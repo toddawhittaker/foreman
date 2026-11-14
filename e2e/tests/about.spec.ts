@@ -121,6 +121,43 @@ test("the About page has the same content, and the dialog is not repeated on it"
   await checkPage(page);
 });
 
+// DESIGN 6, "User menu": the rusty wordmark stands above the heading's words
+// in the dialog and on the page, decorative, sharp on a 2x screen, and inside
+// the box at phone width. Both themes come from the test projects.
+test("the dialog and the page show the wordmark above the heading", async ({ page }) => {
+  await createAdmin(page);
+  const expectWordmark = async (heading: ReturnType<Page["locator"]>) => {
+    await expect(heading).toHaveAccessibleName("About Foreman");
+    const img = heading.locator("img");
+    await expect(img).toHaveCount(1);
+    await expect(img).toHaveAttribute("alt", "");
+    await expect(img).toHaveAttribute("src", /\/icons\/wordmark-480\.webp\?v=/);
+    await expect(img).toHaveAttribute("width", "240");
+    await expect(img).toHaveAttribute("height", "74");
+    // Loaded, and at least twice the width it is drawn at.
+    await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth)).toBe(480);
+    const shown = (await img.boundingBox())!;
+    expect(shown.width).toBeLessThanOrEqual(240);
+    expect(shown.width).toBeGreaterThan(150);
+    const words = await heading.evaluate((h) => {
+      const range = document.createRange();
+      range.selectNodeContents([...h.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim())!);
+      return range.getBoundingClientRect().top;
+    });
+    expect(words, "the words sit under the wordmark").toBeGreaterThanOrEqual(shown.y + shown.height);
+    const box = (await heading.locator("xpath=ancestor::*[self::dialog or self::main][1]").boundingBox())!;
+    expect(shown.x + shown.width).toBeLessThanOrEqual(box.x + box.width);
+  };
+  await openMenu(page);
+  await aboutItem(page).click();
+  await expectWordmark(dialog(page).getByRole("heading", { level: 2 }));
+  await checkPage(page);
+  await page.keyboard.press("Escape");
+  await page.goto("/about");
+  await expectWordmark(page.getByRole("heading", { level: 1 }));
+  await checkPage(page);
+});
+
 test("a signed-out visitor is sent to sign in, not shown the build", async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);

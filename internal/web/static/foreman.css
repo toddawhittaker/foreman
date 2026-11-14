@@ -4677,14 +4677,17 @@ form:has(#mode-exchange:checked) .achievements {
 /* About (DESIGN 6, "User menu"): the product, its version and commit, the Go
    version, the licence and the project's address, on the About page and in
    the dialog the user menu opens. The dialog has the look of the leave box. */
+/* The wordmark stands above the heading's words, at most the width it is
+   drawn for, and shrinks with a narrow dialog. */
 .about__heading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
 }
 
 .about__heading img {
-  flex: none;
+  inline-size: min(15rem, 100%);
+  block-size: auto;
 }
 
 /* The link to the project is a sentence's own, and a target of the floor's height (SPEC 17.2). */

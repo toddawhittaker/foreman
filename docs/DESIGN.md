@@ -602,8 +602,11 @@ frame (7.4).
   3. **About**, a link to the `/about` page, so it works without script.
      With script (`about.js`) it opens the same content in a native modal
      `dialog` (the leave box's look, `surface` on a dimmed page, 32rem at
-     most): the logo (40 px, decorative) and "About Foreman" as its
-     heading, a row of facts: the **Version**, a release tag, shown only
+     most): "About Foreman" as its heading, with the rusty riveted
+     wordmark above the words inside it (`static/icons/wordmark-480.webp`,
+     made from `docs/brand/foreman-wordmark.webp` at twice the 240 by 74
+     px it is drawn, shrinking with a narrower box; decorative, empty
+     `alt`, so the heading's name stays "About Foreman"); then a row of facts: the **Version**, a release tag, shown only
      when one reaches the build; the **Commit** (twelve characters of the
      hash, with "(modified)" after it when the tree had changes); the
      **Go version** it was built with; and the **Licence** (MIT). Then a
