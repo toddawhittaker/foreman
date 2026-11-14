@@ -261,6 +261,7 @@
   "server.done.snapshot": "Foreman took the snapshot \"{label}\" of {world}.",
   "server.done.restore_short": "The world is restored.",
   "server.done.switch_short": "The worlds are switched.",
+  "server.done.close": "Close this message",
   "server.done.update_short": "The game version is updated.",
   "server.done.mods_short": "The mods were changed.",
   "server.done.rollback_short": "The world is rolled back.",
