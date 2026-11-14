@@ -4677,14 +4677,17 @@ form:has(#mode-exchange:checked) .achievements {
 /* About (DESIGN 6, "User menu"): the product, its version and commit, the Go
    version, the licence and the project's address, on the About page and in
    the dialog the user menu opens. The dialog has the look of the leave box. */
+/* The wordmark stands above the heading's words, at most the width it is
+   drawn for, and shrinks with a narrow dialog. */
 .about__heading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
 }
 
 .about__heading img {
-  flex: none;
+  inline-size: min(15rem, 100%);
+  block-size: auto;
 }
 
 /* The link to the project is a sentence's own, and a target of the floor's height (SPEC 17.2). */
@@ -5206,29 +5209,19 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   padding-inline-start: 2.5rem;
 }
 
-/* The Server page: the state card, then players beside the live world's
-   pages on a wide screen; on a phone the pages come first, as tiles. */
+/* The Server page: the state card, then the live world's pages and the
+   players, in the code's order; on a phone the pages are tiles. */
 .server-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
-  order: 2;
-}
-
-main > .status-card {
-  order: 1;
-}
-
-.server-grid > .panel {
-  order: 1;
 }
 
 /* The world's pages beside the players: one list of 56 px rows divided by
    hairlines, with the players card's side padding. */
 .shortcuts.card,
 .server-grid > .shortcuts.card {
-  order: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-auto-rows: auto;
@@ -6053,8 +6046,8 @@ main > .panel > .facts > div {
   font-size: var(--text-xs);
 }
 
-/* The status lamp (DESIGN 7.5): the state badge's shape, small, after Server
-   in the main navigation and at the start of the Server plate's band. A
+/* The status lamp (DESIGN 7.5): the state badge's shape, small, before the
+   state's word in the header and at the start of the Server plate's band. A
    filled square runs, a half-filled one starts or stops, a diamond has
    crashed, a hollow square is stopped, a hollow circle is unknown. */
 .lamp {
@@ -6093,13 +6086,76 @@ main > .panel > .facts > div {
   border-radius: 50%;
 }
 
+/* Every state is said in words (SPEC 17.4). On a wide screen the lamp and
+   the state's word sit small under Server in its tab; a long word wraps
+   between words rather than widen the header. */
+.tabs__stack {
+  display: contents;
+}
+
+@media (min-width: 40rem) {
+  .tabs a:has(> .tabs__stack) {
+    display: grid;
+    grid-template-columns: auto auto;
+    place-content: center;
+    align-items: center;
+    gap: 0 var(--space-2);
+    line-height: 1;
+  }
+}
+
+/* The state's line spans the tab under the icon and the word, and is sized
+   by the tab rather than sizing it, so a long state wraps there instead of
+   widening the header; two lines of it still fit the 44 px tab. */
 .tabs :is(#nav-lamp, .nav-lamp) {
-  display: inline-flex;
-  margin-inline-start: calc(var(--space-2) - var(--space-1));
+  display: block;
+  grid-column: 1 / -1;
+  contain: inline-size;
+  margin-inline: calc(var(--space-1) - var(--space-3));
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* On a phone the four tabs fill their row, so the lamp and word move up
+   beside the logo, where the first row has room; the tab keeps the word for
+   screen readers. */
+.site-state {
+  display: none;
+}
+
+@media (max-width: 39.99rem) {
+  .site-state:not(:empty) {
+    display: inline-flex;
+    flex: 1 1 0;
+    align-items: center;
+    gap: var(--space-2);
+    min-inline-size: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.2;
+    hyphens: auto;
+  }
+
+  .tabs #nav-lamp {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 .tabs :is(#nav-lamp, .nav-lamp):empty {
   display: none;
+}
+
+.tabs :is(#nav-lamp, .nav-lamp) .lamp {
+  vertical-align: -0.0625rem;
 }
 
 /* While starting, the lamp's fill sweeps; it rests under reduced motion. */
@@ -6829,8 +6885,10 @@ main:has(> .gate) > .gate {
 
 /* The selection bar: the number ticked and Delete selected float over the
    list's foot, at its end, once a box is ticked, so the next step is always
-   in view. */
+   in view. It comes before the list in the code, so the keyboard reaches it
+   from the first box; `order` draws it last in its form, where it sticks. */
 .select-bar {
+  order: 1;
   position: sticky;
   inset-block-end: var(--space-4);
   z-index: 2;
@@ -6850,6 +6908,11 @@ main:has(> .gate) > .gate {
 
 .select-bar[hidden] {
   display: none;
+}
+
+/* The link to older snapshots after the list stays after the bar too. */
+.select-bar ~ .actions {
+  order: 2;
 }
 
 /* The number ticked is a round tag before the button it counts for. */
@@ -6874,6 +6937,7 @@ main:has(> .gate) > .gate {
 
 /* On the component page the bar is a specimen, so it stays in its place. */
 .design-pane .select-bar {
+  order: 0;
   position: static;
 }
 

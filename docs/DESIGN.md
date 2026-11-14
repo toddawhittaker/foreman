@@ -534,8 +534,9 @@ frame (7.4).
   it. Its content lines up with the page column (`--page-max`), and its
   side padding follows `main`'s. It is a flex row that wraps. From 40rem it
   is one row: the logo and name at the start, then the nav and the user menu
-  at the end. Below 40rem it is two rows, about 100 px at 320 px: the logo
-  and the menu, then the nav on a row of its own (`order: 2; flex-basis:
+  at the end. Below 40rem it is two rows, about 100 px at 320 px: the logo,
+  the server's state in words (7.5, "The nav's state") and the menu, then
+  the nav on a row of its own (`order: 2; flex-basis:
   100%`), its four tabs sharing the row out between them. At 320 px with
   200% text in German or Russian the tabs wrap onto a second row of that
   line rather than widen the page. The focus
@@ -565,7 +566,9 @@ frame (7.4).
   marked on all three settings pages and the pages under them, "page" on
   the restart schedule and "true" on the others. No page shows two
   navigation links with the same name, so a world's own settings tab is
-  "Game settings".
+  "Game settings", and a world's own Snapshots tab keeps its one word on
+  screen but is named "Snapshots of this world" (an `aria-label` that
+  starts with the shown word, WCAG 2.5.3).
 - **The user menu** is a native `details` at the end of the header. Its
   summary is a bordered button on `raised` (1 px `border`, `--radius`,
   `--text-sm`) that shows the user's name in weight 600 and the current
@@ -599,8 +602,11 @@ frame (7.4).
   3. **About**, a link to the `/about` page, so it works without script.
      With script (`about.js`) it opens the same content in a native modal
      `dialog` (the leave box's look, `surface` on a dimmed page, 32rem at
-     most): the logo (40 px, decorative) and "About Foreman" as its
-     heading, a row of facts: the **Version**, a release tag, shown only
+     most): "About Foreman" as its heading, with the rusty riveted
+     wordmark above the words inside it (`static/icons/wordmark-480.webp`,
+     made from `docs/brand/foreman-wordmark.webp` at twice the 240 by 74
+     px it is drawn, shrinking with a narrower box; decorative, empty
+     `alt`, so the heading's name stays "About Foreman"); then a row of facts: the **Version**, a release tag, shown only
      when one reaches the build; the **Commit** (twelve characters of the
      hash, with "(modified)" after it when the tree had changes); the
      **Go version** it was built with; and the **Licence** (MIT). Then a
@@ -745,12 +751,14 @@ order and the picture agree.
   then the **Server plate** (7.5, the status card of 7.8): its band, which
   states the server's state large, then the controls (and while an
   operation runs, its step list and "Cancel stop"), then the facts. Below
-  the plate come "Players online" and the live world's pages (World page,
-  Mods, Game settings and Switch world). On a phone (to 40rem) the pages
-  come first, as a two-column grid of 48 px tiles with 8 px gaps (`surface`
+  the plate come the live world's pages (World page, Mods, Game settings
+  and Switch world), then "Players online", in that order in the code too,
+  so Tab meets them as they are drawn. On a phone (to 40rem) the pages are
+  a two-column grid of 48 px tiles with 8 px gaps (`surface`
   face, 1 px `border` edge, `--radius`, icon and name, no chevron), so the
-  players start on the first screen; then the players. From 64rem the
-  players card and the pages card sit side by side (two parts to one), and
+  players start on the first screen. From 64rem the grid places the
+  players card on the left and the pages card on the right (`grid-row`
+  and `grid-column`, not `order`), side by side (two parts to one), and
   the pages are one card of four 56 px rows divided by hairlines (icon,
   name and a chevron), the card running down to the players card's foot
   with its rows at the top. There is no list of other worlds: "Switch world"
@@ -1275,8 +1283,23 @@ holds only the word. A template always writes the modifier, even for
   otherwise. So the state reads from across the room and is said once per
   screen. After the word come the uptime and who is online. The rule is a
   border, so forced colours keeps it. The plate has no corner marks; the
-  riveted logo in the header is unchanged. The nav's state square (the
-  lamp after Server) stays on every page.
+  riveted logo in the header is unchanged.
+- **The nav's state.** Every page's header says the server's state in
+  words, with the badge's shape as a small lamp (a 0.625rem square in the
+  state's colour) before the word, so no state is told by shape or colour
+  alone. On a wide screen (from 40rem) the lamp and word sit on a second
+  line under the tab's icon and "Server", `--text-xs`, weight 500, line
+  height 1. That line takes the tab's width and never sets it
+  (`contain: inline-size`), so a long state wraps there, to two lines at
+  most within the 44 px tab, and the header keeps its height when the
+  state changes; the lamp stays with its word (a no-break space). On a
+  phone the four tabs fill their row, so the lamp and word sit beside the
+  logo in the first row instead (`site-state`, `--text-sm`, weight 600,
+  `text-muted`), taking the room between the logo and the menu and
+  wrapping there. Either way the Server link's name is "Server Running",
+  its words in the order they show (WCAG 2.5.3); the copy beside the logo
+  is `aria-hidden`, so the state is heard once. The Server page's live facts replace both
+  copies, so the header follows the game without a reload.
 - **The live world's chip.** The live world's mark and the server's state
   are one chip, never two pills side by side: a pill on `raised` with a
   1 px `border` edge holding the pin and "Active", a hairline, then the
@@ -1623,7 +1646,12 @@ what an operator scans for: the label with its box at `--text-md`, weight
 44 px "Details" disclosure holding the exact time, who took it and, on
 the main Snapshots page, what deleting it frees; then Restore and the 44 by
 44 px Delete together, 12 px apart. The header row is visually hidden. "Delete selected" (risky) waits
-for a ticked box (7.1). A list without row actions, such as the deleted
+for a ticked box (7.1). Its selection bar comes before the list in the
+code, after "Select all automatic", so a keyboard user reaches it with one
+Shift+Tab from the first box (two on the Snapshots tab, past the first
+world's name) instead of passing every row; `order: 1` draws it at the
+end of its form, where it sticks to the window's foot (6, rule 7), and
+"Show older" after the list keeps its place after the bar (`order: 2`). A list without row actions, such as the deleted
 worlds, keeps its columns. A snapshot table also stacks each cell (snapshot,
 then "Taken:", then "Size:") when its panel is narrower than 14rem, which is
 200% text on a 320 px phone. Changing `display` can drop table semantics in some browsers, so

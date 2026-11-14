@@ -254,6 +254,7 @@ var staticTypes = map[string]string{
 	".ico":   "image/x-icon",
 	".woff2": "font/woff2",
 	".svg":   "image/svg+xml",
+	".webp":  "image/webp",
 }
 
 // flags are the languages' flag pictures under static/flags, by language

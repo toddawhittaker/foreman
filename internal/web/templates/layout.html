@@ -27,10 +27,12 @@
   {{- /* The logo is decorative beside the name, so the link's name is "Foreman". */}}
   <a href="{{serverPath}}" class="product"><img src="{{static "icons/logo-32.png"}}" srcset="{{static "icons/logo-64.png"}} 2x" alt="" width="32" height="32"><span class="product__name">Foreman</span></a>
   {{- if .User}}
+  {{- /* On a phone the state shows here, where the logo's row has room; Server's tab says it to screen readers (DESIGN 7.5). */}}
+  <span id="site-state" class="site-state" aria-hidden="true">{{template "nav-lamp" .Lamp}}</span>
   <nav aria-label="{{t "common.nav.label"}}">
     <ul class="tabs" role="list">
       {{- /* "page" only on the page itself; "true" on the section a page belongs to (DESIGN 6). */}}
-      <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}>{{t "common.nav.server"}}<span id="nav-lamp">{{template "nav-lamp" .Lamp}}</span></a></li>
+      <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}><span class="tabs__stack">{{t "common.nav.server"}}<span id="nav-lamp">{{template "nav-lamp" .Lamp}}</span></span></a></li>
       <li><a href="{{worldsPath}}"{{if .Current (print worldsPath "#page")}} aria-current="page"{{else if .Current worldsPath}} aria-current="true"{{end}}>{{t "common.nav.worlds"}}</a></li>
       <li><a href="{{snapshotsTabPath}}"{{if .Current (print snapshotsTabPath "#page")}} aria-current="page"{{else if .Current snapshotsTabPath}} aria-current="true"{{end}}>{{t "common.nav.snapshots"}}</a></li>
       {{- /* Foreman's own settings (DESIGN 8.15); the tab opens the restart schedule. */}}
@@ -109,9 +111,9 @@
 </html>
 {{end}}
 
-{{/* The product's logo beside the About heading; decorative, as the name is in the heading. */}}
+{{/* The product's rusty wordmark above the About heading's words; decorative, as the name is in the heading. */}}
 {{define "about-logo" -}}
-<img src="{{static "icons/logo-64.png"}}" alt="" width="40" height="40">
+<img src="{{static "icons/wordmark-480.webp"}}" alt="" width="240" height="74">
 {{- end}}
 
 {{/* What About says, in the page and the dialog: the version and commit, the
@@ -190,12 +192,12 @@
 {{.ActiveName}} <span class="state state--{{.Status.State}}">{{msg .StateWord}}</span>
 {{- end}}
 
-{{/* The server's state as a lamp after Server in the main navigation, on
-     every page: the state badge's shape and colour, and its word for screen
-     readers (DESIGN 7.5). The Server page's live facts replace it. Takes
-     LiveState. */}}
+{{/* The server's state under Server in the main navigation, on every page:
+     the state badge's shape and colour, then its word, so no state is told
+     by shape alone (SPEC 17.4, DESIGN 7.5); the link is named "Server Running".
+     The Server page's live facts replace it. Takes LiveState. */}}
 {{define "nav-lamp" -}}
-{{- if .Have}}<span class="lamp lamp--{{.State}}"></span><span class="visually-hidden">, {{msg .Word}}</span>{{end}}
+{{- if .Have}}<span class="lamp lamp--{{.State}}"></span>&nbsp;{{msg .Word}}{{end}}
 {{- end}}
 
 {{/* The tabs of the server view (DESIGN 6, "Sub-navigation"). Takes
@@ -235,7 +237,8 @@
   <ul role="list">
     <li><a href="{{.Path}}"{{if eq .Current "overview"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.tabs.overview"}}</a></li>
     <li><a href="{{.Path}}/saves"{{if eq .Current "saves"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.saves"}}</a></li>
-    <li><a href="{{.Path}}/snapshots"{{if eq .Current "snapshots"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
+    {{- /* The main nav has a Snapshots tab too, so this one's name says whose; it starts with the shown word (WCAG 2.5.3). */}}
+    <li><a href="{{.Path}}/snapshots" aria-label="{{t "worlds.world.snapshots_name"}}"{{if eq .Current "snapshots"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
     {{- if .Settings}}
     <li><a href="{{.Path}}/mods"{{if eq .Current "mods"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "mods.tab"}}</a></li>
     <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a></li>
