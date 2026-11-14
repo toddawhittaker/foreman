@@ -4,7 +4,8 @@
 // -dir, serves the test hooks (internal/fakegame, HookHandler) on a loopback
 // TCP port, and prints one line of JSON, {"socket": "...", "hook":
 // "http://127.0.0.1:PORT"}, once both are ready. It stops on SIGINT or
-// SIGTERM.
+// SIGTERM. -sidecar NAME (with -self-network) also seeds an operator's VPN
+// sidecar on that network, publishing 34197/udp on -sidecar-port if given.
 package main
 
 import (
@@ -36,11 +37,14 @@ func run() error {
 	images := flag.String("images", "", "comma-separated image references that are present at the start")
 	loadDelay := flag.Duration("load-delay", 0, "time a start takes between loading the map and InGame")
 	selfNetwork := flag.String("self-network", "", "seed a container for the one this runs in, on this network")
+	sidecar := flag.String("sidecar", "", "seed a running VPN sidecar of this name on the self network")
+	sidecarPort := flag.String("sidecar-port", "", "host port the sidecar publishes 34197/udp on; empty publishes none")
 	flag.Parse()
 	if *dir == "" {
 		return errors.New("-dir is required")
 	}
-	cfg := fakegame.Config{Dir: *dir, LoadDelay: *loadDelay, SelfNetwork: *selfNetwork}
+	cfg := fakegame.Config{Dir: *dir, LoadDelay: *loadDelay, SelfNetwork: *selfNetwork,
+		Sidecar: *sidecar, SidecarPort: *sidecarPort}
 	if *images != "" {
 		cfg.Images = strings.Split(*images, ",")
 	}
