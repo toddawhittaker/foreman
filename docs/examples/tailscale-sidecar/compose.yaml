@@ -1,0 +1,100 @@
+# Foreman with a Tailscale VPN sidecar. See docs/OPERATOR.md, section 16.
+#
+# Put this file next to data/ as compose.yaml, replace the example values,
+# then run `docker compose up -d` and sign the sidecar in from its log:
+# `docker compose logs -f tailscale`.
+#
+# - Foreman creates the game's container itself. It is not defined here, and
+#   must never be: Foreman recreates it at every start.
+# - No Tailscale credential is in this file. The sidecar prints a sign-in
+#   link in its log the first time it starts.
+# - Foreman never signs in, configures, restarts or removes the sidecar.
+#   After you restart or recreate it, restart the game from Foreman.
+services:
+  foreman:
+    image: foreman:dev
+    restart: unless-stopped
+    environment:
+      FOREMAN_DATA_DIR: /data
+      FOREMAN_GAME_NETWORK: foreman-game
+      # The game runs inside this container's network. It must match the
+      # sidecar's container_name below.
+      FOREMAN_GAME_NETWORK_CONTAINER: foreman-tailscale
+      DOCKER_HOST: tcp://socket-proxy:2375
+      # The join line on the Server page: one address, for LAN players or
+      # for VPN players. Use your host's LAN address or the sidecar's
+      # tailnet name.
+      FOREMAN_PUBLIC_ADDRESS: 192.168.1.20
+      # At least 32 random characters, for example from: openssl rand -hex 32
+      FOREMAN_SECRET_KEY: replace-with-at-least-32-random-characters
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # Orders `docker compose up` only. Docker's own restarts after a reboot
+    # do not follow it.
+    depends_on: [socket-proxy, tailscale]
+    networks: [game, docker]
+
+  socket-proxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      IMAGES: "1"
+      POST: "1"
+      EVENTS: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # Never put the sidecar on this network: the game could reach Docker.
+    networks: [docker]
+
+  tailscale:
+    # An exact release, pinned by its multi-platform index digest on
+    # Docker Hub, so the sidecar never changes under a running game.
+    image: tailscale/tailscale:v1.104.7@sha256:72c1e19e0aedca96b8533bbb0b4368564410ff20b17e53b804eb6c1f04a31be4
+    container_name: foreman-tailscale
+    restart: unless-stopped
+    environment:
+      # Kernel networking: a real tailscale0 interface the game listens on.
+      TS_USERSPACE: "false"
+      # Keeps the node's identity, so a restart is not a new machine.
+      TS_STATE_DIR: /var/lib/tailscale
+      # Sign in only when not already signed in.
+      TS_AUTH_ONCE: "true"
+      # The machine's name in your tailnet; VPN players join this name.
+      TS_HOSTNAME: factorio
+      # Do not add TS_ROUTES, TS_DEST_IP, TS_SERVE_CONFIG, an exit node or
+      # --advertise-routes: each can forward VPN traffic past the game's
+      # UDP port to the private network where RCON listens.
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    # Kernel networking needs the TUN device and these capabilities. They
+    # are the sidecar's own; the game container gets none.
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add: [NET_ADMIN, NET_RAW]
+    # LAN players join here. Foreman cannot publish a port for a game that
+    # shares this container's network; only this container can.
+    ports:
+      - "34197:34197/udp"
+    # Required: Foreman reaches RCON at this container's address on the
+    # game network. Other networks may be added; the game can then reach
+    # everything on them (docs/OPERATOR.md, section 16).
+    networks: [game]
+
+networks:
+  game:
+    name: foreman-game
+  docker:
+    name: foreman-docker
+
+volumes:
+  tailscale-state:
+    name: foreman-tailscale-state
