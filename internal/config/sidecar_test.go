@@ -9,8 +9,7 @@ func sidecarEnv(vars map[string]string) env {
 	return env{getenv: func(k string) (string, bool) { v, ok := vars[k]; return v, ok }}
 }
 
-// The sidecar's name is read and checked now; Load still refuses it until
-// the game can use it (SPEC 4.13), so these tests call loadSidecar directly.
+// The sidecar's name is read and checked (SPEC 4.13).
 func TestLoadSidecarReadsNameOrID(t *testing.T) {
 	for _, name := range []string{"tailscale", "vpn_1", "ts.sidecar-2", "0123abcd", strings.Repeat("a", 64)} {
 		var errs []error
