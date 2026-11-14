@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -35,18 +36,22 @@ type secRig struct {
 }
 
 // startController makes a controller on dockerHost and runs it until the
-// returned stop is called (also at test end).
-func startController(t *testing.T, dockerHost string, worlds *world.Manager, st *store.Store, logs io.Writer) (*game.Controller, func()) {
+// returned stop is called (also at test end). opts change its settings.
+func startController(t *testing.T, dockerHost string, worlds *world.Manager, st *store.Store, logs io.Writer, opts ...func(*game.Config)) (*game.Controller, func()) {
 	t.Helper()
 	dc, err := docker.New(dockerHost)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := game.New(game.Config{
+	cfg := game.Config{
 		Docker: dc, Worlds: worlds, Audit: st, Switches: st,
 		HostDataDir: filepath.Dir(worlds.Dirs().Worlds), GameUID: 845, GameGID: 845,
 		Log: slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
-	})
+	}
+	for _, o := range opts {
+		o(&cfg)
+	}
+	c, err := game.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -845,4 +850,61 @@ func TestRefusedStopKeepsTheRestartsResult(t *testing.T) {
 		t.Fatal("the stop was not refused, so the check proves nothing")
 	}
 	g.waitPage("is not downloaded", "The stop asked for during another action did not finish: ")
+}
+
+// SPEC 4.13, 12.6: with a VPN sidecar, every range of every Docker network
+// the sidecar is on is a game range for trusted-header sign-in, learned
+// before any game starts while Foreman runs on the host, and header
+// sign-in stays refused while the sidecar cannot be read.
+func TestSidecarRangesRefuseHeaderSignIn(t *testing.T) {
+	sidecarHarness := func(t *testing.T, seed bool) (*harness, *game.Controller) {
+		fake := fakegame.New(t, fakegame.Config{Images: []string{image21}})
+		if seed {
+			fake.Daemon().Seed(dockertest.Container{Name: "tailscale", Status: "running",
+				Networks: map[string]string{"games": "172.30.0.5/24", "shared": "10.0.1.7/24"},
+				Spec:     docker.ContainerSpec{Env: []string{"TS_AUTHKEY=tskey-never-shown"}}})
+		}
+		env := map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_REQUIRED_GROUP": testGroup}
+		for k, v := range headerEnv {
+			env[k] = v
+		}
+		env["FOREMAN_TRUSTED_PROXIES"] = "10.0.0.5/32"
+		var ctrl *game.Controller
+		hn := newHarnessWith(t, env, func(worlds *world.Manager, st *store.Store) *game.Controller {
+			ctrl, _ = startController(t, fake.Host(), worlds, st, io.Discard, func(c *game.Config) {
+				c.Network, c.NetworkContainer = "games", "tailscale"
+			})
+			return ctrl
+		})
+		return hn, ctrl
+	}
+	t.Run("the sidecar's additional network is refused", func(t *testing.T) {
+		hn, ctrl := sidecarHarness(t, true)
+		deadline := time.Now().Add(5 * time.Second)
+		for _, known := ctrl.GameSubnets(); !known; _, known = ctrl.GameSubnets() {
+			if time.Now().After(deadline) {
+				t.Fatal("the sidecar's ranges never became known")
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if rec := hn.get(PathWorlds, asPeer(peerProxy)...); rec.Code != http.StatusOK {
+			t.Fatalf("from the proxy: %d", rec.Code)
+		}
+		if rec := hn.get(PathWorlds, asPeer("10.0.1.200:4000")...); rec.Code != http.StatusForbidden {
+			t.Fatalf("from the sidecar's shared network: %d", rec.Code)
+		}
+		if strings.Contains(hn.logs.String(), "tskey") {
+			t.Error("the log shows the sidecar's environment")
+		}
+	})
+	t.Run("a sidecar that cannot be read keeps header sign-in refused", func(t *testing.T) {
+		hn, ctrl := sidecarHarness(t, false)
+		time.Sleep(100 * time.Millisecond) // several monitor looks
+		if _, known := ctrl.GameSubnets(); known {
+			t.Fatal("ranges known without the sidecar")
+		}
+		if rec := hn.get(PathWorlds, asPeer(peerProxy)...); rec.Code != http.StatusForbidden {
+			t.Fatalf("from the proxy while unknown: %d", rec.Code)
+		}
+	})
 }

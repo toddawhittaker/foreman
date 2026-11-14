@@ -18,6 +18,7 @@ type launch struct {
 	save    string // the save chosen to load, or ""
 	meta    world.Meta
 	image   string
+	network gameNet
 	rconPW  secret.Secret
 	secrets []secret.Secret
 }
@@ -78,7 +79,7 @@ func (c *Controller) prepareContainer(ctx context.Context, o *opRun) (launch, er
 		return launch{}, err
 	}
 	o.done(StepCreate)
-	return launch{cid: cid, save: save, meta: meta, image: ref, rconPW: rconPW, secrets: secrets}, nil
+	return launch{cid: cid, save: save, meta: meta, image: ref, network: network, rconPW: rconPW, secrets: secrets}, nil
 }
 
 // runContainer starts the prepared container and waits for the game.
@@ -102,7 +103,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	w.mu.Unlock()
 	closeRCON(stale)
 	o.show(StateStarting)
-	c.noteSelfGameSubnet(ctx)
+	c.noteStartSubnets(ctx, p.network)
 	if err := c.docker.StartContainer(ctx, cid); err != nil {
 		return startRefused(err)
 	}
@@ -111,8 +112,11 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 		return err
 	}
 	// Before the next monitor look, so a new game's range is refused at once.
-	c.noteGameSubnets(cont)
-	addr := rconAddress(cont)
+	c.noteGameSubnets(ctx, cont)
+	ep, err := c.gameEndpoint(ctx, cont)
+	if err != nil {
+		return err
+	}
 	w.mu.Lock()
 	if err := ctx.Err(); err != nil {
 		w.mu.Unlock()
@@ -121,8 +125,9 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	// Only a container Docker started can crash.
 	w.expectRunning = true
 	w.dockerStatus, w.startedAt, w.seenRestarts = cont.State.Status, cont.State.StartedAt, cont.RestartCount
-	if addr != "" {
-		w.rc = rcon.New(addr, p.rconPW)
+	w.lanUnpublished = ep.lanUnpublished
+	if ep.rcon != "" {
+		w.rc = rcon.New(ep.rcon, p.rconPW)
 	}
 	c.followLocked(w, cid, time.Time{})
 	c.changedLocked(w, true)
@@ -227,9 +232,9 @@ func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) e
 	if err != nil {
 		return err
 	}
-	addr := rconAddress(cont)
-	if addr == "" {
-		return nil
+	ep, err := c.gameEndpoint(ctx, cont)
+	if err != nil || ep.rcon == "" {
+		return err
 	}
 	pw, err := c.worlds.RCONPassword(w.id)
 	if err != nil {
@@ -238,7 +243,7 @@ func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) e
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.containerID == cid && w.rc == nil {
-		w.rc = rcon.New(addr, pw)
+		w.rc = rcon.New(ep.rcon, pw)
 	}
 	return nil
 }

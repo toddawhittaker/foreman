@@ -219,7 +219,7 @@ func gameConfig(cfg *config.Config, d *docker.Client, worlds *world.Manager, st 
 	return game.Config{
 		Docker: d, Worlds: worlds, Audit: st, Switches: st,
 		HostDataDir: hostDir, GameUID: cfg.GameUID, GameGID: cfg.GameGID,
-		Network:    cfg.GameNetwork,
+		Network: cfg.GameNetwork, NetworkContainer: cfg.GameNetworkContainer,
 		DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,
 		SelfID: selfID, Log: slog.Default(),
 	}

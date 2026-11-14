@@ -37,9 +37,9 @@ func TestGameConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config.Config{GameUID: 845, GameGID: 845, GameNetwork: "games"}
+	cfg := &config.Config{GameUID: 845, GameGID: 845, GameNetwork: "games", GameNetworkContainer: "tailscale"}
 	gc := gameConfig(cfg, d, worlds, st, "/srv/foreman", "self")
-	if gc.HostDataDir != "/srv/foreman" || gc.Network != "games" || gc.SelfID != "self" {
+	if gc.HostDataDir != "/srv/foreman" || gc.Network != "games" || gc.NetworkContainer != "tailscale" || gc.SelfID != "self" {
 		t.Errorf("game config = %+v", gc)
 	}
 	if _, err := game.New(gc); err != nil {

@@ -2,8 +2,10 @@ package game
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 	"slices"
+	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 )
@@ -29,42 +31,86 @@ func (c *Controller) GameSubnets() (subnets []netip.Prefix, known bool) {
 // the range is Foreman's own on the game network; with no game network no
 // game can start (SPEC 4.4). Outside one it is what the game containers
 // report (noteGameSubnets), so it is known only once all were inspected.
+// With a VPN sidecar it is every range of the sidecar's networks too, read
+// in either case, and known only once the sidecar was read in full and
+// every game was inspected, since an older game may share the network of
+// a sidecar since replaced.
 func (c *Controller) refreshSubnets(ctx context.Context, allSeen bool) {
 	self, inContainer, err := c.selfContainer(ctx)
+	var own []netip.Prefix
+	if inContainer {
+		own = appendSubnets(nil, self.Networks[c.network])
+	}
 	switch {
 	case err != nil:
+	case c.sidecar != "":
+		sidecar, complete := c.readSidecarSubnets(ctx)
+		c.addSubnets(append(own, sidecar...), complete && allSeen)
 	case inContainer:
-		c.addSubnets(appendSubnets(nil, self.Networks[c.network]))
+		c.addSubnets(own, true)
 	case allSeen:
-		c.addSubnets(nil)
+		c.addSubnets(nil, true)
 	}
 }
 
-// noteSelfGameSubnet adds, before a game first starts, Foreman's
-// own range on the game network, so the game is never running while its
-// range is unknown. Outside a container Foreman has no endpoint there, and
+// readSidecarSubnets reads the ranges of the configured sidecar's networks
+// (SPEC 12.6); complete is false when they could not all be read.
+func (c *Controller) readSidecarSubnets(ctx context.Context) (subnets []netip.Prefix, complete bool) {
+	sc, err := c.docker.InspectContainer(ctx, c.sidecar)
+	if err != nil {
+		return nil, false
+	}
+	return sidecarSubnets(sc)
+}
+
+// noteStartSubnets adds, before a game starts, the ranges it will send
+// from, so the game is never running while they are unknown. With a VPN
+// sidecar they are the ranges of the sidecar the start checked, which
+// were all read (SPEC 4.13). In a container they are Foreman's own range
+// on the game network. Outside one Foreman has no endpoint there, and
 // noteGameSubnets adds the range once the started game is inspected.
-func (c *Controller) noteSelfGameSubnet(ctx context.Context) {
+func (c *Controller) noteStartSubnets(ctx context.Context, network gameNet) {
+	if network.sidecar.ID != "" {
+		c.addSubnets(sidecarSubnets(network.sidecar))
+		return
+	}
 	self, inContainer, err := c.selfContainer(ctx)
 	if err != nil || !inContainer {
 		return
 	}
-	c.addSubnets(appendSubnets(nil, self.Networks[c.network]))
+	c.addSubnets(appendSubnets(nil, self.Networks[c.network]), true)
 }
 
-// noteGameSubnets adds a game container's range on its network. Ranges
-// are only added here, never dropped: a network keeps its range, and
-// refusing an old one is the safe side.
-func (c *Controller) noteGameSubnets(cont docker.Container) {
+// noteGameSubnets adds a game container's ranges and reports whether they
+// could be read. A game in another container's network has none of its
+// own: the ranges are that container's, looked up by the ID the game
+// joined, and they never alone make the ranges known. A game whose
+// network container is gone sends from no Docker network. Ranges are only
+// added here, never dropped: a network keeps its range, and refusing an
+// old one is the safe side.
+func (c *Controller) noteGameSubnets(ctx context.Context, cont docker.Container) bool {
+	if ref, shared := strings.CutPrefix(cont.NetworkMode, "container:"); shared {
+		ns, err := c.docker.InspectContainer(ctx, ref)
+		if err != nil {
+			return errors.Is(err, docker.ErrNotFound)
+		}
+		subnets, _ := sidecarSubnets(ns)
+		c.addSubnets(subnets, false)
+		return true
+	}
 	var add []netip.Prefix
 	for _, n := range cont.Networks {
 		add = appendSubnets(add, n)
 	}
-	c.addSubnets(add)
+	// With a sidecar, a game on a network of its own is left from before
+	// the sidecar was set; the sidecar's ranges decide.
+	c.addSubnets(add, c.sidecar == "")
+	return true
 }
 
-// addSubnets marks the ranges known and adds subnets to them.
-func (c *Controller) addSubnets(subnets []netip.Prefix) {
+// addSubnets adds subnets to the ranges, and marks them known when known
+// is set.
+func (c *Controller) addSubnets(subnets []netip.Prefix, known bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	subnets = append(subnets, c.subnets...)
@@ -74,7 +120,8 @@ func (c *Controller) addSubnets(subnets []netip.Prefix) {
 		}
 		return a.Bits() - b.Bits()
 	})
-	c.subnets, c.subnetsKnown = slices.Compact(subnets), true
+	c.subnets = slices.Compact(subnets)
+	c.subnetsKnown = c.subnetsKnown || known
 }
 
 // linkLocalV6 is fe80::/10, the IPv6 link-local range.

@@ -177,11 +177,11 @@ func TestStartScriptWhitelistSwitchOn(t *testing.T) {
 // Foreman can tell whether the running game keeps the whitelist.
 func TestContainerSpecWhitelistSwitch(t *testing.T) {
 	c := &Controller{hostData: "/srv/foreman"}
-	off := c.containerSpec("w1", "img", "net", world.Meta{})
+	off := c.containerSpec("w1", "img", gameNet{mode: "net"}, world.Meta{})
 	if _, ok := off.Labels[LabelWhitelist]; ok || strings.Contains(off.Cmd[1], "whitelist") {
 		t.Errorf("switch off: label %v, script mentions the whitelist: %v", off.Labels, strings.Contains(off.Cmd[1], "whitelist"))
 	}
-	on := c.containerSpec("w1", "img", "net", world.Meta{UseWhitelist: true})
+	on := c.containerSpec("w1", "img", gameNet{mode: "net"}, world.Meta{UseWhitelist: true})
 	if on.Labels[LabelWhitelist] != "1" || !strings.Contains(on.Cmd[1], "--use-server-whitelist --server-whitelist ") {
 		t.Errorf("switch on: label %v, script %q", on.Labels, on.Cmd[1])
 	}

@@ -173,11 +173,6 @@ func load(e env) (*Config, error) {
 	}
 
 	loadSidecar(e, c, &errs)
-	// Refuse rather than silently ignore a setting that would route game traffic
-	// through a VPN sidecar, until the game can use it (SPEC 4.13).
-	if _, ok := e.get(varNetworkContainer); ok {
-		fail("%s is set, but VPN sidecars (SPEC 4.13) are not built yet. Unset it to start Foreman.", varNetworkContainer)
-	}
 
 	loadSecrets(e, c, &errs)
 

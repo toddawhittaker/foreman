@@ -166,6 +166,10 @@ type Config struct {
 	// Network is FOREMAN_GAME_NETWORK. Outside a container empty means
 	// Docker's default bridge; inside one it is required (SPEC 4.4).
 	Network string
+	// NetworkContainer is FOREMAN_GAME_NETWORK_CONTAINER: the VPN sidecar
+	// whose network the game shares, or "" for none. It needs Network
+	// (SPEC 4.13).
+	NetworkContainer string
 	// DockerHost is DOCKER_HOST. Over tcp:// a socket proxy shares a
 	// network with Foreman, so the game network must not hold its address
 	// (SPEC 4.4).
@@ -192,6 +196,7 @@ type Controller struct {
 	hostData string
 	user     string
 	network  string
+	sidecar  string // FOREMAN_GAME_NETWORK_CONTAINER; "" for none (SPEC 4.13)
 	selfID   string
 	// What the game network is checked against (SPEC 4.4). dockerHost is the
 	// host DOCKER_HOST names over tcp://.
@@ -286,6 +291,9 @@ func New(cfg Config) (*Controller, error) {
 	if err := checkNetworkName(cfg.Network); err != nil {
 		return nil, err
 	}
+	if cfg.NetworkContainer != "" && cfg.Network == "" {
+		return nil, errors.New("FOREMAN_GAME_NETWORK must be set when FOREMAN_GAME_NETWORK_CONTAINER is set")
+	}
 	now := cfg.Now
 	if now == nil {
 		now = time.Now
@@ -299,7 +307,7 @@ func New(cfg Config) (*Controller, error) {
 		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit, switches: cfg.Switches,
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
-		network:  cfg.Network, selfID: cfg.SelfID,
+		network:  cfg.Network, sidecar: cfg.NetworkContainer, selfID: cfg.SelfID,
 		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), dockerHost: tcpHost(cfg.DockerHost),
 		proxies: cfg.TrustedProxies, containerEnvs: []string{docker.DockerEnvPath, docker.PodmanEnvPath}, lookupHost: net.DefaultResolver.LookupHost,
 		now: now, log: log,
@@ -363,6 +371,8 @@ type worldRun struct {
 	gameVersion string
 	image       string
 	usage       usage
+	// lanUnpublished is Status.LANUnpublished for the current container.
+	lanUnpublished string
 
 	following    bool
 	followGen    int
@@ -719,6 +729,12 @@ type Status struct {
 	// is the free space then (SPEC 8.13).
 	LowDisk   bool
 	FreeBytes uint64
+	// LANUnpublished is the VPN sidecar's name while the game runs in its
+	// network and the sidecar published no host port for UDP 34197 when the
+	// game started or was taken on; "" otherwise. LAN players then cannot
+	// join, but VPN players can, so it is a warning and never refuses a
+	// start (SPEC 4.13).
+	LANUnpublished string
 }
 
 // View is what a page shows when it opens: the status and the log so far.
@@ -777,6 +793,7 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	}
 	if w.dockerStatus == "running" {
 		st.LowDisk, st.FreeBytes = c.diskLow()
+		st.LANUnpublished = w.lanUnpublished
 	}
 	if st.State == StateCrashed || st.State == StateCrashLooping {
 		st.Crash = c.crashLocked(w)

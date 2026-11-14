@@ -113,9 +113,7 @@ func (c *Controller) tick(ctx context.Context) {
 			continue
 		}
 		cont, err := c.docker.InspectContainer(ctx, cid)
-		if err == nil {
-			c.noteGameSubnets(cont)
-		} else {
+		if err != nil || !c.noteGameSubnets(ctx, cont) {
 			allSeen = false
 		}
 		c.observeInspect(ctx, w, cont, err, ops[w])
@@ -319,17 +317,17 @@ func (c *Controller) passwords(id string) (secret.Secret, []secret.Secret, error
 // taken before an operation began or ended is dropped (see worldRun.ops).
 func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 	live := gameLive(cont.State.Status)
-	var addr string
+	var ep endpoint
 	var rconPW secret.Secret
 	var secrets []secret.Secret
 	var err error
 	if live {
 		// Re-attaching changes no world file (SPEC 3.8): a missing password
 		// file is not made here, since the running game could not be using it.
-		addr = rconAddress(cont)
 		if rconPW, secrets, err = c.passwords(w.id); err != nil {
 			err = fmt.Errorf("cannot read this world's RCON password, so it cannot watch the game: %w", err)
 		}
+		ep = c.attachEndpoint(w, cont)
 	}
 	if err != nil {
 		var old *rcon.Client
@@ -380,13 +378,26 @@ func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 	w.secrets = secrets
 	w.gameVersion = meta.GameVersion
 	w.image = cont.Image
-	if live && addr != "" {
-		w.rc = rcon.New(addr, rconPW)
+	w.lanUnpublished = ep.lanUnpublished
+	if live && ep.rcon != "" {
+		w.rc = rcon.New(ep.rcon, rconPW)
 		if cont.State.Status == "running" {
 			rc := w.rc
 			c.spawn(func() { c.probeInGame(w, cont.ID, rc) })
 		}
 	}
+}
+
+// attachEndpoint is gameEndpoint for a game being taken on. A game whose
+// RCON cannot be found safely is still watched, without RCON: its stop
+// then needs Force stop, as for any game Foreman cannot reach (SPEC 4.13,
+// 7.6).
+func (c *Controller) attachEndpoint(w *worldRun, cont docker.Container) endpoint {
+	ep, err := c.gameEndpoint(c.ctx, cont)
+	if err != nil {
+		c.log.Warn("cannot reach the game over RCON", "world", w.id, "error", err)
+	}
+	return ep
 }
 
 // probeInGame marks a re-attached game in game when it answers over RCON.
@@ -420,6 +431,7 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	rc := w.rc
 	w.rc = nil
 	w.containerID, w.dockerStatus = "", ""
+	w.lanUnpublished = ""
 	w.noSecrets = false
 	w.startedAt = time.Time{}
 	w.usage = usage{}
