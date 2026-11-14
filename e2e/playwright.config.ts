@@ -13,7 +13,14 @@ export default defineConfig({
   reporter: "list",
   // SPEC 22.2: the browser's language picks Foreman's, so every project asks
   // for English and no test depends on the machine it runs on.
-  use: { locale: "en-US" },
+  use: {
+    locale: "en-US",
+    // A failing test keeps its trace in e2e/test-results (CI uploads that folder when a shard fails);
+    // a passing one drops it. A trace holds the page's DOM, every request and reply with headers and
+    // bodies, and the values the test typed into forms, so it is for failure diagnosis only and its
+    // artifact is kept briefly. Sources are left out so a trace carries no test code.
+    trace: { mode: "retain-on-failure", screenshots: true, snapshots: true, sources: false },
+  },
   // DESIGN 10: every screen is checked in both themes, at desktop and at
   // 320 CSS pixels (SPEC 17.2).
   projects: [
