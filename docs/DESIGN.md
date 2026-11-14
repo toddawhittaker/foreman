@@ -533,8 +533,9 @@ frame (7.4).
   `surface`, a 3 px `primary` line across its top and a 1 px `line` under
   it. Its content lines up with the page column (`--page-max`), and its
   side padding follows `main`'s. It is a flex row that wraps. From 40rem it
-  is one row: the logo and name at the start, then the nav and the user menu
-  at the end. Below 40rem it is two rows, about 100 px at 320 px: the logo,
+  is one row: the logo and name at the start, the server's state in words
+  after them (7.5, "The nav's state"), then the nav and the user menu at
+  the end. Below 40rem it is two rows, about 100 px at 320 px: the logo,
   the server's state in words (7.5, "The nav's state") and the menu, then
   the nav on a row of its own (`order: 2; flex-basis:
   100%`), its four tabs sharing the row out between them. At 320 px with
@@ -1288,19 +1289,16 @@ holds only the word. A template always writes the modifier, even for
 - **The nav's state.** Every page's header says the server's state in
   words, with the badge's shape as a small lamp (a 0.625rem square in the
   state's colour) before the word, so no state is told by shape or colour
-  alone. On a wide screen (from 40rem) the lamp and word sit on a second
-  line under the tab's icon and "Server", `--text-xs`, weight 500, line
-  height 1. That line takes the tab's width and never sets it
-  (`contain: inline-size`), so a long state wraps there, to two lines at
-  most within the 44 px tab, and the header keeps its height when the
-  state changes; the lamp stays with its word (a no-break space). On a
-  phone the four tabs fill their row, so the lamp and word sit beside the
-  logo in the first row instead (`site-state`, `--text-sm`, weight 600,
-  `text-muted`), taking the room between the logo and the menu and
-  wrapping there. Either way the Server link's name is "Server Running",
-  its words in the order they show (WCAG 2.5.3); the copy beside the logo
-  is `aria-hidden`, so the state is heard once. The Server page's live facts replace both
-  copies, so the header follows the game without a reload.
+  alone. On every width the lamp and word sit in the header's first row,
+  after the product name (`site-state`, `--text-sm`, weight 600,
+  `text-muted`). The word takes the room between the logo and the tabs (on
+  a phone, the menu), and a long state wraps there instead of widening the
+  header; the lamp stays with its word (a no-break space). Server's tab
+  shows only "Server" and keeps the state as visually hidden text, so its
+  name is "Server Running", its words in the order they are read (WCAG
+  2.5.3). The copy beside the logo is `aria-hidden`, so the state is heard
+  once. The Server page's live facts replace both copies, so the header
+  follows the game without a reload.
 - **The live world's chip.** The live world's mark and the server's state
   are one chip, never two pills side by side: a pill on `raised` with a
   1 px `border` edge holding the pin and "Active", a hairline, then the

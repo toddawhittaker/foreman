@@ -27,12 +27,12 @@
   {{- /* The logo is decorative beside the name, so the link's name is "Foreman". */}}
   <a href="{{serverPath}}" class="product"><img src="{{static "icons/logo-32.png"}}" srcset="{{static "icons/logo-64.png"}} 2x" alt="" width="32" height="32"><span class="product__name">Foreman</span></a>
   {{- if .User}}
-  {{- /* On a phone the state shows here, where the logo's row has room; Server's tab says it to screen readers (DESIGN 7.5). */}}
+  {{- /* The state shows here on every width; Server's tab says it to screen readers (DESIGN 7.5). */}}
   <span id="site-state" class="site-state" aria-hidden="true">{{template "nav-lamp" .Lamp}}</span>
   <nav aria-label="{{t "common.nav.label"}}">
     <ul class="tabs" role="list">
       {{- /* "page" only on the page itself; "true" on the section a page belongs to (DESIGN 6). */}}
-      <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}><span class="tabs__stack">{{t "common.nav.server"}}<span id="nav-lamp">{{template "nav-lamp" .Lamp}}</span></span></a></li>
+      <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}>{{t "common.nav.server"}}<span id="nav-lamp">{{template "nav-lamp" .Lamp}}</span></a></li>
       <li><a href="{{worldsPath}}"{{if .Current (print worldsPath "#page")}} aria-current="page"{{else if .Current worldsPath}} aria-current="true"{{end}}>{{t "common.nav.worlds"}}</a></li>
       <li><a href="{{snapshotsTabPath}}"{{if .Current (print snapshotsTabPath "#page")}} aria-current="page"{{else if .Current snapshotsTabPath}} aria-current="true"{{end}}>{{t "common.nav.snapshots"}}</a></li>
       {{- /* Foreman's own settings (DESIGN 8.15); the tab opens the restart schedule. */}}
