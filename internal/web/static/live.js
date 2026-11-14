@@ -153,6 +153,18 @@
     if (e.target.hasAttribute("data-focus-result")) focusDone();
   });
 
+  // Closing the Done message posts without a reload (the form works without
+  // script). The server answers with no body, so the box is removed here, and
+  // focus goes to the first control of the panel, not to the top of the page
+  // (DESIGN 7.3, SPEC 17.9). The next live update brings the page in line.
+  document.addEventListener("htmx:afterRequest", (e) => {
+    const form = e.target;
+    if (!form.hasAttribute?.("data-dismiss-result") || !e.detail.successful) return;
+    form.closest(".message")?.remove();
+    const first = document.querySelector(".server-actions :is(a, button)");
+    (first ?? document.getElementById("control-heading"))?.focus();
+  });
+
   // The mods notice is a status region and loads again after each operation
   // (SPEC 9.3). Swapping in the same content would have a screen reader read
   // it again, so an unchanged answer is dropped. Both sides go through the

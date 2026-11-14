@@ -30,6 +30,9 @@ const (
 	// stopping; in a switch that is the world switched from (SPEC 7.6).
 	PathGameCancel   = "/worlds/{id}/cancel-stop"
 	PathGameSnapshot = "/worlds/{id}/take-snapshot"
+	// PathGameDismiss closes the Done box of the world's last action
+	// (SPEC 17.9).
+	PathGameDismiss = "/worlds/{id}/dismiss-result"
 )
 
 func gamePath(id, action string) string { return worldPath(id) + "/" + action }
@@ -233,6 +236,26 @@ func (g *gameRuns) result(id string) (actionResult, bool) {
 	return res, ok
 }
 
+// closable reports whether the person may close the result's box: a success
+// or a cancelled stop. A failure stays until the next action (SPEC 17.9).
+func (r actionResult) closable() bool {
+	return r.Err == nil || errors.Is(r.Err, game.ErrStopCancelled)
+}
+
+// dismiss forgets the world's last result when it is the one that ended at
+// the given time and may be closed. A newer result, a failure, or none is
+// left alone; the asides and the running actions are never touched.
+func (g *gameRuns) dismiss(id string, at int64) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	res, ok := g.results[id]
+	if !ok || !res.closable() || res.At.UnixNano() != at {
+		return
+	}
+	delete(g.results, id)
+	g.changedLocked()
+}
+
 // others returns the results of the actions asked for while another ran.
 func (g *gameRuns) others(id string) []actionResult {
 	g.mu.Lock()
@@ -276,6 +299,7 @@ func (s *server) gameRoutes() {
 	s.mux.HandleFunc("POST "+PathGamePull, s.requireUser(s.handlePull))
 	s.mux.HandleFunc("POST "+PathGameCancel, s.requireUser(s.handleCancelStop))
 	s.mux.HandleFunc("POST "+PathGameSnapshot, s.requireUser(s.handleServerSnapshot))
+	s.mux.HandleFunc("POST "+PathGameDismiss, s.requireUser(s.handleDismissResult))
 	s.switchRoutes()
 	s.handleLong("GET "+PathGameEvents, s.requireUser(s.handleEvents))
 }
@@ -683,6 +707,27 @@ func (s *server) handlePull(w http.ResponseWriter, r *http.Request, u store.User
 	s.begin(w, r, sum.ID, false, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditImageDownload, s.game.PullImage(ctx, sum.ID, by))
 	})
+}
+
+// handleDismissResult closes the Done box of the world in the path, when the
+// form names the result the page showed (SPEC 17.9). An htmx request gets
+// no body, since the page removes the box itself.
+func (s *server) handleDismissResult(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
+		return
+	}
+	if at, err := strconv.ParseInt(r.PostFormValue("at"), 10, 64); err == nil {
+		s.runs.dismiss(sum.ID, at)
+	}
+	if r.Header.Get("HX-Request") == "true" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	http.Redirect(w, r, PathServer, http.StatusSeeOther)
 }
 
 // handleCancelStop ends the stop countdown on the world in the path, so the

@@ -337,7 +337,7 @@
 </div>
 {{- end}}
 {{- if not .Done.IsZero}}
-<div class="message message--success" id="done-message" tabindex="-1"{{if $.FocusResult}} autofocus{{end}}>
+<div class="message message--success message--closable" id="done-message" tabindex="-1"{{if $.FocusResult}} autofocus{{end}}>
   <p><strong>{{t "common.label.done"}}</strong> {{tHTML "server.done.box" "message" .Done "time" (momentUTC $.DoneAt)}}</p>
   <div class="actions">
     {{- with $.Undo}}
@@ -345,6 +345,11 @@
     {{- end}}
     <a href="{{$.SnapshotsPath}}" id="act-snapshots">{{t "server.go_snapshots"}}</a>
   </div>
+  {{- /* The one message with a close button: it reports a success, which the person has read (DESIGN 7.3, SPEC 17.9). Script removes the box and focuses the first control; without it the form posts and the page reloads. */}}
+  <form method="post" action="{{$.DismissPath}}" class="message__dismiss" hx-post="{{$.DismissPath}}" hx-swap="none" data-dismiss-result>
+    <input type="hidden" name="at" value="{{$.DoneAt.UnixNano}}">
+    <button type="submit" class="button button--icon message__close" id="act-dismiss"><span class="visually-hidden">{{t "server.done.close"}}</span></button>
+  </form>
 </div>
 {{- end}}
 {{- if .PortalUnchecked}}
