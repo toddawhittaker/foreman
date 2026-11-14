@@ -35,6 +35,33 @@ test.describe("with the fake game", () => {
     await expect(doneBox(page)).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Switch back to Base" })).toHaveCount(0);
   });
+
+  // The live update can reach the page before the close's own answer does. It
+  // redraws the panel, so the form that sent the close is gone when the answer
+  // comes; focus must still land on the first control, not on the heading.
+  test("focus goes to the first control when the live update comes before the answer", async ({ page, foreman, fakeGame }) => {
+    await createAdmin(page);
+    seedWorld(foreman);
+    seedSecond(foreman);
+    await fakeGame!.call("/image", { ref: image21, on: true });
+    await page.goto("/worlds/second");
+    await page.getByRole("link", { name: "Switch to this world" }).click();
+    await page.locator("section.confirm").getByRole("button", { name: "Switch to Second" }).click();
+    await expect(doneBox(page)).toContainText("The worlds are switched", live);
+
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/dismiss-result", async (route) => {
+      const answer = await route.fetch();
+      await held;
+      await route.fulfill({ response: answer });
+    });
+    await doneBox(page).getByRole("button", { name: "Close this message" }).click();
+    // The server has forgotten the result; its live update removes the box.
+    await expect(doneBox(page)).toHaveCount(0, live);
+    release();
+    await expect(page.locator("#act-snapshot")).toBeFocused();
+  });
 });
 
 test.describe("with the fake game and no JavaScript", () => {
