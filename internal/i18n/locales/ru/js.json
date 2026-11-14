@@ -19,6 +19,11 @@
   "js.generate.ach_setting": "{setting} отключает некоторые достижения.",
   "js.generate.ach_clear": "Теперь ни одна настройка не отключает достижения.",
   "js.generate.moved": "{field}: установлено {value}, чтобы диапазон оставался допустимым.",
+  "js.generate.all_set": {
+    "one": "{setting}: установлено {value} для {count} ресурса.",
+    "few": "{setting}: установлено {value} для {count} ресурсов.",
+    "many": "{setting}: установлено {value} для {count} ресурсов."
+  },
   "js.preview.download_territories": "Скачать карту с территориями: {planet}",
   "js.preview.download_amounts": "Скачать карту с количеством ресурсов: {planet}",
   "js.preview.download_both": "Скачать карту с территориями и количеством ресурсов: {planet}",

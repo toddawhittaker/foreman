@@ -29,6 +29,7 @@ func init() {
 		"js.generate.ach_setting",
 		"js.generate.ach_clear",
 		"js.generate.moved",
+		"js.generate.all_set",
 		"js.import.many",
 		"js.import.same",
 		"js.import.same.unreadable",

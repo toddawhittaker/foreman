@@ -19,6 +19,10 @@
   "js.generate.ach_setting": "{setting} désactive certains succès.",
   "js.generate.ach_clear": "Plus aucun paramètre ne désactive les succès.",
   "js.generate.moved": "{field} réglé sur {value} pour que la plage reste valide.",
+  "js.generate.all_set": {
+    "one": "{setting} réglé sur {value} pour {count} ressource.",
+    "other": "{setting} réglé sur {value} pour {count} ressources."
+  },
   "js.preview.download_territories": "Télécharger la carte avec les territoires : {planet}",
   "js.preview.download_amounts": "Télécharger la carte avec les quantités de ressources : {planet}",
   "js.preview.download_both": "Télécharger la carte avec les territoires et les quantités de ressources : {planet}",

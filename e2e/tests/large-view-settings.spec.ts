@@ -38,7 +38,7 @@ async function openLarge(page: Page) {
 
 // The id of a planet's first setting of steps in a tab, read from its row on the page.
 const firstSelect = (page: Page, tab: string, planet: string) =>
-  page.locator(`#mg-${tab}-${planet} .step select`).first().getAttribute("id");
+  page.locator(`#mg-${tab}-${planet} .step select[name]`).first().getAttribute("id");
 
 test.describe("on a wide screen", () => {
   test.beforeEach(({ page }) => test.skip(!isWide(page), "the settings show beside the map only where both fit"));
@@ -77,7 +77,7 @@ test.describe("on a wide screen", () => {
     await openLarge(page);
     const sent: Request[] = [];
     page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
-    const select = page.locator("#large-resources .step select").first();
+    const select = page.locator("#large-resources .step select[name]").first();
     const id = (await select.getAttribute("id"))!;
     const name = (await select.getAttribute("name"))!;
     const before = await select.inputValue();
@@ -194,11 +194,11 @@ test.describe("on a wide screen", () => {
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
     await expect(dialog(page)).toBeVisible();
     release();
-    await expect(panel(page).locator(".step select").first()).toBeAttached();
+    await expect(panel(page).locator(".step select[name]").first()).toBeAttached();
     const twice = await panel(page).locator("[id]").evaluateAll((els) => els.map((e) => e.id).filter((id) => document.querySelectorAll(`[id="${id}"]`).length !== 1));
     expect(twice).toEqual([]);
     // An edit there reaches the next preview and stays once the view closes.
-    const select = panel(page).locator(".step select").first();
+    const select = panel(page).locator(".step select[name]").first();
     const id = (await select.getAttribute("id"))!;
     const name = (await select.getAttribute("name"))!;
     await page.locator(`#${id}-range`).focus();
@@ -360,6 +360,6 @@ test("where the settings and the map do not both fit, the view is map only", asy
   await checkPage(page);
   // The fields are back in their rows once it closes.
   await page.keyboard.press("Escape");
-  await expect(page.locator("#mg-resources-nauvis .step select").first()).toBeAttached();
+  await expect(page.locator("#mg-resources-nauvis .step select[name]").first()).toBeAttached();
   await expect(page.locator("#large-settings select")).toHaveCount(0);
 });
