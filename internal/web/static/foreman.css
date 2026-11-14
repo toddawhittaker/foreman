@@ -8250,19 +8250,21 @@ main:has(> .gate)::before {
 .mod-tools__link--upload { --icon: var(--i-upload); }
 .mod-tools__link--settings { --icon: var(--i-settings); }
 
-/* Game settings on a phone: one 44 px select jumps to a section; it goes
-   when the rail of section links shows beside the form. */
+/* Game settings on a phone: a disclosure of links jumps to a section; it
+   goes when the rail of section links shows beside the form. */
 .settings-jump {
-  display: grid;
-  gap: var(--space-1);
   margin-block-end: var(--space-4);
 }
 
-.settings-jump[hidden] {
-  display: none;
+.settings-jump > ul {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  list-style: none;
 }
 
-.settings-jump select {
+.settings-jump a {
+  display: flex;
+  align-items: center;
   min-block-size: var(--target-min);
 }
 

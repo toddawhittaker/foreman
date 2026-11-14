@@ -655,9 +655,11 @@ frame (7.4).
   that cell; no rule runs across the whole width. The words are
   `--text-sm`, weight 600, centred, and wrap inside their cell (`--text-xs`
   below 23rem). On Game settings the rail of section links is hidden on a
-  phone and a 44 px "Jump to section" `select` under the tabs takes its
-  place; choosing a section scrolls to it and moves focus there. Script
-  shows the select, since only script can follow it.
+  phone and a "Jump to section" disclosure (`details.disclosure`) under the
+  tabs takes its place. It opens to a plain list of in-page links to the
+  same sections, each a 44 px row, so it works without script. It is not a
+  `select`, because a select that moves the page on `change` would leave it
+  on one arrow key (WCAG 3.2.2).
 - The `#announcer` region is where htmx swaps short results ("Snapshot
   taken", "Server started") so screen readers hear them. Errors are not
   announced from here; see 7.3.
@@ -2347,7 +2349,8 @@ The settings pages (form, raw editor and preview) carry the world's tabs
 world's name. On a container at least 44rem wide a rail of section links
 (Listing, Joining, Saving, Admins, and "Edit server-settings.json as
 JSON") sits beside the form, 12rem wide and sticky, since it never covers
-the form; narrower, there is no rail and the raw editor's link follows
+the form; narrower, there is no rail, a "Jump to section" disclosure of
+the same links sits under the tabs (6), and the raw editor's link follows
 the form. A rail link is `text-muted` with a 3px `line` edge at its start,
 which turns `selected` under the pointer; the raw editor's link is set
 apart below the others as an underlined `link`. Server name is required (7.2).

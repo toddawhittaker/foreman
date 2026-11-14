@@ -75,18 +75,18 @@
 {{- end}}
 {{/* The rail of section links shows only on a wide panel (DESIGN 8.10); a phone scrolls. */}}
 <div class="settings-wrap">
-{{- /* Below the rail's width, one select jumps to a section; script shows it, since only script can follow it. */}}
-<div class="settings-jump field" hidden>
-  <label for="settings-jump">{{t "settings.jump.label"}}</label>
-  <select id="settings-jump" data-jump>
-    <option value="settings-listing">{{t "settings.listing"}}</option>
-    <option value="settings-joining">{{t "settings.joining"}}</option>
-    <option value="settings-saving">{{t "settings.saving"}}</option>
-    <option value="settings-admins">{{t "settings.admins.legend"}}</option>
-    <option value="settings-whitelist">{{t "settings.whitelist.legend"}}</option>
-    <option value="settings-bans">{{t "settings.bans.legend"}}</option>
-  </select>
-</div>
+{{- /* Below the rail's width, one disclosure of links jumps to a section; plain links, so it needs no script (DESIGN 6). */}}
+<details class="disclosure settings-jump">
+  <summary>{{t "settings.jump.label"}}</summary>
+  <ul role="list">
+    <li><a href="#settings-listing">{{t "settings.listing"}}</a></li>
+    <li><a href="#settings-joining">{{t "settings.joining"}}</a></li>
+    <li><a href="#settings-saving">{{t "settings.saving"}}</a></li>
+    <li><a href="#settings-admins">{{t "settings.admins.legend"}}</a></li>
+    <li><a href="#settings-whitelist">{{t "settings.whitelist.legend"}}</a></li>
+    <li><a href="#settings-bans">{{t "settings.bans.legend"}}</a></li>
+  </ul>
+</details>
 <div class="settings-layout">
 <nav class="settings-rail" aria-label="{{t "settings.rail.label"}}">
   <ul role="list">
