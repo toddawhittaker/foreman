@@ -291,3 +291,97 @@ func TestOversizedPacketIsRefused(t *testing.T) {
 	_, err = c.Exec(ctxWithTimeout(t, 5*time.Second), "/players")
 	requireClean(t, err)
 }
+
+// newChecked is newClient with a check before each login.
+func newChecked(t *testing.T, addr string, check func(context.Context) error) *rcon.Client {
+	t.Helper()
+	c := rcon.NewChecked(addr, secret.New(testPassword), check)
+	t.Cleanup(func() { _ = c.Close() })
+	return c
+}
+
+// The check runs once for each new connection, before its login, within
+// the call's deadline; a command on a kept connection is not checked again.
+func TestCheckRunsBeforeEachLogin(t *testing.T) {
+	srv := rcontest.Start(t, rcontest.Config{Password: testPassword})
+	var checks int
+	c := newChecked(t, srv.Addr(), func(ctx context.Context) error {
+		if _, ok := ctx.Deadline(); !ok {
+			t.Error("the check has no deadline")
+		}
+		if srv.Logins() != checks {
+			t.Error("a login was sent before its check")
+		}
+		checks++
+		return nil
+	})
+	ctx := ctxWithTimeout(t, 5*time.Second)
+	for range 2 {
+		if _, err := c.Exec(ctx, "/players"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if checks != 1 || srv.Logins() != 1 {
+		t.Fatalf("checks %d, logins %d; want 1 and 1", checks, srv.Logins())
+	}
+	_ = c.Close()
+	if _, err := c.Exec(ctx, "/players"); err != nil {
+		t.Fatal(err)
+	}
+	if checks != 2 || srv.Logins() != 2 {
+		t.Errorf("checks %d, logins %d after a new connection; want 2 and 2", checks, srv.Logins())
+	}
+}
+
+// A failed check sends no login, returns its reason without the password
+// or the command, and is made again at the next call.
+func TestFailedCheckSendsNoLoginAndIsRetried(t *testing.T) {
+	srv := rcontest.Start(t, rcontest.Config{Password: testPassword})
+	moved := errors.New("the endpoint moved")
+	fail := true
+	c := newChecked(t, srv.Addr(), func(context.Context) error {
+		if fail {
+			return moved
+		}
+		return nil
+	})
+	ctx := ctxWithTimeout(t, 5*time.Second)
+	_, err := c.Exec(ctx, testCommand)
+	requireClean(t, err)
+	if !errors.Is(err, moved) {
+		t.Errorf("err = %v, want the check's reason", err)
+	}
+	if srv.Logins() != 0 || len(srv.Commands()) != 0 {
+		t.Fatalf("logins %d, commands %q after a failed check", srv.Logins(), srv.Commands())
+	}
+	fail = false
+	if _, err := c.Exec(ctx, "/players"); err != nil {
+		t.Fatalf("after the check passes: %v", err)
+	}
+	if srv.Logins() != 1 {
+		t.Errorf("logins %d, want 1", srv.Logins())
+	}
+}
+
+// A check still running when the call's context ends gives the context's
+// error, and no login is sent.
+func TestCheckHonoursTheContext(t *testing.T) {
+	srv := rcontest.Start(t, rcontest.Config{Password: testPassword})
+	c := newChecked(t, srv.Addr(), func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	_, err := c.Exec(ctxWithTimeout(t, 100*time.Millisecond), "/players")
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("err = %v, want DeadlineExceeded", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(50*time.Millisecond, cancel)
+	_, err = c.Exec(ctx, "/players")
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v, want Canceled", err)
+	}
+	if srv.Logins() != 0 {
+		t.Errorf("logins %d, want 0", srv.Logins())
+	}
+}

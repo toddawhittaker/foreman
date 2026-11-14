@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -71,10 +72,10 @@ func seedSidecar(d *dockertest.Daemon, name string, o sidecarOpts) dockertest.Co
 // sidecarRCON stands for the sidecar's network: a listener on a free
 // loopback address, the sidecar's address on the game network, that passes
 // each connection to the RCON of the world's fake game. It returns the
-// address and a count of the connections made to it.
-func (r *rig) sidecarRCON(id string) (string, *atomic.Int64) {
+// address and the listener, whose Load is the count of connections made.
+func (r *rig) sidecarRCON(id string) (string, *sidecarServer) {
 	r.t.Helper()
-	conns := &atomic.Int64{}
+	srv := &sidecarServer{}
 	target := func() string {
 		for _, cs := range r.game.State().Containers {
 			if cs.Name == ContainerName(id) && cs.IP != "" {
@@ -89,21 +90,47 @@ func (r *rig) sidecarRCON(id string) (string, *atomic.Int64) {
 		if err != nil {
 			continue
 		}
-		r.t.Cleanup(func() { _ = ln.Close() })
-		go forward(ln, target, conns)
-		return ip, conns
+		r.t.Cleanup(func() { _ = ln.Close(); srv.dropAll() })
+		go srv.forward(ln, target)
+		return ip, srv
 	}
 	r.t.Fatal("no free loopback address for the sidecar's RCON")
 	return "", nil
 }
 
-func forward(ln net.Listener, target func() string, conns *atomic.Int64) {
+// sidecarServer is the listener of sidecarRCON. Its Load is how many
+// connections were made to it.
+type sidecarServer struct {
+	atomic.Int64
+	// spoke counts the connections Foreman sent anything on: a login, at
+	// least, since a login is the first thing sent.
+	spoke atomic.Int64
+
+	mu   sync.Mutex
+	open []net.Conn
+}
+
+// dropAll closes every connection made so far, as when the network they
+// ran in goes away.
+func (s *sidecarServer) dropAll() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, c := range s.open {
+		_ = c.Close()
+	}
+	s.open = nil
+}
+
+func (s *sidecarServer) forward(ln net.Listener, target func() string) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			return
 		}
-		conns.Add(1)
+		s.Add(1)
+		s.mu.Lock()
+		s.open = append(s.open, conn)
+		s.mu.Unlock()
 		go func() {
 			defer func() { _ = conn.Close() }()
 			up, err := net.Dial("tcp", target())
@@ -111,7 +138,17 @@ func forward(ln net.Listener, target func() string, conns *atomic.Int64) {
 				return
 			}
 			defer func() { _ = up.Close() }()
-			go func() { _, _ = io.Copy(up, conn) }()
+			go func() {
+				buf := make([]byte, 4096)
+				n, err := conn.Read(buf)
+				if n > 0 {
+					s.spoke.Add(1)
+					_, _ = up.Write(buf[:n])
+				}
+				if err == nil {
+					_, _ = io.Copy(up, conn)
+				}
+			}()
 			_, _ = io.Copy(conn, up)
 		}()
 	}
@@ -622,5 +659,120 @@ func TestSidecarOldNamespaceIncompleteRanges(t *testing.T) {
 	r.c.refreshSubnets(ctx, complete)
 	if _, known := r.c.GameSubnets(); known {
 		t.Fatal("ranges known despite an unreadable old running namespace")
+	}
+}
+
+// SPEC 4.13, 14.16: a running game keeps its RCON client. When that
+// connection drops after the sidecar the game joined was replaced under the
+// same name at the same address, neither the next console command nor a
+// stop sends the world's RCON login to the replacement: each new
+// connection is checked against the container the game joined before the
+// login. The game then needs Force stop (SPEC 7.6).
+func TestSidecarCachedRCONDoesNotFollowReplacement(t *testing.T) {
+	r, _ := sidecarRig(t, false)
+	d := r.game.Daemon()
+	id := r.newWorld("Base")
+	ip, srv := r.sidecarRCON(id)
+	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
+	r.stop = r.run(r.c)
+	r.start(id)
+	ctx := context.Background()
+	if _, _, err := r.c.Console(ctx, id, admin, "/players", ""); err != nil {
+		t.Fatalf("console before the replacement: %v", err)
+	}
+
+	removeSidecar(t, r, "tailscale")
+	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
+	srv.dropAll()
+	spoke := srv.spoke.Load()
+	for range 2 { // the first may only find the dropped connection
+		if _, _, err := r.c.Console(ctx, id, admin, "/players", ""); !errors.Is(err, ErrRCONUnreachable) {
+			t.Errorf("console: %v, want ErrRCONUnreachable", err)
+		}
+	}
+	if err := r.c.Stop(ctx, id, admin, StopOptions{}); !errors.Is(err, ErrRCONUnreachable) {
+		t.Errorf("stop: %v, want ErrRCONUnreachable", err)
+	}
+	if got := srv.spoke.Load(); got != spoke {
+		t.Errorf("Foreman sent %d logins through the replacement sidecar", got-spoke)
+	}
+	if err := r.c.ForceStop(ctx, id, admin); err != nil {
+		t.Errorf("force stop: %v", err)
+	}
+}
+
+// SPEC 4.13: while the sidecar the game joined is unchanged, a dropped
+// RCON connection is made again, with a new login, and a stop is graceful.
+func TestSidecarCachedRCONReconnects(t *testing.T) {
+	r, _ := sidecarRig(t, false)
+	d := r.game.Daemon()
+	id := r.newWorld("Base")
+	ip, srv := r.sidecarRCON(id)
+	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
+	r.stop = r.run(r.c)
+	r.start(id)
+	ctx := context.Background()
+
+	srv.dropAll()
+	spoke := srv.spoke.Load()
+	var err error
+	for range 2 { // the first may only find the dropped connection
+		if _, _, err = r.c.Console(ctx, id, admin, "/players", ""); err == nil {
+			break
+		}
+	}
+	if err != nil {
+		t.Fatalf("console after the drop: %v", err)
+	}
+	if srv.spoke.Load() <= spoke {
+		t.Error("the console answered without a new login")
+	}
+	if err := r.c.Stop(ctx, id, admin, StopOptions{}); err != nil {
+		t.Errorf("graceful stop: %v", err)
+	}
+}
+
+// SPEC 4.13: when the check before a login cannot be made, as when Docker
+// does not answer, no login is sent, and the next connection checks again
+// and logs in. Foreman's own run is stopped so nothing else connects.
+func TestSidecarRCONCheckFailureIsRetried(t *testing.T) {
+	r, _ := sidecarRig(t, false)
+	d := r.game.Daemon()
+	id := r.newWorld("Base")
+	ip, srv := r.sidecarRCON(id)
+	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
+	r.stop = r.run(r.c)
+	r.start(id)
+	r.stop()
+	ctx := context.Background()
+	cont, err := r.docker.InspectContainer(ctx, ContainerName(id))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pw, err := r.worlds.RCONPassword(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rc := r.c.rconClient(cont, net.JoinHostPort(ip, RCONPort), pw)
+	defer closeRCON(rc)
+
+	spoke := srv.spoke.Load()
+	d.SetFailure(500, "the daemon is busy")
+	_, err = rc.Exec(ctx, "/players online")
+	d.SetFailure(0, "")
+	if err == nil {
+		t.Fatal("RCON answered while its sidecar could not be checked")
+	}
+	if strings.Contains(err.Error(), pw.Reveal()) {
+		t.Errorf("error %q shows the RCON password", err)
+	}
+	if srv.spoke.Load() != spoke {
+		t.Error("a login was sent before the sidecar was checked")
+	}
+	if _, err := rc.Exec(ctx, "/players online"); err != nil {
+		t.Fatalf("after Docker answers again: %v", err)
+	}
+	if got := srv.spoke.Load(); got != spoke+1 {
+		t.Errorf("%d logins after the retry, want 1", got-spoke)
 	}
 }

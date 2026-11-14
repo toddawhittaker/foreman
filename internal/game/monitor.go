@@ -380,7 +380,7 @@ func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 	w.image = cont.Image
 	w.lanUnpublished = ep.lanUnpublished
 	if live && ep.rcon != "" {
-		w.rc = rcon.New(ep.rcon, rconPW)
+		w.rc = c.rconClient(cont, ep.rcon, rconPW)
 		if cont.State.Status == "running" {
 			rc := w.rc
 			c.spawn(func() { c.probeInGame(w, cont.ID, rc) })
