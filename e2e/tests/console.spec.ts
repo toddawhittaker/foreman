@@ -141,6 +141,21 @@ test.describe("with the fake game", () => {
     ]);
   });
 
+  test("opening Past commands shows the newest entry, not the oldest", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    for (let i = 0; i < 12; i++) {
+      await send(page, i % 2 ? "/server-save" : "/players online");
+      await expect(history(page).locator("li")).toHaveCount(i + 1);
+    }
+    // A fresh page starts with the box closed, so it has no height to scroll yet.
+    await page.goto("/console");
+    await expect(history(page)).toBeHidden();
+    await page.locator("#console-past").click();
+    await expect.poll(() => atBottom(history(page))).toBe(true);
+    expect(await history(page).evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await expect(history(page).locator("li").last()).toContainText("You sent /server-save");
+  });
+
   test("a command that sets a password is sent as typed and shown and recorded masked", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await send(page, "/config set password hunter2");

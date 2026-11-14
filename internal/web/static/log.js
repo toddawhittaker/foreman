@@ -180,6 +180,12 @@
   if (frame) followLog(frame);
   historyToEnd();
   document.addEventListener("htmx:afterSettle", historyToEnd);
+  // A closed "Past commands" box has no height, so its end is found again
+  // when it opens. "toggle" does not bubble, and htmx may replace the
+  // details, so it is caught on the document.
+  document.addEventListener("toggle", (e) => {
+    if (e.target.matches?.(".console-past") && e.target.open) historyToEnd();
+  }, true);
 
   // After a command is sent, the newest reply is brought onto the screen (on
   // a phone it would land just below it). Focus stays where it was.
