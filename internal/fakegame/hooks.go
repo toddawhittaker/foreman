@@ -233,14 +233,17 @@ type ContainerState struct {
 // State is the whole fake, for tests to read.
 type State struct {
 	Containers []ContainerState `json:"containers"`
-	Calls      []string         `json:"calls"` // every Docker call received, as "METHOD /path"
+	// Sidecar is the seeded VPN sidecar (Config.Sidecar), null without one.
+	// Containers leaves it out, as it leaves out the self container.
+	Sidecar *SidecarState `json:"sidecar"`
+	Calls   []string      `json:"calls"` // every Docker call received, as "METHOD /path"
 }
 
 // State returns a snapshot.
 func (g *Game) State() State {
-	out := State{Containers: []ContainerState{}, Calls: []string{}}
+	out := State{Containers: []ContainerState{}, Calls: []string{}, Sidecar: g.sidecarState()}
 	for _, c := range g.daemon.Containers() {
-		if c.ID == g.selfID {
+		if c.ID == g.selfID || (out.Sidecar != nil && c.ID == out.Sidecar.ID) {
 			continue
 		}
 		cs := ContainerState{
@@ -282,7 +285,7 @@ type hookRequest struct {
 	On     bool   `json:"on"`     // crash-loop, rcon-refuse, save-hangs, image
 	Mode   string `json:"mode"`   // preview-mode
 	Text   string `json:"text"`   // chat
-	Port   string `json:"port"`   // port-in-use: the host port that is taken
+	Port   string `json:"port"`   // port-in-use: the host port that is taken; sidecar-port: the one published, "" for none
 }
 
 // HookHandler serves the test hooks over HTTP. Every hook is a POST with a
@@ -300,6 +303,8 @@ type hookRequest struct {
 //	POST /oom           name, on
 //	POST /port-in-use   name, port (the next start of that name fails)
 //	POST /preview-mode  mode ("ok", "fail", "hang", "slow" or "oom")
+//	POST /sidecar-port  port (publish 34197/udp on it; "" stops publishing)
+//	POST /sidecar-restart  (the sidecar restarts; shared games' RCON stops)
 func (g *Game) HookHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /state", func(w http.ResponseWriter, _ *http.Request) {
@@ -344,6 +349,8 @@ func (g *Game) HookHandler() http.Handler {
 	})
 	hook("/rcon-refuse", func(q hookRequest) error { g.SetRCONRefuse(q.Name, q.On); return nil })
 	hook("/save-hangs", func(q hookRequest) error { g.SetSaveHangs(q.Name, q.On); return nil })
+	hook("/sidecar-port", func(q hookRequest) error { return g.SetSidecarPort(q.Port) })
+	hook("/sidecar-restart", func(hookRequest) error { return g.RestartSidecar() })
 	hook("/preview-mode", func(q hookRequest) error { return g.SetPreviewMode(PreviewMode(q.Mode)) })
 	hook("/image", func(q hookRequest) error {
 		if q.Ref == "" {
