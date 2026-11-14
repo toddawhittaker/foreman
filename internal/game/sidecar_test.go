@@ -388,6 +388,17 @@ func TestSidecarReplacementIsNotFollowed(t *testing.T) {
 // trusted headers are accepted.
 func TestSidecarForemanRestart(t *testing.T) {
 	r, opts, ip := liveSidecarRig(t, false, false)
+	// Keep the fake's verified holder ID and bind address, but give it
+	// another network and IPv6 so re-attachment must learn every range.
+	d := r.game.Daemon()
+	sc, ok := d.Container("tailscale")
+	if !ok {
+		t.Fatal("missing fixture sidecar")
+	}
+	removeSidecar(t, r, "tailscale")
+	sc.Networks["games"] = ip + "/24,fd00:30::5/64"
+	sc.Networks["shared"] = sharedNet
+	d.Seed(sc)
 	id := r.newWorld("Base")
 	r.stop = r.run(r.c)
 	r.start(id)
@@ -404,9 +415,12 @@ func TestSidecarForemanRestart(t *testing.T) {
 	if st := c2.Status(id); st.LANUnpublished != "tailscale" {
 		t.Errorf("LAN warning %q after re-attach", st.LANUnpublished)
 	}
+	eventually(t, func() bool { _, known := c2.GameSubnets(); return known }, "ranges known after re-attach")
 	subnets, known := c2.GameSubnets()
-	if !known || !slices.Contains(subnets, netip.MustParsePrefix(ip+"/24").Masked()) {
-		t.Errorf("ranges %v, known %v", subnets, known)
+	for _, prefix := range []string{ip + "/24", "fd00:30::/64", sharedNet} {
+		if !known || !slices.Contains(subnets, netip.MustParsePrefix(prefix).Masked()) {
+			t.Errorf("ranges %v, known %v, missing %s", subnets, known, prefix)
+		}
 	}
 	if err := c2.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
 		t.Errorf("graceful stop after re-attach: %v", err)
