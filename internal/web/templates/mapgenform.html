@@ -81,6 +81,7 @@
      the preview on it (DESIGN 8.7). Takes []MapGenPlanet. */}}
 {{define "mapgen-planets" -}}
 {{- if eq (len .) 1}}
+{{- with (index . 0).All}}{{template "mapgen-all" .}}{{end}}
 {{- range (index . 0).Groups}}
 {{template "mapgen-group" .}}
 {{- end}}
@@ -89,6 +90,7 @@
 <details id="{{.ID}}" name="planet-{{.Tab}}" data-planet="{{.Planet}}" data-said="{{t "mapgen.planet.preview_said" "planet" (msg .Summary)}}"{{if .Open}} open{{end}}>
   <summary>{{msg .Summary}}</summary>
   <div class="mapgen-body">
+    {{- with .All}}{{template "mapgen-all" .}}{{end}}
     {{- range .Groups}}
     {{template "mapgen-group" .}}
     {{- end}}
@@ -96,6 +98,31 @@
 </details>
 {{- end}}
 {{- end}}
+{{- end}}
+
+{{/* The row that sets one setting on every resource of a planet that is on.
+     Script only: without it the row stays hidden, and its selects have no
+     name, so the form sends nothing for it (DESIGN 8.7). The "Mixed" entry
+     is what the script selects while the resources differ. Takes MapGenAll. */}}
+{{define "mapgen-all" -}}
+<fieldset class="autoplace autoplace--all" id="{{.ID}}" data-all-groups="{{.Groups}}" aria-describedby="{{.ID}}-hint">
+  <legend>{{t "mapgen.all.legend"}}</legend>
+  <p class="hint" id="{{.ID}}-hint">{{t "mapgen.all.hint"}}</p>
+  {{- range .Selects}}
+  <div class="field step">
+    <div class="field__head">
+      <label for="{{.ID}}" id="{{.ID}}-label">{{msg .Label}}</label>
+    </div>
+    <select id="{{.ID}}" data-all-key="{{.Key}}">
+      <option value="" data-mixed disabled hidden>{{t "mapgen.all.mixed"}}</option>
+      {{- $chosen := .Value}}
+      {{- range .Options}}
+      <option value="{{.Value}}"{{if eq .Value $chosen}} selected{{end}}>{{msg .Label}}</option>
+      {{- end}}
+    </select>
+  </div>
+  {{- end}}
+</fieldset>
 {{- end}}
 
 {{/* One autoplace control: its name, then its settings side by side. A

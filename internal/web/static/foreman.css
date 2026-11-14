@@ -6046,6 +6046,23 @@ main > .panel > .facts > div {
   font-size: var(--text-xs);
 }
 
+/* A planet's "All resources" row sets the rows under it, so it needs script
+   and a rule under it sets it apart (DESIGN 8.7). */
+.autoplace--all {
+  display: none;
+}
+
+.js-on .autoplace--all {
+  display: grid;
+  padding-block-end: var(--space-4);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.autoplace--all > .hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 /* The status lamp (DESIGN 7.5): the state badge's shape, small, before the
    state's word in the header and at the start of the Server plate's band. A
    filled square runs, a half-filled one starts or stops, a diamond has

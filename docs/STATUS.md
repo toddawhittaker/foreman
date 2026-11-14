@@ -2863,6 +2863,13 @@ independent cards is acceptable (WCAG 2.4.3 passes). The fold changed DESIGN
 - **The crash-loop retry test flake is fixed (#475).** It was a race in the
   fake Docker (`internal/fakegame`), not in Foreman: a game that died during
   a refused stop was never restarted. The fake now schedules the restart.
+- **Each planet with two or more resources has an "All resources" row at the
+  top of its Resources list (SPEC 5.6, 11.5; DESIGN 8.7).** It has Frequency,
+  Size and Richness with the resources' own steps. Moving one sets it on every
+  resource that is switched on, through each resource's own select, so
+  sliders, warnings, "[modified]" and the preview follow. It shows "Mixed"
+  while the resources differ. It needs script and sends nothing; the
+  checkboxes and the server's form handling are unchanged.
 
 ### Gaps left
 
