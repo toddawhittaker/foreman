@@ -324,6 +324,7 @@
   "worlds.world.updating": "Aktualizowanie do wersji Factorio {version}…",
   "worlds.world.server_page": "stronę serwera",
   "worlds.world.snapshots": "Migawki",
+  "worlds.world.snapshots_name": "Migawki tego świata",
   "worlds.world.switch.busy": "Na serwerze trwa operacja, na przykład przełączanie. Zobacz {link}.",
   "worlds.world.switch.button": "Przełącz na ten świat",
   "worlds.world.switch.heading": "Przełączanie",

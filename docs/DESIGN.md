@@ -565,7 +565,9 @@ frame (7.4).
   marked on all three settings pages and the pages under them, "page" on
   the restart schedule and "true" on the others. No page shows two
   navigation links with the same name, so a world's own settings tab is
-  "Game settings".
+  "Game settings", and a world's own Snapshots tab keeps its one word on
+  screen but is named "Snapshots of this world" (an `aria-label` that
+  starts with the shown word, WCAG 2.5.3).
 - **The user menu** is a native `details` at the end of the header. Its
   summary is a bordered button on `raised` (1 px `border`, `--radius`,
   `--text-sm`) that shows the user's name in weight 600 and the current

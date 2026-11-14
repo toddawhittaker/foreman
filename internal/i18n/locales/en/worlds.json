@@ -312,6 +312,7 @@
   "worlds.world.updating": "Updating to Factorio {version}…",
   "worlds.world.server_page": "the Server page",
   "worlds.world.snapshots": "Snapshots",
+  "worlds.world.snapshots_name": "Snapshots of this world",
   "worlds.world.switch.busy": "An operation is running on the server, such as a switch. See {link}.",
   "worlds.world.switch.button": "Switch to this world",
   "worlds.world.switch.heading": "Switch",

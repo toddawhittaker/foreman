@@ -147,24 +147,29 @@ test("the Settings tab is current on the three Foreman settings pages", async ({
   await expect(mainNav(page).getByRole("link", { name: "Settings" })).not.toHaveAttribute("aria-current");
 });
 
-// No page shows two navigation links with the same name to different places.
+// No page shows two navigation links with the same name to different places
+// (SPEC 17.1). A link's name is its aria-label when it has one.
 test("no page has two navigation links with one name", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
-  for (const path of ["/", "/worlds/base", "/worlds/base/settings", "/settings/restart-schedule"]) {
+  for (const path of ["/", "/worlds/base", "/worlds/base/snapshots", "/worlds/base/settings", "/settings/restart-schedule"]) {
     await page.goto(path);
     const links = await page.locator("nav a, main .links a").evaluateAll((els) =>
-      els.map((a) => [(a.textContent ?? "").trim(), a.getAttribute("href")!.split("?")[0]]),
+      els.map((a) => [(a.getAttribute("aria-label") ?? a.textContent ?? "").trim(), a.getAttribute("href")!.split("?")[0]]),
     );
     const byName = new Map<string, Set<string>>();
     for (const [name, href] of links) byName.set(name, (byName.get(name) ?? new Set()).add(href));
-    // The main Snapshots tab and a world's Snapshots tab share a name from
-    // before this rule; that is left to its own issue.
-    const dup = [...byName].filter(([n, hrefs]) => hrefs.size > 1 && n !== "Snapshots").map(([n]) => n);
+    const dup = [...byName].filter(([, hrefs]) => hrefs.size > 1).map(([n]) => n);
     expect(dup, path).toEqual([]);
   }
   await page.goto("/worlds/base");
-  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Game settings" })).toBeVisible();
+  const worldPages = page.getByRole("navigation", { name: "World pages" });
+  await expect(worldPages.getByRole("link", { name: "Game settings" })).toBeVisible();
+  // The world's own tab still shows the one word, and its name starts with it (WCAG 2.5.3).
+  const own = worldPages.getByRole("link", { name: "Snapshots of this world", exact: true });
+  await expect(own).toHaveText("Snapshots");
+  await expect(own).toHaveAttribute("href", "/worlds/base/snapshots");
+  await expect(mainNav(page).getByRole("link", { name: "Snapshots", exact: true })).toHaveAttribute("href", "/snapshots");
 });
 
 // SPEC 17.2: at 320 px and 200% text, in German and Russian, the header

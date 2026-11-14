@@ -300,6 +300,7 @@
   "worlds.world.updating": "正在更新到 Factorio {version}…",
   "worlds.world.server_page": "服务器页面",
   "worlds.world.snapshots": "快照",
+  "worlds.world.snapshots_name": "快照（此世界）",
   "worlds.world.switch.busy": "服务器上正在运行操作，例如切换。请查看{link}。",
   "worlds.world.switch.button": "切换到此世界",
   "worlds.world.switch.heading": "切换",
