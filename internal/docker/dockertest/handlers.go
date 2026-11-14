@@ -106,8 +106,10 @@ func (d *Daemon) ipFor(c *Container) string {
 
 func (d *Daemon) markRunning(c *Container) {
 	c.Status = "running"
+	// Docker clears the out-of-memory flag on a start but keeps the last
+	// exit's FinishedAt.
 	c.ExitCode, c.OOMKilled, c.Error = 0, false, ""
-	c.StartedAt, c.FinishedAt = time.Now().UTC(), time.Time{}
+	c.StartedAt = time.Now().UTC()
 	mode := c.Spec.HostConfig.NetworkMode
 	if _, shared := joinedContainer(mode); shared {
 		c.Networks = nil
@@ -517,6 +519,11 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 		reply(w, http.StatusNotFound, "No such container: "+ref)
 		return
 	}
+	if !follow && d.refuseReads {
+		d.mu.Unlock()
+		reply(w, http.StatusInternalServerError, "log read refused")
+		return
+	}
 	next := 0
 	if n, err := strconv.Atoi(q.Get("tail")); err == nil && n < len(c.Log) {
 		next = len(c.Log) - n
@@ -540,7 +547,8 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 		if follow && d.holdFollow {
 			entries, running = nil, true
 		}
-		if !follow && d.cutReads > 0 && len(entries) > d.cutReads {
+		cut := !follow && d.cutReads > 0 && len(entries) > d.cutReads
+		if cut {
 			entries = entries[:d.cutReads]
 		}
 		d.mu.Unlock()
@@ -562,6 +570,10 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 		}
 		next += len(entries)
 		flush(w)
+		if cut {
+			// The connection drops: the reader gets an error, not the end.
+			panic(http.ErrAbortHandler)
+		}
 		if !follow || !running {
 			return
 		}

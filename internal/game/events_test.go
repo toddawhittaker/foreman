@@ -456,6 +456,9 @@ func TestLowDiskOncePerCrossingAcrossWorldsAndRestart(t *testing.T) {
 // ADR 0016, SPEC 8.7: a crash the poll sees before the log's failure line
 // can be read is sent with the reason once the line is read. The poll's
 // own read of the log is refused, so the line comes only by the follower.
+// That is the follower already open when the game crashed: while held it
+// does not end, so no new one starts, and following reads are never
+// refused, so releasing it is what delivers the line.
 func TestCrashEventWaitsForTheReason(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	r.c.crashSettle = 5 * time.Second
@@ -467,8 +470,8 @@ func TestCrashEventWaitsForTheReason(t *testing.T) {
 	waitEvents(t, n, notify.Start)
 	d := r.game.Daemon()
 	d.HoldFollowers(true)
-	d.SetCallFailure("GET", "logs", 500, "log read refused")
-	t.Cleanup(func() { d.HoldFollowers(false); d.SetCallFailure("GET", "logs", 0, "") })
+	d.RefuseLogReads(true)
+	t.Cleanup(func() { d.HoldFollowers(false); d.RefuseLogReads(false) })
 	d.EmitLog(ContainerName(id), docker.Stdout,
 		`   9.000 Error ServerMultiplayerManager.cpp:85: MultiplayerManager failed: "Opening zip /factorio/saves/base.zip failed: I/O error"`)
 	if err := r.game.Crash(ContainerName(id), 1, false); err != nil {
@@ -479,7 +482,7 @@ func TestCrashEventWaitsForTheReason(t *testing.T) {
 	if got := n.events(); len(got) != 1 {
 		t.Fatalf("sent %v before the reason was read", got)
 	}
-	d.SetCallFailure("GET", "logs", 0, "")
+	d.RefuseLogReads(false)
 	d.HoldFollowers(false)
 	eventually(t, func() bool { return n.count(notify.Crash) == 1 }, "the crash sent")
 	if m := n.all()[1]; m.Event != notify.Crash || m.Reason != crashreasons.SaveUnreadable {

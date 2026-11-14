@@ -2,12 +2,15 @@ package game
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
+	"github.com/toddawhittaker/foreman/internal/notify"
 )
 
 // The orderings below are the ones the real game gave in a crash loop
@@ -220,8 +223,8 @@ func TestCrashReasonKeepsTheNewestFinishedRuns(t *testing.T) {
 		{"the newest run's own reason", []string{loading, other, failed, loading, badZip}, crashreasons.SaveUnreadable},
 	} {
 		f := readAll(tc.lines)
-		if got := f.crashReason(masking()).Kind; got != tc.want {
-			t.Errorf("%s: kind %q, want %q", tc.name, got, tc.want)
+		if got, _, _ := f.crashReason(masking()); got.Kind != tc.want {
+			t.Errorf("%s: kind %q, want %q", tc.name, got.Kind, tc.want)
 		}
 	}
 	// A start reads the log after its game stopped, so its newest run did
@@ -229,5 +232,374 @@ func TestCrashReasonKeepsTheNewestFinishedRuns(t *testing.T) {
 	start := readAll([]string{loading, badZip, failed, loading})
 	if got := start.reason(masking()).Kind; got != "" {
 		t.Errorf("a start's reason took an older run's kind %q", got)
+	}
+}
+
+// Lines of the game's log in a crash loop: the start of a run, the words
+// that name a save that cannot be read, and the end of a failed load.
+const (
+	runLoad    = "   0.344 Loading map /factorio/saves/base.zip: 4096 bytes."
+	runBadZip  = `   0.344 Error ServerMultiplayerManager.cpp:92: MultiplayerManager failed: "Opening zip /factorio/saves/base.zip failed: Bad zip file"`
+	runOther   = `   0.344 Error ServerMultiplayerManager.cpp:92: MultiplayerManager failed: "something new"`
+	runFailed  = "   0.344 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(CreatingGame) to(InitializationFailed)"
+	runGoodbye = "   0.364 Goodbye"
+)
+
+// emitLines writes lines to the container's log, as the game would.
+func emitLines(t *testing.T, d *dockertest.Daemon, cid string, lines ...string) {
+	t.Helper()
+	for _, l := range lines {
+		if !d.EmitLog(cid, docker.Stdout, l) {
+			t.Fatal("no container to log to")
+		}
+	}
+}
+
+// lookAt reads the container as the poll would, before anything below
+// changes it, and the world's operation count with it.
+func lookAt(t *testing.T, r *rig, w *worldRun, cid string) (docker.Container, uint64) {
+	t.Helper()
+	w.mu.Lock()
+	ops := w.ops
+	w.mu.Unlock()
+	cont, err := r.docker.InspectContainer(context.Background(), cid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cont, ops
+}
+
+func oomOf(w *worldRun) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.oomKilled
+}
+
+// SPEC 8.7: the poll's inspect can be seconds older than the one taken when
+// the log ended (its log read takes up to loadFailureReadLimit), so the
+// two race. Docker's FinishedAt orders them: a look at an older exit never
+// replaces what a look at a newer one said, in either direction.
+func TestOlderExitLookDoesNotOverruleANewerOne(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		older, oom bool // whether the older exit and the newer were out of memory
+	}{
+		{"a stale exit without the flag after a newer out-of-memory kill", false, true},
+		{"a stale out-of-memory kill after a newer exit without the flag", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newRig(t, rigOptions{noRun: true})
+			id := r.newWorld("Race")
+			r.start(id)
+			d := r.game.Daemon()
+			cid := r.container(id).ID
+			w := r.c.world(id)
+
+			drainPoke(r.c)
+			d.Exit(cid, 1, tc.older)
+			awaitPoke(t, r.c) // the follower ended and looked at this exit
+			stale, ops := lookAt(t, r, w, cid)
+			d.Restart(cid)
+			d.Exit(cid, 1, tc.oom)
+			r.c.noteExit(w, cid) // the newer exit, seen first
+			if got := oomOf(w); got != tc.oom {
+				t.Fatalf("after the newer exit's look: out of memory %v, want %v", got, tc.oom)
+			}
+			if !r.c.observe(w, &stale, ops, nil) {
+				t.Fatal("the poll's look was dropped")
+			}
+			if got := oomOf(w); got != tc.oom {
+				t.Errorf("the older look made it out of memory %v, want %v", got, tc.oom)
+			}
+			d.Restart(cid)
+			r.c.tick(context.Background())
+			want := ""
+			if tc.oom {
+				want = crashreasons.OutOfMemory
+			}
+			if st := r.c.Status(id); st.State != StateCrashed || st.Crash.Kind != want {
+				t.Errorf("state %s, kind %q; want %s, %q", st.State, st.Crash.Kind, StateCrashed, want)
+			}
+		})
+	}
+}
+
+// SPEC 8.7: a look at the exit it already took in, or one with no exit
+// time, changes nothing; a running game's flag is not an exit's.
+func TestExitSeenOnlyFromANewerExit(t *testing.T) {
+	at := time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
+	w := &worldRun{}
+	if exitSeenLocked(w, docker.State{Status: "exited", OOMKilled: true}) || w.oomKilled {
+		t.Error("an exit with no time was taken in")
+	}
+	if !exitSeenLocked(w, docker.State{Status: "exited", OOMKilled: true, FinishedAt: at}) || !w.oomKilled {
+		t.Fatal("the first exit was not taken in")
+	}
+	if exitSeenLocked(w, docker.State{Status: "exited", FinishedAt: at}) || !w.oomKilled {
+		t.Error("a look at the same exit changed the flag")
+	}
+	if exitSeenLocked(w, docker.State{Status: "exited", FinishedAt: at.Add(-time.Second)}) || !w.oomKilled {
+		t.Error("an older exit changed the flag")
+	}
+	w.stopping = true
+	if exitSeenLocked(w, docker.State{Status: "exited", FinishedAt: at.Add(time.Second)}) || !w.oomKilled {
+		t.Error("Foreman's own stop cleared the flag")
+	}
+	w.stopping = false
+	if !exitSeenLocked(w, docker.State{Status: "exited", FinishedAt: at.Add(2 * time.Second)}) || w.oomKilled {
+		t.Error("a newer exit without the flag did not clear it")
+	}
+	for _, s := range []string{"running", "paused", "created"} {
+		if exited(s) {
+			t.Errorf("%s counted as an exit", s)
+		}
+	}
+}
+
+// SPEC 8.7: an out-of-memory kill names the crash until a newer run names
+// another reason. Here the game ran out of memory, Docker restarted it,
+// and that run failed to load its save before any look saw it, so the
+// save names the crash. A run Docker began after the kill is told by
+// Docker's own time of its first line.
+func TestNewerRunsReasonOverrulesAnOlderOutOfMemoryKill(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("OOM then bad save")
+	r.start(id)
+	d := r.game.Daemon()
+	cid := r.container(id).ID
+
+	drainPoke(r.c)
+	d.Exit(cid, 137, true)
+	awaitPoke(t, r.c)
+	if !oomOf(r.c.world(id)) {
+		t.Fatal("setup: the kill was not seen")
+	}
+	d.Restart(cid)
+	emitLines(t, d, cid, runLoad, runBadZip, runFailed, runGoodbye)
+	d.Exit(cid, 1, false) // no look sees this exit
+	d.Restart(cid)
+	emitLines(t, d, cid, runLoad)
+
+	r.c.tick(context.Background())
+	if st := r.c.Status(id); st.State != StateCrashed || st.Crash.Kind != crashreasons.SaveUnreadable {
+		t.Errorf("state %s, kind %q; want %s, %q", st.State, st.Crash.Kind, StateCrashed, crashreasons.SaveUnreadable)
+	}
+}
+
+// SPEC 8.7: a read taken after an out-of-memory kill holds the killed run's
+// words too, and the flag outranks them: they were written before the
+// kill, so they are not a newer crash.
+func TestOutOfMemoryOutranksTheKilledRunsOwnWords(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("OOM with words")
+	r.start(id)
+	d := r.game.Daemon()
+	cid := r.container(id).ID
+
+	drainPoke(r.c)
+	emitLines(t, d, cid, runLoad, runBadZip)
+	d.Exit(cid, 137, true)
+	awaitPoke(t, r.c)
+	d.Restart(cid)
+	emitLines(t, d, cid, runLoad)
+	d.Exit(cid, 1, false)
+	d.Restart(cid)
+
+	r.c.tick(context.Background())
+	if st := r.c.Status(id); st.State != StateCrashed || st.Crash.Kind != crashreasons.OutOfMemory {
+		t.Errorf("state %s, kind %q; want %s, %q", st.State, st.Crash.Kind, StateCrashed, crashreasons.OutOfMemory)
+	}
+}
+
+// takeEvents empties the controller's event queue; the tests below run no
+// monitor, so nothing else delivers them.
+func takeEvents(c *Controller) []notify.Message {
+	var out []notify.Message
+	for {
+		select {
+		case m := <-c.events:
+			out = append(out, m)
+		default:
+			return out
+		}
+	}
+}
+
+// eventsOf lists the crash and crash-loop events in ms, with their reasons.
+func crashEventsOf(ms []notify.Message) []string {
+	var out []string
+	for _, m := range ms {
+		if m.Event == notify.Crash || m.Event == notify.CrashLoop {
+			out = append(out, string(m.Event)+":"+m.Reason)
+		}
+	}
+	return out
+}
+
+// ADR 0016, SPEC 8.7, 8.10: when the poll's read of the log is the only
+// way the runs it found were seen (each follower is held, as a stalled
+// stream is), the crash and the crash loop it finds are each sent at once
+// with the reason that read names.
+func TestCrashEventsNameThePollsRead(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.c.crashSettle = time.Hour
+	id := r.newWorld("Read only")
+	r.start(id)
+	ctx := context.Background()
+	d := r.game.Daemon()
+	cid := r.container(id).ID
+	d.HoldFollowers(true)
+	t.Cleanup(func() { d.HoldFollowers(false) })
+	takeEvents(r.c)
+
+	d.Exit(cid, 1, false)
+	d.Restart(cid)
+	emitLines(t, d, cid, runLoad, runBadZip, runFailed)
+	d.Exit(cid, 1, false)
+	d.Restart(cid)
+	emitLines(t, d, cid, runLoad)
+	r.c.tick(ctx)
+	if got := crashEventsOf(takeEvents(r.c)); !slices.Equal(got, []string{"crash:" + crashreasons.SaveUnreadable}) {
+		t.Fatalf("after the look that found the crash: %v", got)
+	}
+
+	emitLines(t, d, cid, `   0.300 Error Util.cpp:81: Failed to load mod "brokenlua": __brokenlua__/data.lua:1: boom`)
+	d.Exit(cid, 1, false)
+	d.Restart(cid)
+	r.c.tick(ctx)
+	if got := crashEventsOf(takeEvents(r.c)); !slices.Equal(got, []string{"crash-loop:" + crashreasons.ModError}) {
+		t.Errorf("after the look that found the loop: %v", got)
+	}
+}
+
+// SPEC 8.7, 8.9, 8.10: an earlier run's reason that only the follower saw
+// is the last one seen, not the crash's: the run that crashed may not
+// have been read yet. The crash-loop event waits for that run's words
+// (here a failure the catalogue does not know) instead of naming the
+// earlier save, while the Server page shows the last reason seen.
+func TestCrashLoopEventWaitsForTheCrashedRunsWords(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.c.crashSettle = 5 * time.Second
+	id := r.newWorld("Lagging follower")
+	r.start(id)
+	ctx := context.Background()
+	d := r.game.Daemon()
+	d.RefuseLogReads(true) // the poll's read never helps here
+	t.Cleanup(func() { d.RefuseLogReads(false); d.HoldFollowers(false) })
+	cid := r.container(id).ID
+	w := r.c.world(id)
+	following := func() bool {
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		return w.following
+	}
+	crashKind := func() string { return r.c.Status(id).Crash.Kind }
+	takeEvents(r.c)
+
+	// The first crash: its run said nothing, the next failed on its save.
+	drainPoke(r.c)
+	d.Exit(cid, 1, false)
+	awaitPoke(t, r.c)
+	d.Restart(cid)
+	r.c.tick(ctx)
+	eventually(t, following, "the second run to be followed")
+	emitLines(t, d, cid, runLoad, runBadZip, runFailed)
+	eventually(t, func() bool { return crashKind() == crashreasons.SaveUnreadable }, "the save's failure to be read")
+	if got := crashEventsOf(takeEvents(r.c)); !slices.Equal(got, []string{"crash:" + crashreasons.SaveUnreadable}) {
+		t.Fatalf("the first crash: %v", got)
+	}
+
+	// The third run begins and the follower reads that, then stalls.
+	drainPoke(r.c)
+	d.Exit(cid, 1, false)
+	awaitPoke(t, r.c)
+	d.Restart(cid)
+	r.c.tick(ctx)
+	eventually(t, following, "the third run to be followed")
+	emitLines(t, d, cid, runLoad)
+	eventually(t, func() bool {
+		lines := w.logs.Lines()
+		return len(lines) > 0 && strings.HasSuffix(lines[len(lines)-1], "bytes.")
+	}, "the third run's start to be read")
+	d.HoldFollowers(true)
+	emitLines(t, d, cid, runOther, runFailed)
+	d.Exit(cid, 1, false)
+	d.Restart(cid)
+	r.c.tick(ctx)
+	if st := r.c.Status(id); st.State != StateCrashLooping || st.Crash.Kind != crashreasons.SaveUnreadable {
+		t.Fatalf("the page: state %s, kind %q; want %s showing the last reason seen", st.State, st.Crash.Kind, StateCrashLooping)
+	}
+	if got := crashEventsOf(takeEvents(r.c)); len(got) != 0 {
+		t.Fatalf("sent %v before the run that crashed was read", got)
+	}
+
+	d.HoldFollowers(false)
+	eventually(t, func() bool { return crashKind() == "" }, "the third run's words to be read")
+	r.clock.Advance(6 * time.Second)
+	r.c.tick(ctx)
+	if got := crashEventsOf(takeEvents(r.c)); !slices.Equal(got, []string{"crash-loop:"}) {
+		t.Errorf("after the third run was read and the wait ended: %v, want the loop sent as unknown", got)
+	}
+}
+
+// SPEC 8.6, 8.7: the poll reads the log only for a restart it has not
+// seen, only when the world's secrets are known to mask what it reads,
+// and keeps the read only when it reached the log's end.
+func TestReadCrashLogLimits(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Limits")
+	r.start(id)
+	ctx := context.Background()
+	d := r.game.Daemon()
+	cid := r.container(id).ID
+	w := r.c.world(id)
+	emitLines(t, d, cid, runLoad, runBadZip, runFailed)
+	d.Exit(cid, 1, false)
+	d.Restart(cid)
+	cont, ops := lookAt(t, r, w, cid)
+	reads := func() int {
+		n := 0
+		for _, c := range d.Calls() {
+			if strings.HasSuffix(c.Path, "/logs") && c.Query.Get("follow") != "true" {
+				n++
+			}
+		}
+		return n
+	}
+
+	before := reads()
+	w.mu.Lock()
+	w.noSecrets = true
+	w.mu.Unlock()
+	if got := r.c.readCrashLog(ctx, w, cont, ops); got != nil || reads() != before {
+		t.Errorf("read without the secrets to mask it: %v, %d reads", got, reads()-before)
+	}
+	w.mu.Lock()
+	w.noSecrets = false
+	w.mu.Unlock()
+
+	seen := cont
+	seen.RestartCount = 0
+	if got := r.c.readCrashLog(ctx, w, seen, ops); got != nil || reads() != before {
+		t.Errorf("read with no new restart: %v", got)
+	}
+
+	d.CutLogReads(1)
+	if got := r.c.readCrashLog(ctx, w, cont, ops); got != nil {
+		t.Errorf("a read cut short was kept: %+v", got)
+	}
+	d.CutLogReads(0)
+	d.RefuseLogReads(true)
+	if got := r.c.readCrashLog(ctx, w, cont, ops); got != nil {
+		t.Errorf("a refused read was kept: %+v", got)
+	}
+	d.RefuseLogReads(false)
+
+	got := r.c.readCrashLog(ctx, w, cont, ops)
+	if got == nil {
+		t.Fatal("a whole read was not kept")
+	}
+	if r, _, final := got.f.crashReason(masking()); r.Kind != crashreasons.SaveUnreadable || !final {
+		t.Errorf("the whole read: kind %q, final %v", r.Kind, final)
 	}
 }

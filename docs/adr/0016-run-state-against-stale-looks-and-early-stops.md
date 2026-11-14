@@ -2,7 +2,8 @@
 
 - **Status**: Accepted
 - **Date**: 2026-11-09
-- **References**: SPEC.md sections 7.3, 8.7 and 14.3; ADR 0003
+- **References**: SPEC.md sections 7.3, 8.7, 8.9, 8.10 and 14.3; ADR 0003
+- **Amended 2026-11-14**: crash reasons in a fast crash loop (below).
 
 ## Context
 
@@ -45,3 +46,57 @@ Docker's newest run stops for another reason, Start still reports the
 earlier run's failed load. Both races are tested directly, through hooks in
 the fake Docker daemon, because loops of the old tests hit them only under
 heavy load.
+
+## Amendment 2026-11-14: crash reasons in a fast crash loop
+
+### Context
+
+The real game in a crash loop ends each run within half a second, and
+Docker restarts it within a few hundred milliseconds. One poll then saw the
+restart count rise by three at once, after Docker had cleared the
+out-of-memory flag, while no follower had read the runs in between: a loop
+of out-of-memory kills or of a save that cannot be read showed as unknown.
+The looks that could fill the gap race each other: the poll inspects, then
+may spend up to five seconds reading the log, while the follower's look at
+an exit can be newer.
+
+### Decision
+
+- When the log stream ends, the follower inspects the container at once
+  and takes in the out-of-memory flag of the exit it finds.
+- Each look at an exit carries Docker's `FinishedAt`. The world keeps that
+  of the last exit taken in and refuses a look at an exit no newer, in
+  either direction (a stale "not out of memory" or a stale "out of
+  memory"). A running or paused container's flag and `FinishedAt` describe
+  no new exit and are ignored. Foreman's own stop of a crash loop is passed
+  over. A new container starts afresh; the game getting back in game clears
+  the flag and moves the kept time to that log line's time. Rejected:
+  ordering by the operation count alone (it does not change between two
+  exits of one container), and the restart count (Docker raises it on the
+  start, after the exit's flag was cleared).
+- When a look finds the restart count risen, the poll reads the log once:
+  the start's read, with the same tail, byte and five-second bounds and
+  Docker's line times. It is skipped when the world's secrets are not known
+  to mask it, and dropped unless it reached the log's end. Lines the
+  follower adds after it are read on top.
+- The flag outranks the log's words unless the run that said them began,
+  by Docker's time of its first line, after the exit the flag names. Both
+  times come from Docker's clock. A run whose time is not known (the
+  follower kept only the newest 64 run starts) never overrules the flag.
+- A crash's reason is that of the newest run that said how its load ended,
+  since the newest is often still loading. A crash or crash-loop event is
+  sent at once only when that reason is final: the newest run's own, or an
+  earlier run's from a read that reached the log's end after the restart.
+  An earlier run's reason seen only by the follower may yet give way to the
+  crashed run's words, so the event waits, within the settle bound, and
+  then names the last reason seen. The Server page shows that reason
+  meanwhile.
+
+### Consequences
+
+A loop of out-of-memory kills, or of a bad save, is named on the look that
+finds it. A host kill, a flag both looks missed, and runs whose words
+neither the follower nor the read saw stay unknown. When the follower lags
+and the read is refused, a crash event can still name the newest run the
+follower read, which may be older than the run that crashed. The races are
+tested by taking the looks by hand in a set order.

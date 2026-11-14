@@ -87,9 +87,11 @@ type Daemon struct {
 	portInUse  map[string]string  // container name to the host port its next start finds taken
 	changed    chan struct{}      // closed and replaced whenever state or a log changes
 	// holdFollow keeps following log streams from sending new lines;
-	// cutReads ends every other log read after that many lines, if above 0.
-	holdFollow bool
-	cutReads   int
+	// cutReads ends every other log read after that many lines, if above 0,
+	// and refuseReads fails every other log read.
+	holdFollow  bool
+	cutReads    int
+	refuseReads bool
 }
 
 // New starts a fake daemon that speaks API version docker.MaxAPIVersion and
@@ -174,12 +176,22 @@ func (d *Daemon) HoldFollowers(on bool) {
 	d.broadcast()
 }
 
-// CutLogReads ends every log read that does not follow after n lines, as a
-// dropped connection would, until it is called again with 0.
+// CutLogReads breaks off every log read that does not follow after n
+// lines, as a dropped connection does, so the reader gets an error rather
+// than the stream's end, until it is called again with 0.
 func (d *Daemon) CutLogReads(n int) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.cutReads = n
+}
+
+// RefuseLogReads makes every log read that does not follow fail with
+// HTTP 500, until it is called again with false. Following streams are
+// not refused.
+func (d *Daemon) RefuseLogReads(on bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.refuseReads = on
 }
 
 // DropLog forgets a container's output so far, as Docker's log rotation
