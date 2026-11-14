@@ -26,13 +26,16 @@ none concern sidecars; this epic closes none of them.
    the host; the game publishes no ports and listens on all interfaces.
    Omit both `ExposedPorts` and `PortBindings` from the game container in
    shared-network mode. Ordinary mode keeps its current behavior.
-2. **Dedicated sidecar (Todd, 2026-11-14):** require a dedicated VPN
-   sidecar attached only to `FOREMAN_GAME_NETWORK`. Refuse a start when
-   Docker reports any additional network attachment, with a plain reason
-   and guidance to use a dedicated sidecar. T0 updates the current spec,
-   which permits multiple Docker networks. This restriction concerns
-   Docker attachments; the sidecar still provides its VPN interface and
-   publishes the LAN game port. It does not replace VPN access rules.
+2. **Shared sidecars allowed (Todd, 2026-11-14):** the operator may
+   attach the sidecar to additional Docker networks, including shared
+   networks. It must still join `FOREMAN_GAME_NETWORK`; do not refuse
+   merely because another attachment or an unrelated service exists on
+   an additional network. Keep the existing game-network checks. Inspect
+   every attached network's address ranges for trusted-proxy overlap and
+   exposure of the configured Docker API/socket proxy. Document that the
+   game can reach services on those additional networks and that the
+   operator owns that choice. This supersedes the earlier dedicated-only
+   decision and preserves the multi-network scope of SPEC 4.13.
 3. **Identity:** resolve the configured name at every start, inspect that
    container, and join `container:<verified ID>`. Never silently follow a
    replacement between inspection and creation. A failed create/start
@@ -109,9 +112,9 @@ Sonnet means `claude-sonnet-5-5`, Opus means `claude-opus-5-5`.
 
 | Task | Owner and model | Files owned | Done and dependency |
 | --- | --- | --- | --- |
-| T0: settle contract | Orchestrator; current model | `docs/SPEC.md`, `docs/adr/0006-vpn-sidecar-network.md`, this plan | Record the approved dedicated-sidecar restriction; correct security claims; retain manual recovery. After plan approval. |
+| T0: settle contract | Orchestrator; current model | `docs/SPEC.md`, `docs/adr/0006-vpn-sidecar-network.md`, this plan | Record shared-sidecar support and its trust boundary; correct security claims; retain manual recovery. After plan approval. |
 | T1: config and Docker support | Builder; Sonnet high | `internal/config/`, `internal/docker/` including `dockertest`, `internal/gameenv/` | Read sidecar config, require the game network, expose inspect fields, model shared namespace and refusal cases accurately in fake Docker. After T0. Keep the startup refusal until T2 wires the feature, so the intermediate commit cannot enable incomplete support. |
-| T2: game integration and trust | Builder; Opus high | `internal/game/` production code and unit tests; `cmd/foreman/main.go`, the final enablement in `internal/config/config.go` after T1; `internal/web/game_security_test.go` | Validate sidecar, join verified ID, bind/dial RCON on all paths, retain protected sign-in ranges, expose LAN warning status. All lifecycle/precheck paths covered. After T1. |
+| T2: game integration and trust | Builder; Opus high | `internal/game/` production code and unit tests; `cmd/foreman/main.go`, the final enablement in `internal/config/config.go` after T1; `internal/web/game_security_test.go` | Validate sidecar across all attached Docker networks without banning shared attachments, join verified ID, bind/dial RCON on all paths, retain protected sign-in ranges, expose LAN warning status. All lifecycle/precheck paths covered. After T1. |
 | T3: browser test fixture | Builder; Sonnet high | `internal/fakegame/`, `cmd/fakegame/` | Seed a sidecar and published-port variants; simulate empty game networks and bind-aware RCON. After T1 and T2's agreed environment contract; may run beside T2. |
 | T4: UI and browser coverage | Builder; Sonnet high | `internal/web/gametext.go`, `internal/web/serverpage.go`, their tests, `internal/web/templates/server.html`, `internal/i18n/locales/`, `e2e/tests/foreman.ts`, new `e2e/tests/sidecar.spec.ts` | Localized refusal and nonblocking LAN warning; start/console/refusal tests, live updates, no-script and 320px accessibility coverage. After T2 and T3. |
 | T5: real game and Tailscale recipe | Tester; Opus high | New `internal/game/*sidecar*_game_test.go`; `docs/OPERATOR.md`, `README.md`; an example under `docs/examples/` if useful | Real-container coverage across the three supported game lines; executable Tailscale setup and manual acceptance checklist. After T2; may run beside T4. Reuse existing harness, coordinate any shared-helper edit. |
@@ -130,8 +133,11 @@ Automated checks must cover these invariants, not merely mirror helpers:
 - Ordinary mode still starts, reconnects and publishes its game port.
 - Missing/stopped/host-network/nested-namespace/off-network sidecars fail
   before destructive world work. Inspection failures fail closed. Cover
-  the dedicated-sidecar restriction and trusted-proxy overlap
-  for IPv4 and IPv6 ranges visible to Docker.
+  a successful multi-network sidecar start, including an unrelated service
+  on its additional network. Check trusted-proxy overlap and configured
+  Docker API/socket-proxy exposure across every attached network, for
+  IPv4 and IPv6 ranges visible to Docker. Unknown ranges fail closed;
+  additional attachments alone do not cause a refusal.
 - Replacing the named container between validation and creation cannot
   attach the game to the unchecked replacement.
 - Shared-network games have no port/expose declarations. The real Docker
@@ -192,8 +198,9 @@ any unavailable check as outstanding. Todd merges the final epic PR.
 - Local: ADR 0006, SPEC 4.13 and 14.16; architecture pass read the relevant
   config, container creation, launch, monitor and subnet code.
 
-2026-11-14: architecture pass completed; plan drafted. Todd chose a dedicated
-sidecar on the game Docker network only. Overall plan approval remains
+2026-11-14: architecture pass completed; plan drafted. Todd revised the
+network decision: shared sidecars and additional Docker networks are allowed.
+The earlier dedicated-only restriction is superseded. Overall plan approval remains
 pending. No implementation or live Tailscale test has run. Keep this
 progress record on the epic branch;
 the fold moves lasting evidence into STATUS and removes the plan.
