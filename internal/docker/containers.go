@@ -175,6 +175,28 @@ type Container struct {
 	RestartCount int
 	Mounts       []Mount
 	Networks     map[string]Network // by network name
+	// Env holds the container's environment as "KEY=value" lines. It may hold
+	// credentials (a VPN sidecar's key, for one): read a value with EnvValue
+	// and never log it or put it in an error.
+	Env []string
+	// NetworkMode is HostConfig.NetworkMode: a network name, "default",
+	// "host", "none" or "container:<id or name>".
+	NetworkMode string
+	// Ports is NetworkSettings.Ports, by "port/proto". A port that is only
+	// exposed has no bindings; a published one lists its host bindings. It is
+	// empty while the container is not running.
+	Ports map[string][]PortBinding
+}
+
+// EnvValue returns the value of the environment variable key, and whether
+// the container sets it. A line without "=" counts as unset.
+func (c Container) EnvValue(key string) (string, bool) {
+	for _, line := range c.Env {
+		if k, v, ok := strings.Cut(line, "="); ok && k == key {
+			return v, true
+		}
+	}
+	return "", false
 }
 
 // InspectContainer reads one container. A missing one is ErrNotFound.
@@ -195,10 +217,15 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		Config       struct {
 			Image  string
 			Labels map[string]string
+			Env    []string
+		}
+		HostConfig struct {
+			NetworkMode string
 		}
 		Mounts          []Mount
 		NetworkSettings struct {
 			Networks map[string]Network
+			Ports    map[string][]PortBinding
 		}
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
@@ -213,6 +240,9 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		RestartCount: raw.RestartCount,
 		Mounts:       raw.Mounts,
 		Networks:     raw.NetworkSettings.Networks,
+		Env:          raw.Config.Env,
+		NetworkMode:  raw.HostConfig.NetworkMode,
+		Ports:        raw.NetworkSettings.Ports,
 	}, nil
 }
 

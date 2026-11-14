@@ -11,6 +11,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -32,25 +33,24 @@ const (
 
 // Variable names.
 const (
-	varDataDir       = "FOREMAN_DATA_DIR"
-	varHostDataDir   = "FOREMAN_HOST_DATA_DIR"
-	varGameUID       = "FOREMAN_GAME_UID"
-	varGameGID       = "FOREMAN_GAME_GID"
-	varListen        = "FOREMAN_LISTEN"
-	varPublicURL     = "FOREMAN_PUBLIC_URL"
-	varPublicAddr    = "FOREMAN_PUBLIC_ADDRESS"
-	varAuthMethods   = "FOREMAN_AUTH_METHODS"
-	varUserHeader    = "FOREMAN_AUTH_USER_HEADER"
-	varGroupHeader   = "FOREMAN_AUTH_GROUPS_HEADER"
-	varGroup         = "FOREMAN_AUTH_REQUIRED_GROUP"
-	varProxies       = "FOREMAN_TRUSTED_PROXIES"
-	varSessionIdle   = "FOREMAN_SESSION_IDLE"
-	varDockerHost    = "DOCKER_HOST"
-	varGameNetwork   = "FOREMAN_GAME_NETWORK"
-	varFactorioUser  = "FOREMAN_FACTORIO_USERNAME"
-	varFactorioToken = "FOREMAN_FACTORIO_TOKEN"
-	varSecretKey     = "FOREMAN_SECRET_KEY"
-	// varNetworkContainer is read only to refuse it (SPEC 4.13).
+	varDataDir          = "FOREMAN_DATA_DIR"
+	varHostDataDir      = "FOREMAN_HOST_DATA_DIR"
+	varGameUID          = "FOREMAN_GAME_UID"
+	varGameGID          = "FOREMAN_GAME_GID"
+	varListen           = "FOREMAN_LISTEN"
+	varPublicURL        = "FOREMAN_PUBLIC_URL"
+	varPublicAddr       = "FOREMAN_PUBLIC_ADDRESS"
+	varAuthMethods      = "FOREMAN_AUTH_METHODS"
+	varUserHeader       = "FOREMAN_AUTH_USER_HEADER"
+	varGroupHeader      = "FOREMAN_AUTH_GROUPS_HEADER"
+	varGroup            = "FOREMAN_AUTH_REQUIRED_GROUP"
+	varProxies          = "FOREMAN_TRUSTED_PROXIES"
+	varSessionIdle      = "FOREMAN_SESSION_IDLE"
+	varDockerHost       = "DOCKER_HOST"
+	varGameNetwork      = "FOREMAN_GAME_NETWORK"
+	varFactorioUser     = "FOREMAN_FACTORIO_USERNAME"
+	varFactorioToken    = "FOREMAN_FACTORIO_TOKEN"
+	varSecretKey        = "FOREMAN_SECRET_KEY"
 	varNetworkContainer = "FOREMAN_GAME_NETWORK_CONTAINER"
 )
 
@@ -73,6 +73,10 @@ type Config struct {
 	SessionIdle    time.Duration
 	DockerHost     string
 	GameNetwork    string // the Docker network the game joins; empty means work it out (SPEC 4.4)
+	// GameNetworkContainer names the VPN sidecar whose network the game
+	// shares; empty means none (SPEC 4.13). It is a container name or ID,
+	// and when set, GameNetwork is set too.
+	GameNetworkContainer string
 	// FactorioUsername and FactorioToken are the portal account from the
 	// environment (SPEC 9.11): both set or both empty.
 	FactorioUsername, FactorioToken secret.Secret
@@ -168,8 +172,9 @@ func load(e env) (*Config, error) {
 		}
 	}
 
+	loadSidecar(e, c, &errs)
 	// Refuse rather than silently ignore a setting that would route game traffic
-	// through a VPN sidecar (SPEC 4.13).
+	// through a VPN sidecar, until the game can use it (SPEC 4.13).
 	if _, ok := e.get(varNetworkContainer); ok {
 		fail("%s is set, but VPN sidecars (SPEC 4.13) are not built yet. Unset it to start Foreman.", varNetworkContainer)
 	}
@@ -189,6 +194,30 @@ func load(e env) (*Config, error) {
 		return nil, errors.Join(errs...)
 	}
 	return c, nil
+}
+
+// containerRef is what Docker accepts as a container name; a container ID
+// fits it too. It has no colon, so it cannot be a network mode such as
+// container:x, and no slash or space.
+var containerRef = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
+
+// loadSidecar reads the VPN sidecar's name (SPEC 4.13). The sidecar must be
+// on the game network, so that network is then required, even outside a
+// container.
+func loadSidecar(e env, c *Config, errs *[]error) {
+	raw, ok := e.get(varNetworkContainer)
+	if !ok {
+		return
+	}
+	if !containerRef.MatchString(raw) {
+		*errs = append(*errs, fmt.Errorf("%s must be the name or ID of a container, for example tailscale, not %q", varNetworkContainer, raw))
+		return
+	}
+	if c.GameNetwork == "" {
+		*errs = append(*errs, fmt.Errorf("%s must be set when %s is set, because the sidecar must be on the game network", varGameNetwork, varNetworkContainer))
+		return
+	}
+	c.GameNetworkContainer = raw
 }
 
 // loadSecrets reads the portal account and the secret key. The messages name
