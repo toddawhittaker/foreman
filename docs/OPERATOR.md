@@ -698,8 +698,8 @@ below: replacing the sidecar cuts the running game off.
 
 ### Sign the sidecar in
 
-First configure `tag:factorio` and its owners as shown under "Limit who
-can join" below. Sign in as an owner of that tag. A tagged device uses its
+First configure `tag:factorio` and its owners as shown under "Limit who can
+reach the game over the VPN" below. Sign in as an owner of that tag. A tagged device uses its
 tag's identity instead of the signer's personal access; leave the tag
 without outbound grants and remove broader rules that would grant it
 unwanted access. Verify the tag in the admin console before starting a
