@@ -7,6 +7,7 @@
   <div class="actions">
     <a href="{{.Page.GeneratePath}}" class="button button--primary">{{t "worlds.list.generate"}}</a>
     <a href="{{.Page.ImportPath}}" class="button">{{t "worlds.list.import"}}</a>
+    <a href="{{deletedPath}}" class="button button--quiet" id="act-deleted">{{t "worlds.deleted.title"}}</a>
   </div>
 </header>
 {{- with .Page.Deleted}}
@@ -25,17 +26,19 @@
 {{- end}}
 <section class="panel" aria-label="{{t "worlds.list.all"}}">
   {{- with .Page.Worlds}}
+  {{- /* On a wide screen the list is a table: the fact names head the columns once, and each row keeps its own for screen readers. */}}
+  <div class="worlds-head" aria-hidden="true"><span>{{t "worlds.list.col.world"}}</span><span class="worlds-head__facts"><span>{{t "worlds.fact.game_version"}}</span><span>{{t "worlds.fact.space_age"}}</span><span>{{t "worlds.fact.last_played"}}</span><span>{{t "worlds.fact.disk_use"}}</span></span></div>
   <ul class="worlds" role="list">
     {{- range .}}
     <li>
-      <h2 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{if $.Page.HaveState}} <span class="state state--{{$.Page.ActiveState}}">{{msg $.Page.StateWord}}</span>{{end}}{{end}}</h2>
+      <h2 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="live-chip"><span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{if $.Page.HaveState}} <span class="state state--{{$.Page.ActiveState}}">{{msg $.Page.StateWord}}</span>{{end}}</span>{{end}}</h2>
       {{- if .Unreadable}}
       <p>{{tHTML "worlds.unreadable" "folder" (code .ID)}}</p>
       {{- else if .Newer}}
       <p>{{t "worlds.error.newer_format"}}</p>
       {{- end}}
       <dl class="facts">
-        <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
+        <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .GameVersion}}<span class="ver"><code>{{.GameVersion}}</code></span>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
         <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
         <div><dt>{{t "worlds.fact.last_played"}}</dt><dd>{{if .LastPlayedUnknown}}{{t "worlds.unknown_lower"}}{{else if .LastPlayed.IsZero}}{{t "worlds.never"}}{{else}}<time datetime="{{isoTime .LastPlayed}}" data-age-only>{{utc .LastPlayed}}</time>{{end}}</dd></div>
         <div><dt>{{t "worlds.fact.disk_use"}}</dt><dd>{{if .SizeUnknown}}{{t "worlds.unknown_lower"}}{{else}}<span class="nowrap">{{bytes .DiskBytes}}</span>{{end}}<span class="visually-hidden">,</span> <span class="fact-note">{{if $.Page.AddsUnknown}}{{t "worlds.list.adds_unknown"}}{{else}}{{tHTML "worlds.list.adds" "size" (nowrap (bytes (index $.Page.SnapshotAdds .ID)))}}{{end}}</span></dd></div>
@@ -56,5 +59,4 @@
   <p class="empty empty--art empty--worlds">{{t "worlds.list.empty"}}</p>
   {{- end}}
 </section>
-<div class="links"><a href="{{deletedPath}}">{{t "worlds.deleted.title"}}</a></div>
 {{- end}}

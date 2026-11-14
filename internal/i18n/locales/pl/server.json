@@ -606,5 +606,6 @@
   "server.schedule.next_is": "Następny restart: {time}.",
   "server.op.scheduled_restart": "Zaplanowany restart",
   "server.disk.low": "Wolne jest tylko {free} miejsca na dysku. Poniżej {reserve} automatyczne zapisy mogą się nie udać, a migawki przestają być wykonywane. Należy usunąć niepotrzebne migawki lub światy.",
-  "server.disk.snapshots": "Migawki"
+  "server.disk.snapshots": "Migawki",
+  "server.force.group": "Działania awaryjne"
 }

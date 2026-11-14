@@ -3,6 +3,7 @@
 {{define "content" -}}
 {{with .Page}}
 {{- $page := .}}
+<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
@@ -74,6 +75,18 @@
 {{- end}}
 {{/* The rail of section links shows only on a wide panel (DESIGN 8.10); a phone scrolls. */}}
 <div class="settings-wrap">
+{{- /* Below the rail's width, one disclosure of links jumps to a section; plain links, so it needs no script (DESIGN 6). */}}
+<details class="disclosure settings-jump">
+  <summary>{{t "settings.jump.label"}}</summary>
+  <ul role="list">
+    <li><a href="#settings-listing">{{t "settings.listing"}}</a></li>
+    <li><a href="#settings-joining">{{t "settings.joining"}}</a></li>
+    <li><a href="#settings-saving">{{t "settings.saving"}}</a></li>
+    <li><a href="#settings-admins">{{t "settings.admins.legend"}}</a></li>
+    <li><a href="#settings-whitelist">{{t "settings.whitelist.legend"}}</a></li>
+    <li><a href="#settings-bans">{{t "settings.bans.legend"}}</a></li>
+  </ul>
+</details>
 <div class="settings-layout">
 <nav class="settings-rail" aria-label="{{t "settings.rail.label"}}">
   <ul role="list">
@@ -101,6 +114,7 @@
   {{- end}}
   <fieldset id="settings-listing"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.listing"}}</legend>
+    <div class="setting-row__body">
     <div class="field">
       <label for="name" class="required">{{t "settings.name.label"}}</label>
       <input id="name" name="name" type="text" value="{{.Name}}" autocomplete="off" required placeholder="{{t "worlds.name.placeholder"}}"
@@ -121,10 +135,12 @@
       <label class="check"><input type="radio" id="visibility-lan" name="visibility" value="lan"{{if eq .Visibility "lan"}} checked{{end}}{{if not .VisibilityHint.IsZero}} aria-describedby="visibility-hint"{{end}}> {{t "settings.visibility.lan"}}</label>
       <label class="check"><input type="radio" id="visibility-hidden" name="visibility" value="hidden"{{if eq .Visibility "hidden"}} checked{{end}}{{if not .VisibilityHint.IsZero}} aria-describedby="visibility-hint"{{end}}> {{t "settings.visibility.hidden"}}</label>
     </fieldset>
+    </div>
   </fieldset>
 
   <fieldset id="settings-joining"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.joining"}}</legend>
+    <div class="setting-row__body">
     <fieldset>
       <legend>{{t "settings.password.legend"}}</legend>
       <p class="hint" id="pw-state">{{if .PasswordSet}}{{t "settings.password.set"}}{{else}}{{t "settings.password.unset"}}{{end}}</p>
@@ -156,10 +172,12 @@
       {{- end}}
     </div>
     <label class="check"><input type="checkbox" name="require_user_verification"{{if .Verify}} checked{{end}}> {{t "settings.verify.label"}}</label>
+    </div>
   </fieldset>
 
   <fieldset id="settings-saving"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.saving"}}</legend>
+    <div class="setting-row__body">
     <div class="field field--short">
       <label for="autosave-interval">{{t "settings.interval.label"}}</label>
       <input id="autosave-interval" name="autosave_interval" type="text" inputmode="numeric" value="{{.Interval}}" autocomplete="off"
@@ -177,11 +195,13 @@
       {{- end}}
     </div>
     <label class="check"><input type="checkbox" name="auto_pause"{{if .AutoPause}} checked{{end}}> {{t "settings.auto_pause.label"}}</label>
+    </div>
   </fieldset>
 
   {{/* readonly, not disabled: the list can still be focused and scrolled on a world that cannot be changed. */}}
   <fieldset id="settings-admins">
     <legend>{{t "settings.admins.legend"}}</legend>
+    <div class="setting-row__body">
     {{- if .AdminsBroken}}
     <p class="hint">{{t "settings.admins.broken" "file" .AdminFile}}</p>
     {{- else}}
@@ -205,11 +225,13 @@
     </ul>
     {{- end}}
     {{- end}}
+    </div>
   </fieldset>
   {{- if not .LiveBans}}
 
   <fieldset id="settings-bans">
     <legend>{{t "settings.bans.legend"}}</legend>
+    <div class="setting-row__body">
     {{- if .BansBroken}}
     <p class="hint">{{t "settings.bans.broken" "file" .BanFile}}</p>
     {{- else}}
@@ -224,12 +246,14 @@
       {{- end}}
     </div>
     {{- end}}
+    </div>
   </fieldset>
   {{- end}}
   {{- if not .LiveWhitelist}}
 
   <fieldset id="settings-whitelist">
     <legend>{{t "settings.whitelist.legend"}}</legend>
+    <div class="setting-row__body">
     {{- if .WhitelistBroken}}
     <p class="hint">{{t "settings.whitelist.broken" "file" .WhitelistFile}}</p>
     {{- else}}
@@ -242,26 +266,45 @@
       {{- if not .WhitelistError.IsZero}}
       <p class="error" id="whitelist-error"><strong>{{t "common.error.label"}}</strong> {{msg .WhitelistError}}</p>
       {{- end}}
+      {{- if .Editable}}
+      <p class="hint">{{t "settings.whitelist.list_note"}}</p>
+      {{- end}}
     </div>
     {{- end}}
-    {{template "whitelist-switch" .}}
+    </div>
   </fieldset>
   {{- end}}
 
   {{- if .Editable}}
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{t "settings.preview.button"}}</button>
+  <div class="actions form-foot">
     <a href="{{.WorldPath}}">{{t "settings.cancel"}}</a>
+    <button type="submit" class="button button--primary">{{t "settings.preview.button"}}</button>
   </div>
   {{- end}}
 </form>
 {{- if .Editable}}
 <form method="post" action="{{.WhitelistPath}}" id="whitelist-switch-form" hidden></form>
 {{- end}}
+{{- /* Whether the game enforces the whitelist saves on its own, so it sits in
+     its own card after the form rather than inside it, and the form's
+     Preview changes covers only the list (DESIGN 8.13). */}}
+{{- if and .Editable (not .LiveWhitelist)}}
+<section class="panel setting-row" id="settings-whitelist-enforce" aria-labelledby="whitelist-enforce-heading">
+  <div class="setting-row__head">
+  <h2 id="whitelist-enforce-heading">{{t "settings.whitelist.enforce_heading"}}</h2>
+  </div>
+  <div class="setting-row__body">
+  {{template "whitelist-switch" .}}
+  </div>
+</section>
+{{- end}}
 {{- if and .LiveBans .Editable}}
-<section class="panel" id="settings-bans" aria-labelledby="bans-heading">
+<section class="panel setting-row" id="settings-bans" aria-labelledby="bans-heading">
+  <div class="setting-row__head">
   <h2 id="bans-heading">{{t "settings.bans.legend"}}</h2>
   <p class="hint">{{t "settings.lists.live"}}</p>
+  </div>
+  <div class="setting-row__body">
   {{- if .BansBroken}}
   <p class="hint">{{t "settings.bans.broken" "file" .BanFile}}</p>
   {{- else}}
@@ -294,12 +337,16 @@
     {{- end}}
   </form>
   {{- end}}
+  </div>
 </section>
 {{- end}}
 {{- if and .LiveWhitelist .Editable}}
-<section class="panel" id="settings-whitelist" aria-labelledby="whitelist-heading">
+<section class="panel setting-row" id="settings-whitelist" aria-labelledby="whitelist-heading">
+  <div class="setting-row__head">
   <h2 id="whitelist-heading">{{t "settings.whitelist.legend"}}</h2>
   <p class="hint">{{t "settings.lists.live"}}</p>
+  </div>
+  <div class="setting-row__body">
   {{- if .WhitelistBroken}}
   <p class="hint">{{t "settings.whitelist.broken" "file" .WhitelistFile}}</p>
   {{- else}}
@@ -331,6 +378,7 @@
   </form>
   {{- end}}
   {{template "whitelist-switch" .}}
+  </div>
 </section>
 {{- end}}
 {{- end}}
@@ -349,7 +397,8 @@
     <div class="message message--note">
       <p><strong>{{t "common.label.note"}}</strong> {{t "settings.whitelist.note"}}</p>
     </div>
-    <div class="field">
+    {{- /* The switch saves on its own, apart from the form around it, so it is boxed with its own button. */}}
+    <div class="field own-save">
       <label class="check"><input type="checkbox" id="use-whitelist" name="use_whitelist" value="on" form="whitelist-switch-form"{{if .UseWhitelist}} checked{{end}} aria-describedby="use-whitelist-hint"> {{t "settings.whitelist.switch_label"}}</label>
       <p class="hint" id="use-whitelist-hint">{{if .Running}}{{t "settings.whitelist.switch_running"}}{{else}}{{t "settings.whitelist.switch_hint"}}{{end}}</p>
       <div class="actions">

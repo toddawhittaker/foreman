@@ -110,7 +110,9 @@ test.describe("no factorio.com account", () => {
     await expect(page.getByRole("link", { name: "Enter the factorio.com account" })).toBeVisible();
     await checkPage(page);
 
-    await page.getByRole("table", { name: /Mods of Base/ }).getByRole("row", { name: /fp-local/ }).getByRole("link", { name: "Disable" }).click();
+    const localRow = page.getByRole("table", { name: /Mods of Base/ }).getByRole("row", { name: /fp-local/ });
+    await localRow.locator("details.row-menu > summary").click();
+    await localRow.getByRole("link", { name: "Disable" }).click();
     await page.getByRole("button", { name: "Disable 1 mod" }).click();
     await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   });

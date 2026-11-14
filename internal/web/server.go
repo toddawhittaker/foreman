@@ -278,7 +278,7 @@ func clientGone(r *http.Request, err error) bool {
 // page renders p. If rendering fails it logs the error and sends a plain 500,
 // unless the browser left: that is no server fault and nobody is left to answer.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user string, p Page) {
-	err := s.render.Render(w, r, status, user, p)
+	err := s.render.Render(w, r, status, user, s.lamp(r, user), p)
 	if err == nil {
 		return
 	}
@@ -287,9 +287,23 @@ func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user s
 		return
 	}
 	s.log.Error("render page", "method", r.Method, "path", r.URL.Path, "error", err)
-	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
+	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", LiveState{}, ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+}
+
+// lamp is the active world's server state for the main navigation, shown
+// only to a signed-in user and only with server control. It makes no Docker
+// call (game.Controller.Status); a failed lookup shows no lamp.
+func (s *server) lamp(r *http.Request, user string) LiveState {
+	if user == "" || s.game == nil || s.store == nil {
+		return LiveState{}
+	}
+	id, found, err := s.store.ActiveWorld(r.Context())
+	if err != nil || !found {
+		return LiveState{}
+	}
+	return s.liveState(id, true)
 }
 
 // fail logs err and sends the 500 page. The page never carries err.

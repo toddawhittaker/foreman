@@ -326,6 +326,49 @@ test("the form works with the keyboard alone", async ({ page, foreman }) => {
   await expect(page.locator(".message--success")).toBeVisible();
 });
 
+// Below the rail's width, "Jump to section" is a disclosure of plain links
+// (DESIGN 6, 8.10): an arrow key on it does nothing, and it works without script.
+test.describe("Jump to section on a narrow screen", () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  test("Down on its summary does not move the page, and a link reaches its section", async ({ page, foreman }) => {
+    await setUp(page, foreman);
+    await page.goto("/worlds/base/settings");
+    const jump = page.locator("details.settings-jump");
+    const summary = jump.locator("summary");
+    await expect(summary).toHaveText("Jump to section");
+    await summary.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(page).toHaveURL(/\/worlds\/base\/settings$/);
+    await expect(summary).toBeFocused();
+    await expect(jump).not.toHaveAttribute("open");
+
+    await page.keyboard.press("Enter");
+    await expect(jump).toHaveAttribute("open");
+    await page.keyboard.press("ArrowDown");
+    await expect(page).toHaveURL(/\/worlds\/base\/settings$/);
+    const bans = jump.getByRole("link", { name: "Ban list" });
+    expect((await bans.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await bans.click();
+    await expect(page).toHaveURL(/#settings-bans$/);
+    await expect(page.locator("#settings-bans")).toBeInViewport();
+    await checkPage(page);
+  });
+
+  test.describe("without script", () => {
+    test.use({ javaScriptEnabled: false });
+
+    test("its links still reach their sections", async ({ page, foreman }) => {
+      await setUp(page, foreman);
+      await page.goto("/worlds/base/settings");
+      await page.locator("details.settings-jump > summary").click();
+      await page.locator("details.settings-jump").getByRole("link", { name: "Saving" }).click();
+      await expect(page).toHaveURL(/#settings-saving$/);
+      await expect(page.locator("#settings-saving")).toBeInViewport();
+    });
+  });
+});
+
 test("a long name and a long description do not break the layout", async ({ page, foreman }) => {
   await setUp(page, foreman, { description: "word ".repeat(200) });
   const long = "N".repeat(60);

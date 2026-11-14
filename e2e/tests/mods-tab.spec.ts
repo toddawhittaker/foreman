@@ -1,4 +1,5 @@
-import { test, expect, checkPage, setUpModsWorld, live, version20, type SeedMod } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, live, version20, type SeedMod, openModTools } from "./foreman.js";
+import { languages, t } from "./i18n.js";
 import type { Locator } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -33,11 +34,12 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
 
   await page.goto("/worlds/base/mods");
   const status = page.locator("#mod-status");
-  // One summary line: red only because players cannot join, with Update all beside it.
+  // One summary line: red only because players cannot join, with Update all beside the Installed mods heading.
   await expect(status.locator(".message--error")).toContainText("1 mod stops players joining. Its row says how to fix it.", live);
   await expect(status).toContainText("2 mods are not on the mod portal.");
   await expect(status).toContainText("4 mods have an update for this game version.");
-  await expect(status.getByRole("link", { name: "Update all" })).toBeVisible();
+  await expect(page.locator("#mod-update-all").getByRole("link", { name: "Update all" })).toBeVisible();
+  await expect(status.getByRole("link", { name: "Update all" })).toHaveCount(0);
   await expect(status.locator(".message")).toHaveCount(1);
 
   const table = page.getByRole("table", { name: /Mods of Base: 44 mods\. 43 are enabled\./ });
@@ -75,36 +77,37 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
   const plain = ["fp-mod-01", "fp-mod-03", "fp-mod-20", "fp-mod-40"];
   const heights = await Promise.all(plain.map(async (n) => Math.round((await box(row(n))).height)));
   expect(new Set(heights).size).toBe(1);
-  const removeEnds = await Promise.all([...plain, ...updated].map(async (n) => {
-    const b = await box(row(n).getByRole("link", { name: `Remove ${n}` }));
-    return Math.round(phone ? b.x : b.x + b.width);
+  // Each row's More actions menu keeps one place at the row's end, a folder
+  // mod's too (the departure that moved Disable and Remove into it).
+  const menu = (n: string) => row(n).locator("details.row-menu > summary");
+  const menuEnds = await Promise.all([...plain, ...updated, "my-local-tweaks"].map(async (n) => {
+    const b = await box(menu(n));
+    return Math.round(b.x + b.width);
   }));
-  if (!phone) expect(new Set(removeEnds).size).toBe(1);
+  expect(new Set(menuEnds).size).toBe(1);
   // Change version only where the portal has another release on the line
   // (SPEC 9.3): the updated mods and the gone version, not a mod with one.
-  for (const n of [...updated, "visible-planets"]) await expect(row(n).getByRole("link", { name: `Change version ${n}`, exact: true })).toBeVisible();
+  for (const n of [...updated, "visible-planets"]) {
+    await menu(n).click();
+    await expect(row(n).getByRole("link", { name: `Change version ${n}`, exact: true })).toBeVisible();
+  }
   for (const n of [...plain, "zz-private-tweaks", "my-local-tweaks"]) await expect(row(n).getByRole("link", { name: /^Change version/ })).toHaveCount(0);
-  // With Update and Change version, Remove still shares Disable's line, and
-  // a folder mod's Disable sits where the other rows' Disable sits (DESIGN 8.11).
+  // Disable and Remove are in every portal mod's menu; a folder mod's has Disable only.
   for (const n of updated) {
-    const dis = await box(row(n).getByRole("link", { name: `Disable ${n}` }));
-    const rem = await box(row(n).getByRole("link", { name: `Remove ${n}` }));
-    expect(Math.abs(rem.y - dis.y)).toBeLessThan(2);
+    await menu(n).click();
+    await expect(row(n).getByRole("link", { name: `Disable ${n}` })).toBeVisible();
+    await expect(row(n).getByRole("link", { name: `Remove ${n}` })).toBeVisible();
   }
-  const disableAt = async (n: string) => {
-    const b = await box(row(n).getByRole("link", { name: `Disable ${n}` }));
-    return Math.round(phone ? b.x : b.x + b.width);
-  };
-  expect(await disableAt("my-local-tweaks")).toBe(await disableAt("fp-mod-01"));
-  // On a phone the actions drop under the name, so the name keeps the width.
-  const name = await box(row("a-mod-with-a-rather-long-name-for-a-phone-screen").locator(".mod-name"));
-  const disable = await box(row("a-mod-with-a-rather-long-name-for-a-phone-screen").getByRole("link", { name: /^Disable/ }));
-  if (phone) {
-    expect(disable.y).toBeGreaterThan(name.y + name.height - 1);
-    expect(name.height).toBeLessThan(80);
-  } else {
-    expect(Math.abs(disable.y - name.y)).toBeLessThan(10);
-  }
+  await menu("my-local-tweaks").click();
+  await expect(row("my-local-tweaks").getByRole("link", { name: "Disable my-local-tweaks" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  // On a phone the menu stays on the name's line and the name keeps its width.
+  const longName = "a-mod-with-a-rather-long-name-for-a-phone-screen";
+  const name = await box(row(longName).locator(".mod-name"));
+  const toggle = await box(menu(longName));
+  expect(toggle.y).toBeLessThan(name.y + name.height);
+  if (phone) expect(name.height).toBeLessThan(80);
+  else expect(Math.abs(toggle.y - name.y)).toBeLessThan(10);
 
   // Issue 372: the built-in line says which are off and why.
   await expect(page.locator("#mods-built-in")).toContainText("Built in, version 2.0.77: base. Space Age is off, so elevated-rails, quality, space-age are off.");
@@ -119,6 +122,7 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
   await page.screenshot({ path: `../screenshots/mods-tab-many-${test.info().project.name}.png`, fullPage: true });
 
   // The folded forms open by keyboard and pass the checks open.
+  await openModTools(page);
   await page.locator("#mod-upload > summary").focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#mod-file")).toBeVisible();
@@ -132,7 +136,24 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
 test("a world whose mods match the save says so", async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip" });
   await page.goto("/worlds/base/mods");
+  await openModTools(page);
   await expect(page.locator("#sync-state")).toHaveText("The mods match the save base.zip.");
   await expect(page.getByRole("link", { name: "Match mods to the save" })).toHaveCount(0);
   await checkPage(page);
+});
+
+// WCAG 2.5.3: the row's More button says its word and its name starts with
+// that word, in every language, so a person who says what they see reaches it.
+test("each language names a row's More button starting with its visible word", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-mod-01", "1.0.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-mod-01": { factorio: "2.0" } } });
+  for (const lang of languages) {
+    await page.context().addCookies([{ name: "foreman_lang", value: lang, url: foreman.url }]);
+    await page.goto("/worlds/base/mods");
+    const toggle = page.locator("details.row-menu > summary").first();
+    const word = (await toggle.locator(".row-menu__word").innerText()).trim();
+    expect(word, lang).toBe(t("mods.row.more_word", {}, lang));
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    await expect(toggle, lang).toHaveAccessibleName(new RegExp(`^${escaped}`));
+  }
 });

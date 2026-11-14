@@ -4,30 +4,24 @@
 
 {{define "content" -}}
 {{with .Page}}
-<h1>{{t "worlds.allsnapshots.title"}}</h1>
+<header class="page-head">
+  <h1>{{t "worlds.allsnapshots.title"}}</h1>
+</header>
 {{- if .Deleted}}
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
 </div>
 {{- end}}
 
-<section class="panel disk-strip" aria-labelledby="disk-heading">
-  <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
-  <dl class="facts facts--inline">
-    <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
-    <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes .FreeBytes}}</dd></div>
-  </dl>
-  <p class="hint">{{t "worlds.allsnapshots.adds_hint"}}</p>
-</section>
-
 {{- if .Groups}}
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
-  <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
-  <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
-  {{- /* Every world's automatic snapshots at once; each world's heading has its own (SPEC 6.12). */}}
-  <div class="actions">
-    <button type="submit" class="button button--quiet" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
+  {{- /* One shortcut ticks every world's automatic snapshots; the world headings carry only the world and its size, so the page has one such button. */}}
+  <div class="group__head">
+    <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
+    <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
   </div>
+  {{- /* The selection bar shows the next step to the eye; this says it to a screen reader. */}}
+  <p class="visually-hidden">{{t "worlds.snapshots.select_hint"}}</p>
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}
@@ -35,9 +29,8 @@
   <section class="group" aria-labelledby="world-{{.WorldID}}">
     <div class="group__head">
       <h3 id="world-{{.WorldID}}">{{if .Known}}<a href="{{$.Page.WorldPath .WorldID}}">{{.WorldName}}</a>{{else}}{{t "worlds.allsnapshots.deleted_world" "world" .WorldName}}{{end}}</h3>
-      <button type="submit" class="button" name="select" value="{{$.Page.SelectWorld .WorldID}}" formaction="{{$.Page.SelectPath}}"><span aria-hidden="true">{{t "worlds.snapshots.select_automatic"}}</span><span class="visually-hidden">{{t "worlds.allsnapshots.select_of" "world" .WorldName}}</span></button>
+      <p class="hint">{{tHTML "worlds.allsnapshots.world_adds" "size" (nowrap (bytes .Adds))}}</p>
     </div>
-    <p class="hint">{{tHTML "worlds.allsnapshots.world_adds" "size" (nowrap (bytes .Adds))}}</p>
     <table class="snapshot-list" role="table">
       <caption>{{t "worlds.snapshots.caption" "world" .WorldName}}</caption>
       <thead role="rowgroup">
@@ -47,8 +40,16 @@
         {{- range .Rows}}
         <tr role="row">
           <td role="cell">
-            <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span>{{with snapReason .Snapshot}}{{.}}<br>{{end}}{{snapLabel .Snapshot}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
+            <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span class="snap-name">{{with snapReason .Snapshot}}<span class="snap-kind">{{.}}</span><br>{{end}}{{snapLabel .Snapshot}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
             <p class="hint">{{tHTML "worlds.allsnapshots.frees" "size" (nowrap (bytes .Frees))}}</p>
+            {{- /* On a phone: the age and size on one line, the rest folded under Details (DESIGN 8.3). */}}
+            <p class="snap-meta"><time datetime="{{isoTime .TakenAt}}" data-age-only>{{utc .TakenAt}}</time><span>{{bytes .DiskSize}}</span></p>
+            <details class="disclosure snap-details">
+              <summary>{{t "worlds.snapshots.details"}}</summary>
+              <p>{{template "when" .TakenAt}}</p>
+              <p>{{if .TakenBy}}{{t "worlds.allsnapshots.by" "user" .TakenBy}}{{else}}{{t "worlds.allsnapshots.by_unknown"}}{{end}}</p>
+              <p>{{tHTML "worlds.allsnapshots.frees" "size" (nowrap (bytes .Frees))}}</p>
+            </details>
             <div class="row-actions"><a class="button" href="{{$.Page.RestorePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.restore_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--risky button--icon" href="{{$.Page.DeletePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.delete_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
           </td>
           <td role="cell" data-label="{{t "worlds.snapshots.taken_label"}}">{{template "when" .TakenAt}}<br>{{if .TakenBy}}{{t "worlds.allsnapshots.by" "user" .TakenBy}}{{else}}{{t "worlds.allsnapshots.by_unknown"}}{{end}}</td>
@@ -59,8 +60,9 @@
     </table>
   </section>
   {{- end}}
-  {{- /* Delete selected acts on the boxes above, so it comes after them. */}}
-  <div class="actions">
+  {{- /* Delete selected acts on the boxes above, so it comes after them; with script it is a bar that shows once a box is ticked. */}}
+  <div class="actions select-bar" data-select-bar>
+    <span class="select-bar__count" data-tick-count aria-hidden="true"></span>
     <button type="submit" class="button button--risky" data-needs-tick>{{t "worlds.snapshots.delete_selected"}}</button>
   </div>
 </form>
@@ -70,5 +72,20 @@
   <p class="empty empty--art empty--snapshots">{{t "worlds.allsnapshots.empty"}}</p>
 </section>
 {{- end}}
+
+<section class="panel setting-row disk-use" aria-labelledby="disk-heading">
+  <div class="setting-row__head">
+    <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
+    <p class="hint">{{t "worlds.allsnapshots.adds_hint"}}</p>
+  </div>
+  <div class="setting-row__body">
+    {{- /* The bar is decorative: the two figures under it say the same. */}}
+    <span class="meter disk-bar" aria-hidden="true"><span style="inline-size: {{share .AddBytes .FreeBytes}}%"></span></span>
+    <dl class="facts facts--inline disk-key">
+      <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
+      <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes .FreeBytes}}</dd></div>
+    </dl>
+  </div>
+</section>
 {{- end}}
 {{- end}}

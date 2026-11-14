@@ -517,10 +517,61 @@ export async function expectFollowed(page: Page, sentence: string) {
   expect(await page.evaluate(() => document.activeElement?.id)).toBe("control-heading");
 }
 
+// The Snapshots selection bar and Generate's action bar stick to the window's
+// foot (DESIGN 8.3, 8.6), so at some scroll positions one lies over a row's
+// control and axe's target-size rule counts that control as partly covered.
+// That is not a barrier: a pointer user scrolls the control out from under the
+// bar, and the page's scroll-padding keeps a focused control clear of it
+// (WCAG 2.4.11, tested per bar in sticky-bars.spec.ts). So a target-size
+// finding is dropped only when axe says the control is obscured rather than
+// small, the control's own box is at least 24 by 24 px, and it lies under one
+// of those bars while the bar is sticky. Every other finding still fails.
+// Todd approved this exception on 2026-11-13.
+const stickyBars = ".select-bar, .generate > .gen-actions";
+type AxeCheck = { id: string; data?: unknown };
+type AxeNode = { target: unknown[]; any?: AxeCheck[]; all?: AxeCheck[]; none?: AxeCheck[] };
+type AxeViolation = { id: string; nodes: AxeNode[] };
+
+// axe-core 4.14 marks a target that is big enough but partly covered with
+// this key on its target-size check; a target that is simply too small has
+// none. The node's target-offset check is axe's other way to pass (enough
+// space around a small target), so it says nothing about why size failed.
+function onlyObscured(n: AxeNode): boolean {
+  const sizeChecks = [...(n.any ?? []), ...(n.all ?? []), ...(n.none ?? [])].filter((c) => c.id === "target-size");
+  return sizeChecks.length > 0 && sizeChecks.every((c) =>
+    typeof c.data === "object" && c.data !== null && (c.data as { messageKey?: unknown }).messageKey === "partiallyObscured");
+}
+
+async function withoutTargetsUnderStickyBars<V extends AxeViolation>(page: Page, violations: V[]): Promise<V[]> {
+  const kept: V[] = [];
+  for (const v of violations) {
+    if (v.id !== "target-size") { kept.push(v); continue; }
+    const nodes = [];
+    for (const n of v.nodes) {
+      const selector = n.target.length === 1 && typeof n.target[0] === "string" ? n.target[0] : null;
+      const covered = selector !== null && onlyObscured(n) && await page.evaluate(([sel, bars]) => {
+        const el = document.querySelector(sel);
+        if (!el || el.closest(bars)) return false;
+        const r = el.getBoundingClientRect();
+        if (r.width < 24 || r.height < 24) return false;
+        return [...document.querySelectorAll(bars)].some((bar) => {
+          if (getComputedStyle(bar).position !== "sticky") return false;
+          const b = bar.getBoundingClientRect();
+          return b.width > 0 && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top;
+        });
+      }, [selector, stickyBars] as const);
+      if (!covered) nodes.push(n);
+    }
+    if (nodes.length) kept.push({ ...v, nodes });
+  }
+  return kept;
+}
+
 // Every page visited passes these (SPEC 17.1 and 17.2, DESIGN 10).
 export async function checkPage(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
-  expect(results.violations, `axe on ${page.url()}`).toEqual([]);
+  const violations = await withoutTargetsUnderStickyBars(page, results.violations);
+  expect(violations, `axe on ${page.url()}`).toEqual([]);
   if ((page.viewportSize()?.width ?? 1000) > 320) return;
 
   const size = await page.evaluate(() => ({
@@ -611,4 +662,15 @@ export async function openPlanetRow(page: Page, planet = "nauvis") {
   const row = page.locator(`#mg-resources-${planet}`);
   if (!(await row.evaluate((d) => (d as HTMLDetailsElement).open))) await row.locator("summary").click();
   await expect(row).toHaveJSProperty("open", true);
+}
+
+// The rarer Mods tools (match to the save, upload, mod settings) sit in a
+// disclosure that is closed on a phone and always open on a wide window.
+export async function openModTools(page: Page) {
+  const tools = page.locator("#mod-tools");
+  // A wide window opens it by script, so wait for that instead of clicking.
+  if ((page.viewportSize()?.width ?? 1280) >= 1024) return expect(tools).toHaveJSProperty("open", true);
+  if (await tools.evaluate((el) => (el as HTMLDetailsElement).open)) return;
+  await page.locator("#mod-tools > summary").click();
+  await expect(tools).toHaveJSProperty("open", true);
 }

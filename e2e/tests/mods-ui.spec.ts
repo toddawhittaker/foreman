@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, openModTools } from "./foreman.js";
 
 // The Mods tab and its pages (SPEC 9, 17). These run with no mod portal at
 // all: the e2e environment points HTTPS_PROXY at a closed port, so every
@@ -24,12 +24,14 @@ test.describe("mods tab", () => {
     await expect(page.locator("#mods-built-in")).toContainText("Space Age is off, so elevated-rails, quality, space-age are off.");
     await expect(page.getByRole("link", { name: "Turn on Space Age", exact: true })).toHaveAttribute("href", "/worlds/base/settings");
     // Each row's buttons name their mod for a screen reader.
+    await table.getByRole("row", { name: /other/ }).locator("details.row-menu > summary").click();
     await expect(table.getByRole("link", { name: "Disable other" })).toBeVisible();
     await expect(table.getByRole("link", { name: "Remove other" })).toBeVisible();
     // The portal cannot be reached here, and the tab says so in words, in a live region.
     await expect(page.locator("#mod-status")).toHaveAttribute("role", "status");
     await expect(page.locator("#mod-status")).toContainText("could not reach the mod portal");
     // Issue 373: the save's mods are read, so the tab says they differ before any click.
+    await openModTools(page);
     await expect(page.locator("#sync-state")).toContainText("The mods differ from the save base.zip:");
     await expect(page.getByRole("link", { name: "Match mods to the save" })).toBeVisible();
     await checkPage(page);

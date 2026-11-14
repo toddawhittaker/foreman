@@ -126,7 +126,7 @@
   "settings.whitelist.switch_label": "Only whitelisted players can join",
   "settings.whitelist.switch_hint": "The server reads this when it starts.",
   "settings.whitelist.switch_running": "The server is running, so a change here takes effect after a restart.",
-  "settings.whitelist.switch_save": "Save whitelist choice",
+  "settings.whitelist.switch_save": "Save whitelist enforcement",
   "settings.whitelist.restart_on": "The server is still running without whitelist checks. Restart it so only whitelisted players can join.",
   "settings.whitelist.restart_off": "The server is still running with whitelist checks. Restart it so anyone can join.",
   "settings.whitelist.done_on": "From its next start, only whitelisted players can join {world}.",
@@ -138,5 +138,8 @@
   "settings.diff.banned": "Banned {name}",
   "settings.diff.unbanned": "Unbanned {name}",
   "settings.diff.whitelist_added": "Added {name} to the whitelist",
-  "settings.diff.whitelist_removed": "Removed {name} from the whitelist"
+  "settings.diff.whitelist_removed": "Removed {name} from the whitelist",
+  "settings.jump.label": "Jump to section",
+  "settings.whitelist.enforce_heading": "Whitelist enforcement",
+  "settings.whitelist.list_note": "List changes are included in Preview changes."
 }

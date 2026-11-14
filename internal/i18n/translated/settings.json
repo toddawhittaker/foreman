@@ -57,6 +57,7 @@
   "settings.error.whole": "154ae40a",
   "settings.interval.label": "6d498ee7",
   "settings.joining": "f61d43f6",
+  "settings.jump.label": "0d1815f5",
   "settings.link": "fece8604",
   "settings.listing": "fc7f1aa2",
   "settings.lists.live": "64162fdc",
@@ -128,9 +129,11 @@
   "settings.whitelist.done_off": "3c2a83e7",
   "settings.whitelist.done_on": "499ca566",
   "settings.whitelist.empty": "e40d686e",
+  "settings.whitelist.enforce_heading": "290e79f5",
   "settings.whitelist.hint": "5101879a",
   "settings.whitelist.label": "086edd27",
   "settings.whitelist.legend": "8559afa6",
+  "settings.whitelist.list_note": "30637b4e",
   "settings.whitelist.note": "1eeac195",
   "settings.whitelist.remove": "c3186151",
   "settings.whitelist.restart_off": "ba21f72e",
@@ -138,5 +141,5 @@
   "settings.whitelist.switch_hint": "1efa6b0d",
   "settings.whitelist.switch_label": "7346c7d1",
   "settings.whitelist.switch_running": "4796adc3",
-  "settings.whitelist.switch_save": "8fe3ff3c"
+  "settings.whitelist.switch_save": "ae4af1dc"
 }

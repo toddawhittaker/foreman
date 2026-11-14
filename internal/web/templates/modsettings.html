@@ -2,6 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
@@ -104,13 +105,18 @@
 </section>
 {{- end}}
 {{- if .CanSave}}
-<section class="panel" aria-labelledby="mod-settings-save-heading">
-  <h2 id="mod-settings-save-heading" class="visually-hidden">{{t "mods.settings.edit.save_heading"}}</h2>
+<section class="panel setting-row" aria-labelledby="mod-settings-save-heading">
+  <div class="setting-row__head">
+  <h2 id="mod-settings-save-heading">{{t "mods.settings.edit.save_heading"}}</h2>
+  </div>
+  <div class="setting-row__body">
   {{- if .Running}}
   {{template "countdown" .CountdownForm}}
   {{- end}}
-  <div class="mod-settings-will">
-    <p>{{t "common.confirm.will"}}</p>
+  {{- /* Two lines say what saving does; the full list folds under them, so the form stays short (DESIGN 7.4). */}}
+  <p>{{if .Running}}{{t "mods.settings.edit.summary_running"}}{{else}}{{t "mods.settings.edit.summary"}}{{end}}</p>
+  <details class="disclosure mod-settings-will">
+    <summary>{{t "mods.settings.edit.details"}}</summary>
     <ul>
       {{- if .Running}}
       <li>{{t "mods.plan.warn_stop"}}</li>
@@ -122,11 +128,14 @@
       {{- end}}
       <li>{{t "mods.plan.undo"}}</li>
     </ul>
-  </div>
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
+  </details>
   </div>
 </section>
+{{- /* The save bar stays at the window's foot while the form is in view, so the action is always in reach. */}}
+<div class="actions form-foot">
+  <a href="{{.ModsPath}}">{{t "settings.cancel"}}</a>
+  <button type="submit" class="button button--primary">{{if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
+</div>
 </form>
 {{- end}}
 {{- if and (not .NewMap) .Map}}
@@ -135,8 +144,9 @@
   <h2 id="mod-settings-map-heading">{{t "mods.settings.edit.map.heading"}}</h2>
   <p>{{t "mods.settings.edit.map.saved"}}</p>
   {{- range .Map}}
+  <div class="mod-settings-group setting-row">
   <h3 class="ident" translate="no">{{.Mod}}</h3>
-  <dl class="mod-settings-values">
+  <dl class="mod-settings-values setting-row__body">
     {{- range .Fields}}
     <div>
       <dt{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</dt>
@@ -144,6 +154,7 @@
     </div>
     {{- end}}
   </dl>
+  </div>
   {{- end}}
 </section>
 {{- end}}
@@ -167,8 +178,9 @@
      control (DESIGN 7.2). Takes []SettingGroup. */}}
 {{define "modsettings-groups" -}}
 {{- range .}}
-<fieldset class="mod-settings-group">
+<fieldset class="mod-settings-group setting-row">
   <legend class="ident" translate="no">{{.Mod}}</legend>
+  <div class="setting-row__body">
   {{- range .Fields}}
   {{- $err := not .Error.IsZero}}
   {{- $desc := ""}}{{if .Hint}}{{$desc = print .ID "-hint"}}{{end}}{{if $err}}{{$desc = print $desc " " .ID "-error"}}{{end}}
@@ -221,6 +233,7 @@
   </dl>
   {{- end}}
   {{- end}}
+  </div>
 </fieldset>
 {{- end}}
 {{- end}}

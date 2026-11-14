@@ -126,7 +126,7 @@
   "settings.whitelist.switch_label": "Dołączać mogą tylko gracze z białej listy",
   "settings.whitelist.switch_hint": "Serwer odczytuje to przy uruchomieniu.",
   "settings.whitelist.switch_running": "Serwer działa, więc zmiana tutaj zacznie obowiązywać po restarcie.",
-  "settings.whitelist.switch_save": "Zapisz wybór białej listy",
+  "settings.whitelist.switch_save": "Zapisz egzekwowanie białej listy",
   "settings.whitelist.restart_on": "Serwer nadal działa bez sprawdzania białej listy. Po restarcie dołączać będą mogli tylko gracze z białej listy.",
   "settings.whitelist.restart_off": "Serwer nadal działa ze sprawdzaniem białej listy. Po restarcie dołączać będzie mógł każdy.",
   "settings.whitelist.done_on": "Od następnego uruchomienia do świata {world} mogą dołączać tylko gracze z białej listy.",
@@ -138,5 +138,8 @@
   "settings.diff.banned": "Zbanowano gracza {name}",
   "settings.diff.unbanned": "Odbanowano gracza {name}",
   "settings.diff.whitelist_added": "Dodano gracza {name} do białej listy",
-  "settings.diff.whitelist_removed": "Usunięto gracza {name} z białej listy"
+  "settings.diff.whitelist_removed": "Usunięto gracza {name} z białej listy",
+  "settings.jump.label": "Przejdź do sekcji",
+  "settings.whitelist.enforce_heading": "Egzekwowanie białej listy",
+  "settings.whitelist.list_note": "Zmiany listy są uwzględnione w „Zobacz zmiany”."
 }

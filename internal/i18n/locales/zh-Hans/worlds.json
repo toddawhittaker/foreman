@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "删除后可释放 {size}",
   "worlds.allsnapshots.list": "全部快照",
   "worlds.allsnapshots.restore_named": "恢复 {world} 的 {label}，创建于 {when}",
-  "worlds.allsnapshots.select_of": "选择所有自动快照（{world}）",
   "worlds.allsnapshots.title": "快照",
   "worlds.allsnapshots.world_adds": "此世界的快照额外占用 {size}。",
   "worlds.back.world": "返回 {world}",
@@ -228,6 +227,7 @@
   "worlds.snapshots.delete.title": "删除 {world} 的快照",
   "worlds.snapshots.delete_named": "删除 {label}，创建于 {when}",
   "worlds.snapshots.delete_selected": "删除所选",
+  "worlds.snapshots.details": "详情",
   "worlds.snapshots.deleted_many": {
     "other": "Foreman 已删除 {count} 个快照。"
   },
@@ -281,7 +281,6 @@
   "worlds.tabs.overview": "概览",
   "worlds.world.checking_release": "正在检查是否有更新的 Factorio 版本。",
   "worlds.world.delete.button": "删除世界",
-  "worlds.world.more.heading": "复制或删除",
   "worlds.world.delete.text": "删除会移除世界的文件夹。其快照会保留，因此之后可以恢复。",
   "worlds.world.download_failed": "无法下载 Factorio {version} 的游戏镜像。详情见 Foreman 的日志。切换到此世界时会再次尝试下载。",
   "worlds.world.download_running": "正在从 Docker Hub 下载 Factorio {version} 的游戏镜像。刷新此页面可查看下载何时结束。",
@@ -315,8 +314,8 @@
   "worlds.generate.intro": "新建一个还没有存档的世界。它的地图会在世界首次启动时生成。",
   "worlds.generate.version.same": "{version}，与活动世界相同",
   "worlds.generate.version.choose": "选择版本",
-  "worlds.generate.space_age.hint": "太空时代仅适用于 Factorio 2.0 及更高版本。此选项决定地图包含哪些星球。",
-  "worlds.generate.download.hint": "在其游戏镜像（对应版本的 {image}）到达此主机之前，世界无法启动。下载会在世界创建后从 Docker Hub 开始。",
+  "worlds.generate.space_age.hint": "适用于 Factorio 2.0 及更高版本。会改变地图包含的星球。",
+  "worlds.generate.download.hint": "创建世界后，如果此主机上没有该版本的 {image}，会从 Docker Hub 下载。",
   "worlds.generate.reset_note": "游戏版本或太空时代已更改，因此下方的地图选项已恢复为该版本的默认值。请检查后再继续。",
   "worlds.generate.mode.legend": "地图的生成方式",
   "worlds.generate.mode.exchange": "地图共享代码",
@@ -454,5 +453,6 @@
   "worlds.generate.resources.request_failed": "资源数量请求失败。请确认能够访问 Foreman 且仍处于登录状态，然后重试。",
   "worlds.generate.resources.retry": "重试",
   "worlds.generate.resources.not_counted": "此下载需要尚未获得的资源数量或撼地虫领地。请从“生成世界”页面重新下载，该页面会先获取它们。",
-  "worlds.generate.resources.not_kept": "统计资源时设置已更改，因此未保留资源数量。请重试。"
+  "worlds.generate.resources.not_kept": "统计资源时设置已更改，因此未保留资源数量。请重试。",
+  "worlds.list.col.world": "世界"
 }

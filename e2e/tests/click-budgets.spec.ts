@@ -1,4 +1,4 @@
-import { test, expect, createAdmin, mainNav, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame } from "./foreman.js";
+import { test, expect, createAdmin, mainNav, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame, openModTools } from "./foreman.js";
 import { countClicks, expectWithin, type Clicks } from "./clicks.js";
 import type { Page } from "@playwright/test";
 import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync } from "node:fs";
@@ -383,6 +383,8 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await startGame(page, clicks);
 
     await page.getByRole("link", { name: "Mods", exact: true }).click();
+    // On a phone the rarer tools are in a closed disclosure, so opening it is one more click.
+    await openModTools(page);
     await page.getByRole("link", { name: "Edit mod settings" }).click();
     // The form loads after the page, from a definitions run that is a container of its own; waiting is not a click.
     const box = page.getByRole("checkbox", { name: "fm-sta-bool" });
@@ -394,7 +396,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await expect(badge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "mod-settings.dat"))).toBe(true);
-    await expectWithin(clicks, 4, "change a startup mod setting");
+    await expectWithin(clicks, (page.viewportSize()?.width ?? 1280) < 1024 ? 5 : 4, "change a startup mod setting");
   });
 
   // Issue 131: the portal has no 1.5.5 of visible-planets.
@@ -477,7 +479,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
 
   // Choosing from the list takes a click in a browser; selectOption makes none,
   // so the count here is 3, and the budget still covers the real 4.
-  test("change a mod's version: 4 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("change a mod's version: 5 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
     const portal = fakePortal!;
     await portal.add("fp-back", "1.0.0", ["base >= 2.0"]);
     await portal.add("fp-back", "1.1.0", ["base >= 2.0"]);
@@ -486,6 +488,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await startGame(page, clicks);
 
     await page.getByRole("link", { name: "Mods", exact: true }).click();
+    await page.getByRole("row", { name: /fp-back/ }).locator("details.row-menu > summary").click();
     await page.getByRole("link", { name: "Change version fp-back", exact: true }).click();
     await page.getByLabel("Version of fp-back").selectOption("1.0.0");
     await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-back 1.1.0 to 1.0.0");
@@ -493,6 +496,6 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
     expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-back_1.0.0.zip"))).toBe(true);
-    await expectWithin(clicks, 4, "change a mod's version");
+    await expectWithin(clicks, 5, "change a mod's version");
   });
 });

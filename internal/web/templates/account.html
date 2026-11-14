@@ -23,6 +23,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+<p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "account.title"}}</h1>
 {{template "settings-tabs" "account"}}
 {{- if not .Done.IsZero}}
@@ -48,32 +49,87 @@
 <p id="account-none">{{t "account.none"}}</p>
 {{- end}}
 {{- end}}
+{{- /* One card of rows, as on a world's settings: what the account is for in the first column, its state or form in the second (DESIGN 4). */}}
+{{- if .FromEnv}}
+<div class="panel setting-rows">
+<section class="setting-row" aria-labelledby="account-env-heading">
+  <div class="setting-row__head">
+    <h2 id="account-env-heading">{{t "account.env.state"}}</h2>
+    <p class="hint">{{t "account.intro"}}</p>
+  </div>
+  <div class="setting-row__body">
+    <p>{{tHTML "account.env.text" "username" (code "FOREMAN_FACTORIO_USERNAME") "token" (code "FOREMAN_FACTORIO_TOKEN")}}</p>
+    <p class="hint" id="account-shared">{{t "account.shared"}}</p>
+  </div>
+</section>
+</div>
+{{- else if .NoKeyNotice}}
 <div class="account-intro">
 <p>{{t "account.intro"}}</p>
 <p id="account-shared">{{t "account.shared"}}</p>
 </div>
-{{- if .FromEnv}}
-<section class="panel" aria-labelledby="account-env-heading">
-  <h2 id="account-env-heading">{{t "account.env.state"}}</h2>
-  <p>{{tHTML "account.env.text" "username" (code "FOREMAN_FACTORIO_USERNAME") "token" (code "FOREMAN_FACTORIO_TOKEN")}}</p>
-</section>
-{{- else}}
-{{- if .NoKeyNotice}}
 <div class="message message--note" id="account-nokey">
   <p><strong>{{t "common.label.note"}}</strong> {{tHTML "account.nokey" "key" (code "FOREMAN_SECRET_KEY") "username" (code "FOREMAN_FACTORIO_USERNAME") "token" (code "FOREMAN_FACTORIO_TOKEN")}}</p>
 </div>
-{{- end}}
 {{- /* Without a secret key nothing can be stored, so the note above stands in for the form. */}}
-{{- if .NoKeyNotice}}
 {{- with .Return}}
 <div class="actions"><a href="{{.}}" id="act-back">{{t "account.back"}}</a></div>
 {{- end}}
+{{- else if .Stored}}
+<div class="panel setting-rows">
+<section class="setting-row" aria-label="{{t "account.title"}}">
+  <div class="setting-row__head">
+    <p class="hint">{{t "account.intro"}}</p>
+    <p class="hint" id="account-shared">{{t "account.shared"}}</p>
+  </div>
+  <div class="setting-row__body">
+    {{- /* Replacing is rare, so it folds away and stays secondary; a refused post reopens it. */}}
+    <details class="disclosure" id="account-replace"{{if .Retype}} open{{end}}>
+      <summary id="account-replace-summary">{{t "account.form.replace"}}</summary>
+      <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="account-replace-summary">
+        {{- if .Retype}}
+        <div class="message message--note"><p><strong>{{t "common.label.note"}}</strong> {{t "account.retype"}}</p></div>
+        {{- end}}
+        {{template "required-note"}}
+        {{template "account-fields" .}}
+        {{- with .Return}}
+        <input type="hidden" name="return" value="{{.}}">
+        {{- end}}
+        <div class="actions">
+          <button type="submit" class="button">{{t "account.replace"}}</button>
+          {{- with .Return}}
+          <a href="{{.}}">{{t "worlds.cancel"}}</a>
+          {{- end}}
+        </div>
+      </form>
+    </details>
+  </div>
+</section>
+<form method="post" action="{{.Path}}" class="setting-row" aria-labelledby="account-remove-heading">
+  <div class="setting-row__head">
+    <h2 id="account-remove-heading">{{t "account.remove.heading"}}</h2>
+    <p class="hint">{{t "account.remove.hint"}}</p>
+  </div>
+  <div class="setting-row__body">
+    <input type="hidden" name="action" value="remove">
+    {{- with .Return}}
+    <input type="hidden" name="return" value="{{.}}">
+    {{- end}}
+    <div class="actions">
+      <button type="submit" class="button">{{t "account.remove"}}</button>
+    </div>
+  </div>
+</form>
+</div>
 {{- else}}
-{{- if .Stored}}
-{{- /* Replacing is rare, so it folds away and stays secondary; a refused post reopens it. */}}
-<details class="disclosure" id="account-replace"{{if .Retype}} open{{end}}>
-  <summary id="account-replace-summary">{{t "account.form.replace"}}</summary>
-  <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="account-replace-summary">
+<div class="panel setting-rows">
+<form method="post" action="{{.Path}}" class="setting-row" novalidate aria-labelledby="account-form-heading">
+  <div class="setting-row__head">
+    <h2 id="account-form-heading">{{t "account.form.enter"}}</h2>
+    <p class="hint">{{t "account.intro"}}</p>
+    <p class="hint" id="account-shared">{{t "account.shared"}}</p>
+  </div>
+  <div class="setting-row__body">
     {{- if .Retype}}
     <div class="message message--note"><p><strong>{{t "common.label.note"}}</strong> {{t "account.retype"}}</p></div>
     {{- end}}
@@ -83,46 +139,14 @@
     <input type="hidden" name="return" value="{{.}}">
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button">{{t "account.replace"}}</button>
+      <button type="submit" class="button button--primary">{{t "account.save"}}</button>
       {{- with .Return}}
       <a href="{{.}}">{{t "worlds.cancel"}}</a>
       {{- end}}
     </div>
-  </form>
-</details>
-{{- else}}
-<form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="account-form-heading">
-  <h2 id="account-form-heading">{{t "account.form.enter"}}</h2>
-  {{- if .Retype}}
-  <div class="message message--note"><p><strong>{{t "common.label.note"}}</strong> {{t "account.retype"}}</p></div>
-  {{- end}}
-  {{template "required-note"}}
-  {{template "account-fields" .}}
-  {{- with .Return}}
-  <input type="hidden" name="return" value="{{.}}">
-  {{- end}}
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{t "account.save"}}</button>
-    {{- with .Return}}
-    <a href="{{.}}">{{t "worlds.cancel"}}</a>
-    {{- end}}
   </div>
 </form>
-{{- end}}
-{{- end}}
-{{- if .Stored}}
-<form method="post" action="{{.Path}}" class="panel" aria-labelledby="account-remove-heading">
-  <h2 id="account-remove-heading">{{t "account.remove.heading"}}</h2>
-  <p>{{t "account.remove.hint"}}</p>
-  <input type="hidden" name="action" value="remove">
-  {{- with .Return}}
-  <input type="hidden" name="return" value="{{.}}">
-  {{- end}}
-  <div class="actions">
-    <button type="submit" class="button">{{t "account.remove"}}</button>
-  </div>
-</form>
-{{- end}}
+</div>
 {{- end}}
 {{end}}
 {{- end}}

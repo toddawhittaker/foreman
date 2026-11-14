@@ -445,21 +445,14 @@ test.describe("without script", () => {
   });
 });
 
-// The preview's text is short and in American English: the size hint fits
-// one line on a desktop, and nothing says "centre".
-test("the preview's words are short and spelled the American way", async ({ page, foreman, fakeGame }) => {
+// The preview's text is in American English: nothing says "centre". The size
+// hint wraps at DESIGN's 60ch hint width, so its line count is not checked.
+test("the preview's words are spelled the American way", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
-  // The one-line check is where the preview spans the panel; from 68.75rem it
-  // is a narrow column beside the settings, where no sentence this long fits.
-  if ((page.viewportSize()?.width ?? 0) > 320) await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto("/generate");
   await expect(pictures(page)).toHaveCount(1);
   const hint = page.locator("#generate-preview-size-hint");
   await expect(hint).toHaveText("How much of the map, around its center, the preview shows. The pin is where players start.");
-  if ((page.viewportSize()?.width ?? 0) > 320) {
-    const lines = await hint.evaluate((h) => h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight));
-    expect(lines).toBeLessThan(1.5);
-  }
   // The large view's words are in the page too, so this covers them.
   expect(await page.evaluate(() => document.body.textContent)).not.toMatch(/\b(centre|colour|labelled|behaviour)\b/i);
 });

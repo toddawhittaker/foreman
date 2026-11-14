@@ -21,7 +21,9 @@ test.describe("turning off a mod the loading save uses", () => {
     await setUpModsWorld(page, foreman, g, { ...withMod, start: true });
     const before = await creates(g);
     await page.goto("/worlds/base/mods");
-    await page.getByRole("table", { name: /Mods of Base/ }).getByRole("row", { name: /foreman-test/ }).getByRole("link", { name: "Disable" }).click();
+    const modRow = page.getByRole("table", { name: /Mods of Base/ }).getByRole("row", { name: /foreman-test/ });
+    await modRow.locator("details.row-menu > summary").click();
+    await modRow.getByRole("link", { name: "Disable" }).click();
 
     await expect(page.getByRole("heading", { level: 1, name: "Disable foreman-test in Base?" })).toBeVisible();
     // Issue 376: the warning comes first in the plan and says it once; the box is the go-ahead.

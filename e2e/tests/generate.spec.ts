@@ -750,3 +750,31 @@ test.describe("without script", () => {
     await expect(page.getByLabel("Width")).toHaveValue("0");
   });
 });
+
+// DESIGN 8.6, WCAG 1.3.2 and 2.4.3: the action bar shows Generate world,
+// Preview map, Cancel in code order at every width, so the eye and Tab agree.
+for (const [name, size, axis] of [
+  ["a wide screen", { width: 1280, height: 800 }, "x"],
+  ["a phone", { width: 360, height: 740 }, "y"],
+] as const) {
+  test(`the action bar's buttons follow their Tab order on ${name}`, async ({ page, foreman, fakeGame }) => {
+    await page.setViewportSize(size);
+    await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+    const bar = page.locator(".generate > .gen-actions");
+    await expect(page.locator("#preview-button")).toBeVisible();
+    await page.locator("#generate-button").focus();
+    const seen: { id: string; pos: number }[] = [];
+    for (let i = 0; i < 3; i++) {
+      if (i > 0) await page.keyboard.press("Tab");
+      seen.push(await bar.evaluate((el, axis) => {
+        const f = document.activeElement as HTMLElement;
+        const r = f.getBoundingClientRect();
+        return { id: el.contains(f) ? (f.id || f.tagName) : "outside", pos: axis === "x" ? r.left : r.top };
+      }, axis));
+    }
+    expect(seen.map((s) => s.id)).toEqual(["generate-button", "preview-button", "A"]);
+    expect(seen[1].pos).toBeGreaterThan(seen[0].pos);
+    expect(seen[2].pos).toBeGreaterThan(seen[1].pos);
+  });
+}

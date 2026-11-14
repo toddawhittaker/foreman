@@ -126,7 +126,7 @@
   "settings.whitelist.switch_label": "仅白名单中的玩家可以加入",
   "settings.whitelist.switch_hint": "服务器在启动时读取此项。",
   "settings.whitelist.switch_running": "服务器正在运行，因此此处的更改在重启后生效。",
-  "settings.whitelist.switch_save": "保存白名单选择",
+  "settings.whitelist.switch_save": "保存白名单限制",
   "settings.whitelist.restart_on": "服务器仍在不检查白名单的状态下运行。重启服务器后，只有白名单中的玩家可以加入。",
   "settings.whitelist.restart_off": "服务器仍在检查白名单的状态下运行。重启服务器后，任何人都可以加入。",
   "settings.whitelist.done_on": "从下次启动起，只有白名单中的玩家可以加入 {world}。",
@@ -138,5 +138,8 @@
   "settings.diff.banned": "已封禁 {name}",
   "settings.diff.unbanned": "已解封 {name}",
   "settings.diff.whitelist_added": "已将 {name} 加入白名单",
-  "settings.diff.whitelist_removed": "已将 {name} 移出白名单"
+  "settings.diff.whitelist_removed": "已将 {name} 移出白名单",
+  "settings.jump.label": "跳转到部分",
+  "settings.whitelist.enforce_heading": "白名单限制",
+  "settings.whitelist.list_note": "名单的更改包含在“预览更改”中。"
 }

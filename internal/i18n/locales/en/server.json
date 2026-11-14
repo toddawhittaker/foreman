@@ -586,5 +586,6 @@
   "server.schedule.next_is": "The next restart is {time}.",
   "server.op.scheduled_restart": "Scheduled restart",
   "server.disk.low": "Only {free} of disk space is free. Autosaves can fail below {reserve}, and snapshots stop below it. Delete snapshots or worlds you no longer need.",
-  "server.disk.snapshots": "Snapshots"
+  "server.disk.snapshots": "Snapshots",
+  "server.force.group": "Emergency actions"
 }

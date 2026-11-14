@@ -15,6 +15,7 @@
 <script src="{{static "vendor/htmx-ext-sse.min.js"}}" defer></script>
 <script src="{{static "time.js"}}" defer></script>
 <script src="{{static "menu.js"}}" defer></script>
+<script src="{{static "subnav.js"}}" defer></script>
 {{- if .User}}
 <script src="{{static "about.js"}}" defer></script>
 {{- end}}
@@ -29,7 +30,7 @@
   <nav aria-label="{{t "common.nav.label"}}">
     <ul class="tabs" role="list">
       {{- /* "page" only on the page itself; "true" on the section a page belongs to (DESIGN 6). */}}
-      <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}>{{t "common.nav.server"}}</a></li>
+      <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}>{{t "common.nav.server"}}<span id="nav-lamp">{{template "nav-lamp" .Lamp}}</span></a></li>
       <li><a href="{{worldsPath}}"{{if .Current (print worldsPath "#page")}} aria-current="page"{{else if .Current worldsPath}} aria-current="true"{{end}}>{{t "common.nav.worlds"}}</a></li>
       <li><a href="{{snapshotsTabPath}}"{{if .Current (print snapshotsTabPath "#page")}} aria-current="page"{{else if .Current snapshotsTabPath}} aria-current="true"{{end}}>{{t "common.nav.snapshots"}}</a></li>
       {{- /* Foreman's own settings (DESIGN 8.15); the tab opens the restart schedule. */}}
@@ -189,6 +190,14 @@
 {{.ActiveName}} <span class="state state--{{.Status.State}}">{{msg .StateWord}}</span>
 {{- end}}
 
+{{/* The server's state as a lamp after Server in the main navigation, on
+     every page: the state badge's shape and colour, and its word for screen
+     readers (DESIGN 7.5). The Server page's live facts replace it. Takes
+     LiveState. */}}
+{{define "nav-lamp" -}}
+{{- if .Have}}<span class="lamp lamp--{{.State}}"></span><span class="visually-hidden">, {{msg .Word}}</span>{{end}}
+{{- end}}
+
 {{/* The tabs of the server view (DESIGN 6, "Sub-navigation"). Takes
      "overview", "console" or "chat". */}}
 {{define "server-tabs" -}}
@@ -217,7 +226,8 @@
 {{/* The tabs of a world's pages (DESIGN 6, "Sub-navigation"). Takes WorldTabs. */}}
 {{/* The server's state beside the active world's name, on each of its pages (DESIGN 7.5). Takes LiveState. */}}
 {{define "live-state" -}}
-{{- if .Have}}<span class="state state--{{.State}}">{{msg .Word}}</span>{{end}}
+{{- /* One chip: the live world's mark and the server's state together. The heading keeps its own Active badge for screen readers, so the chip's copy is hidden from them. */}}
+{{- if .Have}}<span class="live-chip"><span class="badge badge--active" aria-hidden="true">{{t "worlds.badge.active"}}</span><span class="state state--{{.State}}">{{msg .Word}}</span></span>{{end}}
 {{- end}}
 
 {{define "world-tabs" -}}

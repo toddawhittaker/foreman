@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Borrarla libera {size}",
   "worlds.allsnapshots.list": "Todas las instantáneas",
   "worlds.allsnapshots.restore_named": "Restaurar {label} de {world}, tomada el {when}",
-  "worlds.allsnapshots.select_of": "Seleccionar todas las automáticas de {world}",
   "worlds.allsnapshots.title": "Instantáneas",
   "worlds.allsnapshots.world_adds": "Las instantáneas de este mundo añaden {size}.",
   "worlds.back.world": "Volver a {world}",
@@ -236,6 +235,7 @@
   "worlds.snapshots.delete.title": "Borrar una instantánea de {world}",
   "worlds.snapshots.delete_named": "Borrar {label}, tomada el {when}",
   "worlds.snapshots.delete_selected": "Borrar seleccionadas",
+  "worlds.snapshots.details": "Detalles",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman borró {count} instantánea.",
     "other": "Foreman borró {count} instantáneas."
@@ -293,7 +293,6 @@
   "worlds.tabs.overview": "Resumen",
   "worlds.world.checking_release": "Buscando una versión más reciente de Factorio.",
   "worlds.world.delete.button": "Borrar mundo",
-  "worlds.world.more.heading": "Copiar o borrar",
   "worlds.world.delete.text": "Al borrar se elimina la carpeta del mundo. Sus instantáneas se conservan, así que se puede restaurar.",
   "worlds.world.download_failed": "No se pudo descargar la imagen del juego para Factorio {version}. Los detalles están en el registro de Foreman. Al cambiar a este mundo se vuelve a intentar la descarga.",
   "worlds.world.download_running": "Se está descargando de Docker Hub la imagen del juego para Factorio {version}. Recarga esta página para ver cuándo termina.",
@@ -327,8 +326,8 @@
   "worlds.generate.intro": "Crea un mundo nuevo sin partida guardada. Su mapa se genera la primera vez que se inicia el mundo.",
   "worlds.generate.version.same": "{version}, igual que el mundo activo",
   "worlds.generate.version.choose": "Elige una versión",
-  "worlds.generate.space_age.hint": "Space Age solo existe desde Factorio 2.0. Esta opción decide qué planetas tiene el mapa.",
-  "worlds.generate.download.hint": "El mundo no puede iniciarse hasta que su imagen del juego ({image} en su versión) esté en este host. La descarga empieza desde Docker Hub después de crear el mundo.",
+  "worlds.generate.space_age.hint": "Factorio 2.0 y posteriores. Cambia qué planetas tiene el mapa.",
+  "worlds.generate.download.hint": "Descarga {image} en esta versión desde Docker Hub después de crear el mundo, si este host no la tiene.",
   "worlds.generate.reset_note": "Cambió la versión del juego o Space Age, así que las opciones del mapa de abajo volvieron a los valores por defecto de esa versión. Revísalas y continúa.",
   "worlds.generate.mode.legend": "Cómo crear el mapa",
   "worlds.generate.mode.exchange": "Cadena de intercambio de mapa",
@@ -471,5 +470,6 @@
   "worlds.generate.resources.request_failed": "Falló la solicitud de las cantidades de recursos. Comprueba que Foreman esté accesible y que sigas con la sesión iniciada, y vuelve a intentarlo.",
   "worlds.generate.resources.retry": "Reintentar",
   "worlds.generate.resources.not_counted": "Esta descarga pide cantidades de recursos o territorios de los demoledores que aún no están disponibles. Vuelve a descargarla desde la página «Generar un mundo», que los obtiene primero.",
-  "worlds.generate.resources.not_kept": "La configuración cambió mientras se contaban los recursos, así que las cantidades no se guardaron. Inténtalo de nuevo."
+  "worlds.generate.resources.not_kept": "La configuración cambió mientras se contaban los recursos, así que las cantidades no se guardaron. Inténtalo de nuevo.",
+  "worlds.list.col.world": "Mundo"
 }

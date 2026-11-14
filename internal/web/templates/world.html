@@ -4,6 +4,7 @@
 {{define "content" -}}
 {{with .Page}}
 {{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
+<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
@@ -77,7 +78,7 @@
   <h2 id="facts-heading" class="visually-hidden">{{t "worlds.world.about"}}</h2>
   <dl class="facts">
     <div><dt>{{t "worlds.world.folder"}}</dt><dd><code>{{.World.ID}}</code></dd></div>
-    <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
+    <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .World.GameVersion}}<span class="ver"><code>{{.World.GameVersion}}</code></span>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
     <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .World.SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
     <div><dt>{{t "worlds.fact.last_played"}}</dt><dd>{{if .World.LastPlayedUnknown}}{{t "worlds.unknown_lower"}}{{else if .World.LastPlayed.IsZero}}{{t "worlds.never"}}{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
     {{- with .World.ImportedFrom}}
@@ -87,61 +88,80 @@
   </dl>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
-<section class="panel" aria-labelledby="version-heading">
-  <h2 id="version-heading">{{t "worlds.fact.game_version"}}</h2>
-  {{- with .ReleasesPath}}
-  <div id="release-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML">
-    <p>{{t "worlds.world.checking_release"}}</p>
+{{- /* Version, name and copy share one card of rows: a row's title in the first column, its control in the second (DESIGN 4). */}}
+<div class="panel setting-rows">
+<section class="setting-row" aria-labelledby="version-heading">
+  <div class="setting-row__head">
+    <h2 id="version-heading">{{t "worlds.fact.game_version"}}</h2>
   </div>
-  {{- end}}
-  <div class="actions">
-    <a href="{{.UpdatePath}}" class="button" id="act-update">{{t "worlds.world.update"}}</a>
-  </div>
-  {{- with .Rollback}}
-  <p>{{tHTML "worlds.world.rollback_text" "label" (snapLabel .Snapshot) "when" (momentUTC .Snapshot.TakenAt) "version" (code .Version)}}</p>
-  <div class="actions">
-    <a href="{{.Path}}" class="button" id="act-rollback">{{t "worlds.world.rollback_button" "version" .Version}}</a>
-  </div>
-  {{- end}}
-</section>
-{{- end}}
-{{- if not (or .World.Newer .World.Unreadable)}}
-<form method="post" action="{{.RenamePath}}" class="panel" novalidate aria-labelledby="rename-heading">
-  <h2 id="rename-heading">{{t "worlds.world.rename.heading"}}</h2>
-  {{template "summary" .Problems}}
-  {{template "required-note"}}
-  <div class="field">
-    <label for="name" class="required">{{t "worlds.world.rename.label"}}</label>
-    <p class="hint" id="name-hint">{{t "worlds.world.rename.text"}}</p>
-    <div class="inline-row">
-      <input id="name" name="name" type="text" value="{{.Name}}" required maxlength="100"
-        {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="name-hint name-error"{{else}} aria-describedby="name-hint"{{end}}>
-      <button type="submit" class="button">{{t "worlds.world.rename.button"}}</button>
+  <div class="setting-row__body">
+    {{- with .ReleasesPath}}
+    <div id="release-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML">
+      <p>{{t "worlds.world.checking_release"}}</p>
     </div>
-    {{- if not .NameError.IsZero}}
-    <p class="error" id="name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
+    {{- end}}
+    <div class="actions">
+      <a href="{{.UpdatePath}}" class="button" id="act-update">{{t "worlds.world.update"}}</a>
+    </div>
+    {{- with .Rollback}}
+    <p>{{tHTML "worlds.world.rollback_text" "label" (snapLabel .Snapshot) "when" (momentUTC .Snapshot.TakenAt) "version" (code .Version)}}</p>
+    <div class="actions">
+      <a href="{{.Path}}" class="button" id="act-rollback">{{t "worlds.world.rollback_button" "version" .Version}}</a>
+    </div>
     {{- end}}
   </div>
+</section>
+<form method="post" action="{{.RenamePath}}" class="setting-row" novalidate aria-labelledby="rename-heading">
+  <div class="setting-row__head">
+    <h2 id="rename-heading">{{t "worlds.world.rename.heading"}}</h2>
+    <p class="hint" id="name-hint">{{t "worlds.world.rename.text"}}</p>
+  </div>
+  <div class="setting-row__body">
+    {{template "summary" .Problems}}
+    {{template "required-note"}}
+    <div class="field">
+      <label for="name" class="required">{{t "worlds.world.rename.label"}}</label>
+      <div class="inline-row">
+        <input id="name" name="name" type="text" value="{{.Name}}" required maxlength="100"
+          {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="name-hint name-error"{{else}} aria-describedby="name-hint"{{end}}>
+        <button type="submit" class="button">{{t "worlds.world.rename.button"}}</button>
+      </div>
+      {{- if not .NameError.IsZero}}
+      <p class="error" id="name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
+      {{- end}}
+    </div>
+  </div>
 </form>
+<section class="setting-row" aria-labelledby="clone-heading">
+  <div class="setting-row__head">
+    <h2 id="clone-heading">{{t "worlds.clone.heading"}}</h2>
+  </div>
+  <div class="setting-row__body">
+    <div class="actions">
+      <a href="{{.ClonePath}}" class="button" id="act-clone">{{t "worlds.world.clone"}}</a>
+    </div>
+  </div>
+</section>
+</div>
 {{- end}}
-<section class="panel" aria-labelledby="delete-heading">
-  <h2 id="delete-heading">{{t "worlds.world.more.heading"}}</h2>
+{{- /* What destroys the world sits last, in the Danger zone, apart from the safe copy above (DESIGN 7.4). */}}
+<section class="panel danger-zone{{if not .DeleteRefusal.IsZero}} danger-zone--blocked{{end}}" aria-labelledby="delete-heading">
+  <h2 id="delete-heading">{{t "worlds.world.delete.button"}}</h2>
   {{- $refusal := .DeleteRefusal}}
   {{- if not $refusal.IsZero}}
   <p class="hint">{{msg $refusal}}</p>
   {{- else}}
   <p class="hint">{{t "worlds.world.delete.text"}}</p>
   {{- end}}
+  {{- if $refusal.IsZero}}
   <div class="actions">
-    {{- if not (or .World.Newer .World.Unreadable)}}
-    <a href="{{.ClonePath}}" class="button" id="act-clone">{{t "worlds.world.clone"}}</a>
-    {{- end}}
-    {{- if $refusal.IsZero}}
     <a href="{{.DeletePath}}" class="button button--risky">{{t "worlds.world.delete.button"}}</a>
-    {{- else if $.Page.DeleteWaitsOnServer}}
-    <a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a>
-    {{- end}}
   </div>
+  {{- else if $.Page.DeleteWaitsOnServer}}
+  <div class="actions">
+    <a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a>
+  </div>
+  {{- end}}
 </section>
 {{end}}
 {{- end}}

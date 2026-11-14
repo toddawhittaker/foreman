@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Deleting it frees {size}",
   "worlds.allsnapshots.list": "Every snapshot",
   "worlds.allsnapshots.restore_named": "Restore {label} of {world}, taken {when}",
-  "worlds.allsnapshots.select_of": "Select all automatic of {world}",
   "worlds.allsnapshots.title": "Snapshots",
   "worlds.allsnapshots.world_adds": "Snapshots of this world add {size}.",
   "worlds.back.world": "Back to {world}",
@@ -236,6 +235,7 @@
   "worlds.snapshots.delete.title": "Delete a snapshot of {world}",
   "worlds.snapshots.delete_named": "Delete {label}, taken {when}",
   "worlds.snapshots.delete_selected": "Delete selected",
+  "worlds.snapshots.details": "Details",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman deleted {count} snapshot.",
     "other": "Foreman deleted {count} snapshots."
@@ -293,7 +293,6 @@
   "worlds.tabs.overview": "Overview",
   "worlds.world.checking_release": "Checking for a newer Factorio release.",
   "worlds.world.delete.button": "Delete world",
-  "worlds.world.more.heading": "Copy or delete",
   "worlds.world.delete.text": "Deleting removes the world's folder. Its snapshots stay, so it can be restored.",
   "worlds.world.download_failed": "The game image for Factorio {version} could not be downloaded. The details are in Foreman's log. A switch to this world tries the download again.",
   "worlds.world.download_running": "Downloading the game image for Factorio {version} from Docker Hub. Reload this page to see when it ends.",
@@ -327,8 +326,8 @@
   "worlds.generate.intro": "Make a new world that has no save yet. Its map is made when the world first starts.",
   "worlds.generate.version.same": "{version}, same as the active world",
   "worlds.generate.version.choose": "Choose a version",
-  "worlds.generate.space_age.hint": "Space Age only applies to Factorio 2.0 and later. Changing it changes which planets the map has.",
-  "worlds.generate.download.hint": "The world cannot start until its game image ({image} at its version) is on this host. The download starts after the world is made, from Docker Hub.",
+  "worlds.generate.space_age.hint": "Factorio 2.0 and later. Changes which planets the map has.",
+  "worlds.generate.download.hint": "Downloads {image} at this version from Docker Hub after the world is made, if this host lacks it.",
   "worlds.generate.reset_note": "The game version or Space Age changed, so the map options below were set back to that version's defaults. Check them, then continue.",
   "worlds.generate.mode.legend": "How to make the map",
   "worlds.generate.mode.exchange": "Map exchange string",
@@ -471,5 +470,6 @@
   "worlds.generate.resources.request_failed": "The request for the resource amounts failed. Check that Foreman is reachable and that you are still signed in, then try again.",
   "worlds.generate.resources.retry": "Try again",
   "worlds.generate.resources.not_counted": "This download asks for resource amounts or demolisher territories that are not held yet. Download it again from the Generate a world page, which counts them first.",
-  "worlds.generate.resources.not_kept": "The settings changed while the resources were counted, so the amounts were not kept. Try again."
+  "worlds.generate.resources.not_kept": "The settings changed while the resources were counted, so the amounts were not kept. Try again.",
+  "worlds.list.col.world": "World"
 }

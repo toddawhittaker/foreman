@@ -32,14 +32,77 @@
     const keepEnd = () => {
       if (following) toEnd();
     };
-    // The game's own Error and Warning lines are coloured, as console.go does.
+    // Each line is split into its parts, so a phone can set the clock in a
+    // column of its own and the date once above the day's first line: the
+    // time's date and clock, and the words, where a path may break only
+    // after a slash. The text itself is unchanged.
+    const dateClock = /^(\s*)(\d{4}-\d\d-\d\d) (.*)$/s;
+    const dress = (el) => {
+      if (el.querySelector(":scope > .log-msg")) return el;
+      const time = el.querySelector(":scope > .log-time");
+      const words = [...el.childNodes].filter((n) => n !== time).map((n) => n.textContent).join("");
+      const msg = document.createElement("span");
+      msg.className = "log-msg";
+      words.split("/").forEach((part, i, all) => {
+        if (i < all.length - 1) msg.append(part + "/", document.createElement("wbr"));
+        else msg.append(part);
+      });
+      if (time) {
+        const m = dateClock.exec(time.textContent);
+        const clock = document.createElement("span");
+        clock.className = "log-clock";
+        if (m) {
+          const date = document.createElement("span");
+          date.className = "log-date";
+          date.textContent = m[1] + m[2] + " ";
+          clock.textContent = m[3];
+          time.replaceChildren(date, clock);
+        } else {
+          clock.textContent = time.textContent;
+          time.replaceChildren(clock);
+        }
+      }
+      el.replaceChildren(...(time ? [time] : []), msg);
+      return el;
+    };
+    // The first line of each day carries data-day, which shows its date.
+    const markDays = () => {
+      let day = "";
+      for (const line of pre.children) {
+        const date = line.querySelector(":scope > .log-time > .log-date")?.textContent.trim();
+        if (date && date !== day) {
+          line.dataset.day = "";
+          day = date;
+        } else delete line.dataset.day;
+      }
+    };
+    if (pre.tagName === "PRE") {
+      for (const line of pre.children) dress(line);
+      markDays();
+    }
+
+    // The game's own Error and Warning lines, and players joining or
+    // leaving, are coloured, and the time is set apart, as console.go does.
     const kind = /^\s*\d+\.\d+ (Error|Warning) /;
+    const player = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[(JOIN|LEAVE)\] /;
+    const stamp = /^\s*(?:\d+\.\d+|\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) /;
     const span = (text) => {
       const el = document.createElement("span");
-      el.textContent = text + "\n";
+      const s = stamp.exec(text);
+      if (s) {
+        const time = document.createElement("span");
+        time.className = "log-time";
+        time.textContent = s[0];
+        el.append(time);
+      }
+      el.append(text.slice(s ? s[0].length : 0) + "\n");
       const m = kind.exec(text);
       if (m) el.className = "log-" + m[1].toLowerCase();
-      return el;
+      else {
+        const p = player.exec(text);
+        if (p) el.className = p[1] === "LEAVE" ? "log-join log-leave" : "log-join";
+      }
+      return dress(el);
     };
     // With data-log-html each line comes as one list item the server drew and
     // escaped (DESIGN 8.14); its time is put in the viewer's zone before it
@@ -62,6 +125,7 @@
       readScroll();
       pre.append(...lines.map(row));
       while (pre.childElementCount > max) pre.firstElementChild.remove();
+      if (row === span) markDays();
       noEmptyNote(lines);
       if (following) toEnd();
       else jump.hidden = false;
@@ -72,6 +136,7 @@
       readScroll();
       const top = box.scrollTop;
       pre.replaceChildren(...lines.slice(-max).map(row));
+      if (row === span) markDays();
       noEmptyNote(lines);
       if (following) toEnd();
       else {
@@ -115,4 +180,19 @@
   if (frame) followLog(frame);
   historyToEnd();
   document.addEventListener("htmx:afterSettle", historyToEnd);
+  // A closed "Past commands" box has no height, so its end is found again
+  // when it opens. "toggle" does not bubble, and htmx may replace the
+  // details, so it is caught on the document.
+  document.addEventListener("toggle", (e) => {
+    if (e.target.matches?.(".console-past") && e.target.open) historyToEnd();
+  }, true);
+
+  // After a command is sent, the newest reply is brought onto the screen (on
+  // a phone it would land just below it). Focus stays where it was.
+  document.addEventListener("htmx:afterSettle", (e) => {
+    const form = e.detail && e.detail.requestConfig && e.detail.requestConfig.elt;
+    if (!form || !form.matches || !form.matches(".console-form")) return;
+    const reply = document.getElementById("last-reply");
+    if (reply) reply.scrollIntoView({ block: "nearest" });
+  });
 })();

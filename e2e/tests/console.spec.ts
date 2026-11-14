@@ -64,22 +64,28 @@ test.describe("with the fake game", () => {
     await expect.poll(() => atBottom(log)).toBe(true);
     const jump = page.getByRole("button", { name: "Jump to newest" });
     await expect(jump).toBeHidden();
-    // Its row is kept while hidden, so showing it moves nothing below the log.
+    // It floats over the log and keeps no row of its own, so showing it moves nothing below the log.
+    // On a phone the command row is a sticky bar, so it is measured once focusing it has scrolled the page.
     const consoleTop = () => page.locator("#console-panel").evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
-    const topBefore = await consoleTop();
 
     // Reading older lines: new ones arrive but the view stays where it is.
     const command = page.getByLabel("Command");
     await command.focus();
+    const topBefore = await consoleTop();
     await log.evaluate((el) => (el.scrollTop = 0));
     await fakeGame!.call("/join", { name: container, player: "late" });
     await expect(log).toContainText("late joined the game", live);
     expect(await log.evaluate((el) => el.scrollTop)).toBe(0);
     await expect(jump).toBeVisible();
-    // The button sits under the box and covers no line (DESIGN 8.5).
+    // The button floats over the log's bottom end corner, inside its box (DESIGN 8.5).
     const logRect = (await log.boundingBox())!;
     const jumpBox = (await jump.boundingBox())!;
-    expect(jumpBox.y).toBeGreaterThanOrEqual(logRect.y + logRect.height);
+    expect(jumpBox.y).toBeGreaterThan(logRect.y + logRect.height / 2);
+    expect(jumpBox.y + jumpBox.height).toBeLessThanOrEqual(logRect.y + logRect.height);
+    expect(jumpBox.x).toBeGreaterThanOrEqual(logRect.x);
+    expect(jumpBox.x + jumpBox.width).toBeLessThanOrEqual(logRect.x + logRect.width);
+    // Nearer the end edge than the start edge.
+    expect(logRect.x + logRect.width - (jumpBox.x + jumpBox.width)).toBeLessThan(jumpBox.x - logRect.x);
     expect(await consoleTop()).toBe(topBefore);
     await expect(command).toBeFocused();
     await checkPage(page);
@@ -133,6 +139,21 @@ test.describe("with the fake game", () => {
       { username: "admin", world_id: "base", detail: "/players online" },
       { username: "admin", world_id: "base", detail: "/server-save" },
     ]);
+  });
+
+  test("opening Past commands shows the newest entry, not the oldest", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    for (let i = 0; i < 12; i++) {
+      await send(page, i % 2 ? "/server-save" : "/players online");
+      await expect(history(page).locator("li")).toHaveCount(i + 1);
+    }
+    // A fresh page starts with the box closed, so it has no height to scroll yet.
+    await page.goto("/console");
+    await expect(history(page)).toBeHidden();
+    await page.locator("#console-past").click();
+    await expect.poll(() => atBottom(history(page))).toBe(true);
+    expect(await history(page).evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await expect(history(page).locator("li").last()).toContainText("You sent /server-save");
   });
 
   test("a command that sets a password is sent as typed and shown and recorded masked", async ({ page, foreman, fakeGame }) => {

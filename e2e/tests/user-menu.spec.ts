@@ -7,7 +7,7 @@ import { test, expect, checkPage, createAdmin, mainNav, openLanguages, openMenu,
 // Settings tab. Every project runs these, at 320 px and at desktop width.
 
 const flagFiles = ["gb", "de", "ru", "cn", "fr", "es", "pl", "cz"];
-const darkBg = "rgb(18, 17, 16)";
+const darkBg = "rgb(20, 17, 14)";
 
 const langRow = (page: Page) => page.locator("details.menu__langs > summary");
 const themes = (page: Page) => page.getByRole("group", { name: "Theme" });

@@ -58,6 +58,7 @@
   "mods.state.off": "Désactivé",
   "mods.row.update": "Mettre à jour vers {version}",
   "mods.row.version": "Changer de version",
+  "mods.row.more": "Plus d'actions pour {name}",
   "mods.row.enable": "Activer",
   "mods.row.disable": "Désactiver",
   "mods.row.remove": "Retirer",
@@ -136,7 +137,7 @@
   "mods.upload.bad_name": "Le fichier info.json du mod donne un nom ou une version que Foreman ne peut pas utiliser comme nom de fichier. Choisissez un autre fichier.",
   "mods.upload.wrong_mod": "Ce zip contient {got}, et non {mod}. Choisissez le zip de {mod}.",
   "mods.settings.heading": "Paramètres des mods",
-  "mods.settings.text": "Les valeurs des paramètres des mods se trouvent dans {file}. Téléchargez-le pour en garder une copie ou pour l’utiliser dans un autre monde.",
+  "mods.settings.text": "Les valeurs des paramètres des mods se trouvent dans {file} ; téléchargez ce fichier pour en garder une copie.",
   "mods.settings.download": "Télécharger mod-settings.dat",
   "mods.settings.none": "Ce monde n’a pas encore de {file}. Le jeu en écrit un lors de sa première exécution avec des mods.",
   "mods.settings.summary": "Remplacer {file}",
@@ -168,6 +169,9 @@
   "mods.settings.edit.no_change": "Vous n’avez modifié aucun paramètre, donc rien n’a été enregistré.",
   "mods.settings.edit.none": "Les mods activés n’ont aucun paramètre à afficher.",
   "mods.settings.edit.back": "Retour aux mods",
+  "mods.settings.edit.summary": "L’enregistrement prend d’abord un instantané, puis écrit les paramètres que vous avez modifiés. Annuler restaure cet instantané.",
+  "mods.settings.edit.summary_running": "L’enregistrement prévient les joueurs et redémarre le serveur, après avoir pris un instantané. Annuler restaure cet instantané.",
+  "mods.settings.edit.details": "Ce que fait l’enregistrement",
   "mods.settings.edit.fixed": "Foreman ne peut pas modifier ce type de paramètre.",
   "mods.settings.edit.locked": "Le mod n’autorise que cette valeur.",
   "mods.settings.edit.on": "Activé",
@@ -397,5 +401,7 @@
     "one": "Supprimer ce que {mods} a construit. L’instantané « {label} » en garde une copie.",
     "other": "Supprimer ce que ces {count} mods ont construit : {mods}. L’instantané « {label} » en garde une copie."
   },
-  "mods.drops.confirm_missing_one": "Cochez la case pour confirmer que le jeu supprime ce que {mod} a construit, ou annulez."
+  "mods.drops.confirm_missing_one": "Cochez la case pour confirmer que le jeu supprime ce que {mod} a construit, ou annulez.",
+  "mods.tools.label": "Outils des mods",
+  "mods.row.more_word": "Plus"
 }

@@ -7,18 +7,25 @@ import type { Page } from "@playwright/test";
 // form explains the asterisk once with "* Required". The table lists, per
 // form, the fields its handler refuses when empty, so a field added to a
 // handler without its mark fails here.
+//
+// SPEC 17.13 makes one exception: the Console's command field, the only field
+// of a form that exists only to send it, keeps its required attribute but has
+// no asterisk and no note. The second table lists such fields.
 const required: Record<string, string[]> = {
   "/worlds/base": ["name"],
   "/worlds/base/clone": ["clone-name"],
   "/worlds/second/delete": ["confirm-name"],
   "/worlds/base/saves": ["save-file"],
   "/import": ["upload-name", "upload-source"],
-  "/console": ["command"],
+  "/console": [],
   "/generate": ["generate-name"],
   "/worlds/base/settings": ["name"],
 };
+const unmarkedByDesign: Record<string, string[]> = {
+  "/console": ["command"],
+};
 
-async function expectMarked(page: Page, ids: string[]) {
+async function expectMarked(page: Page, ids: string[], bare: string[] = []) {
   for (const id of ids) {
     const field = page.locator(`#${id}`);
     await expect(field, `#${id} on ${page.url()}`).toHaveAttribute("required", "");
@@ -33,9 +40,19 @@ async function expectMarked(page: Page, ids: string[]) {
     await expect(note).toHaveText("* Required");
     expect((await note.boundingBox())!.y).toBeLessThan((await field.boundingBox())!.y);
   }
-  // No field is marked required without the mark, and no mark is on an optional field.
-  const unmarked = await page.locator("main [required]").evaluateAll((els) =>
-    els.filter((el) => !document.querySelector(`label.required[for="${el.id}"]`)).map((el) => el.id),
+  for (const id of bare) {
+    const field = page.locator(`#${id}`);
+    await expect(field, `#${id} on ${page.url()}`).toHaveAttribute("required", "");
+    const label = page.locator(`label[for="${id}"]`);
+    await expect(label, `#${id} carries no mark`).not.toHaveClass(/\brequired\b/);
+    expect(await label.evaluate((el) => getComputedStyle(el, "::after").content)).not.toContain("*");
+    await expect(field).toHaveAccessibleName(((await label.textContent()) ?? "").trim());
+    await expect(field.locator("xpath=ancestor::form[1]").locator(".required-note"), `no note in #${id}'s form`).toHaveCount(0);
+  }
+  // No other field is marked required without the mark, and no mark is on an optional field.
+  const unmarked = await page.locator("main [required]").evaluateAll(
+    (els, bare) => els.filter((el) => !bare.includes(el.id) && !document.querySelector(`label.required[for="${el.id}"]`)).map((el) => el.id),
+    bare,
   );
   expect(unmarked, `required fields without a mark on ${page.url()}`).toEqual([]);
   const stray = await page.locator("main label.required").evaluateAll((labels) =>
@@ -55,7 +72,7 @@ test("every required field is marked, on every form", async ({ page, foreman }) 
   seedSecond(foreman);
   for (const [path, ids] of Object.entries(required)) {
     await page.goto(path);
-    await expectMarked(page, ids);
+    await expectMarked(page, ids, unmarkedByDesign[path]);
     await checkPage(page);
   }
   await signOut(page);

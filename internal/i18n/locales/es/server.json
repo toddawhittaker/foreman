@@ -586,5 +586,6 @@
   "server.schedule.next_is": "El próximo reinicio es {time}.",
   "server.op.scheduled_restart": "Reinicio programado",
   "server.disk.low": "Solo quedan {free} de espacio en disco. Por debajo de {reserve} los guardados automáticos pueden fallar y las instantáneas se detienen. Borra las instantáneas o los mundos que ya no necesites.",
-  "server.disk.snapshots": "Instantáneas"
+  "server.disk.snapshots": "Instantáneas",
+  "server.force.group": "Acciones de emergencia"
 }

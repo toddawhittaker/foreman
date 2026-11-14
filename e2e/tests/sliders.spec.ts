@@ -186,12 +186,22 @@ test("an off box keeps its name at full strength and greys its settings", async 
   await page.goto("/generate");
   const colour = (sel: string) => page.locator(sel).evaluate((el) => getComputedStyle(el).color);
   const text = await page.locator("#map-settings").evaluate((el) => getComputedStyle(el).color);
+  // Full strength is the text colour or the stronger heading colour.
+  const heading = await page.locator("#map-settings").evaluate((el) => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--color-heading)";
+    el.append(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    return c;
+  });
   const name = "#mg-nauvis-uranium-ore > legend label";
   const setting = "#mg-nauvis-uranium-ore-frequency-label";
-  expect(await colour(name)).toBe(text);
+  const nameOn = await colour(name);
+  expect([text, heading]).toContain(nameOn);
   expect(await colour(setting)).toBe(text);
   await page.locator("#mg-nauvis-uranium-ore-on").uncheck();
-  expect(await colour(name)).toBe(text);
+  expect(await colour(name)).toBe(nameOn);
   expect(await colour(setting)).not.toBe(text);
   await page.locator("#mg-nauvis-uranium-ore-on").check();
   expect(await colour(setting)).toBe(text);
@@ -231,6 +241,8 @@ async function expectEnds(page: Page) {
     await tab(page, tabNames.en[t]).click();
     const range = page.locator(`#${id}-range`);
     await expect(range).toBeVisible();
+    // In the middle of the window, clear of the form's sticky save bar at the viewport's foot.
+    await range.evaluate((el) => el.scrollIntoView({ block: "center" }));
     // Nothing pads or edges the track, so its ends are the range's own box.
     const style = await range.evaluate((el) => {
       const s = getComputedStyle(el);
@@ -271,10 +283,10 @@ test("each kind of slider reaches the track's ends at its first and last step", 
   await expectEnds(page);
 });
 
-// The middle row of a picture, read in a blank page: one [r, g, b] per device pixel.
-async function middleRow(page: Page, png: Buffer) {
+// One row of a picture, `up` device pixels above its middle, read in a blank page: one [r, g, b] per device pixel.
+async function rowAbove(page: Page, png: Buffer, up: number) {
   const blank = await page.context().newPage();
-  const row = await blank.evaluate(async (b64) => {
+  const row = await blank.evaluate(async ({ b64, up }) => {
     const img = new Image();
     img.src = `data:image/png;base64,${b64}`;
     await img.decode();
@@ -283,46 +295,58 @@ async function middleRow(page: Page, png: Buffer) {
     c.height = img.naturalHeight;
     const g = c.getContext("2d")!;
     g.drawImage(img, 0, 0);
-    const data = g.getImageData(0, Math.floor(c.height / 2), c.width, 1).data;
+    const data = g.getImageData(0, Math.floor(c.height / 2) - up, c.width, 1).data;
     return Array.from({ length: c.width }, (_, i) => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]);
-  }, png.toString("base64"));
+  }, { b64: png.toString("base64"), up });
   await blank.close();
   return row;
 }
 
 // DESIGN 8.7: the default step sits at the middle of the track, so the knob
 // is centred at "100%" (or bias 0) whatever the number of steps either side.
-// The knob is the accent colour: from the track's start it runs to the knob's
-// right edge at the default, and to the knob's own width at the first step.
+// The knob (18 px) is taller than the 4 px track, so a row of pixels 6 CSS px
+// above the track's middle crosses the knob and nothing else: where that row
+// leaves the page's colour is the knob. Its centre at the default must be
+// halfway between its centres at the first and last steps.
 async function expectCentred(page: Page) {
   await page.goto("/generate");
   for (const [t, id] of kinds) {
     await tab(page, tabNames.en[t]).click();
     const range = page.locator(`#${id}-range`);
     await expect(range).toBeVisible();
+    // In the middle of the window, clear of the form's sticky save bar at the viewport's foot.
+    await range.evaluate((el) => el.scrollIntoView({ block: "center" }));
     const dpr = await page.evaluate(() => window.devicePixelRatio);
-    // A mouse resting over a slider would darken its knob.
+    // A mouse resting over a slider would change its knob.
     await page.mouse.move(0, 0);
-    const atDefault = await middleRow(page, await range.screenshot({ animations: "disabled" }));
+    const shot = async () => rowAbove(page, await range.screenshot({ animations: "disabled" }), Math.round(6 * dpr));
+    const atDefault = await shot();
     await range.focus();
     await page.keyboard.press("Home");
-    const atFirst = await middleRow(page, await range.screenshot({ animations: "disabled" }));
+    const atFirst = await shot();
+    await page.keyboard.press("End");
+    const atLast = await shot();
+    await page.keyboard.press("Home");
 
-    const knob = atFirst[Math.round(4 * dpr)];
-    const isKnob = (px: number[]) => apart(px, knob) < 40;
-    // The knob at the first step, from its left edge to its right.
-    const left = atFirst.findIndex(isKnob);
-    let right = left;
-    while (right < atFirst.length && isKnob(atFirst[right])) right++;
-    const width = right - left;
-    expect(width, `${id}: the knob is found`).toBeGreaterThan(4 * dpr);
-    expect(width, `${id}: the knob is found`).toBeLessThan(atFirst.length / 4);
-    // At the default, the fill runs to the knob's right edge.
-    let edge = Math.round(atDefault.length / 4);
-    while (edge < atDefault.length && isKnob(atDefault[edge])) edge++;
-    // The knob at the first step touches the track's start and at the last its end, so the middle of its travel is the middle of the picture.
-    const middle = atFirst.length / 2;
-    expect(Math.abs(edge - width / 2 - middle) / dpr, `${id}: the knob's centre is off the track's middle by this many px`).toBeLessThanOrEqual(1);
+    // The page's colour is read where the knob is not: the right end at the first step.
+    const back = atFirst[atFirst.length - 1];
+    const knobAt = (row: number[][], name: string) => {
+      const left = row.findIndex((px) => apart(px, back) > 40);
+      let right = row.length - 1;
+      while (right > left && apart(row[right], back) <= 40) right--;
+      const width = right + 1 - left;
+      expect(left, `${id}: the knob is found at ${name}`).toBeGreaterThanOrEqual(0);
+      expect(width, `${id}: the knob is found at ${name}`).toBeGreaterThan(4 * dpr);
+      expect(width, `${id}: the knob is found at ${name}`).toBeLessThan(row.length / 4);
+      return (left + right + 1) / 2;
+    };
+    const first = knobAt(atFirst, "the first step");
+    const last = knobAt(atLast, "the last step");
+    const centre = knobAt(atDefault, "the default");
+    // The knob touches the track's start at the first step and its end at the last.
+    expect(first / dpr, `${id}: the knob at the first step starts at the track's start`).toBeLessThanOrEqual(10);
+    expect((atLast.length - last) / dpr, `${id}: the knob at the last step ends at the track's end`).toBeLessThanOrEqual(10);
+    expect(Math.abs(centre - (first + last) / 2) / dpr, `${id}: the knob's centre is off the track's middle by this many px`).toBeLessThanOrEqual(1);
   }
 }
 
@@ -344,6 +368,8 @@ test("each kind of slider takes one step per key press, and the nearest step to 
     const range = page.locator(`#${id}-range`);
     const index = () => page.locator(`#${id}`).evaluate((s: HTMLSelectElement) => s.selectedIndex);
     const count = await page.locator(`#${id} option`).count();
+    // In the middle of the window, clear of the form's sticky save bar at the viewport's foot.
+    await range.evaluate((el) => el.scrollIntoView({ block: "center" }));
     await range.focus();
     await page.keyboard.press("Home");
     expect(await index(), `${id} at Home`).toBe(0);
@@ -375,7 +401,8 @@ test("each kind of slider takes one step per key press, and the nearest step to 
     }, count);
     expect(places[0], `${id}: first step at the start`).toBe(0);
     expect(places[count - 1], `${id}: last step at the end`).toBe(max);
-    const knob = 16;
+    // The style sheet's knob is 18 px wide (DESIGN 8.7).
+    const knob = 18;
     const xOf = (value: number) => box.x + knob / 2 + (value / max) * (box.width - knob);
     const slack = max * 0.02;
     for (const part of [0.25, 0.75]) {

@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, makeZip, version20 } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, makeZip, version20, openModTools } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,6 +20,7 @@ test.describe("upload a mod zip", () => {
     await setUpModsWorld(page, foreman, g, { ...world, start: true });
     const before = await creates(g);
     await page.goto("/worlds/base/mods");
+    await openModTools(page);
     // Uploading is rare, so its form is folded away.
     await page.locator("#mod-upload > summary").click();
     await page.locator("#mod-file").setInputFiles({ name: "up-mod_2.3.4.zip", mimeType: "application/zip", buffer: upZip });
@@ -48,6 +49,7 @@ test.describe("upload a mod zip", () => {
   test("a file that is not a mod zip is refused on the Mods tab, with the error summary", async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods");
+    await openModTools(page);
     await page.locator("#mod-upload > summary").click();
     await page.locator("#mod-file").setInputFiles({ name: "junk.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
     await page.getByRole("button", { name: "Upload mod", exact: true }).click();
@@ -67,6 +69,7 @@ test.describe("mod-settings.dat", () => {
   test("a world with only built-in mods has no Mod settings section", async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods");
+    await openModTools(page);
     await expect(page.getByRole("heading", { level: 2, name: "Upload a mod" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Mod settings" })).toHaveCount(0);
   });
@@ -74,6 +77,7 @@ test.describe("mod-settings.dat", () => {
   test("a world with none says so and offers no download", async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "some-mod": "2.0" } });
     await page.goto("/worlds/base/mods");
+    await openModTools(page);
     await expect(page.getByRole("link", { name: "Download mod-settings.dat" })).toHaveCount(0);
     await expect(page.locator("#settings-heading + p + p, #settings-heading ~ p.empty")).toContainText("has no mod-settings.dat yet");
     await checkPage(page);
@@ -83,6 +87,7 @@ test.describe("mod-settings.dat", () => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
     writeFileSync(modsFile(foreman.dataDir, "mod-settings.dat"), old);
     await page.goto("/worlds/base/mods");
+    await openModTools(page);
     await checkPage(page);
     const download = page.waitForEvent("download");
     await page.getByRole("link", { name: "Download mod-settings.dat" }).click();
@@ -97,6 +102,7 @@ test.describe("mod-settings.dat", () => {
     writeFileSync(modsFile(foreman.dataDir, "mod-settings.dat"), old);
     const before = await creates(g);
     await page.goto("/worlds/base/mods");
+    await openModTools(page);
     const form = page.locator("form", { has: page.locator("#settings-file") });
     // Replacing is rare, so its form is folded away; the download stays in view.
     await expect(form).toBeHidden();
@@ -120,6 +126,7 @@ test.describe("mod-settings.dat", () => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
     writeFileSync(modsFile(foreman.dataDir, "mod-settings.dat"), old);
     await page.goto("/worlds/base/mods");
+    await openModTools(page);
     await page.locator("#mod-settings-replace > summary").click();
     await page.locator("#settings-file").setInputFiles({ name: "mod-settings.dat", mimeType: "application/octet-stream", buffer: Buffer.alloc(0) });
     await page.getByRole("button", { name: "Upload mod settings" }).click();

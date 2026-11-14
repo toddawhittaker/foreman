@@ -179,6 +179,44 @@ func (p ServerPage) Running() bool { return !p.Status.StartedAt.IsZero() }
 func (p ServerPage) Uptime() i18n.Msg  { return durationText(p.Status.Uptime) }
 func (p ServerPage) UptimeISO() string { return durationISO(p.Status.Uptime) }
 
+// Lamp is the server's state for the main navigation's lamp, which the
+// live facts replace (DESIGN 7.5).
+func (p ServerPage) Lamp() LiveState { return LiveState{State: p.Status.State, Have: true} }
+
+// CPUMeter is the CPU figure as a meter's fill, 0 to 100, and CPULevel
+// names the band it is in: "warn" above 80, "danger" above 95, else "".
+func (p ServerPage) CPUMeter() string {
+	return strconv.FormatFloat(min(max(p.Status.CPUPercent, 0), 100), 'f', 1, 64)
+}
+
+func (p ServerPage) CPULevel() string { return loadLevel(p.Status.CPUPercent) }
+
+// MemoryMeter is the memory figure as a share of the container's limit, 0
+// to 100, and MemoryLevel names its band as CPULevel does; HaveMemoryMeter
+// is false when Docker gave no limit.
+func (p ServerPage) HaveMemoryMeter() bool { return p.Status.MemoryLimit > 0 }
+
+func (p ServerPage) memoryShare() float64 {
+	if p.Status.MemoryLimit == 0 {
+		return 0
+	}
+	return min(float64(p.Status.MemoryBytes)/float64(p.Status.MemoryLimit)*100, 100)
+}
+
+func (p ServerPage) MemoryMeter() string { return strconv.FormatFloat(p.memoryShare(), 'f', 1, 64) }
+
+func (p ServerPage) MemoryLevel() string { return loadLevel(p.memoryShare()) }
+
+func loadLevel(v float64) string {
+	switch {
+	case v > 95:
+		return "danger"
+	case v > 80:
+		return "warn"
+	}
+	return ""
+}
+
 // Busy reports whether a start, stop, restart or restore is running.
 func (p ServerPage) Busy() bool { return p.Status.Operation != nil && !p.Status.Operation.Done }
 

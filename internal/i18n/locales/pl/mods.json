@@ -62,6 +62,7 @@
   "mods.state.off": "Wyłączona",
   "mods.row.update": "Zaktualizuj do {version}",
   "mods.row.version": "Zmień wersję",
+  "mods.row.more": "Więcej działań dla {name}",
   "mods.row.enable": "Włącz",
   "mods.row.disable": "Wyłącz",
   "mods.row.remove": "Usuń",
@@ -151,7 +152,7 @@
   "mods.upload.bad_name": "W pliku info.json modyfikacji podano nazwę lub wersję, której Foreman nie może użyć jako nazwy pliku. Należy wybrać inny plik.",
   "mods.upload.wrong_mod": "W tym pliku zip jest {got}, a nie {mod}. Należy wybrać plik zip modyfikacji {mod}.",
   "mods.settings.heading": "Ustawienia modyfikacji",
-  "mods.settings.text": "Wartości ustawień modyfikacji znajdują się w pliku {file}. Można go pobrać, aby zachować kopię lub użyć go w innym świecie.",
+  "mods.settings.text": "Wartości ustawień modyfikacji są zapisane w {file}; plik można pobrać, aby zachować kopię.",
   "mods.settings.download": "Pobierz mod-settings.dat",
   "mods.settings.none": "Ten świat nie ma jeszcze pliku {file}. Gra tworzy go przy pierwszym uruchomieniu z modyfikacjami.",
   "mods.settings.summary": "Zastąp {file}",
@@ -183,6 +184,9 @@
   "mods.settings.edit.no_change": "Nie zmieniono żadnego ustawienia, więc niczego nie zapisano.",
   "mods.settings.edit.none": "Włączone modyfikacje nie mają ustawień do pokazania.",
   "mods.settings.edit.back": "Wróć do modyfikacji",
+  "mods.settings.edit.summary": "Przy zapisie najpierw wykonywana jest migawka, a potem zapisywane są zmienione ustawienia. Cofnięcie przywraca tę migawkę.",
+  "mods.settings.edit.summary_running": "Przy zapisie gracze dostają ostrzeżenie, a serwer zostaje zrestartowany; najpierw wykonywana jest migawka. Cofnięcie przywraca tę migawkę.",
+  "mods.settings.edit.details": "Co się dzieje przy zapisie",
   "mods.settings.edit.fixed": "Foreman nie może edytować tego rodzaju ustawienia.",
   "mods.settings.edit.locked": "Modyfikacja dopuszcza tylko tę wartość.",
   "mods.settings.edit.on": "Włączone",
@@ -432,5 +436,7 @@
     "few": "Usunięcie tego, co zostało zbudowane przez te {count} modyfikacje: {mods}. Kopię zachowuje migawka „{label}”.",
     "many": "Usunięcie tego, co zostało zbudowane przez te {count} modyfikacji: {mods}. Kopię zachowuje migawka „{label}”."
   },
-  "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować."
+  "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować.",
+  "mods.tools.label": "Narzędzia modyfikacji",
+  "mods.row.more_word": "Więcej"
 }

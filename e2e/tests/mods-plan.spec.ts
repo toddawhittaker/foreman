@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, live, version20 } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, doneBox, live, version20, openModTools } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -137,6 +137,7 @@ test("the Mods tab: built-in mods in one line, portal links, and where mod-setti
   await expect(table.getByRole("link", { name: /fp-gone-from-portal on the mod portal/ })).toHaveCount(0);
   await expect(table.getByRole("row", { name: /fp-gone-from-portal/ })).toContainText("Note: Not on the mod portal");
   // The settings help is in the folded replace form.
+  await openModTools(page);
   await page.locator("#mod-settings-replace > summary").click();
   await expect(page.locator("#settings-file-help")).toContainText("Windows %APPDATA%\\Factorio\\mods, macOS ~/Library/Application Support/factorio/mods, Linux ~/.factorio/mods.");
   await expect(page.locator("#settings-file-help")).toContainText("Startup settings apply when the world next starts.");

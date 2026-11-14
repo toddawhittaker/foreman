@@ -1,9 +1,9 @@
 import type { Page } from "@playwright/test";
 import { test, expect, checkPage, createAdmin, openMenu } from "./foreman.js";
 
-// The page background is --color-bg: #121110 in dark, #f1efeb in light (DESIGN 3).
-const darkBg = "rgb(18, 17, 16)";
-const lightBg = "rgb(241, 239, 235)";
+// The page background is --color-bg: #14110e in dark, #ece9e3 in light (DESIGN 3).
+const darkBg = "rgb(20, 17, 14)";
+const lightBg = "rgb(236, 233, 227)";
 
 async function pickTheme(page: Page, name: string) {
   await openMenu(page);

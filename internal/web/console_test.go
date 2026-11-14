@@ -174,10 +174,31 @@ func TestLogLineClass(t *testing.T) {
 		"   0.100 Warning Mod.cpp:2: odd":                      "log-warning",
 		"   1.000 Info Server started":                         "",
 		"2026-11-06 12:00:00 [CHAT] alice: Error here":         "",
+		"2026-11-06 12:00:00 [JOIN] alice joined the game":     "log-join",
+		"2026-11-06 12:00:00 [LEAVE] alice left the game":      "log-join log-leave",
 		"Error without a time":                                 "",
 	} {
 		if got := p.LineClass(line); got != want {
 			t.Errorf("%q: %q, want %q", line, got, want)
+		}
+	}
+}
+
+// DESIGN 8.5: a log line's time is split from its words so it can be set
+// quieter; the two halves always join back into the whole line.
+func TestLogLineStamp(t *testing.T) {
+	var p ConsolePage
+	for line, stamp := range map[string]string{
+		"   0.807 Info PlayerData.cpp:71: Cloud":  "   0.807 ",
+		"2026-11-06 12:00:00 [JOIN] alice joined": "2026-11-06 12:00:00 ",
+		"Error without a time":                    "",
+		"":                                        "",
+	} {
+		if got := p.LineStamp(line); got != stamp {
+			t.Errorf("%q: stamp %q, want %q", line, got, stamp)
+		}
+		if got := p.LineStamp(line) + p.LineText(line); got != line {
+			t.Errorf("%q: halves join to %q", line, got)
 		}
 	}
 }

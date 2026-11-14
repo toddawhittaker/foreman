@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Smazáním se uvolní {size}",
   "worlds.allsnapshots.list": "Každý snímek",
   "worlds.allsnapshots.restore_named": "Obnovit {label} ze světa {world}, pořízeno {when}",
-  "worlds.allsnapshots.select_of": "Vybrat všechny automatické snímky světa {world}",
   "worlds.allsnapshots.title": "Snímky",
   "worlds.allsnapshots.world_adds": "Snímky tohoto světa přidávají {size}.",
   "worlds.back.world": "Zpět na {world}",
@@ -244,6 +243,7 @@
   "worlds.snapshots.delete.title": "Smazání snímku světa {world}",
   "worlds.snapshots.delete_named": "Smazat {label}, pořízeno {when}",
   "worlds.snapshots.delete_selected": "Smazat vybrané",
+  "worlds.snapshots.details": "Podrobnosti",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman smazal {count} snímek.",
     "few": "Foreman smazal {count} snímky.",
@@ -305,7 +305,6 @@
   "worlds.tabs.overview": "Přehled",
   "worlds.world.checking_release": "Probíhá kontrola novějšího vydání Factorio.",
   "worlds.world.delete.button": "Smazat svět",
-  "worlds.world.more.heading": "Kopírovat nebo smazat",
   "worlds.world.delete.text": "Smazáním se odstraní složka světa. Jeho snímky zůstanou, takže ho lze obnovit.",
   "worlds.world.download_failed": "Obraz hry pro Factorio {version} se nepodařilo stáhnout. Podrobnosti jsou v protokolu Foremanu. Přepnutí na tento svět stažení zopakuje.",
   "worlds.world.download_running": "Probíhá stahování obrazu hry pro Factorio {version} z Docker Hubu. Po opětovném načtení stránky bude vidět, kdy stahování skončí.",
@@ -339,8 +338,8 @@
   "worlds.generate.intro": "Vytvoření nového světa bez uložené hry. Jeho mapa se vytvoří při prvním spuštění světa.",
   "worlds.generate.version.same": "{version}, stejná jako u aktivního světa",
   "worlds.generate.version.choose": "Vybrat verzi",
-  "worlds.generate.space_age.hint": "Space Age existuje jen ve Factoriu 2.0 a novějších. Toto nastavení určuje, které planety mapa má.",
-  "worlds.generate.download.hint": "Svět nelze spustit, dokud jeho obraz hry ({image} v příslušné verzi) není na tomto hostiteli. Stahování z Docker Hubu začne po vytvoření světa.",
+  "worlds.generate.space_age.hint": "Factorio 2.0 a novější. Mění, které planety mapa obsahuje.",
+  "worlds.generate.download.hint": "Po vytvoření světa stáhne {image} v této verzi z Docker Hubu, pokud ho tento hostitel nemá.",
   "worlds.generate.reset_note": "Změnila se verze hry nebo Space Age, a proto byly níže uvedené možnosti mapy vráceny na výchozí hodnoty této verze. Je třeba je zkontrolovat a pokračovat.",
   "worlds.generate.mode.legend": "Způsob vytvoření mapy",
   "worlds.generate.mode.exchange": "Řetězec pro výměnu map",
@@ -488,5 +487,6 @@
   "worlds.generate.resources.request_failed": "Požadavek na množství surovin selhal. Je třeba zkontrolovat, zda je Foreman dostupný a zda je přihlášení stále platné, a zkusit to znovu.",
   "worlds.generate.resources.retry": "Zkusit znovu",
   "worlds.generate.resources.not_counted": "Toto stažení vyžaduje množství surovin nebo teritoria ničitelů, která zatím nejsou k dispozici. Je třeba stáhnout znovu ze stránky „Vygenerovat svět“, která je nejprve zjistí.",
-  "worlds.generate.resources.not_kept": "Nastavení se během počítání surovin změnilo, takže množství nebylo uloženo. Je třeba to zkusit znovu."
+  "worlds.generate.resources.not_kept": "Nastavení se během počítání surovin změnilo, takže množství nebylo uloženo. Je třeba to zkusit znovu.",
+  "worlds.list.col.world": "Svět"
 }

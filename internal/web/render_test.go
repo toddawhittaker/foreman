@@ -431,7 +431,7 @@ func render(t *testing.T, r *Renderer, c pageCase) (*httptest.ResponseRecorder, 
 func renderIn(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) (*httptest.ResponseRecorder, string) {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	if err := r.Render(rec, requestIn(loc), c.status, c.user, c.page); err != nil {
+	if err := r.Render(rec, requestIn(loc), c.status, c.user, LiveState{}, c.page); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	return rec, rec.Body.String()
@@ -883,8 +883,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 20 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, about.js, the logo at two sizes, the logo again in the About dialog and eight flags, found %v", found)
+	if len(found) != 21 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, subnav.js, about.js, the logo at two sizes, the logo again in the About dialog and eight flags, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

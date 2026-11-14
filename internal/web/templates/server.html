@@ -7,7 +7,10 @@
 {{define "content" -}}
 {{with .Page}}
 {{- if not .HasWorld}}
-<h1>{{t "server.title"}}</h1>
+<header class="page-head">
+  <p class="eyebrow">{{t "common.nav.server"}}</p>
+  <h1>{{t "server.title"}}</h1>
+</header>
 {{template "server-tabs" "overview"}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
@@ -18,13 +21,18 @@
 <div sse-swap="announce" hidden></div>
 <div sse-swap="moved" hidden></div>
 {{/* The world's name and its state lead the page; focus comes here after an operation (DESIGN 6, 7.5). */}}
-<header class="page-head">
+{{- /* The plate's band below states the server's state large, so here the
+     heading's badge is kept for screen readers only. */}}
+<header class="page-head page-head--plate">
+  <p class="eyebrow">{{t "common.nav.server"}}</p>
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
   {{template "server-join" .JoinAddress}}
 </header>
 {{template "server-tabs" "overview"}}
-{{- /* One card holds what the server is doing and what to do about it; its top edge takes the state's colour. */}}
-<div class="card status-card">
+{{- /* One plate holds what the server is doing and what to do about it: a
+     band tinted by the state, the actions, then the gauges (DESIGN 7.5). */}}
+<div class="card status-card plate">
+<div class="plate__band" id="plate-band">{{template "server-band" .}}</div>
 {{/* Controls and progress come first, so a phone shows them without scrolling (DESIGN 6). */}}
 <div sse-swap="control"{{if .FocusResult}} data-focus-result{{end}}>{{template "server-control" .}}</div>
 {{- /* The mods notice sits with the facts, as the game-network warning does (DESIGN 6, 7.3). It asks the mod portal after the page has opened, so it never slows the page (SPEC 9.3, DESIGN 8.11). */}}
@@ -76,6 +84,21 @@
 <a href="{{worldsPath}}" id="act-switch-world">{{t "server.links.switch"}}</a>
 {{- end}}
 
+{{/* The plate's band: how long the game has run and who is online. The
+     heading's badge names the state, so the band does not repeat it. Like
+     the facts, it leaves out what cannot be known now (SPEC 7.1). */}}
+{{define "server-band" -}}
+<span class="plate__state plate__state--{{.Status.State}}">{{msg .StateWord}}</span>
+{{- if and .FactsKnown .Running}}
+<span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> <time datetime="{{.UptimeISO}}">{{msg .Uptime}}</time></span>
+{{- else if .FactsKnown}}
+<span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{t "server.facts.not_running"}}</span>
+{{- end}}
+{{- with .PlayerTable}}{{if .Live}}
+<span class="plate__fact">{{msg .Caption}}</span>
+{{- end}}{{end}}
+{{- end}}
+
 {{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
      focus, because it is replaced whenever a figure changes. Figures that
      cannot be known now are left out rather than shown stale (SPEC 7.1). */}}
@@ -83,20 +106,23 @@
 {{- if .Live}}
 {{- /* The heading's badge changes with the facts, so it travels with them (DESIGN 7.5). */}}
 <span id="server-title" hx-swap-oob="innerHTML">{{template "server-title" .}}</span>
+<div id="plate-band" hx-swap-oob="innerHTML">{{template "server-band" .}}</div>
+<span id="nav-lamp" hx-swap-oob="innerHTML">{{template "nav-lamp" .Lamp}}</span>
 {{- end}}
-<dl class="facts facts--inline">
+{{- /* The run's facts and its live load as one row of equal cells that share a label line; each load has a bar coloured by how full it is, beside its figure (DESIGN 7.5). */}}
+<dl class="facts stat-grid">
   {{- if not .Switching.IsZero}}
-  <div><dt>{{t "server.facts.switching"}}</dt><dd>{{msg .Switching}}</dd></div>
+  <div class="stat"><dt>{{t "server.facts.switching"}}</dt><dd>{{msg .Switching}}</dd></div>
   {{- end}}
   {{- if .FactsKnown}}
-  <div><dt>{{t "server.facts.uptime"}}</dt><dd>{{if .Running}}<time datetime="{{.UptimeISO}}">{{msg .Uptime}}</time>{{else}}{{t "server.facts.not_running"}}{{end}}</dd></div>
-  <div><dt>{{t "server.facts.game_version"}}</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}{{t "server.facts.unknown"}}{{end}}</dd></div>
+  <div class="stat"><dt>{{t "server.facts.game_version"}}</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}{{t "server.facts.unknown"}}{{end}}</dd></div>
   {{- with .Status.Save}}
-  <div><dt>{{t "server.facts.save"}}</dt><dd>{{.}}</dd></div>
+  <div class="stat"><dt>{{t "server.facts.save"}}</dt><dd><code>{{.}}</code></dd></div>
   {{- end}}
   {{- if .Status.HaveUsage}}
-  <div><dt>{{t "server.facts.cpu"}}</dt><dd>{{t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent)}}</dd></div>
-  <div><dt>{{t "server.facts.memory"}}</dt><dd>{{bytes .Status.MemoryBytes}}</dd></div>
+  {{- /* The meters are decorative: the figures say the same. */}}
+  <div class="stat gauge gauge--{{or .CPULevel "ok"}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
+  <div class="stat{{if .HaveMemoryMeter}} gauge gauge--{{or .MemoryLevel "ok"}}{{end}}"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}{{if .HaveMemoryMeter}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.MemoryMeter}}%"></span></span>{{end}}</dd></div>
   {{- end}}
   {{- end}}
 </dl>
@@ -389,7 +415,8 @@
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{msg .StartLabel}}</button></form>
   {{- end}}
   {{- if .CanSnapshot}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+  {{- /* While the game runs, the safe everyday step is the page's one primary; Restart and Stop stay plain (DESIGN 7.1). */}}
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button{{if eq .Status.State "running"}} button--primary{{end}}" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
   {{- end}}
   {{- if .CanRestart}}
   <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>
@@ -397,11 +424,17 @@
   {{- if .CanStop}}
   <a href="{{.StopPath}}" class="button" id="act-stop">{{t "server.action.stop"}}</a>
   {{- end}}
-  {{- if .CanForceStop}}
-  {{- /* A link, not a button face: it opens a confirmation, and it is set apart at the row's end in the danger colour (DESIGN 6). */}}
-  <a href="{{.ForceStopPath}}" id="act-force-stop">{{t "server.action.force_stop"}}</a>
-  {{- end}}
 </div>
+{{- end}}
+{{- if .CanForceStop}}
+{{- /* The emergency stop is not a peer of the routine controls: it sits at the plate's foot under a danger rule, with what it does in one line. On a phone it folds under an Emergency actions disclosure, so it does not push the facts down; on a wide screen the script opens it and hides the summary. */}}
+<details class="disclosure emergency" data-open-wide>
+  <summary>{{t "server.force.group"}}</summary>
+  <div class="danger-row">
+    <a href="{{.ForceStopPath}}" id="act-force-stop">{{t "server.action.force_stop"}}</a>
+    <p class="hint">{{t "server.force.at_once"}}</p>
+  </div>
+</details>
 {{- end}}
 {{- if not .ActionsNote.IsZero}}
 <p>{{msg .ActionsNote}}</p>

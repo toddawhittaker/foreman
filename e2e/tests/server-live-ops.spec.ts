@@ -170,7 +170,7 @@ test("the whitelist buttons show only while the running game keeps the whitelist
   // The switch is read at the start, so it is set before.
   await page.goto("/worlds/base/settings");
   await page.getByLabel("Only whitelisted players can join").check();
-  await page.getByRole("button", { name: "Save whitelist choice" }).click();
+  await page.getByRole("button", { name: "Save whitelist enforcement" }).click();
   await expect(page.locator("#done-message")).toBeVisible();
   expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
   await expect.poll(async () => (await page.request.get("/")).text(), live).toContain("state--running");
@@ -223,8 +223,9 @@ test("the next scheduled restart shows while the game runs, as a time still to c
   await expect(page.locator(".schedule-next dt")).toHaveText("Next restart");
   await expect(next).toHaveAttribute("href", "/settings/restart-schedule");
   await expect(next.locator("time")).toHaveAttribute("datetime", /T04:00:00Z$/);
-  // time.js says how far off it is (SPEC 17.11).
-  await expect(next).toContainText(/\(in \d+ (hours?|minutes?)\)|\(tomorrow\)/);
+  // time.js says how far off it is (SPEC 17.11). A run in the minute before
+  // 04:00 UTC sees seconds, so those count as still to come too.
+  await expect(next).toContainText(/\(in \d+ (hours?|minutes?|seconds?)\)|\(tomorrow\)/);
   await checkPage(page);
 
   // Changing the schedule is one click from it, and the save the second.

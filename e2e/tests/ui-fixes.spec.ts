@@ -534,22 +534,79 @@ test.describe("Generate", () => {
     await expect(page.locator("#preset-modified")).toHaveText("");
   });
 
-  // WCAG 1.4.11: the slider is drawn in the selected colour, 3:1 or more on both themes (DESIGN 3).
-  test("the sliders use the selected colour", async ({ page }) => {
+  // DESIGN 8.7: the style sheet draws the sliders in neutrals, so orange keeps
+  // meaning the primary action: the track in `border`, the fill up to the knob
+  // in `text` and the knob in `heading`. WCAG 1.4.11: the fill and the knob
+  // stand 3:1 or more against the page behind them, on both themes (DESIGN 3).
+  // A turned-off slider takes `border` for its fill and knob.
+  test("the sliders are drawn in neutrals, and greyed while off", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/generate");
     await tab(page, "Resources").click();
-    const range = page.locator("input.step__range").first();
+    const range = page.locator("#mg-nauvis-uranium-ore-frequency-range");
     await expect(range).toBeVisible();
-    const [accent, selected] = await range.evaluate((r) => {
-      const probe = document.createElement("span");
-      probe.style.color = "var(--color-selected)";
-      document.body.append(probe);
-      const want = getComputedStyle(probe).color;
-      probe.remove();
-      return [getComputedStyle(r).accentColor, want];
+    // In the middle of the window, clear of the form's sticky save bar at the viewport's foot.
+    await range.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    // A mouse resting over the slider could change its knob.
+    await page.mouse.move(0, 0);
+    const tokens = await range.evaluate(() => {
+      const rgb = (name: string) => {
+        const probe = document.createElement("span");
+        probe.style.color = `var(${name})`;
+        document.body.append(probe);
+        const m = getComputedStyle(probe).color.match(/\d+(\.\d+)?/g)!.slice(0, 3).map(Number);
+        probe.remove();
+        return m;
+      };
+      return { border: rgb("--color-border"), text: rgb("--color-text"), heading: rgb("--color-heading"), selected: rgb("--color-selected") };
     });
-    expect(accent).toBe(selected);
+    // The browser's own orange is not used.
+    expect(await range.evaluate((r) => getComputedStyle(r).appearance)).toBe("none");
+
+    // Sampled at mid height: the fill at a quarter, the knob at the middle (the default), the bare track at
+    // three quarters, and the page above the track.
+    const points: [number, number][] = [[0.25, 0.5], [0.5, 0.5], [0.85, 0.5], [0.5, 0]];
+    const sample = async () => {
+      const png = await range.screenshot({ animations: "disabled" });
+      const blank = await page.context().newPage();
+      const out = await blank.evaluate(async ({ b64, points }) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const g = c.getContext("2d")!;
+        g.drawImage(img, 0, 0);
+        return points.map(([x, y]) => [...g.getImageData(Math.round(x * (c.width - 1)), Math.round(y * (c.height - 1)), 1, 1).data.slice(0, 3)]);
+      }, { b64: png.toString("base64"), points });
+      await blank.close();
+      return out;
+    };
+    const apart = (a: number[], b: number[]) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+    const lum = (c: number[]) => {
+      const [r, g, b] = c.map((v) => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const contrast = (a: number[], b: number[]) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+
+    const [fill, knob, track, back] = await sample();
+    expect(apart(fill, tokens.text), "the fill is the text colour").toBeLessThanOrEqual(12);
+    expect(apart(knob, tokens.heading), "the knob is the heading colour").toBeLessThanOrEqual(12);
+    expect(apart(track, tokens.border), "the bare track is the border colour").toBeLessThanOrEqual(12);
+    for (const px of [fill, knob, track]) expect(apart(px, tokens.selected), "no part is the selected orange").toBeGreaterThan(40);
+    expect(contrast(fill, back), "the fill stands out from the page").toBeGreaterThanOrEqual(3);
+    expect(contrast(knob, back), "the knob stands out from the page").toBeGreaterThanOrEqual(3);
+
+    // Off: the slider is disabled, and its fill and knob take the border colour.
+    await page.locator("#mg-nauvis-uranium-ore-on").uncheck();
+    await expect(range).toBeDisabled();
+    const [offFill, offKnob] = await sample();
+    expect(apart(offFill, tokens.border), "the fill while off").toBeLessThanOrEqual(12);
+    expect(apart(offKnob, tokens.border), "the knob while off").toBeLessThanOrEqual(12);
+    await page.locator("#mg-nauvis-uranium-ore-on").check();
+    await expect(range).toBeEnabled();
+    expect(apart((await sample())[1], tokens.heading), "the knob back on").toBeLessThanOrEqual(12);
   });
 });
 

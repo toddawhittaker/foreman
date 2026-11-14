@@ -414,6 +414,7 @@ type usage struct {
 	ok     bool
 	cpu    float64
 	memory uint64
+	limit  uint64
 }
 
 // world returns the record for id, making it on first use.
@@ -703,6 +704,9 @@ type Status struct {
 	HaveUsage   bool
 	CPUPercent  float64
 	MemoryBytes uint64
+	// MemoryLimit is the most memory the container may use, as Docker
+	// reports it (the host's memory when no limit is set); 0 when unknown.
+	MemoryLimit uint64
 	// Operation is the operation running now, or the last one.
 	Operation *Operation
 	// Download is the image download running now, or the last one.
@@ -769,7 +773,7 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 		}
 	}
 	if w.dockerStatus == "running" && w.usage.ok {
-		st.HaveUsage, st.CPUPercent, st.MemoryBytes = true, w.usage.cpu, w.usage.memory
+		st.HaveUsage, st.CPUPercent, st.MemoryBytes, st.MemoryLimit = true, w.usage.cpu, w.usage.memory, w.usage.limit
 	}
 	if w.dockerStatus == "running" {
 		st.LowDisk, st.FreeBytes = c.diskLow()

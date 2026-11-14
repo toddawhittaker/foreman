@@ -70,7 +70,7 @@ func TestChangeVersionGoesBack(t *testing.T) {
 
 	_, status := g.getStatus(modsPath(id) + "/status")
 	link := plan + "?kind=update&amp;name=ver-b&amp;version-ver-b=1.1.0"
-	wantIn(t, "status", status, `<span id="`+slotID("version", "ver-b")+`" hx-swap-oob="true"><a href="`+link+`" class="button button--quiet mod-version">Change version<span class="visually-hidden"> <span translate="no">ver-b</span></span></a></span>`)
+	wantIn(t, "status", status, `<span id="`+slotID("version", "ver-b")+`" hx-swap-oob="true"><a href="`+link+`" class="row-menu__item mod-version">Change version<span class="visually-hidden"> <span translate="no">ver-b</span></span></a></span>`)
 
 	code, body := g.getStatus(plan + "?kind=update&name=ver-b&version-ver-b=1.1.0")
 	if code != http.StatusOK {

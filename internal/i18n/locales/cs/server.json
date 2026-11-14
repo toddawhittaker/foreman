@@ -606,5 +606,6 @@
   "server.schedule.next_is": "Další restart: {time}.",
   "server.op.scheduled_restart": "Plánovaný restart",
   "server.disk.low": "Volné je jen {free} místa na disku. Pod {reserve} mohou automatická uložení selhat a snímky se přestanou pořizovat. Smažte nepotřebné snímky nebo světy.",
-  "server.disk.snapshots": "Snímky"
+  "server.disk.snapshots": "Snímky",
+  "server.force.group": "Nouzové akce"
 }

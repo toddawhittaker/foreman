@@ -58,6 +58,7 @@
   "mods.state.off": "Desactivado",
   "mods.row.update": "Actualizar a {version}",
   "mods.row.version": "Cambiar versión",
+  "mods.row.more": "Más acciones para {name}",
   "mods.row.enable": "Activar",
   "mods.row.disable": "Desactivar",
   "mods.row.remove": "Quitar",
@@ -136,7 +137,7 @@
   "mods.upload.bad_name": "El info.json del mod da un nombre o una versión que Foreman no puede usar como nombre de archivo. Elige otro archivo.",
   "mods.upload.wrong_mod": "Este zip contiene {got}, no {mod}. Elige el zip de {mod}.",
   "mods.settings.heading": "Ajustes de los mods",
-  "mods.settings.text": "Los valores de los ajustes de los mods están en {file}. Descárgalo para conservar una copia o para usarlo en otro mundo.",
+  "mods.settings.text": "Los valores de los ajustes de los mods están en {file}; descárgalo para guardar una copia.",
   "mods.settings.download": "Descargar mod-settings.dat",
   "mods.settings.none": "Este mundo aún no tiene {file}. El juego escribe uno la primera vez que se ejecuta con mods.",
   "mods.settings.summary": "Reemplazar {file}",
@@ -168,6 +169,9 @@
   "mods.settings.edit.no_change": "No cambiaste ningún ajuste, así que no se guardó nada.",
   "mods.settings.edit.none": "Los mods activados no tienen ajustes que mostrar.",
   "mods.settings.edit.back": "Volver a los mods",
+  "mods.settings.edit.summary": "Al guardar, primero se toma una instantánea y luego se escriben los ajustes que cambiaste. Deshacer restaura esa instantánea.",
+  "mods.settings.edit.summary_running": "Al guardar, se avisa a los jugadores y se reinicia el servidor, tomando antes una instantánea. Deshacer restaura esa instantánea.",
+  "mods.settings.edit.details": "Qué ocurre al guardar",
   "mods.settings.edit.fixed": "Foreman no puede editar este tipo de ajuste.",
   "mods.settings.edit.locked": "El mod solo permite este valor.",
   "mods.settings.edit.on": "Activado",
@@ -397,5 +401,7 @@
     "one": "Borrar lo que {mods} construyó. La instantánea «{label}» conserva una copia.",
     "other": "Borrar lo que construyeron estos {count} mods: {mods}. La instantánea «{label}» conserva una copia."
   },
-  "mods.drops.confirm_missing_one": "Marca la casilla para confirmar que el juego borra lo que {mod} construyó, o cancela."
+  "mods.drops.confirm_missing_one": "Marca la casilla para confirmar que el juego borra lo que {mod} construyó, o cancela.",
+  "mods.tools.label": "Herramientas de mods",
+  "mods.row.more_word": "Más"
 }

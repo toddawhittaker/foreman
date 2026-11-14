@@ -3,7 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 
 // The phone layout (SPEC 17.2, VISION success test, DESIGN 6): the header is
 // two short rows, the Server page leads with its controls and progress, the
-// console's field sits above the log, and a world in the list stays compact.
+// console's field sits under the log, as on a wide screen, and a world in the list stays compact.
 // Every project runs these, so each holds at 320 px and at desktop width.
 
 const container = "foreman-base";
@@ -63,6 +63,8 @@ test.describe("with the fake game", () => {
     if (phone(page)) expect((await box(snapshot)).width).toBe((await box(stop)).width);
 
     // Force stop is a plain link after the buttons, not a button face of its own.
+    // On a phone it folds under the Emergency actions disclosure, so it is opened first.
+    if (phone(page)) await page.locator("details.emergency > summary").click();
     const force = page.getByRole("link", { name: "Force stop" });
     await expect(force).not.toHaveClass(/button/);
     expect((await box(force)).height).toBeGreaterThanOrEqual(44);
@@ -100,23 +102,36 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running", live);
   });
 
-  test("the console's command field sits above the game log, with the reply under it", async ({ page, foreman, fakeGame }) => {
+  test("the console's command field sits under the game log, with the reply under it", async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!);
     await page.getByRole("navigation", { name: "Server pages" }).getByRole("link", { name: "Console" }).click();
 
     const field = page.getByLabel("Command");
     const log = page.getByRole("region", { name: "Game log lines" });
-    expect((await box(field)).y).toBeLessThan((await box(log)).y);
-    expect((await box(field)).y + 44).toBeLessThanOrEqual(page.viewportSize()!.height);
+    expect((await box(field)).y).toBeGreaterThan((await box(log)).y);
+    // Once its card is reached, the command field is on that first screen (DESIGN 8.5).
+    await page.locator(".terminal").evaluate((el) => el.scrollIntoView({ block: "start" }));
+    await expect(field).toBeInViewport({ ratio: 1 });
 
     await field.fill("/players online");
     await page.getByRole("button", { name: "Send" }).click();
     const reply = page.locator("#last-reply");
     await expect(reply).toContainText("alice", live);
-    // The newest reply is right under the field, before the log, and the history box fits it.
+    // The newest reply is right under the field, after the log. The history box is only as
+    // tall as what it holds, up to min(40vh, 20rem), then scrolls (DESIGN 6, 8.5).
     const history = page.getByRole("region", { name: "Console history" });
-    expect((await box(history)).y).toBeLessThan((await box(log)).y);
-    expect((await box(history)).height).toBeLessThan((await box(log)).height);
+    expect((await box(history)).y).toBeGreaterThan((await box(field)).y);
+    const cap = Math.min(0.4 * page.viewportSize()!.height, 320);
+    expect((await box(history)).height).toBeLessThanOrEqual(cap + 1);
+    // When what it holds is shorter than the cap, the box ends under the newest entry, with no empty band.
+    const { band, held } = await history.evaluate((el) => {
+      const s = getComputedStyle(el);
+      const first = el.querySelector("li")!.getBoundingClientRect();
+      const last = el.querySelector("li:last-child")!.getBoundingClientRect();
+      const frame = parseFloat(s.paddingBlockStart) + parseFloat(s.paddingBlockEnd) + parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth);
+      return { held: last.bottom - first.top + frame, band: el.getBoundingClientRect().bottom - last.bottom - parseFloat(s.paddingBlockEnd) - parseFloat(s.borderBottomWidth) };
+    });
+    if (held < cap - 4) expect(band, "empty space under the newest entry, in px").toBeLessThanOrEqual(4);
     await expect(reply).toBeInViewport();
     await checkPage(page);
   });
