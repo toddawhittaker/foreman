@@ -138,7 +138,7 @@ func (e *gameEnv) runCatalogue(t *testing.T, tag, fixture, version string) {
 		}
 		if sameRun() {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			out, err := exec.CommandContext(ctx, "docker", "exec", before.ID, "sh", "-c", "kill -TERM 1").CombinedOutput()
+			out, err := exec.CommandContext(ctx, "docker", "exec", before.ID, "sh", "-c", "kill -TERM 1").CombinedOutput() //nolint:gosec // fixed arguments on the test's own container
 			cancel()
 			if err != nil && sameRun() {
 				t.Fatalf("end the run after applying memory limits: %v: %s", err, out)

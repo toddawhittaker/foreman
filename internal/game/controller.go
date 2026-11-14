@@ -360,18 +360,18 @@ type worldRun struct {
 	crashedRun    bool // Docker restarted the game after a crash and it is not back in game
 	// oomKilled is whether Docker said the newest exit it was seen at was an
 	// out-of-memory kill (SPEC 8.7). An exit no look saw changes nothing;
-	// reaching the game again clears it.
+	// the game coming back in game clears it.
 	oomKilled bool
 	// crashLog is the container's log as read when a look found Docker had
 	// restarted the game: the runs between two looks can end before the
 	// follower reads them (SPEC 8.7, ADR 0016). nil until then, and after
-	// the game reaches the game again.
+	// the game is back in game.
 	crashLog *crashLog
 	run      runState
-	saves         int           // "Saving finished" lines seen
-	changed       chan struct{} // closed and replaced whenever the game's state moves
-	rc            *rcon.Client
-	secrets       []secret.Secret // removed from every relayed line (SPEC 8.6)
+	saves    int           // "Saving finished" lines seen
+	changed  chan struct{} // closed and replaced whenever the game's state moves
+	rc       *rcon.Client
+	secrets  []secret.Secret // removed from every relayed line (SPEC 8.6)
 	// noSecrets is set when the container was taken on while stopped,
 	// without its world's passwords; it is taken on again before its log
 	// is followed.
