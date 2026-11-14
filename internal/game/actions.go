@@ -610,12 +610,15 @@ func durationWords(d time.Duration) string {
 	return fmt.Sprintf("%d seconds", secs)
 }
 
-// refresh reads the container once more after Foreman changed it, while an
-// operation keeps the monitor away.
+// refresh reads the container once more after Foreman stopped it. A
+// monitor look read before the stop would show the game running again; a
+// forced stop may run outside any operation, so refresh counts as one
+// (see worldRun.ops) and that look is dropped.
 func (c *Controller) refresh(ctx context.Context, w *worldRun, cid string) {
 	cont, err := c.docker.InspectContainer(ctx, cid)
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	w.ops++
 	if err == nil && w.containerID == cid {
 		w.dockerStatus, w.seenRestarts = cont.State.Status, cont.RestartCount
 	}
