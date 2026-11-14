@@ -533,10 +533,12 @@ type AxeNode = { target: unknown[]; any?: AxeCheck[]; all?: AxeCheck[]; none?: A
 type AxeViolation = { id: string; nodes: AxeNode[] };
 
 // axe-core 4.14 marks a target that is big enough but partly covered with
-// this key; a target that is simply too small has none.
+// this key on its target-size check; a target that is simply too small has
+// none. The node's target-offset check is axe's other way to pass (enough
+// space around a small target), so it says nothing about why size failed.
 function onlyObscured(n: AxeNode): boolean {
-  const checks = [...(n.any ?? []), ...(n.all ?? []), ...(n.none ?? [])];
-  return checks.length > 0 && checks.every((c) =>
+  const sizeChecks = [...(n.any ?? []), ...(n.all ?? []), ...(n.none ?? [])].filter((c) => c.id === "target-size");
+  return sizeChecks.length > 0 && sizeChecks.every((c) =>
     typeof c.data === "object" && c.data !== null && (c.data as { messageKey?: unknown }).messageKey === "partiallyObscured");
 }
 
