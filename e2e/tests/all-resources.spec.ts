@@ -1,4 +1,4 @@
-import { test, expect, createAdmin, seedWorld, image21, openPlanetRow } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, openPlanetRow } from "./foreman.js";
 import type { Locator, Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -170,4 +170,56 @@ test("a preset that sets resources redraws the row to what they hold", async ({ 
       return new Set(values).size === 1 ? shownValue === values[0] : shownValue === "";
     })
     .toBe(true);
+});
+
+// One sentence says the whole change, once, in the page's polite live region.
+test("a change on the row is said once, with the number of resources it reached", async ({ page }) => {
+  await page.locator("#mg-nauvis-stone-on").uncheck();
+  await expect(page.locator("#announcer")).toContainText("Without stone");
+  await chooseAllLast(page, "richness");
+  await expect(page.locator("#announcer")).toHaveText("Richness set to 600% on 5 resources.");
+  // With one resource left on, the sentence is singular.
+  for (const c of ["iron-ore", "copper-ore", "coal", "crude-oil"]) await page.locator(`#mg-nauvis-${c}-on`).uncheck();
+  // The previews the boxes asked for have said their news by now, so they do not follow the sentence.
+  await page.waitForTimeout(2500);
+  await setSelect(all(page, "frequency"), "200");
+  await expect(page.locator("#announcer")).toHaveText("Frequency set to 200% on 1 resource.");
+});
+
+test("each select of the row is described by its hint", async ({ page }) => {
+  for (const key of ["frequency", "size", "richness"]) {
+    await expect(all(page, key)).toHaveAccessibleDescription("Sets every resource of this planet that is on.");
+  }
+});
+
+// With every resource off there is nothing to set: the row is off, and says why.
+test("the row is disabled while every resource of the planet is off, and comes back with one", async ({ page }) => {
+  const boxes = (await nauvisResources(page, "frequency")).map((c) => page.locator(`#mg-nauvis-${c}-on`));
+  for (const box of boxes) await box.uncheck();
+  await expect(page.locator("#mg-nauvis-all")).toHaveJSProperty("disabled", true);
+  await expect(page.locator("#mg-nauvis-all .hint")).toHaveText("Every resource of this planet is off. Switch one on to use this row.");
+  await expect(all(page, "richness")).toBeDisabled();
+  await boxes[0].check();
+  await expect(page.locator("#mg-nauvis-all")).toHaveJSProperty("disabled", false);
+  await expect(page.locator("#mg-nauvis-all .hint")).toHaveText("Sets every resource of this planet that is on.");
+});
+
+// The automatic preview waits out its pause and starts over on each change, so a change of the row, which
+// sets many resources at once, asks for one picture.
+test("one change of the row asks for one preview", async ({ page }) => {
+  await page.waitForTimeout(2500);
+  const sent: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().endsWith("/generate/preview")) sent.push(r.postData() ?? "");
+  });
+  await chooseAllLast(page, "richness");
+  await page.waitForTimeout(2500);
+  expect(sent.length).toBeLessThanOrEqual(1);
+});
+
+// The row in its Mixed state passes the page's accessibility scan, wide and on a phone.
+test("the page passes the accessibility scan with the row Mixed", async ({ page }) => {
+  await setResource(page, "iron-ore", "richness", "200");
+  expect(await shown(page, "richness")).toBe("Mixed");
+  await checkPage(page);
 });

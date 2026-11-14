@@ -103,17 +103,18 @@
 {{/* The row that sets one setting on every resource of a planet that is on.
      Script only: without it the row stays hidden, and its selects have no
      name, so the form sends nothing for it (DESIGN 8.7). The "Mixed" entry
-     is what the script selects while the resources differ. Takes MapGenAll. */}}
+     is what the script selects while the resources differ; with every resource
+     off the script disables the row and the hint says why. Takes MapGenAll. */}}
 {{define "mapgen-all" -}}
-<fieldset class="autoplace autoplace--all" id="{{.ID}}" data-all-groups="{{.Groups}}" aria-describedby="{{.ID}}-hint">
+<fieldset class="autoplace autoplace--all" id="{{.ID}}" data-all-groups="{{.Groups}}">
   <legend>{{t "mapgen.all.legend"}}</legend>
-  <p class="hint" id="{{.ID}}-hint">{{t "mapgen.all.hint"}}</p>
+  <p class="hint" id="{{.ID}}-hint" data-hint="{{t "mapgen.all.hint"}}" data-hint-off="{{t "mapgen.all.off"}}">{{t "mapgen.all.hint"}}</p>
   {{- range .Selects}}
   <div class="field step">
     <div class="field__head">
       <label for="{{.ID}}" id="{{.ID}}-label">{{msg .Label}}</label>
     </div>
-    <select id="{{.ID}}" data-all-key="{{.Key}}">
+    <select id="{{.ID}}" data-all-key="{{.Key}}" aria-describedby="{{$.ID}}-hint">
       <option value="" data-mixed disabled hidden>{{t "mapgen.all.mixed"}}</option>
       {{- $chosen := .Value}}
       {{- range .Options}}

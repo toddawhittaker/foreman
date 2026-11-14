@@ -11,6 +11,7 @@
   "mapgen.achievement.warning": "Vypne některé úspěchy.",
   "mapgen.all.hint": "Nastaví najednou všechny zapnuté zdroje této planety.",
   "mapgen.all.legend": "Všechny zdroje",
+  "mapgen.all.off": "Všechny zdroje této planety jsou vypnuté. Zapnutím jednoho lze tento řádek použít.",
   "mapgen.all.mixed": "Různé",
   "mapgen.aux.legend": "Typ terénu",
   "mapgen.control.calcite": "Kalcit",

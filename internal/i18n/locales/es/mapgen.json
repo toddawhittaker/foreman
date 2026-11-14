@@ -11,6 +11,7 @@
   "mapgen.achievement.warning": "Desactiva algunos logros.",
   "mapgen.all.hint": "Ajusta a la vez todos los recursos activados de este planeta.",
   "mapgen.all.legend": "Todos los recursos",
+  "mapgen.all.off": "Todos los recursos de este planeta están desactivados. Activa uno para usar esta fila.",
   "mapgen.all.mixed": "Mixto",
   "mapgen.aux.legend": "Tipo de terreno",
   "mapgen.control.calcite": "Calcita",

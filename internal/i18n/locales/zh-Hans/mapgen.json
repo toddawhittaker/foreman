@@ -11,6 +11,7 @@
   "mapgen.achievement.warning": "将禁用部分成就。",
   "mapgen.all.hint": "同时设置此星球上所有已启用的资源。",
   "mapgen.all.legend": "全部资源",
+  "mapgen.all.off": "此星球上的资源均已关闭。启用其中一项后才能使用此行。",
   "mapgen.all.mixed": "混合",
   "mapgen.aux.legend": "地貌类型",
   "mapgen.control.calcite": "方解石",

@@ -1976,9 +1976,15 @@ starts."
   the preview follow. The row shows the value every such resource holds, or
   "Mixed" when they differ: an entry the script selects, never one to
   choose (it is `hidden` and `disabled`), over a slider that stands at the
-  default step with "Mixed" for its words. It is worked out again when a
-  resource, a box or a preset or reset changes the values. The on/off boxes
-  are as before.
+  default step with "Mixed" for its words, so from Mixed the first arrow
+  key moves to the step beside the default. It is worked out again when a
+  resource, a box or a preset or reset changes the values. The row applies
+  a committed choice, not every step of a drag, and says it once in the
+  polite live region ("Richness set to 600% on 5 resources."), after any
+  achievement news the change caused. Each select is described by the
+  hint. While every resource of the planet is off, the row is disabled and
+  the hint says why; ticking one box brings it back. The on/off boxes are
+  as before.
 - **One fieldset per control**, its legend the game's name, small and
   muted so the groups read as one list. Its settings sit in a grid
   `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`, 13rem with sliders.

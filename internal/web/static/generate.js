@@ -216,26 +216,43 @@ document.addEventListener("DOMContentLoaded", () => {
   // "[modified]" and the preview follow; the row's selects have no name and
   // send nothing. Its own selects show the value the resources share, or "Mixed".
   let applyingAll = false;
-  // The select of one setting in each resource of the row that is on (or has no box).
-  function allTargets(row, key) {
+  // The resources of the row that are on (or have no box).
+  function groupsOn(row) {
     return row.dataset.allGroups.split(" ").flatMap((id) => {
       const group = document.getElementById(id);
       const box = group && group.querySelector(":scope > legend input[type=checkbox]");
-      const select = group && (!box || box.checked) ? group.querySelector(`select[name$=".${key}"]`) : null;
+      return group && (!box || box.checked) ? [group] : [];
+    });
+  }
+  // The select of one setting in each of those.
+  function allTargets(row, key) {
+    return groupsOn(row).flatMap((group) => {
+      const select = group.querySelector(`select[name$=".${key}"]`);
       return select ? [select] : [];
     });
   }
   function applyAll(all) {
     const row = all.closest("[data-all-groups]");
     if (!row) return;
+    const targets = allTargets(row, all.dataset.allKey);
     applyingAll = true;
-    for (const select of allTargets(row, all.dataset.allKey)) {
+    for (const select of targets) {
       if (select.value === all.value || ![...select.options].some((o) => o.value === all.value)) continue;
       select.value = all.value;
       select.dispatchEvent(new Event("input", { bubbles: true }));
       select.dispatchEvent(new Event("change", { bubbles: true }));
     }
     applyingAll = false;
+    if (!targets.length) return;
+    // One sentence for the whole change, after any achievement news it caused.
+    const lang = document.documentElement.lang;
+    const text = strings["js.generate.all_set"];
+    const form = text[new Intl.PluralRules(lang).select(targets.length)] ?? text.other;
+    const said = form
+      .replace("{setting}", labelOf(all))
+      .replace("{value}", all.options[all.selectedIndex].text)
+      .replace("{count}", targets.length.toLocaleString(lang));
+    announce(saidNow ? saidNow + " " + said : said);
   }
   function syncAll() {
     document.querySelectorAll("#generate-form [data-all-groups]").forEach((row) => {
@@ -247,16 +264,24 @@ document.addEventListener("DOMContentLoaded", () => {
         all.selectedIndex = option ? option.index : [...all.options].find((o) => o.hasAttribute("data-mixed")).index;
         syncSlider(all);
       });
+      // With every resource off there is nothing to set; the hint says so.
+      const none = groupsOn(row).length === 0;
+      row.disabled = none;
+      const hint = row.querySelector(".hint");
+      if (hint) hint.textContent = none ? hint.dataset.hintOff : hint.dataset.hint;
     });
   }
   function onAllEvent(e) {
     const t = e.target;
     if (applyingAll || !t.closest || !t.closest("#generate-form")) return;
-    // A select's change is a choice; a slider sends no change, so its input is.
     const range = t.classList.contains("step__range");
     if (e.type === "input" && !range) return;
     const select = range ? document.getElementById(t.dataset.for) : t;
-    if (select && select.matches && select.matches("select[data-all-key]")) applyAll(select);
+    if (select && select.matches && select.matches("select[data-all-key]")) {
+      // The row applies a committed choice: a drag is many inputs but one change, so one request and one sentence.
+      if (e.type === "change") applyAll(select);
+      else return;
+    }
     syncAll();
   }
 

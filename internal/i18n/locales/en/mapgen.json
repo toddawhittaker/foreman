@@ -11,6 +11,7 @@
   "mapgen.achievement.warning": "Turns off some achievements.",
   "mapgen.all.hint": "Sets every resource of this planet that is on.",
   "mapgen.all.legend": "All resources",
+  "mapgen.all.off": "Every resource of this planet is off. Switch one on to use this row.",
   "mapgen.all.mixed": "Mixed",
   "mapgen.aux.legend": "Terrain type",
   "mapgen.control.calcite": "Calcite",
