@@ -1525,7 +1525,9 @@ first; the rest go by downloads, most first, then by name. A
 mods.factorio.com link pasted into the box finds that exact mod, read from
 the path after `/mod/` (nothing is fetched from the link); text that is
 not such a link is an ordinary search. With script the results follow the
-typing, from 2 characters, a short pause after the last key; without it the
+typing, from 2 characters, a short pause after the last key, both on the
+search page and under the Mods tab's "Find a mod" box, which keeps its own
+address; without it the
 Search button works as before. A link "Browse the mod portal" opens the
 portal's most downloaded list for the game line in a new tab.
 It does this because the portal's own search needs credentials, and
@@ -2396,8 +2398,8 @@ with the defaults accepted, these take at most:
 | Switch to another world, downloading its game image if needed (Switch world, the world's Switch, confirm) | 3 |
 | Switch back after a switch | 2 |
 | Undo the last change (switch, update, restore, mod change) | 2 |
-| Search for a mod and install it (Mods, Search, Add to plan, Install 1 mod) | 4 |
-| Install a second mod in the same change (one more Add to plan, on the plan page) | 5 |
+| Search for a mod and install it (Mods, type the name, Add to plan, Install 1 mod; typing is not a click) | 3 |
+| Install a second mod in the same change (one more Add to plan, on the plan page) | 4 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
 | Change a startup mod setting (Mods, Edit mod settings, tick the setting, Save and restart; on a phone, Mod tools before Edit mod settings) | 4 (5 on a phone) |
 | Change a mod's version (Mods, the row's More actions, Change version, choose the version, Change 1 mod; when the portal has an update, the row's Update to *x.y.z* opens the same version choice, so Mods, Update to *x.y.z*, choose, Change 1 mod) | 5 (4 with an update) |
