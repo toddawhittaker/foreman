@@ -34,7 +34,7 @@ func seedSidecar(d *Daemon, name string) Container {
 		Networks: map[string]string{"games": "172.30.0.5/24,fd00:30::5/64", "shared": "10.9.0.7/16"},
 		Spec: docker.ContainerSpec{
 			Image:        sidecarImage,
-			Env:          []string{"TS_AUTHKEY=tskey-secret-value"},
+			Env:          []string{"TS_AUTHKEY=test-only-sidecar-secret"},
 			ExposedPorts: map[string]struct{}{"34197/udp": {}, "9/tcp": {}},
 			HostConfig: docker.HostConfig{
 				NetworkMode:  "games",
@@ -89,7 +89,7 @@ func TestInspectOfMultiNetworkSidecar(t *testing.T) {
 	if !reflect.DeepEqual(got.Ports, wantPorts) {
 		t.Errorf("Ports = %+v, want %+v", got.Ports, wantPorts)
 	}
-	if v, _ := got.EnvValue("TS_AUTHKEY"); v != "tskey-secret-value" || got.NetworkMode != "games" {
+	if v, _ := got.EnvValue("TS_AUTHKEY"); v != "test-only-sidecar-secret" || got.NetworkMode != "games" {
 		t.Errorf("env or mode lost: mode %q", got.NetworkMode)
 	}
 }
@@ -254,7 +254,7 @@ func TestSharedNamespaceStartNeedsARunningSidecar(t *testing.T) {
 		if after.State.Running || after.State.Status != "created" || after.State.Error == "" || after.State.ExitCode != 128 {
 			t.Errorf("%s: state after refused start = %+v", tc.name, after.State)
 		}
-		if strings.Contains(err.Error(), "tskey-secret-value") {
+		if strings.Contains(err.Error(), "test-only-sidecar-secret") {
 			t.Errorf("%s: error carries the sidecar's environment: %v", tc.name, err)
 		}
 	}

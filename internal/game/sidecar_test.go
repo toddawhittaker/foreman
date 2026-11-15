@@ -21,7 +21,7 @@ import (
 
 // sidecarSecret is in the sidecar's environment; no error or status may
 // show it (SPEC 14.16).
-const sidecarSecret = "tskey-auth-never-shown" //nolint:gosec // a test value to look for
+const sidecarSecret = "test-only-sidecar-secret" //nolint:gosec // a test value to look for
 
 // sharedNet is an additional network the sidecar is on, with an unrelated
 // service on it too: allowed (SPEC 4.13).
