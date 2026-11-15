@@ -47,6 +47,8 @@
   <p class="hint">{{t "mods.search.pick_hint"}}</p>
   {{- end}}
   {{template "mod-hits" .}}
+  {{- else if not .LinkMiss.IsZero}}
+  <p class="empty">{{msg .LinkMiss}}</p>
   {{- else}}
   <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
   {{- end}}

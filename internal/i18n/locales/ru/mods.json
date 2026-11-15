@@ -18,6 +18,8 @@
   "mods.search.results_heading": "Моды, подходящие под «{query}»",
   "mods.search.unreachable": "Foreman не смог связаться с порталом модов и поэтому не выполнил поиск. Повторите попытку через минуту.",
   "mods.search.none": "Нет модов для Factorio {line}, подходящих под запрос. Введите более короткую часть названия.",
+  "mods.search.link_unknown": "На портале модов нет мода с названием {name}.",
+  "mods.search.link_no_release": "У мода {name} нет выпуска для Factorio {line}.",
   "mods.search.add": "Добавить в план",
   "mods.hits.count": {
     "one": "{count} мод для Factorio {line} подходит.",
