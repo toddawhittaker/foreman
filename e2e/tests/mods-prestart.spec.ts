@@ -83,6 +83,9 @@ test("a refusal that arrives without a reload leaves one Update button and keeps
   await expect(refusal(page)).toBeVisible(live);
   await expect(mine).toHaveCount(0, live);
   await expect(page.getByRole("link", { name: "Update visible-planets" })).toHaveCount(1);
+  // The second page took the browser's focus; give it back so toBeFocused sees the page's
+  // active element, not an "inactive" page (issue 593).
+  await page.bringToFront();
   await expect(page.locator("#act-fix")).toBeFocused();
   await checkPage(page);
 });
