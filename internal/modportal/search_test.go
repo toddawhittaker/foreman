@@ -50,6 +50,38 @@ func TestSearchHitFields(t *testing.T) {
 	}
 }
 
+// SPEC 9.1: each hit carries the date of its latest release, read from the
+// list itself. A missing or unreadable date is the zero time, never an error.
+func TestSearchHitReleasedAt(t *testing.T) {
+	_, c, _ := fakePortal(t)
+	hits, err := c.Search(context.Background(), "2.0", "flib")
+	if err != nil || len(hits) != 1 {
+		t.Fatalf("hits %v, err %v", hits, err)
+	}
+	want := time.Date(2025, 11, 5, 1, 17, 3, 734000000, time.UTC)
+	if !hits[0].ReleasedAt.Equal(want) {
+		t.Errorf("ReleasedAt %v, want %v", hits[0].ReleasedAt, want)
+	}
+
+	c = handlerClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(listBody([]listRow{
+			{name: "good", title: "T", releasedAt: "2026-02-03T04:05:06Z"},
+			{name: "none", title: "T"},
+			{name: "bad", title: "T", releasedAt: "last Tuesday"},
+		}))
+	})
+	hits, err = c.Search(context.Background(), "2.0", "t")
+	if err != nil || len(hits) != 3 {
+		t.Fatalf("hits %v, err %v", hits, err)
+	}
+	for _, h := range hits {
+		zero := h.Name != "good"
+		if h.ReleasedAt.IsZero() != zero {
+			t.Errorf("%s: ReleasedAt %v, zero want %v", h.Name, h.ReleasedAt, zero)
+		}
+	}
+}
+
 // Only an exact name outranks downloads; a prefix match gets no boost.
 func TestSearchOrder(t *testing.T) {
 	c := handlerClient(t, func(w http.ResponseWriter, _ *http.Request) {

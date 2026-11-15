@@ -35,7 +35,7 @@ func (c *Client) Lookup(ctx context.Context, line, name string) (Hit, error) {
 	for i := len(m.Releases) - 1; i >= 0; i-- {
 		if r := m.Releases[i]; r.FactorioVersion == line {
 			return Hit{Name: m.Name, Title: m.Title, Summary: m.Summary, LatestVersion: r.Version,
-				FactorioVersion: line, Downloads: m.Downloads}, nil
+				FactorioVersion: line, Downloads: m.Downloads, ReleasedAt: r.ReleasedAt}, nil
 		}
 	}
 	return Hit{}, ErrNoRelease

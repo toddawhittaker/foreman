@@ -75,6 +75,7 @@ type listRow struct {
 	name, title string
 	downloads   int
 	noRelease   bool
+	releasedAt  string // sent as released_at when not empty
 }
 
 func listBody(rows []listRow) []byte {
@@ -85,10 +86,14 @@ func listBody(rows []listRow) []byte {
 			"downloads_count": r.downloads,
 		}
 		if !r.noRelease {
-			m["latest_release"] = map[string]any{
+			rel := map[string]any{
 				"version":   "1.2.3",
 				"info_json": map[string]any{"factorio_version": "2.0"},
 			}
+			if r.releasedAt != "" {
+				rel["released_at"] = r.releasedAt
+			}
+			m["latest_release"] = rel
 		}
 		results = append(results, m)
 	}

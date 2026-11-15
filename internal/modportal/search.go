@@ -81,8 +81,9 @@ func (c *Client) modList(ctx context.Context, line string) ([]listEntry, error) 
 			Summary   string `json:"summary"`
 			Downloads int    `json:"downloads_count"`
 			Latest    *struct {
-				Version string `json:"version"`
-				Info    struct {
+				Version    string `json:"version"`
+				ReleasedAt string `json:"released_at"`
+				Info       struct {
 					FactorioVersion string `json:"factorio_version"`
 				} `json:"info_json"`
 			} `json:"latest_release"`
@@ -104,6 +105,7 @@ func (c *Client) modList(ctx context.Context, line string) ([]listEntry, error) 
 				LatestVersion:   r.Latest.Version,
 				FactorioVersion: r.Latest.Info.FactorioVersion,
 				Downloads:       r.Downloads,
+				ReleasedAt:      parseReleasedAt(r.Latest.ReleasedAt),
 			},
 			name:  strings.ToLower(r.Name),
 			title: strings.ToLower(r.Title),
