@@ -39,5 +39,6 @@
   "favorites.start.note": "正在从收藏“{name}”开始。其游戏版本、太空时代设置、预设和地图设置已在下方填好，均可更改。新世界将获得其服务器设置和模组设置。",
   "favorites.start.mods": {
     "other": "世界创建后，将检查 {count} 个要安装的模组。"
-  }
+  },
+  "favorites.error.map_damaged": "此收藏的地图设置已损坏，Foreman 无法填入。请选择其他收藏，或删除此收藏后从世界重新创建。"
 }

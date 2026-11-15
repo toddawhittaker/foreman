@@ -42,5 +42,6 @@
   "favorites.start.mods": {
     "one": "Nachdem die Welt erstellt ist, prüfst du {count} Mod zur Installation.",
     "other": "Nachdem die Welt erstellt ist, prüfst du {count} Mods zur Installation."
-  }
+  },
+  "favorites.error.map_damaged": "Die Karteneinstellungen dieses Favoriten sind beschädigt, daher kann Foreman sie nicht eintragen. Wähle einen anderen Favoriten oder lösche diesen und erstelle ihn aus einer Welt neu."
 }

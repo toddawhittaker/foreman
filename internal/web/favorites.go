@@ -195,7 +195,7 @@ func (s *server) favoriteFacts(p *WorldPage, r *http.Request) {
 	if err != nil {
 		return
 	}
-	p.FavMade = &FavoriteMade{Name: fav.Name, LeftOut: fav.LeftOut, DefaultMap: !fav.HasMapSettings && fav.Preset == ""}
+	p.FavMade = &FavoriteMade{Name: fav.Name, LeftOut: fav.LeftOut, DefaultMap: getsDefaultMap(fav.HasMapSettings, fav.Preset)}
 }
 
 // worldHasNoMap reports whether a favorite of the world would get the
@@ -207,16 +207,26 @@ func (s *server) worldHasNoMap(id string) bool {
 		return false
 	}
 	defer func() { _ = root.Close() }()
-	if m, err := world.ReadMeta(root); err != nil || (m.NewMap != nil && m.NewMap.Preset != "") {
+	m, err := world.ReadMeta(root)
+	if err != nil {
 		return false
 	}
+	preset := ""
+	if m.NewMap != nil {
+		preset = m.NewMap.Preset
+	}
+	hasFiles := false
 	for _, f := range []string{world.MapGenSettingsFile, world.MapSettingsFile} {
 		if _, err := root.Stat(path.Join(world.ConfigDir, f)); err == nil {
-			return false
+			hasFiles = true
 		}
 	}
-	return true
+	return getsDefaultMap(hasFiles, preset)
 }
+
+// getsDefaultMap reports whether a world made from these map settings gets
+// the game's default map: no settings files and no preset.
+func getsDefaultMap(hasFiles bool, preset string) bool { return !hasFiles && preset == "" }
 
 // FavoritesPath is the favorites list.
 func (WorldPage) FavoritesPath() string { return PathFavorites }
@@ -228,15 +238,31 @@ func (p WorldPage) FavoritePath() string { return favoriteMakePath(p.World.ID) }
 func (FavoriteDeletePage) ListPath() string { return PathFavorites }
 
 // fillFromFiles fills the map settings from a favorite's files (SPEC 5.12),
-// so the form, the preview and the world start from its values.
+// so the form, the preview and the world start from its values. Files it
+// cannot read put an error on the chooser, so the form never shows other
+// settings than the world would get.
 func (f *GenerateForm) fillFromFiles(files world.FavoriteFiles) {
 	sa := f.SpaceAge && lineHasSpaceAge(f.Line)
+	damaged := func() { f.FavoriteError = i18n.M("favorites.error.map_damaged") }
 	if len(files.MapGenSettings) > 0 {
+		if _, ok := orderedMembers(files.MapGenSettings); !ok {
+			damaged()
+			return
+		}
 		f.MapGen = NewMapGenFormFromFile(f.Line, sa, files.MapGenSettings)
 		f.MapGen.withPreset(NewMapGenFormForPreset(f.Line, sa, f.Preset))
 	}
 	if len(files.MapSettings) > 0 {
-		f.MapSettings, _, _ = readMapSettings(f.Version, f.Preset, mapSettingsValues(f.Version, f.Preset, files.MapSettings))
+		vals := mapSettingsValues(f.Version, f.Preset, files.MapSettings)
+		if vals == nil {
+			damaged()
+			return
+		}
+		var problems []Problem
+		if f.MapSettings, _, problems = readMapSettings(f.Version, f.Preset, vals); len(problems) > 0 {
+			damaged()
+			return
+		}
 	}
 	f.Modified = f.MapGen.Modified() || f.MapSettings.Modified()
 }
@@ -265,13 +291,20 @@ func mapSettingsValues(version, preset string, file []byte) url.Values {
 			name := msPrefix + d.path
 			switch d.kind {
 			case msToggle:
-				if on, _ := v.(bool); on {
+				on, isBool := v.(bool)
+				if !isBool {
+					return nil
+				}
+				if on {
 					vals.Set(name, "on")
 				}
 			case msChoice:
 				vals.Set(name, presetChoice(v))
 			default:
-				n, _ := v.(float64)
+				n, isNum := v.(float64)
+				if !isNum {
+					return nil
+				}
 				vals.Set(name, presetShown(n, d))
 			}
 		}
@@ -301,9 +334,8 @@ func (s *server) favoriteMapFiles(f *GenerateForm, nw *world.NewWorld, files wor
 		_, overrides, _ := readMapSettings(f.Version, f.Preset, r.PostForm)
 		var err error
 		if formMS, err = mapgen.MapSettings(f.Version, f.Preset, overrides); err != nil {
-			// A layout Foreman has no fields for: the favorite's file as it is.
-			nw.MapSettings = files.MapSettings
-			return true
+			f.FormError = i18n.M("worlds.generate.error.settings")
+			return false
 		}
 	}
 	out, err := overlayFields(files.MapSettings, formMS)

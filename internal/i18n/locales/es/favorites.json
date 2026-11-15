@@ -42,5 +42,6 @@
   "favorites.start.mods": {
     "one": "Cuando el mundo esté creado, revisarás {count} mod para instalar.",
     "other": "Cuando el mundo esté creado, revisarás {count} mods para instalar."
-  }
+  },
+  "favorites.error.map_damaged": "La configuración del mapa de este favorito está dañada, así que Foreman no puede rellenarla. Elige otro favorito, o bórralo y créalo de nuevo a partir de un mundo."
 }

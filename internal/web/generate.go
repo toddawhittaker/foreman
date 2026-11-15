@@ -48,6 +48,9 @@ const (
 	modeExchange = "exchange"
 )
 
+// favoriteChoiceID is the id of Generate's favorite select.
+const favoriteChoiceID = "favorite-choice"
+
 // presetSelectID is the id of Generate's preset select.
 const presetSelectID = "generate-preset"
 
@@ -125,8 +128,10 @@ type GenerateForm struct {
 	// PreviewSize is the map preview's side in tiles; zero is the default.
 	PreviewSize int
 
-	// Favorite is the favorite the form started from, or nil (SPEC 5.12).
-	Favorite *world.Favorite
+	// Favorite is the favorite the form started from, or nil (SPEC 5.12);
+	// FavoriteError says it cannot be used, on the chooser.
+	Favorite      *world.Favorite
+	FavoriteError i18n.Msg
 
 	NameError, VersionError, SpaceAgeError, PresetError, ExchangeError, FormError, PreviewSizeError i18n.Msg
 	SettingsProblems                                                                                []Problem
@@ -141,6 +146,7 @@ func (p GeneratePage) hasErrors() bool { return len(p.Problems()) > 0 }
 func (p GeneratePage) Problems() []Problem {
 	f := p.Form
 	all := []Problem{
+		{favoriteChoiceID, f.FavoriteError},
 		{"generate-name", f.NameError},
 		{"generate-version", f.VersionError},
 		{"generate-space-age", f.SpaceAgeError},
@@ -233,7 +239,7 @@ func (s *server) readFavorite(f *GenerateForm, id string) world.FavoriteFiles {
 	}
 	fav, files, err := s.favorites.Get(id)
 	if err != nil {
-		f.FormError = i18n.M("favorites.error.gone")
+		f.FavoriteError = i18n.M("favorites.error.gone")
 		return world.FavoriteFiles{}
 	}
 	f.Favorite = &fav
@@ -287,8 +293,11 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 	f.MapGen.markAchievements(rules)
 	f.reasons(version, nil, nil, rules)
 	status := http.StatusOK
-	if !f.FormError.IsZero() {
+	switch {
+	case !f.FavoriteError.IsZero() && f.Favorite == nil:
 		status = http.StatusNotFound
+	case !f.FavoriteError.IsZero():
+		status = http.StatusUnprocessableEntity
 	}
 	s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
 }
@@ -343,7 +352,13 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 	}
 	f, nw, ok := s.readGenerate(r, kindGenerate)
 	files := s.readFavorite(&f, r.PostFormValue(favoriteQuery))
-	ok = ok && f.FormError.IsZero()
+	if f.favoriteMap() {
+		// Damaged files are refused here too, as the filled form refused them.
+		check := f
+		check.fillFromFiles(files)
+		f.FavoriteError = check.FavoriteError
+	}
+	ok = ok && f.FavoriteError.IsZero()
 	if !ok {
 		status := http.StatusBadRequest
 		if f.Reset || f.Refilled {

@@ -42,5 +42,6 @@
   "favorites.start.mods": {
     "one": "After the world is made, you review {count} mod to install.",
     "other": "After the world is made, you review {count} mods to install."
-  }
+  },
+  "favorites.error.map_damaged": "This favorite's map settings are damaged, so Foreman cannot fill them in. Choose another favorite, or delete this one and make it again from a world."
 }

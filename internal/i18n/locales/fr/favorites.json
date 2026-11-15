@@ -1,6 +1,6 @@
 {
   "favorites.title": "Favoris",
-  "favorites.intro": "Un favori contient la version du jeu d'un monde, son réglage l'Ère spatiale, ses paramètres de carte, ses paramètres de serveur sans mots de passe, ses mods et leurs paramètres. Démarrez un nouveau monde à partir de l'un d'eux dans Générer.",
+  "favorites.intro": "Un favori contient la version du jeu d'un monde, son réglage de l'Ère spatiale, ses paramètres de carte, ses paramètres de serveur sans mots de passe, ses mods et leurs paramètres. Démarrez un nouveau monde à partir de l'un d'eux dans Générer.",
   "favorites.fact.source": "Créé à partir de",
   "favorites.fact.mods": "Mods",
   "favorites.fact.created": "Créé le",
@@ -15,7 +15,7 @@
   "favorites.delete.keeps": "Laisser tels quels chaque monde créé à partir de lui et le monde dont il provient.",
   "favorites.delete.cancel": "Le garder",
   "favorites.make.heading": "Créer un favori à partir de ce monde",
-  "favorites.make.text": "Enregistre la version du jeu de ce monde, son réglage l'Ère spatiale, ses paramètres de carte, ses paramètres de serveur sans mots de passe, ses mods et leurs paramètres, pour démarrer de nouveaux mondes. Le monde lui-même n'est pas modifié.",
+  "favorites.make.text": "Enregistre la version du jeu de ce monde, son réglage de l'Ère spatiale, ses paramètres de carte, ses paramètres de serveur sans mots de passe, ses mods et leurs paramètres, pour démarrer de nouveaux mondes. Le monde lui-même n'est pas modifié.",
   "favorites.make.default_map": "Ce monde n'a pas de paramètres de carte : les mondes créés à partir du favori auront la carte par défaut.",
   "favorites.make.label": "Nom du favori",
   "favorites.make.button": "Créer le favori",
@@ -38,9 +38,10 @@
   "favorites.start.label": "Favori",
   "favorites.start.button": "Utiliser le favori",
   "favorites.start.none": "Aucun favori pour l'instant. Créez-en un depuis la page d'un monde.",
-  "favorites.start.note": "Départ à partir du favori « {name} ». Sa version du jeu, son réglage l'Ère spatiale, son préréglage et ses paramètres de carte sont remplis ci-dessous ; modifiez ce que vous voulez. Le nouveau monde reçoit ses paramètres de serveur et ses paramètres de mods.",
+  "favorites.start.note": "Départ à partir du favori « {name} ». Sa version du jeu, son réglage de l'Ère spatiale, son préréglage et ses paramètres de carte sont remplis ci-dessous ; modifiez ce que vous voulez. Le nouveau monde reçoit ses paramètres de serveur et ses paramètres de mods.",
   "favorites.start.mods": {
     "one": "Une fois le monde créé, vous vérifiez {count} mod à installer.",
     "other": "Une fois le monde créé, vous vérifiez {count} mods à installer."
-  }
+  },
+  "favorites.error.map_damaged": "Les paramètres de carte de ce favori sont endommagés : Foreman ne peut pas les remplir. Choisissez un autre favori, ou supprimez celui-ci et recréez-le à partir d'un monde."
 }

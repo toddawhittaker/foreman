@@ -48,13 +48,15 @@ func NewMapGenFormForPreset(line string, spaceAge bool, preset string) MapGenFor
 // sets, and the game's defaults elsewhere. Nauvis holds every control a preset
 // names. A value that is on no step is left at the default.
 func presetValues(line string, spaceAge bool, preset, seed string) url.Values {
-	return fileValues(line, spaceAge, mapgen.PresetMapGen(line, preset), seed, rawPrefillFor(line, preset))
+	return fileValues(line, spaceAge, mapgen.PresetMapGen(line, preset), seed, rawPrefillFor(line, preset), false)
 }
 
 // fileValues are the post of the form opened on a map-gen-settings.json:
 // what the file sets, the game's defaults elsewhere, and raw in the raw box.
-// A value that is on no step is left at the default.
-func fileValues(line string, spaceAge bool, file []byte, seed, raw string) url.Values {
+// A value that is on no step is left at the default. wholeFile reads every
+// planet and "no enemies", as a saved file holds them; a preset is read as
+// Nauvis only.
+func fileValues(line string, spaceAge bool, file []byte, seed, raw string, wholeFile bool) url.Values {
 	vals := url.Values{mgSeed: {seed}, mgRaw: {raw}}
 	var p presetSettings
 	if json.Unmarshal(file, &p) != nil {
@@ -70,7 +72,7 @@ func fileValues(line string, spaceAge bool, file []byte, seed, raw string) url.V
 	if p.Peaceful != nil && *p.Peaceful {
 		vals.Set(mgPeaceful, "on")
 	}
-	if p.NoEnemies != nil && *p.NoEnemies {
+	if wholeFile && p.NoEnemies != nil && *p.NoEnemies {
 		vals.Set(mgNoEnemies, "on")
 	}
 	step := func(name string, v *float64, invert bool) {
@@ -115,6 +117,10 @@ func fileValues(line string, spaceAge bool, file []byte, seed, raw string) url.V
 		}
 	}
 	for _, pl := range mgPlanets(line, spaceAge) {
+		// A preset names Nauvis's controls only; a whole file names every planet's.
+		if !wholeFile && pl.name != "nauvis" {
+			continue
+		}
 		for _, c := range pl.controls {
 			if ctl, named := p.Controls[c.name]; c.toggle && named && ctl.Size != nil && *ctl.Size == 0 {
 				vals.Set(fieldName(pl.name, c.name, mgOn), "off")
@@ -202,7 +208,7 @@ func NewMapGenFormFromFile(line string, spaceAge bool, file []byte) MapGenForm {
 	if json.Unmarshal(file, &doc) == nil && doc.Seed != nil {
 		seed = strconv.FormatUint(*doc.Seed, 10)
 	}
-	form, _, _ := parseMapGenValues(fileValues(line, spaceAge, file, seed, fileRaw(line, file)), line, spaceAge)
+	form, _, _ := parseMapGenValues(fileValues(line, spaceAge, file, seed, fileRaw(line, file), true), line, spaceAge)
 	return form
 }
 

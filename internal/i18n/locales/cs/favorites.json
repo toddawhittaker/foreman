@@ -39,11 +39,12 @@
   "favorites.start.heading": "Začít z oblíbené",
   "favorites.start.label": "Oblíbená",
   "favorites.start.button": "Použít oblíbenou",
-  "favorites.start.none": "Zatím žádné oblíbené. Lze ji vytvořit na stránce světa.",
+  "favorites.start.none": "Zatím žádné oblíbené. Oblíbenou lze vytvořit na stránce světa.",
   "favorites.start.note": "Začíná se z oblíbené „{name}“. Její verze hry, nastavení Space Age, předvolba a nastavení mapy jsou vyplněny níže; cokoli lze změnit. Nový svět dostane její nastavení serveru a nastavení modů.",
   "favorites.start.mods": {
     "one": "Po vytvoření světa se zobrazí ke kontrole {count} mod k instalaci.",
     "few": "Po vytvoření světa se zobrazí ke kontrole {count} mody k instalaci.",
     "other": "Po vytvoření světa se zobrazí ke kontrole {count} modů k instalaci."
-  }
+  },
+  "favorites.error.map_damaged": "Nastavení mapy této oblíbené položky je poškozené, proto ho Foreman nemůže vyplnit. Je potřeba zvolit jinou oblíbenou, nebo tuto smazat a vytvořit znovu ze světa."
 }

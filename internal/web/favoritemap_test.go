@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"maps"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -89,7 +92,7 @@ func TestFavoriteMapGenRoundTripsThroughTheForm(t *testing.T) {
 func TestFavoriteMapGenOneEditChangesOneValue(t *testing.T) {
 	file := favoriteMapGen(t)
 	form := NewMapGenFormFromFile(favLine, true, file)
-	vals := fileValues(favLine, true, file, form.Seed.Value, form.Raw.Value)
+	vals := fileValues(favLine, true, file, form.Seed.Value, form.Raw.Value, true)
 	s := form.selects()[0]
 	for _, o := range s.Options {
 		if v, ok := stepValue(o.Value); ok && v > 0 && o.Value != s.Value {
@@ -193,7 +196,7 @@ func favoritePost(t *testing.T, favID string, edit ...string) url.Values {
 	t.Helper()
 	file := favoriteMapGen(t)
 	form := NewMapGenFormFromFile(favLine, true, file)
-	vals := fileValues(favLine, true, file, form.Seed.Value, form.Raw.Value)
+	vals := fileValues(favLine, true, file, form.Seed.Value, form.Raw.Value, true)
 	for k, v := range mapSettingsValues(favVersion, defaultPreset, favoriteMapSettings(t)) {
 		vals[k] = v
 	}
@@ -281,19 +284,84 @@ func TestGenerateFormFillsTheFavoritesMapAndPreviewUsesIt(t *testing.T) {
 	}
 }
 
-// containsAfter reports whether want appears after the first marker, within
-// a few thousand bytes.
+// containsAfter reports whether want appears within a few thousand bytes
+// after the first marker.
 func containsAfter(body, marker, want string) bool {
-	for i := 0; i+len(marker) <= len(body); i++ {
-		if body[i:i+len(marker)] == marker {
-			end := min(len(body), i+4000)
-			for j := i; j+len(want) <= end; j++ {
-				if body[j:j+len(want)] == want {
-					return true
-				}
+	i := strings.Index(body, marker)
+	if i < 0 {
+		return false
+	}
+	return strings.Contains(body[i:min(len(body), i+4000)], want)
+}
+
+func TestPresetFillStaysNauvisOnly(t *testing.T) {
+	defaults := NewMapGenFormForPreset(favLine, true, defaultPreset).chosen()
+	for _, preset := range mapgen.Presets(favLine) {
+		vals := presetValues(favLine, true, preset, "")
+		for k := range vals {
+			if strings.HasPrefix(k, mgPrefix) && strings.Count(k, ".") == 3 && !strings.HasPrefix(k, mgPrefix+"nauvis.") {
+				t.Errorf("preset %s sets %s on another planet", preset, k)
 			}
-			return false
+		}
+		if vals.Has(mgNoEnemies) {
+			t.Errorf("preset %s sets no enemies", preset)
+		}
+		// Another planet's fields, such as its water, stay at the default.
+		form := NewMapGenFormForPreset(favLine, true, preset)
+		for _, s := range form.selects() {
+			if strings.HasPrefix(s.Name, mgPrefix+"vulcanus.") && s.Value != defaults[s.Name] {
+				t.Errorf("preset %s moved %s", preset, s.Name)
+			}
 		}
 	}
-	return false
+}
+
+func TestFileFillSetsNoEnemiesOnlyWhenTheFileDoes(t *testing.T) {
+	if vals := fileValues(favLine, true, []byte(`{"no_enemies_mode":true}`), "", "{}", true); vals.Get(mgNoEnemies) != "on" {
+		t.Error("a file with no enemies did not tick the box")
+	}
+	if vals := fileValues(favLine, true, []byte(`{"no_enemies_mode":false}`), "", "{}", true); vals.Has(mgNoEnemies) {
+		t.Error("a file without no enemies ticked the box")
+	}
+}
+
+func TestFavoriteMapFilesRefusesWhenMapSettingsCannotBeMade(t *testing.T) {
+	f := GenerateForm{Version: "9.9.9", Preset: defaultPreset, Line: favLine, MapGen: NewMapGenFormForPreset(favLine, true, defaultPreset)}
+	nw := world.NewWorld{}
+	r := httptest.NewRequest(http.MethodPost, PathGenerate, nil)
+	r.PostForm = url.Values{}
+	if (&server{}).favoriteMapFiles(&f, &nw, world.FavoriteFiles{MapSettings: favoriteMapSettings(t)}, r) {
+		t.Fatal("made map files without map settings")
+	}
+	if f.FormError.IsZero() || nw.MapSettings != nil {
+		t.Errorf("error %v, map settings %s", f.FormError, nw.MapSettings)
+	}
+}
+
+func TestDamagedFavoriteMapSettingsAreRefusedOnGenerate(t *testing.T) {
+	hn, favs := newFavoritesHarness(t)
+	c := hn.signIn()
+	hn.withActive(favVersion)
+	src, err := hn.worlds.Generate(context.Background(), world.NewWorld{Name: "Odd", GameVersion: favVersion, SpaceAge: true,
+		MapSettings: []byte(`{"enemy_expansion":{"enabled":"yes"}}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	favID, err := favs.Make(context.Background(), src, "Odd start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := hn.get(generateFromPath(favID), withCookie(c))
+	body := rec.Body.String()
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(body, `id="favorite-choice-error"`) ||
+		!strings.Contains(body, `aria-describedby="favorite-choice-error"`) || !strings.Contains(body, `href="#favorite-choice"`) {
+		t.Errorf("status %d, no error on the chooser", rec.Code)
+	}
+	n := hn.worldCount()
+	if rec := hn.postLong(PathGenerate, generateForm("name", "Odd", "favorite", favID), c); rec.Code != http.StatusBadRequest {
+		t.Errorf("generate: %d", rec.Code)
+	}
+	if hn.worldCount() != n {
+		t.Error("a world was made from damaged map settings")
+	}
 }
