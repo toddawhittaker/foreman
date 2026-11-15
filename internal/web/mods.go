@@ -824,7 +824,7 @@ const maxSearchQuery = 100
 
 // searchTooLong says a search is too long to run. A pasted link may carry a
 // sub-page and tracking query, so only the mod name in it counts; plain text
-// counts whole. The search page and the plan's "Add another mod" share it.
+// counts whole.
 func searchTooLong(query string) bool {
 	if name, isLink := modportal.PortalLinkName(query); isLink {
 		query = name
@@ -856,17 +856,9 @@ type planForm struct {
 	// DropsConfirmed is the box that accepts losing what dropped mods
 	// built. The names are worked out again on the post, never read.
 	DropsConfirmed bool
-	// Query is the search the install plan's "Add another mod" shows, and
-	// Page the page of its results.
-	Query string
-	Page  int
-	// Added and Removed name the mod a click just added to or took out of
-	// the plan, for the sentence the redraw announces. Links carry them;
-	// the plan does not.
-	Added, Removed string
-	// Searched is a search from "Add another mod": its results heading
-	// takes focus, not the messages above the plan.
-	Searched bool
+	// Removed names the mod a click just took out of the plan, for the
+	// sentence the redraw announces. The link carries it; the plan does not.
+	Removed string
 	// AlsoDisable and AlsoRemove are installed mods a conflict's fix turns
 	// off in the same plan; Fixed names the one a click just added, for
 	// the sentence the redraw announces (SPEC 9.2, 17.9).
@@ -896,8 +888,7 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		Save: v.Get("save"), Staged: v.Get("staged"), Hash: v.Get("hash"), Fingerprint: v.Get("fingerprint"),
 		DropsConfirmed: v.Get(dropsField) == "1",
 		Choices:        map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{},
-		Query: strings.TrimSpace(v.Get("q")), Added: v.Get("added"), Removed: v.Get("removed"),
-		Searched: v.Get("add") == "1", Page: readPage(v.Get("page")),
+		Removed:     v.Get("removed"),
 		AlsoDisable: v[alsoDisableField], AlsoRemove: v[alsoRemoveField], Fixed: v.Get("fixed"),
 	}
 	// The de-duplication below is quadratic, so the raw lists are bounded first.
@@ -973,12 +964,6 @@ func (f planForm) query() url.Values {
 	for name, c := range f.Choices {
 		q.Set(choicePrefix+name, string(c))
 	}
-	if f.Query != "" {
-		q.Set("q", f.Query)
-		if f.Page > 1 {
-			q.Set("page", strconv.Itoa(f.Page))
-		}
-	}
 	return q
 }
 
@@ -1037,71 +1022,13 @@ type ModPlanPage struct {
 	// Redraw says a script asked for the plan after a change on the page:
 	// the plan is announced and focus stays where it was (WCAG 4.1.3).
 	Redraw bool
-	// Results are the "Add another mod" search's page of results; Installed
-	// names the world's mods. AddUnreachable says the portal could not be
-	// asked.
-	Results        ModHits
-	Installed      map[string]bool
-	AddUnreachable bool
-	// AddMiss says why a pasted portal link found no mod.
-	AddMiss i18n.Msg
 	// Have are the world's mods now, for the conflicts' fixes.
 	Have []world.InstalledMod
 }
 
-// Adding says the plan installs mods the admin picks, so it lists them
-// with a way to take one out and offers to add another (SPEC 9.1, 9.2).
-func (p ModPlanPage) Adding() bool { return p.Form.Kind == mods.KindInstall && p.Form.Staged == "" }
-
-// InPlan reports whether the plan already installs or changes a mod.
-func (p ModPlanPage) InPlan(name string) bool {
-	return slices.Contains(p.Form.Names, name) || slices.ContainsFunc(p.Plan.Changes, func(c mods.Change) bool {
-		return c.Name == name && c.Action != mods.ActKeep
-	})
-}
-
-// CanAdd says another mod fits in one plan request.
-func (p ModPlanPage) CanAdd() bool { return len(p.Form.Names) < store.MaxModPlanNames }
-
-// Picking is false: each result's Add redraws the plan at once, so a box to
-// tick would only cost a click more.
-func (ModPlanPage) Picking() bool { return false }
-
-// HitState is what an "Add another mod" result offers: "in_plan",
-// "installed", "add", or nothing when the plan is full.
-func (p ModPlanPage) HitState(name string) string {
-	switch {
-	case p.InPlan(name):
-		return "in_plan"
-	case p.Installed[name]:
-		return "installed"
-	case p.CanAdd():
-		return "add"
-	}
-	return ""
-}
-
-// PagePath is the plan with another page of the search's results; the
-// marker puts focus on them as a new search does.
-func (p ModPlanPage) PagePath(page int) string {
-	f := p.Form
-	f.Page = page
-	q := f.query()
-	q.Set("add", "1")
-	return planPath(p.World.ID, q) + "#add-heading"
-}
-
-// AddPath is the plan with name added; PlanWith is the same plan without
-// the note of what was added, for the address bar.
-func (p ModPlanPage) AddPath(name string) string {
-	q := p.Form.withNames(append(slices.Clone(p.Form.Names), name)).query()
-	q.Set("added", name)
-	return planPath(p.World.ID, q)
-}
-
-func (p ModPlanPage) PlanWith(name string) string {
-	return planPath(p.World.ID, p.Form.withNames(append(slices.Clone(p.Form.Names), name)).query())
-}
+// FromPicks says the plan installs mods the admin picked on the Mods tab,
+// so it lists them with a way to take one out (SPEC 9.2).
+func (p ModPlanPage) FromPicks() bool { return p.Form.Kind == mods.KindInstall && p.Form.Staged == "" }
 
 // RemovePath is the plan without name; PlanWithout the same for the
 // address bar.
@@ -1235,8 +1162,6 @@ func (p ModPlanPage) Announce() i18n.Msg {
 		return i18n.M("mods.plan.nothing")
 	case p.Form.Fixed != "":
 		return i18n.M("mods.plan.fixed", "count", p.Count())
-	case p.Form.Added != "":
-		return i18n.M("mods.plan.added", "mod", p.Form.Added, "count", p.Count())
 	case p.Form.Removed != "":
 		return i18n.M("mods.plan.removed", "mod", p.Form.Removed, "count", p.Count())
 	}
@@ -1497,10 +1422,6 @@ func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.
 		form.Countdown = c[0]
 	}
 	p := s.planPage(r.Context(), sum, f, form)
-	// Only the plan page searches; applying a plan never does.
-	if p.Error.IsZero() {
-		s.addSearch(r.Context(), &p)
-	}
 	// htmx swaps only a 2xx reply, so a redraw that finds a conflict or a
 	// portal failure still answers 200 for the page to show it.
 	if r.Header.Get("HX-Request") != "" {
@@ -1562,32 +1483,6 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 	}
 	p.Hash = mods.HashPlan(p.Plan, p.Drops)
 	return p
-}
-
-// addSearch fills the install plan's "Add another mod" results. A portal
-// that cannot be reached is said there; the plan above still stands.
-func (s *server) addSearch(ctx context.Context, p *ModPlanPage) {
-	if !p.Adding() || p.Form.Query == "" {
-		return
-	}
-	// The field's maxlength keeps a typed search short; a longer one is
-	// crafted, and is said to be too long instead of searched.
-	if searchTooLong(p.Form.Query) {
-		p.AddMiss = i18n.M("mods.search.long", "count", maxSearchQuery)
-		return
-	}
-	p.Installed = map[string]bool{}
-	for _, m := range p.Have {
-		p.Installed[m.Name] = true
-	}
-	hits, miss, err := s.findMods(ctx, mods.GameLine(p.World.GameVersion), p.Form.Query)
-	if err != nil {
-		s.portalTrouble("search the mod portal", p.World.ID, err)
-		p.AddUnreachable = true
-		return
-	}
-	p.AddMiss = miss
-	p.Results = pageOfHits(hits, p.Form.Page)
 }
 
 // planDrops lists the plan's dropped mods, leaving out unresolved mods,
@@ -1774,7 +1669,12 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	if !p.UsesUpload() {
 		shown.Retry = planPath(sum.ID, f.query())
 	}
-	s.applyMods(w, r, u, sum, op, stop, unused, shown)
+	// The picks were the plan's input; a refused request keeps them (SPEC 9.14).
+	if s.applyMods(w, r, u, sum, op, stop, unused, shown) && f.Kind == mods.KindInstall {
+		if err := s.store.ClearModPlan(r.Context(), sum.ID); err != nil {
+			s.log.Warn("clear the mod plan after an install", "world", sum.ID, "error", err)
+		}
+	}
 }
 
 // UsesUpload reports whether a change in the plan comes from the staged zip.
@@ -1811,8 +1711,9 @@ func clipSummary(s string) string {
 
 // applyMods runs one mod change in the background (SPEC 9.13). The
 // Server page follows the active world's; the Mods tab any other world's.
-// The result names the "Before mod change" snapshot, for undo.
-func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string, shown modResult) {
+// The result names the "Before mod change" snapshot, for undo. It reports
+// whether the change was started.
+func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string, shown modResult) bool {
 	id, by := sum.ID, actor(u)
 	to := PathServer
 	if !sum.Active {
@@ -1820,7 +1721,7 @@ func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User,
 	}
 	newest := s.newestModSnapshot(id)
 	run, inRun := s.worlds.ModRunSnapshot(id)
-	s.beginTo(w, r, to, []string{id}, true, func(ctx context.Context) actionResult {
+	return s.beginTo(w, r, to, []string{id}, true, func(ctx context.Context) actionResult {
 		err := s.game.ApplyMods(ctx, id, by, op, stop)
 		if unused != "" {
 			_ = s.worlds.RemoveStaged(unused)

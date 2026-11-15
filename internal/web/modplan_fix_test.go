@@ -19,14 +19,14 @@ func TestPlanConflictOffersItsFix(t *testing.T) {
 	id := g.world20("Base", "fp-other_1.0.0")
 	plan := "/worlds/" + id + "/mods/plan"
 
-	code, body := g.getStatus(plan + "?kind=install&name=fp-clash&q=fp-c")
+	code, body := g.getStatus(plan + "?kind=install&name=fp-clash")
 	if code != http.StatusConflict {
 		t.Fatalf("status %d", code)
 	}
-	fixed := plan + "?also-remove=fp-other&amp;kind=install&amp;name=fp-clash&amp;q=fp-c"
+	fixed := plan + "?also-remove=fp-other&amp;kind=install&amp;name=fp-clash"
 	wantIn(t, "conflict", plain(body), "fp-clash cannot run together with fp-other.",
-		`<a href="`+fixed+`" class="button" id="mod-fp-other-fix" hx-get="`+plan+`?also-remove=fp-other&amp;fixed=fp-other&amp;kind=install&amp;name=fp-clash&amp;q=fp-c"`,
-		">Remove fp-other as part of this plan</a>", `<a href="/worlds/`+id+`/mods/search?q=fp-c">Back to search</a>`)
+		`<a href="`+fixed+`" class="button" id="mod-fp-other-fix" hx-get="`+plan+`?also-remove=fp-other&amp;fixed=fp-other&amp;kind=install&amp;name=fp-clash"`,
+		">Remove fp-other as part of this plan</a>", `<a href="/worlds/`+id+`/mods">Back to the mods</a>`)
 	for _, gone := range []string{`id="plan-steps"`, `id="act-apply"`, "Take a snapshot"} {
 		if strings.Contains(body, gone) {
 			t.Errorf("a plan with a conflict still shows %s", gone)
@@ -34,7 +34,7 @@ func TestPlanConflictOffersItsFix(t *testing.T) {
 	}
 
 	// The fix's plan installs one, removes the other, and says so in its heading and button.
-	code, body = g.getStatus(plan + "?also-remove=fp-other&kind=install&name=fp-clash&q=fp-c")
+	code, body = g.getStatus(plan + "?also-remove=fp-other&kind=install&name=fp-clash")
 	if code != http.StatusOK {
 		t.Fatalf("fixed plan %d\n%s", code, body)
 	}
@@ -42,7 +42,7 @@ func TestPlanConflictOffersItsFix(t *testing.T) {
 		`<input type="hidden" name="also-remove" value="fp-other">`, `class="button button--danger" id="act-apply">Change 2 mods</button>`, `<section class="confirm">`)
 
 	// A redraw from the fix announces it and puts focus on the changes.
-	rec := g.harness.get(plan+"?also-remove=fp-other&fixed=fp-other&kind=install&name=fp-clash&q=fp-c", withCookie(g.cookie), withHeader("HX-Request", "true"))
+	rec := g.harness.get(plan+"?also-remove=fp-other&fixed=fp-other&kind=install&name=fp-clash", withCookie(g.cookie), withHeader("HX-Request", "true"))
 	wantIn(t, "redraw", rec.Body.String(), "Plan updated. It changes 2 mods.", `<p class="plan-label" id="plan-changes" tabindex="-1" autofocus>Changes:</p>`)
 
 	// Applying it removes the other mod in the same change, with one snapshot.

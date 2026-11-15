@@ -21,20 +21,13 @@
   "mods.search.none": "No mod for Factorio {line} matches. Try a shorter part of the name.",
   "mods.search.link_unknown": "No mod named {name} is on the mod portal. Check the spelling.",
   "mods.search.link_no_release": "{name} has no release for Factorio {line}. Try a different mod.",
-  "mods.search.add": "Add to plan",
   "mods.hits.count": {
     "one": "{count} mod for Factorio {line} matches.",
     "other": "{count} mods for Factorio {line} match."
   },
   "mods.hits.showing": "Showing {first} to {last}.",
-  "mods.hits.summary": "Details",
-  "mods.hits.latest_label": "Latest version:",
-  "mods.hits.downloads_label": "Downloads:",
-  "mods.hits.pages": "Result pages",
-  "mods.hits.page": "Page {page} of {pages}",
   "mods.hits.prev": "Previous page",
   "mods.hits.next": "Next page",
-  "mods.fact.latest": "Latest version",
   "mods.fact.downloads": "Downloads",
   "mods.badge.installed": "Installed",
   "mods.badge.in_plan": "In plan",
@@ -242,8 +235,6 @@
   "mods.plan.warn_stop": "Warn the players, then save and stop the server.",
   "mods.plan.snapshot": "Take a snapshot of {world}, labeled \"{label}\". If the snapshot fails, nothing else happens.",
   "mods.plan.asked.remove": "Remove from plan",
-  "mods.plan.add.heading": "Add another mod",
-  "mods.plan.add.back": "Back to the plan",
   "mods.plan.start": "Start the server again.",
   "mods.plan.undo": "When it is done, a one-click Undo appears with the result, which restores that snapshot.",
   "mods.plan.group.install": "Install",
@@ -348,10 +339,6 @@
     "one": "Plan updated: {count} mod changes.",
     "other": "Plan updated: {count} mods change."
   },
-  "mods.plan.added": {
-    "one": "Added {mod}. The plan has {count} mod.",
-    "other": "Added {mod}. The plan has {count} mods."
-  },
   "mods.plan.removed": {
     "one": "Removed {mod}. The plan has {count} mod.",
     "other": "Removed {mod}. The plan has {count} mods."
@@ -387,7 +374,6 @@
   "mods.plan.step.fails": "If a step fails, the steps after it do not happen.",
   "mods.plan.fix.remove": "Remove {mod} as part of this plan",
   "mods.plan.fix.disable": "Disable {mod} too",
-  "mods.plan.back_search": "Back to search",
   "mods.plan.fixed": {
     "one": "Plan updated. It changes {count} mod.",
     "other": "Plan updated. It changes {count} mods."

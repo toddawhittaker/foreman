@@ -22,21 +22,14 @@
   "mods.search.none": "Нет модов для Factorio {line}, подходящих под запрос. Введите более короткую часть названия.",
   "mods.search.link_unknown": "На портале модов нет мода с названием {name}. Проверьте написание.",
   "mods.search.link_no_release": "У мода {name} нет выпуска для Factorio {line}. Попробуйте другой мод.",
-  "mods.search.add": "Добавить в план",
   "mods.hits.count": {
     "one": "{count} мод для Factorio {line} подходит.",
     "few": "{count} мода для Factorio {line} подходят.",
     "many": "{count} модов для Factorio {line} подходят."
   },
   "mods.hits.showing": "Показаны с {first} по {last}.",
-  "mods.hits.summary": "Подробнее",
-  "mods.hits.latest_label": "Последняя версия:",
-  "mods.hits.downloads_label": "Скачивания:",
-  "mods.hits.pages": "Страницы результатов",
-  "mods.hits.page": "Страница {page} из {pages}",
   "mods.hits.prev": "Предыдущая страница",
   "mods.hits.next": "Следующая страница",
-  "mods.fact.latest": "Последняя версия",
   "mods.fact.downloads": "Скачивания",
   "mods.badge.installed": "Установлен",
   "mods.badge.in_plan": "В плане",
@@ -259,8 +252,6 @@
   "mods.plan.warn_stop": "Предупредить игроков, затем сохранить игру и остановить сервер.",
   "mods.plan.snapshot": "Сделать снимок мира {world} с названием «{label}». Если снимок сделать не удастся, больше ничего не произойдёт.",
   "mods.plan.asked.remove": "Убрать из плана",
-  "mods.plan.add.heading": "Добавить ещё мод",
-  "mods.plan.add.back": "Назад к плану",
   "mods.plan.start": "Снова запустить сервер.",
   "mods.plan.undo": "После завершения рядом с результатом появится отмена в один клик, которая восстановит этот снимок.",
   "mods.plan.group.install": "Установить",
@@ -374,11 +365,6 @@
     "few": "План обновлён: меняются {count} мода.",
     "many": "План обновлён: меняются {count} модов."
   },
-  "mods.plan.added": {
-    "one": "Добавлен {mod}. В плане {count} мод.",
-    "few": "Добавлен {mod}. В плане {count} мода.",
-    "many": "Добавлен {mod}. В плане {count} модов."
-  },
   "mods.plan.removed": {
     "one": "Убран {mod}. В плане {count} мод.",
     "few": "Убран {mod}. В плане {count} мода.",
@@ -419,7 +405,6 @@
   "mods.plan.step.fails": "Если шаг не удастся, следующие шаги не выполняются.",
   "mods.plan.fix.remove": "Удалить {mod} в рамках этого плана",
   "mods.plan.fix.disable": "Отключить и {mod}",
-  "mods.plan.back_search": "Назад к поиску",
   "mods.plan.fixed": {
     "one": "План обновлён. Он меняет {count} мод.",
     "few": "План обновлён. Он меняет {count} мода.",

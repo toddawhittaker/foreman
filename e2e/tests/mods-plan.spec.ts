@@ -14,105 +14,122 @@ const modsDir = (dataDir: string) => join(dataDir, "worlds", "base", "mods");
 const snapshots = (dataDir: string) => readdirSync(join(dataDir, "snapshots", "base")).filter((n) => /^\d{8}T\d{6}Z/.test(n)).length;
 const shot = (page: Page, name: string) => page.screenshot({ path: `../screenshots/${name}-${test.info().project.name}.png`, fullPage: true });
 
-test("two mods from one search: added in place, then one install with one snapshot", async ({ page, foreman, fakeGame, fakePortal }) => {
-  const portal = fakePortal!;
-  await portal.add("fp-lamp", "1.0.0", ["base >= 2.0"]);
-  await portal.add("fp-lamp-colours", "1.2.0", ["base >= 2.0", "fp-lamp-lib >= 1.0.0"]);
-  await portal.add("fp-lamp-lib", "1.0.0");
-  await setUpModsWorld(page, foreman, fakeGame!, world);
+const hit = (page: Page, name: string) => page.locator(`#mod-${name}-hit`);
+const panel = (page: Page) => page.locator("#plan-panel");
 
-  await page.goto("/worlds/base/mods/search?q=fp-lamp");
-  await checkPage(page);
-  await shot(page, "mods-search");
-  // A result's title is its portal page, in a new tab, and names its mod.
-  const portalLink = page.getByRole("link", { name: "fp-lamp on the mod portal, opens in a new tab", exact: true });
-  await expect(portalLink).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-lamp");
-  await expect(portalLink).toHaveAttribute("target", "_blank");
-  await expect(portalLink).toHaveAttribute("rel", "noopener noreferrer");
-  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-lamp&q=fp-lamp");
+// Picks fp-lamp and fp-lamp-colours (which needs fp-lamp-lib) on the Mods tab.
+async function pickTwo(page: Page) {
+  await page.goto("/worlds/base/mods");
+  await page.getByLabel("Mod name").fill("fp-lamp");
+  for (const n of ["fp-lamp", "fp-lamp-colours"]) {
+    await hit(page, n).getByRole("button", { name: `Add ${n} to the plan`, exact: true }).click();
+    await expect(hit(page, n)).toContainText("In plan");
+  }
+}
 
-  await expect(page.getByRole("heading", { level: 1, name: "Install fp-lamp in Base?" })).toBeVisible();
-  const asked = page.locator("#mod-plan .plan-groups");
-  await expect(asked).toContainText("fp-lamp 1.0.0");
-  // Issue 364: the heading is one run of text, so the name has one space each side and breaks like a word.
-  const h1 = page.locator("#confirm-heading");
-  expect(await h1.evaluate((el) => getComputedStyle(el).display)).toBe("block");
-  expect(await h1.evaluate((el) => (el as HTMLElement).innerText)).toBe("Install fp-lamp in Base?");
-  // A stopped world's install is the primary action, not a danger (DESIGN 7.1).
-  await expect(page.getByRole("button", { name: "Install 1 mod" })).toHaveClass(/button--primary/);
-  // The same search waits under the plan, after the confirm button.
-  const add = page.getByRole("region", { name: "Add another mod" });
-  await expect(add.getByLabel("Mod name")).toHaveValue("fp-lamp");
-  await expect(add.getByText("In plan")).toBeVisible();
-  const apply = (await page.getByRole("button", { name: "Install 1 mod" }).boundingBox())!;
-  expect(apply.y).toBeLessThan((await add.boundingBox())!.y);
-  await checkPage(page);
+test.describe("the review of picks from the Mods tab", () => {
+  test.beforeEach(async ({ page, foreman, fakeGame, fakePortal }) => {
+    const portal = fakePortal!;
+    await portal.add("fp-lamp", "1.0.0", ["base >= 2.0"]);
+    await portal.add("fp-lamp-colours", "1.2.0", ["base >= 2.0", "fp-lamp-lib >= 1.0.0"]);
+    await portal.add("fp-lamp-lib", "1.0.0");
+    await setUpModsWorld(page, foreman, fakeGame!, world);
+  });
 
-  // Adding redraws the plan in place, says so, and leaves focus where it was.
-  await add.getByRole("link", { name: "Add to plan fp-lamp-colours", exact: true }).click();
-  await expect(page.locator("#announcer")).toHaveText("Added fp-lamp-colours. The plan has 3 mods.");
-  await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
-  await expect(page.locator("#mod-fp-lamp-colours-add")).toBeFocused();
-  // The focused badge names its mod to a screen reader.
-  await expect(page.locator("#mod-fp-lamp-colours-add")).toHaveText("In plan fp-lamp-colours");
-  await expect(page.locator("#mod-fp-lamp-colours-add .visually-hidden")).toHaveText(" fp-lamp-colours");
-  await expect(page).toHaveURL(/name=fp-lamp&name=fp-lamp-colours/);
-  await expect(page.locator("#mod-plan")).toContainText("fp-lamp-lib 1.0.0 (fp-lamp-colours needs it)");
-  await expect(asked.getByRole("link", { name: "Remove from plan fp-lamp-colours" })).toBeVisible();
-  await checkPage(page);
-  await shot(page, "mods-plan-two");
+  test("the search page's title links to the mod's portal page", async ({ page }) => {
+    await page.goto("/worlds/base/mods/search?q=fp-lamp");
+    await checkPage(page);
+    await shot(page, "mods-search");
+    // A result's title is its portal page, in a new tab, and names its mod.
+    const portalLink = page.getByRole("link", { name: "fp-lamp on the mod portal, opens in a new tab", exact: true });
+    await expect(portalLink).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-lamp");
+    await expect(portalLink).toHaveAttribute("target", "_blank");
+    await expect(portalLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
 
-  // Taking one out redraws again and puts focus on the list.
-  await asked.getByRole("link", { name: "Remove from plan fp-lamp-colours" }).click();
-  await expect(page.locator("#announcer")).toHaveText("Removed fp-lamp-colours. The plan has 1 mod.");
-  await expect(page.locator("#plan-changes")).toBeFocused();
-  await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
-  await add.getByRole("link", { name: "Add to plan fp-lamp-colours", exact: true }).click();
+  // SPEC 9.2, 9.14: Review opens the plan of the picks; adding more happens on
+  // the Mods tab, so the page has no search; Cancel goes back to the tab where
+  // the picks are still in the panel.
+  test("review of the picks has no add search, and Cancel returns to the Mods tab with the picks kept", async ({ page }) => {
+    await pickTwo(page);
+    await panel(page).getByRole("link", { name: "Review and install 3 mods" }).click();
 
-  // One confirm, one snapshot, every mod installed.
-  await page.getByRole("button", { name: "Install 3 mods" }).click();
-  await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
-  for (const f of ["fp-lamp_1.0.0.zip", "fp-lamp-colours_1.2.0.zip", "fp-lamp-lib_1.0.0.zip"]) expect(existsSync(join(modsDir(foreman.dataDir), f))).toBe(true);
-  expect(snapshots(foreman.dataDir)).toBe(1);
+    await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
+    await expect(page.locator("#mod-plan")).toContainText("fp-lamp-lib 1.0.0 (fp-lamp-colours needs it)");
+    await expect(page.getByRole("region", { name: "Add another mod" })).toHaveCount(0);
+    // A stopped world's install is the primary action, not a danger (DESIGN 7.1).
+    await expect(page.getByRole("button", { name: "Install 3 mods" })).toHaveClass(/button--primary/);
+    await checkPage(page);
+    await shot(page, "mods-plan-two");
+
+    await page.getByRole("link", { name: "Cancel, change nothing" }).click();
+    await expect(page).toHaveURL(/\/worlds\/base\/mods$/);
+    await expect(panel(page).locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
+    await expect(panel(page).getByRole("link", { name: "Review and install 3 mods" })).toBeVisible();
+  });
+
+  test("the heading of a plan for one named mod is one run of text", async ({ page }) => {
+    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-lamp");
+    await expect(page.getByRole("heading", { level: 1, name: "Install fp-lamp in Base?" })).toBeVisible();
+    // Issue 364: the name has one space each side and breaks like a word.
+    const h1 = page.locator("#confirm-heading");
+    expect(await h1.evaluate((el) => getComputedStyle(el).display)).toBe("block");
+    expect(await h1.evaluate((el) => (el as HTMLElement).innerText)).toBe("Install fp-lamp in Base?");
+  });
+
+  // SPEC 9.2, 17.9: taking a mod out of the review redraws it in place, says so,
+  // and puts focus on the list it left.
+  test("taking a mod out of the review redraws the plan and says so", async ({ page }) => {
+    await pickTwo(page);
+    await panel(page).getByRole("link", { name: "Review and install 3 mods" }).click();
+    const asked = page.locator("#mod-plan .plan-groups");
+    await asked.getByRole("link", { name: "Remove from plan fp-lamp-colours" }).click();
+    await expect(page.locator("#announcer")).toHaveText("Removed fp-lamp-colours. The plan has 1 mod.");
+    await expect(page.locator("#plan-changes")).toBeFocused();
+    await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
+    await checkPage(page);
+  });
+
+  // SPEC 9.13, 9.14: one confirm installs every pick and what they need with one
+  // snapshot, and the Mods tab's plan is empty afterwards.
+  test("two picks: one install with one snapshot, then the panel is empty", async ({ page, foreman }) => {
+    await pickTwo(page);
+    await panel(page).getByRole("link", { name: "Review and install 3 mods" }).click();
+    await page.getByRole("button", { name: "Install 3 mods" }).click();
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
+    for (const f of ["fp-lamp_1.0.0.zip", "fp-lamp-colours_1.2.0.zip", "fp-lamp-lib_1.0.0.zip"]) expect(existsSync(join(modsDir(foreman.dataDir), f))).toBe(true);
+    expect(snapshots(foreman.dataDir)).toBe(1);
+
+    await page.goto("/worlds/base/mods");
+    await expect(panel(page)).toContainText("No mods in the plan yet.");
+    await page.getByLabel("Mod name").fill("fp-lamp");
+    await expect(hit(page, "fp-lamp")).toContainText("Installed");
+  });
+
+  test.describe("without script", () => {
+    // The accessibility scan needs script, so these pages are scanned in the tests with script.
+    test.use({ javaScriptEnabled: false });
+
+    test("each remove link is the plan without its mod", async ({ page }) => {
+      await page.goto("/worlds/base/mods/plan?kind=install&name=fp-lamp&name=fp-lamp-colours");
+      await expect(page.getByRole("button", { name: "Install 3 mods" })).toBeVisible();
+      await page.getByRole("link", { name: "Remove from plan fp-lamp-colours" }).click();
+      await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
+      await page.getByRole("link", { name: "Cancel, change nothing" }).click();
+      await expect(page).toHaveURL(/\/worlds\/base\/mods$/);
+    });
+  });
 });
 
-// A search from "Add another mod" loads the page again; focus lands on the
-// search's heading, not on the conflict box above the plan.
-test("a search from Add another mod keeps focus on its results", async ({ page, foreman, fakeGame, fakePortal }) => {
+// A conflict takes focus on load; its way back is the Mods tab, not a search.
+test("a conflict is focused and its way back is the Mods tab", async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-conf", "1.0.0", ["base >= 2.0", "! fp-other"]);
   await fakePortal!.add("fp-main", "1.0.0", ["base >= 2.0", "? fp-conf"]);
-  await fakePortal!.add("fp-extra", "1.0.0");
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-other": "2.0" } });
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main&optional=fp-conf");
   await expect(page.locator("#plan-conflicts")).toBeFocused();
-  const add = page.getByRole("region", { name: "Add another mod" });
-  await add.getByLabel("Mod name").fill("fp-extra");
-  await add.getByRole("button", { name: "Search" }).click();
-  await expect(add.getByRole("link", { name: "Add to plan fp-extra", exact: true })).toBeVisible();
-  await expect(page.locator("#add-heading")).toBeFocused();
-  await expect(page.locator("#plan-conflicts")).not.toBeFocused();
+  await expect(page.locator("#plan-conflicts").getByRole("link", { name: "Back to the mods" })).toHaveAttribute("href", "/worlds/base/mods");
   await checkPage(page);
-});
-
-test.describe("without script", () => {
-  // The accessibility scan needs script, so these pages are scanned in the tests with script.
-  test.use({ javaScriptEnabled: false });
-
-  test("each add and remove link is the plan with or without its mod", async ({ page, foreman, fakeGame, fakePortal }) => {
-    await fakePortal!.add("fp-a1", "1.0.0");
-    await fakePortal!.add("fp-a2", "1.0.0");
-    await setUpModsWorld(page, foreman, fakeGame!, world);
-    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-a1&q=fp-a");
-    await page.getByRole("link", { name: "Add to plan fp-a2", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
-    await page.getByRole("link", { name: "Remove from plan fp-a2" }).click();
-    await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
-    // The add search is a plain form that keeps the plan.
-    await page.getByRole("region", { name: "Add another mod" }).getByLabel("Mod name").fill("fp-a2");
-    await page.getByRole("region", { name: "Add another mod" }).getByRole("button", { name: "Search" }).click();
-    await expect(page).toHaveURL(/name=fp-a1.*q=fp-a2#add-heading/);
-    await expect(page.getByRole("link", { name: "Add to plan fp-a2", exact: true })).toBeVisible();
-  });
 });
 
 test("the Mods tab: built-in mods in one line, portal links, and where mod-settings.dat lives", async ({ page, foreman, fakeGame, fakePortal }) => {
