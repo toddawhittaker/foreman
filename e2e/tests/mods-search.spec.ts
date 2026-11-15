@@ -170,3 +170,70 @@ test("a link to another site is ordinary search text", async ({ page }) => {
   await expect(page.getByText("No mod for Factorio 2.0 matches.")).toBeVisible();
   await expect(page.getByRole("table")).toHaveCount(0);
 });
+
+// SPEC 9.1: with script the results follow the typing after a pause; only the
+// results change, focus stays in the box, the address stays, and a screen
+// reader hears the count.
+test("results appear while typing, without Enter, and keep focus, address and ticks", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
+  const box = page.getByLabel("Mod name");
+  await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
+  await box.fill("fp-pg-0");
+  const table = page.getByRole("table", { name: "10 mods for Factorio 2.0 match." });
+  await expect(table).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-0"' })).toBeVisible();
+  await expect(box).toBeFocused();
+  await expect(page).toHaveURL(/\?q=fp-pg-01$/);
+  await expect(table.getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+  await expect(page.locator("#announcer")).toHaveText("10 mods for Factorio 2.0 match.");
+  // A ticked box survives a second typed search that no longer lists it.
+  await box.fill("fp-pg-02");
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+  await expect(page.locator("#announcer")).toHaveText("1 mod for Factorio 2.0 matches.");
+  await checkPage(page);
+});
+
+test("under 2 characters typing changes nothing", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
+  let asked = 0;
+  page.on("request", (r) => {
+    if (r.headers()["hx-request"]) asked++;
+  });
+  await page.getByLabel("Mod name").fill("f");
+  await page.waitForTimeout(600);
+  expect(asked).toBe(0);
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-01"' })).toBeVisible();
+});
+
+// SPEC 9.1, 9.11: a pasted link goes through the same typed search.
+test("a pasted portal link shows its one mod while typing", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg");
+  await page.getByLabel("Mod name").fill("https://mods.factorio.com/mod/fp-pg-03");
+  const table = page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." });
+  await expect(table.getByRole("row")).toHaveCount(2);
+  await expect(table.getByRole("checkbox", { name: "fp-pg-03" })).toBeVisible();
+});
+
+test("without script the search form and Search button still work", async ({ page, foreman, browser }) => {
+  const plain = await browser.newContext({ baseURL: foreman.url, javaScriptEnabled: false, storageState: await page.context().storageState() });
+  const p = await plain.newPage();
+  await p.goto("/worlds/base/mods/search?q=fp-pg-01");
+  await p.getByLabel("Mod name").fill("fp-pg-02");
+  await p.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(p).toHaveURL(/q=fp-pg-02/);
+  await expect(p.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
+  await plain.close();
+});
+
+// The portal's own browse page for the world's game line, in a new tab, on both search forms.
+for (const at of ["/worlds/base/mods", "/worlds/base/mods/search?q=fp-pg"]) {
+  test(`the Browse the mod portal link on ${at}`, async ({ page }) => {
+    await page.goto(at);
+    const link = page.getByRole("link", { name: "Browse the mod portal (opens in a new tab)" });
+    await expect(link).toHaveAttribute("href", "https://mods.factorio.com/browse/downloaded?factorio_version=2.0");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(page.getByText("You can also paste a mod's link from the portal.")).toBeVisible();
+    await shot(page, `mods-browse-${at.includes("search") ? "search" : "tab"}`);
+  });
+}

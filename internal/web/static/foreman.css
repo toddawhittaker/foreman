@@ -1058,6 +1058,7 @@ main {
 
 main > .panel,
 main > .panels > .panel,
+main > .panels > .panels > .panel,
 .split > .panel,
 .split .split__rail > .panel,
 .mod-settings > .panel,
@@ -1081,6 +1082,7 @@ main > .panels > .panel,
 
   main > .panel,
   main > .panels > .panel,
+  main > .panels > .panels > .panel,
   .split > .panel,
   .split .split__rail > .panel,
   .mod-settings > .panel,
