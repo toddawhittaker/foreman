@@ -227,6 +227,12 @@ func TestModSettingDefsContainer(t *testing.T) {
 func TestModSettingDefsMountsZipsReadOnly(t *testing.T) {
 	r := newModSettingsRig(t)
 	r.writeFile(r.id, filepath.Join(world.ModsDir, "fmtest_1.0.0.zip"), []byte("zip"))
+	// A folder mod and the mod list are copies, so they get no mount.
+	r.writeFile(r.id, filepath.Join(world.ModsDir, world.ModListFile), []byte(`{"mods":[{"name":"base","enabled":true}]}`))
+	if err := os.MkdirAll(filepath.Join(r.worldDir(r.id), world.ModsDir, "mine"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	r.writeFile(r.id, filepath.Join(world.ModsDir, "mine", "info.json"), []byte("{}"))
 	ch := r.ask(context.Background())
 	c := r.waitRunning()
 	folder := strings.TrimPrefix(c.Name, "foreman-modsettings-")

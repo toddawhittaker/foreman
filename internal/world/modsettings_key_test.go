@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // pinTimes sets each path's times to t0, so only a file's own change can
@@ -44,6 +45,50 @@ func TestModSettingsKeyChangesWithFolderModContents(t *testing.T) {
 	pinTimes(t, folders...)
 	if settingsKey(t, m, id) == edited {
 		t.Fatal("adding a file inside a folder mod did not change the key")
+	}
+}
+
+// A same-size edit moves only the file's modified time; that is enough.
+func TestModSettingsKeyChangesWithFolderModFileTime(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	mod := filepath.Join(dir, ModsDir, "mine")
+	if err := os.MkdirAll(mod, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(mod, "settings.lua")
+	writeFile(t, file, "aaaa")
+	pinTimes(t, filepath.Join(dir, ModsDir), mod, file)
+	before := settingsKey(t, m, id)
+	later := t0.Add(time.Second)
+	if err := os.Chtimes(file, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if settingsKey(t, m, id) == before {
+		t.Fatal("moving a folder mod file's modified time did not change the key")
+	}
+}
+
+// The walk follows no link: a link inside a folder mod is hashed as a link,
+// so its target, outside the world, does not reach the key.
+func TestModSettingsKeyIgnoresLinkTargets(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	mod := filepath.Join(dir, ModsDir, "mine")
+	if err := os.MkdirAll(mod, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "target.lua")
+	writeFile(t, outside, "x")
+	if err := os.Symlink(outside, filepath.Join(mod, "link.lua")); err != nil {
+		t.Fatal(err)
+	}
+	before := settingsKey(t, m, id)
+	writeFile(t, outside, "a longer target")
+	later := t0.Add(time.Hour)
+	if err := os.Chtimes(outside, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if settingsKey(t, m, id) != before {
+		t.Fatal("changing a link's target outside the world changed the key")
 	}
 }
 

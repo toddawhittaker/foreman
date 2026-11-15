@@ -97,7 +97,7 @@ func (m *Manager) ModSettingsKey(id string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// hashModFolders writes the name, type, size and change time of every entry
+// hashModFolders writes the name, type, size and modified time of every entry
 // inside the world's folder mods to h. The top-level fingerprint sees only a
 // folder's own time, which an edit deep inside does not move. It reads no
 // file's bytes, and stops at the same limits as LinkModsInto.
