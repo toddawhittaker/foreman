@@ -98,8 +98,10 @@ snapshots, and the app database. Its layout is in section 5.2. (P0)
 3.4. **The app database** holds only users, sessions, API token hashes,
 app settings, notification settings, the audit log, which world is
 active (a table of world ids, so that several could be active later), the
-record of a switch in progress (7.10). It never holds other game data: saves, mods and game settings live only in
-world directories. (P0)
+record of a switch in progress (7.10), and each world's unfinished mod plan
+(9.14: the names of the mods picked, nothing else; ADR 0021). It never holds
+other game data: saves, mods and game settings live only in world
+directories. (P0)
 
 3.5. **Host paths.** Foreman creates containers with bind mounts, which
 the Docker daemon resolves on the host. Foreman must know the host path of
@@ -439,8 +441,8 @@ rewrites the file. A world whose `format_version` is newer than Foreman
 knows is listed but cannot be changed, and the page says a newer Foreman
 wrote it. (P0)
 
-5.2. The data directory holds `worlds/<world-id>/`, `snapshots/` and
-the app database. A world's id is a
+5.2. The data directory holds `worlds/<world-id>/`, `snapshots/`,
+`favorites/` (5.12) and the app database. A world's id is a
 short, safe directory name that never changes; its display name can. The
 id is made from the name (lowercase letters, digits and hyphens, at most
 40 characters, with `-2`, `-3` and so on when taken), and an id is never
@@ -893,6 +895,59 @@ world cannot be deleted. (P0)
 5.11. **Saves.** List a world's save files with timestamps and sizes;
 download any save; upload a save; choose which save loads (section 7.11).
 (P0)
+
+5.12. **Favorites.** A favorite is a saved bundle to start new worlds from:
+a game version, Space Age, a map, server settings, mods and mod settings.
+(P1)
+
+- **Made only from a world.** A world's page has "Make a favorite from this
+  world", with a name field already filled with the world's name. Making a
+  favorite only reads the world's files, so it takes no snapshot and changes
+  nothing in the world. A world a newer Foreman wrote has no such form.
+- **What it holds.** The exact game version and Space Age flag. The map and
+  map-generation settings and the preset, when the world has them; an
+  imported world has none, so its favorite gets the default map and the page
+  says so. The server settings with every secret removed (the game
+  password, the factorio.com username and token; 14.8). The world's portal
+  mods with their exact versions. `mod-settings.dat`, copied as it is, since
+  the same admins already see those settings on the Mods tab. Folder mods,
+  turned-off mods and zips whose name or version cannot be read are left out,
+  and the page says which. Foreman cannot tell an uploaded zip from a portal
+  zip, so uploaded mods are kept like portal mods; if the portal lacks the
+  release, the review page shows a conflict with the upload fix (9.2).
+- **Where it lives.** Each favorite is a folder `favorites/<id>/` under the
+  data directory (3.3), holding `favorite.json`, the settings files and
+  `mod-settings.dat`. The id is 16 random hex characters Foreman makes, and
+  nothing else reaches a path. A favorite is built in a staging folder and
+  renamed into place, and a half-made one is cleared at startup. Its files
+  are read as untrusted input (14.5, 14.6): size limits, no links, checked
+  JSON, checked mod names and versions, and secrets removed again on every
+  read. The app database holds nothing about it (3.4). Names are unique,
+  ignoring case, and at most 100 characters.
+- **Shared and fixed.** Every signed-in user sees and uses every favorite. A
+  favorite can be deleted, after a page that says no snapshot is taken and
+  no world changes; it is never edited. To change one, make a new one from a
+  world.
+- **Starting from one.** Generate (5.6) offers "Start from a favorite", a
+  plain form that works without script. Choosing one fills in the form: the
+  game version (still changeable), Space Age, the preset and every map
+  field, and the person can change anything before generating. After the
+  world is made, its server settings and `mod-settings.dat` are written, the
+  favorite's mod names become the world's saved picks (9.14; those past 50
+  are not saved), and the person lands on the world's review page with a note
+  that the world was made, the favorite's mods, and their pinned versions. One
+  "Install N mods" then goes through the checks, checksums and snapshot of
+  9.13; there is no second download path. A favorite with no mods leads to
+  the world's page, as Generate does. A favorite deleted in the meantime is
+  an error on the form and no world is made. Generate's audit entry (12.9)
+  names the favorite.
+- **Other game lines.** The pinned versions are passed to the review page
+  only when the new world is on the favorite's game line. On another line
+  only the names go, and the review page takes the newest release that fits,
+  or shows a conflict for a mod with none.
+- **Limits.** The review page takes at most 50 mod names (9.14), so a
+  favorite with more mods cannot go through it. Foreman keeps no export or
+  import of favorites. (P2)
 
 ## 6. Snapshots
 
@@ -1516,8 +1571,8 @@ Snapshots page, where space can be freed. (P1)
 
 ## 9. Mods (per world)
 
-9.1. **Search** the mod portal by name and see each mod's latest version
-and download count, with its summary on demand. Foreman reads the
+9.1. **Search** the mod portal by name and see each mod's latest version,
+download count and latest release date, with its summary. Foreman reads the
 portal's whole mod list for the world's game line once (15-minute cache)
 and searches it in memory. A mod matches when every word of the text is in
 its name or title, in any order. A mod named exactly like the text comes
@@ -1527,17 +1582,25 @@ the path after `/mod/` (nothing is fetched from the link); text that is
 not such a link is an ordinary search. With script the results follow the
 typing, from 2 characters, a short pause after the last key, both on the
 search page and under the Mods tab's "Find a mod" box, which keeps its own
-address; without it the
-Search button works as before. A link "Browse the mod portal" opens the
-portal's most downloaded list for the game line in a new tab.
-It does this because the portal's own search needs credentials, and
-search must work without them (9.11, ADR 0012). Every match is kept; the
-results show ten at a time, in a table that says how many match in all
-and which ones it shows, with links to the other pages. On the search
-page several results can be ticked and added to one plan at once. Search
-results, the plan's asked-for rows and installed mods link to the mod's page
-at `https://mods.factorio.com/mod/<name>`, in a new tab; built-in and folder
-mods have no link. (P0)
+address; without it the Search button works as before. A link "Browse the
+mod portal" opens the portal's most downloaded list for the game line in a
+new tab. It does this because the portal's own search needs credentials,
+and search must work without them (9.11, ADR 0012).
+
+Every match is kept. The "Mods matching" panel is always on the Mods tab and
+the search page. It is a list, not a table, that says how many mods match
+and which ones it shows, ten at a time. Paging sits above and below the list
+(Previous, a page box with a Go button, Next); with script only the list is
+replaced and focus goes to its heading, and without script they are links
+and a plain form. Each row has the title, linking to
+`https://mods.factorio.com/mod/<name>` in a new tab (built-in and folder
+mods have no link), the summary, the latest version, the downloads and the
+latest release date, and one control: "+", named "Add *mod* to the plan"
+(44 px on a phone); "Installed"; "In plan" with a tick and a "−" that takes
+the pick back out; or "Needed by *mod*", with no button, for a mod that is in
+the plan only as another pick's dependency. "+" takes a moment, since the
+plan needs the portal; the row shows "Adding…" until the plan is back.
+(P0)
 
 9.2. **Install** with dependency resolution. Foreman reads required,
 optional and incompatible dependencies and version constraints, and
@@ -1562,9 +1625,21 @@ dependencies it needs; the mods it pulls in still take the newest release
 that fits. Foreman checks a chosen version against the portal's releases on
 the world's line on every request, and downloads only a release from that
 list; a version the portal does not have there is a conflict. A
-search result's "Add to plan" starts one plan, and "Add another mod" on the
-plan page adds more: several mods are one plan, one snapshot and one
-restart. A conflict that turning off one installed mod would clear offers
+search result's "+" adds the mod to the world's plan, shown in a panel
+beside the results on the Mods tab; several mods are one plan, one snapshot
+and one restart. The panel is a tree. It lists each mod picked with "+" and,
+indented under it and marked "Needed by *mod*", the required dependencies
+the plan would change. A dependency two picks share shows under each; the
+"Review and install N mods" count counts each distinct mod once. Only changes
+show: built-in mods and a dependency already installed at a fitting version
+are hidden, and one that must be updated says "Will update to *version*". A
+dependency that cannot be had (gone from the portal, or without a release
+for this game line) or that conflicts with an installed mod shows a warning
+and a short reason on its line; Review still opens, and the review page
+offers the fixes below. Review opens the review page, which keeps the
+versions, the optional mods, the hazard confirmation and Install; adding
+mods happens only on the Mods tab, and the review page's Back link goes
+there. "Clear plan" empties the panel. A conflict that turning off one installed mod would clear offers
 that as a control on the plan page (17.9): "Remove *mod* as part of this
 plan" when two mods cannot run together, "Disable *mod* too" when an
 enabled mod needs one the plan turns off. It draws the plan again with
@@ -1620,6 +1695,17 @@ snapshot's time. A start refused by the pre-start check does not end the
 run, since the world's files did not change. A running world snapshots
 every change. (P0)
 
+Removing a mod also lists, on its review page, each installed mod that no
+remaining enabled mod requires, as "*mod*, only needed by *mod*". Each is
+ticked, so it is removed in the same change (one snapshot, one restart, the
+confirmation above); unticking keeps it. The check follows required
+dependencies only (including ones without load order), and repeats: a mod
+freed by removing another is offered too. Optional, hidden-optional and
+recommended dependencies, built-in mods and folder mods are never offered. A
+mod that only a kept mod needs is not offered. Foreman keeps no record of
+which mods were picked on purpose; the removal is snapshotted, so it can be
+undone.
+
 9.5. **Upload** a local mod zip. Foreman reads its `info.json` to name and
 version it, and treats it as any other mod afterwards. (P1)
 
@@ -1632,9 +1718,14 @@ its own linked from the Mods tab. For a world with no save yet, its map
 settings are edited there too. (P1) Foreman learns each setting's type,
 default, limits, allowed values, owner and visibility from a one-off run of
 the world's own game image (14.3), and keeps them in memory per world until
-the mods or the game version change. Names and descriptions come from the
-mods' locale files, in the page's language, else English, else the setting's
-own name. Hidden settings are not shown, and a setting with one allowed
+the mods or the game version change. A setting's name comes from its
+`localised_name`, resolved against every section of the mods' locale files
+as the game does: `__1__` parameters, nested keys, `""` joining its
+parameters, and `?` taking the first part that resolves. Without one it is
+`[mod-setting-name]`, then the setting's own name. A description is the same
+with `localised_description` and `[mod-setting-description]`, else none.
+The language is the page's, else English. Resolving stops at 20 levels and
+1,000 characters and falls back when either is passed (14.6). Hidden settings are not shown, and a setting with one allowed
 value is shown locked. Foreman checks each changed value itself, because
 the game silently resets a bad value in the file. An int limit at or past
 the 64-bit range means no limit.
@@ -1739,14 +1830,23 @@ folder no longer matches the plan. A mod settings edit also carries a hash
 of the `mod-settings.dat` its form was drawn from, and is refused as
 changed when the file no longer matches. (P0)
 
-9.14. **The plan is carried, not stored.** Foreman keeps no plan on the
-server. The plan page posts the request, a hash of the plan (which covers
-the mods dropped under 9.4) and a fingerprint of the mods folder (file names,
-sizes, times, and the content of `mod-list.json`). The server works the
-plan out again; when the hash or the fingerprint differs it applies
-nothing and shows the new plan with "The plan changed" (17.8). The
-fingerprint is read again after the game stops, because the game may write
-files as it exits. (P0)
+9.14. **The plan is worked out, not stored.** Foreman saves, per world,
+only the names of the mods picked with "+", at most 50 (3.4, ADR 0021). Each
+time the panel is drawn the tree is worked out again, so removing a pick
+also drops every dependency nothing else needs, and a dependency has no
+remove button of its own. When "Install N mods" is accepted, the mods it
+installed leave the saved picks and the others stay; nothing is cleared by
+a changed plan, a failed check, a refused request or any other kind of plan.
+The failure page's "Try again" still carries the names. Deleting a world
+clears its picks. The picks are a database table, not a file in the world,
+so no snapshot, clone or restore carries them. Beyond the picks, Foreman
+keeps no plan on the server. The review page posts the request, a hash of
+the plan (which covers the mods dropped under 9.4) and a fingerprint of the
+mods folder (file names, sizes, times, and the content of `mod-list.json`).
+The server works the plan out again; when the hash or the fingerprint
+differs it applies nothing and shows the new plan with "The plan changed"
+(17.8). The fingerprint is read again after the game stops, because the
+game may write files as it exits. (P0)
 
 9.15. **How the game treats mod files** (checked in a real game on 1.1, 2.0
 and 2.1). When `mods/` holds two zips of one mod the game loads the higher
@@ -2398,8 +2498,8 @@ with the defaults accepted, these take at most:
 | Switch to another world, downloading its game image if needed (Switch world, the world's Switch, confirm) | 3 |
 | Switch back after a switch | 2 |
 | Undo the last change (switch, update, restore, mod change) | 2 |
-| Search for a mod and install it (Mods, type the name, Add to plan, Install 1 mod; typing is not a click) | 3 |
-| Install a second mod in the same change (one more Add to plan, on the plan page) | 4 |
+| Search for a mod and install it (Mods, type the name, +, Review and install 1 mod, Install 1 mod; typing is not a click) | 4 |
+| Install a second mod in the same change (one more +, on the Mods tab) | 5 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
 | Change a startup mod setting (Mods, Edit mod settings, tick the setting, Save and restart; on a phone, Mod tools before Edit mod settings) | 4 (5 on a phone) |
 | Change a mod's version (Mods, the row's More actions, Change version, choose the version, Change 1 mod; when the portal has an update, the row's Update to *x.y.z* opens the same version choice, so Mods, Update to *x.y.z*, choose, Change 1 mod) | 5 (4 with an update) |

@@ -3239,3 +3239,140 @@ arrow keys do nothing while a preparation is shown (SPEC 17.1).
 - **Under 2 characters the address keeps the last search**, so a reload
   brings that search back.
 - Still deferred: as listed under fixes batch 8.
+
+## Fixes batch 10
+
+Serves SPEC 3.4, 5.12 (new), 9.1, 9.2, 9.4, 9.6, 9.14 and 17.10, with DESIGN
+8.11 and ADR 0021. Issues: #593, #595, #596, #597, #598 and #547, plus the
+removal of orphaned dependencies that Todd asked for while the batch was
+planned. The pull requests were #601 (saved plan storage), #604 (release
+dates), #607 (Mods tab), #609 (review page), #611 (orphans on removal), #605
+(mod setting names), #603 (flaky focus test), #602, #606 and #610
+(favorites), #612 (out of memory on start) and #613 (integration fixes).
+
+Rulings: the saved plan is a database table, not a file in the world folder,
+so no snapshot, clone or restore carries it (ADR 0021). A favorite is made
+only from a world. Generate fills in a favorite and the new world's review
+page installs its mods, so there is no second download path. Export and
+import of favorites is #599 and is not built.
+
+### Delivered
+
+- **Mods tab: a results list with "+", and a plan panel (#595, #596, #597,
+  SPEC 9.1, 9.2, 9.14; #601, #604, #607).** The "Mods matching" panel is
+  always on the Mods tab and the search page. It is a list of ten rows, with
+  a count line, paging above and below (Previous, a page box with Go, Next)
+  and script that replaces only the list. Each row has the title linking to
+  the portal in a new tab, a summary, the latest version, downloads and the
+  latest release date, and then "+", "Installed", "In plan" with "−", or
+  "Needed by *mod*". "+" shows "Adding…" until the panel is back.
+- **The plan panel is a tree.** It lists each picked mod with the required
+  dependencies that change nested under it. A shared dependency shows under
+  each pick. Built-in mods and installed mods that already fit are hidden.
+  An update reads "Will update to *version*". A dependency that cannot be
+  had or that conflicts shows a warning and a short reason; Review still
+  opens. "Review and install N mods" counts each distinct mod once. On a
+  phone the panel holds to the bottom as a bar once it has a mod.
+- **Only the picked names are saved (SPEC 3.4, 9.14; #601).** The table
+  `mod_plan_mods` keeps up to 50 names per world; the tree is worked out
+  fresh each time. Removing a pick drops every dependency nothing else
+  needs. Deleting a world clears its picks.
+- **The review page lost "Add another mod" (SPEC 9.2; #609).** Adding
+  happens only on the Mods tab. Cancel and a conflict's "Back to the mods"
+  go to the Mods tab. When "Install N mods" is accepted, the installed mods
+  leave the saved picks (others stay; #613). The failure page's "Try again"
+  still carries the names. Click budgets rose by one: search and install
+  is 4 clicks, a second mod 5 (SPEC 17.10).
+- **Removing a mod offers the mods only it needed (SPEC 9.4; #611).** The
+  review page lists each installed mod that no remaining enabled mod
+  requires, as "only needed by *mod*", ticked, and the choice goes through
+  the same snapshot and hazard confirmation. The check is transitive.
+  Optional, hidden-optional and recommended dependencies, built-in mods and
+  folder mods are never offered.
+- **Mod settings use each setting's own names (#598, SPEC 9.6; #605).**
+  The definitions run reports `localised_name` and `localised_description`;
+  Foreman resolves them against every section of the mods' locale files as
+  the game does (parameters, nested keys, `""` joining, `?`), then falls
+  back to `[mod-setting-name]` and the setting's own name. It stops at 20
+  levels and 1,000 characters.
+- **Favorites (#547, SPEC 5.12; #602, #606, #610, #613).** A world's page
+  has "Make a favorite from this world". A favorite is a folder under
+  `favorites/<id>/` with its description, the map files, the server settings
+  with every secret removed, the portal mods with their versions and
+  `mod-settings.dat`. `/favorites` lists them, with "Generate from it" and a
+  delete that asks first. Generate offers "Start from a favorite": it fills
+  in the version (still changeable), Space Age, the preset and every map
+  field. After the world is made it gets the server settings and
+  `mod-settings.dat`, the favorite's mods become its saved picks, and the
+  person lands on its review page with a "world made" note, so one "Install
+  N mods" goes through the checks, checksums and snapshot of SPEC 9.13.
+  Versions are passed only when the new world is on the favorite's game
+  line; on another line the review page picks the newest release that fits
+  or shows a conflict. A world with no map files (an imported one) makes a
+  favorite with the default map, and the page says so. Delete is a trash
+  icon, and a favorite's folder is read as untrusted input.
+- **The flaky focus test is fixed (#593; #603).** The page now comes to the
+  front before the focus check, because a second page in the same browser
+  took the focus.
+- **A start names out of memory after Docker restarts the game (SPEC 8.7;
+  #612).** Docker clears its out-of-memory flag when it restarts a killed
+  game, about 100 ms later, and the start only looked on its next poll. The
+  look at the end of the log stream now also happens during an operation.
+  The switch test waits for the world's first state before switching.
+- **Spec and docs.** SPEC 3.4, 5.12, 9.1, 9.2, 9.4, 9.6, 9.14 and 17.10
+  carry the new rules, DESIGN 8.11 describes the Mods tab and the review
+  page, the operator guide's mod walk-through uses the plan panel, ADR 0021
+  records where the picks live, and the plan was deleted. DESIGN has no
+  section for the favorites screens yet.
+
+### Verified
+
+- Each task ran the fast checks (`make check-go fmt-check vet lint
+  typecheck`), the Go tests of the packages it changed and the browser specs
+  for its files at desktop and 320 px, dark and light, with the accessibility
+  scan. #603's test was repeated 20 times with no failure, and fails when
+  the fix is removed.
+- #605's definitions run was tested against real game containers on 1.1.110,
+  2.0.77 and 2.1.24, which return the localised fields.
+- #612's new test failed 30 of 30 times without the fix under load and
+  passed 30 of 30 with it.
+
+### Gaps left
+
+- **A favorite with more than 50 mods cannot go through the review page.**
+  The page's address carries every name and accepts at most 50. Such a world
+  is made, but the review page refuses its mods, and only the first 50
+  names are saved as picks. Wanted: "Review page for favorites with more
+  than 50 mods".
+- **A favorite's pinned versions live only in the review page's address.**
+  Leaving and returning through the Mods tab's panel picks the newest
+  release that fits, since only names are saved.
+- **Uploaded mods are kept in a favorite.** Foreman cannot tell an uploaded
+  zip from a portal zip, so a favorite lists it as a portal mod; on another
+  machine or after the portal drops it, it shows as a conflict with the
+  upload fix. Folder mods, turned-off mods and zips with unreadable names
+  are left out, with a note.
+- **A favorite carries `mod-settings.dat` as it is.** A mod that keeps a
+  token in its settings carries it into new worlds. It also carries the
+  world's map seed, so a new world has the same map unless the seed is
+  changed.
+- **DESIGN.md has no section for the favorites screens.** Their strings and
+  behavior are in SPEC 5.12 and the tests only.
+- **Making and deleting a favorite are not in the audit log.** Generating
+  from one is, with the favorite's name.
+- **Out of memory on start can still be missed** under extreme load, or after
+  a second fast crash. The look at the end of the log can lose to Docker's
+  100 ms restart; the fix is Docker's `oom` event, and the Docker interface
+  has no event stream yet. Wanted: "Read Docker's OOM event so out-of-memory
+  on start is never missed".
+- **The plan panel's focus-leave close is untested.** On a phone the open
+  list folds when focus leaves the panel; no browser test covers it.
+- **Removing a mod on the review page does not remove it from the saved
+  picks.** The link changes only that review, and Cancel returns to a panel
+  that still has the mod.
+- **Each "+" waits for the portal**, because the tree needs it, and the
+  panel shows a portal-down note when it cannot be reached.
+- **A pasted name in the wrong case** still falls back to the name as pasted
+  (from fixes batch 9). The old gaps about the plan page's search and about
+  ticked mods hiding with the results are gone with the tick boxes.
+- Still deferred: as listed under fixes batch 9.
