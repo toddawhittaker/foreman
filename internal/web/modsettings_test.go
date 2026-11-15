@@ -371,6 +371,25 @@ func TestModSettingsRefusesABadValue(t *testing.T) {
 	}
 }
 
+// SPEC 9.6, 17.1, 22.3: in the error summary too, a setting name the mod
+// has only in English is marked lang="en" on a German page.
+func TestModSettingsSummaryMarksEnglishNames(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
+	_, v := g.settingsForm(id)
+	intID := fieldOf("fm-sta-int", modsettings.Startup)
+	v.Set(intID, "42")
+	rep := g.do(http.MethodPost, modSettingsEditPath(id), v, http.Header{"Cookie": {g.cookie.String() + "; " + LangCookie + "=de"}})
+	if rep.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d", rep.StatusCode)
+	}
+	summary := rep.body[strings.Index(rep.body, `id="error-summary"`):]
+	summary = summary[:strings.Index(summary, "</ul>")]
+	wantIn(t, "summary", summary, `<span lang="en">Startup integer</span>`)
+}
+
 // SPEC 9.13: a form drawn from another file saves nothing and shows the
 // current values.
 func TestModSettingsStaleFormSavesNothing(t *testing.T) {
