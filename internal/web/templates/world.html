@@ -142,6 +142,42 @@
     </div>
   </div>
 </section>
+{{- if .CanFavorite}}
+<form method="post" action="{{.FavoritePath}}" class="setting-row" novalidate aria-labelledby="favorite-heading">
+  <div class="setting-row__head">
+    <h2 id="favorite-heading">{{t "favorites.make.heading"}}</h2>
+    <p class="hint" id="favorite-hint">{{t "favorites.make.text"}}{{if .FavDefaultMap}} {{t "favorites.make.default_map"}}{{end}}</p>
+  </div>
+  <div class="setting-row__body">
+    {{- with .FavMade}}
+    <div class="message message--success" id="favorite-made" tabindex="-1" autofocus>
+      <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.made" "name" .Name}}</p>
+      {{- if .DefaultMap}}
+      <p>{{t "favorites.made.default_map"}}</p>
+      {{- end}}
+      {{- with .LeftOut}}
+      <p>{{t "favorites.made.left_out" "count" (len .)}}</p>
+      <ul>
+        {{- range .}}<li translate="no">{{.}}</li>{{end}}
+      </ul>
+      {{- end}}
+      <div class="actions"><a href="{{$.Page.FavoritesPath}}" id="act-favorites">{{t "favorites.list.link"}}</a></div>
+    </div>
+    {{- end}}
+    <div class="field">
+      <label for="favorite-name" class="required">{{t "favorites.make.label"}}</label>
+      <div class="inline-row">
+        <input id="favorite-name" name="favorite_name" type="text" value="{{.FavName}}" required maxlength="100" autocomplete="off"
+          {{- if not .FavError.IsZero}} aria-invalid="true" aria-describedby="favorite-hint favorite-name-error" autofocus{{else}} aria-describedby="favorite-hint"{{end}}>
+        <button type="submit" class="button" id="act-favorite">{{t "favorites.make.button"}}</button>
+      </div>
+      {{- if not .FavError.IsZero}}
+      <p class="error" id="favorite-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .FavError}}</p>
+      {{- end}}
+    </div>
+  </div>
+</form>
+{{- end}}
 </div>
 {{- end}}
 {{- /* What destroys the world sits last, in the Danger zone, apart from the safe copy above (DESIGN 7.4). */}}

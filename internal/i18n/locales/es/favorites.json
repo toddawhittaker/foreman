@@ -1,0 +1,47 @@
+{
+  "favorites.title": "Favoritos",
+  "favorites.intro": "Un favorito guarda la versión del juego de un mundo, su ajuste de Space Age, la configuración del mapa, la configuración del servidor sin contraseñas, los mods y su configuración. Inicia un mundo nuevo a partir de uno en Generar.",
+  "favorites.fact.source": "Creado a partir de",
+  "favorites.fact.mods": "Mods",
+  "favorites.fact.created": "Creado el",
+  "favorites.generate": "Generar a partir de él",
+  "favorites.empty": "Aún no hay favoritos. Abre un mundo y usa «Crear favorito» en su página.",
+  "favorites.empty.link": "Ir a los mundos",
+  "favorites.list.link": "Ver todos los favoritos",
+  "favorites.deleted": "Se borró el favorito «{name}». Los mundos creados a partir de él no cambian.",
+  "favorites.delete.button": "Borrar favorito",
+  "favorites.delete.question": "¿Borrar el favorito «{name}»?",
+  "favorites.delete.removes": "Quitar para siempre el favorito y sus archivos de configuración. No se toma ninguna instantánea.",
+  "favorites.delete.keeps": "Dejar como están todos los mundos creados a partir de él y el mundo del que se creó.",
+  "favorites.delete.cancel": "Conservarlo",
+  "favorites.make.heading": "Crear un favorito a partir de este mundo",
+  "favorites.make.text": "Guarda la versión del juego de este mundo, su ajuste de Space Age, la configuración del mapa, la configuración del servidor sin contraseñas, los mods y su configuración, para iniciar mundos nuevos. El mundo en sí no cambia.",
+  "favorites.make.default_map": "Este mundo no tiene configuración del mapa, así que los mundos creados a partir del favorito tendrán el mapa predeterminado.",
+  "favorites.make.label": "Nombre del favorito",
+  "favorites.make.button": "Crear favorito",
+  "favorites.made": "Se creó el favorito «{name}».",
+  "favorites.made.default_map": "No tiene configuración del mapa, así que los mundos creados a partir de él tendrán el mapa predeterminado.",
+  "favorites.made.left_out": {
+    "one": "Se dejó fuera {count} mod porque Foreman no puede descargarlo de nuevo: es un mod de carpeta, o su nombre o versión no se puede leer. Añádelo a mano a los mundos nuevos.",
+    "other": "Se dejaron fuera {count} mods porque Foreman no puede descargarlos de nuevo: cada uno es un mod de carpeta, o su nombre o versión no se puede leer. Añádelos a mano a los mundos nuevos."
+  },
+  "favorites.error.name_empty": "Escribe un nombre para el favorito.",
+  "favorites.error.name_bad": {
+    "one": "Usa como máximo {count} carácter, sin caracteres de control.",
+    "other": "Usa como máximo {count} caracteres, sin caracteres de control."
+  },
+  "favorites.error.name_taken": "Otro favorito ya tiene este nombre. Elige un nombre distinto.",
+  "favorites.error.settings_broken": "La configuración del servidor de este mundo no es un JSON válido, así que no se creó ningún favorito. Corrígela primero en la pestaña Configuración del juego.",
+  "favorites.error.too_big": "Este mundo tiene demasiados mods o ajustes para guardarlo como favorito.",
+  "favorites.error.gone": "Ese favorito ya no existe o sus archivos están dañados. Elige otro favorito o genera sin ninguno.",
+  "favorites.start.heading": "Empezar desde un favorito",
+  "favorites.start.label": "Favorito",
+  "favorites.start.button": "Usar favorito",
+  "favorites.start.none": "Aún no hay favoritos. Crea uno desde la página de un mundo.",
+  "favorites.start.note": "Empezando desde el favorito «{name}». Su versión del juego, su ajuste de Space Age, su preajuste y la configuración del mapa están rellenados abajo; cambia lo que quieras. El mundo nuevo recibe su configuración del servidor y la configuración de sus mods.",
+  "favorites.start.mods": {
+    "one": "Cuando el mundo esté creado, revisarás {count} mod para instalar.",
+    "other": "Cuando el mundo esté creado, revisarás {count} mods para instalar."
+  },
+  "favorites.error.map_damaged": "La configuración del mapa de este favorito está dañada, así que Foreman no puede rellenarla. Elige otro favorito, o bórralo y créalo de nuevo a partir de un mundo."
+}

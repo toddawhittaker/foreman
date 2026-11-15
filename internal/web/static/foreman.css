@@ -9276,3 +9276,12 @@ main:has(> .gate) > * + :not(h1, .gate) {
   display: grid;
   gap: var(--space-3);
 }
+
+/* The favorites list (SPEC 5.12): one row per favorite, no bullets. */
+.favorite-list {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

@@ -1,0 +1,50 @@
+{
+  "favorites.title": "Ulubione",
+  "favorites.intro": "Ulubiony zestaw zawiera wersję gry świata, ustawienie Era Kosmosu, ustawienia mapy, ustawienia serwera bez haseł, modyfikacje i ich ustawienia. Nowy świat na jego podstawie można utworzyć na stronie Generuj.",
+  "favorites.fact.source": "Utworzono z",
+  "favorites.fact.mods": "Modyfikacje",
+  "favorites.fact.created": "Utworzono",
+  "favorites.generate": "Generuj na jego podstawie",
+  "favorites.empty": "Brak ulubionych. Na stronie świata można użyć opcji „Utwórz ulubiony”.",
+  "favorites.empty.link": "Przejdź do światów",
+  "favorites.list.link": "Pokaż wszystkie ulubione",
+  "favorites.deleted": "Usunięto ulubiony „{name}”. Światy utworzone na jego podstawie się nie zmieniły.",
+  "favorites.delete.button": "Usuń ulubiony",
+  "favorites.delete.question": "Usunąć ulubiony „{name}”?",
+  "favorites.delete.removes": "Trwałe usunięcie ulubionego i jego plików ustawień. Migawka nie jest wykonywana.",
+  "favorites.delete.keeps": "Światy utworzone na jego podstawie i świat, z którego powstał, pozostaną bez zmian.",
+  "favorites.delete.cancel": "Zachowaj",
+  "favorites.make.heading": "Utwórz ulubiony z tego świata",
+  "favorites.make.text": "Zapisuje wersję gry tego świata, ustawienie Era Kosmosu, ustawienia mapy, ustawienia serwera bez haseł, modyfikacje i ich ustawienia, aby tworzyć na ich podstawie nowe światy. Sam świat się nie zmienia.",
+  "favorites.make.default_map": "Ten świat nie ma ustawień mapy, więc światy z tego ulubionego dostaną domyślną mapę.",
+  "favorites.make.label": "Nazwa ulubionego",
+  "favorites.make.button": "Utwórz ulubiony",
+  "favorites.made": "Utworzono ulubiony „{name}”.",
+  "favorites.made.default_map": "Nie ma ustawień mapy, więc światy na jego podstawie dostaną domyślną mapę.",
+  "favorites.made.left_out": {
+    "one": "Pominięto {count} modyfikację, bo Foreman nie może jej ponownie pobrać: jest modyfikacją z folderu albo nie da się odczytać jej nazwy lub wersji. Trzeba ją dodać do nowych światów ręcznie.",
+    "few": "Pominięto {count} modyfikacje, bo Foreman nie może ich ponownie pobrać: każda jest modyfikacją z folderu albo nie da się odczytać jej nazwy lub wersji. Trzeba je dodać do nowych światów ręcznie.",
+    "many": "Pominięto {count} modyfikacji, bo Foreman nie może ich ponownie pobrać: każda jest modyfikacją z folderu albo nie da się odczytać jej nazwy lub wersji. Trzeba je dodać do nowych światów ręcznie."
+  },
+  "favorites.error.name_empty": "Należy wpisać nazwę ulubionego.",
+  "favorites.error.name_bad": {
+    "one": "Dozwolony jest najwyżej {count} znak, bez znaków sterujących.",
+    "few": "Dozwolone są najwyżej {count} znaki, bez znaków sterujących.",
+    "many": "Dozwolonych jest najwyżej {count} znaków, bez znaków sterujących."
+  },
+  "favorites.error.name_taken": "Inny ulubiony ma już tę nazwę. Należy wybrać inną nazwę.",
+  "favorites.error.settings_broken": "Ustawienia serwera tego świata nie są poprawnym JSON, więc nie utworzono ulubionego. Najpierw należy je poprawić na karcie Ustawienia gry.",
+  "favorites.error.too_big": "Ten świat ma zbyt wiele modyfikacji lub ustawień, aby zapisać go jako ulubiony.",
+  "favorites.error.gone": "Ten ulubiony już nie istnieje lub jego pliki są uszkodzone. Należy wybrać inny ulubiony albo generować bez niego.",
+  "favorites.start.heading": "Zacznij od ulubionego",
+  "favorites.start.label": "Ulubiony",
+  "favorites.start.button": "Użyj ulubionego",
+  "favorites.start.none": "Brak ulubionych. Można utworzyć ulubiony na stronie świata.",
+  "favorites.start.note": "Start od ulubionego „{name}”. Jego wersja gry, ustawienie Era Kosmosu, preset i ustawienia mapy są wypełnione poniżej; wszystko można zmienić. Nowy świat dostanie jego ustawienia serwera i ustawienia modyfikacji.",
+  "favorites.start.mods": {
+    "one": "Po utworzeniu świata pojawi się do sprawdzenia {count} modyfikacja do instalacji.",
+    "few": "Po utworzeniu świata pojawią się do sprawdzenia {count} modyfikacje do instalacji.",
+    "many": "Po utworzeniu świata pojawi się do sprawdzenia {count} modyfikacji do instalacji."
+  },
+  "favorites.error.map_damaged": "Ustawienia mapy tego ulubionego są uszkodzone, więc Foreman nie może ich wypełnić. Należy wybrać inny ulubiony albo usunąć ten i utworzyć go ponownie ze świata."
+}

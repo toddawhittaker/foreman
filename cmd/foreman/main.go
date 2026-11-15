@@ -148,7 +148,11 @@ func serve(cfg *config.Config) error {
 	var scheduling sync.WaitGroup
 	scheduling.Go(func() { scheduler.Run(scheduleCtx) })
 	defer func() { stopSchedule(); scheduling.Wait() }()
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: scheduler, HostDataDir: hostDir, Log: slog.Default()})
+	favorites, err := world.NewFavorites(datadir.Favorites(cfg.DataDir), worlds, time.Now)
+	if err != nil {
+		return err
+	}
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Favorites: favorites, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: scheduler, HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
 	}

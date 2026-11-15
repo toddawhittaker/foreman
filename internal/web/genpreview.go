@@ -425,7 +425,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	f, nw, ok := s.readGenerate(r, kindPreview)
 	if !ok {
 		if auto {
-			s.fragment(w, r, s.generatePage(f, nil), "generate-preview-invalid")
+			s.fragment(w, r, s.generatePage(r.Context(), f, nil), "generate-preview-invalid")
 			return
 		}
 		// htmx swaps only a 2xx answer, and then the whole form, with its errors.
@@ -440,7 +440,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		if f.Reset {
 			status = http.StatusOK
 		}
-		s.page(w, r, status, u.Username, s.generatePage(f, nil))
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
 		return
 	}
 	line, _ := mapgen.Line(nw.GameVersion)
@@ -496,10 +496,10 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	if auto {
 		// The page keeps the form as typed and swaps in the section alone.
-		s.fragment(w, r, s.generatePage(f, view), "generate-preview")
+		s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-preview")
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, view))
+	s.page(w, r, http.StatusOK, u.Username, s.generatePage(r.Context(), f, view))
 }
 
 // previewRequest is the preview of the settings Generate would write.

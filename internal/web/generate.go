@@ -8,6 +8,7 @@ import (
 	"fmt"
 	mrand "math/rand/v2"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapexchange"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
+	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -46,6 +48,9 @@ const (
 	modeExchange = "exchange"
 )
 
+// favoriteChoiceID is the id of Generate's favorite select.
+const favoriteChoiceID = "favorite-choice"
+
 // presetSelectID is the id of Generate's preset select.
 const presetSelectID = "generate-preset"
 
@@ -62,7 +67,14 @@ type GeneratePage struct {
 	// CanPreview is true when this Foreman can make map previews.
 	CanPreview bool
 	Preview    *PreviewView
+	// FavoritesOn shows "Start from a favorite"; Favorites are its choices
+	// (SPEC 5.12).
+	FavoritesOn bool
+	Favorites   []world.Favorite
 }
+
+// FavoritesPath is the favorites list.
+func (GeneratePage) FavoritesPath() string { return PathFavorites }
 
 // AchReason is one of the game's reasons achievements are turned off, for
 // the summary by the Generate button; Active when the settings give it.
@@ -116,6 +128,11 @@ type GenerateForm struct {
 	// PreviewSize is the map preview's side in tiles; zero is the default.
 	PreviewSize int
 
+	// Favorite is the favorite the form started from, or nil (SPEC 5.12);
+	// FavoriteError says it cannot be used, on the chooser.
+	Favorite      *world.Favorite
+	FavoriteError i18n.Msg
+
 	NameError, VersionError, SpaceAgeError, PresetError, ExchangeError, FormError, PreviewSizeError i18n.Msg
 	SettingsProblems                                                                                []Problem
 }
@@ -129,6 +146,7 @@ func (p GeneratePage) hasErrors() bool { return len(p.Problems()) > 0 }
 func (p GeneratePage) Problems() []Problem {
 	f := p.Form
 	all := []Problem{
+		{favoriteChoiceID, f.FavoriteError},
 		{"generate-name", f.NameError},
 		{"generate-version", f.VersionError},
 		{"generate-space-age", f.SpaceAgeError},
@@ -192,9 +210,40 @@ func (s *server) activeVersion(ctx context.Context) string {
 	return ""
 }
 
-func (s *server) generatePage(f GenerateForm, preview *PreviewView) GeneratePage {
+func (s *server) generatePage(ctx context.Context, f GenerateForm, preview *PreviewView) GeneratePage {
 	f.CanDownload = s.game != nil
-	return GeneratePage{Form: f, CanPreview: s.previewer != nil, Preview: preview}
+	p := GeneratePage{Form: f, CanPreview: s.previewer != nil, Preview: preview, FavoritesOn: s.favorites != nil}
+	if s.favorites != nil {
+		// A list that cannot be read leaves only the chooser out.
+		p.Favorites, _ = s.favorites.List(ctx)
+	}
+	return p
+}
+
+// favoriteMap reports whether the form's map settings are laid over the
+// favorite's files: it has them, the map is made from the settings, and the
+// world is on the favorite's game line, which the files were written for.
+func (f GenerateForm) favoriteMap() bool {
+	if f.Favorite == nil || !f.Favorite.HasMapSettings || f.Mode != modeSettings {
+		return false
+	}
+	line, ok := mapgen.Line(f.Favorite.GameVersion)
+	return ok && line == f.Line
+}
+
+// readFavorite reads the favorite a form names; a missing or damaged one
+// is a form error.
+func (s *server) readFavorite(f *GenerateForm, id string) world.FavoriteFiles {
+	if id == "" || s.favorites == nil {
+		return world.FavoriteFiles{}
+	}
+	fav, files, err := s.favorites.Get(id)
+	if err != nil {
+		f.FavoriteError = i18n.M("favorites.error.gone")
+		return world.FavoriteFiles{}
+	}
+	f.Favorite = &fav
+	return files
 }
 
 // mapKey names the game line and Space Age setting the map options are for.
@@ -228,11 +277,49 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 		Mode: modeSettings, Preset: defaultPreset, Line: line, Presets: mapgen.Presets(line),
 		MapKey: mapKey(line, spaceAge), Tab: tabResources,
 	}
+	var files world.FavoriteFiles
+	if id := r.URL.Query().Get(favoriteQuery); id != "" {
+		files = s.readFavorite(&f, id)
+		if fav := f.Favorite; fav != nil {
+			f.startFrom(*fav)
+			version = f.Version
+		}
+	}
 	f.fill(version, nil)
+	if f.favoriteMap() {
+		f.fillFromFiles(files)
+	}
 	rules, _ := mapgen.AchievementRules(version)
 	f.MapGen.markAchievements(rules)
 	f.reasons(version, nil, nil, rules)
-	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, nil))
+	status := http.StatusOK
+	switch {
+	case !f.FavoriteError.IsZero() && f.Favorite == nil:
+		status = http.StatusNotFound
+	case !f.FavoriteError.IsZero():
+		status = http.StatusUnprocessableEntity
+	}
+	s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
+}
+
+// startFrom fills the form's version, Space Age and preset from a favorite
+// (SPEC 5.12); the person can change any of them.
+func (f *GenerateForm) startFrom(fav world.Favorite) {
+	line, ok := mapgen.Line(fav.GameVersion)
+	if !ok || !world.SupportedGameVersion(fav.GameVersion) {
+		return
+	}
+	f.Version, f.Line = fav.GameVersion, line
+	if fav.GameVersion != f.DefaultVersion {
+		f.Typed = fav.GameVersion
+	}
+	f.SpaceAge = fav.SpaceAge && lineHasSpaceAge(line)
+	f.Presets = mapgen.Presets(line)
+	f.Preset = defaultPreset
+	if slices.Contains(f.Presets, fav.Preset) {
+		f.Preset = fav.Preset
+	}
+	f.MapKey = mapKey(line, f.SpaceAge)
 }
 
 // handleGenerateRefresh redraws the page for a changed game version, Space
@@ -244,7 +331,7 @@ func (s *server) handleGenerateRefresh(w http.ResponseWriter, r *http.Request, u
 	}
 	f, _, _ := s.readGenerate(r, kindRefresh)
 	f.clearErrors()
-	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, nil))
+	s.page(w, r, http.StatusOK, u.Username, s.generatePage(r.Context(), f, nil))
 }
 
 func (f *GenerateForm) clearErrors() {
@@ -264,13 +351,28 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	f, nw, ok := s.readGenerate(r, kindGenerate)
+	files := s.readFavorite(&f, r.PostFormValue(favoriteQuery))
+	if f.favoriteMap() {
+		// Damaged files are refused here too, as the filled form refused them.
+		check := f
+		check.fillFromFiles(files)
+		f.FavoriteError = check.FavoriteError
+	}
+	ok = ok && f.FavoriteError.IsZero()
 	if !ok {
 		status := http.StatusBadRequest
 		if f.Reset || f.Refilled {
 			status = http.StatusOK
 		}
-		s.page(w, r, status, u.Username, s.generatePage(f, nil))
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
 		return
+	}
+	if fav := f.Favorite; fav != nil {
+		nw.ServerSettings, nw.ModSettings = files.ServerSettings, files.ModSettings
+		if f.favoriteMap() && !s.favoriteMapFiles(&f, &nw, files, r) {
+			s.page(w, r, http.StatusBadRequest, u.Username, s.generatePage(r.Context(), f, nil))
+			return
+		}
 	}
 	id, err := s.worlds.Generate(r.Context(), nw)
 	if err != nil {
@@ -279,7 +381,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 			return
 		}
 		f.place(err, msg)
-		s.page(w, r, status, u.Username, s.generatePage(f, nil))
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
 		return
 	}
 	how := f.Mode
@@ -289,9 +391,27 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 			how += ", modified"
 		}
 	}
+	if f.Favorite != nil {
+		how += ", favorite " + f.Favorite.Name
+	}
 	s.audit(r.Context(), u, AuditGenerate, id, fmt.Sprintf("%s, %s, space age %t", how, nw.GameVersion, nw.SpaceAge))
 	if f.Download {
 		s.downloadFor(r.Context(), map[string]string{nw.GameVersion: id}, actor(u))
+	}
+	// The favorite's mods go through the review page's checks and one
+	// install (SPEC 5.12, 9.13). Its versions are pinned on its own game
+	// line; on another line the review page picks the newest that fits.
+	if fav := f.Favorite; fav != nil && len(fav.Mods) > 0 {
+		q := url.Values{"kind": {string(mods.KindInstall)}}
+		favLine, _ := mapgen.Line(fav.GameVersion)
+		for _, m := range fav.Mods {
+			q.Add("name", m.Name)
+			if favLine == f.Line {
+				q.Set(versionPrefix+m.Name, m.Version)
+			}
+		}
+		http.Redirect(w, r, planPath(id, q), http.StatusSeeOther)
+		return
 	}
 	http.Redirect(w, r, worldPath(id)+"?"+generatedQuery+"=1", http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
 }
