@@ -545,6 +545,10 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	err := s.worlds.Delete(r.Context(), sum.ID, p.ConfirmName, p.FinalSnapshot, u.Username)
 	if err == nil {
+		// A deleted world's unfinished mod plan goes with it (SPEC 3.4).
+		if cerr := s.store.ClearModPlan(r.Context(), sum.ID); cerr != nil {
+			s.log.Warn("clear the mod plan of a deleted world", "world", sum.ID, "error", cerr)
+		}
 		http.Redirect(w, r, PathWorlds+"?deleted="+sum.ID, http.StatusSeeOther)
 		return
 	}

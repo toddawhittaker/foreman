@@ -63,8 +63,9 @@ test.describe("mods tab", () => {
     await page.goto("/worlds/base/mods");
     await page.getByLabel("Mod name").fill("jetpack");
     await page.getByRole("button", { name: "Search" }).click();
-    await expect(page).toHaveURL(/\/worlds\/base\/mods\/search\?q=jetpack/);
-    await expect(page.getByText("could not reach the mod portal, so it could not search")).toBeVisible();
+    // With script the search runs in place on the tab.
+    await expect(page.locator("#results")).toContainText("could not reach the mod portal, so it could not search");
+    await expect(page).toHaveURL(/\/worlds\/base\/mods$/);
     await checkPage(page);
   });
 });

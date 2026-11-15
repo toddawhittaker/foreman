@@ -2563,10 +2563,10 @@ game's state badge beside it (7.5), then sections in the order below, each
 a `section.panel` (a card, 7.8). The three rarer tools ("Match mods to the
 save", "Upload a mod", "Mod settings") sit inside one `details.disclosure`,
 "Mod tools", so each tool appears once on the page. Below 64rem that
-disclosure is a closed 44 px row under "Find a mod", with the tools' full
+disclosure is a closed 44 px row after "Plan", with the tools' full
 cards inside, and "Installed mods" follows it. From 64rem `subnav.js`
 opens it and hides its summary (`data-open-wide`), and the cards are a
-22.5rem rail beside "Find a mod" and "Installed mods". A refused upload
+22.5rem rail under "Plan", beside the rest. A refused upload
 opens it, so the error summary's link reaches the field. In the rail the
 tools' buttons (Match mods to the save, Edit mod settings, Upload a mod
 zip) are as wide as their words, not the rail's width, so they do not
@@ -2576,7 +2576,8 @@ fine pointer and 44 px on touch. The sections, in order:
 - A Note when Foreman has no factorio.com account: "Mod downloads are off
   ... Searching still works", with a link to the account page that comes
   back to this tab.
-- "Find a mod": one `role="search"` form, a field and Search.
+- "Find a mod": one `role="search"` form, a field and Search, then
+  "Mods matching" and "Plan" as described under Search below.
 - "Installed mods". A status block (`role="status"`, so a late answer is
   announced) loads after the page ("Checking the mod portal for updates…"),
   then shows one quiet line of counts in `text`, each led by its shape and
@@ -2659,34 +2660,75 @@ A change to a world that is not active reports on its own Mods tab: a
 steps list (7.6) while it runs, then a Done message with "Undo this mod
 change", which goes to the restore confirmation (7.4).
 
-**Search** (`/worlds/{id}/mods/search?q=`). The `h1` is the world, as on
-the Mods tab; "Find a mod" is an `h2` with the form, and "Mods matching
-"krastorio"" an `h2` over the results. The results are a table (8.3) of
-ten rows a page: Mod, Latest version, Downloads. Its caption says how many
-match in all and which ones show ("25 mods for Factorio 2.0 match. Showing
-1 to 10."), so a cut is never hidden. The first cell holds a box labelled
-with the title (weight 600) and the name in `code`, then "Add to plan"
-(secondary, hidden text names the mod), then a closed "Details" `details`
-with the summary and the portal link. The game version is not repeated: the
-search only finds mods for the world's line. "Installed" and "In plan" are
-badges in place of the box and the button. "Add ticked mods to plan" after
-the table starts one plan with every ticked mod; with none ticked the page
-says so (7.2). The page controls ("Previous page", "Page 2 of 3", "Next
-page") are buttons of the same form, so ticks on other pages are kept as
-hidden fields and named under the table; after a page change focus goes to
-the results heading. With a mouse (`pointer: fine`) the box's label and the
-Details toggle are 24 px tall, so a row is about 100 px. Search works
-without an account. With script the results follow the typing: from 2
-characters, 300 ms after the last key, only the results are replaced (htmx),
-focus stays in the box, the address does not change, and the caption is
-read out through the shared announcer (7.5), as is a refused search's error.
-Under 2 characters the old results are hidden and "Type at least 2
-characters to search." is announced once. The "Also ticked" list and "Add
-ticked mods to plan" hide with them; the ticks still go with the form.
-Without script the form and
-Search work as before. Under the field, on this page and on the Mods tab, a
-hint says a pasted mod link works, with a plain link "Browse the mod
-portal" (hidden text "(opens in a new tab)") to
+**Search and the plan panel** (SPEC 9.1, 9.2, 9.14). The Mods tab and the
+search page (`/worlds/{id}/mods/search?q=`, the same results without
+script) show three things in this order: "Find a mod", "Mods matching" and
+"Plan". On a wide screen (64rem and up) "Plan" heads the rail, above Mod
+tools, beside the other two, and holds to the top of the screen
+(`position: sticky`) while the results scroll past it. On a phone it
+follows the results; once it has a mod it holds to the bottom of the
+screen as a bar with the count ("2 mods in the plan"), the names cut to
+one line, and "Review and install N mods". The bar's line is a `details`
+summary that opens the full list (up to 40% of the screen, scrolling);
+the panel's heading stays for screen readers and focus. Below 360 px the
+bar keeps its frame while the other cards lie flat.
+
+- "Mods matching" is always there. Before a search it says "Type at
+  least 2 characters of a mod's name in Find a mod. Matching mods show
+  here." With script, typing replaces only this panel 300 ms after the
+  last key (htmx); under 2 characters the server sends that sentence back
+  and asks the portal nothing. A reply that no longer matches the box is
+  dropped. The count, the empty sentence or the error is read out through
+  the shared announcer (7.5). On the search page the address and title
+  follow the text without new history entries; on the Mods tab the
+  address stays the tab's, and Enter searches in place.
+- The results are a list (`ul`, named by its count line: "25 mods for
+  Factorio 2.0 match. Showing 1 to 10."), ten rows a page, rows divided by
+  rules, not cards. Each row: an `h3` whose title links to the mod's portal
+  page in a new tab (hidden text "on the mod portal, opens in a new tab";
+  a 24 px tall target), the name in `code` when it differs; the summary,
+  two lines at most; then one line of facts as a `dl` (Latest, Downloads,
+  Updated, the last only when the portal gives a date; `time.js` writes
+  the date in the reader's language) with the row's control at its end.
+- The control: "+" (a framed square, 44 px on touch, 32 px with a mouse,
+  named "Add *mod* to the plan"); "Installed" badge; for a pick an "In
+  plan" badge with a tick and a "−" named "Remove *mod* from the plan",
+  the row tinted and edged in `selected` (the words carry it, never colour
+  alone); for a mod in the plan only as a dependency a "Needed by *mod*"
+  badge and no button. While the plan is worked out after "+" the row says
+  "Adding…" beside the button. Changes to the plan go one at a time; a
+  second click waits and is sent once the first answer is in.
+- Paging is the same bar above and below the list, in three columns:
+  "Previous page", a page box ("Page [n] of N" and Go, a plain GET form),
+  "Next page". With script only the results panel is replaced and focus
+  goes to its heading; without script they are plain links and forms. A
+  page past the end shows the last page.
+- "Plan" lists each pick with a quiet cross ("Remove *mod* from the
+  plan"), its version, and under it, indented on a rule, each required
+  dependency that changes, labelled "Needed by *mod*", nested as deep as
+  it goes. A dependency two picks share shows under each. Built-in mods
+  and installed mods that already fit are left out; an installed one that
+  must change says "Will update to *x.y.z*" ("Will change to" for an older
+  one, "Will be enabled" for one that is off). A dependency that cannot be
+  had or conflicts shows a warning triangle and a short reason. Under the
+  list: when the plan was started, that Review shows every change, and a
+  quiet "Clear plan". Last, the primary "Review and install N mods"
+  (each distinct mod counted once) opens the plan page with the picks
+  (`kind=install&name=…`). An empty plan says "No mods in the plan yet.
+  Choose + beside a mod to add it, then search again for the next." If
+  the portal cannot be reached the picks are listed by name with a
+  Warning and "Check again", and the button reads "Review the plan".
+- Each change says what it did through the announcer ("Krastorio2 added
+  to the plan. The plan has 2 mods.") and keeps focus where the hand is:
+  on the row's new control, on the next cross in the panel, or on the
+  panel's heading after Clear plan. Without script every control is a
+  form that comes back to the same search, page and row
+  (`#mod-<name>-hit`), or to the panel (`#plan-panel`). A "+" past the
+  plan's 50 mods is refused with an error in the panel.
+
+Under the field, on this page and on the Mods tab, a hint says a pasted
+mod link works, with a plain link "Browse the mod portal" (hidden text
+"(opens in a new tab)") to
 `https://mods.factorio.com/browse/downloaded?factorio_version=<line>`
 in a new tab.
 

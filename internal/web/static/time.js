@@ -7,7 +7,8 @@
 // button whose time is the point of it, such as the next scheduled restart,
 // asks for the age with data-age; it is refreshed with the rest. A time
 // still to come reads forward ("in 7 hours"). A time marked data-clock shows
-// the clock alone, with the full time in its title.
+// the clock alone, with the full time in its title; one marked data-day the
+// date alone.
 (function () {
   "use strict";
 
@@ -42,6 +43,12 @@
     }
     var date = new Date(iso);
     if (isNaN(date.getTime())) {
+      return;
+    }
+    // A day alone, such as a mod's last release, shows the date only.
+    if (el.hasAttribute("data-day")) {
+      el.textContent = new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", year: "numeric" }).format(date);
+      el.dataset.local = "true";
       return;
     }
     var withSeconds = /:\d\d:\d\d/.test(el.textContent);
