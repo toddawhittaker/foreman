@@ -751,6 +751,21 @@ func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
 			}
 		}
 	}
+	for _, n := range names {
+		t := r.targets[n]
+		if !t.enabled || t.builtin {
+			continue
+		}
+		for _, d := range t.deps {
+			if !d.required() {
+				continue
+			}
+			if p.Requires == nil {
+				p.Requires = map[string][]string{}
+			}
+			p.Requires[n] = append(p.Requires[n], d.Name)
+		}
+	}
 	p.Conflicts = dedupe(r.conflicts)
 	p.Unresolved = unresolved
 	slices.SortFunc(p.Unresolved, func(a, b Unresolved) int { return strings.Compare(a.Name, b.Name) })

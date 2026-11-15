@@ -220,6 +220,8 @@
   --i-history: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/%3E %3Cpath d='M3 3v5h5'/%3E %3Cpath d='M12 7v5l4 2'/%3E%3C/svg%3E");
   --i-version: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 14 4-4'/%3E %3Cpath d='M3.34 19a10 10 0 1 1 17.32 0'/%3E%3C/svg%3E");
   --i-plus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E %3Cpath d='M12 5v14'/%3E%3C/svg%3E");
+  --i-minus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
+  --i-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
   --i-trash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 11v6'/%3E %3Cpath d='M14 11v6'/%3E %3Cpath d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6'/%3E %3Cpath d='M3 6h18'/%3E %3Cpath d='M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/%3E%3C/svg%3E");
   --i-rename: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 21h8'/%3E %3Cpath d='m15 5 4 4'/%3E %3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3C/svg%3E");
   --i-account: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='5'/%3E %3Cpath d='M20 21a8 8 0 0 0-16 0'/%3E%3C/svg%3E");
@@ -407,7 +409,7 @@ main h2[id]::before {
 .server-actions :is(#act-start, #act-stop, #act-restart, #act-snapshot, #act-pull, [data-design-icon])::before,
 :is(#act-force-stop, .design-force-stop)::before,
 .page-head--row .button:is([href$="/generate"], [href$="/import"])::before,
-main h2:is(#players-heading, #disk-heading, #list-heading, #search-heading, #installed-heading, #sync-heading, #upload-heading, #settings-heading, #version-heading, #rename-heading, #take-heading, #delete-heading, #console-heading, #log-heading, #saves-heading, #folder-heading, #account-env-heading, #account-form-heading, #account-remove-heading, #mod-settings-heading, #mod-settings-map-heading, #clone-heading, #results-heading, #changes-heading, #admins-heading, #none-heading)::before {
+main h2:is(#players-heading, #disk-heading, #list-heading, #search-heading, #installed-heading, #sync-heading, #upload-heading, #settings-heading, #version-heading, #rename-heading, #take-heading, #delete-heading, #console-heading, #log-heading, #saves-heading, #folder-heading, #account-env-heading, #account-form-heading, #account-remove-heading, #mod-settings-heading, #mod-settings-map-heading, #clone-heading, #results-heading, #plan-heading, #changes-heading, #admins-heading, #none-heading)::before {
   content: "";
 }
 
@@ -443,6 +445,7 @@ main h2[id]::before {
 #search-heading,
 #results-heading { --icon: var(--i-search); }
 #installed-heading { --icon: var(--i-mods); }
+#plan-heading { --icon: var(--i-list); }
 #sync-heading { --icon: var(--i-sync); }
 #upload-heading,
 #folder-heading { --icon: var(--i-upload); }
@@ -1061,7 +1064,7 @@ main > .panels > .panel,
 main > .panels > .panels > .panel,
 .split > .panel,
 .split .split__rail > .panel,
-.mod-results > .panels > .panel,
+.mod-side > .panel,
 .mod-settings > .panel,
 .mod-settings > .panels > .panel,
 .settings-main > .panel,
@@ -1086,7 +1089,7 @@ main > .panels > .panels > .panel,
   main > .panels > .panels > .panel,
   .split > .panel,
   .split .split__rail > .panel,
-  .mod-results > .panels > .panel,
+  .mod-side > .panel,
   .mod-settings > .panel,
   .mod-settings > .panels > .panel,
   .settings-main > .panel,
@@ -4632,20 +4635,6 @@ form:has(#mode-exchange:checked) .achievements {
   margin-block-start: var(--space-1);
 }
 
-.mod-hits .check {
-  align-items: start;
-}
-
-/* The box sits beside the title's first line, not the middle of a wrapped one. */
-.mod-hits .check input {
-  margin-block-start: 0.125rem;
-}
-
-/* A mod without a box (installed, or in the plan) lines its title up with the ticked ones. */
-.mod-hits--pick .mod-hits__name {
-  padding-inline-start: calc(1.25rem + var(--space-3));
-}
-
 .mod-hits__title {
   font-weight: 600;
 }
@@ -4660,13 +4649,9 @@ form:has(#mode-exchange:checked) .achievements {
   font-size: var(--text-sm);
 }
 
-/* With a mouse the box's label and the details toggle need no touch-sized
-   row (WCAG 2.5.8 asks 24 px), so a row is about 100 px tall, not 140. */
+/* With a mouse the details toggle needs no touch-sized row (WCAG 2.5.8
+   asks 24 px). */
 @media (pointer: fine) {
-  .mod-hits .check {
-    min-block-size: 1.5rem;
-  }
-
   .mod-hits__summary > summary {
     min-block-size: 1.5rem;
     padding-block: var(--space-1);
@@ -8391,12 +8376,17 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-/* Mods: search, the tools and the list in that order. On a wide screen the
-   tools are a rail beside both; below it they fold under one 44 px Mod
-   tools disclosure under the search. */
+/* Mods: search, the results, the plan and the tools, then the list. On a
+   wide screen the plan and the tools are a rail beside the rest; on a phone
+   the plan follows the results and the tools fold under one 44 px Mod tools
+   disclosure (DESIGN 8.11). */
 .split.split--mods {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: none;
+}
+
+.mod-side {
+  display: contents;
 }
 
 @media (min-width: 64rem) {
@@ -8406,20 +8396,447 @@ main > .panel.danger-zone.danger-zone--blocked {
     align-items: start;
   }
 
-  .split--mods > .mod-rail {
+  .split--mods > .mod-side {
+    display: grid;
     grid-column: 2;
     grid-row: 1 / span 3;
+    align-self: stretch;
+    align-content: start;
+    gap: var(--space-4);
   }
 
-  .split--mods > .panel,
-  .split--mods > .mod-results {
+  .split--mods > .panel {
     grid-column: 1;
+  }
+
+  /* The plan stays in view while the results scroll past it. */
+  .mod-side > .plan-panel {
+    position: sticky;
+    inset-block-start: var(--space-4);
+    z-index: 1;
   }
 }
 
-/* The Mods tab's typed results take no row, and so no gap, until there is something to show. */
-.mod-results:not(:has(.panel, .error, .message)) {
+/* Phone: once the plan has a mod it holds to the bottom of the screen as a
+   bar with the count, the names and Review; it opens to the full list. */
+@media (max-width: 63.99rem) {
+  .plan-panel:not(.plan-panel--empty) {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 5;
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-pop);
+  }
+
+  /* The bar's own line names it; the heading stays for screen readers and focus. */
+  .plan-panel:not(.plan-panel--empty) > .plan-panel__head {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .plan-panel .plan-tree {
+    max-block-size: 40vh;
+    overflow-y: auto;
+  }
+}
+
+/* Below 360 px cards lie flat; the held bar keeps its frame so it reads as one. */
+@media (max-width: 22.4rem) {
+  .mod-side > .plan-panel:not(.plan-panel--empty) {
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-border);
+  }
+}
+
+/* Results: a list of rows divided by rules, not cards (DESIGN 1). */
+.mod-found {
+  container-type: inline-size;
+}
+
+.mod-found__count {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.hits {
+  max-inline-size: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hit {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  max-inline-size: none;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-3) 0;
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-inline-start: 3px solid transparent;
+}
+
+.hit:last-child {
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+/* "In plan" says it in words with a tick; the tint and edge only repeat it. */
+.hit:has(.badge--chosen) {
+  background: var(--color-accent-bg);
+  border-inline-start-color: var(--color-selected);
+}
+
+.hit__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* The title is a link of its own, so it gets a 24 px tall target (WCAG 2.5.8). */
+.hit__title a {
+  display: inline-block;
+  padding-block: 0.125rem;
+}
+
+.hit__title code {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.hit__summary {
+  display: -webkit-box;
+  max-inline-size: var(--measure);
+  overflow: hidden;
+  font-size: var(--text-sm);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.hit__line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.hit__facts {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  min-inline-size: 0;
+  margin: 0;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.hit__facts > div {
+  display: flex;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.hit__facts dt {
+  color: var(--color-text-muted);
+}
+
+.hit__facts dd {
+  margin: 0;
+}
+
+.hit__act,
+.hit__form {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hit__act .badge {
+  white-space: nowrap;
+}
+
+.hit__act .badge--needed {
+  max-inline-size: 12rem;
+  white-space: normal;
+}
+
+/* While the plan is worked out the row says so beside its button. */
+.hit__busy {
   display: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.hit__form.htmx-request .hit__busy {
+  display: inline;
+}
+
+/* The words keep the text colour for contrast on the tint; the edge and tick carry the orange. */
+.badge--chosen {
+  gap: var(--space-1);
+  color: var(--color-text);
+  border-color: var(--color-selected);
+}
+
+.badge--chosen::before {
+  content: "";
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  background: var(--color-selected);
+  mask: var(--i-check) center / contain no-repeat;
+}
+
+/* The row's + (or −): 44 px on touch screens, 32 px with a mouse (WCAG 2.5.8 asks 24). */
+.plan-toggle {
+  inline-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  block-size: var(--target-min);
+  padding: 0;
+}
+
+.plan-toggle::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--i-plus) center / contain no-repeat;
+}
+
+.plan-toggle--remove::before {
+  mask-image: var(--i-minus);
+}
+
+@media (pointer: fine) {
+  .plan-toggle {
+    inline-size: 2rem;
+    min-inline-size: 2rem;
+    block-size: 2rem;
+    min-block-size: 2rem;
+  }
+}
+
+/* Paging: the same bar above and below the list, in three columns so
+   Previous and Next keep their places on every page. */
+.result-pager {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  max-inline-size: none;
+}
+
+.result-pager__jump {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.result-pager__jump input {
+  inline-size: 3.25rem;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-2);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* At 320 px the word "Page" stays for screen readers only; the box and "of N" still read as a page number. */
+@container (max-width: 22rem) {
+  .result-pager__jump > label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .result-pager .button {
+    padding-inline: var(--space-2);
+  }
+}
+
+/* The plan panel: the picks, each with what it needs indented under it. */
+.plan-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plan-panel__head {
+  margin: 0;
+}
+
+.plan-panel__list > * + * {
+  margin-block-start: var(--space-3);
+}
+
+.plan-panel__list > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  cursor: pointer;
+  list-style: none;
+}
+
+.plan-panel__list > summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-panel__list > summary::before {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+  rotate: -90deg;
+  transition: rotate var(--dur-1) var(--ease);
+}
+
+.plan-panel__list[open] > summary::before {
+  rotate: 90deg;
+}
+
+.plan-panel__list[data-wide] > summary {
+  display: none;
+}
+
+.plan-panel__sum {
+  flex: none;
+  font-weight: 600;
+}
+
+.plan-panel__names {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-panel__list[open] .plan-panel__names {
+  display: none;
+}
+
+.plan-tree,
+.plan-tree__deps {
+  max-inline-size: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-tree__pick {
+  padding-block: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.plan-tree__pick:first-child {
+  padding-block-start: 0;
+}
+
+.plan-tree__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.plan-tree__name {
+  flex: 1;
+  min-inline-size: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.plan-tree__deps .plan-tree__name {
+  font-weight: 400;
+}
+
+.plan-tree .mod-ver {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A dependency hangs off its parent by a rule, one step in per level. */
+.plan-tree__deps {
+  margin-block-start: var(--space-1);
+  margin-inline-start: var(--space-1);
+  padding-inline-start: var(--space-3);
+  border-inline-start: var(--border-width) solid var(--color-line);
+}
+
+.plan-tree__dep {
+  padding-block: var(--space-1);
+}
+
+.plan-tree__why,
+.plan-tree__note,
+.plan-tree__warn {
+  max-inline-size: none;
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.plan-tree__why {
+  color: var(--color-text-muted);
+}
+
+/* A problem is a triangle and words, never colour alone. */
+.plan-tree__warn {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  color: var(--color-warn);
+  font-weight: 600;
+}
+
+.plan-tree__warn::before {
+  content: "";
+  flex: none;
+  inline-size: 0.75rem;
+  block-size: 0.6875rem;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* Taking a mod out of the plan destroys nothing, so the cross is quiet, not red. */
+.button--icon.plan-panel__remove,
+.button--icon.plan-panel__remove:hover {
+  --icon: var(--i-close);
+  color: var(--color-text-muted);
+}
+
+.button--icon.plan-panel__remove:hover {
+  color: var(--color-text);
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+.plan-panel__go {
+  margin: 0;
+}
+
+.plan-panel__go .button {
+  inline-size: 100%;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-panel__list > summary::before {
+    transition: none;
+  }
 }
 
 .mod-rail > summary {

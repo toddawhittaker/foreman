@@ -6,7 +6,6 @@
   "mods.search.heading": "查找模组",
   "mods.search.label": "模组名称",
   "mods.search.hint": "在模组门户中搜索适用于 Factorio {line} 的模组，即此世界的游戏版本。",
-  "mods.search.short": "至少输入 2 个字符才能搜索。已勾选的模组会保留。",
   "mods.search.paste_hint": "也可以粘贴模组门户中某个模组的链接。",
   "mods.search.browse": "浏览模组门户",
   "mods.search.button": "搜索",
@@ -33,11 +32,6 @@
   "mods.hits.page": "第 {page} 页，共 {pages} 页",
   "mods.hits.prev": "上一页",
   "mods.hits.next": "下一页",
-  "mods.search.pick_hint": "勾选多个模组可将它们加入同一个计划，也可以使用模组自己的“加入计划”按钮。",
-  "mods.search.add_ticked": "将勾选的模组加入计划",
-  "mods.search.pick_none": "没有勾选任何模组。请勾选要添加的模组，或使用模组自己的“加入计划”按钮。",
-  "mods.search.pick_too_many": "一个计划勾选的模组过多。上限为 {limit}。请取消勾选一部分，然后再添加。",
-  "mods.search.ticked_elsewhere": "在其他搜索或其他页上也已勾选",
   "mods.fact.latest": "最新版本",
   "mods.fact.downloads": "下载量",
   "mods.badge.installed": "已安装",
@@ -373,5 +367,50 @@
   },
   "mods.drops.confirm_missing_one": "请勾选复选框，确认游戏会删除 {mod} 建造的内容，或取消。",
   "mods.tools.label": "模组工具",
-  "mods.row.more_word": "更多"
+  "mods.row.more_word": "更多",
+  "mods.search.start": "在“查找模组”中至少输入模组名称的 2 个字符。匹配的模组会显示在这里。",
+  "mods.search.results_heading_empty": "匹配的模组",
+  "mods.hit.latest": "最新版本",
+  "mods.hit.updated": "更新于",
+  "mods.hit.add": "将 {mod} 加入计划",
+  "mods.hit.adding": "正在加入…",
+  "mods.hits.pages_top": "结果页（列表上方）",
+  "mods.hits.pages_bottom": "结果页（列表下方）",
+  "mods.hits.page_label": "页码",
+  "mods.hits.of_pages": "共 {pages} 页",
+  "mods.hits.go": "跳转",
+  "mods.hits.go_name": "跳转到该页",
+  "mods.plan_panel.heading": "计划",
+  "mods.plan_panel.empty": "计划中还没有模组。选择模组旁的 + 即可加入，然后再搜索下一个。",
+  "mods.plan_panel.summary": {
+    "other": "计划中有 {count} 个模组"
+  },
+  "mods.plan_panel.started": "开始于 {when}。",
+  "mods.plan_panel.review_hint": "在安装任何内容之前，审阅页面会列出每一项更改。",
+  "mods.plan_panel.needed_by": "{mod} 需要",
+  "mods.plan_panel.update": "将更新到 {version}",
+  "mods.plan_panel.change": "将改为 {version}",
+  "mods.plan_panel.enable": "将被启用",
+  "mods.plan_panel.installed": "已安装",
+  "mods.plan_panel.remove": "从计划中移除 {mod}",
+  "mods.plan_panel.review": {
+    "other": "审阅并安装 {count} 个模组"
+  },
+  "mods.plan_panel.review_plain": "审阅计划",
+  "mods.plan_panel.clear": "清空计划",
+  "mods.plan_panel.unreachable": "Foreman 无法连接模组门户，因此现在无法检查这些模组需要什么。门户恢复后即可审阅。",
+  "mods.plan_panel.full": "计划中已有 {limit} 个模组，这是一个计划的上限。请先审阅并安装这些模组，或移除一些，然后再添加。",
+  "mods.plan_panel.added": {
+    "other": "已将 {mod} 加入计划。计划中有 {count} 个模组。"
+  },
+  "mods.plan_panel.removed": {
+    "other": "已将 {mod} 从计划中移除。计划中有 {count} 个模组。"
+  },
+  "mods.plan_panel.cleared": "计划已清空。",
+  "mods.plan_panel.warn.not_on_portal": "不在模组门户上",
+  "mods.plan_panel.warn.no_release": "没有适用于 Factorio {line} 的发布版本",
+  "mods.plan_panel.warn.incompatible": "无法与 {mod} 一起运行",
+  "mods.plan_panel.warn.version": "版本 {version} 不满足其他模组的要求",
+  "mods.plan_panel.warn.space_age": "需要太空时代，但此世界已关闭太空时代",
+  "mods.plan_panel.warn.other": "无法计划；审阅页面会说明原因"
 }

@@ -18,7 +18,7 @@ func TestSearchPastedPortalLinkFindsThatMod(t *testing.T) {
 		t.Fatalf("status %d\n%s", code, body)
 	}
 	main := plain(between(body, "<main", "</main>"))
-	wantIn(t, "link search", main, "<caption>1 mod for Factorio 2.0 matches.</caption>", `<code translate="no">Krastorio2</code>`)
+	wantIn(t, "link search", main, `<p class="mod-found__count" id="results-count">1 mod for Factorio 2.0 matches.</p>`, `<code translate="no">Krastorio2</code>`)
 	// Krastorio2Assets also contains the name, so a text search would list it.
 	if strings.Contains(main, "Krastorio2Assets") {
 		t.Errorf("the link listed more than the one mod:\n%s", main)
@@ -110,20 +110,6 @@ func TestSearchLongPastedLinkIsLimitedByTheName(t *testing.T) {
 	if code, _ := g.getStatus(modsPath(id) + "/search?q=" + strings.Repeat("a", maxSearchQuery+1)); code != http.StatusBadRequest {
 		t.Errorf("long plain text: status %d, want 400", code)
 	}
-}
-
-// A ticked box rides along on a link search, and the one result stays.
-func TestSearchPastedLinkKeepsTicks(t *testing.T) {
-	g := newModsRig(t, true)
-	id := g.world20("Base")
-	q := url.Values{"q": {"https://mods.factorio.com/mod/Krastorio2?from=search"}, "pick": {"jetpack"}}
-	code, body := g.getStatus(modsPath(id) + "/search?" + q.Encode())
-	if code != http.StatusOK {
-		t.Fatalf("status %d", code)
-	}
-	main := between(body, "<main", "</main>")
-	wantIn(t, "link and tick", main, "<caption>1 mod for Factorio 2.0 matches.</caption>", `<code translate="no">Krastorio2</code>`,
-		`name="pick" value="jetpack" checked`)
 }
 
 // SPEC 9.1, 9.11: the plan's "Add another mod" reads a pasted portal link the

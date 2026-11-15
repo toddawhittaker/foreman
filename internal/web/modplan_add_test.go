@@ -24,9 +24,9 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 	plan := "/worlds/" + id + "/mods/plan"
 
 	_, search := g.getStatus(modsPath(id) + "/search?q=aai")
-	wantIn(t, "search", search,
-		`href="`+plan+`?kind=install&amp;name=aai-industry&amp;q=aai" class="button" id="mod-aai-industry-add">Add to plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></a>`,
-		`href="https://mods.factorio.com/mod/aai-industry" class="portal-link" target="_blank" rel="noopener noreferrer"`)
+	wantIn(t, "search", plain(search),
+		`id="mod-aai-industry-plan"><span class="visually-hidden">Add aai-industry to the plan</span></button>`,
+		`<a href="https://mods.factorio.com/mod/aai-industry" target="_blank" rel="noopener noreferrer">`)
 	if strings.Contains(search, "Install aai-industry") {
 		t.Error("a search result still installs at once")
 	}

@@ -1,298 +1,333 @@
 import { test, expect, checkPage, setUpModsWorld, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
-// SPEC 9.1, 9.2, 17.10: a search with many results is a table
-// shown ten at a time, with boxes to add several mods to one plan, on the
-// Mods tab's search and under the plan's "Add another mod".
+// SPEC 9.1, 9.2, 9.14, 17.10: the search results are a list shown ten at a
+// time with page controls above and below; "+" adds a mod to the world's
+// plan beside the results, which shows what each pick needs. The projects
+// run it in both themes, at desktop and at 320 px.
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
 
 const world = { version: version20, fixture: "2.0.77-no-space-age.zip" };
 const shot = (page: Page, name: string) => page.screenshot({ path: `../screenshots/${name}-${test.info().project.name}.png`, fullPage: true });
 const names = Array.from({ length: 25 }, (_, i) => `fp-pg-${String(i).padStart(2, "0")}`);
+const phone = (page: Page) => (page.viewportSize()?.width ?? 1280) < 1024;
+const panel = (page: Page) => page.locator("#plan-panel");
+const hit = (page: Page, name: string) => page.locator(`#mod-${name}-hit`);
 
 test.beforeEach(async ({ page, foreman, fakeGame, fakePortal }) => {
   // The mod list is cached once the world is set up, so every mod is added first.
-  for (const n of [...names, "fp-rs-rail-signal", "fp-rs-rail-only"]) await fakePortal!.add(n, "1.0.0");
-  await setUpModsWorld(page, foreman, fakeGame!, world);
+  const portal = fakePortal!;
+  for (const n of [...names, "fp-rs-rail-signal", "fp-rs-rail-only"]) await portal.add(n, "1.0.0");
+  // Two mods that share a dependency, one of which needs an installed mod updated.
+  await portal.add("fp-core", "1.0.0");
+  await portal.add("fp-lib", "1.0.0");
+  await portal.add("fp-lib", "1.1.0");
+  await portal.add("fp-rails", "1.0.0", ["base >= 2.0", "fp-core", "fp-lib >= 1.1.0"]);
+  await portal.add("fp-trains", "1.0.0", ["fp-core >= 1.0.0", "fp-gone"]);
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-lib": "2.0" } });
 });
 
-test("25 results: a table a page at a time, ticks kept across pages, one plan for the ticked mods", async ({ page }) => {
+test("25 results: a list a page at a time, with Previous, a page box and Next above and below", async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg");
-  // The world is the heading; the matches are a section that says how many there are in all.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Base/);
   await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg"' })).toBeVisible();
-  const table = page.getByRole("table", { name: "25 mods for Factorio 2.0 match. Showing 1 to 10." });
-  await expect(table.getByRole("row")).toHaveCount(11);
-  await expect(table.getByRole("columnheader")).toHaveText(["Mod", "Latest version", "Downloads"]);
-  await expect(table.getByText("Game version")).toHaveCount(0);
-  await expect(page.getByRole("navigation", { name: "Result pages" })).toContainText("Page 1 of 3");
-  // The summary is there on demand.
-  await expect(table.getByText("added by a test").first()).toBeHidden();
-  await table.locator("summary").first().click();
-  await expect(table.getByText("added by a test").first()).toBeVisible();
-  await expect(table.getByRole("link", { name: "Mod portal for fp-pg-00, opens in a new tab" })).toBeVisible();
+  const list = page.getByRole("list", { name: "25 mods for Factorio 2.0 match. Showing 1 to 10." });
+  await expect(list.getByRole("listitem")).toHaveCount(10);
+  await expect(page.getByRole("table")).toHaveCount(0);
+  // Each row: the title links to the portal in a new tab, then the summary and the facts.
+  const first = hit(page, "fp-pg-00");
+  const title = first.getByRole("link", { name: "fp-pg-00 on the mod portal, opens in a new tab" });
+  await expect(title).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-pg-00");
+  await expect(title).toHaveAttribute("target", "_blank");
+  await expect(first).toContainText("added by a test");
+  await expect(first.locator("dt")).toHaveText(["Latest", "Downloads", "Updated"]);
+  await expect(first.locator("time")).toHaveAttribute("datetime", /^\d{4}-\d\d-\d\dT/);
+  const add = first.getByRole("button", { name: "Add fp-pg-00 to the plan" });
+  const size = (await add.boundingBox())!;
+  // 44 px on a touch screen, 32 with a mouse (WCAG 2.5.8 asks 24).
+  expect(size.width).toBeGreaterThanOrEqual(32);
+  const top = page.getByRole("navigation", { name: "Result pages, above the list" });
+  const bottom = page.getByRole("navigation", { name: "Result pages, below the list" });
+  await expect(top.getByRole("textbox", { name: "Page" })).toHaveValue("1");
+  await expect(top).toContainText("of 3");
+  await expect(bottom.getByRole("link", { name: "Next page" })).toBeVisible();
+  await expect(top.getByRole("link", { name: "Previous page" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 2, name: "Plan" })).toBeVisible();
+  await expect(panel(page)).toContainText("No mods in the plan yet. Choose + beside a mod to add it, then search again for the next.");
+  // On a wide screen the plan starts level with the search, in the rail beside it.
+  const searchBox = (await page.locator("section:has(#search-heading)").boundingBox())!;
+  const planBox = (await panel(page).boundingBox())!;
+  if (phone(page)) expect(planBox.y).toBeGreaterThan(searchBox.y + searchBox.height);
+  else {
+    expect(Math.abs(planBox.y - searchBox.y)).toBeLessThan(2);
+    // It stays in view while the list scrolls past.
+    await page.getByRole("navigation", { name: "Result pages, below the list" }).scrollIntoViewIfNeeded();
+    const held = (await panel(page).boundingBox())!;
+    expect(held.y).toBeGreaterThanOrEqual(0);
+    expect(held.y).toBeLessThan(40);
+  }
   await checkPage(page);
   await shot(page, "mods-search-25");
 
-  // Tick one, page on with the keyboard, and the tick comes along.
-  await table.getByRole("checkbox", { name: "fp-pg-01" }).check();
-  await page.getByRole("button", { name: "Next page" }).focus();
-  await page.keyboard.press("Enter");
+  // Next replaces only the list, keeps the address in step and puts focus on the results.
+  await bottom.getByRole("link", { name: "Next page" }).click();
+  await expect(page.getByRole("list", { name: /Showing 11 to 20\./ })).toBeVisible();
   await expect(page.locator("#results-heading")).toBeFocused();
-  await expect(page.getByRole("table", { name: /Showing 11 to 20\./ })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
-  await page.getByRole("checkbox", { name: "fp-pg-12" }).focus();
-  await page.keyboard.press("Space");
+  await expect(page).toHaveURL(/page=2/);
+  // The page box jumps straight to a page.
+  await top.getByRole("textbox", { name: "Page" }).fill("3");
+  await top.getByRole("button", { name: "Go to page" }).click();
+  await expect(page.getByRole("list", { name: /Showing 21 to 25\./ })).toBeVisible();
+  await expect(page.locator("#results-heading")).toBeFocused();
+  await expect(top.getByRole("link", { name: "Next page" })).toHaveCount(0);
+  await expect(top.getByRole("link", { name: "Previous page" })).toBeVisible();
+  // A number past the end goes to the last page.
+  await bottom.getByRole("textbox", { name: "Page" }).fill("99");
+  await bottom.getByRole("textbox", { name: "Page" }).press("Enter");
+  await expect(page.getByRole("list", { name: /Showing 21 to 25\./ })).toBeVisible();
   await checkPage(page);
-  await page.getByRole("button", { name: "Add ticked mods to plan" }).click();
-
-  // One plan with both, and the same page of the same search below it.
-  await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
-  const asked = page.locator("#mod-plan .plan-groups");
-  await expect(asked).toContainText("fp-pg-01 1.0.0");
-  await expect(asked).toContainText("fp-pg-12 1.0.0");
-  await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
-  const add = page.getByRole("region", { name: "Add another mod" });
-  await expect(add.getByRole("table", { name: /Showing 11 to 20\./ })).toBeVisible();
-  await expect(add.locator("#mod-fp-pg-12-add")).toHaveText("In plan fp-pg-12");
-  // Each Add adds at once here, so there is no box to tick.
-  await expect(add.getByRole("checkbox")).toHaveCount(0);
-  await checkPage(page);
-  await shot(page, "mods-plan-add-25");
-
-  // A page link keeps the plan and puts focus on the results; Add redraws in place.
-  await add.getByRole("link", { name: "Next page" }).click();
-  await expect(page.locator("#add-heading")).toBeFocused();
-  await expect(add.getByRole("table", { name: /Showing 21 to 25\./ })).toBeVisible();
-  await add.getByRole("link", { name: "Add to plan fp-pg-22", exact: true }).click();
-  await expect(page.locator("#announcer")).toHaveText("Added fp-pg-22. The plan has 3 mods.");
-  await expect(page.locator("#mod-fp-pg-22-add")).toBeFocused();
-  await expect(page).toHaveURL(/page=3/);
-  // The plan's button is one link away.
-  await add.getByRole("link", { name: "Back to the plan" }).click();
-  await expect(page).toHaveURL(/#confirm-heading$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeInViewport();
 });
 
-// SPEC 9.1: ticks are kept across new searches, so mods found by several searches go into one plan.
-test("three searches, one tick each, one plan with all three", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
-  await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
-  for (const n of ["fp-pg-02", "fp-pg-03", "fp-pg-04"]) {
-    await page.getByLabel("Mod name").fill(n);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
-    await page.getByRole("table").getByRole("checkbox", { name: n }).check();
+// SPEC 9.1, 9.2 (rulings 2, 3, 6, 9): "+" says it is working, then the row
+// says "In plan" with "−" and the panel shows the pick with what it needs.
+test("+ adds a mod in place: Adding…, In plan with −, and the panel's tree", async ({ page }) => {
+  await page.goto("/worlds/base/mods");
+  const box = page.getByLabel("Mod name");
+  await box.fill("fp-rails");
+  await expect(hit(page, "fp-rails")).toBeVisible();
+  // Hold the add, so its working state shows.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/mods/plan/mods", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await hit(page, "fp-rails").getByRole("button", { name: "Add fp-rails to the plan" }).click();
+  await expect(hit(page, "fp-rails").getByText("Adding…")).toBeVisible();
+  release();
+  await expect(page.locator("#announcer")).toHaveText("fp-rails added to the plan. The plan has 1 mod.");
+  const remove = hit(page, "fp-rails").getByRole("button", { name: "Remove fp-rails from the plan" });
+  await expect(remove).toBeFocused();
+  await expect(hit(page, "fp-rails")).toContainText("In plan");
+  await expect(hit(page, "fp-rails").getByText("Adding…")).toBeHidden();
+  // The address stays the tab's.
+  expect(new URL(page.url()).pathname).toBe("/worlds/base/mods");
+
+  if (phone(page)) await panel(page).locator("#plan-list > summary").click();
+  const plan = panel(page);
+  await expect(plan.locator(".plan-tree__pick")).toHaveCount(1);
+  const deps = plan.locator(".plan-tree__dep");
+  await expect(deps).toHaveCount(2);
+  await expect(deps.nth(0)).toContainText("fp-core");
+  await expect(deps.nth(0)).toContainText("Needed by fp-rails");
+  await expect(deps.nth(1)).toContainText("fp-lib");
+  await expect(deps.nth(1)).toContainText("Will update to 1.1.0");
+  // base is built in, so it is never listed.
+  await expect(plan).not.toContainText("base");
+  await expect(plan.getByRole("link", { name: "Review and install 3 mods" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=install&name=fp-rails");
+
+  // A dependency in the results says what needs it and has no button.
+  await box.fill("fp-core");
+  await expect(hit(page, "fp-core")).toContainText("Needed by fp-rails");
+  await expect(hit(page, "fp-core").getByRole("button")).toHaveCount(0);
+  await checkPage(page);
+
+  // "−" takes it out again; the dependency goes with it.
+  await box.fill("fp-rails");
+  await hit(page, "fp-rails").getByRole("button", { name: "Remove fp-rails from the plan" }).click();
+  await expect(page.locator("#announcer")).toHaveText("fp-rails removed from the plan. The plan has 0 mods.");
+  await expect(hit(page, "fp-rails").getByRole("button", { name: "Add fp-rails to the plan" })).toBeVisible();
+  await expect(panel(page)).toContainText("No mods in the plan yet.");
+});
+
+// Rulings 2-4: two picks that share a dependency show it under each; an
+// installed mod that must change shows its update; a dependency that cannot
+// be had shows a warning; Review counts each mod once.
+test("two picks share a dependency: it shows under each, counted once, with an update and a warning", async ({ page }) => {
+  await page.goto("/worlds/base/mods");
+  const box = page.getByLabel("Mod name");
+  for (const n of ["fp-rails", "fp-trains"]) {
+    await box.fill(n);
+    await hit(page, n).getByRole("button", { name: `Add ${n} to the plan` }).click();
+    await expect(hit(page, n)).toContainText("In plan");
   }
-  // The mods ticked in earlier searches are listed with their own boxes, so one can be unticked.
-  const ticked = page.getByRole("group", { name: "Also ticked" });
-  await expect(ticked.getByRole("checkbox")).toHaveCount(3);
-  await expect(ticked.getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+  const plan = panel(page);
+  if (phone(page)) {
+    // The bar holds to the bottom of the screen with the count, the names and Review.
+    const bar = (await plan.boundingBox())!;
+    expect(Math.round(bar.y + bar.height)).toBeLessThanOrEqual(page.viewportSize()!.height + 1);
+    await expect(plan.locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
+    await expect(plan.locator(".plan-panel__names")).toHaveText("fp-rails, fp-trains");
+    await expect(plan.getByRole("link", { name: "Review and install 4 mods" })).toBeVisible();
+    await checkPage(page);
+    await shot(page, "mods-plan-bar");
+    await plan.locator("#plan-list > summary").click();
+  }
+  const picks = plan.locator(".plan-tree__pick");
+  await expect(picks).toHaveCount(2);
+  await expect(picks.nth(0)).toContainText("fp-core");
+  await expect(picks.nth(0)).toContainText("Will update to 1.1.0");
+  await expect(picks.nth(1)).toContainText("fp-core");
+  await expect(picks.nth(1).locator(".plan-tree__why").first()).toHaveText("Needed by fp-trains");
+  await expect(picks.nth(1).locator(".plan-tree__warn")).toHaveText("Warning: Not on the mod portal");
+  // fp-rails, fp-trains, fp-core and fp-lib; fp-gone cannot be had.
+  await expect(plan.getByRole("link", { name: "Review and install 4 mods" })).toBeVisible();
+  await expect(plan).toContainText(/Started /);
   await checkPage(page);
-  await shot(page, "mods-search-ticked");
-  await ticked.getByRole("checkbox", { name: "fp-pg-02" }).uncheck();
-  await page.getByRole("button", { name: "Add ticked mods to plan" }).click();
+  await shot(page, "mods-plan-tree");
 
+  // The plan is kept on the server: a reload still has it.
+  await page.reload();
+  await expect(panel(page).locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
+
+  // Review opens today's plan page with the picks.
+  await panel(page).getByRole("link", { name: "Review and install 4 mods" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
-  const asked = page.locator("#mod-plan .plan-groups");
-  for (const n of ["fp-pg-01", "fp-pg-03", "fp-pg-04"]) await expect(asked).toContainText(`${n} 1.0.0`);
-  await expect(asked).not.toContainText("fp-pg-02");
-  await expect(page.getByRole("button", { name: "Install 3 mods" })).toBeVisible();
+  await expect(page).toHaveURL(/kind=install&name=fp-rails&name=fp-trains/);
 });
 
-// SPEC 9.1: Enter in the search box runs a new search, not Add ticked mods, and keeps the ticks.
-test("Enter in the search box searches and keeps the ticks", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
-  await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
-  await page.getByLabel("Mod name").fill("fp-pg-02");
-  await page.getByLabel("Mod name").press("Enter");
-  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+// Ruling 5: the cross takes a pick out with the dependencies nothing else
+// needs; Clear plan empties it.
+test("the cross removes a pick and its own dependencies, and Clear plan empties the plan", async ({ page }) => {
+  await page.goto("/worlds/base/mods");
+  const box = page.getByLabel("Mod name");
+  for (const n of ["fp-rails", "fp-pg-01"]) {
+    await box.fill(n);
+    await hit(page, n).getByRole("button", { name: `Add ${n} to the plan` }).click();
+    await expect(hit(page, n)).toContainText("In plan");
+  }
+  const plan = panel(page);
+  if (phone(page)) await plan.locator("#plan-list > summary").click();
+  await plan.getByRole("button", { name: "Remove fp-rails from the plan" }).click();
+  await expect(page.locator("#announcer")).toHaveText("fp-rails removed from the plan. The plan has 1 mod.");
+  await expect(plan.getByRole("button", { name: "Remove fp-pg-01 from the plan" })).toBeFocused();
+  await expect(plan).not.toContainText("fp-core");
+  await expect(plan).not.toContainText("fp-rails");
+  await plan.getByRole("button", { name: "Clear plan" }).click();
+  await expect(page.locator("#announcer")).toHaveText("The plan is empty.");
+  await expect(page.locator("#plan-heading")).toBeFocused();
+  await expect(plan).toContainText("No mods in the plan yet.");
+  await expect(hit(page, "fp-pg-01").getByRole("button", { name: "Add fp-pg-01 to the plan" })).toBeVisible();
 });
 
-test("Add ticked mods with nothing ticked says so on the search page", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search?q=fp-pg");
-  await page.getByRole("button", { name: "Add ticked mods to plan" }).click();
-  await expect(page.locator("#error-summary")).toBeFocused();
-  await expect(page.locator("#pick-error")).toHaveText("Error: Nothing is ticked. Tick the mods to add, or use a mod's own Add to plan button.");
-  // The summary points at the first box.
-  await expect(page.locator("#error-summary").getByRole("link")).toHaveAttribute("href", "#mod-fp-pg-00-pick");
-  await expect(page.getByRole("checkbox", { name: "fp-pg-00" })).toHaveAttribute("aria-describedby", "pick-error");
+// SPEC 9.2: with the portal out of reach the panel still lists the picks by
+// name, says their dependencies cannot be checked now, and offers to check again.
+test("with the portal down the panel lists the picks by name and says why", async ({ page, fakePortal }) => {
+  // A pick the portal client has not seen yet, so working out the plan needs the portal.
+  const r = await page.request.post("/worlds/base/mods/plan/mods", { form: { name: "fp-unseen", op: "add" }, maxRedirects: 0 });
+  expect(r.status()).toBe(303);
+  await fakePortal!.failApi(500);
+  await page.goto("/worlds/base/mods");
+  const plan = panel(page);
+  if (phone(page)) await plan.locator("#plan-list > summary").click();
+  await expect(plan).toContainText("fp-unseen");
+  await expect(plan.locator(".message--warning")).toContainText("Foreman could not reach the mod portal, so it cannot check what these mods need now.");
+  await expect(plan.getByRole("link", { name: "Check again" })).toHaveAttribute("href", "/worlds/base/mods");
+  await expect(plan.getByRole("link", { name: "Review the plan" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=install&name=fp-unseen");
   await checkPage(page);
 });
 
-test("a search under Add another mod that finds nothing says what to try", async ({ page }) => {
-  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-pg-00");
-  const add = page.getByRole("region", { name: "Add another mod" });
-  await add.getByLabel("Mod name").fill("no such mod anywhere");
-  await add.getByRole("button", { name: "Search" }).click();
-  await expect(add).toContainText("No mod for Factorio 2.0 matches. Try a shorter part of the name.");
-  await checkPage(page);
+// SPEC 9.1: without script every control is a plain link or form, and each
+// change comes back to the same search, page and row.
+test("without script +, −, the page controls and Clear plan work and keep the place", async ({ page, foreman, browser }) => {
+  const plain = await browser.newContext({ baseURL: foreman.url, javaScriptEnabled: false, storageState: await page.context().storageState() });
+  const p = await plain.newPage();
+  await p.goto("/worlds/base/mods");
+  await expect(p.getByRole("heading", { level: 2, name: "Mods matching" })).toBeVisible();
+  await expect(p.locator("#results")).toContainText("Type at least 2 characters of a mod's name in Find a mod.");
+  await p.getByLabel("Mod name").fill("fp-pg");
+  await p.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(p).toHaveURL(/\/mods\/search\?q=fp-pg$/);
+  await p.getByRole("navigation", { name: "Result pages, below the list" }).getByRole("link", { name: "Next page" }).click();
+  await expect(p.getByRole("list", { name: /Showing 11 to 20\./ })).toBeVisible();
+  await p.getByRole("button", { name: "Add fp-pg-12 to the plan" }).click();
+  await expect(p).toHaveURL(/\/mods\/search\?page=2&q=fp-pg#mod-fp-pg-12-hit$/);
+  await expect(hit(p, "fp-pg-12")).toContainText("In plan");
+  await expect(p.locator("#plan-panel .plan-panel__sum")).toHaveText("1 mod in the plan");
+  // The page box is a plain form too.
+  const top = p.getByRole("navigation", { name: "Result pages, above the list" });
+  await top.getByRole("textbox", { name: "Page" }).fill("3");
+  await top.getByRole("button", { name: "Go to page" }).click();
+  await expect(p.getByRole("list", { name: /Showing 21 to 25\./ })).toBeVisible();
+  await p.goto("/worlds/base/mods/search?q=fp-pg&page=2");
+  await hit(p, "fp-pg-12").getByRole("button", { name: "Remove fp-pg-12 from the plan" }).click();
+  await expect(p).toHaveURL(/page=2&q=fp-pg#mod-fp-pg-12-hit$/);
+  await expect(hit(p, "fp-pg-12").getByRole("button", { name: "Add fp-pg-12 to the plan" })).toBeVisible();
+  await p.getByRole("button", { name: "Add fp-pg-13 to the plan" }).click();
+  // Without script the panel's list is folded on every width; it opens by its own line.
+  await p.locator("#plan-list > summary").click();
+  await p.getByRole("button", { name: "Clear plan" }).click();
+  await expect(p).toHaveURL(/#plan-panel$/);
+  await expect(p.locator("#plan-panel")).toContainText("No mods in the plan yet.");
+  await plain.close();
 });
 
-// SPEC 9.1, 9.11: the plan's "Add another mod" reads a pasted portal link too.
-test("a pasted portal link under Add another mod finds that mod, and an unknown one says so", async ({ page }) => {
-  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-pg-00");
-  const add = page.getByRole("region", { name: "Add another mod" });
-  await add.getByLabel("Mod name").fill("https://mods.factorio.com/mod/fp-pg-03/changelog?from=search&utm_source=" + "x".repeat(150));
-  await add.getByRole("button", { name: "Search" }).click();
-  const table = add.getByRole("table", { name: "1 mod for Factorio 2.0 matches." });
-  await expect(table.getByRole("row")).toHaveCount(2);
-  await expect(table.getByRole("link", { name: "Add to plan fp-pg-03" })).toBeVisible();
-  await add.getByLabel("Mod name").fill("https://mods.factorio.com/mod/no-such-mod-anywhere");
-  await add.getByRole("button", { name: "Search" }).click();
-  await expect(add).toContainText("No mod named no-such-mod-anywhere is on the mod portal.");
-  await expect(add.getByRole("table")).toHaveCount(0);
-  await checkPage(page);
+// SPEC 9.1: a search of two words finds a mod with both, in either order.
+test("a search of two words finds a mod with both, in either order", async ({ page }) => {
+  for (const q of ["signal rail", "rail signal"]) {
+    await page.goto(`/worlds/base/mods/search?q=${encodeURIComponent(q)}`);
+    await expect(hit(page, "fp-rs-rail-signal")).toBeVisible();
+    await expect(hit(page, "fp-rs-rail-only")).toHaveCount(0);
+  }
 });
 
-// SPEC 9.1, 9.11: a pasted mod portal link, with a sub-page and a query, finds
-// that one mod by its exact name, ready to add.
+// SPEC 9.1, 9.11: a pasted mod portal link, with a sub-page and a query, finds that one mod.
 test("a pasted portal link with a sub-page and query finds that exact mod", async ({ page }) => {
   await page.goto("/worlds/base/mods/search");
   await page.getByLabel("Mod name").fill("www.mods.factorio.com/mod/fp-pg-03/changelog?from=search");
   await page.getByLabel("Mod name").press("Enter");
-  const table = page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." });
-  await expect(table.getByRole("row")).toHaveCount(2);
-  await expect(table.getByRole("checkbox", { name: "fp-pg-03" })).toBeVisible();
-  await checkPage(page);
-  await page.getByRole("link", { name: "Add to plan fp-pg-03", exact: true }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Install fp-pg-03 in Base?" })).toBeVisible();
-});
-
-// SPEC 9.1: a link to a name no mod has says so, rather than listing mods that merely contain it.
-test("a pasted portal link to an unknown mod says there is no such mod", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search");
-  await page.getByLabel("Mod name").fill("https://mods.factorio.com/mod/fp-pg-1");
-  await page.getByLabel("Mod name").press("Enter");
-  await expect(page.getByText("No mod named fp-pg-1 is on the mod portal.")).toBeVisible();
-  await expect(page.getByRole("table")).toHaveCount(0);
+  const list = page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." });
+  await expect(list.getByRole("listitem")).toHaveCount(1);
+  await expect(list.getByRole("button", { name: "Add fp-pg-03 to the plan" })).toBeVisible();
   await checkPage(page);
 });
 
-// SPEC 9.1: a mod the portal has, but not for the world's game line, is told apart from one it lacks.
-test("a pasted portal link to a mod with no release for the game line says so", async ({ page, fakePortal }) => {
+test("a pasted portal link to an unknown mod, to a mod without a release, and to another site", async ({ page, fakePortal }) => {
   await fakePortal!.add("fp-link-new", "1.0.0", ["base >= 2.1"], "2.1");
-  await page.goto("/worlds/base/mods/search");
-  await page.getByLabel("Mod name").fill("mods.factorio.com/mod/fp-link-new");
-  await page.getByLabel("Mod name").press("Enter");
+  const search = async (q: string) => {
+    await page.goto("/worlds/base/mods/search");
+    await page.getByLabel("Mod name").fill(q);
+    await page.getByLabel("Mod name").press("Enter");
+  };
+  await search("https://mods.factorio.com/mod/fp-pg-1");
+  await expect(page.getByText("No mod named fp-pg-1 is on the mod portal.")).toBeVisible();
+  await expect(page.locator(".hits")).toHaveCount(0);
+  await checkPage(page);
+  await search("mods.factorio.com/mod/fp-link-new");
   await expect(page.getByText("fp-link-new has no release for Factorio 2.0.")).toBeVisible();
-  await expect(page.getByRole("table")).toHaveCount(0);
-  await checkPage(page);
-});
-
-test("a link to another site is ordinary search text", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search");
-  await page.getByLabel("Mod name").fill("https://example.com/mod/fp-pg-03");
-  await page.getByLabel("Mod name").press("Enter");
+  await search("https://example.com/mod/fp-pg-03");
   await expect(page.getByText("No mod for Factorio 2.0 matches.")).toBeVisible();
-  await expect(page.getByRole("table")).toHaveCount(0);
-});
-
-// SPEC 9.1: every word must be in the name or title, in any order.
-test("a search of two words finds a mod with both, in either order", async ({ page }) => {
-  for (const q of ["signal rail", "rail signal"]) {
-    await page.goto(`/worlds/base/mods/search?q=${encodeURIComponent(q)}`);
-    await expect(page.getByRole("checkbox", { name: "fp-rs-rail-signal" })).toBeVisible();
-    await expect(page.getByRole("checkbox", { name: "fp-rs-rail-only" })).toHaveCount(0);
-  }
-  await checkPage(page);
 });
 
 // SPEC 9.1: with script the results follow the typing after a pause; only the
 // results change, focus stays in the box, the address and tab title follow the
-// text, and a screen reader hears the count.
-test("results appear while typing, without Enter, and keep focus and ticks", async ({ page }) => {
+// text without new history entries, and a screen reader hears the count.
+test("on the search page results follow the typing, keep focus, and the address follows", async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg-01");
   const box = page.getByLabel("Mod name");
-  await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
+  const history = await page.evaluate(() => window.history.length);
   await box.fill("fp-pg-0");
-  const table = page.getByRole("table", { name: "10 mods for Factorio 2.0 match." });
-  await expect(table).toBeVisible();
+  await expect(page.getByRole("list", { name: "10 mods for Factorio 2.0 match." })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-0"' })).toBeVisible();
   await expect(box).toBeFocused();
-  await expect(table.getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
   await expect(page.locator("#announcer")).toHaveText("10 mods for Factorio 2.0 match.");
-  // A ticked box survives a second typed search that no longer lists it.
-  await box.fill("fp-pg-02");
-  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
-  await expect(page.locator("#announcer")).toHaveText("1 mod for Factorio 2.0 matches.");
+  expect(new URL(page.url()).searchParams.get("q")).toBe("fp-pg-0");
+  await expect(page).toHaveTitle(/Mods matching "fp-pg-0"/);
+  expect(await page.evaluate(() => window.history.length)).toBe(history);
+  await page.reload();
+  await expect(box).toHaveValue("fp-pg-0");
   await checkPage(page);
 });
 
-// The address and the tab title follow the typed search, replacing the entry
-// so Back does not step through every pause; a reload keeps the search.
-test("typing keeps the address and tab title in step, and a reload keeps the search", async ({ page }) => {
+// SPEC 9.1: under 2 characters the panel stays and says what to type.
+test("under 2 characters the panel says what to type and the portal is not asked", async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg-01");
   const box = page.getByLabel("Mod name");
-  const asked = () => new URL(page.url()).searchParams.get("q");
-  const history = await page.evaluate(() => window.history.length);
-  await box.fill("fp-pg-02");
-  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
-  expect(asked()).toBe("fp-pg-02");
-  expect(page.url()).not.toMatch(/[?&](shown|at)=/);
-  await expect(page).toHaveTitle(/Mods matching "fp-pg-02"/);
-  expect(await page.evaluate(() => window.history.length)).toBe(history);
-  await page.reload();
-  await expect(box).toHaveValue("fp-pg-02");
-  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
-});
-
-test("under 2 characters typing asks the server nothing", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
-  let asked = 0;
-  page.on("request", (r) => {
-    if (r.headers()["hx-request"]) asked++;
-  });
-  await page.getByLabel("Mod name").fill("f");
-  await page.waitForTimeout(600);
-  expect(asked).toBe(0);
-  await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toHaveCount(0);
-});
-
-// SPEC 9.1, 9.11: a pasted link goes through the same typed search.
-test("a pasted portal link shows its one mod while typing", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search?q=fp-pg");
-  await page.getByLabel("Mod name").fill("https://mods.factorio.com/mod/fp-pg-03");
-  const table = page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." });
-  await expect(table.getByRole("row")).toHaveCount(2);
-  await expect(table.getByRole("checkbox", { name: "fp-pg-03" })).toBeVisible();
-});
-
-test("without script the search form and Search button still work", async ({ page, foreman, browser }) => {
-  const plain = await browser.newContext({ baseURL: foreman.url, javaScriptEnabled: false, storageState: await page.context().storageState() });
-  const p = await plain.newPage();
-  await p.goto("/worlds/base/mods/search?q=fp-pg-01");
-  await p.getByLabel("Mod name").fill("fp-pg-02");
-  await p.getByRole("button", { name: "Search", exact: true }).click();
-  await expect(p).toHaveURL(/q=fp-pg-02/);
-  await expect(p.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
-  await plain.close();
-});
-
-// The portal's own browse page for the world's game line, in a new tab, on both search forms.
-for (const at of ["/worlds/base/mods", "/worlds/base/mods/search?q=fp-pg"]) {
-  test(`the Browse the mod portal link on ${at}`, async ({ page }) => {
-    await page.goto(at);
-    const link = page.getByRole("link", { name: "Browse the mod portal (opens in a new tab)" });
-    await expect(link).toHaveAttribute("href", "https://mods.factorio.com/browse/downloaded?factorio_version=2.0");
-    await expect(link).toHaveAttribute("target", "_blank");
-    await expect(page.getByText("You can also paste a mod's link from the portal.")).toBeVisible();
-    await shot(page, `mods-browse-${at.includes("search") ? "search" : "tab"}`);
-  });
-}
-
-// SPEC 9.1: a long pasted link with a tracking query is not cut by the box,
-// on the Mods tab or while typing on the search page.
-test("a long pasted link with a tracking query finds its mod", async ({ page }) => {
-  const link = `https://mods.factorio.com/mod/fp-pg-04?utm_source=${"x".repeat(150)}&utm_medium=share`;
-  expect(link.length).toBeGreaterThan(100);
-  await page.goto("/worlds/base/mods");
-  await page.getByLabel("Mod name").fill(link);
-  await page.getByLabel("Mod name").press("Enter");
-  await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." }).getByRole("checkbox", { name: "fp-pg-04" })).toBeVisible();
-  await page.getByLabel("Mod name").fill(link.replace("fp-pg-04", "fp-pg-05"));
-  await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." }).getByRole("checkbox", { name: "fp-pg-05" })).toBeVisible();
+  await box.fill("f");
+  await expect(page.getByRole("heading", { level: 2, name: "Mods matching" })).toBeVisible();
+  await expect(page.locator("#results .empty")).toHaveText("Type at least 2 characters of a mod's name in Find a mod. Matching mods show here.");
+  await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters of a mod's name in Find a mod. Matching mods show here.");
+  await expect(page.locator(".hits")).toHaveCount(0);
 });
 
 // SPEC 9.1: a typed search the server refuses shows and announces why, ties
@@ -308,163 +343,90 @@ test("a refused typed search says why, and a good one clears it", async ({ page 
   await expect(page.locator("#announcer")).toHaveText("Error: Enter at most 100 characters.");
   await expect(box).toBeFocused();
   await box.fill("fp-pg-02");
-  await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
+  await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
   await expect(error).toHaveCount(0);
   await expect(box).not.toHaveAttribute("aria-invalid", "true");
   await expect(box).toHaveAttribute("aria-describedby", "mod-search-hint mod-paste-hint");
 });
 
-test("going back under 2 characters hides the old results", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search");
-  const box = page.getByLabel("Mod name");
-  await box.fill("fp-pg-03");
-  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-03"' })).toBeVisible();
-  await box.fill("f");
-  await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toHaveCount(0);
-  await page.waitForTimeout(600);
-  await expect(page.getByRole("table")).toHaveCount(0);
-});
-
-test("a typed search from page 2 keeps focus in the box", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search?q=fp-pg");
-  await page.getByRole("button", { name: "Next page" }).click();
-  await expect(page.getByRole("navigation", { name: "Result pages" })).toContainText("Page 2 of 3");
-  const box = page.getByLabel("Mod name");
-  await box.fill("fp-pg-1");
-  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-1"' })).toBeVisible();
-  await expect(box).toBeFocused();
-});
-
-// SPEC 9.1: a reply that lands after the box went under 2 characters is dropped.
-test("a slow reply does not bring back results after the text is cut", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search");
+// A reply that lands after the box changed is stale and never shows.
+test("a slow reply does not replace the results for newer text", async ({ page }) => {
+  await page.goto("/worlds/base/mods");
   let release!: () => void;
   const held = new Promise<void>((r) => (release = r));
-  let sent!: () => void;
-  const out = new Promise<void>((r) => (sent = r));
-  await page.route(/\/mods\/search\?/, async (route) => {
-    if (!route.request().headers()["hx-request"]) return route.continue();
-    sent();
+  let asked!: () => void;
+  const sent = new Promise<void>((r) => (asked = r));
+  let first = true;
+  await page.route("**/mods/search?**", async (route) => {
+    if (!first) return route.continue();
+    first = false;
+    asked();
     await held;
     await route.continue();
   });
   const box = page.getByLabel("Mod name");
   await box.fill("fp-pg-03");
-  await out;
+  await sent;
   await box.fill("f");
   release();
   await page.waitForTimeout(800);
-  await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toHaveCount(0);
-  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(page.locator(".hits")).toHaveCount(0);
+  await expect(page.locator("#results .empty")).toBeVisible();
 });
 
-test("cutting a refused search under 2 characters clears the error and says why", async ({ page }) => {
-  await page.goto("/worlds/base/mods/search?q=fp-pg");
-  const box = page.getByLabel("Mod name");
-  await box.fill("a".repeat(150));
-  await expect(box).toHaveAttribute("aria-invalid", "true");
-  await box.fill("a");
-  await expect(box).not.toHaveAttribute("aria-invalid", "true");
-  await expect(box).toHaveAttribute("aria-describedby", "mod-search-hint mod-paste-hint");
-  await expect(page.locator("#mod-search-error")).toBeHidden();
-  await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters to search. Ticked mods are kept.");
-});
+// The portal's own browse page for the world's game line, in a new tab, on both search forms.
+for (const at of ["/worlds/base/mods", "/worlds/base/mods/search?q=fp-pg"]) {
+  test(`the Browse the mod portal link on ${at}`, async ({ page }) => {
+    await page.goto(at);
+    const link = page.getByRole("link", { name: "Browse the mod portal (opens in a new tab)" });
+    await expect(link).toHaveAttribute("href", "https://mods.factorio.com/browse/downloaded?factorio_version=2.0");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(page.getByText("You can also paste a mod's link from the portal.")).toBeVisible();
+  });
+}
 
-// SPEC 9.1: on the Mods tab the results follow the typing too, in a panel
-// under the box, without leaving the tab or changing its address.
+// SPEC 9.1: on the Mods tab the "Mods matching" panel is always there; typing
+// and paging replace only the list, and the address stays the tab's.
 test.describe("typing on the Mods tab", () => {
-  test("results appear under the box with no button, focus and caret stay, the address stays", async ({ page }) => {
+  test("the panel is there before any typing, and results follow the typing in it", async ({ page }) => {
     await page.goto("/worlds/base/mods");
     const url = page.url();
     const history = await page.evaluate(() => window.history.length);
+    await expect(page.getByRole("heading", { level: 2, name: "Mods matching" })).toBeVisible();
+    await expect(page.locator("#results .empty")).toHaveText("Type at least 2 characters of a mod's name in Find a mod. Matching mods show here.");
     const box = page.getByLabel("Mod name");
     await box.click();
     await page.keyboard.type("fp-pg-0", { delay: 20 });
-    const table = page.getByRole("table", { name: "10 mods for Factorio 2.0 match." });
-    await expect(table).toBeVisible();
+    await expect(page.getByRole("list", { name: "10 mods for Factorio 2.0 match." })).toBeVisible();
     await expect(page.locator("#announcer")).toHaveText("10 mods for Factorio 2.0 match.");
     await expect(box).toBeFocused();
     expect(await box.evaluate((b: HTMLInputElement) => [b.selectionStart, b.selectionEnd])).toEqual([7, 7]);
-    // Typing goes on where the caret is, after the results arrived.
     await page.keyboard.type("2");
-    await expect(box).toHaveValue("fp-pg-02");
-    await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
+    await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
     expect(page.url()).toBe(url);
     expect(await page.evaluate(() => window.history.length)).toBe(history);
-    // The results sit between the search and the installed list.
+    // Search, results, the plan, then the installed list.
     const order = await page.evaluate(() => {
       const at = (s: string) => document.querySelector(s)!;
       const after = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-      return after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#installed-heading"));
+      return after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#plan-heading")) && after(at("#plan-heading"), at("#installed-heading"));
     });
     expect(order).toBe(true);
     await checkPage(page);
     await shot(page, "mods-tab-typed");
   });
 
-  test("under 2 characters clears the results and says so", async ({ page }) => {
+  test("Enter searches in place, and the page controls keep the tab's address", async ({ page }) => {
     await page.goto("/worlds/base/mods");
     const box = page.getByLabel("Mod name");
-    await box.fill("fp-pg-03");
-    await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-03"' })).toBeVisible();
-    await box.fill("f");
-    await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toHaveCount(0);
-    await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters to search. Ticked mods are kept.");
-    await page.waitForTimeout(600);
-    await expect(page.getByRole("table")).toHaveCount(0);
-    // No empty row is left between the search and the installed list.
-    await expect(page.locator("#mod-results-form")).toBeHidden();
-  });
-
-  test("a fresh tab says nothing for 1 character", async ({ page }) => {
-    await page.goto("/worlds/base/mods");
-    await page.getByLabel("Mod name").fill("f");
-    await page.waitForTimeout(400);
-    await expect(page.locator("#announcer")).toHaveText("");
-  });
-
-  test("a reply that lands after the box went under 2 characters never shows", async ({ page }) => {
-    await page.goto("/worlds/base/mods");
-    let release!: () => void;
-    const held = new Promise<void>((r) => (release = r));
-    let asked!: () => void;
-    const sent = new Promise<void>((r) => (asked = r));
-    await page.route("**/mods/search?**", async (route) => {
-      asked();
-      await held;
-      await route.continue();
-    });
-    const box = page.getByLabel("Mod name");
-    await box.fill("fp-pg-03");
-    await sent;
-    await box.fill("f");
-    release();
-    await page.waitForTimeout(800);
-    await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toBeHidden();
-    await expect(page.getByRole("checkbox", { name: "fp-pg-03" })).toBeHidden();
-  });
-
-  test("Enter after ticking carries the ticks and the new search to the search page", async ({ page }) => {
-    await page.goto("/worlds/base/mods");
-    const box = page.getByLabel("Mod name");
-    await box.fill("fp-pg-0");
-    await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
-    await page.getByRole("checkbox", { name: "fp-pg-02" }).check();
-    await box.fill("fp-pg-1");
-    await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-1"' })).toBeVisible();
+    await box.fill("fp-pg");
     await box.press("Enter");
-    await expect(page).toHaveURL(/\/mods\/search\?.*q=fp-pg-1/);
-    const also = page.getByRole("group", { name: "Also ticked" });
-    await expect(also.getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
-    await expect(also.getByRole("checkbox", { name: "fp-pg-02" })).toBeChecked();
-  });
-
-  test("a pasted portal link shows its one mod", async ({ page }) => {
-    await page.goto("/worlds/base/mods");
-    await page.getByLabel("Mod name").fill("https://mods.factorio.com/mod/fp-pg-03");
-    const table = page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." });
-    await expect(table.getByRole("row")).toHaveCount(2);
-    await expect(table.getByRole("checkbox", { name: "fp-pg-03" })).toBeVisible();
+    await expect(page.getByRole("list", { name: /Showing 1 to 10\./ })).toBeVisible();
+    await page.getByRole("navigation", { name: "Result pages, above the list" }).getByRole("link", { name: "Next page" }).click();
+    await expect(page.getByRole("list", { name: /Showing 11 to 20\./ })).toBeVisible();
+    await expect(page.locator("#results-heading")).toBeFocused();
+    expect(new URL(page.url()).pathname).toBe("/worlds/base/mods");
+    expect(new URL(page.url()).search).toBe("");
   });
 
   test("a refused search says why in place", async ({ page }) => {
@@ -477,45 +439,10 @@ test.describe("typing on the Mods tab", () => {
     expect(page.url()).toMatch(/\/worlds\/base\/mods$/);
   });
 
-  test("ticks across two typed searches reach one plan", async ({ page }) => {
+  test("a long pasted link with a tracking query finds its mod", async ({ page }) => {
+    const link = `https://mods.factorio.com/mod/fp-pg-04?utm_source=${"x".repeat(150)}&utm_medium=share`;
     await page.goto("/worlds/base/mods");
-    const box = page.getByLabel("Mod name");
-    await box.fill("fp-pg-01");
-    await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
-    await box.fill("fp-pg-02");
-    await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
-    await page.getByRole("checkbox", { name: "fp-pg-02" }).check();
-    await page.getByRole("button", { name: "Add ticked mods to plan" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
-    const asked = page.locator("#mod-plan .plan-groups");
-    await expect(asked).toContainText("fp-pg-01 1.0.0");
-    await expect(asked).toContainText("fp-pg-02 1.0.0");
-  });
-
-  test("Add to plan on one result opens its plan", async ({ page }) => {
-    await page.goto("/worlds/base/mods");
-    await page.getByLabel("Mod name").fill("fp-pg-03");
-    await page.getByRole("link", { name: "Add to plan fp-pg-03", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
-  });
-
-  test("a page button goes on to the search page with the search", async ({ page }) => {
-    await page.goto("/worlds/base/mods");
-    await page.getByLabel("Mod name").fill("fp-pg");
-    await expect(page.getByRole("table", { name: /Showing 1 to 10\./ })).toBeVisible();
-    await page.getByRole("button", { name: "Next page" }).click();
-    await expect(page).toHaveURL(/\/mods\/search\?/);
-    await expect(page.getByRole("table", { name: /Showing 11 to 20\./ })).toBeVisible();
-  });
-
-  test("without script the box still submits to the search page", async ({ page, foreman, browser }) => {
-    const plain = await browser.newContext({ baseURL: foreman.url, javaScriptEnabled: false, storageState: await page.context().storageState() });
-    const p = await plain.newPage();
-    await p.goto("/worlds/base/mods");
-    await p.getByLabel("Mod name").fill("fp-pg-02");
-    await p.getByRole("button", { name: "Search", exact: true }).click();
-    await expect(p).toHaveURL(/\/mods\/search\?q=fp-pg-02/);
-    await expect(p.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
-    await plain.close();
+    await page.getByLabel("Mod name").fill(link);
+    await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." }).getByRole("button", { name: "Add fp-pg-04 to the plan" })).toBeVisible();
   });
 });
