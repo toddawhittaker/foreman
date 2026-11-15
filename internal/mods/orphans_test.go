@@ -65,6 +65,26 @@ func TestBuiltInAndFolderModsAreNeverOrphans(t *testing.T) {
 	}
 }
 
+func TestADisabledModDoesNotKeepAnOrphan(t *testing.T) {
+	w := World{Mods: []world.InstalledMod{
+		installed("a", "1.0.0", true, "b"), installed("b", "1.0.0", true), installed("c", "1.0.0", false, "b"),
+	}}
+	plan := resolve(t, portal{}, w, Request{Kind: KindRemove, Names: []string{"a"}})
+	if got := orphanNames(plan); !slices.Equal(got, []string{"b<a"}) {
+		t.Fatalf("orphans = %v", got)
+	}
+}
+
+func TestAnEnabledModInACycleKeepsItsPartner(t *testing.T) {
+	w := World{Mods: []world.InstalledMod{
+		installed("a", "1.0.0", true, "b"), installed("b", "1.0.0", true, "c"), installed("c", "1.0.0", true, "b"),
+	}}
+	plan := resolve(t, portal{}, w, Request{Kind: KindRemove, Names: []string{"a"}})
+	if len(plan.Orphans) != 0 {
+		t.Fatalf("orphans = %v", orphanNames(plan))
+	}
+}
+
 func TestOptionalDependencyIsNotAnOrphan(t *testing.T) {
 	w := World{Mods: []world.InstalledMod{
 		installed("a", "1.0.0", true, "? b", "+ c", "(?) d", "! e"),
