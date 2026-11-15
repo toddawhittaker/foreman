@@ -1,0 +1,21 @@
+{{define "title"}}{{t "favorites.delete.question" "name" .Page.Favorite.Name}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<p class="eyebrow crumb"><a href="{{.ListPath}}">{{t "favorites.title"}}</a></p>
+<h1 id="confirm-heading">{{t "favorites.delete.question" "name" .Favorite.Name}}</h1>
+<section class="confirm">
+  <p>{{t "common.confirm.will"}}</p>
+  <ul>
+    <li>{{t "favorites.delete.removes"}}</li>
+    <li>{{t "favorites.delete.keeps"}}</li>
+  </ul>
+  <form method="post" action="{{.Favorite.DeletePath}}" novalidate>
+    <div class="actions">
+      <button type="submit" class="button button--danger" id="act-favorite-delete">{{t "favorites.delete.button"}}</button>
+      <a href="{{.ListPath}}">{{t "favorites.delete.cancel"}}</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}

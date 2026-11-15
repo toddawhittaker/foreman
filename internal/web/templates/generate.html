@@ -8,6 +8,35 @@
 <p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <h1>{{t "worlds.generate.title"}}</h1>
 <p class="hint">{{t "worlds.generate.intro"}}</p>
+{{- if .FavoritesOn}}
+{{- /* A plain GET, so without script the page reloads filled in (SPEC 5.12). */}}
+<form method="get" action="{{.Path}}" class="panel" id="favorite-chooser" aria-labelledby="favorite-chooser-heading">
+  <h2 id="favorite-chooser-heading">{{t "favorites.start.heading"}}</h2>
+  {{- if .Favorites}}
+  <div class="field">
+    <label for="favorite-choice">{{t "favorites.start.label"}}</label>
+    <div class="inline-row">
+      <select id="favorite-choice" name="favorite"
+        {{- if not .Form.FavoriteError.IsZero}} aria-invalid="true" aria-describedby="favorite-choice-error"{{end}}>
+        {{- range .Favorites}}
+        <option value="{{.ID}}"{{if and $.Page.Form.Favorite (eq .ID $.Page.Form.Favorite.ID)}} selected{{end}}>{{.Name}}</option>
+        {{- end}}
+      </select>
+      <button type="submit" class="button" id="act-favorite-start">{{t "favorites.start.button"}}</button>
+    </div>
+    {{- if not .Form.FavoriteError.IsZero}}
+    <p class="error" id="favorite-choice-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.FavoriteError}}</p>
+    {{- end}}
+  </div>
+  {{- else}}
+  <p class="hint">{{t "favorites.start.none"}}</p>
+  {{- if not .Form.FavoriteError.IsZero}}
+  <p class="error" id="favorite-choice-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.FavoriteError}}</p>
+  {{- end}}
+  {{- end}}
+  <div class="actions"><a href="{{.FavoritesPath}}" id="act-favorites">{{t "favorites.list.link"}}</a></div>
+</form>
+{{- end}}
 <form method="post" action="{{.Path}}" class="panel generate" id="generate-form" novalidate data-tab="{{.Form.Tab}}" data-ach-word="{{t "mapgen.achievement.warning"}}">
   {{- /* The first submit button is the one Enter presses; without this it would be the hidden preset reset. */}}
   <button type="submit" id="generate-default" hidden></button>
@@ -17,6 +46,15 @@
   <div class="gen-settings">
   {{template "required-note"}}
   {{- with .Form}}
+  {{- with .Favorite}}
+  <input type="hidden" name="favorite" value="{{.ID}}">
+  <div class="message message--note" id="favorite-note" tabindex="-1" autofocus>
+    <p><strong>{{t "common.label.note"}}</strong> {{t "favorites.start.note" "name" .Name}}</p>
+    {{- if .Mods}}
+    <p>{{t "favorites.start.mods" "count" (len .Mods)}}</p>
+    {{- end}}
+  </div>
+  {{- end}}
   <div class="field">
     <label for="generate-name" class="required">{{t "worlds.import.name.label"}}</label>
     <p class="hint" id="generate-name-hint">{{t "worlds.import.name.hint" "count" 100}}</p>

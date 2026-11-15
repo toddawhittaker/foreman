@@ -1,0 +1,50 @@
+{
+  "favorites.title": "Oblíbené",
+  "favorites.intro": "Oblíbená položka obsahuje verzi hry světa, nastavení Space Age, nastavení mapy, nastavení serveru bez hesel, mody a jejich nastavení. Nový svět z ní lze založit na stránce Generovat.",
+  "favorites.fact.source": "Vytvořeno ze světa",
+  "favorites.fact.mods": "Mody",
+  "favorites.fact.created": "Vytvořeno",
+  "favorites.generate": "Generovat z ní",
+  "favorites.empty": "Zatím žádné oblíbené. Na stránce světa lze použít „Vytvořit oblíbenou“.",
+  "favorites.empty.link": "Přejít na světy",
+  "favorites.list.link": "Zobrazit všechny oblíbené",
+  "favorites.deleted": "Oblíbená položka „{name}“ byla smazána. Světy z ní vytvořené se nezměnily.",
+  "favorites.delete.button": "Smazat oblíbenou",
+  "favorites.delete.question": "Smazat oblíbenou položku „{name}“?",
+  "favorites.delete.removes": "Natrvalo odstranit oblíbenou položku a její soubory nastavení. Žádný snímek se nepořizuje.",
+  "favorites.delete.keeps": "Ponechat beze změny všechny světy z ní vytvořené i svět, ze kterého vznikla.",
+  "favorites.delete.cancel": "Ponechat",
+  "favorites.make.heading": "Vytvořit oblíbenou z tohoto světa",
+  "favorites.make.text": "Uloží verzi hry tohoto světa, nastavení Space Age, nastavení mapy, nastavení serveru bez hesel, mody a jejich nastavení pro zakládání nových světů. Samotný svět se nemění.",
+  "favorites.make.default_map": "Tento svět nemá nastavení mapy, takže světy z této oblíbené dostanou výchozí mapu.",
+  "favorites.make.label": "Název oblíbené",
+  "favorites.make.button": "Vytvořit oblíbenou",
+  "favorites.made": "Oblíbená položka „{name}“ byla vytvořena.",
+  "favorites.made.default_map": "Nemá nastavení mapy, takže světy z ní dostanou výchozí mapu.",
+  "favorites.made.left_out": {
+    "one": "{count} mod byl vynechán, protože ho Foreman nemůže znovu stáhnout: je to mod ze složky, nebo nelze přečíst jeho název či verzi. Do nových světů je potřeba ho přidat ručně.",
+    "few": "{count} mody byly vynechány, protože je Foreman nemůže znovu stáhnout: každý je mod ze složky, nebo nelze přečíst jeho název či verzi. Do nových světů je potřeba je přidat ručně.",
+    "other": "{count} modů bylo vynecháno, protože je Foreman nemůže znovu stáhnout: každý je mod ze složky, nebo nelze přečíst jeho název či verzi. Do nových světů je potřeba je přidat ručně."
+  },
+  "favorites.error.name_empty": "Je potřeba zadat název oblíbené.",
+  "favorites.error.name_bad": {
+    "one": "Nejvýše {count} znak, bez řídicích znaků.",
+    "few": "Nejvýše {count} znaky, bez řídicích znaků.",
+    "other": "Nejvýše {count} znaků, bez řídicích znaků."
+  },
+  "favorites.error.name_taken": "Tento název už má jiná oblíbená položka. Je potřeba zvolit jiný název.",
+  "favorites.error.settings_broken": "Nastavení serveru tohoto světa není platný JSON, proto nebyla vytvořena žádná oblíbená. Nejprve je potřeba ho opravit na kartě Nastavení hry.",
+  "favorites.error.too_big": "Tento svět má příliš mnoho modů nebo nastavení na uložení jako oblíbená.",
+  "favorites.error.gone": "Tato oblíbená položka už neexistuje, nebo jsou její soubory poškozené. Je potřeba zvolit jinou, nebo generovat bez ní.",
+  "favorites.start.heading": "Začít z oblíbené",
+  "favorites.start.label": "Oblíbená",
+  "favorites.start.button": "Použít oblíbenou",
+  "favorites.start.none": "Zatím žádné oblíbené. Oblíbenou lze vytvořit na stránce světa.",
+  "favorites.start.note": "Začíná se z oblíbené „{name}“. Její verze hry, nastavení Space Age, předvolba a nastavení mapy jsou vyplněny níže; cokoli lze změnit. Nový svět dostane její nastavení serveru a nastavení modů.",
+  "favorites.start.mods": {
+    "one": "Po vytvoření světa se zobrazí ke kontrole {count} mod k instalaci.",
+    "few": "Po vytvoření světa se zobrazí ke kontrole {count} mody k instalaci.",
+    "other": "Po vytvoření světa se zobrazí ke kontrole {count} modů k instalaci."
+  },
+  "favorites.error.map_damaged": "Nastavení mapy této oblíbené položky je poškozené, proto ho Foreman nemůže vyplnit. Je potřeba zvolit jinou oblíbenou, nebo tuto smazat a vytvořit znovu ze světa."
+}
