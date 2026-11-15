@@ -47,6 +47,32 @@ test.describe("a sidecar that publishes the game port", () => {
   // Any host port counts: the operator may map 34197 to another one.
   test.use({ fakeGameOn: true, sidecar: { name: "vpn", port: "40000" } });
 
+  test("recovers through Force stop and Start after the sidecar restarts", async ({ page, foreman, fakeGame }) => {
+    const g = fakeGame!;
+    await setUp(page, foreman, g);
+    await start(page);
+    const before = await creates(g);
+    await g.call("/sidecar-restart", {});
+    await page.getByRole("link", { name: "Restart server" }).click();
+    await page.getByRole("button", { name: "Restart server" }).click();
+    await expect(page.locator("main")).toContainText("Cannot reach the game over RCON", live);
+    await expect(stateBadge(page)).toHaveText("Running", live);
+    expect(await creates(g)).toBe(before);
+    const emergency = page.locator("details.emergency");
+    if (!(await emergency.evaluate((d) => (d as HTMLDetailsElement).open))) await emergency.locator("summary").click();
+    await page.getByRole("link", { name: "Force stop" }).click();
+    await page.locator("section.confirm").getByRole("button", { name: "Force stop" }).click();
+    await expect(stateBadge(page)).toHaveText("Stopped", live);
+    await start(page);
+    await expect.poll(() => creates(g), live).toBe(before + 1);
+    await page.goto("/console");
+    await page.getByLabel("Command").fill("/players online");
+    await page.getByLabel("Command").press("Enter");
+    await expect(page.locator("main")).toContainText("Online players (0):", live);
+    await checkPage(page);
+    await expectNoSecret(page, foreman);
+  });
+
   test("starts with no warning, and the console works", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     expect((await fakeGame!.state()).sidecar?.port).toBe("40000");

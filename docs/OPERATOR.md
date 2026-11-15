@@ -853,6 +853,10 @@ Foreman's (SPEC 14.16).
 
 ### Sign-in through a reverse proxy
 
+If Foreman starts while the sidecar is stopped or missing, trusted-header
+sign-in stays unavailable until the sidecar runs and Foreman can read all
+of its Docker network ranges. Local sign-in still works.
+
 With a sidecar, Foreman counts every Docker network the sidecar is on as a
 game network, and ignores sign-in headers from those addresses (section
 6). Docker cannot tell Foreman the VPN's addresses. So never put the
