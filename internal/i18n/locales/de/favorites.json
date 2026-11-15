@@ -1,0 +1,47 @@
+{
+  "favorites.title": "Favoriten",
+  "favorites.intro": "Ein Favorit enthält die Spielversion, die Space-Age-Einstellung, die Karteneinstellungen, die Servereinstellungen ohne Passwörter, die Mods und die Mod-Einstellungen einer Welt. Starte unter Generieren eine neue Welt daraus.",
+  "favorites.fact.source": "Erstellt aus",
+  "favorites.fact.mods": "Mods",
+  "favorites.fact.created": "Erstellt am",
+  "favorites.generate": "Daraus generieren",
+  "favorites.empty": "Noch keine Favoriten. Öffne eine Welt und nutze dort „Favorit erstellen“.",
+  "favorites.empty.link": "Zu den Welten",
+  "favorites.list.link": "Alle Favoriten ansehen",
+  "favorites.deleted": "Der Favorit „{name}“ wurde gelöscht. Welten, die daraus erstellt wurden, bleiben unverändert.",
+  "favorites.delete.button": "Favorit löschen",
+  "favorites.delete.question": "Den Favoriten „{name}“ löschen?",
+  "favorites.delete.removes": "Den Favoriten und seine Einstellungsdateien endgültig entfernen. Es wird kein Snapshot erstellt.",
+  "favorites.delete.keeps": "Jede daraus erstellte Welt und die Welt, aus der er erstellt wurde, unverändert lassen.",
+  "favorites.delete.cancel": "Behalten",
+  "favorites.make.heading": "Favorit aus dieser Welt erstellen",
+  "favorites.make.text": "Speichert die Spielversion, die Space-Age-Einstellung, die Karteneinstellungen, die Servereinstellungen ohne Passwörter, die Mods und die Mod-Einstellungen dieser Welt, um neue Welten daraus zu starten. Die Welt selbst wird nicht geändert.",
+  "favorites.make.default_map": "Diese Welt hat keine Karteneinstellungen, daher bekommen Welten aus dem Favoriten die Standardkarte.",
+  "favorites.make.label": "Name des Favoriten",
+  "favorites.make.button": "Favorit erstellen",
+  "favorites.made": "Der Favorit „{name}“ wurde erstellt.",
+  "favorites.made.default_map": "Er hat keine Karteneinstellungen, daher bekommen Welten daraus die Standardkarte.",
+  "favorites.made.left_out": {
+    "one": "{count} Mod wurde weggelassen, weil Foreman sie nicht erneut herunterladen kann: Sie ist eine Ordner-Mod, oder ihr Name oder ihre Version ist nicht lesbar. Füge sie neuen Welten von Hand hinzu.",
+    "other": "{count} Mods wurden weggelassen, weil Foreman sie nicht erneut herunterladen kann: Jede ist eine Ordner-Mod, oder ihr Name oder ihre Version ist nicht lesbar. Füge sie neuen Welten von Hand hinzu."
+  },
+  "favorites.error.name_empty": "Gib einen Namen für den Favoriten ein.",
+  "favorites.error.name_bad": {
+    "one": "Verwende höchstens {count} Zeichen, ohne Steuerzeichen.",
+    "other": "Verwende höchstens {count} Zeichen, ohne Steuerzeichen."
+  },
+  "favorites.error.name_taken": "Ein anderer Favorit hat schon diesen Namen. Wähle einen anderen Namen.",
+  "favorites.error.settings_broken": "Die Servereinstellungen dieser Welt sind kein gültiges JSON, daher wurde kein Favorit erstellt. Korrigiere sie zuerst im Tab Spieleinstellungen.",
+  "favorites.error.too_big": "Diese Welt hat zu viele Mods oder Einstellungen, um sie als Favoriten zu speichern.",
+  "favorites.error.gone": "Diesen Favoriten gibt es nicht mehr, oder seine Dateien sind beschädigt. Wähle einen anderen Favoriten oder generiere ohne einen.",
+  "favorites.start.heading": "Mit einem Favoriten beginnen",
+  "favorites.start.label": "Favorit",
+  "favorites.start.button": "Favorit verwenden",
+  "favorites.start.none": "Noch keine Favoriten. Erstelle einen auf der Seite einer Welt.",
+  "favorites.start.note": "Beginnt mit dem Favoriten „{name}“. Seine Spielversion, Space-Age-Einstellung und Voreinstellung sind unten eingetragen; ändere, was du willst. Die neue Welt bekommt seine Servereinstellungen und Mod-Einstellungen.",
+  "favorites.start.mods": {
+    "one": "Nachdem die Welt erstellt ist, prüfst du {count} Mod zur Installation.",
+    "other": "Nachdem die Welt erstellt ist, prüfst du {count} Mods zur Installation."
+  },
+  "favorites.start.map": "Solange du die Karteneinstellungen wie eingetragen lässt, nutzt die Welt die Karteneinstellungen des Favoriten. Die Vorschau zeigt die Voreinstellung."
+}

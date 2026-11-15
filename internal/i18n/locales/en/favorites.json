@@ -1,0 +1,47 @@
+{
+  "favorites.title": "Favorites",
+  "favorites.intro": "A favorite holds a world's game version, Space Age setting, map settings, server settings without passwords, mods and mod settings. Start a new world from one on Generate.",
+  "favorites.fact.source": "Made from",
+  "favorites.fact.mods": "Mods",
+  "favorites.fact.created": "Made on",
+  "favorites.generate": "Generate from it",
+  "favorites.empty": "No favorites yet. Open a world and use \"Make favorite\" on its page.",
+  "favorites.empty.link": "Go to the worlds",
+  "favorites.list.link": "See all favorites",
+  "favorites.deleted": "Deleted the favorite \"{name}\". Worlds made from it are unchanged.",
+  "favorites.delete.button": "Delete favorite",
+  "favorites.delete.question": "Delete the favorite \"{name}\"?",
+  "favorites.delete.removes": "Remove the favorite and its settings files for good. No snapshot is taken.",
+  "favorites.delete.keeps": "Leave every world made from it, and the world it was made from, as they are.",
+  "favorites.delete.cancel": "Keep it",
+  "favorites.make.heading": "Make a favorite from this world",
+  "favorites.make.text": "Saves this world's game version, Space Age setting, map settings, server settings without passwords, mods and mod settings, to start new worlds from. The world itself is not changed.",
+  "favorites.make.default_map": "This world has no map settings, so worlds made from the favorite get the default map.",
+  "favorites.make.label": "Favorite name",
+  "favorites.make.button": "Make favorite",
+  "favorites.made": "Made the favorite \"{name}\".",
+  "favorites.made.default_map": "It has no map settings, so worlds made from it get the default map.",
+  "favorites.made.left_out": {
+    "one": "{count} mod is left out because Foreman cannot download it again: it is a folder mod, or its name or version cannot be read. Add it to new worlds by hand.",
+    "other": "{count} mods are left out because Foreman cannot download them again: each is a folder mod, or its name or version cannot be read. Add them to new worlds by hand."
+  },
+  "favorites.error.name_empty": "Enter a name for the favorite.",
+  "favorites.error.name_bad": {
+    "one": "Use at most {count} character, with no control characters.",
+    "other": "Use at most {count} characters, with no control characters."
+  },
+  "favorites.error.name_taken": "Another favorite already has this name. Choose a different name.",
+  "favorites.error.settings_broken": "This world's server settings are not valid JSON, so no favorite was made. Fix them on the Game settings tab first.",
+  "favorites.error.too_big": "This world has too many mods or settings to save as a favorite.",
+  "favorites.error.gone": "That favorite no longer exists or its files are damaged. Choose another favorite, or generate without one.",
+  "favorites.start.heading": "Start from a favorite",
+  "favorites.start.label": "Favorite",
+  "favorites.start.button": "Use favorite",
+  "favorites.start.none": "No favorites yet. Make one from a world's page.",
+  "favorites.start.note": "Starting from the favorite \"{name}\". Its game version, Space Age setting and preset are filled in below; change anything you like. The new world gets its server settings and mod settings.",
+  "favorites.start.mods": {
+    "one": "After the world is made, you review {count} mod to install.",
+    "other": "After the world is made, you review {count} mods to install."
+  },
+  "favorites.start.map": "While you keep the map settings as filled in, the world uses the favorite's own map settings. The preview shows the preset."
+}
