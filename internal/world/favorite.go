@@ -282,7 +282,7 @@ func (f *Favorites) fromWorld(worldID string) (Favorite, FavoriteFiles, error) {
 		case mod.BuiltIn || !mod.Enabled:
 			// Built-in mods come with the game; a turned-off mod is not part
 			// of what the world plays.
-		case mod.Local || !validModName(mod.Name) || !modVersionRE.MatchString(mod.Version):
+		case mod.Local || !ValidModName(mod.Name) || !modVersionRE.MatchString(mod.Version):
 			fav.LeftOut = append(fav.LeftOut, mod.Name)
 		default:
 			fav.Mods = append(fav.Mods, FavoriteMod{Name: mod.Name, Version: mod.Version})
@@ -423,12 +423,12 @@ func validFavorite(fav Favorite) bool {
 		return false
 	}
 	for _, m := range fav.Mods {
-		if !validModName(m.Name) || !modVersionRE.MatchString(m.Version) {
+		if !ValidModName(m.Name) || !modVersionRE.MatchString(m.Version) {
 			return false
 		}
 	}
 	for _, n := range fav.LeftOut {
-		if !validModName(n) {
+		if !ValidModName(n) {
 			return false
 		}
 	}
