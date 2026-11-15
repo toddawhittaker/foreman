@@ -2204,6 +2204,11 @@ close the view, the tab, the setting, and the picture again).
     in a field there does nothing but end the edit; it never creates the
     world. Tab goes round the view's controls; from the last it returns
     to the first, and Shift+Tab the other way, never out to the browser.
+    Close comes first in the view's body, so Tab reaches it right after
+    the bar and before the settings, though it is drawn over the picture's
+    top corner. While a download is being prepared (below), the left and
+    right arrows do nothing, since stepping would end it; the first press
+    says so once.
   - **Settings beside the map** (#399). Where the view is at least 77rem
     wide (a 1280 px desktop is), the planet shown has its Resources and
     Terrain settings in a 38rem column on the map's left, under the
@@ -2293,6 +2298,9 @@ close the view, the tab, the setting, and the picture again).
   - A busy or failed run, or a failed request, is an error (7.3) under
     the picture with a "Try again" button; the page's picture stays.
     The announcement is the error sentence alone, not the button label.
+    In the large view a failed request shows the same "Try again" in the
+    view's box. It asks again, moves focus back to the box and says
+    "Finding the demolisher territories..." in the status line.
 - **Resource amounts** (every planet; SPEC 5.6, 17.15). A "Show resource
   amounts" checkbox (7.2) in the large view's bar, under the status lines,
   so it is there with the settings column and in a map-only view, and a
@@ -2363,6 +2371,25 @@ close the view, the tab, the setting, and the picture again).
     visually hidden sentence that counts the demolisher territories in words
     appears inside the large view too, for the same reason: the page
     outside the dialog is inert.
+- **A download's preparation** (SPEC 5.6, 17.1, 17.15). A download that
+  asks for amounts or territories is counted first, so its link shows a
+  block (`.download-prep`, a `template` in the page) instead of starting at
+  once. The block has a hint saying which planet of how many is being
+  counted, a bar that is seen and not read (`aria-hidden`, and never empty:
+  half a step for the planet counted now, or the indeterminate bar for one
+  planet), and a Cancel button. On a page it follows the link, or the zip's
+  paragraph. In the large view it lies over the top of the stage, between
+  the Previous and Next arrows and above zoom, so the picture keeps its
+  place and no control or focus ring is covered; there the words are said
+  by a visually hidden `role="status"` (`#large-prep-news`) in the bar and
+  not shown twice. A failure replaces the wait with an error (7.3) naming
+  the planet, with "Try again: (planet)" and, for the zip with other
+  planets left, "Download without (planet)"; focus goes to the first of
+  them when it was on the link or in the block. Cancel, a finished
+  preparation, or the picture shown changing ends it, and focus in the
+  block returns to the link. Only one runs at a time: another download link
+  says so and moves focus to Cancel. A count waits while the pictures are
+  being redrawn, and says so.
 - **Icons** (the large view only; the rest of the interface uses the set
   in 7.9). Inline SVG on a 16 by 16 grid, drawn
   with a 2 px `currentColor` stroke and no fill, `aria-hidden`, inside a

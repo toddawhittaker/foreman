@@ -1521,7 +1521,13 @@ and download count, with its summary on demand. Foreman reads the
 portal's whole mod list for the world's game line once (15-minute cache)
 and searches it in memory. A mod matches when every word of the text is in
 its name or title, in any order. A mod named exactly like the text comes
-first; the rest go by downloads, most first, then by name.
+first; the rest go by downloads, most first, then by name. A
+mods.factorio.com link pasted into the box finds that exact mod, read from
+the path after `/mod/` (nothing is fetched from the link); text that is
+not such a link is an ordinary search. With script the results follow the
+typing, from 2 characters, a short pause after the last key; without it the
+Search button works as before. A link "Browse the mod portal" opens the
+portal's most downloaded list for the game line in a new tab.
 It does this because the portal's own search needs credentials, and
 search must work without them (9.11, ADR 0012). Every match is kept; the
 results show ten at a time, in a table that says how many match in all
@@ -2471,7 +2477,9 @@ leave dialog (5.6) is a modal `dialog` named by its question, with "Stay on
 this page" focused on open; Escape closes it like Stay, and it passes the
 accessibility scan at 1280 and 320 px. In the large view the arrow keys step
 the planet unless focus is in a settings field, including from the amounts
-list. Tab goes round the large view's controls, from the last back to the
+list, or a preparation is shown in the view (a failed one with its Try again
+too): then Left and Right do nothing, and the first ignored press says why
+once. Tab goes round the large view's controls, from the last back to the
 first. The One planet picture's box is announced as the large view's is;
 at 320 px a short "Counting…" beside it is seen, not said, and a page count
 that ends while the large view is open is said once when the view closes.
