@@ -21,8 +21,8 @@ const tabNames: Record<string, RegExp[]> = {
   ru: [/^\s*Ресурсы\s*$/, /^\s*Ландшафт\s*$/, /^\s*Враг\s*$/],
 };
 
-// Moves every shown slider through all its steps as a drag does (an input
-// event per step) and returns the sliders whose box moved in their tab, and
+// Moves every shown slider through all its steps as an arrow key does
+// (an input event per step) and returns the sliders whose box moved in their tab, and
 // how. Boxes are measured from the tab's top: the preset's "[modified]" above
 // the tabs is not the slider row's doing.
 async function movedWhileStepping(page: Page) {
@@ -41,17 +41,20 @@ async function movedWhileStepping(page: Page) {
       const select = document.getElementById(range.dataset.for!) as HTMLSelectElement;
       const label = document.getElementById(range.dataset.for + "-label")!;
       const before = where(range) + " " + where(label);
-      // The row shows only its step, so each step is measured once: a
-      // layout per track value made this test outrun its time limit.
+      // The page snaps the slider to its step's place, so one unit further
+      // is the next step. An event per track unit cost seconds per test, as
+      // each runs the page's whole refresh.
       const seen = new Set<number>();
-      for (let i = Number(range.min); i <= Number(range.max); i++) {
-        range.value = String(i);
+      range.value = range.min;
+      for (;;) {
         range.dispatchEvent(new Event("input", { bubbles: true }));
-        if (seen.has(select.selectedIndex)) continue;
+        if (seen.has(select.selectedIndex)) break;
         seen.add(select.selectedIndex);
         top = panel.getBoundingClientRect().y;
         const now = where(range) + " " + where(label);
-        if (now !== before) moved.push(`${range.id} at step ${i}: ${before} became ${now}`);
+        if (now !== before) moved.push(`${range.id} at value ${range.value}: ${before} became ${now}`);
+        if (Number(range.value) >= Number(range.max)) break;
+        range.value = String(Number(range.value) + 1);
       }
       // Every option is a step the slider can reach, except the All row's "Mixed", which is a word and not a step.
       const steps = [...select.options].filter((o) => !o.hasAttribute("data-mixed")).length;
