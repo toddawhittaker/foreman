@@ -522,7 +522,7 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 }
 
 // stopCrashLoopLocked starts a crash-loop stop unless one is still waiting
-// on Docker, which can take the whole stop grace. w.mu is held.
+// on Docker, which can take the whole crash-loop grace. w.mu is held.
 func (c *Controller) stopCrashLoopLocked(w *worldRun, cid string) {
 	if w.crashStopping {
 		return
@@ -533,10 +533,11 @@ func (c *Controller) stopCrashLoopLocked(w *worldRun, cid string) {
 }
 
 // stopCrashLoop stops a crash-looping game, which keeps it stopped under
-// unless-stopped (SPEC 4.3, 8.9). When Docker refuses, the stopping mark is
+// unless-stopped (SPEC 4.3, 8.9), with the short crash-loop grace (see
+// CrashLoopStopGraceSeconds). When Docker refuses, the stopping mark is
 // dropped so the next poll tries again; the state stays crash-looping.
 func (c *Controller) stopCrashLoop(w *worldRun, cid string) {
-	err := c.docker.StopContainer(c.ctx, cid, StopGraceSeconds)
+	err := c.docker.StopContainer(c.ctx, cid, CrashLoopStopGraceSeconds)
 	refused := err != nil && !errors.Is(err, docker.ErrNotModified) && !errors.Is(err, docker.ErrNotFound)
 	if refused {
 		c.log.Warn("could not stop the crash-looping game, will try again", "world", w.id, "container", cid, "error", err)

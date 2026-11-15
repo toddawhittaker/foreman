@@ -1446,7 +1446,9 @@ version an operator names (`make test-catalogue VERSION=2.1.22`). (P1)
 
 8.9. **Crash loops.** If the game crashes three times within ten minutes,
 Foreman marks it crash-looping and stops the container, since Docker's
-restart policy would otherwise keep it spinning. If Docker refuses that stop, Foreman
+restart policy would otherwise keep it spinning. This stop gives the game
+10 seconds to exit before Docker kills it; an admin's graceful stop keeps
+the 120-second save grace of 7.6. If Docker refuses that stop, Foreman
 tries again at each poll until Docker accepts it. An admin must start it
 again by hand. After Foreman itself restarts, a stopped game shows as
 stopped; the crash-loop mark is not remembered. (P0)

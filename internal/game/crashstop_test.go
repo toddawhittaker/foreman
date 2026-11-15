@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -97,5 +98,34 @@ func TestCrashLoopStopsDoNotOverlap(t *testing.T) {
 	eventually(t, func() bool { return r.container(id).Status == "exited" }, "the container to stop")
 	if st := r.c.Status(id); st.State != StateCrashLooping {
 		t.Errorf("state %s after the stop", st.State)
+	}
+}
+
+// SPEC 8.9: the crash-loop stop gives the game only a short grace before
+// Docker kills it. Docker sends SIGTERM to a run it has just started, and
+// Factorio 2.0.77 hangs for good when SIGTERM reaches it while it loads its
+// mods, so the full stop grace (SPEC 7.6) would leave the crash-looping
+// game running for two minutes. A run so new has nothing to save.
+func TestCrashLoopStopHasAShortGrace(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Loop grace")
+	r.start(id)
+	r.game.SetCrashLoop(ContainerName(id), true)
+	r.waitState(id, StateCrashLooping)
+	eventually(t, func() bool { return r.container(id).Status == "exited" }, "the container to stop")
+	stop := "/containers/" + r.container(id).ID + "/stop"
+	var grace []string
+	for _, c := range r.game.Daemon().Calls() {
+		if c.Method == "POST" && c.Path == stop {
+			grace = append(grace, c.Query.Get("t"))
+		}
+	}
+	if len(grace) == 0 {
+		t.Fatal("the crash loop was not stopped with Docker's stop")
+	}
+	for _, g := range grace {
+		if s, err := strconv.Atoi(g); err != nil || s > 10 {
+			t.Errorf("crash-loop stop grace t=%q, want at most 10 seconds", g)
+		}
 	}
 }
