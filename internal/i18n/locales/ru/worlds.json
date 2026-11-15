@@ -419,6 +419,7 @@
   "worlds.generate.large.close": "Закрыть",
   "worlds.generate.large.keys": "Клавиши: ← → планета (сдвиг при увеличении), + − масштаб, 0 вписать, Esc закрыть. Касание центрирует.",
   "worlds.generate.large.keys_settings": "В настройке клавиши управляют самой настройкой: стрелка двигает ползунок, а не карту.",
+  "worlds.generate.large.settings": "Настройки планеты",
   "worlds.generate.leave.title": "Уйти, не сохранив эти настройки карты?",
   "worlds.generate.leave.text": "Настройки нового мира не сохранены. Если вы уйдёте, они будут потеряны.",
   "worlds.generate.leave.stay": "Остаться на странице",

@@ -203,9 +203,9 @@
     <button type="button" class="icon-button large-view__close" id="large-close"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m3.5 3.5 9 9m0-9-9 9"/></svg><span class="visually-hidden">{{t "worlds.generate.large.close"}}</span></button>
     {{/* On a wide view, the planet's own Resources and Terrain fields, which the script
          moves in while the view is open and back when it closes: one copy of each (DESIGN 8.8). */}}
-    <div class="large-view__settings" id="large-settings" role="group" aria-labelledby="large-settings-keys" hidden>
+    <div class="large-view__settings" id="large-settings" role="group" aria-label="{{t "worlds.generate.large.settings"}}" aria-describedby="large-settings-keys" hidden>
       {{- /* The key help above is for the map; here a setting keeps its own keys (DESIGN 8.8).
-           It names the column's group, so a screen reader says it on entering the fields. */}}
+           It describes the column's group, so a screen reader says it on entering the fields. */}}
       <p class="hint" id="large-settings-keys">{{t "worlds.generate.large.keys_settings"}}</p>
       <section id="large-resources" aria-labelledby="large-resources-heading">
         <h3 id="large-resources-heading">{{t "mapgen.tab.resources"}}</h3>

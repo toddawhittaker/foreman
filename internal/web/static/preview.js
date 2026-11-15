@@ -312,11 +312,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", (e) => {
     if (!e.target.closest("[data-territory-retry]")) return;
     // The button goes with the message, so focus goes back to the box.
-    const inView = dialog && dialog.open;
-    const box = inView ? document.getElementById("large-territories") : terrBox();
-    if (box) box.focus();
-    const slot = terrSlot();
-    if (inView) largeStatus(slot ? slot.dataset.finding : "");
+    if (dialog && dialog.open) {
+      document.getElementById("large-territories").focus();
+      const slot = terrSlot();
+      largeStatus(slot ? slot.dataset.finding : "");
+    } else {
+      const box = terrBox();
+      if (box) box.focus();
+    }
     territories(true);
   });
 
@@ -1351,7 +1354,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.target.closest && e.target.closest("#large-settings")) return;
       const panning = e.target === frame() && zoom > 1;
       // Stepping would end a download being prepared here, so the arrows wait (SPEC 17.1).
-      if (arrows[e.key] && !panning && prep && prep.inView) e.preventDefault();
+      if (arrows[e.key] && !panning && prep && prep.inView) {
+        e.preventDefault();
+        // Said once per preparation; later presses stay quiet.
+        if (!prep.waitSaid) largeStatus(strings["js.preview.prepare_planets_wait"]);
+        prep.waitSaid = true;
+      }
       else if (arrows[e.key] && !panning) step(arrows[e.key]);
       else if (e.key === "+" || e.key === "=") zoomSaid(zoom * factor);
       else if (e.key === "-") zoomSaid(zoom / factor);

@@ -319,9 +319,9 @@ test.describe("on a wide screen", () => {
     // Close comes right after the bar, before the settings' fields, not after the map.
     expect(at("large-amounts")).toBeLessThan(at("large-close"));
     expect(at("large-close")).toBeLessThan(at("a slider"));
-    // The settings' key hint is not a stop of its own; it names the fields' group, said on entering it.
+    // The settings' key hint is not a stop of its own; it describes the fields' group, said on entering it.
     expect(ids).not.toContain("large-settings-keys");
-    await expect(dialog(page).getByRole("group", { name: keysInSetting })).toBeVisible();
+    await expect(dialog(page).getByRole("group", { name: "Planet settings" })).toHaveAccessibleDescription(keysInSetting);
     // Shift+Tab from the first control goes round to the last.
     await page.locator("#large-download").focus();
     await page.keyboard.press("Shift+Tab");

@@ -365,8 +365,12 @@ test("in the large view the preparation lies over the stage without moving it, a
   await checkPage(page);
   // The arrow keys wait while it is prepared, so a stray key does not end it.
   await page.keyboard.press("ArrowRight");
+  // The first press says why, once; later ones stay quiet.
+  await expect(page.locator("#large-status")).toHaveText("Planets wait while the download is prepared. Cancel it first.");
+  await page.locator("#large-status").evaluate((s) => { s.textContent = ""; });
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator("#large-title")).toHaveText("Nauvis");
+  await expect(page.locator("#large-status")).toHaveText("");
   await expect(view.locator(".download-prep")).toBeVisible();
   const heard = await listen(page, "#large-status");
   await page.locator("#large-next").click();
@@ -384,7 +388,7 @@ test("in the large view the preparation lies over the stage without moving it, a
   await hold.stop();
 });
 
-test("in the large view the preparation leaves the arrows and zoom free, and an undrawn planet still says it ended", async ({ page }) => {
+test("in the large view the preparation leaves the edge buttons and zoom free, and the Next button ends it, saying so even for an undrawn planet", async ({ page }) => {
   await page.goto("/generate");
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
