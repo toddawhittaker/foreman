@@ -2652,7 +2652,8 @@ Details toggle are 24 px tall, so a row is about 100 px. Search works
 without an account. With script the results follow the typing: from 2
 characters, 300 ms after the last key, only the results are replaced (htmx),
 focus stays in the box, the address does not change, and the caption is
-read out through the shared announcer (7.5). Without script the form and
+read out through the shared announcer (7.5), as is a refused search's error.
+Under 2 characters the old results are hidden. Without script the form and
 Search work as before. Under the field, on this page and on the Mods tab, a
 hint says a pasted mod link works, with a plain link "Browse the mod
 portal" (hidden text "(opens in a new tab)") to

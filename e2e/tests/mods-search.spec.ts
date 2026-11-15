@@ -194,7 +194,7 @@ test("results appear while typing, without Enter, and keep focus, address and ti
   await checkPage(page);
 });
 
-test("under 2 characters typing changes nothing", async ({ page }) => {
+test("under 2 characters typing asks the server nothing", async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg-01");
   let asked = 0;
   page.on("request", (r) => {
@@ -203,7 +203,7 @@ test("under 2 characters typing changes nothing", async ({ page }) => {
   await page.getByLabel("Mod name").fill("f");
   await page.waitForTimeout(600);
   expect(asked).toBe(0);
-  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-01"' })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toHaveCount(0);
 });
 
 // SPEC 9.1, 9.11: a pasted link goes through the same typed search.
@@ -249,4 +249,44 @@ test("a long pasted link with a tracking query finds its mod", async ({ page }) 
   await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." }).getByRole("checkbox", { name: "fp-pg-04" })).toBeVisible();
   await page.getByLabel("Mod name").fill(link.replace("fp-pg-04", "fp-pg-05"));
   await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." }).getByRole("checkbox", { name: "fp-pg-05" })).toBeVisible();
+});
+
+// SPEC 9.1: a typed search the server refuses shows and announces why, ties
+// the error to the box, and a good search clears it.
+test("a refused typed search says why, and a good one clears it", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg");
+  const box = page.getByLabel("Mod name");
+  await box.fill("a".repeat(150));
+  const error = page.locator("#mod-search-error");
+  await expect(error).toHaveText("Error: Enter at most 100 characters.");
+  await expect(box).toHaveAttribute("aria-invalid", "true");
+  await expect(box).toHaveAttribute("aria-describedby", /mod-search-error/);
+  await expect(page.locator("#announcer")).toHaveText("Error: Enter at most 100 characters.");
+  await expect(box).toBeFocused();
+  await box.fill("fp-pg-02");
+  await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
+  await expect(error).toHaveCount(0);
+  await expect(box).not.toHaveAttribute("aria-invalid", "true");
+  await expect(box).toHaveAttribute("aria-describedby", "mod-search-hint mod-paste-hint");
+});
+
+test("going back under 2 characters hides the old results", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search");
+  const box = page.getByLabel("Mod name");
+  await box.fill("fp-pg-03");
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-03"' })).toBeVisible();
+  await box.fill("f");
+  await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toHaveCount(0);
+  await page.waitForTimeout(600);
+  await expect(page.getByRole("table")).toHaveCount(0);
+});
+
+test("a typed search from page 2 keeps focus in the box", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg");
+  await page.getByRole("button", { name: "Next page" }).click();
+  await expect(page.getByRole("navigation", { name: "Result pages" })).toContainText("Page 2 of 3");
+  const box = page.getByLabel("Mod name");
+  await box.fill("fp-pg-1");
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-1"' })).toBeVisible();
+  await expect(box).toBeFocused();
 });

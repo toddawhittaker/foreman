@@ -3,9 +3,9 @@
 <a href="{{portalPath .}}" class="portal-link" target="_blank" rel="noopener noreferrer">{{t "mods.portal.link"}}<span class="visually-hidden"> {{tHTML "mods.portal.for" "mod" (ident .)}}</span></a>
 {{- end}}
 
-{{/* Browse the portal for the world's game line in a new tab, with the hint that a pasted mod link works (SPEC 9.1). Takes the line. */}}
+{{/* Browse the portal for the world's game line in a new tab, with the hint that a pasted mod link works (SPEC 9.1). Takes the world's game line, such as "2.0". */}}
 {{define "portal-browse" -}}
-<p class="hint">{{t "mods.search.paste_hint"}} <a href="https://mods.factorio.com/browse/downloaded?factorio_version={{.}}" target="_blank" rel="noopener noreferrer">{{t "mods.search.browse"}}<span class="visually-hidden"> {{t "common.link.new_tab"}}</span></a></p>
+<p class="hint" id="mod-paste-hint">{{t "mods.search.paste_hint"}} <a href="https://mods.factorio.com/browse/downloaded?factorio_version={{.}}" target="_blank" rel="noopener noreferrer">{{t "mods.search.browse"}}<span class="visually-hidden"> {{t "common.link.new_tab"}}</span></a></p>
 {{- end}}
 
 {{/* One page of a mod search's results, a row per mod (DESIGN 8.3, SPEC 9.1). Takes the search page, whose rows have boxes to tick several mods, or the plan page, whose Add redraws the plan. */}}
