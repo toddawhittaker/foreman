@@ -2299,12 +2299,16 @@ may revisit).
   Server page only at the next status change or reload.
 - The Saves button cell's text is `--text-sm` at 320 px.
 - The large view's settings hint is not reached by Tab, and Close is far
-  down the view's tab order (Escape closes it).
+  down the view's tab order (Escape closes it). (Closed in fixes batch 9:
+  Close comes first in the view's body, and the settings group's name carries
+  the hint.)
 - The Escape-on-info-tip test moves an Enemy field into the column, since
   no Resources or Terrain setting has a tip yet.
-- A world briefly away shows 0 up to date on the Mods tab.
+- A world briefly away shows 0 up to date on the Mods tab. (Already fixed by
+  #452 before this gap was written; checked in fixes batch 9.)
 - If Docker's newest run stops loading for another reason, Start reports
-  the earlier run's failed load.
+  the earlier run's failed load. (Closed in fixes batch 9, with a remainder
+  listed there.)
 - **Watch item.** `TestInvariantCrashAtEveryPointOfASwitch` failed once
   under stress loops ("cannot tell its state") and passed 8 of 8 after.
 - Still deferred: #353, #339 (P2), #207, #206, #132 and #92, and Enemy and
@@ -2435,10 +2439,12 @@ failed on the epic head passed after.
   this batch; the forced-colours scan covers only the preparation block.
 - **`preview.js` is about 1,300 lines**, past the 800-line split point.
 - **Arrow keys in the large view** still step the planet during a
-  preparation, which ends it (SPEC 5.6).
+  preparation, which ends it (SPEC 5.6). (Closed in fixes batch 9: the
+  arrow keys wait while a preparation is shown, SPEC 17.1.)
 - Aquilo has only wells, so the ore gap and label hiding do not change it.
 - No real-game check of time and memory for five counts in a row.
-- DESIGN.md does not yet describe the preparation block.
+- DESIGN.md does not yet describe the preparation block. (Closed in fixes
+  batch 9: DESIGN 8.8.)
 - Still deferred: as listed under fixes batch 5.
 
 ## Mod settings epic
@@ -2510,12 +2516,16 @@ definitions run has a 4 GiB memory limit and a 5-minute time limit.
 ### Gaps
 
 - The definitions container can write the world's hard-linked mod zips, as
-  the main game container already can.
+  the main game container already can. (Closed in fixes batch 9 for the
+  definitions container, which now gets the zips read-only; the main game
+  container is still open.)
 - Editing files inside an unpacked folder mod does not change the cache key.
+  (Closed in fixes batch 9.)
 - Copying a folder mod, or a zip when linking fails, reserves no disk space
   (it is capped at 4 GiB and 100,000 files).
 - In the error summary at the top of the page, an English setting name is
   not marked `lang="en"`; the summary is in the shared layout template.
+  (Closed in fixes batch 9.)
 - The file name `mod-settings.dat` may wrap at its hyphen at 320 px.
 - Gate B (SPEC 19.2) is still owed.
 
@@ -2707,7 +2717,8 @@ tab (8.5); an `http://` webhook address is allowed, with a warning (8.11).
   - An admin's cancel, which skips the day, sends no webhook, and neither
     does a missed one (the message names players as the reason).
   - A scheduled restart sends both the scheduled-restart and the start
-    webhooks.
+    webhooks. Not a gap: SPEC 7.12 says the restart's own start sends the
+    start webhook too (ruled in fixes batch 9).
   - No "restarted on schedule" Done message: the scheduler keeps no
     field for it.
 - **Audit.** Schedule and webhook saves are audited after the change, and a
@@ -2817,7 +2828,8 @@ commit, Go version, licence and a project link, and no game versions.
 ### Gaps left
 
 - **The large map view has no "Try again" for a failed territory request
-  (#499).** Unticking and ticking the box again retries.
+  (#499).** Unticking and ticking the box again retries. (Closed in fixes
+  batch 9.)
 - **The theme buttons' names show only to screen readers and as hover text.**
   Keyboard and touch users see bare icons (ruling 2a).
 - **The language is in the user menu, not on the header bar.** Ruling 2
@@ -3121,3 +3133,89 @@ a second promised configuration.
 - Docker's own error texts for joining a stopped or removed holder differ
   between the cases measured; Foreman refuses before creating anything and
   relies on none of them.
+
+## Fixes batch 9
+
+Serves SPEC 5.6, 8.7, 8.9, 9.1, 9.6, 9.11, 14 and 17.1, with DESIGN 8.8.
+Issues: #549, #551, #552 and #499, and gaps from earlier sections. The pull
+requests were #582 and #583 and #586 (mod search), #584 (large view), #585
+(error summary), #581 (Start's reason) and #580 (mod settings reader).
+
+Rulings: a scheduled restart sends both the scheduled-restart and the start
+webhooks, as SPEC 7.12 says, so that is not a gap. In the large view the
+arrow keys do nothing while a preparation is shown (SPEC 17.1).
+
+### Delivered
+
+- **Mod search matches every word in any order, exact name first (#549, SPEC
+  9.1; #582).** A mod matches when each word of the query is in its name or
+  title. A mod whose name equals the whole query comes first; the rest go by
+  downloads, then name. The old prefix and contains groups are gone.
+- **A pasted mod portal link finds that mod (#551, SPEC 9.1, 9.11; #583).**
+  The name is read from the path after `/mod/` and looked up in the cached
+  list, then with the portal's `/full` call. It shows as the one result.
+  "No mod named X is on the mod portal" and "X has no release for Factorio
+  2.0" are told apart. Other text, including other sites' links, is
+  ordinary search, and nothing is fetched from the link. The fake portal now
+  leaves out a mod with no release for the asked game line, as the real one
+  does.
+- **Results follow the typing, and a link to browse the portal (#549, #552,
+  SPEC 9.1; #586).** With script, the search starts at 2 characters, 300 ms
+  after the last key, replaces only the results, keeps focus in the box and
+  announces the result count. Ticked boxes survive. Without script the form
+  works as before. "Browse the mod portal (opens in a new tab)" links to the
+  portal's most downloaded list for the world's game line, with a hint that
+  a pasted mod link works, on the search page and on the Mods tab's Find a
+  mod form. Both boxes take 300 characters.
+- **The large view's Close comes first in Tab order, and the settings hint is
+  read (#499, SPEC 17.1, DESIGN 8.8; #584).** Close moves to the start of the
+  view's body and is still drawn in the picture's corner. The settings
+  column is a group whose name carries the hint.
+- **The arrow keys wait during a preparation (SPEC 17.1; #584).** While a
+  preparation is shown, Left and Right do not step the planet, including a
+  failed one with its Try again.
+- **A failed territory request offers Try again (#499; #584).** It sends the
+  request again, moves focus to the box and says "Finding the demolisher
+  territories..." in the status line.
+- **The error summary marks English setting names `lang="en"` (SPEC 9.6,
+  17.1, 22.3; #585).** It uses the same `msgHTML` as the field error.
+- **Start reports the newest run's own reason (SPEC 8.7, 8.9; #581).** An
+  earlier run's failed load stands only while the newest run is silent. A
+  known crash reason from the catalogue, or a failed load of its own,
+  replaces it.
+- **The mod settings reader locks the zips and notices folder mod changes
+  (SPEC 9.6, 14; #580).** Each mod zip is mounted read-only over itself in
+  the definitions container, using Docker's `Mounts` field so odd file names
+  need no quoting. The cache key now covers every entry inside a folder mod
+  (name, type, size, change time), within the 100,000 file and 4 GiB limits.
+- **Mods tab "0 up to date" needed no change.** #452 had fixed it already.
+- **Spec and docs.** SPEC 9.1 and 17.1 carry the new rules, DESIGN 8.8
+  describes the preparation block, and the plan was deleted.
+
+### Verified
+
+- Each task ran the full `make verify` and the browser specs for its files, on
+  linux-dev, Todd-Desktop-2 or pve1-dev. G1 (large view), G2 (error summary)
+  and M3 (as-you-type search) ran the whole browser suite.
+- G3 (Start's reason) and G4 (mod settings reader) passed `make test-game`
+  against real `factoriotools/factorio` containers, including
+  `TestRealGameModSettingsDefinitions` on 1.1, 2.0 and 2.1. M2 and M3 change
+  only search and the portal link, so they had no real-game check.
+- Two one-off flakes: `sliders.spec.ts:393` (a timeout under load, 12 of 12
+  on rerun) and `generate.spec.ts:144` (failed twice on another machine and
+  could not be reproduced in 160 runs on the head or the base).
+
+### Gaps left
+
+- **The plan page's "Add another mod" search** does not read pasted links or
+  search as you type.
+- **A pasted name in the wrong case** falls back to the name as pasted.
+- **The main game container can still write the world's hard-linked zips.**
+  G4 covered only the definitions reader.
+- **A run that dies of a reason the crash catalogue does not know** still
+  reports an earlier run's failed load.
+- **Ticked mods and "Add ticked mods" hide with the results** under 2
+  characters.
+- **The Previous and Next buttons in the large view** still end a
+  preparation, as stepping always has.
+- Still deferred: as listed under fixes batch 8.
