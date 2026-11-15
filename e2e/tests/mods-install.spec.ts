@@ -84,7 +84,7 @@ test("a chain three levels deep: the plan lists what is needed and why, and all 
   await portal.add("fp-a", "1.0.0", ["base >= 2.0", "fp-b >= 1.0.0"]);
   await setUpModsWorld(page, foreman, fakeGame!, world);
 
-  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-a&q=fp-a");
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-a");
   const plan = page.locator("#mod-plan");
   await expect(plan).toContainText("fp-a 1.0.0");
   await expect(plan).toContainText("fp-b 1.0.0 (fp-a needs it)");
@@ -202,7 +202,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
   await portal.add("fp-clash", "1.0.0", ["base >= 2.0", "! fp-other"]);
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-other": "2.0" } });
 
-  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-clash&q=fp-clash");
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-clash");
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-clash in Base?" })).toBeVisible();
   const conflicts = page.locator("#plan-conflicts");
   await expect(conflicts).toContainText("This plan cannot be applied because of a conflict:");
@@ -211,7 +211,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
   await expect(page.locator("#act-apply")).toHaveCount(0);
   // Issue 344: a plan that cannot be applied does not say what applying does, and offers its fix and a way back.
   await expect(page.locator("#plan-steps")).toHaveCount(0);
-  await expect(conflicts.getByRole("link", { name: "Back to search" })).toHaveAttribute("href", "/worlds/base/mods/search?q=fp-clash");
+  await expect(conflicts.getByRole("link", { name: "Back to the mods" })).toHaveAttribute("href", "/worlds/base/mods");
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/i-plan-conflict-${test.info().project.name}.png`, fullPage: true });
   expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-clash_1.0.0.zip"))).toBe(false);
