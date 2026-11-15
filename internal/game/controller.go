@@ -48,6 +48,12 @@ const (
 	// StopGraceSeconds is how long Docker waits for the game to save and
 	// exit after SIGTERM before it kills it (SPEC 7.6).
 	StopGraceSeconds = 120
+	// CrashLoopStopGraceSeconds is how long Docker waits after SIGTERM
+	// before it kills a crash-looping game (SPEC 8.9). Foreman stops the
+	// loop just as Docker starts a new run, which has nothing to save, and
+	// Factorio 2.0.77 hangs for good when SIGTERM reaches it while it loads
+	// its mods, so the full grace would leave it running for two minutes.
+	CrashLoopStopGraceSeconds = 10
 	// CrashLoopCount crashes within CrashLoopWindow make a crash loop (SPEC 8.9).
 	CrashLoopCount  = 3
 	CrashLoopWindow = 10 * time.Minute
