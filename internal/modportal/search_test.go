@@ -50,7 +50,8 @@ func TestSearchHitFields(t *testing.T) {
 	}
 }
 
-func TestSearchGroupOrder(t *testing.T) {
+// Only an exact name outranks downloads; a prefix match gets no boost.
+func TestSearchOrder(t *testing.T) {
 	c := handlerClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(listBody([]listRow{
 			{name: "zzaa", title: "Zz", downloads: 9000},               // contains, in name
@@ -67,7 +68,45 @@ func TestSearchGroupOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := names(hits), "AA,aac,aad,aab,zzaa,other"; got != want {
+	if got, want := names(hits), "AA,zzaa,other,aac,aad,aab"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestSearchWordsInAnyOrder(t *testing.T) {
+	c := handlerClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(listBody([]listRow{
+			{name: "signal-extras", title: "Signal for rail", downloads: 10},
+			{name: "rail-signal-plus", title: "Plus", downloads: 5},
+			{name: "railway", title: "Trains", downloads: 900}, // no "signal"
+			{name: "signals", title: "Lights", downloads: 800}, // no "rail"
+			{name: "other", title: "Rail and SIGNAL tools", downloads: 20},
+		}))
+	})
+	for _, q := range []string{"rail signal", "signal rail", "  RAIL   Signal "} {
+		hits, err := c.Search(context.Background(), "2.0", q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, want := names(hits), "other,signal-extras,rail-signal-plus"; got != want {
+			t.Errorf("%q: got %q, want %q", q, got, want)
+		}
+	}
+}
+
+// A name equal to the whole query beats a mod with far more downloads.
+func TestSearchExactNameBeatsPopularMod(t *testing.T) {
+	c := handlerClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(listBody([]listRow{
+			{name: "rail-signal-plus", title: "Plus", downloads: 100000},
+			{name: "Rail Signal", title: "Exact", downloads: 3},
+		}))
+	})
+	hits, err := c.Search(context.Background(), "2.0", "rail signal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := names(hits), "Rail Signal,rail-signal-plus"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }

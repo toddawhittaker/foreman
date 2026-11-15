@@ -1519,8 +1519,9 @@ Snapshots page, where space can be freed. (P1)
 9.1. **Search** the mod portal by name and see each mod's latest version
 and download count, with its summary on demand. Foreman reads the
 portal's whole mod list for the world's game line once (15-minute cache)
-and searches it in memory: an exact name first, then names that start with
-the text, then names or titles that contain it, each group by downloads.
+and searches it in memory. A mod matches when every word of the text is in
+its name or title, in any order. A mod named exactly like the text comes
+first; the rest go by downloads, most first, then by name.
 It does this because the portal's own search needs credentials, and
 search must work without them (9.11, ADR 0012). Every match is kept; the
 results show ten at a time, in a table that says how many match in all

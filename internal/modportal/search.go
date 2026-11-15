@@ -18,41 +18,48 @@ type listEntry struct {
 
 // Search finds mods for a game line such as "2.0". The portal's own search
 // needs a login, which SPEC 9.11 keeps out of search, so the whole list for
-// the line is fetched once, kept for 15 minutes, and searched here: an exact
-// name first, then names that start with the query, then names or titles
-// that contain it, each group by downloads. It returns every match; the
-// page shows them a page at a time (SPEC 9.1).
+// the line is fetched once, kept for 15 minutes, and searched here. Every
+// word of the query must appear in a mod's name or title. A mod named
+// exactly like the query comes first; the rest go by downloads, then name.
+// It returns every match; the page shows them a page at a time (SPEC 9.1).
 func (c *Client) Search(ctx context.Context, line, query string) ([]Hit, error) {
 	q := strings.ToLower(strings.TrimSpace(query))
-	if q == "" {
+	words := strings.Fields(q)
+	if len(words) == 0 {
 		return nil, nil
 	}
 	list, err := c.modList(ctx, line)
 	if err != nil {
 		return nil, err
 	}
-	var exact, prefix, contains []Hit
+	var exact, rest []Hit
 	for _, e := range list {
 		switch {
 		case e.name == q:
 			exact = append(exact, e.hit)
-		case strings.HasPrefix(e.name, q):
-			prefix = append(prefix, e.hit)
-		case strings.Contains(e.name, q) || strings.Contains(e.title, q):
-			contains = append(contains, e.hit)
+		case matchesAll(e, words):
+			rest = append(rest, e.hit)
 		}
 	}
-	var out []Hit
-	for _, group := range [][]Hit{exact, prefix, contains} {
+	for _, group := range [][]Hit{exact, rest} {
 		sort.Slice(group, func(i, j int) bool {
 			if group[i].Downloads != group[j].Downloads {
 				return group[i].Downloads > group[j].Downloads
 			}
 			return group[i].Name < group[j].Name
 		})
-		out = append(out, group...)
 	}
-	return out, nil
+	return append(exact, rest...), nil
+}
+
+// matchesAll reports whether each word is in the mod's name or title.
+func matchesAll(e listEntry, words []string) bool {
+	for _, w := range words {
+		if !strings.Contains(e.name, w) && !strings.Contains(e.title, w) {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *Client) modList(ctx context.Context, line string) ([]listEntry, error) {
