@@ -290,3 +290,38 @@ test("a typed search from page 2 keeps focus in the box", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-1"' })).toBeVisible();
   await expect(box).toBeFocused();
 });
+
+// SPEC 9.1: a reply that lands after the box went under 2 characters is dropped.
+test("a slow reply does not bring back results after the text is cut", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search");
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  let sent!: () => void;
+  const out = new Promise<void>((r) => (sent = r));
+  await page.route(/\/mods\/search\?/, async (route) => {
+    if (!route.request().headers()["hx-request"]) return route.continue();
+    sent();
+    await held;
+    await route.continue();
+  });
+  const box = page.getByLabel("Mod name");
+  await box.fill("fp-pg-03");
+  await out;
+  await box.fill("f");
+  release();
+  await page.waitForTimeout(800);
+  await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toHaveCount(0);
+  await expect(page.getByRole("table")).toHaveCount(0);
+});
+
+test("cutting a refused search under 2 characters clears the error and says why", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg");
+  const box = page.getByLabel("Mod name");
+  await box.fill("a".repeat(150));
+  await expect(box).toHaveAttribute("aria-invalid", "true");
+  await box.fill("a");
+  await expect(box).not.toHaveAttribute("aria-invalid", "true");
+  await expect(box).toHaveAttribute("aria-describedby", "mod-search-hint mod-paste-hint");
+  await expect(page.locator("#mod-search-error")).toBeHidden();
+  await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters to search.");
+});

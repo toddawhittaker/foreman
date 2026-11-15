@@ -6,6 +6,7 @@
   "mods.search.heading": "Find a mod",
   "mods.search.label": "Mod name",
   "mods.search.hint": "Searches the mod portal for mods made for Factorio {line}, the game version of this world.",
+  "mods.search.short": "Type at least 2 characters to search.",
   "mods.search.paste_hint": "You can also paste a mod's link from the portal.",
   "mods.search.browse": "Browse the mod portal",
   "mods.search.button": "Search",
