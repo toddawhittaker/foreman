@@ -22,6 +22,8 @@ func TestPortalLinkName(t *testing.T) {
 		{"https://mods.factorio.com/mod/Krastorio2/changelog?x=1&y=2#top", "Krastorio2", true},
 		{"https://mods.factorio.com/mod/Flow%20Control", "Flow Control", true},
 		{"https://mods.factorio.com/mod/a%2Fb", "a/b", true},
+		// The parser drops userinfo before the host; only the name is used.
+		{"https://someone@mods.factorio.com/mod/Krastorio2", "Krastorio2", true},
 
 		{"", "", false},
 		{"Krastorio2", "", false},
@@ -41,6 +43,9 @@ func TestPortalLinkName(t *testing.T) {
 		{"https://notmods.factorio.com/mod/Krastorio2", "", false},
 		{"https://factorio.com/mod/Krastorio2", "", false},
 		{"ftp://mods.factorio.com/mod/Krastorio2", "", false},
+		{"https://mods.factorio.com:443/mod/Krastorio2", "", false},
+		{"https://mods.factorio.com:8443/mod/Krastorio2", "", false},
+		{"https://evil.example:80@evil.example/mod/Krastorio2", "", false},
 		{"javascript:alert(1)", "", false},
 	}
 	for _, c := range cases {

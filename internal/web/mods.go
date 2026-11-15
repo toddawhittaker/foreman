@@ -768,7 +768,13 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	if len(p.Query) > maxSearchQuery {
+	// A pasted link may be long with a sub-page and tracking query; only the
+	// mod name in it counts against the limit.
+	limited := p.Query
+	if name, isLink := modportal.PortalLinkName(p.Query); isLink {
+		limited = name
+	}
+	if len(limited) > maxSearchQuery {
 		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
