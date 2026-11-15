@@ -165,13 +165,15 @@ jobs:
       - if: startsWith(matrix.check, 'test')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: coverage-${{ github.run_attempt }}-${{ strategy.job-index }}
+          name: coverage-${{ strategy.job-index }}-${{ github.run_attempt }}
           path: .cache/cover
           retention-days: 1
           if-no-files-found: error
 
   # Merges the three test slices' coverage and checks the floor, as a
-  # whole-queue `make test` does on one machine.
+  # whole-queue `make test` does on one machine. It takes every attempt's
+  # files: re-running one failed slice uploads only that slice again, and
+  # the other two slices' files come from the earlier attempt.
   coverage:
     needs: [changes, verify]
     if: needs.changes.outputs.code == 'true'
@@ -191,7 +193,7 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: coverage-${{ github.run_attempt }}-*
+          pattern: coverage-*
           path: .cache/cover
           merge-multiple: true
 
