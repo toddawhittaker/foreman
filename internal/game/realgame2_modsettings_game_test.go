@@ -422,6 +422,15 @@ func (e *gameEnv) runMSDefinitions(t *testing.T, tag, version string) {
 	if d := byName["fm-sta-int"]; d.Default == nil || d.Default.Int != 7 {
 		t.Errorf("fm-sta-int default %+v: settings-updates.lua should have changed it to 7", d.Default)
 	}
+	// fm-glo-bool is named the Squeak Through way: the game reports its
+	// localised strings and Foreman resolves them (SPEC 9.6).
+	if d := byName["fm-glo-bool"]; !strings.Contains(string(d.LocalisedName), "fm-setting-name.disable-setting") ||
+		!strings.Contains(string(d.LocalisedDescription), "fm-setting-description.chests") {
+		t.Errorf("fm-glo-bool localised name %s, description %s", d.LocalisedName, d.LocalisedDescription)
+	}
+	if txt := res.Locale["en"]["fm-glo-bool"]; txt.Name != "Disable modification of chests" || txt.Description != "Chests and wagons." {
+		t.Errorf("fm-glo-bool text in en: %+v", txt)
+	}
 	// The mod's text is read from its locale file in English.
 	if txt := res.Locale["en"]["fm-sta-int"]; txt.Name != "Startup integer" {
 		t.Logf("locale text for fm-sta-int in en: %+v (the page may fill it from the .cfg instead)", txt)

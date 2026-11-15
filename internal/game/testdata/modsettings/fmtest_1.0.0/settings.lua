@@ -13,4 +13,12 @@ table.insert(defs, {type="string-setting", name="fm-sta-blank", setting_type="st
 table.insert(defs, {type="string-setting", name="fm-sta-long", setting_type="startup", default_value=string.rep("0123456789", 30), order="g"})
 table.insert(defs, {type="int-setting", name="fm-sta-unbounded", setting_type="startup", default_value=4, order="h"})
 table.insert(defs, {type="double-setting", name="fm-sta-dallowed", setting_type="startup", default_value=1, allowed_values={0.5, 1, 2}, order="i"})
+-- fm-glo-bool is named the Squeak Through way: localised strings in the mod's
+-- own sections.
+for _, d in ipairs(defs) do
+  if d.name == "fm-glo-bool" then
+    d.localised_name = {"fm-setting-name.disable-setting", {"fm-setting-name.chests"}}
+    d.localised_description = {"fm-setting-description.chests"}
+  end
+end
 data:extend(defs)

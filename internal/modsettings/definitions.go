@@ -55,6 +55,8 @@ type rawDefinition struct {
 	Hidden     bool            `json:"hidden"`
 	AllowBlank bool            `json:"allow_blank"`
 	AutoTrim   bool            `json:"auto_trim"`
+	LocName    json.RawMessage `json:"localised_name"`
+	LocDesc    json.RawMessage `json:"localised_description"`
 }
 
 // ParseDefinitions parses the JSON a definitions run writes, enforcing the
@@ -146,6 +148,9 @@ func convertDefinition(r *rawDefinition) Definition {
 		Hidden:     r.Hidden,
 		AllowBlank: r.AllowBlank,
 		AutoTrim:   r.AutoTrim,
+		// Kept as the game wrote them; ResolveLocalised reads them.
+		LocalisedName:        r.LocName,
+		LocalisedDescription: r.LocDesc,
 	}
 	d.Editable = knownValueType(d.Type) && validSetting(d.Setting) &&
 		r.Name != "" && len(r.Name) <= maxNameBytes && utf8.ValidString(r.Name) &&

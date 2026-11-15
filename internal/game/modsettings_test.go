@@ -29,7 +29,8 @@ const defsJSON = `{"settings": [
    "default_value": 5, "minimum_value": 1, "maximum_value": 10, "allowed_values": [1, 5],
    "hidden": false, "allow_blank": false, "auto_trim": false},
   {"name": "fm-run-bool", "mod": "fmtest", "setting_type": "runtime-global", "type": "bool-setting", "order": "a",
-   "default_value": true}
+   "default_value": true, "localised_name": ["fm-setting-name.disable-setting", ["fm-setting-name.chests"]],
+   "localised_description": ["fm-setting-description.chests"]}
 ]}`
 
 // modSettingsRig is a rig whose preview containers stay up until the test
@@ -556,16 +557,24 @@ func TestModSettingDefsLocale(t *testing.T) {
 	for _, mod := range []string{"fmtest", "zmod"} {
 		put(mod+"/info.json", `{"name":"`+mod+`","version":"1.0.0","title":"x","author":"x","factorio_version":"2.1"}`)
 	}
-	put("fmtest/locale/en/a.cfg", "[mod-setting-name]\nfm-sta-int=Integer\n[mod-setting-description]\nfm-sta-int=An integer\n")
-	put("fmtest/locale/zh-CN/a.cfg", "[mod-setting-name]\nfm-sta-int=整数\n")
+	put("fmtest/locale/en/a.cfg", "[mod-setting-name]\nfm-sta-int=Integer\nfm-run-bool=Overridden\n[mod-setting-description]\nfm-sta-int=An integer\n"+
+		"[fm-setting-name]\ndisable-setting=Disable __1__\nchests=chests\n[fm-setting-description]\nchests=Chests.\n")
+	put("fmtest/locale/zh-CN/a.cfg", "[mod-setting-name]\nfm-sta-int=整数\nfm-run-bool=挤\n")
+	// German has the outer key only: the nested one comes from English.
+	put("fmtest/locale/de/a.cfg", "[fm-setting-name]\ndisable-setting=__1__ nicht ändern\n")
 	put("zmod/locale/en/b.cfg", "[mod-setting-name]\nz-set=Zed\n")
 	put("fmtest/locale/ru/bad.cfg", "[mod-setting-name\nbroken")
 	r.writeFile(r.id, filepath.Join(world.ModsDir, world.ModListFile),
 		[]byte(`{"mods":[{"name":"base","enabled":true},{"name":"fmtest","enabled":true},{"name":"zmod","enabled":true}]}`))
 	got := r.run().Locale
 	want := modsettings.Locale{
-		"en":      {"fm-sta-int": {Name: "Integer", Description: "An integer"}, "z-set": {Name: "Zed"}},
-		"zh-Hans": {"fm-sta-int": {Name: "整数"}},
+		"en": {"fm-sta-int": {Name: "Integer", Description: "An integer"}, "z-set": {Name: "Zed"},
+			// Its own localised strings win; German has no such keys.
+			"fm-run-bool": {Name: "Disable chests", Description: "Chests."}},
+		// The setting's own localised string wins over [mod-setting-name], with
+		// English behind Chinese key by key.
+		"zh-Hans": {"fm-sta-int": {Name: "整数"}, "fm-run-bool": {Name: "Disable chests", Description: "Chests."}},
+		"de":      {"fm-run-bool": {Name: "chests nicht ändern", Description: "Chests."}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("locale %+v, want %+v", got, want)

@@ -1,5 +1,7 @@
 package modsettings
 
+import "encoding/json"
+
 // Limits on untrusted input (SPEC 14.6).
 const (
 	// MaxDefinitionsBytes caps the definitions file a run writes.
@@ -68,6 +70,10 @@ type Definition struct {
 	AllowBlank    bool
 	AutoTrim      bool
 	Order         string
+	// LocalisedName and LocalisedDescription are the prototype's localised
+	// strings as JSON, nil when the game reports none.
+	LocalisedName        json.RawMessage
+	LocalisedDescription json.RawMessage
 	// Editable is false for an unknown type or a name Foreman will not touch.
 	Editable bool
 }

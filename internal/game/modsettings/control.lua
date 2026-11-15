@@ -1,8 +1,9 @@
 -- Foreman's mod setting reader (SPEC 9.6). When the map is made, it lists
 -- every mod setting prototype the world's mods define, in the game's order,
 -- and writes them as JSON to script-output/mod-settings-defs.json. It adds no
--- prototypes and has no settings of its own. The same script runs on 1.1,
--- 2.0 and 2.1. A prototype lacks the fields that do not apply to its type
+-- prototypes and has no settings of its own. Each setting carries its
+-- localised name and description as the game holds them. The same script
+-- runs on 1.1, 2.0 and 2.1. A prototype lacks the fields that do not apply to its type
 -- (a bool has no minimum), and reading one raises, so each field is read
 -- under pcall and left out of the JSON when the game has no value for it.
 local value_fields = {
@@ -61,6 +62,10 @@ script.on_init(function()
       setting_type = read(proto, "setting_type"),
       order = read(proto, "order"),
     }
+    -- The localised name and description: a key and parameters, or a plain
+    -- string. Foreman resolves them against the mods' locale files.
+    setting.localised_name = read(proto, "localised_name")
+    setting.localised_description = read(proto, "localised_description")
     for _, field in ipairs(value_fields) do
       local value = read(proto, field)
       if value ~= nil then

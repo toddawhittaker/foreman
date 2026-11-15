@@ -284,7 +284,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	// The control mod has no settings, but a file that lists one is not
 	// shown.
 	defs = slices.DeleteFunc(defs, func(d modsettings.Definition) bool { return d.Mod == modsettingsmod.ModName })
-	return &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: c.modSettingsLocale(id, localeCfgs)}, key, nil
+	return &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: c.modSettingsLocale(id, defs, localeCfgs)}, key, nil
 }
 
 // makeModSettingsDir makes the run's work folder: the game's config and the
@@ -414,33 +414,63 @@ func modSettingsError(err error) error {
 // languages from the enabled mods' raw locale files. Locale text is
 // decoration: a file that does not parse is logged and skipped, so a world
 // shows the setting names instead. Files merge in the order of mod name, then
-// as given.
-func (c *Controller) modSettingsLocale(id string, files map[string]map[string][][]byte) modsettings.Locale {
+// as given. As in the game, a setting's own localised name or description,
+// when it has one, is the text: resolved in the language with English behind
+// it key by key, and empty when it does not resolve. Only a setting without
+// one takes its [mod-setting-name] or [mod-setting-description] entry
+// (SPEC 9.6). The page falls back to English, then to the setting's name.
+func (c *Controller) modSettingsLocale(id string, defs modsettings.Definitions, files map[string]map[string][][]byte) modsettings.Locale {
 	mods := make([]string, 0, len(files))
 	for mod := range files {
 		mods = append(mods, mod)
 	}
 	sort.Strings(mods)
-	out := modsettings.Locale{}
+	all := map[string]modsettings.LocaleSections{}
 	for lang, code := range modsettings.FactorioLocales {
-		texts := map[string]modsettings.LocaleText{}
+		secs := modsettings.LocaleSections{}
 		for _, mod := range mods {
 			for _, data := range files[mod][code] {
-				names, descs, err := modsettings.ParseLocaleCfg(data)
+				parsed, err := modsettings.ParseLocaleCfg(data)
 				if err != nil {
 					c.log.Warn("a mod's locale file does not parse", "world", id, "mod", mod, "locale", code, "error", err)
 					continue
 				}
-				for n, v := range names {
-					t := texts[n]
-					t.Name = v
-					texts[n] = t
-				}
-				for n, v := range descs {
-					t := texts[n]
-					t.Description = v
-					texts[n] = t
-				}
+				secs.Merge(parsed)
+			}
+		}
+		if len(secs) > 0 {
+			all[lang] = secs
+		}
+	}
+	out := modsettings.Locale{}
+	for lang, secs := range all {
+		texts := map[string]modsettings.LocaleText{}
+		for n, v := range secs["mod-setting-name"] {
+			t := texts[n]
+			t.Name = v
+			texts[n] = t
+		}
+		for n, v := range secs["mod-setting-description"] {
+			t := texts[n]
+			t.Description = v
+			texts[n] = t
+		}
+		layers := []modsettings.LocaleSections{secs}
+		if lang != "en" && all["en"] != nil {
+			layers = append(layers, all["en"])
+		}
+		for _, d := range defs {
+			t, had := texts[d.Name]
+			if hasLocalised(d.LocalisedName) {
+				t.Name, _ = modsettings.ResolveLocalised(d.LocalisedName, layers...)
+			}
+			if hasLocalised(d.LocalisedDescription) {
+				t.Description, _ = modsettings.ResolveLocalised(d.LocalisedDescription, layers...)
+			}
+			if t != (modsettings.LocaleText{}) {
+				texts[d.Name] = t
+			} else if had {
+				delete(texts, d.Name)
 			}
 		}
 		if len(texts) > 0 {
@@ -448,4 +478,10 @@ func (c *Controller) modSettingsLocale(id string, files map[string]map[string][]
 		}
 	}
 	return out
+}
+
+// hasLocalised reports whether the game gave a localised string.
+func hasLocalised(raw []byte) bool {
+	s := strings.TrimSpace(string(raw))
+	return s != "" && s != "null"
 }

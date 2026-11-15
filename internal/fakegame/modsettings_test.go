@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -105,6 +106,10 @@ func TestModSettingsRunWritesBothFiles(t *testing.T) {
 	}
 	if a := byName["fm-sta-forced"]["allowed_values"].([]any); len(a) != 1 || a[0] != 3.0 {
 		t.Errorf("fm-sta-forced is %v", byName["fm-sta-forced"])
+	}
+	if sq := byName["fm-glo-bool"]; fmt.Sprint(sq["localised_name"]) != "[fm-setting-name.disable-setting [fm-setting-name.chests]]" ||
+		fmt.Sprint(sq["localised_description"]) != "[fm-setting-description.chests]" {
+		t.Errorf("fm-glo-bool is %v", sq)
 	}
 	if w := byName["fm-sta-weird"]; w["type"] != "weird-setting" {
 		t.Errorf("fm-sta-weird is %v", w)
