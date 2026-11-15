@@ -97,6 +97,19 @@ test.describe("edit mod settings", () => {
     await expect(field).toBeFocused();
   });
 
+  test("in German the summary marks the English setting name as English", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await page.context().addCookies([{ name: "foreman_lang", value: "de", url: foreman.url }]);
+    await page.goto("/worlds/base/mods/settings");
+    const field = page.getByLabel("Startup integer");
+    await expect(field).toBeVisible(live);
+    await field.fill("42");
+    await page.locator("#mod-settings-form button[type=submit]").click();
+    await expect(page.locator("#error-summary")).toBeFocused();
+    await expect(page.locator("#error-summary li [lang=en]")).toHaveText("Startup integer");
+    await expect(page.locator("#" + (await field.getAttribute("id")) + "-error [lang=en]")).toHaveText("Startup integer");
+  });
+
   test("a failed definitions run says why and offers the file upload", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);

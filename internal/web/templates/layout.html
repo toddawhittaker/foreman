@@ -171,7 +171,7 @@
   <h2 id="error-summary-heading"><strong>{{t "common.error.label"}}</strong> {{t "common.summary.heading" "count" (len .)}}</h2>
   <ul>
     {{- range .}}
-    <li><a href="#{{.FieldID}}">{{msg .Message}}</a></li>
+    <li><a href="#{{.FieldID}}">{{msgHTML .Message}}</a></li>
     {{- end}}
   </ul>
 </div>
