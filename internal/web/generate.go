@@ -402,10 +402,14 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 	// install (SPEC 5.12, 9.13). Its versions are pinned on its own game
 	// line; on another line the review page picks the newest that fits.
 	if fav := f.Favorite; fav != nil && len(fav.Mods) > 0 {
-		q := url.Values{"kind": {string(mods.KindInstall)}}
+		q := url.Values{"kind": {string(mods.KindInstall)}, generatedQuery: {"1"}}
 		favLine, _ := mapgen.Line(fav.GameVersion)
 		for _, m := range fav.Mods {
 			q.Add("name", m.Name)
+			// Saved as picks too, so leaving the review page keeps the mods.
+			if err := s.store.AddModPlanName(r.Context(), id, m.Name, u.Username, s.now()); err != nil && !errors.Is(err, store.ErrModPlanFull) {
+				s.log.Warn("save the favorite's mods as picks", "world", id, "error", err)
+			}
 			if favLine == f.Line {
 				q.Set(versionPrefix+m.Name, m.Version)
 			}

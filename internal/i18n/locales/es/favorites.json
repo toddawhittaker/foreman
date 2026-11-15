@@ -39,6 +39,7 @@
   "favorites.start.button": "Usar favorito",
   "favorites.start.none": "Aún no hay favoritos. Crea uno desde la página de un mundo.",
   "favorites.start.note": "Empezando desde el favorito «{name}». Su versión del juego, su ajuste de Space Age, su preajuste y la configuración del mapa están rellenados abajo; cambia lo que quieras. El mundo nuevo recibe su configuración del servidor y la configuración de sus mods.",
+  "favorites.review.generated": "Se generó {name} a partir del favorito. Abajo están los mods del favorito para instalar en él.",
   "favorites.start.mods": {
     "one": "Cuando el mundo esté creado, revisarás {count} mod para instalar.",
     "other": "Cuando el mundo esté creado, revisarás {count} mods para instalar."

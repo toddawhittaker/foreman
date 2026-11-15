@@ -25,7 +25,8 @@
       </dl>
       <div class="actions">
         <a href="{{.GeneratePath}}" class="button" id="act-favorite-generate-{{.ID}}" aria-describedby="favorite-{{.ID}}-name">{{t "favorites.generate"}}</a>
-        <a href="{{.DeletePath}}" class="button button--risky" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name">{{t "favorites.delete.button"}}</a>
+        {{- /* A trash icon, as the webhook list has: red but borderless, so Delete does not weigh as much as Generate (DESIGN 7.1). */}}
+        <a href="{{.DeletePath}}" class="button button--icon" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
       </div>
     </li>
     {{- end}}

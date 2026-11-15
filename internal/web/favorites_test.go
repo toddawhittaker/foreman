@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -253,6 +254,23 @@ func TestGenerateFromAFavoriteWritesSettingsAndOffersItsMods(t *testing.T) {
 	if q.Get("kind") != "install" || strings.Join(q["name"], ",") != "Krastorio2,flib" ||
 		q.Get("version-Krastorio2") != "1.3.24" || q.Get("version-flib") != "0.12.9" {
 		t.Errorf("review query %v", q)
+	}
+	if q.Get(generatedQuery) != "1" {
+		t.Errorf("review query %v has no %s flag", q, generatedQuery)
+	}
+	// The favorite's mods are saved as the new world's picks; the pinned
+	// versions travel only in the address.
+	picks, err := hn.store.ModPlan(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, m := range picks {
+		names = append(names, m.Name)
+	}
+	slices.Sort(names)
+	if strings.Join(names, ",") != "Krastorio2,flib" {
+		t.Errorf("saved picks %v, want the favorite's two mods", names)
 	}
 	server := string(hn.config(id, world.ServerSettingsFile).Data)
 	if !strings.Contains(server, `"max_players"`) || strings.Contains(server, "hunter2") || strings.Contains(server, "tok-abc123") {
