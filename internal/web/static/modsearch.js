@@ -28,8 +28,27 @@
   const fields = (form) => ["hx-post", "name", "op", "from"].map((k) => (k === "hx-post" ? form.getAttribute(k) : form.elements[k]?.value ?? ""));
   let planBusy = false;
   let waiting = null;
+  // While a change runs, Review would open the plan without it, so it is held
+  // back and says why (aria-disabled keeps it in the tab order).
+  const holdReview = (on) => {
+    const review = document.getElementById("act-review-plan");
+    const wait = document.getElementById("plan-wait");
+    if (!review || !wait) return;
+    wait.hidden = !on;
+    if (on) {
+      review.setAttribute("aria-disabled", "true");
+      review.setAttribute("aria-describedby", "plan-wait");
+    } else {
+      review.removeAttribute("aria-disabled");
+      review.removeAttribute("aria-describedby");
+    }
+  };
+  document.addEventListener("click", (e) => {
+    if (e.target.closest?.('#act-review-plan[aria-disabled="true"]')) e.preventDefault();
+  });
   const planDone = () => {
     planBusy = false;
+    holdReview(false);
     if (!waiting) return;
     const want = waiting.join("\n");
     waiting = null;
@@ -39,6 +58,10 @@
   document.addEventListener("htmx:confirm", (e) => {
     const form = e.detail.elt;
     if (!isPlanForm(form)) return;
+    // The row's "Adding…" is read out too, not only shown.
+    const busy = form.querySelector(".hit__busy");
+    if (busy) say(busy.textContent.trim());
+    holdReview(true);
     if (!planBusy) {
       planBusy = true;
       return;
@@ -50,9 +73,18 @@
   });
   for (const ev of ["htmx:responseError", "htmx:sendError", "htmx:timeout", "htmx:swapError"]) {
     document.addEventListener(ev, (e) => {
-      if (isPlanForm(e.detail.elt)) planDone();
+      // A refused "+" (400) redraws the panel, which ends the change there.
+      if (isPlanForm(e.detail.elt) && e.detail.xhr?.status !== 400) planDone();
     });
   }
+  // On a phone the open list folds again once focus leaves the panel, so it
+  // does not hide the page behind it (WCAG 2.4.11).
+  document.addEventListener("focusout", (e) => {
+    const panel = document.getElementById("plan-panel");
+    const list = document.getElementById("plan-list");
+    if (!panel || !list || !list.open || list.hasAttribute("data-wide") || !panel.contains(e.target)) return;
+    if (e.relatedTarget && !panel.contains(e.relatedTarget)) list.open = false;
+  });
   // The phone bar keeps its open state through a redraw of the plan.
   let listOpen = false;
   let paged = false;
@@ -63,6 +95,8 @@
     const id = e.detail.target?.id;
     // A refused or unreachable search still shows its message in place.
     if (id === "results" && e.detail.xhr.status >= 400) e.detail.shouldSwap = true;
+    // A refused "+" says why in the panel.
+    if (id === "plan-panel" && e.detail.xhr.status === 400) e.detail.shouldSwap = true;
     // A typed search's reply that no longer matches the box is stale.
     const box = document.getElementById("mod-search");
     const elt = e.detail.requestConfig?.elt;

@@ -451,5 +451,7 @@
   "mods.plan_panel.warn.incompatible": "Cannot run with {mod}",
   "mods.plan_panel.warn.version": "Version {version} does not fit what the other mods need",
   "mods.plan_panel.warn.space_age": "Needs Space Age, which is off in this world",
-  "mods.plan_panel.warn.other": "Cannot be planned; Review shows why"
+  "mods.plan_panel.warn.other": "Cannot be planned; Review shows why",
+  "mods.plan_panel.bad_name": "That is not a mod name Foreman can add. Search for the mod, then choose + beside it.",
+  "mods.plan_panel.wait": "Review is ready once the plan is updated."
 }

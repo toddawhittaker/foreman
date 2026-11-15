@@ -210,6 +210,61 @@ test("the cross removes a pick and its own dependencies, and Clear plan empties 
   await expect(hit(page, "fp-pg-01").getByRole("button", { name: "Add fp-pg-01 to the plan" })).toBeVisible();
 });
 
+// While a change to the plan runs, Review is held back and says why, so it
+// never opens the plan without the last change; "Adding…" is read out.
+test("Review waits for a change that is still being worked out", async ({ page }) => {
+  await page.goto("/worlds/base/mods");
+  const box = page.getByLabel("Mod name");
+  await box.fill("fp-pg-01");
+  await hit(page, "fp-pg-01").getByRole("button", { name: "Add fp-pg-01 to the plan" }).click();
+  await expect(hit(page, "fp-pg-01")).toContainText("In plan");
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/mods/plan/mods", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await box.fill("fp-pg-02");
+  await hit(page, "fp-pg-02").getByRole("button", { name: "Add fp-pg-02 to the plan" }).click();
+  await expect(page.locator("#announcer")).toHaveText("Adding…");
+  const review = panel(page).getByRole("link", { name: "Review and install 1 mod" });
+  await expect(review).toHaveAttribute("aria-disabled", "true");
+  await expect(review).toHaveAccessibleDescription("Review is ready once the plan is updated.");
+  await expect(panel(page).getByText("Review is ready once the plan is updated.")).toBeVisible();
+  await review.click({ force: true });
+  expect(new URL(page.url()).pathname).toBe("/worlds/base/mods");
+  release();
+  const ready = panel(page).getByRole("link", { name: "Review and install 2 mods" });
+  await expect(ready).not.toHaveAttribute("aria-disabled", "true");
+  await ready.click();
+  await expect(page).toHaveURL(/name=fp-pg-01&name=fp-pg-02/);
+});
+
+// WCAG 2.4.11: at phone width, a row's button reached by keyboard is never
+// hidden behind the plan's bar.
+test("keyboard focus is never hidden behind the plan's bar", async ({ page }) => {
+  test.skip(!phone(page), "the bar is a phone layout");
+  await page.goto("/worlds/base/mods");
+  const box = page.getByLabel("Mod name");
+  await box.fill("fp-pg-00");
+  await hit(page, "fp-pg-00").getByRole("button", { name: "Add fp-pg-00 to the plan" }).click();
+  await expect(hit(page, "fp-pg-00")).toContainText("In plan");
+  await box.fill("fp-pg");
+  await expect(page.getByRole("list", { name: /Showing 1 to 10\./ })).toBeVisible();
+  await box.focus();
+  let checked = 0;
+  for (let i = 0; i < 60 && checked < 8; i++) {
+    await page.keyboard.press("Tab");
+    const focused = page.locator(":focus");
+    if (!(await focused.evaluate((el) => !!el.closest(".hits")))) continue;
+    const bar = (await panel(page).boundingBox())!;
+    const at = (await focused.boundingBox())!;
+    expect(at.y + at.height, await focused.evaluate((el) => el.outerHTML.slice(0, 80))).toBeLessThanOrEqual(bar.y + 1);
+    checked++;
+  }
+  expect(checked).toBeGreaterThan(4);
+});
+
 // SPEC 9.2: with the portal out of reach the panel still lists the picks by
 // name, says their dependencies cannot be checked now, and offers to check again.
 test("with the portal down the panel lists the picks by name and says why", async ({ page, fakePortal }) => {

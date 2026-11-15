@@ -459,7 +459,7 @@
   },
   "mods.plan_panel.started": "Начат {when}.",
   "mods.plan_panel.review_hint": "При проверке видно каждое изменение до того, как что-либо будет установлено.",
-  "mods.plan_panel.needed_by": "Нужен для {mod}",
+  "mods.plan_panel.needed_by": "Нужен моду {mod}",
   "mods.plan_panel.update": "Будет обновлён до {version}",
   "mods.plan_panel.change": "Будет заменён на {version}",
   "mods.plan_panel.enable": "Будет включён",
@@ -490,5 +490,7 @@
   "mods.plan_panel.warn.incompatible": "Не работает вместе с {mod}",
   "mods.plan_panel.warn.version": "Версия {version} не подходит под требования других модов",
   "mods.plan_panel.warn.space_age": "Нужен Space Age, который в этом мире выключен",
-  "mods.plan_panel.warn.other": "Невозможно запланировать; причина видна при проверке"
+  "mods.plan_panel.warn.other": "Невозможно запланировать; причина видна при проверке",
+  "mods.plan_panel.bad_name": "Это не название мода, которое Foreman может добавить. Найдите мод и нажмите + рядом с ним.",
+  "mods.plan_panel.wait": "Проверка станет доступна, когда план обновится."
 }

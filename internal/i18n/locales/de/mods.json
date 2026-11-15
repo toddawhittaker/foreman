@@ -451,5 +451,7 @@
   "mods.plan_panel.warn.incompatible": "Läuft nicht zusammen mit {mod}",
   "mods.plan_panel.warn.version": "Version {version} passt nicht zu dem, was die anderen Mods brauchen",
   "mods.plan_panel.warn.space_age": "Braucht Space Age, das in dieser Welt aus ist",
-  "mods.plan_panel.warn.other": "Nicht planbar; die Prüfung zeigt den Grund"
+  "mods.plan_panel.warn.other": "Nicht planbar; die Prüfung zeigt den Grund",
+  "mods.plan_panel.bad_name": "Das ist kein Mod-Name, den Foreman hinzufügen kann. Suche die Mod und wähle dann + daneben.",
+  "mods.plan_panel.wait": "Die Prüfung ist bereit, sobald der Plan aktualisiert ist."
 }

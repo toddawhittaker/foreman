@@ -451,5 +451,7 @@
   "mods.plan_panel.warn.incompatible": "Ne peut pas fonctionner avec {mod}",
   "mods.plan_panel.warn.version": "La version {version} ne convient pas à ce dont les autres mods ont besoin",
   "mods.plan_panel.warn.space_age": "Requiert l'Ère spatiale, désactivée dans ce monde",
-  "mods.plan_panel.warn.other": "Impossible à planifier ; la vérification en donne la raison"
+  "mods.plan_panel.warn.other": "Impossible à planifier ; la vérification en donne la raison",
+  "mods.plan_panel.bad_name": "Ce n’est pas un nom de mod que Foreman peut ajouter. Cherchez le mod, puis choisissez + à côté.",
+  "mods.plan_panel.wait": "La vérification sera possible dès que le plan sera à jour."
 }

@@ -131,8 +131,24 @@ func TestPlanPanelRefusesBadRequests(t *testing.T) {
 			t.Errorf("%v: %d", form, r.code)
 		}
 	}
+	// A name no mod can have is refused before it is saved, with a reason.
+	for _, bad := range []string{"../alpha", ".hidden", "a/b", `a\b`, "a\x01b"} {
+		r := g.postPlan(planModsPath(id), url.Values{"name": {bad}, "op": {"add"}})
+		if r.code != http.StatusBadRequest || !strings.Contains(r.body, "That is not a mod name Foreman can add.") {
+			t.Errorf("add %q: %d", bad, r.code)
+		}
+		rec := g.harness.post(planModsPath(id), url.Values{"name": {bad}, "op": {"add"}}, withCookie(g.cookie), withHeader("HX-Request", "true"))
+		wantIn(t, "bad name with script", rec.Body.String(), `id="plan-error"`, `data-focus="plan-heading"`)
+		if rec.Code != http.StatusBadRequest || strings.Contains(rec.Body.String(), "<main") {
+			t.Errorf("add %q with script: %d", bad, rec.Code)
+		}
+	}
 	if len(g.picks(id)) != 0 {
 		t.Error("a refused request saved a pick")
+	}
+	// Taking a name out needs no check: it can only remove.
+	if r := g.postPlan(planModsPath(id), url.Values{"name": {"../alpha"}, "op": {"remove"}}); r.code != http.StatusSeeOther {
+		t.Errorf("remove an odd name: %d", r.code)
 	}
 	for ret, want := range map[string]string{
 		"https://example.com/":        modsPath(id),
