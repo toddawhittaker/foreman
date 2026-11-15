@@ -230,6 +230,7 @@ test("typing keeps the address and tab title in step, and a reload keeps the sea
   await box.fill("fp-pg-02");
   await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
   expect(asked()).toBe("fp-pg-02");
+  expect(page.url()).not.toMatch(/[?&](shown|at)=/);
   await expect(page).toHaveTitle(/Mods matching "fp-pg-02"/);
   expect(await page.evaluate(() => window.history.length)).toBe(history);
   await page.reload();

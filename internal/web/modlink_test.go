@@ -133,6 +133,9 @@ func TestAddAnotherModReadsPastedPortalLink(t *testing.T) {
 	g.portal.AddZip("alpha", "1.0.0")
 	g.portal.AddZip("alpha-extra", "1.0.0")
 	g.portal.AddZipFor("2.1", "only-new", "1.0.0")
+	// Mods named like the over-long inputs below, so a search would find them.
+	g.portal.AddZip(strings.Repeat("n", 101), "1.0.0")
+	g.portal.AddZip(strings.Repeat("a", 101), "1.0.0")
 	id := g.world20("Base")
 	plan := func(q string) string {
 		_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, "q": {q}}))
@@ -149,10 +152,17 @@ func TestAddAnotherModReadsPastedPortalLink(t *testing.T) {
 	wantIn(t, "unknown", plan("https://mods.factorio.com/mod/no-such-mod-anywhere"), "No mod named no-such-mod-anywhere is on the mod portal.")
 	wantIn(t, "no release", plan("https://mods.factorio.com/mod/only-new"), "only-new has no release for Factorio 2.0.")
 
-	// A link whose mod name is too long, and long plain text, are not searched.
-	for _, q := range []string{"https://mods.factorio.com/mod/" + strings.Repeat("n", 101), strings.Repeat("a", 101)} {
-		if strings.Contains(plan(q), "<table") {
-			t.Errorf("%.40s was searched", q)
+	// A link whose mod name is too long, and long plain text, are not searched
+	// even when a mod of that very name exists; the page says why.
+	for _, name := range []string{strings.Repeat("n", 101), strings.Repeat("a", 101)} {
+		q := name
+		if name[0] == 'n' {
+			q = "https://mods.factorio.com/mod/" + name
+		}
+		got := plan(q)
+		wantIn(t, q, got, "Enter at most 100 characters.")
+		if strings.Contains(got, "<table") || strings.Contains(got, "No mod for") {
+			t.Errorf("%.40s was searched:\n%s", q, got)
 		}
 	}
 }

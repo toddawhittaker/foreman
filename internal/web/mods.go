@@ -1571,9 +1571,13 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 // addSearch fills the install plan's "Add another mod" results. A portal
 // that cannot be reached is said there; the plan above still stands.
 func (s *server) addSearch(ctx context.Context, p *ModPlanPage) {
+	if !p.Adding() || p.Form.Query == "" {
+		return
+	}
 	// The field's maxlength keeps a typed search short; a longer one is
-	// crafted, and is not searched.
-	if !p.Adding() || p.Form.Query == "" || searchTooLong(p.Form.Query) {
+	// crafted, and is said to be too long instead of searched.
+	if searchTooLong(p.Form.Query) {
+		p.AddMiss = i18n.M("mods.search.long", "count", maxSearchQuery)
 		return
 	}
 	p.Installed = map[string]bool{}
