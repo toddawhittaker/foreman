@@ -15,9 +15,9 @@ func TestSearchRecordedList(t *testing.T) {
 	for _, tc := range []struct{ query, want string }{
 		{"flib", "flib"},
 		{"FLOW CONTROL", "Flow Control"},
-		{"krastorio", "Krastorio2Assets,Krastorio2"},  // both prefix; more downloads first
+		{"krastorio", "Krastorio2Assets,Krastorio2"},  // both match; more downloads first
 		{"krastorio2", "Krastorio2,Krastorio2Assets"}, // exact name first
-		{"aai", "aai-containers,aai-industry"},        // prefix, by downloads
+		{"aai", "aai-containers,aai-industry"},        // by downloads
 		{"armor", "Power Armor MK3"},                  // substring of the name, any case
 		{"planets", "visible-planets"},                // name
 		{"in space", "visible-planets"},               // title only
