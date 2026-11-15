@@ -21,47 +21,74 @@ const tabNames: Record<string, RegExp[]> = {
   ru: [/^\s*Ресурсы\s*$/, /^\s*Ландшафт\s*$/, /^\s*Враг\s*$/],
 };
 
-// Moves every shown slider through all its steps as an arrow key does
-// (an input event per step) and returns the sliders whose box moved in their tab, and
-// how. Boxes are measured from the tab's top: the preset's "[modified]" above
-// the tabs is not the slider row's doing.
+// Moves every shown slider through all its steps, all together, and returns
+// the sliders whose box moved at some step, and how. A layout per slider per
+// step cost seconds per test, so all sliders take step k at once and are
+// laid out once; a slider with fewer steps stays at its last. Heights are
+// measured from the slider's own row: another row's achievement warning
+// (SPEC 5.6) may push it down, which is not its row moving. A shared column
+// that widens can move several sliders, so a failure names all of them.
 async function movedWhileStepping(page: Page) {
   return page.evaluate(() => {
     const moved: string[] = [];
-    let top = 0;
-    const where = (el: Element) => {
+    const where = (el: Element, top: number) => {
       const r = el.getBoundingClientRect();
       return `${Math.round(r.x * 10)},${Math.round((r.y - top) * 10)},${Math.round(r.width * 10)},${Math.round(r.height * 10)}`;
     };
-    for (const range of document.querySelectorAll<HTMLInputElement>("#map-settings input.step__range")) {
-      if (range.getClientRects().length === 0) continue;
-      const panel = range.closest(".tab-panel")!;
-      top = panel.getBoundingClientRect().y;
-      const start = range.value;
-      const select = document.getElementById(range.dataset.for!) as HTMLSelectElement;
-      const label = document.getElementById(range.dataset.for + "-label")!;
-      const before = where(range) + " " + where(label);
-      // The page snaps the slider to its step's place, so one unit further
-      // is the next step. An event per track unit cost seconds per test, as
-      // each runs the page's whole refresh.
-      const seen = new Set<number>();
-      range.value = range.min;
-      for (;;) {
-        range.dispatchEvent(new Event("input", { bubbles: true }));
-        if (seen.has(select.selectedIndex)) break;
-        seen.add(select.selectedIndex);
-        top = panel.getBoundingClientRect().y;
-        const now = where(range) + " " + where(label);
-        if (now !== before) moved.push(`${range.id} at value ${range.value}: ${before} became ${now}`);
-        if (Number(range.value) >= Number(range.max)) break;
-        range.value = String(Number(range.value) + 1);
-      }
-      // Every option is a step the slider can reach, except the All row's "Mixed", which is a word and not a step.
-      const steps = [...select.options].filter((o) => !o.hasAttribute("data-mixed")).length;
-      if (seen.size !== steps) moved.push(`${range.id} reached ${seen.size} of ${steps} steps`);
-      range.value = start;
+    const input = (range: HTMLInputElement, value: string) => {
+      range.value = value;
       range.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    // The All rows go last: a resource's input resets its row's All slider to "Mixed".
+    const sliders = [...document.querySelectorAll<HTMLInputElement>("#map-settings input.step__range")]
+      .filter((range) => range.getClientRects().length > 0)
+      .map((range) => {
+        const select = document.getElementById(range.dataset.for!) as HTMLSelectElement;
+        return {
+          range,
+          select,
+          label: document.getElementById(range.dataset.for + "-label")!,
+          row: range.closest(".step")!,
+          start: range.value,
+          all: select.matches("[data-all-key]"),
+          places: [] as string[],
+          seen: new Set<number>(),
+        };
+      })
+      .sort((x, y) => Number(x.all) - Number(y.all));
+    // Each step's place on the track, found as an arrow key moves: the page
+    // snaps the slider to its step's place, so one unit further is the next.
+    for (const s of sliders) {
+      const seen = new Set<number>();
+      input(s.range, s.range.min);
+      while (!seen.has(s.select.selectedIndex)) {
+        seen.add(s.select.selectedIndex);
+        s.places.push(s.range.value);
+        if (Number(s.range.value) >= Number(s.range.max)) break;
+        input(s.range, String(Number(s.range.value) + 1));
+      }
+      input(s.range, s.start);
     }
+    const boxes = () => sliders.map((s) => {
+      const top = s.row.getBoundingClientRect().y;
+      return where(s.range, top) + " " + where(s.label, top);
+    });
+    let before = boxes();
+    const steps = Math.max(...sliders.map((s) => s.places.length));
+    for (let k = 0; k < steps; k++) {
+      for (const s of sliders) input(s.range, s.places[Math.min(k, s.places.length - 1)]);
+      for (const s of sliders) s.seen.add(s.select.selectedIndex);
+      const now = boxes();
+      const here = sliders.flatMap((s, i) => (now[i] !== before[i] ? [`${s.range.id}: ${before[i]} became ${now[i]}`] : []));
+      if (here.length > 0) moved.push(`at step ${k}: ${here.join("; ")}`);
+      before = now;
+    }
+    for (const s of sliders) {
+      // Every option is a step the slider can reach, except the All row's "Mixed", which is a word and not a step.
+      const count = [...s.select.options].filter((o) => !o.hasAttribute("data-mixed")).length;
+      if (s.seen.size !== count) moved.push(`${s.range.id} reached ${s.seen.size} of ${count} steps`);
+    }
+    for (const s of sliders) input(s.range, s.start);
     return moved;
   });
 }
