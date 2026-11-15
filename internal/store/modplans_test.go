@@ -192,3 +192,38 @@ func TestModPlanConcurrentAddsStopAtLimit(t *testing.T) {
 		t.Errorf("plan size = %d, want %d", got, MaxModPlanNames)
 	}
 }
+
+// Adding a name while another caller removes it must never look like a full
+// plan: the plan holds 10 names at most, far from the limit. It is a stress
+// test, as the race cannot be forced without a hook in the code.
+func TestModPlanAddRacingRemoveIsNeverFull(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	for i := range 9 {
+		if err := s.AddModPlanName(ctx, "w1", fmt.Sprintf("mod-%02d", i), "u", t0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const rounds = 5000
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for range rounds {
+			if err := s.AddModPlanName(ctx, "w1", "racer", "u", t0); err != nil {
+				t.Errorf("add: %v", err)
+				return
+			}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for range rounds {
+			if err := s.RemoveModPlanName(ctx, "w1", "racer"); err != nil {
+				t.Errorf("remove: %v", err)
+				return
+			}
+		}
+	}()
+	wg.Wait()
+}

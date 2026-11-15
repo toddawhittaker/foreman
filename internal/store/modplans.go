@@ -48,8 +48,14 @@ func (s *Store) ModPlan(ctx context.Context, worldID string) ([]ModPlanMod, erro
 // AddModPlanName adds a mod to a world's plan. A name already there is left
 // as it is. It returns ErrModPlanFull when the plan is at its limit.
 func (s *Store) AddModPlanName(ctx context.Context, worldID, name, by string, now time.Time) error {
-	// One statement, so the count and the insert cannot be split by another add.
-	res, err := s.db.ExecContext(ctx,
+	// The insert takes the write lock even when it adds no row, so the check
+	// after it sees the same plan: no remove or add can slip in between.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("add to mod plan: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
 		`INSERT INTO mod_plan_mods (world_id, name, added_at, added_by)
 		 SELECT ?1, ?2, ?3, ?4
 		 WHERE NOT EXISTS (SELECT 1 FROM mod_plan_mods WHERE world_id = ?1 AND name = ?2)
@@ -62,19 +68,21 @@ func (s *Store) AddModPlanName(ctx context.Context, worldID, name, by string, no
 	if err != nil {
 		return fmt.Errorf("add to mod plan: %w", err)
 	}
-	if n > 0 {
-		return nil
+	if n == 0 {
+		var there int
+		err = tx.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM mod_plan_mods WHERE world_id = ? AND name = ?", worldID, name).Scan(&there)
+		if err != nil {
+			return fmt.Errorf("add to mod plan: %w", err)
+		}
+		if there == 0 {
+			return ErrModPlanFull
+		}
 	}
-	var there int
-	err = s.db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM mod_plan_mods WHERE world_id = ? AND name = ?", worldID, name).Scan(&there)
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("add to mod plan: %w", err)
 	}
-	if there > 0 {
-		return nil
-	}
-	return ErrModPlanFull
+	return nil
 }
 
 // RemoveModPlanName removes a mod from a world's plan. A name that is not
