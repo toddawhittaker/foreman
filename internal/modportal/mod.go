@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -92,6 +93,7 @@ func parseMod(body []byte) (Mod, error) {
 			FileName    string `json:"file_name"`
 			SHA1        string `json:"sha1"`
 			Version     string `json:"version"`
+			ReleasedAt  string `json:"released_at"`
 			Info        struct {
 				FactorioVersion string   `json:"factorio_version"`
 				Dependencies    []string `json:"dependencies"`
@@ -121,6 +123,7 @@ func parseMod(body []byte) (Mod, error) {
 			SHA1:            r.SHA1,
 			FactorioVersion: r.Info.FactorioVersion,
 			Dependencies:    r.Info.Dependencies,
+			ReleasedAt:      parseReleasedAt(r.ReleasedAt),
 		})
 	}
 	// The portal lists oldest first; the contract says so, so sort rather
@@ -129,6 +132,16 @@ func parseMod(body []byte) (Mod, error) {
 		return world.CompareVersions(a.Version, b.Version)
 	})
 	return m, nil
+}
+
+// parseReleasedAt reads the portal's release date. A date that is missing or
+// not RFC 3339 is the zero time, so a bad date never fails a search.
+func parseReleasedAt(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
 }
 
 // cloneMod copies the slices, so a caller cannot change what the cache holds.
