@@ -165,6 +165,28 @@ test("errors name the field, keep what was typed and make nothing", async ({ pag
   expect(readdirSync(join(foreman.dataDir, "worlds")).filter((n) => !n.startsWith("."))).toEqual(["base"]);
 });
 
+// A redraw that lands while the person has the seed selected leaves it selected,
+// so what they type replaces it rather than going in front of it (SPEC 5.6).
+test("a redraw keeps a selected seed selected, so typing replaces it", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  const seed = page.locator("#generate-seed");
+  await seed.fill("12345");
+  let release = () => {};
+  const held = new Promise<void>((r) => { release = r; });
+  await page.route("**/generate/refresh", async (route) => { await held; await route.continue(); });
+  await (await typedVersion(page)).fill("2.1.24");
+  const sent = page.waitForRequest("**/generate/refresh");
+  await seed.selectText(); // leaving the version box sends the redraw
+  await sent;
+  const swapped = page.evaluate(() => new Promise((r) => document.body.addEventListener("htmx:afterSettle", r, { once: true })));
+  release();
+  await swapped;
+  await expect(seed).toBeFocused();
+  await page.keyboard.insertText("not a number");
+  await expect(seed).toHaveValue("not a number");
+});
+
 test("a long world name fits at any width", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
