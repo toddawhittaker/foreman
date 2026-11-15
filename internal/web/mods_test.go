@@ -1084,3 +1084,16 @@ func TestModsTabSearchFollowsTyping(t *testing.T) {
 		t.Error("the results, plan and tools are out of order")
 	}
 }
+
+// An orphan box sends its name as offered too, so an unticked one reads as
+// kept, and the link back to the plan carries it (SPEC 9.4).
+func TestPlanFormReadsUntickedOrphansAsKept(t *testing.T) {
+	f, ok := readPlanForm(url.Values{"kind": {"remove"}, "name": {"a"}, "orphan-offered": {"b", "c"}, "orphan": {"c"}})
+	if !ok || len(f.Kept) != 1 || f.Kept[0] != "b" {
+		t.Fatalf("kept = %v, ok = %v", f.Kept, ok)
+	}
+	g, ok := readPlanForm(f.query())
+	if !ok || len(g.Kept) != 1 || g.Kept[0] != "b" {
+		t.Fatalf("round trip kept = %v", g.Kept)
+	}
+}

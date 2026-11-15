@@ -845,6 +845,9 @@ type planForm struct {
 	// Declined are recommended mods the admin unticked. A box cannot send
 	// "unticked", so each recommended box sends its name as "offered" too.
 	Declined []string
+	// Kept are offered orphans the admin unticked; each orphan box sends
+	// its name as "orphan-offered" too, for the same reason (SPEC 9.4).
+	Kept []string
 	// Save is the save a sync reads; Staged is an uploaded zip waiting in
 	// the staging area (SPEC 9.5, 9.10).
 	Save, Staged string
@@ -871,11 +874,14 @@ type planForm struct {
 }
 
 const (
-	choicePrefix     = "choice-"
-	confirmPrefix    = "confirm-"
-	alsoDisableField = "also-disable"
-	alsoRemoveField  = "also-remove"
-	versionPrefix    = "version-"
+	choicePrefix       = "choice-"
+	confirmPrefix      = "confirm-"
+	alsoDisableField   = "also-disable"
+	alsoRemoveField    = "also-remove"
+	orphanField        = "orphan"
+	orphanOfferedField = "orphan-offered"
+	keptField          = "kept"
+	versionPrefix      = "version-"
 )
 
 var planKinds = []mods.Kind{mods.KindInstall, mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove, mods.KindUpload}
@@ -898,6 +904,14 @@ func readPlanForm(v url.Values) (planForm, bool) {
 	for _, n := range append(slices.Clone(v["declined"]), v["offered"]...) {
 		if !slices.Contains(f.Optional, n) && !slices.Contains(f.Declined, n) {
 			f.Declined = append(f.Declined, n)
+		}
+	}
+	if len(v[keptField])+len(v[orphanOfferedField]) > store.MaxModPlanNames {
+		return planForm{}, false
+	}
+	for _, n := range append(slices.Clone(v[keptField]), v[orphanOfferedField]...) {
+		if !slices.Contains(v[orphanField], n) && !slices.Contains(f.Kept, n) {
+			f.Kept = append(f.Kept, n)
 		}
 	}
 	// Each name can cost a portal request, so a crafted list is bounded.
@@ -951,6 +965,9 @@ func (f planForm) query() url.Values {
 	}
 	if len(f.Declined) > 0 {
 		q["declined"] = f.Declined
+	}
+	if len(f.Kept) > 0 {
+		q[keptField] = f.Kept
 	}
 	if len(f.AlsoDisable) > 0 {
 		q[alsoDisableField] = f.AlsoDisable
@@ -1325,6 +1342,8 @@ func changeText(c mods.Change) i18n.Msg {
 		why = i18n.M("mods.plan.why.from_save")
 	case mods.WhyNotInSave:
 		why = i18n.M("mods.plan.why.not_in_save")
+	case mods.WhyOnlyNeededBy:
+		why = i18n.M("mods.plan.why.only_needed_by", "mod", i18n.Ident(c.Why.Of))
 	}
 	if !why.IsZero() {
 		what = i18n.M("mods.plan.item.why", "item", what, "why", why)
@@ -1557,7 +1576,7 @@ func (s *server) kindRequest(id string, p *ModPlanPage) (mods.Request, error) {
 		req.Optional = f.Optional
 		return req, err
 	}
-	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional, Declined: f.Declined, Versions: f.Versions}, nil
+	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional, Declined: f.Declined, Kept: f.Kept, Versions: f.Versions}, nil
 }
 
 // planError words why no plan could be made.

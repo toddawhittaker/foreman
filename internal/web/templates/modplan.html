@@ -151,6 +151,17 @@
       {{- end}}
     </fieldset>
     {{- end}}
+    {{- with .Plan.Orphans}}
+    {{- /* Each box also sends its name as offered, so an unticked one reads as kept (SPEC 9.4). */}}
+    <fieldset id="plan-orphans">
+      <legend>{{t "mods.orphans.legend"}}</legend>
+      <p class="hint">{{t "mods.orphans.hint"}}</p>
+      {{- range .}}
+      <input type="hidden" name="orphan-offered" value="{{.Name}}">
+      <label class="check"><input type="checkbox" name="orphan" value="{{.Name}}" id="{{$.Page.ModID .Name "orphan"}}" hx-get="{{$.Page.Path}}"{{if .Chosen}} checked{{end}}> <span>{{tHTML "mods.orphans.item" "mod" (ident .Name) "of" (ident .Of)}}</span></label>
+      {{- end}}
+    </fieldset>
+    {{- end}}
     {{- with .Plan.Unavailable}}
     <ul class="hint" id="plan-unavailable">
       {{- range .}}
