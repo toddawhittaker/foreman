@@ -31,7 +31,10 @@ type ContainerSpec struct {
 
 // HostConfig is the host-side half of a ContainerSpec.
 type HostConfig struct {
-	Binds         []string                 `json:"Binds,omitempty"`        // "host:container[:opts]"
+	Binds []string `json:"Binds,omitempty"` // "host:container[:opts]"
+	// Mounts are binds given as fields, so a path holding ":" or "," needs
+	// no quoting.
+	Mounts        []BindMount              `json:"Mounts,omitempty"`
 	PortBindings  map[string][]PortBinding `json:"PortBindings,omitempty"` // key like "34197/udp"
 	CapDrop       []string                 `json:"CapDrop,omitempty"`
 	SecurityOpt   []string                 `json:"SecurityOpt,omitempty"`
@@ -44,6 +47,14 @@ type HostConfig struct {
 	Memory         int64             `json:"Memory,omitempty"`
 	MemorySwap     int64             `json:"MemorySwap,omitempty"`
 	Tmpfs          map[string]string `json:"Tmpfs,omitempty"`
+}
+
+// BindMount is one entry of HostConfig.Mounts. Type is "bind".
+type BindMount struct {
+	Type     string `json:"Type"`
+	Source   string `json:"Source"`
+	Target   string `json:"Target"`
+	ReadOnly bool   `json:"ReadOnly,omitempty"`
 }
 
 // PortBinding publishes a container port on the host.

@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -257,10 +259,15 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 		if err := addControlMod(base, name, modSettingsMod, modSettingsInfo(line)); err != nil {
 			return err
 		}
-		if err := container(c.controlModSpec(ref, name, req, modSettingsMod, nil)); err != nil {
+		mounts, err := c.readOnlyZipMounts(base, name)
+		if err != nil {
 			return err
 		}
-		var err error
+		spec := c.controlModSpec(ref, name, req, modSettingsMod, nil)
+		spec.HostConfig.Mounts = mounts
+		if err := container(spec); err != nil {
+			return err
+		}
 		defsJSON, defaults, err = readModSettingsOutput(base, name)
 		return err
 	})
@@ -331,6 +338,31 @@ func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string) (
 		locale = nil
 	}
 	return key, name, locale, nil
+}
+
+// readOnlyZipMounts mounts each mod zip in the work folder dir read-only
+// over itself. The zips are hard links to the world's own files, and the
+// game must still write mod-settings.dat into the same folder, so the folder
+// stays writable and only the zips are locked (SPEC 9.6, 14).
+func (c *Controller) readOnlyZipMounts(base *os.Root, dir string) ([]docker.BindMount, error) {
+	mods := filepath.Join(dir, world.ModsDir)
+	entries, err := fs.ReadDir(base.FS(), filepath.ToSlash(mods))
+	if err != nil {
+		return nil, err
+	}
+	var out []docker.BindMount
+	for _, e := range entries {
+		if !e.Type().IsRegular() || !strings.HasSuffix(e.Name(), ".zip") {
+			continue
+		}
+		out = append(out, docker.BindMount{
+			Type:     "bind",
+			Source:   filepath.Join(c.hostData, previewDir, mods, e.Name()),
+			Target:   gameenv.PreviewMount + "/" + world.ModsDir + "/" + e.Name(),
+			ReadOnly: true,
+		})
+	}
+	return out, nil
 }
 
 // readModSettingsOutput reads the definitions JSON and the defaults file the
