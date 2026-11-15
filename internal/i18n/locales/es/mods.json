@@ -21,20 +21,13 @@
   "mods.search.none": "Ningún mod para Factorio {line} coincide. Prueba con una parte más corta del nombre.",
   "mods.search.link_unknown": "No hay ningún mod llamado {name} en el portal de mods. Revisa la ortografía.",
   "mods.search.link_no_release": "{name} no tiene ninguna versión para Factorio {line}. Prueba con otro mod.",
-  "mods.search.add": "Añadir al plan",
   "mods.hits.count": {
     "one": "{count} mod para Factorio {line} coincide.",
     "other": "{count} mods para Factorio {line} coinciden."
   },
   "mods.hits.showing": "Mostrando del {first} al {last}.",
-  "mods.hits.summary": "Detalles",
-  "mods.hits.latest_label": "Última versión:",
-  "mods.hits.downloads_label": "Descargas:",
-  "mods.hits.pages": "Páginas de resultados",
-  "mods.hits.page": "Página {page} de {pages}",
   "mods.hits.prev": "Página anterior",
   "mods.hits.next": "Página siguiente",
-  "mods.fact.latest": "Última versión",
   "mods.fact.downloads": "Descargas",
   "mods.badge.installed": "Instalado",
   "mods.badge.in_plan": "En el plan",
@@ -242,8 +235,6 @@
   "mods.plan.warn_stop": "Avisar a los jugadores, guardar y detener el servidor.",
   "mods.plan.snapshot": "Tomar una instantánea de {world}, con la etiqueta «{label}». Si la instantánea falla, no ocurre nada más.",
   "mods.plan.asked.remove": "Quitar del plan",
-  "mods.plan.add.heading": "Añadir otro mod",
-  "mods.plan.add.back": "Volver al plan",
   "mods.plan.start": "Iniciar el servidor de nuevo.",
   "mods.plan.undo": "Al terminar, el resultado ofrece deshacer con un clic, que restaura esa instantánea.",
   "mods.plan.group.install": "Instalar",
@@ -348,10 +339,6 @@
     "one": "Plan actualizado: cambia {count} mod.",
     "other": "Plan actualizado: cambian {count} mods."
   },
-  "mods.plan.added": {
-    "one": "Se añadió {mod}. El plan tiene {count} mod.",
-    "other": "Se añadió {mod}. El plan tiene {count} mods."
-  },
   "mods.plan.removed": {
     "one": "Se quitó {mod}. El plan tiene {count} mod.",
     "other": "Se quitó {mod}. El plan tiene {count} mods."
@@ -387,7 +374,6 @@
   "mods.plan.step.fails": "Si un paso falla, los pasos siguientes no se hacen.",
   "mods.plan.fix.remove": "Quitar {mod} en este mismo plan",
   "mods.plan.fix.disable": "Desactivar también {mod}",
-  "mods.plan.back_search": "Volver a la búsqueda",
   "mods.plan.fixed": {
     "one": "Plan actualizado. Cambia {count} mod.",
     "other": "Plan actualizado. Cambia {count} mods."

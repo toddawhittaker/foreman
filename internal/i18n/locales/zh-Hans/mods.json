@@ -20,19 +20,12 @@
   "mods.search.none": "没有匹配的适用于 Factorio {line} 的模组。请尝试名称中更短的一部分。",
   "mods.search.link_unknown": "模组门户上没有名为 {name} 的模组。请检查拼写。",
   "mods.search.link_no_release": "{name} 没有适用于 Factorio {line} 的发布版本。请试试其他模组。",
-  "mods.search.add": "加入计划",
   "mods.hits.count": {
     "other": "有 {count} 个适用于 Factorio {line} 的模组匹配。"
   },
   "mods.hits.showing": "显示第 {first} 至 {last} 个。",
-  "mods.hits.summary": "详情",
-  "mods.hits.latest_label": "最新版本：",
-  "mods.hits.downloads_label": "下载量：",
-  "mods.hits.pages": "结果页",
-  "mods.hits.page": "第 {page} 页，共 {pages} 页",
   "mods.hits.prev": "上一页",
   "mods.hits.next": "下一页",
-  "mods.fact.latest": "最新版本",
   "mods.fact.downloads": "下载量",
   "mods.badge.installed": "已安装",
   "mods.badge.in_plan": "已在计划中",
@@ -225,8 +218,6 @@
   "mods.plan.warn_stop": "警告玩家，然后保存并停止服务器。",
   "mods.plan.snapshot": "为 {world} 创建快照，标签为“{label}”。如果快照失败，不会执行其他操作。",
   "mods.plan.asked.remove": "从计划中移除",
-  "mods.plan.add.heading": "添加其他模组",
-  "mods.plan.add.back": "返回计划",
   "mods.plan.start": "重新启动服务器。",
   "mods.plan.undo": "完成后，结果旁会出现一键撤销，用于恢复该快照。",
   "mods.plan.group.install": "安装",
@@ -322,9 +313,6 @@
   "mods.plan.redrawn": {
     "other": "计划已更新：将更改 {count} 个模组。"
   },
-  "mods.plan.added": {
-    "other": "已添加 {mod}。计划中有 {count} 个模组。"
-  },
   "mods.plan.removed": {
     "other": "已移除 {mod}。计划中有 {count} 个模组。"
   },
@@ -355,7 +343,6 @@
   "mods.plan.step.fails": "如果某一步失败，之后的步骤不会执行。",
   "mods.plan.fix.remove": "在此计划中一并移除 {mod}",
   "mods.plan.fix.disable": "同时禁用 {mod}",
-  "mods.plan.back_search": "返回搜索",
   "mods.plan.fixed": {
     "other": "计划已更新。它更改 {count} 个模组。"
   },

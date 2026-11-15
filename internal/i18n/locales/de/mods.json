@@ -21,20 +21,13 @@
   "mods.search.none": "Keine Mod für Factorio {line} passt. Versuche einen kürzeren Teil des Namens.",
   "mods.search.link_unknown": "Auf dem Mod-Portal gibt es keine Mod namens {name}. Prüfe die Schreibweise.",
   "mods.search.link_no_release": "{name} hat keine Version für Factorio {line}. Versuche eine andere Mod.",
-  "mods.search.add": "Zum Plan hinzufügen",
   "mods.hits.count": {
     "one": "{count} Mod für Factorio {line} passt.",
     "other": "{count} Mods für Factorio {line} passen."
   },
   "mods.hits.showing": "Angezeigt: {first} bis {last}.",
-  "mods.hits.summary": "Details",
-  "mods.hits.latest_label": "Neueste Version:",
-  "mods.hits.downloads_label": "Downloads:",
-  "mods.hits.pages": "Ergebnisseiten",
-  "mods.hits.page": "Seite {page} von {pages}",
   "mods.hits.prev": "Vorherige Seite",
   "mods.hits.next": "Nächste Seite",
-  "mods.fact.latest": "Neueste Version",
   "mods.fact.downloads": "Downloads",
   "mods.badge.installed": "Installiert",
   "mods.badge.in_plan": "Im Plan",
@@ -242,8 +235,6 @@
   "mods.plan.warn_stop": "Die Spieler warnen, dann den Server speichern und stoppen.",
   "mods.plan.snapshot": "Einen Snapshot von {world} mit der Bezeichnung „{label}“ erstellen. Schlägt der Snapshot fehl, passiert sonst nichts.",
   "mods.plan.asked.remove": "Aus dem Plan entfernen",
-  "mods.plan.add.heading": "Eine weitere Mod hinzufügen",
-  "mods.plan.add.back": "Zurück zum Plan",
   "mods.plan.start": "Den Server wieder starten.",
   "mods.plan.undo": "Danach erscheint beim Ergebnis ein Rückgängig mit einem Klick, das diesen Snapshot wiederherstellt.",
   "mods.plan.group.install": "Installieren",
@@ -348,10 +339,6 @@
     "one": "Plan aktualisiert: {count} Mod wird geändert.",
     "other": "Plan aktualisiert: {count} Mods werden geändert."
   },
-  "mods.plan.added": {
-    "one": "{mod} hinzugefügt. Der Plan umfasst {count} Mod.",
-    "other": "{mod} hinzugefügt. Der Plan umfasst {count} Mods."
-  },
   "mods.plan.removed": {
     "one": "{mod} entfernt. Der Plan umfasst {count} Mod.",
     "other": "{mod} entfernt. Der Plan umfasst {count} Mods."
@@ -387,7 +374,6 @@
   "mods.plan.step.fails": "Schlägt ein Schritt fehl, folgen die Schritte danach nicht.",
   "mods.plan.fix.remove": "{mod} in diesem Plan mit entfernen",
   "mods.plan.fix.disable": "{mod} auch deaktivieren",
-  "mods.plan.back_search": "Zurück zur Suche",
   "mods.plan.fixed": {
     "one": "Plan aktualisiert. Er ändert {count} Mod.",
     "other": "Plan aktualisiert. Er ändert {count} Mods."

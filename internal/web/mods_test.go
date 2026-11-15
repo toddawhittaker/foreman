@@ -719,11 +719,8 @@ func modPageCases() []pageCase {
 		{"mod plan zip refused", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindSync, Save: "base.zip"},
 			Plan: mods.Plan{Unresolved: []mods.Unresolved{{Name: "old mod", Version: "0.1.0"}}}, UploadFor: "old mod", UploadError: i18n.M("mods.upload.not_mod")}},
 		{"mod plan redrawn", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Redraw: true}},
-		{"mod plan adding", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha", longName}, Query: "a", Added: "alpha"},
-			Plan: mods.Plan{Changes: plan.Changes[:2], Optional: plan.Optional}, Redraw: true, Installed: map[string]bool{"gamma": true},
-			Results: pageOfHits([]modportal.Hit{{Name: "alpha", Title: "Alpha", LatestVersion: "1.0.0"}, {Name: "gamma"}, {Name: "delta", Title: longName, LatestVersion: "2.0.0", Summary: longName}}, 1)}},
-		{"mod plan add search down", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}, Query: "a"},
-			Plan: mods.Plan{Changes: plan.Changes[:1]}, AddUnreachable: true}},
+		{"mod plan picked", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha", longName}, Removed: "gamma"},
+			Plan: mods.Plan{Changes: plan.Changes[:2], Optional: plan.Optional}, Redraw: true}},
 	}
 }
 

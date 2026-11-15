@@ -1,7 +1,6 @@
 package web
 
 import (
-	"net/url"
 	"slices"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
@@ -46,7 +45,7 @@ func (p ModPlanPage) Groups() []PlanGroup {
 	var out []PlanGroup
 	for _, g := range groupTitles {
 		var items []PlanItem
-		if g.act == mods.ActInstall && p.Adding() {
+		if g.act == mods.ActInstall && p.FromPicks() {
 			for _, n := range p.Form.Names {
 				if !slices.ContainsFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == n }) {
 					items = append(items, PlanItem{Name: n, Asked: true})
@@ -88,7 +87,7 @@ func (p ModPlanPage) Kept() []PlanItem {
 }
 
 func (p ModPlanPage) item(c mods.Change) PlanItem {
-	asked := p.Adding() && slices.Contains(p.Form.Names, c.Name)
+	asked := p.FromPicks() && slices.Contains(p.Form.Names, c.Name)
 	return PlanItem{Name: c.Name, Text: changeText(c), Asked: asked, Portal: asked && c.Release != nil}
 }
 
@@ -162,15 +161,6 @@ func (p ModPlanPage) canTurnOff(name string) (local, ok bool) {
 		return false, false
 	}
 	return m.Local, true
-}
-
-// SearchPath is the search the admin came from, for "Back to search".
-func (p ModPlanPage) SearchPath() string {
-	path := modsPath(p.World.ID) + "/search"
-	if p.Form.Query != "" {
-		path += "?q=" + url.QueryEscape(p.Form.Query)
-	}
-	return path
 }
 
 // extraKinds says the plan turns mods off besides its own kind of change,
