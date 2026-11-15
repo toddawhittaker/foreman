@@ -499,7 +499,7 @@ func TestCrashLoopEventWaitsForTheCrashedRunsWords(t *testing.T) {
 	// The first crash: its run said nothing, the next failed on its save.
 	drainPoke(r.c)
 	d.Exit(cid, 1, false)
-	awaitPoke(t, r.c)
+	eventually(t, func() bool { return !following() }, "the first run's follower to end")
 	d.Restart(cid)
 	r.c.tick(ctx)
 	eventually(t, following, "the second run to be followed")
@@ -512,7 +512,9 @@ func TestCrashLoopEventWaitsForTheCrashedRunsWords(t *testing.T) {
 	// The third run begins and the follower reads that, then stalls.
 	drainPoke(r.c)
 	d.Exit(cid, 1, false)
-	awaitPoke(t, r.c)
+	// A failed-load line can poke the monitor before EOF does. Wait for
+	// the follower itself to end before the tick starts another one.
+	eventually(t, func() bool { return !following() }, "the second run's follower to end")
 	d.Restart(cid)
 	r.c.tick(ctx)
 	eventually(t, following, "the third run to be followed")
