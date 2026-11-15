@@ -237,3 +237,16 @@ for (const at of ["/worlds/base/mods", "/worlds/base/mods/search?q=fp-pg"]) {
     await shot(page, `mods-browse-${at.includes("search") ? "search" : "tab"}`);
   });
 }
+
+// SPEC 9.1: a long pasted link with a tracking query is not cut by the box,
+// on the Mods tab or while typing on the search page.
+test("a long pasted link with a tracking query finds its mod", async ({ page }) => {
+  const link = `https://mods.factorio.com/mod/fp-pg-04?utm_source=${"x".repeat(150)}&utm_medium=share`;
+  expect(link.length).toBeGreaterThan(100);
+  await page.goto("/worlds/base/mods");
+  await page.getByLabel("Mod name").fill(link);
+  await page.getByLabel("Mod name").press("Enter");
+  await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." }).getByRole("checkbox", { name: "fp-pg-04" })).toBeVisible();
+  await page.getByLabel("Mod name").fill(link.replace("fp-pg-04", "fp-pg-05"));
+  await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." }).getByRole("checkbox", { name: "fp-pg-05" })).toBeVisible();
+});
