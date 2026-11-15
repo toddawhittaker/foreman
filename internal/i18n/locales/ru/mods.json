@@ -6,6 +6,9 @@
   "mods.search.heading": "Найти мод",
   "mods.search.label": "Название мода",
   "mods.search.hint": "Ищет на портале модов моды для Factorio {line} — версии игры этого мира.",
+  "mods.search.short": "Для поиска введите не менее 2 символов. Отмеченные моды сохраняются.",
+  "mods.search.paste_hint": "Можно также вставить ссылку на мод с портала.",
+  "mods.search.browse": "Открыть портал модов",
   "mods.search.button": "Найти",
   "mods.search.missing": "Введите часть названия мода для поиска.",
   "mods.search.long": {
@@ -18,6 +21,8 @@
   "mods.search.results_heading": "Моды, подходящие под «{query}»",
   "mods.search.unreachable": "Foreman не смог связаться с порталом модов и поэтому не выполнил поиск. Повторите попытку через минуту.",
   "mods.search.none": "Нет модов для Factorio {line}, подходящих под запрос. Введите более короткую часть названия.",
+  "mods.search.link_unknown": "На портале модов нет мода с названием {name}. Проверьте написание.",
+  "mods.search.link_no_release": "У мода {name} нет выпуска для Factorio {line}. Попробуйте другой мод.",
   "mods.search.add": "Добавить в план",
   "mods.hits.count": {
     "one": "{count} мод для Factorio {line} подходит.",

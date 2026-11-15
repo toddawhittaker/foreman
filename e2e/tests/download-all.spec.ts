@@ -339,7 +339,7 @@ test("another download while one is prepared says so; a settings change ends it 
   await hold.stop();
 });
 
-test("in the large view the preparation lies over the stage without moving it, and closing or another planet ends it", async ({ page }) => {
+test("in the large view the preparation lies over the stage without moving it, and closing or another planet ends it, and the arrow keys wait", async ({ page }) => {
   const asked: string[] = [];
   await threeDrawn(page, asked);
   await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -363,8 +363,17 @@ test("in the large view the preparation lies over the stage without moving it, a
   await expect(page.locator("#large-prep-news")).toHaveText(/planet 1 of 1: Nauvis/);
   expect(await page.locator("#large-frame").boundingBox()).toEqual(stage);
   await checkPage(page);
-  const heard = await listen(page, "#large-status");
+  // The arrow keys wait while it is prepared, so a stray key does not end it.
   await page.keyboard.press("ArrowRight");
+  // The first press says why, once; later ones stay quiet.
+  await expect(page.locator("#large-status")).toHaveText("Planets wait while the download is prepared. Cancel it first.");
+  await page.locator("#large-status").evaluate((s) => { s.textContent = ""; });
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#large-title")).toHaveText("Nauvis");
+  await expect(page.locator("#large-status")).toHaveText("");
+  await expect(view.locator(".download-prep")).toBeVisible();
+  const heard = await listen(page, "#large-status");
+  await page.locator("#large-next").click();
   await expect(view.locator(".download-prep")).toHaveCount(0);
   await expect.poll(heard).toMatch(/Download canceled\./);
   // Its unseen news goes with it.
@@ -379,7 +388,7 @@ test("in the large view the preparation lies over the stage without moving it, a
   await hold.stop();
 });
 
-test("in the large view the preparation leaves the arrows and zoom free, and an undrawn planet still says it ended", async ({ page }) => {
+test("in the large view the preparation leaves the edge buttons and zoom free, and the Next button ends it, saying so even for an undrawn planet", async ({ page }) => {
   await page.goto("/generate");
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
@@ -410,7 +419,7 @@ test("in the large view the preparation leaves the arrows and zoom free, and an 
   await expect(page.locator("#large-prep-news")).toHaveText(/The download stopped at Vulcanus\./);
   // Gleba is not drawn yet: its "Drawing" line still says the download ended.
   const heard = await listen(page, "#large-status");
-  await page.keyboard.press("ArrowRight");
+  await page.locator("#large-next").click();
   await expect.poll(heard).toMatch(/Drawing Gleba….*Download canceled\./);
   await expect(block).toHaveCount(0);
   await expect(page.locator("#large-prep-news")).toHaveText("");

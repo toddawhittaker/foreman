@@ -16,8 +16,9 @@ leak through error messages, logs and the `Referer` header.
 
 - **Search runs locally.** Foreman fetches the portal's mod list for the
   world's game line once (`/api/mods?page_size=max&version=<line>`, no
-  credentials) and searches it in memory: exact name, then prefix, then
-  substring of name or title, by downloads, the first 25.
+  credentials) and searches it in memory. Every word of the query must
+  appear in a mod's name or title; an exact name comes first, then the
+  rest by downloads (SPEC 9.1).
 - **The base is fixed** at `https://mods.factorio.com`; there is no portal
   setting. Browser tests reach a fake portal through an HTTPS proxy with a
   test certificate authority (`HTTPS_PROXY`, `SSL_CERT_FILE`), so the

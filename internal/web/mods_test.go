@@ -223,6 +223,8 @@ func TestModsTabListsMods(t *testing.T) {
 	wantIn(t, "mods tab", body, `>alpha</span>`, `>folder-mod</span>`, "Local folder",
 		`href="/worlds/`+id+`/mods/plan?kind=remove&amp;name=alpha"`, `href="/worlds/`+id+`/mods/plan?kind=disable&amp;name=alpha"`,
 		`hx-get="/worlds/`+id+`/mods/status"`, "Match mods to the save", `aria-current="page">Mods</a>`,
+		// SPEC 9.1: the portal browse link uses the world's game line; its hint describes the box.
+		`href="https://mods.factorio.com/browse/downloaded?factorio_version=2.0"`, `aria-describedby="mod-search-hint mod-paste-hint"`,
 		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod.
 		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
 		`Remove<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
@@ -1047,5 +1049,28 @@ func TestModsTabWithTheResultDoesNotReload(t *testing.T) {
 		if t.Failed() {
 			return
 		}
+	}
+}
+
+// SPEC 9.1: the tab's box asks the search page for its results while typing,
+// keeps the tab's address, and its results sit in a form that goes on to the
+// search page; without script the box's own form still submits there.
+func TestModsTabSearchFollowsTyping(t *testing.T) {
+	g := newModsRig(t, true)
+	id := g.world20("Base", "alpha_1.0.0")
+	code, body := g.getStatus(modsPath(id))
+	if code != http.StatusOK {
+		t.Fatalf("status %d\n%s", code, g.logs.String())
+	}
+	search := "/worlds/" + id + "/mods/search"
+	wantIn(t, "mods tab", body,
+		`<div role="search" class="setting-row__body">`, `type="search" form="mod-results-form"`, `class="button" form="mod-results-form">Search</button>`,
+		`hx-get="`+search+`" hx-trigger="input[this.value.trim().length`, `2] changed delay:300ms"`,
+		`hx-target="#results" hx-select="#results" hx-swap="outerHTML"`,
+		`data-short="Type at least 2 characters to search.`,
+		`<form method="get" action="`+search+`" id="mod-results-form" class="mod-results">`,
+		`<div id="results" class="panels"></div>`, `modsearch`)
+	if strings.Contains(body, "hx-replace-url") || strings.Contains(body, "hx-push-url=\"true\"") {
+		t.Error("typing on the Mods tab must not change the address")
 	}
 }

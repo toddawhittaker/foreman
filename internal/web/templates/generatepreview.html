@@ -171,6 +171,8 @@
     <div class="large-view__territories" id="large-territories-box" hidden>
       <label class="check"><input type="checkbox" id="large-territories" aria-describedby="large-territories-hint"> {{t "worlds.generate.territories.label"}}</label>
       <p class="hint" id="large-territories-hint">{{t "worlds.generate.territories.hint"}}</p>
+      {{- /* Shown while the request has failed; the status line says why. */}}
+      <button type="button" class="button" id="large-territories-retry" data-territory-retry hidden>{{t "worlds.generate.territories.retry"}}</button>
     </div>
     {{/* A view, not a setting, so it has no name; off on load, kept while the page lives (SPEC 5.6).
          The count waits for the picture and is dropped when the view, the planet or a setting changes. */}}
@@ -197,10 +199,13 @@
     <p class="visually-hidden" id="large-territory-counts"></p>
   </div>
   <div class="large-view__body">
+    {{- /* First in the body, so Tab reaches it before the settings; drawn over the picture's top corner. */}}
+    <button type="button" class="icon-button large-view__close" id="large-close"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m3.5 3.5 9 9m0-9-9 9"/></svg><span class="visually-hidden">{{t "worlds.generate.large.close"}}</span></button>
     {{/* On a wide view, the planet's own Resources and Terrain fields, which the script
          moves in while the view is open and back when it closes: one copy of each (DESIGN 8.8). */}}
-    <div class="large-view__settings" id="large-settings" hidden>
-      {{- /* The key help above is for the map; here a setting keeps its own keys (DESIGN 8.8). */}}
+    <div class="large-view__settings" id="large-settings" role="group" aria-label="{{t "worlds.generate.large.settings"}}" aria-describedby="large-settings-keys" hidden>
+      {{- /* The key help above is for the map; here a setting keeps its own keys (DESIGN 8.8).
+           It describes the column's group, so a screen reader says it on entering the fields. */}}
       <p class="hint" id="large-settings-keys">{{t "worlds.generate.large.keys_settings"}}</p>
       <section id="large-resources" aria-labelledby="large-resources-heading">
         <h3 id="large-resources-heading">{{t "mapgen.tab.resources"}}</h3>
@@ -216,7 +221,6 @@
       </div>
       <button type="button" class="icon-button large-view__edge large-view__edge--prev" id="large-prev"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M10 3 5 8l5 5"/></svg><span class="visually-hidden" id="large-prev-name"></span></button>
       <button type="button" class="icon-button large-view__edge large-view__edge--next" id="large-next"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m6 3 5 5-5 5"/></svg><span class="visually-hidden" id="large-next-name"></span></button>
-      <button type="button" class="icon-button large-view__close" id="large-close"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m3.5 3.5 9 9m0-9-9 9"/></svg><span class="visually-hidden">{{t "worlds.generate.large.close"}}</span></button>
       <div class="large-view__zoom">
         <button type="button" class="icon-button" id="large-out"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_out"}}</span></button>
         <button type="button" class="icon-button" id="large-in"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10M8 3v10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_in"}}</span></button>

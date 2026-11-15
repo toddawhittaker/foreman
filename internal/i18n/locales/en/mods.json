@@ -6,6 +6,9 @@
   "mods.search.heading": "Find a mod",
   "mods.search.label": "Mod name",
   "mods.search.hint": "Searches the mod portal for mods made for Factorio {line}, the game version of this world.",
+  "mods.search.short": "Type at least 2 characters to search. Ticked mods are kept.",
+  "mods.search.paste_hint": "You can also paste a mod's link from the portal.",
+  "mods.search.browse": "Browse the mod portal",
   "mods.search.button": "Search",
   "mods.search.missing": "Enter part of a mod's name to search for.",
   "mods.search.long": {
@@ -17,6 +20,8 @@
   "mods.search.results_heading": "Mods matching \"{query}\"",
   "mods.search.unreachable": "Foreman could not reach the mod portal, so it could not search. Try again in a moment.",
   "mods.search.none": "No mod for Factorio {line} matches. Try a shorter part of the name.",
+  "mods.search.link_unknown": "No mod named {name} is on the mod portal. Check the spelling.",
+  "mods.search.link_no_release": "{name} has no release for Factorio {line}. Try a different mod.",
   "mods.search.add": "Add to plan",
   "mods.hits.count": {
     "one": "{count} mod for Factorio {line} matches.",

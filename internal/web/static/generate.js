@@ -681,12 +681,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const isRefresh = (e) => (e.detail.pathInfo ? e.detail.pathInfo.requestPath : "").endsWith("/generate/refresh");
   let sentValues = new Map();
   let typedValues = new Map();
+  // htmx skips putting back a selection that starts at 0, so typing over a
+  // selected field would go in front of its text instead of replacing it.
+  let caret = null;
+  function keepCaret() {
+    const was = caret;
+    caret = null;
+    const f = was && document.getElementById(was.id);
+    if (f && f === document.activeElement && f.setSelectionRange) f.setSelectionRange(was.start, was.end, was.dir);
+  }
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (isRefresh(e)) sentValues = new Map(textFields().map((f) => [f.name, f.value]));
   });
   document.body.addEventListener("htmx:beforeSwap", (e) => {
     if (!isRefresh(e)) return;
     typedValues = new Map(textFields().filter((f) => sentValues.has(f.name) && sentValues.get(f.name) !== f.value).map((f) => [f.name, f.value]));
+    const at = document.activeElement;
+    caret = textFields().includes(at) ? { id: at.id, start: at.selectionStart, end: at.selectionEnd, dir: at.selectionDirection } : null;
   });
 
   document.body.addEventListener("htmx:afterSwap", (e) => {
@@ -694,6 +705,8 @@ document.addEventListener("DOMContentLoaded", () => {
       textFields().forEach((f) => { if (typedValues.has(f.name)) f.value = typedValues.get(f.name); });
       typedValues = new Map();
     }
+    // Out-of-band parts swap first; the fields come back, and htmx refocuses, with the main part.
+    if (isRefresh(e) && (e.target.id === "line-box" || e.target.id === "map-settings")) keepCaret();
     const path = e.detail.pathInfo ? e.detail.pathInfo.requestPath : "";
     // The version list's own load is also a swap; it must not touch the summary.
     if (!path.endsWith("/generate/refresh") && !path.endsWith("/generate/preview")) return;

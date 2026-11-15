@@ -265,7 +265,7 @@
       <label for="add-search">{{t "mods.search.label"}}</label>
       <p class="hint" id="add-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
       <div class="inline-row">
-        <input id="add-search" name="q" type="search" value="{{.Form.Query}}" autocomplete="off" spellcheck="false" maxlength="100" aria-describedby="add-search-hint">
+        <input id="add-search" name="q" type="search" value="{{.Form.Query}}" autocomplete="off" spellcheck="false" maxlength="300" aria-describedby="add-search-hint">
         <button type="submit" class="button">{{t "mods.search.button"}}</button>
       </div>
     </div>
@@ -280,6 +280,8 @@
   {{template "mod-pager" .}}
   {{- /* The plan and its Install button are above; this takes the admin back without scrolling past every result. */}}
   <div class="actions"><a href="#confirm-heading">{{t "mods.plan.add.back"}}</a></div>
+  {{- else if not .AddMiss.IsZero}}
+  <p class="empty">{{msg .AddMiss}}</p>
   {{- else}}
   <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
   {{- end}}

@@ -1,5 +1,7 @@
 {{define "title"}}{{if .Page.Query}}{{t "mods.search.title" "query" .Page.Query "world" .Page.World.Name}}{{else}}{{t "mods.search.title_empty" "world" .Page.World.Name}}{{end}}{{end}}
 
+{{define "scripts"}}<script src="{{static "modsearch.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
@@ -20,16 +22,23 @@
       <label for="mod-search">{{t "mods.search.label"}}</label>
       <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
       <div class="inline-row">
-        <input id="mod-search" name="q" type="search" value="{{.Query}}" autocomplete="off" spellcheck="false" maxlength="100"
-          {{- if not .QueryError.IsZero}} aria-invalid="true" aria-describedby="mod-search-hint mod-search-error"{{else}} aria-describedby="mod-search-hint"{{end}}>
+        {{- /* With script the results follow the typing after a pause, from 2 characters; only #results is replaced, and the address and title follow the text without adding history entries (SPEC 9.1). */}}
+        <input id="mod-search" name="q" type="search" value="{{.Query}}" autocomplete="off" spellcheck="false" maxlength="300"
+          hx-get="{{.Path}}" hx-trigger="input[this.value.trim().length >= 2] changed delay:300ms" hx-include="closest form" hx-params="q,pick"
+          hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-replace-url="true" hx-sync="this:replace" data-short="{{t "mods.search.short"}}"
+          {{- if not .QueryError.IsZero}} aria-invalid="true" aria-describedby="mod-search-hint mod-paste-hint mod-search-error"{{else}} aria-describedby="mod-search-hint mod-paste-hint"{{end}}>
         <button type="submit" class="button">{{t "mods.search.button"}}</button>
       </div>
-      {{- if not .QueryError.IsZero}}
-      <p class="error" id="mod-search-error"><strong>{{t "common.error.label"}}</strong> {{msg .QueryError}}</p>
-      {{- end}}
+      {{template "portal-browse" .Line}}
     </div>
   </div>
 </section>
+{{- /* Always present, so a typed search has a place to put its results. */}}
+<div id="results" class="panels">
+{{- /* Inside #results so a typed search shows it too; modsearch.js ties it to the box after a swap. */}}
+{{- if not .QueryError.IsZero}}
+<p class="error" id="mod-search-error"><strong>{{t "common.error.label"}}</strong> {{msg .QueryError}}</p>
+{{- end}}
 {{- if .Unreachable}}
 <div class="message message--error">
   <p><strong>{{t "common.error.label"}}</strong> {{t "mods.search.unreachable"}}</p>
@@ -47,6 +56,8 @@
   <p class="hint">{{t "mods.search.pick_hint"}}</p>
   {{- end}}
   {{template "mod-hits" .}}
+  {{- else if not .LinkMiss.IsZero}}
+  <p class="empty">{{msg .LinkMiss}}</p>
   {{- else}}
   <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
   {{- end}}
@@ -60,6 +71,7 @@
   {{template "mod-picks" .}}
 </section>
 {{- end}}
+</div>
 </form>
 {{end}}
 {{- end}}

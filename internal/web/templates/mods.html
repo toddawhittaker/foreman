@@ -1,5 +1,5 @@
 {{define "title"}}{{t "mods.title" "world" .Page.World.Name}}{{end}}
-{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script><script src="{{static "modsearch.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -54,16 +54,25 @@
     <h2 id="search-heading">{{t "mods.search.heading"}}</h2>
     <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
   </div>
-  <form method="get" action="{{.SearchPath}}" role="search" class="setting-row__body">
+  {{- /* The box and Search belong to the results form below, so one submit carries the search and the ticks (SPEC 9.1). */}}
+  <div role="search" class="setting-row__body">
     <div class="field">
       <label for="mod-search">{{t "mods.search.label"}}</label>
       <div class="inline-row">
-        <input id="mod-search" name="q" type="search" autocomplete="off" spellcheck="false" maxlength="100" aria-describedby="mod-search-hint">
-        <button type="submit" class="button">{{t "mods.search.button"}}</button>
+        {{- /* With script the search page's results follow the typing here after a pause, from 2 characters; the address stays the tab's (SPEC 9.1). */}}
+        <input id="mod-search" name="q" type="search" form="mod-results-form" autocomplete="off" spellcheck="false" maxlength="300" aria-describedby="mod-search-hint mod-paste-hint"
+          hx-get="{{.SearchPath}}" hx-trigger="input[this.value.trim().length >= 2] changed delay:300ms" hx-include="#mod-results-form" hx-params="q,pick"
+          hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-sync="this:replace" data-short="{{t "mods.search.short"}}">
+        <button type="submit" class="button" form="mod-results-form">{{t "mods.search.button"}}</button>
       </div>
+      {{template "portal-browse" .Line}}
     </div>
-  </form>
+  </div>
 </section>
+{{- /* The typed search's results, in the search page's own form, so ticks, Add ticked mods and the page buttons go on to the search page with the search shown. */}}
+<form method="get" action="{{.SearchPath}}" id="mod-results-form" class="mod-results">
+<div id="results" class="panels"></div>
+</form>
 {{- /* The rarer tools: a rail beside the list on a wide screen; on a phone one 44 px Mod tools disclosure under the search, so each tool appears once. A refused file opens it, so the error summary's link reaches the field. */}}
 <details class="disclosure mod-rail" id="mod-tools" data-open-wide="64rem"{{if or (not .UploadError.IsZero) (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
 <summary class="mod-rail__toggle" id="mod-tools-summary">{{t "mods.tools.label"}}</summary>

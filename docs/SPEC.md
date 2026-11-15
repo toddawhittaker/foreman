@@ -1519,8 +1519,17 @@ Snapshots page, where space can be freed. (P1)
 9.1. **Search** the mod portal by name and see each mod's latest version
 and download count, with its summary on demand. Foreman reads the
 portal's whole mod list for the world's game line once (15-minute cache)
-and searches it in memory: an exact name first, then names that start with
-the text, then names or titles that contain it, each group by downloads.
+and searches it in memory. A mod matches when every word of the text is in
+its name or title, in any order. A mod named exactly like the text comes
+first; the rest go by downloads, most first, then by name. A
+mods.factorio.com link pasted into the box finds that exact mod, read from
+the path after `/mod/` (nothing is fetched from the link); text that is
+not such a link is an ordinary search. With script the results follow the
+typing, from 2 characters, a short pause after the last key, both on the
+search page and under the Mods tab's "Find a mod" box, which keeps its own
+address; without it the
+Search button works as before. A link "Browse the mod portal" opens the
+portal's most downloaded list for the game line in a new tab.
 It does this because the portal's own search needs credentials, and
 search must work without them (9.11, ADR 0012). Every match is kept; the
 results show ten at a time, in a table that says how many match in all
@@ -2389,8 +2398,8 @@ with the defaults accepted, these take at most:
 | Switch to another world, downloading its game image if needed (Switch world, the world's Switch, confirm) | 3 |
 | Switch back after a switch | 2 |
 | Undo the last change (switch, update, restore, mod change) | 2 |
-| Search for a mod and install it (Mods, Search, Add to plan, Install 1 mod) | 4 |
-| Install a second mod in the same change (one more Add to plan, on the plan page) | 5 |
+| Search for a mod and install it (Mods, type the name, Add to plan, Install 1 mod; typing is not a click) | 3 |
+| Install a second mod in the same change (one more Add to plan, on the plan page) | 4 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
 | Change a startup mod setting (Mods, Edit mod settings, tick the setting, Save and restart; on a phone, Mod tools before Edit mod settings) | 4 (5 on a phone) |
 | Change a mod's version (Mods, the row's More actions, Change version, choose the version, Change 1 mod; when the portal has an update, the row's Update to *x.y.z* opens the same version choice, so Mods, Update to *x.y.z*, choose, Change 1 mod) | 5 (4 with an update) |
@@ -2470,7 +2479,9 @@ leave dialog (5.6) is a modal `dialog` named by its question, with "Stay on
 this page" focused on open; Escape closes it like Stay, and it passes the
 accessibility scan at 1280 and 320 px. In the large view the arrow keys step
 the planet unless focus is in a settings field, including from the amounts
-list. Tab goes round the large view's controls, from the last back to the
+list, or a preparation is shown in the view (a failed one with its Try again
+too): then Left and Right do nothing, and the first ignored press says why
+once. Tab goes round the large view's controls, from the last back to the
 first. The One planet picture's box is announced as the large view's is;
 at 320 px a short "Counting…" beside it is seen, not said, and a page count
 that ends while the large view is open is said once when the view closes.

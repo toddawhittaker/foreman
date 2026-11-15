@@ -6,6 +6,9 @@
   "mods.search.heading": "查找模组",
   "mods.search.label": "模组名称",
   "mods.search.hint": "在模组门户中搜索适用于 Factorio {line} 的模组，即此世界的游戏版本。",
+  "mods.search.short": "至少输入 2 个字符才能搜索。已勾选的模组会保留。",
+  "mods.search.paste_hint": "也可以粘贴模组门户中某个模组的链接。",
+  "mods.search.browse": "浏览模组门户",
   "mods.search.button": "搜索",
   "mods.search.missing": "请输入模组名称的一部分以进行搜索。",
   "mods.search.long": {
@@ -16,6 +19,8 @@
   "mods.search.results_heading": "与“{query}”匹配的模组",
   "mods.search.unreachable": "Foreman 无法连接模组门户，因此无法搜索。请稍后重试。",
   "mods.search.none": "没有匹配的适用于 Factorio {line} 的模组。请尝试名称中更短的一部分。",
+  "mods.search.link_unknown": "模组门户上没有名为 {name} 的模组。请检查拼写。",
+  "mods.search.link_no_release": "{name} 没有适用于 Factorio {line} 的发布版本。请试试其他模组。",
   "mods.search.add": "加入计划",
   "mods.hits.count": {
     "other": "有 {count} 个适用于 Factorio {line} 的模组匹配。"

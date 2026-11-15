@@ -339,7 +339,8 @@ func TestAccountReturnPath(t *testing.T) {
 				t.Errorf("%q: the page carries the return path %q", bad, m[1])
 			}
 		}
-		if strings.Contains(body, "Cancel") {
+		// The link itself: page scripts carry strings with the word in them.
+		if strings.Contains(body, ">Cancel</a>") {
 			t.Errorf("%q: the page links back to a refused path", bad)
 		}
 		form.Set("return", bad)

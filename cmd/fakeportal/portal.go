@@ -245,9 +245,14 @@ func (f *Fake) addToList(resp *http.Response) error {
 	if err := json.Unmarshal(doc["results"], &results); err != nil {
 		return err
 	}
+	line := resp.Request.URL.Query().Get("version")
 	f.mu.Lock()
 	for _, name := range f.added {
-		results = append(results, listEntry(name, f.latest(name)))
+		// Like the real portal's version filter: a mod with no release for the
+		// asked line is not in that line's list.
+		if s := f.latest(name, line); s.Name != "" {
+			results = append(results, listEntry(name, s))
+		}
 	}
 	f.mu.Unlock()
 	doc["results"], _ = json.Marshal(results)
@@ -258,11 +263,12 @@ func (f *Fake) addToList(resp *http.Response) error {
 	return nil
 }
 
-// latest is the highest-sorting version added for a mod; the caller holds mu.
-func (f *Fake) latest(name string) modportaltest.Served {
+// latest is the highest-sorting version added for a mod on a game line, or on
+// any line when line is empty; the caller holds mu.
+func (f *Fake) latest(name, line string) modportaltest.Served {
 	var last modportaltest.Served
 	for _, s := range f.served {
-		if s.Name == name && (last.Name == "" || s.Version > last.Version) {
+		if s.Name == name && (line == "" || s.FactorioVersion == line) && (last.Name == "" || s.Version > last.Version) {
 			last = s
 		}
 	}
