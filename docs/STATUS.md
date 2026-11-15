@@ -2896,13 +2896,14 @@ independent cards is acceptable (WCAG 2.4.3 passes). The fold changed DESIGN
 
 Serves SPEC 4.3, 4.4, 4.6, 4.13, 12.6, 14.3, 14.16 and 18.9b, with 8.4 and
 22, and ADR 0006. Issues closed: none (none concerned sidecars). The pull
-requests were #559 to #568, with the contract in #555 to #558. Built across
+requests were #559 to #568, followed by #569, #572, #573 and #574,
+with the contract in #555 to #558. Built across
 three machines.
 
 **Not fully accepted.** The code is built and tested as listed below, but
-the live checks that matter most to a real deployment were not run, and
-the full `make test-game` is not green (see "Remaining acceptance"). Read
-that list before relying on a sidecar.
+the live VPN and reboot checks were not run (see "Remaining acceptance").
+All automated gates below passed. Todd deferred live acceptance on
+2026-11-14 and asked that the epic pull request remain draft.
 
 Rulings (Todd, 2026-11-14), now in SPEC 4.13, 12.6 and 14.16 and ADR 0006:
 shared sidecars are allowed, on additional Docker networks too, and an
@@ -2975,11 +2976,15 @@ being waived or fixed by auto-start.
   old ID cannot join a replaced name. The fake game takes `-sidecar` and
   `-sidecar-port`, binds RCON only at the sidecar's address, and keeps no
   RCON after a sidecar restart until it restarts itself.
-- **Browser tests (#564).** `e2e/tests/sidecar.spec.ts` covers a published
+- **Browser tests (#564, #572).** `e2e/tests/sidecar.spec.ts` covers a published
   and an unpublished start, the Console, the warning following a change
   live in a second tab, missing and stopped sidecars, no script, 320 px
   and axe in four projects, and that the sidecar's secret never reaches a
-  page or the log.
+  page or the log. Sidecar restart recovery is covered in all four projects:
+  graceful Restart refuses without creating a container, then Force stop
+  and Start restore the Console. The shared accessibility helper waits for
+  animation state rather than promises Chromium can leave unresolved in
+  closed details elements.
 - **Real-container tests (#565).** `internal/game/sidecar_game_test.go`
   runs under `make test-game` on 1.1.110, 2.0.77 and 2.1.24, with a
   game-image container as the namespace holder on a temporary game network
@@ -3015,33 +3020,38 @@ being waived or fixed by auto-start.
   contain only the test fixtures' synthetic credentials. This explains
   failures; it fixes none.
 
+- **Crash-loop fixes found by the gates (#569, #573, #574; SPEC 8.7–8.9,
+  ADR 0016).** The OOM test restarts under both memory limits and tolerates
+  a failed exec only after Docker confirms that run ended. The monitor
+  orders exit evidence by Docker's exit time, captures the OOM flag at log
+  EOF, and reads a bounded log tail on a restart. Older evidence cannot
+  overwrite newer exits; a newer run's explicit reason can supersede an
+  older OOM kill. Events wait for the crashed run's reason when only an
+  earlier follower supplied one. Crash-loop stops give Docker 10 seconds
+  before killing a game that hangs during loading; admin stops retain
+  their 120-second save grace.
+
 ### Evidence
 
-On epic head `712f786` (tree
-`34fc8636c545c387796de2e5f44f95b0e8a13c38`), identical to the consolidated
-tree that was verified:
+Epic head `70476fb8` has exactly the verified candidate `60206373`'s tree,
+`747d02dd8b26b43bf5c83b8a35dd6cf2a09c2ed7`:
 
 - Full `make verify`: passed, 90.9% coverage across `internal/`.
-  Test counts: game 400, world 304 and web 694.
-- Full fake-browser suite: 3078 passed, 254 skipped, 0 failed.
-On combined real-game candidate `e08f002` (the feature changes plus the
-OOM test-trigger correction in #569):
-
-- Real-game sidecar tests: 52 passes across 1.1.110, 2.0.77 and 2.1.24,
-  including the same-address trap.
+  Test counts: game 413, world 304 and web 694; race detector and lint pass.
+- Full fake-browser suite: 3082 passed, 254 skipped, 0 failed or flaky.
+- Full `make test-game`: passed, including sidecar lifecycle, crash
+  catalogue, crash-loop stops, web and resource tests on the pinned
+  1.1.110, 2.0.77 and 2.1.24 images. Four existing resource-label checks
+  are skipped.
 - Full `make e2e-game`: 2 passed.
+- Code and security reviews covered Docker, trusted headers, RCON and the
+  crash-loop changes; accessibility and translation reviews covered the
+  sidecar UI. All blocking findings were corrected and rechecked.
 
 ### Remaining acceptance
 
 Not done, and not to be read as passed:
 
-- **The full `make test-game` is not green.** Two failures, both older than
-  this epic and not caused by it: the out-of-memory case of the crash
-  catalogue never triggers on a host with swap (a test-only fix is the open
-  pull request #569), and a race in the monitor's crash-reason handling
-  reproduces on `main`, with a fix being prepared and not yet merged. The
-  epic is not fully accepted until both land and the suite is rerun green.
-  The sidecar tests inside it pass.
 - **No live Tailscale test has run, and no client has played.** The pinned
   `tailscale/tailscale:v1.104.7` image has not been run against Foreman. pve has no
   `/dev/net/tun`, so a kernel-mode sidecar needs another host or TUN
