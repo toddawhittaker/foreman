@@ -129,6 +129,22 @@ test("a search under Add another mod that finds nothing says what to try", async
   await checkPage(page);
 });
 
+// SPEC 9.1, 9.11: the plan's "Add another mod" reads a pasted portal link too.
+test("a pasted portal link under Add another mod finds that mod, and an unknown one says so", async ({ page }) => {
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-pg-00");
+  const add = page.getByRole("region", { name: "Add another mod" });
+  await add.getByLabel("Mod name").fill("https://mods.factorio.com/mod/fp-pg-03/changelog?from=search&utm_source=" + "x".repeat(150));
+  await add.getByRole("button", { name: "Search" }).click();
+  const table = add.getByRole("table", { name: "1 mod for Factorio 2.0 matches." });
+  await expect(table.getByRole("row")).toHaveCount(2);
+  await expect(table.getByRole("link", { name: "Add to plan fp-pg-03" })).toBeVisible();
+  await add.getByLabel("Mod name").fill("https://mods.factorio.com/mod/no-such-mod-anywhere");
+  await add.getByRole("button", { name: "Search" }).click();
+  await expect(add).toContainText("No mod named no-such-mod-anywhere is on the mod portal.");
+  await expect(add.getByRole("table")).toHaveCount(0);
+  await checkPage(page);
+});
+
 // SPEC 9.1, 9.11: a pasted mod portal link, with a sub-page and a query, finds
 // that one mod by its exact name, ready to add.
 test("a pasted portal link with a sub-page and query finds that exact mod", async ({ page }) => {
@@ -183,9 +199,9 @@ test("a search of two words finds a mod with both, in either order", async ({ pa
 });
 
 // SPEC 9.1: with script the results follow the typing after a pause; only the
-// results change, focus stays in the box, the address stays, and a screen
-// reader hears the count.
-test("results appear while typing, without Enter, and keep focus, address and ticks", async ({ page }) => {
+// results change, focus stays in the box, the address and tab title follow the
+// text, and a screen reader hears the count.
+test("results appear while typing, without Enter, and keep focus and ticks", async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg-01");
   const box = page.getByLabel("Mod name");
   await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
@@ -194,7 +210,6 @@ test("results appear while typing, without Enter, and keep focus, address and ti
   await expect(table).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-0"' })).toBeVisible();
   await expect(box).toBeFocused();
-  await expect(page).toHaveURL(/\?q=fp-pg-01$/);
   await expect(table.getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
   await expect(page.locator("#announcer")).toHaveText("10 mods for Factorio 2.0 match.");
   // A ticked box survives a second typed search that no longer lists it.
@@ -203,6 +218,24 @@ test("results appear while typing, without Enter, and keep focus, address and ti
   await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
   await expect(page.locator("#announcer")).toHaveText("1 mod for Factorio 2.0 matches.");
   await checkPage(page);
+});
+
+// The address and the tab title follow the typed search, replacing the entry
+// so Back does not step through every pause; a reload keeps the search.
+test("typing keeps the address and tab title in step, and a reload keeps the search", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
+  const box = page.getByLabel("Mod name");
+  const asked = () => new URL(page.url()).searchParams.get("q");
+  const history = await page.evaluate(() => window.history.length);
+  await box.fill("fp-pg-02");
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
+  expect(asked()).toBe("fp-pg-02");
+  expect(page.url()).not.toMatch(/[?&](shown|at)=/);
+  await expect(page).toHaveTitle(/Mods matching "fp-pg-02"/);
+  expect(await page.evaluate(() => window.history.length)).toBe(history);
+  await page.reload();
+  await expect(box).toHaveValue("fp-pg-02");
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
 });
 
 test("under 2 characters typing asks the server nothing", async ({ page }) => {
@@ -334,5 +367,5 @@ test("cutting a refused search under 2 characters clears the error and says why"
   await expect(box).not.toHaveAttribute("aria-invalid", "true");
   await expect(box).toHaveAttribute("aria-describedby", "mod-search-hint mod-paste-hint");
   await expect(page.locator("#mod-search-error")).toBeHidden();
-  await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters to search.");
+  await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters to search. Ticked mods are kept.");
 });
