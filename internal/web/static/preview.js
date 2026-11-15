@@ -199,11 +199,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (link) link.querySelectorAll(".territories").forEach((o) => o.remove());
     const slot = terrSlot();
     if (slot) slot.replaceChildren();
+    largeRetry();
     territoryDownloads();
   }
 
   function showTerritoryResult(slot, from) {
     slot.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+  }
+
+  // The large view's Try again shows while the page's slot holds the failure.
+  function largeRetry() {
+    const retry = document.getElementById("large-territories-retry");
+    const slot = terrSlot();
+    if (retry) retry.hidden = !(slot && slot.querySelector("[data-territory-retry]"));
   }
 
   async function territories(say) {
@@ -221,6 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
     note.className = "hint";
     note.textContent = slot.dataset.finding;
     slot.replaceChildren(note);
+    largeRetry();
     const body = new URLSearchParams(new FormData(formEl()));
     let html;
     try {
@@ -230,6 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
       terrPending = null;
       const failed = document.getElementById("territory-failed");
       if (failed) showTerritoryResult(slot, failed.content);
+      largeRetry();
       // The sentence only, not the Try again button's label.
       const why = slot.querySelector(".message p");
       if (say && why) announce(words(why));
@@ -280,6 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const here = planet === terrPlanet;
     largeBox.checked = new FormData(formEl()).has("territories");
     largeBox.disabled = !(here && pictureLink(terrPlanet) && terrBox());
+    largeRetry();
     // A box going away under the focus hands it to the picture, as the settings do.
     const lost = wrap.contains(document.activeElement) && !here;
     wrap.hidden = !here;
@@ -301,8 +312,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", (e) => {
     if (!e.target.closest("[data-territory-retry]")) return;
     // The button goes with the message, so focus goes back to the box.
-    const box = terrBox();
+    const inView = dialog && dialog.open;
+    const box = inView ? document.getElementById("large-territories") : terrBox();
     if (box) box.focus();
+    const slot = terrSlot();
+    if (inView) largeStatus(slot ? slot.dataset.finding : "");
     territories(true);
   });
 
@@ -1336,7 +1350,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest && e.target.closest("#large-settings")) return;
       const panning = e.target === frame() && zoom > 1;
-      if (arrows[e.key] && !panning) step(arrows[e.key]);
+      // Stepping would end a download being prepared here, so the arrows wait (SPEC 17.1).
+      if (arrows[e.key] && !panning && prep && prep.inView) e.preventDefault();
+      else if (arrows[e.key] && !panning) step(arrows[e.key]);
       else if (e.key === "+" || e.key === "=") zoomSaid(zoom * factor);
       else if (e.key === "-") zoomSaid(zoom / factor);
       else if (e.key === "0") zoomSaid(1);

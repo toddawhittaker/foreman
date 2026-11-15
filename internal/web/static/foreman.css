@@ -3678,8 +3678,9 @@ form:has(#mode-exchange:checked) .achievements {
   transition: opacity 120ms ease-out;
 }
 
-.large-view__stage:hover :is(.large-view__edge, .large-view__close, .large-view__zoom),
-.large-view__stage:has(:focus-visible) :is(.large-view__edge, .large-view__close, .large-view__zoom) {
+.large-view__stage:hover :is(.large-view__edge, .large-view__zoom),
+.large-view__stage:has(:focus-visible) :is(.large-view__edge, .large-view__zoom),
+.large-view__body:has(> .large-view__stage:hover, > .large-view__close:hover, > .large-view__stage :focus-visible, > .large-view__close:focus-visible) .large-view__close {
   opacity: 1;
 }
 
@@ -3713,7 +3714,9 @@ form:has(#mode-exchange:checked) .achievements {
   inset-inline-end: var(--space-5);
 }
 
+/* Above the stage, which comes after it in the document. */
 .large-view__close {
+  z-index: 1;
   inset-block-start: var(--space-2);
   inset-inline-end: var(--space-5);
 }
@@ -3983,7 +3986,9 @@ form:has(#mode-exchange:checked) .achievements {
   container: large-view / inline-size;
 }
 
+/* Close sits in the body, before the settings in Tab order, at the stage's top corner. */
 .large-view__body {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
