@@ -236,3 +236,56 @@ func TestPlanAccountLinkReturnsToThePlan(t *testing.T) {
 	form.Set("return", back)
 	ah.wantRedirect(ah.post(PathAccount, form, withCookie(c)), back)
 }
+
+// SPEC 9.14: an accepted install takes out of the saved picks only the mods
+// it installed; the other picks stay for a later install.
+func TestAcceptedInstallKeepsOtherSavedPicks(t *testing.T) {
+	g := newModsRig(t, true)
+	for _, n := range []string{"mod-a", "mod-b", "mod-c"} {
+		g.portal.AddZip(n, "1.0.0")
+	}
+	id := g.world20("Base")
+	g.pick(id, "mod-a", "mod-b")
+	plan := modsPath(id) + "/plan"
+
+	// Installing a mod that was never picked leaves both picks.
+	_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"mod-c"}}))
+	g.wantRedirectHome(g.post(plan, planValues(t, body)))
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.picks(id); len(got) != 2 {
+		t.Errorf("installing another mod left picks %v, want both kept", got)
+	}
+
+	// Installing one pick takes out that one only.
+	_, body = g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"mod-a"}}))
+	g.wantRedirectHome(g.post(plan, planValues(t, body)))
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.picks(id); len(got) != 1 || got[0] != "mod-b" {
+		t.Errorf("picks %v, want only mod-b", got)
+	}
+}
+
+// SPEC 5.12: the review page after Generate from a favorite says the world
+// was made and takes focus; an ordinary review page has no such note.
+func TestReviewAfterGenerateSaysTheWorldWasMade(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("aai-industry", "1.0.0")
+	id := g.world20("Club world")
+
+	q := url.Values{"kind": {"install"}, "name": {"aai-industry"}}
+	_, plain0 := g.getStatus(planPath(id, q))
+	if strings.Contains(plain0, `id="plan-generated"`) {
+		t.Error("an ordinary review page has the generated note")
+	}
+	q.Set(generatedQuery, "1")
+	_, body := g.getStatus(planPath(id, q))
+	wantIn(t, "note", body, `id="plan-generated" tabindex="-1" autofocus`)
+	wantIn(t, "note text", plain(body), "Generated Club world from the favorite.")
+	if strings.Index(body, `id="plan-generated"`) > strings.Index(body, `id="mod-plan"`) {
+		t.Error("the note is not above the plan")
+	}
+}

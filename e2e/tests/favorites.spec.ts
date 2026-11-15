@@ -58,6 +58,11 @@ test("make a favorite, start Generate from it, land on the review page, then del
   expect(url.searchParams.getAll("name")).toEqual(["fp-signs"]);
   expect(url.searchParams.get("version-fp-signs")).toBe("1.0.0");
   await expect(page.locator("#mod-plan")).toContainText("fp-signs 1.0.0");
+  // The page says the world was made, above the changes, and takes focus.
+  const generated = page.locator("#plan-generated");
+  await expect(generated).toContainText("Generated From club from the favorite.");
+  await expect(generated).toBeFocused();
+  await checkPage(page);
   const id = url.pathname.split("/")[2];
   const server = readFileSync(join(foreman.dataDir, "worlds", id, "config", "server-settings.json"), "utf8");
   expect(server).toContain('"max_players"');

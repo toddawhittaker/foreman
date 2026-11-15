@@ -39,6 +39,7 @@
   "favorites.start.button": "Use favorite",
   "favorites.start.none": "No favorites yet. Make one from a world's page.",
   "favorites.start.note": "Starting from the favorite \"{name}\". Its game version, Space Age setting, preset and map settings are filled in below; change anything you like. The new world gets its server settings and mod settings.",
+  "favorites.review.generated": "Generated {name} from the favorite. Below are the favorite's mods to install on it.",
   "favorites.start.mods": {
     "one": "After the world is made, you review {count} mod to install.",
     "other": "After the world is made, you review {count} mods to install."
