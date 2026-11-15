@@ -59,6 +59,7 @@ type Request struct {
 	Names    []string          // install, update, enable, disable, remove
 	Optional []string          // optional dependencies the admin ticked
 	Declined []string          // recommended dependencies the admin unticked
+	Kept     []string          // offered orphans the admin unticked (SPEC 9.4)
 	Upload   *world.ModInfo    // the uploaded zip's info.json, for KindUpload
 	SaveMods []SaveMod         // for KindSync
 	Choices  map[string]Choice // for KindSync, by mod name
@@ -97,6 +98,8 @@ const (
 	WhyRecommendedBy ReasonCode = "recommended-by"
 	WhyFromSave      ReasonCode = "from-save"
 	WhyNotInSave     ReasonCode = "not-in-save"
+	// WhyOnlyNeededBy is an orphan: only the removed mod Of required it.
+	WhyOnlyNeededBy ReasonCode = "only-needed-by"
 )
 
 // Reason is a code plus the mod it names, if any; the web layer words it.
@@ -183,6 +186,9 @@ type Plan struct {
 	Conflicts  []Conflict
 	Unresolved []Unresolved
 	Optional   []Offer
+	// Orphans are installed mods only the removed mods required, offered
+	// for removal too; Chosen is true while ticked (SPEC 9.4).
+	Orphans []Offer
 	// Unavailable are recommended mods left out because the portal lacks
 	// them or they would conflict; they never block the plan (SPEC 9.2).
 	Unavailable []Offer
