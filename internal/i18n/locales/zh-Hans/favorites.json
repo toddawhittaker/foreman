@@ -1,0 +1,45 @@
+{
+  "favorites.title": "收藏",
+  "favorites.intro": "收藏保存一个世界的游戏版本、太空时代设置、地图设置、不含密码的服务器设置、模组及模组设置。可在“生成”页面从收藏创建新世界。",
+  "favorites.fact.source": "来源世界",
+  "favorites.fact.mods": "模组",
+  "favorites.fact.created": "创建时间",
+  "favorites.generate": "从此收藏生成",
+  "favorites.empty": "还没有收藏。打开一个世界，在其页面上使用“创建收藏”。",
+  "favorites.empty.link": "前往世界列表",
+  "favorites.list.link": "查看所有收藏",
+  "favorites.deleted": "已删除收藏“{name}”。从中创建的世界没有变化。",
+  "favorites.delete.button": "删除收藏",
+  "favorites.delete.question": "删除收藏“{name}”？",
+  "favorites.delete.removes": "永久删除该收藏及其设置文件。不会创建快照。",
+  "favorites.delete.keeps": "从中创建的所有世界以及它的来源世界都保持不变。",
+  "favorites.delete.cancel": "保留",
+  "favorites.make.heading": "从此世界创建收藏",
+  "favorites.make.text": "保存此世界的游戏版本、太空时代设置、地图设置、不含密码的服务器设置、模组及模组设置，用于创建新世界。世界本身不会改变。",
+  "favorites.make.default_map": "此世界没有地图设置，因此从该收藏创建的世界将使用默认地图。",
+  "favorites.make.label": "收藏名称",
+  "favorites.make.button": "创建收藏",
+  "favorites.made": "已创建收藏“{name}”。",
+  "favorites.made.default_map": "它没有地图设置，因此从中创建的世界将使用默认地图。",
+  "favorites.made.left_out": {
+    "other": "有 {count} 个模组未保存，因为 Foreman 无法再次下载：它们是文件夹模组，或者无法读取名称或版本。请手动将其添加到新世界。"
+  },
+  "favorites.error.name_empty": "请输入收藏名称。",
+  "favorites.error.name_bad": {
+    "other": "最多 {count} 个字符，且不能包含控制字符。"
+  },
+  "favorites.error.name_taken": "已有其他收藏使用此名称。请选择其他名称。",
+  "favorites.error.settings_broken": "此世界的服务器设置不是有效的 JSON，因此未创建收藏。请先在“游戏设置”选项卡中修正。",
+  "favorites.error.too_big": "此世界的模组或设置过多，无法保存为收藏。",
+  "favorites.error.gone": "该收藏已不存在，或其文件已损坏。请选择其他收藏，或不使用收藏直接生成。",
+  "favorites.start.heading": "从收藏开始",
+  "favorites.start.label": "收藏",
+  "favorites.start.button": "使用收藏",
+  "favorites.start.none": "还没有收藏。可在世界页面上创建。",
+  "favorites.start.note": "正在从收藏“{name}”开始。其游戏版本、太空时代设置、预设和地图设置已在下方填好，均可更改。新世界将获得其服务器设置和模组设置。",
+  "favorites.review.generated": "已从收藏生成 {name}。下方是该收藏中可安装到它上面的模组。",
+  "favorites.start.mods": {
+    "other": "世界创建后，将检查 {count} 个要安装的模组。"
+  },
+  "favorites.error.map_damaged": "此收藏的地图设置已损坏，Foreman 无法填入。请选择其他收藏，或删除此收藏后从世界重新创建。"
+}

@@ -21,8 +21,7 @@ test("the plan lists the line's releases, newest that fits first, and an older o
   await portal.add("fp-ver", "3.0.0", ["base >= 2.1"], "2.1");
   await setUpModsWorld(page, foreman, fakeGame!, world);
 
-  await page.goto("/worlds/base/mods/search?q=fp-ver");
-  await page.getByRole("link", { name: "Add to plan fp-ver", exact: true }).click();
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-ver");
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-ver in Base?" })).toBeVisible();
   const version = page.getByLabel("Version of fp-ver");
   await expect(version).toHaveValue("");

@@ -6,9 +6,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/modportal"
 )
 
-// hitsPerPage is how many search results one page shows, so the plan page's
-// Install button stays a short scroll above its "Add another mod" results
-// (SPEC 9.1).
+// hitsPerPage is how many search results one page shows (SPEC 9.1).
 const hitsPerPage = 10
 
 // ModHits is one page of a mod search's results (SPEC 9.1).

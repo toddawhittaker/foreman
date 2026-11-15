@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestLookup(t *testing.T) {
@@ -27,6 +28,10 @@ func TestLookup(t *testing.T) {
 	h, err = c.Lookup(ctx, "2.0", "chest-auto-sort")
 	if err != nil || h.Name != "chest-auto-sort" || h.FactorioVersion != "2.0" || h.LatestVersion == "" {
 		t.Errorf("full hit: %+v, %v", h, err)
+	}
+	// The hit built from /full carries the date of the release it names.
+	if want := time.Date(2024, 10, 24, 21, 2, 35, 152000000, time.UTC); !h.ReleasedAt.Equal(want) {
+		t.Errorf("full hit ReleasedAt %v, want %v", h.ReleasedAt, want)
 	}
 	// On the portal, but with no release for the line.
 	if _, err := c.Lookup(ctx, "2.0", "only-new"); !errors.Is(err, ErrNoRelease) {

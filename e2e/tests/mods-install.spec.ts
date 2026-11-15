@@ -29,12 +29,11 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   await checkPage(page);
 
   await page.getByLabel("Mod name").fill("fp-signs");
-  await page.getByRole("button", { name: "Search" }).click();
-  await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: "fp-signs" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
   await checkPage(page);
 
-  await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();
+  await page.getByRole("button", { name: "Add fp-signs to the plan" }).click();
+  await page.getByRole("link", { name: "Review and install 1 mod" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-signs in Base?" })).toBeVisible();
   await expect(page.locator("#mod-plan")).toContainText("fp-signs 1.0.0");
   // A running game: the plan says it will warn, stop and start it again, and asks for the countdown.
@@ -85,8 +84,7 @@ test("a chain three levels deep: the plan lists what is needed and why, and all 
   await portal.add("fp-a", "1.0.0", ["base >= 2.0", "fp-b >= 1.0.0"]);
   await setUpModsWorld(page, foreman, fakeGame!, world);
 
-  await page.goto("/worlds/base/mods/search?q=fp-a");
-  await page.getByRole("link", { name: "Add to plan fp-a", exact: true }).click();
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-a");
   const plan = page.locator("#mod-plan");
   await expect(plan).toContainText("fp-a 1.0.0");
   await expect(plan).toContainText("fp-b 1.0.0 (fp-a needs it)");
@@ -204,8 +202,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
   await portal.add("fp-clash", "1.0.0", ["base >= 2.0", "! fp-other"]);
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-other": "2.0" } });
 
-  await page.goto("/worlds/base/mods/search?q=fp-clash");
-  await page.getByRole("link", { name: "Add to plan fp-clash", exact: true }).click();
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-clash");
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-clash in Base?" })).toBeVisible();
   const conflicts = page.locator("#plan-conflicts");
   await expect(conflicts).toContainText("This plan cannot be applied because of a conflict:");
@@ -214,7 +211,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
   await expect(page.locator("#act-apply")).toHaveCount(0);
   // Issue 344: a plan that cannot be applied does not say what applying does, and offers its fix and a way back.
   await expect(page.locator("#plan-steps")).toHaveCount(0);
-  await expect(conflicts.getByRole("link", { name: "Back to search" })).toHaveAttribute("href", "/worlds/base/mods/search?q=fp-clash");
+  await expect(conflicts.getByRole("link", { name: "Back to the mods" })).toHaveAttribute("href", "/worlds/base/mods");
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/i-plan-conflict-${test.info().project.name}.png`, fullPage: true });
   expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-clash_1.0.0.zip"))).toBe(false);

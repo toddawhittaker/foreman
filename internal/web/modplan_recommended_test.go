@@ -33,5 +33,5 @@ func TestRecommendedDependencyPlan(t *testing.T) {
 	if strings.Contains(plain(body), "fp-lane 1.3.1") {
 		t.Error("an unticked recommended mod is still installed")
 	}
-	wantIn(t, "unticked", body, `<input type="hidden" name="declined" value="fp-lane">`)
+	wantIn(t, "unticked", body, `<input type="hidden" name="offered" value="fp-lane">`)
 }

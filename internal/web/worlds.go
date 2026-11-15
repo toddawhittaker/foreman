@@ -154,12 +154,20 @@ type WorldPage struct {
 	// Working says an action runs on the world, so the page reloads the
 	// block that shows what it does and how it ended.
 	Working bool
+	// The favorite form (SPEC 5.12): CanFavorite shows it, FavName refills
+	// its name, FavDefaultMap says the favorite will get the default map,
+	// and FavMade confirms one just made.
+	CanFavorite   bool
+	FavName       string
+	FavError      i18n.Msg
+	FavDefaultMap bool
+	FavMade       *FavoriteMade
 }
 
 func (WorldPage) templateName() string { return "world" }
 func (WorldPage) navItem() string      { return PathWorlds }
 
-func (p WorldPage) hasErrors() bool { return !p.NameError.IsZero() }
+func (p WorldPage) hasErrors() bool { return !p.NameError.IsZero() || !p.FavError.IsZero() }
 
 // ImportPath and GeneratePath are where the world list's import and generate
 // links go.
@@ -378,6 +386,7 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	s.importFacts(&p, r)
 	s.generatedFacts(&p, r)
 	s.clonedFacts(&p, r)
+	s.favoriteFacts(&p, r)
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -446,7 +455,9 @@ func (s *server) handleRename(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return
 	}
-	s.page(w, r, status, u.Username, s.worldPage(r.Context(), sum, name, msg))
+	p := s.worldPage(r.Context(), sum, name, msg)
+	s.favoriteFacts(&p, r)
+	s.page(w, r, status, u.Username, p)
 }
 
 // DeletePage confirms deleting a world (SPEC 5.10, DESIGN 7.4).
@@ -534,6 +545,10 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	err := s.worlds.Delete(r.Context(), sum.ID, p.ConfirmName, p.FinalSnapshot, u.Username)
 	if err == nil {
+		// A deleted world's unfinished mod plan goes with it (SPEC 3.4).
+		if cerr := s.store.ClearModPlan(r.Context(), sum.ID); cerr != nil {
+			s.log.Warn("clear the mod plan of a deleted world", "world", sum.ID, "error", cerr)
+		}
 		http.Redirect(w, r, PathWorlds+"?deleted="+sum.ID, http.StatusSeeOther)
 		return
 	}

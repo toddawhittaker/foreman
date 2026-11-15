@@ -27,6 +27,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/modportal/modportaltest"
 	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/secret"
+	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -354,7 +355,7 @@ func TestSearchWithoutAccount(t *testing.T) {
 		t.Fatalf("status %d\n%s", code, body)
 	}
 	wantIn(t, "search", body, "Jetpack", "Mod downloads are off", `/settings/factorio-account?return=`,
-		"kind=install&amp;name=jetpack", "Latest version", "Downloads")
+		`<input type="hidden" name="name" value="jetpack">`, "<dt>Latest</dt>", "<dt>Downloads</dt>")
 	code, body = g.getStatus(modsPath(id) + "/search?q=+")
 	if code != http.StatusBadRequest || !strings.Contains(body, "Enter part of a mod") {
 		t.Errorf("empty search: %d", code)
@@ -700,9 +701,12 @@ func modPageCases() []pageCase {
 			Done:          i18n.M("mods.done", "world", w.Name, "label", "x"), Undo: &Offer{Path: "/x", Label: i18n.M("mods.undo")}}},
 		{"mods errors", "todd", 200, ModsPage{World: w, Mods: installed[:1], UploadError: i18n.M("mods.upload.not_mod"),
 			SettingsError: i18n.M("mods.settings.empty"), Failure: &Failure{Message: i18n.M("mods.error.changed")}}},
+		{"mods plan", "todd", 200, ModsPage{World: w, Mods: installed, Plan: samplePanel(w), Search: ModSearchPage{World: w, Tab: true}}},
+		{"mods plan down", "todd", 200, ModsPage{World: w, Plan: PlanPanel{World: w, Picks: []string{"alpha"},
+			Roots: []PlanNode{{Name: "alpha", Title: "alpha"}}, Unreachable: true, Error: planFull()}}},
 		{"mods unreadable", "todd", 200, ModsPage{World: world.Summary{ID: "x", Name: "X", Unreadable: true}}},
 		{"mod search", "todd", 200, ModSearchPage{World: w, Query: "alpha", NoAccount: true, Installed: map[string]bool{"alpha": true},
-			Picks: []string{"beta", "elsewhere"}, Paged: true, PickError: i18n.M("mods.search.pick_none"),
+			Paged: true, Plan: samplePanel(w),
 			Results: pageOfHits([]modportal.Hit{{Name: "alpha", Title: "Alpha", Summary: longName, LatestVersion: "1.0.0", FactorioVersion: "2.0", Downloads: 12345}, {Name: "beta", Title: "beta"}, {Name: longName, Title: longName, Summary: "s"}, {Name: "m4"}, {Name: "m5"}, {Name: "m6"}, {Name: "m7"}, {Name: "m8"}, {Name: "m9"}, {Name: "m10"}, {Name: "m11"}}, 1)}},
 		{"mod search empty", "todd", 200, ModSearchPage{World: w, QueryError: i18n.M("mods.search.missing")}},
 		{"mod search down", "todd", 200, ModSearchPage{World: w, Query: "x", Unreachable: true}},
@@ -715,11 +719,8 @@ func modPageCases() []pageCase {
 		{"mod plan zip refused", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindSync, Save: "base.zip"},
 			Plan: mods.Plan{Unresolved: []mods.Unresolved{{Name: "old mod", Version: "0.1.0"}}}, UploadFor: "old mod", UploadError: i18n.M("mods.upload.not_mod")}},
 		{"mod plan redrawn", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Redraw: true}},
-		{"mod plan adding", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha", longName}, Query: "a", Added: "alpha"},
-			Plan: mods.Plan{Changes: plan.Changes[:2], Optional: plan.Optional}, Redraw: true, Installed: map[string]bool{"gamma": true},
-			Results: pageOfHits([]modportal.Hit{{Name: "alpha", Title: "Alpha", LatestVersion: "1.0.0"}, {Name: "gamma"}, {Name: "delta", Title: longName, LatestVersion: "2.0.0", Summary: longName}}, 1)}},
-		{"mod plan add search down", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}, Query: "a"},
-			Plan: mods.Plan{Changes: plan.Changes[:1]}, AddUnreachable: true}},
+		{"mod plan picked", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha", longName}, Removed: "gamma"},
+			Plan: mods.Plan{Changes: plan.Changes[:2], Optional: plan.Optional}, Redraw: true}},
 	}
 }
 
@@ -837,7 +838,7 @@ func TestPlanRequestIsBounded(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("alpha", "1.0.0")
 	id := g.world20("Base")
-	names := make([]string, maxPlanNames+1)
+	names := make([]string, store.MaxModPlanNames+1)
 	for i := range names {
 		names[i] = "m" + strings.Repeat("x", i)
 	}
@@ -848,7 +849,7 @@ func TestPlanRequestIsBounded(t *testing.T) {
 		t.Errorf("51 optional mods: %d", code)
 	}
 	// The bound counts the raw values, before duplicates are dropped.
-	same := make([]string, maxPlanNames+1)
+	same := make([]string, store.MaxModPlanNames+1)
 	for i := range same {
 		same[i] = "x"
 	}
@@ -1052,9 +1053,10 @@ func TestModsTabWithTheResultDoesNotReload(t *testing.T) {
 	}
 }
 
-// SPEC 9.1: the tab's box asks the search page for its results while typing,
-// keeps the tab's address, and its results sit in a form that goes on to the
-// search page; without script the box's own form still submits there.
+// SPEC 9.1: the tab's "Mods matching" panel is always there; the box asks the
+// search page for its results while typing and keeps the tab's address;
+// without script the box's form goes to the search page. The plan panel
+// sits beside the results.
 func TestModsTabSearchFollowsTyping(t *testing.T) {
 	g := newModsRig(t, true)
 	id := g.world20("Base", "alpha_1.0.0")
@@ -1063,14 +1065,35 @@ func TestModsTabSearchFollowsTyping(t *testing.T) {
 		t.Fatalf("status %d\n%s", code, g.logs.String())
 	}
 	search := "/worlds/" + id + "/mods/search"
-	wantIn(t, "mods tab", body,
-		`<div role="search" class="setting-row__body">`, `type="search" form="mod-results-form"`, `class="button" form="mod-results-form">Search</button>`,
-		`hx-get="`+search+`" hx-trigger="input[this.value.trim().length`, `2] changed delay:300ms"`,
+	wantIn(t, "mods tab", plain(body),
+		`<form method="get" action="`+search+`" role="search" class="setting-row__body"`,
 		`hx-target="#results" hx-select="#results" hx-swap="outerHTML"`,
-		`data-short="Type at least 2 characters to search.`,
-		`<form method="get" action="`+search+`" id="mod-results-form" class="mod-results">`,
-		`<div id="results" class="panels"></div>`, `modsearch`)
+		`hx-trigger="input changed delay:300ms"`,
+		`<section class="panel mod-found" id="results" aria-labelledby="results-heading">`,
+		`<h2 id="results-heading" tabindex="-1">Mods matching</h2>`,
+		"Type at least 2 characters of a mod&#39;s name in Find a mod. Matching mods show here.",
+		`<div class="mod-side">`, `id="plan-panel"`, `id="mod-tools"`, `modsearch`)
+	if !strings.Contains(body, `hx-vals='{&#34;in&#34;: &#34;tab&#34;}'`) && !strings.Contains(body, `hx-vals="{&#34;in&#34;: &#34;tab&#34;}"`) && !strings.Contains(body, `hx-vals='{"in": "tab"}'`) {
+		t.Error("the tab's typing does not say it is for the tab")
+	}
 	if strings.Contains(body, "hx-replace-url") || strings.Contains(body, "hx-push-url=\"true\"") {
 		t.Error("typing on the Mods tab must not change the address")
+	}
+	// The results come before the plan, and the plan before the tools, so a phone reads them in that order.
+	if i, j, k := strings.Index(body, `id="results"`), strings.Index(body, `id="plan-panel"`), strings.Index(body, `id="mod-tools"`); i > j || j > k {
+		t.Error("the results, plan and tools are out of order")
+	}
+}
+
+// An orphan box sends its name as offered too, so an unticked one reads as
+// kept, and the link back to the plan carries it (SPEC 9.4).
+func TestPlanFormReadsUntickedOrphansAsKept(t *testing.T) {
+	f, ok := readPlanForm(url.Values{"kind": {"remove"}, "name": {"a"}, "orphan-offered": {"b", "c"}, "orphan": {"c"}})
+	if !ok || len(f.Kept) != 1 || f.Kept[0] != "b" {
+		t.Fatalf("kept = %v, ok = %v", f.Kept, ok)
+	}
+	g, ok := readPlanForm(f.query())
+	if !ok || len(g.Kept) != 1 || g.Kept[0] != "b" {
+		t.Fatalf("round trip kept = %v", g.Kept)
 	}
 }

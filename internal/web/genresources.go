@@ -242,7 +242,7 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 	view := &PreviewView{Size: f.PreviewSize}
 	if !ok {
 		view.Resources = &ResourceView{Error: i18n.M("worlds.generate.resources.invalid")}
-		s.fragment(w, r, s.generatePage(f, view), "generate-resources")
+		s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-resources")
 		return
 	}
 	// The planet is one of the world's own, never other text (SPEC 14.1).
@@ -253,7 +253,7 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	view.Resources = s.resources(w, r, u, previewRequest(f, nw), f.Name, planet)
-	s.fragment(w, r, s.generatePage(f, view), "generate-resources")
+	s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-resources")
 }
 
 // addResources keeps the amounts counted on planet, as add keeps pictures,

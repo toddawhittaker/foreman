@@ -1,0 +1,40 @@
+{{define "title"}}{{t "favorites.title"}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
+<h1>{{t "favorites.title"}}</h1>
+<p class="hint">{{t "favorites.intro"}}</p>
+{{- with .Deleted}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.deleted" "name" .}}</p>
+</div>
+{{- end}}
+<section class="panel" aria-label="{{t "favorites.title"}}">
+  {{- with .Favorites}}
+  <ul class="webhook-list favorite-list" role="list">
+    {{- range .}}
+    <li id="favorite-{{.ID}}">
+      <h2 id="favorite-{{.ID}}-name" class="webhook-list__title">{{.Name}}</h2>
+      <dl class="facts facts--inline">
+        <div><dt>{{t "favorites.fact.source"}}</dt><dd>{{.SourceWorld}}</dd></div>
+        <div><dt>{{t "worlds.fact.game_version"}}</dt><dd><span class="ver"><code>{{.GameVersion}}</code></span></dd></div>
+        <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
+        <div><dt>{{t "favorites.fact.mods"}}</dt><dd>{{len .Mods}}</dd></div>
+        <div><dt>{{t "favorites.fact.created"}}</dt><dd><time datetime="{{isoTime .CreatedAt}}">{{utc .CreatedAt}}</time></dd></div>
+      </dl>
+      <div class="actions">
+        <a href="{{.GeneratePath}}" class="button" id="act-favorite-generate-{{.ID}}" aria-describedby="favorite-{{.ID}}-name">{{t "favorites.generate"}}</a>
+        {{- /* A trash icon, as the webhook list has: red but borderless, so Delete does not weigh as much as Generate (DESIGN 7.1). */}}
+        <a href="{{.DeletePath}}" class="button button--icon" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
+      </div>
+    </li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty" id="favorites-empty">{{t "favorites.empty"}}</p>
+  <div class="actions"><a href="{{worldsPath}}">{{t "favorites.empty.link"}}</a></div>
+  {{- end}}
+</section>
+{{- end}}
+{{- end}}

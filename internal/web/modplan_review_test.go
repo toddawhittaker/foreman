@@ -3,7 +3,7 @@ package web
 import (
 	"net/http"
 	"net/url"
-	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -12,10 +12,9 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// SPEC 9.1, 9.2, 17.10: a search result adds its mod to a plan; the plan
-// lists the mods asked for, offers the same search to add another, and one
-// confirm installs every mod with one snapshot.
-func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
+// SPEC 9.2, 9.13, 17.10: a plan of two picked mods lists both, and one
+// confirm installs them and what they need with one snapshot.
+func TestReviewOfTwoModsOneSnapshot(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("aai-industry", "1.0.0")
 	g.portal.AddZip("aai-containers", "1.0.0", "fp-lib >= 1.0.0")
@@ -23,54 +22,24 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 	id := g.world20("Base", "Krastorio2Assets_1.0.0")
 	plan := "/worlds/" + id + "/mods/plan"
 
-	_, search := g.getStatus(modsPath(id) + "/search?q=aai")
-	wantIn(t, "search", search,
-		`href="`+plan+`?kind=install&amp;name=aai-industry&amp;q=aai" class="button" id="mod-aai-industry-add">Add to plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></a>`,
-		`href="https://mods.factorio.com/mod/aai-industry" class="portal-link" target="_blank" rel="noopener noreferrer"`)
-	if strings.Contains(search, "Install aai-industry") {
-		t.Error("a search result still installs at once")
-	}
-
-	code, one := g.getStatus(plan + "?kind=install&name=aai-industry&q=aai")
+	code, one := g.getStatus(plan + "?kind=install&name=aai-industry")
 	if code != http.StatusOK {
 		t.Fatalf("plan %d\n%s", code, one)
 	}
-	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", `<p class="plan-label" id="plan-changes" tabindex="-1">Changes:</p>`, "aai-industry 1.0.0", "Add another mod",
-		`<input type="hidden" name="q" value="aai">`, `id="add-search" name="q" type="search" value="aai"`,
-		// The mod in the plan and the installed one say so; the others can be added.
-		`<span class="badge" id="mod-aai-industry-add" tabindex="-1">In plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></span>`,
-		`hx-get="`+plan+`?added=aai-containers&amp;kind=install&amp;name=aai-industry&amp;name=aai-containers&amp;q=aai"`,
-		`hx-push-url="`+plan+`?kind=install&amp;name=aai-industry&amp;name=aai-containers&amp;q=aai"`,
+	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", `<p class="plan-label" id="plan-changes" tabindex="-1">Changes:</p>`, "aai-industry 1.0.0",
 		// A stopped world's install is the primary action (DESIGN 7.1).
 		`class="button button--primary" id="act-apply">Install 1 mod</button>`)
 	if strings.Contains(one, "Remove from plan") {
 		t.Error("the only mod in a plan offers to take it out; Cancel does that")
 	}
-	if strings.Index(one, `id="act-apply"`) > strings.Index(one, `id="add-heading"`) {
-		t.Error("Add another mod comes before the confirm button")
-	}
 
-	// A mod the world has already is not offered.
-	_, other := g.getStatus(plan + "?kind=install&name=aai-industry&q=Krastorio2")
-	wantIn(t, "installed", other, `<span class="badge">Installed</span>`, `id="mod-Krastorio2-add"`)
-
-	// A click on Add to plan redraws the plan in place and says what changed.
-	rec := g.harness.get(plan+"?added=aai-containers&kind=install&name=aai-industry&name=aai-containers&q=aai", withCookie(g.cookie), withHeader("HX-Request", "true"))
-	two := rec.Body.String()
-	wantIn(t, "redraw", plain(two), `<div hx-swap-oob="innerHTML:#announcer">Added aai-containers. The plan has 3 mods.</div>`,
-		`<h1 id="confirm-heading" hx-swap-oob="true">Install mods in Base?</h1>`, "fp-lib 1.0.0 (aai-containers needs it)", "<dt>Install</dt>",
-		`id="mod-aai-containers-add" tabindex="-1">In plan`, "Install 3 mods", "Remove from plan")
-	if strings.Contains(between(two, `id="mod-plan"`, `</main>`), "autofocus") {
-		t.Error("adding a mod moves focus")
-	}
-
-	// Taking one out again puts focus on the list it left.
-	rec = g.harness.get(plan+"?kind=install&name=aai-industry&q=aai&removed=aai-containers", withCookie(g.cookie), withHeader("HX-Request", "true"))
+	// A taken-out mod redraws the plan and puts focus on the list it left.
+	rec := g.harness.get(plan+"?kind=install&name=aai-industry&removed=aai-containers", withCookie(g.cookie), withHeader("HX-Request", "true"))
 	wantIn(t, "removed", rec.Body.String(), `Removed aai-containers. The plan has 1 mod.`, `<p class="plan-label" id="plan-changes" tabindex="-1" autofocus>Changes:</p>`)
 
 	// One confirm: both mods and the library, one snapshot.
-	_, both := g.getStatus(plan + "?kind=install&name=aai-industry&name=aai-containers&q=aai")
-	wantIn(t, "plan of two", both, `hx-params="none"`, `id="mod-aai-industry-remove"`, `id="mod-aai-containers-remove"`)
+	_, both := g.getStatus(plan + "?kind=install&name=aai-industry&name=aai-containers")
+	wantIn(t, "plan of two", both, `hx-params="none"`, `id="mod-aai-industry-remove"`, `id="mod-aai-containers-remove"`, "Install 3 mods")
 	g.wantRedirectHome(g.post(plan, planValues(t, both)))
 	if err := g.waitResult(id, game.AuditMods); err != nil {
 		t.Fatal(err)
@@ -85,17 +54,89 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 	}
 }
 
-// A plan the portal cannot work out offers nothing to add to.
-func TestAddSearchNotOfferedWithoutAPlan(t *testing.T) {
+// SPEC 9.2: adding happens only on the Mods tab, so the review page has no
+// search, and its Cancel and a conflict's way back lead to the tab.
+func TestReviewPageHasNoAddSearch(t *testing.T) {
 	g := newModsRig(t, true)
-	g.portal.FailAPI(http.StatusInternalServerError)
-	id := g.world20("Base")
-	code, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"aai-industry"}, "q": {"fp"}}))
-	if code != http.StatusBadGateway {
-		t.Fatalf("status %d", code)
+	g.portal.AddZip("fp-conf", "1.0.0", "! beta")
+	g.portal.AddZip("fp-main", "1.0.0", "? fp-conf")
+	g.portal.AddZip("aai-industry", "1.0.0")
+	id := g.world20("Base", "beta_1.0.0")
+	tab := `href="` + modsPath(id) + `"`
+
+	_, ok := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"aai-industry"}}))
+	for _, gone := range []string{"Add another mod", `id="add-search"`, `id="add-heading"`, `name="add"`, `role="search"`, `name="q"`, `class="mod-hits"`} {
+		if strings.Contains(ok, gone) {
+			t.Errorf("the review page still has %q", gone)
+		}
 	}
-	if strings.Contains(body, `id="add-heading"`) {
-		t.Error("a plan that could not be made offers to add to it")
+	wantIn(t, "cancel", plain(ok), tab+`>Cancel, change nothing</a>`)
+
+	code, conflict := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}, "optional": {"fp-conf"}}))
+	if code != http.StatusConflict {
+		t.Fatalf("conflict plan: status %d", code)
+	}
+	wantIn(t, "conflict", plain(conflict), `id="plan-conflicts"`, tab+`>Back to the mods</a>`)
+	if strings.Contains(conflict, "Back to search") {
+		t.Error("a conflict sends the admin back to a search page")
+	}
+}
+
+// SPEC 9.14: the saved picks are cleared when "Install N mods" is accepted,
+// and only then.
+func TestAcceptedInstallClearsSavedPicks(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("aai-industry", "1.0.0")
+	g.portal.AddZip("aai-containers", "1.0.0")
+	id := g.world20("Base")
+	other := g.world20("Other")
+	g.pick(id, "aai-industry", "aai-containers")
+	g.pick(other, "aai-industry")
+	plan := modsPath(id) + "/plan"
+
+	_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"aai-industry", "aai-containers"}}))
+	v := planValues(t, body)
+
+	// A plan that is no longer the one shown applies nothing and keeps the picks.
+	stale := url.Values{}
+	for k, vals := range v {
+		stale[k] = slices.Clone(vals)
+	}
+	stale.Set("hash", "not-the-plan")
+	if code := g.post(plan, stale).StatusCode; code != http.StatusConflict {
+		t.Fatalf("a changed plan: status %d, want 409", code)
+	}
+	if got := g.picks(id); len(got) != 2 {
+		t.Errorf("a refused install left picks %v, want both kept", got)
+	}
+
+	g.wantRedirectHome(g.post(plan, v))
+	if got := g.picks(id); len(got) != 0 {
+		t.Errorf("an accepted install left picks %v, want none", got)
+	}
+	if got := g.picks(other); len(got) != 1 {
+		t.Errorf("another world's picks are %v, want kept", got)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// SPEC 9.14: only an install plan has picks to clear; an update from the
+// Mods tab leaves them alone.
+func TestAcceptedUpdateKeepsSavedPicks(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("beta", "2.0.0")
+	id := g.world20("Base", "beta_1.0.0")
+	g.pick(id, "aai-industry")
+
+	_, body := g.getStatus(planPath(id, url.Values{"kind": {"update"}, "name": {"beta"}}))
+	g.wantRedirectHome(g.post(modsPath(id)+"/plan", planValues(t, body)))
+	if got := g.picks(id); len(got) != 1 {
+		t.Errorf("an accepted update left picks %v, want kept", got)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -186,8 +227,8 @@ func TestAccountLinksToTheProfilePage(t *testing.T) {
 func TestPlanAccountLinkReturnsToThePlan(t *testing.T) {
 	ah := newAccountHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
 	c := ah.signIn()
-	p := ModPlanPage{World: world.Summary{ID: "base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"a", "b"}, Query: "x"}}
-	back := planPath("base", url.Values{"kind": {"install"}, "name": {"a", "b"}, "q": {"x"}})
+	p := ModPlanPage{World: world.Summary{ID: "base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"a", "b"}}}
+	back := planPath("base", url.Values{"kind": {"install"}, "name": {"a", "b"}})
 	if got, want := p.AccountPath(), PathAccount+"?return="+url.QueryEscape(back); got != want {
 		t.Fatalf("account link %q, want %q", got, want)
 	}
@@ -196,56 +237,55 @@ func TestPlanAccountLinkReturnsToThePlan(t *testing.T) {
 	ah.wantRedirect(ah.post(PathAccount, form, withCookie(c)), back)
 }
 
-// A search from "Add another mod" reloads the page with focus on its
-// results, not on the conflict box above the plan; a plain load of the same
-// plan still puts focus on the conflict.
-func TestAddSearchKeepsFocusOnResults(t *testing.T) {
+// SPEC 9.14: an accepted install takes out of the saved picks only the mods
+// it installed; the other picks stay for a later install.
+func TestAcceptedInstallKeepsOtherSavedPicks(t *testing.T) {
 	g := newModsRig(t, true)
-	g.portal.AddZip("fp-conf", "1.0.0", "! beta")
-	g.portal.AddZip("fp-main", "1.0.0", "? fp-conf")
-	id := g.world20("Base", "beta_1.0.0")
-	q := url.Values{"kind": {"install"}, "name": {"fp-main"}, "optional": {"fp-conf"}, "q": {"fp"}}
-	_, plainLoad := g.getStatus(planPath(id, q))
-	wantIn(t, "plain load", plainLoad, `id="plan-conflicts" tabindex="-1" autofocus`, `<input type="hidden" name="add" value="1">`)
-	if strings.Contains(plainLoad, `id="add-heading" tabindex="-1" autofocus`) {
-		t.Error("a plain load puts focus on the search")
+	for _, n := range []string{"mod-a", "mod-b", "mod-c"} {
+		g.portal.AddZip(n, "1.0.0")
 	}
-	q.Set("add", "1")
-	_, searched := g.getStatus(planPath(id, q))
-	wantIn(t, "search", searched, `id="add-heading" tabindex="-1" autofocus`)
-	if n := strings.Count(between(searched, `id="mod-plan"`, `</main>`), "autofocus"); n != 1 {
-		t.Errorf("a search page has %d autofocus, want 1", n)
+	id := g.world20("Base")
+	g.pick(id, "mod-a", "mod-b")
+	plan := modsPath(id) + "/plan"
+
+	// Installing a mod that was never picked leaves both picks.
+	_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"mod-c"}}))
+	g.wantRedirectHome(g.post(plan, planValues(t, body)))
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
 	}
-	// The marker is the search form's and its page links' alone; the add and remove links do not carry it.
-	if regexp.MustCompile(`(href|hx-get|hx-push-url)="[^"]*add=1`).MatchString(searched) {
-		t.Error("a link carries the search marker")
+	if got := g.picks(id); len(got) != 2 {
+		t.Errorf("installing another mod left picks %v, want both kept", got)
 	}
-	// A redraw sends the whole page's fields, the marker too, and still
-	// leaves focus where it is.
-	rec := g.harness.get(planPath(id, q), withCookie(g.cookie), withHeader("HX-Request", "true"))
-	if strings.Contains(between(rec.Body.String(), `id="mod-plan"`, `</main>`), "autofocus") {
-		t.Error("a redraw with the search marker moves focus")
+
+	// Installing one pick takes out that one only.
+	_, body = g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"mod-a"}}))
+	g.wantRedirectHome(g.post(plan, planValues(t, body)))
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.picks(id); len(got) != 1 || got[0] != "mod-b" {
+		t.Errorf("picks %v, want only mod-b", got)
 	}
 }
 
-// Only the plan page searches the portal for "Add another mod"; applying
-// the plan, which carries the search along, does not search again.
-func TestPlanApplyDoesNotSearch(t *testing.T) {
+// SPEC 5.12: the review page after Generate from a favorite says the world
+// was made and takes focus; an ordinary review page has no such note.
+func TestReviewAfterGenerateSaysTheWorldWasMade(t *testing.T) {
 	g := newModsRig(t, true)
-	g.portal.AddZip("alpha", "1.0.0")
-	id := g.world20("Base")
-	before := g.portal.ListCalls()
-	_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, "q": {"alp"}}))
-	if g.portal.ListCalls() == before {
-		t.Fatal("the plan page did not search")
+	g.portal.AddZip("aai-industry", "1.0.0")
+	id := g.world20("Club world")
+
+	q := url.Values{"kind": {"install"}, "name": {"aai-industry"}}
+	_, plain0 := g.getStatus(planPath(id, q))
+	if strings.Contains(plain0, `id="plan-generated"`) {
+		t.Error("an ordinary review page has the generated note")
 	}
-	v := planValues(t, body)
-	if v.Get("q") != "alp" {
-		t.Fatalf("the plan form does not carry the search: %v", v)
-	}
-	before = g.portal.ListCalls()
-	g.wantRedirectHome(g.post(modsPath(id)+"/plan", v))
-	if n := g.portal.ListCalls() - before; n != 0 {
-		t.Errorf("applying the plan searched the portal %d times", n)
+	q.Set(generatedQuery, "1")
+	_, body := g.getStatus(planPath(id, q))
+	wantIn(t, "note", body, `id="plan-generated" tabindex="-1" autofocus`)
+	wantIn(t, "note text", plain(body), "Generated Club world from the favorite.")
+	if strings.Index(body, `id="plan-generated"`) > strings.Index(body, `id="mod-plan"`) {
+		t.Error("the note is not above the plan")
 	}
 }

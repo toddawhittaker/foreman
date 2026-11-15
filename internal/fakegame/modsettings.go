@@ -34,12 +34,16 @@ type modSettingDef struct {
 	Hidden        bool   `json:"hidden"`
 	AllowBlank    bool   `json:"allow_blank"`
 	AutoTrim      bool   `json:"auto_trim"`
+	// LocalisedName and LocalisedDescription are localised strings, as
+	// the game writes them.
+	LocalisedName        any `json:"localised_name,omitempty"`
+	LocalisedDescription any `json:"localised_description,omitempty"`
 }
 
 // cannedModSettingDefs is what the test mod fmtest declares: for each of the
 // three setting types a bool, an int, a double, a string with allowed values
-// and a color, a hidden startup bool and a startup int with one allowed
-// value. One more setting is of a type Foreman does not know, for the
+// and a color (the global bool named by its own localised strings), a
+// hidden startup bool and a startup int with one allowed value. One more setting is of a type Foreman does not know, for the
 // page's "cannot be edited here" case; the game never writes it to
 // mod-settings.dat. Every other default equals the value in the embedded
 // defaults file.
@@ -53,6 +57,12 @@ func cannedModSettingDefs() []modSettingDef {
 		}
 		b := def("bool", "bool-setting", "a")
 		b.DefaultValue = true
+		if st.typ == "runtime-global" {
+			// Named the Squeak Through way: its text is in the mod's own
+			// sections, with a parameter.
+			b.LocalisedName = []any{"fm-setting-name.disable-setting", []any{"fm-setting-name.chests"}}
+			b.LocalisedDescription = []any{"fm-setting-description.chests"}
+		}
 		i := def("int", "int-setting", "b")
 		i.DefaultValue, i.MinimumValue, i.MaximumValue = 5, 1, 10
 		if st.typ == "startup" {

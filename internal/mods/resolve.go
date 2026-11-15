@@ -51,6 +51,7 @@ type resolver struct {
 	cache     map[string]*modportal.Mod
 	conflicts []Conflict
 	queue     []string
+	orphans   []Offer
 }
 
 // Resolve turns a request into a plan, greedily and without backtracking
@@ -130,6 +131,7 @@ func resolveOnce(ctx context.Context, w World, req Request, lookup Lookup, cache
 	if err := r.walk(); err != nil {
 		return nil, nil, err
 	}
+	r.offerOrphans(req.Kept)
 	r.check()
 	return r, unresolved, nil
 }
@@ -701,7 +703,7 @@ func (r *resolver) activeNeeds(name string) []Need {
 
 // plan writes the final round; left names the recommended mods left out.
 func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
-	var p Plan
+	p := Plan{Orphans: r.orphans}
 	names := make([]string, 0, len(r.targets))
 	for n := range r.targets {
 		names = append(names, n)
@@ -749,6 +751,21 @@ func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
 					p.Optional = append(p.Optional, o)
 				}
 			}
+		}
+	}
+	for _, n := range names {
+		t := r.targets[n]
+		if !t.enabled || t.builtin {
+			continue
+		}
+		for _, d := range t.deps {
+			if !d.required() {
+				continue
+			}
+			if p.Requires == nil {
+				p.Requires = map[string][]string{}
+			}
+			p.Requires[n] = append(p.Requires[n], d.Name)
 		}
 	}
 	p.Conflicts = dedupe(r.conflicts)

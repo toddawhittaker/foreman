@@ -6,7 +6,6 @@
   "mods.search.heading": "Trouver un mod",
   "mods.search.label": "Nom du mod",
   "mods.search.hint": "Cherche sur le portail de mods les mods conçus pour Factorio {line}, la version du jeu de ce monde.",
-  "mods.search.short": "Saisissez au moins 2 caractères pour lancer la recherche. Les mods cochés sont conservés.",
   "mods.search.paste_hint": "Vous pouvez aussi coller le lien d'un mod depuis le portail.",
   "mods.search.browse": "Parcourir le portail de mods",
   "mods.search.button": "Rechercher",
@@ -22,25 +21,13 @@
   "mods.search.none": "Aucun mod pour Factorio {line} ne correspond. Essayez une partie plus courte du nom.",
   "mods.search.link_unknown": "Aucun mod nommé {name} n’est sur le portail de mods. Vérifiez l’orthographe.",
   "mods.search.link_no_release": "{name} n’a aucune version pour Factorio {line}. Essayez un autre mod.",
-  "mods.search.add": "Ajouter au plan",
   "mods.hits.count": {
     "one": "{count} mod pour Factorio {line} correspond.",
     "other": "{count} mods pour Factorio {line} correspondent."
   },
   "mods.hits.showing": "Affichage de {first} à {last}.",
-  "mods.hits.summary": "Détails",
-  "mods.hits.latest_label": "Dernière version :",
-  "mods.hits.downloads_label": "Téléchargements :",
-  "mods.hits.pages": "Pages de résultats",
-  "mods.hits.page": "Page {page} sur {pages}",
   "mods.hits.prev": "Page précédente",
   "mods.hits.next": "Page suivante",
-  "mods.search.pick_hint": "Cochez plusieurs mods pour les ajouter à un seul plan, ou utilisez le bouton « Ajouter au plan » d’un mod.",
-  "mods.search.add_ticked": "Ajouter les mods cochés au plan",
-  "mods.search.pick_none": "Rien n’est coché. Cochez les mods à ajouter, ou utilisez le bouton « Ajouter au plan » d’un mod.",
-  "mods.search.pick_too_many": "Trop de mods sont cochés pour un seul plan. La limite est de {limit}. Décochez-en quelques-uns, puis ajoutez-les.",
-  "mods.search.ticked_elsewhere": "Également cochés dans d’autres recherches ou sur d’autres pages",
-  "mods.fact.latest": "Dernière version",
   "mods.fact.downloads": "Téléchargements",
   "mods.badge.installed": "Installé",
   "mods.badge.in_plan": "Dans le plan",
@@ -248,8 +235,6 @@
   "mods.plan.warn_stop": "Avertir les joueurs, puis sauvegarder et arrêter le serveur.",
   "mods.plan.snapshot": "Prendre un instantané de {world}, nommé « {label} ». Si l’instantané échoue, rien d’autre ne se passe.",
   "mods.plan.asked.remove": "Retirer du plan",
-  "mods.plan.add.heading": "Ajouter un autre mod",
-  "mods.plan.add.back": "Retour au plan",
   "mods.plan.start": "Démarrer à nouveau le serveur.",
   "mods.plan.undo": "Une fois terminé, le résultat propose une annulation en un clic, qui restaure cet instantané.",
   "mods.plan.group.install": "Installer",
@@ -296,6 +281,10 @@
   "mods.optional.legend": "Mods facultatifs",
   "mods.optional.hint": "Un mod du plan peut les utiliser, mais n’en a pas besoin. Cochez-en un pour l’ajouter, avec tout ce dont il a besoin.",
   "mods.optional.item": "{mod}, proposé par {of}",
+  "mods.orphans.legend": "Mods devenus inutiles",
+  "mods.orphans.hint": "Seuls les mods retirés en ont besoin. Ils sont retirés aussi, sauf si vous les décochez.",
+  "mods.orphans.item": "{mod}, utile seulement à {of}",
+  "mods.plan.why.only_needed_by": "seul {mod} en avait besoin",
   "mods.recommended.item": "{mod}, recommandé par {of}",
   "mods.recommended.hint": "Les mods recommandés sont déjà cochés. Décochez-en un pour ne pas l’ajouter.",
   "mods.recommended.unavailable": "{mod}, recommandé par {of}, est laissé de côté : le portail des mods n’a aucune version qui convient.",
@@ -354,10 +343,6 @@
     "one": "Plan mis à jour : {count} mod change.",
     "other": "Plan mis à jour : {count} mods changent."
   },
-  "mods.plan.added": {
-    "one": "{mod} ajouté. Le plan compte {count} mod.",
-    "other": "{mod} ajouté. Le plan compte {count} mods."
-  },
   "mods.plan.removed": {
     "one": "{mod} retiré. Le plan compte {count} mod.",
     "other": "{mod} retiré. Le plan compte {count} mods."
@@ -393,7 +378,6 @@
   "mods.plan.step.fails": "Si une étape échoue, les étapes suivantes n’ont pas lieu.",
   "mods.plan.fix.remove": "Retirer {mod} dans ce même plan",
   "mods.plan.fix.disable": "Désactiver aussi {mod}",
-  "mods.plan.back_search": "Retour à la recherche",
   "mods.plan.fixed": {
     "one": "Plan mis à jour. Il modifie {count} mod.",
     "other": "Plan mis à jour. Il modifie {count} mods."
@@ -408,5 +392,56 @@
   },
   "mods.drops.confirm_missing_one": "Cochez la case pour confirmer que le jeu supprime ce que {mod} a construit, ou annulez.",
   "mods.tools.label": "Outils des mods",
-  "mods.row.more_word": "Plus"
+  "mods.row.more_word": "Plus",
+  "mods.search.start": "Saisissez au moins 2 caractères du nom d’un mod dans « Trouver un mod ». Les mods correspondants s’affichent ici.",
+  "mods.search.results_heading_empty": "Mods correspondants",
+  "mods.hit.latest": "Dernière",
+  "mods.hit.updated": "Mis à jour",
+  "mods.hit.add": "Ajouter {mod} au plan",
+  "mods.hit.adding": "Ajout…",
+  "mods.hits.pages_top": "Pages de résultats, au-dessus de la liste",
+  "mods.hits.pages_bottom": "Pages de résultats, sous la liste",
+  "mods.hits.page_label": "Page",
+  "mods.hits.of_pages": "sur {pages}",
+  "mods.hits.go": "Aller",
+  "mods.hits.go_name": "Aller à la page",
+  "mods.plan_panel.heading": "Plan",
+  "mods.plan_panel.empty": "Aucun mod dans le plan pour l’instant. Choisissez + à côté d’un mod pour l’ajouter, puis cherchez le suivant.",
+  "mods.plan_panel.summary": {
+    "one": "{count} mod dans le plan",
+    "other": "{count} mods dans le plan"
+  },
+  "mods.plan_panel.started": "Commencé {when}.",
+  "mods.plan_panel.review_hint": "La vérification montre chaque changement avant toute installation.",
+  "mods.plan_panel.needed_by": "Requis par {mod}",
+  "mods.plan_panel.update": "Sera mis à jour vers {version}",
+  "mods.plan_panel.change": "Passera à {version}",
+  "mods.plan_panel.enable": "Sera activé",
+  "mods.plan_panel.installed": "Déjà installé",
+  "mods.plan_panel.remove": "Retirer {mod} du plan",
+  "mods.plan_panel.review": {
+    "one": "Vérifier et installer {count} mod",
+    "other": "Vérifier et installer {count} mods"
+  },
+  "mods.plan_panel.review_plain": "Vérifier le plan",
+  "mods.plan_panel.clear": "Vider le plan",
+  "mods.plan_panel.unreachable": "Foreman n’a pas pu joindre le portail de mods et ne peut donc pas vérifier maintenant ce dont ces mods ont besoin. La vérification fonctionnera de nouveau dès que le portail sera joignable.",
+  "mods.plan_panel.full": "Le plan contient déjà {limit} mods, le maximum pour un plan. Vérifiez et installez-les, ou retirez-en, puis ajoutez-en d’autres.",
+  "mods.plan_panel.added": {
+    "one": "{mod} ajouté au plan. Le plan compte {count} mod.",
+    "other": "{mod} ajouté au plan. Le plan compte {count} mods."
+  },
+  "mods.plan_panel.removed": {
+    "one": "{mod} retiré du plan. Le plan compte {count} mod.",
+    "other": "{mod} retiré du plan. Le plan compte {count} mods."
+  },
+  "mods.plan_panel.cleared": "Le plan est vide.",
+  "mods.plan_panel.warn.not_on_portal": "Absent du portail de mods",
+  "mods.plan_panel.warn.no_release": "Aucune version ne convient à Factorio {line}",
+  "mods.plan_panel.warn.incompatible": "Ne peut pas fonctionner avec {mod}",
+  "mods.plan_panel.warn.version": "La version {version} ne convient pas à ce dont les autres mods ont besoin",
+  "mods.plan_panel.warn.space_age": "Requiert l'Ère spatiale, désactivée dans ce monde",
+  "mods.plan_panel.warn.other": "Impossible à planifier ; la vérification en donne la raison",
+  "mods.plan_panel.bad_name": "Ce n’est pas un nom de mod que Foreman peut ajouter. Cherchez le mod, puis choisissez + à côté.",
+  "mods.plan_panel.wait": "La vérification sera possible dès que le plan sera à jour."
 }

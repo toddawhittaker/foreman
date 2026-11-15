@@ -347,3 +347,24 @@ func TestParseDefinitionsIntBoundsPastInt64MeanNoLimit(t *testing.T) {
 		t.Errorf("double takes a big value: %v %v", v, e)
 	}
 }
+
+// SPEC 9.6: each setting's localised name and description come through as
+// the game wrote them, absent when it wrote none.
+func TestParseDefinitionsLocalised(t *testing.T) {
+	defs, err := ParseDefinitions([]byte(`{"settings": [
+  {"name": "a", "mod": "m", "setting_type": "startup", "type": "bool-setting", "default_value": true,
+   "localised_name": ["s.k", ["s.p"]], "localised_description": "plain"},
+  {"name": "b", "mod": "m", "setting_type": "startup", "type": "bool-setting", "default_value": true}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(defs[0].LocalisedName); got != `["s.k", ["s.p"]]` {
+		t.Errorf("name %s", got)
+	}
+	if got := string(defs[0].LocalisedDescription); got != `"plain"` {
+		t.Errorf("description %s", got)
+	}
+	if defs[1].LocalisedName != nil || defs[1].LocalisedDescription != nil {
+		t.Errorf("absent: %s %s", defs[1].LocalisedName, defs[1].LocalisedDescription)
+	}
+}

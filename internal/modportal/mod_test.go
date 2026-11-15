@@ -39,6 +39,7 @@ func TestModRecorded(t *testing.T) {
 		SHA1:            "a519a4075e252eae84059e07edb20313bd34b3fa",
 		FactorioVersion: "2.1",
 		Dependencies:    []string{"base >= 2.1", "space-age >= 2.1", "?PlanetsLib >= 1.19.0"},
+		ReleasedAt:      time.Date(2026, 6, 27, 10, 48, 29, 565000000, time.UTC),
 	}
 	if fmt.Sprint(last) != fmt.Sprint(want) {
 		t.Errorf("last release\n got %+v\nwant %+v", last, want)
@@ -269,6 +270,24 @@ func TestParseModSortsReleases(t *testing.T) {
 	}
 	if strings.Join(got, ",") != "0.9.0,1.0.2,1.0.10" {
 		t.Errorf("got %v", got)
+	}
+}
+
+func TestParseModReleasedAt(t *testing.T) {
+	m, err := parseMod([]byte(`{"name":"m","releases":[
+		{"version":"1.0.0","file_name":"m_1.0.0.zip","released_at":"2024-05-06T07:08:09.123000Z"},
+		{"version":"1.1.0","file_name":"m_1.1.0.zip"},
+		{"version":"1.2.0","file_name":"m_1.2.0.zip","released_at":"yesterday"}]}`))
+	if err != nil || len(m.Releases) != 3 {
+		t.Fatalf("mod %+v, err %v", m, err)
+	}
+	if want := time.Date(2024, 5, 6, 7, 8, 9, 123000000, time.UTC); !m.Releases[0].ReleasedAt.Equal(want) {
+		t.Errorf("ReleasedAt %v, want %v", m.Releases[0].ReleasedAt, want)
+	}
+	for _, r := range m.Releases[1:] {
+		if !r.ReleasedAt.IsZero() {
+			t.Errorf("%s: ReleasedAt %v, want zero", r.Version, r.ReleasedAt)
+		}
 	}
 }
 

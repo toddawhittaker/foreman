@@ -9,16 +9,22 @@
 {{- if .Redraw}}
 <div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
 {{- end}}
+{{- if .Generated}}
+{{- /* Outside #mod-plan so a redraw keeps it; first in the page, so it wins the autofocus below it (SPEC 5.12). */}}
+<div class="message message--success" id="plan-generated" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.review.generated" "name" .World.Name}}</p>
+</div>
+{{- end}}
 {{- /* Ticking an optional mod or choosing for an unresolved one redraws this block with the new plan (SPEC 9.14). */}}
 <div id="mod-plan" class="mod-plan">
 {{template "summary" .Problems}}
 {{- if .Changed}}
-<div class="message message--warning" id="plan-changed" tabindex="-1"{{if not (or .Problems .Redraw .Form.Searched)}} autofocus{{end}}>
+<div class="message message--warning" id="plan-changed" tabindex="-1"{{if not (or .Problems .Redraw)}} autofocus{{end}}>
   <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.plan.changed" "world" .World.Name}}</p>
 </div>
 {{- end}}
 {{- if not .Error.IsZero}}
-<div class="message message--error" id="plan-error" tabindex="-1"{{if not (or .Changed .Problems .Redraw .Form.Searched)}} autofocus{{end}}>
+<div class="message message--error" id="plan-error" tabindex="-1"{{if not (or .Changed .Problems .Redraw)}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
   <div class="actions">
     {{- with .Retry}}<a href="{{.}}" class="button">{{t "mods.plan.retry"}}</a>{{end}}
@@ -28,7 +34,7 @@
 {{- else}}
 {{- with .Conflicts}}
 {{- /* After a fix's redraw focus comes here, as the link clicked is gone (SPEC 17.9). */}}
-<div class="message message--error" id="plan-conflicts" tabindex="-1"{{if or (not (or $.Page.Changed $.Page.Problems $.Page.Redraw $.Page.Form.Searched)) (and $.Page.Redraw $.Page.Form.Fixed)}} autofocus{{end}}>
+<div class="message message--error" id="plan-conflicts" tabindex="-1"{{if or (not (or $.Page.Changed $.Page.Problems $.Page.Redraw)) (and $.Page.Redraw $.Page.Form.Fixed)}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{t "mods.plan.conflicts" "count" (len .)}}</p>
   <ul class="plan-conflicts">
     {{- range .}}
@@ -41,8 +47,8 @@
     </li>
     {{- end}}
   </ul>
-  {{- if $.Page.Adding}}
-  <div class="actions"><a href="{{$.Page.SearchPath}}">{{t "mods.plan.back_search"}}</a></div>
+  {{- if $.Page.FromPicks}}
+  <div class="actions"><a href="{{$.Page.ModsPath}}">{{t "mods.plan.back"}}</a></div>
   {{- end}}
 </div>
 {{- end}}
@@ -64,7 +70,6 @@
 <section class="confirm{{if not .Danger}} confirm--plain{{end}}">
   {{- /* A choice's control asks for the plan again (hx-get); the form gives it what to send and where the new plan goes. */}}
   <form method="post" action="{{.Path}}" novalidate hx-include="closest form" hx-sync="this:replace" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">
-    <input type="hidden" name="add" value="1">
     <input type="hidden" name="kind" value="{{.Form.Kind}}">
     {{- range .Form.Names}}
     <input type="hidden" name="name" value="{{.}}">
@@ -78,12 +83,6 @@
     {{- end}}
     <input type="hidden" name="hash" value="{{.Hash}}">
     <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
-    {{- with .Form.Query}}
-    <input type="hidden" name="q" value="{{.}}">
-    {{- if gt $.Page.Form.Page 1}}
-    <input type="hidden" name="page" value="{{$.Page.Form.Page}}">
-    {{- end}}
-    {{- end}}
     {{- if .AsksRequired}}
     {{template "required-note"}}
     {{- end}}
@@ -155,6 +154,17 @@
       <input type="hidden" name="offered" value="{{.Name}}">
       {{- end}}
       <label class="check"><input type="checkbox" name="optional" value="{{.Name}}" id="{{$.Page.ModID .Name "optional"}}" hx-get="{{$.Page.Path}}"{{if .Chosen}} checked{{end}}> <span>{{if .Recommended}}{{tHTML "mods.recommended.item" "mod" (ident .Name) "of" (ident .Of)}}{{else}}{{tHTML "mods.optional.item" "mod" (ident .Name) "of" (ident .Of)}}{{end}}</span></label>
+      {{- end}}
+    </fieldset>
+    {{- end}}
+    {{- with .Plan.Orphans}}
+    {{- /* Each box also sends its name as offered, so an unticked one reads as kept (SPEC 9.4). */}}
+    <fieldset id="plan-orphans">
+      <legend>{{t "mods.orphans.legend"}}</legend>
+      <p class="hint">{{t "mods.orphans.hint"}}</p>
+      {{- range .}}
+      <input type="hidden" name="orphan-offered" value="{{.Name}}">
+      <label class="check"><input type="checkbox" name="orphan" value="{{.Name}}" id="{{$.Page.ModID .Name "orphan"}}" hx-get="{{$.Page.Path}}"{{if .Chosen}} checked{{end}}> <span>{{tHTML "mods.orphans.item" "mod" (ident .Name) "of" (ident .Of)}}</span></label>
       {{- end}}
     </fieldset>
     {{- end}}
@@ -238,52 +248,6 @@
   {{- if eq ($.Page.Choice .Name) "upload"}}
   <form method="post" action="{{$.Page.UploadAction .Name}}" enctype="multipart/form-data" id="{{$.Page.ModID .Name "zip"}}-form" novalidate hidden></form>
   {{- end}}
-  {{- end}}
-  {{- end}}
-</section>
-{{- end}}
-{{- if .Adding}}
-{{- /* More mods join the same plan, so they share one snapshot and one restart. It comes after the confirm button, which stays the page's next step (SPEC 9.1, 9.2). */}}
-<section class="panel" aria-labelledby="add-heading">
-  <h2 id="add-heading" tabindex="-1"{{if and .Form.Searched (not .Redraw)}} autofocus{{end}}>{{t "mods.plan.add.heading"}}</h2>
-  <form method="get" action="{{.Path}}#add-heading" role="search">
-    <input type="hidden" name="kind" value="{{.Form.Kind}}">
-    {{- range .Form.Names}}
-    <input type="hidden" name="name" value="{{.}}">
-    {{- end}}
-    {{- range .Form.Optional}}
-    <input type="hidden" name="optional" value="{{.}}">
-    {{- end}}
-    {{- range .Form.Declined}}
-    <input type="hidden" name="declined" value="{{.}}">
-    {{- end}}
-    {{- range $name, $v := .Form.Versions}}
-    <input type="hidden" name="version-{{$name}}" value="{{$v}}">
-    {{- end}}
-    {{- template "plan-also" .Form}}
-    <div class="field">
-      <label for="add-search">{{t "mods.search.label"}}</label>
-      <p class="hint" id="add-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
-      <div class="inline-row">
-        <input id="add-search" name="q" type="search" value="{{.Form.Query}}" autocomplete="off" spellcheck="false" maxlength="300" aria-describedby="add-search-hint">
-        <button type="submit" class="button">{{t "mods.search.button"}}</button>
-      </div>
-    </div>
-  </form>
-  {{- if .AddUnreachable}}
-  <div class="message message--error">
-    <p><strong>{{t "common.error.label"}}</strong> {{t "mods.search.unreachable"}}</p>
-  </div>
-  {{- else if .Form.Query}}
-  {{- if .Results.Rows}}
-  {{template "mod-hits" .}}
-  {{template "mod-pager" .}}
-  {{- /* The plan and its Install button are above; this takes the admin back without scrolling past every result. */}}
-  <div class="actions"><a href="#confirm-heading">{{t "mods.plan.add.back"}}</a></div>
-  {{- else if not .AddMiss.IsZero}}
-  <p class="empty">{{msg .AddMiss}}</p>
-  {{- else}}
-  <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
   {{- end}}
   {{- end}}
 </section>

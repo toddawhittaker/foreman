@@ -109,10 +109,15 @@ func TestLoadReasonOutOfMemoryWords(t *testing.T) {
 }
 
 // startUntilKilled starts a world and kills its game while it loads, as
-// the kernel's out-of-memory killer would when oom is set.
-func startUntilKilled(t *testing.T, oom bool) error {
+// the kernel's out-of-memory killer would when oom is set. A poll other
+// than zero replaces the rig's quick one.
+func startUntilKilled(t *testing.T, oom bool, poll time.Duration) error {
 	t.Helper()
-	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 30 * time.Second}})
+	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 30 * time.Second}, noRun: true})
+	if poll != 0 {
+		r.c.pollInterval = poll
+	}
+	r.run(r.c)
 	id := r.newWorld("Killed")
 	done := make(chan error, 1)
 	go func() { done <- r.c.Start(context.Background(), id, admin, StartOptions{}) }()
@@ -147,12 +152,23 @@ func startUntilKilled(t *testing.T, oom bool) error {
 // SPEC 8.7: out of memory is named from Docker's flag, never from the log.
 func TestStartNamesOutOfMemoryFromDockersFlag(t *testing.T) {
 	var se *StartError
-	if err := startUntilKilled(t, true); !errors.As(err, &se) || se.Reason.Kind != crashreasons.OutOfMemory {
+	if err := startUntilKilled(t, true, 0); !errors.As(err, &se) || se.Reason.Kind != crashreasons.OutOfMemory {
 		t.Fatalf("got %v (%+v), want out of memory", err, se)
 	}
 	se = nil
-	if err := startUntilKilled(t, false); !errors.As(err, &se) || se.Reason.Kind != "" {
+	if err := startUntilKilled(t, false, 0); !errors.As(err, &se) || se.Reason.Kind != "" {
 		t.Fatalf("got %v (%+v), want an unknown reason", err, se)
+	}
+}
+
+// SPEC 8.7: Docker restarts a killed game within a fraction of a second
+// and clears its flag then, long before the start's next look at the
+// container in production (every 5 s), yet the start still names out of
+// memory.
+func TestStartNamesOutOfMemoryAfterDockerRestarted(t *testing.T) {
+	var se *StartError
+	if err := startUntilKilled(t, true, time.Second); !errors.As(err, &se) || se.Reason.Kind != crashreasons.OutOfMemory {
+		t.Fatalf("got %v (%+v), want out of memory", err, se)
 	}
 }
 

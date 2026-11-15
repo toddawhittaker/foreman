@@ -50,3 +50,4 @@ record has four parts:
 | [0018](0018-webhook-storage-and-body.md) | Webhook addresses are sealed like the factorio.com account, the generic body is versioned from the start, and every target has its own queue so a hung one delays only itself; `http://` is allowed with a warning. |
 | [0019](0019-the-scheduler.md) | The restart scheduler is a leaf package that waits for an empty server, then runs a 60-second countdown that always runs and never starts a stopped game; a missed restart is not made up. |
 | [0020](0020-language-flags.md) | Each language shows one country's flag in the user menu (the United Kingdom for English, Spain for Spanish), as bundled flag-icons SVG files rather than emoji, decorative with the language's own name as the label. |
+| [0021](0021-mod-plan-picks-in-the-database.md) | The mods picked on the Mods tab are saved as names in the app database, not the world folder, so no snapshot is needed and no snapshot, clone or restore carries a plan. |

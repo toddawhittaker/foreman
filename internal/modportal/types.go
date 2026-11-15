@@ -2,7 +2,10 @@
 // 14.10).
 package modportal
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 // Release is one release of a mod on the portal.
 type Release struct {
@@ -10,8 +13,9 @@ type Release struct {
 	FileName        string // always <name>_<version>.zip
 	DownloadURL     string // path on the portal, starting with /download/
 	SHA1            string
-	FactorioVersion string   // the game line, such as "2.0"
-	Dependencies    []string // raw dependency strings from info.json
+	FactorioVersion string    // the game line, such as "2.0"
+	Dependencies    []string  // raw dependency strings from info.json
+	ReleasedAt      time.Time // zero when the portal gave no usable date
 }
 
 // Mod is a mod with all its releases.
@@ -32,6 +36,7 @@ type Hit struct {
 	LatestVersion   string
 	FactorioVersion string
 	Downloads       int
+	ReleasedAt      time.Time // of the latest version; zero when unknown
 }
 
 // Errors the client returns.
