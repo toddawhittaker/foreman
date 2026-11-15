@@ -862,7 +862,7 @@ func TestSidecarRangesRefuseHeaderSignIn(t *testing.T) {
 		if seed {
 			fake.Daemon().Seed(dockertest.Container{Name: "tailscale", Status: "running",
 				Networks: map[string]string{"games": "172.30.0.5/24", "shared": "10.0.1.7/24"},
-				Spec:     docker.ContainerSpec{Env: []string{"TS_AUTHKEY=tskey-never-shown"}}})
+				Spec:     docker.ContainerSpec{Env: []string{"TS_AUTHKEY=test-only-sidecar-secret"}}})
 		}
 		env := map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_REQUIRED_GROUP": testGroup}
 		for k, v := range headerEnv {

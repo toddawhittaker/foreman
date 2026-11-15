@@ -36,7 +36,7 @@ func inspectServer(t *testing.T, body string) *Client {
 // its environment.
 const sidecarInspect = `{
  "Id":"c0ffee","Name":"/tailscale",
- "Config":{"Image":"tailscale/tailscale:v1.80.0","Env":["TS_AUTHKEY=tskey-secret-value","TS_USERSPACE=false","PATH=/usr/bin"]},
+ "Config":{"Image":"tailscale/tailscale:v1.80.0","Env":["TS_AUTHKEY=test-only-sidecar-secret","TS_USERSPACE=false","PATH=/usr/bin"]},
  "HostConfig":{"NetworkMode":"foreman-games"},
  "NetworkSettings":{
   "Networks":{
@@ -115,9 +115,9 @@ func TestEnvValue(t *testing.T) {
 // VPN key, into the error.
 func TestInspectErrorsDoNotQuoteTheEnvironment(t *testing.T) {
 	bodies := map[string]string{
-		"env is not a list": `{"Id":"c","Config":{"Env":"TS_AUTHKEY=tskey-secret-value"}}`,
-		"truncated":         `{"Id":"c","Config":{"Env":["TS_AUTHKEY=tskey-secret-value"`,
-		"ports mistyped":    `{"Id":"c","Config":{"Env":["TS_AUTHKEY=tskey-secret-value"]},"NetworkSettings":{"Ports":"TS_AUTHKEY=tskey-secret-value"}}`,
+		"env is not a list": `{"Id":"c","Config":{"Env":"TS_AUTHKEY=test-only-sidecar-secret"}}`,
+		"truncated":         `{"Id":"c","Config":{"Env":["TS_AUTHKEY=test-only-sidecar-secret"`,
+		"ports mistyped":    `{"Id":"c","Config":{"Env":["TS_AUTHKEY=test-only-sidecar-secret"]},"NetworkSettings":{"Ports":"TS_AUTHKEY=test-only-sidecar-secret"}}`,
 	}
 	for name, body := range bodies {
 		_, err := inspectServer(t, body).InspectContainer(context.Background(), "sidecar")
@@ -125,7 +125,7 @@ func TestInspectErrorsDoNotQuoteTheEnvironment(t *testing.T) {
 			t.Errorf("%s: want an error", name)
 			continue
 		}
-		if strings.Contains(err.Error(), "tskey-secret-value") || strings.Contains(err.Error(), "TS_AUTHKEY") {
+		if strings.Contains(err.Error(), "test-only-sidecar-secret") || strings.Contains(err.Error(), "TS_AUTHKEY") {
 			t.Errorf("%s: the error quotes the environment: %v", name, err)
 		}
 	}
