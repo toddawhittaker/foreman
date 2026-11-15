@@ -31,7 +31,7 @@
   "js.preview.prepare_without": "下载时不含 {planet}",
   "js.preview.prepare_canceled": "下载已取消。",
   "js.preview.prepare_busy": "正在准备另一个下载。请等待其完成，或先将其取消。",
-  "js.preview.prepare_planets_wait": "下载准备期间或取消之前，无法切换星球。",
+  "js.preview.prepare_planets_wait": "下载准备期间无法切换星球。请先取消下载。",
   "js.preview.prepare_retry": "重试：{planet}",
   "js.preview.prepare_started": "下载已开始。",
   "js.preview.prepare_redrawing": "正在按新设置绘制地图预览。就绪后再下载。"

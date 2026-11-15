@@ -366,7 +366,7 @@ test("in the large view the preparation lies over the stage without moving it, a
   // The arrow keys wait while it is prepared, so a stray key does not end it.
   await page.keyboard.press("ArrowRight");
   // The first press says why, once; later ones stay quiet.
-  await expect(page.locator("#large-status")).toHaveText("Planets wait while the download is prepared, or until it is canceled.");
+  await expect(page.locator("#large-status")).toHaveText("Planets wait while the download is prepared. Cancel it first.");
   await page.locator("#large-status").evaluate((s) => { s.textContent = ""; });
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator("#large-title")).toHaveText("Nauvis");
