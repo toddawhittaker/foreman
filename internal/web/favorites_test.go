@@ -263,7 +263,7 @@ func TestGenerateFromAFavoriteWritesSettingsAndOffersItsMods(t *testing.T) {
 		t.Errorf("mod-settings.dat %q, %v", ms, err)
 	}
 	// Settings kept as filled: the favorite's own map files.
-	if got := string(hn.config(id, world.MapSettingsFile).Data); !strings.Contains(got, `"enabled":false`) {
+	if got := string(hn.config(id, world.MapSettingsFile).Data); !strings.Contains(got, `"enabled": false`) {
 		t.Errorf("map settings %s, want the favorite's", got)
 	}
 }

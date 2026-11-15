@@ -38,10 +38,9 @@
   "favorites.start.label": "Favori",
   "favorites.start.button": "Utiliser le favori",
   "favorites.start.none": "Aucun favori pour l'instant. Créez-en un depuis la page d'un monde.",
-  "favorites.start.note": "Départ à partir du favori « {name} ». Sa version du jeu, son réglage l'Ère spatiale et son préréglage sont remplis ci-dessous ; modifiez ce que vous voulez. Le nouveau monde reçoit ses paramètres de serveur et ses paramètres de mods.",
+  "favorites.start.note": "Départ à partir du favori « {name} ». Sa version du jeu, son réglage l'Ère spatiale, son préréglage et ses paramètres de carte sont remplis ci-dessous ; modifiez ce que vous voulez. Le nouveau monde reçoit ses paramètres de serveur et ses paramètres de mods.",
   "favorites.start.mods": {
     "one": "Une fois le monde créé, vous vérifiez {count} mod à installer.",
     "other": "Une fois le monde créé, vous vérifiez {count} mods à installer."
-  },
-  "favorites.start.map": "Tant que vous gardez les paramètres de carte tels qu'ils sont remplis, le monde utilise les paramètres de carte du favori. L'aperçu montre le préréglage."
+  }
 }

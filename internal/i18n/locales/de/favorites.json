@@ -38,10 +38,9 @@
   "favorites.start.label": "Favorit",
   "favorites.start.button": "Favorit verwenden",
   "favorites.start.none": "Noch keine Favoriten. Erstelle einen auf der Seite einer Welt.",
-  "favorites.start.note": "Beginnt mit dem Favoriten „{name}“. Seine Spielversion, Space-Age-Einstellung und Voreinstellung sind unten eingetragen; ändere, was du willst. Die neue Welt bekommt seine Servereinstellungen und Mod-Einstellungen.",
+  "favorites.start.note": "Beginnt mit dem Favoriten „{name}“. Seine Spielversion, Space-Age-Einstellung, Voreinstellung und Karteneinstellungen sind unten eingetragen; ändere, was du willst. Die neue Welt bekommt seine Servereinstellungen und Mod-Einstellungen.",
   "favorites.start.mods": {
     "one": "Nachdem die Welt erstellt ist, prüfst du {count} Mod zur Installation.",
     "other": "Nachdem die Welt erstellt ist, prüfst du {count} Mods zur Installation."
-  },
-  "favorites.start.map": "Solange du die Karteneinstellungen wie eingetragen lässt, nutzt die Welt die Karteneinstellungen des Favoriten. Die Vorschau zeigt die Voreinstellung."
+  }
 }

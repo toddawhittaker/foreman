@@ -40,11 +40,10 @@
   "favorites.start.label": "Ulubiony",
   "favorites.start.button": "Użyj ulubionego",
   "favorites.start.none": "Brak ulubionych. Można go utworzyć na stronie świata.",
-  "favorites.start.note": "Start od ulubionego „{name}”. Jego wersja gry, ustawienie Era Kosmosu i preset są wypełnione poniżej; wszystko można zmienić. Nowy świat dostanie jego ustawienia serwera i ustawienia modyfikacji.",
+  "favorites.start.note": "Start od ulubionego „{name}”. Jego wersja gry, ustawienie Era Kosmosu, preset i ustawienia mapy są wypełnione poniżej; wszystko można zmienić. Nowy świat dostanie jego ustawienia serwera i ustawienia modyfikacji.",
   "favorites.start.mods": {
     "one": "Po utworzeniu świata pojawi się do sprawdzenia {count} modyfikacja do instalacji.",
     "few": "Po utworzeniu świata pojawią się do sprawdzenia {count} modyfikacje do instalacji.",
     "many": "Po utworzeniu świata pojawi się do sprawdzenia {count} modyfikacji do instalacji."
-  },
-  "favorites.start.map": "Dopóki ustawienia mapy pozostają takie, jak wypełniono, świat używa ustawień mapy z ulubionego. Podgląd pokazuje preset."
+  }
 }

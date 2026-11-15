@@ -38,10 +38,9 @@
   "favorites.start.label": "Favorite",
   "favorites.start.button": "Use favorite",
   "favorites.start.none": "No favorites yet. Make one from a world's page.",
-  "favorites.start.note": "Starting from the favorite \"{name}\". Its game version, Space Age setting and preset are filled in below; change anything you like. The new world gets its server settings and mod settings.",
+  "favorites.start.note": "Starting from the favorite \"{name}\". Its game version, Space Age setting, preset and map settings are filled in below; change anything you like. The new world gets its server settings and mod settings.",
   "favorites.start.mods": {
     "one": "After the world is made, you review {count} mod to install.",
     "other": "After the world is made, you review {count} mods to install."
-  },
-  "favorites.start.map": "While you keep the map settings as filled in, the world uses the favorite's own map settings. The preview shows the preset."
+  }
 }

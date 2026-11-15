@@ -204,25 +204,25 @@ func (s *server) activeVersion(ctx context.Context) string {
 	return ""
 }
 
-func (s *server) generatePage(f GenerateForm, preview *PreviewView) GeneratePage {
+func (s *server) generatePage(ctx context.Context, f GenerateForm, preview *PreviewView) GeneratePage {
 	f.CanDownload = s.game != nil
 	p := GeneratePage{Form: f, CanPreview: s.previewer != nil, Preview: preview, FavoritesOn: s.favorites != nil}
 	if s.favorites != nil {
 		// A list that cannot be read leaves only the chooser out.
-		p.Favorites, _ = s.favorites.List(context.Background())
+		p.Favorites, _ = s.favorites.List(ctx)
 	}
 	return p
 }
 
-// favoriteMapUsed reports whether the world gets the favorite's own map
-// files: it has them, and the person kept the settings as filled, on the
-// favorite's game line.
-func (f GenerateForm) favoriteMapUsed() bool {
-	if f.Favorite == nil || !f.Favorite.HasMapSettings || f.Mode != modeSettings || f.Modified {
+// favoriteMap reports whether the form's map settings are laid over the
+// favorite's files: it has them, the map is made from the settings, and the
+// world is on the favorite's game line, which the files were written for.
+func (f GenerateForm) favoriteMap() bool {
+	if f.Favorite == nil || !f.Favorite.HasMapSettings || f.Mode != modeSettings {
 		return false
 	}
 	line, ok := mapgen.Line(f.Favorite.GameVersion)
-	return ok && line == f.Line && f.Preset == cmp.Or(f.Favorite.Preset, defaultPreset)
+	return ok && line == f.Line
 }
 
 // readFavorite reads the favorite a form names; a missing or damaged one
@@ -271,14 +271,18 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 		Mode: modeSettings, Preset: defaultPreset, Line: line, Presets: mapgen.Presets(line),
 		MapKey: mapKey(line, spaceAge), Tab: tabResources,
 	}
+	var files world.FavoriteFiles
 	if id := r.URL.Query().Get(favoriteQuery); id != "" {
-		s.readFavorite(&f, id)
+		files = s.readFavorite(&f, id)
 		if fav := f.Favorite; fav != nil {
 			f.startFrom(*fav)
 			version = f.Version
 		}
 	}
 	f.fill(version, nil)
+	if f.favoriteMap() {
+		f.fillFromFiles(files)
+	}
 	rules, _ := mapgen.AchievementRules(version)
 	f.MapGen.markAchievements(rules)
 	f.reasons(version, nil, nil, rules)
@@ -286,7 +290,7 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 	if !f.FormError.IsZero() {
 		status = http.StatusNotFound
 	}
-	s.page(w, r, status, u.Username, s.generatePage(f, nil))
+	s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
 }
 
 // startFrom fills the form's version, Space Age and preset from a favorite
@@ -318,7 +322,7 @@ func (s *server) handleGenerateRefresh(w http.ResponseWriter, r *http.Request, u
 	}
 	f, _, _ := s.readGenerate(r, kindRefresh)
 	f.clearErrors()
-	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, nil))
+	s.page(w, r, http.StatusOK, u.Username, s.generatePage(r.Context(), f, nil))
 }
 
 func (f *GenerateForm) clearErrors() {
@@ -345,13 +349,14 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 		if f.Reset || f.Refilled {
 			status = http.StatusOK
 		}
-		s.page(w, r, status, u.Username, s.generatePage(f, nil))
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
 		return
 	}
 	if fav := f.Favorite; fav != nil {
 		nw.ServerSettings, nw.ModSettings = files.ServerSettings, files.ModSettings
-		if f.favoriteMapUsed() {
-			nw.MapGenSettings, nw.MapSettings, nw.Preset = files.MapGenSettings, files.MapSettings, ""
+		if f.favoriteMap() && !s.favoriteMapFiles(&f, &nw, files, r) {
+			s.page(w, r, http.StatusBadRequest, u.Username, s.generatePage(r.Context(), f, nil))
+			return
 		}
 	}
 	id, err := s.worlds.Generate(r.Context(), nw)
@@ -361,7 +366,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 			return
 		}
 		f.place(err, msg)
-		s.page(w, r, status, u.Username, s.generatePage(f, nil))
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
 		return
 	}
 	how := f.Mode

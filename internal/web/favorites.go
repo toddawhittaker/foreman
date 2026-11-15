@@ -1,13 +1,17 @@
 package web
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -222,3 +226,145 @@ func (p WorldPage) FavoritePath() string { return favoriteMakePath(p.World.ID) }
 
 // ListPath is the favorites list.
 func (FavoriteDeletePage) ListPath() string { return PathFavorites }
+
+// fillFromFiles fills the map settings from a favorite's files (SPEC 5.12),
+// so the form, the preview and the world start from its values.
+func (f *GenerateForm) fillFromFiles(files world.FavoriteFiles) {
+	sa := f.SpaceAge && lineHasSpaceAge(f.Line)
+	if len(files.MapGenSettings) > 0 {
+		f.MapGen = NewMapGenFormFromFile(f.Line, sa, files.MapGenSettings)
+		f.MapGen.withPreset(NewMapGenFormForPreset(f.Line, sa, f.Preset))
+	}
+	if len(files.MapSettings) > 0 {
+		f.MapSettings, _, _ = readMapSettings(f.Version, f.Preset, mapSettingsValues(f.Version, f.Preset, files.MapSettings))
+	}
+	f.Modified = f.MapGen.Modified() || f.MapSettings.Modified()
+}
+
+// mapSettingsValues is the post of the map-settings fields holding a
+// map-settings.json's values; a field the file lacks keeps the preset's.
+func mapSettingsValues(version, preset string, file []byte) url.Values {
+	base, err := presetMapSettings(version, preset)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if json.Unmarshal(file, &m) != nil {
+		return nil
+	}
+	for k, v := range flatPaths(m, "") {
+		base[k] = v
+	}
+	vals := url.Values{}
+	for _, g := range msGroups {
+		for _, d := range g.defs {
+			v, ok := base[d.path]
+			if !ok {
+				continue
+			}
+			name := msPrefix + d.path
+			switch d.kind {
+			case msToggle:
+				if on, _ := v.(bool); on {
+					vals.Set(name, "on")
+				}
+			case msChoice:
+				vals.Set(name, presetChoice(v))
+			default:
+				n, _ := v.(float64)
+				vals.Set(name, presetShown(n, d))
+			}
+		}
+	}
+	return vals
+}
+
+// favoriteMapFiles writes the world's map files as the favorite's with the
+// form's fields laid over them, so settings the form has no field for are
+// kept (SPEC 5.12). It is false, with the form's error set, when they cannot
+// be made.
+func (s *server) favoriteMapFiles(f *GenerateForm, nw *world.NewWorld, files world.FavoriteFiles, r *http.Request) bool {
+	if nw.MapGenSettings == nil {
+		mg, ok := buildMapGen(f.MapGen, rawOrEmpty(f.MapGen.Raw.Value))
+		if !ok {
+			f.FormError = i18n.M("worlds.generate.error.settings")
+			return false
+		}
+		nw.MapGenSettings = mg
+	}
+	nw.Preset = ""
+	if len(files.MapSettings) == 0 {
+		return true
+	}
+	formMS := nw.MapSettings
+	if formMS == nil {
+		_, overrides, _ := readMapSettings(f.Version, f.Preset, r.PostForm)
+		var err error
+		if formMS, err = mapgen.MapSettings(f.Version, f.Preset, overrides); err != nil {
+			// A layout Foreman has no fields for: the favorite's file as it is.
+			nw.MapSettings = files.MapSettings
+			return true
+		}
+	}
+	out, err := overlayFields(files.MapSettings, formMS)
+	if err != nil {
+		f.FormError = i18n.M("worlds.generate.error.settings")
+		return false
+	}
+	nw.MapSettings = out
+	return true
+}
+
+// overlayFields copies each value the map-settings fields cover from the
+// form's file into the favorite's, leaving the rest of the favorite's file
+// as it is.
+func overlayFields(fav, form []byte) ([]byte, error) {
+	var dst, src map[string]any
+	if err := decodeNumbers(fav, &dst); err != nil {
+		return nil, err
+	}
+	if err := decodeNumbers(form, &src); err != nil {
+		return nil, err
+	}
+	for _, g := range msGroups {
+		for _, d := range g.defs {
+			if v, ok := pathValue(src, d.path); ok {
+				setPath(dst, d.path, v)
+			}
+		}
+	}
+	out, err := json.MarshalIndent(dst, "", "  ")
+	return append(out, '\n'), err
+}
+
+func decodeNumbers(b []byte, v any) error {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.UseNumber()
+	return dec.Decode(v)
+}
+
+func pathValue(m map[string]any, p string) (any, bool) {
+	parts := strings.Split(p, ".")
+	for _, k := range parts[:len(parts)-1] {
+		sub, ok := m[k].(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		m = sub
+	}
+	v, ok := m[parts[len(parts)-1]]
+	return v, ok
+}
+
+func setPath(m map[string]any, p string, v any) {
+	parts := strings.Split(p, ".")
+	for _, k := range parts[:len(parts)-1] {
+		sub, ok := m[k].(map[string]any)
+		if !ok {
+			sub = map[string]any{}
+			m[k] = sub
+		}
+		m = sub
+	}
+	m[parts[len(parts)-1]] = v
+}

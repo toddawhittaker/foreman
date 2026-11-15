@@ -38,10 +38,9 @@
   "favorites.start.label": "Favorito",
   "favorites.start.button": "Usar favorito",
   "favorites.start.none": "Aún no hay favoritos. Crea uno desde la página de un mundo.",
-  "favorites.start.note": "Empezando desde el favorito «{name}». Su versión del juego, su ajuste de Space Age y su preajuste están rellenados abajo; cambia lo que quieras. El mundo nuevo recibe su configuración del servidor y la configuración de sus mods.",
+  "favorites.start.note": "Empezando desde el favorito «{name}». Su versión del juego, su ajuste de Space Age, su preajuste y la configuración del mapa están rellenados abajo; cambia lo que quieras. El mundo nuevo recibe su configuración del servidor y la configuración de sus mods.",
   "favorites.start.mods": {
     "one": "Cuando el mundo esté creado, revisarás {count} mod para instalar.",
     "other": "Cuando el mundo esté creado, revisarás {count} mods para instalar."
-  },
-  "favorites.start.map": "Mientras mantengas la configuración del mapa tal como está rellenada, el mundo usa la configuración del mapa del favorito. La vista previa muestra el preajuste."
+  }
 }

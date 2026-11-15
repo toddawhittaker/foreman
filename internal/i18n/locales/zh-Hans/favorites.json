@@ -36,9 +36,8 @@
   "favorites.start.label": "收藏",
   "favorites.start.button": "使用收藏",
   "favorites.start.none": "还没有收藏。可在世界页面上创建。",
-  "favorites.start.note": "正在从收藏“{name}”开始。其游戏版本、太空时代设置和预设已在下方填好，均可更改。新世界将获得其服务器设置和模组设置。",
+  "favorites.start.note": "正在从收藏“{name}”开始。其游戏版本、太空时代设置、预设和地图设置已在下方填好，均可更改。新世界将获得其服务器设置和模组设置。",
   "favorites.start.mods": {
     "other": "世界创建后，将检查 {count} 个要安装的模组。"
-  },
-  "favorites.start.map": "只要地图设置保持填入时的样子，世界就会使用收藏中的地图设置。预览显示的是预设。"
+  }
 }
