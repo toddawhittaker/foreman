@@ -544,7 +544,7 @@ func TestDroppingContainerDoesNotBlockStatus(t *testing.T) {
 	conn := <-accepted
 	defer func() { _ = conn.Close() }()
 
-	go r.c.observe(w, nil, 0)
+	go r.c.observe(w, nil, 0, nil)
 	time.Sleep(100 * time.Millisecond)
 	done := make(chan struct{})
 	go func() {
@@ -704,7 +704,7 @@ func TestMonitorDropsALookTakenBeforeAnOperation(t *testing.T) {
 	if got := r.c.Status(id).State; got != StateRunning {
 		t.Errorf("a look from before the start made the running game %s", got)
 	}
-	r.c.observe(w, nil, ops)
+	r.c.observe(w, nil, ops, nil)
 	if got := r.c.Status(id).State; got != StateRunning {
 		t.Errorf("an empty list from before the start made the running game %s", got)
 	}
@@ -739,7 +739,7 @@ func TestMonitorDropsALookTakenDuringAnOperation(t *testing.T) {
 	if got := r.c.Status(id).State; got != StateRunning {
 		t.Errorf("a look from during the start made the running game %s", got)
 	}
-	r.c.observe(w, nil, ops)
+	r.c.observe(w, nil, ops, nil)
 	if got := r.c.Status(id).State; got != StateRunning {
 		t.Errorf("an empty list from during the start made the running game %s", got)
 	}

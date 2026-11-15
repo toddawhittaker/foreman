@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -109,7 +110,7 @@ func (c *Controller) tick(ctx context.Context) {
 		}
 		cid, ok := found[w.id]
 		if !ok {
-			c.observe(w, nil, ops[w])
+			c.observe(w, nil, ops[w], nil)
 			continue
 		}
 		cont, err := c.docker.InspectContainer(ctx, cid)
@@ -126,7 +127,7 @@ func (c *Controller) tick(ctx context.Context) {
 func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docker.Container, err error, ops uint64) {
 	switch {
 	case errors.Is(err, docker.ErrNotFound):
-		c.observe(w, nil, ops)
+		c.observe(w, nil, ops, nil)
 	case err != nil:
 		w.mu.Lock()
 		if w.opDone != nil || w.ops != ops {
@@ -138,7 +139,7 @@ func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docke
 		c.changedLocked(w, true)
 		w.mu.Unlock()
 	default:
-		if !c.observe(w, &cont, ops) {
+		if !c.observe(w, &cont, ops, c.readCrashLog(ctx, w, cont, ops)) {
 			return
 		}
 		if cont.State.Status == "running" {
@@ -146,6 +147,31 @@ func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docke
 			c.checkDisk(w, cont.ID)
 		}
 	}
+}
+
+// readCrashLog reads the container's log once when the look finds Docker
+// restarted the game since the last look. Each run can end, and Docker
+// start it again, before the follower reads it, and the follower is not
+// started again once a crash loop is being stopped, so the words that name
+// the crash may be only in Docker's log (SPEC 8.7, ADR 0016). It returns
+// nil when there is no crash to read for, the world's secrets are not
+// known to mask what it reads, or the read did not reach the log's end.
+func (c *Controller) readCrashLog(ctx context.Context, w *worldRun, cont docker.Container, ops uint64) *crashLog {
+	w.mu.Lock()
+	ok := w.opDone == nil && w.ops == ops && w.containerID == cont.ID && !w.noSecrets && cont.RestartCount > w.seenRestarts
+	mark := w.logs.Mark()
+	w.mu.Unlock()
+	if !ok {
+		return nil
+	}
+	f, whole := c.readLoadLog(ctx, cont.ID)
+	if !whole {
+		return nil
+	}
+	// Docker restarted the game before this read, so every run before the
+	// newest it holds had ended and said all it would (see crashReason).
+	f.runWhole = true
+	return &crashLog{f: f, mark: mark}
 }
 
 func hasName(names []string, want string) bool {
@@ -167,9 +193,10 @@ func (c *Controller) busy(w *worldRun) bool {
 
 // observe takes in one look at the world's container (nil when it has
 // none), read when the world had begun ops operations, and acts on what
-// changed since the last look (SPEC 8.7). It reports false when the look
+// changed since the last look (SPEC 8.7). read is the container's log read
+// for a restart this look shows, or nil. It reports false when the look
 // was dropped: an operation runs, or one began since the look.
-func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64) bool {
+func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, read *crashLog) bool {
 	if !c.lookStillHolds(w, ops) {
 		return false
 	}
@@ -209,22 +236,17 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64) bo
 		w.lastCrash = now
 		w.crashedRun = true
 		w.run = runState{}
-		if w.dockerStatus == "running" {
-			// The exit was not seen, and Docker clears the flag when it
-			// restarts the game, so whether it ran out of memory is lost.
-			w.oomKilled = false
+		// Docker clears the out-of-memory flag when it restarts the game,
+		// so an exit no look saw leaves the newest flag seen as it was.
+		if read != nil {
+			w.crashLog = read
 		}
 	}
 	w.seenRestarts = cont.RestartCount
 	w.crashes = keepSince(w.crashes, now.Add(-c.crashWindow))
 	w.dockerStatus = cont.State.Status
-	switch {
-	case cont.State.OOMKilled:
-		w.oomKilled = true
-	case w.dockerStatus != "running" && !w.stopping:
-		// The newest exit was not an out-of-memory kill. Foreman's own
-		// stop, of a crash loop say, is not the exit the flag describes.
-		w.oomKilled = false
+	if exited(cont.State.Status) {
+		exitSeenLocked(w, cont.State)
 	}
 	if !cont.State.StartedAt.Equal(w.startedAt) {
 		if w.stopping && w.dockerStatus == "running" {
@@ -262,6 +284,64 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64) bo
 	}
 	c.changedLocked(w, true)
 	return true
+}
+
+// exited reports whether a container in this Docker state has a game
+// that ended, so its out-of-memory flag and FinishedAt describe that exit.
+// A running or paused game's flag was cleared when Docker started it, and
+// its FinishedAt is an older exit's.
+func exited(status string) bool {
+	return status == "exited" || status == "restarting" || status == "dead"
+}
+
+// exitSeenLocked takes in Docker's out-of-memory flag from a look at the
+// game's exit (SPEC 8.7) and reports whether it changed what is known:
+// the flag names the exit, and a newer exit without it says that one was
+// not. An exit no newer than the last one taken in is an older look's, so
+// it changes nothing; nor does a look with no exit time. Foreman's own
+// stop, of a crash loop say, is not the exit the flag describes, so it is
+// passed over and a crash that ended before it may still be taken in.
+// w.mu is held.
+func exitSeenLocked(w *worldRun, st docker.State) bool {
+	if !st.FinishedAt.After(w.exitAt) {
+		return false
+	}
+	if !st.OOMKilled && w.stopping {
+		return false
+	}
+	w.oomKilled, w.exitAt = st.OOMKilled, st.FinishedAt
+	return true
+}
+
+// noteExit looks at the container once its log stream has ended, which it
+// does when the game exits. Docker restarts the game within a fraction of
+// a second and clears its out-of-memory flag when it does, often before
+// the next poll (SPEC 8.7). A look at a game that already runs again, or
+// taken while an operation owns the container, is not taken in.
+func (c *Controller) noteExit(w *worldRun, cid string) {
+	w.mu.Lock()
+	ops, ours := w.ops, w.opDone == nil && w.containerID == cid
+	w.mu.Unlock()
+	if !ours {
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.ctx, loadFailureReadLimit)
+	cont, err := c.docker.InspectContainer(ctx, cid)
+	cancel()
+	if err != nil {
+		return
+	}
+	if !exited(cont.State.Status) {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.opDone != nil || w.ops != ops || w.containerID != cid {
+		return
+	}
+	if exitSeenLocked(w, cont.State) {
+		c.changedLocked(w, true)
+	}
 }
 
 // lookStillHolds reports whether a look taken when the world had begun ops
@@ -436,7 +516,8 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	w.startedAt = time.Time{}
 	w.usage = usage{}
 	w.expectRunning = false
-	w.oomKilled = false
+	w.oomKilled, w.exitAt = false, time.Time{}
+	w.crashLog, w.runStarts = nil, nil
 	return rc
 }
 
@@ -507,6 +588,9 @@ func (c *Controller) followLocked(w *worldRun, cid string, since time.Time) {
 			w.following, w.followCancel = false, nil
 		}
 		w.mu.Unlock()
+		if err == nil && ctx.Err() == nil {
+			c.noteExit(w, cid)
+		}
 		// The stream ends when the game exits: look at once (SPEC 8.7). A
 		// stream that failed at once waits for the next poll instead, so a
 		// broken log does not make a tight loop.
@@ -573,6 +657,12 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	case KindLoadStarted:
 		// Every run of the game starts here; players from the last run are gone.
 		w.joins.Reset()
+		if !at.IsZero() {
+			if len(w.runStarts) == maxRunStarts {
+				w.runStarts = slices.Delete(w.runStarts, 0, 1)
+			}
+			w.runStarts = append(w.runStarts, runStart{mark: w.logs.Mark(), at: at})
+		}
 		if w.run.inGame {
 			// A game process loads its map once, and observe resets the run
 			// on a restart, so this is a re-attach replaying the log after
@@ -582,8 +672,17 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 		}
 		w.run = runState{save: w.saveName(raw)}
 	case KindInGame:
+		// The game is back: what named the last crash no longer holds,
+		// unless a look already saw an exit after this line. A look at an
+		// exit before it is an old one.
 		w.run.inGame = true
 		w.crashedRun = false
+		if at.IsZero() || !w.exitAt.After(at) {
+			w.oomKilled, w.crashLog = false, nil
+			if at.After(w.exitAt) {
+				w.exitAt = at
+			}
+		}
 	case KindLoadError:
 		w.run.loadError = shownText(w.redact, ev.Detail)
 		publish = false

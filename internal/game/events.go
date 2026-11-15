@@ -125,21 +125,23 @@ type pendingCrash struct {
 	at    time.Time
 }
 
-// flushCrashLocked sends the waiting crash event once the log names its
-// reason, once it has waited crashSettle, or at once when force is set.
-// The poll looks again within crashSettle, so the event is never lost
-// while Foreman runs. w.mu is held.
+// flushCrashLocked sends the waiting crash event once the reason is final
+// (see crashLocked), once it has waited crashSettle, or at once when force
+// is set; after the wait it names the last reason seen, as the Server page
+// does. The poll looks again within crashSettle, so the event is never
+// lost while Foreman runs. w.mu is held.
 func (c *Controller) flushCrashLocked(w *worldRun, force bool) {
 	p := w.crashEvent
 	if p == nil {
 		return
 	}
-	reason := c.crashLocked(w).Kind
+	r, final := c.crashLocked(w)
+	reason := r.Kind
 	settle := c.crashSettle
 	if settle == 0 {
 		settle = 2 * c.pollInterval
 	}
-	if reason == "" && !force && c.now().Before(p.at.Add(settle)) {
+	if (reason == "" || !final) && !force && c.now().Before(p.at.Add(settle)) {
 		return
 	}
 	w.crashEvent = nil
@@ -161,18 +163,44 @@ func (w *worldRun) liveLineLocked(at time.Time) bool {
 }
 
 // crashLocked is the reason for the current crash, from the log of the
-// current container and Docker's out-of-memory flag (SPEC 8.7). w.mu is
-// held.
-func (c *Controller) crashLocked(w *worldRun) LoadReason {
+// current container and Docker's out-of-memory flag (SPEC 8.7): the read
+// taken when a look found the crash, if any, then the lines the follower
+// added since. It reports whether the reason is final: an earlier run's
+// kind that only the follower saw may yet give way to the words of the
+// run that crashed (see loadFailure.crashReason). w.mu is held.
+//
+// The out-of-memory flag names the exit Docker saw at exitAt. A log
+// reason overrules it only from a run whose first line Docker stamped
+// after that exit: that run began after the kill, so its own failure is
+// the newer crash. Docker stamps both on its own clock. A run whose time
+// is not known never overrules the flag.
+func (c *Controller) crashLocked(w *worldRun) (LoadReason, bool) {
 	var f loadFailure
-	for _, l := range w.logs.LinesSince(w.logMark) {
-		f.add(l)
+	from := w.logMark
+	if w.crashLog != nil {
+		f, from = w.crashLog.f.clone(), w.crashLog.mark
 	}
-	r := f.reason(w.redact)
-	if w.oomKilled {
-		r.Kind = crashreasons.OutOfMemory
+	// Lines are added to logs only under w.mu, so the n-th line returned
+	// is the one added (end - len + n)-th.
+	end := w.logs.Mark()
+	lines := w.logs.LinesSince(from)
+	starts := w.runStarts
+	for i, l := range lines {
+		mark := end - uint64(len(lines)) + uint64(i) + 1
+		for len(starts) > 0 && starts[0].mark < mark {
+			starts = starts[1:]
+		}
+		var at time.Time
+		if len(starts) > 0 && starts[0].mark == mark {
+			at = starts[0].at
+		}
+		f.addAt(at, l)
 	}
-	return r
+	r, at, final := f.crashReason(w.redact)
+	if w.oomKilled && (r.Kind == "" || !at.After(w.exitAt)) {
+		r.Kind, final = crashreasons.OutOfMemory, true
+	}
+	return r, final
 }
 
 // checkDisk reads the free space where worlds are kept while a game runs,

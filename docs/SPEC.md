@@ -1384,10 +1384,17 @@ the line, so colour is not the only sign (17.4). **Download log**
 a text file, so it holds nothing the page would not show (14.8).
 
 8.7. **Crash detection.** When the game stops without being asked to,
-Foreman marks it crashed. It polls Docker every few seconds, and again when
-the log stream ends, and compares the container's restart count, start time
-and out-of-memory flag with what it saw last, together with the log's
-failed-load line. It does not use the exit code, because the same failure
+Foreman marks it crashed. It polls Docker every few seconds, and inspects
+the container at once when the log stream ends, and compares the
+container's restart count, start time and out-of-memory flag with what it
+saw last, together with the log's failed-load line. Looks can arrive out of
+order, so each exit is told apart by Docker's exit time (`FinishedAt`): a
+look at an exit no newer than the last one taken in changes nothing. When a
+look finds Docker restarted the game since the last one, Foreman reads the
+container's log once, within the bounds of the start's read (ADR 0016), so
+the runs that ended between two looks still name the crash. It reads only
+when it knows the world's secrets to mask the log, and keeps the read only
+if it reached the log's end. It does not use the exit code, because the same failure
 exits with different codes in different game versions (1.1 exits 0 after a
 failed load). It names the reason when it can, by one of these stable ids, and
 otherwise says the reason is unknown:
@@ -1402,8 +1409,19 @@ otherwise says the reason is unknown:
 - `out-of-memory`, only from Docker's `OOMKilled` flag, because the game's
   log just stops when the kernel kills it. The game container has no memory
   limit, so a kill of the whole host shows as unknown, and so does an
-  out-of-memory kill that Docker restarts before the monitor sees the
-  flag (Docker clears it).
+  out-of-memory kill that Docker restarts before either look sees the flag
+  (Docker clears it). Once seen, the flag names the crash until a newer
+  exit says otherwise, or a run Docker began after that exit (by Docker's
+  log time) names another reason; the game getting back in game clears it.
+
+In a crash loop the newest run is often still loading when Foreman looks
+or stops it, so the reason shown is that of the newest run that said how
+its load ended: the last reason witnessed, not a guess about the newest
+run. A run that reached the game, or failed for no known reason, said so,
+and no older reason is shown after it. The reason is unknown when neither
+the follower nor that read saw the run's words: the read was refused, cut
+short or not made (the secrets were not known), or the words had left
+Docker's log.
 
 On 1.1 a mod with a missing dependency is skipped and the game starts, so
 there is nothing to name there. A save that fails to load is
