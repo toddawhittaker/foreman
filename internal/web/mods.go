@@ -768,13 +768,7 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	// A pasted link may be long with a sub-page and tracking query; only the
-	// mod name in it counts against the limit.
-	limited := p.Query
-	if name, isLink := modportal.PortalLinkName(p.Query); isLink {
-		limited = name
-	}
-	if len(limited) > maxSearchQuery {
+	if searchTooLong(p.Query) {
 		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
@@ -827,6 +821,16 @@ func (s *server) findMods(ctx context.Context, line, query string) ([]modportal.
 
 // maxSearchQuery bounds a search, which is only a name or a few words.
 const maxSearchQuery = 100
+
+// searchTooLong says a search is too long to run. A pasted link may carry a
+// sub-page and tracking query, so only the mod name in it counts; plain text
+// counts whole. The search page and the plan's "Add another mod" share it.
+func searchTooLong(query string) bool {
+	if name, isLink := modportal.PortalLinkName(query); isLink {
+		query = name
+	}
+	return len(query) > maxSearchQuery
+}
 
 // maxPickName bounds one ticked mod name, which goes into the redirect to the
 // plan page; the portal's names are far shorter.
@@ -1043,6 +1047,8 @@ type ModPlanPage struct {
 	Results        ModHits
 	Installed      map[string]bool
 	AddUnreachable bool
+	// AddMiss says why a pasted portal link found no mod.
+	AddMiss i18n.Msg
 	// Have are the world's mods now, for the conflicts' fixes.
 	Have []world.InstalledMod
 }
@@ -1565,21 +1571,26 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 // addSearch fills the install plan's "Add another mod" results. A portal
 // that cannot be reached is said there; the plan above still stands.
 func (s *server) addSearch(ctx context.Context, p *ModPlanPage) {
-	// The field's maxlength keeps a typed search short; a longer one is a
-	// crafted link, and is not searched.
-	if !p.Adding() || p.Form.Query == "" || len(p.Form.Query) > maxSearchQuery {
+	if !p.Adding() || p.Form.Query == "" {
+		return
+	}
+	// The field's maxlength keeps a typed search short; a longer one is
+	// crafted, and is said to be too long instead of searched.
+	if searchTooLong(p.Form.Query) {
+		p.AddMiss = i18n.M("mods.search.long", "count", maxSearchQuery)
 		return
 	}
 	p.Installed = map[string]bool{}
 	for _, m := range p.Have {
 		p.Installed[m.Name] = true
 	}
-	hits, err := s.portal.Search(ctx, mods.GameLine(p.World.GameVersion), p.Form.Query)
+	hits, miss, err := s.findMods(ctx, mods.GameLine(p.World.GameVersion), p.Form.Query)
 	if err != nil {
 		s.portalTrouble("search the mod portal", p.World.ID, err)
 		p.AddUnreachable = true
 		return
 	}
+	p.AddMiss = miss
 	p.Results = pageOfHits(hits, p.Form.Page)
 }
 

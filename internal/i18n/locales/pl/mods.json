@@ -6,6 +6,9 @@
   "mods.search.heading": "Znajdź modyfikację",
   "mods.search.label": "Nazwa modyfikacji",
   "mods.search.hint": "Przeszukuje portal modyfikacji pod kątem modyfikacji dla Factorio {line}, czyli wersji gry tego świata.",
+  "mods.search.short": "Aby wyszukać, należy wpisać co najmniej 2 znaki. Zaznaczone modyfikacje zostają zachowane.",
+  "mods.search.paste_hint": "Można też wkleić link do modyfikacji z portalu.",
+  "mods.search.browse": "Przeglądaj portal modyfikacji",
   "mods.search.button": "Szukaj",
   "mods.search.missing": "Aby wyszukać, należy wpisać część nazwy modyfikacji.",
   "mods.search.long": {

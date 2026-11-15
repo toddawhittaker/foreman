@@ -58,9 +58,10 @@
     <div class="field">
       <label for="mod-search">{{t "mods.search.label"}}</label>
       <div class="inline-row">
-        <input id="mod-search" name="q" type="search" autocomplete="off" spellcheck="false" maxlength="100" aria-describedby="mod-search-hint">
+        <input id="mod-search" name="q" type="search" autocomplete="off" spellcheck="false" maxlength="300" aria-describedby="mod-search-hint mod-paste-hint">
         <button type="submit" class="button">{{t "mods.search.button"}}</button>
       </div>
+      {{template "portal-browse" .Line}}
     </div>
   </form>
 </section>

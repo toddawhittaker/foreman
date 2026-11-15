@@ -223,6 +223,8 @@ func TestModsTabListsMods(t *testing.T) {
 	wantIn(t, "mods tab", body, `>alpha</span>`, `>folder-mod</span>`, "Local folder",
 		`href="/worlds/`+id+`/mods/plan?kind=remove&amp;name=alpha"`, `href="/worlds/`+id+`/mods/plan?kind=disable&amp;name=alpha"`,
 		`hx-get="/worlds/`+id+`/mods/status"`, "Match mods to the save", `aria-current="page">Mods</a>`,
+		// SPEC 9.1: the portal browse link uses the world's game line; its hint describes the box.
+		`href="https://mods.factorio.com/browse/downloaded?factorio_version=2.0"`, `aria-describedby="mod-search-hint mod-paste-hint"`,
 		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod.
 		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
 		`Remove<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
