@@ -390,11 +390,25 @@ test("each kind of slider has its knob at the track's middle at its default", as
 // middle whatever the number of steps either side), so a key's one-unit move
 // must still land on the next step, in both directions, and a click on the
 // track must land on the nearest step.
-test("each kind of slider takes one step per key press, and the nearest step to a click", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/generate");
-  let farApart = 0;
-  for (const [t, id] of kinds) {
+// Where each step sits on the track, read back by moving the select to each.
+async function stepPlaces(page: Page, id: string, count: number) {
+  return page.locator(`#${id}-range`).evaluate((el: HTMLInputElement, n) => {
+    const select = document.getElementById(el.dataset.for!) as HTMLSelectElement;
+    const at: number[] = [];
+    for (let i = 0; i < n; i++) {
+      select.selectedIndex = i;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      at.push(Number(el.value));
+    }
+    return at;
+  }, count);
+}
+
+// One test per kind: walking every step of every kind in one test ran past the timeout under load.
+for (const [t, id] of kinds) {
+  test(`${id} takes one step per key press, and the nearest step to a click`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/generate");
     await tab(page, tabNames.en[t]).click();
     const range = page.locator(`#${id}-range`);
     const index = () => page.locator(`#${id}`).evaluate((s: HTMLSelectElement) => s.selectedIndex);
@@ -420,16 +434,7 @@ test("each kind of slider takes one step per key press, and the nearest step to 
     // width is lost at each end of the travel).
     const box = (await range.boundingBox())!;
     const max = Number(await range.getAttribute("max"));
-    const places = await range.evaluate((el: HTMLInputElement, n) => {
-      const select = document.getElementById(el.dataset.for!) as HTMLSelectElement;
-      const at: number[] = [];
-      for (let i = 0; i < n; i++) {
-        select.selectedIndex = i;
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-        at.push(Number(el.value));
-      }
-      return at;
-    }, count);
+    const places = await stepPlaces(page, id, count);
     expect(places[0], `${id}: first step at the start`).toBe(0);
     expect(places[count - 1], `${id}: last step at the end`).toBe(max);
     // The style sheet's knob is 18 px wide (DESIGN 8.7).
@@ -449,7 +454,6 @@ test("each kind of slider takes one step per key press, and the nearest step to 
     // stays on it: a pointer takes the nearest, where a key takes the next.
     const gap = places[2] - places[1];
     if (gap >= 5) {
-      farApart++;
       await range.focus();
       await page.keyboard.press("Home");
       await page.keyboard.press("ArrowRight");
@@ -458,6 +462,16 @@ test("each kind of slider takes one step per key press, and the nearest step to 
       expect(await index(), `${id}: a click just past step 1 stays on it`).toBe(1);
       await page.mouse.move(0, 0);
     }
+  });
+}
+
+// The click-off-a-step check above only runs where steps are far apart, so some kind must have them.
+test("some kind of slider has steps far apart on its track", async ({ page }) => {
+  await page.goto("/generate");
+  let farApart = 0;
+  for (const [, id] of kinds) {
+    const places = await stepPlaces(page, id, await page.locator(`#${id} option`).count());
+    if (places[2] - places[1] >= 5) farApart++;
   }
   expect(farApart, "some kind of slider has steps far apart on its track").toBeGreaterThan(0);
 });
