@@ -71,8 +71,9 @@ var linkInto = linkFile
 // ModSettingsKey returns the cache key for a world's mod setting
 // definitions: a SHA-256 of the game version plus the mods fingerprint
 // without mod-settings.dat, since setting values cannot change definitions
-// (SPEC 9.6). Installing, removing, enabling or disabling a mod, or moving
-// the game version, changes it.
+// (SPEC 9.6). Installing, removing, enabling or disabling a mod, editing a
+// file inside a folder mod, or moving the game version, changes it. A folder
+// mod past the link limits is ErrModsTooBig, as LinkModsInto would refuse it.
 func (m *Manager) ModSettingsKey(id string) (string, error) {
 	root, err := m.OpenWorld(id)
 	if err != nil {
@@ -90,7 +91,63 @@ func (m *Manager) ModSettingsKey(id string) (string, error) {
 	h := sha256.New()
 	// The Space Age flag picks the default mod list of a world with none.
 	_, _ = fmt.Fprintf(h, "%q %t %s\n", meta.GameVersion, meta.SpaceAge, fp)
+	if err := hashModFolders(root, h); err != nil {
+		return "", err
+	}
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// hashModFolders writes the name, type, size and modified time of every entry
+// inside the world's folder mods to h. The top-level fingerprint sees only a
+// folder's own time, which an edit deep inside does not move. It reads no
+// file's bytes, and stops at the same limits as LinkModsInto.
+func hashModFolders(root *os.Root, h io.Writer) error {
+	entries, err := readModsDir(root)
+	if err != nil {
+		return err
+	}
+	var budget linkBudget
+	for _, e := range entries {
+		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		if err := hashModFolder(root, path.Join(ModsDir, e.Name()), 0, &budget, h); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// hashModFolder is hashModFolders for one folder. It follows no link.
+func hashModFolder(root *os.Root, dir string, depth int, budget *linkBudget, h io.Writer) error {
+	if depth > maxModFolderDepth {
+		return fmt.Errorf("%s is nested too deep to be a mod", dir)
+	}
+	entries, err := fs.ReadDir(root.FS(), dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		p := path.Join(dir, e.Name())
+		info, err := root.Lstat(p)
+		if err != nil {
+			return err
+		}
+		size := int64(0)
+		if info.Mode().IsRegular() {
+			size = info.Size()
+		}
+		if err := budget.take(size); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(h, "%q %v %d %d\n", p, info.Mode().Type(), size, info.ModTime().UnixNano())
+		if info.IsDir() {
+			if err := hashModFolder(root, p, depth+1, budget, h); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // LinkModsInto fills dst, a definitions run's work folder, with a mods/
