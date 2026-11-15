@@ -40,6 +40,8 @@ type Deps struct {
 	Config *config.Config
 	Store  *store.Store
 	Worlds *world.Manager
+	// Favorites holds the favorites (SPEC 5.12); nil offers none.
+	Favorites *world.Favorites
 	// Game runs the game servers; nil means this mode has no server
 	// control, and "/" shows the world list.
 	Game *game.Controller
@@ -70,11 +72,13 @@ type Deps struct {
 }
 
 type server struct {
-	cfg      *config.Config
-	store    *store.Store
-	worlds   *world.Manager
-	game     *game.Controller
-	releases Releases
+	cfg    *config.Config
+	store  *store.Store
+	worlds *world.Manager
+	// favorites is nil when this handler offers none (SPEC 5.12).
+	favorites *world.Favorites
+	game      *game.Controller
+	releases  Releases
 	// previewer and previews: the map preview maker, and the pictures it
 	// made, held for 15 minutes (SPEC 5.6).
 	previewer MapPreviewer
@@ -138,6 +142,7 @@ func NewHandler(d Deps) (*Handler, error) {
 	s := &server{
 		cfg:       d.Config,
 		store:     d.Store,
+		favorites: d.Favorites,
 		worlds:    d.Worlds,
 		game:      d.Game,
 		releases:  d.Releases,
@@ -219,6 +224,7 @@ func (s *server) routes() {
 	s.updateRoutes()
 	s.generateRoutes()
 	s.cloneRoutes()
+	s.favoriteRoutes()
 	s.settingsRoutes()
 	s.accountRoutes()
 	s.aboutRoutes()

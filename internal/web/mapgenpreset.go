@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
@@ -20,6 +21,7 @@ type presetSettings struct {
 	Height       *float64 `json:"height"`
 	StartingArea *float64 `json:"starting_area"`
 	Peaceful     *bool    `json:"peaceful_mode"`
+	NoEnemies    *bool    `json:"no_enemies_mode"`
 	Controls     map[string]struct {
 		Frequency *float64 `json:"frequency"`
 		Size      *float64 `json:"size"`
@@ -46,9 +48,18 @@ func NewMapGenFormForPreset(line string, spaceAge bool, preset string) MapGenFor
 // sets, and the game's defaults elsewhere. Nauvis holds every control a preset
 // names. A value that is on no step is left at the default.
 func presetValues(line string, spaceAge bool, preset, seed string) url.Values {
-	vals := url.Values{mgSeed: {seed}, mgRaw: {rawPrefillFor(line, preset)}}
+	return fileValues(line, spaceAge, mapgen.PresetMapGen(line, preset), seed, rawPrefillFor(line, preset), false)
+}
+
+// fileValues are the post of the form opened on a map-gen-settings.json:
+// what the file sets, the game's defaults elsewhere, and raw in the raw box.
+// A value that is on no step is left at the default. wholeFile reads every
+// planet and "no enemies", as a saved file holds them; a preset is read as
+// Nauvis only.
+func fileValues(line string, spaceAge bool, file []byte, seed, raw string, wholeFile bool) url.Values {
+	vals := url.Values{mgSeed: {seed}, mgRaw: {raw}}
 	var p presetSettings
-	if json.Unmarshal(mapgen.PresetMapGen(line, preset), &p) != nil {
+	if json.Unmarshal(file, &p) != nil {
 		return vals
 	}
 	whole := func(v *float64) string { return strconv.FormatUint(uint64(*v), 10) }
@@ -60,6 +71,9 @@ func presetValues(line string, spaceAge bool, preset, seed string) url.Values {
 	}
 	if p.Peaceful != nil && *p.Peaceful {
 		vals.Set(mgPeaceful, "on")
+	}
+	if wholeFile && p.NoEnemies != nil && *p.NoEnemies {
+		vals.Set(mgNoEnemies, "on")
 	}
 	step := func(name string, v *float64, invert bool) {
 		if v == nil || (invert && *v == 0) {
@@ -103,7 +117,8 @@ func presetValues(line string, spaceAge bool, preset, seed string) url.Values {
 		}
 	}
 	for _, pl := range mgPlanets(line, spaceAge) {
-		if pl.name != "nauvis" {
+		// A preset names Nauvis's controls only; a whole file names every planet's.
+		if !wholeFile && pl.name != "nauvis" {
 			continue
 		}
 		for _, c := range pl.controls {
@@ -180,4 +195,35 @@ func rawPrefillFor(line, preset string) string {
 		ms = append(ms, jsonMember{"property_expression_names", writeMembers(lay(nil))})
 	}
 	return string(indent(writeMembers(ms))) + "\n"
+}
+
+// NewMapGenFormFromFile is the form filled from a saved map-gen-settings.json,
+// as a favorite holds (SPEC 5.12). Every key the fields do not cover stays
+// in the raw box, so building the file again keeps it.
+func NewMapGenFormFromFile(line string, spaceAge bool, file []byte) MapGenForm {
+	var doc struct {
+		Seed *uint64 `json:"seed"`
+	}
+	seed := ""
+	if json.Unmarshal(file, &doc) == nil && doc.Seed != nil {
+		seed = strconv.FormatUint(*doc.Seed, 10)
+	}
+	form, _, _ := parseMapGenValues(fileValues(line, spaceAge, file, seed, fileRaw(line, file), true), line, spaceAge)
+	return form
+}
+
+// fileRaw is a map-gen-settings.json without the top-level keys the fields
+// decide and without comments; the fields win over it for the rest.
+func fileRaw(line string, file []byte) string {
+	ms, ok := orderedMembers(file)
+	if !ok {
+		return "{}"
+	}
+	var keep []jsonMember
+	for _, m := range ms {
+		if !strings.HasPrefix(m.key, "_") && !rawCovered(line, m.key) {
+			keep = append(keep, m)
+		}
+	}
+	return string(indent(writeMembers(keep))) + "\n"
 }

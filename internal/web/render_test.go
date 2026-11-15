@@ -49,6 +49,11 @@ func pageCases() []pageCase {
 	return append([]pageCase{
 		{"design", "todd", 200, testDesignPage()},
 		{"worlds empty", "todd", 200, WorldsPage{}},
+		{"favorites empty", "todd", 200, FavoritesPage{}},
+		{"favorites listed", "todd", 200, FavoritesPage{Deleted: longName, Favorites: []FavoriteRow{{world.Favorite{
+			ID: "0123456789abcdef", Name: longName, SourceWorld: longName, GameVersion: "2.0.72", SpaceAge: true,
+			Mods: []world.FavoriteMod{{Name: "x", Version: "1.0.0"}}, CreatedAt: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)}}}}},
+		{"favorite delete", "todd", 200, FavoriteDeletePage{Favorite: FavoriteRow{world.Favorite{ID: "0123456789abcdef", Name: longName}}}},
 		{"worlds after delete", "todd", 200, WorldsPage{Deleted: longName}},
 		{"worlds long user", longName, 200, WorldsPage{}},
 		{"worlds listed", "todd", 200, WorldsPage{Worlds: []world.Summary{
