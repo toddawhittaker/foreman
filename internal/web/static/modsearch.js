@@ -24,9 +24,13 @@
   // hidden (their ticked boxes still go with the form) and said so once.
   box.addEventListener("input", () => {
     const results = document.getElementById("results");
-    if (!short() || !results || results.style.display === "none") return;
+    // Nothing shown means nothing to clear, so nothing is said.
+    if (!short() || !results || !results.firstElementChild || results.style.display === "none") return;
     // An inline style, as .panels sets display and would beat the hidden attribute.
     results.style.display = "none";
+    // On the Mods tab the results' own form would keep an empty grid row.
+    const wrap = results.closest(".mod-results");
+    if (wrap) wrap.style.display = "none";
     markError(false);
     say(box.dataset.short);
   });
@@ -44,6 +48,7 @@
     if (!isResults(e)) return;
     const results = document.getElementById("results");
     if (!results) return;
+    results.closest(".mod-results")?.style.removeProperty("display");
     markError(!!document.getElementById("mod-search-error"));
     say(results.querySelector("#mod-search-error, caption, .empty, .message")?.textContent.trim());
   });

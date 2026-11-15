@@ -1064,7 +1064,7 @@ func TestModsTabSearchFollowsTyping(t *testing.T) {
 	}
 	search := "/worlds/" + id + "/mods/search"
 	wantIn(t, "mods tab", body,
-		`<form method="get" action="`+search+`" role="search"`,
+		`<div role="search" class="setting-row__body">`, `type="search" form="mod-results-form"`, `class="button" form="mod-results-form">Search</button>`,
 		`hx-get="`+search+`" hx-trigger="input[this.value.trim().length`, `2] changed delay:300ms"`,
 		`hx-target="#results" hx-select="#results" hx-swap="outerHTML"`,
 		`data-short="Type at least 2 characters to search.`,

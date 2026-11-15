@@ -412,6 +412,51 @@ test.describe("typing on the Mods tab", () => {
     await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters to search. Ticked mods are kept.");
     await page.waitForTimeout(600);
     await expect(page.getByRole("table")).toHaveCount(0);
+    // No empty row is left between the search and the installed list.
+    await expect(page.locator("#mod-results-form")).toBeHidden();
+  });
+
+  test("a fresh tab says nothing for 1 character", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    await page.getByLabel("Mod name").fill("f");
+    await page.waitForTimeout(400);
+    await expect(page.locator("#announcer")).toHaveText("");
+  });
+
+  test("a reply that lands after the box went under 2 characters never shows", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    let asked!: () => void;
+    const sent = new Promise<void>((r) => (asked = r));
+    await page.route("**/mods/search?**", async (route) => {
+      asked();
+      await held;
+      await route.continue();
+    });
+    const box = page.getByLabel("Mod name");
+    await box.fill("fp-pg-03");
+    await sent;
+    await box.fill("f");
+    release();
+    await page.waitForTimeout(800);
+    await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toBeHidden();
+    await expect(page.getByRole("checkbox", { name: "fp-pg-03" })).toBeHidden();
+  });
+
+  test("Enter after ticking carries the ticks and the new search to the search page", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    const box = page.getByLabel("Mod name");
+    await box.fill("fp-pg-0");
+    await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
+    await page.getByRole("checkbox", { name: "fp-pg-02" }).check();
+    await box.fill("fp-pg-1");
+    await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-1"' })).toBeVisible();
+    await box.press("Enter");
+    await expect(page).toHaveURL(/\/mods\/search\?.*q=fp-pg-1/);
+    const also = page.getByRole("group", { name: "Also ticked" });
+    await expect(also.getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+    await expect(also.getByRole("checkbox", { name: "fp-pg-02" })).toBeChecked();
   });
 
   test("a pasted portal link shows its one mod", async ({ page }) => {
