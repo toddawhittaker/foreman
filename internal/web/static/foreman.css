@@ -8442,6 +8442,14 @@ main > .panel.danger-zone.danger-zone--blocked {
     max-block-size: 40vh;
     overflow-y: auto;
   }
+
+  /* Keyboard focus scrolled into view stays clear of the folded bar: its
+     44 px line, the 44 px Review button, the gap and padding (WCAG 2.4.11).
+     The bar's own rule beside the other foot bars would reach wide screens,
+     where the plan is not at the foot. */
+  html:has(.plan-panel:not(.plan-panel--empty)) {
+    scroll-padding-block-end: 9rem;
+  }
 }
 
 /* Below 360 px cards lie flat; the held bar keeps its frame so it reads as one. */

@@ -92,7 +92,7 @@ func TestSearchPagesAndList(t *testing.T) {
 	}
 	// Each row offers "+" named for its mod; the installed one says so instead.
 	wantIn(t, "add", main, `<button type="submit" class="button plan-toggle" id="mod-pager-00-plan"><span class="visually-hidden">Add pager-00 to the plan</span></button>`,
-		`<span class="hit__busy" aria-hidden="true">Adding…</span>`)
+		`<span class="hit__busy">Adding…</span>`)
 	wantIn(t, "installed", between(main, `id="mod-pager-03-hit"`, "</li>"), `<span class="badge">Installed</span>`)
 	if strings.Contains(between(main, `id="mod-pager-03-hit"`, "</li>"), "plan-toggle") {
 		t.Error("an installed mod offers +")

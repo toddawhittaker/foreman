@@ -84,9 +84,6 @@ func (PlanPanel) RemoveID(name string) string { return modID(name, "unpick") }
 
 // Names are the picks' titles, for the phone bar's one line.
 func (p PlanPanel) Names() string {
-	if len(p.Roots) == 0 {
-		return strings.Join(p.Picks, ", ")
-	}
 	out := make([]string, len(p.Roots))
 	for i, n := range p.Roots {
 		out[i] = n.Title
@@ -305,6 +302,12 @@ func (s *server) handlePlanMods(w http.ResponseWriter, r *http.Request, u store.
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
+	// A name the portal could never give is refused before it is saved; it
+	// would only come from a hand-made request.
+	if op == "add" && !world.ValidModName(name) {
+		s.badPlanName(w, r, u, sum)
+		return
+	}
 	full := false
 	var err error
 	if op == "add" {
@@ -319,14 +322,32 @@ func (s *server) handlePlanMods(w http.ResponseWriter, r *http.Request, u store.
 		s.fail(w, r, "change the mod plan", err)
 		return
 	}
-	// A cross in the panel leaves focus in the panel; a row's button stays
-	// on its row (WCAG 2.4.3).
-	fromPanel := r.PostFormValue("from") == "panel"
-	anchor := "#" + modID(name, "hit")
-	if fromPanel || full {
-		anchor = "#plan-panel"
+	s.planChanged(w, r, u, sum, planChange{name: name, op: op, full: full, fromPanel: r.PostFormValue("from") == "panel"})
+}
+
+// badPlanName refuses a "+" whose name is not one a mod can have: without
+// script an error page, with htmx the panel saying so.
+func (s *server) badPlanName(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary) {
+	msg := i18n.M("mods.plan_panel.bad_name")
+	if r.Header.Get("HX-Request") == "" {
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest, Detail: msg})
+		return
 	}
-	s.planChanged(w, r, u, sum, planChange{name: name, op: op, full: full, fromPanel: fromPanel, anchor: anchor})
+	panel, err := s.planPanel(r.Context(), sum, planReturn(sum.ID, r.PostFormValue("return")))
+	if err != nil {
+		s.fail(w, r, "read the mod plan", err)
+		return
+	}
+	panel.Error, panel.Said, panel.Focus = msg, msg, "plan-heading"
+	var b strings.Builder
+	if err := s.render.Fragment(&b, localeOf(r), PlanUpdate{Search: ModSearchPage{World: sum, Plan: panel}}, "plan-update"); err != nil {
+		s.fail(w, r, "render plan-update", err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusBadRequest)
+	_, _ = w.Write([]byte(b.String()))
 }
 
 func (s *server) handlePlanClear(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -341,12 +362,12 @@ func (s *server) handlePlanClear(w http.ResponseWriter, r *http.Request, u store
 		s.fail(w, r, "clear the mod plan", err)
 		return
 	}
-	s.planChanged(w, r, u, sum, planChange{op: "clear", fromPanel: true, anchor: "#plan-panel"})
+	s.planChanged(w, r, u, sum, planChange{op: "clear", fromPanel: true})
 }
 
 type planChange struct {
-	name, op, anchor string
-	full, fromPanel  bool
+	name, op        string
+	full, fromPanel bool
 }
 
 // planChanged answers a change: without script it goes back where the
@@ -361,7 +382,13 @@ func (s *server) planChanged(w http.ResponseWriter, r *http.Request, u store.Use
 			q.Set("full", "1")
 		}
 		loc.RawQuery, loc.Fragment = q.Encode(), ""
-		http.Redirect(w, r, loc.String()+c.anchor, http.StatusSeeOther) //nolint:gosec // a local path under this world's mods pages
+		// A row's button comes back to its row; the panel's controls and a
+		// refused "+" come back to the panel (WCAG 2.4.3).
+		anchor := "#" + modID(c.name, "hit")
+		if c.fromPanel || c.full || c.op == "clear" {
+			anchor = "#plan-panel"
+		}
+		http.Redirect(w, r, loc.String()+anchor, http.StatusSeeOther) //nolint:gosec // a local path under this world's mods pages
 		return
 	}
 	panel, err := s.planPanel(r.Context(), sum, back)

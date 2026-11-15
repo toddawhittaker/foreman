@@ -423,7 +423,7 @@
   "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować.",
   "mods.tools.label": "Narzędzia modyfikacji",
   "mods.row.more_word": "Więcej",
-  "mods.search.start": "Wpisz co najmniej 2 znaki nazwy modyfikacji w polu „Znajdź modyfikację”. Pasujące modyfikacje pojawią się tutaj.",
+  "mods.search.start": "Należy wpisać co najmniej 2 znaki nazwy modyfikacji w polu „Znajdź modyfikację”. Pasujące modyfikacje pojawią się tutaj.",
   "mods.search.results_heading_empty": "Pasujące modyfikacje",
   "mods.hit.latest": "Najnowsza",
   "mods.hit.updated": "Zaktualizowano",
@@ -475,5 +475,7 @@
   "mods.plan_panel.warn.incompatible": "Nie może działać razem z {mod}",
   "mods.plan_panel.warn.version": "Wersja {version} nie spełnia wymagań pozostałych modyfikacji",
   "mods.plan_panel.warn.space_age": "Wymaga Ery Kosmosu, która jest wyłączona w tym świecie",
-  "mods.plan_panel.warn.other": "Nie można zaplanować; przegląd pokazuje przyczynę"
+  "mods.plan_panel.warn.other": "Nie można zaplanować; przegląd pokazuje przyczynę",
+  "mods.plan_panel.bad_name": "To nie jest nazwa modyfikacji, którą Foreman może dodać. Należy wyszukać modyfikację i wybrać + obok niej.",
+  "mods.plan_panel.wait": "Przegląd będzie dostępny po zaktualizowaniu planu."
 }

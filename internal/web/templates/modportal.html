@@ -81,7 +81,7 @@
     {{- else}}
     <input type="hidden" name="op" value="add">
     {{- /* The plan needs the portal, so the row says it is working until the panel is back. */}}
-    <span class="hit__busy" aria-hidden="true">{{t "mods.hit.adding"}}</span>
+    <span class="hit__busy">{{t "mods.hit.adding"}}</span>
     <button type="submit" class="button plan-toggle" id="{{.ControlID}}"><span class="visually-hidden">{{tHTML "mods.hit.add" "mod" (ident .Name)}}</span></button>
     {{- end}}
   </form>
@@ -172,6 +172,8 @@
   </details>
   <div class="actions plan-panel__go">
     <a href="{{.ReviewPath}}" class="button button--primary" id="act-review-plan">{{if or .Unreachable (not .Count)}}{{t "mods.plan_panel.review_plain"}}{{else}}{{t "mods.plan_panel.review" "count" .Count}}{{end}}</a>
+    {{- /* While a change to the plan is still being worked out, modsearch.js holds Review back and shows this, so Review never opens without the last change. */}}
+    <p class="hint plan-panel__wait" id="plan-wait" hidden>{{t "mods.plan_panel.wait"}}</p>
   </div>
   {{- end}}
 </section>
