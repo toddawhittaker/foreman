@@ -6,6 +6,9 @@
   "mods.search.heading": "Найти мод",
   "mods.search.label": "Название мода",
   "mods.search.hint": "Ищет на портале модов моды для Factorio {line} — версии игры этого мира.",
+  "mods.search.short": "Для поиска введите не менее 2 символов.",
+  "mods.search.paste_hint": "Можно также вставить ссылку на мод с портала.",
+  "mods.search.browse": "Открыть портал модов",
   "mods.search.button": "Найти",
   "mods.search.missing": "Введите часть названия мода для поиска.",
   "mods.search.long": {

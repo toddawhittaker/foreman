@@ -6,6 +6,9 @@
   "mods.search.heading": "Trouver un mod",
   "mods.search.label": "Nom du mod",
   "mods.search.hint": "Cherche sur le portail de mods les mods conçus pour Factorio {line}, la version du jeu de ce monde.",
+  "mods.search.short": "Saisissez au moins 2 caractères pour lancer la recherche.",
+  "mods.search.paste_hint": "Vous pouvez aussi coller le lien d'un mod depuis le portail.",
+  "mods.search.browse": "Parcourir le portail de mods",
   "mods.search.button": "Rechercher",
   "mods.search.missing": "Saisissez une partie du nom d’un mod pour lancer la recherche.",
   "mods.search.long": {

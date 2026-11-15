@@ -2649,7 +2649,19 @@ page") are buttons of the same form, so ticks on other pages are kept as
 hidden fields and named under the table; after a page change focus goes to
 the results heading. With a mouse (`pointer: fine`) the box's label and the
 Details toggle are 24 px tall, so a row is about 100 px. Search works
-without an account.
+without an account. With script the results follow the typing: from 2
+characters, 300 ms after the last key, only the results are replaced (htmx),
+focus stays in the box, the address does not change, and the caption is
+read out through the shared announcer (7.5), as is a refused search's error.
+Under 2 characters the old results are hidden and "Type at least 2
+characters to search." is announced once. The "Also ticked" list and "Add
+ticked mods to plan" hide with them; the ticks still go with the form.
+Without script the form and
+Search work as before. Under the field, on this page and on the Mods tab, a
+hint says a pasted mod link works, with a plain link "Browse the mod
+portal" (hidden text "(opens in a new tab)") to
+`https://mods.factorio.com/browse/downloaded?factorio_version=<line>`
+in a new tab.
 
 **The plan page** (`/worlds/{id}/mods/plan`) is a 7.4 confirmation. The
 `h1` is a question naming the world and the mod: "Install visible-planets
