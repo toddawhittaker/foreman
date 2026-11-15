@@ -503,6 +503,8 @@ func TestSwitchUnavailable(t *testing.T) {
 func TestSwitchReplacesAStaleRecord(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	a, b := r.twoWorlds()
+	// Until the monitor's first look a switch is refused as unsettled.
+	r.waitState(a, StateStopped)
 	if err := r.store.BeginSwitch(context.Background(), a, b, "someone", time.Now()); err != nil {
 		t.Fatal(err)
 	}
