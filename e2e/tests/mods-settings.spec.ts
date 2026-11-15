@@ -46,6 +46,8 @@ test.describe("edit mod settings", () => {
     await openEditor(page);
     // The description is the hint below its control, and the field says so.
     await expect(page.getByLabel("Startup integer")).toHaveAccessibleDescription("An integer from 1 to 10.");
+    // A setting's own localised name, with a parameter, as the game shows it (#598).
+    await expect(page.locator("#mod-settings-form dt", { hasText: "Disable modification of chests" })).toBeVisible();
     // Map settings of a world with a save are values for a new map, changed in the game (SPEC 9.6).
     await expect(page.locator("#mod-settings-map-heading + p")).toContainText("Settings, Mod settings, Map");
     await expect(page.locator("#mod-settings-per-user")).toBeVisible();

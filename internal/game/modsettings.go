@@ -284,7 +284,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	// The control mod has no settings, but a file that lists one is not
 	// shown.
 	defs = slices.DeleteFunc(defs, func(d modsettings.Definition) bool { return d.Mod == modsettingsmod.ModName })
-	return &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: c.modSettingsLocale(id, localeCfgs)}, key, nil
+	return &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: c.modSettingsLocale(id, defs, localeCfgs)}, key, nil
 }
 
 // makeModSettingsDir makes the run's work folder: the game's config and the
@@ -414,8 +414,11 @@ func modSettingsError(err error) error {
 // languages from the enabled mods' raw locale files. Locale text is
 // decoration: a file that does not parse is logged and skipped, so a world
 // shows the setting names instead. Files merge in the order of mod name, then
-// as given.
-func (c *Controller) modSettingsLocale(id string, files map[string]map[string][][]byte) modsettings.Locale {
+// as given. A setting's own localised name or description, when it resolves
+// in the language, wins over its [mod-setting-name] or
+// [mod-setting-description] entry (SPEC 9.6); the page falls back to English,
+// then to the setting's name.
+func (c *Controller) modSettingsLocale(id string, defs modsettings.Definitions, files map[string]map[string][][]byte) modsettings.Locale {
 	mods := make([]string, 0, len(files))
 	for mod := range files {
 		mods = append(mods, mod)
@@ -423,24 +426,43 @@ func (c *Controller) modSettingsLocale(id string, files map[string]map[string][]
 	sort.Strings(mods)
 	out := modsettings.Locale{}
 	for lang, code := range modsettings.FactorioLocales {
-		texts := map[string]modsettings.LocaleText{}
+		secs := modsettings.LocaleSections{}
 		for _, mod := range mods {
 			for _, data := range files[mod][code] {
-				names, descs, err := modsettings.ParseLocaleCfg(data)
+				parsed, err := modsettings.ParseLocaleCfg(data)
 				if err != nil {
 					c.log.Warn("a mod's locale file does not parse", "world", id, "mod", mod, "locale", code, "error", err)
 					continue
 				}
-				for n, v := range names {
-					t := texts[n]
-					t.Name = v
-					texts[n] = t
-				}
-				for n, v := range descs {
-					t := texts[n]
-					t.Description = v
-					texts[n] = t
-				}
+				secs.Merge(parsed)
+			}
+		}
+		if len(secs) == 0 {
+			continue
+		}
+		texts := map[string]modsettings.LocaleText{}
+		for n, v := range secs["mod-setting-name"] {
+			t := texts[n]
+			t.Name = v
+			texts[n] = t
+		}
+		for n, v := range secs["mod-setting-description"] {
+			t := texts[n]
+			t.Description = v
+			texts[n] = t
+		}
+		for _, d := range defs {
+			t, had := texts[d.Name]
+			name, okName := modsettings.ResolveLocalised(d.LocalisedName, secs)
+			desc, okDesc := modsettings.ResolveLocalised(d.LocalisedDescription, secs)
+			if okName {
+				t.Name = name
+			}
+			if okDesc {
+				t.Description = desc
+			}
+			if had || t != (modsettings.LocaleText{}) {
+				texts[d.Name] = t
 			}
 		}
 		if len(texts) > 0 {
