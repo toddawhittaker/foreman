@@ -399,3 +399,46 @@ func TestStartFindsTheNewestFailurePastTheReadCap(t *testing.T) {
 		})
 	}
 }
+
+// SPEC 8.7, 8.9: a newer run that stopped with a reason of its own, not a
+// failed load, ends the earlier run's failure.
+func TestLoadFailureEndsWhenTheNextRunGivesItsOwnReason(t *testing.T) {
+	f := readAll(failedRun("first"), failedRun("")[:1], []string{"   1.0 Error Mod.cpp:9: Failed to load mod \"boom\": bad"})
+	if f.loadFailed() {
+		t.Error("the newest run's own error still reads as the earlier failed load")
+	}
+}
+
+// A crash loop read before run 2's InitializationFailed line: run 2's own
+// failed-load error makes it a failed load, told with its own reason.
+func TestLoadFailureCountsTheNewestRunsFailureBeforeItsLastLine(t *testing.T) {
+	second := failedRun("second")
+	f := readAll(failedRun("first"), second[:len(second)-1])
+	if !f.loadFailed() || f.failDetail() != "second" {
+		t.Errorf("failed %v with %q, want the newest run's failed load", f.loadFailed(), f.failDetail())
+	}
+}
+
+// An early error line that is no known crash reason does not end the
+// earlier run's failure.
+func TestLoadFailureStandsPastANonFatalErrorLine(t *testing.T) {
+	f := readAll(failedRun("first"), failedRun("")[:1], []string{"   1.0 Error Mod.cpp:9: harmless"})
+	if !f.loadFailed() || f.failDetail() != "first" {
+		t.Errorf("failed %v with %q, want the earlier failure", f.loadFailed(), f.failDetail())
+	}
+}
+
+// SPEC 8.7: Start reports only the newest run's failure. Holding the
+// follower makes Start read the log only after the newest run stopped.
+func TestStartReportsTheNewestRunsReasonNotAnEarlierFailedLoad(t *testing.T) {
+	_, err := startWhileGameDies(t, func(string) []string {
+		lines := append(failedRun("first"), failedRun("")[:1]...)
+		return append(lines, "   1.000 Error Mod.cpp:9: Failed to load mod \"boom\": bad")
+	}, func(d *dockertest.Daemon, _ int) { d.HoldFollowers(true) })
+	if !errors.Is(err, ErrStartFailed) {
+		t.Fatalf("got %v", err)
+	}
+	if strings.Contains(err.Error(), "could not load the save") || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("got %q, want the newest run's own reason", err)
+	}
+}

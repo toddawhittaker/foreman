@@ -11,7 +11,8 @@ const shot = (page: Page, name: string) => page.screenshot({ path: `../screensho
 const names = Array.from({ length: 25 }, (_, i) => `fp-pg-${String(i).padStart(2, "0")}`);
 
 test.beforeEach(async ({ page, foreman, fakeGame, fakePortal }) => {
-  for (const n of names) await fakePortal!.add(n, "1.0.0");
+  // The mod list is cached once the world is set up, so every mod is added first.
+  for (const n of [...names, "fp-rs-rail-signal", "fp-rs-rail-only"]) await fakePortal!.add(n, "1.0.0");
   await setUpModsWorld(page, foreman, fakeGame!, world);
 });
 
@@ -169,4 +170,14 @@ test("a link to another site is ordinary search text", async ({ page }) => {
   await page.getByLabel("Mod name").press("Enter");
   await expect(page.getByText("No mod for Factorio 2.0 matches.")).toBeVisible();
   await expect(page.getByRole("table")).toHaveCount(0);
+});
+
+// SPEC 9.1: every word must be in the name or title, in any order.
+test("a search of two words finds a mod with both, in either order", async ({ page }) => {
+  for (const q of ["signal rail", "rail signal"]) {
+    await page.goto(`/worlds/base/mods/search?q=${encodeURIComponent(q)}`);
+    await expect(page.getByRole("checkbox", { name: "fp-rs-rail-signal" })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: "fp-rs-rail-only" })).toHaveCount(0);
+  }
+  await checkPage(page);
 });

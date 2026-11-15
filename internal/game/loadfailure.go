@@ -82,6 +82,30 @@ type loadFailure struct {
 	runWhole              bool
 }
 
+// loadFailed reports whether the newest run's stop is a failed load
+// (SPEC 8.7). The newest run's failed-load error counts even before its
+// last line is read, since only that path prints it. Otherwise the newest
+// run to finish loading failed, and no run after it named a known crash
+// reason: other error lines may not be fatal, so they do not end it.
+func (f loadFailure) loadFailed() bool {
+	switch {
+	// finished with failed set means the newest run's own failed-load line.
+	case f.finished:
+		return f.failed
+	case f.runError != "":
+		return true
+	}
+	return f.failed && f.kind == ""
+}
+
+// failDetail is the game's words for the failed load loadFailed reports.
+func (f loadFailure) failDetail() string {
+	if !f.finished && f.runError != "" {
+		return f.runError
+	}
+	return f.failError
+}
+
 // add reads one line whose time Docker did not give.
 func (f *loadFailure) add(raw string) { f.addAt(time.Time{}, raw) }
 
@@ -306,10 +330,10 @@ func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid s
 	if oom {
 		reason.Kind = crashreasons.OutOfMemory
 	}
-	if !f.failed {
+	if !f.loadFailed() {
 		return &StartError{Kind: StartStopped, Reason: reason}
 	}
-	detail := shownText(w.redact, f.failError)
+	detail := shownText(w.redact, f.failDetail())
 	if w.containerID == cid && !w.run.loadFailed {
 		w.run.loadFailed, w.run.inGame, w.run.loadError = true, false, detail
 		c.changedLocked(w, true)

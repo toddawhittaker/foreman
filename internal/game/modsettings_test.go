@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	modsettingsmod "github.com/toddawhittaker/foreman/internal/game/modsettings"
@@ -218,6 +219,36 @@ func TestModSettingDefsContainer(t *testing.T) {
 		t.Error("the run starts a server")
 	}
 	_ = ch
+}
+
+// SPEC 9.6, 14 (least privilege): each mod zip in the work folder is a hard
+// link to the world's own file, so the run gets it read-only; a write
+// through the link would change the world's mod.
+func TestModSettingDefsMountsZipsReadOnly(t *testing.T) {
+	r := newModSettingsRig(t)
+	r.writeFile(r.id, filepath.Join(world.ModsDir, "fmtest_1.0.0.zip"), []byte("zip"))
+	// A folder mod and the mod list are copies, so they get no mount.
+	r.writeFile(r.id, filepath.Join(world.ModsDir, world.ModListFile), []byte(`{"mods":[{"name":"base","enabled":true}]}`))
+	if err := os.MkdirAll(filepath.Join(r.worldDir(r.id), world.ModsDir, "mine"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	r.writeFile(r.id, filepath.Join(world.ModsDir, "mine", "info.json"), []byte("{}"))
+	ch := r.ask(context.Background())
+	c := r.waitRunning()
+	folder := strings.TrimPrefix(c.Name, "foreman-modsettings-")
+	want := []docker.BindMount{{
+		Type:     "bind",
+		Source:   filepath.Join(r.c.hostData, previewDir, folder, world.ModsDir, "fmtest_1.0.0.zip"),
+		Target:   gameenv.PreviewMount + "/" + world.ModsDir + "/fmtest_1.0.0.zip",
+		ReadOnly: true,
+	}}
+	if got := c.Spec.HostConfig.Mounts; !reflect.DeepEqual(got, want) {
+		t.Errorf("mounts %+v, want %+v", got, want)
+	}
+	r.finish(c, defsJSON, defaultsDat(t))
+	if res := r.result(ch); res.err != nil {
+		t.Fatal(res.err)
+	}
 }
 
 // SPEC 9.6: the work folder holds the config, the world's own mod list with
