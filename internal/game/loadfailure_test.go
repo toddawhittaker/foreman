@@ -399,3 +399,30 @@ func TestStartFindsTheNewestFailurePastTheReadCap(t *testing.T) {
 		})
 	}
 }
+
+// SPEC 8.7, 8.9: a newer run that stopped with a reason of its own, not a
+// failed load, ends the earlier run's failure.
+func TestLoadFailureEndsWhenTheNextRunGivesItsOwnReason(t *testing.T) {
+	f := readAll(failedRun("first"), failedRun("")[:1], []string{"   1.0 Error Mod.cpp:9: boom"})
+	if f.loadFailed() {
+		t.Error("the newest run's own error still reads as the earlier failed load")
+	}
+	if !readAll(failedRun("first"), failedRun("")[:1]).loadFailed() {
+		t.Error("a silent newer run ended the earlier failure")
+	}
+}
+
+// SPEC 8.7: Start reports only the newest run's failure. Holding the
+// follower makes Start read the log only after the newest run stopped.
+func TestStartReportsTheNewestRunsReasonNotAnEarlierFailedLoad(t *testing.T) {
+	_, err := startWhileGameDies(t, func(string) []string {
+		lines := append(failedRun("first"), failedRun("")[:1]...)
+		return append(lines, "   1.000 Error Mod.cpp:9: boom")
+	}, func(d *dockertest.Daemon, _ int) { d.HoldFollowers(true) })
+	if !errors.Is(err, ErrStartFailed) {
+		t.Fatalf("got %v", err)
+	}
+	if strings.Contains(err.Error(), "could not load the save") || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("got %q, want the newest run's own reason", err)
+	}
+}

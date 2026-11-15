@@ -82,6 +82,14 @@ type loadFailure struct {
 	runWhole              bool
 }
 
+// loadFailed reports whether the newest run's stop is a failed load: the
+// newest run to finish loading failed, and no run after it named a reason
+// of its own. A run still loading has said nothing, so the failure before
+// it stands (SPEC 8.7).
+func (f loadFailure) loadFailed() bool {
+	return f.failed && (f.finished || (f.kind == "" && f.errLine == "" && f.runError == ""))
+}
+
 // add reads one line whose time Docker did not give.
 func (f *loadFailure) add(raw string) { f.addAt(time.Time{}, raw) }
 
@@ -306,7 +314,7 @@ func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid s
 	if oom {
 		reason.Kind = crashreasons.OutOfMemory
 	}
-	if !f.failed {
+	if !f.loadFailed() {
 		return &StartError{Kind: StartStopped, Reason: reason}
 	}
 	detail := shownText(w.redact, f.failError)
