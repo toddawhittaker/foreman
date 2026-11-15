@@ -5,6 +5,9 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "tests",
   forbidOnly: true,
+  // Each test starts its own Foreman (tests/foreman.ts), so tests need no order,
+  // and CI's slices split by test rather than by whole file.
+  fullyParallel: true,
   retries: 0,
   // Eight workers locally, so two runs at once fit a 32-core machine; each
   // worker starts its own Foreman and browser. CI keeps Playwright's default

@@ -131,10 +131,16 @@ jobs:
             run: make check-go fmt-check vet
           - check: lint
             run: make lint
-          # CI uses the same worker pool as a local run. `make test` alone,
-          # with CI set, still gives the single-process `go test ./...`.
-          - check: test
-            run: make test TEST_SHARDS=auto
+          # CI uses the same worker pool as a local run, split across three
+          # runners by TEST_SLICE; the coverage job below checks the floor.
+          # `make test` alone, with CI set, still gives the single-process
+          # `go test ./...`.
+          - check: test 1/3
+            run: make test TEST_SHARDS=auto TEST_SLICE=1/3
+          - check: test 2/3
+            run: make test TEST_SHARDS=auto TEST_SLICE=2/3
+          - check: test 3/3
+            run: make test TEST_SHARDS=auto TEST_SLICE=3/3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -155,6 +161,41 @@ jobs:
           key: lint-${{ hashFiles('go.sum', 'Makefile', '.golangci.yml') }}
 
       - run: ${{ matrix.run }}
+
+      - if: startsWith(matrix.check, 'test')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-${{ github.run_attempt }}-${{ strategy.job-index }}
+          path: .cache/cover
+          retention-days: 1
+          if-no-files-found: error
+
+  # Merges the three test slices' coverage and checks the floor, as a
+  # whole-queue `make test` does on one machine.
+  coverage:
+    needs: [changes, verify]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the Go version from the Makefile
+        id: go
+        run: echo "version=$(sed -n 's/^GO_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ steps.go.outputs.version }}
+          cache-dependency-path: go.sum
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: coverage-${{ github.run_attempt }}-*
+          path: .cache/cover
+          merge-multiple: true
+
+      - run: make coverage-floor
 
   # The end-to-end tests, in eight slices that run side by side. The check
   # names (e2e (1/8) and so on) are not required by the ruleset; the `ci`
@@ -260,7 +301,7 @@ jobs:
   # records the tested tree, so the same tree is not tested again.
   ci:
     if: always()
-    needs: [changes, trailers, verify, e2e, image]
+    needs: [changes, trailers, verify, coverage, e2e, image]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -271,10 +312,11 @@ jobs:
           CODE: ${{ needs.changes.outputs.code }}
           TRAILERS: ${{ needs.trailers.result }}
           VERIFY: ${{ needs.verify.result }}
+          COVERAGE: ${{ needs.coverage.result }}
           E2E: ${{ needs.e2e.result }}
           IMAGE: ${{ needs.image.result }}
         run: |
-          echo "changes=$CHANGES code=$CODE trailers=$TRAILERS verify=$VERIFY e2e=$E2E image=$IMAGE"
+          echo "changes=$CHANGES code=$CODE trailers=$TRAILERS verify=$VERIFY coverage=$COVERAGE e2e=$E2E image=$IMAGE"
           [ "$CHANGES" = success ]
           if [ "$EVENT" = pull_request ]; then
             [ "$TRAILERS" = success ]
@@ -286,7 +328,7 @@ jobs:
             false) want=skipped ;;
             *) exit 1 ;;
           esac
-          [ "$VERIFY" = "$want" ] && [ "$E2E" = "$want" ] && [ "$IMAGE" = "$want" ]
+          [ "$VERIFY" = "$want" ] && [ "$COVERAGE" = "$want" ] && [ "$E2E" = "$want" ] && [ "$IMAGE" = "$want" ]
 
       - name: Record the tested tree
         if: needs.changes.outputs.code == 'true'
