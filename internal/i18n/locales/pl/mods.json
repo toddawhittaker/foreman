@@ -22,21 +22,14 @@
   "mods.search.none": "Żadna modyfikacja dla Factorio {line} nie pasuje. Należy spróbować krótszej części nazwy.",
   "mods.search.link_unknown": "W portalu modyfikacji nie ma modyfikacji o nazwie {name}. Należy sprawdzić pisownię.",
   "mods.search.link_no_release": "Modyfikacja {name} nie ma wydania dla Factorio {line}. Należy wybrać inną modyfikację.",
-  "mods.search.add": "Dodaj do planu",
   "mods.hits.count": {
     "one": "{count} modyfikacja dla Factorio {line} pasuje.",
     "few": "{count} modyfikacje dla Factorio {line} pasują.",
     "many": "{count} modyfikacji dla Factorio {line} pasuje."
   },
   "mods.hits.showing": "Wyświetlono od {first} do {last}.",
-  "mods.hits.summary": "Szczegóły",
-  "mods.hits.latest_label": "Najnowsza wersja:",
-  "mods.hits.downloads_label": "Pobrania:",
-  "mods.hits.pages": "Strony wyników",
-  "mods.hits.page": "Strona {page} z {pages}",
   "mods.hits.prev": "Poprzednia strona",
   "mods.hits.next": "Następna strona",
-  "mods.fact.latest": "Najnowsza wersja",
   "mods.fact.downloads": "Pobrania",
   "mods.badge.installed": "Zainstalowana",
   "mods.badge.in_plan": "W planie",
@@ -259,8 +252,6 @@
   "mods.plan.warn_stop": "Ostrzeż graczy, a potem zapisz grę i zatrzymaj serwer.",
   "mods.plan.snapshot": "Wykonaj migawkę świata {world} z etykietą „{label}”. Jeśli migawka się nie powiedzie, nic więcej się nie dzieje.",
   "mods.plan.asked.remove": "Usuń z planu",
-  "mods.plan.add.heading": "Dodaj kolejną modyfikację",
-  "mods.plan.add.back": "Wróć do planu",
   "mods.plan.start": "Ponownie uruchom serwer.",
   "mods.plan.undo": "Po zakończeniu przy wyniku pojawi się cofnięcie jednym kliknięciem, które przywraca tę migawkę.",
   "mods.plan.group.install": "Instalacja",
@@ -374,11 +365,6 @@
     "few": "Plan zaktualizowany: zmieniają się {count} modyfikacje.",
     "many": "Plan zaktualizowany: zmienia się {count} modyfikacji."
   },
-  "mods.plan.added": {
-    "one": "Dodano {mod}. Plan obejmuje {count} modyfikację.",
-    "few": "Dodano {mod}. Plan obejmuje {count} modyfikacje.",
-    "many": "Dodano {mod}. Plan obejmuje {count} modyfikacji."
-  },
   "mods.plan.removed": {
     "one": "Usunięto {mod}. Plan obejmuje {count} modyfikację.",
     "few": "Usunięto {mod}. Plan obejmuje {count} modyfikacje.",
@@ -419,7 +405,6 @@
   "mods.plan.step.fails": "Jeśli krok się nie powiedzie, kolejne kroki nie zostaną wykonane.",
   "mods.plan.fix.remove": "Usuń {mod} w ramach tego planu",
   "mods.plan.fix.disable": "Wyłącz też {mod}",
-  "mods.plan.back_search": "Wróć do wyszukiwania",
   "mods.plan.fixed": {
     "one": "Plan zaktualizowany. Zmienia {count} modyfikację.",
     "few": "Plan zaktualizowany. Zmienia {count} modyfikacje.",

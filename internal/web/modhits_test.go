@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -187,27 +186,4 @@ func TestSearchRowsFollowThePlan(t *testing.T) {
 		t.Error("a dependency has a button of its own")
 	}
 	wantIn(t, "other", between(main, `id="mod-pager-04-hit"`, "</li>"), `<input type="hidden" name="op" value="add">`)
-}
-
-// The plan page's "Add another mod" is the same table with links to its
-// pages, and an empty search says what to try.
-func TestAddAnotherModPages(t *testing.T) {
-	g, id := pagerRig(t)
-	q := url.Values{"kind": {"install"}, "name": {"pager-00"}, "q": {"pager"}}
-	_, body := g.getStatus(planPath(id, q))
-	next := url.Values{"add": {"1"}, "kind": {"install"}, "name": {"pager-00"}, "q": {"pager"}, "page": {"2"}}
-	wantIn(t, "plan", plain(body), "<caption>25 mods for Factorio 2.0 match. Showing 1 to 10.</caption>",
-		`<a href="`+strings.ReplaceAll(planPath(id, next), "&", "&amp;")+`#add-heading" class="button button--quiet">Next page</a>`,
-		`<a href="#confirm-heading">Back to the plan</a>`)
-	if strings.Contains(body, `name="pick"`) {
-		t.Error("the plan page has boxes to tick; each Add adds at once")
-	}
-	// An add from page 2 keeps page 2.
-	q.Set("page", "2")
-	_, two := g.getStatus(planPath(id, q))
-	wantIn(t, "page 2", two, `hx-get="/worlds/`+id+`/mods/plan?added=pager-10&amp;kind=install&amp;name=pager-00&amp;name=pager-10&amp;page=2&amp;q=pager"`)
-
-	q.Set("q", "no such mod anywhere")
-	_, none := g.getStatus(planPath(id, q))
-	wantIn(t, "none", none, "No mod for Factorio 2.0 matches. Try a shorter part of the name.")
 }

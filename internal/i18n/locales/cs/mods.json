@@ -22,21 +22,14 @@
   "mods.search.none": "Žádný mod pro Factorio {line} neodpovídá. Je třeba zkusit kratší část názvu.",
   "mods.search.link_unknown": "Na portálu modů není žádný mod s názvem {name}. Je třeba zkontrolovat pravopis.",
   "mods.search.link_no_release": "Mod {name} nemá vydání pro Factorio {line}. Je třeba zkusit jiný mod.",
-  "mods.search.add": "Přidat do plánu",
   "mods.hits.count": {
     "one": "{count} mod pro Factorio {line} odpovídá.",
     "few": "{count} mody pro Factorio {line} odpovídají.",
     "other": "{count} modů pro Factorio {line} odpovídá."
   },
   "mods.hits.showing": "Zobrazeno {first} až {last}.",
-  "mods.hits.summary": "Podrobnosti",
-  "mods.hits.latest_label": "Nejnovější verze:",
-  "mods.hits.downloads_label": "Stažení:",
-  "mods.hits.pages": "Stránky výsledků",
-  "mods.hits.page": "Stránka {page} z {pages}",
   "mods.hits.prev": "Předchozí stránka",
   "mods.hits.next": "Další stránka",
-  "mods.fact.latest": "Nejnovější verze",
   "mods.fact.downloads": "Stažení",
   "mods.badge.installed": "Nainstalovaný",
   "mods.badge.in_plan": "V plánu",
@@ -259,8 +252,6 @@
   "mods.plan.warn_stop": "Upozornit hráče, pak uložit hru a zastavit server.",
   "mods.plan.snapshot": "Pořídit snímek světa {world} se štítkem „{label}“. Pokud snímek selže, nestane se nic dalšího.",
   "mods.plan.asked.remove": "Odebrat z plánu",
-  "mods.plan.add.heading": "Přidat další mod",
-  "mods.plan.add.back": "Zpět k plánu",
   "mods.plan.start": "Znovu spustit server.",
   "mods.plan.undo": "Po dokončení se u výsledku objeví vrácení zpět jedním kliknutím, které tento snímek obnoví.",
   "mods.plan.group.install": "Instalace",
@@ -374,11 +365,6 @@
     "few": "Plán aktualizován: mění se {count} mody.",
     "other": "Plán aktualizován: mění se {count} modů."
   },
-  "mods.plan.added": {
-    "one": "Přidán {mod}. Plán má {count} mod.",
-    "few": "Přidán {mod}. Plán má {count} mody.",
-    "other": "Přidán {mod}. Plán má {count} modů."
-  },
   "mods.plan.removed": {
     "one": "Odebrán {mod}. Plán má {count} mod.",
     "few": "Odebrán {mod}. Plán má {count} mody.",
@@ -419,7 +405,6 @@
   "mods.plan.step.fails": "Pokud krok selže, další kroky se neprovedou.",
   "mods.plan.fix.remove": "Odebrat {mod} v rámci tohoto plánu",
   "mods.plan.fix.disable": "Vypnout také {mod}",
-  "mods.plan.back_search": "Zpět k hledání",
   "mods.plan.fixed": {
     "one": "Plán aktualizován. Mění {count} mod.",
     "few": "Plán aktualizován. Mění {count} mody.",
