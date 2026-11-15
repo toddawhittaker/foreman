@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -94,6 +95,9 @@ type Favorites struct {
 	dir    string
 	worlds *Manager
 	now    func() time.Time
+	// makeMu is held from the taken-name check to the rename, so two
+	// favorites cannot get the same name.
+	makeMu sync.Mutex
 }
 
 // NewFavorites makes the favorites folder if it is missing and clears any
@@ -157,6 +161,8 @@ func (f *Favorites) Make(ctx context.Context, worldID, name string) (string, err
 	fav.CreatedAt = f.now().UTC()
 	fav.FormatVersion = favoriteFormat
 
+	f.makeMu.Lock()
+	defer f.makeMu.Unlock()
 	existing, err := f.List(ctx)
 	if err != nil {
 		return "", err
@@ -418,6 +424,11 @@ func validFavorite(fav Favorite) bool {
 	}
 	for _, m := range fav.Mods {
 		if !validModName(m.Name) || !modVersionRE.MatchString(m.Version) {
+			return false
+		}
+	}
+	for _, n := range fav.LeftOut {
+		if !validModName(n) {
 			return false
 		}
 	}

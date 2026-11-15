@@ -55,18 +55,6 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 	if !presetRE.MatchString(nw.Preset) {
 		return "", ErrBadPreset
 	}
-	files := []struct {
-		name string
-		data []byte
-	}{{MapGenSettingsFile, nw.MapGenSettings}, {MapSettingsFile, nw.MapSettings}}
-	for _, f := range files {
-		if len(f.data) > maxConfigFile {
-			return "", ErrConfigTooBig
-		}
-		if len(f.data) > 0 && !json.Valid(f.data) {
-			return "", ErrBadMapJSON
-		}
-	}
 	var server []byte
 	if len(nw.ServerSettings) > 0 {
 		if len(nw.ServerSettings) > maxConfigFile {
@@ -74,6 +62,18 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 		}
 		if server, _ = gamesettings.StripSecrets(nw.ServerSettings); server == nil {
 			return "", ErrBadServerSettings
+		}
+	}
+	files := []struct {
+		name string
+		data []byte
+	}{{MapGenSettingsFile, nw.MapGenSettings}, {MapSettingsFile, nw.MapSettings}, {ServerSettingsFile, server}}
+	for _, f := range files {
+		if len(f.data) > maxConfigFile {
+			return "", ErrConfigTooBig
+		}
+		if len(f.data) > 0 && !json.Valid(f.data) {
+			return "", ErrBadMapJSON
 		}
 	}
 	if len(nw.ModSettings) > MaxModSettings {
@@ -89,10 +89,7 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 			return err
 		}
 		defer func() { _ = dst.Close() }()
-		for _, f := range append(files, struct {
-			name string
-			data []byte
-		}{ServerSettingsFile, server}) {
+		for _, f := range files {
 			if len(f.data) == 0 {
 				continue
 			}

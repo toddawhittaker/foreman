@@ -276,3 +276,71 @@ func TestGenerateWritesFavoriteSettings(t *testing.T) {
 		t.Errorf("bad server settings: %v", err)
 	}
 }
+
+func TestConcurrentMakesWithOneNameGiveOneFavorite(t *testing.T) {
+	ctx := context.Background()
+	f, m := newTestFavorites(t)
+	id, err := m.Create(ctx, "W", "2.0.77", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const n = 8
+	errs := make(chan error, n)
+	for range n {
+		go func() {
+			_, err := f.Make(ctx, id, "Big base")
+			errs <- err
+		}()
+	}
+	made := 0
+	for range n {
+		switch err := <-errs; {
+		case err == nil:
+			made++
+		case !errors.Is(err, ErrFavoriteNameTaken):
+			t.Errorf("make: %v", err)
+		}
+	}
+	if list, _ := f.List(ctx); made != 1 || len(list) != 1 {
+		t.Errorf("made %d, listed %d, want 1", made, len(list))
+	}
+}
+
+func TestFavoriteWithBadLeftOutIsRefused(t *testing.T) {
+	ctx := context.Background()
+	f, m := newTestFavorites(t)
+	id, err := m.Create(ctx, "W", "2.0.77", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, left := range map[string]string{
+		"oversized entry": `["` + strings.Repeat("x", 10000) + `"]`,
+		"control chars":   `["a\u0007b"]`,
+		"too many":        "[" + strings.TrimSuffix(strings.Repeat(`"m",`, maxFavoriteMods+1), ",") + "]",
+	} {
+		t.Run(name, func(t *testing.T) {
+			favID, err := f.Make(ctx, id, "fav "+name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			desc := `{"format_version":1,"name":"fav ` + name + `","game_version":"2.0.77","mods":[],"left_out":` + left + `}`
+			if err := os.WriteFile(filepath.Join(f.dir, favID, FavoriteFile), []byte(desc), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := f.Get(favID); !errors.Is(err, ErrFavoriteBroken) {
+				t.Errorf("get: %v", err)
+			}
+		})
+	}
+}
+
+func TestGenerateRefusesOversizedModSettings(t *testing.T) {
+	m, _ := newTestManager(t)
+	_, err := m.Generate(context.Background(), NewWorld{Name: "Big", GameVersion: "2.0.77", ModSettings: make([]byte, MaxModSettings+1)})
+	if !errors.Is(err, ErrModSettingsTooBig) {
+		t.Errorf("oversized mod settings: %v", err)
+	}
+	if list, _ := m.List(context.Background()); len(list) != 0 {
+		t.Errorf("a world was made: %v", list)
+	}
+}
