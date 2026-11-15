@@ -8,11 +8,219 @@
 <p class="hint" id="mod-paste-hint">{{t "mods.search.paste_hint"}} <a href="https://mods.factorio.com/browse/downloaded?factorio_version={{.}}" target="_blank" rel="noopener noreferrer">{{t "mods.search.browse"}}<span class="visually-hidden"> {{t "common.link.new_tab"}}</span></a></p>
 {{- end}}
 
-{{/* One page of a mod search's results, a row per mod (DESIGN 8.3, SPEC 9.1). Takes the search page, whose rows have boxes to tick several mods, or the plan page, whose Add redraws the plan. */}}
+{{/* The "Mods matching" panel, always on the Mods tab and the search page; typing and the page controls replace only this (SPEC 9.1). Takes ModSearchPage. */}}
+{{define "mod-results" -}}
+<section class="panel mod-found" id="results" aria-labelledby="results-heading">
+  {{- /* A page control without script reloads the page; focus goes to the results it asked for. */}}
+  <h2 id="results-heading" tabindex="-1"{{if and .Paged (not .Problems)}} autofocus{{end}}>{{if .Searched}}{{t "mods.search.results_heading" "query" .Query}}{{else}}{{t "mods.search.results_heading_empty"}}{{end}}</h2>
+  {{- if not .QueryError.IsZero}}
+  {{- /* Inside the panel so a typed search shows it too; modsearch.js ties it to the box after a swap. */}}
+  <p class="error" id="mod-search-error"><strong>{{t "common.error.label"}}</strong> {{msg .QueryError}}</p>
+  {{- else if .Unreachable}}
+  <div class="message message--error">
+    <p><strong>{{t "common.error.label"}}</strong> {{t "mods.search.unreachable"}}</p>
+  </div>
+  {{- else if not .Query}}
+  <p class="empty">{{t "mods.search.start"}}</p>
+  {{- else if .Results.Rows}}
+  {{- $p := .}}
+  {{template "result-pager" (.Pager "top")}}
+  {{- with .Results}}
+  <p class="mod-found__count" id="results-count">{{t "mods.hits.count" "count" .Total "line" $p.Line}}{{if gt .Pages 1}} {{t "mods.hits.showing" "first" .First "last" .Last}}{{end}}</p>
+  <ul class="hits" role="list" aria-labelledby="results-count">
+    {{- range .Rows}}
+    <li class="hit" id="{{$p.ModID .Name "hit"}}">
+      {{- /* The rows on the page, so a change to the plan redraws each one's state. */}}
+      <input type="hidden" name="row" value="{{.Name}}" data-row>
+      <h3 class="hit__title"><a href="{{portalPath .Name}}" target="_blank" rel="noopener noreferrer">{{if and .Title (ne .Title .Name)}}{{.Title}}{{else}}<span class="ident" translate="no">{{.Name}}</span>{{end}}<span class="visually-hidden"> {{t "mods.installed.portal"}}</span></a>{{if and .Title (ne .Title .Name)}} <code translate="no">{{.Name}}</code>{{end}}</h3>
+      {{- with .Summary}}
+      <p class="hit__summary">{{.}}</p>
+      {{- end}}
+      <div class="hit__line">
+        <dl class="hit__facts">
+          <div><dt>{{t "mods.hit.latest"}}</dt><dd translate="no">{{.LatestVersion}}</dd></div>
+          <div><dt>{{t "mods.fact.downloads"}}</dt><dd>{{num .Downloads}}</dd></div>
+          {{- if not .ReleasedAt.IsZero}}
+          <div><dt>{{t "mods.hit.updated"}}</dt><dd><time datetime="{{isoTime .ReleasedAt}}" data-day>{{day .ReleasedAt}}</time></dd></div>
+          {{- end}}
+        </dl>
+        {{template "hit-act" ($p.Act .Name)}}
+      </div>
+    </li>
+    {{- end}}
+  </ul>
+  {{- end}}
+  {{template "result-pager" (.Pager "bottom")}}
+  {{- else if not .LinkMiss.IsZero}}
+  <p class="empty">{{msg .LinkMiss}}</p>
+  {{- else}}
+  <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
+  {{- end}}
+</section>
+{{- end}}
+
+{{/* What one result offers: a badge, "+", or "In plan" with "−"; a change to the plan swaps it in place (SPEC 9.1). Takes HitAct. */}}
+{{define "hit-act" -}}
+<div class="hit__act" id="{{.ID}}"{{if .OOB}} hx-swap-oob="true"{{end}}>
+  {{- if eq .State "installed"}}
+  <span class="badge">{{t "mods.badge.installed"}}</span>
+  {{- else if eq .State "needed"}}
+  {{- /* No button: a dependency leaves the plan with the mod that needs it (SPEC 9.14). */}}
+  <span class="badge badge--needed" id="{{.ControlID}}" tabindex="-1">{{t "mods.plan_panel.needed_by" "mod" .NeededBy}}</span>
+  {{- else}}
+  {{- if eq .State "in_plan"}}
+  {{- /* Said in words with a tick; the row's tint only repeats it. */}}
+  <span class="badge badge--chosen">{{t "mods.badge.in_plan"}}</span>
+  {{- end}}
+  <form method="post" action="{{.Path}}" class="hit__form" hx-post="{{.Path}}" hx-target="#plan-panel" hx-swap="outerHTML" hx-include="[data-row]" hx-disabled-elt="find button">
+    <input type="hidden" name="name" value="{{.Name}}">
+    <input type="hidden" name="return" value="{{.Return}}">
+    {{- if eq .State "in_plan"}}
+    <input type="hidden" name="op" value="remove">
+    <button type="submit" class="button plan-toggle plan-toggle--remove" id="{{.ControlID}}"><span class="visually-hidden">{{tHTML "mods.plan_panel.remove" "mod" (ident .Name)}}</span></button>
+    {{- else}}
+    <input type="hidden" name="op" value="add">
+    {{- /* The plan needs the portal, so the row says it is working until the panel is back. */}}
+    <span class="hit__busy">{{t "mods.hit.adding"}}</span>
+    <button type="submit" class="button plan-toggle" id="{{.ControlID}}"><span class="visually-hidden">{{tHTML "mods.hit.add" "mod" (ident .Name)}}</span></button>
+    {{- end}}
+  </form>
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* Previous, a page box with Go, and Next, above and below the results; each its own form, so it works as a plain link or GET without script (SPEC 9.1). Takes ResultPager. */}}
+{{define "result-pager" -}}
+{{- $p := .Search}}
+{{- $where := .Where}}
+{{- with .Search.Results}}
+{{- if gt .Pages 1}}
+<nav class="pager result-pager" aria-label="{{if eq $where "top"}}{{t "mods.hits.pages_top"}}{{else}}{{t "mods.hits.pages_bottom"}}{{end}}" hx-target="#results" hx-select="#results" hx-swap="outerHTML"{{if not $p.Tab}} hx-push-url="true"{{end}}>
+  {{- if gt .Page 1}}
+  <a href="{{$p.PagePath .Prev}}" class="button button--quiet result-pager__step" rel="prev" hx-get="{{$p.PagePath .Prev}}">{{t "mods.hits.prev"}}</a>
+  {{- else}}
+  <span class="result-pager__step"></span>
+  {{- end}}
+  <form method="get" action="{{$p.Path}}" class="result-pager__jump" hx-get="{{$p.Path}}">
+    <input type="hidden" name="q" value="{{$p.Query}}">
+    {{- if $p.Tab}}<input type="hidden" name="in" value="tab">{{end}}
+    <label for="page-{{$where}}">{{t "mods.hits.page_label"}}</label>
+    <input id="page-{{$where}}" name="page" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="{{.Page}}" size="3" aria-describedby="pages-{{$where}}">
+    <span id="pages-{{$where}}">{{t "mods.hits.of_pages" "pages" .Pages}}</span>
+    <button type="submit" class="button button--quiet"><span aria-hidden="true">{{t "mods.hits.go"}}</span><span class="visually-hidden">{{t "mods.hits.go_name"}}</span></button>
+  </form>
+  {{- if lt .Page .Pages}}
+  <a href="{{$p.PagePath .Next}}" class="button button--quiet result-pager__step" rel="next" hx-get="{{$p.PagePath .Next}}">{{t "mods.hits.next"}}</a>
+  {{- else}}
+  <span class="result-pager__step"></span>
+  {{- end}}
+</nav>
+{{- end}}
+{{- end}}
+{{- end}}
+
+{{/* The world's unfinished plan beside the results: each picked mod with what it needs under it (SPEC 9.2). On a phone it follows the results and holds to the bottom of the screen once it has a mod. Takes PlanPanel. */}}
+{{define "plan-panel" -}}
+<section class="panel plan-panel{{if not .Picks}} plan-panel--empty{{end}}" id="plan-panel" aria-labelledby="plan-heading">
+  <div class="group__head plan-panel__head">
+    <h2 id="plan-heading" tabindex="-1">{{t "mods.plan_panel.heading"}}</h2>
+    {{- with .Picks}}<span class="count" aria-hidden="true">{{len .}}</span>{{end}}
+  </div>
+  {{- if not .Said.IsZero}}
+  <p class="visually-hidden" data-said data-focus="{{.Focus}}">{{msg .Said}}</p>
+  {{- end}}
+  {{- if not .Error.IsZero}}
+  <p class="error" id="plan-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  {{- end}}
+  {{- if not .Picks}}
+  <p class="empty">{{t "mods.plan_panel.empty"}}</p>
+  {{- else}}
+  {{- /* Open beside the results on a wide screen; on a phone a one-line bar that opens to the list. */}}
+  <details class="plan-panel__list" id="plan-list" data-open-wide="64rem">
+    <summary><span class="plan-panel__sum">{{t "mods.plan_panel.summary" "count" (len .Picks)}}</span> <span class="plan-panel__names">{{.Names}}</span></summary>
+    {{- if .Unreachable}}
+    <div class="message message--warning">
+      <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.plan_panel.unreachable"}}</p>
+      <div class="actions"><a href="{{.Return}}" class="button">{{t "mods.status.retry"}}</a></div>
+    </div>
+    {{- end}}
+    <ul class="plan-tree" role="list">
+      {{- range .Roots}}
+      <li class="plan-tree__pick">
+        <div class="plan-tree__row">
+          <span class="plan-tree__name"{{if .Ident}} translate="no"{{end}}>{{.Title}}</span>
+          {{- with .Version}} <span class="mod-ver" translate="no">{{.}}</span>{{end}}
+          <form method="post" action="{{$.ChangePath}}" hx-post="{{$.ChangePath}}" hx-target="#plan-panel" hx-swap="outerHTML" hx-include="[data-row]" hx-disabled-elt="find button">
+            <input type="hidden" name="name" value="{{.Name}}">
+            <input type="hidden" name="op" value="remove">
+            <input type="hidden" name="from" value="panel">
+            <input type="hidden" name="return" value="{{$.Return}}">
+            {{- /* Taking a mod out destroys nothing, so the cross is quiet, not red. */}}
+            <button type="submit" class="button button--icon plan-panel__remove" id="{{$.RemoveID .Name}}"><span class="visually-hidden">{{tHTML "mods.plan_panel.remove" "mod" (ident .Name)}}</span></button>
+          </form>
+        </div>
+        {{template "plan-notes" .}}
+        {{template "plan-deps" .Children}}
+      </li>
+      {{- end}}
+    </ul>
+    <p class="hint">{{tHTML "mods.plan_panel.started" "when" (momentUTC .Started)}} {{t "mods.plan_panel.review_hint"}}</p>
+    <form method="post" action="{{.ClearPath}}" class="plan-panel__clear" hx-post="{{.ClearPath}}" hx-target="#plan-panel" hx-swap="outerHTML" hx-include="[data-row]" hx-disabled-elt="find button">
+      <input type="hidden" name="return" value="{{.Return}}">
+      <button type="submit" class="button button--quiet">{{t "mods.plan_panel.clear"}}</button>
+    </form>
+  </details>
+  <div class="actions plan-panel__go">
+    <a href="{{.ReviewPath}}" class="button button--primary" id="act-review-plan">{{if or .Unreachable (not .Count)}}{{t "mods.plan_panel.review_plain"}}{{else}}{{t "mods.plan_panel.review" "count" .Count}}{{end}}</a>
+    {{- /* While a change to the plan is still being worked out, modsearch.js holds Review back and shows this, so Review never opens without the last change. */}}
+    <p class="hint plan-panel__wait" id="plan-wait" hidden>{{t "mods.plan_panel.wait"}}</p>
+  </div>
+  {{- end}}
+</section>
+{{- end}}
+
+{{/* The dependencies under a mod in the plan, each said to be needed by it; nested as deep as they go. Takes []PlanNode. */}}
+{{define "plan-deps" -}}
+{{- with .}}
+<ul class="plan-tree__deps" role="list">
+  {{- range .}}
+  <li class="plan-tree__dep">
+    <div class="plan-tree__row">
+      <span class="plan-tree__name"{{if .Ident}} translate="no"{{end}}>{{.Title}}</span>
+      {{- with .Version}} <span class="mod-ver" translate="no">{{.}}</span>{{end}}
+    </div>
+    <p class="plan-tree__why">{{t "mods.plan_panel.needed_by" "mod" .Of}}</p>
+    {{template "plan-notes" .}}
+    {{template "plan-deps" .Children}}
+  </li>
+  {{- end}}
+</ul>
+{{- end}}
+{{- end}}
+
+{{/* What changes for a mod in the plan, and its problems, each with its shape and word (SPEC 9.2). Takes PlanNode. */}}
+{{define "plan-notes" -}}
+{{- if not .Note.IsZero}}
+<p class="plan-tree__note">{{msg .Note}}</p>
+{{- end}}
+{{- range .Warnings}}
+<p class="plan-tree__warn"><strong class="visually-hidden">{{t "common.label.warning"}}</strong> {{msg .}}</p>
+{{- end}}
+{{- end}}
+
+{{/* The reply to a change made with script: the panel, then each result row's new state out of band. Takes PlanUpdate. */}}
+{{define "plan-update" -}}
+{{template "plan-panel" .Search.Plan}}
+{{- range .Acts}}
+{{template "hit-act" .}}
+{{- end}}
+{{- end}}
+
+{{/* One page of a mod search's results for the plan page's "Add another mod", a row per mod (DESIGN 8.3, SPEC 9.1). Takes the plan page, whose Add redraws the plan. */}}
 {{define "mod-hits" -}}
 {{- $p := .}}
 {{- with .Results}}
-<table class="mod-hits{{if $p.Picking}} mod-hits--pick{{end}}" role="table">
+<table class="mod-hits" role="table">
   <caption>{{t "mods.hits.count" "count" .Total "line" $p.Line}}{{if gt .Pages 1}} {{t "mods.hits.showing" "first" .First "last" .Last}}{{end}}</caption>
   <thead role="rowgroup">
     <tr role="row"><th scope="col" role="columnheader">{{t "mods.col.mod"}}</th><th scope="col" role="columnheader">{{t "mods.fact.latest"}}</th><th scope="col" class="num" role="columnheader">{{t "mods.fact.downloads"}}</th></tr>
@@ -23,11 +231,7 @@
     {{- $add := $p.ModID .Name "add"}}
     <tr role="row">
       <td role="cell">
-        {{- if and $p.Picking (eq $state "add")}}
-        <label class="check"><input type="checkbox" name="pick" value="{{.Name}}" id="{{$p.ModID .Name "pick"}}"{{if $p.Picked .Name}} checked{{end}}{{if not $p.PickError.IsZero}} aria-invalid="true" aria-describedby="pick-error"{{end}}> <span>{{template "mod-hit-name" .}}</span></label>
-        {{- else}}
         <p class="mod-hits__name">{{template "mod-hit-name" .}}</p>
-        {{- end}}
         {{- if $state}}
         <div class="row-actions">
           {{- if eq $state "in_plan"}}
@@ -35,8 +239,6 @@
           <span class="badge" id="{{$add}}" tabindex="-1">{{t "mods.badge.in_plan"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></span>
           {{- else if eq $state "installed"}}
           <span class="badge">{{t "mods.badge.installed"}}</span>
-          {{- else if and (eq $state "add") $p.Picking}}
-          <a href="{{$p.AddPath .Name}}" class="button" id="{{$add}}">{{t "mods.search.add"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
           {{- else if eq $state "add"}}
           <a href="{{$p.PlanWith .Name}}" class="button" id="{{$add}}" hx-get="{{$p.AddPath .Name}}" hx-push-url="{{$p.PlanWith .Name}}" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">{{t "mods.search.add"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
           {{- end}}
@@ -62,26 +264,18 @@
 {{if and .Title (ne .Title .Name)}}<span class="mod-hits__title">{{.Title}}</span> <code translate="no">{{.Name}}</code>{{else}}<span class="mod-hits__title ident" translate="no">{{.Name}}</span>{{end}}
 {{- end}}
 
-{{/* The pages of a mod search's results. The search page's are buttons of its form, so ticked boxes come along; the plan page's are links. */}}
+{{/* The pages of the plan page's "Add another mod" results, as links. */}}
 {{define "mod-pager" -}}
 {{- $p := .}}
 {{- with .Results}}
 {{- if gt .Pages 1}}
 <nav class="pager" aria-label="{{t "mods.hits.pages"}}">
   {{- if gt .Page 1}}
-  {{- if $p.Picking}}
-  <button type="submit" class="button button--quiet" name="page" value="{{.Prev}}">{{t "mods.hits.prev"}}</button>
-  {{- else}}
   <a href="{{$p.PagePath .Prev}}" class="button button--quiet">{{t "mods.hits.prev"}}</a>
-  {{- end}}
   {{- end}}
   <span class="pager__at">{{t "mods.hits.page" "page" .Page "pages" .Pages}}</span>
   {{- if lt .Page .Pages}}
-  {{- if $p.Picking}}
-  <button type="submit" class="button button--quiet" name="page" value="{{.Next}}">{{t "mods.hits.next"}}</button>
-  {{- else}}
   <a href="{{$p.PagePath .Next}}" class="button button--quiet">{{t "mods.hits.next"}}</a>
-  {{- end}}
   {{- end}}
 </nav>
 {{- end}}

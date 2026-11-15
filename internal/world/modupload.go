@@ -47,7 +47,7 @@ func readModZipIn(root *os.Root, name string) (ModInfo, error) {
 	if !ok {
 		return ModInfo{}, ErrModZip
 	}
-	if !validModName(info.Name) || !modVersionRE.MatchString(info.Version) {
+	if !ValidModName(info.Name) || !modVersionRE.MatchString(info.Version) {
 		return ModInfo{}, ErrModName
 	}
 	return info, nil
@@ -58,10 +58,10 @@ func ModFileName(info ModInfo) string {
 	return info.Name + "_" + info.Version + ".zip"
 }
 
-// validModName refuses a name that could leave the mods folder, hide
+// ValidModName refuses a name that could leave the mods folder, hide
 // itself, look like a leftover of an interrupted write, or carry control
 // characters.
-func validModName(name string) bool {
+func ValidModName(name string) bool {
 	if name == "" || len(name) > maxModNameLen || strings.HasPrefix(name, ".") {
 		return false
 	}

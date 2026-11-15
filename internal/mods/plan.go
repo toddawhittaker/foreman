@@ -190,6 +190,10 @@ type Plan struct {
 	// line of each mod an install or update names, for its version list.
 	// It is not the plan, so it is not hashed.
 	Releases map[string][]string `json:"-"`
+	// Requires lists, for each enabled mod that is not built in, the mods
+	// its required dependencies name, so a page can show which mod needs
+	// which (SPEC 9.2). It is derived from the plan, so it is not hashed.
+	Requires map[string][]string `json:"-"`
 }
 
 // Applicable reports whether the plan may be applied: no conflict, and

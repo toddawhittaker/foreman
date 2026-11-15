@@ -3,6 +3,7 @@ package web
 import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mods"
+	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -24,7 +25,7 @@ func goneFix(id string, gone []world.GoneMod) Offer {
 		return Offer{Path: kindPlanPath(id, mods.KindUpdate, gone[0].Name), Label: i18n.M("mods.notice.update", "mod", i18n.Ident(gone[0].Name))}
 	case len(gone) == 1:
 		return Offer{Path: kindPlanPath(id, mods.KindRemove, gone[0].Name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(gone[0].Name))}
-	case all && len(names) <= maxPlanNames:
+	case all && len(names) <= store.MaxModPlanNames:
 		return Offer{Path: kindPlanPath(id, mods.KindUpdate, names...), Label: i18n.M("mods.plan.button.update", "count", len(names))}
 	}
 	return Offer{Path: modsPath(id), Label: i18n.M("mods.notice.review", "count", len(gone))}

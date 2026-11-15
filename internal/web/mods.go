@@ -87,6 +87,7 @@ func (s *server) modRoutes() {
 	s.mux.HandleFunc("GET "+PathModSearch, s.requireUser(s.handleModSearch))
 	s.mux.HandleFunc("GET "+PathModPlan, s.requireUser(s.handlePlanForm))
 	s.mux.HandleFunc("POST "+PathModPlan, s.requireUser(s.handlePlan))
+	s.modPlanRoutes()
 	s.modFileRoutes()
 	s.modSettingsRoutes()
 }
@@ -162,6 +163,10 @@ type ModsPage struct {
 	Done       i18n.Msg
 	Failure    *Failure
 	Undo       *Offer
+	// Search is the empty results panel the typing fills; Plan is the
+	// world's unfinished plan beside it (SPEC 9.1, 9.2).
+	Search ModSearchPage
+	Plan   PlanPanel
 }
 
 // UploadLimit and SettingsLimit say the upload size limits.
@@ -321,6 +326,16 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 	}
 	if ended {
 		s.modsOutcome(&p, res)
+	}
+	if !p.World.Newer && !p.World.Unreadable {
+		if p.Plan, err = s.planPanel(r.Context(), sum, p.Path()); err != nil {
+			s.fail(w, r, "read the mod plan", err)
+			return
+		}
+		if r.URL.Query().Get("full") == "1" {
+			p.Plan.Error = planFull()
+		}
+		p.Search = ModSearchPage{World: sum, Tab: true, Plan: p.Plan, Return: p.Path()}
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
@@ -626,17 +641,16 @@ func (p ServerPage) ModNoticePath() string {
 	return modsPath(p.World.ID) + "/notice"
 }
 
-// ModSearchPage lists the portal's mods that match a search (SPEC 9.1).
+// ModSearchPage lists the portal's mods that match a search, beside the
+// world's plan (SPEC 9.1, 9.2). The Mods tab shows the same results.
 type ModSearchPage struct {
 	World      world.Summary
 	Query      string
 	QueryError i18n.Msg
 	Results    ModHits
-	// Picks are the mods ticked to add, on this page of results or another;
-	// PickError says none was ticked when "Add ticked mods" was chosen.
-	Picks     []string
-	PickError i18n.Msg
-	// Paged says a page button brought the admin here, so focus goes to
+	// Tab says the results go into the Mods tab, which keeps its address.
+	Tab bool
+	// Paged says a page control brought the person here, so focus goes to
 	// the results.
 	Paged bool
 	// LinkMiss says why a pasted portal link found no mod.
@@ -645,26 +659,19 @@ type ModSearchPage struct {
 	Installed   map[string]bool
 	Unreachable bool
 	NoAccount   bool
+	// Plan is the world's unfinished plan; Return is this page, for the
+	// forms that change it without script.
+	Plan   PlanPanel
+	Return string
 }
 
 func (ModSearchPage) templateName() string { return "modsearch" }
 func (ModSearchPage) navItem() string      { return PathWorlds }
 func (p ModSearchPage) hasErrors() bool    { return len(p.Problems()) > 0 }
 
-// Problems lists the search field's error, then the ticks'.
+// Problems lists the search field's error.
 func (p ModSearchPage) Problems() []Problem {
-	return problems(Problem{"mod-search", p.QueryError}, Problem{p.firstPick(), p.PickError})
-}
-
-// firstPick is the id of the first box on the page, where the ticks' error
-// points.
-func (p ModSearchPage) firstPick() string {
-	for _, h := range p.Results.Rows {
-		if !p.Installed[h.Name] {
-			return modID(h.Name, "pick")
-		}
-	}
-	return "pick-error"
+	return problems(Problem{"mod-search", p.QueryError})
 }
 
 func (p ModSearchPage) Path() string     { return modsPath(p.World.ID) + "/search" }
@@ -681,86 +688,91 @@ func (p ModSearchPage) Tabs() WorldTabs {
 	return t
 }
 
-// Picking says the results have boxes to tick several mods at once.
-func (ModSearchPage) Picking() bool { return true }
-
-// HitState is what a result offers: "installed" or "add".
-func (p ModSearchPage) HitState(name string) string {
-	if p.Installed[name] {
-		return "installed"
-	}
-	return "add"
-}
-
-// Picked reports whether a result's box is ticked.
-func (p ModSearchPage) Picked(name string) bool { return slices.Contains(p.Picks, name) }
-
-// PicksElsewhere are the ticked mods not on this page of results, listed
-// under the results with their own boxes so each can be unticked.
-func (p ModSearchPage) PicksElsewhere() []string {
-	return slices.DeleteFunc(slices.Clone(p.Picks), func(n string) bool {
-		return slices.ContainsFunc(p.Results.Rows, func(h modportal.Hit) bool { return h.Name == n })
-	})
-}
-
-// CanPick says the form has a mod that "Add ticked mods" could add.
-func (p ModSearchPage) CanPick() bool {
-	return len(p.Picks) > 0 || slices.ContainsFunc(p.Results.Rows, func(h modportal.Hit) bool { return !p.Installed[h.Name] })
+// Searched says a search ran, so the panel lists what it found.
+func (p ModSearchPage) Searched() bool {
+	return p.Query != "" && p.QueryError.IsZero() && !p.Unreachable
 }
 
 // ModID is modID for the template.
 func (ModSearchPage) ModID(name, part string) string { return modID(name, part) }
 
-// AddPath is the plan that installs one mod, keeping the search and its
-// page so the plan page can offer the same results to add more.
-func (p ModSearchPage) AddPath(name string) string {
-	return planPath(p.World.ID, p.planForm([]string{name}).query())
+// PagePath is a page of the results shown. The Mods tab's own requests say
+// so, so their answers keep the tab's address; the tab shows results only
+// with script.
+func (p ModSearchPage) PagePath(page int) string {
+	q := url.Values{"q": {p.Query}, "page": {strconv.Itoa(page)}}
+	if p.Tab {
+		q.Set("in", "tab")
+	}
+	return p.Path() + "?" + q.Encode()
 }
 
-func (p ModSearchPage) planForm(names []string) planForm {
-	return planForm{Kind: mods.KindInstall, Names: names, Query: p.Query, Page: p.Results.Page}
+// Pager is the page controls above or below the results.
+func (p ModSearchPage) Pager(where string) ResultPager { return ResultPager{Search: p, Where: where} }
+
+// ResultPager is one set of page controls; Where is "top" or "bottom".
+type ResultPager struct {
+	Search ModSearchPage
+	Where  string
+}
+
+// HitAct is what one result offers: State is "installed", "in_plan",
+// "needed" (by the mod NeededBy) or "add" (SPEC 9.1).
+type HitAct struct {
+	Name, State, NeededBy string
+	// ID is the slot's, swapped when the plan changes; ControlID is the
+	// button's or, without one, the badge's, so focus has a place to go.
+	ID, ControlID string
+	Path, Return  string
+	// OOB marks a slot sent after a change, to swap in place.
+	OOB bool
+}
+
+// Act is a result's state and control.
+func (p ModSearchPage) Act(name string) HitAct {
+	a := HitAct{Name: name, ID: modID(name, "act"), ControlID: modID(name, "plan"), Path: p.Plan.ChangePath(), Return: p.Return}
+	switch {
+	case p.Installed[name]:
+		a.State = "installed"
+	case p.Plan.Picked(name):
+		a.State = "in_plan"
+	case p.Plan.NeededBy(name) != "":
+		a.State, a.NeededBy = "needed", p.Plan.NeededBy(name)
+	default:
+		a.State = "add"
+	}
+	return a
 }
 
 // handleModSearch searches the portal's list for the world's game line. It
-// needs no account (SPEC 9.11). "Add ticked mods" sends the ticked mods to
-// one plan; a new search or a page button keeps them ticked.
+// needs no account (SPEC 9.11). With script the Mods tab and this page ask
+// it for their results as the person types.
 func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
 		return
 	}
 	q := r.URL.Query()
-	page := readPage(q.Get("page"))
-	adding := q.Get("picked") == "1"
-	if adding {
-		page = readPage(q.Get("at"))
+	p := ModSearchPage{World: sum, Query: strings.TrimSpace(q.Get("q")), Installed: s.installedNames(sum.ID),
+		Paged: q.Has("page"), Tab: q.Get("in") == "tab"}
+	p.Return = planReturn(sum.ID, r.URL.RequestURI())
+	if p.Tab {
+		p.Return = modsPath(sum.ID)
 	}
-	// A page button and Add ticked mods act on the search shown, not on
-	// whatever was typed in the box since.
-	query := q.Get("q")
-	if (q.Has("page") || adding) && q.Has("shown") {
-		query = q.Get("shown")
+	panel, err := s.planPanel(r.Context(), sum, p.Return)
+	if err != nil {
+		s.fail(w, r, "read the mod plan", err)
+		return
 	}
-	p := ModSearchPage{World: sum, Query: strings.TrimSpace(query), Installed: map[string]bool{}, Paged: q.Has("page")}
-	// Ticks are read before the search text, so a bad search keeps them and
-	// Add ticked mods needs no search at all (SPEC 9.1).
-	for _, n := range q["pick"] {
-		if len(n) > maxPickName {
-			p.QueryError = i18n.M("mods.search.long", "count", maxPickName)
-			s.page(w, r, http.StatusBadRequest, u.Username, p)
-			return
-		}
-		if !slices.Contains(p.Picks, n) {
-			p.Picks = append(p.Picks, n)
-		}
+	p.Plan = panel
+	if q.Get("full") == "1" {
+		p.Plan.Error = planFull()
 	}
-	// A plan names at most maxPlanNames mods; more ticks are refused, not
-	// dropped, so none goes missing unseen.
-	if len(p.Picks) > maxPlanNames {
-		p.PickError = i18n.M("mods.search.pick_too_many", "limit", maxPlanNames)
-	} else if adding && len(p.Picks) > 0 {
-		p.Results.Page = page
-		http.Redirect(w, r, planPath(sum.ID, p.planForm(p.Picks).query()), http.StatusSeeOther) //nolint:gosec // a local path; the ticked names are only query values
+	// Typed text under 2 characters asks the portal nothing: the results
+	// say what to type (SPEC 9.1).
+	if r.Header.Get("HX-Request") != "" && utf8.RuneCountInString(p.Query) < 2 {
+		p.Query = ""
+		s.page(w, r, http.StatusOK, u.Username, p)
 		return
 	}
 	if p.Query == "" {
@@ -774,11 +786,6 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	p.NoAccount = !s.downloadsOn(r.Context())
-	if list, err := s.worlds.Mods(sum.ID); err == nil {
-		for _, m := range list {
-			p.Installed[m.Name] = true
-		}
-	}
 	hits, miss, err := s.findMods(r.Context(), mods.GameLine(sum.GameVersion), p.Query)
 	if err != nil {
 		s.portalTrouble("search the mod portal", sum.ID, err)
@@ -787,14 +794,7 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	p.LinkMiss = miss
-	p.Results = pageOfHits(hits, page)
-	if adding && p.PickError.IsZero() {
-		p.PickError = i18n.M("mods.search.pick_none")
-	}
-	if !p.PickError.IsZero() {
-		s.page(w, r, http.StatusBadRequest, u.Username, p)
-		return
-	}
+	p.Results = pageOfHits(hits, readPage(q.Get("page")))
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -832,8 +832,8 @@ func searchTooLong(query string) bool {
 	return len(query) > maxSearchQuery
 }
 
-// maxPickName bounds one ticked mod name, which goes into the redirect to the
-// plan page; the portal's names are far shorter.
+// maxPickName bounds one picked mod name, which the plan saves; the
+// portal's names are far shorter.
 const maxPickName = 100
 
 // planForm is a mod change request as the plan page's form carries it, so
@@ -886,10 +886,6 @@ const (
 	versionPrefix    = "version-"
 )
 
-// maxPlanNames bounds the mods one plan request names, and the optional
-// mods it ticks.
-const maxPlanNames = 50
-
 var planKinds = []mods.Kind{mods.KindInstall, mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove, mods.KindUpload}
 
 // readPlanForm reads a request from a query or a posted form; ok is false
@@ -905,7 +901,7 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		AlsoDisable: v[alsoDisableField], AlsoRemove: v[alsoRemoveField], Fixed: v.Get("fixed"),
 	}
 	// The de-duplication below is quadratic, so the raw lists are bounded first.
-	if len(v["declined"])+len(v["offered"]) > maxPlanNames {
+	if len(v["declined"])+len(v["offered"]) > store.MaxModPlanNames {
 		return planForm{}, false
 	}
 	for _, n := range append(slices.Clone(v["declined"]), v["offered"]...) {
@@ -914,8 +910,8 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		}
 	}
 	// Each name can cost a portal request, so a crafted list is bounded.
-	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames || len(f.Declined) > maxPlanNames ||
-		len(f.AlsoDisable)+len(f.AlsoRemove) > maxPlanNames {
+	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > store.MaxModPlanNames || len(f.Optional) > store.MaxModPlanNames || len(f.Declined) > store.MaxModPlanNames ||
+		len(f.AlsoDisable)+len(f.AlsoRemove) > store.MaxModPlanNames {
 		return planForm{}, false
 	}
 	// Only an asked mod of an install or update has a version list. The
@@ -1065,7 +1061,7 @@ func (p ModPlanPage) InPlan(name string) bool {
 }
 
 // CanAdd says another mod fits in one plan request.
-func (p ModPlanPage) CanAdd() bool { return len(p.Form.Names) < maxPlanNames }
+func (p ModPlanPage) CanAdd() bool { return len(p.Form.Names) < store.MaxModPlanNames }
 
 // Picking is false: each result's Add redraws the plan at once, so a box to
 // tick would only cost a click more.

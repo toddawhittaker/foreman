@@ -1,16 +1,9 @@
-// Search as you type (SPEC 9.1). htmx replaces #results; this keeps the box's
-// error state in step and reads the outcome out through the shared announcer.
+// Search as you type and the plan panel (SPEC 9.1, 9.2). htmx replaces
+// #results and #plan-panel; this keeps the box's error state in step, reads
+// each outcome out through the shared announcer and puts focus where the
+// hand is.
 (() => {
   "use strict";
-  const box = document.getElementById("mod-search");
-  if (!box) return;
-  const short = () => box.value.trim().length < 2;
-  const isResults = (e) => e.detail.target?.id === "results";
-  const markError = (on) => {
-    if (on) box.setAttribute("aria-invalid", "true");
-    else box.removeAttribute("aria-invalid");
-    box.setAttribute("aria-describedby", on ? "mod-search-hint mod-paste-hint mod-search-error" : "mod-search-hint mod-paste-hint");
-  };
   const say = (text) => {
     const announcer = document.getElementById("announcer");
     if (!announcer || !text) return;
@@ -20,36 +13,117 @@
       announcer.textContent = text;
     });
   };
-  // Under 2 characters the old results no longer match the box, so they are
-  // hidden (their ticked boxes still go with the form) and said so once.
-  box.addEventListener("input", () => {
-    const results = document.getElementById("results");
-    // Nothing shown means nothing to clear, so nothing is said.
-    if (!short() || !results || !results.firstElementChild || results.style.display === "none") return;
-    // An inline style, as .panels sets display and would beat the hidden attribute.
-    results.style.display = "none";
-    // On the Mods tab the results' own form would keep an empty grid row.
-    const wrap = results.closest(".mod-results");
-    if (wrap) wrap.style.display = "none";
-    markError(false);
-    say(box.dataset.short);
+  const markError = (on) => {
+    const box = document.getElementById("mod-search");
+    if (!box) return;
+    if (on) box.setAttribute("aria-invalid", "true");
+    else box.removeAttribute("aria-invalid");
+    box.setAttribute("aria-describedby", on ? "mod-search-hint mod-paste-hint mod-search-error" : "mod-search-hint mod-paste-hint");
+  };
+  // Changes to the plan go one at a time: each reply redraws the panel and the
+  // rows, so a second change sent meanwhile would act on controls the first
+  // replaces. A change asked for while one runs waits, then is sent from the
+  // redrawn page if it still applies.
+  const isPlanForm = (el) => el instanceof HTMLFormElement && /\/mods\/plan\/(mods|clear)$/.test(el.getAttribute("hx-post") || "");
+  const fields = (form) => ["hx-post", "name", "op", "from"].map((k) => (k === "hx-post" ? form.getAttribute(k) : form.elements[k]?.value ?? ""));
+  let planBusy = false;
+  let waiting = null;
+  // While a change runs, Review would open the plan without it, so it is held
+  // back and says why (aria-disabled keeps it in the tab order).
+  const holdReview = (on) => {
+    const review = document.getElementById("act-review-plan");
+    const wait = document.getElementById("plan-wait");
+    if (!review || !wait) return;
+    wait.hidden = !on;
+    if (on) {
+      review.setAttribute("aria-disabled", "true");
+      review.setAttribute("aria-describedby", "plan-wait");
+    } else {
+      review.removeAttribute("aria-disabled");
+      review.removeAttribute("aria-describedby");
+    }
+  };
+  document.addEventListener("click", (e) => {
+    if (e.target.closest?.('#act-review-plan[aria-disabled="true"]')) e.preventDefault();
   });
+  const planDone = () => {
+    planBusy = false;
+    holdReview(false);
+    if (!waiting) return;
+    const want = waiting.join("\n");
+    waiting = null;
+    const next = [...document.querySelectorAll("form[hx-post]")].find((f) => isPlanForm(f) && fields(f).join("\n") === want);
+    if (next) window.htmx.trigger(next, "submit");
+  };
+  document.addEventListener("htmx:confirm", (e) => {
+    const form = e.detail.elt;
+    if (!isPlanForm(form)) return;
+    // The row's "Adding…" is read out too, not only shown.
+    const busy = form.querySelector(".hit__busy");
+    if (busy) say(busy.textContent.trim());
+    holdReview(true);
+    if (!planBusy) {
+      planBusy = true;
+      return;
+    }
+    e.preventDefault();
+    waiting = fields(form);
+    // It shows as working while it waits.
+    form.classList.add("htmx-request");
+  });
+  for (const ev of ["htmx:responseError", "htmx:sendError", "htmx:timeout", "htmx:swapError"]) {
+    document.addEventListener(ev, (e) => {
+      // A refused "+" (400) redraws the panel, which ends the change there.
+      if (isPlanForm(e.detail.elt) && e.detail.xhr?.status !== 400) planDone();
+    });
+  }
+  // On a phone the open list folds again once focus leaves the panel, so it
+  // does not hide the page behind it (WCAG 2.4.11).
+  document.addEventListener("focusout", (e) => {
+    const panel = document.getElementById("plan-panel");
+    const list = document.getElementById("plan-list");
+    if (!panel || !list || !list.open || list.hasAttribute("data-wide") || !panel.contains(e.target)) return;
+    if (e.relatedTarget && !panel.contains(e.relatedTarget)) list.open = false;
+  });
+  // The phone bar keeps its open state through a redraw of the plan.
+  let listOpen = false;
+  let paged = false;
   document.addEventListener("htmx:beforeRequest", (e) => {
-    if (isResults(e) && short()) e.preventDefault();
+    paged = !!e.detail.elt.closest?.(".result-pager");
   });
   document.addEventListener("htmx:beforeSwap", (e) => {
-    if (!isResults(e)) return;
+    const id = e.detail.target?.id;
     // A refused or unreachable search still shows its message in place.
-    if (e.detail.xhr.status >= 400) e.detail.shouldSwap = true;
-    // A reply that lands after the box went under 2 characters is stale.
-    if (short()) e.detail.shouldSwap = false;
+    if (id === "results" && e.detail.xhr.status >= 400) e.detail.shouldSwap = true;
+    // A refused "+" says why in the panel.
+    if (id === "plan-panel" && e.detail.xhr.status === 400) e.detail.shouldSwap = true;
+    // A typed search's reply that no longer matches the box is stale.
+    const box = document.getElementById("mod-search");
+    const elt = e.detail.requestConfig?.elt;
+    if (id === "results" && box && elt && (elt === box || elt.contains(box))) {
+      const asked = new URL(e.detail.pathInfo?.finalRequestPath ?? "", location.href).searchParams.get("q") ?? "";
+      if (asked.trim() !== box.value.trim()) e.detail.shouldSwap = false;
+    }
+    if (id === "plan-panel") listOpen = !!document.querySelector("#plan-list:not([data-wide])[open]");
   });
   document.addEventListener("htmx:afterSettle", (e) => {
-    if (!isResults(e)) return;
     const results = document.getElementById("results");
-    if (!results) return;
-    results.closest(".mod-results")?.style.removeProperty("display");
-    markError(!!document.getElementById("mod-search-error"));
-    say(results.querySelector("#mod-search-error, caption, .empty, .message")?.textContent.trim());
+    if (results && e.detail.target?.id === "results") {
+      markError(!!document.getElementById("mod-search-error"));
+      say(results.querySelector("#mod-search-error, #results-count, .empty, .message")?.textContent.trim());
+      // A page control's own place is gone, so focus goes to the new page's heading.
+      if (paged) document.getElementById("results-heading")?.focus();
+      return;
+    }
+    const plan = document.getElementById("plan-panel");
+    if (!plan || e.detail.target?.id !== "plan-panel") return;
+    planDone();
+    const list = document.getElementById("plan-list");
+    if (list && listOpen && !list.hasAttribute("data-wide")) list.open = true;
+    const said = plan.querySelector("[data-said]");
+    if (!said) return;
+    say(said.textContent.trim());
+    document.getElementById(said.dataset.focus)?.focus();
+    said.remove();
   });
 })();

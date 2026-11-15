@@ -317,11 +317,11 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await startGame(page, clicks);
     const before = await creates(g);
 
-    // Typing the name is not a click; the clicks are Mods, Search, Add to plan, and the plan's button.
+    // Typing the name is not a click, and the results follow it; the clicks are Mods, +, Review and the plan's button.
     await page.getByRole("link", { name: "Mods", exact: true }).click();
     await page.getByLabel("Mod name").fill("fp-signs");
-    await page.getByRole("button", { name: "Search" }).click();
-    await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();
+    await page.getByRole("button", { name: "Add fp-signs to the plan", exact: true }).click();
+    await page.getByRole("link", { name: "Review and install 1 mod" }).click();
     await page.getByRole("button", { name: "Install 1 mod" }).click();
     await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
@@ -329,7 +329,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await expectWithin(clicks, 4, "search and install a mod");
   });
 
-  // A second mod from the same search joins the plan: one more click, still one snapshot and one restart.
+  // A second mod from the same search joins the plan with its own +: one more click, still one snapshot and one restart.
   test("search for two mods and install both: 5 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
     const g = fakeGame!;
     await fakePortal!.add("fp-signs", "1.0.0", ["base >= 2.0"]);
@@ -341,9 +341,9 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
 
     await page.getByRole("link", { name: "Mods", exact: true }).click();
     await page.getByLabel("Mod name").fill("fp-signs");
-    await page.getByRole("button", { name: "Search" }).click();
-    await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();
-    await page.getByRole("link", { name: "Add to plan fp-signs-extra", exact: true }).click();
+    await page.getByRole("button", { name: "Add fp-signs to the plan", exact: true }).click();
+    await page.getByRole("button", { name: "Add fp-signs-extra to the plan", exact: true }).click();
+    await page.getByRole("link", { name: "Review and install 2 mods" }).click();
     await page.getByRole("button", { name: "Install 2 mods" }).click();
     await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
