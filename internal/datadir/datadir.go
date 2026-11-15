@@ -27,6 +27,9 @@ func Snapshots(dataDir string) string { return filepath.Join(dataDir, "snapshots
 // Imports returns the inbox that worlds are imported from.
 func Imports(dataDir string) string { return filepath.Join(dataDir, "import") }
 
+// Favorites returns the folder that holds the favorites (SPEC 5.12).
+func Favorites(dataDir string) string { return filepath.Join(dataDir, "favorites") }
+
 // Inspector reads a container's mounts. *docker.Client satisfies it.
 type Inspector interface {
 	InspectContainer(ctx context.Context, id string) (docker.Container, error)

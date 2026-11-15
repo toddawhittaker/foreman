@@ -7,6 +7,8 @@ import (
 	"os"
 	"path"
 	"regexp"
+
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
 )
 
 // Refusals of Generate.
@@ -37,6 +39,12 @@ type NewWorld struct {
 	// means no file.
 	MapGenSettings []byte
 	MapSettings    []byte
+	// ServerSettings and ModSettings come from a favorite (SPEC 5.12) and
+	// are written to config/server-settings.json and mods/mod-settings.dat.
+	// Empty means no file. Secrets are removed from ServerSettings, so the
+	// person sets them on the new world.
+	ServerSettings []byte
+	ModSettings    []byte
 }
 
 // Generate makes a new world that has no save: its folders, any map
@@ -59,6 +67,18 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 			return "", ErrBadMapJSON
 		}
 	}
+	var server []byte
+	if len(nw.ServerSettings) > 0 {
+		if len(nw.ServerSettings) > maxConfigFile {
+			return "", ErrConfigTooBig
+		}
+		if server, _ = gamesettings.StripSecrets(nw.ServerSettings); server == nil {
+			return "", ErrBadServerSettings
+		}
+	}
+	if len(nw.ModSettings) > MaxModSettings {
+		return "", ErrModSettingsTooBig
+	}
 	if err := m.checkNew(ctx, nw.Name, nw.GameVersion, nw.SpaceAge); err != nil {
 		return "", err
 	}
@@ -69,13 +89,19 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 			return err
 		}
 		defer func() { _ = dst.Close() }()
-		for _, f := range files {
+		for _, f := range append(files, struct {
+			name string
+			data []byte
+		}{ServerSettingsFile, server}) {
 			if len(f.data) == 0 {
 				continue
 			}
 			if err := writeFileAtomicMode(dst, path.Join(ConfigDir, f.name), f.data); err != nil {
 				return err
 			}
+		}
+		if len(nw.ModSettings) > 0 {
+			return WriteFileAtomic(dst, path.Join(ModsDir, ModSettingsFile), nw.ModSettings)
 		}
 		return nil
 	})
