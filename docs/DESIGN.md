@@ -2753,7 +2753,8 @@ sync, upload) has the same shape, changes first. In order:
   disabled instead), "Disable *mod* too" for a mod another needs. The fix
   redraws the plan with both changes and puts focus on the "Changes:"
   label, or on the conflicts if one is left. An install plan's conflict box
-  also has "Back to search".
+  also has "Back to the mods", a link to the Mods tab, where the picks stay
+  in the panel.
 - A Note when the plan downloads and Foreman has no account, with the link.
 - The required note and, when the change turns off or removes a mod the
   loading save uses, a Warning that says it once ("The save that loads
@@ -2779,6 +2780,10 @@ sync, upload) has the same shape, changes first. In order:
   steps and no apply button.
 - "Optional mods" as checkboxes, "Mod, offered by Mod". Ticking one redraws
   the plan with htmx; a "Recalculate the plan" button does it without script.
+- "Mods no longer needed" (SPEC 9.4), a `fieldset` shown when a removal frees
+  other mods: a hint ("Only the mods being removed need these. They are
+  removed too unless you untick them."), then one ticked checkbox for each,
+  "Mod, only needed by Mod". Ticking redraws the plan like an optional mod.
 - For each unresolved mod a `fieldset` with its legend ("The mod portal
   does not have X 1.2.3"), radios for upload, nearest and continue without,
   and the zip field with its own Upload zip button tied to an empty form so
@@ -2800,18 +2805,12 @@ sync, upload) has the same shape, changes first. In order:
   built from the save, or goes on "continue without". Anything else is
   primary with a plain box (`confirm--plain`, a `line` border), on a
   running world too: the steps say the restart. Cancel is a link.
-- "Add another mod": its own `role="search"` form, filled with the search
-  the person came from and carrying `add=1`, which keeps focus on the
-  heading after a page load. Results are the search page's table without
-  boxes, since each "Add to plan" here adds at once; its page controls are
-  links that carry `add=1`, and a "Back to the plan" link follows them. An
-  empty search says the Mods tab's sentence ("No mod for Factorio 2.0
-  matches. Try a shorter part of the name."). Results say "Add to plan", "In plan" (the
-  badge takes the button's id) or "Installed". Adding or removing redraws
-  the plan in place; `#announcer` says "Added visible-planets. The plan has
-  2 mods." and focus stays on the badge, or goes to the "Changes:" label
-  after a removal. Without script every add and remove link is
-  the plan's own URL.
+- The review page has no search or "Add another mod". Adding happens only
+  on the Mods tab (SPEC 9.2). Cancel and "Back to the mods" link to the Mods
+  tab. Removing a mod on the review page redraws the plan in place with
+  htmx, and `#announcer` says "visible-planets removed from the plan. The
+  plan has 1 mod."; focus goes to the "Changes:" label. Without script the
+  remove link is the plan's own URL.
 
 A redraw moves focus only when the control used is gone (a removal or a
 fix, above), always answers 200 so htmx swaps it in, and says the new plan
