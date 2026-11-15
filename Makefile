@@ -41,7 +41,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test test-shards typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
+.PHONY: verify check-go fmt-check fmt vet lint test test-shards coverage-floor typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
 	test-game test-game-resources test-catalogue game-images e2e-game vuln ci tidy i18n-hash deploy design-export
 
 verify: check-go fmt-check vet lint test typecheck
@@ -91,6 +91,25 @@ POOL_PKGS := ./internal/game ./internal/world ./internal/web
 # race detector and the coverage counters) more often; large ones the
 # reverse.
 TEST_BATCH ?= 8
+
+# CI splits the queue across runners. TEST_SLICE=k/m runs only every m-th
+# batch by queue position, starting at the k-th, and slice 1 also runs the
+# other packages. A slice checks no coverage floor, since it holds only part
+# of the counts; it leaves its coverage folders in TEST_COVER_DIR, and
+# `make coverage-floor` merges every slice's folders there and checks.
+TEST_SLICE ?=
+TEST_COVER_DIR ?= $(CACHE)/cover
+
+# Sets cov to a text profile merged from the comma-separated coverage folders
+# in dirs, then fails if the total is below COVERAGE_FLOOR.
+define CHECK_FLOOR
+go tool covdata textfmt -i="$$dirs" -o "$$cov" || exit $$?; \
+total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
+if awk -v t="$$total" -v f=$(COVERAGE_FLOOR) 'BEGIN { exit !(t < f) }'; then \
+	echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
+fi; \
+echo "Coverage across internal/: $$total% (floor $(COVERAGE_FLOOR)%)."
+endef
 
 # One queued batch, run by `sh -c` with the fields of a queue line as
 # arguments: the package folder, the test binary, the batch name and the
@@ -146,6 +165,7 @@ test-shards:
 # One race-enabled run gives both the test result and the coverage floor.
 ifeq ($(TEST_SHARDS),1)
 test:
+	@if [ -n '$(TEST_SLICE)' ]; then echo "TEST_SLICE needs the worker pool; set TEST_SHARDS above 1 or to auto."; exit 1; fi
 	@cov=$$(mktemp) && trap 'rm -f "$$cov"' EXIT && \
 	go test -race -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... -coverprofile="$$cov" ./... || exit $$?; \
 	total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
@@ -161,6 +181,12 @@ else
 # folders are merged before the floor check.
 test:
 	@$(RESOLVE_SHARDS); \
+	slice='$(TEST_SLICE)'; k=1; m=1; \
+	if [ -n "$$slice" ]; then \
+		k=$${slice%%/*}; m=$${slice#*/}; \
+		case "$$k/$$m" in */*/*|*[!0-9/]*|/*|*/) echo "TEST_SLICE must look like 1/3."; exit 1;; esac; \
+		if [ "$$k" -lt 1 ] || [ "$$k" -gt "$$m" ]; then echo "TEST_SLICE must look like 1/3, with the first number from 1 to the second."; exit 1; fi; \
+	fi; \
 	work=$$(mktemp -d) && trap 'rm -rf "$$work"' EXIT && \
 	mkdir "$$work/bin" "$$work/lists" "$$work/cov" "$$work/cov-other" "$$work/out" "$$work/rc" && \
 	go test -c -race -covermode=atomic -coverpkg=./internal/... -o "$$work/bin/" $(POOL_PKGS) || exit $$?; \
@@ -174,28 +200,33 @@ test:
 			printf '%s %s %s %s-%03d %s\n' "$$i" "$${p#./}" "$$work/bin/$$base.test" "$$base" "$$i" "^($$run)\$$"; \
 		done; }; \
 	done > "$$work/queue.in" || exit $$?; \
-	sort -s -n -k1,1 "$$work/queue.in" | cut -d' ' -f2- > "$$work/queue"; \
+	sort -s -n -k1,1 "$$work/queue.in" | cut -d' ' -f2- | awk -v k="$$k" -v m="$$m" 'NR % m == k % m' > "$$work/queue"; \
 	batches=$$(wc -l < "$$work/queue"); \
 	if [ "$$n" -gt "$$batches" ]; then n=$$batches; fi; \
 	word=workers; if [ "$$n" -eq 1 ]; then word=worker; fi; \
 	names=$$(echo $(patsubst ./%,%,$(POOL_PKGS)) | awk '{ s = $$1; for (i = 2; i < NF; i++) s = s ", " $$i; if (NF > 1) s = s " and " $$NF; print s }'); \
-	echo "Running $$names as $$batches batches on $$n $$word ($$why)."; \
+	part=""; if [ -n "$$slice" ]; then part=" (slice $$slice)"; fi; \
+	echo "Running $$names as $$batches batches$$part on $$n $$word ($$why)."; \
 	go list $(POOL_PKGS) > "$$work/pool.pkgs"; \
 	pkgs=$$(go list ./... | grep -vxFf "$$work/pool.pkgs"); \
-	( go test -race -count=1 -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... $$pkgs -args -test.gocoverdir="$$work/cov-other" > "$$work/other.out" 2>&1; echo $$? > "$$work/other.rc" ) & \
+	if [ "$$k" -eq 1 ]; then \
+		( go test -race -count=1 -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... $$pkgs -args -test.gocoverdir="$$work/cov-other" > "$$work/other.out" 2>&1; echo $$? > "$$work/other.rc" ) & \
+	else \
+		: > "$$work/other.out"; echo 0 > "$$work/other.rc"; \
+	fi; \
 	POOL_WORK="$$work" xargs -P "$$n" -n 4 sh -c '$(POOL_BATCH)' sh < "$$work/queue"; \
 	wait; \
 	failed=0; \
 	for p in $(POOL_PKGS); do \
-		base=$${p##*/}; bad=0; count=0; slow=0; \
+		base=$${p##*/}; bad=0; count=0; slow=0; tests=0; \
 		while read -r dir bin id run; do \
 			case "$$id" in "$$base"-*) ;; *) continue;; esac; \
 			count=$$((count + 1)); rc=1; secs=0; \
+			tests=$$((tests + $$(printf '%s' "$$run" | tr -cd '|' | wc -c) + 1)); \
 			read rc secs < "$$work/rc/$$id" || true; \
 			if [ "$$rc" -ne 0 ]; then bad=$$((bad + 1)); echo "$$id" >> "$$work/failed"; fi; \
 			if [ "$$secs" -gt "$$slow" ]; then slow=$$secs; fi; \
 		done < "$$work/queue"; \
-		tests=$$(wc -l < "$$work/lists/$$base"); \
 		if [ "$$bad" -eq 0 ]; then \
 			printf 'ok    %s  %s tests in %s batches  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$slow"; \
 		else \
@@ -209,15 +240,25 @@ test:
 		while read -r id; do echo "Output of failed batch $$id:"; cat "$$work/out/$$id"; done < "$$work/failed"; \
 	fi; \
 	if [ "$$failed" -ne 0 ]; then exit 1; fi; \
+	if [ -n "$$slice" ]; then \
+		mkdir -p '$(TEST_COVER_DIR)' || exit $$?; \
+		if [ "$$batches" -gt 0 ]; then cp -R "$$work"/cov/* '$(TEST_COVER_DIR)'/ || exit $$?; fi; \
+		if [ "$$k" -eq 1 ]; then cp -R "$$work/cov-other" '$(TEST_COVER_DIR)/other' || exit $$?; fi; \
+		echo "Slice $$slice left its coverage in $(TEST_COVER_DIR); make coverage-floor checks the floor."; \
+		exit 0; \
+	fi; \
 	cov="$$work/cover.out"; \
 	dirs=$$(ls -d "$$work"/cov/* "$$work/cov-other" | paste -sd, -); \
-	go tool covdata textfmt -i="$$dirs" -o "$$cov" || exit $$?; \
-	total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
-	if awk -v t="$$total" -v f=$(COVERAGE_FLOOR) 'BEGIN { exit !(t < f) }'; then \
-		echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
-	fi; \
-	echo "Coverage across internal/: $$total% (floor $(COVERAGE_FLOOR)%)."
+	$(CHECK_FLOOR)
 endif
+
+# Merges the coverage that every TEST_SLICE run left in TEST_COVER_DIR and
+# checks the floor, as a whole-queue `make test` does.
+coverage-floor:
+	@dirs=$$(ls -d '$(TEST_COVER_DIR)'/*/ 2>/dev/null | sed 's:/$$::' | paste -sd, -); \
+	if [ -z "$$dirs" ]; then echo "Found no coverage in $(TEST_COVER_DIR)."; exit 1; fi; \
+	cov=$$(mktemp) && trap 'rm -f "$$cov"' EXIT && \
+	$(CHECK_FLOOR)
 
 e2e/node_modules/.package-lock.json: e2e/package.json e2e/package-lock.json
 	@mkdir -p $(CACHE)/home
