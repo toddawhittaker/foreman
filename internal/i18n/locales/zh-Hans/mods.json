@@ -18,8 +18,8 @@
   "mods.search.results_heading": "与“{query}”匹配的模组",
   "mods.search.unreachable": "Foreman 无法连接模组门户，因此无法搜索。请稍后重试。",
   "mods.search.none": "没有匹配的适用于 Factorio {line} 的模组。请尝试名称中更短的一部分。",
-  "mods.search.link_unknown": "模组门户上没有名为 {name} 的模组。",
-  "mods.search.link_no_release": "{name} 没有适用于 Factorio {line} 的发布版本。",
+  "mods.search.link_unknown": "模组门户上没有名为 {name} 的模组。请检查拼写。",
+  "mods.search.link_no_release": "{name} 没有适用于 Factorio {line} 的发布版本。请试试其他模组。",
   "mods.search.add": "加入计划",
   "mods.hits.count": {
     "other": "有 {count} 个适用于 Factorio {line} 的模组匹配。"

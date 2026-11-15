@@ -25,6 +25,8 @@ func (c *Client) Lookup(ctx context.Context, line, name string) (Hit, error) {
 			return e.hit, nil
 		}
 	}
+	// A miss in the list falls back to the name as pasted; the portal matches
+	// names as it matches them.
 	m, err := c.Mod(ctx, name)
 	if err != nil {
 		return Hit{}, err

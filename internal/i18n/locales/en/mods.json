@@ -19,8 +19,8 @@
   "mods.search.results_heading": "Mods matching \"{query}\"",
   "mods.search.unreachable": "Foreman could not reach the mod portal, so it could not search. Try again in a moment.",
   "mods.search.none": "No mod for Factorio {line} matches. Try a shorter part of the name.",
-  "mods.search.link_unknown": "No mod named {name} is on the mod portal.",
-  "mods.search.link_no_release": "{name} has no release for Factorio {line}.",
+  "mods.search.link_unknown": "No mod named {name} is on the mod portal. Check the spelling.",
+  "mods.search.link_no_release": "{name} has no release for Factorio {line}. Try a different mod.",
   "mods.search.add": "Add to plan",
   "mods.hits.count": {
     "one": "{count} mod for Factorio {line} matches.",

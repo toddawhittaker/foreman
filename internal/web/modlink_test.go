@@ -89,3 +89,39 @@ func TestSearchPastedPortalLinkPortalDown(t *testing.T) {
 	}
 	wantIn(t, "portal down", body, "could not reach the mod portal")
 }
+
+// A pasted link carries a sub-page and tracking query, so the 100-character
+// limit applies to the mod name in it, not to the whole link; plain text keeps
+// the limit.
+func TestSearchLongPastedLinkIsLimitedByTheName(t *testing.T) {
+	g := newModsRig(t, true)
+	id := g.world20("Base")
+	long := "https://mods.factorio.com/mod/Krastorio2/changelog?utm=" + strings.Repeat("x", 200)
+	code, body := g.getStatus(modsPath(id) + "/search?q=" + url.QueryEscape(long))
+	if code != http.StatusOK {
+		t.Fatalf("a long link: status %d", code)
+	}
+	wantIn(t, "long link", plain(between(body, "<main", "</main>")), `<code translate="no">Krastorio2</code>`)
+
+	longName := "https://mods.factorio.com/mod/" + strings.Repeat("a", maxSearchQuery+1)
+	if code, _ := g.getStatus(modsPath(id) + "/search?q=" + url.QueryEscape(longName)); code != http.StatusBadRequest {
+		t.Errorf("a link with a too long name: status %d, want 400", code)
+	}
+	if code, _ := g.getStatus(modsPath(id) + "/search?q=" + strings.Repeat("a", maxSearchQuery+1)); code != http.StatusBadRequest {
+		t.Errorf("long plain text: status %d, want 400", code)
+	}
+}
+
+// A ticked box rides along on a link search, and the one result stays.
+func TestSearchPastedLinkKeepsTicks(t *testing.T) {
+	g := newModsRig(t, true)
+	id := g.world20("Base")
+	q := url.Values{"q": {"https://mods.factorio.com/mod/Krastorio2?from=search"}, "pick": {"jetpack"}}
+	code, body := g.getStatus(modsPath(id) + "/search?" + q.Encode())
+	if code != http.StatusOK {
+		t.Fatalf("status %d", code)
+	}
+	main := between(body, "<main", "</main>")
+	wantIn(t, "link and tick", main, "<caption>1 mod for Factorio 2.0 matches.</caption>", `<code translate="no">Krastorio2</code>`,
+		`name="pick" value="jetpack" checked`)
+}

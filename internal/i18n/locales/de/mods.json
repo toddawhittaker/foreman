@@ -19,8 +19,8 @@
   "mods.search.results_heading": "Mods, die zu „{query}“ passen",
   "mods.search.unreachable": "Foreman konnte das Mod-Portal nicht erreichen und deshalb nicht suchen. Versuche es gleich noch einmal.",
   "mods.search.none": "Keine Mod für Factorio {line} passt. Versuche einen kürzeren Teil des Namens.",
-  "mods.search.link_unknown": "Auf dem Mod-Portal gibt es keine Mod namens {name}.",
-  "mods.search.link_no_release": "{name} hat keine Version für Factorio {line}.",
+  "mods.search.link_unknown": "Auf dem Mod-Portal gibt es keine Mod namens {name}. Prüfe die Schreibweise.",
+  "mods.search.link_no_release": "{name} hat keine Version für Factorio {line}. Versuche eine andere Mod.",
   "mods.search.add": "Zum Plan hinzufügen",
   "mods.hits.count": {
     "one": "{count} Mod für Factorio {line} passt.",
