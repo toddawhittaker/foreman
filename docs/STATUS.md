@@ -3139,8 +3139,8 @@ a second promised configuration.
 Serves SPEC 5.6, 8.7, 8.9, 9.1, 9.6, 9.11, 14 and 17.1, with DESIGN 8.8.
 Issues: #549, #551, #552 and #499, and gaps from earlier sections. The pull
 requests were #582, #583, #588 and #589 (mod search), #584 (large view), #585
-(error summary), #581 (Start's reason), #580 (mod settings reader) and #590
-(slider tests).
+(error summary), #581 (Start's reason), #580 (mod settings reader), #590
+(slider tests) and #591 (Generate seed).
 
 Rulings: a scheduled restart sends both the scheduled-restart and the start
 webhooks, as SPEC 7.12 says, so that is not a gap. In the large view the
@@ -3196,6 +3196,11 @@ arrow keys do nothing while a preparation is shown (SPEC 17.1).
   the definitions container, using Docker's `Mounts` field so odd file names
   need no quoting. The cache key now covers every entry inside a folder mod
   (name, type, size, modified time), within the 100,000 file and 4 GiB limits.
+- **Typing over a selected Generate field replaces it (SPEC 5.6; #591).** A
+  settings redraw that landed while a field's whole text was selected put
+  the cursor at its start, so typing went in front of the old text (a
+  random seed). The page now selects the same text again after a redraw.
+  This was the cause of the `generate.spec.ts:144` flake.
 - **Mods tab "0 up to date" needed no change.** #452 had fixed it already.
 - **Spec and docs.** SPEC 9.1 and 17.1 carry the new rules, DESIGN 8.8
   describes the preparation block, and the plan was deleted.
