@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { test as base, expect, type Locator, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { spawn, type ChildProcess } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
@@ -135,16 +135,31 @@ export interface FakeGame {
   state: () => Promise<{
     containers: { name: string; image: string; status: string; ip: string; players: string[]; commands: string[]; restart_count: number }[];
     calls: string[];
+    // The seeded VPN sidecar, null without one (internal/fakegame/sidecar.go). Port is the host port
+    // 34197/udp is published on, "" when it is not.
+    sidecar: { name: string; id: string; status: string; ip: string; port: string } | null;
   }>;
 }
+
+// An operator's VPN sidecar for the fake (SPEC 4.13): its container name, and the host port it publishes
+// 34197/udp on, left out for none. Foreman is given the name as FOREMAN_GAME_NETWORK_CONTAINER.
+export interface SidecarSeed {
+  name: string;
+  port?: string;
+}
+
+// The credential the fake puts in the sidecar's environment (internal/fakegame.SidecarSecret). It must never
+// reach a page, a refusal or a log.
+export const sidecarSecret = "canary-sidecar-credential-0000";
 
 // The fake seeds a container for the one Foreman runs in, on this network,
 // so Foreman can check the game network as it does in a real install (SPEC 14.4).
 const fakeGameNetwork = "foreman-games";
 
-async function startFakeGame(): Promise<FakeGame & { stop: () => Promise<void> }> {
+async function startFakeGame(sidecar?: SidecarSeed): Promise<FakeGame & { stop: () => Promise<void> }> {
   const dir = mkdtempSync(join(tmpdir(), "fakegame-e2e-"));
-  const proc = spawn(fakeGameBinary, ["-dir", dir, "-self-network", fakeGameNetwork], { stdio: ["ignore", "pipe", "pipe"] });
+  const sidecarArgs = sidecar ? ["-sidecar", sidecar.name, ...(sidecar.port ? ["-sidecar-port", sidecar.port] : [])] : [];
+  const proc = spawn(fakeGameBinary, ["-dir", dir, "-self-network", fakeGameNetwork, ...sidecarArgs], { stdio: ["ignore", "pipe", "pipe"] });
   let err = "";
   proc.stderr.on("data", (d) => (err += d));
   const lines = createInterface({ input: proc.stdout })[Symbol.asyncIterator]();
@@ -252,12 +267,37 @@ async function startFakePortal(): Promise<FakePortal & { stop: () => Promise<voi
   };
 }
 
+// True when the test body failed or timed out and the test was not declared with test.fail(), which expects
+// exactly that. Skips and interruptions (another test's failure under --max-failures) are not failures.
+function failedUnexpectedly(testInfo: TestInfo): boolean {
+  return testInfo.expectedStatus !== "failed" && (testInfo.status === "failed" || testInfo.status === "timedOut");
+}
+
+// What a failed test's report may carry of Foreman's output (SPEC 14.8: Foreman never logs a secret, so this
+// is defence in depth). It is a bounded tail, with the value of every environment variable that looks like a
+// credential (at least four characters) replaced before truncation. This covers literal values only. Only the output is read;
+// the environment is never written out.
+const attachedLogLimit = 256 * 1024;
+function attachableLogs(out: string, env: [string, string][]): string {
+  const credentials = env
+    .filter(([name, value]) => /TOKEN|PASSWORD|SECRET|KEY|CREDENTIAL/i.test(name) && value.length >= 4)
+    .map(([, value]) => value)
+    .sort((a, b) => b.length - a.length);
+  let text = out;
+  for (const value of credentials) text = text.split(value).join("[redacted]");
+  return text.length > attachedLogLimit ? `[earlier output cut]\n${text.slice(-attachedLogLimit)}` : text;
+}
+
 export const test = base.extend<{
   foreman: Foreman;
   foremanEnv: Record<string, string>;
   // Opt in with test.use({ fakeGameOn: true }): Foreman then gets the fake as its Docker host.
   fakeGameOn: boolean;
   fakeGame: FakeGame | undefined;
+  // Opt in with test.use({ fakeGameOn: true, sidecar: { name: "vpn", port: "34197" } }): the fake then seeds a running
+  // VPN sidecar on the game network, and Foreman is told its name (SPEC 4.13). To refuse a sidecar the fake does not
+  // have, set FOREMAN_GAME_NETWORK_CONTAINER in foremanEnv instead.
+  sidecar: SidecarSeed | undefined;
   // Opt in with test.use({ fakePortalOn: true }): Foreman then reaches the fake mod portal through its proxy.
   fakePortalOn: boolean;
   fakePortal: FakePortal | undefined;
@@ -267,6 +307,7 @@ export const test = base.extend<{
 }>({
   foremanEnv: [{}, { option: true }],
   fakeGameOn: [false, { option: true }],
+  sidecar: [undefined, { option: true }],
   fakePortalOn: [false, { option: true }],
   portalAccountOn: [false, { option: true }],
   fakePortal: async ({ fakePortalOn }, use) => {
@@ -278,18 +319,19 @@ export const test = base.extend<{
     await use(p);
     await p.stop();
   },
-  fakeGame: async ({ fakeGameOn }, use) => {
+  fakeGame: async ({ fakeGameOn, sidecar }, use) => {
     if (!fakeGameOn) {
       await use(undefined);
       return;
     }
-    const g = await startFakeGame();
+    const g = await startFakeGame(sidecar);
     await use(g);
     await g.stop();
   },
-  foreman: async ({ foremanEnv, fakeGame, fakePortal, portalAccountOn }, use, testInfo) => {
+  foreman: async ({ foremanEnv, fakeGame, fakePortal, portalAccountOn, sidecar }, use, testInfo) => {
     const env = {
       ...(fakeGame ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork } : {}),
+      ...(fakeGame && sidecar ? { FOREMAN_GAME_NETWORK_CONTAINER: sidecar.name } : {}),
       // Loopback addresses are never proxied, so only the portal's hosts go through.
       ...(fakePortal ? { HTTPS_PROXY: fakePortal.proxy, SSL_CERT_FILE: fakePortal.caFile } : {}),
       ...(fakePortal && portalAccountOn ? { FOREMAN_FACTORIO_USERNAME: fakePortal.username, FOREMAN_FACTORIO_TOKEN: fakePortal.token } : {}),
@@ -300,17 +342,36 @@ export const test = base.extend<{
     f.expectError = (match) => expected.push(match);
     await use(f);
     const { exitedEarly } = await f.stop();
-    expect(exitedEarly, `Foreman exited before the test ended. Last output:\n${f.logs().slice(-2000)}`).toBe(false);
-    // docs/WORKFLOW.md: a test fails on any ERROR line it did not declare, and on a
-    // declaration that matched nothing. This process belongs to this test alone.
-    const matches = (line: string, m: string | RegExp) => (typeof m === "string" ? line.includes(m) : m.test(line));
-    const lines = f.errorLines();
-    const unexpected = lines.filter((line) => !expected.some((m) => matches(line, m)));
-    expect(unexpected, "Foreman wrote ERROR log lines the test did not declare with foreman.expectError").toEqual([]);
-    // A test that already failed may have stopped before the error came, so only a passing test must show it.
-    if (testInfo.status === "passed") {
-      const missing = expected.filter((m) => !lines.some((line) => matches(line, m))).map(String);
-      expect(missing, "foreman.expectError declared lines Foreman never wrote").toEqual([]);
+    // The checks below may themselves fail the test, which testInfo does not show yet, so this stays true until they pass.
+    let teardownFailed = true;
+    try {
+      expect(exitedEarly, `Foreman exited before the test ended. Last output:\n${f.logs().slice(-2000)}`).toBe(false);
+      // docs/WORKFLOW.md: a test fails on any ERROR line it did not declare, and on a
+      // declaration that matched nothing. This process belongs to this test alone.
+      const matches = (line: string, m: string | RegExp) => (typeof m === "string" ? line.includes(m) : m.test(line));
+      const lines = f.errorLines();
+      const unexpected = lines.filter((line) => !expected.some((m) => matches(line, m)));
+      expect(unexpected, "Foreman wrote ERROR log lines the test did not declare with foreman.expectError").toEqual([]);
+      // A test that already failed may have stopped before the error came, so only a passing test must show it.
+      if (testInfo.status === "passed") {
+        const missing = expected.filter((m) => !lines.some((line) => matches(line, m))).map(String);
+        expect(missing, "foreman.expectError declared lines Foreman never wrote").toEqual([]);
+      }
+      teardownFailed = false;
+    } finally {
+      // The process and its data directory are gone now, so this is the last chance to keep its output.
+      if (failedUnexpectedly(testInfo) || (teardownFailed && testInfo.expectedStatus !== "failed")) {
+        // A file, not a body: the list reporter writes no body attachment to disk. Playwright copies the
+        // file into the test's output folder, so the temporary one goes at once.
+        const dir = mkdtempSync(join(tmpdir(), "foreman-e2e-log-"));
+        try {
+          const path = join(dir, "foreman-output.log");
+          writeFileSync(path, attachableLogs(f.logs(), Object.entries(env)));
+          await testInfo.attach("foreman-output.log", { path, contentType: "text/plain" });
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      }
     }
   },
   baseURL: async ({ foreman }, use) => use(foreman.url),
@@ -572,13 +633,12 @@ export async function checkPage(page: Page) {
   // Let colour transitions end first, so axe never measures a button halfway
   // between two looks (a hover or a state change just made). Endless
   // animations, such as the starting lamp's sweep, are left running.
-  await page.evaluate(() =>
-    Promise.all(
-      document
-        .getAnimations()
-        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-        .map((a) => a.finished.catch(() => undefined)),
-    ),
+  // Chromium can report a transition inside closed details as finished while
+  // leaving its finished promise pending. Wait on state before running axe.
+  await page.waitForFunction(() =>
+    document.getAnimations()
+      .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+      .every((a) => a.playState !== "running"),
   );
   const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
   const violations = await withoutTargetsUnderStickyBars(page, results.violations);

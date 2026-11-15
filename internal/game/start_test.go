@@ -221,15 +221,15 @@ func TestGameNetwork(t *testing.T) {
 			got, err := r.c.gameNetwork(context.Background())
 			if tc.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
-					t.Fatalf("got %q, %v; want an error with %q", got, err, tc.wantErr)
+					t.Fatalf("got %q, %v; want an error with %q", got.mode, err, tc.wantErr)
 				}
 				if !errors.Is(err, ErrNetwork) {
 					t.Errorf("%q is not an ErrNetwork, so the page cannot show it", err)
 				}
 				return
 			}
-			if err != nil || got != tc.want {
-				t.Fatalf("got %q, %v; want %q", got, err, tc.want)
+			if err != nil || got.mode != tc.want {
+				t.Fatalf("got %q, %v; want %q", got.mode, err, tc.want)
 			}
 		})
 	}
@@ -256,13 +256,13 @@ func TestGameNetworkMembers(t *testing.T) {
 		t.Helper()
 		got, err := r.c.gameNetwork(context.Background())
 		if want == "" {
-			if err != nil || got != "games" {
-				t.Fatalf("got %q, %v; want games", got, err)
+			if err != nil || got.mode != "games" {
+				t.Fatalf("got %q, %v; want games", got.mode, err)
 			}
 			return
 		}
 		if !errors.Is(err, ErrNetwork) || !strings.Contains(err.Error(), want) {
-			t.Fatalf("got %q, %v; want an ErrNetwork with %q", got, err, want)
+			t.Fatalf("got %q, %v; want an ErrNetwork with %q", got.mode, err, want)
 		}
 	}
 	check("")
@@ -276,8 +276,8 @@ func TestGameNetworkMembers(t *testing.T) {
 	// Outside a container the default bridge is shared with anything, and
 	// nothing is checked.
 	r.c.selfID, r.c.network = "", ""
-	if got, err := r.c.gameNetwork(context.Background()); err != nil || got != "bridge" {
-		t.Errorf("outside a container: %q, %v", got, err)
+	if got, err := r.c.gameNetwork(context.Background()); err != nil || got.mode != "bridge" {
+		t.Errorf("outside a container: %q, %v", got.mode, err)
 	}
 }
 

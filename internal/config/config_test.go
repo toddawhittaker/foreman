@@ -288,17 +288,6 @@ func TestRemovedSettingsAreIgnored(t *testing.T) {
 	}
 }
 
-func TestGameNetworkContainerIsRefused(t *testing.T) {
-	_, err := load(map[string]string{"FOREMAN_GAME_NETWORK_CONTAINER": "vpn"})
-	if err == nil {
-		t.Fatal("want an error: VPN sidecars are not built (SPEC 4.13)")
-	}
-	want := "FOREMAN_GAME_NETWORK_CONTAINER is set, but VPN sidecars (SPEC 4.13) are not built yet. Unset it to start Foreman."
-	if !strings.Contains(err.Error(), want) {
-		t.Errorf("error = %q, want containing %q", err, want)
-	}
-}
-
 // The address players join (SPEC 3.2): shown as given, with the game's own
 // port added when none is named. Blank means none is shown.
 func TestPublicAddress(t *testing.T) {
@@ -332,6 +321,27 @@ func TestPublicAddress(t *testing.T) {
 		if err != nil || c.PublicAddress != "" {
 			t.Errorf("%v: got %+v, %v; want no address", vars, c, err)
 		}
+	}
+}
+
+// A sidecar with the game network is accepted and reaches the config
+// (SPEC 4.13).
+func TestGameNetworkContainerIsAcceptedWithGameNetwork(t *testing.T) {
+	c, err := load(map[string]string{"FOREMAN_GAME_NETWORK_CONTAINER": "vpn", "FOREMAN_GAME_NETWORK": "games"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.GameNetworkContainer != "vpn" || c.GameNetwork != "games" {
+		t.Errorf("sidecar %q, network %q; want vpn, games", c.GameNetworkContainer, c.GameNetwork)
+	}
+}
+
+// A sidecar without the game network reports the missing network, and the
+// ordinary start (no sidecar) is untouched by it.
+func TestGameNetworkContainerNeedsGameNetwork(t *testing.T) {
+	_, err := load(map[string]string{"FOREMAN_GAME_NETWORK_CONTAINER": "vpn"})
+	if err == nil || !strings.Contains(err.Error(), "FOREMAN_GAME_NETWORK must be set") {
+		t.Errorf("error = %v, want one naming FOREMAN_GAME_NETWORK", err)
 	}
 }
 

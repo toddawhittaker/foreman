@@ -149,6 +149,7 @@ type rigOptions struct {
 	fake    fakegame.Config
 	network string
 	selfID  string
+	sidecar string // FOREMAN_GAME_NETWORK_CONTAINER
 	noRun   bool
 }
 
@@ -202,7 +203,7 @@ func (r *rig) newController(opts rigOptions) *Controller {
 	cfg := Config{
 		Docker: r.docker, Worlds: r.worlds, Audit: r.audit, Switches: r.store,
 		HostDataDir: r.data, GameUID: 845, GameGID: 845,
-		Network: opts.network, SelfID: opts.selfID,
+		Network: opts.network, NetworkContainer: opts.sidecar, SelfID: opts.selfID,
 		Now: r.clock.Now, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	c, err := New(cfg)

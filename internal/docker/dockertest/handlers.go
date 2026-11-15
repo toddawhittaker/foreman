@@ -60,13 +60,39 @@ func (d *Daemon) broadcast() {
 	d.changed = make(chan struct{})
 }
 
+// find resolves ref as Docker does: a name or a full ID first, then an ID
+// prefix that matches one container only.
 func (d *Daemon) find(ref string) *Container {
 	for _, c := range d.containers {
 		if c.ID == ref || c.Name == ref {
 			return c
 		}
 	}
+	var match *Container
+	for _, c := range d.containers {
+		if ref != "" && strings.HasPrefix(c.ID, ref) {
+			if match != nil {
+				return nil
+			}
+			match = c
+		}
+	}
+	return match
+}
+
+// findName checks the name reservation used by container creation.
+func (d *Daemon) findName(name string) *Container {
+	for _, c := range d.containers {
+		if c.Name == name {
+			return c
+		}
+	}
 	return nil
+}
+
+// joinedContainer returns the target of a "container:<ref>" network mode.
+func joinedContainer(mode string) (string, bool) {
+	return strings.CutPrefix(mode, "container:")
 }
 
 func (d *Daemon) ipFor(c *Container) string {
@@ -80,17 +106,27 @@ func (d *Daemon) ipFor(c *Container) string {
 
 func (d *Daemon) markRunning(c *Container) {
 	c.Status = "running"
+	// Docker clears the out-of-memory flag on a start but keeps the last
+	// exit's FinishedAt.
 	c.ExitCode, c.OOMKilled, c.Error = 0, false, ""
-	c.StartedAt, c.FinishedAt = time.Now().UTC(), time.Time{}
-	if len(c.Networks) == 0 {
-		mode := c.Spec.HostConfig.NetworkMode
-		if mode == "" {
-			mode = "bridge"
+	c.StartedAt = time.Now().UTC()
+	mode := c.Spec.HostConfig.NetworkMode
+	if _, shared := joinedContainer(mode); shared {
+		c.Networks = nil
+	} else {
+		if len(c.Networks) == 0 {
+			if mode == "" {
+				mode = "bridge"
+			}
+			c.Networks = map[string]string{mode: ""}
 		}
-		c.Networks = map[string]string{mode: ""}
-	}
-	for name := range c.Networks {
-		c.Networks[name] = d.ipFor(c)
+		for name := range c.Networks {
+			if addr := c.seeded[name]; addr != "" {
+				c.Networks[name] = addr
+			} else {
+				c.Networks[name] = d.ipFor(c)
+			}
+		}
 	}
 	d.broadcast()
 }
@@ -164,13 +200,17 @@ func (d *Daemon) create(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusBadRequest, "bad request body")
 		return
 	}
+	if msg := invalidNetworkMode(spec); msg != "" {
+		reply(w, http.StatusBadRequest, msg)
+		return
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	name := r.URL.Query().Get("name")
 	if name == "" {
 		name = fmt.Sprintf("fake_%d", d.serial+1)
 	}
-	if other := d.find(name); other != nil {
+	if other := d.findName(name); other != nil {
 		reply(w, http.StatusConflict, fmt.Sprintf(
 			"Conflict. The container name \"/%s\" is already in use by container \"%s\". "+
 				"You have to remove (or rename) that container to be able to reuse that name.", name, other.ID))
@@ -197,6 +237,43 @@ func (d *Daemon) create(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]any{"Id": c.ID, "Warnings": []string{}})
+}
+
+// invalidNetworkMode returns Docker's reason for refusing a create that joins
+// another container's network with options that belong to a network of its
+// own, or "" when the spec is fine. The target is checked at start, not here.
+func invalidNetworkMode(spec docker.ContainerSpec) string {
+	target, shared := joinedContainer(spec.HostConfig.NetworkMode)
+	switch {
+	case !shared:
+		return ""
+	case target == "":
+		return "invalid container format container:<name|id>"
+	case len(spec.HostConfig.PortBindings) > 0:
+		return "conflicting options: port publishing and the container type network mode"
+	case len(spec.ExposedPorts) > 0:
+		return "conflicting options: port exposing and the container type network mode"
+	}
+	return ""
+}
+
+// joinFailure returns why c cannot start in the network of the container its
+// mode names, or "" when it can. Docker looks the target up at start, so a
+// name that now means a replacement is found and an old ID is not.
+func (d *Daemon) joinFailure(c *Container) (status int, msg string) {
+	ref, shared := joinedContainer(c.Spec.HostConfig.NetworkMode)
+	if !shared {
+		return 0, ""
+	}
+	switch target := d.find(ref); {
+	case target == nil:
+		return http.StatusNotFound, "No such container: " + ref
+	case target.Status == "restarting":
+		return http.StatusConflict, "Container " + target.ID + " is restarting, wait until the container is running"
+	case target.Status != "running":
+		return http.StatusConflict, "cannot join network namespace of a non running container: " + ref
+	}
+	return 0, ""
 }
 
 func (d *Daemon) pull(w http.ResponseWriter, r *http.Request) {
@@ -281,6 +358,13 @@ func (d *Daemon) containerCall(w http.ResponseWriter, r *http.Request, ref, acti
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
+		if status, msg := d.joinFailure(c); status != 0 {
+			// Docker leaves the container created, with the reason in State.Error.
+			c.Error, c.ExitCode = msg, 128
+			d.broadcast()
+			reply(w, status, msg)
+			return
+		}
 		if port, armed := d.portInUse[c.Name]; armed {
 			delete(d.portInUse, c.Name)
 			c.Error = PortInUseMessage(c.Name, endpointID(c.ID), port)
@@ -320,13 +404,11 @@ func (d *Daemon) containerCall(w http.ResponseWriter, r *http.Request, ref, acti
 func inspectBody(c *Container) map[string]any {
 	nets := map[string]any{}
 	for name, addr := range c.Networks {
-		ip, prefixLen := addr, 0
-		if p, err := netip.ParsePrefix(addr); err == nil {
-			ip, prefixLen = p.Addr().String(), p.Bits()
-		} else if addr != "" {
-			prefixLen = 16
-		}
-		nets[name] = map[string]any{"IPAddress": ip, "IPPrefixLen": prefixLen}
+		nets[name] = networkBody(addr)
+	}
+	mode := c.Spec.HostConfig.NetworkMode
+	if mode == "" {
+		mode = "default"
 	}
 	return map[string]any{
 		"Id":           c.ID,
@@ -337,10 +419,64 @@ func inspectBody(c *Container) map[string]any {
 			"ExitCode": c.ExitCode, "OOMKilled": c.OOMKilled, "Error": c.Error,
 			"StartedAt": c.StartedAt, "FinishedAt": c.FinishedAt,
 		},
-		"Config":          map[string]any{"Image": c.Spec.Image, "Labels": c.Spec.Labels},
+		"Config": map[string]any{
+			"Image": c.Spec.Image, "Labels": c.Spec.Labels, "Env": c.Spec.Env,
+		},
+		"HostConfig":      map[string]any{"NetworkMode": mode},
 		"Mounts":          c.Mounts,
-		"NetworkSettings": map[string]any{"Networks": nets},
+		"NetworkSettings": map[string]any{"Networks": nets, "Ports": portsBody(c)},
 	}
+}
+
+// networkBody is one network's entry in an inspect reply, from an address in
+// the form Container.Networks describes.
+func networkBody(addr string) map[string]any {
+	body := map[string]any{"IPAddress": "", "IPPrefixLen": 0, "GlobalIPv6Address": "", "GlobalIPv6PrefixLen": 0}
+	for _, one := range strings.Split(addr, ",") {
+		var ip netip.Addr
+		bits := 16 // a bare address has the prefix length Docker's default network has
+		if p, err := netip.ParsePrefix(one); err == nil {
+			ip, bits = p.Addr(), p.Bits()
+		} else if a, err := netip.ParseAddr(one); err == nil {
+			ip = a
+			if a.Is6() {
+				bits = 64
+			}
+		} else {
+			continue
+		}
+		if ip.Is6() {
+			body["GlobalIPv6Address"], body["GlobalIPv6PrefixLen"] = ip.String(), bits
+		} else {
+			body["IPAddress"], body["IPPrefixLen"] = ip.String(), bits
+		}
+	}
+	return body
+}
+
+// portsBody is NetworkSettings.Ports: filled in only while the container
+// runs, with an exposed but unpublished port as null, and a port published on
+// every address listed for IPv4 and IPv6, as Docker does.
+func portsBody(c *Container) map[string]any {
+	ports := map[string]any{}
+	if c.Status != "running" {
+		return ports
+	}
+	for port := range c.Spec.ExposedPorts {
+		ports[port] = nil
+	}
+	for port, bindings := range c.Spec.HostConfig.PortBindings {
+		var out []docker.PortBinding
+		for _, b := range bindings {
+			if b.HostIP == "" {
+				out = append(out, docker.PortBinding{HostIP: "0.0.0.0", HostPort: b.HostPort}, docker.PortBinding{HostIP: "::", HostPort: b.HostPort})
+			} else {
+				out = append(out, b)
+			}
+		}
+		ports[port] = out
+	}
+	return ports
 }
 
 func statsBody() map[string]any {
@@ -383,6 +519,11 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 		reply(w, http.StatusNotFound, "No such container: "+ref)
 		return
 	}
+	if !follow && d.refuseReads {
+		d.mu.Unlock()
+		reply(w, http.StatusInternalServerError, "log read refused")
+		return
+	}
 	next := 0
 	if n, err := strconv.Atoi(q.Get("tail")); err == nil && n < len(c.Log) {
 		next = len(c.Log) - n
@@ -406,7 +547,8 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 		if follow && d.holdFollow {
 			entries, running = nil, true
 		}
-		if !follow && d.cutReads > 0 && len(entries) > d.cutReads {
+		cut := !follow && d.cutReads > 0 && len(entries) > d.cutReads
+		if cut {
 			entries = entries[:d.cutReads]
 		}
 		d.mu.Unlock()
@@ -428,6 +570,10 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 		}
 		next += len(entries)
 		flush(w)
+		if cut {
+			// The connection drops: the reader gets an error, not the end.
+			panic(http.ErrAbortHandler)
+		}
 		if !follow || !running {
 			return
 		}

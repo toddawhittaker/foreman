@@ -15,9 +15,9 @@ a save is never lost.
 Early development; no image is published yet, so you build it yourself
 (`make image`). Built so far: sign-in, worlds and snapshots, server
 control, switching worlds and game versions, generating worlds, game
-settings, languages and mods, and webhook notifications (Discord, ntfy or
-any web address) with a low-disk warning. See [docs/STATUS.md](docs/STATUS.md)
-for what each epic has delivered, and [docs/SPEC.md](docs/SPEC.md),
+settings, languages and mods, webhook notifications (Discord, ntfy or
+any web address) with a low-disk warning, and optional VPN sidecars. See
+[docs/STATUS.md](docs/STATUS.md) for what each epic has delivered, and [docs/SPEC.md](docs/SPEC.md),
 section 18, for the epic order.
 
 The web UI is available in eight languages. The translations are made by
@@ -35,6 +35,15 @@ need, the compose file, the security advice (Docker access is root on the
 host), running behind a reverse proxy, first sign-in, generating a world,
 installing mods, joining the game, importing and switching worlds,
 webhooks, the low-disk warning, and what to do when something fails.
+
+Optionally, the game can run inside a VPN sidecar's network, so players
+join through Tailscale or another VPN while LAN players still join the
+host. You define and sign in the sidecar yourself; Foreman holds no VPN
+credential. Foreman does not watch the sidecar: after you restart or
+recreate it, restart the game from Foreman's Server page. The operator
+guide, section 16, has the setup, and
+[docs/examples/tailscale-sidecar/compose.yaml](docs/examples/tailscale-sidecar/compose.yaml)
+is a Tailscale compose file.
 
 ## Documentation
 

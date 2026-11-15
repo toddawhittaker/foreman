@@ -12,7 +12,8 @@ below uses the new numbers.
 Epics 1 to 9, the Gate A fixes, the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
 the Resource amounts epic, fixes batches 5, 6 and 7 and the Mod settings epic
-are done. Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was
+are done. Epic 9b (VPN sidecars) is built, but its live acceptance is still
+open (see its section). Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was
 skipped for now, at Todd's choice, when the Mod settings epic started; it is
 still owed before Gate C.
 
@@ -2719,8 +2720,7 @@ tab (8.5); an `http://` webhook address is allowed, with a warning (8.11).
 - **Not built (planned).** A test-send button, signed webhook bodies, days of
   the week for the schedule, "skip tonight", and undelivered events kept
   across a Foreman restart.
-- Epic 9b (VPN sidecars) is not built; Foreman still refuses to start when
-  `FOREMAN_GAME_NETWORK_CONTAINER` is set.
+- Epic 9b (VPN sidecars) was not built yet; it is now (see Epic 9b).
 - Gate B (SPEC 19.2) is still owed.
 
 ## Fixes batch 7
@@ -2891,3 +2891,233 @@ independent cards is acceptable (WCAG 2.4.3 passes). The fold changed DESIGN
   awaits Todd.
 - Five translations still need a native check: French and Spanish whitelist
   enforcement, Czech Undo, Chinese Jump to section, Polish More actions.
+
+## Epic 9b: VPN sidecars
+
+Serves SPEC 4.3, 4.4, 4.6, 4.13, 12.6, 14.3, 14.16 and 18.9b, with 8.4 and
+22, and ADR 0006. Issues closed: none (none concerned sidecars). The pull
+requests were #559 to #568, followed by #569, #572, #573 and #574,
+with the contract in #555 to #558. Built across
+three machines.
+
+**Not fully accepted.** The code is built and tested as listed below, but
+the live VPN and reboot checks were not run (see "Remaining acceptance").
+All automated gates below passed. Todd deferred live acceptance on
+2026-11-14 and asked that the epic pull request remain draft.
+
+Rulings (Todd, 2026-11-14), now in SPEC 4.13, 12.6 and 14.16 and ADR 0006:
+shared sidecars are allowed, on additional Docker networks too, and an
+unrelated service there is no reason to refuse; the sidecar's lifecycle is
+the operator's, with no watcher and no automatic recovery; the game joins
+the checked container ID and declares no port, and the sidecar publishes
+UDP 34197 so LAN and VPN players play together; RCON stays on the sidecar's
+private game-network address; Tailscale in kernel mode is the reference
+setup, while Foreman stays independent of the VPN provider; reboot recovery
+must be tested on a disposable host, and a failure goes to Todd rather than
+being waived or fixed by auto-start.
+
+### Delivered
+
+- **The game runs in the sidecar's network (SPEC 4.13, 14.16, ADR 0006;
+  #560, #563).** With `FOREMAN_GAME_NETWORK_CONTAINER` set, every start
+  looks the sidecar up by name, checks it, and creates the game with
+  network mode `container:<inspected ID>`. A container made later under the
+  same name is never joined, and a failed create or start falls back to
+  nothing. The game declares no exposed or published port. Start, restart,
+  switch, version change and mod changes all run the check before any world
+  change, so a refused start writes no mod list and takes no snapshot. The
+  sidecar must be running, on `FOREMAN_GAME_NETWORK`, and not on the host
+  network or inside another container's. The old startup refusal is gone.
+  Container inspect gained the environment, network mode and ports. The
+  environment and full inspect result are never put in an error or log. No database, API, endpoint or
+  dependency changed.
+- **Shared sidecars (SPEC 4.13).** Every network the sidecar is on has its
+  IPv4 and IPv6 ranges checked: an unreadable range, an overlap with
+  `FOREMAN_TRUSTED_PROXIES` and a range holding the address a `tcp://`
+  `DOCKER_HOST` reaches each refuse the start. Extra networks and unrelated
+  services on them do not.
+- **RCON is private to the sidecar's game-network address (SPEC 4.13, 14.16;
+  #563).** The game gets `FOREMAN_RCON_BIND=<IPv4>:27015` and the start
+  script passes `--rcon-bind` in place of `--rcon-port`. One path resolves
+  the address for the first connection, each reconnect and a Foreman
+  restart. It inspects the container the game's network mode names, by
+  ID, and trusts the bind only when it is that container's exact address
+  on the game network and port 27015. Each new RCON connection runs the
+  check again after it is made and before the login (`rcon.NewChecked`).
+  When Docker reports the original holder gone or its address changed, the
+  login is refused; this remains a point-in-time check. Ordinary mode is unchanged.
+- **The sidecar's ranges protect trusted-header sign-in (SPEC 12.6;
+  #563).** They are read before the first game starts and on every monitor
+  look, with Foreman in or out of a container, and again after a Foreman
+  restart. They count as known only when the sidecar and every game
+  container were read in full, an empty network list on a game proves
+  nothing, ranges learned earlier survive a failed read, and a game in a
+  since-replaced sidecar's old namespace contributes its ranges too. Before
+  the first complete discovery, unreadable ranges keep sign-in refused;
+  later read failures retain previously learned ranges and knowledge.
+- **The Server page warns, without blocking, when LAN players cannot join
+  (SPEC 4.13; #563, #564).** When the sidecar has no host binding for
+  `34197/udp`, the start goes ahead and the page warns while the game
+  runs, in the low-disk warning's live region and in all eight languages.
+  The warning is read at start or when a running game is taken on, and is
+  not refreshed while it runs. The eight refusals are worded in all eight
+  languages and name only the configured container.
+- **A running game with no RCON client says so (SPEC 8.4, 4.13; #568).**
+  After a Foreman restart, when the sidecar the game joined is gone, the
+  Console, Players and Chat now say the game cannot be reached over RCON
+  instead of "not running". A game that is not running or not yet in game
+  still says "not running".
+- **A forced stop reports one stop (SPEC 7.7, 8.10; #562).** Found by the
+  epic's full verify: a monitor look read just before Force stop's kill
+  could be taken in afterwards, so the game read as Stopping and sent a
+  second stop event. `refresh` now drops any look read before the kill.
+- **Test fakes (#559, #566).** The fake Docker models `container:<ref>`:
+  create refuses ports and exposes, start needs a running holder, and an
+  old ID cannot join a replaced name. The fake game takes `-sidecar` and
+  `-sidecar-port`, binds RCON only at the sidecar's address, and keeps no
+  RCON after a sidecar restart until it restarts itself.
+- **Browser tests (#564, #572).** `e2e/tests/sidecar.spec.ts` covers a published
+  and an unpublished start, the Console, the warning following a change
+  live in a second tab, missing and stopped sidecars, no script, 320 px
+  and axe in four projects, and that the sidecar's secret never reaches a
+  page or the log. Sidecar restart recovery is covered in all four projects:
+  graceful Restart refuses without creating a container, then Force stop
+  and Start restore the Console. The shared accessibility helper waits for
+  animation state rather than promises Chromium can leave unresolved in
+  closed details elements.
+- **Real-container tests (#565).** `internal/game/sidecar_game_test.go`
+  runs under `make test-game` on 1.1.110, 2.0.77 and 2.1.24, with a
+  game-image container as the namespace holder on a temporary game network
+  and a second shared network with an unrelated service. Docker accepts the
+  generated spec; the game reaches InGame; the only listener on 27015 is
+  the holder's game-network address, refused on the holder's other
+  interface and on loopback; the console works; a Foreman restart
+  re-attaches; a graceful stop saves; restart and a switch to another world
+  and back work; five refusals happen before any container exists. The
+  same-address trap (a replacement at the old address) receives 0 bytes
+  through both the running controller and a restarted Foreman.
+  Measured on Docker 29.1.3, identical on all three lines: a holder
+  restart keeps its ID and address, and the running game then sees only
+  loopback; a replacement gets a new ID at the same address, and the game
+  stays in the orphaned namespace with the old ID. In both, the Console and
+  a graceful stop fail, nothing is saved or reported stopped, and Force stop
+  followed by a start recovers.
+- **Operator guide and Tailscale recipe (#561).** OPERATOR section 16 and
+  `docs/examples/tailscale-sidecar/compose.yaml`: kernel networking, a state
+  volume, `/dev/net/tun`, `NET_ADMIN` and `NET_RAW` on the sidecar only, the
+  image pinned by tag and index digest, and a tag with a grant for
+  `udp:34197`. Sign-in is interactive or by an auth key mounted as a file
+  into the sidecar alone. It covers LAN and VPN play together, what a
+  published port cannot prove, RCON's private bind with checks that must
+  fail, what the game inherits from additional networks, never trusting a
+  VPN address or range as a proxy, and manual recovery after a sidecar
+  restart. The README links it. `docker compose config` passed; nothing was
+  started.
+- **Failure diagnostics for browser tests (#567).** A failing e2e test keeps
+  a Playwright trace and the last 256 KiB of Foreman's output with secret
+  literal credential values of at least four characters redacted, and CI
+  uploads them for seven days. Browser traces are not redacted and must
+  contain only the test fixtures' synthetic credentials. This explains
+  failures; it fixes none.
+
+- **Crash-loop fixes found by the gates (#569, #573, #574; SPEC 8.7–8.9,
+  ADR 0016).** The OOM test restarts under both memory limits and tolerates
+  a failed exec only after Docker confirms that run ended. The monitor
+  orders exit evidence by Docker's exit time, captures the OOM flag at log
+  EOF, and reads a bounded log tail on a restart. Older evidence cannot
+  overwrite newer exits; a newer run's explicit reason can supersede an
+  older OOM kill. Events wait for the crashed run's reason when only an
+  earlier follower supplied one. Crash-loop stops give Docker 10 seconds
+  before killing a game that hangs during loading; admin stops retain
+  their 120-second save grace.
+
+### Evidence
+
+Epic head `70476fb8` has exactly the verified candidate `60206373`'s tree,
+`747d02dd8b26b43bf5c83b8a35dd6cf2a09c2ed7`:
+
+- Full `make verify`: passed, 90.9% coverage across `internal/`.
+  Test counts: game 413, world 304 and web 694; race detector and lint pass.
+- Full fake-browser suite: 3082 passed, 254 skipped, 0 failed or flaky.
+- Full `make test-game`: passed, including sidecar lifecycle, crash
+  catalogue, crash-loop stops, web and resource tests on the pinned
+  1.1.110, 2.0.77 and 2.1.24 images. Four existing resource-label checks
+  are skipped.
+- Full `make e2e-game`: 2 passed.
+- Code and security reviews covered Docker, trusted headers, RCON and the
+  crash-loop changes; accessibility and translation reviews covered the
+  sidecar UI. All blocking findings were corrected and rechecked.
+
+### Remaining acceptance
+
+Not done, and not to be read as passed:
+
+- **No live Tailscale test has run, and no client has played.** The pinned
+  `tailscale/tailscale:v1.104.7` image has not been run against Foreman. pve has no
+  `/dev/net/tun`, so a kernel-mode sidecar needs another host or TUN
+  passthrough. A real VPN, routes and the concurrent LAN and VPN players
+  are unproven: the real-container tests use a `sleep` container as the
+  namespace holder, and the fakes model no routing.
+- **Reboot and Docker-restart recovery is unmeasured.** Section 16's reboot
+  paragraph is cautious wording, not a result.
+- **One timeout under load.** The first run of the map-settings test
+  timed out waiting for Docker at load 27; the focused rerun and the whole
+  map suite (59 tests) passed. Not reproduced, not explained.
+- **A rare CI chat failure is unexplained.** `chat.spec.ts:146` once timed
+  out in CI (run 43638303346) on the first slash-message submission. 250
+  local repeats pass, and the cause is unknown. #567 only adds diagnostics,
+  and its artifact upload had not run on GitHub when it merged.
+
+The live acceptance, to run on a separate test stack with a disposable world
+and never on Todd's active game. Take any credential through the secret tool
+at the time; no authentication value goes into the repository, a pull
+request, command output or notes. Record the image tags and digests, the
+Docker version, the topology and each result:
+
+1. Start through Foreman; the Console and Players work.
+2. A LAN client joins the published host address while a client on another
+   network joins the sidecar's Tailscale address. Both play at once.
+3. RCON works from Foreman, but connections to TCP 27015 on the LAN host
+   address and the Tailscale address fail. Advertise no route to the Docker
+   game subnet and forward no Tailscale traffic to the private RCON address.
+4. Recreate the test sidecar without the published port and restart the
+   game: the warning appears, remote VPN play works, and LAN play does not.
+5. Restart the sidecar, then separately recreate it, while the test game
+   runs. Write down the symptoms, restart the game through Foreman, and
+   confirm both clients rejoin. Expect no new sidecar warning.
+6. Restart Foreman only: the game stays up and RCON re-attaches. Then save
+   and stop gracefully, restart, switch worlds and switch back.
+7. Test the trusted-header boundary. Limit the sidecar's VPN access to the
+   peers and services it needs by a tailnet policy; no Docker API or proxy
+   service may be reachable through the sidecar.
+8. On a disposable host, restart Docker or reboot with the game and sidecar
+   running; record the recovery order and when the game and RCON are ready.
+   If recovery fails, bring the failure to Todd; do not waive the vision's
+   principle 2 or add auto-start. Never restart Todd's own host for this.
+
+Afterwards correct OPERATOR section 16 to the measured behavior, and
+optionally try Tailscale's userspace mode as an exploration only: it is not
+a second promised configuration.
+
+### Gaps left
+
+- **No sidecar watcher, warning or automatic recovery, by design (SPEC
+  4.13).** After the sidecar is restarted or replaced, a running game keeps
+  showing Running on the Server page while it has no RCON; the operator
+  uses Force stop, which saves nothing, and starts it again. This holds
+  after a Foreman restart too.
+- **The RCON check is a point in time.** Docker confirms the holder before
+  each login but cannot rule out a swap between that check and the login.
+- A stopped or missing sidecar when Foreman starts keeps trusted-header
+  sign-in refused until it runs; local sign-in still works.
+- VPN interface ranges are not visible through Docker. Documentation, not
+  the product, forbids trusting a VPN address or range as a proxy.
+- The LAN warning is evidence from inspection: a published port does not
+  prove reachability (host address, changed host port, firewall).
+- The sidecar and its namespace peers are trusted: Foreman has no scanner
+  for peers and no VPN firewall manager (SPEC 14.16).
+- The eight sidecar refusals and the warning are AI-written translations
+  that no native speaker has checked.
+- Docker's own error texts for joining a stopped or removed holder differ
+  between the cases measured; Foreman refuses before creating anything and
+  relies on none of them.

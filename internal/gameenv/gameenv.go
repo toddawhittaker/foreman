@@ -16,6 +16,12 @@ const (
 	Seed   = "FOREMAN_SEED"
 )
 
+// RCONBind is set when the game shares a VPN sidecar's network (SPEC 4.13).
+// Its value is the IP:port endpoint RCON listens on, with brackets around an
+// IPv6 address. The start script passes it to --rcon-bind and Foreman reads
+// it back from the game container to reconnect.
+const RCONBind = "FOREMAN_RCON_BIND"
+
 // Environment variables of a preview container.
 const (
 	// PreviewPlanets lists the planets to draw, separated by spaces.

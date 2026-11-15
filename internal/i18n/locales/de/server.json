@@ -419,6 +419,14 @@
   "server.network.host_outside": "DOCKER_HOST erreicht Docker unter {address}, das in keinem der Netzwerke von Foreman außer dem Spielnetzwerk „{network}“ liegt, daher könnte ein Spiel es über das Gateway dieses Netzwerks erreichen. Erreiche Docker über ein Netzwerk, in dem das Spiel nicht ist, zum Beispiel über einen Socket-Proxy in einem Netzwerk, das Foreman mit ihm teilt.",
   "server.network.self_file": "Foreman scheint in einem Container zu laufen ({file} existiert), aber Docker hat keinen Container mit der ID oder dem Hostnamen von Foreman, daher kann Foreman nicht feststellen, in welchen Netzwerken es ist. Behalte den Hostnamen, den Docker dem Foreman-Container gegeben hat, und stelle sicher, dass DOCKER_HOST das Docker erreicht, auf dem Foreman läuft.",
   "server.network.self_tcp": "Foreman scheint in einem Container zu laufen (DOCKER_HOST nutzt tcp://), aber Docker hat keinen Container mit der ID oder dem Hostnamen von Foreman, daher kann Foreman nicht feststellen, in welchen Netzwerken es ist. Behalte den Hostnamen, den Docker dem Foreman-Container gegeben hat, und stelle sicher, dass DOCKER_HOST das Docker erreicht, auf dem Foreman läuft.",
+  "server.network.sidecar_missing": "FOREMAN_GAME_NETWORK_CONTAINER nennt „{container}“, aber Docker kennt keinen Container mit diesem Namen, daher hat das Spiel keinen VPN-Sidecar, mit dem es ein Netzwerk teilen kann. Starte den Sidecar oder entferne FOREMAN_GAME_NETWORK_CONTAINER.",
+  "server.network.sidecar_stopped": "Der VPN-Sidecar „{container}“ läuft nicht, daher kann das Spiel sein Netzwerk nicht teilen. Starte den Sidecar und versuche es dann erneut.",
+  "server.network.sidecar_host": "Der VPN-Sidecar „{container}“ nutzt das Netzwerk des Hosts, daher wäre ein Spiel, das es teilt, ebenfalls im Netzwerk des Hosts. Gib dem Sidecar ein eigenes Docker-Netzwerk und setze ihn in „{network}“.",
+  "server.network.sidecar_nested": "Der VPN-Sidecar „{container}“ nutzt das Netzwerk eines anderen Containers, daher kann Foreman nicht erkennen, was das Spiel teilen würde. Nenne stattdessen den Container, dem das Netzwerk gehört.",
+  "server.network.sidecar_off_network": "Der VPN-Sidecar „{container}“ ist nicht im Spielnetzwerk „{network}“, daher könnte Foreman das Spiel nicht über RCON erreichen. Verbinde den Sidecar mit diesem Netzwerk und versuche es dann erneut.",
+  "server.network.sidecar_no_range": "Der Adressbereich des Netzwerks „{network}“, in dem der VPN-Sidecar „{container}“ ist, kann nicht aus Docker gelesen werden, daher kann Foreman nicht prüfen, ob ein Spiel, das es teilt, vom Docker-Socket-Proxy und von FOREMAN_TRUSTED_PROXIES fernbleibt. Prüfe, ob Docker antwortet, und versuche es dann erneut.",
+  "server.network.sidecar_proxy_overlap": "Der VPN-Sidecar „{container}“ ist im Netzwerk „{network}“ ({subnet}), das sich mit FOREMAN_TRUSTED_PROXIES ({proxies}) überschneidet, daher könnte ein Spiel im Netzwerk des Sidecars sich als der Proxy ausgeben, der Benutzer anmeldet. Nimm den Sidecar aus diesem Netzwerk oder verkleinere FOREMAN_TRUSTED_PROXIES.",
+  "server.network.sidecar_host_on_network": "DOCKER_HOST erreicht den Docker-Socket-Proxy unter {address}, der im Netzwerk „{network}“ ({subnet}) liegt, in dem auch der VPN-Sidecar „{container}“ ist, daher könnte ein Spiel im Netzwerk des Sidecars ihn erreichen. Nimm den Sidecar oder den Proxy aus diesem Netzwerk.",
   "server.download.failed": "Foreman konnte {image} nicht herunterladen. Die Einzelheiten stehen im Protokoll von Foreman. Versuche es erneut.",
   "server.download.failed_switch": "Foreman konnte {image} nicht herunterladen. Die Einzelheiten stehen im Protokoll von Foreman. Versuche den Wechsel erneut.",
   "server.download.no_image": "Foreman konnte {image} nicht herunterladen: Docker Hub hat kein Image mit dieser Version.",
@@ -588,5 +596,6 @@
   "server.op.scheduled_restart": "Geplanter Neustart",
   "server.disk.low": "Nur noch {free} Speicherplatz ist frei. Unter {reserve} können automatische Speicherungen scheitern, und Snapshots werden nicht mehr erstellt. Lösche Snapshots oder Welten, die du nicht mehr brauchst.",
   "server.disk.snapshots": "Snapshots",
+  "server.lan.unpublished": "Spieler im lokalen Netzwerk können das Spiel nicht erreichen: {sidecar} veröffentlicht UDP 34197 nicht auf dem Host.",
   "server.force.group": "Notfallaktionen"
 }

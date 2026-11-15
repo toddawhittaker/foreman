@@ -65,6 +65,14 @@ var typedFailures = []error{
 	&game.NetworkError{Kind: game.NetworkHostOutside, Address: "10.0.0.1", Network: "games"},
 	&game.NetworkError{Kind: game.NetworkSelfFile, File: "/.dockerenv"},
 	&game.NetworkError{Kind: game.NetworkSelfTCP},
+	&game.NetworkError{Kind: game.NetworkSidecarMissing, Container: "vpn"},
+	&game.NetworkError{Kind: game.NetworkSidecarStopped, Container: "vpn"},
+	&game.NetworkError{Kind: game.NetworkSidecarHost, Container: "vpn", Network: "games"},
+	&game.NetworkError{Kind: game.NetworkSidecarNested, Container: "vpn"},
+	&game.NetworkError{Kind: game.NetworkSidecarOffNetwork, Container: "vpn", Network: "games"},
+	&game.NetworkError{Kind: game.NetworkSidecarNoRange, Container: "vpn", Network: "shared"},
+	&game.NetworkError{Kind: game.NetworkSidecarProxyOverlap, Container: "vpn", Network: "shared", Subnet: "172.21.0.0/16", Proxies: "172.21.0.0/24"},
+	&game.NetworkError{Kind: game.NetworkSidecarHostOnNetwork, Container: "vpn", Network: "shared", Subnet: "172.21.0.0/16", Address: "172.21.0.5"},
 }
 
 // The page's English for every failure says what the log says, word for
@@ -102,6 +110,14 @@ func TestTypedFailuresNameTheirFactsInGerman(t *testing.T) {
 		{&game.ForcedStopError{World: "Alpha", Stopped: true}, []string{"Alpha"}},
 		{game.NotActiveError{Name: "Bravo"}, []string{"Bravo"}},
 		{&game.NetworkError{Kind: game.NetworkNotJoined, Network: "games"}, []string{"games", "FOREMAN_GAME_NETWORK"}},
+		{&game.NetworkError{Kind: game.NetworkSidecarMissing, Container: "vpn"}, []string{"vpn", "FOREMAN_GAME_NETWORK_CONTAINER"}},
+		{&game.NetworkError{Kind: game.NetworkSidecarStopped, Container: "vpn"}, []string{"vpn"}},
+		{&game.NetworkError{Kind: game.NetworkSidecarHost, Container: "vpn", Network: "games"}, []string{"vpn", "games"}},
+		{&game.NetworkError{Kind: game.NetworkSidecarNested, Container: "vpn"}, []string{"vpn"}},
+		{&game.NetworkError{Kind: game.NetworkSidecarOffNetwork, Container: "vpn", Network: "games"}, []string{"vpn", "games"}},
+		{&game.NetworkError{Kind: game.NetworkSidecarNoRange, Container: "vpn", Network: "shared"}, []string{"vpn", "shared"}},
+		{&game.NetworkError{Kind: game.NetworkSidecarProxyOverlap, Container: "vpn", Network: "shared", Subnet: "172.21.0.0/16", Proxies: "172.21.0.0/24"}, []string{"vpn", "shared", "172.21.0.0/16", "172.21.0.0/24"}},
+		{&game.NetworkError{Kind: game.NetworkSidecarHostOnNetwork, Container: "vpn", Network: "shared", Subnet: "172.21.0.0/16", Address: "172.21.0.5"}, []string{"vpn", "shared", "172.21.0.0/16", "172.21.0.5"}},
 		{&game.ImageDownloadError{Image: "factoriotools/factorio:2.0.76", Err: errors.New("x")}, []string{"factoriotools/factorio:2.0.76"}},
 	}
 	for _, c := range cases {

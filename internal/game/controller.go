@@ -48,6 +48,12 @@ const (
 	// StopGraceSeconds is how long Docker waits for the game to save and
 	// exit after SIGTERM before it kills it (SPEC 7.6).
 	StopGraceSeconds = 120
+	// CrashLoopStopGraceSeconds is how long Docker waits after SIGTERM
+	// before it kills a crash-looping game (SPEC 8.9). Foreman stops the
+	// loop just as Docker starts a new run, which has nothing to save, and
+	// Factorio 2.0.77 hangs for good when SIGTERM reaches it while it loads
+	// its mods, so the full grace would leave it running for two minutes.
+	CrashLoopStopGraceSeconds = 10
 	// CrashLoopCount crashes within CrashLoopWindow make a crash loop (SPEC 8.9).
 	CrashLoopCount  = 3
 	CrashLoopWindow = 10 * time.Minute
@@ -166,6 +172,10 @@ type Config struct {
 	// Network is FOREMAN_GAME_NETWORK. Outside a container empty means
 	// Docker's default bridge; inside one it is required (SPEC 4.4).
 	Network string
+	// NetworkContainer is FOREMAN_GAME_NETWORK_CONTAINER: the VPN sidecar
+	// whose network the game shares, or "" for none. It needs Network
+	// (SPEC 4.13).
+	NetworkContainer string
 	// DockerHost is DOCKER_HOST. Over tcp:// a socket proxy shares a
 	// network with Foreman, so the game network must not hold its address
 	// (SPEC 4.4).
@@ -192,6 +202,7 @@ type Controller struct {
 	hostData string
 	user     string
 	network  string
+	sidecar  string // FOREMAN_GAME_NETWORK_CONTAINER; "" for none (SPEC 4.13)
 	selfID   string
 	// What the game network is checked against (SPEC 4.4). dockerHost is the
 	// host DOCKER_HOST names over tcp://.
@@ -286,6 +297,9 @@ func New(cfg Config) (*Controller, error) {
 	if err := checkNetworkName(cfg.Network); err != nil {
 		return nil, err
 	}
+	if cfg.NetworkContainer != "" && cfg.Network == "" {
+		return nil, errors.New("FOREMAN_GAME_NETWORK must be set when FOREMAN_GAME_NETWORK_CONTAINER is set")
+	}
 	now := cfg.Now
 	if now == nil {
 		now = time.Now
@@ -299,7 +313,7 @@ func New(cfg Config) (*Controller, error) {
 		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit, switches: cfg.Switches,
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
-		network:  cfg.Network, selfID: cfg.SelfID,
+		network:  cfg.Network, sidecar: cfg.NetworkContainer, selfID: cfg.SelfID,
 		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), dockerHost: tcpHost(cfg.DockerHost),
 		proxies: cfg.TrustedProxies, containerEnvs: []string{docker.DockerEnvPath, docker.PodmanEnvPath}, lookupHost: net.DefaultResolver.LookupHost,
 		now: now, log: log,
@@ -350,12 +364,27 @@ type worldRun struct {
 	crashes       []time.Time // crashes seen within the crash-loop window
 	lastCrash     time.Time
 	crashedRun    bool // Docker restarted the game after a crash and it is not back in game
-	oomKilled     bool // Docker said the newest crash was an out-of-memory kill (SPEC 8.7)
-	run           runState
-	saves         int           // "Saving finished" lines seen
-	changed       chan struct{} // closed and replaced whenever the game's state moves
-	rc            *rcon.Client
-	secrets       []secret.Secret // removed from every relayed line (SPEC 8.6)
+	// oomKilled is whether Docker said the newest exit a look saw was an
+	// out-of-memory kill (SPEC 8.7), and exitAt is Docker's FinishedAt of
+	// that exit. Looks race (the poll's inspect can be older than the one
+	// taken when the log ended), so a look at an exit no newer than exitAt
+	// is not taken in. An exit no look saw changes nothing; the game coming
+	// back in game clears oomKilled and moves exitAt to that line's time.
+	oomKilled bool
+	exitAt    time.Time
+	// crashLog is the container's log as read when a look found Docker had
+	// restarted the game: the runs between two looks can end before the
+	// follower reads them (SPEC 8.7, ADR 0016). nil until then, and after
+	// the game is back in game.
+	crashLog *crashLog
+	// runStarts is Docker's time of each line the follower kept that began
+	// a run, by its place in logs, oldest first and at most maxRunStarts.
+	runStarts []runStart
+	run       runState
+	saves     int           // "Saving finished" lines seen
+	changed   chan struct{} // closed and replaced whenever the game's state moves
+	rc        *rcon.Client
+	secrets   []secret.Secret // removed from every relayed line (SPEC 8.6)
 	// noSecrets is set when the container was taken on while stopped,
 	// without its world's passwords; it is taken on again before its log
 	// is followed.
@@ -363,6 +392,8 @@ type worldRun struct {
 	gameVersion string
 	image       string
 	usage       usage
+	// lanUnpublished is Status.LANUnpublished for the current container.
+	lanUnpublished string
 
 	following    bool
 	followGen    int
@@ -375,9 +406,9 @@ type worldRun struct {
 	opCancel context.CancelFunc
 	opDone   chan struct{} // nil when no operation is running
 	opRun    *opRun        // the operation running now; nil when none
-	// ops counts each operation's beginning and end, so the monitor can drop
-	// a look at Docker taken before or during one: it would undo what that
-	// one did.
+	// ops counts each operation's beginning and end, and each stop's last
+	// look at the container, so the monitor can drop a look at Docker taken
+	// before or during one: it would undo what that one did.
 	ops uint64
 	// countdownCancel ends the stop countdown running now; nil when there
 	// is none. It is set and cleared under mu, so a cancel is either in
@@ -401,6 +432,24 @@ type worldRun struct {
 	// (ADR 0016); nil when none waits.
 	crashEvent *pendingCrash
 }
+
+// crashLog is one read of the container's log; mark is where the lines
+// the follower added after it began in logs.
+type crashLog struct {
+	f    loadFailure
+	mark uint64
+}
+
+// runStart is a line the follower added to logs that began a run: mark is
+// logs.Mark just after it was added, and at is Docker's time of it.
+type runStart struct {
+	mark uint64
+	at   time.Time
+}
+
+// maxRunStarts bounds runStarts. A run whose start is no longer kept has
+// no known time, so Docker's out-of-memory flag is not overruled by it.
+const maxRunStarts = 64
 
 // runState is what the log said about the current run of the game.
 type runState struct {
@@ -719,6 +768,12 @@ type Status struct {
 	// is the free space then (SPEC 8.13).
 	LowDisk   bool
 	FreeBytes uint64
+	// LANUnpublished is the VPN sidecar's name while the game runs in its
+	// network and the sidecar published no host port for UDP 34197 when the
+	// game started or was taken on; "" otherwise. LAN players then cannot
+	// join, but VPN players can, so it is a warning and never refuses a
+	// start (SPEC 4.13).
+	LANUnpublished string
 }
 
 // View is what a page shows when it opens: the status and the log so far.
@@ -777,9 +832,10 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	}
 	if w.dockerStatus == "running" {
 		st.LowDisk, st.FreeBytes = c.diskLow()
+		st.LANUnpublished = w.lanUnpublished
 	}
 	if st.State == StateCrashed || st.State == StateCrashLooping {
-		st.Crash = c.crashLocked(w)
+		st.Crash, _ = c.crashLocked(w)
 		st.CrashReason = strings.TrimSuffix(st.Crash.text(), ".")
 	}
 	return st

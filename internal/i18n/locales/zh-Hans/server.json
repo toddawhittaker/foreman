@@ -403,6 +403,14 @@
   "server.network.host_outside": "DOCKER_HOST 通过 {address} 访问 Docker，该地址不在 Foreman 的任何网络中（游戏网络“{network}”除外），因此游戏可能通过该网络的网关访问到它。请通过游戏不在其中的网络访问 Docker，例如与 Foreman 共享的网络上的套接字代理。",
   "server.network.self_file": "Foreman 似乎在容器中运行（{file} 存在），但 Docker 中没有与 Foreman 的 ID 或主机名对应的容器，因此 Foreman 无法判断自己在哪些网络中。请保留 Docker 给 Foreman 容器的主机名，并确保 DOCKER_HOST 指向运行 Foreman 的那个 Docker。",
   "server.network.self_tcp": "Foreman 似乎在容器中运行（DOCKER_HOST 使用 tcp://），但 Docker 中没有与 Foreman 的 ID 或主机名对应的容器，因此 Foreman 无法判断自己在哪些网络中。请保留 Docker 给 Foreman 容器的主机名，并确保 DOCKER_HOST 指向运行 Foreman 的那个 Docker。",
+  "server.network.sidecar_missing": "FOREMAN_GAME_NETWORK_CONTAINER 指定了“{container}”，但 Docker 中没有这个名称的容器，因此游戏没有可共享网络的 VPN sidecar。请启动该 sidecar，或取消设置 FOREMAN_GAME_NETWORK_CONTAINER。",
+  "server.network.sidecar_stopped": "VPN sidecar“{container}”未在运行，因此游戏无法共享它的网络。请启动该 sidecar，然后重试。",
+  "server.network.sidecar_host": "VPN sidecar“{container}”使用主机的网络，因此共享它的游戏也会处在主机的网络中。请为该 sidecar 提供专用的 Docker 网络，并把它放进“{network}”。",
+  "server.network.sidecar_nested": "VPN sidecar“{container}”使用另一个容器的网络，因此 Foreman 无法确定游戏会共享什么。请改为指定拥有该网络的容器。",
+  "server.network.sidecar_off_network": "VPN sidecar“{container}”不在游戏网络“{network}”中，因此 Foreman 无法通过 RCON 连接到游戏。请把该 sidecar 连接到该网络，然后重试。",
+  "server.network.sidecar_no_range": "无法从 Docker 读取 VPN sidecar“{container}”所在网络“{network}”的地址范围，因此 Foreman 无法确认共享该网络的游戏够不到 Docker 套接字代理和 FOREMAN_TRUSTED_PROXIES。请检查 Docker 是否有响应，然后重试。",
+  "server.network.sidecar_proxy_overlap": "VPN sidecar“{container}”位于网络“{network}”（{subnet}）中，该网络与 FOREMAN_TRUSTED_PROXIES（{proxies}）重叠，因此共享该 sidecar 网络的游戏可能冒充负责用户登录的代理。请让该 sidecar 离开该网络，或缩小 FOREMAN_TRUSTED_PROXIES。",
+  "server.network.sidecar_host_on_network": "DOCKER_HOST 通过 {address} 访问 Docker 套接字代理，该地址位于网络“{network}”（{subnet}）中，VPN sidecar“{container}”也在该网络中，因此共享该 sidecar 网络的游戏可能访问到它。请让该 sidecar 或该代理离开该网络。",
   "server.download.failed": "Foreman 无法下载 {image}。详情见 Foreman 的日志。请重试。",
   "server.download.failed_switch": "Foreman 无法下载 {image}。详情见 Foreman 的日志。请重新尝试切换。",
   "server.download.no_image": "Foreman 无法下载 {image}：Docker Hub 上没有该版本的镜像。",
@@ -568,5 +576,6 @@
   "server.op.scheduled_restart": "计划重启",
   "server.disk.low": "磁盘空间仅剩 {free}。低于 {reserve} 时自动存档可能失败，快照也将停止。请删除不再需要的快照或世界。",
   "server.disk.snapshots": "快照",
+  "server.lan.unpublished": "局域网玩家无法连接到游戏：{sidecar} 没有在主机上发布 UDP 34197。",
   "server.force.group": "紧急操作"
 }

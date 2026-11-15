@@ -77,7 +77,7 @@ func passIfPresent(flag, file string) string {
 // environment variables, never through its text.
 func startScript(useWhitelist bool) string {
 	server := `set -- --start-server-load-latest --mod-directory ` + gameMount + "/" + world.ModsDir +
-		` --rcon-port ` + RCONPort + ` --rcon-password "$pw"` +
+		` --rcon-password "$pw"` +
 		` --server-adminlist ` + configPath(world.ServerAdminListFile) +
 		` --server-banlist ` + configPath(world.ServerBanListFile)
 	if useWhitelist {
@@ -98,6 +98,9 @@ func startScript(useWhitelist bool) string {
 		`fi`,
 		`fi`,
 		server,
+		// With a VPN sidecar RCON listens on the sidecar's game-network
+		// address only, never every interface (SPEC 4.13).
+		`if [ -n "$` + gameenv.RCONBind + `" ]; then set -- "$@" --rcon-bind "$` + gameenv.RCONBind + `"; else set -- "$@" --rcon-port ` + RCONPort + `; fi`,
 		passIfPresent("--server-settings", world.ServerSettingsFile),
 		`exec ` + gameBinary + ` "$@"`,
 	}, "\n")
@@ -111,14 +114,16 @@ func ContainerName(id string) string { return "foreman-" + id }
 // which world.ValidID has checked.
 //
 // meta's new_map, when set, adds the create step's environment (SPEC 4.3);
-// its whitelist switch decides the whitelist flags (SPEC 8.3).
-func (c *Controller) containerSpec(id, image, network string, meta world.Meta) docker.ContainerSpec {
+// its whitelist switch decides the whitelist flags (SPEC 8.3). In a VPN
+// sidecar's network the game declares no port, since only the sidecar can
+// publish one, and is told where RCON listens (SPEC 4.13).
+func (c *Controller) containerSpec(id, image string, network gameNet, meta world.Meta) docker.ContainerSpec {
 	grace := StopGraceSeconds
 	labels := map[string]string{LabelWorld: id, LabelInstall: c.hostData}
 	if meta.UseWhitelist {
 		labels[LabelWhitelist] = "1"
 	}
-	return docker.ContainerSpec{
+	spec := docker.ContainerSpec{
 		Image:        image,
 		Labels:       labels,
 		Env:          createEnv(id, meta.NewMap),
@@ -137,9 +142,14 @@ func (c *Controller) containerSpec(id, image, network string, meta world.Meta) d
 			LogConfig: docker.LogConfig{Type: "json-file", Config: map[string]string{
 				"max-size": "10m", "max-file": "3",
 			}},
-			NetworkMode: network,
+			NetworkMode: network.mode,
 		},
 	}
+	if network.rconBind != "" {
+		spec.ExposedPorts, spec.HostConfig.PortBindings = nil, nil
+		spec.Env = append(spec.Env, gameenv.RCONBind+"="+network.rconBind)
+	}
+	return spec
 }
 
 // createEnv is the environment that makes the start script create the
@@ -208,6 +218,16 @@ const (
 	NetworkHostOutside  = "host-outside"  // Host's Address is on none of Foreman's networks
 	NetworkSelfFile     = "self-file"     // File says Foreman is in a container Docker does not know
 	NetworkSelfTCP      = "self-tcp"      // a tcp:// DOCKER_HOST says so
+	// The VPN sidecar's refusals (SPEC 4.13). Container is its configured
+	// name; Network is the game network unless said otherwise.
+	NetworkSidecarMissing       = "sidecar-missing"         // Docker has no Container
+	NetworkSidecarStopped       = "sidecar-stopped"         // Container is not running
+	NetworkSidecarHost          = "sidecar-host"            // Container uses the host's network
+	NetworkSidecarNested        = "sidecar-nested"          // Container uses another container's network
+	NetworkSidecarOffNetwork    = "sidecar-off-network"     // Container is not on Network
+	NetworkSidecarNoRange       = "sidecar-no-range"        // the range of Network, one of Container's, cannot be read
+	NetworkSidecarProxyOverlap  = "sidecar-proxy-overlap"   // Network, one of Container's, has Subnet overlapping Proxies
+	NetworkSidecarHostOnNetwork = "sidecar-host-on-network" // DOCKER_HOST's Address is on Subnet of Network, one of Container's
 )
 
 // NetworkError is a refusal of the game network (ErrNetwork), with the
@@ -215,6 +235,8 @@ const (
 type NetworkError struct {
 	Kind                                          string
 	Network, Subnet, Proxies, Host, Address, File string
+	// Container is the VPN sidecar's configured name, on its refusals.
+	Container string
 	// Members are the other containers on a shared network.
 	Members []NetworkMember
 	// unchecked marks a check that could not be made (errNetworkUnchecked).
@@ -253,6 +275,9 @@ func (e *NetworkError) members(stopped bool) []string {
 }
 
 func (e *NetworkError) Error() string {
+	if text := e.sidecarText(); text != "" {
+		return text
+	}
 	switch e.Kind {
 	case NetworkUnset:
 		return "FOREMAN_GAME_NETWORK must be set when Foreman runs in a container: it names the Docker network the game joins. Choose a network Foreman is on that the Docker socket proxy is not on"
@@ -303,19 +328,24 @@ func (e *NetworkError) Error() string {
 // Outside a container it is FOREMAN_GAME_NETWORK, or Docker's default
 // bridge. Inside one FOREMAN_GAME_NETWORK is required, and refused when a
 // game on it could reach the Docker socket proxy or pose as a trusted
-// proxy (SPEC 12.6, 14.4).
-func (c *Controller) gameNetwork(ctx context.Context) (string, error) {
+// proxy (SPEC 12.6, 14.4). With a VPN sidecar the game joins the
+// sidecar's network instead, once the sidecar passes its checks (SPEC 4.13).
+func (c *Controller) gameNetwork(ctx context.Context) (gameNet, error) {
 	self, inContainer, err := c.selfContainer(ctx)
 	if err != nil {
-		return "", err
+		return gameNet{}, err
+	}
+	if c.sidecar != "" {
+		return c.sidecarNetwork(ctx, self, inContainer)
 	}
 	if !inContainer {
 		if c.network != "" {
-			return c.network, nil
+			return gameNet{mode: c.network}, nil
 		}
-		return "bridge", nil
+		return gameNet{mode: "bridge"}, nil
 	}
-	return c.checkGameNetwork(ctx, self)
+	network, err := c.checkGameNetwork(ctx, self)
+	return gameNet{mode: network}, err
 }
 
 // checkGameNetwork checks FOREMAN_GAME_NETWORK against Foreman's own
@@ -400,27 +430,16 @@ func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Contai
 // address when DOCKER_HOST resolves to it, and by checkNetworkMembers
 // whatever address DOCKER_HOST names.
 func (c *Controller) checkDockerHost(ctx context.Context, self docker.Container, network string, subnets []netip.Prefix) error {
-	var addrs []string
-	err := errors.New("DOCKER_HOST names no host")
-	if c.dockerHost != "" {
-		addrs, err = c.lookupHost(ctx, c.dockerHost)
+	ips, err := c.dockerHostAddrs(ctx, network)
+	if err != nil {
+		return err
 	}
-	if err != nil || len(addrs) == 0 {
-		return &NetworkError{Kind: NetworkHostLookup, Host: c.dockerHost, Network: network, unchecked: true}
-	}
-	ips := make([]netip.Addr, 0, len(addrs))
-	for _, a := range addrs {
-		ip, err := netip.ParseAddr(a)
-		if err != nil {
-			return &NetworkError{Kind: NetworkHostAddress, Host: c.dockerHost, Address: a}
-		}
-		ip = ip.WithZone("").Unmap()
+	for _, ip := range ips {
 		for _, subnet := range subnets {
 			if subnet.Contains(ip) {
 				return &NetworkError{Kind: NetworkHostOnGame, Address: ip.String(), Network: network, Subnet: subnet.String()}
 			}
 		}
-		ips = append(ips, ip)
 	}
 	for _, ip := range ips {
 		if !onOtherNetwork(self, network, ip) {
@@ -428,6 +447,28 @@ func (c *Controller) checkDockerHost(ctx context.Context, self docker.Container,
 		}
 	}
 	return nil
+}
+
+// dockerHostAddrs looks up the addresses a tcp:// DOCKER_HOST names.
+// network is the game network, for the refusal's text.
+func (c *Controller) dockerHostAddrs(ctx context.Context, network string) ([]netip.Addr, error) {
+	var addrs []string
+	err := errors.New("DOCKER_HOST names no host")
+	if c.dockerHost != "" {
+		addrs, err = c.lookupHost(ctx, c.dockerHost)
+	}
+	if err != nil || len(addrs) == 0 {
+		return nil, &NetworkError{Kind: NetworkHostLookup, Host: c.dockerHost, Network: network, unchecked: true}
+	}
+	ips := make([]netip.Addr, 0, len(addrs))
+	for _, a := range addrs {
+		ip, err := netip.ParseAddr(a)
+		if err != nil {
+			return nil, &NetworkError{Kind: NetworkHostAddress, Host: c.dockerHost, Address: a}
+		}
+		ips = append(ips, ip.WithZone("").Unmap())
+	}
+	return ips, nil
 }
 
 // onOtherNetwork reports whether ip lies in the range of one of self's
@@ -513,7 +554,8 @@ func exists(path string) bool {
 }
 
 // rconAddress is where the game's RCON listens, or "" while the container
-// has no address. The container is on one network only (SPEC 4.4).
+// has no address. The container is on one network only (SPEC 4.4). A game
+// in a VPN sidecar's network has none of its own; gameEndpoint finds its.
 func rconAddress(cont docker.Container) string {
 	ip := containerIP(cont)
 	if ip == "" {

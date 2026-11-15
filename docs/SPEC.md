@@ -74,7 +74,7 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_HOST_DATA_DIR` | discovered | The same directory's path on the host (3.5) |
 | `FOREMAN_GAME_UID`, `FOREMAN_GAME_GID` | `845` | The game's user and group (3.6). Never 0 (14.11) |
 | `FOREMAN_GAME_NETWORK` | none | The Docker network the game joins (4.4). Required when Foreman runs in a container, or when `FOREMAN_GAME_NETWORK_CONTAINER` is set |
-| `FOREMAN_GAME_NETWORK_CONTAINER` | none | A VPN sidecar container whose network the game shares (4.13). Optional. Not built yet: Foreman refuses to start when it is set |
+| `FOREMAN_GAME_NETWORK_CONTAINER` | none | A VPN sidecar container whose network the game shares (4.13). Optional. Needs `FOREMAN_GAME_NETWORK` |
 | `FOREMAN_LISTEN` | `:8080` | The address Foreman listens on |
 | `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7) |
 | `FOREMAN_PUBLIC_ADDRESS` | none | The host name or IP address players type into Factorio, with an optional port (34197 when none is given). The Server page shows it as a join line (7.1). When it is blank the line is hidden: Foreman never guesses the address |
@@ -309,16 +309,21 @@ another VPN), so that players join through the VPN. This is one choice an
 operator may make, never a requirement. By default, with
 `FOREMAN_GAME_NETWORK_CONTAINER` unset, nothing here applies: Foreman
 publishes the game port on the host (4.3, 4.4) and needs no VPN. Foreman
-must not prevent a sidecar (ADR 0006). Until this is built (Epic 9b, 18.9b),
-Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set. (P1)
+must not prevent a sidecar (ADR 0006). Built in Epic 9b (18.9b). (P1)
 
 When an operator sets one:
 
 - The optional setting `FOREMAN_GAME_NETWORK_CONTAINER` names a running
   container, the sidecar, which the operator defines and runs. When it is
   set, Foreman creates the game container with Docker network mode
-  `container:<that container>`, so the game shares the sidecar's network,
-  and publishes no port itself.
+  `container:<verified container ID>`, so the game shares the inspected
+  sidecar's network. A replacement between inspection and creation must not
+  silently become the game's sidecar, and a failed create or start reports
+  its failure and never falls back to another network. The game container
+  declares neither exposed nor published ports in this mode (Docker refuses
+  them), so Foreman never publishes the game port itself. Every path that
+  starts a game runs the sidecar checks first, before any world change:
+  start, restart, world switch, version change and mod changes.
 - The game listens on UDP 34197 on every interface of the shared network;
   only RCON is bound to one address (below). LAN players and VPN players
   can play at the same time: VPN players reach the game through the VPN,
@@ -326,32 +331,81 @@ When an operator sets one:
   The operator sets that port in the sidecar's own definition, because
   Docker lets only the container that owns a network publish its ports,
   so Foreman cannot publish it.
-- At every start Foreman inspects the sidecar. When UDP 34197 is not
-  published on the host, the Server page shows a warning, "LAN players
-  cannot reach the game: <sidecar> does not publish UDP 34197 on the
-  host.", and the start goes ahead, because VPN-only play can be a
-  deliberate choice.
+- At every start, and when Foreman takes on a game that is already running,
+  Foreman inspects the sidecar. When UDP 34197 has no host binding, the
+  Server page shows, while the game runs, a warning, "LAN players cannot
+  reach the game: <sidecar> does not publish UDP 34197 on the host.", and
+  the start goes ahead, because VPN-only play can be a deliberate choice.
+  The warning is evidence from inspection, not a connectivity probe, and it
+  is not refreshed while the game runs: a published port does not prove LAN
+  players can reach it (the host address it is bound to, a changed host
+  port and the firewall are outside this publication check). It is worded in
+  all eight languages and is not announced to screen readers.
 - The sidecar must be on `FOREMAN_GAME_NETWORK`, which is then required
   even outside a container. The sidecar is the one container other than
   Foreman and its games allowed on the game network (4.4). Foreman reaches
-  RCON at the sidecar's address on the game network.
-- RCON is bound only to that address, with Factorio's
-  `--rcon-bind <address>:27015`, never to `0.0.0.0`, so VPN peers cannot
-  reach RCON.
-- Every address range of every network the sidecar is on counts as a game
+  RCON at the sidecar's address on the game network. The operator may also
+  attach the sidecar to other Docker networks, including shared networks;
+  those attachments and unrelated services there are not refusal reasons.
+  The game inherits access to those networks (14.16).
+- RCON is bound only to the sidecar's IPv4 address on the game network,
+  with Factorio's `--rcon-bind <address>:27015`, never to `0.0.0.0`. The
+  address reaches the game as the environment variable `FOREMAN_RCON_BIND`
+  and is a value the start script passes as one argument, never shell text.
+  This keeps RCON off the VPN interface, the sidecar's other Docker
+  interfaces and loopback; it does not prevent access through an operator's
+  subnet route or forwarding rule to that private address (14.16).
+- One path finds the RCON address: the first connection, every reconnect,
+  and taking on a running game after a Foreman restart. It reads the bind
+  address from the game container Foreman created, and trusts it only
+  when the container the game's network mode names, looked up by that ID
+  and never by the configured name, still exists and has exactly that
+  address on the game network, with port 27015. A forged value, a network
+  mode that names a container instead of an ID, or a holder that is gone or
+  replaced prevents an RCON login. The same check runs on every new
+  connection after it is made and before the RCON password is sent. When
+  Docker reports the original holder gone or its address changed, the login
+  is refused. This is Docker's word at one moment:
+  it narrows, but cannot close, the time between the check and the login.
+- Every address range of every Docker network the sidecar is on counts as a game
   range for trusted-header sign-in (12.5, 12.6). A start is refused when
   any of them overlaps `FOREMAN_TRUSTED_PROXIES`, as for the game network
-  (4.4).
+  (4.4). Check every attached Docker network for exposure of the configured
+  Docker API/socket proxy too (a range that holds the address a `tcp://`
+  `DOCKER_HOST` reaches). Unknown ranges fail closed: a range Docker does
+  not report refuses the start. Foreman reads the sidecar's ranges before
+  accepting trusted headers, on every monitor look, whether Foreman runs in
+  a container or on the host, and they count as known only when the
+  sidecar and every game container were read in full. An empty network list
+  on the game is not evidence that its ranges are known. Ranges learned
+  earlier are kept when a later read fails; a game still running in a
+  since-replaced sidecar's old namespace contributes its ranges too. Before
+  the first complete discovery, unreadable ranges keep trusted-header sign-in
+  refused. Later read failures retain previously learned ranges and knowledge.
 - A start is refused, with a plain reason, when the sidecar does not
-  exist, is not running, uses the host network, or is not on the game
-  network. Foreman recreates the game container at every start (4.3), so it
-  looks the sidecar up by name at every start and attaches the game to the
-  sidecar as it is then.
-- Known limit: when the sidecar is restarted or recreated while the game
-  runs, the game may lose its network until Foreman starts it again.
-  Foreman does not watch the sidecar for this. The README and the operator
-  guide say to restart the game from Foreman after restarting the
+  exist, is not running, uses the host or another container's network,
+  is not on the game network, or has an address range Foreman cannot read,
+  that overlaps the trusted proxies or that holds the Docker API's address.
+  The reasons are worded in all eight languages and identify the configured
+  container. Network diagnostics may include inspected addresses and ranges,
+  but never the sidecar environment or an inspect dump. Foreman recreates the
+  game container at every start (4.3), so it looks the sidecar up by name at
+  every start and attaches the game to the sidecar as it is then.
+- Known limit: Foreman has no sidecar watcher, warning or automatic
+  recovery. The sidecar is the operator's, and so is its lifecycle. When it
+  is restarted (same ID, same address) or replaced (new ID) while the game
+  runs, the game stays running in a namespace that no longer has its RCON
+  listener, or in the old orphaned one, and the monitor keeps showing it
+  running. Console, players, chat and stop then say Foreman cannot reach the
+  game over RCON, and a graceful stop or restart refuses and never claims
+  the world was saved. The operator uses Force stop, which stops the game
+  without saving, then starts it from Foreman, which joins the sidecar as it
+  is then. This applies after a Foreman restart too. The README and the
+  operator guide say to restart the game from Foreman after restarting the
   sidecar.
+- Not measured: recovery after a host reboot or a Docker restart, with
+  Docker restarting the game (4.3) and the sidecar in no guaranteed order.
+  Operators check it on their own host (STATUS, Epic 9b).
 
 The sidecar is a container Foreman did not create; 14.16 states the risk
 this accepts.
@@ -1330,10 +1384,17 @@ the line, so colour is not the only sign (17.4). **Download log**
 a text file, so it holds nothing the page would not show (14.8).
 
 8.7. **Crash detection.** When the game stops without being asked to,
-Foreman marks it crashed. It polls Docker every few seconds, and again when
-the log stream ends, and compares the container's restart count, start time
-and out-of-memory flag with what it saw last, together with the log's
-failed-load line. It does not use the exit code, because the same failure
+Foreman marks it crashed. It polls Docker every few seconds, and inspects
+the container at once when the log stream ends, and compares the
+container's restart count, start time and out-of-memory flag with what it
+saw last, together with the log's failed-load line. Looks can arrive out of
+order, so each exit is told apart by Docker's exit time (`FinishedAt`): a
+look at an exit no newer than the last one taken in changes nothing. When a
+look finds Docker restarted the game since the last one, Foreman reads the
+container's log once, within the bounds of the start's read (ADR 0016), so
+the runs that ended between two looks still name the crash. It reads only
+when it knows the world's secrets to mask the log, and keeps the read only
+if it reached the log's end. It does not use the exit code, because the same failure
 exits with different codes in different game versions (1.1 exits 0 after a
 failed load). It names the reason when it can, by one of these stable ids, and
 otherwise says the reason is unknown:
@@ -1348,8 +1409,19 @@ otherwise says the reason is unknown:
 - `out-of-memory`, only from Docker's `OOMKilled` flag, because the game's
   log just stops when the kernel kills it. The game container has no memory
   limit, so a kill of the whole host shows as unknown, and so does an
-  out-of-memory kill that Docker restarts before the monitor sees the
-  flag (Docker clears it).
+  out-of-memory kill that Docker restarts before either look sees the flag
+  (Docker clears it). Once seen, the flag names the crash until a newer
+  exit says otherwise, or a run Docker began after that exit (by Docker's
+  log time) names another reason; the game getting back in game clears it.
+
+In a crash loop the newest run is often still loading when Foreman looks
+or stops it, so the reason shown is that of the newest run that said how
+its load ended: the last reason witnessed, not a guess about the newest
+run. A run that reached the game, or failed for no known reason, said so,
+and no older reason is shown after it. The reason is unknown when neither
+the follower nor that read saw the run's words: the read was refused, cut
+short or not made (the secrets were not known), or the words had left
+Docker's log.
 
 On 1.1 a mod with a missing dependency is skipped and the game starts, so
 there is nothing to name there. A save that fails to load is
@@ -1374,7 +1446,9 @@ version an operator names (`make test-catalogue VERSION=2.1.22`). (P1)
 
 8.9. **Crash loops.** If the game crashes three times within ten minutes,
 Foreman marks it crash-looping and stops the container, since Docker's
-restart policy would otherwise keep it spinning. If Docker refuses that stop, Foreman
+restart policy would otherwise keep it spinning. This stop gives the game
+10 seconds to exit before Docker kills it; an admin's graceful stop keeps
+the 120-second save grace of 7.6. If Docker refuses the crash-loop stop, Foreman
 tries again at each poll until Docker accepts it. An admin must start it
 again by hand. After Foreman itself restarts, a stopped game shows as
 stopped; the crash-loop mark is not remembered. (P0)
@@ -1881,9 +1955,14 @@ Foreman refuses to start. (P0)
 Trusted-header sign-in also ignores the headers when the direct peer is
 inside the address range of a game network, IPv4 or IPv6, because a game
 is never the proxy. The ranges are the game network's (4.4) and, with a
-VPN sidecar, those of every network the sidecar is on (4.13). Foreman
+VPN sidecar, those of every Docker network the sidecar is on (4.13). Foreman
 in a container records that range before the first start; outside a
-container it learns a game's range right after the game starts.
+container it learns a game's range right after the game starts. With a
+sidecar, in either mode it reads the sidecar's Docker ranges before the
+first game starts and restores that knowledge on Foreman restart. Docker
+cannot reveal the VPN interface's ranges: operators must not trust the
+sidecar's VPN address or a broad VPN range as a sign-in proxy. Use only
+an individual address of a separate trusted proxy, or local sign-in.
 `fe80::/10` counts as a game range
 whenever a game network has IPv6. While those ranges are not yet known
 (Docker unreachable, the container missing, or not yet inspected),
@@ -2187,13 +2266,20 @@ because people sometimes type a password into the username field. (P0)
 14.15. (Removed: adopted mode was dropped; ADR 0005.)
 
 14.16. **The VPN sidecar.** **Accepted risk:** the sidecar (4.13) is a
-container Foreman did not create. It sees all of the game's traffic and
-usually holds `NET_ADMIN`, and Foreman does not police its capabilities.
-The defences: RCON is bound only to the sidecar's game-network address,
-so VPN peers cannot reach it; every range of the sidecar's networks counts
-as a game range for trusted-header sign-in (12.6); and a start is refused
-when the sidecar is missing, not running, on the host network, or not on
-the game network (4.13). The game container itself keeps the shape in
+container Foreman did not create. It sees all game traffic and usually
+holds `NET_ADMIN`; Foreman does not police its capabilities. The game
+inherits access to its additional Docker networks, reachable VPN peers
+and loopback services. The sidecar and any namespace peers are trusted.
+Operators own the sidecar's routes, forwarding, services and VPN access
+rules, and must not expose the Docker API/socket proxy through it.
+RCON binds only the game-network address, not the VPN interface; routing
+VPN traffic to that address can still expose RCON, which remains password
+protected. All attached Docker ranges count as game ranges for trusted
+headers and are checked for proxy overlap and configured Docker API/socket
+proxy exposure. VPN ranges are not discoverable through Docker (12.6).
+A start is refused when the sidecar is missing, not running, on the host
+or another container's network, or off the game network (4.13). Additional
+Docker networks alone do not cause refusal. The game keeps the shape in
 4.6. (P1)
 
 14.17. **Return after sign-in.** A signed-out visit to a page goes to the
@@ -2438,8 +2524,7 @@ and the low-disk warning (8.13).
 
 18.9b. **Epic 9b: VPN sidecars.** The optional sidecar (4.13, 14.16, ADR
 0006), split out of Epic 9 so that Epics 10 and 11 keep their numbers.
-Until it is built, Foreman refuses to start when
-`FOREMAN_GAME_NETWORK_CONTAINER` is set.
+Built; what is still unproven is in STATUS.md, Epic 9b.
 
 18.10. **Epic 10: AI access.** API tokens (12.10) and the MCP endpoint
 (section 21).

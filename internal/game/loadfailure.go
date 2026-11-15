@@ -2,7 +2,9 @@ package game
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"slices"
 	"strings"
@@ -64,24 +66,46 @@ type loadFailure struct {
 	// failError the reason that run gave (SPEC 8.7).
 	failed    bool
 	failError string
+	// finished is whether the run being read has said how its load ended:
+	// in game, or failed. prevKind is the kind of the newest run before it
+	// that said anything: a run that ended without a word, or one Foreman
+	// stopped while it loaded, leaves it as it was (see crashReason).
+	finished bool
+	prevKind string
+	// runAt is Docker's time of the line that began the run being read,
+	// zero when it is not known; prevAt is that of the run prevKind came
+	// from, and modsAt that of the newest run that listed a mod made for
+	// another version. They say which runs came after an exit Docker saw
+	// (see crashLocked). runWhole is whether the run being read began in a
+	// read that reached the log's end after Docker restarted the game.
+	runAt, prevAt, modsAt time.Time
+	runWhole              bool
 }
 
-// Lines are not cut before they are masked, so a cut cannot leave part of
-// a secret; Docker's reader already bounds a line's length.
-func (f *loadFailure) add(raw string) {
+// add reads one line whose time Docker did not give.
+func (f *loadFailure) add(raw string) { f.addAt(time.Time{}, raw) }
+
+// addAt reads one line Docker stamped at (zero when unknown). Lines are
+// not cut before they are masked, so a cut cannot leave part of a secret;
+// Docker's reader already bounds a line's length.
+func (f *loadFailure) addAt(at time.Time, raw string) {
 	switch ev := ParseLine(raw); ev.Kind {
 	case KindLoadStarted:
 		// Every run begins here, so an older run's words are not its reason.
 		if f.errLine != "" {
 			f.lastErr = f.errLine
 		}
-		f.errLine, f.runError, f.kind = "", "", ""
+		if f.kind != "" || f.finished {
+			f.prevKind, f.prevAt = f.kind, f.runAt
+		}
+		f.errLine, f.runError, f.kind, f.finished = "", "", "", false
+		f.runAt, f.runWhole = at, false
 	case KindInGame:
-		f.failed, f.failError = false, ""
+		f.failed, f.failError, f.finished = false, "", true
 	case KindLoadError:
 		f.runError = ev.Detail
 	case KindLoadFailed:
-		f.failed, f.failError = true, f.runError
+		f.failed, f.failError, f.finished = true, f.runError, true
 	}
 	line := strings.TrimSpace(secondsPrefix.ReplaceAllString(strings.TrimSuffix(raw, "\r"), ""))
 	f.kind = crashreasons.Prefer(f.kind, crashreasons.Line(line))
@@ -105,6 +129,7 @@ func (f *loadFailure) add(raw string) {
 func (f *loadFailure) addIncompatible(current, required string) {
 	mod := f.mod
 	f.mod = ""
+	f.modsAt = f.runAt
 	if f.byRequired == nil {
 		f.byRequired = map[string][]string{}
 	}
@@ -146,6 +171,44 @@ func (f *loadFailure) reason(redact func(string) string) LoadReason {
 		r.Said = shownText(redact, said)
 	}
 	return r
+}
+
+// crashReason is reason for a crash the monitor found (SPEC 8.7, 8.9). A
+// crash is the end of a run before the newest: Docker has started the
+// newest again, and Foreman may stop it in a crash loop while it loads. So
+// while the newest run has named no reason and not said how its load
+// ended, the kind is that of the newest run before it that said anything.
+// A run that reached the game, or failed for no known reason, did say, and
+// then no older kind is shown. reason itself is for a start, whose newest
+// run has ended, so its silence means unknown.
+//
+// It also returns Docker's time of the line that began the run the kind
+// came from (zero when not known), and whether the kind is final. The
+// newest run's own kind is. An earlier run's is only when the newest run
+// began in a read that reached the log's end after Docker restarted the
+// game: every run before it had ended, so their words were all in it.
+// Otherwise the follower may not yet have read the words of the run that
+// crashed, and the kind is only the last one seen (see flushCrashLocked).
+func (f *loadFailure) crashReason(redact func(string) string) (LoadReason, time.Time, bool) {
+	r := f.reason(redact)
+	switch {
+	case len(f.byRequired) > 0:
+		return r, f.modsAt, true
+	case r.Kind != "" || f.finished:
+		return r, f.runAt, true
+	}
+	r.Kind = f.prevKind
+	return r, f.prevAt, f.runWhole
+}
+
+// clone copies f, so lines added to the copy leave f as it was.
+func (f *loadFailure) clone() loadFailure {
+	c := *f
+	c.byRequired = make(map[string][]string, len(f.byRequired))
+	for v, names := range f.byRequired {
+		c.byRequired[v] = slices.Clone(names)
+	}
+	return c
 }
 
 // shownText is the game's words from its log as a page may show them:
@@ -235,7 +298,7 @@ func cut(s string, n int) string {
 // also marked on the run, as the follower would, so the world's state
 // agrees with the error.
 func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid string) *StartError {
-	f := c.readLoadLog(ctx, cid)
+	f, _ := c.readLoadLog(ctx, cid)
 	oom := c.oomKilled(ctx, cid)
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -266,23 +329,32 @@ func (c *Controller) oomKilled(ctx context.Context, cid string) bool {
 
 // readLoadLog reads the newest lines of the container's log once, within
 // the limits above, and keeps the newest of them, so the last run's lines
-// are never the ones left out. A read that fails or ends early gives what
-// was read before it.
-func (c *Controller) readLoadLog(ctx context.Context, cid string) loadFailure {
+// are never the ones left out. Each line comes with Docker's time, which
+// is kept apart from its text. A read that fails or ends early gives what
+// was read before it, and reports false: it may lack the newest lines.
+func (c *Controller) readLoadLog(ctx context.Context, cid string) (loadFailure, bool) {
 	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
 	defer cancel()
-	var kept []string
-	if s, err := c.docker.Logs(ctx, cid, docker.LogOptions{Tail: maxLoadFailureLines}); err == nil {
+	type line struct {
+		at   time.Time
+		text string
+	}
+	var kept []line
+	whole := false
+	if s, err := c.docker.Logs(ctx, cid, docker.LogOptions{Tail: maxLoadFailureLines, Timestamps: true}); err == nil {
 		size := 0
+		whole = true
 		for range maxLoadFailureLines {
 			l, err := s.Next()
 			if err != nil {
+				whole = errors.Is(err, io.EOF)
 				break
 			}
-			kept = append(kept, l.Text)
-			size += len(l.Text) + 1
+			at, text := splitDockerTime(l.Text)
+			kept = append(kept, line{at, text})
+			size += len(text) + 1
 			for size > maxLoadFailureBytes {
-				size -= len(kept[0]) + 1
+				size -= len(kept[0].text) + 1
 				kept = kept[1:]
 			}
 		}
@@ -290,7 +362,7 @@ func (c *Controller) readLoadLog(ctx context.Context, cid string) loadFailure {
 	}
 	var f loadFailure
 	for _, l := range kept {
-		f.add(l)
+		f.addAt(l.at, l.text)
 	}
-	return f
+	return f, whole
 }

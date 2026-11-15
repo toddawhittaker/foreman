@@ -26,18 +26,21 @@ import (
 type instance struct {
 	g        *Game
 	id, name string
-	ip       string
+	ip       string // where RCON listens: the container's own address, or the bind address in a shared namespace
+	shared   string // the container whose namespace this game joined, "" for its own
+	bind     string // the RCON endpoint a shared-namespace game was told to bind
 	save     string // file name of the save the container loads
 	password string
 	v        *version
 
-	mu      sync.Mutex
-	dead    bool
-	inGame  bool
-	players []string
-	flags   listFlags
-	bans    []banEntry // the lists are in memory; flags say which are also files
-	admins  []string
+	mu          sync.Mutex
+	dead        bool
+	networkLost bool // the shared namespace no longer has a working network
+	inGame      bool
+	players     []string
+	flags       listFlags
+	bans        []banEntry // the lists are in memory; flags say which are also files
+	admins      []string
 	// whitelist is loaded from its file only with --use-server-whitelist.
 	whitelist []string
 	base      float64   // elapsed seconds on the last line written...
@@ -56,6 +59,12 @@ type rconServer struct {
 
 // boot runs the game for a container that Docker has just started.
 func (g *Game) boot(id string) {
+	g.mu.Lock()
+	operatorContainer := id == g.sidecar || id == g.selfID
+	g.mu.Unlock()
+	if operatorContainer {
+		return
+	}
 	c, ok := g.daemon.Container(id)
 	if !ok || c.Status != "running" {
 		return
@@ -74,12 +83,20 @@ func (g *Game) boot(id string) {
 		save: saveName(c.Spec), password: rconPassword(c),
 		baseAt: time.Now(), conns: map[net.Conn]struct{}{},
 	}
+	if holder, joined := sidecarHolder(c); joined {
+		in.shared = holder
+		// An unreadable endpoint leaves in.ip empty and fails the bind later.
+		in.bind = envValue(c.Spec.Env, gameenv.RCONBind)
+		in.ip = rconHost(in.bind)
+	}
 	g.mu.Lock()
 	if g.closed || g.insts[id] != nil {
 		g.mu.Unlock()
 		return
 	}
-	in.ip = g.addrLocked(id)
+	if in.shared == "" {
+		in.ip = g.addrLocked(id)
+	}
 	g.insts[id] = in
 	loops := g.behave[c.Name].crashLoop
 	oom := g.behave[c.Name].oom
@@ -181,7 +198,9 @@ func (in *instance) finishLoad() {
 	}
 	in.emit(in.v.tail, runSave)
 	in.mu.Lock()
-	in.inGame = true
+	if !in.dead {
+		in.inGame = true
+	}
 	in.mu.Unlock()
 }
 
@@ -302,8 +321,28 @@ func (in *instance) writeLocked(text, saveFrom string) {
 // sits in front of an rcontest server, because rcontest only listens on
 // 127.0.0.1.
 func (in *instance) startRCON() error {
-	ln, err := net.Listen("tcp", net.JoinHostPort(in.ip, rconPort))
+	in.mu.Lock()
+	unavailable := in.dead || in.networkLost
+	in.mu.Unlock()
+	if unavailable {
+		return nil
+	}
+	addr := net.JoinHostPort(in.ip, rconPort)
+	if in.shared != "" {
+		// A game in a shared namespace listens on the endpoint it was told
+		// to, and nowhere else; one that cannot bind it exits.
+		addr = in.bind
+		if why := in.bindFails(); why != "" {
+			in.bindFailed(why)
+			return nil
+		}
+	}
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
+		if in.shared != "" {
+			in.bindFailed(err.Error())
+			return nil
+		}
 		return fmt.Errorf("RCON for %s cannot listen on %s: %w", in.name, in.ip, err)
 	}
 	in.g.mu.Lock()
@@ -312,7 +351,7 @@ func (in *instance) startRCON() error {
 	rcon := in.newRCON(refuse)
 
 	in.mu.Lock()
-	if in.dead {
+	if in.dead || in.networkLost {
 		in.mu.Unlock()
 		_ = ln.Close()
 		rcon.tb.runCleanups()
@@ -392,7 +431,20 @@ func (in *instance) pipe(client net.Conn, target string) {
 	closeBoth := func() { _ = client.Close(); _ = server.Close() }
 	done := make(chan struct{})
 	go func() {
-		_, _ = io.Copy(server, client)
+		// The first packet a client sends is its login (internal/rcon).
+		buf := make([]byte, 4096)
+		n, err := client.Read(buf)
+		if n > 0 {
+			in.g.mu.Lock()
+			in.g.logins[in.name]++
+			in.g.mu.Unlock()
+			if _, werr := server.Write(buf[:n]); werr != nil {
+				err = werr
+			}
+		}
+		if err == nil {
+			_, _ = io.Copy(server, client)
+		}
 		closeBoth()
 		close(done)
 	}()

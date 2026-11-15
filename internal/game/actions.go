@@ -131,6 +131,9 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	o.begin(StepCheck)
 	opts.running = IsRunning(c.Status(id).State)
 	opts.portal = true
+	if err := c.checkNetwork(ctx); err != nil {
+		return o.end(c.checkFailed(ctx, by, AuditStart, id, opts.auditDetail(), err))
+	}
 	check, err := c.precheck(ctx, id, opts)
 	o.notePortal(check)
 	if err != nil {
@@ -210,6 +213,15 @@ func (c *Controller) anywaySnapshot(o *opRun, by Actor, check world.PreCheck) er
 	}
 	o.done(StepSnapshot)
 	return nil
+}
+
+// checkNetwork refuses a start before the pre-start check, which may write
+// the world's mod list, and before a restart stops the game, when the game
+// network or the VPN sidecar would refuse it (SPEC 4.4, 4.13). The start
+// checks again when it creates the container.
+func (c *Controller) checkNetwork(ctx context.Context) error {
+	_, err := c.gameNetwork(ctx)
+	return err
 }
 
 // gameImage returns the world's metadata and image, or
@@ -598,12 +610,15 @@ func durationWords(d time.Duration) string {
 	return fmt.Sprintf("%d seconds", secs)
 }
 
-// refresh reads the container once more after Foreman changed it, while an
-// operation keeps the monitor away.
+// refresh reads the container once more after Foreman stopped it. A
+// monitor look read before the stop would show the game running again; a
+// forced stop may run outside any operation, so refresh counts as one
+// (see worldRun.ops) and that look is dropped.
 func (c *Controller) refresh(ctx context.Context, w *worldRun, cid string) {
 	cont, err := c.docker.InspectContainer(ctx, cid)
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	w.ops++
 	if err == nil && w.containerID == cid {
 		w.dockerStatus, w.seenRestarts = cont.State.Status, cont.RestartCount
 	}
@@ -736,6 +751,9 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	// already stopped.
 	opts.running = IsRunning(c.Status(id).State)
 	opts.portal = true
+	if err := c.checkNetwork(ctx); err != nil {
+		return c.checkFailed(ctx, by, AuditRestart, id, opts.auditDetail(), err)
+	}
 	check, err := c.precheck(ctx, id, opts)
 	if err != nil {
 		return c.checkFailed(ctx, by, AuditRestart, id, opts.auditDetail(), err)

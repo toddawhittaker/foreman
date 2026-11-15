@@ -123,8 +123,32 @@ func (e *gameEnv) runCatalogue(t *testing.T, tag, fixture, version string) {
 		}
 		// Foreman sets no memory limit, so the test lowers it under the
 		// running game, as the captures did (testdata README, 10). The
-		// kernel kills the game, and each restart, while it loads.
+		// kernel kills each restart while it loads.
+		before := e.inspect(t, id)
 		e.dockerCLI(t, "update", "--memory", "96m", "--memory-swap", "96m", ContainerName(id))
+		// Docker sets the memory limit before the swap limit, so on a host
+		// with swap the running game can move to swap and live on. Ending
+		// it makes Docker restart it under both limits. The kind below is
+		// named only from Docker's OOMKilled flag, which this exit never
+		// sets.
+		// With no swap, the kernel may already have ended that run.
+		sameRun := func() bool {
+			now := e.inspect(t, id)
+			return now.ID == before.ID && now.State.Status == "running" && now.State.StartedAt.Equal(before.State.StartedAt)
+		}
+		if sameRun() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			out, err := exec.CommandContext(ctx, "docker", "exec", before.ID, "sh", "-c", "kill -TERM 1").CombinedOutput() //nolint:gosec // fixed arguments on the test's own container
+			cancel()
+			if err != nil {
+				// The runtime can lose the process's namespaces before Docker
+				// records its exit. Accept the failed exec only after inspect
+				// confirms that this run ended; a still-running run fails.
+				waitFor(t, 5*time.Second, "the original run to end after docker exec failed: "+err.Error()+": "+string(out), func() bool {
+					return !sameRun()
+				})
+			}
+		}
 		st := waitCrashLoop(t, c, id)
 		if st.Crash.Kind != crashreasons.OutOfMemory {
 			t.Errorf("kind %q (%s), want %q; OOMKilled %v", st.Crash.Kind, st.CrashReason, crashreasons.OutOfMemory, e.inspect(t, id).State.OOMKilled)
