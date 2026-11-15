@@ -369,3 +369,153 @@ test("cutting a refused search under 2 characters clears the error and says why"
   await expect(page.locator("#mod-search-error")).toBeHidden();
   await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters to search. Ticked mods are kept.");
 });
+
+// SPEC 9.1: on the Mods tab the results follow the typing too, in a panel
+// under the box, without leaving the tab or changing its address.
+test.describe("typing on the Mods tab", () => {
+  test("results appear under the box with no button, focus and caret stay, the address stays", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    const url = page.url();
+    const history = await page.evaluate(() => window.history.length);
+    const box = page.getByLabel("Mod name");
+    await box.click();
+    await page.keyboard.type("fp-pg-0", { delay: 20 });
+    const table = page.getByRole("table", { name: "10 mods for Factorio 2.0 match." });
+    await expect(table).toBeVisible();
+    await expect(page.locator("#announcer")).toHaveText("10 mods for Factorio 2.0 match.");
+    await expect(box).toBeFocused();
+    expect(await box.evaluate((b: HTMLInputElement) => [b.selectionStart, b.selectionEnd])).toEqual([7, 7]);
+    // Typing goes on where the caret is, after the results arrived.
+    await page.keyboard.type("2");
+    await expect(box).toHaveValue("fp-pg-02");
+    await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
+    expect(page.url()).toBe(url);
+    expect(await page.evaluate(() => window.history.length)).toBe(history);
+    // The results sit between the search and the installed list.
+    const order = await page.evaluate(() => {
+      const at = (s: string) => document.querySelector(s)!;
+      const after = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#installed-heading"));
+    });
+    expect(order).toBe(true);
+    await checkPage(page);
+    await shot(page, "mods-tab-typed");
+  });
+
+  test("under 2 characters clears the results and says so", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    const box = page.getByLabel("Mod name");
+    await box.fill("fp-pg-03");
+    await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-03"' })).toBeVisible();
+    await box.fill("f");
+    await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toHaveCount(0);
+    await expect(page.locator("#announcer")).toHaveText("Type at least 2 characters to search. Ticked mods are kept.");
+    await page.waitForTimeout(600);
+    await expect(page.getByRole("table")).toHaveCount(0);
+    // No empty row is left between the search and the installed list.
+    await expect(page.locator("#mod-results-form")).toBeHidden();
+  });
+
+  test("a fresh tab says nothing for 1 character", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    await page.getByLabel("Mod name").fill("f");
+    await page.waitForTimeout(400);
+    await expect(page.locator("#announcer")).toHaveText("");
+  });
+
+  test("a reply that lands after the box went under 2 characters never shows", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    let asked!: () => void;
+    const sent = new Promise<void>((r) => (asked = r));
+    await page.route("**/mods/search?**", async (route) => {
+      asked();
+      await held;
+      await route.continue();
+    });
+    const box = page.getByLabel("Mod name");
+    await box.fill("fp-pg-03");
+    await sent;
+    await box.fill("f");
+    release();
+    await page.waitForTimeout(800);
+    await expect(page.getByRole("heading", { level: 2, name: /Mods matching/ })).toBeHidden();
+    await expect(page.getByRole("checkbox", { name: "fp-pg-03" })).toBeHidden();
+  });
+
+  test("Enter after ticking carries the ticks and the new search to the search page", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    const box = page.getByLabel("Mod name");
+    await box.fill("fp-pg-0");
+    await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
+    await page.getByRole("checkbox", { name: "fp-pg-02" }).check();
+    await box.fill("fp-pg-1");
+    await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-1"' })).toBeVisible();
+    await box.press("Enter");
+    await expect(page).toHaveURL(/\/mods\/search\?.*q=fp-pg-1/);
+    const also = page.getByRole("group", { name: "Also ticked" });
+    await expect(also.getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+    await expect(also.getByRole("checkbox", { name: "fp-pg-02" })).toBeChecked();
+  });
+
+  test("a pasted portal link shows its one mod", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    await page.getByLabel("Mod name").fill("https://mods.factorio.com/mod/fp-pg-03");
+    const table = page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." });
+    await expect(table.getByRole("row")).toHaveCount(2);
+    await expect(table.getByRole("checkbox", { name: "fp-pg-03" })).toBeVisible();
+  });
+
+  test("a refused search says why in place", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    const box = page.getByLabel("Mod name");
+    await box.fill("a".repeat(150));
+    await expect(page.locator("#mod-search-error")).toHaveText("Error: Enter at most 100 characters.");
+    await expect(box).toHaveAttribute("aria-invalid", "true");
+    await expect(box).toBeFocused();
+    expect(page.url()).toMatch(/\/worlds\/base\/mods$/);
+  });
+
+  test("ticks across two typed searches reach one plan", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    const box = page.getByLabel("Mod name");
+    await box.fill("fp-pg-01");
+    await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
+    await box.fill("fp-pg-02");
+    await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+    await page.getByRole("checkbox", { name: "fp-pg-02" }).check();
+    await page.getByRole("button", { name: "Add ticked mods to plan" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
+    const asked = page.locator("#mod-plan .plan-groups");
+    await expect(asked).toContainText("fp-pg-01 1.0.0");
+    await expect(asked).toContainText("fp-pg-02 1.0.0");
+  });
+
+  test("Add to plan on one result opens its plan", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    await page.getByLabel("Mod name").fill("fp-pg-03");
+    await page.getByRole("link", { name: "Add to plan fp-pg-03", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
+  });
+
+  test("a page button goes on to the search page with the search", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    await page.getByLabel("Mod name").fill("fp-pg");
+    await expect(page.getByRole("table", { name: /Showing 1 to 10\./ })).toBeVisible();
+    await page.getByRole("button", { name: "Next page" }).click();
+    await expect(page).toHaveURL(/\/mods\/search\?/);
+    await expect(page.getByRole("table", { name: /Showing 11 to 20\./ })).toBeVisible();
+  });
+
+  test("without script the box still submits to the search page", async ({ page, foreman, browser }) => {
+    const plain = await browser.newContext({ baseURL: foreman.url, javaScriptEnabled: false, storageState: await page.context().storageState() });
+    const p = await plain.newPage();
+    await p.goto("/worlds/base/mods");
+    await p.getByLabel("Mod name").fill("fp-pg-02");
+    await p.getByRole("button", { name: "Search", exact: true }).click();
+    await expect(p).toHaveURL(/\/mods\/search\?q=fp-pg-02/);
+    await expect(p.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
+    await plain.close();
+  });
+});

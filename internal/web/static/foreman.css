@@ -1061,6 +1061,7 @@ main > .panels > .panel,
 main > .panels > .panels > .panel,
 .split > .panel,
 .split .split__rail > .panel,
+.mod-results > .panels > .panel,
 .mod-settings > .panel,
 .mod-settings > .panels > .panel,
 .settings-main > .panel,
@@ -1085,6 +1086,7 @@ main > .panels > .panels > .panel,
   main > .panels > .panels > .panel,
   .split > .panel,
   .split .split__rail > .panel,
+  .mod-results > .panels > .panel,
   .mod-settings > .panel,
   .mod-settings > .panels > .panel,
   .settings-main > .panel,
@@ -8400,18 +8402,24 @@ main > .panel.danger-zone.danger-zone--blocked {
 @media (min-width: 64rem) {
   .split.split--mods {
     grid-template-columns: minmax(0, 1fr) 22.5rem;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto 1fr;
     align-items: start;
   }
 
   .split--mods > .mod-rail {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 1 / span 3;
   }
 
-  .split--mods > .panel {
+  .split--mods > .panel,
+  .split--mods > .mod-results {
     grid-column: 1;
   }
+}
+
+/* The Mods tab's typed results take no row, and so no gap, until there is something to show. */
+.mod-results:not(:has(.panel, .error, .message)) {
+  display: none;
 }
 
 .mod-rail > summary {
