@@ -6,7 +6,7 @@
   "mods.search.heading": "Buscar un mod",
   "mods.search.label": "Nombre del mod",
   "mods.search.hint": "Busca en el portal de mods los mods hechos para Factorio {line}, la versión del juego de este mundo.",
-  "mods.search.short": "Escribe al menos 2 caracteres para buscar.",
+  "mods.search.short": "Escribe al menos 2 caracteres para buscar. Los mods marcados se conservan.",
   "mods.search.paste_hint": "También puedes pegar el enlace de un mod del portal.",
   "mods.search.browse": "Explorar el portal de mods",
   "mods.search.button": "Buscar",

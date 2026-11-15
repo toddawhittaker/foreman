@@ -22,10 +22,10 @@
       <label for="mod-search">{{t "mods.search.label"}}</label>
       <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
       <div class="inline-row">
-        {{- /* With script the results follow the typing after a pause, from 2 characters; only #results is replaced and the address stays (SPEC 9.1). */}}
+        {{- /* With script the results follow the typing after a pause, from 2 characters; only #results is replaced, and the address and title follow the text without adding history entries (SPEC 9.1). */}}
         <input id="mod-search" name="q" type="search" value="{{.Query}}" autocomplete="off" spellcheck="false" maxlength="300"
           hx-get="{{.Path}}" hx-trigger="input[this.value.trim().length >= 2] changed delay:300ms" hx-include="closest form"
-          hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-sync="this:replace" data-short="{{t "mods.search.short"}}"
+          hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-replace-url="true" hx-sync="this:replace" data-short="{{t "mods.search.short"}}"
           {{- if not .QueryError.IsZero}} aria-invalid="true" aria-describedby="mod-search-hint mod-paste-hint mod-search-error"{{else}} aria-describedby="mod-search-hint mod-paste-hint"{{end}}>
         <button type="submit" class="button">{{t "mods.search.button"}}</button>
       </div>

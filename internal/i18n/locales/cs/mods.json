@@ -6,7 +6,7 @@
   "mods.search.heading": "Najít mod",
   "mods.search.label": "Název modu",
   "mods.search.hint": "Prohledá portál modů a hledá mody pro Factorio {line}, tedy verzi hry tohoto světa.",
-  "mods.search.short": "Pro hledání je potřeba zadat alespoň 2 znaky.",
+  "mods.search.short": "Pro hledání je potřeba zadat alespoň 2 znaky. Zaškrtnuté mody zůstávají zachovány.",
   "mods.search.paste_hint": "Lze také vložit odkaz na mod z portálu.",
   "mods.search.browse": "Procházet portál modů",
   "mods.search.button": "Hledat",

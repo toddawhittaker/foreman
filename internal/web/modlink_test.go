@@ -125,3 +125,34 @@ func TestSearchPastedLinkKeepsTicks(t *testing.T) {
 	wantIn(t, "link and tick", main, "<caption>1 mod for Factorio 2.0 matches.</caption>", `<code translate="no">Krastorio2</code>`,
 		`name="pick" value="jetpack" checked`)
 }
+
+// SPEC 9.1, 9.11: the plan's "Add another mod" reads a pasted portal link the
+// way the search page does, and says why a link found nothing.
+func TestAddAnotherModReadsPastedPortalLink(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	g.portal.AddZip("alpha-extra", "1.0.0")
+	g.portal.AddZipFor("2.1", "only-new", "1.0.0")
+	id := g.world20("Base")
+	plan := func(q string) string {
+		_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, "q": {q}}))
+		return plain(between(body, `id="add-heading"`, "</main>"))
+	}
+
+	long := "https://mods.factorio.com/mod/alpha-extra/changelog?from=" + strings.Repeat("x", 150)
+	found := plan(long)
+	wantIn(t, "link", found, `id="mod-alpha-extra-add"`)
+	if strings.Contains(found, `id="mod-alpha-add"`) {
+		t.Errorf("the link listed more than the one mod:\n%s", found)
+	}
+
+	wantIn(t, "unknown", plan("https://mods.factorio.com/mod/no-such-mod-anywhere"), "No mod named no-such-mod-anywhere is on the mod portal.")
+	wantIn(t, "no release", plan("https://mods.factorio.com/mod/only-new"), "only-new has no release for Factorio 2.0.")
+
+	// A link whose mod name is too long, and long plain text, are not searched.
+	for _, q := range []string{"https://mods.factorio.com/mod/" + strings.Repeat("n", 101), strings.Repeat("a", 101)} {
+		if strings.Contains(plan(q), "<table") {
+			t.Errorf("%.40s was searched", q)
+		}
+	}
+}
