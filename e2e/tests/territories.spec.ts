@@ -429,8 +429,16 @@ test("a failed request in the large view is said there", async ({ page }) => {
   await largeBox(page).check();
   await expect(page.locator("#large-view #large-status")).toContainText("The request for the demolisher territories failed.");
   await expect(largeOverlay(page)).toHaveCount(0);
+  await checkPage(page);
   await page.unroute(territoryURL);
-  // Off and on again asks once more.
+  // Try again beside the box asks once more, and focus goes back to the box.
+  const retry = page.locator("#large-view").getByRole("button", { name: "Try again" });
+  await retry.click();
+  await expect(largeBox(page)).toBeFocused();
+  await expect(retry).toBeHidden();
+  await expect(largeOverlay(page)).toHaveCount(1);
+  await expect(page.locator("#large-view #large-status")).toHaveText(counts);
+  // Off and on again asks once more too.
   await largeBox(page).uncheck();
   await largeBox(page).check();
   await expect(largeOverlay(page)).toHaveCount(1);

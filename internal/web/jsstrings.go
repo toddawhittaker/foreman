@@ -21,6 +21,7 @@ func init() {
 		"js.preview.prepare_without",
 		"js.preview.prepare_canceled",
 		"js.preview.prepare_busy",
+		"js.preview.prepare_planets_wait",
 		"js.preview.prepare_retry",
 		"js.preview.prepare_started",
 		"js.preview.prepare_redrawing",

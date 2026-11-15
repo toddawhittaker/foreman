@@ -407,6 +407,7 @@
   "worlds.generate.large.close": "Fermer",
   "worlds.generate.large.keys": "Touches : ← → planète (déplacer si zoomé), + − zoom, 0 ajuster, Échap fermer. Touchez pour centrer.",
   "worlds.generate.large.keys_settings": "Dans un paramètre, les touches agissent sur ce paramètre : une flèche déplace un curseur, pas la carte.",
+  "worlds.generate.large.settings": "Paramètres de la planète",
   "worlds.generate.leave.title": "Quitter la page sans enregistrer ces paramètres de la carte ?",
   "worlds.generate.leave.text": "Les paramètres du nouveau monde ne sont pas enregistrés. Si vous quittez la page, ils seront perdus.",
   "worlds.generate.leave.stay": "Rester sur cette page",

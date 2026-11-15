@@ -395,6 +395,7 @@
   "worlds.generate.large.close": "关闭",
   "worlds.generate.large.keys": "按键：← → 切换星球（放大时平移），+ − 缩放，0 适应窗口，Esc 关闭。轻触可居中。",
   "worlds.generate.large.keys_settings": "在设置中，按键作用于该设置：方向键移动滑块，而不是地图。",
+  "worlds.generate.large.settings": "星球设置",
   "worlds.generate.leave.title": "不保存这些地图设置就离开吗？",
   "worlds.generate.leave.text": "新世界的设置尚未保存。离开后，这些设置将丢失。",
   "worlds.generate.leave.stay": "留在此页面",
