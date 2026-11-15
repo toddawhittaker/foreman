@@ -2,8 +2,10 @@ package modsettings
 
 import (
 	"encoding/json"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The Squeak Through way, and the rest of the game's rules (SPEC 9.6).
@@ -88,4 +90,42 @@ func FuzzResolveLocalised(f *testing.F) {
 			t.Errorf("%d characters", len([]rune(s)))
 		}
 	})
+}
+
+// A huge parameter list costs little: only the parameters the text uses are
+// resolved, and the work is bounded (security review of #598).
+func TestResolveLocalisedHugeParams(t *testing.T) {
+	secs := LocaleSections{"s": {"big": strings.Repeat("x", 4000), "one": "__1__", "none": "plain", "all": "__1____2____3__"}}
+	params := strings.Repeat(`,["s.big"]`, 150000)
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	before := m.TotalAlloc
+	start := time.Now()
+	if got, ok := ResolveLocalised(json.RawMessage(`["s.none"`+params+`]`), secs); !ok || got != "plain" {
+		t.Errorf("unused parameters: %q %v", got, ok)
+	}
+	if _, ok := ResolveLocalised(json.RawMessage(`["s.all"`+params+`]`), secs); ok {
+		t.Error("parameters past the byte cap resolved")
+	}
+	if _, ok := ResolveLocalised(json.RawMessage(`["?",["nope.x"]`+strings.Repeat(`,["nope.x"]`, 150000)+`]`), secs); ok {
+		t.Error("a long ? list resolved")
+	}
+	runtime.ReadMemStats(&m)
+	// Decoding the JSON itself is most of this; resolving every parameter
+	// would be about 600 MB.
+	if alloc := m.TotalAlloc - before; alloc > 200<<20 {
+		t.Errorf("allocated %d MB", alloc>>20)
+	}
+	if d := time.Since(start); d > 5*time.Second {
+		t.Errorf("took %s", d)
+	}
+}
+
+// Keys fall back to English one by one, as in the game.
+func TestResolveLocalisedFallsBackKeyByKey(t *testing.T) {
+	de := LocaleSections{"s": {"dis": "__1__ nicht ändern"}}
+	en := LocaleSections{"s": {"dis": "Disable __1__", "chests": "chests"}}
+	if got, ok := ResolveLocalised(json.RawMessage(`["s.dis",["s.chests"]]`), de, en); !ok || got != "chests nicht ändern" {
+		t.Errorf("got %q %v", got, ok)
+	}
 }

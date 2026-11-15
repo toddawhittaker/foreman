@@ -414,17 +414,18 @@ func modSettingsError(err error) error {
 // languages from the enabled mods' raw locale files. Locale text is
 // decoration: a file that does not parse is logged and skipped, so a world
 // shows the setting names instead. Files merge in the order of mod name, then
-// as given. A setting's own localised name or description, when it resolves
-// in the language, wins over its [mod-setting-name] or
-// [mod-setting-description] entry (SPEC 9.6); the page falls back to English,
-// then to the setting's name.
+// as given. As in the game, a setting's own localised name or description,
+// when it has one, is the text: resolved in the language with English behind
+// it key by key, and empty when it does not resolve. Only a setting without
+// one takes its [mod-setting-name] or [mod-setting-description] entry
+// (SPEC 9.6). The page falls back to English, then to the setting's name.
 func (c *Controller) modSettingsLocale(id string, defs modsettings.Definitions, files map[string]map[string][][]byte) modsettings.Locale {
 	mods := make([]string, 0, len(files))
 	for mod := range files {
 		mods = append(mods, mod)
 	}
 	sort.Strings(mods)
-	out := modsettings.Locale{}
+	all := map[string]modsettings.LocaleSections{}
 	for lang, code := range modsettings.FactorioLocales {
 		secs := modsettings.LocaleSections{}
 		for _, mod := range mods {
@@ -437,9 +438,12 @@ func (c *Controller) modSettingsLocale(id string, defs modsettings.Definitions, 
 				secs.Merge(parsed)
 			}
 		}
-		if len(secs) == 0 {
-			continue
+		if len(secs) > 0 {
+			all[lang] = secs
 		}
+	}
+	out := modsettings.Locale{}
+	for lang, secs := range all {
 		texts := map[string]modsettings.LocaleText{}
 		for n, v := range secs["mod-setting-name"] {
 			t := texts[n]
@@ -451,18 +455,22 @@ func (c *Controller) modSettingsLocale(id string, defs modsettings.Definitions, 
 			t.Description = v
 			texts[n] = t
 		}
+		layers := []modsettings.LocaleSections{secs}
+		if lang != "en" && all["en"] != nil {
+			layers = append(layers, all["en"])
+		}
 		for _, d := range defs {
 			t, had := texts[d.Name]
-			name, okName := modsettings.ResolveLocalised(d.LocalisedName, secs)
-			desc, okDesc := modsettings.ResolveLocalised(d.LocalisedDescription, secs)
-			if okName {
-				t.Name = name
+			if hasLocalised(d.LocalisedName) {
+				t.Name, _ = modsettings.ResolveLocalised(d.LocalisedName, layers...)
 			}
-			if okDesc {
-				t.Description = desc
+			if hasLocalised(d.LocalisedDescription) {
+				t.Description, _ = modsettings.ResolveLocalised(d.LocalisedDescription, layers...)
 			}
-			if had || t != (modsettings.LocaleText{}) {
+			if t != (modsettings.LocaleText{}) {
 				texts[d.Name] = t
+			} else if had {
+				delete(texts, d.Name)
 			}
 		}
 		if len(texts) > 0 {
@@ -470,4 +478,10 @@ func (c *Controller) modSettingsLocale(id string, defs modsettings.Definitions, 
 		}
 	}
 	return out
+}
+
+// hasLocalised reports whether the game gave a localised string.
+func hasLocalised(raw []byte) bool {
+	s := strings.TrimSpace(string(raw))
+	return s != "" && s != "null"
 }

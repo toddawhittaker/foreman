@@ -560,6 +560,8 @@ func TestModSettingDefsLocale(t *testing.T) {
 	put("fmtest/locale/en/a.cfg", "[mod-setting-name]\nfm-sta-int=Integer\nfm-run-bool=Overridden\n[mod-setting-description]\nfm-sta-int=An integer\n"+
 		"[fm-setting-name]\ndisable-setting=Disable __1__\nchests=chests\n[fm-setting-description]\nchests=Chests.\n")
 	put("fmtest/locale/zh-CN/a.cfg", "[mod-setting-name]\nfm-sta-int=整数\nfm-run-bool=挤\n")
+	// German has the outer key only: the nested one comes from English.
+	put("fmtest/locale/de/a.cfg", "[fm-setting-name]\ndisable-setting=__1__ nicht ändern\n")
 	put("zmod/locale/en/b.cfg", "[mod-setting-name]\nz-set=Zed\n")
 	put("fmtest/locale/ru/bad.cfg", "[mod-setting-name\nbroken")
 	r.writeFile(r.id, filepath.Join(world.ModsDir, world.ModListFile),
@@ -569,8 +571,10 @@ func TestModSettingDefsLocale(t *testing.T) {
 		"en": {"fm-sta-int": {Name: "Integer", Description: "An integer"}, "z-set": {Name: "Zed"},
 			// Its own localised strings win; German has no such keys.
 			"fm-run-bool": {Name: "Disable chests", Description: "Chests."}},
-		// The localised name does not resolve in Chinese: [mod-setting-name].
-		"zh-Hans": {"fm-sta-int": {Name: "整数"}, "fm-run-bool": {Name: "挤"}},
+		// The setting's own localised string wins over [mod-setting-name], with
+		// English behind Chinese key by key.
+		"zh-Hans": {"fm-sta-int": {Name: "整数"}, "fm-run-bool": {Name: "Disable chests", Description: "Chests."}},
+		"de":      {"fm-run-bool": {Name: "chests nicht ändern", Description: "Chests."}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("locale %+v, want %+v", got, want)
