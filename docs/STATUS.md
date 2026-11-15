@@ -3138,8 +3138,9 @@ a second promised configuration.
 
 Serves SPEC 5.6, 8.7, 8.9, 9.1, 9.6, 9.11, 14 and 17.1, with DESIGN 8.8.
 Issues: #549, #551, #552 and #499, and gaps from earlier sections. The pull
-requests were #582 and #583 and #586 (mod search), #584 (large view), #585
-(error summary), #581 (Start's reason) and #580 (mod settings reader).
+requests were #582, #583, #588 and #589 (mod search), #584 (large view), #585
+(error summary), #581 (Start's reason), #580 (mod settings reader) and #590
+(slider tests).
 
 Rulings: a scheduled restart sends both the scheduled-restart and the start
 webhooks, as SPEC 7.12 says, so that is not a gap. In the large view the
@@ -3160,13 +3161,20 @@ arrow keys do nothing while a preparation is shown (SPEC 17.1).
   leaves out a mod with no release for the asked game line, as the real one
   does.
 - **Results follow the typing, and a link to browse the portal (#549, #552,
-  SPEC 9.1; #586).** With script, the search starts at 2 characters, 300 ms
+  SPEC 9.1; #588).** With script, the search starts at 2 characters, 300 ms
   after the last key, replaces only the results, keeps focus in the box and
   announces the result count. Ticked boxes survive. Without script the form
   works as before. "Browse the mod portal (opens in a new tab)" links to the
   portal's most downloaded list for the world's game line, with a hint that
   a pasted mod link works, on the search page and on the Mods tab's Find a
-  mod form. Both boxes take 300 characters.
+  mod form. Both boxes take 300 characters. The address follows the typed
+  search without adding history entries, so a reload keeps it. A refused
+  search shows and announces its error; under 2 characters the results
+  hide and the page says "Type at least 2 characters to search. Ticked mods
+  are kept."
+- **The install plan's "Add another mod" reads pasted links too (SPEC 9.1;
+  #589).** One length check serves both boxes: a link's mod name, or plain
+  text, may be at most 100 characters, and a longer search says so.
 - **The large view's Close comes first in Tab order, and the settings hint is
   read (#499, SPEC 17.1, DESIGN 8.8; #584).** Close moves to the start of the
   view's body and is still drawn in the picture's corner. The settings
@@ -3187,7 +3195,7 @@ arrow keys do nothing while a preparation is shown (SPEC 17.1).
   (SPEC 9.6, 14; #580).** Each mod zip is mounted read-only over itself in
   the definitions container, using Docker's `Mounts` field so odd file names
   need no quoting. The cache key now covers every entry inside a folder mod
-  (name, type, size, change time), within the 100,000 file and 4 GiB limits.
+  (name, type, size, modified time), within the 100,000 file and 4 GiB limits.
 - **Mods tab "0 up to date" needed no change.** #452 had fixed it already.
 - **Spec and docs.** SPEC 9.1 and 17.1 carry the new rules, DESIGN 8.8
   describes the preparation block, and the plan was deleted.
@@ -3201,14 +3209,15 @@ arrow keys do nothing while a preparation is shown (SPEC 17.1).
   against real `factoriotools/factorio` containers, including
   `TestRealGameModSettingsDefinitions` on 1.1, 2.0 and 2.1. M2 and M3 change
   only search and the portal link, so they had no real-game check.
-- Two one-off flakes: `sliders.spec.ts:393` (a timeout under load, 12 of 12
-  on rerun) and `generate.spec.ts:144` (failed twice on another machine and
-  could not be reproduced in 160 runs on the head or the base).
+- The epic with every task ran the full `make verify` and the whole browser
+  suite on linux-dev.
+- `sliders.spec.ts:393` timed out three times in full runs. It was just
+  long (18 to 27 s alone, on main too), so #590 split it into one test per
+  slider kind, keeping every check.
 
 ### Gaps left
 
-- **The plan page's "Add another mod" search** does not read pasted links or
-  search as you type.
+- **The plan page's "Add another mod" search** does not search as you type.
 - **A pasted name in the wrong case** falls back to the name as pasted.
 - **The main game container can still write the world's hard-linked zips.**
   G4 covered only the definitions reader.
@@ -3218,4 +3227,10 @@ arrow keys do nothing while a preparation is shown (SPEC 17.1).
   characters.
 - **The Previous and Next buttons in the large view** still end a
   preparation, as stepping always has.
+- **A refused search's error sits below the search panel**, a little away
+  from the box on a phone; the box still points to it.
+- **The paste hint holds the portal link** and is the box's description, so
+  a screen reader reads the link text with the box.
+- **Under 2 characters the address keeps the last search**, so a reload
+  brings that search back.
 - Still deferred: as listed under fixes batch 8.
