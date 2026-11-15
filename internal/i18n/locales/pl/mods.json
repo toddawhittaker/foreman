@@ -18,6 +18,8 @@
   "mods.search.results_heading": "Modyfikacje pasujące do „{query}”",
   "mods.search.unreachable": "Foreman nie mógł połączyć się z portalem modyfikacji, więc nie wyszukał. Należy spróbować ponownie za chwilę.",
   "mods.search.none": "Żadna modyfikacja dla Factorio {line} nie pasuje. Należy spróbować krótszej części nazwy.",
+  "mods.search.link_unknown": "W portalu modyfikacji nie ma modyfikacji o nazwie {name}. Należy sprawdzić pisownię.",
+  "mods.search.link_no_release": "Modyfikacja {name} nie ma wydania dla Factorio {line}. Należy wybrać inną modyfikację.",
   "mods.search.add": "Dodaj do planu",
   "mods.hits.count": {
     "one": "{count} modyfikacja dla Factorio {line} pasuje.",

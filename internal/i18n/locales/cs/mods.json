@@ -18,6 +18,8 @@
   "mods.search.results_heading": "Mody odpovídající „{query}“",
   "mods.search.unreachable": "Foreman se nemohl spojit s portálem modů, a proto nemohl hledat. Za chvíli je třeba zkusit to znovu.",
   "mods.search.none": "Žádný mod pro Factorio {line} neodpovídá. Je třeba zkusit kratší část názvu.",
+  "mods.search.link_unknown": "Na portálu modů není žádný mod s názvem {name}. Je třeba zkontrolovat pravopis.",
+  "mods.search.link_no_release": "Mod {name} nemá vydání pro Factorio {line}. Je třeba zkusit jiný mod.",
   "mods.search.add": "Přidat do plánu",
   "mods.hits.count": {
     "one": "{count} mod pro Factorio {line} odpovídá.",

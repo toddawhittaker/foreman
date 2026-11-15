@@ -39,6 +39,7 @@ const (
 type ModPortal interface {
 	mods.Portal
 	Search(ctx context.Context, line, query string) ([]modportal.Hit, error)
+	Lookup(ctx context.Context, line, name string) (modportal.Hit, error)
 	Download(ctx context.Context, username, token string, r modportal.Release, dst *os.File) error
 }
 
@@ -638,6 +639,8 @@ type ModSearchPage struct {
 	// Paged says a page button brought the admin here, so focus goes to
 	// the results.
 	Paged bool
+	// LinkMiss says why a pasted portal link found no mod.
+	LinkMiss i18n.Msg
 	// Installed names the mods the world has already.
 	Installed   map[string]bool
 	Unreachable bool
@@ -765,7 +768,13 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	if len(p.Query) > maxSearchQuery {
+	// A pasted link may be long with a sub-page and tracking query; only the
+	// mod name in it counts against the limit.
+	limited := p.Query
+	if name, isLink := modportal.PortalLinkName(p.Query); isLink {
+		limited = name
+	}
+	if len(limited) > maxSearchQuery {
 		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
@@ -776,13 +785,14 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 			p.Installed[m.Name] = true
 		}
 	}
-	hits, err := s.portal.Search(r.Context(), mods.GameLine(sum.GameVersion), p.Query)
+	hits, miss, err := s.findMods(r.Context(), mods.GameLine(sum.GameVersion), p.Query)
 	if err != nil {
 		s.portalTrouble("search the mod portal", sum.ID, err)
 		p.Unreachable = true
 		s.page(w, r, http.StatusBadGateway, u.Username, p)
 		return
 	}
+	p.LinkMiss = miss
 	p.Results = pageOfHits(hits, page)
 	if adding && p.PickError.IsZero() {
 		p.PickError = i18n.M("mods.search.pick_none")
@@ -792,6 +802,27 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// findMods answers a search. A pasted mod portal link finds that one mod by
+// its exact name; a mod that is not there comes back as a message, not an
+// error (SPEC 9.1). Any other text is an ordinary search.
+func (s *server) findMods(ctx context.Context, line, query string) ([]modportal.Hit, i18n.Msg, error) {
+	name, isLink := modportal.PortalLinkName(query)
+	if !isLink {
+		hits, err := s.portal.Search(ctx, line, query)
+		return hits, i18n.Msg{}, err
+	}
+	hit, err := s.portal.Lookup(ctx, line, name)
+	switch {
+	case err == nil:
+		return []modportal.Hit{hit}, i18n.Msg{}, nil
+	case errors.Is(err, modportal.ErrNotOnPortal):
+		return nil, i18n.M("mods.search.link_unknown", "name", name), nil
+	case errors.Is(err, modportal.ErrNoRelease):
+		return nil, i18n.M("mods.search.link_no_release", "name", name, "line", line), nil
+	}
+	return nil, i18n.Msg{}, err
 }
 
 // maxSearchQuery bounds a search, which is only a name or a few words.

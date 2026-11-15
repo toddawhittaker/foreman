@@ -129,6 +129,49 @@ test("a search under Add another mod that finds nothing says what to try", async
   await checkPage(page);
 });
 
+// SPEC 9.1, 9.11: a pasted mod portal link, with a sub-page and a query, finds
+// that one mod by its exact name, ready to add.
+test("a pasted portal link with a sub-page and query finds that exact mod", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search");
+  await page.getByLabel("Mod name").fill("www.mods.factorio.com/mod/fp-pg-03/changelog?from=search");
+  await page.getByLabel("Mod name").press("Enter");
+  const table = page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." });
+  await expect(table.getByRole("row")).toHaveCount(2);
+  await expect(table.getByRole("checkbox", { name: "fp-pg-03" })).toBeVisible();
+  await checkPage(page);
+  await page.getByRole("link", { name: "Add to plan fp-pg-03", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Install fp-pg-03 in Base?" })).toBeVisible();
+});
+
+// SPEC 9.1: a link to a name no mod has says so, rather than listing mods that merely contain it.
+test("a pasted portal link to an unknown mod says there is no such mod", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search");
+  await page.getByLabel("Mod name").fill("https://mods.factorio.com/mod/fp-pg-1");
+  await page.getByLabel("Mod name").press("Enter");
+  await expect(page.getByText("No mod named fp-pg-1 is on the mod portal.")).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await checkPage(page);
+});
+
+// SPEC 9.1: a mod the portal has, but not for the world's game line, is told apart from one it lacks.
+test("a pasted portal link to a mod with no release for the game line says so", async ({ page, fakePortal }) => {
+  await fakePortal!.add("fp-link-new", "1.0.0", ["base >= 2.1"], "2.1");
+  await page.goto("/worlds/base/mods/search");
+  await page.getByLabel("Mod name").fill("mods.factorio.com/mod/fp-link-new");
+  await page.getByLabel("Mod name").press("Enter");
+  await expect(page.getByText("fp-link-new has no release for Factorio 2.0.")).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await checkPage(page);
+});
+
+test("a link to another site is ordinary search text", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search");
+  await page.getByLabel("Mod name").fill("https://example.com/mod/fp-pg-03");
+  await page.getByLabel("Mod name").press("Enter");
+  await expect(page.getByText("No mod for Factorio 2.0 matches.")).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(0);
+});
+
 // SPEC 9.1: every word must be in the name or title, in any order.
 test("a search of two words finds a mod with both, in either order", async ({ page }) => {
   for (const q of ["signal rail", "rail signal"]) {
