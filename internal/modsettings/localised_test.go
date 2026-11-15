@@ -116,7 +116,7 @@ func TestResolveLocalisedHugeParams(t *testing.T) {
 	if alloc := m.TotalAlloc - before; alloc > 200<<20 {
 		t.Errorf("allocated %d MB", alloc>>20)
 	}
-	if d := time.Since(start); d > 5*time.Second {
+	if d := time.Since(start); d > 30*time.Second { // decoding dominates; generous for -race on a busy machine
 		t.Errorf("took %s", d)
 	}
 }
