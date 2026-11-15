@@ -633,13 +633,12 @@ export async function checkPage(page: Page) {
   // Let colour transitions end first, so axe never measures a button halfway
   // between two looks (a hover or a state change just made). Endless
   // animations, such as the starting lamp's sweep, are left running.
-  await page.evaluate(() =>
-    Promise.all(
-      document
-        .getAnimations()
-        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-        .map((a) => a.finished.catch(() => undefined)),
-    ),
+  // Chromium can report a transition inside closed details as finished while
+  // leaving its finished promise pending. Wait on state before running axe.
+  await page.waitForFunction(() =>
+    document.getAnimations()
+      .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+      .every((a) => a.playState !== "running"),
   );
   const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
   const violations = await withoutTargetsUnderStickyBars(page, results.violations);
