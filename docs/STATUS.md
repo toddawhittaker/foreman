@@ -2902,7 +2902,8 @@ three machines.
 
 **Not fully accepted.** The code is built and tested as listed below, but
 the live VPN and reboot checks were not run (see "Remaining acceptance").
-All automated gates below passed.
+All automated gates below passed. Todd deferred live acceptance on
+2026-11-14 and asked that the epic pull request remain draft.
 
 Rulings (Todd, 2026-11-14), now in SPEC 4.13, 12.6 and 14.16 and ADR 0006:
 shared sidecars are allowed, on additional Docker networks too, and an
