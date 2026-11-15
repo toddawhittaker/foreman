@@ -158,7 +158,7 @@
       {{- with .LeftOut}}
       <p>{{t "favorites.made.left_out" "count" (len .)}}</p>
       <ul>
-        {{- range .}}<li translate="no">{{.}}</li>{{end}}
+        {{- range .}}<li><span class="ident" translate="no">{{.}}</span></li>{{end}}
       </ul>
       {{- end}}
       <div class="actions"><a href="{{$.Page.FavoritesPath}}" id="act-favorites">{{t "favorites.list.link"}}</a></div>

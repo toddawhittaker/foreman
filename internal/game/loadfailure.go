@@ -327,7 +327,9 @@ func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid s
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	reason := f.reason(w.redact)
-	if oom {
+	// Docker has often restarted the game, and cleared its flag, before
+	// this look; noteExit looked when the log ended, before the restart.
+	if oom || (w.containerID == cid && w.oomKilled) {
 		reason.Kind = crashreasons.OutOfMemory
 	}
 	if !f.loadFailed() {

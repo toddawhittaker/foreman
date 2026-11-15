@@ -39,6 +39,7 @@
   "favorites.start.button": "Favorit verwenden",
   "favorites.start.none": "Noch keine Favoriten. Erstelle einen auf der Seite einer Welt.",
   "favorites.start.note": "Beginnt mit dem Favoriten „{name}“. Seine Spielversion, Space-Age-Einstellung, Voreinstellung und Karteneinstellungen sind unten eingetragen; ändere, was du willst. Die neue Welt bekommt seine Servereinstellungen und Mod-Einstellungen.",
+  "favorites.review.generated": "{name} wurde aus dem Favoriten generiert. Unten stehen die Mods des Favoriten, die du darauf installieren kannst.",
   "favorites.start.mods": {
     "one": "Nachdem die Welt erstellt ist, prüfst du {count} Mod zur Installation.",
     "other": "Nachdem die Welt erstellt ist, prüfst du {count} Mods zur Installation."

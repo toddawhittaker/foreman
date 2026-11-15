@@ -9,6 +9,12 @@
 {{- if .Redraw}}
 <div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
 {{- end}}
+{{- if .Generated}}
+{{- /* Outside #mod-plan so a redraw keeps it; first in the page, so it wins the autofocus below it (SPEC 5.12). */}}
+<div class="message message--success" id="plan-generated" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.review.generated" "name" .World.Name}}</p>
+</div>
+{{- end}}
 {{- /* Ticking an optional mod or choosing for an unresolved one redraws this block with the new plan (SPEC 9.14). */}}
 <div id="mod-plan" class="mod-plan">
 {{template "summary" .Problems}}

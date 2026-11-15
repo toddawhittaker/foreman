@@ -317,10 +317,12 @@ func exitSeenLocked(w *worldRun, st docker.State) bool {
 // does when the game exits. Docker restarts the game within a fraction of
 // a second and clears its out-of-memory flag when it does, often before
 // the next poll (SPEC 8.7). A look at a game that already runs again, or
-// taken while an operation owns the container, is not taken in.
+// taken across the start or end of an operation, is not taken in. One
+// taken during an operation is, so a start can name an out-of-memory
+// kill (see stoppedWhileLoading).
 func (c *Controller) noteExit(w *worldRun, cid string) {
 	w.mu.Lock()
-	ops, ours := w.ops, w.opDone == nil && w.containerID == cid
+	ops, ours := w.ops, w.containerID == cid
 	w.mu.Unlock()
 	if !ours {
 		return
@@ -336,7 +338,7 @@ func (c *Controller) noteExit(w *worldRun, cid string) {
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.opDone != nil || w.ops != ops || w.containerID != cid {
+	if w.ops != ops || w.containerID != cid {
 		return
 	}
 	if exitSeenLocked(w, cont.State) {

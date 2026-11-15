@@ -1039,6 +1039,9 @@ type ModPlanPage struct {
 	// Redraw says a script asked for the plan after a change on the page:
 	// the plan is announced and focus stays where it was (WCAG 4.1.3).
 	Redraw bool
+	// Generated says the world was just made from a favorite, whose mods
+	// this plan installs (SPEC 5.12).
+	Generated bool
 	// Have are the world's mods now, for the conflicts' fixes.
 	Have []world.InstalledMod
 }
@@ -1441,6 +1444,7 @@ func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.
 		form.Countdown = c[0]
 	}
 	p := s.planPage(r.Context(), sum, f, form)
+	p.Generated = q.Get(generatedQuery) != ""
 	// htmx swaps only a 2xx reply, so a redraw that finds a conflict or a
 	// portal failure still answers 200 for the page to show it.
 	if r.Header.Get("HX-Request") != "" {
@@ -1688,10 +1692,13 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	if !p.UsesUpload() {
 		shown.Retry = planPath(sum.ID, f.query())
 	}
-	// The picks were the plan's input; a refused request keeps them (SPEC 9.14).
+	// The installed picks leave the saved ones; a refused request keeps
+	// them, and so do picks this plan did not install (SPEC 9.14).
 	if s.applyMods(w, r, u, sum, op, stop, unused, shown) && f.Kind == mods.KindInstall {
-		if err := s.store.ClearModPlan(r.Context(), sum.ID); err != nil {
-			s.log.Warn("clear the mod plan after an install", "world", sum.ID, "error", err)
+		for _, name := range f.Names {
+			if err := s.store.RemoveModPlanName(r.Context(), sum.ID, name); err != nil {
+				s.log.Warn("take an installed mod out of the mod plan", "world", sum.ID, "error", err)
+			}
 		}
 	}
 }
