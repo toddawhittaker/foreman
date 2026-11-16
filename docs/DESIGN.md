@@ -894,8 +894,18 @@ the block padding is `--space-2` so a two-line label is not cramped.
   row is the last item of the row's More actions menu, also in
   `danger-text` (8.11). Either opens the confirmation, so the filled danger
   button is still kept for the confirming step (7.4).
-- Use `<a class="button">` only for navigation that looks like an action
-  ("Upload a save" leading to the upload page). Anything that changes
+- **Links take you somewhere; buttons do something.** A link to another
+  tab or page inside Foreman is plain underlined text ending in a chevron
+  (class `link-tab`, drawn in CSS from `--i-chevron`), never a button: the
+  three links to another tab's upload (Mods to Saves, mod settings to Mods,
+  an empty Worlds list to Import) are of this kind. A link that leaves
+  Foreman opens in a new tab, says so in hidden text ("opens in a new tab"),
+  and ends in `↗`. One rule on `a[target="_blank"]` draws the arrow, so every
+  link out has it, including a mod's title linked to the portal. Both marks
+  are drawn in CSS with empty alt text, so neither is read aloud or part of
+  the link's name. A link is still a 44 px target. `<a class="button">` is
+  kept for the few links that are drawn as actions in their own right
+  (Force stop, the risky "Delete world" link above). Anything that changes
   state is a `<button>` inside a `<form method="post">`.
 - **No disabled buttons to hide a reason.** If an action is not available
   ("Delete world" on the active world, SPEC 5.10), leave the button out
@@ -1510,12 +1520,12 @@ on its background instead of one long list.
   (name beside value) and the one-line explanation on a single wrapping row,
   so the forms and the list stay near the top. A warning inside it takes a
   row of its own.
-- **Foldouts** (`details.disclosure`). One style for every foldout. The
-  summary is a `list-item` with the browser's own triangle (`::marker`) at
+- **Foldouts** (`details.disclosure`). One style for every foldout; the
+  class stays `disclosure`. The summary is a `list-item` with the browser's own triangle (`::marker`) at
   its start, coloured `primary`: it points ahead when closed and down when
   open. The label is `heading` at weight 600, with no face, border or
-  shadow at rest. Under the pointer the row fills with `secondary-hover`
-  at `--radius`; its side padding of `--space-1` and a matching negative
+  shadow at rest. Under a pointer that can hover (`@media (hover: hover)`) the row fills with
+  `secondary-hover` at `--radius`; its side padding of `--space-1` and a matching negative
   margin keep the words still. Focus keeps the normal ring. With a fine
   pointer the row is compact (`min-block-size: 1.75rem`, `--space-1` above
   and below); on touch it is `--target-min`. A lone foldout has no line
@@ -1616,10 +1626,11 @@ a page loads in its `scripts` block. The page builds a `DropZone`
 - One file per zone.
 
 **Where an upload happens.** An upload happens in place, in a drop zone,
-when its result is used on that page. Otherwise the page offers a button,
-never a link, that goes to the tab that owns the file ("Upload a save" on
-the Mods tab goes to the Saves tab). Button words name the file: "Upload
-a save", "Upload a mod zip", "Replace mod-settings.dat".
+only where its result is used on that page. Otherwise the page links to the
+tab that owns the file, as a `link-tab` link (7.1), not a button: "Upload a
+save" on the Mods tab goes to the Saves tab, mod settings link to the Mods
+tab, and an empty Worlds list links to Import. The link's words name the
+file: "Upload a save", "Upload a mod zip", "Replace mod-settings.dat".
 
 ### 7.11 Favorites: export and import (SPEC 5.12)
 
@@ -1638,7 +1649,11 @@ The Favorites page lists each favorite as one closed row, stacked with a
   columns once there is room; the map exchange string with its Copy
   button; Rename (a name field and a Rename button on one line); then
   Export and the red bin Delete on one line, last. The mod list and the
-  exchange string are headed sections, not foldouts of their own.
+  exchange string are headed sections, not foldouts of their own. In a
+  browser without `::details-content` (Firefox before 143, older Safari),
+  an `@supports not selector(::details-content)` rule places the open body on
+  the second row across the whole row, so it neither squeezes into the name's
+  column nor overlaps Generate.
 - **Rename** posts to `/favorites/{id}/rename` and follows Make's name
   rules and error text (not empty, at most 100 characters, no name another
   favorite has, ignoring case; a change of case to its own name is
@@ -1793,6 +1808,10 @@ visually hidden header, so they line up whatever the names' lengths; the
 newest save's button is named "Load next: the newest save". When the panel
 is 14 to 24rem wide (a phone), each saves row is a grid with fixed size
 and time columns and the button on its own line under them.
+An autosave's label in the saves table is "World, date time" in tabular
+numbers, and its file name sits on a second line under it, muted, so every
+file name starts at the label's left edge; the "Loads next" badge stays
+beside the label.
 A time is three units: the date, the clock and the zone. None breaks inside
 itself, and a wide zone such as `GMT+5:45` drops to its own line after the
 clock. Each language keeps its own order (Chinese puts the zone first), and
