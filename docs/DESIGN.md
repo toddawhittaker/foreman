@@ -1594,6 +1594,10 @@ a page loads in its `scripts` block. The page builds a `DropZone`
   (7.2) that says what to choose instead, and the error is read out. The
   page's own listeners never see a refused file. The server still checks
   every upload as before; the zone's checks are only a quicker answer.
+- A page never adds its own capture-phase `change` listener on an
+  ancestor of a zone: it would run before the zone's and see refused files.
+- A new file, good or refused, hides the server's error from the last
+  upload; a refused drop also empties any file chosen before.
 - One file per zone.
 
 **Where an upload happens.** An upload happens in place, in a drop zone,
@@ -1601,9 +1605,6 @@ when its result is used on that page. Otherwise the page offers a button,
 never a link, that goes to the tab that owns the file ("Upload a save" on
 the Mods tab goes to the Saves tab). Button words name the file: "Upload
 a save", "Upload a mod zip", "Replace mod-settings.dat".
-
-Today the Import page's "Upload a save" uses the drop zone; the Saves
-tab, the Mods tab and the review page move to it next.
 
 ## 8. Patterns for later screens
 

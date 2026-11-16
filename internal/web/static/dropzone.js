@@ -51,8 +51,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const clear = zone.querySelector(".dropzone__clear");
     const error = document.getElementById(input.id + "-client-error");
     const accept = zone.dataset.accept.toLowerCase();
-    const describedBy = input.getAttribute("aria-describedby") || "";
-    const serverInvalid = input.getAttribute("aria-invalid") === "true";
+    const serverError = document.getElementById(input.id + "-error");
+    let describedBy = input.getAttribute("aria-describedby") || "";
+    let serverInvalid = input.getAttribute("aria-invalid") === "true";
+
+    // A new file answers the server's last refusal, so its error goes.
+    function dropServerError() {
+      if (!serverError) return;
+      serverError.hidden = true;
+      describedBy = describedBy.split(" ").filter((id) => id !== serverError.id).join(" ");
+      serverInvalid = false;
+    }
     zone.classList.add("dropzone--on");
     prompt.hidden = false;
 
@@ -86,6 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // reaches them.
     zone.addEventListener("change", (e) => {
       if (e.target !== input) return;
+      if (input.files.length) dropServerError();
       const said = input.files.length ? refusal(input.files) : "";
       if (said) {
         e.stopPropagation();
@@ -110,8 +120,12 @@ document.addEventListener("DOMContentLoaded", () => {
       e.stopPropagation();
       depth = 0;
       marking(false);
+      dropServerError();
       const said = refusal(e.dataTransfer.files);
       if (said) {
+        // An earlier good choice must never upload behind a refusal.
+        input.value = "";
+        showChosen();
         showError(said);
         return;
       }

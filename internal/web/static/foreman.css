@@ -9330,6 +9330,12 @@ main:has(> .gate) > * + :not(h1, .gate) {
   display: none;
 }
 
+/* Clear keeps a 44 px target on a phone (SPEC 17.2). */
+.dropzone__clear {
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+}
+
 .dropzone__file {
   min-inline-size: 0;
   overflow-wrap: anywhere;

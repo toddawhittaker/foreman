@@ -122,6 +122,36 @@ test("a wrong type, several files or a file over the limit is refused before upl
   await expect(input).toHaveAttribute("aria-describedby", "upload-source-hint");
 });
 
+test("a refused drop empties an earlier good choice", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/import");
+  const form = uploadForm(page);
+  const input = form.getByLabel("Save file");
+  await input.setInputFiles({ name: "good.zip", mimeType: "application/zip", buffer: emptyZip });
+  await expect(form.locator(".dropzone__chosen")).toBeVisible();
+  await drop(page, [{ name: "bad.txt", body: "x" }]);
+  await expect(form.locator("#upload-source-client-error")).toHaveText("Error: bad.txt is not a .zip file. Choose a file that ends in .zip.");
+  await expect(form.locator(".dropzone__chosen")).toBeHidden();
+  expect(await input.evaluate((el: HTMLInputElement) => el.files!.length)).toBe(0);
+});
+
+test("a new good choice clears the server's error", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/import");
+  const form = uploadForm(page);
+  await form.getByLabel("World name").fill("Nofile");
+  await form.getByLabel("Or type a version").fill("1.1.110");
+  await form.getByRole("button", { name: "Upload and import" }).click();
+  const serverError = form.locator("#upload-source-error");
+  await expect(serverError).toBeVisible();
+  const input = form.getByLabel("Save file");
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  await input.setInputFiles({ name: "fixed.zip", mimeType: "application/zip", buffer: emptyZip });
+  await expect(serverError).toBeHidden();
+  await expect(input).not.toHaveAttribute("aria-invalid");
+  await expect(input).toHaveAttribute("aria-describedby", "upload-source-hint");
+});
+
 test("Clear empties the field and returns focus to it", async ({ page }) => {
   await createAdmin(page);
   await page.goto("/import");
@@ -129,6 +159,10 @@ test("Clear empties the field and returns focus to it", async ({ page }) => {
   const input = form.getByLabel("Save file");
   await input.setInputFiles({ name: "first.zip", mimeType: "application/zip", buffer: emptyZip });
   await expect(form.locator(".dropzone__chosen")).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 700 });
+  const clearBox = await form.getByRole("button", { name: "Clear" }).boundingBox();
+  expect(clearBox!.height).toBeGreaterThanOrEqual(44);
+  expect(clearBox!.width).toBeGreaterThanOrEqual(44);
   await form.getByRole("button", { name: "Clear" }).click();
   await expect(form.locator(".dropzone__chosen")).toBeHidden();
   await expect(input).toBeFocused();
