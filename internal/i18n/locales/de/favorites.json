@@ -44,5 +44,15 @@
     "one": "Nachdem die Welt erstellt ist, prüfst du {count} Mod zur Installation.",
     "other": "Nachdem die Welt erstellt ist, prüfst du {count} Mods zur Installation."
   },
-  "favorites.error.map_damaged": "Die Karteneinstellungen dieses Favoriten sind beschädigt, daher kann Foreman sie nicht eintragen. Wähle einen anderen Favoriten oder lösche diesen und erstelle ihn aus einer Welt neu."
+  "favorites.error.map_damaged": "Die Karteneinstellungen dieses Favoriten sind beschädigt, daher kann Foreman sie nicht eintragen. Wähle einen anderen Favoriten oder lösche diesen und erstelle ihn aus einer Welt neu.",
+  "favorites.export.button": "Exportieren",
+  "favorites.export.warning": "Exportieren lädt einen Favoriten als Datei herunter, um ihn zu teilen oder in ein anderes Foreman zu bringen. Die Datei enthält die Mod-Einstellungen, und ein Mod kann dort ein Token oder einen anderen privaten Wert speichern. Teile sie also nur mit Leuten, denen du vertraust.",
+  "favorites.mods.show": "Mods anzeigen",
+  "favorites.import.heading": "Favoriten importieren",
+  "favorites.import.text": "Füge einen Favoriten aus einer Datei hinzu, die ein anderes Foreman exportiert hat. Mods oder eine Spielversion, die diesem Foreman fehlen, werden trotzdem importiert; die Mod-Prüfung von Generieren zeigt sie.",
+  "favorites.import.label": "Favoritendatei",
+  "favorites.import.button": "Favoriten importieren",
+  "favorites.import.done": "Der Favorit „{name}“ wurde importiert.",
+  "favorites.import.bad": "Das ist keine Favoritendatei, die Foreman lesen kann, oder sie ist beschädigt. Es wurde nichts importiert.",
+  "favorites.import.name_taken": "Es gibt schon einen Favoriten mit dem Namen aus dieser Datei. Benenne diesen Favoriten um oder lösche ihn, und importiere dann erneut."
 }

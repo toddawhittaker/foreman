@@ -55,6 +55,9 @@ var favoriteIDRE = regexp.MustCompile(`^[0-9a-f]{16}$`)
 type FavoriteMod struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+	// Title is the mod's cleaned title from info.json; "" when it had none
+	// or the favorite predates titles.
+	Title string `json:"title,omitempty"`
 }
 
 // Favorite describes a saved bundle to start new worlds from (SPEC 5.12).
@@ -160,7 +163,13 @@ func (f *Favorites) Make(ctx context.Context, worldID, name string) (string, err
 	fav.Name = name
 	fav.CreatedAt = f.now().UTC()
 	fav.FormatVersion = favoriteFormat
+	return f.save(ctx, fav, files)
+}
 
+// save writes a checked favorite under a new id. The name check and the
+// rename happen under makeMu, and the folder is built in a staging folder
+// and renamed into place, so a failure leaves nothing behind.
+func (f *Favorites) save(ctx context.Context, fav Favorite, files FavoriteFiles) (string, error) {
 	f.makeMu.Lock()
 	defer f.makeMu.Unlock()
 	existing, err := f.List(ctx)
@@ -168,7 +177,7 @@ func (f *Favorites) Make(ctx context.Context, worldID, name string) (string, err
 		return "", err
 	}
 	for _, e := range existing {
-		if strings.EqualFold(e.Name, name) {
+		if strings.EqualFold(e.Name, fav.Name) {
 			return "", ErrFavoriteNameTaken
 		}
 	}
@@ -285,7 +294,7 @@ func (f *Favorites) fromWorld(worldID string) (Favorite, FavoriteFiles, error) {
 		case mod.Local || !ValidModName(mod.Name) || !modVersionRE.MatchString(mod.Version):
 			fav.LeftOut = append(fav.LeftOut, mod.Name)
 		default:
-			fav.Mods = append(fav.Mods, FavoriteMod{Name: mod.Name, Version: mod.Version})
+			fav.Mods = append(fav.Mods, FavoriteMod{Name: mod.Name, Version: mod.Version, Title: CleanTitle(mod.Title)})
 		}
 	}
 	if len(fav.Mods) > maxFavoriteMods {
@@ -396,15 +405,28 @@ func readFavorite(root *os.Root, id string) (Favorite, error) {
 	if err != nil {
 		return Favorite{}, ErrFavoriteBroken
 	}
+	fav, err := decodeFavorite(b, false)
+	if err != nil {
+		return Favorite{}, err
+	}
+	fav.ID = id
+	return fav, nil
+}
+
+// decodeFavorite decodes and checks favorite.json. strict refuses unknown
+// fields, for a file from outside.
+func decodeFavorite(b []byte, strict bool) (Favorite, error) {
 	var fav Favorite
 	dec := json.NewDecoder(bytes.NewReader(b))
+	if strict {
+		dec.DisallowUnknownFields()
+	}
 	if err := dec.Decode(&fav); err != nil || dec.More() {
 		return Favorite{}, ErrFavoriteBroken
 	}
 	if !validFavorite(fav) {
 		return Favorite{}, ErrFavoriteBroken
 	}
-	fav.ID = id
 	return fav, nil
 }
 
@@ -423,7 +445,7 @@ func validFavorite(fav Favorite) bool {
 		return false
 	}
 	for _, m := range fav.Mods {
-		if !ValidModName(m.Name) || !modVersionRE.MatchString(m.Version) {
+		if !ValidModName(m.Name) || !modVersionRE.MatchString(m.Version) || !validTitle(m.Title) {
 			return false
 		}
 	}
@@ -435,9 +457,22 @@ func validFavorite(fav Favorite) bool {
 	return true
 }
 
+// validTitle says t is what CleanTitle could have made: no control or
+// format characters, no outer space, and no longer than its cut.
+func validTitle(t string) bool {
+	if !utf8.ValidString(t) || strings.TrimSpace(t) != t || utf8.RuneCountInString(t) > maxModTitle+1 {
+		return false
+	}
+	for _, r := range t {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
+			return false
+		}
+	}
+	return true
+}
+
 // readFavoriteFiles reads a favorite's settings files with the limits and
-// checks world files get. Server settings are stripped of secrets again in
-// case one was planted.
+// checks world files get.
 func readFavoriteFiles(dir *os.Root) (FavoriteFiles, error) {
 	read := func(name string, limit int64) ([]byte, error) {
 		b, err := ReadSmallFile(dir, name, limit)
@@ -452,15 +487,33 @@ func readFavoriteFiles(dir *os.Root) (FavoriteFiles, error) {
 	var files FavoriteFiles
 	var err error
 	for _, j := range []struct {
-		name string
-		dst  *[]byte
-	}{{MapGenSettingsFile, &files.MapGenSettings}, {MapSettingsFile, &files.MapSettings}, {ServerSettingsFile, &files.ServerSettings}} {
-		if *j.dst, err = read(j.name, maxConfigFile); err != nil {
+		name  string
+		dst   *[]byte
+		limit int64
+	}{
+		{MapGenSettingsFile, &files.MapGenSettings, maxConfigFile},
+		{MapSettingsFile, &files.MapSettings, maxConfigFile},
+		{ServerSettingsFile, &files.ServerSettings, maxConfigFile},
+		{ModSettingsFile, &files.ModSettings, MaxModSettings},
+	} {
+		if *j.dst, err = read(j.name, j.limit); err != nil {
 			return FavoriteFiles{}, err
 		}
-		if len(*j.dst) > 0 && !json.Valid(*j.dst) {
+	}
+	return checkFavoriteFiles(files)
+}
+
+// checkFavoriteFiles checks a favorite's settings files: the JSON ones must
+// be valid, and server settings are stripped of secrets again in case one
+// was planted.
+func checkFavoriteFiles(files FavoriteFiles) (FavoriteFiles, error) {
+	for _, b := range [][]byte{files.MapGenSettings, files.MapSettings, files.ServerSettings} {
+		if int64(len(b)) > maxConfigFile || len(b) > 0 && !json.Valid(b) {
 			return FavoriteFiles{}, ErrFavoriteBroken
 		}
+	}
+	if len(files.ModSettings) > MaxModSettings {
+		return FavoriteFiles{}, ErrFavoriteBroken
 	}
 	if len(files.ServerSettings) > 0 {
 		stripped, _ := gamesettings.StripSecrets(files.ServerSettings)
@@ -468,9 +521,6 @@ func readFavoriteFiles(dir *os.Root) (FavoriteFiles, error) {
 			return FavoriteFiles{}, ErrFavoriteBroken
 		}
 		files.ServerSettings = stripped
-	}
-	if files.ModSettings, err = read(ModSettingsFile, MaxModSettings); err != nil {
-		return FavoriteFiles{}, err
 	}
 	return files, nil
 }

@@ -44,5 +44,15 @@
     "one": "Cuando el mundo esté creado, revisarás {count} mod para instalar.",
     "other": "Cuando el mundo esté creado, revisarás {count} mods para instalar."
   },
-  "favorites.error.map_damaged": "La configuración del mapa de este favorito está dañada, así que Foreman no puede rellenarla. Elige otro favorito, o bórralo y créalo de nuevo a partir de un mundo."
+  "favorites.error.map_damaged": "La configuración del mapa de este favorito está dañada, así que Foreman no puede rellenarla. Elige otro favorito, o bórralo y créalo de nuevo a partir de un mundo.",
+  "favorites.export.button": "Exportar",
+  "favorites.export.warning": "Exportar descarga un favorito como archivo para compartirlo o llevarlo a otro Foreman. Incluye los ajustes de los mods, y un mod puede guardar ahí un token u otro valor privado, así que compártelo solo con personas de confianza.",
+  "favorites.mods.show": "Mostrar los mods",
+  "favorites.import.heading": "Importar un favorito",
+  "favorites.import.text": "Añade un favorito desde un archivo exportado por otro Foreman. Los mods o la versión del juego que falten en este Foreman se importan igualmente; la revisión de mods de Generar los muestra.",
+  "favorites.import.label": "Archivo de favorito",
+  "favorites.import.button": "Importar favorito",
+  "favorites.import.done": "Se importó el favorito «{name}».",
+  "favorites.import.bad": "No es un archivo de favorito que Foreman pueda leer, o está dañado. No se importó nada.",
+  "favorites.import.name_taken": "Ya existe un favorito con el nombre de este archivo. Cambia el nombre de ese favorito o elimínalo y vuelve a importar."
 }

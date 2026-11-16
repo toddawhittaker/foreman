@@ -9254,6 +9254,30 @@ main:has(> .gate) > * + :not(h1, .gate) {
   list-style: none;
 }
 
+/* P1 favorites export and import (DESIGN 7.11). A favorite's mods fold
+   away so a large pack does not fill the list; each mod's title may wrap. */
+.favorite-mods > summary {
+  min-block-size: var(--target-min);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.favorite-mods ul {
+  display: grid;
+  gap: 0;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.favorite-mods li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
 /* U1 drop zone (DESIGN 7.10). Without script .dropzone is a plain .field.
    With script the native input is stretched, transparent, over a dashed
    area, so a click, Enter or Space anywhere on it opens the picker. A drag
