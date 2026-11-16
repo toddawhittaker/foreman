@@ -111,6 +111,11 @@ type server struct {
 	uploadLimits map[string]int64
 	// uploadSlots holds one entry per upload in progress (see guardUpload).
 	uploadSlots chan struct{}
+	// publicSlots holds one entry per public download in progress. marks
+	// keeps the portal's answers for the public mods page, and is nil when
+	// Foreman has no portal (SPEC 9.16, 14.18).
+	publicSlots chan struct{}
+	marks       *portalMarks
 }
 
 // Handler is the HTTP handler for the whole app.
@@ -172,6 +177,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		mux:          http.NewServeMux(),
 		uploadLimits: map[string]int64{},
 		uploadSlots:  make(chan struct{}, maxUploads),
+		publicSlots:  make(chan struct{}, maxPublicDownloads),
 	}
 	if s.gameNets == nil && d.Game != nil {
 		s.gameNets = d.Game
@@ -182,6 +188,7 @@ func NewHandler(d Deps) (*Handler, error) {
 			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal})
 			d.Game.SetModCheck(s.planner)
 		}
+		s.marks = newPortalMarks(now, s.checkPortalForPublic)
 	}
 	s.routes()
 
@@ -233,6 +240,7 @@ func (s *server) routes() {
 	s.aboutRoutes()
 	s.modRoutes()
 	s.designRoutes()
+	s.publicModsRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
@@ -245,6 +253,12 @@ func (s *server) routes() {
 // handleUnknown answers every path no route claims: 405 when the path
 // exists for another method, otherwise 404.
 func (s *server) handleUnknown(w http.ResponseWriter, r *http.Request) {
+	// While the public page is off, nothing under /public/ shows that it
+	// exists, not even through the method it allows (SPEC 9.16).
+	if s.publicClosed(r) {
+		s.pageNotFound(w, r)
+		return
+	}
 	var allowed []string
 	for _, m := range []string{http.MethodGet, http.MethodPost} {
 		probe := r.Clone(r.Context())
@@ -260,7 +274,7 @@ func (s *server) handleUnknown(w http.ResponseWriter, r *http.Request) {
 		s.page(w, r, http.StatusMethodNotAllowed, "", ErrorPage{Status: http.StatusMethodNotAllowed})
 		return
 	}
-	s.page(w, r, http.StatusNotFound, "", ErrorPage{Status: http.StatusNotFound})
+	s.pageNotFound(w, r)
 }
 
 // NewHTTPServer returns an http.Server with the timeouts and size limits

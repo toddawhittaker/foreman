@@ -282,6 +282,32 @@ from, which with Docker's port forwarding is the gateway of the network
 that carries the published port (for example `172.30.0.1/32`). Never use a
 whole network range, and never a network the game is on.
 
+### Let players reach the public mods page
+
+Foreman can show the mods of the running world to anyone, without a
+sign-in, so players can download them. An admin turns this on at
+**Settings**, **Public mods**; it is off until then. While it is off,
+every path that starts with `/public/` answers "not found".
+
+When a proxy signs people in, it will ask players to sign in before they
+can see that page. Add one rule to the proxy: requests whose path starts
+with `/public/` go to Foreman without authentication, and every other path
+stays behind the proxy's sign-in. Match on the path prefix `/public/`,
+nothing wider. The rule needs nothing else from the proxy, so it works the
+same with any proxy that can skip authentication for a path.
+
+- The public paths show the running world's name, its game version, and
+  its turned-on mods, and send those mod files. They show no save,
+  setting, password, player or log.
+- Foreman ignores the sign-in headers and any cookie on these paths, so
+  nobody is signed in by them.
+- At most 4 public downloads run at once. A fifth visitor is told to try
+  again in 5 seconds. Turn the page off to stop them all.
+- Test the rule from a machine that is not signed in: open
+  `https://<your address>/public/mods`. It should show the page (or "not
+  found" while the setting is off), never the proxy's sign-in page. Then
+  open `https://<your address>/worlds`; it should still ask you to sign in.
+
 ## 7. First run: create the admin
 
 Open `http://<your host>:8080`. Foreman shows **Create the first admin
