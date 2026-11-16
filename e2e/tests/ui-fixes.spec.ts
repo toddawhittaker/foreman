@@ -480,7 +480,7 @@ test.describe("Generate", () => {
 
   test("on 1.1, the settler group sizes keep their order", async ({ page }) => {
     await page.goto("/generate");
-    await page.locator("details.disclosure summary").click();
+    await page.locator(".version-fields > details.disclosure > summary").click();
     const refreshed = page.waitForResponse((r) => r.url().endsWith("/generate/refresh"));
     await page.getByLabel("Type a version").fill("1.1.110");
     await page.getByLabel("Type a version").press("Tab");
@@ -520,7 +520,7 @@ test.describe("Generate", () => {
   // A preset chosen after the game line changed fills the new line's settings.
   test("after typing a 1.1 version, choosing Marathon refills the settings", async ({ page }) => {
     await page.goto("/generate");
-    await page.locator("details.disclosure summary").click();
+    await page.locator(".version-fields > details.disclosure > summary").click();
     const refreshed = page.waitForResponse((r) => r.url().endsWith("/generate/refresh"));
     await page.getByLabel("Type a version").fill("1.1.110");
     await page.getByLabel("Type a version").press("Tab");

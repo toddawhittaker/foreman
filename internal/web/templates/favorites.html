@@ -13,6 +13,11 @@
   <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.deleted" "name" .}}</p>
 </div>
 {{- end}}
+{{- if not .Renamed.IsZero}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Renamed}}</p>
+</div>
+{{- end}}
 {{- with .Imported}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.import.done" "name" .}}</p>
@@ -21,42 +26,56 @@
 <section class="panel" aria-label="{{t "favorites.title"}}">
   {{- with .Favorites}}
   <p class="hint favorite-export-warning" id="favorite-export-warning"><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
-  <ul class="webhook-list favorite-list" role="list">
+  <ul class="favorite-list" role="list">
     {{- range .}}
     {{- $name := .Name}}
-    <li id="favorite-{{.ID}}">
-      <h2 id="favorite-{{.ID}}-name" class="webhook-list__title">{{.Name}}</h2>
-      <dl class="facts facts--inline">
-        {{- with .SourceWorld}}
-        <div><dt>{{t "favorites.fact.source"}}</dt><dd>{{.}}</dd></div>
-        {{- end}}
-        <div><dt>{{t "worlds.fact.game_version"}}</dt><dd><span class="ver"><code>{{.GameVersion}}</code></span></dd></div>
-        <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
-        <div><dt>{{t "favorites.fact.mods"}}</dt><dd>{{len .Mods}}</dd></div>
-        <div><dt>{{t "favorites.fact.created"}}</dt><dd><time datetime="{{isoTime .CreatedAt}}">{{utc .CreatedAt}}</time></dd></div>
-      </dl>
-      {{- with .Mods}}
-      {{- /* A details list works without script and keeps a long pack from filling the page. */}}
-      <details class="favorite-mods">
-        <summary>{{t "favorites.mods.show" "count" (len .)}}<span class="visually-hidden" translate="no"> {{$name}}</span></summary>
-        <ul role="list">
-          {{- range .}}
-          <li><span class="mod-name">{{template "mod-name" ($.Page.Mod .)}}</span> <span class="mod-ver" translate="no">{{.Version}}</span></li>
+    {{- $id := .ID}}
+    {{- $rename := $.Page.RenameFor .ID}}
+    <li id="favorite-{{.ID}}" class="favorite">
+      {{- /* A details row works without script. Generate sits outside the summary, beside it, so the most common task stays one click (SPEC 5.12, DESIGN 7.11). */}}
+      <details class="disclosure favorite__details"{{if $rename.Open}} open{{end}}>
+        <summary><span id="favorite-{{.ID}}-name" class="favorite__name">{{.Name}}</span>
+          <span class="favorite__facts"><span translate="no">{{.GameVersion}}</span> · {{if .SpaceAge}}{{t "worlds.fact.space_age"}}{{else}}{{t "favorites.no_space_age"}}{{end}} · {{t "favorites.mods.count" "count" (len .Mods)}}</span></summary>
+        <div class="favorite__body">
+          <dl class="facts facts--inline">
+            {{- with .SourceWorld}}
+            <div><dt>{{t "favorites.fact.source"}}</dt><dd>{{.}}</dd></div>
+            {{- end}}
+            <div><dt>{{t "favorites.fact.created"}}</dt><dd><time datetime="{{isoTime .CreatedAt}}">{{utc .CreatedAt}}</time></dd></div>
+          </dl>
+          {{- with .Mods}}
+          <section class="favorite__part" aria-labelledby="favorite-{{$id}}-mods">
+            <h3 id="favorite-{{$id}}-mods">{{t "favorites.fact.mods"}}<span class="visually-hidden" translate="no"> {{$name}}</span></h3>
+            <ul class="favorite-mods" role="list">
+              {{- range .}}
+              <li><span class="mod-name">{{template "mod-name" ($.Page.Mod .)}}</span> <span class="mod-ver" translate="no">{{.Version}}</span></li>
+              {{- end}}
+            </ul>
+          </section>
           {{- end}}
-        </ul>
+          <section class="favorite__part" aria-labelledby="favorite-{{.ID}}-exchange">
+            <h3 id="favorite-{{.ID}}-exchange">{{t "favorites.exchange.show"}}<span class="visually-hidden" translate="no"> {{$name}}</span></h3>
+            {{template "exchange-string" ($.Page.ExchangeFor .ID)}}
+          </section>
+          <form method="post" action="{{.RenamePath}}" class="field favorite__rename" novalidate>
+            <label for="favorite-{{.ID}}-rename" class="required">{{t "favorites.rename.label"}}<span class="visually-hidden" translate="no"> {{$name}}</span></label>
+            <div class="inline-row">
+              <input id="favorite-{{.ID}}-rename" name="name" type="text" value="{{$rename.Value}}" required maxlength="{{$.Page.MaxName}}"
+                {{- if not $rename.Error.IsZero}} aria-invalid="true" aria-describedby="favorite-{{.ID}}-rename-error"{{end}}>
+              <button type="submit" class="button" id="act-favorite-rename-{{.ID}}" aria-describedby="favorite-{{.ID}}-name">{{t "favorites.rename.button"}}</button>
+            </div>
+            {{- if not $rename.Error.IsZero}}
+            <p class="error" id="favorite-{{.ID}}-rename-error"><strong>{{t "common.error.label"}}</strong> {{msg $rename.Error}}</p>
+            {{- end}}
+          </form>
+          <div class="actions">
+            <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-export-warning">{{t "favorites.export.button"}}</a>
+            {{- /* A trash icon, as the webhook list has: red but borderless, so Delete does not weigh as much as Generate (DESIGN 7.1). */}}
+            <a href="{{.DeletePath}}" class="button button--icon" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
+          </div>
+        </div>
       </details>
-      {{- end}}
-      {{- /* A details block keeps a long string off the list until it is wanted, and works without script. */}}
-      <details class="favorite-exchange">
-        <summary>{{t "favorites.exchange.show"}}<span class="visually-hidden" translate="no"> {{$name}}</span></summary>
-        {{template "exchange-string" ($.Page.ExchangeFor .ID)}}
-      </details>
-      <div class="actions">
-        <a href="{{.GeneratePath}}" class="button" id="act-favorite-generate-{{.ID}}" aria-describedby="favorite-{{.ID}}-name">{{t "favorites.generate"}}</a>
-        <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-export-warning">{{t "favorites.export.button"}}</a>
-        {{- /* A trash icon, as the webhook list has: red but borderless, so Delete does not weigh as much as Generate (DESIGN 7.1). */}}
-        <a href="{{.DeletePath}}" class="button button--icon" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
-      </div>
+      <a href="{{.GeneratePath}}" class="button favorite__generate" id="act-favorite-generate-{{.ID}}" aria-label="{{t "favorites.generate.label" "name" .Name}}">{{t "favorites.generate"}}</a>
     </li>
     {{- end}}
   </ul>

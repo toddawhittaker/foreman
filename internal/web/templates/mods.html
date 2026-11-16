@@ -79,8 +79,8 @@
   <h2 id="sync-heading">{{t "mods.sync.heading"}}</h2>
   {{- if not .LoadSave}}
   <p class="empty">{{t "mods.sync.no_save"}}</p>
-  {{- /* The save is used here but owned by the Saves tab, so the way there is a button (DESIGN 7.10). */}}
-  <div class="actions"><a href="{{.SavesPath}}" class="button" id="act-upload-save">{{t "mods.sync.upload_save"}}</a></div>
+  {{- /* The save is used here but owned by the Saves tab, so the way there is a link ending in a chevron, not a button (DESIGN 7.1, 7.10). */}}
+  <p><a href="{{.SavesPath}}" class="link-tab" id="act-upload-save">{{t "mods.sync.upload_save"}}</a></p>
   {{- else if and .SaveDiff .SaveDiff.Matches}}
   {{- /* Read from the save itself, so a match costs no trip to the plan (SPEC 9.8, 9.9). */}}
   <p id="sync-state">{{tHTML "mods.sync.match" "save" (code .LoadSave)}}</p>

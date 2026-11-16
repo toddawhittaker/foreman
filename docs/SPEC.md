@@ -947,10 +947,18 @@ a game version, Space Age, a map, server settings, mods and mod settings.
   JSON, checked mod names and versions, and secrets removed again on every
   read. The app database holds nothing about it (3.4). Names are unique,
   ignoring case, and at most 100 characters.
-- **Shared and fixed.** Every signed-in user sees and uses every favorite. A
+- **Shared, renamed, not edited.** Every signed-in user sees and uses every favorite. A
   favorite can be deleted, after a page that says no snapshot is taken and
-  no world changes; it is never edited. To change one, make a new one from a
-  world.
+  no world changes. **Rename.** Each favorite can be renamed from its
+  Details on the Favorites page. The new name follows the same rules as
+  making one: not empty, at most 100 characters, and no name another
+  favorite already has, ignoring case; a change of case to its own name is
+  allowed. Renaming takes the same lock as making a favorite and rewrites
+  only the favorite's `favorite.json`, atomically, so it takes no snapshot
+  and changes nothing else in the favorite. An export made afterwards
+  carries the new name. A rename, like making and deleting a favorite, is
+  not in the audit log. Nothing else in a favorite is edited; to change
+  its map, mods or settings, make a new one from a world.
 - **Starting from one.** Generate (5.6) offers "Start from a favorite", a
   plain form that works without script. Choosing one fills in the form: the
   game version (still changeable), Space Age, the preset and every map
@@ -1534,7 +1542,19 @@ there is nothing to name there. A save that fails to load is
 reported as a failed load whichever check sees the stop first, the log or
 the container poll (ADR 0016), and a Docker look taken before or during an
 operation on the world is dropped, so it never overwrites what the
-operation set. The Server page shows only that
+operation set. **A stop takes in a restart Docker made first.** Every
+operation that stops a game (Stop, Restart, Switch, Restore, Rollback, mod
+changes and Update) first takes the look it would otherwise miss, when
+Docker's restart count is above the one Foreman last saw, before it plans:
+it counts the crash, follows the new run's log and drops the old RCON
+connection, exactly as the next poll would. A game back in game, which is
+decided by the log or by RCON answering (Factorio opens RCON only once in
+game), is then warned about and saved, as Stop and Restart always do for a
+game in game. A game not yet in game is stopped without a warning or save,
+and a Stop is never refused for it; an operation that needs a game in game
+or stopped (Update, mod changes) still refuses a game that is loading, and
+no refusal tells the user to stop it. A crash in the instant between this
+look and the plan still takes the plain-stop path. The Server page shows only that
 summary, masked like every log line, and links to the full log on the
 Console page (8.6); it
 never guesses a reason. (P0 to detect a crash; P1 to name the reason)
@@ -2409,8 +2429,13 @@ memory and is checked in full before anything is written (5.12). A save whose
 name ends in `.tmp.zip` is refused. **Every upload uses one drop zone**
 (DESIGN 7.10): its checks of type, count and size only answer sooner, and the
 server checks every upload as before. An upload happens in place when its
-result is used on that page; otherwise a button goes to the tab that owns the
-file. (P0)
+result is used on that page; otherwise a link marked with a chevron goes to
+the tab that owns the file (the Mods tab to Saves, a world's mod settings
+to Mods, an empty Worlds list to Import). A link takes you somewhere and a
+button does something, so such a link is never drawn as a button. A link
+that leaves Foreman opens in a new tab and ends in `↗`; both marks are
+drawn by the page's styles and are not part of the link's name. Every link
+that opens a new tab points off the site, and a test checks it. (P0)
 
 14.7. **Requests that change state** require a signed-in session and
 protection against cross-site request forgery. A browser post is accepted
@@ -2716,8 +2741,18 @@ download begins. (P1)
 17.16. **Defaults show.** A settings form never shows an empty box that
 hides the value in effect: a field the file leaves unset shows that value as
 a placeholder and in a hint that carries its meaning, and a checkbox shows the
-default state. A write-only secret is the exception. The game settings form
-follows the rule (11.1); the other forms do not yet (issue #636). (P1)
+default state. Every settings form follows the rule: the game settings form
+(11.1), the mod settings (the world's file, else the defaults file, else the
+mod's own default), the restart schedule and the webhook form (new ones start
+filled with Foreman's defaults), Generate (the seed's hint says a blank seed
+is random) and the version boxes (the hint says a typed version is used
+instead of the choice). Two forms are exempt: the factorio.com account, whose
+username and token are write-only secrets (11.4), and the raw settings editor,
+which edits the file as text, where adding keys the file lacks would change
+the file. A mod setting whose value differs from the mod's own default shows
+a hint under the field, "Mod default: X" (booleans as on or off, an empty
+text as empty); nothing extra shows when the value is the default. The hint
+is part of the field's description for screen readers. (P1)
 
 17.17. **No long addresses.** No address Foreman builds carries a list or
 long state. State travels by id, or by a server-side record the address names

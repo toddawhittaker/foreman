@@ -3554,3 +3554,127 @@ optional; the review page keeps its answers in a draft in memory (ADR
 - Still deferred: as listed under fixes batch 10, except the gaps about
   favorites with more than 50 mods, out-of-memory on start and the missing
   favorites section in DESIGN.md, which this batch closes.
+
+## Fixes batch 12
+
+Serves SPEC 5.12, 8.7, 14.6 and 17.16, with DESIGN 7.1, 7.8, 7.10, 7.11 and
+8.3 and ADR 0023. Issues: #636, #646, #656, #657, #658 and #659. The plan was
+#660. The pull requests were #661 (a stop sees a restarted game), #662 (one
+foldout style), #663 (favorites rows and Rename), #664 (link marks, Saves file
+names, mod default hint) and #665 (integration fixes).
+
+Rulings (Todd, 2026-11-16): a link to another tab ends in a chevron and a link
+that leaves Foreman ends in `↗`, both drawn in CSS so neither is read aloud;
+one foldout style, with `.plan-panel__list` taking only the orange marker;
+Emergency actions keeps its red label and only its marker is orange; a
+favorite can be renamed under Make's name rules; a "Mod default: X" hint shows
+under a mod setting that differs from the mod's default. Orchestrator rulings:
+the foldout class stays `disclosure`; a rename takes the favorites lock and is
+not audited; a Stop is never refused for a game not in game, and a game in
+game is always warned and saved.
+
+### Delivered
+
+- **A stop sees a game back from a crash (#646, SPEC 8.7, ADR 0023; #661).**
+  Every operation that stops a game now takes the monitor's missed look at a
+  restart Docker made before it plans, so Stop, Restart, Switch, Restore,
+  Rollback, mod changes and Update treat a game back in game as in game: it is
+  warned and saved. When the log has not yet said "in game", the stop asks
+  RCON, which Factorio opens only once in game. A game not yet in game is
+  stopped without a warning or save, never refused, and no refusal tells the
+  user to "stop it". New tests run with the monitor off and failed before the
+  change; the crash-loop tests still pass.
+- **One foldout style (#657, DESIGN 7.8; #662).** Every `details.disclosure`
+  has the orange triangle, a bold label, a fill under a pointer that can hover,
+  a compact row with a fine pointer and 44 px on touch, and a line only
+  between stacked foldouts. Generate's planet rows and the raw JSON foldout
+  use it. The old button look, the `disclosure--add` plus style and the
+  snapshot narrow-row link look are gone. The plan panel's list keeps its bar
+  and takes only the marker. The player list's name, the row menus and the user
+  menu are unchanged.
+- **Favorites are closed rows with Details, and can be renamed (#658, SPEC
+  5.12, DESIGN 7.11; #663, #665).** Each row shows the name and a line of
+  facts, with Generate ("Generate a world from {name}") at its right end.
+  Details holds made from and on, the mods, the exchange string, Rename, and
+  Export and Delete. The export warning shows once. Rename is
+  `POST /favorites/{id}/rename`; it follows Make's rules, allows a change of
+  case to the favorite's own name, rewrites only `favorite.json`, and shows
+  "Renamed the favorite to ..." from the favorite's current name. A refusal
+  re-opens that favorite's Details with the error. The name field's limit
+  comes from the server's own. Browsers without `::details-content` place the
+  open body on the second row, across the whole row.
+- **Link marks (#656, SPEC 14.6, DESIGN 7.1, 7.10; #664).** The three links to
+  another tab's upload (Mods to Saves, mod settings to Mods, an empty Worlds
+  list to Import) are plain links ending in a chevron (`link-tab`), not
+  buttons. One rule on `a[target="_blank"]` ends every link out, including mod
+  titles linked to the portal, in `↗`. The changelog link on the versions page
+  now opens in a new tab with the hidden "opens in a new tab" text. A Go test
+  checks that every new-tab link points off the site and has
+  `rel="noopener noreferrer"`, and that every `https://` link opens in a new
+  tab.
+- **Saves file names on their own line (#659, SPEC 5.11, DESIGN 8.3; #664).**
+  An autosave's file name sits under its "World, date time" label, muted, and
+  the label uses tabular numbers, so file names line up at the label's left
+  edge on desktop and at 320 px.
+- **Mod default hint (#636, SPEC 17.16; #664).** A mod setting whose value
+  differs from the mod's default shows "Mod default: X" under the field, in
+  the field's description. The other forms in the #636 list were already
+  compliant; the account form and the raw settings editor are exempt (SPEC
+  17.16).
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck`, its Go tests
+  and its end-to-end specs on all four projects (phone and desktop, dark and
+  light, axe clean), at 320 px and 200% text in German and Russian for the
+  UI tasks. The whole `internal/web` package takes over three minutes, so L1
+  ran it in slices.
+- G1's new tests failed on the base (`TestStopWarnsAGameBackInGameBeforeAnyLook`,
+  `TestOnlyRunningRestartsAGameBackInGameBeforeAnyLook`; two more failed on
+  the first head) and pass now, also under `-race -count=3`.
+- The new foldout spec (`foldouts.spec.ts`) covers the line rules, the marker
+  colour and turn, the focus ring and 44 px rows under touch emulation. The
+  `@supports` fallback was checked by hand in Chromium with a plain div
+  standing in for an old browser's Details: the body was 600 px wide on row 2,
+  and without the rule it sat on Generate.
+
+### Flaky tests fixed
+
+Three tests failed once or more under heavy machine load during the batch.
+Each was diagnosed:
+
+- **Mod plan adds could fail under contention (a real bug).** With hundreds
+  of writers at once, SQLite's busy timeout does not serve waiting writers in
+  turn, so some adds failed with "database is locked". Mod plan writes now
+  queue in Foreman before they reach the database, and the test fails on any
+  error except "plan full" (#668).
+- **The failed-switch test read the page too early (test only).** The reason
+  sentence is stored a moment after the failed state shows, and the live page
+  sends a fresh copy once it is; the test now waits for it (#668).
+- **The drop-zone upload test timed out (test only).** The shared `dropFile`
+  helper sent a 4 MB file as an array of numbers; it now sends base64, and the
+  test takes about 3.5 s instead of 30 to 56 s (#667).
+
+### Gaps left
+
+- **A crash in the instant between the catch-up and the stop plan** still
+  takes the plain-stop path (no warning or save). The window is microseconds,
+  not a poll interval.
+- **A stale monitor look applied after the catch-up** can wind the run's start
+  time back until the next poll. The RCON check still warns and saves.
+- **The plan bar's CSS triangle does not flip for right-to-left text.** There
+  is no right-to-left language today.
+- **The foldout end-to-end checks cover one page per kind**, not every
+  foldout.
+- **The link-mark guard test reads templates only.** A `target="_blank"` link
+  built in Go or JavaScript would pass it; there is none today.
+- **A long `link-tab` label that wraps on a phone** shows its chevron at the
+  middle right of the wrapped text, not after the last word.
+- **`link-tab` marks the three "upload on another tab" links** (SPEC 14.6).
+  Ordinary navigation links inside Foreman (tabs, breadcrumbs, list rows)
+  carry no chevron.
+- **Closed from batch 11:** the gaps about other forms showing no defaults
+  (#636) and a game back from a crash briefly treated as crashed (#646). The
+  batch 11 note that an upload for another tab is a button is replaced by the
+  link rule in SPEC 14.6.
+- Still deferred: as listed under fixes batch 11.

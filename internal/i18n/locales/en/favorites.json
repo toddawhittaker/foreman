@@ -4,7 +4,7 @@
   "favorites.fact.source": "Made from",
   "favorites.fact.mods": "Mods",
   "favorites.fact.created": "Made on",
-  "favorites.generate": "Generate from it",
+  "favorites.generate": "Generate",
   "favorites.empty": "No favorites yet. Open a world and use \"Make favorite\" on its page.",
   "favorites.empty.link": "Go to the worlds",
   "favorites.list.link": "See all favorites",
@@ -48,7 +48,6 @@
   "favorites.error.map_damaged": "This favorite's map settings are damaged, so Foreman cannot fill them in. Choose another favorite, or delete this one and make it again from a world.",
   "favorites.export.button": "Export",
   "favorites.export.warning": "Export downloads a favorite as a file to share or move to another Foreman. It includes the mod settings, and a mod may keep a token or other private value there, so share it only with people you trust.",
-  "favorites.mods.show": "Show the mods",
   "favorites.import.heading": "Import a favorite",
   "favorites.import.text": "Add a favorite from a file another Foreman exported. Mods this Foreman lacks are still imported, and Generate's mod review shows them. A game version this Foreman does not support is replaced by the default version on Generate.",
   "favorites.import.label": "Favorite file",
@@ -56,5 +55,14 @@
   "favorites.import.done": "Imported the favorite \"{name}\".",
   "favorites.import.bad": "This is not a favorite file Foreman can read, or it is damaged. Nothing was imported.",
   "favorites.import.name_taken": "A favorite with this file's name already exists. Rename or delete that favorite, then import again.",
-  "favorites.exchange.show": "Map exchange string"
+  "favorites.exchange.show": "Map exchange string",
+  "favorites.generate.label": "Generate a world from {name}",
+  "favorites.no_space_age": "No Space Age",
+  "favorites.mods.count": {
+    "one": "{count} mod",
+    "other": "{count} mods"
+  },
+  "favorites.rename.label": "New name",
+  "favorites.rename.button": "Rename",
+  "favorites.renamed": "Renamed the favorite to \"{name}\"."
 }

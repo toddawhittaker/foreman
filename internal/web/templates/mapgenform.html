@@ -53,7 +53,7 @@
   {{template "ms-group" .}}
   {{- end}}
   {{- end}}
-  <details id="mg-raw-details"{{if .MapGen.RawOpen}} open{{end}}>
+  <details class="disclosure" id="mg-raw-details"{{if .MapGen.RawOpen}} open{{end}}>
     <summary>{{t "mapgen.raw.summary"}}</summary>
     {{- with .MapGen.Raw}}
     <div class="field">
@@ -87,7 +87,7 @@
 {{- end}}
 {{- else}}
 {{- range .}}
-<details id="{{.ID}}" name="planet-{{.Tab}}" data-planet="{{.Planet}}" data-said="{{t "mapgen.planet.preview_said" "planet" (msg .Summary)}}"{{if .Open}} open{{end}}>
+<details class="disclosure" id="{{.ID}}" name="planet-{{.Tab}}" data-planet="{{.Planet}}" data-said="{{t "mapgen.planet.preview_said" "planet" (msg .Summary)}}"{{if .Open}} open{{end}}>
   <summary>{{msg .Summary}}</summary>
   <div class="mapgen-body">
     {{- with .All}}{{template "mapgen-all" .}}{{end}}

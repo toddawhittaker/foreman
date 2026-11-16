@@ -204,7 +204,7 @@ func TestModSettingsFormShowsTheSettings(t *testing.T) {
 	}
 	intID := fieldOf("fm-sta-int", modsettings.Startup)
 	wantIn(t, "form", body,
-		`<label for="`+intID+`" class="required">Startup integer</label>`, `required aria-describedby="`+intID+`-hint"`,
+		`<label for="`+intID+`" class="required">Startup integer</label>`, `required aria-describedby="`+intID+`-hint `+intID+`-default"`,
 		`<div hx-swap-oob="innerHTML:#announcer">Mod settings loaded.</div>`, `inputmode="numeric"`,
 		`<input type="text" id="`+intID+`" name="`+intID+`" value="`,
 		`<p class="hint" id="`+intID+`-hint">An integer from 1 to 10.</p>`,
@@ -364,7 +364,7 @@ func TestModSettingsRefusesABadValue(t *testing.T) {
 		t.Fatalf("status %d", rep.StatusCode)
 	}
 	wantIn(t, "refusal", rep.body, `id="error-summary"`, `href="#`+intID+`"`, `value="42"`,
-		`aria-describedby="`+intID+`-hint `+intID+`-error" aria-invalid="true"`,
+		`aria-describedby="`+intID+`-hint `+intID+`-default `+intID+`-error" aria-invalid="true"`,
 		"Enter a value from 1 to 10 for Startup integer.")
 	if string(g.settingsFile(id)) != string(before) || g.modSnapshots(id) != 0 {
 		t.Error("a refused value changed the world")
@@ -739,5 +739,78 @@ func TestClipSummary(t *testing.T) {
 	}
 	if s := planSummary(plan); !utf8.ValidString(s) || len(s) > maxSummary+len("…") {
 		t.Errorf("plan summary is %d bytes, valid=%v", len(s), utf8.ValidString(s))
+	}
+}
+
+// settingsFileWith is the game's own defaults file with the fmtest startup
+// settings set to the given values.
+func settingsFileWith(t *testing.T, set map[string]modsettings.Value) []byte {
+	t.Helper()
+	defaults, err := modsettings.Decode(gameFile(t, "2.0.77"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := modsettings.Decode(gameFile(t, "2.0.77"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, v := range set {
+		if err := f.Set(modsettings.Startup, name, v, defaults); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	b, err := f.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// SPEC 17.16, #636: under a setting whose value differs from the mod's
+// default the form says what the default is, for every kind of control, and
+// the control's description names the note. A setting at its default gets no
+// note.
+func TestModSettingsShowsTheModDefaultOnlyWhenItDiffers(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+
+	// Every setting at the mod's default: no note anywhere.
+	atDefault := map[string]modsettings.Value{
+		"fm-sta-bool":   {Type: modsettings.TypeBool, Bool: true},
+		"fm-sta-int":    {Type: modsettings.TypeInt, Int: 5},
+		"fm-sta-double": {Type: modsettings.TypeDouble, Double: 1.5},
+		"fm-sta-string": strVal("red"),
+		"fm-sta-color":  {Type: modsettings.TypeColor, Color: modsettings.Color{R: 1, G: 0.5, B: 0, A: 1}},
+	}
+	g.writeSettingsFile(id, settingsFileWith(t, atDefault))
+	body, _ := g.settingsForm(id)
+	if strings.Contains(body, "Mod default") || strings.Contains(body, "-default") {
+		t.Errorf("a setting at its default shows a note:\n%s", body)
+	}
+
+	// Every setting away from it.
+	changed := map[string]modsettings.Value{
+		"fm-sta-bool":   {Type: modsettings.TypeBool, Bool: false},
+		"fm-sta-int":    {Type: modsettings.TypeInt, Int: 9},
+		"fm-sta-double": {Type: modsettings.TypeDouble, Double: 2.5},
+		"fm-sta-string": strVal("green"),
+		"fm-sta-color":  {Type: modsettings.TypeColor, Color: modsettings.Color{R: 0, G: 0, B: 1, A: 0.5}},
+	}
+	g.writeSettingsFile(id, settingsFileWith(t, changed))
+	body, _ = g.settingsForm(id)
+	for name, want := range map[string]string{
+		"fm-sta-bool":   "Mod default: on",
+		"fm-sta-int":    "Mod default: <code>5</code>",
+		"fm-sta-double": "Mod default: <code>1.5</code>",
+		"fm-sta-string": "Mod default: <code>red</code>",
+		"fm-sta-color":  "Mod default: <code>#ff8000</code>, opacity 1",
+	} {
+		fid := fieldOf(name, modsettings.Startup)
+		wantIn(t, name, body, `id="`+fid+`-default"`, want)
+		// The control is described by the note (checkbox, select, text and the colour pair).
+		if !regexp.MustCompile(`aria-describedby="[^"]*\b` + fid + `-default\b[^"]*"`).MatchString(body) {
+			t.Errorf("%s: no control is described by its default note", name)
+		}
 	}
 }

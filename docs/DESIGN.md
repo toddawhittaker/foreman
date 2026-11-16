@@ -38,8 +38,8 @@ and nothing in it should suggest it is an official product.
   light (`--shadow-card`) and what floats over the page (`--shadow-pop`):
   the user menu, a row's More menu, the selection bar and "Jump to
   newest", and the sign-in box.
-  Corners are 6 px on controls and 8 px on cards, the menu and disclosure
-  rows.
+  Corners are 6 px on controls and foldout rows under the pointer, and
+  8 px on cards and the menu.
 - **Colour that means something.** Neutrals are warm greys. Orange marks
   the one primary button on a screen, the selected tab, checked boxes,
   links, the line across the top of the header and the live world's edge in
@@ -190,7 +190,7 @@ dialog (black at 50%) and the shadows' own values (4).
 |---|---|---|---|
 | `--color-bg` | `#14110e` | `#ece9e3` | The page |
 | `--color-surface` | `#26211c` | `#fffdfa` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#332c25` | `#f4f0e9` | The secondary button's face, the user menu's button, disclosure rows, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-raised` | `#332c25` | `#f4f0e9` | The secondary button's face, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
 | `--color-deep` | `#0e0c0a` | `#ffffff` | Form fields, the log and console |
 | `--color-line` | `#4a4239` | `#d9d4cb` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
 | `--color-text` | `#ede7de` | `#1c1915` | Body text, field text |
@@ -390,7 +390,7 @@ Other fixed values, also tokens:
 | Token | Value | Use |
 |---|---|---|
 | `--radius` | 6px | Buttons, fields, the menu button, messages, the log |
-| `--radius-lg` | 8px | Cards, the confirmation box, the menu panel, disclosure rows, the Generate preview column |
+| `--radius-lg` | 8px | Cards, the confirmation box, the menu panel, the Generate preview column |
 | `--border-width` | 1px | Every border except the ones below |
 | `--focus-width` | 3px | Focus outline |
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
@@ -894,8 +894,18 @@ the block padding is `--space-2` so a two-line label is not cramped.
   row is the last item of the row's More actions menu, also in
   `danger-text` (8.11). Either opens the confirmation, so the filled danger
   button is still kept for the confirming step (7.4).
-- Use `<a class="button">` only for navigation that looks like an action
-  ("Upload a save" leading to the upload page). Anything that changes
+- **Links take you somewhere; buttons do something.** A link to another
+  tab or page inside Foreman is plain underlined text ending in a chevron
+  (class `link-tab`, drawn in CSS from `--i-chevron`), never a button: the
+  three links to another tab's upload (Mods to Saves, mod settings to Mods,
+  an empty Worlds list to Import) are of this kind. A link that leaves
+  Foreman opens in a new tab, says so in hidden text ("opens in a new tab"),
+  and ends in `↗`. One rule on `a[target="_blank"]` draws the arrow, so every
+  link out has it, including a mod's title linked to the portal. Both marks
+  are drawn in CSS with empty alt text, so neither is read aloud or part of
+  the link's name. A link is still a 44 px target. `<a class="button">` is
+  kept for the few links that are drawn as actions in their own right
+  (Force stop, the risky "Delete world" link above). Anything that changes
   state is a `<button>` inside a `<form method="post">`.
 - **No disabled buttons to hide a reason.** If an action is not available
   ("Delete world" on the active world, SPEC 5.10), leave the button out
@@ -1510,18 +1520,31 @@ on its background instead of one long list.
   (name beside value) and the one-line explanation on a single wrapping row,
   so the forms and the list stay near the top. A warning inside it takes a
   row of its own.
-- **Disclosure rows.** A closed `details.disclosure` is drawn as a
-  full-width row: `raised` face, 1 px `line` border, `--radius-lg`, summary
-  in `heading` at weight 600, with a chevron at the end (drawn in CSS, as
-  the user menu's, and turned when open). Under the pointer the edge turns
-  `border` and the face `secondary-hover`. It reads as something that
-  opens, not a link. Used for "Or start anyway" (7.4), the steps that were
-  not run (7.6), "N other mods stay as they are" and the upload and replace
+- **Foldouts** (`details.disclosure`). One style for every foldout; the
+  class stays `disclosure`. The summary is a `list-item` with the browser's own triangle (`::marker`) at
+  its start, coloured `primary`: it points ahead when closed and down when
+  open. The label is `heading` at weight 600, with no face, border or
+  shadow at rest. Under a pointer that can hover (`@media (hover: hover)`) the row fills with
+  `secondary-hover` at `--radius`; its side padding of `--space-1` and a matching negative
+  margin keep the words still. Focus keeps the normal ring. With a fine
+  pointer the row is compact (`min-block-size: 1.75rem`, `--space-1` above
+  and below); on touch it is `--target-min`. A lone foldout has no line
+  above it; one directly after another gets a 1 px `line` rule above it,
+  so stacked rows such as Generate's planets and the raw settings read as
+  a list. "Emergency actions" keeps its `danger` label; only its marker is
+  orange. The plan list's summary on the mod portal keeps its 44 px bar
+  and draws the same orange triangle itself, without the compact size or
+  the hover fill. Used for "Or start anyway" (7.4), the steps that were not
+  run (7.6), "N other mods stay as they are" and the upload and replace
   forms (8.11), "Replace the account" (8.11), the version not in the list
-  (8.6), the resource amounts as text (8.8), "Mod tools" on the Mods tab
-  below 64rem (8.11), "Emergency actions" on the Server page on a phone
-  (6), a snapshot row's "Details" on a phone (8.3) and "What saving does"
-  (7.4). The mod search results' own Details toggle is not one.
+  (8.6), Generate's planet rows and raw settings, the resource amounts as
+  text (8.8), "Mod tools" on the Mods tab below 64rem (8.11, keeping its
+  settings icon), "Emergency actions" on the Server page on a phone (6),
+  a snapshot row's "Details" on a phone (8.3), "Jump to section" and
+  Network in server settings, past console messages and "What saving
+  does" (7.4). Not foldouts: a player's name in the players table (8.12,
+  its chevron at the end), the row menus, the user menu and the mod search
+  results' own Details toggle.
 
 ### 7.9 Line icons
 
@@ -1603,26 +1626,50 @@ a page loads in its `scripts` block. The page builds a `DropZone`
 - One file per zone.
 
 **Where an upload happens.** An upload happens in place, in a drop zone,
-when its result is used on that page. Otherwise the page offers a button,
-never a link, that goes to the tab that owns the file ("Upload a save" on
-the Mods tab goes to the Saves tab). Button words name the file: "Upload
-a save", "Upload a mod zip", "Replace mod-settings.dat".
+only where its result is used on that page. Otherwise the page links to the
+tab that owns the file, as a `link-tab` link (7.1), not a button: "Upload a
+save" on the Mods tab goes to the Saves tab, mod settings link to the Mods
+tab, and an empty Worlds list links to Import. The link's words name the
+file: "Upload a save", "Upload a mod zip", "Replace mod-settings.dat".
 
 ### 7.11 Favorites: export and import (SPEC 5.12)
 
-The Favorites page lists each favorite with its facts, a folded "Show the
-mods" list and three actions: Generate from it, Export and the trash-icon
-Delete.
+The Favorites page lists each favorite as one closed row, stacked with a
+1 px `--color-line` line between rows, as stacked foldouts are (7.8).
 
-- **Mods by title.** The folded list shows each mod with the `mod-name`
+- **The closed row.** The favorite's name, bold, is the summary of a
+  "Details" foldout (`details.disclosure`), with a muted line of facts
+  under it: game version · Space Age or No Space Age · N mods. Generate
+  sits at the row's right end, on phones too, outside the summary and
+  beside it on the row's grid. Its face is the Worlds tab's globe with a
+  small plus at its lower right and the word "Generate"; its accessible
+  name says which favorite: "Generate a world from {name}". Details shares
+  the row's grid (subgrid), so its body spans the whole row once open.
+- **Inside Details, in order:** made from and made on; the mod list, two
+  columns once there is room; the map exchange string with its Copy
+  button; Rename (a name field and a Rename button on one line); then
+  Export and the red bin Delete on one line, last. The mod list and the
+  exchange string are headed sections, not foldouts of their own. In a
+  browser without `::details-content` (Firefox before 143, older Safari),
+  an `@supports not selector(::details-content)` rule places the open body on
+  the second row across the whole row, so it neither squeezes into the name's
+  column nor overlaps Generate.
+- **Rename** posts to `/favorites/{id}/rename` and follows Make's name
+  rules and error text (not empty, at most 100 characters, no name another
+  favorite has, ignoring case; a change of case to its own name is
+  allowed). It rewrites only `favorite.json`. Success returns to the list
+  with "Renamed the favorite to "{name}"."; a refusal shows the list again
+  with that favorite's Details open and the error on its field. It works
+  without script.
+- **Mods by title.** The mod list shows each mod with the `mod-name`
   partial: its title from `info.json`, kept in `favorite.json` when the
   favorite was made, linked to its portal page in a new tab, with its
   pinned version beside it. A favorite made before titles were kept shows
   the mod's name instead.
 - **Export** is a quiet button that downloads `<name>-favorite.zip`: the
   favorite's folder as it is on disk, plus `foreman-favorite.json`, which
-  holds the file's format version. A warning above the list, tied to every
-  Export button, says the file holds the mod settings and that a mod may
+  holds the file's format version. A warning, once at the top of the list and
+  tied to every Export button, says the file holds the mod settings and that a mod may
   keep a token there, so it should be shared only with people trusted.
   Server settings never hold a password (SPEC 14.8).
 - **Import** is its own section under the list, with one drop zone (7.10)
@@ -1761,6 +1808,10 @@ visually hidden header, so they line up whatever the names' lengths; the
 newest save's button is named "Load next: the newest save". When the panel
 is 14 to 24rem wide (a phone), each saves row is a grid with fixed size
 and time columns and the button on its own line under them.
+An autosave's label in the saves table is "World, date time" in tabular
+numbers, and its file name sits on a second line under it, muted, so every
+file name starts at the label's left edge; the "Loads next" badge stays
+beside the label.
 A time is three units: the date, the clock and the zone. None breaks inside
 itself, and a wide zone such as `GMT+5:45` drops to its own line after the
 clock. Each language keeps its own order (Chinese puts the zone first), and

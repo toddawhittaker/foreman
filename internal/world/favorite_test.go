@@ -1,10 +1,12 @@
 package world
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -342,5 +344,66 @@ func TestGenerateRefusesOversizedModSettings(t *testing.T) {
 	}
 	if list, _ := m.List(context.Background()); len(list) != 0 {
 		t.Errorf("a world was made: %v", list)
+	}
+}
+
+func TestFavoriteRename(t *testing.T) {
+	ctx := context.Background()
+	f, m := newTestFavorites(t)
+	wid, err := m.Create(ctx, "W", "2.0.77", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := f.Make(ctx, wid, "Club start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Make(ctx, wid, "Other"); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]error{
+		"   ":                                  ErrFavoriteNameEmpty,
+		strings.Repeat("x", MaxFavoriteName+1): ErrFavoriteNameBad,
+		"OTHER":                                ErrFavoriteNameTaken,
+	} {
+		if err := f.Rename(ctx, id, name); !errors.Is(err, want) {
+			t.Errorf("rename to %q: %v, want %v", name, err, want)
+		}
+	}
+	if err := f.Rename(ctx, "ffffffffffffffff", "New"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("missing favorite: %v", err)
+	}
+	if err := f.Rename(ctx, "../x", "New"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("bad id: %v", err)
+	}
+	if err := f.Rename(ctx, id, "CLUB START"); err != nil {
+		t.Errorf("case-only change: %v", err)
+	}
+	if err := f.Rename(ctx, id, "  Rail world  "); err != nil {
+		t.Fatal(err)
+	}
+	fav, _, err := f.Get(id)
+	if err != nil || fav.Name != "Rail world" || fav.GameVersion != "2.0.77" || fav.FormatVersion != favoriteFormat {
+		t.Errorf("after rename %+v, %v", fav, err)
+	}
+	exported, data, err := f.Export(id)
+	if err != nil || exported.Name != "Rail world" {
+		t.Fatalf("export %+v, %v", exported, err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, e := range zr.File {
+		if e.Name == FavoriteFile {
+			rc, _ := e.Open()
+			b, _ := io.ReadAll(rc)
+			_ = rc.Close()
+			found = bytes.Contains(b, []byte(`"Rail world"`))
+		}
+	}
+	if !found {
+		t.Error("the exported favorite.json lacks the new name")
 	}
 }

@@ -229,6 +229,46 @@ func (f *Favorites) save(ctx context.Context, fav Favorite, files FavoriteFiles)
 	return id, nil
 }
 
+// Rename gives favorite id a new name with the same rules as Make. A name
+// another favorite has, ignoring case, is refused; a change of case to its
+// own name is allowed. Only favorite.json is rewritten, atomically, under
+// makeMu so two favorites cannot end up with one name.
+func (f *Favorites) Rename(ctx context.Context, id, name string) error {
+	name, err := checkFavoriteName(name)
+	if err != nil {
+		return err
+	}
+	if !favoriteIDRE.MatchString(id) {
+		return fs.ErrNotExist
+	}
+	f.makeMu.Lock()
+	defer f.makeMu.Unlock()
+	existing, err := f.List(ctx)
+	if err != nil {
+		return err
+	}
+	for _, e := range existing {
+		if e.ID != id && strings.EqualFold(e.Name, name) {
+			return ErrFavoriteNameTaken
+		}
+	}
+	root, err := openFolder(f.dir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	fav, err := readFavorite(root, id)
+	if err != nil {
+		return err
+	}
+	fav.Name = name
+	desc, err := json.MarshalIndent(fav, "", "  ")
+	if err != nil {
+		return err
+	}
+	return WriteFileAtomic(root, path.Join(id, FavoriteFile), desc)
+}
+
 // fromWorld reads what a favorite keeps from a world. It never writes.
 func (f *Favorites) fromWorld(worldID string) (Favorite, FavoriteFiles, error) {
 	root, err := f.worlds.OpenWorld(worldID)

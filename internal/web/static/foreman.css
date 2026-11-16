@@ -2531,27 +2531,6 @@ td > .hint {
     font-size: var(--text-sm);
   }
 
-  .snapshot-list:has(.row-actions) .snap-details > summary {
-    display: inline-flex;
-    inline-size: fit-content;
-    padding: 0 var(--space-2);
-    margin-inline-start: calc(-1 * var(--space-2));
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-    color: var(--color-link);
-    font-size: var(--text-sm);
-  }
-
-  .snapshot-list:has(.row-actions) .snap-details > summary::after {
-    margin-inline: var(--space-1) 0;
-  }
-
-  .snapshot-list:has(.row-actions) .snap-details > summary:hover {
-    background: var(--color-raised);
-    border-color: var(--color-line);
-  }
-
   .snapshot-list:has(.row-actions) .snap-details > p {
     margin: var(--space-1) 0 0;
     color: var(--color-text-muted);
@@ -2969,10 +2948,6 @@ td > .hint {
       block-size: 1.5rem;
     }
 
-    .js-on .mode-panel summary {
-      min-block-size: 1.5rem;
-      padding-block: var(--space-1);
-    }
   }
 }
 
@@ -3179,26 +3154,45 @@ td > .hint {
   border: 2px solid var(--color-danger-text);
 }
 
-/* A planet's controls, the raw box and the typed version fold away; the summary is the whole target. */
-.mode-panel details {
-  border-block-start: var(--border-width) solid var(--color-line);
-}
-
-.mode-panel summary,
-.disclosure > summary {
+/* A foldout (DESIGN 7.8): the browser's own triangle in orange, a bold
+   label, no face at rest. Hover fills the row; the side padding and its
+   negative margin keep the words still. 44 px on touch, compact with a
+   fine pointer. Only a foldout directly after another gets a line above
+   it, so stacked rows (Generate's planets) read as a list. The player
+   name in the players table keeps its own look (8.12). */
+.disclosure:not(.player-actions) > summary {
   display: list-item;
   list-style-position: inside;
   min-block-size: var(--target-min);
-  padding-block: var(--space-3);
+  padding: var(--space-3) var(--space-1);
+  margin-inline: calc(-1 * var(--space-1));
   box-sizing: border-box;
+  border-radius: var(--radius);
+  color: var(--color-heading);
   font-weight: 600;
   cursor: pointer;
   overflow-wrap: anywhere;
 }
 
-.disclosure > summary {
-  color: var(--color-text);
-  font-weight: 400;
+.disclosure:not(.player-actions) > summary::marker {
+  color: var(--color-primary);
+}
+
+@media (hover: hover) {
+  .disclosure:not(.player-actions) > summary:hover {
+    background: var(--color-secondary-hover);
+  }
+}
+
+.disclosure + .disclosure {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+@media (pointer: fine) {
+  .disclosure:not(.player-actions) > summary {
+    min-block-size: 1.75rem;
+    padding-block: var(--space-1);
+  }
 }
 
 .mapgen-body,
@@ -4564,6 +4558,40 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
+/* Links (DESIGN 7.1). A link to another tab ends in a chevron (class
+   link-tab); a link that leaves Foreman ends in a diagonal arrow. Both marks
+   are drawn here, not written in the text, so a screen reader does not read
+   them as part of the link's name. */
+.link-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--target-min);
+}
+
+.link-tab::after {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+a[target="_blank"]::after {
+  content: "↗︎" / "";
+  margin-inline-start: 0.2em;
+  font-size: 0.85em;
+  text-decoration: none;
+  display: inline-block;
+}
+
+@media (forced-colors: active) {
+  .link-tab::after {
+    background: LinkText;
+  }
+}
+
 /* A mod plan that destroys nothing is not a danger box (DESIGN 7.1, 8.11). */
 .confirm--plain {
   border-color: var(--color-line);
@@ -5563,44 +5591,28 @@ main:has(> .gate) > h1 {
   text-underline-offset: 0.2em;
 }
 
-/* A disclosure is a full-width row with a chevron at its end, drawn like
-   the account menu's, so it reads as something that opens, not a link.
-   The class twice keeps the weight these rules had, so a later one-class
-   rule for a summary (.mod-rail) still loses. */
-.disclosure.disclosure > summary {
-  display: flex;
-  align-items: center;
-  gap: 0 0.3em;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-raised);
-  color: var(--color-heading);
-  border: var(--border-width) solid var(--color-line);
-  border-radius: var(--radius-lg);
-  font-weight: 600;
+/* The player name's chevron (8.12): the one disclosure that keeps a
+   chevron at its end instead of the foldout triangle. */
+.player-actions.disclosure > summary {
   list-style: none;
+  cursor: pointer;
 }
 
-.disclosure.disclosure > summary::-webkit-details-marker {
+.player-actions.disclosure > summary::-webkit-details-marker {
   display: none;
 }
 
-.disclosure.disclosure > summary:hover {
-  border-color: var(--color-border);
-  background: var(--color-secondary-hover);
-}
-
-.disclosure.disclosure > summary::after {
+.player-actions.disclosure > summary::after {
   content: "";
   flex: none;
   inline-size: 0.5rem;
   block-size: 0.5rem;
-  margin-inline: auto var(--space-1);
   border-inline-end: 2px solid currentColor;
   border-block-end: 2px solid currentColor;
   transform: translateY(-2px) rotate(45deg);
 }
 
-.disclosure.disclosure[open] > summary::after {
+.player-actions.disclosure[open] > summary::after {
   transform: translateY(2px) rotate(-135deg);
 }
 
@@ -7070,19 +7082,6 @@ main > .message > :is(p, ul) {
   line-height: 1.43;
 }
 
-/* A disclosure's summary is the secondary button with a chevron at its end. */
-.disclosure:not(.player-actions, .resource-text) > summary {
-  min-block-size: var(--target-min);
-  border-color: var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: inset 0 1px 0 light-dark(rgb(255 255 255 / 70%), rgb(255 255 255 / 7%)),
-    0 1px 0 light-dark(rgb(60 45 25 / 10%), rgb(0 0 0 / 40%));
-}
-
-.disclosure:not(.player-actions, .resource-text) > summary:hover {
-  border-color: var(--color-text-muted);
-}
-
 /* All snapshots: a world's name, what its snapshots add and its shortcut
    share one raised band, so each button's reach is plain. */
 .group > .group__head {
@@ -7716,10 +7715,6 @@ main:has(> .gate)::before {
   background: var(--color-surface);
 }
 
-.mod-settings-will > summary {
-  font-weight: 600;
-}
-
 /* Server: the run's facts and live load as equal cells on one label line,
    divided by hairlines; two to a row on a phone. */
 .facts.stat-grid {
@@ -7956,49 +7951,6 @@ main:has(> .gate)::before {
   }
 }
 
-/* A disclosure that adds an optional field (Generate's typed version) is a
-   quiet text button with a plus, not a box that looks like a second select. */
-.disclosure.disclosure--add > summary {
-  display: inline-flex;
-  inline-size: fit-content;
-  gap: var(--space-2);
-  min-block-size: var(--target-min);
-  padding: 0 var(--space-1);
-  background: transparent;
-  color: var(--color-link);
-  border: 0;
-  box-shadow: none;
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.disclosure.disclosure--add > summary:hover {
-  background: transparent;
-  text-decoration: underline;
-}
-
-.disclosure.disclosure--add > summary::before {
-  content: "";
-  flex: none;
-  inline-size: 1rem;
-  block-size: 1rem;
-  background: currentColor;
-  mask: var(--i-plus) center / contain no-repeat;
-  transition: transform var(--dur-2) var(--ease);
-}
-
-.disclosure.disclosure--add[open] > summary::before {
-  transform: rotate(45deg);
-}
-
-.disclosure.disclosure--add > summary::after {
-  content: none;
-}
-
-.version-fields > .disclosure--add {
-  margin-block-start: calc(-1 * var(--space-2));
-}
-
 /* Helper text: 14 px at a 1.5 line height, held to about 60 characters, so
    it reads as help under its field and never competes with content. */
 .hint,
@@ -8050,6 +8002,10 @@ main > h1 + p.hint {
 
 .disclosure.emergency > summary {
   color: var(--color-danger-text);
+}
+
+.disclosure.emergency > summary::marker {
+  color: var(--color-primary);
 }
 
 .emergency[open] > .danger-row {
@@ -8684,14 +8640,16 @@ main > .panel.danger-zone.danger-zone--blocked {
   display: none;
 }
 
+/* The foldout's orange triangle (DESIGN 7.8), drawn so the bar keeps its
+   flex layout. */
 .plan-panel__list > summary::before {
   content: "";
   flex: none;
-  inline-size: 1rem;
-  block-size: 1rem;
-  background: currentColor;
-  mask: var(--i-chevron) center / contain no-repeat;
-  rotate: -90deg;
+  inline-size: 0.5rem;
+  block-size: 0.6rem;
+  margin-inline: 0.25rem;
+  background: var(--color-primary);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
   transition: rotate var(--dur-1) var(--ease);
 }
 
@@ -8831,16 +8789,11 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-.mod-rail > summary {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-weight: 600;
-}
-
 .mod-rail > summary::before {
   content: "";
-  flex: none;
+  display: inline-block;
+  vertical-align: -0.2em;
+  margin-inline-end: var(--space-2);
   inline-size: 1.125rem;
   block-size: 1.125rem;
   background: currentColor;
@@ -9086,17 +9039,10 @@ main:has(> .gate) > * + :not(h1, .gate) {
     flex: none;
     inline-size: auto;
   }
-
-  .mod-rail #mod-upload > summary {
-    inline-size: fit-content;
-    max-inline-size: 100%;
-    gap: var(--space-3);
-  }
 }
 
 @media (min-width: 64rem) and (pointer: fine) {
-  .mod-rail .split__rail .actions > .button,
-  .mod-rail #mod-upload > summary {
+  .mod-rail .split__rail .actions > .button {
     min-block-size: 2.5rem;
     padding-block: var(--space-1);
   }
@@ -9261,32 +9207,130 @@ main:has(> .gate) > * + :not(h1, .gate) {
   gap: var(--space-3);
 }
 
-/* The favorites list (SPEC 5.12): one row per favorite, no bullets. */
+/* The favorites list (SPEC 5.12, DESIGN 7.11): one row per favorite, a
+   foldout named by the favorite with Generate beside it, outside the
+   summary. Rows are split by the line stacked foldouts get. */
 .favorite-list {
   display: grid;
-  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* P1 favorites export and import (DESIGN 7.11). A favorite's mods fold
-   away so a large pack does not fill the list, and so does its exchange
-   string; each mod's title may wrap. */
-.favorite-mods > summary,
-.favorite-exchange > summary {
-  min-block-size: var(--target-min);
-  display: flex;
-  align-items: center;
-  cursor: pointer;
+.favorite {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  align-items: start;
 }
 
-.favorite-mods ul {
+/* Details shares the row's grid, so its summary takes the first column
+   beside Generate and its body spans the whole row once open. */
+.favorite__details {
   display: grid;
-  gap: 0;
-  margin: var(--space-2) 0 0;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+}
+
+.favorite__details > summary {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.favorite__details::details-content {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* Without ::details-content (Firefox before 143, older Safari) the body is
+   a grid item of Details itself, so it is placed on the second row, across
+   the whole row, below the summary and Generate. */
+@supports not selector(::details-content) {
+  .favorite__details > :not(summary) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+.favorite__generate {
+  grid-column: 2;
+  grid-row: 1;
+  margin-block-start: var(--space-1);
+  gap: var(--space-2);
+}
+
+.favorite + .favorite {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.favorite__name {
+  overflow-wrap: anywhere;
+}
+
+.favorite__facts {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+/* The Worlds tab's globe with a small plus at its lower right. */
+.favorite__generate::before {
+  content: "";
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--i-plus) right bottom / 0.85rem 0.85rem no-repeat, var(--i-worlds) left top / 1rem 1rem no-repeat;
+}
+
+.favorite__body {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--space-4);
+  padding-block: var(--space-2) var(--space-4);
+}
+
+.favorite__part {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.favorite__part > h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.favorite__rename,
+.favorite__body > .actions {
+  margin: 0;
+}
+
+/* Export and the red bin stay on one line, even on a narrow panel. */
+.favorite__body > .actions {
+  flex-wrap: nowrap;
+}
+
+.favorite__body > .actions > .button {
+  flex: none;
+}
+
+/* Each mod's title may wrap; two columns once the row has room. */
+.favorite-mods {
+  display: grid;
+  gap: 0 var(--space-4);
+  margin: 0;
   padding: 0;
   list-style: none;
+}
+
+@container (min-width: 36rem) {
+  .favorite-mods {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .favorite-mods li {
@@ -9390,8 +9434,15 @@ main:has(> .gate) > * + :not(h1, .gate) {
 }
 
 /* Saves tab: an autosave reads as the world's name and time, and its file
-   name sits beside it as smaller, quieter text. */
+   name sits on its own line under them as smaller, quieter text, so every
+   file name starts at the same left edge. The label's digits are tabular, as
+   in the other time cells. */
+.save-label {
+  font-variant-numeric: tabular-nums;
+}
+
 .save-file {
+  flex: 0 0 100%;
   min-inline-size: 0;
   overflow-wrap: anywhere;
   color: var(--color-text-muted);
