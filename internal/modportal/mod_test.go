@@ -314,9 +314,9 @@ func TestParseModDropsReleasesNamedForAnotherMod(t *testing.T) {
 func TestParseModCleansTheTitle(t *testing.T) {
 	long := strings.Repeat("x", 150)
 	for title, want := range map[string]string{
-		"Helper‮exe.gnp": "Helper exe.gnp",
-		" Plain ":        "Plain",
-		long:             strings.Repeat("x", 100) + "…",
+		"Helper\u202eexe.gnp": "Helper exe.gnp",
+		" Plain ":             "Plain",
+		long:                  strings.Repeat("x", 100) + "…",
 	} {
 		b, _ := json.Marshal(map[string]any{"name": "m", "title": title})
 		m, err := parseMod(b)
