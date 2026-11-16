@@ -1,8 +1,11 @@
 package web
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"html"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -329,5 +332,111 @@ func TestGenerateFromAFavoriteOnAnotherLineLetsTheReviewPick(t *testing.T) {
 	q := loc.Query()
 	if strings.Join(q["name"], ",") != "Krastorio2,flib" || q.Get("version-Krastorio2") != "" || q.Get("version-flib") != "" {
 		t.Errorf("review query %v, want names without pinned versions", q)
+	}
+}
+
+func (hn *harness) importFavorite(c *http.Cookie, filename string, content []byte) *httptest.ResponseRecorder {
+	hn.t.Helper()
+	body, ct := multipartBody(hn.t, favoriteImportField, filename, content)
+	r := httptest.NewRequest(http.MethodPost, PathFavoriteImport, body)
+	r.Header.Set("Content-Type", ct)
+	r.AddCookie(c)
+	return hn.serveLong(r)
+}
+
+func TestFavoriteExportAndImport(t *testing.T) {
+	hn, favs := newFavoritesHarness(t)
+	c := hn.signIn()
+	id := favSource(t, hn)
+	favID, err := favs.Make(context.Background(), id, "Club start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := FavoriteRow{world.Favorite{ID: favID}}
+
+	list := hn.get(PathFavorites, withCookie(c)).Body.String()
+	for _, want := range []string{
+		`href="` + row.ExportPath() + `"`, `id="favorite-export-warning"`, "may keep a token",
+		`href="https://mods.factorio.com/mod/Krastorio2"`, `action="` + PathFavoriteImport + `"`,
+		`enctype="multipart/form-data"`, `name="` + favoriteImportField + `"`, `accept=".zip"`,
+	} {
+		if !strings.Contains(list, want) {
+			t.Errorf("list lacks %q", want)
+		}
+	}
+
+	rec := hn.getLong(row.ExportPath(), c)
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/zip" ||
+		!strings.Contains(rec.Header().Get("Content-Disposition"), "Club_start-favorite.zip") {
+		t.Fatalf("export: %d %v", rec.Code, rec.Header())
+	}
+	data := rec.Body.Bytes()
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawServer bool
+	for _, e := range zr.File {
+		rc, err := e.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "hunter2") || strings.Contains(string(b), "tok-abc123") {
+			t.Errorf("unpacked %s holds a secret", e.Name)
+		}
+		if e.Name == world.ServerSettingsFile {
+			sawServer = true
+			if !strings.Contains(string(b), `"max_players"`) || strings.Contains(string(b), "game_password") {
+				t.Errorf("unpacked server settings: %s", b)
+			}
+		}
+	}
+	if !sawServer {
+		t.Error("the export has no server settings")
+	}
+
+	// The same name is refused; once it is deleted the file comes back.
+	rec = hn.importFavorite(c, "Club start-favorite.zip", data)
+	if body := html.UnescapeString(rec.Body.String()); rec.Code != http.StatusBadRequest || !strings.Contains(body, "already exists") ||
+		!strings.Contains(body, `id="favorite-file-error"`) || !strings.Contains(body, `id="error-summary" tabindex="-1" autofocus`) ||
+		!strings.Contains(body, `href="#favorite-file"`) {
+		t.Errorf("clash: %d", rec.Code)
+	}
+	if err := favs.Delete(favID); err != nil {
+		t.Fatal(err)
+	}
+	rec = hn.importFavorite(c, "Club start-favorite.zip", data)
+	if body := html.UnescapeString(rec.Body.String()); rec.Code != http.StatusOK || !strings.Contains(body, `Imported the favorite "Club start".`) {
+		t.Fatalf("import: %d\n%s", rec.Code, body)
+	}
+	got, _ := favs.List(context.Background())
+	if len(got) != 1 || got[0].Name != "Club start" || len(got[0].Mods) != 2 {
+		t.Errorf("after import: %+v", got)
+	}
+}
+
+func TestFavoriteImportRefusesBadFiles(t *testing.T) {
+	hn, favs := newFavoritesHarness(t)
+	c := hn.signIn()
+	for name, data := range map[string][]byte{
+		"not a zip": []byte("hello"),
+		"oversize":  make([]byte, world.MaxFavoriteUpload+1),
+	} {
+		rec := hn.importFavorite(c, "x.zip", data)
+		body := html.UnescapeString(rec.Body.String())
+		if rec.Code != http.StatusBadRequest || !strings.Contains(body, `id="favorite-file-error"`) || !strings.Contains(body, `aria-invalid="true"`) {
+			t.Errorf("%s: status %d", name, rec.Code)
+		}
+	}
+	if list, _ := favs.List(context.Background()); len(list) != 0 {
+		t.Errorf("%d favorites after refusals", len(list))
+	}
+	if rec := hn.getLong(PathFavorites+"/ffffffffffffffff/export", c); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown export: %d", rec.Code)
 	}
 }

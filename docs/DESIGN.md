@@ -1606,6 +1606,48 @@ never a link, that goes to the tab that owns the file ("Upload a save" on
 the Mods tab goes to the Saves tab). Button words name the file: "Upload
 a save", "Upload a mod zip", "Replace mod-settings.dat".
 
+### 7.11 Favorites: export and import (SPEC 5.12)
+
+The Favorites page lists each favorite with its facts, a folded "Show the
+mods" list and three actions: Generate from it, Export and the trash-icon
+Delete.
+
+- **Mods by title.** The folded list shows each mod with the `mod-name`
+  partial: its title from `info.json`, kept in `favorite.json` when the
+  favorite was made, linked to its portal page in a new tab, with its
+  pinned version beside it. A favorite made before titles were kept shows
+  the mod's name instead.
+- **Export** is a quiet button that downloads `<name>-favorite.zip`: the
+  favorite's folder as it is on disk, plus `foreman-favorite.json`, which
+  holds the file's format version. A warning above the list, tied to every
+  Export button, says the file holds the mod settings and that a mod may
+  keep a token there, so it should be shared only with people trusted.
+  Server settings never hold a password (SPEC 14.8).
+- **Import** is its own section under the list, with one drop zone (7.10)
+  for a `.zip` of at most 8 MiB and an "Import favorite" button. It works
+  without script as a plain upload form.
+- **Checks before writing.** The server reads the whole file in memory and
+  checks all of it before anything is written: the size, the format
+  version, that every entry is one of the six known file names with no
+  folder, link or repeat, that each entry unpacks within its own limit,
+  that both JSON descriptions have no unknown field, and that every mod
+  name, version and title and the game version are well formed. Server
+  settings are stripped of secrets again. A refused file gets one field
+  error, "This is not a favorite file Foreman can read, or it is damaged.
+  Nothing was imported.", which never repeats what the file holds.
+- **What is not checked.** A mod this Foreman lacks is still imported,
+  and Generate's mod review shows it. A game version this Foreman does not
+  support is still imported; Generate replaces it with the default version.
+- **A name in use** is refused, not renamed, so the person sees which
+  favorite they already have: rename or delete it, then import again.
+- **An imported favorite** is dated when it was imported and names no
+  source world, since that world is on another Foreman.
+- **A refused import** shows the error summary (7.2) at the top of the
+  Import section, which takes focus and links to the file field.
+- **Writing** builds the favorite in a staging folder and renames it into
+  place, so a failure leaves nothing. Success shows the list with "Done:
+  Imported the favorite *name*." in focus.
+
 ## 8. Patterns for later screens
 
 These are not built in Epic 1. They are here so Epics 2 and 3 start from
