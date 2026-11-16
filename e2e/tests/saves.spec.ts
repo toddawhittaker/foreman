@@ -135,44 +135,51 @@ test("a duplicate name is refused and the save is untouched", async ({ page, for
   await checkPage(page);
 });
 
-test("a file that is not a zip, or has an unsafe entry, is refused", async ({ page, foreman }) => {
-  await createAdmin(page);
-  const dir = seedTwoSaves(foreman);
-  await page.goto("/worlds/family-base/saves");
+// The drop zone refuses a wrong type or a file over the limit before it is
+// sent (DESIGN 7.10, in uploads.spec.ts), so the server's own checks (SPEC 14.6)
+// are tried without script, where the field posts whatever it holds. The
+// accessibility scan needs script; the duplicate-name test above scans a
+// server error with it.
+test.describe("the server's checks on a posted save", () => {
+  test.use({ javaScriptEnabled: false });
 
-  const refused = [
-    { name: "notes.zip", buffer: Buffer.from("this is plain text"), message: "This file is not a zip file." },
-    { name: "evil.zip", buffer: makeZip({ "../escape.txt": "x" }), message: "unsafe name" },
-    { name: "map.txt", buffer: newSave, message: "must end in .zip" },
-    { name: ".hidden.zip", buffer: newSave, message: "must end in .zip" },
-  ];
-  for (const r of refused) {
-    await page.getByLabel("Save file").setInputFiles({ name: r.name, mimeType: "application/zip", buffer: r.buffer });
+  test("a file that is not a zip, or has an unsafe entry, is refused", async ({ page, foreman }) => {
+    await createAdmin(page);
+    const dir = seedTwoSaves(foreman);
+    await page.goto("/worlds/family-base/saves");
+
+    const refused = [
+      { name: "notes.zip", buffer: Buffer.from("this is plain text"), message: "This file is not a zip file." },
+      { name: "evil.zip", buffer: makeZip({ "../escape.txt": "x" }), message: "unsafe name" },
+      { name: "map.txt", buffer: newSave, message: "must end in .zip" },
+      { name: ".hidden.zip", buffer: newSave, message: "must end in .zip" },
+    ];
+    for (const r of refused) {
+      await page.getByLabel("Save file").setInputFiles({ name: r.name, mimeType: "application/zip", buffer: r.buffer });
+      await page.getByRole("button", { name: "Upload save" }).click();
+      await expect(page.locator("#save-file-error"), r.name).toContainText(r.message);
+      await expect(page.locator("#error-summary h2")).toContainText("Fix this problem to continue");
+    }
+    expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
+  });
+
+  test("an upload over the limit is refused before it is stored", async ({ page, foreman }) => {
+    test.setTimeout(120_000);
+    await createAdmin(page);
+    const dir = seedTwoSaves(foreman);
+    // A sparse file one byte over 1 GiB takes no disk space.
+    const big = join(tmpdir(), `foreman-oversized-${process.pid}-${Date.now()}.zip`);
+    const fd = openSync(big, "w");
+    ftruncateSync(fd, 2 ** 30 + 1);
+    closeSync(fd);
+
+    await page.goto("/worlds/family-base/saves");
+    await page.getByLabel("Save file").setInputFiles(big);
     await page.getByRole("button", { name: "Upload save" }).click();
-    await expect(page.locator("#save-file-error"), r.name).toContainText(r.message);
-    await expect(page.locator("#error-summary h2")).toContainText("Fix this problem to continue");
-  }
-  await checkPage(page);
-  expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
-});
 
-test("an upload over the limit is refused before it is stored", async ({ page, foreman }) => {
-  test.setTimeout(120_000);
-  await createAdmin(page);
-  const dir = seedTwoSaves(foreman);
-  // A sparse file one byte over 1 GiB takes no disk space.
-  const big = join(tmpdir(), `foreman-oversized-${process.pid}-${Date.now()}.zip`);
-  const fd = openSync(big, "w");
-  ftruncateSync(fd, 2 ** 30 + 1);
-  closeSync(fd);
-
-  await page.goto("/worlds/family-base/saves");
-  await page.getByLabel("Save file").setInputFiles(big);
-  await page.getByRole("button", { name: "Upload save" }).click();
-
-  await expect(page.locator("#save-file-error")).toContainText("larger than the limit of");
-  expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
-  await checkPage(page);
+    await expect(page.locator("#save-file-error")).toContainText("larger than the limit of 1 GB.");
+    expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
+  });
 });
 
 // SPEC 7.11: one list of saves; each row that does not load next has a

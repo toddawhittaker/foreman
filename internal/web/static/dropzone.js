@@ -5,8 +5,7 @@
 // server still checks everything (SPEC 14.6). Without script the field is
 // the plain labelled file input.
 document.addEventListener("DOMContentLoaded", () => {
-  const zones = Array.from(document.querySelectorAll("[data-dropzone]"));
-  if (zones.length === 0) return;
+  const zones = () => document.querySelectorAll("[data-dropzone]");
 
   function announce(said) {
     const announcer = document.getElementById("announcer");
@@ -33,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // A drag anywhere on the page marks every zone, not by colour alone: the
   // border and the prompt's words change.
   let depth = 0;
-  const marking = (on) => zones.forEach((z) => z.classList.toggle("dropzone--page", on));
+  const marking = (on) => zones().forEach((z) => z.classList.toggle("dropzone--page", on));
   const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types).some((type) => type.toLowerCase() === "files");
   document.addEventListener("dragenter", (e) => { if (hasFiles(e)) { depth++; marking(true); } });
   document.addEventListener("dragleave", (e) => { if (hasFiles(e) && --depth <= 0) { depth = 0; marking(false); } });
@@ -45,7 +44,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hasFiles(e)) e.preventDefault();
   });
 
-  zones.forEach((zone) => {
+  function enhance(zone) {
+    if (zone.classList.contains("dropzone--on")) return;
     const input = zone.querySelector('input[type="file"]');
     const prompt = zone.querySelector(".dropzone__prompt");
     const chosen = zone.querySelector(".dropzone__chosen");
@@ -142,5 +142,9 @@ document.addEventListener("DOMContentLoaded", () => {
       input.focus();
       announce(zone.dataset.cleared);
     });
-  });
+  }
+
+  zones().forEach(enhance);
+  // A redraw can bring a zone in after the page loads, as a plan does for a mod's zip.
+  document.addEventListener("htmx:load", () => zones().forEach(enhance));
 });

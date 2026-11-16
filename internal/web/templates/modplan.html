@@ -1,5 +1,7 @@
 {{define "title"}}{{msg .Page.Heading}}{{end}}
 
+{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- /* A redraw swaps in the heading too, as adding or taking out a mod changes it. */}}
@@ -173,16 +175,7 @@
       {{- else if and (eq $choice "upload") (not $.Page.Form.Staged)}}
       {{- /* The zip belongs to its own form (after this one), so choosing a file never redraws the plan; one zip per change (SPEC 9.10). */}}
       {{- $id := $.Page.ModID .Name "zip"}}
-      {{- $upErr := and (eq $.Page.UploadFor .Name) (not $.Page.UploadError.IsZero)}}
-      <div class="field">
-        <label for="{{$id}}" class="required">{{tHTML "mods.unresolved.upload_label" "mod" (ident .Name) "version" .Version}}</label>
-        <p class="hint" id="{{$id}}-hint">{{t "mods.upload.hint" "limit" $.Page.UploadLimit}}</p>
-        <input id="{{$id}}" name="mod" type="file" accept=".zip,application/zip" required form="{{$id}}-form"
-          aria-describedby="{{$id}}-hint{{if $upErr}} {{$id}}-error{{end}}"{{if $upErr}} aria-invalid="true"{{end}}>
-        {{- if $upErr}}
-        <p class="error" id="{{$id}}-error"><strong>{{t "common.error.label"}}</strong> {{msg $.Page.UploadError}}</p>
-        {{- end}}
-      </div>
+      {{template "dropzone" ($.Page.UploadZone .Name .Version)}}
       <div class="actions"><button type="submit" class="button" form="{{$id}}-form">{{t "mods.unresolved.upload_button"}}</button></div>
       {{- end}}
     </fieldset>

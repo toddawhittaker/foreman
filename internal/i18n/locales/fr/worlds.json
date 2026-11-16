@@ -178,7 +178,7 @@
   "worlds.saves.title": "Sauvegardes de {world}",
   "worlds.saves.upload.button": "Envoyer la sauvegarde",
   "worlds.saves.upload.heading": "Envoyer une sauvegarde",
-  "worlds.saves.upload.hint": "Une sauvegarde Factorio : un fichier .zip de {limit} au maximum. Une sauvegarde ne remplace jamais une autre du même nom.",
+  "worlds.saves.upload.hint": "Une sauvegarde ne remplace jamais une autre du même nom.",
   "worlds.saves.upload.label": "Fichier de sauvegarde",
   "worlds.saves.uploaded": "{file} a été envoyé.",
   "worlds.snapshot.label.before_delete": "Avant la suppression",

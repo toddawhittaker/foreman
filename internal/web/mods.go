@@ -172,9 +172,16 @@ type ModsPage struct {
 	Plan   PlanPanel
 }
 
-// UploadLimit and SettingsLimit say the upload size limits.
-func (ModsPage) UploadLimit() i18n.Msg   { return megabytes(modUploadMB) }
-func (ModsPage) SettingsLimit() i18n.Msg { return megabytes(settingsUploadMB) }
+// UploadZone and SettingsZone are the tab's two upload fields (DESIGN 7.10).
+func (p ModsPage) UploadZone() DropZone {
+	return DropZone{ID: "mod-file", Name: "mod", Label: i18n.M("mods.upload.label"),
+		Accept: ".zip", MaxBytes: MaxModUpload, Error: p.UploadError}
+}
+
+func (p ModsPage) SettingsZone() DropZone {
+	return DropZone{ID: "settings-file", Name: "settings", Label: i18n.M("mods.settings.label", "file", i18n.Code(world.ModSettingsFile)),
+		Accept: ".dat", MaxBytes: MaxSettingsUpload, Error: p.SettingsError, DescribedBy: "settings-file-help"}
+}
 
 // SettingsTabPath is the world's Settings tab, where Space Age is turned on
 // or off for the built-in mods.
@@ -417,6 +424,7 @@ func (s *server) modsOutcome(p *ModsPage, res actionResult) {
 		return
 	}
 	p.Undo = modsUndo(p.World.ID, res)
+	res.Mods.Titles = s.worlds.InstalledTitles(p.World.ID)
 	if res.Err == nil {
 		p.Done = modsDone(res.Mods, p.World.Name)
 		return
@@ -628,9 +636,10 @@ func (s *server) portalTrouble(what, id string, err error) {
 type ModNotice struct {
 	World  world.Summary
 	Errors int
-	// Mod and Version name the mod when there is exactly one.
-	Mod, Version string
-	Fix          Offer
+	// Mod and Version name the mod when there is exactly one; Title is its
+	// title from info.json, "" when it has none (SPEC 9.15).
+	Mod, Version, Title string
+	Fix                 Offer
 }
 
 func (ModNotice) templateName() string { return "server" }
@@ -648,13 +657,14 @@ func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
 	}
 	var gone []world.GoneMod
+	titles := s.worlds.InstalledTitles(sum.ID)
 	for _, f := range flags {
 		if f.Severity != mods.SevError {
 			continue
 		}
 		n.Errors++
-		n.Mod, n.Version = f.Name, f.Version
-		gone = append(gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update})
+		n.Mod, n.Version, n.Title = f.Name, f.Version, titles[f.Name]
+		gone = append(gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update, Title: titles[f.Name]})
 	}
 	if n.Errors > 0 {
 		n.Fix = goneFix(sum.ID, gone)
@@ -1192,8 +1202,18 @@ func (p ModPlanPage) UploadAction(name string) string {
 	return p.UploadPath() + "?" + q.Encode()
 }
 
-// UploadLimit says the zip size limit.
-func (ModPlanPage) UploadLimit() i18n.Msg { return megabytes(modUploadMB) }
+// UploadZone is an unresolved mod's zip field. It sits outside the plan's
+// form, which cannot hold a second form, and posts as the mod's own form
+// (DESIGN 7.10).
+func (p ModPlanPage) UploadZone(name string, version string) DropZone {
+	z := DropZone{ID: modID(name, "zip"), Name: "mod", Accept: ".zip", MaxBytes: MaxModUpload,
+		Label: i18n.M("mods.unresolved.upload_label", "mod", i18n.Ident(name), "version", version),
+		Form:  modID(name, "zip") + "-form"}
+	if p.UploadFor == name {
+		z.Error = p.UploadError
+	}
+	return z
+}
 
 // AsksRequired reports whether the form has a box or a field that must be
 // filled, so it explains the required mark (DESIGN 7.2).

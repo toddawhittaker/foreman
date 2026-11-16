@@ -183,7 +183,7 @@
   "worlds.saves.title": "Сохранения мира {world}",
   "worlds.saves.upload.button": "Загрузить сохранение",
   "worlds.saves.upload.heading": "Загрузка сохранения",
-  "worlds.saves.upload.hint": "Сохранение Factorio: файл .zip размером до {limit}. Сохранение никогда не заменяет другое с тем же именем.",
+  "worlds.saves.upload.hint": "Сохранение никогда не заменяет другое с тем же именем.",
   "worlds.saves.upload.label": "Файл сохранения",
   "worlds.saves.uploaded": "Файл {file} загружен.",
   "worlds.snapshot.label.before_delete": "Перед удалением",

@@ -178,7 +178,7 @@
   "worlds.saves.title": "Partidas guardadas de {world}",
   "worlds.saves.upload.button": "Subir partida guardada",
   "worlds.saves.upload.heading": "Subir una partida guardada",
-  "worlds.saves.upload.hint": "Una partida guardada de Factorio: un archivo .zip de hasta {limit}. Una partida guardada nunca sustituye a otra con el mismo nombre.",
+  "worlds.saves.upload.hint": "Una partida guardada nunca sustituye a otra con el mismo nombre.",
   "worlds.saves.upload.label": "Archivo de partida guardada",
   "worlds.saves.uploaded": "Se subió {file}.",
   "worlds.snapshot.label.before_delete": "Antes de borrar",

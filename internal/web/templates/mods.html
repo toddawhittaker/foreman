@@ -1,5 +1,5 @@
 {{define "title"}}{{t "mods.title" "world" .Page.World.Name}}{{end}}
-{{define "scripts"}}<script src="{{static "live.js"}}" defer></script><script src="{{static "modsearch.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script><script src="{{static "modsearch.js"}}" defer></script><script src="{{static "dropzone.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -79,7 +79,8 @@
   <h2 id="sync-heading">{{t "mods.sync.heading"}}</h2>
   {{- if not .LoadSave}}
   <p class="empty">{{t "mods.sync.no_save"}}</p>
-  <div class="actions"><a href="{{.SavesPath}}">{{t "mods.sync.upload_save"}}</a></div>
+  {{- /* The save is used here but owned by the Saves tab, so the way there is a button (DESIGN 7.10). */}}
+  <div class="actions"><a href="{{.SavesPath}}" class="button" id="act-upload-save">{{t "mods.sync.upload_save"}}</a></div>
   {{- else if and .SaveDiff .SaveDiff.Matches}}
   {{- /* Read from the save itself, so a match costs no trip to the plan (SPEC 9.8, 9.9). */}}
   <p id="sync-state">{{tHTML "mods.sync.match" "save" (code .LoadSave)}}</p>
@@ -108,16 +109,8 @@
     <summary id="mod-upload-summary">{{t "mods.upload.summary"}}</summary>
     <form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel" novalidate aria-labelledby="mod-upload-summary">
       {{template "required-note"}}
-      <div class="field">
-        <label for="mod-file" class="required">{{t "mods.upload.label"}}</label>
-        <p class="hint" id="mod-file-hint">{{t "mods.upload.hint" "limit" .UploadLimit}}</p>
-        <input id="mod-file" name="mod" type="file" accept=".zip,application/zip" required
-          aria-describedby="mod-file-hint{{if not .UploadError.IsZero}} mod-file-error{{end}}"
-          {{- if not .UploadError.IsZero}} aria-invalid="true"{{end}}>
-        {{- if not .UploadError.IsZero}}
-        <p class="error" id="mod-file-error"><strong>{{t "common.error.label"}}</strong> {{msg .UploadError}}</p>
-        {{- end}}
-      </div>
+      <p class="hint">{{t "mods.upload.hint"}}</p>
+      {{template "dropzone" .UploadZone}}
       <div class="actions">
         <button type="submit" class="button">{{t "mods.upload.button"}}</button>
       </div>
@@ -143,16 +136,7 @@
       {{- /* Where the file is, then the field, then what the upload will do beside its button. */}}
       <p id="settings-file-help">{{tHTML "mods.settings.where" "windows" (code `%APPDATA%\Factorio\mods`) "macos" (code "~/Library/Application Support/factorio/mods") "linux" (code "~/.factorio/mods")}} {{if .Running}}{{t "mods.settings.apply_running"}}{{else}}{{t "mods.settings.apply"}}{{end}}</p>
       {{template "required-note"}}
-      <div class="field">
-        <label for="settings-file" class="required">{{tHTML "mods.settings.label" "file" (code .SettingsFile)}}</label>
-        <p class="hint" id="settings-file-hint">{{t "mods.settings.hint" "limit" .SettingsLimit}}</p>
-        <input id="settings-file" name="settings" type="file" accept=".dat" required
-          aria-describedby="settings-file-help settings-file-hint{{if not .SettingsError.IsZero}} settings-file-error{{end}}"
-          {{- if not .SettingsError.IsZero}} aria-invalid="true"{{end}}>
-        {{- if not .SettingsError.IsZero}}
-        <p class="error" id="settings-file-error"><strong>{{t "common.error.label"}}</strong> {{msg .SettingsError}}</p>
-        {{- end}}
-      </div>
+      {{template "dropzone" .SettingsZone}}
       {{- if .Running}}
       {{template "countdown" .CountdownForm}}
       {{- end}}

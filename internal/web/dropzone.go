@@ -17,4 +17,13 @@ type DropZone struct {
 	MaxBytes uint64
 	// Error is the server's refusal of the last upload, if any.
 	Error i18n.Msg
+	// DescribedBy is the id of a paragraph, outside the field, that also
+	// describes it; "" for none. It reads after the limits hint.
+	DescribedBy string
+	// Form is the id of the form that posts the file when the field sits
+	// outside it, as in a form that cannot nest; "" for the enclosing form.
+	Form string
 }
+
+// Limit says MaxBytes as the server's refusal does (sizeLimit).
+func (z DropZone) Limit() i18n.Msg { return sizeLimit(z.MaxBytes) }
