@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -171,5 +172,43 @@ func TestPlanFactsCleanTheSummary(t *testing.T) {
 	}
 	if n := len([]rune(got)); n != maxPortalSummary+1 || !strings.HasSuffix(got, "…") {
 		t.Errorf("summary is %d characters, want %d and an ellipsis", n, maxPortalSummary+1)
+	}
+}
+
+// Ruling 15: the review page's heading, conflicts and fix buttons name a mod
+// by its title where it has one, and by its name where it has none.
+func TestPlanTextsUseTitles(t *testing.T) {
+	p := ModPlanPage{World: world.Summary{ID: "base", Name: "Base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"k2"}},
+		Have: []world.InstalledMod{{Name: "inst", Title: "Installed one", Enabled: true}},
+		Plan: mods.Plan{Conflicts: []mods.Conflict{
+			{Code: mods.ConflictIncompatible, Mod: "k2", Other: "inst"},
+			{Code: mods.ConflictNotOnPortal, Mod: "bare"},
+		}},
+		facts: map[string]ModFacts{"k2": {Title: "Krastorio 2", OnPortal: true}, "inst": {Title: "Installed one"}}}
+	if got := english(p.Heading()); !strings.Contains(got, "Krastorio 2") || strings.Contains(got, "k2") {
+		t.Errorf("heading %q", got)
+	}
+	rows := p.Conflicts()
+	if got := english(rows[0].Text); !strings.Contains(got, "Krastorio 2") || !strings.Contains(got, "Installed one") || strings.Contains(got, "k2") || strings.Contains(got, "inst ") {
+		t.Errorf("conflict %q", got)
+	}
+	if got := english(rows[0].Fix); !strings.Contains(got, "Installed one") {
+		t.Errorf("fix %q", got)
+	}
+	if got := english(rows[1].Text); !strings.Contains(got, "bare") {
+		t.Errorf("a mod without a title falls back to its name: %q", got)
+	}
+}
+
+// Ruling 15: the panel's warnings and its screen-reader messages name the
+// other mod by title.
+func TestPlanPanelWarningsAndMessagesUseTitles(t *testing.T) {
+	tr := planTree{plan: mods.Plan{Conflicts: []mods.Conflict{{Code: mods.ConflictIncompatible, Mod: "a", Other: "b"}}},
+		title: func(n string) string { return "Title of " + n }, titles: map[string]string{}, changes: map[string]mods.Change{}}
+	if got := englishAll(tr.warnings("a")); !slices.Equal(got, []string{"Cannot run with Title of b"}) {
+		t.Errorf("a's warnings %v", got)
+	}
+	if got := englishAll(tr.warnings("b")); !slices.Equal(got, []string{"Cannot run with Title of a"}) {
+		t.Errorf("b's warnings %v", got)
 	}
 }

@@ -124,14 +124,18 @@ func (s *server) planPanel(ctx context.Context, sum world.Summary, ret string) (
 		return p, nil
 	}
 	t := planTree{plan: plan, line: mods.GameLine(sum.GameVersion), titles: map[string]string{}, changes: map[string]mods.Change{},
-		title: func(name string) string {
-			if m, err := s.portal.Mod(ctx, name); err == nil && m.Title != "" {
-				return m.Title
-			}
-			return name
-		}}
+		title: func(name string) string { return s.portalTitle(ctx, name) }}
 	p.Roots, p.Count, p.neededBy = t.build(p.Picks)
 	return p, nil
+}
+
+// portalTitle is the portal's title for a mod, or its name when the portal
+// has none.
+func (s *server) portalTitle(ctx context.Context, name string) string {
+	if m, err := s.portal.Mod(ctx, name); err == nil && m.Title != "" {
+		return m.Title
+	}
+	return name
 }
 
 // planTree turns a resolved plan into the panel's tree: each pick with the
@@ -253,7 +257,7 @@ func (t *planTree) warnings(name string) []i18n.Msg {
 		key := string(c.Code) + "\x00" + c.Version
 		switch {
 		case c.Code == mods.ConflictIncompatible && c.Other == name:
-			m, key = i18n.M("mods.plan_panel.warn.incompatible", "mod", c.Mod), key+c.Mod
+			m, key = i18n.M("mods.plan_panel.warn.incompatible", "mod", i18n.Ident(t.titleOf(c.Mod))), key+c.Mod
 		case c.Mod != name:
 			continue
 		case c.Code == mods.ConflictNotOnPortal:
@@ -261,7 +265,7 @@ func (t *planTree) warnings(name string) []i18n.Msg {
 		case c.Code == mods.ConflictNoRelease:
 			m = i18n.M("mods.plan_panel.warn.no_release", "line", t.line)
 		case c.Code == mods.ConflictIncompatible:
-			m, key = i18n.M("mods.plan_panel.warn.incompatible", "mod", c.Other), key+c.Other
+			m, key = i18n.M("mods.plan_panel.warn.incompatible", "mod", i18n.Ident(t.titleOf(c.Other))), key+c.Other
 		case c.Code == mods.ConflictVersion:
 			m = i18n.M("mods.plan_panel.warn.version", "version", c.Version)
 		case c.Code == mods.ConflictSpaceAgeOff:
@@ -415,9 +419,9 @@ func (s *server) planChanged(w http.ResponseWriter, r *http.Request, u store.Use
 		up.Search.Plan.Error = planFull()
 		up.Search.Plan.Said = up.Search.Plan.Error
 	case c.op == "add":
-		up.Search.Plan.Said = i18n.M("mods.plan_panel.added", "mod", c.name, "count", count)
+		up.Search.Plan.Said = i18n.M("mods.plan_panel.added", "mod", i18n.Ident(s.portalTitle(r.Context(), c.name)), "count", count)
 	case c.op == "remove":
-		up.Search.Plan.Said = i18n.M("mods.plan_panel.removed", "mod", c.name, "count", count)
+		up.Search.Plan.Said = i18n.M("mods.plan_panel.removed", "mod", i18n.Ident(s.portalTitle(r.Context(), c.name)), "count", count)
 	default:
 		up.Search.Plan.Said = i18n.M("mods.plan_panel.cleared")
 	}

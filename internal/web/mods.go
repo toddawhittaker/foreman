@@ -194,12 +194,12 @@ type ModsPage struct {
 
 // UploadZone and SettingsZone are the tab's two upload fields (DESIGN 7.10).
 func (p ModsPage) UploadZone() DropZone {
-	return DropZone{ID: "mod-file", Name: "mod", Label: i18n.M("mods.upload.label"),
+	return DropZone{ID: "mod-file", Name: modUploadField, Label: i18n.M("mods.upload.label"),
 		Accept: ".zip", MaxBytes: MaxModUpload, Error: p.UploadError}
 }
 
 func (p ModsPage) SettingsZone() DropZone {
-	return DropZone{ID: "settings-file", Name: "settings", Label: i18n.M("mods.settings.label", "file", i18n.Code(world.ModSettingsFile)),
+	return DropZone{ID: "settings-file", Name: settingsUploadField, Label: i18n.M("mods.settings.label", "file", i18n.Code(world.ModSettingsFile)),
 		Accept: ".dat", MaxBytes: MaxSettingsUpload, Error: p.SettingsError, DescribedBy: "settings-file-help"}
 }
 
@@ -1192,7 +1192,7 @@ func (p ModPlanPage) UploadAction(name string) string {
 // form, which cannot hold a second form, and posts as the mod's own form
 // (DESIGN 7.10).
 func (p ModPlanPage) UploadZone(name string, version string) DropZone {
-	z := DropZone{ID: modID(name, "zip"), Name: "mod", Accept: ".zip", MaxBytes: MaxModUpload,
+	z := DropZone{ID: modID(name, "zip"), Name: modUploadField, Accept: ".zip", MaxBytes: MaxModUpload,
 		Label: i18n.M("mods.unresolved.upload_label", "mod", i18n.Ident(name), "version", version),
 		Form:  modID(name, "zip") + "-form"}
 	if p.UploadFor == name {
@@ -1270,7 +1270,7 @@ func (p ModPlanPage) Heading() i18n.Msg {
 	w := p.World.Name
 	var one any = ""
 	if len(p.Form.Names) == 1 {
-		one = i18n.Ident(p.Form.Names[0])
+		one = p.ident(p.Form.Names[0])
 	}
 	if p.extraKinds() {
 		return i18n.M("mods.plan.heading.change", "world", w)
@@ -1302,7 +1302,7 @@ func (p ModPlanPage) Heading() i18n.Msg {
 	case mods.KindRemove:
 		return i18n.M("mods.plan.heading.remove", "mod", one, "world", w)
 	case mods.KindUpload:
-		return i18n.M("mods.plan.heading.upload", "mod", i18n.Ident(p.Uploaded.Name), "version", p.Uploaded.Version, "world", w)
+		return i18n.M("mods.plan.heading.upload", "mod", p.ident(p.Uploaded.Name), "version", p.Uploaded.Version, "world", w)
 	}
 	return i18n.M("mods.plan.heading.change", "world", w)
 }
@@ -1392,17 +1392,17 @@ func (p ModPlanPage) changeText(c mods.Change) i18n.Msg {
 	var why i18n.Msg
 	switch c.Why.Code {
 	case mods.WhyRequiredBy:
-		why = i18n.M("mods.plan.why.required_by", "mod", i18n.Ident(p.Title(c.Why.Of)))
+		why = i18n.M("mods.plan.why.required_by", "mod", p.ident(c.Why.Of))
 	case mods.WhyOptionalOf:
-		why = i18n.M("mods.plan.why.optional_of", "mod", i18n.Ident(p.Title(c.Why.Of)))
+		why = i18n.M("mods.plan.why.optional_of", "mod", p.ident(c.Why.Of))
 	case mods.WhyRecommendedBy:
-		why = i18n.M("mods.plan.why.recommended_by", "mod", i18n.Ident(p.Title(c.Why.Of)))
+		why = i18n.M("mods.plan.why.recommended_by", "mod", p.ident(c.Why.Of))
 	case mods.WhyFromSave:
 		why = i18n.M("mods.plan.why.from_save")
 	case mods.WhyNotInSave:
 		why = i18n.M("mods.plan.why.not_in_save")
 	case mods.WhyOnlyNeededBy:
-		why = i18n.M("mods.plan.why.only_needed_by", "mod", i18n.Ident(p.Title(c.Why.Of)))
+		why = i18n.M("mods.plan.why.only_needed_by", "mod", p.ident(c.Why.Of))
 	}
 	if !why.IsZero() {
 		what = i18n.M("mods.plan.item.why", "item", what, "why", why)
@@ -1413,33 +1413,33 @@ func (p ModPlanPage) changeText(c mods.Change) i18n.Msg {
 	return what
 }
 
-func conflictText(c mods.Conflict) i18n.Msg {
+func (p ModPlanPage) conflictText(c mods.Conflict) i18n.Msg {
 	switch c.Code {
 	case mods.ConflictIncompatible:
-		return i18n.M("mods.conflict.incompatible", "mod", i18n.Ident(c.Mod), "other", i18n.Ident(c.Other))
+		return i18n.M("mods.conflict.incompatible", "mod", p.ident(c.Mod), "other", p.ident(c.Other))
 	case mods.ConflictSpaceAgeOff:
 		if c.Other == "" {
-			return i18n.M("mods.conflict.space_age_save", "mod", i18n.Ident(c.Mod))
+			return i18n.M("mods.conflict.space_age_save", "mod", p.ident(c.Mod))
 		}
-		return i18n.M("mods.conflict.space_age_off", "mod", i18n.Ident(c.Mod), "other", i18n.Ident(c.Other))
+		return i18n.M("mods.conflict.space_age_off", "mod", p.ident(c.Mod), "other", p.ident(c.Other))
 	case mods.ConflictNoRelease:
-		return i18n.M("mods.conflict.no_release", "mod", i18n.Ident(c.Mod), "needs", needsText(c.Needs))
+		return i18n.M("mods.conflict.no_release", "mod", p.ident(c.Mod), "needs", needsText(c.Needs))
 	case mods.ConflictNoSuchRelease:
-		return i18n.M("mods.conflict.no_such_release", "mod", i18n.Ident(c.Mod), "version", c.Version)
+		return i18n.M("mods.conflict.no_such_release", "mod", p.ident(c.Mod), "version", c.Version)
 	case mods.ConflictVersion:
-		return i18n.M("mods.conflict.version", "mod", i18n.Ident(c.Mod), "version", c.Version, "needs", needsText(c.Needs))
+		return i18n.M("mods.conflict.version", "mod", p.ident(c.Mod), "version", c.Version, "needs", needsText(c.Needs))
 	case mods.ConflictNotOnPortal:
-		return i18n.M("mods.conflict.not_on_portal", "mod", i18n.Ident(c.Mod))
+		return i18n.M("mods.conflict.not_on_portal", "mod", p.ident(c.Mod))
 	case mods.ConflictRequiredBy:
-		return i18n.M("mods.conflict.required_by", "mod", i18n.Ident(c.Mod), "other", i18n.Ident(c.Other))
+		return i18n.M("mods.conflict.required_by", "mod", p.ident(c.Mod), "other", p.ident(c.Other))
 	case mods.ConflictBuiltIn:
-		return i18n.M("mods.conflict.built_in", "mod", i18n.Ident(c.Mod))
+		return i18n.M("mods.conflict.built_in", "mod", p.ident(c.Mod))
 	case mods.ConflictLocal:
-		return i18n.M("mods.conflict.local", "mod", i18n.Ident(c.Mod))
+		return i18n.M("mods.conflict.local", "mod", p.ident(c.Mod))
 	case mods.ConflictNotInstalled:
-		return i18n.M("mods.conflict.not_installed", "mod", i18n.Ident(c.Mod))
+		return i18n.M("mods.conflict.not_installed", "mod", p.ident(c.Mod))
 	case mods.ConflictBadDep:
-		return i18n.M("mods.conflict.bad_dependency", "mod", i18n.Ident(c.Mod), "text", c.Text)
+		return i18n.M("mods.conflict.bad_dependency", "mod", p.ident(c.Mod), "text", c.Text)
 	case mods.ConflictTooComplex:
 		return i18n.M("mods.conflict.too_complex")
 	}

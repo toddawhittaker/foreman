@@ -1,10 +1,7 @@
-import { test, expect, checkPage, createAdmin, setUpModsWorld, version20 } from "./foreman.js";
+import { test, expect, planRow, dropFile, checkPage, createAdmin, setUpModsWorld, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-
-// A change's row on the review page, found by the title it starts with (issue 620).
-const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
 
 // SPEC 5.12: a favorite is made from a world's page and starts a new world on
 // Generate, whose mods then go through the review page (SPEC 9.13).
@@ -125,16 +122,7 @@ test("export a favorite, see the warning, then import it by dropping the file", 
 
   await page.goto("/favorites");
   await expect(page.locator("#favorites-empty")).toBeVisible();
-  const dt = await page.evaluateHandle((b64) => {
-    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    const dt = new DataTransfer();
-    dt.items.add(new File([bytes], "Shared_pack-favorite.zip", { type: "application/zip" }));
-    return dt;
-  }, file.toString("base64"));
-  const area = page.locator("#favorite-file").locator("..");
-  await page.dispatchEvent("body", "dragenter", { dataTransfer: dt });
-  await area.dispatchEvent("dragover", { dataTransfer: dt });
-  await area.dispatchEvent("drop", { dataTransfer: dt });
+  await dropFile(page, "favorite-file", [{ name: "Shared_pack-favorite.zip", body: file, type: "application/zip" }]);
   await expect(page.locator(".dropzone__chosen")).toContainText("Shared_pack-favorite.zip");
   await page.getByRole("button", { name: "Import favorite" }).click();
   await expect(page.locator("#done-message")).toContainText('Imported the favorite "Shared pack".');

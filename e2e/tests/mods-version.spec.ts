@@ -1,10 +1,7 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, live, version20 } from "./foreman.js";
+import { test, expect, planRow, checkPage, setUpModsWorld, doneBox, live, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-
-// A change's row on the review page, found by the title it starts with (issue 620).
-const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
 
 // SPEC 9.2 and 9.3: choosing a mod's version on the plan page, and
 // Change version in the installed table, which also goes back after a bad

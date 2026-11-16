@@ -61,6 +61,15 @@ type FavoritesPage struct {
 	ImportError i18n.Msg
 	// Exchanges holds each favorite's map exchange string, by favorite id.
 	Exchanges map[string]ExchangeField
+	// missing says the portal is known not to have a mod, so it is not
+	// linked; nil links every mod.
+	missing func(string) bool
+}
+
+// Mod is a favorite's mod as the mod-name partial shows it: by title,
+// linked to the portal unless the portal is known to lack it.
+func (p FavoritesPage) Mod(m world.FavoriteMod) ModName {
+	return modName(m.Name, m.Title, p.missing == nil || !p.missing(m.Name))
 }
 
 // ExchangeFor is the map exchange string field of one favorite.
@@ -123,6 +132,9 @@ func (s *server) favoritesPage(w http.ResponseWriter, r *http.Request, u store.U
 		return
 	}
 	p.Exchanges = map[string]ExchangeField{}
+	if s.portal != nil {
+		p.missing = s.portal.KnownMissing
+	}
 	for _, f := range list {
 		p.Favorites = append(p.Favorites, FavoriteRow{f})
 		if _, files, err := s.favorites.Get(f.ID); err != nil {

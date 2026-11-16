@@ -49,9 +49,18 @@ const AddSaveWait = 60 * time.Second
 // maxSaveNameLength is the longest file name most filesystems allow.
 const maxSaveNameLength = 255
 
-// ValidSaveName reports whether name is a plain file name of a save: a base
-// name that ends in .zip and does not start with a dot (SPEC 5.11).
+// ValidSaveName reports whether name may be given to a new save: a plain
+// file name of a save (see plainSaveName) that is not one of the game's
+// partial saves, which end in .tmp.zip (SPEC 5.11).
 func ValidSaveName(name string) bool {
+	return plainSaveName(name) && !strings.HasSuffix(name, tempSaveSuffix)
+}
+
+// plainSaveName reports whether name is a plain file name of a save: a base
+// name that ends in .zip and does not start with a dot. Checks on a save
+// that exists already, and a folder import, use this one so a partial save
+// stays readable and removable.
+func plainSaveName(name string) bool {
 	if name == "" || len(name) > maxSaveNameLength || !strings.HasSuffix(name, ".zip") || name[0] == '.' {
 		return false
 	}
@@ -83,7 +92,7 @@ func listSaves(root *os.Root) ([]Save, error) {
 	}
 	var out []Save
 	for _, e := range entries {
-		if !e.Type().IsRegular() || !ValidSaveName(e.Name()) || strings.HasSuffix(e.Name(), tempSaveSuffix) {
+		if !e.Type().IsRegular() || !plainSaveName(e.Name()) || strings.HasSuffix(e.Name(), tempSaveSuffix) {
 			continue
 		}
 		info, err := e.Info()
@@ -158,7 +167,7 @@ func (m *Manager) LoadChoice(id string) string {
 
 // OpenSave opens a save for download. The caller closes the file.
 func (m *Manager) OpenSave(id, name string) (*os.File, fs.FileInfo, error) {
-	if !ValidSaveName(name) {
+	if !plainSaveName(name) {
 		return nil, nil, ErrSaveNotFound
 	}
 	root, err := m.OpenWorld(id)
@@ -292,7 +301,7 @@ func (m *Manager) SetLoadSave(id, name string) error {
 	}
 
 	if name != "" {
-		if !ValidSaveName(name) {
+		if !plainSaveName(name) {
 			return ErrSaveNotFound
 		}
 		info, err := root.Lstat(path.Join(SavesDir, name))
@@ -329,7 +338,7 @@ func (m *Manager) PrepareLoad(id string) (string, error) {
 		return "", err
 	}
 	if meta.LoadSave != "" {
-		if !ValidSaveName(meta.LoadSave) {
+		if !plainSaveName(meta.LoadSave) {
 			return "", ErrSaveNotFound
 		}
 		p := path.Join(SavesDir, meta.LoadSave)

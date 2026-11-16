@@ -1,10 +1,7 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, version20, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
+import { test, expect, planRow, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, version20, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-
-// A change's row on the review page, found by the title it starts with (issue 620).
-const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
 
 // SPEC 9.1, 9.2, 9.7, 9.8, 9.12: search, the plan, and the install on a running
 // world, through the fake portal. The portal's generated mods are made for

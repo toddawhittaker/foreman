@@ -332,11 +332,11 @@ func saveClash(saves []importFile) (string, bool) {
 // files in config/. mods is nil when there is no mods/ folder. Symlinks and
 // other special files are skipped, never followed.
 func importPlan(src *os.Root) (saves, mods, config []importFile, err error) {
-	saves, err = regularFiles(src, ".", ValidSaveName)
+	saves, err = regularFiles(src, ".", plainSaveName)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	inner, err := regularFiles(src, SavesDir, ValidSaveName)
+	inner, err := regularFiles(src, SavesDir, plainSaveName)
 	if err != nil {
 		return nil, nil, nil, err
 	}

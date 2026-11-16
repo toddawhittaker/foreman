@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -384,4 +385,24 @@ func TestPlanTreeBuild(t *testing.T) {
 func portalName(name string) string {
 	return `<a href="https://mods.factorio.com/mod/` + name + `" class="mod-title" target="_blank" rel="noopener noreferrer">` + name +
 		`<span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`
+}
+
+// titledPortal gives every mod a title unlike its name.
+type titledPortal struct{ ModPortal }
+
+func (p titledPortal) Mod(ctx context.Context, name string) (modportal.Mod, error) {
+	m, err := p.ModPortal.Mod(ctx, name)
+	m.Title = "Title of " + name
+	return m, err
+}
+
+// Ruling 15: the announcements after "+" and "−" name the mod by title.
+func TestPlanPanelAnnouncesTitles(t *testing.T) {
+	g := newModsRigWrapped(t, true, func(p ModPortal) ModPortal { return titledPortal{p} })
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base")
+	add := g.harness.post(planModsPath(id), url.Values{"name": {"alpha"}, "op": {"add"}}, withCookie(g.cookie), withHeader("HX-Request", "true"))
+	wantIn(t, "add", squash(plain(add.Body.String())), `>Title of alpha added to the plan. The plan has 1 mod.</p>`)
+	rm := g.harness.post(planModsPath(id), url.Values{"name": {"alpha"}, "op": {"remove"}, "from": {"panel"}}, withCookie(g.cookie), withHeader("HX-Request", "true"))
+	wantIn(t, "remove", squash(plain(rm.Body.String())), `>Title of alpha removed from the plan. The plan has 0 mods.</p>`)
 }

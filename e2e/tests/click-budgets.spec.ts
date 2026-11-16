@@ -1,11 +1,8 @@
-import { test, expect, createAdmin, mainNav, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame, openModTools } from "./foreman.js";
+import { test, expect, planRow, createAdmin, mainNav, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame, openModTools } from "./foreman.js";
 import { countClicks, expectWithin, type Clicks } from "./clicks.js";
 import type { Page } from "@playwright/test";
 import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync } from "node:fs";
 import { join } from "node:path";
-
-// A change's row on the review page, found by the title it starts with (issue 620).
-const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
 
 // SPEC 17.10: the common tasks, started on the Server page with the
 // defaults accepted, take no more clicks than the table allows. Each test

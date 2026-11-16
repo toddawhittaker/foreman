@@ -44,7 +44,7 @@ func saveNames(saves []Save) []string {
 func TestValidSaveName(t *testing.T) {
 	good := []string{"a.zip", "My Save (2).zip", "_autosave1.zip", "ünï.zip", "a..zip"}
 	bad := []string{"", ".zip", ".hidden.zip", "../x.zip", "a/b.zip", `a\b.zip`, "/abs.zip", "x.ZIP", "x.zip.txt",
-		"x", "..", "a\x00b.zip", "a\nb.zip", strings.Repeat("a", 252) + ".zip"}
+		"x", "..", "x.tmp.zip", "a\x00b.zip", "a\nb.zip", strings.Repeat("a", 252) + ".zip"}
 	for _, n := range good {
 		if !ValidSaveName(n) {
 			t.Errorf("%q refused", n)
@@ -54,6 +54,14 @@ func TestValidSaveName(t *testing.T) {
 		if ValidSaveName(n) {
 			t.Errorf("%q allowed", n)
 		}
+	}
+}
+
+// The game's partial saves cannot be uploaded, yet a folder import and the
+// checks on a save already there still accept the name.
+func TestPartialSaveNames(t *testing.T) {
+	if ValidSaveName("x.tmp.zip") || !plainSaveName("x.tmp.zip") {
+		t.Error("x.tmp.zip must be refused as a new save and accepted as an existing file")
 	}
 }
 

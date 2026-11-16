@@ -23,6 +23,7 @@
   <p class="hint favorite-export-warning" id="favorite-export-warning"><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
   <ul class="webhook-list favorite-list" role="list">
     {{- range .}}
+    {{- $name := .Name}}
     <li id="favorite-{{.ID}}">
       <h2 id="favorite-{{.ID}}-name" class="webhook-list__title">{{.Name}}</h2>
       <dl class="facts facts--inline">
@@ -37,17 +38,17 @@
       {{- with .Mods}}
       {{- /* A details list works without script and keeps a long pack from filling the page. */}}
       <details class="favorite-mods">
-        <summary>{{t "favorites.mods.show" "count" (len .)}}</summary>
+        <summary>{{t "favorites.mods.show" "count" (len .)}}<span class="visually-hidden" translate="no"> {{$name}}</span></summary>
         <ul role="list">
           {{- range .}}
-          <li><span class="mod-name">{{template "mod-name" (modName .Name .Title true)}}</span> <span class="mod-ver" translate="no">{{.Version}}</span></li>
+          <li><span class="mod-name">{{template "mod-name" ($.Page.Mod .)}}</span> <span class="mod-ver" translate="no">{{.Version}}</span></li>
           {{- end}}
         </ul>
       </details>
       {{- end}}
       {{- /* A details block keeps a long string off the list until it is wanted, and works without script. */}}
       <details class="favorite-exchange">
-        <summary>{{t "favorites.exchange.show"}}</summary>
+        <summary>{{t "favorites.exchange.show"}}<span class="visually-hidden" translate="no"> {{$name}}</span></summary>
         {{template "exchange-string" ($.Page.ExchangeFor .ID)}}
       </details>
       <div class="actions">
@@ -69,6 +70,7 @@
   {{template "summary" .Problems}}
   <p class="hint">{{t "favorites.import.text"}}</p>
   <form method="post" action="{{.ImportPath}}" enctype="multipart/form-data" novalidate>
+    {{template "required-note"}}
     {{template "dropzone" .ImportZone}}
     <div class="actions">
       <button type="submit" class="button" id="act-favorite-import">{{t "favorites.import.button"}}</button>

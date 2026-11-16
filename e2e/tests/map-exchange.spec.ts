@@ -141,21 +141,24 @@ test.describe("without script", () => {
   });
 });
 
-// SPEC 17.2, 22.7: German runs long; the string breaks in its field and the buttons keep their words.
-test("at 320 px and 200% text in German, the world and favorites pages fit", async ({ page, foreman }) => {
-  await page.setViewportSize({ width: 320, height: 640 });
-  await createAdmin(page);
-  seedWorld(foreman, { version: version20, fixture: "2.0.77-no-space-age.zip" });
-  seedFavorite(foreman.dataDir, favID, "With map", true);
-  await pickLanguage(page, "de");
-  await page.addStyleTag({ content: "html { font-size: 200% }" });
-  await page.goto("/worlds/base");
-  await expect(page.getByRole("heading", { name: "Code zum Kartenaustausch" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Code zum Kartenaustausch kopieren" })).toBeVisible();
-  await checkPage(page);
-  await page.goto("/favorites");
-  await page.locator("summary", { hasText: "Code zum Kartenaustausch" }).click();
-  await expect(field(page, `exchange-${favID}`)).toBeVisible();
-  await checkPage(page);
-  await page.screenshot({ path: `../screenshots/x2-de-200-${test.info().project.name}.png`, fullPage: true });
-});
+// SPEC 17.2, 22.7: German and Russian run long; the string breaks in its field and the buttons keep their words.
+const exchangeWords = { de: ["Code zum Kartenaustausch", "Code zum Kartenaustausch kopieren"], ru: ["Строка обмена карты", "Скопировать строку обмена карты"] } as const;
+for (const lang of ["de", "ru"] as const) {
+  test(`at 320 px and 200% text in ${lang}, the world and favorites pages fit`, async ({ page, foreman }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await createAdmin(page);
+    seedWorld(foreman, { version: version20, fixture: "2.0.77-no-space-age.zip" });
+    seedFavorite(foreman.dataDir, favID, "With map", true);
+    await pickLanguage(page, lang);
+    await page.addStyleTag({ content: "html { font-size: 200% }" });
+    await page.goto("/worlds/base");
+    await expect(page.getByRole("heading", { name: exchangeWords[lang][0] })).toBeVisible();
+    await expect(page.getByRole("button", { name: exchangeWords[lang][1] })).toBeVisible();
+    await checkPage(page);
+    await page.goto("/favorites");
+    await page.locator("summary", { hasText: exchangeWords[lang][0] }).click();
+    await expect(field(page, `exchange-${favID}`)).toBeVisible();
+    await checkPage(page);
+    await page.screenshot({ path: `../screenshots/x2-${lang}-200-${test.info().project.name}.png`, fullPage: true });
+  });
+}
