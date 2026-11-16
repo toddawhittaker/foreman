@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sync"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
@@ -19,6 +20,10 @@ const dbFileMode = 0o660
 // Store is the app database.
 type Store struct {
 	db *sql.DB
+	// planMu queues mod plan writes in Go. Many writers waiting on
+	// SQLite's busy timeout are not served in turn, so under load some ran
+	// out of time and a user's add failed with "database is locked".
+	planMu sync.Mutex
 }
 
 // Open opens the database at path, creating the file if it is missing, and

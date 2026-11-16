@@ -99,9 +99,12 @@ func TestSwitchFailedDownloadOffersNoWrongDownload(t *testing.T) {
 	g.fake.Daemon().FailPull(image20, "manifest unknown")
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
-	body := g.waitPage("The switch from Alpha to Old failed", "Alpha is still the active world")
-	g.wantContains("server page", body, `id="server-title">Alpha <span`, running,
+	// The failed operation shows in the game's status a moment before the
+	// action's result, which holds the reason, is stored; the live page
+	// sends both. So the wait covers the reason too.
+	body := g.waitPage("The switch from Alpha to Old failed", "Alpha is still the active world",
 		"Foreman could not download "+image20+". The details are in Foreman&#39;s log. Try the switch again.")
+	g.wantContains("server page", body, `id="server-title">Alpha <span`, running)
 	g.wantMissing("server page", body, gamePath(a, "pull-image"), `id="act-pull"`, "manifest unknown", "could not finish this")
 }
 
