@@ -1,11 +1,8 @@
 {{/* One file field that, with script, is also a drop zone (DESIGN 7.10). Without script it is the plain labelled field. Takes DropZone. */}}
 {{define "dropzone" -}}
 <div class="field dropzone" data-dropzone data-accept="{{.Accept}}" data-max-bytes="{{.MaxBytes}}"
-  data-wrong-type="{{t "common.dropzone.wrong_type" "types" .Accept "file" "{file}"}}"
-  data-too-big="{{t "common.dropzone.too_big" "limit" (bytes .MaxBytes) "file" "{file}"}}"
+  data-limit="{{bytes .MaxBytes}}"
   data-single="{{t "common.dropzone.one_file"}}"
-  data-chosen="{{t "common.dropzone.chosen" "file" "{file}" "size" "{size}"}}"
-  data-units="{{t "common.bytes.b" "n" "{n}"}}|{{t "common.bytes.kb" "n" "{n}"}}|{{t "common.bytes.mb" "n" "{n}"}}|{{t "common.bytes.gb" "n" "{n}"}}"
   data-cleared="{{t "common.dropzone.cleared"}}">
   <label for="{{.ID}}" class="required">{{msg .Label}}</label>
   <p class="hint" id="{{.ID}}-hint">{{t "common.dropzone.limits" "types" .Accept "limit" (bytes .MaxBytes)}}</p>

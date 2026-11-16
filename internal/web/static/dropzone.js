@@ -15,17 +15,19 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => { announcer.textContent = said; }, 50);
   }
 
-  const fill = (text, args) => text.replace(/\{(\w+)\}/g, (_, k) => args[k] ?? "");
+  // Text from the page's #i18n block, with {name} placeholders filled in.
+  const strings = JSON.parse(document.getElementById("i18n").textContent);
+  const t = (key, args) => strings[key].replace(/\{(\w+)\}/g, (_, k) => args[k] ?? "");
 
   // A size in the server's words and 1000-based units: "512 B", "1.5 MB".
-  function size(zone, n) {
-    const units = zone.dataset.units.split("|");
+  function size(n) {
+    const units = ["common.bytes.b", "common.bytes.kb", "common.bytes.mb", "common.bytes.gb"];
     let i = 0;
     while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
     const digits = i ? 1 : 0;
     const num = new Intl.NumberFormat(document.documentElement.lang || undefined,
       { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false }).format(n);
-    return fill(units[i], { n: num });
+    return t(units[i], { n: num });
   }
 
   // A drag anywhere on the page marks every zone, not by colour alone: the
@@ -69,8 +71,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function refusal(files) {
       if (files.length !== 1) return zone.dataset.single;
       const f = files[0];
-      if (!f.name.toLowerCase().endsWith(accept)) return fill(zone.dataset.wrongType, { file: f.name });
-      if (f.size > Number(zone.dataset.maxBytes)) return fill(zone.dataset.tooBig, { file: f.name });
+      if (!f.name.toLowerCase().endsWith(accept)) return t("common.dropzone.wrong_type", { file: f.name, types: zone.dataset.accept });
+      if (f.size > Number(zone.dataset.maxBytes)) return t("common.dropzone.too_big", { file: f.name, limit: zone.dataset.limit });
       return "";
     }
 
@@ -88,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const f = input.files[0];
       chosen.hidden = !f;
       zone.classList.toggle("dropzone--chosen", !!f);
-      fileText.textContent = f ? fill(zone.dataset.chosen, { file: f.name, size: size(zone, f.size) }) : "";
+      fileText.textContent = f ? t("common.dropzone.chosen", { file: f.name, size: size(f.size) }) : "";
     }
 
     // Capture runs before the page's own listeners, so a refused file never
