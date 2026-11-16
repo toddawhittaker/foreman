@@ -1,6 +1,7 @@
 package web
 
 import (
+	"html"
 	"net/http"
 	"net/url"
 	"os"
@@ -66,24 +67,32 @@ func TestSelectAllAutomaticTicksOnlyAutomaticSnapshots(t *testing.T) {
 		}
 		return ticked(rec.Body.String())
 	}
+	// The shortcut posts its selection, so no address carries it.
+	press := func(path string, form url.Values) []string {
+		rec := hn.post(path+"/select", form, withCookie(c))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("POST %s/select: %d", path, rec.Code)
+		}
+		return ticked(rec.Body.String())
+	}
 	if got := get(PathSnapshots); len(got) != 0 {
 		t.Errorf("a fresh page ticks %v", got)
 	}
-	if got := get(PathSnapshots + "?select=automatic"); len(got) != 2 || got[0] != ref(id, auto.Name) || got[1] != ref(other, otherAuto.Name) {
+	if got := press(PathSnapshots, url.Values{"select": {"automatic"}}); len(got) != 2 || got[0] != ref(id, auto.Name) || got[1] != ref(other, otherAuto.Name) {
 		t.Errorf("all worlds ticked %v", got)
 	}
-	if got := get(PathSnapshots + "?select=automatic:" + other); len(got) != 1 || got[0] != ref(other, otherAuto.Name) {
+	if got := press(PathSnapshots, url.Values{"select": {"automatic:" + other}}); len(got) != 1 || got[0] != ref(other, otherAuto.Name) {
 		t.Errorf("one world ticked %v", got)
 	}
 	// A box ticked by hand stays ticked when the shortcut is pressed.
-	if got := get(PathSnapshots + "?select=automatic&snap=" + url.QueryEscape(ref(id, manual.Name))); len(got) != 3 {
+	if got := press(PathSnapshots, url.Values{"select": {"automatic"}, "snap": {ref(id, manual.Name)}}); len(got) != 3 {
 		t.Errorf("hand tick lost: %v", got)
 	}
-	if got := get(snapshotsPath(id) + "?select=automatic"); len(got) != 1 || got[0] != ref(id, auto.Name) {
+	if got := press(snapshotsPath(id), url.Values{"select": {"automatic"}}); len(got) != 1 || got[0] != ref(id, auto.Name) {
 		t.Errorf("the world's page ticked %v", got)
 	}
 	// A value that names no snapshot is ignored.
-	if got := get(PathSnapshots + "?snap=../etc&snap=nope&snap=" + url.QueryEscape(ref("..", manual.Name))); len(got) != 0 {
+	if got := press(PathSnapshots, url.Values{"snap": {"../etc", "nope", ref("..", manual.Name)}}); len(got) != 0 {
 		t.Errorf("bad values ticked %v", got)
 	}
 	if list, _ := hn.worlds.Snapshots(id); len(list) != 2 {
@@ -113,8 +122,8 @@ func TestBulkDeleteConfirmationCountsTheSelectionTogether(t *testing.T) {
 		t.Fatalf("the test needs a shared file: alone %d, together %d", alone, together)
 	}
 
-	q := url.Values{"snap": {ref(id, first.Name), ref(id, second.Name), ref(id, "20991103T142500Z"), "junk"}}
-	rec := hn.get(PathSnapshotsDelete+"?"+q.Encode(), withCookie(c))
+	form := url.Values{"snap": {ref(id, first.Name), ref(id, second.Name), ref(id, "20991103T142500Z"), "junk"}}
+	rec := hn.post(PathSnapshotsReview, form, withCookie(c))
 	body := rec.Body.String()
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d", rec.Code)
@@ -137,11 +146,14 @@ func TestBulkDeleteConfirmationCountsTheSelectionTogether(t *testing.T) {
 		t.Error("the confirmation page wrote an audit entry")
 	}
 
-	rec = hn.get(PathSnapshotsDelete, withCookie(c))
+	rec = hn.post(PathSnapshotsReview, nil, withCookie(c))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Nothing is ticked.") {
 		t.Errorf("nothing ticked: %d", rec.Code)
 	}
-	hn.wantRedirect(hn.get(PathSnapshotsDelete), signInAfter(PathSnapshotsDelete))
+	hn.wantRedirect(hn.post(PathSnapshotsReview, form), PathSignIn)
+	if rec := hn.post(PathSnapshotsReview, form, withCookie(c), withHeader("Sec-Fetch-Site", "cross-site")); rec.Code != http.StatusForbidden {
+		t.Errorf("cross-site: %d", rec.Code)
+	}
 }
 
 // A gone snapshot whose name has the right shape but no real date is listed
@@ -154,7 +166,7 @@ func TestBulkDeleteGoneSnapshotWithoutADateShowsItsName(t *testing.T) {
 	if _, ok := world.SnapshotNameTime(bad); ok || !world.ValidSnapshotName(bad) {
 		t.Fatal("the test needs a name of the right shape that holds no date")
 	}
-	rec := hn.get(PathSnapshotsDelete+"?snap="+url.QueryEscape(ref(id, bad)), withCookie(c))
+	rec := hn.post(PathSnapshotsReview, url.Values{"snap": {ref(id, bad)}}, withCookie(c))
 	body := rec.Body.String()
 	if rec.Code != http.StatusOK || !strings.Contains(body, "Already deleted") {
 		t.Fatalf("status %d:\n%s", rec.Code, body)
@@ -178,7 +190,7 @@ func TestBulkDeleteWarnsAboutRollback(t *testing.T) {
 	if err := hn.worlds.SetGameVersionHeld(id, "2.0.73"); err != nil {
 		t.Fatal(err)
 	}
-	body := hn.get(PathSnapshotsDelete+"?snap="+url.QueryEscape(ref(id, snap.Name)), withCookie(c)).Body.String()
+	body := hn.post(PathSnapshotsReview, url.Values{"snap": {ref(id, snap.Name)}}, withCookie(c)).Body.String()
 	if !strings.Contains(body, "you can no longer roll Base back to game version 2.0.72") {
 		t.Errorf("no rollback warning:\n%s", body)
 	}
@@ -199,7 +211,7 @@ func TestBulkDeleteDeletesAuditsAndReturns(t *testing.T) {
 
 	form := url.Values{"snap": {ref(id, first.Name), ref(id, second.Name)}}
 	rec := hn.post(PathSnapshotsDelete, form, withCookie(c))
-	hn.wantRedirect(rec, PathSnapshots+"?"+deletedQuery(first.Name, second.Name))
+	hn.wantRedirect(rec, PathSnapshots+"?removed=2")
 	if list, _ := hn.worlds.Snapshots(id); len(list) != 1 || list[0].Name != keep.Name {
 		t.Errorf("left %+v", list)
 	}
@@ -216,7 +228,7 @@ func TestBulkDeleteDeletesAuditsAndReturns(t *testing.T) {
 
 	// From a world's page, the delete returns there.
 	rec = hn.post(PathSnapshotsDelete, url.Values{"snap": {ref(id, keep.Name)}, "world": {id}}, withCookie(c))
-	hn.wantRedirect(rec, snapshotsPath(id)+"?"+deletedQuery(keep.Name))
+	hn.wantRedirect(rec, snapshotsPath(id)+"?removed=1")
 }
 
 // SPEC 6.12: a delete that fails is reported, and the ones already done
@@ -291,12 +303,12 @@ func TestBulkDeleteCountsGoneSnapshotsAsDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 	form := url.Values{"snap": {ref(id, a.Name), ref(other, b.Name)}}
-	hn.wantRedirect(hn.post(PathSnapshotsDelete, form, withCookie(c)), PathSnapshots+"?"+deletedQuery(a.Name, b.Name))
+	hn.wantRedirect(hn.post(PathSnapshotsDelete, form, withCookie(c)), PathSnapshots+"?removed=2")
 	if n := len(hn.audits(AuditSnapshotDelete)); n != 2 {
 		t.Fatalf("%d audit entries after the first post", n)
 	}
 	// The same form again.
-	hn.wantRedirect(hn.post(PathSnapshotsDelete, form, withCookie(c)), PathSnapshots+"?"+deletedQuery(a.Name, b.Name))
+	hn.wantRedirect(hn.post(PathSnapshotsDelete, form, withCookie(c)), PathSnapshots+"?removed=2")
 	if n := len(hn.audits(AuditSnapshotDelete)); n != 2 {
 		t.Errorf("a resubmit was audited: %d entries", n)
 	}
@@ -333,6 +345,13 @@ func TestBulkDeleteRefusesBadRequests(t *testing.T) {
 	if rec := hn.post(PathSnapshotsDelete, form, withCookie(c), withHeader("Sec-Fetch-Site", "cross-site")); rec.Code != http.StatusForbidden {
 		t.Errorf("cross-site: %d", rec.Code)
 	}
+	// The selection is never read from an address, so a GET deletes nothing.
+	if rec := hn.get(PathSnapshotsDelete+"?"+form.Encode(), withCookie(c)); rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET: %d", rec.Code)
+	}
+	if list, _ := hn.worlds.Snapshots(id); len(list) != 2 {
+		t.Errorf("a GET removed a snapshot: %+v", list)
+	}
 	hn.wantRedirect(hn.post(PathSnapshotsDelete, form), PathSignIn)
 	for name, bad := range map[string]url.Values{
 		"nothing ticked": {},
@@ -345,11 +364,96 @@ func TestBulkDeleteRefusesBadRequests(t *testing.T) {
 	// A snapshot that is not there counts as deleted: the Done page, with
 	// nothing removed and nothing audited.
 	rec := hn.post(PathSnapshotsDelete, url.Values{"snap": {ref(id, "20991103T142500Z")}}, withCookie(c))
-	hn.wantRedirect(rec, PathSnapshots+"?"+deletedQuery("20991103T142500Z"))
+	hn.wantRedirect(rec, PathSnapshots+"?removed=1")
 	if list, _ := hn.worlds.Snapshots(id); len(list) != 2 {
 		t.Errorf("a refused delete removed a snapshot: %+v", list)
 	}
 	if len(hn.audits(AuditSnapshotDelete)) != 0 {
 		t.Error("a refused delete was audited")
+	}
+}
+
+// addresses lists every link and form address a page carries.
+func addresses(body string) []string {
+	var out []string
+	for _, m := range regexp.MustCompile(`(?:href|action|formaction)="([^"]*)"`).FindAllStringSubmatch(body, -1) {
+		out = append(out, html.UnescapeString(m[1]))
+	}
+	return out
+}
+
+// wantShortAddresses checks every address against maxAddress (SPEC 17).
+func (hn *harness) wantShortAddresses(page string, body string) {
+	hn.t.Helper()
+	if len(addresses(body)) == 0 {
+		hn.t.Fatalf("%s: found no addresses to check", page)
+	}
+	for _, a := range addresses(body) {
+		if len(a) > maxAddress {
+			hn.t.Errorf("%s: an address is %d bytes: %.80s...", page, len(a), a)
+		}
+	}
+}
+
+// SPEC 6.12: 200 ticked snapshots add nothing to any address. The selection
+// is posted, the delete says how many went, and each is still audited.
+func TestBulkDeleteOf200SnapshotsKeepsEveryAddressShort(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id := hn.seedSnapshotWorld()
+	const n = 200
+	var picks []string
+	for range n {
+		hn.clock.Advance(time.Second)
+		sn, err := hn.worlds.TakeSnapshot(id, "Bulk", "alice")
+		if err != nil {
+			t.Fatal(err)
+		}
+		picks = append(picks, ref(id, sn.Name))
+	}
+	form := url.Values{"snap": picks, "world": {id}}
+
+	for _, path := range []string{PathSnapshots + "/select", snapshotsPath(id) + "/select", PathSnapshotsReview} {
+		body := hn.post(path, form, withCookie(c)).Body.String()
+		hn.wantShortAddresses(path, body)
+		if path != PathSnapshotsReview && len(ticked(body)) == 0 {
+			t.Errorf("%s ticked nothing", path)
+		}
+	}
+	review := hn.post(PathSnapshotsReview, form, withCookie(c)).Body.String()
+	if got := strings.Count(review, `<input type="hidden" name="snap"`); got != n {
+		t.Fatalf("the confirmation posts %d snapshots, want %d", got, n)
+	}
+
+	rec := hn.post(PathSnapshotsDelete, form, withCookie(c))
+	loc := rec.Header().Get("Location")
+	if len(loc) > maxAddress || loc != snapshotsPath(id)+"?removed=200" {
+		t.Fatalf("the result address is %d bytes: %.80s", len(loc), loc)
+	}
+	done := hn.get(loc, withCookie(c)).Body.String()
+	hn.wantShortAddresses("result", done)
+	if !strings.Contains(done, "Foreman deleted 200 snapshots.") {
+		t.Errorf("the result does not say how many were deleted:\n%s", done)
+	}
+	if got := len(hn.audits(AuditSnapshotDelete)); got != n {
+		t.Errorf("%d audit entries, want one for each of %d", got, n)
+	}
+	if list, _ := hn.worlds.Snapshots(id); len(list) != 0 {
+		t.Errorf("%d snapshots left", len(list))
+	}
+}
+
+// SPEC 6.12: a count in the address is read as a count and nothing else.
+func TestRemovedCountIgnoresJunk(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	hn.seedSnapshotWorld()
+	if body := hn.get(PathSnapshots+"?removed=1", withCookie(c)).Body.String(); !strings.Contains(body, "Foreman deleted 1 snapshot.") {
+		t.Errorf("a count of one:\n%s", body)
+	}
+	for _, v := range []string{"abc", "-3", "0", ""} {
+		if body := hn.get(PathSnapshots+"?removed="+v, withCookie(c)).Body.String(); strings.Contains(body, "Foreman deleted") {
+			t.Errorf("removed=%q shows a result", v)
+		}
 	}
 }

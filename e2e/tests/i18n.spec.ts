@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, adminPassword, seedWorld, seedSecond, image21, openMenu, pickLanguage, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, postFrom, adminPassword, seedWorld, seedSecond, image21, openMenu, pickLanguage, type Foreman } from "./foreman.js";
 import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -415,7 +415,6 @@ test.describe("layout at 320 px in every language", () => {
       const deleteBase = await longRow.getByRole("link", { name: /^Delete/ }).getAttribute("href");
       const ticked = await page.locator("input[name=snap]").evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
       expect(ticked.length, "snapshots of the base world").toBeGreaterThanOrEqual(2);
-      const bulk = `/snapshots/delete?${ticked.map((v) => `snap=${encodeURIComponent(v)}`).join("&")}`;
       await page.goto("/deleted");
       const restoreDeleted = await page.getByRole("link", { name: /^Restore/ }).first().getAttribute("href");
       expect(restoreBase && deleteBase && restoreDeleted, "snapshot links").toBeTruthy();
@@ -442,13 +441,20 @@ test.describe("layout at 320 px in every language", () => {
           restoreBase!,
           restoreDeleted!,
           deleteBase!,
-          bulk,
           "/worlds/base/rollback",
           "/generate",
           "/worlds/base/clone",
           "/worlds/base/settings",
           "/worlds/base/settings/raw/server-settings.json",
         ],
+        failures,
+      );
+      // The confirmation for ticking several is the answer to a post.
+      await sweepSubmit(
+        page,
+        lang,
+        "/snapshots/review",
+        () => postFrom(page, "/snapshots", "/snapshots/review", ticked.map((v) => ["snap", v])),
         failures,
       );
 

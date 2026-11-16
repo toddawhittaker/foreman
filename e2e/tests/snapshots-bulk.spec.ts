@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, postFrom, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { mkdirSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -89,14 +89,15 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   await expect(ticked(page)).toHaveCount(0);
 
   await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
-  await expect(page).toHaveURL(/\/snapshots\?.*select=automatic/);
+  // The ticked boxes are posted, so the address stays short.
+  await expect(page).toHaveURL("/snapshots/select");
   await expect(rowsOf(page)).toHaveCount(3);
   await expect(ticked(page)).toHaveCount(2);
   await expect(rowsOf(page).filter({ hasText: "Keep me" }).locator('input[name="snap"]')).not.toBeChecked();
   await checkPage(page);
 
   await page.getByRole("button", { name: "Delete selected" }).click();
-  await expect(page).toHaveURL(/\/snapshots\/delete\?/);
+  await expect(page).toHaveURL("/snapshots/review");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Delete 2 snapshots?");
   await expect(page.getByText(/^Free .* of disk space/)).toBeVisible();
   await expect(page.locator(".confirm li", { hasText: /^Family base: "Before restore"/ })).toHaveCount(2);
@@ -110,7 +111,7 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
   await page.getByRole("button", { name: "Delete selected" }).click();
   await page.getByRole("button", { name: "Delete 2 snapshots" }).click();
-  await expect(page).toHaveURL(/\/snapshots\?deleted=.*&deleted=/);
+  await expect(page).toHaveURL("/snapshots?removed=2");
   await expect(page.getByText("Done: Foreman deleted 2 snapshots.")).toBeVisible();
   await expect(rowsOf(page)).toHaveCount(1);
   await expect(rowsOf(page).first()).toContainText("Keep me");
@@ -131,7 +132,7 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   await page.locator('input[name="snap"]').first().check();
   await page.getByRole("button", { name: "Delete selected" }).click();
   await page.getByRole("button", { name: "Delete 1 snapshot" }).click();
-  await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?deleted=/);
+  await expect(page).toHaveURL(`${world}/snapshots?removed=1`);
   await expect(page.getByText(/No snapshots yet/)).toBeVisible();
 });
 
@@ -182,7 +183,7 @@ test("the total is what deleting everything frees", async ({ page, foreman }) =>
 test("the confirmation says which snapshots are already deleted", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
-  await page.goto("/snapshots/delete?snap=family-base/20991103T142500Z");
+  await postFrom(page, "/snapshots", "/snapshots/review", [["snap", "family-base/20991103T142500Z"]]);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Delete snapshots");
   await expect(page.getByRole("heading", { name: "Already deleted" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "These stay" })).toHaveCount(0);
@@ -190,7 +191,7 @@ test("the confirmation says which snapshots are already deleted", async ({ page,
   await expect(page.getByRole("button", { name: /^Delete \d/ })).toHaveCount(0);
   await checkPage(page);
 
-  await page.goto("/snapshots/delete");
+  await postFrom(page, "/snapshots", "/snapshots/review", []);
   await expect(page.getByText("Nothing is ticked.")).toBeVisible();
   await checkPage(page);
 });

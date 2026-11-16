@@ -64,7 +64,7 @@ func (hn *harness) seedTwoSnapshots() (id string, first, second world.Snapshot) 
 
 func (hn *harness) audits(action string) []string {
 	hn.t.Helper()
-	list, err := hn.store.ListAudit(context.Background(), 100)
+	list, err := hn.store.ListAudit(context.Background(), 500)
 	if err != nil {
 		hn.t.Fatal(err)
 	}

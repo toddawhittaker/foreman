@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
@@ -59,6 +60,8 @@ type AllSnapshotsPage struct {
 	TickNote i18n.Msg
 	// Deleted holds when each snapshot the last delete removed was taken.
 	Deleted []time.Time
+	// Removed is how many snapshots the last bulk delete removed.
+	Removed int
 }
 
 func (AllSnapshotsPage) templateName() string { return "allsnapshots" }
@@ -79,10 +82,10 @@ func (AllSnapshotsPage) WorldPath(id string) string { return worldPath(id) }
 func (AllSnapshotsPage) BulkValue(id, snap string) string { return refValue(id, snap) }
 
 // SelectPath is where the shortcut buttons post back to.
-func (AllSnapshotsPage) SelectPath() string { return PathSnapshots }
+func (AllSnapshotsPage) SelectPath() string { return PathSnapshots + "/select" }
 
-// BulkPath is the confirmation page for the ticked snapshots.
-func (AllSnapshotsPage) BulkPath() string { return PathSnapshotsDelete }
+// BulkPath is where the ticked snapshots post to be confirmed.
+func (AllSnapshotsPage) BulkPath() string { return PathSnapshotsReview }
 
 // SelectWorld is the value of one world's "select all automatic" button.
 func (AllSnapshotsPage) SelectWorld(id string) string { return selectAutomatic + ":" + id }
@@ -128,10 +131,10 @@ func (p SnapshotDeletePage) BackPath() string {
 func (p SnapshotsPage) DeletePath(snap string) string { return snapshotDeletePath(p.WorldID, snap) }
 
 // SelectPath is where the shortcut button posts back to.
-func (p SnapshotsPage) SelectPath() string { return snapshotsPath(p.WorldID) }
+func (p SnapshotsPage) SelectPath() string { return snapshotsPath(p.WorldID) + "/select" }
 
-// BulkPath is the confirmation page for the ticked snapshots.
-func (SnapshotsPage) BulkPath() string { return PathSnapshotsDelete }
+// BulkPath is where the ticked snapshots post to be confirmed.
+func (SnapshotsPage) BulkPath() string { return PathSnapshotsReview }
 
 // SelectAll is the value of the button that ticks this world's automatic snapshots.
 func (SnapshotsPage) SelectAll() string { return selectAutomatic }
@@ -140,8 +143,21 @@ func (s *server) allSnapshotRoutes() {
 	s.mux.HandleFunc("GET "+PathSnapshots, s.requireUser(s.handleAllSnapshots))
 	s.mux.HandleFunc("GET "+PathSnapshotDelete, s.requireUser(s.handleSnapshotDeleteForm))
 	s.mux.HandleFunc("POST "+PathSnapshotDelete, s.requireUser(s.handleSnapshotDelete))
-	s.mux.HandleFunc("GET "+PathSnapshotsDelete, s.requireUser(s.handleSnapshotsDeleteForm))
+	s.mux.HandleFunc("POST "+PathSnapshotsReview, s.requireUser(s.handleSnapshotsReview))
+	// A shortcut button posts the ticked boxes back and gets the list again
+	// with its boxes ticked; it changes nothing.
+	s.mux.HandleFunc("POST "+PathSnapshots+"/select", s.requireUser(s.reselect(s.handleAllSnapshots)))
+	s.mux.HandleFunc("POST "+PathWorldSnapshots+"/select", s.requireUser(s.reselect(s.handleSnapshots)))
 	s.mux.HandleFunc("POST "+PathSnapshotsDelete, s.requireUser(s.handleSnapshotsDelete))
+}
+
+// reselect reads a posted selection before showing a snapshot list.
+func (s *server) reselect(list func(http.ResponseWriter, *http.Request, store.User)) func(http.ResponseWriter, *http.Request, store.User) {
+	return func(w http.ResponseWriter, r *http.Request, u store.User) {
+		if s.readForm(w, r) {
+			list(w, r, u)
+		}
+	}
 }
 
 func (s *server) handleAllSnapshots(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -182,6 +198,7 @@ func (s *server) handleAllSnapshots(w http.ResponseWriter, r *http.Request, u st
 	}
 	p.TickNote = sel.tickNote(automatic)
 	p.Deleted = deletedTimes(r.URL.Query()["deleted"])
+	p.Removed = removedCount(r)
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -292,10 +309,23 @@ func (s *server) handleSnapshotDelete(w http.ResponseWriter, r *http.Request, u 
 	s.page(w, r, http.StatusConflict, u.Username, p)
 }
 
-// deletedQuery names the deleted snapshots for the page the delete returns
-// to, which says what went from their folder names alone.
-func deletedQuery(names ...string) string {
-	return url.Values{"deleted": names}.Encode()
+// deletedQuery names the deleted snapshot for the page the delete returns
+// to, which says what went from its folder name alone.
+func deletedQuery(name string) string {
+	return url.Values{"deleted": {name}}.Encode()
+}
+
+// removedQuery tells a snapshot list how many snapshots a bulk delete removed,
+// so the address stays short however many were ticked.
+func removedQuery(n int) string { return "removed=" + strconv.Itoa(n) }
+
+// removedCount reads removedQuery; zero when it is absent or not a count.
+func removedCount(r *http.Request) int {
+	n, err := strconv.Atoi(r.URL.Query().Get("removed"))
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
 }
 
 // deletedTimes reads when the deleted snapshots were taken from their
