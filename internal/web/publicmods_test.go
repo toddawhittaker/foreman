@@ -498,7 +498,7 @@ func TestPublicDownloadsLiftDeadlinesOnlyWhileServingAFile(t *testing.T) {
 // again in 5 seconds, and a place frees when a download ends.
 func TestPublicDownloadsAreLimitedToFour(t *testing.T) {
 	p := newPublicRig(t)
-	big := make([]byte, 40<<20)
+	big := make([]byte, 8<<20)
 	if err := os.WriteFile(filepath.Join(p.modsDir(p.id), "big_1.0.0.zip"), big, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -544,12 +544,15 @@ func TestPublicDownloadsAreLimitedToFour(t *testing.T) {
 // SPEC 14.18: a download whose reader stops reading is cut off after the
 // idle limit, and its place is given back.
 func TestPublicDownloadThatStallsIsCutOff(t *testing.T) {
+	// Shorten the idle limit before the rig starts, so the server and its
+	// handlers are shut down (cleanups run last first) before the limit is
+	// put back.
+	shortIdle(t, 300*time.Millisecond)
 	p := newPublicRig(t)
-	big := make([]byte, 40<<20)
+	big := make([]byte, 8<<20)
 	if err := os.WriteFile(filepath.Join(p.modsDir(p.id), "big_1.0.0.zip"), big, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	shortIdle(t, 300*time.Millisecond)
 	path := PublicModFilePath(p.id, "big_1.0.0.zip")
 	var held []*http.Response
 	defer func() {
