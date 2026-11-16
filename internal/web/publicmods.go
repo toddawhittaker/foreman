@@ -344,12 +344,6 @@ func (p *portalMarks) run(id, fp string, e *marksEntry, done chan struct{}) {
 	close(done)
 }
 
-// handlePublicModsPage is a placeholder until the page itself is built.
-func (s *server) handlePublicModsPage(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = w.Write([]byte("Public mods\n"))
-}
-
 // publicShare finds the mod list of the world in the address, which must be
 // the world whose game is running. It answers 404 itself and returns false
 // for any other world. Whatever the address holds is only compared, never

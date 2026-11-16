@@ -1,0 +1,42 @@
+{{define "title"}}{{t "publicmods.settings.title"}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<p class="eyebrow">{{t "common.nav.settings"}}</p>
+<h1>{{t "publicmods.settings.title"}}</h1>
+{{template "settings-tabs" "public-mods"}}
+{{- if .Done}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "on"}}{{t "publicmods.settings.done.on"}}{{else}}{{t "publicmods.settings.done.off"}}{{end}}</p>
+</div>
+{{- end}}
+{{- /* The state leads, as on the other settings pages (DESIGN 8.15). */}}
+{{- if .On}}
+<p id="public-mods-state">{{t "publicmods.settings.state.on"}}</p>
+{{- else}}
+<p id="public-mods-state">{{t "publicmods.settings.state.off"}}</p>
+{{- end}}
+{{- /* One button flips the setting, so turning it on or off is one click. */}}
+<form method="post" action="{{.Path}}" class="panel setting-row">
+  <section class="setting-row__head" aria-labelledby="public-mods-shares-heading">
+    <h2 id="public-mods-shares-heading">{{t "publicmods.settings.shares.heading"}}</h2>
+    <ul>
+      <li>{{t "publicmods.settings.shares.world"}}</li>
+      <li>{{t "publicmods.settings.shares.mods"}}</li>
+      <li>{{t "publicmods.settings.shares.nothing"}}</li>
+    </ul>
+  </section>
+  <div class="setting-row__body">
+    <p id="public-mods-proxy">{{tHTML "publicmods.settings.proxy" "path" (code "/public/") "guide" (extLink .GuidePath "publicmods.settings.proxy.guide")}}</p>
+    <div class="actions">
+      {{- if .On}}
+      <a href="{{.PagePath}}" class="button button--primary" id="act-public-mods-open">{{t "publicmods.settings.open"}}</a>
+      <button type="submit" class="button" name="public_mods" value="off" id="act-public-mods">{{t "publicmods.settings.turn_off"}}</button>
+      {{- else}}
+      <button type="submit" class="button button--primary" name="public_mods" value="on" id="act-public-mods">{{t "publicmods.settings.turn_on"}}</button>
+      {{- end}}
+    </div>
+  </div>
+</form>
+{{end}}
+{{- end}}

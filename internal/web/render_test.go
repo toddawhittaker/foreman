@@ -168,6 +168,14 @@ func pageCases() []pageCase {
 			return p
 		}()},
 		{"notification delete", "todd", 200, WebhookDeletePage{Hook: WebhookView{ID: 1, Preset: i18n.M("notify.preset.discord"), Host: "discord.com"}}},
+		{"public mods none", "", 200, PublicModsPage{}},
+		{"public mods listed", "", 200, PublicModsPage{PublicModsData{PortalUnchecked: true, Worlds: []PublicWorld{{
+			ID: "w", Name: longName, GameVersion: "2.0.72", AllPath: PublicModsAllPath("w"), Mods: []PublicMod{
+				{Name: "a", Title: longName, Version: "1.0.0", DownloadPath: PublicModFilePath("w", "a_1.0.0.zip"), NotOnPortal: true, Hidden: true},
+				{Name: "b", Version: "2.0.0", Folder: true},
+			}}}}}},
+		{"public mods settings off", "todd", 200, PublicModsSettingsPage{}},
+		{"public mods settings on", "todd", 200, PublicModsSettingsPage{On: true, Done: PublicModsOn}},
 		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1"}.withZones()},
 		{"schedule on", "todd", 200, SchedulePage{On: true, Next: time.Date(2026, 11, 13, 4, 0, 0, 0, time.UTC), SavedClock: "04:00", SavedZone: "Europe/London",
 			Enabled: true, Clock: "04:00", Zone: "Europe/London", Limit: "1", Saved: true}.withZones()},
@@ -472,8 +480,9 @@ func checkPage(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) {
 	if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
 		t.Errorf("Content-Type %q", got)
 	}
-	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
-		t.Errorf("Cache-Control %q", got)
+	// A public page keeps the no-cache its route sets (SPEC 14.18).
+	if _, public := c.page.(publicPage); !public && rec.Header().Get("Cache-Control") != "no-store" {
+		t.Errorf("Cache-Control %q", rec.Header().Get("Cache-Control"))
 	}
 	if !strings.HasPrefix(body, "<!doctype html>") {
 		t.Errorf("body does not start with a doctype: %.40q", body)

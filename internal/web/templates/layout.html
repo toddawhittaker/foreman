@@ -212,7 +212,7 @@
 </nav>
 {{- end}}
 
-{{/* The tabs of Foreman's own settings pages (DESIGN 8.15). Takes "account",
+{{/* The tabs of Foreman's own settings pages (DESIGN 8.15). Takes "account", "public-mods",
      "schedule" or "notifications", or "notification" on a page under the
      notifications list, where its link is current but not the page. */}}
 {{define "settings-tabs" -}}
@@ -221,6 +221,7 @@
     <li><a href="{{accountPath}}"{{if eq . "account"}} aria-current="page"{{end}}>{{t "account.title"}}</a></li>
     <li><a href="{{schedulePath}}"{{if eq . "schedule"}} aria-current="page"{{end}}>{{t "common.menu.schedule"}}</a></li>
     <li><a href="{{notificationsPath}}"{{if eq . "notifications"}} aria-current="page"{{else if eq . "notification"}} aria-current="true"{{end}}>{{t "common.menu.notifications"}}</a></li>
+    <li><a href="{{publicModsSetPath}}"{{if eq . "public-mods"}} aria-current="page"{{end}}>{{t "publicmods.settings.tab"}}</a></li>
   </ul>
 </nav>
 {{- end}}
