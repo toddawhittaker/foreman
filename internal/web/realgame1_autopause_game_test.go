@@ -2,8 +2,9 @@
 
 package web
 
-// A world with no server-settings.json, saved once through the settings page,
-// must start with the game's auto-pause on (SPEC 11.1). The real game images
+// A generated world's server-settings.json has auto-pause on (EPIC-fixes-11
+// ruling 3); saved once through the settings page, the world must start with
+// auto-pause as the form left it (SPEC 11.1). The real game images
 // show it: with no player connected, an auto-paused game's tick does not
 // move. Run by `make test-game` after the game package, one package at a time
 // (they share the game's UDP port), or alone with `go test -tags game -run
@@ -106,18 +107,24 @@ func runAutoPause(t *testing.T, dc *docker.Client, version string, leaveOn bool)
 	rig.id, rig.dir = id, filepath.Join(hn.worlds.Dirs().Worlds, id)
 	t.Cleanup(func() {
 		_ = ctrl.Stop(context.Background(), id, game.Actor{UserID: 1, Username: "alice"}, game.StopOptions{})
-		if err := dc.RemoveContainer(context.Background(), game.ContainerName(id), true); err != nil && !strings.Contains(err.Error(), "not found") {
+		if err := dc.RemoveContainer(context.Background(), game.ContainerName(id), true); err != nil && !strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "No such container") {
 			t.Errorf("could not remove test container: %v", err)
 		}
 	})
 	if !strings.HasPrefix(game.ContainerName(id), "foreman-uib-realgame1-") {
 		t.Fatalf("container name %s is not recognisable as this test's", game.ContainerName(id))
 	}
-	if cfg, err := hn.worlds.ReadConfig(id, world.ServerSettingsFile); err != nil || cfg.Found {
-		t.Fatalf("a generated world has a server-settings.json: %v %v", cfg.Found, err)
+	gen, err := hn.worlds.ReadConfig(id, world.ServerSettingsFile)
+	if err != nil || !gen.Found {
+		t.Fatalf("a generated world has no server-settings.json: %v %v", gen.Found, err)
+	}
+	for _, k := range []string{`"auto_pause": true`, `"autosave_slots": 20`, `"visibility": {"public": false, "lan": false}`} {
+		if !strings.Contains(string(gen.Data), k) {
+			t.Fatalf("the generated file lacks %s:\n%s", k, gen.Data)
+		}
 	}
 
-	// The page shows auto-pause on for a world with no file.
+	// The page shows auto-pause on for a generated world.
 	body := rig.getAs(rig.cookie, rig.path("")).Body.String()
 	if !strings.Contains(body, `name="auto_pause"`) || !checkedBox(body, "auto_pause") {
 		t.Fatalf("the first form does not show auto_pause on:\n%s", body)
