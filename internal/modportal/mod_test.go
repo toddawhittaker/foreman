@@ -328,3 +328,17 @@ func TestParseModCleansTheTitle(t *testing.T) {
 		}
 	}
 }
+
+// KnownMissing reads the cache and never asks the portal.
+func TestKnownMissingReadsOnlyTheCache(t *testing.T) {
+	_, c, _ := fakePortal(t)
+	if c.KnownMissing("no-such-mod") {
+		t.Error("known missing before the portal was asked")
+	}
+	if _, err := c.Mod(context.Background(), "no-such-mod"); !errors.Is(err, ErrNotOnPortal) {
+		t.Fatalf("got %v", err)
+	}
+	if !c.KnownMissing("no-such-mod") {
+		t.Error("not known missing after the portal said so")
+	}
+}

@@ -1,6 +1,6 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, live, stateBadge, version20, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, doneBox, live, stateBadge, version20, makeZip, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // SPEC 7.4, 9.3: the pre-start check refuses a world using a mod version the
@@ -54,6 +54,20 @@ test("a start refused for a mod players cannot download: update first, then star
   // The stop link comes in the same render as the note would, once the start has ended.
   await expect(page.locator("#act-stop")).toBeVisible(live);
   await expect(page.locator("#portal-unchecked")).toHaveCount(0);
+});
+
+// Ruling on #623 (SPEC 9.15): the refusal and its fix name the mod by the title
+// in its info.json, in plain text.
+test("a refusal for a gone mod names it by its title", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await goneWorld(page, foreman, fakeGame!, fakePortal!);
+  const info = { name: "visible-planets", version: "1.5.5", factorio_version: "2.0", title: "Visible Planets", dependencies: ["base >= 2.0", "space-age >= 2.0"] };
+  writeFileSync(join(foreman.dataDir, "worlds", "base", "mods", "visible-planets_1.5.5.zip"), makeZip({ "visible-planets_1.5.5/info.json": JSON.stringify(info) }));
+  await page.getByRole("button", { name: "Start server" }).click();
+  const box = refusal(page);
+  await expect(box).toContainText("The mod portal no longer has Visible Planets 1.5.5, so players' games cannot download it", live);
+  await expect(box).not.toContainText("visible-planets");
+  await expect(box.getByRole("link", { name: "Update Visible Planets" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=update&name=visible-planets");
+  await checkPage(page);
 });
 
 // SPEC 9.3, 7.4: the refusal carries the fix, so the notice keeps its words and drops its own button.

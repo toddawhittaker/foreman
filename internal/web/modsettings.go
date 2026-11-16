@@ -315,9 +315,9 @@ func (s *server) modSettingsPage(r *http.Request, sum world.Summary) (ModSetting
 }
 
 // titleGroups gives each group its mod's title from the mod's info.json
-// and says whether the mod is on the portal's page list: a folder mod or a
-// built-in one is not linked (SPEC 9.15). A mods folder that cannot be read
-// leaves the names as they are.
+// and says whether it links to the portal: a folder mod, a built-in one and
+// a mod the portal is known to lack are not linked (SPEC 9.15). A mods
+// folder that cannot be read leaves the names as they are.
 func (s *server) titleGroups(id string, lists ...[]SettingGroup) {
 	installed, err := s.worlds.Mods(id)
 	if err != nil {
@@ -331,7 +331,7 @@ func (s *server) titleGroups(id string, lists ...[]SettingGroup) {
 	for _, groups := range lists {
 		for i, g := range groups {
 			if m, ok := by[g.Mod]; ok {
-				groups[i].Title, groups[i].Link = m.Title, !m.Local && !m.BuiltIn
+				groups[i].Title, groups[i].Link = m.Title, !m.Local && !m.BuiltIn && !s.portalLacks(m.Name)
 			}
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/mods"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // titledZip is a mod zip whose info.json carries a title.
@@ -95,5 +97,52 @@ func TestModResultSentencesUseTitles(t *testing.T) {
 	msg, _ := modsFailure(err, res, "Base", game.StateRunning, PathServer)
 	if got := english(msg); !strings.HasPrefix(got, "Lamp Pack 1.0.0 did not match") {
 		t.Errorf("failure: %q", got)
+	}
+}
+
+// SPEC 9.15, 7.4: the pre-start refusal and its fix name a mod by title.
+func TestPrecheckNamesModsByTitle(t *testing.T) {
+	titles := map[string]string{"fp-gone": "Gone Pack", "fp-off": "Off Pack"}
+	one := world.Problem{Kind: world.ProblemModGone, Titles: titles, Gone: []world.GoneMod{{Name: "fp-gone", Version: "1.0.0", Update: "1.1.0", Title: "Gone Pack"}}}
+	if got := english(problemMsg(one)); !strings.Contains(got, "no longer has Gone Pack 1.0.0") {
+		t.Errorf("gone: %q", got)
+	}
+	off := world.Problem{Kind: world.ProblemModDisabled, Titles: titles, Mods: []string{"fp-off", "fp-plain"}, Save: "a.zip"}
+	if got := english(problemMsg(off)); !strings.Contains(got, "Off Pack, fp-plain") {
+		t.Errorf("disabled: %q", got)
+	}
+	for _, c := range []struct {
+		gone world.GoneMod
+		want string
+	}{
+		{world.GoneMod{Name: "fp-gone", Version: "1", Update: "2", Title: "Gone Pack"}, "Update Gone Pack"},
+		{world.GoneMod{Name: "fp-gone", Version: "1", Title: "Gone Pack"}, "Remove Gone Pack"},
+		{world.GoneMod{Name: "fp-gone", Version: "1", Update: "2"}, "Update fp-gone"},
+	} {
+		if got := english(goneFix("w1", []world.GoneMod{c.gone}).Label); got != c.want {
+			t.Errorf("label %q, want %q", got, c.want)
+		}
+	}
+}
+
+// SPEC 9.15: on the settings page a mod the portal client's cache already
+// knows the portal lacks is not linked; the page asks the portal nothing.
+func TestModSettingsDoesNotLinkAModThePortalLacks(t *testing.T) {
+	var client ModPortal
+	g := newModsRigWrapped(t, false, func(p ModPortal) ModPortal { client = p; return p })
+	id := g.world20("Base")
+	g.writeTitledMod(id, "fmtest", "1.0.0", "Test Mod")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
+	body, _ := g.settingsForm(id)
+	wantIn(t, "before the portal said", body, `<a href="https://mods.factorio.com/mod/fmtest" class="mod-title"`)
+
+	if _, err := client.Mod(t.Context(), "fmtest"); !errors.Is(err, modportal.ErrNotOnPortal) {
+		t.Fatalf("the fake portal has the mod, so the test cannot say it lacks it: %v", err)
+	}
+	body, _ = g.settingsForm(id)
+	wantIn(t, "after", body, `<span class="mod-title" translate="no">Test Mod</span>`)
+	if strings.Contains(body, "mods.factorio.com/mod/fmtest") {
+		t.Error("a mod the portal lacks is linked")
 	}
 }

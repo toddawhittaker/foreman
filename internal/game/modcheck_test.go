@@ -1,6 +1,8 @@
 package game
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -244,5 +246,29 @@ func TestSwitchWithoutStartDoesNotAskThePortal(t *testing.T) {
 	}
 	if r.active() != b {
 		t.Error("the switch did not make the new world active")
+	}
+}
+
+// SPEC 9.15: the refusal names a gone mod by the title in its info.json.
+func TestGoneProblemCarriesTheModTitle(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	p := r.withPortal()
+	id := r.newWorld("Gone")
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	f, err := zw.Create("fp-gone_1.0.0/info.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = f.Write([]byte(`{"name":"fp-gone","version":"1.0.0","title":"Gone Pack","factorio_version":"2.1"}`))
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	r.writeFile(id, filepath.Join(world.ModsDir, "fp-gone_1.0.0.zip"), buf.Bytes())
+	p.AddZipFor("2.1", "fp-gone", "1.1.0")
+
+	gone := goneOf(t, r.c.Start(context.Background(), id, admin, StartOptions{}))
+	if len(gone.Gone) != 1 || gone.Gone[0].Title != "Gone Pack" || gone.Title("fp-gone") != "Gone Pack" {
+		t.Errorf("problem %+v", gone)
 	}
 }

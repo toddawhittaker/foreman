@@ -68,7 +68,8 @@ test.describe("edit mod settings", () => {
 
   // Ruling on #623 (SPEC 9.15): each mod's group is headed by its title from
   // info.json, linked to the portal in a new tab, and the name stays out of sight.
-  test("each mod's settings are headed by its title, linked to the mod portal", async ({ page, foreman, fakeGame }) => {
+  test("each mod's settings are headed by its title, linked to the mod portal", async ({ page, foreman, fakeGame, fakePortal }) => {
+    await fakePortal!.add("fmtest", "1.0.0", ["base >= 2.0"]);
     await setUp(page, foreman, fakeGame!);
     await openEditor(page);
     const heading = form(page).locator("fieldset.mod-settings-group legend").first();
@@ -78,6 +79,18 @@ test.describe("edit mod settings", () => {
     await expect(link).toHaveAttribute("target", "_blank");
     await expect(form(page).locator("legend", { hasText: /^fmtest$/ })).toHaveCount(0);
     await checkPage(page);
+  });
+
+  // A mod the portal is known to lack is named by its title but not linked.
+  test("a mod the portal lacks is headed by its title, without a link", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    // The Mods tab asks the portal, which has no fmtest; the editor then knows it.
+    await page.goto("/worlds/base/mods");
+    await expect(page.locator(".mod-flags").first()).toBeVisible(live);
+    await openEditor(page);
+    const heading = form(page).locator("fieldset.mod-settings-group legend").first();
+    await expect(heading).toContainText("FM test");
+    await expect(heading.getByRole("link")).toHaveCount(0);
   });
 
   test("a running world: the countdown is offered, and the game restarts", async ({ page, foreman, fakeGame }) => {

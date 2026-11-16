@@ -57,7 +57,7 @@ func (c *Controller) portalCheck(ctx context.Context, id string, check world.Pre
 		check.PortalUnchecked = true
 		return check
 	}
-	if p, ok := goneProblem(flags); ok {
+	if p, ok := goneProblem(flags, c.worlds.InstalledTitles(id)); ok {
 		check.Problems = append(check.Problems, p)
 	}
 	return check
@@ -66,15 +66,15 @@ func (c *Controller) portalCheck(ctx context.Context, id string, check world.Pre
 // goneProblem is the problem for the mods whose installed version the
 // portal no longer offers, if any. Mods not on the portal at all are left
 // out: players need their files from the admin whatever Foreman does.
-func goneProblem(flags []mods.Flag) (world.Problem, bool) {
-	p := world.Problem{Kind: world.ProblemModGone, StartAnyway: true}
+func goneProblem(flags []mods.Flag, titles map[string]string) (world.Problem, bool) {
+	p := world.Problem{Kind: world.ProblemModGone, StartAnyway: true, Titles: titles}
 	var named []string
 	for _, f := range flags {
 		if f.Code != mods.FlagVersionGone {
 			continue
 		}
 		p.Mods = append(p.Mods, f.Name)
-		p.Gone = append(p.Gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update})
+		p.Gone = append(p.Gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update, Title: titles[f.Name]})
 		named = append(named, f.Name+" "+f.Version)
 	}
 	if len(p.Mods) == 0 {

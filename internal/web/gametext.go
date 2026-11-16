@@ -410,7 +410,7 @@ func problemMsgs(problems []world.Problem) []i18n.Msg {
 }
 
 func problemMsg(p world.Problem) i18n.Msg {
-	mods := strings.Join(p.Mods, ", ")
+	mods := strings.Join(p.TitleOf(p.Mods), ", ")
 	names := strings.Join(p.Names, ", ")
 	switch p.Kind {
 	case world.ProblemGameVersion:
@@ -448,11 +448,11 @@ func problemMsg(p world.Problem) i18n.Msg {
 		return modVersionMsg(p)
 	case world.ProblemModGone:
 		if len(p.Gone) == 1 {
-			return i18n.M("server.problem.mod_gone_one", "mod", p.Gone[0].Name, "version", p.Gone[0].Version)
+			return i18n.M("server.problem.mod_gone_one", "mod", p.Title(p.Gone[0].Name), "version", p.Gone[0].Version)
 		}
 		named := make([]string, len(p.Gone))
 		for i, g := range p.Gone {
-			named[i] = g.Name + " " + g.Version
+			named[i] = p.Title(g.Name) + " " + g.Version
 		}
 		return i18n.M("server.problem.mod_gone_many", "mods", strings.Join(named, ", "))
 	}
@@ -488,9 +488,9 @@ func modVersionMsg(p world.Problem) i18n.Msg {
 	}
 	g := p.Groups[0]
 	msg := i18n.M("server.problem.mod_version_first", "world", p.World, "version", p.GameVersion,
-		"count", g.Count, "for", g.Version, "names", modNames(g.Shown, g.More))
+		"count", g.Count, "for", g.Version, "names", modNames(p.TitleOf(g.Shown), g.More))
 	for _, g := range p.Groups[1:] {
-		msg = join(msg, i18n.M("server.problem.mod_version_more", "count", g.Count, "for", g.Version, "names", modNames(g.Shown, g.More)))
+		msg = join(msg, i18n.M("server.problem.mod_version_more", "count", g.Count, "for", g.Version, "names", modNames(p.TitleOf(g.Shown), g.More)))
 	}
 	if p.UpdateTo != "" {
 		return join(msg, i18n.M("server.problem.mod_version_update_game", "line", p.UpdateTo))
