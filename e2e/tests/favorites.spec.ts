@@ -1,6 +1,6 @@
-import { test, expect, checkPage, setUpModsWorld, version20 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, setUpModsWorld, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 // A change's row on the review page, found by the title it starts with (issue 620).
@@ -81,4 +81,90 @@ test("make a favorite, start Generate from it, land on the review page, then del
   await expect(page.locator("#done-message")).toContainText('Deleted the favorite "Club start".');
   await expect(page.locator("#favorites-empty")).toBeVisible();
   await checkPage(page);
+});
+
+// SPEC 5.12, DESIGN 7.11: a favorite exports as a file and imports again
+// through the drop zone, with or without script.
+const favID = "0123456789abcdef";
+
+function seedFavorite(dataDir: string) {
+  const dir = join(dataDir, "favorites", favID);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "favorite.json"), JSON.stringify({
+    name: "Shared pack", created_at: "2026-11-15T00:00:00Z", source_world: "Base", game_version: version20,
+    space_age: false, has_map_settings: false, format_version: 1, left_out: [],
+    mods: [{ name: "fp-signs", version: "1.0.0", title: "Signs of the Factory" }],
+  }));
+  writeFileSync(join(dir, "mod-settings.dat"), "modsettings-bytes");
+}
+
+async function exportAndDelete(page: Page, dataDir: string): Promise<Buffer> {
+  await page.goto("/favorites");
+  const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Shared pack" }) });
+  await expect(page.locator("#favorite-export-warning")).toContainText("a mod may keep a token");
+  await row.getByText("Show the mods").click();
+  const title = row.getByRole("link", { name: /Signs of the Factory/ });
+  await expect(title).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-signs");
+  await expect(title).toHaveAttribute("target", "_blank");
+  const downloading = page.waitForEvent("download");
+  await row.getByRole("link", { name: "Export" }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("Shared pack-favorite.zip");
+  const file = readFileSync(await download.path());
+  rmSync(join(dataDir, "favorites", favID), { recursive: true });
+  return file;
+}
+
+test("export a favorite, see the warning, then import it by dropping the file", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedFavorite(foreman.dataDir);
+  await page.goto("/favorites");
+  await checkPage(page);
+  const file = await exportAndDelete(page, foreman.dataDir);
+
+  await page.goto("/favorites");
+  await expect(page.locator("#favorites-empty")).toBeVisible();
+  const dt = await page.evaluateHandle((b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], "Shared_pack-favorite.zip", { type: "application/zip" }));
+    return dt;
+  }, file.toString("base64"));
+  const area = page.locator("#favorite-file").locator("..");
+  await page.dispatchEvent("body", "dragenter", { dataTransfer: dt });
+  await area.dispatchEvent("dragover", { dataTransfer: dt });
+  await area.dispatchEvent("drop", { dataTransfer: dt });
+  await expect(page.locator(".dropzone__chosen")).toContainText("Shared_pack-favorite.zip");
+  await page.getByRole("button", { name: "Import favorite" }).click();
+  await expect(page.locator("#done-message")).toContainText('Imported the favorite "Shared pack".');
+  const imported = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Shared pack" }) });
+  await expect(imported).toBeVisible();
+  // An imported favorite names no source world and is dated on import.
+  await expect(imported.getByText("Made from")).toHaveCount(0);
+  await expect(imported.locator("time")).not.toHaveAttribute("datetime", /^2026-11-15T00:00:00/);
+  await checkPage(page);
+  await page.screenshot({ path: `../screenshots/p1-favorites-imported-${test.info().project.name}.png`, fullPage: true });
+
+  // A damaged file is refused on the field, and nothing is added.
+  await page.locator("#favorite-file").setInputFiles({ name: "bad.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
+  await page.getByRole("button", { name: "Import favorite" }).click();
+  await expect(page.locator("#favorite-file-error")).toContainText("Nothing was imported.");
+  await expect(page.locator("#error-summary")).toBeFocused();
+  await expect(page.locator("#error-summary").getByRole("link")).toHaveAttribute("href", "#favorite-file");
+  await expect(page.getByRole("heading", { level: 2, name: "Shared pack" })).toHaveCount(1);
+  await checkPage(page);
+});
+
+test.describe("without script", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("a favorite file imports through the plain file field", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedFavorite(foreman.dataDir);
+    const file = await exportAndDelete(page, foreman.dataDir);
+    await page.goto("/favorites");
+    await page.getByLabel("Favorite file").setInputFiles({ name: "pack.zip", mimeType: "application/zip", buffer: file });
+    await page.getByRole("button", { name: "Import favorite" }).click();
+    await expect(page.locator("#done-message")).toContainText('Imported the favorite "Shared pack".');
+  });
 });

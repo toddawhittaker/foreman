@@ -96,7 +96,7 @@ func TestFavoriteKeepsSettingsAndModsWithoutSecrets(t *testing.T) {
 		!fav.SpaceAge || fav.Preset != "rich-resources" || !fav.HasMapSettings || fav.CreatedAt.IsZero() {
 		t.Errorf("favorite: %+v", fav)
 	}
-	want := []FavoriteMod{{"Krastorio2", "1.3.24"}, {"flib", "0.12.9"}}
+	want := []FavoriteMod{{Name: "Krastorio2", Version: "1.3.24"}, {Name: "flib", Version: "0.12.9"}}
 	if fmt.Sprint(fav.Mods) != fmt.Sprint(want) {
 		t.Errorf("mods %v, want %v", fav.Mods, want)
 	}

@@ -342,8 +342,9 @@
   "server.problem.mod_missing_many": "{save} nutzt {mods}, aber diese Welt hat dafür keine Dateien.",
   "server.problem.mod_disabled_one": "{save} nutzt {mods}, aber diese Mod ist in dieser Welt deaktiviert.",
   "server.problem.mod_disabled_many": "{save} nutzt {mods}, aber diese Mods sind in dieser Welt deaktiviert.",
-  "server.problem.mod_gone_one": "Das Mod-Portal hat {mod} {version} nicht mehr, deshalb kann das Spiel der Spieler sie nicht herunterladen, und sie können nicht beitreten. Trotzdem fortzufahren löscht nichts aus dem Speicherstand.",
+  "server.problem.mod_gone_one": "Das Mod-Portal hat {mod} (Version {version}) nicht mehr, deshalb kann das Spiel der Spieler sie nicht herunterladen, und sie können nicht beitreten. Trotzdem fortzufahren löscht nichts aus dem Speicherstand.",
   "server.problem.mod_gone_many": "Das Mod-Portal hat {mods} nicht mehr, deshalb kann das Spiel der Spieler sie nicht herunterladen, und sie können nicht beitreten. Trotzdem fortzufahren löscht nichts aus dem Speicherstand.",
+  "server.problem.mod_gone_item": "{mod} (Version {version})",
   "server.problem.mod_version_first": {
     "one": "{world} kann unter Factorio {version} nicht laufen: {count} ihrer Mods wurde für Factorio {for} erstellt, und das Spiel weigert sich, sie zu laden: {names}.",
     "other": "{world} kann unter Factorio {version} nicht laufen: {count} ihrer Mods wurden für Factorio {for} erstellt, und das Spiel weigert sich, sie zu laden: {names}."

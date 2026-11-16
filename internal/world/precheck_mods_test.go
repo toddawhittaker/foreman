@@ -189,6 +189,23 @@ func TestPreCheckDisabledModText(t *testing.T) {
 	}
 }
 
+// SPEC 9.15: a problem carries the installed mods' titles, so a page can
+// name a turned-off mod by its title.
+func TestPreCheckProblemsCarryModTitles(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.1.24", true)
+	putFixture(t, dir, "2.1.24-space-age-testmod.zip", "a.zip", t0)
+	putModZip(t, dir, "foreman-test_0.1.0.zip", "foreman-test_0.1.0", `{"name":"foreman-test","version":"0.1.0","title":"Foreman Test","factorio_version":"2.1"}`)
+	putModListOff(t, dir, []string{"base", "elevated-rails", "quality", "recycler", "space-age"}, "foreman-test")
+	p := runCheck(t, m, id)
+	wantKinds(t, p, ProblemModDisabled)
+	if got := p.Problems[0].Title("foreman-test"); got != "Foreman Test" {
+		t.Errorf("title %q", got)
+	}
+	if got := p.Problems[0].Title("other"); got != "other" {
+		t.Errorf("a mod with no title shows by its name, got %q", got)
+	}
+}
+
 func TestCompareSaveManyMissingAndDisabledModsUsePlurals(t *testing.T) {
 	save := savefile.Save{Version: savefile.Version{Major: 2, Minor: 0, Patch: 77},
 		Mods: []savefile.Mod{{Name: "base"}, {Name: "gone-a"}, {Name: "gone-b"}, {Name: "off-a"}, {Name: "off-b"}}}

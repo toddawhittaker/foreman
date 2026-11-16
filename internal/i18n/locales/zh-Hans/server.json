@@ -328,8 +328,9 @@
   "server.problem.mod_missing_many": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
   "server.problem.mod_disabled_one": "{save} 使用了 {mods}，但在此世界中已禁用。",
   "server.problem.mod_disabled_many": "{save} 使用了 {mods}，但在此世界中已禁用。",
-  "server.problem.mod_gone_one": "模组门户上已没有 {mod} {version}，因此玩家的游戏无法下载它，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
+  "server.problem.mod_gone_one": "模组门户上已没有 {mod}（版本 {version}），因此玩家的游戏无法下载它，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
   "server.problem.mod_gone_many": "模组门户上已没有 {mods}，因此玩家的游戏无法下载它们，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
+  "server.problem.mod_gone_item": "{mod}（版本 {version}）",
   "server.problem.mod_version_first": {
     "other": "{world} 无法在 Factorio {version} 上运行：它的 {count} 个模组是为 Factorio {for} 制作的，游戏拒绝加载：{names}。"
   },

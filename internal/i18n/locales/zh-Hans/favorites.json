@@ -41,5 +41,15 @@
   "favorites.start.mods": {
     "other": "世界创建后，将检查 {count} 个要安装的模组。"
   },
-  "favorites.error.map_damaged": "此收藏的地图设置已损坏，Foreman 无法填入。请选择其他收藏，或删除此收藏后从世界重新创建。"
+  "favorites.error.map_damaged": "此收藏的地图设置已损坏，Foreman 无法填入。请选择其他收藏，或删除此收藏后从世界重新创建。",
+  "favorites.export.button": "导出",
+  "favorites.export.warning": "导出会把收藏下载为文件，用于分享或移到另一个 Foreman。文件包含模组设置，而模组可能在其中保存令牌或其他私密值，因此仅应与可信任的人分享。",
+  "favorites.mods.show": "显示模组",
+  "favorites.import.heading": "导入收藏",
+  "favorites.import.text": "从另一个 Foreman 导出的文件添加收藏。此 Foreman 缺少的模组仍会导入，并会在生成后的模组审查中列出。此 Foreman 不支持的游戏版本会在生成时换成默认版本。",
+  "favorites.import.label": "收藏文件",
+  "favorites.import.button": "导入收藏",
+  "favorites.import.done": "已导入收藏“{name}”。",
+  "favorites.import.bad": "这不是 Foreman 能读取的收藏文件，或文件已损坏。未导入任何内容。",
+  "favorites.import.name_taken": "已有收藏使用此文件中的名称。请重命名或删除该收藏，然后重新导入。"
 }
