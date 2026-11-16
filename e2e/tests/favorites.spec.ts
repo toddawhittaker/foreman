@@ -59,8 +59,9 @@ test("make a favorite, start Generate from it, land on the review page, then del
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page).toHaveURL(/\/worlds\/[^/]+\/mods\/plan\?/);
   const url = new URL(page.url());
-  expect(url.searchParams.getAll("name")).toEqual(["fp-signs"]);
-  expect(url.searchParams.get("version-fp-signs")).toBe("1.0.0");
+  // The address names the favorite alone; the review reads its mods and pinned versions (SPEC 17).
+  expect(url.searchParams.get("favorite")).toMatch(/^[0-9a-f]{16}$/);
+  expect(url.searchParams.getAll("name")).toEqual([]);
   await expect(planRow(page, "fp-signs")).toContainText("1.0.0");
   // The page says the world was made, above the changes, and takes focus.
   const generated = page.locator("#plan-generated");

@@ -22,6 +22,9 @@ import (
 type Offer struct {
 	Path  string
 	Label i18n.Msg
+	// Post makes the offer a button that posts to Path, for a fix whose
+	// state the server works out again rather than carry in the address.
+	Post bool
 	// At is when the snapshot the offer restores was taken, or zero.
 	At time.Time
 }

@@ -40,6 +40,7 @@
   "favorites.start.none": "Aucun favori pour l'instant. Créez-en un depuis la page d'un monde.",
   "favorites.start.note": "Départ à partir du favori « {name} ». Sa version du jeu, son réglage de l'Ère spatiale, son préréglage et ses paramètres de carte sont remplis ci-dessous ; modifiez ce que vous voulez. Le nouveau monde reçoit ses paramètres de serveur et ses paramètres de mods.",
   "favorites.review.generated": "{name} a été généré à partir du favori. Ci-dessous, les mods du favori à installer dans ce monde.",
+  "favorites.review.unsupported_version": "Le favori a été enregistré avec la version du jeu {version}, que ce Foreman ne prend pas en charge : ses mods ne peuvent pas être installés à partir de lui. Revenez à l’onglet Mods pour installer plutôt les versions les plus récentes.",
   "favorites.start.mods": {
     "one": "Une fois le monde créé, vous vérifiez {count} mod à installer.",
     "other": "Une fois le monde créé, vous vérifiez {count} mods à installer."

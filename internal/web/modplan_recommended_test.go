@@ -22,12 +22,12 @@ func TestRecommendedDependencyPlan(t *testing.T) {
 	wantIn(t, "plan", plain(body), "recommended by fp-k2</label>", "Mods marked as recommended start ticked.",
 		"fp-gone, recommended by fp-k2, is left out")
 	wantIn(t, "plan", body, `<input type="hidden" name="offered" value="fp-lane">`,
-		`value="fp-lane" id="mod-fp-lane-optional" hx-get="/worlds/`+id+`/mods/plan" checked>`)
+		`value="fp-lane" id="mod-fp-lane-optional" hx-post="/worlds/`+id+`/mods/plan/redraw" checked>`)
 
 	// Unticked: the box sends nothing, but "offered" says it was shown.
 	off := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-k2"}, "offered": {"fp-lane"}})
 	code, body = g.getStatus(off)
-	if code != http.StatusOK || strings.Contains(body, `hx-get="/worlds/`+id+`/mods/plan" checked>`) {
+	if code != http.StatusOK || strings.Contains(body, `hx-post="/worlds/`+id+`/mods/plan/redraw" checked>`) {
 		t.Fatalf("unticked plan %d:\n%s", code, body)
 	}
 	if strings.Contains(planRows(body), "fp-lane 1.3.1") {

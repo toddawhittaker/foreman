@@ -42,6 +42,7 @@
   "favorites.start.none": "Brak ulubionych. Można utworzyć ulubiony na stronie świata.",
   "favorites.start.note": "Start od ulubionego „{name}”. Jego wersja gry, ustawienie Era Kosmosu, preset i ustawienia mapy są wypełnione poniżej; wszystko można zmienić. Nowy świat dostanie jego ustawienia serwera i ustawienia modyfikacji.",
   "favorites.review.generated": "Wygenerowano świat {name} na podstawie ulubionego. Poniżej są modyfikacje ulubionego do zainstalowania w tym świecie.",
+  "favorites.review.unsupported_version": "Ulubiony został zapisany w wersji gry {version}, której ten Foreman nie obsługuje, więc nie można z niego zainstalować modyfikacji. Wróć na kartę Modyfikacje, aby zamiast tego zainstalować najnowsze wersje.",
   "favorites.start.mods": {
     "one": "Po utworzeniu świata pojawi się do sprawdzenia {count} modyfikacja do instalacji.",
     "few": "Po utworzeniu świata pojawią się do sprawdzenia {count} modyfikacje do instalacji.",

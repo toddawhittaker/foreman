@@ -118,8 +118,8 @@ func (p ModPlanPage) item(c mods.Change, vs map[string]*VersionRow) PlanItem {
 // plan turning one more mod off (SPEC 9.2, 17.9).
 type ConflictRow struct {
 	Text i18n.Msg
-	// Fix words the fix; zero when there is none. Path is the plan with
-	// it, and Redraw the same with the note for the announcer.
+	// Fix words the fix; zero when there is none. Path adds it to the
+	// draft, and Redraw the same with the note for the announcer.
 	Fix          i18n.Msg
 	Path, Redraw string
 	ID           string
@@ -127,22 +127,22 @@ type ConflictRow struct {
 
 // Conflicts words the plan's conflicts, each with its fix.
 func (p ModPlanPage) Conflicts() []ConflictRow {
-	out := make([]ConflictRow, 0, len(p.Plan.Conflicts))
+	out := make([]ConflictRow, 0, len(p.Plan.Conflicts)+1)
+	if v := p.Form.FavoriteVersion; v != "" {
+		out = append(out, ConflictRow{Text: i18n.M("favorites.review.unsupported_version", "version", v)})
+	}
 	var offered []string
 	for _, c := range p.Plan.Conflicts {
 		row := ConflictRow{Text: conflictText(c)}
 		if name, remove := p.conflictFix(c); name != "" && !slices.Contains(offered, name) {
 			offered = append(offered, name)
-			f := p.Form
+			field := alsoDisableField
+			row.Fix = i18n.M("mods.plan.fix.disable", "mod", i18n.Ident(name))
 			if remove {
-				f.AlsoRemove, row.Fix = append(slices.Clone(f.AlsoRemove), name), i18n.M("mods.plan.fix.remove", "mod", i18n.Ident(name))
-			} else {
-				f.AlsoDisable, row.Fix = append(slices.Clone(f.AlsoDisable), name), i18n.M("mods.plan.fix.disable", "mod", i18n.Ident(name))
+				field, row.Fix = alsoRemoveField, i18n.M("mods.plan.fix.remove", "mod", i18n.Ident(name))
 			}
-			q := f.query()
-			row.Path, row.ID = planPath(p.World.ID, q), modID(name, "fix")
-			q.Set("fixed", name)
-			row.Redraw = planPath(p.World.ID, q)
+			row.Path, row.ID = draftPath(p.World.ID, p.Draft, field, name), modID(name, "fix")
+			row.Redraw = draftPath(p.World.ID, p.Draft, field, name, "fixed", "1")
 		}
 		out = append(out, row)
 	}
@@ -302,7 +302,7 @@ type OfferRow struct {
 	Of    i18n.Msg
 	Name  ModName
 	Facts ModFacts
-	// Field is the box's form field; Path the plan it redraws.
+	// Field is the box's form field; Path where it posts for a redraw.
 	Field, Path string
 }
 
@@ -321,7 +321,7 @@ func (p ModPlanPage) OptionalRows() []OfferRow {
 		of := i18n.Ident(p.Title(o.Of))
 		r := OfferRow{Offer: o, ID: p.ModID(o.Name, "optional"), Name: p.Mod(o.Name), Facts: p.facts[o.Name],
 			Of:    i18n.M("mods.plan.why.optional_of", "mod", of),
-			Field: "optional", Path: p.Path()}
+			Field: "optional", Path: p.RedrawPath()}
 		if o.Recommended {
 			r.Of = i18n.M("mods.plan.why.recommended_by", "mod", of)
 		}
@@ -337,7 +337,7 @@ func (p ModPlanPage) OrphanRows() []OfferRow {
 		of := i18n.Ident(p.Title(o.Of))
 		out = append(out, OfferRow{Offer: o, ID: p.ModID(o.Name, "orphan"), Name: p.Mod(o.Name), Facts: p.facts[o.Name],
 			Of:    i18n.M("mods.plan.why.only_needed_by", "mod", of),
-			Field: "orphan", Path: p.Path()})
+			Field: "orphan", Path: p.RedrawPath()})
 	}
 	return out
 }

@@ -66,7 +66,7 @@ test("a late redraw does not undo a newer version choice", async ({ page, forema
   let first!: () => void;
   const firstSeen = new Promise<void>((r) => (first = r));
   let n = 0;
-  await page.route("**/mods/plan?*", async (route) => {
+  await page.route("**/mods/plan/redraw", async (route) => {
     if (!route.request().headers()["hx-request"] || ++n > 1) return route.continue();
     first();
     await held;

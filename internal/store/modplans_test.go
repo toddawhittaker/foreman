@@ -100,8 +100,8 @@ func TestModPlanRemoveAndClear(t *testing.T) {
 func TestModPlanLimit(t *testing.T) {
 	s, _ := openTemp(t)
 	ctx := context.Background()
-	if MaxModPlanNames != 50 {
-		t.Fatalf("limit = %d, want 50", MaxModPlanNames)
+	if MaxModPlanNames != 500 {
+		t.Fatalf("limit = %d, want 500", MaxModPlanNames)
 	}
 	for i := range MaxModPlanNames {
 		if err := s.AddModPlanName(ctx, "w1", fmt.Sprintf("mod-%02d", i), "u", t0); err != nil {

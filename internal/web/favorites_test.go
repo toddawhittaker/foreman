@@ -253,16 +253,19 @@ func TestGenerateFromAFavoriteWritesSettingsAndOffersItsMods(t *testing.T) {
 	if !ok {
 		t.Fatalf("redirect %q, want the review page", loc)
 	}
+	// The review reads the mods and pinned versions from the favorite, so
+	// the address names the favorite alone (SPEC 17).
 	q := loc.Query()
-	if q.Get("kind") != "install" || strings.Join(q["name"], ",") != "Krastorio2,flib" ||
-		q.Get("version-Krastorio2") != "1.3.24" || q.Get("version-flib") != "0.12.9" {
+	if q.Get(favoriteQuery) != favID || len(q) != 2 {
 		t.Errorf("review query %v", q)
+	}
+	if l := len(rec.Header().Get("Location")); l > maxAddress {
+		t.Errorf("review address of %d bytes", l)
 	}
 	if q.Get(generatedQuery) != "1" {
 		t.Errorf("review query %v has no %s flag", q, generatedQuery)
 	}
-	// The favorite's mods are saved as the new world's picks; the pinned
-	// versions travel only in the address.
+	// The favorite's mods are saved as the new world's picks too.
 	picks, err := hn.store.ModPlan(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)
@@ -329,9 +332,23 @@ func TestGenerateFromAFavoriteOnAnotherLineLetsTheReviewPick(t *testing.T) {
 		t.Fatalf("status %d:\n%s", rec.Code, rec.Body.String())
 	}
 	loc, _ := url.Parse(rec.Header().Get("Location"))
-	q := loc.Query()
-	if strings.Join(q["name"], ",") != "Krastorio2,flib" || q.Get("version-Krastorio2") != "" || q.Get("version-flib") != "" {
-		t.Errorf("review query %v, want names without pinned versions", q)
+	if q := loc.Query(); q.Get(favoriteQuery) != favID || len(q) != 2 {
+		t.Errorf("review query %v, want the favorite alone", q)
+	}
+	// On another line the review pins no versions: each mod gets the
+	// newest that fits.
+	id := strings.TrimSuffix(strings.TrimPrefix(loc.Path, PathWorlds+"/"), "/mods/plan")
+	sum, err := hn.worlds.Get(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, _, _ := (&server{favorites: favs}).favoriteForm(context.Background(), sum, favID)
+	if strings.Join(f.Names, ",") != "Krastorio2,flib" || len(f.Versions) != 0 || f.FavoriteVersion != "" {
+		t.Errorf("review form %+v, want names without pinned versions", f)
+	}
+	sum.GameVersion = "2.0.77"
+	if f, _, _ := (&server{favorites: favs}).favoriteForm(context.Background(), sum, favID); f.Versions["Krastorio2"] != "1.3.24" || f.Versions["flib"] != "0.12.9" {
+		t.Errorf("same line versions %v, want the favorite's", f.Versions)
 	}
 }
 

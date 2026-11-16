@@ -111,10 +111,12 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	if !ok {
 		return
 	}
-	// A sync plan's upload form carries the plan's answers in its query
-	// (ModPlanPage.UploadAction), so a refusal or the new plan keeps them.
+	// A sync plan's upload form names the page's draft, which holds the
+	// plan's answers (ModPlanPage.UploadAction), so a refusal or the new
+	// plan keeps them.
 	q := r.URL.Query()
-	plan, sync := readPlanForm(q)
+	token := q.Get(draftField)
+	plan, sync := s.drafts.get(token, u.ID, sum.ID)
 	sync = sync && plan.Kind == mods.KindSync
 	countdown := defaultCountdown()
 	if c := q.Get("countdown"); c != "" {
@@ -123,6 +125,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	refuse := func(msg i18n.Msg, status int) {
 		if sync {
 			p := s.planPage(r.Context(), sum, plan, countdown)
+			p.Draft = s.drafts.keep(token, u.ID, sum.ID, p.Form)
 			p.UploadError, p.UploadFor = msg, q.Get("for")
 			s.page(w, r, status, u.Username, p)
 			return
@@ -169,6 +172,10 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	}
 	f.Staged = up.Temp
 	p := s.planPage(r.Context(), sum, f, countdown)
+	if !sync {
+		token = ""
+	}
+	p.Draft = s.drafts.keep(token, u.ID, sum.ID, p.Form)
 	s.page(w, r, planStatus(p), u.Username, p)
 }
 

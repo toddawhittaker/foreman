@@ -96,7 +96,7 @@ func TestPlanPanelAddRemoveClear(t *testing.T) {
 		`<span class="plan-tree__name">`+portalName("alpha")+`</span> <span class="mod-ver" translate="no">1.0.0</span>`,
 		`id="mod-alpha-unpick"><span class="visually-hidden">Remove alpha from the plan</span>`,
 		`>Clear plan</button>`, "Started <time",
-		`<a href="/worlds/`+id+`/mods/plan?kind=install&amp;name=alpha&amp;name=beta" class="button button--primary" id="act-review-plan">Review and install 2 mods</a>`)
+		`<a href="/worlds/`+id+`/mods/plan?kind=install" class="button button--primary" id="act-review-plan">Review and install 2 mods</a>`)
 
 	r = g.postPlan(planModsPath(id), url.Values{"name": {"alpha"}, "op": {"remove"}, "from": {"panel"}, "return": {modsPath(id)}})
 	if r.code != http.StatusSeeOther || r.loc != modsPath(id)+"#plan-panel" {
@@ -189,7 +189,7 @@ func TestPlanPanelLimit(t *testing.T) {
 	g := newModsRig(t, true)
 	id := g.world20("Base")
 	for i := range store.MaxModPlanNames {
-		g.pick(id, fmt.Sprintf("m%02d", i))
+		g.pick(id, fmt.Sprintf("m%03d", i))
 	}
 	// The portal is down, so the full panel draws from the names alone.
 	g.portal.FailAPI(http.StatusInternalServerError)
@@ -198,7 +198,7 @@ func TestPlanPanelLimit(t *testing.T) {
 		t.Fatalf("full: %d to %q", r.code, r.loc)
 	}
 	_, body := g.getStatus(strings.TrimSuffix(r.loc, "#plan-panel"))
-	wantIn(t, "full", body, `<p class="error" id="plan-error"><strong>Error:</strong> The plan already holds 50 mods, the most one plan can.`)
+	wantIn(t, "full", body, `<p class="error" id="plan-error"><strong>Error:</strong> The plan already holds 500 mods, the most one plan can.`)
 	if slices.Contains(g.picks(id), "extra") {
 		t.Error("a pick past the limit was saved")
 	}

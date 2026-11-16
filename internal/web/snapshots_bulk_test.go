@@ -382,10 +382,7 @@ func addresses(body string) []string {
 	return out
 }
 
-// maxAddress is the longest address Foreman may build (SPEC 6.12): the
-// ticked snapshots travel in a form, so no address grows with them.
-const maxAddress = 512
-
+// wantShortAddresses checks every address against maxAddress (SPEC 17).
 func (hn *harness) wantShortAddresses(page string, body string) {
 	hn.t.Helper()
 	if len(addresses(body)) == 0 {
