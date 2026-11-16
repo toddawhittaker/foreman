@@ -97,11 +97,72 @@ func (c *Controller) Console(ctx context.Context, id string, by Actor, command, 
 	return shown, Redact(reply, secrets...), nil
 }
 
+// saveCount follows the saves the game logs. The game writes one save at
+// a time, autosaves and /server-save alike, so the nth save to end is the
+// nth to begin. With fork saving a /server-save asked while another save is
+// still being written waits behind it, and the first "Saving finished"
+// after the command ends that earlier save.
+type saveCount struct {
+	starts, ends int // saves begun, and ended by a finish or a failure
+	server       int // /server-save starts
+	lastServer   int // which start, counted in starts, was the newest /server-save
+	// lastServerAt is Docker's time of the newest /server-save start, zero
+	// when the line came without one.
+	lastServerAt time.Time
+	failed       int // saves whose writing process died or failed
+}
+
+func (s *saveCount) observe(ev Event) {
+	k := ev.Kind
+	switch k {
+	case KindSaveStarted:
+		s.starts++
+	case KindServerSaveStarted:
+		s.starts++
+		s.server++
+		s.lastServer = s.starts
+		s.lastServerAt = ev.Time
+	case KindSaveFinished, KindSaveFailed:
+		s.ends++
+		if k == KindSaveFailed {
+			s.failed++
+		}
+		// A save begun before the log was followed was never counted.
+		s.starts = max(s.starts, s.ends)
+	}
+}
+
+// runEnded ends, as failed, the saves the game was writing when its run
+// ended: the game logs nothing more for them.
+func (s *saveCount) runEnded() {
+	if s.starts > s.ends {
+		s.failed += s.starts - s.ends
+		s.ends = s.starts
+	}
+}
+
+// saveMark is what a save waits from: the /server-save starts and failed
+// saves seen before the command was sent, and when it was sent. A start
+// the follower reads late, from a /server-save sent just before, counts
+// as read only when Docker stamped it at or after sent.
+type saveMark struct {
+	server, failed int
+	sent           time.Time
+}
+
+func (w *worldRun) saveMarkLocked(sent time.Time) saveMark {
+	return saveMark{server: w.save.server, failed: w.save.failed, sent: sent}
+}
+
 // saveGame sends /server-save and waits for the log to say the save
 // finished (SPEC 6.10, 7.6).
 func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 	w.mu.Lock()
-	rc, before := w.rc, w.saves
+	// Docker stamps lines with the host's wall clock, so the send time is
+	// read from that clock, not the controller's, with no margin: a daemon
+	// clock behind this one can only make the save time out, never end the
+	// wait on an earlier save.
+	rc, mark := w.rc, w.saveMarkLocked(time.Now())
 	w.mu.Unlock()
 	if rc == nil {
 		return ErrRCONUnreachable
@@ -109,13 +170,24 @@ func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 	if err := c.exec(ctx, rc, "/server-save"); err != nil {
 		return err
 	}
+	return c.waitSaved(ctx, w, mark)
+}
+
+// waitSaved waits until a /server-save begun after mark has finished. A
+// save that fails meanwhile ends the wait with ErrSaveFailed: the game
+// quits when its save process dies.
+func (c *Controller) waitSaved(ctx context.Context, w *worldRun, mark saveMark) error {
 	deadline := time.NewTimer(c.saveTimeout)
 	defer deadline.Stop()
 	for {
 		w.mu.Lock()
-		saved, changed := w.saves > before, w.changed
+		s, changed := w.save, w.changed
 		w.mu.Unlock()
-		if saved {
+		switch {
+		case s.failed > mark.failed:
+			return ErrSaveFailed
+		case s.server > mark.server && s.ends >= s.lastServer &&
+			(s.lastServerAt.IsZero() || !s.lastServerAt.Before(mark.sent)):
 			return nil
 		}
 		select {
