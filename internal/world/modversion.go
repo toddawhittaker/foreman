@@ -377,18 +377,26 @@ func parseInfoJSON(b []byte) (ModInfo, bool) {
 	return info, true
 }
 
-// CleanTitle makes a mod's untrusted title safe to show: control and
-// format characters (such as bidirectional overrides and zero-width spaces)
-// become spaces, outer space goes, and it is cut to maxModTitle characters.
-func CleanTitle(t string) string {
-	t = strings.TrimSpace(strings.Map(func(r rune) rune {
+// CleanTitle makes a mod's untrusted title safe to show: CleanText, cut to
+// maxModTitle characters.
+func CleanTitle(t string) string { return CutText(CleanText(t), maxModTitle) }
+
+// CleanText makes untrusted portal or info.json text safe to show: control
+// and format characters (such as bidirectional overrides and zero-width
+// spaces) become spaces, and outer space goes.
+func CleanText(t string) string {
+	return strings.TrimSpace(strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
 			return ' '
 		}
 		return r
 	}, t))
-	if r := []rune(t); len(r) > maxModTitle {
-		t = strings.TrimSpace(string(r[:maxModTitle])) + "…"
+}
+
+// CutText cuts t to at most n characters, marking the cut with an ellipsis.
+func CutText(t string, n int) string {
+	if r := []rune(t); len(r) > n {
+		t = strings.TrimSpace(string(r[:n])) + "…"
 	}
 	return t
 }

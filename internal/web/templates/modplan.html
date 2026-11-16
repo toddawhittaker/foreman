@@ -102,6 +102,10 @@
     {{- if or $groups $kept}}
     {{- /* A label, not a heading: the box holds no heading of its own (DESIGN 7.4). It takes focus after a removal or a fix redraws the plan. */}}
     <p class="plan-label" id="plan-changes" tabindex="-1"{{if and .Redraw (or .Form.Removed (and .Form.Fixed (not .Plan.Conflicts)))}} autofocus{{end}}>{{t "mods.plan.changes"}}</p>
+    {{- /* Choosing a release in a row redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). Arrow keys on a closed list fire a change per press; the form replaces an older redraw with the newest, so the last choice wins. */}}
+    {{- if $versions}}
+    <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" .Line}}</p>
+    {{- end}}
     {{- with $groups}}
     <dl class="plan-groups">
       {{- range .}}
@@ -119,41 +123,15 @@
     {{- if .Nothing}}
     <p id="plan-same">{{t "mods.version.same"}}</p>
     {{- end}}
-    {{- /* Choosing a release redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). Arrow keys on a closed list fire a change per press; the form replaces an older redraw with the newest, so the last choice wins. */}}
-    {{- with $versions}}
-    {{- /* One mod's list is one field; several share a fieldset and its hint. */}}
-    {{- $many := gt (len .) 1}}
-    {{- if $many}}
-    <fieldset class="plan-versions">
-      <legend>{{t "mods.version.legend"}}</legend>
-      <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" $.Page.Line}}</p>
-    {{- end}}
-      {{- range .}}
-      <div class="field">
-        <label for="{{.ID}}">{{tHTML "mods.version.label" "mod" (ident .Name)}}</label>
-        {{- if not $many}}
-        <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" $.Page.Line}}</p>
-        {{- end}}
-        <select id="{{.ID}}" name="version-{{.Name}}" hx-get="{{$.Page.Path}}" aria-describedby="plan-versions-hint">
-          {{- range .Options}}
-          <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{if .Label.IsZero}}{{.Value}}{{else}}{{msg .Label}}{{end}}</option>
-          {{- end}}
-        </select>
-      </div>
-      {{- end}}
-    {{- if $many}}
-    </fieldset>
-    {{- end}}
-    {{- end}}
     {{- with .Plan.Optional}}
     <fieldset>
       <legend>{{t "mods.optional.legend"}}</legend>
       <p class="hint">{{t "mods.optional.hint"}}{{if $.Page.HasRecommended}} {{t "mods.recommended.hint"}}{{end}}</p>
-      {{- range .}}
-      {{- if .Recommended}}
-      <input type="hidden" name="offered" value="{{.Name}}">
+      {{- range $.Page.OptionalRows}}
+      {{- if .Offer.Recommended}}
+      <input type="hidden" name="offered" value="{{.Offer.Name}}">
       {{- end}}
-      <label class="check"><input type="checkbox" name="optional" value="{{.Name}}" id="{{$.Page.ModID .Name "optional"}}" hx-get="{{$.Page.Path}}"{{if .Chosen}} checked{{end}}> <span>{{if .Recommended}}{{tHTML "mods.recommended.item" "mod" (ident .Name) "of" (ident .Of)}}{{else}}{{tHTML "mods.optional.item" "mod" (ident .Name) "of" (ident .Of)}}{{end}}</span></label>
+      {{template "plan-offer" .}}
       {{- end}}
     </fieldset>
     {{- end}}
@@ -162,9 +140,9 @@
     <fieldset id="plan-orphans">
       <legend>{{t "mods.orphans.legend"}}</legend>
       <p class="hint">{{t "mods.orphans.hint"}}</p>
-      {{- range .}}
-      <input type="hidden" name="orphan-offered" value="{{.Name}}">
-      <label class="check"><input type="checkbox" name="orphan" value="{{.Name}}" id="{{$.Page.ModID .Name "orphan"}}" hx-get="{{$.Page.Path}}"{{if .Chosen}} checked{{end}}> <span>{{tHTML "mods.orphans.item" "mod" (ident .Name) "of" (ident .Of)}}</span></label>
+      {{- range $.Page.OrphanRows}}
+      <input type="hidden" name="orphan-offered" value="{{.Offer.Name}}">
+      {{template "plan-offer" .}}
       {{- end}}
     </fieldset>
     {{- end}}
@@ -257,20 +235,56 @@
 {{end}}
 {{- end}}
 
-{{/* One mod's line in the plan; an install's asked mod carries its portal link and, with two or more, a way out of the plan. Takes a PlanRow. */}}
+{{/* One mod's line in the plan: its title, linked to the portal, the change, its version list and, for an install's asked mod with two or more, a way out of the plan (SPEC 9.2, 9.15). Takes a PlanRow. */}}
 {{define "plan-item" -}}
 {{- $p := .Page}}{{with .Item}}
-<li>
-  <span class="plan-items__text">{{if .Text.IsZero}}<span class="ident" translate="no">{{.Name}}</span>{{else}}{{msgHTML .Text}}{{end}}</span>
-  {{- if .Portal}}
-  {{template "portal-link" .Name}}
+<li class="plan-row">
+  <span class="plan-row__text"><span class="plan-row__name">{{template "mod-name" ($p.Mod .Name)}}</span>{{if not .Text.IsZero}} {{msgHTML .Text}}{{end}}</span>
+  {{- with .Version}}
+  {{- /* Labelled for a screen reader by the mod's title; the select sits in the row so a phone keeps it with its mod. */}}
+  <span class="plan-row__version">
+    <label for="{{.ID}}" class="visually-hidden">{{tHTML "mods.version.label" "mod" (ident ($p.Title .Name))}}</label>
+    <select id="{{.ID}}" name="version-{{.Name}}" hx-get="{{$p.Path}}" aria-describedby="plan-versions-hint">
+      {{- range .Options}}
+      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{if .Label.IsZero}}{{.Value}}{{else}}{{msg .Label}}{{end}}</option>
+      {{- end}}
+    </select>
+  </span>
   {{- end}}
   {{- if and .Asked (gt (len $p.Form.Names) 1)}}
-  {{- /* Taking a mod out redraws the plan; the link holds the plan without it, for a page without script. */}}
-  <a href="{{$p.PlanWithout .Name}}" class="button button--quiet" id="{{$p.ModID .Name "remove"}}" hx-get="{{$p.RemovePath .Name}}" hx-push-url="{{$p.PlanWithout .Name}}" hx-params="none">{{t "mods.plan.asked.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+  {{- /* Taking a mod out redraws the plan; the link holds the plan without it, for a page without script. It destroys nothing, so the cross is quiet. */}}
+  <a href="{{$p.PlanWithout .Name}}" class="button button--icon plan-panel__remove" id="{{$p.ModID .Name "remove"}}" hx-get="{{$p.RemovePath .Name}}" hx-push-url="{{$p.PlanWithout .Name}}" hx-params="none"><span class="visually-hidden">{{tHTML "mods.plan_panel.remove" "mod" (ident ($p.Title .Name))}}</span></a>
   {{- end}}
 </li>
 {{- end}}
+{{- end}}
+
+{{/* One offered mod: the tick box, named for a screen reader by the mod's title, then the title link and details beside it, outside the labels, so following the link never ticks the box; the "offered by" words are a second label, so a click on them does (SPEC 9.2, 9.4). Takes an OfferRow. */}}
+{{define "plan-offer" -}}
+{{- $r := .}}
+<div class="plan-offer">
+  <label class="check plan-offer__box" for="{{$r.ID}}"><input type="checkbox" name="{{$r.Field}}" value="{{$r.Offer.Name}}" id="{{$r.ID}}" hx-get="{{$r.Path}}"{{if $r.Offer.Chosen}} checked{{end}}{{if $r.HasDetail}} aria-describedby="{{$r.DetailID}}"{{end}}> <span class="visually-hidden" translate="no">{{$r.Name.Title}}</span></label>
+  <div class="plan-offer__body">
+    <p class="plan-offer__name">{{template "mod-name" $r.Name}} <label class="plan-offer__of" for="{{$r.ID}}">{{msgHTML $r.Of}}</label></p>
+    {{- if $r.HasDetail}}
+    <div id="{{$r.DetailID}}" class="plan-offer__detail">
+      {{- with $r.Facts.Summary}}
+      <p>{{.}}</p>
+      {{- end}}
+      {{- if or $r.Facts.Version (not $r.Facts.Released.IsZero)}}
+      <dl class="hit__facts">
+        {{- with $r.Facts.Version}}
+        <div><dt>{{t "mods.offer.version"}}</dt><dd translate="no">{{.}}</dd></div>
+        {{- end}}
+        {{- if not $r.Facts.Released.IsZero}}
+        <div><dt>{{t "mods.offer.released"}}</dt><dd><time datetime="{{isoTime $r.Facts.Released}}" data-day>{{day $r.Facts.Released}}</time></dd></div>
+        {{- end}}
+      </dl>
+      {{- end}}
+    </div>
+    {{- end}}
+  </div>
+</div>
 {{- end}}
 
 {{/* The mods a conflict's fix turns off too, carried by each form of the plan. Takes the planForm. */}}

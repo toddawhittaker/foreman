@@ -3,6 +3,9 @@ import type { Page } from "@playwright/test";
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
+// A change's row on the review page, found by the title it starts with (issue 620).
+const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
+
 // SPEC 5.12: a favorite is made from a world's page and starts a new world on
 // Generate, whose mods then go through the review page (SPEC 9.13).
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
@@ -58,7 +61,7 @@ test("make a favorite, start Generate from it, land on the review page, then del
   const url = new URL(page.url());
   expect(url.searchParams.getAll("name")).toEqual(["fp-signs"]);
   expect(url.searchParams.get("version-fp-signs")).toBe("1.0.0");
-  await expect(page.locator("#mod-plan")).toContainText("fp-signs 1.0.0");
+  await expect(planRow(page, "fp-signs")).toContainText("1.0.0");
   // The page says the world was made, above the changes, and takes focus.
   const generated = page.locator("#plan-generated");
   await expect(generated).toContainText("Generated From club from the favorite.");

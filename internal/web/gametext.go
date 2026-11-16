@@ -94,6 +94,7 @@ var refusals = []struct {
 	{game.ErrNotReady, i18n.M("server.error.not_ready")},
 	{game.ErrImageMissing, i18n.M("server.error.image_missing")},
 	{game.ErrRCONUnreachable, i18n.M("server.error.rcon_unreachable")},
+	{game.ErrSaveFailed, i18n.M("server.error.save_failed")},
 	{game.ErrSaveTimeout, i18n.M("server.error.save_timeout")},
 	{game.ErrStartFailed, i18n.M("server.error.start_failed")},
 	{game.ErrCancelled, i18n.M("server.error.cancelled")},
@@ -410,7 +411,7 @@ func problemMsgs(problems []world.Problem) []i18n.Msg {
 }
 
 func problemMsg(p world.Problem) i18n.Msg {
-	mods := strings.Join(p.Mods, ", ")
+	mods := strings.Join(p.TitleOf(p.Mods), ", ")
 	names := strings.Join(p.Names, ", ")
 	switch p.Kind {
 	case world.ProblemGameVersion:
@@ -448,13 +449,13 @@ func problemMsg(p world.Problem) i18n.Msg {
 		return modVersionMsg(p)
 	case world.ProblemModGone:
 		if len(p.Gone) == 1 {
-			return i18n.M("server.problem.mod_gone_one", "mod", p.Gone[0].Name, "version", p.Gone[0].Version)
+			return i18n.M("server.problem.mod_gone_one", "mod", p.Title(p.Gone[0].Name), "version", p.Gone[0].Version)
 		}
-		named := make([]string, len(p.Gone))
+		items := make([]i18n.Msg, len(p.Gone))
 		for i, g := range p.Gone {
-			named[i] = g.Name + " " + g.Version
+			items[i] = i18n.M("server.problem.mod_gone_item", "mod", p.Title(g.Name), "version", g.Version)
 		}
-		return i18n.M("server.problem.mod_gone_many", "mods", strings.Join(named, ", "))
+		return i18n.M("server.problem.mod_gone_many", "mods", listMsg(items))
 	}
 	// A problem this page does not know yet keeps its English.
 	return i18n.M("server.problem.other", "text", p.Text)
@@ -488,9 +489,9 @@ func modVersionMsg(p world.Problem) i18n.Msg {
 	}
 	g := p.Groups[0]
 	msg := i18n.M("server.problem.mod_version_first", "world", p.World, "version", p.GameVersion,
-		"count", g.Count, "for", g.Version, "names", modNames(g.Shown, g.More))
+		"count", g.Count, "for", g.Version, "names", modNames(p.TitleOf(g.Shown), g.More))
 	for _, g := range p.Groups[1:] {
-		msg = join(msg, i18n.M("server.problem.mod_version_more", "count", g.Count, "for", g.Version, "names", modNames(g.Shown, g.More)))
+		msg = join(msg, i18n.M("server.problem.mod_version_more", "count", g.Count, "for", g.Version, "names", modNames(p.TitleOf(g.Shown), g.More)))
 	}
 	if p.UpdateTo != "" {
 		return join(msg, i18n.M("server.problem.mod_version_update_game", "line", p.UpdateTo))

@@ -1,6 +1,8 @@
 package web
 
 import (
+	"cmp"
+
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -22,14 +24,17 @@ func goneFix(id string, gone []world.GoneMod) Offer {
 	all := len(names) == len(gone)
 	switch {
 	case len(gone) == 1 && all:
-		return Offer{Path: kindPlanPath(id, mods.KindUpdate, gone[0].Name), Label: i18n.M("mods.notice.update", "mod", i18n.Ident(gone[0].Name))}
+		return Offer{Path: kindPlanPath(id, mods.KindUpdate, gone[0].Name), Label: i18n.M("mods.notice.update", "mod", i18n.Ident(goneTitle(gone[0])))}
 	case len(gone) == 1:
-		return Offer{Path: kindPlanPath(id, mods.KindRemove, gone[0].Name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(gone[0].Name))}
+		return Offer{Path: kindPlanPath(id, mods.KindRemove, gone[0].Name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(goneTitle(gone[0])))}
 	case all && len(names) <= store.MaxModPlanNames:
 		return Offer{Path: kindPlanPath(id, mods.KindUpdate, names...), Label: i18n.M("mods.plan.button.update", "count", len(names))}
 	}
 	return Offer{Path: modsPath(id), Label: i18n.M("mods.notice.review", "count", len(gone))}
 }
+
+// goneTitle is how a gone mod is named in a label: its title, or its name.
+func goneTitle(g world.GoneMod) string { return cmp.Or(g.Title, g.Name) }
 
 // precheckFix is the main fix a refused start or switch offers first
 // (SPEC 17.9): matching the mods to the save, since otherwise the game

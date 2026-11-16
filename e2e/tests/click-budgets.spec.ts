@@ -4,6 +4,9 @@ import type { Page } from "@playwright/test";
 import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 
+// A change's row on the review page, found by the title it starts with (issue 620).
+const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
+
 // SPEC 17.10: the common tasks, started on the Server page with the
 // defaults accepted, take no more clicks than the table allows. Each test
 // does the task, checks it finished, and checks the count. Controls are
@@ -491,7 +494,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await page.getByRole("row", { name: /fp-back/ }).locator("details.row-menu > summary").click();
     await page.getByRole("link", { name: "Change version fp-back", exact: true }).click();
     await page.getByLabel("Version of fp-back").selectOption("1.0.0");
-    await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-back 1.1.0 to 1.0.0");
+    await expect(planRow(page, "fp-back")).toContainText("1.1.0 to 1.0.0");
     await page.getByRole("button", { name: "Change 1 mod" }).click();
     await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);

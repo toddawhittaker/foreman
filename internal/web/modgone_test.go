@@ -14,11 +14,11 @@ import (
 // cannot join, and say going ahead deletes nothing.
 func TestGoneModWords(t *testing.T) {
 	one := world.Problem{Kind: world.ProblemModGone, Gone: []world.GoneMod{{Name: "visible-planets", Version: "1.5.5", Update: "1.7.2"}}}
-	if got, want := english(problemMsg(one)), "The mod portal no longer has visible-planets 1.5.5, so players' games cannot download it and they cannot join. Going ahead anyway deletes nothing from the save."; got != want {
+	if got, want := english(problemMsg(one)), "The mod portal no longer has visible-planets (version 1.5.5), so players' games cannot download it and they cannot join. Going ahead anyway deletes nothing from the save."; got != want {
 		t.Errorf("one:\n got %q\nwant %q", got, want)
 	}
 	two := world.Problem{Kind: world.ProblemModGone, Gone: []world.GoneMod{{Name: "a", Version: "1.0.0"}, {Name: "b", Version: "2.0.0"}}}
-	if got, want := english(problemMsg(two)), "The mod portal no longer has a 1.0.0, b 2.0.0, so players' games cannot download them and they cannot join. Going ahead anyway deletes nothing from the save."; got != want {
+	if got, want := english(problemMsg(two)), "The mod portal no longer has a (version 1.0.0), b (version 2.0.0), so players' games cannot download them and they cannot join. Going ahead anyway deletes nothing from the save."; got != want {
 		t.Errorf("two:\n got %q\nwant %q", got, want)
 	}
 	only := world.PreCheck{Problems: []world.Problem{one}}

@@ -356,8 +356,9 @@
   "server.problem.mod_missing_many": "{save} używa modyfikacji: {mods}, ale ten świat nie ma odpowiednich plików.",
   "server.problem.mod_disabled_one": "{save} używa modyfikacji {mods}, ale w tym świecie jest ona wyłączona.",
   "server.problem.mod_disabled_many": "{save} używa modyfikacji: {mods}. W tym świecie są one wyłączone.",
-  "server.problem.mod_gone_one": "Portal modyfikacji nie ma już {mod} {version}, więc gra graczy nie może jej pobrać i nie mogą oni dołączyć. Kontynuowanie mimo to niczego nie usuwa z zapisu.",
+  "server.problem.mod_gone_one": "Portal modyfikacji nie ma już {mod} (wersja {version}), więc gra graczy nie może jej pobrać i nie mogą oni dołączyć. Kontynuowanie mimo to niczego nie usuwa z zapisu.",
   "server.problem.mod_gone_many": "Portal modyfikacji nie ma już {mods}, więc gra graczy nie może ich pobrać i nie mogą oni dołączyć. Kontynuowanie mimo to niczego nie usuwa z zapisu.",
+  "server.problem.mod_gone_item": "{mod} (wersja {version})",
   "server.problem.mod_version_first": {
     "one": "{world} nie może działać w Factorio {version}: {count} z jego modyfikacji powstała dla Factorio {for}, a gra odmawia jej wczytania: {names}.",
     "few": "{world} nie może działać w Factorio {version}: {count} z jego modyfikacji powstały dla Factorio {for}, a gra odmawia ich wczytania: {names}.",
@@ -384,6 +385,7 @@
   "server.error.image_missing": "Obraz gry dla wersji Factorio tego świata nie został pobrany. Należy pobrać obraz gry, a potem uruchomić ponownie.",
   "server.error.rcon_unreachable": "Nie można połączyć się z grą przez RCON, więc nie można ostrzec graczy ani wcześniej zapisać gry. Aby zatrzymać ją bez zapisu, należy użyć przycisku Wymuś zatrzymanie.",
   "server.error.save_timeout": "Gra nie zdążyła zapisać stanu, więc nic nie zatrzymano ani nie utworzono migawki. Należy spróbować ponownie albo użyć przycisku Wymuś zatrzymanie.",
+  "server.error.save_failed": "Gra nie mogła zapisać świata, więc nic nie zatrzymano ani nie utworzono migawki. Przyczynę należy sprawdzić w logu.",
   "server.error.start_failed": "Gra się nie uruchomiła.",
   "server.error.cancelled": "Wymuszone zatrzymanie przerwało tę akcję.",
   "server.error.stop_cancelled": "Zatrzymanie zostało anulowane, więc nic nie zatrzymano ani nie zapisano, a gra działa dalej.",

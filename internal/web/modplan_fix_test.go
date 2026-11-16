@@ -1,7 +1,9 @@
 package web
 
 import (
+	"html"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -38,7 +40,8 @@ func TestPlanConflictOffersItsFix(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("fixed plan %d\n%s", code, body)
 	}
-	wantIn(t, "fixed", plain(body), "Change the mods of Base?", "<dt>Install</dt>", "fp-clash 1.0.0", "<dt>Remove</dt>", "fp-other 1.0.0",
+	wantIn(t, "fixed rows", planRows(body), "fp-clash 1.0.0", "fp-other 1.0.0")
+	wantIn(t, "fixed", plain(body), "Change the mods of Base?", "<dt>Install</dt>", "<dt>Remove</dt>",
 		`<input type="hidden" name="also-remove" value="fp-other">`, `class="button button--danger" id="act-apply">Change 2 mods</button>`, `<section class="confirm">`)
 
 	// A redraw from the fix announces it and puts focus on the changes.
@@ -111,12 +114,35 @@ func TestPlanKeptModsFold(t *testing.T) {
 		}}}
 	_, body := renderIn(t, r, pageCase{"plan", "todd", 200, p}, "en")
 	body = plain(body)
-	wantIn(t, "kept", body, "<summary>1 other mod stays as it is</summary>", "lib 2.0.0 (beta needs it)")
-	z, a, b := strings.Index(body, "zeta 1.0.0"), strings.Index(body, "alpha 1.0.0"), strings.Index(body, "beta 1.0.0")
+	rows := planRows(body)
+	wantIn(t, "kept", body, "<summary>1 other mod stays as it is</summary>")
+	wantIn(t, "kept row", rows, "lib 2.0.0 (beta needs it)")
+	z, a, b := strings.Index(rows, "zeta 1.0.0"), strings.Index(rows, "alpha 1.0.0"), strings.Index(rows, "beta 1.0.0")
 	if z < 0 || z > a || a > b {
 		t.Errorf("install order: zeta %d, alpha %d, beta %d; want the asked mods first, in the order asked", z, a, b)
 	}
 	if strings.Contains(body, "Leave alone") {
 		t.Error("the kept mods still have their own group")
 	}
+}
+
+var (
+	planRowRe    = regexp.MustCompile(`(?s)<li class="plan-row">(.*?)</li>`)
+	rowHiddenRe  = regexp.MustCompile(`<span class="visually-hidden">[^<]*</span>`)
+	rowVersionRe = regexp.MustCompile(`(?s)<span class="plan-row__version">.*?</select>\s*</span>`)
+	rowRemoveRe  = regexp.MustCompile(`(?s)<a [^>]*plan-panel__remove.*?</a>`)
+	rowTagRe     = regexp.MustCompile(`<[^>]+>`)
+)
+
+// planRows is the visible text of each row of the plan's changes, without
+// its version list and remove cross, one row a line, such as
+// "fp-clash 1.0.0" for a row whose title links to the portal.
+func planRows(body string) string {
+	var out []string
+	for _, m := range planRowRe.FindAllStringSubmatch(body, -1) {
+		s := rowRemoveRe.ReplaceAllString(rowVersionRe.ReplaceAllString(m[1], ""), "")
+		s = rowTagRe.ReplaceAllString(rowHiddenRe.ReplaceAllString(s, ""), "")
+		out = append(out, strings.Join(strings.Fields(html.UnescapeString(s)), " "))
+	}
+	return strings.Join(out, "\n")
 }

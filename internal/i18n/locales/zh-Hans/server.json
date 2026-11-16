@@ -328,8 +328,9 @@
   "server.problem.mod_missing_many": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
   "server.problem.mod_disabled_one": "{save} 使用了 {mods}，但在此世界中已禁用。",
   "server.problem.mod_disabled_many": "{save} 使用了 {mods}，但在此世界中已禁用。",
-  "server.problem.mod_gone_one": "模组门户上已没有 {mod} {version}，因此玩家的游戏无法下载它，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
+  "server.problem.mod_gone_one": "模组门户上已没有 {mod}（版本 {version}），因此玩家的游戏无法下载它，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
   "server.problem.mod_gone_many": "模组门户上已没有 {mods}，因此玩家的游戏无法下载它们，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
+  "server.problem.mod_gone_item": "{mod}（版本 {version}）",
   "server.problem.mod_version_first": {
     "other": "{world} 无法在 Factorio {version} 上运行：它的 {count} 个模组是为 Factorio {for} 制作的，游戏拒绝加载：{names}。"
   },
@@ -352,6 +353,7 @@
   "server.error.image_missing": "此世界的 Factorio 版本对应的游戏镜像尚未下载。请下载游戏镜像，然后重新启动。",
   "server.error.rcon_unreachable": "无法通过 RCON 连接到游戏，因此无法警告玩家或先行保存。请使用“强制停止”来不保存直接停止。",
   "server.error.save_timeout": "游戏没有及时完成保存，因此没有停止任何内容，也没有创建快照。请重试，或使用“强制停止”。",
+  "server.error.save_failed": "游戏无法保存世界，因此没有停止任何内容，也没有创建快照。请查看日志了解原因。",
   "server.error.start_failed": "游戏没有启动。",
   "server.error.cancelled": "强制停止中断了此操作。",
   "server.error.stop_cancelled": "停止已取消，因此没有停止或保存任何内容，游戏继续运行。",
