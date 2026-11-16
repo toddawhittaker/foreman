@@ -97,17 +97,58 @@ func (c *Controller) Console(ctx context.Context, id string, by Actor, command, 
 	return shown, Redact(reply, secrets...), nil
 }
 
-// saveSettle is how long a save that looks finished is watched for one
-// more start: a save queued behind another begins in the same tick the
-// other ends, and a line can be read after /server-save was sent although
-// the game logged it before.
-const saveSettle = 300 * time.Millisecond
+// saveCount follows the saves the game logs. The game writes one save at
+// a time, autosaves and /server-save alike, so the nth save to end is the
+// nth to begin. With fork saving a /server-save asked while another save is
+// still being written waits behind it, and the first "Saving finished"
+// after the command ends that earlier save.
+type saveCount struct {
+	starts, ends int // saves begun, and ended by a finish or a failure
+	server       int // /server-save starts
+	lastServer   int // which start, counted in starts, was the newest /server-save
+	failed       int // saves whose writing process died or failed
+}
+
+func (s *saveCount) observe(k Kind) {
+	switch k {
+	case KindSaveStarted:
+		s.starts++
+	case KindServerSaveStarted:
+		s.starts++
+		s.server++
+		s.lastServer = s.starts
+	case KindSaveFinished, KindSaveFailed:
+		s.ends++
+		if k == KindSaveFailed {
+			s.failed++
+		}
+		// A save begun before the log was followed was never counted.
+		s.starts = max(s.starts, s.ends)
+	}
+}
+
+// runEnded ends, as failed, the saves the game was writing when its run
+// ended: the game logs nothing more for them.
+func (s *saveCount) runEnded() {
+	if s.starts > s.ends {
+		s.failed += s.starts - s.ends
+		s.ends = s.starts
+	}
+}
+
+// saveMark is what a save waits from: the /server-save starts and failed
+// saves seen before the command was sent.
+type saveMark struct{ server, failed int }
+
+func (w *worldRun) saveMarkLocked() saveMark {
+	return saveMark{server: w.save.server, failed: w.save.failed}
+}
 
 // saveGame sends /server-save and waits for the log to say the save
 // finished (SPEC 6.10, 7.6).
 func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 	w.mu.Lock()
-	rc, before := w.rc, w.saveStarts
+	rc, mark := w.rc, w.saveMarkLocked()
 	w.mu.Unlock()
 	if rc == nil {
 		return ErrRCONUnreachable
@@ -115,34 +156,26 @@ func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 	if err := c.exec(ctx, rc, "/server-save"); err != nil {
 		return err
 	}
-	return c.waitSaved(ctx, w, before)
+	return c.waitSaved(ctx, w, mark)
 }
 
-// waitSaved waits until a save begun after before saves had begun has
-// finished and no other save is being written. With fork saving a
-// /server-save sent while another save is still being written waits
-// behind it, so the first "Saving finished" can end the earlier save while
-// ours is still writing. The game writes one save at a time.
-func (c *Controller) waitSaved(ctx context.Context, w *worldRun, before int) error {
+// waitSaved waits until a /server-save begun after mark has finished. A
+// save that fails meanwhile ends the wait with ErrSaveFailed: the game
+// quits when its save process dies.
+func (c *Controller) waitSaved(ctx context.Context, w *worldRun, mark saveMark) error {
 	deadline := time.NewTimer(c.saveTimeout)
 	defer deadline.Stop()
-	var settle <-chan time.Time
 	for {
 		w.mu.Lock()
-		done := w.saves > before && w.saves >= w.saveStarts
-		changed := w.changed
+		s, changed := w.save, w.changed
 		w.mu.Unlock()
 		switch {
-		case !done:
-			settle = nil
-		case settle == nil:
-			t := time.NewTimer(c.saveSettle)
-			defer t.Stop()
-			settle = t.C
+		case s.failed > mark.failed:
+			return ErrSaveFailed
+		case s.server > mark.server && s.ends >= s.lastServer:
+			return nil
 		}
 		select {
-		case <-settle:
-			return nil
 		case <-changed:
 		case <-deadline.C:
 			return ErrSaveTimeout

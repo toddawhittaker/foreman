@@ -238,6 +238,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		w.lastCrash = now
 		w.crashedRun = true
 		w.run = runState{}
+		w.save.runEnded()
 		// Docker clears the out-of-memory flag when it restarts the game,
 		// so an exit no look saw leaves the newest flag seen as it was.
 		if read != nil {
@@ -259,6 +260,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		// A new run, including a `docker restart` that leaves the restart
 		// count alone: nothing the last run knew still holds.
 		w.run = runState{}
+		w.save.runEnded()
 		w.joins.Reset()
 		w.startedAt = cont.State.StartedAt
 	}
@@ -455,6 +457,7 @@ func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 	w.stopping, w.crashLoop, w.crashedRun = false, false, false
 	w.crashes = nil
 	w.run = runState{}
+	w.save.runEnded()
 	w.joins.Reset()
 	// A container taken on is looked at afresh: what it did before was
 	// reported by whoever saw it happen (SPEC 3.8).
@@ -660,8 +663,10 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	case KindOther:
 		return
 	case KindLoadStarted:
-		// Every run of the game starts here; players from the last run are gone.
+		// Every run of the game starts here; players from the last run are
+		// gone, and a save the last run was writing ended with it.
 		w.joins.Reset()
+		w.save.runEnded()
 		if !at.IsZero() {
 			if len(w.runStarts) == maxRunStarts {
 				w.runStarts = slices.Delete(w.runStarts, 0, 1)
@@ -694,13 +699,8 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	case KindLoadFailed:
 		w.run.loadFailed, w.run.inGame = true, false
 		c.pokeMonitor()
-	case KindSaveStarted:
-		w.saveStarts++
-		publish = false
-	case KindSaveFinished:
-		w.saves++
-		// A save begun before the log was followed was never counted.
-		w.saveStarts = max(w.saveStarts, w.saves)
+	case KindSaveStarted, KindServerSaveStarted, KindSaveFinished, KindSaveFailed:
+		w.save.observe(ev.Kind)
 		publish = false
 	case KindPlayerJoined, KindPlayerLeft:
 		w.joins.Observe(ev)

@@ -81,8 +81,8 @@ func (e *gameEnv) runForkSave(t *testing.T, tag, version string) {
 	}
 
 	// An autosave is being written by a child when the snapshot is asked.
-	auto := "/silent-command game.auto_save('e3fork')"
-	if _, _, err := c.Console(ctx, id, admin, auto, auto); err != nil {
+	autosave := "/silent-command game.auto_save('e3fork')"
+	if _, _, err := c.Console(ctx, id, admin, autosave, autosave); err != nil {
 		t.Fatalf("RCON: %v", err)
 	}
 	begin := time.Now()
@@ -91,35 +91,42 @@ func (e *gameEnv) runForkSave(t *testing.T, tag, version string) {
 		t.Fatalf("snapshot: %v\nlog:\n%s", err, strings.Join(logLines(c, id), "\n"))
 	}
 	t.Logf("TIMING snapshot with a save queued behind a forked autosave: %s", time.Since(begin).Round(10*time.Millisecond))
+	// The log as it stood when the snapshot was taken.
 	lines := logLines(c, id)
 
-	// The game forked for both saves.
-	if !logHas(c, id, "(non-blocking)") || !logHas(c, id, "Saving process PID") {
-		t.Errorf("the game did not fork the save; log:\n%s", strings.Join(lines, "\n"))
-	}
-	// The autosave began, then Foreman's save; both had finished when the
-	// snapshot was taken.
-	after := -1
+	// From the autosave's start on: the autosave forks, Foreman's save is
+	// queued behind it and begins in the same tick the autosave ends, and
+	// Foreman's save had finished before the snapshot was taken.
+	auto := -1
 	for i, l := range lines {
-		if strings.Contains(l, "Saving to _autosave-e3fork") {
-			after = i
+		if strings.Contains(l, "Saving to _autosave-e3fork (non-blocking)") {
+			auto = i
 		}
 	}
-	if after < 0 {
-		t.Fatalf("no autosave start in the log:\n%s", strings.Join(lines, "\n"))
+	if auto < 0 {
+		t.Fatalf("the autosave did not fork:\n%s", strings.Join(lines, "\n"))
 	}
-	var started, finished int
-	for _, l := range lines[after:] {
-		if strings.Contains(l, "Saving game as ") {
-			started++
-		}
-		if strings.HasSuffix(l, "Saving finished") {
-			finished++
+	tail := lines[auto:]
+	autoEnd, ours, oursEnd := -1, -1, -1
+	for i, l := range tail {
+		switch {
+		case strings.HasSuffix(l, "Saving finished") && autoEnd < 0:
+			autoEnd = i
+		case strings.Contains(l, "Saving game as ") && ours < 0:
+			ours = i
+		case strings.HasSuffix(l, "Saving finished") && ours >= 0 && oursEnd < 0:
+			oursEnd = i
 		}
 	}
-	if started < 1 || finished < 2 {
-		t.Errorf("snapshot taken before Foreman's own save finished: %d starts, %d finishes after the autosave\n%s",
-			started, finished, strings.Join(lines[after:], "\n"))
+	if ours < 0 || oursEnd < 0 {
+		t.Fatalf("the snapshot was taken before Foreman's own save finished:\n%s", strings.Join(tail, "\n"))
+	}
+	if !logHas(c, id, "Saving process PID") {
+		t.Errorf("the game did not fork the save:\n%s", strings.Join(tail, "\n"))
+	}
+	if ours < autoEnd || ours != autoEnd+1 || gameTime(tail[ours]) != gameTime(tail[autoEnd]) {
+		t.Skipf("the autosave finished before /server-save reached the game, so no save was queued; nothing was exercised:\n%s",
+			strings.Join(tail, "\n"))
 	}
 
 	// Every save in the snapshot is complete and reads back.
@@ -143,6 +150,15 @@ func (e *gameEnv) runForkSave(t *testing.T, tag, version string) {
 	if zips == 0 {
 		t.Fatalf("the snapshot in %s holds no save", dir)
 	}
+}
+
+// gameTime is the game's own clock at the start of a log line.
+func gameTime(line string) string {
+	f := strings.Fields(line)
+	if len(f) == 0 {
+		return ""
+	}
+	return f[0]
 }
 
 // checkZip reads every entry of a zip, so a truncated file or a bad CRC
