@@ -1,9 +1,7 @@
 package game
 
 import (
-	"bytes"
 	"context"
-	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -12,24 +10,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 )
-
-// lockedBuffer is a log destination safe for the watcher's goroutine.
-type lockedBuffer struct {
-	mu sync.Mutex
-	b  bytes.Buffer
-}
-
-func (l *lockedBuffer) Write(p []byte) (int, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.b.Write(p)
-}
-
-func (l *lockedBuffer) String() string {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.b.String()
-}
 
 // watch runs the event watcher until the test ends, and fails the test if
 // it is still running a moment after its context ends.
@@ -85,9 +65,8 @@ func TestOOMEventNamesAKillDockerAlreadyRestarted(t *testing.T) {
 // SPEC 14.3: events are optional. With the proxy refusing them the watcher
 // says so in the log once, ends, and the monitor polls as before.
 func TestRefusedEventsFallBackToPollingQuietly(t *testing.T) {
-	r := newRig(t, rigOptions{noRun: true})
 	var logs lockedBuffer
-	r.c.log = slog.New(slog.NewTextHandler(&logs, nil))
+	r := newRig(t, rigOptions{noRun: true, logs: &logs})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	r.c.watchOOM(ctx) // returns on the refusal

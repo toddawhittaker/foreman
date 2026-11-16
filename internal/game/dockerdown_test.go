@@ -1,8 +1,6 @@
 package game
 
 import (
-	"bytes"
-	"log/slog"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,9 +20,8 @@ func TestDockerUnreachableReasonIsPlain(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.docker = dc
-	c := r.newController(rigOptions{})
-	var logs bytes.Buffer
-	c.log = slog.New(slog.NewTextHandler(&logs, nil))
+	var logs lockedBuffer
+	c := r.newController(rigOptions{logs: &logs})
 	stop := r.run(c)
 
 	var st Status
@@ -61,9 +58,8 @@ func TestInspectFaultReasonIsPlain(t *testing.T) {
 	r.start(id)
 	// A second controller, made before it runs, so its log can be read.
 	r.stop()
-	c := r.newController(rigOptions{})
-	var logs bytes.Buffer
-	c.log = slog.New(slog.NewTextHandler(&logs, nil))
+	var logs lockedBuffer
+	c := r.newController(rigOptions{logs: &logs})
 	r.c = c
 	r.stop = r.run(c)
 	r.waitState(id, StateRunning)
