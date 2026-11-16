@@ -220,6 +220,7 @@ type Controller struct {
 	pollInterval  time.Duration
 	startTimeout  time.Duration
 	saveTimeout   time.Duration
+	saveSettle    time.Duration
 	rconRetry     time.Duration
 	crashWindow   time.Duration
 	rconCallLimit time.Duration
@@ -317,7 +318,7 @@ func New(cfg Config) (*Controller, error) {
 		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), dockerHost: tcpHost(cfg.DockerHost),
 		proxies: cfg.TrustedProxies, containerEnvs: []string{docker.DockerEnvPath, docker.PodmanEnvPath}, lookupHost: net.DefaultResolver.LookupHost,
 		now: now, log: log,
-		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
+		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout, saveSettle: saveSettle,
 		rconRetry: rconRetry, crashWindow: CrashLoopWindow,
 		rconCallLimit: rcon.DefaultTimeout, previewLimit: PreviewLimit, previewWait: PreviewWait,
 		modCheckLimit: ModCheckTimeout, modSettingsLimit: ModSettingsLimit,
@@ -381,10 +382,14 @@ type worldRun struct {
 	// a run, by its place in logs, oldest first and at most maxRunStarts.
 	runStarts []runStart
 	run       runState
-	saves     int           // "Saving finished" lines seen
-	changed   chan struct{} // closed and replaced whenever the game's state moves
-	rc        *rcon.Client
-	secrets   []secret.Secret // removed from every relayed line (SPEC 8.6)
+	saves     int // "Saving finished" lines seen
+	// saveStarts counts the lines that began a save, never fewer than
+	// saves. The game writes one save at a time, so the nth finish ends
+	// the nth start.
+	saveStarts int
+	changed    chan struct{} // closed and replaced whenever the game's state moves
+	rc         *rcon.Client
+	secrets    []secret.Secret // removed from every relayed line (SPEC 8.6)
 	// noSecrets is set when the container was taken on while stopped,
 	// without its world's passwords; it is taken on again before its log
 	// is followed.

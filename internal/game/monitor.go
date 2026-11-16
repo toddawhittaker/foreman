@@ -692,8 +692,13 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	case KindLoadFailed:
 		w.run.loadFailed, w.run.inGame = true, false
 		c.pokeMonitor()
+	case KindSaveStarted:
+		w.saveStarts++
+		publish = false
 	case KindSaveFinished:
 		w.saves++
+		// A save begun before the log was followed was never counted.
+		w.saveStarts = max(w.saveStarts, w.saves)
 		publish = false
 	case KindPlayerJoined, KindPlayerLeft:
 		w.joins.Observe(ev)

@@ -32,6 +32,7 @@ const (
 	KindLoadError         // the reason for a failed load, in Detail
 	KindPlayerJoined
 	KindPlayerLeft
+	KindSaveStarted // an autosave or /server-save began writing
 )
 
 // Event is one classified log line.
@@ -95,6 +96,9 @@ func ParseLine(line string) Event {
 		ev.Detail = strings.Trim(strings.TrimPrefix(msg, "MultiplayerManager failed: "), `"`)
 	case msg == "Saving finished":
 		ev.Kind = KindSaveFinished
+	case strings.HasPrefix(msg, "Saving game as "),
+		strings.HasPrefix(msg, "Saving to ") && strings.HasSuffix(msg, "blocking)."):
+		ev.Kind = KindSaveStarted
 	}
 	return ev
 }

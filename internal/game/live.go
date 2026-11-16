@@ -97,11 +97,17 @@ func (c *Controller) Console(ctx context.Context, id string, by Actor, command, 
 	return shown, Redact(reply, secrets...), nil
 }
 
+// saveSettle is how long a save that looks finished is watched for one
+// more start: a save queued behind another begins in the same tick the
+// other ends, and a line can be read after /server-save was sent although
+// the game logged it before.
+const saveSettle = 300 * time.Millisecond
+
 // saveGame sends /server-save and waits for the log to say the save
 // finished (SPEC 6.10, 7.6).
 func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 	w.mu.Lock()
-	rc, before := w.rc, w.saves
+	rc, before := w.rc, w.saveStarts
 	w.mu.Unlock()
 	if rc == nil {
 		return ErrRCONUnreachable
@@ -109,16 +115,34 @@ func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 	if err := c.exec(ctx, rc, "/server-save"); err != nil {
 		return err
 	}
+	return c.waitSaved(ctx, w, before)
+}
+
+// waitSaved waits until a save begun after before saves had begun has
+// finished and no other save is being written. With fork saving a
+// /server-save sent while another save is still being written waits
+// behind it, so the first "Saving finished" can end the earlier save while
+// ours is still writing. The game writes one save at a time.
+func (c *Controller) waitSaved(ctx context.Context, w *worldRun, before int) error {
 	deadline := time.NewTimer(c.saveTimeout)
 	defer deadline.Stop()
+	var settle <-chan time.Time
 	for {
 		w.mu.Lock()
-		saved, changed := w.saves > before, w.changed
+		done := w.saves > before && w.saves >= w.saveStarts
+		changed := w.changed
 		w.mu.Unlock()
-		if saved {
-			return nil
+		switch {
+		case !done:
+			settle = nil
+		case settle == nil:
+			t := time.NewTimer(c.saveSettle)
+			defer t.Stop()
+			settle = t.C
 		}
 		select {
+		case <-settle:
+			return nil
 		case <-changed:
 		case <-deadline.C:
 			return ErrSaveTimeout
