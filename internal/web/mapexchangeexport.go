@@ -163,7 +163,8 @@ func (s *server) worldExchange(ctx context.Context, sum world.Summary) ExchangeF
 	out := ExchangeField{ID: "exchange"}
 	fail := func(err error) ExchangeField {
 		reason, known := exchangeReason(err)
-		if !known {
+		// A request the visitor canceled is not a fault.
+		if !known && ctx.Err() == nil {
 			s.log.Warn("make a map exchange string", "world", sum.ID, "error", err)
 		}
 		out.Reason = reason

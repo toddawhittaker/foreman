@@ -399,3 +399,25 @@ func TestLoadChoice(t *testing.T) {
 		t.Errorf("unknown world: %q", got)
 	}
 }
+
+// The game writes a save as <name>.tmp.zip and renames it when done; a killed
+// save leaves the temporary file behind. It is not a save, and must not be
+// the newest one the game or the pre-start check goes by (SPEC 7.11).
+func TestSavesSkipTheGamesTemporaryFiles(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	putSave(t, dir, "_autosave1.zip", "old", t0.Add(-time.Hour))
+	putSave(t, dir, "_autosave2.tmp.zip", "half", t0)
+
+	list, err := m.Saves(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := saveNames(list.Saves), []string{"_autosave1.zip"}; !slices.Equal(got, want) {
+		t.Errorf("saves %v, want %v", got, want)
+	}
+	newest, found, err := m.NewestSave(id)
+	if err != nil || !found || newest.Name != "_autosave1.zip" {
+		t.Errorf("newest %+v, %v, %v; want _autosave1.zip", newest, found, err)
+	}
+}

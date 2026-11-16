@@ -75,8 +75,8 @@ func TestWorldPageOffersTheStringFromItsMapFiles(t *testing.T) {
 			t.Errorf("page lacks %q", need)
 		}
 	}
-	if strings.Contains(page, `id="exchange-copy" disabled`) {
-		t.Error("the copy button is disabled though there is a string")
+	if !strings.Contains(page, `id="exchange-copy"`) {
+		t.Error("the page has no copy button though there is a string")
 	}
 	// The string is never in an address.
 	if strings.Contains(page, "href=\""+worldPath(id)+"?") && strings.Contains(page, "%3E%3E%3E") {
@@ -104,11 +104,11 @@ func TestWorldWithARandomSeedFallsBackToItsSave(t *testing.T) {
 	c := hn.signIn()
 	id := generated(t, hn, "Random", `{"seed":null,"width":0}`)
 
-	// With no save, the reason names the random seed and the button is off.
+	// With no save, the reason names the random seed and there is no button.
 	page := hn.get(worldPath(id), withCookie(c)).Body.String()
 	if textarea(page, "exchange") != "" || !strings.Contains(page, "seed is left to chance") ||
-		!strings.Contains(page, `id="exchange-copy" disabled aria-describedby="exchange-reason"`) {
-		t.Errorf("no save: want a disabled button with the reason:\n%s", page)
+		!strings.Contains(page, `id="exchange-reason"`) || strings.Contains(page, `id="exchange-copy"`) {
+		t.Errorf("no save: want the reason and no copy button:\n%s", page)
 	}
 
 	data := fixtureBytes(t, "2.0.77-space-age.zip")
@@ -139,8 +139,8 @@ func TestWorldPageSaysWhyThereIsNoString(t *testing.T) {
 			id := generated(t, hn, "Odd", `{"seed":null}`)
 			putSave(t, hn, id, "a.zip", tc.save(t))
 			page := html.UnescapeString(hn.get(worldPath(id), withCookie(c)).Body.String())
-			if textarea(page, "exchange") != "" || !strings.Contains(page, tc.want) || !strings.Contains(page, `id="exchange-copy" disabled`) {
-				t.Errorf("want a disabled button and %q:\n%s", tc.want, page)
+			if textarea(page, "exchange") != "" || !strings.Contains(page, tc.want) || strings.Contains(page, `id="exchange-copy"`) {
+				t.Errorf("want %q and no copy button:\n%s", tc.want, page)
 			}
 		})
 	}
@@ -154,7 +154,7 @@ func TestWorldWithNoMapAtAllSaysSo(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := hn.get(worldPath(id), withCookie(c)).Body.String()
-	if !strings.Contains(page, "no map settings files and no save yet") || !strings.Contains(page, `id="exchange-copy" disabled`) {
+	if !strings.Contains(page, "no map settings files and no save yet") || strings.Contains(page, `id="exchange-copy"`) {
 		t.Errorf("want the no-map reason:\n%s", page)
 	}
 }
@@ -183,8 +183,8 @@ func TestFavoritesListOffersTheStringFromStoredMapFiles(t *testing.T) {
 		t.Errorf("seeded favorite holds %q, want %q", got, want)
 	}
 	for _, id := range []string{random, bare} {
-		if textarea(page, "exchange-"+id) != "" || !strings.Contains(page, `id="exchange-`+id+`-copy" disabled`) {
-			t.Errorf("favorite %s: want a disabled button", id)
+		if textarea(page, "exchange-"+id) != "" || strings.Contains(page, `id="exchange-`+id+`-copy"`) || !strings.Contains(page, `id="exchange-`+id+`-reason"`) {
+			t.Errorf("favorite %s: want the reason and no copy button", id)
 		}
 	}
 	for _, need := range []string{"seed is left to chance", "keeps no map settings"} {
@@ -293,5 +293,34 @@ func TestExchangeReasons(t *testing.T) {
 		if reason.Key != tc.key || known != tc.known {
 			t.Errorf("%v: got %q, %v; want %q, %v", tc.err, reason.Key, known, tc.key, tc.known)
 		}
+	}
+}
+
+// A request the visitor canceled while it waited for a read slot is not a
+// fault, so it is not logged as a warning.
+func TestCanceledRequestIsNotLoggedAsAWarning(t *testing.T) {
+	hn := newHarness(t, nil)
+	id := generated(t, hn, "Quiet", `{"seed":null}`)
+	putSave(t, hn, id, "a.zip", fixtureBytes(t, "2.0.77-no-space-age.zip"))
+	sum, err := hn.worlds.Get(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range maxSaveReads {
+		saveReader.slots <- struct{}{}
+	}
+	defer func() {
+		for range maxSaveReads {
+			<-saveReader.slots
+		}
+	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	s := &server{worlds: hn.worlds, log: hn.slog}
+	if got := s.worldExchange(ctx, sum); got.Have() || got.Reason.IsZero() {
+		t.Fatalf("canceled: %+v", got)
+	}
+	if strings.Contains(hn.logs.String(), "make a map exchange string") {
+		t.Errorf("a canceled request was logged:\n%s", hn.logs.String())
 	}
 }

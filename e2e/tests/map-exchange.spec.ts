@@ -71,7 +71,7 @@ test("an imported world gives the game's own string from its save", async ({ pag
   await checkPage(page);
 });
 
-test("a random seed uses the save, and with no save the control is off and says why", async ({ page, foreman }) => {
+test("a random seed uses the save, and with no save there is no button and the page says why", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, { version: version20, fixture: "2.0.77-no-space-age.zip" });
   const base = join(foreman.dataDir, "worlds", "base");
@@ -82,15 +82,14 @@ test("a random seed uses the save, and with no save the control is off and says 
   // A save that cannot be read leaves the control off, with the reason beside it.
   writeFileSync(join(base, "saves", "base.zip"), "not a zip");
   await page.goto("/worlds/base");
-  await expect(page.getByRole("button", { name: copyName })).toBeDisabled();
+  await expect(page.getByRole("button", { name: copyName })).toHaveCount(0);
   await expect(page.locator("#exchange-reason")).toContainText("could not read the world's newest save");
-  await expect(page.getByRole("button", { name: copyName })).toHaveAccessibleDescription(/could not read/);
   await checkPage(page);
 
   // No save at all: the seed is left to chance, so nothing can name the map.
   rmSync(join(base, "saves", "base.zip"));
   await page.goto("/worlds/base");
-  await expect(page.getByRole("button", { name: copyName })).toBeDisabled();
+  await expect(page.getByRole("button", { name: copyName })).toHaveCount(0);
   await expect(page.locator("#exchange-reason")).toContainText("seed is left to chance");
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/x2-world-off-${test.info().project.name}.png`, fullPage: true });
@@ -114,7 +113,7 @@ test("a favorite offers its string, and one without map settings says why", asyn
   await expect(withMap.getByRole("button", { name: copyName })).toHaveAccessibleDescription(/With map/);
 
   await noMap.locator("summary", { hasText: "Map exchange string" }).click();
-  await expect(noMap.getByRole("button", { name: copyName })).toBeDisabled();
+  await expect(noMap.getByRole("button", { name: copyName })).toHaveCount(0);
   await expect(noMap).toContainText("keeps no map settings");
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/x2-favorites-${test.info().project.name}.png`, fullPage: true });

@@ -16,9 +16,6 @@
   {{- if not .Reason.IsZero}}
   <p class="hint" id="{{.ID}}-reason">{{msg .Reason}}</p>
   {{- end}}
-  <div class="actions">
-    <button type="button" class="button" id="{{.ID}}-copy" disabled aria-describedby="{{if not .Reason.IsZero}}{{.ID}}-reason{{end}}{{with .Owner}} {{.}}{{end}}">{{t "mapgen.exchange.copy"}}</button>
-  </div>
   {{- end}}
 </div>
 {{- end}}

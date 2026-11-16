@@ -214,7 +214,7 @@
   "mapgen.exchange.note": "Po vložení do generátoru map ve Factoriu vznikne stejná mapa. Řetězec obsahuje jen nastavení mapy, ne mody.",
   "mapgen.exchange.reason.no_seed": "Kód mapy je ponechán náhodě a není uložená hra, ze které by ho bylo možné přečíst, proto řetězec neexistuje.",
   "mapgen.exchange.reason.no_map_world": "Tento svět nemá soubory s nastavením mapy ani zatím žádnou uloženou hru, proto není co popisovat.",
-  "mapgen.exchange.reason.no_map_favorite": "Tato oblíbená nemá uložené nastavení mapy, proto není co popisovat.",
+  "mapgen.exchange.reason.no_map_favorite": "Tato oblíbená položka nemá uložené nastavení mapy, proto není co popisovat.",
   "mapgen.exchange.reason.no_settings": "Nejnovější uložená hra světa neobsahuje nastavení mapy, které by Foreman uměl přečíst, proto řetězec neexistuje.",
   "mapgen.exchange.reason.unsupported": "Tato mapa pochází z Factoria {version}, pro které Foreman nemůže řetězec vytvořit.",
   "mapgen.exchange.reason.unreadable": "Nejnovější uloženou hru světa se nepodařilo přečíst, proto řetězec neexistuje.",
