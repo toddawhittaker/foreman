@@ -32,6 +32,9 @@ const (
 	KindLoadError         // the reason for a failed load, in Detail
 	KindPlayerJoined
 	KindPlayerLeft
+	KindSaveStarted       // an autosave began writing
+	KindServerSaveStarted // a /server-save began writing
+	KindSaveFailed        // the process writing a forked save died or failed
 )
 
 // Event is one classified log line.
@@ -95,8 +98,25 @@ func ParseLine(line string) Event {
 		ev.Detail = strings.Trim(strings.TrimPrefix(msg, "MultiplayerManager failed: "), `"`)
 	case msg == "Saving finished":
 		ev.Kind = KindSaveFinished
+	case strings.HasPrefix(msg, "Saving game as "):
+		ev.Kind = KindServerSaveStarted
+	case strings.HasPrefix(msg, "Saving to ") && strings.HasSuffix(msg, "blocking)."):
+		ev.Kind = KindSaveStarted
+	case childFailed(msg):
+		ev.Kind = KindSaveFailed
 	}
 	return ev
+}
+
+// childLine is how the game reports the end of the process that wrote a
+// forked save. Only that process is a child of the game.
+var childLine = regexp.MustCompile(`^Child \d+ (?:exited with return value (\d+)|was terminated by signal \d+)$`)
+
+// childFailed reports whether a line says the save process failed. The
+// game then logs no "Saving finished" for that save.
+func childFailed(msg string) bool {
+	m := childLine.FindStringSubmatch(msg)
+	return m != nil && m[1] != "0"
 }
 
 // splitDockerTime takes the timestamp Docker puts before a line when asked
