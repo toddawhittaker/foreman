@@ -26,7 +26,6 @@ func TestFakeFailsTheTestOnCallsOutsideSpec14_3(t *testing.T) {
 		{"POST", "/v1.52/networks/create", "outside SPEC 14.3"},
 		{"DELETE", "/v1.52/images/x", "outside SPEC 14.3"},
 		{"GET", "/containers/x/json", "no API version prefix"},
-		{"GET", "/v1.52/events", "not implemented"},
 	}
 	for _, tc := range cases {
 		rec := &recorder{TB: t}

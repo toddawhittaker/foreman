@@ -174,6 +174,9 @@ func (p WorldPage) hasErrors() bool { return !p.NameError.IsZero() || !p.FavErro
 func (WorldsPage) ImportPath() string   { return PathImport }
 func (WorldsPage) GeneratePath() string { return PathGenerate }
 
+// FavoritesPath is the favorites list, shown beside Generate and Import.
+func (WorldsPage) FavoritesPath() string { return PathFavorites }
+
 // Problems lists the rename field's error.
 func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.NameError}) }
 
