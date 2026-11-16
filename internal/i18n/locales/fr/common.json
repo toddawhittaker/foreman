@@ -79,5 +79,14 @@
   "common.menu.notifications": "Notifications",
   "common.menu.schedule": "Planification des redémarrages",
   "common.settings.label": "Paramètres de Foreman",
-  "common.countdown.none_name": "Sans avertissement : régler le compte à rebours sur 0 seconde"
+  "common.countdown.none_name": "Sans avertissement : régler le compte à rebours sur 0 seconde",
+  "common.dropzone.limits": "Un fichier {types} de {limit} au maximum.",
+  "common.dropzone.prompt": "Déposez le fichier ici ou choisissez un fichier",
+  "common.dropzone.drop": "Déposez le fichier pour le choisir",
+  "common.dropzone.chosen": "Choisi : {file}, {size}",
+  "common.dropzone.clear": "Retirer",
+  "common.dropzone.cleared": "Aucun fichier choisi.",
+  "common.dropzone.wrong_type": "{file} n’est pas un fichier {types}. Choisissez un fichier qui se termine par {types}.",
+  "common.dropzone.too_big": "{file} dépasse {limit}. Choisissez un fichier plus petit.",
+  "common.dropzone.one_file": "Choisissez un seul fichier à la fois."
 }

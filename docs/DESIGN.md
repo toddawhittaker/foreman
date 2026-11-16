@@ -1557,6 +1557,55 @@ Words stay first (1).
   preview's large view and the toggletip keep their own inline SVG icons
   (8.8, 7.7).
 
+### 7.10 Uploads (SPEC 14.6)
+
+Every file upload uses one control, the drop zone: the partial
+`dropzone` in `templates/dropzone.html` with `static/dropzone.js`, which
+a page loads in its `scripts` block. The page builds a `DropZone`
+(`internal/web/dropzone.go`) and passes it to the partial:
+
+| Field | What it is |
+|---|---|
+| `ID` | The file input's id. The hint, chosen line and errors use it as a prefix. |
+| `Name` | The form field the file posts as, such as `save`. |
+| `Label` | The visible label, as a message. |
+| `Accept` | The one file ending the field takes, such as `.zip`. |
+| `MaxBytes` | The server's size limit, shown in the hint. |
+| `Error` | The server's refusal of the last upload, shown under the field. |
+
+- **Without script** it is a plain form field (7.2): a label with the
+  required asterisk, a hint naming the type and size limit, and the
+  native file input. The form posts as it always did.
+- **With script** the zone is a dashed box at least 6rem tall that says
+  "Drop the file here, or choose a file". The native input is stretched,
+  transparent, over the whole box, so it stays the control: a click
+  anywhere, or Enter or Space when it has focus, opens the picker, and a
+  screen reader meets an ordinary labelled file field. Focus draws the
+  focus ring on the box. On a phone, where dragging is rare, it is simply
+  a big button.
+- **A drag** of files anywhere on the page turns every zone's border
+  solid and changes its words to "Drop the file to choose it"; over the
+  zone the border grows to 4px. The change is never colour alone.
+- **Once chosen**, the line under the box says "Chosen: *name*, *size*"
+  with a Clear button. Clear empties the field and puts focus back on it;
+  choosing again replaces the file.
+- **Refused before uploading**: a file of another type, several files,
+  or a file over the limit. The field is emptied, gets a field error
+  (7.2) that says what to choose instead, and the error is read out. The
+  page's own listeners never see a refused file. The server still checks
+  every upload as before; the zone's checks are only a quicker answer.
+- A page never adds its own capture-phase `change` listener on an
+  ancestor of a zone: it would run before the zone's and see refused files.
+- A new file, good or refused, hides the server's error from the last
+  upload; a refused drop also empties any file chosen before.
+- One file per zone.
+
+**Where an upload happens.** An upload happens in place, in a drop zone,
+when its result is used on that page. Otherwise the page offers a button,
+never a link, that goes to the tab that owns the file ("Upload a save" on
+the Mods tab goes to the Saves tab). Button words name the file: "Upload
+a save", "Upload a mod zip", "Replace mod-settings.dat".
+
 ## 8. Patterns for later screens
 
 These are not built in Epic 1. They are here so Epics 2 and 3 start from

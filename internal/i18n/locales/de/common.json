@@ -79,5 +79,14 @@
   "common.menu.notifications": "Benachrichtigungen",
   "common.menu.schedule": "Neustart-Zeitplan",
   "common.settings.label": "Foreman-Einstellungen",
-  "common.countdown.none_name": "Keine Warnung: Countdown auf 0 Sekunden setzen"
+  "common.countdown.none_name": "Keine Warnung: Countdown auf 0 Sekunden setzen",
+  "common.dropzone.limits": "Eine {types}-Datei bis {limit}.",
+  "common.dropzone.prompt": "Datei hier ablegen oder eine Datei wählen",
+  "common.dropzone.drop": "Datei ablegen, um sie zu wählen",
+  "common.dropzone.chosen": "Gewählt: {file}, {size}",
+  "common.dropzone.clear": "Entfernen",
+  "common.dropzone.cleared": "Keine Datei gewählt.",
+  "common.dropzone.wrong_type": "{file} ist keine {types}-Datei. Wähle eine Datei, die auf {types} endet.",
+  "common.dropzone.too_big": "{file} ist größer als {limit}. Wähle eine kleinere Datei.",
+  "common.dropzone.one_file": "Wähle jeweils nur eine Datei."
 }
