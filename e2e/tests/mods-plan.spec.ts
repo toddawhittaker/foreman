@@ -1,10 +1,7 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, live, version20, openModTools } from "./foreman.js";
+import { test, expect, planRow, checkPage, setUpModsWorld, doneBox, live, version20, openModTools } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-
-// A change's row on the review page, found by the title it starts with (issue 620).
-const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
 
 // SPEC 9.1, 9.2, 9.7, 9.11: building one plan from a search, the portal
 // links, the built-in line, the settings help and the Server page notice,

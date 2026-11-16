@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, dropFile, pickLanguage } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -12,21 +12,14 @@ const emptyZip = Buffer.concat([Buffer.from("PK\x05\x06"), Buffer.alloc(18)]);
 
 const uploadForm = (page: Page) => page.locator("form", { has: page.getByRole("heading", { name: "Upload a save" }) });
 
-// Drops files on the zone the way a browser does: dragenter on the page,
-// then dragover and drop on the zone, carrying a DataTransfer of files.
+// Drops files on the save zone and checks the page and the zone show their
+// drag states first.
 async function drop(page: Page, files: { name: string; body: string }[]) {
-  const dt = await page.evaluateHandle((files) => {
-    const dt = new DataTransfer();
-    for (const f of files) dt.items.add(new File([f.body], f.name, { type: "application/zip" }));
-    return dt;
-  }, files);
-  const area = page.locator("#upload-source").locator("..");
-  await page.dispatchEvent("body", "dragenter", { dataTransfer: dt });
-  await expect(page.locator("[data-dropzone]")).toHaveClass(/dropzone--page/);
-  await expect(area.getByText("Drop the file to choose it")).toBeVisible();
-  await area.dispatchEvent("dragover", { dataTransfer: dt });
-  await expect(page.locator("[data-dropzone]")).toHaveClass(/dropzone--over/);
-  await area.dispatchEvent("drop", { dataTransfer: dt });
+  await dropFile(page, "upload-source", files, async () => {
+    await expect(page.locator("[data-dropzone]")).toHaveClass(/dropzone--page/);
+    await expect(page.locator("#upload-source").locator("..").getByText("Drop the file to choose it")).toBeVisible();
+    await expect(page.locator("[data-dropzone]")).toHaveClass(/dropzone--over/);
+  });
 }
 
 test("a dropped save fills the field, names the file, and imports", async ({ page, foreman }) => {
@@ -39,7 +32,7 @@ test("a dropped save fills the field, names the file, and imports", async ({ pag
 
   await drop(page, [{ name: "dropped.zip", body: emptyZip.toString("latin1") }]);
   await expect(page.locator("[data-dropzone]")).not.toHaveClass(/dropzone--page|dropzone--over/);
-  await expect(form.locator(".dropzone__chosen")).toHaveText("Chosen: dropped.zip, 22 B Clear");
+  await expect(form.locator(".dropzone__chosen")).toHaveText("Chosen: dropped.zip, 22 B Clear Save file");
   // The page's own listener still runs: the name is suggested from the file.
   await expect(form.getByLabel("World name")).toHaveValue("dropped");
   await expect(form.getByLabel("Save file")).toBeFocused();
@@ -196,3 +189,25 @@ test.describe("without script", () => {
     expect(readdirSync(join(foreman.dataDir, "worlds", "plain", "saves"))).toEqual(["plain.zip"]);
   });
 });
+
+// SPEC 17.2, 22.7: the zone, its hint and the chosen file with its Clear button fit at
+// 320 px and 200% text in the longest languages.
+for (const lang of ["de", "ru"]) {
+  test.describe(`${lang} at 320 px and 200% text`, () => {
+    test.use({ viewport: { width: 320, height: 640 } });
+
+    test("the zone and a chosen file fit and pass axe", async ({ page }) => {
+      await createAdmin(page);
+      await pickLanguage(page, lang);
+      await page.goto("/import");
+      await expect(page.locator("html")).toHaveAttribute("lang", lang);
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = "200%";
+      });
+      await checkPage(page);
+      await dropFile(page, "upload-source", [{ name: "a-save-with-a-fairly-long-name-for-a-phone.zip", body: emptyZip }]);
+      await expect(page.locator(".dropzone__chosen")).toBeVisible();
+      await checkPage(page);
+    });
+  });
+}

@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, postFrom, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, pickLanguage, postFrom, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { mkdirSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -210,3 +210,33 @@ test.describe("in a wide time zone", () => {
     await checkPage(page);
   });
 });
+
+// SPEC 17.2, 22.7: the snapshot lists, the selection bar and the confirmation fit at 320 px
+// and 200% text in the longest languages.
+for (const lang of ["de", "ru"]) {
+  test.describe(`${lang} at 320 px and 200% text`, () => {
+    test.use({ viewport: { width: 320, height: 640 } });
+
+    test("the lists, the selection bar and the confirmation fit and pass axe", async ({ page, foreman }) => {
+      await createAdmin(page);
+      seedWorld(foreman);
+      await takeSnapshot(page, "A label that is long enough to wrap onto several lines on a phone screen");
+      await restore(page, "A label");
+      await pickLanguage(page, lang);
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = "200%";
+      });
+      await page.goto(`${world}/snapshots`);
+      await expect(page.locator("html")).toHaveAttribute("lang", lang);
+      await expectTablesFit(page);
+      await checkPage(page);
+      await page.goto("/snapshots");
+      await page.locator('input[name="snap"]').first().check();
+      await expectTablesFit(page);
+      await checkPage(page);
+      await page.locator("[data-needs-tick]").click();
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await checkPage(page);
+    });
+  });
+}

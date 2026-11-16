@@ -46,7 +46,7 @@ type serverValues struct {
 // The allow_commands choices the form offers, as posted and as compared.
 const (
 	commandsEveryone = "true"
-	commandsAdmins   = "admins-only"
+	commandsAdmins   = gamesettings.GameDefaultCommands
 	commandsNobody   = "false"
 )
 

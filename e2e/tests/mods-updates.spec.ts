@@ -1,10 +1,7 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, version20, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
+import { test, expect, planRow, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, version20, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-
-// A change's row on the review page, found by the title it starts with (issue 620).
-const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
 
 // SPEC 9.3 (updates) and 9.8 (mods players cannot get), through the
 // fake portal. The fake's generated mods are made for Factorio 2.0.

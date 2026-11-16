@@ -769,3 +769,31 @@ export async function openModTools(page: Page) {
   await page.locator("#mod-tools > summary").click();
   await expect(tools).toHaveJSProperty("open", true);
 }
+
+// A change's row on the review page, found by the name it starts with.
+export const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
+
+// Drops files on the drop zone whose file input has this id, as a browser
+// does: dragenter on the page, then dragover and drop on the zone. A string
+// body is read as Latin-1 bytes. before runs once the page and the zone show
+// their drag states, and just before the drop.
+export async function dropFile(
+  page: Page,
+  zone: string,
+  files: { name: string; body: Buffer | string; type?: string }[],
+  before?: () => Promise<void>,
+) {
+  const dt = await page.evaluateHandle(
+    (files) => {
+      const dt = new DataTransfer();
+      for (const f of files) dt.items.add(new File([new Uint8Array(f.bytes)], f.name, { type: f.type }));
+      return dt;
+    },
+    files.map((f) => ({ name: f.name, type: f.type ?? "", bytes: Array.from(typeof f.body === "string" ? Buffer.from(f.body, "latin1") : f.body) })),
+  );
+  const area = page.locator(`#${zone}`).locator("..");
+  await page.dispatchEvent("body", "dragenter", { dataTransfer: dt });
+  await area.dispatchEvent("dragover", { dataTransfer: dt });
+  await before?.();
+  await area.dispatchEvent("drop", { dataTransfer: dt });
+}

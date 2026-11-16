@@ -457,3 +457,23 @@ func TestFavoriteImportRefusesBadFiles(t *testing.T) {
 		t.Errorf("unknown export: %d", rec.Code)
 	}
 }
+
+// Ruling 15: a favorite's mods show by title and link to the portal, except
+// those the portal is known to lack.
+func TestFavoritesListLinksOnlyKnownMods(t *testing.T) {
+	r := newTestRenderer(t)
+	p := FavoritesPage{Favorites: []FavoriteRow{{Favorite: world.Favorite{ID: "aaaaaaaaaaaaaaaa", Name: "Club", GameVersion: "2.0.77",
+		Mods: []world.FavoriteMod{{Name: "k2", Version: "1.0.0", Title: "Krastorio 2"}, {Name: "gone", Version: "1.0.0", Title: "Gone mod"}}}}},
+		missing: func(n string) bool { return n == "gone" }}
+	_, body := renderIn(t, r, pageCase{"favorites", "todd", 200, p}, "en")
+	wantIn(t, "list", body, `<a href="https://mods.factorio.com/mod/k2"`, "Krastorio 2", "Gone mod",
+		// Each fold-out names its favorite, and the import form says what * means.
+		`Show the mods<span class="visually-hidden" translate="no"> Club</span></summary>`,
+		`Map exchange string<span class="visually-hidden" translate="no"> Club</span></summary>`,
+		`class="hint required-note"`,
+		// Two Clear buttons differ by the field they clear.
+		`Clear<span class="visually-hidden"> Favorite file</span></button>`)
+	if strings.Contains(body, "mods.factorio.com/mod/gone") {
+		t.Error("a mod the portal lacks is linked")
+	}
+}

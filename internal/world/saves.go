@@ -49,9 +49,17 @@ const AddSaveWait = 60 * time.Second
 // maxSaveNameLength is the longest file name most filesystems allow.
 const maxSaveNameLength = 255
 
-// ValidSaveName reports whether name is a plain file name of a save: a base
-// name that ends in .zip and does not start with a dot (SPEC 5.11).
+// ValidSaveName reports whether name is a save Foreman will take, list,
+// load or import: a plain file name of a save (see plainSaveName) that is not
+// one of the game's partial saves, which end in .tmp.zip (SPEC 5.11).
 func ValidSaveName(name string) bool {
+	return plainSaveName(name) && !strings.HasSuffix(name, tempSaveSuffix)
+}
+
+// plainSaveName reports whether name is a plain file name of a save: a base
+// name that ends in .zip and does not start with a dot. Download uses this
+// one, so an admin can still fetch a partial save to look at it.
+func plainSaveName(name string) bool {
 	if name == "" || len(name) > maxSaveNameLength || !strings.HasSuffix(name, ".zip") || name[0] == '.' {
 		return false
 	}
@@ -83,7 +91,7 @@ func listSaves(root *os.Root) ([]Save, error) {
 	}
 	var out []Save
 	for _, e := range entries {
-		if !e.Type().IsRegular() || !ValidSaveName(e.Name()) || strings.HasSuffix(e.Name(), tempSaveSuffix) {
+		if !e.Type().IsRegular() || !ValidSaveName(e.Name()) {
 			continue
 		}
 		info, err := e.Info()
@@ -158,7 +166,7 @@ func (m *Manager) LoadChoice(id string) string {
 
 // OpenSave opens a save for download. The caller closes the file.
 func (m *Manager) OpenSave(id, name string) (*os.File, fs.FileInfo, error) {
-	if !ValidSaveName(name) {
+	if !plainSaveName(name) {
 		return nil, nil, ErrSaveNotFound
 	}
 	root, err := m.OpenWorld(id)

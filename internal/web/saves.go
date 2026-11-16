@@ -74,7 +74,6 @@ type SavesPage struct {
 	LoadSave string
 	// LoadMissing is true when the chosen save is no longer in the folder.
 	LoadMissing bool
-	UploadLimit uint64
 	// Uploaded and Chosen report what the last request did.
 	Uploaded string
 	Chosen   bool
@@ -86,7 +85,7 @@ type SavesPage struct {
 // UploadZone is the upload form's save field (DESIGN 7.10).
 func (p SavesPage) UploadZone() DropZone {
 	return DropZone{ID: "save-file", Name: saveUploadField, Label: i18n.M("worlds.saves.upload.label"),
-		Accept: ".zip", MaxBytes: p.UploadLimit, Error: p.UploadError}
+		Accept: ".zip", MaxBytes: MaxSaveUpload, Error: p.UploadError}
 }
 
 func (SavesPage) templateName() string { return "saves" }
@@ -129,13 +128,12 @@ func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
 	}
 	base := "/worlds/" + id
 	p := SavesPage{
-		WorldName:   list.WorldName,
-		WorldHref:   base,
-		SavesHref:   base + "/saves",
-		LoadHref:    base + "/load-save",
-		Newer:       list.Newer,
-		LoadSave:    list.LoadSave,
-		UploadLimit: MaxSaveUpload,
+		WorldName: list.WorldName,
+		WorldHref: base,
+		SavesHref: base + "/saves",
+		LoadHref:  base + "/load-save",
+		Newer:     list.Newer,
+		LoadSave:  list.LoadSave,
 	}
 	chosen := chosenIndex(list)
 	p.LoadMissing = list.LoadSave != "" && chosen < 0

@@ -133,13 +133,13 @@ func (p ModPlanPage) Conflicts() []ConflictRow {
 	}
 	var offered []string
 	for _, c := range p.Plan.Conflicts {
-		row := ConflictRow{Text: conflictText(c)}
+		row := ConflictRow{Text: p.conflictText(c)}
 		if name, remove := p.conflictFix(c); name != "" && !slices.Contains(offered, name) {
 			offered = append(offered, name)
 			field := alsoDisableField
-			row.Fix = i18n.M("mods.plan.fix.disable", "mod", i18n.Ident(name))
+			row.Fix = i18n.M("mods.plan.fix.disable", "mod", p.ident(name))
 			if remove {
-				field, row.Fix = alsoRemoveField, i18n.M("mods.plan.fix.remove", "mod", i18n.Ident(name))
+				field, row.Fix = alsoRemoveField, i18n.M("mods.plan.fix.remove", "mod", p.ident(name))
 			}
 			row.Path, row.ID = draftPath(p.World.ID, p.Draft, field, name), modID(name, "fix")
 			row.Redraw = draftPath(p.World.ID, p.Draft, field, name, "fixed", "1")
@@ -291,6 +291,10 @@ func (p ModPlanPage) Mod(name string) ModName {
 // Title is name's title, or name when there is none.
 func (p ModPlanPage) Title(name string) string { return p.Mod(name).Title }
 
+// ident is name's title as a message argument: it is a mod's own words, so
+// a page translator leaves it be.
+func (p ModPlanPage) ident(name string) i18n.Fragment { return i18n.Ident(p.Title(name)) }
+
 // OfferRow is one offered mod's tick box, its title link and its details.
 // The box has two labels, a hidden one with the title and the visible words
 // saying why it is offered; the link sits outside both, so a click on it
@@ -318,7 +322,7 @@ func (o OfferRow) HasDetail() bool {
 func (p ModPlanPage) OptionalRows() []OfferRow {
 	out := make([]OfferRow, 0, len(p.Plan.Optional))
 	for _, o := range p.Plan.Optional {
-		of := i18n.Ident(p.Title(o.Of))
+		of := p.ident(o.Of)
 		r := OfferRow{Offer: o, ID: p.ModID(o.Name, "optional"), Name: p.Mod(o.Name), Facts: p.facts[o.Name],
 			Of:    i18n.M("mods.plan.why.optional_of", "mod", of),
 			Field: "optional", Path: p.RedrawPath()}
@@ -334,7 +338,7 @@ func (p ModPlanPage) OptionalRows() []OfferRow {
 func (p ModPlanPage) OrphanRows() []OfferRow {
 	out := make([]OfferRow, 0, len(p.Plan.Orphans))
 	for _, o := range p.Plan.Orphans {
-		of := i18n.Ident(p.Title(o.Of))
+		of := p.ident(o.Of)
 		out = append(out, OfferRow{Offer: o, ID: p.ModID(o.Name, "orphan"), Name: p.Mod(o.Name), Facts: p.facts[o.Name],
 			Of:    i18n.M("mods.plan.why.only_needed_by", "mod", of),
 			Field: "orphan", Path: p.RedrawPath()})

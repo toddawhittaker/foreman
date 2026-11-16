@@ -4573,8 +4573,7 @@ form:has(#mode-exchange:checked) .achievements {
   font-weight: 600;
 }
 
-/* The plan's changes, one mod a line; an asked-for mod's portal link and
-   way out of the plan wrap under its name when the box is narrow. */
+/* The plan's changes, one mod a line. */
 .confirm .plan-items {
   padding-inline-start: 0;
   list-style: none;
@@ -4589,11 +4588,6 @@ form:has(#mode-exchange:checked) .achievements {
   min-inline-size: 0;
   padding-block: var(--space-1);
   border-block-end: var(--border-width) solid var(--color-line);
-}
-
-.plan-items__text {
-  flex: 1 1 12rem;
-  min-inline-size: 0;
 }
 
 /* A mod's short badge stays whole. Badges elsewhere, such as a save's
@@ -9277,8 +9271,10 @@ main:has(> .gate) > * + :not(h1, .gate) {
 }
 
 /* P1 favorites export and import (DESIGN 7.11). A favorite's mods fold
-   away so a large pack does not fill the list; each mod's title may wrap. */
-.favorite-mods > summary {
+   away so a large pack does not fill the list, and so does its exchange
+   string; each mod's title may wrap. */
+.favorite-mods > summary,
+.favorite-exchange > summary {
   min-block-size: var(--target-min);
   display: flex;
   align-items: center;
@@ -9512,12 +9508,4 @@ main:has(> .gate) > * + :not(h1, .gate) {
   overflow-wrap: anywhere;
   text-overflow: clip;
   resize: vertical;
-}
-
-/* A favorite folds its string away, as it does its mods. */
-.favorite-exchange > summary {
-  min-block-size: var(--target-min);
-  display: flex;
-  align-items: center;
-  cursor: pointer;
 }

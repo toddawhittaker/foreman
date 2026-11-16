@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, setUpModsWorld, makeZip, openModTools, live } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, setUpModsWorld, makeZip, openModTools, live, dropFile } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -14,23 +14,6 @@ const testModZip = () =>
 
 const shot = (page: Page, name: string) => page.screenshot({ path: `../screenshots/uploads-${name}-${test.info().project.name}.png`, fullPage: true });
 
-// Drops one file on the zone whose input has this id, as a browser does.
-async function drop(page: Page, id: string, name: string, body: Buffer | string) {
-  if (typeof body === "string") body = Buffer.from(body, "latin1");
-  const dt = await page.evaluateHandle(
-    ({ name, bytes }) => {
-      const dt = new DataTransfer();
-      dt.items.add(new File([new Uint8Array(bytes)], name));
-      return dt;
-    },
-    { name, bytes: Array.from(body) },
-  );
-  const area = page.locator(`#${id}`).locator("..");
-  await page.dispatchEvent("body", "dragenter", { dataTransfer: dt });
-  await area.dispatchEvent("dragover", { dataTransfer: dt });
-  await area.dispatchEvent("drop", { dataTransfer: dt });
-}
-
 test("the Saves tab upload is a drop zone that uploads the dropped save", async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!);
   await page.goto("/worlds/base/saves");
@@ -43,12 +26,12 @@ test("the Saves tab upload is a drop zone that uploads the dropped save", async 
   await shot(page, "saves");
 
   // A wrong type is refused in the zone, before uploading.
-  await drop(page, "save-file", "notes.txt", "hello");
+  await dropFile(page, "save-file", [{ name: "notes.txt", body: "hello" }]);
   await expect(page.locator("#save-file-client-error")).toContainText("notes.txt is not a .zip file");
   await expect(page.locator("#save-file")).toHaveAttribute("aria-invalid", "true");
   await checkPage(page);
 
-  await drop(page, "save-file", "dropped.zip", makeZip({ "level/level.dat0": "from elsewhere" }));
+  await dropFile(page, "save-file", [{ name: "dropped.zip", body: makeZip({ "level/level.dat0": "from elsewhere" }) }]);
   await expect(zone.locator(".dropzone__file")).toContainText("Chosen: dropped.zip");
   await page.getByRole("button", { name: "Upload save" }).click();
   await expect(page.getByText("Done: Uploaded dropped.zip.")).toBeVisible();
@@ -107,16 +90,16 @@ test("the Mods tab's mod zip and mod-settings.dat uploads are drop zones", async
   await shot(page, "mods");
 
   // The settings zone takes only a .dat; a zip is refused in place.
-  await drop(page, "settings-file", "mods.zip", "x");
+  await dropFile(page, "settings-file", [{ name: "mods.zip", body: "x" }]);
   await expect(page.locator("#settings-file-client-error")).toContainText("mods.zip is not a .dat file");
-  await drop(page, "settings-file", "big.dat", Buffer.alloc(4 * 2 ** 20 + 1));
+  await dropFile(page, "settings-file", [{ name: "big.dat", body: Buffer.alloc(4 * 2 ** 20 + 1) }]);
   await expect(page.locator("#settings-file-client-error")).toContainText("big.dat is larger than 4 MB");
-  await drop(page, "settings-file", "mod-settings.dat", "\x02\x00settings");
+  await dropFile(page, "settings-file", [{ name: "mod-settings.dat", body: "\x02\x00settings" }]);
   await expect(settingsZone.locator(".dropzone__file")).toContainText("Chosen: mod-settings.dat");
   await expect(page.locator("#settings-file-client-error")).toBeHidden();
 
   // A dropped mod zip opens its plan, as the form always did.
-  await drop(page, "mod-file", "foreman-test_0.1.0.zip", testModZip());
+  await dropFile(page, "mod-file", [{ name: "foreman-test_0.1.0.zip", body: testModZip() }]);
   await expect(modZone.locator(".dropzone__file")).toContainText("Chosen: foreman-test_0.1.0.zip");
   await page.locator("#mod-upload").getByRole("button", { name: "Upload mod" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Install the uploaded foreman-test 0.1.0 in Base?" })).toBeVisible();
@@ -138,7 +121,7 @@ test.describe("an unresolved mod's zip on the review page", () => {
     await checkPage(page);
     await shot(page, "plan");
 
-    await drop(page, "mod-foreman-test-zip", "foreman-test_0.1.0.zip", testModZip());
+    await dropFile(page, "mod-foreman-test-zip", [{ name: "foreman-test_0.1.0.zip", body: testModZip() }]);
     await expect(zone.locator(".dropzone__file")).toContainText("Chosen: foreman-test_0.1.0.zip");
     await page.getByRole("button", { name: "Upload zip" }).click();
     await expect(page.getByLabel("Use the uploaded zip of foreman-test 0.1.0")).toBeChecked();
@@ -147,7 +130,7 @@ test.describe("an unresolved mod's zip on the review page", () => {
   test("refuses a wrong type in the zone, in the mod's own group", async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, { fixture: save, spaceAge: true });
     await page.goto(syncPlan);
-    await drop(page, "mod-foreman-test-zip", "readme.txt", "x");
+    await dropFile(page, "mod-foreman-test-zip", [{ name: "readme.txt", body: "x" }]);
     await expect(page.locator("#mod-foreman-test-zip-client-error")).toContainText("readme.txt is not a .zip file");
     await expect(page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" }).locator("#mod-foreman-test-zip-client-error")).toBeVisible();
   });

@@ -11,7 +11,7 @@
     <input id="{{.ID}}" name="{{.Name}}" type="file" accept="{{.Accept}}" required{{with .Form}} form="{{.}}"{{end}}
       aria-describedby="{{.ID}}-hint{{with .DescribedBy}} {{.}}{{end}}{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
   </div>
-  <p class="dropzone__chosen" id="{{.ID}}-chosen" hidden><span class="dropzone__file"></span> <button type="button" class="button button--quiet dropzone__clear">{{t "common.dropzone.clear"}}</button></p>
+  <p class="dropzone__chosen" id="{{.ID}}-chosen" hidden><span class="dropzone__file"></span> <button type="button" class="button button--quiet dropzone__clear">{{t "common.dropzone.clear"}}<span class="visually-hidden"> {{msgHTML .Label}}</span></button></p>
   <p class="error" id="{{.ID}}-client-error" hidden><strong>{{t "common.error.label"}}</strong> <span></span></p>
   {{- if not .Error.IsZero}}
   <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
