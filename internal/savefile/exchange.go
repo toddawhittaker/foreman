@@ -25,15 +25,16 @@ const maxLevelInit = 32 << 20
 var (
 	ErrNoLevelInit   = errors.New("the save has no level-init.dat inside it")
 	ErrTooLarge      = errors.New("the save's level-init.dat is larger than Foreman reads")
-	ErrNoMapSettings = errors.New("the save's map settings could not be found")
+	ErrNoMapSettings = mapexchange.ErrNoSettings
 )
 
 // ExchangeString returns the map exchange string the game gives for the
 // save in r (size bytes long), read from its level-init.dat without running
 // the game (SPEC 5.6). The version in the string is the save's own, so it
 // names the game that made the map. Errors are ErrNotZip, ErrNoLevelInit,
-// ErrTooLarge, ErrFormat, ErrTruncated, ErrNoMapSettings or an
-// *UnsupportedVersionError.
+// ErrTooLarge, ErrFormat, ErrTruncated, ErrNoMapSettings (which is
+// mapexchange.ErrNoSettings) or an *UnsupportedVersionError. Each call may
+// hold up to maxLevelInit bytes, so callers should not run many at once.
 func ExchangeString(r io.ReaderAt, size int64) (string, error) {
 	zr, err := zip.NewReader(r, size)
 	if err != nil {
@@ -47,12 +48,11 @@ func ExchangeString(r io.ReaderAt, size int64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, end, err := parseHeader(data, false); err != nil {
+	_, end, err := parseHeader(data, false)
+	if err != nil {
 		return "", err
-	} else if s, err := mapexchange.FromLevel(data, end); err == nil {
-		return s, nil
 	}
-	return "", ErrNoMapSettings
+	return mapexchange.FromLevel(data, end)
 }
 
 // topFile finds a file by name in the save's top folder.

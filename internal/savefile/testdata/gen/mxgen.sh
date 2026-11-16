@@ -11,10 +11,13 @@ mkdir -p "$OUT"
 IMG11=factoriotools/factorio:1.1.110
 IMG20=factoriotools/factorio:2.0.77
 IMG21=factoriotools/factorio:2.1.24
+IMG2123=factoriotools/factorio:2.1.23
 
 # run SAVE IMAGE PROBE MODLIST(dir in $HERE holding mod-list.json and mods, or "")
 run() {
   local save=$1 img=$2 probe=$3 mods=$4
+  # ONLY=<save> records just that one.
+  if [ -n "${ONLY:-}" ] && [ "$ONLY" != "$save" ]; then return; fi
   local work
   work=$(mktemp -d)
   mkdir -p "$work/mods" "$work/data" "$work/save"
@@ -44,3 +47,4 @@ run 2.0.77-no-space-age.zip "$IMG20" mxprobe-2.0 mods20-nosa
 run 2.1.24-space-age.zip "$IMG21" mxprobe-2.1 ""
 run 2.1.24-no-space-age.zip "$IMG21" mxprobe-2.1 mods20-nosa
 run 2.1.24-space-age-testmod.zip "$IMG21" mxprobe-2.1 mods21-sa-mod
+run 2.1.23-space-age.zip "$IMG2123" mxprobe-2.1 ""

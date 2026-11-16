@@ -81,8 +81,8 @@ func exchangeBytes(b []byte) (string, error) {
 // (testdata/mxstrings, made by gen/mxgen.sh) is the expected answer.
 func TestExchangeStringMatchesTheGame(t *testing.T) {
 	saves, err := filepath.Glob("testdata/*.zip")
-	if err != nil || len(saves) != 7 {
-		t.Fatalf("want the 7 test saves, got %d (%v)", len(saves), err)
+	if err != nil || len(saves) != 8 {
+		t.Fatalf("want the 8 test saves, got %d (%v)", len(saves), err)
 	}
 	for _, p := range saves {
 		name := strings.TrimSuffix(filepath.Base(p), ".zip")

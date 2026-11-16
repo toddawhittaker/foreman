@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"hash/crc32"
+	"maps"
+	"slices"
 )
 
 // The save format is undocumented. In the level-init.dat of every save tested
@@ -24,6 +26,9 @@ const (
 	// fsrMinBytes is the least one autoplace control can take: a one-byte
 	// name length and three floats.
 	fsrMinBytes = 13
+	// settingMinBytes is the least one autoplace setting can take: a name
+	// length, its flag and an empty dictionary.
+	settingMinBytes = 3
 )
 
 // ErrNoSettings means the level data does not hold settings Foreman can read.
@@ -71,15 +76,24 @@ func block(level []byte, pos int) *reader {
 	return &reader{buf: level[:min(len(level), pos+maxBlock)], pos: pos}
 }
 
-// plausible cheaply refuses a start whose first control count cannot fit,
-// so a hostile save cannot make each try allocate a large map.
+// plausible cheaply refuses a start whose first two counts (autoplace
+// controls, then autoplace settings) cannot fit in the bytes left, so a
+// hostile save cannot make many tries each read a long block.
 func plausible(r *reader, line gameLine) bool {
 	p := &reader{buf: r.buf, pos: r.pos}
 	if line == line11 {
 		p.take(8) // terrain_segmentation and water
 	}
 	n := p.count()
-	return p.err == nil && n*fsrMinBytes <= len(p.buf)-p.pos
+	if p.err != nil || n*fsrMinBytes > len(p.buf)-p.pos {
+		return false
+	}
+	for range n {
+		p.take(p.count()) // the control's name
+		p.take(12)        // its frequency, size and richness
+	}
+	m := p.count()
+	return p.err == nil && m*settingMinBytes <= len(p.buf)-p.pos
 }
 
 // findMapSettings finds the first map-gen block after the header that a map
@@ -126,9 +140,22 @@ func findSurface(level []byte, line gameLine, head MapGenSettings) ([]byte, bool
 			continue
 		}
 		m := readMapGenSettings(r, line)
-		if r.err == nil && m.Seed == head.Seed && m.Width == head.Width && m.Height == head.Height {
+		if r.err == nil && sameMap(m, head, line) {
 			return level[start:r.pos], true
 		}
 	}
 	return nil, false
+}
+
+// sameMap reports whether a surface's map-gen settings describe the map the
+// header's copy does. On 1.1 the header copy is complete, so the autoplace
+// controls must match too; on 2.x the header copy has none, the surface's
+// own being what the game's string carries.
+func sameMap(s, head MapGenSettings, line gameLine) bool {
+	if s.Seed != head.Seed || s.Width != head.Width || s.Height != head.Height ||
+		s.StartingArea != head.StartingArea || s.PeacefulMode != head.PeacefulMode ||
+		!slices.Equal(s.StartingPoints, head.StartingPoints) {
+		return false
+	}
+	return line != line11 || maps.Equal(s.AutoplaceControls, head.AutoplaceControls)
 }

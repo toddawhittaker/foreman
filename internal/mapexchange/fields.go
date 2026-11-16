@@ -22,7 +22,7 @@ func readFSR(r *reader, field string) FrequencySizeRichness {
 
 func readFSRDict(r *reader, field string) map[string]FrequencySizeRichness {
 	n := r.count()
-	m := make(map[string]FrequencySizeRichness, n)
+	m := make(map[string]FrequencySizeRichness, hint(n))
 	for i := 0; i < n && r.err == nil; i++ {
 		k := r.str(field)
 		if _, dup := m[k]; dup {
@@ -42,7 +42,7 @@ func readMapGenSettings(r *reader, line gameLine) MapGenSettings {
 	s.AutoplaceControls = readFSRDict(r, "autoplace_controls")
 
 	n := r.count()
-	s.AutoplaceSettings = make(map[string]AutoplaceSetting, n)
+	s.AutoplaceSettings = make(map[string]AutoplaceSetting, hint(n))
 	for i := 0; i < n && r.err == nil; i++ {
 		k := r.str("autoplace_settings")
 		if _, dup := s.AutoplaceSettings[k]; dup {
@@ -73,13 +73,13 @@ func readMapGenSettings(r *reader, line gameLine) MapGenSettings {
 	}
 
 	n = r.count()
-	s.StartingPoints = make([]Position, 0, n)
+	s.StartingPoints = make([]Position, 0, hint(n))
 	for i := 0; i < n && r.err == nil; i++ {
 		s.StartingPoints = append(s.StartingPoints, r.position())
 	}
 
 	n = r.count()
-	s.PropertyExpressionNames = make(map[string]string, n)
+	s.PropertyExpressionNames = make(map[string]string, hint(n))
 	for i := 0; i < n && r.err == nil; i++ {
 		k := r.str("property_expression_names")
 		if _, dup := s.PropertyExpressionNames[k]; dup {
@@ -107,7 +107,7 @@ func readMapGenSettings(r *reader, line gameLine) MapGenSettings {
 	if line >= line20 && r.present("territory_settings") {
 		t := &TerritorySettings{}
 		n = r.count()
-		t.Units = make([]string, 0, n)
+		t.Units = make([]string, 0, hint(n))
 		for i := 0; i < n && r.err == nil; i++ {
 			t.Units = append(t.Units, r.str("territory_settings"))
 		}
@@ -241,14 +241,14 @@ func readMapSettings(r *reader, line gameLine, v [4]uint16) MapSettings {
 	f.StartToGoalCostMultiplierToTerminatePathFind = optF64(r, pf)
 	if r.present(pf) {
 		n := r.count()
-		f.OverloadLevels = make([]uint32, 0, n)
+		f.OverloadLevels = make([]uint32, 0, hint(n))
 		for i := 0; i < n && r.err == nil; i++ {
 			f.OverloadLevels = append(f.OverloadLevels, r.u32())
 		}
 	}
 	if r.present(pf) {
 		n := r.count()
-		f.OverloadMultipliers = make([]float64, 0, n)
+		f.OverloadMultipliers = make([]float64, 0, hint(n))
 		for i := 0; i < n && r.err == nil; i++ {
 			f.OverloadMultipliers = append(f.OverloadMultipliers, r.f64(pf))
 		}
@@ -283,3 +283,9 @@ func readMapSettings(r *reader, line gameLine, v [4]uint16) MapSettings {
 	}
 	return s
 }
+
+// maxHint caps a size hint taken from a stored count, so a hostile count
+// cannot make one read allocate far more than it parses.
+const maxHint = 256
+
+func hint(n int) int { return min(n, maxHint) }

@@ -58,5 +58,8 @@ No RCON and no console command is used. Run it from this folder with
 
   ./gen/mxgen.sh "$(pwd)/mxstrings"
 
-It uses the three image tags above as present locally. The strings were
-recorded on 2026-11-15.
+It uses the three image tags above as present locally, plus
+factoriotools/factorio:2.1.23@sha256:1e1773337f5be1d93f61d1d64757f18c19c8eb345c96acc57e0d3567a4fd4c3f
+for 2.1.23-space-age.zip, a save made the same way as the others with
+that image and no mod directory. ONLY=<save>.zip records just one. The
+strings were recorded on 2026-11-15.
