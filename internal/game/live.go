@@ -106,10 +106,14 @@ type saveCount struct {
 	starts, ends int // saves begun, and ended by a finish or a failure
 	server       int // /server-save starts
 	lastServer   int // which start, counted in starts, was the newest /server-save
+	// lastServerAt is Docker's time of the newest /server-save start, zero
+	// when the line came without one.
+	lastServerAt time.Time
 	failed       int // saves whose writing process died or failed
 }
 
-func (s *saveCount) observe(k Kind) {
+func (s *saveCount) observe(ev Event) {
+	k := ev.Kind
 	switch k {
 	case KindSaveStarted:
 		s.starts++
@@ -117,6 +121,7 @@ func (s *saveCount) observe(k Kind) {
 		s.starts++
 		s.server++
 		s.lastServer = s.starts
+		s.lastServerAt = ev.Time
 	case KindSaveFinished, KindSaveFailed:
 		s.ends++
 		if k == KindSaveFailed {
@@ -137,18 +142,27 @@ func (s *saveCount) runEnded() {
 }
 
 // saveMark is what a save waits from: the /server-save starts and failed
-// saves seen before the command was sent.
-type saveMark struct{ server, failed int }
+// saves seen before the command was sent, and when it was sent. A start
+// the follower reads late, from a /server-save sent just before, counts
+// as read only when Docker stamped it at or after sent.
+type saveMark struct {
+	server, failed int
+	sent           time.Time
+}
 
-func (w *worldRun) saveMarkLocked() saveMark {
-	return saveMark{server: w.save.server, failed: w.save.failed}
+func (w *worldRun) saveMarkLocked(sent time.Time) saveMark {
+	return saveMark{server: w.save.server, failed: w.save.failed, sent: sent}
 }
 
 // saveGame sends /server-save and waits for the log to say the save
 // finished (SPEC 6.10, 7.6).
 func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 	w.mu.Lock()
-	rc, mark := w.rc, w.saveMarkLocked()
+	// Docker stamps lines with the host's wall clock, so the send time is
+	// read from that clock, not the controller's, with no margin: a daemon
+	// clock behind this one can only make the save time out, never end the
+	// wait on an earlier save.
+	rc, mark := w.rc, w.saveMarkLocked(time.Now())
 	w.mu.Unlock()
 	if rc == nil {
 		return ErrRCONUnreachable
@@ -172,7 +186,8 @@ func (c *Controller) waitSaved(ctx context.Context, w *worldRun, mark saveMark) 
 		switch {
 		case s.failed > mark.failed:
 			return ErrSaveFailed
-		case s.server > mark.server && s.ends >= s.lastServer:
+		case s.server > mark.server && s.ends >= s.lastServer &&
+			(s.lastServerAt.IsZero() || !s.lastServerAt.Before(mark.sent)):
 			return nil
 		}
 		select {

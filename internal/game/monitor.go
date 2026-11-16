@@ -700,7 +700,7 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 		w.run.loadFailed, w.run.inGame = true, false
 		c.pokeMonitor()
 	case KindSaveStarted, KindServerSaveStarted, KindSaveFinished, KindSaveFailed:
-		w.save.observe(ev.Kind)
+		w.save.observe(ev)
 		publish = false
 	case KindPlayerJoined, KindPlayerLeft:
 		w.joins.Observe(ev)
