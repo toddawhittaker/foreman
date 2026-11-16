@@ -61,6 +61,12 @@ type FavoritesPage struct {
 	ImportError i18n.Msg
 }
 
+// Problems is the import form's error summary (DESIGN 7.2), which takes
+// focus when an import is refused.
+func (p FavoritesPage) Problems() []Problem { return problems(Problem{"favorite-file", p.ImportError}) }
+
+func (p FavoritesPage) hasErrors() bool { return len(p.Problems()) > 0 }
+
 // ImportPath is where the import form posts.
 func (FavoritesPage) ImportPath() string { return PathFavoriteImport }
 

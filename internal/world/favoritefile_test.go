@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // exportedFavorite makes a favorite with every settings file and mods, and
@@ -88,7 +89,7 @@ func TestFavoriteExportImportRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got.Name != want.Name || got.GameVersion != want.GameVersion || !got.SpaceAge || got.Preset != want.Preset ||
-		len(got.Mods) != 1 || got.Mods[0] != want.Mods[0] || !got.CreatedAt.Equal(want.CreatedAt) {
+		len(got.Mods) != 1 || got.Mods[0] != want.Mods[0] || got.SourceWorld != "" {
 		t.Errorf("imported %+v, want %+v", got, want)
 	}
 	if !bytes.Equal(gotFiles.MapGenSettings, wantFiles.MapGenSettings) || !bytes.Equal(gotFiles.MapSettings, wantFiles.MapSettings) ||
@@ -168,5 +169,22 @@ func TestFavoriteImportStripsPlantedSecret(t *testing.T) {
 	}
 	if bytes.Contains(allBytes(t, filepath.Join(f.dir, id)), []byte("hunter2")) {
 		t.Error("an imported secret was kept")
+	}
+}
+
+func TestFavoriteImportIsDatedNowWithNoSource(t *testing.T) {
+	f, _ := newTestFavorites(t)
+	at := time.Date(2027, 1, 2, 3, 4, 5, 0, time.UTC)
+	f.now = func() time.Time { return at }
+	id, err := f.Import(context.Background(), zipOf(t, [2]string{FavoriteFormatFile, goodFormat}, [2]string{FavoriteFile, goodDesc("")}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := f.Get(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.CreatedAt.Equal(at) || got.SourceWorld != "" {
+		t.Errorf("imported created %v from %q, want %v and no source", got.CreatedAt, got.SourceWorld, at)
 	}
 }

@@ -134,7 +134,11 @@ test("export a favorite, see the warning, then import it by dropping the file", 
   await expect(page.locator(".dropzone__chosen")).toContainText("Shared_pack-favorite.zip");
   await page.getByRole("button", { name: "Import favorite" }).click();
   await expect(page.locator("#done-message")).toContainText('Imported the favorite "Shared pack".');
-  await expect(page.getByRole("heading", { name: "Shared pack" })).toBeVisible();
+  const imported = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Shared pack" }) });
+  await expect(imported).toBeVisible();
+  // An imported favorite names no source world and is dated on import.
+  await expect(imported.getByText("Made from")).toHaveCount(0);
+  await expect(imported.locator("time")).not.toHaveAttribute("datetime", /^2026-11-15T00:00:00/);
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/p1-favorites-imported-${test.info().project.name}.png`, fullPage: true });
 
@@ -142,6 +146,8 @@ test("export a favorite, see the warning, then import it by dropping the file", 
   await page.locator("#favorite-file").setInputFiles({ name: "bad.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
   await page.getByRole("button", { name: "Import favorite" }).click();
   await expect(page.locator("#favorite-file-error")).toContainText("Nothing was imported.");
+  await expect(page.locator("#error-summary")).toBeFocused();
+  await expect(page.locator("#error-summary").getByRole("link")).toHaveAttribute("href", "#favorite-file");
   await expect(page.getByRole("heading", { level: 2, name: "Shared pack" })).toHaveCount(1);
   await checkPage(page);
 });

@@ -1640,6 +1640,10 @@ Delete.
   support is still imported; Generate replaces it with the default version.
 - **A name in use** is refused, not renamed, so the person sees which
   favorite they already have: rename or delete it, then import again.
+- **An imported favorite** is dated when it was imported and names no
+  source world, since that world is on another Foreman.
+- **A refused import** shows the error summary (7.2) at the top of the
+  Import section, which takes focus and links to the file field.
 - **Writing** builds the favorite in a staging folder and renames it into
   place, so a failure leaves nothing. Success shows the list with "Done:
   Imported the favorite *name*." in focus.

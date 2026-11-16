@@ -89,12 +89,17 @@ func (f *Favorites) Export(id string) (Favorite, []byte, error) {
 // file's mods and game version need not be available here: the review
 // after Generate shows those as conflicts. A name already in use is
 // refused with ErrFavoriteNameTaken rather than renamed, so the person
-// sees which favorite they already have.
+// sees which favorite they already have. The imported favorite is dated
+// now and names no source world.
 func (f *Favorites) Import(ctx context.Context, data []byte) (string, error) {
 	fav, files, err := readFavoriteZip(data)
 	if err != nil {
 		return "", err
 	}
+	// The source names a world on another Foreman, and the date is when the
+	// favorite arrived here.
+	fav.SourceWorld = ""
+	fav.CreatedAt = f.now().UTC()
 	return f.save(ctx, fav, files)
 }
 

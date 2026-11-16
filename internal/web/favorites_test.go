@@ -1,8 +1,11 @@
 package web
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"html"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -368,14 +371,40 @@ func TestFavoriteExportAndImport(t *testing.T) {
 		t.Fatalf("export: %d %v", rec.Code, rec.Header())
 	}
 	data := rec.Body.Bytes()
-	if strings.Contains(string(data), "hunter2") {
-		t.Error("the export holds a secret")
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawServer bool
+	for _, e := range zr.File {
+		rc, err := e.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "hunter2") || strings.Contains(string(b), "tok-abc123") {
+			t.Errorf("unpacked %s holds a secret", e.Name)
+		}
+		if e.Name == world.ServerSettingsFile {
+			sawServer = true
+			if !strings.Contains(string(b), `"max_players"`) || strings.Contains(string(b), "game_password") {
+				t.Errorf("unpacked server settings: %s", b)
+			}
+		}
+	}
+	if !sawServer {
+		t.Error("the export has no server settings")
 	}
 
 	// The same name is refused; once it is deleted the file comes back.
 	rec = hn.importFavorite(c, "Club start-favorite.zip", data)
 	if body := html.UnescapeString(rec.Body.String()); rec.Code != http.StatusBadRequest || !strings.Contains(body, "already exists") ||
-		!strings.Contains(body, `id="favorite-file-error"`) {
+		!strings.Contains(body, `id="favorite-file-error"`) || !strings.Contains(body, `id="error-summary" tabindex="-1" autofocus`) ||
+		!strings.Contains(body, `href="#favorite-file"`) {
 		t.Errorf("clash: %d", rec.Code)
 	}
 	if err := favs.Delete(favID); err != nil {

@@ -25,7 +25,9 @@
     <li id="favorite-{{.ID}}">
       <h2 id="favorite-{{.ID}}-name" class="webhook-list__title">{{.Name}}</h2>
       <dl class="facts facts--inline">
-        <div><dt>{{t "favorites.fact.source"}}</dt><dd>{{.SourceWorld}}</dd></div>
+        {{- with .SourceWorld}}
+        <div><dt>{{t "favorites.fact.source"}}</dt><dd>{{.}}</dd></div>
+        {{- end}}
         <div><dt>{{t "worlds.fact.game_version"}}</dt><dd><span class="ver"><code>{{.GameVersion}}</code></span></dd></div>
         <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
         <div><dt>{{t "favorites.fact.mods"}}</dt><dd>{{len .Mods}}</dd></div>
@@ -58,6 +60,7 @@
 </section>
 <section class="panel" aria-labelledby="favorite-import-heading">
   <h2 id="favorite-import-heading">{{t "favorites.import.heading"}}</h2>
+  {{template "summary" .Problems}}
   <p class="hint">{{t "favorites.import.text"}}</p>
   <form method="post" action="{{.ImportPath}}" enctype="multipart/form-data" novalidate>
     {{template "dropzone" .ImportZone}}
