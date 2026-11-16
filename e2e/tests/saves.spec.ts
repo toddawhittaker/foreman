@@ -177,7 +177,7 @@ test.describe("the server's checks on a posted save", () => {
     await page.getByLabel("Save file").setInputFiles(big);
     await page.getByRole("button", { name: "Upload save" }).click();
 
-    await expect(page.locator("#save-file-error")).toContainText("larger than the limit of");
+    await expect(page.locator("#save-file-error")).toContainText("larger than the limit of 1 GB.");
     expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
   });
 });

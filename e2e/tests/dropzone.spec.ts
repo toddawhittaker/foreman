@@ -33,7 +33,7 @@ test("a dropped save fills the field, names the file, and imports", async ({ pag
   await createAdmin(page);
   await page.goto("/import");
   const form = uploadForm(page);
-  await expect(form.getByText("A .zip file of up to 1.1 GB.")).toBeVisible();
+  await expect(form.getByText("A .zip file of up to 1 GB.")).toBeVisible();
   await expect(form.getByText("Drop the file here, or choose a file")).toBeVisible();
   await checkPage(page);
 
@@ -113,7 +113,7 @@ test("a wrong type, several files or a file over the limit is refused before upl
   // the limit text comes from the server and only the number is compared.
   await form.locator("[data-dropzone]").evaluate((el: HTMLElement) => { el.dataset.maxBytes = "10"; });
   await drop(page, [{ name: "big.zip", body: "eleven bytes" }]);
-  await expect(err).toHaveText("Error: big.zip is larger than 1.1 GB. Choose a smaller file.");
+  await expect(err).toHaveText("Error: big.zip is larger than 1 GB. Choose a smaller file.");
 
   // A good file then clears the error.
   await drop(page, [{ name: "ok.zip", body: "1" }]);

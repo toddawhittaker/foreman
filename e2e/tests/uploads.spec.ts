@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, makeZip, openModTools, live } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, setUpModsWorld, makeZip, openModTools, live } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -38,7 +38,7 @@ test("the Saves tab upload is a drop zone that uploads the dropped save", async 
   await expect(zone).toHaveClass(/dropzone--on/);
   await expect(zone.getByText("A save never replaces one with the same name.")).toHaveCount(0);
   await expect(page.getByText("A save never replaces one with the same name.")).toBeVisible();
-  await expect(zone.getByText("A .zip file of up to")).toBeVisible();
+  await expect(zone.getByText("A .zip file of up to 1 GB.")).toBeVisible();
   await checkPage(page);
   await shot(page, "saves");
 
@@ -73,6 +73,19 @@ test("a world with no save offers the Saves tab as a button from the Mods tab", 
   await expect(page.locator("#save-file")).toBeVisible();
 });
 
+test("the empty Worlds list offers the upload as a button to the Import page", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/worlds");
+  const button = page.locator("#act-upload-save");
+  await expect(button).toHaveText("Upload a save");
+  await expect(button).toHaveClass(/button/);
+  if ((page.viewportSize()?.width ?? 1280) < 600) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await checkPage(page);
+  await button.click();
+  await expect(page).toHaveURL("/import#upload-heading");
+  await expect(page.locator("#upload-source")).toBeVisible();
+});
+
 test("the Mods tab's mod zip and mod-settings.dat uploads are drop zones", async ({ page, foreman, fakeGame }) => {
   // The settings upload is offered once the world has a mod of its own.
   await setUpModsWorld(page, foreman, fakeGame!, { mods: { alpha: "2.1" } });
@@ -84,14 +97,20 @@ test("the Mods tab's mod zip and mod-settings.dat uploads are drop zones", async
   await expect(modZone.getByText(/A \.zip file of up to/)).toBeVisible();
   await page.locator("#mod-settings-replace > summary").click();
   const settingsZone = page.locator(".dropzone", { has: page.locator("#settings-file") });
-  await expect(settingsZone.getByText(/A \.dat file of up to/)).toBeVisible();
-  await expect(page.getByLabel("New mod-settings.dat")).toBeAttached();
+  // One figure everywhere: the hint says what the server says, in whole binary units.
+  await expect(modZone.getByText("A .zip file of up to 200 MB.")).toBeVisible();
+  await expect(settingsZone.getByText("A .dat file of up to 4 MB.")).toBeVisible();
+  await expect(settingsZone.locator("label code")).toHaveText("mod-settings.dat");
+  // The help paragraph above the field still describes it, after the limits hint.
+  await expect(page.getByLabel("New mod-settings.dat")).toHaveAccessibleDescription(/A \.dat file of up to 4 MB\..*Your Factorio client keeps it in its mods folder/);
   await checkPage(page);
   await shot(page, "mods");
 
   // The settings zone takes only a .dat; a zip is refused in place.
   await drop(page, "settings-file", "mods.zip", "x");
   await expect(page.locator("#settings-file-client-error")).toContainText("mods.zip is not a .dat file");
+  await drop(page, "settings-file", "big.dat", Buffer.alloc(4 * 2 ** 20 + 1));
+  await expect(page.locator("#settings-file-client-error")).toContainText("big.dat is larger than 4 MB");
   await drop(page, "settings-file", "mod-settings.dat", "\x02\x00settings");
   await expect(settingsZone.locator(".dropzone__file")).toContainText("Chosen: mod-settings.dat");
   await expect(page.locator("#settings-file-client-error")).toBeHidden();

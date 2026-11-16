@@ -58,6 +58,8 @@
   </ul>
   {{- else}}
   <p class="empty empty--art empty--worlds">{{t "worlds.list.empty"}}</p>
+  {{- /* The save is used on the Import page, which owns the upload, so the way there is a button (DESIGN 7.10). */}}
+  <div class="actions"><a href="{{.Page.ImportPath}}#upload-heading" class="button" id="act-upload-save">{{t "worlds.saves.upload.heading"}}</a></div>
   {{- end}}
 </section>
 {{- end}}
