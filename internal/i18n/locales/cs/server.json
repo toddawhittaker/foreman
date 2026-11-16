@@ -385,6 +385,7 @@
   "server.error.image_missing": "Obraz hry pro verzi Factorio tohoto světa není stažen. Je třeba stáhnout obraz hry a spustit znovu.",
   "server.error.rcon_unreachable": "Ke hře se nelze připojit přes RCON, takže nelze upozornit hráče ani předtím uložit hru. Je třeba použít Vynutit zastavení, které ji zastaví bez uložení.",
   "server.error.save_timeout": "Hra neukončila ukládání včas, takže nic nebylo zastaveno a nebyl pořízen snímek. Je třeba zkusit to znovu nebo použít Vynutit zastavení.",
+  "server.error.save_failed": "Hra nedokázala svět uložit, takže nic nebylo zastaveno a nebyl pořízen snímek. Důvod je třeba hledat v logu.",
   "server.error.start_failed": "Hra se nespustila.",
   "server.error.cancelled": "Vynucené zastavení toto přerušilo.",
   "server.error.stop_cancelled": "Zastavení bylo zrušeno, takže nic nebylo zastaveno ani uloženo a hra běží dál.",

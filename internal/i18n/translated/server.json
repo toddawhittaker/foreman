@@ -153,6 +153,7 @@
   "server.error.not_running": "bf7c97f2",
   "server.error.paused": "11b5b2ca",
   "server.error.rcon_unreachable": "278bf34e",
+  "server.error.save_failed": "187fc7ad",
   "server.error.save_in_future": "b7c57d16",
   "server.error.save_timeout": "8a165de9",
   "server.error.start_failed": "388150f9",
