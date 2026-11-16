@@ -9428,3 +9428,30 @@ main:has(> .gate) > * + :not(h1, .gate) {
     min-block-size: var(--target-min);
   }
 }
+
+/* ---- X2 map exchange string (SPEC 5.6): a read-only field to select and
+   copy, on a world's page and in each favorite. ---- */
+.exchange {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.exchange .field textarea.exchange__value {
+  inline-size: 100%;
+  max-inline-size: none;
+  padding-block: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  /* A string has no spaces, so it breaks anywhere rather than scroll sideways. */
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  resize: vertical;
+}
+
+/* A favorite folds its string away, as it does its mods. */
+.favorite-exchange > summary {
+  min-block-size: var(--target-min);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}

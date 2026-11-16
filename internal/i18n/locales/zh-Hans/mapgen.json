@@ -206,5 +206,17 @@
   "mapgen.tip.tree_damage": "树木在被污染摧毁前有四个渐进的阶段。超过这个数量的任何污染都会将树转移到更受损的阶段。",
   "mapgen.unit.minutes": "分钟",
   "mapgen.unit.percent": "%",
-  "mapgen.width.label": "宽度"
+  "mapgen.width.label": "宽度",
+  "mapgen.exchange.heading": "地图共享代码",
+  "mapgen.exchange.label": "地图共享代码",
+  "mapgen.exchange.copy": "复制地图共享代码",
+  "mapgen.exchange.copied": "已复制地图共享代码",
+  "mapgen.exchange.note": "粘贴到 Factorio 的地图生成器中，即可得到相同的地图。代码只包含地图设置，不包含模组。",
+  "mapgen.exchange.reason.no_seed": "地图种子由随机决定，也没有可读取种子的存档，因此没有代码。",
+  "mapgen.exchange.reason.no_map_world": "此世界还没有地图设置文件，也没有存档，因此没有可描述的地图。",
+  "mapgen.exchange.reason.no_map_favorite": "此收藏没有保存地图设置，因此没有可描述的地图。",
+  "mapgen.exchange.reason.no_settings": "此世界最新的存档中没有 Foreman 能读取的地图设置，因此没有代码。",
+  "mapgen.exchange.reason.unsupported": "此地图来自 Factorio {version}，Foreman 无法为其生成代码。",
+  "mapgen.exchange.reason.unreadable": "Foreman 无法读取此世界最新的存档，因此没有代码。",
+  "mapgen.exchange.reason.failed": "Foreman 暂时无法生成代码。重新加载页面即可重试。"
 }

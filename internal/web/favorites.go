@@ -59,7 +59,12 @@ type FavoritesPage struct {
 	Imported string
 	// ImportError says why the last import was refused.
 	ImportError i18n.Msg
+	// Exchanges holds each favorite's map exchange string, by favorite id.
+	Exchanges map[string]ExchangeField
 }
+
+// ExchangeFor is the map exchange string field of one favorite.
+func (p FavoritesPage) ExchangeFor(id string) ExchangeField { return p.Exchanges[id] }
 
 // Problems is the import form's error summary (DESIGN 7.2), which takes
 // focus when an import is refused.
@@ -117,8 +122,14 @@ func (s *server) favoritesPage(w http.ResponseWriter, r *http.Request, u store.U
 		s.fail(w, r, "list favorites", err)
 		return
 	}
+	p.Exchanges = map[string]ExchangeField{}
 	for _, f := range list {
 		p.Favorites = append(p.Favorites, FavoriteRow{f})
+		if _, files, err := s.favorites.Get(f.ID); err != nil {
+			p.Exchanges[f.ID] = ExchangeField{ID: "exchange-" + f.ID, Owner: "favorite-" + f.ID + "-name", Reason: i18n.M("mapgen.exchange.reason.failed")}
+		} else {
+			p.Exchanges[f.ID] = s.favoriteExchange(f.ID, f, files)
+		}
 	}
 	s.page(w, r, status, u.Username, p)
 }

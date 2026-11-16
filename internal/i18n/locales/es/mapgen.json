@@ -206,5 +206,17 @@
   "mapgen.tip.tree_damage": "Los árboles tienen cuatro etapas progresivas diferentes hasta su destrucción por la contaminación. Cualquier nivel de contaminación superior a este inicia el proceso de degradación del árbol.",
   "mapgen.unit.minutes": "min",
   "mapgen.unit.percent": "%",
-  "mapgen.width.label": "Anchura"
+  "mapgen.width.label": "Anchura",
+  "mapgen.exchange.heading": "Cadena de intercambio de mapa",
+  "mapgen.exchange.label": "Cadena de intercambio de mapa",
+  "mapgen.exchange.copy": "Copiar cadena de intercambio de mapa",
+  "mapgen.exchange.copied": "Cadena de intercambio de mapa copiada",
+  "mapgen.exchange.note": "Pégala en el generador de mapas de Factorio para crear el mismo mapa. La cadena solo contiene los ajustes del mapa, no los mods.",
+  "mapgen.exchange.reason.no_seed": "La semilla del mapa se deja al azar y no hay ninguna partida guardada de la que leerla, así que no hay cadena.",
+  "mapgen.exchange.reason.no_map_world": "Este mundo no tiene archivos de ajustes del mapa ni ninguna partida guardada todavía, así que no hay un mapa que describir.",
+  "mapgen.exchange.reason.no_map_favorite": "Este favorito no guarda ajustes del mapa, así que no hay un mapa que describir.",
+  "mapgen.exchange.reason.no_settings": "La partida guardada más reciente del mundo no tiene ajustes del mapa que Foreman pueda leer, así que no hay cadena.",
+  "mapgen.exchange.reason.unsupported": "Este mapa es de Factorio {version}, y Foreman no puede crear una cadena para esa versión.",
+  "mapgen.exchange.reason.unreadable": "Foreman no pudo leer la partida guardada más reciente del mundo, así que no hay cadena.",
+  "mapgen.exchange.reason.failed": "Foreman no pudo crear la cadena en este momento. Recarga la página para intentarlo de nuevo."
 }
