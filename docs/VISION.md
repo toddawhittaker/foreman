@@ -135,8 +135,13 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
   where they apply (map-gen only matters when generating).
 
 ### Auth
-- **Single role in v1**: every user is a full admin. The model leaves room for roles
-  later, such as a read-only viewer.
+- **Single role in v1**: every user is a full admin, and every page needs a signed-in
+  admin except the one below. The model leaves room for roles later, such as a
+  read-only viewer.
+- **One public page, off unless an admin turns it on**: players download the running
+  world's mods there without signing in, including mods the portal can no longer
+  supply. It shows only mod names and versions, the world's name and its game
+  version. Whether the mods may be shared is the admin's call.
 - Three ways to sign in, any combination enabled:
   - **Local accounts**: username and password, with first-run admin setup.
   - **Trusted proxy headers**: forward-auth (Authentik, Authelia, oauth2-proxy), with a
