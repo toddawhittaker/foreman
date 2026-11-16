@@ -12,8 +12,12 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// Deleting several snapshots at once (SPEC 6.12).
+// Deleting several snapshots at once (SPEC 6.12). The ticked snapshots travel
+// in a posted form, never in an address.
 const (
+	// PathSnapshotsReview takes the selection and answers with the page that
+	// confirms it; PathSnapshotsDelete takes the confirmed one.
+	PathSnapshotsReview = "/snapshots/review"
 	PathSnapshotsDelete = "/snapshots/delete"
 
 	// fieldSnap carries one ticked snapshot as "<world id>/<folder>";
@@ -49,7 +53,7 @@ type selection struct {
 // readSelection reads the ticked snapshots, leaving out repeats and values
 // that name no snapshot.
 func readSelection(r *http.Request) selection {
-	_ = r.ParseForm() // a bad query leaves what parsed, which is all a selection needs
+	_ = r.ParseForm() // a bad form leaves what parsed, which is all a selection needs
 	sel := selection{automatic: r.Form.Get(fieldSelect)}
 	for _, v := range r.Form[fieldSnap] {
 		if ref, ok := parseRef(v); ok && !slices.Contains(sel.refs, ref) {
@@ -227,7 +231,10 @@ func (s *server) bulkPage(w http.ResponseWriter, r *http.Request, refs []world.S
 	return p, true
 }
 
-func (s *server) handleSnapshotsDeleteForm(w http.ResponseWriter, r *http.Request, u store.User) {
+func (s *server) handleSnapshotsReview(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
 	refs := readSelection(r).refs
 	p, ok := s.bulkPage(w, r, refs)
 	if !ok {
@@ -298,7 +305,7 @@ func (s *server) handleSnapshotsDelete(w http.ResponseWriter, r *http.Request, u
 		if p.WorldID != "" {
 			to = snapshotsPath(p.WorldID)
 		}
-		http.Redirect(w, r, to+"?"+deletedQuery(deleted...), http.StatusSeeOther)
+		http.Redirect(w, r, to+"?"+removedQuery(len(deleted)), http.StatusSeeOther)
 		return
 	}
 	rest, ok := s.bulkPage(w, r, stayed)

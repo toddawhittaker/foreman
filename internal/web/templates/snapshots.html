@@ -22,6 +22,10 @@
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
 </div>
+{{- else if .Removed}}
+<div class="message message--success">
+  <p><strong>{{t "common.label.done"}}</strong> {{t "worlds.snapshots.deleted_many" "count" .Removed}}</p>
+</div>
 {{- end}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1"{{if .LabelError.IsZero}} autofocus{{end}}>
@@ -51,7 +55,7 @@
 </form>
 
 {{- if .Snapshots}}
-<form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
+<form method="post" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
   <input type="hidden" name="world" value="{{.WorldID}}">
   <div class="group__head">
     <h2 id="list-heading">{{t "worlds.snapshots.list"}}</h2>
