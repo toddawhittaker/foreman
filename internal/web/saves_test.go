@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -507,5 +508,143 @@ func TestSavesButtonCell(t *testing.T) {
 	body = hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
 	if strings.Contains(body, "save-load") {
 		t.Error("a newer world's table has a button cell")
+	}
+}
+
+// writeAutosave adds an autosave file to a world, saved at the given time.
+func writeAutosave(t *testing.T, dir, name string, at time.Time) {
+	t.Helper()
+	p := filepath.Join(dir, "saves", name)
+	if err := os.WriteFile(p, []byte("data of "+name), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(p, at, at); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// SPEC 5.11: an autosave reads as the world's name and the save time, with
+// the real file name as smaller text; a save with a name of its own keeps it.
+func TestSavesPageNamesAutosaves(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, dir := savesWorld(t, hn)
+	writeAutosave(t, dir, "_autosave3.zip", time.Date(2026, 11, 3, 15, 0, 0, 0, time.UTC))
+	writeAutosave(t, dir, "_autosave1.zip", time.Date(2026, 11, 3, 14, 0, 0, 0, time.UTC))
+
+	body := hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
+	row := saveRowByHref(t, body, id, "_autosave3.zip")
+	for _, want := range []string{
+		`Family base, <time datetime="2026-11-03T15:00:00Z"><span class="nowrap">2026-11-03</span> <span class="nowrap">15:00 UTC</span></time>`,
+		`<span class="save-file">_autosave3.zip</span>`,
+		"Loads next",
+	} {
+		if !strings.Contains(row, want) {
+			t.Errorf("autosave row lacks %q:\n%s", want, row)
+		}
+	}
+	if strings.Contains(row, ">_autosave3.zip</a>") {
+		t.Errorf("the file name is still the link text:\n%s", row)
+	}
+	// Newest first: the three autosave and named rows keep the time order.
+	a3, a1, nw := strings.Index(body, "/saves/_autosave3.zip"), strings.Index(body, "/saves/_autosave1.zip"), strings.Index(body, "/saves/new.zip")
+	if a3 < 0 || a1 < 0 || nw < 0 || a3 > a1 || a1 > nw {
+		t.Errorf("order: autosave3 %d, autosave1 %d, new %d", a3, a1, nw)
+	}
+	// A save the person named keeps its own name and shows no secondary text.
+	if named := saveRow(t, body, "new.zip"); strings.Contains(named, "save-file") || strings.Contains(named, "Family base,") {
+		t.Errorf("a named save was renamed:\n%s", named)
+	}
+	// Only the shown name changes: the load choice still posts the file name.
+	if !strings.Contains(saveRowByHref(t, body, id, "_autosave1.zip"), loadButton("_autosave1.zip")) {
+		t.Error("the Load next button no longer posts the file name")
+	}
+}
+
+// A world's name is the user's text, so it is escaped in the page.
+func TestSavesPageEscapesWorldNameInAutosaveRow(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, err := hn.worlds.Create(context.Background(), `<b>"x" & y`, "2.0.72", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeAutosave(t, filepath.Join(hn.worlds.Dirs().Worlds, id), "_autosave2.zip", time.Date(2026, 11, 3, 15, 0, 0, 0, time.UTC))
+	row := saveRowByHref(t, hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String(), id, "_autosave2.zip")
+	if strings.Contains(row, "<b>") || !strings.Contains(row, "&lt;b&gt;") {
+		t.Errorf("world name not escaped:\n%s", row)
+	}
+}
+
+// saveRowByHref returns the table row whose link goes to the named save.
+func saveRowByHref(t *testing.T, body, id, name string) string {
+	t.Helper()
+	i := strings.Index(body, `href="`+saveHref(id, name)+`"`)
+	if i < 0 {
+		t.Fatalf("no row for %s", name)
+	}
+	start := strings.LastIndex(body[:i], "<tr")
+	end := i + strings.Index(body[i:], "</tr>")
+	return body[start:end]
+}
+
+// SPEC 5.11: a downloaded autosave is named for the world and the save time
+// (in UTC, the server's zone), not _autosave3.zip.
+func TestAutosaveDownloadName(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, dir := savesWorld(t, hn)
+	writeAutosave(t, dir, "_autosave3.zip", time.Date(2026, 11, 15, 19, 46, 5, 0, time.UTC))
+
+	rec := hn.getLong("/worlds/"+id+"/saves/_autosave3.zip", c)
+	if rec.Code != http.StatusOK || rec.Body.String() != "data of _autosave3.zip" {
+		t.Fatalf("download: %d %q", rec.Code, rec.Body.String())
+	}
+	want := `attachment; filename="Family_base-2026-11-15-19-46-05.zip"; filename*=UTF-8''Family_base-2026-11-15-19-46-05.zip`
+	if got := rec.Header().Get("Content-Disposition"); got != want {
+		t.Errorf("Content-Disposition = %q, want %q", got, want)
+	}
+}
+
+// A world's name is user text: whatever it holds, the download header stays
+// one valid line, with no quote, CR or LF breaking out of it.
+func TestAutosaveDownloadNameIsSafeForAnyWorldName(t *testing.T) {
+	names := []string{
+		`say "hi"`,
+		"line\r\nSet-Cookie: x=1",
+		"Мир фабрик 🏭",
+		`a"; filename="evil.exe`,
+		"..",
+		"   ",
+		strings.Repeat("long ", 100),
+		"semi;colon%25",
+	}
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	for _, name := range names {
+		id, err := hn.worlds.Create(context.Background(), name, "2.0.72", true)
+		if err != nil {
+			t.Logf("world name %q refused: %v", name, err)
+			continue
+		}
+		writeAutosave(t, filepath.Join(hn.worlds.Dirs().Worlds, id), "_autosave1.zip", time.Date(2026, 11, 15, 19, 46, 5, 0, time.UTC))
+		rec := hn.getLong("/worlds/"+id+"/saves/_autosave1.zip", c)
+		if rec.Code != http.StatusOK {
+			t.Errorf("%q: status %d", name, rec.Code)
+			continue
+		}
+		got := rec.Header().Get("Content-Disposition")
+		if strings.ContainsAny(got, "\r\n") {
+			t.Errorf("%q: header holds a line break: %q", name, got)
+		}
+		typ, params, err := mime.ParseMediaType(got)
+		if err != nil || typ != "attachment" {
+			t.Errorf("%q: header %q does not parse: %v", name, got, err)
+			continue
+		}
+		file := params["filename"]
+		if !strings.HasSuffix(file, "-2026-11-15-19-46-05.zip") || strings.ContainsAny(file, `/\;"`) || len(params) != 1 {
+			t.Errorf("%q: file name %q, params %v", name, file, params)
+		}
 	}
 }

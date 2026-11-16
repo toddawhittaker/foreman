@@ -53,6 +53,34 @@ test("/ is the Server page and the world list is at /worlds", async ({ page }) =
   await expect(page).toHaveURL("/worlds");
 });
 
+// A Favorites button sits beside Generate and Import, as a button and not a
+// text link, and works without script (SPEC 5.12).
+test("the Worlds page has a Favorites button that opens the favorites list", async ({ page }) => {
+  await createAdmin(page);
+  const actions = page.locator("header .actions");
+  const buttons = actions.locator("a.button");
+  await expect(buttons.nth(0)).toHaveText("Generate a world");
+  await expect(buttons.nth(1)).toHaveText("Import a world");
+  const favorites = actions.getByRole("link", { name: "Favorites", exact: true });
+  await expect(favorites).toHaveClass(/\bbutton\b/);
+  expect((await favorites.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await favorites.click();
+  await expect(page).toHaveURL("/favorites");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Favorites");
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 320, height: 700 }, javaScriptEnabled: false });
+  test("the Favorites button is reachable without script and fits 320 px", async ({ page }) => {
+    await createAdmin(page);
+    const favorites = page.getByRole("link", { name: "Favorites", exact: true });
+    await expect(favorites).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await favorites.click();
+    await expect(page).toHaveURL("/favorites");
+  });
+});
+
 test("empty world list names the next step", async ({ page }) => {
   await createAdmin(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Worlds");

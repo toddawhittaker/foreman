@@ -385,3 +385,61 @@ test.describe("at phone width", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });
+
+// An autosave reads as the world's name and its time, with the file name as
+// smaller text; a save the person named keeps its own name (SPEC 5.11).
+function seedAutosaves(f: Foreman, meta: Record<string, unknown> = {}) {
+  return seedWorld(f, "family-base", { name: "Family base", ...meta }, [
+    { name: "named.zip", content: oldSave, at: "2026-11-01T09:00:00Z" },
+    { name: "_autosave1.zip", content: oldSave, at: "2026-11-03T14:00:05Z" },
+    { name: "_autosave2.zip", content: newSave, at: "2026-11-03T14:25:07Z" },
+  ]);
+}
+
+test("autosaves show the world's name and time, newest first, and keep the file name beside them", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedAutosaves(foreman);
+  await page.goto("/worlds/family-base/saves");
+
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(3);
+  const newest = rows.nth(0);
+  const link = newest.locator('a[href$="/saves/_autosave2.zip"]');
+  await expect(link).toContainText("Family base, ");
+  await expect(link.locator("time")).toHaveAttribute("datetime", "2026-11-03T14:25:07Z");
+  await expect(newest.locator(".save-file")).toHaveText("_autosave2.zip");
+  await expect(newest).toContainText("Loads next");
+  await expect(rows.nth(1).locator(".save-file")).toHaveText("_autosave1.zip");
+  // A save with a name of its own is not renamed, and the Load next button still names its file.
+  await expect(rows.nth(2).getByRole("link")).toHaveText("named.zip");
+  await expect(rows.nth(2).locator(".save-file")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Load next: _autosave1.zip" })).toBeVisible();
+  await expect(page.locator("#saves-time-hint")).toContainText("last changed on disk");
+  await checkPage(page);
+});
+
+test("an autosave downloads under the world's name and its save time", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedAutosaves(foreman);
+  await page.goto("/worlds/family-base/saves");
+
+  const [download] = await Promise.all([page.waitForEvent("download"), page.locator('a[href$="/saves/_autosave2.zip"]').click()]);
+  expect(download.suggestedFilename()).toBe("Family_base-2026-11-03-14-25-07.zip");
+  expect(readFileSync(await download.path()).equals(newSave)).toBe(true);
+});
+
+test.describe("autosave rows at phone width", () => {
+  test.use({ viewport: { width: 320, height: 700 } });
+  test("a long world name and 200% text still fit", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman, "long-world", { name: "Long " + "w".repeat(60) }, [
+      { name: "_autosave1.zip", content: oldSave, at: "2026-11-03T14:00:05Z" },
+      { name: "_autosave2.zip", content: newSave, at: "2026-11-03T14:25:07Z" },
+    ]);
+    await page.goto("/worlds/long-world/saves");
+    await page.addStyleTag({ content: "html { font-size: 200% }" });
+    await expect(page.getByRole("button", { name: "Load next: _autosave1.zip" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await checkPage(page);
+  });
+});
