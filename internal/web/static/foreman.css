@@ -9253,3 +9253,27 @@ main:has(> .gate) > * + :not(h1, .gate) {
   padding: 0;
   list-style: none;
 }
+
+/* ---- Mod titles (SPEC 9.15): the mod-name partial, a title that links to
+   the mod portal. ---- */
+
+/* On the Installed list the title fills the row's full-size target. */
+.mod-name > .mod-title {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* In the plan panel the title is its own target, apart from the cross. */
+.plan-tree__name > a.mod-title {
+  display: inline-block;
+  padding-block: 0.125rem;
+}
+
+@media (pointer: coarse) {
+  .plan-tree__name > a.mod-title {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+  }
+}

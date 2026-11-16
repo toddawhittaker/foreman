@@ -18,6 +18,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/savefile"
@@ -300,6 +301,36 @@ func (ModsPage) PortalSlot(name string) string { return slotID("portal", name) }
 // portalPath is a mod's page on the mod portal.
 func portalPath(name string) string { return "https://mods.factorio.com/mod/" + url.PathEscape(name) }
 
+// ModName is what the mod-name partial shows: a mod's title, or its name
+// when it has none, linked to its portal page when Link is set.
+type ModName struct {
+	Name, Title string
+	Link        bool
+}
+
+// IsName says the title shown is the mod's name, which never hyphenates.
+func (m ModName) IsName() bool { return m.Title == m.Name }
+
+// modName is the mod-name partial's input. title falls back to name; link
+// is false for a folder mod or one the portal lacks, and a built-in mod is
+// never linked (ruling on #623; SPEC 9.7).
+func modName(name, title string, link bool) ModName {
+	if strings.TrimSpace(title) == "" {
+		title = name
+	}
+	return ModName{Name: name, Title: title, Link: link && !builtinName(name)}
+}
+
+// builtinName says name is a built-in mod of any supported game line.
+func builtinName(name string) bool {
+	for _, l := range mapgen.Lines {
+		if slices.Contains(world.BuiltinMods(l+".0"), name) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
@@ -408,6 +439,16 @@ type ModStatus struct {
 	// Changeable maps the mods that get Change version to their installed
 	// version (SPEC 9.3).
 	Changeable map[string]string
+	// titles maps each installed mod to its title from info.json.
+	titles map[string]string
+}
+
+// Title is an installed mod's title, or its name when it has none.
+func (p ModStatus) Title(name string) string {
+	if t := p.titles[name]; t != "" {
+		return t
+	}
+	return name
 }
 
 func (ModStatus) templateName() string { return "mods" }
@@ -543,6 +584,10 @@ func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store
 	}
 	if !st.Unreachable {
 		st.Current = currentCount(ps.Installed, st.Flags)
+		st.titles = map[string]string{}
+		for _, m := range ps.Installed {
+			st.titles[m.Name] = m.Title
+		}
 	}
 	s.fragment(w, r, st, "mod-status")
 }

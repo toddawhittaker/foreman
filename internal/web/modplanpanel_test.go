@@ -92,8 +92,8 @@ func TestPlanPanelAddRemoveClear(t *testing.T) {
 
 	_, tab := g.getStatus(modsPath(id))
 	panel := plain(between(tab, `id="plan-panel"`, "</section>"))
-	wantIn(t, "tab", panel, `<span class="plan-panel__sum">2 mods in the plan</span> <span class="plan-panel__names">alpha, beta</span>`,
-		`<span class="plan-tree__name" translate="no">alpha</span> <span class="mod-ver" translate="no">1.0.0</span>`,
+	wantIn(t, "tab", panel, `<span class="plan-panel__sum">2 mods in the plan</span> <span class="plan-panel__names" translate="no">alpha, beta</span>`,
+		`<span class="plan-tree__name">`+portalName("alpha")+`</span> <span class="mod-ver" translate="no">1.0.0</span>`,
 		`id="mod-alpha-unpick"><span class="visually-hidden">Remove alpha from the plan</span>`,
 		`>Clear plan</button>`, "Started <time",
 		`<a href="/worlds/`+id+`/mods/plan?kind=install&amp;name=alpha&amp;name=beta" class="button button--primary" id="act-review-plan">Review and install 2 mods</a>`)
@@ -233,16 +233,16 @@ func TestPlanPanelTree(t *testing.T) {
 	beta := panel[strings.LastIndex(panel, `<li class="plan-tree__pick">`):]
 
 	dep := func(name, version, of string) string {
-		return `<span class="plan-tree__name" translate="no">` + name + `</span><span class="mod-ver" translate="no">` + version +
+		return `<span class="plan-tree__name">` + portalName(name) + `</span><span class="mod-ver" translate="no">` + version +
 			`</span></div><p class="plan-tree__why">Needed by ` + of + `</p>`
 	}
 	wantIn(t, "alpha", alpha, dep("lib", "1.0.0", "alpha"), dep("core", "1.0.0", "lib"))
 	wantIn(t, "beta", beta, dep("lib", "1.0.0", "beta"), dep("core", "1.0.0", "lib"),
 		dep("old", "1.0.0", "beta")+`<p class="plan-tree__note">Will update to 2.0.0</p>`,
-		`<span class="plan-tree__name" translate="no">gone</span></div><p class="plan-tree__why">Needed by beta</p><p class="plan-tree__warn"><strong class="visually-hidden">Warning:</strong> Not on the mod portal</p>`)
+		`<span class="plan-tree__name"><span class="mod-title ident" translate="no">gone</span></span></div><p class="plan-tree__why">Needed by beta</p><p class="plan-tree__warn"><strong class="visually-hidden">Warning:</strong> Not on the mod portal</p>`)
 	// core hangs under lib, not beside it.
 	if !strings.Contains(alpha, `<p class="plan-tree__why">Needed by alpha</p><ul class="plan-tree__deps" role="list"><li class="plan-tree__dep"><div class="plan-tree__row">`+
-		`<span class="plan-tree__name" translate="no">core</span>`) {
+		`<span class="plan-tree__name">`+portalName("core")+`</span>`) {
 		t.Error("core is not nested under lib")
 	}
 	for _, hidden := range []string{">base<", ">fits<"} {
@@ -277,7 +277,7 @@ func TestPlanPanelPortalDown(t *testing.T) {
 		t.Fatalf("tab: %d", code)
 	}
 	panel := plain(between(body, `id="plan-panel"`, "</section>"))
-	wantIn(t, "down", panel, `<span class="plan-tree__name" translate="no">alpha</span>`, `<span class="plan-tree__name" translate="no">beta</span>`,
+	wantIn(t, "down", panel, `<span class="plan-tree__name">`+portalName("alpha")+`</span>`, `<span class="plan-tree__name">`+portalName("beta")+`</span>`,
 		"Foreman could not reach the mod portal, so it cannot check what these mods need now.",
 		`<a href="/worlds/`+id+`/mods" class="button">Check again</a>`, ">Review the plan</a>")
 }
@@ -377,4 +377,11 @@ func TestPlanTreeBuild(t *testing.T) {
 	if count != 5 || needed["lib"] != "A" || needed["deep"] != "A" || needed["b"] != "" {
 		t.Errorf("count %d, needed %v", count, needed)
 	}
+}
+
+// portalName is how the mod-name partial shows a mod with no title, linked,
+// after plain.
+func portalName(name string) string {
+	return `<a href="https://mods.factorio.com/mod/` + name + `" class="mod-title" target="_blank" rel="noopener noreferrer">` + name +
+		`<span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`
 }

@@ -61,6 +61,8 @@ type PlanPanel struct {
 // PlanNode is one mod in the panel's tree.
 type PlanNode struct {
 	Name, Title, Version string
+	// NotOnPortal says the portal lacks the mod, so its name is not linked.
+	NotOnPortal bool
 	// Of is the title of the mod this one shows under; empty for a pick.
 	Of string
 	// Note says what changes for a mod already installed.
@@ -69,8 +71,8 @@ type PlanNode struct {
 	Children []PlanNode
 }
 
-// Ident says the title is the mod's name, so it is not translated.
-func (n PlanNode) Ident() bool { return n.Title == n.Name }
+// Linked says the mod's name links to its portal page.
+func (n PlanNode) Linked() bool { return !n.NotOnPortal }
 
 func (p PlanPanel) ModsPath() string   { return modsPath(p.World.ID) }
 func (p PlanPanel) ChangePath() string { return modsPath(p.World.ID) + "/plan/mods" }
@@ -211,6 +213,11 @@ func (t *planTree) shown(name string) bool {
 
 func (t *planTree) node(name, of string) PlanNode {
 	n := PlanNode{Name: name, Title: t.titleOf(name), Of: of, Warnings: t.warnings(name)}
+	for _, c := range t.plan.Conflicts {
+		if c.Code == mods.ConflictNotOnPortal && c.Mod == name {
+			n.NotOnPortal = true
+		}
+	}
 	c, ok := t.changes[name]
 	if !ok {
 		return n

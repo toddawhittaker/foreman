@@ -206,7 +206,7 @@ func (m *Manager) Mods(id string) ([]InstalledMod, error) {
 		case e.Type().IsRegular() && strings.HasSuffix(file, ".zip"):
 			mod := modFromFileName(strings.TrimSuffix(file, ".zip"))
 			if info, ok := zipModInfo(root, path.Join(ModsDir, file)); ok {
-				mod.Dependencies = info.Dependencies
+				mod.Dependencies, mod.Title = info.Dependencies, info.Title
 				if info.Name != "" {
 					mod.Name, mod.Version = info.Name, info.Version
 				}
@@ -218,7 +218,7 @@ func (m *Manager) Mods(id string) ([]InstalledMod, error) {
 			b, err := ReadSmallFile(root, path.Join(ModsDir, file, "info.json"), maxInfoJSON)
 			if err == nil {
 				if info, ok := parseInfoJSON(b); ok {
-					mod.Dependencies = info.Dependencies
+					mod.Dependencies, mod.Title = info.Dependencies, info.Title
 					if info.Name != "" {
 						mod.Name, mod.Version = info.Name, info.Version
 					}
