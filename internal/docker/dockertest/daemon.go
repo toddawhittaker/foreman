@@ -76,6 +76,7 @@ type Daemon struct {
 
 	mu         sync.Mutex
 	apiVersion string
+	os         string // the Os GET /version reports; empty reports none
 	images     map[string]bool
 	pullFail   map[string]string
 	pulls      []string
@@ -134,6 +135,13 @@ func (d *Daemon) SetAPIVersion(v string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.apiVersion = v
+}
+
+// SetOS changes the Os GET /version reports, such as "linux" or "windows".
+func (d *Daemon) SetOS(os string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.os = os
 }
 
 // SetFailure makes every call answer with status and message, until it is
@@ -401,9 +409,9 @@ func (d *Daemon) route(w http.ResponseWriter, r *http.Request, path string) {
 		d.eventStream(w, r)
 	case path == "/version":
 		d.mu.Lock()
-		v := d.apiVersion
+		v, hostOS := d.apiVersion, d.os
 		d.mu.Unlock()
-		writeJSON(w, map[string]string{"Version": "29.0.0", "ApiVersion": v})
+		writeJSON(w, map[string]string{"Version": "29.0.0", "ApiVersion": v, "Os": hostOS})
 	case path == "/containers/json":
 		d.list(w, r)
 	case path == "/containers/create":

@@ -25,16 +25,34 @@ var (
 )
 
 // serverValues are the settings the form shows, read from the text of
-// server-settings.json. A key the file lacks, or holds in another shape, reads
-// as empty (auto_pause as on), so the form changes nothing it did not show
-// (see applyForm).
+// server-settings.json. A whole number the file lacks reads as empty and the
+// form shows the game's default as its placeholder. A true-or-false key the
+// file lacks reads as the game's default, as does allow_commands. So the
+// form changes nothing it did not show (see applyForm).
 type serverValues struct {
-	Name, Description string
-	MaxPlayers        string
-	Interval, Slots   string
-	Verify, AutoPause bool
-	Visibility        gamesettings.Visibility // "" when the file does not say
-	PasswordSet       bool
+	Name, Description                                                         string
+	MaxPlayers                                                                string
+	Interval, Slots                                                           string
+	AFK                                                                       string
+	Upload, UploadSlots                                                       string
+	Verify, IgnoreLimit, AutoPause, PauseOnJoin, OnlyAdminsPause, NonBlocking bool
+	// Commands is the allow_commands choice: commandsEveryone,
+	// commandsAdmins or commandsNobody.
+	Commands    string
+	Visibility  gamesettings.Visibility // "" when the file does not say
+	PasswordSet bool
+}
+
+// The allow_commands choices the form offers, as posted and as compared.
+const (
+	commandsEveryone = "true"
+	commandsAdmins   = "admins-only"
+	commandsNobody   = "false"
+)
+
+// validCommands is true when s is one of the allow_commands choices.
+func validCommands(s string) bool {
+	return s == commandsEveryone || s == commandsAdmins || s == commandsNobody
 }
 
 // readServerValues reads the form's fields from b, which must be one JSON
@@ -51,16 +69,27 @@ func readServerValues(b []byte) (serverValues, bool) {
 		}
 		return s
 	}
+	// A missing key reads as the game's own default (SPEC 11.1).
 	flag := func(key string) bool {
+		if _, ok := raw[key]; !ok {
+			return gamesettings.GameDefaultFlag(key)
+		}
 		var v bool
 		return json.Unmarshal(raw[key], &v) == nil && v
 	}
-	// A missing key reads as on, the game's own default (SPEC 11.1).
-	flagOrOn := func(key string) bool {
-		if _, ok := raw[key]; !ok {
-			return true
+	// The game takes true, false and admins-only, as text or, for the first
+	// two, as a boolean. Anything else reads as the default, so the form
+	// writes nothing it did not show.
+	commands := func() string {
+		var b bool
+		if json.Unmarshal(raw["allow_commands"], &b) == nil {
+			return strconv.FormatBool(b)
 		}
-		return flag(key)
+		var s string
+		if json.Unmarshal(raw["allow_commands"], &s) == nil && validCommands(s) {
+			return s
+		}
+		return commandsAdmins
 	}
 	whole := func(key string) string {
 		s := strings.TrimSpace(string(raw[key]))
@@ -72,7 +101,11 @@ func readServerValues(b []byte) (serverValues, bool) {
 	v := serverValues{
 		Name: str("name"), Description: str("description"),
 		MaxPlayers: whole("max_players"), Interval: whole("autosave_interval"), Slots: whole("autosave_slots"),
-		Verify: flag("require_user_verification"), AutoPause: flagOrOn("auto_pause"),
+		AFK: whole("afk_autokick_interval"), Upload: whole("max_upload_in_kilobytes_per_second"), UploadSlots: whole("max_upload_slots"),
+		Verify: flag("require_user_verification"), IgnoreLimit: flag("ignore_player_limit_for_returning_players"),
+		AutoPause: flag("auto_pause"), PauseOnJoin: flag("auto_pause_when_players_connect"),
+		OnlyAdminsPause: flag("only_admins_can_pause_the_game"), NonBlocking: flag("non_blocking_saving"),
+		Commands: commands(),
 	}
 	if vis, ok := gamesettings.ReadVisibility(b); ok {
 		v.Visibility = vis
@@ -80,6 +113,16 @@ func readServerValues(b []byte) (serverValues, bool) {
 	_, set := gamesettings.StripSecrets(b)
 	v.PasswordSet = set["game_password"]
 	return v, true
+}
+
+// formCaps says which fields a world's form offers. A field that is hidden or
+// disabled is not posted, so it must not read as unchecked.
+type formCaps struct {
+	// PauseOnJoin is true on a game line that has auto_pause_when_players_connect.
+	PauseOnJoin bool
+	// Fork is true unless Docker reports a host that is not Linux, where the
+	// game cannot save by forking (SPEC 8.7).
+	Fork bool
 }
 
 // postedForm is the settings form as submitted.
@@ -90,7 +133,15 @@ type postedForm struct {
 	RemovePassword    bool
 	MaxPlayers        string
 	Interval, Slots   string
+	AFK               string
+	Upload            string
+	UploadSlots       string
 	Verify, AutoPause bool
+	IgnoreLimit       bool
+	PauseOnJoin       bool
+	OnlyAdminsPause   bool
+	NonBlocking       bool
+	Commands          string
 	Admins            string
 	AdminsPosted      bool
 	Bans, Whitelist   string
@@ -105,8 +156,12 @@ func readPostedForm(get func(string) string, has func(string) bool) postedForm {
 		Name: get("name"), Description: strings.ReplaceAll(get("description"), "\r\n", "\n"),
 		Visibility: get("visibility"), Password: get("game_password"), RemovePassword: has("game_password_remove"),
 		MaxPlayers: get("max_players"), Interval: get("autosave_interval"), Slots: get("autosave_slots"),
+		AFK: get("afk_autokick_interval"), Upload: get("max_upload_in_kilobytes_per_second"), UploadSlots: get("max_upload_slots"),
 		Verify: has("require_user_verification"), AutoPause: has("auto_pause"),
-		Admins: strings.ReplaceAll(get("admins"), "\r\n", "\n"), AdminsPosted: has("admins"),
+		IgnoreLimit: has("ignore_player_limit_for_returning_players"), PauseOnJoin: has("auto_pause_when_players_connect"),
+		OnlyAdminsPause: has("only_admins_can_pause_the_game"), NonBlocking: has("non_blocking_saving"),
+		Commands: get("allow_commands"),
+		Admins:   strings.ReplaceAll(get("admins"), "\r\n", "\n"), AdminsPosted: has("admins"),
 		MakeAdmin: strings.TrimSpace(get("make_admin")),
 		Bans:      strings.ReplaceAll(get("bans"), "\r\n", "\n"), BansPosted: has("bans"),
 		Whitelist: strings.ReplaceAll(get("whitelist"), "\r\n", "\n"), WhitelistPosted: has("whitelist"),
@@ -146,12 +201,14 @@ func connected(names []string, adminsText string) []string {
 // formErrors are the form's field errors.
 type formErrors struct {
 	NameError, PasswordError, MaxPlayersError, IntervalError, SlotsError, AdminsError i18n.Msg
+	AFKError, UploadError, UploadSlotsError                                           i18n.Msg
 	BansError, WhitelistError                                                         i18n.Msg
 }
 
 func (e formErrors) has() bool {
 	return !e.NameError.IsZero() || !e.PasswordError.IsZero() || !e.MaxPlayersError.IsZero() ||
 		!e.IntervalError.IsZero() || !e.SlotsError.IsZero() || !e.AdminsError.IsZero() ||
+		!e.AFKError.IsZero() || !e.UploadError.IsZero() || !e.UploadSlotsError.IsZero() ||
 		!e.BansError.IsZero() || !e.WhitelistError.IsZero()
 }
 
@@ -159,14 +216,12 @@ func wholeError() i18n.Msg { return i18n.M("settings.error.whole", "max", maxWho
 
 // parseWhole reads a number field. same is true when the field holds what the
 // file holds, so nothing is written for it. An empty field is no change when
-// the file has no number there either.
+// the file has no number there either; when it has one, the empty field asks
+// for the key to go, and canonical is "" with same false.
 func parseWhole(posted, current string) (canonical string, same bool, problem i18n.Msg) {
 	s := strings.TrimSpace(posted)
 	if s == "" {
-		if current == "" {
-			return "", true, i18n.Msg{}
-		}
-		return "", false, wholeError()
+		return "", current == "", i18n.Msg{}
 	}
 	n, err := strconv.ParseUint(s, 10, 32)
 	if err != nil || !typedWhole.MatchString(s) {
@@ -192,8 +247,9 @@ func jsonBool(v bool) []byte { return []byte(strconv.FormatBool(v)) }
 // form. Only a field that differs from what the file holds is written, so a
 // key the form could not show stays as it is. carried is the game password
 // raw JSON from an earlier, previewed edit, kept when the form leaves the
-// password alone.
-func applyForm(old []byte, cur serverValues, in postedForm, carried []byte) ([]byte, formErrors, error) {
+// password alone. caps says which fields this world's form offers; a field it
+// does not offer is never written, whatever was posted.
+func applyForm(old []byte, cur serverValues, in postedForm, carried []byte, caps formCaps) ([]byte, formErrors, error) {
 	var errs formErrors
 	var fields []gamesettings.Field
 	set := func(key string, raw []byte) { fields = append(fields, gamesettings.Field{Key: key, JSON: raw}) }
@@ -216,21 +272,45 @@ func applyForm(old []byte, cur serverValues, in postedForm, carried []byte) ([]b
 		{"max_players", in.MaxPlayers, cur.MaxPlayers, &errs.MaxPlayersError},
 		{"autosave_interval", in.Interval, cur.Interval, &errs.IntervalError},
 		{"autosave_slots", in.Slots, cur.Slots, &errs.SlotsError},
+		{"afk_autokick_interval", in.AFK, cur.AFK, &errs.AFKError},
+		{"max_upload_in_kilobytes_per_second", in.Upload, cur.Upload, &errs.UploadError},
+		{"max_upload_slots", in.UploadSlots, cur.UploadSlots, &errs.UploadSlotsError},
 	}
 	for _, n := range numbers {
 		canonical, same, problem := parseWhole(n.posted, n.current)
 		switch {
 		case !problem.IsZero():
 			*n.problem = problem
+		case !same && canonical == "":
+			// Cleared: the game uses its own default again.
+			set(n.key, nil)
 		case !same:
 			set(n.key, []byte(canonical))
 		}
 	}
-	if in.Verify != cur.Verify {
-		set("require_user_verification", jsonBool(in.Verify))
+	flags := []struct {
+		key             string
+		posted, current bool
+		offered         bool
+	}{
+		{"require_user_verification", in.Verify, cur.Verify, true},
+		{"ignore_player_limit_for_returning_players", in.IgnoreLimit, cur.IgnoreLimit, true},
+		{"auto_pause", in.AutoPause, cur.AutoPause, true},
+		{"auto_pause_when_players_connect", in.PauseOnJoin, cur.PauseOnJoin, caps.PauseOnJoin},
+		{"only_admins_can_pause_the_game", in.OnlyAdminsPause, cur.OnlyAdminsPause, true},
+		{"non_blocking_saving", in.NonBlocking, cur.NonBlocking, caps.Fork},
 	}
-	if in.AutoPause != cur.AutoPause {
-		set("auto_pause", jsonBool(in.AutoPause))
+	for _, f := range flags {
+		if f.offered && f.posted != f.current {
+			set(f.key, jsonBool(f.posted))
+		}
+	}
+	if in.Commands != cur.Commands && validCommands(in.Commands) {
+		if in.Commands == commandsAdmins {
+			set("allow_commands", jsonString(commandsAdmins))
+		} else {
+			set("allow_commands", []byte(in.Commands))
+		}
 	}
 	switch {
 	case in.Password != "" && in.RemovePassword:
@@ -337,13 +417,30 @@ type SettingsPage struct {
 	PasswordDropped bool
 	// PasswordPending is true when the form was refilled from a previewed
 	// change whose password differs from the one in the file.
-	PasswordPending   bool
-	PasswordSet       bool
-	MaxPlayers        string
-	Interval, Slots   string
-	Verify, AutoPause bool
-	Admins            string
-	AdminsBroken      bool
+	PasswordPending bool
+	PasswordSet     bool
+	MaxPlayers      string
+	Interval, Slots string
+	AFK             string
+	Upload          string
+	UploadSlots     string
+	Verify          bool
+	IgnoreLimit     bool
+	AutoPause       bool
+	PauseOnJoin     bool
+	OnlyAdminsPause bool
+	NonBlocking     bool
+	// Commands is the allow_commands choice: "true", "admins-only" or "false".
+	Commands string
+	// HasPauseOnJoin is true when the world's game line offers the pause while
+	// someone joins; 1.1 has no such setting.
+	HasPauseOnJoin bool
+	// ForkOff is true when Docker reports a host that is not Linux, so fork
+	// saving is shown disabled; HostOS is what Docker reported.
+	ForkOff      bool
+	HostOS       string
+	Admins       string
+	AdminsBroken bool
 	// Connected are the players in the running game who are not admins.
 	Connected []string
 
@@ -367,6 +464,41 @@ type SettingsPage struct {
 	// DoneSnap is the snapshot the save took; DoneRestart offers Restart.
 	DoneSnap    string
 	DoneRestart bool
+}
+
+// Default is the game's own value of a whole-number field, shown as its
+// placeholder and in its hint, so an unset field is never an empty unknown.
+func (SettingsPage) Default(key string) uint32 { return gamesettings.GameDefaultWhole(key) }
+
+// DefaultOn is the game's own value of a true-or-false field.
+func (SettingsPage) DefaultOn(key string) bool { return gamesettings.GameDefaultFlag(key) }
+
+// ForemanSlots is the autosave slots Foreman gives a world it creates.
+func (SettingsPage) ForemanSlots() int { return gamesettings.ForemanAutosaveSlots }
+
+// NetworkOpen is true when the collapsed Network group holds a setting the
+// file sets or an error, so nothing set is hidden.
+func (p SettingsPage) NetworkOpen() bool {
+	return p.Upload != "" || p.UploadSlots != "" || !p.UploadError.IsZero() || !p.UploadSlotsError.IsZero()
+}
+
+// setPosted shows the form as it was posted, for a refused form.
+func (p *SettingsPage) setPosted(in postedForm) {
+	p.Name, p.Description, p.MaxPlayers = in.Name, in.Description, in.MaxPlayers
+	p.Interval, p.Slots, p.AFK, p.Upload, p.UploadSlots = in.Interval, in.Slots, in.AFK, in.Upload, in.UploadSlots
+	p.Verify, p.IgnoreLimit, p.AutoPause = in.Verify, in.IgnoreLimit, in.AutoPause
+	p.OnlyAdminsPause = in.OnlyAdminsPause
+	// A setting the form does not offer, or shows disabled, is not posted, so
+	// it keeps the file's value instead of showing unticked.
+	if p.HasPauseOnJoin {
+		p.PauseOnJoin = in.PauseOnJoin
+	}
+	if !p.ForkOff {
+		p.NonBlocking = in.NonBlocking
+	}
+	if validCommands(in.Commands) {
+		p.Commands = in.Commands
+	}
 }
 
 func (SettingsPage) templateName() string { return "settings" }
@@ -413,8 +545,11 @@ func (p SettingsPage) Problems() []Problem {
 		Problem{"name", p.NameError},
 		Problem{"game-password", p.PasswordError},
 		Problem{"max-players", p.MaxPlayersError},
+		Problem{"afk-autokick", p.AFKError},
 		Problem{"autosave-interval", p.IntervalError},
 		Problem{"autosave-slots", p.SlotsError},
+		Problem{"max-upload", p.UploadError},
+		Problem{"max-upload-slots", p.UploadSlotsError},
 		Problem{"admins", p.AdminsError},
 		Problem{"bans", p.BansError},
 		Problem{"whitelist", p.WhitelistError},

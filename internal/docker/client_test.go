@@ -37,7 +37,7 @@ func (f *fakeDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/_ping":
 		_, _ = w.Write([]byte("OK"))
 	case "/version":
-		_, _ = w.Write([]byte(`{"Version":"29.0.0","ApiVersion":"` + f.apiVersion + `"}`))
+		_, _ = w.Write([]byte(`{"Version":"29.0.0","ApiVersion":"` + f.apiVersion + `","Os":"linux"}`))
 	case "/containers/self/json":
 		_, _ = w.Write([]byte(`{"Id":"abc","Mounts":[{"Type":"bind","Source":"/srv/foreman","Destination":"/data"}],
 			"NetworkSettings":{"Networks":{"game":{"IPAddress":"172.18.0.2","IPPrefixLen":16,"GlobalIPv6Address":"fd00:18::2","GlobalIPv6PrefixLen":64},"bridge":{}}}}`))
@@ -64,6 +64,9 @@ func TestEveryMethodStaysOnAllowlist(t *testing.T) {
 	v, err := c.Version(ctx)
 	if err != nil || v.APIVersion != "1.47" {
 		t.Fatalf("Version = %+v, %v", v, err)
+	}
+	if v.Os != "linux" {
+		t.Errorf("Version.Os = %q, want the daemon's Os field", v.Os)
 	}
 	got, err := c.InspectContainer(ctx, "self")
 	if err != nil {

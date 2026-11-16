@@ -229,6 +229,9 @@ func (c *Client) Ping(ctx context.Context) error {
 type VersionInfo struct {
 	Version    string `json:"Version"`
 	APIVersion string `json:"ApiVersion"`
+	// Os is the system the daemon runs containers on, such as "linux" or
+	// "windows"; empty when the daemon does not say.
+	Os string `json:"Os"`
 }
 
 // Version returns the daemon's version.
