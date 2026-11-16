@@ -49,7 +49,7 @@
   "favorites.export.warning": "Exporter télécharge un favori sous forme de fichier, pour le partager ou le déplacer vers un autre Foreman. Le fichier contient les paramètres des mods, et un mod peut y garder un jeton ou une autre valeur privée : ne le partagez qu'avec des personnes de confiance.",
   "favorites.mods.show": "Afficher les mods",
   "favorites.import.heading": "Importer un favori",
-  "favorites.import.text": "Ajoutez un favori depuis un fichier exporté par un autre Foreman. Les mods ou la version du jeu absents de ce Foreman sont tout de même importés ; la revue des mods de Générer les affiche.",
+  "favorites.import.text": "Ajoutez un favori depuis un fichier exporté par un autre Foreman. Les mods absents de ce Foreman sont tout de même importés, et la revue des mods de Générer les affiche. Une version du jeu que ce Foreman ne prend pas en charge est remplacée par la version par défaut lors de Générer.",
   "favorites.import.label": "Fichier de favori",
   "favorites.import.button": "Importer le favori",
   "favorites.import.done": "Le favori « {name} » a été importé.",

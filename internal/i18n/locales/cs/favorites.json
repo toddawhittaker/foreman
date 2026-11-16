@@ -52,7 +52,7 @@
   "favorites.export.warning": "Export stáhne oblíbenou položku jako soubor, který lze sdílet nebo přenést do jiného Foremanu. Obsahuje nastavení modů a mod v nich může uchovávat token nebo jinou soukromou hodnotu, proto je vhodné ho sdílet jen s důvěryhodnými lidmi.",
   "favorites.mods.show": "Zobrazit mody",
   "favorites.import.heading": "Import oblíbené položky",
-  "favorites.import.text": "Oblíbenou položku lze přidat ze souboru, který exportoval jiný Foreman. Mody nebo verze hry, které tento Foreman nemá, se importují i tak; ukáže je kontrola modů při generování.",
+  "favorites.import.text": "Oblíbenou položku lze přidat ze souboru, který exportoval jiný Foreman. Mody, které tento Foreman nemá, se importují i tak a ukáže je kontrola modů při generování. Verze hry, kterou tento Foreman nepodporuje, se při generování nahradí výchozí verzí.",
   "favorites.import.label": "Soubor oblíbené položky",
   "favorites.import.button": "Importovat oblíbenou",
   "favorites.import.done": "Oblíbená položka „{name}“ byla importována.",

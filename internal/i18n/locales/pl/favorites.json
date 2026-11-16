@@ -52,7 +52,7 @@
   "favorites.export.warning": "Eksport pobiera ulubiony jako plik, aby go udostępnić lub przenieść do innego Foremana. Plik zawiera ustawienia modyfikacji, a modyfikacja może przechowywać w nich token lub inną prywatną wartość, dlatego należy go udostępniać tylko zaufanym osobom.",
   "favorites.mods.show": "Pokaż modyfikacje",
   "favorites.import.heading": "Import ulubionego",
-  "favorites.import.text": "Można dodać ulubiony z pliku wyeksportowanego przez inny Foreman. Modyfikacje lub wersja gry, których brakuje w tym Foremanie, i tak zostaną zaimportowane; pokaże je przegląd modyfikacji w Generowaniu.",
+  "favorites.import.text": "Można dodać ulubiony z pliku wyeksportowanego przez inny Foreman. Modyfikacje, których brakuje w tym Foremanie, i tak zostaną zaimportowane, a pokaże je przegląd modyfikacji w Generowaniu. Wersja gry, której ten Foreman nie obsługuje, zostanie przy generowaniu zastąpiona wersją domyślną.",
   "favorites.import.label": "Plik ulubionego",
   "favorites.import.button": "Importuj ulubiony",
   "favorites.import.done": "Zaimportowano ulubiony „{name}”.",

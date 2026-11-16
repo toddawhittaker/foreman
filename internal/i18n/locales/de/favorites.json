@@ -49,7 +49,7 @@
   "favorites.export.warning": "Exportieren lädt einen Favoriten als Datei herunter, um ihn zu teilen oder in ein anderes Foreman zu bringen. Die Datei enthält die Mod-Einstellungen, und ein Mod kann dort ein Token oder einen anderen privaten Wert speichern. Teile sie also nur mit Leuten, denen du vertraust.",
   "favorites.mods.show": "Mods anzeigen",
   "favorites.import.heading": "Favoriten importieren",
-  "favorites.import.text": "Füge einen Favoriten aus einer Datei hinzu, die ein anderes Foreman exportiert hat. Mods oder eine Spielversion, die diesem Foreman fehlen, werden trotzdem importiert; die Mod-Prüfung von Generieren zeigt sie.",
+  "favorites.import.text": "Füge einen Favoriten aus einer Datei hinzu, die ein anderes Foreman exportiert hat. Mods, die diesem Foreman fehlen, werden trotzdem importiert, und die Mod-Prüfung von Generieren zeigt sie. Eine Spielversion, die dieses Foreman nicht unterstützt, wird beim Generieren durch die Standardversion ersetzt.",
   "favorites.import.label": "Favoritendatei",
   "favorites.import.button": "Favoriten importieren",
   "favorites.import.done": "Der Favorit „{name}“ wurde importiert.",

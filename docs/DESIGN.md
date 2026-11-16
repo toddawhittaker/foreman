@@ -1635,9 +1635,9 @@ Delete.
   settings are stripped of secrets again. A refused file gets one field
   error, "This is not a favorite file Foreman can read, or it is damaged.
   Nothing was imported.", which never repeats what the file holds.
-- **What is not checked.** A mod or game version this Foreman lacks is
-  still imported; Generate and its mod review deal with them as for any
-  favorite.
+- **What is not checked.** A mod this Foreman lacks is still imported,
+  and Generate's mod review shows it. A game version this Foreman does not
+  support is still imported; Generate replaces it with the default version.
 - **A name in use** is refused, not renamed, so the person sees which
   favorite they already have: rename or delete it, then import again.
 - **Writing** builds the favorite in a staging folder and renames it into

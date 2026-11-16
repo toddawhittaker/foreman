@@ -49,7 +49,7 @@
   "favorites.export.warning": "Export downloads a favorite as a file to share or move to another Foreman. It includes the mod settings, and a mod may keep a token or other private value there, so share it only with people you trust.",
   "favorites.mods.show": "Show the mods",
   "favorites.import.heading": "Import a favorite",
-  "favorites.import.text": "Add a favorite from a file another Foreman exported. Mods or a game version this Foreman lacks are still imported; Generate's mod review shows them.",
+  "favorites.import.text": "Add a favorite from a file another Foreman exported. Mods this Foreman lacks are still imported, and Generate's mod review shows them. A game version this Foreman does not support is replaced by the default version on Generate.",
   "favorites.import.label": "Favorite file",
   "favorites.import.button": "Import favorite",
   "favorites.import.done": "Imported the favorite \"{name}\".",
