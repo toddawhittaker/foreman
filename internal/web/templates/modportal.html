@@ -3,6 +3,13 @@
 <a href="{{portalPath .}}" class="portal-link" target="_blank" rel="noopener noreferrer">{{t "mods.portal.link"}}<span class="visually-hidden"> {{tHTML "mods.portal.for" "mod" (ident .)}}</span></a>
 {{- end}}
 
+{{/* A mod shown to a person: its title (its name when it has none), linked to its portal page in a new tab unless it is built in, a folder mod or not on the portal. The title is untrusted and never translated (SPEC 9.15). Takes ModName, from (modName name title link). */}}
+{{define "mod-name" -}}
+{{- if .Link}}<a href="{{portalPath .Name}}" class="mod-title" target="_blank" rel="noopener noreferrer"><span{{if .IsName}} class="ident"{{end}} translate="no">{{.Title}}</span><span class="visually-hidden"> {{t "mods.installed.portal"}}</span></a>
+{{- else}}<span class="mod-title{{if .IsName}} ident{{end}}" translate="no">{{.Title}}</span>
+{{- end}}
+{{- end}}
+
 {{/* Browse the portal for the world's game line in a new tab, with the hint that a pasted mod link works (SPEC 9.1). Takes the world's game line, such as "2.0". */}}
 {{define "portal-browse" -}}
 <p class="hint" id="mod-paste-hint">{{t "mods.search.paste_hint"}} <a href="https://mods.factorio.com/browse/downloaded?factorio_version={{.}}" target="_blank" rel="noopener noreferrer">{{t "mods.search.browse"}}<span class="visually-hidden"> {{t "common.link.new_tab"}}</span></a></p>
@@ -137,7 +144,7 @@
   {{- else}}
   {{- /* Open beside the results on a wide screen; on a phone a one-line bar that opens to the list. */}}
   <details class="plan-panel__list" id="plan-list" data-open-wide="64rem">
-    <summary><span class="plan-panel__sum">{{t "mods.plan_panel.summary" "count" (len .Picks)}}</span> <span class="plan-panel__names">{{.Names}}</span></summary>
+    <summary><span class="plan-panel__sum">{{t "mods.plan_panel.summary" "count" (len .Picks)}}</span> <span class="plan-panel__names" translate="no">{{.Names}}</span></summary>
     {{- if .Unreachable}}
     <div class="message message--warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.plan_panel.unreachable"}}</p>
@@ -148,7 +155,7 @@
       {{- range .Roots}}
       <li class="plan-tree__pick">
         <div class="plan-tree__row">
-          <span class="plan-tree__name"{{if .Ident}} translate="no"{{end}}>{{.Title}}</span>
+          <span class="plan-tree__name">{{template "mod-name" (modName .Name .Title .Linked)}}</span>
           {{- with .Version}} <span class="mod-ver" translate="no">{{.}}</span>{{end}}
           <form method="post" action="{{$.ChangePath}}" hx-post="{{$.ChangePath}}" hx-target="#plan-panel" hx-swap="outerHTML" hx-include="[data-row]" hx-disabled-elt="find button">
             <input type="hidden" name="name" value="{{.Name}}">
@@ -156,7 +163,7 @@
             <input type="hidden" name="from" value="panel">
             <input type="hidden" name="return" value="{{$.Return}}">
             {{- /* Taking a mod out destroys nothing, so the cross is quiet, not red. */}}
-            <button type="submit" class="button button--icon plan-panel__remove" id="{{$.RemoveID .Name}}"><span class="visually-hidden">{{tHTML "mods.plan_panel.remove" "mod" (ident .Name)}}</span></button>
+            <button type="submit" class="button button--icon plan-panel__remove" id="{{$.RemoveID .Name}}"><span class="visually-hidden">{{tHTML "mods.plan_panel.remove" "mod" (ident .Title)}}</span></button>
           </form>
         </div>
         {{template "plan-notes" .}}
@@ -186,7 +193,7 @@
   {{- range .}}
   <li class="plan-tree__dep">
     <div class="plan-tree__row">
-      <span class="plan-tree__name"{{if .Ident}} translate="no"{{end}}>{{.Title}}</span>
+      <span class="plan-tree__name">{{template "mod-name" (modName .Name .Title .Linked)}}</span>
       {{- with .Version}} <span class="mod-ver" translate="no">{{.}}</span>{{end}}
     </div>
     <p class="plan-tree__why">{{t "mods.plan_panel.needed_by" "mod" .Of}}</p>

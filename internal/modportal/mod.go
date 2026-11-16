@@ -105,7 +105,7 @@ func parseMod(body []byte) (Mod, error) {
 	}
 	m := Mod{
 		Name:       doc.Name,
-		Title:      doc.Title,
+		Title:      world.CleanTitle(doc.Title),
 		Summary:    doc.Summary,
 		Downloads:  doc.Downloads,
 		Deprecated: doc.Deprecated,

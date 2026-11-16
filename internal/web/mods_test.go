@@ -234,7 +234,7 @@ func TestModsTabListsMods(t *testing.T) {
 		`href="/worlds/`+id+`/settings" id="act-built-in-settings">Turn on Space Age</a>`,
 		"at most 200 MB", "At most 4 MB",
 		// SPEC 9.7: a portal mod's name is the link to its portal page, in a new tab.
-		`<a href="https://mods.factorio.com/mod/alpha" id="`+slotID("portal", "alpha")+`" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`,
+		`<span class="mod-name" id="`+slotID("portal", "alpha")+`"><a href="https://mods.factorio.com/mod/alpha" class="mod-title" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a></span>`,
 		// SPEC 9.8: the save's mods are read and the differences counted; the save uses neither mod.
 		"The mods differ from the save", "2 enabled mods are not in the save", `id="act-sync"`,
 		// SPEC 9.5: the rare forms fold away.
@@ -304,7 +304,7 @@ func TestModStatusCurrentCount(t *testing.T) {
 	_, body := g.getStatus(modsPath(id) + "/status")
 	wantIn(t, "status", body, "1 mod from the mod portal is up to date.", "1 mod is not on the mod portal.",
 		// The portal's link goes; the name stays.
-		`<span id="`+slotID("portal", "zz-not-on-portal")+`" class="mod-name ident" translate="no" tabindex="-1" aria-describedby="`+slotID("note", "zz-not-on-portal")+`" hx-swap-oob="true">zz-not-on-portal</span>`,
+		`<span id="`+slotID("portal", "zz-not-on-portal")+`" class="mod-name" tabindex="-1" aria-describedby="`+slotID("note", "zz-not-on-portal")+`" hx-swap-oob="true"><span class="mod-title ident" translate="no">zz-not-on-portal</span></span>`,
 		"Not on the mod portal, so players")
 	if strings.Contains(body, "message--error") {
 		t.Error("a note reads as an error")

@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, live, version20, type SeedMod, openModTools } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, live, version20, type SeedMod, openModTools, makeZip } from "./foreman.js";
 import { languages, t } from "./i18n.js";
 import type { Locator } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -130,6 +130,7 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
   await page.keyboard.press("Enter");
   await expect(page.locator("#settings-file")).toBeVisible();
   await checkPage(page);
+
 });
 
 // Issue 373: a world whose mods match its save says so, and offers no match.
@@ -140,6 +141,7 @@ test("a world whose mods match the save says so", async ({ page, foreman, fakeGa
   await expect(page.locator("#sync-state")).toHaveText("The mods match the save base.zip.");
   await expect(page.getByRole("link", { name: "Match mods to the save" })).toHaveCount(0);
   await checkPage(page);
+
 });
 
 // WCAG 2.5.3: the row's More button says its word and its name starts with
@@ -156,4 +158,67 @@ test("each language names a row's More button starting with its visible word", a
     const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     await expect(toggle, lang).toHaveAccessibleName(new RegExp(`^${escaped}`));
   }
+});
+
+// Ruling on #623 (SPEC 9.15): the Installed list, its update lines and its
+// More menus show each mod's title from info.json, linked to the portal; a
+// mod without one shows its name; folder mods and mods the portal lacks are
+// not linked.
+test("installed mods show their titles, linked to the mod portal", async ({ page, foreman, fakeGame, fakePortal }) => {
+  const portal = fakePortal!;
+  await portal.add("fp-titled", "1.0.0", ["base >= 2.0"]);
+  await portal.add("fp-titled", "1.1.0", ["base >= 2.0"]);
+  await portal.add("fp-plain", "1.0.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, {
+    version: version20,
+    fixture: "2.0.77-no-space-age.zip",
+    mods: { "fp-titled": { factorio: "2.0" }, "fp-plain": { factorio: "2.0" }, "zz-gone": { factorio: "2.0" } },
+  });
+  const mods = join(foreman.dataDir, "worlds", "base", "mods");
+  const titled = (name: string, title: string) =>
+    writeFileSync(join(mods, `${name}_1.0.0.zip`), makeZip({ [`${name}_1.0.0/info.json`]: JSON.stringify({ name, version: "1.0.0", factorio_version: "2.0", title }) }));
+  titled("fp-titled", "Titled <Mod>");
+  titled("zz-gone", "Gone Mod");
+  const unbroken = "Averyveryverylongunbrokenmodtitlewithnospacesatallthatgoesonandon";
+  titled("fp-plain", unbroken);
+  const folder = join(mods, "my-local-tweaks");
+  mkdirSync(folder);
+  writeFileSync(join(folder, "info.json"), JSON.stringify({ name: "my-local-tweaks", version: "0.3.0", factorio_version: "2.0", title: "My Local Tweaks" }));
+
+  await page.goto("/worlds/base/mods");
+  const table = page.getByRole("table", { name: /Mods of Base/ });
+  const row = (name: string) => table.getByRole("row", { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`) });
+  const link = row("Titled <Mod>").getByRole("link", { name: "Titled <Mod> on the mod portal, opens in a new tab" });
+  await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-titled");
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(link.locator("[translate=no]")).toHaveText("Titled <Mod>");
+  await expect(table).not.toContainText("fp-titled");
+  // A long unbroken title wraps inside the row and keeps the version on it.
+  const longRow = row(unbroken);
+  await expect(longRow.getByRole("link", { name: `${unbroken} on the mod portal, opens in a new tab` })).toBeVisible();
+  const cell = (await longRow.locator(".mod-line").boundingBox())!;
+  const ver = (await longRow.locator(".mod-ver").boundingBox())!;
+  expect(ver.x + ver.width).toBeLessThanOrEqual(cell.x + cell.width + 1);
+  const title = (await longRow.locator(".mod-title").boundingBox())!;
+  expect(title.x + title.width).toBeLessThanOrEqual(cell.x + cell.width + 1);
+  // The update line and the More menu name the title.
+  await expect(row("Titled <Mod>").getByRole("link", { name: "Update to 1.1.0 Titled <Mod>" })).toBeVisible(live);
+  await expect(row("Titled <Mod>").locator("details.row-menu > summary")).toHaveAccessibleName("More actions for Titled <Mod>");
+  // Not on the portal, and a folder mod: the title, no link.
+  await expect(row("Gone Mod")).toContainText("Note: Not on the mod portal", live);
+  await expect(row("Gone Mod").getByRole("link", { name: /on the mod portal/ })).toHaveCount(0);
+  await expect(row("Gone Mod").locator(".mod-title")).toHaveText("Gone Mod");
+  await expect(row("My Local Tweaks").getByRole("link", { name: /on the mod portal/ })).toHaveCount(0);
+  await expect(row("My Local Tweaks").locator(".mod-title")).toHaveAttribute("translate", "no");
+  await checkPage(page);
+
+  // At 320 px and 200% text the long title still wraps inside its row.
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  const narrowCell = (await longRow.locator(".mod-line").boundingBox())!;
+  const narrowVer = (await longRow.locator(".mod-ver").boundingBox())!;
+  expect(narrowVer.x + narrowVer.width).toBeLessThanOrEqual(narrowCell.x + narrowCell.width + 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });

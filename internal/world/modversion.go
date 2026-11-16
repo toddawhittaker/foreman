@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 const (
@@ -31,6 +32,9 @@ const (
 	listedMods = 5
 	// maxShownModName is the longest mod name shown, in characters.
 	maxShownModName = 100
+	// maxModTitle is the longest mod title kept from info.json, in
+	// characters; a title is untrusted text.
+	maxModTitle = 100
 )
 
 // modGameVersions returns, for each mod the game would load that has a zip
@@ -117,6 +121,9 @@ func zipFactorioVersion(root *os.Root, name string) string {
 // ModInfo is what a mod's info.json says about it.
 type ModInfo struct {
 	Name, Version, FactorioVersion string
+	// Title is the display name, cleaned and cut to maxModTitle; "" when
+	// info.json gives none.
+	Title string
 	// Dependencies are the raw strings, such as "? other >= 1.2".
 	Dependencies []string
 }
@@ -352,13 +359,14 @@ func parseInfoJSON(b []byte) (ModInfo, bool) {
 	var doc struct {
 		Name            string          `json:"name"`
 		Version         string          `json:"version"`
+		Title           string          `json:"title"`
 		FactorioVersion string          `json:"factorio_version"`
 		Dependencies    json.RawMessage `json:"dependencies"`
 	}
 	if json.Unmarshal(b, &doc) != nil {
 		return ModInfo{}, false
 	}
-	info := ModInfo{Name: doc.Name, Version: doc.Version, FactorioVersion: doc.FactorioVersion}
+	info := ModInfo{Name: doc.Name, Version: doc.Version, FactorioVersion: doc.FactorioVersion, Title: CleanTitle(doc.Title)}
 	if len(doc.Dependencies) > 0 {
 		_ = json.Unmarshal(doc.Dependencies, &info.Dependencies)
 	}
@@ -367,6 +375,22 @@ func parseInfoJSON(b []byte) (ModInfo, bool) {
 		info.Dependencies = []string{}
 	}
 	return info, true
+}
+
+// CleanTitle makes a mod's untrusted title safe to show: control and
+// format characters (such as bidirectional overrides and zero-width spaces)
+// become spaces, outer space goes, and it is cut to maxModTitle characters.
+func CleanTitle(t string) string {
+	t = strings.TrimSpace(strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
+			return ' '
+		}
+		return r
+	}, t))
+	if r := []rune(t); len(r) > maxModTitle {
+		t = strings.TrimSpace(string(r[:maxModTitle])) + "…"
+	}
+	return t
 }
 
 // modVersionMismatch finds mods made for another Factorio than the world's
