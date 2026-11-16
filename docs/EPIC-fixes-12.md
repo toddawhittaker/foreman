@@ -58,7 +58,13 @@ Orchestrator:
     wave 1. P1 alone writes DESIGN 7.11 in wave 2. L1 puts its DESIGN text
     in the PR body.
 
-Todd's answers to Q1 and Q2 are recorded here once given.
+Todd (2026-11-16):
+12. Q1: `.plan-panel__list` gets the orange triangle marker only. It keeps
+    its bar layout and 44 px line; the compact size and hover do not apply.
+    F1 does it.
+13. Q2: add a "Mod default: X" hint, shown only under a mod setting whose
+    value differs from the mod's default (bool, number, text, choice and
+    colour). L1 does it.
 
 ## #636 checked (no real gaps)
 
