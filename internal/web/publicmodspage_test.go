@@ -12,7 +12,7 @@ import (
 // renderPublic draws the public page for data, in English.
 func renderPublic(t *testing.T, data PublicModsData) string {
 	t.Helper()
-	r, err := NewRenderer()
+	r, err := sharedRenderer()
 	if err != nil {
 		t.Fatal(err)
 	}

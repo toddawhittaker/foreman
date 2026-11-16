@@ -144,7 +144,7 @@ func TestPanicBecomes500AndIsLogged(t *testing.T) {
 
 func mustRenderer(t *testing.T) *Renderer {
 	t.Helper()
-	r, err := NewRenderer()
+	r, err := sharedRenderer()
 	if err != nil {
 		t.Fatal(err)
 	}

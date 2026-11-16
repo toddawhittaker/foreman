@@ -14,6 +14,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -437,6 +438,12 @@ var partialFiles = func() []string {
 }()
 
 func isPartial(name string) bool { return slices.Contains(partials, name) }
+
+// sharedRenderer is the one Renderer of the process. A Renderer is never
+// changed after NewRenderer returns, so every handler can share it; building
+// one per handler costs hundreds of megabytes of parse trees, which made the
+// tests, which build many handlers, run out of memory.
+var sharedRenderer = sync.OnceValues(NewRenderer)
 
 // NewRenderer parses every template once, makes a copy for each language
 // with that language's functions, and hashes every static file once.
