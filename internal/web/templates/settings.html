@@ -81,7 +81,9 @@
   <ul role="list">
     <li><a href="#settings-listing">{{t "settings.listing"}}</a></li>
     <li><a href="#settings-joining">{{t "settings.joining"}}</a></li>
+    <li><a href="#settings-gameplay">{{t "settings.gameplay"}}</a></li>
     <li><a href="#settings-saving">{{t "settings.saving"}}</a></li>
+    <li><a href="#settings-network">{{t "settings.network"}}</a></li>
     <li><a href="#settings-admins">{{t "settings.admins.legend"}}</a></li>
     <li><a href="#settings-whitelist">{{t "settings.whitelist.legend"}}</a></li>
     <li><a href="#settings-bans">{{t "settings.bans.legend"}}</a></li>
@@ -92,7 +94,9 @@
   <ul role="list">
     <li><a href="#settings-listing">{{t "settings.listing"}}</a></li>
     <li><a href="#settings-joining">{{t "settings.joining"}}</a></li>
+    <li><a href="#settings-gameplay">{{t "settings.gameplay"}}</a></li>
     <li><a href="#settings-saving">{{t "settings.saving"}}</a></li>
+    <li><a href="#settings-network">{{t "settings.network"}}</a></li>
     <li><a href="#settings-admins">{{t "settings.admins.legend"}}</a></li>
     <li><a href="#settings-bans">{{t "settings.bans.legend"}}</a></li>
     <li><a href="#settings-whitelist">{{t "settings.whitelist.legend"}}</a></li>
@@ -163,15 +167,61 @@
     </fieldset>
     <div class="field field--short">
       <label for="max-players">{{t "settings.max_players.label"}}</label>
-      <p class="hint" id="max-players-hint">{{t "settings.max_players.hint"}}</p>
-      <input id="max-players" name="max_players" type="text" inputmode="numeric" value="{{.MaxPlayers}}" autocomplete="off"
+      <p class="hint" id="max-players-hint">{{t "settings.max_players.hint"}} {{t "settings.default.game" "value" (.Default "max_players")}}</p>
+      <input id="max-players" name="max_players" type="text" inputmode="numeric" value="{{.MaxPlayers}}" placeholder="{{.Default "max_players"}}" autocomplete="off"
         aria-describedby="max-players-hint{{if not .MaxPlayersError.IsZero}} max-players-error{{end}}"
         {{- if not .MaxPlayersError.IsZero}} aria-invalid="true"{{end}}>
       {{- if not .MaxPlayersError.IsZero}}
       <p class="error" id="max-players-error"><strong>{{t "common.error.label"}}</strong> {{msg .MaxPlayersError}}</p>
       {{- end}}
     </div>
-    <label class="check"><input type="checkbox" name="require_user_verification"{{if .Verify}} checked{{end}}> {{t "settings.verify.label"}}</label>
+    <div class="setting-check">
+      <label class="check"><input type="checkbox" id="ignore-limit" name="ignore_player_limit_for_returning_players"{{if .IgnoreLimit}} checked{{end}} aria-describedby="ignore-limit-hint"> {{t "settings.ignore_limit.label"}}</label>
+      <p class="hint" id="ignore-limit-hint">{{template "default-flag" (.DefaultOn "ignore_player_limit_for_returning_players")}}</p>
+    </div>
+    <div class="setting-check">
+      <label class="check"><input type="checkbox" id="require-verification" name="require_user_verification"{{if .Verify}} checked{{end}} aria-describedby="require-verification-hint"> {{t "settings.verify.label"}}</label>
+      <p class="hint" id="require-verification-hint">{{template "default-flag" (.DefaultOn "require_user_verification")}}</p>
+    </div>
+    <div class="field field--short">
+      <label for="afk-autokick">{{t "settings.afk.label"}}</label>
+      <p class="hint" id="afk-autokick-hint">{{t "settings.afk.hint"}} {{t "settings.default.game" "value" (.Default "afk_autokick_interval")}}</p>
+      <input id="afk-autokick" name="afk_autokick_interval" type="text" inputmode="numeric" value="{{.AFK}}" placeholder="{{.Default "afk_autokick_interval"}}" autocomplete="off"
+        aria-describedby="afk-autokick-hint{{if not .AFKError.IsZero}} afk-autokick-error{{end}}"
+        {{- if not .AFKError.IsZero}} aria-invalid="true"{{end}}>
+      {{- if not .AFKError.IsZero}}
+      <p class="error" id="afk-autokick-error"><strong>{{t "common.error.label"}}</strong> {{msg .AFKError}}</p>
+      {{- end}}
+    </div>
+    </div>
+  </fieldset>
+
+  <fieldset id="settings-gameplay"{{if not .Editable}} disabled{{end}}>
+    <legend>{{t "settings.gameplay"}}</legend>
+    <div class="setting-row__body">
+    <div class="setting-check">
+      <label class="check"><input type="checkbox" id="auto-pause" name="auto_pause"{{if .AutoPause}} checked{{end}} aria-describedby="auto-pause-hint"> {{t "settings.auto_pause.label"}}</label>
+      <p class="hint" id="auto-pause-hint">{{template "default-flag" (.DefaultOn "auto_pause")}}</p>
+    </div>
+    {{- if .HasPauseOnJoin}}
+    <div class="setting-check">
+      <label class="check"><input type="checkbox" id="pause-on-join" name="auto_pause_when_players_connect"{{if .PauseOnJoin}} checked{{end}} aria-describedby="pause-on-join-hint"> {{t "settings.pause_on_join.label"}}</label>
+      <p class="hint" id="pause-on-join-hint">{{template "default-flag" (.DefaultOn "auto_pause_when_players_connect")}}</p>
+    </div>
+    {{- end}}
+    <div class="setting-check">
+      <label class="check"><input type="checkbox" id="only-admins-pause" name="only_admins_can_pause_the_game"{{if .OnlyAdminsPause}} checked{{end}} aria-describedby="only-admins-pause-hint"> {{t "settings.only_admins_pause.label"}}</label>
+      <p class="hint" id="only-admins-pause-hint">{{template "default-flag" (.DefaultOn "only_admins_can_pause_the_game")}}</p>
+    </div>
+    <div class="field">
+      <label for="allow-commands">{{t "settings.commands.label"}}</label>
+      <p class="hint" id="allow-commands-hint">{{t "settings.commands.hint"}} {{t "settings.default.game" "value" (t "settings.commands.admins")}}</p>
+      <select id="allow-commands" name="allow_commands" aria-describedby="allow-commands-hint">
+        <option value="true"{{if eq .Commands "true"}} selected{{end}}>{{t "settings.commands.everyone"}}</option>
+        <option value="admins-only"{{if eq .Commands "admins-only"}} selected{{end}}>{{t "settings.commands.admins"}}</option>
+        <option value="false"{{if eq .Commands "false"}} selected{{end}}>{{t "settings.commands.nobody"}}</option>
+      </select>
+    </div>
     </div>
   </fieldset>
 
@@ -180,21 +230,62 @@
     <div class="setting-row__body">
     <div class="field field--short">
       <label for="autosave-interval">{{t "settings.interval.label"}}</label>
-      <input id="autosave-interval" name="autosave_interval" type="text" inputmode="numeric" value="{{.Interval}}" autocomplete="off"
-        {{- if not .IntervalError.IsZero}} aria-invalid="true" aria-describedby="autosave-interval-error"{{end}}>
+      <p class="hint" id="autosave-interval-hint">{{t "settings.default.game" "value" (.Default "autosave_interval")}}</p>
+      <input id="autosave-interval" name="autosave_interval" type="text" inputmode="numeric" value="{{.Interval}}" placeholder="{{.Default "autosave_interval"}}" autocomplete="off"
+        aria-describedby="autosave-interval-hint{{if not .IntervalError.IsZero}} autosave-interval-error{{end}}"
+        {{- if not .IntervalError.IsZero}} aria-invalid="true"{{end}}>
       {{- if not .IntervalError.IsZero}}
       <p class="error" id="autosave-interval-error"><strong>{{t "common.error.label"}}</strong> {{msg .IntervalError}}</p>
       {{- end}}
     </div>
     <div class="field field--short">
       <label for="autosave-slots">{{t "settings.slots.label"}}</label>
-      <input id="autosave-slots" name="autosave_slots" type="text" inputmode="numeric" value="{{.Slots}}" autocomplete="off"
-        {{- if not .SlotsError.IsZero}} aria-invalid="true" aria-describedby="autosave-slots-error"{{end}}>
+      <p class="hint" id="autosave-slots-hint">{{t "settings.default.game" "value" (.Default "autosave_slots")}} {{t "settings.slots.hint" "foreman" .ForemanSlots}}</p>
+      <input id="autosave-slots" name="autosave_slots" type="text" inputmode="numeric" value="{{.Slots}}" placeholder="{{.Default "autosave_slots"}}" autocomplete="off"
+        aria-describedby="autosave-slots-hint{{if not .SlotsError.IsZero}} autosave-slots-error{{end}}"
+        {{- if not .SlotsError.IsZero}} aria-invalid="true"{{end}}>
       {{- if not .SlotsError.IsZero}}
       <p class="error" id="autosave-slots-error"><strong>{{t "common.error.label"}}</strong> {{msg .SlotsError}}</p>
       {{- end}}
     </div>
-    <label class="check"><input type="checkbox" name="auto_pause"{{if .AutoPause}} checked{{end}}> {{t "settings.auto_pause.label"}}</label>
+    <div class="setting-check">
+      <label class="check"><input type="checkbox" id="non-blocking-saving" name="non_blocking_saving"{{if .NonBlocking}} checked{{end}}{{if .ForkOff}} disabled{{end}}
+        aria-describedby="non-blocking-saving-hint non-blocking-saving-note{{if .ForkOff}} non-blocking-saving-off{{end}}"> {{t "settings.fork.label"}}</label>
+      <p class="hint" id="non-blocking-saving-hint">{{template "default-flag" (.DefaultOn "non_blocking_saving")}}</p>
+      <p class="hint" id="non-blocking-saving-note"><strong>{{t "common.label.note"}}</strong> {{t "settings.fork.note"}}</p>
+      {{- if .ForkOff}}
+      <p class="hint" id="non-blocking-saving-off"><strong>{{t "common.label.note"}}</strong> {{t "settings.fork.not_linux" "os" .HostOS}}</p>
+      {{- end}}
+    </div>
+    </div>
+  </fieldset>
+
+  <fieldset id="settings-network"{{if not .Editable}} disabled{{end}}>
+    <legend>{{t "settings.network"}}</legend>
+    <div class="setting-row__body">
+    <details class="disclosure"{{if .NetworkOpen}} open{{end}}>
+      <summary>{{t "settings.network.summary"}}</summary>
+      <div class="field field--short">
+        <label for="max-upload">{{t "settings.upload.label"}}</label>
+        <p class="hint" id="max-upload-hint">{{t "settings.upload.hint"}} {{t "settings.default.game" "value" (.Default "max_upload_in_kilobytes_per_second")}}</p>
+        <input id="max-upload" name="max_upload_in_kilobytes_per_second" type="text" inputmode="numeric" value="{{.Upload}}" placeholder="{{.Default "max_upload_in_kilobytes_per_second"}}" autocomplete="off"
+          aria-describedby="max-upload-hint{{if not .UploadError.IsZero}} max-upload-error{{end}}"
+          {{- if not .UploadError.IsZero}} aria-invalid="true"{{end}}>
+        {{- if not .UploadError.IsZero}}
+        <p class="error" id="max-upload-error"><strong>{{t "common.error.label"}}</strong> {{msg .UploadError}}</p>
+        {{- end}}
+      </div>
+      <div class="field field--short">
+        <label for="max-upload-slots">{{t "settings.upload_slots.label"}}</label>
+        <p class="hint" id="max-upload-slots-hint">{{t "settings.default.game" "value" (.Default "max_upload_slots")}}</p>
+        <input id="max-upload-slots" name="max_upload_slots" type="text" inputmode="numeric" value="{{.UploadSlots}}" placeholder="{{.Default "max_upload_slots"}}" autocomplete="off"
+          aria-describedby="max-upload-slots-hint{{if not .UploadSlotsError.IsZero}} max-upload-slots-error{{end}}"
+          {{- if not .UploadSlotsError.IsZero}} aria-invalid="true"{{end}}>
+        {{- if not .UploadSlotsError.IsZero}}
+        <p class="error" id="max-upload-slots-error"><strong>{{t "common.error.label"}}</strong> {{msg .UploadSlotsError}}</p>
+        {{- end}}
+      </div>
+    </details>
     </div>
   </fieldset>
 
@@ -412,4 +503,9 @@
       {{- end}}
     </div>
 {{- end}}
+{{- end}}
+
+{{/* The game's own value of a true-or-false setting, as a hint under it. */}}
+{{define "default-flag" -}}
+{{if .}}{{t "settings.default.on"}}{{else}}{{t "settings.default.off"}}{{end}}
 {{- end}}

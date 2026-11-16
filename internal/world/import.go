@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
 )
 
 // InboxFolder is one subfolder of the import inbox (SPEC 5.5).
@@ -424,8 +426,19 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 				return err
 			}
 		}
+		// The folder's own file is kept as it is; a folder with none gets
+		// the file Foreman creates (SPEC 11.1).
+		if !slices.ContainsFunc(config, func(f importFile) bool { return path.Base(f.path) == ServerSettingsFile }) {
+			return writeNewServerSettings(dst, name)
+		}
 		return nil
 	})
+}
+
+// writeNewServerSettings writes the server-settings.json Foreman creates for
+// a new world called name.
+func writeNewServerSettings(dst *os.Root, name string) error {
+	return writeFileAtomicMode(dst, path.Join(ConfigDir, ServerSettingsFile), gamesettings.NewServerSettings(strings.TrimSpace(name)))
 }
 
 // ImportSave makes a new world from one uploaded save (SPEC 5.5). temp is
@@ -450,7 +463,15 @@ func (m *Manager) ImportSave(ctx context.Context, name, gameVersion string, spac
 		return "", err
 	}
 	return m.create(ctx, name, gameVersion, spaceAge, createOptions{}, func(worlds *os.Root, dir string) error {
-		return worlds.Rename(temp, path.Join(dir, SavesDir, saveName))
+		if err := worlds.Rename(temp, path.Join(dir, SavesDir, saveName)); err != nil {
+			return err
+		}
+		dst, err := worlds.OpenRoot(dir)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = dst.Close() }()
+		return writeNewServerSettings(dst, name)
 	})
 }
 

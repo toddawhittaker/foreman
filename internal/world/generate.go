@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
 )
@@ -63,6 +64,12 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 		if server, _ = gamesettings.StripSecrets(nw.ServerSettings); server == nil {
 			return "", ErrBadServerSettings
 		}
+	}
+	// A file Foreman creates keeps 20 autosaves, not the game's 5 (SPEC 11.1).
+	if server == nil {
+		server = gamesettings.NewServerSettings(strings.TrimSpace(nw.Name))
+	} else {
+		server = gamesettings.WithAutosaveSlots(server)
 	}
 	files := []struct {
 		name string

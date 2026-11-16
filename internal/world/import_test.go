@@ -414,8 +414,8 @@ func TestImportFolderTopLevelOnlyStillWorks(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(m.dirs.Worlds, id, "saves", "one.zip")); err != nil {
 		t.Error(err)
 	}
-	if entries, _ := os.ReadDir(filepath.Join(m.dirs.Worlds, id, "config")); len(entries) != 0 {
-		t.Errorf("config not empty: %v", entries)
+	if entries, _ := os.ReadDir(filepath.Join(m.dirs.Worlds, id, "config")); len(entries) != 1 || entries[0].Name() != ServerSettingsFile {
+		t.Errorf("config holds %v, want only the server-settings.json Foreman creates", entries)
 	}
 }
 
@@ -436,10 +436,12 @@ func TestImportFolderSkipsSymlinksInSavesAndConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := filepath.Join(m.dirs.Worlds, id)
-	for _, p := range []string{"saves/link.zip", "config/server-settings.json"} {
-		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
-			t.Errorf("%s should not be copied: %v", p, err)
-		}
+	if _, err := os.Lstat(filepath.Join(w, "saves/link.zip")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("saves/link.zip should not be copied: %v", err)
+	}
+	// The linked settings file is skipped; the file there is the one Foreman made.
+	if b, err := os.ReadFile(filepath.Join(w, "config/server-settings.json")); err != nil || strings.Contains(string(b), "secret") { //nolint:gosec // a test temp folder
+		t.Errorf("config/server-settings.json followed the link: %q, %v", b, err)
 	}
 	for _, p := range []string{"saves/real.zip", "config/map-settings.json"} {
 		if _, err := os.Lstat(filepath.Join(w, p)); err != nil {
@@ -465,10 +467,12 @@ func TestImportFolderIgnoresSymlinkedSavesAndConfigFolders(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := filepath.Join(m.dirs.Worlds, id)
-	for _, p := range []string{"saves/x.zip", "config/server-settings.json"} {
-		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
-			t.Errorf("%s should not be copied: %v", p, err)
-		}
+	if _, err := os.Lstat(filepath.Join(w, "saves/x.zip")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("saves/x.zip should not be copied: %v", err)
+	}
+	// The linked config folder is skipped; the file there is the one Foreman made.
+	if b, err := os.ReadFile(filepath.Join(w, "config/server-settings.json")); err != nil || string(b) == "{}" { //nolint:gosec // a test temp folder
+		t.Errorf("config/server-settings.json came from the link: %q, %v", b, err)
 	}
 }
 

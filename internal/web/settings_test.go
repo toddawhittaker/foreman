@@ -92,12 +92,15 @@ type settingsRig struct {
 
 // newSettingsRig makes a signed-in harness with one 2.1.24 world whose
 // server-settings.json is settingsFile.
-func newSettingsRig(t *testing.T) *settingsRig {
+func newSettingsRig(t *testing.T) *settingsRig { return newSettingsRigOn(t, "2.1.24") }
+
+// newSettingsRigOn is newSettingsRig with a world on the given game version.
+func newSettingsRigOn(t *testing.T, gameVersion string) *settingsRig {
 	t.Helper()
 	ls := newLiveServer(t, nil)
 	hn := ls.harness
 	r := &settingsRig{liveServer: ls, cookie: hn.signIn()}
-	id, err := hn.worlds.Create(context.Background(), "Base", "2.1.24", false)
+	id, err := hn.worlds.Create(context.Background(), "Base", gameVersion, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,8 +165,17 @@ func settingsFormValues() url.Values {
 	return url.Values{
 		"name": {"Family base"}, "description": {"Come play"}, "visibility": {"lan"},
 		"max_players": {"0"}, "autosave_interval": {"10"}, "autosave_slots": {"5"},
-		"require_user_verification": {"on"}, "auto_pause": {"on"}, "admins": {""},
+		"require_user_verification": {"on"}, "auto_pause": {"on"}, "only_admins_can_pause_the_game": {"on"}, "admins": {""},
 	}
+}
+
+// withDefaultBoxes adds the boxes the game turns on when a file does not
+// mention them (SPEC 11.1), as a page shows them ticked and posts them.
+func withDefaultBoxes(f url.Values) url.Values {
+	for _, k := range []string{"require_user_verification", "only_admins_can_pause_the_game"} {
+		f.Set(k, "on")
+	}
+	return f
 }
 
 var reToken = regexp.MustCompile(`name="token" value="([^"]+)"`)
@@ -888,7 +900,7 @@ func TestSettingsRunningAdminChangeIsNotWrittenByForeman(t *testing.T) {
 	id := g.startRunning()
 	g.writeConfig(id, world.ServerAdminListFile, `["ghost"]`)
 	path := settingsPath(id)
-	rep := g.post(path, url.Values{"name": {"Live"}, "description": {""}, "max_players": {""}, "autosave_interval": {""}, "autosave_slots": {""}, "admins": {""}})
+	rep := g.post(path, withDefaultBoxes(url.Values{"name": {"Live"}, "description": {""}, "max_players": {""}, "autosave_interval": {""}, "autosave_slots": {"20"}, "auto_pause": {"on"}, "admins": {""}}))
 	if rep.StatusCode != http.StatusOK {
 		t.Fatalf("preview %d:\n%s", rep.StatusCode, rep.body)
 	}
