@@ -1089,6 +1089,8 @@ type ModPlanPage struct {
 	Generated bool
 	// Have are the world's mods now, for the conflicts' fixes.
 	Have []world.InstalledMod
+	// facts are the titles and offered mods' details, by mod name.
+	facts map[string]ModFacts
 }
 
 // FromPicks says the plan installs mods the admin picked on the Mods tab,
@@ -1365,33 +1367,34 @@ func (p ModPlanPage) CanApply() bool {
 	return true
 }
 
-// changeText words one change and why it is in the plan.
-func changeText(c mods.Change) i18n.Msg {
+// changeText words c after the mod's name, which its row shows as a
+// title; a mod named in the reason shows by title too (SPEC 9.15).
+func (p ModPlanPage) changeText(c mods.Change) i18n.Msg {
 	var what i18n.Msg
 	switch {
 	case c.Action == mods.ActRemove:
-		what = i18n.M("mods.plan.item.name", "mod", i18n.Ident(c.Name), "version", c.From)
+		what = i18n.M("mods.plan.row.version", "version", c.From)
 	case c.From != "" && c.From != c.To:
-		what = i18n.M("mods.plan.item.from_to", "mod", i18n.Ident(c.Name), "from", c.From, "to", c.To)
+		what = i18n.M("mods.plan.row.from_to", "from", c.From, "to", c.To)
 	case c.Upload:
-		what = i18n.M("mods.plan.item.uploaded", "mod", i18n.Ident(c.Name), "version", c.To)
+		what = i18n.M("mods.plan.row.uploaded", "version", c.To)
 	default:
-		what = i18n.M("mods.plan.item.name", "mod", i18n.Ident(c.Name), "version", c.To)
+		what = i18n.M("mods.plan.row.version", "version", c.To)
 	}
 	var why i18n.Msg
 	switch c.Why.Code {
 	case mods.WhyRequiredBy:
-		why = i18n.M("mods.plan.why.required_by", "mod", i18n.Ident(c.Why.Of))
+		why = i18n.M("mods.plan.why.required_by", "mod", i18n.Ident(p.Title(c.Why.Of)))
 	case mods.WhyOptionalOf:
-		why = i18n.M("mods.plan.why.optional_of", "mod", i18n.Ident(c.Why.Of))
+		why = i18n.M("mods.plan.why.optional_of", "mod", i18n.Ident(p.Title(c.Why.Of)))
 	case mods.WhyRecommendedBy:
-		why = i18n.M("mods.plan.why.recommended_by", "mod", i18n.Ident(c.Why.Of))
+		why = i18n.M("mods.plan.why.recommended_by", "mod", i18n.Ident(p.Title(c.Why.Of)))
 	case mods.WhyFromSave:
 		why = i18n.M("mods.plan.why.from_save")
 	case mods.WhyNotInSave:
 		why = i18n.M("mods.plan.why.not_in_save")
 	case mods.WhyOnlyNeededBy:
-		why = i18n.M("mods.plan.why.only_needed_by", "mod", i18n.Ident(c.Why.Of))
+		why = i18n.M("mods.plan.why.only_needed_by", "mod", i18n.Ident(p.Title(c.Why.Of)))
 	}
 	if !why.IsZero() {
 		what = i18n.M("mods.plan.item.why", "item", what, "why", why)
@@ -1550,7 +1553,109 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 		s.log.Warn("list the mods for the plan's fixes", "world", sum.ID, "error", err)
 	}
 	p.Hash = mods.HashPlan(p.Plan, p.Drops)
+	p.facts = s.planFacts(ctx, p)
 	return p
+}
+
+// planFacts gathers each mod's title, and the details of the offered ones,
+// from info.json and then the portal (SPEC 9.2, 9.15). The plan has already
+// looked up the mods it changes, so those come from the portal client's
+// cache. An offered mod may be one the plan never asked about, so at most
+// store.MaxModPlanNames offered mods are asked for; the rest show by title
+// alone, or by name (ruling 22 of the fixes-11 plan).
+func (s *server) planFacts(ctx context.Context, p ModPlanPage) map[string]ModFacts {
+	out := map[string]ModFacts{}
+	installed := map[string]world.InstalledMod{}
+	for _, m := range p.Have {
+		installed[m.Name] = m
+		out[m.Name] = ModFacts{Title: m.Title, Version: m.Version}
+	}
+	line := p.Line()
+	look := func(name string, offered bool) {
+		m, err := s.portal.Mod(ctx, name)
+		if err != nil {
+			return
+		}
+		f := out[name]
+		f.OnPortal = true
+		if f.Title == "" {
+			f.Title = m.Title
+		}
+		if offered {
+			f.Summary = clipRunes(m.Summary, maxPortalSummary)
+			want := f.Version
+			if c := slices.IndexFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == name }); c >= 0 && p.Plan.Changes[c].To != "" {
+				want = p.Plan.Changes[c].To
+			}
+			if _, ok := installed[name]; !ok && want == "" {
+				for _, r := range m.Releases {
+					if r.FactorioVersion == line && (want == "" || world.CompareVersions(r.Version, want) > 0) {
+						want = r.Version
+					}
+				}
+			}
+			f.Version = want
+			for _, r := range m.Releases {
+				if r.Version == want {
+					f.Released = r.ReleasedAt
+				}
+			}
+		}
+		out[name] = f
+	}
+	seen := map[string]bool{}
+	var names []string
+	add := func(n string) {
+		if n != "" && !seen[n] {
+			seen[n] = true
+			names = append(names, n)
+		}
+	}
+	for _, n := range p.Form.Names {
+		add(n)
+	}
+	for _, c := range p.Plan.Changes {
+		add(c.Name)
+		add(c.Why.Of)
+	}
+	for _, n := range names {
+		if !installed[n].BuiltIn && !installed[n].Local {
+			look(n, false)
+		}
+	}
+	asked := 0
+	for _, o := range slices.Concat(p.Plan.Optional, p.Plan.Orphans) {
+		if seen[o.Name] || installed[o.Name].BuiltIn || installed[o.Name].Local {
+			continue
+		}
+		seen[o.Name] = true
+		if asked < store.MaxModPlanNames {
+			asked++
+			look(o.Name, true)
+		}
+	}
+	for _, o := range slices.Concat(p.Plan.Optional, p.Plan.Orphans) {
+		if _, ok := out[o.Of]; !ok && !seen[o.Of] {
+			seen[o.Of] = true
+			if !installed[o.Of].BuiltIn {
+				look(o.Of, false)
+			}
+		}
+	}
+	return out
+}
+
+// maxPortalSummary bounds a portal summary on the review page; it is
+// untrusted.
+const maxPortalSummary = 300
+
+// clipRunes cuts s to at most n runes, ending in an ellipsis when cut.
+func clipRunes(s string, n int) string {
+	r := []rune(strings.TrimSpace(s))
+	if len(r) <= n {
+		return string(r)
+	}
+	return strings.TrimSpace(string(r[:n-1])) + "…"
 }
 
 // planDrops lists the plan's dropped mods, leaving out unresolved mods,

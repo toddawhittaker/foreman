@@ -30,7 +30,7 @@ func TestRecommendedDependencyPlan(t *testing.T) {
 	if code != http.StatusOK || strings.Contains(body, `hx-get="/worlds/`+id+`/mods/plan" checked>`) {
 		t.Fatalf("unticked plan %d:\n%s", code, body)
 	}
-	if strings.Contains(plain(body), "fp-lane 1.3.1") {
+	if strings.Contains(planRows(body), "fp-lane 1.3.1") {
 		t.Error("an unticked recommended mod is still installed")
 	}
 	wantIn(t, "unticked", body, `<input type="hidden" name="offered" value="fp-lane">`)

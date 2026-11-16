@@ -3,6 +3,9 @@ import type { Page } from "@playwright/test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+// A change's row on the review page, found by the title it starts with (issue 620).
+const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
+
 // SPEC 9.1, 9.2, 9.7, 9.8, 9.12: search, the plan, and the install on a running
 // world, through the fake portal. The portal's generated mods are made for
 // Factorio 2.0, so these worlds are 2.0 worlds.
@@ -35,7 +38,7 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   await page.getByRole("button", { name: "Add fp-signs to the plan" }).click();
   await page.getByRole("link", { name: "Review and install 1 mod" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-signs in Base?" })).toBeVisible();
-  await expect(page.locator("#mod-plan")).toContainText("fp-signs 1.0.0");
+  await expect(planRow(page, "fp-signs")).toContainText("1.0.0");
   // A running game: the plan says it will warn, stop and start it again, and asks for the countdown.
   const steps = page.locator("ol.plan-steps");
   await expect(steps.getByRole("listitem")).toHaveText([
@@ -86,9 +89,9 @@ test("a chain three levels deep: the plan lists what is needed and why, and all 
 
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-a");
   const plan = page.locator("#mod-plan");
-  await expect(plan).toContainText("fp-a 1.0.0");
-  await expect(plan).toContainText("fp-b 1.0.0 (fp-a needs it)");
-  await expect(plan).toContainText("fp-c 1.0.0 (fp-b needs it)");
+  await expect(planRow(page, "fp-a")).toContainText("1.0.0");
+  await expect(planRow(page, "fp-b")).toContainText("1.0.0 (fp-a needs it)");
+  await expect(planRow(page, "fp-c")).toContainText("1.0.0 (fp-b needs it)");
   await checkPage(page);
 
   await page.getByRole("button", { name: "Install 3 mods" }).click();
@@ -139,12 +142,30 @@ test.describe("an optional dependency", () => {
 
     await box.check();
     await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
-    await expect(page.locator("#mod-plan")).toContainText("fp-opt 1.0.0 (offered by fp-main)");
+    await expect(page.locator("#mod-plan .plan-row", { hasText: "fp-opt" })).toContainText("1.0.0 (offered by fp-main)");
     // The redraw keeps the ticked box, and focus stays on it.
     await expect(box).toBeChecked();
     await expect(box).toBeFocused();
     // Script redraws the plan without a page load, so there is no Recalculate button.
     await expect(page.getByRole("button", { name: "Recalculate the plan" })).toBeHidden();
+    await checkPage(page);
+  });
+
+  // Issue 620: an offered mod shows its title as the portal link, its summary,
+  // version and release date (dated in the Go tests); following the link never ticks the box.
+  test("an offered mod's details, and its link apart from its box", async ({ page, foreman, fakeGame, fakePortal }) => {
+    await addMods(fakePortal!);
+    await setUpModsWorld(page, foreman, fakeGame!, world);
+    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
+    const offer = page.locator(".plan-offer", { has: page.getByLabel("fp-opt, offered by fp-main") });
+    const link = offer.getByRole("link", { name: "fp-opt on the mod portal, opens in a new tab" });
+    await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-opt");
+    await expect(link).toHaveAttribute("target", "_blank");
+    // The fake portal's summary; its added mods carry no release date, which the Go tests cover.
+    await expect(offer).toContainText("generated");
+    await expect(offer.locator("dd").first()).toHaveText("1.0.0");
+    await link.click({ modifiers: ["ControlOrMeta"] });
+    await expect(page.getByLabel("fp-opt, offered by fp-main")).not.toBeChecked();
     await checkPage(page);
   });
 
@@ -173,7 +194,7 @@ test.describe("an optional dependency", () => {
       await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
       await page.getByRole("button", { name: "Recalculate the plan" }).click();
       await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
-      await expect(page.locator("#mod-plan")).toContainText("fp-opt 1.0.0 (offered by fp-main)");
+      await expect(page.locator("#mod-plan .plan-row", { hasText: "fp-opt" })).toContainText("1.0.0 (offered by fp-main)");
     }
 
     test("Recalculate draws the plan again", async ({ page, foreman, fakeGame, fakePortal }) => {
@@ -224,7 +245,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
   await expect(page.locator("#plan-changes")).toBeFocused();
   await expect(page.locator("#plan-conflicts")).toHaveCount(0);
   await expect(page.locator(".plan-groups")).toContainText("Remove");
-  await expect(page.locator(".plan-groups")).toContainText("fp-other 1.0.0");
+  await expect(planRow(page, "fp-other")).toContainText("1.0.0");
   // Removing a mod destroys something, so this one is red.
   await expect(page.getByRole("button", { name: "Change 2 mods" })).toHaveClass(/button--danger/);
   await checkPage(page);
@@ -252,7 +273,7 @@ test("removing a needed mod offers to disable the one that needs it, in one chan
   await conflicts.getByRole("link", { name: "Disable fp-needer too" }).click();
   await expect(page.locator("#plan-changes")).toBeFocused();
   await expect(page.locator(".plan-groups")).toContainText("Disable");
-  await expect(page.locator(".plan-groups")).toContainText("fp-needer 1.0.0");
+  await expect(planRow(page, "fp-needer")).toContainText("1.0.0");
   await expect(page.locator("#plan-steps")).toBeVisible();
   await checkPage(page);
   await page.getByRole("button", { name: "Change 2 mods" }).click();

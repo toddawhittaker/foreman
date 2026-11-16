@@ -3,6 +3,9 @@ import type { Page } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
+// A change's row on the review page, found by the title it starts with (issue 620).
+const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
+
 // SPEC 9.2 and 9.3: choosing a mod's version on the plan page, and
 // Change version in the installed table, which also goes back after a bad
 // update. The fake portal's mods are made for Factorio 2.0.
@@ -28,7 +31,7 @@ test("the plan lists the line's releases, newest that fits first, and an older o
   await expect(version.locator("option:checked")).toHaveText("Newest that fits (2.0.0)");
   // Only the world's line: no 3.0.0, which is for 2.1.
   await expect(version.locator("option")).toHaveText(["Newest that fits (2.0.0)", "2.0.0", "1.0.0"]);
-  await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-ver 2.0.0");
+  await expect(planRow(page, "fp-ver")).toContainText("2.0.0");
   await checkPage(page);
   await shot(page, "mods-version-plan");
 
@@ -36,7 +39,7 @@ test("the plan lists the line's releases, newest that fits first, and an older o
   await version.focus();
   await version.selectOption("1.0.0");
   await expect(page.locator("#announcer")).toHaveText("Plan updated: 2 mods change.");
-  await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-ver 1.0.0");
+  await expect(planRow(page, "fp-ver")).toContainText("1.0.0");
   await expect(page.getByLabel("Version of fp-ver")).toBeFocused();
   await checkPage(page);
 
@@ -74,12 +77,12 @@ test("a late redraw does not undo a newer version choice", async ({ page, forema
   await version.selectOption("2.0.0");
   release();
 
-  await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-race 2.0.0");
+  await expect(planRow(page, "fp-race")).toContainText("2.0.0");
   await expect(page.locator("#announcer")).toHaveText("Plan updated: 1 mod changes.");
   // Wait out any late swap, then check the choice stayed.
   await page.waitForTimeout(1000);
   await expect(page.getByLabel("Version of fp-race")).toHaveValue("2.0.0");
-  await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-race 2.0.0");
+  await expect(planRow(page, "fp-race")).toContainText("2.0.0");
   await checkPage(page);
 });
 
@@ -123,7 +126,7 @@ test("Change version goes back after a bad update, with a snapshot first", async
   await shot(page, "mods-version-held");
 
   await version.selectOption("1.0.0");
-  await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-back 1.1.0 to 1.0.0");
+  await expect(planRow(page, "fp-back")).toContainText("1.1.0 to 1.0.0");
   await expect(page.locator("#plan-steps")).toBeVisible();
   await expect(page.locator(".plan-steps")).toContainText('Take a snapshot labeled "Before mod change".');
   await checkPage(page);

@@ -373,7 +373,8 @@ func TestInstallAppliesThePlanAndOffersUndo(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("plan %d\n%s", code, body)
 	}
-	wantIn(t, "plan", plain(body), "Install alpha in Base?", "Install 2 mods", "beta 1.0.0 (alpha needs it)", "Before mod change", "Download 2 mods")
+	wantIn(t, "plan", plain(body), "Install alpha in Base?", "Install 2 mods", "Before mod change", "Download 2 mods")
+	wantIn(t, "plan rows", planRows(body), "beta 1.0.0 (alpha needs it)")
 	v := planValues(t, body)
 	g.wantRedirectHome(g.post(modsPath(id)+"/plan", v))
 	if err := g.waitResult(id, game.AuditMods); err != nil {
