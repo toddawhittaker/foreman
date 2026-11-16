@@ -66,9 +66,13 @@ func ValidSaveName(name string) bool {
 	return true
 }
 
+// tempSaveSuffix ends the name the game gives a save while it writes it; a
+// killed save leaves the file behind.
+const tempSaveSuffix = ".tmp.zip"
+
 // listSaves returns the saves in a world's root, newest first, with equal
 // times in name order. Anything else in the folder, such as a partial
-// upload, is not a save.
+// upload or the game's unfinished save, is not a save.
 func listSaves(root *os.Root) ([]Save, error) {
 	entries, err := fs.ReadDir(root.FS(), SavesDir)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -79,7 +83,7 @@ func listSaves(root *os.Root) ([]Save, error) {
 	}
 	var out []Save
 	for _, e := range entries {
-		if !e.Type().IsRegular() || !ValidSaveName(e.Name()) {
+		if !e.Type().IsRegular() || !ValidSaveName(e.Name()) || strings.HasSuffix(e.Name(), tempSaveSuffix) {
 			continue
 		}
 		info, err := e.Info()

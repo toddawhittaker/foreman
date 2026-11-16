@@ -58,5 +58,6 @@
   "favorites.import.button": "Importuj ulubiony",
   "favorites.import.done": "Zaimportowano ulubiony „{name}”.",
   "favorites.import.bad": "To nie jest plik ulubionego, który Foreman potrafi odczytać, albo jest uszkodzony. Niczego nie zaimportowano.",
-  "favorites.import.name_taken": "Ulubiony o nazwie z tego pliku już istnieje. Należy zmienić jego nazwę lub go usunąć, a potem zaimportować ponownie."
+  "favorites.import.name_taken": "Ulubiony o nazwie z tego pliku już istnieje. Należy zmienić jego nazwę lub go usunąć, a potem zaimportować ponownie.",
+  "favorites.exchange.show": "Kod wymiany mapy"
 }

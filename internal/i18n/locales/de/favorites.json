@@ -55,5 +55,6 @@
   "favorites.import.button": "Favoriten importieren",
   "favorites.import.done": "Der Favorit „{name}“ wurde importiert.",
   "favorites.import.bad": "Das ist keine Favoritendatei, die Foreman lesen kann, oder sie ist beschädigt. Es wurde nichts importiert.",
-  "favorites.import.name_taken": "Es gibt schon einen Favoriten mit dem Namen aus dieser Datei. Benenne diesen Favoriten um oder lösche ihn, und importiere dann erneut."
+  "favorites.import.name_taken": "Es gibt schon einen Favoriten mit dem Namen aus dieser Datei. Benenne diesen Favoriten um oder lösche ihn, und importiere dann erneut.",
+  "favorites.exchange.show": "Code zum Kartenaustausch"
 }

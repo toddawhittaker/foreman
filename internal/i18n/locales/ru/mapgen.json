@@ -206,5 +206,17 @@
   "mapgen.tip.tree_damage": "Деревья проходят 4 стадии перед уничтожением от загрязнения. Загрязнение больше этого значения запускает процесс перехода к следующей стадии повреждения.",
   "mapgen.unit.minutes": "мин",
   "mapgen.unit.percent": "%",
-  "mapgen.width.label": "Ширина"
+  "mapgen.width.label": "Ширина",
+  "mapgen.exchange.heading": "Строка обмена карты",
+  "mapgen.exchange.label": "Строка обмена карты",
+  "mapgen.exchange.copy": "Скопировать строку обмена карты",
+  "mapgen.exchange.copied": "Строка обмена карты скопирована",
+  "mapgen.exchange.note": "Вставьте её в генератор карт Factorio, чтобы получить такую же карту. Строка содержит только настройки карты, без модов.",
+  "mapgen.exchange.reason.no_seed": "Ключ генератора карты выбирается случайно, а сохранения, из которого его можно прочитать, нет, поэтому строки нет.",
+  "mapgen.exchange.reason.no_map_world": "У этого мира нет файлов настроек карты и пока нет сохранения, поэтому описывать нечего.",
+  "mapgen.exchange.reason.no_map_favorite": "В этом избранном нет настроек карты, поэтому описывать нечего.",
+  "mapgen.exchange.reason.no_settings": "В самом новом сохранении мира нет настроек карты, которые Foreman может прочитать, поэтому строки нет.",
+  "mapgen.exchange.reason.unsupported": "Эта карта создана в Factorio {version}, и для неё Foreman не может создать строку.",
+  "mapgen.exchange.reason.unreadable": "Foreman не смог прочитать самое новое сохранение мира, поэтому строки нет.",
+  "mapgen.exchange.reason.failed": "Foreman не смог создать строку. Обновите страницу, чтобы повторить попытку."
 }

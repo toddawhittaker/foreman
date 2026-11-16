@@ -369,6 +369,7 @@
   "server.error.image_missing": "Das Spiel-Image für die Factorio-Version dieser Welt ist nicht heruntergeladen. Lade das Spiel-Image herunter und starte dann erneut.",
   "server.error.rcon_unreachable": "Das Spiel ist über RCON nicht erreichbar, daher kann es Spieler nicht warnen und nicht vorher speichern. Nutze „Stopp erzwingen“, um es ohne Speichern zu stoppen.",
   "server.error.save_timeout": "Das Spiel hat das Speichern nicht rechtzeitig beendet, deshalb wurde nichts gestoppt und kein Snapshot erstellt. Versuche es erneut oder nutze „Stopp erzwingen“.",
+  "server.error.save_failed": "Das Spiel konnte die Welt nicht speichern, deshalb wurde nichts gestoppt und kein Snapshot erstellt. Den Grund findest du im Protokoll.",
   "server.error.start_failed": "Das Spiel ist nicht gestartet.",
   "server.error.cancelled": "Ein erzwungener Stopp hat das unterbrochen.",
   "server.error.stop_cancelled": "Das Stoppen wurde abgebrochen, deshalb wurde nichts gestoppt oder gespeichert, und das Spiel läuft weiter.",
