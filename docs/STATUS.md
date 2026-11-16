@@ -3638,6 +3638,23 @@ game is always warned and saved.
   standing in for an old browser's Details: the body was 600 px wide on row 2,
   and without the rule it sat on Generate.
 
+### Flaky tests fixed
+
+Three tests failed once or more under heavy machine load during the batch.
+Each was diagnosed:
+
+- **Mod plan adds could fail under contention (a real bug).** With hundreds
+  of writers at once, SQLite's busy timeout does not serve waiting writers in
+  turn, so some adds failed with "database is locked". Mod plan writes now
+  queue in Foreman before they reach the database, and the test fails on any
+  error except "plan full" (#668).
+- **The failed-switch test read the page too early (test only).** The reason
+  sentence is stored a moment after the failed state shows, and the live page
+  sends a fresh copy once it is; the test now waits for it (#668).
+- **The drop-zone upload test timed out (test only).** The shared `dropFile`
+  helper sent a 4 MB file as an array of numbers; it now sends base64, and the
+  test takes about 3.5 s instead of 30 to 56 s (#667).
+
 ### Gaps left
 
 - **A crash in the instant between the catch-up and the stop plan** still
@@ -3656,10 +3673,6 @@ game is always warned and saved.
 - **`link-tab` marks the three "upload on another tab" links** (SPEC 14.6).
   Ordinary navigation links inside Foreman (tabs, breadcrumbs, list rows)
   carry no chevron.
-- **`uploads.spec.ts` "the Mods tab's mod zip and mod-settings.dat uploads
-  are drop zones"** timed out once on a phone project while the machine was
-  heavily loaded, on the batch's base commit too. It passed in every full
-  run of the batch.
 - **Closed from batch 11:** the gaps about other forms showing no defaults
   (#636) and a game back from a crash briefly treated as crashed (#646). The
   batch 11 note that an upload for another tab is a button is replaced by the
