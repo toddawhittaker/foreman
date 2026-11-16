@@ -628,6 +628,30 @@ async function withoutTargetsUnderStickyBars<V extends AxeViolation>(page: Page,
   return kept;
 }
 
+// Opens a page the way a link does and then submits a form there, as a hand-built
+// post, so a test reaches an answer to a post that no link or button leads to.
+export async function postFrom(page: Page, from: string, action: string, fields: [string, string][]) {
+  await page.goto(from);
+  await page.evaluate(
+    ([to, pairs]) => {
+      const form = document.createElement("form");
+      form.method = "post";
+      form.action = to;
+      for (const [name, value] of pairs) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value;
+        form.append(input);
+      }
+      document.body.append(form);
+      form.submit();
+    },
+    [action, fields] as const,
+  );
+  await page.waitForURL((u) => u.pathname === action);
+}
+
 // Every page visited passes these (SPEC 17.1 and 17.2, DESIGN 10).
 export async function checkPage(page: Page) {
   // Let colour transitions end first, so axe never measures a button halfway

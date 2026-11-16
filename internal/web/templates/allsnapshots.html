@@ -11,10 +11,14 @@
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
 </div>
+{{- else if .Removed}}
+<div class="message message--success">
+  <p><strong>{{t "common.label.done"}}</strong> {{t "worlds.snapshots.deleted_many" "count" .Removed}}</p>
+</div>
 {{- end}}
 
 {{- if .Groups}}
-<form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
+<form method="post" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
   {{- /* One shortcut ticks every world's automatic snapshots; the world headings carry only the world and its size, so the page has one such button. */}}
   <div class="group__head">
     <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
