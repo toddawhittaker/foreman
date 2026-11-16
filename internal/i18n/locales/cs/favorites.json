@@ -57,5 +57,6 @@
   "favorites.import.button": "Importovat oblíbenou",
   "favorites.import.done": "Oblíbená položka „{name}“ byla importována.",
   "favorites.import.bad": "Toto není soubor oblíbené položky, který Foreman umí přečíst, nebo je poškozený. Nic nebylo importováno.",
-  "favorites.import.name_taken": "Oblíbená položka s názvem z tohoto souboru už existuje. Je potřeba ji přejmenovat nebo smazat a pak importovat znovu."
+  "favorites.import.name_taken": "Oblíbená položka s názvem z tohoto souboru už existuje. Je potřeba ji přejmenovat nebo smazat a pak importovat znovu.",
+  "favorites.exchange.show": "Řetězec pro výměnu map"
 }

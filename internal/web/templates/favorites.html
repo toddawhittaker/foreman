@@ -1,6 +1,7 @@
 {{define "title"}}{{t "favorites.title"}}{{end}}
 
-{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
+<script src="{{static "copy.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -44,6 +45,11 @@
         </ul>
       </details>
       {{- end}}
+      {{- /* A details block keeps a long string off the list until it is wanted, and works without script. */}}
+      <details class="favorite-exchange">
+        <summary>{{t "favorites.exchange.show"}}</summary>
+        {{template "exchange-string" ($.Page.ExchangeFor .ID)}}
+      </details>
       <div class="actions">
         <a href="{{.GeneratePath}}" class="button" id="act-favorite-generate-{{.ID}}" aria-describedby="favorite-{{.ID}}-name">{{t "favorites.generate"}}</a>
         <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-export-warning">{{t "favorites.export.button"}}</a>

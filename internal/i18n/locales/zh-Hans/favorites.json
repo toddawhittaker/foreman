@@ -51,5 +51,6 @@
   "favorites.import.button": "导入收藏",
   "favorites.import.done": "已导入收藏“{name}”。",
   "favorites.import.bad": "这不是 Foreman 能读取的收藏文件，或文件已损坏。未导入任何内容。",
-  "favorites.import.name_taken": "已有收藏使用此文件中的名称。请重命名或删除该收藏，然后重新导入。"
+  "favorites.import.name_taken": "已有收藏使用此文件中的名称。请重命名或删除该收藏，然后重新导入。",
+  "favorites.exchange.show": "地图共享代码"
 }
