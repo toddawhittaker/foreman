@@ -62,14 +62,14 @@ func TestGenerateMakesAWorldWithNoSaveAndNewMap(t *testing.T) {
 	assertNoStaging(t, m)
 }
 
-func TestGenerateWithoutSettingsWritesNoConfigFilesAndKeepsNilSeed(t *testing.T) {
+func TestGenerateWithoutSettingsWritesOnlyTheNewServerSettingsAndKeepsNilSeed(t *testing.T) {
 	m, _ := newTestManager(t)
 	id, err := m.Generate(context.Background(), NewWorld{Name: "Plain", GameVersion: "1.1.110"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entries, _ := os.ReadDir(filepath.Join(m.Dirs().Worlds, id, ConfigDir)); len(entries) != 0 {
-		t.Errorf("config files written: %v", entries)
+	if entries, _ := os.ReadDir(filepath.Join(m.Dirs().Worlds, id, ConfigDir)); len(entries) != 1 || entries[0].Name() != ServerSettingsFile {
+		t.Errorf("config files written: %v, want only %s", entries, ServerSettingsFile)
 	}
 	meta := readWorldMetaFile(t, m, id)
 	if meta.NewMap == nil || meta.NewMap.Preset != "" || meta.NewMap.Seed != nil {

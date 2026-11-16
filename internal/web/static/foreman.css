@@ -4258,6 +4258,28 @@ form:has(#mode-exchange:checked) .achievements {
   border-block-end: 0;
 }
 
+/* Settings form, defaults (SPEC 11.1): a checkbox with its hints below it,
+   the hints lined up under the label text (a 1.25rem box and the gap). */
+.setting-check {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.setting-check > .hint {
+  margin-block: 0;
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+/* The collapsed Network group keeps its fields clear of the summary. */
+#settings-network details > .field + .field {
+  margin-block-start: var(--space-3);
+}
+
+#settings-gameplay select {
+  max-inline-size: 24rem;
+}
+
 .changes {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

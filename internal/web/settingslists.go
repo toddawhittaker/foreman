@@ -188,7 +188,7 @@ func (h *settingsHandlers) handleWhitelistSwitch(w http.ResponseWriter, r *http.
 		return
 	}
 	if !sw.readOnly.IsZero() {
-		p := sw.formPage(sw.formText(), sw.admins)
+		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
 		p.Error = sw.readOnly
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
@@ -211,7 +211,7 @@ func (h *settingsHandlers) handleWhitelistSwitch(w http.ResponseWriter, r *http.
 			s.log.Error("set whitelist switch", "world", sw.sum.ID, "error", err)
 			status, msg = http.StatusInternalServerError, i18n.M("settings.error.failed")
 		}
-		p := sw.formPage(sw.formText(), sw.admins)
+		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
 		p.Error = msg
 		s.page(w, r, status, u.Username, p)
 		return

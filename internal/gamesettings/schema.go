@@ -118,7 +118,7 @@ func serverSettings(line string) *spec {
 		"minimum_latency_in_ticks", "autosave_interval", "autosave_slots", "afk_autokick_interval",
 		"minimum_segment_size", "minimum_segment_size_peer_count",
 		"maximum_segment_size", "maximum_segment_size_peer_count")
-	if line == Line21 {
+	if HasPauseWhenConnect(line) {
 		f["auto_pause_when_players_connect"] = boolean
 	}
 	return object(f)
