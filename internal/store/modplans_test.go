@@ -184,7 +184,9 @@ func TestModPlanConcurrentAddsStopAtLimit(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = s.AddModPlanName(ctx, "w1", fmt.Sprintf("mod-%02d", i), "u", t0)
+			if err := s.AddModPlanName(ctx, "w1", fmt.Sprintf("mod-%02d", i), "u", t0); err != nil && !errors.Is(err, ErrModPlanFull) {
+				t.Errorf("concurrent add: %v", err)
+			}
 		}()
 	}
 	wg.Wait()

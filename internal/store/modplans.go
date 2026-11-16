@@ -50,6 +50,8 @@ func (s *Store) ModPlan(ctx context.Context, worldID string) ([]ModPlanMod, erro
 func (s *Store) AddModPlanName(ctx context.Context, worldID, name, by string, now time.Time) error {
 	// The insert takes the write lock even when it adds no row, so the check
 	// after it sees the same plan: no remove or add can slip in between.
+	s.planMu.Lock()
+	defer s.planMu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("add to mod plan: %w", err)
@@ -88,6 +90,8 @@ func (s *Store) AddModPlanName(ctx context.Context, worldID, name, by string, no
 // RemoveModPlanName removes a mod from a world's plan. A name that is not
 // there is not an error.
 func (s *Store) RemoveModPlanName(ctx context.Context, worldID, name string) error {
+	s.planMu.Lock()
+	defer s.planMu.Unlock()
 	if _, err := s.db.ExecContext(ctx,
 		"DELETE FROM mod_plan_mods WHERE world_id = ? AND name = ?", worldID, name); err != nil {
 		return fmt.Errorf("remove from mod plan: %w", err)
@@ -98,6 +102,8 @@ func (s *Store) RemoveModPlanName(ctx context.Context, worldID, name string) err
 // ClearModPlan empties a world's plan. Callers use it when the plan is
 // installed and when the world is deleted.
 func (s *Store) ClearModPlan(ctx context.Context, worldID string) error {
+	s.planMu.Lock()
+	defer s.planMu.Unlock()
 	if _, err := s.db.ExecContext(ctx, "DELETE FROM mod_plan_mods WHERE world_id = ?", worldID); err != nil {
 		return fmt.Errorf("clear mod plan: %w", err)
 	}
