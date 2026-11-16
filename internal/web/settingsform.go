@@ -50,6 +50,11 @@ const (
 	commandsNobody   = "false"
 )
 
+// validCommands is true when s is one of the allow_commands choices.
+func validCommands(s string) bool {
+	return s == commandsEveryone || s == commandsAdmins || s == commandsNobody
+}
+
 // readServerValues reads the form's fields from b, which must be one JSON
 // object. A repeated key reads as its last value, as the game does.
 func readServerValues(b []byte) (serverValues, bool) {
@@ -81,7 +86,7 @@ func readServerValues(b []byte) (serverValues, bool) {
 			return strconv.FormatBool(b)
 		}
 		var s string
-		if json.Unmarshal(raw["allow_commands"], &s) == nil && slices.Contains([]string{commandsEveryone, commandsAdmins, commandsNobody}, s) {
+		if json.Unmarshal(raw["allow_commands"], &s) == nil && validCommands(s) {
 			return s
 		}
 		return commandsAdmins
@@ -300,7 +305,7 @@ func applyForm(old []byte, cur serverValues, in postedForm, carried []byte, caps
 			set(f.key, jsonBool(f.posted))
 		}
 	}
-	if in.Commands != cur.Commands && slices.Contains([]string{commandsEveryone, commandsAdmins, commandsNobody}, in.Commands) {
+	if in.Commands != cur.Commands && validCommands(in.Commands) {
 		if in.Commands == commandsAdmins {
 			set("allow_commands", jsonString(commandsAdmins))
 		} else {
@@ -481,9 +486,17 @@ func (p SettingsPage) NetworkOpen() bool {
 func (p *SettingsPage) setPosted(in postedForm) {
 	p.Name, p.Description, p.MaxPlayers = in.Name, in.Description, in.MaxPlayers
 	p.Interval, p.Slots, p.AFK, p.Upload, p.UploadSlots = in.Interval, in.Slots, in.AFK, in.Upload, in.UploadSlots
-	p.Verify, p.IgnoreLimit, p.AutoPause, p.PauseOnJoin = in.Verify, in.IgnoreLimit, in.AutoPause, in.PauseOnJoin
-	p.OnlyAdminsPause, p.NonBlocking = in.OnlyAdminsPause, in.NonBlocking
-	if slices.Contains([]string{commandsEveryone, commandsAdmins, commandsNobody}, in.Commands) {
+	p.Verify, p.IgnoreLimit, p.AutoPause = in.Verify, in.IgnoreLimit, in.AutoPause
+	p.OnlyAdminsPause = in.OnlyAdminsPause
+	// A setting the form does not offer, or shows disabled, is not posted, so
+	// it keeps the file's value instead of showing unticked.
+	if p.HasPauseOnJoin {
+		p.PauseOnJoin = in.PauseOnJoin
+	}
+	if !p.ForkOff {
+		p.NonBlocking = in.NonBlocking
+	}
+	if validCommands(in.Commands) {
 		p.Commands = in.Commands
 	}
 }

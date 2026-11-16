@@ -293,3 +293,72 @@ func TestSettingsClearingAnUnsetNumberChangesNothing(t *testing.T) {
 		t.Errorf("an empty box changed the file:\n%s", rec.Body.String())
 	}
 }
+
+// A setting the form does not offer keeps the file's value on a refused form
+// instead of showing it unticked (SPEC 11.1).
+func TestSettingsPostedFormKeepsSettingsItDoesNotOffer(t *testing.T) {
+	p := SettingsPage{HasPauseOnJoin: false, PauseOnJoin: true, ForkOff: true, NonBlocking: true}
+	p.setPosted(postedForm{Commands: commandsNobody})
+	if !p.PauseOnJoin || !p.NonBlocking {
+		t.Errorf("a hidden or disabled setting was unticked: %+v", p)
+	}
+	if p.Commands != commandsNobody {
+		t.Errorf("commands = %q", p.Commands)
+	}
+	p = SettingsPage{HasPauseOnJoin: true, PauseOnJoin: true, NonBlocking: true}
+	p.setPosted(postedForm{})
+	if p.PauseOnJoin || p.NonBlocking {
+		t.Errorf("an offered setting ignored the posted form: %+v", p)
+	}
+}
+
+func TestSettingsRefusedFormKeepsDisabledForkSaving(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	g.fake.Daemon().SetOS("windows")
+	g.writeConfig(id, world.ServerSettingsFile, strings.Replace(bareFile, `"description"`, `"non_blocking_saving": true, "description"`, 1))
+	form := bareForm()
+	form.Set("max_players", "ten")
+	rep := g.post(settingsPath(id), form)
+	if rep.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status %d", rep.StatusCode)
+	}
+	input := between(rep.body, `<input type="checkbox" id="non-blocking-saving"`, ">")
+	if !strings.Contains(input, " checked") || !strings.Contains(input, " disabled") {
+		t.Errorf("the refused form shows fork saving as %s", input)
+	}
+}
+
+// Docker is asked for its system only when the form page is drawn, and on a
+// preview only when fork saving was changed, so a slow daemon cannot slow
+// every request.
+func TestSettingsAsksDockerForItsSystemOnlyWhenNeeded(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	g.writeConfig(id, world.ServerSettingsFile, bareFile)
+	versions := func() (n int) {
+		for _, c := range g.fake.Daemon().Calls() {
+			if c.Path == "/version" {
+				n++
+			}
+		}
+		return n
+	}
+	g.get(settingsPath(id))
+	drawn := versions()
+	if drawn == 0 {
+		t.Fatal("the form page never asked Docker for its system")
+	}
+	form := bareForm()
+	form.Set("max_players", "9")
+	rep := g.post(settingsPath(id), form)
+	g.post(settingsPath(id)+"/confirm", url.Values{"token": {tokenOf(t, rep.body)}})
+	if got := versions(); got != drawn {
+		t.Errorf("a preview and save asked Docker %d more times", got-drawn)
+	}
+	form.Set("non_blocking_saving", "on")
+	g.post(settingsPath(id), form)
+	if versions() == drawn {
+		t.Error("changing fork saving did not check Docker's system")
+	}
+}

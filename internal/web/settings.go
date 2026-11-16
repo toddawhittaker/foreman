@@ -70,9 +70,10 @@ type settingsWorld struct {
 	adminsBroken  bool
 	running       bool
 	// hostOS is the system Docker reported for the game's host; "" when it
-	// did not say or could not be asked.
-	hostOS string
-	lists  settingsLists
+	// did not say or was not asked. osAsked is true once it was asked.
+	hostOS  string
+	osAsked bool
+	lists   settingsLists
 	// readOnly says why the world cannot be changed; zero when it can.
 	readOnly i18n.Msg
 }
@@ -131,7 +132,6 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 		}
 	}
 	if s.game != nil {
-		sw.hostOS = h.hostOS(r.Context())
 		switch s.game.Status(sum.ID).State {
 		case game.StateRunning, game.StateStarting:
 			sw.running = true
@@ -150,16 +150,26 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 	return sw, true
 }
 
-// hostOS asks Docker which system the game runs on. It answers "" when the
-// daemon does not say or does not answer in time.
-func (h *settingsHandlers) hostOS(ctx context.Context) string {
+// askOS asks Docker which system the game runs on, once. The answer stays ""
+// when there is no server control, the daemon does not say or it does not
+// answer in time.
+func (h *settingsHandlers) askOS(ctx context.Context, sw *settingsWorld) {
+	if sw.osAsked || h.s.game == nil {
+		return
+	}
+	sw.osAsked = true
 	ctx, cancel := context.WithTimeout(ctx, hostOSTimeout)
 	defer cancel()
-	os, err := h.s.game.HostOS(ctx)
-	if err != nil {
-		return ""
+	if os, err := h.s.game.HostOS(ctx); err == nil {
+		sw.hostOS = strings.ToLower(strings.TrimSpace(os))
 	}
-	return strings.ToLower(strings.TrimSpace(os))
+}
+
+// formPage fills the form page for a world. Only a page that draws the form
+// asks Docker for its system, to show fork saving as on or disabled.
+func (h *settingsHandlers) formPage(ctx context.Context, sw settingsWorld, text []byte, names []string) SettingsPage {
+	h.askOS(ctx, &sw)
+	return sw.formPage(text, names)
 }
 
 // formPage fills the form from the settings text and admin names given.
@@ -241,7 +251,7 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 			}
 		}
 	}
-	p := sw.formPage(text, names)
+	p := h.formPage(r.Context(), sw, text, names)
 	if fromEdit {
 		refillLists(&p, c)
 	}
@@ -298,7 +308,7 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	if !sw.readOnly.IsZero() {
-		p := sw.formPage(sw.formText(), sw.admins)
+		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
 		p.Error = sw.readOnly
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
@@ -306,7 +316,7 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 	text := sw.formText()
 	_, readable := readServerValues(text)
 	if !readable {
-		p := sw.formPage(text, sw.admins)
+		p := h.formPage(r.Context(), sw, text, sw.admins)
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
@@ -331,7 +341,12 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 			adminErr = i18n.M("settings.admins.bad_name", "line", bad, "max", gamesettings.MaxNameBytes)
 		}
 	}
-	edit2 := formEdit{BaseText: text, BaseAdmins: sw.admins, In: in, Carried: carried, Names: names}
+	// Only a changed fork saving needs to know Docker's system: the setting is
+	// refused off Linux.
+	if cur, _ := readServerValues(text); in.NonBlocking != cur.NonBlocking {
+		h.askOS(r.Context(), &sw)
+	}
+	edit2 := formEdit{BaseText: text, BaseAdmins: sw.admins, In: in, Caps: sw.caps(), Carried: carried, Names: names}
 	edit2.Bans = postedList(in.Bans, in.BansPosted && sw.lists.bansEditable(), sw.lists.banNames())
 	edit2.Whitelist = postedList(in.Whitelist, in.WhitelistPosted && sw.lists.whitelistEditable(), sw.lists.whitelist)
 	files, errs, err := buildFiles(sw, edit2)
@@ -344,7 +359,7 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 	}
 	errs.BansError, errs.WhitelistError = edit2.Bans.err, edit2.Whitelist.err
 	if errs.has() {
-		p := sw.formPage(text, sw.admins)
+		p := h.formPage(r.Context(), sw, text, sw.admins)
 		p.setPosted(in)
 		p.Admins, p.Edit, p.formErrors = in.Admins, edit, errs
 		p.Bans, p.Whitelist = in.Bans, in.Whitelist
@@ -367,7 +382,10 @@ type formEdit struct {
 	BaseText   []byte
 	BaseAdmins []string
 	In         postedForm
-	Carried    []byte
+	// Caps are the fields the form offered, kept so a change applied again
+	// after the files moved offers the same ones.
+	Caps    formCaps
+	Carried []byte
 	// Names are the admins as posted; used only when In.AdminsPosted.
 	Names []string
 	// Bans and Whitelist are the lists' boxes as posted.
@@ -383,7 +401,7 @@ func buildFiles(sw settingsWorld, e formEdit) ([]pendingFile, formErrors, error)
 		return nil, formErrors{}, errors.New("server-settings.json is not an object")
 	}
 	text := sw.formText()
-	next, errs, err := applyForm(text, shown, e.In, e.Carried, sw.caps())
+	next, errs, err := applyForm(text, shown, e.In, e.Carried, e.Caps)
 	if err != nil || errs.has() {
 		return nil, errs, err
 	}
@@ -453,13 +471,13 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 	token := r.PostFormValue("token")
 	c, ok := h.pending.take(token, u.ID, id)
 	if !ok {
-		p := sw.formPage(sw.formText(), sw.admins)
+		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
 		p.Error = i18n.M("settings.error.expired")
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
 	if !sw.readOnly.IsZero() {
-		p := sw.formPage(sw.formText(), sw.admins)
+		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
 		p.Error = sw.readOnly
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
@@ -555,7 +573,7 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 		s.log.Error("save settings", "path", r.URL.Path, "world", id, "files", files, "error", err)
 		status, msg = http.StatusInternalServerError, i18n.M("settings.error.failed")
 	}
-	p := sw.formPage(sw.formText(), sw.admins)
+	p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
 	p.Error = msg
 	if len(saved) > 0 {
 		p.Error = i18n.M("settings.error.partial", "saved", strings.Join(saved, ", "), "failed", strings.Join(failed, ", "), "reason", msg)
