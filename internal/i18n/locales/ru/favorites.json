@@ -4,7 +4,7 @@
   "favorites.fact.source": "Создано из",
   "favorites.fact.mods": "Моды",
   "favorites.fact.created": "Создано",
-  "favorites.generate": "Сгенерировать из него",
+  "favorites.generate": "Сгенерировать",
   "favorites.empty": "Избранного пока нет. Откройте мир и нажмите «Добавить в избранное» на его странице.",
   "favorites.empty.link": "Перейти к мирам",
   "favorites.list.link": "Всё избранное",
@@ -51,7 +51,6 @@
   "favorites.error.map_damaged": "Настройки карты этого избранного повреждены, поэтому Foreman не может их заполнить. Выберите другое избранное или удалите это и создайте его заново из мира.",
   "favorites.export.button": "Экспортировать",
   "favorites.export.warning": "Экспорт скачивает избранное файлом, чтобы поделиться им или перенести в другой Foreman. В файл входят настройки модов, а мод может хранить там токен или другое личное значение, поэтому делитесь файлом только с теми, кому доверяете.",
-  "favorites.mods.show": "Показать моды",
   "favorites.import.heading": "Импорт избранного",
   "favorites.import.text": "Добавьте избранное из файла, который экспортировал другой Foreman. Моды, которых нет в этом Foreman, всё равно импортируются, и проверка модов в «Сгенерировать» покажет их. Версия игры, которую этот Foreman не поддерживает, при генерации заменяется версией по умолчанию.",
   "favorites.import.label": "Файл избранного",
@@ -59,5 +58,16 @@
   "favorites.import.done": "Избранное «{name}» импортировано.",
   "favorites.import.bad": "Это не файл избранного, который Foreman может прочитать, или он повреждён. Ничего не импортировано.",
   "favorites.import.name_taken": "Избранное с названием из этого файла уже есть. Переименуйте или удалите его, затем импортируйте снова.",
-  "favorites.exchange.show": "Строка обмена карты"
+  "favorites.exchange.show": "Строка обмена карты",
+  "favorites.generate.label": "Сгенерировать мир из {name}",
+  "favorites.no_space_age": "Без Space Age",
+  "favorites.mods.count": {
+    "one": "{count} мод",
+    "few": "{count} мода",
+    "many": "{count} модов",
+    "other": "{count} мода"
+  },
+  "favorites.rename.label": "Новое название",
+  "favorites.rename.button": "Переименовать",
+  "favorites.renamed": "Избранное переименовано: «{name}»."
 }

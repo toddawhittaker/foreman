@@ -4,7 +4,7 @@
   "favorites.fact.source": "Vytvořeno ze světa",
   "favorites.fact.mods": "Mody",
   "favorites.fact.created": "Vytvořeno",
-  "favorites.generate": "Generovat z ní",
+  "favorites.generate": "Generovat",
   "favorites.empty": "Zatím žádné oblíbené. Na stránce světa lze použít „Vytvořit oblíbenou“.",
   "favorites.empty.link": "Přejít na světy",
   "favorites.list.link": "Zobrazit všechny oblíbené",
@@ -51,7 +51,6 @@
   "favorites.error.map_damaged": "Nastavení mapy této oblíbené položky je poškozené, proto ho Foreman nemůže vyplnit. Je potřeba zvolit jinou oblíbenou, nebo tuto smazat a vytvořit znovu ze světa.",
   "favorites.export.button": "Exportovat",
   "favorites.export.warning": "Export stáhne oblíbenou položku jako soubor, který lze sdílet nebo přenést do jiného Foremanu. Obsahuje nastavení modů a mod v nich může uchovávat token nebo jinou soukromou hodnotu, proto je vhodné ho sdílet jen s důvěryhodnými lidmi.",
-  "favorites.mods.show": "Zobrazit mody",
   "favorites.import.heading": "Import oblíbené položky",
   "favorites.import.text": "Oblíbenou položku lze přidat ze souboru, který exportoval jiný Foreman. Mody, které tento Foreman nemá, se importují i tak a ukáže je kontrola modů při generování. Verze hry, kterou tento Foreman nepodporuje, se při generování nahradí výchozí verzí.",
   "favorites.import.label": "Soubor oblíbené položky",
@@ -59,5 +58,16 @@
   "favorites.import.done": "Oblíbená položka „{name}“ byla importována.",
   "favorites.import.bad": "Toto není soubor oblíbené položky, který Foreman umí přečíst, nebo je poškozený. Nic nebylo importováno.",
   "favorites.import.name_taken": "Oblíbená položka s názvem z tohoto souboru už existuje. Je potřeba ji přejmenovat nebo smazat a pak importovat znovu.",
-  "favorites.exchange.show": "Řetězec pro výměnu map"
+  "favorites.exchange.show": "Řetězec pro výměnu map",
+  "favorites.generate.label": "Generovat svět z {name}",
+  "favorites.no_space_age": "Bez Space Age",
+  "favorites.mods.count": {
+    "one": "{count} mod",
+    "few": "{count} mody",
+    "many": "{count} modu",
+    "other": "{count} modů"
+  },
+  "favorites.rename.label": "Nový název",
+  "favorites.rename.button": "Přejmenovat",
+  "favorites.renamed": "Oblíbená položka přejmenována na „{name}“."
 }
