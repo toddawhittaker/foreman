@@ -175,7 +175,7 @@
   "worlds.saves.loads_next": "Loads next",
   "worlds.saves.newer": "A newer version of Foreman wrote this world, so this version cannot change it. You can still download its saves.",
   "worlds.saves.older": "Show older saves",
-  "worlds.saves.time_hint": "Each time is when the save's file was last changed on disk, which can differ a little from when the game saved. An autosave shows the world's name and its time, with the file name beside it.",
+  "worlds.saves.time_hint": "Each time is when the save's file was last changed on disk, which can differ a little from when the game saved. An autosave shows the world's name and its time, with the file name on the line below it.",
   "worlds.saves.title": "Saves of {world}",
   "worlds.saves.upload.button": "Upload save",
   "worlds.saves.upload.heading": "Upload a save",

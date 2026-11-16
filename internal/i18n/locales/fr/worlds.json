@@ -175,7 +175,7 @@
   "worlds.saves.loads_next": "Chargée ensuite",
   "worlds.saves.newer": "Une version plus récente de Foreman a écrit ce monde, donc cette version ne peut pas le modifier. Vous pouvez toujours télécharger ses sauvegardes.",
   "worlds.saves.older": "Afficher les sauvegardes plus anciennes",
-  "worlds.saves.time_hint": "Chaque heure est celle de la dernière modification du fichier de la sauvegarde sur le disque, qui peut différer un peu du moment où le jeu a sauvegardé. Une sauvegarde automatique affiche le nom du monde et son heure, avec le nom du fichier à côté.",
+  "worlds.saves.time_hint": "Chaque heure est celle de la dernière modification du fichier de la sauvegarde sur le disque, qui peut différer un peu du moment où le jeu a sauvegardé. Une sauvegarde automatique affiche le nom du monde et son heure, avec le nom du fichier sur la ligne dessous.",
   "worlds.saves.title": "Sauvegardes de {world}",
   "worlds.saves.upload.button": "Envoyer la sauvegarde",
   "worlds.saves.upload.heading": "Envoyer une sauvegarde",
