@@ -149,7 +149,7 @@ func TestFavoritesListAndDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := hn.get(PathFavorites, withCookie(c)).Body.String()
-	for _, want := range []string{"Club start", "Source", "2.0.77", "<dd>2</dd>", favoriteDeletePath(favID), html.EscapeString(generateFromPath(favID))} {
+	for _, want := range []string{"Club start", "Source", "2.0.77", "2 mods", favoriteDeletePath(favID), html.EscapeString(generateFromPath(favID))} {
 		if !strings.Contains(body, want) {
 			t.Errorf("list lacks %q", want)
 		}
@@ -468,12 +468,87 @@ func TestFavoritesListLinksOnlyKnownMods(t *testing.T) {
 	_, body := renderIn(t, r, pageCase{"favorites", "todd", 200, p}, "en")
 	wantIn(t, "list", body, `<a href="https://mods.factorio.com/mod/k2"`, "Krastorio 2", "Gone mod",
 		// Each fold-out names its favorite, and the import form says what * means.
-		`Show the mods<span class="visually-hidden" translate="no"> Club</span></summary>`,
-		`Map exchange string<span class="visually-hidden" translate="no"> Club</span></summary>`,
+		`Mods<span class="visually-hidden" translate="no"> Club</span></h3>`,
+		`Map exchange string<span class="visually-hidden" translate="no"> Club</span></h3>`,
+		`aria-label="Generate a world from Club"`,
 		`class="hint required-note"`,
 		// Two Clear buttons differ by the field they clear.
 		`Clear<span class="visually-hidden"> Favorite file</span></button>`)
 	if strings.Contains(body, "mods.factorio.com/mod/gone") {
 		t.Error("a mod the portal lacks is linked")
+	}
+}
+
+func favoriteRenamePath(id string) string { return PathFavorites + "/" + id + "/rename" }
+
+func TestFavoriteRename(t *testing.T) {
+	hn, favs := newFavoritesHarness(t)
+	c := hn.signIn()
+	src := favSource(t, hn)
+	favID, err := favs.Make(context.Background(), src, "Club start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := favs.Make(context.Background(), src, "Other"); err != nil {
+		t.Fatal(err)
+	}
+	list := hn.get(PathFavorites, withCookie(c)).Body.String()
+	for _, want := range []string{`action="` + favoriteRenamePath(favID) + `"`, `aria-label="Generate a world from Club start"`, `2.0.77</span> · Space Age · 2 mods`} {
+		if !strings.Contains(html.UnescapeString(list), want) {
+			t.Errorf("list lacks %q", want)
+		}
+	}
+
+	for name, want := range map[string]string{
+		"   ":                    "Enter a name for the favorite.",
+		strings.Repeat("x", 101): "Use at most 100 characters",
+		"other":                  "Another favorite already has this name.",
+	} {
+		rec := hn.post(favoriteRenamePath(favID), url.Values{"name": {name}}, withCookie(c))
+		body := html.UnescapeString(rec.Body.String())
+		if rec.Code != http.StatusBadRequest || !strings.Contains(body, want) || !strings.Contains(body, `id="favorite-`+favID+`-rename-error"`) {
+			t.Errorf("name %q: status %d, want 400 with %q", name, rec.Code, want)
+		}
+		if !strings.Contains(body, `<details class="disclosure favorite__details" open>`) {
+			t.Errorf("name %q: the favorite's Details are not open", name)
+		}
+	}
+	if fav, _, _ := favs.Get(favID); fav.Name != "Club start" {
+		t.Fatalf("a refused rename changed the name to %q", fav.Name)
+	}
+
+	// A change of case to its own name is allowed.
+	rec := hn.post(favoriteRenamePath(favID), url.Values{"name": {"CLUB START"}}, withCookie(c))
+	if want := PathFavorites + "?renamed=" + favID; rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != want {
+		t.Fatalf("case-only rename: %d to %q", rec.Code, rec.Header().Get("Location"))
+	}
+	rec = hn.post(favoriteRenamePath(favID), url.Values{"name": {"Rail world"}}, withCookie(c))
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("rename: %d", rec.Code)
+	}
+	done := html.UnescapeString(hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String())
+	if !strings.Contains(done, `Renamed the favorite to "Rail world".`) {
+		t.Error("no confirmation names the new name")
+	}
+	if fav, _, _ := favs.Get(favID); fav.Name != "Rail world" {
+		t.Errorf("name %q after rename", fav.Name)
+	}
+	exp := hn.get(PathFavorites+"/"+favID+"/export", withCookie(c))
+	if cd := exp.Header().Get("Content-Disposition"); !strings.Contains(cd, "Rail world-favorite.zip") && !strings.Contains(cd, "Rail%20world-favorite.zip") {
+		t.Errorf("export named %q", cd)
+	}
+
+	if rec := hn.post(favoriteRenamePath("ffffffffffffffff"), url.Values{"name": {"New"}}, withCookie(c)); rec.Code != http.StatusNotFound {
+		t.Errorf("missing favorite: %d, want 404", rec.Code)
+	}
+	if rec := hn.post(favoriteRenamePath(favID), url.Values{"name": {"Evil"}}, withCookie(c), withHeader("Origin", "https://evil.example")); rec.Code != http.StatusForbidden {
+		t.Errorf("cross-site rename: %d", rec.Code)
+	}
+	if rec := hn.post(favoriteRenamePath(favID), url.Values{"name": {"Signed out"}}); rec.Code != http.StatusSeeOther || !strings.HasPrefix(rec.Header().Get("Location"), PathSignIn) {
+		t.Errorf("signed out: %d", rec.Code)
+	}
+	// A crafted link puts no words on the page.
+	if strings.Contains(hn.get(PathFavorites+"?renamed=../x", withCookie(c)).Body.String(), "Renamed the favorite") {
+		t.Error("a made-up id showed a confirmation")
 	}
 }

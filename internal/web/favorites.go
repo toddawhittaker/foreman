@@ -24,6 +24,7 @@ const (
 	PathFavoriteDelete = "/favorites/{fav}/delete"
 	PathFavoriteExport = "/favorites/{fav}/export"
 	PathFavoriteImport = "/favorites/import"
+	PathFavoriteRename = "/favorites/{fav}/rename"
 )
 
 // favoriteImportField is the import form's file field.
@@ -49,6 +50,15 @@ type FavoriteRow struct {
 func (f FavoriteRow) DeletePath() string   { return favoriteDeletePath(f.ID) }
 func (f FavoriteRow) GeneratePath() string { return generateFromPath(f.ID) }
 func (f FavoriteRow) ExportPath() string   { return PathFavorites + "/" + f.ID + "/export" }
+func (f FavoriteRow) RenamePath() string   { return PathFavorites + "/" + f.ID + "/rename" }
+
+// FavoriteRename is one favorite's rename field: the name it shows, the
+// error of a refused rename, and whether its Details foldout opens.
+type FavoriteRename struct {
+	Value string
+	Error i18n.Msg
+	Open  bool
+}
 
 // FavoritesPage lists every favorite (SPEC 5.12).
 type FavoritesPage struct {
@@ -57,6 +67,12 @@ type FavoritesPage struct {
 	Deleted string
 	// Imported names the favorite just imported.
 	Imported string
+	// Renamed is the message after a rename.
+	Renamed i18n.Msg
+	// RenameID and RenameValue, RenameError are a refused rename's favorite,
+	// name and error.
+	RenameID, RenameValue string
+	RenameError           i18n.Msg
 	// ImportError says why the last import was refused.
 	ImportError i18n.Msg
 	// Exchanges holds each favorite's map exchange string, by favorite id.
@@ -70,6 +86,20 @@ type FavoritesPage struct {
 // linked to the portal unless the portal is known to lack it.
 func (p FavoritesPage) Mod(m world.FavoriteMod) ModName {
 	return modName(m.Name, m.Title, p.missing == nil || !p.missing(m.Name))
+}
+
+// RenameFor is favorite id's rename field; a refused rename keeps its
+// value and error and opens that favorite's Details.
+func (p FavoritesPage) RenameFor(id string) FavoriteRename {
+	if id == p.RenameID {
+		return FavoriteRename{Value: p.RenameValue, Error: p.RenameError, Open: true}
+	}
+	for _, f := range p.Favorites {
+		if f.ID == id {
+			return FavoriteRename{Value: f.Name}
+		}
+	}
+	return FavoriteRename{}
 }
 
 // ExchangeFor is the map exchange string field of one favorite.
@@ -117,6 +147,7 @@ func (s *server) favoriteRoutes() {
 	s.mux.HandleFunc("POST "+PathWorlds+"/{id}/favorite", s.requireUser(s.handleMakeFavorite))
 	s.mux.HandleFunc("GET "+PathFavoriteDelete, s.requireUser(s.handleFavoriteDeleteForm))
 	s.mux.HandleFunc("POST "+PathFavoriteDelete, s.requireUser(s.handleFavoriteDelete))
+	s.mux.HandleFunc("POST "+PathFavoriteRename, s.requireUser(s.handleFavoriteRename))
 	s.mux.HandleFunc("GET "+PathFavoriteExport, s.requireUser(s.handleFavoriteExport))
 	s.handleUpload("POST "+PathFavoriteImport, favoriteImportLimit, s.requireUser(s.guardUpload(s.handleFavoriteImport)))
 }
@@ -147,7 +178,47 @@ func (s *server) favoritesPage(w http.ResponseWriter, r *http.Request, u store.U
 }
 
 func (s *server) handleFavorites(w http.ResponseWriter, r *http.Request, u store.User) {
-	s.favoritesPage(w, r, u, http.StatusOK, FavoritesPage{})
+	p := FavoritesPage{}
+	if id := r.URL.Query().Get("renamed"); id != "" {
+		if fav, _, err := s.favorites.Get(id); err == nil {
+			p.Renamed = i18n.M("favorites.renamed", "name", fav.Name)
+		}
+	}
+	s.favoritesPage(w, r, u, http.StatusOK, p)
+}
+
+// handleFavoriteRename renames a favorite (SPEC 5.12) with Make's name
+// rules. It writes only favorite.json, so it takes no snapshot.
+func (s *server) handleFavoriteRename(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	fav, ok := s.findFavorite(w, r, u)
+	if !ok {
+		return
+	}
+	name := r.PostFormValue("name")
+	err := s.favorites.Rename(r.Context(), fav.ID, name)
+	if err == nil {
+		http.Redirect(w, r, PathFavorites+"?"+url.Values{"renamed": {fav.ID}}.Encode(), http.StatusSeeOther)
+		return
+	}
+	var msg i18n.Msg
+	switch {
+	case errors.Is(err, world.ErrFavoriteNameEmpty):
+		msg = i18n.M("favorites.error.name_empty")
+	case errors.Is(err, world.ErrFavoriteNameBad):
+		msg = i18n.M("favorites.error.name_bad", "count", world.MaxFavoriteName)
+	case errors.Is(err, world.ErrFavoriteNameTaken):
+		msg = i18n.M("favorites.error.name_taken")
+	case errors.Is(err, fs.ErrNotExist), errors.Is(err, world.ErrFavoriteBroken):
+		s.notFound(w, r, u)
+		return
+	default:
+		s.fail(w, r, "rename favorite", err)
+		return
+	}
+	s.favoritesPage(w, r, u, http.StatusBadRequest, FavoritesPage{RenameID: fav.ID, RenameValue: name, RenameError: msg})
 }
 
 // handleFavoriteExport downloads a favorite as a file (SPEC 5.12).

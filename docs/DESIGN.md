@@ -1623,19 +1623,38 @@ a save", "Upload a mod zip", "Replace mod-settings.dat".
 
 ### 7.11 Favorites: export and import (SPEC 5.12)
 
-The Favorites page lists each favorite with its facts, a folded "Show the
-mods" list and three actions: Generate from it, Export and the trash-icon
-Delete.
+The Favorites page lists each favorite as one closed row, stacked with a
+1 px `--color-line` line between rows, as stacked foldouts are (7.8).
 
-- **Mods by title.** The folded list shows each mod with the `mod-name`
+- **The closed row.** The favorite's name, bold, is the summary of a
+  "Details" foldout (`details.disclosure`), with a muted line of facts
+  under it: game version · Space Age or No Space Age · N mods. Generate
+  sits at the row's right end, on phones too, outside the summary and
+  beside it on the row's grid. Its face is the Worlds tab's globe with a
+  small plus at its lower right and the word "Generate"; its accessible
+  name says which favorite: "Generate a world from {name}". Details shares
+  the row's grid (subgrid), so its body spans the whole row once open.
+- **Inside Details, in order:** made from and made on; the mod list, two
+  columns once there is room; the map exchange string with its Copy
+  button; Rename (a name field and a Rename button on one line); then
+  Export and the red bin Delete on one line, last. The mod list and the
+  exchange string are headed sections, not foldouts of their own.
+- **Rename** posts to `/favorites/{id}/rename` and follows Make's name
+  rules and error text (not empty, at most 100 characters, no name another
+  favorite has, ignoring case; a change of case to its own name is
+  allowed). It rewrites only `favorite.json`. Success returns to the list
+  with "Renamed the favorite to "{name}"."; a refusal shows the list again
+  with that favorite's Details open and the error on its field. It works
+  without script.
+- **Mods by title.** The mod list shows each mod with the `mod-name`
   partial: its title from `info.json`, kept in `favorite.json` when the
   favorite was made, linked to its portal page in a new tab, with its
   pinned version beside it. A favorite made before titles were kept shows
   the mod's name instead.
 - **Export** is a quiet button that downloads `<name>-favorite.zip`: the
   favorite's folder as it is on disk, plus `foreman-favorite.json`, which
-  holds the file's format version. A warning above the list, tied to every
-  Export button, says the file holds the mod settings and that a mod may
+  holds the file's format version. A warning, once at the top of the list and
+  tied to every Export button, says the file holds the mod settings and that a mod may
   keep a token there, so it should be shared only with people trusted.
   Server settings never hold a password (SPEC 14.8).
 - **Import** is its own section under the list, with one drop zone (7.10)
