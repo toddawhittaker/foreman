@@ -9428,3 +9428,69 @@ main:has(> .gate) > * + :not(h1, .gate) {
     min-block-size: var(--target-min);
   }
 }
+
+/* ---- Mods review page rows and offers (M2, SPEC 9.2, 9.15): a change's
+   title link, its version list and its remove cross share one row, which
+   wraps on a phone with the version kept beside its mod. ---- */
+
+.plan-row__text {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-row__name > a.mod-title,
+.plan-offer__name > a.mod-title {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.plan-row__version {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.plan-row__version select {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+/* An offered mod: the tick box is its own target, apart from the title
+   link, so following the link never ticks it. */
+.plan-offer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.plan-offer__box {
+  flex: none;
+  min-inline-size: var(--target-min);
+  min-block-size: var(--target-min);
+  justify-content: center;
+}
+
+.plan-offer__body {
+  display: grid;
+  flex: 1 1 0;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-offer__name,
+.plan-offer__detail p {
+  margin: 0;
+}
+
+.plan-offer__of {
+  color: var(--color-text-muted);
+}
+
+.plan-offer__detail {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+}

@@ -26,10 +26,11 @@ func TestReviewOfTwoModsOneSnapshot(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("plan %d\n%s", code, one)
 	}
-	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", `<p class="plan-label" id="plan-changes" tabindex="-1">Changes:</p>`, "aai-industry 1.0.0",
+	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", `<p class="plan-label" id="plan-changes" tabindex="-1">Changes:</p>`,
 		// A stopped world's install is the primary action (DESIGN 7.1).
 		`class="button button--primary" id="act-apply">Install 1 mod</button>`)
-	if strings.Contains(one, "Remove from plan") {
+	wantIn(t, "plan of one rows", planRows(one), "aai-industry 1.0.0")
+	if strings.Contains(one, "from the plan</span>") {
 		t.Error("the only mod in a plan offers to take it out; Cancel does that")
 	}
 
