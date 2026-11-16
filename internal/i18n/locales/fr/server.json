@@ -342,8 +342,9 @@
   "server.problem.mod_missing_many": "{save} utilise {mods}, mais ce monde n’a pas de fichiers pour eux.",
   "server.problem.mod_disabled_one": "{save} utilise {mods}, mais il est désactivé dans ce monde.",
   "server.problem.mod_disabled_many": "{save} utilise {mods}, mais ils sont désactivés dans ce monde.",
-  "server.problem.mod_gone_one": "Le portail de mods n’a plus {mod} {version}, le jeu des joueurs ne peut donc pas le télécharger et ils ne peuvent pas rejoindre la partie. Continuer quand même ne supprime rien de la sauvegarde.",
+  "server.problem.mod_gone_one": "Le portail de mods n’a plus {mod} (version {version}), le jeu des joueurs ne peut donc pas le télécharger et ils ne peuvent pas rejoindre la partie. Continuer quand même ne supprime rien de la sauvegarde.",
   "server.problem.mod_gone_many": "Le portail de mods n’a plus {mods}, le jeu des joueurs ne peut donc pas les télécharger et ils ne peuvent pas rejoindre la partie. Continuer quand même ne supprime rien de la sauvegarde.",
+  "server.problem.mod_gone_item": "{mod} (version {version})",
   "server.problem.mod_version_first": {
     "one": "{world} ne peut pas fonctionner sous Factorio {version} : {count} de ses mods a été conçu pour Factorio {for}, et le jeu refuse de le charger : {names}.",
     "other": "{world} ne peut pas fonctionner sous Factorio {version} : {count} de ses mods ont été conçus pour Factorio {for}, et le jeu refuse de les charger : {names}."

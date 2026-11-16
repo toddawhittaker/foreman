@@ -356,8 +356,9 @@
   "server.problem.mod_missing_many": "{save} používá {mods}, ale tento svět pro ně nemá soubory.",
   "server.problem.mod_disabled_one": "{save} používá {mods}, ale v tomto světě je vypnutý.",
   "server.problem.mod_disabled_many": "{save} používá mody: {mods}. V tomto světě jsou vypnuté.",
-  "server.problem.mod_gone_one": "Portál modů už nemá {mod} {version}, takže ho hra hráčů nemůže stáhnout a hráči se nemohou připojit. Pokračování přesto z uložené hry nic nesmaže.",
+  "server.problem.mod_gone_one": "Portál modů už nemá {mod} (verze {version}), takže ho hra hráčů nemůže stáhnout a hráči se nemohou připojit. Pokračování přesto z uložené hry nic nesmaže.",
   "server.problem.mod_gone_many": "Portál modů už nemá {mods}, takže je hra hráčů nemůže stáhnout a hráči se nemohou připojit. Pokračování přesto z uložené hry nic nesmaže.",
+  "server.problem.mod_gone_item": "{mod} (verze {version})",
   "server.problem.mod_version_first": {
     "one": "{world} nemůže běžet na Factorio {version}: {count} z jeho modů byl vytvořen pro Factorio {for} a hra ho odmítá načíst: {names}.",
     "few": "{world} nemůže běžet na Factorio {version}: {count} z jeho modů byly vytvořeny pro Factorio {for} a hra je odmítá načíst: {names}.",

@@ -29,7 +29,7 @@ test("a start refused for a mod players cannot download: update first, then star
   await goneWorld(page, foreman, fakeGame!, fakePortal!);
   await page.getByRole("button", { name: "Start server" }).click();
   const box = refusal(page);
-  await expect(box).toContainText("The mod portal no longer has visible-planets 1.5.5, so players' games cannot download it and they cannot join. Going ahead anyway deletes nothing from the save.", live);
+  await expect(box).toContainText("The mod portal no longer has visible-planets (version 1.5.5), so players' games cannot download it and they cannot join. Going ahead anyway deletes nothing from the save.", live);
   await expect(stateBadge(page)).toHaveText("Stopped");
   // The update is the first button; start anyway waits behind its own choice.
   const fix = box.getByRole("link", { name: "Update visible-planets" });
@@ -64,7 +64,7 @@ test("a refusal for a gone mod names it by its title", async ({ page, foreman, f
   writeFileSync(join(foreman.dataDir, "worlds", "base", "mods", "visible-planets_1.5.5.zip"), makeZip({ "visible-planets_1.5.5/info.json": JSON.stringify(info) }));
   await page.getByRole("button", { name: "Start server" }).click();
   const box = refusal(page);
-  await expect(box).toContainText("The mod portal no longer has Visible Planets 1.5.5, so players' games cannot download it", live);
+  await expect(box).toContainText("The mod portal no longer has Visible Planets (version 1.5.5), so players' games cannot download it", live);
   await expect(box).not.toContainText("visible-planets");
   await expect(box.getByRole("link", { name: "Update Visible Planets" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=update&name=visible-planets");
   await checkPage(page);

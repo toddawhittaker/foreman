@@ -179,8 +179,12 @@
 {{define "modsettings-groups" -}}
 {{- range .}}
 <fieldset class="mod-settings-group setting-row">
-  <legend><span class="mod-name">{{template "mod-name" (modName .Mod .Title .Link)}}</span></legend>
+  {{- /* The legend names every control in the group, so it is the title alone; the portal link sits beside it, in the body, outside the legend. */}}
+  <legend>{{template "mod-name" (modName .Mod .Title false)}}</legend>
   <div class="setting-row__body">
+  {{- if .Link}}
+  <p class="hint"><a href="{{portalPath .Mod}}" class="portal-link" target="_blank" rel="noopener noreferrer">{{t "mods.portal.link"}}<span class="visually-hidden"> {{tHTML "mods.portal.for" "mod" (ident (or .Title .Mod))}}</span></a></p>
+  {{- end}}
   {{- range .Fields}}
   {{- $err := not .Error.IsZero}}
   {{- $desc := ""}}{{if .Hint}}{{$desc = print .ID "-hint"}}{{end}}{{if $err}}{{$desc = print $desc " " .ID "-error"}}{{end}}

@@ -331,7 +331,7 @@ func (s *server) titleGroups(id string, lists ...[]SettingGroup) {
 	for _, groups := range lists {
 		for i, g := range groups {
 			if m, ok := by[g.Mod]; ok {
-				groups[i].Title, groups[i].Link = m.Title, !m.Local && !m.BuiltIn && !s.portalLacks(m.Name)
+				groups[i].Title, groups[i].Link = m.Title, !m.Local && !m.BuiltIn && (s.portal == nil || !s.portal.KnownMissing(m.Name))
 			}
 		}
 	}

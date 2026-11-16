@@ -72,9 +72,12 @@ test.describe("edit mod settings", () => {
     await fakePortal!.add("fmtest", "1.0.0", ["base >= 2.0"]);
     await setUp(page, foreman, fakeGame!);
     await openEditor(page);
-    const heading = form(page).locator("fieldset.mod-settings-group legend").first();
-    await expect(heading.locator(".mod-title")).toContainText("FM test");
-    const link = heading.getByRole("link", { name: /FM test/ });
+    // The group is named by the title alone, so no setting is announced with the link's words.
+    const group = form(page).locator("fieldset.mod-settings-group").first();
+    await expect(group).toHaveAccessibleName("FM test");
+    await expect(group.locator("> legend")).not.toContainText("portal");
+    const link = group.getByRole("link", { name: /Mod portal/ });
+    await expect(link).toHaveAccessibleName("Mod portal for FM test, opens in a new tab");
     await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fmtest");
     await expect(link).toHaveAttribute("target", "_blank");
     await expect(form(page).locator("legend", { hasText: /^fmtest$/ })).toHaveCount(0);
@@ -88,9 +91,9 @@ test.describe("edit mod settings", () => {
     await page.goto("/worlds/base/mods");
     await expect(page.locator(".mod-flags").first()).toBeVisible(live);
     await openEditor(page);
-    const heading = form(page).locator("fieldset.mod-settings-group legend").first();
-    await expect(heading).toContainText("FM test");
-    await expect(heading.getByRole("link")).toHaveCount(0);
+    const group = form(page).locator("fieldset.mod-settings-group").first();
+    await expect(group).toHaveAccessibleName("FM test");
+    await expect(group.getByRole("link")).toHaveCount(0);
   });
 
   test("a running world: the countdown is offered, and the game restarts", async ({ page, foreman, fakeGame }) => {

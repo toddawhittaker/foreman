@@ -450,11 +450,11 @@ func problemMsg(p world.Problem) i18n.Msg {
 		if len(p.Gone) == 1 {
 			return i18n.M("server.problem.mod_gone_one", "mod", p.Title(p.Gone[0].Name), "version", p.Gone[0].Version)
 		}
-		named := make([]string, len(p.Gone))
+		items := make([]i18n.Msg, len(p.Gone))
 		for i, g := range p.Gone {
-			named[i] = p.Title(g.Name) + " " + g.Version
+			items[i] = i18n.M("server.problem.mod_gone_item", "mod", p.Title(g.Name), "version", g.Version)
 		}
-		return i18n.M("server.problem.mod_gone_many", "mods", strings.Join(named, ", "))
+		return i18n.M("server.problem.mod_gone_many", "mods", listMsg(items))
 	}
 	// A problem this page does not know yet keeps its English.
 	return i18n.M("server.problem.other", "text", p.Text)

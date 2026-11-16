@@ -66,8 +66,12 @@ func TestModSettingsNamesModsByTitle(t *testing.T) {
 	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
 	body, _ := g.settingsForm(id)
 	wantIn(t, "form", body,
-		`<legend><span class="mod-name"><a href="https://mods.factorio.com/mod/fmtest" class="mod-title" target="_blank" rel="noopener noreferrer"><span translate="no">Test &lt;b&gt;Mod&lt;/b&gt;</span>`,
-		`<legend><span class="mod-name"><span class="mod-title" translate="no">Local Thing</span></span></legend>`)
+		`<legend><span class="mod-title" translate="no">Test &lt;b&gt;Mod&lt;/b&gt;</span></legend>`,
+		`<a href="https://mods.factorio.com/mod/fmtest" class="portal-link" target="_blank" rel="noopener noreferrer">Mod portal<span class="visually-hidden"> for <span class="ident" translate="no">Test &lt;b&gt;Mod&lt;/b&gt;</span>, opens in a new tab</span></a>`,
+		`<legend><span class="mod-title" translate="no">Local Thing</span></legend>`)
+	if strings.Contains(body, "mods.factorio.com/mod/fmlocal") {
+		t.Error("a folder mod is linked")
+	}
 	if strings.Contains(body, "<b>Mod</b>") {
 		t.Error("the title was not escaped")
 	}
@@ -80,7 +84,7 @@ func TestModSettingsNamesAModWithoutATitleByItsName(t *testing.T) {
 	fakeDefs(t, fmtestSettingDefs(t), nil)
 	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
 	body, _ := g.settingsForm(id)
-	wantIn(t, "form", body, `<legend><span class="mod-name"><a href="https://mods.factorio.com/mod/fmtest" class="mod-title" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">fmtest</span>`)
+	wantIn(t, "form", body, `<legend><span class="mod-title ident" translate="no">fmtest</span></legend>`, `href="https://mods.factorio.com/mod/fmtest" class="portal-link"`)
 }
 
 // SPEC 9.15, 17.9: the Done message and the failed download name the mods
@@ -104,7 +108,7 @@ func TestModResultSentencesUseTitles(t *testing.T) {
 func TestPrecheckNamesModsByTitle(t *testing.T) {
 	titles := map[string]string{"fp-gone": "Gone Pack", "fp-off": "Off Pack"}
 	one := world.Problem{Kind: world.ProblemModGone, Titles: titles, Gone: []world.GoneMod{{Name: "fp-gone", Version: "1.0.0", Update: "1.1.0", Title: "Gone Pack"}}}
-	if got := english(problemMsg(one)); !strings.Contains(got, "no longer has Gone Pack 1.0.0") {
+	if got := english(problemMsg(one)); !strings.Contains(got, "no longer has Gone Pack (version 1.0.0)") {
 		t.Errorf("gone: %q", got)
 	}
 	off := world.Problem{Kind: world.ProblemModDisabled, Titles: titles, Mods: []string{"fp-off", "fp-plain"}, Save: "a.zip"}
@@ -135,13 +139,13 @@ func TestModSettingsDoesNotLinkAModThePortalLacks(t *testing.T) {
 	fakeDefs(t, fmtestSettingDefs(t), nil)
 	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
 	body, _ := g.settingsForm(id)
-	wantIn(t, "before the portal said", body, `<a href="https://mods.factorio.com/mod/fmtest" class="mod-title"`)
+	wantIn(t, "before the portal said", body, `<a href="https://mods.factorio.com/mod/fmtest" class="portal-link"`)
 
 	if _, err := client.Mod(t.Context(), "fmtest"); !errors.Is(err, modportal.ErrNotOnPortal) {
 		t.Fatalf("the fake portal has the mod, so the test cannot say it lacks it: %v", err)
 	}
 	body, _ = g.settingsForm(id)
-	wantIn(t, "after", body, `<span class="mod-title" translate="no">Test Mod</span>`)
+	wantIn(t, "after", body, `<legend><span class="mod-title" translate="no">Test Mod</span></legend>`)
 	if strings.Contains(body, "mods.factorio.com/mod/fmtest") {
 		t.Error("a mod the portal lacks is linked")
 	}

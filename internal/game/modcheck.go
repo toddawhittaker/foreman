@@ -57,28 +57,44 @@ func (c *Controller) portalCheck(ctx context.Context, id string, check world.Pre
 		check.PortalUnchecked = true
 		return check
 	}
-	if p, ok := goneProblem(flags, c.worlds.InstalledTitles(id)); ok {
+	if p, ok := goneProblem(flags, func() map[string]string { return c.titlesOf(id, check) }); ok {
 		check.Problems = append(check.Problems, p)
 	}
 	return check
 }
 
+// titlesOf is the installed mods' titles. The check's own problems already
+// carry them, read once from the mods folder; only a check with no other
+// problem reads the folder here.
+func (c *Controller) titlesOf(id string, check world.PreCheck) map[string]string {
+	for _, p := range check.Problems {
+		if p.Titles != nil {
+			return p.Titles
+		}
+	}
+	return c.worlds.InstalledTitles(id)
+}
+
 // goneProblem is the problem for the mods whose installed version the
 // portal no longer offers, if any. Mods not on the portal at all are left
 // out: players need their files from the admin whatever Foreman does.
-func goneProblem(flags []mods.Flag, titles map[string]string) (world.Problem, bool) {
-	p := world.Problem{Kind: world.ProblemModGone, StartAnyway: true, Titles: titles}
+func goneProblem(flags []mods.Flag, titles func() map[string]string) (world.Problem, bool) {
+	p := world.Problem{Kind: world.ProblemModGone, StartAnyway: true}
 	var named []string
 	for _, f := range flags {
 		if f.Code != mods.FlagVersionGone {
 			continue
 		}
 		p.Mods = append(p.Mods, f.Name)
-		p.Gone = append(p.Gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update, Title: titles[f.Name]})
+		p.Gone = append(p.Gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update})
 		named = append(named, f.Name+" "+f.Version)
 	}
 	if len(p.Mods) == 0 {
 		return world.Problem{}, false
+	}
+	p.Titles = titles()
+	for i := range p.Gone {
+		p.Gone[i].Title = p.Titles[p.Gone[i].Name]
 	}
 	p.Text = fmt.Sprintf("The mod portal no longer offers %s, so players' games cannot download it to join.", strings.Join(named, ", "))
 	return p, true
