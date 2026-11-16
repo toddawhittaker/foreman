@@ -19,6 +19,7 @@ import (
 
 // Run watches every game container this install made until ctx ends: it
 // re-attaches to games already running when Foreman starts, polls Docker
+// and follows its out-of-memory events where the proxy allows them
 // (SPEC 8.7), follows each game's log, and stops a crash-looping game
 // (SPEC 8.9). It never stops or removes a game when Foreman starts or
 // stops (SPEC 3.8). Call it once.
@@ -27,6 +28,7 @@ func (c *Controller) Run(ctx context.Context) {
 	// Not waited for at shutdown: a notifier that hangs must not hold
 	// Foreman up (SPEC 8.12).
 	go c.deliverEvents()
+	c.spawn(func() { c.watchOOM(c.ctx) })
 	t := time.NewTicker(c.pollInterval)
 	defer t.Stop()
 	for {
