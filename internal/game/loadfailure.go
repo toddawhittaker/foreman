@@ -323,7 +323,9 @@ func cut(s string, n int) string {
 // agrees with the error.
 func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid string) *StartError {
 	f, _ := c.readLoadLog(ctx, cid)
-	oom := c.oomKilled(ctx, cid)
+	oom, finished := c.oomKilled(ctx, cid)
+	// With events live, the oom event for this exit comes before its die.
+	c.awaitDie(ctx, w, cid, finished)
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	reason := f.reason(w.redact)
@@ -345,12 +347,16 @@ func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid s
 
 // oomKilled reports whether Docker says the container's last exit was the
 // kernel's out-of-memory kill. Docker clears the flag when it restarts the
-// container, so a kill it has already restarted reads false.
-func (c *Controller) oomKilled(ctx context.Context, cid string) bool {
+// container, so a kill it has already restarted reads false. It also gives
+// Docker's FinishedAt of that exit, zero when the look failed.
+func (c *Controller) oomKilled(ctx context.Context, cid string) (bool, time.Time) {
 	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
 	defer cancel()
 	cont, err := c.docker.InspectContainer(ctx, cid)
-	return err == nil && cont.State.OOMKilled
+	if err != nil {
+		return false, time.Time{}
+	}
+	return cont.State.OOMKilled, cont.State.FinishedAt
 }
 
 // readLoadLog reads the newest lines of the container's log once, within
