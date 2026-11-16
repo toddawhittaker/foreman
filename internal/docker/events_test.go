@@ -32,8 +32,13 @@ func TestEventsRefusedByTheProxy(t *testing.T) {
 	if docker.EventsRefused(&docker.UnreachableError{Target: "x", Err: errors.New("down")}) {
 		t.Error("an unreachable daemon is not a refusal")
 	}
-	if docker.EventsRefused(&docker.APIError{Status: 500}) {
-		t.Error("a 500 is not a refusal")
+	if !docker.EventsRefused(&docker.APIError{Status: 401}) {
+		t.Error("a 401 is a refusal")
+	}
+	for _, st := range []int{400, 404, 429, 500, 502} {
+		if docker.EventsRefused(&docker.APIError{Status: st}) {
+			t.Errorf("a %d is not a refusal for good", st)
+		}
 	}
 }
 

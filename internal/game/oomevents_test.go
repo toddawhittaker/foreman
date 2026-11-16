@@ -176,3 +176,42 @@ func TestDockerEventOrdering(t *testing.T) {
 		t.Error("a look at the same exit overruled the event")
 	}
 }
+
+// SPEC 8.7: the start can see the log end before Docker's events reach
+// Foreman; Docker sends oom before die. With the stream live, the start
+// waits for the die of the exit it saw, and so still names the kill.
+func TestStartWaitsForTheDieEventOfTheExitItSaw(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	d := r.game.Daemon()
+	d.AllowEvents(true)
+	id := r.newWorld("Late events")
+	r.start(id)
+	cid := r.container(id).ID
+	w := r.c.world(id)
+	watch(t, r.c)
+	eventually(t, func() bool { return r.c.eventsLive.Load() }, "the event stream to open")
+
+	d.HoldEvents(true)
+	d.Exit(cid, 137, true)
+	d.Restart(cid) // Docker clears the flag
+	got := make(chan *StartError, 1)
+	go func() { got <- r.c.stoppedWhileLoading(context.Background(), w, cid) }()
+	time.Sleep(300 * time.Millisecond)
+	d.HoldEvents(false)
+	if serr := <-got; serr.Reason.Kind != crashreasons.OutOfMemory {
+		t.Errorf("start error reason %q, want %q", serr.Reason.Kind, crashreasons.OutOfMemory)
+	}
+}
+
+// Without a live stream the start does not wait.
+func TestStartDoesNotWaitForDieWithoutEvents(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("No events")
+	r.start(id)
+	cid := r.container(id).ID
+	began := time.Now()
+	r.c.awaitDie(context.Background(), r.c.world(id), cid, time.Now())
+	if time.Since(began) > 100*time.Millisecond {
+		t.Errorf("waited %v with no event stream", time.Since(began))
+	}
+}

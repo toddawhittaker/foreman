@@ -90,10 +90,10 @@ func (s *EventStream) Next() (Event, error) {
 	}
 }
 
-// EventsRefused reports whether err is the daemon or a socket proxy
-// refusing the event stream, as a proxy with EVENTS=0 does, rather than a
-// failure that a later try could get past.
+// EventsRefused reports whether err is a socket proxy refusing the event
+// stream for good, as one with EVENTS=0 does (401 or 403). Any other
+// failure may pass, so the caller tries again.
 func EventsRefused(err error) bool {
 	var api *APIError
-	return errors.As(err, &api) && api.Status >= 400 && api.Status < 500 && api.Status != http.StatusTooManyRequests
+	return errors.As(err, &api) && (api.Status == http.StatusUnauthorized || api.Status == http.StatusForbidden)
 }

@@ -24,6 +24,15 @@ func (d *Daemon) AllowEvents(on bool) {
 	d.eventsOn = on
 }
 
+// HoldEvents keeps open event streams from sending new events until it is
+// turned off again, as a busy daemon delivers them late.
+func (d *Daemon) HoldEvents(on bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.eventsHeld = on
+	d.broadcast()
+}
+
 // CutEvents ends every open event stream, as a proxy that drops an idle
 // connection does.
 func (d *Daemon) CutEvents() {
@@ -85,8 +94,11 @@ func (d *Daemon) eventStream(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	for {
 		d.mu.Lock()
-		evs := append([]event(nil), d.events[next:]...)
-		next = len(d.events)
+		var evs []event
+		if !d.eventsHeld {
+			evs = append(evs, d.events[next:]...)
+			next = len(d.events)
+		}
 		ended := d.eventsCut != cut
 		changed := d.changed
 		d.mu.Unlock()

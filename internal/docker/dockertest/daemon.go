@@ -97,6 +97,7 @@ type Daemon struct {
 	// stream them, and eventsCut counts CutEvents calls.
 	events       []event
 	eventsOn     bool
+	eventsHeld   bool
 	eventsCut    int
 	eventStreams int
 	eventsOpen   int

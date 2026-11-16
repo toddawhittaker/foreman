@@ -520,7 +520,7 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	w.startedAt = time.Time{}
 	w.usage = usage{}
 	w.expectRunning = false
-	w.oomKilled, w.exitAt = false, time.Time{}
+	w.oomKilled, w.exitAt, w.lastDie = false, time.Time{}, time.Time{}
 	w.crashLog, w.runStarts = nil, nil
 	return rc
 }
