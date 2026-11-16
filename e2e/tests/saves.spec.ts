@@ -413,6 +413,8 @@ test("autosaves show the world's name and time, newest first, and keep the file 
   const newest = rows.nth(0);
   const link = newest.locator('a[href$="/saves/_autosave2.zip"]');
   await expect(link).toContainText("Family base, ");
+  // What is drawn, not just the text: the name, a comma and a space, then the time on the same line.
+  expect(await link.innerText()).toMatch(/^Family base, \S/);
   await expect(link.locator("time")).toHaveAttribute("datetime", "2026-11-03T14:25:07Z");
   await expect(newest.locator(".save-file")).toHaveText("_autosave2.zip");
   await expect(newest).toContainText("Loads next");

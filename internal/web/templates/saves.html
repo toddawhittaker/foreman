@@ -49,7 +49,7 @@
       {{- range .Rows}}
       <tr role="row">
         <td role="cell"><div class="save-name">
-          {{- if .WorldName}}<a href="{{.Href}}">{{.WorldName}}, {{template "when" .Saved}}</a> <span class="save-file">{{.Name}}</span>{{else}}<a href="{{.Href}}">{{.Name}}</a>{{end}}{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</div></td>
+          {{- if .WorldName}}{{/* The link is a flex box (a 44 px target), which drops the space between its children; the span keeps the name and the time as one run of text. */}}<a href="{{.Href}}"><span>{{.WorldName}}, {{template "when" .Saved}}</span></a> <span class="save-file">{{.Name}}</span>{{else}}<a href="{{.Href}}">{{.Name}}</a>{{end}}{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</div></td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
         <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
         {{- if not $.Page.Newer}}
