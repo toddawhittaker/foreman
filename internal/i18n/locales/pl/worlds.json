@@ -151,6 +151,7 @@
   "worlds.list.deleted_kept": "Usunięto świat {name}. Jego migawki są w sekcji „Usunięte światy”.",
   "worlds.list.deleted_link": "Przejdź do usuniętych światów",
   "worlds.list.empty": "Nie ma jeszcze żadnych światów. Aby utworzyć pierwszy świat, należy zaimportować folder z zapisami lub przesłać plik zapisu.",
+  "worlds.list.upload_save": "Prześlij zapis",
   "worlds.list.import": "Importuj świat",
   "worlds.list.server_link": "Zobacz stronę serwera",
   "worlds.list.switch": "Przełącz",

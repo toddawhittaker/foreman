@@ -146,6 +146,7 @@
   "worlds.list.deleted_kept": "{name} wurde gelöscht. Die Snapshots der Welt findest du unter „Gelöschte Welten“.",
   "worlds.list.deleted_link": "Zu den gelöschten Welten",
   "worlds.list.empty": "Noch keine Welten. Importiere einen Ordner mit Speicherständen oder lade einen Speicherstand hoch, um deine erste Welt anzulegen.",
+  "worlds.list.upload_save": "Einen Speicherstand hochladen",
   "worlds.list.import": "Welt importieren",
   "worlds.list.server_link": "Zur Server-Seite",
   "worlds.list.switch": "Wechseln",

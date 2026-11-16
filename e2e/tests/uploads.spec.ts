@@ -4,7 +4,8 @@ import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 // DESIGN 7.10: every upload uses the drop zone, and a file another tab owns
-// is reached by a button, never a link. The zone's own behavior is tried in
+// is reached by a link that ends in a chevron, never a button (DESIGN 7.1).
+// The marker itself is tried in links.spec.ts. The zone's own behavior is tried in
 // dropzone.spec.ts; the server's checks (SPEC 14.6) in the page specs.
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
 
@@ -38,7 +39,7 @@ test("the Saves tab upload is a drop zone that uploads the dropped save", async 
   expect(readdirSync(join(foreman.dataDir, "worlds", "base", "saves")).sort()).toEqual(["base.zip", "dropped.zip"]);
 });
 
-test("a world with no save offers the Saves tab as a button from the Mods tab", async ({ page, foreman, fakeGame }) => {
+test("a world with no save offers the Saves tab as a link from the Mods tab", async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!);
   rmSync(join(foreman.dataDir, "worlds", "base", "saves", "base.zip"));
   await page.goto("/worlds/base/mods");
@@ -46,8 +47,8 @@ test("a world with no save offers the Saves tab as a button from the Mods tab", 
   await expect(page.getByText("This world has no save yet, so there is nothing to match.")).toBeVisible();
   const button = page.locator("#act-upload-save");
   await expect(button).toHaveText("Upload a save");
-  await expect(button).toHaveClass(/button/);
-  // On a phone every button is a 44 px target.
+  await expect(button).toHaveClass("link-tab");
+  // On a phone the link is still a 44 px target.
   if ((page.viewportSize()?.width ?? 1280) < 600) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await checkPage(page);
   await shot(page, "sync");
@@ -56,12 +57,12 @@ test("a world with no save offers the Saves tab as a button from the Mods tab", 
   await expect(page.locator("#save-file")).toBeVisible();
 });
 
-test("the empty Worlds list offers the upload as a button to the Import page", async ({ page }) => {
+test("the empty Worlds list offers the upload as a link to the Import page", async ({ page }) => {
   await createAdmin(page);
   await page.goto("/worlds");
   const button = page.locator("#act-upload-save");
   await expect(button).toHaveText("Upload a save");
-  await expect(button).toHaveClass(/button/);
+  await expect(button).toHaveClass("link-tab");
   if ((page.viewportSize()?.width ?? 1280) < 600) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await checkPage(page);
   await button.click();

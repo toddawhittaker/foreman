@@ -437,6 +437,45 @@ test("an autosave downloads under the world's name and its save time", async ({ 
   expect(readFileSync(await download.path()).equals(newSave)).toBe(true);
 });
 
+// #659, DESIGN 8.3: the file name is on its own line under the label, so every
+// file name starts at the label's left edge however long the label is. The
+// project's viewport sets desktop or 320 px.
+test("every autosave's file name starts at the left edge of its label, on a line of its own", async ({ page, foreman }) => {
+  await createAdmin(page);
+  // Times with one and two digits in the hour, so the labels differ in width.
+  seedWorld(foreman, "family-base", { name: "Family base" }, [
+    { name: "_autosave1.zip", content: oldSave, at: "2026-11-03T08:05:05Z" },
+    { name: "_autosave2.zip", content: newSave, at: "2026-11-03T10:37:07Z" },
+    { name: "_autosave3.zip", content: newSave, at: "2026-11-03T22:48:09Z" },
+    { name: "named.zip", content: oldSave, at: "2026-11-01T09:00:00Z" },
+  ]);
+  await page.goto("/worlds/family-base/saves");
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(4);
+  const labels = new Set<number>();
+  for (const name of ["_autosave1.zip", "_autosave2.zip", "_autosave3.zip"]) {
+    const row = rows.filter({ has: page.locator(`a[href$="/saves/${name}"]`) });
+    const link = row.locator("a").first();
+    const file = row.locator(".save-file");
+    await expect(file).toHaveText(name);
+    const l = (await link.boundingBox())!;
+    const f = (await file.boundingBox())!;
+    expect(Math.abs(f.x - l.x), `${name} starts at the label's left edge`).toBeLessThanOrEqual(0.5);
+    expect(f.y, `${name} is under the label`).toBeGreaterThanOrEqual(l.y + l.height - 0.5);
+    labels.add(Math.round((await row.locator(".save-label").boundingBox())!.width));
+  }
+  // On a desktop the labels really are different widths, so the check above could fail
+  // (at 320 px a label wraps to the column's width).
+  if ((page.viewportSize()?.width ?? 1280) > 600) expect(labels.size).toBeGreaterThan(1);
+  // The label's digits are tabular, as in the other time cells.
+  expect(await rows.first().locator(".save-label").evaluate((el) => getComputedStyle(el).fontVariantNumeric)).toContain("tabular-nums");
+  // The badge is never between the label and the file name.
+  const badge = (await rows.first().locator(".badge").boundingBox())!;
+  const lastFile = (await rows.first().locator(".save-file").boundingBox())!;
+  expect(badge.y + badge.height).toBeLessThanOrEqual(lastFile.y + 0.5);
+  await checkPage(page);
+});
+
 test.describe("autosave rows at phone width", () => {
   test.use({ viewport: { width: 320, height: 700 } });
   test("a long world name and 200% text still fit", async ({ page, foreman }) => {
