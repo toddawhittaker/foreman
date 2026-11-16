@@ -240,12 +240,15 @@ type Controller struct {
 	// previewWaiting holds a token for each caller waiting for the slot.
 	previewWaiting chan struct{}
 
-	ctx     context.Context // ends when Run returns; log followers live in it
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	spawnMu sync.Mutex
-	closed  bool          // Run has returned; no goroutine may start
-	poke    chan struct{} // asks the monitor to look now
+	// eventsLive is whether Docker's event stream is open now, so a die
+	// event can be waited for (SPEC 8.7, 14.3).
+	eventsLive atomic.Bool
+	ctx        context.Context // ends when Run returns; log followers live in it
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
+	spawnMu    sync.Mutex
+	closed     bool          // Run has returned; no goroutine may start
+	poke       chan struct{} // asks the monitor to look now
 
 	// events wait here for the notifier (SPEC 8.12); eventsFull is set once
 	// an event was dropped, so the drop is logged once. eventsFrom is when
@@ -373,6 +376,9 @@ type worldRun struct {
 	// back in game clears oomKilled and moves exitAt to that line's time.
 	oomKilled bool
 	exitAt    time.Time
+	// lastDie is Docker's time of the newest die event for this container,
+	// zero without one (SPEC 8.7).
+	lastDie time.Time
 	// crashLog is the container's log as read when a look found Docker had
 	// restarted the game: the runs between two looks can end before the
 	// follower reads them (SPEC 8.7, ADR 0016). nil until then, and after

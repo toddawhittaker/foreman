@@ -49,7 +49,7 @@ services:
       CONTAINERS: "1"
       IMAGES: "1"
       POST: "1"
-      EVENTS: "0"
+      EVENTS: "1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     # Never put the sidecar on this network: the game could reach Docker.

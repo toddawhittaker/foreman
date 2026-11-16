@@ -138,7 +138,7 @@ func (d *Daemon) markExited(c *Container, code int) {
 	for name := range c.Networks {
 		c.Networks[name] = ""
 	}
-	d.broadcast()
+	d.recordEvent(c, "die")
 }
 
 func (d *Daemon) list(w http.ResponseWriter, r *http.Request) {
