@@ -309,10 +309,10 @@ func (s *server) handleSnapshotDelete(w http.ResponseWriter, r *http.Request, u 
 	s.page(w, r, http.StatusConflict, u.Username, p)
 }
 
-// deletedQuery names the deleted snapshots for the page the delete returns
-// to, which says what went from their folder names alone.
-func deletedQuery(names ...string) string {
-	return url.Values{"deleted": names}.Encode()
+// deletedQuery names the deleted snapshot for the page the delete returns
+// to, which says what went from its folder name alone.
+func deletedQuery(name string) string {
+	return url.Values{"deleted": {name}}.Encode()
 }
 
 // removedQuery tells a snapshot list how many snapshots a bulk delete removed,

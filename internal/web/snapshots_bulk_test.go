@@ -345,6 +345,13 @@ func TestBulkDeleteRefusesBadRequests(t *testing.T) {
 	if rec := hn.post(PathSnapshotsDelete, form, withCookie(c), withHeader("Sec-Fetch-Site", "cross-site")); rec.Code != http.StatusForbidden {
 		t.Errorf("cross-site: %d", rec.Code)
 	}
+	// The selection is never read from an address, so a GET deletes nothing.
+	if rec := hn.get(PathSnapshotsDelete+"?"+form.Encode(), withCookie(c)); rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET: %d", rec.Code)
+	}
+	if list, _ := hn.worlds.Snapshots(id); len(list) != 2 {
+		t.Errorf("a GET removed a snapshot: %+v", list)
+	}
 	hn.wantRedirect(hn.post(PathSnapshotsDelete, form), PathSignIn)
 	for name, bad := range map[string]url.Values{
 		"nothing ticked": {},
