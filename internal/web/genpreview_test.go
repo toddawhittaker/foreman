@@ -179,10 +179,10 @@ func TestPreviewDownloadNamesAreSafe(t *testing.T) {
 		{"...", "map-7-nauvis"},
 	}
 	for _, tc := range cases {
-		if got := previewFileName(tc.world, "7", "nauvis"); got != tc.want {
+		if got := downloadStem(tc.world, "7", "nauvis"); got != tc.want {
 			t.Errorf("%q: %q, want %q", tc.world, got, tc.want)
 		}
-		h := attachment(previewFileName(tc.world, "7", "nauvis") + ".png")
+		h := attachment(downloadStem(tc.world, "7", "nauvis") + ".png")
 		if strings.ContainsAny(h, "\r\n/\\") || strings.Count(h, `"`) != 2 || strings.Count(h, ";") != 2 {
 			t.Errorf("%q: header %q", tc.world, h)
 		}

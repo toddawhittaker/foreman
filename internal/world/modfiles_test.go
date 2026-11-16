@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -123,15 +124,25 @@ func TestShareableModsPrefersAZipOverAFolderOfTheSameVersion(t *testing.T) {
 	}
 }
 
+// openModFile lists the world's mods and opens one zip, as the public
+// download does.
+func openModFile(m *Manager, id, file string) (*os.File, fs.FileInfo, error) {
+	share, err := m.ModShare(id)
+	if err != nil {
+		return nil, nil, err
+	}
+	return share.Open(file)
+}
+
 // SPEC 14.18: the file must equal a listed zip's name byte for byte.
-func TestOpenModFileOpensOnlyAListedZip(t *testing.T) {
+func TestModShareOpenOpensOnlyAListedZip(t *testing.T) {
 	m, id, dir := sharedWorld(t, "alpha_1.0.0.zip", "alpha_2.0.0.zip", "beta_1.0.0.zip")
 	writeFile(t, filepath.Join(dir, ModsDir, ModListFile),
 		`{"mods":[{"name":"alpha","enabled":true},{"name":"beta","enabled":false}]}`)
 	writeFile(t, filepath.Join(dir, "saves", "a.zip"), "save")
 	writeFile(t, filepath.Join(dir, ModsDir, "notes.txt"), "text")
 
-	f, info, err := m.OpenModFile(id, "alpha_2.0.0.zip")
+	f, info, err := openModFile(m, id, "alpha_2.0.0.zip")
 	if err != nil {
 		t.Fatalf("open the offered zip: %v", err)
 	}
@@ -160,29 +171,29 @@ func TestOpenModFileOpensOnlyAListedZip(t *testing.T) {
 		"..",                          //
 		"alpha_2.0.0.zip/../beta.zip", //
 	} {
-		if f, _, err := m.OpenModFile(id, name); !errors.Is(err, ErrModFileNotFound) {
+		if f, _, err := openModFile(m, id, name); !errors.Is(err, ErrModFileNotFound) {
 			if f != nil {
 				_ = f.Close()
 			}
-			t.Errorf("OpenModFile(%q) = %v, want not found", name, err)
+			t.Errorf("openModFile(%q) = %v, want not found", name, err)
 		}
 	}
 }
 
 // SPEC 14.18: another world's id, or one that is not an id, finds nothing.
-func TestOpenModFileOtherWorldAndBadIDs(t *testing.T) {
+func TestModShareOpenOtherWorldAndBadIDs(t *testing.T) {
 	m, id, _ := sharedWorld(t, "alpha_1.0.0.zip")
 	other, err := m.Create(context.Background(), "Other", "2.0.72", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := m.OpenModFile(other, "alpha_1.0.0.zip"); !errors.Is(err, ErrModFileNotFound) {
+	if _, _, err := openModFile(m, other, "alpha_1.0.0.zip"); !errors.Is(err, ErrModFileNotFound) {
 		t.Errorf("another world's list: %v, want not found", err)
 	}
 	for _, bad := range []string{"../" + id, "", "A", id + "/../" + other, "nope"} {
-		if f, _, err := m.OpenModFile(bad, "alpha_1.0.0.zip"); err == nil {
+		if f, _, err := openModFile(m, bad, "alpha_1.0.0.zip"); err == nil {
 			_ = f.Close()
-			t.Errorf("OpenModFile(world %q) opened a file", bad)
+			t.Errorf("openModFile(world %q) opened a file", bad)
 		}
 	}
 }
@@ -237,5 +248,51 @@ func TestModShareOpenRefusesALinkAndASwappedWorld(t *testing.T) {
 			_ = f.Close()
 		}
 		t.Errorf("a swapped world: %v, want not found", err)
+	}
+}
+
+// SPEC 14.18: a mods folder that is a link, even to a folder inside the
+// world, lists nothing and serves nothing, whether it was a link when the
+// list was read or became one after.
+func TestModShareRefusesAModsFolderThatIsALink(t *testing.T) {
+	m, id, dir := sharedWorld(t, "alpha_1.0.0.zip")
+	share, err := m.ModShare(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(share.Mods) != 1 {
+		t.Fatalf("listed %+v, want alpha", share.Mods)
+	}
+
+	saves := filepath.Join(dir, "saves")
+	writeFile(t, filepath.Join(saves, "alpha_1.0.0.zip"), "a save, not a mod")
+	writeFile(t, filepath.Join(saves, "beta_1.0.0.zip"), "another save")
+	if err := os.RemoveAll(filepath.Join(dir, ModsDir)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("saves", filepath.Join(dir, ModsDir)); err != nil {
+		t.Fatal(err)
+	}
+
+	if f, _, err := share.Open("alpha_1.0.0.zip"); !errors.Is(err, ErrModFileNotFound) {
+		if f != nil {
+			_ = f.Close()
+		}
+		t.Errorf("a list read before the swap: %v, want not found", err)
+	}
+	fresh, err := m.ModShare(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fresh.Mods) != 0 {
+		t.Errorf("a linked mods folder is listed: %+v", fresh.Mods)
+	}
+	for _, name := range []string{"alpha_1.0.0.zip", "beta_1.0.0.zip"} {
+		if f, _, err := fresh.Open(name); !errors.Is(err, ErrModFileNotFound) {
+			if f != nil {
+				_ = f.Close()
+			}
+			t.Errorf("Open(%q) through a linked folder: %v, want not found", name, err)
+		}
 	}
 }

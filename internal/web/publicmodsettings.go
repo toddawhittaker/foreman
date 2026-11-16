@@ -60,7 +60,7 @@ func (s *server) handlePublicModsSet(w http.ResponseWriter, r *http.Request, u s
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	if err := s.setPublicMods(r.Context(), v == PublicModsOn, u.Username); err != nil {
+	if err := s.setPublicMods(r.Context(), v, u.Username); err != nil {
 		s.fail(w, r, "save the public mods setting", err)
 		return
 	}

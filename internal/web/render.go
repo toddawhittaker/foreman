@@ -541,7 +541,7 @@ func (r *Renderer) publicFlagURL(tag string) (string, error) {
 // PublicStatic serves the files of Static under PathPublicStatic.
 func (r *Renderer) PublicStatic() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathPublicStatic))
+		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathPublicStatic), true)
 	}
 }
 
@@ -612,7 +612,7 @@ func (r *Renderer) Fragment(w io.Writer, loc i18n.Locale, p Page, name string) e
 // is revalidated.
 func (r *Renderer) Static() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathStatic))
+		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathStatic), false)
 	})
 }
 
@@ -620,11 +620,14 @@ func (r *Renderer) Static() http.Handler {
 // page's own icon links say.
 func (r *Renderer) Favicon() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		r.serveStatic(w, req, faviconFile)
+		r.serveStatic(w, req, faviconFile, false)
 	})
 }
 
-func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name string) {
+// serveStatic answers with one embedded file. public is for the public
+// page's copy: it is always revalidated, and an SVG's policy keeps the frame
+// refusal of every public answer (SPEC 14.18).
+func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name string, public bool) {
 	f, ok := r.static[name]
 	if !ok {
 		http.NotFound(w, req)
@@ -635,10 +638,14 @@ func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name st
 	h.Set("X-Content-Type-Options", "nosniff")
 	if f.contentType == staticTypes[".svg"] {
 		// A picture opened on its own runs nothing (the flags hold no script).
-		h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+		csp := "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+		if public {
+			csp += "; frame-ancestors 'none'"
+		}
+		h.Set("Content-Security-Policy", csp)
 	}
 	h.Set("ETag", `"`+f.hash+`"`)
-	if req.URL.Query().Get("v") == f.hash {
+	if req.URL.Query().Get("v") == f.hash && !public {
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")
 	} else {
 		h.Set("Cache-Control", "no-cache")

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -66,12 +67,8 @@ func (s *server) publicModsOn(ctx context.Context) bool {
 }
 
 // setPublicMods stores the admin's choice and takes effect at once. The caller
-// audits it (SPEC 9.16).
-func (s *server) setPublicMods(ctx context.Context, on bool, by string) error {
-	v := PublicModsOff
-	if on {
-		v = PublicModsOn
-	}
+// audits it (SPEC 9.16). v is PublicModsOn or PublicModsOff.
+func (s *server) setPublicMods(ctx context.Context, v, by string) error {
 	return s.store.SetAppSetting(ctx, SettingPublicMods, v, by, s.now())
 }
 
@@ -107,6 +104,12 @@ func (s *server) handlePublic(pattern string, h http.HandlerFunc) {
 		hd.Set("X-Content-Type-Options", "nosniff")
 		hd.Set("Referrer-Policy", "no-referrer")
 		setFrameRefusal(hd)
+		// A GET pattern also answers HEAD, which would run a whole download.
+		if r.Method == http.MethodHead {
+			hd.Set("Allow", http.MethodGet)
+			s.page(w, r, http.StatusMethodNotAllowed, "", ErrorPage{Status: http.StatusMethodNotAllowed})
+			return
+		}
 		h(w, r)
 	})
 }
@@ -129,6 +132,9 @@ func (s *server) publicModsRoutes() {
 	s.handlePublic("GET "+PathPublicMods, s.handlePublicModsPage)
 	s.handlePublic("GET "+pathPublicModFile, s.handlePublicModFile)
 	s.handlePublic("GET "+pathPublicModsAll, s.handlePublicModsAll)
+	// Without this the mux redirects the path to the one with the slash, even
+	// while the page is off.
+	s.handlePublic("GET "+strings.TrimSuffix(PathPublicStatic, "/"), s.pageNotFound)
 }
 
 // PublicModFilePath is the download address of one mod zip.
@@ -204,8 +210,14 @@ func (s *server) publicModsData(ctx context.Context) (PublicModsData, error) {
 	if err != nil {
 		return data, err
 	}
-	marks, checked := s.publicMarks(ctx, sum.ID)
-	data.PortalUnchecked = !checked
+	// Only a zip can be looked up on the portal, so a world with none needs no
+	// check and no "could not be checked" line.
+	var marks map[modKey]mark
+	if slices.ContainsFunc(share.Mods, func(m world.InstalledMod) bool { return !m.Local }) {
+		var checked bool
+		marks, checked = s.publicMarks(ctx, sum.ID)
+		data.PortalUnchecked = !checked
+	}
 	pw := PublicWorld{ID: sum.ID, Name: sum.Name, GameVersion: sum.GameVersion}
 	for _, mod := range share.Mods {
 		pm := PublicMod{Name: mod.Name, Title: mod.Title, Version: mod.Version, Folder: mod.Local}
@@ -445,7 +457,7 @@ func (s *server) handlePublicModsAll(w http.ResponseWriter, r *http.Request) {
 	}
 	h := w.Header()
 	h.Set("Content-Type", "application/zip")
-	h.Set("Content-Disposition", attachment(previewFileName(sum.Name, "mods", "")+".zip"))
+	h.Set("Content-Disposition", attachment(downloadStem(sum.Name, "mods", "")+".zip"))
 	zw := zip.NewWriter(iw)
 	for _, mod := range files {
 		if err := addModZip(zw, share, mod.File); err != nil {
