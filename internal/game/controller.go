@@ -637,6 +637,12 @@ func (c *Controller) beginOp(ctx context.Context, w *worldRun, action string, st
 // world shows it and is busy until it ends, and a forced stop on any of them
 // interrupts it. Starting an action clears a world's switch notice.
 func (c *Controller) beginOpOn(ctx context.Context, ws []*worldRun, op *Operation) (context.Context, *opRun) {
+	// The monitor leaves a world alone while an operation runs, so a restart
+	// Docker made after its last look is taken in now, before any w.mu is
+	// held: a stop inside the operation then plans on the new run (#646).
+	for _, w := range ws {
+		c.catchUpWorld(ctx, w.id)
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	o := &opRun{c: c, w: ws[0], ws: ws, op: op, cancel: cancel, ended: make(chan struct{})}
 	o.lockAll()

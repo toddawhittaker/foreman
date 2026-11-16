@@ -538,7 +538,7 @@ func TestRawBoxErrors(t *testing.T) {
 			t.Errorf("%s: raw box open=%v invalid=%v kept=%v", c.name, f.RawOpen, f.RawInvalid, f.Raw.Value == c.raw)
 		}
 		body := renderPartial(t, i18n.English, f)
-		if !strings.Contains(body, `<details id="mg-raw-details" open>`) || !strings.Contains(body, `aria-invalid="true" aria-describedby="mg-raw-hint error-summary"`) {
+		if !strings.Contains(body, `<details class="disclosure" id="mg-raw-details" open>`) || !strings.Contains(body, `aria-invalid="true" aria-describedby="mg-raw-hint error-summary"`) {
 			t.Errorf("%s: the raw box does not show the error", c.name)
 		}
 	}

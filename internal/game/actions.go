@@ -380,8 +380,10 @@ type stopPlan struct {
 }
 
 // planStop decides what a stop would do, without doing it. It returns
-// ErrPaused, ErrNotRunning, ErrNotReady or ErrRCONUnreachable when the stop
-// would refuse or has nothing to stop.
+// ErrPaused, ErrNotRunning or ErrRCONUnreachable when the stop would refuse
+// or has nothing to stop. ErrNotReady comes with a plan: the game is
+// starting and not yet in game, so a stop stops it without a save (SPEC
+// 8.7) while a check before another action refuses.
 func (c *Controller) planStop(ctx context.Context, w *worldRun) (stopPlan, error) {
 	cont, found, err := c.ourContainer(ctx, w.id)
 	if err != nil {
@@ -394,23 +396,70 @@ func (c *Controller) planStop(ctx context.Context, w *worldRun) (stopPlan, error
 	if !found || (status != "running" && status != "restarting") {
 		return stopPlan{}, ErrNotRunning
 	}
+	if status == "running" && c.catchUp(ctx, w, cont) {
+		// Docker restarted the game since the monitor's last look; that look
+		// is taken now, so the plan below sees the new run.
+		return c.planStop(ctx, w)
+	}
 	w.mu.Lock()
 	ours := w.containerID == cont.ID
 	rc, inGame := w.rc, ours && w.run.inGame
-	// A restart count above the last look is a crash the monitor has not seen yet.
-	crashed := ours && (w.crashedRun || w.run.loadFailed || cont.RestartCount > w.seenRestarts)
+	// A restart count above the last look is a crash no look has taken in,
+	// here only while an operation runs (see catchUp).
+	unseen := ours && cont.RestartCount > w.seenRestarts
+	loadFailed := ours && w.run.loadFailed
+	crashed := ours && w.crashedRun
 	w.mu.Unlock()
 	switch {
-	case status == "restarting" || crashed:
-		// Docker is restarting the game after a crash, or it crashed and is
-		// not back in game: there is no game to warn or save.
+	case status == "restarting" || unseen || loadFailed:
+		// Docker is restarting the game after a crash, or it crashed and
+		// cannot be in game: there is no game to warn or save.
 		return stopPlan{cont: cont}, nil
-	case ours && !inGame:
-		return stopPlan{}, ErrNotReady
-	case rc == nil || !ours:
+	case !ours:
 		return stopPlan{}, ErrRCONUnreachable
+	case inGame && rc == nil:
+		return stopPlan{}, ErrRCONUnreachable
+	case inGame || c.answers(ctx, rc):
+		// The game opens RCON only once in game, so an answer means it is in
+		// game even before its log line is read (a run back from a crash).
+		return stopPlan{cont: cont, rc: rc, save: true}, nil
+	case crashed:
+		return stopPlan{cont: cont}, nil
 	}
-	return stopPlan{cont: cont, rc: rc, save: true}, nil
+	return stopPlan{cont: cont}, ErrNotReady
+}
+
+// catchUp takes the monitor's look at the world's running container when
+// Docker restarted the game since the last look, as the next poll would:
+// it counts the crash, follows the new run's log and drops the RCON
+// connection to the run that ended (SPEC 8.7, #646). It reports whether it
+// took the look. A look is not taken while an operation runs.
+func (c *Controller) catchUp(ctx context.Context, w *worldRun, cont docker.Container) bool {
+	w.mu.Lock()
+	unseen := w.containerID == cont.ID && cont.RestartCount > w.seenRestarts
+	ops := w.ops
+	w.mu.Unlock()
+	return unseen && c.observe(w, &cont, ops, c.readCrashLog(ctx, w, cont, ops))
+}
+
+// catchUpWorld is catchUp for an action about to begin its operation (see
+// beginOpOn), whose stop would otherwise plan on a look taken before Docker
+// restarted the game. The caller holds the world's lock and no w.mu.
+func (c *Controller) catchUpWorld(ctx context.Context, id string) {
+	if cont, found, err := c.ourContainer(ctx, id); err == nil && found && cont.State.Status == "running" {
+		c.catchUp(ctx, c.world(id), cont)
+	}
+}
+
+// answers reports whether the game answers over rc.
+func (c *Controller) answers(ctx context.Context, rc *rcon.Client) bool {
+	if rc == nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(ctx, c.rconCallLimit)
+	defer cancel()
+	_, err := rc.Exec(ctx, "/players online")
+	return err == nil
 }
 
 // stopLocked runs the stop steps. It returns ErrNotRunning, with the steps
@@ -423,6 +472,10 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 func (c *Controller) stopWarn(ctx context.Context, o *opRun, countdown time.Duration, opts StopOptions) error {
 	w := o.w
 	plan, err := c.planStop(ctx, w)
+	if errors.Is(err, ErrNotReady) {
+		// Not yet in game: stopped without a warning or save (SPEC 8.7).
+		err = nil
+	}
 	switch {
 	case errors.Is(err, ErrRCONUnreachable):
 		return err
@@ -747,6 +800,7 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
+	c.catchUpWorld(ctx, id)
 	// Compared before the stop, so a restart never refuses with the game
 	// already stopped.
 	opts.running = IsRunning(c.Status(id).State)
