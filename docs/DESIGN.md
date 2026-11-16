@@ -38,8 +38,8 @@ and nothing in it should suggest it is an official product.
   light (`--shadow-card`) and what floats over the page (`--shadow-pop`):
   the user menu, a row's More menu, the selection bar and "Jump to
   newest", and the sign-in box.
-  Corners are 6 px on controls and 8 px on cards, the menu and disclosure
-  rows.
+  Corners are 6 px on controls and foldout rows under the pointer, and
+  8 px on cards and the menu.
 - **Colour that means something.** Neutrals are warm greys. Orange marks
   the one primary button on a screen, the selected tab, checked boxes,
   links, the line across the top of the header and the live world's edge in
@@ -190,7 +190,7 @@ dialog (black at 50%) and the shadows' own values (4).
 |---|---|---|---|
 | `--color-bg` | `#14110e` | `#ece9e3` | The page |
 | `--color-surface` | `#26211c` | `#fffdfa` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#332c25` | `#f4f0e9` | The secondary button's face, the user menu's button, disclosure rows, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-raised` | `#332c25` | `#f4f0e9` | The secondary button's face, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
 | `--color-deep` | `#0e0c0a` | `#ffffff` | Form fields, the log and console |
 | `--color-line` | `#4a4239` | `#d9d4cb` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
 | `--color-text` | `#ede7de` | `#1c1915` | Body text, field text |
@@ -390,7 +390,7 @@ Other fixed values, also tokens:
 | Token | Value | Use |
 |---|---|---|
 | `--radius` | 6px | Buttons, fields, the menu button, messages, the log |
-| `--radius-lg` | 8px | Cards, the confirmation box, the menu panel, disclosure rows, the Generate preview column |
+| `--radius-lg` | 8px | Cards, the confirmation box, the menu panel, the Generate preview column |
 | `--border-width` | 1px | Every border except the ones below |
 | `--focus-width` | 3px | Focus outline |
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
@@ -1510,18 +1510,31 @@ on its background instead of one long list.
   (name beside value) and the one-line explanation on a single wrapping row,
   so the forms and the list stay near the top. A warning inside it takes a
   row of its own.
-- **Disclosure rows.** A closed `details.disclosure` is drawn as a
-  full-width row: `raised` face, 1 px `line` border, `--radius-lg`, summary
-  in `heading` at weight 600, with a chevron at the end (drawn in CSS, as
-  the user menu's, and turned when open). Under the pointer the edge turns
-  `border` and the face `secondary-hover`. It reads as something that
-  opens, not a link. Used for "Or start anyway" (7.4), the steps that were
-  not run (7.6), "N other mods stay as they are" and the upload and replace
+- **Foldouts** (`details.disclosure`). One style for every foldout. The
+  summary is a `list-item` with the browser's own triangle (`::marker`) at
+  its start, coloured `primary`: it points ahead when closed and down when
+  open. The label is `heading` at weight 600, with no face, border or
+  shadow at rest. Under the pointer the row fills with `secondary-hover`
+  at `--radius`; its side padding of `--space-1` and a matching negative
+  margin keep the words still. Focus keeps the normal ring. With a fine
+  pointer the row is compact (`min-block-size: 1.75rem`, `--space-1` above
+  and below); on touch it is `--target-min`. A lone foldout has no line
+  above it; one directly after another gets a 1 px `line` rule above it,
+  so stacked rows such as Generate's planets and the raw settings read as
+  a list. "Emergency actions" keeps its `danger` label; only its marker is
+  orange. The plan list's summary on the mod portal keeps its 44 px bar
+  and draws the same orange triangle itself, without the compact size or
+  the hover fill. Used for "Or start anyway" (7.4), the steps that were not
+  run (7.6), "N other mods stay as they are" and the upload and replace
   forms (8.11), "Replace the account" (8.11), the version not in the list
-  (8.6), the resource amounts as text (8.8), "Mod tools" on the Mods tab
-  below 64rem (8.11), "Emergency actions" on the Server page on a phone
-  (6), a snapshot row's "Details" on a phone (8.3) and "What saving does"
-  (7.4). The mod search results' own Details toggle is not one.
+  (8.6), Generate's planet rows and raw settings, the resource amounts as
+  text (8.8), "Mod tools" on the Mods tab below 64rem (8.11, keeping its
+  settings icon), "Emergency actions" on the Server page on a phone (6),
+  a snapshot row's "Details" on a phone (8.3), "Jump to section" and
+  Network in server settings, past console messages and "What saving
+  does" (7.4). Not foldouts: a player's name in the players table (8.12,
+  its chevron at the end), the row menus, the user menu and the mod search
+  results' own Details toggle.
 
 ### 7.9 Line icons
 
