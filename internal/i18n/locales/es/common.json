@@ -79,5 +79,14 @@
   "common.menu.notifications": "Notificaciones",
   "common.menu.schedule": "Programación de reinicios",
   "common.settings.label": "Ajustes de Foreman",
-  "common.countdown.none_name": "Sin aviso: pon la cuenta atrás en 0 segundos"
+  "common.countdown.none_name": "Sin aviso: pon la cuenta atrás en 0 segundos",
+  "common.dropzone.limits": "Un archivo {types} de hasta {limit}.",
+  "common.dropzone.prompt": "Suelta el archivo aquí o elige un archivo",
+  "common.dropzone.drop": "Suelta el archivo para elegirlo",
+  "common.dropzone.chosen": "Elegido: {file}, {size}",
+  "common.dropzone.clear": "Quitar",
+  "common.dropzone.cleared": "No hay ningún archivo elegido.",
+  "common.dropzone.wrong_type": "{file} no es un archivo {types}. Elige un archivo que termine en {types}.",
+  "common.dropzone.too_big": "{file} ocupa más de {limit}. Elige un archivo más pequeño.",
+  "common.dropzone.one_file": "Elige un solo archivo cada vez."
 }
