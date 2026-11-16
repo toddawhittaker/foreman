@@ -786,10 +786,12 @@ export async function dropFile(
   const dt = await page.evaluateHandle(
     (files) => {
       const dt = new DataTransfer();
-      for (const f of files) dt.items.add(new File([new Uint8Array(f.bytes)], f.name, { type: f.type }));
+      for (const f of files) dt.items.add(new File([Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0))], f.name, { type: f.type }));
       return dt;
     },
-    files.map((f) => ({ name: f.name, type: f.type ?? "", bytes: Array.from(typeof f.body === "string" ? Buffer.from(f.body, "latin1") : f.body) })),
+    // Base64, not an array of numbers: a 4 MB file as a JSON array is slow
+    // enough to time a test out on a loaded machine.
+    files.map((f) => ({ name: f.name, type: f.type ?? "", b64: (typeof f.body === "string" ? Buffer.from(f.body, "latin1") : f.body).toString("base64") })),
   );
   const area = page.locator(`#${zone}`).locator("..");
   await page.dispatchEvent("body", "dragenter", { dataTransfer: dt });
