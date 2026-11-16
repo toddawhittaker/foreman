@@ -32,7 +32,7 @@ test("a dropped save fills the field, names the file, and imports", async ({ pag
 
   await drop(page, [{ name: "dropped.zip", body: emptyZip.toString("latin1") }]);
   await expect(page.locator("[data-dropzone]")).not.toHaveClass(/dropzone--page|dropzone--over/);
-  await expect(form.locator(".dropzone__chosen")).toHaveText("Chosen: dropped.zip, 22 B Clear");
+  await expect(form.locator(".dropzone__chosen")).toHaveText("Chosen: dropped.zip, 22 B Clear Save file");
   // The page's own listener still runs: the name is suggested from the file.
   await expect(form.getByLabel("World name")).toHaveValue("dropped");
   await expect(form.getByLabel("Save file")).toBeFocused();
