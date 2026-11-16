@@ -121,6 +121,17 @@
   "settings.diff.admin_removed": "Удалён администратор {name}",
   "settings.preview.restart": "Сервер запущен. Эти изменения вступят в силу после перезапуска.",
   "settings.preview.admins_live": "Сервер запущен. Изменения администраторов действуют сразу.",
+  "settings.preview.autosave_keep": {
+    "one": "При следующем запуске Foreman оставит {count} самое новое автосохранение.",
+    "few": "При следующем запуске Foreman оставит {count} самых новых автосохранения.",
+    "many": "При следующем запуске Foreman оставит {count} самых новых автосохранений."
+  },
+  "settings.preview.autosave_remove": {
+    "one": "Foreman удалит ещё {count} автосохранение.",
+    "few": "Foreman удалит ещё {count} автосохранения.",
+    "many": "Foreman удалит ещё {count} автосохранений."
+  },
+  "settings.preview.autosave_snapshot": "Сначала делается снимок.",
   "settings.preview.step_save_game": "Сохранит запущенную игру.",
   "settings.preview.step_snapshot": "Сделает автоматический снимок мира {world}. Если снимок не удастся, больше ничего не произойдёт.",
   "settings.preview.step_write": "Запишет {file}.",

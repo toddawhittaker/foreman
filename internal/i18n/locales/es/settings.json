@@ -121,6 +121,15 @@
   "settings.diff.admin_removed": "Administrador {name} quitado",
   "settings.preview.restart": "El servidor está en marcha. Estos cambios surten efecto tras reiniciar.",
   "settings.preview.admins_live": "El servidor está en marcha. Los cambios en los administradores se aplican de inmediato.",
+  "settings.preview.autosave_keep": {
+    "one": "En el próximo inicio, Foreman conserva el autoguardado más reciente.",
+    "other": "En el próximo inicio, Foreman conserva los {count} autoguardados más recientes."
+  },
+  "settings.preview.autosave_remove": {
+    "one": "Foreman elimina {count} autoguardado más.",
+    "other": "Foreman elimina los otros {count} autoguardados."
+  },
+  "settings.preview.autosave_snapshot": "Antes se toma una instantánea.",
   "settings.preview.step_save_game": "Guardar la partida en marcha.",
   "settings.preview.step_snapshot": "Tomar una instantánea automática de {world}. Si la instantánea falla, no pasa nada más.",
   "settings.preview.step_write": "Escribir {file}.",

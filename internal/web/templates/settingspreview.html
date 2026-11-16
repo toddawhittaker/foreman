@@ -90,6 +90,11 @@
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.restart"}}</p>
 </div>
 {{- end}}
+{{- if .TidyKept}}
+<div class="message message--note" id="autosave-tidy">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.autosave_keep" "count" .TidyKept}}{{if .TidyRemoved}} {{t "settings.preview.autosave_remove" "count" .TidyRemoved}}{{end}} {{t "settings.preview.autosave_snapshot"}}</p>
+</div>
+{{- end}}
 {{- if .AdminsLive}}
 <div class="message message--note">
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.admins_live"}}</p>

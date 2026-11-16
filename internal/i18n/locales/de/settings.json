@@ -121,6 +121,15 @@
   "settings.diff.admin_removed": "Admin {name} entfernt",
   "settings.preview.restart": "Der Server läuft. Diese Änderungen gelten erst nach einem Neustart.",
   "settings.preview.admins_live": "Der Server läuft. Änderungen an den Admins gelten sofort.",
+  "settings.preview.autosave_keep": {
+    "one": "Beim nächsten Start behält Foreman den neuesten automatischen Speicherstand.",
+    "other": "Beim nächsten Start behält Foreman die {count} neuesten automatischen Speicherstände."
+  },
+  "settings.preview.autosave_remove": {
+    "one": "Foreman entfernt {count} weiteren automatischen Speicherstand.",
+    "other": "Foreman entfernt {count} weitere automatische Speicherstände."
+  },
+  "settings.preview.autosave_snapshot": "Vorher wird ein Snapshot erstellt.",
   "settings.preview.step_save_game": "Das laufende Spiel speichern.",
   "settings.preview.step_snapshot": "Einen automatischen Snapshot von {world} erstellen. Schlägt der Snapshot fehl, passiert sonst nichts.",
   "settings.preview.step_write": "{file} schreiben.",

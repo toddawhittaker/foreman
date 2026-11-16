@@ -193,6 +193,7 @@
   "worlds.snapshot.label.before_switch": "Перед переключением",
   "worlds.snapshot.label.before_update": "Перед обновлением",
   "worlds.snapshot.label.before_mods": "Перед изменением модов",
+  "worlds.snapshot.label.before_autosaves": "Перед очисткой автосохранений",
   "worlds.snapshot.label.manual": "Снимок вручную",
   "worlds.snapshot.reason.manual": "Вручную",
   "worlds.snapshots.adds": "Снимки добавляют",

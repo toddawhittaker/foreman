@@ -676,6 +676,8 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 			}
 			w.runStarts = append(w.runStarts, runStart{mark: w.logs.Mark(), at: at})
 		}
+		// Kept past the run's end: the autosave tidy skips it (SPEC 11.6).
+		w.lastLoaded = loadedSave(raw)
 		if w.run.inGame {
 			// A game process loads its map once, and observe resets the run
 			// on a restart, so this is a re-attach replaying the log after

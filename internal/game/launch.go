@@ -67,6 +67,8 @@ func (c *Controller) prepareContainer(ctx context.Context, o *opRun) (launch, er
 	if err != nil {
 		return launch{}, err
 	}
+	// The game is stopped and the lock held, so the files stay still.
+	c.tidyAutosaves(ctx, o.w)
 	save, err := c.worlds.PrepareLoad(id)
 	if err != nil {
 		return launch{}, err
