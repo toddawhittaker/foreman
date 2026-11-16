@@ -64,8 +64,8 @@ func TestModSettingsNamesModsByTitle(t *testing.T) {
 	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
 	body, _ := g.settingsForm(id)
 	wantIn(t, "form", body,
-		`<legend><a href="https://mods.factorio.com/mod/fmtest" class="mod-title" target="_blank" rel="noopener noreferrer"><span translate="no">Test &lt;b&gt;Mod&lt;/b&gt;</span>`,
-		`<legend><span class="mod-title" translate="no">Local Thing</span></legend>`)
+		`<legend><span class="mod-name"><a href="https://mods.factorio.com/mod/fmtest" class="mod-title" target="_blank" rel="noopener noreferrer"><span translate="no">Test &lt;b&gt;Mod&lt;/b&gt;</span>`,
+		`<legend><span class="mod-name"><span class="mod-title" translate="no">Local Thing</span></span></legend>`)
 	if strings.Contains(body, "<b>Mod</b>") {
 		t.Error("the title was not escaped")
 	}
@@ -78,7 +78,7 @@ func TestModSettingsNamesAModWithoutATitleByItsName(t *testing.T) {
 	fakeDefs(t, fmtestSettingDefs(t), nil)
 	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
 	body, _ := g.settingsForm(id)
-	wantIn(t, "form", body, `<legend><a href="https://mods.factorio.com/mod/fmtest" class="mod-title" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">fmtest</span>`)
+	wantIn(t, "form", body, `<legend><span class="mod-name"><a href="https://mods.factorio.com/mod/fmtest" class="mod-title" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">fmtest</span>`)
 }
 
 // SPEC 9.15, 17.9: the Done message and the failed download name the mods

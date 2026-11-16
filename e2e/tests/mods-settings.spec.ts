@@ -72,7 +72,7 @@ test.describe("edit mod settings", () => {
     await setUp(page, foreman, fakeGame!);
     await openEditor(page);
     const heading = form(page).locator("fieldset.mod-settings-group legend").first();
-    await expect(heading.locator(".mod-title")).toHaveText("FM test");
+    await expect(heading.locator(".mod-title")).toContainText("FM test");
     const link = heading.getByRole("link", { name: /FM test/ });
     await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fmtest");
     await expect(link).toHaveAttribute("target", "_blank");

@@ -145,7 +145,7 @@
   <p>{{t "mods.settings.edit.map.saved"}}</p>
   {{- range .Map}}
   <div class="mod-settings-group setting-row">
-  <h3>{{template "mod-name" (modName .Mod .Title .Link)}}</h3>
+  <h3><span class="mod-name">{{template "mod-name" (modName .Mod .Title .Link)}}</span></h3>
   <dl class="mod-settings-values setting-row__body">
     {{- range .Fields}}
     <div>
@@ -179,7 +179,7 @@
 {{define "modsettings-groups" -}}
 {{- range .}}
 <fieldset class="mod-settings-group setting-row">
-  <legend>{{template "mod-name" (modName .Mod .Title .Link)}}</legend>
+  <legend><span class="mod-name">{{template "mod-name" (modName .Mod .Title .Link)}}</span></legend>
   <div class="setting-row__body">
   {{- range .Fields}}
   {{- $err := not .Error.IsZero}}
