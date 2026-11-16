@@ -3376,3 +3376,175 @@ import of favorites is #599 and is not built.
   (from fixes batch 9). The old gaps about the plan page's search and about
   ticked mods hiding with the results are gone with the tick boxes.
 - Still deferred: as listed under fixes batch 9.
+
+## Fixes batch 11
+
+Serves SPEC 5.6, 5.11, 5.12, 6.10, 6.12, 8.7, 9.2, 9.14, 9.15, 11.1, 14.3,
+14.6 and 17 (new 17.16 and 17.17), with DESIGN 7.10, 7.11, 8.10 and 8.11 and
+ADR 0022. Issues: #599, #615, #616, #618, #619, #620, #621, #622, #623,
+#624, #625 and #626. The plan was #627. The pull requests were #628
+(map string encoder), #629 (saves and the Favorites button), #630 (drop
+zone), #631 (mod titles), #632 (Docker events), #633 (map string from a
+save), #634 (snapshot wait under fork saving), #635, #639, #640, #644, #645
+and #650 (test and small fixes), #637 (game settings form), #638 (titles on
+other pages), #641 (review page rows), #642 (favorites export and import),
+#643 (map string screens), #647 (drop zone everywhere), #648 (snapshot
+selection), #649 (review draft and short addresses) and #651 (integration
+fixes).
+
+Rulings (Todd, 2026-11-15): all twelve issues in one batch; fork saving is
+in the form; Foreman writes 20 autosave slots whenever it creates
+`server-settings.json`; defaults show in every unset field; an upload
+happens in place when its result is used on that page, otherwise a button
+goes to the tab that owns the file; pages show titles while saved records
+keep the slug; no address Foreman builds is long; Docker events are
+optional; the review page keeps its answers in a draft in memory (ADR
+0022); a snapshot selection is posted and the result shows a count.
+
+### Delivered
+
+- **Mods show by title (#623, #619, #620; SPEC 9.15, 9.2; #631, #638, #641,
+  #647, #651).** A mod's title comes from its `info.json` or the portal,
+  with the slug as fallback, and is drawn by one `mod-name` partial: cut to
+  100 characters, escaped and `translate="no"`. Named on its own it links
+  to the portal in a new tab, except built-in mods, folder mods and mods the
+  portal lacks. The Installed list, update lines, More menus, plan panel,
+  phone bar, review page, mod settings page, Server page results,
+  pre-start refusal, fix labels and the favorites list use it. Inside a
+  sentence or on a button a title is plain text. Snapshot labels, audit
+  entries and sent notifications keep the slug.
+- **The review page rows (#620; #641).** Each mod's version list and a
+  cross named "Remove *title* from the plan" sit in its row. An offered mod
+  (optional, recommended, no longer needed) shows its title link, the portal's
+  summary, the version and its release date; the link never ticks the box.
+  Portal lookups for offered mods are capped.
+- **One drop zone for every upload (#622, SPEC 14.6, DESIGN 7.10; #630,
+  #647, #651).** `templates/dropzone.html` and `static/dropzone.js` give a
+  dashed box that takes a drop, a click or the keyboard, refuses a wrong
+  type, several files and an oversized file before uploading, and shows
+  "Chosen: name, size" with Clear. Without script it is a plain file field.
+  Import, Saves, the Mods tab's zip and `mod-settings.dat` and the review
+  page's missing-mod zip use it. An upload for another tab ("Upload a save"
+  on the Mods tab) is a button, never a link. The server's checks are
+  unchanged.
+- **Favorites export and import (#599, SPEC 5.12, DESIGN 7.11; #642).** An
+  export is `<name>-favorite.zip`: the folder plus a format-version file,
+  with `mod-settings.dat` and a visible warning that a mod may keep a token
+  there. An import (8 MiB, drop zone) is checked in full before anything is
+  written. A name in use is refused. Missing mods or a game version this
+  Foreman lacks are still imported and show as conflicts on review. The
+  list shows each favorite's mods by title.
+- **The map exchange string is offered back (#618, SPEC 5.6; #628, #633,
+  #643).** A world's page and each favorite have a read-only field with a
+  Copy button and a note that mods are not included. It is encoded from the
+  map files for 1.1, 2.0 and 2.1 (`mapexchange.Encode`), or, for a random
+  seed or an imported world, read from the newest save's `level-init.dat`
+  (`savefile.ExchangeString`). No container was needed. When neither works,
+  the button is disabled with the reason.
+- **Saves read as world and time (#625; #629).** An autosave shows the
+  world's name and its save time in the viewer's zone, with the file name
+  beside it; its download is named from the world and the time. Files are
+  never renamed. A Favorites button sits beside Generate and Import (#621).
+- **Game settings form (#624, #626, SPEC 11.1, 17.16; #637).** Every unset
+  field shows the game's default as a placeholder and a hint; unset
+  checkboxes show the default state. New groups: Players and access,
+  Gameplay, Saving and Network. `auto_pause_when_players_connect` is hidden
+  on 1.1 and added to the 2.0 schema. Fork saving is in the form with its
+  note, disabled when Docker's `/version` says the host is not Linux.
+  Foreman writes `autosave_slots: 20` whenever it creates the file, so a new
+  world is also Hidden from its first start. Clearing a number box removes
+  its key.
+- **Snapshots wait for a forked save (#626, SPEC 6.10; #634, #644, #645).**
+  A `/server-save` sent while an earlier forked save is still being written
+  is queued; the snapshot now waits for the save begun after its command and
+  for a 300 ms settle. A failed save process is named as a failure. After a
+  crash restart the stale RCON connection is dropped, so a restart reaches
+  the game that came back.
+- **Docker events (#616, SPEC 8.7, 14.3; #632, #639).** Foreman follows
+  `oom` and `die` events when the socket proxy allows them, so an
+  out-of-memory kill is named even after Docker restarts the game. It
+  retries from 1 to 30 seconds. With `EVENTS=0` it polls as before and logs
+  the refusal once. The operator guide recommends `EVENTS=1`.
+- **Short addresses and the review draft (#615, SPEC 9.14, 17.17, ADR 0022;
+  #648, #649).** The review page keeps its answers in a draft in memory
+  under a random token; links carry only a kind and one name, or the token.
+  Generate passes a favorite's id. A plan holds up to 500 picks, and a
+  120-mod favorite installs in one review. A snapshot selection is posted,
+  and the result says how many were deleted. A test on each of the review
+  and snapshot pages keeps every address under 512 bytes.
+- **Partial saves are refused (#651).** A file ending in `.tmp.zip` cannot be
+  uploaded, loaded or chosen to load next, and a folder import skips it; its
+  download is allowed.
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck` and its own Go
+  tests and end-to-end specs (four projects: phone and desktop, dark and
+  light, axe clean). The whole `internal/web` package takes over three
+  minutes, so tasks ran it in slices.
+- The fork-save wait was checked in real containers on 1.1.110, 2.0.77 and
+  2.1.24. The queued-save bug failed its test before the fix.
+- The encoder round-trips all 98 real-game strings in `testdata` to the same
+  inflated payload. The save reader matches the game's own string on all
+  eight test saves from 1.1.110, 2.0.77, 2.1.23 and 2.1.24, and fuzzed for 60
+  seconds without a failure.
+- The defaults table is checked against the game's own example files for
+  1.1.110, 2.0.77 and 2.1.24. The real-game first-save and auto-pause tests
+  pass on all three lines with the generated file (#650).
+- The race in `TestRefusalIsAuditedAndLoggedWithReason` and the crash restart
+  flake were test and product bugs fixed here (#639, #645).
+
+### Gaps left
+
+- **A removed mod's result names its slug.** Its file is gone, so no title
+  can be read.
+- **A title inside a sentence or on a button is plain text**, not a link.
+- **Plan panel and review titles are tested end to end only as slugs.** The
+  fake portal's title equals its slug and its added mods have no release
+  date; the Go tests cover real titles and dates.
+- **The Favorites page reads each favorite's files on every view** to make
+  its map string.
+- **Map strings are proven byte for byte only on 1.1.110, 2.0.77, 2.1.23
+  and 2.1.24.** Another patch is accepted only if the result decodes in full
+  and its fields match; otherwise the button is disabled with a reason.
+- **The map string read from a save is the map as created** (`level-init.dat`);
+  a later script change to the map settings is not in it. The compressed text
+  of an encoded string differs from the game's; the payload is the same.
+- **Docker events are checked once, at startup.** After changing `EVENTS`,
+  restart Foreman. The polling fallback can still miss an out-of-memory kill
+  under heavy load.
+- **A save that fails without any log line** still waits the 2-minute
+  timeout. A failing save process that logs its failure ends the wait at
+  once (#644).
+- **Snapshot bulk selection is capped by the 64 KB form limit**, about 1,500
+  snapshots; and after "Select all automatic" the address is
+  `/snapshots/select`, so a reload asks to resend the form.
+- **Fork saving that is already on can be turned off only in the raw
+  editor** on a host that is not Linux.
+- **Generate from a favorite writes 20 autosave slots** even if the favorite
+  had cleared the key (ruling 3 as written).
+- **New worlds are Hidden from their first start**, because Generate and
+  Import now write a full `server-settings.json`. The alternative, writing
+  only the slots and the three required keys with LAN visibility, is a
+  one-line change in `gamesettings.NewServerSettings`.
+- **`allow_commands`** is written as `true`, `false` or `"admins-only"`; the
+  real-game check covers only the last.
+- **A favorite on an unsupported game version** is imported, and Generate
+  uses the default version without saying so. The review page shows a
+  conflict that blocks the install, so the admin installs from the Mods tab,
+  where Generate saved the picks. Whether that should block is Todd's call.
+- **Drafts live in memory.** A restart or two hours sends an open review back
+  to the saved picks, and the page says so.
+- **The download time of an autosave is UTC**, not the viewer's zone, and a
+  named save keeps its file name on download.
+- **The Worlds list's empty state is text only**; the Import button sits
+  above it.
+- **Other settings forms still show no defaults** (#636), and **a game back
+  from a crash can briefly be treated as still crashed** (#646).
+- **Real-game checks not recorded here**: out of memory on start 20 of 20
+  with events on and off (`TestRealGameOOMOnStart`), and a start on 1.1.110,
+  2.0.77 and 2.1.24 with each new settings key. Todd pastes one string into
+  the game client at the test drive.
+- Still deferred: as listed under fixes batch 10, except the gaps about
+  favorites with more than 50 mods, out-of-memory on start and the missing
+  favorites section in DESIGN.md, which this batch closes.

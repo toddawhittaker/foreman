@@ -1572,6 +1572,8 @@ a page loads in its `scripts` block. The page builds a `DropZone`
 | `Accept` | The one file ending the field takes, such as `.zip`. |
 | `MaxBytes` | The server's size limit, shown in the hint. |
 | `Error` | The server's refusal of the last upload, shown under the field. |
+| `DescribedBy` | The id of a paragraph outside the field that also describes it; it reads after the limits hint. Empty for none. |
+| `Form` | The id of the form that posts the file, when the field sits outside it (a form cannot nest). Empty for the enclosing form. |
 
 - **Without script** it is a plain form field (7.2): a label with the
   required asterisk, a hint naming the type and size limit, and the
@@ -2529,8 +2531,8 @@ the game is running.
 The settings pages (form, raw editor and preview) carry the world's tabs
 (6) with Game settings current, and no "Back to" link. The form's `h1` is the
 world's name. On a container at least 44rem wide a rail of section links
-(Listing, Joining, Saving, Admins, and "Edit server-settings.json as
-JSON") sits beside the form, 12rem wide and sticky, since it never covers
+(Listing, Players and access, Gameplay, Saving, Network, Admins, and "Edit
+server-settings.json as JSON") sits beside the form, 12rem wide and sticky, since it never covers
 the form; narrower, there is no rail, a "Jump to section" disclosure of
 the same links sits under the tabs (6), and the raw editor's link follows
 the form. A rail link is `text-muted` with a 3px `line` edge at its start,
@@ -2542,10 +2544,21 @@ fieldsets, in this order:
 
 - "Listing": name, description (`textarea`, 3 rows), and visibility as
   two radios, "On the local network" and "Hidden".
-- "Joining": game password (below), maximum players (numeric, hint "0
-  means no limit"), require user verification (checkbox).
-- "Saving": autosave interval in minutes, autosave slots, pause when no
-  one is online (checkbox).
+- "Players and access": game password (below), maximum players (numeric,
+  hint "0 means no limit"), returning players skip the cap, require user
+  verification, AFK kick.
+- "Gameplay": pause when no one is online, pause while someone joins (2.0
+  and later), only admins can pause, who may use console commands.
+- "Saving": autosave interval in minutes, autosave slots, and "Save
+  without pausing" (fork saving), with its note about the experimental flag
+  and memory (SPEC 11.1); disabled with its reason on a non-Linux host.
+- "Network", collapsed: upload limit and upload slots.
+
+Every unset field shows what applies (SPEC 17.16): a number box is empty
+with the game's default as its placeholder and in a hint ("Game default: 10.
+Clear the box to use it."); a checkbox the file does not mention shows the
+game's default state. Autosave slots on an older file without the key say
+"Game default: 5" and that new worlds get 20.
 - "Admins": a `textarea`, one player name per line, as its hint says. On
   a world that cannot be changed it is `readonly`, not disabled, so the
   keyboard can focus and scroll a long list; the other controls stay
@@ -2640,14 +2653,21 @@ conflicts, notices, headings and button labels, so a name such as
 `.button` the name breaks only when it does not fit, and `.button .ident`
 is `display: contents`. Mod badges are `white-space: nowrap`.
 
-**Portal links.** Search results and the plan's asked-for rows carry a
-quiet link, "Mod portal", to `https://mods.factorio.com/mod/<name>` with
-`target="_blank"` and `rel="noopener noreferrer"`. Its hidden text finishes
-the name: "for visible-planets, opens in a new tab". In the installed table
-the mod's name is that link (a 44 px target), with the hidden text "on the
-mod portal, opens in a new tab", so every row has the same shape. Built-in
-and folder mods have none; the portal status turns the name of any mod the
-portal does not have back into plain text.
+**Mod names (SPEC 9.15).** A mod is shown by its title, drawn by the
+`mod-name` partial in `templates/modportal.html`: the title from the mod's
+`info.json` or the portal, the slug as fallback, escaped, cut to 100
+characters and marked `translate="no"`. A mod named on its own is a link to
+`https://mods.factorio.com/mod/<name>` with `target="_blank"` and
+`rel="noopener noreferrer"`, and the hidden text "on the mod portal, opens in
+a new tab"; in the installed list and on the review page that name is the
+link (a 44 px target), so every row has the same shape. A built-in mod, a
+folder mod and a mod the portal lacks show plain text; the portal status
+turns the name of a mod the portal does not have back into plain text. A
+mod named inside a sentence, a button or a summary line is plain text, never
+a link, because a link there fights the sentence or the toggle. The slug is
+shown (`ident`) only where the title would be ambiguous. Saved records (a
+snapshot label, an audit entry, a sent notification) keep the slug they were
+written with.
 
 **The Mods tab.** One `h1`, the world's name with the Active badge, and the
 game's state badge beside it (7.5), then sections in the order below, each
@@ -2734,8 +2754,8 @@ fine pointer and 44 px on touch. The sections, in order:
   general sentence and the button; a world with no save says so and links
   to upload one.
 - "Upload a mod": one line, then a closed `details.disclosure` "Upload a
-  mod zip" holding the file field (size limit in its hint) and the upload
-  button, which goes to the plan page. A refused file opens it.
+  mod zip" holding a drop zone (7.10) and the upload button, which goes to
+  the plan page. A refused file opens it.
 - "Mod settings", only when the world has a mod that is not built in, a
   `mod-settings.dat`, or a refused upload: the text, the "Edit mod
   settings" button to the editor and the download link stay in view; the
@@ -2815,7 +2835,7 @@ bar keeps its frame while the other cards lie flat.
   panel's heading after Clear plan. Without script every control is a
   form that comes back to the same search, page and row
   (`#mod-<name>-hit`), or to the panel (`#plan-panel`). A "+" past the
-  plan's 50 mods is refused with an error in the panel.
+  plan's 500 mods is refused with an error in the panel.
 
 Under the field, on this page and on the Mods tab, a hint says a pasted
 mod link works, with a plain link "Browse the mod portal" (hidden text
@@ -2828,10 +2848,13 @@ in a new tab.
 in Family base 2025?", "Install mods in Family base 2025?" for several,
 "Change the mods of Family base 2025?" once a conflict's fix adds a mod to
 turn off. The `h1` lays out as one run of text, so a mod's name has one
-space each side and wraps like a word. The plan lives in the address and
-the form (`name=` repeated, `q=` for the search the person came from,
-`also-disable=` and `also-remove=` for the fixes taken), never on the
-server. Every kind of change (install, update, enable, disable, remove,
+space each side and wraps like a word. The plan's answers live in a draft on
+the server, in memory, under a random token the page carries (SPEC 9.14,
+ADR 0022), so no address grows with the plan (SPEC 17.17); an entry link
+holds only its kind and one name. Without script the form posts to the
+redraw route and is redirected to `?draft=<token>`, so a reload keeps the
+answers. A lost draft is rebuilt from the saved picks and a Note says so.
+Every kind of change (install, update, enable, disable, remove,
 sync, upload) has the same shape, changes first. In order:
 
 - At most one of these at the top, each taking focus on a full page load
@@ -2858,8 +2881,9 @@ sync, upload) has the same shape, changes first. In order:
   grouped Install, Upgrade, Downgrade, Enable, Disable and Remove in a
   `dl`, one mod a line with its reason in brackets ("visible-planets needs
   it"). The mods an install asked for come first in their group, each line
-  with its portal link and, when there are two or more, "Remove from
-  plan". The mods the plan needs and leaves as they are fold into one
+  with its title as the portal link and, in the same row, its version list
+  and a quiet cross named "Remove *title* from the plan" (a 44 px target).
+  The mods the plan needs and leaves as they are fold into one
   closed `details`, "2 other mods stay as they are".
 - For each mod an install or update names, a `select` "Version of *mod*"
   (SPEC 9.2): "Newest that fits (2.0.0)", then the releases for the
@@ -2869,8 +2893,11 @@ sync, upload) has the same shape, changes first. In order:
   stays on the list. While the chosen release is the installed one, "Nothing
   changes at this version" takes the place of the changes, and there are no
   steps and no apply button.
-- "Optional mods" as checkboxes, "Mod, offered by Mod". Ticking one redraws
-  the plan with htmx; a "Recalculate the plan" button does it without script.
+- "Optional mods" (and the recommended ones) as rows: the tick box with a
+  hidden name, then the title link, the portal's summary, the version it
+  would install and its release date. The link is its own target and never
+  ticks the box. Ticking one redraws the plan with htmx; a "Recalculate the
+  plan" button does it without script.
 - "Mods no longer needed" (SPEC 9.4), a `fieldset` shown when a removal frees
   other mods: a hint ("Only the mods being removed need these. They are
   removed too unless you untick them."), then one ticked checkbox for each,
@@ -2899,9 +2926,9 @@ sync, upload) has the same shape, changes first. In order:
 - The review page has no search or "Add another mod". Adding happens only
   on the Mods tab (SPEC 9.2). Cancel and "Back to the mods" link to the Mods
   tab. Removing a mod on the review page redraws the plan in place with
-  htmx, and `#announcer` says "visible-planets removed from the plan. The
+  htmx, and `#announcer` says "Visible Planets removed from the plan. The
   plan has 1 mod."; focus goes to the "Changes:" label. Without script the
-  remove link is the plan's own URL.
+  cross is a button in a form that posts to the redraw route.
 
 A redraw moves focus only when the control used is gone (a removal or a
 fix, above), always answers 200 so htmx swaps it in, and says the new plan
