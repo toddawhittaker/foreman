@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -20,7 +21,7 @@ func ages(names ...string) []autosave {
 		if !ok {
 			panic(name)
 		}
-		out = append(out, autosave{name: name, n: n, modTime: tidyBase.Add(time.Duration(i) * time.Minute)})
+		out = append(out, autosave{name: name, n: n, tidy: strings.HasSuffix(name, autosaveTidySuffix), modTime: tidyBase.Add(time.Duration(i) * time.Minute)})
 	}
 	return out
 }
@@ -114,14 +115,15 @@ func TestPlanAutosaveTidy(t *testing.T) {
 			map[string]string{autosaveName(12): autosaveName(2), autosaveName(9): autosaveName(1), autosaveName(2): autosaveName(10)}, 3,
 		},
 		{
-			// A tidy cut short after the first renames: 17 and 16 are
-			// leftovers, read as autosaves 17 and 16.
+			// A tidy cut short after the first renames: 17 and 16 wait
+			// as leftovers named for their slots 7 and 6. The loaded file
+			// is ignored, as the leftovers fix K.
 			"leftovers from a tidy cut short",
-			ages(append(append(numbered(18, 19, 20), numbered(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)...), autosaveTidyName(16), autosaveTidyName(17))...),
-			10, "",
+			ages(append(append(numbered(18, 19, 20), numbered(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)...), autosaveTidyName(6), autosaveTidyName(7))...),
+			10, autosaveName(15),
 			func() map[string]string {
 				m := maps.Clone(spec)
-				m[autosaveTidyName(17)], m[autosaveTidyName(16)] = m[autosaveName(17)], m[autosaveName(16)]
+				m[autosaveTidyName(7)], m[autosaveTidyName(6)] = m[autosaveName(17)], m[autosaveName(16)]
 				delete(m, autosaveName(17))
 				delete(m, autosaveName(16))
 				return m
@@ -184,8 +186,15 @@ func TestPlanAutosaveTidySkips(t *testing.T) {
 			t.Errorf("%s: ok %v err %v", name, ok, err)
 		}
 	}
-	if _, ok, err := planAutosaveTidy(ages(autosaveName(4), autosaveTidyName(4), autosaveName(9)), 3, ""); ok || !errors.Is(err, errAutosaveClash) {
-		t.Errorf("a number held twice: ok %v err %v", ok, err)
+	// Leftovers that fit no mapping for S, as when S changed after a cut.
+	for name, saves := range map[string][]autosave{
+		"slot above S":       ages(autosaveName(5), autosaveTidyName(4), autosaveName(9)),
+		"slots out of order": ages(autosaveName(5), autosaveTidyName(1), autosaveTidyName(3), autosaveName(9)),
+		"leftover not kept":  ages(autosaveTidyName(1), autosaveName(5), autosaveName(6), autosaveName(9)),
+	} {
+		if _, ok, err := planAutosaveTidy(saves, 3, ""); ok || !errors.Is(err, errAutosaveLeftover) {
+			t.Errorf("%s: ok %v err %v", name, ok, err)
+		}
 	}
 }
 
@@ -249,27 +258,69 @@ func TestApplyAutosaveTidy(t *testing.T) {
 	}
 }
 
-func TestAutosaveTidyResumesACutShortTidy(t *testing.T) {
-	var names []string
-	for _, n := range []int{18, 19, 20, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17} {
-		names = append(names, autosaveName(n))
+// A tidy cut short after any step, in either rename round or among the
+// removals, is finished by the next start exactly as if it had never
+// stopped (SPEC 11.6). The next start no longer knows the loaded file.
+func TestAutosaveTidyResumesAfterEveryStep(t *testing.T) {
+	order := numbered(18, 19, 20, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)
+	stopped := append(slices.DeleteFunc(slices.Clone(order), func(s string) bool { return s == autosaveName(3) }), autosaveName(3))
+	cases := []struct {
+		name   string
+		saves  []string
+		slots  int
+		loaded string
+	}{
+		{"spec example", order, 10, ""},
+		{"K skips the loaded file", stopped, 10, autosaveName(3)},
+		{"S does not divide", numbered(1, 2, 3, 4, 5, 6, 7), 3, ""},
 	}
-	m, id, dir := tidyWorld(t, names...)
-	before := dirState(t, dir)
-	// The first rename happened, then Foreman stopped.
-	if err := os.Rename(filepath.Join(dir, SavesDir, autosaveName(17)), filepath.Join(dir, SavesDir, autosaveTidyName(17))); err != nil {
-		t.Fatal(err)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			names := append(slices.Clone(c.saves), "base.zip")
+			m, id, dir := tidyWorld(t, names...)
+			plan, ok, err := m.PlanAutosaveTidyHeld(id, c.slots, c.loaded)
+			if err != nil || !ok {
+				t.Fatal(ok, err)
+			}
+			steps := plan.steps()
+			if err := m.ApplyAutosaveTidyHeld(id, plan); err != nil {
+				t.Fatal(err)
+			}
+			want := dirState(t, dir)
+
+			for cut := 1; cut < len(steps); cut++ {
+				m, id, dir := tidyWorld(t, names...)
+				root, err := m.OpenWorld(id)
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = applyTidySteps(root, steps[:cut])
+				_ = root.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				plan, ok, err := m.PlanAutosaveTidyHeld(id, c.slots, "")
+				if err != nil || !ok {
+					t.Fatalf("cut after %d of %d (%v): ok %v err %v", cut, len(steps), steps[cut-1], ok, err)
+				}
+				if err := m.ApplyAutosaveTidyHeld(id, plan); err != nil {
+					t.Fatal(err)
+				}
+				if got := dirState(t, dir); !maps.Equal(got, want) {
+					t.Errorf("cut after %d of %d (%v):\n%v\nwant\n%v", cut, len(steps), steps[cut-1], got, want)
+				}
+			}
+		})
 	}
-	plan, ok, err := m.PlanAutosaveTidyHeld(id, 10, "")
-	if err != nil || !ok {
-		t.Fatal(ok, err)
-	}
-	if err := m.ApplyAutosaveTidyHeld(id, plan); err != nil {
-		t.Fatal(err)
-	}
-	after := dirState(t, dir)
-	if after[autosaveName(7)] != before[autosaveName(17)] || len(after) != 10 {
-		t.Errorf("after: %v", after)
+}
+
+func TestAutosaveTidyCountsMatchThePlan(t *testing.T) {
+	// A tidy cut short can leave nothing above S, yet the next start
+	// still finishes it; the preview counts the same files.
+	m, id, _ := tidyWorld(t, autosaveName(1), autosaveName(2), autosaveName(3), autosaveTidyName(2), autosaveTidyName(1))
+	k, r, err := m.AutosaveTidyCounts(id, 2)
+	if err != nil || k != 2 || r != 3 {
+		t.Errorf("counts %d, %d, %v; want 2, 3", k, r, err)
 	}
 }
 
