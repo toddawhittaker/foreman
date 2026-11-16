@@ -205,8 +205,8 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 	if cont != nil && c.needsAttach(w, *cont, ops) {
 		c.attach(w, *cont, ops)
 	}
-	var old *rcon.Client
-	defer func() { closeRCON(old) }() // runs after the unlock below
+	var old, stale *rcon.Client
+	defer func() { closeRCON(old); closeRCON(stale) }() // runs after the unlock below
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.opDone != nil || w.ops != ops {
@@ -263,6 +263,9 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		w.save.runEnded()
 		w.joins.Reset()
 		w.startedAt = cont.State.StartedAt
+		// The RCON connection went to the run that ended; the first command
+		// on it would fail, so the next one dials the new run.
+		stale = w.rc
 	}
 	active := w.dockerStatus == "running" || w.dockerStatus == "restarting"
 	switch {
