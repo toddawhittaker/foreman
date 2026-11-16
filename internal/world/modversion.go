@@ -366,7 +366,7 @@ func parseInfoJSON(b []byte) (ModInfo, bool) {
 	if json.Unmarshal(b, &doc) != nil {
 		return ModInfo{}, false
 	}
-	info := ModInfo{Name: doc.Name, Version: doc.Version, FactorioVersion: doc.FactorioVersion, Title: cleanTitle(doc.Title)}
+	info := ModInfo{Name: doc.Name, Version: doc.Version, FactorioVersion: doc.FactorioVersion, Title: CleanTitle(doc.Title)}
 	if len(doc.Dependencies) > 0 {
 		_ = json.Unmarshal(doc.Dependencies, &info.Dependencies)
 	}
@@ -377,11 +377,12 @@ func parseInfoJSON(b []byte) (ModInfo, bool) {
 	return info, true
 }
 
-// cleanTitle drops control characters and outer space from a mod's title
-// and cuts it to maxModTitle characters.
-func cleanTitle(t string) string {
+// CleanTitle makes a mod's untrusted title safe to show: control and
+// format characters (such as bidirectional overrides and zero-width spaces)
+// become spaces, outer space goes, and it is cut to maxModTitle characters.
+func CleanTitle(t string) string {
 	t = strings.TrimSpace(strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
 			return ' '
 		}
 		return r

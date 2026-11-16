@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // listEntry is one mod of the portal's list, with the lower-case forms the
@@ -100,7 +102,7 @@ func (c *Client) modList(ctx context.Context, line string) ([]listEntry, error) 
 		list = append(list, listEntry{
 			hit: Hit{
 				Name:            r.Name,
-				Title:           r.Title,
+				Title:           world.CleanTitle(r.Title),
 				Summary:         r.Summary,
 				LatestVersion:   r.Latest.Version,
 				FactorioVersion: r.Latest.Info.FactorioVersion,
@@ -108,7 +110,7 @@ func (c *Client) modList(ctx context.Context, line string) ([]listEntry, error) 
 				ReleasedAt:      parseReleasedAt(r.Latest.ReleasedAt),
 			},
 			name:  strings.ToLower(r.Name),
-			title: strings.ToLower(r.Title),
+			title: strings.ToLower(world.CleanTitle(r.Title)),
 		})
 	}
 	c.lists.put(line, list, c.now())

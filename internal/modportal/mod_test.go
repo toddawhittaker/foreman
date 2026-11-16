@@ -2,6 +2,7 @@ package modportal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -305,5 +306,25 @@ func TestParseModDropsReleasesNamedForAnotherMod(t *testing.T) {
 	}
 	if len(m.Releases) != 1 || m.Releases[0].Version != "1.0.0" {
 		t.Errorf("releases %+v, want only 1.0.0", m.Releases)
+	}
+}
+
+// A portal title is untrusted: format characters go and it is cut short,
+// as a title from info.json is (SPEC 9.15).
+func TestParseModCleansTheTitle(t *testing.T) {
+	long := strings.Repeat("x", 150)
+	for title, want := range map[string]string{
+		"Helper‮exe.gnp": "Helper exe.gnp",
+		" Plain ":        "Plain",
+		long:             strings.Repeat("x", 100) + "…",
+	} {
+		b, _ := json.Marshal(map[string]any{"name": "m", "title": title})
+		m, err := parseMod(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if m.Title != want {
+			t.Errorf("title %q = %q, want %q", title, m.Title, want)
+		}
 	}
 }

@@ -17,6 +17,8 @@ func TestParseInfoJSONTitle(t *testing.T) {
 		{"missing", `{"name":"a"}`, ""},
 		{"blank", `{"name":"a","title":"   "}`, ""},
 		{"control characters", `{"name":"a","title":"\tTwo\nlines\u0000 "}`, "Two lines"},
+		{"bidirectional override", `{"name":"a","title":"Helper\u202eexe.gnp"}`, "Helper exe.gnp"},
+		{"isolates and zero-width", `{"name":"a","title":"\u2066A\u2069\u200bB\ufeff"}`, "A  B"},
 		{"markup kept as text", `{"name":"a","title":"<b>x</b>"}`, "<b>x</b>"},
 		{"long", `{"name":"a","title":"` + long + `"}`, strings.Repeat("Ü", maxModTitle) + "…"},
 	}

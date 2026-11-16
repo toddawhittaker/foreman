@@ -163,7 +163,7 @@
             <input type="hidden" name="from" value="panel">
             <input type="hidden" name="return" value="{{$.Return}}">
             {{- /* Taking a mod out destroys nothing, so the cross is quiet, not red. */}}
-            <button type="submit" class="button button--icon plan-panel__remove" id="{{$.RemoveID .Name}}"><span class="visually-hidden">{{t "mods.plan_panel.remove" "mod" .Title}}</span></button>
+            <button type="submit" class="button button--icon plan-panel__remove" id="{{$.RemoveID .Name}}"><span class="visually-hidden">{{tHTML "mods.plan_panel.remove" "mod" (ident .Title)}}</span></button>
           </form>
         </div>
         {{template "plan-notes" .}}
