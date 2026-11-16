@@ -183,7 +183,7 @@ test("installed mods show their titles, linked to the mod portal", async ({ page
 
   await page.goto("/worlds/base/mods");
   const table = page.getByRole("table", { name: /Mods of Base/ });
-  const row = (name: string) => table.getByRole("row", { name: new RegExp(`^${name}\\b`) });
+  const row = (name: string) => table.getByRole("row", { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`) });
   const link = row("Titled <Mod>").getByRole("link", { name: "Titled <Mod> on the mod portal, opens in a new tab" });
   await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-titled");
   await expect(link).toHaveAttribute("target", "_blank");
