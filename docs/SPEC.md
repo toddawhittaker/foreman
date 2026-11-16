@@ -525,6 +525,21 @@ not) or a map exchange string, with Space Age on or off. (P0)
   line each: *Map settings* or *Map exchange string*. An exchange string
   is decoded by Foreman and both its files are written
   (`map-gen-settings.json`, `map-settings.json`).
+- **The string is offered back.** A world's page and each favorite show the
+  map exchange string with a "Copy map exchange string" button and a note
+  that it carries map settings only, not mods. It is made from the map files
+  by Foreman's own encoder for 1.1, 2.0 and 2.1: the payload matches the
+  game's byte for byte, the compressed text does not (the game reads
+  either). A world with a random seed, or without map files, takes it from
+  its newest save's `level-init.dat`, read in Go: it is the map as the game
+  created it, so a later script change to the map settings is not in it. It
+  matches the game's own `get_map_exchange_string()` byte for byte on
+  1.1.110, 2.0.77, 2.1.23 and 2.1.24. A save of another patch is accepted
+  only when the result decodes in full and the surface's seed, width and
+  height match the header's; otherwise the button is disabled with the
+  reason. RCON is never used for it, because a Lua command turns achievements
+  off for good. At most 2 saves are read at once, a result is kept per save
+  file (path, size, modified time), and the string never goes in an address.
 - **One form for map settings.** Choosing a preset fills every tab from
   it. Once any field differs from the preset, the form shows the game's
   own word "[modified]". **One "Reset to defaults"** for the whole world,
@@ -894,7 +909,14 @@ world cannot be deleted. (P0)
 
 5.11. **Saves.** List a world's save files with timestamps and sizes;
 download any save; upload a save; choose which save loads (section 7.11).
-(P0)
+An autosave is listed as the world's name and its save time in the viewer's
+time zone (17.11), with its file name as smaller text; a save a person
+named keeps their name. A downloaded autosave is named from the world's
+name and its save time (UTC); other saves keep their file name. Files are
+never renamed, and "Loads next" still uses the file name. A file whose name
+ends in `.tmp.zip` is a save still being written: it cannot be uploaded,
+loaded or chosen to load next, and a folder import skips it; only its
+download is allowed. (P0)
 
 5.12. **Favorites.** A favorite is a saved bundle to start new worlds from:
 a game version, Space Age, a map, server settings, mods and mod settings.
@@ -914,7 +936,8 @@ a game version, Space Age, a map, server settings, mods and mod settings.
   turned-off mods and zips whose name or version cannot be read are left out,
   and the page says which. Foreman cannot tell an uploaded zip from a portal
   zip, so uploaded mods are kept like portal mods; if the portal lacks the
-  release, the review page shows a conflict with the upload fix (9.2).
+  release, the review page shows a conflict with the upload fix (9.2). Each
+  mod's title from its `info.json` is kept with it (9.15).
 - **Where it lives.** Each favorite is a folder `favorites/<id>/` under the
   data directory (3.3), holding `favorite.json`, the settings files and
   `mod-settings.dat`. The id is 16 random hex characters Foreman makes, and
@@ -933,9 +956,11 @@ a game version, Space Age, a map, server settings, mods and mod settings.
   game version (still changeable), Space Age, the preset and every map
   field, and the person can change anything before generating. After the
   world is made, its server settings and `mod-settings.dat` are written, the
-  favorite's mod names become the world's saved picks (9.14; those past 50
-  are not saved), and the person lands on the world's review page with a note
-  that the world was made, the favorite's mods, and their pinned versions. One
+  favorite's mod names become the world's saved picks (9.14, up to 500), and
+  the person lands on the world's review page with a note that the world was
+  made, the favorite's mods, and their pinned versions. Generate passes the
+  favorite's id, never its mod names, and the review reads the names and
+  versions from the favorite by that id (17.17). One
   "Install N mods" then goes through the checks, checksums and snapshot of
   9.13; there is no second download path. A favorite with no mods leads to
   the world's page, as Generate does. A favorite deleted in the meantime is
@@ -944,10 +969,24 @@ a game version, Space Age, a map, server settings, mods and mod settings.
 - **Other game lines.** The pinned versions are passed to the review page
   only when the new world is on the favorite's game line. On another line
   only the names go, and the review page takes the newest release that fits,
-  or shows a conflict for a mod with none.
-- **Limits.** The review page takes at most 50 mod names (9.14), so a
-  favorite with more mods cannot go through it. Foreman keeps no export or
-  import of favorites. (P2)
+  or shows a conflict for a mod with none. A favorite saved on a game version
+  this Foreman does not support shows a conflict on the review page, which
+  cannot then be applied; the admin installs the mods from the Mods tab,
+  where Generate saved them as picks.
+- **Export and import** (P1). A favorite exports as `<name>-favorite.zip`:
+  its folder plus `foreman-favorite.json`, which holds the file format
+  version. `mod-settings.dat` travels with it, and a visible warning above
+  the list says a mod may keep a token there. An import takes a `.zip` of at
+  most 8 MiB through the drop zone (14.6) and checks all of it before writing
+  anything: the format version, six known entry names with no folder, link
+  or repeat, each entry's unpacked size, no unknown field in either JSON
+  file, and every mod name, version and title and the game version. Server
+  settings are stripped of secrets again. A name already in use is refused,
+  not renamed. A mod or game version this Foreman lacks is still imported
+  and shows as a conflict on review. It is written in a staging folder and
+  renamed into place. An imported favorite names no source world.
+- **Limits.** The saved picks and the review take at most 500 mod names
+  (9.14), so a favorite of 120 mods installs in one review.
 
 ## 6. Snapshots
 
@@ -1027,7 +1066,15 @@ manifest, because hardlinked saves share their time with the world
 RCON, once the game's log says the save finished, so it holds the current
 game state. A snapshot or restore asks Docker whether the game is running
 first; when Docker cannot be reached it is refused, because Foreman cannot
-tell whether files are in use. (P0)
+tell whether files are in use. With fork saving on (`non_blocking_saving`,
+11.1) the game writes a save in a second process, and a `/server-save` sent
+while an earlier save is still being written is queued behind it. Foreman
+therefore counts the saves the game starts (its "Saving game as" and
+"Saving to" lines, which an autosave also writes) and waits for one begun
+after its own command, until none is being written and 300 ms have passed
+with no new start. A save whose process fails ends the wait with its own
+error, "the game could not save the world", not the timeout; a save that
+fails without any log line still waits the 2-minute limit. (P0)
 
 6.11. **Fail safe on disk space.** Before a snapshot, restore, import or
 upload, Foreman works out how many bytes the write needs (nothing for a
@@ -1053,11 +1100,13 @@ world or another snapshot holds the name by hard link (6.8).
 An admin can delete snapshots from this tab or from a world's Snapshots
 page. A row's Delete link opens a confirmation page that names the world,
 label and time and says how much space it frees. Each row also has a
-checkbox, and "Delete selected" opens one confirmation page for the whole
-selection, which lists every snapshot with its world, label and time and
-says how much space the selection frees. One "Select all automatic"
+checkbox, and "Delete selected" posts the selection and opens one
+confirmation page for it, which lists every snapshot with its world, label
+and time and says how much space the selection frees. The selection is
+sent in a posted form, never in the address (17.17), and after the delete the
+page says how many snapshots were deleted; the audit log still names each one. One "Select all automatic"
 button, on the list's heading row, ticks every automatic snapshot (6.6)
-on the page; on the tab that is every world's, and the world headings
+on the page, also by a post; on the tab that is every world's, and the world headings
 carry only the world's name and what its snapshots add. It keeps any hand
 ticks and never ticks a manual or "Before delete" snapshot. After it, the page says how many snapshots it
 ticked, also to a screen reader, and moves focus to that note.
@@ -1463,9 +1512,11 @@ otherwise says the reason is unknown:
   a crash;
 - `out-of-memory`, only from Docker's `OOMKilled` flag, because the game's
   log just stops when the kernel kills it. The game container has no memory
-  limit, so a kill of the whole host shows as unknown, and so does an
+  limit, so a kill of the whole host shows as unknown. When the socket proxy
+  allows Docker's events (14.3), an `oom` event names the exit even after
+  Docker restarts the game and clears the flag. Without events, an
   out-of-memory kill that Docker restarts before either look sees the flag
-  (Docker clears it). Once seen, the flag names the crash until a newer
+  shows as unknown (Docker clears it). Once seen, the flag names the crash until a newer
   exit says otherwise, or a run Docker began after that exit (by Docker's
   log time) names another reason; the game getting back in game clears it.
 
@@ -1622,7 +1673,15 @@ page: "Newest that fits", chosen at first, then the portal's releases for
 the world's game line, newest first, with the installed one marked.
 Choosing a release draws the plan again with that release and the
 dependencies it needs; the mods it pulls in still take the newest release
-that fits. Foreman checks a chosen version against the portal's releases on
+that fits. On the review page each mod is named by its title, linked to
+its portal page (9.15), and an asked mod's version list and its way out of
+the plan (a cross named "Remove *title* from the plan") sit in its row. Each
+offered mod (optional, recommended or no longer needed) shows its title
+link, the portal's summary, the version it would install (or has installed)
+and that release's date, apart from its tick box, so a click on the link never
+changes the tick. These come from the plan's portal lookups and the cache,
+with at most 500 further lookups for offered mods; past that a mod shows its
+title and link only. Foreman checks a chosen version against the portal's releases on
 the world's line on every request, and downloads only a release from that
 list; a version the portal does not have there is a conflict. A
 search result's "+" adds the mod to the world's plan, shown in a panel
@@ -1831,7 +1890,7 @@ of the `mod-settings.dat` its form was drawn from, and is refused as
 changed when the file no longer matches. (P0)
 
 9.14. **The plan is worked out, not stored.** Foreman saves, per world,
-only the names of the mods picked with "+", at most 50 (3.4, ADR 0021). Each
+only the names of the mods picked with "+", at most 500 (3.4, ADR 0021). Each
 time the panel is drawn the tree is worked out again, so removing a pick
 also drops every dependency nothing else needs, and a dependency has no
 remove button of its own. When "Install N mods" is accepted, the mods it
@@ -1840,7 +1899,16 @@ a changed plan, a failed check, a refused request or any other kind of plan.
 The failure page's "Try again" still carries the names. Deleting a world
 clears its picks. The picks are a database table, not a file in the world,
 so no snapshot, clone or restore carries them. Beyond the picks, Foreman
-keeps no plan on the server. The review page posts the request, a hash of
+keeps no plan in storage. The review page keeps its answers (ticks, chosen
+versions, mods to remove or turn off) in a **draft held in memory** under a
+random token tied to the signed-in user and the world, like the previews of
+5.6 and 11.3 (ADR 0022). A draft lasts 2 hours, a user keeps at most 20 and
+the server at most 200, the oldest going first; it is lost on a restart. A
+draft that has expired or is unknown, or is another user's, is rebuilt
+from the saved picks, and the page says so. A link into the review carries
+only its kind and at most one name (`update` with no name for Update all, a
+favorite's id, or a draft's token), and the review's own links and redraws
+carry the token (17.17). The review page posts the request, a hash of
 the plan (which covers the mods dropped under 9.4) and a fingerprint of the
 mods folder (file names, sizes, times, and the content of `mod-list.json`).
 The server works the plan out again; when the hash or the fingerprint
@@ -1848,7 +1916,7 @@ differs it applies nothing and shows the new plan with "The plan changed"
 (17.8). The fingerprint is read again after the game stops, because the
 game may write files as it exits. (P0)
 
-9.15. **How the game treats mod files** (checked in a real game on 1.1, 2.0
+9.15. **How the game treats mod files, and how Foreman names mods** (checked in a real game on 1.1, 2.0
 and 2.1). When `mods/` holds two zips of one mod the game loads the higher
 version, so a plan starts from the newest zip and deletes the other zips of
 a mod it changes or removes. The game rewrites `mod-list.json` when it exits,
@@ -1863,6 +1931,19 @@ the file's, so stopping, editing the file and starting changes nothing
 2.0 store whole numbers as doubles. The only ways to change a map value in
 a save are a Lua command in the owning mod's context, which ends the save's
 achievements for good, or an admin in the game's Map tab.
+
+**Mods are shown by title.** Wherever a page names a mod, it shows the
+mod's title, not its slug, and the slug is the fallback. The title comes from
+the mod's `info.json` for an installed mod and from the mod portal otherwise
+(cached, with no lookups beyond those a page already makes). A title is
+untrusted input: control characters become spaces, the text is cut to 100
+characters, it is escaped like any text, and it is marked `translate="no"`.
+A mod named on its own (a list row, a plan row, a heading) links to its
+portal page in a new tab, except a built-in mod, a folder mod, and a mod the
+portal is known to lack; a mod named inside a sentence or on a button is plain
+text, because a link inside a sentence or a button is hard to use. Saved
+records keep the slug they were written with: snapshot labels, audit entries
+and sent notifications. (P1)
 
 ## 10. Game versions
 
@@ -1959,6 +2040,36 @@ raw JSON editor for everything else. (P0 form; P1 raw editor)
   that lacks one of the three.
 - **The form changes only the keys it shows.** Every other key, and the
   file's layout and key order, are kept.
+- **Groups.** Players and access (game password, max players, returning
+  players skip the cap, user verification, AFK kick), Gameplay (auto-pause,
+  pause while someone joins, only admins can pause, who may use console
+  commands), Saving (interval, slots, fork saving) and Network (upload limit
+  and slots, collapsed). `auto_pause_when_players_connect` is hidden on 1.1
+  and never written there.
+- **Every unset field shows the value that applies** (17.16). A
+  whole-number field the file lacks is empty with the game's default as its
+  placeholder and in a hint; a true-or-false field the file lacks shows the
+  game's default state. Clearing a whole-number box removes its key, so
+  the next start uses the game's default and the hint ends "Clear the box to
+  use it."; a checkbox writes its state when it differs from what the form
+  showed. Name and description are never removed. The save takes the usual
+  snapshot (11.3).
+- **20 autosave slots for new worlds.** Foreman writes `autosave_slots: 20`
+  whenever it creates `server-settings.json`: Generate, Import of a save or
+  folder with no file, and a world's first settings save. These files hold
+  the name, an empty description, Hidden visibility, `auto_pause: true` and
+  the 20 slots. A favorite's file gets the key only when it lacks one, so a
+  Generate from a favorite writes 20 slots even if the favorite had cleared
+  the key. An imported folder's own file is copied as it is. An older file
+  without the key shows the game's 5 and a hint that Foreman's default for
+  new worlds is 20. Foreman never writes an existing world's file at start.
+- **Fork saving** (`non_blocking_saving`) makes the game write a save in a
+  second process, so a save no longer pauses the server. It is experimental in
+  the game, and the fork can bring memory use close to double on a busy map;
+  the form says so. It is disabled, with the reason, when Docker's reported
+  operating system (the `Os` field of `GET /version`) is not `linux`, and
+  Foreman never writes it on then; one already on stays on and can be turned
+  off only in the raw editor. A snapshot waits for a forked save (6.10).
 - **Auto-pause is on unless the file says otherwise.** A missing
   `auto_pause` key shows as on, the game's own default. The first save on
   a world with no file writes `auto_pause: true` with the three keys
@@ -2169,8 +2280,12 @@ endpoints:
   `GET /containers/{id}/json`, `POST /containers/{id}/start`,
   `POST /containers/{id}/stop`, `POST /containers/{id}/kill` (forced stop
   only), `GET /containers/{id}/logs`, `GET /containers/{id}/stats`, and
-  optionally `GET /events` filtered to containers. Foreman does not use
-  `GET /events`; it polls (8.7).
+  optionally `GET /events` filtered to containers. `GET /events` is
+  optional: Foreman uses it when the proxy allows it, to name an
+  out-of-memory kill (8.7), and polls as the fallback. A 401 or 403 means
+  events are off until Foreman restarts; any other failure retries from 1 to
+  30 seconds. Docker's operating system is read from the `Os` field of
+  `GET /version`.
 - `POST /images/create` (pull an exact tag), `GET /images/{name}/json`,
   `POST /containers/create`, and `DELETE /containers/{id}`.
 
@@ -2289,7 +2404,13 @@ are ignored and an unknown setting type is shown as not editable. A mod's
 `.cfg` locale file is at most 1 MiB, and 8 MiB per language across mods. A
 string setting value is at most 10,000 bytes. A mod or `mod-settings.dat` upload waits in a
 staging file at the top of the worlds folder, and a staged mod nobody
-applied is removed an hour later. (P0)
+applied is removed an hour later. A favorite file is at most 8 MiB, is read in
+memory and is checked in full before anything is written (5.12). A save whose
+name ends in `.tmp.zip` is refused. **Every upload uses one drop zone**
+(DESIGN 7.10): its checks of type, count and size only answer sooner, and the
+server checks every upload as before. An upload happens in place when its
+result is used on that page; otherwise a button goes to the tab that owns the
+file. (P0)
 
 14.7. **Requests that change state** require a signed-in session and
 protection against cross-site request forgery. A browser post is accepted
@@ -2344,7 +2465,7 @@ whose host ends in `.factorio.com`. The real portal redirects to
 `dl-mod.factorio.com`. The redirect carries no `Referer` header, because Go
 would copy the token-bearing address into it. An error message never holds
 the request's query string, because the token rides in it (14.8).
-A mod plan request names at most 50 mods and ticks at most 50 optional
+A mod plan request names at most 500 mods and ticks at most 500 optional
 ones, so one request cannot start unbounded portal calls. A plan page
 opened by a request marked cross-site or same-site in `Sec-Fetch-Site` is
 refused with a page that offers "Try again", and asks the portal nothing. (P0)
@@ -2591,6 +2712,20 @@ again names the planet; a click on another download moves focus to Cancel;
 when the focused button goes, focus moves to Cancel, and when the block
 closes, back to the download link. "Download started." is said when the
 download begins. (P1)
+
+17.16. **Defaults show.** A settings form never shows an empty box that
+hides the value in effect: a field the file leaves unset shows that value as
+a placeholder and in a hint that carries its meaning, and a checkbox shows the
+default state. A write-only secret is the exception. The game settings form
+follows the rule (11.1); the other forms do not yet (issue #636). (P1)
+
+17.17. **No long addresses.** No address Foreman builds carries a list or
+long state. State travels by id, or by a server-side record the address names
+by token (the mods review's draft, 9.14; a settings preview, 11.3; a map
+preview, 5.6), or in a posted form (a snapshot selection, 6.12). Every address
+stays under 512 bytes, and the pages that carry plans or selections have a
+test for it. Left as they are, one short value each: a note, a favorite's id,
+a player name, a game version, a search and its page, the versions filter. (P0)
 
 ## 18. Epics, in order
 

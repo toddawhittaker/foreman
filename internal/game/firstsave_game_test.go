@@ -3,7 +3,7 @@
 package game
 
 // Generate writes a server-settings.json with Hidden visibility, auto-pause on
-// and 20 autosave slots (EPIC-fixes-11 ruling 3); the first settings save keeps
+// and 20 autosave slots (SPEC 11.1, 17.16); the first settings save keeps
 // those, adds what the form sets, and the game starts with it (SPEC 11.1,
 // 11.2). Run by `make test-game`, never by `make verify`.
 
