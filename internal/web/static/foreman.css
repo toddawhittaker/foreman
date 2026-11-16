@@ -3178,8 +3178,10 @@ td > .hint {
   color: var(--color-primary);
 }
 
-.disclosure:not(.player-actions) > summary:hover {
-  background: var(--color-secondary-hover);
+@media (hover: hover) {
+  .disclosure:not(.player-actions) > summary:hover {
+    background: var(--color-secondary-hover);
+  }
 }
 
 .disclosure + .disclosure {
@@ -9171,32 +9173,123 @@ main:has(> .gate) > * + :not(h1, .gate) {
   gap: var(--space-3);
 }
 
-/* The favorites list (SPEC 5.12): one row per favorite, no bullets. */
+/* The favorites list (SPEC 5.12, DESIGN 7.11): one row per favorite, a
+   foldout named by the favorite with Generate beside it, outside the
+   summary. Rows are split by the line stacked foldouts get. */
 .favorite-list {
   display: grid;
-  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* P1 favorites export and import (DESIGN 7.11). A favorite's mods fold
-   away so a large pack does not fill the list, and so does its exchange
-   string; each mod's title may wrap. */
-.favorite-mods > summary,
-.favorite-exchange > summary {
-  min-block-size: var(--target-min);
-  display: flex;
-  align-items: center;
-  cursor: pointer;
+.favorite {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  align-items: start;
 }
 
-.favorite-mods ul {
+/* Details shares the row's grid, so its summary takes the first column
+   beside Generate and its body spans the whole row once open. */
+.favorite__details {
   display: grid;
-  gap: 0;
-  margin: var(--space-2) 0 0;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+}
+
+.favorite__details > summary {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.favorite__details::details-content {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.favorite__generate {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.favorite + .favorite {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.favorite__name {
+  overflow-wrap: anywhere;
+}
+
+.favorite__facts {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.favorite__generate {
+  margin-block-start: var(--space-1);
+  gap: var(--space-2);
+}
+
+/* The Worlds tab's globe with a small plus at its lower right. */
+.favorite__generate::before {
+  content: "";
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--i-plus) right bottom / 0.85rem 0.85rem no-repeat, var(--i-worlds) left top / 1rem 1rem no-repeat;
+}
+
+.favorite__body {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--space-4);
+  padding-block: var(--space-2) var(--space-4);
+}
+
+.favorite__part {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.favorite__part > h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.favorite__rename,
+.favorite__body > .actions {
+  margin: 0;
+}
+
+/* Export and the red bin stay on one line, even on a narrow panel. */
+.favorite__body > .actions {
+  flex-wrap: nowrap;
+}
+
+.favorite__body > .actions > .button {
+  flex: none;
+}
+
+/* Each mod's title may wrap; two columns once the row has room. */
+.favorite-mods {
+  display: grid;
+  gap: 0 var(--space-4);
+  margin: 0;
   padding: 0;
   list-style: none;
+}
+
+@container (min-width: 36rem) {
+  .favorite-mods {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .favorite-mods li {

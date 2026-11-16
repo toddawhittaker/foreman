@@ -101,18 +101,18 @@ test("a favorite offers its string, and one without map settings says why", asyn
   seedFavorite(foreman.dataDir, favID, "With map", true);
   seedFavorite(foreman.dataDir, "fedcba9876543210", "No map", false);
   await page.goto("/favorites");
-  const withMap = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "With map" }) });
-  const noMap = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "No map" }) });
+  const withMap = page.locator("li.favorite", { has: page.locator(".favorite__name", { hasText: "With map" }) });
+  const noMap = page.locator("li.favorite", { has: page.locator(".favorite__name", { hasText: "No map" }) });
 
-  // The string folds away until it is wanted.
+  // The string sits in the favorite's Details, folded away until wanted.
   await expect(field(page, `exchange-${favID}`)).toBeHidden();
-  await withMap.locator("summary", { hasText: "Map exchange string" }).click();
+  await withMap.locator("summary").click();
   await expect(field(page, `exchange-${favID}`)).toHaveValue(/^>>>[A-Za-z0-9+/=]+<<<$/);
   await copyAndRead(page, withMap, field(page, `exchange-${favID}`));
   // The button's name is the same on every row; its description names the favorite.
   await expect(withMap.getByRole("button", { name: copyName })).toHaveAccessibleDescription(/With map/);
 
-  await noMap.locator("summary", { hasText: "Map exchange string" }).click();
+  await noMap.locator("summary").click();
   await expect(noMap.getByRole("button", { name: copyName })).toHaveCount(0);
   await expect(noMap).toContainText("keeps no map settings");
   await checkPage(page);
@@ -135,7 +135,7 @@ test.describe("without script", () => {
     await expect(field(page)).toBeFocused();
 
     await page.goto("/favorites");
-    await page.locator("summary", { hasText: "Map exchange string" }).click();
+    await page.locator(".favorite summary").click();
     await expect(field(page, `exchange-${favID}`)).toHaveValue(/^>>>/);
     await expect(field(page, `exchange-${favID}`)).toBeVisible();
   });
@@ -156,7 +156,8 @@ for (const lang of ["de", "ru"] as const) {
     await expect(page.getByRole("button", { name: exchangeWords[lang][1] })).toBeVisible();
     await checkPage(page);
     await page.goto("/favorites");
-    await page.locator("summary", { hasText: exchangeWords[lang][0] }).click();
+    await page.locator(".favorite summary").click();
+    await expect(page.getByRole("heading", { name: new RegExp(exchangeWords[lang][0]) })).toBeVisible();
     await expect(field(page, `exchange-${favID}`)).toBeVisible();
     await checkPage(page);
     await page.screenshot({ path: `../screenshots/x2-${lang}-200-${test.info().project.name}.png`, fullPage: true });

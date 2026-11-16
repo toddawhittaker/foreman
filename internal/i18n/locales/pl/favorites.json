@@ -4,7 +4,7 @@
   "favorites.fact.source": "Utworzono z",
   "favorites.fact.mods": "Modyfikacje",
   "favorites.fact.created": "Utworzono",
-  "favorites.generate": "Generuj na jego podstawie",
+  "favorites.generate": "Generuj",
   "favorites.empty": "Brak ulubionych. Na stronie świata można użyć opcji „Utwórz ulubiony”.",
   "favorites.empty.link": "Przejdź do światów",
   "favorites.list.link": "Pokaż wszystkie ulubione",
@@ -51,7 +51,6 @@
   "favorites.error.map_damaged": "Ustawienia mapy tego ulubionego są uszkodzone, więc Foreman nie może ich wypełnić. Należy wybrać inny ulubiony albo usunąć ten i utworzyć go ponownie ze świata.",
   "favorites.export.button": "Eksportuj",
   "favorites.export.warning": "Eksport pobiera ulubiony jako plik, aby go udostępnić lub przenieść do innego Foremana. Plik zawiera ustawienia modyfikacji, a modyfikacja może przechowywać w nich token lub inną prywatną wartość, dlatego należy go udostępniać tylko zaufanym osobom.",
-  "favorites.mods.show": "Pokaż modyfikacje",
   "favorites.import.heading": "Import ulubionego",
   "favorites.import.text": "Można dodać ulubiony z pliku wyeksportowanego przez inny Foreman. Modyfikacje, których brakuje w tym Foremanie, i tak zostaną zaimportowane, a pokaże je przegląd modyfikacji w Generowaniu. Wersja gry, której ten Foreman nie obsługuje, zostanie przy generowaniu zastąpiona wersją domyślną.",
   "favorites.import.label": "Plik ulubionego",
@@ -59,5 +58,15 @@
   "favorites.import.done": "Zaimportowano ulubiony „{name}”.",
   "favorites.import.bad": "To nie jest plik ulubionego, który Foreman potrafi odczytać, albo jest uszkodzony. Niczego nie zaimportowano.",
   "favorites.import.name_taken": "Ulubiony o nazwie z tego pliku już istnieje. Należy zmienić jego nazwę lub go usunąć, a potem zaimportować ponownie.",
-  "favorites.exchange.show": "Kod wymiany mapy"
+  "favorites.exchange.show": "Kod wymiany mapy",
+  "favorites.generate.label": "Generuj świat na podstawie {name}",
+  "favorites.no_space_age": "Bez Space Age",
+  "favorites.mods.count": {
+    "one": "{count} modyfikacja",
+    "few": "{count} modyfikacje",
+    "many": "{count} modyfikacji"
+  },
+  "favorites.rename.label": "Nowa nazwa",
+  "favorites.rename.button": "Zmień nazwę",
+  "favorites.renamed": "Zmieniono nazwę ulubionego na: „{name}”."
 }
