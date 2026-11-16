@@ -115,9 +115,9 @@ func TestStopCrashedGameDockerRestarted(t *testing.T) {
 	r.waitState(id, StateStopped)
 }
 
-// A game still loading cannot be warned or saved yet: Stop says to wait,
-// not that RCON is unreachable.
-func TestStopStartingGameNotReady(t *testing.T) {
+// A game still loading cannot be warned or saved yet, and is never refused
+// a stop (#646): it stops without a save.
+func TestStopStartingGameStopsWithoutSave(t *testing.T) {
 	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 2 * time.Second}})
 	id := r.newWorld("Loading")
 	r.start(id)
@@ -129,11 +129,14 @@ func TestStopStartingGameNotReady(t *testing.T) {
 	c2 := r.newController(rigOptions{})
 	r.run(c2)
 	eventually(t, func() bool { return c2.Status(id).State == StateStarting }, "the re-attached game to be starting")
-	if err := c2.Stop(context.Background(), id, admin, StopOptions{}); !errors.Is(err, ErrNotReady) {
-		t.Fatalf("got %v, want ErrNotReady", err)
+	if err := c2.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+		t.Fatalf("stop = %v, want it to run", err)
 	}
-	if r.container(id).Status != "running" {
-		t.Error("the loading game was stopped")
+	if slices.Contains(r.commands(id), "/server-save") {
+		t.Error("tried to save a game that is not in game")
+	}
+	if cs := r.container(id); cs.Status != "exited" {
+		t.Errorf("container %s, want exited", cs.Status)
 	}
 }
 
