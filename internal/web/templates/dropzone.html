@@ -1,0 +1,23 @@
+{{/* One file field that, with script, is also a drop zone (DESIGN 7.10). Without script it is the plain labelled field. Takes DropZone. */}}
+{{define "dropzone" -}}
+<div class="field dropzone" data-dropzone data-accept="{{.Accept}}" data-max-bytes="{{.MaxBytes}}"
+  data-wrong-type="{{t "common.dropzone.wrong_type" "types" .Accept "file" "{file}"}}"
+  data-too-big="{{t "common.dropzone.too_big" "limit" (bytes .MaxBytes) "file" "{file}"}}"
+  data-single="{{t "common.dropzone.one_file"}}"
+  data-chosen="{{t "common.dropzone.chosen" "file" "{file}" "size" "{size}"}}"
+  data-units="{{t "common.bytes.b" "n" "{n}"}}|{{t "common.bytes.kb" "n" "{n}"}}|{{t "common.bytes.mb" "n" "{n}"}}|{{t "common.bytes.gb" "n" "{n}"}}"
+  data-cleared="{{t "common.dropzone.cleared"}}">
+  <label for="{{.ID}}" class="required">{{msg .Label}}</label>
+  <p class="hint" id="{{.ID}}-hint">{{t "common.dropzone.limits" "types" .Accept "limit" (bytes .MaxBytes)}}</p>
+  <div class="dropzone__area">
+    <p class="dropzone__prompt" aria-hidden="true" hidden><span class="dropzone__idle">{{t "common.dropzone.prompt"}}</span><span class="dropzone__drop">{{t "common.dropzone.drop"}}</span></p>
+    <input id="{{.ID}}" name="{{.Name}}" type="file" accept="{{.Accept}}" required
+      aria-describedby="{{.ID}}-hint{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
+  </div>
+  <p class="dropzone__chosen" id="{{.ID}}-chosen" hidden><span class="dropzone__file"></span> <button type="button" class="button button--quiet dropzone__clear">{{t "common.dropzone.clear"}}</button></p>
+  <p class="error" id="{{.ID}}-client-error" hidden><strong>{{t "common.error.label"}}</strong> <span></span></p>
+  {{- if not .Error.IsZero}}
+  <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  {{- end}}
+</div>
+{{- end}}

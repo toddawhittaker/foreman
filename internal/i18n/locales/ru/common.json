@@ -83,5 +83,14 @@
   "common.menu.notifications": "Уведомления",
   "common.menu.schedule": "Расписание перезапуска",
   "common.settings.label": "Настройки Foreman",
-  "common.countdown.none_name": "Без предупреждения: установить обратный отсчёт на 0 секунд"
+  "common.countdown.none_name": "Без предупреждения: установить обратный отсчёт на 0 секунд",
+  "common.dropzone.limits": "Файл {types} размером до {limit}.",
+  "common.dropzone.prompt": "Перетащите файл сюда или выберите файл",
+  "common.dropzone.drop": "Отпустите файл, чтобы выбрать его",
+  "common.dropzone.chosen": "Выбран: {file}, {size}",
+  "common.dropzone.clear": "Убрать",
+  "common.dropzone.cleared": "Файл не выбран.",
+  "common.dropzone.wrong_type": "{file} — не файл {types}. Выберите файл с окончанием {types}.",
+  "common.dropzone.too_big": "{file} больше {limit}. Выберите файл поменьше.",
+  "common.dropzone.one_file": "Выбирайте по одному файлу."
 }
