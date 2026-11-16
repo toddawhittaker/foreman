@@ -94,6 +94,7 @@ var refusals = []struct {
 	{game.ErrNotReady, i18n.M("server.error.not_ready")},
 	{game.ErrImageMissing, i18n.M("server.error.image_missing")},
 	{game.ErrRCONUnreachable, i18n.M("server.error.rcon_unreachable")},
+	{game.ErrSaveFailed, i18n.M("server.error.save_failed")},
 	{game.ErrSaveTimeout, i18n.M("server.error.save_timeout")},
 	{game.ErrStartFailed, i18n.M("server.error.start_failed")},
 	{game.ErrCancelled, i18n.M("server.error.cancelled")},

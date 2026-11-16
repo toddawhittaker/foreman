@@ -369,6 +369,7 @@
   "server.error.image_missing": "The game image for this world's Factorio version is not downloaded. Download the game image, then start again.",
   "server.error.rcon_unreachable": "Cannot reach the game over RCON, so it cannot warn players or save first. Use Force stop to stop it without saving.",
   "server.error.save_timeout": "The game did not finish saving in time, so nothing was stopped or snapshotted. Try again, or use Force stop.",
+  "server.error.save_failed": "The game could not save the world, so nothing was stopped or snapshotted. Check the log for the reason.",
   "server.error.start_failed": "The game did not start.",
   "server.error.cancelled": "A forced stop interrupted this.",
   "server.error.stop_cancelled": "The stop was canceled, so nothing was stopped or saved and the game runs on.",
