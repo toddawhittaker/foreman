@@ -28,7 +28,7 @@ const tab = (page: Page, name: string) => page.locator("label.tab", { hasText: n
 
 // The typed version sits in a disclosure, opened first.
 async function typedVersion(page: Page) {
-  const d = page.locator("details.disclosure");
+  const d = page.locator(".version-fields > details.disclosure");
   if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator("summary").click();
   return page.getByLabel("Or type a version");
 }

@@ -465,7 +465,7 @@ test.describe("the planet viewed", () => {
       if (change === "Space Age off") {
         await page.getByLabel("Space Age is on").uncheck();
       } else {
-        const d = page.locator("details.disclosure");
+        const d = page.locator(".version-fields > details.disclosure");
         if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator("summary").click();
         await page.getByLabel("Or type a version").fill("1.1.110");
         await page.getByLabel("Or type a version").press("Tab");
