@@ -178,7 +178,7 @@
   "worlds.saves.title": "Saves of {world}",
   "worlds.saves.upload.button": "Upload save",
   "worlds.saves.upload.heading": "Upload a save",
-  "worlds.saves.upload.hint": "A Factorio save: a .zip file of up to {limit}. A save never replaces one with the same name.",
+  "worlds.saves.upload.hint": "A save never replaces one with the same name.",
   "worlds.saves.upload.label": "Save file",
   "worlds.saves.uploaded": "Uploaded {file}.",
   "worlds.snapshot.label.before_delete": "Before delete",

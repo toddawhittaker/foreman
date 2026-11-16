@@ -17,4 +17,7 @@ type DropZone struct {
 	MaxBytes uint64
 	// Error is the server's refusal of the last upload, if any.
 	Error i18n.Msg
+	// Form is the id of the form that posts the file when the field sits
+	// outside it, as in a form that cannot nest; "" for the enclosing form.
+	Form string
 }

@@ -8,7 +8,7 @@
   <p class="hint" id="{{.ID}}-hint">{{t "common.dropzone.limits" "types" .Accept "limit" (bytes .MaxBytes)}}</p>
   <div class="dropzone__area">
     <p class="dropzone__prompt" aria-hidden="true" hidden><span class="dropzone__idle">{{t "common.dropzone.prompt"}}</span><span class="dropzone__drop">{{t "common.dropzone.drop"}}</span></p>
-    <input id="{{.ID}}" name="{{.Name}}" type="file" accept="{{.Accept}}" required
+    <input id="{{.ID}}" name="{{.Name}}" type="file" accept="{{.Accept}}" required{{with .Form}} form="{{.}}"{{end}}
       aria-describedby="{{.ID}}-hint{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
   </div>
   <p class="dropzone__chosen" id="{{.ID}}-chosen" hidden><span class="dropzone__file"></span> <button type="button" class="button button--quiet dropzone__clear">{{t "common.dropzone.clear"}}</button></p>

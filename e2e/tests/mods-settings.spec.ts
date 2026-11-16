@@ -150,6 +150,7 @@ test.describe("edit mod settings", () => {
       await page.goto("/worlds/base/mods/settings");
       await expect(page.locator("#mod-settings-error")).toContainText("ran out of memory", live);
       await checkPage(page);
+      await expect(page.locator("#act-settings-upload")).toHaveClass(/button/);
       await page.getByRole("link", { name: "Upload mod-settings.dat on the Mods tab" }).click();
       await expect(page).toHaveURL(/\/worlds\/base\/mods#mod-settings-replace$/);
     } finally {

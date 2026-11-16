@@ -183,7 +183,7 @@
   "worlds.saves.title": "Uložené hry světa {world}",
   "worlds.saves.upload.button": "Nahrát uloženou hru",
   "worlds.saves.upload.heading": "Nahrání uložené hry",
-  "worlds.saves.upload.hint": "Uložená hra Factorio: soubor .zip o velikosti do {limit}. Uložená hra nikdy nenahradí jinou se stejným názvem.",
+  "worlds.saves.upload.hint": "Uložená hra nikdy nenahradí jinou se stejným názvem.",
   "worlds.saves.upload.label": "Soubor uložené hry",
   "worlds.saves.uploaded": "Soubor {file} byl nahrán.",
   "worlds.snapshot.label.before_delete": "Před smazáním",

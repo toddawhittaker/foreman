@@ -83,6 +83,12 @@ type SavesPage struct {
 	LoadError   i18n.Msg
 }
 
+// UploadZone is the upload form's save field (DESIGN 7.10).
+func (p SavesPage) UploadZone() DropZone {
+	return DropZone{ID: "save-file", Name: saveUploadField, Label: i18n.M("worlds.saves.upload.label"),
+		Accept: ".zip", MaxBytes: p.UploadLimit, Error: p.UploadError}
+}
+
 func (SavesPage) templateName() string { return "saves" }
 func (SavesPage) navItem() string      { return PathWorlds }
 

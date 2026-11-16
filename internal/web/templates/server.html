@@ -461,7 +461,7 @@
 {{define "mods-notice" -}}
 {{- if eq .Errors 1}}
 <div class="message message--warning">
-  <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "mods.notice.one" "mod" (ident .Mod) "version" .Version}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "mods.notice.one" "mod" (ident (or .Title .Mod)) "version" .Version}}</p>
   {{- if .Fix.Path}}
   <div class="actions"><a href="{{.Fix.Path}}" class="button" id="act-mods-fix">{{msgHTML .Fix.Label}}</a></div>
   {{- end}}

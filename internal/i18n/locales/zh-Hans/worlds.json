@@ -173,7 +173,7 @@
   "worlds.saves.title": "{world} 的存档",
   "worlds.saves.upload.button": "上传存档",
   "worlds.saves.upload.heading": "上传存档",
-  "worlds.saves.upload.hint": "Factorio 存档：最大 {limit} 的 .zip 文件。存档不会替换同名的已有存档。",
+  "worlds.saves.upload.hint": "存档不会替换同名的已有存档。",
   "worlds.saves.upload.label": "存档文件",
   "worlds.saves.uploaded": "已上传 {file}。",
   "worlds.snapshot.label.before_delete": "删除前",
