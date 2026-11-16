@@ -180,7 +180,7 @@
   "worlds.saves.loads_next": "Načte se příště",
   "worlds.saves.newer": "Tento svět zapsala novější verze Foremanu, proto ho tato verze nemůže měnit. Uložené hry lze stále stáhnout.",
   "worlds.saves.older": "Zobrazit starší uložené hry",
-  "worlds.saves.time_hint": "Každý čas je okamžik poslední změny souboru uložené hry na disku, který se může trochu lišit od okamžiku uložení hrou. Automatické uložení zobrazuje název světa a jeho čas, vedle něj název souboru.",
+  "worlds.saves.time_hint": "Každý čas je okamžik poslední změny souboru uložené hry na disku, který se může trochu lišit od okamžiku uložení hrou. Automatické uložení zobrazuje název světa a jeho čas, na řádku pod ním název souboru.",
   "worlds.saves.title": "Uložené hry světa {world}",
   "worlds.saves.upload.button": "Nahrát uloženou hru",
   "worlds.saves.upload.heading": "Nahrání uložené hry",
