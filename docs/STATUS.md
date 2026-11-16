@@ -3532,7 +3532,8 @@ optional; the review page keeps its answers in a draft in memory (ADR
 - **A favorite on an unsupported game version** is imported, and Generate
   uses the default version without saying so. The review page shows a
   conflict that blocks the install, so the admin installs from the Mods tab,
-  where Generate saved the picks. Whether that should block is Todd's call.
+  where Generate saved the picks. Blocking is the orchestrator's ruling
+  (2026-11-16).
 - **Drafts live in memory.** A restart or two hours sends an open review back
   to the saved picks, and the page says so.
 - **The download time of an autosave is UTC**, not the viewer's zone, and a
@@ -3541,10 +3542,15 @@ optional; the review page keeps its answers in a draft in memory (ADR
   above it.
 - **Other settings forms still show no defaults** (#636), and **a game back
   from a crash can briefly be treated as still crashed** (#646).
-- **Real-game checks not recorded here**: out of memory on start 20 of 20
-  with events on and off (`TestRealGameOOMOnStart`), and a start on 1.1.110,
-  2.0.77 and 2.1.24 with each new settings key. Todd pastes one string into
-  the game client at the test drive.
+- **Real-game results.** Out of memory on start was named 20 of 20 times
+  with events on and 20 of 20 with events off (`TestRealGameOOMOnStart`,
+  2.1.24, on pve1). The fork-save snapshot test passed on 1.1, 2.0 and 2.1,
+  including a save queued behind an autosave. `TestRealGameFirstSettingsSave`
+  and `TestRealGameUIBAutoPause` passed on 1.1.110, 2.0.77 and 2.1.24 after
+  #650: the generated file is Hidden with auto-pause on and 20 slots, and
+  the game starts. `make test-game` on the final head is recorded in the
+  batch pull request. Todd checks a pasted map string in the game client at
+  the test drive.
 - Still deferred: as listed under fixes batch 10, except the gaps about
   favorites with more than 50 mods, out-of-memory on start and the missing
   favorites section in DESIGN.md, which this batch closes.

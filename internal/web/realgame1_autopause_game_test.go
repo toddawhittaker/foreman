@@ -2,8 +2,8 @@
 
 package web
 
-// A generated world's server-settings.json has auto-pause on (EPIC-fixes-11
-// ruling 3); saved once through the settings page, the world must start with
+// A generated world's server-settings.json has auto-pause on
+// (SPEC 11.1, 17.16); saved once through the settings page, the world must start with
 // auto-pause as the form left it (SPEC 11.1). The real game images
 // show it: with no player connected, an auto-paused game's tick does not
 // move. Run by `make test-game` after the game package, one package at a time
