@@ -49,17 +49,16 @@ const AddSaveWait = 60 * time.Second
 // maxSaveNameLength is the longest file name most filesystems allow.
 const maxSaveNameLength = 255
 
-// ValidSaveName reports whether name may be given to a new save: a plain
-// file name of a save (see plainSaveName) that is not one of the game's
-// partial saves, which end in .tmp.zip (SPEC 5.11).
+// ValidSaveName reports whether name is a save Foreman will take, list,
+// load or import: a plain file name of a save (see plainSaveName) that is not
+// one of the game's partial saves, which end in .tmp.zip (SPEC 5.11).
 func ValidSaveName(name string) bool {
 	return plainSaveName(name) && !strings.HasSuffix(name, tempSaveSuffix)
 }
 
 // plainSaveName reports whether name is a plain file name of a save: a base
-// name that ends in .zip and does not start with a dot. Checks on a save
-// that exists already, and a folder import, use this one so a partial save
-// stays readable and removable.
+// name that ends in .zip and does not start with a dot. Download uses this
+// one, so an admin can still fetch a partial save to look at it.
 func plainSaveName(name string) bool {
 	if name == "" || len(name) > maxSaveNameLength || !strings.HasSuffix(name, ".zip") || name[0] == '.' {
 		return false
@@ -92,7 +91,7 @@ func listSaves(root *os.Root) ([]Save, error) {
 	}
 	var out []Save
 	for _, e := range entries {
-		if !e.Type().IsRegular() || !plainSaveName(e.Name()) || strings.HasSuffix(e.Name(), tempSaveSuffix) {
+		if !e.Type().IsRegular() || !ValidSaveName(e.Name()) {
 			continue
 		}
 		info, err := e.Info()
@@ -301,7 +300,7 @@ func (m *Manager) SetLoadSave(id, name string) error {
 	}
 
 	if name != "" {
-		if !plainSaveName(name) {
+		if !ValidSaveName(name) {
 			return ErrSaveNotFound
 		}
 		info, err := root.Lstat(path.Join(SavesDir, name))
@@ -338,7 +337,7 @@ func (m *Manager) PrepareLoad(id string) (string, error) {
 		return "", err
 	}
 	if meta.LoadSave != "" {
-		if !plainSaveName(meta.LoadSave) {
+		if !ValidSaveName(meta.LoadSave) {
 			return "", ErrSaveNotFound
 		}
 		p := path.Join(SavesDir, meta.LoadSave)

@@ -57,11 +57,35 @@ func TestValidSaveName(t *testing.T) {
 	}
 }
 
-// The game's partial saves cannot be uploaded, yet a folder import and the
-// checks on a save already there still accept the name.
+// The game's partial saves cannot be uploaded or chosen to load, and a
+// folder import leaves them out; an admin can still download one to look at.
 func TestPartialSaveNames(t *testing.T) {
 	if ValidSaveName("x.tmp.zip") || !plainSaveName("x.tmp.zip") {
-		t.Error("x.tmp.zip must be refused as a new save and accepted as an existing file")
+		t.Error("x.tmp.zip must be refused as a new or loadable save and accepted as an existing file")
+	}
+}
+
+func TestPartialSaveCannotBeChosenOrLoaded(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	putSave(t, dir, "half.tmp.zip", "partial", t0.Add(-time.Hour))
+	putSave(t, dir, "good.zip", "ok", t0.Add(-2*time.Hour))
+	if err := m.SetLoadSave(id, "half.tmp.zip"); !errors.Is(err, ErrSaveNotFound) {
+		t.Errorf("choosing a partial save: %v, want ErrSaveNotFound", err)
+	}
+	// A world.json that names one anyway (written by hand) does not load it.
+	old, err := os.ReadFile(filepath.Join(dir, MetaFile)) //nolint:gosec // a test temp file
+	if err != nil {
+		t.Fatal(err)
+	}
+	rewriteMeta(t, dir, strings.TrimRight(string(old), "\n }")+`, "load_save": "half.tmp.zip"}`)
+	if _, err := m.PrepareLoad(id); !errors.Is(err, ErrSaveNotFound) {
+		t.Errorf("loading a partial save: %v, want ErrSaveNotFound", err)
+	}
+	if f, _, err := m.OpenSave(id, "half.tmp.zip"); err != nil {
+		t.Errorf("download of a partial save: %v", err)
+	} else {
+		_ = f.Close()
 	}
 }
 

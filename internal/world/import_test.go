@@ -76,6 +76,7 @@ func seedInbox(t *testing.T, m *Manager) string {
 	write(t, filepath.Join(src, "later.zip"), "save-two!", old.Add(time.Hour))
 	write(t, filepath.Join(src, "notes.txt"), "not a save", old)
 	write(t, filepath.Join(src, ".hidden.zip"), "x", old)
+	write(t, filepath.Join(src, "half.tmp.zip"), "partial", old.Add(2*time.Hour))
 	write(t, filepath.Join(src, "old", "nested.zip"), "nested", old)
 	write(t, filepath.Join(src, "mods", "mod-list.json"), "{}", old)
 	write(t, filepath.Join(src, "mods", "sub", "a.zip"), "mod", old)
@@ -129,7 +130,7 @@ func TestImportFolderCopiesSavesAndModsAndLeavesSourceAlone(t *testing.T) {
 	if mode(t, filepath.Join(w, "mods", "sub")) != DirMode {
 		t.Errorf("mods/sub mode %v", mode(t, filepath.Join(w, "mods", "sub")))
 	}
-	for _, p := range []string{"saves/notes.txt", "saves/.hidden.zip", "saves/link.zip", "mods/link.zip", "saves/nested.zip", "saves/old"} {
+	for _, p := range []string{"saves/notes.txt", "saves/.hidden.zip", "saves/half.tmp.zip", "saves/link.zip", "mods/link.zip", "saves/nested.zip", "saves/old"} {
 		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
 			t.Errorf("%s should not be copied: %v", p, err)
 		}
