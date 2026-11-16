@@ -62,7 +62,7 @@ func (e *gameEnv) oomStarts(t *testing.T, cli *gameEnv, tag, fixture, version st
 	c, _ := e.controller(t)
 	named := 0
 	for i := range runs {
-		id := e.newWorld(t, tag, version, "oom-start-"+strconv.Itoa(i), fixture, map[string]time.Duration{"cap.zip": time.Hour})
+		id := e.newWorld(t, tag, version, oomWorldPrefix(strict)+strconv.Itoa(i), fixture, map[string]time.Duration{"cap.zip": time.Hour})
 		done := make(chan error, 1)
 		go func() { done <- c.Start(context.Background(), id, admin, StartOptions{}) }()
 		limitWhenCreated(t, cli, id)
@@ -133,4 +133,13 @@ func noEventsDocker(t *testing.T) *docker.Client {
 		t.Fatal(err)
 	}
 	return dc
+}
+
+// oomWorldPrefix keeps the two cases' worlds apart: both run in one
+// environment, and world names must be unique.
+func oomWorldPrefix(strict bool) string {
+	if strict {
+		return "oom-events-on-"
+	}
+	return "oom-events-off-"
 }
