@@ -9245,9 +9245,21 @@ main:has(> .gate) > * + :not(h1, .gate) {
   grid-row: 2;
 }
 
+/* Without ::details-content (Firefox before 143, older Safari) the body is
+   a grid item of Details itself, so it is placed on the second row, across
+   the whole row, below the summary and Generate. */
+@supports not selector(::details-content) {
+  .favorite__details > :not(summary) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
 .favorite__generate {
   grid-column: 2;
   grid-row: 1;
+  margin-block-start: var(--space-1);
+  gap: var(--space-2);
 }
 
 .favorite + .favorite {
@@ -9263,11 +9275,6 @@ main:has(> .gate) > * + :not(h1, .gate) {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-weight: 400;
-}
-
-.favorite__generate {
-  margin-block-start: var(--space-1);
-  gap: var(--space-2);
 }
 
 /* The Worlds tab's globe with a small plus at its lower right. */

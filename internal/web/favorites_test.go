@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"fmt"
 	"html"
 	"io"
 	"net/http"
@@ -551,4 +552,13 @@ func TestFavoriteRename(t *testing.T) {
 	if strings.Contains(hn.get(PathFavorites+"?renamed=../x", withCookie(c)).Body.String(), "Renamed the favorite") {
 		t.Error("a made-up id showed a confirmation")
 	}
+}
+
+// The rename field's length limit is the server's own (SPEC 5.12), so the
+// two cannot disagree.
+func TestFavoriteRenameFieldCarriesTheServersLimit(t *testing.T) {
+	r := newTestRenderer(t)
+	p := FavoritesPage{Favorites: []FavoriteRow{{Favorite: world.Favorite{ID: "aaaaaaaaaaaaaaaa", Name: "Club", GameVersion: "2.0.77"}}}}
+	_, body := renderIn(t, r, pageCase{"favorites", "todd", 200, p}, "en")
+	wantIn(t, "rename field", body, fmt.Sprintf(`required maxlength="%d"`, world.MaxFavoriteName))
 }
