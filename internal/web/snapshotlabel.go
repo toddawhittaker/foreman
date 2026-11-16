@@ -30,6 +30,7 @@ var snapshotKinds = []snapshotKind{
 	{world.ReasonGameUpdate, world.LabelBeforeUpdate, i18n.M("worlds.snapshot.label.before_update"), i18n.M("worlds.snapshot.label.before_update")},
 	{world.ReasonSettings, world.LabelBeforeSettings, i18n.M("worlds.snapshot.label.before_settings"), i18n.M("worlds.snapshot.label.before_settings")},
 	{world.ReasonMods, world.LabelBeforeMods, i18n.M("worlds.snapshot.label.before_mods"), i18n.M("worlds.snapshot.label.before_mods")},
+	{world.ReasonAutosaves, world.LabelBeforeAutosaves, i18n.M("worlds.snapshot.label.before_autosaves"), i18n.M("worlds.snapshot.label.before_autosaves")},
 	{game.ReasonStartAnyway, game.LabelStartAnyway, i18n.M("worlds.snapshot.label.before_start_anyway"), i18n.M("worlds.snapshot.label.before_start_anyway")},
 }
 

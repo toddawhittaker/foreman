@@ -121,6 +121,15 @@
   "settings.diff.admin_removed": "Removed admin {name}",
   "settings.preview.restart": "The server is running. These changes take effect after a restart.",
   "settings.preview.admins_live": "The server is running. Changes to admins apply at once.",
+  "settings.preview.autosave_keep": {
+    "one": "At the next start, Foreman keeps the newest autosave.",
+    "other": "At the next start, Foreman keeps the newest {count} autosaves."
+  },
+  "settings.preview.autosave_remove": {
+    "one": "It removes {count} other autosave.",
+    "other": "It removes {count} other autosaves."
+  },
+  "settings.preview.autosave_snapshot": "A snapshot is taken first.",
   "settings.preview.step_save_game": "Save the running game.",
   "settings.preview.step_snapshot": "Take an automatic snapshot of {world}. If the snapshot fails, nothing else happens.",
   "settings.preview.step_write": "Write {file}.",

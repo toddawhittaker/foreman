@@ -193,6 +193,7 @@
   "worlds.snapshot.label.before_switch": "Před přepnutím",
   "worlds.snapshot.label.before_update": "Před aktualizací",
   "worlds.snapshot.label.before_mods": "Před změnou modů",
+  "worlds.snapshot.label.before_autosaves": "Před úklidem automatických uložení",
   "worlds.snapshot.label.manual": "Ruční snímek",
   "worlds.snapshot.reason.manual": "Ruční",
   "worlds.snapshots.adds": "Snímky přidávají",
