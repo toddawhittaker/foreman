@@ -233,8 +233,8 @@ func TestModsTabListsMods(t *testing.T) {
 		`>base</span>`, "Space Age is off, so", `>space-age</span> are off.`,
 		`href="/worlds/`+id+`/settings" id="act-built-in-settings">Turn on Space Age</a>`,
 		// DESIGN 7.10: both uploads are drop zones that show their file type and limit.
-		`id="mod-file" name="mod" type="file" accept=".zip"`, "A .zip file of up to 209.7 MB.",
-		`id="settings-file" name="settings" type="file" accept=".dat"`, "A .dat file of up to 4.2 MB.",
+		`id="mod-file" name="mod" type="file" accept=".zip"`, "A .zip file of up to 200 MB.",
+		`id="settings-file" name="settings" type="file" accept=".dat"`, "A .dat file of up to 4 MB.",
 		// SPEC 9.7: a portal mod's name is the link to its portal page, in a new tab.
 		`<span class="mod-name" id="`+slotID("portal", "alpha")+`"><a href="https://mods.factorio.com/mod/alpha" class="mod-title" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a></span>`,
 		// SPEC 9.8: the save's mods are read and the differences counted; the save uses neither mod.
@@ -895,7 +895,7 @@ func TestRefusedUnresolvedZipKeepsTheAnswers(t *testing.T) {
 	q := url.Values{"kind": {"sync"}, "choice-recycler": {"without"}, "confirm-recycler": {"1"}}
 	_, body := g.getStatus(planPath(id, q))
 	wantIn(t, "sync", body, `id="mod-recycler-confirm" required hx-get="/worlds/`+id+`/mods/plan" checked`, `<label for="mod-foreman-test-zip" class="required">`,
-		`form="mod-foreman-test-zip-form"`, `class="hint required-note"`, "A .zip file of up to 209.7 MB.")
+		`form="mod-foreman-test-zip-form"`, `class="hint required-note"`, "A .zip file of up to 200 MB.")
 	if strings.Contains(body, `id="mod-foreman-test-confirm"`) {
 		t.Error("the continue-without box shows for a mod whose choice is upload")
 	}

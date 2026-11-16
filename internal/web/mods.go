@@ -179,8 +179,8 @@ func (p ModsPage) UploadZone() DropZone {
 }
 
 func (p ModsPage) SettingsZone() DropZone {
-	return DropZone{ID: "settings-file", Name: "settings", Label: i18n.M("mods.settings.label", "file", world.ModSettingsFile),
-		Accept: ".dat", MaxBytes: MaxSettingsUpload, Error: p.SettingsError}
+	return DropZone{ID: "settings-file", Name: "settings", Label: i18n.M("mods.settings.label", "file", i18n.Code(world.ModSettingsFile)),
+		Accept: ".dat", MaxBytes: MaxSettingsUpload, Error: p.SettingsError, DescribedBy: "settings-file-help"}
 }
 
 // SettingsTabPath is the world's Settings tab, where Space Age is turned on
