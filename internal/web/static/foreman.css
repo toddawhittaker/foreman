@@ -9276,98 +9276,6 @@ main:has(> .gate) > * + :not(h1, .gate) {
   list-style: none;
 }
 
-/* ---- Mod titles (SPEC 9.15): the mod-name partial, a title that links to
-   the mod portal. ---- */
-
-/* On the Installed list the title fills the row's full-size target. */
-.mod-name > .mod-title {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: var(--target-min);
-  /* A long unbroken title wraps rather than pushing the version off the row. */
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-}
-
-/* In the plan panel the title is its own target, apart from the cross. */
-.plan-tree__name > a.mod-title {
-  display: inline-block;
-  padding-block: 0.125rem;
-}
-
-@media (pointer: coarse) {
-  .plan-tree__name > a.mod-title {
-    display: inline-flex;
-    align-items: center;
-    min-block-size: var(--target-min);
-  }
-}
-
-/* ---- Mods review page rows and offers (M2, SPEC 9.2, 9.15): a change's
-   title link, its version list and its remove cross share one row, which
-   wraps on a phone with the version kept beside its mod. ---- */
-
-.plan-row__text {
-  flex: 1 1 12rem;
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-}
-
-.plan-row__name > a.mod-title,
-.plan-offer__name > a.mod-title {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: var(--target-min);
-}
-
-.plan-row__version {
-  display: inline-flex;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-}
-
-.plan-row__version select {
-  min-inline-size: 0;
-  max-inline-size: 100%;
-}
-
-/* An offered mod: the tick box is its own target, apart from the title
-   link, so following the link never ticks it. */
-.plan-offer {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.plan-offer__box {
-  flex: none;
-  min-inline-size: var(--target-min);
-  min-block-size: var(--target-min);
-  justify-content: center;
-}
-
-.plan-offer__body {
-  display: grid;
-  flex: 1 1 0;
-  gap: var(--space-1);
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-}
-
-.plan-offer__name,
-.plan-offer__detail p {
-  margin: 0;
-}
-
-.plan-offer__of {
-  color: var(--color-text-muted);
-}
-
-.plan-offer__detail {
-  display: grid;
-  gap: var(--space-1);
-  color: var(--color-text-muted);
-
 /* U1 drop zone (DESIGN 7.10). Without script .dropzone is a plain .field.
    With script the native input is stretched, transparent, over a dashed
    area, so a click, Enter or Space anywhere on it opens the picker. A drag
@@ -9495,4 +9403,70 @@ main:has(> .gate) > * + :not(h1, .gate) {
     align-items: center;
     min-block-size: var(--target-min);
   }
+}
+
+/* ---- Mods review page rows and offers (M2, SPEC 9.2, 9.15): a change's
+   title link, its version list and its remove cross share one row, which
+   wraps on a phone with the version kept beside its mod. ---- */
+
+.plan-row__text {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-row__name > a.mod-title,
+.plan-offer__name > a.mod-title {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.plan-row__version {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.plan-row__version select {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+/* An offered mod: the tick box is its own target, apart from the title
+   link, so following the link never ticks it. */
+.plan-offer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.plan-offer__box {
+  flex: none;
+  min-inline-size: var(--target-min);
+  min-block-size: var(--target-min);
+  justify-content: center;
+}
+
+.plan-offer__body {
+  display: grid;
+  flex: 1 1 0;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-offer__name,
+.plan-offer__detail p {
+  margin: 0;
+}
+
+.plan-offer__of {
+  color: var(--color-text-muted);
+}
+
+.plan-offer__detail {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
 }
