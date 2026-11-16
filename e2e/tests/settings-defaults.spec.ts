@@ -89,6 +89,29 @@ test("each new field writes its own key, and the Network group opens when it hol
   await checkPage(page);
 });
 
+test("clearing a field the file sets removes its key and brings back the default hint", async ({ page, foreman }) => {
+  await setUp(page, foreman);
+  const slots = page.getByLabel("Autosave slots");
+  await slots.fill("7");
+  await page.getByRole("button", { name: "Preview changes" }).click();
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page).toHaveURL(/\/worlds\/base\/settings\?saved=1/);
+  expect(read(foreman.dataDir).autosave_slots).toBe(7);
+  await expect(slots).toHaveValue("7");
+
+  await slots.fill("");
+  await page.getByRole("button", { name: "Preview changes" }).click();
+  const row = page.locator("ul.changes > li").filter({ hasText: "autosave_slots" });
+  await expect(row).toContainText("Removed");
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page).toHaveURL(/\/worlds\/base\/settings\?saved=1/);
+  expect(read(foreman.dataDir)).not.toHaveProperty("autosave_slots");
+  await expect(slots).toHaveValue("");
+  await expect(slots).toHaveAttribute("placeholder", "5");
+  await expect(page.locator("#autosave-slots-hint")).toContainText("Game default: 5. Clear the box to use it.");
+  await checkPage(page);
+});
+
 test("fork saving carries its note, and the pause-while-joining setting is hidden on 1.1", async ({ page, foreman }) => {
   await setUp(page, foreman, "1.1.110");
   await expect(page.getByLabel("Pause the game while a player is joining")).toHaveCount(0);

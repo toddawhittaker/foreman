@@ -36,6 +36,7 @@
   "settings.network": "网络",
   "settings.network.summary": "上传限制",
   "settings.default.game": "游戏默认值：{value}",
+  "settings.default.number": "游戏默认值：{value}。清空输入框即可使用默认值。",
   "settings.default.on": "游戏默认值：开启",
   "settings.default.off": "游戏默认值：关闭",
   "settings.ignore_limit.label": "服务器已满时，回归玩家仍可加入",

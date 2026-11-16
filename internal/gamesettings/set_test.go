@@ -72,3 +72,27 @@ func TestUnknownKey(t *testing.T) {
 		t.Error("a file without a table has no unknown keys")
 	}
 }
+
+// A field with no value removes its key, with every repeat of it, and leaves
+// the rest of the text as it was (SPEC 11.1).
+func TestSetFieldsRemovesAKey(t *testing.T) {
+	in := "{\n  \"name\": \"a\",\n  \"autosave_slots\": 7,\n  \"max_players\": 3,\n  \"autosave_slots\": 9\n}\n"
+	got, err := SetFields([]byte(in), []Field{{Key: "autosave_slots"}, {Key: "never_there"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "{\n  \"name\": \"a\",\n  \"max_players\": 3\n}\n"
+	if string(got) != want {
+		t.Errorf("got %q\nwant %q", got, want)
+	}
+	if ch := Diff([]byte(in), got); len(ch) != 1 || ch[0].Key != "autosave_slots" || ch[0].Kind != KindRemoved {
+		t.Errorf("changes: %+v", ch)
+	}
+	only, err := SetFields([]byte(`{"max_players": 3}`), []Field{{Key: "max_players"}})
+	if err != nil || HasKey(only, "max_players") {
+		t.Errorf("removing the only key: %q, %v", only, err)
+	}
+	if _, err := SetFields([]byte(`[1]`), []Field{{Key: "a"}}); err == nil {
+		t.Error("an array was accepted")
+	}
+}

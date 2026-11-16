@@ -36,6 +36,7 @@
   "settings.network": "Síť",
   "settings.network.summary": "Omezení odesílání",
   "settings.default.game": "Výchozí hodnota hry: {value}",
+  "settings.default.number": "Výchozí hodnota hry: {value}. Po vymazání pole platí tato hodnota.",
   "settings.default.on": "Výchozí hodnota hry: zapnuto",
   "settings.default.off": "Výchozí hodnota hry: vypnuto",
   "settings.ignore_limit.label": "Vracející se hráči se mohou připojit, i když je server plný",

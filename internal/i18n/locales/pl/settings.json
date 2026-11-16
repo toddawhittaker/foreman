@@ -36,6 +36,7 @@
   "settings.network": "Sieć",
   "settings.network.summary": "Limity wysyłania",
   "settings.default.game": "Domyślnie w grze: {value}",
+  "settings.default.number": "Domyślnie w grze: {value}. Po wyczyszczeniu pola obowiązuje ta wartość.",
   "settings.default.on": "Domyślnie w grze: włączone",
   "settings.default.off": "Domyślnie w grze: wyłączone",
   "settings.ignore_limit.label": "Wracający gracze mogą dołączyć, gdy serwer jest pełny",

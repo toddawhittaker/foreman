@@ -36,6 +36,7 @@
   "settings.network": "Red",
   "settings.network.summary": "Límites de subida",
   "settings.default.game": "Valor predeterminado del juego: {value}",
+  "settings.default.number": "Valor predeterminado del juego: {value}. Vacía el campo para usarlo.",
   "settings.default.on": "Valor predeterminado del juego: activado",
   "settings.default.off": "Valor predeterminado del juego: desactivado",
   "settings.ignore_limit.label": "Los jugadores que ya han estado pueden unirse aunque el servidor esté lleno",

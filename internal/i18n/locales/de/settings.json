@@ -36,6 +36,7 @@
   "settings.network": "Netzwerk",
   "settings.network.summary": "Upload-Begrenzung",
   "settings.default.game": "Spielstandard: {value}",
+  "settings.default.number": "Spielstandard: {value}. Leere das Feld, um ihn zu verwenden.",
   "settings.default.on": "Spielstandard: an",
   "settings.default.off": "Spielstandard: aus",
   "settings.ignore_limit.label": "Zurückkehrende Spieler können beitreten, wenn der Server voll ist",

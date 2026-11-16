@@ -36,6 +36,7 @@
   "settings.network": "Сеть",
   "settings.network.summary": "Ограничения скорости передачи",
   "settings.default.game": "По умолчанию в игре: {value}",
+  "settings.default.number": "По умолчанию в игре: {value}. Очистите поле, чтобы использовать его.",
   "settings.default.on": "По умолчанию в игре: включено",
   "settings.default.off": "По умолчанию в игре: выключено",
   "settings.ignore_limit.label": "Вернувшиеся игроки могут подключаться, когда сервер заполнен",

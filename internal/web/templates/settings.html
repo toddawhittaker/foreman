@@ -167,7 +167,7 @@
     </fieldset>
     <div class="field field--short">
       <label for="max-players">{{t "settings.max_players.label"}}</label>
-      <p class="hint" id="max-players-hint">{{t "settings.max_players.hint"}} {{t "settings.default.game" "value" (.Default "max_players")}}</p>
+      <p class="hint" id="max-players-hint">{{t "settings.max_players.hint"}} {{t "settings.default.number" "value" (.Default "max_players")}}</p>
       <input id="max-players" name="max_players" type="text" inputmode="numeric" value="{{.MaxPlayers}}" placeholder="{{.Default "max_players"}}" autocomplete="off"
         aria-describedby="max-players-hint{{if not .MaxPlayersError.IsZero}} max-players-error{{end}}"
         {{- if not .MaxPlayersError.IsZero}} aria-invalid="true"{{end}}>
@@ -185,7 +185,7 @@
     </div>
     <div class="field field--short">
       <label for="afk-autokick">{{t "settings.afk.label"}}</label>
-      <p class="hint" id="afk-autokick-hint">{{t "settings.afk.hint"}} {{t "settings.default.game" "value" (.Default "afk_autokick_interval")}}</p>
+      <p class="hint" id="afk-autokick-hint">{{t "settings.afk.hint"}} {{t "settings.default.number" "value" (.Default "afk_autokick_interval")}}</p>
       <input id="afk-autokick" name="afk_autokick_interval" type="text" inputmode="numeric" value="{{.AFK}}" placeholder="{{.Default "afk_autokick_interval"}}" autocomplete="off"
         aria-describedby="afk-autokick-hint{{if not .AFKError.IsZero}} afk-autokick-error{{end}}"
         {{- if not .AFKError.IsZero}} aria-invalid="true"{{end}}>
@@ -230,7 +230,7 @@
     <div class="setting-row__body">
     <div class="field field--short">
       <label for="autosave-interval">{{t "settings.interval.label"}}</label>
-      <p class="hint" id="autosave-interval-hint">{{t "settings.default.game" "value" (.Default "autosave_interval")}}</p>
+      <p class="hint" id="autosave-interval-hint">{{t "settings.default.number" "value" (.Default "autosave_interval")}}</p>
       <input id="autosave-interval" name="autosave_interval" type="text" inputmode="numeric" value="{{.Interval}}" placeholder="{{.Default "autosave_interval"}}" autocomplete="off"
         aria-describedby="autosave-interval-hint{{if not .IntervalError.IsZero}} autosave-interval-error{{end}}"
         {{- if not .IntervalError.IsZero}} aria-invalid="true"{{end}}>
@@ -240,7 +240,7 @@
     </div>
     <div class="field field--short">
       <label for="autosave-slots">{{t "settings.slots.label"}}</label>
-      <p class="hint" id="autosave-slots-hint">{{t "settings.default.game" "value" (.Default "autosave_slots")}} {{t "settings.slots.hint" "foreman" .ForemanSlots}}</p>
+      <p class="hint" id="autosave-slots-hint">{{t "settings.default.number" "value" (.Default "autosave_slots")}} {{t "settings.slots.hint" "foreman" .ForemanSlots}}</p>
       <input id="autosave-slots" name="autosave_slots" type="text" inputmode="numeric" value="{{.Slots}}" placeholder="{{.Default "autosave_slots"}}" autocomplete="off"
         aria-describedby="autosave-slots-hint{{if not .SlotsError.IsZero}} autosave-slots-error{{end}}"
         {{- if not .SlotsError.IsZero}} aria-invalid="true"{{end}}>
@@ -267,7 +267,7 @@
       <summary>{{t "settings.network.summary"}}</summary>
       <div class="field field--short">
         <label for="max-upload">{{t "settings.upload.label"}}</label>
-        <p class="hint" id="max-upload-hint">{{t "settings.upload.hint"}} {{t "settings.default.game" "value" (.Default "max_upload_in_kilobytes_per_second")}}</p>
+        <p class="hint" id="max-upload-hint">{{t "settings.upload.hint"}} {{t "settings.default.number" "value" (.Default "max_upload_in_kilobytes_per_second")}}</p>
         <input id="max-upload" name="max_upload_in_kilobytes_per_second" type="text" inputmode="numeric" value="{{.Upload}}" placeholder="{{.Default "max_upload_in_kilobytes_per_second"}}" autocomplete="off"
           aria-describedby="max-upload-hint{{if not .UploadError.IsZero}} max-upload-error{{end}}"
           {{- if not .UploadError.IsZero}} aria-invalid="true"{{end}}>
@@ -277,7 +277,7 @@
       </div>
       <div class="field field--short">
         <label for="max-upload-slots">{{t "settings.upload_slots.label"}}</label>
-        <p class="hint" id="max-upload-slots-hint">{{t "settings.default.game" "value" (.Default "max_upload_slots")}}</p>
+        <p class="hint" id="max-upload-slots-hint">{{t "settings.default.number" "value" (.Default "max_upload_slots")}}</p>
         <input id="max-upload-slots" name="max_upload_slots" type="text" inputmode="numeric" value="{{.UploadSlots}}" placeholder="{{.Default "max_upload_slots"}}" autocomplete="off"
           aria-describedby="max-upload-slots-hint{{if not .UploadSlotsError.IsZero}} max-upload-slots-error{{end}}"
           {{- if not .UploadSlotsError.IsZero}} aria-invalid="true"{{end}}>

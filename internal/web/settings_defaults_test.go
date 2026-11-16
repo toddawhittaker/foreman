@@ -244,3 +244,52 @@ func TestSettingsAllowCommands(t *testing.T) {
 		t.Errorf("allow_commands text true not selected")
 	}
 }
+
+// SPEC 11.1: clearing a number the file sets removes its key, so the game
+// uses its default again; the preview says "Removed", and the form then shows
+// the default as its placeholder.
+func TestSettingsClearingANumberRemovesItsKey(t *testing.T) {
+	r := newSettingsRig(t)
+	r.write(world.ServerSettingsFile, `{"name": "Old", "description": "", "visibility": {"public": false, "lan": false},
+  "max_players": 5, "autosave_interval": 4, "autosave_slots": 7, "afk_autokick_interval": 3,
+  "max_upload_in_kilobytes_per_second": 100, "max_upload_slots": 2, "mod_key": 1}
+`)
+	form := bareForm()
+	for _, k := range []string{"max_players", "autosave_interval", "autosave_slots", "afk_autokick_interval",
+		"max_upload_in_kilobytes_per_second", "max_upload_slots"} {
+		form.Set(k, "")
+	}
+	rec := r.postAs(r.cookie, r.path(""), form)
+	if rec.Code != http.StatusOK || strings.Count(rec.Body.String(), "Removed") < 6 {
+		t.Fatalf("preview %d:\n%s", rec.Code, rec.Body.String())
+	}
+	if conf := r.postAs(r.cookie, r.path("/confirm"), url.Values{"token": {tokenOf(t, rec.Body.String())}}); conf.Code != http.StatusSeeOther {
+		t.Fatalf("confirm %d:\n%s", conf.Code, conf.Body.String())
+	}
+	got := r.read(world.ServerSettingsFile)
+	for _, k := range []string{"max_players", "autosave_interval", "autosave_slots", "afk_autokick_interval", "max_upload"} {
+		if strings.Contains(got, k) {
+			t.Errorf("%s was not removed:\n%s", k, got)
+		}
+	}
+	if !strings.Contains(got, `"mod_key": 1`) {
+		t.Errorf("a key the form does not show was lost:\n%s", got)
+	}
+	if len(r.snapshots()) != 1 {
+		t.Errorf("%d snapshots, want the one every settings save takes", len(r.snapshots()))
+	}
+	body := r.getAs(r.cookie, r.path("")).Body.String()
+	if !strings.Contains(body, `name="autosave_slots" type="text" inputmode="numeric" value="" placeholder="5"`) {
+		t.Errorf("the cleared field does not show the default:\n%s", body)
+	}
+}
+
+// A clear that matches an empty file changes nothing, and a key held in a
+// shape the form cannot read is left alone until a number is typed.
+func TestSettingsClearingAnUnsetNumberChangesNothing(t *testing.T) {
+	r := newSettingsRig(t)
+	r.write(world.ServerSettingsFile, strings.Replace(bareFile, `"description"`, `"max_players": "ten", "description"`, 1))
+	if rec := r.postAs(r.cookie, r.path(""), bareForm()); !strings.Contains(rec.Body.String(), "Nothing changed") {
+		t.Errorf("an empty box changed the file:\n%s", rec.Body.String())
+	}
+}

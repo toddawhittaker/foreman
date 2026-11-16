@@ -36,6 +36,7 @@
   "settings.network": "Network",
   "settings.network.summary": "Upload limits",
   "settings.default.game": "Game default: {value}",
+  "settings.default.number": "Game default: {value}. Clear the box to use it.",
   "settings.default.on": "Game default: on",
   "settings.default.off": "Game default: off",
   "settings.ignore_limit.label": "Returning players can join when the server is full",

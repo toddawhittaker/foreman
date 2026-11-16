@@ -211,14 +211,12 @@ func wholeError() i18n.Msg { return i18n.M("settings.error.whole", "max", maxWho
 
 // parseWhole reads a number field. same is true when the field holds what the
 // file holds, so nothing is written for it. An empty field is no change when
-// the file has no number there either.
+// the file has no number there either; when it has one, the empty field asks
+// for the key to go, and canonical is "" with same false.
 func parseWhole(posted, current string) (canonical string, same bool, problem i18n.Msg) {
 	s := strings.TrimSpace(posted)
 	if s == "" {
-		if current == "" {
-			return "", true, i18n.Msg{}
-		}
-		return "", false, wholeError()
+		return "", current == "", i18n.Msg{}
 	}
 	n, err := strconv.ParseUint(s, 10, 32)
 	if err != nil || !typedWhole.MatchString(s) {
@@ -278,6 +276,9 @@ func applyForm(old []byte, cur serverValues, in postedForm, carried []byte, caps
 		switch {
 		case !problem.IsZero():
 			*n.problem = problem
+		case !same && canonical == "":
+			// Cleared: the game uses its own default again.
+			set(n.key, nil)
 		case !same:
 			set(n.key, []byte(canonical))
 		}

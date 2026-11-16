@@ -36,6 +36,7 @@
   "settings.network": "Réseau",
   "settings.network.summary": "Limites d’envoi",
   "settings.default.game": "Valeur par défaut du jeu : {value}",
+  "settings.default.number": "Valeur par défaut du jeu : {value}. Videz le champ pour l’utiliser.",
   "settings.default.on": "Valeur par défaut du jeu : activé",
   "settings.default.off": "Valeur par défaut du jeu : désactivé",
   "settings.ignore_limit.label": "Les joueurs déjà venus peuvent rejoindre même si le serveur est plein",
