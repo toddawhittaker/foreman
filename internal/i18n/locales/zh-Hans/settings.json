@@ -121,6 +121,13 @@
   "settings.diff.admin_removed": "已移除管理员 {name}",
   "settings.preview.restart": "服务器正在运行。这些更改在重启后生效。",
   "settings.preview.admins_live": "服务器正在运行。管理员的更改立即生效。",
+  "settings.preview.autosave_keep": {
+    "other": "下次启动时，Foreman 保留最新的 {count} 个自动存档。"
+  },
+  "settings.preview.autosave_remove": {
+    "other": "其余 {count} 个自动存档将被删除。"
+  },
+  "settings.preview.autosave_snapshot": "操作前会先创建快照。",
   "settings.preview.step_save_game": "保存正在运行的游戏。",
   "settings.preview.step_snapshot": "为 {world} 创建自动快照。如果快照失败，不会进行其他操作。",
   "settings.preview.step_write": "写入 {file}。",

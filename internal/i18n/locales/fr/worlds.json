@@ -188,6 +188,7 @@
   "worlds.snapshot.label.before_switch": "Avant le basculement",
   "worlds.snapshot.label.before_update": "Avant la mise à jour",
   "worlds.snapshot.label.before_mods": "Avant la modification des mods",
+  "worlds.snapshot.label.before_autosaves": "Avant le rangement des sauvegardes automatiques",
   "worlds.snapshot.label.manual": "Instantané manuel",
   "worlds.snapshot.reason.manual": "Manuel",
   "worlds.snapshots.adds": "Les instantanés ajoutent",

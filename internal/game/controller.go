@@ -349,10 +349,13 @@ func tcpHost(dockerHost string) string {
 
 // worldRun is what the controller knows about one world's game.
 type worldRun struct {
-	id    string
-	hub   *Hub[Update]
-	logs  *LogBuffer
-	joins *JoinTimes
+	id string
+	// lastLoaded is the save the last run loaded, kept after the run ends
+	// for the autosave tidy (SPEC 11.6). w.mu guards it.
+	lastLoaded string
+	hub        *Hub[Update]
+	logs       *LogBuffer
+	joins      *JoinTimes
 
 	mu          sync.Mutex
 	containerID string // "" when there is no container

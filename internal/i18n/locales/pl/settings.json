@@ -121,6 +121,17 @@
   "settings.diff.admin_removed": "Usunięto administratora {name}",
   "settings.preview.restart": "Serwer działa. Te zmiany zaczną obowiązywać po restarcie.",
   "settings.preview.admins_live": "Serwer działa. Zmiany administratorów działają od razu.",
+  "settings.preview.autosave_keep": {
+    "one": "Przy następnym uruchomieniu Foreman zachowa {count} najnowszy autozapis.",
+    "few": "Przy następnym uruchomieniu Foreman zachowa {count} najnowsze autozapisy.",
+    "many": "Przy następnym uruchomieniu Foreman zachowa {count} najnowszych autozapisów."
+  },
+  "settings.preview.autosave_remove": {
+    "one": "Pozostały {count} autozapis zostanie usunięty.",
+    "few": "Pozostałe {count} autozapisy zostaną usunięte.",
+    "many": "Pozostałe {count} autozapisów zostanie usuniętych."
+  },
+  "settings.preview.autosave_snapshot": "Najpierw zostanie wykonana migawka.",
   "settings.preview.step_save_game": "Zapisze działającą grę.",
   "settings.preview.step_snapshot": "Wykona automatyczną migawkę świata {world}. Jeśli migawka się nie powiedzie, nic więcej się nie stanie.",
   "settings.preview.step_write": "Zapisze {file}.",
