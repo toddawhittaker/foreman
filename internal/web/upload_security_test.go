@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -94,6 +95,21 @@ func dataTree(t *testing.T, dir string) map[string]string {
 		t.Fatal(err)
 	}
 	return out
+}
+
+// wholeNewServerSettings is true when a dataTree entry holds a complete
+// server-settings.json that Foreman created: valid JSON with 20 autosave slots.
+func wholeNewServerSettings(entry string) bool {
+	rest := strings.TrimPrefix(entry, "file:")
+	i := strings.LastIndex(rest, "@") // the file's text may hold an @; the mod time after it cannot
+	if i < 0 {
+		return false
+	}
+	body := rest[:i]
+	var m struct {
+		Slots *int `json:"autosave_slots"`
+	}
+	return json.Unmarshal([]byte(body), &m) == nil && m.Slots != nil && *m.Slots == 20
 }
 
 func sameData(t *testing.T, what string, got, want map[string]string) {
@@ -425,6 +441,10 @@ func TestUploadWithLyingContentLength(t *testing.T) {
 				}
 				if filepath.Base(p) == world.MetaFile && status == http.StatusSeeOther && path == PathImportUpload {
 					continue // the new world an accepted import made
+				}
+				if filepath.Base(p) == world.ServerSettingsFile && filepath.Base(filepath.Dir(p)) == world.ConfigDir &&
+					status == http.StatusSeeOther && path == PathImportUpload && wholeNewServerSettings(v) {
+					continue // the file Foreman creates for the new world an accepted import made
 				}
 				t.Errorf("%s: left %s (%.60q)", what, p, v)
 			}

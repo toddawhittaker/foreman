@@ -279,3 +279,28 @@ func TestSaveReadDetailIsTranslated(t *testing.T) {
 		}
 	}
 }
+
+// A failed save and a save that timed out are two different failures: the
+// failed one must not say "in time" (SPEC 8.7, 22.3).
+func TestSaveFailedHasItsOwnWords(t *testing.T) {
+	failed := failureText(fmt.Errorf("stop: %w", game.ErrSaveFailed))
+	timeout := failureText(fmt.Errorf("stop: %w", game.ErrSaveTimeout))
+	if failed.IsZero() || timeout.IsZero() {
+		t.Fatal("a save failure has no words")
+	}
+	if got := english(failed); !strings.Contains(got, "could not save") || strings.Contains(got, "in time") {
+		t.Errorf("failed save in English: %q", got)
+	}
+	if got := english(timeout); !strings.Contains(got, "in time") {
+		t.Errorf("timed-out save in English: %q", got)
+	}
+	for _, lang := range []string{"cs", "de", "es", "fr", "pl", "ru", "zh-Hans"} {
+		l := i18n.Locale(lang)
+		if l.Format(failed) == english(failed) {
+			t.Errorf("%s: failed-save text is not translated", lang)
+		}
+		if l.Format(failed) == l.Format(timeout) {
+			t.Errorf("%s: failed save reads as the timeout", lang)
+		}
+	}
+}

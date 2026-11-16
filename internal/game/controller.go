@@ -98,12 +98,15 @@ var (
 	ErrImageMissing    = errors.New("the game image for this world's Factorio version is not downloaded. Download the game image, then start again")
 	ErrRCONUnreachable = errors.New("cannot reach the game over RCON, so it cannot warn players or save first. Use Force stop to stop it without saving")
 	ErrSaveTimeout     = errors.New("the game did not finish saving in time, so nothing was stopped or snapshotted. Try again, or use Force stop")
-	ErrStartFailed     = errors.New("the game did not start")
-	ErrCancelled       = errors.New("a forced stop interrupted this")
-	ErrStopCancelled   = errors.New("the stop was canceled, so nothing was stopped or saved and the game runs on")
-	ErrNoCountdown     = errors.New("there is no stop countdown to cancel. It may have just ended")
-	ErrDownloading     = errors.New("the game image is already being downloaded")
-	ErrForeign         = errors.New("a Docker container with this world's container name exists, but Foreman did not create it. Rename or remove that container, then try again")
+	// ErrSaveFailed is a save whose writing process died or failed. It is
+	// shown as ErrSaveTimeout is: nothing was stopped or snapshotted.
+	ErrSaveFailed    = fmt.Errorf("the game's save process failed: %w", ErrSaveTimeout)
+	ErrStartFailed   = errors.New("the game did not start")
+	ErrCancelled     = errors.New("a forced stop interrupted this")
+	ErrStopCancelled = errors.New("the stop was canceled, so nothing was stopped or saved and the game runs on")
+	ErrNoCountdown   = errors.New("there is no stop countdown to cancel. It may have just ended")
+	ErrDownloading   = errors.New("the game image is already being downloaded")
+	ErrForeign       = errors.New("a Docker container with this world's container name exists, but Foreman did not create it. Rename or remove that container, then try again")
 )
 
 // ImageDownloadError is a failed download of a game image. Err is the
@@ -239,12 +242,15 @@ type Controller struct {
 	// previewWaiting holds a token for each caller waiting for the slot.
 	previewWaiting chan struct{}
 
-	ctx     context.Context // ends when Run returns; log followers live in it
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	spawnMu sync.Mutex
-	closed  bool          // Run has returned; no goroutine may start
-	poke    chan struct{} // asks the monitor to look now
+	// eventsLive is whether Docker's event stream is open now, so a die
+	// event can be waited for (SPEC 8.7, 14.3).
+	eventsLive atomic.Bool
+	ctx        context.Context // ends when Run returns; log followers live in it
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
+	spawnMu    sync.Mutex
+	closed     bool          // Run has returned; no goroutine may start
+	poke       chan struct{} // asks the monitor to look now
 
 	// events wait here for the notifier (SPEC 8.12); eventsFull is set once
 	// an event was dropped, so the drop is logged once. eventsFrom is when
@@ -372,6 +378,9 @@ type worldRun struct {
 	// back in game clears oomKilled and moves exitAt to that line's time.
 	oomKilled bool
 	exitAt    time.Time
+	// lastDie is Docker's time of the newest die event for this container,
+	// zero without one (SPEC 8.7).
+	lastDie time.Time
 	// crashLog is the container's log as read when a look found Docker had
 	// restarted the game: the runs between two looks can end before the
 	// follower reads them (SPEC 8.7, ADR 0016). nil until then, and after
@@ -381,7 +390,7 @@ type worldRun struct {
 	// a run, by its place in logs, oldest first and at most maxRunStarts.
 	runStarts []runStart
 	run       runState
-	saves     int           // "Saving finished" lines seen
+	save      saveCount
 	changed   chan struct{} // closed and replaced whenever the game's state moves
 	rc        *rcon.Client
 	secrets   []secret.Secret // removed from every relayed line (SPEC 8.6)

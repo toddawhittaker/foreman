@@ -51,10 +51,10 @@ func TestSettingsFirstSaveWritesRequiredKeys(t *testing.T) {
 	}
 
 	// What the page posts when the person types only a password.
-	form := url.Values{
+	form := withDefaultBoxes(url.Values{
 		"name": {"Base"}, "description": {""}, "visibility": {"hidden"}, "game_password": {"newpass-typed"},
-		"max_players": {""}, "autosave_interval": {""}, "autosave_slots": {""}, "admins": {""},
-	}
+		"max_players": {""}, "autosave_interval": {""}, "autosave_slots": {"20"}, "auto_pause": {"on"}, "admins": {""},
+	})
 	rec := r.postAs(r.cookie, r.path(""), form)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("preview status %d:\n%s", rec.Code, rec.Body.String())
@@ -82,7 +82,7 @@ func TestSettingsFirstSaveWritesRequiredKeys(t *testing.T) {
 func TestSettingsFirstSaveWithoutVisibilityDefaultsToHidden(t *testing.T) {
 	r := newSettingsRig(t)
 	r.removeSettingsFile()
-	rec := r.postAs(r.cookie, r.path(""), url.Values{"name": {"Mine"}, "game_password": {"newpass-typed"}})
+	rec := r.postAs(r.cookie, r.path(""), withDefaultBoxes(url.Values{"name": {"Mine"}, "game_password": {"newpass-typed"}, "auto_pause": {"on"}, "autosave_slots": {"20"}}))
 	conf := r.postAs(r.cookie, r.path("/confirm"), url.Values{"token": {tokenOf(t, rec.Body.String())}})
 	if conf.Code != http.StatusSeeOther {
 		t.Fatalf("confirm status %d:\n%s", conf.Code, conf.Body.String())
@@ -150,8 +150,8 @@ func TestSettingsFirstSaveWritesAutoPause(t *testing.T) {
 		form url.Values
 		want string
 	}{
-		"left on":  {url.Values{"name": {"Base"}, "description": {""}, "visibility": {"hidden"}, "auto_pause": {"on"}}, `"auto_pause": true`},
-		"unticked": {url.Values{"name": {"Base"}, "description": {""}, "visibility": {"hidden"}}, `"auto_pause": false`},
+		"left on":  {withDefaultBoxes(url.Values{"name": {"Base"}, "description": {""}, "visibility": {"hidden"}, "auto_pause": {"on"}, "autosave_slots": {"20"}}), `"auto_pause": true`},
+		"unticked": {withDefaultBoxes(url.Values{"name": {"Base"}, "description": {""}, "visibility": {"hidden"}, "autosave_slots": {"20"}}), `"auto_pause": false`},
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := newSettingsRig(t)
@@ -185,7 +185,7 @@ func TestSettingsMissingAutoPauseReadsAsOn(t *testing.T) {
 	if body := r.getAs(r.cookie, r.path("")).Body.String(); !strings.Contains(body, autoPauseBox) {
 		t.Errorf("a file with no auto_pause shows it off:\n%s", body)
 	}
-	same := url.Values{"name": {"Old"}, "description": {""}, "visibility": {"hidden"}, "auto_pause": {"on"}}
+	same := withDefaultBoxes(url.Values{"name": {"Old"}, "description": {""}, "visibility": {"hidden"}, "auto_pause": {"on"}})
 	if rec := r.postAs(r.cookie, r.path(""), same); !strings.Contains(rec.Body.String(), "Nothing changed") {
 		t.Errorf("an untouched box changed the file:\n%s", rec.Body.String())
 	}
@@ -194,7 +194,7 @@ func TestSettingsMissingAutoPauseReadsAsOn(t *testing.T) {
 	if body := r.getAs(r.cookie, r.path("")).Body.String(); strings.Contains(body, autoPauseBox) {
 		t.Errorf("an explicit false shows on:\n%s", body)
 	}
-	off := url.Values{"name": {"Old"}, "description": {""}, "visibility": {"hidden"}}
+	off := withDefaultBoxes(url.Values{"name": {"Old"}, "description": {""}, "visibility": {"hidden"}})
 	if rec := r.postAs(r.cookie, r.path(""), off); !strings.Contains(rec.Body.String(), "Nothing changed") {
 		t.Errorf("an explicit false was changed:\n%s", rec.Body.String())
 	}

@@ -135,44 +135,51 @@ test("a duplicate name is refused and the save is untouched", async ({ page, for
   await checkPage(page);
 });
 
-test("a file that is not a zip, or has an unsafe entry, is refused", async ({ page, foreman }) => {
-  await createAdmin(page);
-  const dir = seedTwoSaves(foreman);
-  await page.goto("/worlds/family-base/saves");
+// The drop zone refuses a wrong type or a file over the limit before it is
+// sent (DESIGN 7.10, in uploads.spec.ts), so the server's own checks (SPEC 14.6)
+// are tried without script, where the field posts whatever it holds. The
+// accessibility scan needs script; the duplicate-name test above scans a
+// server error with it.
+test.describe("the server's checks on a posted save", () => {
+  test.use({ javaScriptEnabled: false });
 
-  const refused = [
-    { name: "notes.zip", buffer: Buffer.from("this is plain text"), message: "This file is not a zip file." },
-    { name: "evil.zip", buffer: makeZip({ "../escape.txt": "x" }), message: "unsafe name" },
-    { name: "map.txt", buffer: newSave, message: "must end in .zip" },
-    { name: ".hidden.zip", buffer: newSave, message: "must end in .zip" },
-  ];
-  for (const r of refused) {
-    await page.getByLabel("Save file").setInputFiles({ name: r.name, mimeType: "application/zip", buffer: r.buffer });
+  test("a file that is not a zip, or has an unsafe entry, is refused", async ({ page, foreman }) => {
+    await createAdmin(page);
+    const dir = seedTwoSaves(foreman);
+    await page.goto("/worlds/family-base/saves");
+
+    const refused = [
+      { name: "notes.zip", buffer: Buffer.from("this is plain text"), message: "This file is not a zip file." },
+      { name: "evil.zip", buffer: makeZip({ "../escape.txt": "x" }), message: "unsafe name" },
+      { name: "map.txt", buffer: newSave, message: "must end in .zip" },
+      { name: ".hidden.zip", buffer: newSave, message: "must end in .zip" },
+    ];
+    for (const r of refused) {
+      await page.getByLabel("Save file").setInputFiles({ name: r.name, mimeType: "application/zip", buffer: r.buffer });
+      await page.getByRole("button", { name: "Upload save" }).click();
+      await expect(page.locator("#save-file-error"), r.name).toContainText(r.message);
+      await expect(page.locator("#error-summary h2")).toContainText("Fix this problem to continue");
+    }
+    expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
+  });
+
+  test("an upload over the limit is refused before it is stored", async ({ page, foreman }) => {
+    test.setTimeout(120_000);
+    await createAdmin(page);
+    const dir = seedTwoSaves(foreman);
+    // A sparse file one byte over 1 GiB takes no disk space.
+    const big = join(tmpdir(), `foreman-oversized-${process.pid}-${Date.now()}.zip`);
+    const fd = openSync(big, "w");
+    ftruncateSync(fd, 2 ** 30 + 1);
+    closeSync(fd);
+
+    await page.goto("/worlds/family-base/saves");
+    await page.getByLabel("Save file").setInputFiles(big);
     await page.getByRole("button", { name: "Upload save" }).click();
-    await expect(page.locator("#save-file-error"), r.name).toContainText(r.message);
-    await expect(page.locator("#error-summary h2")).toContainText("Fix this problem to continue");
-  }
-  await checkPage(page);
-  expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
-});
 
-test("an upload over the limit is refused before it is stored", async ({ page, foreman }) => {
-  test.setTimeout(120_000);
-  await createAdmin(page);
-  const dir = seedTwoSaves(foreman);
-  // A sparse file one byte over 1 GiB takes no disk space.
-  const big = join(tmpdir(), `foreman-oversized-${process.pid}-${Date.now()}.zip`);
-  const fd = openSync(big, "w");
-  ftruncateSync(fd, 2 ** 30 + 1);
-  closeSync(fd);
-
-  await page.goto("/worlds/family-base/saves");
-  await page.getByLabel("Save file").setInputFiles(big);
-  await page.getByRole("button", { name: "Upload save" }).click();
-
-  await expect(page.locator("#save-file-error")).toContainText("larger than the limit of");
-  expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
-  await checkPage(page);
+    await expect(page.locator("#save-file-error")).toContainText("larger than the limit of 1 GB.");
+    expect(readdirSync(join(dir, "saves")).sort()).toEqual(["new.zip", "old.zip"]);
+  });
 });
 
 // SPEC 7.11: one list of saves; each row that does not load next has a
@@ -383,5 +390,65 @@ test.describe("at phone width", () => {
     expect(saved.y).toBeLessThan(name.y + name.height);
     expect(saved.x).toBeGreaterThan(name.x + name.width - 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+});
+
+// An autosave reads as the world's name and its time, with the file name as
+// smaller text; a save the person named keeps its own name (SPEC 5.11).
+function seedAutosaves(f: Foreman, meta: Record<string, unknown> = {}) {
+  return seedWorld(f, "family-base", { name: "Family base", ...meta }, [
+    { name: "named.zip", content: oldSave, at: "2026-11-01T09:00:00Z" },
+    { name: "_autosave1.zip", content: oldSave, at: "2026-11-03T14:00:05Z" },
+    { name: "_autosave2.zip", content: newSave, at: "2026-11-03T14:25:07Z" },
+  ]);
+}
+
+test("autosaves show the world's name and time, newest first, and keep the file name beside them", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedAutosaves(foreman);
+  await page.goto("/worlds/family-base/saves");
+
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(3);
+  const newest = rows.nth(0);
+  const link = newest.locator('a[href$="/saves/_autosave2.zip"]');
+  await expect(link).toContainText("Family base, ");
+  // What is drawn, not just the text: the name, a comma and a space, then the time on the same line.
+  expect(await link.innerText()).toMatch(/^Family base, \S/);
+  await expect(link.locator("time")).toHaveAttribute("datetime", "2026-11-03T14:25:07Z");
+  await expect(newest.locator(".save-file")).toHaveText("_autosave2.zip");
+  await expect(newest).toContainText("Loads next");
+  await expect(rows.nth(1).locator(".save-file")).toHaveText("_autosave1.zip");
+  // A save with a name of its own is not renamed, and the Load next button still names its file.
+  await expect(rows.nth(2).getByRole("link")).toHaveText("named.zip");
+  await expect(rows.nth(2).locator(".save-file")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Load next: _autosave1.zip" })).toBeVisible();
+  await expect(page.locator("#saves-time-hint")).toContainText("last changed on disk");
+  await checkPage(page);
+});
+
+test("an autosave downloads under the world's name and its save time", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedAutosaves(foreman);
+  await page.goto("/worlds/family-base/saves");
+
+  const [download] = await Promise.all([page.waitForEvent("download"), page.locator('a[href$="/saves/_autosave2.zip"]').click()]);
+  expect(download.suggestedFilename()).toBe("Family_base-2026-11-03-14-25-07UTC.zip");
+  expect(readFileSync(await download.path()).equals(newSave)).toBe(true);
+});
+
+test.describe("autosave rows at phone width", () => {
+  test.use({ viewport: { width: 320, height: 700 } });
+  test("a long world name and 200% text still fit", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman, "long-world", { name: "Long " + "w".repeat(60) }, [
+      { name: "_autosave1.zip", content: oldSave, at: "2026-11-03T14:00:05Z" },
+      { name: "_autosave2.zip", content: newSave, at: "2026-11-03T14:25:07Z" },
+    ]);
+    await page.goto("/worlds/long-world/saves");
+    await page.addStyleTag({ content: "html { font-size: 200% }" });
+    await expect(page.getByRole("button", { name: "Load next: _autosave1.zip" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await checkPage(page);
   });
 });

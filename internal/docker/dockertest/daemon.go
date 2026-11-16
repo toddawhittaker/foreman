@@ -2,7 +2,8 @@
 // containers and images, answers the calls of SPEC 14.3 the way the real
 // daemon does for the cases Foreman meets, and fails the test on any call
 // outside that list, on a versioned call without the version prefix, and on
-// an allowed call it does not implement (GET /events).
+// an allowed call it does not implement. GET /events answers 403, as a
+// socket proxy with EVENTS=0 does, until AllowEvents turns it on.
 package dockertest
 
 import (
@@ -75,6 +76,7 @@ type Daemon struct {
 
 	mu         sync.Mutex
 	apiVersion string
+	os         string // the Os GET /version reports; empty reports none
 	images     map[string]bool
 	pullFail   map[string]string
 	pulls      []string
@@ -92,6 +94,14 @@ type Daemon struct {
 	holdFollow  bool
 	cutReads    int
 	refuseReads bool
+	// events is every container event so far; eventsOn lets GET /events
+	// stream them, and eventsCut counts CutEvents calls.
+	events       []event
+	eventsOn     bool
+	eventsHeld   bool
+	eventsCut    int
+	eventStreams int
+	eventsOpen   int
 }
 
 // New starts a fake daemon that speaks API version docker.MaxAPIVersion and
@@ -125,6 +135,13 @@ func (d *Daemon) SetAPIVersion(v string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.apiVersion = v
+}
+
+// SetOS changes the Os GET /version reports, such as "linux" or "windows".
+func (d *Daemon) SetOS(os string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.os = os
 }
 
 // SetFailure makes every call answer with status and message, until it is
@@ -306,6 +323,9 @@ func (d *Daemon) Exit(ref string, code int, oomKilled bool) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if c := d.find(ref); c != nil && c.Status == "running" {
+		if oomKilled {
+			d.recordEvent(c, "oom")
+		}
 		d.markExited(c, code)
 		c.OOMKilled = oomKilled
 	}
@@ -385,11 +405,13 @@ func (d *Daemon) route(w http.ResponseWriter, r *http.Request, path string) {
 	switch {
 	case path == "/_ping":
 		_, _ = w.Write([]byte("OK"))
+	case path == "/events":
+		d.eventStream(w, r)
 	case path == "/version":
 		d.mu.Lock()
-		v := d.apiVersion
+		v, hostOS := d.apiVersion, d.os
 		d.mu.Unlock()
-		writeJSON(w, map[string]string{"Version": "29.0.0", "ApiVersion": v})
+		writeJSON(w, map[string]string{"Version": "29.0.0", "ApiVersion": v, "Os": hostOS})
 	case path == "/containers/json":
 		d.list(w, r)
 	case path == "/containers/create":

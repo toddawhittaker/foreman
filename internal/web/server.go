@@ -83,7 +83,9 @@ type server struct {
 	// made, held for 15 minutes (SPEC 5.6).
 	previewer MapPreviewer
 	previews  *previewStore
-	account   *factorioaccount.Service
+	// drafts are the mods review page's answers (SPEC 9.14).
+	drafts  *draftStore
+	account *factorioaccount.Service
 	// portal and planner: the mod portal and the plans made from it (SPEC 9).
 	portal    ModPortal
 	planner   *mods.Planner
@@ -148,6 +150,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		releases:  d.Releases,
 		previewer: d.Previewer,
 		previews:  newPreviewStore(now),
+		drafts:    newDraftStore(now),
 		account:   account,
 		hostData:  d.HostDataDir,
 		notifier:  d.Notifier,

@@ -1,5 +1,6 @@
 {{define "title"}}{{.Page.World.Name}}{{end}}
-{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
+<script src="{{static "copy.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -142,6 +143,16 @@
     </div>
   </div>
 </section>
+{{- with .Exchange}}
+<section class="setting-row" aria-labelledby="exchange-heading">
+  <div class="setting-row__head">
+    <h2 id="exchange-heading">{{t "mapgen.exchange.heading"}}</h2>
+  </div>
+  <div class="setting-row__body">
+    {{template "exchange-string" .}}
+  </div>
+</section>
+{{- end}}
 {{- if .CanFavorite}}
 <form method="post" action="{{.FavoritePath}}" class="setting-row" novalidate aria-labelledby="favorite-heading">
   <div class="setting-row__head">

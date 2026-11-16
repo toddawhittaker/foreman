@@ -39,7 +39,9 @@ const v20 = "2.0.77"
 
 type modsRig struct {
 	*gameRig
-	portal *modportaltest.Portal
+	portal  *modportaltest.Portal
+	favs    *world.Favorites
+	favsDir string
 }
 
 // newModsRig is a game rig whose handler asks the fake portal. withAccount
@@ -68,15 +70,20 @@ func newModsRigWrapped(t *testing.T, withAccount bool, wrap func(ModPortal) ModP
 	if wrap != nil {
 		portal = wrap(portal)
 	}
+	favsDir := filepath.Join(t.TempDir(), "favorites")
+	favs, err := world.NewFavorites(favsDir, g.worlds, g.clock.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
 	h, err := NewHandler(Deps{Config: g.cfg, Store: g.store, Worlds: g.worlds, Game: g.ctrl, Portal: portal,
-		Account: acct, Log: g.slog, Now: g.clock.Now})
+		Account: acct, Favorites: favs, Log: g.slog, Now: g.clock.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(h.Close)
 	g.h = h
 	g.liveServer = newLiveServerFor(t, g.harness)
-	return &modsRig{gameRig: g, portal: p}
+	return &modsRig{gameRig: g, portal: p, favs: favs, favsDir: favsDir}
 }
 
 // world20 makes a stopped 2.0 world without Space Age, with a save, and
@@ -232,9 +239,11 @@ func TestModsTabListsMods(t *testing.T) {
 		// SPEC 9.7: the built-in line says which are off and why, with the way to turn them on.
 		`>base</span>`, "Space Age is off, so", `>space-age</span> are off.`,
 		`href="/worlds/`+id+`/settings" id="act-built-in-settings">Turn on Space Age</a>`,
-		"at most 200 MB", "At most 4 MB",
+		// DESIGN 7.10: both uploads are drop zones that show their file type and limit.
+		`id="mod-file" name="mod" type="file" accept=".zip"`, "A .zip file of up to 200 MB.",
+		`id="settings-file" name="settings" type="file" accept=".dat"`, "A .dat file of up to 4 MB.",
 		// SPEC 9.7: a portal mod's name is the link to its portal page, in a new tab.
-		`<a href="https://mods.factorio.com/mod/alpha" id="`+slotID("portal", "alpha")+`" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`,
+		`<span class="mod-name" id="`+slotID("portal", "alpha")+`"><a href="https://mods.factorio.com/mod/alpha" class="mod-title" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a></span>`,
 		// SPEC 9.8: the save's mods are read and the differences counted; the save uses neither mod.
 		"The mods differ from the save", "2 enabled mods are not in the save", `id="act-sync"`,
 		// SPEC 9.5: the rare forms fold away.
@@ -304,7 +313,7 @@ func TestModStatusCurrentCount(t *testing.T) {
 	_, body := g.getStatus(modsPath(id) + "/status")
 	wantIn(t, "status", body, "1 mod from the mod portal is up to date.", "1 mod is not on the mod portal.",
 		// The portal's link goes; the name stays.
-		`<span id="`+slotID("portal", "zz-not-on-portal")+`" class="mod-name ident" translate="no" tabindex="-1" aria-describedby="`+slotID("note", "zz-not-on-portal")+`" hx-swap-oob="true">zz-not-on-portal</span>`,
+		`<span id="`+slotID("portal", "zz-not-on-portal")+`" class="mod-name" tabindex="-1" aria-describedby="`+slotID("note", "zz-not-on-portal")+`" hx-swap-oob="true"><span class="mod-title ident" translate="no">zz-not-on-portal</span></span>`,
 		"Not on the mod portal, so players")
 	if strings.Contains(body, "message--error") {
 		t.Error("a note reads as an error")
@@ -373,7 +382,8 @@ func TestInstallAppliesThePlanAndOffersUndo(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("plan %d\n%s", code, body)
 	}
-	wantIn(t, "plan", plain(body), "Install alpha in Base?", "Install 2 mods", "beta 1.0.0 (alpha needs it)", "Before mod change", "Download 2 mods")
+	wantIn(t, "plan", plain(body), "Install alpha in Base?", "Install 2 mods", "Before mod change", "Download 2 mods")
+	wantIn(t, "plan rows", planRows(body), "beta 1.0.0 (alpha needs it)")
 	v := planValues(t, body)
 	g.wantRedirectHome(g.post(modsPath(id)+"/plan", v))
 	if err := g.waitResult(id, game.AuditMods); err != nil {
@@ -714,7 +724,7 @@ func modPageCases() []pageCase {
 			Changed: true, Drops: []string{"gamma"}, DropsError: dropsMissing([]string{"gamma"}),
 			ConfirmErrors: map[string]i18n.Msg{"old": i18n.M("mods.unresolved.confirm_missing", "mod", "old")}}},
 		{"mod plan ready", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}}, Plan: mods.Plan{Changes: plan.Changes[:1]}, Running: true, CountdownForm: defaultCountdown()}},
-		{"mod plan error", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}, Error: i18n.M("mods.error.portal"), Retry: "/x"}},
+		{"mod plan error", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}, Error: i18n.M("mods.error.portal"), Retry: true, Draft: "tok"}},
 		{"mod plan nothing", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}}},
 		{"mod plan zip refused", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindSync, Save: "base.zip"},
 			Plan: mods.Plan{Unresolved: []mods.Unresolved{{Name: "old mod", Version: "0.1.0"}}}, UploadFor: "old mod", UploadError: i18n.M("mods.upload.not_mod")}},
@@ -798,7 +808,7 @@ func TestPlanRedrawShowsAConflict(t *testing.T) {
 	id := g.world20("Base", "beta_1.0.0")
 	path := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}})
 	_, body := g.getStatus(path)
-	wantIn(t, "plan", body, `id="mod-fp-conf-optional"`, `hx-get="/worlds/`+id+`/mods/plan"`)
+	wantIn(t, "plan", body, `id="mod-fp-conf-optional"`, `hx-post="/worlds/`+id+`/mods/plan/redraw"`)
 	if strings.Contains(body, `hx-swap-oob="innerHTML:#announcer"`) {
 		t.Error("a full page load announces a redraw")
 	}
@@ -832,7 +842,7 @@ func TestPlanRedrawKeepsTheCountdown(t *testing.T) {
 		"Plan updated: 1 mod changes.")
 }
 
-// S3: a plan request names at most 50 mods, and another site's page cannot
+// S3: a plan request names at most store.MaxModPlanNames mods, and another site's page cannot
 // make a signed-in browser ask for a plan; the admin's own click can.
 func TestPlanRequestIsBounded(t *testing.T) {
 	g := newModsRig(t, true)
@@ -891,8 +901,8 @@ func TestRefusedUnresolvedZipKeepsTheAnswers(t *testing.T) {
 	g.copySave(id, "2.1.24-space-age-testmod.zip")
 	q := url.Values{"kind": {"sync"}, "choice-recycler": {"without"}, "confirm-recycler": {"1"}}
 	_, body := g.getStatus(planPath(id, q))
-	wantIn(t, "sync", body, `id="mod-recycler-confirm" required hx-get="/worlds/`+id+`/mods/plan" checked`, `<label for="mod-foreman-test-zip" class="required">`,
-		`form="mod-foreman-test-zip-form"`, `class="hint required-note"`, "at most 200 MB")
+	wantIn(t, "sync", body, `id="mod-recycler-confirm" required hx-post="/worlds/`+id+`/mods/plan/redraw" checked`, `<label for="mod-foreman-test-zip" class="required">`,
+		`form="mod-foreman-test-zip-form"`, `class="hint required-note"`, "A .zip file of up to 200 MB.")
 	if strings.Contains(body, `id="mod-foreman-test-confirm"`) {
 		t.Error("the continue-without box shows for a mod whose choice is upload")
 	}
@@ -902,7 +912,7 @@ func TestRefusedUnresolvedZipKeepsTheAnswers(t *testing.T) {
 		t.Fatalf("junk zip: %d", rep.StatusCode)
 	}
 	wantIn(t, "refused", rep.body, `id="error-summary"`, `<a href="#mod-foreman-test-zip">This file is not a mod zip`,
-		`id="mod-foreman-test-zip-error"`, `id="mod-recycler-without" hx-get="/worlds/`+id+`/mods/plan" checked`, `id="mod-recycler-confirm" required hx-get="/worlds/`+id+`/mods/plan" checked`)
+		`id="mod-foreman-test-zip-error"`, `id="mod-recycler-without" hx-post="/worlds/`+id+`/mods/plan/redraw" checked`, `id="mod-recycler-confirm" required hx-post="/worlds/`+id+`/mods/plan/redraw" checked`)
 }
 
 // plain is a page with its mod names unwrapped, so a test can look for a
@@ -1086,13 +1096,14 @@ func TestModsTabSearchFollowsTyping(t *testing.T) {
 }
 
 // An orphan box sends its name as offered too, so an unticked one reads as
-// kept, and the link back to the plan carries it (SPEC 9.4).
+// kept, and the page's draft keeps it (SPEC 9.4).
 func TestPlanFormReadsUntickedOrphansAsKept(t *testing.T) {
 	f, ok := readPlanForm(url.Values{"kind": {"remove"}, "name": {"a"}, "orphan-offered": {"b", "c"}, "orphan": {"c"}})
 	if !ok || len(f.Kept) != 1 || f.Kept[0] != "b" {
 		t.Fatalf("kept = %v, ok = %v", f.Kept, ok)
 	}
-	g, ok := readPlanForm(f.query())
+	d := newDraftStore(time.Now)
+	g, ok := d.get(d.keep("", 1, "w", f), 1, "w")
 	if !ok || len(g.Kept) != 1 || g.Kept[0] != "b" {
 		t.Fatalf("round trip kept = %v", g.Kept)
 	}

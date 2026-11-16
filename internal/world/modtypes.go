@@ -4,6 +4,8 @@ package world
 type InstalledMod struct {
 	Name    string
 	Version string
+	// Title is the display name from info.json; "" when it gives none.
+	Title   string
 	File    string // zip file name in mods/; empty for a folder mod
 	Enabled bool
 	Local   bool // installed as a folder; never replaced

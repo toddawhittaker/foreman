@@ -61,6 +61,8 @@ type PlanPanel struct {
 // PlanNode is one mod in the panel's tree.
 type PlanNode struct {
 	Name, Title, Version string
+	// NotOnPortal says the portal lacks the mod, so its name is not linked.
+	NotOnPortal bool
 	// Of is the title of the mod this one shows under; empty for a pick.
 	Of string
 	// Note says what changes for a mod already installed.
@@ -69,15 +71,15 @@ type PlanNode struct {
 	Children []PlanNode
 }
 
-// Ident says the title is the mod's name, so it is not translated.
-func (n PlanNode) Ident() bool { return n.Title == n.Name }
+// Linked says the mod's name links to its portal page.
+func (n PlanNode) Linked() bool { return !n.NotOnPortal }
 
 func (p PlanPanel) ModsPath() string   { return modsPath(p.World.ID) }
 func (p PlanPanel) ChangePath() string { return modsPath(p.World.ID) + "/plan/mods" }
 func (p PlanPanel) ClearPath() string  { return modsPath(p.World.ID) + "/plan/clear" }
 
 // ReviewPath is today's plan page for the picks; it adds their dependencies.
-func (p PlanPanel) ReviewPath() string { return kindPlanPath(p.World.ID, mods.KindInstall, p.Picks...) }
+func (p PlanPanel) ReviewPath() string { return kindPlanPath(p.World.ID, mods.KindInstall, "") }
 
 // RemoveID is the id of a pick's cross in the panel.
 func (PlanPanel) RemoveID(name string) string { return modID(name, "unpick") }
@@ -122,14 +124,18 @@ func (s *server) planPanel(ctx context.Context, sum world.Summary, ret string) (
 		return p, nil
 	}
 	t := planTree{plan: plan, line: mods.GameLine(sum.GameVersion), titles: map[string]string{}, changes: map[string]mods.Change{},
-		title: func(name string) string {
-			if m, err := s.portal.Mod(ctx, name); err == nil && m.Title != "" {
-				return m.Title
-			}
-			return name
-		}}
+		title: func(name string) string { return s.portalTitle(ctx, name) }}
 	p.Roots, p.Count, p.neededBy = t.build(p.Picks)
 	return p, nil
+}
+
+// portalTitle is the portal's title for a mod, or its name when the portal
+// has none.
+func (s *server) portalTitle(ctx context.Context, name string) string {
+	if m, err := s.portal.Mod(ctx, name); err == nil && m.Title != "" {
+		return m.Title
+	}
+	return name
 }
 
 // planTree turns a resolved plan into the panel's tree: each pick with the
@@ -211,6 +217,11 @@ func (t *planTree) shown(name string) bool {
 
 func (t *planTree) node(name, of string) PlanNode {
 	n := PlanNode{Name: name, Title: t.titleOf(name), Of: of, Warnings: t.warnings(name)}
+	for _, c := range t.plan.Conflicts {
+		if c.Code == mods.ConflictNotOnPortal && c.Mod == name {
+			n.NotOnPortal = true
+		}
+	}
 	c, ok := t.changes[name]
 	if !ok {
 		return n
@@ -246,7 +257,7 @@ func (t *planTree) warnings(name string) []i18n.Msg {
 		key := string(c.Code) + "\x00" + c.Version
 		switch {
 		case c.Code == mods.ConflictIncompatible && c.Other == name:
-			m, key = i18n.M("mods.plan_panel.warn.incompatible", "mod", c.Mod), key+c.Mod
+			m, key = i18n.M("mods.plan_panel.warn.incompatible", "mod", i18n.Ident(t.titleOf(c.Mod))), key+c.Mod
 		case c.Mod != name:
 			continue
 		case c.Code == mods.ConflictNotOnPortal:
@@ -254,7 +265,7 @@ func (t *planTree) warnings(name string) []i18n.Msg {
 		case c.Code == mods.ConflictNoRelease:
 			m = i18n.M("mods.plan_panel.warn.no_release", "line", t.line)
 		case c.Code == mods.ConflictIncompatible:
-			m, key = i18n.M("mods.plan_panel.warn.incompatible", "mod", c.Other), key+c.Other
+			m, key = i18n.M("mods.plan_panel.warn.incompatible", "mod", i18n.Ident(t.titleOf(c.Other))), key+c.Other
 		case c.Code == mods.ConflictVersion:
 			m = i18n.M("mods.plan_panel.warn.version", "version", c.Version)
 		case c.Code == mods.ConflictSpaceAgeOff:
@@ -408,9 +419,9 @@ func (s *server) planChanged(w http.ResponseWriter, r *http.Request, u store.Use
 		up.Search.Plan.Error = planFull()
 		up.Search.Plan.Said = up.Search.Plan.Error
 	case c.op == "add":
-		up.Search.Plan.Said = i18n.M("mods.plan_panel.added", "mod", c.name, "count", count)
+		up.Search.Plan.Said = i18n.M("mods.plan_panel.added", "mod", i18n.Ident(s.portalTitle(r.Context(), c.name)), "count", count)
 	case c.op == "remove":
-		up.Search.Plan.Said = i18n.M("mods.plan_panel.removed", "mod", c.name, "count", count)
+		up.Search.Plan.Said = i18n.M("mods.plan_panel.removed", "mod", i18n.Ident(s.portalTitle(r.Context(), c.name)), "count", count)
 	default:
 		up.Search.Plan.Said = i18n.M("mods.plan_panel.cleared")
 	}

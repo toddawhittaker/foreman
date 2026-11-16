@@ -1,7 +1,9 @@
 package web
 
 import (
+	"html"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -23,9 +25,10 @@ func TestPlanConflictOffersItsFix(t *testing.T) {
 	if code != http.StatusConflict {
 		t.Fatalf("status %d", code)
 	}
-	fixed := plan + "?also-remove=fp-other&amp;kind=install&amp;name=fp-clash"
+	tok := draftOf(t, body)
+	fixed := plan + "?also-remove=fp-other&amp;draft=" + tok
 	wantIn(t, "conflict", plain(body), "fp-clash cannot run together with fp-other.",
-		`<a href="`+fixed+`" class="button" id="mod-fp-other-fix" hx-get="`+plan+`?also-remove=fp-other&amp;fixed=fp-other&amp;kind=install&amp;name=fp-clash"`,
+		`<a href="`+fixed+`" class="button" id="mod-fp-other-fix" hx-get="`+fixed+`&amp;fixed=1"`,
 		">Remove fp-other as part of this plan</a>", `<a href="/worlds/`+id+`/mods">Back to the mods</a>`)
 	for _, gone := range []string{`id="plan-steps"`, `id="act-apply"`, "Take a snapshot"} {
 		if strings.Contains(body, gone) {
@@ -34,15 +37,16 @@ func TestPlanConflictOffersItsFix(t *testing.T) {
 	}
 
 	// The fix's plan installs one, removes the other, and says so in its heading and button.
-	code, body = g.getStatus(plan + "?also-remove=fp-other&kind=install&name=fp-clash")
+	code, body = g.getStatus(plan + "?also-remove=fp-other&draft=" + tok)
 	if code != http.StatusOK {
 		t.Fatalf("fixed plan %d\n%s", code, body)
 	}
-	wantIn(t, "fixed", plain(body), "Change the mods of Base?", "<dt>Install</dt>", "fp-clash 1.0.0", "<dt>Remove</dt>", "fp-other 1.0.0",
+	wantIn(t, "fixed rows", planRows(body), "fp-clash 1.0.0", "fp-other 1.0.0")
+	wantIn(t, "fixed", plain(body), "Change the mods of Base?", "<dt>Install</dt>", "<dt>Remove</dt>",
 		`<input type="hidden" name="also-remove" value="fp-other">`, `class="button button--danger" id="act-apply">Change 2 mods</button>`, `<section class="confirm">`)
 
 	// A redraw from the fix announces it and puts focus on the changes.
-	rec := g.harness.get(plan+"?also-remove=fp-other&fixed=fp-other&kind=install&name=fp-clash", withCookie(g.cookie), withHeader("HX-Request", "true"))
+	rec := g.harness.get(plan+"?also-remove=fp-other&draft="+tok+"&fixed=1", withCookie(g.cookie), withHeader("HX-Request", "true"))
 	wantIn(t, "redraw", rec.Body.String(), "Plan updated. It changes 2 mods.", `<p class="plan-label" id="plan-changes" tabindex="-1" autofocus>Changes:</p>`)
 
 	// Applying it removes the other mod in the same change, with one snapshot.
@@ -111,12 +115,35 @@ func TestPlanKeptModsFold(t *testing.T) {
 		}}}
 	_, body := renderIn(t, r, pageCase{"plan", "todd", 200, p}, "en")
 	body = plain(body)
-	wantIn(t, "kept", body, "<summary>1 other mod stays as it is</summary>", "lib 2.0.0 (beta needs it)")
-	z, a, b := strings.Index(body, "zeta 1.0.0"), strings.Index(body, "alpha 1.0.0"), strings.Index(body, "beta 1.0.0")
+	rows := planRows(body)
+	wantIn(t, "kept", body, "<summary>1 other mod stays as it is</summary>")
+	wantIn(t, "kept row", rows, "lib 2.0.0 (beta needs it)")
+	z, a, b := strings.Index(rows, "zeta 1.0.0"), strings.Index(rows, "alpha 1.0.0"), strings.Index(rows, "beta 1.0.0")
 	if z < 0 || z > a || a > b {
 		t.Errorf("install order: zeta %d, alpha %d, beta %d; want the asked mods first, in the order asked", z, a, b)
 	}
 	if strings.Contains(body, "Leave alone") {
 		t.Error("the kept mods still have their own group")
 	}
+}
+
+var (
+	planRowRe    = regexp.MustCompile(`(?s)<li class="plan-row">(.*?)</li>`)
+	rowHiddenRe  = regexp.MustCompile(`<span class="visually-hidden">[^<]*</span>`)
+	rowVersionRe = regexp.MustCompile(`(?s)<span class="plan-row__version">.*?</select>\s*</span>`)
+	rowRemoveRe  = regexp.MustCompile(`(?s)<a [^>]*plan-panel__remove.*?</a>`)
+	rowTagRe     = regexp.MustCompile(`<[^>]+>`)
+)
+
+// planRows is the visible text of each row of the plan's changes, without
+// its version list and remove cross, one row a line, such as
+// "fp-clash 1.0.0" for a row whose title links to the portal.
+func planRows(body string) string {
+	var out []string
+	for _, m := range planRowRe.FindAllStringSubmatch(body, -1) {
+		s := rowRemoveRe.ReplaceAllString(rowVersionRe.ReplaceAllString(m[1], ""), "")
+		s = rowTagRe.ReplaceAllString(rowHiddenRe.ReplaceAllString(s, ""), "")
+		out = append(out, strings.Join(strings.Fields(html.UnescapeString(s)), " "))
+	}
+	return strings.Join(out, "\n")
 }

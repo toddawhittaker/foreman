@@ -1,4 +1,4 @@
-import { test, expect, checkPage, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, pickLanguage, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -51,6 +51,53 @@ test("/ is the Server page and the world list is at /worlds", async ({ page }) =
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Server");
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Worlds" }).click();
   await expect(page).toHaveURL("/worlds");
+});
+
+// A Favorites button sits beside Generate and Import, as a button and not a
+// text link, and works without script (SPEC 5.12).
+test("the Worlds page has a Favorites button that opens the favorites list", async ({ page }) => {
+  await createAdmin(page);
+  const actions = page.locator("header .actions");
+  const buttons = actions.locator("a.button");
+  await expect(buttons.nth(0)).toHaveText("Generate a world");
+  await expect(buttons.nth(1)).toHaveText("Import a world");
+  const favorites = actions.getByRole("link", { name: "Favorites", exact: true });
+  await expect(favorites).toHaveClass(/\bbutton\b/);
+  expect((await favorites.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await favorites.click();
+  await expect(page).toHaveURL("/favorites");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Favorites");
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 320, height: 700 }, javaScriptEnabled: false });
+  test("the Favorites button is reachable without script and fits 320 px", async ({ page }) => {
+    await createAdmin(page);
+    const favorites = page.getByRole("link", { name: "Favorites", exact: true });
+    await expect(favorites).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await favorites.click();
+    await expect(page).toHaveURL("/favorites");
+  });
+});
+
+// German runs long: at 320 px and 200% text the three buttons wrap and the
+// Favorites button stays whole, inside the page, with a full-size target.
+test.describe("in German at large text on a phone", () => {
+  test.use({ viewport: { width: 320, height: 700 } });
+  test("the Favorites button fits", async ({ page }) => {
+    await createAdmin(page);
+    await pickLanguage(page, "de");
+    await page.addStyleTag({ content: "html { font-size: 200% }" });
+    const favorites = page.getByRole("link", { name: "Favoriten", exact: true });
+    await expect(favorites).toBeVisible();
+    const box = (await favorites.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(320 + 0.5);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await checkPage(page);
+  });
 });
 
 test("empty world list names the next step", async ({ page }) => {

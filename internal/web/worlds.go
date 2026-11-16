@@ -162,6 +162,9 @@ type WorldPage struct {
 	FavError      i18n.Msg
 	FavDefaultMap bool
 	FavMade       *FavoriteMade
+	// Exchange is the map exchange string to copy, or why there is none
+	// (SPEC 5.6); nil for a world this Foreman cannot read.
+	Exchange *ExchangeField
 }
 
 func (WorldPage) templateName() string { return "world" }
@@ -173,6 +176,9 @@ func (p WorldPage) hasErrors() bool { return !p.NameError.IsZero() || !p.FavErro
 // links go.
 func (WorldsPage) ImportPath() string   { return PathImport }
 func (WorldsPage) GeneratePath() string { return PathGenerate }
+
+// FavoritesPath is the favorites list, shown beside Generate and Import.
+func (WorldsPage) FavoritesPath() string { return PathFavorites }
 
 // Problems lists the rename field's error.
 func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.NameError}) }
@@ -417,6 +423,10 @@ func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, 
 		}
 	}
 	p.Working = !p.Busy.IsZero() || s.game != nil && s.runs.inFlight(sum.ID)
+	if !sum.Unreadable && !sum.Newer {
+		ex := s.worldExchange(ctx, sum)
+		p.Exchange = &ex
+	}
 	if s.game != nil && !sum.Unreadable && !sum.Newer {
 		p.ReleasesPath = releasesPath(sum.ID)
 		p.Rollback = s.rollbackOffer(sum.ID)

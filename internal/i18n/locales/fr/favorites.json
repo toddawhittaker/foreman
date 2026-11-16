@@ -40,9 +40,21 @@
   "favorites.start.none": "Aucun favori pour l'instant. Créez-en un depuis la page d'un monde.",
   "favorites.start.note": "Départ à partir du favori « {name} ». Sa version du jeu, son réglage de l'Ère spatiale, son préréglage et ses paramètres de carte sont remplis ci-dessous ; modifiez ce que vous voulez. Le nouveau monde reçoit ses paramètres de serveur et ses paramètres de mods.",
   "favorites.review.generated": "{name} a été généré à partir du favori. Ci-dessous, les mods du favori à installer dans ce monde.",
+  "favorites.review.unsupported_version": "Le favori a été enregistré avec la version du jeu {version}, que ce Foreman ne prend pas en charge : ses mods ne peuvent pas être installés à partir de lui. Revenez à l’onglet Mods pour installer plutôt les versions les plus récentes.",
   "favorites.start.mods": {
     "one": "Une fois le monde créé, vous vérifiez {count} mod à installer.",
     "other": "Une fois le monde créé, vous vérifiez {count} mods à installer."
   },
-  "favorites.error.map_damaged": "Les paramètres de carte de ce favori sont endommagés : Foreman ne peut pas les remplir. Choisissez un autre favori, ou supprimez celui-ci et recréez-le à partir d'un monde."
+  "favorites.error.map_damaged": "Les paramètres de carte de ce favori sont endommagés : Foreman ne peut pas les remplir. Choisissez un autre favori, ou supprimez celui-ci et recréez-le à partir d'un monde.",
+  "favorites.export.button": "Exporter",
+  "favorites.export.warning": "Exporter télécharge un favori sous forme de fichier, pour le partager ou le déplacer vers un autre Foreman. Le fichier contient les paramètres des mods, et un mod peut y garder un jeton ou une autre valeur privée : ne le partagez qu'avec des personnes de confiance.",
+  "favorites.mods.show": "Afficher les mods",
+  "favorites.import.heading": "Importer un favori",
+  "favorites.import.text": "Ajoutez un favori depuis un fichier exporté par un autre Foreman. Les mods absents de ce Foreman sont tout de même importés, et la revue des mods de Générer les affiche. Une version du jeu que ce Foreman ne prend pas en charge est remplacée par la version par défaut lors de Générer.",
+  "favorites.import.label": "Fichier de favori",
+  "favorites.import.button": "Importer le favori",
+  "favorites.import.done": "Le favori « {name} » a été importé.",
+  "favorites.import.bad": "Ce n'est pas un fichier de favori que Foreman peut lire, ou il est endommagé. Rien n'a été importé.",
+  "favorites.import.name_taken": "Un favori portant le nom de ce fichier existe déjà. Renommez ou supprimez ce favori, puis importez à nouveau.",
+  "favorites.exchange.show": "Chaîne d’échange de carte"
 }

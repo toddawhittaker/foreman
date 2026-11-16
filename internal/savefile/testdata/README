@@ -46,3 +46,20 @@ else. It declares factorio_version 1.1 or 2.1 to match the game. Note that
 
 Saves are not reproducible byte for byte (the game writes timestamps and
 checksums), but the version and mod list are.
+
+Exchange strings (SPEC 5.6)
+
+mxstrings/<save>.txt is the game's own map exchange string for each save,
+from LuaSurface.get_map_exchange_string() on surface 1. gen/mxgen.sh makes
+them: for each save it runs the game once in a throwaway container with no
+network, on a copy of the save, with --benchmark for one tick and a probe
+mod (gen/mxprobe-<line>) whose on_init writes the string with write_file.
+No RCON and no console command is used. Run it from this folder with
+
+  ./gen/mxgen.sh "$(pwd)/mxstrings"
+
+It uses the three image tags above as present locally, plus
+factoriotools/factorio:2.1.23@sha256:1e1773337f5be1d93f61d1d64757f18c19c8eb345c96acc57e0d3567a4fd4c3f
+for 2.1.23-space-age.zip, a save made the same way as the others with
+that image and no mod directory. ONLY=<save>.zip records just one. The
+strings were recorded on 2026-11-15.

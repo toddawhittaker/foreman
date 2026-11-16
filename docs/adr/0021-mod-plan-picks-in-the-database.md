@@ -15,7 +15,7 @@ data. The app database already holds small per-world records.
 
 - **The picks are rows in the app database.** The table `mod_plan_mods` has
   one row per world and mod name, with who added it and when. Only the names
-  of the mods picked are saved, at most 50 per world. The dependencies are
+  of the mods picked are saved, at most 500 per world (50 until fixes batch 11). The dependencies are
   worked out again each time the plan is drawn.
 - **Not in the world folder.** Every write to a world's files needs the
   snapshot SPEC 6 requires first, and a pick is not worth a snapshot. A

@@ -36,7 +36,7 @@ func kinds(lines []string) []Kind {
 
 func TestParseLineSigtermTranscripts(t *testing.T) {
 	// Start, /server-save, one autosave, then SIGTERM.
-	want := []Kind{KindLoadStarted, KindInGame, KindSaveFinished, KindSaveFinished}
+	want := []Kind{KindLoadStarted, KindInGame, KindServerSaveStarted, KindSaveFinished, KindSaveStarted, KindSaveFinished}
 	for _, v := range versions {
 		t.Run(v, func(t *testing.T) {
 			got := kinds(transcript(t, v, "run-sigterm.log"))
@@ -109,7 +109,12 @@ func TestParseLineRealLines(t *testing.T) {
 		{"2.1 rcon", "2026-11-03T22:26:40.787585323Z    1.112 Info RemoteCommandProcessor.cpp:119: Starting RCON interface at IP ADDR:({0.0.0.0:27015})", Event{Time: docker}},
 		{"server-save", "   3.279 Info AppManagerStates.cpp:2131: Saving finished", Event{Kind: KindSaveFinished}},
 		{"hosting line is not in game", "   1.112 Hosting game at IP ADDR:({0.0.0.0:34197})", Event{}},
-		{"save start is not finished", "   3.229 Info AppManager.cpp:424: Saving game as /factorio/saves/spike.zip", Event{}},
+		{"save start is not finished", "   3.229 Info AppManager.cpp:424: Saving game as /factorio/saves/spike.zip", Event{Kind: KindServerSaveStarted}},
+		{"save child ok", "  29.494 Info ChildProcessAgent.cpp:61: Child 31150 exited with return value 0", Event{}},
+		{"save child failed", "  29.494 Info ChildProcessAgent.cpp:61: Child 31150 exited with return value 1", Event{Kind: KindSaveFailed}},
+		{"save child killed", "  39.114 Error ChildProcessAgent.cpp:63: Child 42231 was terminated by signal 9", Event{Kind: KindSaveFailed}},
+		{"fork autosave start", "  214.224 Info AppManager.cpp:304: Saving to _autosave1 (non-blocking).", Event{Kind: KindSaveStarted}},
+		{"autosave start", "  214.224 Info AppManager.cpp:304: Saving to _autosave1 (blocking).", Event{Kind: KindSaveStarted}},
 		{"loading a mod", "   0.033 Loading mod base 2.1.24 (data.lua)", Event{}},
 		{"closing state", "  64.867 Info ServerMultiplayerManager.cpp:809: updateTick(3814) changing state from(Disconnected) to(Closed)", Event{}},
 		{"failed state", "   0.361 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(CreatingGame) to(InitializationFailed)", Event{Kind: KindLoadFailed}},

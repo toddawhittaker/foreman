@@ -40,9 +40,21 @@
   "favorites.start.none": "Aún no hay favoritos. Crea uno desde la página de un mundo.",
   "favorites.start.note": "Empezando desde el favorito «{name}». Su versión del juego, su ajuste de Space Age, su preajuste y la configuración del mapa están rellenados abajo; cambia lo que quieras. El mundo nuevo recibe su configuración del servidor y la configuración de sus mods.",
   "favorites.review.generated": "Se generó {name} a partir del favorito. Abajo están los mods del favorito para instalar en él.",
+  "favorites.review.unsupported_version": "El favorito se guardó con la versión del juego {version}, que este Foreman no admite, así que no se pueden instalar sus mods desde él. Vuelve a la pestaña Mods para instalar las versiones más recientes.",
   "favorites.start.mods": {
     "one": "Cuando el mundo esté creado, revisarás {count} mod para instalar.",
     "other": "Cuando el mundo esté creado, revisarás {count} mods para instalar."
   },
-  "favorites.error.map_damaged": "La configuración del mapa de este favorito está dañada, así que Foreman no puede rellenarla. Elige otro favorito, o bórralo y créalo de nuevo a partir de un mundo."
+  "favorites.error.map_damaged": "La configuración del mapa de este favorito está dañada, así que Foreman no puede rellenarla. Elige otro favorito, o bórralo y créalo de nuevo a partir de un mundo.",
+  "favorites.export.button": "Exportar",
+  "favorites.export.warning": "Exportar descarga un favorito como archivo para compartirlo o llevarlo a otro Foreman. Incluye los ajustes de los mods, y un mod puede guardar ahí un token u otro valor privado, así que compártelo solo con personas de confianza.",
+  "favorites.mods.show": "Mostrar los mods",
+  "favorites.import.heading": "Importar un favorito",
+  "favorites.import.text": "Añade un favorito desde un archivo exportado por otro Foreman. Los mods que falten en este Foreman se importan igualmente, y la revisión de mods de Generar los muestra. Una versión del juego que este Foreman no admite se sustituye por la versión predeterminada al generar.",
+  "favorites.import.label": "Archivo de favorito",
+  "favorites.import.button": "Importar favorito",
+  "favorites.import.done": "Se importó el favorito «{name}».",
+  "favorites.import.bad": "No es un archivo de favorito que Foreman pueda leer, o está dañado. No se importó nada.",
+  "favorites.import.name_taken": "Ya existe un favorito con el nombre de este archivo. Cambia el nombre de ese favorito o elimínalo y vuelve a importar.",
+  "favorites.exchange.show": "Cadena de intercambio de mapa"
 }

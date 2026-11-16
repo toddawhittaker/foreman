@@ -342,8 +342,9 @@
   "server.problem.mod_missing_many": "{save} utilise {mods}, mais ce monde n’a pas de fichiers pour eux.",
   "server.problem.mod_disabled_one": "{save} utilise {mods}, mais il est désactivé dans ce monde.",
   "server.problem.mod_disabled_many": "{save} utilise {mods}, mais ils sont désactivés dans ce monde.",
-  "server.problem.mod_gone_one": "Le portail de mods n’a plus {mod} {version}, le jeu des joueurs ne peut donc pas le télécharger et ils ne peuvent pas rejoindre la partie. Continuer quand même ne supprime rien de la sauvegarde.",
+  "server.problem.mod_gone_one": "Le portail de mods n’a plus {mod} (version {version}), le jeu des joueurs ne peut donc pas le télécharger et ils ne peuvent pas rejoindre la partie. Continuer quand même ne supprime rien de la sauvegarde.",
   "server.problem.mod_gone_many": "Le portail de mods n’a plus {mods}, le jeu des joueurs ne peut donc pas les télécharger et ils ne peuvent pas rejoindre la partie. Continuer quand même ne supprime rien de la sauvegarde.",
+  "server.problem.mod_gone_item": "{mod} (version {version})",
   "server.problem.mod_version_first": {
     "one": "{world} ne peut pas fonctionner sous Factorio {version} : {count} de ses mods a été conçu pour Factorio {for}, et le jeu refuse de le charger : {names}.",
     "other": "{world} ne peut pas fonctionner sous Factorio {version} : {count} de ses mods ont été conçus pour Factorio {for}, et le jeu refuse de les charger : {names}."
@@ -368,6 +369,7 @@
   "server.error.image_missing": "L’image du jeu pour la version de Factorio de ce monde n’est pas téléchargée. Téléchargez l’image du jeu, puis démarrez à nouveau.",
   "server.error.rcon_unreachable": "Impossible de joindre le jeu par RCON, donc il ne peut ni prévenir les joueurs ni sauvegarder d’abord. Utilisez « Forcer l’arrêt » pour l’arrêter sans sauvegarde.",
   "server.error.save_timeout": "Le jeu n’a pas fini de sauvegarder à temps, donc rien n’a été arrêté ni pris en instantané. Réessayez, ou utilisez « Forcer l’arrêt ».",
+  "server.error.save_failed": "Le jeu n’a pas pu sauvegarder le monde, donc rien n’a été arrêté ni pris en instantané. Consultez le journal pour en connaître la raison.",
   "server.error.start_failed": "Le jeu n’a pas démarré.",
   "server.error.cancelled": "Un arrêt forcé a interrompu cette opération.",
   "server.error.stop_cancelled": "L’arrêt a été annulé, donc rien n’a été arrêté ni sauvegardé et le jeu continue de fonctionner.",

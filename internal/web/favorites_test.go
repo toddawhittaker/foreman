@@ -1,8 +1,11 @@
 package web
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"html"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -250,16 +253,19 @@ func TestGenerateFromAFavoriteWritesSettingsAndOffersItsMods(t *testing.T) {
 	if !ok {
 		t.Fatalf("redirect %q, want the review page", loc)
 	}
+	// The review reads the mods and pinned versions from the favorite, so
+	// the address names the favorite alone (SPEC 17).
 	q := loc.Query()
-	if q.Get("kind") != "install" || strings.Join(q["name"], ",") != "Krastorio2,flib" ||
-		q.Get("version-Krastorio2") != "1.3.24" || q.Get("version-flib") != "0.12.9" {
+	if q.Get(favoriteQuery) != favID || len(q) != 2 {
 		t.Errorf("review query %v", q)
+	}
+	if l := len(rec.Header().Get("Location")); l > maxAddress {
+		t.Errorf("review address of %d bytes", l)
 	}
 	if q.Get(generatedQuery) != "1" {
 		t.Errorf("review query %v has no %s flag", q, generatedQuery)
 	}
-	// The favorite's mods are saved as the new world's picks; the pinned
-	// versions travel only in the address.
+	// The favorite's mods are saved as the new world's picks too.
 	picks, err := hn.store.ModPlan(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)
@@ -326,8 +332,148 @@ func TestGenerateFromAFavoriteOnAnotherLineLetsTheReviewPick(t *testing.T) {
 		t.Fatalf("status %d:\n%s", rec.Code, rec.Body.String())
 	}
 	loc, _ := url.Parse(rec.Header().Get("Location"))
-	q := loc.Query()
-	if strings.Join(q["name"], ",") != "Krastorio2,flib" || q.Get("version-Krastorio2") != "" || q.Get("version-flib") != "" {
-		t.Errorf("review query %v, want names without pinned versions", q)
+	if q := loc.Query(); q.Get(favoriteQuery) != favID || len(q) != 2 {
+		t.Errorf("review query %v, want the favorite alone", q)
+	}
+	// On another line the review pins no versions: each mod gets the
+	// newest that fits.
+	id := strings.TrimSuffix(strings.TrimPrefix(loc.Path, PathWorlds+"/"), "/mods/plan")
+	sum, err := hn.worlds.Get(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, _, _ := (&server{favorites: favs}).favoriteForm(context.Background(), sum, favID)
+	if strings.Join(f.Names, ",") != "Krastorio2,flib" || len(f.Versions) != 0 || f.FavoriteVersion != "" {
+		t.Errorf("review form %+v, want names without pinned versions", f)
+	}
+	sum.GameVersion = "2.0.77"
+	if f, _, _ := (&server{favorites: favs}).favoriteForm(context.Background(), sum, favID); f.Versions["Krastorio2"] != "1.3.24" || f.Versions["flib"] != "0.12.9" {
+		t.Errorf("same line versions %v, want the favorite's", f.Versions)
+	}
+}
+
+func (hn *harness) importFavorite(c *http.Cookie, filename string, content []byte) *httptest.ResponseRecorder {
+	hn.t.Helper()
+	body, ct := multipartBody(hn.t, favoriteImportField, filename, content)
+	r := httptest.NewRequest(http.MethodPost, PathFavoriteImport, body)
+	r.Header.Set("Content-Type", ct)
+	r.AddCookie(c)
+	return hn.serveLong(r)
+}
+
+func TestFavoriteExportAndImport(t *testing.T) {
+	hn, favs := newFavoritesHarness(t)
+	c := hn.signIn()
+	id := favSource(t, hn)
+	favID, err := favs.Make(context.Background(), id, "Club start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := FavoriteRow{world.Favorite{ID: favID}}
+
+	list := hn.get(PathFavorites, withCookie(c)).Body.String()
+	for _, want := range []string{
+		`href="` + row.ExportPath() + `"`, `id="favorite-export-warning"`, "may keep a token",
+		`href="https://mods.factorio.com/mod/Krastorio2"`, `action="` + PathFavoriteImport + `"`,
+		`enctype="multipart/form-data"`, `name="` + favoriteImportField + `"`, `accept=".zip"`,
+	} {
+		if !strings.Contains(list, want) {
+			t.Errorf("list lacks %q", want)
+		}
+	}
+
+	rec := hn.getLong(row.ExportPath(), c)
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/zip" ||
+		!strings.Contains(rec.Header().Get("Content-Disposition"), "Club_start-favorite.zip") {
+		t.Fatalf("export: %d %v", rec.Code, rec.Header())
+	}
+	data := rec.Body.Bytes()
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawServer bool
+	for _, e := range zr.File {
+		rc, err := e.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "hunter2") || strings.Contains(string(b), "tok-abc123") {
+			t.Errorf("unpacked %s holds a secret", e.Name)
+		}
+		if e.Name == world.ServerSettingsFile {
+			sawServer = true
+			if !strings.Contains(string(b), `"max_players"`) || strings.Contains(string(b), "game_password") {
+				t.Errorf("unpacked server settings: %s", b)
+			}
+		}
+	}
+	if !sawServer {
+		t.Error("the export has no server settings")
+	}
+
+	// The same name is refused; once it is deleted the file comes back.
+	rec = hn.importFavorite(c, "Club start-favorite.zip", data)
+	if body := html.UnescapeString(rec.Body.String()); rec.Code != http.StatusBadRequest || !strings.Contains(body, "already exists") ||
+		!strings.Contains(body, `id="favorite-file-error"`) || !strings.Contains(body, `id="error-summary" tabindex="-1" autofocus`) ||
+		!strings.Contains(body, `href="#favorite-file"`) {
+		t.Errorf("clash: %d", rec.Code)
+	}
+	if err := favs.Delete(favID); err != nil {
+		t.Fatal(err)
+	}
+	rec = hn.importFavorite(c, "Club start-favorite.zip", data)
+	if body := html.UnescapeString(rec.Body.String()); rec.Code != http.StatusOK || !strings.Contains(body, `Imported the favorite "Club start".`) {
+		t.Fatalf("import: %d\n%s", rec.Code, body)
+	}
+	got, _ := favs.List(context.Background())
+	if len(got) != 1 || got[0].Name != "Club start" || len(got[0].Mods) != 2 {
+		t.Errorf("after import: %+v", got)
+	}
+}
+
+func TestFavoriteImportRefusesBadFiles(t *testing.T) {
+	hn, favs := newFavoritesHarness(t)
+	c := hn.signIn()
+	for name, data := range map[string][]byte{
+		"not a zip": []byte("hello"),
+		"oversize":  make([]byte, world.MaxFavoriteUpload+1),
+	} {
+		rec := hn.importFavorite(c, "x.zip", data)
+		body := html.UnescapeString(rec.Body.String())
+		if rec.Code != http.StatusBadRequest || !strings.Contains(body, `id="favorite-file-error"`) || !strings.Contains(body, `aria-invalid="true"`) {
+			t.Errorf("%s: status %d", name, rec.Code)
+		}
+	}
+	if list, _ := favs.List(context.Background()); len(list) != 0 {
+		t.Errorf("%d favorites after refusals", len(list))
+	}
+	if rec := hn.getLong(PathFavorites+"/ffffffffffffffff/export", c); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown export: %d", rec.Code)
+	}
+}
+
+// Ruling 15: a favorite's mods show by title and link to the portal, except
+// those the portal is known to lack.
+func TestFavoritesListLinksOnlyKnownMods(t *testing.T) {
+	r := newTestRenderer(t)
+	p := FavoritesPage{Favorites: []FavoriteRow{{Favorite: world.Favorite{ID: "aaaaaaaaaaaaaaaa", Name: "Club", GameVersion: "2.0.77",
+		Mods: []world.FavoriteMod{{Name: "k2", Version: "1.0.0", Title: "Krastorio 2"}, {Name: "gone", Version: "1.0.0", Title: "Gone mod"}}}}},
+		missing: func(n string) bool { return n == "gone" }}
+	_, body := renderIn(t, r, pageCase{"favorites", "todd", 200, p}, "en")
+	wantIn(t, "list", body, `<a href="https://mods.factorio.com/mod/k2"`, "Krastorio 2", "Gone mod",
+		// Each fold-out names its favorite, and the import form says what * means.
+		`Show the mods<span class="visually-hidden" translate="no"> Club</span></summary>`,
+		`Map exchange string<span class="visually-hidden" translate="no"> Club</span></summary>`,
+		`class="hint required-note"`,
+		// Two Clear buttons differ by the field they clear.
+		`Clear<span class="visually-hidden"> Favorite file</span></button>`)
+	if strings.Contains(body, "mods.factorio.com/mod/gone") {
+		t.Error("a mod the portal lacks is linked")
 	}
 }

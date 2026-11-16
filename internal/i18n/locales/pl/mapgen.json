@@ -206,5 +206,17 @@
   "mapgen.tip.tree_damage": "Drzewa mają 4 różne fazy żywotności zbliżające je do śmierci przez zanieczyszczenie powietrza. Wszelkie zanieczyszczenia powyżej tej wartości rozpoczynają proces przejścia do kolejnej fazy żywotu drzewa.",
   "mapgen.unit.minutes": "min.",
   "mapgen.unit.percent": "%",
-  "mapgen.width.label": "Szerokość"
+  "mapgen.width.label": "Szerokość",
+  "mapgen.exchange.heading": "Kod wymiany mapy",
+  "mapgen.exchange.label": "Kod wymiany mapy",
+  "mapgen.exchange.copy": "Kopiuj kod wymiany mapy",
+  "mapgen.exchange.copied": "Skopiowano kod wymiany mapy",
+  "mapgen.exchange.note": "Wklejenie go w generatorze map Factorio daje taką samą mapę. Kod zawiera tylko ustawienia mapy, bez modyfikacji.",
+  "mapgen.exchange.reason.no_seed": "Ziarno mapy jest losowe i nie ma zapisu, z którego można je odczytać, więc nie ma kodu.",
+  "mapgen.exchange.reason.no_map_world": "Ten świat nie ma plików z ustawieniami mapy ani jeszcze zapisu, więc nie ma mapy do opisania.",
+  "mapgen.exchange.reason.no_map_favorite": "Ten ulubiony nie zawiera ustawień mapy, więc nie ma mapy do opisania.",
+  "mapgen.exchange.reason.no_settings": "Najnowszy zapis świata nie zawiera ustawień mapy, które Foreman potrafi odczytać, więc nie ma kodu.",
+  "mapgen.exchange.reason.unsupported": "Ta mapa pochodzi z Factorio {version}, dla którego Foreman nie może utworzyć kodu.",
+  "mapgen.exchange.reason.unreadable": "Nie można odczytać najnowszego zapisu świata, więc nie ma kodu.",
+  "mapgen.exchange.reason.failed": "Nie można teraz utworzyć kodu. Odświeżenie strony pozwoli spróbować ponownie."
 }

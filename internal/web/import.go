@@ -116,6 +116,12 @@ type ImportForm struct {
 	IDPrefix string
 }
 
+// SourceZone is the upload form's save field.
+func (f ImportForm) SourceZone() DropZone {
+	return DropZone{ID: "upload-source", Name: "save", Label: i18n.M("worlds.saves.upload.label"),
+		Accept: ".zip", MaxBytes: MaxSaveUpload, Error: f.SourceError}
+}
+
 func (ImportPage) templateName() string { return "import" }
 func (ImportPage) navItem() string      { return PathWorlds }
 func (p ImportPage) hasErrors() bool    { return len(p.Folder.Problems())+len(p.Upload.Problems()) > 0 }

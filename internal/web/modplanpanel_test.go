@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -92,11 +93,11 @@ func TestPlanPanelAddRemoveClear(t *testing.T) {
 
 	_, tab := g.getStatus(modsPath(id))
 	panel := plain(between(tab, `id="plan-panel"`, "</section>"))
-	wantIn(t, "tab", panel, `<span class="plan-panel__sum">2 mods in the plan</span> <span class="plan-panel__names">alpha, beta</span>`,
-		`<span class="plan-tree__name" translate="no">alpha</span> <span class="mod-ver" translate="no">1.0.0</span>`,
+	wantIn(t, "tab", panel, `<span class="plan-panel__sum">2 mods in the plan</span> <span class="plan-panel__names" translate="no">alpha, beta</span>`,
+		`<span class="plan-tree__name">`+portalName("alpha")+`</span> <span class="mod-ver" translate="no">1.0.0</span>`,
 		`id="mod-alpha-unpick"><span class="visually-hidden">Remove alpha from the plan</span>`,
 		`>Clear plan</button>`, "Started <time",
-		`<a href="/worlds/`+id+`/mods/plan?kind=install&amp;name=alpha&amp;name=beta" class="button button--primary" id="act-review-plan">Review and install 2 mods</a>`)
+		`<a href="/worlds/`+id+`/mods/plan?kind=install" class="button button--primary" id="act-review-plan">Review and install 2 mods</a>`)
 
 	r = g.postPlan(planModsPath(id), url.Values{"name": {"alpha"}, "op": {"remove"}, "from": {"panel"}, "return": {modsPath(id)}})
 	if r.code != http.StatusSeeOther || r.loc != modsPath(id)+"#plan-panel" {
@@ -189,7 +190,7 @@ func TestPlanPanelLimit(t *testing.T) {
 	g := newModsRig(t, true)
 	id := g.world20("Base")
 	for i := range store.MaxModPlanNames {
-		g.pick(id, fmt.Sprintf("m%02d", i))
+		g.pick(id, fmt.Sprintf("m%03d", i))
 	}
 	// The portal is down, so the full panel draws from the names alone.
 	g.portal.FailAPI(http.StatusInternalServerError)
@@ -198,7 +199,7 @@ func TestPlanPanelLimit(t *testing.T) {
 		t.Fatalf("full: %d to %q", r.code, r.loc)
 	}
 	_, body := g.getStatus(strings.TrimSuffix(r.loc, "#plan-panel"))
-	wantIn(t, "full", body, `<p class="error" id="plan-error"><strong>Error:</strong> The plan already holds 50 mods, the most one plan can.`)
+	wantIn(t, "full", body, `<p class="error" id="plan-error"><strong>Error:</strong> The plan already holds 500 mods, the most one plan can.`)
 	if slices.Contains(g.picks(id), "extra") {
 		t.Error("a pick past the limit was saved")
 	}
@@ -233,16 +234,16 @@ func TestPlanPanelTree(t *testing.T) {
 	beta := panel[strings.LastIndex(panel, `<li class="plan-tree__pick">`):]
 
 	dep := func(name, version, of string) string {
-		return `<span class="plan-tree__name" translate="no">` + name + `</span><span class="mod-ver" translate="no">` + version +
+		return `<span class="plan-tree__name">` + portalName(name) + `</span><span class="mod-ver" translate="no">` + version +
 			`</span></div><p class="plan-tree__why">Needed by ` + of + `</p>`
 	}
 	wantIn(t, "alpha", alpha, dep("lib", "1.0.0", "alpha"), dep("core", "1.0.0", "lib"))
 	wantIn(t, "beta", beta, dep("lib", "1.0.0", "beta"), dep("core", "1.0.0", "lib"),
 		dep("old", "1.0.0", "beta")+`<p class="plan-tree__note">Will update to 2.0.0</p>`,
-		`<span class="plan-tree__name" translate="no">gone</span></div><p class="plan-tree__why">Needed by beta</p><p class="plan-tree__warn"><strong class="visually-hidden">Warning:</strong> Not on the mod portal</p>`)
+		`<span class="plan-tree__name"><span class="mod-title ident" translate="no">gone</span></span></div><p class="plan-tree__why">Needed by beta</p><p class="plan-tree__warn"><strong class="visually-hidden">Warning:</strong> Not on the mod portal</p>`)
 	// core hangs under lib, not beside it.
 	if !strings.Contains(alpha, `<p class="plan-tree__why">Needed by alpha</p><ul class="plan-tree__deps" role="list"><li class="plan-tree__dep"><div class="plan-tree__row">`+
-		`<span class="plan-tree__name" translate="no">core</span>`) {
+		`<span class="plan-tree__name">`+portalName("core")+`</span>`) {
 		t.Error("core is not nested under lib")
 	}
 	for _, hidden := range []string{">base<", ">fits<"} {
@@ -277,7 +278,7 @@ func TestPlanPanelPortalDown(t *testing.T) {
 		t.Fatalf("tab: %d", code)
 	}
 	panel := plain(between(body, `id="plan-panel"`, "</section>"))
-	wantIn(t, "down", panel, `<span class="plan-tree__name" translate="no">alpha</span>`, `<span class="plan-tree__name" translate="no">beta</span>`,
+	wantIn(t, "down", panel, `<span class="plan-tree__name">`+portalName("alpha")+`</span>`, `<span class="plan-tree__name">`+portalName("beta")+`</span>`,
 		"Foreman could not reach the mod portal, so it cannot check what these mods need now.",
 		`<a href="/worlds/`+id+`/mods" class="button">Check again</a>`, ">Review the plan</a>")
 }
@@ -377,4 +378,31 @@ func TestPlanTreeBuild(t *testing.T) {
 	if count != 5 || needed["lib"] != "A" || needed["deep"] != "A" || needed["b"] != "" {
 		t.Errorf("count %d, needed %v", count, needed)
 	}
+}
+
+// portalName is how the mod-name partial shows a mod with no title, linked,
+// after plain.
+func portalName(name string) string {
+	return `<a href="https://mods.factorio.com/mod/` + name + `" class="mod-title" target="_blank" rel="noopener noreferrer">` + name +
+		`<span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`
+}
+
+// titledPortal gives every mod a title unlike its name.
+type titledPortal struct{ ModPortal }
+
+func (p titledPortal) Mod(ctx context.Context, name string) (modportal.Mod, error) {
+	m, err := p.ModPortal.Mod(ctx, name)
+	m.Title = "Title of " + name
+	return m, err
+}
+
+// Ruling 15: the announcements after "+" and "−" name the mod by title.
+func TestPlanPanelAnnouncesTitles(t *testing.T) {
+	g := newModsRigWrapped(t, true, func(p ModPortal) ModPortal { return titledPortal{p} })
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base")
+	add := g.harness.post(planModsPath(id), url.Values{"name": {"alpha"}, "op": {"add"}}, withCookie(g.cookie), withHeader("HX-Request", "true"))
+	wantIn(t, "add", squash(plain(add.Body.String())), `>Title of alpha added to the plan. The plan has 1 mod.</p>`)
+	rm := g.harness.post(planModsPath(id), url.Values{"name": {"alpha"}, "op": {"remove"}, "from": {"panel"}}, withCookie(g.cookie), withHeader("HX-Request", "true"))
+	wantIn(t, "remove", squash(plain(rm.Body.String())), `>Title of alpha removed from the plan. The plan has 0 mods.</p>`)
 }

@@ -44,7 +44,7 @@ func saveNames(saves []Save) []string {
 func TestValidSaveName(t *testing.T) {
 	good := []string{"a.zip", "My Save (2).zip", "_autosave1.zip", "ünï.zip", "a..zip"}
 	bad := []string{"", ".zip", ".hidden.zip", "../x.zip", "a/b.zip", `a\b.zip`, "/abs.zip", "x.ZIP", "x.zip.txt",
-		"x", "..", "a\x00b.zip", "a\nb.zip", strings.Repeat("a", 252) + ".zip"}
+		"x", "..", "x.tmp.zip", "a\x00b.zip", "a\nb.zip", strings.Repeat("a", 252) + ".zip"}
 	for _, n := range good {
 		if !ValidSaveName(n) {
 			t.Errorf("%q refused", n)
@@ -54,6 +54,38 @@ func TestValidSaveName(t *testing.T) {
 		if ValidSaveName(n) {
 			t.Errorf("%q allowed", n)
 		}
+	}
+}
+
+// The game's partial saves cannot be uploaded or chosen to load, and a
+// folder import leaves them out; an admin can still download one to look at.
+func TestPartialSaveNames(t *testing.T) {
+	if ValidSaveName("x.tmp.zip") || !plainSaveName("x.tmp.zip") {
+		t.Error("x.tmp.zip must be refused as a new or loadable save and accepted as an existing file")
+	}
+}
+
+func TestPartialSaveCannotBeChosenOrLoaded(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	putSave(t, dir, "half.tmp.zip", "partial", t0.Add(-time.Hour))
+	putSave(t, dir, "good.zip", "ok", t0.Add(-2*time.Hour))
+	if err := m.SetLoadSave(id, "half.tmp.zip"); !errors.Is(err, ErrSaveNotFound) {
+		t.Errorf("choosing a partial save: %v, want ErrSaveNotFound", err)
+	}
+	// A world.json that names one anyway (written by hand) does not load it.
+	old, err := os.ReadFile(filepath.Join(dir, MetaFile)) //nolint:gosec // a test temp file
+	if err != nil {
+		t.Fatal(err)
+	}
+	rewriteMeta(t, dir, strings.TrimRight(string(old), "\n }")+`, "load_save": "half.tmp.zip"}`)
+	if _, err := m.PrepareLoad(id); !errors.Is(err, ErrSaveNotFound) {
+		t.Errorf("loading a partial save: %v, want ErrSaveNotFound", err)
+	}
+	if f, _, err := m.OpenSave(id, "half.tmp.zip"); err != nil {
+		t.Errorf("download of a partial save: %v", err)
+	} else {
+		_ = f.Close()
 	}
 }
 
@@ -397,5 +429,27 @@ func TestLoadChoice(t *testing.T) {
 	}
 	if got := m.LoadChoice("nope"); got != "" {
 		t.Errorf("unknown world: %q", got)
+	}
+}
+
+// The game writes a save as <name>.tmp.zip and renames it when done; a killed
+// save leaves the temporary file behind. It is not a save, and must not be
+// the newest one the game or the pre-start check goes by (SPEC 7.11).
+func TestSavesSkipTheGamesTemporaryFiles(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	putSave(t, dir, "_autosave1.zip", "old", t0.Add(-time.Hour))
+	putSave(t, dir, "_autosave2.tmp.zip", "half", t0)
+
+	list, err := m.Saves(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := saveNames(list.Saves), []string{"_autosave1.zip"}; !slices.Equal(got, want) {
+		t.Errorf("saves %v, want %v", got, want)
+	}
+	newest, found, err := m.NewestSave(id)
+	if err != nil || !found || newest.Name != "_autosave1.zip" {
+		t.Errorf("newest %+v, %v, %v; want _autosave1.zip", newest, found, err)
 	}
 }

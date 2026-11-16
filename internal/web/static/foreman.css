@@ -4258,6 +4258,28 @@ form:has(#mode-exchange:checked) .achievements {
   border-block-end: 0;
 }
 
+/* Settings form, defaults (SPEC 11.1): a checkbox with its hints below it,
+   the hints lined up under the label text (a 1.25rem box and the gap). */
+.setting-check {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.setting-check > .hint {
+  margin-block: 0;
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+/* The collapsed Network group keeps its fields clear of the summary. */
+#settings-network details > .field + .field {
+  margin-block-start: var(--space-3);
+}
+
+#settings-gameplay select {
+  max-inline-size: 24rem;
+}
+
 .changes {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -4551,8 +4573,7 @@ form:has(#mode-exchange:checked) .achievements {
   font-weight: 600;
 }
 
-/* The plan's changes, one mod a line; an asked-for mod's portal link and
-   way out of the plan wrap under its name when the box is narrow. */
+/* The plan's changes, one mod a line. */
 .confirm .plan-items {
   padding-inline-start: 0;
   list-style: none;
@@ -4567,11 +4588,6 @@ form:has(#mode-exchange:checked) .achievements {
   min-inline-size: 0;
   padding-block: var(--space-1);
   border-block-end: var(--border-width) solid var(--color-line);
-}
-
-.plan-items__text {
-  flex: 1 1 12rem;
-  min-inline-size: 0;
 }
 
 /* A mod's short badge stays whole. Badges elsewhere, such as a save's
@@ -9252,4 +9268,244 @@ main:has(> .gate) > * + :not(h1, .gate) {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* P1 favorites export and import (DESIGN 7.11). A favorite's mods fold
+   away so a large pack does not fill the list, and so does its exchange
+   string; each mod's title may wrap. */
+.favorite-mods > summary,
+.favorite-exchange > summary {
+  min-block-size: var(--target-min);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.favorite-mods ul {
+  display: grid;
+  gap: 0;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.favorite-mods li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+/* U1 drop zone (DESIGN 7.10). Without script .dropzone is a plain .field.
+   With script the native input is stretched, transparent, over a dashed
+   area, so a click, Enter or Space anywhere on it opens the picker. A drag
+   is shown by a solid, thicker border and new words, not colour alone. */
+.dropzone--on .dropzone__area {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-block-size: 6rem;
+  padding: var(--space-4);
+  background: var(--color-deep);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.dropzone--on .dropzone__area input[type="file"] {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  max-inline-size: none;
+  block-size: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dropzone--on .dropzone__area:hover {
+  background: var(--color-secondary-hover);
+}
+
+.dropzone--on .dropzone__area:focus-within {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.dropzone__prompt {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.dropzone__drop,
+.dropzone--page .dropzone__idle {
+  display: none;
+}
+
+.dropzone--page .dropzone__drop {
+  display: inline;
+}
+
+.dropzone--page .dropzone__area {
+  border-style: solid;
+  border-color: var(--color-selected);
+}
+
+.dropzone--over .dropzone__area {
+  border-width: 4px;
+  background: var(--color-accent-bg);
+}
+
+.dropzone--on:has(input[aria-invalid="true"]) .dropzone__area {
+  border-color: var(--color-danger-text);
+}
+
+.dropzone__chosen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.dropzone__chosen[hidden] {
+  display: none;
+}
+
+/* Clear keeps a 44 px target on a phone (SPEC 17.2). */
+.dropzone__clear {
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+}
+
+.dropzone__file {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  .dropzone--over .dropzone__area {
+    border-color: Highlight;
+  }
+}
+
+/* Saves tab: an autosave reads as the world's name and time, and its file
+   name sits beside it as smaller, quieter text. */
+.save-file {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---- Mod titles (SPEC 9.15): the mod-name partial, a title that links to
+   the mod portal. ---- */
+
+/* On the Installed list the title fills the row's full-size target. */
+.mod-name > .mod-title {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  /* A long unbroken title wraps rather than pushing the version off the row. */
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/* In the plan panel the title is its own target, apart from the cross. */
+.plan-tree__name > a.mod-title {
+  display: inline-block;
+  padding-block: 0.125rem;
+}
+
+@media (pointer: coarse) {
+  .plan-tree__name > a.mod-title {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+  }
+}
+
+/* ---- Mods review page rows and offers (M2, SPEC 9.2, 9.15): a change's
+   title link, its version list and its remove cross share one row, which
+   wraps on a phone with the version kept beside its mod. ---- */
+
+.plan-row__text {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-row__name > a.mod-title,
+.plan-offer__name > a.mod-title {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.plan-row__version {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.plan-row__version select {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+/* An offered mod: the tick box is its own target, apart from the title
+   link, so following the link never ticks it. */
+.plan-offer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.plan-offer__box {
+  flex: none;
+  min-inline-size: var(--target-min);
+  min-block-size: var(--target-min);
+  justify-content: center;
+}
+
+.plan-offer__body {
+  display: grid;
+  flex: 1 1 0;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-offer__name,
+.plan-offer__detail p {
+  margin: 0;
+}
+
+.plan-offer__of {
+  color: var(--color-text-muted);
+}
+
+.plan-offer__detail {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+}
+
+/* ---- X2 map exchange string (SPEC 5.6): a read-only field to select and
+   copy, on a world's page and in each favorite. ---- */
+.exchange {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.exchange .field textarea.exchange__value {
+  inline-size: 100%;
+  max-inline-size: none;
+  padding-block: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  /* A string has no spaces, so it breaks anywhere rather than scroll sideways. */
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  resize: vertical;
 }

@@ -124,7 +124,7 @@ test("+ adds a mod in place: Adding…, In plan with −, and the panel's tree",
   await expect(deps.nth(1)).toContainText("Will update to 1.1.0");
   // base is built in, so it is never listed.
   await expect(plan).not.toContainText("base");
-  await expect(plan.getByRole("link", { name: "Review and install 3 mods" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=install&name=fp-rails");
+  await expect(plan.getByRole("link", { name: "Review and install 3 mods" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=install");
 
   // A dependency in the results says what needs it and has no button.
   await box.fill("fp-core");
@@ -170,6 +170,14 @@ test("two picks share a dependency: it shows under each, counted once, with an u
   await expect(picks.nth(1)).toContainText("fp-core");
   await expect(picks.nth(1).locator(".plan-tree__why").first()).toHaveText("Needed by fp-trains");
   await expect(picks.nth(1).locator(".plan-tree__warn")).toHaveText("Warning: Not on the mod portal");
+  // Each name links to its portal page in a new tab, apart from the cross; a
+  // mod the portal lacks is not linked (ruling on #623).
+  const rails = picks.nth(0).getByRole("link", { name: "fp-rails on the mod portal, opens in a new tab" });
+  await expect(rails).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-rails");
+  await expect(rails).toHaveAttribute("target", "_blank");
+  await expect(picks.nth(0).getByRole("link", { name: "fp-core on the mod portal, opens in a new tab" }).first()).toBeVisible();
+  await expect(picks.nth(1).getByRole("link", { name: /^fp-gone/ })).toHaveCount(0);
+  await expect(picks.nth(0).getByRole("button", { name: "Remove fp-rails from the plan" })).toBeVisible();
   // fp-rails, fp-trains, fp-core and fp-lib; fp-gone cannot be had.
   await expect(plan.getByRole("link", { name: "Review and install 4 mods" })).toBeVisible();
   await expect(plan).toContainText(/Started /);
@@ -183,7 +191,9 @@ test("two picks share a dependency: it shows under each, counted once, with an u
   // Review opens today's plan page with the picks.
   await panel(page).getByRole("link", { name: "Review and install 4 mods" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
-  await expect(page).toHaveURL(/kind=install&name=fp-rails&name=fp-trains/);
+  // The link names no mods: the review reads the saved picks (SPEC 17).
+  await expect(page).toHaveURL(/\/mods\/plan\?kind=install$/);
+  await expect(page.locator("#mod-plan")).toContainText("fp-trains");
 });
 
 // Ruling 5: the cross takes a pick out with the dependencies nothing else
@@ -237,7 +247,8 @@ test("Review waits for a change that is still being worked out", async ({ page }
   const ready = panel(page).getByRole("link", { name: "Review and install 2 mods" });
   await expect(ready).not.toHaveAttribute("aria-disabled", "true");
   await ready.click();
-  await expect(page).toHaveURL(/name=fp-pg-01&name=fp-pg-02/);
+  await expect(page).toHaveURL(/\/mods\/plan\?kind=install$/);
+  await expect(page.locator("#mod-plan")).toContainText("fp-pg-02");
 });
 
 // WCAG 2.4.11: at phone width, a row's button reached by keyboard is never
@@ -278,7 +289,7 @@ test("with the portal down the panel lists the picks by name and says why", asyn
   await expect(plan).toContainText("fp-unseen");
   await expect(plan.locator(".message--warning")).toContainText("Foreman could not reach the mod portal, so it cannot check what these mods need now.");
   await expect(plan.getByRole("link", { name: "Check again" })).toHaveAttribute("href", "/worlds/base/mods");
-  await expect(plan.getByRole("link", { name: "Review the plan" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=install&name=fp-unseen");
+  await expect(plan.getByRole("link", { name: "Review the plan" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=install");
   await checkPage(page);
 });
 

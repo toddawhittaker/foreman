@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, live, version20, openModTools } from "./foreman.js";
+import { test, expect, planRow, checkPage, setUpModsWorld, doneBox, live, version20, openModTools } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -55,7 +55,7 @@ test.describe("the review of picks from the Mods tab", () => {
     await panel(page).getByRole("link", { name: "Review and install 3 mods" }).click();
 
     await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
-    await expect(page.locator("#mod-plan")).toContainText("fp-lamp-lib 1.0.0 (fp-lamp-colours needs it)");
+    await expect(planRow(page, "fp-lamp-lib")).toContainText("1.0.0 (fp-lamp-colours needs it)");
     await expect(page.getByRole("region", { name: "Add another mod" })).toHaveCount(0);
     // A stopped world's install is the primary action, not a danger (DESIGN 7.1).
     await expect(page.getByRole("button", { name: "Install 3 mods" })).toHaveClass(/button--primary/);
@@ -83,10 +83,25 @@ test.describe("the review of picks from the Mods tab", () => {
     await pickTwo(page);
     await panel(page).getByRole("link", { name: "Review and install 3 mods" }).click();
     const asked = page.locator("#mod-plan .plan-groups");
-    await asked.getByRole("link", { name: "Remove from plan fp-lamp-colours" }).click();
+    await asked.getByRole("link", { name: "Remove fp-lamp-colours from the plan" }).click();
     await expect(page.locator("#announcer")).toHaveText("Removed fp-lamp-colours. The plan has 1 mod.");
     await expect(page.locator("#plan-changes")).toBeFocused();
     await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
+    await checkPage(page);
+  });
+
+  // Issue 620: each change names its mod by title, as the portal link; the
+  // version list and the remove cross sit in the same row.
+  test("each change's row holds its title link, version list and remove cross", async ({ page }) => {
+    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-lamp&name=fp-lamp-colours");
+    const row = page.locator("#mod-plan .plan-row", { has: page.getByRole("link", { name: "fp-lamp-colours on the mod portal, opens in a new tab" }) });
+    await expect(row.getByRole("link", { name: "fp-lamp-colours on the mod portal, opens in a new tab" })).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-lamp-colours");
+    await expect(row.getByLabel("Version of fp-lamp-colours")).toBeVisible();
+    const cross = row.getByRole("link", { name: "Remove fp-lamp-colours from the plan" });
+    const box = await cross.boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    await expect(page.locator(".portal-link")).toHaveCount(0);
     await checkPage(page);
   });
 
@@ -113,7 +128,7 @@ test.describe("the review of picks from the Mods tab", () => {
     test("each remove link is the plan without its mod", async ({ page }) => {
       await page.goto("/worlds/base/mods/plan?kind=install&name=fp-lamp&name=fp-lamp-colours");
       await expect(page.getByRole("button", { name: "Install 3 mods" })).toBeVisible();
-      await page.getByRole("link", { name: "Remove from plan fp-lamp-colours" }).click();
+      await page.getByRole("link", { name: "Remove fp-lamp-colours from the plan" }).click();
       await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
       await page.getByRole("link", { name: "Cancel, change nothing" }).click();
       await expect(page).toHaveURL(/\/worlds\/base\/mods$/);

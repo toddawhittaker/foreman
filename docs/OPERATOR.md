@@ -83,9 +83,22 @@ the kinds of request it is told to allow.
 
 Foreman calls only these Docker endpoints: ping and version; list,
 inspect, create, start, stop, kill and remove containers, and read their
-logs and stats; inspect an image and pull an exact tag. With the Tecnativa
-socket proxy in the compose file below, that means `CONTAINERS=1`,
-`IMAGES=1` and `POST=1`, with `EVENTS=0`.
+logs and stats; inspect an image and pull an exact tag; and, if allowed,
+read Docker's event stream. With the Tecnativa socket proxy in the compose
+file below, that means `CONTAINERS=1`, `IMAGES=1`, `POST=1` and
+`EVENTS=1`.
+
+`EVENTS=1` is recommended, not required. Foreman reads only the
+out-of-memory and exit events of its own game containers. Docker restarts
+a game the kernel killed for lack of memory within a fraction of a second
+and forgets why it stopped, so without events Foreman can miss the cause,
+for example on a busy host or when the game crashes again at once, and
+shows a plain crash instead of "out of memory". With `EVENTS=0` Foreman
+works as before: it checks Docker every few seconds, notes once in its log
+that events are refused, and shows no error. An install set up with
+`EVENTS=0` keeps working; change it to `1` and recreate the proxy
+(`docker compose up -d socket-proxy`), then restart Foreman, to get the
+events.
 
 A socket proxy narrows what Foreman can call, but it is not a full
 boundary. It allows requests by path and cannot look inside a request to
@@ -166,7 +179,7 @@ services:
       CONTAINERS: "1"
       IMAGES: "1"
       POST: "1"
-      EVENTS: "0"
+      EVENTS: "1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [docker]

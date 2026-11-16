@@ -66,6 +66,36 @@ test.describe("edit mod settings", () => {
     await expect(page.getByLabel("Startup integer")).toHaveValue("3");
   });
 
+  // Ruling on #623 (SPEC 9.15): each mod's group is headed by its title from
+  // info.json, linked to the portal in a new tab, and the name stays out of sight.
+  test("each mod's settings are headed by its title, linked to the mod portal", async ({ page, foreman, fakeGame, fakePortal }) => {
+    await fakePortal!.add("fmtest", "1.0.0", ["base >= 2.0"]);
+    await setUp(page, foreman, fakeGame!);
+    await openEditor(page);
+    // The group is named by the title alone, so no setting is announced with the link's words.
+    const group = form(page).locator("fieldset.mod-settings-group").first();
+    await expect(group).toHaveAccessibleName("FM test");
+    await expect(group.locator("> legend")).not.toContainText("portal");
+    const link = group.getByRole("link", { name: /Mod portal/ });
+    await expect(link).toHaveAccessibleName("Mod portal for FM test, opens in a new tab");
+    await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fmtest");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(form(page).locator("legend", { hasText: /^fmtest$/ })).toHaveCount(0);
+    await checkPage(page);
+  });
+
+  // A mod the portal is known to lack is named by its title but not linked.
+  test("a mod the portal lacks is headed by its title, without a link", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    // The Mods tab asks the portal, which has no fmtest; the editor then knows it.
+    await page.goto("/worlds/base/mods");
+    await expect(page.locator(".mod-flags").first()).toBeVisible(live);
+    await openEditor(page);
+    const group = form(page).locator("fieldset.mod-settings-group").first();
+    await expect(group).toHaveAccessibleName("FM test");
+    await expect(group.getByRole("link")).toHaveCount(0);
+  });
+
   test("a running world: the countdown is offered, and the game restarts", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g, true);
@@ -120,6 +150,7 @@ test.describe("edit mod settings", () => {
       await page.goto("/worlds/base/mods/settings");
       await expect(page.locator("#mod-settings-error")).toContainText("ran out of memory", live);
       await checkPage(page);
+      await expect(page.locator("#act-settings-upload")).toHaveClass(/button/);
       await page.getByRole("link", { name: "Upload mod-settings.dat on the Mods tab" }).click();
       await expect(page).toHaveURL(/\/worlds\/base\/mods#mod-settings-replace$/);
     } finally {

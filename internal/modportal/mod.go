@@ -50,6 +50,13 @@ func (c *Client) Mod(ctx context.Context, name string) (Mod, error) {
 	return cloneMod(m), nil
 }
 
+// KnownMissing says the portal has answered "no such mod" for name and the
+// answer is still cached. It never asks the portal.
+func (c *Client) KnownMissing(name string) bool {
+	_, ok := c.missing.get(name, c.now())
+	return ok
+}
+
 // ModResult is the outcome of one mod in Mods.
 type ModResult struct {
 	Mod Mod
@@ -105,7 +112,7 @@ func parseMod(body []byte) (Mod, error) {
 	}
 	m := Mod{
 		Name:       doc.Name,
-		Title:      doc.Title,
+		Title:      world.CleanTitle(doc.Title),
 		Summary:    doc.Summary,
 		Downloads:  doc.Downloads,
 		Deprecated: doc.Deprecated,

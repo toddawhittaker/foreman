@@ -1,5 +1,6 @@
-import { test, expect, checkPage, setUpModsWorld, version20 } from "./foreman.js";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { test, expect, planRow, dropFile, checkPage, createAdmin, setUpModsWorld, version20 } from "./foreman.js";
+import type { Page } from "@playwright/test";
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 // SPEC 5.12: a favorite is made from a world's page and starts a new world on
@@ -55,9 +56,10 @@ test("make a favorite, start Generate from it, land on the review page, then del
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page).toHaveURL(/\/worlds\/[^/]+\/mods\/plan\?/);
   const url = new URL(page.url());
-  expect(url.searchParams.getAll("name")).toEqual(["fp-signs"]);
-  expect(url.searchParams.get("version-fp-signs")).toBe("1.0.0");
-  await expect(page.locator("#mod-plan")).toContainText("fp-signs 1.0.0");
+  // The address names the favorite alone; the review reads its mods and pinned versions (SPEC 17).
+  expect(url.searchParams.get("favorite")).toMatch(/^[0-9a-f]{16}$/);
+  expect(url.searchParams.getAll("name")).toEqual([]);
+  await expect(planRow(page, "fp-signs")).toContainText("1.0.0");
   // The page says the world was made, above the changes, and takes focus.
   const generated = page.locator("#plan-generated");
   await expect(generated).toContainText("Generated From club from the favorite.");
@@ -77,4 +79,81 @@ test("make a favorite, start Generate from it, land on the review page, then del
   await expect(page.locator("#done-message")).toContainText('Deleted the favorite "Club start".');
   await expect(page.locator("#favorites-empty")).toBeVisible();
   await checkPage(page);
+});
+
+// SPEC 5.12, DESIGN 7.11: a favorite exports as a file and imports again
+// through the drop zone, with or without script.
+const favID = "0123456789abcdef";
+
+function seedFavorite(dataDir: string) {
+  const dir = join(dataDir, "favorites", favID);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "favorite.json"), JSON.stringify({
+    name: "Shared pack", created_at: "2026-11-15T00:00:00Z", source_world: "Base", game_version: version20,
+    space_age: false, has_map_settings: false, format_version: 1, left_out: [],
+    mods: [{ name: "fp-signs", version: "1.0.0", title: "Signs of the Factory" }],
+  }));
+  writeFileSync(join(dir, "mod-settings.dat"), "modsettings-bytes");
+}
+
+async function exportAndDelete(page: Page, dataDir: string): Promise<Buffer> {
+  await page.goto("/favorites");
+  const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Shared pack" }) });
+  await expect(page.locator("#favorite-export-warning")).toContainText("a mod may keep a token");
+  await row.getByText("Show the mods").click();
+  const title = row.getByRole("link", { name: /Signs of the Factory/ });
+  await expect(title).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-signs");
+  await expect(title).toHaveAttribute("target", "_blank");
+  const downloading = page.waitForEvent("download");
+  await row.getByRole("link", { name: "Export" }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("Shared pack-favorite.zip");
+  const file = readFileSync(await download.path());
+  rmSync(join(dataDir, "favorites", favID), { recursive: true });
+  return file;
+}
+
+test("export a favorite, see the warning, then import it by dropping the file", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedFavorite(foreman.dataDir);
+  await page.goto("/favorites");
+  await checkPage(page);
+  const file = await exportAndDelete(page, foreman.dataDir);
+
+  await page.goto("/favorites");
+  await expect(page.locator("#favorites-empty")).toBeVisible();
+  await dropFile(page, "favorite-file", [{ name: "Shared_pack-favorite.zip", body: file, type: "application/zip" }]);
+  await expect(page.locator(".dropzone__chosen")).toContainText("Shared_pack-favorite.zip");
+  await page.getByRole("button", { name: "Import favorite" }).click();
+  await expect(page.locator("#done-message")).toContainText('Imported the favorite "Shared pack".');
+  const imported = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Shared pack" }) });
+  await expect(imported).toBeVisible();
+  // An imported favorite names no source world and is dated on import.
+  await expect(imported.getByText("Made from")).toHaveCount(0);
+  await expect(imported.locator("time")).not.toHaveAttribute("datetime", /^2026-11-15T00:00:00/);
+  await checkPage(page);
+  await page.screenshot({ path: `../screenshots/p1-favorites-imported-${test.info().project.name}.png`, fullPage: true });
+
+  // A damaged file is refused on the field, and nothing is added.
+  await page.locator("#favorite-file").setInputFiles({ name: "bad.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
+  await page.getByRole("button", { name: "Import favorite" }).click();
+  await expect(page.locator("#favorite-file-error")).toContainText("Nothing was imported.");
+  await expect(page.locator("#error-summary")).toBeFocused();
+  await expect(page.locator("#error-summary").getByRole("link")).toHaveAttribute("href", "#favorite-file");
+  await expect(page.getByRole("heading", { level: 2, name: "Shared pack" })).toHaveCount(1);
+  await checkPage(page);
+});
+
+test.describe("without script", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("a favorite file imports through the plain file field", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedFavorite(foreman.dataDir);
+    const file = await exportAndDelete(page, foreman.dataDir);
+    await page.goto("/favorites");
+    await page.getByLabel("Favorite file").setInputFiles({ name: "pack.zip", mimeType: "application/zip", buffer: file });
+    await page.getByRole("button", { name: "Import favorite" }).click();
+    await expect(page.locator("#done-message")).toContainText('Imported the favorite "Shared pack".');
+  });
 });

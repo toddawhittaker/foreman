@@ -83,5 +83,14 @@
   "common.menu.notifications": "Powiadomienia",
   "common.menu.schedule": "Harmonogram restartów",
   "common.settings.label": "Ustawienia Foremana",
-  "common.countdown.none_name": "Bez ostrzeżenia: ustaw odliczanie na 0 sekund"
+  "common.countdown.none_name": "Bez ostrzeżenia: ustaw odliczanie na 0 sekund",
+  "common.dropzone.limits": "Plik {types} o rozmiarze do {limit}.",
+  "common.dropzone.prompt": "Upuść plik tutaj lub wybierz plik",
+  "common.dropzone.drop": "Upuść plik, aby go wybrać",
+  "common.dropzone.chosen": "Wybrano: {file}, {size}",
+  "common.dropzone.clear": "Usuń",
+  "common.dropzone.cleared": "Nie wybrano pliku.",
+  "common.dropzone.wrong_type": "{file} nie jest plikiem {types}. Należy wybrać plik z końcówką {types}.",
+  "common.dropzone.too_big": "{file} przekracza {limit}. Należy wybrać mniejszy plik.",
+  "common.dropzone.one_file": "Można wybrać tylko jeden plik naraz."
 }

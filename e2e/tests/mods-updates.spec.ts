@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, version20, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
+import { test, expect, planRow, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, version20, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -29,10 +29,9 @@ test.describe("updates", () => {
 
     await page.getByRole("link", { name: "Update all" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Update the mods of Base?" })).toBeVisible();
-    const plan = page.locator("#mod-plan");
-    await expect(plan).toContainText("fp-up1 1.0.0 to 1.1.0");
-    await expect(plan).toContainText("fp-up2 1.0.0 to 1.2.0");
-    await expect(plan).not.toContainText("fp-same 1.0.0 to");
+    await expect(planRow(page, "fp-up1")).toContainText("1.0.0 to 1.1.0");
+    await expect(planRow(page, "fp-up2")).toContainText("1.0.0 to 1.2.0");
+    await expect(planRow(page, "fp-same").filter({ hasText: "1.0.0 to" })).toHaveCount(0);
     await checkPage(page);
 
     await page.getByRole("button", { name: "Update 2 mods" }).click();
@@ -127,7 +126,7 @@ test.describe("a mod players cannot get", () => {
     await expect(notice).toContainText("cannot join", live);
     await notice.getByRole("link", { name: "Update visible-planets" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Update visible-planets in Base?" })).toBeVisible();
-    await expect(page.locator("#mod-plan")).toContainText("visible-planets 1.5.5 to 1.7.2");
+    await expect(planRow(page, "visible-planets")).toContainText("1.5.5 to 1.7.2");
     await checkPage(page);
     await page.getByRole("button", { name: "Update 1 mod" }).click();
     await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);

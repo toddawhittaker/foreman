@@ -76,6 +76,7 @@ func seedInbox(t *testing.T, m *Manager) string {
 	write(t, filepath.Join(src, "later.zip"), "save-two!", old.Add(time.Hour))
 	write(t, filepath.Join(src, "notes.txt"), "not a save", old)
 	write(t, filepath.Join(src, ".hidden.zip"), "x", old)
+	write(t, filepath.Join(src, "half.tmp.zip"), "partial", old.Add(2*time.Hour))
 	write(t, filepath.Join(src, "old", "nested.zip"), "nested", old)
 	write(t, filepath.Join(src, "mods", "mod-list.json"), "{}", old)
 	write(t, filepath.Join(src, "mods", "sub", "a.zip"), "mod", old)
@@ -129,7 +130,7 @@ func TestImportFolderCopiesSavesAndModsAndLeavesSourceAlone(t *testing.T) {
 	if mode(t, filepath.Join(w, "mods", "sub")) != DirMode {
 		t.Errorf("mods/sub mode %v", mode(t, filepath.Join(w, "mods", "sub")))
 	}
-	for _, p := range []string{"saves/notes.txt", "saves/.hidden.zip", "saves/link.zip", "mods/link.zip", "saves/nested.zip", "saves/old"} {
+	for _, p := range []string{"saves/notes.txt", "saves/.hidden.zip", "saves/half.tmp.zip", "saves/link.zip", "mods/link.zip", "saves/nested.zip", "saves/old"} {
 		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
 			t.Errorf("%s should not be copied: %v", p, err)
 		}
@@ -414,8 +415,8 @@ func TestImportFolderTopLevelOnlyStillWorks(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(m.dirs.Worlds, id, "saves", "one.zip")); err != nil {
 		t.Error(err)
 	}
-	if entries, _ := os.ReadDir(filepath.Join(m.dirs.Worlds, id, "config")); len(entries) != 0 {
-		t.Errorf("config not empty: %v", entries)
+	if entries, _ := os.ReadDir(filepath.Join(m.dirs.Worlds, id, "config")); len(entries) != 1 || entries[0].Name() != ServerSettingsFile {
+		t.Errorf("config holds %v, want only the server-settings.json Foreman creates", entries)
 	}
 }
 
@@ -436,10 +437,12 @@ func TestImportFolderSkipsSymlinksInSavesAndConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := filepath.Join(m.dirs.Worlds, id)
-	for _, p := range []string{"saves/link.zip", "config/server-settings.json"} {
-		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
-			t.Errorf("%s should not be copied: %v", p, err)
-		}
+	if _, err := os.Lstat(filepath.Join(w, "saves/link.zip")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("saves/link.zip should not be copied: %v", err)
+	}
+	// The linked settings file is skipped; the file there is the one Foreman made.
+	if b, err := os.ReadFile(filepath.Join(w, "config/server-settings.json")); err != nil || strings.Contains(string(b), "secret") { //nolint:gosec // a test temp folder
+		t.Errorf("config/server-settings.json followed the link: %q, %v", b, err)
 	}
 	for _, p := range []string{"saves/real.zip", "config/map-settings.json"} {
 		if _, err := os.Lstat(filepath.Join(w, p)); err != nil {
@@ -465,10 +468,12 @@ func TestImportFolderIgnoresSymlinkedSavesAndConfigFolders(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := filepath.Join(m.dirs.Worlds, id)
-	for _, p := range []string{"saves/x.zip", "config/server-settings.json"} {
-		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
-			t.Errorf("%s should not be copied: %v", p, err)
-		}
+	if _, err := os.Lstat(filepath.Join(w, "saves/x.zip")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("saves/x.zip should not be copied: %v", err)
+	}
+	// The linked config folder is skipped; the file there is the one Foreman made.
+	if b, err := os.ReadFile(filepath.Join(w, "config/server-settings.json")); err != nil || string(b) == "{}" { //nolint:gosec // a test temp folder
+		t.Errorf("config/server-settings.json came from the link: %q, %v", b, err)
 	}
 }
 

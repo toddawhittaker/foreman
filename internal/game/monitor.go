@@ -19,6 +19,7 @@ import (
 
 // Run watches every game container this install made until ctx ends: it
 // re-attaches to games already running when Foreman starts, polls Docker
+// and follows its out-of-memory events where the proxy allows them
 // (SPEC 8.7), follows each game's log, and stops a crash-looping game
 // (SPEC 8.9). It never stops or removes a game when Foreman starts or
 // stops (SPEC 3.8). Call it once.
@@ -27,6 +28,7 @@ func (c *Controller) Run(ctx context.Context) {
 	// Not waited for at shutdown: a notifier that hangs must not hold
 	// Foreman up (SPEC 8.12).
 	go c.deliverEvents()
+	c.spawn(func() { c.watchOOM(c.ctx) })
 	t := time.NewTicker(c.pollInterval)
 	defer t.Stop()
 	for {
@@ -203,8 +205,8 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 	if cont != nil && c.needsAttach(w, *cont, ops) {
 		c.attach(w, *cont, ops)
 	}
-	var old *rcon.Client
-	defer func() { closeRCON(old) }() // runs after the unlock below
+	var old, stale *rcon.Client
+	defer func() { closeRCON(old); closeRCON(stale) }() // runs after the unlock below
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.opDone != nil || w.ops != ops {
@@ -236,6 +238,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		w.lastCrash = now
 		w.crashedRun = true
 		w.run = runState{}
+		w.save.runEnded()
 		// Docker clears the out-of-memory flag when it restarts the game,
 		// so an exit no look saw leaves the newest flag seen as it was.
 		if read != nil {
@@ -257,8 +260,12 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		// A new run, including a `docker restart` that leaves the restart
 		// count alone: nothing the last run knew still holds.
 		w.run = runState{}
+		w.save.runEnded()
 		w.joins.Reset()
 		w.startedAt = cont.State.StartedAt
+		// The RCON connection went to the run that ended; the first command
+		// on it would fail, so the next one dials the new run.
+		stale = w.rc
 	}
 	active := w.dockerStatus == "running" || w.dockerStatus == "restarting"
 	switch {
@@ -453,6 +460,7 @@ func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 	w.stopping, w.crashLoop, w.crashedRun = false, false, false
 	w.crashes = nil
 	w.run = runState{}
+	w.save.runEnded()
 	w.joins.Reset()
 	// A container taken on is looked at afresh: what it did before was
 	// reported by whoever saw it happen (SPEC 3.8).
@@ -518,7 +526,7 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	w.startedAt = time.Time{}
 	w.usage = usage{}
 	w.expectRunning = false
-	w.oomKilled, w.exitAt = false, time.Time{}
+	w.oomKilled, w.exitAt, w.lastDie = false, time.Time{}, time.Time{}
 	w.crashLog, w.runStarts = nil, nil
 	return rc
 }
@@ -658,8 +666,10 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	case KindOther:
 		return
 	case KindLoadStarted:
-		// Every run of the game starts here; players from the last run are gone.
+		// Every run of the game starts here; players from the last run are
+		// gone, and a save the last run was writing ended with it.
 		w.joins.Reset()
+		w.save.runEnded()
 		if !at.IsZero() {
 			if len(w.runStarts) == maxRunStarts {
 				w.runStarts = slices.Delete(w.runStarts, 0, 1)
@@ -692,8 +702,8 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	case KindLoadFailed:
 		w.run.loadFailed, w.run.inGame = true, false
 		c.pokeMonitor()
-	case KindSaveFinished:
-		w.saves++
+	case KindSaveStarted, KindServerSaveStarted, KindSaveFinished, KindSaveFailed:
+		w.save.observe(ev)
 		publish = false
 	case KindPlayerJoined, KindPlayerLeft:
 		w.joins.Observe(ev)

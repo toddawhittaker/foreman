@@ -25,7 +25,7 @@
       {{- end}}
     </ul>
     {{- with .Fix}}
-    <div class="actions"><a href="{{.Path}}" class="button" id="act-fix">{{msg .Label}}</a></div>
+    <div class="actions">{{if .Post}}<form method="post" action="{{.Path}}"><button type="submit" class="button" id="act-fix">{{msg .Label}}</button></form>{{else}}<a href="{{.Path}}" class="button" id="act-fix">{{msg .Label}}</a>{{end}}</div>
     {{- end}}
   </div>
   {{- end}}

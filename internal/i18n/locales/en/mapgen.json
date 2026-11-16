@@ -206,5 +206,17 @@
   "mapgen.tip.tree_damage": "Trees have 4 different progressive stages toward being destroyed by pollution. Any pollution above this amount starts the process of moving a tree toward a more damaged stage.",
   "mapgen.unit.minutes": "min",
   "mapgen.unit.percent": "%",
-  "mapgen.width.label": "Width"
+  "mapgen.width.label": "Width",
+  "mapgen.exchange.heading": "Map exchange string",
+  "mapgen.exchange.label": "Map exchange string",
+  "mapgen.exchange.copy": "Copy map exchange string",
+  "mapgen.exchange.copied": "Map exchange string copied",
+  "mapgen.exchange.note": "Paste it into Factorio's map generator to make the same map. The string carries the map settings only, not mods.",
+  "mapgen.exchange.reason.no_seed": "The map's seed is left to chance and there is no save to read it from, so there is no string.",
+  "mapgen.exchange.reason.no_map_world": "This world has no map settings files and no save yet, so there is no map to describe.",
+  "mapgen.exchange.reason.no_map_favorite": "This favorite keeps no map settings, so there is no map to describe.",
+  "mapgen.exchange.reason.no_settings": "The world's newest save holds no map settings that Foreman can read, so there is no string.",
+  "mapgen.exchange.reason.unsupported": "This map comes from Factorio {version}, which Foreman cannot make a string for.",
+  "mapgen.exchange.reason.unreadable": "Foreman could not read the world's newest save, so there is no string.",
+  "mapgen.exchange.reason.failed": "Foreman could not make the string just now. Reload the page to try again."
 }

@@ -37,9 +37,18 @@ const (
 	MaxSettingsUpload = settingsUploadMB << 20
 )
 
-// megabytes says a limit as whole megabytes, "200 MB", the figure the spec
-// gives, rather than the "209.7 MB" its bytes read as in decimal units.
-func megabytes(n int) i18n.Msg { return i18n.M("common.bytes.mb", "n", n) }
+// sizeLimit says an upload limit as the spec words it: a whole number of
+// binary units, "200 MB" for 200 MiB and "1 GB" for 1 GiB, rather than the
+// "209.7 MB" its bytes read as in decimal units. A limit that is not a whole
+// number of gigabytes is said in whole megabytes, rounded down. The hint, the
+// script's message and the server's refusal all use it, so they give one
+// figure (DESIGN 7.10).
+func sizeLimit(n uint64) i18n.Msg {
+	if n >= 1<<30 && n%(1<<30) == 0 {
+		return i18n.M("common.bytes.gb", "n", n>>30)
+	}
+	return i18n.M("common.bytes.mb", "n", n>>20)
+}
 
 // The upload forms' fields.
 const (
@@ -57,7 +66,7 @@ func (s *server) modFileRoutes() {
 func modZipError(err error) i18n.Msg {
 	switch {
 	case errors.Is(err, world.ErrModTooBig):
-		return i18n.M("worlds.upload.too_large", "limit", megabytes(modUploadMB))
+		return i18n.M("worlds.upload.too_large", "limit", sizeLimit(MaxModUpload))
 	case errors.Is(err, world.ErrModName):
 		return i18n.M("mods.upload.bad_name")
 	}
@@ -102,10 +111,12 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	if !ok {
 		return
 	}
-	// A sync plan's upload form carries the plan's answers in its query
-	// (ModPlanPage.UploadAction), so a refusal or the new plan keeps them.
+	// A sync plan's upload form names the page's draft, which holds the
+	// plan's answers (ModPlanPage.UploadAction), so a refusal or the new
+	// plan keeps them.
 	q := r.URL.Query()
-	plan, sync := readPlanForm(q)
+	token := q.Get(draftField)
+	plan, sync := s.drafts.get(token, u.ID, sum.ID)
 	sync = sync && plan.Kind == mods.KindSync
 	countdown := defaultCountdown()
 	if c := q.Get("countdown"); c != "" {
@@ -114,6 +125,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	refuse := func(msg i18n.Msg, status int) {
 		if sync {
 			p := s.planPage(r.Context(), sum, plan, countdown)
+			p.Draft = s.drafts.keep(token, u.ID, sum.ID, p.Form)
 			p.UploadError, p.UploadFor = msg, q.Get("for")
 			s.page(w, r, status, u.Username, p)
 			return
@@ -160,6 +172,10 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	}
 	f.Staged = up.Temp
 	p := s.planPage(r.Context(), sum, f, countdown)
+	if !sync {
+		token = ""
+	}
+	p.Draft = s.drafts.keep(token, u.ID, sum.ID, p.Form)
 	s.page(w, r, planStatus(p), u.Username, p)
 }
 

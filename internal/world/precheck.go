@@ -70,12 +70,51 @@ type Problem struct {
 	Groups                 []ModGroup
 	// Gone words a mod gone problem: each mod and the version installed.
 	Gone []GoneMod
+	// Titles are the installed mods' titles by name, for the mods the
+	// problem names; a mod with none shows by its name (SPEC 9.15).
+	Titles map[string]string
+}
+
+// Title is a mod's title for words about it, or its name when it has none.
+func (p Problem) Title(name string) string {
+	if t := p.Titles[name]; t != "" {
+		return t
+	}
+	return name
+}
+
+// TitleOf maps mod names to their titles, keeping a name that has none.
+func (p Problem) TitleOf(names []string) []string {
+	out := make([]string, len(names))
+	for i, n := range names {
+		out[i] = p.Title(n)
+	}
+	return out
+}
+
+// InstalledTitles maps a world's installed mods to their titles from
+// info.json; a mod with none, or a mods folder that cannot be read, gives
+// no entry.
+func (m *Manager) InstalledTitles(id string) map[string]string {
+	installed, err := m.Mods(id)
+	if err != nil {
+		return nil
+	}
+	titles := map[string]string{}
+	for _, mod := range installed {
+		if mod.Title != "" {
+			titles[mod.Name] = mod.Title
+		}
+	}
+	return titles
 }
 
 // GoneMod is a mod at a version the mod portal no longer offers. Update is
 // the newest release on the world's game line, or "" when there is none.
 type GoneMod struct {
 	Name, Version, Update string
+	// Title is the mod's title from info.json, "" when it has none.
+	Title string
 }
 
 // ModGroup is the mods made for one Factorio version: the first few names,
@@ -163,6 +202,11 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 		if len(wrong) > 0 {
 			p := modVersionProblem(meta.Name, running, wrong)
 			out.Problems = slices.Insert(out.Problems, modAt, p)
+		}
+		if titles := m.InstalledTitles(id); len(titles) > 0 {
+			for i := range out.Problems {
+				out.Problems[i].Titles = titles
+			}
 		}
 		return out, nil
 	}

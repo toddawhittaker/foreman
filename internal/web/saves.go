@@ -6,6 +6,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"time"
 
@@ -46,7 +47,10 @@ type SaveRow struct {
 	Href  string
 	Size  uint64
 	Saved time.Time
-	Loads bool // the save the game loads next
+	// WorldName is set on an autosave: the row reads "<world>, <time>" and
+	// the file name is secondary text (SPEC 5.11).
+	WorldName string
+	Loads     bool // the save the game loads next
 	// LoadValue is what the row's "Load next" button posts: the save's name,
 	// or empty on the newest row, so later autosaves still win (SPEC 7.11).
 	LoadValue string
@@ -70,13 +74,18 @@ type SavesPage struct {
 	LoadSave string
 	// LoadMissing is true when the chosen save is no longer in the folder.
 	LoadMissing bool
-	UploadLimit uint64
 	// Uploaded and Chosen report what the last request did.
 	Uploaded string
 	Chosen   bool
 
 	UploadError i18n.Msg
 	LoadError   i18n.Msg
+}
+
+// UploadZone is the upload form's save field (DESIGN 7.10).
+func (p SavesPage) UploadZone() DropZone {
+	return DropZone{ID: "save-file", Name: saveUploadField, Label: i18n.M("worlds.saves.upload.label"),
+		Accept: ".zip", MaxBytes: MaxSaveUpload, Error: p.UploadError}
 }
 
 func (SavesPage) templateName() string { return "saves" }
@@ -98,6 +107,14 @@ func (p SavesPage) Problems() []Problem {
 	)
 }
 
+// autosaveName matches the files the game cycles through, _autosave1.zip
+// and on.
+var autosaveName = regexp.MustCompile(`^_autosave[0-9]+\.zip$`)
+
+// downloadTimeLayout is the save time in a download's name, in UTC, the one
+// zone the server knows; the suffix says so.
+const downloadTimeLayout = "2006-01-02-15-04-05UTC"
+
 func saveHref(id, name string) string {
 	return "/worlds/" + url.PathEscape(id) + "/saves/" + url.PathEscape(name)
 }
@@ -111,13 +128,12 @@ func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
 	}
 	base := "/worlds/" + id
 	p := SavesPage{
-		WorldName:   list.WorldName,
-		WorldHref:   base,
-		SavesHref:   base + "/saves",
-		LoadHref:    base + "/load-save",
-		Newer:       list.Newer,
-		LoadSave:    list.LoadSave,
-		UploadLimit: MaxSaveUpload,
+		WorldName: list.WorldName,
+		WorldHref: base,
+		SavesHref: base + "/saves",
+		LoadHref:  base + "/load-save",
+		Newer:     list.Newer,
+		LoadSave:  list.LoadSave,
 	}
 	chosen := chosenIndex(list)
 	p.LoadMissing = list.LoadSave != "" && chosen < 0
@@ -135,6 +151,9 @@ func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
 			Size:  uint64(sv.Size), //nolint:gosec // a file size is never negative
 			Saved: sv.ModTime,
 			Loads: i == loads,
+		}
+		if autosaveName.MatchString(sv.Name) {
+			row.WorldName = list.WorldName
 		}
 		if i > 0 {
 			row.LoadValue = sv.Name
@@ -253,10 +272,27 @@ func (s *server) handleSaveDownload(w http.ResponseWriter, r *http.Request, u st
 	defer func() { _ = f.Close() }()
 	h := w.Header()
 	h.Set("Content-Type", "application/zip")
-	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": info.Name()}))
+	h.Set("Content-Disposition", s.saveDisposition(r, info))
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Cache-Control", "private, no-cache")
 	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
+}
+
+// saveDisposition names a download. An autosave takes the world's name and
+// its save time, so it is not just _autosave3.zip; the world's name is user
+// text, which previewFileName and attachment make safe for a header. Any
+// other save keeps its own name, and so does an autosave when the world's
+// name cannot be read.
+func (s *server) saveDisposition(r *http.Request, info fs.FileInfo) string {
+	plain := mime.FormatMediaType("attachment", map[string]string{"filename": info.Name()})
+	if !autosaveName.MatchString(info.Name()) {
+		return plain
+	}
+	sum, err := s.worlds.Get(r.Context(), r.PathValue("id"))
+	if err != nil {
+		return plain
+	}
+	return attachment(previewFileName(sum.Name, info.ModTime().UTC().Format(downloadTimeLayout), "") + ".zip")
 }
 
 // handleLoadSave sets which save the game loads: a named one, or the

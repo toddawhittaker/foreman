@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
@@ -20,7 +22,12 @@ import (
 const (
 	PathFavorites      = "/favorites"
 	PathFavoriteDelete = "/favorites/{fav}/delete"
+	PathFavoriteExport = "/favorites/{fav}/export"
+	PathFavoriteImport = "/favorites/import"
 )
+
+// favoriteImportField is the import form's file field.
+const favoriteImportField = "favorite"
 
 // favoriteQuery marks a world page that follows making a favorite, and
 // Generate's link that starts from one.
@@ -41,12 +48,46 @@ type FavoriteRow struct {
 
 func (f FavoriteRow) DeletePath() string   { return favoriteDeletePath(f.ID) }
 func (f FavoriteRow) GeneratePath() string { return generateFromPath(f.ID) }
+func (f FavoriteRow) ExportPath() string   { return PathFavorites + "/" + f.ID + "/export" }
 
 // FavoritesPage lists every favorite (SPEC 5.12).
 type FavoritesPage struct {
 	Favorites []FavoriteRow
 	// Deleted names the favorite just deleted.
 	Deleted string
+	// Imported names the favorite just imported.
+	Imported string
+	// ImportError says why the last import was refused.
+	ImportError i18n.Msg
+	// Exchanges holds each favorite's map exchange string, by favorite id.
+	Exchanges map[string]ExchangeField
+	// missing says the portal is known not to have a mod, so it is not
+	// linked; nil links every mod.
+	missing func(string) bool
+}
+
+// Mod is a favorite's mod as the mod-name partial shows it: by title,
+// linked to the portal unless the portal is known to lack it.
+func (p FavoritesPage) Mod(m world.FavoriteMod) ModName {
+	return modName(m.Name, m.Title, p.missing == nil || !p.missing(m.Name))
+}
+
+// ExchangeFor is the map exchange string field of one favorite.
+func (p FavoritesPage) ExchangeFor(id string) ExchangeField { return p.Exchanges[id] }
+
+// Problems is the import form's error summary (DESIGN 7.2), which takes
+// focus when an import is refused.
+func (p FavoritesPage) Problems() []Problem { return problems(Problem{"favorite-file", p.ImportError}) }
+
+func (p FavoritesPage) hasErrors() bool { return len(p.Problems()) > 0 }
+
+// ImportPath is where the import form posts.
+func (FavoritesPage) ImportPath() string { return PathFavoriteImport }
+
+// ImportZone is the import form's file field (DESIGN 7.10).
+func (p FavoritesPage) ImportZone() DropZone {
+	return DropZone{ID: "favorite-file", Name: favoriteImportField, Label: i18n.M("favorites.import.label"),
+		Accept: ".zip", MaxBytes: world.MaxFavoriteUpload, Error: p.ImportError}
 }
 
 func (FavoritesPage) templateName() string { return "favorites" }
@@ -76,23 +117,120 @@ func (s *server) favoriteRoutes() {
 	s.mux.HandleFunc("POST "+PathWorlds+"/{id}/favorite", s.requireUser(s.handleMakeFavorite))
 	s.mux.HandleFunc("GET "+PathFavoriteDelete, s.requireUser(s.handleFavoriteDeleteForm))
 	s.mux.HandleFunc("POST "+PathFavoriteDelete, s.requireUser(s.handleFavoriteDelete))
+	s.mux.HandleFunc("GET "+PathFavoriteExport, s.requireUser(s.handleFavoriteExport))
+	s.handleUpload("POST "+PathFavoriteImport, favoriteImportLimit, s.requireUser(s.guardUpload(s.handleFavoriteImport)))
 }
 
-func (s *server) favoritesPage(w http.ResponseWriter, r *http.Request, u store.User, deleted string) {
+// favoriteImportLimit is the import body's limit: the file plus room for
+// the form's headers.
+const favoriteImportLimit = world.MaxFavoriteUpload + 64<<10
+
+func (s *server) favoritesPage(w http.ResponseWriter, r *http.Request, u store.User, status int, p FavoritesPage) {
 	list, err := s.favorites.List(r.Context())
 	if err != nil {
 		s.fail(w, r, "list favorites", err)
 		return
 	}
-	p := FavoritesPage{Deleted: deleted}
+	p.Exchanges = map[string]ExchangeField{}
+	if s.portal != nil {
+		p.missing = s.portal.KnownMissing
+	}
 	for _, f := range list {
 		p.Favorites = append(p.Favorites, FavoriteRow{f})
+		if _, files, err := s.favorites.Get(f.ID); err != nil {
+			p.Exchanges[f.ID] = ExchangeField{ID: "exchange-" + f.ID, Owner: "favorite-" + f.ID + "-name", Reason: i18n.M("mapgen.exchange.reason.failed")}
+		} else {
+			p.Exchanges[f.ID] = s.favoriteExchange(f.ID, f, files)
+		}
 	}
-	s.page(w, r, http.StatusOK, u.Username, p)
+	s.page(w, r, status, u.Username, p)
 }
 
 func (s *server) handleFavorites(w http.ResponseWriter, r *http.Request, u store.User) {
-	s.favoritesPage(w, r, u, "")
+	s.favoritesPage(w, r, u, http.StatusOK, FavoritesPage{})
+}
+
+// handleFavoriteExport downloads a favorite as a file (SPEC 5.12).
+func (s *server) handleFavoriteExport(w http.ResponseWriter, r *http.Request, u store.User) {
+	fav, data, err := s.favorites.Export(r.PathValue("fav"))
+	switch {
+	case errors.Is(err, fs.ErrNotExist), errors.Is(err, world.ErrFavoriteBroken):
+		s.notFound(w, r, u)
+		return
+	case err != nil:
+		s.fail(w, r, "export favorite", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", attachment(fav.Name+"-favorite.zip"))
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	_, _ = w.Write(data)
+}
+
+// handleFavoriteImport reads an uploaded favorite file into memory, which
+// its 8 MiB limit allows, and saves it only once every check has passed.
+func (s *server) handleFavoriteImport(w http.ResponseWriter, r *http.Request, u store.User) {
+	data, err := readFavoriteUpload(r)
+	var id string
+	if err == nil {
+		id, err = s.favorites.Import(r.Context(), data)
+	}
+	if err == nil {
+		fav, _, gerr := s.favorites.Get(id)
+		if gerr != nil {
+			s.fail(w, r, "read imported favorite", gerr)
+			return
+		}
+		s.favoritesPage(w, r, u, http.StatusOK, FavoritesPage{Imported: fav.Name})
+		return
+	}
+	var up uploadError
+	var msg i18n.Msg
+	switch {
+	case errors.As(err, &up):
+		msg = up.msg
+	case errors.Is(err, world.ErrFavoriteFileBad):
+		msg = i18n.M("favorites.import.bad")
+	case errors.Is(err, world.ErrFavoriteNameTaken):
+		msg = i18n.M("favorites.import.name_taken")
+	default:
+		s.fail(w, r, "import favorite", err)
+		return
+	}
+	s.favoritesPage(w, r, u, http.StatusBadRequest, FavoritesPage{ImportError: msg})
+}
+
+// readFavoriteUpload returns the form's favorite file, refusing one over
+// world.MaxFavoriteUpload.
+func readFavoriteUpload(r *http.Request) ([]byte, error) {
+	limit := int64(world.MaxFavoriteUpload)
+	if r.ContentLength > favoriteImportLimit {
+		return nil, tooLarge(limit)
+	}
+	mr, err := r.MultipartReader()
+	if err != nil {
+		return nil, uploadError{i18n.M("worlds.upload.choose_file")}
+	}
+	for {
+		part, err := mr.NextPart()
+		if errors.Is(err, io.EOF) {
+			return nil, uploadError{i18n.M("worlds.upload.choose_file")}
+		}
+		if err != nil {
+			return nil, partError(err, limit)
+		}
+		if part.FormName() != favoriteImportField || part.FileName() == "" {
+			continue
+		}
+		data, err := io.ReadAll(io.LimitReader(part, limit+1))
+		if err != nil {
+			return nil, bodyError(err, limit)
+		}
+		if int64(len(data)) > limit {
+			return nil, tooLarge(limit)
+		}
+		return data, nil
+	}
 }
 
 // findFavorite reads the path's favorite, or answers 404 or 500 itself.
@@ -135,7 +273,7 @@ func (s *server) handleFavoriteDelete(w http.ResponseWriter, r *http.Request, u 
 		s.fail(w, r, "delete favorite", err)
 		return
 	}
-	s.favoritesPage(w, r, u, fav.Name)
+	s.favoritesPage(w, r, u, http.StatusOK, FavoritesPage{Deleted: fav.Name})
 }
 
 // handleMakeFavorite makes a favorite from the world (SPEC 5.12). It only

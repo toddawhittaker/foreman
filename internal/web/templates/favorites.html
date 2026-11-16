@@ -1,5 +1,8 @@
 {{define "title"}}{{t "favorites.title"}}{{end}}
 
+{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
+<script src="{{static "copy.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
@@ -10,21 +13,47 @@
   <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.deleted" "name" .}}</p>
 </div>
 {{- end}}
+{{- with .Imported}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.import.done" "name" .}}</p>
+</div>
+{{- end}}
 <section class="panel" aria-label="{{t "favorites.title"}}">
   {{- with .Favorites}}
+  <p class="hint favorite-export-warning" id="favorite-export-warning"><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
   <ul class="webhook-list favorite-list" role="list">
     {{- range .}}
+    {{- $name := .Name}}
     <li id="favorite-{{.ID}}">
       <h2 id="favorite-{{.ID}}-name" class="webhook-list__title">{{.Name}}</h2>
       <dl class="facts facts--inline">
-        <div><dt>{{t "favorites.fact.source"}}</dt><dd>{{.SourceWorld}}</dd></div>
+        {{- with .SourceWorld}}
+        <div><dt>{{t "favorites.fact.source"}}</dt><dd>{{.}}</dd></div>
+        {{- end}}
         <div><dt>{{t "worlds.fact.game_version"}}</dt><dd><span class="ver"><code>{{.GameVersion}}</code></span></dd></div>
         <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
         <div><dt>{{t "favorites.fact.mods"}}</dt><dd>{{len .Mods}}</dd></div>
         <div><dt>{{t "favorites.fact.created"}}</dt><dd><time datetime="{{isoTime .CreatedAt}}">{{utc .CreatedAt}}</time></dd></div>
       </dl>
+      {{- with .Mods}}
+      {{- /* A details list works without script and keeps a long pack from filling the page. */}}
+      <details class="favorite-mods">
+        <summary>{{t "favorites.mods.show" "count" (len .)}}<span class="visually-hidden" translate="no"> {{$name}}</span></summary>
+        <ul role="list">
+          {{- range .}}
+          <li><span class="mod-name">{{template "mod-name" ($.Page.Mod .)}}</span> <span class="mod-ver" translate="no">{{.Version}}</span></li>
+          {{- end}}
+        </ul>
+      </details>
+      {{- end}}
+      {{- /* A details block keeps a long string off the list until it is wanted, and works without script. */}}
+      <details class="favorite-exchange">
+        <summary>{{t "favorites.exchange.show"}}<span class="visually-hidden" translate="no"> {{$name}}</span></summary>
+        {{template "exchange-string" ($.Page.ExchangeFor .ID)}}
+      </details>
       <div class="actions">
         <a href="{{.GeneratePath}}" class="button" id="act-favorite-generate-{{.ID}}" aria-describedby="favorite-{{.ID}}-name">{{t "favorites.generate"}}</a>
+        <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-export-warning">{{t "favorites.export.button"}}</a>
         {{- /* A trash icon, as the webhook list has: red but borderless, so Delete does not weigh as much as Generate (DESIGN 7.1). */}}
         <a href="{{.DeletePath}}" class="button button--icon" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
       </div>
@@ -35,6 +64,18 @@
   <p class="empty" id="favorites-empty">{{t "favorites.empty"}}</p>
   <div class="actions"><a href="{{worldsPath}}">{{t "favorites.empty.link"}}</a></div>
   {{- end}}
+</section>
+<section class="panel" aria-labelledby="favorite-import-heading">
+  <h2 id="favorite-import-heading">{{t "favorites.import.heading"}}</h2>
+  {{template "summary" .Problems}}
+  <p class="hint">{{t "favorites.import.text"}}</p>
+  <form method="post" action="{{.ImportPath}}" enctype="multipart/form-data" novalidate>
+    {{template "required-note"}}
+    {{template "dropzone" .ImportZone}}
+    <div class="actions">
+      <button type="submit" class="button" id="act-favorite-import">{{t "favorites.import.button"}}</button>
+    </div>
+  </form>
 </section>
 {{- end}}
 {{- end}}

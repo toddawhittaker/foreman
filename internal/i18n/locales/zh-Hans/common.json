@@ -75,5 +75,14 @@
   "common.menu.notifications": "通知",
   "common.menu.schedule": "重启计划",
   "common.settings.label": "Foreman 设置",
-  "common.countdown.none_name": "不警告：将倒计时设为 0 秒"
+  "common.countdown.none_name": "不警告：将倒计时设为 0 秒",
+  "common.dropzone.limits": "{types} 文件，最大 {limit}。",
+  "common.dropzone.prompt": "将文件拖放到此处，或选择文件",
+  "common.dropzone.drop": "松开即可选择该文件",
+  "common.dropzone.chosen": "已选择：{file}，{size}",
+  "common.dropzone.clear": "清除",
+  "common.dropzone.cleared": "未选择文件。",
+  "common.dropzone.wrong_type": "{file} 不是 {types} 文件。请选择以 {types} 结尾的文件。",
+  "common.dropzone.too_big": "{file} 超过 {limit}。请选择更小的文件。",
+  "common.dropzone.one_file": "一次只能选择一个文件。"
 }

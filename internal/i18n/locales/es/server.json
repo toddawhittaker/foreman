@@ -342,8 +342,9 @@
   "server.problem.mod_missing_many": "{save} usa {mods}, pero este mundo no tiene archivos para ellos.",
   "server.problem.mod_disabled_one": "{save} usa {mods}, pero está desactivado en este mundo.",
   "server.problem.mod_disabled_many": "{save} usa {mods}, pero están desactivados en este mundo.",
-  "server.problem.mod_gone_one": "El portal de mods ya no tiene {mod} {version}, así que el juego de los jugadores no puede descargarlo y no pueden unirse. Continuar igualmente no borra nada de la partida guardada.",
+  "server.problem.mod_gone_one": "El portal de mods ya no tiene {mod} (versión {version}), así que el juego de los jugadores no puede descargarlo y no pueden unirse. Continuar igualmente no borra nada de la partida guardada.",
   "server.problem.mod_gone_many": "El portal de mods ya no tiene {mods}, así que el juego de los jugadores no puede descargarlos y no pueden unirse. Continuar igualmente no borra nada de la partida guardada.",
+  "server.problem.mod_gone_item": "{mod} (versión {version})",
   "server.problem.mod_version_first": {
     "one": "{world} no puede ejecutarse en Factorio {version}: {count} de sus mods se hizo para Factorio {for}, y el juego se niega a cargarlo: {names}.",
     "other": "{world} no puede ejecutarse en Factorio {version}: {count} de sus mods se hicieron para Factorio {for}, y el juego se niega a cargarlos: {names}."
@@ -368,6 +369,7 @@
   "server.error.image_missing": "La imagen del juego para la versión de Factorio de este mundo no está descargada. Descarga la imagen del juego y vuelve a iniciar.",
   "server.error.rcon_unreachable": "No se puede conectar con el juego por RCON, así que no puede avisar a los jugadores ni guardar antes. Usa «Forzar la detención» para detenerlo sin guardar.",
   "server.error.save_timeout": "El juego no terminó de guardar a tiempo, así que no se detuvo ni se tomó instantánea de nada. Vuelve a intentarlo, o usa «Forzar la detención».",
+  "server.error.save_failed": "El juego no pudo guardar el mundo, así que no se detuvo ni se tomó instantánea de nada. Consulta el registro para ver el motivo.",
   "server.error.start_failed": "El juego no se inició.",
   "server.error.cancelled": "Una detención forzada interrumpió esto.",
   "server.error.stop_cancelled": "La detención se canceló, así que no se detuvo ni se guardó nada y el juego sigue en marcha.",

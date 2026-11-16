@@ -206,5 +206,17 @@
   "mapgen.tip.tree_damage": "Bäume haben 4 verschiedene Stufen der Zerstörung durch Umweltverschmutzung. Wenn die Umweltverschmutzung über diesen Betrag hinausgeht, beginnt der Prozess, einen Baum in die nächste Stufe zu setzen.",
   "mapgen.unit.minutes": "min",
   "mapgen.unit.percent": "%",
-  "mapgen.width.label": "Breite"
+  "mapgen.width.label": "Breite",
+  "mapgen.exchange.heading": "Code zum Kartenaustausch",
+  "mapgen.exchange.label": "Code zum Kartenaustausch",
+  "mapgen.exchange.copy": "Code zum Kartenaustausch kopieren",
+  "mapgen.exchange.copied": "Code zum Kartenaustausch kopiert",
+  "mapgen.exchange.note": "Füge ihn im Kartengenerator von Factorio ein, um dieselbe Karte zu erzeugen. Der Code enthält nur die Karteneinstellungen, keine Mods.",
+  "mapgen.exchange.reason.no_seed": "Der Kartenseed wird dem Zufall überlassen, und es gibt keinen Speicherstand, aus dem er sich lesen lässt. Deshalb gibt es keinen Code.",
+  "mapgen.exchange.reason.no_map_world": "Diese Welt hat keine Dateien mit Karteneinstellungen und noch keinen Speicherstand. Deshalb gibt es keine Karte, die sich beschreiben ließe.",
+  "mapgen.exchange.reason.no_map_favorite": "Dieser Favorit enthält keine Karteneinstellungen. Deshalb gibt es keine Karte, die sich beschreiben ließe.",
+  "mapgen.exchange.reason.no_settings": "Der neueste Speicherstand der Welt enthält keine Karteneinstellungen, die Foreman lesen kann. Deshalb gibt es keinen Code.",
+  "mapgen.exchange.reason.unsupported": "Diese Karte stammt aus Factorio {version}. Dafür kann Foreman keinen Code erzeugen.",
+  "mapgen.exchange.reason.unreadable": "Foreman konnte den neuesten Speicherstand der Welt nicht lesen. Deshalb gibt es keinen Code.",
+  "mapgen.exchange.reason.failed": "Foreman konnte den Code gerade nicht erzeugen. Lade die Seite neu, um es noch einmal zu versuchen."
 }

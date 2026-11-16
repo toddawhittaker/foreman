@@ -342,8 +342,9 @@
   "server.problem.mod_missing_many": "{save} uses {mods}, but this world has no files for them.",
   "server.problem.mod_disabled_one": "{save} uses {mods}, but it is disabled in this world.",
   "server.problem.mod_disabled_many": "{save} uses {mods}, but they are disabled in this world.",
-  "server.problem.mod_gone_one": "The mod portal no longer has {mod} {version}, so players' games cannot download it and they cannot join. Going ahead anyway deletes nothing from the save.",
+  "server.problem.mod_gone_one": "The mod portal no longer has {mod} (version {version}), so players' games cannot download it and they cannot join. Going ahead anyway deletes nothing from the save.",
   "server.problem.mod_gone_many": "The mod portal no longer has {mods}, so players' games cannot download them and they cannot join. Going ahead anyway deletes nothing from the save.",
+  "server.problem.mod_gone_item": "{mod} (version {version})",
   "server.problem.mod_version_first": {
     "one": "{world} cannot run on Factorio {version}: {count} of its mods was made for Factorio {for}, and the game refuses to load it: {names}.",
     "other": "{world} cannot run on Factorio {version}: {count} of its mods were made for Factorio {for}, and the game refuses to load them: {names}."
@@ -368,6 +369,7 @@
   "server.error.image_missing": "The game image for this world's Factorio version is not downloaded. Download the game image, then start again.",
   "server.error.rcon_unreachable": "Cannot reach the game over RCON, so it cannot warn players or save first. Use Force stop to stop it without saving.",
   "server.error.save_timeout": "The game did not finish saving in time, so nothing was stopped or snapshotted. Try again, or use Force stop.",
+  "server.error.save_failed": "The game could not save the world, so nothing was stopped or snapshotted. Check the log for the reason.",
   "server.error.start_failed": "The game did not start.",
   "server.error.cancelled": "A forced stop interrupted this.",
   "server.error.stop_cancelled": "The stop was canceled, so nothing was stopped or saved and the game runs on.",

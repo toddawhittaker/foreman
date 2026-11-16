@@ -18,6 +18,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/savefile"
@@ -32,6 +33,9 @@ const (
 	PathModNotice = "/worlds/{id}/mods/notice"
 	PathModSearch = "/worlds/{id}/mods/search"
 	PathModPlan   = "/worlds/{id}/mods/plan"
+	// PathModPlanRedraw takes the review page's answers and draws the plan
+	// again, keeping them in the page's draft.
+	PathModPlanRedraw = "/worlds/{id}/mods/plan/redraw"
 )
 
 // ModPortal is what the mods pages ask the mod portal; *modportal.Client
@@ -41,6 +45,8 @@ type ModPortal interface {
 	Search(ctx context.Context, line, query string) ([]modportal.Hit, error)
 	Lookup(ctx context.Context, line, name string) (modportal.Hit, error)
 	Download(ctx context.Context, username, token string, r modportal.Release, dst *os.File) error
+	// KnownMissing says the portal's cached answer is "no such mod"; it never asks the portal.
+	KnownMissing(name string) bool
 }
 
 // accountFetcher downloads with the factorio.com account the service holds
@@ -63,22 +69,37 @@ func (f accountFetcher) Download(ctx context.Context, r modportal.Release, dst *
 
 func modsPath(id string) string { return worldPath(id) + "/mods" }
 
-// planPath is the plan page for a request given as query values.
+// planPath is the plan page for a request given as query values. Links
+// into the review page carry the kind and at most one name, a favorite's
+// id, or a draft's token; the page keeps the rest in the draft, so no
+// address grows with the plan (SPEC 17).
 func planPath(id string, q url.Values) string {
 	return modsPath(id) + "/plan?" + q.Encode()
 }
 
-func kindPlanPath(id string, kind mods.Kind, names ...string) string {
+// kindPlanPath opens a plan of kind for one mod, or for every mod the kind
+// covers when name is "": the saved picks of an install, every update.
+func kindPlanPath(id string, kind mods.Kind, name string) string {
 	q := url.Values{"kind": {string(kind)}}
-	if len(names) > 0 {
-		q["name"] = names
+	if name != "" {
+		q.Set("name", name)
+	}
+	return planPath(id, q)
+}
+
+// draftPath is the review page drawn from a draft, with one change to it
+// when more is given as a key and a value.
+func draftPath(id, token string, more ...string) string {
+	q := url.Values{draftField: {token}}
+	for i := 0; i+1 < len(more); i += 2 {
+		q.Set(more[i], more[i+1])
 	}
 	return planPath(id, q)
 }
 
 // syncPath is the plan that matches a world's mods to the save that loads
 // (SPEC 9.8, 7.11).
-func syncPath(id string) string { return kindPlanPath(id, mods.KindSync) }
+func syncPath(id string) string { return kindPlanPath(id, mods.KindSync, "") }
 
 func (s *server) modRoutes() {
 	s.mux.HandleFunc("GET "+PathWorldMods, s.requireUser(s.handleMods))
@@ -87,6 +108,8 @@ func (s *server) modRoutes() {
 	s.mux.HandleFunc("GET "+PathModSearch, s.requireUser(s.handleModSearch))
 	s.mux.HandleFunc("GET "+PathModPlan, s.requireUser(s.handlePlanForm))
 	s.mux.HandleFunc("POST "+PathModPlan, s.requireUser(s.handlePlan))
+	s.mux.HandleFunc("POST "+PathModPlanRedraw, s.requireUser(s.handlePlanRedraw))
+	s.mux.HandleFunc("POST "+PathModPlan+"/gone", s.requireUser(s.handlePlanGone))
 	s.modPlanRoutes()
 	s.modFileRoutes()
 	s.modSettingsRoutes()
@@ -169,9 +192,16 @@ type ModsPage struct {
 	Plan   PlanPanel
 }
 
-// UploadLimit and SettingsLimit say the upload size limits.
-func (ModsPage) UploadLimit() i18n.Msg   { return megabytes(modUploadMB) }
-func (ModsPage) SettingsLimit() i18n.Msg { return megabytes(settingsUploadMB) }
+// UploadZone and SettingsZone are the tab's two upload fields (DESIGN 7.10).
+func (p ModsPage) UploadZone() DropZone {
+	return DropZone{ID: "mod-file", Name: modUploadField, Label: i18n.M("mods.upload.label"),
+		Accept: ".zip", MaxBytes: MaxModUpload, Error: p.UploadError}
+}
+
+func (p ModsPage) SettingsZone() DropZone {
+	return DropZone{ID: "settings-file", Name: settingsUploadField, Label: i18n.M("mods.settings.label", "file", i18n.Code(world.ModSettingsFile)),
+		Accept: ".dat", MaxBytes: MaxSettingsUpload, Error: p.SettingsError, DescribedBy: "settings-file-help"}
+}
 
 // SettingsTabPath is the world's Settings tab, where Space Age is turned on
 // or off for the built-in mods.
@@ -300,6 +330,36 @@ func (ModsPage) PortalSlot(name string) string { return slotID("portal", name) }
 // portalPath is a mod's page on the mod portal.
 func portalPath(name string) string { return "https://mods.factorio.com/mod/" + url.PathEscape(name) }
 
+// ModName is what the mod-name partial shows: a mod's title, or its name
+// when it has none, linked to its portal page when Link is set.
+type ModName struct {
+	Name, Title string
+	Link        bool
+}
+
+// IsName says the title shown is the mod's name, which never hyphenates.
+func (m ModName) IsName() bool { return m.Title == m.Name }
+
+// modName is the mod-name partial's input. title falls back to name; link
+// is false for a folder mod or one the portal lacks, and a built-in mod is
+// never linked (ruling on #623; SPEC 9.7).
+func modName(name, title string, link bool) ModName {
+	if strings.TrimSpace(title) == "" {
+		title = name
+	}
+	return ModName{Name: name, Title: title, Link: link && !builtinName(name)}
+}
+
+// builtinName says name is a built-in mod of any supported game line.
+func builtinName(name string) bool {
+	for _, l := range mapgen.Lines {
+		if slices.Contains(world.BuiltinMods(l+".0"), name) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
@@ -384,6 +444,7 @@ func (s *server) modsOutcome(p *ModsPage, res actionResult) {
 		return
 	}
 	p.Undo = modsUndo(p.World.ID, res)
+	res.Mods.Titles = s.worlds.InstalledTitles(p.World.ID)
 	if res.Err == nil {
 		p.Done = modsDone(res.Mods, p.World.Name)
 		return
@@ -408,12 +469,22 @@ type ModStatus struct {
 	// Changeable maps the mods that get Change version to their installed
 	// version (SPEC 9.3).
 	Changeable map[string]string
+	// titles maps each installed mod to its title from info.json.
+	titles map[string]string
+}
+
+// Title is an installed mod's title, or its name when it has none.
+func (p ModStatus) Title(name string) string {
+	if t := p.titles[name]; t != "" {
+		return t
+	}
+	return name
 }
 
 func (ModStatus) templateName() string { return "mods" }
 
 // UpdateAllPath is the plan that updates every mod with an update.
-func (p ModStatus) UpdateAllPath() string { return kindPlanPath(p.World.ID, mods.KindUpdate) }
+func (p ModStatus) UpdateAllPath() string { return kindPlanPath(p.World.ID, mods.KindUpdate, "") }
 func (p ModStatus) Path() string          { return modsPath(p.World.ID) }
 
 // UpdatePath is the plan for one mod's update.
@@ -543,6 +614,10 @@ func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store
 	}
 	if !st.Unreachable {
 		st.Current = currentCount(ps.Installed, st.Flags)
+		st.titles = map[string]string{}
+		for _, m := range ps.Installed {
+			st.titles[m.Name] = m.Title
+		}
 	}
 	s.fragment(w, r, st, "mod-status")
 }
@@ -581,9 +656,10 @@ func (s *server) portalTrouble(what, id string, err error) {
 type ModNotice struct {
 	World  world.Summary
 	Errors int
-	// Mod and Version name the mod when there is exactly one.
-	Mod, Version string
-	Fix          Offer
+	// Mod and Version name the mod when there is exactly one; Title is its
+	// title from info.json, "" when it has none (SPEC 9.15).
+	Mod, Version, Title string
+	Fix                 Offer
 }
 
 func (ModNotice) templateName() string { return "server" }
@@ -601,13 +677,14 @@ func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
 	}
 	var gone []world.GoneMod
+	titles := s.worlds.InstalledTitles(sum.ID)
 	for _, f := range flags {
 		if f.Severity != mods.SevError {
 			continue
 		}
 		n.Errors++
-		n.Mod, n.Version = f.Name, f.Version
-		gone = append(gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update})
+		n.Mod, n.Version, n.Title = f.Name, f.Version, titles[f.Name]
+		gone = append(gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update, Title: titles[f.Name]})
 	}
 	if n.Errors > 0 {
 		n.Fix = goneFix(sum.ID, gone)
@@ -871,6 +948,10 @@ type planForm struct {
 	// install or update, by name; a mod without one gets the newest that
 	// fits (SPEC 9.2, 9.3).
 	Versions map[string]string
+	// FavoriteVersion is the game version of the favorite the plan came
+	// from, when this Foreman does not support it: the review shows it as a
+	// conflict (SPEC 5.12). Only a draft holds it.
+	FavoriteVersion string
 }
 
 const (
@@ -882,6 +963,7 @@ const (
 	orphanOfferedField = "orphan-offered"
 	keptField          = "kept"
 	versionPrefix      = "version-"
+	draftField         = "draft"
 )
 
 var planKinds = []mods.Kind{mods.KindInstall, mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove, mods.KindUpload}
@@ -949,59 +1031,6 @@ func readPlanForm(v url.Values) (planForm, bool) {
 	return f, true
 }
 
-// query is the form as query values, for a link back to the same plan.
-func (f planForm) query() url.Values {
-	q := url.Values{"kind": {string(f.Kind)}}
-	if len(f.Names) > 0 {
-		q["name"] = f.Names
-	}
-	for _, n := range f.Names {
-		if ver := f.Versions[n]; ver != "" {
-			q.Set(versionPrefix+n, ver)
-		}
-	}
-	if len(f.Optional) > 0 {
-		q["optional"] = f.Optional
-	}
-	if len(f.Declined) > 0 {
-		q["declined"] = f.Declined
-	}
-	if len(f.Kept) > 0 {
-		q[keptField] = f.Kept
-	}
-	if len(f.AlsoDisable) > 0 {
-		q[alsoDisableField] = f.AlsoDisable
-	}
-	if len(f.AlsoRemove) > 0 {
-		q[alsoRemoveField] = f.AlsoRemove
-	}
-	if f.Save != "" {
-		q.Set("save", f.Save)
-	}
-	for name, c := range f.Choices {
-		q.Set(choicePrefix+name, string(c))
-	}
-	return q
-}
-
-// withNames is the form asking for names instead.
-func (f planForm) withNames(names []string) planForm {
-	f.Names = names
-	return f
-}
-
-// answers is the form with the "continue without" boxes too, for the
-// upload form of an unresolved mod, so a refused zip keeps every answer.
-func (f planForm) answers() url.Values {
-	q := f.query()
-	for name, ok := range f.Confirmed {
-		if ok {
-			q.Set(confirmPrefix+name, "1")
-		}
-	}
-	return q
-}
-
 // ModPlanPage shows a mod change before it applies (SPEC 9.2, 17.5, 17.8).
 type ModPlanPage struct {
 	World world.Summary
@@ -1024,7 +1053,15 @@ type ModPlanPage struct {
 	Changed bool
 	// Error says why there is no plan; Retry offers to try again.
 	Error i18n.Msg
-	Retry string
+	Retry bool
+	// Draft is the token of the draft that holds the page's answers;
+	// DraftLost says the draft a link named was gone, so the page started
+	// again from the saved picks.
+	Draft     string
+	DraftLost bool
+	// RetryTo is where Try again goes when it is not the draft, as on a
+	// refused cross-site request, which makes no draft.
+	RetryTo string
 	// ConfirmErrors are unticked "continue without" boxes, by mod name.
 	ConfirmErrors map[string]i18n.Msg
 	Busy          i18n.Msg
@@ -1044,27 +1081,36 @@ type ModPlanPage struct {
 	Generated bool
 	// Have are the world's mods now, for the conflicts' fixes.
 	Have []world.InstalledMod
+	// facts are the titles and offered mods' details, by mod name.
+	facts map[string]ModFacts
 }
 
 // FromPicks says the plan installs mods the admin picked on the Mods tab,
 // so it lists them with a way to take one out (SPEC 9.2).
 func (p ModPlanPage) FromPicks() bool { return p.Form.Kind == mods.KindInstall && p.Form.Staged == "" }
 
-// RemovePath is the plan without name; PlanWithout the same for the
-// address bar.
+// RemovePath takes name out of the draft's plan.
 func (p ModPlanPage) RemovePath(name string) string {
-	q := p.Form.withNames(without(p.Form.Names, name)).query()
-	q.Set("removed", name)
-	return planPath(p.World.ID, q)
+	return draftPath(p.World.ID, p.Draft, "removed", name)
 }
 
-func (p ModPlanPage) PlanWithout(name string) string {
-	return planPath(p.World.ID, p.Form.withNames(without(p.Form.Names, name)).query())
+// DraftPath is the page drawn from its draft, for the address bar and to
+// try again.
+func (p ModPlanPage) DraftPath() string { return draftPath(p.World.ID, p.Draft) }
+
+// RetryPath is where Try again goes.
+func (p ModPlanPage) RetryPath() string {
+	if p.RetryTo != "" {
+		return p.RetryTo
+	}
+	return p.DraftPath()
 }
 
-func without(names []string, name string) []string {
-	return slices.DeleteFunc(slices.Clone(names), func(n string) bool { return n == name })
-}
+// maxAddress is the longest address Foreman builds (SPEC 17).
+const maxAddress = 512
+
+// RedrawPath takes the form's answers and draws the plan again.
+func (p ModPlanPage) RedrawPath() string { return p.Path() + "/redraw" }
 
 // Danger says the plan destroys something, so its box and button are the
 // danger style: it removes a mod, drops what the save built, or goes on
@@ -1094,7 +1140,7 @@ const dropsField = "confirm-drops"
 func (ModPlanPage) templateName() string { return "modplan" }
 func (ModPlanPage) navItem() string      { return PathWorlds }
 func (p ModPlanPage) hasErrors() bool {
-	return len(p.Problems()) > 0 || !p.Error.IsZero() || len(p.Plan.Conflicts) > 0
+	return len(p.Problems()) > 0 || !p.Error.IsZero() || len(p.Plan.Conflicts) > 0 || p.Form.FavoriteVersion != ""
 }
 
 // Problems lists the form's field errors in page order.
@@ -1132,19 +1178,28 @@ func modID(name, part string) string {
 // ModID is modID for the template.
 func (ModPlanPage) ModID(name, part string) string { return modID(name, part) }
 
-// UploadAction is where an unresolved mod's zip is posted: its query holds
-// every answer on the page, so the plan that comes back keeps them.
+// UploadAction is where an unresolved mod's zip is posted: its draft holds
+// the page's answers, so the plan that comes back keeps them.
 func (p ModPlanPage) UploadAction(name string) string {
-	q := p.Form.answers()
-	q.Set("for", name)
+	q := url.Values{draftField: {p.Draft}, "for": {name}}
 	if p.Countdown != "" {
 		q.Set("countdown", p.Countdown)
 	}
 	return p.UploadPath() + "?" + q.Encode()
 }
 
-// UploadLimit says the zip size limit.
-func (ModPlanPage) UploadLimit() i18n.Msg { return megabytes(modUploadMB) }
+// UploadZone is an unresolved mod's zip field. It sits outside the plan's
+// form, which cannot hold a second form, and posts as the mod's own form
+// (DESIGN 7.10).
+func (p ModPlanPage) UploadZone(name string, version string) DropZone {
+	z := DropZone{ID: modID(name, "zip"), Name: modUploadField, Accept: ".zip", MaxBytes: MaxModUpload,
+		Label: i18n.M("mods.unresolved.upload_label", "mod", i18n.Ident(name), "version", version),
+		Form:  modID(name, "zip") + "-form"}
+	if p.UploadFor == name {
+		z.Error = p.UploadError
+	}
+	return z
+}
 
 // AsksRequired reports whether the form has a box or a field that must be
 // filled, so it explains the required mark (DESIGN 7.2).
@@ -1200,7 +1255,7 @@ func (p ModPlanPage) AccountPath() string {
 	if p.Form.Staged != "" {
 		return accountLink(p.ModsPath())
 	}
-	return accountLink(planPath(p.World.ID, p.Form.query()))
+	return accountLink(p.DraftPath())
 }
 
 // Tabs mark the Mods tab as the section the plan belongs to.
@@ -1215,7 +1270,7 @@ func (p ModPlanPage) Heading() i18n.Msg {
 	w := p.World.Name
 	var one any = ""
 	if len(p.Form.Names) == 1 {
-		one = i18n.Ident(p.Form.Names[0])
+		one = p.ident(p.Form.Names[0])
 	}
 	if p.extraKinds() {
 		return i18n.M("mods.plan.heading.change", "world", w)
@@ -1247,7 +1302,7 @@ func (p ModPlanPage) Heading() i18n.Msg {
 	case mods.KindRemove:
 		return i18n.M("mods.plan.heading.remove", "mod", one, "world", w)
 	case mods.KindUpload:
-		return i18n.M("mods.plan.heading.upload", "mod", i18n.Ident(p.Uploaded.Name), "version", p.Uploaded.Version, "world", w)
+		return i18n.M("mods.plan.heading.upload", "mod", p.ident(p.Uploaded.Name), "version", p.Uploaded.Version, "world", w)
 	}
 	return i18n.M("mods.plan.heading.change", "world", w)
 }
@@ -1305,7 +1360,7 @@ func (p ModPlanPage) Nothing() bool {
 // has passed, apart from an unticked "continue without" box, which is a
 // field error after the post (DESIGN 7.1, 7.2, SPEC 17.8).
 func (p ModPlanPage) CanApply() bool {
-	if !p.Error.IsZero() || !p.Busy.IsZero() || len(p.Plan.Conflicts) > 0 || p.Count() == 0 && len(p.Plan.Unresolved) == 0 {
+	if !p.Error.IsZero() || !p.Busy.IsZero() || len(p.Plan.Conflicts) > 0 || p.Form.FavoriteVersion != "" || p.Count() == 0 && len(p.Plan.Unresolved) == 0 {
 		return false
 	}
 	if p.NoAccount && p.Downloads() > 0 {
@@ -1320,33 +1375,34 @@ func (p ModPlanPage) CanApply() bool {
 	return true
 }
 
-// changeText words one change and why it is in the plan.
-func changeText(c mods.Change) i18n.Msg {
+// changeText words c after the mod's name, which its row shows as a
+// title; a mod named in the reason shows by title too (SPEC 9.15).
+func (p ModPlanPage) changeText(c mods.Change) i18n.Msg {
 	var what i18n.Msg
 	switch {
 	case c.Action == mods.ActRemove:
-		what = i18n.M("mods.plan.item.name", "mod", i18n.Ident(c.Name), "version", c.From)
+		what = i18n.M("mods.plan.row.version", "version", c.From)
 	case c.From != "" && c.From != c.To:
-		what = i18n.M("mods.plan.item.from_to", "mod", i18n.Ident(c.Name), "from", c.From, "to", c.To)
+		what = i18n.M("mods.plan.row.from_to", "from", c.From, "to", c.To)
 	case c.Upload:
-		what = i18n.M("mods.plan.item.uploaded", "mod", i18n.Ident(c.Name), "version", c.To)
+		what = i18n.M("mods.plan.row.uploaded", "version", c.To)
 	default:
-		what = i18n.M("mods.plan.item.name", "mod", i18n.Ident(c.Name), "version", c.To)
+		what = i18n.M("mods.plan.row.version", "version", c.To)
 	}
 	var why i18n.Msg
 	switch c.Why.Code {
 	case mods.WhyRequiredBy:
-		why = i18n.M("mods.plan.why.required_by", "mod", i18n.Ident(c.Why.Of))
+		why = i18n.M("mods.plan.why.required_by", "mod", p.ident(c.Why.Of))
 	case mods.WhyOptionalOf:
-		why = i18n.M("mods.plan.why.optional_of", "mod", i18n.Ident(c.Why.Of))
+		why = i18n.M("mods.plan.why.optional_of", "mod", p.ident(c.Why.Of))
 	case mods.WhyRecommendedBy:
-		why = i18n.M("mods.plan.why.recommended_by", "mod", i18n.Ident(c.Why.Of))
+		why = i18n.M("mods.plan.why.recommended_by", "mod", p.ident(c.Why.Of))
 	case mods.WhyFromSave:
 		why = i18n.M("mods.plan.why.from_save")
 	case mods.WhyNotInSave:
 		why = i18n.M("mods.plan.why.not_in_save")
 	case mods.WhyOnlyNeededBy:
-		why = i18n.M("mods.plan.why.only_needed_by", "mod", i18n.Ident(c.Why.Of))
+		why = i18n.M("mods.plan.why.only_needed_by", "mod", p.ident(c.Why.Of))
 	}
 	if !why.IsZero() {
 		what = i18n.M("mods.plan.item.why", "item", what, "why", why)
@@ -1357,33 +1413,33 @@ func changeText(c mods.Change) i18n.Msg {
 	return what
 }
 
-func conflictText(c mods.Conflict) i18n.Msg {
+func (p ModPlanPage) conflictText(c mods.Conflict) i18n.Msg {
 	switch c.Code {
 	case mods.ConflictIncompatible:
-		return i18n.M("mods.conflict.incompatible", "mod", i18n.Ident(c.Mod), "other", i18n.Ident(c.Other))
+		return i18n.M("mods.conflict.incompatible", "mod", p.ident(c.Mod), "other", p.ident(c.Other))
 	case mods.ConflictSpaceAgeOff:
 		if c.Other == "" {
-			return i18n.M("mods.conflict.space_age_save", "mod", i18n.Ident(c.Mod))
+			return i18n.M("mods.conflict.space_age_save", "mod", p.ident(c.Mod))
 		}
-		return i18n.M("mods.conflict.space_age_off", "mod", i18n.Ident(c.Mod), "other", i18n.Ident(c.Other))
+		return i18n.M("mods.conflict.space_age_off", "mod", p.ident(c.Mod), "other", p.ident(c.Other))
 	case mods.ConflictNoRelease:
-		return i18n.M("mods.conflict.no_release", "mod", i18n.Ident(c.Mod), "needs", needsText(c.Needs))
+		return i18n.M("mods.conflict.no_release", "mod", p.ident(c.Mod), "needs", needsText(c.Needs))
 	case mods.ConflictNoSuchRelease:
-		return i18n.M("mods.conflict.no_such_release", "mod", i18n.Ident(c.Mod), "version", c.Version)
+		return i18n.M("mods.conflict.no_such_release", "mod", p.ident(c.Mod), "version", c.Version)
 	case mods.ConflictVersion:
-		return i18n.M("mods.conflict.version", "mod", i18n.Ident(c.Mod), "version", c.Version, "needs", needsText(c.Needs))
+		return i18n.M("mods.conflict.version", "mod", p.ident(c.Mod), "version", c.Version, "needs", needsText(c.Needs))
 	case mods.ConflictNotOnPortal:
-		return i18n.M("mods.conflict.not_on_portal", "mod", i18n.Ident(c.Mod))
+		return i18n.M("mods.conflict.not_on_portal", "mod", p.ident(c.Mod))
 	case mods.ConflictRequiredBy:
-		return i18n.M("mods.conflict.required_by", "mod", i18n.Ident(c.Mod), "other", i18n.Ident(c.Other))
+		return i18n.M("mods.conflict.required_by", "mod", p.ident(c.Mod), "other", p.ident(c.Other))
 	case mods.ConflictBuiltIn:
-		return i18n.M("mods.conflict.built_in", "mod", i18n.Ident(c.Mod))
+		return i18n.M("mods.conflict.built_in", "mod", p.ident(c.Mod))
 	case mods.ConflictLocal:
-		return i18n.M("mods.conflict.local", "mod", i18n.Ident(c.Mod))
+		return i18n.M("mods.conflict.local", "mod", p.ident(c.Mod))
 	case mods.ConflictNotInstalled:
-		return i18n.M("mods.conflict.not_installed", "mod", i18n.Ident(c.Mod))
+		return i18n.M("mods.conflict.not_installed", "mod", p.ident(c.Mod))
 	case mods.ConflictBadDep:
-		return i18n.M("mods.conflict.bad_dependency", "mod", i18n.Ident(c.Mod), "text", c.Text)
+		return i18n.M("mods.conflict.bad_dependency", "mod", p.ident(c.Mod), "text", c.Text)
 	case mods.ConflictTooComplex:
 		return i18n.M("mods.conflict.too_complex")
 	}
@@ -1426,24 +1482,30 @@ func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	q := r.URL.Query()
-	f, ok := readPlanForm(q)
+	// A plan asks the portal about every mod it names, so another site's
+	// page may not make a signed-in browser ask for one; nor may it make
+	// drafts, which would push out the admin's own. The admin's click on
+	// Try again is same-origin and opens the same short address.
+	if !fromThisSite(r) {
+		p := ModPlanPage{World: sum, Error: i18n.M("mods.error.cross_site"), Retry: true, RetryTo: modsPath(sum.ID)}
+		if to := r.URL.RequestURI(); len(to) <= maxAddress {
+			p.RetryTo = to
+		}
+		s.page(w, r, http.StatusForbidden, u.Username, p)
+		return
+	}
+	f, lost, ok := s.entryForm(r.Context(), u, sum, q)
 	if !ok {
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	// A plan asks the portal about every mod it names, so another site's
-	// page may not make a signed-in browser ask for one. The admin's own
-	// click on Try again is same-origin.
-	if !fromThisSite(r) {
-		p := ModPlanPage{World: sum, Form: f, Error: i18n.M("mods.error.cross_site"), Retry: planPath(sum.ID, f.query())}
-		s.page(w, r, http.StatusForbidden, u.Username, p)
-		return
-	}
+	token := q.Get(draftField)
 	form := defaultCountdown()
 	if c, ok := q["countdown"]; ok {
 		form.Countdown = c[0]
 	}
 	p := s.planPage(r.Context(), sum, f, form)
+	p.Draft, p.DraftLost = s.drafts.keep(token, u.ID, sum.ID, p.Form), lost
 	p.Generated = q.Get(generatedQuery) != ""
 	// htmx swaps only a 2xx reply, so a redraw that finds a conflict or a
 	// portal failure still answers 200 for the page to show it.
@@ -1453,6 +1515,141 @@ func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	s.page(w, r, planStatus(p), u.Username, p)
+}
+
+// entryForm is the plan a link asks for: a draft with at most one change
+// to it, a favorite's mods, the saved picks, or a kind and one name. A
+// draft that is gone, as after it expired or Foreman restarted, starts
+// again from the saved picks, and lost says so.
+func (s *server) entryForm(ctx context.Context, u store.User, sum world.Summary, q url.Values) (f planForm, lost, ok bool) {
+	if token := q.Get(draftField); token != "" {
+		f, ok := s.drafts.get(token, u.ID, sum.ID)
+		if !ok {
+			return s.picksForm(ctx, sum.ID), true, true
+		}
+		switch {
+		case q.Has("removed"):
+			f.Removed = q.Get("removed")
+			f.Names = slices.DeleteFunc(f.Names, func(n string) bool { return n == f.Removed })
+		case q.Has(alsoDisableField):
+			f.AlsoDisable = alsoAdd(&f, f.AlsoDisable, q.Get(alsoDisableField), q.Has("fixed"))
+		case q.Has(alsoRemoveField):
+			f.AlsoRemove = alsoAdd(&f, f.AlsoRemove, q.Get(alsoRemoveField), q.Has("fixed"))
+		}
+		return f, false, true
+	}
+	if id := q.Get(favoriteQuery); id != "" {
+		return s.favoriteForm(ctx, sum, id)
+	}
+	f, ok = readPlanForm(q)
+	if ok && f.Kind == mods.KindInstall && len(f.Names) == 0 {
+		return s.picksForm(ctx, sum.ID), false, true
+	}
+	return f, false, ok
+}
+
+// alsoAdd adds a conflict's fix to list once, so a reload of its link
+// changes nothing, and marks it Fixed for the announcer when fixed.
+func alsoAdd(f *planForm, list []string, name string, fixed bool) []string {
+	if fixed {
+		f.Fixed = name
+	}
+	if name == "" || slices.Contains(list, name) || len(f.AlsoDisable)+len(f.AlsoRemove) >= store.MaxModPlanNames {
+		return list
+	}
+	return append(list, name)
+}
+
+// picksForm installs the world's saved picks (SPEC 9.14).
+func (s *server) picksForm(ctx context.Context, id string) planForm {
+	f := planForm{Kind: mods.KindInstall, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}, Versions: map[string]string{}}
+	picks, err := s.store.ModPlan(ctx, id)
+	if err != nil {
+		s.log.Warn("read the mod plan", "world", id, "error", err)
+	}
+	for _, m := range picks {
+		f.Names = append(f.Names, m.Name)
+	}
+	return f
+}
+
+// favoriteForm installs a favorite's mods, at its pinned versions when the
+// world is on the favorite's game line; on another line each gets the
+// newest that fits. A game version this Foreman does not support is a
+// conflict on the page (SPEC 5.12). A favorite that is gone leaves the
+// saved picks, which Generate saved from it.
+func (s *server) favoriteForm(ctx context.Context, sum world.Summary, id string) (planForm, bool, bool) {
+	if s.favorites == nil {
+		return s.picksForm(ctx, sum.ID), true, true
+	}
+	fav, _, err := s.favorites.Get(id)
+	if err != nil {
+		return s.picksForm(ctx, sum.ID), true, true
+	}
+	f := planForm{Kind: mods.KindInstall, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}, Versions: map[string]string{}}
+	favLine, known := mapgen.Line(fav.GameVersion)
+	if !known || !world.SupportedGameVersion(fav.GameVersion) {
+		f.FavoriteVersion = fav.GameVersion
+	}
+	for _, m := range fav.Mods {
+		f.Names = append(f.Names, m.Name)
+		if known && favLine == mods.GameLine(sum.GameVersion) && m.Version != "" {
+			f.Versions[m.Name] = m.Version
+		}
+	}
+	return f, false, true
+}
+
+// handlePlanRedraw takes the review page's answers, keeps them in its
+// draft and draws the plan again: in place with script, and without it
+// through the draft's address, so a reload asks nothing again.
+func (s *server) handlePlanRedraw(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modsWorld(w, r, u)
+	if !ok {
+		return
+	}
+	if !s.readForm(w, r) {
+		return
+	}
+	f, ok := s.postedForm(u, sum, r.PostForm)
+	if !ok {
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
+		return
+	}
+	token := r.PostForm.Get(draftField)
+	if r.Header.Get("HX-Request") == "" {
+		token = s.drafts.keep(token, u.ID, sum.ID, f)
+		var more []string
+		if c := r.PostForm.Get("countdown"); c != "" && len(c) <= maxCountdownField {
+			more = []string{"countdown", c}
+		}
+		http.Redirect(w, r, draftPath(sum.ID, token, more...), http.StatusSeeOther) //nolint:gosec // a local path under this world's mods pages
+		return
+	}
+	countdown := defaultCountdown()
+	if c := r.PostForm.Get("countdown"); c != "" {
+		countdown.Countdown = c
+	}
+	p := s.planPage(r.Context(), sum, f, countdown)
+	p.Draft, p.Redraw = s.drafts.keep(token, u.ID, sum.ID, p.Form), true
+	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// maxCountdownField bounds the countdown a redraw's address carries; a
+// real one is a few digits.
+const maxCountdownField = 8
+
+// postedForm reads the review page's form; what only the draft holds
+// comes from it.
+func (s *server) postedForm(u store.User, sum world.Summary, v url.Values) (planForm, bool) {
+	f, ok := readPlanForm(v)
+	if !ok {
+		return planForm{}, false
+	}
+	if d, ok := s.drafts.get(v.Get(draftField), u.ID, sum.ID); ok {
+		f.FavoriteVersion = d.FavoriteVersion
+	}
+	return f, true
 }
 
 // fromThisSite reports whether a request came from Foreman's own pages or
@@ -1470,7 +1667,7 @@ func planStatus(p ModPlanPage) int {
 	switch {
 	case !p.Error.IsZero():
 		return http.StatusBadGateway
-	case len(p.Plan.Conflicts) > 0:
+	case len(p.Plan.Conflicts) > 0, p.Form.FavoriteVersion != "":
 		return http.StatusConflict
 	}
 	return http.StatusOK
@@ -1497,7 +1694,7 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 		p.Plan, p.Fingerprint, err = s.planner.Plan(ctx, sum.ID, req)
 	}
 	if err != nil {
-		p.Error, p.Retry = s.planError(sum.ID, err), planPath(sum.ID, f.query())
+		p.Error, p.Retry = s.planError(sum.ID, err), true
 		return p
 	}
 	p.Drops = s.planDrops(ctx, sum.ID, p.Plan, p.Running)
@@ -1505,8 +1702,109 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 		s.log.Warn("list the mods for the plan's fixes", "world", sum.ID, "error", err)
 	}
 	p.Hash = mods.HashPlan(p.Plan, p.Drops)
+	p.facts = s.planFacts(ctx, p)
 	return p
 }
+
+// planFacts gathers each mod's title, and the details of the offered ones,
+// from info.json and then the portal (SPEC 9.2, 9.15). The plan has already
+// looked up the mods it changes, so those come from the portal client's
+// cache. An offered mod may be one the plan never asked about, so at most
+// store.MaxModPlanNames offered mods are asked for; the rest show by title
+// alone, or by name (ruling 22 of the fixes-11 plan).
+func (s *server) planFacts(ctx context.Context, p ModPlanPage) map[string]ModFacts {
+	out := map[string]ModFacts{}
+	installed := map[string]world.InstalledMod{}
+	for _, m := range p.Have {
+		installed[m.Name] = m
+		out[m.Name] = ModFacts{Title: m.Title, Version: m.Version}
+	}
+	// Details are a help, not the plan: a slow portal leaves them out
+	// rather than holding the page.
+	ctx, cancel := context.WithTimeout(ctx, planFactsWait)
+	defer cancel()
+	seen := map[string]bool{}
+	// pick lists the names not seen yet that the portal may have, at most
+	// limit of them (no limit when limit < 0).
+	pick := func(limit int, names ...string) []string {
+		var got []string
+		for _, n := range names {
+			if n == "" || seen[n] || installed[n].BuiltIn || installed[n].Local {
+				continue
+			}
+			if limit >= 0 && len(got) >= limit {
+				break
+			}
+			seen[n] = true
+			got = append(got, n)
+		}
+		return got
+	}
+	var mine []string
+	for _, c := range p.Plan.Changes {
+		mine = append(mine, c.Name, c.Why.Of)
+	}
+	offers := slices.Concat(p.Plan.Optional, p.Plan.Orphans)
+	var offered, of []string
+	for _, o := range offers {
+		offered, of = append(offered, o.Name), append(of, o.Of)
+	}
+	plan := pick(-1, slices.Concat(p.Form.Names, mine)...)
+	asked := pick(store.MaxModPlanNames, offered...)
+	why := pick(store.MaxModPlanNames, of...)
+	for name, r := range s.portal.Mods(ctx, slices.Concat(plan, why)) {
+		if r.Err == nil {
+			out[name] = modFacts(out[name], r.Mod)
+		}
+	}
+	for name, r := range s.portal.Mods(ctx, asked) {
+		if r.Err == nil {
+			_, have := installed[name]
+			out[name] = offerFacts(modFacts(out[name], r.Mod), r.Mod, p, have)
+		}
+	}
+	return out
+}
+
+// planFactsWait bounds the portal lookups for the review page's details.
+var planFactsWait = 3 * time.Second
+
+// modFacts adds the portal's word on a mod to what info.json gave.
+func modFacts(f ModFacts, m modportal.Mod) ModFacts {
+	f.OnPortal = true
+	if f.Title == "" {
+		f.Title = m.Title
+	}
+	return f
+}
+
+// offerFacts adds an offered mod's summary and the release it would
+// install, or has installed, with that release's date.
+func offerFacts(f ModFacts, m modportal.Mod, p ModPlanPage, installed bool) ModFacts {
+	f.Summary = world.CutText(world.CleanText(m.Summary), maxPortalSummary)
+	want := f.Version
+	if c := slices.IndexFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == m.Name }); c >= 0 && p.Plan.Changes[c].To != "" {
+		want = p.Plan.Changes[c].To
+	}
+	if !installed && want == "" {
+		for _, r := range m.Releases {
+			if r.FactorioVersion == p.Line() && (want == "" || world.CompareVersions(r.Version, want) > 0) {
+				want = r.Version
+			}
+		}
+	}
+	f.Version = want
+	for _, r := range m.Releases {
+		if r.Version == want {
+			f.Released = r.ReleasedAt
+		}
+	}
+	return f
+}
+
+// maxPortalSummary bounds a portal summary on the review page; it is
+// untrusted.
+const maxPortalSummary = 300
 
 // planDrops lists the plan's dropped mods, leaving out unresolved mods,
 // which have their own box. A save that cannot be read drops nothing here;
@@ -1621,13 +1919,14 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	if !s.readForm(w, r) {
 		return
 	}
-	f, ok := readPlanForm(r.PostForm)
+	f, ok := s.postedForm(u, sum, r.PostForm)
 	if !ok {
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
 	form, stop := readCountdown(r)
 	p := s.planPage(r.Context(), sum, f, form)
+	p.Draft = s.drafts.keep(r.PostForm.Get(draftField), u.ID, sum.ID, p.Form)
 	if !p.Running {
 		p.CountdownError = i18n.Msg{}
 	}
@@ -1690,7 +1989,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	// Trying again opens this plan anew, unless it used the uploaded zip.
 	shown := modResult{Changes: p.Plan.Changes}
 	if !p.UsesUpload() {
-		shown.Retry = planPath(sum.ID, f.query())
+		shown.Retry = p.DraftPath()
 	}
 	// The installed picks leave the saved ones; a refused request keeps
 	// them, and so do picks this plan did not install (SPEC 9.14).

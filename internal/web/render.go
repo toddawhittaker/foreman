@@ -382,6 +382,8 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"extLink": loc.ExternalLink,
 		// portalPath is a mod's page on the mod portal.
 		"portalPath": portalPath,
+		// modName is the mod-name partial's input: {{template "mod-name" (modName .Name .Title true)}}.
+		"modName": modName,
 		// game marks Factorio's own words, for tHTML.
 		"game": i18n.Game,
 		// m makes a Msg to fill a placeholder, such as a snapshot label:
@@ -412,7 +414,7 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 
 // partials are template files that no route renders on their own: every page
 // loads them, and each defines templates the pages include.
-var partials = []string{"mapgenform", "generatepreview", "failure", "modportal"}
+var partials = []string{"mapgenform", "generatepreview", "failure", "modportal", "dropzone", "mapexchange"}
 
 var partialFiles = func() []string {
 	out := make([]string, len(partials))

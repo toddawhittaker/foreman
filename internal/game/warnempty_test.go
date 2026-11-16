@@ -67,15 +67,16 @@ func TestOnlyRunningRefusesAStoppedGame(t *testing.T) {
 	}
 }
 
-// A crash the monitor has not seen yet is not a running game either.
+// A crash the monitor has not seen yet is not a running game either. The
+// game keeps failing to load, so Docker's restart cannot bring it back in
+// game before the restart looks (TestRestartReachesAGameBackFromACrash
+// covers a game that is back).
 func TestOnlyRunningRefusesACrashedGame(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Crashed")
 	r.start(id)
 	cid := r.container(id).ID
-	if err := r.game.Crash(ContainerName(id), 1, false); err != nil {
-		t.Fatal(err)
-	}
+	r.game.SetCrashLoop(ContainerName(id), true)
 	err := r.c.Restart(context.Background(), id, admin, StopOptions{Countdown: MaxStopCountdown, OnlyRunning: true}, StartOptions{})
 	if !errors.Is(err, ErrNotRunning) {
 		t.Fatalf("restart = %v, want ErrNotRunning", err)
@@ -85,5 +86,28 @@ func TestOnlyRunningRefusesACrashedGame(t *testing.T) {
 	}
 	if slices.Contains(r.commands(id), "/server-save") {
 		t.Error("the crashed game was saved")
+	}
+}
+
+// A game Docker restarted after a crash, and that is back in game, is a
+// running game: its restart warns and saves over RCON, not over the
+// connection to the run that crashed (SPEC 8.7).
+func TestRestartReachesAGameBackFromACrash(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Back")
+	r.start(id)
+	if err := r.game.Crash(ContainerName(id), 1, false); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, func() bool {
+		c, ok := r.game.Daemon().Container(r.container(id).ID)
+		return ok && c.RestartCount > 0 && r.c.Status(id).State == StateRunning
+	}, "the game to be back in game")
+	err := r.c.Restart(context.Background(), id, admin, StopOptions{Countdown: MaxStopCountdown, OnlyRunning: true}, StartOptions{})
+	if err != nil {
+		t.Fatalf("restart = %v, want it to run", err)
+	}
+	if !slices.Contains(r.commands(id), "/server-save") {
+		t.Error("the running game was not saved")
 	}
 }

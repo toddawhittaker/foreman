@@ -6,7 +6,8 @@ import (
 	"fmt"
 )
 
-// Field is one top-level key and its new value, written as JSON.
+// Field is one top-level key and its new value, written as JSON. A nil JSON
+// removes the key, and every repeat of it.
 type Field struct {
 	Key  string
 	JSON []byte
@@ -14,14 +15,15 @@ type Field struct {
 
 // SetFields returns b with each top-level key set to its value, in order. A
 // key that is already there keeps its place, and a new one goes at the end;
-// the rest of the file keeps its text, order and layout (SPEC 11.3). It
-// refuses input that is not one JSON object and a value that is not JSON.
+// the rest of the file keeps its text, order and layout (SPEC 11.3). A field
+// with no value removes its key. It refuses input that is not one JSON object
+// and a value that is not JSON.
 func SetFields(b []byte, fields []Field) ([]byte, error) {
 	if len(b) > MaxBytes {
 		return nil, errors.New("settings file too large")
 	}
 	for _, f := range fields {
-		if !json.Valid(f.JSON) {
+		if f.JSON != nil && !json.Valid(f.JSON) {
 			return nil, fmt.Errorf("the value for %q is not JSON", f.Key)
 		}
 	}
@@ -30,6 +32,10 @@ func SetFields(b []byte, fields []Field) ([]byte, error) {
 		root, fe := parse(b)
 		if fe != nil {
 			return nil, errors.New("settings file is not one JSON object")
+		}
+		if f.JSON == nil {
+			b = rebuild(b, root, func(m member) bool { return m.key != f.Key })
+			continue
 		}
 		b = setMember(b, root, f.Key, compact(f.JSON))
 	}

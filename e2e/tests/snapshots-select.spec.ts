@@ -69,7 +69,7 @@ test("Delete selected is one Shift+Tab from the first box", async ({ page, forem
   const lastRow = (await page.locator("table.snapshot-list tbody tr").last().boundingBox())!;
   expect(bar.y).toBeGreaterThanOrEqual(lastRow.y + lastRow.height - 0.5);
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/snapshots\/delete\?/);
+  await expect(page).toHaveURL("/snapshots/review");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Delete");
 
   // On the Snapshots tab the bar comes just before the first world's list:

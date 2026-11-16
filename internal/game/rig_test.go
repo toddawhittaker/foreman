@@ -1,6 +1,7 @@
 package game
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -151,6 +152,9 @@ type rigOptions struct {
 	selfID  string
 	sidecar string // FOREMAN_GAME_NETWORK_CONTAINER
 	noRun   bool
+	// logs receives the controller's log. It is set before Run starts,
+	// since Run's goroutines read the logger from then on.
+	logs io.Writer
 }
 
 func newRig(t *testing.T, opts rigOptions) *rig {
@@ -205,6 +209,9 @@ func (r *rig) newController(opts rigOptions) *Controller {
 		HostDataDir: r.data, GameUID: 845, GameGID: 845,
 		Network: opts.network, NetworkContainer: opts.sidecar, SelfID: opts.selfID,
 		Now: r.clock.Now, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	if opts.logs != nil {
+		cfg.Log = slog.New(slog.NewTextHandler(opts.logs, nil))
 	}
 	c, err := New(cfg)
 	if err != nil {
@@ -382,4 +389,22 @@ func (r *rig) crashCount(id string) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return len(w.crashes)
+}
+
+// lockedBuffer is a log destination safe for the watcher's goroutine.
+type lockedBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *lockedBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+
+func (l *lockedBuffer) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.String()
 }

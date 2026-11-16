@@ -1,5 +1,7 @@
 {{define "title"}}{{t "worlds.saves.title" "world" .Page.WorldName}}{{end}}
 
+{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
@@ -37,6 +39,7 @@
   <p>{{if and .LoadSave (not .LoadMissing)}}{{tHTML "worlds.saves.load.pinned" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.load.text"}}{{end}}</p>
   <form method="post" action="{{.LoadHref}}">
   {{- end}}
+  <p class="hint" id="saves-time-hint">{{t "worlds.saves.time_hint"}}</p>
   <table class="save-list" role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
@@ -45,7 +48,8 @@
     <tbody role="rowgroup">
       {{- range .Rows}}
       <tr role="row">
-        <td role="cell"><div class="save-name"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</div></td>
+        <td role="cell"><div class="save-name">
+          {{- if .WorldName}}{{/* The link is a flex box (a 44 px target), which drops the space between its children; the span keeps the name and the time as one run of text. */}}<a href="{{.Href}}"><span>{{.WorldName}}, {{template "when" .Saved}}</span></a> <span class="save-file">{{.Name}}</span>{{else}}<a href="{{.Href}}">{{.Name}}</a>{{end}}{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</div></td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
         <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
         {{- if not $.Page.Newer}}
@@ -74,16 +78,8 @@
   <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>
   <form method="post" action="{{.SavesHref}}" enctype="multipart/form-data" novalidate>
     {{template "required-note"}}
-    <div class="field">
-      <label for="save-file" class="required">{{t "worlds.saves.upload.label"}}</label>
-      <p class="hint" id="save-file-hint">{{t "worlds.saves.upload.hint" "limit" (bytes .UploadLimit)}}</p>
-      <input id="save-file" name="save" type="file" accept=".zip,application/zip" required
-        aria-describedby="save-file-hint{{if not .UploadError.IsZero}} save-file-error{{end}}"
-        {{- if not .UploadError.IsZero}} aria-invalid="true"{{end}}>
-      {{- if not .UploadError.IsZero}}
-      <p class="error" id="save-file-error"><strong>{{t "common.error.label"}}</strong> {{msg .UploadError}}</p>
-      {{- end}}
-    </div>
+    <p class="hint">{{t "worlds.saves.upload.hint"}}</p>
+    {{template "dropzone" .UploadZone}}
     <div class="actions">
       <button type="submit" class="button button--primary">{{t "worlds.saves.upload.button"}}</button>
     </div>

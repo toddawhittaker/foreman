@@ -26,10 +26,11 @@ func TestReviewOfTwoModsOneSnapshot(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("plan %d\n%s", code, one)
 	}
-	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", `<p class="plan-label" id="plan-changes" tabindex="-1">Changes:</p>`, "aai-industry 1.0.0",
+	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", `<p class="plan-label" id="plan-changes" tabindex="-1">Changes:</p>`,
 		// A stopped world's install is the primary action (DESIGN 7.1).
 		`class="button button--primary" id="act-apply">Install 1 mod</button>`)
-	if strings.Contains(one, "Remove from plan") {
+	wantIn(t, "plan of one rows", planRows(one), "aai-industry 1.0.0")
+	if strings.Contains(one, "from the plan</span>") {
 		t.Error("the only mod in a plan offers to take it out; Cancel does that")
 	}
 
@@ -194,13 +195,13 @@ func TestServerModNoticeNamesTheFix(t *testing.T) {
 	_, frag := g.getStatus(modsPath(id) + "/notice")
 	wantIn(t, "two errors", frag, "2 mods of Base can no longer be downloaded", ">Review 2 mods</a>", `href="/worlds/`+id+`/mods"`)
 
-	// Two gone mods that both have updates: the button says what its plan does.
+	// Two gone mods that both have updates: a button that posts, so the address names no mods.
 	g3 := newModsRig(t, true)
 	g3.portal.AddZip("beta", "2.0.0")
 	g3.portal.AddZip("gamma", "2.0.0")
 	id3 := g3.world20("Base", "beta_1.0.0", "gamma_1.0.0")
 	_, frag = g3.getStatus(modsPath(id3) + "/notice")
-	wantIn(t, "two updates", frag, ">Update 2 mods</a>", `href="/worlds/`+id3+`/mods/plan?kind=update&amp;name=beta&amp;name=gamma"`)
+	wantIn(t, "two updates", frag, `<form method="post" action="/worlds/`+id3+`/mods/plan/gone"><button type="submit" class="button" id="act-mods-fix">Update 2 mods</button></form>`)
 
 	g2 := newModsRig(t, true)
 	id2 := g2.world20("Base", "beta_1.0.0")
@@ -227,8 +228,8 @@ func TestAccountLinksToTheProfilePage(t *testing.T) {
 func TestPlanAccountLinkReturnsToThePlan(t *testing.T) {
 	ah := newAccountHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
 	c := ah.signIn()
-	p := ModPlanPage{World: world.Summary{ID: "base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"a", "b"}}}
-	back := planPath("base", url.Values{"kind": {"install"}, "name": {"a", "b"}})
+	p := ModPlanPage{World: world.Summary{ID: "base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"a", "b"}}, Draft: "tok"}
+	back := draftPath("base", "tok")
 	if got, want := p.AccountPath(), PathAccount+"?return="+url.QueryEscape(back); got != want {
 		t.Fatalf("account link %q, want %q", got, want)
 	}

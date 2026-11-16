@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/mods"
@@ -31,8 +32,10 @@ func TestPlanVersionList(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("status %d\n%s", code, body)
 	}
-	wantIn(t, "default", plain(body), "ver-a 2.0.0", `<label for="mod-ver-a-version">Version of ver-a</label>`,
-		`<select id="mod-ver-a-version" name="version-ver-a" hx-get="`+plan+`" aria-describedby="plan-versions-hint">`,
+	wantIn(t, "default rows", planRows(body), "ver-a 2.0.0")
+	// The list sits in the mod's row, named by its title (issue 620).
+	wantIn(t, "default", plain(body), `<label for="mod-ver-a-version" class="visually-hidden">Version of ver-a</label>`,
+		`<select id="mod-ver-a-version" name="version-ver-a" hx-post="`+plan+`/redraw" aria-describedby="plan-versions-hint">`,
 		`<option value="" selected>Newest that fits (2.0.0)</option>`, `<option value="2.0.0">2.0.0</option>`, `<option value="1.0.0">1.0.0</option>`,
 		"Only releases for Factorio 2.0")
 	if strings.Contains(body, "0.9.0") {
@@ -42,7 +45,8 @@ func TestPlanVersionList(t *testing.T) {
 	// Choosing 1.0.0 redraws the plan with it; the library is still the newest that fits.
 	rec := g.harness.get(plan+"?kind=install&name=ver-a&version-ver-a=1.0.0", withCookie(g.cookie), withHeader("HX-Request", "true"))
 	body = rec.Body.String()
-	wantIn(t, "chosen", plain(body), "ver-a 1.0.0", "ver-lib 2.0.0", `<option value="1.0.0" selected>1.0.0</option>`,
+	wantIn(t, "chosen rows", planRows(body), "ver-a 1.0.0", "ver-lib 2.0.0")
+	wantIn(t, "chosen", plain(body), `<option value="1.0.0" selected>1.0.0</option>`,
 		`<option value="">Newest that fits</option>`, "Install 2 mods")
 
 	// Applying it installs exactly the chosen release.
@@ -88,7 +92,8 @@ func TestChangeVersionGoesBack(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("status %d\n%s", code, body)
 	}
-	wantIn(t, "back", plain(body), "<dt>Downgrade</dt>", "ver-b 1.1.0 to 1.0.0", `id="act-apply">Change 1 mod</button>`, "Take a snapshot")
+	wantIn(t, "back rows", planRows(body), "ver-b 1.1.0 to 1.0.0")
+	wantIn(t, "back", plain(body), "<dt>Downgrade</dt>", `id="act-apply">Change 1 mod</button>`, "Take a snapshot")
 	g.wantRedirectHome(g.post(plan, withVersions(planValues(t, body), body)))
 	if err := g.waitResult(id, game.AuditMods); err != nil {
 		t.Fatal(err)
@@ -153,7 +158,7 @@ func TestPlanVersionIsChecked(t *testing.T) {
 }
 
 // The form keeps a chosen version only for an asked mod of an install or
-// update, and every link back to the plan carries it.
+// update, and the page's draft keeps it.
 func TestPlanFormVersions(t *testing.T) {
 	f, ok := readPlanForm(url.Values{"kind": {"install"}, "name": {"a", "b"}, "version-a": {"1.2.3"}, "version-z": {"1.0.0"}, "version-b": {""}})
 	if !ok {
@@ -162,12 +167,9 @@ func TestPlanFormVersions(t *testing.T) {
 	if len(f.Versions) != 1 || f.Versions["a"] != "1.2.3" {
 		t.Errorf("versions = %v", f.Versions)
 	}
-	if got := f.query().Encode(); got != "kind=install&name=a&name=b&version-a=1.2.3" {
-		t.Errorf("query = %s", got)
-	}
-	// Taking a out of the plan takes its version too.
-	if got := f.withNames([]string{"b"}).query().Encode(); got != "kind=install&name=b" {
-		t.Errorf("without a = %s", got)
+	d := newDraftStore(time.Now)
+	if got, _ := d.get(d.keep("", 1, "w", f), 1, "w"); got.Versions["a"] != "1.2.3" {
+		t.Errorf("draft versions = %v", got.Versions)
 	}
 	f, ok = readPlanForm(url.Values{"kind": {"disable"}, "name": {"a"}, "version-a": {"nonsense"}})
 	if !ok || len(f.Versions) != 0 {
@@ -179,23 +181,32 @@ func TestPlanFormVersions(t *testing.T) {
 	}
 }
 
-// Two asked mods share one fieldset and its hint; one mod's list is a
-// plain field with the hint under its label (DESIGN 7.2).
+// Each asked mod's list sits in its own row of the changes, beside its
+// title; one hint above the changes serves them all (issue 620, SPEC 9.2).
 func TestPlanVersionListShape(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("ver-d", "1.0.0")
 	g.portal.AddZip("ver-e", "1.0.0")
 	id := g.world20("Base")
 	plan := "/worlds/" + id + "/mods/plan"
-	_, one := g.getStatus(plan + "?kind=install&name=ver-d")
-	if strings.Contains(one, `class="plan-versions"`) {
-		t.Error("one mod's list is in a fieldset")
-	}
-	wantIn(t, "one", plain(one), `<label for="mod-ver-d-version">Version of ver-d</label>
-        <p class="hint" id="plan-versions-hint">`)
 	_, two := g.getStatus(plan + "?kind=install&name=ver-d&name=ver-e")
-	wantIn(t, "two", two, `<fieldset class="plan-versions">
-      <legend>Versions</legend>`, `id="mod-ver-d-version"`, `id="mod-ver-e-version"`)
+	if strings.Contains(two, `class="plan-versions"`) {
+		t.Error("the version lists are still a fieldset of their own")
+	}
+	if n := strings.Count(two, `id="plan-versions-hint"`); n != 1 {
+		t.Errorf("%d version hints, want 1", n)
+	}
+	for _, n := range []string{"ver-d", "ver-e"} {
+		found := false
+		for _, m := range planRowRe.FindAllStringSubmatch(two, -1) {
+			if strings.Contains(m[1], `href="https://mods.factorio.com/mod/`+n+`"`) {
+				found = strings.Contains(m[1], `id="mod-`+n+`-version"`)
+			}
+		}
+		if !found {
+			t.Errorf("%s's version list is not in its row", n)
+		}
+	}
 }
 
 // SPEC 9.3: the tab draws an empty place for Change version, so nothing

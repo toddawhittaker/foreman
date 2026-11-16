@@ -1557,6 +1557,99 @@ Words stay first (1).
   preview's large view and the toggletip keep their own inline SVG icons
   (8.8, 7.7).
 
+### 7.10 Uploads (SPEC 14.6)
+
+Every file upload uses one control, the drop zone: the partial
+`dropzone` in `templates/dropzone.html` with `static/dropzone.js`, which
+a page loads in its `scripts` block. The page builds a `DropZone`
+(`internal/web/dropzone.go`) and passes it to the partial:
+
+| Field | What it is |
+|---|---|
+| `ID` | The file input's id. The hint, chosen line and errors use it as a prefix. |
+| `Name` | The form field the file posts as, such as `save`. |
+| `Label` | The visible label, as a message. |
+| `Accept` | The one file ending the field takes, such as `.zip`. |
+| `MaxBytes` | The server's size limit, shown in the hint. |
+| `Error` | The server's refusal of the last upload, shown under the field. |
+| `DescribedBy` | The id of a paragraph outside the field that also describes it; it reads after the limits hint. Empty for none. |
+| `Form` | The id of the form that posts the file, when the field sits outside it (a form cannot nest). Empty for the enclosing form. |
+
+- **Without script** it is a plain form field (7.2): a label with the
+  required asterisk, a hint naming the type and size limit, and the
+  native file input. The form posts as it always did.
+- **With script** the zone is a dashed box at least 6rem tall that says
+  "Drop the file here, or choose a file". The native input is stretched,
+  transparent, over the whole box, so it stays the control: a click
+  anywhere, or Enter or Space when it has focus, opens the picker, and a
+  screen reader meets an ordinary labelled file field. Focus draws the
+  focus ring on the box. On a phone, where dragging is rare, it is simply
+  a big button.
+- **A drag** of files anywhere on the page turns every zone's border
+  solid and changes its words to "Drop the file to choose it"; over the
+  zone the border grows to 4px. The change is never colour alone.
+- **Once chosen**, the line under the box says "Chosen: *name*, *size*"
+  with a Clear button. Clear empties the field and puts focus back on it;
+  choosing again replaces the file.
+- **Refused before uploading**: a file of another type, several files,
+  or a file over the limit. The field is emptied, gets a field error
+  (7.2) that says what to choose instead, and the error is read out. The
+  page's own listeners never see a refused file. The server still checks
+  every upload as before; the zone's checks are only a quicker answer.
+- A page never adds its own capture-phase `change` listener on an
+  ancestor of a zone: it would run before the zone's and see refused files.
+- A new file, good or refused, hides the server's error from the last
+  upload; a refused drop also empties any file chosen before.
+- One file per zone.
+
+**Where an upload happens.** An upload happens in place, in a drop zone,
+when its result is used on that page. Otherwise the page offers a button,
+never a link, that goes to the tab that owns the file ("Upload a save" on
+the Mods tab goes to the Saves tab). Button words name the file: "Upload
+a save", "Upload a mod zip", "Replace mod-settings.dat".
+
+### 7.11 Favorites: export and import (SPEC 5.12)
+
+The Favorites page lists each favorite with its facts, a folded "Show the
+mods" list and three actions: Generate from it, Export and the trash-icon
+Delete.
+
+- **Mods by title.** The folded list shows each mod with the `mod-name`
+  partial: its title from `info.json`, kept in `favorite.json` when the
+  favorite was made, linked to its portal page in a new tab, with its
+  pinned version beside it. A favorite made before titles were kept shows
+  the mod's name instead.
+- **Export** is a quiet button that downloads `<name>-favorite.zip`: the
+  favorite's folder as it is on disk, plus `foreman-favorite.json`, which
+  holds the file's format version. A warning above the list, tied to every
+  Export button, says the file holds the mod settings and that a mod may
+  keep a token there, so it should be shared only with people trusted.
+  Server settings never hold a password (SPEC 14.8).
+- **Import** is its own section under the list, with one drop zone (7.10)
+  for a `.zip` of at most 8 MiB and an "Import favorite" button. It works
+  without script as a plain upload form.
+- **Checks before writing.** The server reads the whole file in memory and
+  checks all of it before anything is written: the size, the format
+  version, that every entry is one of the six known file names with no
+  folder, link or repeat, that each entry unpacks within its own limit,
+  that both JSON descriptions have no unknown field, and that every mod
+  name, version and title and the game version are well formed. Server
+  settings are stripped of secrets again. A refused file gets one field
+  error, "This is not a favorite file Foreman can read, or it is damaged.
+  Nothing was imported.", which never repeats what the file holds.
+- **What is not checked.** A mod this Foreman lacks is still imported,
+  and Generate's mod review shows it. A game version this Foreman does not
+  support is still imported; Generate replaces it with the default version.
+- **A name in use** is refused, not renamed, so the person sees which
+  favorite they already have: rename or delete it, then import again.
+- **An imported favorite** is dated when it was imported and names no
+  source world, since that world is on another Foreman.
+- **A refused import** shows the error summary (7.2) at the top of the
+  Import section, which takes focus and links to the file field.
+- **Writing** builds the favorite in a staging folder and renames it into
+  place, so a failure leaves nothing. Success shows the list with "Done:
+  Imported the favorite *name*." in focus.
+
 ## 8. Patterns for later screens
 
 These are not built in Epic 1. They are here so Epics 2 and 3 start from
@@ -2438,8 +2531,8 @@ the game is running.
 The settings pages (form, raw editor and preview) carry the world's tabs
 (6) with Game settings current, and no "Back to" link. The form's `h1` is the
 world's name. On a container at least 44rem wide a rail of section links
-(Listing, Joining, Saving, Admins, and "Edit server-settings.json as
-JSON") sits beside the form, 12rem wide and sticky, since it never covers
+(Listing, Players and access, Gameplay, Saving, Network, Admins, and "Edit
+server-settings.json as JSON") sits beside the form, 12rem wide and sticky, since it never covers
 the form; narrower, there is no rail, a "Jump to section" disclosure of
 the same links sits under the tabs (6), and the raw editor's link follows
 the form. A rail link is `text-muted` with a 3px `line` edge at its start,
@@ -2451,10 +2544,21 @@ fieldsets, in this order:
 
 - "Listing": name, description (`textarea`, 3 rows), and visibility as
   two radios, "On the local network" and "Hidden".
-- "Joining": game password (below), maximum players (numeric, hint "0
-  means no limit"), require user verification (checkbox).
-- "Saving": autosave interval in minutes, autosave slots, pause when no
-  one is online (checkbox).
+- "Players and access": game password (below), maximum players (numeric,
+  hint "0 means no limit"), returning players skip the cap, require user
+  verification, AFK kick.
+- "Gameplay": pause when no one is online, pause while someone joins (2.0
+  and later), only admins can pause, who may use console commands.
+- "Saving": autosave interval in minutes, autosave slots, and "Save
+  without pausing" (fork saving), with its note about the experimental flag
+  and memory (SPEC 11.1); disabled with its reason on a non-Linux host.
+- "Network", collapsed: upload limit and upload slots.
+
+Every unset field shows what applies (SPEC 17.16): a number box is empty
+with the game's default as its placeholder and in a hint ("Game default: 10.
+Clear the box to use it."); a checkbox the file does not mention shows the
+game's default state. Autosave slots on an older file without the key say
+"Game default: 5" and that new worlds get 20.
 - "Admins": a `textarea`, one player name per line, as its hint says. On
   a world that cannot be changed it is `readonly`, not disabled, so the
   keyboard can focus and scroll a long list; the other controls stay
@@ -2549,14 +2653,21 @@ conflicts, notices, headings and button labels, so a name such as
 `.button` the name breaks only when it does not fit, and `.button .ident`
 is `display: contents`. Mod badges are `white-space: nowrap`.
 
-**Portal links.** Search results and the plan's asked-for rows carry a
-quiet link, "Mod portal", to `https://mods.factorio.com/mod/<name>` with
-`target="_blank"` and `rel="noopener noreferrer"`. Its hidden text finishes
-the name: "for visible-planets, opens in a new tab". In the installed table
-the mod's name is that link (a 44 px target), with the hidden text "on the
-mod portal, opens in a new tab", so every row has the same shape. Built-in
-and folder mods have none; the portal status turns the name of any mod the
-portal does not have back into plain text.
+**Mod names (SPEC 9.15).** A mod is shown by its title, drawn by the
+`mod-name` partial in `templates/modportal.html`: the title from the mod's
+`info.json` or the portal, the slug as fallback, escaped, cut to 100
+characters and marked `translate="no"`. A mod named on its own is a link to
+`https://mods.factorio.com/mod/<name>` with `target="_blank"` and
+`rel="noopener noreferrer"`, and the hidden text "on the mod portal, opens in
+a new tab"; in the installed list and on the review page that name is the
+link (a 44 px target), so every row has the same shape. A built-in mod, a
+folder mod and a mod the portal lacks show plain text; the portal status
+turns the name of a mod the portal does not have back into plain text. A
+mod named inside a sentence, a button or a summary line is plain text, never
+a link, because a link there fights the sentence or the toggle. The slug is
+shown (`ident`) only where the title would be ambiguous. Saved records (a
+snapshot label, an audit entry, a sent notification) keep the slug they were
+written with.
 
 **The Mods tab.** One `h1`, the world's name with the Active badge, and the
 game's state badge beside it (7.5), then sections in the order below, each
@@ -2643,8 +2754,8 @@ fine pointer and 44 px on touch. The sections, in order:
   general sentence and the button; a world with no save says so and links
   to upload one.
 - "Upload a mod": one line, then a closed `details.disclosure` "Upload a
-  mod zip" holding the file field (size limit in its hint) and the upload
-  button, which goes to the plan page. A refused file opens it.
+  mod zip" holding a drop zone (7.10) and the upload button, which goes to
+  the plan page. A refused file opens it.
 - "Mod settings", only when the world has a mod that is not built in, a
   `mod-settings.dat`, or a refused upload: the text, the "Edit mod
   settings" button to the editor and the download link stay in view; the
@@ -2724,7 +2835,7 @@ bar keeps its frame while the other cards lie flat.
   panel's heading after Clear plan. Without script every control is a
   form that comes back to the same search, page and row
   (`#mod-<name>-hit`), or to the panel (`#plan-panel`). A "+" past the
-  plan's 50 mods is refused with an error in the panel.
+  plan's 500 mods is refused with an error in the panel.
 
 Under the field, on this page and on the Mods tab, a hint says a pasted
 mod link works, with a plain link "Browse the mod portal" (hidden text
@@ -2737,10 +2848,13 @@ in a new tab.
 in Family base 2025?", "Install mods in Family base 2025?" for several,
 "Change the mods of Family base 2025?" once a conflict's fix adds a mod to
 turn off. The `h1` lays out as one run of text, so a mod's name has one
-space each side and wraps like a word. The plan lives in the address and
-the form (`name=` repeated, `q=` for the search the person came from,
-`also-disable=` and `also-remove=` for the fixes taken), never on the
-server. Every kind of change (install, update, enable, disable, remove,
+space each side and wraps like a word. The plan's answers live in a draft on
+the server, in memory, under a random token the page carries (SPEC 9.14,
+ADR 0022), so no address grows with the plan (SPEC 17.17); an entry link
+holds only its kind and one name. Without script the form posts to the
+redraw route and is redirected to `?draft=<token>`, so a reload keeps the
+answers. A lost draft is rebuilt from the saved picks and a Note says so.
+Every kind of change (install, update, enable, disable, remove,
 sync, upload) has the same shape, changes first. In order:
 
 - At most one of these at the top, each taking focus on a full page load
@@ -2767,8 +2881,9 @@ sync, upload) has the same shape, changes first. In order:
   grouped Install, Upgrade, Downgrade, Enable, Disable and Remove in a
   `dl`, one mod a line with its reason in brackets ("visible-planets needs
   it"). The mods an install asked for come first in their group, each line
-  with its portal link and, when there are two or more, "Remove from
-  plan". The mods the plan needs and leaves as they are fold into one
+  with its title as the portal link and, in the same row, its version list
+  and a quiet cross named "Remove *title* from the plan" (a 44 px target).
+  The mods the plan needs and leaves as they are fold into one
   closed `details`, "2 other mods stay as they are".
 - For each mod an install or update names, a `select` "Version of *mod*"
   (SPEC 9.2): "Newest that fits (2.0.0)", then the releases for the
@@ -2778,8 +2893,11 @@ sync, upload) has the same shape, changes first. In order:
   stays on the list. While the chosen release is the installed one, "Nothing
   changes at this version" takes the place of the changes, and there are no
   steps and no apply button.
-- "Optional mods" as checkboxes, "Mod, offered by Mod". Ticking one redraws
-  the plan with htmx; a "Recalculate the plan" button does it without script.
+- "Optional mods" (and the recommended ones) as rows: the tick box with a
+  hidden name, then the title link, the portal's summary, the version it
+  would install and its release date. The link is its own target and never
+  ticks the box. Ticking one redraws the plan with htmx; a "Recalculate the
+  plan" button does it without script.
 - "Mods no longer needed" (SPEC 9.4), a `fieldset` shown when a removal frees
   other mods: a hint ("Only the mods being removed need these. They are
   removed too unless you untick them."), then one ticked checkbox for each,
@@ -2808,9 +2926,9 @@ sync, upload) has the same shape, changes first. In order:
 - The review page has no search or "Add another mod". Adding happens only
   on the Mods tab (SPEC 9.2). Cancel and "Back to the mods" link to the Mods
   tab. Removing a mod on the review page redraws the plan in place with
-  htmx, and `#announcer` says "visible-planets removed from the plan. The
+  htmx, and `#announcer` says "Visible Planets removed from the plan. The
   plan has 1 mod."; focus goes to the "Changes:" label. Without script the
-  remove link is the plan's own URL.
+  cross is a button in a form that posts to the redraw route.
 
 A redraw moves focus only when the control used is gone (a removal or a
 fix, above), always answers 200 so htmx swaps it in, and says the new plan

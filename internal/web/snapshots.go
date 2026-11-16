@@ -58,6 +58,8 @@ type SnapshotsPage struct {
 	DoneSnap string
 	// Deleted holds when each snapshot the last delete removed was taken.
 	Deleted []time.Time
+	// Removed is how many snapshots the last bulk delete removed.
+	Removed int
 }
 
 // RestorePage confirms a restore (SPEC 6.5, DESIGN 7.4).
@@ -199,7 +201,8 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("undo")); ok {
 		p.Done, p.DoneSnap = i18n.M("worlds.snapshots.done.undo", "label", snapshotLabelArg(sn)), sn.Name
 	}
-	if p.Deleted = deletedTimes(q["deleted"]); len(p.Deleted) > 0 {
+	p.Deleted, p.Removed = deletedTimes(q["deleted"]), removedCount(r)
+	if len(p.Deleted) > 0 || p.Removed > 0 {
 		p.Done, p.DoneSnap = i18n.Msg{}, ""
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)

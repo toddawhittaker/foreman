@@ -17,7 +17,7 @@
   {{- if or .Fix .Undo}}
   <div class="actions">
     {{- with .Fix}}
-    <a href="{{.Path}}" class="button" id="act-fix">{{msg .Label}}</a>
+    {{if .Post}}<form method="post" action="{{.Path}}"><button type="submit" class="button" id="act-fix">{{msg .Label}}</button></form>{{else}}<a href="{{.Path}}" class="button" id="act-fix">{{msg .Label}}</a>{{end}}
     {{- end}}
     {{- if .Undo}}
     <a href="{{.UndoPath}}" class="button" id="act-undo-failed">{{t "server.failure.undo_button" "label" .UndoName}}</a>

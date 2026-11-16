@@ -2,12 +2,14 @@
 
 package game
 
-// A world with no server-settings.json starts without --server-settings; its
-// first settings save must write a file the game then starts with (SPEC 11.1,
+// Generate writes a server-settings.json with Hidden visibility, auto-pause on
+// and 20 autosave slots (SPEC 11.1, 17.16); the first settings save keeps
+// those, adds what the form sets, and the game starts with it (SPEC 11.1,
 // 11.2). Run by `make test-game`, never by `make verify`.
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
@@ -35,9 +37,11 @@ func (e *gameEnv) runFirstSave(t *testing.T, tag, version string) {
 	ctx := context.Background()
 	c, _ := e.controller(t)
 	id := e.generate(t, tag+" first save", world.NewWorld{GameVersion: version})
-	if cfg, err := e.worlds.ReadConfig(id, world.ServerSettingsFile); err != nil || cfg.Found {
-		t.Fatalf("a generated world has a server-settings.json: %v %v", cfg.Found, err)
+	gen, err := e.worlds.ReadConfig(id, world.ServerSettingsFile)
+	if err != nil || !gen.Found {
+		t.Fatalf("a generated world has no server-settings.json: %v %v", gen.Found, err)
 	}
+	foremanDefaults(t, "the generated file", gen.Data)
 	save := func(data []byte) error {
 		read, err := e.worlds.ReadConfig(id, world.ServerSettingsFile)
 		if err != nil {
@@ -53,23 +57,29 @@ func (e *gameEnv) runFirstSave(t *testing.T, tag, version string) {
 	if err := save(partial); !errors.Is(err, ErrSettingsInvalid) {
 		t.Fatalf("a file without description and visibility was not refused: %v", err)
 	}
-	if cfg, _ := e.worlds.ReadConfig(id, world.ServerSettingsFile); cfg.Found {
+	if cfg, _ := e.worlds.ReadConfig(id, world.ServerSettingsFile); cfg.Hash != gen.Hash {
 		t.Fatal("the refused file was written")
 	}
 
-	// What the form writes now for a first save of a name and a password.
-	data, err := gamesettings.SetFields([]byte(`{"name": "e3test first save"}`), []gamesettings.Field{
-		{Key: "description", JSON: []byte(`""`)},
+	// What the form writes now for a first save of a name and a password: the
+	// generated file with those fields set.
+	data, err := gamesettings.SetFields(gen.Data, []gamesettings.Field{
+		{Key: "name", JSON: []byte(`"e3test first save"`)},
 		{Key: "game_password", JSON: []byte(`"e3test-pw"`)},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if data, err = gamesettings.SetVisibility(data, gamesettings.VisibilityHidden); err != nil {
-		t.Fatal(err)
-	}
 	if err := save(data); err != nil {
 		t.Fatalf("first save: %v", err)
+	}
+	saved, err := e.worlds.ReadConfig(id, world.ServerSettingsFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foremanDefaults(t, "the saved file", saved.Data)
+	if !strings.Contains(string(saved.Data), `"game_password": "e3test-pw"`) || !strings.Contains(string(saved.Data), `"name": "e3test first save"`) {
+		t.Fatalf("the saved file lacks the form's name and password:\n%s", saved.Data)
 	}
 
 	// The first start creates the map and passes --server-settings.
@@ -85,5 +95,28 @@ func (e *gameEnv) runFirstSave(t *testing.T, tag, version string) {
 	e.noSecretInLog(t, c, id)
 	if err := c.Stop(ctx, id, admin, StopOptions{}); err != nil {
 		t.Fatalf("stop: %v", err)
+	}
+}
+
+// foremanDefaults fails unless b holds what Foreman writes into a new
+// server-settings.json: Hidden, auto-pause on, 20 autosave slots.
+func foremanDefaults(t *testing.T, what string, b []byte) {
+	t.Helper()
+	var v struct {
+		Visibility    *struct{ Public, LAN bool } `json:"visibility"`
+		AutoPause     *bool                       `json:"auto_pause"`
+		AutosaveSlots *int                        `json:"autosave_slots"`
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		t.Fatalf("%s is not JSON: %v\n%s", what, err, b)
+	}
+	if v.Visibility == nil || v.Visibility.Public || v.Visibility.LAN {
+		t.Errorf("%s is not Hidden:\n%s", what, b)
+	}
+	if v.AutoPause == nil || !*v.AutoPause {
+		t.Errorf("%s lacks auto_pause true:\n%s", what, b)
+	}
+	if v.AutosaveSlots == nil || *v.AutosaveSlots != gamesettings.ForemanAutosaveSlots {
+		t.Errorf("%s lacks autosave_slots %d:\n%s", what, gamesettings.ForemanAutosaveSlots, b)
 	}
 }

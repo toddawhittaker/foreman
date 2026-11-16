@@ -231,7 +231,7 @@ test("ticking an optional mod that conflicts shows the conflict", async ({ page,
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-other": "2.0" } });
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
   await expectWholeChoiceLabels(page);
-  await page.getByLabel("fp-conf, offered by fp-main").check();
+  await page.getByRole("checkbox", { name: "fp-conf offered by fp-main" }).check();
   await expect(page.locator("#plan-conflicts")).toContainText("fp-conf cannot run together with fp-other.", { timeout: 3_000 });
   await expect(page.locator("#announcer")).toHaveText("Plan updated: it has a conflict, so it cannot be applied.");
   // A redraw never moves focus to the conflict box.
