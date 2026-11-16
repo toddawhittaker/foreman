@@ -9447,3 +9447,30 @@ main:has(> .gate) > * + :not(h1, .gate) {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
+
+/* ---- Mod titles (SPEC 9.15): the mod-name partial, a title that links to
+   the mod portal. ---- */
+
+/* On the Installed list the title fills the row's full-size target. */
+.mod-name > .mod-title {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  /* A long unbroken title wraps rather than pushing the version off the row. */
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/* In the plan panel the title is its own target, apart from the cross. */
+.plan-tree__name > a.mod-title {
+  display: inline-block;
+  padding-block: 0.125rem;
+}
+
+@media (pointer: coarse) {
+  .plan-tree__name > a.mod-title {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+  }
+}
