@@ -179,6 +179,7 @@
   "worlds.saves.loads_next": "Wczytywany jako następny",
   "worlds.saves.newer": "Ten świat zapisała nowsza wersja Foremana, więc ta wersja nie może go zmieniać. Zapisy nadal można pobrać.",
   "worlds.saves.older": "Pokaż starsze zapisy",
+  "worlds.saves.time_hint": "Każda godzina to chwila ostatniej zmiany pliku zapisu na dysku, która może się trochę różnić od chwili zapisu przez grę. Zapis automatyczny pokazuje nazwę świata i jego godzinę, a obok nazwę pliku.",
   "worlds.saves.title": "Zapisy świata {world}",
   "worlds.saves.upload.button": "Prześlij zapis",
   "worlds.saves.upload.heading": "Przesyłanie zapisu",

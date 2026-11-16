@@ -174,6 +174,7 @@
   "worlds.saves.loads_next": "Wird als Nächstes geladen",
   "worlds.saves.newer": "Eine neuere Version von Foreman hat diese Welt geschrieben, daher kann diese Version sie nicht ändern. Ihre Speicherstände kannst du weiterhin herunterladen.",
   "worlds.saves.older": "Ältere Speicherstände anzeigen",
+  "worlds.saves.time_hint": "Jede Zeit ist der Zeitpunkt, zu dem die Datei des Speicherstands zuletzt auf der Festplatte geändert wurde; er kann etwas vom Speicherzeitpunkt des Spiels abweichen. Ein automatischer Speicherstand zeigt den Namen der Welt und seine Zeit, daneben den Dateinamen.",
   "worlds.saves.title": "Speicherstände von {world}",
   "worlds.saves.upload.button": "Speicherstand hochladen",
   "worlds.saves.upload.heading": "Speicherstand hochladen",

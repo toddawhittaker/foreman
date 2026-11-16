@@ -1,6 +1,7 @@
 {{define "title"}}{{t "worlds.import.title"}}{{end}}
 
-{{define "scripts"}}<script src="{{static "import.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
+<script src="{{static "import.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -85,14 +86,7 @@
   {{template "required-note"}}
   {{template "import-fields" .}}
   {{/* The file comes last: the server reads the text fields before it. */}}
-  <div class="field">
-    <label for="upload-source" class="required">{{t "worlds.saves.upload.label"}}</label>
-    <input id="upload-source" name="save" type="file" accept=".zip" required
-      {{- if not .SourceError.IsZero}} aria-invalid="true" aria-describedby="upload-source-error"{{end}}>
-    {{- if not .SourceError.IsZero}}
-    <p class="error" id="upload-source-error"><strong>{{t "common.error.label"}}</strong> {{msg .SourceError}}</p>
-    {{- end}}
-  </div>
+  {{template "dropzone" .SourceZone}}
   {{- end}}
   <div class="actions">
     <button type="submit" class="button button--primary">{{t "worlds.import.upload.button"}}</button>

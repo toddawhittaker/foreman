@@ -83,5 +83,14 @@
   "common.menu.notifications": "Oznámení",
   "common.menu.schedule": "Plán restartů",
   "common.settings.label": "Nastavení Foremanu",
-  "common.countdown.none_name": "Bez upozornění: nastavit odpočet na 0 sekund"
+  "common.countdown.none_name": "Bez upozornění: nastavit odpočet na 0 sekund",
+  "common.dropzone.limits": "Soubor {types} o velikosti do {limit}.",
+  "common.dropzone.prompt": "Přetáhnout soubor sem, nebo vybrat soubor",
+  "common.dropzone.drop": "Pustit soubor a vybrat ho",
+  "common.dropzone.chosen": "Vybráno: {file}, {size}",
+  "common.dropzone.clear": "Odebrat",
+  "common.dropzone.cleared": "Není vybrán žádný soubor.",
+  "common.dropzone.wrong_type": "{file} není soubor {types}. Je třeba vybrat soubor s koncovkou {types}.",
+  "common.dropzone.too_big": "{file} je větší než {limit}. Je třeba vybrat menší soubor.",
+  "common.dropzone.one_file": "Lze vybrat jen jeden soubor najednou."
 }
