@@ -271,7 +271,7 @@ func TestRunOnKeepsTheResultOnEveryWorld(t *testing.T) {
 
 func renderControl(t *testing.T, p ServerPage) string {
 	t.Helper()
-	r, err := NewRenderer()
+	r, err := sharedRenderer()
 	if err != nil {
 		t.Fatal(err)
 	}

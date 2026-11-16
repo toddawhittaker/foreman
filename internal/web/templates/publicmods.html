@@ -54,9 +54,9 @@
 {{- if not .Worlds}}
 <p class="empty" id="public-none">{{t "publicmods.none"}}</p>
 {{- end}}
-{{- range .Worlds}}
-<section class="public-world" aria-labelledby="public-world-name">
-  <h2 id="public-world-name" translate="no">{{.Name}}</h2>
+{{- range $i, $w := .Worlds}}
+<section class="public-world" aria-labelledby="public-world-name-{{$i}}">
+  <h2 id="public-world-name-{{$i}}" translate="no">{{.Name}}</h2>
   <dl class="facts">
     <div><dt>{{t "publicmods.game_version"}}</dt><dd>{{.GameVersion}}</dd></div>
   </dl>

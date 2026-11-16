@@ -12,7 +12,7 @@ import (
 // renderPublic draws the public page for data, in English.
 func renderPublic(t *testing.T, data PublicModsData) string {
 	t.Helper()
-	r, err := NewRenderer()
+	r, err := sharedRenderer()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +116,54 @@ func TestPublicModsPageLive(t *testing.T) {
 	}
 	if st := p.anon(PathPublicStatic + "SHA256SUMS"); st.StatusCode != http.StatusNotFound {
 		t.Errorf("an unlisted static file answered %d", st.StatusCode)
+	}
+}
+
+// Each world's section is named by its own heading, so the ids stay unique
+// when the page lists more than one world.
+func TestPublicModsPageHeadingIDsAreUnique(t *testing.T) {
+	body := renderPublic(t, PublicModsData{Worlds: []PublicWorld{
+		{ID: "w1", Name: "One", GameVersion: "2.0.77"},
+		{ID: "w2", Name: "Two", GameVersion: "2.0.77"},
+	}})
+	for _, want := range []string{
+		`aria-labelledby="public-world-name-0"`, `<h2 id="public-world-name-0" translate="no">One</h2>`,
+		`aria-labelledby="public-world-name-1"`, `<h2 id="public-world-name-1" translate="no">Two</h2>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page lacks %s", want)
+		}
+	}
+}
+
+// SPEC 14.18: public static files are revalidated, never cached for a year,
+// and carry the same headers as every public answer, an SVG's own policy
+// included. The signed-in /static/ keeps its caching.
+func TestPublicStaticCarriesThePublicHeaders(t *testing.T) {
+	p := newPublicRig(t, "alpha_1.0.0")
+	rep := p.anon(PathPublicMods)
+	for _, name := range []string{"foreman.css", "flags/de.svg"} {
+		m := regexp.MustCompile(`/public/static/` + regexp.QuoteMeta(name) + `\?v=[0-9a-f]+`).FindString(rep.body)
+		if m == "" {
+			t.Fatalf("the page does not load %s", name)
+		}
+		st := p.anon(m)
+		if st.StatusCode != http.StatusOK {
+			t.Fatalf("GET %s: %d", m, st.StatusCode)
+		}
+		h := st.Header
+		if h.Get("Cache-Control") != "no-cache" {
+			t.Errorf("%s: Cache-Control %q, want no-cache", m, h.Get("Cache-Control"))
+		}
+		if h.Get("X-Content-Type-Options") != "nosniff" || h.Get("Referrer-Policy") != "no-referrer" ||
+			h.Get("X-Frame-Options") != "DENY" || !strings.Contains(h.Get("Content-Security-Policy"), "frame-ancestors 'none'") {
+			t.Errorf("%s: headers %v", m, h)
+		}
+	}
+
+	signedIn := strings.Replace(regexp.MustCompile(`/public/static/foreman\.css\?v=[0-9a-f]+`).FindString(rep.body), "/public", "", 1)
+	if got := p.anon(signedIn).Header.Get("Cache-Control"); !strings.Contains(got, "immutable") {
+		t.Errorf("/static/ Cache-Control %q, want the year-long caching kept", got)
 	}
 }
 

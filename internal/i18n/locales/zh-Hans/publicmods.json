@@ -10,7 +10,7 @@
   "publicmods.settings.done.on": "已开启公开模组页面。",
   "publicmods.settings.open": "打开公开模组页面",
   "publicmods.settings.proxy": "如果 Foreman 前面有负责登录的代理，它必须让以 {path} 开头的路径无需登录即可通过，否则玩家会被要求登录。规则见{guide}。",
-  "publicmods.settings.proxy.guide": "运维指南",
+  "publicmods.settings.proxy.guide": "操作指南",
   "publicmods.settings.shares.heading": "开启后会公开的内容",
   "publicmods.settings.shares.mods": "它已启用的模组、模组版本及其 zip 文件，包括模组门户上已没有的模组。模组能否分享由管理员自行决定。",
   "publicmods.settings.shares.nothing": "除此之外不公开任何内容：没有存档、设置、密码、玩家或日志。",

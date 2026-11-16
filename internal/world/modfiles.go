@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"path"
 	"slices"
 )
 
@@ -58,6 +57,11 @@ func (m *Manager) ModShare(id string) (*ModShare, error) {
 	if err != nil {
 		return nil, err
 	}
+	// A link in place of the folder would show another folder's files as mods
+	// (SPEC 14.18).
+	if info, err := root.Lstat(ModsDir); err == nil && !info.IsDir() {
+		return &ModShare{m: m, id: id, opened: opened}, nil
+	}
 	list, err := m.Mods(id)
 	if err != nil {
 		return nil, err
@@ -88,29 +92,28 @@ func (s *ModShare) Open(file string) (*os.File, fs.FileInfo, error) {
 	if !os.SameFile(s.opened, now) {
 		return nil, nil, ErrModFileNotFound
 	}
-	p := path.Join(ModsDir, file)
+	// openDir refuses a link in place of the mods folder, which os.Root would
+	// follow while it stays inside the world.
+	modsRoot, err := openDir(root, ModsDir)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, ErrNotFolder) {
+		return nil, nil, ErrModFileNotFound
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = modsRoot.Close() }()
 	// openRegular refuses a link too, but with an error that does not tell a
 	// refusal from a read failure, so the refusal is told apart here.
-	linfo, err := root.Lstat(p)
+	linfo, err := modsRoot.Lstat(file)
 	if errors.Is(err, fs.ErrNotExist) || (err == nil && !linfo.Mode().IsRegular()) {
 		return nil, nil, ErrModFileNotFound
 	}
 	if err != nil {
 		return nil, nil, err
 	}
-	f, info, err := openRegular(root, p)
+	f, info, err := openRegular(modsRoot, file)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil, ErrModFileNotFound
 	}
 	return f, info, err
-}
-
-// OpenModFile lists the world's mods and opens the zip named file: the
-// single download.
-func (m *Manager) OpenModFile(id, file string) (*os.File, fs.FileInfo, error) {
-	share, err := m.ModShare(id)
-	if err != nil {
-		return nil, nil, err
-	}
-	return share.Open(file)
 }

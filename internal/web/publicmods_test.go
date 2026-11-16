@@ -113,6 +113,8 @@ func TestPublicPathsAnswerAsUnknownWhileOff(t *testing.T) {
 		PathPublicMods, PathPublicMods + "/", PathPublic, PathPublic + "anything",
 		PublicModFilePath(p.id, "alpha_1.0.0.zip"), PublicModsAllPath(p.id),
 		PathPublic + "static/x.css", PathPublic + "language",
+		// The mux would redirect this one to the path with a slash.
+		strings.TrimSuffix(PathPublicStatic, "/"),
 	}
 	for _, path := range paths {
 		got := p.anon(path)
@@ -155,10 +157,10 @@ func TestPublicModsSettingDefaultsToOff(t *testing.T) {
 	if s.publicModsOn(ctx) {
 		t.Error("a fresh database has the page on")
 	}
-	if err := s.setPublicMods(ctx, true, "alice"); err != nil || !s.publicModsOn(ctx) {
+	if err := s.setPublicMods(ctx, PublicModsOn, "alice"); err != nil || !s.publicModsOn(ctx) {
 		t.Errorf("after turning on: on=%v, err=%v", s.publicModsOn(ctx), err)
 	}
-	if err := s.setPublicMods(ctx, false, "alice"); err != nil || s.publicModsOn(ctx) {
+	if err := s.setPublicMods(ctx, PublicModsOff, "alice"); err != nil || s.publicModsOn(ctx) {
 		t.Errorf("after turning off: on=%v, err=%v", s.publicModsOn(ctx), err)
 	}
 	if err := hn.store.SetAppSetting(ctx, SettingPublicMods, "yes", "alice", hn.clock.Now()); err != nil || s.publicModsOn(ctx) {
@@ -587,6 +589,54 @@ func TestPublicDownloadsAllowOnlyGet(t *testing.T) {
 				t.Errorf("%s %s: %d, want 405", method, path, rep.StatusCode)
 			}
 		}
+	}
+}
+
+// SPEC 14.18: only GET. HEAD is refused too, so a probe never makes the
+// server stream a whole mods zip to nobody.
+func TestPublicRoutesRefuseHead(t *testing.T) {
+	p := newPublicRig(t, "alpha_1.0.0")
+	for _, path := range []string{
+		PathPublicMods, PublicModFilePath(p.id, "alpha_1.0.0.zip"), PublicModsAllPath(p.id),
+		PathPublicStatic + "foreman.css",
+	} {
+		rep := p.do(http.MethodHead, path, nil, nil)
+		if rep.StatusCode != http.StatusMethodNotAllowed {
+			t.Errorf("HEAD %s: %d, want 405", path, rep.StatusCode)
+		}
+		if allow := rep.Header.Get("Allow"); allow != http.MethodGet {
+			t.Errorf("HEAD %s: Allow %q, want GET", path, allow)
+		}
+	}
+}
+
+// SPEC 9.16, 14.18: the portal is asked about zips only. A world with no zip
+// to list has nothing to mark, so the visitor waits for no check and sees no
+// "could not be checked" line.
+func TestPublicModsDataSkipsThePortalWhenNoModHasAZip(t *testing.T) {
+	p := newPublicRig(t)
+	local := filepath.Join(p.modsDir(p.id), "local_3.0.0")
+	if err := os.MkdirAll(local, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(local, "info.json"), []byte(`{"name":"local","version":"3.0.0"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var calls atomic.Int32
+	s := p.server()
+	s.marks = newPortalMarks(p.clock.Now, func(context.Context, string) ([]mods.Flag, error) {
+		calls.Add(1)
+		return nil, errors.New("portal down")
+	})
+	data, err := s.publicModsData(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data.PortalUnchecked || calls.Load() != 0 {
+		t.Errorf("unchecked=%v, portal asked %d times: want no check", data.PortalUnchecked, calls.Load())
+	}
+	if len(data.Worlds) != 1 || len(data.Worlds[0].Mods) != 1 {
+		t.Errorf("data %+v: want the folder mod listed", data)
 	}
 }
 

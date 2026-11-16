@@ -10,7 +10,7 @@
   "publicmods.settings.done.on": "Włączono publiczną stronę modyfikacji.",
   "publicmods.settings.open": "Otwórz publiczną stronę modyfikacji",
   "publicmods.settings.proxy": "Jeśli przed Foremanem działa proxy, które loguje użytkowników, musi przepuszczać bez logowania ścieżki zaczynające się od {path}, inaczej gracze zostaną poproszeni o zalogowanie. Regułę opisuje {guide}.",
-  "publicmods.settings.proxy.guide": "przewodnik administratora",
+  "publicmods.settings.proxy.guide": "przewodnik operatora",
   "publicmods.settings.shares.heading": "Co udostępnia włączenie",
   "publicmods.settings.shares.mods": "Jego włączone modyfikacje, ich wersje i pliki zip, także modyfikacje, których portal modyfikacji już nie ma. O tym, czy wolno je udostępniać, decyduje administrator.",
   "publicmods.settings.shares.nothing": "Nic więcej: żadnego zapisu, ustawienia, hasła, gracza ani dziennika.",

@@ -592,7 +592,7 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 		s.drawFailure(w, r, u, err)
 		return
 	}
-	w.Header().Set("Content-Disposition", attachment(previewFileName(e.name, e.seed, planet)+suffix+".png"))
+	w.Header().Set("Content-Disposition", attachment(downloadStem(e.name, e.seed, planet)+suffix+".png"))
 	writePNG(w, png)
 }
 
@@ -637,11 +637,11 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 	h.Set("Content-Type", "application/zip")
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Disposition", attachment(previewFileName(e.name, e.seed, "")+".zip"))
+	h.Set("Content-Disposition", attachment(downloadStem(e.name, e.seed, "")+".zip"))
 	zw := zip.NewWriter(w)
 	for _, planet := range planets {
 		// A PNG is compressed already.
-		fw, err := zw.CreateHeader(&zip.FileHeader{Name: previewFileName(e.name, e.seed, planet) + suffixes[planet] + ".png", Method: zip.Store})
+		fw, err := zw.CreateHeader(&zip.FileHeader{Name: downloadStem(e.name, e.seed, planet) + suffixes[planet] + ".png", Method: zip.Store})
 		if err != nil {
 			return
 		}
@@ -714,11 +714,12 @@ func writePNG(w http.ResponseWriter, png []byte) {
 // maxFileStem caps the world name's part of a download name, in characters.
 const maxFileStem = 60
 
-// previewFileName is a download's name without its extension: the world's
-// name, the seed and the planet, joined by dashes. The world name loses
-// path, control and quoting characters; a blank one is "map". planet may
-// be blank, for the zip.
-func previewFileName(world, seed, planet string) string {
+// downloadStem is a download's name without its extension: the world's
+// name, then a seed (or a word such as "mods" or a save's time) and the
+// planet, joined by dashes. The world name loses path, control and quoting
+// characters; a blank one is "map". planet may be blank, for a zip or a
+// save.
+func downloadStem(world, seed, planet string) string {
 	var b strings.Builder
 	n := 0
 	for _, c := range strings.TrimSpace(world) {

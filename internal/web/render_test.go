@@ -28,7 +28,7 @@ import (
 
 func newTestRenderer(t *testing.T) *Renderer {
 	t.Helper()
-	r, err := NewRenderer()
+	r, err := sharedRenderer()
 	if err != nil {
 		t.Fatalf("NewRenderer: %v", err)
 	}

@@ -132,7 +132,7 @@ func (h *Handler) Close() { h.runs.close() }
 
 // NewHandler returns the HTTP handler for the whole app.
 func NewHandler(d Deps) (*Handler, error) {
-	renderer, err := NewRenderer()
+	renderer, err := sharedRenderer()
 	if err != nil {
 		return nil, err
 	}
