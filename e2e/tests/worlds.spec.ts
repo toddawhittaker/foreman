@@ -1,4 +1,4 @@
-import { test, expect, checkPage, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, pickLanguage, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -78,6 +78,25 @@ test.describe("on a phone", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await favorites.click();
     await expect(page).toHaveURL("/favorites");
+  });
+});
+
+// German runs long: at 320 px and 200% text the three buttons wrap and the
+// Favorites button stays whole, inside the page, with a full-size target.
+test.describe("in German at large text on a phone", () => {
+  test.use({ viewport: { width: 320, height: 700 } });
+  test("the Favorites button fits", async ({ page }) => {
+    await createAdmin(page);
+    await pickLanguage(page, "de");
+    await page.addStyleTag({ content: "html { font-size: 200% }" });
+    const favorites = page.getByRole("link", { name: "Favoriten", exact: true });
+    await expect(favorites).toBeVisible();
+    const box = (await favorites.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(320 + 0.5);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await checkPage(page);
   });
 });
 

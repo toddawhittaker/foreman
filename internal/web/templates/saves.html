@@ -38,7 +38,7 @@
   <form method="post" action="{{.LoadHref}}">
   {{- end}}
   <p class="hint" id="saves-time-hint">{{t "worlds.saves.time_hint"}}</p>
-  <table class="save-list" role="table" aria-describedby="saves-time-hint">
+  <table class="save-list" role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
       <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th>{{if not .Newer}}<th scope="col" class="visually-hidden" role="columnheader">{{t "worlds.saves.load_next"}}</th>{{end}}</tr>
@@ -47,7 +47,7 @@
       {{- range .Rows}}
       <tr role="row">
         <td role="cell"><div class="save-name">
-          {{- if .WorldName}}<a href="{{.Href}}"><span>{{.WorldName}}, {{template "when" .Saved}}</span></a> <span class="save-file">{{.Name}}</span>{{else}}<a href="{{.Href}}">{{.Name}}</a>{{end}}{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</div></td>
+          {{- if .WorldName}}<a href="{{.Href}}">{{.WorldName}}, {{template "when" .Saved}}</a> <span class="save-file">{{.Name}}</span>{{else}}<a href="{{.Href}}">{{.Name}}</a>{{end}}{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</div></td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
         <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
         {{- if not $.Page.Newer}}

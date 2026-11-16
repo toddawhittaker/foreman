@@ -107,8 +107,8 @@ func (p SavesPage) Problems() []Problem {
 var autosaveName = regexp.MustCompile(`^_autosave[0-9]+\.zip$`)
 
 // downloadTimeLayout is the save time in a download's name, in UTC, the one
-// zone the server knows.
-const downloadTimeLayout = "2006-01-02-15-04-05"
+// zone the server knows; the suffix says so.
+const downloadTimeLayout = "2006-01-02-15-04-05UTC"
 
 func saveHref(id, name string) string {
 	return "/worlds/" + url.PathEscape(id) + "/saves/" + url.PathEscape(name)

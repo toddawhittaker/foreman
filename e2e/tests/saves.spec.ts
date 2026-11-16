@@ -424,7 +424,7 @@ test("an autosave downloads under the world's name and its save time", async ({ 
   await page.goto("/worlds/family-base/saves");
 
   const [download] = await Promise.all([page.waitForEvent("download"), page.locator('a[href$="/saves/_autosave2.zip"]').click()]);
-  expect(download.suggestedFilename()).toBe("Family_base-2026-11-03-14-25-07.zip");
+  expect(download.suggestedFilename()).toBe("Family_base-2026-11-03-14-25-07UTC.zip");
   expect(readFileSync(await download.path()).equals(newSave)).toBe(true);
 });
 

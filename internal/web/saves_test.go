@@ -600,7 +600,7 @@ func TestAutosaveDownloadName(t *testing.T) {
 	if rec.Code != http.StatusOK || rec.Body.String() != "data of _autosave3.zip" {
 		t.Fatalf("download: %d %q", rec.Code, rec.Body.String())
 	}
-	want := `attachment; filename="Family_base-2026-11-15-19-46-05.zip"; filename*=UTF-8''Family_base-2026-11-15-19-46-05.zip`
+	want := `attachment; filename="Family_base-2026-11-15-19-46-05UTC.zip"; filename*=UTF-8''Family_base-2026-11-15-19-46-05UTC.zip`
 	if got := rec.Header().Get("Content-Disposition"); got != want {
 		t.Errorf("Content-Disposition = %q, want %q", got, want)
 	}
@@ -643,7 +643,7 @@ func TestAutosaveDownloadNameIsSafeForAnyWorldName(t *testing.T) {
 			continue
 		}
 		file := params["filename"]
-		if !strings.HasSuffix(file, "-2026-11-15-19-46-05.zip") || strings.ContainsAny(file, `/\;"`) || len(params) != 1 {
+		if !strings.HasSuffix(file, "-2026-11-15-19-46-05UTC.zip") || strings.ContainsAny(file, `/\;"`) || len(params) != 1 {
 			t.Errorf("%q: file name %q, params %v", name, file, params)
 		}
 	}
