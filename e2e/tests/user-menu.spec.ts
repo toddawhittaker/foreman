@@ -130,12 +130,13 @@ test("a theme chosen by keyboard returns to the same page; each choice has a nam
 
 // SPEC 17.10 and DESIGN 8.15: the Settings tab is the one way in, marked on
 // all three pages and the pages under them.
-test("the Settings tab is current on the three Foreman settings pages", async ({ page }) => {
+test("the Settings tab is current on the four Foreman settings pages", async ({ page }) => {
   await createAdmin(page);
   for (const [path, mark] of [
     ["/settings/restart-schedule", "page"],
     ["/settings/factorio-account", "true"],
     ["/settings/notifications", "true"],
+    ["/settings/public-mods", "true"],
   ]) {
     await page.goto(path);
     const tab = mainNav(page).getByRole("link", { name: "Settings" });

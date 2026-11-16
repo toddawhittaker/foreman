@@ -110,6 +110,14 @@ type ErrorPage struct {
 	Detail i18n.Msg
 }
 
+// publicPage is a page anyone may see without signing in (SPEC 9.16). It is
+// drawn in the public layout, which loads only from /public/static/ and
+// links back into Foreman only through the product name.
+type publicPage interface {
+	Page
+	public()
+}
+
 func (SignedOutPage) templateName() string { return "signedout" }
 func (SignInPage) templateName() string    { return "signin" }
 func (SetupPage) templateName() string     { return "setup" }
@@ -320,6 +328,10 @@ type Renderer struct {
 func (r *Renderer) sharedFuncs() template.FuncMap {
 	return template.FuncMap{
 		"static":            r.staticURL,
+		"publicStatic":      r.publicStaticURL,
+		"publicFlag":        r.publicFlagURL,
+		"publicLangPath":    func() string { return PathPublicLanguage },
+		"publicModsSetPath": func() string { return PathPublicModsSettings },
 		"serverPath":        func() string { return PathServer },
 		"consolePath":       func() string { return PathConsole },
 		"worldsPath":        func() string { return PathWorlds },
@@ -510,6 +522,29 @@ func (r *Renderer) staticURL(name string) (string, error) {
 	return PathStatic + name + "?v=" + f.hash, nil
 }
 
+// publicStaticURL is staticURL under PathPublicStatic, for the public page
+// (SPEC 9.16).
+func (r *Renderer) publicStaticURL(name string) (string, error) {
+	u, err := r.staticURL(name)
+	return PathPublicStatic + strings.TrimPrefix(u, PathStatic), err
+}
+
+// publicFlagURL is flagURL under PathPublicStatic.
+func (r *Renderer) publicFlagURL(tag string) (string, error) {
+	f, ok := flags[tag]
+	if !ok {
+		return "", fmt.Errorf("no flag for language %q", tag)
+	}
+	return r.publicStaticURL(f)
+}
+
+// PublicStatic serves the files of Static under PathPublicStatic.
+func (r *Renderer) PublicStatic() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathPublicStatic))
+	}
+}
+
 // menuReturn is the address the user menu's forms go back to. A GET page is
 // its own address. Any other request came from a form, whose address answers
 // only POST, so it is the page the form was on, from a same-site Referer.
@@ -537,17 +572,24 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 		return err
 	}
 	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp}
+	layout := "layout"
+	_, public := p.(publicPage)
+	if public {
+		layout = "public-layout"
+	}
 	var buf bytes.Buffer
-	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
+	if err := t.ExecuteTemplate(&buf, layout, v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)
 	}
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
-	// Pages can show who is signed in; the back button after sign-out must not.
-	h.Set("Cache-Control", "no-store")
+	// Pages can show who is signed in; the back button after sign-out must
+	// not. A public page shows nobody and keeps handlePublic's no-cache.
+	if !public {
+		h.Set("Cache-Control", "no-store")
+	}
 	// Pages carry sign-in forms, so no other site may frame them.
-	h.Set("Content-Security-Policy", "frame-ancestors 'none'")
-	h.Set("X-Frame-Options", "DENY")
+	setFrameRefusal(h)
 	// The language follows a cookie and the request's Accept-Language.
 	h.Set("Vary", "Cookie, Accept-Language")
 	w.WriteHeader(status)
