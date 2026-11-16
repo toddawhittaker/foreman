@@ -327,6 +327,9 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 		p.Result, p.HaveResult = cancelledByOperation(st, s.now())
 	}
 	p.Others = s.runs.others(sum.ID)
+	if p.HaveResult && p.Result.Action == game.AuditMods {
+		p.Result.Mods.Titles = s.installedTitles(sum.ID)
+	}
 	p.ModsNotice = s.planner != nil
 	p.LoadsNext = s.loadsNext(sum.ID)
 	s.switchNames(&p)

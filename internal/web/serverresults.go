@@ -204,7 +204,14 @@ type modResult struct {
 	// Since is when the snapshot the change reused was taken, before an
 	// earlier change of the same run (SPEC 9.4); zero when it took its own.
 	Since time.Time
+	// Titles are the installed mods' titles by name, set when the page is
+	// drawn; a mod with none shows by its name (SPEC 9.15).
+	Titles map[string]string
 }
+
+// mod is a mod as a sentence names it: its title, or its name when it has
+// none, never translated.
+func (r modResult) mod(name string) i18n.Fragment { return i18n.Ident(cmp.Or(r.Titles[name], name)) }
 
 // modsDoneNamed is how many mods a Done message names before "and N more".
 const modsDoneNamed = 3
@@ -214,7 +221,7 @@ const modsDoneNamed = 3
 // no mod in it, such as a settings upload, keeps the plain sentence.
 func modsDone(res modResult, world string) i18n.Msg {
 	label := i18n.M("worlds.snapshot.label.before_mods")
-	what := modsChanged(res.Changes, world)
+	what := modsChanged(res, world)
 	switch {
 	case !res.Since.IsZero() && what.IsZero():
 		what = i18n.M("server.mods_done.changed", "world", world)
@@ -305,10 +312,10 @@ func modActCount(act mods.Action, n int) i18n.Msg {
 // modsChanged names the mods a change of one kind touched ("Installed a,
 // b and c in Base."), or counts each kind of a mixed one ("Changed 12 mods
 // in Base: 9 updated, 3 installed."). It is zero when no mod changed.
-func modsChanged(changes []mods.Change, world string) i18n.Msg {
+func modsChanged(res modResult, world string) i18n.Msg {
 	by := map[mods.Action][]mods.Change{}
 	n := 0
-	for _, c := range changes {
+	for _, c := range res.Changes {
 		if slices.Contains(modActs, c.Action) {
 			by[c.Action] = append(by[c.Action], c)
 			n++
@@ -320,7 +327,7 @@ func modsChanged(changes []mods.Change, world string) i18n.Msg {
 	var kinds []i18n.Msg
 	for _, act := range modActs {
 		if cs := by[act]; len(by) == 1 && len(cs) > 0 {
-			return modActDone(act, modItems(act, cs), world)
+			return modActDone(act, modItems(res, act, cs), world)
 		} else if len(cs) > 0 {
 			kinds = append(kinds, modActCount(act, len(cs)))
 		}
@@ -330,13 +337,13 @@ func modsChanged(changes []mods.Change, world string) i18n.Msg {
 
 // modItems lists up to modsDoneNamed mods, with the version a changed
 // version went to, and how many more there are.
-func modItems(act mods.Action, cs []mods.Change) i18n.Msg {
+func modItems(res modResult, act mods.Action, cs []mods.Change) i18n.Msg {
 	var items []i18n.Msg
 	for _, c := range cs[:min(len(cs), modsDoneNamed)] {
 		if act == mods.ActUpgrade || act == mods.ActDowngrade {
-			items = append(items, i18n.M("server.mods_done.to", "mod", i18n.Ident(c.Name), "version", c.To))
+			items = append(items, i18n.M("server.mods_done.to", "mod", res.mod(c.Name), "version", c.To))
 		} else {
-			items = append(items, i18n.M("server.list.names", "names", i18n.Ident(c.Name)))
+			items = append(items, i18n.M("server.list.names", "names", res.mod(c.Name)))
 		}
 	}
 	if len(cs) > modsDoneNamed {
@@ -360,7 +367,7 @@ func modsFailure(err error, res modResult, world string, state game.State, back 
 	if !ok {
 		return failureText(err), nil
 	}
-	mod, version := i18n.Ident(de.Mod), de.Version
+	mod, version := res.mod(de.Mod), de.Version
 	var what i18n.Msg
 	switch {
 	case errors.Is(err, modportal.ErrChecksum):
@@ -466,7 +473,7 @@ func resultAnnouncement(p ServerPage) i18n.Msg {
 		said = append(said, short)
 	case !p.Done().IsZero() && p.Result.Action == game.AuditMods:
 		// Which mods changed is the news; the snapshot is said on the page.
-		what := modsChanged(p.Result.Mods.Changes, p.World.Name)
+		what := modsChanged(p.Result.Mods, p.World.Name)
 		if what.IsZero() {
 			what = doneAnnouncement[game.AuditMods]
 		}

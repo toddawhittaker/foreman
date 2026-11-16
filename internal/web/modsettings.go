@@ -104,9 +104,12 @@ func minBelowZero(v modsettings.Value) bool {
 	return (v.Type == modsettings.TypeInt && v.Int < 0) || (v.Type == modsettings.TypeDouble && v.Double < 0)
 }
 
-// SettingGroup is one mod's settings.
+// SettingGroup is one mod's settings. Title and Link are for the mod-name
+// partial: the mod's title, and whether it links to the mod portal.
 type SettingGroup struct {
 	Mod    string
+	Title  string
+	Link   bool
 	Fields []SettingField
 }
 
@@ -307,7 +310,31 @@ func (s *server) modSettingsPage(r *http.Request, sum world.Summary) (ModSetting
 		return p, st, nil
 	}
 	p.Startup, p.Map, p.PerUser = settingGroups(defs, st.file, st.defaults, localeOf(r).String())
+	s.titleGroups(sum.ID, p.Startup, p.Map)
 	return p, st, nil
+}
+
+// titleGroups gives each group its mod's title from the mod's info.json
+// and says whether the mod is on the portal's page list: a folder mod or a
+// built-in one is not linked (SPEC 9.15). A mods folder that cannot be read
+// leaves the names as they are.
+func (s *server) titleGroups(id string, lists ...[]SettingGroup) {
+	installed, err := s.worlds.Mods(id)
+	if err != nil {
+		s.log.Warn("read the mod titles", "world", id, "error", err)
+		return
+	}
+	by := make(map[string]world.InstalledMod, len(installed))
+	for _, m := range installed {
+		by[m.Name] = m
+	}
+	for _, groups := range lists {
+		for i, g := range groups {
+			if m, ok := by[g.Mod]; ok {
+				groups[i].Title, groups[i].Link = m.Title, !m.Local && !m.BuiltIn
+			}
+		}
+	}
 }
 
 // makesNewMap reports whether the world's next start makes its map: it has

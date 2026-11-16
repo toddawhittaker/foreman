@@ -66,6 +66,20 @@ test.describe("edit mod settings", () => {
     await expect(page.getByLabel("Startup integer")).toHaveValue("3");
   });
 
+  // Ruling on #623 (SPEC 9.15): each mod's group is headed by its title from
+  // info.json, linked to the portal in a new tab, and the name stays out of sight.
+  test("each mod's settings are headed by its title, linked to the mod portal", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await openEditor(page);
+    const heading = form(page).locator("fieldset.mod-settings-group legend").first();
+    await expect(heading.locator(".mod-title")).toHaveText("FM test");
+    const link = heading.getByRole("link", { name: /FM test/ });
+    await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fmtest");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(form(page).locator("legend", { hasText: /^fmtest$/ })).toHaveCount(0);
+    await checkPage(page);
+  });
+
   test("a running world: the countdown is offered, and the game restarts", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g, true);
