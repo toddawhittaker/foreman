@@ -116,3 +116,41 @@ func inGameRuns(r *rig, id string) int {
 	}
 	return n
 }
+
+// Every action that stops the game sees the missed restart too (ruling 10):
+// Restore stops a game back in game with a warning and a save.
+func TestRestoreSavesAGameBackInGameBeforeAnyLook(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Restore unseen")
+	r.start(id)
+	snap, err := r.c.Snapshot(context.Background(), id, admin, "good")
+	if err != nil {
+		t.Fatal(err)
+	}
+	crashUnseen(t, r, id)
+	eventually(t, func() bool { return inGameRuns(r, id) >= 2 }, "the new run to be in game")
+	before := saves(r, id)
+	if _, err := r.c.Restore(context.Background(), id, admin, snap.Name, StopOptions{}); err != nil {
+		t.Fatalf("restore = %v, want it to run", err)
+	}
+	if saves(r, id) == before {
+		t.Error("the game back in game was stopped without a save")
+	}
+}
+
+// Switch does too, for the world it stops.
+func TestSwitchSavesAGameBackInGameBeforeAnyLook(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	from := r.newWorld("Switch unseen")
+	to := r.newWorld("Next")
+	r.start(from)
+	crashUnseen(t, r, from)
+	eventually(t, func() bool { return inGameRuns(r, from) >= 2 }, "the new run to be in game")
+	before := saves(r, from)
+	if err := r.c.Switch(context.Background(), from, to, admin, StopOptions{}, StartOptions{}, true); err != nil {
+		t.Fatalf("switch = %v, want it to run", err)
+	}
+	if saves(r, from) == before {
+		t.Error("the game back in game was stopped without a save")
+	}
+}

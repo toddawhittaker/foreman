@@ -367,7 +367,6 @@ func (c *Controller) Stop(ctx context.Context, id string, by Actor, stop StopOpt
 	if err := c.audit(ctx, by, AuditStop, id, ""); err != nil {
 		return err
 	}
-	c.catchUpWorld(ctx, id)
 	ctx, o := c.beginOp(ctx, c.world(id), AuditStop, stopSteps)
 	err = c.stopLocked(ctx, o, countdown)
 	return o.end(err)
@@ -443,9 +442,9 @@ func (c *Controller) catchUp(ctx context.Context, w *worldRun, cont docker.Conta
 	return unseen && c.observe(w, &cont, ops, c.readCrashLog(ctx, w, cont, ops))
 }
 
-// catchUpWorld is catchUp for a stop about to begin its operation, which
-// would otherwise plan on a look taken before Docker restarted the game.
-// The caller holds the world's lock.
+// catchUpWorld is catchUp for an action about to begin its operation (see
+// beginOpOn), whose stop would otherwise plan on a look taken before Docker
+// restarted the game. The caller holds the world's lock and no w.mu.
 func (c *Controller) catchUpWorld(ctx context.Context, id string) {
 	if cont, found, err := c.ourContainer(ctx, id); err == nil && found && cont.State.Status == "running" {
 		c.catchUp(ctx, c.world(id), cont)
