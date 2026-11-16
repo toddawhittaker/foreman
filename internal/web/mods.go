@@ -42,6 +42,8 @@ type ModPortal interface {
 	Search(ctx context.Context, line, query string) ([]modportal.Hit, error)
 	Lookup(ctx context.Context, line, name string) (modportal.Hit, error)
 	Download(ctx context.Context, username, token string, r modportal.Release, dst *os.File) error
+	// KnownMissing says the portal's cached answer is "no such mod"; it never asks the portal.
+	KnownMissing(name string) bool
 }
 
 // accountFetcher downloads with the factorio.com account the service holds
