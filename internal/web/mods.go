@@ -109,6 +109,7 @@ func (s *server) modRoutes() {
 	s.mux.HandleFunc("GET "+PathModPlan, s.requireUser(s.handlePlanForm))
 	s.mux.HandleFunc("POST "+PathModPlan, s.requireUser(s.handlePlan))
 	s.mux.HandleFunc("POST "+PathModPlanRedraw, s.requireUser(s.handlePlanRedraw))
+	s.mux.HandleFunc("POST "+PathModPlan+"/gone", s.requireUser(s.handlePlanGone))
 	s.modPlanRoutes()
 	s.modFileRoutes()
 	s.modSettingsRoutes()
@@ -1058,6 +1059,9 @@ type ModPlanPage struct {
 	// again from the saved picks.
 	Draft     string
 	DraftLost bool
+	// RetryTo is where Try again goes when it is not the draft, as on a
+	// refused cross-site request, which makes no draft.
+	RetryTo string
 	// ConfirmErrors are unticked "continue without" boxes, by mod name.
 	ConfirmErrors map[string]i18n.Msg
 	Busy          i18n.Msg
@@ -1093,6 +1097,17 @@ func (p ModPlanPage) RemovePath(name string) string {
 // DraftPath is the page drawn from its draft, for the address bar and to
 // try again.
 func (p ModPlanPage) DraftPath() string { return draftPath(p.World.ID, p.Draft) }
+
+// RetryPath is where Try again goes.
+func (p ModPlanPage) RetryPath() string {
+	if p.RetryTo != "" {
+		return p.RetryTo
+	}
+	return p.DraftPath()
+}
+
+// maxAddress is the longest address Foreman builds (SPEC 17).
+const maxAddress = 512
 
 // RedrawPath takes the form's answers and draws the plan again.
 func (p ModPlanPage) RedrawPath() string { return p.Path() + "/redraw" }
@@ -1467,20 +1482,24 @@ func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	q := r.URL.Query()
+	// A plan asks the portal about every mod it names, so another site's
+	// page may not make a signed-in browser ask for one; nor may it make
+	// drafts, which would push out the admin's own. The admin's click on
+	// Try again is same-origin and opens the same short address.
+	if !fromThisSite(r) {
+		p := ModPlanPage{World: sum, Error: i18n.M("mods.error.cross_site"), Retry: true, RetryTo: modsPath(sum.ID)}
+		if to := r.URL.RequestURI(); len(to) <= maxAddress {
+			p.RetryTo = to
+		}
+		s.page(w, r, http.StatusForbidden, u.Username, p)
+		return
+	}
 	f, lost, ok := s.entryForm(r.Context(), u, sum, q)
 	if !ok {
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	token := s.drafts.keep(q.Get(draftField), u.ID, sum.ID, f)
-	// A plan asks the portal about every mod it names, so another site's
-	// page may not make a signed-in browser ask for one. The admin's own
-	// click on Try again is same-origin.
-	if !fromThisSite(r) {
-		p := ModPlanPage{World: sum, Form: f, Error: i18n.M("mods.error.cross_site"), Retry: true, Draft: token}
-		s.page(w, r, http.StatusForbidden, u.Username, p)
-		return
-	}
+	token := q.Get(draftField)
 	form := defaultCountdown()
 	if c, ok := q["countdown"]; ok {
 		form.Countdown = c[0]

@@ -34,7 +34,7 @@
 <div class="message message--error" id="plan-error" tabindex="-1"{{if not (or .Changed .Problems .Redraw)}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
   <div class="actions">
-    {{- if .Retry}}<a href="{{.DraftPath}}" class="button">{{t "mods.plan.retry"}}</a>{{end}}
+    {{- if .Retry}}<a href="{{.RetryPath}}" class="button">{{t "mods.plan.retry"}}</a>{{end}}
     <a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a>
   </div>
 </div>

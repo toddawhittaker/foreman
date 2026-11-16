@@ -76,7 +76,7 @@ func TestDraftsAreBounded(t *testing.T) {
 	}
 }
 
-var reDraft = regexp.MustCompile(`draft=([A-Za-z0-9_-]+)`)
+var reDraft = regexp.MustCompile(`(?:draft=|name="draft" value=")([A-Za-z0-9_-]+)`)
 
 // draftOf is the draft token a review page carries.
 func draftOf(t *testing.T, body string) string {
@@ -91,9 +91,6 @@ func draftOf(t *testing.T, body string) string {
 // reAddress finds every address a page offers: links, forms, buttons and
 // htmx requests.
 var reAddress = regexp.MustCompile(`(?:href|action|formaction|hx-get|hx-post|hx-push-url)="([^"]*)"`)
-
-// maxAddress is the longest address Foreman may build (SPEC 17).
-const maxAddress = 512
 
 func wantShortAddresses(t *testing.T, what, body string) {
 	t.Helper()
@@ -225,5 +222,66 @@ func TestUnsupportedFavoriteVersionIsAConflict(t *testing.T) {
 	// Posting the form anyway applies nothing.
 	if rep := g.post(modsPath(id)+"/plan", planValues(t, body)); rep.StatusCode != http.StatusConflict {
 		t.Errorf("post: %d", rep.StatusCode)
+	}
+}
+
+// The gone-mods fix posts; the server finds the gone mods again and plans
+// only those, from a draft with a short address, however many there are
+// (SPEC 9.3, 17).
+func TestGoneFixPlansOnlyTheGoneMods(t *testing.T) {
+	g := newModsRig(t, true)
+	var zips, gone []string
+	for i := range 30 {
+		name := fmt.Sprintf("gone-%02d-%s", i, strings.Repeat("y", 60))
+		gone = append(gone, name)
+		zips = append(zips, name+"_1.0.0")
+		g.portal.AddZip(name, "2.0.0")
+	}
+	// delta has an update but is not gone, so the fix leaves it alone.
+	g.portal.AddZip("delta", "1.0.0")
+	g.portal.AddZip("delta", "1.1.0")
+	id := g.world20("Base", append(zips, "delta_1.0.0")...)
+	_, frag := g.getStatus(modsPath(id) + "/notice")
+	wantIn(t, "notice", frag, `action="`+goneUpdatePath(id)+`"`, ">Update 30 mods</button>")
+	rec := g.harness.post(goneUpdatePath(id), url.Values{}, withCookie(g.cookie))
+	loc := rec.Header().Get("Location")
+	if rec.Code != http.StatusSeeOther || !strings.HasPrefix(loc, modsPath(id)+"/plan?draft=") || len(loc) > maxAddress {
+		t.Fatalf("fix: %d to %q", rec.Code, loc)
+	}
+	code, body := g.getStatus(loc)
+	if code != http.StatusOK {
+		t.Fatalf("plan %d", code)
+	}
+	wantIn(t, "plan", plain(body), "Update 30 mods")
+	for _, n := range gone {
+		wantIn(t, "plan", body, n)
+	}
+	if strings.Contains(planRows(body), "delta") {
+		t.Error("the fix plans a mod that is not gone")
+	}
+	wantShortAddresses(t, "plan", body)
+	// Another site cannot post it.
+	if rec := g.harness.post(goneUpdatePath(id), url.Values{}, withCookie(g.cookie), withHeader("Origin", "https://evil.example")); rec.Code != http.StatusForbidden {
+		t.Errorf("cross-site: %d", rec.Code)
+	}
+}
+
+// A refused cross-site request makes no draft, so another site's page
+// cannot push out the admin's own draft by asking many times.
+func TestCrossSiteReviewMakesNoDraft(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base")
+	_, body := g.getStatus(kindPlanPath(id, mods.KindInstall, "alpha"))
+	tok := draftOf(t, body)
+	for range maxDraftsPerUser + 5 {
+		rec := g.harness.get(kindPlanPath(id, mods.KindInstall, "alpha"), withCookie(g.cookie), withHeader("Sec-Fetch-Site", "cross-site"))
+		if rec.Code != http.StatusForbidden || strings.Contains(rec.Body.String(), "draft=") {
+			t.Fatalf("cross-site: %d, or it names a draft", rec.Code)
+		}
+	}
+	_, body = g.getStatus(draftPath(id, tok))
+	if strings.Contains(body, `id="plan-draft-lost"`) {
+		t.Error("cross-site requests pushed out the admin's draft")
 	}
 }

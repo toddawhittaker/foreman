@@ -2,9 +2,11 @@ package web
 
 import (
 	"cmp"
+	"net/http"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mods"
+	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -27,11 +29,42 @@ func goneFix(id string, gone []world.GoneMod) Offer {
 	case len(gone) == 1:
 		return Offer{Path: kindPlanPath(id, mods.KindRemove, gone[0].Name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(goneTitle(gone[0])))}
 	case all:
-		// Update all, as the Mods tab offers it: the link names no mods, so
-		// its address stays short however many there are (SPEC 17).
-		return Offer{Path: kindPlanPath(id, mods.KindUpdate, ""), Label: i18n.M("mods.status.update_all")}
+		// A post, not a link listing the mods: the server finds the gone
+		// mods again and opens their plan from a draft (SPEC 17).
+		return Offer{Path: goneUpdatePath(id), Label: i18n.M("mods.plan.button.update", "count", len(names)), Post: true}
 	}
 	return Offer{Path: modsPath(id), Label: i18n.M("mods.notice.review", "count", len(gone))}
+}
+
+func goneUpdatePath(id string) string { return modsPath(id) + "/plan/gone" }
+
+// handlePlanGone opens the plan that updates every mod the portal no longer
+// offers on the world's line and that has an update, and only those
+// (SPEC 9.3). The list is read from the portal again, never from the form.
+func (s *server) handlePlanGone(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modsWorld(w, r, u)
+	if !ok {
+		return
+	}
+	if !s.readForm(w, r) {
+		return
+	}
+	flags, err := s.planner.Availability(r.Context(), sum.ID)
+	if err != nil {
+		s.portalTrouble("check the mods on the portal", sum.ID, err)
+	}
+	f := planForm{Kind: mods.KindUpdate, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}, Versions: map[string]string{}}
+	for _, fl := range flags {
+		if fl.Severity == mods.SevError && fl.Update != "" {
+			f.Names = append(f.Names, fl.Name)
+		}
+	}
+	if len(f.Names) == 0 {
+		http.Redirect(w, r, modsPath(sum.ID), http.StatusSeeOther)
+		return
+	}
+	token := s.drafts.keep("", u.ID, sum.ID, f)
+	http.Redirect(w, r, draftPath(sum.ID, token), http.StatusSeeOther) //nolint:gosec // a local path under this world's mods pages
 }
 
 // goneTitle is how a gone mod is named in a label: its title, or its name.

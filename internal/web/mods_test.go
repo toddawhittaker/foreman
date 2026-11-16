@@ -872,7 +872,7 @@ func TestPlanRequestIsBounded(t *testing.T) {
 	for _, site := range []string{"cross-site", "same-site"} {
 		rec := g.harness.get(path, withCookie(g.cookie), withHeader("Sec-Fetch-Site", site))
 		body := rec.Body.String()
-		if rec.Code != http.StatusForbidden || !strings.Contains(body, "opened from another site") || !strings.Contains(body, `href="`+html.EscapeString(draftPath(id, draftOf(t, body)))+`" class="button">Try again`) {
+		if rec.Code != http.StatusForbidden || !strings.Contains(body, "opened from another site") || !strings.Contains(body, `href="`+html.EscapeString(path)+`" class="button">Try again`) {
 			t.Errorf("%s: %d\n%s", site, rec.Code, body)
 		}
 	}
