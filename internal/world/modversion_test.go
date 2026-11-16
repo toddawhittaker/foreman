@@ -65,3 +65,17 @@ func TestModsCarryTitles(t *testing.T) {
 		}
 	}
 }
+
+// CleanText turns control and format characters into spaces without
+// cutting; CutText cuts by characters and marks the cut.
+func TestCleanTextAndCutText(t *testing.T) {
+	if got := CleanText(" a\u202Eb\u200Bc\n "); got != "a b c" {
+		t.Errorf("CleanText = %q", got)
+	}
+	if got := CutText("ééééé", 3); got != "ééé…" {
+		t.Errorf("CutText = %q", got)
+	}
+	if got := CutText("abc", 3); got != "abc" {
+		t.Errorf("CutText of a short text = %q", got)
+	}
+}

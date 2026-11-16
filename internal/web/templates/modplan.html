@@ -259,13 +259,13 @@
 {{- end}}
 {{- end}}
 
-{{/* One offered mod: the tick box, named for a screen reader by the mod's title, then the title link and details beside it, outside the label, so following the link never ticks the box (SPEC 9.2, 9.4). Takes an OfferRow. */}}
+{{/* One offered mod: the tick box, named for a screen reader by the mod's title, then the title link and details beside it, outside the labels, so following the link never ticks the box; the "offered by" words are a second label, so a click on them does (SPEC 9.2, 9.4). Takes an OfferRow. */}}
 {{define "plan-offer" -}}
 {{- $r := .}}
 <div class="plan-offer">
-  <label class="check plan-offer__box" for="{{$r.ID}}"><input type="checkbox" name="{{$r.Field}}" value="{{$r.Offer.Name}}" id="{{$r.ID}}" hx-get="{{$r.Path}}"{{if $r.Offer.Chosen}} checked{{end}}{{if $r.HasDetail}} aria-describedby="{{$r.DetailID}}"{{end}}> <span class="visually-hidden">{{msgHTML $r.Label}}</span></label>
+  <label class="check plan-offer__box" for="{{$r.ID}}"><input type="checkbox" name="{{$r.Field}}" value="{{$r.Offer.Name}}" id="{{$r.ID}}" hx-get="{{$r.Path}}"{{if $r.Offer.Chosen}} checked{{end}}{{if $r.HasDetail}} aria-describedby="{{$r.DetailID}}"{{end}}> <span class="visually-hidden" translate="no">{{$r.Name.Title}}</span></label>
   <div class="plan-offer__body">
-    <p class="plan-offer__name">{{template "mod-name" $r.Name}} <span class="plan-offer__of" aria-hidden="true">{{msgHTML $r.Of}}</span></p>
+    <p class="plan-offer__name">{{template "mod-name" $r.Name}} <label class="plan-offer__of" for="{{$r.ID}}">{{msgHTML $r.Of}}</label></p>
     {{- if $r.HasDetail}}
     <div id="{{$r.DetailID}}" class="plan-offer__detail">
       {{- with $r.Facts.Summary}}

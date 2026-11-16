@@ -1570,93 +1570,92 @@ func (s *server) planFacts(ctx context.Context, p ModPlanPage) map[string]ModFac
 		installed[m.Name] = m
 		out[m.Name] = ModFacts{Title: m.Title, Version: m.Version}
 	}
-	line := p.Line()
-	look := func(name string, offered bool) {
-		m, err := s.portal.Mod(ctx, name)
-		if err != nil {
-			return
-		}
-		f := out[name]
-		f.OnPortal = true
-		if f.Title == "" {
-			f.Title = m.Title
-		}
-		if offered {
-			f.Summary = clipRunes(m.Summary, maxPortalSummary)
-			want := f.Version
-			if c := slices.IndexFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == name }); c >= 0 && p.Plan.Changes[c].To != "" {
-				want = p.Plan.Changes[c].To
-			}
-			if _, ok := installed[name]; !ok && want == "" {
-				for _, r := range m.Releases {
-					if r.FactorioVersion == line && (want == "" || world.CompareVersions(r.Version, want) > 0) {
-						want = r.Version
-					}
-				}
-			}
-			f.Version = want
-			for _, r := range m.Releases {
-				if r.Version == want {
-					f.Released = r.ReleasedAt
-				}
-			}
-		}
-		out[name] = f
-	}
+	// Details are a help, not the plan: a slow portal leaves them out
+	// rather than holding the page.
+	ctx, cancel := context.WithTimeout(ctx, planFactsWait)
+	defer cancel()
 	seen := map[string]bool{}
-	var names []string
-	add := func(n string) {
-		if n != "" && !seen[n] {
-			seen[n] = true
-			names = append(names, n)
-		}
-	}
-	for _, n := range p.Form.Names {
-		add(n)
-	}
-	for _, c := range p.Plan.Changes {
-		add(c.Name)
-		add(c.Why.Of)
-	}
-	for _, n := range names {
-		if !installed[n].BuiltIn && !installed[n].Local {
-			look(n, false)
-		}
-	}
-	asked := 0
-	for _, o := range slices.Concat(p.Plan.Optional, p.Plan.Orphans) {
-		if seen[o.Name] || installed[o.Name].BuiltIn || installed[o.Name].Local {
-			continue
-		}
-		seen[o.Name] = true
-		if asked < store.MaxModPlanNames {
-			asked++
-			look(o.Name, true)
-		}
-	}
-	for _, o := range slices.Concat(p.Plan.Optional, p.Plan.Orphans) {
-		if _, ok := out[o.Of]; !ok && !seen[o.Of] {
-			seen[o.Of] = true
-			if !installed[o.Of].BuiltIn {
-				look(o.Of, false)
+	// pick lists the names not seen yet that the portal may have, at most
+	// limit of them (no limit when limit < 0).
+	pick := func(limit int, names ...string) []string {
+		var got []string
+		for _, n := range names {
+			if n == "" || seen[n] || installed[n].BuiltIn || installed[n].Local {
+				continue
 			}
+			if limit >= 0 && len(got) >= limit {
+				break
+			}
+			seen[n] = true
+			got = append(got, n)
+		}
+		return got
+	}
+	var mine []string
+	for _, c := range p.Plan.Changes {
+		mine = append(mine, c.Name, c.Why.Of)
+	}
+	offers := slices.Concat(p.Plan.Optional, p.Plan.Orphans)
+	var offered, of []string
+	for _, o := range offers {
+		offered, of = append(offered, o.Name), append(of, o.Of)
+	}
+	plan := pick(-1, slices.Concat(p.Form.Names, mine)...)
+	asked := pick(store.MaxModPlanNames, offered...)
+	why := pick(store.MaxModPlanNames, of...)
+	for name, r := range s.portal.Mods(ctx, slices.Concat(plan, why)) {
+		if r.Err == nil {
+			out[name] = modFacts(out[name], r.Mod)
+		}
+	}
+	for name, r := range s.portal.Mods(ctx, asked) {
+		if r.Err == nil {
+			_, have := installed[name]
+			out[name] = offerFacts(modFacts(out[name], r.Mod), r.Mod, p, have)
 		}
 	}
 	return out
 }
 
+// planFactsWait bounds the portal lookups for the review page's details.
+var planFactsWait = 3 * time.Second
+
+// modFacts adds the portal's word on a mod to what info.json gave.
+func modFacts(f ModFacts, m modportal.Mod) ModFacts {
+	f.OnPortal = true
+	if f.Title == "" {
+		f.Title = m.Title
+	}
+	return f
+}
+
+// offerFacts adds an offered mod's summary and the release it would
+// install, or has installed, with that release's date.
+func offerFacts(f ModFacts, m modportal.Mod, p ModPlanPage, installed bool) ModFacts {
+	f.Summary = world.CutText(world.CleanText(m.Summary), maxPortalSummary)
+	want := f.Version
+	if c := slices.IndexFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == m.Name }); c >= 0 && p.Plan.Changes[c].To != "" {
+		want = p.Plan.Changes[c].To
+	}
+	if !installed && want == "" {
+		for _, r := range m.Releases {
+			if r.FactorioVersion == p.Line() && (want == "" || world.CompareVersions(r.Version, want) > 0) {
+				want = r.Version
+			}
+		}
+	}
+	f.Version = want
+	for _, r := range m.Releases {
+		if r.Version == want {
+			f.Released = r.ReleasedAt
+		}
+	}
+	return f
+}
+
 // maxPortalSummary bounds a portal summary on the review page; it is
 // untrusted.
 const maxPortalSummary = 300
-
-// clipRunes cuts s to at most n runes, ending in an ellipsis when cut.
-func clipRunes(s string, n int) string {
-	r := []rune(strings.TrimSpace(s))
-	if len(r) <= n {
-		return string(r)
-	}
-	return strings.TrimSpace(string(r[:n-1])) + "…"
-}
 
 // planDrops lists the plan's dropped mods, leaving out unresolved mods,
 // which have their own box. A save that cannot be read drops nothing here;

@@ -47,18 +47,19 @@ var groupTitles = []struct {
 // by its name, so it can still be taken out.
 func (p ModPlanPage) Groups() []PlanGroup {
 	var out []PlanGroup
+	vs := p.versionRows()
 	for _, g := range groupTitles {
 		var items []PlanItem
 		if g.act == mods.ActInstall && p.FromPicks() {
 			for _, n := range p.Form.Names {
 				if !slices.ContainsFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == n }) {
-					items = append(items, PlanItem{Name: n, Asked: true, Version: p.versionFor(n)})
+					items = append(items, PlanItem{Name: n, Asked: true, Version: vs[n]})
 				}
 			}
 		}
 		for _, c := range p.Plan.Changes {
 			if c.Action == g.act {
-				items = append(items, p.item(c))
+				items = append(items, p.item(c, vs))
 			}
 		}
 		slices.SortStableFunc(items, func(a, b PlanItem) int { return p.askedOrder(a) - p.askedOrder(b) })
@@ -71,11 +72,11 @@ func (p ModPlanPage) Groups() []PlanGroup {
 	var same []PlanItem
 	for _, c := range p.Plan.Changes {
 		if p.keptListed(c) {
-			same = append(same, p.item(c))
+			same = append(same, p.item(c, vs))
 		}
 	}
 	if len(same) > 0 {
-		out = append(out, PlanGroup{Title: i18n.M("mods.version.legend"), Items: same})
+		out = append(out, PlanGroup{Title: i18n.M("mods.plan.group.same"), Items: same})
 	}
 	return out
 }
@@ -95,20 +96,22 @@ func (p ModPlanPage) askedOrder(it PlanItem) int {
 }
 
 // Kept lists the mods the plan needs and leaves as they are. An asked mod
-// kept at its version is not one of them: Groups shows it with its list.
+// kept at its version is not one of them: Groups shows it with its list,
+// so none of these has a version list.
 func (p ModPlanPage) Kept() []PlanItem {
 	var out []PlanItem
 	for _, c := range p.Plan.Changes {
 		if c.Action == mods.ActKeep && !p.keptListed(c) {
-			out = append(out, p.item(c))
+			out = append(out, p.item(c, nil))
 		}
 	}
 	return out
 }
 
-func (p ModPlanPage) item(c mods.Change) PlanItem {
+// item is c's row, with its version list from vs.
+func (p ModPlanPage) item(c mods.Change, vs map[string]*VersionRow) PlanItem {
 	asked := p.FromPicks() && slices.Contains(p.Form.Names, c.Name)
-	return PlanItem{Name: c.Name, Text: p.changeText(c), Asked: asked, Version: p.versionFor(c.Name)}
+	return PlanItem{Name: c.Name, Text: p.changeText(c), Asked: asked, Version: vs[c.Name]}
 }
 
 // ConflictRow is one conflict and, when Foreman has one, its fix: the same
@@ -213,14 +216,13 @@ type VersionOption struct {
 	Selected bool
 }
 
-// versionFor is name's version list from Versions; nil when it has none.
-func (p ModPlanPage) versionFor(name string) *VersionRow {
+// versionRows is Versions by mod name, built once for a render's rows.
+func (p ModPlanPage) versionRows() map[string]*VersionRow {
+	out := map[string]*VersionRow{}
 	for _, v := range p.Versions() {
-		if v.Name == name {
-			return &v
-		}
+		out[v.Name] = &v
 	}
-	return nil
+	return out
 }
 
 // Versions are the version lists of the mods an install or update asks
@@ -289,16 +291,17 @@ func (p ModPlanPage) Mod(name string) ModName {
 // Title is name's title, or name when there is none.
 func (p ModPlanPage) Title(name string) string { return p.Mod(name).Title }
 
-// OfferRow is one offered mod's tick box: its accessible name, its title
-// link and its details, which sit outside the label so a click on the
-// link never ticks it (SPEC 9.2, 9.4).
+// OfferRow is one offered mod's tick box, its title link and its details.
+// The box has two labels, a hidden one with the title and the visible words
+// saying why it is offered; the link sits outside both, so a click on it
+// never ticks the box (SPEC 9.2, 9.4).
 type OfferRow struct {
 	Offer mods.Offer
 	ID    string
-	// Label names the box for a screen reader; Of says why it is offered.
-	Label, Of i18n.Msg
-	Name      ModName
-	Facts     ModFacts
+	// Of says why it is offered.
+	Of    i18n.Msg
+	Name  ModName
+	Facts ModFacts
 	// Field is the box's form field; Path the plan it redraws.
 	Field, Path string
 }
@@ -315,12 +318,12 @@ func (o OfferRow) HasDetail() bool {
 func (p ModPlanPage) OptionalRows() []OfferRow {
 	out := make([]OfferRow, 0, len(p.Plan.Optional))
 	for _, o := range p.Plan.Optional {
-		mod, of := i18n.Ident(p.Title(o.Name)), i18n.Ident(p.Title(o.Of))
+		of := i18n.Ident(p.Title(o.Of))
 		r := OfferRow{Offer: o, ID: p.ModID(o.Name, "optional"), Name: p.Mod(o.Name), Facts: p.facts[o.Name],
-			Label: i18n.M("mods.optional.item", "mod", mod, "of", of), Of: i18n.M("mods.plan.why.optional_of", "mod", of),
+			Of:    i18n.M("mods.plan.why.optional_of", "mod", of),
 			Field: "optional", Path: p.Path()}
 		if o.Recommended {
-			r.Label, r.Of = i18n.M("mods.recommended.item", "mod", mod, "of", of), i18n.M("mods.plan.why.recommended_by", "mod", of)
+			r.Of = i18n.M("mods.plan.why.recommended_by", "mod", of)
 		}
 		out = append(out, r)
 	}
@@ -331,9 +334,9 @@ func (p ModPlanPage) OptionalRows() []OfferRow {
 func (p ModPlanPage) OrphanRows() []OfferRow {
 	out := make([]OfferRow, 0, len(p.Plan.Orphans))
 	for _, o := range p.Plan.Orphans {
-		mod, of := i18n.Ident(p.Title(o.Name)), i18n.Ident(p.Title(o.Of))
+		of := i18n.Ident(p.Title(o.Of))
 		out = append(out, OfferRow{Offer: o, ID: p.ModID(o.Name, "orphan"), Name: p.Mod(o.Name), Facts: p.facts[o.Name],
-			Label: i18n.M("mods.orphans.item", "mod", mod, "of", of), Of: i18n.M("mods.plan.why.only_needed_by", "mod", of),
+			Of:    i18n.M("mods.plan.why.only_needed_by", "mod", of),
 			Field: "orphan", Path: p.Path()})
 	}
 	return out

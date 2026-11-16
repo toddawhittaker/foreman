@@ -19,7 +19,7 @@ func TestRecommendedDependencyPlan(t *testing.T) {
 	if code != http.StatusOK || !strings.Contains(body, `id="act-apply"`) {
 		t.Fatalf("plan %d, not applicable:\n%s", code, body)
 	}
-	wantIn(t, "plan", plain(body), "fp-lane, recommended by fp-k2", "Mods marked as recommended start ticked.",
+	wantIn(t, "plan", plain(body), "recommended by fp-k2</label>", "Mods marked as recommended start ticked.",
 		"fp-gone, recommended by fp-k2, is left out")
 	wantIn(t, "plan", body, `<input type="hidden" name="offered" value="fp-lane">`,
 		`value="fp-lane" id="mod-fp-lane-optional" hx-get="/worlds/`+id+`/mods/plan" checked>`)

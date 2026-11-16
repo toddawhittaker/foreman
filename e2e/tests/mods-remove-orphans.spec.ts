@@ -23,8 +23,8 @@ test("removing a mod offers its orphans, and an unticked one is kept", async ({ 
   await page.goto("/worlds/base/mods/plan?kind=remove&name=fp-top");
   const orphans = page.locator("#plan-orphans");
   await expect(orphans.getByRole("checkbox")).toHaveCount(2);
-  const a = orphans.getByRole("checkbox", { name: "fp-dep-a, only needed by fp-top" });
-  const b = orphans.getByRole("checkbox", { name: "fp-dep-b, only needed by fp-top" });
+  const a = orphans.getByRole("checkbox", { name: "fp-dep-a only fp-top needed it" });
+  const b = orphans.getByRole("checkbox", { name: "fp-dep-b only fp-top needed it" });
   await expect(a).toBeChecked();
   await expect(b).toBeChecked();
   await expect(page.getByRole("button", { name: "Remove 3 mods" })).toBeVisible();
@@ -33,7 +33,7 @@ test("removing a mod offers its orphans, and an unticked one is kept", async ({ 
 
   await a.uncheck();
   await expect(page.getByRole("button", { name: "Remove 2 mods" })).toBeVisible();
-  await expect(orphans.getByRole("checkbox", { name: "fp-dep-a, only needed by fp-top" })).not.toBeChecked();
+  await expect(orphans.getByRole("checkbox", { name: "fp-dep-a only fp-top needed it" })).not.toBeChecked();
   await page.getByRole("button", { name: "Remove 2 mods" }).click();
   await expect(doneBox(page)).toBeVisible(live);
 

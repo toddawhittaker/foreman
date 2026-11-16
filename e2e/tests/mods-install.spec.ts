@@ -108,7 +108,7 @@ test("a recommended dependency starts ticked, and one the portal lacks is left o
   await fakePortal!.add("fp-k2", "2.1.4", ["base >= 2.0", "+ fp-lane >= 1.3.0", "+ fp-gone"]);
   await setUpModsWorld(page, foreman, fakeGame!, world);
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-k2");
-  const box = page.getByLabel("fp-lane, recommended by fp-k2");
+  const box = page.getByRole("checkbox", { name: "fp-lane recommended by fp-k2" });
   await expect(box).toBeChecked();
   await expect(page.locator("#plan-unavailable")).toContainText("fp-gone, recommended by fp-k2, is left out");
   await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
@@ -135,7 +135,7 @@ test.describe("an optional dependency", () => {
     await addMods(fakePortal!);
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
-    const box = page.getByLabel("fp-opt, offered by fp-main");
+    const box = page.getByRole("checkbox", { name: "fp-opt offered by fp-main" });
     await expect(box).not.toBeChecked();
     await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
     await checkPage(page);
@@ -157,7 +157,7 @@ test.describe("an optional dependency", () => {
     await addMods(fakePortal!);
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
-    const offer = page.locator(".plan-offer", { has: page.getByLabel("fp-opt, offered by fp-main") });
+    const offer = page.locator(".plan-offer", { has: page.getByRole("checkbox", { name: "fp-opt offered by fp-main" }) });
     const link = offer.getByRole("link", { name: "fp-opt on the mod portal, opens in a new tab" });
     await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-opt");
     await expect(link).toHaveAttribute("target", "_blank");
@@ -165,7 +165,7 @@ test.describe("an optional dependency", () => {
     await expect(offer).toContainText("generated");
     await expect(offer.locator("dd").first()).toHaveText("1.0.0");
     await link.click({ modifiers: ["ControlOrMeta"] });
-    await expect(page.getByLabel("fp-opt, offered by fp-main")).not.toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "fp-opt offered by fp-main" })).not.toBeChecked();
     await checkPage(page);
   });
 
@@ -175,8 +175,8 @@ test.describe("an optional dependency", () => {
     await addMods(fakePortal!);
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
-    await page.getByLabel("fp-opt, offered by fp-main").check();
-    await expect(page.getByLabel("fp-opt, offered by fp-main")).toBeChecked();
+    await page.getByRole("checkbox", { name: "fp-opt offered by fp-main" }).check();
+    await expect(page.getByRole("checkbox", { name: "fp-opt offered by fp-main" })).toBeChecked();
     await page.getByRole("button", { name: "Install 2 mods" }).click();
     await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     for (const name of ["fp-main", "fp-opt"]) expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", `${name}_1.0.0.zip`))).toBe(true);
@@ -190,7 +190,7 @@ test.describe("an optional dependency", () => {
       await addMods(portal);
       await setUpModsWorld(page, foreman, g, world);
       await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
-      await page.getByLabel("fp-opt, offered by fp-main").check();
+      await page.getByRole("checkbox", { name: "fp-opt offered by fp-main" }).check();
       await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
       await page.getByRole("button", { name: "Recalculate the plan" }).click();
       await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
@@ -205,7 +205,7 @@ test.describe("an optional dependency", () => {
     // The same, reached with Recalculate.
     test("a ticked optional mod is installed when the plan is confirmed", async ({ page, foreman, fakeGame, fakePortal }) => {
       await recalculate(page, foreman, fakeGame!, fakePortal!);
-      await expect(page.getByLabel("fp-opt, offered by fp-main")).toBeChecked();
+      await expect(page.getByRole("checkbox", { name: "fp-opt offered by fp-main" })).toBeChecked();
       await page.getByRole("button", { name: "Install 2 mods" }).click();
       await expect(page).toHaveURL("/", live);
       // Without script the page does not update itself; load it until the change has finished.
