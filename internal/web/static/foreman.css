@@ -9279,6 +9279,7 @@ main:has(> .gate) > * + :not(h1, .gate) {
     align-items: center;
     min-block-size: var(--target-min);
   }
+}
 
 /* Saves tab: an autosave reads as the world's name and time, and its file
    name sits beside it as smaller, quieter text. */
