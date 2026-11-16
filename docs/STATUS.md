@@ -3653,16 +3653,13 @@ game is always warned and saved.
   built in Go or JavaScript would pass it; there is none today.
 - **A long `link-tab` label that wraps on a phone** shows its chevron at the
   middle right of the wrapped text, not after the last word.
-- **`link-tab` is on the three upload links only.** Other links to a tab or
-  page inside Foreman are unchanged.
-- **The mod default hint shows a choice's raw value.** The mod's definitions
-  hold no labels for choices, only a name and a description, so there is
-  nothing nicer to show. Reading labels would need a ruling.
-- **`.mod-settings-will` is still styled in `foreman.css`**, so the class
-  stays on the mods page; removing it would change the layout.
+- **`link-tab` marks the three "upload on another tab" links** (SPEC 14.6).
+  Ordinary navigation links inside Foreman (tabs, breadcrumbs, list rows)
+  carry no chevron.
 - **`uploads.spec.ts` "the Mods tab's mod zip and mod-settings.dat uploads
-  are drop zones" fails on the phone projects**, and fails the same way on
-  the batch's base commit. It passes on the desktop projects.
+  are drop zones"** timed out once on a phone project while the machine was
+  heavily loaded, on the batch's base commit too. It passed in every full
+  run of the batch.
 - **Closed from batch 11:** the gaps about other forms showing no defaults
   (#636) and a game back from a crash briefly treated as crashed (#646). The
   batch 11 note that an upload for another tab is a button is replaced by the
