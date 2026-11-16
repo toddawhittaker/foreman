@@ -45,7 +45,9 @@ func levelInits(t testing.TB) [][]byte {
 }
 
 // A crafted level whose counts claim the rest of the file, with decoy
-// surface names, must be refused quickly.
+// surface names, must be refused quickly. Before the count checks it took
+// about 5.6 s; the bound leaves room for a slow machine and the race
+// detector while still catching that.
 func TestFromLevelRefusesHostileCountsQuickly(t *testing.T) {
 	lv := []byte{2, 0, 1, 0, 24, 0, 1, 0}
 	unit := []byte{0x00, 0x00, 0xff, 0x60, 0xea, 0x00, 0x00}
@@ -55,8 +57,8 @@ func TestFromLevelRefusesHostileCountsQuickly(t *testing.T) {
 	}
 	start := time.Now()
 	_, err := FromLevel(lv, 8)
-	if el := time.Since(start); el > 100*time.Millisecond {
-		t.Fatalf("took %v, want well under 100ms", el)
+	if el := time.Since(start); el > 2*time.Second {
+		t.Fatalf("took %v, want well under 2s", el)
 	}
 	if !errors.Is(err, ErrNoSettings) {
 		t.Fatalf("err %v, want ErrNoSettings", err)

@@ -9254,6 +9254,108 @@ main:has(> .gate) > * + :not(h1, .gate) {
   list-style: none;
 }
 
+/* U1 drop zone (DESIGN 7.10). Without script .dropzone is a plain .field.
+   With script the native input is stretched, transparent, over a dashed
+   area, so a click, Enter or Space anywhere on it opens the picker. A drag
+   is shown by a solid, thicker border and new words, not colour alone. */
+.dropzone--on .dropzone__area {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-block-size: 6rem;
+  padding: var(--space-4);
+  background: var(--color-deep);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.dropzone--on .dropzone__area input[type="file"] {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  max-inline-size: none;
+  block-size: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dropzone--on .dropzone__area:hover {
+  background: var(--color-secondary-hover);
+}
+
+.dropzone--on .dropzone__area:focus-within {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.dropzone__prompt {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.dropzone__drop,
+.dropzone--page .dropzone__idle {
+  display: none;
+}
+
+.dropzone--page .dropzone__drop {
+  display: inline;
+}
+
+.dropzone--page .dropzone__area {
+  border-style: solid;
+  border-color: var(--color-selected);
+}
+
+.dropzone--over .dropzone__area {
+  border-width: 4px;
+  background: var(--color-accent-bg);
+}
+
+.dropzone--on:has(input[aria-invalid="true"]) .dropzone__area {
+  border-color: var(--color-danger-text);
+}
+
+.dropzone__chosen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.dropzone__chosen[hidden] {
+  display: none;
+}
+
+/* Clear keeps a 44 px target on a phone (SPEC 17.2). */
+.dropzone__clear {
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+}
+
+.dropzone__file {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  .dropzone--over .dropzone__area {
+    border-color: Highlight;
+  }
+}
+
+/* Saves tab: an autosave reads as the world's name and time, and its file
+   name sits beside it as smaller, quieter text. */
+.save-file {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
 /* ---- Mod titles (SPEC 9.15): the mod-name partial, a title that links to
    the mod portal. ---- */
 
@@ -9279,13 +9381,4 @@ main:has(> .gate) > * + :not(h1, .gate) {
     align-items: center;
     min-block-size: var(--target-min);
   }
-}
-
-/* Saves tab: an autosave reads as the world's name and time, and its file
-   name sits beside it as smaller, quieter text. */
-.save-file {
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
 }

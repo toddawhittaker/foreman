@@ -1,9 +1,7 @@
 package game
 
 import (
-	"bytes"
 	"context"
-	"log/slog"
 	"strings"
 	"testing"
 )
@@ -33,9 +31,8 @@ func TestSwitchCheckFaultIsNotARefusal(t *testing.T) {
 func TestRefusalIsAuditedAndLoggedWithReason(t *testing.T) {
 	for _, action := range []string{AuditStart, AuditRestart} {
 		t.Run(action, func(t *testing.T) {
-			r := newRig(t, rigOptions{})
-			var logs bytes.Buffer
-			r.c.log = slog.New(slog.NewTextHandler(&logs, nil))
+			var logs lockedBuffer
+			r := newRig(t, rigOptions{logs: &logs})
 			id, err := r.worlds.Create(context.Background(), "Empty", "2.1.24", false)
 			if err != nil {
 				t.Fatal(err)
