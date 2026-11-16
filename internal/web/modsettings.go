@@ -72,6 +72,11 @@ type SettingField struct {
 	Min, Max     string
 	Options      []string
 	Error        i18n.Msg
+	// Default and DefaultAlpha are the mod's own default, as the control
+	// posts it, when the value in effect differs from it (SPEC 17.16);
+	// HasDefault says so.
+	Default, DefaultAlpha string
+	HasDefault            bool
 
 	def modsettings.Definition
 }
@@ -479,6 +484,17 @@ func newField(d modsettings.Definition, file, defaults *modsettings.File, loc mo
 		f.Value, f.Alpha = colorHex(v.Color), formatFloat(scaleColor(v.Color).A)
 	} else {
 		f.Value = formatValue(v)
+	}
+	if d.Default != nil && f.Kind != kindLocked {
+		dv := *d.Default
+		if d.Type == modsettings.TypeInt && dv.Type == modsettings.TypeDouble {
+			dv = modsettings.Value{Type: modsettings.TypeInt, Int: int64(math.Round(dv.Double))}
+		}
+		f.Default = formatValue(dv)
+		if d.Type == modsettings.TypeColor {
+			f.DefaultAlpha = formatFloat(scaleColor(dv.Color).A)
+		}
+		f.HasDefault = f.Default != f.Value || f.DefaultAlpha != f.Alpha
 	}
 	return f
 }

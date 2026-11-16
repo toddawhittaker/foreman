@@ -26,7 +26,7 @@
 <p>{{if and .Stable .Experimental}}{{tHTML "server.versions.newer_both" "stable" (code .Stable) "experimental" (code .Experimental) "current" (code .Current)}}{{else if .Stable}}{{tHTML "server.versions.newer_stable" "stable" (code .Stable) "current" (code .Current)}}{{else}}{{tHTML "server.versions.newer_experimental" "experimental" (code .Experimental) "current" (code .Current)}}{{end}}</p>
 <div class="actions">
   {{- with .ChangelogURL}}
-  <a href="{{.}}" rel="noopener noreferrer">{{t "server.versions.changelog"}}</a>
+  <a href="{{.}}" target="_blank" rel="noopener noreferrer">{{t "server.versions.changelog"}}<span class="visually-hidden"> {{t "common.link.new_tab"}}</span></a>
   {{- end}}
   {{- if .UpdatePath}}
   <a href="{{.UpdatePath}}" class="button">{{t "server.versions.update"}}</a>

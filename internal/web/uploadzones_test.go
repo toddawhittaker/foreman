@@ -41,15 +41,16 @@ func TestModsTabResultNamesModsByTitle(t *testing.T) {
 }
 
 // DESIGN 7.10: a world with no save offers the Saves tab, which owns the
-// upload, as a button, and the Saves tab's field is a drop zone.
-func TestUploadsOfAnotherTabAreButtons(t *testing.T) {
+// upload, as a link ending in a chevron (DESIGN 7.1), and the Saves tab's
+// field is a drop zone.
+func TestUploadsOfAnotherTabAreChevronLinks(t *testing.T) {
 	g := newModsRig(t, true)
 	id, err := g.worlds.Create(context.Background(), "Empty", v20, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, tab := g.getStatus(modsPath(id))
-	wantIn(t, "mods tab", tab, `<a href="/worlds/`+id+`/saves" class="button" id="act-upload-save">Upload a save</a>`)
+	wantIn(t, "mods tab", tab, `<a href="/worlds/`+id+`/saves" class="link-tab" id="act-upload-save">Upload a save</a>`)
 	saves := g.get(worldPath(id) + "/saves")
 	wantIn(t, "saves tab", saves, `data-dropzone`, `id="save-file" name="save" type="file" accept=".zip"`, "A save never replaces one with the same name.", `src="/static/dropzone.`)
 }
@@ -70,13 +71,13 @@ func TestDropZoneDescribedByReadsBetweenHintAndError(t *testing.T) {
 }
 
 // DESIGN 7.10: the empty Worlds list offers the Import page's upload as a
-// button, since the result is used there.
-func TestEmptyWorldsListOffersTheUploadAsAButton(t *testing.T) {
+// link ending in a chevron, since the result is used there.
+func TestEmptyWorldsListOffersTheUploadAsALink(t *testing.T) {
 	g := newModsRig(t, true)
-	wantIn(t, "worlds", g.get(PathWorlds), `<a href="/import#upload-heading" class="button" id="act-upload-save">Upload a save</a>`)
+	wantIn(t, "worlds", g.get(PathWorlds), `<a href="/import#upload-heading" class="link-tab" id="act-upload-save">Upload a save</a>`)
 	g.world20("Base")
 	if strings.Contains(g.get(PathWorlds), `id="act-upload-save"`) {
-		t.Error("a list with a world offers the empty state's button")
+		t.Error("a list with a world offers the empty state's link")
 	}
 }
 

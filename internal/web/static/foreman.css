@@ -4558,6 +4558,40 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
+/* Links (DESIGN 7.1). A link to another tab ends in a chevron (class
+   link-tab); a link that leaves Foreman ends in a diagonal arrow. Both marks
+   are drawn here, not written in the text, so a screen reader does not read
+   them as part of the link's name. */
+.link-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--target-min);
+}
+
+.link-tab::after {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+a[target="_blank"]::after {
+  content: "↗︎" / "";
+  margin-inline-start: 0.2em;
+  font-size: 0.85em;
+  text-decoration: none;
+  display: inline-block;
+}
+
+@media (forced-colors: active) {
+  .link-tab::after {
+    background: LinkText;
+  }
+}
+
 /* A mod plan that destroys nothing is not a danger box (DESIGN 7.1, 8.11). */
 .confirm--plain {
   border-color: var(--color-line);
@@ -9393,8 +9427,15 @@ main:has(> .gate) > * + :not(h1, .gate) {
 }
 
 /* Saves tab: an autosave reads as the world's name and time, and its file
-   name sits beside it as smaller, quieter text. */
+   name sits on its own line under them as smaller, quieter text, so every
+   file name starts at the same left edge. The label's digits are tabular, as
+   in the other time cells. */
+.save-label {
+  font-variant-numeric: tabular-nums;
+}
+
 .save-file {
+  flex: 0 0 100%;
   min-inline-size: 0;
   overflow-wrap: anywhere;
   color: var(--color-text-muted);

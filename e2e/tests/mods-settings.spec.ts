@@ -66,6 +66,34 @@ test.describe("edit mod settings", () => {
     await expect(page.getByLabel("Startup integer")).toHaveValue("3");
   });
 
+  // #636, SPEC 17.16: a setting that differs from the mod's default says what the default is.
+  test("a setting that differs from the mod's default shows the default, and one at its default does not", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await openEditor(page);
+    const field = page.getByLabel("Startup integer");
+    const own = "An integer from 1 to 10.";
+    await field.fill("3");
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(doneBox(page)).toBeVisible(live);
+    await openEditor(page);
+    await expect(field).toHaveValue("3");
+    const note = page.locator(`#${await field.getAttribute("id")}-default`);
+    await expect(note).toHaveText(/^Mod default: \d+$/);
+    // The note is part of the field's description, after the mod's own text.
+    await expect(field).toHaveAccessibleDescription(`${own} ${await note.innerText()}`);
+    await checkPage(page);
+
+    // Back to the default: the note goes.
+    const def = /(\d+)$/.exec(await note.innerText())![1];
+    await field.fill(def);
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(doneBox(page)).toBeVisible(live);
+    await openEditor(page);
+    await expect(field).toHaveValue(def);
+    await expect(page.locator(`#${await field.getAttribute("id")}-default`)).toHaveCount(0);
+    await expect(field).toHaveAccessibleDescription(own);
+  });
+
   // Ruling on #623 (SPEC 9.15): each mod's group is headed by its title from
   // info.json, linked to the portal in a new tab, and the name stays out of sight.
   test("each mod's settings are headed by its title, linked to the mod portal", async ({ page, foreman, fakeGame, fakePortal }) => {
@@ -150,7 +178,7 @@ test.describe("edit mod settings", () => {
       await page.goto("/worlds/base/mods/settings");
       await expect(page.locator("#mod-settings-error")).toContainText("ran out of memory", live);
       await checkPage(page);
-      await expect(page.locator("#act-settings-upload")).toHaveClass(/button/);
+      await expect(page.locator("#act-settings-upload")).toHaveClass("link-tab");
       await page.getByRole("link", { name: "Upload mod-settings.dat on the Mods tab" }).click();
       await expect(page).toHaveURL(/\/worlds\/base\/mods#mod-settings-replace$/);
     } finally {

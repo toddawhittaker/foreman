@@ -146,6 +146,7 @@
   "worlds.list.deleted_kept": "{name} a été supprimé. Ses instantanés se trouvent dans « Mondes supprimés ».",
   "worlds.list.deleted_link": "Aller aux mondes supprimés",
   "worlds.list.empty": "Aucun monde pour l’instant. Importez un dossier de sauvegardes ou envoyez un fichier de sauvegarde pour créer votre premier monde.",
+  "worlds.list.upload_save": "Envoyer une sauvegarde",
   "worlds.list.import": "Importer un monde",
   "worlds.list.server_link": "Voir la page du serveur",
   "worlds.list.switch": "Basculer",

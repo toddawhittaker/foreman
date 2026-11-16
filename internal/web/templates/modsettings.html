@@ -61,7 +61,7 @@
       {{- if .HasFile}}
       <a href="{{.FilePath}}" download id="act-settings-download">{{t "mods.settings.download"}}</a>
       {{- end}}
-      <a href="{{.UploadPath}}" class="button" id="act-settings-upload">{{t "mods.settings.edit.upload_link"}}</a>
+      <a href="{{.UploadPath}}" class="link-tab" id="act-settings-upload">{{t "mods.settings.edit.upload_link"}}</a>
     </div>
   </div>
 </section>
@@ -187,7 +187,7 @@
   {{- end}}
   {{- range .Fields}}
   {{- $err := not .Error.IsZero}}
-  {{- $desc := ""}}{{if .Hint}}{{$desc = print .ID "-hint"}}{{end}}{{if $err}}{{$desc = print $desc " " .ID "-error"}}{{end}}
+  {{- $desc := ""}}{{if .Hint}}{{$desc = print .ID "-hint"}}{{end}}{{if .HasDefault}}{{$desc = print $desc " " .ID "-default"}}{{end}}{{if $err}}{{$desc = print $desc " " .ID "-error"}}{{end}}
   {{- if eq .Kind "bool"}}
   <div class="field">
     <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.ID}}" value="true"{{if eq .Value "true"}} checked{{end}}
@@ -245,6 +245,14 @@
 {{/* A control's description, between its label and the control. Takes SettingField. */}}
 {{define "modsettings-hint" -}}
 {{- if .Hint}}<p class="hint" id="{{.ID}}-hint"{{with .HintLang}} lang="{{.}}"{{end}}>{{.Hint}}</p>{{end}}
+{{- if .HasDefault}}
+<p class="hint" id="{{.ID}}-default">
+  {{- if eq .Kind "bool"}}{{if eq .Default "true"}}{{t "mods.settings.edit.default_on"}}{{else}}{{t "mods.settings.edit.default_off"}}{{end}}
+  {{- else if eq .Kind "color"}}{{tHTML "mods.settings.edit.default_color" "color" (code .Default) "alpha" .DefaultAlpha}}
+  {{- else if eq .Default ""}}{{t "mods.settings.edit.default_empty"}}
+  {{- else}}{{tHTML "mods.settings.edit.default" "value" (code .Default)}}{{end -}}
+</p>
+{{- end}}
 {{- end}}
 
 {{/* A control's error, below it. Takes SettingField. */}}

@@ -141,6 +141,7 @@
   "worlds.list.deleted_kept": "已删除 {name}。其快照在“已删除的世界”中。",
   "worlds.list.deleted_link": "前往已删除的世界",
   "worlds.list.empty": "还没有世界。导入存档文件夹或上传存档文件，即可创建第一个世界。",
+  "worlds.list.upload_save": "上传存档",
   "worlds.list.import": "导入世界",
   "worlds.list.server_link": "查看服务器页面",
   "worlds.list.switch": "切换",
