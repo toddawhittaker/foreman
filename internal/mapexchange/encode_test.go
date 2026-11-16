@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -185,5 +186,89 @@ func mustJSON(t *testing.T, b []byte, v any) {
 	t.Helper()
 	if err := json.Unmarshal(b, v); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestEncodePresetsMatchGame encodes each preset as Generate writes it and
+// checks the game's own string for that preset decodes to the same settings.
+// Autoplace controls are left aside: the game lists every control its
+// prototypes have, and Foreman's file lists only those it changes. On 2.x the
+// game's non-default presets carry an empty cliff name; a file that leaves
+// cliff_settings out gets "cliff", as the game's own default preset shows, so
+// the name is left aside there too.
+func TestEncodePresetsMatchGame(t *testing.T) {
+	for _, v := range []string{"1.1.110", "2.0.77", "2.1.24"} {
+		line, ok := mapgen.Line(v)
+		if !ok {
+			t.Fatalf("no game line for %s", v)
+		}
+		for _, p := range mapgen.Presets(line) {
+			t.Run(v+"/"+p, func(t *testing.T) {
+				b, err := os.ReadFile("testdata/" + v + "/" + p + ".txt") //nolint:gosec // test fixture path from fixed lists
+				if err != nil {
+					t.Skip("no game string for this preset")
+				}
+				game, err := Decode(strings.TrimSpace(string(b)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var want MapGenSettings
+				mustJSON(t, game.MapGenSettings, &want)
+				ms, err := mapgen.MapSettings(v, p, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				s, err := Encode(v, withSeed(t, mapgen.PresetMapGen(line, p), want.Seed), ms)
+				if err != nil {
+					t.Fatal(err)
+				}
+				ours, err := Decode(s)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var got MapGenSettings
+				mustJSON(t, ours.MapGenSettings, &got)
+				want.AutoplaceControls, got.AutoplaceControls = nil, nil
+				if want.CliffSettings.Name == "" {
+					want.CliffSettings.Name = got.CliffSettings.Name
+				}
+				if !reflect.DeepEqual(want, got) {
+					t.Errorf("map gen settings differ\ngame %+v\nours %+v", want, got)
+				}
+				var wantMS, gotMS MapSettings
+				mustJSON(t, game.MapSettings, &wantMS)
+				mustJSON(t, ours.MapSettings, &gotMS)
+				if !reflect.DeepEqual(wantMS, gotMS) {
+					t.Errorf("map settings differ\ngame %+v\nours %+v", wantMS, gotMS)
+				}
+			})
+		}
+	}
+}
+
+func TestEncodeRefusesStartingPointsOutOfRange(t *testing.T) {
+	mg := []byte(`{"seed":1,"starting_points":[{"x":1e12,"y":0}]}`)
+	if _, err := Encode("2.1.24", mg, []byte(`{}`)); err == nil || !strings.Contains(err.Error(), "starting_points") {
+		t.Fatalf("error %v, want a starting_points range error", err)
+	}
+}
+
+func TestEncodeStartingPointsDoNotDrift(t *testing.T) {
+	mg := []byte(`{"seed":1,"starting_points":[{"x":0.3,"y":0},{"x":0.6,"y":0},{"x":0.9,"y":0},{"x":1.2,"y":0}]}`)
+	s, err := Encode("2.1.24", mg, []byte(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := Decode(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got MapGenSettings
+	mustJSON(t, r.MapGenSettings, &got)
+	for i, p := range got.StartingPoints {
+		want := 0.3 * float64(i+1)
+		if d := p.X - want; d > 1.0/512 || d < -1.0/512 {
+			t.Errorf("point %d x = %v, want %v within half a step", i, p.X, want)
+		}
 	}
 }

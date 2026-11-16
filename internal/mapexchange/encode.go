@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -142,6 +143,11 @@ func parseMapGenFile(b []byte, line gameLine) (MapGenSettings, error) {
 	if err := json.Unmarshal(rest, &s); err != nil {
 		return MapGenSettings{}, fmt.Errorf("map-gen-settings.json: %w", err)
 	}
+	for _, p := range s.StartingPoints {
+		if !fitsInt32(p.X*256) || !fitsInt32(p.Y*256) {
+			return MapGenSettings{}, rangeError("starting_points")
+		}
+	}
 	if s.AutoplaceSettings == nil {
 		s.AutoplaceSettings = map[string]AutoplaceSetting{}
 	}
@@ -197,4 +203,11 @@ func parseExpressionNames(b json.RawMessage) (map[string]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// fitsInt32 reports whether v, rounded, fits the int32 a full position is
+// written as.
+func fitsInt32(v float64) bool {
+	r := math.Round(v)
+	return r >= math.MinInt32 && r <= math.MaxInt32
 }

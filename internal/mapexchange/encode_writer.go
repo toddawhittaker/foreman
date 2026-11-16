@@ -92,7 +92,9 @@ func (w *writer) position(p Position) {
 		w.i32(int32(math.Round(p.X * 256)))
 		w.i32(int32(math.Round(p.Y * 256)))
 	}
-	w.lastPos = p
+	// The reader keeps the rounded point, so the next delta must start from
+	// it too, or rounding errors add up along a list of points.
+	w.lastPos = Position{X: math.Round(p.X*256) / 256, Y: math.Round(p.Y*256) / 256}
 }
 
 // sortedKeys gives a map's keys in byte order, the order the game writes.
