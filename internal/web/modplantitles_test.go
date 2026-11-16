@@ -58,6 +58,7 @@ func (c *countPortal) Search(context.Context, string, string) ([]modportal.Hit, 
 func (c *countPortal) Lookup(context.Context, string, string) (modportal.Hit, error) {
 	return modportal.Hit{}, nil
 }
+func (c *countPortal) KnownMissing(string) bool { return false }
 func (c *countPortal) Download(context.Context, string, string, modportal.Release, *os.File) error {
 	return nil
 }
