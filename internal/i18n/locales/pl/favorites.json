@@ -64,8 +64,7 @@
   "favorites.mods.count": {
     "one": "{count} modyfikacja",
     "few": "{count} modyfikacje",
-    "many": "{count} modyfikacji",
-    "other": "{count} modyfikacji"
+    "many": "{count} modyfikacji"
   },
   "favorites.rename.label": "Nowa nazwa",
   "favorites.rename.button": "Zmień nazwę",

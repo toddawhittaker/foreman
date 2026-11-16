@@ -64,8 +64,7 @@
   "favorites.mods.count": {
     "one": "{count} мод",
     "few": "{count} мода",
-    "many": "{count} модов",
-    "other": "{count} мода"
+    "many": "{count} модов"
   },
   "favorites.rename.label": "Новое название",
   "favorites.rename.button": "Переименовать",

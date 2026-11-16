@@ -64,7 +64,6 @@
   "favorites.mods.count": {
     "one": "{count} mod",
     "few": "{count} mody",
-    "many": "{count} modu",
     "other": "{count} modů"
   },
   "favorites.rename.label": "Nový název",
