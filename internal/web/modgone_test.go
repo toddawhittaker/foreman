@@ -52,7 +52,7 @@ func TestPrecheckFix(t *testing.T) {
 		{"one with none left", []world.Problem{gone(world.GoneMod{Name: "vp", Version: "1.5.5"})},
 			"/worlds/w1/mods/plan?kind=remove&name=vp", "Remove vp"},
 		{"two with updates", []world.Problem{gone(world.GoneMod{Name: "a", Version: "1", Update: "2"}, world.GoneMod{Name: "b", Version: "1", Update: "2"})},
-			"/worlds/w1/mods/plan?kind=update&name=a&name=b", "Update 2 mods"},
+			"/worlds/w1/mods/plan?kind=update", "Update all"},
 		{"two, one with none left", []world.Problem{gone(world.GoneMod{Name: "a", Version: "1", Update: "2"}, world.GoneMod{Name: "b", Version: "1"})},
 			"/worlds/w1/mods", "Review 2 mods"},
 		{"a missing mod comes first", []world.Problem{gone(world.GoneMod{Name: "vp", Version: "1", Update: "2"}), {Kind: world.ProblemModMissing, Mods: []string{"x"}}},

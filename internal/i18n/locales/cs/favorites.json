@@ -42,6 +42,7 @@
   "favorites.start.none": "Zatím žádné oblíbené. Oblíbenou lze vytvořit na stránce světa.",
   "favorites.start.note": "Začíná se z oblíbené „{name}“. Její verze hry, nastavení Space Age, předvolba a nastavení mapy jsou vyplněny níže; cokoli lze změnit. Nový svět dostane její nastavení serveru a nastavení modů.",
   "favorites.review.generated": "Svět {name} byl vygenerován z oblíbené položky. Níže jsou mody z ní k instalaci do tohoto světa.",
+  "favorites.review.unsupported_version": "Oblíbená položka byla uložena ve verzi hry {version}, kterou tento Foreman nepodporuje, a tak z ní nelze nainstalovat mody. Vraťte se na kartu Mody a nainstalujte místo toho nejnovější verze.",
   "favorites.start.mods": {
     "one": "Po vytvoření světa se zobrazí ke kontrole {count} mod k instalaci.",
     "few": "Po vytvoření světa se zobrazí ke kontrole {count} mody k instalaci.",

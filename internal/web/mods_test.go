@@ -39,7 +39,9 @@ const v20 = "2.0.77"
 
 type modsRig struct {
 	*gameRig
-	portal *modportaltest.Portal
+	portal  *modportaltest.Portal
+	favs    *world.Favorites
+	favsDir string
 }
 
 // newModsRig is a game rig whose handler asks the fake portal. withAccount
@@ -68,15 +70,20 @@ func newModsRigWrapped(t *testing.T, withAccount bool, wrap func(ModPortal) ModP
 	if wrap != nil {
 		portal = wrap(portal)
 	}
+	favsDir := filepath.Join(t.TempDir(), "favorites")
+	favs, err := world.NewFavorites(favsDir, g.worlds, g.clock.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
 	h, err := NewHandler(Deps{Config: g.cfg, Store: g.store, Worlds: g.worlds, Game: g.ctrl, Portal: portal,
-		Account: acct, Log: g.slog, Now: g.clock.Now})
+		Account: acct, Favorites: favs, Log: g.slog, Now: g.clock.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(h.Close)
 	g.h = h
 	g.liveServer = newLiveServerFor(t, g.harness)
-	return &modsRig{gameRig: g, portal: p}
+	return &modsRig{gameRig: g, portal: p, favs: favs, favsDir: favsDir}
 }
 
 // world20 makes a stopped 2.0 world without Space Age, with a save, and
@@ -717,7 +724,7 @@ func modPageCases() []pageCase {
 			Changed: true, Drops: []string{"gamma"}, DropsError: dropsMissing([]string{"gamma"}),
 			ConfirmErrors: map[string]i18n.Msg{"old": i18n.M("mods.unresolved.confirm_missing", "mod", "old")}}},
 		{"mod plan ready", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}}, Plan: mods.Plan{Changes: plan.Changes[:1]}, Running: true, CountdownForm: defaultCountdown()}},
-		{"mod plan error", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}, Error: i18n.M("mods.error.portal"), Retry: "/x"}},
+		{"mod plan error", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}, Error: i18n.M("mods.error.portal"), Retry: true, Draft: "tok"}},
 		{"mod plan nothing", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}}},
 		{"mod plan zip refused", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindSync, Save: "base.zip"},
 			Plan: mods.Plan{Unresolved: []mods.Unresolved{{Name: "old mod", Version: "0.1.0"}}}, UploadFor: "old mod", UploadError: i18n.M("mods.upload.not_mod")}},
@@ -801,7 +808,7 @@ func TestPlanRedrawShowsAConflict(t *testing.T) {
 	id := g.world20("Base", "beta_1.0.0")
 	path := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}})
 	_, body := g.getStatus(path)
-	wantIn(t, "plan", body, `id="mod-fp-conf-optional"`, `hx-get="/worlds/`+id+`/mods/plan"`)
+	wantIn(t, "plan", body, `id="mod-fp-conf-optional"`, `hx-post="/worlds/`+id+`/mods/plan/redraw"`)
 	if strings.Contains(body, `hx-swap-oob="innerHTML:#announcer"`) {
 		t.Error("a full page load announces a redraw")
 	}
@@ -835,7 +842,7 @@ func TestPlanRedrawKeepsTheCountdown(t *testing.T) {
 		"Plan updated: 1 mod changes.")
 }
 
-// S3: a plan request names at most 50 mods, and another site's page cannot
+// S3: a plan request names at most store.MaxModPlanNames mods, and another site's page cannot
 // make a signed-in browser ask for a plan; the admin's own click can.
 func TestPlanRequestIsBounded(t *testing.T) {
 	g := newModsRig(t, true)
@@ -865,7 +872,7 @@ func TestPlanRequestIsBounded(t *testing.T) {
 	for _, site := range []string{"cross-site", "same-site"} {
 		rec := g.harness.get(path, withCookie(g.cookie), withHeader("Sec-Fetch-Site", site))
 		body := rec.Body.String()
-		if rec.Code != http.StatusForbidden || !strings.Contains(body, "opened from another site") || !strings.Contains(body, `href="`+html.EscapeString(path)+`" class="button">Try again`) {
+		if rec.Code != http.StatusForbidden || !strings.Contains(body, "opened from another site") || !strings.Contains(body, `href="`+html.EscapeString(draftPath(id, draftOf(t, body)))+`" class="button">Try again`) {
 			t.Errorf("%s: %d\n%s", site, rec.Code, body)
 		}
 	}
@@ -894,7 +901,7 @@ func TestRefusedUnresolvedZipKeepsTheAnswers(t *testing.T) {
 	g.copySave(id, "2.1.24-space-age-testmod.zip")
 	q := url.Values{"kind": {"sync"}, "choice-recycler": {"without"}, "confirm-recycler": {"1"}}
 	_, body := g.getStatus(planPath(id, q))
-	wantIn(t, "sync", body, `id="mod-recycler-confirm" required hx-get="/worlds/`+id+`/mods/plan" checked`, `<label for="mod-foreman-test-zip" class="required">`,
+	wantIn(t, "sync", body, `id="mod-recycler-confirm" required hx-post="/worlds/`+id+`/mods/plan/redraw" checked`, `<label for="mod-foreman-test-zip" class="required">`,
 		`form="mod-foreman-test-zip-form"`, `class="hint required-note"`, "A .zip file of up to 200 MB.")
 	if strings.Contains(body, `id="mod-foreman-test-confirm"`) {
 		t.Error("the continue-without box shows for a mod whose choice is upload")
@@ -905,7 +912,7 @@ func TestRefusedUnresolvedZipKeepsTheAnswers(t *testing.T) {
 		t.Fatalf("junk zip: %d", rep.StatusCode)
 	}
 	wantIn(t, "refused", rep.body, `id="error-summary"`, `<a href="#mod-foreman-test-zip">This file is not a mod zip`,
-		`id="mod-foreman-test-zip-error"`, `id="mod-recycler-without" hx-get="/worlds/`+id+`/mods/plan" checked`, `id="mod-recycler-confirm" required hx-get="/worlds/`+id+`/mods/plan" checked`)
+		`id="mod-foreman-test-zip-error"`, `id="mod-recycler-without" hx-post="/worlds/`+id+`/mods/plan/redraw" checked`, `id="mod-recycler-confirm" required hx-post="/worlds/`+id+`/mods/plan/redraw" checked`)
 }
 
 // plain is a page with its mod names unwrapped, so a test can look for a
@@ -1089,13 +1096,14 @@ func TestModsTabSearchFollowsTyping(t *testing.T) {
 }
 
 // An orphan box sends its name as offered too, so an unticked one reads as
-// kept, and the link back to the plan carries it (SPEC 9.4).
+// kept, and the page's draft keeps it (SPEC 9.4).
 func TestPlanFormReadsUntickedOrphansAsKept(t *testing.T) {
 	f, ok := readPlanForm(url.Values{"kind": {"remove"}, "name": {"a"}, "orphan-offered": {"b", "c"}, "orphan": {"c"}})
 	if !ok || len(f.Kept) != 1 || f.Kept[0] != "b" {
 		t.Fatalf("kept = %v, ok = %v", f.Kept, ok)
 	}
-	g, ok := readPlanForm(f.query())
+	d := newDraftStore(time.Now)
+	g, ok := d.get(d.keep("", 1, "w", f), 1, "w")
 	if !ok || len(g.Kept) != 1 || g.Kept[0] != "b" {
 		t.Fatalf("round trip kept = %v", g.Kept)
 	}

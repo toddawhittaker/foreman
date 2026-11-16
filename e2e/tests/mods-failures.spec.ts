@@ -83,7 +83,6 @@ test.describe("no factorio.com account", () => {
     await expect(page.locator(".message--note")).toContainText("This plan downloads 1 mod, and downloads are off because Foreman has no factorio.com account.");
     await expect(page.getByRole("button", { name: /^Install/ })).toHaveCount(0);
     await checkPage(page);
-    const planUrl = page.url();
 
     await page.getByRole("link", { name: "Enter the factorio.com account" }).click();
     await expect(page).toHaveURL(/\/settings\/factorio-account\?return=/);
@@ -91,8 +90,8 @@ test.describe("no factorio.com account", () => {
     await page.getByLabel("factorio.com token").fill(portal.token);
     await page.getByRole("button", { name: "Save account" }).click();
 
-    // Back on the plan, which now offers the button.
-    await expect(page).toHaveURL(planUrl);
+    // Back on the plan, by its draft's short address, which now offers the button.
+    await expect(page).toHaveURL(/\/worlds\/base\/mods\/plan\?draft=[\w-]+$/);
     await expect(page.getByRole("heading", { level: 1, name: "Install fp-nodl in Base?" })).toBeVisible();
     const html = await page.content();
     expect(html).not.toContain(portal.token);
@@ -222,7 +221,7 @@ test.describe("retrying a failed mod change", () => {
     // The account page returns to the same plan, so the fix ends one click from trying again.
     const link = page.getByRole("link", { name: "Check the factorio.com account" });
     const back = new URL(String(await link.getAttribute("href")), foreman.url).searchParams.get("return");
-    expect(back).toBe("/worlds/base/mods/plan?kind=install&name=fp-bad");
+    expect(back).toMatch(/^\/worlds\/base\/mods\/plan\?draft=[\w-]+$/);
     await link.click();
     await expect(page).toHaveURL(/\/settings\/factorio-account\?return=/);
     await checkPage(page);

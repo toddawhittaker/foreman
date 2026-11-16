@@ -195,13 +195,13 @@ func TestServerModNoticeNamesTheFix(t *testing.T) {
 	_, frag := g.getStatus(modsPath(id) + "/notice")
 	wantIn(t, "two errors", frag, "2 mods of Base can no longer be downloaded", ">Review 2 mods</a>", `href="/worlds/`+id+`/mods"`)
 
-	// Two gone mods that both have updates: the button says what its plan does.
+	// Two gone mods that both have updates: Update all, whose link names no mods.
 	g3 := newModsRig(t, true)
 	g3.portal.AddZip("beta", "2.0.0")
 	g3.portal.AddZip("gamma", "2.0.0")
 	id3 := g3.world20("Base", "beta_1.0.0", "gamma_1.0.0")
 	_, frag = g3.getStatus(modsPath(id3) + "/notice")
-	wantIn(t, "two updates", frag, ">Update 2 mods</a>", `href="/worlds/`+id3+`/mods/plan?kind=update&amp;name=beta&amp;name=gamma"`)
+	wantIn(t, "two updates", frag, ">Update all</a>", `href="/worlds/`+id3+`/mods/plan?kind=update"`)
 
 	g2 := newModsRig(t, true)
 	id2 := g2.world20("Base", "beta_1.0.0")
@@ -228,8 +228,8 @@ func TestAccountLinksToTheProfilePage(t *testing.T) {
 func TestPlanAccountLinkReturnsToThePlan(t *testing.T) {
 	ah := newAccountHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
 	c := ah.signIn()
-	p := ModPlanPage{World: world.Summary{ID: "base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"a", "b"}}}
-	back := planPath("base", url.Values{"kind": {"install"}, "name": {"a", "b"}})
+	p := ModPlanPage{World: world.Summary{ID: "base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"a", "b"}}, Draft: "tok"}
+	back := draftPath("base", "tok")
 	if got, want := p.AccountPath(), PathAccount+"?return="+url.QueryEscape(back); got != want {
 		t.Fatalf("account link %q, want %q", got, want)
 	}

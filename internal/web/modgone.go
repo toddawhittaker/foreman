@@ -5,7 +5,6 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mods"
-	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -27,8 +26,10 @@ func goneFix(id string, gone []world.GoneMod) Offer {
 		return Offer{Path: kindPlanPath(id, mods.KindUpdate, gone[0].Name), Label: i18n.M("mods.notice.update", "mod", i18n.Ident(goneTitle(gone[0])))}
 	case len(gone) == 1:
 		return Offer{Path: kindPlanPath(id, mods.KindRemove, gone[0].Name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(goneTitle(gone[0])))}
-	case all && len(names) <= store.MaxModPlanNames:
-		return Offer{Path: kindPlanPath(id, mods.KindUpdate, names...), Label: i18n.M("mods.plan.button.update", "count", len(names))}
+	case all:
+		// Update all, as the Mods tab offers it: the link names no mods, so
+		// its address stays short however many there are (SPEC 17).
+		return Offer{Path: kindPlanPath(id, mods.KindUpdate, ""), Label: i18n.M("mods.status.update_all")}
 	}
 	return Offer{Path: modsPath(id), Label: i18n.M("mods.notice.review", "count", len(gone))}
 }

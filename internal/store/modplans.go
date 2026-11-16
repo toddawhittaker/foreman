@@ -8,7 +8,7 @@ import (
 )
 
 // MaxModPlanNames is how many mods one world's saved plan may name (SPEC 9.14).
-const MaxModPlanNames = 50
+const MaxModPlanNames = 500
 
 // ErrModPlanFull is returned when a plan already names MaxModPlanNames mods.
 var ErrModPlanFull = errors.New("store: the mod plan is full")

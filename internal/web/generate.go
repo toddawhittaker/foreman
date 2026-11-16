@@ -17,7 +17,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapexchange"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
-	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -399,21 +398,17 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 		s.downloadFor(r.Context(), map[string]string{nw.GameVersion: id}, actor(u))
 	}
 	// The favorite's mods go through the review page's checks and one
-	// install (SPEC 5.12, 9.13). Its versions are pinned on its own game
-	// line; on another line the review page picks the newest that fits.
+	// install (SPEC 5.12, 9.13).
 	if fav := f.Favorite; fav != nil && len(fav.Mods) > 0 {
-		q := url.Values{"kind": {string(mods.KindInstall)}, generatedQuery: {"1"}}
-		favLine, _ := mapgen.Line(fav.GameVersion)
 		for _, m := range fav.Mods {
-			q.Add("name", m.Name)
 			// Saved as picks too, so leaving the review page keeps the mods.
 			if err := s.store.AddModPlanName(r.Context(), id, m.Name, u.Username, s.now()); err != nil && !errors.Is(err, store.ErrModPlanFull) {
 				s.log.Warn("save the favorite's mods as picks", "world", id, "error", err)
 			}
-			if favLine == f.Line {
-				q.Set(versionPrefix+m.Name, m.Version)
-			}
 		}
+		// The review reads the names and versions from the favorite, so the
+		// address carries its id alone (SPEC 17).
+		q := url.Values{favoriteQuery: {fav.ID}, generatedQuery: {"1"}}
 		http.Redirect(w, r, planPath(id, q), http.StatusSeeOther)
 		return
 	}

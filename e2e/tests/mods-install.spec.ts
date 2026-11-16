@@ -197,9 +197,12 @@ test.describe("an optional dependency", () => {
       await expect(page.locator("#mod-plan .plan-row", { hasText: "fp-opt" })).toContainText("1.0.0 (offered by fp-main)");
     }
 
+    // The answers live in the page's draft, so the address stays short and a reload keeps them (SPEC 17).
     test("Recalculate draws the plan again", async ({ page, foreman, fakeGame, fakePortal }) => {
       await recalculate(page, foreman, fakeGame!, fakePortal!);
-      await expect(page).toHaveURL(/optional=fp-opt/);
+      await expect(page).toHaveURL(/\/worlds\/base\/mods\/plan\?draft=[\w-]+$/);
+      await page.reload();
+      await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
     });
 
     // The same, reached with Recalculate.

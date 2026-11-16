@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/mods"
@@ -34,7 +35,7 @@ func TestPlanVersionList(t *testing.T) {
 	wantIn(t, "default rows", planRows(body), "ver-a 2.0.0")
 	// The list sits in the mod's row, named by its title (issue 620).
 	wantIn(t, "default", plain(body), `<label for="mod-ver-a-version" class="visually-hidden">Version of ver-a</label>`,
-		`<select id="mod-ver-a-version" name="version-ver-a" hx-get="`+plan+`" aria-describedby="plan-versions-hint">`,
+		`<select id="mod-ver-a-version" name="version-ver-a" hx-post="`+plan+`/redraw" aria-describedby="plan-versions-hint">`,
 		`<option value="" selected>Newest that fits (2.0.0)</option>`, `<option value="2.0.0">2.0.0</option>`, `<option value="1.0.0">1.0.0</option>`,
 		"Only releases for Factorio 2.0")
 	if strings.Contains(body, "0.9.0") {
@@ -157,7 +158,7 @@ func TestPlanVersionIsChecked(t *testing.T) {
 }
 
 // The form keeps a chosen version only for an asked mod of an install or
-// update, and every link back to the plan carries it.
+// update, and the page's draft keeps it.
 func TestPlanFormVersions(t *testing.T) {
 	f, ok := readPlanForm(url.Values{"kind": {"install"}, "name": {"a", "b"}, "version-a": {"1.2.3"}, "version-z": {"1.0.0"}, "version-b": {""}})
 	if !ok {
@@ -166,12 +167,9 @@ func TestPlanFormVersions(t *testing.T) {
 	if len(f.Versions) != 1 || f.Versions["a"] != "1.2.3" {
 		t.Errorf("versions = %v", f.Versions)
 	}
-	if got := f.query().Encode(); got != "kind=install&name=a&name=b&version-a=1.2.3" {
-		t.Errorf("query = %s", got)
-	}
-	// Taking a out of the plan takes its version too.
-	if got := f.withNames([]string{"b"}).query().Encode(); got != "kind=install&name=b" {
-		t.Errorf("without a = %s", got)
+	d := newDraftStore(time.Now)
+	if got, _ := d.get(d.keep("", 1, "w", f), 1, "w"); got.Versions["a"] != "1.2.3" {
+		t.Errorf("draft versions = %v", got.Versions)
 	}
 	f, ok = readPlanForm(url.Values{"kind": {"disable"}, "name": {"a"}, "version-a": {"nonsense"}})
 	if !ok || len(f.Versions) != 0 {

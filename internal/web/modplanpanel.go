@@ -79,7 +79,7 @@ func (p PlanPanel) ChangePath() string { return modsPath(p.World.ID) + "/plan/mo
 func (p PlanPanel) ClearPath() string  { return modsPath(p.World.ID) + "/plan/clear" }
 
 // ReviewPath is today's plan page for the picks; it adds their dependencies.
-func (p PlanPanel) ReviewPath() string { return kindPlanPath(p.World.ID, mods.KindInstall, p.Picks...) }
+func (p PlanPanel) ReviewPath() string { return kindPlanPath(p.World.ID, mods.KindInstall, "") }
 
 // RemoveID is the id of a pick's cross in the panel.
 func (PlanPanel) RemoveID(name string) string { return modID(name, "unpick") }

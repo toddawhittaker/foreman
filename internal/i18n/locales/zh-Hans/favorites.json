@@ -38,6 +38,7 @@
   "favorites.start.none": "还没有收藏。可在世界页面上创建。",
   "favorites.start.note": "正在从收藏“{name}”开始。其游戏版本、太空时代设置、预设和地图设置已在下方填好，均可更改。新世界将获得其服务器设置和模组设置。",
   "favorites.review.generated": "已从收藏生成 {name}。下方是该收藏中可安装到它上面的模组。",
+  "favorites.review.unsupported_version": "该收藏保存于游戏版本 {version}，此 Foreman 不支持该版本，因此无法从中安装其模组。请返回“模组”选项卡改为安装最新版本。",
   "favorites.start.mods": {
     "other": "世界创建后，将检查 {count} 个要安装的模组。"
   },

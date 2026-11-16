@@ -20,6 +20,11 @@
 {{- /* Ticking an optional mod or choosing for an unresolved one redraws this block with the new plan (SPEC 9.14). */}}
 <div id="mod-plan" class="mod-plan">
 {{template "summary" .Problems}}
+{{- if .DraftLost}}
+<div class="message message--note" id="plan-draft-lost">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "mods.plan.draft_lost"}}</p>
+</div>
+{{- end}}
 {{- if .Changed}}
 <div class="message message--warning" id="plan-changed" tabindex="-1"{{if not (or .Problems .Redraw)}} autofocus{{end}}>
   <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.plan.changed" "world" .World.Name}}</p>
@@ -29,7 +34,7 @@
 <div class="message message--error" id="plan-error" tabindex="-1"{{if not (or .Changed .Problems .Redraw)}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
   <div class="actions">
-    {{- with .Retry}}<a href="{{.}}" class="button">{{t "mods.plan.retry"}}</a>{{end}}
+    {{- if .Retry}}<a href="{{.DraftPath}}" class="button">{{t "mods.plan.retry"}}</a>{{end}}
     <a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a>
   </div>
 </div>
@@ -44,7 +49,7 @@
       <p>{{msgHTML .Text}}</p>
       {{- if not .Fix.IsZero}}
       {{- /* The fix asks for the same plan with one more mod turned off; without script the link is that plan. */}}
-      <div class="actions"><a href="{{.Path}}" class="button" id="{{.ID}}" hx-get="{{.Redraw}}" hx-push-url="{{.Path}}" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">{{msgHTML .Fix}}</a></div>
+      <div class="actions"><a href="{{.Path}}" class="button" id="{{.ID}}" hx-get="{{.Redraw}}" hx-push-url="{{$.Page.DraftPath}}" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">{{msgHTML .Fix}}</a></div>
       {{- end}}
     </li>
     {{- end}}
@@ -70,8 +75,9 @@
 <div class="actions"><a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a></div>
 {{- else}}
 <section class="confirm{{if not .Danger}} confirm--plain{{end}}">
-  {{- /* A choice's control asks for the plan again (hx-get); the form gives it what to send and where the new plan goes. */}}
+  {{- /* A choice's control posts the answers for the plan again (hx-post), which keeps them in the page's draft; the form gives it what to send and where the new plan goes. */}}
   <form method="post" action="{{.Path}}" novalidate hx-include="closest form" hx-sync="this:replace" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">
+    <input type="hidden" name="draft" value="{{.Draft}}">
     <input type="hidden" name="kind" value="{{.Form.Kind}}">
     {{- range .Form.Names}}
     <input type="hidden" name="name" value="{{.}}">
@@ -92,7 +98,7 @@
     {{- /* The game deletes what a mod the save uses built once it starts without it; the box is the go-ahead, first so a phone shows it at once (SPEC 9.4, 17.5). */}}
     <div class="message message--warning" id="plan-drops">
       <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "mods.drops.warning" "count" (len .Drops) "mods" (idents .Drops)}}</p>
-      <label class="check required" for="confirm-drops"><input type="checkbox" name="confirm-drops" value="1" id="confirm-drops" required hx-get="{{.Path}}"{{if .Form.DropsConfirmed}} checked{{end}}{{if not .DropsError.IsZero}} aria-invalid="true" aria-describedby="confirm-drops-error"{{end}}> <span>{{tHTML "mods.drops.confirm" "count" (len .Drops) "mods" (idents .Drops) "label" (m "worlds.snapshot.label.before_mods")}}</span></label>
+      <label class="check required" for="confirm-drops"><input type="checkbox" name="confirm-drops" value="1" id="confirm-drops" required hx-post="{{.RedrawPath}}"{{if .Form.DropsConfirmed}} checked{{end}}{{if not .DropsError.IsZero}} aria-invalid="true" aria-describedby="confirm-drops-error"{{end}}> <span>{{tHTML "mods.drops.confirm" "count" (len .Drops) "mods" (idents .Drops) "label" (m "worlds.snapshot.label.before_mods")}}</span></label>
       {{- if not .DropsError.IsZero}}
       <p class="error" id="confirm-drops-error"><strong>{{t "common.error.label"}}</strong> {{msg .DropsError}}</p>
       {{- end}}
@@ -160,15 +166,15 @@
     <fieldset>
       <legend>{{tHTML "mods.unresolved.legend" "mod" (ident .Name) "version" .Version}}</legend>
       <p class="hint">{{t "mods.unresolved.hint"}}{{if .Nearest}} {{t "mods.unresolved.nearest_hint" "line" $.Page.Line}}{{end}}</p>
-      <label class="check"><input type="radio" name="choice-{{.Name}}" value="upload" id="{{$.Page.ModID .Name "upload"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "upload"}} checked{{end}}> <span>{{if $.Page.UploadedFor .Name}}{{tHTML "mods.unresolved.uploaded" "mod" (ident .Name) "version" $.Page.Uploaded.Version}}{{else}}{{tHTML "mods.unresolved.upload" "mod" (ident .Name) "version" .Version}}{{end}}</span></label>
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="upload" id="{{$.Page.ModID .Name "upload"}}" hx-post="{{$.Page.RedrawPath}}"{{if eq $choice "upload"}} checked{{end}}> <span>{{if $.Page.UploadedFor .Name}}{{tHTML "mods.unresolved.uploaded" "mod" (ident .Name) "version" $.Page.Uploaded.Version}}{{else}}{{tHTML "mods.unresolved.upload" "mod" (ident .Name) "version" .Version}}{{end}}</span></label>
       {{- if .Nearest}}
-      <label class="check"><input type="radio" name="choice-{{.Name}}" value="nearest" id="{{$.Page.ModID .Name "nearest"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "nearest"}} checked{{end}}> <span>{{tHTML "mods.unresolved.nearest" "mod" (ident .Name) "version" .Nearest "line" $.Page.Line}}</span></label>
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="nearest" id="{{$.Page.ModID .Name "nearest"}}" hx-post="{{$.Page.RedrawPath}}"{{if eq $choice "nearest"}} checked{{end}}> <span>{{tHTML "mods.unresolved.nearest" "mod" (ident .Name) "version" .Nearest "line" $.Page.Line}}</span></label>
       {{- end}}
-      <label class="check"><input type="radio" name="choice-{{.Name}}" value="without" id="{{$.Page.ModID .Name "without"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "without"}} checked{{end}}> <span>{{tHTML "mods.unresolved.without" "mod" (ident .Name)}}</span></label>
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="without" id="{{$.Page.ModID .Name "without"}}" hx-post="{{$.Page.RedrawPath}}"{{if eq $choice "without"}} checked{{end}}> <span>{{tHTML "mods.unresolved.without" "mod" (ident .Name)}}</span></label>
       {{- if eq $choice "without"}}
       {{- $id := $.Page.ModID .Name "confirm"}}
       {{- $err := index $.Page.ConfirmErrors .Name}}
-      <label class="check confirm-without required" for="{{$id}}"><input type="checkbox" name="confirm-{{.Name}}" value="1" id="{{$id}}" required hx-get="{{$.Page.Path}}"{{if and .Choice .Choice.Confirmed}} checked{{end}}{{if not $err.IsZero}} aria-invalid="true" aria-describedby="{{$id}}-error"{{end}}> <span>{{tHTML "mods.unresolved.confirm" "mod" (ident .Name) "label" (m "worlds.snapshot.label.before_mods")}}</span></label>
+      <label class="check confirm-without required" for="{{$id}}"><input type="checkbox" name="confirm-{{.Name}}" value="1" id="{{$id}}" required hx-post="{{$.Page.RedrawPath}}"{{if and .Choice .Choice.Confirmed}} checked{{end}}{{if not $err.IsZero}} aria-invalid="true" aria-describedby="{{$id}}-error"{{end}}> <span>{{tHTML "mods.unresolved.confirm" "mod" (ident .Name) "label" (m "worlds.snapshot.label.before_mods")}}</span></label>
       {{- if not $err.IsZero}}
       <p class="error" id="{{$id}}-error"><strong>{{t "common.error.label"}}</strong> {{msg $err}}</p>
       {{- end}}
@@ -182,10 +188,10 @@
     {{- end}}
     {{- if or .Plan.Optional .Plan.Unresolved $versions}}
     {{- /* With script, a change redraws the plan; without it, this button does. */}}
-    <noscript><div class="actions"><button type="submit" class="button" formmethod="get" formaction="{{.Path}}" formnovalidate>{{t "mods.plan.recalculate"}}</button></div></noscript>
+    <noscript><div class="actions"><button type="submit" class="button" formaction="{{.RedrawPath}}" formnovalidate>{{t "mods.plan.recalculate"}}</button></div></noscript>
     {{- end}}
     {{- /* A plan with a conflict cannot be applied, so it does not say what applying does (SPEC 17.8). */}}
-    {{- if not (or .Plan.Conflicts .Nothing)}}
+    {{- if not (or .Plan.Conflicts .Form.FavoriteVersion .Nothing)}}
     <p id="plan-steps">{{t "common.confirm.will"}}</p>
     <ol class="plan-steps">
       {{- with .Downloads}}
@@ -237,7 +243,7 @@
   {{- /* Labelled for a screen reader by the mod's title; the select sits in the row so a phone keeps it with its mod. */}}
   <span class="plan-row__version">
     <label for="{{.ID}}" class="visually-hidden">{{tHTML "mods.version.label" "mod" (ident ($p.Title .Name))}}</label>
-    <select id="{{.ID}}" name="version-{{.Name}}" hx-get="{{$p.Path}}" aria-describedby="plan-versions-hint">
+    <select id="{{.ID}}" name="version-{{.Name}}" hx-post="{{$p.RedrawPath}}" aria-describedby="plan-versions-hint">
       {{- range .Options}}
       <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{if .Label.IsZero}}{{.Value}}{{else}}{{msg .Label}}{{end}}</option>
       {{- end}}
@@ -245,8 +251,8 @@
   </span>
   {{- end}}
   {{- if and .Asked (gt (len $p.Form.Names) 1)}}
-  {{- /* Taking a mod out redraws the plan; the link holds the plan without it, for a page without script. It destroys nothing, so the cross is quiet. */}}
-  <a href="{{$p.PlanWithout .Name}}" class="button button--icon plan-panel__remove" id="{{$p.ModID .Name "remove"}}" hx-get="{{$p.RemovePath .Name}}" hx-push-url="{{$p.PlanWithout .Name}}" hx-params="none"><span class="visually-hidden">{{tHTML "mods.plan_panel.remove" "mod" (ident ($p.Title .Name))}}</span></a>
+  {{- /* Taking a mod out of the draft redraws the plan, with or without script. It destroys nothing, so the cross is quiet. */}}
+  <a href="{{$p.RemovePath .Name}}" class="button button--icon plan-panel__remove" id="{{$p.ModID .Name "remove"}}" hx-get="{{$p.RemovePath .Name}}" hx-push-url="{{$p.DraftPath}}" hx-params="none"><span class="visually-hidden">{{tHTML "mods.plan_panel.remove" "mod" (ident ($p.Title .Name))}}</span></a>
   {{- end}}
 </li>
 {{- end}}
@@ -256,7 +262,7 @@
 {{define "plan-offer" -}}
 {{- $r := .}}
 <div class="plan-offer">
-  <label class="check plan-offer__box" for="{{$r.ID}}"><input type="checkbox" name="{{$r.Field}}" value="{{$r.Offer.Name}}" id="{{$r.ID}}" hx-get="{{$r.Path}}"{{if $r.Offer.Chosen}} checked{{end}}{{if $r.HasDetail}} aria-describedby="{{$r.DetailID}}"{{end}}> <span class="visually-hidden" translate="no">{{$r.Name.Title}}</span></label>
+  <label class="check plan-offer__box" for="{{$r.ID}}"><input type="checkbox" name="{{$r.Field}}" value="{{$r.Offer.Name}}" id="{{$r.ID}}" hx-post="{{$r.Path}}"{{if $r.Offer.Chosen}} checked{{end}}{{if $r.HasDetail}} aria-describedby="{{$r.DetailID}}"{{end}}> <span class="visually-hidden" translate="no">{{$r.Name.Title}}</span></label>
   <div class="plan-offer__body">
     <p class="plan-offer__name">{{template "mod-name" $r.Name}} <label class="plan-offer__of" for="{{$r.ID}}">{{msgHTML $r.Of}}</label></p>
     {{- if $r.HasDetail}}
