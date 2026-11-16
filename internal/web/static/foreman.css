@@ -9253,3 +9253,12 @@ main:has(> .gate) > * + :not(h1, .gate) {
   padding: 0;
   list-style: none;
 }
+
+/* Saves tab: an autosave reads as the world's name and time, and its file
+   name sits beside it as smaller, quieter text. */
+.save-file {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
