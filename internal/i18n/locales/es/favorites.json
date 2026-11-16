@@ -54,5 +54,6 @@
   "favorites.import.button": "Importar favorito",
   "favorites.import.done": "Se importó el favorito «{name}».",
   "favorites.import.bad": "No es un archivo de favorito que Foreman pueda leer, o está dañado. No se importó nada.",
-  "favorites.import.name_taken": "Ya existe un favorito con el nombre de este archivo. Cambia el nombre de ese favorito o elimínalo y vuelve a importar."
+  "favorites.import.name_taken": "Ya existe un favorito con el nombre de este archivo. Cambia el nombre de ese favorito o elimínalo y vuelve a importar.",
+  "favorites.exchange.show": "Cadena de intercambio de mapa"
 }

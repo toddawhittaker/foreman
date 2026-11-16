@@ -206,5 +206,17 @@
   "mapgen.tip.tree_damage": "Les arbres ont 4 stades successifs de dépérissement dus à la pollution. Toute pollution supérieure à cette valeur déclenche le processus d'évolution d'un arbre vers un stade plus endommagé.",
   "mapgen.unit.minutes": "min",
   "mapgen.unit.percent": "%",
-  "mapgen.width.label": "Largeur"
+  "mapgen.width.label": "Largeur",
+  "mapgen.exchange.heading": "Chaîne d’échange de carte",
+  "mapgen.exchange.label": "Chaîne d’échange de carte",
+  "mapgen.exchange.copy": "Copier la chaîne d’échange de carte",
+  "mapgen.exchange.copied": "Chaîne d’échange de carte copiée",
+  "mapgen.exchange.note": "Collez-la dans le générateur de carte de Factorio pour obtenir la même carte. La chaîne ne contient que les paramètres de la carte, pas les mods.",
+  "mapgen.exchange.reason.no_seed": "La valeur d’initialisation de la carte est laissée au hasard et aucune sauvegarde ne permet de la lire, donc il n’y a pas de chaîne.",
+  "mapgen.exchange.reason.no_map_world": "Ce monde n’a aucun fichier de paramètres de carte et pas encore de sauvegarde, donc il n’y a pas de carte à décrire.",
+  "mapgen.exchange.reason.no_map_favorite": "Ce favori ne garde aucun paramètre de carte, donc il n’y a pas de carte à décrire.",
+  "mapgen.exchange.reason.no_settings": "La sauvegarde la plus récente du monde ne contient aucun paramètre de carte que Foreman puisse lire, donc il n’y a pas de chaîne.",
+  "mapgen.exchange.reason.unsupported": "Cette carte vient de Factorio {version}, pour lequel Foreman ne peut pas créer de chaîne.",
+  "mapgen.exchange.reason.unreadable": "Foreman n’a pas pu lire la sauvegarde la plus récente du monde, donc il n’y a pas de chaîne.",
+  "mapgen.exchange.reason.failed": "Foreman n’a pas pu créer la chaîne pour le moment. Rechargez la page pour réessayer."
 }

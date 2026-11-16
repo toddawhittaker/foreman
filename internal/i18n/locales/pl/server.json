@@ -385,6 +385,7 @@
   "server.error.image_missing": "Obraz gry dla wersji Factorio tego świata nie został pobrany. Należy pobrać obraz gry, a potem uruchomić ponownie.",
   "server.error.rcon_unreachable": "Nie można połączyć się z grą przez RCON, więc nie można ostrzec graczy ani wcześniej zapisać gry. Aby zatrzymać ją bez zapisu, należy użyć przycisku Wymuś zatrzymanie.",
   "server.error.save_timeout": "Gra nie zdążyła zapisać stanu, więc nic nie zatrzymano ani nie utworzono migawki. Należy spróbować ponownie albo użyć przycisku Wymuś zatrzymanie.",
+  "server.error.save_failed": "Gra nie mogła zapisać świata, więc nic nie zatrzymano ani nie utworzono migawki. Przyczynę należy sprawdzić w logu.",
   "server.error.start_failed": "Gra się nie uruchomiła.",
   "server.error.cancelled": "Wymuszone zatrzymanie przerwało tę akcję.",
   "server.error.stop_cancelled": "Zatrzymanie zostało anulowane, więc nic nie zatrzymano ani nie zapisano, a gra działa dalej.",
