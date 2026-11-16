@@ -124,9 +124,7 @@ func headerBytes(rc io.Reader) ([]byte, error) {
 		return nil, ErrTruncated
 	}
 	var src io.Reader = br
-	// A zlib header: CM=8 and a valid check value. An uncompressed header
-	// starts with the game's major version, which is never 0x78.
-	if head[0] == 0x78 && (uint16(head[0])<<8|uint16(head[1]))%31 == 0 {
+	if isZlib(head) {
 		zr, err := zlib.NewReader(br)
 		if err != nil {
 			return nil, ErrFormat
@@ -146,20 +144,33 @@ func headerBytes(rc io.Reader) ([]byte, error) {
 	return data, nil
 }
 
+// isZlib reports a zlib header: CM=8 and a valid check value. An
+// uncompressed level file starts with the game's major version, never 0x78.
+func isZlib(head []byte) bool {
+	return head[0] == 0x78 && (uint16(head[0])<<8|uint16(head[1]))%31 == 0
+}
+
 // supported reports whether Foreman knows the header layout for v.
 func supported(v Version) bool {
 	return (v.Major == 1 && v.Minor == 1) || (v.Major == 2 && (v.Minor == 0 || v.Minor == 1))
 }
 
 func parse(data []byte) (Save, error) {
-	p := &parser{buf: data, capped: len(data) >= maxHeader}
+	s, _, err := parseHeader(data, len(data) >= maxHeader)
+	return s, err
+}
+
+// parseHeader reads the header at the start of data and also returns where
+// it ends. capped says data was cut at a read limit.
+func parseHeader(data []byte, capped bool) (Save, int, error) {
+	p := &parser{buf: data, capped: capped}
 	var s Save
 	s.Version = Version{p.u16(), p.u16(), p.u16(), p.u16()}
 	if p.err != nil {
-		return Save{}, p.err
+		return Save{}, 0, p.err
 	}
 	if !supported(s.Version) {
-		return Save{}, &UnsupportedVersionError{Version: s.Version}
+		return Save{}, 0, &UnsupportedVersionError{Version: s.Version}
 	}
 	p.skip(1)  // unknown flag
 	p.str()    // campaign
@@ -177,24 +188,24 @@ func parse(data []byte) (Save, error) {
 	}
 	n := p.count()
 	if p.err == nil && n > maxMods {
-		return Save{}, ErrFormat
+		return Save{}, 0, ErrFormat
 	}
 	for i := uint32(0); i < n && p.err == nil; i++ {
 		m := Mod{Name: p.str(), Version: p.modVer()}
 		p.skip(4) // CRC
 		if p.err == nil && !validName(m.Name) {
-			return Save{}, ErrFormat
+			return Save{}, 0, ErrFormat
 		}
 		s.Mods = append(s.Mods, m)
 	}
 	if p.err != nil {
-		return Save{}, p.err
+		return Save{}, 0, p.err
 	}
 	// Every save has base first. If not, the layout above did not fit.
 	if len(s.Mods) == 0 || s.Mods[0].Name != "base" {
-		return Save{}, ErrFormat
+		return Save{}, 0, ErrFormat
 	}
-	return s, nil
+	return s, len(data) - len(p.buf), nil
 }
 
 // validName accepts the characters the mod portal allows in a mod name.
