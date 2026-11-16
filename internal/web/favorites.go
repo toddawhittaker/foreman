@@ -102,6 +102,10 @@ func (p FavoritesPage) RenameFor(id string) FavoriteRename {
 	return FavoriteRename{}
 }
 
+// MaxName is the longest favorite name, which the rename field allows so
+// the field and the server cannot disagree.
+func (FavoritesPage) MaxName() int { return world.MaxFavoriteName }
+
 // ExchangeFor is the map exchange string field of one favorite.
 func (p FavoritesPage) ExchangeFor(id string) ExchangeField { return p.Exchanges[id] }
 

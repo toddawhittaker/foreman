@@ -60,7 +60,7 @@
           <form method="post" action="{{.RenamePath}}" class="field favorite__rename" novalidate>
             <label for="favorite-{{.ID}}-rename" class="required">{{t "favorites.rename.label"}}<span class="visually-hidden" translate="no"> {{$name}}</span></label>
             <div class="inline-row">
-              <input id="favorite-{{.ID}}-rename" name="name" type="text" value="{{$rename.Value}}" required maxlength="100"
+              <input id="favorite-{{.ID}}-rename" name="name" type="text" value="{{$rename.Value}}" required maxlength="{{$.Page.MaxName}}"
                 {{- if not $rename.Error.IsZero}} aria-invalid="true" aria-describedby="favorite-{{.ID}}-rename-error"{{end}}>
               <button type="submit" class="button" id="act-favorite-rename-{{.ID}}" aria-describedby="favorite-{{.ID}}-name">{{t "favorites.rename.button"}}</button>
             </div>
