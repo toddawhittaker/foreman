@@ -212,7 +212,15 @@ func (s *server) bulkPlan(ctx context.Context, refs []world.SnapshotRef) (Snapsh
 				wi.rollbackSnap, wi.rollback = target.Name, version
 			}
 		} else {
-			wi.name = s.worlds.SnapshotWorldName(ref.WorldID, ref.Name)
+			// The name is read from any one of the world's snapshots that
+			// still exists; one already gone cannot give it.
+			wi.name = ref.WorldID
+			for _, other := range refs {
+				if _, ok := have[other]; ok && other.WorldID == ref.WorldID {
+					wi.name = s.worlds.SnapshotWorldName(other.WorldID, other.Name)
+					break
+				}
+			}
 		}
 		worlds[ref.WorldID] = wi
 		return wi

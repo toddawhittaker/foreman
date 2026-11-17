@@ -327,6 +327,19 @@ func (s *server) mcpDeleteSnapshots(ctx context.Context, req *mcp.CallToolReques
 	var failures map[world.SnapshotRef]i18n.Msg
 	finished, err := s.mcpDetached(ctx, func(ctx context.Context) error {
 		deleted, stayed, failures, _ = s.deleteBulk(ctx, by, p, s.bulkFailure)
+		// The call may have stopped waiting, so what stayed is logged here.
+		// The reasons are plain words, never secrets.
+		for _, it := range p.Items {
+			ref := world.SnapshotRef{WorldID: it.WorldID, Name: it.Snapshot.Name}
+			if !slices.Contains(stayed, ref) {
+				continue
+			}
+			why := it.Refusal
+			if f, ok := failures[ref]; ok {
+				why = f
+			}
+			s.log.Info("mcp: snapshot stayed", "world", ref.WorldID, "snapshot", ref.Name, "why", inEnglish(why))
+		}
 		return nil
 	})
 	if err != nil {
@@ -357,7 +370,7 @@ func (s *server) mcpDeleteSnapshots(ctx context.Context, req *mcp.CallToolReques
 	res := mcpText("Deleted %d snapshots.", out.DeletedCount)
 	if len(stayed) > 0 {
 		res = mcpText("Deleted %d snapshots; %d stayed, see staying.", out.DeletedCount, len(stayed))
-		res.IsError = len(deleted) == 0
+		res.IsError = out.DeletedCount == 0
 	}
 	return res, out, nil
 }

@@ -412,11 +412,36 @@ func TestMCPDeleteSnapshotsOfADeletedWorld(t *testing.T) {
 	if err := g.worlds.Delete(context.Background(), other, "Other", false, "alice"); err != nil {
 		t.Fatal(err)
 	}
-	_, res, out := confirmCall(t, cs, "delete_snapshots", map[string]any{"world_id": other, "snapshots": []string{snap.Name}})
+	_, res, out := confirmCall(t, cs, "delete_snapshots", map[string]any{"world_id": other, "snapshots": []string{"20200101T000000Z", snap.Name}})
 	if res.IsError || out["deleted"] != float64(1) {
 		t.Fatalf("confirm: %s %s", resultText(res), asJSON(out))
 	}
 	if got := snapshotNamesOf(t, g, other); len(got) != 0 {
+		t.Errorf("snapshots left: %v", got)
+	}
+	if !strings.Contains(asJSON(out["world"]), `"name":"Other"`) {
+		t.Errorf("the deleted world's name: %s", asJSON(out["world"]))
+	}
+}
+
+// SPEC 6.12: a snapshot already gone is not a snapshot deleted, so a call
+// whose only other snapshot stays is an error that deleted nothing.
+func TestMCPDeleteSnapshotsErrorWhenNothingWasRemoved(t *testing.T) {
+	g, cs := mcpRig(t, auth.ScopeAdmin, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	snaps := threeSnapshots(t, g, id)
+	args := map[string]any{"world_id": id, "snapshots": []string{"20200101T000000Z", snaps[0].Name}}
+	code := askCode(t, cs, "delete_snapshots", args)
+	unlock, err := g.worlds.Lock(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	res, out := call(t, cs, "delete_snapshots", withCode(args, code))
+	if !res.IsError || out["deleted"] != nil || !strings.Contains(asJSON(out["staying"]), snaps[0].Name) {
+		t.Fatalf("one gone, one stays: %s %s", resultText(res), asJSON(out))
+	}
+	if got := snapshotNamesOf(t, g, id); len(got) != 3 {
 		t.Errorf("snapshots left: %v", got)
 	}
 }
