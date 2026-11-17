@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"testing"
@@ -11,7 +12,9 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/modportal"
 )
 
 // mcpRig is a game rig with MCP on and a client connected through a token
@@ -145,6 +148,57 @@ func TestMCPSnapshotsAndMods(t *testing.T) {
 	}
 	res, out = call(t, cs, "list_mods", map[string]any{"world_id": id})
 	if res.IsError || out["portal"] != "off" || !strings.Contains(resultText(res), "updates are unknown") {
+		t.Errorf("list_mods: %s %s", resultText(res), asJSON(out))
+	}
+}
+
+// SPEC 21.4, 8.6: recent_log returns the newest 200 lines and no more.
+func TestMCPRecentLogKeepsNewest200(t *testing.T) {
+	g, cs := mcpRig(t, auth.ScopeRead, image21)
+	id := g.startRunning()
+	for i := range 250 {
+		g.fake.Daemon().EmitLog(game.ContainerName(id), docker.Stdout, fmt.Sprintf("   2.000 Info line %03d", i))
+	}
+	var lines []any
+	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		_, out := call(t, cs, "recent_log", map[string]any{"world_id": id})
+		lines, _ = out["untrusted_lines"].([]any)
+		if len(lines) > 0 && strings.HasSuffix(fmt.Sprint(lines[len(lines)-1]), "line 249") {
+			break
+		}
+	}
+	if len(lines) != mcpLogLines || !strings.HasSuffix(fmt.Sprint(lines[len(lines)-1]), "line 249") {
+		t.Errorf("recent_log gave %d lines, ending %v", len(lines), lines[len(lines)-1:])
+	}
+}
+
+// stuckPortal never answers before the caller gives up.
+type stuckPortal struct{ ModPortal }
+
+func (stuckPortal) Mods(ctx context.Context, names []string) map[string]modportal.ModResult {
+	<-ctx.Done()
+	out := map[string]modportal.ModResult{}
+	for _, n := range names {
+		out[n] = modportal.ModResult{Err: ctx.Err()}
+	}
+	return out
+}
+
+// SPEC 9.3, 21.4: a portal that does not answer in time is said as "not
+// reached", never as "no updates", and the mods are still listed.
+func TestMCPListModsPortalTimeout(t *testing.T) {
+	g := newModsRigWrapped(t, false, func(p ModPortal) ModPortal { return stuckPortal{p} })
+	was := mcpPortalLimit
+	mcpPortalLimit = 50 * time.Millisecond
+	t.Cleanup(func() { mcpPortalLimit = was })
+	id := g.world20("Modded", "somemod_1.0.0")
+	u, _, _ := g.store.UserByUsername(context.Background(), "alice")
+	turnMCPOn(t, g.harness)
+	secret, _ := apiToken(t, g.harness, u, "Claude", auth.ScopeRead)
+	cs := mcpConnect(t, g.url, secret)
+	res, out := call(t, cs, "list_mods", map[string]any{"world_id": id})
+	if res.IsError || out["portal"] != "not reached" || !strings.Contains(asJSON(out), `"untrusted_name":"somemod"`) ||
+		!strings.Contains(resultText(res), "not reached") {
 		t.Errorf("list_mods: %s %s", resultText(res), asJSON(out))
 	}
 }

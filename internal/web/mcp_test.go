@@ -13,6 +13,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
@@ -236,9 +237,13 @@ func TestMCPToolsFollowScope(t *testing.T) {
 			t.Errorf("listed %q, want %q", got, all)
 		}
 	}
-	res, err := reader.CallTool(context.Background(), &mcp.CallToolParams{Name: "start_server", Arguments: map[string]any{"world_id": "x"}})
-	if err == nil && (res == nil || !res.IsError) {
-		t.Errorf("a read token started a server: %+v", res)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	res, err := reader.CallTool(context.Background(), &mcp.CallToolParams{Name: "start_server", Arguments: map[string]any{"world_id": id}})
+	if err == nil || !strings.Contains(err.Error(), "unknown tool") {
+		t.Errorf("a read token's start_server: %+v %v", res, err)
+	}
+	if g.ctrl.Status(id).State != game.StateStopped {
+		t.Errorf("a read token started the game: %s", g.ctrl.Status(id).State)
 	}
 }
 
@@ -294,15 +299,28 @@ func TestMCPPerTokenRateLimit(t *testing.T) {
 	}
 }
 
-// SPEC 14.7, 14.19: a request from a foreign origin is refused.
+// SPEC 14.7, 14.19: a request with an Origin is refused unless it is
+// exactly FOREMAN_PUBLIC_URL's. An Origin equal to Host is refused too, as
+// a DNS rebinding page sends one.
 func TestMCPRefusesForeignOrigin(t *testing.T) {
-	ls := newLiveServer(t, nil)
-	u := ls.addUser("alice", testPassword)
-	turnMCPOn(t, ls.harness)
-	secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
-	h := bearer(secret)
-	h.Set("Origin", "https://evil.example")
-	if rep := ls.mcpPost(http.MethodPost, initMessage, h); rep.StatusCode != http.StatusForbidden {
-		t.Errorf("foreign origin: %d", rep.StatusCode)
+	for _, env := range []map[string]string{nil, {"FOREMAN_PUBLIC_URL": "https://foreman.example"}} {
+		ls := newLiveServer(t, env)
+		u := ls.addUser("alice", testPassword)
+		turnMCPOn(t, ls.harness)
+		secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
+		for _, origin := range []string{"https://evil.example", ls.url, "null"} {
+			h := bearer(secret)
+			h.Set("Origin", origin)
+			if rep := ls.mcpPost(http.MethodPost, initMessage, h); rep.StatusCode != http.StatusForbidden {
+				t.Errorf("public URL %q, origin %q: %d", env["FOREMAN_PUBLIC_URL"], origin, rep.StatusCode)
+			}
+		}
+		if env != nil {
+			h := bearer(secret)
+			h.Set("Origin", "https://foreman.example")
+			if rep := ls.mcpPost(http.MethodPost, initMessage, h); rep.StatusCode != http.StatusOK {
+				t.Errorf("the public URL's origin: %d %q", rep.StatusCode, rep.body)
+			}
+		}
 	}
 }

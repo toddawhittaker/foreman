@@ -2,14 +2,19 @@ package web
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // auditByToken returns the audit entries of one action made through the
@@ -32,7 +37,7 @@ func TestMCPStartAndStop(t *testing.T) {
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 
 	res, out := call(t, cs, "start_server", map[string]any{"world_id": id})
-	if res.IsError || out["finished"] != true || !strings.Contains(asJSON(out), `"ok":true`) {
+	if res.IsError || out["finished"] != true || !strings.Contains(asJSON(out), `"ok":true`) || resultText(res) != "World Base is running." {
 		t.Fatalf("start: %s %s", resultText(res), asJSON(out))
 	}
 	if g.ctrl.Status(id).State != game.StateRunning {
@@ -47,7 +52,7 @@ func TestMCPStartAndStop(t *testing.T) {
 		t.Errorf("a countdown over 10 minutes: %s", resultText(res))
 	}
 	res, out = call(t, cs, "stop_server", map[string]any{"world_id": id, "countdown_seconds": 0})
-	if res.IsError || out["finished"] != true {
+	if res.IsError || out["finished"] != true || resultText(res) != "World Base is stopped." {
 		t.Fatalf("stop: %s %s", resultText(res), asJSON(out))
 	}
 	if g.ctrl.Status(id).State != game.StateStopped || len(g.auditByToken(game.AuditStop)) != 1 {
@@ -62,7 +67,7 @@ func TestMCPStartNeedsActiveWorld(t *testing.T) {
 	old := g.oldWorld("Old")
 	for _, tool := range []string{"start_server", "restart_server"} {
 		res, _ := call(t, cs, tool, map[string]any{"world_id": old})
-		if !res.IsError || !strings.Contains(resultText(res), "not the active world") {
+		if !res.IsError || !strings.Contains(resultText(res), "Only the active world can be started.") || !strings.Contains(resultText(res), "switch_world") {
 			t.Errorf("%s on a world not active: %s", tool, resultText(res))
 		}
 	}
@@ -112,7 +117,8 @@ func TestMCPTakeSnapshot(t *testing.T) {
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	res, out := call(t, cs, "take_snapshot", map[string]any{"world_id": id, "label": "Before the boss"})
 	taken, _ := out["snapshots_taken"].([]any)
-	if res.IsError || out["finished"] != true || len(taken) != 1 || !strings.Contains(asJSON(taken), `"label":"Before the boss"`) {
+	if res.IsError || out["finished"] != true || len(taken) != 1 || !strings.Contains(asJSON(taken), `"label":"Before the boss"`) ||
+		resultText(res) != `Foreman took the snapshot "Before the boss" of Base.` {
 		t.Fatalf("snapshot: %s %s", resultText(res), asJSON(out))
 	}
 	list, err := g.worlds.Snapshots(id)
@@ -125,11 +131,17 @@ func TestMCPTakeSnapshot(t *testing.T) {
 // snapshot it took, and leaves a stopped game stopped unless asked.
 func TestMCPSwitchWorld(t *testing.T) {
 	g, cs := mcpRig(t, auth.ScopeOperate, image21, image20)
-	g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	base := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	old := g.oldWorld("Old")
 	res, out := call(t, cs, "switch_world", map[string]any{"world_id": old})
-	if res.IsError || out["finished"] != true || !strings.Contains(asJSON(out), `"ok":true`) {
+	if res.IsError || out["finished"] != true || !strings.Contains(asJSON(out), `"ok":true`) ||
+		!strings.HasPrefix(resultText(res), "The worlds are switched, from Base to Old.") || strings.Contains(resultText(res), "snapshots were taken") {
 		t.Fatalf("switch: %s %s", resultText(res), asJSON(out))
+	}
+	// The world switched from words the same result with the target's name.
+	_, st := call(t, cs, "server_status", map[string]any{"world_id": base})
+	if !strings.Contains(asJSON(st), "from Base to Old") {
+		t.Errorf("status of the old world: %s", asJSON(st))
 	}
 	sum, err := g.worlds.Get(context.Background(), old)
 	if err != nil || !sum.Active {
@@ -175,5 +187,86 @@ func TestMCPChat(t *testing.T) {
 	}
 	if res, _ := call(t, cs, "send_chat", map[string]any{"world_id": id, "message": strings.Repeat("x", game.MaxChatRunes-len("[Claude] "))}); res.IsError {
 		t.Errorf("a line at the limit was refused: %s", resultText(res))
+	}
+}
+
+// SPEC 21.5, 7.4: a switch that would have to start past the pre-start
+// check's problems is refused, with the problems in untrusted_problems.
+func TestMCPSwitchRefusesStartWithProblems(t *testing.T) {
+	g, cs := mcpRig(t, auth.ScopeOperate, image21, image20)
+	g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	id, err := g.worlds.Create(context.Background(), "Newer", "2.0.77", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join("..", "savefile", "testdata", "2.1.24-no-space-age.zip")) //nolint:gosec // a fixed test fixture
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(g.worlds.Dirs().Worlds, id, world.SavesDir, "base.zip"), b, 0o600); err != nil { //nolint:gosec // a test temp folder
+		t.Fatal(err)
+	}
+	res, out := call(t, cs, "switch_world", map[string]any{"world_id": id, "start": true})
+	problems, _ := out["untrusted_problems"].([]any)
+	if !res.IsError || len(problems) < 2 || !strings.Contains(resultText(res), "untrusted_problems") {
+		t.Fatalf("switch: %s %s", resultText(res), asJSON(out))
+	}
+	if sum, _ := g.worlds.Get(context.Background(), id); sum.Active {
+		t.Error("the refused switch made the world active")
+	}
+}
+
+// SPEC 7.6, 21.5: a stop with no countdown given warns players for the
+// app's default.
+func TestMCPStopDefaultCountdown(t *testing.T) {
+	g, cs := mcpRig(t, auth.ScopeOperate, image21)
+	id := g.startRunning()
+	g.join(id, "bob")
+	was := mcpWait
+	mcpWait = 50 * time.Millisecond
+	t.Cleanup(func() { mcpWait = was })
+	asked := time.Now()
+	if res, out := call(t, cs, "stop_server", map[string]any{"world_id": id}); res.IsError || out["finished"] != false {
+		t.Fatalf("stop: %s %s", resultText(res), asJSON(out))
+	}
+	var ends time.Time
+	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		if op := g.ctrl.Status(id).Operation; op != nil {
+			if e, ok := op.CountdownEnds(); ok {
+				ends = e
+				break
+			}
+		}
+	}
+	if d := ends.Sub(asked); d < game.StopCountdown-5*time.Second || d > game.StopCountdown+5*time.Second {
+		t.Errorf("countdown ends %v after the call, want about %v", d, game.StopCountdown)
+	}
+	if err := g.ctrl.CancelStop(context.Background(), id, game.Actor{Username: "alice"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// SPEC 21.5: the action goes on when the client leaves, and server_status
+// reports how it ended.
+func TestMCPActionOutlivesTheClient(t *testing.T) {
+	g, cs := mcpRig(t, auth.ScopeOperate, image21)
+	id := g.startRunning()
+	g.join(id, "bob")
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	if _, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "stop_server", Arguments: map[string]any{"world_id": id, "countdown_seconds": 2}}); err == nil {
+		t.Fatal("the call outlived its context")
+	}
+	for deadline := time.Now().Add(15 * time.Second); ; time.Sleep(50 * time.Millisecond) {
+		_, st := call(t, cs, "server_status", map[string]any{"world_id": id})
+		if last, ok := st["last_result"].(map[string]any); ok && last["action"] == game.AuditStop {
+			if last["ok"] != true || st["state"] != string(game.StateStopped) {
+				t.Errorf("stop result: %s", asJSON(st))
+			}
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("server_status never reported the stop: %s", asJSON(st))
+		}
 	}
 }

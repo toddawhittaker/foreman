@@ -28,18 +28,13 @@ const mcpMaxBody = 4 << 20
 // waits up to mcpWait, plus room for the answer (SPEC 21.5).
 const mcpWriteTime = 65 * time.Second
 
-// tokenChecker finds the API token a secret belongs to (auth.APITokens).
-type tokenChecker interface {
-	Check(ctx context.Context, secret string) (store.APIToken, error)
-}
-
 // mcpTokenKey holds the request's API token in the SDK's TokenInfo.
 const mcpTokenKey = "foreman_token"
 
 // mcpRoutes adds the MCP endpoint (SPEC 21). Each request passes, in order:
-// MCP on (403), POST only (405), the per-address failure limit (429), the
+// MCP on (403), no foreign Origin (403), POST only (405), the per-address failure limit (429), the
 // bearer token (401), the per-token limits (429) and one JSON-RPC message
-// per body (400). The cross-origin check wraps every route (SPEC 14.7).
+// per body (400).
 // Nothing here reads a cookie or a trusted header (SPEC 14.19).
 func (s *server) mcpRoutes() {
 	servers := s.mcpServers()
@@ -48,10 +43,9 @@ func (s *server) mcpRoutes() {
 	}, &mcp.StreamableHTTPOptions{
 		Stateless:    true,
 		JSONResponse: true,
-		// The token and the Origin check already cover DNS rebinding, and a
-		// proxy on the same host would trip the SDK's own check.
+		// mcpOrigin covers DNS rebinding, and a proxy on the same host would
+		// trip the SDK's own check. limitBody caps the body.
 		DisableLocalhostProtection: true,
-		MaxRequestBodyBytes:        mcpMaxBody,
 	})
 	limits := auth.NewTokenLimiter(s.now)
 	addrs := auth.NewAddrLimiter(s.now)
@@ -82,6 +76,10 @@ func (s *server) mcpRoutes() {
 			http.Error(w, "MCP access is off. An admin can turn it on on Foreman's API tokens page.", http.StatusForbidden)
 			return
 		}
+		if !s.mcpOrigin(r) {
+			http.Error(w, "Requests from a web page are refused.", http.StatusForbidden)
+			return
+		}
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -93,6 +91,19 @@ func (s *server) mcpRoutes() {
 		}
 		inner.ServeHTTP(w, r)
 	})
+}
+
+// mcpOrigin reports whether a request's Origin may reach /mcp: none, or
+// exactly FOREMAN_PUBLIC_URL's. Go's cross-origin check accepts an Origin
+// equal to Host, which a DNS rebinding page can fake (SPEC 14.19); MCP
+// clients send no Origin.
+func (s *server) mcpOrigin(r *http.Request) bool {
+	origin, sent := r.Header["Origin"]
+	if !sent {
+		return true
+	}
+	u := s.cfg.PublicURL
+	return u != nil && len(origin) == 1 && origin[0] == u.Scheme+"://"+u.Host
 }
 
 func tooMany(w http.ResponseWriter, wait time.Duration, text string) {
@@ -126,7 +137,7 @@ func oneMessage(w http.ResponseWriter, r *http.Request) bool {
 // refused. An unknown token gets a plain 401; an expired or revoked one a
 // 401 naming its state (SPEC 14.19). A working token clears the address's
 // failures.
-func (s *server) mcpVerifier(tokens tokenChecker, addrs *auth.AddrLimiter) mcpauth.TokenVerifier {
+func (s *server) mcpVerifier(tokens *auth.APITokens, addrs *auth.AddrLimiter) mcpauth.TokenVerifier {
 	return func(ctx context.Context, secret string, r *http.Request) (*mcpauth.TokenInfo, error) {
 		tok, err := tokens.Check(ctx, secret)
 		switch {
