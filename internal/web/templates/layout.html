@@ -116,7 +116,7 @@
     {{- range .}}
     <li>
       <form method="post" action="{{.RenewPath}}" class="token-banner__line">
-        <p><strong>{{t "common.label.warning"}}</strong> {{if eq .State "expired"}}{{tHTML "apitokens.banner.expired" "name" .Name "time" (momentUTC .Expires)}}{{else}}{{tHTML "apitokens.banner.expiring" "name" .Name "time" (momentUTC .Expires)}}{{end}}</p>
+        <p><strong>{{t "common.label.warning"}}</strong> {{if .Expired}}{{tHTML "apitokens.banner.expired" "name" .Name "time" (momentUTC .Expires)}}{{else}}{{tHTML "apitokens.banner.expiring" "name" .Name "time" (momentUTC .Expires)}}{{end}}</p>
         {{- with $.Return}}
         <input type="hidden" name="return" value="{{.}}">
         {{- end}}

@@ -69,6 +69,12 @@ func (s *server) mcpRoutes() {
 		if !oneMessage(w, r) {
 			return
 		}
+		// The body may have taken a while: a revoke made meanwhile counts
+		// (SPEC 12.10, "takes effect at once").
+		if err := s.tokens.Recheck(r.Context(), tok.ID); err != nil {
+			s.refuseToken(w, err)
+			return
+		}
 		sdk.ServeHTTP(w, r)
 	}))
 	s.mux.HandleFunc(PathMCP, func(w http.ResponseWriter, r *http.Request) {
@@ -132,24 +138,44 @@ func oneMessage(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-// mcpVerifier checks a bearer token once per request: a call already
-// running when its token is revoked may finish, and every later request is
-// refused. An unknown token gets a plain 401; an expired or revoked one a
+// tokenRefusal turns a token check's error into the SDK's: an unknown token
+// is a plain invalid token, an expired or revoked one names its state
+// (SPEC 14.19), and a store failure is logged and not described.
+func (s *server) tokenRefusal(err error) error {
+	switch {
+	case errors.Is(err, auth.ErrTokenUnknown):
+		return mcpauth.ErrInvalidToken
+	case errors.Is(err, auth.ErrTokenExpired):
+		return fmt.Errorf("%w: this token has expired; its owner can renew it on Foreman's API tokens page", mcpauth.ErrInvalidToken)
+	case errors.Is(err, auth.ErrTokenRevoked):
+		return fmt.Errorf("%w: this token has been revoked; make a new one", mcpauth.ErrInvalidToken)
+	}
+	s.log.Error("check an API token", "error", err)
+	return errors.New("the token could not be checked")
+}
+
+// refuseToken answers a request whose token failed the check after its body
+// was read, as the bearer check would have answered it.
+func (s *server) refuseToken(w http.ResponseWriter, err error) {
+	refusal := s.tokenRefusal(err)
+	if errors.Is(refusal, mcpauth.ErrInvalidToken) {
+		http.Error(w, refusal.Error(), http.StatusUnauthorized)
+		return
+	}
+	http.Error(w, refusal.Error(), http.StatusInternalServerError)
+}
+
+// mcpVerifier checks a bearer token when the request arrives; the handler
+// checks it again once the body is read. A call already running when its
+// token is revoked may finish, and every later request is refused. An
+// unknown token gets a plain 401; an expired or revoked one a
 // 401 naming its state (SPEC 14.19). A working token clears the address's
 // failures.
 func (s *server) mcpVerifier(tokens *auth.APITokens, addrs *auth.AddrLimiter) mcpauth.TokenVerifier {
 	return func(ctx context.Context, secret string, r *http.Request) (*mcpauth.TokenInfo, error) {
 		tok, err := tokens.Check(ctx, secret)
-		switch {
-		case errors.Is(err, auth.ErrTokenUnknown):
-			return nil, mcpauth.ErrInvalidToken
-		case errors.Is(err, auth.ErrTokenExpired):
-			return nil, fmt.Errorf("%w: this token has expired; its owner can renew it on Foreman's API tokens page", mcpauth.ErrInvalidToken)
-		case errors.Is(err, auth.ErrTokenRevoked):
-			return nil, fmt.Errorf("%w: this token has been revoked; make a new one", mcpauth.ErrInvalidToken)
-		case err != nil:
-			s.log.Error("check an API token", "error", err)
-			return nil, errors.New("the token could not be checked")
+		if err != nil {
+			return nil, s.tokenRefusal(err)
 		}
 		addrs.Succeed(auth.ClientAddr(r, s.cfg.TrustedProxies))
 		return &mcpauth.TokenInfo{Scopes: []string{tok.Scope}, UserID: fmt.Sprint(tok.UserID),

@@ -340,3 +340,22 @@ func TestAPITokenRenewedMessageNotSpoofed(t *testing.T) {
 		t.Error("a revoked token's name showed a Renewed message")
 	}
 }
+
+// SPEC 12.10, 14.17: a Renewed message shows only for a working token, so
+// the name of an expired one cannot be used to show it either.
+func TestAPITokenRenewedMessageOnlyForWorkingToken(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	hn.createToken(c, "Claude", auth.ScopeRead)
+	shown := func() bool {
+		return strings.Contains(hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(), `id="renewed-message"`)
+	}
+	if !shown() {
+		t.Fatal("a working token's Renewed message is not shown")
+	}
+	hn.clock.Advance(auth.TokenPeriod + time.Hour)
+	c = hn.signInAgain("alice")
+	if shown() {
+		t.Error("an expired token's name showed a Renewed message")
+	}
+}

@@ -124,7 +124,7 @@ func TestHeldVariantsWorkUnderTheCallersLock(t *testing.T) {
 	if _, err := m.TakeSnapshot(id, "x", "admin"); !errors.Is(err, ErrBusy) {
 		t.Fatalf("TakeSnapshot err %v, want ErrBusy", err)
 	}
-	snap, err := m.TakeSnapshotHeld(id, "x", "admin")
+	snap, err := m.TakeSnapshotHeld(id, "x", "admin", false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -253,3 +253,19 @@ func TestTokenMigrationTurnsOffEventOnExistingWebhooks(t *testing.T) {
 		t.Errorf("events_off = %q", got)
 	}
 }
+
+func TestAPITokensOfIsOneUsers(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	ann, bob := tokenUser(t, s, "ann"), tokenUser(t, s, "bob")
+	_, _ = s.CreateAPIToken(ctx, bob, "b", "read", "h1", t0)
+	_, _ = s.CreateAPIToken(ctx, ann, "z", "read", "h2", t0)
+	a, _ := s.CreateAPIToken(ctx, ann, "a", "read", "h3", t0)
+	if _, err := s.RevokeAPIToken(ctx, a.ID, t0); err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.APITokensOf(ctx, ann)
+	if err != nil || len(list) != 2 || list[0].Name != "a" || list[1].Name != "z" {
+		t.Errorf("tokens of ann (revoked included, by name): %+v %v", list, err)
+	}
+}

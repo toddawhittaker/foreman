@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
@@ -178,13 +179,13 @@ func pageCases() []pageCase {
 		{"public mods settings on", "todd", 200, PublicModsSettingsPage{On: true, Done: PublicModsOn}},
 		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},
 		{"api tokens listed", "todd", 200, APITokensPage{Admin: true, MCPOn: true,
-			Mine: []TokenRow{{ID: 1, Owner: "todd", Name: "Claude", Scope: "operate", State: "working", Mine: true}},
-			All:  []TokenRow{{ID: 1, IDPrefix: "all-", Owner: "todd", Name: "Claude", Scope: "operate", State: "working", Mine: true}, {ID: 2, IDPrefix: "all-", Owner: "bob", Name: "Old", Scope: "admin", State: "revoked"}},
+			Mine: []TokenRow{{ID: 1, Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}},
+			All:  []TokenRow{{ID: 1, IDPrefix: "all-", Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}, {ID: 2, IDPrefix: "all-", Owner: "bob", Name: "Old", Scope: "admin", State: auth.TokenRevoked}},
 			Form: TokenForm{Name: "a[b]", Scope: "admin", NameError: i18n.M("apitokens.create.name.taken")}}},
-		{"api tokens used", "todd", 200, APITokensPage{Form: TokenForm{Scope: "read"}, Mine: []TokenRow{{ID: 3, Owner: "todd", Name: "Used", Scope: "read", State: "working", Mine: true, LastUsed: time.Date(2026, 11, 2, 9, 7, 30, 0, time.UTC)}}}},
+		{"api tokens used", "todd", 200, APITokensPage{Form: TokenForm{Scope: "read"}, Mine: []TokenRow{{ID: 3, Owner: "todd", Name: "Used", Scope: "read", State: auth.TokenWorking, Mine: true, LastUsed: time.Date(2026, 11, 2, 9, 7, 30, 0, time.UTC)}}}},
 		{"api tokens forced off", "todd", 200, APITokensPage{MCPForced: true, Done: tokenDoneRevoked, DoneName: "Claude", Form: TokenForm{Scope: "read"}}},
-		{"api token created", "todd", 200, APITokenCreatedPage{Token: TokenRow{ID: 1, Name: "Claude", Scope: "read", State: "working"}, Secret: "fmn_x", Endpoint: "https://f.example/mcp"}},
-		{"api token revoke", "todd", 200, APITokenRevokePage{Token: TokenRow{ID: 1, Owner: "bob", Name: "Claude", Scope: "read", State: "expired"}}},
+		{"api token created", "todd", 200, APITokenCreatedPage{Token: TokenRow{ID: 1, Name: "Claude", Scope: "read", State: auth.TokenWorking}, Secret: "fmn_x", Endpoint: "https://f.example/mcp"}},
+		{"api token revoke", "todd", 200, APITokenRevokePage{Token: TokenRow{ID: 1, Owner: "bob", Name: "Claude", Scope: "read", State: auth.TokenExpired}}},
 		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1"}.withZones()},
 		{"schedule on", "todd", 200, SchedulePage{On: true, Next: time.Date(2026, 11, 13, 4, 0, 0, 0, time.UTC), SavedClock: "04:00", SavedZone: "Europe/London",
 			Enabled: true, Clock: "04:00", Zone: "Europe/London", Limit: "1", Saved: true}.withZones()},

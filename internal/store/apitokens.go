@@ -164,6 +164,12 @@ func (s *Store) ListAPITokens(ctx context.Context) ([]APIToken, error) {
 		"SELECT "+apiTokenSelect+" ORDER BY u.username, t.name, t.id")
 }
 
+// APITokensOf returns one user's tokens, revoked ones too, by name, then ID.
+func (s *Store) APITokensOf(ctx context.Context, userID int64) ([]APIToken, error) {
+	return s.queryTokens(ctx, "list a user's API tokens",
+		"SELECT "+apiTokenSelect+" WHERE t.user_id = ? ORDER BY t.name, t.id", userID)
+}
+
 // APITokensStartedBy returns the owner's tokens that are not revoked and
 // whose period started at or before cutoff, oldest period first. With
 // cutoff set to 25 days ago these are the ones within 5 days of expiring

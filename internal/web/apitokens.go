@@ -48,7 +48,7 @@ type TokenRow struct {
 	Owner    string
 	Name     string
 	Scope    string
-	State    string // "working", "expired" or "revoked"
+	State    auth.TokenState
 	Expires  time.Time
 	Created  time.Time
 	LastUsed time.Time // zero when never used
@@ -59,15 +59,8 @@ type TokenRow struct {
 }
 
 func tokenRow(t store.APIToken, me int64, now time.Time) TokenRow {
-	state := "working"
-	switch auth.State(t, now) {
-	case auth.TokenExpired:
-		state = "expired"
-	case auth.TokenRevoked:
-		state = "revoked"
-	}
 	return TokenRow{
-		ID: t.ID, Owner: t.Owner, Name: t.Name, Scope: t.Scope, State: state,
+		ID: t.ID, Owner: t.Owner, Name: t.Name, Scope: t.Scope, State: auth.State(t, now),
 		Expires: auth.ExpiresAt(t), Created: t.CreatedAt, LastUsed: t.LastUsedAt, Mine: t.UserID == me,
 	}
 }
@@ -75,13 +68,27 @@ func tokenRow(t store.APIToken, me int64, now time.Time) TokenRow {
 // StateWord is the state in words.
 func (t TokenRow) StateWord() i18n.Msg {
 	switch t.State {
-	case "expired":
+	case auth.TokenExpired:
 		return i18n.M("apitokens.state.expired")
-	case "revoked":
+	case auth.TokenRevoked:
 		return i18n.M("apitokens.state.revoked")
 	}
 	return i18n.M("apitokens.state.working")
 }
+
+// StateClass is the state's CSS class suffix.
+func (t TokenRow) StateClass() string {
+	switch t.State {
+	case auth.TokenExpired:
+		return "expired"
+	case auth.TokenRevoked:
+		return "revoked"
+	}
+	return "working"
+}
+
+// Expired is true once the period has run out and the token is not revoked.
+func (t TokenRow) Expired() bool { return t.State == auth.TokenExpired }
 
 // ScopeWord is the scope in words.
 func (t TokenRow) ScopeWord() i18n.Msg { return scopeWord(t.Scope) }
@@ -107,7 +114,7 @@ func scopeHint(scope string) i18n.Msg {
 }
 
 // Revoked is true once the token has ended for good.
-func (t TokenRow) Revoked() bool { return t.State == "revoked" }
+func (t TokenRow) Revoked() bool { return t.State == auth.TokenRevoked }
 
 // RenewPath is where its Renew button posts.
 func (t TokenRow) RenewPath() string { return tokenPath(t.ID, "renew") }
@@ -331,7 +338,7 @@ func (s *server) tokenFromPath(w http.ResponseWriter, r *http.Request, u store.U
 		s.notFound(w, r, u)
 		return store.APIToken{}, false
 	}
-	t, err := s.store.APIToken(r.Context(), id)
+	t, err := s.tokens.Get(r.Context(), id)
 	if errors.Is(err, store.ErrTokenNotFound) {
 		s.notFound(w, r, u)
 		return store.APIToken{}, false
@@ -494,8 +501,8 @@ func (s *server) tokenBanner(r *http.Request, user string) []TokenRow {
 }
 
 // dropSpoofedRenewed removes a done=renewed message unless it names one of
-// the signed-in user's own tokens that is not revoked, so a crafted link
-// cannot show a made-up Done message.
+// the signed-in user's own tokens that is working, so a crafted link cannot
+// show a made-up Done message.
 func (s *server) dropSpoofedRenewed(r *http.Request, user string) *http.Request {
 	name := renewedName(r, user)
 	if name == "" || s.ownsLiveToken(r.Context(), user, name) {
@@ -509,6 +516,7 @@ func (s *server) dropSpoofedRenewed(r *http.Request, user string) *http.Request 
 	return r2
 }
 
+// ownsLiveToken reports whether the user has a working token of this name.
 func (s *server) ownsLiveToken(ctx context.Context, user, name string) bool {
 	if s.tokens == nil || s.store == nil {
 		return false
@@ -517,12 +525,13 @@ func (s *server) ownsLiveToken(ctx context.Context, user, name string) bool {
 	if err != nil || !found {
 		return false
 	}
-	ts, err := s.tokens.List(ctx)
+	ts, err := s.tokens.OwnedBy(ctx, u.ID)
 	if err != nil {
 		return false
 	}
+	now := s.now()
 	for _, t := range ts {
-		if t.UserID == u.ID && t.RevokedAt.IsZero() && t.Name == name {
+		if t.Name == name && auth.State(t, now) == auth.TokenWorking {
 			return true
 		}
 	}
