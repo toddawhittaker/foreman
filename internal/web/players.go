@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"slices"
@@ -215,20 +216,33 @@ func (s *server) handlePlayerConfirm(w http.ResponseWriter, r *http.Request, u s
 		return
 	}
 	q := r.URL.Query()
-	p := PlayerActionPage{World: sum, Action: action, Name: q.Get("name"), Return: returnPath(q.Get(returnField))}
-	if err := game.CheckPlayerAction(action, p.Name, ""); err != nil {
+	p, valid := s.playerConfirmPage(r.Context(), sum, action, q.Get("name"))
+	p.Return = returnPath(q.Get(returnField))
+	if !valid {
 		s.playerResults.put(u.ID, PlayerResult{WorldID: sum.ID, WorldName: sum.Name, Action: action, Name: p.Name,
 			Error: i18n.M("players.error.name", "max", gamesettings.MaxNameBytes), NameError: true, Return: p.Back()})
-		http.Redirect(w, r, p.Back(), http.StatusSeeOther)
+		http.Redirect(w, r, p.Back(), http.StatusSeeOther) //nolint:gosec // Return passed returnPath (SPEC 14.17)
 		return
+	}
+	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// playerConfirmPage builds the kick or ban confirmation for name without a
+// request, running the checks the action would (SPEC 17.8). valid is false
+// when name fails the check of SPEC 14.9, so nothing may be sent. The MCP
+// kick and ban tools use it too. Return is left for the caller.
+func (s *server) playerConfirmPage(ctx context.Context, sum world.Summary, action game.PlayerAction, name string) (p PlayerActionPage, valid bool) {
+	p = PlayerActionPage{World: sum, Action: action, Name: name}
+	if err := game.CheckPlayerAction(action, name, ""); err != nil {
+		return p, false
 	}
 	if s.game.Status(sum.ID).State != game.StateRunning {
 		p.Error = i18n.M("players.error.not_running", "world", sum.Name)
-	} else if o := s.online(r.Context(), sum.ID); o.Asked && !o.Failed {
+	} else if o := s.online(ctx, sum.ID); o.Asked && !o.Failed {
 		p.Online = slices.ContainsFunc(o.Names, func(n string) bool { return strings.EqualFold(n, p.Name) })
 		p.Gone = !p.Online
 	}
-	s.page(w, r, http.StatusOK, u.Username, p)
+	return p, true
 }
 
 // handlePlayerAction sends one player action to the running game and goes
@@ -261,7 +275,7 @@ func (s *server) handlePlayerAction(w http.ResponseWriter, r *http.Request, u st
 		return
 	}
 	if err != nil {
-		res.Error, res.Reply, res.NameError = s.playerError(r, sum, name, err)
+		res.Error, res.Reply, res.NameError = s.playerError(r.URL.Path, sum, name, err)
 	}
 	if back == "" {
 		back = PathServer
@@ -297,7 +311,7 @@ func banReasonIn(data []byte, name string) string {
 }
 
 // playerError words a player action that was not done.
-func (s *server) playerError(r *http.Request, sum world.Summary, name string, err error) (msg i18n.Msg, reply string, nameErr bool) {
+func (s *server) playerError(path string, sum world.Summary, name string, err error) (msg i18n.Msg, reply string, nameErr bool) {
 	if refused, ok := errors.AsType[*game.PlayerRefusedError](err); ok {
 		return i18n.M("players.error.refused", "name", name, "world", sum.Name), refused.Reply, false
 	}
@@ -315,7 +329,7 @@ func (s *server) playerError(r *http.Request, sum world.Summary, name string, er
 	}
 	status, msg := gameError(err)
 	if status == http.StatusInternalServerError || msg.IsZero() {
-		s.log.Error("player action", "path", r.URL.Path, "world", sum.ID, "error", err)
+		s.log.Error("player action", "path", path, "world", sum.ID, "error", err)
 		msg = i18n.M("players.error.failed", "world", sum.Name)
 	}
 	return msg, "", false
