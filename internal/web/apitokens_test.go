@@ -321,3 +321,22 @@ func TestAPITokenLastUsedToTheMinute(t *testing.T) {
 		t.Error("last use is not shown as 13:07 UTC")
 	}
 }
+
+// A crafted link cannot show a Renewed message for a token the user does
+// not own, or one that is revoked.
+func TestAPITokenRenewedMessageNotSpoofed(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	hn.createToken(c, "Claude", auth.ScopeRead)
+	for _, name := range []string{"Your account is locked, call 555-0100", "claude-x"} {
+		body := hn.get("/worlds?"+url.Values{"done": {"renewed"}, "name": {name}}.Encode(), withCookie(c)).Body.String()
+		if strings.Contains(body, `id="renewed-message"`) {
+			t.Errorf("name %q showed a Renewed message", name)
+		}
+	}
+	tok := hn.tokenNamed("Claude")
+	hn.post(tokenPath(tok.ID, "revoke"), url.Values{}, withCookie(c))
+	if body := hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(); strings.Contains(body, `id="renewed-message"`) {
+		t.Error("a revoked token's name showed a Renewed message")
+	}
+}

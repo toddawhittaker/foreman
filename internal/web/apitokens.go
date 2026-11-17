@@ -492,3 +492,39 @@ func (s *server) tokenBanner(r *http.Request, user string) []TokenRow {
 	}
 	return out
 }
+
+// dropSpoofedRenewed removes a done=renewed message unless it names one of
+// the signed-in user's own tokens that is not revoked, so a crafted link
+// cannot show a made-up Done message.
+func (s *server) dropSpoofedRenewed(r *http.Request, user string) *http.Request {
+	name := renewedName(r, user)
+	if name == "" || s.ownsLiveToken(r.Context(), user, name) {
+		return r
+	}
+	r2 := r.Clone(r.Context())
+	q := r2.URL.Query()
+	q.Del("done")
+	q.Del("name")
+	r2.URL.RawQuery = q.Encode()
+	return r2
+}
+
+func (s *server) ownsLiveToken(ctx context.Context, user, name string) bool {
+	if s.tokens == nil || s.store == nil {
+		return false
+	}
+	u, found, err := s.store.UserByUsername(ctx, user)
+	if err != nil || !found {
+		return false
+	}
+	ts, err := s.tokens.List(ctx)
+	if err != nil {
+		return false
+	}
+	for _, t := range ts {
+		if t.UserID == u.ID && t.RevokedAt.IsZero() && t.Name == name {
+			return true
+		}
+	}
+	return false
+}
