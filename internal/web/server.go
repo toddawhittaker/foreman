@@ -308,7 +308,8 @@ func clientGone(r *http.Request, err error) bool {
 // page renders p. If rendering fails it logs the error and sends a plain 500,
 // unless the browser left: that is no server fault and nobody is left to answer.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user string, p Page) {
-	err := s.render.Render(w, r, status, user, s.lamp(r, user), p)
+	r = s.dropSpoofedRenewed(r, user)
+	err := s.render.Render(w, r, status, user, s.lamp(r, user), s.tokenBanner(r, user), p)
 	if err == nil {
 		return
 	}
@@ -317,7 +318,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user s
 		return
 	}
 	s.log.Error("render page", "method", r.Method, "path", r.URL.Path, "error", err)
-	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", LiveState{}, ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
+	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", LiveState{}, nil, ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

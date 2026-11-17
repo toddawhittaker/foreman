@@ -18,7 +18,7 @@ func renderPublic(t *testing.T, data PublicModsData) string {
 	}
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, PathPublicMods, nil)
-	if err := r.Render(rec, req, http.StatusOK, "", LiveState{}, PublicModsPage{data}); err != nil {
+	if err := r.Render(rec, req, http.StatusOK, "", LiveState{}, nil, PublicModsPage{data}); err != nil {
 		t.Fatal(err)
 	}
 	return rec.Body.String()
