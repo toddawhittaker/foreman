@@ -1974,7 +1974,8 @@ Foreman shows no licence. (P1)
   `/settings/public-mods`. The choice is stored in the app database,
   takes effect at once, and is audited as `public-mods-set` with the
   detail "on" or "off". While it is off, every path under `/public/`
-  answers 404, exactly like an unknown path.
+  answers 404, exactly like an unknown path. So does `/public/static`
+  without the slash.
 - **Page.** `GET /public/mods` needs no sign-in. For each world whose game
   is running (one in v1), it shows the world's name, its game version, and
   its enabled mods that are not built in (9.7). Each mod shows its title
@@ -2204,10 +2205,11 @@ separate design (issue #207).
 - **When.** At every start Foreman makes (start, restart, switch, start
   anyway, scheduled restart), after the game has stopped and before the
   save to load is chosen (7.11), Foreman looks at the world's autosaves:
-  files named `_autosaveN.zip`, and leftovers named `_autosaveN.tidy.zip`.
-  It tidies only when some N is greater than S, the `autosave_slots` value
-  in `server-settings.json` (the game's default of 5 when the key is
-  missing). It never tidies while the game runs, when S or
+  files named `_autosaveN.zip`, and leftovers of a tidy cut short, named
+  `_autosaveN.tidy.zip` (N is the slot the file is moving to, 11.6
+  "Order"). It tidies when some N is greater than S, the `autosave_slots`
+  value in `server-settings.json` (the game's default of 5 when the key is
+  missing), and also whenever any `.tidy.zip` file exists. It never tidies while the game runs, when S or
   `autosave_interval` is 0, or when an admin has chosen an autosave to
   load next; the next start tries again. Docker restarting a crashed game
   never tidies.
@@ -2229,20 +2231,25 @@ separate design (issue #207).
 - **Order.** (1) A snapshot, reason `autosaves`, labelled "Before
   autosave tidy" (6.2). (2) An audit entry `autosave-tidy` with how many
   files were kept, renamed and removed (12.9), written before any file
-  changes. (3) Each kept file is renamed to `_autosaveN.tidy.zip` (N its
-  old number), then to its final name. (4) The rest are removed. If the
-  snapshot or the audit entry fails, the tidy is skipped, the reason is
-  logged, and the start carries on with the files untouched. A tidy cut
-  short is finished by the next, which reads `.tidy.zip` files as
-  autosave N.
+  changes. (3) Each kept file is renamed to `_autosaveN.tidy.zip`, N its
+  final slot. (4) The rest are removed. (5) Each kept file is renamed to
+  its final name. If the snapshot or the audit entry fails, the tidy is
+  skipped, the reason is logged, and the start carries on with the files
+  untouched. A tidy cut short is finished by the next, which keeps each
+  `.tidy.zip` file in slot N and works out the rest of the mapping from
+  them; if they fit no mapping for the current S, the tidy is skipped and
+  the reason is logged. The snapshot and the audit entry are made by
+  "Foreman", not by the user who started the game.
 - **Accuracy.** The mapping is exact when K is the last real autosave and
   either the new count divides the old one or the map has made fewer
   autosaves than the old count. Otherwise the game's first overwrite may
   hit a file that is not the oldest. The snapshot is the undo.
 - **What the UI says.** When a settings preview (11.3) lowers S and
   autosaves above S exist, it says: "At the next start, Foreman keeps the
-  newest {kept} autosaves and removes {removed}. A snapshot is taken
-  first." The snapshot then shows under its own label.
+  newest {count} autosaves. It removes {count} other autosaves. A snapshot
+  is taken first." Each sentence is its own message with one count
+  (docs/I18N.md). The second sentence is left out when nothing is removed.
+  The snapshot then shows under its own label.
 
 ## 12. Sign-in and users
 
@@ -2657,11 +2664,12 @@ carries none. (P0)
   the next gets 503 with `Retry-After: 5`. A download write that makes no
   progress for 60 seconds is cut off (the idle limit of 14.6); there is
   no overall deadline. The page itself keeps the server's normal
-  timeouts. Only GET is allowed, plus `POST /public/language`, whose body
-  is capped at 64 KB.
+  timeouts. Only GET is allowed: HEAD and every other method get 405,
+  except `POST /public/language`, whose body is capped at 64 KB.
 - **No identity.** A public route never reads a session, trusted headers
   or an API token, never creates a user, and sets no cookie except the
-  language cookie. Responses carry `Cache-Control: no-cache`,
+  language cookie. Responses, `/public/static/` files included, carry
+  `Cache-Control: no-cache`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
   the frame refusal of 14.13.
 - **Forward-auth proxy.** The operator guide says to let requests whose
@@ -2671,8 +2679,9 @@ carries none. (P0)
 - **Accepted risks.** A stranger can hold the 4 download slots; turning
   the page off ends that. Anyone who can reach the page learns which world
   runs and which mods it uses; the admin chose that by turning it on.
-- **Logging.** The access log records the path only (15.1). Downloads are
-  not audited.
+- **Logging.** The access log records each public request as it does any
+  other, with the path and no query string (15.1). Downloads are not
+  audited.
 
 ## 15. Logging
 
@@ -2933,7 +2942,8 @@ and the low-disk warning (8.13).
 Built; what is still unproven is in STATUS.md, Epic 9b.
 
 18.9c. **Epic 9c: Public mods and autosave tidy.** The public mods page
-(9.16, 14.18, #132) and the autosave tidy (11.6, #671).
+(9.16, 14.18, #132) and the autosave tidy (11.6, #671). Built; see
+STATUS.md, Epic 9c.
 
 18.10. **Epic 10: AI access.** API tokens (12.10) and the MCP endpoint
 (section 21).
