@@ -103,6 +103,30 @@
 </dialog>
 {{- end}}
 <main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
+{{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here (SPEC 12.10). */}}
+{{- with .Renewed}}
+<div class="message message--success" id="renewed-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{t "apitokens.done.renewed" "name" .}}</p>
+</div>
+{{- end}}
+{{- with .Banner}}
+<section class="message message--warning token-banner" id="token-banner" aria-labelledby="token-banner-heading">
+  <h2 id="token-banner-heading" class="visually-hidden">{{t "apitokens.banner.heading"}}</h2>
+  <ul role="list">
+    {{- range .}}
+    <li>
+      <form method="post" action="{{.RenewPath}}" class="token-banner__line">
+        <p><strong>{{t "common.label.warning"}}</strong> {{if eq .State "expired"}}{{tHTML "apitokens.banner.expired" "name" .Name "time" (momentUTC .Expires)}}{{else}}{{tHTML "apitokens.banner.expiring" "name" .Name "time" (momentUTC .Expires)}}{{end}}</p>
+        {{- with $.Return}}
+        <input type="hidden" name="return" value="{{.}}">
+        {{- end}}
+        <button type="submit" class="button" aria-label="{{t "apitokens.renew.name" "name" .Name}}">{{t "apitokens.renew"}}</button>
+      </form>
+    </li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
 {{template "content" .}}
 </main>
 <div id="announcer" class="visually-hidden" aria-live="polite"></div>
@@ -212,7 +236,7 @@
 </nav>
 {{- end}}
 
-{{/* The tabs of Foreman's own settings pages (DESIGN 8.15). Takes "account", "public-mods",
+{{/* The tabs of Foreman's own settings pages (DESIGN 8.15). Takes "account", "public-mods", "api-tokens" ("api-token" under it),
      "schedule" or "notifications", or "notification" on a page under the
      notifications list, where its link is current but not the page. */}}
 {{define "settings-tabs" -}}
@@ -222,6 +246,7 @@
     <li><a href="{{schedulePath}}"{{if eq . "schedule"}} aria-current="page"{{end}}>{{t "common.menu.schedule"}}</a></li>
     <li><a href="{{notificationsPath}}"{{if eq . "notifications"}} aria-current="page"{{else if eq . "notification"}} aria-current="true"{{end}}>{{t "common.menu.notifications"}}</a></li>
     <li><a href="{{publicModsSetPath}}"{{if eq . "public-mods"}} aria-current="page"{{end}}>{{t "publicmods.settings.tab"}}</a></li>
+    <li><a href="{{apiTokensPath}}"{{if eq . "api-tokens"}} aria-current="page"{{else if eq . "api-token"}} aria-current="true"{{end}}>{{t "apitokens.tab"}}</a></li>
   </ul>
 </nav>
 {{- end}}

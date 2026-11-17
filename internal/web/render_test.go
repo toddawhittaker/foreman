@@ -176,6 +176,15 @@ func pageCases() []pageCase {
 			}}}}}},
 		{"public mods settings off", "todd", 200, PublicModsSettingsPage{}},
 		{"public mods settings on", "todd", 200, PublicModsSettingsPage{On: true, Done: PublicModsOn}},
+		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},
+		{"api tokens listed", "todd", 200, APITokensPage{Admin: true, MCPOn: true,
+			Mine: []TokenRow{{ID: 1, Owner: "todd", Name: "Claude", Scope: "operate", State: "working", Mine: true}},
+			All:  []TokenRow{{ID: 1, IDPrefix: "all-", Owner: "todd", Name: "Claude", Scope: "operate", State: "working", Mine: true}, {ID: 2, IDPrefix: "all-", Owner: "bob", Name: "Old", Scope: "admin", State: "revoked"}},
+			Form: TokenForm{Name: "a[b]", Scope: "admin", NameError: i18n.M("apitokens.create.name.taken")}}},
+		{"api tokens used", "todd", 200, APITokensPage{Form: TokenForm{Scope: "read"}, Mine: []TokenRow{{ID: 3, Owner: "todd", Name: "Used", Scope: "read", State: "working", Mine: true, LastUsed: time.Date(2026, 11, 2, 9, 7, 30, 0, time.UTC)}}}},
+		{"api tokens forced off", "todd", 200, APITokensPage{MCPForced: true, Done: tokenDoneRevoked, DoneName: "Claude", Form: TokenForm{Scope: "read"}}},
+		{"api token created", "todd", 200, APITokenCreatedPage{Token: TokenRow{ID: 1, Name: "Claude", Scope: "read", State: "working"}, Secret: "fmn_x", Endpoint: "https://f.example/mcp"}},
+		{"api token revoke", "todd", 200, APITokenRevokePage{Token: TokenRow{ID: 1, Owner: "bob", Name: "Claude", Scope: "read", State: "expired"}}},
 		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1"}.withZones()},
 		{"schedule on", "todd", 200, SchedulePage{On: true, Next: time.Date(2026, 11, 13, 4, 0, 0, 0, time.UTC), SavedClock: "04:00", SavedZone: "Europe/London",
 			Enabled: true, Clock: "04:00", Zone: "Europe/London", Limit: "1", Saved: true}.withZones()},
@@ -444,7 +453,7 @@ func render(t *testing.T, r *Renderer, c pageCase) (*httptest.ResponseRecorder, 
 func renderIn(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) (*httptest.ResponseRecorder, string) {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	if err := r.Render(rec, requestIn(loc), c.status, c.user, LiveState{}, c.page); err != nil {
+	if err := r.Render(rec, requestIn(loc), c.status, c.user, LiveState{}, nil, c.page); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	return rec, rec.Body.String()
