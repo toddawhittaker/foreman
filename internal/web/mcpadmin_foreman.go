@@ -22,7 +22,7 @@ import (
 // the account's username and token go in and never come back (SPEC 14.8).
 
 func (s *server) addForemanTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{Name: "foreman_settings", Annotations: foremanReadOnly,
+	mcp.AddTool(srv, &mcp.Tool{Name: "foreman_settings", Annotations: readOnly,
 		Description: "Show Foreman's own settings: the restart schedule, the webhooks (preset, host, language and events, never the address), " +
 			"where the factorio.com account comes from (never its username or token) and whether the public mods page is on."}, s.mcpForemanSettings)
 	mcp.AddTool(srv, &mcp.Tool{Name: "set_restart_schedule", Annotations: oneStep,
@@ -47,11 +47,6 @@ func (s *server) addForemanTools(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{Name: "set_public_mods", Annotations: oneStep,
 		Description: "Turn the public mods page on or off, as Foreman's Public mods setting does."}, s.mcpSetPublicMods)
 }
-
-// foremanReadOnly marks a read tool of the admin scope; the destructive hint
-// is explicit like every other admin tool's, since MCP reads a missing one
-// as true.
-var foremanReadOnly = &mcp.ToolAnnotations{ReadOnlyHint: true, DestructiveHint: new(false)}
 
 // presetList and eventList name the choices a webhook tool accepts.
 func presetList() string {
@@ -105,7 +100,8 @@ func mcpWebhookOf(w notify.Webhook) mcpWebhook {
 }
 
 type mcpForemanOut struct {
-	RestartSchedule mcpScheduleOut `json:"restart_schedule"`
+	// RestartSchedule is left out when this mode has no scheduler.
+	RestartSchedule *mcpScheduleOut `json:"restart_schedule,omitempty"`
 	Webhooks        struct {
 		// CanStore is false without FOREMAN_SECRET_KEY, which webhook
 		// addresses are sealed with.
@@ -149,7 +145,8 @@ var errNoScheduler = errors.New("the restart schedule is not available in this m
 func (s *server) mcpForemanSettings(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, mcpForemanOut, error) {
 	var out mcpForemanOut
 	if s.scheduler != nil {
-		out.RestartSchedule = s.scheduleOut()
+		sched := s.scheduleOut()
+		out.RestartSchedule = &sched
 	}
 	out.Webhooks.CanStore = s.notifier.CanStore()
 	out.Webhooks.Hooks = []mcpWebhook{}
@@ -357,8 +354,9 @@ func (s *server) mcpDeleteWebhook(ctx context.Context, req *mcp.CallToolRequest,
 		return nil, mcpDeleteWebhookOut{}, err
 	}
 	out := mcpDeleteWebhookOut{Webhook: mcpWebhookOf(hook)}
-	// The preview shows the webhook as it was; a change before the confirm
-	// call (the address, the events) makes the preview stale.
+	// The preview shows the webhook as it was; a change to its preset, host,
+	// language, events or address state before the confirm call makes the
+	// preview stale. A new address on the same host does not.
 	seen := fmt.Sprintf("%d %s %s %s %v %v %v", hook.ID, hook.Preset, hook.Host, hook.Lang, hook.OnEvents(), hook.Unreadable, hook.Plain)
 	preview := func(stale bool) (*mcp.CallToolResult, mcpDeleteWebhookOut, error) {
 		p, err := s.mcpAsk(req, in, seen)

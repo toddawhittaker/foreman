@@ -158,6 +158,13 @@ func TestMCPForemanToolsAnnotations(t *testing.T) {
 			continue
 		}
 		seen++
+		if tl.Name == "foreman_settings" {
+			// A read tool: read-only says it changes nothing.
+			if tl.Annotations == nil || !tl.Annotations.ReadOnlyHint {
+				t.Errorf("foreman_settings: annotations %+v, want read-only", tl.Annotations)
+			}
+			continue
+		}
 		if tl.Annotations == nil || tl.Annotations.DestructiveHint == nil || *tl.Annotations.DestructiveHint != two {
 			t.Errorf("%s: annotations %+v, want destructive %v", tl.Name, tl.Annotations, two)
 		}
