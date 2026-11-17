@@ -3688,6 +3688,40 @@ The rules the Epic 9 pages add to `foreman.css`.
   the licence's list and the empty-state rule.
 - The Foreman settings sub-navigation reuses `.subnav`; no new rule.
 
+### 8.20 The public mods page (SPEC 9.16)
+
+**The page** (`GET /public/mods`, `publicmods.html`) is for players, who
+are not signed in. It has its own shell (`public-layout`): the logo and
+product name, the only link back into Foreman, and the user menu with
+only the language, which posts to `POST /public/language`. No theme
+choice, no nav, no About. Every file loads from `/public/static/`, so a
+proxy rule for `/public/` is all it needs.
+
+- `h1` "Mods for this server", then per running world an `h2` with its
+  name, the game version as a `.facts` pair, "Download all" as the primary
+  button-faced link, and the mods as a plain list (`ul.public-mods`), one
+  row each, never cards. A row is the mod's title and version as one
+  download link, so each link's name holds both; marks follow as `.badge`
+  words in a list: "Not on the mod portal", "Hidden on the mod portal",
+  and, for a folder mod, which has no link, "Ask the server admin for this
+  mod". A row is at least `--target-min` tall, divided by a 1 px `line`.
+- No game running: one `p.empty` saying so, and nothing listed. The
+  portal not checked: one `.hint` line above the list.
+- "Where the mods go" closes the page with the three mods folders, written
+  as the mod settings note writes them (8.11).
+
+**The setting** (`GET /settings/public-mods`, `publicmodssettings.html`)
+is a fourth tab, "Public mods", in the Foreman settings sub-navigation
+(8.15), so from any page it is two clicks away and turning it on is three.
+The state sentence leads; then a `.setting-row` panel: what turning it on
+shares on the left, the proxy rule with a link to the operator guide on
+the right, and one button that flips the setting ("Turn on the public mods
+page" or "Turn off the public mods page"). While on, "Open the public mods
+page" sits beside it. A Done message confirms each change.
+
+New CSS: `.public-world`, `.public-mods` and its `__name`, `__version`
+and `__marks`, at the end of `foreman.css`.
+
 ## 9. Writing
 
 - Plain words, sentence case, no exclamation marks, no "Oops".

@@ -188,6 +188,7 @@
   "worlds.snapshot.label.before_switch": "Before switch",
   "worlds.snapshot.label.before_update": "Before update",
   "worlds.snapshot.label.before_mods": "Before mod change",
+  "worlds.snapshot.label.before_autosaves": "Before autosave tidy",
   "worlds.snapshot.label.manual": "Manual snapshot",
   "worlds.snapshot.reason.manual": "Manual",
   "worlds.snapshots.adds": "Snapshots add",

@@ -14,6 +14,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -108,6 +109,14 @@ type SetupPage struct {
 type ErrorPage struct {
 	Status int
 	Detail i18n.Msg
+}
+
+// publicPage is a page anyone may see without signing in (SPEC 9.16). It is
+// drawn in the public layout, which loads only from /public/static/ and
+// links back into Foreman only through the product name.
+type publicPage interface {
+	Page
+	public()
 }
 
 func (SignedOutPage) templateName() string { return "signedout" }
@@ -320,6 +329,10 @@ type Renderer struct {
 func (r *Renderer) sharedFuncs() template.FuncMap {
 	return template.FuncMap{
 		"static":            r.staticURL,
+		"publicStatic":      r.publicStaticURL,
+		"publicFlag":        r.publicFlagURL,
+		"publicLangPath":    func() string { return PathPublicLanguage },
+		"publicModsSetPath": func() string { return PathPublicModsSettings },
 		"serverPath":        func() string { return PathServer },
 		"consolePath":       func() string { return PathConsole },
 		"worldsPath":        func() string { return PathWorlds },
@@ -426,6 +439,12 @@ var partialFiles = func() []string {
 
 func isPartial(name string) bool { return slices.Contains(partials, name) }
 
+// sharedRenderer is the one Renderer of the process. A Renderer is never
+// changed after NewRenderer returns, so every handler can share it; building
+// one per handler costs hundreds of megabytes of parse trees, which made the
+// tests, which build many handlers, run out of memory.
+var sharedRenderer = sync.OnceValues(NewRenderer)
+
 // NewRenderer parses every template once, makes a copy for each language
 // with that language's functions, and hashes every static file once.
 func NewRenderer() (*Renderer, error) {
@@ -510,6 +529,29 @@ func (r *Renderer) staticURL(name string) (string, error) {
 	return PathStatic + name + "?v=" + f.hash, nil
 }
 
+// publicStaticURL is staticURL under PathPublicStatic, for the public page
+// (SPEC 9.16).
+func (r *Renderer) publicStaticURL(name string) (string, error) {
+	u, err := r.staticURL(name)
+	return PathPublicStatic + strings.TrimPrefix(u, PathStatic), err
+}
+
+// publicFlagURL is flagURL under PathPublicStatic.
+func (r *Renderer) publicFlagURL(tag string) (string, error) {
+	f, ok := flags[tag]
+	if !ok {
+		return "", fmt.Errorf("no flag for language %q", tag)
+	}
+	return r.publicStaticURL(f)
+}
+
+// PublicStatic serves the files of Static under PathPublicStatic.
+func (r *Renderer) PublicStatic() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathPublicStatic), true)
+	}
+}
+
 // menuReturn is the address the user menu's forms go back to. A GET page is
 // its own address. Any other request came from a form, whose address answers
 // only POST, so it is the page the form was on, from a same-site Referer.
@@ -537,17 +579,24 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 		return err
 	}
 	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp}
+	layout := "layout"
+	_, public := p.(publicPage)
+	if public {
+		layout = "public-layout"
+	}
 	var buf bytes.Buffer
-	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
+	if err := t.ExecuteTemplate(&buf, layout, v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)
 	}
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
-	// Pages can show who is signed in; the back button after sign-out must not.
-	h.Set("Cache-Control", "no-store")
+	// Pages can show who is signed in; the back button after sign-out must
+	// not. A public page shows nobody and keeps handlePublic's no-cache.
+	if !public {
+		h.Set("Cache-Control", "no-store")
+	}
 	// Pages carry sign-in forms, so no other site may frame them.
-	h.Set("Content-Security-Policy", "frame-ancestors 'none'")
-	h.Set("X-Frame-Options", "DENY")
+	setFrameRefusal(h)
 	// The language follows a cookie and the request's Accept-Language.
 	h.Set("Vary", "Cookie, Accept-Language")
 	w.WriteHeader(status)
@@ -570,7 +619,7 @@ func (r *Renderer) Fragment(w io.Writer, loc i18n.Locale, p Page, name string) e
 // is revalidated.
 func (r *Renderer) Static() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathStatic))
+		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathStatic), false)
 	})
 }
 
@@ -578,11 +627,14 @@ func (r *Renderer) Static() http.Handler {
 // page's own icon links say.
 func (r *Renderer) Favicon() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		r.serveStatic(w, req, faviconFile)
+		r.serveStatic(w, req, faviconFile, false)
 	})
 }
 
-func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name string) {
+// serveStatic answers with one embedded file. public is for the public
+// page's copy: it is always revalidated, and an SVG's policy keeps the frame
+// refusal of every public answer (SPEC 14.18).
+func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name string, public bool) {
 	f, ok := r.static[name]
 	if !ok {
 		http.NotFound(w, req)
@@ -593,10 +645,14 @@ func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name st
 	h.Set("X-Content-Type-Options", "nosniff")
 	if f.contentType == staticTypes[".svg"] {
 		// A picture opened on its own runs nothing (the flags hold no script).
-		h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+		csp := "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+		if public {
+			csp += "; frame-ancestors 'none'"
+		}
+		h.Set("Content-Security-Policy", csp)
 	}
 	h.Set("ETag", `"`+f.hash+`"`)
-	if req.URL.Query().Get("v") == f.hash {
+	if req.URL.Query().Get("v") == f.hash && !public {
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")
 	} else {
 		h.Set("Cache-Control", "no-cache")

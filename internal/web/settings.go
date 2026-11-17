@@ -651,6 +651,10 @@ type SettingsPreviewPage struct {
 	// FileChanged is true when the file moved on since the preview, so these
 	// are the changes against the file as it is now.
 	FileChanged bool
+	// TidyKept and TidyRemoved are what the next start's autosave tidy
+	// would keep and remove; both 0 when the change sets off no tidy
+	// (SPEC 11.6).
+	TidyKept, TidyRemoved int
 }
 
 // ChangeRow is one key that differs.
@@ -726,6 +730,7 @@ func (h *settingsHandlers) previewPage(sw settingsWorld, change pendingChange) S
 		switch f.File {
 		case world.ServerSettingsFile:
 			p.Settings = changeRows(sw.line, gamesettings.Diff(sw.cfg.Data, f.New))
+			p.TidyKept, p.TidyRemoved = h.tidyCounts(sw, f.New)
 		case world.ServerAdminListFile:
 			if next, err := gamesettings.ParseAdminList(f.New); err == nil {
 				p.Promote, p.Demote = gamesettings.AdminDiff(sw.admins, next)
@@ -742,6 +747,26 @@ func (h *settingsHandlers) previewPage(sw settingsWorld, change pendingChange) S
 	}
 	p.BansLive, p.WhitelistLive = sw.running, sw.running && sw.lists.kept
 	return p
+}
+
+// tidyCounts is what the next start's autosave tidy would do when the
+// change lowers the slots (SPEC 11.6). A failure only leaves the note out.
+func (h *settingsHandlers) tidyCounts(sw settingsWorld, next []byte) (kept, removed int) {
+	old := sw.cfg.Data
+	if !sw.cfg.Found {
+		old = []byte("{}")
+	}
+	was, _, okOld := gamesettings.AutosaveSlots(old)
+	slots, interval, ok := gamesettings.AutosaveSlots(next)
+	if !ok || !okOld || slots >= was || interval == 0 {
+		return 0, 0
+	}
+	kept, removed, err := h.s.worlds.AutosaveTidyCounts(sw.sum.ID, slots)
+	if err != nil {
+		h.s.log.Warn("could not count the autosaves for the settings preview", "world", sw.sum.ID, "error", err)
+		return 0, 0
+	}
+	return kept, removed
 }
 
 func changeRows(line string, changes []gamesettings.Change) []ChangeRow {

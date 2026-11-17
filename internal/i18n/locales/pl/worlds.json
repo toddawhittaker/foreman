@@ -193,6 +193,7 @@
   "worlds.snapshot.label.before_switch": "Przed przełączeniem",
   "worlds.snapshot.label.before_update": "Przed aktualizacją",
   "worlds.snapshot.label.before_mods": "Przed zmianą modyfikacji",
+  "worlds.snapshot.label.before_autosaves": "Przed porządkowaniem autozapisów",
   "worlds.snapshot.label.manual": "Migawka ręczna",
   "worlds.snapshot.reason.manual": "Ręczna",
   "worlds.snapshots.adds": "Migawki dodają",

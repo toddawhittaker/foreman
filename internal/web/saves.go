@@ -280,7 +280,7 @@ func (s *server) handleSaveDownload(w http.ResponseWriter, r *http.Request, u st
 
 // saveDisposition names a download. An autosave takes the world's name and
 // its save time, so it is not just _autosave3.zip; the world's name is user
-// text, which previewFileName and attachment make safe for a header. Any
+// text, which downloadStem and attachment make safe for a header. Any
 // other save keeps its own name, and so does an autosave when the world's
 // name cannot be read.
 func (s *server) saveDisposition(r *http.Request, info fs.FileInfo) string {
@@ -292,7 +292,7 @@ func (s *server) saveDisposition(r *http.Request, info fs.FileInfo) string {
 	if err != nil {
 		return plain
 	}
-	return attachment(previewFileName(sum.Name, info.ModTime().UTC().Format(downloadTimeLayout), "") + ".zip")
+	return attachment(downloadStem(sum.Name, info.ModTime().UTC().Format(downloadTimeLayout), "") + ".zip")
 }
 
 // handleLoadSave sets which save the game loads: a named one, or the

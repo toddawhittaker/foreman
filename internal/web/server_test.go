@@ -231,11 +231,37 @@ func TestHealthzAndUnknownPaths(t *testing.T) {
 		{http.MethodPost, "/nope", http.StatusNotFound},
 		{http.MethodGet, PathSignedOut, http.StatusOK},
 		{http.MethodGet, PathSignOut, http.StatusMethodNotAllowed},
+		// The public mods page is off until an admin turns it on (SPEC 9.16):
+		// each of its paths is an unknown path, whatever the method.
+		{http.MethodGet, PathPublicMods, http.StatusNotFound},
+		{http.MethodPost, PathPublicMods, http.StatusNotFound},
+		{http.MethodGet, PathPublic + "mods/base/files/a_1.0.0.zip", http.StatusNotFound},
+		{http.MethodGet, PathPublic + "mods/base/all.zip", http.StatusNotFound},
+		{http.MethodPost, PathPublic + "language", http.StatusNotFound},
 	}
 	for _, c := range cases {
 		rec := hn.serve(httptest.NewRequest(c.method, c.path, nil))
 		if rec.Code != c.want {
 			t.Errorf("%s %s: got %d, want %d", c.method, c.path, rec.Code, c.want)
+		}
+	}
+	if err := hn.store.SetAppSetting(context.Background(), SettingPublicMods, PublicModsOn, "alice", hn.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	// On: the page answers GET only, and a download with no running game
+	// finds nothing.
+	for _, c := range []struct {
+		method, path string
+		want         int
+	}{
+		{http.MethodGet, PathPublicMods, http.StatusOK},
+		{http.MethodPost, PathPublicMods, http.StatusMethodNotAllowed},
+		{http.MethodGet, PathPublic + "mods/base/files/a_1.0.0.zip", http.StatusNotFound},
+		{http.MethodPost, PathPublic + "mods/base/all.zip", http.StatusMethodNotAllowed},
+		{http.MethodGet, PathPublic + "nope", http.StatusNotFound},
+	} {
+		if rec := hn.serve(httptest.NewRequest(c.method, c.path, nil)); rec.Code != c.want {
+			t.Errorf("page on: %s %s: got %d, want %d", c.method, c.path, rec.Code, c.want)
 		}
 	}
 	rec := hn.get("/nope")

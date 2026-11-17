@@ -121,6 +121,15 @@
   "settings.diff.admin_removed": "Administrateur {name} supprimé",
   "settings.preview.restart": "Le serveur est en cours d’exécution. Ces modifications prennent effet après un redémarrage.",
   "settings.preview.admins_live": "Le serveur est en cours d’exécution. Les modifications des administrateurs s’appliquent immédiatement.",
+  "settings.preview.autosave_keep": {
+    "one": "Au prochain démarrage, Foreman conserve la sauvegarde automatique la plus récente.",
+    "other": "Au prochain démarrage, Foreman conserve les {count} sauvegardes automatiques les plus récentes."
+  },
+  "settings.preview.autosave_remove": {
+    "one": "Foreman supprime {count} autre sauvegarde automatique.",
+    "other": "Foreman supprime les {count} autres sauvegardes automatiques."
+  },
+  "settings.preview.autosave_snapshot": "Un instantané est pris avant.",
   "settings.preview.step_save_game": "Sauvegarder la partie en cours.",
   "settings.preview.step_snapshot": "Prendre un instantané automatique de {world}. Si l’instantané échoue, rien d’autre ne se passe.",
   "settings.preview.step_write": "Écrire {file}.",

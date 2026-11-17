@@ -913,7 +913,7 @@ An autosave is listed as the world's name and its save time in the viewer's
 time zone (17.11), with its file name as smaller text; a save a person
 named keeps their name. A downloaded autosave is named from the world's
 name and its save time (UTC); other saves keep their file name. Files are
-never renamed, and "Loads next" still uses the file name. A file whose name
+never renamed, except by the autosave tidy (11.6), and "Loads next" still uses the file name. A file whose name
 ends in `.tmp.zip` is a save still being written: it cannot be uploaded,
 loaded or chosen to load next, and a folder import skips it; only its
 download is allowed. (P0)
@@ -1047,7 +1047,7 @@ figures can add up to less than the total. (P0)
 `snapshot.json` manifest (6.1). The folder is named by its UTC time, for
 example `20261103T142501Z`, with `-2` added on a clash. The manifest
 holds the label, the reason (`manual`, `before-delete`, `before-restore`,
-`settings`, `mods`, or the risky operation), the time, who took it, and for each file its
+`settings`, `mods`, `autosaves`, or the risky operation), the time, who took it, and for each file its
 path, size and modification time to the nanosecond. For each save and mod
 zip it also holds a SHA-256 hash, which Foreman reuses from the previous
 snapshot when the file's inode, size and modification time are unchanged.
@@ -1965,6 +1965,52 @@ text, because a link inside a sentence or a button is hard to use. Saved
 records keep the slug they were written with: snapshot labels, audit entries
 and sent notifications. (P1)
 
+9.16. **Public mods page.** Players download the running world's mods
+here without signing in, including mods the portal can no longer supply
+(VISION, Auth). Whether the mods may be shared is the admin's call;
+Foreman shows no licence. (P1)
+
+- **Setting.** Off by default. An admin turns it on or off at
+  `/settings/public-mods`. The choice is stored in the app database,
+  takes effect at once, and is audited as `public-mods-set` with the
+  detail "on" or "off". While it is off, every path under `/public/`
+  answers 404, exactly like an unknown path. So does `/public/static`
+  without the slash.
+- **Page.** `GET /public/mods` needs no sign-in. For each world whose game
+  is running (one in v1), it shows the world's name, its game version, and
+  its enabled mods that are not built in (9.7). Each mod shows its title
+  (9.15), its version and a download link, and a "Download all" link sits
+  beside them. When two zips of one mod exist, only the zip the game loads
+  is listed (9.15). A mod installed as a folder is listed, marked "Ask the
+  server admin for this mod", with no download. Turned-off mods are left
+  out. When no game is running, or it is starting, stopping or
+  crash-looping, the page says so and lists nothing.
+- **What it reveals.** Only the items above. No save, setting, secret,
+  player, log, snapshot, file size or path. The page carries
+  `<meta name="robots" content="noindex">`, and its only link back into
+  Foreman is the product name.
+- **Marks.** A mod the Mods tab's portal check flags (9.3) is marked in
+  words: "Not on the mod portal" (not on the portal, or that version is
+  gone) or "Hidden on the mod portal" (deprecated). The answer is kept per
+  world and per mods fingerprint (9.14): 15 minutes after an answer, 1
+  minute after a failure. One check runs at a time per world. The page
+  waits at most 5 seconds for a check, then shows the list without marks
+  and one line saying the portal could not be checked. Downloads never
+  depend on the portal.
+- **Files.** `GET /public/mods/<world>/files/<file>` sends one mod zip and
+  answers conditional and range requests as a save download does (5.11).
+  `GET /public/mods/<world>/all.zip` streams one zip holding each mod zip,
+  stored without compression, downloaded as `<world name>-mods.zip`. The
+  page says where the Factorio client keeps its mods folder on Windows,
+  macOS and Linux, as 9.6 does for `mod-settings.dat`.
+- **Accessibility and languages.** The page meets 17.1, 17.2 and 17.4,
+  and 22.7 in every language. Each download link's name holds the mod's
+  title and version, so no two links share a name; marks are words, never
+  colour alone. The page has the language menu, which posts to
+  `POST /public/language` with the same handling and return check as 22.2
+  and 14.17. Its scripts and styles load from `/public/static/`. Its text
+  lives in the catalogue area `publicmods`.
+
 ## 10. Game versions
 
 10.1. Each world shows its game version: an exact patch release of a
@@ -2154,11 +2200,63 @@ Editing `map-settings.json` later has no effect, so Foreman offers map
 settings only at Generate. Changing them in a running game would need a
 separate design (issue #207).
 
+11.6. **Tidying autosaves after the slot count goes down.** (P1)
+
+- **When.** At every start Foreman makes (start, restart, switch, start
+  anyway, scheduled restart), after the game has stopped and before the
+  save to load is chosen (7.11), Foreman looks at the world's autosaves:
+  files named `_autosaveN.zip`, and leftovers of a tidy cut short, named
+  `_autosaveN.tidy.zip` (N is the slot the file is moving to, 11.6
+  "Order"). It tidies when some N is greater than S, the `autosave_slots`
+  value in `server-settings.json` (the game's default of 5 when the key is
+  missing), and also whenever any `.tidy.zip` file exists. It never tidies while the game runs, when S or
+  `autosave_interval` is 0, or when an admin has chosen an autosave to
+  load next; the next start tries again. Docker restarting a crashed game
+  never tidies.
+- **The last slot written, K.** A graceful stop saves over the file the
+  game loaded, so that file can look newest without being the last
+  autosave. K is the number of the newest autosave by modification time,
+  skipping the file the last run loaded (read from the game's "Loading
+  map" line, 8.6). When Foreman has restarted since that run and no
+  longer knows the loaded file, K is the number of the newest autosave by
+  time.
+- **Mapping.** The newest S autosaves stay. The i-th newest (i = 1 is the
+  newest) becomes `_autosave(((K − i) mod S) + 1).zip`, the remainder
+  running from 0 to S−1, so the oldest kept file takes the slot the game
+  writes next. Every other autosave is removed. Other saves and
+  `.tmp.zip` files are never touched. Renaming keeps each file's
+  modification time. Example: 20 slots down to 10 with K = 17: files 17
+  down to 8 become slots 7 to 1, then 10, 9, 8; files 1 to 7 and 18 to 20
+  are removed.
+- **Order.** (1) A snapshot, reason `autosaves`, labelled "Before
+  autosave tidy" (6.2). (2) An audit entry `autosave-tidy` with how many
+  files were kept, renamed and removed (12.9), written before any file
+  changes. (3) Each kept file is renamed to `_autosaveN.tidy.zip`, N its
+  final slot. (4) The rest are removed. (5) Each kept file is renamed to
+  its final name. If the snapshot or the audit entry fails, the tidy is
+  skipped, the reason is logged, and the start carries on with the files
+  untouched. A tidy cut short is finished by the next, which keeps each
+  `.tidy.zip` file in slot N and works out the rest of the mapping from
+  them; if they fit no mapping for the current S, the tidy is skipped and
+  the reason is logged. The snapshot and the audit entry are made by
+  "Foreman", not by the user who started the game.
+- **Accuracy.** The mapping is exact when K is the last real autosave and
+  either the new count divides the old one or the map has made fewer
+  autosaves than the old count. Otherwise the game's first overwrite may
+  hit a file that is not the oldest. The snapshot is the undo.
+- **What the UI says.** When a settings preview (11.3) lowers S and
+  autosaves above S exist, it says: "At the next start, Foreman keeps the
+  newest {count} autosaves. It removes {count} other autosaves. A snapshot
+  is taken first." Each sentence is its own message with one count
+  (docs/I18N.md). The second sentence is left out when nothing is removed.
+  The snapshot then shows under its own label.
+
 ## 12. Sign-in and users
 
-12.1. **One role in v1**: every user is a full admin. The user model
-keeps a role field so a read-only viewer can be added later without a
-migration. (P0)
+12.1. **One role in v1**: every user is a full admin, and every page
+needs a signed-in user, except the public mods page (9.16) while an admin
+has it turned on. The user model keeps a role field so a read-only viewer
+can be added later without a migration. (P0)
 
 12.2. Three sign-in methods, any combination enabled by configuration:
 local accounts (12.3), trusted proxy headers (12.5), and OpenID Connect
@@ -2230,7 +2328,9 @@ control records start, stop, restart, forced stop, switch (on the world
 switched from, with both ids), game image download and
 every console command (8.4), every player action and chat message (8.2,
 8.5), a change to the whitelist switch (8.3), and a change to the restart
-schedule or to a webhook (7.12, 8.10), never with the webhook's address.
+schedule or to a webhook (7.12, 8.10), never with the webhook's address,
+the autosave tidy (11.6), and turning the public mods page on or off
+(9.16).
 Player actions, chat messages and the whitelist switch are recorded before
 they take effect and are refused if the record cannot be written. A
 schedule or webhook change is recorded after it, and a failure to record it
@@ -2261,8 +2361,8 @@ the per-address limit does not prevent this. (P0)
 ## 13. Foreman's own settings
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
-default stop countdown, scheduled restarts, notifications, and portal
-credentials when not set by environment. Each shows where its value comes
+default stop countdown, scheduled restarts, notifications, the public
+mods page (9.16), and portal credentials when not set by environment. Each shows where its value comes
 from (environment or UI), and environment values cannot be changed in the
 UI. (P0 for those whose features are P0)
 
@@ -2284,6 +2384,7 @@ reviews against.
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
 | Internet | Mod portal, image registry and its tag list, release list, webhook targets | Nothing |
 | AI client | An assistant calling the MCP endpoint (section 21) | Only its token's scope; steerable by text it reads (14.12) |
+| Player | Anyone who can reach the public mods page (9.16) | Nothing; may be a script |
 
 14.2. **Docker access is root on the host.** Whoever controls Foreman's
 Docker access controls the host. A socket proxy narrows which endpoints
@@ -2549,6 +2650,39 @@ posted, and it survives a wrong password. A POST or a partial-page
 return path, because the proxy vouches for every request. The setup page
 carries none. (P0)
 
+14.18. **The public mods page.** Every line is a condition for shipping
+9.16. (P1)
+
+- **Paths.** Foreman never builds a file path from the request. `<world>`
+  must equal the id of a world whose game is running. `<file>` must equal,
+  byte for byte, the file name of an enabled, non-built-in zip in that
+  world's mod list at the time of the request. The file is opened through
+  the world's root (14.5), must be a regular file and not a symlink, and
+  passes the same-world check a save download uses. Anything else gets a
+  plain 404.
+- **Limits.** At most 4 public downloads run at once across all visitors;
+  the next gets 503 with `Retry-After: 5`. A download write that makes no
+  progress for 60 seconds is cut off (the idle limit of 14.6); there is
+  no overall deadline. The page itself keeps the server's normal
+  timeouts. Only GET is allowed: HEAD and every other method get 405,
+  except `POST /public/language`, whose body is capped at 64 KB.
+- **No identity.** A public route never reads a session, trusted headers
+  or an API token, never creates a user, and sets no cookie except the
+  language cookie. Responses, `/public/static/` files included, carry
+  `Cache-Control: no-cache`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
+  the frame refusal of 14.13.
+- **Forward-auth proxy.** The operator guide says to let requests whose
+  path starts with `/public/` reach Foreman without authentication and to
+  keep every other path behind the proxy. It names no particular proxy.
+  Without that rule the page asks for sign-in at the proxy.
+- **Accepted risks.** A stranger can hold the 4 download slots; turning
+  the page off ends that. Anyone who can reach the page learns which world
+  runs and which mods it uses; the admin chose that by turning it on.
+- **Logging.** The access log records each public request as it does any
+  other, with the path and no query string (15.1). Downloads are not
+  audited.
+
 ## 15. Logging
 
 15.1. Foreman writes structured logs to standard output: time, level,
@@ -2806,6 +2940,10 @@ and the low-disk warning (8.13).
 18.9b. **Epic 9b: VPN sidecars.** The optional sidecar (4.13, 14.16, ADR
 0006), split out of Epic 9 so that Epics 10 and 11 keep their numbers.
 Built; what is still unproven is in STATUS.md, Epic 9b.
+
+18.9c. **Epic 9c: Public mods and autosave tidy.** The public mods page
+(9.16, 14.18, #132) and the autosave tidy (11.6, #671). Built; see
+STATUS.md, Epic 9c.
 
 18.10. **Epic 10: AI access.** API tokens (12.10) and the MCP endpoint
 (section 21).

@@ -1,0 +1,100 @@
+{{define "title"}}{{t "publicmods.title"}}{{end}}
+
+{{/* The shell of a page anyone may open (SPEC 9.16): everything loads from
+     /public/static/, the product name is the only link into Foreman, and the
+     menu holds only the language, which posts to /public/language. */}}
+{{define "public-layout" -}}
+<!doctype html>
+<html lang="{{lang}}"{{if ne .Theme "auto"}} data-theme="{{.Theme}}"{{end}}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="{{if eq .Theme "auto"}}dark light{{else}}{{.Theme}}{{end}}">
+<meta name="robots" content="noindex">
+<title>{{template "title" .}} – Foreman</title>
+<link rel="icon" href="{{publicStatic "icons/icon-16.png"}}" sizes="16x16" type="image/png">
+<link rel="icon" href="{{publicStatic "icons/icon-32.png"}}" sizes="32x32" type="image/png">
+<link rel="stylesheet" href="{{publicStatic "foreman.css"}}">
+<script src="{{publicStatic "menu.js"}}" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">{{t "common.skip"}}</a>
+<header class="site">
+  <a href="{{serverPath}}" class="product"><img src="{{publicStatic "icons/logo-32.png"}}" srcset="{{publicStatic "icons/logo-64.png"}} 2x" alt="" width="32" height="32"><span class="product__name">Foreman</span></a>
+  {{- $langName := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$langName = .Name}}{{end}}{{end}}
+  <details class="menu">
+    <summary aria-label="{{t "common.menu.language" "language" $langName}}"><span class="menu__lang">{{$langName}}</span></summary>
+    <div class="menu__panel">
+      <details class="menu__langs">
+        <summary class="menu__item"><img src="{{publicFlag lang}}" alt="" width="20" height="15"><span class="visually-hidden">{{t "common.language.label"}}{{if ne lang "en"}} <span lang="en">({{english "common.language.label"}})</span>{{end}}</span> <span class="menu__name">{{$langName}}</span></summary>
+        <form method="post" action="{{publicLangPath}}">
+          <ul role="list">
+            {{- range languages}}{{if ne .Tag.String lang}}
+            <li><button type="submit" name="lang" value="{{.Tag}}" lang="{{.Tag}}" class="menu__item"><img src="{{publicFlag .Tag.String}}" alt="" width="20" height="15" loading="lazy"> <span class="menu__name">{{.Name}}</span></button></li>
+            {{- end}}{{end}}
+          </ul>
+          {{- with .Return}}
+          <input type="hidden" name="return" value="{{.}}">
+          {{- end}}
+        </form>
+      </details>
+    </div>
+  </details>
+</header>
+<main id="main" tabindex="-1">
+{{template "content" .}}
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>{{t "publicmods.title"}}</h1>
+{{- if not .Worlds}}
+<p class="empty" id="public-none">{{t "publicmods.none"}}</p>
+{{- end}}
+{{- range $i, $w := .Worlds}}
+<section class="public-world" aria-labelledby="public-world-name-{{$i}}">
+  <h2 id="public-world-name-{{$i}}" translate="no">{{.Name}}</h2>
+  <dl class="facts">
+    <div><dt>{{t "publicmods.game_version"}}</dt><dd>{{.GameVersion}}</dd></div>
+  </dl>
+  {{- if $.Page.PortalUnchecked}}
+  <p class="hint" id="public-unchecked">{{t "publicmods.unchecked"}}</p>
+  {{- end}}
+  {{- if .Mods}}
+  {{- with .AllPath}}
+  <p><a class="button button--primary" href="{{.}}" download id="public-all">{{t "publicmods.all"}}</a></p>
+  {{- end}}
+  {{- /* A list, not a table: each row is a name, a version and words (DESIGN 8.2). A link's name is the title and version, so no two share one. */}}
+  <ul class="public-mods" role="list">
+    {{- range .Mods}}
+    <li>
+      {{- if .DownloadPath}}
+      <a href="{{.DownloadPath}}" download class="public-mods__name"><span translate="no">{{or .Title .Name}}</span> <span class="public-mods__version">{{.Version}}</span></a>
+      {{- else}}
+      <span class="public-mods__name"><span translate="no">{{or .Title .Name}}</span> <span class="public-mods__version">{{.Version}}</span></span>
+      {{- end}}
+      {{- if or .Folder .NotOnPortal .Hidden}}
+      <ul class="public-mods__marks" role="list">
+        {{- if .Folder}}<li class="badge">{{t "publicmods.mark.folder"}}</li>{{end}}
+        {{- if .NotOnPortal}}<li class="badge">{{t "publicmods.mark.not_on_portal"}}</li>{{end}}
+        {{- if .Hidden}}<li class="badge">{{t "publicmods.mark.hidden"}}</li>{{end}}
+      </ul>
+      {{- end}}
+    </li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty" id="public-no-mods">{{t "publicmods.no_mods"}}</p>
+  {{- end}}
+</section>
+{{- end}}
+{{- /* Where the files go, as the mod settings note says it (SPEC 9.6). */}}
+<section aria-labelledby="public-where-heading">
+  <h2 id="public-where-heading">{{t "publicmods.where.heading"}}</h2>
+  <p>{{tHTML "publicmods.where.text" "windows" (code `%APPDATA%\Factorio\mods`) "macos" (code "~/Library/Application Support/factorio/mods") "linux" (code "~/.factorio/mods")}}</p>
+</section>
+{{end}}
+{{- end}}

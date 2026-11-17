@@ -9560,3 +9560,46 @@ main:has(> .gate) > * + :not(h1, .gate) {
   text-overflow: clip;
   resize: vertical;
 }
+
+/* ---- The public mods page (SPEC 9.16, DESIGN 8.20): a plain list of the
+   running world's mods, one row each, with any marks in words beside it. ---- */
+.public-world {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.public-mods {
+  display: grid;
+  padding: 0;
+  list-style: none;
+}
+
+.public-mods > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-block-size: var(--target-min);
+  padding-block: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.public-mods__name {
+  min-inline-size: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.public-mods__version {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.public-mods__marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 0;
+  list-style: none;
+}

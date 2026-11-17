@@ -121,6 +121,17 @@
   "settings.diff.admin_removed": "Odebrán správce {name}",
   "settings.preview.restart": "Server běží. Tyto změny se projeví po restartu.",
   "settings.preview.admins_live": "Server běží. Změny správců se projeví okamžitě.",
+  "settings.preview.autosave_keep": {
+    "one": "Při příštím spuštění Foreman ponechá {count} nejnovější automatické uložení.",
+    "few": "Při příštím spuštění Foreman ponechá {count} nejnovější automatická uložení.",
+    "other": "Při příštím spuštění Foreman ponechá {count} nejnovějších automatických uložení."
+  },
+  "settings.preview.autosave_remove": {
+    "one": "Zbývající {count} automatické uložení bude odstraněno.",
+    "few": "Zbývající {count} automatická uložení budou odstraněna.",
+    "other": "Zbývajících {count} automatických uložení bude odstraněno."
+  },
+  "settings.preview.autosave_snapshot": "Nejprve se pořídí snímek.",
   "settings.preview.step_save_game": "Uloží běžící hru.",
   "settings.preview.step_snapshot": "Pořídí automatický snímek světa {world}. Pokud se snímek nezdaří, nic dalšího se nestane.",
   "settings.preview.step_write": "Zapíše {file}.",
