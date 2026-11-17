@@ -85,8 +85,11 @@ type mcpActionOut struct {
 	Action string      `json:"action"`
 	// Finished is false when the action was still running when the call
 	// stopped waiting; server_status reports its result.
-	Finished bool        `json:"finished"`
-	Outcome  *mcpOutcome `json:"outcome,omitempty"`
+	Finished bool `json:"finished"`
+	// Nothing is true when there was nothing to act on, as for cancel_stop
+	// with no countdown running.
+	Nothing bool        `json:"nothing_to_do,omitempty"`
+	Outcome *mcpOutcome `json:"outcome,omitempty"`
 	// SnapshotsTaken are the snapshots the action took, on any world it
 	// acted on.
 	SnapshotsTaken []mcpSnapshotItem `json:"snapshots_taken,omitempty"`
@@ -336,7 +339,8 @@ func (s *server) mcpCancelStop(ctx context.Context, req *mcp.CallToolRequest, in
 	switch {
 	case errors.Is(err, game.ErrNoCountdown):
 		// A countdown that ended just before the cancel has nothing to cancel.
-		return mcpText("There was no stop countdown on %s to cancel; server_status shows how the action went on.", sum.Name), out, nil
+		out.Finished, out.Nothing = false, true
+		return mcpText("There was no stop countdown on %s to cancel, so nothing was cancelled; server_status shows how the action went on.", sum.Name), out, nil
 	case err != nil:
 		return nil, mcpActionOut{}, s.mcpFail("cancel the stop", err)
 	}

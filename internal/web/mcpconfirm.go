@@ -63,13 +63,13 @@ type mcpPreview struct {
 	ExpiresAt       string   `json:"expires_at,omitempty"`
 }
 
-// confirmEntry is one code. Only the arguments' hash is kept, so no
-// command or password sits in memory.
+// confirmEntry is one code. Only hashes of the arguments and of the seen
+// state are kept, so no command, settings file or password sits in memory.
 type confirmEntry struct {
 	tokenID int64
 	tool    string
 	args    [sha256.Size]byte
-	seen    string
+	seen    confirmSeen
 	created time.Time
 	expires time.Time
 }
@@ -96,20 +96,17 @@ func (c *confirmStore) add(e confirmEntry) (string, time.Time) {
 			delete(c.m, code)
 		}
 	}
-	for {
-		oldest, n := "", 0
-		for code, o := range c.m {
-			if o.tokenID != e.tokenID {
-				continue
-			}
-			n++
-			if oldest == "" || o.created.Before(c.m[oldest].created) {
-				oldest = code
-			}
+	oldest, n := "", 0
+	for code, o := range c.m {
+		if o.tokenID != e.tokenID {
+			continue
 		}
-		if n < maxConfirmsPerToken {
-			break
+		n++
+		if oldest == "" || o.created.Before(c.m[oldest].created) {
+			oldest = code
 		}
+	}
+	if n >= maxConfirmsPerToken {
 		delete(c.m, oldest)
 	}
 	e.created, e.expires = now, now.Add(confirmTTL)
@@ -123,18 +120,27 @@ func (c *confirmStore) add(e confirmEntry) (string, time.Time) {
 	return code, e.expires
 }
 
-// spend removes the code, whatever the call, and returns its seen state
-// when the call matches.
-func (c *confirmStore) spend(code string, tokenID int64, tool string, args [sha256.Size]byte) (string, error) {
+// spend removes the code, whatever the call, and returns its seen state's
+// hash when the call matches.
+func (c *confirmStore) spend(code string, tokenID int64, tool string, args [sha256.Size]byte) (confirmSeen, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	e, ok := c.m[code]
 	delete(c.m, code)
 	if !ok || !c.now().Before(e.expires) || e.tokenID != tokenID || e.tool != tool || e.args != args {
-		return "", errConfirmRefused
+		return confirmSeen{}, errConfirmRefused
 	}
 	return e.seen, nil
 }
+
+// confirmSeen is the hash of the state a preview showed (SPEC 21.8).
+type confirmSeen [sha256.Size]byte
+
+func hashSeen(seen string) confirmSeen { return sha256.Sum256([]byte(seen)) }
+
+// moved reports whether the state now differs from the state the preview
+// showed.
+func (h confirmSeen) moved(now string) bool { return h != hashSeen(now) }
 
 // confirmArgs returns the confirm code in a tool's arguments and the
 // SHA-256 of the rest as canonical JSON: keys sorted, confirm_code left out.
@@ -167,34 +173,45 @@ func mcpToken(req *mcp.CallToolRequest) store.APIToken {
 	return mcpRequestToken(req.Extra.TokenInfo)
 }
 
-// mcpAsk issues a code for this token, tool and arguments, keeping seen:
-// the state the preview showed, so the confirm call can tell it moved
-// (SPEC 21.8). It returns the preview's code fields; the tool fills the
-// rest.
-func (s *server) mcpAsk(req *mcp.CallToolRequest, tool string, in any, seen string) (mcpPreview, error) {
+// mcpTool is the name of the tool a call is for.
+func mcpTool(req *mcp.CallToolRequest) string {
+	if req == nil || req.Params == nil {
+		return ""
+	}
+	return req.Params.Name
+}
+
+// mcpAsk issues a code for this call's token, tool and arguments, keeping a
+// hash of seen: the state the preview showed, so the confirm call can tell
+// it moved (SPEC 21.8). It returns the preview's code fields; the tool
+// fills the rest.
+func (s *server) mcpAsk(req *mcp.CallToolRequest, in any, seen string) (mcpPreview, error) {
 	_, args, err := confirmArgs(in)
 	if err != nil {
 		return mcpPreview{}, s.mcpFail("prepare the confirm code", err)
 	}
-	code, expires := s.confirms.add(confirmEntry{tokenID: mcpToken(req).ID, tool: tool, args: args, seen: seen})
+	code, expires := s.confirms.add(confirmEntry{tokenID: mcpToken(req).ID, tool: mcpTool(req), args: args, seen: hashSeen(seen)})
 	return mcpPreview{ConfirmCode: code, ExpiresAt: mcpTime(expires)}, nil
 }
 
-// mcpSpend spends the code in the arguments and returns the seen state its
-// preview kept. Any use spends the code; every refusal is
-// errConfirmRefused.
-func (s *server) mcpSpend(req *mcp.CallToolRequest, tool string, in any) (string, error) {
+// mcpSpend spends the code in the arguments and returns the hash of the
+// seen state its preview kept; seen.moved(now) compares it. Any use spends
+// the code; every refusal is errConfirmRefused.
+func (s *server) mcpSpend(req *mcp.CallToolRequest, in any) (confirmSeen, error) {
 	code, args, err := confirmArgs(in)
 	if err != nil || code == "" {
-		return "", errConfirmRefused
+		return confirmSeen{}, errConfirmRefused
 	}
-	return s.confirms.spend(code, mcpToken(req).ID, tool, args)
+	return s.confirms.spend(code, mcpToken(req).ID, mcpTool(req), args)
 }
 
 // mcpDetached runs work that may outlast the call and has no Server page
 // result for mcpRun to report (a clone, a world or snapshot delete). It
 // waits up to mcpWait; finished is false when the work is still running.
 // The work goes on if the client leaves, and shutdown waits for it.
+// server_status does not show detached work: its result shows in the audit
+// log and on the pages, and a failure is logged, since the caller may have
+// stopped waiting.
 func (s *server) mcpDetached(ctx context.Context, do func(ctx context.Context) error) (finished bool, err error) {
 	if !s.runs.track() {
 		return false, errors.New("foreman is shutting down")
@@ -202,7 +219,11 @@ func (s *server) mcpDetached(ctx context.Context, do func(ctx context.Context) e
 	done := make(chan error, 1)
 	go func() {
 		defer s.runs.wg.Done()
-		done <- do(s.runs.ctx)
+		err := do(s.runs.ctx)
+		if err != nil {
+			s.log.Error("mcp: detached work failed", "error", err)
+		}
+		done <- err
 	}()
 	timer := time.NewTimer(mcpWait)
 	defer timer.Stop()

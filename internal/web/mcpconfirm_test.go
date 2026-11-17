@@ -9,6 +9,7 @@ import (
 	"maps"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -30,6 +31,12 @@ import (
 //     has moved, refuse with a fresh preview and code. Otherwise act.
 //
 // The tool is registered with Annotations: twoStep.
+//
+// The seen state must include the resolved world id and anything else the
+// arguments leave unresolved (a version picked as "latest", a save left
+// empty). Two-step tools require world_id and never default to the active
+// world. Real tools hold the world's lock through mcpRun or the lifted
+// function, not a mutex like the example's notes.mu.
 
 // exampleNotes stands in for a world's files.
 type exampleNotes struct {
@@ -49,14 +56,14 @@ type exampleDeleteOut struct {
 
 // exampleDelete deletes a note in two steps; the note's text is the state
 // the preview shows.
-func (s *server) exampleDelete(tool string, notes *exampleNotes) mcp.ToolHandlerFor[exampleDeleteIn, exampleDeleteOut] {
+func (s *server) exampleDelete(notes *exampleNotes) mcp.ToolHandlerFor[exampleDeleteIn, exampleDeleteOut] {
 	preview := func(req *mcp.CallToolRequest, in exampleDeleteIn, text string) (*mcp.CallToolResult, exampleDeleteOut, error) {
-		p, err := s.mcpAsk(req, tool, in, text)
+		p, err := s.mcpAsk(req, in, text)
 		if err != nil {
 			return nil, exampleDeleteOut{}, err
 		}
 		p.Will, p.Snapshot = []string{"Note " + in.Name + " will be deleted."}, "Before delete"
-		return mcpText("Nothing has changed yet. Call "+tool+" again with the same arguments and confirm_code to delete %s.", in.Name),
+		return mcpText("Nothing has changed yet. Call "+mcpTool(req)+" again with the same arguments and confirm_code to delete %s.", in.Name),
 			exampleDeleteOut{mcpPreview: p, Name: in.Name}, nil
 	}
 	return func(_ context.Context, req *mcp.CallToolRequest, in exampleDeleteIn) (*mcp.CallToolResult, exampleDeleteOut, error) {
@@ -70,11 +77,11 @@ func (s *server) exampleDelete(tool string, notes *exampleNotes) mcp.ToolHandler
 		if in.ConfirmCode == "" {
 			return preview(req, in, text)
 		}
-		seen, err := s.mcpSpend(req, tool, in)
+		seen, err := s.mcpSpend(req, in)
 		if err != nil {
 			return nil, exampleDeleteOut{}, err
 		}
-		if seen != text {
+		if seen.moved(text) {
 			res, out, err := preview(req, in, text)
 			if res != nil {
 				res = mcpText("Note %s changed since the preview, so nothing was deleted. Here is a fresh preview and code.", in.Name)
@@ -108,8 +115,8 @@ func newConfirmRig() *confirmRig {
 func (r *confirmRig) session(t *testing.T, tokenID int64) *mcp.ClientSession {
 	t.Helper()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "foreman", Version: "test"}, nil)
-	mcp.AddTool(srv, &mcp.Tool{Name: "example_delete", Annotations: twoStep, Description: "Delete a note, in two steps."}, r.s.exampleDelete("example_delete", r.notes))
-	mcp.AddTool(srv, &mcp.Tool{Name: "example_other", Annotations: twoStep, Description: "Another two-step tool."}, r.s.exampleDelete("example_other", r.notes))
+	mcp.AddTool(srv, &mcp.Tool{Name: "example_delete", Annotations: twoStep, Description: "Delete a note, in two steps."}, r.s.exampleDelete(r.notes))
+	mcp.AddTool(srv, &mcp.Tool{Name: "example_other", Annotations: twoStep, Description: "Another two-step tool."}, r.s.exampleDelete(r.notes))
 	ti := &mcpauth.TokenInfo{Extra: map[string]any{mcpTokenKey: store.APIToken{ID: tokenID, Name: "Claude"}}}
 	srv.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
@@ -289,9 +296,9 @@ func TestConfirmWorksWithinFiveMinutes(t *testing.T) {
 	}
 }
 
-// fakeTokenReq is a call made with the token of this id.
+// fakeTokenReq is a call to the tool t made with the token of this id.
 func fakeTokenReq(id int64) *mcp.CallToolRequest {
-	return &mcp.CallToolRequest{Extra: &mcp.RequestExtra{TokenInfo: &mcpauth.TokenInfo{
+	return &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Name: "t"}, Extra: &mcp.RequestExtra{TokenInfo: &mcpauth.TokenInfo{
 		Extra: map[string]any{mcpTokenKey: store.APIToken{ID: id}}}}}
 }
 
@@ -320,13 +327,13 @@ func TestConfirmArgsCanonical(t *testing.T) {
 
 	s := newConfirmRig().s
 	in := confirmArgsIn{World: "w", Values: map[string]string{"z": "1", "a": "2"}}
-	p, err := s.mcpAsk(fakeTokenReq(1), "t", in, "seen")
+	p, err := s.mcpAsk(fakeTokenReq(1), in, "seen")
 	if err != nil {
 		t.Fatal(err)
 	}
 	in.ConfirmCode = p.ConfirmCode
-	if seen, err := s.mcpSpend(fakeTokenReq(1), "t", in); err != nil || seen != "seen" {
-		t.Errorf("spend: %q %v", seen, err)
+	if seen, err := s.mcpSpend(fakeTokenReq(1), in); err != nil || seen.moved("seen") || !seen.moved("other") {
+		t.Errorf("spend: %v", err)
 	}
 }
 
@@ -335,18 +342,18 @@ func TestConfirmArgsCanonical(t *testing.T) {
 func TestConfirmEleventhDropsOldest(t *testing.T) {
 	r := newConfirmRig()
 	s := r.s
-	other, _ := s.mcpAsk(fakeTokenReq(2), "t", confirmArgsIn{World: "x"}, "")
+	other, _ := s.mcpAsk(fakeTokenReq(2), confirmArgsIn{World: "x"}, "")
 	var codes []string
 	for i := range maxConfirmsPerToken + 1 {
 		r.clock.Advance(time.Millisecond)
-		p, err := s.mcpAsk(fakeTokenReq(1), "t", confirmArgsIn{World: fmt.Sprint(i)}, "")
+		p, err := s.mcpAsk(fakeTokenReq(1), confirmArgsIn{World: fmt.Sprint(i)}, "")
 		if err != nil {
 			t.Fatal(err)
 		}
 		codes = append(codes, p.ConfirmCode)
 	}
 	spend := func(tok int64, world, code string) error {
-		_, err := s.mcpSpend(fakeTokenReq(tok), "t", confirmArgsIn{mcpConfirmIn: mcpConfirmIn{code}, World: world})
+		_, err := s.mcpSpend(fakeTokenReq(tok), confirmArgsIn{mcpConfirmIn: mcpConfirmIn{code}, World: world})
 		return err
 	}
 	if err := spend(1, "0", codes[0]); !errors.Is(err, errConfirmRefused) {
@@ -394,7 +401,7 @@ func TestAuditCarriesTokenName(t *testing.T) {
 // SPEC 21.5: detached work is waited for up to mcpWait, then said to be
 // still running, and goes on.
 func TestMCPDetached(t *testing.T) {
-	s := &server{runs: newGameRuns()}
+	s := &server{runs: newGameRuns(), log: slog.New(slog.DiscardHandler)}
 	t.Cleanup(s.runs.close)
 	if done, err := s.mcpDetached(context.Background(), func(context.Context) error { return errors.New("no") }); !done || err == nil {
 		t.Errorf("quick work: %v %v", done, err)
@@ -413,4 +420,24 @@ func TestMCPDetached(t *testing.T) {
 	}
 	close(release)
 	<-ended
+}
+
+// Shutdown waits for detached work that is still running.
+func TestMCPDetachedShutdownWaits(t *testing.T) {
+	s := &server{runs: newGameRuns(), log: slog.New(slog.DiscardHandler)}
+	was := mcpWait
+	mcpWait = 10 * time.Millisecond
+	t.Cleanup(func() { mcpWait = was })
+	var ended atomic.Bool
+	if done, _ := s.mcpDetached(context.Background(), func(context.Context) error {
+		time.Sleep(200 * time.Millisecond)
+		ended.Store(true)
+		return nil
+	}); done {
+		t.Fatal("the work finished before mcpWait")
+	}
+	s.runs.close()
+	if !ended.Load() {
+		t.Error("shutdown did not wait for the detached work")
+	}
 }

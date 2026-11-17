@@ -284,8 +284,8 @@ func TestMCPCancelStop(t *testing.T) {
 		t.Errorf("state after the cancel: %s", st)
 	}
 	// As on the Server page, a cancel that finds no countdown is no error.
-	res, _ = call(t, cs, "cancel_stop", map[string]any{"world_id": id})
-	if res.IsError || !strings.Contains(resultText(res), "no stop countdown") {
+	res, out = call(t, cs, "cancel_stop", map[string]any{"world_id": id})
+	if res.IsError || out["finished"] != false || out["nothing_to_do"] != true || !strings.Contains(resultText(res), "no stop countdown") {
 		t.Errorf("a cancel with no countdown: %s", resultText(res))
 	}
 }
