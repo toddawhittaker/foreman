@@ -1,8 +1,10 @@
 package web
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/version"
 )
@@ -49,6 +51,16 @@ func (s *server) handlePublicModsSettings(w http.ResponseWriter, r *http.Request
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
+// setPublicModsBy stores the choice, "on" or "off", and records it in the
+// audit log under by.
+func (s *server) setPublicModsBy(ctx context.Context, by game.Actor, v string) error {
+	if err := s.setPublicMods(ctx, v, by.Username); err != nil {
+		return err
+	}
+	s.audit(ctx, by, AuditPublicModsSet, "", v)
+	return nil
+}
+
 // handlePublicModsSet stores the posted choice, audits it and comes back
 // to the page with a Done message.
 func (s *server) handlePublicModsSet(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -60,10 +72,9 @@ func (s *server) handlePublicModsSet(w http.ResponseWriter, r *http.Request, u s
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	if err := s.setPublicMods(r.Context(), v, u.Username); err != nil {
+	if err := s.setPublicModsBy(r.Context(), actor(u), v); err != nil {
 		s.fail(w, r, "save the public mods setting", err)
 		return
 	}
-	s.audit(r.Context(), actor(u), AuditPublicModsSet, "", v)
 	http.Redirect(w, r, PathPublicModsSettings+"?done="+v, http.StatusSeeOther)
 }

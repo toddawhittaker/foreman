@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/secret"
@@ -448,21 +450,34 @@ func webhookAudit(w notify.Webhook) string {
 	return fmt.Sprintf("webhook %d: %s, %s", w.ID, w.Preset, w.Host)
 }
 
+// addWebhook checks and stores a webhook and records it in the audit log
+// under by. The page returned holds the form's problems when the setup is
+// refused, and nothing is stored then.
+func (s *server) addWebhook(ctx context.Context, by game.Actor, st notify.Setup) (notify.Webhook, WebhookFormPage, error) {
+	if p := checkSetup(st, nil); p.hasErrors() {
+		return notify.Webhook{}, p, nil
+	}
+	hook, err := s.notifier.Add(ctx, st, by.Username)
+	if err != nil {
+		return notify.Webhook{}, WebhookFormPage{}, err
+	}
+	s.audit(ctx, by, AuditWebhookAdd, "", webhookAudit(hook))
+	return hook, WebhookFormPage{}, nil
+}
+
 func (s *server) handleWebhookAdd(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) || !s.withKey(w, r) {
 		return
 	}
-	st := postedSetup(r)
-	if p := checkSetup(st, nil); p.hasErrors() {
-		s.page(w, r, http.StatusBadRequest, u.Username, p)
-		return
-	}
-	hook, err := s.notifier.Add(r.Context(), st, u.Username)
+	hook, p, err := s.addWebhook(r.Context(), actor(u), postedSetup(r))
 	if err != nil {
 		s.fail(w, r, "add a webhook", err)
 		return
 	}
-	s.audit(r.Context(), actor(u), AuditWebhookAdd, "", webhookAudit(hook))
+	if p.hasErrors() {
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
 	http.Redirect(w, r, webhookDoneURL(webhookDoneAdded, hook), http.StatusSeeOther)
 }
 
@@ -505,6 +520,23 @@ func (s *server) handleWebhookEditForm(w http.ResponseWriter, r *http.Request, u
 	s.page(w, r, http.StatusOK, u.Username, editPage(localeOf(r), formPage(hook.Preset, on, hook.Lang), hook))
 }
 
+// changeWebhook checks and stores the new setup of hook, the stored
+// webhook, and records it in the audit log under by. An empty address keeps
+// the stored one. The page returned holds the form's problems when the setup
+// is refused, and nothing is stored then. The error is notify.ErrNoWebhook
+// when the webhook is gone.
+func (s *server) changeWebhook(ctx context.Context, by game.Actor, hook notify.Webhook, st notify.Setup) (notify.Webhook, WebhookFormPage, error) {
+	if p := checkSetup(st, &hook); p.hasErrors() {
+		return notify.Webhook{}, p, nil
+	}
+	saved, err := s.notifier.Update(ctx, hook.ID, st, by.Username)
+	if err != nil {
+		return notify.Webhook{}, WebhookFormPage{}, err
+	}
+	s.audit(ctx, by, AuditWebhookChange, "", webhookAudit(saved))
+	return saved, WebhookFormPage{}, nil
+}
+
 func (s *server) handleWebhookEdit(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) || !s.withKey(w, r) {
 		return
@@ -513,12 +545,7 @@ func (s *server) handleWebhookEdit(w http.ResponseWriter, r *http.Request, u sto
 	if !ok {
 		return
 	}
-	st := postedSetup(r)
-	if p := checkSetup(st, &hook); p.hasErrors() {
-		s.page(w, r, http.StatusBadRequest, u.Username, editPage(localeOf(r), p, hook))
-		return
-	}
-	saved, err := s.notifier.Update(r.Context(), hook.ID, st, u.Username)
+	saved, p, err := s.changeWebhook(r.Context(), actor(u), hook, postedSetup(r))
 	if errors.Is(err, notify.ErrNoWebhook) {
 		s.notFound(w, r, u)
 		return
@@ -527,7 +554,10 @@ func (s *server) handleWebhookEdit(w http.ResponseWriter, r *http.Request, u sto
 		s.fail(w, r, "save a webhook", err)
 		return
 	}
-	s.audit(r.Context(), actor(u), AuditWebhookChange, "", webhookAudit(saved))
+	if p.hasErrors() {
+		s.page(w, r, http.StatusBadRequest, u.Username, editPage(localeOf(r), p, hook))
+		return
+	}
 	http.Redirect(w, r, webhookDoneURL(webhookDoneSaved, saved), http.StatusSeeOther)
 }
 
@@ -542,6 +572,16 @@ func (s *server) handleWebhookDeleteForm(w http.ResponseWriter, r *http.Request,
 	s.page(w, r, http.StatusOK, u.Username, WebhookDeletePage{Hook: webhookView(localeOf(r), hook)})
 }
 
+// deleteWebhook removes hook and records it in the audit log under by. The
+// error is notify.ErrNoWebhook when the webhook is already gone.
+func (s *server) deleteWebhook(ctx context.Context, by game.Actor, hook notify.Webhook) error {
+	if err := s.notifier.Delete(ctx, hook.ID); err != nil {
+		return err
+	}
+	s.audit(ctx, by, AuditWebhookDelete, "", webhookAudit(hook))
+	return nil
+}
+
 func (s *server) handleWebhookDelete(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) || !s.withKey(w, r) {
 		return
@@ -550,7 +590,7 @@ func (s *server) handleWebhookDelete(w http.ResponseWriter, r *http.Request, u s
 	if !ok {
 		return
 	}
-	err := s.notifier.Delete(r.Context(), hook.ID)
+	err := s.deleteWebhook(r.Context(), actor(u), hook)
 	if errors.Is(err, notify.ErrNoWebhook) {
 		s.notFound(w, r, u)
 		return
@@ -559,6 +599,5 @@ func (s *server) handleWebhookDelete(w http.ResponseWriter, r *http.Request, u s
 		s.fail(w, r, "delete a webhook", err)
 		return
 	}
-	s.audit(r.Context(), actor(u), AuditWebhookDelete, "", webhookAudit(hook))
 	http.Redirect(w, r, webhookDoneURL(webhookDoneDeleted, hook), http.StatusSeeOther)
 }
