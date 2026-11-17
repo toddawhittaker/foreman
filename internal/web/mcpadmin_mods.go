@@ -69,12 +69,12 @@ type mcpSearchModsOut struct {
 }
 
 type mcpModHit struct {
-	UntrustedName    string `json:"untrusted_name"`
-	UntrustedTitle   string `json:"untrusted_title,omitempty"`
-	UntrustedSummary string `json:"untrusted_summary,omitempty"`
+	UntrustedName          string `json:"untrusted_name"`
+	UntrustedTitle         string `json:"untrusted_title,omitempty"`
+	UntrustedSummary       string `json:"untrusted_summary,omitempty"`
 	UntrustedLatestVersion string `json:"untrusted_latest_version,omitempty"`
-	Downloads        int    `json:"downloads"`
-	Installed        bool   `json:"installed"`
+	Downloads              int    `json:"downloads"`
+	Installed              bool   `json:"installed"`
 }
 
 // mcpSearchMods searches as handleModSearch does (SPEC 9.1, 9.11).
@@ -103,7 +103,7 @@ func (s *server) mcpSearchMods(ctx context.Context, _ *mcp.CallToolRequest, in m
 	installed := s.installedNames(sum.ID)
 	for _, h := range hits[:min(len(hits), mcpSearchLimit)] {
 		out.Hits = append(out.Hits, mcpModHit{UntrustedName: h.Name, UntrustedTitle: h.Title,
-			UntrustedSummary: world.CutText(world.CleanText(h.Summary), maxPortalSummary),
+			UntrustedSummary:       world.CutText(world.CleanText(h.Summary), maxPortalSummary),
 			UntrustedLatestVersion: h.LatestVersion, Downloads: h.Downloads, Installed: installed[h.Name]})
 	}
 	text := fmt.Sprintf("Found %d mods for Factorio %s.", len(hits), line)
