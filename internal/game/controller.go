@@ -81,6 +81,7 @@ const (
 	AuditUpdate        = "game-update"
 	AuditRollback      = "rollback"
 	AuditMods          = "mods"
+	AuditSnapshot      = "snapshot"
 	// A start, restart, switch or update the checks refused before anything
 	// was done is recorded under its own action, with the reason (SPEC 12.9).
 	AuditStartRefused   = "start-refused"

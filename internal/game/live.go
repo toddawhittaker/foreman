@@ -226,13 +226,17 @@ func (c *Controller) saveRunning(ctx context.Context, id string) (running bool, 
 
 // Snapshot takes a manual snapshot of the world (SPEC 6.3). When the game
 // is running it saves first, so the snapshot holds the current game
-// (SPEC 6.10).
+// (SPEC 6.10). It is recorded in the audit log first, and not taken when
+// the entry cannot be written (SPEC 12.9).
 func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label string) (world.Snapshot, error) {
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return world.Snapshot{}, err
 	}
 	defer unlock()
+	if err := c.audit(ctx, by, AuditSnapshot, id, label); err != nil {
+		return world.Snapshot{}, err
+	}
 	if _, err := c.saveRunning(ctx, id); err != nil {
 		return world.Snapshot{}, err
 	}
