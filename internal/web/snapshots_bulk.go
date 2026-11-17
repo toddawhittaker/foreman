@@ -1,12 +1,14 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -173,10 +175,24 @@ func (p SnapshotBulkDeletePage) Question() i18n.Msg {
 // It answers the request itself with 500 and returns false when the
 // snapshots cannot be counted.
 func (s *server) bulkPage(w http.ResponseWriter, r *http.Request, refs []world.SnapshotRef) (SnapshotBulkDeletePage, bool) {
-	count, err := s.worlds.CountSnapshots()
+	p, err := s.bulkPlan(r.Context(), refs)
 	if err != nil {
 		s.fail(w, r, "read snapshots", err)
 		return SnapshotBulkDeletePage{}, false
+	}
+	if id := r.Form.Get(fieldWorld); world.ValidID(id) {
+		p.WorldID = id
+	}
+	return p, true
+}
+
+// bulkPlan examines the named snapshots without a request: what can go,
+// what stays and why, and what is already gone. The MCP delete tool uses
+// it too. WorldID, which says where the page came from, is left empty.
+func (s *server) bulkPlan(ctx context.Context, refs []world.SnapshotRef) (SnapshotBulkDeletePage, error) {
+	count, err := s.worlds.CountSnapshots()
+	if err != nil {
+		return SnapshotBulkDeletePage{}, err
 	}
 	have := map[world.SnapshotRef]world.Snapshot{}
 	for _, u := range count.Snapshots() {
@@ -190,7 +206,7 @@ func (s *server) bulkPage(w http.ResponseWriter, r *http.Request, refs []world.S
 			return wi
 		}
 		var wi worldInfo
-		if sum, err := s.worlds.Get(r.Context(), ref.WorldID); err == nil {
+		if sum, err := s.worlds.Get(ctx, ref.WorldID); err == nil {
 			wi.name = sum.Name
 			if target, version, err := s.worlds.RollbackTarget(ref.WorldID); err == nil {
 				wi.rollbackSnap, wi.rollback = target.Name, version
@@ -202,9 +218,6 @@ func (s *server) bulkPage(w http.ResponseWriter, r *http.Request, refs []world.S
 		return wi
 	}
 	p := SnapshotBulkDeletePage{}
-	if id := r.Form.Get(fieldWorld); world.ValidID(id) {
-		p.WorldID = id
-	}
 	var going []world.SnapshotRef
 	for _, ref := range refs {
 		snap, found := have[ref]
@@ -228,7 +241,7 @@ func (s *server) bulkPage(w http.ResponseWriter, r *http.Request, refs []world.S
 		p.Items = append(p.Items, item)
 	}
 	p.Frees = count.Frees(going)
-	return p, true
+	return p, nil
 }
 
 func (s *server) handleSnapshotsReview(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -258,6 +271,39 @@ func (s *server) failureText(r *http.Request, err error) (text i18n.Msg, fault b
 	return i18n.M("worlds.snapshots.bulk.delete_failed"), true
 }
 
+// deleteBulk deletes the snapshots in p that can go, one at a time, each
+// audited before it is removed (SPEC 6.12). It returns the names deleted
+// (a snapshot already gone counts, since that is what was asked), the refs
+// that stayed, why each stayed, and whether any failure was a fault.
+// failure words a delete error and says whether it was a fault. It does not
+// stop at a failure and does not undo the deletes already done.
+func (s *server) deleteBulk(ctx context.Context, by game.Actor, p SnapshotBulkDeletePage, failure func(error) (i18n.Msg, bool)) (
+	deleted []string, stayed []world.SnapshotRef, failures map[world.SnapshotRef]i18n.Msg, fault bool) {
+	failures = map[world.SnapshotRef]i18n.Msg{}
+	for _, item := range p.Items {
+		ref := world.SnapshotRef{WorldID: item.WorldID, Name: item.Snapshot.Name}
+		if !item.Refusal.IsZero() {
+			stayed = append(stayed, ref)
+			continue
+		}
+		// A snapshot already gone is what the person asked for, so a
+		// resubmitted form ends on the Done page.
+		var err error
+		if !item.Gone {
+			err = s.deleteSnapshot(ctx, by, ref.WorldID, ref.Name)
+		}
+		if err == nil || errors.Is(err, world.ErrNoSnapshot) {
+			deleted = append(deleted, ref.Name)
+			continue
+		}
+		var bad bool
+		failures[ref], bad = failure(err)
+		fault = fault || bad
+		stayed = append(stayed, ref)
+	}
+	return deleted, stayed, failures, fault
+}
+
 // handleSnapshotsDelete deletes the confirmed snapshots one at a time, each
 // audited before it is removed. A failure does not undo the deletes already
 // done; the page then lists what stayed and why (SPEC 6.12).
@@ -275,31 +321,9 @@ func (s *server) handleSnapshotsDelete(w http.ResponseWriter, r *http.Request, u
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	var deleted []string
-	var stayed []world.SnapshotRef
-	failures := map[world.SnapshotRef]i18n.Msg{}
-	fault := false
-	for _, item := range p.Items {
-		ref := world.SnapshotRef{WorldID: item.WorldID, Name: item.Snapshot.Name}
-		if !item.Refusal.IsZero() {
-			stayed = append(stayed, ref)
-			continue
-		}
-		// A snapshot already gone is what the person asked for, so a
-		// resubmitted form ends on the Done page.
-		var err error
-		if !item.Gone {
-			err = s.deleteSnapshot(r.Context(), actor(u), ref.WorldID, ref.Name)
-		}
-		if err == nil || errors.Is(err, world.ErrNoSnapshot) {
-			deleted = append(deleted, ref.Name)
-			continue
-		}
-		var bad bool
-		failures[ref], bad = s.failureText(r, err)
-		fault = fault || bad
-		stayed = append(stayed, ref)
-	}
+	deleted, stayed, failures, fault := s.deleteBulk(r.Context(), actor(u), p, func(err error) (i18n.Msg, bool) {
+		return s.failureText(r, err)
+	})
 	if len(stayed) == 0 {
 		to := PathSnapshots
 		if p.WorldID != "" {
