@@ -207,14 +207,9 @@ func (s *server) handleFavoriteRename(w http.ResponseWriter, r *http.Request, u 
 		http.Redirect(w, r, PathFavorites+"?"+url.Values{"renamed": {fav.ID}}.Encode(), http.StatusSeeOther)
 		return
 	}
-	var msg i18n.Msg
+	msg := favoriteError(err, false)
 	switch {
-	case errors.Is(err, world.ErrFavoriteNameEmpty):
-		msg = i18n.M("favorites.error.name_empty")
-	case errors.Is(err, world.ErrFavoriteNameBad):
-		msg = i18n.M("favorites.error.name_bad", "count", world.MaxFavoriteName)
-	case errors.Is(err, world.ErrFavoriteNameTaken):
-		msg = i18n.M("favorites.error.name_taken")
+	case !msg.IsZero():
 	case errors.Is(err, fs.ErrNotExist), errors.Is(err, world.ErrFavoriteBroken):
 		s.notFound(w, r, u)
 		return
@@ -223,6 +218,25 @@ func (s *server) handleFavoriteRename(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	s.favoritesPage(w, r, u, http.StatusBadRequest, FavoritesPage{RenameID: fav.ID, RenameValue: name, RenameError: msg})
+}
+
+// favoriteError words a refused make or rename of a favorite (SPEC 5.12),
+// or is zero when the refusal has no words for the page. making says the
+// favorite was being made, where a broken favorite means one too big.
+func favoriteError(err error, making bool) i18n.Msg {
+	switch {
+	case errors.Is(err, world.ErrFavoriteNameEmpty):
+		return i18n.M("favorites.error.name_empty")
+	case errors.Is(err, world.ErrFavoriteNameBad):
+		return i18n.M("favorites.error.name_bad", "count", world.MaxFavoriteName)
+	case errors.Is(err, world.ErrFavoriteNameTaken):
+		return i18n.M("favorites.error.name_taken")
+	case making && errors.Is(err, world.ErrWorldSettingsBroke):
+		return i18n.M("favorites.error.settings_broken")
+	case making && errors.Is(err, world.ErrFavoriteBroken):
+		return i18n.M("favorites.error.too_big")
+	}
+	return i18n.Msg{}
 }
 
 // handleFavoriteExport downloads a favorite as a file (SPEC 5.12).
@@ -367,19 +381,8 @@ func (s *server) handleMakeFavorite(w http.ResponseWriter, r *http.Request, u st
 		http.Redirect(w, r, worldPath(sum.ID)+"?"+url.Values{favoriteQuery: {id}}.Encode(), http.StatusSeeOther)
 		return
 	}
-	var msg i18n.Msg
-	switch {
-	case errors.Is(err, world.ErrFavoriteNameEmpty):
-		msg = i18n.M("favorites.error.name_empty")
-	case errors.Is(err, world.ErrFavoriteNameBad):
-		msg = i18n.M("favorites.error.name_bad", "count", world.MaxFavoriteName)
-	case errors.Is(err, world.ErrFavoriteNameTaken):
-		msg = i18n.M("favorites.error.name_taken")
-	case errors.Is(err, world.ErrWorldSettingsBroke):
-		msg = i18n.M("favorites.error.settings_broken")
-	case errors.Is(err, world.ErrFavoriteBroken):
-		msg = i18n.M("favorites.error.too_big")
-	default:
+	msg := favoriteError(err, true)
+	if msg.IsZero() {
 		s.notFoundOrFail(w, r, u, "make favorite", err)
 		return
 	}
@@ -530,6 +533,11 @@ func mapSettingsValues(version, preset string, file []byte) url.Values {
 // kept (SPEC 5.12). It is false, with the form's error set, when they cannot
 // be made.
 func (s *server) favoriteMapFiles(f *GenerateForm, nw *world.NewWorld, files world.FavoriteFiles, r *http.Request) bool {
+	return s.favoriteMapFilesFrom(f, nw, files, r.PostForm)
+}
+
+// favoriteMapFilesFrom is favoriteMapFiles on the posted values.
+func (s *server) favoriteMapFilesFrom(f *GenerateForm, nw *world.NewWorld, files world.FavoriteFiles, form url.Values) bool {
 	if nw.MapGenSettings == nil {
 		mg, ok := buildMapGen(f.MapGen, rawOrEmpty(f.MapGen.Raw.Value))
 		if !ok {
@@ -544,7 +552,7 @@ func (s *server) favoriteMapFiles(f *GenerateForm, nw *world.NewWorld, files wor
 	}
 	formMS := nw.MapSettings
 	if formMS == nil {
-		_, overrides, _ := readMapSettings(f.Version, f.Preset, r.PostForm)
+		_, overrides, _ := readMapSettings(f.Version, f.Preset, form)
 		var err error
 		if formMS, err = mapgen.MapSettings(f.Version, f.Preset, overrides); err != nil {
 			f.FormError = i18n.M("worlds.generate.error.settings")
