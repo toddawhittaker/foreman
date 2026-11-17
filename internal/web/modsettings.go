@@ -2,6 +2,7 @@ package web
 
 import (
 	"cmp"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -242,7 +243,7 @@ func (s *server) handleModSettingsForm(w http.ResponseWriter, r *http.Request, u
 	if !ok {
 		return
 	}
-	p, _, err := s.modSettingsPage(r, sum)
+	p, _, err := s.modSettingsPage(r.Context(), localeOf(r).String(), sum)
 	if err != nil {
 		if r.Context().Err() == nil {
 			s.log.Error("read the mod settings", "world", sum.ID, "error", err)
@@ -261,9 +262,9 @@ type settingsState struct {
 }
 
 // modSettingsPage reads the definitions and the world's file and fills
-// the form. A failure the page can word is in RunError; err is Foreman's
-// own fault.
-func (s *server) modSettingsPage(r *http.Request, sum world.Summary) (ModSettingsPage, settingsState, error) {
+// the form, with setting names in lang. A failure the page can word is in
+// RunError; err is Foreman's own fault.
+func (s *server) modSettingsPage(ctx context.Context, lang string, sum world.Summary) (ModSettingsPage, settingsState, error) {
 	p := ModSettingsPage{World: sum, Loaded: true, CountdownForm: defaultCountdown()}
 	p.Running = game.IsRunning(s.game.Status(sum.ID).State)
 	p.HasFile = s.hasModSettings(sum.ID)
@@ -275,14 +276,14 @@ func (s *server) modSettingsPage(r *http.Request, sum world.Summary) (ModSetting
 	if p.NewMap, err = s.makesNewMap(sum.ID); err != nil {
 		return p, st, err
 	}
-	defs, err := modSettingDefs(s.game, r.Context(), sum.ID)
+	defs, err := modSettingDefs(s.game, ctx, sum.ID)
 	if err != nil {
 		// The error may hold text a mod wrote or a host path, so it goes to
 		// the log only.
 		var known bool
 		p.RunError, known = modSettingsRunError(sum, err)
 		switch {
-		case r.Context().Err() != nil:
+		case ctx.Err() != nil:
 		case known:
 			s.log.Warn("read the mod setting definitions", "world", sum.ID, "error", err)
 		default:
@@ -314,7 +315,7 @@ func (s *server) modSettingsPage(r *http.Request, sum world.Summary) (ModSetting
 		p.RunError = i18n.M("mods.settings.edit.unreadable")
 		return p, st, nil
 	}
-	p.Startup, p.Map, p.PerUser = settingGroups(defs, st.file, st.defaults, localeOf(r).String())
+	p.Startup, p.Map, p.PerUser = settingGroups(defs, st.file, st.defaults, lang)
 	s.titleGroups(sum.ID, p.Startup, p.Map)
 	return p, st, nil
 }
@@ -611,7 +612,7 @@ func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	countdown, stop := readCountdown(r)
-	p, st, err := s.modSettingsPage(r, sum)
+	p, st, err := s.modSettingsPage(r.Context(), localeOf(r).String(), sum)
 	if err != nil {
 		s.fail(w, r, "read the mod settings", err)
 		return
@@ -630,21 +631,7 @@ func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	mapToo := p.NewMap
-	var changes []settingChange
-	read := func(groups []SettingGroup) {
-		for gi := range groups {
-			for fi := range groups[gi].Fields {
-				if c, ok := readField(r, &groups[gi].Fields[fi]); ok {
-					changes = append(changes, c)
-				}
-			}
-		}
-	}
-	read(p.Startup)
-	if mapToo {
-		read(p.Map)
-	}
+	changes := p.readChanges(func(f *SettingField) (settingChange, bool) { return readField(r, f) })
 	p.Countdown = countdown.Countdown
 	if p.Running {
 		p.CountdownError = countdown.CountdownError
@@ -663,38 +650,82 @@ func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	data, err := encodeChanges(st, changes)
+	op, err := modSettingsOp(p, st, changes)
 	if err != nil {
 		s.fail(w, r, "write the changed mod settings", err)
 		return
+	}
+	s.applyMods(w, r, u, sum, op, stop, "", modResult{Retry: p.Path()})
+}
+
+// readChanges reads each editable field with read, the map settings too
+// when they seed a new map, and returns the values that changed.
+func (p *ModSettingsPage) readChanges(read func(*SettingField) (settingChange, bool)) []settingChange {
+	var changes []settingChange
+	each := func(groups []SettingGroup) {
+		for gi := range groups {
+			for fi := range groups[gi].Fields {
+				if c, ok := read(&groups[gi].Fields[fi]); ok {
+					changes = append(changes, c)
+				}
+			}
+		}
+	}
+	each(p.Startup)
+	if p.NewMap {
+		each(p.Map)
+	}
+	return changes
+}
+
+// modSettingsOp is the mod change that writes the changed settings, bound
+// to the files the page was drawn from (SPEC 9.6, 9.13).
+func modSettingsOp(p ModSettingsPage, st settingsState, changes []settingChange) (game.ModOp, error) {
+	data, err := encodeChanges(st, changes)
+	if err != nil {
+		return game.ModOp{}, err
 	}
 	names := make([]string, len(changes))
 	for i, c := range changes {
 		names[i] = c.def.Name
 	}
 	summary := clipSummary("edit mod settings: " + strings.Join(names, ", "))
-	op := game.ModOp{Change: world.ModChange{Settings: data, SettingsSeen: p.Seen}, Fingerprint: p.Fingerprint, Summary: summary}
-	s.applyMods(w, r, u, sum, op, stop, "", modResult{Retry: p.Path()})
+	return game.ModOp{Change: world.ModChange{Settings: data, SettingsSeen: p.Seen}, Fingerprint: p.Fingerprint, Summary: summary}, nil
 }
 
-// readField reads one control from the post. A value the same as the
-// form showed is untouched and never checked (SPEC 9.6). A refused value
-// stays in the field with its error.
+// readField reads one control from the post: a box posts "true" or
+// nothing, a colour its hex and alpha.
 func readField(r *http.Request, f *SettingField) (settingChange, bool) {
+	raw := r.PostFormValue(f.ID)
+	switch f.Kind {
+	case kindBool:
+		raw = strconv.FormatBool(raw == "true")
+	case kindColor:
+		raw += " " + r.PostFormValue(f.AlphaID())
+	}
+	return parseField(f, raw)
+}
+
+// parseField reads one value as text: "true" or "false" for a box, and for
+// a colour its hex with the alpha after a space, the shown alpha when left
+// out. A value the same as the form showed is untouched and never checked
+// (SPEC 9.6). A refused value stays in the field with its error.
+func parseField(f *SettingField, raw string) (settingChange, bool) {
 	if !f.Editable() {
 		return settingChange{}, false
 	}
-	var raw string
 	switch f.Kind {
 	case kindBool:
-		// An unticked box posts nothing.
-		raw = strconv.FormatBool(r.PostFormValue(f.ID) == "true")
 		if raw == f.Value {
 			return settingChange{}, false
 		}
 		f.Value = raw
 	case kindColor:
-		hexColor, alpha := strings.ToLower(r.PostFormValue(f.ID)), r.PostFormValue(f.AlphaID())
+		hexColor, alpha, hasAlpha := strings.Cut(raw, " ")
+		if !hasAlpha {
+			alpha = f.Alpha
+		}
+		hexColor = strings.ToLower(hexColor)
 		if hexColor == f.Value && alpha == f.Alpha {
 			return settingChange{}, false
 		}
@@ -705,7 +736,6 @@ func readField(r *http.Request, f *SettingField) (settingChange, bool) {
 			return settingChange{}, false
 		}
 	default:
-		raw = r.PostFormValue(f.ID)
 		// A text input drops line breaks from its value, so a value that
 		// holds one posts without it untouched.
 		if raw == f.Value || (f.Kind == kindText && raw == stripLineBreaks(f.Value)) {
