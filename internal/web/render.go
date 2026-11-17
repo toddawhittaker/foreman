@@ -223,6 +223,8 @@ type view struct {
 	// Lamp is the server's state for the lamp beside Server in the main
 	// navigation, on every page (DESIGN 7.5).
 	Lamp LiveState
+	// Banner is the API token expiry banner's lines (SPEC 12.10).
+	Banner []TokenBanner
 }
 
 // Current is true when the nav link to path names this page, so it gets
@@ -338,6 +340,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"worldsPath":        func() string { return PathWorlds },
 		"snapshotsTabPath":  func() string { return PathSnapshots },
 		"accountPath":       func() string { return PathAccount },
+		"apiTokensPath":     func() string { return PathAPITokens },
 		"aboutPath":         func() string { return PathAbout },
 		"about":             version.Get,
 		"notificationsPath": func() string { return PathNotifications },
@@ -574,11 +577,16 @@ func menuReturn(req *http.Request) string {
 // anything is written, so on error the response is untouched and the
 // caller can still send an ErrorPage.
 func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, p Page) error {
+	return r.RenderWithBanner(w, req, status, user, lamp, nil, p)
+}
+
+// RenderWithBanner is Render with the API token expiry banner's lines.
+func (r *Renderer) RenderWithBanner(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, banner []TokenBanner, p Page) error {
 	t, err := r.template(localeOf(req), p)
 	if err != nil {
 		return err
 	}
-	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp}
+	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp, Banner: banner}
 	layout := "layout"
 	_, public := p.(publicPage)
 	if public {

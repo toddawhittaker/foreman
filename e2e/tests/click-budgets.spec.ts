@@ -73,6 +73,18 @@ test.describe("click budgets, with the fake game", () => {
     await expectWithin(clicks, 2, "Open Notifications");
   });
 
+  // SPEC 12.10: Settings, API tokens, then Create token with the name typed
+  // and read kept.
+  test("create an API token: 3 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await mainNav(page).getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "API tokens" }).click();
+    await page.getByLabel("Name").fill("Claude");
+    await page.getByRole("button", { name: "Create token" }).click();
+    await expect(page.locator("#token-secret")).toHaveValue(/^fmn_/);
+    await expectWithin(clicks, 3, "Create an API token");
+  });
+
   // SPEC 17.10 (Generate row): from the Server page, Worlds, "Generate a
   // world", then "Generate world" with every default kept but the name.
   test("generate a world with the defaults: 3 clicks", async ({ page, foreman, fakeGame }) => {

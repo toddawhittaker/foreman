@@ -79,17 +79,18 @@ test("a wrong limit is refused with its error, and nothing is saved", async ({ p
   await expect(page.locator("#schedule-state")).toHaveText("No restart is scheduled.");
 });
 
-test("the four Foreman settings pages share one sub-navigation", async ({ page }) => {
+test("the five Foreman settings pages share one sub-navigation", async ({ page }) => {
   await createAdmin(page);
   for (const [path, current] of [
     ["/settings/factorio-account", "factorio.com account"],
     ["/settings/restart-schedule", "Restart schedule"],
     ["/settings/notifications", "Notifications"],
     ["/settings/public-mods", "Public mods"],
+    ["/settings/api-tokens", "API tokens"],
   ]) {
     await page.goto(path);
     const nav = settingsNav(page);
-    await expect(nav.getByRole("link")).toHaveText(["factorio.com account", "Restart schedule", "Notifications", "Public mods"]);
+    await expect(nav.getByRole("link")).toHaveText(["factorio.com account", "Restart schedule", "Notifications", "Public mods", "API tokens"]);
     await expect(nav.getByRole("link", { name: current })).toHaveAttribute("aria-current", "page");
     await expect(nav.locator("[aria-current]")).toHaveCount(1);
     // It sits under the page's heading.

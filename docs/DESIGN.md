@@ -3722,6 +3722,35 @@ page" sits beside it. A Done message confirms each change.
 New CSS: `.public-world`, `.public-mods` and its `__name`, `__version`
 and `__marks`, at the end of `foreman.css`.
 
+### 8.20 API tokens (SPEC 12.10, 21.2, Epic 10a)
+
+`/settings/api-tokens` is the fifth "Foreman settings" tab, after Public
+mods. Its order follows what a person came to do:
+
+1. **MCP access** leads, as each settings page leads with its state: one
+   sentence and one button that flips it. When `FOREMAN_MCP=off` forces
+   it off, the sentence names the variable and no button shows.
+2. **Your tokens**: one card per token (`.token-list`, `.token-card`),
+   never a table, so seven facts wrap at 320 px. A card holds the name,
+   a state badge (Working, Expired, Revoked, reusing the running,
+   stopping and crashed shapes so no state is told by colour alone),
+   owner, scope, expiry, creation and last use to the minute. Renew is a
+   one-click form post on the owner's own cards only; Revoke links to a
+   confirm page (7.4), because it is final. A revoked card has no buttons.
+3. **Create a token**: name, then the scope as radio buttons with read
+   checked, each with a hint, then the warning that the two-step confirm
+   guards mistakes, not a steered AI. Creating is one click on this page.
+4. **All tokens**, for admins: the same cards for every user.
+
+The create answer is its own page: the secret and the endpoint in
+read-only inputs, so they select whole, under a warning that the secret
+is shown once. It is sent with `no-store`.
+
+The **expiry banner** sits at the top of `main` on every signed-in page,
+a warning message with one line per token from 5 days before expiry and
+while Expired. Each line names the token and the time, with a Renew
+button that returns to the same page.
+
 ## 9. Writing
 
 - Plain words, sentence case, no exclamation marks, no "Oops".
