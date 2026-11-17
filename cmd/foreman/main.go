@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/config"
 	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/docker"
@@ -167,7 +168,14 @@ func serve(cfg *config.Config) error {
 		defer sweeping.Done()
 		web.SweepSessions(sweepCtx, st, cfg.SessionIdle, slog.Default())
 	}()
-	// The sweeper uses the store, so it must stop before the store closes.
+	// Token reminders go out once at start, so one that came due while
+	// Foreman was down is not missed (SPEC 8.10).
+	sweeping.Add(1)
+	go func() {
+		defer sweeping.Done()
+		web.RemindTokens(sweepCtx, auth.NewAPITokens(st, time.Now), notifier, slog.Default())
+	}()
+	// The sweepers use the store, so they must stop before the store closes.
 	defer func() { stopSweep(); sweeping.Wait() }()
 
 	ln, err := listen(cfg.Listen)

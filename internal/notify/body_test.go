@@ -29,6 +29,7 @@ func sample() []Message {
 		{Event: ScheduledRestart, Time: at, World: w},
 		{Event: ScheduledRestart, Time: at, World: w, Skipped: true},
 		{Event: LowDisk, Time: at, World: w, FreeBytes: 3_500_000_000},
+		{Event: TokenExpiring, Time: at, Token: Token{Name: "Claude", Owner: "ann", Expires: at.Add(24 * time.Hour)}},
 	}
 }
 
@@ -77,7 +78,11 @@ func TestGenericBodyFields(t *testing.T) {
 			t.Errorf("%s: %s", m.Event, r.body)
 		}
 		w, _ := got["world"].(map[string]any)
-		if w["id"] != "main-base" || w["name"] != "Main base" {
+		wantID, wantName := "main-base", "Main base"
+		if m.Event == TokenExpiring {
+			wantID, wantName = "", ""
+		}
+		if w["id"] != wantID || w["name"] != wantName {
 			t.Errorf("%s: world %v", m.Event, w)
 		}
 	}
@@ -88,8 +93,17 @@ func TestEveryEventHasText(t *testing.T) {
 	for _, l := range i18n.Languages {
 		for _, m := range sample() {
 			text := Text(l.Tag, m, plain)
-			if text == "" || strings.Contains(text, "notify.") || !strings.Contains(text, "Main base") {
+			if text == "" || strings.Contains(text, "notify.") {
 				t.Errorf("%s %s: %q", l.Tag, m.Event, text)
+			}
+			if m.Event == TokenExpiring {
+				for _, want := range []string{"Claude", "ann", "2026-11-13 23:30 UTC"} {
+					if !strings.Contains(text, want) {
+						t.Errorf("%s: no %q in %q", l.Tag, want, text)
+					}
+				}
+			} else if !strings.Contains(text, "Main base") {
+				t.Errorf("%s %s: no world in %q", l.Tag, m.Event, text)
 			}
 			if m.Player != "" && !strings.Contains(text, m.Player) {
 				t.Errorf("%s %s: no player in %q", l.Tag, m.Event, text)
@@ -129,5 +143,77 @@ func TestNtfyPriority(t *testing.T) {
 		if got := r.headers["Priority"]; got != want {
 			t.Errorf("%s: priority %q, want %q", e, got, want)
 		}
+	}
+}
+
+// A token reminder names the token, its owner and its expiry, and nothing
+// that could be the secret; the generic body has the token object and no
+// world (SPEC 8.10, 8.11).
+func TestTokenExpiringBody(t *testing.T) {
+	at := time.Date(2026, 11, 12, 18, 30, 5, 0, time.UTC)
+	m := Message{Event: TokenExpiring, Time: at, Token: Token{Name: "Claude", Owner: "ann", Expires: at.Add(24 * time.Hour)}}
+	r, err := build(Generic, i18n.English, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Token map[string]string `json:"token"`
+		World map[string]string `json:"world"`
+	}
+	if err := json.Unmarshal(r.body, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"name": "Claude", "owner": "ann", "expires": "2026-11-13T18:30:05Z"}
+	if len(got.Token) != 3 || got.Token["name"] != want["name"] || got.Token["owner"] != want["owner"] || got.Token["expires"] != want["expires"] {
+		t.Errorf("token %v, want %v", got.Token, want)
+	}
+	if got.World["id"] != "" || got.World["name"] != "" {
+		t.Errorf("world %v, want empty", got.World)
+	}
+	// Other events carry no token field.
+	other, _ := build(Generic, i18n.English, Message{Event: Start, World: world})
+	if bytes.Contains(other.body, []byte(`"token"`)) {
+		t.Errorf("a start body has a token: %s", other.body)
+	}
+}
+
+// A token's name and owner are shortened and escaped for Discord like any
+// name, so neither can format the message or ping anyone.
+func TestTokenExpiringDiscordEscapes(t *testing.T) {
+	m := Message{Event: TokenExpiring, Token: Token{Name: "*bold* @everyone", Owner: strings.Repeat("_", 3000), Expires: time.Unix(0, 0)}}
+	r, err := build(Discord, i18n.English, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body discordBody
+	if err := json.Unmarshal(r.body, &body); err != nil {
+		t.Fatal(err)
+	}
+	if n := len([]rune(body.Content)); n > discordMaxContent {
+		t.Errorf("content is %d characters", n)
+	}
+	if !strings.Contains(body.Content, `\*bold\* \@everyone`) || strings.Contains(body.Content, " @everyone") {
+		t.Errorf("name not escaped: %q", body.Content[:60])
+	}
+	if !bytes.Contains(r.body, []byte(`"allowed_mentions":{"parse":[]}`)) {
+		t.Errorf("body %s", r.body)
+	}
+}
+
+// A reminder is off by default, and a stored off-list that names it stays
+// off however it is read back and written again (SPEC 8.10).
+func TestTokenExpiringOffByDefault(t *testing.T) {
+	for _, e := range Events {
+		if e.OffByDefault() != (e == TokenExpiring) {
+			t.Errorf("%s: OffByDefault is %v", e, e.OffByDefault())
+		}
+	}
+	on := map[Event]bool{}
+	for _, e := range Events {
+		on[e] = !e.OffByDefault()
+	}
+	off := parseEventsOff(eventsOff(on))
+	if len(off) != 1 || !off[TokenExpiring] {
+		t.Errorf("off-list %v", off)
 	}
 }

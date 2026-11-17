@@ -150,19 +150,19 @@ func pageCases() []pageCase {
 			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", Events: "Crash, low disk", Plain: true},
 			{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: "hooks.example.org", LangTag: "fr", LangName: "Français", AllOn: true, Unreadable: true},
 		}}},
-		{"notification add", "todd", 200, formPage(notify.Discord, allEventsOn(), "en")},
+		{"notification add", "todd", 200, formPage(notify.Discord, defaultEvents(), "en")},
 		{"notification add refused", "todd", 400, func() WebhookFormPage {
 			p := formPage("", map[notify.Event]bool{}, "xx")
 			p.PresetError, p.URLError, p.EventsError, p.LangError = i18n.M("notify.preset.invalid"), i18n.M("notify.url.scheme"), i18n.M("notify.events.none"), i18n.M("notify.lang.invalid")
 			return p
 		}()},
 		{"notification edit plain", "todd", 200, func() WebhookFormPage {
-			p := formPage(notify.Ntfy, allEventsOn(), "de")
+			p := formPage(notify.Ntfy, defaultEvents(), "de")
 			p.Edit, p.ID, p.Kept = true, 2, WebhookView{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", Plain: true}
 			return p
 		}()},
 		{"notification edit unreadable", "todd", 400, func() WebhookFormPage {
-			p := formPage(notify.Generic, allEventsOn(), "fr")
+			p := formPage(notify.Generic, defaultEvents(), "fr")
 			p.Edit, p.ID, p.Kept = true, 3, WebhookView{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: longName, Unreadable: true}
 			p.URLError = i18n.M("notify.url.missing")
 			return p

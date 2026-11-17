@@ -23,6 +23,7 @@
   "notify.event.short.player_leave": "выход игрока",
   "notify.event.short.scheduled_restart": "плановый перезапуск",
   "notify.event.short.low_disk": "мало места на диске",
+  "notify.event.short.token_expiring": "истекает срок API-токена",
   "notify.edit": "Изменить",
   "notify.edit.named": "Изменить вебхук {preset} на {host}",
   "notify.delete.named": "Удалить вебхук {preset} на {host}",
@@ -58,6 +59,7 @@
   "notify.event.player_leave": "игрок выходит",
   "notify.event.scheduled_restart": "плановый перезапуск выполняется или пропускается",
   "notify.event.low_disk": "заканчивается место на диске",
+  "notify.event.token_expiring": "срок действия API-токена скоро истекает",
   "notify.events.none": "Выберите хотя бы одно событие.",
   "notify.lang.label": "Язык сообщений",
   "notify.lang.hint": "Имена из игры и название мира отправляются как написаны.",
@@ -75,5 +77,6 @@
   "notify.msg.player_leave": "{world}: {player} вышел из игры.",
   "notify.msg.restart_ran": "{world}: плановый перезапуск выполнен.",
   "notify.msg.restart_skipped": "{world}: плановый перезапуск пропущен, потому что игроки оставались в сети.",
-  "notify.msg.low_disk": "{world}: свободно только {free} места на диске. Когда место закончится, автосохранения могут не сработать."
+  "notify.msg.low_disk": "{world}: свободно только {free} места на диске. Когда место закончится, автосохранения могут не сработать.",
+  "notify.msg.token_expiring": "Срок действия API-токена {token} (владелец: {owner}) истекает {expires}."
 }

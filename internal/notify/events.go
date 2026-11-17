@@ -19,10 +19,16 @@ const (
 	PlayerLeave      Event = "player-leave"
 	ScheduledRestart Event = "scheduled-restart"
 	LowDisk          Event = "low-disk"
+	TokenExpiring    Event = "token-expiring" //nolint:gosec // an event id, not a credential
 )
 
 // Events lists every event in the order the page shows them.
-var Events = []Event{Start, Stop, Crash, CrashLoop, PlayerJoin, PlayerLeave, ScheduledRestart, LowDisk}
+var Events = []Event{Start, Stop, Crash, CrashLoop, PlayerJoin, PlayerLeave, ScheduledRestart, LowDisk, TokenExpiring}
+
+// OffByDefault reports whether a new webhook starts with e turned off. A
+// token reminder is off until an admin asks for it, because a webhook often
+// posts to a channel players read (SPEC 8.10).
+func (e Event) OffByDefault() bool { return e == TokenExpiring }
 
 // Known reports whether e is one of Events.
 func (e Event) Known() bool {
@@ -40,6 +46,13 @@ type World struct {
 	Name string
 }
 
+// Token names the API token a reminder is about. It never holds the secret.
+type Token struct {
+	Name    string
+	Owner   string
+	Expires time.Time
+}
+
 // Message is one event to send. Fields that do not belong to its event are
 // left zero.
 type Message struct {
@@ -55,6 +68,9 @@ type Message struct {
 	Skipped bool
 	// FreeBytes is the free disk space, for LowDisk.
 	FreeBytes uint64
+	// Token is the token a TokenExpiring message is about. That event has
+	// no world.
+	Token Token
 }
 
 // eventsOff and parseEventsOff turn the set of events turned off into the

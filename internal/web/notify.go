@@ -230,6 +230,8 @@ func eventLabel(e notify.Event) i18n.Msg {
 		return i18n.M("notify.event.scheduled_restart")
 	case notify.LowDisk:
 		return i18n.M("notify.event.low_disk")
+	case notify.TokenExpiring:
+		return i18n.M("notify.event.token_expiring")
 	}
 	return i18n.M("notify.event.start")
 }
@@ -250,6 +252,8 @@ func eventShort(e notify.Event) i18n.Msg {
 		return i18n.M("notify.event.short.scheduled_restart")
 	case notify.LowDisk:
 		return i18n.M("notify.event.short.low_disk")
+	case notify.TokenExpiring:
+		return i18n.M("notify.event.short.token_expiring")
 	}
 	return i18n.M("notify.event.short.start")
 }
@@ -353,10 +357,12 @@ func formPage(preset notify.Preset, on map[notify.Event]bool, lang i18n.Locale) 
 	return p
 }
 
-func allEventsOn() map[notify.Event]bool {
+// defaultEvents is the events a new webhook starts with on: every event but
+// the ones that are off until an admin turns them on (SPEC 8.10).
+func defaultEvents() map[notify.Event]bool {
 	on := map[notify.Event]bool{}
 	for _, e := range notify.Events {
-		on[e] = true
+		on[e] = !e.OffByDefault()
 	}
 	return on
 }
@@ -366,7 +372,7 @@ func (s *server) handleWebhookNew(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 	// The language defaults to the adding admin's (DESIGN 8.16).
-	s.page(w, r, http.StatusOK, u.Username, formPage(notify.Discord, allEventsOn(), localeOf(r)))
+	s.page(w, r, http.StatusOK, u.Username, formPage(notify.Discord, defaultEvents(), localeOf(r)))
 }
 
 // postedSetup reads the form. The address is wrapped at once so it can
