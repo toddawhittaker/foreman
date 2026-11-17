@@ -61,7 +61,7 @@ is a Tailscale compose file.
 
 ## Development
 
-You need Go 1.27.3 (exactly; see WORKFLOW.md, "Local development"),
+You need Go 1.27.4 (exactly; see WORKFLOW.md, "Local development"),
 Docker and `make`. The linter and the browser tests run in pinned
 containers, so you do not install them.
 

@@ -26,7 +26,7 @@ golangci-lint and Playwright run in images pinned by digest. Nothing is
 installed for them.
 
 The `go` line in `go.mod` states the language minimum, `go 1.27.0`, not the
-pinned toolchain `1.27.3`. The golangci-lint image is built with an older
+pinned toolchain `1.27.4`. The golangci-lint image is built with an older
 1.27 patch (1.27.2) and refuses to load a module that asks for a newer one.
 The pin that matters lives in the Makefile; `go.mod` only says which
 language features the code may use.
