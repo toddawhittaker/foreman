@@ -49,6 +49,7 @@ type settingsHandlers struct {
 
 func (s *server) settingsRoutes() {
 	h := &settingsHandlers{s: s, pending: newPendingStore(s.now)}
+	s.settings = h
 	s.mux.HandleFunc("GET "+PathSettings, s.requireUser(h.handleForm))
 	s.mux.HandleFunc("POST "+PathSettings, s.requireUser(h.handlePreview))
 	s.mux.HandleFunc("GET "+PathSettingsRaw, s.requireUser(h.handleRawForm))
@@ -486,7 +487,7 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 		h.showPreview(w, r, u, sw, *c, true)
 		return
 	}
-	res, err := h.save(r.Context(), u, id, c.Files)
+	res, err := h.save(r.Context(), actor(u), id, c.Files)
 	if err != nil {
 		h.saveFailed(w, r, u, id, c, err)
 		return
@@ -596,14 +597,14 @@ func settingsError(err error) (int, i18n.Msg) {
 // it, because a running game must be saved first and told of an admin change
 // (SPEC 6.10, 11.3). With none there is no game to save, so Foreman takes the
 // lock and runs the same world function.
-func (h *settingsHandlers) save(ctx context.Context, u store.User, id string, files []pendingFile) (game.SettingsResult, error) {
+func (h *settingsHandlers) save(ctx context.Context, by game.Actor, id string, files []pendingFile) (game.SettingsResult, error) {
 	s := h.s
 	if s.game != nil {
 		changes := make([]game.SettingsChange, len(files))
 		for i, f := range files {
 			changes[i] = game.SettingsChange{File: f.File, Data: f.New, SeenHash: f.Hash}
 		}
-		return s.game.SaveSettings(ctx, id, actor(u), changes)
+		return s.game.SaveSettings(ctx, id, by, changes)
 	}
 	unlock, err := s.worlds.Lock(id)
 	if err != nil {
@@ -614,9 +615,9 @@ func (h *settingsHandlers) save(ctx context.Context, u store.User, id string, fi
 	for i, f := range files {
 		changes[i] = world.ConfigChange{File: f.File, Data: f.New, SeenHash: f.Hash}
 	}
-	snap, err := s.worlds.SaveSettingsHeld(id, changes, u.Username, func() error {
+	snap, err := s.worlds.SaveSettingsHeld(id, changes, by.Username, func() error {
 		err := s.store.AddAudit(ctx, store.AuditEntry{
-			Time: s.now(), UserID: u.ID, Username: u.Username, Action: game.AuditSettingsSave,
+			Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token, Action: game.AuditSettingsSave,
 			WorldID: id, Detail: strings.Join(fileNames(files), ", "),
 		})
 		if err != nil {

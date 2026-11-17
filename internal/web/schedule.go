@@ -203,6 +203,6 @@ func (s *server) handleScheduleSave(w http.ResponseWriter, r *http.Request, u st
 	if next.Enabled {
 		detail = fmt.Sprintf("every day at %s %s, waiting up to %d h", clockText(next.Minute), next.Zone, next.LimitHours)
 	}
-	s.audit(r.Context(), u, AuditScheduleSet, "", detail)
+	s.audit(r.Context(), actor(u), AuditScheduleSet, "", detail)
 	http.Redirect(w, r, PathSchedule+"?done="+scheduleDoneSaved, http.StatusSeeOther)
 }

@@ -289,7 +289,7 @@ func (s *server) handleSnapshotsDelete(w http.ResponseWriter, r *http.Request, u
 		// resubmitted form ends on the Done page.
 		var err error
 		if !item.Gone {
-			err = s.deleteSnapshot(r.Context(), u, ref.WorldID, ref.Name)
+			err = s.deleteSnapshot(r.Context(), actor(u), ref.WorldID, ref.Name)
 		}
 		if err == nil || errors.Is(err, world.ErrNoSnapshot) {
 			deleted = append(deleted, ref.Name)

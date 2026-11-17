@@ -393,7 +393,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 	if f.Favorite != nil {
 		how += ", favorite " + f.Favorite.Name
 	}
-	s.audit(r.Context(), u, AuditGenerate, id, fmt.Sprintf("%s, %s, space age %t", how, nw.GameVersion, nw.SpaceAge))
+	s.audit(r.Context(), actor(u), AuditGenerate, id, fmt.Sprintf("%s, %s, space age %t", how, nw.GameVersion, nw.SpaceAge))
 	if f.Download {
 		s.downloadFor(r.Context(), map[string]string{nw.GameVersion: id}, actor(u))
 	}
@@ -428,17 +428,6 @@ func (f *GenerateForm) place(err error, msg i18n.Msg) {
 		f.PresetError = i18n.M("worlds.generate.error.preset")
 	default:
 		f.FormError = msg
-	}
-}
-
-// audit records an action that is already done. A failed write is logged:
-// the world exists, and undoing it would lose more than the entry.
-func (s *server) audit(ctx context.Context, u store.User, action, worldID, detail string) {
-	err := s.store.AddAudit(ctx, store.AuditEntry{
-		Time: s.now(), UserID: u.ID, Username: u.Username, Action: action, WorldID: worldID, Detail: detail,
-	})
-	if err != nil {
-		s.log.Error("could not record the action in the audit log", "action", action, "world", worldID, "error", err)
 	}
 }
 
