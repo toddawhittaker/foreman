@@ -263,8 +263,9 @@ func (s *server) updateOutcome(sum world.Summary) (i18n.Msg, *Failure) {
 	return i18n.Msg{}, f
 }
 
-// rollbackPage builds the rollback confirmation, or says why there is none.
-func (s *server) rollbackPage(w http.ResponseWriter, r *http.Request, u store.User) (RollbackPage, bool) {
+// rollbackPageFor builds the rollback confirmation for the world in the
+// path, or answers the request itself and returns false.
+func (s *server) rollbackPageFor(w http.ResponseWriter, r *http.Request, u store.User) (RollbackPage, bool) {
 	if s.game == nil {
 		s.notFound(w, r, u)
 		return RollbackPage{}, false
@@ -273,21 +274,31 @@ func (s *server) rollbackPage(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return RollbackPage{}, false
 	}
+	p, err := s.rollbackPage(sum)
+	if err != nil {
+		s.notFoundOrFail(w, r, u, "find the rollback snapshot", err)
+		return RollbackPage{}, false
+	}
+	return p, true
+}
+
+// rollbackPage builds the rollback confirmation; Error says why there is
+// none. It needs server control.
+func (s *server) rollbackPage(sum world.Summary) (RollbackPage, error) {
 	p := RollbackPage{World: sum, CountdownForm: defaultCountdown(), Running: game.IsRunning(s.game.Status(sum.ID).State)}
 	snap, version, err := s.worlds.RollbackTarget(sum.ID)
 	switch {
 	case errors.Is(err, world.ErrNoRollback):
 		p.Error = i18n.M("server.error.no_rollback")
 	case err != nil:
-		s.notFoundOrFail(w, r, u, "find the rollback snapshot", err)
-		return RollbackPage{}, false
+		return RollbackPage{}, err
 	}
 	p.Snapshot, p.Version = snap, version
-	return p, true
+	return p, nil
 }
 
 func (s *server) handleRollbackForm(w http.ResponseWriter, r *http.Request, u store.User) {
-	p, ok := s.rollbackPage(w, r, u)
+	p, ok := s.rollbackPageFor(w, r, u)
 	if !ok {
 		return
 	}
@@ -306,7 +317,7 @@ func (s *server) handleRollback(w http.ResponseWriter, r *http.Request, u store.
 	if !s.readForm(w, r) {
 		return
 	}
-	p, ok := s.rollbackPage(w, r, u)
+	p, ok := s.rollbackPageFor(w, r, u)
 	if !ok {
 		return
 	}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -111,21 +112,29 @@ func (w settingsWorld) forkOff() bool { return w.hostOS != "" && w.hostOS != "li
 // load finds the world named in the path and reads its two settings files.
 // It answers the request itself and returns false when it cannot.
 func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.User) (settingsWorld, bool) {
-	s := h.s
-	sum, ok := s.findWorld(w, r, u)
+	sum, ok := h.s.findWorld(w, r, u)
 	if !ok {
 		return settingsWorld{}, false
 	}
+	sw, err := h.loadWorld(r.Context(), sum)
+	if err != nil {
+		h.s.notFoundOrFail(w, r, u, "read settings", err)
+		return settingsWorld{}, false
+	}
+	return sw, true
+}
+
+// loadWorld reads a world's settings files and player lists as they are now.
+func (h *settingsHandlers) loadWorld(ctx context.Context, sum world.Summary) (settingsWorld, error) {
+	s := h.s
 	sw := settingsWorld{sum: sum, live: s.liveState(sum.ID, sum.Active)}
 	sw.line, _ = mapgen.Line(sum.GameVersion)
 	var err error
 	if sw.cfg, err = s.worlds.ReadConfig(sum.ID, world.ServerSettingsFile); err != nil {
-		s.notFoundOrFail(w, r, u, "read server settings", err)
-		return settingsWorld{}, false
+		return settingsWorld{}, fmt.Errorf("read server settings: %w", err)
 	}
 	if sw.adminCfg, err = s.worlds.ReadConfig(sum.ID, world.ServerAdminListFile); err != nil {
-		s.notFoundOrFail(w, r, u, "read admin list", err)
-		return settingsWorld{}, false
+		return settingsWorld{}, fmt.Errorf("read admin list: %w", err)
 	}
 	if sw.adminCfg.Found {
 		if sw.admins, err = gamesettings.ParseAdminList(sw.adminCfg.Data); err != nil {
@@ -138,9 +147,8 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 			sw.running = true
 		}
 	}
-	if sw.lists, err = h.loadLists(r.Context(), sum, sw.running); err != nil {
-		s.notFoundOrFail(w, r, u, "read player lists", err)
-		return settingsWorld{}, false
+	if sw.lists, err = h.loadLists(ctx, sum, sw.running); err != nil {
+		return settingsWorld{}, fmt.Errorf("read player lists: %w", err)
 	}
 	switch {
 	case sum.Newer:
@@ -148,7 +156,7 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 	case sum.Unreadable:
 		sw.readOnly = i18n.M("settings.readonly.unreadable")
 	}
-	return sw, true
+	return sw, nil
 }
 
 // askOS asks Docker which system the game runs on, once. The answer stays ""
@@ -321,7 +329,6 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	in := readPostedForm(r.PostFormValue, func(k string) bool { _, ok := r.PostForm[k]; return ok })
 	var carried []byte
 	edit := r.PostFormValue("edit")
 	if c, ok := h.fromEdit(edit, u, sw.sum.ID, false); ok {
@@ -331,34 +338,12 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 	} else {
 		edit = ""
 	}
-	if !sw.adminsBroken {
-		in.addMadeAdmin()
-	}
-	var names []string
-	var adminErr i18n.Msg
-	if in.AdminsPosted && !sw.adminsBroken {
-		var bad int
-		if names, bad = adminLines(in.Admins); bad > 0 {
-			adminErr = i18n.M("settings.admins.bad_name", "line", bad, "max", gamesettings.MaxNameBytes)
-		}
-	}
-	// Only a changed fork saving needs to know Docker's system: the setting is
-	// refused off Linux.
-	if cur, _ := readServerValues(text); in.NonBlocking != cur.NonBlocking {
-		h.askOS(r.Context(), &sw)
-	}
-	edit2 := formEdit{BaseText: text, BaseAdmins: sw.admins, In: in, Caps: sw.caps(), Carried: carried, Names: names}
-	edit2.Bans = postedList(in.Bans, in.BansPosted && sw.lists.bansEditable(), sw.lists.banNames())
-	edit2.Whitelist = postedList(in.Whitelist, in.WhitelistPosted && sw.lists.whitelistEditable(), sw.lists.whitelist)
-	files, errs, err := buildFiles(sw, edit2)
+	edit2, files, errs, err := h.formChange(r.Context(), &sw, r.PostForm, carried)
 	if err != nil {
 		s.fail(w, r, "apply settings form", err)
 		return
 	}
-	if !adminErr.IsZero() {
-		errs.AdminsError = adminErr
-	}
-	errs.BansError, errs.WhitelistError = edit2.Bans.err, edit2.Whitelist.err
+	in := edit2.In
 	if errs.has() {
 		p := h.formPage(r.Context(), sw, text, sw.admins)
 		p.setPosted(in)
@@ -373,6 +358,43 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	h.showPreview(w, r, u, sw, pendingChange{UserID: u.ID, WorldID: sw.sum.ID, Form: &edit2, Files: files}, false)
+}
+
+// formChange turns a posted settings form into the files it changes,
+// applied to the files as they are now (SPEC 11.3). carried is the game
+// password of an earlier, previewed edit. It may ask Docker for its system,
+// which it notes in sw.
+func (h *settingsHandlers) formChange(ctx context.Context, sw *settingsWorld, form url.Values, carried []byte) (formEdit, []pendingFile, formErrors, error) {
+	text := sw.formText()
+	in := readPostedForm(form.Get, func(k string) bool { _, ok := form[k]; return ok })
+	if !sw.adminsBroken {
+		in.addMadeAdmin()
+	}
+	var names []string
+	var adminErr i18n.Msg
+	if in.AdminsPosted && !sw.adminsBroken {
+		var bad int
+		if names, bad = adminLines(in.Admins); bad > 0 {
+			adminErr = i18n.M("settings.admins.bad_name", "line", bad, "max", gamesettings.MaxNameBytes)
+		}
+	}
+	// Only a changed fork saving needs to know Docker's system: the setting is
+	// refused off Linux.
+	if cur, _ := readServerValues(text); in.NonBlocking != cur.NonBlocking {
+		h.askOS(ctx, sw)
+	}
+	edit := formEdit{BaseText: text, BaseAdmins: sw.admins, In: in, Caps: sw.caps(), Carried: carried, Names: names}
+	edit.Bans = postedList(in.Bans, in.BansPosted && sw.lists.bansEditable(), sw.lists.banNames())
+	edit.Whitelist = postedList(in.Whitelist, in.WhitelistPosted && sw.lists.whitelistEditable(), sw.lists.whitelist)
+	files, errs, err := buildFiles(*sw, edit)
+	if err != nil {
+		return formEdit{}, nil, formErrors{}, err
+	}
+	if !adminErr.IsZero() {
+		errs.AdminsError = adminErr
+	}
+	errs.BansError, errs.WhitelistError = edit.Bans.err, edit.Whitelist.err
+	return edit, files, errs, nil
 }
 
 // formEdit is what a form submission asked for, kept with its pending change
