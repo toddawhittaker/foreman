@@ -2358,7 +2358,10 @@ the UI: same action name, same before-or-after rule, plus the token's
 name. Read tools change nothing and are not recorded. The token's "last
 used" time covers them (12.10). Player actions, chat messages and the
 whitelist switch are recorded before they take effect and are refused if
-the record cannot be written. A schedule or webhook change is recorded
+the record cannot be written. Deleting a world records `world-delete`
+with the world's name and whether a final snapshot was taken; it too is
+recorded before the delete, which is refused if the record cannot be
+written. (Todd's ruling, 2026-11-17.) A schedule or webhook change is recorded
 after it, and a failure to record it is only logged. (P1, except RCON
 commands, which are recorded from the first version that has a console:
 P0)
@@ -3188,7 +3191,9 @@ result is marked untrusted (14.12). (P1)
 (7.6), with a countdown from 0 to 10 minutes that defaults to the app's;
 graceful restart (7.8); switch world (7.9); take a snapshot (6.3). The
 tools are `start_server`, `stop_server`, `restart_server`,
-`switch_world` and `take_snapshot`. `world_id` is required on each. Each
+`switch_world` and `take_snapshot`, and `cancel_stop`, which cancels a
+stop countdown exactly as the Server page's **Cancel stop** does (7.6;
+Todd's ruling, 2026-11-17). `world_id` is required on each. Each
 returns what happened, including any snapshot it took. A call waits up
 to 50 seconds. If the action is still running then, the call says so and
 server status (21.4) reports the result when it ends. The action
@@ -3238,7 +3243,16 @@ change or be lost, which snapshot will be taken, and who is online and
 will be warned. It also returns a confirm code (14.19). The second call
 repeats the tool with the same arguments plus the code. It runs every
 check again, as the UI's form post does, then takes the same snapshots
-and writes the same audit entries. (P1)
+and writes the same audit entries. If what the preview showed has
+changed since (for example a new mod release), the second call is
+refused and returns a fresh preview and code. The code also stands for
+the confirmations a UI confirm page asks for inside the page, such as
+typing the world's name or ticking that mods will be dropped, so the
+preview lists those items explicitly. An action is two-step exactly when
+this section names it or the UI shows a confirm page for it; every other
+admin tool is one call. Game settings are changed through the settings
+form's fields only, not the raw editor. (Todd's rulings, 2026-11-17.)
+(P1)
 
 ## 22. Languages
 
