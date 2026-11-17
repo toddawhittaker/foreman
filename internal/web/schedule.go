@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/schedule"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -153,15 +155,22 @@ func parseLimit(v string) (int, bool) {
 	return n, err == nil && n <= schedule.MaxLimitHours
 }
 
-func (s *server) handleScheduleSave(w http.ResponseWriter, r *http.Request, u store.User) {
-	if !s.readForm(w, r) {
-		return
-	}
+// scheduleIn is the schedule form's fields as text.
+type scheduleIn struct {
+	Enabled            bool
+	Clock, Zone, Limit string
+}
+
+// saveSchedule checks and saves the restart schedule and records it in the
+// audit log under by. The page returned holds the form's problems when a
+// field is refused, and nothing is saved then; the error is for a save that
+// failed.
+func (s *server) saveSchedule(ctx context.Context, by game.Actor, in scheduleIn) (SchedulePage, error) {
 	saved, _ := s.scheduler.Settings()
-	next := store.RestartSchedule{Enabled: r.PostFormValue("enabled") != "", UpdatedBy: u.Username}
+	next := store.RestartSchedule{Enabled: in.Enabled, UpdatedBy: by.Username}
 	p := s.schedulePage()
 	p.Enabled = next.Enabled
-	p.Clock, p.Zone, p.Limit = r.PostFormValue("time"), r.PostFormValue("zone"), r.PostFormValue("limit_hours")
+	p.Clock, p.Zone, p.Limit = in.Clock, in.Zone, in.Limit
 	// A refused form shows what was posted, never a zone chosen for the viewer.
 	p.Fresh = false
 
@@ -179,8 +188,7 @@ func (s *server) handleScheduleSave(w http.ResponseWriter, r *http.Request, u st
 			p.LimitError = i18n.M("schedule.limit.error", "max", schedule.MaxLimitHours)
 		}
 		if p.hasErrors() {
-			s.page(w, r, http.StatusBadRequest, u.Username, p.withZones())
-			return
+			return p, nil
 		}
 	}
 	// While off the fields are ignored: one that does not parse keeps its
@@ -195,14 +203,31 @@ func (s *server) handleScheduleSave(w http.ResponseWriter, r *http.Request, u st
 	if limitOK {
 		next.LimitHours = limit
 	}
-	if err := s.scheduler.Set(r.Context(), next); err != nil {
-		s.fail(w, r, "save the restart schedule", err)
-		return
+	if err := s.scheduler.Set(ctx, next); err != nil {
+		return p, err
 	}
 	detail := "off"
 	if next.Enabled {
 		detail = fmt.Sprintf("every day at %s %s, waiting up to %d h", clockText(next.Minute), next.Zone, next.LimitHours)
 	}
-	s.audit(r.Context(), actor(u), AuditScheduleSet, "", detail)
+	s.audit(ctx, by, AuditScheduleSet, "", detail)
+	return p, nil
+}
+
+func (s *server) handleScheduleSave(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	p, err := s.saveSchedule(r.Context(), actor(u), scheduleIn{
+		Enabled: r.PostFormValue("enabled") != "", Clock: r.PostFormValue("time"), Zone: r.PostFormValue("zone"), Limit: r.PostFormValue("limit_hours"),
+	})
+	if err != nil {
+		s.fail(w, r, "save the restart schedule", err)
+		return
+	}
+	if p.hasErrors() {
+		s.page(w, r, http.StatusBadRequest, u.Username, p.withZones())
+		return
+	}
 	http.Redirect(w, r, PathSchedule+"?done="+scheduleDoneSaved, http.StatusSeeOther)
 }
