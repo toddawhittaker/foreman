@@ -1605,8 +1605,8 @@ except `token-expiring`, which names a token and its owner and no world.
   Foreman started. Events that happen while Foreman is down are not sent. (P1)
 - **Token expiring** is sent 5 days and again 1 day before a Working
   token expires, naming the token, its owner and its expiry, never the
-  secret. Foreman checks at least once an hour. Each reminder is sent
-  once per period. The token records which reminders were sent, and
+  secret. Foreman checks at start and every 15 minutes. Each reminder is
+  sent once per period. The token records which reminders were sent, and
   renewing starts over. Unlike other events, a reminder whose time
   passed while Foreman was down is sent at the next check if the token
   is still Working.
@@ -2348,7 +2348,9 @@ and every console command (8.4), every player action and chat message
 (8.2, 8.5), a change to the whitelist switch (8.3), and a change to the
 restart schedule or to a webhook (7.12, 8.10), never with the webhook's
 address, the autosave tidy (11.6), and turning the public mods page on
-or off (9.16). API tokens record `token-create`, `token-renew` and
+or off (9.16). A manual snapshot and a restore are recorded as `snapshot`
+and `restore`, with the token's name when they come through MCP. API
+tokens record `token-create`, `token-renew` and
 `token-revoke`, each naming the token, its owner and its scope. Turning
 MCP access on or off records `mcp-set` with the detail "on" or "off"
 (21.2). An action through MCP is recorded exactly as the same action in
@@ -2370,8 +2372,11 @@ one (section 21). (P1)
   default. A name is 1 to 32 characters of letters, digits, spaces, `.`,
   `_` and `-`. It must differ from the names of the owner's other tokens
   that are not revoked. The secret is shown once, on the page that
-  answers the create, beside the endpoint's address (21.1). Foreman
-  stores only its hash (14.19).
+  answers the create, beside the endpoint's address (21.1). That address
+  is `FOREMAN_PUBLIC_URL` plus `/mcp` when it is set. Otherwise it uses
+  the request's host, and takes its scheme from `X-Forwarded-Proto` only
+  when the request comes from a trusted proxy (12.5). Foreman stores
+  only its hash (14.19).
 - **Scope**, fixed for the token's life, each including the one before:
   - **read**: the read tools (21.4);
   - **operate**: also the action tools (21.5) and chat (21.6);
@@ -2393,8 +2398,9 @@ one (section 21). (P1)
   token cannot renew itself. An Expired token stays renewable for as
   long as it exists and is never deleted automatically.
 - **Revoking.** The owner or any admin revokes a token. It takes effect
-  at once, including for requests that arrive while the revoke is being
-  made.
+  for every request whose token is checked after the revoke. A request
+  is checked again after its body arrives, so one that holds its body
+  back is refused too.
 - **Who sees what.** Every admin sees every token: its owner, name,
   scope, state, expiry, creation time and last use (to the minute).
   Never the secret or its hash. The owner renews their own tokens. Any
@@ -2686,10 +2692,14 @@ player names and much of the game log. The mod portal controls mod
 titles, summaries and changelogs. Either can write instructions aimed at
 the AI. Every tool result keeps such text in fields marked as untrusted
 content, apart from Foreman's own words, and each tool's description
-says which fields those are. A token's scope limits the harm (12.10). A
-read token changes nothing. An operate token cannot delete, overwrite or
-run raw commands. An admin token's destructive actions need the two-step
-confirm (21.8). (P1)
+says which fields those are. Besides player names, chat and log lines,
+those fields hold the label of a snapshot written through a token, mod
+names, and the problems a pre-start check finds. A token's scope limits
+the harm (12.10). A read token changes nothing. An operate token cannot
+delete, overwrite or run raw commands, and it cannot fill a world with
+snapshots: a world holds at most 10 snapshots taken through API tokens
+(21.5). An admin token's destructive actions need the two-step confirm
+(21.8). (P1)
 
 14.13. **Pages refuse framing.** Every page carries
 `Content-Security-Policy: frame-ancestors 'none'` and
@@ -2790,10 +2800,12 @@ for shipping section 21. (P1)
   and holds one JSON-RPC message.
 - **Off means off.** While MCP access is off (21.2), every `/mcp`
   request gets 403 saying so, before its token is read.
-- **Origin.** A request with an `Origin` header that is not Foreman's
-  own origin, or that of `FOREMAN_PUBLIC_URL`, is refused, as the MCP
-  specification asks for protection against DNS rebinding (a page that
-  makes its own domain point at a local address).
+- **Origin.** On `/mcp`, any request with an `Origin` header is refused
+  unless it is exactly the origin of `FOREMAN_PUBLIC_URL`. With that
+  unset, any `Origin` is refused. Real MCP clients send none. The
+  generic same-origin check is not enough here: under DNS rebinding (a
+  page that makes its own domain point at a local address) the browser
+  sends an `Origin` equal to the `Host`, and that check lets it through.
 - **Confirm codes** (21.8). A code is 128 random bits. It lasts 5
   minutes, works once, and is bound to the token, the tool and the
   call's exact arguments. Any use, right or wrong, spends it. Codes are
@@ -3166,24 +3178,32 @@ needs no new tool. Tool descriptions, results and errors are in English
 the action running now and the last action's result, as the Server page
 shows them; list worlds (5.4); players online (8.1); the most recent log
 lines, with secrets removed (8.6); list snapshots (6.4); list a world's
-mods and available updates (9.3). Player and portal text in any result
-is marked untrusted (14.12). (P1)
+mods and available updates (9.3). The tools are `server_status`,
+`list_worlds`, `list_players`, `recent_log` (the newest 200 lines),
+`list_snapshots` and `list_mods`. `world_id` is optional on these and
+means the active world when left out. Player and portal text in any
+result is marked untrusted (14.12). (P1)
 
 21.5. **Action tools** (operate and admin): start (7.3); graceful stop
 (7.6), with a countdown from 0 to 10 minutes that defaults to the app's;
-graceful restart (7.8); switch world (7.9); take a snapshot (6.3). Each
+graceful restart (7.8); switch world (7.9); take a snapshot (6.3). The
+tools are `start_server`, `stop_server`, `restart_server`,
+`switch_world` and `take_snapshot`. `world_id` is required on each. Each
 returns what happened, including any snapshot it took. A call waits up
 to 50 seconds. If the action is still running then, the call says so and
 server status (21.4) reports the result when it ends. The action
 continues if the client goes away, as it does when a browser closes.
-(P1)
+`take_snapshot` through a token is refused once the world holds 10
+snapshots taken through API tokens. The snapshot's record notes
+`via_token` for this. Snapshots taken in the UI neither count nor are
+refused, and an admin deleting one frees room. (P1)
 
-21.6. **Chat** (operate and admin): send an in-game message as the
-server (8.5). Foreman puts the token's name in brackets in front of it,
-for example "[Claude] Restarting in 5 minutes", so players can tell it
-from a person. The prefix cannot be left out. The whole line, prefix
-included, follows 8.5's rules and its 500-character limit, and is
-audited as sent. (Todd's ruling, 2026-11-17.) (P1)
+21.6. **Chat** (operate and admin): the tool `send_chat` sends an
+in-game message as the server (8.5). Foreman puts the token's name in
+brackets in front of it, for example "[Claude] Restarting in 5 minutes",
+so players can tell it from a person. The prefix cannot be left out. The
+whole line, prefix included, follows 8.5's rules and its 500-character
+limit, and is audited as sent. (Todd's ruling, 2026-11-17.) (P1)
 
 21.7. **Admin tools** (admin only): everything an admin can do in the UI
 in these areas:
