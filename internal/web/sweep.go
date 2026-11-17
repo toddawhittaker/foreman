@@ -63,8 +63,9 @@ func RemindTokens(ctx context.Context, tokens *auth.APITokens, n *notify.Notifie
 	}
 }
 
-// remindOnce sends each due reminder and then records it as sent, so a
-// failure to record sends it again at the next check rather than never.
+// remindOnce queues each due reminder and then records it as sent, so a
+// crash or failed write in between sends it twice rather than never.
+// Delivery itself is best effort, as for every event (SPEC 8.12).
 // The message names the token and its owner, never the secret.
 func remindOnce(ctx context.Context, tokens *auth.APITokens, n emitter, log *slog.Logger) {
 	due, err := tokens.DueReminders(ctx)
