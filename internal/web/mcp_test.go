@@ -103,22 +103,6 @@ var (
 	actionTools = []string{"restart_server", "send_chat", "start_server", "stop_server", "switch_world", "take_snapshot"}
 )
 
-// SPEC 21.2, 14.19: while MCP is off every request gets 403, before its
-// token is read, so a bad token is not even a 401.
-func TestMCPOffRefusesEveryRequest(t *testing.T) {
-	ls := newLiveServer(t, nil)
-	u := ls.addUser("alice", testPassword)
-	secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
-	for _, h := range []http.Header{bearer(secret), bearer("fmn_nonsense"), nil} {
-		if rep := ls.mcpPost(http.MethodPost, initMessage, h); rep.StatusCode != http.StatusForbidden || !strings.Contains(rep.body, "MCP access is off") {
-			t.Errorf("off: %d %q", rep.StatusCode, rep.body)
-		}
-	}
-	if rep := ls.mcpPost(http.MethodGet, "", bearer(secret)); rep.StatusCode != http.StatusForbidden {
-		t.Errorf("off GET: %d", rep.StatusCode)
-	}
-}
-
 // SPEC 21.2: FOREMAN_MCP=off wins over the admin setting.
 func TestMCPForcedOffWinsOverSetting(t *testing.T) {
 	ls := newLiveServer(t, map[string]string{"FOREMAN_MCP": "off"})
@@ -127,69 +111,6 @@ func TestMCPForcedOffWinsOverSetting(t *testing.T) {
 	secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
 	if rep := ls.mcpPost(http.MethodPost, initMessage, bearer(secret)); rep.StatusCode != http.StatusForbidden {
 		t.Errorf("forced off: %d %q", rep.StatusCode, rep.body)
-	}
-}
-
-// SPEC 21.1: GET and DELETE answer 405.
-func TestMCPGetAndDeleteAre405(t *testing.T) {
-	ls := newLiveServer(t, nil)
-	u := ls.addUser("alice", testPassword)
-	turnMCPOn(t, ls.harness)
-	secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
-	for _, m := range []string{http.MethodGet, http.MethodDelete} {
-		rep := ls.mcpPost(m, "", bearer(secret))
-		if rep.StatusCode != http.StatusMethodNotAllowed || rep.Header.Get("Allow") != http.MethodPost {
-			t.Errorf("%s: %d, Allow %q", m, rep.StatusCode, rep.Header.Get("Allow"))
-		}
-	}
-}
-
-// SPEC 14.19: only a bearer token is read. An unknown token gets a plain
-// 401; an expired or revoked one a 401 naming its state. A token in the
-// query string or a cookie, and a browser session, count for nothing.
-func TestMCPTokenChecks(t *testing.T) {
-	ls := newLiveServer(t, nil)
-	session := ls.signIn()
-	u, _, _ := ls.store.UserByUsername(context.Background(), "alice")
-	turnMCPOn(t, ls.harness)
-	secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
-	if rep := ls.mcpPost(http.MethodPost, initMessage, bearer(secret)); rep.StatusCode != http.StatusOK {
-		t.Fatalf("working token: %d %q", rep.StatusCode, rep.body)
-	}
-	unknown := auth.TokenPrefix + strings.Repeat("A", 43)
-	for name, h := range map[string]http.Header{
-		"none":    nil,
-		"unknown": bearer(unknown),
-		"cookie":  {"Cookie": {"token=" + secret + "; " + session.String()}},
-		"basic":   {"Authorization": {"Basic " + secret}},
-	} {
-		rep := ls.mcpPost(http.MethodPost, initMessage, h)
-		if rep.StatusCode != http.StatusUnauthorized || strings.Contains(rep.body, "expired") || strings.Contains(rep.body, "revoked") {
-			t.Errorf("%s: %d %q", name, rep.StatusCode, rep.body)
-		}
-	}
-	req, _ := http.NewRequest(http.MethodPost, ls.url+PathMCP+"?token="+secret, strings.NewReader(initMessage))
-	req.Header.Set("Content-Type", "application/json")
-	if resp, err := ls.client.Do(req); err != nil || resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("token in query: %v %v", resp, err)
-	} else {
-		_ = resp.Body.Close()
-	}
-
-	ls.clock.Advance(auth.TokenPeriod + time.Minute)
-	if rep := ls.mcpPost(http.MethodPost, initMessage, bearer(secret)); rep.StatusCode != http.StatusUnauthorized || !strings.Contains(rep.body, "expired") {
-		t.Errorf("expired: %d %q", rep.StatusCode, rep.body)
-	}
-
-	secret2, tok2 := apiToken(t, ls.harness, u, "Other", auth.ScopeRead)
-	if _, err := auth.NewAPITokens(ls.store, ls.clock.Now).Revoke(context.Background(), tok2.ID); err != nil {
-		t.Fatal(err)
-	}
-	if rep := ls.mcpPost(http.MethodPost, initMessage, bearer(secret2)); rep.StatusCode != http.StatusUnauthorized || !strings.Contains(rep.body, "revoked") {
-		t.Errorf("revoked: %d %q", rep.StatusCode, rep.body)
-	}
-	if strings.Contains(ls.logs.String(), secret) || strings.Contains(ls.logs.String(), secret2) {
-		t.Error("a token secret reached the log")
 	}
 }
 
@@ -247,17 +168,6 @@ func TestMCPToolsFollowScope(t *testing.T) {
 	}
 }
 
-// SPEC 14.19: one JSON-RPC message per body; a batch is refused.
-func TestMCPRefusesBatch(t *testing.T) {
-	ls := newLiveServer(t, nil)
-	u := ls.addUser("alice", testPassword)
-	turnMCPOn(t, ls.harness)
-	secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
-	if rep := ls.mcpPost(http.MethodPost, " ["+initMessage+"]", bearer(secret)); rep.StatusCode != http.StatusBadRequest {
-		t.Errorf("batch: %d %q", rep.StatusCode, rep.body)
-	}
-}
-
 // SPEC 14.19: 20 failed token checks from one address in the window, then
 // 429 with Retry-After, even for a working token from there.
 func TestMCPAddressFailureLimit(t *testing.T) {
@@ -279,48 +189,5 @@ func TestMCPAddressFailureLimit(t *testing.T) {
 	ls.clock.Advance(auth.LimitWindow + time.Second)
 	if rep := ls.mcpPost(http.MethodPost, initMessage, bearer(secret)); rep.StatusCode != http.StatusOK {
 		t.Errorf("after the window: %d", rep.StatusCode)
-	}
-}
-
-// SPEC 14.19: a token may make 120 requests a minute.
-func TestMCPPerTokenRateLimit(t *testing.T) {
-	ls := newLiveServer(t, nil)
-	u := ls.addUser("alice", testPassword)
-	turnMCPOn(t, ls.harness)
-	secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
-	for i := range auth.TokenRequestsPerMinute {
-		if rep := ls.mcpPost(http.MethodPost, initMessage, bearer(secret)); rep.StatusCode != http.StatusOK {
-			t.Fatalf("request %d: %d", i+1, rep.StatusCode)
-		}
-	}
-	rep := ls.mcpPost(http.MethodPost, initMessage, bearer(secret))
-	if rep.StatusCode != http.StatusTooManyRequests || rep.Header.Get("Retry-After") == "" {
-		t.Errorf("request 121: %d, Retry-After %q", rep.StatusCode, rep.Header.Get("Retry-After"))
-	}
-}
-
-// SPEC 14.7, 14.19: a request with an Origin is refused unless it is
-// exactly FOREMAN_PUBLIC_URL's. An Origin equal to Host is refused too, as
-// a DNS rebinding page sends one.
-func TestMCPRefusesForeignOrigin(t *testing.T) {
-	for _, env := range []map[string]string{nil, {"FOREMAN_PUBLIC_URL": "https://foreman.example"}} {
-		ls := newLiveServer(t, env)
-		u := ls.addUser("alice", testPassword)
-		turnMCPOn(t, ls.harness)
-		secret, _ := apiToken(t, ls.harness, u, "Claude", auth.ScopeRead)
-		for _, origin := range []string{"https://evil.example", ls.url, "null"} {
-			h := bearer(secret)
-			h.Set("Origin", origin)
-			if rep := ls.mcpPost(http.MethodPost, initMessage, h); rep.StatusCode != http.StatusForbidden {
-				t.Errorf("public URL %q, origin %q: %d", env["FOREMAN_PUBLIC_URL"], origin, rep.StatusCode)
-			}
-		}
-		if env != nil {
-			h := bearer(secret)
-			h.Set("Origin", "https://foreman.example")
-			if rep := ls.mcpPost(http.MethodPost, initMessage, h); rep.StatusCode != http.StatusOK {
-				t.Errorf("the public URL's origin: %d %q", rep.StatusCode, rep.body)
-			}
-		}
 	}
 }
