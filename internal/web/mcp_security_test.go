@@ -38,19 +38,15 @@ func mcpReq(hn *harness, peer string, header http.Header, mods ...func(*http.Req
 	return hn.serve(r)
 }
 
-// mcpTokenCount names each test token uniquely.
-var mcpTokenCount int
-
-// mcpUser is a harness user with MCP on and a token of the given scope.
-func mcpUser(t *testing.T, hn *harness, scope string) (string, store.APIToken) {
+// mcpOn turns MCP on and returns alice, adding her if she is missing.
+func mcpOn(t *testing.T, hn *harness) store.User {
 	t.Helper()
 	u, ok, _ := hn.store.UserByUsername(context.Background(), "alice")
 	if !ok {
 		u = addTestUser(t, hn)
 	}
 	turnMCPOn(t, hn)
-	mcpTokenCount++
-	return apiToken(t, hn, u, fmt.Sprintf("T%d", mcpTokenCount), scope)
+	return u
 }
 
 // 14.19 Format: "fmn_" then 43 base64url characters, 32 random bytes.
@@ -98,20 +94,25 @@ func addTestUser(t *testing.T, hn *harness) store.User {
 // and schemes holding a working secret count for nothing.
 func TestMCPSecOnlyBearerHeader(t *testing.T) {
 	hn := newHarness(t, nil)
-	secret, _ := mcpUser(t, hn, auth.ScopeRead)
+	secret, _ := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	for name, h := range map[string]http.Header{
 		"X-Api-Key":     {"X-Api-Key": {secret}},
 		"Token scheme":  {"Authorization": {"Token " + secret}},
 		"bare secret":   {"Authorization": {secret}},
 		"proxy header":  {"Proxy-Authorization": {"Bearer " + secret}},
 		"x-auth-token":  {"X-Auth-Token": {secret}},
+		"no header":     nil,
+		"Basic raw":     {"Authorization": {"Basic " + secret}},
 		"Basic encoded": {"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte("alice:"+secret))}},
 	} {
 		if rec := mcpReq(hn, peerUntrusted, h); rec.Code != http.StatusUnauthorized {
 			t.Errorf("%s: %d", name, rec.Code)
 		}
 	}
-	// A query token is ignored even beside a bad bearer.
+	// A query token is ignored, alone or beside a bad bearer.
+	if rec := mcpReq(hn, peerUntrusted, nil, func(r *http.Request) { r.URL.RawQuery = "token=" + secret }); rec.Code != http.StatusUnauthorized {
+		t.Errorf("query alone: %d", rec.Code)
+	}
 	rec := mcpReq(hn, peerUntrusted, bearer("fmn_x"), func(r *http.Request) { r.URL.RawQuery = "access_token=" + secret })
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("query beside a bad bearer: %d", rec.Code)
@@ -126,7 +127,7 @@ func TestMCPSecOnlyBearerHeader(t *testing.T) {
 // one a 401 naming "revoked" for good.
 func TestMCPSec401Wording(t *testing.T) {
 	hn := newHarness(t, nil)
-	secret, tok := mcpUser(t, hn, auth.ScopeRead)
+	secret, tok := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	tokens := auth.NewAPITokens(hn.store, hn.clock.Now)
 	for _, s := range []string{"fmn_short", auth.TokenPrefix + strings.Repeat("Z", 43), strings.ToUpper(secret[:4]) + secret[4:], secret + "A"} {
 		rec := mcpReq(hn, peerUntrusted, bearer(s))
@@ -163,7 +164,7 @@ func TestMCPSec401Wording(t *testing.T) {
 // access log records the path only. Every refusal path is exercised.
 func TestMCPSecTokenNeverLogged(t *testing.T) {
 	hn := newHarness(t, nil)
-	secret, tok := mcpUser(t, hn, auth.ScopeRead)
+	secret, tok := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	q := func(r *http.Request) { r.URL.RawQuery = "token=" + secret }
 	mcpReq(hn, peerUntrusted, bearer(secret), q)
 	mcpReq(hn, peerUntrusted, bearer(secret), withHeader("Origin", "https://evil.example"))
@@ -191,7 +192,7 @@ func TestMCPSecTokenNeverLogged(t *testing.T) {
 // even with a working token; another /64 is untouched.
 func TestMCPSecAddressLimitIPv6Slash64(t *testing.T) {
 	hn := newHarness(t, nil)
-	secret, _ := mcpUser(t, hn, auth.ScopeRead)
+	secret, _ := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	bad := bearer(auth.TokenPrefix + strings.Repeat("B", 43))
 	for i := range auth.LimitPerAddress {
 		peer := fmt.Sprintf("[2001:db8:1:2::%x]:4000", i+1)
@@ -227,7 +228,7 @@ func TestMCPSecAddressLimitIPv6Slash64(t *testing.T) {
 // rotating it does not escape the limit.
 func TestMCPSecAddressLimitProxyAware(t *testing.T) {
 	hn := newHarness(t, map[string]string{"FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8"})
-	secret, _ := mcpUser(t, hn, auth.ScopeRead)
+	secret, _ := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	bad := bearer(auth.TokenPrefix + strings.Repeat("C", 43))
 	xff := func(a string) func(*http.Request) { return withHeader("X-Forwarded-For", a) }
 	for range auth.LimitPerAddress {
@@ -251,8 +252,8 @@ func TestMCPSecAddressLimitProxyAware(t *testing.T) {
 // 429 with Retry-After; the count is per token and the next window opens.
 func TestMCPSecPerTokenMinute(t *testing.T) {
 	hn := newHarness(t, nil)
-	secret, _ := mcpUser(t, hn, auth.ScopeRead)
-	other, _ := mcpUser(t, hn, auth.ScopeRead)
+	secret, _ := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
+	other, _ := apiToken(t, hn, mcpOn(t, hn), "Other", auth.ScopeRead)
 	for i := range auth.TokenRequestsPerMinute {
 		if rec := mcpReq(hn, peerUntrusted, bearer(secret)); rec.Code != http.StatusOK {
 			t.Fatalf("request %d: %d", i+1, rec.Code)
@@ -285,7 +286,7 @@ func TestMCPSecPerTokenMinute(t *testing.T) {
 // held open by bodies that have not finished arriving.
 func TestMCPSecPerTokenConcurrency(t *testing.T) {
 	ls := newLiveServer(t, nil)
-	secret, _ := mcpUser(t, ls.harness, auth.ScopeRead)
+	secret, _ := apiToken(t, ls.harness, mcpOn(t, ls.harness), "Claude", auth.ScopeRead)
 	type held struct {
 		w    *io.PipeWriter
 		done chan int
@@ -340,7 +341,7 @@ func TestMCPSecPerTokenConcurrency(t *testing.T) {
 // 14.19 Limits: a request body is at most 4 MiB.
 func TestMCPSecBodyLimit(t *testing.T) {
 	ls := newLiveServer(t, nil)
-	secret, _ := mcpUser(t, ls.harness, auth.ScopeRead)
+	secret, _ := apiToken(t, ls.harness, mcpOn(t, ls.harness), "Claude", auth.ScopeRead)
 	pad := func(n int) string { return initMessage + strings.Repeat(" ", n-len(initMessage)) }
 	if rep := ls.mcpPost(http.MethodPost, pad(mcpMaxBody), bearer(secret)); rep.StatusCode != http.StatusOK {
 		t.Errorf("exactly 4 MiB: %d %q", rep.StatusCode, rep.body)
@@ -356,7 +357,7 @@ func TestMCPSecBodyLimit(t *testing.T) {
 // 14.19 Limits: a body holds one JSON-RPC message; any batch is refused.
 func TestMCPSecOneMessage(t *testing.T) {
 	ls := newLiveServer(t, nil)
-	secret, _ := mcpUser(t, ls.harness, auth.ScopeRead)
+	secret, _ := apiToken(t, ls.harness, mcpOn(t, ls.harness), "Claude", auth.ScopeRead)
 	for _, body := range []string{"[" + initMessage + "]", "\r\n\t[" + initMessage + "," + initMessage + "]", "[]"} {
 		if rep := ls.mcpPost(http.MethodPost, body, bearer(secret)); rep.StatusCode != http.StatusBadRequest {
 			t.Errorf("batch %q: %d", body[:4], rep.StatusCode)
@@ -368,7 +369,7 @@ func TestMCPSecOneMessage(t *testing.T) {
 // neither get a 401 nor count toward the address's failures.
 func TestMCPSecOffBeforeTokenRead(t *testing.T) {
 	hn := newHarness(t, nil)
-	secret, _ := mcpUser(t, hn, auth.ScopeRead)
+	secret, _ := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	if err := hn.store.SetAppSetting(context.Background(), SettingMCP, "off", "alice", hn.clock.Now()); err != nil {
 		t.Fatal(err)
 	}
@@ -377,6 +378,14 @@ func TestMCPSecOffBeforeTokenRead(t *testing.T) {
 		if rec := mcpReq(hn, peerUntrusted, bad); rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "off") {
 			t.Fatalf("off: %d %q", rec.Code, rec.Body)
 		}
+	}
+	for _, h := range []http.Header{bearer(secret), nil} {
+		if rec := mcpReq(hn, peerUntrusted, h); rec.Code != http.StatusForbidden {
+			t.Errorf("off, working token or none: %d", rec.Code)
+		}
+	}
+	if rec := mcpReq(hn, peerUntrusted, bearer(secret), func(r *http.Request) { r.Method = http.MethodGet }); rec.Code != http.StatusForbidden {
+		t.Errorf("off GET: %d", rec.Code)
 	}
 	turnMCPOn(t, hn)
 	if rec := mcpReq(hn, peerUntrusted, bearer(secret)); rec.Code != http.StatusOK {
@@ -391,7 +400,7 @@ func TestMCPSecOrigin(t *testing.T) {
 	origin := func(o string) http.Header { return http.Header{"Origin": {o}} }
 
 	hn := newHarness(t, nil)
-	secret, _ := mcpUser(t, hn, auth.ScopeRead)
+	secret, _ := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	for _, o := range []string{"http://rebind.example", "http://rebind.example:8080", "http://localhost", "null", ""} {
 		h := origin(o)
 		h.Set("Authorization", "Bearer "+secret)
@@ -404,7 +413,7 @@ func TestMCPSecOrigin(t *testing.T) {
 	}
 
 	hn = newHarness(t, map[string]string{"FOREMAN_PUBLIC_URL": "https://foreman.example/sub/"})
-	secret, _ = mcpUser(t, hn, auth.ScopeRead)
+	secret, _ = apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	cases := map[string]int{
 		"https://foreman.example":      http.StatusOK,
 		"https://foreman.example/":     http.StatusForbidden,
@@ -440,7 +449,7 @@ func TestMCPSecOrigin(t *testing.T) {
 // with or without a token.
 func TestMCPSecMethods(t *testing.T) {
 	hn := newHarness(t, nil)
-	secret, _ := mcpUser(t, hn, auth.ScopeRead)
+	secret, _ := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
 	for _, m := range []string{http.MethodGet, http.MethodDelete, http.MethodPut, http.MethodPatch} {
 		for _, h := range []http.Header{bearer(secret), nil} {
 			rec := mcpReq(hn, peerUntrusted, h, func(r *http.Request) { r.Method = m })
