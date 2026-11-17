@@ -281,60 +281,83 @@ func TestMCPSecPerTokenMinute(t *testing.T) {
 	}
 }
 
+// heldBody is a request body that reports when the handler first reads it
+// (after the per-token slot is taken, before the SDK runs) and then waits
+// until released, keeping the request in flight.
+type heldBody struct {
+	reading chan struct{}
+	release chan struct{}
+	once    bool
+	r       io.Reader
+}
+
+func newHeldBody() *heldBody {
+	return &heldBody{reading: make(chan struct{}), release: make(chan struct{}), r: strings.NewReader(initMessage)}
+}
+
+func (h *heldBody) Read(p []byte) (int, error) {
+	if !h.once {
+		h.once = true
+		close(h.reading)
+		<-h.release
+	}
+	return h.r.Read(p)
+}
+
 // 14.19 Limits: at most 4 requests of one token running at once; the 5th
-// gets 429 with Retry-After, and a slot frees when one ends. Requests are
-// held open by bodies that have not finished arriving.
+// gets 429 with Retry-After, and a slot frees when one ends. The held
+// requests are served in-process with bodies that signal once the handler
+// reads them, so the fifth is sent only when all four hold a slot: no
+// probes that could race for a slot, and no sleeps.
 func TestMCPSecPerTokenConcurrency(t *testing.T) {
-	ls := newLiveServer(t, nil)
-	secret, _ := apiToken(t, ls.harness, mcpOn(t, ls.harness), "Claude", auth.ScopeRead)
+	hn := newHarness(t, nil)
+	secret, _ := apiToken(t, hn, mcpOn(t, hn), "Claude", auth.ScopeRead)
+	send := func(body io.Reader) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, PathMCP, body)
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Accept", "application/json, text/event-stream")
+		r.Header.Set("Authorization", "Bearer "+secret)
+		r.RemoteAddr = peerUntrusted
+		rec := httptest.NewRecorder()
+		hn.h.ServeHTTP(rec, r)
+		return rec
+	}
 	type held struct {
-		w    *io.PipeWriter
+		body *heldBody
 		done chan int
 	}
 	var open []held
-	for range auth.TokenConcurrent {
-		pr, pw := io.Pipe()
-		h := held{pw, make(chan int, 1)}
-		req, _ := http.NewRequest(http.MethodPost, ls.url+PathMCP, pr)
-		req.Header = http.Header{"Content-Type": {"application/json"}, "Accept": {"application/json, text/event-stream"}, "Authorization": {"Bearer " + secret}}
-		go func() {
-			resp, err := ls.client.Do(req)
-			if err != nil {
-				h.done <- -1
-				return
-			}
-			_, _ = io.Copy(io.Discard, resp.Body)
-			_ = resp.Body.Close()
-			h.done <- resp.StatusCode
-		}()
-		open = append(open, h)
-	}
 	t.Cleanup(func() {
 		for _, h := range open {
-			_ = h.w.Close()
+			select {
+			case <-h.body.release:
+			default:
+				close(h.body.release)
+			}
+			<-h.done
 		}
 	})
-	// The held requests take their slots as they arrive; wait for the 5th
-	// to be refused.
-	var rep reply
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		rep = ls.mcpPost(http.MethodPost, initMessage, bearer(secret))
-		if rep.StatusCode == http.StatusTooManyRequests || time.Now().After(deadline) {
-			break
+	for i := range auth.TokenConcurrent {
+		h := held{newHeldBody(), make(chan int, 1)}
+		open = append(open, h)
+		go func() { h.done <- send(h.body).Code }()
+		select {
+		case <-h.body.reading:
+		case code := <-h.done:
+			t.Fatalf("held request %d was answered %d before holding a slot", i+1, code)
 		}
-		time.Sleep(20 * time.Millisecond)
 	}
-	if rep.StatusCode != http.StatusTooManyRequests || rep.Header.Get("Retry-After") == "" {
-		t.Fatalf("5th at once: %d, Retry-After %q", rep.StatusCode, rep.Header.Get("Retry-After"))
+	rec := send(strings.NewReader(initMessage))
+	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("5th at once: %d, Retry-After %q", rec.Code, rec.Header().Get("Retry-After"))
 	}
-	_, _ = io.WriteString(open[0].w, initMessage)
-	_ = open[0].w.Close()
+	close(open[0].body.release)
 	if code := <-open[0].done; code != http.StatusOK {
 		t.Fatalf("a held request: %d", code)
 	}
-	if rep := ls.mcpPost(http.MethodPost, initMessage, bearer(secret)); rep.StatusCode != http.StatusOK {
-		t.Errorf("after one ended: %d %q", rep.StatusCode, rep.body)
+	open[0].done <- http.StatusOK // for the cleanup's wait
+	if rec := send(strings.NewReader(initMessage)); rec.Code != http.StatusOK {
+		t.Errorf("after one ended: %d %q", rec.Code, rec.Body)
 	}
 }
 
