@@ -2,14 +2,54 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
+
+// SPEC 21.5, 14.12: take_snapshot through a token is refused once the world
+// holds world.MaxTokenSnapshots snapshots taken through tokens. A snapshot
+// taken in the UI neither counts nor is refused, and an admin deleting one
+// frees room.
+func TestMCPSnapshotLimit(t *testing.T) {
+	g, cs := mcpRig(t, auth.ScopeOperate, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	for i := range world.MaxTokenSnapshots {
+		res, out := call(t, cs, "take_snapshot", map[string]any{"world_id": id, "label": fmt.Sprint("s", i)})
+		if res.IsError || out["finished"] != true {
+			t.Fatalf("snapshot %d: %s", i, resultText(res))
+		}
+	}
+	res, _ := call(t, cs, "take_snapshot", map[string]any{"world_id": id})
+	if !res.IsError || !strings.Contains(resultText(res), "limit") || !strings.Contains(resultText(res), "admin") {
+		t.Fatalf("the snapshot past the limit: %v %q", res.IsError, resultText(res))
+	}
+	list, _ := g.worlds.Snapshots(id)
+	if len(list) != world.MaxTokenSnapshots {
+		t.Errorf("a refused snapshot was taken: %d", len(list))
+	}
+
+	rec := g.do(http.MethodPost, snapshotsPath(id), url.Values{"label": {"By hand"}}, http.Header{"Cookie": {g.cookie.String()}})
+	if rec.StatusCode != http.StatusSeeOther {
+		t.Fatalf("a UI snapshot past the token limit: %d", rec.StatusCode)
+	}
+	if err := g.worlds.DeleteSnapshot(id, list[0].Name, func(world.Snapshot) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if res, _ := call(t, cs, "take_snapshot", map[string]any{"world_id": id}); res.IsError {
+		t.Errorf("after a delete: %s", resultText(res))
+	}
+	if res, _ := call(t, cs, "take_snapshot", map[string]any{"world_id": id}); !res.IsError {
+		t.Error("the limit did not hold again")
+	}
+}
 
 // SPEC 12.10, 14.19: revoking takes effect at once. A request that held
 // its body back while the token was revoked is refused, not served.

@@ -128,6 +128,9 @@ type Manifest struct {
 	Reason  string    `json:"reason"`
 	TakenAt time.Time `json:"taken_at"`
 	TakenBy string    `json:"taken_by"`
+	// ViaToken is true when an API token took the snapshot, which counts
+	// toward MaxTokenSnapshots (SPEC 21.5).
+	ViaToken bool `json:"via_token,omitempty"`
 	// Copied is true when a zip could not be hard-linked and was copied
 	// whole (SPEC 6.8).
 	Copied bool            `json:"copied,omitempty"`
@@ -161,6 +164,26 @@ func (s Snapshot) Size() uint64 {
 // a snapshot listed any other way reports Size.
 func (s Snapshot) DiskSize() uint64 { return s.Size() + s.manifestBytes }
 
+// MaxTokenSnapshots is how many manual snapshots taken through API tokens a
+// world may hold; the Server page's snapshot button has no such limit.
+const MaxTokenSnapshots = 10
+
+// TokenSnapshots counts the world's manual snapshots taken through an API
+// token.
+func (m *Manager) TokenSnapshots(id string) (int, error) {
+	list, err := m.Snapshots(id)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, s := range list {
+		if s.ViaToken && s.Reason == ReasonManual {
+			n++
+		}
+	}
+	return n, nil
+}
+
 // TakeSnapshot takes a manual snapshot of a world (SPEC 6.3).
 func (m *Manager) TakeSnapshot(id, label, by string) (Snapshot, error) {
 	unlock, err := m.Lock(id)
@@ -168,20 +191,21 @@ func (m *Manager) TakeSnapshot(id, label, by string) (Snapshot, error) {
 		return Snapshot{}, err
 	}
 	defer unlock()
-	return m.TakeSnapshotHeld(id, label, by)
+	return m.TakeSnapshotHeld(id, label, by, false)
 }
 
 // TakeSnapshotHeld is TakeSnapshot for a caller that already holds
 // Lock(id), such as server control after a /server-save (SPEC 6.10).
-func (m *Manager) TakeSnapshotHeld(id, label, by string) (Snapshot, error) {
-	return m.snapshot(id, ReasonManual, label, by)
+// viaToken records that an API token asked for it.
+func (m *Manager) TakeSnapshotHeld(id, label, by string, viaToken bool) (Snapshot, error) {
+	return m.snapshot(id, ReasonManual, label, by, viaToken)
 }
 
 // AutoSnapshot takes the automatic snapshot that comes before a risky
 // operation (SPEC 6.2), then applies retention. The caller holds Lock(id)
 // and must not run the operation if this returns an error.
 func (m *Manager) AutoSnapshot(id, reason, label, by string) (Snapshot, error) {
-	s, err := m.snapshot(id, reason, label, by)
+	s, err := m.snapshot(id, reason, label, by, false)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -201,7 +225,7 @@ func (m *Manager) pruneOrWarn(id string) {
 // snapshot copies a world into snapshots/<id>/<time>. It builds in a
 // partial folder and renames it into place, so a failure or crash leaves
 // nothing that looks like a snapshot.
-func (m *Manager) snapshot(id, reason, label, by string) (Snapshot, error) {
+func (m *Manager) snapshot(id, reason, label, by string, viaToken bool) (Snapshot, error) {
 	w, err := m.OpenWorld(id)
 	if err != nil {
 		return Snapshot{}, err
@@ -224,7 +248,7 @@ func (m *Manager) snapshot(id, reason, label, by string) (Snapshot, error) {
 	}
 	defer func() { _ = snaps.Close() }()
 
-	man := Manifest{Label: label, Reason: reason, TakenAt: m.now().UTC(), TakenBy: by, Files: files}
+	man := Manifest{Label: label, Reason: reason, TakenAt: m.now().UTC(), TakenBy: by, ViaToken: viaToken, Files: files}
 	partial := PrefixPartial + randomSuffix()
 	if err := m.fillSnapshot(w, snaps, partial, &man); err != nil {
 		_ = snaps.RemoveAll(partial)

@@ -240,7 +240,7 @@ func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label st
 	if _, err := c.saveRunning(ctx, id); err != nil {
 		return world.Snapshot{}, err
 	}
-	return c.worlds.TakeSnapshotHeld(id, label, by.Username)
+	return c.worlds.TakeSnapshotHeld(id, label, by.Username, by.Token != "")
 }
 
 // Restore puts the world back as a snapshot recorded it (SPEC 6.5). A
