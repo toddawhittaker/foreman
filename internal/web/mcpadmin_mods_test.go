@@ -2,9 +2,7 @@ package web
 
 import (
 	"context"
-	"html"
 	"maps"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -74,29 +72,6 @@ func (g *modsRig) wantUnchanged(was unchanged) {
 	}
 }
 
-var reAnyTag = regexp.MustCompile(`<[^>]*>`)
-
-// pageWords is a page's text with tags gone, as a reader sees it.
-func pageWords(body string) string {
-	return strings.Join(strings.Fields(html.UnescapeString(reAnyTag.ReplaceAllString(body, ""))), " ")
-}
-
-// wantWillOnPage checks every will sentence of a preview is on the UI's
-// confirm page (SPEC 21.8).
-func wantWillOnPage(t *testing.T, preview map[string]any, body string) {
-	t.Helper()
-	will, _ := preview["will"].([]any)
-	if len(will) == 0 {
-		t.Fatalf("no will sentences: %s", asJSON(preview))
-	}
-	words := pageWords(body)
-	for _, w := range will {
-		if !strings.Contains(words, w.(string)) {
-			t.Errorf("the page does not say %q", w)
-		}
-	}
-}
-
 func wantNoToken(t *testing.T, g *modsRig, outs ...any) {
 	t.Helper()
 	for _, o := range outs {
@@ -124,7 +99,11 @@ func TestMCPModToolsAnnotations(t *testing.T) {
 			continue
 		}
 		delete(want, tool.Name)
-		if tool.Annotations == nil || tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint != two {
+		if tool.Name == "search_mods" {
+			if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
+				t.Error("search_mods is not read-only")
+			}
+		} else if tool.Annotations == nil || tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint != two {
 			t.Errorf("%s's destructive hint is not %v", tool.Name, two)
 		}
 		if !strings.Contains(tool.Description, "untrusted_") {
@@ -171,7 +150,7 @@ func TestMCPChangeModsInstall(t *testing.T) {
 	wantIn(t, "preview", asJSON(preview), `"untrusted_name":"alpha"`, `"untrusted_name":"beta"`, "Download 2 mods")
 	g.wantUnchanged(was)
 	_, page := g.getStatus(kindPlanPath(id, mods.KindInstall, "alpha"))
-	wantWillOnPage(t, preview, page)
+	wantWill(t, strs(preview["will"]), pageWords(page))
 
 	res, out := call(t, cs, "change_mods", withCode(args, preview["confirm_code"].(string)))
 	if res.IsError || out["done"] != true {
@@ -274,7 +253,7 @@ func TestMCPChangeModsDropsOnARunningWorld(t *testing.T) {
 	wantIn(t, "preview", asJSON(preview), "save and stop Base", "then start Base again")
 	g.wantUnchanged(was)
 	_, page := g.getStatus(kindPlanPath(id, mods.KindDisable, "alpha"))
-	wantWillOnPage(t, preview, page)
+	wantWill(t, strs(preview["will"]), pageWords(page))
 	res, out := call(t, cs, "change_mods", withCode(args, preview[confirmCodeKey].(string)))
 	if res.IsError || out["done"] != true {
 		t.Fatalf("confirm: %s %s", resultText(res), asJSON(out))
@@ -368,7 +347,7 @@ func TestMCPChangeModSettings(t *testing.T) {
 	}
 	g.wantUnchanged(was)
 	page, _ := g.settingsForm(id)
-	wantWillOnPage(t, preview, page)
+	wantWill(t, strs(preview["will"]), pageWords(page))
 
 	res, out := call(t, cs, "change_mod_settings", withCode(args, preview[confirmCodeKey].(string)))
 	if res.IsError || out["done"] != true {

@@ -1,13 +1,8 @@
 package web
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"fmt"
-	"html"
-	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,7 +15,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
-	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -67,54 +61,6 @@ func (r *worldsRig) auditOf(action string) []store.AuditEntry {
 	return out
 }
 
-// dataDigest sums every file under the data folder: path, mode and bytes.
-func (r *worldsRig) dataDigest() string {
-	r.t.Helper()
-	root := filepath.Dir(r.worlds.Dirs().Worlds)
-	h := sha256.New()
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(root, p)
-		_, _ = fmt.Fprintf(h, "%s %v\n", rel, d.Type())
-		if d.Type().IsRegular() {
-			b, err := os.ReadFile(p) //nolint:gosec // a test temp folder
-			if err != nil {
-				return err
-			}
-			h.Write(b)
-		}
-		return nil
-	})
-	if err != nil {
-		r.t.Fatal(err)
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
-var tagRE = regexp.MustCompile(`<[^>]*>`)
-
-// pageText renders a page's content template in English as plain text.
-func pageText(t *testing.T, name string, p Page) string {
-	t.Helper()
-	var b bytes.Buffer
-	if err := newTestRenderer(t).pages[i18n.English][name].ExecuteTemplate(&b, "content", view{Page: p}); err != nil {
-		t.Fatalf("render %s: %v", name, err)
-	}
-	return strings.Join(strings.Fields(html.UnescapeString(tagRE.ReplaceAllString(b.String(), ""))), " ")
-}
-
-// wantParity checks each will sentence appears on the UI confirm page.
-func wantParity(t *testing.T, page string, will []string) {
-	t.Helper()
-	for _, w := range will {
-		if !strings.Contains(page, strings.Join(strings.Fields(w), " ")) {
-			t.Errorf("the confirm page lacks %q:\n%s", w, page)
-		}
-	}
-}
-
 func strs(v any) []string {
 	var out []string
 	list, _ := v.([]any)
@@ -133,19 +79,19 @@ func TestMCPDeleteWorld(t *testing.T) {
 	_, id := r.seedTwo()
 	args := map[string]any{"world_id": id}
 
-	before, audits := r.dataDigest(), len(r.audits())
+	before, audits := dataDigest(r.t, r.worlds.Dirs()), len(r.audits())
 	res, preview := call(t, r.cs, "delete_world", args)
 	if res.IsError || preview["done"] != false || preview["snapshot"] != "Before delete" || preview[confirmCodeKey] == "" {
 		t.Fatalf("preview: %s %s", resultText(res), asJSON(preview))
 	}
-	if r.dataDigest() != before || len(r.audits()) != audits {
+	if dataDigest(r.t, r.worlds.Dirs()) != before || len(r.audits()) != audits {
 		t.Fatal("the preview changed the data folder or the audit log")
 	}
 	sum, err := r.worlds.Get(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantParity(t, pageText(t, "delete", DeletePage{World: sum, FinalSnapshot: true}), strs(preview["will"]))
+	wantWill(t, strs(preview["will"]), pageText(t, DeletePage{World: sum, FinalSnapshot: true}))
 
 	res, out := call(t, r.cs, "delete_world", withCode(args, preview[confirmCodeKey].(string)))
 	if res.IsError || out["done"] != true || out["finished"] != true {
@@ -206,13 +152,13 @@ func TestMCPDeleteWorldRefusals(t *testing.T) {
 	if err := r.worlds.Rename(context.Background(), id, "Renamed"); err != nil {
 		t.Fatal(err)
 	}
-	before := r.dataDigest()
+	before := dataDigest(r.t, r.worlds.Dirs())
 	res, out := call(t, r.cs, "delete_world", withCode(args, code))
 	fresh, _ := out[confirmCodeKey].(string)
 	if !res.IsError || out["done"] != false || fresh == "" || fresh == code || !strings.Contains(resultText(res), "changed since the preview") {
 		t.Fatalf("moved: %s %s", resultText(res), asJSON(out))
 	}
-	if r.dataDigest() != before || len(r.auditOf(AuditWorldDelete)) != 0 {
+	if dataDigest(r.t, r.worlds.Dirs()) != before || len(r.auditOf(AuditWorldDelete)) != 0 {
 		t.Error("a moved world was acted on")
 	}
 }
@@ -430,19 +376,19 @@ func TestMCPFavorites(t *testing.T) {
 	}
 
 	args := map[string]any{"favorite_id": favID}
-	before, audits := r.dataDigest(), len(r.audits())
+	before, audits := dataDigest(r.t, r.worlds.Dirs()), len(r.audits())
 	res, preview := call(t, r.cs, "delete_favorite", args)
 	if res.IsError || preview["done"] != false || preview["snapshot"] != nil {
 		t.Fatalf("preview: %s %s", resultText(res), asJSON(preview))
 	}
-	if r.dataDigest() != before || len(r.audits()) != audits {
+	if dataDigest(r.t, r.worlds.Dirs()) != before || len(r.audits()) != audits {
 		t.Fatal("the preview changed the data folder or the audit log")
 	}
 	fav, _, err := r.favs.Get(favID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantParity(t, pageText(t, "favoritedelete", FavoriteDeletePage{Favorite: FavoriteRow{fav}}), strs(preview["will"]))
+	wantWill(t, strs(preview["will"]), pageText(t, FavoriteDeletePage{Favorite: FavoriteRow{fav}}))
 
 	// A rename since the preview moves the seen state.
 	code := preview[confirmCodeKey].(string)

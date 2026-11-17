@@ -2,14 +2,9 @@ package web
 
 import (
 	"context"
-	"crypto/sha256"
-	"fmt"
-	"html"
-	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -18,56 +13,8 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/game"
-	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
-
-// dataDigest hashes every file name and content under the data folder, so a
-// test can show that a preview changed nothing on disk (SPEC 21.8).
-func dataDigest(t *testing.T, g *gameRig) string {
-	t.Helper()
-	h := sha256.New()
-	root := filepath.Dir(g.worlds.Dirs().Worlds)
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		rel, _ := filepath.Rel(root, p)
-		b, err := os.ReadFile(p) //nolint:gosec // a test temp folder
-		if err != nil {
-			return err
-		}
-		_, _ = fmt.Fprintf(h, "%s %d\n", rel, len(b))
-		h.Write(b)
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
-var reTags = regexp.MustCompile(`<[^>]*>`)
-
-// wantWillOnPage fails unless each sentence of will appears in the text of
-// the UI page p rendered in English: the preview parity test (SPEC 21.8).
-func wantWillOnPage(t *testing.T, will []string, p Page) {
-	t.Helper()
-	r, err := sharedRenderer()
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, body := renderIn(t, r, pageCase{user: "alice", status: 200, page: p}, i18n.English)
-	text := strings.Join(strings.Fields(html.UnescapeString(reTags.ReplaceAllString(body, ""))), " ")
-	if len(will) == 0 {
-		t.Fatal("the preview has no will sentences")
-	}
-	for _, w := range will {
-		if want := strings.Join(strings.Fields(w), " "); !strings.Contains(text, want) {
-			t.Errorf("the preview says %q, which the page does not:\n%s", want, text)
-		}
-	}
-}
 
 func snapshotNamesOf(t *testing.T, g *gameRig, id string) []string {
 	t.Helper()
@@ -146,7 +93,7 @@ func TestMCPSnapshotToolsAreAdminAndTwoStep(t *testing.T) {
 func TestMCPRestoreSnapshot(t *testing.T) {
 	g, cs, id, snap, saved := adminRig(t)
 	args := map[string]any{"world_id": id, "snapshot": snap.Name}
-	digest, audits := dataDigest(t, g), len(g.audit())
+	digest, audits := dataDigest(t, g.worlds.Dirs()), len(g.audit())
 
 	res, out := call(t, cs, "restore_snapshot", args)
 	if res.IsError || out["done"] != false || out["snapshot"] != "Before restore" || out[confirmCodeKey] == "" {
@@ -155,7 +102,7 @@ func TestMCPRestoreSnapshot(t *testing.T) {
 	if !strings.Contains(asJSON(out["will"]), `First, take a snapshot of Base, labeled \"Before restore\"`) {
 		t.Errorf("will: %s", asJSON(out["will"]))
 	}
-	if dataDigest(t, g) != digest || len(g.audit()) != audits {
+	if dataDigest(t, g.worlds.Dirs()) != digest || len(g.audit()) != audits {
 		t.Fatal("the preview changed the data folder or the audit log")
 	}
 
@@ -304,7 +251,7 @@ func TestRestoreWillMatchesThePage(t *testing.T) {
 		"running": {WorldID: "base", WorldName: "Base", Snapshot: snap, Running: true, CountdownForm: defaultCountdown()},
 		"deleted": {WorldID: "base", WorldName: "Base", Snapshot: snap, Deleted: true, CountdownForm: defaultCountdown()},
 	} {
-		t.Run(name, func(t *testing.T) { wantWillOnPage(t, restoreWill(p), p) })
+		t.Run(name, func(t *testing.T) { wantWill(t, restoreWill(p), pageText(t, p)) })
 	}
 }
 
@@ -329,13 +276,13 @@ func TestMCPDeleteSnapshots(t *testing.T) {
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	snaps := threeSnapshots(t, g, id)
 	args := map[string]any{"world_id": id, "snapshots": []string{snaps[0].Name, snaps[1].Name}}
-	digest, audits := dataDigest(t, g), len(g.audit())
+	digest, audits := dataDigest(t, g.worlds.Dirs()), len(g.audit())
 
 	res, out := call(t, cs, "delete_snapshots", args)
 	if res.IsError || out["done"] != false || out[confirmCodeKey] == "" || !strings.Contains(asJSON(out["deleting"]), `"untrusted_label":"One"`) {
 		t.Fatalf("preview: %s %s", resultText(res), asJSON(out))
 	}
-	if dataDigest(t, g) != digest || len(g.audit()) != audits {
+	if dataDigest(t, g.worlds.Dirs()) != digest || len(g.audit()) != audits {
 		t.Fatal("the preview changed the data folder or the audit log")
 	}
 
@@ -479,5 +426,5 @@ func TestBulkWillMatchesThePage(t *testing.T) {
 		{WorldID: "base", WorldName: "Base", Snapshot: snap, Rollback: "2.0.77"},
 		{WorldID: "base", WorldName: "Base", Snapshot: world.Snapshot{Name: "20261102T130000Z", Manifest: world.Manifest{Label: "Two", Reason: world.ReasonManual, TakenAt: snap.TakenAt}}},
 	}}
-	wantWillOnPage(t, bulkWill(p), p)
+	wantWill(t, bulkWill(p), pageText(t, p))
 }

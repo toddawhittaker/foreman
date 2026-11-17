@@ -34,7 +34,7 @@ func (s *server) addModTools(srv *mcp.Server) {
 	if s.game == nil || s.planner == nil {
 		return
 	}
-	mcp.AddTool(srv, &mcp.Tool{Name: "search_mods", Annotations: oneStep,
+	mcp.AddTool(srv, &mcp.Tool{Name: "search_mods", Annotations: readOnly,
 		Description: "Search the mod portal for mods that fit a world's game version, as the Mods tab's search does. A pasted mod portal link finds that one mod." +
 			modTextNote}, s.mcpSearchMods)
 	mcp.AddTool(srv, &mcp.Tool{Name: "change_mods", Annotations: twoStep,
@@ -233,7 +233,7 @@ func (s *server) modsPreview(ctx context.Context, p ModPlanPage) mcpChangeModsOu
 	out.UntrustedDrops = p.Drops
 	out.Will = planWill(p)
 	if len(out.Will) > 0 && p.RunSnapshot.IsZero() {
-		out.Snapshot = inEnglish(i18n.M("worlds.snapshot.label.before_mods"))
+		out.Snapshot = world.LabelBeforeMods
 	}
 	if p.Running {
 		out.UntrustedOnline = s.online(ctx, p.World.ID).Names
@@ -255,7 +255,7 @@ func planWill(p ModPlanPage) []string {
 		will = append(will, inEnglish(i18n.M("mods.plan.step.stop", "world", p.World.Name)))
 	}
 	if p.RunSnapshot.IsZero() {
-		will = append(will, inEnglish(i18n.M("mods.plan.step.snapshot", "label", i18n.M("worlds.snapshot.label.before_mods"))))
+		will = append(will, inEnglish(i18n.M("mods.plan.step.snapshot", "label", world.LabelBeforeMods)))
 	} else {
 		will = append(will, inEnglish(i18n.M("mods.plan.step.snapshot_kept", "time", momentUTC(p.RunSnapshot))))
 	}
@@ -290,13 +290,10 @@ func planRefusal(p ModPlanPage) string {
 // mcpChangeMods applies a mod plan in two steps, as handlePlan does (SPEC
 // 9.2, 9.14, 17.8, 21.8).
 func (s *server) mcpChangeMods(ctx context.Context, req *mcp.CallToolRequest, in mcpChangeModsIn) (*mcp.CallToolResult, mcpChangeModsOut, error) {
-	var seen confirmSeen
-	if in.ConfirmCode != "" {
-		// Spent before any check, so a refused confirm spends it too.
-		var err error
-		if seen, err = s.mcpSpend(req, in); err != nil {
-			return nil, mcpChangeModsOut{}, err
-		}
+	// Spent before any check, so a refused confirm spends it too.
+	seen, err := s.spendIfCode(req, in, in.ConfirmCode)
+	if err != nil {
+		return nil, mcpChangeModsOut{}, err
 	}
 	stop, err := stopOptions(in.CountdownSeconds)
 	if err != nil {
@@ -337,11 +334,8 @@ func (s *server) mcpChangeMods(ctx context.Context, req *mcp.CallToolRequest, in
 			p.Count(), sum.Name, mcpTool(req)))
 	}
 	if seen.moved(mcpPlanSeen(p)) {
-		res, out, err := preview(fmt.Sprintf("The plan for %s changed since the preview, so nothing was applied. Here is the new plan and a fresh code.", sum.Name))
-		if res != nil {
-			res.IsError = true
-		}
-		return res, out, err
+		return mcpRetryPreview(func() (*mcp.CallToolResult, mcpChangeModsOut, error) { return preview("") },
+			"The plan for %s changed since the preview, so nothing was applied. Here is the new plan and a fresh code.", sum.Name)
 	}
 	op, unused, err := s.planOp(p, p.Form)
 	if err != nil {
@@ -454,13 +448,13 @@ type mcpChangeModSettingsIn struct {
 
 type mcpChangeModSettingsOut struct {
 	mcpPreview
-	World            mcpWorldRef        `json:"world"`
-	UntrustedChanges []mcpSettingChange `json:"untrusted_changes,omitempty"`
-	UntrustedRefused []string           `json:"untrusted_refused,omitempty"`
-	Result           *mcpActionOut      `json:"result,omitempty"`
+	World            mcpWorldRef           `json:"world"`
+	UntrustedChanges []mcpModSettingChange `json:"untrusted_changes,omitempty"`
+	UntrustedRefused []string              `json:"untrusted_refused,omitempty"`
+	Result           *mcpActionOut         `json:"result,omitempty"`
 }
 
-type mcpSettingChange struct {
+type mcpModSettingChange struct {
 	UntrustedName string `json:"untrusted_name"`
 	UntrustedFrom string `json:"untrusted_from"`
 	UntrustedTo   string `json:"untrusted_to"`
@@ -485,8 +479,8 @@ func (s *server) settingsRunSnapshot(p ModSettingsPage) time.Time {
 	return time.Time{}
 }
 
-// settingsWill is the editor's "what saving does" text.
-func settingsWill(p ModSettingsPage, run time.Time) []string {
+// modSettingsWill is the editor's "what saving does" text.
+func modSettingsWill(p ModSettingsPage, run time.Time) []string {
 	summary, will := i18n.M("mods.settings.edit.summary"), []string{}
 	if p.Running {
 		summary = i18n.M("mods.settings.edit.summary_running")
@@ -496,7 +490,7 @@ func settingsWill(p ModSettingsPage, run time.Time) []string {
 		will = append(will, inEnglish(i18n.M("mods.plan.warn_stop")))
 	}
 	if run.IsZero() {
-		will = append(will, inEnglish(i18n.M("mods.plan.snapshot", "world", p.World.Name, "label", i18n.M("worlds.snapshot.label.before_mods"))))
+		will = append(will, inEnglish(i18n.M("mods.plan.snapshot", "world", p.World.Name, "label", world.LabelBeforeMods)))
 	} else {
 		will = append(will, inEnglish(i18n.M("mods.plan.step.snapshot_kept", "time", momentUTC(run))))
 	}
@@ -510,13 +504,10 @@ func settingsWill(p ModSettingsPage, run time.Time) []string {
 // mcpChangeModSettings saves changed mod settings in two steps, as
 // handleModSettingsSave does (SPEC 9.6, 9.13, 21.8).
 func (s *server) mcpChangeModSettings(ctx context.Context, req *mcp.CallToolRequest, in mcpChangeModSettingsIn) (*mcp.CallToolResult, mcpChangeModSettingsOut, error) {
-	var seen confirmSeen
-	if in.ConfirmCode != "" {
-		// Spent before any check, so a refused confirm spends it too.
-		var err error
-		if seen, err = s.mcpSpend(req, in); err != nil {
-			return nil, mcpChangeModSettingsOut{}, err
-		}
+	// Spent before any check, so a refused confirm spends it too.
+	seen, err := s.spendIfCode(req, in, in.ConfirmCode)
+	if err != nil {
+		return nil, mcpChangeModSettingsOut{}, err
 	}
 	stop, err := stopOptions(in.CountdownSeconds)
 	if err != nil {
@@ -544,7 +535,7 @@ func (s *server) mcpChangeModSettings(ctx context.Context, req *mcp.CallToolRequ
 		}
 		c, ok := parseField(f, raw)
 		if ok {
-			out.UntrustedChanges = append(out.UntrustedChanges, mcpSettingChange{UntrustedName: f.Name, UntrustedFrom: from, UntrustedTo: raw})
+			out.UntrustedChanges = append(out.UntrustedChanges, mcpModSettingChange{UntrustedName: f.Name, UntrustedFrom: from, UntrustedTo: raw})
 		}
 		return c, ok
 	})
@@ -568,9 +559,9 @@ func (s *server) mcpChangeModSettings(ctx context.Context, req *mcp.CallToolRequ
 		if err != nil {
 			return nil, mcpChangeModSettingsOut{}, err
 		}
-		ask.Will = settingsWill(p, run)
+		ask.Will = modSettingsWill(p, run)
 		if run.IsZero() {
-			ask.Snapshot = inEnglish(i18n.M("worlds.snapshot.label.before_mods"))
+			ask.Snapshot = world.LabelBeforeMods
 		}
 		if p.Running {
 			ask.UntrustedOnline = s.online(ctx, sum.ID).Names
@@ -583,11 +574,8 @@ func (s *server) mcpChangeModSettings(ctx context.Context, req *mcp.CallToolRequ
 			len(changes), sum.Name, mcpTool(req)))
 	}
 	if seen.moved(mcpSettingsSeen(p, run)) {
-		res, out, err := preview(fmt.Sprintf("The mod settings of %s changed since the preview, or the game started or stopped, so nothing was saved. Here is a fresh preview and code.", sum.Name))
-		if res != nil {
-			res.IsError = true
-		}
-		return res, out, err
+		return mcpRetryPreview(func() (*mcp.CallToolResult, mcpChangeModSettingsOut, error) { return preview("") },
+			"The mod settings of %s changed since the preview, or the game started or stopped, so nothing was saved. Here is a fresh preview and code.", sum.Name)
 	}
 	op, err := modSettingsOp(p, st, changes)
 	if err != nil {

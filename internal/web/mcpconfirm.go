@@ -205,6 +205,28 @@ func (s *server) mcpSpend(req *mcp.CallToolRequest, in any) (confirmSeen, error)
 	return s.confirms.spend(code, mcpToken(req).ID, mcpTool(req), args)
 }
 
+// spendIfCode spends the confirm code of a two-step call, when it has one,
+// and returns the hash of the state its preview showed. Every two-step tool
+// calls it first, before any refusal check, so a refused confirm still
+// spends the code.
+func (s *server) spendIfCode(req *mcp.CallToolRequest, in any, code string) (confirmSeen, error) {
+	if code == "" {
+		return confirmSeen{}, nil
+	}
+	return s.mcpSpend(req, in)
+}
+
+// mcpRetryPreview answers a confirm call whose state moved: a fresh preview
+// and code, marked as an error so nothing reads as done.
+func mcpRetryPreview[O any](preview func() (*mcp.CallToolResult, O, error), format string, a ...any) (*mcp.CallToolResult, O, error) {
+	res, out, err := preview()
+	if res != nil {
+		res = mcpText(format, a...)
+		res.IsError = true
+	}
+	return res, out, err
+}
+
 // mcpDetached runs work that may outlast the call and has no Server page
 // result for mcpRun to report (a clone, a world or snapshot delete). It
 // waits up to mcpWait; finished is false when the work is still running.

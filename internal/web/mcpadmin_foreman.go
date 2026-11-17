@@ -174,16 +174,6 @@ func onOff(on bool) string {
 	return "off"
 }
 
-// mcpProblemError words a form's problems in English, in the order the
-// form shows them. A problem never holds what was sent.
-func mcpProblemError(what string, ps []Problem) error {
-	var msgs []string
-	for _, p := range ps {
-		msgs = append(msgs, inEnglish(p.Message))
-	}
-	return fmt.Errorf("%s: %s", what, strings.Join(msgs, " "))
-}
-
 type mcpScheduleIn struct {
 	Enabled    bool   `json:"enabled" jsonschema:"whether Foreman restarts the world every day"`
 	Time       string `json:"time,omitempty" jsonschema:"the time of day, HH:MM, 24 hours"`
@@ -213,7 +203,7 @@ func (s *server) mcpSetSchedule(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, mcpScheduleOut{}, s.mcpFail("save the restart schedule", err)
 	}
 	if p.hasErrors() {
-		return nil, mcpScheduleOut{}, mcpProblemError("the restart schedule was not saved", p.Problems())
+		return nil, mcpScheduleOut{}, mcpProblems("the restart schedule was not saved", p.Problems())
 	}
 	out := s.scheduleOut()
 	if !out.Enabled {
@@ -279,7 +269,7 @@ func (s *server) mcpAddWebhook(ctx context.Context, req *mcp.CallToolRequest, in
 		return nil, mcpWebhookOut{}, s.mcpFail("add the webhook", err)
 	}
 	if p.hasErrors() {
-		return nil, mcpWebhookOut{}, mcpProblemError("the webhook was not added", p.Problems())
+		return nil, mcpWebhookOut{}, mcpProblems("the webhook was not added", p.Problems())
 	}
 	return mcpText("Webhook %d was added: %s, %s.", hook.ID, hook.Preset, hook.Host), mcpWebhookOut{Webhook: mcpWebhookOf(hook)}, nil
 }
@@ -328,7 +318,7 @@ func (s *server) mcpChangeWebhook(ctx context.Context, req *mcp.CallToolRequest,
 		return nil, mcpWebhookOut{}, s.mcpFail("save the webhook", err)
 	}
 	if p.hasErrors() {
-		return nil, mcpWebhookOut{}, mcpProblemError("the webhook was not changed", p.Problems())
+		return nil, mcpWebhookOut{}, mcpProblems("the webhook was not changed", p.Problems())
 	}
 	return mcpText("Webhook %d was saved: %s, %s.", saved.ID, saved.Preset, saved.Host), mcpWebhookOut{Webhook: mcpWebhookOf(saved)}, nil
 }
@@ -349,6 +339,11 @@ func webhookDeleteWill() []string {
 }
 
 func (s *server) mcpDeleteWebhook(ctx context.Context, req *mcp.CallToolRequest, in mcpDeleteWebhookIn) (*mcp.CallToolResult, mcpDeleteWebhookOut, error) {
+	// A code is spent before any check, so a refused call spends it too.
+	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	if err != nil {
+		return nil, mcpDeleteWebhookOut{}, err
+	}
 	hook, err := s.mcpWebhookNamed(ctx, in.WebhookID)
 	if err != nil {
 		return nil, mcpDeleteWebhookOut{}, err
@@ -358,30 +353,20 @@ func (s *server) mcpDeleteWebhook(ctx context.Context, req *mcp.CallToolRequest,
 	// language, events or address state before the confirm call makes the
 	// preview stale. A new address on the same host does not.
 	seen := fmt.Sprintf("%d %s %s %s %v %v %v", hook.ID, hook.Preset, hook.Host, hook.Lang, hook.OnEvents(), hook.Unreadable, hook.Plain)
-	preview := func(stale bool) (*mcp.CallToolResult, mcpDeleteWebhookOut, error) {
+	preview := func() (*mcp.CallToolResult, mcpDeleteWebhookOut, error) {
 		p, err := s.mcpAsk(req, in, seen)
 		if err != nil {
 			return nil, mcpDeleteWebhookOut{}, err
 		}
 		p.Will = webhookDeleteWill()
 		out.mcpPreview = p
-		text := fmt.Sprintf("Nothing has changed yet. Call delete_webhook again with the same arguments and confirm_code to delete webhook %d (%s, %s).", hook.ID, hook.Preset, hook.Host)
-		if stale {
-			text = fmt.Sprintf("Webhook %d changed since the preview, so nothing was deleted. Here is a fresh preview and code.", hook.ID)
-		}
-		res := mcpText("%s", text)
-		res.IsError = stale
-		return res, out, nil
+		return mcpText("Nothing has changed yet. Call delete_webhook again with the same arguments and confirm_code to delete webhook %d (%s, %s).", hook.ID, hook.Preset, hook.Host), out, nil
 	}
 	if in.ConfirmCode == "" {
-		return preview(false)
-	}
-	was, err := s.mcpSpend(req, in)
-	if err != nil {
-		return nil, mcpDeleteWebhookOut{}, err
+		return preview()
 	}
 	if was.moved(seen) {
-		return preview(true)
+		return mcpRetryPreview(preview, "Webhook %d changed since the preview, so nothing was deleted. Here is a fresh preview and code.", hook.ID)
 	}
 	if err := s.deleteWebhook(ctx, mcpActor(req), hook); err != nil {
 		if errors.Is(err, notify.ErrNoWebhook) {
@@ -407,7 +392,7 @@ type mcpAccountOut struct {
 // problems or its error, never the values sent.
 func mcpAccountRefusal(what string, p AccountPage) error {
 	if ps := p.Problems(); len(ps) > 0 {
-		return mcpProblemError(what, ps)
+		return mcpProblems(what, ps)
 	}
 	return fmt.Errorf("%s: %s", what, inEnglish(p.Error))
 }

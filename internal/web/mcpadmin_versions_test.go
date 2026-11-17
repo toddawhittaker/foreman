@@ -54,9 +54,9 @@ func TestMCPUpdateAndRollback(t *testing.T) {
 	save := g.readSave(id)
 	args := map[string]any{"world_id": id, "version": newVersion}
 
-	tree, audits := t5Tree(t, g), len(g.audit())
+	tree, audits := dataDigest(t, g.worlds.Dirs()), len(g.audit())
 	res, out := call(t, cs, "update_game_version", args)
-	t5Unchanged(t, g, "the update preview", tree, audits)
+	wantDataUnchanged(t, g, "the update preview", tree, audits)
 	if res.IsError || out["done"] != false || out["snapshot"] != world.LabelBeforeUpdate || out["confirm_code"] == "" ||
 		!strings.Contains(asJSON(out["will"]), "Set the world's game version to the new one.") {
 		t.Fatalf("update preview: %s %s", resultText(res), asJSON(out))
@@ -74,9 +74,9 @@ func TestMCPUpdateAndRollback(t *testing.T) {
 		t.Errorf("update snapshots: %s", asJSON(out))
 	}
 
-	tree, audits = t5Tree(t, g), len(g.audit())
+	tree, audits = dataDigest(t, g.worlds.Dirs()), len(g.audit())
 	res, out = call(t, cs, "rollback_game_version", map[string]any{"world_id": id})
-	t5Unchanged(t, g, "the rollback preview", tree, audits)
+	wantDataUnchanged(t, g, "the rollback preview", tree, audits)
 	if res.IsError || out["snapshot"] != world.LabelBeforeRestore || out["confirm_code"] == "" {
 		t.Fatalf("rollback preview: %s %s", resultText(res), asJSON(out))
 	}
@@ -93,7 +93,7 @@ func TestMCPUpdateAndRollback(t *testing.T) {
 func TestMCPVersionRefusals(t *testing.T) {
 	g, cs := t5VersionRig(t)
 	id := g.newWorld("Base", fixtureNoSA, false)
-	tree, audits := t5Tree(t, g), len(g.audit())
+	tree, audits := dataDigest(t, g.worlds.Dirs()), len(g.audit())
 	for _, c := range []struct {
 		tool string
 		args map[string]any
@@ -109,7 +109,7 @@ func TestMCPVersionRefusals(t *testing.T) {
 			t.Errorf("%s %v: %s, want %q", c.tool, c.args, resultText(res), c.want)
 		}
 	}
-	t5Unchanged(t, g, "the refusals", tree, audits)
+	wantDataUnchanged(t, g, "the refusals", tree, audits)
 }
 
 // SPEC 21.8 ruling 2: an update confirmed after the game started is
@@ -143,10 +143,10 @@ func TestMCPVersionPreviewParity(t *testing.T) {
 	sum := world.Summary{ID: "w1", Name: "Base", GameVersion: oldVersion}
 	for _, running := range []bool{false, true} {
 		up := UpdatePage{World: sum, Target: newVersion, Running: running, CountdownForm: defaultCountdown()}
-		t5WantWill(t, t5PageText(t, up), updateWill(up))
+		wantWill(t, updateWill(up), pageText(t, up))
 		rb := RollbackPage{World: sum, Running: running, Version: "2.0.77", CountdownForm: defaultCountdown(),
 			Snapshot: world.Snapshot{Name: "s1", Label: world.LabelBeforeUpdate, Reason: world.ReasonGameUpdate, TakenAt: time.Date(2026, 11, 17, 9, 30, 0, 0, time.UTC)}}
-		t5WantWill(t, t5PageText(t, rb), rollbackWill(rb))
+		wantWill(t, rollbackWill(rb), pageText(t, rb))
 	}
 }
 
@@ -177,4 +177,45 @@ func TestMCPUpdateStoppedIgnoresCountdown(t *testing.T) {
 	if res.IsError || out["confirm_code"] == "" {
 		t.Errorf("stopped world with a bad countdown: %s %s", resultText(res), asJSON(out))
 	}
+}
+
+// wantCodeSpentAfterVanish deletes a world after a preview and checks the
+// confirm is refused for the missing world, then that the code is gone
+// (SPEC 14.19: any use spends it, whatever else is refused).
+func wantCodeSpentAfterVanish(t *testing.T, g *gameRig, cs *mcp.ClientSession, tool, id, name string, args map[string]any, code string) {
+	t.Helper()
+	if err := g.worlds.Delete(context.Background(), id, name, false, "alice"); err != nil {
+		t.Fatal(err)
+	}
+	res, _ := call(t, cs, tool, withCode(args, code))
+	if !res.IsError || strings.Contains(resultText(res), errConfirmRefused.Error()) {
+		t.Fatalf("%s confirm for a vanished world: %s", tool, resultText(res))
+	}
+	if res, _ := call(t, cs, tool, withCode(args, code)); !res.IsError || !strings.Contains(resultText(res), errConfirmRefused.Error()) {
+		t.Errorf("%s: the code was not spent by the refused confirm: %s", tool, resultText(res))
+	}
+}
+
+// SPEC 14.19: a confirm refused because the world vanished still spends
+// its code, for each tool that names a world.
+func TestMCPVersionAndSettingsConfirmSpendsCodeWhenWorldVanishes(t *testing.T) {
+	g, cs := t5VersionRig(t)
+	g.newWorld("Base", fixtureNoSA, false)
+	g.addImage(newVersion)
+
+	up := g.newWorld("Update me", fixtureNoSA, false)
+	upArgs := map[string]any{"world_id": up, "version": newVersion}
+	wantCodeSpentAfterVanish(t, g, cs, "update_game_version", up, "Update me", upArgs, askCode(t, cs, "update_game_version", upArgs))
+
+	// Rollback needs an update behind it.
+	rb := g.newWorld("Roll me", fixtureNoSA, false)
+	if _, res, _ := confirmCall(t, cs, "update_game_version", map[string]any{"world_id": rb, "version": newVersion}); res.IsError {
+		t.Fatalf("update before rollback: %s", resultText(res))
+	}
+	rbArgs := map[string]any{"world_id": rb}
+	wantCodeSpentAfterVanish(t, g, cs, "rollback_game_version", rb, "Roll me", rbArgs, askCode(t, cs, "rollback_game_version", rbArgs))
+
+	st := g.newWorld("Settings", fixtureNoSA, false)
+	stArgs := map[string]any{"world_id": st, "settings": map[string]any{"max_players": 20}}
+	wantCodeSpentAfterVanish(t, g, cs, "change_game_settings", st, "Settings", stArgs, askCode(t, cs, "change_game_settings", stArgs))
 }

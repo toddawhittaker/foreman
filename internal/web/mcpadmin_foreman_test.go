@@ -561,3 +561,25 @@ func TestMCPSetPublicMods(t *testing.T) {
 		t.Errorf("audit after off %+v", rows)
 	}
 }
+
+// SPEC 14.19: a delete_webhook confirm refused because the webhook is gone
+// still spends its code.
+func TestMCPDeleteWebhookGoneStillSpendsCode(t *testing.T) {
+	r := newForemanRig(t, keyed)
+	ctx := context.Background()
+	hook, err := r.n.Add(ctx, notify.Setup{Preset: notify.Discord, URL: secret.New(hookURL), Events: defaultEvents(), Lang: "en"}, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := map[string]any{"webhook_id": hook.ID}
+	code := askCode(t, r.cs, "delete_webhook", args)
+	if err := r.n.Delete(ctx, hook.ID); err != nil {
+		t.Fatal(err)
+	}
+	if res, _ := r.run(t, "delete_webhook", withCode(args, code)); !res.IsError || strings.Contains(resultText(res), errConfirmRefused.Error()) {
+		t.Fatalf("confirm for a gone webhook: %s", resultText(res))
+	}
+	if res, _ := r.run(t, "delete_webhook", withCode(args, code)); !res.IsError || !strings.Contains(resultText(res), errConfirmRefused.Error()) {
+		t.Errorf("the code was not spent: %s", resultText(res))
+	}
+}
