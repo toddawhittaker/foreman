@@ -25,6 +25,27 @@ func TestSwitchCheckFaultIsNotARefusal(t *testing.T) {
 	}
 }
 
+// SPEC 12.9: an action made through an API token records the token's name in
+// its audit entry.
+func TestAuditEntryNamesTheAPIToken(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id, err := r.worlds.Create(context.Background(), "Empty", "2.1.24", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	by := Actor{UserID: 7, Username: "alice", Token: "bot"}
+	if err := r.c.Start(context.Background(), id, by, StartOptions{}); err == nil {
+		t.Fatal("a world with no save was not refused")
+	}
+	entries := r.audit.list()
+	if len(entries) == 0 {
+		t.Fatal("no audit entry")
+	}
+	if e := entries[len(entries)-1]; e.TokenName != "bot" || e.Username != "alice" {
+		t.Errorf("audit entry %+v, want token name bot and user alice", e)
+	}
+}
+
 // SPEC 12.9: a start or restart the checks refuse is recorded as a refusal,
 // with the reason, in one audit entry and one log line, and never as the
 // action itself.

@@ -36,9 +36,11 @@ test.describe("with a secret key", () => {
 
     await page.locator("#act-webhook-add").click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Add a webhook");
-    // Discord, every event and the admin's language are the defaults.
+    // Discord, every event but the token reminder and the admin's language
+    // are the defaults (SPEC 8.10).
     await expect(page.getByRole("radio", { name: "Discord" })).toBeChecked();
-    for (const box of await page.getByRole("checkbox").all()) await expect(box).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "An API token is about to expire" })).not.toBeChecked();
+    for (const box of await page.locator('input[name="events"]:not(#webhook-event-token-expiring)').all()) await expect(box).toBeChecked();
     await expect(page.getByLabel("Language of the messages")).toHaveValue("en");
     await checkPage(page);
 
@@ -49,7 +51,8 @@ test.describe("with a secret key", () => {
     await expect(page.locator("#notify-state")).toHaveText("1 webhook gets messages.");
     const row = page.locator("#webhook-1");
     await expect(row.getByRole("heading", { level: 2 })).toHaveText("Discord discord.com");
-    await expect(row).toContainText("All events");
+    await expect(row).toContainText("Start, stop, crash, crash loop, player joins, player leaves, scheduled restart, low disk");
+    await expect(row).not.toContainText("token expiring");
     await expectNoAddress(page);
     await checkPage(page);
 
@@ -61,10 +64,11 @@ test.describe("with a secret key", () => {
     await checkPage(page);
     await page.getByRole("checkbox", { name: "A player joins" }).uncheck();
     await page.getByRole("checkbox", { name: "A player leaves" }).uncheck();
+    await page.getByRole("checkbox", { name: "An API token is about to expire" }).check();
     await page.getByLabel("Language of the messages").selectOption("de");
     await page.getByRole("button", { name: "Save webhook" }).click();
     await expect(page.locator("#done-message")).toHaveText("Done: Saved the Discord webhook to discord.com.");
-    await expect(row).toContainText("Start, stop, crash, crash loop, scheduled restart, low disk");
+    await expect(row).toContainText("Start, stop, crash, crash loop, scheduled restart, low disk, token expiring");
     await expect(row.locator('dd[lang="de"]')).toHaveText("Deutsch");
 
     // Delete asks first; Cancel keeps it.
@@ -78,6 +82,42 @@ test.describe("with a secret key", () => {
     await expect(page.locator("#done-message")).toHaveText("Done: Deleted the Discord webhook to discord.com.");
     await expect(page.locator("#notify-empty")).toBeVisible();
 
+    expect(foreman.logs()).not.toContain(token);
+  });
+
+  test("the token reminder stays off until it is ticked, and saving does not tick it", async ({ page, foreman }) => {
+    await createAdmin(page);
+    await page.goto("/settings/notifications/new");
+    await page.getByLabel("Webhook address").fill(discordURL);
+    await page.getByRole("button", { name: "Add webhook" }).click();
+    await expect(page.locator("#done-message")).toContainText("Added the Discord webhook");
+    const stored = () => {
+      const db = new DatabaseSync(join(foreman.dataDir, "foreman.db"));
+      try {
+        return (db.prepare("SELECT events_off FROM webhooks WHERE id = 1").get() as { events_off: string }).events_off;
+      } finally {
+        db.close();
+      }
+    };
+    expect(stored()).toBe("token-expiring");
+
+    // Saving the page without touching the box keeps it off.
+    const reminder = page.getByRole("checkbox", { name: "An API token is about to expire" });
+    await page.getByRole("link", { name: "Edit the Discord webhook to discord.com" }).click();
+    await expect(reminder).not.toBeChecked();
+    await page.getByRole("checkbox", { name: "A player joins" }).uncheck();
+    await page.getByRole("button", { name: "Save webhook" }).click();
+    await expect(page.locator("#done-message")).toContainText("Saved the Discord webhook");
+    expect(stored()).toBe("player-join,token-expiring");
+
+    // Ticking it turns it on, and every event is then on but join.
+    await page.getByRole("link", { name: "Edit the Discord webhook to discord.com" }).click();
+    await expect(reminder).not.toBeChecked();
+    await reminder.check();
+    await page.getByRole("checkbox", { name: "A player joins" }).check();
+    await page.getByRole("button", { name: "Save webhook" }).click();
+    await expect(page.locator("#webhook-1")).toContainText("All events");
+    expect(stored()).toBe("");
     expect(foreman.logs()).not.toContain(token);
   });
 

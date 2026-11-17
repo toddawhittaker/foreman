@@ -23,6 +23,7 @@
   "notify.event.short.player_leave": "odchod hráče",
   "notify.event.short.scheduled_restart": "plánovaný restart",
   "notify.event.short.low_disk": "málo místa na disku",
+  "notify.event.short.token_expiring": "brzy vyprší token API",
   "notify.edit": "Upravit",
   "notify.edit.named": "Upravit webhook {preset} na {host}",
   "notify.delete.named": "Smazat webhook {preset} na {host}",
@@ -58,6 +59,7 @@
   "notify.event.player_leave": "hráč odejde",
   "notify.event.scheduled_restart": "se plánovaný restart provede nebo přeskočí",
   "notify.event.low_disk": "dochází místo na disku",
+  "notify.event.token_expiring": "brzy vyprší platnost tokenu API",
   "notify.events.none": "Je třeba vybrat aspoň jednu událost.",
   "notify.lang.label": "Jazyk zpráv",
   "notify.lang.hint": "Názvy ze hry a název světa se posílají tak, jak jsou napsané.",
@@ -75,5 +77,6 @@
   "notify.msg.player_leave": "{world}: {player} odešel.",
   "notify.msg.restart_ran": "{world}: plánovaný restart byl proveden.",
   "notify.msg.restart_skipped": "{world}: plánovaný restart byl přeskočen, protože hráči zůstali online.",
-  "notify.msg.low_disk": "{world}: na disku zbývá jen {free} volného místa. Až dojde, automatická uložení mohou selhat."
+  "notify.msg.low_disk": "{world}: na disku zbývá jen {free} volného místa. Až dojde, automatická uložení mohou selhat.",
+  "notify.msg.token_expiring": "Platnost tokenu API {token} (vlastník: {owner}) vyprší {expires}."
 }

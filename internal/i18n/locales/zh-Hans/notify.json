@@ -21,6 +21,7 @@
   "notify.event.short.player_leave": "玩家离开",
   "notify.event.short.scheduled_restart": "定时重启",
   "notify.event.short.low_disk": "磁盘空间不足",
+  "notify.event.short.token_expiring": "API 令牌即将到期",
   "notify.edit": "编辑",
   "notify.edit.named": "编辑发往 {host} 的 {preset} Webhook",
   "notify.delete.named": "删除发往 {host} 的 {preset} Webhook",
@@ -56,6 +57,7 @@
   "notify.event.player_leave": "有玩家离开",
   "notify.event.scheduled_restart": "定时重启执行或被跳过",
   "notify.event.low_disk": "磁盘空间不足",
+  "notify.event.token_expiring": "API 令牌即将到期",
   "notify.events.none": "请至少选择一个事件。",
   "notify.lang.label": "消息语言",
   "notify.lang.hint": "游戏中的名称和世界名称按原样发送。",
@@ -73,5 +75,6 @@
   "notify.msg.player_leave": "{world}：{player} 离开了游戏。",
   "notify.msg.restart_ran": "{world}：定时重启已执行。",
   "notify.msg.restart_skipped": "{world}：因玩家一直在线，定时重启已跳过。",
-  "notify.msg.low_disk": "{world}：磁盘空间仅剩 {free}。空间用完时自动存档可能失败。"
+  "notify.msg.low_disk": "{world}：磁盘空间仅剩 {free}。空间用完时自动存档可能失败。",
+  "notify.msg.token_expiring": "API 令牌 {token}（所有者：{owner}）将于 {expires} 到期。"
 }

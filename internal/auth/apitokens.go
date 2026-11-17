@@ -110,9 +110,6 @@ func State(t store.APIToken, now time.Time) TokenState {
 	}
 }
 
-// State is the package State at the manager's current time.
-func (m *APITokens) State(t store.APIToken) TokenState { return State(t, m.now()) }
-
 // CleanTokenName trims surrounding spaces and checks the name rule. The
 // rule refines SPEC 12.10's "letters, digits" to Unicode letters and
 // digits, so brackets stay out of the chat prefix "[name]".

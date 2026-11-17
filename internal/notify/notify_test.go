@@ -286,6 +286,30 @@ func TestEventsTurnedOffAreNotSent(t *testing.T) {
 	}
 }
 
+// A webhook stored without the reminder in its off-list (as one stored
+// before the event existed would have been, before migration 0010) is
+// sent it; one with it off is not (SPEC 8.10).
+func TestTokenExpiringOnlyToWebhooksThatTurnedItOn(t *testing.T) {
+	n, st, _ := newTest(t, testKey)
+	var on, off hits
+	onSrv, offSrv := server(t, &on, http.StatusNoContent), server(t, &off, http.StatusNoContent)
+	addRaw(t, n, st, Generic, onSrv.URL+"/hook", "en")
+	addRaw(t, n, st, Generic, offSrv.URL+"/hook", "en", TokenExpiring)
+	run(t, n)
+	n.Emit(Message{Event: TokenExpiring, Token: Token{Name: "Claude", Owner: "ann", Expires: time.Now()}})
+	n.Emit(Message{Event: Start, World: world})
+	waitFor(t, "both requests", func() bool { return on.n.Load() == 2 && off.n.Load() == 1 })
+	var body struct {
+		Event string `json:"event"`
+		Token struct{ Name, Owner string }
+	}
+	on.mu.Lock()
+	defer on.mu.Unlock()
+	if err := json.Unmarshal(on.bodies[0], &body); err != nil || body.Event != "token-expiring" || body.Token.Name != "Claude" || body.Token.Owner != "ann" {
+		t.Errorf("body %s (%v)", on.bodies[0], err)
+	}
+}
+
 // The message is in the webhook's own language (SPEC 22).
 func TestMessageInWebhookLanguage(t *testing.T) {
 	n, st, _ := newTest(t, testKey)

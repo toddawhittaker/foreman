@@ -94,3 +94,18 @@
   "text": "Main base: only 3.5 GB of disk space is free. Autosaves can fail when it runs out.",
   "free_bytes": 3500000000
 }
+{
+  "version": 1,
+  "event": "token-expiring",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "",
+    "name": ""
+  },
+  "text": "The API token Claude, owned by ann, expires at 2026-11-13 23:30 UTC.",
+  "token": {
+    "name": "Claude",
+    "owner": "ann",
+    "expires": "2026-11-13T23:30:05Z"
+  }
+}
