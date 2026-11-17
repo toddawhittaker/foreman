@@ -73,10 +73,12 @@ var (
 // satisfies it.
 type APITokenStore interface {
 	CreateAPIToken(ctx context.Context, userID int64, name, scope, secretHash string, now time.Time) (store.APIToken, error)
+	APIToken(ctx context.Context, id int64) (store.APIToken, error)
 	APITokenByHash(ctx context.Context, secretHash string) (store.APIToken, bool, error)
 	RenewAPIToken(ctx context.Context, id, ownerID int64, now time.Time) (store.APIToken, error)
 	RevokeAPIToken(ctx context.Context, id int64, now time.Time) (store.APIToken, error)
 	ListAPITokens(ctx context.Context) ([]store.APIToken, error)
+	APITokensOf(ctx context.Context, userID int64) ([]store.APIToken, error)
 	APITokensStartedBy(ctx context.Context, userID int64, cutoff time.Time) ([]store.APIToken, error)
 	APITokensDueReminder(ctx context.Context, notBefore, first, second time.Time) ([]store.APIToken, error)
 	SetAPITokenReminded(ctx context.Context, id int64, periodStart time.Time, n int) error
@@ -191,6 +193,32 @@ func (m *APITokens) Check(ctx context.Context, secret string) (store.APIToken, e
 	return t, nil
 }
 
+// Recheck reads a token again by its id and says whether it still works:
+// nil, ErrTokenExpired or ErrTokenRevoked, and ErrTokenUnknown when it is
+// gone. It records no use. A request calls it once its body is in, so a
+// revoke made while the body was on its way still counts (SPEC 12.10).
+func (m *APITokens) Recheck(ctx context.Context, id int64) error {
+	t, err := m.store.APIToken(ctx, id)
+	if errors.Is(err, store.ErrTokenNotFound) {
+		return ErrTokenUnknown
+	}
+	if err != nil {
+		return fmt.Errorf("auth: look up API token: %w", err)
+	}
+	switch State(t, m.now()) {
+	case TokenRevoked:
+		return ErrTokenRevoked
+	case TokenExpired:
+		return ErrTokenExpired
+	}
+	return nil
+}
+
+// Get returns the token with this id, or store.ErrTokenNotFound.
+func (m *APITokens) Get(ctx context.Context, id int64) (store.APIToken, error) {
+	return m.store.APIToken(ctx, id)
+}
+
 // Renew starts a new 30-day period for the owner's token, keeping its
 // secret. Another user's token is store.ErrTokenNotFound and a revoked one
 // store.ErrTokenRevoked. The caller must be signed in through a browser,
@@ -208,6 +236,11 @@ func (m *APITokens) Revoke(ctx context.Context, id int64) (store.APIToken, error
 // List returns every token, never with its secret or hash.
 func (m *APITokens) List(ctx context.Context) ([]store.APIToken, error) {
 	return m.store.ListAPITokens(ctx)
+}
+
+// OwnedBy returns one user's tokens, revoked ones too, never with a secret.
+func (m *APITokens) OwnedBy(ctx context.Context, userID int64) ([]store.APIToken, error) {
+	return m.store.APITokensOf(ctx, userID)
 }
 
 // Expiring returns the user's tokens that expire within 5 days or have

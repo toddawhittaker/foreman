@@ -3,7 +3,7 @@
 {{/* One token as a card: its facts, then its buttons (SPEC 12.10). Never the secret. */}}
 {{define "token-card" -}}
 <li id="{{.IDPrefix}}token-{{.ID}}" class="token-card">
-  <h3 class="token-card__title"><span class="ident">{{.Name}}</span> <span class="state state--token-{{.State}}">{{msg .StateWord}}</span></h3>
+  <h3 class="token-card__title"><span class="ident">{{.Name}}</span> <span class="state state--token-{{.StateClass}}">{{msg .StateWord}}</span></h3>
   <dl class="facts facts--inline">
     <div><dt>{{t "apitokens.fact.owner"}}</dt><dd>{{.Owner}}</dd></div>
     <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .ScopeWord}}</dd></div>

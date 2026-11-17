@@ -143,7 +143,7 @@ func TestMCPSnapshotsAndMods(t *testing.T) {
 		t.Fatal(err)
 	}
 	res, out := call(t, cs, "list_snapshots", map[string]any{"world_id": id})
-	if res.IsError || !strings.Contains(asJSON(out), `"label":"Before the rocket"`) {
+	if res.IsError || !strings.Contains(asJSON(out), `"untrusted_label":"Before the rocket"`) {
 		t.Errorf("list_snapshots: %s %s", resultText(res), asJSON(out))
 	}
 	res, out = call(t, cs, "list_mods", map[string]any{"world_id": id})

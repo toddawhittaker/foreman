@@ -260,3 +260,50 @@ func TestScopeIncludes(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 12.10: Recheck follows the token's state by id, without a secret.
+func TestRecheckFollowsState(t *testing.T) {
+	m, _, clk, ann := newTokens(t)
+	ctx := context.Background()
+	_, tok, _ := m.Create(ctx, ann, "c", ScopeRead)
+	if err := m.Recheck(ctx, tok.ID); err != nil {
+		t.Errorf("working: %v", err)
+	}
+	if err := m.Recheck(ctx, tok.ID+100); !errors.Is(err, ErrTokenUnknown) {
+		t.Errorf("unknown id: err = %v", err)
+	}
+	clk.Advance(TokenPeriod)
+	if err := m.Recheck(ctx, tok.ID); !errors.Is(err, ErrTokenExpired) {
+		t.Errorf("expired: err = %v", err)
+	}
+	if _, err := m.Renew(ctx, tok.ID, ann); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Revoke(ctx, tok.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Recheck(ctx, tok.ID); !errors.Is(err, ErrTokenRevoked) {
+		t.Errorf("revoked: err = %v", err)
+	}
+}
+
+func TestOwnedByListsOnlyTheUsersTokens(t *testing.T) {
+	m, s, _, ann := newTokens(t)
+	ctx := context.Background()
+	bob, err := s.CreateUser(ctx, "bob", "h", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, mine, _ := m.Create(ctx, ann, "mine", ScopeRead)
+	_, _, _ = m.Create(ctx, bob.ID, "theirs", ScopeRead)
+	got, err := m.OwnedBy(ctx, ann)
+	if err != nil || len(got) != 1 || got[0].ID != mine.ID {
+		t.Errorf("owned by ann: %+v %v", got, err)
+	}
+	if one, err := m.Get(ctx, mine.ID); err != nil || one.ID != mine.ID {
+		t.Errorf("get: %+v %v", one, err)
+	}
+	if _, err := m.Get(ctx, mine.ID+100); !errors.Is(err, store.ErrTokenNotFound) {
+		t.Errorf("get unknown: err = %v", err)
+	}
+}

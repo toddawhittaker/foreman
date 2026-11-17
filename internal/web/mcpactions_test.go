@@ -117,8 +117,8 @@ func TestMCPTakeSnapshot(t *testing.T) {
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	res, out := call(t, cs, "take_snapshot", map[string]any{"world_id": id, "label": "Before the boss"})
 	taken, _ := out["snapshots_taken"].([]any)
-	if res.IsError || out["finished"] != true || len(taken) != 1 || !strings.Contains(asJSON(taken), `"label":"Before the boss"`) ||
-		resultText(res) != `Foreman took the snapshot "Before the boss" of Base.` {
+	if res.IsError || out["finished"] != true || len(taken) != 1 || !strings.Contains(asJSON(taken), `"untrusted_label":"Before the boss"`) ||
+		resultText(res) != "Foreman took a snapshot of Base; its label is in untrusted_label." {
 		t.Fatalf("snapshot: %s %s", resultText(res), asJSON(out))
 	}
 	list, err := g.worlds.Snapshots(id)
