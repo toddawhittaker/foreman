@@ -76,6 +76,11 @@ func forceStopWill(p ForceStopPage) []string {
 }
 
 func (s *server) mcpForceStop(ctx context.Context, req *mcp.CallToolRequest, in mcpForceStopIn) (*mcp.CallToolResult, mcpForceStopOut, error) {
+	// The code is spent before any check, so a refused confirm spends it too.
+	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	if err != nil {
+		return nil, mcpForceStopOut{}, err
+	}
 	sum, err := s.mcpNamed(ctx, in.WorldID)
 	if err != nil {
 		return nil, mcpForceStopOut{}, err
@@ -101,10 +106,6 @@ func (s *server) mcpForceStop(ctx context.Context, req *mcp.CallToolRequest, in 
 	}
 	if in.ConfirmCode == "" {
 		return preview()
-	}
-	was, err := s.mcpSpend(req, in)
-	if err != nil {
-		return nil, mcpForceStopOut{}, err
 	}
 	if was.moved(seen) {
 		res, out, err := preview()
@@ -207,6 +208,11 @@ func (s *server) mcpPlayerDone(ctx context.Context, req *mcp.CallToolRequest, su
 
 // mcpKickBan is kick_player and ban_player; the tool's name says which.
 func (s *server) mcpKickBan(ctx context.Context, req *mcp.CallToolRequest, in mcpKickBanIn) (*mcp.CallToolResult, mcpPlayerOut, error) {
+	// The code is spent before any check, so a refused confirm spends it too.
+	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	if err != nil {
+		return nil, mcpPlayerOut{}, err
+	}
 	action := game.PlayerKick
 	if mcpTool(req) == "ban_player" {
 		action = game.PlayerBan
@@ -239,10 +245,6 @@ func (s *server) mcpKickBan(ctx context.Context, req *mcp.CallToolRequest, in mc
 	}
 	if in.ConfirmCode == "" {
 		return preview()
-	}
-	was, err := s.mcpSpend(req, in)
-	if err != nil {
-		return nil, mcpPlayerOut{}, err
 	}
 	if was.moved(seen) {
 		res, out, err := preview()
@@ -314,6 +316,11 @@ func consoleWill(sum world.Summary) []string {
 }
 
 func (s *server) mcpConsole(ctx context.Context, req *mcp.CallToolRequest, in mcpConsoleIn) (*mcp.CallToolResult, mcpConsoleOut, error) {
+	// The code is spent before any check, so a refused confirm spends it too.
+	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	if err != nil {
+		return nil, mcpConsoleOut{}, err
+	}
 	sum, err := s.mcpNamed(ctx, in.WorldID)
 	if err != nil {
 		return nil, mcpConsoleOut{}, err
@@ -337,10 +344,6 @@ func (s *server) mcpConsole(ctx context.Context, req *mcp.CallToolRequest, in mc
 	}
 	if in.ConfirmCode == "" {
 		return preview()
-	}
-	was, err := s.mcpSpend(req, in)
-	if err != nil {
-		return nil, mcpConsoleOut{}, err
 	}
 	if was.moved(seen) {
 		res, out, err := preview()

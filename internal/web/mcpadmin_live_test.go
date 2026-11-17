@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -287,7 +288,9 @@ func TestPlayerWillMatchesThePage(t *testing.T) {
 // once, audited with the token's name, and refuse what the page refuses.
 func TestMCPPlayerAction(t *testing.T) {
 	g, cs, id := liveRig(t)
-	for action, command := range map[string]string{"promote": "/promote bob", "demote": "/demote bob"} {
+	// Promote first: the game refuses to demote a player who is not an admin.
+	for _, action := range []string{"promote", "demote"} {
+		command := "/" + action + " bob"
 		res, out := call(t, cs, "player_action", map[string]any{"world_id": id, "action": action, "name": "bob"})
 		if res.IsError || out["done"] != true {
 			t.Fatalf("%s: %s %s", action, resultText(res), asJSON(out))
@@ -426,4 +429,67 @@ func TestMCPConsoleCodeIsForTheCommandAsked(t *testing.T) {
 	if !res.IsError || len(g.consoleCommands(id)) != 0 {
 		t.Errorf("a code for another command: %s, sent %q", resultText(res), g.consoleCommands(id))
 	}
+}
+
+// SPEC 14.19, 21.8: a confirm whose checks refuse still spends its code, so
+// the same code is refused as a code, not as the check, the second time.
+func TestMCPTwoStepToolsSpendTheCodeBeforeTheirChecks(t *testing.T) {
+	spent := func(t *testing.T, cs *mcp.ClientSession, tool string, args map[string]any, code string) {
+		t.Helper()
+		res, _ := call(t, cs, tool, withCode(args, code))
+		if !res.IsError || strings.Contains(resultText(res), "confirm code") {
+			t.Errorf("the confirm after the state changed should be refused by its check: %s", resultText(res))
+		}
+		res, _ = call(t, cs, tool, withCode(args, code))
+		if !res.IsError || !strings.Contains(resultText(res), "confirm code was refused") {
+			t.Errorf("the code was not spent by the refused confirm: %s", resultText(res))
+		}
+	}
+	t.Run("run_console_command", func(t *testing.T) {
+		g, cs, id := liveRig(t)
+		args := map[string]any{"world_id": id, "command": "/time"}
+		code := askCode(t, cs, "run_console_command", args)
+		call(t, cs, "stop_server", map[string]any{"world_id": id, "countdown_seconds": 0})
+		spent(t, cs, "run_console_command", args, code)
+		if slices.Contains(g.consoleCommands(id), "/time") {
+			t.Errorf("sent %q", g.consoleCommands(id))
+		}
+	})
+	t.Run("force_stop", func(t *testing.T) {
+		g, cs, id := liveRig(t)
+		args := map[string]any{"world_id": id}
+		code := askCode(t, cs, "force_stop", args)
+		call(t, cs, "stop_server", map[string]any{"world_id": id, "countdown_seconds": 0})
+		spent(t, cs, "force_stop", args, code)
+		if g.hasAudit(game.AuditForceStop) {
+			t.Error("force stop audited")
+		}
+	})
+	t.Run("kick_player", func(t *testing.T) {
+		g, cs, id := liveRig(t)
+		args := map[string]any{"world_id": id, "name": "bob"}
+		code := askCode(t, cs, "kick_player", args)
+		if err := g.fake.Leave(game.ContainerName(id), "bob"); err != nil {
+			t.Fatal(err)
+		}
+		spent(t, cs, "kick_player", args, code)
+	})
+	t.Run("restore_snapshot", func(t *testing.T) {
+		g, cs, id, snap, _ := adminRig(t)
+		args := map[string]any{"world_id": id, "snapshot": snap.Name}
+		code := askCode(t, cs, "restore_snapshot", args)
+		if err := g.worlds.DeleteSnapshot(id, snap.Name, func(world.Snapshot) error { return nil }); err != nil {
+			t.Fatal(err)
+		}
+		spent(t, cs, "restore_snapshot", args, code)
+	})
+	t.Run("delete_snapshots", func(t *testing.T) {
+		g, cs, id, snap, _ := adminRig(t)
+		args := map[string]any{"world_id": id, "snapshots": []string{snap.Name}}
+		code := askCode(t, cs, "delete_snapshots", args)
+		if err := g.worlds.DeleteSnapshot(id, snap.Name, func(world.Snapshot) error { return nil }); err != nil {
+			t.Fatal(err)
+		}
+		spent(t, cs, "delete_snapshots", args, code)
+	})
 }
