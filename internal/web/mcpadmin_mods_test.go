@@ -205,7 +205,7 @@ func TestMCPChangeModsMovedPlan(t *testing.T) {
 	if !res.IsError || out["done"] != false || again == "" || again == code || !strings.Contains(resultText(res), "changed since the preview") {
 		t.Fatalf("moved: %s %s", resultText(res), asJSON(out))
 	}
-	if !strings.Contains(asJSON(out), `"to":"1.1.0"`) || g.modSnapshots(id) != 0 || len(g.auditByToken(game.AuditMods)) != 0 {
+	if !strings.Contains(asJSON(out), `"untrusted_to":"1.1.0"`) || g.modSnapshots(id) != 0 || len(g.auditByToken(game.AuditMods)) != 0 {
 		t.Fatalf("the fresh plan or the world: %s", asJSON(out))
 	}
 	// The mods folder moving is refused the same way.
@@ -438,4 +438,120 @@ func TestMCPChangeModSettingsRefusals(t *testing.T) {
 		t.Errorf("no change: %s %s", resultText(res), asJSON(out))
 	}
 	g.wantUnchanged(was)
+}
+
+// SPEC 21.8, 7.6: a game that started between the calls is refused with a
+// fresh preview, since the preview never said it would stop.
+func TestMCPChangeModsGameStarted(t *testing.T) {
+	g, cs := modsMCP(t, true)
+	id := g.world20("Base", "alpha_1.0.0")
+	args := map[string]any{"world_id": id, "kind": "disable", "names": []string{"alpha"}}
+	code := askCode(t, cs, "change_mods", args)
+	g.startGame(id)
+	res, out := call(t, cs, "change_mods", withCode(args, code))
+	fresh, _ := out[confirmCodeKey].(string)
+	if !res.IsError || fresh == "" || fresh == code || out["running"] != true || g.modSnapshots(id) != 0 {
+		t.Fatalf("started: %s %s", resultText(res), asJSON(out))
+	}
+	wantIn(t, "fresh preview", asJSON(out), "save and stop Base")
+}
+
+// SPEC 14.19: a confirm refused by any check still spends its code.
+func TestMCPModToolsRefusedConfirmSpendsTheCode(t *testing.T) {
+	g, cs := modsMCP(t, true)
+	id := g.world20("Base", "fmtest_1.0.0", "alpha_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
+	for tool, args := range map[string]map[string]any{
+		"change_mods":         {"world_id": id, "kind": "disable", "names": []string{"alpha"}},
+		"change_mod_settings": {"world_id": id, "values": map[string]any{"fm-sta-int": "9"}},
+	} {
+		code := askCode(t, cs, tool, args)
+		bad := withCode(args, code)
+		bad["countdown_seconds"] = 9999
+		if res, _ := call(t, cs, tool, bad); !res.IsError || !strings.Contains(resultText(res), "countdown_seconds") {
+			t.Errorf("%s bad countdown: %s", tool, resultText(res))
+		}
+		if res, _ := call(t, cs, tool, withCode(args, code)); !res.IsError || resultText(res) != errConfirmRefused.Error() {
+			t.Errorf("%s: the code still works after a refusal: %s", tool, resultText(res))
+		}
+	}
+	if g.modSnapshots(id) != 0 {
+		t.Error("a refused confirm acted")
+	}
+}
+
+// SPEC 9.4, ADR 0014: inside an open run of mod changes on a stopped world,
+// the preview names no new snapshot and the run's one is kept.
+func TestMCPChangeModsInARun(t *testing.T) {
+	g, cs := modsMCP(t, true)
+	id := g.world20("Base", "alpha_1.0.0", "beta_1.0.0", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
+	if _, res, out := confirmCall(t, cs, "change_mods", map[string]any{"world_id": id, "kind": "disable", "names": []string{"alpha"}}); res.IsError {
+		t.Fatalf("first: %s %s", resultText(res), asJSON(out))
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	for tool, args := range map[string]map[string]any{
+		"change_mods":         {"world_id": id, "kind": "disable", "names": []string{"beta"}},
+		"change_mod_settings": {"world_id": id, "values": map[string]any{"fm-sta-int": "9"}},
+	} {
+		preview, res, out := confirmCall(t, cs, tool, args)
+		if _, ok := preview["snapshot"]; ok || !strings.Contains(asJSON(preview["will"]), "Keep the snapshot") {
+			t.Errorf("%s preview in a run: %s", tool, asJSON(preview))
+		}
+		if res.IsError || out["done"] != true {
+			t.Fatalf("%s: %s %s", tool, resultText(res), asJSON(out))
+		}
+	}
+	if n := g.modSnapshots(id); n != 1 {
+		t.Errorf("%d mod snapshots, want 1", n)
+	}
+}
+
+// SPEC 9.8, 9.10: a sync answers a save's mod the portal lacks with
+// nearest or without, and without is listed in untrusted_without.
+func TestMCPChangeModsSyncChoices(t *testing.T) {
+	g, cs := modsMCP(t, true)
+	id, err := g.worlds.Create(context.Background(), "Modded", "2.1.24", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.copySave(id, "2.1.24-space-age-testmod.zip")
+	res, out := call(t, cs, "change_mods", map[string]any{"world_id": id, "kind": "sync"})
+	if !res.IsError || !strings.Contains(asJSON(out), `"untrusted_name":"foreman-test"`) || out[confirmCodeKey] != nil {
+		t.Fatalf("unanswered: %s %s", resultText(res), asJSON(out))
+	}
+	args := map[string]any{"world_id": id, "kind": "sync", "choices": map[string]any{"foreman-test": "without"}}
+	preview, res, out := confirmCall(t, cs, "change_mods", args)
+	if !strings.Contains(asJSON(preview["untrusted_without"]), "foreman-test") || res.IsError || out["done"] != true {
+		t.Fatalf("without: %s %s %s", asJSON(preview), resultText(res), asJSON(out))
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+
+	g2, cs2 := modsMCP(t, true)
+	g2.portal.AddZipFor("2.1", "foreman-test", "0.2.0")
+	id2, err := g2.worlds.Create(context.Background(), "Modded", "2.1.24", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g2.copySave(id2, "2.1.24-space-age-testmod.zip")
+	_, out = call(t, cs2, "change_mods", map[string]any{"world_id": id2, "kind": "sync"})
+	if !strings.Contains(asJSON(out), `"nearest":"0.2.0"`) {
+		t.Fatalf("no nearest offered: %s", asJSON(out))
+	}
+	_, res, out = confirmCall(t, cs2, "change_mods", map[string]any{"world_id": id2, "kind": "sync", "choices": map[string]any{"foreman-test": "nearest"}})
+	if res.IsError || out["done"] != true {
+		t.Fatalf("nearest: %s %s", resultText(res), asJSON(out))
+	}
+	if err := g2.waitResult(id2, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if !g2.hasFile(id2, "foreman-test_0.2.0.zip") {
+		t.Errorf("nearest not installed: %v", dirNames(t, g2.modsDir(id2)))
+	}
 }
