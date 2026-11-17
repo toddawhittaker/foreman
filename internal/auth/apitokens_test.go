@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"path/filepath"
 	"regexp"
@@ -76,18 +78,50 @@ func TestCreateRefusesBadNameAndScope(t *testing.T) {
 	}
 }
 
-func TestCheckRefusesMalformedAndUnknown(t *testing.T) {
-	m, _, _, ann := newTokens(t)
-	ctx := context.Background()
-	secret, _, _ := m.Create(ctx, ann, "c", ScopeRead)
+// lookupFails is a store whose lookup must never run.
+type lookupFails struct {
+	APITokenStore
+	t *testing.T
+}
+
+func (l lookupFails) APITokenByHash(context.Context, string) (store.APIToken, bool, error) {
+	l.t.Fatal("a malformed secret reached the database (SPEC 14.19)")
+	return store.APIToken{}, false, nil
+}
+
+func TestCheckRefusesMalformedWithoutLookup(t *testing.T) {
+	m, _, clk, ann := newTokens(t)
+	secret, _, _ := m.Create(context.Background(), ann, "c", ScopeRead)
+	stub := NewAPITokens(lookupFails{t: t}, clk.Now)
 	for _, bad := range []string{
 		"", "fmn_", secret[4:], "xyz_" + secret[4:], secret + "A", secret[:len(secret)-1],
 		"fmn_" + strings.Repeat("=", 43), "fmn_" + strings.Repeat("A", 42) + "B", // last char has stray bits
-		"fmn_" + strings.Repeat("A", 43),
 	} {
-		if _, err := m.Check(ctx, bad); !errors.Is(err, ErrTokenUnknown) {
+		if _, err := stub.Check(context.Background(), bad); !errors.Is(err, ErrTokenUnknown) {
 			t.Errorf("Check(%q) err = %v, want ErrTokenUnknown", bad, err)
 		}
+	}
+}
+
+func TestCheckRefusesWellFormedUnknown(t *testing.T) {
+	m, _, _, _ := newTokens(t)
+	if _, err := m.Check(context.Background(), "fmn_"+strings.Repeat("A", 43)); !errors.Is(err, ErrTokenUnknown) {
+		t.Errorf("err = %v, want ErrTokenUnknown", err)
+	}
+}
+
+// SPEC 12.10: only the secret's SHA-256, as lowercase hex, is stored.
+func TestStoredHashIsTheSecretsSHA256(t *testing.T) {
+	m, s, _, ann := newTokens(t)
+	ctx := context.Background()
+	secret, tok, _ := m.Create(ctx, ann, "c", ScopeRead)
+	sum := sha256.Sum256([]byte(secret))
+	got, found, err := s.APITokenByHash(ctx, hex.EncodeToString(sum[:]))
+	if err != nil || !found || got.ID != tok.ID {
+		t.Errorf("lookup by the lowercase hex SHA-256: %+v found=%v err=%v", got, found, err)
+	}
+	if _, found, _ := s.APITokenByHash(ctx, secret); found {
+		t.Error("the secret itself is stored")
 	}
 }
 
@@ -109,14 +143,17 @@ func TestStateExpiryRenewAndRevoke(t *testing.T) {
 		t.Errorf("renew by another: err = %v", err)
 	}
 	renewed, err := m.Renew(ctx, tok.ID, ann)
-	if err != nil || m.State(renewed) != TokenWorking {
+	if err != nil || State(renewed, clk.Now()) != TokenWorking {
 		t.Fatalf("renew: %+v %v", renewed, err)
+	}
+	if got, want := ExpiresAt(renewed), clk.Now().Add(30*day); !got.Equal(want) {
+		t.Errorf("renewed token expires %v, want %v", got, want)
 	}
 	if _, err := m.Check(ctx, secret); err != nil {
 		t.Errorf("the same secret works after renewal: %v", err)
 	}
 	revoked, err := m.Revoke(ctx, tok.ID)
-	if err != nil || m.State(revoked) != TokenRevoked {
+	if err != nil || State(revoked, clk.Now()) != TokenRevoked {
 		t.Fatalf("revoke: %+v %v", revoked, err)
 	}
 	if _, err := m.Check(ctx, secret); !errors.Is(err, ErrTokenRevoked) {
