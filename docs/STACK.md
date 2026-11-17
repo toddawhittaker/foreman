@@ -48,6 +48,8 @@ is a copy and goes stale if they change without it.
   library cannot make relative to an open folder).
 - `golang.org/x/text`, direct from Epic 6, for language matching, plural
   rules and number formats (SPEC 22), v0.43.0.
+- `github.com/modelcontextprotocol/go-sdk` v1.8.0, direct from Epic 10a,
+  for the MCP endpoint (section 8).
 - `golang.org/x/image` v0.47.0, direct from fixes batch 2, to draw the
   demolisher territory labels into a downloaded map preview PNG (SPEC
   5.6): its `font/opentype` rasteriser and the Go Bold font, because the
@@ -205,7 +207,9 @@ The library is cheap to change; the `/mcp` path is hard to undo, because
 AI clients are configured with it.
 
 The MCP endpoint (SPEC 21) uses `modelcontextprotocol/go-sdk`, mounted at
-`/mcp` on the main server, with bearer API tokens (SPEC 12.10).
+`/mcp` on the main server, with bearer API tokens (SPEC 12.10). It runs
+in the SDK's stateless mode with plain JSON answers (SPEC 21.1), and only
+the `internal/web/mcp*.go` files import it, so it stays cheap to swap.
 
 Rejected:
 
