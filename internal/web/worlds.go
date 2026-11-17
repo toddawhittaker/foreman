@@ -572,6 +572,16 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 	s.page(w, r, status, u.Username, p)
 }
 
+// deleteDetail is world-delete's detail. The record is written before the
+// delete, which can still fail, so it says the delete was requested.
+func deleteDetail(name string, final bool) string {
+	snap := "no"
+	if final {
+		snap = "yes"
+	}
+	return fmt.Sprintf("%s: requested; final snapshot: %s", name, snap)
+}
+
 // AuditWorldDelete is the audit action of a world's delete (SPEC 12.9).
 const AuditWorldDelete = "world-delete"
 
@@ -602,7 +612,7 @@ func (s *server) deleteWorld(ctx context.Context, by game.Actor, sum world.Summa
 	unlock()
 	err = s.store.AddAudit(ctx, store.AuditEntry{
 		Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token,
-		Action: AuditWorldDelete, WorldID: sum.ID, Detail: fmt.Sprintf("%s, final snapshot %t", sum.Name, final),
+		Action: AuditWorldDelete, WorldID: sum.ID, Detail: deleteDetail(sum.Name, final),
 	})
 	if err != nil {
 		return fmt.Errorf("record the delete in the audit log: %w", err)

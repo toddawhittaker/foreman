@@ -159,7 +159,7 @@ func TestMCPDeleteWorld(t *testing.T) {
 		t.Errorf("final snapshot: %+v", snaps)
 	}
 	if got := r.auditOf(AuditWorldDelete); len(got) != 1 || got[0].TokenName != "Claude" || got[0].Username != "alice" ||
-		got[0].Detail != "Second, final snapshot true" || got[0].WorldID != id {
+		got[0].Detail != deleteDetail("Second", true) || got[0].WorldID != id {
 		t.Errorf("audit: %+v", got)
 	}
 
@@ -183,7 +183,7 @@ func TestMCPDeleteWorldNoFinalSnapshot(t *testing.T) {
 	if snaps, _ := r.worlds.Snapshots(id); len(snaps) != 0 {
 		t.Errorf("a snapshot was taken: %+v", snaps)
 	}
-	if got := r.auditOf(AuditWorldDelete); len(got) != 1 || got[0].Detail != "Second, final snapshot false" {
+	if got := r.auditOf(AuditWorldDelete); len(got) != 1 || got[0].Detail != deleteDetail("Second", false) {
 		t.Errorf("audit: %+v", got)
 	}
 }
@@ -245,7 +245,7 @@ func TestDeleteRefusedWithoutAuditRecord(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("UI delete: %d\n%s", rec.Code, rec.Body)
 	}
-	if got := r.auditOf(AuditWorldDelete); len(got) != 1 || got[0].TokenName != "" || got[0].Username != "alice" || got[0].Detail != "Second, final snapshot false" {
+	if got := r.auditOf(AuditWorldDelete); len(got) != 1 || got[0].TokenName != "" || got[0].Username != "alice" || got[0].Detail != deleteDetail("Second", false) {
 		t.Errorf("UI audit: %+v", got)
 	}
 
@@ -253,18 +253,15 @@ func TestDeleteRefusedWithoutAuditRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sum, err := r.worlds.Get(context.Background(), other)
-	if err != nil {
-		t.Fatal(err)
-	}
+	args := map[string]any{"world_id": other}
+	code := askCode(t, r.cs, "delete_world", args)
 	breakAuditLog(t)
 	rec = r.post(deletePath(other), url.Values{"confirm_name": {"Third"}, "final_snapshot": {"on"}}, withCookie(r.cookie))
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("UI delete without the audit log: %d", rec.Code)
 	}
-	s := &server{store: r.store, worlds: r.worlds, now: r.clock.Now, log: r.slog}
-	if err := s.deleteWorld(context.Background(), mcpActor(nil), sum, "Third", true); err == nil {
-		t.Error("deleteWorld went ahead without its audit record")
+	if res, out := call(t, r.cs, "delete_world", withCode(args, code)); !res.IsError || out["done"] == true {
+		t.Errorf("delete_world went ahead without its audit record: %s %s", resultText(res), asJSON(out))
 	}
 	if _, err := os.Stat(filepath.Join(r.worlds.Dirs().Worlds, other)); err != nil {
 		t.Errorf("the world was deleted without its audit record: %v", err)
@@ -419,11 +416,11 @@ func TestMCPFavorites(t *testing.T) {
 	if res, _ := call(t, r.cs, "make_favorite", map[string]any{"world_id": src, "name": "Club"}); !res.IsError || !strings.Contains(resultText(res), "already") {
 		t.Errorf("a taken name: %s", resultText(res))
 	}
-	if res, out := call(t, r.cs, "rename_favorite", map[string]any{"favorite_id": favID, "name": "Club two"}); res.IsError || out["name"] != "Club two" {
+	if res, out := call(t, r.cs, "rename_favorite", map[string]any{"favorite_id": favID, "name": "Club two"}); res.IsError || out["untrusted_name"] != "Club two" {
 		t.Errorf("rename: %s %s", resultText(res), asJSON(out))
 	}
 	res, list := call(t, r.cs, "list_favorites", nil)
-	if res.IsError || !strings.Contains(asJSON(list), `"name":"Club two"`) || !strings.Contains(asJSON(list), "untrusted_mods") {
+	if res.IsError || !strings.Contains(asJSON(list), `"untrusted_name":"Club two"`) || !strings.Contains(asJSON(list), "untrusted_mods") {
 		t.Errorf("list: %s %s", resultText(res), asJSON(list))
 	}
 	for _, secret := range []string{"hunter2-game", "tok-abc123"} {
