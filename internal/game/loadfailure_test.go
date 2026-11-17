@@ -182,6 +182,9 @@ func TestLoadFailureBoundsWhatItKeeps(t *testing.T) {
 func startWhileGameDies(t *testing.T, lines func(rconPassword string) []string, prepare func(d *dockertest.Daemon, logged int)) (string, error) {
 	t.Helper()
 	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 30 * time.Second}})
+	// The start deadline runs while the test writes the log, which can take
+	// seconds under load; no caller here tests the deadline (SPEC 7.3).
+	r.c.startTimeout = time.Hour
 	id := r.newWorld("Dies")
 	done := make(chan error, 1)
 	go func() { done <- r.c.Start(context.Background(), id, admin, StartOptions{}) }()
