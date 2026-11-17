@@ -456,27 +456,38 @@ func TestMCPChangeModsGameStarted(t *testing.T) {
 	wantIn(t, "fresh preview", asJSON(out), "save and stop Base")
 }
 
-// SPEC 14.19: a confirm refused by any check still spends its code.
+// SPEC 14.19: a confirm refused by any check still spends its code. The
+// refusal comes from the world's state, with the same arguments.
 func TestMCPModToolsRefusedConfirmSpendsTheCode(t *testing.T) {
-	g, cs := modsMCP(t, true)
-	id := g.world20("Base", "fmtest_1.0.0", "alpha_1.0.0")
+	fresh := &uncachedPortal{}
+	g, cs := modsMCPWrapped(t, true, func(p ModPortal) ModPortal { fresh.ModPortal = p; return fresh })
+	fresh.base = g.portal.URL
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base", "fmtest_1.0.0")
 	fakeDefs(t, fmtestSettingDefs(t), nil)
 	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
-	for tool, args := range map[string]map[string]any{
-		"change_mods":         {"world_id": id, "kind": "disable", "names": []string{"alpha"}},
-		"change_mod_settings": {"world_id": id, "values": map[string]any{"fm-sta-int": "9"}},
-	} {
-		code := askCode(t, cs, tool, args)
-		bad := withCode(args, code)
-		bad["countdown_seconds"] = 9999
-		if res, _ := call(t, cs, tool, bad); !res.IsError || !strings.Contains(resultText(res), "countdown_seconds") {
-			t.Errorf("%s bad countdown: %s", tool, resultText(res))
+	cases := []struct {
+		tool        string
+		args        map[string]any
+		break_, fix func()
+	}{
+		{"change_mods", map[string]any{"world_id": id, "kind": "install", "names": []string{"alpha"}},
+			func() { g.portal.FailAPI(500) }, func() { g.portal.FailAPI(0) }},
+		{"change_mod_settings", map[string]any{"world_id": id, "values": map[string]any{"fm-sta-int": "9"}},
+			func() { fakeDefs(t, nil, game.ErrModSettingsTimeout) }, func() { fakeDefs(t, fmtestSettingDefs(t), nil) }},
+	}
+	for _, c := range cases {
+		code := askCode(t, cs, c.tool, c.args)
+		c.break_()
+		if res, _ := call(t, cs, c.tool, withCode(c.args, code)); !res.IsError || resultText(res) == errConfirmRefused.Error() {
+			t.Errorf("%s: want the state's refusal, got %q", c.tool, resultText(res))
 		}
-		if res, _ := call(t, cs, tool, withCode(args, code)); !res.IsError || resultText(res) != errConfirmRefused.Error() {
-			t.Errorf("%s: the code still works after a refusal: %s", tool, resultText(res))
+		c.fix()
+		if res, _ := call(t, cs, c.tool, withCode(c.args, code)); !res.IsError || resultText(res) != errConfirmRefused.Error() {
+			t.Errorf("%s: the code still works after a refusal: %s", c.tool, resultText(res))
 		}
 	}
-	if g.modSnapshots(id) != 0 {
+	if g.modSnapshots(id) != 0 || g.hasFile(id, "alpha_1.0.0.zip") {
 		t.Error("a refused confirm acted")
 	}
 }
