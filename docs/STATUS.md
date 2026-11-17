@@ -13,9 +13,10 @@ Epics 1 to 9, the Gate A fixes, the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
 the Resource amounts epic, fixes batches 5, 6 and 7 and the Mod settings epic
 are done. Epic 9b (VPN sidecars) is built, but its live acceptance is still
-open (see its section). Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was
-skipped for now, at Todd's choice, when the Mod settings epic started; it is
-still owed before Gate C.
+open (see its section). Epic 9c (public mods and autosave tidy) is done.
+Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
+now, at Todd's choice, when the Mod settings epic started; it is still owed
+before Gate C.
 
 Each section describes the game images pinned at its time. Since fixes
 batch 6 the real-game tests pin only 1.1.110, 2.0.77 and 2.1.24: older
@@ -3678,3 +3679,96 @@ Each was diagnosed:
   batch 11 note that an upload for another tab is a button is replaced by the
   link rule in SPEC 14.6.
 - Still deferred: as listed under fixes batch 11.
+
+## Epic 9c: Public mods and autosave tidy
+
+Serves SPEC 9.16, 11.6 and 14.18, with the edits to 5.11, 6.2, 6.7, 11.3,
+12.1, 12.9, 13.1 and 14.1, and the VISION Auth amendment. Issues closed:
+#132 and #671. The plan was #672. The pull requests were #673 (autosave
+tidy), #674 (public mods backend), #675 (public mods page and setting), #676
+(a tidy cut short) and #677 (review and translation fixes).
+
+Rulings (Todd, 2026-11-16), now in SPEC 9.16 and 11.6: the public page
+offers every enabled, non-built-in mod of the running world, one by one and
+as one zip, and marks the ones the portal cannot supply; turned-off mods are
+left out and folder mods are listed with no download; Foreman handles no
+licences; the page is off by default and one admin setting turns it on; the
+setting lives in a new `app_settings` table that Epic 11's settings reuse;
+the autosave tidy takes a snapshot first and treats K as the newest autosave
+by time, skipping the file the last run loaded; player IP addresses stay in
+the access log.
+
+### Delivered
+
+- **The public mods page (SPEC 9.16; #674, #675, #677).** `GET /public/mods`
+  shows the running world's name, game version and mods to anyone, with a
+  link for each mod and a "Download all" link. A mod the portal does not
+  supply is marked in words, a folder mod has no link, and a page with no
+  running game says so. It has its own shell, `noindex`, the language menu
+  (`POST /public/language`) and its files under `/public/static/`. The
+  catalogue area `publicmods` is in all eight languages.
+- **The downloads and their rules (SPEC 14.18; #674, #677).**
+  `GET /public/mods/<world>/files/<file>` sends one zip with conditional and
+  range requests, and `all.zip` streams the lot, stored. A file name must
+  equal a listed zip's name byte for byte and opens through the world root
+  as a regular file that is not a link. At most 4 downloads run at once (503
+  with `Retry-After: 5`) and a stalled write is cut off after 60 seconds. Only
+  GET is allowed: HEAD and every other method get 405. A public route never
+  reads a session, trusted header or token, and sets only the language
+  cookie. A `mods` folder that is a link is never read. `/public/static/`
+  files carry `Cache-Control: no-cache`.
+- **The portal marks (SPEC 9.16).** The answer is kept per world and per
+  mods fingerprint, 15 minutes after an answer and 1 minute after a failure,
+  with one check at a time and a 5-second wait. A page whose mods have no
+  zip skips the check.
+- **The admin setting (SPEC 9.16, 12.1, 12.9).** `/settings/public-mods` is a
+  fourth tab in the Foreman settings. One button turns the page on or off,
+  and each change is audited as `public-mods-set`. While it is off, every
+  path under `/public/` answers 404 like an unknown path, whatever the
+  method. The setting is stored in the new `app_settings` table (migration
+  `0009_app_settings.sql`).
+- **The operator note (docs/OPERATOR.md section 6).** How to let `/public/`
+  through a forward-auth proxy, naming no proxy.
+- **The autosave tidy (SPEC 11.6; #673, #676).** At every start Foreman
+  makes, when the slot count S is lower than some autosave's number, Foreman
+  takes a snapshot ("Before autosave tidy", reason `autosaves`), writes the
+  audit entry `autosave-tidy`, keeps the newest S autosaves under the slot
+  numbers the game writes next, and removes the rest. Files go through
+  `_autosaveN.tidy.zip` names holding their final slot, so a tidy cut short
+  at any step is finished by the next start with the same result. If the
+  snapshot or the audit entry fails, the tidy is skipped and the start carries
+  on. The game's "Loading map" line gives the loaded file, which is kept
+  after the run ends. The settings preview names how many autosaves stay and
+  how many go, in three one-count sentences in all eight languages.
+- **A shared template renderer.** The web package builds one renderer for
+  the whole process (`sharedRenderer`) instead of one per test server. This
+  halved the memory of the test run.
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck`, its Go tests
+  and its end-to-end specs. The new end-to-end specs are `public-mods.spec.ts`
+  (all four projects, axe clean) and `autosave-tidy.spec.ts`. The security
+  file `publicmods_security_test.go` walks the 14.18 conditions.
+- `TestAutosaveTidyResumesAfterEveryStep` cuts the tidy short after every
+  single rename and removal and checks that the next start gives the same
+  folder as an uninterrupted tidy.
+- The public download was tried by Todd on the trial deploy on 2026-11-16.
+- Real-game autosave test: `TestRealGameAutosaveTidy` passed against factoriotools/factorio 2.1.24 on 2026-11-16 (20 slots to 10, K = 17; the game loads `_autosave7.zip`, modification times kept).
+
+### Gaps left
+
+- **The tidy's snapshot and audit entry name "Foreman"**, not the user who
+  started the game.
+- **Leftover `.tidy.zip` files that fit no mapping for the current slot count
+  make every start skip the tidy** and log the reason, as happens when S
+  changes after a tidy was cut short. The admin fixes the files by hand or
+  restores the snapshot.
+- **`public-all` and `public-unchecked` ids repeat per world** in
+  `publicmods.html`. Only one world is listed today, so no page has a
+  duplicate.
+- **The public page serves only a running world.** A stopped world's mods
+  cannot be downloaded from it.
+- **The tidy's mapping is exact only in the cases SPEC 11.6 names under
+  "Accuracy";** otherwise the game's first overwrite may hit a file that is
+  not the oldest, and the snapshot is the undo.
