@@ -226,13 +226,17 @@ func (c *Controller) saveRunning(ctx context.Context, id string) (running bool, 
 
 // Snapshot takes a manual snapshot of the world (SPEC 6.3). When the game
 // is running it saves first, so the snapshot holds the current game
-// (SPEC 6.10).
+// (SPEC 6.10). It is recorded in the audit log first, and not taken when
+// the entry cannot be written (SPEC 12.9).
 func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label string) (world.Snapshot, error) {
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return world.Snapshot{}, err
 	}
 	defer unlock()
+	if err := c.audit(ctx, by, AuditSnapshot, id, label); err != nil {
+		return world.Snapshot{}, err
+	}
 	if _, err := c.saveRunning(ctx, id); err != nil {
 		return world.Snapshot{}, err
 	}
@@ -242,7 +246,8 @@ func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label st
 // Restore puts the world back as a snapshot recorded it (SPEC 6.5). A
 // running game is stopped gracefully first and started again after; the
 // world package takes the "Before restore" snapshot, which is returned as
-// the undo, with any error.
+// the undo, with any error. It is recorded in the audit log first, and not
+// done when the entry cannot be written (SPEC 12.9).
 func (c *Controller) Restore(ctx context.Context, id string, by Actor, name string, stop StopOptions) (world.Snapshot, error) {
 	countdown, err := stopCountdown(stop)
 	if err != nil {
@@ -254,7 +259,15 @@ func (c *Controller) Restore(ctx context.Context, id string, by Actor, name stri
 	}
 	defer unlock()
 	// A missing snapshot is refused before the game is stopped.
-	if _, err := c.worlds.Snapshot(id, name); err != nil {
+	snap, err := c.worlds.Snapshot(id, name)
+	if err != nil {
+		return world.Snapshot{}, err
+	}
+	detail := snap.Name
+	if snap.Label != "" {
+		detail += " (" + snap.Label + ")"
+	}
+	if err := c.audit(ctx, by, AuditRestore, id, detail); err != nil {
 		return world.Snapshot{}, err
 	}
 	ctx, o := c.beginOp(ctx, c.world(id), ActionRestore, stopSteps, []string{StepRestore}, startSteps(StartOptions{}))
