@@ -82,10 +82,15 @@ var idleLimit = 60 * time.Second
 
 // limitBody caps every request body at maxFormBytes, except on an upload
 // route, which applies its own limit once it knows who is asking (see
-// handleLong).
+// handleLong), and on the MCP endpoint, whose messages may be larger
+// (SPEC 14.19).
 func (s *server) limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, pattern := s.mux.Handler(r); s.uploadLimits[pattern] == 0 {
+		_, pattern := s.mux.Handler(r)
+		switch {
+		case pattern == PathMCP:
+			r.Body = http.MaxBytesReader(w, r.Body, mcpMaxBody)
+		case s.uploadLimits[pattern] == 0:
 			r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 		}
 		next.ServeHTTP(w, r)
