@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -553,12 +554,8 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 		ConfirmName:   r.PostFormValue("confirm_name"),
 		Busy:          s.worldBusy(sum.ID),
 	}
-	err := s.worlds.Delete(r.Context(), sum.ID, p.ConfirmName, p.FinalSnapshot, u.Username)
+	err := s.deleteWorld(r.Context(), actor(u), sum, p.ConfirmName, p.FinalSnapshot)
 	if err == nil {
-		// A deleted world's unfinished mod plan goes with it (SPEC 3.4).
-		if cerr := s.store.ClearModPlan(r.Context(), sum.ID); cerr != nil {
-			s.log.Warn("clear the mod plan of a deleted world", "world", sum.ID, "error", cerr)
-		}
 		http.Redirect(w, r, PathWorlds+"?deleted="+sum.ID, http.StatusSeeOther)
 		return
 	}
@@ -573,6 +570,41 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	p.Error = msg
 	s.page(w, r, status, u.Username, p)
+}
+
+// AuditWorldDelete is the audit action of a world's delete (SPEC 12.9).
+const AuditWorldDelete = "world-delete"
+
+// deleteWorld deletes a world as its Delete page does (SPEC 5.10). The
+// checks the world can answer come first; then world-delete is recorded,
+// and the delete is refused when the record cannot be written (SPEC 12.9).
+// typedName is the name typed to confirm; MCP passes the world's own.
+func (s *server) deleteWorld(ctx context.Context, by game.Actor, sum world.Summary, typedName string, final bool) error {
+	switch {
+	case sum.Newer:
+		return world.ErrNewerFormat
+	case sum.Unreadable:
+		return world.ErrUnreadable
+	case sum.Active:
+		return world.ErrActive
+	case typedName != sum.Name:
+		return world.ErrWrongName
+	}
+	err := s.store.AddAudit(ctx, store.AuditEntry{
+		Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token,
+		Action: AuditWorldDelete, WorldID: sum.ID, Detail: fmt.Sprintf("%s, final snapshot %t", sum.Name, final),
+	})
+	if err != nil {
+		return fmt.Errorf("record the delete in the audit log: %w", err)
+	}
+	if err := s.worlds.Delete(ctx, sum.ID, typedName, final, by.Username); err != nil {
+		return err
+	}
+	// A deleted world's unfinished mod plan goes with it (SPEC 3.4).
+	if err := s.store.ClearModPlan(ctx, sum.ID); err != nil {
+		s.log.Warn("clear the mod plan of a deleted world", "world", sum.ID, "error", err)
+	}
+	return nil
 }
 
 func (s *server) handleDeleted(w http.ResponseWriter, r *http.Request, u store.User) {

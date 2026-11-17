@@ -344,44 +344,35 @@ func (f GenerateForm) failed() bool {
 	return GeneratePage{Form: f}.hasErrors()
 }
 
-// handleGenerate makes the world (SPEC 5.6).
-func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.User) {
-	if !s.readForm(w, r) {
-		return
-	}
-	f, nw, ok := s.readGenerate(r, kindGenerate)
-	files := s.readFavorite(&f, r.PostFormValue(favoriteQuery))
+// errGenerateForm says the Generate form has errors, which are on the form.
+var errGenerateForm = errors.New("the generate form has errors")
+
+// generateWorld makes the world a read form describes, as Generate does
+// (SPEC 5.6, 5.12): ok and nw come from readGenerateValues, and form holds
+// the posted values. It audits the world, starts the image download when
+// the form asks, and saves a favorite's mods as the world's picks. A form
+// with errors returns errGenerateForm with them on f; a refusal from the
+// world maker comes back as it is, for the caller to word.
+func (s *server) generateWorld(ctx context.Context, by game.Actor, f *GenerateForm, nw world.NewWorld, ok bool, form url.Values) (string, error) {
+	files := s.readFavorite(f, form.Get(favoriteQuery))
 	if f.favoriteMap() {
 		// Damaged files are refused here too, as the filled form refused them.
-		check := f
+		check := *f
 		check.fillFromFiles(files)
 		f.FavoriteError = check.FavoriteError
 	}
-	ok = ok && f.FavoriteError.IsZero()
-	if !ok {
-		status := http.StatusBadRequest
-		if f.Reset || f.Refilled {
-			status = http.StatusOK
-		}
-		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
-		return
+	if !ok || !f.FavoriteError.IsZero() {
+		return "", errGenerateForm
 	}
 	if fav := f.Favorite; fav != nil {
 		nw.ServerSettings, nw.ModSettings = files.ServerSettings, files.ModSettings
-		if f.favoriteMap() && !s.favoriteMapFiles(&f, &nw, files, r) {
-			s.page(w, r, http.StatusBadRequest, u.Username, s.generatePage(r.Context(), f, nil))
-			return
+		if f.favoriteMap() && !s.favoriteMapFilesFrom(f, &nw, files, form) {
+			return "", errGenerateForm
 		}
 	}
-	id, err := s.worlds.Generate(r.Context(), nw)
+	id, err := s.worlds.Generate(ctx, nw)
 	if err != nil {
-		status, msg, ok := s.refusal(w, r, u, "generate world", err)
-		if !ok {
-			return
-		}
-		f.place(err, msg)
-		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
-		return
+		return "", err
 	}
 	how := f.Mode
 	if f.Mode == modeSettings {
@@ -393,19 +384,48 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 	if f.Favorite != nil {
 		how += ", favorite " + f.Favorite.Name
 	}
-	s.audit(r.Context(), actor(u), AuditGenerate, id, fmt.Sprintf("%s, %s, space age %t", how, nw.GameVersion, nw.SpaceAge))
+	s.audit(ctx, by, AuditGenerate, id, fmt.Sprintf("%s, %s, space age %t", how, nw.GameVersion, nw.SpaceAge))
 	if f.Download {
-		s.downloadFor(r.Context(), map[string]string{nw.GameVersion: id}, actor(u))
+		s.downloadFor(ctx, map[string]string{nw.GameVersion: id}, by)
+	}
+	if fav := f.Favorite; fav != nil {
+		for _, m := range fav.Mods {
+			// Saved as picks too, so leaving the review page keeps the mods.
+			if err := s.store.AddModPlanName(ctx, id, m.Name, by.Username, s.now()); err != nil && !errors.Is(err, store.ErrModPlanFull) {
+				s.log.Warn("save the favorite's mods as picks", "world", id, "error", err)
+			}
+		}
+	}
+	return id, nil
+}
+
+// handleGenerate makes the world (SPEC 5.6).
+func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	f, nw, ok := s.readGenerate(r, kindGenerate)
+	id, err := s.generateWorld(r.Context(), actor(u), &f, nw, ok, r.PostForm)
+	switch {
+	case errors.Is(err, errGenerateForm):
+		status := http.StatusBadRequest
+		if f.Reset || f.Refilled {
+			status = http.StatusOK
+		}
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
+		return
+	case err != nil:
+		status, msg, ok := s.refusal(w, r, u, "generate world", err)
+		if !ok {
+			return
+		}
+		f.place(err, msg)
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
+		return
 	}
 	// The favorite's mods go through the review page's checks and one
 	// install (SPEC 5.12, 9.13).
 	if fav := f.Favorite; fav != nil && len(fav.Mods) > 0 {
-		for _, m := range fav.Mods {
-			// Saved as picks too, so leaving the review page keeps the mods.
-			if err := s.store.AddModPlanName(r.Context(), id, m.Name, u.Username, s.now()); err != nil && !errors.Is(err, store.ErrModPlanFull) {
-				s.log.Warn("save the favorite's mods as picks", "world", id, "error", err)
-			}
-		}
 		// The review reads the names and versions from the favorite, so the
 		// address carries its id alone (SPEC 17).
 		q := url.Values{favoriteQuery: {fav.ID}, generatedQuery: {"1"}}
@@ -531,24 +551,30 @@ func (f GenerateForm) tabOf(id string) string {
 // settings are filled from the preset and ok is false with no error (Reset,
 // Refilled); the exchange string does not depend on them.
 func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, nw world.NewWorld, ok bool) {
-	ctx := r.Context()
+	_ = r.ParseForm() // the middleware caps the body; a bad body leaves what parsed, and the fields then fail their own checks
+	return s.readGenerateValues(r.Context(), r.PostForm, kind)
+}
+
+// readGenerateValues is readGenerate on the posted values, so MCP can make
+// a world through the same checks.
+func (s *server) readGenerateValues(ctx context.Context, form url.Values, kind readKind) (f GenerateForm, nw world.NewWorld, ok bool) {
 	f = GenerateForm{
-		Name:        r.PostFormValue("name"),
-		Typed:       chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed")),
-		SpaceAge:    r.PostFormValue("space_age") == "on",
-		Download:    r.PostFormValue("download") == "on",
-		Mode:        r.PostFormValue("mode"),
-		Preset:      r.PostFormValue("preset"),
-		FilledFrom:  r.PostFormValue("filled_from"),
-		Tab:         r.PostFormValue("tab"),
-		FilledSeed:  strings.TrimSpace(r.PostFormValue("filled_seed")),
-		Exchange:    r.PostFormValue("exchange"),
+		Name:        form.Get("name"),
+		Typed:       chosenVersion(form.Get("game_version"), form.Get("game_version_typed")),
+		SpaceAge:    form.Get("space_age") == "on",
+		Download:    form.Get("download") == "on",
+		Mode:        form.Get("mode"),
+		Preset:      form.Get("preset"),
+		FilledFrom:  form.Get("filled_from"),
+		Tab:         form.Get("tab"),
+		FilledSeed:  strings.TrimSpace(form.Get("filled_seed")),
+		Exchange:    form.Get("exchange"),
 		CanDownload: s.game != nil,
 	}
 	if f.Mode != modeExchange {
 		f.Mode = modeSettings
 	}
-	f.readPreviewSize(r.PostFormValue(previewSizeField), kind)
+	f.readPreviewSize(form.Get(previewSizeField), kind)
 	if !slices.Contains(f.Tabs(), f.Tab) {
 		f.Tab = tabResources
 	}
@@ -579,7 +605,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 		s.checkTypedVersion(ctx, &check)
 		f.VersionError = check.VersionError
 	}
-	posted := r.PostFormValue("map_key")
+	posted := form.Get("map_key")
 	if !versionOK {
 		if line = keyLine(posted); line == "" {
 			line = mapgen.Lines[len(mapgen.Lines)-1]
@@ -590,7 +616,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 	f.Presets = mapgen.Presets(line)
 	// A post that never showed the settings (no settingsShown), such as a preset
 	// and a seed alone, means the preset as it is.
-	shown := r.PostFormValue(settingsShown) != ""
+	shown := form.Get(settingsShown) != ""
 	// The settings are stale when made for another line, or for the other Space Age setting.
 	stale := versionOK && shown && (keyLine(posted) != line || (f.SpaceAgeError.IsZero() && posted != f.MapKey))
 	f.Reset = stale && f.Mode == modeSettings
@@ -606,7 +632,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 		}
 	}
 	// Reset to defaults is for the whole world: the version's default preset (SPEC 5.6).
-	if r.PostFormValue("reset") != "" && f.PresetError.IsZero() {
+	if form.Get("reset") != "" && f.PresetError.IsZero() {
 		f.Preset = defaultPreset
 	}
 	// The version the map settings are laid out for: the world's, or the
@@ -619,11 +645,11 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 	// Always read the settings, so they are shown again whatever the mode.
 	var mapGen []byte
 	var overrides map[string]any
-	seed := MapGenText{Value: strings.TrimSpace(r.PostFormValue(mgSeed))}
+	seed := MapGenText{Value: strings.TrimSpace(form.Get(mgSeed))}
 	mismatch := f.PresetError.IsZero() && f.FilledFrom != f.Preset
-	refill := stale || r.PostFormValue("reset") != "" || mismatch || !shown
+	refill := stale || form.Get("reset") != "" || mismatch || !shown
 	if refill {
-		f.Refilled = kind == kindGenerate && shown && mismatch && !stale && f.Mode == modeSettings && r.PostFormValue("reset") == ""
+		f.Refilled = kind == kindGenerate && shown && mismatch && !stale && f.Mode == modeSettings && form.Get("reset") == ""
 		f.fill(layoutVersion, &seed)
 		f.checkSeed()
 		if f.Refilled {
@@ -632,9 +658,9 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 		mapGen, _ = buildMapGen(f.MapGen, rawOrEmpty(f.MapGen.Raw.Value))
 	} else {
 		var probs, msProbs []Problem
-		f.MapGen, mapGen, probs = ParseMapGenForm(r, line, mapSpaceAge)
+		f.MapGen, mapGen, probs = parseMapGenValues(form, line, mapSpaceAge)
 		f.MapGen.withPreset(NewMapGenFormForPreset(line, mapSpaceAge, f.Preset))
-		f.MapSettings, overrides, msProbs = readMapSettings(layoutVersion, f.Preset, r.PostForm)
+		f.MapSettings, overrides, msProbs = readMapSettings(layoutVersion, f.Preset, form)
 		if f.Mode == modeSettings {
 			f.SettingsProblems = append(probs, msProbs...)
 			// The seed is in no tab: keep the tab the page was on.
@@ -646,7 +672,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 		}
 	}
 	// The open planet is one choice for the whole form, kept over a round trip.
-	f.MapGen.setOpen(r.PostFormValue("open_planet"))
+	f.MapGen.setOpen(form.Get("open_planet"))
 	f.Modified = f.MapGen.Modified() || f.MapSettings.Modified()
 	rules, _ := mapgen.AchievementRules(layoutVersion)
 	f.MapGen.markAchievements(rules)
