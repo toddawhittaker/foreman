@@ -100,6 +100,43 @@ func (l *Limiter) Succeed(username, addr string) {
 	l.addrs.release(addrKey(addr))
 }
 
+// AddrLimiter counts API token checks per client address, apart from
+// sign-in's counts, so guessing at the MCP endpoint cannot lock anyone out
+// of the browser sign-in (SPEC 14.19). It has sign-in's address limit and
+// window, groups IPv6 by /64, and counts an attempt before the check, as
+// Limiter does, so parallel guesses cannot outrun it.
+type AddrLimiter struct {
+	now   func() time.Time
+	mu    sync.Mutex
+	addrs *failureTable
+}
+
+// NewAddrLimiter returns an AddrLimiter with the settled limits.
+func NewAddrLimiter(now func() time.Time) *AddrLimiter {
+	return &AddrLimiter{now: now, addrs: newFailureTable(LimitPerAddress, limitMaxEntries)}
+}
+
+// Allow reports whether a token check from addr may proceed and, if so,
+// counts it. When it may not, retryAfter is the time left in the window.
+func (l *AddrLimiter) Allow(addr string) (ok bool, retryAfter time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now, k := l.now(), addrKey(addr)
+	if r := l.addrs.remaining(k, now); r > 0 {
+		return false, r
+	}
+	l.addrs.add(k, now)
+	return true, 0
+}
+
+// Succeed gives back the attempt Allow counted, because the token was
+// accepted. Earlier failures stay.
+func (l *AddrLimiter) Succeed(addr string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.addrs.release(addrKey(addr))
+}
+
 type failure struct {
 	key   string
 	start time.Time

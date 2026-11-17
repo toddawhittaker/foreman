@@ -15,7 +15,7 @@ func TestAuditRoundTrip(t *testing.T) {
 	}
 	want := AuditEntry{
 		Time: t0, UserID: u.ID, Username: "ann",
-		Action: "server.start", WorldID: "alpha", Detail: "pinned 2.0.55",
+		Action: "server.start", WorldID: "alpha", Detail: "pinned 2.0.55", TokenName: "Claude",
 	}
 	if err := s.AddAudit(ctx, want); err != nil {
 		t.Fatal(err)
