@@ -101,7 +101,9 @@ type server struct {
 	render        *Renderer
 	sessions      *auth.SessionManager
 	limiter       *auth.Limiter
-	headers       auth.HeaderConfig
+	// tokens manages API tokens (SPEC 12.10).
+	tokens  *auth.APITokens
+	headers auth.HeaderConfig
 	// gameNets and gameSeen: the ranges to refuse headers from, and the
 	// ones already logged.
 	gameNets GameSubnetter
@@ -168,6 +170,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		render:    renderer,
 		sessions:  auth.NewSessionManager(d.Store, d.Config.SessionIdle, d.Config.SecureCookies(), now),
 		limiter:   auth.NewLimiter(now),
+		tokens:    auth.NewAPITokens(d.Store, now),
 		headers: auth.HeaderConfig{
 			UserHeader:    d.Config.UserHeader,
 			GroupsHeader:  d.Config.GroupsHeader,
@@ -243,6 +246,8 @@ func (s *server) routes() {
 	s.publicModsRoutes()
 	s.publicModsPageRoutes()
 	s.publicModsSettingsRoutes()
+	s.apiTokenRoutes()
+	s.mcpRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)

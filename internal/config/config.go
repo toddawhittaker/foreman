@@ -52,6 +52,7 @@ const (
 	varFactorioToken    = "FOREMAN_FACTORIO_TOKEN"
 	varSecretKey        = "FOREMAN_SECRET_KEY"
 	varNetworkContainer = "FOREMAN_GAME_NETWORK_CONTAINER"
+	varMCP              = "FOREMAN_MCP"
 )
 
 // Config is Foreman's validated configuration.
@@ -82,6 +83,9 @@ type Config struct {
 	FactorioUsername, FactorioToken secret.Secret
 	// SecretKey seals stored secrets; empty when unset (SPEC 9.11).
 	SecretKey secret.Secret
+	// MCPForcedOff is FOREMAN_MCP=off: MCP access stays off whatever the
+	// admin setting says (SPEC 21.2).
+	MCPForcedOff bool
 }
 
 // SecureCookies reports whether session cookies carry the Secure flag,
@@ -182,6 +186,14 @@ func load(e env) (*Config, error) {
 			fail("%s must be a positive duration such as 168h, not %q", varSessionIdle, raw)
 		} else {
 			c.SessionIdle = d
+		}
+	}
+
+	if raw, ok := e.get(varMCP); ok {
+		if raw == "off" {
+			c.MCPForcedOff = true
+		} else {
+			fail("%s may only be off, not %q; leave it unset to let an admin choose", varMCP, raw)
 		}
 	}
 

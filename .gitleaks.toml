@@ -2,6 +2,13 @@
 [extend]
 useDefault = true
 
+# Foreman API token secrets (SPEC 12.10, 14.19).
+[[rules]]
+id = "foreman-api-token"
+description = "Foreman API token"
+regex = '''fmn_[A-Za-z0-9_-]{43}'''
+keywords = ["fmn_"]
+
 [allowlist]
 description = "Files that legitimately contain secret-shaped strings"
 paths = [

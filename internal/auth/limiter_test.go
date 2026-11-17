@@ -192,3 +192,41 @@ func TestUserKeyFoldsASCIIOnly(t *testing.T) {
 		t.Error("the Kelvin sign must not share a key with ASCII k")
 	}
 }
+
+func TestAddrLimiter(t *testing.T) {
+	clk := newClock()
+	l := NewAddrLimiter(clk.Now)
+	l.Allow("192.0.2.9")
+	l.Succeed("192.0.2.9") // a success costs nothing
+	for i := range LimitPerAddress {
+		// Addresses in one IPv6 /64 share a count.
+		if ok, _ := l.Allow(fmt.Sprintf("2001:db8::%x", i+1)); !ok {
+			t.Fatalf("blocked after %d failures", i)
+		}
+	}
+	clk.Advance(time.Minute)
+	if ok, left := l.Allow("2001:db8::ffff"); ok || left != LimitWindow-time.Minute {
+		t.Errorf("over the limit: ok=%v left=%v", ok, left)
+	}
+	if ok, _ := l.Allow("2001:db8:0:1::1"); !ok {
+		t.Error("another /64 was blocked")
+	}
+	if ok, _ := l.Allow("192.0.2.9"); !ok {
+		t.Error("an IPv4 address was blocked")
+	}
+	clk.Advance(LimitWindow)
+	if ok, _ := l.Allow("2001:db8::1"); !ok {
+		t.Error("still blocked after the window")
+	}
+}
+
+func TestAddrLimiterApartFromSignIn(t *testing.T) {
+	clk := newClock()
+	mcp, signIn := NewAddrLimiter(clk.Now), NewLimiter(clk.Now)
+	for range LimitPerAddress {
+		mcp.Allow("192.0.2.1")
+	}
+	if ok, _ := signIn.Allow("ann", "192.0.2.1"); !ok {
+		t.Error("MCP failures blocked browser sign-in")
+	}
+}

@@ -16,6 +16,8 @@ type AuditEntry struct {
 	Action   string
 	WorldID  string // "" when the action is not about one world
 	Detail   string // must not hold a secret (SPEC 14.8)
+	// TokenName names the API token the action came through, "" for none (SPEC 12.9).
+	TokenName string
 }
 
 // AddAudit records an entry. The ID of e is ignored.
@@ -29,9 +31,9 @@ func (s *Store) AddAudit(ctx context.Context, e AuditEntry) error {
 		worldID = e.WorldID
 	}
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO audit_log (time, user_id, username, action, world_id, detail)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		e.Time.Unix(), userID, e.Username, e.Action, worldID, e.Detail)
+		`INSERT INTO audit_log (time, user_id, username, action, world_id, detail, token_name)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		e.Time.Unix(), userID, e.Username, e.Action, worldID, e.Detail, e.TokenName)
 	if err != nil {
 		return fmt.Errorf("record audit entry: %w", err)
 	}
@@ -44,7 +46,7 @@ func (s *Store) ListAudit(ctx context.Context, limit int) (_ []AuditEntry, err e
 		return nil, errors.New("list audit log: limit must be at least 1")
 	}
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, time, user_id, username, action, world_id, detail
+		`SELECT id, time, user_id, username, action, world_id, detail, token_name
 		 FROM audit_log ORDER BY time DESC, id DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list audit log: %w", err)
@@ -60,7 +62,7 @@ func (s *Store) ListAudit(ctx context.Context, limit int) (_ []AuditEntry, err e
 		var at int64
 		var userID *int64
 		var worldID *string
-		if err := rows.Scan(&e.ID, &at, &userID, &e.Username, &e.Action, &worldID, &e.Detail); err != nil {
+		if err := rows.Scan(&e.ID, &at, &userID, &e.Username, &e.Action, &worldID, &e.Detail, &e.TokenName); err != nil {
 			return nil, fmt.Errorf("list audit log: %w", err)
 		}
 		e.Time = time.Unix(at, 0).UTC()
