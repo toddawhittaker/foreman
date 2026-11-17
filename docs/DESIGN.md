@@ -3722,7 +3722,7 @@ page" sits beside it. A Done message confirms each change.
 New CSS: `.public-world`, `.public-mods` and its `__name`, `__version`
 and `__marks`, at the end of `foreman.css`.
 
-### 8.20 API tokens (SPEC 12.10, 21.2, Epic 10a)
+### 8.21 API tokens (SPEC 12.10, 21.2, Epic 10a)
 
 `/settings/api-tokens` is the fifth "Foreman settings" tab, after Public
 mods. Its order follows what a person came to do:

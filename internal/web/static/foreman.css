@@ -9604,7 +9604,7 @@ main:has(> .gate) > * + :not(h1, .gate) {
   list-style: none;
 }
 
-/* DESIGN 8.20 API tokens (SPEC 12.10). Each token is a card that sizes itself from
+/* DESIGN 8.21 API tokens (SPEC 12.10). Each token is a card that sizes itself from
    its list, so the facts wrap under the name on a phone. */
 .token-list {
   display: grid;
@@ -9663,12 +9663,6 @@ main:has(> .gate) > * + :not(h1, .gate) {
 .state--token-revoked::before {
   background-image: linear-gradient(currentColor, currentColor);
   transform: rotate(45deg);
-}
-
-/* The secret and the endpoint fill their row so they can be selected whole. */
-.token-secret input {
-  inline-size: 100%;
-  font-family: var(--font-mono);
 }
 
 /* The expiry banner: one line per token, its Renew button at the end,

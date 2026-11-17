@@ -224,7 +224,10 @@ type view struct {
 	// navigation, on every page (DESIGN 7.5).
 	Lamp LiveState
 	// Banner is the API token expiry banner's lines (SPEC 12.10).
-	Banner []TokenBanner
+	Banner []TokenRow
+	// Renewed names the token a banner Renew just renewed, for the Done
+	// message at the top of whichever page it came back to.
+	Renewed string
 }
 
 // Current is true when the nav link to path names this page, so it gets
@@ -573,20 +576,16 @@ func menuReturn(req *http.Request) string {
 // Render writes page p as a complete HTML document with the given status,
 // in the language of req (localeOf). user is the signed-in username, or
 // empty to hide the sign-out form. lamp is the server's state for the
-// main navigation, unset to show none. The page is rendered in full before
-// anything is written, so on error the response is untouched and the
+// main navigation, unset to show none. banner is the signed-in user's API
+// tokens near or past expiry (SPEC 12.10). The page is rendered in full
+// before anything is written, so on error the response is untouched and the
 // caller can still send an ErrorPage.
-func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, p Page) error {
-	return r.RenderWithBanner(w, req, status, user, lamp, nil, p)
-}
-
-// RenderWithBanner is Render with the API token expiry banner's lines.
-func (r *Renderer) RenderWithBanner(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, banner []TokenBanner, p Page) error {
+func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, banner []TokenRow, p Page) error {
 	t, err := r.template(localeOf(req), p)
 	if err != nil {
 		return err
 	}
-	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp, Banner: banner}
+	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp, Banner: banner, Renewed: renewedName(req, user)}
 	layout := "layout"
 	_, public := p.(publicPage)
 	if public {
@@ -610,6 +609,19 @@ func (r *Renderer) RenderWithBanner(w http.ResponseWriter, req *http.Request, st
 	w.WriteHeader(status)
 	_, err = buf.WriteTo(w)
 	return err
+}
+
+// renewedName is the token named by a done=renewed return, for a
+// signed-in GET.
+func renewedName(req *http.Request, user string) string {
+	if user == "" || req.Method != http.MethodGet {
+		return ""
+	}
+	q := req.URL.Query()
+	if q.Get("done") != tokenDoneRenewed {
+		return ""
+	}
+	return q.Get("name")
 }
 
 // Fragment writes one named template of page p on its own, in loc's

@@ -34,7 +34,7 @@
 {{- template "summary" .Problems}}
 {{- if .Done}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "renewed"}}{{t "apitokens.done.renewed" "name" .DoneName}}{{else if eq .Done "revoked"}}{{t "apitokens.done.revoked" "name" .DoneName}}{{else if eq .Done "mcp-on"}}{{t "apitokens.done.mcp_on"}}{{else}}{{t "apitokens.done.mcp_off"}}{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "revoked"}}{{t "apitokens.done.revoked" "name" .DoneName}}{{else if eq .Done "mcp-on"}}{{t "apitokens.done.mcp_on"}}{{else}}{{t "apitokens.done.mcp_off"}}{{end}}</p>
 </div>
 {{- end}}
 <p>{{t "apitokens.intro"}}</p>
@@ -88,11 +88,11 @@
       <p class="error" id="token-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.NameError}}</p>
       {{- end}}
     </div>
-    <fieldset>
+    <fieldset aria-describedby="scope-hint">
       <legend>{{t "apitokens.create.scope"}}</legend>
       <p class="hint" id="scope-hint">{{t "apitokens.create.scope.hint"}}</p>
       {{- range .Form.Scopes}}
-      <label class="check"><input type="radio" name="scope" value="{{.Value}}" id="scope-{{.Value}}"{{if .Checked}} checked{{end}} aria-describedby="scope-{{.Value}}-hint"> {{msg .Name}}</label>
+      <label class="check"><input type="radio" name="scope" value="{{.Value}}" id="scope-{{.Value}}"{{if .Checked}} checked{{end}} aria-describedby="scope-{{.Value}}-hint{{if eq .Value "admin"}} scope-admin-warning{{end}}"> {{msg .Name}}</label>
       <p class="hint" id="scope-{{.Value}}-hint">{{msg .Hint}}</p>
       {{- end}}
     </fieldset>

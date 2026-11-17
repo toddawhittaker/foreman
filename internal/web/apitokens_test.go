@@ -54,7 +54,7 @@ func TestAPITokenCreateShowsSecretOnce(t *testing.T) {
 	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
 		t.Errorf("Cache-Control %q, want no-store", got)
 	}
-	if !strings.Contains(rec.Body.String(), `value="http://example.com/mcp"`) {
+	if !strings.Contains(rec.Body.String(), `>http://example.com/mcp</textarea>`) {
 		t.Errorf("the endpoint is not the request's own address")
 	}
 	if _, err := hn.tokensFor(t).Check(context.Background(), secret); err != nil {
@@ -67,7 +67,7 @@ func TestAPITokenCreateShowsSecretOnce(t *testing.T) {
 	if strings.Contains(hn.logs.String(), secret) {
 		t.Error("the log holds the secret")
 	}
-	if got := strings.Join(hn.audits(AuditTokenCreate), "|"); got != "alice  token=Claude owner=alice scope=operate" {
+	if got := strings.Join(hn.audits(AuditTokenCreate), "|"); got != "alice  token_id=1 token=\"Claude\" owner=\"alice\" scope=operate" {
 		t.Errorf("audit %q", got)
 	}
 }
@@ -93,8 +93,33 @@ func TestAPITokenEndpointUsesPublicURL(t *testing.T) {
 	hn := newHarness(t, map[string]string{"FOREMAN_PUBLIC_URL": "https://foreman.example.org/"})
 	c := hn.signIn()
 	_, rec := hn.createToken(c, "x", auth.ScopeRead)
-	if !strings.Contains(rec.Body.String(), `value="https://foreman.example.org/mcp"`) {
+	if !strings.Contains(rec.Body.String(), `>https://foreman.example.org/mcp</textarea>`) {
 		t.Errorf("the endpoint ignores FOREMAN_PUBLIC_URL")
+	}
+}
+
+// S1: behind a trusted proxy the scheme comes from X-Forwarded-Proto, so a
+// client is never told to send its token in clear; a forged header from any
+// other peer is ignored.
+func TestAPITokenEndpointScheme(t *testing.T) {
+	hn := newHarness(t, map[string]string{"FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8"})
+	c := hn.signIn()
+	proto := withHeader("X-Forwarded-Proto", "https")
+	cases := []struct {
+		name string
+		mods []func(*http.Request)
+		want string
+	}{
+		{"trusted proxy", []func(*http.Request){withPeer("10.1.2.3:5555"), proto}, "https://example.com/mcp"},
+		{"untrusted peer", []func(*http.Request){proto}, "http://example.com/mcp"},
+		{"trusted, odd value", []func(*http.Request){withPeer("10.1.2.3:5555"), withHeader("X-Forwarded-Proto", "gopher")}, "http://example.com/mcp"},
+	}
+	for i, k := range cases {
+		mods := append([]func(*http.Request){withCookie(c)}, k.mods...)
+		rec := hn.post(PathAPITokens, url.Values{"name": {"t" + string(rune('a'+i))}, "scope": {"read"}}, mods...)
+		if !strings.Contains(rec.Body.String(), ">"+k.want+"</textarea>") {
+			t.Errorf("%s: want %s (status %d)", k.name, k.want, rec.Code)
+		}
 	}
 }
 
@@ -129,8 +154,11 @@ func TestAPITokenRenew(t *testing.T) {
 		t.Fatal("the token works after 31 days")
 	}
 	c = hn.signInAgain("alice")
-	rec := hn.post(tokenPath(tok.ID, "renew"), url.Values{"return": {"/worlds"}}, withCookie(c))
-	hn.wantRedirect(rec, "/worlds")
+	rec := hn.post(tokenPath(tok.ID, "renew"), url.Values{"return": {"/worlds?done=renewed&name=Old&x=1"}}, withCookie(c))
+	hn.wantRedirect(rec, "/worlds?done=renewed&name=Claude&x=1")
+	if body := hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(); !strings.Contains(body, `id="renewed-message"`) || !strings.Contains(body, "Renewed Claude.") {
+		t.Error("the page renewed from shows no Done message")
+	}
 	if _, err := hn.tokensFor(t).Check(context.Background(), secret); err != nil {
 		t.Errorf("the renewed token is refused: %v", err)
 	}
@@ -161,7 +189,7 @@ func TestAPITokenRevoke(t *testing.T) {
 	if rec := hn.post(tokenPath(tok.ID, "renew"), url.Values{}, withCookie(c)); rec.Code != http.StatusConflict {
 		t.Errorf("renewing a revoked token: %d", rec.Code)
 	}
-	if got := hn.audits(AuditTokenRevoke); len(got) != 1 || got[0] != "alice  token=Claude owner=alice scope=read" {
+	if got := hn.audits(AuditTokenRevoke); len(got) != 1 || got[0] != `alice  token_id=1 token="Claude" owner="alice" scope=read` {
 		t.Errorf("audit %q", got)
 	}
 	if rec := hn.get(tokenPath(999, "revoke"), withCookie(c)); rec.Code != http.StatusNotFound {
@@ -182,7 +210,7 @@ func TestAPITokenMCPSwitch(t *testing.T) {
 		t.Error("the page does not show MCP on")
 	}
 	hn.post(pathAPITokenMCP, url.Values{"mcp": {"off"}}, withCookie(c))
-	if got := strings.Join(hn.audits(AuditMCPSet), "|"); got != "alice  on|alice  off" && got != "alice  off|alice  on" {
+	if got := strings.Join(hn.audits(AuditMCPSet), "|"); got != "alice  off|alice  on" { // newest first
 		t.Errorf("audit %q", got)
 	}
 	if rec := hn.post(pathAPITokenMCP, url.Values{"mcp": {"yes"}}, withCookie(c)); rec.Code != http.StatusBadRequest {
@@ -242,6 +270,11 @@ func TestAPITokenBanner(t *testing.T) {
 	if b := banner(PathAPITokens); !strings.Contains(b, "Your API token Claude expired") {
 		t.Error("no banner while Expired")
 	}
+	if b := banner(PathAPITokens); b == "" {
+		t.Fatal("no banner on the tokens page")
+	} else if !strings.Contains(b, `class="state state--token-expired"`) {
+		t.Error("no Expired card")
+	}
 	hn.post(tokenPath(tok.ID, "renew"), url.Values{}, withCookie(c))
 	if b := banner(PathWorlds); strings.Contains(b, "Claude") {
 		t.Error("the banner stays after renewing")
@@ -250,5 +283,41 @@ func TestAPITokenBanner(t *testing.T) {
 	hn.post(tokenPath(other.ID, "revoke"), url.Values{}, withCookie(c))
 	if b := banner(PathWorlds); b != "" {
 		t.Error("the banner stays after revoking")
+	}
+}
+
+// SPEC 12.10: the banner is the owner's alone; another user's expiring
+// token never shows in it.
+func TestAPITokenBannerIsOwners(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	hn.createToken(c, "Claude", auth.ScopeRead)
+	hn.addUser("bob", testPassword)
+	hn.clock.Advance(26 * 24 * time.Hour)
+	bob := hn.signInAgain("bob")
+	if body := hn.get(PathWorlds, withCookie(bob)).Body.String(); strings.Contains(body, `id="token-banner"`) {
+		t.Error("bob sees alice's token in his banner")
+	}
+	alice := hn.signInAgain("alice")
+	if body := hn.get(PathWorlds, withCookie(alice)).Body.String(); !strings.Contains(body, `id="token-banner"`) {
+		t.Error("alice sees no banner")
+	}
+	if body := hn.get(PathWorlds, withCookie(alice), withHeader("HX-Request", "true")).Body.String(); strings.Contains(body, `id="token-banner"`) {
+		t.Error("an htmx request drew the banner")
+	}
+}
+
+// SPEC 12.10: last use is shown to the minute.
+func TestAPITokenLastUsedToTheMinute(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	hn.createToken(c, "Claude", auth.ScopeRead)
+	tok := hn.tokenNamed("Claude")
+	if err := hn.store.TouchAPIToken(context.Background(), tok.ID, time.Date(2026, 11, 2, 13, 7, 30, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+	body := hn.get(PathAPITokens, withCookie(c)).Body.String()
+	if !strings.Contains(body, `<span class="nowrap">13:07 UTC</span>`) {
+		t.Error("last use is not shown as 13:07 UTC")
 	}
 }

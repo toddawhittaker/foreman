@@ -202,16 +202,6 @@ func (APITokenRevokePage) navItem() string      { return PathSchedule }
 // BackPath is the tokens page.
 func (APITokenRevokePage) BackPath() string { return PathAPITokens }
 
-// TokenBanner is one line of the expiry banner (SPEC 12.10, "Reminder").
-type TokenBanner struct {
-	Name    string
-	Expires time.Time
-	Expired bool
-	// RenewPath is where its button posts; Return is the page to come back to.
-	RenewPath string
-	Return    string
-}
-
 func (s *server) apiTokenRoutes() {
 	s.mux.HandleFunc("GET "+PathAPITokens, s.requireUser(s.handleAPITokens))
 	s.mux.HandleFunc("POST "+PathAPITokens, s.requireUser(s.handleAPITokenCreate))
@@ -258,7 +248,7 @@ func (s *server) handleAPITokens(w http.ResponseWriter, r *http.Request, u store
 	}
 	q := r.URL.Query()
 	switch d := q.Get("done"); d {
-	case tokenDoneRenewed, tokenDoneRevoked:
+	case tokenDoneRevoked:
 		p.Done, p.DoneName = d, q.Get("name")
 	case tokenDoneMCPOn, tokenDoneMCPOff:
 		p.Done = d
@@ -282,9 +272,6 @@ func (s *server) handleAPITokenCreate(w http.ResponseWriter, r *http.Request, u 
 		f.NameError = i18n.M("apitokens.create.name.invalid", "max", auth.TokenNameMax)
 	case errors.Is(err, store.ErrTokenNameTaken):
 		f.NameError = i18n.M("apitokens.create.name.taken")
-	case errors.Is(err, auth.ErrTokenScope):
-		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
-		return
 	case err != nil:
 		s.fail(w, r, "create an API token", err)
 		return
@@ -308,8 +295,10 @@ func (s *server) handleAPITokenCreate(w http.ResponseWriter, r *http.Request, u 
 
 // tokenAudit is an audit detail naming the token, its owner and its scope
 // (SPEC 12.9).
+// Free text is quoted, so a name or username cannot pose as another field.
 func tokenAudit(t store.APIToken) string {
-	return "token=" + t.Name + " owner=" + t.Owner + " scope=" + t.Scope
+	return "token_id=" + strconv.FormatInt(t.ID, 10) + " token=" + strconv.Quote(t.Name) +
+		" owner=" + strconv.Quote(t.Owner) + " scope=" + t.Scope
 }
 
 // mcpEndpoint is the MCP address: FOREMAN_PUBLIC_URL's, else this request's.
@@ -323,6 +312,14 @@ func (s *server) mcpEndpoint(r *http.Request) string {
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
+	}
+	// Behind a trusted proxy the browser's scheme is the proxy's to say;
+	// anyone else's header is ignored.
+	if auth.PeerTrusted(r, s.cfg.TrustedProxies) {
+		switch p := r.Header.Get("X-Forwarded-Proto"); p {
+		case "https", "http":
+			scheme = p
+		}
 	}
 	return (&url.URL{Scheme: scheme, Host: r.Host, Path: "/mcp"}).String()
 }
@@ -372,11 +369,25 @@ func (s *server) handleAPITokenRenew(w http.ResponseWriter, r *http.Request, u s
 		return
 	}
 	s.audit(r.Context(), u, AuditTokenRenew, "", tokenAudit(t))
-	if back := returnPath(r.PostFormValue("return")); back != "" {
-		http.Redirect(w, r, back, http.StatusSeeOther)
-		return
+	http.Redirect(w, r, renewedURL(r.PostFormValue("return"), t.Name), http.StatusSeeOther)
+}
+
+// renewedURL is the page the Renew came from, when safe, else the tokens
+// page, with a Renewed message. An old done or name is dropped first, so
+// the page never shows a stale message (SPEC 14.17).
+func renewedURL(back, name string) string {
+	u, err := url.Parse(returnPath(back))
+	if err != nil || u.Path == "" {
+		return doneURL(tokenDoneRenewed, name)
 	}
-	http.Redirect(w, r, doneURL(tokenDoneRenewed, t.Name), http.StatusSeeOther)
+	q := u.Query()
+	q.Del("done")
+	q.Del("name")
+	q.Set("done", tokenDoneRenewed)
+	q.Set("name", name)
+	u.RawQuery = q.Encode()
+	u.Fragment = ""
+	return u.String()
 }
 
 func doneURL(done, name string) string {
@@ -457,10 +468,11 @@ func (s *server) handleMCPSet(w http.ResponseWriter, r *http.Request, u store.Us
 	http.Redirect(w, r, PathAPITokens+"?done=mcp-"+v, http.StatusSeeOther)
 }
 
-// tokenBanner is the expiry banner's lines for the signed-in user, on every
-// signed-in page (SPEC 12.10, "Reminder"). A failed lookup shows none.
-func (s *server) tokenBanner(r *http.Request, user string) []TokenBanner {
-	if user == "" || s.tokens == nil || s.store == nil {
+// tokenBanner is the expiry banner's tokens for the signed-in user, on
+// every signed-in page (SPEC 12.10, "Reminder"). An htmx request draws no
+// layout, so it skips the lookup; a failed lookup shows none.
+func (s *server) tokenBanner(r *http.Request, user string) []TokenRow {
+	if user == "" || s.tokens == nil || s.store == nil || r.Header.Get("HX-Request") != "" {
 		return nil
 	}
 	ctx := r.Context()
@@ -473,17 +485,10 @@ func (s *server) tokenBanner(r *http.Request, user string) []TokenBanner {
 		s.log.Error("list expiring API tokens", "error", err)
 		return nil
 	}
-	back := menuReturn(r)
-	if returnPath(back) == "" {
-		back = ""
-	}
 	now := s.now()
-	out := make([]TokenBanner, 0, len(ts))
+	out := make([]TokenRow, 0, len(ts))
 	for _, t := range ts {
-		out = append(out, TokenBanner{
-			Name: t.Name, Expires: auth.ExpiresAt(t), Expired: auth.State(t, now) == auth.TokenExpired,
-			RenewPath: tokenPath(t.ID, "renew"), Return: back,
-		})
+		out = append(out, tokenRow(t, u.ID, now))
 	}
 	return out
 }

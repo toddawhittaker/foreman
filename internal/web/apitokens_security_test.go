@@ -41,7 +41,7 @@ func TestAPITokenAdminRevokesOthers(t *testing.T) {
 	hn.addUser("bob", testPassword)
 	bob := sessionCookie(hn.post(PathSignIn, signInForm("bob", testPassword)))
 	hn.wantRedirect(hn.post(tokenPath(tok.ID, "revoke"), url.Values{}, withCookie(bob)), doneURL(tokenDoneRevoked, "Claude"))
-	if got := hn.audits(AuditTokenRevoke); len(got) != 1 || got[0] != "bob  token=Claude owner=alice scope=read" {
+	if got := hn.audits(AuditTokenRevoke); len(got) != 1 || got[0] != `bob  token_id=1 token="Claude" owner="alice" scope=read` {
 		t.Errorf("audit %q", got)
 	}
 }
@@ -112,5 +112,13 @@ func TestAPITokenCannotUseThePages(t *testing.T) {
 	}
 	if len(hn.audits(AuditTokenRenew)) != 0 {
 		t.Error("a bearer token renewed itself")
+	}
+}
+
+// S2: quoted free text keeps a hostile name from posing as another field.
+func TestTokenAuditQuotes(t *testing.T) {
+	got := tokenAudit(store.APIToken{ID: 7, Name: "t", Owner: "eve scope=admin", Scope: "read"})
+	if want := `token_id=7 token="t" owner="eve scope=admin" scope=read`; got != want {
+		t.Errorf("got %s, want %s", got, want)
 	}
 }
