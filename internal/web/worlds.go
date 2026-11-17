@@ -576,7 +576,7 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 const AuditWorldDelete = "world-delete"
 
 // deleteWorld deletes a world as its Delete page does (SPEC 5.10). The
-// checks the world can answer come first; then world-delete is recorded,
+// refusals come first, so a refused delete leaves no record; then world-delete is recorded,
 // and the delete is refused when the record cannot be written (SPEC 12.9).
 // typedName is the name typed to confirm; MCP passes the world's own.
 func (s *server) deleteWorld(ctx context.Context, by game.Actor, sum world.Summary, typedName string, final bool) error {
@@ -589,8 +589,18 @@ func (s *server) deleteWorld(ctx context.Context, by game.Actor, sum world.Summa
 		return world.ErrActive
 	case typedName != sum.Name:
 		return world.ErrWrongName
+	case !s.worldBusy(sum.ID).IsZero():
+		return world.ErrBusy
 	}
-	err := s.store.AddAudit(ctx, store.AuditEntry{
+	// A world another operation holds is refused before the record is
+	// written. Delete takes the lock again; an operation that starts in
+	// between still makes Delete refuse, after the record.
+	unlock, err := s.worlds.Lock(sum.ID)
+	if err != nil {
+		return err
+	}
+	unlock()
+	err = s.store.AddAudit(ctx, store.AuditEntry{
 		Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token,
 		Action: AuditWorldDelete, WorldID: sum.ID, Detail: fmt.Sprintf("%s, final snapshot %t", sum.Name, final),
 	})

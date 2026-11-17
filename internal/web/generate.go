@@ -429,7 +429,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 		// The review reads the names and versions from the favorite, so the
 		// address carries its id alone (SPEC 17).
 		q := url.Values{favoriteQuery: {fav.ID}, generatedQuery: {"1"}}
-		http.Redirect(w, r, planPath(id, q), http.StatusSeeOther)
+		http.Redirect(w, r, planPath(id, q), http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
 		return
 	}
 	http.Redirect(w, r, worldPath(id)+"?"+generatedQuery+"=1", http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment

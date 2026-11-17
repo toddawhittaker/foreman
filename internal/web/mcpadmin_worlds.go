@@ -438,10 +438,6 @@ func (s *server) mcpMakeFavorite(ctx context.Context, _ *mcp.CallToolRequest, in
 	return mcpText("Favorite %s was made from %s, with id %s.", fav.Name, sum.Name, id), mcpFavoriteRef{ID: id, Name: fav.Name}, nil
 }
 
-type mcpFavoriteIn struct {
-	FavoriteID string `json:"favorite_id" jsonschema:"the favorite's id from list_favorites"`
-}
-
 type mcpRenameFavoriteIn struct {
 	FavoriteID string `json:"favorite_id" jsonschema:"the favorite's id from list_favorites"`
 	Name       string `json:"name" jsonschema:"the new name"`

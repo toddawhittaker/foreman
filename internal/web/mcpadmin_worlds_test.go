@@ -77,7 +77,7 @@ func (r *worldsRig) dataDigest() string {
 			return err
 		}
 		rel, _ := filepath.Rel(root, p)
-		fmt.Fprintf(h, "%s %v\n", rel, d.Type())
+		_, _ = fmt.Fprintf(h, "%s %v\n", rel, d.Type())
 		if d.Type().IsRegular() {
 			b, err := os.ReadFile(p) //nolint:gosec // a test temp folder
 			if err != nil {
@@ -499,5 +499,33 @@ func TestMCPWorldToolsHints(t *testing.T) {
 	}
 	if seen != len(mine) {
 		t.Errorf("found %d of %d tools", seen, len(mine))
+	}
+}
+
+// SPEC 12.9: a refused delete writes no world-delete entry: a locked
+// world, the active world, a wrong typed name.
+func TestRefusedDeleteWritesNoAudit(t *testing.T) {
+	r := newWorldsRig(t)
+	active, id := r.seedTwo()
+	unlock, err := r.worlds.Lock(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := r.post(deletePath(id), url.Values{"confirm_name": {"Second"}}, withCookie(r.cookie))
+	unlock()
+	if rec.Code != http.StatusConflict {
+		t.Errorf("busy: %d", rec.Code)
+	}
+	if rec := r.post(deletePath(active), url.Values{"confirm_name": {"Base"}}, withCookie(r.cookie)); rec.Code != http.StatusConflict {
+		t.Errorf("active: %d", rec.Code)
+	}
+	if rec := r.post(deletePath(id), url.Values{"confirm_name": {"second"}}, withCookie(r.cookie)); rec.Code != http.StatusBadRequest {
+		t.Errorf("wrong name: %d", rec.Code)
+	}
+	if res, _ := call(t, r.cs, "delete_world", map[string]any{"world_id": active}); !res.IsError {
+		t.Error("MCP deleted the active world")
+	}
+	if got := r.auditOf(AuditWorldDelete); len(got) != 0 {
+		t.Errorf("refused deletes were audited: %+v", got)
 	}
 }
