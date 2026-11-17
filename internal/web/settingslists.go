@@ -194,18 +194,7 @@ func (h *settingsHandlers) handleWhitelistSwitch(w http.ResponseWriter, r *http.
 		return
 	}
 	on := r.PostFormValue("use_whitelist") != ""
-	detail := "off"
-	if on {
-		detail = "on"
-	}
-	by := actor(u)
-	err := s.store.AddAudit(r.Context(), store.AuditEntry{
-		Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token, Action: AuditWhitelistSwitch,
-		WorldID: sw.sum.ID, Detail: detail,
-	})
-	if err == nil {
-		err = s.worlds.SetUseWhitelist(sw.sum.ID, on)
-	}
+	err := s.setWhitelistSwitch(r.Context(), actor(u), sw.sum.ID, on)
 	if err != nil {
 		status, msg := worldError(err)
 		if status == http.StatusInternalServerError || msg.IsZero() {
@@ -217,7 +206,27 @@ func (h *settingsHandlers) handleWhitelistSwitch(w http.ResponseWriter, r *http.
 		s.page(w, r, status, u.Username, p)
 		return
 	}
-	http.Redirect(w, r, settingsPath(sw.sum.ID)+"?"+switchQuery+"="+detail, http.StatusSeeOther)
+	http.Redirect(w, r, settingsPath(sw.sum.ID)+"?"+switchQuery+"="+whitelistWord(on), http.StatusSeeOther)
+}
+
+func whitelistWord(on bool) string {
+	if on {
+		return "on"
+	}
+	return "off"
+}
+
+// setWhitelistSwitch records the change in the audit log, then sets the
+// world's whitelist switch (SPEC 8.3, 12.9).
+func (s *server) setWhitelistSwitch(ctx context.Context, by game.Actor, id string, on bool) error {
+	err := s.store.AddAudit(ctx, store.AuditEntry{
+		Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token, Action: AuditWhitelistSwitch,
+		WorldID: id, Detail: whitelistWord(on),
+	})
+	if err != nil {
+		return err
+	}
+	return s.worlds.SetUseWhitelist(id, on)
 }
 
 // PlayerDone is the player action result to show as Done, or nil.
