@@ -22,6 +22,7 @@
   "notify.event.short.player_leave": "player leaves",
   "notify.event.short.scheduled_restart": "scheduled restart",
   "notify.event.short.low_disk": "low disk",
+  "notify.event.short.token_expiring": "token expiring",
   "notify.edit": "Edit",
   "notify.edit.named": "Edit the {preset} webhook to {host}",
   "notify.delete.named": "Delete the {preset} webhook to {host}",
@@ -57,6 +58,7 @@
   "notify.event.player_leave": "A player leaves",
   "notify.event.scheduled_restart": "A scheduled restart runs or is skipped",
   "notify.event.low_disk": "Disk space runs low",
+  "notify.event.token_expiring": "An API token is about to expire",
   "notify.events.none": "Choose at least one event.",
   "notify.lang.label": "Language of the messages",
   "notify.lang.hint": "Names from the game and the world’s name are sent as written.",
@@ -74,5 +76,6 @@
   "notify.msg.player_leave": "{world}: {player} left.",
   "notify.msg.restart_ran": "{world}: the scheduled restart ran.",
   "notify.msg.restart_skipped": "{world}: the scheduled restart was skipped because players stayed online.",
-  "notify.msg.low_disk": "{world}: only {free} of disk space is free. Autosaves can fail when it runs out."
+  "notify.msg.low_disk": "{world}: only {free} of disk space is free. Autosaves can fail when it runs out.",
+  "notify.msg.token_expiring": "The API token {token}, owned by {owner}, expires at {expires}."
 }

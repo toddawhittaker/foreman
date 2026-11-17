@@ -22,6 +22,7 @@
   "notify.event.short.player_leave": "sale un jugador",
   "notify.event.short.scheduled_restart": "reinicio programado",
   "notify.event.short.low_disk": "poco espacio en disco",
+  "notify.event.short.token_expiring": "token de API por caducar",
   "notify.edit": "Editar",
   "notify.edit.named": "Editar el webhook de {preset} a {host}",
   "notify.delete.named": "Borrar el webhook de {preset} a {host}",
@@ -57,6 +58,7 @@
   "notify.event.player_leave": "sale un jugador",
   "notify.event.scheduled_restart": "un reinicio programado se ejecuta o se omite",
   "notify.event.low_disk": "queda poco espacio en disco",
+  "notify.event.token_expiring": "un token de API está a punto de caducar",
   "notify.events.none": "Elige al menos un evento.",
   "notify.lang.label": "Idioma de los mensajes",
   "notify.lang.hint": "Los nombres del juego y el nombre del mundo se envían tal como están escritos.",
@@ -74,5 +76,6 @@
   "notify.msg.player_leave": "{world}: {player} ha salido.",
   "notify.msg.restart_ran": "{world}: el reinicio programado se ha ejecutado.",
   "notify.msg.restart_skipped": "{world}: el reinicio programado se ha omitido porque había jugadores conectados.",
-  "notify.msg.low_disk": "{world}: solo quedan {free} de espacio en disco. Los autoguardados pueden fallar cuando se acabe."
+  "notify.msg.low_disk": "{world}: solo quedan {free} de espacio en disco. Los autoguardados pueden fallar cuando se acabe.",
+  "notify.msg.token_expiring": "El token de API {token} de {owner} caduca el {expires}."
 }
