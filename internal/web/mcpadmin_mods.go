@@ -289,6 +289,14 @@ func planRefusal(p ModPlanPage) string {
 // mcpChangeMods applies a mod plan in two steps, as handlePlan does (SPEC
 // 9.2, 9.14, 17.8, 21.8).
 func (s *server) mcpChangeMods(ctx context.Context, req *mcp.CallToolRequest, in mcpChangeModsIn) (*mcp.CallToolResult, mcpChangeModsOut, error) {
+	var seen confirmSeen
+	if in.ConfirmCode != "" {
+		// Spent before any check, so a refused confirm spends it too.
+		var err error
+		if seen, err = s.mcpSpend(req, in); err != nil {
+			return nil, mcpChangeModsOut{}, err
+		}
+	}
 	stop, err := stopOptions(in.CountdownSeconds)
 	if err != nil {
 		return nil, mcpChangeModsOut{}, err
@@ -300,13 +308,6 @@ func (s *server) mcpChangeMods(ctx context.Context, req *mcp.CallToolRequest, in
 	sum, err := s.mcpNamed(ctx, in.WorldID)
 	if err != nil {
 		return nil, mcpChangeModsOut{}, err
-	}
-	var seen confirmSeen
-	if in.ConfirmCode != "" {
-		// Spent first, so a wrong use spends it too.
-		if seen, err = s.mcpSpend(req, in); err != nil {
-			return nil, mcpChangeModsOut{}, err
-		}
 	}
 	p := s.planPage(ctx, sum, f, CountdownForm{})
 	if !p.Error.IsZero() {
@@ -491,18 +492,20 @@ func settingsWill(p ModSettingsPage) []string {
 // mcpChangeModSettings saves changed mod settings in two steps, as
 // handleModSettingsSave does (SPEC 9.6, 9.13, 21.8).
 func (s *server) mcpChangeModSettings(ctx context.Context, req *mcp.CallToolRequest, in mcpChangeModSettingsIn) (*mcp.CallToolResult, mcpChangeModSettingsOut, error) {
+	var seen confirmSeen
+	if in.ConfirmCode != "" {
+		// Spent before any check, so a refused confirm spends it too.
+		var err error
+		if seen, err = s.mcpSpend(req, in); err != nil {
+			return nil, mcpChangeModSettingsOut{}, err
+		}
+	}
 	stop, err := stopOptions(in.CountdownSeconds)
 	if err != nil {
 		return nil, mcpChangeModSettingsOut{}, err
 	}
 	if len(in.Values) == 0 {
 		return nil, mcpChangeModSettingsOut{}, errors.New("values is required: new values by setting name")
-	}
-	var seen confirmSeen
-	if in.ConfirmCode != "" {
-		if seen, err = s.mcpSpend(req, in); err != nil {
-			return nil, mcpChangeModSettingsOut{}, err
-		}
 	}
 	sum, p, st, err := s.mcpModSettings(ctx, in.WorldID)
 	if err != nil {
