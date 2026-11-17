@@ -13,7 +13,8 @@ Epics 1 to 9, the Gate A fixes, the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
 the Resource amounts epic, fixes batches 5, 6 and 7 and the Mod settings epic
 are done. Epic 9b (VPN sidecars) is built, but its live acceptance is still
-open (see its section). Epic 9c (public mods and autosave tidy) is done.
+open (see its section). Epic 9c (public mods and autosave tidy) and Epic
+10a (API tokens and MCP) are done.
 Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
 now, at Todd's choice, when the Mod settings epic started; it is still owed
 before Gate C.
@@ -396,7 +397,7 @@ world (6.5, 6.10). Everything below is built and tested. Coverage across
   reader reads real Space Age saves, and the real check ran 2.1.24 with
   Space Age off.
 - There is no audit viewer, filter or retention yet (Epic 11), and audit
-  rows have no token name (Epic 10).
+  rows have carried the API token's name since Epic 10a (SPEC 12.9).
 - Crash reasons are not named; a crash says "unknown" and shows the last 20
   lines (Epic 9). A crash loop is not remembered across a Foreman restart:
   the game stays stopped and shows as stopped.
@@ -3772,3 +3773,120 @@ the access log.
 - **The tidy's mapping is exact only in the cases SPEC 11.6 names under
   "Accuracy";** otherwise the game's first overwrite may hit a file that is
   not the oldest, and the snapshot is the undo.
+
+## Epic 10a: API tokens and MCP
+
+Serves SPEC 12.10, 14.19 and 21.1 to 21.6, with the edits to 3.2, 8.10,
+8.11, 12.1, 12.9, 13.1, 14.1, 14.7, 14.8, 14.12 and 22.3. The task pull
+requests were #681 and #682 (token core and its tests), #683 (the
+`token-expiring` event), #684 (the endpoint and tools), #685 (the page and
+banner), #686 (security, real-game and end-to-end tests), #687 (manual
+snapshots and restores audited), #688 (integration fixes) and #689 (a
+load-sensitive test). Epic 10b (admin tools, the two-step confirm, SPEC
+21.7 and 21.8) is a later epic.
+
+Rulings (Todd, 2026-11-17), now in SPEC 12.10 and 21: three nested scopes
+(read, operate, admin); tokens last 30 days from creation or renewal, and
+an expired token stays renewable with the same secret; a revoked one is
+final; every admin sees every token; chat through MCP carries the token's
+name; MCP is an admin setting, off by default.
+
+### Delivered
+
+- **API tokens (SPEC 12.10, 14.19; ADR 0024; #681, #682).** A secret is
+  `fmn_` plus 32 random bytes in base64url. Only its SHA-256 is stored.
+  Migration `0010_api_tokens.sql` adds the `api_tokens` table and the audit
+  log's `token_name` column. A name is 1 to 32 letters, digits, spaces, `.`,
+  `_` or `-`, and unique among the owner's live tokens. State (working,
+  expired, revoked) is worked out from the stored times. Renew keeps the
+  secret and is owner only. Revoke is final. Last use is written at most once
+  a minute. A gitleaks rule catches `fmn_` secrets.
+- **The API tokens page and the banner (SPEC 12.10, 21.2; #685).**
+  `/settings/api-tokens` holds the MCP switch, the user's tokens with Renew
+  and Revoke (revoke goes through a confirm page), a create form with read
+  picked by default, and an "All tokens" list. The secret appears once, on
+  a `no-store` page, beside the endpoint address. The banner shows on every
+  signed-in page from 5 days before expiry and while a token is expired. The
+  strings are in all eight languages. `FOREMAN_MCP=off` forces MCP off and the
+  page says so. The setting is audited as `mcp-set`, and token changes as
+  `token-create`, `token-renew` and `token-revoke`.
+- **The `/mcp` endpoint and its tools (SPEC 21.1 to 21.6; ADR 0025; #684).**
+  The official Go SDK in stateless JSON mode, one server per scope. Read
+  tools: `server_status`, `list_worlds`, `list_players`, `recent_log`,
+  `list_snapshots`, `list_mods`. Action tools: `start_server`, `stop_server`,
+  `restart_server`, `switch_world`, `take_snapshot`, `send_chat`. They run
+  the same code as the Server page, wait up to 50 seconds, and never offer
+  "start anyway". Chat is sent as `[token name] message`.
+- **The limits (SPEC 14.19; #681, #684, #686).** Bearer header only. A
+  malformed secret is refused with no lookup. A 401 names an expired or
+  revoked state. 20 failures per address in 15 minutes (IPv6 by /64, kept
+  apart from sign-in's count), 120 requests a minute and 4 at once per token,
+  429 with `Retry-After`, a 4 MiB body, one JSON-RPC message per body, 403
+  when MCP is off before the token is read, and any `Origin` refused unless
+  it equals `FOREMAN_PUBLIC_URL`'s. No cookie or trusted header gives an
+  identity on `/mcp`. `mcp_security_test.go` walks 14.19 line by line.
+- **Untrusted text (SPEC 14.12; #684, #688).** Player, log, portal and
+  snapshot-label text sits in `untrusted_*` fields, and each tool's
+  description names them.
+- **The snapshot cap (SPEC 14.12, 21.5; #688).** `take_snapshot` through a
+  token is refused once the world holds 10 snapshots taken through tokens.
+  The snapshot's `snapshot.json` records `via_token`. Snapshots taken in the
+  UI neither count nor are refused.
+- **A revoke takes effect on a held request (SPEC 12.10; #688).** `/mcp`
+  checks the token again by id after the body is read. The Renewed message
+  shows only for a working token.
+- **Manual snapshots and restores are audited (SPEC 12.9; #687).** The
+  controller records `snapshot` and `restore` entries with the token's name,
+  before the action, and refuses if the entry cannot be written. The
+  automatic "Before restore" snapshot adds no extra entry.
+- **The `token-expiring` event (SPEC 8.10, 8.11; #683).** Sent 5 days and 1
+  day before a working token expires, once per period, checked at start and
+  every 15 minutes. If both came due while Foreman was down, only the later
+  one is sent. It is off by default on new webhooks and was turned off on
+  existing ones by the migration. The generic body gains an optional `token`
+  field, and `world` has an empty id and name for this event. Eight languages.
+- **The operator guide (docs/OPERATOR.md).** The `token-expiring` event, the
+  `token` body field, and "Connect an AI assistant", which says how to let
+  `/mcp` past a sign-in proxy without naming one.
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck` and the Go tests
+  and end-to-end specs for its files. New end-to-end specs: `api-tokens.spec.ts`
+  and `mcp.spec.ts` (token made in the browser, `/mcp` called with no cookie,
+  last use updates, revoke then 401 naming it, MCP off gives 403).
+- `TestRealGameMCP` (tag `game`, 2.1.24) reads status, takes a snapshot, sends
+  chat (the game log shows `[Claude] ...`), restarts with a 3-second
+  countdown, and shows a read token refused a restart. It found that manual
+  snapshots were not audited, which #687 fixed.
+- Tests written first for the revoke re-check, untrusted labels, the
+  snapshot cap and the audit entries failed before their fixes.
+
+### Gaps left
+
+- **A token-expiring reminder is sent on a best-effort basis (SPEC 8.12).**
+  It is queued and then recorded as sent. A full queue or a shutdown between
+  the two can drop one, and it is not retried.
+- **The MCP snapshot cap can overshoot by one or two** when calls race at the
+  limit. It guards against a flood, not an exact count. Snapshots from before
+  Epic 10a lack `via_token` and never count.
+- **A request whose token check finishes a few milliseconds before a revoke
+  commits may still run.** Every request checked after the revoke is refused.
+- **Admin scope has only the operate tools until Epic 10b.** The admin tools
+  and the two-step confirm (SPEC 21.7, 21.8) are not built.
+- **Snapshots and restores taken without Docker control write no audit
+  entry.** The web paths used when Foreman has no Docker control act without
+  recording one.
+- **No viewer role exists yet,** so the "All tokens" list and the MCP switch
+  show to every user (SPEC 12.1).
+- **The language cookie is still read on `/mcp`** by the shared locale
+  middleware. It is not used for identity.
+- **Audits that take a user instead of an actor cannot carry a token name:**
+  Generate, settings, snapshot deletion and the world manager's `by`
+  parameters. Epic 10b changes them, once admin tools reach them.
+- **No audit viewer yet (Epic 11).** Token names are recorded but only the
+  database shows them.
+- **Not built, on purpose:** OAuth discovery metadata, progress updates over
+  a stream, tokens limited to one world, and a paged token list.
+- **The 18.10 gate with a real Claude Code client on trial** is the
+  orchestrator's check before the epic merges, not part of the build.

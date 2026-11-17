@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
@@ -150,19 +151,19 @@ func pageCases() []pageCase {
 			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", Events: "Crash, low disk", Plain: true},
 			{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: "hooks.example.org", LangTag: "fr", LangName: "Français", AllOn: true, Unreadable: true},
 		}}},
-		{"notification add", "todd", 200, formPage(notify.Discord, allEventsOn(), "en")},
+		{"notification add", "todd", 200, formPage(notify.Discord, defaultEvents(), "en")},
 		{"notification add refused", "todd", 400, func() WebhookFormPage {
 			p := formPage("", map[notify.Event]bool{}, "xx")
 			p.PresetError, p.URLError, p.EventsError, p.LangError = i18n.M("notify.preset.invalid"), i18n.M("notify.url.scheme"), i18n.M("notify.events.none"), i18n.M("notify.lang.invalid")
 			return p
 		}()},
 		{"notification edit plain", "todd", 200, func() WebhookFormPage {
-			p := formPage(notify.Ntfy, allEventsOn(), "de")
+			p := formPage(notify.Ntfy, defaultEvents(), "de")
 			p.Edit, p.ID, p.Kept = true, 2, WebhookView{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", Plain: true}
 			return p
 		}()},
 		{"notification edit unreadable", "todd", 400, func() WebhookFormPage {
-			p := formPage(notify.Generic, allEventsOn(), "fr")
+			p := formPage(notify.Generic, defaultEvents(), "fr")
 			p.Edit, p.ID, p.Kept = true, 3, WebhookView{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: longName, Unreadable: true}
 			p.URLError = i18n.M("notify.url.missing")
 			return p
@@ -176,6 +177,15 @@ func pageCases() []pageCase {
 			}}}}}},
 		{"public mods settings off", "todd", 200, PublicModsSettingsPage{}},
 		{"public mods settings on", "todd", 200, PublicModsSettingsPage{On: true, Done: PublicModsOn}},
+		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},
+		{"api tokens listed", "todd", 200, APITokensPage{Admin: true, MCPOn: true,
+			Mine: []TokenRow{{ID: 1, Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}},
+			All:  []TokenRow{{ID: 1, IDPrefix: "all-", Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}, {ID: 2, IDPrefix: "all-", Owner: "bob", Name: "Old", Scope: "admin", State: auth.TokenRevoked}},
+			Form: TokenForm{Name: "a[b]", Scope: "admin", NameError: i18n.M("apitokens.create.name.taken")}}},
+		{"api tokens used", "todd", 200, APITokensPage{Form: TokenForm{Scope: "read"}, Mine: []TokenRow{{ID: 3, Owner: "todd", Name: "Used", Scope: "read", State: auth.TokenWorking, Mine: true, LastUsed: time.Date(2026, 11, 2, 9, 7, 30, 0, time.UTC)}}}},
+		{"api tokens forced off", "todd", 200, APITokensPage{MCPForced: true, Done: tokenDoneRevoked, DoneName: "Claude", Form: TokenForm{Scope: "read"}}},
+		{"api token created", "todd", 200, APITokenCreatedPage{Token: TokenRow{ID: 1, Name: "Claude", Scope: "read", State: auth.TokenWorking}, Secret: "fmn_x", Endpoint: "https://f.example/mcp"}},
+		{"api token revoke", "todd", 200, APITokenRevokePage{Token: TokenRow{ID: 1, Owner: "bob", Name: "Claude", Scope: "read", State: auth.TokenExpired}}},
 		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1"}.withZones()},
 		{"schedule on", "todd", 200, SchedulePage{On: true, Next: time.Date(2026, 11, 13, 4, 0, 0, 0, time.UTC), SavedClock: "04:00", SavedZone: "Europe/London",
 			Enabled: true, Clock: "04:00", Zone: "Europe/London", Limit: "1", Saved: true}.withZones()},
@@ -444,7 +454,7 @@ func render(t *testing.T, r *Renderer, c pageCase) (*httptest.ResponseRecorder, 
 func renderIn(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) (*httptest.ResponseRecorder, string) {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	if err := r.Render(rec, requestIn(loc), c.status, c.user, LiveState{}, c.page); err != nil {
+	if err := r.Render(rec, requestIn(loc), c.status, c.user, LiveState{}, nil, c.page); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	return rec, rec.Body.String()

@@ -81,6 +81,8 @@ const (
 	AuditUpdate        = "game-update"
 	AuditRollback      = "rollback"
 	AuditMods          = "mods"
+	AuditSnapshot      = "snapshot"
+	AuditRestore       = "restore"
 	// A start, restart, switch or update the checks refused before anything
 	// was done is recorded under its own action, with the reason (SPEC 12.9).
 	AuditStartRefused   = "start-refused"
@@ -152,6 +154,9 @@ func (e *PrecheckError) Error() string {
 type Actor struct {
 	UserID   int64
 	Username string
+	// Token is the API token's name when the action came through one, else ""
+	// (SPEC 12.9).
+	Token string
 }
 
 // AuditLog records who did what. *store.Store satisfies it.
@@ -1059,7 +1064,7 @@ func (c *Controller) refused(ctx context.Context, by Actor, action, id, detail s
 	if detail != "" {
 		reason = detail + ": " + reason
 	}
-	c.log.Warn(action+" refused", "world", id, "user", by.Username, "reason", reason)
+	c.log.Warn(action+" refused", "world", id, "user", by.Username, "token", by.Token, "reason", reason)
 	if aerr := c.audit(ctx, by, refusedActions[action], id, reason); aerr != nil {
 		c.log.Error("could not record the refusal in the audit log", "world", id, "action", action, "error", aerr)
 	}
@@ -1070,7 +1075,7 @@ func (c *Controller) refused(ctx context.Context, by Actor, action, id, detail s
 // so nothing is done that the audit log does not show (SPEC 12.9).
 func (c *Controller) audit(ctx context.Context, by Actor, action, id, detail string) error {
 	err := c.auditLog.AddAudit(ctx, store.AuditEntry{
-		Time: c.now(), UserID: by.UserID, Username: by.Username,
+		Time: c.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token,
 		Action: action, WorldID: id, Detail: detail,
 	})
 	if err != nil {

@@ -73,7 +73,7 @@ func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapsho
 
 	// The automatic snapshot comes first: staging sets times on zips that
 	// share an inode with the live world (SPEC 6.2, 6.9).
-	before, err := m.snapshot(id, ReasonBeforeRestore, LabelBeforeRestore, by)
+	before, err := m.snapshot(id, ReasonBeforeRestore, LabelBeforeRestore, by, false)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("take the snapshot before restoring: %w", err)
 	}

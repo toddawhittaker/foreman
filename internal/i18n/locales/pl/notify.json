@@ -23,6 +23,7 @@
   "notify.event.short.player_leave": "wyjście gracza",
   "notify.event.short.scheduled_restart": "zaplanowany restart",
   "notify.event.short.low_disk": "mało miejsca na dysku",
+  "notify.event.short.token_expiring": "wygasanie tokenu API",
   "notify.edit": "Edytuj",
   "notify.edit.named": "Edytuj webhook {preset} do {host}",
   "notify.delete.named": "Usuń webhook {preset} do {host}",
@@ -58,6 +59,7 @@
   "notify.event.player_leave": "gracz wychodzi",
   "notify.event.scheduled_restart": "zaplanowany restart zostaje wykonany lub pominięty",
   "notify.event.low_disk": "kończy się miejsce na dysku",
+  "notify.event.token_expiring": "wkrótce wygaśnie token API",
   "notify.events.none": "Należy wybrać co najmniej jedno zdarzenie.",
   "notify.lang.label": "Język wiadomości",
   "notify.lang.hint": "Nazwy z gry i nazwa świata są wysyłane w oryginalnej pisowni.",
@@ -75,5 +77,6 @@
   "notify.msg.player_leave": "{world}: {player} opuszcza grę.",
   "notify.msg.restart_ran": "{world}: zaplanowany restart został wykonany.",
   "notify.msg.restart_skipped": "{world}: zaplanowany restart został pominięty, ponieważ gracze pozostali online.",
-  "notify.msg.low_disk": "{world}: na dysku zostało tylko {free} wolnego miejsca. Gdy się skończy, autozapisy mogą się nie udać."
+  "notify.msg.low_disk": "{world}: na dysku zostało tylko {free} wolnego miejsca. Gdy się skończy, autozapisy mogą się nie udać.",
+  "notify.msg.token_expiring": "Token API {token} (właściciel: {owner}) wygasa {expires}."
 }

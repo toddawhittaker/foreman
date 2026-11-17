@@ -308,6 +308,54 @@ same with any proxy that can skip authentication for a path.
   found" while the setting is off), never the proxy's sign-in page. Then
   open `https://<your address>/worlds`; it should still ask you to sign in.
 
+### Connect an AI assistant
+
+Foreman can let an AI assistant, such as Claude Code, read the server's
+state and run a few actions through MCP (Model Context Protocol), at
+`/mcp` (SPEC section 21). It is off until an admin turns it on.
+
+1. Open **Settings**, **API tokens**, and turn MCP access on. To keep it
+   off whatever the page says, set `FOREMAN_MCP: off` in the compose file.
+   `off` is the only value Foreman accepts; anything else stops it at
+   startup. The page then says the environment turned MCP off.
+2. On the same page, name a token and pick its scope. **Read** only
+   looks. **Operate** can also start, stop and restart the server, switch
+   world, take snapshots and send chat. Pick the smallest scope that does
+   the job. Foreman shows the secret once, so copy it then. It starts with
+   `fmn_`; treat it like a password.
+3. Add Foreman to the assistant. For Claude Code:
+
+   ```sh
+   claude mcp add --transport http foreman https://<your Foreman>/mcp --header "Authorization: Bearer <token>"
+   ```
+
+   The page that shows the secret also shows the address to use.
+
+Things to know:
+
+- A token expires 30 days after it was made or last renewed. From 5 days
+  before, its owner sees a banner on every page with a Renew button, and an
+  expired token's call is refused with a message that says so. Renewing
+  keeps the same secret, so the assistant needs no change. A revoked token
+  cannot be renewed. If you suspect a secret leaked, revoke the token and
+  make a new one: renewing does not change the secret. To be told by
+  webhook, tick `token-expiring` on a webhook (section 12).
+- Chat sent through a token starts with the token's name, such as
+  `[Claude] Restarting in 5 minutes`.
+- A token can take at most 10 snapshots per world. An admin deleting some
+  in the web UI frees room.
+- Set `FOREMAN_PUBLIC_URL` (section 6). Foreman refuses any `/mcp` request
+  that carries an `Origin` header unless it equals that address. Real MCP
+  clients send none. Without `FOREMAN_PUBLIC_URL`, any `Origin` is refused.
+- If a proxy in front of Foreman asks people to sign in, it will also block
+  the assistant, which cannot sign in that way. Add one rule to the proxy:
+  requests whose path starts with `/mcp` go to Foreman without the proxy's
+  sign-in. Foreman checks the token itself and ignores any sign-in header on
+  this path. Every other path stays behind the proxy. Or point the assistant
+  at Foreman directly on a network you trust.
+- Test it from a machine that is not signed in. A call with the token
+  should work. A call with no token should get 401.
+
 ## 7. First run: create the admin
 
 Open `http://<your host>:8080`. Foreman shows **Create the first admin
@@ -428,8 +476,9 @@ you save, the page shows only the service and the host name, never the
 rest of the address, and the address is never logged. A few services put
 the secret in the host name itself; for those the secret is shown.
 
-**Events.** Each webhook has its own list of events, all on by default.
-Each event has a stable id, which the generic body uses:
+**Events.** Each webhook has its own list of events, all on by default
+except `token-expiring`. Each event has a stable id, which the generic
+body uses:
 
 | Id | Sent when |
 | --- | --- |
@@ -441,6 +490,11 @@ Each event has a stable id, which the generic body uses:
 | `player-leave` | a player left |
 | `scheduled-restart` | a scheduled restart ran, or was skipped |
 | `low-disk` | free disk space fell too low (section 13) |
+| `token-expiring` | an API token will expire in 5 days or in 1 day (section 6, "Connect an AI assistant") |
+
+`token-expiring` is off until you tick it, because a webhook often posts to
+a channel that players read. It names the token and its owner, never the
+secret.
 
 **Language.** The message text is in the language chosen for that webhook.
 It starts as the language of the admin who adds it.
@@ -497,6 +551,10 @@ Fields that appear only for some events:
 - `skipped`: `true` or `false`, for `scheduled-restart`. `true` means the
   restart did not run.
 - `free_bytes`: free disk space in bytes, for `low-disk`.
+- `token`: for `token-expiring`, an object with `name` (the token's name),
+  `owner` (the user who made it) and `expires` (when it expires, UTC, in
+  RFC 3339). For this event `world` is still sent, with an empty `id` and
+  an empty `name`, because the event belongs to no world.
 
 A field that does not apply is left out, not sent empty. Within version 1,
 new fields may be added, but none is removed or renamed, and no meaning

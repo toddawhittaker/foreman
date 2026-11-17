@@ -14,9 +14,9 @@ version and runs `factoriotools/factorio:<version>` by tag (SPEC 4.2,
 ADR 0005). The files named below are the source of truth; this list
 is a copy and goes stale if they change without it.
 
-- Go 1.27.3, set once as `GO_VERSION` in the `Makefile`. `go.mod` states
+- Go 1.27.4, set once as `GO_VERSION` in the `Makefile`. `go.mod` states
   only the language minimum, `go 1.27.0` (ADR 0001).
-- Build image: `golang:1.27.3-trixie@sha256:c65ecfe613b539ac74c62a4c3b2c27e8f8a6076384c8f27e8a3c0f3be17cc385`.
+- Build image: `golang:1.27.4-trixie@sha256:f18c3d73a184fb0582828510722e723b63a93f7188d11dd223d9be6f6880e65d`.
 - golangci-lint: `golangci/golangci-lint:v2.15.0@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481`.
 - Runtime image: `gcr.io/distroless/static-debian13@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f`,
   run as `USER 845:845`.
@@ -48,6 +48,8 @@ is a copy and goes stale if they change without it.
   library cannot make relative to an open folder).
 - `golang.org/x/text`, direct from Epic 6, for language matching, plural
   rules and number formats (SPEC 22), v0.43.0.
+- `github.com/modelcontextprotocol/go-sdk` v1.8.0, direct from Epic 10a,
+  for the MCP endpoint (section 8).
 - `golang.org/x/image` v0.47.0, direct from fixes batch 2, to draw the
   demolisher territory labels into a downloaded map preview PNG (SPEC
   5.6): its `font/opentype` rasteriser and the Go Bold font, because the
@@ -205,7 +207,9 @@ The library is cheap to change; the `/mcp` path is hard to undo, because
 AI clients are configured with it.
 
 The MCP endpoint (SPEC 21) uses `modelcontextprotocol/go-sdk`, mounted at
-`/mcp` on the main server, with bearer API tokens (SPEC 12.10).
+`/mcp` on the main server, with bearer API tokens (SPEC 12.10). It runs
+in the SDK's stateless mode with plain JSON answers (SPEC 21.1), and only
+the `internal/web/mcp*.go` files import it, so it stays cheap to swap.
 
 Rejected:
 

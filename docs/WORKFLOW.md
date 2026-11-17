@@ -66,16 +66,16 @@ local gitleaks hook.
 
 ## Local development
 
-You need Go 1.27.3, Docker and `make`. golangci-lint and Playwright run
+You need Go 1.27.4, Docker and `make`. golangci-lint and Playwright run
 in pinned images, so you do not install them. `make verify` refuses to
 run when your Go differs from `GO_VERSION` in the Makefile, which also
 names the build image, so install exactly that version:
 
 ```sh
-curl -fsSLo /tmp/go.tgz https://go.dev/dl/go1.27.3.linux-amd64.tar.gz
-echo "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40  /tmp/go.tgz" | sha256sum -c -
-mkdir -p ~/.local/go1.27.3 && tar -C ~/.local/go1.27.3 --strip-components=1 -xzf /tmp/go.tgz
-export PATH="$HOME/.local/go1.27.3/bin:$PATH"   # add this line to your shell profile
+curl -fsSLo /tmp/go.tgz https://go.dev/dl/go1.27.4.linux-amd64.tar.gz
+echo "7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840  /tmp/go.tgz" | sha256sum -c -
+mkdir -p ~/.local/go1.27.4 && tar -C ~/.local/go1.27.4 --strip-components=1 -xzf /tmp/go.tgz
+export PATH="$HOME/.local/go1.27.4/bin:$PATH"   # add this line to your shell profile
 ```
 
 The Makefile sets `GOTOOLCHAIN=local`, so Go never downloads another

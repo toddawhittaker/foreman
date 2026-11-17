@@ -189,6 +189,13 @@ func TestLoadErrors(t *testing.T) {
 		{"headers without groups header", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_AUTH_GROUPS_HEADER must be set when FOREMAN_AUTH_METHODS includes headers"},
 		{"headers without user header", map[string]string{"FOREMAN_AUTH_METHODS": "local,headers", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_AUTH_USER_HEADER must be set"},
 	}
+	for _, v := range []string{"on", "OFF", "0", "false", " off"} {
+		tests = append(tests, struct {
+			name string
+			vars map[string]string
+			want string
+		}{"mcp " + v, map[string]string{"FOREMAN_MCP": v}, "FOREMAN_MCP may only be off"})
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := load(tt.vars)
@@ -202,6 +209,19 @@ func TestLoadErrors(t *testing.T) {
 				t.Errorf("error = %q, want containing %q", err, tt.want)
 			}
 		})
+	}
+}
+
+func TestLoadMCPOff(t *testing.T) {
+	c, err := load(map[string]string{"FOREMAN_MCP": "off"})
+	if err != nil || !c.MCPForcedOff {
+		t.Fatalf("FOREMAN_MCP=off: %+v %v", c, err)
+	}
+	for _, vars := range []map[string]string{{}, {"FOREMAN_MCP": ""}} {
+		c, err := load(vars)
+		if err != nil || c.MCPForcedOff {
+			t.Errorf("%v: forced off=%v err=%v", vars, c != nil && c.MCPForcedOff, err)
+		}
 	}
 }
 

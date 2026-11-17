@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/notify"
+	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 // hookToken is the secret part of a test address: no page, log line or
@@ -66,7 +67,26 @@ func (nh *notifyHarness) wantNoAddress(where, body string) {
 	}
 }
 
-var reValueAttr = regexp.MustCompile(`<input id="webhook-url"[^>]*value=`)
+var (
+	reTokenEventChecked = regexp.MustCompile(`id="webhook-event-token-expiring"[^>]*checked`)
+	reValueAttr         = regexp.MustCompile(`<input id="webhook-url"[^>]*value=`)
+)
+
+// eventsOtherThan is every event id but the ones named, as a browser posts
+// the boxes still ticked.
+func eventsOtherThan(skip ...notify.Event) []string {
+	var out []string
+next:
+	for _, e := range notify.Events {
+		for _, s := range skip {
+			if e == s {
+				continue next
+			}
+		}
+		out = append(out, string(e))
+	}
+	return out
+}
 
 func TestNotificationsNeedSignIn(t *testing.T) {
 	nh := newNotifyHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
@@ -111,8 +131,8 @@ func TestWebhookLifecycle(t *testing.T) {
 	if !strings.Contains(form, `value="discord" id="preset-discord" checked`) || strings.Count(form, `name="events"`) != len(notify.Events) {
 		t.Errorf("form defaults\n%s", form)
 	}
-	if strings.Count(form, "checked") != 1+len(notify.Events) {
-		t.Errorf("want Discord and every event checked\n%s", form)
+	if strings.Count(form, "checked") != 1+len(notify.Events)-1 || reTokenEventChecked.MatchString(form) {
+		t.Errorf("want Discord and every event but the token reminder checked\n%s", form)
 	}
 	if !strings.Contains(form, `<option value="de" lang="de" selected>`) {
 		t.Errorf("the language is not the admin's\n%s", form)
@@ -321,4 +341,62 @@ func TestWebhookUnreadableAfterKeyChange(t *testing.T) {
 		t.Errorf("still unreadable after typing it again\n%s", body)
 	}
 	nh.wantNoAddress("a key change", "")
+}
+
+// SPEC 8.10: the token reminder is off for a new webhook, and ticking it is
+// the admin's choice. A webhook made with the form's defaults is not sent
+// it and does not list it.
+func TestTokenExpiringIsOffForANewWebhook(t *testing.T) {
+	nh := newNotifyHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
+	c := nh.signIn()
+	ctx := context.Background()
+	form := hookForm("discord", hookURL, eventsOtherThan(notify.TokenExpiring)...)
+	nh.wantRedirect(nh.post(PathNotifications+"/new", form, withCookie(c)), PathNotifications+"?done=added&host=discord.com&preset=discord")
+	list, _ := nh.n.List(ctx)
+	if len(list) != 1 || list[0].On(notify.TokenExpiring) || !list[0].On(notify.Start) || list[0].AllOn() {
+		t.Fatalf("stored %+v", list)
+	}
+	body := nh.get(PathNotifications, withCookie(c)).Body.String()
+	if strings.Contains(body, "All events") || strings.Contains(body, "token expiring") || !strings.Contains(body, "low disk") {
+		t.Errorf("the list shows the wrong events\n%s", body)
+	}
+	// Ticking it turns it on, and unticking it turns it off again.
+	on := hookForm("discord", "", eventsOtherThan()...)
+	nh.wantRedirect(nh.post(webhookPath(list[0].ID), on, withCookie(c)), PathNotifications+"?done=saved&host=discord.com&preset=discord")
+	if got, _ := nh.n.Get(ctx, list[0].ID); !got.On(notify.TokenExpiring) || !got.AllOn() {
+		t.Errorf("after ticking %+v", got)
+	}
+	body = nh.get(PathNotifications, withCookie(c)).Body.String()
+	if !strings.Contains(body, "All events") {
+		t.Errorf("a webhook with every event on is not shown so\n%s", body)
+	}
+}
+
+// A webhook stored with the reminder in its off-list, as migration 0010
+// leaves every existing one, keeps it off when an admin saves the page
+// without touching that box (SPEC 8.10).
+func TestMigratedWebhookKeepsTokenExpiringOff(t *testing.T) {
+	nh := newNotifyHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
+	c := nh.signIn()
+	ctx := context.Background()
+	on := map[notify.Event]bool{}
+	for _, e := range notify.Events {
+		on[e] = e != notify.TokenExpiring && e != notify.PlayerJoin
+	}
+	hook, err := nh.n.Add(ctx, notify.Setup{Preset: notify.Discord, URL: secret.New(hookURL), Events: on, Lang: "en"}, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	edit := nh.get(webhookPath(hook.ID), withCookie(c)).Body.String()
+	if reTokenEventChecked.MatchString(edit) || !strings.Contains(edit, `id="webhook-event-token-expiring"`) {
+		t.Errorf("the edit form ticks the reminder\n%s", edit)
+	}
+	// The browser posts the boxes left ticked, and not the address.
+	f := hookForm("discord", "", eventsOtherThan(notify.TokenExpiring, notify.PlayerJoin)...)
+	f.Set("lang", "de")
+	nh.wantRedirect(nh.post(webhookPath(hook.ID), f, withCookie(c)), PathNotifications+"?done=saved&host=discord.com&preset=discord")
+	got, _ := nh.n.Get(ctx, hook.ID)
+	if got.On(notify.TokenExpiring) || got.On(notify.PlayerJoin) || !got.On(notify.Crash) || got.Lang != "de" {
+		t.Errorf("after the save %+v", got)
+	}
 }

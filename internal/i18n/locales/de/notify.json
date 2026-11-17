@@ -22,6 +22,7 @@
   "notify.event.short.player_leave": "Spieler geht",
   "notify.event.short.scheduled_restart": "geplanter Neustart",
   "notify.event.short.low_disk": "wenig Speicherplatz",
+  "notify.event.short.token_expiring": "API-Token läuft ab",
   "notify.edit": "Bearbeiten",
   "notify.edit.named": "Den {preset}-Webhook an {host} bearbeiten",
   "notify.delete.named": "Den {preset}-Webhook an {host} löschen",
@@ -57,6 +58,7 @@
   "notify.event.player_leave": "ein Spieler geht",
   "notify.event.scheduled_restart": "ein geplanter Neustart läuft oder übersprungen wird",
   "notify.event.low_disk": "der Speicherplatz knapp wird",
+  "notify.event.token_expiring": "ein API-Token bald abläuft",
   "notify.events.none": "Wähle mindestens ein Ereignis.",
   "notify.lang.label": "Sprache der Nachrichten",
   "notify.lang.hint": "Namen aus dem Spiel und der Name der Welt werden so gesendet, wie sie geschrieben sind.",
@@ -74,5 +76,6 @@
   "notify.msg.player_leave": "{world}: {player} ist gegangen.",
   "notify.msg.restart_ran": "{world}: Der geplante Neustart wurde ausgeführt.",
   "notify.msg.restart_skipped": "{world}: Der geplante Neustart wurde übersprungen, weil Spieler online blieben.",
-  "notify.msg.low_disk": "{world}: Nur noch {free} Speicherplatz sind frei. Autosaves können fehlschlagen, wenn er ausgeht."
+  "notify.msg.low_disk": "{world}: Nur noch {free} Speicherplatz sind frei. Autosaves können fehlschlagen, wenn er ausgeht.",
+  "notify.msg.token_expiring": "Das API-Token {token} von {owner} läuft am {expires} ab."
 }

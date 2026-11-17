@@ -187,7 +187,7 @@ func (p ServerPage) Done() i18n.Msg {
 	case game.AuditRollback:
 		return i18n.M("server.done.rollback", "label", i18n.M("worlds.snapshot.label.before_restore"))
 	case game.AuditSwitch:
-		return i18n.M("server.done.switch", "from", p.name(p.Result.From), "to", p.World.Name,
+		return i18n.M("server.done.switch", "from", p.name(p.Result.From), "to", p.name(p.Result.Target),
 			"label", i18n.M("worlds.snapshot.label.before_switch"))
 	case actionSnapshot:
 		return i18n.M("server.done.snapshot", "label", p.Result.Taken, "world", p.World.Name)

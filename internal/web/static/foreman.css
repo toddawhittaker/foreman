@@ -9603,3 +9603,88 @@ main:has(> .gate) > * + :not(h1, .gate) {
   padding: 0;
   list-style: none;
 }
+
+/* DESIGN 8.21 API tokens (SPEC 12.10). Each token is a card that sizes itself from
+   its list, so the facts wrap under the name on a phone. */
+.token-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.token-card {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--card-pad);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.token-card__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-md);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The token states reuse the server states' colours and shapes: working is
+   the running square, expired the stopping half, revoked the crashed cross. */
+.state--token-working {
+  background-color: var(--color-ok-bg);
+  color: var(--color-ok);
+}
+
+.state--token-working::before {
+  background-image: linear-gradient(currentColor, currentColor);
+}
+
+.state--token-expired {
+  background-color: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+
+.state--token-expired::before {
+  background-image: linear-gradient(to left, currentColor 50%, transparent 50%);
+}
+
+.state--token-revoked {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.state--token-revoked::before {
+  background-image: linear-gradient(currentColor, currentColor);
+  transform: rotate(45deg);
+}
+
+/* The expiry banner: one line per token, its Renew button at the end,
+   wrapping under the words when narrow. */
+.token-banner ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.token-banner__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.token-banner__line > p {
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0;
+}

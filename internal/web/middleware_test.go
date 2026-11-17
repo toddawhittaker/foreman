@@ -240,3 +240,25 @@ func TestSaveRoutesRefuseAnonymousWithoutLiftingDeadlines(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 14.19: an /mcp body may be up to 4 MiB, more than a form's cap, and
+// no more.
+func TestLimitBodyLetsMCPBodiesReachFourMiB(t *testing.T) {
+	s := &server{mux: http.NewServeMux(), uploadLimits: map[string]int64{}}
+	s.mux.HandleFunc(PathMCP, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			w.WriteHeader(http.StatusRequestEntityTooLarge)
+		}
+	})
+	h := s.limitBody(s.mux)
+	for _, c := range []struct {
+		size int
+		want int
+	}{{maxFormBytes + 1, http.StatusOK}, {mcpMaxBody, http.StatusOK}, {mcpMaxBody + 1, http.StatusRequestEntityTooLarge}} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, PathMCP, strings.NewReader(strings.Repeat("x", c.size))))
+		if rec.Code != c.want {
+			t.Errorf("%d bytes: %d, want %d", c.size, rec.Code, c.want)
+		}
+	}
+}

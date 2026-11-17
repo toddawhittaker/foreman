@@ -101,7 +101,9 @@ type server struct {
 	render        *Renderer
 	sessions      *auth.SessionManager
 	limiter       *auth.Limiter
-	headers       auth.HeaderConfig
+	// tokens manages API tokens (SPEC 12.10).
+	tokens  *auth.APITokens
+	headers auth.HeaderConfig
 	// gameNets and gameSeen: the ranges to refuse headers from, and the
 	// ones already logged.
 	gameNets GameSubnetter
@@ -168,6 +170,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		render:    renderer,
 		sessions:  auth.NewSessionManager(d.Store, d.Config.SessionIdle, d.Config.SecureCookies(), now),
 		limiter:   auth.NewLimiter(now),
+		tokens:    auth.NewAPITokens(d.Store, now),
 		headers: auth.HeaderConfig{
 			UserHeader:    d.Config.UserHeader,
 			GroupsHeader:  d.Config.GroupsHeader,
@@ -243,6 +246,8 @@ func (s *server) routes() {
 	s.publicModsRoutes()
 	s.publicModsPageRoutes()
 	s.publicModsSettingsRoutes()
+	s.apiTokenRoutes()
+	s.mcpRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
@@ -303,7 +308,8 @@ func clientGone(r *http.Request, err error) bool {
 // page renders p. If rendering fails it logs the error and sends a plain 500,
 // unless the browser left: that is no server fault and nobody is left to answer.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user string, p Page) {
-	err := s.render.Render(w, r, status, user, s.lamp(r, user), p)
+	r = s.dropSpoofedRenewed(r, user)
+	err := s.render.Render(w, r, status, user, s.lamp(r, user), s.tokenBanner(r, user), p)
 	if err == nil {
 		return
 	}
@@ -312,7 +318,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user s
 		return
 	}
 	s.log.Error("render page", "method", r.Method, "path", r.URL.Path, "error", err)
-	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", LiveState{}, ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
+	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", LiveState{}, nil, ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

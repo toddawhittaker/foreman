@@ -22,6 +22,7 @@
   "notify.event.short.player_leave": "départ d’un joueur",
   "notify.event.short.scheduled_restart": "redémarrage planifié",
   "notify.event.short.low_disk": "espace disque faible",
+  "notify.event.short.token_expiring": "expiration d’un jeton d’API",
   "notify.edit": "Modifier",
   "notify.edit.named": "Modifier le webhook {preset} vers {host}",
   "notify.delete.named": "Supprimer le webhook {preset} vers {host}",
@@ -57,6 +58,7 @@
   "notify.event.player_leave": "un joueur part",
   "notify.event.scheduled_restart": "un redémarrage planifié a lieu ou est sauté",
   "notify.event.low_disk": "l’espace disque devient faible",
+  "notify.event.token_expiring": "un jeton d’API est sur le point d’expirer",
   "notify.events.none": "Choisissez au moins un événement.",
   "notify.lang.label": "Langue des messages",
   "notify.lang.hint": "Les noms venant du jeu et le nom du monde sont envoyés tels qu’ils sont écrits.",
@@ -74,5 +76,6 @@
   "notify.msg.player_leave": "{world} : {player} est parti.",
   "notify.msg.restart_ran": "{world} : le redémarrage planifié a eu lieu.",
   "notify.msg.restart_skipped": "{world} : le redémarrage planifié a été sauté, car des joueurs sont restés en ligne.",
-  "notify.msg.low_disk": "{world} : il ne reste que {free} d’espace disque. Les sauvegardes automatiques peuvent échouer quand il est épuisé."
+  "notify.msg.low_disk": "{world} : il ne reste que {free} d’espace disque. Les sauvegardes automatiques peuvent échouer quand il est épuisé.",
+  "notify.msg.token_expiring": "Le jeton d’API {token} de {owner} expire le {expires}."
 }

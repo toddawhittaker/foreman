@@ -45,9 +45,16 @@ func Text(loc i18n.Locale, m Message, esc func(string) string) string {
 		return loc.T("notify.msg.restart_ran", "world", world)
 	case LowDisk:
 		return loc.T("notify.msg.low_disk", "world", world, "free", loc.Bytes(m.FreeBytes))
+	case TokenExpiring:
+		return loc.T("notify.msg.token_expiring", "token", esc(m.Token.Name), "owner", esc(m.Token.Owner),
+			"expires", m.Token.Expires.UTC().Format(expiryLayout))
 	}
 	return ""
 }
+
+// expiryLayout writes a token's expiry the way the pages do, in UTC, so the
+// message reads the same in every language.
+const expiryLayout = "2006-01-02 15:04 UTC"
 
 func plain(s string) string { return s }
 
@@ -75,15 +82,22 @@ type request struct {
 
 // genericBody is the documented generic JSON body (SPEC 8.11).
 type genericBody struct {
-	Version   int          `json:"version"`
-	Event     Event        `json:"event"`
-	Time      string       `json:"time"`
-	World     genericWorld `json:"world"`
-	Text      string       `json:"text"`
-	Player    string       `json:"player,omitempty"`
-	Reason    string       `json:"reason,omitempty"`
-	Skipped   *bool        `json:"skipped,omitempty"`
-	FreeBytes *uint64      `json:"free_bytes,omitempty"`
+	Version   int           `json:"version"`
+	Event     Event         `json:"event"`
+	Time      string        `json:"time"`
+	World     genericWorld  `json:"world"`
+	Text      string        `json:"text"`
+	Player    string        `json:"player,omitempty"`
+	Reason    string        `json:"reason,omitempty"`
+	Skipped   *bool         `json:"skipped,omitempty"`
+	FreeBytes *uint64       `json:"free_bytes,omitempty"`
+	Token     *genericToken `json:"token,omitempty"`
+}
+
+type genericToken struct {
+	Name    string `json:"name"`
+	Owner   string `json:"owner"`
+	Expires string `json:"expires"`
 }
 
 type genericWorld struct {
@@ -137,6 +151,8 @@ func generic(loc i18n.Locale, m Message) genericBody {
 		g.Skipped = &m.Skipped
 	case LowDisk:
 		g.FreeBytes = &m.FreeBytes
+	case TokenExpiring:
+		g.Token = &genericToken{Name: m.Token.Name, Owner: m.Token.Owner, Expires: m.Token.Expires.UTC().Format(time.RFC3339)}
 	}
 	return g
 }

@@ -51,6 +51,8 @@ mechanism is open.
   (section 7.4).
 - **Data directory**: the one directory where Foreman keeps everything:
   worlds, snapshots and its own database.
+- **API token**: a secret that lets a program, such as an AI assistant,
+  act as the user who made it, within a fixed scope (12.10).
 
 ## 3. Deployment
 
@@ -86,6 +88,7 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_SESSION_IDLE` | `168h` | Idle time before a session ends, as a Go duration (12.8) |
 | `FOREMAN_FACTORIO_USERNAME`, `FOREMAN_FACTORIO_TOKEN` | none | The factorio.com account that downloads mods (9.11). Set both or neither: one alone is a startup error. Either may use its `_FILE` form |
 | `FOREMAN_SECRET_KEY` | none | At least 32 characters; a shorter key is a startup error. It seals secrets an admin enters in the UI (9.11). Without it, an account cannot be stored in the UI. Changing it makes stored secrets unreadable, so they must be entered again. It may use its `_FILE` form |
+| `FOREMAN_MCP` | none | `off` forces MCP access off (21.2). The setting then shows that the environment turned it off and cannot be changed. Any other value is a startup error |
 | `DOCKER_HOST` | `unix:///var/run/docker.sock` | The Docker socket, or a socket proxy |
 
 A `tcp://` `DOCKER_HOST` is not encrypted and not authenticated. Use it
@@ -1584,10 +1587,13 @@ stopped; the crash-loop mark is not remembered. (P0)
 8.10. Webhooks on these events, each with a stable id: `start`, `stop`,
 `crash` (with the reason id of 8.7 when one is known), `crash-loop`,
 `player-join`, `player-leave`, `scheduled-restart` (it ran, or it was
-skipped because players stayed online, 7.12) and `low-disk` (8.13). Each
-event can be turned on or off per webhook, and an event added later is on by
-default. Webhooks belong to Foreman as a whole, not to a world, and every
-event names its world.
+skipped because players stayed online, 7.12), `low-disk` (8.13) and
+`token-expiring` (12.10). Each event can be turned on or off per
+webhook, and an event added later is on by default, except
+`token-expiring`, which is off until an admin turns it on, because a
+webhook often posts to a channel players read. Webhooks belong to
+Foreman as a whole, not to a world, and every event names its world,
+except `token-expiring`, which names a token and its owner and no world.
 
 - Start, stop, crash and crash loop come from changes in the game's own
   state, not from what an operation reports. A crash waits at
@@ -1597,6 +1603,13 @@ event names its world.
   something that happened before it. The first state Foreman sees is only
   noted, and a join or leave is sent only for a log line stamped after
   Foreman started. Events that happen while Foreman is down are not sent. (P1)
+- **Token expiring** is sent 5 days and again 1 day before a Working
+  token expires, naming the token, its owner and its expiry, never the
+  secret. Foreman checks at start and every 15 minutes. Each reminder is
+  sent once per period. The token records which reminders were sent, and
+  renewing starts over. Unlike other events, a reminder whose time
+  passed while Foreman was down is sent at the next check if the token
+  is still Working.
 
 8.11. Presets for Discord and ntfy, plus a generic JSON webhook whose body
 format is documented in the operator guide. Each webhook has its own
@@ -1607,12 +1620,15 @@ it.
   `allowed_mentions` set to none, so no name can ping anyone.
 - **ntfy** posts the message as plain text with a `Title` header, and high
   priority for a crash, a crash loop and low disk.
-- **Generic** posts JSON, version 1: `{"version":1,"event":"<id>","time":
-  "<RFC 3339, UTC>","world":{"id","name"},"text":"<message>"}`, plus
-  `player` for a join or leave, `reason` for a crash, `skipped` for a
-  scheduled restart and `free_bytes` for low disk. A new optional field
-  keeps the version; any other change to the body raises it. A golden file
-  test pins it.
+- **Generic** posts JSON, version 1:
+  `{"version":1,"event":"<id>","time": "<RFC 3339,
+  UTC>","world":{"id","name"},"text":"<message>"}`, plus `player` for a
+  join or leave, `reason` for a crash, `skipped` for a scheduled restart,
+  `free_bytes` for low disk, and `token` (`{"name","owner","expires"}`)
+  for token expiring, whose `world` has an empty id and name. A new
+  optional field keeps the version; any other change to the body raises
+  it. A golden file test pins it. A token's name and owner are shortened
+  and escaped like other names.
 - An address starts with `https://`, or with `http://`, which is allowed
   with a warning that messages then go unencrypted. It has a host, no user
   name or password, no space or control character, and at most 2,048
@@ -2254,9 +2270,10 @@ separate design (issue #207).
 ## 12. Sign-in and users
 
 12.1. **One role in v1**: every user is a full admin, and every page
-needs a signed-in user, except the public mods page (9.16) while an admin
-has it turned on. The user model keeps a role field so a read-only viewer
-can be added later without a migration. (P0)
+needs a signed-in user, except the public mods page (9.16) while an
+admin has it turned on. The MCP endpoint (section 21) is not a page. It
+accepts only API tokens (12.10). The user model keeps a role field so a
+read-only viewer can be added later without a migration. (P0)
 
 12.2. Three sign-in methods, any combination enabled by configuration:
 local accounts (12.3), trusted proxy headers (12.5), and OpenID Connect
@@ -2321,29 +2338,89 @@ who is signed in, and signing out of Foreman ends nothing for them. (P0)
 
 12.9. **Audit log**: who did what and when, for start, stop, restart,
 switch, snapshot and restore, generate and clone, mod changes, settings
-changes, user changes, and every RCON command. Viewable and filterable in
-the UI. Never holds a secret. Each entry holds the time, the user (the name stays on the entry
-after the user is deleted), the action, the world and a detail. Server
-control records start, stop, restart, forced stop, switch (on the world
-switched from, with both ids), game image download and
-every console command (8.4), every player action and chat message (8.2,
-8.5), a change to the whitelist switch (8.3), and a change to the restart
-schedule or to a webhook (7.12, 8.10), never with the webhook's address,
-the autosave tidy (11.6), and turning the public mods page on or off
-(9.16).
-Player actions, chat messages and the whitelist switch are recorded before
-they take effect and are refused if the record cannot be written. A
-schedule or webhook change is recorded after it, and a failure to record it
-is only logged. (P1, except RCON commands, which are recorded
-from the first version that has a console: P0)
+changes, user changes, and every RCON command. Viewable and filterable
+in the UI. Never holds a secret. Each entry holds the time, the user
+(the name stays on the entry after the user is deleted), the action, the
+world, a detail and, for anything done through an API token, the token's
+name (12.10). Server control records start, stop, restart, forced stop,
+switch (on the world switched from, with both ids), game image download
+and every console command (8.4), every player action and chat message
+(8.2, 8.5), a change to the whitelist switch (8.3), and a change to the
+restart schedule or to a webhook (7.12, 8.10), never with the webhook's
+address, the autosave tidy (11.6), and turning the public mods page on
+or off (9.16). A manual snapshot and a restore are recorded as `snapshot`
+and `restore`, with the token's name when they come through MCP. API
+tokens record `token-create`, `token-renew` and
+`token-revoke`, each naming the token, its owner and its scope. Turning
+MCP access on or off records `mcp-set` with the detail "on" or "off"
+(21.2). An action through MCP is recorded exactly as the same action in
+the UI: same action name, same before-or-after rule, plus the token's
+name. Read tools change nothing and are not recorded. The token's "last
+used" time covers them (12.10). Player actions, chat messages and the
+whitelist switch are recorded before they take effect and are refused if
+the record cannot be written. A schedule or webhook change is recorded
+after it, and a failure to record it is only logged. (P1, except RCON
+commands, which are recorded from the first version that has a console:
+P0)
 
-12.10. **API tokens.** A user can create, name, list and revoke their own
-API tokens in the UI. A token acts as that user: everything it does is
-recorded in the audit log under that user and the token's name. A token
-is shown once when created, stored only as a hash, can have an expiry
-date, and has one of two scopes: **read** (only the read tools in 21.3)
-or **operate** (also the actions in 21.4). Tokens are rate-limited. A
-token cannot create tokens, manage users, or sign in to the UI. (P1)
+12.10. **API tokens.** A personal API token lets a program, such as an
+AI assistant, act as the user who made it. Only the MCP endpoint accepts
+one (section 21). (P1)
+
+- **Creating.** On the API tokens page (`/settings/api-tokens`), a
+  signed-in user names a token and picks its scope. Read is picked by
+  default. A name is 1 to 32 characters of letters, digits, spaces, `.`,
+  `_` and `-`. It must differ from the names of the owner's other tokens
+  that are not revoked. The secret is shown once, on the page that
+  answers the create, beside the endpoint's address (21.1). That address
+  is `FOREMAN_PUBLIC_URL` plus `/mcp` when it is set. Otherwise it uses
+  the request's host, and takes its scheme from `X-Forwarded-Proto` only
+  when the request comes from a trusted proxy (12.5). Foreman stores
+  only its hash (14.19).
+- **Scope**, fixed for the token's life, each including the one before:
+  - **read**: the read tools (21.4);
+  - **operate**: also the action tools (21.5) and chat (21.6);
+  - **admin**: also the admin tools (21.7). These cover everything an
+    admin can do in the UI except managing users, API tokens and MCP
+    access (21.2), plus the exclusions in 21.7.
+
+  A token never does more than its owner may do at the time of the call
+  (12.1).
+- **States.** **Working**: accepted. **Expired**: its time ran out. It
+  is refused, and its owner can renew it. **Revoked**: ended by its
+  owner or an admin. It is refused, and this is final: it can never be
+  renewed.
+- **Period.** Every token, whatever its scope, expires 30 days after it
+  was created or last renewed. This is not a setting.
+- **Renewing** restarts the 30 days from now and keeps the same secret,
+  so the program needs no change. Only the owner renews, from a browser
+  signed in by any method of 12.2, never through an API token. So a
+  token cannot renew itself. An Expired token stays renewable for as
+  long as it exists and is never deleted automatically.
+- **Revoking.** The owner or any admin revokes a token. It takes effect
+  for every request whose token is checked after the revoke. A request
+  is checked again after its body arrives, so one that holds its body
+  back is refused too.
+- **Who sees what.** Every admin sees every token: its owner, name,
+  scope, state, expiry, creation time and last use (to the minute).
+  Never the secret or its hash. The owner renews their own tokens. Any
+  admin revokes any token. In v1 every user is an admin (12.1).
+- **Reminder.** From 5 days before a token expires, its owner sees a
+  banner on every signed-in page. The banner names the token and when it
+  expires, and has a Renew button that renews in one click (a form post,
+  14.7). It stays while the token is Expired, until the token is renewed
+  or revoked. Each such token has its own line. The `token-expiring`
+  webhook event (8.10) is sent at 5 days and at 1 day before expiry.
+- **Limits.** Tokens are rate-limited (14.19). A token cannot sign in to
+  the UI: pages never read the `Authorization` header.
+- **Audit.** Everything a token changes is recorded under its owner and
+  the token's name (12.9).
+- **Storage.** Each token row holds its owner, name, scope, secret hash,
+  creation time, the start of its current period, the time it was
+  revoked (if it was), its last use, and which reminders were sent in
+  the current period. The state is worked out from these fields, never
+  stored. A user's tokens are deleted with the user. Audit entries keep
+  both names.
 
 12.11. **Sign-in limits.** A username is allowed 5 failed attempts and an
 address 20, in a fixed 15-minute window that starts at the first failure.
@@ -2362,9 +2439,10 @@ the per-address limit does not prevent this. (P0)
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
 default stop countdown, scheduled restarts, notifications, the public
-mods page (9.16), and portal credentials when not set by environment. Each shows where its value comes
-from (environment or UI), and environment values cannot be changed in the
-UI. (P0 for those whose features are P0)
+mods page (9.16), MCP access (21.2), and portal credentials when not set
+by environment. Each shows where its value comes from (environment or
+UI), and environment values cannot be changed in the UI. (P0 for those
+whose features are P0)
 
 ## 14. Security
 
@@ -2383,7 +2461,7 @@ reviews against.
 | VPN sidecar | An optional container the operator runs, whose network the game shares (4.13) | Nothing; Foreman did not create it (14.16) |
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
 | Internet | Mod portal, image registry and its tag list, release list, webhook targets | Nothing |
-| AI client | An assistant calling the MCP endpoint (section 21) | Only its token's scope; steerable by text it reads (14.12) |
+| AI client | A program, usually an AI assistant, calling the MCP endpoint with an API token (section 21) | Only its token's scope; steerable by text it reads (14.12) |
 | Player | Anyone who can reach the public mods page (9.16) | Nothing; may be a script |
 
 14.2. **Docker access is root on the host.** Whoever controls Foreman's
@@ -2539,24 +2617,30 @@ drawn by the page's styles and are not part of the link's name. Every link
 that opens a new tab points off the site, and a test checks it. (P0)
 
 14.7. **Requests that change state** require a signed-in session and
-protection against cross-site request forgery. A browser post is accepted
-only from Foreman's own origin, or from the origin of
-`FOREMAN_PUBLIC_URL` when that is set, which covers a proxy that rewrites
-the `Host` header. (P0)
+protection against cross-site request forgery. A browser post is
+accepted only from Foreman's own origin, or from the origin of
+`FOREMAN_PUBLIC_URL` when that is set, which covers a proxy that
+rewrites the `Host` header. The MCP endpoint (`/mcp`) is the one
+exception. It takes only a bearer API token and never reads a cookie or
+trusted header. A browser does not send that header on its own, so a
+forged cross-site request carries no identity. It still refuses a
+request whose `Origin` header is present and is not one of the origins
+above (14.19). (P0)
 
 14.8. **Secrets** (the RCON password, the portal token, the OIDC client
 secret, the game password, the factorio.com `username`, `password` and
-`token` keys of `server-settings.json`, `FOREMAN_SECRET_KEY`, webhook URLs,
-and session tokens) never appear in a log line, an API response, an error message, the
-audit log, or the UI. This includes game log lines Foreman relays: it
-removes the RCON password, the game password and those factorio.com values
-from every line (8.6), parsing the line before it redacts so a short
-password cannot hide what the line means. The
-console follows one list of commands that carry a secret: `/config set
-password` has its argument masked in the audit log, on the page and in
-relayed log lines, and the reply to `/config get password` is masked. A Lua
-command is recorded as typed (8.4). The one place the RCON password is
-visible is the game process's arguments, an accepted risk (4.5).
+`token` keys of `server-settings.json`, `FOREMAN_SECRET_KEY`, webhook
+URLs, session tokens, and API token secrets) never appear in a log line,
+an API response, an error message, the audit log, or the UI. This
+includes game log lines Foreman relays: it removes the RCON password,
+the game password and those factorio.com values from every line (8.6),
+parsing the line before it redacts so a short password cannot hide what
+the line means. The console follows one list of commands that carry a
+secret: `/config set password` has its argument masked in the audit log,
+on the page and in relayed log lines, and the reply to `/config get
+password` is masked. A Lua command is recorded as typed (8.4). The one
+place the RCON password is visible is the game process's arguments, an
+accepted risk (4.5).
 
 A webhook URL often carries a token in its path, so it is stored sealed
 with `FOREMAN_SECRET_KEY`, as the stored factorio.com account is (ADR 0013,
@@ -2601,14 +2685,21 @@ read-only root filesystem except its data directory and a temporary
 directory. The game container is also unprivileged (4.6): a game user or
 group ID of 0 is refused at start (3.6). (P0)
 
-14.12. **AI clients.** An AI client connected through MCP (section 21) is
-its own trust zone: trusted only for its token's scope, and assumed to
-be steerable by any text it reads. Players control chat, player names,
-and much of the game log, so a player can write instructions aimed at
-the AI. Every tool result that carries such text marks it as untrusted
-player content, and no MCP tool can delete, force-stop, restore, change
-mods or settings, run raw RCON commands, or manage users and tokens.
-(P1)
+14.12. **AI clients.** An AI client connected through MCP (section 21)
+is its own trust zone. It is trusted only for its token's scope and
+assumed to be steerable by any text it reads. Players control chat,
+player names and much of the game log. The mod portal controls mod
+titles, summaries and changelogs. Either can write instructions aimed at
+the AI. Every tool result keeps such text in fields marked as untrusted
+content, apart from Foreman's own words, and each tool's description
+says which fields those are. Besides player names, chat and log lines,
+those fields hold the label of a snapshot written through a token, mod
+names, and the problems a pre-start check finds. A token's scope limits
+the harm (12.10). A read token changes nothing. An operate token cannot
+delete, overwrite or run raw commands, and it cannot fill a world with
+snapshots: a world holds at most 10 snapshots taken through API tokens
+(21.5). An admin token's destructive actions need the two-step confirm
+(21.8). (P1)
 
 14.13. **Pages refuse framing.** Every page carries
 `Content-Security-Policy: frame-ancestors 'none'` and
@@ -2682,6 +2773,59 @@ carries none. (P0)
 - **Logging.** The access log records each public request as it does any
   other, with the path and no query string (15.1). Downloads are not
   audited.
+
+
+14.19. **API tokens and the MCP endpoint.** Every line is a condition
+for shipping section 21. (P1)
+
+- **Format.** A secret is `fmn_` followed by 43 base64url characters: 32
+  bytes from the system's secure random source. The prefix lets secret
+  scanners and people recognise a leaked token.
+- **Storage and checking.** Only the secret's SHA-256 hash is stored, as
+  for sessions (STACK 7). A request's token is hashed and looked up by
+  its hash, so no secret is ever compared directly. A random 256-bit
+  secret needs no slow hash.
+- **Where the token goes.** Only in `Authorization: Bearer`. A token in
+  a query string or a cookie is ignored. A malformed token is refused
+  without a database lookup. An unknown token gets a plain 401. An
+  Expired or Revoked token gets a 401 that names its state, so its owner
+  knows to renew or replace it. A token is never written to a log. The
+  access log records the path only (15.1). The page that shows a new
+  secret is sent with `Cache-Control: no-store`.
+- **Limits.** Failed token checks are limited per address with the
+  numbers of 12.11: 20 in a 15-minute window, counting IPv6 by its /64.
+  Each token may make 120 requests a minute (fixed window) with at most
+  4 running at once. Beyond any of these limits the answer is 429 with
+  `Retry-After`. Counts are in memory. A request body is at most 4 MiB
+  and holds one JSON-RPC message.
+- **Off means off.** While MCP access is off (21.2), every `/mcp`
+  request gets 403 saying so, before its token is read.
+- **Origin.** On `/mcp`, any request with an `Origin` header is refused
+  unless it is exactly the origin of `FOREMAN_PUBLIC_URL`. With that
+  unset, any `Origin` is refused. Real MCP clients send none. The
+  generic same-origin check is not enough here: under DNS rebinding (a
+  page that makes its own domain point at a local address) the browser
+  sends an `Origin` equal to the `Host`, and that check lets it through.
+- **Confirm codes** (21.8). A code is 128 random bits. It lasts 5
+  minutes, works once, and is bound to the token, the tool and the
+  call's exact arguments. Any use, right or wrong, spends it. Codes are
+  held in memory, so a Foreman restart voids them. A token holds at most
+  10 at once, and an eleventh drops the oldest. A code is never logged.
+- **Forward-auth proxies.** A proxy that demands its own sign-in blocks
+  bearer clients. The operator guide says to either let `/mcp` reach
+  Foreman without proxy sign-in, or point the client at Foreman directly
+  on a trusted network. It names no particular proxy. Trusted headers
+  are never read on `/mcp` (12.5).
+- **Accepted risks.**
+  - Renewing keeps the secret, so a leaked token must be revoked, not
+    renewed.
+  - A user removed at the proxy or the OIDC provider keeps their Working
+    tokens until those expire, at most 30 days later (renewing needs a
+    browser sign-in), or until an admin revokes them.
+  - The two-step confirm guards against mistakes, not against a steered
+    client: an AI steered by player text can make both calls. The token
+    page says this beside the admin scope and suggests the smallest
+    scope that does the job.
 
 ## 15. Logging
 
@@ -2945,8 +3089,27 @@ Built; what is still unproven is in STATUS.md, Epic 9b.
 (9.16, 14.18, #132) and the autosave tidy (11.6, #671). Built; see
 STATUS.md, Epic 9c.
 
-18.10. **Epic 10: AI access.** API tokens (12.10) and the MCP endpoint
-(section 21).
+18.10. **Epic 10a: API tokens and MCP.** API tokens with all three
+scopes, the token page, the expiry banner and the `token-expiring` event
+(12.10, 8.10, 8.11). MCP access on or off (21.2, 13.1, 3.2). The
+endpoint and its limits (21.1, 21.3, 14.19). The read tools (21.4),
+action tools (21.5) and chat (21.6). Audit entries with token names
+(12.9). An admin token works but has only these tools until Epic 10b.
+**Gate:** a real MCP client (Claude Code), using an operate token
+against a real `factoriotools/factorio` container, reads status, takes a
+snapshot, sends a chat that players see as "[name] ...", and restarts
+with a countdown. A read token is refused that action. An Expired token
+is refused, then works with the same secret after renewal. A Revoked
+token stays refused. With MCP off, every call is refused and tokens can
+still be managed.
+
+18.10b. **Epic 10b: Admin tools.** The admin tools for every other UI
+area (21.7) and the two-step confirm (21.8, 14.19).
+**Gate:** for every two-step tool, the first call changes nothing and
+its preview names the snapshot the UI would take. A code is refused for
+another token, tool or arguments, after 5 minutes, and on a second use.
+Restore, a mod change and a game version update through MCP take the
+same snapshots as the UI, checked against a real game container.
 
 18.11. **Epic 11: Release.** OIDC (12.7), the full audit log (12.9),
 archive (5.9), Foreman's settings page (13.1), the operator guide with the
@@ -2981,40 +3144,101 @@ Each is put to Todd with options and a recommendation before the epic
 that needs it starts. The answer is written into the section that cites
 it, and the decision is removed from this list.
 
-| Id | Question | Needed by | Sections |
-|---|---|---|---|
-| D10 | Whether the chat-message tool (21.4) is in v1 or waits, given that it lets an AI speak to players | Epic 10 | 21.4 |
+No decision is open.
 
 The tech stack (vision question 6) is settled in docs/STACK.md, not here.
 
 ## 21. AI access (MCP)
 
-21.1. Foreman serves an MCP (Model Context Protocol) endpoint, so an AI
-assistant can check on and run the server as tools. It is part of the
-one Foreman container, not a separate service, and is off unless
-`FOREMAN_MCP=on`. (P1)
+21.1. **Endpoint.** Foreman serves an MCP (Model Context Protocol)
+endpoint at `/mcp` on its main listener (STACK 8), inside the one
+Foreman container. It uses the Streamable HTTP transport without
+sessions: each POST carries one JSON-RPC message and gets one JSON
+answer. GET and DELETE answer 405. (P1)
 
-21.2. The endpoint accepts only API tokens (12.10), never a browser
-session. Every tool calls the same code the UI uses, so snapshots before
-risky operations, graceful stops, the pre-start check and the audit log
-apply exactly as they do for a person. (P1)
+21.2. **On and off.** MCP access is off by default. An admin turns it on
+or off on the API tokens page (12.10). The choice is stored as an app
+setting (13.1), takes effect at once, and is audited as `mcp-set`.
+`FOREMAN_MCP=off` forces it off. The page then shows that and the switch
+cannot be used. While MCP is off, every `/mcp` request is refused
+(14.19). Tokens can still be created, renewed and revoked, and they keep
+expiring. (P1)
 
-21.3. **Read tools** (read or operate scope): server status (7.1, 7.2);
-list worlds (5.4); players online (8.1); the most recent log lines,
-with secrets removed (8.6); list snapshots (6.4); list a world's mods
-and available updates (9.3). Player-written text in any result is marked
-untrusted (14.12). (P1)
+21.3. **Who may call, and how tools work.** The endpoint accepts only
+API tokens (12.10), never a session, cookie or trusted header. A client
+is listed only the tools its token's scope allows. Any other tool is
+refused as unknown. Every tool calls the same code the UI uses, so the
+pre-start check, snapshots before risky operations, graceful stops,
+refusals and the audit log apply exactly as they do for a person. A tool
+that acts on a world takes the world's id, so a second running world
+needs no new tool. Tool descriptions, results and errors are in English
+(22.3) and never hold a secret (14.8). (P1)
 
-21.4. **Action tools** (operate scope only): start (7.3); graceful stop
-(7.6); graceful restart (7.8); switch world (7.9); take a snapshot
-(6.3); and send an in-game message as the server (8.5), which is
-**Decision D10**. Each action returns what happened, including the
-snapshot it took. (P1)
+21.4. **Read tools** (every scope): server status (7.1, 7.2), including
+the action running now and the last action's result, as the Server page
+shows them; list worlds (5.4); players online (8.1); the most recent log
+lines, with secrets removed (8.6); list snapshots (6.4); list a world's
+mods and available updates (9.3). The tools are `server_status`,
+`list_worlds`, `list_players`, `recent_log` (the newest 200 lines),
+`list_snapshots` and `list_mods`. `world_id` is optional on these and
+means the active world when left out. Player and portal text in any
+result is marked untrusted (14.12). (P1)
 
-21.5. **Never through MCP**, whatever the scope: delete a world, forced
-stop, restore a snapshot, mod changes, settings changes, game version
-changes, raw RCON commands, and user or token management. These stay
-with a person in the UI. (P1)
+21.5. **Action tools** (operate and admin): start (7.3); graceful stop
+(7.6), with a countdown from 0 to 10 minutes that defaults to the app's;
+graceful restart (7.8); switch world (7.9); take a snapshot (6.3). The
+tools are `start_server`, `stop_server`, `restart_server`,
+`switch_world` and `take_snapshot`. `world_id` is required on each. Each
+returns what happened, including any snapshot it took. A call waits up
+to 50 seconds. If the action is still running then, the call says so and
+server status (21.4) reports the result when it ends. The action
+continues if the client goes away, as it does when a browser closes.
+`take_snapshot` through a token is refused once the world holds 10
+snapshots taken through API tokens. The snapshot's record notes
+`via_token` for this. Snapshots taken in the UI neither count nor are
+refused, and an admin deleting one frees room. (P1)
+
+21.6. **Chat** (operate and admin): the tool `send_chat` sends an
+in-game message as the server (8.5). Foreman puts the token's name in
+brackets in front of it, for example "[Claude] Restarting in 5 minutes",
+so players can tell it from a person. The prefix cannot be left out. The
+whole line, prefix included, follows 8.5's rules and its 500-character
+limit, and is audited as sent. (Todd's ruling, 2026-11-17.) (P1)
+
+21.7. **Admin tools** (admin only): everything an admin can do in the UI
+in these areas:
+
+- worlds: rename, generate (without the preview picture), clone, delete,
+  favorites (5);
+- which save loads (7.11);
+- snapshots: restore and delete (6);
+- forced stop (7.7) and the game image download;
+- players, the admin list, ban list and whitelist (8.2, 8.3);
+- the raw console (8.4);
+- the restart schedule (7.12);
+- webhooks (8.10, 8.11), whose address is accepted but never returned
+  (14.8);
+- mods and mod settings (section 9);
+- the public mods page (9.16);
+- the factorio.com account (9.11), write-only;
+- game versions (section 10);
+- game settings, including the autosave tidy (section 11).
+
+Not available through MCP: managing users, API tokens or MCP access;
+uploading or downloading files (saves, mod zips, `mod-settings.dat`,
+favorite files); and map preview pictures. (P1)
+
+21.8. **Two-step confirm.** An admin tool that deletes or overwrites
+works in two calls. This covers deleting a world, restoring a snapshot,
+a forced stop, a raw console command, mod and mod settings changes, game
+settings changes, game version changes, and every other action the UI
+asks a person to confirm first. The first call changes nothing. It
+returns a preview in the same terms as the UI's confirm page: what will
+change or be lost, which snapshot will be taken, and who is online and
+will be warned. It also returns a confirm code (14.19). The second call
+repeats the tool with the same arguments plus the code. It runs every
+check again, as the UI's form post does, then takes the same snapshots
+and writes the same audit entries. (P1)
 
 ## 22. Languages
 
@@ -3050,10 +3274,10 @@ language shown. (P0)
 
 22.3. Everything the web UI shows is translated, including problems,
 refusals, failures and results built by the server, and text shown by
-the page's scripts. Server logs, audit entries as stored, and API and
-MCP errors stay English. Text relayed from Factorio and anything a
-person typed (world names, snapshot labels, player names) is shown as
-written. (P0)
+the page's scripts. Server logs, audit entries as stored, and MCP tool
+descriptions, results and errors stay English. Text relayed from
+Factorio and anything a person typed (world names, snapshot labels,
+player names) is shown as written. (P0)
 
 - Messages built in Go travel as message ids with arguments, never as
   English strings, so a raw string cannot reach a page. The domain
