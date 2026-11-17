@@ -3754,7 +3754,7 @@ the access log.
   single rename and removal and checks that the next start gives the same
   folder as an uninterrupted tidy.
 - The public download was tried by Todd on the trial deploy on 2026-11-16.
-- Real-game autosave test: <RESULT>
+- Real-game autosave test: `TestRealGameAutosaveTidy` passed against factoriotools/factorio 2.1.24 on 2026-11-16 (20 slots to 10, K = 17; the game loads `_autosave7.zip`, modification times kept).
 
 ### Gaps left
 
