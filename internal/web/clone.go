@@ -209,7 +209,7 @@ func (s *server) handleClone(w http.ResponseWriter, r *http.Request, u store.Use
 		s.page(w, r, status, u.Username, p)
 		return
 	}
-	s.audit(r.Context(), u, AuditClone, id, fmt.Sprintf("from %s, %s", sum.ID, choice))
+	s.audit(r.Context(), actor(u), AuditClone, id, fmt.Sprintf("from %s, %s", sum.ID, choice))
 	http.Redirect(w, r, worldPath(id)+"?"+clonedQuery+"="+url.QueryEscape(sum.ID), http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
 }
 

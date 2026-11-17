@@ -198,8 +198,9 @@ func (h *settingsHandlers) handleWhitelistSwitch(w http.ResponseWriter, r *http.
 	if on {
 		detail = "on"
 	}
+	by := actor(u)
 	err := s.store.AddAudit(r.Context(), store.AuditEntry{
-		Time: s.now(), UserID: u.ID, Username: u.Username, Action: AuditWhitelistSwitch,
+		Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token, Action: AuditWhitelistSwitch,
 		WorldID: sw.sum.ID, Detail: detail,
 	})
 	if err == nil {

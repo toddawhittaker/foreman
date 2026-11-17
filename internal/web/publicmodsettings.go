@@ -64,6 +64,6 @@ func (s *server) handlePublicModsSet(w http.ResponseWriter, r *http.Request, u s
 		s.fail(w, r, "save the public mods setting", err)
 		return
 	}
-	s.audit(r.Context(), u, AuditPublicModsSet, "", v)
+	s.audit(r.Context(), actor(u), AuditPublicModsSet, "", v)
 	http.Redirect(w, r, PathPublicModsSettings+"?done="+v, http.StatusSeeOther)
 }

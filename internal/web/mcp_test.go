@@ -100,7 +100,7 @@ func toolNames(t *testing.T, cs *mcp.ClientSession) []string {
 
 var (
 	readTools   = []string{"list_mods", "list_players", "list_snapshots", "list_worlds", "recent_log", "server_status"}
-	actionTools = []string{"restart_server", "send_chat", "start_server", "stop_server", "switch_world", "take_snapshot"}
+	actionTools = []string{"cancel_stop", "restart_server", "send_chat", "start_server", "stop_server", "switch_world", "take_snapshot"}
 )
 
 // SPEC 21.2: FOREMAN_MCP=off wins over the admin setting.
@@ -153,9 +153,15 @@ func TestMCPToolsFollowScope(t *testing.T) {
 		t.Errorf("read scope lists %q, want %q", got, readTools)
 	}
 	all := slices.Sorted(slices.Values(append(slices.Clone(readTools), actionTools...)))
-	for _, secret := range []string{opSecret, adminSecret} {
-		if got := toolNames(t, mcpConnect(t, g.url, secret)); !slices.Equal(got, all) {
-			t.Errorf("listed %q, want %q", got, all)
+	if got := toolNames(t, mcpConnect(t, g.url, opSecret)); !slices.Equal(got, all) {
+		t.Errorf("operate scope lists %q, want %q", got, all)
+	}
+	// The admin scope adds the admin tools (SPEC 21.7), which the exact
+	// lists above keep from the other scopes.
+	got := toolNames(t, mcpConnect(t, g.url, adminSecret))
+	for _, name := range all {
+		if !slices.Contains(got, name) {
+			t.Errorf("admin scope does not list %s", name)
 		}
 	}
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)

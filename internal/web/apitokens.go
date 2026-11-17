@@ -292,7 +292,7 @@ func (s *server) handleAPITokenCreate(w http.ResponseWriter, r *http.Request, u 
 		s.page(w, r, http.StatusUnprocessableEntity, u.Username, p)
 		return
 	}
-	s.audit(r.Context(), u, AuditTokenCreate, "", tokenAudit(t))
+	s.audit(r.Context(), actor(u), AuditTokenCreate, "", tokenAudit(t))
 	// Render sends every signed-in page with no-store; the secret is never
 	// cached or shown again (SPEC 14.19).
 	s.page(w, r, http.StatusOK, u.Username, APITokenCreatedPage{
@@ -375,7 +375,7 @@ func (s *server) handleAPITokenRenew(w http.ResponseWriter, r *http.Request, u s
 		s.fail(w, r, "renew an API token", err)
 		return
 	}
-	s.audit(r.Context(), u, AuditTokenRenew, "", tokenAudit(t))
+	s.audit(r.Context(), actor(u), AuditTokenRenew, "", tokenAudit(t))
 	http.Redirect(w, r, renewedURL(r.PostFormValue("return"), t.Name), http.StatusSeeOther)
 }
 
@@ -444,7 +444,7 @@ func (s *server) handleAPITokenRevoke(w http.ResponseWriter, r *http.Request, u 
 		s.fail(w, r, "revoke an API token", err)
 		return
 	}
-	s.audit(r.Context(), u, AuditTokenRevoke, "", tokenAudit(t))
+	s.audit(r.Context(), actor(u), AuditTokenRevoke, "", tokenAudit(t))
 	http.Redirect(w, r, doneURL(tokenDoneRevoked, t.Name), http.StatusSeeOther)
 }
 
@@ -471,7 +471,7 @@ func (s *server) handleMCPSet(w http.ResponseWriter, r *http.Request, u store.Us
 		s.fail(w, r, "save the MCP setting", err)
 		return
 	}
-	s.audit(r.Context(), u, AuditMCPSet, "", v)
+	s.audit(r.Context(), actor(u), AuditMCPSet, "", v)
 	http.Redirect(w, r, PathAPITokens+"?done=mcp-"+v, http.StatusSeeOther)
 }
 

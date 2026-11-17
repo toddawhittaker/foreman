@@ -194,8 +194,8 @@ func mcpRequestToken(ti *mcpauth.TokenInfo) store.APIToken {
 }
 
 // mcpServers builds one server per scope, so a client is listed only its
-// scope's tools and any other is unknown (SPEC 21.3). The admin server has
-// the operate tools until the admin tools exist (SPEC 21.7).
+// scope's tools and any other is unknown (SPEC 21.3). The admin server adds
+// the admin tools (SPEC 21.7).
 func (s *server) mcpServers() map[string]*mcp.Server {
 	v := version.Get()
 	impl := &mcp.Implementation{Name: "foreman", Version: cmp.Or(v.Version, v.Commit, "dev")}
@@ -205,6 +205,9 @@ func (s *server) mcpServers() map[string]*mcp.Server {
 		s.addReadTools(srv)
 		if auth.ScopeIncludes(scope, auth.ScopeOperate) {
 			s.addActionTools(srv)
+		}
+		if scope == auth.ScopeAdmin {
+			s.addAdminTools(srv)
 		}
 		out[scope] = srv
 	}

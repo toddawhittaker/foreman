@@ -154,7 +154,7 @@ func (s *server) handleAccount(w http.ResponseWriter, r *http.Request, u store.U
 		s.accountRefused(w, r, u, p, "store the factorio.com account", err)
 		return
 	}
-	s.audit(r.Context(), u, AuditAccountSet, "", "")
+	s.audit(r.Context(), actor(u), AuditAccountSet, "", "")
 	to := ret
 	if to == "" {
 		to = accountDoneURL(accountDoneSaved, "")
@@ -170,7 +170,7 @@ func (s *server) removeAccount(w http.ResponseWriter, r *http.Request, u store.U
 			s.accountRefused(w, r, u, p, "remove the factorio.com account", err)
 			return
 		}
-		s.audit(r.Context(), u, AuditAccountRemove, "", "")
+		s.audit(r.Context(), actor(u), AuditAccountRemove, "", "")
 	}
 	http.Redirect(w, r, accountDoneURL(accountDoneRemoved, p.Return), http.StatusSeeOther)
 }

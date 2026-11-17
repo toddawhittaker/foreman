@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -269,13 +270,13 @@ func (s *server) operationRunning(id string) bool {
 // deleteSnapshot deletes one snapshot of a world. The audit entry is
 // written before anything is removed, and if it cannot be written nothing
 // is removed (SPEC 6.12, 12.9).
-func (s *server) deleteSnapshot(ctx context.Context, u store.User, id, name string) error {
+func (s *server) deleteSnapshot(ctx context.Context, by game.Actor, id, name string) error {
 	if s.operationRunning(id) {
 		return errOperationRunning
 	}
 	return s.worlds.DeleteSnapshot(id, name, func(sn world.Snapshot) error {
 		return s.store.AddAudit(ctx, store.AuditEntry{
-			Time: s.now(), UserID: u.ID, Username: u.Username, Action: AuditSnapshotDelete,
+			Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token, Action: AuditSnapshotDelete,
 			WorldID: id, Detail: fmt.Sprintf("%s (%s, %s)", sn.Name, sn.Label, sn.Reason),
 		})
 	})
@@ -291,7 +292,7 @@ func (s *server) handleSnapshotDelete(w http.ResponseWriter, r *http.Request, u 
 	if !ok {
 		return
 	}
-	err := s.deleteSnapshot(r.Context(), u, p.WorldID, p.Snapshot.Name)
+	err := s.deleteSnapshot(r.Context(), actor(u), p.WorldID, p.Snapshot.Name)
 	if err == nil {
 		to := snapshotsPath(p.WorldID)
 		if p.FromAll {

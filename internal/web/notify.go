@@ -462,7 +462,7 @@ func (s *server) handleWebhookAdd(w http.ResponseWriter, r *http.Request, u stor
 		s.fail(w, r, "add a webhook", err)
 		return
 	}
-	s.audit(r.Context(), u, AuditWebhookAdd, "", webhookAudit(hook))
+	s.audit(r.Context(), actor(u), AuditWebhookAdd, "", webhookAudit(hook))
 	http.Redirect(w, r, webhookDoneURL(webhookDoneAdded, hook), http.StatusSeeOther)
 }
 
@@ -527,7 +527,7 @@ func (s *server) handleWebhookEdit(w http.ResponseWriter, r *http.Request, u sto
 		s.fail(w, r, "save a webhook", err)
 		return
 	}
-	s.audit(r.Context(), u, AuditWebhookChange, "", webhookAudit(saved))
+	s.audit(r.Context(), actor(u), AuditWebhookChange, "", webhookAudit(saved))
 	http.Redirect(w, r, webhookDoneURL(webhookDoneSaved, saved), http.StatusSeeOther)
 }
 
@@ -559,6 +559,6 @@ func (s *server) handleWebhookDelete(w http.ResponseWriter, r *http.Request, u s
 		s.fail(w, r, "delete a webhook", err)
 		return
 	}
-	s.audit(r.Context(), u, AuditWebhookDelete, "", webhookAudit(hook))
+	s.audit(r.Context(), actor(u), AuditWebhookDelete, "", webhookAudit(hook))
 	http.Redirect(w, r, webhookDoneURL(webhookDoneDeleted, hook), http.StatusSeeOther)
 }
