@@ -149,3 +149,32 @@ func TestMCPVersionPreviewParity(t *testing.T) {
 		t5WantWill(t, t5PageText(t, rb), rollbackWill(rb))
 	}
 }
+
+// SPEC 14.19: a confirm call refused by a check still spends its code.
+func TestMCPUpdateRefusedConfirmSpendsCode(t *testing.T) {
+	g, cs := t5VersionRig(t)
+	id := g.newWorld("Base", fixtureNoSA, false)
+	g.addImage(newVersion)
+	args := map[string]any{"world_id": id, "version": newVersion}
+	code := askCode(t, cs, "update_game_version", args)
+	// The page updates the world first, so the confirm's version check fails.
+	g.updateStopped(id, newVersion)
+	want := inEnglish(i18n.M("server.error.version_not_newer"))
+	if res, _ := call(t, cs, "update_game_version", withCode(args, code)); !res.IsError || !strings.Contains(resultText(res), want) {
+		t.Fatalf("first confirm: %s", resultText(res))
+	}
+	if res, _ := call(t, cs, "update_game_version", withCode(args, code)); !res.IsError || !strings.Contains(resultText(res), errConfirmRefused.Error()) {
+		t.Errorf("the code was not spent: %s", resultText(res))
+	}
+}
+
+// SPEC 10.3: a stopped world's update ignores the countdown, as the page does.
+func TestMCPUpdateStoppedIgnoresCountdown(t *testing.T) {
+	g, cs := t5VersionRig(t)
+	id := g.newWorld("Base", fixtureNoSA, false)
+	g.addImage(newVersion)
+	res, out := call(t, cs, "update_game_version", map[string]any{"world_id": id, "version": newVersion, "countdown_seconds": 999})
+	if res.IsError || out["confirm_code"] == "" {
+		t.Errorf("stopped world with a bad countdown: %s %s", resultText(res), asJSON(out))
+	}
+}

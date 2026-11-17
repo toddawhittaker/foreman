@@ -95,9 +95,9 @@ func (s *server) mcpGetGameSettings(ctx context.Context, _ *mcp.CallToolRequest,
 	}
 	p := s.settings.formPage(ctx, sw, sw.formText(), sw.admins)
 	out := mcpGameSettingsOut{World: worldRef(sw.sum), Broken: p.Broken, Running: p.Running, HasPassword: p.PasswordSet,
-		UntrustedAdmins: settingsNames(sw.admins), AdminsBroken: p.AdminsBroken,
+		UntrustedAdmins: nonNil(sw.admins), AdminsBroken: p.AdminsBroken,
 		UntrustedBans: []mcpBan{}, BansBroken: p.BansBroken, BansLive: p.LiveBans,
-		UntrustedWhitelist: settingsNames(p.WhitelistNames), WhitelistBroken: p.WhitelistBroken, WhitelistLive: p.LiveWhitelist,
+		UntrustedWhitelist: nonNil(p.WhitelistNames), WhitelistBroken: p.WhitelistBroken, WhitelistLive: p.LiveWhitelist,
 		UseWhitelist: p.UseWhitelist}
 	if !p.ReadOnly.IsZero() {
 		out.ReadOnly = inEnglish(p.ReadOnly)
@@ -120,7 +120,7 @@ func (s *server) mcpGetGameSettings(ctx context.Context, _ *mcp.CallToolRequest,
 	return mcpText("The settings of %s.", sw.sum.Name), out, nil
 }
 
-func settingsNames(names []string) []string {
+func nonNil(names []string) []string {
 	if names == nil {
 		return []string{}
 	}
@@ -327,9 +327,21 @@ func settingsPreviewOut(sw settingsWorld, p SettingsPreviewPage) mcpChangeSettin
 // preview when a file moved since the preview.
 func (s *server) mcpChangeGameSettings(ctx context.Context, req *mcp.CallToolRequest, in mcpChangeSettingsIn) (*mcp.CallToolResult, mcpChangeSettingsOut, error) {
 	h := s.settings
-	sw, err := s.mcpSettingsWorld(ctx, in.WorldID)
+	sum, err := s.mcpNamed(ctx, in.WorldID)
 	if err != nil {
 		return nil, mcpChangeSettingsOut{}, err
+	}
+	// A confirm call spends its code before any check, so a refused
+	// confirm cannot be tried again with the same code.
+	var was confirmSeen
+	if in.ConfirmCode != "" {
+		if was, err = s.mcpSpend(req, in); err != nil {
+			return nil, mcpChangeSettingsOut{}, err
+		}
+	}
+	sw, err := h.loadWorld(ctx, sum)
+	if err != nil {
+		return nil, mcpChangeSettingsOut{}, s.mcpFail("read the settings", err)
 	}
 	if !sw.readOnly.IsZero() {
 		return nil, mcpChangeSettingsOut{}, errors.New(inEnglish(sw.readOnly))
@@ -371,10 +383,6 @@ func (s *server) mcpChangeGameSettings(ctx context.Context, req *mcp.CallToolReq
 	}
 	if in.ConfirmCode == "" {
 		return preview()
-	}
-	was, err := s.mcpSpend(req, in)
-	if err != nil {
-		return nil, mcpChangeSettingsOut{}, err
 	}
 	if was.moved(seen) {
 		return mcpRetryPreview(preview, "The settings of %s changed since the preview, so nothing was saved. Here is a fresh preview and code.", sw.sum.Name)
@@ -451,6 +459,9 @@ func (s *server) mcpSetWhitelistSwitch(ctx context.Context, req *mcp.CallToolReq
 		return nil, mcpWhitelistSwitchOut{}, errors.New(inEnglish(sw.readOnly))
 	}
 	if err := s.setWhitelistSwitch(ctx, mcpActor(req), sw.sum.ID, in.On); err != nil {
+		if status, msg := worldError(err); status != http.StatusInternalServerError && !msg.IsZero() {
+			return nil, mcpWhitelistSwitchOut{}, errors.New(inEnglish(msg))
+		}
 		return nil, mcpWhitelistSwitchOut{}, s.mcpFail("set the whitelist switch", err)
 	}
 	out := mcpWhitelistSwitchOut{World: worldRef(sw.sum), On: in.On, RestartNeeded: sw.running && in.On != sw.lists.kept}

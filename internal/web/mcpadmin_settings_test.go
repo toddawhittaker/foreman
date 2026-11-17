@@ -269,3 +269,20 @@ func TestMCPSettingsPreviewParity(t *testing.T) {
 		t5WantWill(t, t5PageText(t, p), settingsWill(p))
 	}
 }
+
+// SPEC 14.19: a confirm call refused by a check still spends its code, so
+// the same code is refused as a bad code next time.
+func TestMCPChangeGameSettingsRefusedConfirmSpendsCode(t *testing.T) {
+	g, cs := mcpRig(t, auth.ScopeAdmin, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	args := map[string]any{"world_id": id, "settings": map[string]any{"max_players": 20}}
+	code := askCode(t, cs, "change_game_settings", args)
+	// The file now holds the value, so the confirm finds nothing to change.
+	g.writeConfig(id, world.ServerSettingsFile, `{"name": "Base", "description": "", "visibility": {"public": false, "lan": true}, "max_players": 20}`)
+	if res, _ := call(t, cs, "change_game_settings", withCode(args, code)); res.IsError || !strings.Contains(resultText(res), "Nothing would change") {
+		t.Fatalf("first confirm: %s", resultText(res))
+	}
+	if res, _ := call(t, cs, "change_game_settings", withCode(args, code)); !res.IsError || !strings.Contains(resultText(res), errConfirmRefused.Error()) {
+		t.Errorf("the code was not spent: %s", resultText(res))
+	}
+}

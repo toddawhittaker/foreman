@@ -75,7 +75,7 @@ func (s *server) mcpListGameVersions(ctx context.Context, _ *mcp.CallToolRequest
 	if p.Unreachable {
 		return nil, mcpVersionsOut{}, errors.New("foreman could not reach Docker Hub to list the game versions; try again later")
 	}
-	out.Versions, out.Stable, out.Experimental = settingsNames(p.Versions), p.Stable, p.Experimental
+	out.Versions, out.Stable, out.Experimental = nonNil(p.Versions), p.Stable, p.Experimental
 	return mcpText("%d game versions.", len(out.Versions)), out, nil
 }
 
@@ -116,14 +116,25 @@ func (s *server) mcpUpdateGameVersion(ctx context.Context, req *mcp.CallToolRequ
 	if err != nil {
 		return nil, mcpVersionOut{}, err
 	}
-	stop, err := stopOptions(in.CountdownSeconds)
-	if err != nil {
-		return nil, mcpVersionOut{}, err
+	// A confirm call spends its code before any check, so a refused
+	// confirm cannot be tried again with the same code.
+	var was confirmSeen
+	if in.ConfirmCode != "" {
+		if was, err = s.mcpSpend(req, in); err != nil {
+			return nil, mcpVersionOut{}, err
+		}
 	}
 	target := strings.TrimSpace(in.Version)
 	p := s.updatePage(sum, target, CountdownForm{})
 	if !p.Refusal.IsZero() {
 		return nil, mcpVersionOut{}, errors.New(inEnglish(p.Refusal))
+	}
+	// The countdown matters only to a running game, as on the update page.
+	stop := game.StopOptions{Countdown: game.StopCountdown}
+	if p.Running {
+		if stop, err = stopOptions(in.CountdownSeconds); err != nil {
+			return nil, mcpVersionOut{}, err
+		}
 	}
 	if err := world.CheckUpdateTarget(world.Meta{GameVersion: sum.GameVersion}, target); err != nil {
 		if msg := updateTargetError(err); !msg.IsZero() {
@@ -147,10 +158,6 @@ func (s *server) mcpUpdateGameVersion(ctx context.Context, req *mcp.CallToolRequ
 	}
 	if in.ConfirmCode == "" {
 		return preview()
-	}
-	was, err := s.mcpSpend(req, in)
-	if err != nil {
-		return nil, mcpVersionOut{}, err
 	}
 	if was.moved(seen) {
 		return mcpRetryPreview(preview, "World %s changed since the preview, so nothing was updated. Here is a fresh preview and code.", sum.Name)
@@ -197,6 +204,14 @@ func (s *server) mcpRollbackGameVersion(ctx context.Context, req *mcp.CallToolRe
 	if err != nil {
 		return nil, mcpVersionOut{}, err
 	}
+	// A confirm call spends its code before any check, so a refused
+	// confirm cannot be tried again with the same code.
+	var was confirmSeen
+	if in.ConfirmCode != "" {
+		if was, err = s.mcpSpend(req, in); err != nil {
+			return nil, mcpVersionOut{}, err
+		}
+	}
 	p, err := s.rollbackPage(sum)
 	if err != nil {
 		return nil, mcpVersionOut{}, s.mcpFail("find the rollback snapshot", err)
@@ -226,10 +241,6 @@ func (s *server) mcpRollbackGameVersion(ctx context.Context, req *mcp.CallToolRe
 	}
 	if in.ConfirmCode == "" {
 		return preview()
-	}
-	was, err := s.mcpSpend(req, in)
-	if err != nil {
-		return nil, mcpVersionOut{}, err
 	}
 	if was.moved(seen) {
 		return mcpRetryPreview(preview, "World %s changed since the preview, so nothing was rolled back. Here is a fresh preview and code.", sum.Name)
