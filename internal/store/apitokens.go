@@ -27,7 +27,7 @@ type APIToken struct {
 
 var (
 	// ErrTokenNameTaken is returned when the owner already has a token of
-	// that name, ignoring case, that is not revoked.
+	// that name, ignoring ASCII case, that is not revoked.
 	ErrTokenNameTaken = errors.New("store: token name taken")
 	// ErrTokenNotFound is returned when no such token exists, or, for a
 	// renewal, when it belongs to someone else.

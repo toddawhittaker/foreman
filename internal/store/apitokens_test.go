@@ -81,6 +81,9 @@ func TestAPITokenRenew(t *testing.T) {
 	if _, err := s.RenewAPIToken(ctx, tok.ID, bob, later); !errors.Is(err, ErrTokenNotFound) {
 		t.Errorf("renew by another user: err = %v, want ErrTokenNotFound", err)
 	}
+	if kept, _ := s.APIToken(ctx, tok.ID); !kept.PeriodStart.Equal(t0) || kept.Reminded != 2 {
+		t.Errorf("a refused renewal changed the row: %+v", kept)
+	}
 	got, err := s.RenewAPIToken(ctx, tok.ID, ann, later)
 	if err != nil {
 		t.Fatal(err)
