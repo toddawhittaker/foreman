@@ -10,6 +10,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/secret"
+	"github.com/toddawhittaker/foreman/internal/store"
 )
 
 // hookToken is the secret part of a test address: no page, log line or
@@ -59,7 +60,7 @@ func (nh *notifyHarness) wantNoAddress(where, body string) {
 	if strings.Contains(nh.logs.String(), hookToken) {
 		nh.t.Errorf("the log holds the address after %s", where)
 	}
-	list, _ := nh.store.ListAudit(context.Background(), 100)
+	list, _ := nh.store.ListAudit(context.Background(), store.AuditFilter{Limit: 100})
 	for _, e := range list {
 		if strings.Contains(e.Detail, hookToken) {
 			nh.t.Errorf("an audit entry holds the address after %s", where)

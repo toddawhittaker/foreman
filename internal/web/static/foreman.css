@@ -9604,6 +9604,41 @@ main:has(> .gate) > * + :not(h1, .gate) {
   list-style: none;
 }
 
+/* DESIGN 8.15 Audit log (SPEC 12.9): entries are rows divided by a rule, each
+   a title line and its facts, so one layout serves every width. */
+.audit-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audit-list > li {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.audit-list > li:first-child {
+  padding-block-start: 0;
+}
+
+.audit-list > li:last-child {
+  border-block-end: 0;
+}
+
+.audit-list p {
+  margin: 0;
+}
+
+/* An entry's world link is a full-size target. */
+.audit-list .facts a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
 /* DESIGN 8.21 API tokens (SPEC 12.10). Each token is a card that sizes itself from
    its list, so the facts wrap under the name on a phone. */
 .token-list {

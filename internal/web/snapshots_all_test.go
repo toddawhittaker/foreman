@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -64,7 +65,7 @@ func (hn *harness) seedTwoSnapshots() (id string, first, second world.Snapshot) 
 
 func (hn *harness) audits(action string) []string {
 	hn.t.Helper()
-	list, err := hn.store.ListAudit(context.Background(), 500)
+	list, err := hn.store.ListAudit(context.Background(), store.AuditFilter{Limit: 500})
 	if err != nil {
 		hn.t.Fatal(err)
 	}

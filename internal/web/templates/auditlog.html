@@ -1,0 +1,85 @@
+{{define "title"}}{{t "audit.title"}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<p class="eyebrow">{{t "common.nav.settings"}}</p>
+<h1>{{t "audit.title"}}</h1>
+{{template "settings-tabs" "audit-log"}}
+<p>{{t "audit.intro"}}</p>
+
+{{- /* A plain GET form: the filters live in the address, so a filtered view can be bookmarked and the Older link keeps them. */}}
+<form method="get" action="{{.Path}}" class="panel" id="audit-filter" aria-labelledby="filter-heading">
+  <h2 id="filter-heading">{{t "audit.filter.heading"}}</h2>
+  <div class="field">
+    <label for="audit-user">{{t "audit.filter.user"}}</label>
+    <select id="audit-user" name="user">
+      <option value="">{{t "audit.filter.all_users"}}</option>
+      {{- range .Users}}
+      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+      {{- end}}
+    </select>
+  </div>
+  <div class="field">
+    <label for="audit-action">{{t "audit.filter.action"}}</label>
+    <select id="audit-action" name="action">
+      <option value="">{{t "audit.filter.all_actions"}}</option>
+      {{- range .Actions}}
+      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{if .Word.IsZero}}{{.Label}}{{else}}{{msg .Word}}{{end}}</option>
+      {{- end}}
+    </select>
+  </div>
+  <div class="field">
+    <label for="audit-world">{{t "audit.filter.world"}}</label>
+    <select id="audit-world" name="world">
+      <option value="">{{t "audit.filter.all_worlds"}}</option>
+      {{- range .Worlds}}
+      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{if .Word.IsZero}}{{.Label}}{{else}}{{msg .Word}}{{end}}</option>
+      {{- end}}
+    </select>
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary" id="act-audit-filter">{{t "audit.filter.apply"}}</button>
+    {{- if .Filtered}}
+    <a href="{{.Path}}" class="button" id="act-audit-clear">{{t "audit.filter.clear"}}</a>
+    {{- end}}
+  </div>
+</form>
+
+<section aria-labelledby="entries-heading">
+  <h2 id="entries-heading">{{t "audit.list.heading"}}</h2>
+  {{- if .Rows}}
+  <ol class="audit-list" role="list" id="audit-list">
+    {{- range .Rows}}
+    <li id="audit-{{.ID}}">
+      <p><strong>{{if .Word.IsZero}}<span class="ident" translate="no">{{.Action}}</span>{{else}}{{msg .Word}}{{end}}</strong></p>
+      <dl class="facts facts--inline">
+        <div><dt>{{t "audit.fact.time"}}</dt><dd>{{template "when" .Time}}</dd></div>
+        <div><dt>{{t "audit.fact.user"}}</dt><dd>{{.User}}</dd></div>
+        {{- if .Token}}
+        <div><dt>{{t "audit.fact.token"}}</dt><dd><span class="badge ident" translate="no">{{.Token}}</span></dd></div>
+        {{- end}}
+        {{- if .WorldID}}
+        <div><dt>{{t "audit.fact.world"}}</dt><dd>{{if .WorldKnown}}<a href="{{.WorldPath}}">{{.WorldName}}</a>{{else}}<span class="ident">{{t "audit.world.deleted" "world" .WorldID}}</span>{{end}}</dd></div>
+        {{- end}}
+      </dl>
+      {{- if .Detail}}
+      <dl class="facts">
+        <div><dt>{{t "audit.fact.detail"}}</dt><dd class="ident">{{.Detail}}</dd></div>
+      </dl>
+      {{- end}}
+    </li>
+    {{- end}}
+  </ol>
+  {{- else if .Filtered}}
+  <p id="audit-empty">{{t "audit.empty.filtered"}}</p>
+  {{- else}}
+  <p id="audit-empty">{{t "audit.empty"}}</p>
+  {{- end}}
+  {{- if .Older}}
+  <div class="actions">
+    <a href="{{.Older}}" class="button" id="act-audit-older" rel="next">{{t "audit.older"}}</a>
+  </div>
+  {{- end}}
+</section>
+{{- end}}
+{{- end}}
