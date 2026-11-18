@@ -26,9 +26,10 @@ import (
 //  1. Without confirm_code: run the page's checks, build the preview from
 //     the same page struct the UI's confirm page uses, and return it with
 //     s.mcpAsk's code. Nothing changes.
-//  2. With confirm_code: spend the code first (s.mcpSpend), so a wrong use
-//     spends it too. Run every check again. If the state the preview showed
-//     has moved, refuse with a fresh preview and code. Otherwise act.
+//  2. With confirm_code: spend the code first (s.spendIfCode), before any
+//     check, so a wrong or refused use spends it too. Run every check
+//     again. If the state the preview showed has moved, refuse with a
+//     fresh preview and code. Otherwise act.
 //
 // The tool is registered with Annotations: twoStep.
 //
@@ -69,6 +70,12 @@ func (s *server) exampleDelete(notes *exampleNotes) mcp.ToolHandlerFor[exampleDe
 	return func(_ context.Context, req *mcp.CallToolRequest, in exampleDeleteIn) (*mcp.CallToolResult, exampleDeleteOut, error) {
 		notes.mu.Lock()
 		defer notes.mu.Unlock()
+		// The code is spent first, before any check, so a refused confirm
+		// spends it too.
+		seen, err := s.spendIfCode(req, in, in.ConfirmCode)
+		if err != nil {
+			return nil, exampleDeleteOut{}, err
+		}
 		// The page's checks run on both calls.
 		text, ok := notes.notes[in.Name]
 		if !ok {
@@ -76,10 +83,6 @@ func (s *server) exampleDelete(notes *exampleNotes) mcp.ToolHandlerFor[exampleDe
 		}
 		if in.ConfirmCode == "" {
 			return preview(req, in, text)
-		}
-		seen, err := s.mcpSpend(req, in)
-		if err != nil {
-			return nil, exampleDeleteOut{}, err
 		}
 		if seen.moved(text) {
 			res, out, err := preview(req, in, text)
@@ -255,6 +258,16 @@ func TestConfirmRefusals(t *testing.T) {
 		"after a wrong use": func(t *testing.T, _ *confirmRig, cs *mcp.ClientSession) *mcp.CallToolResult {
 			code := askCode(t, cs, "example_delete", args)
 			call(t, cs, "example_other", withCode(args, code))
+			res, _ := call(t, cs, "example_delete", withCode(args, code))
+			return res
+		},
+		"after a refused confirm": func(t *testing.T, r *confirmRig, cs *mcp.ClientSession) *mcp.CallToolResult {
+			code := askCode(t, cs, "example_delete", args)
+			delete(r.notes.notes, "todo")
+			if res, _ := call(t, cs, "example_delete", withCode(args, code)); !res.IsError || !strings.Contains(resultText(res), "no note") {
+				t.Fatalf("the check did not refuse: %q", resultText(res))
+			}
+			r.notes.notes["todo"] = "one"
 			res, _ := call(t, cs, "example_delete", withCode(args, code))
 			return res
 		},
