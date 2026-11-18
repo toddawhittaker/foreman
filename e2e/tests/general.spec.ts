@@ -41,7 +41,7 @@ test("the General tab shows each setting with its default and says where it is s
   await expect(auditDays(page)).toHaveValue("365");
   await expect(saveLimit(page)).toHaveValue("1024");
   await expect(modLimit(page)).toHaveValue("200");
-  await expect(page.getByText("Set here. No environment variable sets it.")).toHaveCount(5);
+  await expect(page.getByText("Set here. No environment variable sets it.")).toHaveCount(1);
   await expect(page.locator("#general-trim")).toHaveCount(0);
   await checkPage(page);
 });
@@ -99,7 +99,8 @@ test("lowering retention deletes nothing and the page counts what will go", asyn
 
   await retention(page).fill("1");
   await page.getByRole("button", { name: "Save settings" }).click();
-  const trim = page.locator("#general-trim");
+  // The count is in the Saved box, which takes focus after the save.
+  const trim = page.locator("#done-message #general-trim");
   await expect(trim).toContainText("3 automatic snapshots will be removed, each at its world's next automatic snapshot.");
   await expect(trim).toContainText("Worlds affected: 1.");
   await checkPage(page);

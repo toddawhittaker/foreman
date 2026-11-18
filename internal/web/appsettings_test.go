@@ -83,8 +83,8 @@ func TestGeneralPageShowsSettings(t *testing.T) {
 	if strings.Contains(body, `id="general-trim"`) {
 		t.Error("the page announced a trim with nothing to trim")
 	}
-	if n := strings.Count(body, "Set here."); n != 5 {
-		t.Errorf("%d fields say where they are set, want 5", n)
+	if n := strings.Count(body, "Set here."); n != 1 {
+		t.Errorf(`"Set here." appears %d times, want once`, n)
 	}
 }
 

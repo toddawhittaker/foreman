@@ -79,28 +79,40 @@ func (d intSetting) rangeMsg() i18n.Msg {
 	return i18n.M("general.error.range", "min", d.Min, "max", d.Max)
 }
 
-// intSetting reads a setting. A missing, unreadable or out-of-range value
-// gives the default, so a database fault never changes a limit to
-// something odd.
-func (s *server) intSetting(ctx context.Context, d intSetting) int {
+// readInt reads a setting. A missing one gives the default. ok is false
+// when the read failed or the stored value is not a number in range; the
+// value is then the default, which callers that must fail safe do not use.
+func (s *server) readInt(ctx context.Context, d intSetting) (n int, ok bool) {
 	v, found, err := s.store.AppSetting(ctx, d.Name)
 	if err != nil {
 		s.log.Error("read an app setting", "setting", d.Name, "error", err)
-		return d.Default
+		return d.Default, false
 	}
-	n, err := strconv.Atoi(v)
-	if !found || err != nil || !d.valid(n) {
-		return d.Default
+	if !found {
+		return d.Default, true
 	}
+	n, err = strconv.Atoi(v)
+	if err != nil || !d.valid(n) {
+		s.log.Error("an app setting holds an unusable value, so its default is used", "setting", d.Name)
+		return d.Default, false
+	}
+	return n, true
+}
+
+// intSetting reads a setting, giving the default when it cannot be read, so
+// a database fault never changes a limit to something odd. Snapshot
+// retention does not use it: see applyRetention.
+func (s *server) intSetting(ctx context.Context, d intSetting) int {
+	n, _ := s.readInt(ctx, d)
 	return n
 }
 
 // setIntSetting stores n and audits the change as from old to n under by.
-// The caller has checked the range. Nothing is stored or audited when the
-// value does not change.
+// The caller has checked the range and holds generalMu. Nothing is stored or
+// audited when the value does not change.
 func (s *server) setIntSetting(ctx context.Context, by game.Actor, d intSetting, n int) error {
-	old := s.intSetting(ctx, d)
-	if old == n {
+	old, ok := s.readInt(ctx, d)
+	if ok && old == n {
 		return nil
 	}
 	if err := s.store.SetAppSetting(ctx, d.Name, strconv.Itoa(n), by.Username, s.now()); err != nil {
@@ -121,7 +133,8 @@ func (s *server) stopCountdown(ctx context.Context) time.Duration {
 	return time.Duration(s.intSetting(ctx, settingStopCountdown)) * time.Second
 }
 
-// auditRetentionDays is how long audit entries are kept (SPEC 12.9).
+// auditRetentionDays is how long audit entries are kept (SPEC 12.9). The
+// hourly sweep reads it; it gives the default when the setting cannot be read.
 func (s *server) auditRetentionDays(ctx context.Context) int {
 	return s.intSetting(ctx, settingAuditRetention)
 }
@@ -135,13 +148,20 @@ func (s *server) modUploadLimit(ctx context.Context) int64 {
 	return int64(s.intSetting(ctx, settingModUpload)) << 20
 }
 
-// applyRetention gives the world manager the saved retention. It runs at
-// start and after each save of the setting, so a lower figure takes effect
-// at each world's next automatic snapshot and nothing is removed now.
+// applyRetention gives the world manager the saved retention at start. If
+// the setting cannot be read it sets the largest figure, so a fault never
+// makes a world drop snapshots it should keep. A lower figure takes effect
+// at each world's next automatic snapshot; nothing is removed now.
 func (s *server) applyRetention(ctx context.Context) {
-	if s.worlds != nil {
-		s.worlds.SetKeepAutomatic(s.snapshotRetention(ctx))
+	if s.worlds == nil {
+		return
 	}
+	n, ok := s.readInt(ctx, settingSnapshotRetention)
+	if !ok {
+		s.log.Error("snapshot retention could not be read, so every world keeps up to the largest number of automatic snapshots", "keep", settingSnapshotRetention.Max)
+		n = settingSnapshotRetention.Max
+	}
+	s.worlds.SetKeepAutomatic(n)
 }
 
 // generalValues reads every General setting by Key.
@@ -156,6 +176,9 @@ func (s *server) generalValues(ctx context.Context) map[string]int {
 // saveGeneral stores the settings in want, by Key. Every value is checked
 // first, and nothing is stored when one is out of range.
 func (s *server) saveGeneral(ctx context.Context, by game.Actor, want map[string]int) error {
+	// One save at a time, so each audit entry's old value is the real one.
+	s.generalMu.Lock()
+	defer s.generalMu.Unlock()
 	for _, d := range generalSettings {
 		if n, ok := want[d.Key]; ok && !d.valid(n) {
 			return fmt.Errorf("%s is outside %d to %d", d.Key, d.Min, d.Max)
@@ -169,8 +192,12 @@ func (s *server) saveGeneral(ctx context.Context, by game.Actor, want map[string
 		if err := s.setIntSetting(ctx, by, d, n); err != nil {
 			return err
 		}
+		// Applied with the value just written, so a failure on a later
+		// setting still leaves the manager on what was saved.
+		if d.Key == settingSnapshotRetention.Key && s.worlds != nil {
+			s.worlds.SetKeepAutomatic(n)
+		}
 	}
-	s.applyRetention(ctx)
 	return nil
 }
 
@@ -244,8 +271,10 @@ func (p *GeneralPage) field(key string) *GeneralField {
 		return &p.AuditRetention
 	case settingSaveUpload.Key:
 		return &p.SaveUpload
+	case settingModUpload.Key:
+		return &p.ModUpload
 	}
-	return &p.ModUpload
+	panic("no General field for " + key)
 }
 
 // withFields gives each input its id, form name and range.

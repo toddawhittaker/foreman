@@ -3,11 +3,10 @@
 {{/* One number input and its error. The row names its own label and hint. */}}
 {{define "general-input" -}}
 <input id="{{.ID}}" name="{{.Name}}" type="text" inputmode="numeric" value="{{.Value}}" required autocomplete="off"
-  {{- if not .Error.IsZero}} aria-invalid="true"{{end}} aria-describedby="{{.ID}}-hint {{.ID}}-source{{if not .Error.IsZero}} {{.ID}}-error{{end}}">
+  {{- if not .Error.IsZero}} aria-invalid="true"{{end}} aria-describedby="{{if not .Error.IsZero}}{{.ID}}-error {{end}}{{.ID}}-hint">
 {{- if not .Error.IsZero}}
 <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
 {{- end}}
-<p class="hint" id="{{.ID}}-source">{{t "general.source"}}</p>
 {{- end}}
 
 {{define "content" -}}
@@ -18,18 +17,22 @@
 {{- if .Saved}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{t "general.done"}}</p>
+  {{- if .Trims}}
+  <p id="general-trim">{{t "general.trim.snapshots" "count" .Trim.Snapshots}} {{t "general.trim.worlds" "count" .Trim.Worlds}}</p>
+  {{- end}}
 </div>
 {{- end}}
 {{template "summary" .Problems}}
 <form method="post" action="{{.Path}}" class="panel setting-rows" novalidate>
   {{template "required-note"}}
+  <p class="hint" id="general-source">{{t "general.source"}}</p>
   <section class="setting-row" aria-labelledby="general-snapshots-heading">
     <div class="setting-row__head">
       <h2 id="general-snapshots-heading">{{t "general.snapshots.heading"}}</h2>
       <p class="hint">{{t "general.snapshots.text"}}</p>
     </div>
     <div class="setting-row__body">
-      {{- if .Trims}}
+      {{- if and .Trims (not .Saved)}}
       <div class="message message--note" id="general-trim">
         <p><strong>{{t "common.label.note"}}</strong> {{t "general.trim.snapshots" "count" .Trim.Snapshots}} {{t "general.trim.worlds" "count" .Trim.Worlds}}</p>
       </div>
