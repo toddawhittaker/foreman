@@ -246,6 +246,50 @@ func TestMCPStopDefaultCountdown(t *testing.T) {
 	}
 }
 
+// SPEC 7.6, 21.5: cancel_stop cancels a stop countdown as the Server
+// page's Cancel stop does, audited with the token's name.
+func TestMCPCancelStop(t *testing.T) {
+	g, cs := mcpRig(t, auth.ScopeOperate, image21)
+	id := g.startRunning()
+	g.join(id, "bob")
+	was := mcpWait
+	mcpWait = 50 * time.Millisecond
+	t.Cleanup(func() { mcpWait = was })
+	if res, out := call(t, cs, "stop_server", map[string]any{"world_id": id, "countdown_seconds": 60}); res.IsError || out["finished"] != false {
+		t.Fatalf("stop: %s %s", resultText(res), asJSON(out))
+	}
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		if op := g.ctrl.Status(id).Operation; op != nil {
+			if _, ok := op.CountdownEnds(); ok {
+				break
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the countdown never began")
+		}
+	}
+	res, out := call(t, cs, "cancel_stop", map[string]any{"world_id": id})
+	if res.IsError || out["finished"] != true {
+		t.Fatalf("cancel_stop: %s %s", resultText(res), asJSON(out))
+	}
+	if got := g.auditByToken(game.AuditStopCancel); len(got) != 1 || got[0].Username != "alice" {
+		t.Errorf("stop-cancel audit: %+v", got)
+	}
+	for deadline := time.Now().Add(10 * time.Second); !g.ctrl.Status(id).Operation.Done; time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("the stop never ended")
+		}
+	}
+	if st := g.ctrl.Status(id).State; st != game.StateRunning {
+		t.Errorf("state after the cancel: %s", st)
+	}
+	// As on the Server page, a cancel that finds no countdown is no error.
+	res, out = call(t, cs, "cancel_stop", map[string]any{"world_id": id})
+	if res.IsError || out["finished"] != false || out["nothing_to_do"] != true || !strings.Contains(resultText(res), "no stop countdown") {
+		t.Errorf("a cancel with no countdown: %s", resultText(res))
+	}
+}
+
 // SPEC 21.5: the action goes on when the client leaves, and server_status
 // reports how it ended.
 func TestMCPActionOutlivesTheClient(t *testing.T) {

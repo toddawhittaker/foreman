@@ -94,6 +94,11 @@ type server struct {
 	scheduler *schedule.Scheduler
 	runs      *gameRuns
 	console   *consoleHistory
+	// settings holds the game settings pages' state, which the MCP admin
+	// tools share (SPEC 21.7).
+	settings *settingsHandlers
+	// confirms holds the MCP admin tools' confirm codes (SPEC 21.8).
+	confirms *confirmStore
 	// playerResults holds each user's last player action result (DESIGN 8.12).
 	playerResults *playerResults
 	log           *slog.Logger
@@ -163,6 +168,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		notifier:  d.Notifier,
 		scheduler: d.Scheduler,
 		runs:      newGameRuns(),
+		confirms:  newConfirmStore(now),
 		gameNets:  d.GameNets,
 		console:   newConsoleHistory(),
 		log:       d.Log,

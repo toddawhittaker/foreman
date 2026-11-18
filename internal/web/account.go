@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -81,22 +83,23 @@ func (s *server) accountRoutes() {
 	s.mux.HandleFunc("POST "+PathAccount, s.requireUser(s.handleAccount))
 }
 
-// accountPage reads where the account stands now. The error is for the
+// accountState reads where the account stands now. The error is for the
 // database failing.
-func (s *server) accountPage(r *http.Request, ret string) (AccountPage, error) {
-	_, src, meta, err := s.account.Get(r.Context())
+func (s *server) accountState(ctx context.Context) (AccountPage, error) {
+	_, src, meta, err := s.account.Get(ctx)
 	if err != nil {
 		return AccountPage{}, err
 	}
-	return AccountPage{Source: src, CanStore: s.account.CanStore(), UpdatedAt: meta.UpdatedAt, UpdatedBy: meta.UpdatedBy, Return: ret}, nil
+	return AccountPage{Source: src, CanStore: s.account.CanStore(), UpdatedAt: meta.UpdatedAt, UpdatedBy: meta.UpdatedBy}, nil
 }
 
 func (s *server) handleAccountForm(w http.ResponseWriter, r *http.Request, u store.User) {
-	p, err := s.accountPage(r, returnPath(r.URL.Query().Get("return")))
+	p, err := s.accountState(r.Context())
 	if err != nil {
 		s.fail(w, r, "read the factorio.com account", err)
 		return
 	}
+	p.Return = returnPath(r.URL.Query().Get("return"))
 	switch r.URL.Query().Get("done") {
 	case accountDoneSaved:
 		p.Done = i18n.M("account.done.saved")
@@ -121,73 +124,106 @@ func checkAccountField(v string, missing i18n.Msg) (string, i18n.Msg) {
 	return clean, i18n.Msg{}
 }
 
-func (s *server) handleAccount(w http.ResponseWriter, r *http.Request, u store.User) {
-	if !s.readForm(w, r) {
-		return
-	}
-	ret := returnPath(r.PostFormValue("return"))
-	p, err := s.accountPage(r, ret)
+// setAccount stores the factorio.com account and records it in the audit
+// log under by. The page returned holds the refusal when the account cannot
+// be stored or a field is refused, and nothing is stored then; the error is
+// for the database failing.
+func (s *server) setAccount(ctx context.Context, by game.Actor, username, token string) (AccountPage, error) {
+	p, err := s.accountState(ctx)
 	if err != nil {
-		s.fail(w, r, "read the factorio.com account", err)
-		return
+		return AccountPage{}, err
 	}
-	if r.PostFormValue("action") == accountActionRemove {
-		s.removeAccount(w, r, u, p)
-		return
-	}
-
 	// Without a key the page has no fields to point a field error at.
 	if p.NoKeyNotice() {
 		p.Error = i18n.M("account.error.nokey")
-		s.page(w, r, http.StatusConflict, u.Username, p)
-		return
+		return p, nil
 	}
-	username, usernameProblem := checkAccountField(r.PostFormValue("username"), i18n.M("account.username.missing"))
-	token, tokenProblem := checkAccountField(r.PostFormValue("token"), i18n.M("account.token.missing"))
+	username, usernameProblem := checkAccountField(username, i18n.M("account.username.missing"))
+	token, tokenProblem := checkAccountField(token, i18n.M("account.token.missing"))
 	if !usernameProblem.IsZero() || !tokenProblem.IsZero() {
 		p.UsernameError, p.TokenError = usernameProblem, tokenProblem
-		s.page(w, r, http.StatusBadRequest, u.Username, p)
-		return
+		return p, nil
 	}
-	err = s.account.Set(r.Context(), factorioaccount.Account{Username: secret.New(username), Token: secret.New(token)}, u.Username)
+	err = s.account.Set(ctx, factorioaccount.Account{Username: secret.New(username), Token: secret.New(token)}, by.Username)
+	if p.refused(err) {
+		return p, nil
+	}
 	if err != nil {
-		s.accountRefused(w, r, u, p, "store the factorio.com account", err)
-		return
+		return AccountPage{}, err
 	}
-	s.audit(r.Context(), u, AuditAccountSet, "", "")
-	to := ret
-	if to == "" {
-		to = accountDoneURL(accountDoneSaved, "")
-	}
-	http.Redirect(w, r, to, http.StatusSeeOther)
+	s.audit(ctx, by, AuditAccountSet, "", "")
+	return p, nil
 }
 
-// removeAccount deletes the stored account. With nothing stored there is
-// nothing to remove, and no audit entry.
-func (s *server) removeAccount(w http.ResponseWriter, r *http.Request, u store.User, p AccountPage) {
-	if p.Stored() || p.Unreadable() {
-		if err := s.account.Remove(r.Context()); err != nil {
-			s.accountRefused(w, r, u, p, "remove the factorio.com account", err)
-			return
-		}
-		s.audit(r.Context(), u, AuditAccountRemove, "", "")
+// removeAccountBy deletes the stored account and records it in the audit
+// log under by. With nothing stored there is nothing to remove, and no audit
+// entry; removed says whether anything was. The page returned holds the
+// refusal when the account cannot be removed.
+func (s *server) removeAccountBy(ctx context.Context, by game.Actor) (removed bool, _ AccountPage, _ error) {
+	p, err := s.accountState(ctx)
+	if err != nil {
+		return false, AccountPage{}, err
 	}
-	http.Redirect(w, r, accountDoneURL(accountDoneRemoved, p.Return), http.StatusSeeOther)
+	if !p.Stored() && !p.Unreadable() {
+		return false, p, nil
+	}
+	err = s.account.Remove(ctx)
+	if p.refused(err) {
+		return false, p, nil
+	}
+	if err != nil {
+		return false, AccountPage{}, err
+	}
+	s.audit(ctx, by, AuditAccountRemove, "", "")
+	return true, p, nil
 }
 
-// accountRefused answers a change the service refused, or fails on any
-// other error. The page never carries err.
-func (s *server) accountRefused(w http.ResponseWriter, r *http.Request, u store.User, p AccountPage, what string, err error) {
+// refused words a change the service refused on the page and reports true;
+// any other error is the caller's to fail on. The page never carries err.
+func (p *AccountPage) refused(err error) bool {
 	switch {
 	case errors.Is(err, factorioaccount.ErrFromEnvironment):
 		p.Error = i18n.M("account.error.env")
 	case errors.Is(err, factorioaccount.ErrNoSecretKey):
 		p.Error = i18n.M("account.error.nokey")
 	default:
+		return false
+	}
+	return true
+}
+
+func (s *server) handleAccount(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	ret := returnPath(r.PostFormValue("return"))
+	if r.PostFormValue("action") == accountActionRemove {
+		_, p, err := s.removeAccountBy(r.Context(), actor(u))
+		s.accountAnswer(w, r, u, p, err, ret, "remove the factorio.com account", accountDoneRemoved)
+		return
+	}
+	p, err := s.setAccount(r.Context(), actor(u), r.PostFormValue("username"), r.PostFormValue("token"))
+	s.accountAnswer(w, r, u, p, err, ret, "store the factorio.com account", accountDoneSaved)
+}
+
+// accountAnswer shows a refused change on the page, fails on a real error,
+// and otherwise goes to the result.
+func (s *server) accountAnswer(w http.ResponseWriter, r *http.Request, u store.User, p AccountPage, err error, ret, what, done string) {
+	if err != nil {
 		s.fail(w, r, what, err)
 		return
 	}
-	s.page(w, r, http.StatusConflict, u.Username, p)
+	p.Return = ret
+	switch {
+	case len(p.Problems()) > 0:
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+	case !p.Error.IsZero():
+		s.page(w, r, http.StatusConflict, u.Username, p)
+	case done == accountDoneSaved && ret != "":
+		http.Redirect(w, r, ret, http.StatusSeeOther)
+	default:
+		http.Redirect(w, r, accountDoneURL(done, ret), http.StatusSeeOther)
+	}
 }
 
 // accountDoneURL is the account page showing the result of a change, and

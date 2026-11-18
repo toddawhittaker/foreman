@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"maps"
 	"net/http"
 	"net/url"
@@ -1939,14 +1940,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	for _, un := range p.Plan.Unresolved {
-		if un.Choice != nil && un.Choice.Kind == mods.ChoiceWithout && !un.Choice.Confirmed {
-			p.ConfirmErrors[un.Name] = i18n.M("mods.unresolved.confirm_missing", "mod", un.Name)
-		}
-	}
-	if len(p.Drops) > 0 && !f.DropsConfirmed {
-		p.DropsError = dropsMissing(p.Drops)
-	}
+	p.confirmProblems(f)
 	if len(p.Problems()) > 0 {
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
@@ -1955,10 +1949,37 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	installed, err := s.worlds.Mods(sum.ID)
+	op, unused, err := s.planOp(p, f)
 	if err != nil {
-		s.fail(w, r, "list mods", err)
+		s.fail(w, r, "turn the plan into a change", err)
 		return
+	}
+	// The installed picks leave the saved ones; a refused request keeps
+	// them, and so do picks this plan did not install (SPEC 9.14).
+	if s.applyMods(w, r, u, sum, op, stop, unused, p.shownResult()) {
+		s.dropInstalledPicks(r.Context(), sum.ID, f)
+	}
+}
+
+// confirmProblems marks the boxes the plan needs that f leaves unticked:
+// each "continue without" and the drops (SPEC 9.4, 9.10).
+func (p *ModPlanPage) confirmProblems(f planForm) {
+	for _, un := range p.Plan.Unresolved {
+		if un.Choice != nil && un.Choice.Kind == mods.ChoiceWithout && !un.Choice.Confirmed {
+			p.ConfirmErrors[un.Name] = i18n.M("mods.unresolved.confirm_missing", "mod", un.Name)
+		}
+	}
+	if len(p.Drops) > 0 && !f.DropsConfirmed {
+		p.DropsError = dropsMissing(p.Drops)
+	}
+}
+
+// planOp turns a confirmed plan into the controller's mod change. unused is
+// a staged zip the plan does not use, removed once the change ends.
+func (s *server) planOp(p ModPlanPage, f planForm) (op game.ModOp, unused string, err error) {
+	installed, err := s.worlds.Mods(p.World.ID)
+	if err != nil {
+		return game.ModOp{}, "", fmt.Errorf("list mods: %w", err)
 	}
 	staged := ""
 	if p.UsesUpload() {
@@ -1966,10 +1987,9 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	}
 	downloads, change, err := mods.ToChange(p.Plan, installed, staged)
 	if err != nil {
-		s.fail(w, r, "turn the plan into a change", err)
-		return
+		return game.ModOp{}, "", err
 	}
-	op := game.ModOp{Change: change, Fingerprint: p.Fingerprint, Summary: planSummary(p.Plan)}
+	op = game.ModOp{Change: change, Fingerprint: p.Fingerprint, Summary: planSummary(p.Plan)}
 	// A save's mod the admin chose to go on without is dropped knowingly too.
 	confirmed := slices.Clone(p.Drops)
 	for _, un := range p.Plan.Unresolved {
@@ -1982,22 +2002,31 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 		op.Downloads = append(op.Downloads, game.ModDownload{Mod: d.Name, Release: d.Release})
 	}
 	// A zip the plan does not use is not kept waiting.
-	unused := ""
 	if staged == "" {
 		unused = f.Staged
 	}
-	// Trying again opens this plan anew, unless it used the uploaded zip.
+	return op, unused, nil
+}
+
+// shownResult is what the result says changed. Trying again opens this
+// plan anew, unless it used the uploaded zip.
+func (p ModPlanPage) shownResult() modResult {
 	shown := modResult{Changes: p.Plan.Changes}
 	if !p.UsesUpload() {
 		shown.Retry = p.DraftPath()
 	}
-	// The installed picks leave the saved ones; a refused request keeps
-	// them, and so do picks this plan did not install (SPEC 9.14).
-	if s.applyMods(w, r, u, sum, op, stop, unused, shown) && f.Kind == mods.KindInstall {
-		for _, name := range f.Names {
-			if err := s.store.RemoveModPlanName(r.Context(), sum.ID, name); err != nil {
-				s.log.Warn("take an installed mod out of the mod plan", "world", sum.ID, "error", err)
-			}
+	return shown
+}
+
+// dropInstalledPicks takes an install's mods out of the saved picks once
+// its change has started (SPEC 9.14).
+func (s *server) dropInstalledPicks(ctx context.Context, id string, f planForm) {
+	if f.Kind != mods.KindInstall {
+		return
+	}
+	for _, name := range f.Names {
+		if err := s.store.RemoveModPlanName(ctx, id, name); err != nil {
+			s.log.Warn("take an installed mod out of the mod plan", "world", id, "error", err)
 		}
 	}
 }
@@ -2039,14 +2068,19 @@ func clipSummary(s string) string {
 // The result names the "Before mod change" snapshot, for undo. It reports
 // whether the change was started.
 func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string, shown modResult) bool {
-	id, by := sum.ID, actor(u)
 	to := PathServer
 	if !sum.Active {
-		to = modsPath(id) + ownResultQuery
+		to = modsPath(sum.ID) + ownResultQuery
 	}
+	return s.beginTo(w, r, to, []string{sum.ID}, true, s.modAction(sum.ID, actor(u), op, stop, unused, shown))
+}
+
+// modAction is a mod change's background work, for the Mods pages and the
+// MCP tools alike; its result names the snapshot that undoes it.
+func (s *server) modAction(id string, by game.Actor, op game.ModOp, stop game.StopOptions, unused string, shown modResult) func(ctx context.Context) actionResult {
 	newest := s.newestModSnapshot(id)
 	run, inRun := s.worlds.ModRunSnapshot(id)
-	return s.beginTo(w, r, to, []string{id}, true, func(ctx context.Context) actionResult {
+	return func(ctx context.Context) actionResult {
 		err := s.game.ApplyMods(ctx, id, by, op, stop)
 		if unused != "" {
 			_ = s.worlds.RemoveStaged(unused)
@@ -2055,7 +2089,7 @@ func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User,
 		res.Mods = shown
 		res.Undo, res.Mods.Since = s.modUndoSnapshot(id, err, newest, run, inRun)
 		return res
-	})
+	}
 }
 
 // newestModSnapshot is the name of the world's newest "Before mod change"

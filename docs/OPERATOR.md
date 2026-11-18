@@ -320,8 +320,9 @@ state and run a few actions through MCP (Model Context Protocol), at
    startup. The page then says the environment turned MCP off.
 2. On the same page, name a token and pick its scope. **Read** only
    looks. **Operate** can also start, stop and restart the server, switch
-   world, take snapshots and send chat. Pick the smallest scope that does
-   the job. Foreman shows the secret once, so copy it then. It starts with
+   world, take snapshots and send chat. **Admin** can also change worlds,
+   mods, settings and more (see "Admin tokens" below). Pick the smallest
+   scope that does the job. Foreman shows the secret once, so copy it then. It starts with
    `fmn_`; treat it like a password.
 3. Add Foreman to the assistant. For Claude Code:
 
@@ -330,6 +331,27 @@ state and run a few actions through MCP (Model Context Protocol), at
    ```
 
    The page that shows the secret also shows the address to use.
+
+Admin tokens:
+
+- An **Admin** token can do nearly everything an admin can do in the web
+  pages: manage worlds, snapshots, mods, game settings, game versions,
+  players, the console, webhooks and the restart schedule. It cannot manage
+  users, tokens or the MCP switch, and it cannot upload or download files.
+  Give an admin token only to an assistant you trust to act for you, and
+  prefer **Operate** or **Read** when that is enough. An assistant that is
+  tricked by text it reads can still use whatever its token allows.
+- Actions that delete or overwrite something work in two steps, as the web
+  pages ask you to confirm. The first call changes nothing. It returns a
+  preview of what will change or be lost, the snapshot Foreman will take
+  and who is online, with a confirm code. The assistant calls the tool again
+  with the same arguments and the code, within 5 minutes. A code works once,
+  only for that token, tool and arguments. If something changed since the
+  preview, such as a new mod release, Foreman refuses and gives a new
+  preview and code. A Foreman restart voids all codes.
+- The step guards against mistakes. It does not stop an assistant that has
+  been steered into confirming, so the scope is the real limit.
+- Everything an admin token does is in the audit log with the token's name.
 
 Things to know:
 

@@ -3873,7 +3873,8 @@ name; MCP is an admin setting, off by default.
 - **A request whose token check finishes a few milliseconds before a revoke
   commits may still run.** Every request checked after the revoke is refused.
 - **Admin scope has only the operate tools until Epic 10b.** The admin tools
-  and the two-step confirm (SPEC 21.7, 21.8) are not built.
+  and the two-step confirm (SPEC 21.7, 21.8) are not built. (Closed by Epic
+  10b: 37 admin tools and the two-step confirm.)
 - **Snapshots and restores taken without Docker control write no audit
   entry.** The web paths used when Foreman has no Docker control act without
   recording one.
@@ -3883,10 +3884,169 @@ name; MCP is an admin setting, off by default.
   middleware. It is not used for identity.
 - **Audits that take a user instead of an actor cannot carry a token name:**
   Generate, settings, snapshot deletion and the world manager's `by`
-  parameters. Epic 10b changes them, once admin tools reach them.
+  parameters. Epic 10b changes them, once admin tools reach them. (Closed by
+  Epic 10b: `s.audit` and the snapshot, settings and world functions take an
+  actor, so a token's name is recorded.)
 - **No audit viewer yet (Epic 11).** Token names are recorded but only the
   database shows them.
 - **Not built, on purpose:** OAuth discovery metadata, progress updates over
   a stream, tokens limited to one world, and a paged token list.
 - **The 18.10 gate with a real Claude Code client on trial** is the
   orchestrator's check before the epic merges, not part of the build.
+
+## Epic 10b: MCP admin tools and the two-step confirm
+
+Serves SPEC 21.7, 21.8, 14.19 and 18.10b, with the edits to 12.9
+(`world-delete`), 21.5 (`cancel_stop`) and 21.8. The task pull requests were
+#695 (the plan), #696 (T1, the foundation), #698 (T2, worlds, favorites and
+saves), #701 (T3, snapshots and live operations), #700 (T4, mods), #697 (T5,
+game settings and versions), #699 (T6, Foreman-wide settings), #702
+(integration fixes) and #703 (T7, the gate tests).
+
+Rulings (Todd, 2026-11-17), now in SPEC 12.9, 21.5 and 21.8:
+
+1. A tool is two-step exactly when SPEC 21.8 names the action or the UI shows
+   a confirm page for it. Every other admin tool is one call.
+2. The confirm call is refused, with a fresh preview and code, when the state
+   the preview showed has changed. That state is kept with the code.
+3. The code stands for a confirm page's inner confirmations (typing the world
+   name, the drops tick, the "go on without" tick). The preview lists the
+   drops and the "without" mods.
+4. One tool per action, with fixed names.
+5. `change_game_settings` takes the settings form's fields only, never the raw
+   editor.
+6. A snapshot's `taken_by` stays the owner's username. The audit log carries
+   the token name. `snapshot.json` is unchanged.
+7. Deleting a world is audited as `world-delete`, before the delete, which is
+   refused if the entry cannot be written. The UI and MCP do the same.
+8. `cancel_stop` is an operate tool.
+
+### Delivered
+
+- **The confirm-code store and helpers (SPEC 14.19, 21.8; ADR 0026; #696).**
+  A code is 16 random bytes in base64url. It lasts 5 minutes, is bound to the
+  token, the tool and the SHA-256 of the arguments in canonical JSON, and is
+  spent by any use, right or wrong. A token holds 10 and an eleventh drops the
+  oldest. Codes live in memory and are never logged. A bad, used, expired or
+  mismatched code gets one fixed message. Any other refusal keeps its own
+  message, and the code is still spent. `s.mcpAsk` issues a code and `s.mcpSpend` spends one. A
+  two-step tool is marked `DestructiveHint: true`, every other admin tool
+  `false`, and the reads `ReadOnlyHint`.
+- **37 admin tools (SPEC 21.7; #696 to #699, #700, #701).** Worlds, favorites
+  and saves (#698): `generate_world`, `clone_world`, `rename_world`,
+  `delete_world`, `list_deleted_worlds`, `list_favorites`, `make_favorite`,
+  `rename_favorite`, `delete_favorite`, `list_saves`, `choose_save`.
+  Snapshots and live operations (#701): `restore_snapshot`, `delete_snapshots`,
+  `force_stop`, `download_game_image`, `kick_player`, `ban_player`,
+  `player_action`, `run_console_command`. Mods (#700): `search_mods`,
+  `change_mods`, `list_mod_settings`, `change_mod_settings`. Game settings and
+  versions (#697): `get_game_settings`, `change_game_settings`,
+  `set_whitelist_switch`, `list_game_versions`, `update_game_version`,
+  `rollback_game_version`. Foreman-wide (#699): `foreman_settings`,
+  `set_restart_schedule`, `add_webhook`, `change_webhook`, `delete_webhook`,
+  `set_factorio_account`, `remove_factorio_account`, `set_public_mods`.
+  Fourteen are two-step: `delete_world`, `delete_favorite`, `restore_snapshot`,
+  `delete_snapshots`, `force_stop`, `kick_player`, `ban_player`,
+  `run_console_command`, `change_mods`, `change_mod_settings`,
+  `change_game_settings`, `update_game_version`, `rollback_game_version` and
+  `delete_webhook`. The tools that need Docker control register only when
+  Foreman has it.
+- **The preview matches the confirm page (SPEC 21.8).** Each two-step tool
+  builds the page the UI's confirm page uses. The preview lists what will
+  change, the snapshot label the UI would take (empty when none), and who is
+  online. The first call changes nothing. The confirm call spends the code
+  first, runs every check again, and is refused with a fresh preview and code
+  if the state moved (mod plan hash and folder fingerprint, settings file
+  hashes, mod setting flags). The same code stands for typing the world name
+  and the other ticks. Each area's test renders the UI template and checks that
+  every `will` sentence appears in it.
+- **Handler logic lifted into request-free functions (#696 to #701).** The
+  UI and MCP call the same function, for example `s.generateWorld`,
+  `s.cloneWorld`, `s.deleteWorld`, `s.restorePage`, `s.bulkPlan`,
+  `s.playerConfirmPage`, `s.planOp`, `modSettingsOp`, `h.formChange`,
+  `s.setWhitelistSwitch`, `s.rollbackPage`, `s.saveSchedule`, the webhook
+  functions, `s.setAccount` and `s.setPublicModsBy`. UI behaviour did not
+  change.
+- **`cancel_stop` (SPEC 21.5; #696).** An operate tool that cancels a stop
+  countdown as the Server page's Cancel stop does, audited as `stop-cancel`.
+  Finding no countdown is not an error.
+- **Audit by actor (SPEC 12.9; #696).** `s.audit` takes an actor, so every
+  audit row from an admin tool carries the token's name. This closes the
+  Epic 10a gap about audits that took a user.
+- **`world-delete` is audited before the delete (SPEC 12.9; #698).** The UI
+  and MCP both go through `s.deleteWorld`.
+- **`mcpRun` takes a lock parameter and long work is detached (#696).**
+  `download_game_image` runs without the world lock. `s.mcpDetached` runs
+  work that can outlast the call and has no Server page result.
+- **Untrusted text (SPEC 14.12; #697, #698, #700, #701).** Player, portal,
+  game-log and snapshot text sits in `untrusted_*` fields, such as
+  `untrusted_online`, `untrusted_reply`, `untrusted_mod_steps` and
+  `untrusted_admins`. Each tool's description names them. No secret is
+  returned: `get_game_settings` gives `has_password`, a webhook's address and
+  the factorio.com account are write-only, and a secret row in a settings
+  preview says only that it changes.
+- **Integration fixes (#702).** The epic head did not compile because two
+  tasks declared the same names. They were renamed. Four tools (settings,
+  update, rollback, webhook delete) spent their code after a lookup and now
+  spend it first. `search_mods`, `get_game_settings` and `list_game_versions`
+  are marked read-only. The shared helpers and test helpers moved to one
+  place.
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck`, the Go tests for
+  its package and the end-to-end specs for the pages whose handler it lifted.
+- `mcpadmin_security_test.go` (#703) finds the two-step tools from `tools/list`
+  with no hand list. For each of the 14, the first call leaves the data folder
+  (path, size, modification time) and every audit row unchanged, and the
+  preview names the snapshot label the UI takes. A code is refused for another
+  token, tool or arguments, after 5 minutes, on a second use and after a refused
+  confirm. No code or secret appears in a result, an error, the log or the
+  audit log on any of three rigs. Operate and read tokens get "unknown tool" for
+  all 37 admin tools.
+- `e2e/tests/mcp-admin.spec.ts` (#703) makes an admin token in the browser and
+  calls `/mcp` with no cookie. After the restore preview the Snapshots tab
+  shows no "Before restore". After the confirm the Server page shows the
+  restore and the tab shows "Before restore". A deleted world stays on Worlds
+  after its preview and is gone after the confirm.
+- `realgame4_mcp_admin_game_test.go` (#703, tag `game`) runs `change_mods`,
+  `restore_snapshot` and `update_game_version` (2.0.77 to 2.1.24) through MCP
+  against a real `factoriotools/factorio` container. For each it checks the
+  snapshot's reason and label, exactly one snapshot per action, the one audit
+  row with the token's name, and that the game reaches InGame. It also checks
+  that the "Before mod change" snapshot still has the probe mod enabled and
+  that the restore brings the probe back. Passed on a real 2.1 game
+  (`TestRealGameMCPAdmin`, a9fcf338, on pve1).
+- **Whole-epic checks (orchestrator).** `make verify` passed (90.7%
+  coverage), the full end-to-end suite passed on 7d4cdf18 (3492 passed, 0
+  failed), and the `internal/game` and `internal/web` real-game packages
+  passed.
+
+### Gaps left
+
+- **The world-delete entry is written before a delete that may still fail.**
+  Ruling 7 accepts this. The entry's detail says "requested", not "done".
+- **Detached work past 50 seconds is not shown by `server_status`.** Clone,
+  world delete and bulk snapshot delete have no Server page result, so after
+  the call gives up waiting, only the audit log and the pages show the
+  outcome.
+- **`change_mod_settings` and the UI share one snapshot wording,** so the
+  snapshot's label does not say which of the two took it. The audit row does.
+- **The two-step confirm guards against mistakes, not a steered client.** An
+  assistant that is tricked into asking can also confirm. SPEC 14.19 accepts
+  this risk. The token's scope and the operator's choice of scope are the
+  defence.
+- **Confirm codes are lost on a restart.** The client asks again.
+- **Some tools are web only:** the raw settings editor, "update anyway" and
+  "start anyway", mod zip upload and the mod plan's picks panel, favorite
+  import and export, map preview pictures and anything excluded by SPEC 21.7.
+- **`restore_snapshot` needs Docker control,** as do `update_game_version` and
+  `rollback_game_version`. The tools are not listed without it.
+- **A console command's preview has no UI confirm page to compare with,** so
+  the test checks the preview's own sentences instead.
+- **Tools are registered when no scheduler is wired.** The Foreman-wide tools
+  then say the feature is unavailable.
+- **The 18.10b gate with a real Claude Code client on trial** is the
+  orchestrator's check before the epic merges, not part of the build.
+- **Not built, on purpose:** snapshot `taken_by_token`, the raw settings
+  editor over MCP and archive (Epic 11).

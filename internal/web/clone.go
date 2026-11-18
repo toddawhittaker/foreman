@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -85,19 +86,25 @@ func (s *server) cloneRoutes() {
 	s.handleLong("POST "+PathClone, s.requireUser(s.handleClone))
 }
 
+// cloneRefusal says why a world cannot be cloned, or is zero when it can.
+func cloneRefusal(sum world.Summary) i18n.Msg {
+	switch {
+	case sum.Unreadable:
+		return i18n.M("worlds.error.unreadable")
+	case sum.Newer:
+		return i18n.M("worlds.error.newer_format")
+	}
+	return i18n.Msg{}
+}
+
 // clonable answers the request itself when the world cannot be cloned.
 func (s *server) clonable(w http.ResponseWriter, r *http.Request, u store.User) (world.Summary, bool) {
 	sum, ok := s.findWorld(w, r, u)
 	if !ok {
 		return sum, false
 	}
-	var why i18n.Msg
-	switch {
-	case sum.Unreadable:
-		why = i18n.M("worlds.error.unreadable")
-	case sum.Newer:
-		why = i18n.M("worlds.error.newer_format")
-	default:
+	why := cloneRefusal(sum)
+	if why.IsZero() {
 		return sum, true
 	}
 	s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict, Detail: why})
@@ -159,20 +166,8 @@ func (s *server) handleCloneForm(w http.ResponseWriter, r *http.Request, u store
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
-func (s *server) handleClone(w http.ResponseWriter, r *http.Request, u store.User) {
-	if !s.readForm(w, r) {
-		return
-	}
-	sum, ok := s.clonable(w, r, u)
-	if !ok {
-		return
-	}
-	name, choice := r.PostFormValue("name"), r.PostFormValue("map")
-	p, err := s.clonePage(sum, name, choice)
-	if err != nil {
-		s.notFoundOrFail(w, r, u, "read clone source", err)
-		return
-	}
+// checkForm puts the form's own errors on its fields.
+func (p *ClonePage) checkForm(name, choice string) {
 	if strings.TrimSpace(name) == "" {
 		p.NameError = msgNameEmpty()
 	}
@@ -182,35 +177,72 @@ func (s *server) handleClone(w http.ResponseWriter, r *http.Request, u store.Use
 	if choice == cloneKeep && p.SaveName == "" {
 		p.ChoiceError = i18n.M("worlds.clone.error.no_save")
 	}
+}
+
+// errCloneForm says the clone form has errors, which are on the page.
+var errCloneForm = errors.New("the clone form has errors")
+
+// cloneWorld clones a world as the Clone page does (SPEC 5.7) and audits
+// it. A field the form shows wrongly is set on the returned page with
+// errCloneForm; a refusal from the clone itself is returned as it is, for
+// the caller to word.
+func (s *server) cloneWorld(ctx context.Context, by game.Actor, sum world.Summary, name, choice string) (string, ClonePage, error) {
+	p, err := s.clonePage(sum, name, choice)
+	if err != nil {
+		// An empty page tells the caller the source could not be read.
+		return "", ClonePage{}, err
+	}
+	p.checkForm(name, choice)
 	if p.hasErrors() {
-		s.page(w, r, http.StatusBadRequest, u.Username, p)
-		return
+		return "", p, errCloneForm
 	}
 	var seed *uint32
 	if choice == cloneFresh {
 		v := newSeed()
 		seed = &v
 	}
-	id, err := s.worlds.Clone(r.Context(), sum.ID, name, choice == cloneKeep, seed)
+	id, err := s.worlds.Clone(ctx, sum.ID, name, choice == cloneKeep, seed)
 	if err != nil {
-		status, msg, ok := s.refusal(w, r, u, "clone world", err)
-		if !ok {
-			return
-		}
-		switch {
-		case errors.Is(err, world.ErrNameEmpty), errors.Is(err, world.ErrNameTaken):
-			p.NameError = msg
-		case errors.Is(err, world.ErrCloneNoSave):
-			p.ChoiceError = i18n.M("worlds.clone.error.no_save")
-		default:
-			p.Error = msg
-			p.ErrorBusy = errors.Is(err, world.ErrBusy)
-		}
-		s.page(w, r, status, u.Username, p)
+		return "", p, err
+	}
+	s.audit(ctx, by, AuditClone, id, fmt.Sprintf("from %s, %s", sum.ID, choice))
+	return id, p, nil
+}
+
+func (s *server) handleClone(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
 		return
 	}
-	s.audit(r.Context(), u, AuditClone, id, fmt.Sprintf("from %s, %s", sum.ID, choice))
-	http.Redirect(w, r, worldPath(id)+"?"+clonedQuery+"="+url.QueryEscape(sum.ID), http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
+	sum, ok := s.clonable(w, r, u)
+	if !ok {
+		return
+	}
+	id, p, err := s.cloneWorld(r.Context(), actor(u), sum, r.PostFormValue("name"), r.PostFormValue("map"))
+	switch {
+	case err == nil:
+		http.Redirect(w, r, worldPath(id)+"?"+clonedQuery+"="+url.QueryEscape(sum.ID), http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
+		return
+	case errors.Is(err, errCloneForm):
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	case p.World.ID == "":
+		s.notFoundOrFail(w, r, u, "read clone source", err)
+		return
+	}
+	status, msg, ok := s.refusal(w, r, u, "clone world", err)
+	if !ok {
+		return
+	}
+	switch {
+	case errors.Is(err, world.ErrNameEmpty), errors.Is(err, world.ErrNameTaken):
+		p.NameError = msg
+	case errors.Is(err, world.ErrCloneNoSave):
+		p.ChoiceError = i18n.M("worlds.clone.error.no_save")
+	default:
+		p.Error = msg
+		p.ErrorBusy = errors.Is(err, world.ErrBusy)
+	}
+	s.page(w, r, status, u.Username, p)
 }
 
 // clonedFacts adds the Done message after a clone to the new world's page.

@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -297,22 +298,31 @@ func (s *server) handleServerSnapshot(w http.ResponseWriter, r *http.Request, u 
 // restoreTarget reads the world and snapshot named in the path, answering
 // the request itself with 404 when either is missing.
 func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.User) (RestorePage, bool) {
-	id, snapName := r.PathValue("id"), r.PathValue("snap")
-	if !world.ValidSnapshotName(snapName) {
-		s.notFound(w, r, u)
+	p, err := s.restorePage(r.Context(), r.PathValue("id"), r.PathValue("snap"))
+	if err != nil {
+		s.notFoundOrFail(w, r, u, "read snapshot", err)
 		return RestorePage{}, false
 	}
-	sum, err := s.worlds.Get(r.Context(), id)
+	return p, true
+}
+
+// restorePage builds the page that confirms restoring snapshot snapName of
+// world id, without a request. A name or snapshot that does not exist is
+// world.ErrNoSnapshot; a deleted world's snapshot is restorable (SPEC 6.6),
+// so a world that is gone is not an error. The MCP restore tool uses it too.
+func (s *server) restorePage(ctx context.Context, id, snapName string) (RestorePage, error) {
+	if !world.ValidSnapshotName(snapName) {
+		return RestorePage{}, world.ErrNoSnapshot
+	}
+	sum, err := s.worlds.Get(ctx, id)
 	found := err == nil
 	if status, _ := worldError(err); err != nil && status != http.StatusNotFound {
-		s.fail(w, r, "read world", err)
-		return RestorePage{}, false
+		return RestorePage{}, fmt.Errorf("read world: %w", err)
 	}
 	name := sum.Name
 	snap, err := s.worlds.Snapshot(id, snapName)
 	if err != nil {
-		s.notFoundOrFail(w, r, u, "read snapshot", err)
-		return RestorePage{}, false
+		return RestorePage{}, err
 	}
 	if !found {
 		// A deleted world's snapshots stay restorable (SPEC 6.6).
@@ -327,10 +337,10 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		switch s.game.Status(id).State {
 		case game.StateRunning, game.StateStarting, game.StateStopping, game.StateCrashed:
 			p.Running = true
-			p.Online = s.online(r.Context(), id)
+			p.Online = s.online(ctx, id)
 		}
 	}
-	return p, true
+	return p, nil
 }
 
 func (s *server) handleRestoreForm(w http.ResponseWriter, r *http.Request, u store.User) {

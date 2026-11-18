@@ -736,6 +736,18 @@ func (s *server) handleDismissResult(w http.ResponseWriter, r *http.Request, u s
 // handleCancelStop ends the stop countdown on the world in the path, so the
 // action that began it ends with nothing changed (SPEC 7.6). It returns once
 // that action has ended, so the Server page shows how it ended.
+// cancelStop ends a world's stop countdown. The action is marked cancelled
+// first so its result is not reported as a stop; the mark is lifted when
+// there was nothing to cancel.
+func (s *server) cancelStop(ctx context.Context, id string, by game.Actor) error {
+	s.runs.markCancelled(id)
+	err := s.game.CancelStop(ctx, id, by)
+	if err != nil {
+		s.runs.unmarkCancelled(id)
+	}
+	return err
+}
+
 func (s *server) handleCancelStop(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) {
 		return
@@ -746,11 +758,7 @@ func (s *server) handleCancelStop(w http.ResponseWriter, r *http.Request, u stor
 	}
 	// A countdown that ended just before the cancel has nothing to cancel;
 	// the Server page shows how the action went on.
-	s.runs.markCancelled(sum.ID)
-	err := s.game.CancelStop(r.Context(), sum.ID, actor(u))
-	if err != nil {
-		s.runs.unmarkCancelled(sum.ID)
-	}
+	err := s.cancelStop(r.Context(), sum.ID, actor(u))
 	if err != nil && !errors.Is(err, game.ErrNoCountdown) {
 		if status, msg, ok := s.gameRefusal(w, r, u, "cancel the stop", err); ok {
 			s.page(w, r, status, u.Username, ErrorPage{Status: status, Detail: msg})

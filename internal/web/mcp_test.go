@@ -100,7 +100,14 @@ func toolNames(t *testing.T, cs *mcp.ClientSession) []string {
 
 var (
 	readTools   = []string{"list_mods", "list_players", "list_snapshots", "list_worlds", "recent_log", "server_status"}
-	actionTools = []string{"restart_server", "send_chat", "start_server", "stop_server", "switch_world", "take_snapshot"}
+	actionTools = []string{"cancel_stop", "restart_server", "send_chat", "start_server", "stop_server", "switch_world", "take_snapshot"}
+	// adminToolNames is the admin scope's own tools (SPEC 21.7), sorted.
+	adminToolNames = []string{"add_webhook", "ban_player", "change_game_settings", "change_mod_settings", "change_mods", "change_webhook",
+		"choose_save", "clone_world", "delete_favorite", "delete_snapshots", "delete_webhook", "delete_world", "download_game_image",
+		"force_stop", "foreman_settings", "generate_world", "get_game_settings", "kick_player", "list_deleted_worlds", "list_favorites",
+		"list_game_versions", "list_mod_settings", "list_saves", "make_favorite", "player_action", "remove_factorio_account",
+		"rename_favorite", "rename_world", "restore_snapshot", "rollback_game_version", "run_console_command", "search_mods",
+		"set_factorio_account", "set_public_mods", "set_restart_schedule", "set_whitelist_switch", "update_game_version"}
 )
 
 // SPEC 21.2: FOREMAN_MCP=off wins over the admin setting.
@@ -141,7 +148,9 @@ func TestMCPMalformedTokenSkipsTheStore(t *testing.T) {
 // SPEC 21.3, 12.10: a client is listed only its scope's tools, and any
 // other tool is unknown.
 func TestMCPToolsFollowScope(t *testing.T) {
-	g := newGameRig(t, image21)
+	// The mods rig has a game, a mod planner and favorites, so every admin
+	// tool is registered.
+	g := newModsRig(t, false).gameRig
 	u, _, _ := g.store.UserByUsername(context.Background(), "alice")
 	turnMCPOn(t, g.harness)
 	readSecret, _ := apiToken(t, g.harness, u, "Reader", auth.ScopeRead)
@@ -153,10 +162,13 @@ func TestMCPToolsFollowScope(t *testing.T) {
 		t.Errorf("read scope lists %q, want %q", got, readTools)
 	}
 	all := slices.Sorted(slices.Values(append(slices.Clone(readTools), actionTools...)))
-	for _, secret := range []string{opSecret, adminSecret} {
-		if got := toolNames(t, mcpConnect(t, g.url, secret)); !slices.Equal(got, all) {
-			t.Errorf("listed %q, want %q", got, all)
-		}
+	if got := toolNames(t, mcpConnect(t, g.url, opSecret)); !slices.Equal(got, all) {
+		t.Errorf("operate scope lists %q, want %q", got, all)
+	}
+	// The admin scope adds the admin tools (SPEC 21.7).
+	admin := slices.Sorted(slices.Values(append(slices.Clone(all), adminToolNames...)))
+	if got := toolNames(t, mcpConnect(t, g.url, adminSecret)); !slices.Equal(got, admin) {
+		t.Errorf("admin scope lists %q, want %q", got, admin)
 	}
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	res, err := reader.CallTool(context.Background(), &mcp.CallToolParams{Name: "start_server", Arguments: map[string]any{"world_id": id}})
