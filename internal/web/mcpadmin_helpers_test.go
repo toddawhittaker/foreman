@@ -10,8 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -84,4 +86,50 @@ func wantDataUnchanged(t *testing.T, g *gameRig, what, digest string, audits int
 	if n := len(g.audit()); n != audits {
 		t.Errorf("%s changed the audit log: %d rows, want %d", what, n, audits)
 	}
+}
+
+// dataStat lists every path under the data folder with its size and
+// modification time, so a test sees any file made, removed, resized or
+// rewritten (SPEC 21.8).
+func dataStat(t *testing.T, dirs world.Dirs) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	root := filepath.Dir(dirs.Worlds)
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, p)
+		if d.IsDir() {
+			out[rel] = "dir"
+		} else {
+			out[rel] = fmt.Sprintf("%d %s", info.Size(), info.ModTime().Format(time.RFC3339Nano))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// diffStat names the paths that differ between two dataStat lists.
+func diffStat(was, now map[string]string) string {
+	var out []string
+	for p, v := range was {
+		if now[p] != v {
+			out = append(out, fmt.Sprintf("%s: %q -> %q", p, v, now[p]))
+		}
+	}
+	for p, v := range now {
+		if _, ok := was[p]; !ok {
+			out = append(out, fmt.Sprintf("%s: new %q", p, v))
+		}
+	}
+	slices.Sort(out)
+	return strings.Join(out, "; ")
 }
