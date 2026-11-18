@@ -30,7 +30,8 @@ const proxyStreamLimit = 5 * time.Minute
 
 // identify works out who made the request (SPEC 12.5, 12.8). Trusted
 // headers come first and need no cookie, since the proxy vouches for every
-// request. Otherwise the session cookie counts, when local sign-in is on.
+// request. Otherwise the session cookie counts, when local or OIDC sign-in
+// is on.
 func (s *server) identify(r *http.Request) (store.User, signedIn, error) {
 	u, state, _, err := s.whoIs(r, s.sessions.Lookup)
 	return u, state, err
@@ -62,7 +63,7 @@ func (s *server) whoIs(r *http.Request, session func(context.Context, *http.Requ
 			return u, isSignedIn, true, nil
 		}
 	}
-	if !s.cfg.AuthLocal {
+	if !s.cfg.AuthLocal && !s.cfg.AuthOIDC {
 		return store.User{}, none, false, nil
 	}
 	id, ok, err := session(ctx, r)
@@ -132,9 +133,19 @@ func (s *server) stillSignedIn(r *http.Request, opened time.Time) bool {
 // headerUser finds the user a trusted proxy named, creating it on first
 // sight with no password. The first user ever seen becomes the first admin.
 func (s *server) headerUser(ctx context.Context, name string) (store.User, error) {
+	u, created, err := s.userByName(ctx, name)
+	if err == nil && created {
+		s.audit(ctx, actor(u), "user-create", "", "headers")
+	}
+	return u, err
+}
+
+// userByName finds the named user, or creates one with no password and
+// reports created. The first user ever seen becomes the first admin.
+func (s *server) userByName(ctx context.Context, name string) (u store.User, created bool, err error) {
 	u, found, err := s.store.UserByUsername(ctx, name)
 	if err != nil || found {
-		return u, err
+		return u, false, err
 	}
 	now := s.now()
 	u, err = s.store.CreateFirstAdmin(ctx, name, "", now)
@@ -147,8 +158,51 @@ func (s *server) headerUser(ctx context.Context, name string) (store.User, error
 		if u, ok, err = s.store.UserByUsername(ctx, name); err == nil && !ok {
 			err = errors.New("user vanished after a duplicate-name error")
 		}
+		return u, false, err
 	}
-	return u, err
+	return u, err == nil, err
+}
+
+// errOIDCNameTaken: the name the identity provider gave belongs to a user
+// who signs in another way (SPEC 12.7).
+var errOIDCNameTaken = errors.New("the name belongs to a user who signs in another way")
+
+// errOIDCBadName: the identity provider gave no usable preferred_username.
+var errOIDCBadName = errors.New("the identity provider gave no usable username")
+
+// oidcUser finds the user an identity provider vouched for, by issuer and
+// subject, never by name alone. On first sight it links a user of the same
+// name only when that user has no password and no link, which is a user
+// made by trusted headers; any other user of that name refuses the sign-in.
+// Otherwise it creates the user (SPEC 12.7).
+func (s *server) oidcUser(ctx context.Context, id auth.OIDCIdentity) (store.User, error) {
+	u, found, err := s.store.UserByOIDC(ctx, id.Issuer, id.Subject)
+	if err != nil || found {
+		return u, err
+	}
+	name, problem := checkUsername(id.Username)
+	if !problem.IsZero() {
+		return store.User{}, errOIDCBadName
+	}
+	u, created, err := s.userByName(ctx, name)
+	if err != nil {
+		return store.User{}, err
+	}
+	switch err := s.store.LinkOIDC(ctx, u.ID, id.Issuer, id.Subject); {
+	case errors.Is(err, store.ErrNotLinkable):
+		// A concurrent callback for the same subject may have linked it first.
+		if u, found, err := s.store.UserByOIDC(ctx, id.Issuer, id.Subject); err != nil || found {
+			return u, err
+		}
+		return store.User{}, errOIDCNameTaken
+	case err != nil:
+		return store.User{}, err
+	}
+	if created {
+		s.audit(ctx, actor(u), "user-create", "", "oidc")
+	}
+	u.OIDCIssuer, u.OIDCSubject = id.Issuer, id.Subject
+	return u, nil
 }
 
 // requireUser runs h for a signed-in user. Anyone else is sent to set up or
@@ -174,7 +228,7 @@ func (s *server) requireUser(h func(http.ResponseWriter, *http.Request, store.Us
 				detail = i18n.M("accounts.proxy.waiting_local", "path", PathSignIn)
 			}
 			s.page(w, r, http.StatusForbidden, "", ErrorPage{Status: http.StatusForbidden, Detail: detail})
-		case s.cfg.AuthLocal:
+		case s.cfg.AuthLocal || s.cfg.AuthOIDC:
 			s.redirectToSignIn(w, r)
 		default:
 			s.page(w, r, http.StatusForbidden, "", ErrorPage{
@@ -186,17 +240,19 @@ func (s *server) requireUser(h func(http.ResponseWriter, *http.Request, store.Us
 }
 
 // redirectToSignIn sends an anonymous visitor to setup while no account
-// exists and to sign-in afterwards, which returns to the page they asked
-// for (SPEC 14.17).
+// exists and local sign-in is on, and to sign-in otherwise, which returns
+// to the page they asked for (SPEC 12.3, 14.17).
 func (s *server) redirectToSignIn(w http.ResponseWriter, r *http.Request) {
-	has, err := s.store.HasUsers(r.Context())
-	if err != nil {
-		s.fail(w, r, "check for users", err)
-		return
-	}
 	to := signInURL(r)
-	if !has {
-		to = PathSetup
+	if s.cfg.AuthLocal {
+		has, err := s.store.HasUsers(r.Context())
+		if err != nil {
+			s.fail(w, r, "check for users", err)
+			return
+		}
+		if !has {
+			to = PathSetup
+		}
 	}
 	// The browser follows a 303 inside an htmx request and hands htmx the page
 	// to swap into a fragment; HX-Redirect makes htmx leave the page instead.

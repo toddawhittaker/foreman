@@ -15,9 +15,12 @@ import (
 type User struct {
 	ID           int64
 	Username     string
-	PasswordHash string // "" for header-created users
+	PasswordHash string // "" for header-created and OIDC users
 	Role         string
 	CreatedAt    time.Time
+	// OIDCIssuer and OIDCSubject name the user at their identity provider;
+	// both are "" for a user with no OIDC link (SPEC 12.7).
+	OIDCIssuer, OIDCSubject string
 }
 
 // ErrAdminExists is returned by CreateFirstAdmin when any user already exists.
@@ -26,15 +29,21 @@ var ErrAdminExists = errors.New("store: an admin already exists")
 // ErrUsernameTaken is returned when a username is already in use, ignoring case.
 var ErrUsernameTaken = errors.New("store: username taken")
 
-const userColumns = "id, username, password_hash, role, created_at"
+// ErrNotLinkable is returned by LinkOIDC when the user has a password or
+// is already linked (SPEC 12.7).
+var ErrNotLinkable = errors.New("store: user cannot be linked to an OIDC subject")
+
+const userColumns = "id, username, password_hash, role, created_at, oidc_issuer, oidc_subject"
 
 func scanUser(row *sql.Row) (User, error) {
 	var u User
 	var created int64
-	if err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &created); err != nil {
+	var issuer, subject sql.NullString
+	if err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &created, &issuer, &subject); err != nil {
 		return User{}, err
 	}
 	u.CreatedAt = time.Unix(created, 0).UTC()
+	u.OIDCIssuer, u.OIDCSubject = issuer.String, subject.String
 	return u, nil
 }
 
@@ -93,8 +102,40 @@ func (s *Store) UserByID(ctx context.Context, id int64) (User, bool, error) {
 	return s.queryUser(ctx, "SELECT "+userColumns+" FROM users WHERE id = ?", id)
 }
 
-func (s *Store) queryUser(ctx context.Context, query string, arg any) (User, bool, error) {
-	u, err := scanUser(s.db.QueryRowContext(ctx, query, arg))
+// UserByOIDC finds the user linked to an identity provider's subject. Both
+// are compared exactly.
+func (s *Store) UserByOIDC(ctx context.Context, issuer, subject string) (User, bool, error) {
+	return s.queryUser(ctx, "SELECT "+userColumns+" FROM users WHERE oidc_issuer = ? AND oidc_subject = ?", issuer, subject)
+}
+
+// LinkOIDC links a user to an identity provider's subject. Only a user with
+// no password and no link may be linked, and the check is part of the
+// update, so a racing link cannot slip past it (SPEC 12.7). It returns
+// ErrNotLinkable otherwise, and when the subject is already linked to
+// another user.
+func (s *Store) LinkOIDC(ctx context.Context, id int64, issuer, subject string) error {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE users SET oidc_issuer = ?, oidc_subject = ?
+		 WHERE id = ? AND password_hash = '' AND oidc_issuer IS NULL`,
+		issuer, subject, id)
+	if isUniqueViolation(err) {
+		return ErrNotLinkable
+	}
+	if err != nil {
+		return fmt.Errorf("link oidc subject: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("link oidc subject: %w", err)
+	}
+	if n == 0 {
+		return ErrNotLinkable
+	}
+	return nil
+}
+
+func (s *Store) queryUser(ctx context.Context, query string, args ...any) (User, bool, error) {
+	u, err := scanUser(s.db.QueryRowContext(ctx, query, args...))
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, false, nil
 	}

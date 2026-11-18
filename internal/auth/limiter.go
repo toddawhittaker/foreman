@@ -100,6 +100,27 @@ func (l *Limiter) Succeed(username, addr string) {
 	l.addrs.release(addrKey(addr))
 }
 
+// AllowAddr is Allow for a sign-in that names no username, such as an OIDC
+// callback (SPEC 12.7): it counts against the address only.
+func (l *Limiter) AllowAddr(addr string) (ok bool, retryAfter time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now, k := l.now(), addrKey(addr)
+	if r := l.addrs.remaining(k, now); r > 0 {
+		return false, r
+	}
+	l.addrs.add(k, now)
+	return true, 0
+}
+
+// ReleaseAddr gives back an attempt AllowAddr counted, because it worked.
+// Earlier failures stay.
+func (l *Limiter) ReleaseAddr(addr string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.addrs.release(addrKey(addr))
+}
+
 // AddrLimiter counts API token checks per client address, apart from
 // sign-in's counts, so guessing at the MCP endpoint cannot lock anyone out
 // of the browser sign-in (SPEC 14.19). It has sign-in's address limit and

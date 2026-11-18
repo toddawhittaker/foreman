@@ -44,5 +44,8 @@
   "accounts.proxy.refused": "Your account is not allowed to use Foreman. Ask the person who runs Foreman to give you access.",
   "accounts.proxy.waiting": "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute.",
   "accounts.proxy.waiting_local": "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute. Password sign-in still works: open {path} to use it.",
-  "accounts.proxy.missing": "Foreman did not get your sign-in from the proxy. Sign in through the proxy, then open this page again."
+  "accounts.proxy.missing": "Foreman did not get your sign-in from the proxy. Sign in through the proxy, then open this page again.",
+  "accounts.oidc.failed": "Single sign-on did not work. Try again. If it keeps failing, ask the person who runs Foreman.",
+  "accounts.oidc.unavailable": "Foreman cannot reach the single sign-on provider right now. Try again in a minute.",
+  "accounts.oidc.name_taken": "Foreman already has a user with your name who signs in another way, so single sign-on cannot sign you in. Ask the person who runs Foreman to rename or remove that user."
 }

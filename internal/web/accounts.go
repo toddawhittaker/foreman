@@ -115,6 +115,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("first admin created", "username", clip(u.Username))
+	s.audit(ctx, actor(u), "user-create", "", "setup")
 	if err := s.sessions.Start(ctx, w, u.ID); err != nil {
 		s.fail(w, r, "start session", err)
 		return

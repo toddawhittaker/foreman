@@ -1,4 +1,7 @@
 {
+  "accounts.oidc.failed": "e918adf6",
+  "accounts.oidc.name_taken": "1e795fcf",
+  "accounts.oidc.unavailable": "7d7229c8",
   "accounts.password.label": "e7cf3ef4",
   "accounts.proxy.missing": "21255f12",
   "accounts.proxy.refused": "a66fe135",
