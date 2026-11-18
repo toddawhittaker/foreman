@@ -13,6 +13,8 @@ package web
 // `go test -tags game -run TestRealGameMCPAdmin ./internal/web/`.
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -120,7 +122,7 @@ func TestRealGameMCPAdmin(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(wdir, world.ModsDir), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(wdir, world.ModsDir, adminProbeMod+"_1.0.0.zip"), modZip(t, adminProbeMod, "1.0.0"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(wdir, world.ModsDir, adminProbeMod+"_1.0.0.zip"), adminProbeZip(t), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	modList := `{"mods":[{"name":"base","enabled":true},{"name":"` + adminProbeMod + `","enabled":true}]}`
@@ -283,4 +285,26 @@ func TestRealGameMCPAdmin(t *testing.T) {
 		settle(t, game.AuditUpdate, before, adminGameTo)
 		wantSnapshotAndAudit(t, was, world.ReasonGameUpdate, world.LabelBeforeUpdate, game.AuditUpdate)
 	})
+}
+
+// adminProbeZip is the probe mod in the shape the real game accepts, as the
+// game package's real-game probe has it: Factorio refuses an info.json
+// without title, author or description.
+func adminProbeZip(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.Create(adminProbeMod + "_1.0.0/info.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := `{"name":"` + adminProbeMod + `","version":"1.0.0","title":"Foreman probe","author":"foreman tests",` +
+		`"description":"made up for the real-game test","factorio_version":"2.0"}`
+	if _, err := w.Write([]byte(info)); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
 }
