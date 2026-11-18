@@ -488,5 +488,6 @@
   "worlds.world.archived.heading": "Archived world",
   "worlds.world.archived.text": "This world is hidden from the main list and cannot start or be switched to. Its files and snapshots stay as they are.",
   "worlds.world.unarchive.button": "Unarchive world",
-  "worlds.world.unarchive.done": "{name} is unarchived."
+  "worlds.world.unarchive.done": "{name} is unarchived.",
+  "worlds.list.all_archived": "All your worlds are archived."
 }

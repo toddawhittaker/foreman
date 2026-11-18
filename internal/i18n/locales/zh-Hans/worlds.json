@@ -471,5 +471,6 @@
   "worlds.world.archived.heading": "已归档的世界",
   "worlds.world.archived.text": "此世界已从主列表中隐藏，无法启动，也无法切换到它。其文件和快照保持不变。",
   "worlds.world.unarchive.button": "取消归档世界",
-  "worlds.world.unarchive.done": "{name} 已取消归档。"
+  "worlds.world.unarchive.done": "{name} 已取消归档。",
+  "worlds.list.all_archived": "所有世界均已归档。"
 }

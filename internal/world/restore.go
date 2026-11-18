@@ -84,7 +84,7 @@ func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapsho
 	}
 	// A live world.json that cannot be read leaves the snapshot's flag.
 	if liveErr == nil {
-		if err := keepArchived(worlds, staging, snap, liveMeta.Archived); err != nil {
+		if err := keepArchived(worlds, staging, liveMeta.Archived); err != nil {
 			_ = worlds.RemoveAll(staging)
 			return before, err
 		}
@@ -188,7 +188,7 @@ func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) 
 	}
 	// A deleted world has no current state to keep; it comes back unarchived,
 	// so it can never become active while archived.
-	if err := keepArchived(worlds, staging, snap, false); err != nil {
+	if err := keepArchived(worlds, staging, false); err != nil {
 		_ = worlds.RemoveAll(staging)
 		return err
 	}
@@ -290,7 +290,7 @@ func (m *Manager) stage(worlds *os.Root, dir, id string, snap Snapshot) error {
 // keepArchived makes the staged world's archive flag archived, whatever the
 // snapshot's world.json says (SPEC 5.9, 6.5). A world.json that already
 // matches is left as the snapshot recorded it, time and all.
-func keepArchived(worlds *os.Root, staging string, snap Snapshot, archived bool) error {
+func keepArchived(worlds *os.Root, staging string, archived bool) error {
 	dst, err := worlds.OpenRoot(staging)
 	if err != nil {
 		return err
@@ -301,15 +301,7 @@ func keepArchived(worlds *os.Root, staging string, snap Snapshot, archived bool)
 		return nil //nolint:nilerr // a world.json that cannot be read is restored as it was
 	}
 	meta.Archived = archived
-	if err := WriteMeta(dst, meta); err != nil {
-		return err
-	}
-	for _, f := range snap.Files {
-		if f.Path == MetaFile {
-			return dst.Chtimes(MetaFile, f.ModTime, f.ModTime)
-		}
-	}
-	return nil
+	return WriteMeta(dst, meta)
 }
 
 // swapIn moves the live world aside and renames the staged one into its

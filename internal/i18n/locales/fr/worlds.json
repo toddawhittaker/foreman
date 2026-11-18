@@ -488,5 +488,6 @@
   "worlds.world.archived.heading": "Monde archivé",
   "worlds.world.archived.text": "Ce monde est masqué de la liste principale ; il ne peut ni démarrer ni être la cible d’un basculement. Ses fichiers et ses instantanés restent tels quels.",
   "worlds.world.unarchive.button": "Désarchiver le monde",
-  "worlds.world.unarchive.done": "{name} n’est plus archivé."
+  "worlds.world.unarchive.done": "{name} n’est plus archivé.",
+  "worlds.list.all_archived": "Tous vos mondes sont archivés."
 }

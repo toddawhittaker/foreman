@@ -48,6 +48,18 @@ type WorldsPage struct {
 	HaveState   bool
 }
 
+// WorldFacts is one world's row of facts, with what its snapshots add (SPEC 6.6).
+type WorldFacts struct {
+	world.Summary
+	Adds        uint64
+	AddsUnknown bool
+}
+
+// Facts gathers a world's facts for the list's rows.
+func (p WorldsPage) Facts(w world.Summary) WorldFacts {
+	return WorldFacts{Summary: w, Adds: p.SnapshotAdds[w.ID], AddsUnknown: p.AddsUnknown}
+}
+
 // StateWord is the active world's state badge word (DESIGN 7.5).
 func (p WorldsPage) StateWord() i18n.Msg { return stateWord(p.ActiveState) }
 
@@ -515,9 +527,11 @@ const (
 // archiveWorld archives or unarchives a world and records it under by
 // (SPEC 5.9, 12.9). The page and the MCP tools both use it, so each is
 // refused for the same reasons. Nothing is deleted, so the record is
-// written after the change, as for the other settings.
+// written after the change, as for the other settings, and only when
+// something changed.
 func (s *server) archiveWorld(ctx context.Context, by game.Actor, id string, on bool) error {
-	if err := s.worlds.SetArchived(ctx, id, on); err != nil {
+	changed, err := s.worlds.SetArchived(ctx, id, on)
+	if err != nil || !changed {
 		return err
 	}
 	action := AuditWorldUnarchive

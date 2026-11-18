@@ -505,5 +505,6 @@
   "worlds.world.archived.heading": "Мир в архиве",
   "worlds.world.archived.text": "Этот мир скрыт из основного списка: его нельзя запустить и нельзя переключиться на него. Его файлы и снимки остаются без изменений.",
   "worlds.world.unarchive.button": "Разархивировать мир",
-  "worlds.world.unarchive.done": "Мир {name} извлечён из архива."
+  "worlds.world.unarchive.done": "Мир {name} извлечён из архива.",
+  "worlds.list.all_archived": "Все ваши миры в архиве."
 }

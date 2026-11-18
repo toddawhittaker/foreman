@@ -168,15 +168,30 @@ func (e NotActiveError) Is(target error) bool { return target == ErrWorldNotActi
 // (SPEC 5.9).
 func errArchived() error { return &StartError{Kind: StartArchived} }
 
-// checkArchived refuses a start or restart of an archived world, and
-// records the refusal. The caller holds the world's lock, which archiving
-// takes too, so the flag cannot change meanwhile. A world.json that cannot
-// be read is left to the pre-start check, which says so.
+// isArchived reports whether err is that refusal.
+func isArchived(err error) bool {
+	se, ok := errors.AsType[*StartError](err)
+	return ok && se.Kind == StartArchived
+}
+
+// checkArchived refuses a start or restart of an archived world before
+// anything else runs, and records the refusal. launchLocked refuses again
+// for every other way a game is started. The caller holds the world's
+// lock, which archiving takes too, so the flag cannot change meanwhile. A
+// world.json that cannot be read is left to the pre-start check, which says
+// so.
 func (c *Controller) checkArchived(ctx context.Context, by Actor, action, id string) error {
-	if meta, err := c.readMeta(id); err != nil || !meta.Archived {
+	if !c.archived(id) {
 		return nil
 	}
 	return c.refused(ctx, by, action, id, "", errArchived())
+}
+
+// archived reports whether the world is archived; an unreadable world.json
+// is not.
+func (c *Controller) archived(id string) bool {
+	meta, err := c.readMeta(id)
+	return err == nil && meta.Archived
 }
 
 // checkActive refuses a start of a world that is not the active one: a
@@ -815,9 +830,6 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 		return err
 	}
 	defer unlock()
-	if err := c.checkArchived(ctx, by, AuditRestart, id); err != nil {
-		return err
-	}
 	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
@@ -825,6 +837,13 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	// Compared before the stop, so a restart never refuses with the game
 	// already stopped.
 	opts.running = IsRunning(c.Status(id).State)
+	// A schedule's restart of a stopped game skips on its own, so it is not
+	// refused here (SPEC 7.12).
+	if opts.running || !stop.OnlyRunning {
+		if err := c.checkArchived(ctx, by, AuditRestart, id); err != nil {
+			return err
+		}
+	}
 	opts.portal = true
 	if err := c.checkNetwork(ctx); err != nil {
 		return c.checkFailed(ctx, by, AuditRestart, id, opts.auditDetail(), err)

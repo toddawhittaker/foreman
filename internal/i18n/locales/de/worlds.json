@@ -488,5 +488,6 @@
   "worlds.world.archived.heading": "Archivierte Welt",
   "worlds.world.archived.text": "Diese Welt ist in der Hauptliste ausgeblendet und kann weder starten noch als Ziel eines Wechsels dienen. Ihre Dateien und Snapshots bleiben unverändert.",
   "worlds.world.unarchive.button": "Archivierung der Welt aufheben",
-  "worlds.world.unarchive.done": "{name} ist nicht mehr archiviert."
+  "worlds.world.unarchive.done": "{name} ist nicht mehr archiviert.",
+  "worlds.list.all_archived": "Alle deine Welten sind archiviert."
 }

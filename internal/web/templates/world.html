@@ -17,7 +17,7 @@
 <p>{{t "worlds.error.newer_format"}}</p>
 {{- end}}
 {{- if not .Done.IsZero}}
-<div class="message message--success">
+<div class="message message--success" id="world-done" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
   {{- with .ImportSync}}
   <div class="actions"><a href="{{.}}" class="button" id="act-import-sync">{{t "mods.sync.import"}}</a></div>

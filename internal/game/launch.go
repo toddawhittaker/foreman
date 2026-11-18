@@ -25,8 +25,12 @@ type launch struct {
 
 // launchLocked starts the world's container, then waits until the game is
 // in game and answers over RCON (SPEC 7.3). The caller holds the world's
-// lock.
+// lock. Every start goes through here, so an archived world is refused for
+// a mod change, an update or a restore too (SPEC 5.9).
 func (c *Controller) launchLocked(ctx context.Context, o *opRun) error {
+	if c.archived(o.w.id) {
+		return errArchived()
+	}
 	p, err := c.prepareContainer(ctx, o)
 	if err != nil {
 		return err

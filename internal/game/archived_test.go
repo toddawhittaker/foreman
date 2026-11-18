@@ -27,11 +27,6 @@ func (r *rig) archiveInPlace(id string) {
 	}
 }
 
-func isArchivedRefusal(err error) bool {
-	se, ok := errors.AsType[*StartError](err)
-	return ok && se.Kind == StartArchived
-}
-
 // SPEC 5.9: an archived world cannot be started, by anyone. The refusal is
 // made under the world's lock, before any container exists, and is audited
 // as a refusal.
@@ -48,7 +43,7 @@ func TestStartAndRestartRefuseAnArchivedWorld(t *testing.T) {
 			} else {
 				err = r.c.Restart(context.Background(), a, admin, StopOptions{}, StartOptions{})
 			}
-			if !isArchivedRefusal(err) || !IsRefusal(err) {
+			if !isArchived(err) || !IsRefusal(err) {
 				t.Fatalf("%s = %v, want the archived refusal", action, err)
 			}
 			if n := len(r.calls("POST /containers/create")); n != 0 {
@@ -68,16 +63,16 @@ func TestSwitchRefusesAnArchivedWorld(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	a, b := r.twoWorlds()
 	r.start(a)
-	if err := r.worlds.SetArchived(context.Background(), b, true); err != nil {
+	if _, err := r.worlds.SetArchived(context.Background(), b, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.c.PlanSwitch(context.Background(), a, b); !isArchivedRefusal(err) {
+	if _, err := r.c.PlanSwitch(context.Background(), a, b); !isArchived(err) {
 		t.Errorf("plan: %v, want the archived refusal", err)
 	}
 	for _, start := range []bool{true, false} {
 		before := len(r.audit.list())
 		err := r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{}, start)
-		if !isArchivedRefusal(err) {
+		if !isArchived(err) {
 			t.Errorf("switch (start=%v): %v, want the archived refusal", start, err)
 		}
 		added := r.audit.list()[before:]
@@ -90,7 +85,7 @@ func TestSwitchRefusesAnArchivedWorld(t *testing.T) {
 	}
 
 	// Unarchived, the same switch works.
-	if err := r.worlds.SetArchived(context.Background(), b, false); err != nil {
+	if _, err := r.worlds.SetArchived(context.Background(), b, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{}, true); err != nil {
@@ -106,5 +101,43 @@ func TestArchivedStartErrorText(t *testing.T) {
 	}
 	if got := err.Error(); got != "the game did not start: the world is archived. Unarchive it first" {
 		t.Errorf("text %q", got)
+	}
+}
+
+// SPEC 7.12, 5.9: a scheduled restart (OnlyRunning) of a stopped archived
+// world skips as it does for any stopped game, with no refusal row.
+func TestScheduledRestartOfAStoppedArchivedWorldSkipsSilently(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	a := r.newWorld("Alpha")
+	r.archiveInPlace(a)
+	before := len(r.audit.list())
+	err := r.c.Restart(context.Background(), a, admin, StopOptions{Countdown: MaxStopCountdown, OnlyRunning: true}, StartOptions{})
+	if !errors.Is(err, ErrNotRunning) || isArchived(err) {
+		t.Fatalf("restart = %v, want ErrNotRunning", err)
+	}
+	for _, e := range r.audit.list()[before:] {
+		if e.Action == AuditRestartRefused {
+			t.Errorf("a restart-refused row was written: %+v", e)
+		}
+	}
+}
+
+// SPEC 5.9: every start goes through the one launch, so an update of a
+// running world that was archived by hand cannot relaunch it.
+func TestUpdateCannotRelaunchAnArchivedWorld(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	a := r.versionWorld("Alpha", "2.0.77", "2.0.77-no-space-age.zip")
+	r.game.SetImage(ImageRef("2.1.24"), true)
+	r.start(a)
+	r.archiveInPlace(a)
+	err := r.c.Update(context.Background(), a, "2.1.24", admin, StopOptions{}, StartOptions{})
+	if !isArchived(err) {
+		t.Fatalf("update = %v, want the archived refusal", err)
+	}
+	if st := r.c.Status(a).State; st != StateStopped {
+		t.Errorf("state = %s, want stopped", st)
+	}
+	if n := len(r.calls("POST /containers/create")); n != 1 {
+		t.Errorf("%d containers created, want only the first start's", n)
 	}
 }

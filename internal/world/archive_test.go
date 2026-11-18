@@ -32,7 +32,7 @@ func TestSetArchivedRoundTrips(t *testing.T) {
 	id := seedSecond(t, m)
 	files := fileTree(t, filepath.Join(m.dirs.Worlds, id))
 
-	if err := m.SetArchived(ctx, id, true); err != nil {
+	if _, err := m.SetArchived(ctx, id, true); err != nil {
 		t.Fatal(err)
 	}
 	if !readMetaOf(t, m, id).Archived {
@@ -63,7 +63,7 @@ func TestSetArchivedRoundTrips(t *testing.T) {
 		}
 	}
 
-	if err := m.SetArchived(ctx, id, false); err != nil {
+	if _, err := m.SetArchived(ctx, id, false); err != nil {
 		t.Fatal(err)
 	}
 	if readMetaOf(t, m, id).Archived {
@@ -83,21 +83,21 @@ func TestSetArchivedRefusals(t *testing.T) {
 	active := seedWorld(t, m)
 	other := seedSecond(t, m)
 
-	if err := m.SetArchived(ctx, active, true); !errors.Is(err, ErrArchiveActive) {
+	if _, err := m.SetArchived(ctx, active, true); !errors.Is(err, ErrArchiveActive) {
 		t.Errorf("active: %v", err)
 	}
 	if readMetaOf(t, m, active).Archived {
 		t.Error("the active world was archived")
 	}
 	// Unarchiving the active world is harmless and allowed.
-	if err := m.SetArchived(ctx, active, false); err != nil {
+	if _, err := m.SetArchived(ctx, active, false); err != nil {
 		t.Errorf("unarchive active: %v", err)
 	}
-	if err := m.SetArchived(ctx, "missing", true); !errors.Is(err, os.ErrNotExist) {
+	if _, err := m.SetArchived(ctx, "missing", true); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("missing: %v", err)
 	}
 	unlock, _ := m.Lock(other)
-	if err := m.SetArchived(ctx, other, true); !errors.Is(err, ErrBusy) {
+	if _, err := m.SetArchived(ctx, other, true); !errors.Is(err, ErrBusy) {
 		t.Errorf("locked: %v", err)
 	}
 	unlock()
@@ -106,7 +106,7 @@ func TestSetArchivedRefusals(t *testing.T) {
 	if err := os.WriteFile(w, []byte(`{"format_version":9,"name":"Future","created_at":"2026-11-01T10:00:00Z"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.SetArchived(ctx, other, true); !errors.Is(err, ErrNewerFormat) {
+	if _, err := m.SetArchived(ctx, other, true); !errors.Is(err, ErrNewerFormat) {
 		t.Errorf("newer: %v", err)
 	}
 }
@@ -122,7 +122,7 @@ func TestArchivedKeepsUnknownFields(t *testing.T) {
 	if err := os.WriteFile(w, []byte(patched), 0o600); err != nil { //nolint:gosec // a test temp file
 		t.Fatal(err)
 	}
-	if err := m.SetArchived(t.Context(), id, true); err != nil {
+	if _, err := m.SetArchived(t.Context(), id, true); err != nil {
 		t.Fatal(err)
 	}
 	b, _ = os.ReadFile(w) //nolint:gosec // a test temp file
@@ -148,14 +148,14 @@ func TestRestoreKeepsCurrentArchivedState(t *testing.T) {
 			ctx := context.Background()
 			seedWorld(t, m)
 			id := seedSecond(t, m)
-			if err := m.SetArchived(ctx, id, tc.snapArchived); err != nil {
+			if _, err := m.SetArchived(ctx, id, tc.snapArchived); err != nil {
 				t.Fatal(err)
 			}
 			snap, err := m.TakeSnapshot(id, "", "alice")
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := m.SetArchived(ctx, id, tc.liveArchived); err != nil {
+			if _, err := m.SetArchived(ctx, id, tc.liveArchived); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := m.Restore(ctx, id, snap.Name, "alice"); err != nil {
@@ -192,7 +192,7 @@ func TestRestoreDeletedWorldComesBackUnarchived(t *testing.T) {
 	ctx := context.Background()
 	id := seedWorld(t, m)
 	other := seedSecond(t, m)
-	if err := m.SetArchived(ctx, other, true); err != nil {
+	if _, err := m.SetArchived(ctx, other, true); err != nil {
 		t.Fatal(err)
 	}
 	active.id = ""
@@ -211,5 +211,21 @@ func TestRestoreDeletedWorldComesBackUnarchived(t *testing.T) {
 	}
 	if active.id != other {
 		t.Errorf("active = %q, want the restored world", active.id)
+	}
+}
+
+// SPEC 12.9: SetArchived says whether it changed anything, so a repeat is not
+// recorded twice.
+func TestSetArchivedReportsAChange(t *testing.T) {
+	m, _ := newTestManager(t)
+	seedWorld(t, m)
+	id := seedSecond(t, m)
+	for i, want := range []struct {
+		on, changed bool
+	}{{true, true}, {true, false}, {false, true}, {false, false}} {
+		changed, err := m.SetArchived(t.Context(), id, want.on)
+		if err != nil || changed != want.changed {
+			t.Errorf("call %d (on=%v) = %v, %v; want changed=%v", i, want.on, changed, err, want.changed)
+		}
 	}
 }

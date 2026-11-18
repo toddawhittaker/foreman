@@ -20,6 +20,7 @@ test("archive from the world page, find it in the foldout, then unarchive", asyn
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Second");
   await expect(page.locator("h1 .badge")).toHaveText("Archived");
   await expect(page.locator(".message--success")).toContainText("Second is archived.");
+  await expect(page.locator("#world-done")).toBeFocused();
   await expect(page.locator("#act-switch")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Archive world", exact: true })).toHaveCount(0);
   await checkPage(page);
@@ -94,5 +95,25 @@ test("an archived world that is active will not start", async ({ page, foreman, 
   await page.getByRole("button", { name: "Start server" }).click();
   await expect(page.locator("main")).toContainText("This world is archived, so it cannot start. Unarchive it first.", live);
   await expect(stateBadge(page)).toHaveText("Stopped");
+  await checkPage(page);
+});
+
+test("when every world is archived the list says so and keeps the way to add one", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedSecond(foreman);
+  // The active world is archived by hand: the page refuses to archive it.
+  const meta = join(foreman.dataDir, "worlds", "base", "world.json");
+  writeFileSync(meta, JSON.stringify({ ...JSON.parse(readFileSync(meta, "utf8")), archived: true }));
+  await page.goto("/worlds/second");
+  await page.getByRole("button", { name: "Archive world", exact: true }).click();
+
+  await page.goto("/worlds");
+  await expect(page.getByText("All your worlds are archived.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Upload a save" })).toBeVisible();
+  const foldout = page.locator("#archived-worlds");
+  await expect(foldout.locator("summary")).toHaveText("Archived (2)");
+  await foldout.locator("summary").click();
+  await expect(foldout.getByRole("heading", { level: 2 })).toHaveCount(2);
   await checkPage(page);
 });

@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -76,6 +78,68 @@ func TestArchiveAndUnarchiveFromThePages(t *testing.T) {
 	list = r.get(PathWorlds, withCookie(r.cookie)).Body.String()
 	if strings.Contains(list, "archived-worlds") {
 		t.Errorf("an empty archive still shows a foldout:\n%s", list)
+	}
+}
+
+// A second submit, or an MCP retry, changes nothing and records nothing.
+func TestArchiveAgainIsNotAuditedAgain(t *testing.T) {
+	r := newWorldsRig(t)
+	_, id := r.seedTwo()
+	for range 2 {
+		if rec := r.post(worldPath(id)+"/archive", url.Values{}, withCookie(r.cookie)); rec.Code != http.StatusSeeOther {
+			t.Fatalf("archive: %d", rec.Code)
+		}
+	}
+	if res, _ := call(t, r.cs, "archive_world", map[string]any{"world_id": id}); res.IsError {
+		t.Fatalf("archive again: %s", resultText(res))
+	}
+	if got := r.auditOf(AuditWorldArchive); len(got) != 1 {
+		t.Errorf("%d archive entries, want 1: %+v", len(got), got)
+	}
+}
+
+// SPEC 5.9: when every world is archived the main panel still says so and
+// keeps the way to add a world; the worlds stay in the foldout, each under a
+// heading of its own.
+func TestWorldsPageWhenEveryWorldIsArchived(t *testing.T) {
+	r := newWorldsRig(t)
+	_, id := r.seedTwo()
+	if _, err := r.worlds.SetArchived(context.Background(), id, true); err != nil {
+		t.Fatal(err)
+	}
+	// The active world goes by hand: archive refuses it.
+	r.archiveByHand(r.activeID())
+	list := r.get(PathWorlds, withCookie(r.cookie)).Body.String()
+	for _, want := range []string{"All your worlds are archived.", `id="act-upload-save"`, `<summary>Archived (2)</summary>`, `<h2 id="world-` + id + `">`} {
+		if !strings.Contains(list, want) {
+			t.Errorf("worlds list lacks %q:\n%s", want, list)
+		}
+	}
+	if strings.Contains(list, "<h3") {
+		t.Errorf("an archived world's name is not under an h2:\n%s", list)
+	}
+}
+
+// SPEC 5.9: the crash box and the switch notice never offer a switch back to
+// an archived world, which would be refused.
+func TestNoSwitchBackToAnArchivedWorld(t *testing.T) {
+	notice := &game.SwitchNotice{SwitchInfo: game.SwitchInfo{From: "a", To: "b", Presented: true}}
+	p := ServerPage{WorldNames: map[string]string{"a": "Alpha"}, Status: game.Status{Notice: notice}}
+	if o := p.SwitchBack(); o == nil || o.Name != "Alpha" {
+		t.Fatalf("switch back = %+v, want an offer for Alpha", o)
+	}
+	p.ArchivedWorlds = map[string]bool{"a": true}
+	if o := p.SwitchBack(); o != nil {
+		t.Errorf("switch back to an archived world = %+v", o)
+	}
+
+	done := ServerPage{HaveResult: true, Result: actionResult{Action: game.AuditSwitch, From: "a"}, WorldNames: map[string]string{"a": "Alpha"}}
+	if o := done.switchBackOffer(); o == nil {
+		t.Fatal("no offer after a switch that worked")
+	}
+	done.ArchivedWorlds = map[string]bool{"a": true}
+	if o := done.switchBackOffer(); o != nil {
+		t.Errorf("offer after a switch, from an archived world: %+v", o)
 	}
 }
 
@@ -168,5 +232,29 @@ func TestMCPArchiveAndUnarchive(t *testing.T) {
 	}
 	if got := r.auditOf(AuditWorldUnarchive); len(got) != 1 || got[0].TokenName != "Claude" || got[0].WorldID != id {
 		t.Errorf("audit: %+v", got)
+	}
+}
+
+// activeID is the active world's id.
+func (r *worldsRig) activeID() string {
+	r.t.Helper()
+	id, _, err := r.store.ActiveWorld(context.Background())
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	return id
+}
+
+// archiveByHand sets the flag in world.json, which SetArchived refuses for the
+// active world.
+func (r *worldsRig) archiveByHand(id string) {
+	r.t.Helper()
+	p := filepath.Join(r.worlds.Dirs().Worlds, id, world.MetaFile)
+	b, err := os.ReadFile(p) //nolint:gosec // a test temp file
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(strings.Replace(string(b), "{", `{"archived": true,`, 1)), 0o600); err != nil { //nolint:gosec // a test temp file
+		r.t.Fatal(err)
 	}
 }
