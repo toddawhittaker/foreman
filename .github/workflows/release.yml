@@ -1,0 +1,60 @@
+name: release
+
+# Builds the image for amd64 and arm64 and pushes nothing.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      # The whole history and the tags: the main check and `git describe` need them.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # A release comes only from a commit on main.
+      - name: Refuse a tag whose commit is not on main
+        if: github.ref_type == 'tag'
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD \
+            || { echo "The tagged commit is not on main; refusing to build a release."; exit 1; }
+
+      # A tag name is text anyone who can push may choose, so only the
+      # characters of a version are kept (the Makefile applies the same rule).
+      - name: Name the build
+        id: build
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" = tag ]; then
+            version=$(printf '%s' "${REF_NAME#v}" | tr -cd 'A-Za-z0-9._+-')
+          else
+            version=$(make --no-print-directory -s foreman-version)
+          fi
+          {
+            echo "version=$version"
+            echo "commit=$GITHUB_SHA"
+            echo "image=$(sed -n 's/^GO_IMAGE *:= *//p' Makefile)"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          build-args: |
+            GO_IMAGE=${{ steps.build.outputs.image }}
+            VERSION=${{ steps.build.outputs.version }}
+            COMMIT=${{ steps.build.outputs.commit }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
