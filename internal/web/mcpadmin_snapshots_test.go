@@ -408,6 +408,19 @@ func TestMCPDeleteSnapshotsStayWhileAnOperationRuns(t *testing.T) {
 	if res, out := call(t, cs, "restart_server", map[string]any{"world_id": id, "countdown_seconds": 5}); res.IsError || out["finished"] != false {
 		t.Fatalf("restart: %s %s", resultText(res), asJSON(out))
 	}
+	// restart_server answers after mcpWait whether or not the restart has
+	// begun, so wait for its countdown before the delete (it was a flake
+	// on a loaded CI runner).
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		if op := g.ctrl.Status(id).Operation; op != nil {
+			if _, ok := op.CountdownEnds(); ok {
+				break
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the restart's countdown never began")
+		}
+	}
 	res, out := call(t, cs, "delete_snapshots", map[string]any{"world_id": id, "snapshots": []string{snap.Name}})
 	if !res.IsError || !strings.Contains(asJSON(out["staying"]), "operation is running") {
 		t.Fatalf("while an operation runs: %s %s", resultText(res), asJSON(out))
