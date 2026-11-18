@@ -253,6 +253,9 @@ func (s *server) routes() {
 	s.publicModsPageRoutes()
 	s.publicModsSettingsRoutes()
 	s.apiTokenRoutes()
+	s.generalRoutes()
+	s.usersRoutes()
+	s.auditRoutes()
 	s.mcpRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
@@ -260,6 +263,7 @@ func (s *server) routes() {
 		s.mux.HandleFunc("GET "+PathSignIn, s.handleSignInForm)
 		s.mux.HandleFunc("POST "+PathSignIn, s.handleSignIn)
 	}
+	s.oidcRoutes()
 	s.mux.HandleFunc("/", s.handleUnknown)
 }
 

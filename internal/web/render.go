@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +37,15 @@ const (
 	PathStatic    = "/static/"
 	PathFavicon   = "/favicon.ico"
 )
+
+// Foreman's own settings pages (SPEC 12.9, 12.12, 13.1).
+func generalPath() string  { return "/settings/general" }
+func usersPath() string    { return "/settings/users" }
+func auditLogPath() string { return "/settings/audit-log" }
+
+func userDeletePath(id int64) string {
+	return usersPath() + "/" + strconv.FormatInt(id, 10) + "/delete"
+}
 
 // faviconFile is the static file answered at PathFavicon.
 const faviconFile = "icons/favicon.ico"
@@ -344,6 +354,12 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"snapshotsTabPath":  func() string { return PathSnapshots },
 		"accountPath":       func() string { return PathAccount },
 		"apiTokensPath":     func() string { return PathAPITokens },
+		"generalPath":       generalPath,
+		"usersPath":         usersPath,
+		"auditLogPath":      auditLogPath,
+		"generalTabOn":      func() bool { return generalTabOn },
+		"usersTabOn":        func() bool { return usersTabOn },
+		"auditTabOn":        func() bool { return auditTabOn },
 		"aboutPath":         func() string { return PathAbout },
 		"about":             version.Get,
 		"notificationsPath": func() string { return PathNotifications },
