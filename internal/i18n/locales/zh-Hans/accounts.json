@@ -42,5 +42,6 @@
   "accounts.proxy.missing": "Foreman 没有从代理收到登录信息。请通过代理登录，然后再次打开此页面。",
   "accounts.oidc.failed": "单点登录未成功。请重试。如果一直失败，请联系运行 Foreman 的人。",
   "accounts.oidc.unavailable": "Foreman 目前无法连接单点登录提供方。请一分钟后再试。",
-  "accounts.oidc.name_taken": "Foreman 中已有同名用户使用其他方式登录，因此无法通过单点登录进入。请让运行 Foreman 的人重命名或删除该用户。"
+  "accounts.oidc.name_taken": "Foreman 中已有同名用户使用其他方式登录，因此无法通过单点登录进入。请让运行 Foreman 的人重命名或删除该用户。",
+  "accounts.oidc.bad_username": "该单点登录账户没有 Foreman 可用的用户名，因此重试也无济于事。请让运行 Foreman 的人在身份提供方处检查该账户。"
 }

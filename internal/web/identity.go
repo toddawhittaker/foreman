@@ -130,22 +130,16 @@ func (s *server) stillSignedIn(r *http.Request, opened time.Time) bool {
 	return !byProxy || s.now().Sub(opened) < proxyStreamLimit
 }
 
+// AuditUserCreate records a new user, with how it was made as the detail:
+// setup, headers or oidc (SPEC 12.9).
+const AuditUserCreate = "user-create"
+
 // headerUser finds the user a trusted proxy named, creating it on first
 // sight with no password. The first user ever seen becomes the first admin.
 func (s *server) headerUser(ctx context.Context, name string) (store.User, error) {
-	u, created, err := s.userByName(ctx, name)
-	if err == nil && created {
-		s.audit(ctx, actor(u), "user-create", "", "headers")
-	}
-	return u, err
-}
-
-// userByName finds the named user, or creates one with no password and
-// reports created. The first user ever seen becomes the first admin.
-func (s *server) userByName(ctx context.Context, name string) (u store.User, created bool, err error) {
 	u, found, err := s.store.UserByUsername(ctx, name)
 	if err != nil || found {
-		return u, false, err
+		return u, err
 	}
 	now := s.now()
 	u, err = s.store.CreateFirstAdmin(ctx, name, "", now)
@@ -158,9 +152,12 @@ func (s *server) userByName(ctx context.Context, name string) (u store.User, cre
 		if u, ok, err = s.store.UserByUsername(ctx, name); err == nil && !ok {
 			err = errors.New("user vanished after a duplicate-name error")
 		}
-		return u, false, err
+		return u, err
 	}
-	return u, err == nil, err
+	if err == nil {
+		s.audit(ctx, actor(u), AuditUserCreate, "", "headers")
+	}
+	return u, err
 }
 
 // errOIDCNameTaken: the name the identity provider gave belongs to a user
@@ -174,7 +171,7 @@ var errOIDCBadName = errors.New("the identity provider gave no usable username")
 // subject, never by name alone. On first sight it links a user of the same
 // name only when that user has no password and no link, which is a user
 // made by trusted headers; any other user of that name refuses the sign-in.
-// Otherwise it creates the user (SPEC 12.7).
+// Otherwise it creates the user, linked in the same insert (SPEC 12.7).
 func (s *server) oidcUser(ctx context.Context, id auth.OIDCIdentity) (store.User, error) {
 	u, found, err := s.store.UserByOIDC(ctx, id.Issuer, id.Subject)
 	if err != nil || found {
@@ -184,9 +181,29 @@ func (s *server) oidcUser(ctx context.Context, id auth.OIDCIdentity) (store.User
 	if !problem.IsZero() {
 		return store.User{}, errOIDCBadName
 	}
-	u, created, err := s.userByName(ctx, name)
+	u, found, err = s.store.UserByUsername(ctx, name)
 	if err != nil {
 		return store.User{}, err
+	}
+	if !found {
+		u, err = s.store.CreateOIDCUser(ctx, name, id.Issuer, id.Subject, s.now())
+		if err == nil {
+			s.audit(ctx, actor(u), AuditUserCreate, "", "oidc")
+			return u, nil
+		}
+		if !errors.Is(err, store.ErrUsernameTaken) {
+			return store.User{}, err
+		}
+		// A concurrent callback made this subject's user, or another
+		// request took the name.
+		if u, found, err := s.store.UserByOIDC(ctx, id.Issuer, id.Subject); err != nil || found {
+			return u, err
+		}
+		if u, found, err = s.store.UserByUsername(ctx, name); err != nil {
+			return store.User{}, err
+		} else if !found {
+			return store.User{}, errors.New("user vanished after a duplicate-name error")
+		}
 	}
 	switch err := s.store.LinkOIDC(ctx, u.ID, id.Issuer, id.Subject); {
 	case errors.Is(err, store.ErrNotLinkable):
@@ -197,9 +214,6 @@ func (s *server) oidcUser(ctx context.Context, id auth.OIDCIdentity) (store.User
 		return store.User{}, errOIDCNameTaken
 	case err != nil:
 		return store.User{}, err
-	}
-	if created {
-		s.audit(ctx, actor(u), "user-create", "", "oidc")
 	}
 	u.OIDCIssuer, u.OIDCSubject = id.Issuer, id.Subject
 	return u, nil

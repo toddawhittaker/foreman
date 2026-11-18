@@ -89,7 +89,9 @@ func TestOIDCDiscoveryIsLazyAndRetried(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(discoveryJSON(srv.URL, "https")))
 	})
+	clk := newClock()
 	o := oidcFor(srv)
+	o.set.Now = clk.Now
 	if calls.Load() != 0 {
 		t.Fatalf("NewOIDC made %d calls", calls.Load())
 	}
@@ -97,6 +99,10 @@ func TestOIDCDiscoveryIsLazyAndRetried(t *testing.T) {
 		t.Fatalf("first Begin: %v", err)
 	}
 	fail.Store(false)
+	if _, err := o.Begin(context.Background()); !errors.Is(err, ErrOIDCUnavailable) || calls.Load() != 1 {
+		t.Fatalf("Begin right after a failure: %v, %d calls", err, calls.Load())
+	}
+	clk.Advance(oidcRetryAfter)
 	for range 2 {
 		req, err := o.Begin(context.Background())
 		if err != nil {
@@ -146,5 +152,52 @@ func TestCappedBody(t *testing.T) {
 	}
 	if total != oidcMaxBody+1 {
 		t.Errorf("read %d bytes before failing", total)
+	}
+}
+
+// SPEC 12.7: while one discovery is in flight, other sign-ins fail at once
+// rather than queue behind a provider that may be down.
+func TestOIDCDiscoveryFailsFastWhileInFlight(t *testing.T) {
+	entered, release := make(chan struct{}), make(chan struct{})
+	var srv *httptest.Server
+	srv = discoveryServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		close(entered)
+		<-release
+		_, _ = w.Write([]byte(discoveryJSON(srv.URL, "https")))
+	})
+	o := oidcFor(srv)
+	done := make(chan error, 1)
+	go func() {
+		_, err := o.Begin(context.Background())
+		done <- err
+	}()
+	<-entered
+	if _, err := o.Begin(context.Background()); !errors.Is(err, ErrOIDCUnavailable) {
+		t.Errorf("second Begin during discovery: %v", err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatalf("first Begin: %v", err)
+	}
+	if _, err := o.Begin(context.Background()); err != nil {
+		t.Errorf("Begin after discovery: %v", err)
+	}
+}
+
+// SPEC 12.7: starts have their own limit, apart from sign-in failures.
+func TestOIDCStartLimiter(t *testing.T) {
+	clk := newClock()
+	l := NewOIDCStartLimiter(clk.Now)
+	for i := range OIDCStartsPerAddress {
+		if ok, _ := l.Allow("192.0.2.1"); !ok {
+			t.Fatalf("blocked after %d starts", i)
+		}
+	}
+	if ok, left := l.Allow("192.0.2.1"); ok || left != OIDCStartWindow {
+		t.Errorf("over the limit: ok=%v left=%v", ok, left)
+	}
+	clk.Advance(OIDCStartWindow)
+	if ok, _ := l.Allow("192.0.2.1"); !ok {
+		t.Error("still blocked after the window")
 	}
 }

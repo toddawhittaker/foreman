@@ -92,6 +92,25 @@ func (s *Store) CreateUser(ctx context.Context, username, passwordHash string, n
 	return u, nil
 }
 
+// CreateOIDCUser adds an admin user with no password, linked to an identity
+// provider's subject in the same insert, so no other sign-in can see the
+// user unlinked (SPEC 12.7). It returns ErrUsernameTaken when the name, or
+// the subject, is already in use.
+func (s *Store) CreateOIDCUser(ctx context.Context, username, issuer, subject string, now time.Time) (User, error) {
+	row := s.db.QueryRowContext(ctx,
+		`INSERT INTO users (username, password_hash, role, created_at, oidc_issuer, oidc_subject)
+		 VALUES (?, '', 'admin', ?, ?, ?) RETURNING `+userColumns,
+		username, now.Unix(), issuer, subject)
+	u, err := scanUser(row)
+	if isUniqueViolation(err) {
+		return User{}, ErrUsernameTaken
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("create oidc user: %w", err)
+	}
+	return u, nil
+}
+
 // UserByUsername finds a user by name, ignoring case.
 func (s *Store) UserByUsername(ctx context.Context, username string) (User, bool, error) {
 	return s.queryUser(ctx, "SELECT "+userColumns+" FROM users WHERE username = ?", username)

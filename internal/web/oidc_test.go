@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -160,12 +161,12 @@ func TestOIDCSignInCreatesUser(t *testing.T) {
 	if page := o.get(PathWorlds, withCookie(session)); page.Code != http.StatusOK || !strings.Contains(page.Body.String(), idp.Username) {
 		t.Fatalf("signed-in page: %d", page.Code)
 	}
-	if got := o.audits("user-create"); len(got) != 1 || got[0] != idp.Username+"  oidc" {
+	if got := o.audits(AuditUserCreate); len(got) != 1 || got[0] != idp.Username+"  oidc" {
 		t.Errorf("user-create entries %q", got)
 	}
 	// A second sign-in finds the same user and creates nothing.
 	o.wantRedirect(o.signIn(""), PathWorlds)
-	if got := o.audits("user-create"); len(got) != 1 {
+	if got := o.audits(AuditUserCreate); len(got) != 1 {
 		t.Errorf("user-create entries after a second sign-in %q", got)
 	}
 	o.noSecretsLogged()
@@ -274,30 +275,127 @@ func TestOIDCForeignNextGoesHome(t *testing.T) {
 	}
 }
 
-// SPEC 12.11: failed callbacks count against the address in the sign-in
-// limiter, shared with password sign-in.
+// SPEC 12.11: a callback that names a sign-in this browser started counts
+// against the address when it fails, in the table password sign-in uses.
 func TestOIDCCallbackFailuresAreLimited(t *testing.T) {
 	o := newOIDCHarness(t, "local,oidc", nil)
+	c := idp.DefaultClaims()
+	c.Nonce = "not-the-nonce"
+	o.idp.SetNext(c)
 	for i := range auth.LimitPerAddress {
-		if rec := o.get(PathOIDCCallback + "?state=x&code=y"); rec.Code != http.StatusBadRequest {
+		if i > 0 && i%auth.OIDCStartsPerAddress == 0 {
+			o.clock.Advance(auth.OIDCStartWindow) // past the start limit, not the failure window
+		}
+		if rec := o.signIn(""); rec.Code != http.StatusBadRequest {
 			t.Fatalf("failure %d: %d", i, rec.Code)
 		}
 	}
-	rec := o.get(PathOIDCCallback + "?state=x&code=y")
+	o.clock.Advance(auth.OIDCStartWindow)
+	tokens := o.idp.Tokens()
+	rec := o.signIn("")
 	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" {
 		t.Fatalf("over the limit: %d", rec.Code)
+	}
+	if o.idp.Tokens() != tokens {
+		t.Error("a limited callback still exchanged its code")
 	}
 	o.addUser("alice", testPassword)
 	if rec := o.post(PathSignIn, signInForm("alice", testPassword)); rec.Code != http.StatusTooManyRequests {
 		t.Errorf("password sign-in from the same address: %d", rec.Code)
 	}
-	if rec := o.get(PathOIDCCallback+"?state=x", withPeer("198.51.100.7:1")); rec.Code != http.StatusBadRequest {
+}
+
+// SPEC 12.11, 14.14: a callback with no sign-in of its own, which any page
+// can make a browser load, costs nothing and calls no one, so it cannot
+// lock the visitor's address out.
+func TestOIDCForgedCallbacksAreFree(t *testing.T) {
+	o := newOIDCHarness(t, "local,oidc", nil)
+	for i := range 3 * auth.LimitPerAddress {
+		if rec := o.get(PathOIDCCallback + "?state=x&code=y"); rec.Code != http.StatusBadRequest {
+			t.Fatalf("forged callback %d: %d", i, rec.Code)
+		}
+	}
+	if n := o.tr.calls.Load(); n != 0 {
+		t.Errorf("forged callbacks made %d calls to the provider", n)
+	}
+	o.addUser("alice", testPassword)
+	o.wantRedirect(o.post(PathSignIn, signInForm("alice", testPassword)), PathWorlds)
+	o.wantRedirect(o.signIn(""), PathWorlds)
+}
+
+// SPEC 12.7: one address may start only so many sign-ins a minute, so it
+// cannot push other people's started sign-ins out.
+func TestOIDCStartsAreLimited(t *testing.T) {
+	o := newOIDCHarness(t, "oidc", nil)
+	for range auth.OIDCStartsPerAddress {
+		o.begin("")
+	}
+	rec := o.get(PathOIDCStart)
+	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("over the start limit: %d", rec.Code)
+	}
+	if rec := o.get(PathOIDCStart, withPeer("198.51.100.7:1")); rec.Code != http.StatusSeeOther {
 		t.Errorf("another address: %d", rec.Code)
+	}
+	o.clock.Advance(auth.OIDCStartWindow)
+	o.begin("")
+}
+
+// SPEC 12.7: a username Foreman cannot use gets its own message, and does
+// not count against the address, since trying again can never work.
+func TestOIDCBadUsernameIsNotCounted(t *testing.T) {
+	o := newOIDCHarness(t, "oidc", nil)
+	c := idp.DefaultClaims()
+	c.Username = "bad\u0007name"
+	o.idp.SetNext(c)
+	for i := range auth.LimitPerAddress {
+		if i > 0 && i%auth.OIDCStartsPerAddress == 0 {
+			o.clock.Advance(auth.OIDCStartWindow)
+		}
+		rec := o.signIn("")
+		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "no username Foreman can use") {
+			t.Fatalf("bad username %d: %d", i, rec.Code)
+		}
+	}
+	o.clock.Advance(auth.OIDCStartWindow)
+	o.idp.SetNext(idp.DefaultClaims())
+	o.wantRedirect(o.signIn(""), PathWorlds)
+}
+
+// SPEC 12.7, 12.9: callbacks racing for one new subject make one user, and
+// exactly one user-create entry.
+func TestOIDCConcurrentFirstSignIn(t *testing.T) {
+	o := newOIDCHarness(t, "oidc", nil)
+	const n = 8
+	cbs := make([]string, n)
+	cookies := make([]*http.Cookie, n)
+	for i := range n {
+		authorize, c := o.begin("")
+		cbs[i], cookies[i] = o.approve(authorize), c
+	}
+	codes := make([]int, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Go(func() { codes[i] = o.get(cbs[i], withCookie(cookies[i])).Code })
+	}
+	wg.Wait()
+	for i, c := range codes {
+		if c != http.StatusSeeOther {
+			t.Errorf("callback %d: %d", i, c)
+		}
+	}
+	if got := o.audits(AuditUserCreate); len(got) != 1 {
+		t.Errorf("user-create entries %q, want one", got)
+	}
+	u, found, _ := o.store.UserByOIDC(context.Background(), o.idp.URL, idp.Subject)
+	if !found || u.Username != idp.Username {
+		t.Errorf("user %+v found=%v", u, found)
 	}
 }
 
-// SPEC 12.7: discovery waits for the first sign-in, a failure is not kept,
-// and a working document is.
+// SPEC 12.7: discovery waits for the first sign-in; after a failure it
+// answers at once for a short while, then tries again; a working document
+// is kept.
 func TestOIDCDiscoveryRetriedAfterFailure(t *testing.T) {
 	o := newOIDCHarness(t, "oidc", nil)
 	o.tr.unusable.Store(true)
@@ -306,6 +404,11 @@ func TestOIDCDiscoveryRetriedAfterFailure(t *testing.T) {
 		t.Fatalf("provider down: %d", rec.Code)
 	}
 	o.tr.unusable.Store(false)
+	calls := o.tr.calls.Load()
+	if rec := o.get(PathOIDCStart); rec.Code != http.StatusServiceUnavailable || o.tr.calls.Load() != calls {
+		t.Errorf("right after a failure: %d with %d calls", rec.Code, o.tr.calls.Load()-calls)
+	}
+	o.clock.Advance(11 * time.Second)
 	o.wantRedirect(o.signIn(""), PathWorlds)
 	before := o.tr.calls.Load()
 	o.begin("")
@@ -352,7 +455,7 @@ func TestOIDCLinksHeaderUser(t *testing.T) {
 	if rec := o.get(PathWorlds, asUser(idp.Username)...); rec.Code != http.StatusOK {
 		t.Fatalf("header sign-in: %d", rec.Code)
 	}
-	if got := o.audits("user-create"); len(got) != 1 || got[0] != idp.Username+"  headers" {
+	if got := o.audits(AuditUserCreate); len(got) != 1 || got[0] != idp.Username+"  headers" {
 		t.Errorf("user-create after headers %q", got)
 	}
 	header, _, _ := o.store.UserByUsername(context.Background(), idp.Username)
@@ -361,7 +464,7 @@ func TestOIDCLinksHeaderUser(t *testing.T) {
 	if !found || linked.ID != header.ID {
 		t.Fatalf("linked %+v, want the header user %d", linked, header.ID)
 	}
-	if got := o.audits("user-create"); len(got) != 1 {
+	if got := o.audits(AuditUserCreate); len(got) != 1 {
 		t.Errorf("linking created a user: %q", got)
 	}
 	if rec := o.get(PathWorlds, asUser(idp.Username)...); rec.Code != http.StatusOK {

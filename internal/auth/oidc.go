@@ -22,7 +22,10 @@ import (
 
 // Limits on calls to the identity provider (SPEC 12.7, 14.10).
 const (
-	oidcTimeout      = 10 * time.Second
+	oidcTimeout = 10 * time.Second
+	// oidcRetryAfter is how long a failed discovery answers every sign-in
+	// with ErrOIDCUnavailable before the next try.
+	oidcRetryAfter   = 10 * time.Second
 	oidcMaxDiscovery = 64 << 10
 	oidcMaxBody      = 1 << 20
 	discoveryPath    = "/.well-known/openid-configuration"
@@ -68,6 +71,11 @@ type OIDC struct {
 
 	mu       sync.Mutex
 	provider *oidc.Provider // nil until discovery works
+	// fetching is true while a discovery is in flight; failedAt is when the
+	// last one failed. Both make other sign-ins fail at once instead of
+	// queueing behind a provider that is down.
+	fetching bool
+	failedAt time.Time
 }
 
 // NewOIDC returns a client. It calls nothing: the discovery document is
@@ -96,13 +104,38 @@ func (o *OIDC) with(ctx context.Context) context.Context {
 }
 
 // discover returns the provider, fetching its discovery document once it
-// is needed. A failure is not kept, so the next sign-in tries again.
+// is needed. While a fetch is in flight, and for oidcRetryAfter after one
+// failed, it fails at once; after that the next sign-in tries again.
 func (o *OIDC) discover(ctx context.Context) (*oidc.Provider, error) {
 	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.provider != nil {
+	switch {
+	case o.provider != nil:
+		defer o.mu.Unlock()
 		return o.provider, nil
+	case o.fetching:
+		o.mu.Unlock()
+		return nil, fmt.Errorf("%w: a discovery is already in flight", ErrOIDCUnavailable)
+	case !o.failedAt.IsZero() && o.set.Now().Sub(o.failedAt) < oidcRetryAfter:
+		o.mu.Unlock()
+		return nil, fmt.Errorf("%w: the last discovery failed moments ago", ErrOIDCUnavailable)
 	}
+	o.fetching = true
+	o.mu.Unlock()
+
+	p, err := o.fetchProvider(ctx)
+
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.fetching = false
+	if err != nil {
+		o.failedAt = o.set.Now()
+		return nil, err
+	}
+	o.provider = p
+	return p, nil
+}
+
+func (o *OIDC) fetchProvider(ctx context.Context) (*oidc.Provider, error) {
 	// The provider keeps this context to fetch signing keys later, so it
 	// must outlive the request that happened to discover it.
 	p, err := oidc.NewProvider(o.with(context.WithoutCancel(ctx)), o.set.Issuer)
@@ -121,7 +154,6 @@ func (o *OIDC) discover(ctx context.Context) (*oidc.Provider, error) {
 			return nil, fmt.Errorf("%w: the discovery document names an endpoint that is not https", ErrOIDCUnavailable)
 		}
 	}
-	o.provider = p
 	return p, nil
 }
 

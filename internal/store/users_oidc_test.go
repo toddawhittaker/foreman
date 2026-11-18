@@ -37,6 +37,26 @@ func TestLinkOIDCAndFind(t *testing.T) {
 	}
 }
 
+// SPEC 12.7: a new OIDC user is linked by the insert itself; a taken name
+// or subject is ErrUsernameTaken.
+func TestCreateOIDCUser(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	u, err := s.CreateOIDCUser(ctx, "erin", testIssuer, "sub-1", t0)
+	if err != nil || u.OIDCIssuer != testIssuer || u.OIDCSubject != "sub-1" || u.PasswordHash != "" || u.Role != "admin" {
+		t.Fatalf("CreateOIDCUser = %+v, %v", u, err)
+	}
+	if got, found, _ := s.UserByOIDC(ctx, testIssuer, "sub-1"); !found || got.ID != u.ID {
+		t.Errorf("not found by subject: %+v", got)
+	}
+	if _, err := s.CreateOIDCUser(ctx, "ERIN", testIssuer, "sub-2", t0); !errors.Is(err, ErrUsernameTaken) {
+		t.Errorf("taken name: %v", err)
+	}
+	if _, err := s.CreateOIDCUser(ctx, "frank", testIssuer, "sub-1", t0); !errors.Is(err, ErrUsernameTaken) {
+		t.Errorf("taken subject: %v", err)
+	}
+}
+
 func TestLinkOIDCRefusesPasswordUsersAndTakenSubjects(t *testing.T) {
 	s, _ := openTemp(t)
 	ctx := context.Background()

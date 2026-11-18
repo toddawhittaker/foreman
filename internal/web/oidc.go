@@ -46,6 +46,7 @@ func (s *server) oidcRoutes() {
 			Now:           s.now,
 		}),
 		pending: newOIDCPending(s.now),
+		starts:  auth.NewOIDCStartLimiter(s.now),
 	}
 	s.mux.HandleFunc("GET "+PathOIDCStart, o.start)
 	s.mux.HandleFunc("GET "+PathOIDCCallback, o.callback)
@@ -55,12 +56,30 @@ type oidcSignIn struct {
 	s       *server
 	client  *auth.OIDC
 	pending *oidcPending
+	// starts bounds the sign-ins one address may start, so it cannot push
+	// other people's out of pending (SPEC 12.7).
+	starts *auth.AddrLimiter
+}
+
+// tooMany answers 429 with how long to wait.
+func (o *oidcSignIn) tooMany(w http.ResponseWriter, r *http.Request, wait time.Duration) {
+	w.Header().Set("Retry-After", fmt.Sprint(int(wait.Seconds())+1))
+	o.s.page(w, r, http.StatusTooManyRequests, "", ErrorPage{
+		Status: http.StatusTooManyRequests,
+		Detail: SignInPage{RateLimited: true, RetryAfter: wait}.RateLimitMessage(),
+	})
 }
 
 // start sends the browser to the identity provider, binding the sign-in to
 // it with a cookie that holds the state.
 func (o *oidcSignIn) start(w http.ResponseWriter, r *http.Request) {
 	s := o.s
+	client := auth.ClientAddr(r, s.cfg.TrustedProxies)
+	if ok, wait := o.starts.Allow(client); !ok {
+		s.log.Info("single sign-on start refused: too many starts", "client", client)
+		o.tooMany(w, r, wait)
+		return
+	}
 	req, err := o.client.Begin(r.Context())
 	if err != nil {
 		// Discovery errors name the provider's addresses, never a user's claims.
@@ -79,22 +98,15 @@ func (o *oidcSignIn) start(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, req.URL, http.StatusSeeOther)
 }
 
-// callback finishes a sign-in. Every failure counts against the client's
-// address in the sign-in limiter (SPEC 12.11), and is logged with the
-// address and fixed words only (SPEC 14.14).
+// callback finishes a sign-in. Each failure is logged with the client's
+// address and fixed words only (SPEC 14.14). A callback that names no
+// sign-in this browser started costs nothing and calls no one, so a hostile
+// page cannot lock a visitor out by loading it; one that does counts
+// against the address in the sign-in limiter (SPEC 12.11).
 func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 	s := o.s
 	ctx := r.Context()
 	client := auth.ClientAddr(r, s.cfg.TrustedProxies)
-	if ok, wait := s.limiter.AllowAddr(client); !ok {
-		s.log.Info("sign-in refused: too many failures", "client", client)
-		w.Header().Set("Retry-After", fmt.Sprint(int(wait.Seconds())+1))
-		s.page(w, r, http.StatusTooManyRequests, "", ErrorPage{
-			Status: http.StatusTooManyRequests,
-			Detail: SignInPage{RateLimited: true, RetryAfter: wait}.RateLimitMessage(),
-		})
-		return
-	}
 	// The cookie has done its job whatever happens next.
 	http.SetCookie(w, o.cookie("", -1))
 	failed := func(status int, detail i18n.Msg, reason string) {
@@ -106,11 +118,7 @@ func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	state := q.Get("state")
 	bound, err := r.Cookie(oidcCookie)
-	switch {
-	case q.Get("error") != "":
-		failed(http.StatusBadRequest, tryAgain, "the identity provider answered with an error")
-		return
-	case state == "" || err != nil || subtle.ConstantTimeCompare([]byte(bound.Value), []byte(state)) != 1:
+	if state == "" || err != nil || subtle.ConstantTimeCompare([]byte(bound.Value), []byte(state)) != 1 {
 		failed(http.StatusBadRequest, tryAgain, "the state does not match the browser's cookie")
 		return
 	}
@@ -119,12 +127,23 @@ func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 		failed(http.StatusBadRequest, tryAgain, "the sign-in is unknown, used or expired")
 		return
 	}
+	if ok, wait := s.limiter.AllowAddr(client); !ok {
+		s.log.Info("sign-in refused: too many failures", "client", client)
+		o.tooMany(w, r, wait)
+		return
+	}
+	if q.Get("error") != "" {
+		failed(http.StatusBadRequest, tryAgain, "the identity provider answered with an error")
+		return
+	}
 	id, err := o.client.Finish(ctx, q.Get("code"), started.verifier, started.nonce)
 	switch {
 	case errors.Is(err, auth.ErrOIDCNotAllowed):
 		failed(http.StatusForbidden, i18n.M("accounts.proxy.refused"), err.Error())
 		return
 	case errors.Is(err, auth.ErrOIDCUnavailable):
+		// A provider that is down is not a guess; it gives the attempt back.
+		s.limiter.ReleaseAddr(client)
 		s.log.Warn("single sign-on is unavailable", "error", err)
 		failed(http.StatusServiceUnavailable, i18n.M("accounts.oidc.unavailable"), "the identity provider is unavailable")
 		return
@@ -134,19 +153,22 @@ func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u, err := s.oidcUser(ctx, id)
+	if !errors.Is(err, errOIDCNameTaken) {
+		// Only a name clash is a refused sign-in; a bad name can never
+		// work by trying again, and a store failure is Foreman's.
+		s.limiter.ReleaseAddr(client)
+	}
 	switch {
 	case errors.Is(err, errOIDCNameTaken):
 		failed(http.StatusForbidden, i18n.M("accounts.oidc.name_taken"), err.Error())
 		return
 	case errors.Is(err, errOIDCBadName):
-		failed(http.StatusForbidden, tryAgain, err.Error())
+		failed(http.StatusForbidden, i18n.M("accounts.oidc.bad_username"), err.Error())
 		return
 	case err != nil:
-		s.limiter.ReleaseAddr(client)
 		s.fail(w, r, "find the single sign-on user", err)
 		return
 	}
-	s.limiter.ReleaseAddr(client)
 	if err := s.sessions.Start(ctx, w, u.ID); err != nil {
 		s.fail(w, r, "start session", err)
 		return
