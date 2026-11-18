@@ -27,8 +27,9 @@ import (
 //     the same page struct the UI's confirm page uses, and return it with
 //     s.mcpAsk's code. Nothing changes.
 //  2. With confirm_code: spend the code first (s.spendIfCode), before any
-//     check, so a wrong or refused use spends it too. Run every check again. If the state the preview showed
-//     has moved, refuse with a fresh preview and code. Otherwise act.
+//     check, so a wrong or refused use spends it too. Run every check
+//     again. If the state the preview showed has moved, refuse with a
+//     fresh preview and code. Otherwise act.
 //
 // The tool is registered with Annotations: twoStep.
 //

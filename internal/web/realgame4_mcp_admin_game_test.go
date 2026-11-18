@@ -14,6 +14,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"os"
@@ -41,8 +42,10 @@ const (
 )
 
 func TestRealGameMCPAdmin(t *testing.T) {
-	if only := os.Getenv("FOREMAN_TEST_GAME_TAG"); only != "" && only != "2.0" && only != "2.1" {
-		t.Skipf("runs on %s and %s only", adminGameFrom, adminGameTo)
+	// One shard runs it: the 2.1 one, which has both images, as the update
+	// test's cross-line case needs.
+	if only := os.Getenv("FOREMAN_TEST_GAME_TAG"); only != "" && only != "2.1" {
+		t.Skip("runs on the 2.1 shard only")
 	}
 	host := os.Getenv("DOCKER_HOST")
 	if host == "" {
@@ -158,16 +161,18 @@ func TestRealGameMCPAdmin(t *testing.T) {
 			t.Fatalf("after %s the game runs %s, want %s", action, got, version)
 		}
 	}
+	snapshots := func(t *testing.T) []world.Snapshot {
+		t.Helper()
+		list, err := hn.worlds.Snapshots(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return list
+	}
+	count := func() int { return len(snapshots(t)) }
 	// twoStep runs a tool's preview, checks it named label, then confirms.
 	twoStep := func(t *testing.T, tool string, args map[string]any, label string) {
 		t.Helper()
-		count := func() int {
-			list, err := hn.worlds.Snapshots(id)
-			if err != nil {
-				t.Fatal(err)
-			}
-			return len(list)
-		}
 		snaps := count()
 		res, preview := call(t, cs, tool, args)
 		if res.IsError || preview["done"] != false || preview["snapshot"] != label {
@@ -183,20 +188,50 @@ func TestRealGameMCPAdmin(t *testing.T) {
 	}
 	// wantSnapshotAndAudit checks the newest snapshot and the action's audit
 	// rows are what the UI path writes, but under the token's name.
-	wantSnapshotAndAudit := func(t *testing.T, reason, label, action string) {
+	// It returns that snapshot, which must be the only one the action added
+	// to the was snapshots there before it.
+	wantSnapshotAndAudit := func(t *testing.T, was []world.Snapshot, reason, label, action string) world.Snapshot {
 		t.Helper()
-		list, err := hn.worlds.Snapshots(id)
-		if err != nil {
-			t.Fatal(err)
+		var added []world.Snapshot
+		for _, s := range snapshots(t) {
+			if !slices.ContainsFunc(was, func(w world.Snapshot) bool { return w.Name == s.Name }) {
+				added = append(added, s)
+			}
 		}
-		if !slices.ContainsFunc(list, func(s world.Snapshot) bool { return s.Reason == reason && s.Label == label }) {
-			t.Errorf("no %s snapshot labelled %q: %+v", reason, label, list)
+		if len(added) != 1 || added[0].Reason != reason || added[0].Label != label {
+			t.Fatalf("%s added snapshots %+v, want one %s snapshot labelled %q", action, added, reason, label)
 		}
 		rows := slices.DeleteFunc(auditRows(t, hn), func(e store.AuditEntry) bool { return e.Action != action })
 		if len(rows) != 1 || rows[0].TokenName != "Claude" || rows[0].Username != "alice" || rows[0].WorldID != id {
 			t.Errorf("%s audit rows: %+v", action, rows)
 		}
+		return added[0]
 	}
+	// probeEnabled reads a mod-list.json and reports whether the probe is on.
+	probeEnabled := func(t *testing.T, path string) bool {
+		t.Helper()
+		b, err := os.ReadFile(path) //nolint:gosec // the test's own folder
+		if err != nil {
+			t.Fatal(err)
+		}
+		var list struct {
+			Mods []struct {
+				Name    string `json:"name"`
+				Enabled bool   `json:"enabled"`
+			} `json:"mods"`
+		}
+		if err := json.Unmarshal(b, &list); err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		for _, m := range list.Mods {
+			if m.Name == adminProbeMod {
+				return m.Enabled
+			}
+		}
+		t.Fatalf("%s does not list the probe: %s", path, b)
+		return false
+	}
+	liveModList := filepath.Join(wdir, world.ModsDir, world.ModListFile)
 
 	before := inGames()
 	if err := ctrl.Start(ctx, id, alice, game.StartOptions{}); err != nil {
@@ -220,25 +255,32 @@ func TestRealGameMCPAdmin(t *testing.T) {
 	}
 
 	t.Run("change_mods disables the probe", func(t *testing.T) {
-		before := inGames()
+		before, was := inGames(), snapshots(t)
 		twoStep(t, "change_mods", map[string]any{"world_id": id, "kind": "disable", "names": []string{adminProbeMod}}, world.LabelBeforeMods)
 		settle(t, game.AuditMods, before, adminGameFrom)
-		wantSnapshotAndAudit(t, world.ReasonMods, world.LabelBeforeMods, game.AuditMods)
-		b, _ := os.ReadFile(filepath.Join(wdir, world.ModsDir, world.ModListFile)) //nolint:gosec // the test's own folder
-		if !strings.Contains(strings.Join(strings.Fields(string(b)), ""), `"name":"`+adminProbeMod+`","enabled":false`) {
-			t.Errorf("mod-list.json: %s", b)
+		snap := wantSnapshotAndAudit(t, was, world.ReasonMods, world.LabelBeforeMods, game.AuditMods)
+		if probeEnabled(t, liveModList) {
+			t.Error("the probe is still enabled in the world")
+		}
+		// The snapshot was taken before the change.
+		if !probeEnabled(t, filepath.Join(hn.worlds.Dirs().Snapshots, id, snap.Name, world.ModsDir, world.ModListFile)) {
+			t.Error("the Before mod change snapshot holds the probe disabled")
 		}
 	})
 	t.Run("restore_snapshot puts back Keep", func(t *testing.T) {
-		before := inGames()
+		before, was := inGames(), snapshots(t)
 		twoStep(t, "restore_snapshot", map[string]any{"world_id": id, "snapshot": keepName}, world.LabelBeforeRestore)
 		settle(t, game.AuditRestore, before, adminGameFrom)
-		wantSnapshotAndAudit(t, world.ReasonBeforeRestore, world.LabelBeforeRestore, game.AuditRestore)
+		wantSnapshotAndAudit(t, was, world.ReasonBeforeRestore, world.LabelBeforeRestore, game.AuditRestore)
+		// Keep was taken with the probe on, so the world has it on again.
+		if !probeEnabled(t, liveModList) {
+			t.Error("after the restore the probe is not enabled: the world did not come back")
+		}
 	})
 	t.Run("update_game_version to "+adminGameTo, func(t *testing.T) {
-		before := inGames()
+		before, was := inGames(), snapshots(t)
 		twoStep(t, "update_game_version", map[string]any{"world_id": id, "version": adminGameTo}, world.LabelBeforeUpdate)
 		settle(t, game.AuditUpdate, before, adminGameTo)
-		wantSnapshotAndAudit(t, world.ReasonGameUpdate, world.LabelBeforeUpdate, game.AuditUpdate)
+		wantSnapshotAndAudit(t, was, world.ReasonGameUpdate, world.LabelBeforeUpdate, game.AuditUpdate)
 	})
 }
