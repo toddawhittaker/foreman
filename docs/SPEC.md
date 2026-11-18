@@ -3280,9 +3280,9 @@ The two-step tools are `delete_world`, `delete_favorite`,
 `restore_snapshot`, `delete_snapshots`, `force_stop`, `kick_player`,
 `ban_player`, `run_console_command`, `change_mods`, `change_mod_settings`,
 `change_game_settings`, `update_game_version`, `rollback_game_version` and
-`delete_webhook`. Each carries `DestructiveHint: true`. Every other admin
-tool sets it to `false` explicitly, and the tools that change nothing also
-set `ReadOnlyHint`. A two-step tool requires `world_id` where it acts on a
+`delete_webhook`. Each carries `DestructiveHint: true`. The tools that
+change nothing carry `ReadOnlyHint: true` instead, and every other admin
+tool sets `DestructiveHint` to `false` explicitly. A two-step tool requires `world_id` where it acts on a
 world, and its confirm call must repeat the first call's arguments. A confirm
 call spends its code before anything else, so a refused confirm still spends
 it. Only a bad, used, expired or mismatched code gets the one fixed
