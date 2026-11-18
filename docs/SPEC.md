@@ -3285,9 +3285,11 @@ tool sets it to `false` explicitly, and the tools that change nothing also
 set `ReadOnlyHint`. A two-step tool requires `world_id` where it acts on a
 world, and its confirm call must repeat the first call's arguments. A confirm
 call spends its code before anything else, so a refused confirm still spends
-it. A moved state is refused with a fresh preview and code; any other
-refusal gives the one fixed message (14.19). Every audit entry written by an admin tool
-carries the token's name (12.9). (P1)
+it. Only a bad, used, expired or mismatched code gets the one fixed
+message (14.19). Any other refusal, such as a busy or active world or a
+page check, keeps its own message, and the code is still spent. A moved
+state is refused with a fresh preview and code. Every audit entry written
+by an admin tool carries the token's name (12.9). (P1)
 
 ## 22. Languages
 

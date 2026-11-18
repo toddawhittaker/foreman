@@ -3927,8 +3927,9 @@ Rulings (Todd, 2026-11-17), now in SPEC 12.9, 21.5 and 21.8:
   A code is 16 random bytes in base64url. It lasts 5 minutes, is bound to the
   token, the tool and the SHA-256 of the arguments in canonical JSON, and is
   spent by any use, right or wrong. A token holds 10 and an eleventh drops the
-  oldest. Codes live in memory and are never logged. Every refusal gives one
-  message. `s.mcpAsk` issues a code and `s.mcpSpend` spends one. A
+  oldest. Codes live in memory and are never logged. A bad, used, expired or
+  mismatched code gets one fixed message. Any other refusal keeps its own
+  message, and the code is still spent. `s.mcpAsk` issues a code and `s.mcpSpend` spends one. A
   two-step tool is marked `DestructiveHint: true`, every other admin tool
   `false`, and the reads `ReadOnlyHint`.
 - **37 admin tools (SPEC 21.7; #696 to #699, #700, #701).** Worlds, favorites
@@ -4010,9 +4011,16 @@ Rulings (Todd, 2026-11-17), now in SPEC 12.9, 21.5 and 21.8:
   after its preview and is gone after the confirm.
 - `realgame4_mcp_admin_game_test.go` (#703, tag `game`) runs `change_mods`,
   `restore_snapshot` and `update_game_version` (2.0.77 to 2.1.24) through MCP
-  against a real `factoriotools/factorio` container, and checks the snapshot's
-  reason and label, the one audit row with the token's name, and that the game
-  reaches InGame.
+  against a real `factoriotools/factorio` container. For each it checks the
+  snapshot's reason and label, exactly one snapshot per action, the one audit
+  row with the token's name, and that the game reaches InGame. It also checks
+  that the "Before mod change" snapshot still has the probe mod enabled and
+  that the restore brings the probe back. Passed on a real 2.1 game
+  (`TestRealGameMCPAdmin`, a9fcf338, on pve1).
+- **Whole-epic checks (orchestrator).** `make verify` passed (90.7%
+  coverage), the full end-to-end suite passed on 7d4cdf18 (3492 passed, 0
+  failed), and the `internal/game` and `internal/web` real-game packages
+  passed.
 
 ### Gaps left
 
@@ -4038,10 +4046,6 @@ Rulings (Todd, 2026-11-17), now in SPEC 12.9, 21.5 and 21.8:
   the test checks the preview's own sentences instead.
 - **Tools are registered when no scheduler is wired.** The Foreman-wide tools
   then say the feature is unavailable.
-- **The real-game test checks the reason, label and audit action** that the
-  UI path writes, as the fake-game UI tests pin them. It does not repeat the
-  UI path against the real container. The orchestrator runs it with
-  `make test-game` before the epic merges.
 - **The 18.10b gate with a real Claude Code client on trial** is the
   orchestrator's check before the epic merges, not part of the build.
 - **Not built, on purpose:** snapshot `taken_by_token`, the raw settings

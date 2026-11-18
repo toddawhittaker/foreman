@@ -25,8 +25,10 @@ eleventh drops the oldest.
 
 A code is spent by any use. A wrong token, tool or arguments, an expired
 code, and a code whose call is later refused for another reason all spend
-it. Every refusal of the code itself gives one fixed message, so a caller
-learns nothing about which part was wrong.
+it. A bad, used, expired or mismatched code gets one fixed message, so a
+caller learns nothing about which part was wrong. Any other refusal, such as
+a busy world or a failed page check, keeps its own message, and the code is
+still spent.
 
 The "seen" state is what the preview showed that could move: the mod
 plan's hash and folder fingerprint, the settings files' hashes, the mod
