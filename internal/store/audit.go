@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -57,24 +58,27 @@ type AuditFilter struct {
 	Limit    int
 }
 
+// listAuditSQL is fixed text: a filter that is not set matches every row, so
+// values are only ever parameters. The row-value comparison lets the
+// (time, id) index start at the cursor instead of scanning from the newest.
+const listAuditSQL = `SELECT id, time, user_id, username, action, world_id, detail, token_name FROM audit_log
+	WHERE (? = '' OR username = ?) AND (? = '' OR action = ?) AND (? = '' OR world_id = ?)
+	  AND (time, id) < (?, ?)
+	ORDER BY time DESC, id DESC LIMIT ?`
+
 // ListAudit returns up to f.Limit entries that match f, newest first.
 func (s *Store) ListAudit(ctx context.Context, f AuditFilter) (_ []AuditEntry, err error) {
 	if f.Limit < 1 {
 		return nil, errors.New("list audit log: limit must be at least 1")
 	}
-	// A filter that is not set matches every row, so the statement is fixed
-	// text and the values are only ever parameters.
-	var beforeTime int64
+	// The first page starts after the largest possible time and id.
+	beforeTime, beforeID := int64(math.MaxInt64), int64(math.MaxInt64)
 	if !f.Before.Time.IsZero() {
-		beforeTime = f.Before.Time.Unix()
+		beforeTime, beforeID = f.Before.Time.Unix(), f.Before.ID
 	}
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, time, user_id, username, action, world_id, detail, token_name FROM audit_log
-		 WHERE (? = '' OR username = ?) AND (? = '' OR action = ?) AND (? = '' OR world_id = ?)
-		   AND (? = 0 OR time < ? OR (time = ? AND id < ?))
-		 ORDER BY time DESC, id DESC LIMIT ?`,
+	rows, err := s.db.QueryContext(ctx, listAuditSQL,
 		f.Username, f.Username, f.Action, f.Action, f.WorldID, f.WorldID,
-		beforeTime, beforeTime, beforeTime, f.Before.ID, f.Limit)
+		beforeTime, beforeID, f.Limit)
 	if err != nil {
 		return nil, fmt.Errorf("list audit log: %w", err)
 	}
@@ -160,15 +164,28 @@ func (s *Store) distinctAudit(ctx context.Context, what, query string) (_ []stri
 	return out, nil
 }
 
-// DeleteAuditBefore deletes the entries older than t and returns how many.
+// auditDeleteBatch is how many rows one delete statement removes, so a large
+// clean-up never holds the write lock long enough to refuse another write.
+const auditDeleteBatch = 10000
+
+// DeleteAuditBefore deletes the entries older than t, in batches, and returns
+// how many it deleted.
 func (s *Store) DeleteAuditBefore(ctx context.Context, t time.Time) (int64, error) {
-	res, err := s.db.ExecContext(ctx, "DELETE FROM audit_log WHERE time < ?", t.Unix())
-	if err != nil {
-		return 0, fmt.Errorf("delete old audit entries: %w", err)
+	var total int64
+	for {
+		res, err := s.db.ExecContext(ctx,
+			"DELETE FROM audit_log WHERE id IN (SELECT id FROM audit_log WHERE time < ? LIMIT ?)",
+			t.Unix(), auditDeleteBatch)
+		if err != nil {
+			return total, fmt.Errorf("delete old audit entries: %w", err)
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return total, fmt.Errorf("delete old audit entries: %w", err)
+		}
+		total += n
+		if n < auditDeleteBatch {
+			return total, nil
+		}
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("delete old audit entries: %w", err)
-	}
-	return n, nil
 }

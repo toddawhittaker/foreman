@@ -9628,7 +9628,7 @@ main:has(> .gate) > * + :not(h1, .gate) {
   border-block-end: 0;
 }
 
-.audit-list p {
+.audit-list :is(h3, p) {
   margin: 0;
 }
 

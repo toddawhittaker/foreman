@@ -51,7 +51,7 @@
   <ol class="audit-list" role="list" id="audit-list">
     {{- range .Rows}}
     <li id="audit-{{.ID}}">
-      <p><strong>{{if .Word.IsZero}}<span class="ident" translate="no">{{.Action}}</span>{{else}}{{msg .Word}}{{end}}</strong></p>
+      <h3>{{if .Word.IsZero}}<span class="ident" translate="no">{{.Action}}</span>{{else}}{{msg .Word}}{{end}}</h3>
       <dl class="facts facts--inline">
         <div><dt>{{t "audit.fact.time"}}</dt><dd>{{template "when" .Time}}</dd></div>
         <div><dt>{{t "audit.fact.user"}}</dt><dd>{{.User}}</dd></div>

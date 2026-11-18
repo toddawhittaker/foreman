@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -244,5 +245,86 @@ func TestDeleteAuditBeforeKeepsTheBoundary(t *testing.T) {
 	got, _ := s.ListAudit(ctx, AuditFilter{Limit: 10})
 	if len(got) != 2 || got[0].Action != "new" || got[1].Action != "edge" {
 		t.Errorf("left %+v, want new and edge", got)
+	}
+}
+
+// Paging starts at the cursor through the (time, id) index and does not scan
+// the table from the newest entry each time.
+func TestListAuditUsesTheTimeIndex(t *testing.T) {
+	s, _ := openTemp(t)
+	rows, err := s.db.Query("EXPLAIN QUERY PLAN "+listAuditSQL, "", "", "", "", "", "", int64(1000), int64(5), 51)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	var plan []string
+	for rows.Next() {
+		var id, parent, unused int
+		var detail string
+		if err := rows.Scan(&id, &parent, &unused, &detail); err != nil {
+			t.Fatal(err)
+		}
+		plan = append(plan, detail)
+	}
+	all := strings.Join(plan, "; ")
+	if !strings.Contains(all, "SEARCH audit_log USING INDEX audit_log_time") || strings.Contains(all, "SCAN audit_log") {
+		t.Errorf("query plan: %s", all)
+	}
+}
+
+// A clean-up bigger than one batch deletes everything it should and only that.
+func TestDeleteAuditBeforeRunsInBatches(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	const old, kept = 2*auditDeleteBatch + 17, 5
+	for _, c := range []struct {
+		n  int
+		at time.Time
+	}{{old, t0.Add(-time.Hour)}, {kept, t0}} {
+		_, err := s.db.ExecContext(ctx,
+			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?)
+			 INSERT INTO audit_log (time, username, action) SELECT ?, 'ann', 'x' FROM n`, c.n, c.at.Unix())
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := s.DeleteAuditBefore(ctx, t0)
+	if err != nil || got != old {
+		t.Fatalf("deleted %d, err %v, want %d", got, err, old)
+	}
+	var left int
+	if err := s.db.QueryRow("SELECT count(*) FROM audit_log").Scan(&left); err != nil {
+		t.Fatal(err)
+	}
+	if left != kept {
+		t.Errorf("%d entries left, want %d", left, kept)
+	}
+}
+
+// Pages by cursor stay right at a third page, when entries share a second
+// across the page borders.
+func TestListAuditCursorThirdPageWithTies(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	var rows []AuditEntry
+	for i := 0; i < 12; i++ {
+		rows = append(rows, AuditEntry{Time: t0.Add(time.Duration(i/5) * time.Second), Username: "ann", Action: "start"})
+	}
+	all := seedAudit(t, s, rows)
+	cur := AuditCursor{}
+	var third []AuditEntry
+	for p := 1; p <= 3; p++ {
+		page, err := s.ListAudit(ctx, AuditFilter{Before: cur, Limit: 4})
+		if err != nil {
+			t.Fatal(err)
+		}
+		last := page[len(page)-1]
+		cur = AuditCursor{Time: last.Time, ID: last.ID}
+		third = page
+	}
+	for i, e := range third {
+		if e.ID != all[8+i].ID {
+			t.Errorf("third page position %d: id %d, want %d", i, e.ID, all[8+i].ID)
+		}
 	}
 }
