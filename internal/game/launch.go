@@ -268,6 +268,9 @@ const (
 	// the catalogue names in Reason.Kind, such as a port in use; Detail is
 	// Docker's words (SPEC 8.7).
 	StartDockerRefused = "docker-refused"
+	// StartArchived: the world is archived, so it cannot start or be
+	// switched to (SPEC 5.9).
+	StartArchived = "archived"
 )
 
 // startRefused names the reason Docker refused to start the container,
@@ -313,6 +316,8 @@ func (e *StartError) Error() string {
 			return head + ": another program already uses the game's port (" + e.Detail + ")"
 		}
 		return head + ": Docker refused to start it (" + e.Detail + ")"
+	case StartArchived:
+		return head + ": the world is archived. Unarchive it first"
 	}
 	return head
 }

@@ -493,5 +493,17 @@
   "worlds.generate.resources.retry": "Zkusit znovu",
   "worlds.generate.resources.not_counted": "Toto stažení vyžaduje množství surovin nebo teritoria ničitelů, která zatím nejsou k dispozici. Je třeba stáhnout znovu ze stránky „Vygenerovat svět“, která je nejprve zjistí.",
   "worlds.generate.resources.not_kept": "Nastavení se během počítání surovin změnilo, takže množství nebylo uloženo. Je třeba to zkusit znovu.",
-  "worlds.list.col.world": "Svět"
+  "worlds.list.col.world": "Svět",
+  "worlds.badge.archived": "Archivovaný",
+  "worlds.archive.refused": "Tento svět je archivovaný, a proto ho nelze spustit. Nejprve je třeba ho vyjmout z archivu.",
+  "worlds.error.archive_active": "Toto je aktivní svět a aktivní svět nelze archivovat. Nejprve je třeba přepnout na jiný svět.",
+  "worlds.list.archived": "Archivované ({count})",
+  "worlds.world.archive.heading": "Archivace",
+  "worlds.world.archive.text": "Skryje tento svět v hlavním seznamu. Nelze ho spustit, dokud není vyjmut z archivu. Jeho soubory a snímky zůstanou beze změny.",
+  "worlds.world.archive.button": "Archivovat svět",
+  "worlds.world.archive.done": "Svět {name} byl archivován.",
+  "worlds.world.archived.heading": "Archivovaný svět",
+  "worlds.world.archived.text": "Tento svět je skrytý v hlavním seznamu a nelze ho spustit ani na něj přepnout. Jeho soubory a snímky zůstanou beze změny.",
+  "worlds.world.unarchive.button": "Vyjmout svět z archivu",
+  "worlds.world.unarchive.done": "Svět {name} byl vyjmut z archivu."
 }

@@ -57,9 +57,31 @@
     {{- end}}
   </ul>
   {{- else}}
+  {{- if not .Page.Archived}}
   <p class="empty empty--art empty--worlds">{{t "worlds.list.empty"}}</p>
   {{- /* The save is used on the Import page, which owns the upload, so the way there is a link ending in a chevron, not a button (DESIGN 7.1, 7.10). */}}
   <p><a href="{{.Page.ImportPath}}#upload-heading" class="link-tab" id="act-upload-save">{{t "worlds.list.upload_save"}}</a></p>
   {{- end}}
+  {{- end}}
 </section>
+{{- with .Page.Archived}}
+{{- /* Archived worlds stay out of the way: a closed foldout at the foot, each world's page one click on (SPEC 5.9). */}}
+<section class="panel" aria-label="{{t "worlds.list.archived" "count" (len .)}}">
+  <details class="disclosure" id="archived-worlds">
+    <summary>{{t "worlds.list.archived" "count" (len .)}}</summary>
+    <ul class="worlds" role="list">
+      {{- range .}}
+      <li>
+        <h3 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a> <span class="badge">{{t "worlds.badge.archived"}}</span></h3>
+        <dl class="facts">
+          <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .GameVersion}}<span class="ver"><code>{{.GameVersion}}</code></span>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
+          <div><dt>{{t "worlds.fact.last_played"}}</dt><dd>{{if .LastPlayedUnknown}}{{t "worlds.unknown_lower"}}{{else if .LastPlayed.IsZero}}{{t "worlds.never"}}{{else}}<time datetime="{{isoTime .LastPlayed}}" data-age-only>{{utc .LastPlayed}}</time>{{end}}</dd></div>
+          <div><dt>{{t "worlds.fact.disk_use"}}</dt><dd>{{if .SizeUnknown}}{{t "worlds.unknown_lower"}}{{else}}<span class="nowrap">{{bytes .DiskBytes}}</span>{{end}}</dd></div>
+        </dl>
+      </li>
+      {{- end}}
+    </ul>
+  </details>
+</section>
+{{- end}}
 {{- end}}

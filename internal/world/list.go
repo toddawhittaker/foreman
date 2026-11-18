@@ -38,6 +38,9 @@ type Summary struct {
 	// UseWhitelist is the world's "only whitelisted players can join"
 	// switch (SPEC 8.3).
 	UseWhitelist bool
+	// Archived is true for a world hidden from the main list that cannot
+	// start (SPEC 5.9).
+	Archived bool
 }
 
 // List returns every world in the worlds folder, the active one first, then
@@ -120,6 +123,7 @@ func summarize(worlds *os.Root, id string) (Summary, error) {
 		s.Newer = meta.Newer()
 		s.ImportedFrom = meta.ImportedFrom
 		s.UseWhitelist = meta.UseWhitelist
+		s.Archived = meta.Archived
 	}
 	if s.DiskBytes, err = diskUse(w); err != nil {
 		s.DiskBytes, s.SizeUnknown = 0, true

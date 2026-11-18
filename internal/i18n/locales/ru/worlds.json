@@ -493,5 +493,17 @@
   "worlds.generate.resources.retry": "Повторить",
   "worlds.generate.resources.not_counted": "Это скачивание запрашивает количество ресурсов или территории разрушителей, которых ещё нет. Скачайте снова со страницы «Создать мир», она сначала определит их.",
   "worlds.generate.resources.not_kept": "Настройки изменились во время подсчёта ресурсов, поэтому количество не сохранено. Попробуйте ещё раз.",
-  "worlds.list.col.world": "Мир"
+  "worlds.list.col.world": "Мир",
+  "worlds.badge.archived": "В архиве",
+  "worlds.archive.refused": "Этот мир в архиве, поэтому его нельзя запустить. Сначала разархивируйте его.",
+  "worlds.error.archive_active": "Это активный мир, а активный мир нельзя архивировать. Сначала переключитесь на другой мир.",
+  "worlds.list.archived": "В архиве ({count})",
+  "worlds.world.archive.heading": "Архивирование",
+  "worlds.world.archive.text": "Скройте этот мир из основного списка. Пока вы не разархивируете его, запустить его нельзя. Его файлы и снимки останутся без изменений.",
+  "worlds.world.archive.button": "Архивировать мир",
+  "worlds.world.archive.done": "Мир {name} помещён в архив.",
+  "worlds.world.archived.heading": "Мир в архиве",
+  "worlds.world.archived.text": "Этот мир скрыт из основного списка: его нельзя запустить и нельзя переключиться на него. Его файлы и снимки остаются без изменений.",
+  "worlds.world.unarchive.button": "Разархивировать мир",
+  "worlds.world.unarchive.done": "Мир {name} извлечён из архива."
 }

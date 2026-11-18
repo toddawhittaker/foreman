@@ -23,6 +23,9 @@ const (
 // WorldsPage is the world list (SPEC 5.4, DESIGN 8.2).
 type WorldsPage struct {
 	Worlds []world.Summary
+	// Archived are the archived worlds, shown in a closed foldout at the
+	// foot of the list (SPEC 5.9).
+	Archived []world.Summary
 	// Deleted names the world a delete just removed, for the message, and
 	// DeletedKept says whether its snapshots remain under Deleted worlds.
 	Deleted     string
@@ -103,6 +106,8 @@ func (s *server) worldRoutes() {
 	s.mux.HandleFunc("GET "+PathWorlds, s.requireUser(s.handleWorlds))
 	s.mux.HandleFunc("GET "+PathWorlds+"/{id}", s.requireUser(s.handleWorld))
 	s.mux.HandleFunc("POST "+PathWorlds+"/{id}/rename", s.requireUser(s.handleRename))
+	s.mux.HandleFunc("POST "+PathWorlds+"/{id}/archive", s.requireUser(s.handleArchive))
+	s.mux.HandleFunc("POST "+PathWorlds+"/{id}/unarchive", s.requireUser(s.handleUnarchive))
 	s.mux.HandleFunc("GET "+PathWorldDelete, s.requireUser(s.handleDeleteForm))
 	s.mux.HandleFunc("POST "+PathWorldDelete, s.requireUser(s.handleDelete))
 	s.mux.HandleFunc("GET "+PathDeleted, s.requireUser(s.handleDeleted))
@@ -118,6 +123,8 @@ type WorldPage struct {
 	// Name refills the rename field.
 	Name      string
 	NameError i18n.Msg
+	// ArchiveError says why an archive or unarchive was refused.
+	ArchiveError i18n.Msg
 	// CanSwitch offers "Switch to this world": this mode has server control
 	// and the world is not the active one (SPEC 7.9). SwitchBusy says an
 	// operation stops it, with a link to the Server page (DESIGN 7.1).
@@ -187,6 +194,8 @@ func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.Name
 // Paths the world page links and posts to.
 func (p WorldPage) WorldPath() string     { return worldPath(p.World.ID) }
 func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/rename" }
+func (p WorldPage) ArchivePath() string   { return worldPath(p.World.ID) + "/archive" }
+func (p WorldPage) UnarchivePath() string { return worldPath(p.World.ID) + "/unarchive" }
 func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/snapshots" }
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
 func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }
@@ -268,7 +277,14 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 		s.fail(w, r, "list worlds", err)
 		return
 	}
-	p := WorldsPage{Worlds: list}
+	p := WorldsPage{}
+	for _, w := range list {
+		if w.Archived {
+			p.Archived = append(p.Archived, w)
+		} else {
+			p.Worlds = append(p.Worlds, w)
+		}
+	}
 	if s.game != nil {
 		for _, w := range list {
 			if w.Active {
@@ -390,6 +406,9 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 		w.Header().Set("HX-Refresh", "true")
 	}
 	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)
+	if p.Done.IsZero() {
+		p.Done = archiveDone(r.URL.Query().Get("archived"), sum)
+	}
 	s.importFacts(&p, r)
 	s.generatedFacts(&p, r)
 	s.clonedFacts(&p, r)
@@ -405,6 +424,19 @@ func renameDone(renamed, current string) i18n.Msg {
 		return i18n.Msg{}
 	}
 	return i18n.M("worlds.world.renamed", "name", current)
+}
+
+// archiveDone is the message after an archive or unarchive. The link says
+// which, and the message shows only while the world is in that state, so a
+// crafted link cannot put words on the page.
+func archiveDone(change string, sum world.Summary) i18n.Msg {
+	switch {
+	case change == archiveOn && sum.Archived:
+		return i18n.M("worlds.world.archive.done", "name", sum.Name)
+	case change == archiveOff && !sum.Archived:
+		return i18n.M("worlds.world.unarchive.done", "name", sum.Name)
+	}
+	return i18n.Msg{}
 }
 
 // worldPage builds a world's page, with its Switch panel's state. A world
@@ -433,7 +465,7 @@ func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, 
 		p.Rollback = s.rollbackOffer(sum.ID)
 	}
 	switch {
-	case s.game == nil || sum.Unreadable || sum.Newer || sum.Active:
+	case s.game == nil || sum.Unreadable || sum.Newer || sum.Active || sum.Archived:
 	case s.switchBusy(ctx, sum.ID):
 		// When the operation is on this world, Busy already says so.
 		p.SwitchBusy = p.Busy.IsZero()
@@ -467,6 +499,68 @@ func (s *server) handleRename(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	p := s.worldPage(r.Context(), sum, name, msg)
+	s.favoriteFacts(&p, r)
+	s.page(w, r, status, u.Username, p)
+}
+
+// The audit actions of archive and unarchive (SPEC 12.9), and the values the
+// redirect's "archived" query carries.
+const (
+	AuditWorldArchive   = "world-archive"
+	AuditWorldUnarchive = "world-unarchive"
+	archiveOn           = "on"
+	archiveOff          = "off"
+)
+
+// archiveWorld archives or unarchives a world and records it under by
+// (SPEC 5.9, 12.9). The page and the MCP tools both use it, so each is
+// refused for the same reasons. Nothing is deleted, so the record is
+// written after the change, as for the other settings.
+func (s *server) archiveWorld(ctx context.Context, by game.Actor, id string, on bool) error {
+	if err := s.worlds.SetArchived(ctx, id, on); err != nil {
+		return err
+	}
+	action := AuditWorldUnarchive
+	if on {
+		action = AuditWorldArchive
+	}
+	s.audit(ctx, by, action, id, "")
+	return nil
+}
+
+func (s *server) handleArchive(w http.ResponseWriter, r *http.Request, u store.User) {
+	s.changeArchive(w, r, u, true)
+}
+
+func (s *server) handleUnarchive(w http.ResponseWriter, r *http.Request, u store.User) {
+	s.changeArchive(w, r, u, false)
+}
+
+// changeArchive archives or unarchives the world in the path and comes back
+// to its page. A refusal shows the page again with the reason.
+func (s *server) changeArchive(w http.ResponseWriter, r *http.Request, u store.User, on bool) {
+	if !s.readForm(w, r) {
+		return
+	}
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
+		return
+	}
+	err := s.archiveWorld(r.Context(), actor(u), sum.ID, on)
+	if err == nil {
+		change := archiveOff
+		if on {
+			change = archiveOn
+		}
+		http.Redirect(w, r, worldPath(sum.ID)+"?archived="+change, http.StatusSeeOther)
+		return
+	}
+	status, msg, ok := s.refusal(w, r, u, "archive world", err)
+	if !ok {
+		return
+	}
+	p := s.worldPage(r.Context(), sum, sum.Name, i18n.Msg{})
+	p.ArchiveError = msg
 	s.favoriteFacts(&p, r)
 	s.page(w, r, status, u.Username, p)
 }

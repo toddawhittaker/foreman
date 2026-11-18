@@ -476,5 +476,17 @@
   "worlds.generate.resources.retry": "Try again",
   "worlds.generate.resources.not_counted": "This download asks for resource amounts or demolisher territories that are not held yet. Download it again from the Generate a world page, which counts them first.",
   "worlds.generate.resources.not_kept": "The settings changed while the resources were counted, so the amounts were not kept. Try again.",
-  "worlds.list.col.world": "World"
+  "worlds.list.col.world": "World",
+  "worlds.badge.archived": "Archived",
+  "worlds.archive.refused": "This world is archived, so it cannot start. Unarchive it first.",
+  "worlds.error.archive_active": "This is the active world, and the active world cannot be archived. Switch to another world first.",
+  "worlds.list.archived": "Archived ({count})",
+  "worlds.world.archive.heading": "Archive",
+  "worlds.world.archive.text": "Hide this world from the main list. It cannot start until you unarchive it. Its files and snapshots stay as they are.",
+  "worlds.world.archive.button": "Archive world",
+  "worlds.world.archive.done": "{name} is archived.",
+  "worlds.world.archived.heading": "Archived world",
+  "worlds.world.archived.text": "This world is hidden from the main list and cannot start or be switched to. Its files and snapshots stay as they are.",
+  "worlds.world.unarchive.button": "Unarchive world",
+  "worlds.world.unarchive.done": "{name} is unarchived."
 }

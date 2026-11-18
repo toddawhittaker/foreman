@@ -54,10 +54,10 @@ func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapsho
 	if err != nil {
 		return Snapshot{}, err
 	}
-	_, err = readChangeable(live)
+	liveMeta, liveErr := readChangeable(live)
 	_ = live.Close()
-	if errors.Is(err, ErrNewerFormat) {
-		return Snapshot{}, err
+	if errors.Is(liveErr, ErrNewerFormat) {
+		return Snapshot{}, liveErr
 	}
 	release, err := m.checkRestore(ctx, id, snap)
 	if err != nil {
@@ -81,6 +81,13 @@ func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapsho
 	if err := m.stage(worlds, staging, id, snap); err != nil {
 		_ = worlds.RemoveAll(staging)
 		return before, err
+	}
+	// A live world.json that cannot be read leaves the snapshot's flag.
+	if liveErr == nil {
+		if err := keepArchived(worlds, staging, snap, liveMeta.Archived); err != nil {
+			_ = worlds.RemoveAll(staging)
+			return before, err
+		}
 	}
 	var old string
 	err = m.commitStaged(ctx, worlds, staging, id, snap, func() (err error) {
@@ -179,6 +186,12 @@ func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) 
 		_ = worlds.RemoveAll(staging)
 		return err
 	}
+	// A deleted world has no current state to keep; it comes back unarchived,
+	// so it can never become active while archived.
+	if err := keepArchived(worlds, staging, snap, false); err != nil {
+		_ = worlds.RemoveAll(staging)
+		return err
+	}
 	err = m.commitStaged(ctx, worlds, staging, id, snap, func() error {
 		return worlds.Rename(staging, id)
 	})
@@ -272,6 +285,31 @@ func (m *Manager) stage(worlds *os.Root, dir, id string, snap Snapshot) error {
 		}
 	}
 	return syncDir(dst, ".")
+}
+
+// keepArchived makes the staged world's archive flag archived, whatever the
+// snapshot's world.json says (SPEC 5.9, 6.5). A world.json that already
+// matches is left as the snapshot recorded it, time and all.
+func keepArchived(worlds *os.Root, staging string, snap Snapshot, archived bool) error {
+	dst, err := worlds.OpenRoot(staging)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = dst.Close() }()
+	meta, err := ReadMeta(dst)
+	if err != nil || meta.Archived == archived {
+		return nil //nolint:nilerr // a world.json that cannot be read is restored as it was
+	}
+	meta.Archived = archived
+	if err := WriteMeta(dst, meta); err != nil {
+		return err
+	}
+	for _, f := range snap.Files {
+		if f.Path == MetaFile {
+			return dst.Chtimes(MetaFile, f.ModTime, f.ModTime)
+		}
+	}
+	return nil
 }
 
 // swapIn moves the live world aside and renames the staged one into its
