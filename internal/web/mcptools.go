@@ -334,6 +334,9 @@ func (s *server) mcpStatus(ctx context.Context, _ *mcp.CallToolRequest, in mcpWo
 	if err != nil {
 		return nil, mcpStatusOut{}, err
 	}
+	// The result is read before the status, so a reply never pairs an
+	// ended action's result with the state from while it ran (SPEC 21.5).
+	res, ended := s.runs.result(sum.ID)
 	st := s.game.Status(sum.ID)
 	out := mcpStatusOut{World: worldRef(sum), Active: sum.Active, State: string(st.State), GameVersion: st.GameVersion,
 		StartedAt: mcpTime(st.StartedAt), UntrustedCrashReason: st.CrashReason}
@@ -351,7 +354,7 @@ func (s *server) mcpStatus(ctx context.Context, _ *mcp.CallToolRequest, in mcpWo
 		out.Running = &mcpRunning{Action: "unknown"}
 		lines = append(lines, "An action is running.")
 	}
-	if res, ok := s.runs.result(sum.ID); ok {
+	if ended {
 		o := s.outcome(sum, res)
 		out.Last = &o
 		if o.OK {
