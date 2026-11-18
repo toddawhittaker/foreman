@@ -72,16 +72,17 @@ func (s *server) mcpWorldFail(what string, err error) error {
 	return errors.New(inEnglish(msg))
 }
 
-// mcpProblems joins a form's problems into one refusal.
+// mcpProblems words a form's problems in English, in the order the form
+// shows them, after what was not done. A problem never holds what was sent.
 func mcpProblems(what string, ps []Problem) error {
 	words := make([]string, 0, len(ps))
 	for _, p := range ps {
 		words = append(words, inEnglish(p.Message))
 	}
 	if len(words) == 0 {
-		return fmt.Errorf("the %s was refused", what)
+		return errors.New(what)
 	}
-	return errors.New(strings.Join(words, " "))
+	return fmt.Errorf("%s: %s", what, strings.Join(words, " "))
 }
 
 type mcpGenerateIn struct {
@@ -169,7 +170,7 @@ func (s *server) mcpGenerate(ctx context.Context, req *mcp.CallToolRequest, in m
 	id, err := s.generateWorld(ctx, by, &f, nw, ok, form)
 	switch {
 	case errors.Is(err, errGenerateForm):
-		return nil, mcpGenerateOut{}, mcpProblems("generate", GeneratePage{Form: f}.Problems())
+		return nil, mcpGenerateOut{}, mcpProblems("the world was not generated", GeneratePage{Form: f}.Problems())
 	case err != nil:
 		return nil, mcpGenerateOut{}, s.mcpWorldFail("generate the world", err)
 	}
@@ -214,7 +215,7 @@ func (s *server) mcpClone(ctx context.Context, req *mcp.CallToolRequest, in mcpC
 	}
 	p.checkForm(in.Name, in.Map)
 	if p.hasErrors() {
-		return nil, mcpCloneOut{}, mcpProblems("clone", p.Problems())
+		return nil, mcpCloneOut{}, mcpProblems("the world was not cloned", p.Problems())
 	}
 	by := mcpActor(req)
 	var id string
@@ -272,7 +273,7 @@ type mcpDeleteWorldOut struct {
 func deletePreview(p DeletePage) (will []string, snapshot string) {
 	folder := "worlds/" + p.World.ID
 	size := i18n.English.Bytes(p.World.DiskBytes)
-	label := inEnglish(i18n.M("worlds.snapshot.label.before_delete"))
+	label := world.LabelBeforeDelete
 	if p.World.SizeUnknown {
 		will = append(will, inEnglish(i18n.M("worlds.delete.folder_unknown", "folder", folder)))
 	} else {
@@ -294,12 +295,9 @@ func deletePreview(p DeletePage) (will []string, snapshot string) {
 // state is the world's id, name and size, which the preview shows.
 func (s *server) mcpDeleteWorld(ctx context.Context, req *mcp.CallToolRequest, in mcpDeleteWorldIn) (*mcp.CallToolResult, mcpDeleteWorldOut, error) {
 	// A code is spent before any check, so a refused call spends it too.
-	var was confirmSeen
-	if in.ConfirmCode != "" {
-		var err error
-		if was, err = s.mcpSpend(req, in); err != nil {
-			return nil, mcpDeleteWorldOut{}, err
-		}
+	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	if err != nil {
+		return nil, mcpDeleteWorldOut{}, err
 	}
 	sum, err := s.mcpNamed(ctx, in.WorldID)
 	if err != nil {
@@ -323,12 +321,7 @@ func (s *server) mcpDeleteWorld(ctx context.Context, req *mcp.CallToolRequest, i
 		return preview()
 	}
 	if was.moved(seen) {
-		res, out, err := preview()
-		if res != nil {
-			res = mcpText("World %s changed since the preview, so nothing was deleted. Here is a fresh preview and code.", sum.Name)
-			res.IsError = true
-		}
-		return res, out, err
+		return mcpRetryPreview(preview, "World %s changed since the preview, so nothing was deleted. Here is a fresh preview and code.", sum.Name)
 	}
 	by := mcpActor(req)
 	finished, err := s.mcpDetached(ctx, func(ctx context.Context) error {
@@ -498,12 +491,9 @@ func favoriteDeletePreview(FavoriteDeletePage) []string {
 // seen state is the favorite's id and name.
 func (s *server) mcpDeleteFavorite(_ context.Context, req *mcp.CallToolRequest, in mcpDeleteFavoriteIn) (*mcp.CallToolResult, mcpDeleteFavoriteOut, error) {
 	// A code is spent before any check, so a refused call spends it too.
-	var was confirmSeen
-	if in.ConfirmCode != "" {
-		var err error
-		if was, err = s.mcpSpend(req, in); err != nil {
-			return nil, mcpDeleteFavoriteOut{}, err
-		}
+	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	if err != nil {
+		return nil, mcpDeleteFavoriteOut{}, err
 	}
 	fav, err := s.mcpFavorite(in.FavoriteID)
 	if err != nil {
@@ -524,12 +514,7 @@ func (s *server) mcpDeleteFavorite(_ context.Context, req *mcp.CallToolRequest, 
 		return preview()
 	}
 	if was.moved(seen) {
-		res, out, err := preview()
-		if res != nil {
-			res = mcpText("Favorite %s changed since the preview, so nothing was deleted. Here is a fresh preview and code.", fav.ID)
-			res.IsError = true
-		}
-		return res, out, err
+		return mcpRetryPreview(preview, "Favorite %s changed since the preview, so nothing was deleted. Here is a fresh preview and code.", fav.ID)
 	}
 	if err := s.favorites.Delete(fav.ID); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {

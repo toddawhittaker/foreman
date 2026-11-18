@@ -2,15 +2,8 @@ package web
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"html"
-	"io/fs"
-	"maps"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -20,66 +13,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
-
-// t5Tree is every file under the data folder's worlds with its hash, so a
-// test can tell that a preview call changed nothing.
-func t5Tree(t *testing.T, g *gameRig) map[string]string {
-	t.Helper()
-	out := map[string]string{}
-	root := g.worlds.Dirs().Worlds
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		b, err := os.ReadFile(p) //nolint:gosec // a test temp folder
-		if err != nil {
-			return err
-		}
-		sum := sha256.Sum256(b)
-		out[strings.TrimPrefix(p, root)] = hex.EncodeToString(sum[:])
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return out
-}
-
-// t5Unchanged fails unless the data folder and the audit log are as before.
-func t5Unchanged(t *testing.T, g *gameRig, what string, tree map[string]string, audits int) {
-	t.Helper()
-	if !maps.Equal(t5Tree(t, g), tree) {
-		t.Errorf("%s changed the data folder", what)
-	}
-	if n := len(g.audit()); n != audits {
-		t.Errorf("%s changed the audit log: %d rows, want %d", what, n, audits)
-	}
-}
-
-// t5PageText renders a page in English as the browser gets it and returns
-// its text without markup, with spaces made single.
-func t5PageText(t *testing.T, p Page) string {
-	t.Helper()
-	rec := httptest.NewRecorder()
-	if err := newTestRenderer(t).Render(rec, httptest.NewRequest("GET", "/", nil), 200, "alice", LiveState{}, nil, p); err != nil {
-		t.Fatal(err)
-	}
-	text := html.UnescapeString(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(rec.Body.String(), ""))
-	return strings.Join(strings.Fields(text), " ")
-}
-
-// t5WantWill fails unless every will sentence appears in the page's text.
-func t5WantWill(t *testing.T, page string, will []string) {
-	t.Helper()
-	if len(will) == 0 {
-		t.Fatal("no will sentences")
-	}
-	for _, w := range will {
-		if !strings.Contains(page, strings.Join(strings.Fields(w), " ")) {
-			t.Errorf("the confirm page does not say %q", w)
-		}
-	}
-}
 
 func readSettingsFile(t *testing.T, g *gameRig, id, file string) string {
 	t.Helper()
@@ -120,6 +53,9 @@ func TestMCPGetGameSettings(t *testing.T) {
 	for _, tool := range tools.Tools {
 		switch tool.Name {
 		case "get_game_settings":
+			if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
+				t.Error("get_game_settings is not read-only")
+			}
 			for _, f := range []string{"untrusted_admins", "untrusted_bans", "untrusted_whitelist"} {
 				if !strings.Contains(tool.Description, f) {
 					t.Errorf("get_game_settings does not name %s", f)
@@ -150,11 +86,11 @@ func TestMCPChangeGameSettings(t *testing.T) {
 	g.writeConfig(id, world.ServerAdminListFile, `["Bob"]`)
 	args := map[string]any{"world_id": id, "settings": map[string]any{"max_players": 20, "auto_pause": false},
 		"game_password": "s3cret-pass", "admins": []string{"Bob", "Carol"}, "whitelist": []string{"Dave"}}
-	tree, audits := t5Tree(t, g), len(g.audit())
+	tree, audits := dataDigest(t, g.worlds.Dirs()), len(g.audit())
 
 	res, out := call(t, cs, "change_game_settings", args)
 	js := asJSON(out) + resultText(res)
-	t5Unchanged(t, g, "the preview", tree, audits)
+	wantDataUnchanged(t, g, "the preview", tree, audits)
 	if res.IsError || out["done"] != false || out["confirm_code"] == "" || out["snapshot"] != world.LabelBeforeSettings ||
 		!strings.Contains(js, `"key":"max_players"`) || !strings.Contains(js, `"key":"game_password"`) ||
 		!strings.Contains(asJSON(out["untrusted_admins_added"]), "Carol") || !strings.Contains(asJSON(out["untrusted_whitelist_added"]), "Dave") ||
@@ -202,12 +138,12 @@ func TestMCPChangeGameSettingsMoved(t *testing.T) {
 	args := map[string]any{"world_id": id, "settings": map[string]any{"max_players": 20}}
 	code := askCode(t, cs, "change_game_settings", args)
 	g.writeConfig(id, world.ServerAdminListFile, `["Eve"]`)
-	tree, audits := t5Tree(t, g), len(g.audit())
+	tree, audits := dataDigest(t, g.worlds.Dirs()), len(g.audit())
 	res, out := call(t, cs, "change_game_settings", withCode(args, code))
 	if !res.IsError || !strings.Contains(resultText(res), "changed since the preview") || out["confirm_code"] == "" || out["confirm_code"] == code {
 		t.Fatalf("moved: %s %s", resultText(res), asJSON(out))
 	}
-	t5Unchanged(t, g, "the refused confirm", tree, audits)
+	wantDataUnchanged(t, g, "the refused confirm", tree, audits)
 	// The fresh code works.
 	res, out = call(t, cs, "change_game_settings", withCode(args, out["confirm_code"].(string)))
 	if res.IsError || out["done"] != true {
@@ -220,7 +156,7 @@ func TestMCPChangeGameSettingsMoved(t *testing.T) {
 func TestMCPChangeGameSettingsRefusals(t *testing.T) {
 	g, cs := mcpRig(t, auth.ScopeAdmin, image21)
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
-	tree, audits := t5Tree(t, g), len(g.audit())
+	tree, audits := dataDigest(t, g.worlds.Dirs()), len(g.audit())
 	for _, c := range []struct {
 		args map[string]any
 		want string
@@ -237,7 +173,7 @@ func TestMCPChangeGameSettingsRefusals(t *testing.T) {
 			t.Errorf("%v: %s, want %q", c.args, resultText(res), c.want)
 		}
 	}
-	t5Unchanged(t, g, "the refusals", tree, audits)
+	wantDataUnchanged(t, g, "the refusals", tree, audits)
 }
 
 // SPEC 8.3, 12.9: the whitelist switch is set as the tab's switch sets it,
@@ -266,7 +202,7 @@ func TestMCPSettingsPreviewParity(t *testing.T) {
 			Settings: changeRows("2.1", []gamesettings.Change{{Key: "max_players", Kind: gamesettings.KindChanged, Old: "8", New: "20"}}),
 			Promote:  []string{"Carol"}, Banned: []string{"Griefer"}, WhitelistAdded: []string{"Dave"},
 			BansLive: running, WhitelistLive: running, TidyKept: 3, TidyRemoved: 2}
-		t5WantWill(t, t5PageText(t, p), settingsWill(p))
+		wantWill(t, settingsWill(p), pageText(t, p))
 	}
 }
 

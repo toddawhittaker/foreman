@@ -101,14 +101,14 @@ func TestMCPForceStop(t *testing.T) {
 	g, cs, id := liveRig(t)
 	rconPW, gamePW := g.secrets(id)
 	args := map[string]any{"world_id": id}
-	digest, audits, calls := dataDigest(t, g), len(g.audit()), len(g.mutations())
+	digest, audits, calls := dataDigest(t, g.worlds.Dirs()), len(g.audit()), len(g.mutations())
 
 	res, out := call(t, cs, "force_stop", args)
 	if res.IsError || out["done"] != false || out[confirmCodeKey] == "" || !strings.Contains(asJSON(out["untrusted_online"]), "bob") ||
 		!strings.Contains(asJSON(out["will"]), "Stop the game at once") {
 		t.Fatalf("preview: %s %s", resultText(res), asJSON(out))
 	}
-	if dataDigest(t, g) != digest || len(g.audit()) != audits || len(g.mutations()) != calls || g.containerStatus(id) != "running" {
+	if dataDigest(t, g.worlds.Dirs()) != digest || len(g.audit()) != audits || len(g.mutations()) != calls || g.containerStatus(id) != "running" {
 		t.Fatal("the preview changed something")
 	}
 
@@ -168,7 +168,7 @@ func TestForceStopWillMatchesThePage(t *testing.T) {
 		"never played": {World: world.Summary{ID: "base", Name: "Base"}},
 		"played":       {World: world.Summary{ID: "base", Name: "Base", LastPlayed: time.Date(2026, 11, 2, 11, 30, 0, 0, time.UTC)}, Online: Online{Asked: true, Names: []string{"bob"}}},
 	} {
-		t.Run(name, func(t *testing.T) { wantWillOnPage(t, forceStopWill(p), p) })
+		t.Run(name, func(t *testing.T) { wantWill(t, forceStopWill(p), pageText(t, p)) })
 	}
 }
 
@@ -280,7 +280,7 @@ func TestPlayerWillMatchesThePage(t *testing.T) {
 		"ban, not on":    {World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerBan, Name: "bob", Gone: true},
 		"ban, not known": {World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerBan, Name: "bob"},
 	} {
-		t.Run(name, func(t *testing.T) { wantWillOnPage(t, playerWill(p), p) })
+		t.Run(name, func(t *testing.T) { wantWill(t, playerWill(p), pageText(t, p)) })
 	}
 }
 

@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -19,7 +18,7 @@ import (
 
 // addVersionTools adds the game version tools (SPEC 21.7).
 func (s *server) addVersionTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{Name: "list_game_versions", Annotations: oneStep,
+	mcp.AddTool(srv, &mcp.Tool{Name: "list_game_versions", Annotations: readOnly,
 		Description: "List the Factorio versions that have game images, newest last, marking the stable and experimental releases. " +
 			"With world_id, only versions newer than the world's, which update_game_version can move it to, and whether it can be rolled back."}, s.mcpListGameVersions)
 	if s.game == nil {
@@ -34,10 +33,6 @@ func (s *server) addVersionTools(srv *mcp.Server) {
 		Description: "Put a world back on the Factorio version it had before its last update, in two steps, as the world's Roll back page does: " +
 			"a \"Before restore\" snapshot is taken, then the \"Before update\" snapshot is restored. Play since the update is lost. " +
 			"The first call changes nothing and returns a preview and a confirm_code; call again with the same arguments and the code to roll back." + mcpWaitNote()}, s.mcpRollbackGameVersion)
-}
-
-func mcpWaitNote() string {
-	return fmt.Sprintf(" The call waits up to %d seconds; if the action is still running then, server_status reports its result.", int(mcpWait.Seconds()))
 }
 
 type mcpVersionsIn struct {
@@ -98,7 +93,7 @@ func updateWill(p UpdatePage) []string {
 		will = append(will, inEnglish(i18n.M("server.update.warn")))
 	}
 	will = append(will,
-		inEnglish(i18n.M("server.update.snapshot", "world", p.World.Name, "label", i18n.M("worlds.snapshot.label.before_update"))),
+		inEnglish(i18n.M("server.update.snapshot", "world", p.World.Name, "label", world.LabelBeforeUpdate)),
 		inEnglish(i18n.M("server.update.set")))
 	if p.Running {
 		will = append(will, inEnglish(i18n.M("server.update.start")))
@@ -112,17 +107,15 @@ func updateWill(p UpdatePage) []string {
 // (SPEC 21.8, 10.3). The seen state is the world, its version and target,
 // and whether its game runs.
 func (s *server) mcpUpdateGameVersion(ctx context.Context, req *mcp.CallToolRequest, in mcpUpdateIn) (*mcp.CallToolResult, mcpVersionOut, error) {
-	sum, err := s.mcpNamed(ctx, in.WorldID)
+	// A confirm call spends its code before any check, so a refused
+	// confirm cannot be tried again with the same code.
+	was, err := s.spendIfCode(req, in, in.ConfirmCode)
 	if err != nil {
 		return nil, mcpVersionOut{}, err
 	}
-	// A confirm call spends its code before any check, so a refused
-	// confirm cannot be tried again with the same code.
-	var was confirmSeen
-	if in.ConfirmCode != "" {
-		if was, err = s.mcpSpend(req, in); err != nil {
-			return nil, mcpVersionOut{}, err
-		}
+	sum, err := s.mcpNamed(ctx, in.WorldID)
+	if err != nil {
+		return nil, mcpVersionOut{}, err
 	}
 	target := strings.TrimSpace(in.Version)
 	p := s.updatePage(sum, target, CountdownForm{})
@@ -185,7 +178,7 @@ func rollbackWill(p RollbackPage) []string {
 	if p.Running {
 		will = append(will, inEnglish(i18n.M("server.update.warn")))
 	}
-	before := i18n.M("worlds.snapshot.label.before_restore")
+	before := world.LabelBeforeRestore
 	will = append(will,
 		inEnglish(i18n.M("server.rollback.snapshot", "world", p.World.Name, "label", before)),
 		inEnglish(i18n.M("server.rollback.restore", "label", snapshotLabelArg(p.Snapshot),
@@ -200,17 +193,15 @@ func rollbackWill(p RollbackPage) []string {
 // steps (SPEC 21.8, 10.4). The seen state is the world, the snapshot and
 // version it goes back to, and whether its game runs.
 func (s *server) mcpRollbackGameVersion(ctx context.Context, req *mcp.CallToolRequest, in mcpRollbackIn) (*mcp.CallToolResult, mcpVersionOut, error) {
-	sum, err := s.mcpNamed(ctx, in.WorldID)
+	// A confirm call spends its code before any check, so a refused
+	// confirm cannot be tried again with the same code.
+	was, err := s.spendIfCode(req, in, in.ConfirmCode)
 	if err != nil {
 		return nil, mcpVersionOut{}, err
 	}
-	// A confirm call spends its code before any check, so a refused
-	// confirm cannot be tried again with the same code.
-	var was confirmSeen
-	if in.ConfirmCode != "" {
-		if was, err = s.mcpSpend(req, in); err != nil {
-			return nil, mcpVersionOut{}, err
-		}
+	sum, err := s.mcpNamed(ctx, in.WorldID)
+	if err != nil {
+		return nil, mcpVersionOut{}, err
 	}
 	p, err := s.rollbackPage(sum)
 	if err != nil {
