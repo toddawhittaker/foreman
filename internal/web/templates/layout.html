@@ -236,17 +236,23 @@
 </nav>
 {{- end}}
 
-{{/* The tabs of Foreman's own settings pages (DESIGN 8.15). Takes "account", "public-mods", "api-tokens" ("api-token" under it),
+{{/* The tabs of Foreman's own settings pages (DESIGN 8.15). Takes "account", "general", "users" ("user" under it), "audit-log", "public-mods", "api-tokens" ("api-token" under it),
      "schedule" or "notifications", or "notification" on a page under the
      notifications list, where its link is current but not the page. */}}
 {{define "settings-tabs" -}}
 <nav class="subnav" aria-label="{{t "common.settings.label"}}">
   <ul role="list">
     <li><a href="{{accountPath}}"{{if eq . "account"}} aria-current="page"{{end}}>{{t "account.title"}}</a></li>
+    {{if generalTabOn}}<li><a href="{{generalPath}}"{{if eq . "general"}} aria-current="page"{{end}}>{{t "common.menu.general"}}</a></li>
+    {{end -}}
     <li><a href="{{schedulePath}}"{{if eq . "schedule"}} aria-current="page"{{end}}>{{t "common.menu.schedule"}}</a></li>
     <li><a href="{{notificationsPath}}"{{if eq . "notifications"}} aria-current="page"{{else if eq . "notification"}} aria-current="true"{{end}}>{{t "common.menu.notifications"}}</a></li>
     <li><a href="{{publicModsSetPath}}"{{if eq . "public-mods"}} aria-current="page"{{end}}>{{t "publicmods.settings.tab"}}</a></li>
     <li><a href="{{apiTokensPath}}"{{if eq . "api-tokens"}} aria-current="page"{{else if eq . "api-token"}} aria-current="true"{{end}}>{{t "apitokens.tab"}}</a></li>
+    {{if usersTabOn}}<li><a href="{{usersPath}}"{{if eq . "users"}} aria-current="page"{{else if eq . "user"}} aria-current="true"{{end}}>{{t "common.menu.users"}}</a></li>
+    {{end -}}
+    {{if auditTabOn}}<li><a href="{{auditLogPath}}"{{if eq . "audit-log"}} aria-current="page"{{end}}>{{t "common.menu.auditlog"}}</a></li>
+    {{end -}}
   </ul>
 </nav>
 {{- end}}
