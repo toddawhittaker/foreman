@@ -1,7 +1,9 @@
 # GO_IMAGE has no default: the Makefile passes the pinned image, so the Go
 # version is named in one place and checked by `make verify`.
 ARG GO_IMAGE
-FROM ${GO_IMAGE} AS build
+# The build runs on the builder's own platform and cross-compiles, so an arm64
+# image is built without emulation.
+FROM --platform=$BUILDPLATFORM ${GO_IMAGE} AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -13,12 +15,25 @@ COPY internal ./internal
 # values are only ever expanded inside double quotes, never as commands.
 ARG VERSION=
 ARG COMMIT=
+ARG TARGETOS
+ARG TARGETARCH
 RUN v="$(printf '%s' "${VERSION}" | tr -cd 'A-Za-z0-9._+-')" && c="$(printf '%s' "${COMMIT}" | tr -cd 'A-Za-z0-9-')" && \
-    CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath \
+    CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" GOTOOLCHAIN=local go build -trimpath \
     -ldflags="-s -w -X github.com/toddawhittaker/foreman/internal/version.Version=${v} -X github.com/toddawhittaker/foreman/internal/version.Commit=${c}" \
     -o /out/foreman ./cmd/foreman
 
+# Both bases are pinned by their multi-arch index digest, so each platform
+# resolves to the same pinned content on every machine.
 FROM gcr.io/distroless/static-debian13@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f
+ARG VERSION=
+ARG COMMIT=
+ARG SOURCE=https://github.com/toddawhittaker/foreman
+LABEL org.opencontainers.image.title="Foreman" \
+      org.opencontainers.image.description="Runs Factorio servers in Docker and manages worlds: a map with its own mods, settings and game version." \
+      org.opencontainers.image.source="${SOURCE}" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}"
 COPY --from=build /out/foreman /usr/local/bin/foreman
 # The game's user and group, so shared files need no ownership changes (SPEC 3.6).
 USER 845:845
