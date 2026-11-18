@@ -3097,8 +3097,8 @@ scopes, the token page, the expiry banner and the `token-expiring` event
 (12.10, 8.10, 8.11). MCP access on or off (21.2, 13.1, 3.2). The
 endpoint and its limits (21.1, 21.3, 14.19). The read tools (21.4),
 action tools (21.5) and chat (21.6). Audit entries with token names
-(12.9). An admin token works but has only these tools until Epic 10b.
-**Gate:** a real MCP client (Claude Code), using an operate token
+(12.9). An admin token has these tools and, since Epic 10b, the admin
+tools (18.10b). **Gate:** a real MCP client (Claude Code), using an operate token
 against a real `factoriotools/factorio` container, reads status, takes a
 snapshot, sends a chat that players see as "[name] ...", and restarts
 with a countdown. A read token is refused that action. An Expired token
@@ -3107,8 +3107,8 @@ token stays refused. With MCP off, every call is refused and tokens can
 still be managed.
 
 18.10b. **Epic 10b: Admin tools.** The admin tools for every other UI
-area (21.7) and the two-step confirm (21.8, 14.19).
-**Gate:** for every two-step tool, the first call changes nothing and
+area (21.7) and the two-step confirm (21.8, 14.19). Built; see STATUS.md,
+Epic 10b. **Gate:** for every two-step tool, the first call changes nothing and
 its preview names the snapshot the UI would take. A code is refused for
 another token, tool or arguments, after 5 minutes, and on a second use.
 Restore, a mod change and a game version update through MCP take the
@@ -3231,7 +3231,30 @@ in these areas:
 
 Not available through MCP: managing users, API tokens or MCP access;
 uploading or downloading files (saves, mod zips, `mod-settings.dat`,
-favorite files); and map preview pictures. (P1)
+favorite files); and map preview pictures.
+
+The tool names are fixed, one tool per action:
+
+- worlds, favorites and saves: `generate_world`, `clone_world`,
+  `rename_world`, `delete_world`, `list_deleted_worlds`, `list_favorites`,
+  `make_favorite`, `rename_favorite`, `delete_favorite`, `list_saves`,
+  `choose_save`;
+- snapshots and live operations: `restore_snapshot`, `delete_snapshots`,
+  `force_stop`, `download_game_image`, `kick_player`, `ban_player`,
+  `player_action`, `run_console_command`;
+- mods: `search_mods`, `change_mods`, `list_mod_settings`,
+  `change_mod_settings`;
+- game settings and versions: `get_game_settings`, `change_game_settings`,
+  `set_whitelist_switch`, `list_game_versions`, `update_game_version`,
+  `rollback_game_version`;
+- Foreman-wide: `foreman_settings`, `set_restart_schedule`, `add_webhook`,
+  `change_webhook`, `delete_webhook`, `set_factorio_account`,
+  `remove_factorio_account`, `set_public_mods`.
+
+Each tool that acts on a world requires `world_id`, except where a
+favorite or webhook is named instead. Player, portal, game-log and snapshot
+text in results is marked untrusted (14.12), and no secret is returned
+(14.8). (P1)
 
 21.8. **Two-step confirm.** An admin tool that deletes or overwrites
 works in two calls. This covers deleting a world, restoring a snapshot,
@@ -3252,7 +3275,21 @@ preview lists those items explicitly. An action is two-step exactly when
 this section names it or the UI shows a confirm page for it; every other
 admin tool is one call. Game settings are changed through the settings
 form's fields only, not the raw editor. (Todd's rulings, 2026-11-17.)
-(P1)
+
+The two-step tools are `delete_world`, `delete_favorite`,
+`restore_snapshot`, `delete_snapshots`, `force_stop`, `kick_player`,
+`ban_player`, `run_console_command`, `change_mods`, `change_mod_settings`,
+`change_game_settings`, `update_game_version`, `rollback_game_version` and
+`delete_webhook`. Each carries `DestructiveHint: true`. The tools that
+change nothing carry `ReadOnlyHint: true` instead, and every other admin
+tool sets `DestructiveHint` to `false` explicitly. A two-step tool requires `world_id` where it acts on a
+world, and its confirm call must repeat the first call's arguments. A confirm
+call spends its code before anything else, so a refused confirm still spends
+it. Only a bad, used, expired or mismatched code gets the one fixed
+message (14.19). Any other refusal, such as a busy or active world or a
+page check, keeps its own message, and the code is still spent. A moved
+state is refused with a fresh preview and code. Every audit entry written
+by an admin tool carries the token's name (12.9). (P1)
 
 ## 22. Languages
 
