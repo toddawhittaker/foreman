@@ -125,7 +125,9 @@ func TestRealGameMCPAdmin(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(wdir, world.ModsDir, adminProbeMod+"_1.0.0.zip"), adminProbeZip(t), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	modList := `{"mods":[{"name":"base","enabled":true},{"name":"` + adminProbeMod + `","enabled":true}]}`
+	modList := `{"mods":[{"name":"base","enabled":true},{"name":"` + adminProbeMod + `","enabled":true},` +
+		// The save has no Space Age; unlisted, the game would turn the DLC on.
+		`{"name":"elevated-rails","enabled":false},{"name":"quality","enabled":false},{"name":"space-age","enabled":false}]}`
 	if err := os.WriteFile(filepath.Join(wdir, world.ModsDir, world.ModListFile), []byte(modList), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -280,6 +282,14 @@ func TestRealGameMCPAdmin(t *testing.T) {
 		}
 	})
 	t.Run("update_game_version to "+adminGameTo, func(t *testing.T) {
+		// The probe is made for 2.0, which 2.1 refuses, so turn it off first.
+		before := inGames()
+		twoStep(t, "change_mods", map[string]any{"world_id": id, "kind": "disable", "names": []string{adminProbeMod}}, world.LabelBeforeMods)
+		settle(t, game.AuditMods, before, adminGameFrom)
+		// Stopping saves main.zip without the probe, so the save matches.
+		if err := ctrl.Stop(ctx, id, alice, game.StopOptions{}); err != nil {
+			t.Fatalf("stop before the update: %v", err)
+		}
 		before, was := inGames(), snapshots(t)
 		twoStep(t, "update_game_version", map[string]any{"world_id": id, "version": adminGameTo}, world.LabelBeforeUpdate)
 		settle(t, game.AuditUpdate, before, adminGameTo)
@@ -289,7 +299,8 @@ func TestRealGameMCPAdmin(t *testing.T) {
 
 // adminProbeZip is the probe mod in the shape the real game accepts, as the
 // game package's real-game probe has it: Factorio refuses an info.json
-// without title, author or description.
+// without title, author or description, and logs
+// "Loading mod" only for a mod with a data.lua.
 func adminProbeZip(t *testing.T) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -301,6 +312,14 @@ func adminProbeZip(t *testing.T) []byte {
 	info := `{"name":"` + adminProbeMod + `","version":"1.0.0","title":"Foreman probe","author":"foreman tests",` +
 		`"description":"made up for the real-game test","factorio_version":"2.0"}`
 	if _, err := w.Write([]byte(info)); err != nil {
+		t.Fatal(err)
+	}
+	// The game prints its "Loading mod" line only for a mod with a data stage.
+	w, err = zw.Create(adminProbeMod + "_1.0.0/data.lua")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Write([]byte("-- nothing to define\n")); err != nil {
 		t.Fatal(err)
 	}
 	if err := zw.Close(); err != nil {
