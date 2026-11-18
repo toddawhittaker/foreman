@@ -199,6 +199,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		}
 		s.marks = newPortalMarks(now, s.checkPortalForPublic)
 	}
+	s.applyRetention(context.Background())
 	s.routes()
 
 	cop := http.NewCrossOriginProtection()

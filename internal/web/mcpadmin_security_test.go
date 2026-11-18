@@ -134,6 +134,14 @@ var gateCases = map[string]func(t *testing.T) gateCase{
 			}
 		}}
 	},
+	"set_foreman_settings": func(t *testing.T) gateCase {
+		r := newForemanRig(t, keyed)
+		return gateCase{hn: r.harness, cs: r.cs, args: map[string]any{"snapshot_retention": 4, "mod_upload_mb": 300}, still: func(t *testing.T) {
+			if got := r.generalServer().snapshotRetention(context.Background()); got != 10 {
+				t.Errorf("retention is %d after the preview", got)
+			}
+		}}
+	},
 }
 
 // gameState is what the fake game was asked to do and how its containers
@@ -485,6 +493,7 @@ func TestMCPAdminGateNoSecretFromAnyTool(t *testing.T) {
 		{"foreman_settings", arg(map[string]any{})},
 		{"remove_factorio_account", arg(map[string]any{})},
 		{"set_public_mods", arg(map[string]any{"on": true})},
+		{"set_foreman_settings", arg(map[string]any{"snapshot_retention": 5})},
 		{"set_restart_schedule", arg(map[string]any{"enabled": false})},
 	}, ran)
 	wantNoSecretIn(t, "a Foreman tool", append([]string{hookURL, hookToken, acctKey}, factorioSecrets...),

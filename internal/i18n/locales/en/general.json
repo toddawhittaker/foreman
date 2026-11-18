@@ -1,0 +1,28 @@
+{
+  "general.audit.heading": "Audit log",
+  "general.audit.label": "Keep audit entries for (days)",
+  "general.audit.text": "How long the audit log keeps an entry. Foreman deletes older entries once an hour.",
+  "general.done": "Saved. The new settings apply from now on.",
+  "general.error.range": "Enter a whole number from {min} to {max}.",
+  "general.range.hint": "A whole number from {min} to {max}.",
+  "general.save": "Save settings",
+  "general.snapshots.heading": "Snapshots",
+  "general.snapshots.hint": "Lowering it deletes nothing now. Each world drops its extra automatic snapshots at its next automatic snapshot.",
+  "general.snapshots.label": "Automatic snapshots to keep per world",
+  "general.snapshots.text": "Foreman keeps the newest automatic snapshots of each world. Manual snapshots and the snapshot taken before a world is deleted are never removed.",
+  "general.source": "Set here. No environment variable sets it.",
+  "general.stop.heading": "Stopping the server",
+  "general.stop.hint": "0 means no warning.",
+  "general.stop.label": "Default stop countdown (seconds)",
+  "general.stop.text": "The countdown a stop or restart starts with when it asks for none. A scheduled restart keeps its own fixed countdown.",
+  "general.trim.snapshots": {
+    "one": "{count} automatic snapshot will be removed, at its world's next automatic snapshot.",
+    "other": "{count} automatic snapshots will be removed, each at its world's next automatic snapshot."
+  },
+  "general.trim.worlds": "Worlds affected: {count}.",
+  "general.uploads.heading": "Uploads",
+  "general.uploads.mod.hint": "A mod downloaded from the mod portal is held to the same limit.",
+  "general.uploads.mod.label": "Largest mod upload (MB)",
+  "general.uploads.save.label": "Largest save upload (MB)",
+  "general.uploads.text": "The largest file Foreman accepts when someone uploads a save or a mod. A change applies to the next upload."
+}

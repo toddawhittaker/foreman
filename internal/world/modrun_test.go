@@ -129,7 +129,7 @@ func TestRetentionRemovingTheSnapshotEndsTheRun(t *testing.T) {
 	clock := t0
 	m.now = func() time.Time { clock = clock.Add(time.Second); return clock }
 	stoppedChange(t, m, id, settingsChange("one"))
-	for range KeepAutomatic {
+	for range DefaultKeepAutomatic {
 		if _, err := m.AutoSnapshot(id, ReasonSettings, LabelBeforeSettings, "bob"); err != nil {
 			t.Fatal(err)
 		}

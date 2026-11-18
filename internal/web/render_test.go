@@ -11,6 +11,7 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -175,6 +176,10 @@ func pageCases() []pageCase {
 				{Name: "a", Title: longName, Version: "1.0.0", DownloadPath: PublicModFilePath("w", "a_1.0.0.zip"), NotOnPortal: true, Hidden: true},
 				{Name: "b", Version: "2.0.0", Folder: true},
 			}}}}}},
+		{"general", "todd", 200, generalTestPage(GeneralPage{})},
+		{"general saved with a trim", "todd", 200, generalTestPage(GeneralPage{Saved: true, Trims: true, Trim: trimCount{Snapshots: 1, Worlds: 1}})},
+		{"general errors", "todd", 400, generalTestPage(GeneralPage{SnapshotRetention: GeneralField{Value: "0", Error: settingSnapshotRetention.rangeMsg()},
+			ModUpload: GeneralField{Value: "x", Error: settingModUpload.rangeMsg()}})},
 		{"public mods settings off", "todd", 200, PublicModsSettingsPage{}},
 		{"public mods settings on", "todd", 200, PublicModsSettingsPage{On: true, Done: PublicModsOn}},
 		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},
@@ -1225,4 +1230,16 @@ func TestPlayerIDsAreUniqueWhateverTheName(t *testing.T) {
 			}
 		}
 	}
+}
+
+// generalTestPage fills the fields a page always has, with the default
+// value where the case gave none.
+func generalTestPage(p GeneralPage) GeneralPage {
+	p = p.withFields()
+	for _, d := range generalSettings {
+		if f := p.field(d.Key); f.Value == "" {
+			f.Value = strconv.Itoa(d.Default)
+		}
+	}
+	return p
 }
