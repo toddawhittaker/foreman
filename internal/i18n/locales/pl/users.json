@@ -1,0 +1,59 @@
+{
+  "users.delete": "Usuń",
+  "users.delete.audit": "Nazwa użytkownika zostanie zachowana we wpisach dziennika audytu, które utworzył.",
+  "users.delete.button": "Usuń użytkownika",
+  "users.delete.cancel": "Zachowaj użytkownika",
+  "users.delete.name": "Usuń użytkownika {name}",
+  "users.delete.question": "Usunąć użytkownika {name}?",
+  "users.delete.returns.oidc": "Ten użytkownik loguje się przez logowanie jednokrotne. Wróci przy następnym logowaniu, chyba że zostanie usunięty także u dostawcy tożsamości.",
+  "users.delete.returns.proxy": "Ten użytkownik loguje się przez proxy. Wróci przy następnej wizycie, chyba że zostanie usunięty także w proxy.",
+  "users.delete.self": "Nie można usunąć samego siebie. Musi to zrobić inny użytkownik.",
+  "users.delete.signout": "Użytkownik zostanie wylogowany wszędzie.",
+  "users.delete.tokens": {
+    "one": "Zostanie usunięty {count} token API tego użytkownika.",
+    "few": "Zostaną usunięte {count} tokeny API tego użytkownika.",
+    "many": "Zostanie usuniętych {count} tokenów API tego użytkownika."
+  },
+  "users.done.deleted": "Użytkownik został usunięty.",
+  "users.done.password": "Hasło zostało zmienione. Wszystkie inne sesje zostały wylogowane.",
+  "users.fact.created": "Utworzono",
+  "users.fact.kind": "Sposób logowania",
+  "users.intro": "Każdy użytkownik jest administratorem. Każdy użytkownik może usunąć innego, ale nie siebie.",
+  "users.kind.oidc": "Logowanie jednokrotne",
+  "users.kind.password": "Hasło",
+  "users.kind.proxy": "Proxy",
+  "users.list.heading": "Wszyscy użytkownicy",
+  "users.password.busy": "Foreman sprawdza teraz inne hasła. Należy spróbować ponownie za chwilę.",
+  "users.password.button": "Zmień hasło",
+  "users.password.confirm": "Nowe hasło ponownie",
+  "users.password.confirm.mismatch": "Dwa nowe hasła się różnią. Należy wpisać to samo hasło w oba pola.",
+  "users.password.confirm.missing": "Należy ponownie wpisać nowe hasło.",
+  "users.password.current": "Obecne hasło",
+  "users.password.current.missing": "Należy wpisać obecne hasło.",
+  "users.password.current.wrong": "Obecne hasło jest nieprawidłowe.",
+  "users.password.heading": "Hasło",
+  "users.password.limited": "Zbyt wiele błędnych haseł. Należy odczekać kilka minut i spróbować ponownie.",
+  "users.password.managed": "Logowanie jest zarządzane gdzie indziej, więc nie ma tu hasła do zmiany.",
+  "users.password.managed.oidc": "Logowanie odbywa się przez logowanie jednokrotne, więc zarządza nim dostawca tożsamości. Nie ma tu hasła.",
+  "users.password.managed.proxy": "Logowanie odbywa się przez proxy, więc jest tam zarządzane. Nie ma tu hasła.",
+  "users.password.new": "Nowe hasło",
+  "users.password.new.hint": {
+    "one": "Co najmniej {count} znak.",
+    "few": "Co najmniej {count} znaki.",
+    "many": "Co najmniej {count} znaków."
+  },
+  "users.password.new.long": {
+    "one": "Nowe hasło jest za długie. Dozwolony jest najwyżej {count} bajt.",
+    "few": "Nowe hasło jest za długie. Dozwolone są najwyżej {count} bajty.",
+    "many": "Nowe hasło jest za długie. Dozwolonych jest najwyżej {count} bajtów."
+  },
+  "users.password.new.missing": "Należy wpisać nowe hasło.",
+  "users.password.new.short": {
+    "one": "Nowe hasło jest za krótkie. Wymagany jest co najmniej {count} znak.",
+    "few": "Nowe hasło jest za krótkie. Wymagane są co najmniej {count} znaki.",
+    "many": "Nowe hasło jest za krótkie. Wymaganych jest co najmniej {count} znaków."
+  },
+  "users.password.sessions": "Zmiana hasła wyloguje wszystkie inne sesje.",
+  "users.title": "Użytkownicy",
+  "users.you": "Bieżący użytkownik"
+}

@@ -1,0 +1,55 @@
+{
+  "users.delete": "Delete",
+  "users.delete.audit": "Keep their name on the audit log entries they made.",
+  "users.delete.button": "Delete user",
+  "users.delete.cancel": "Keep the user",
+  "users.delete.name": "Delete user {name}",
+  "users.delete.question": "Delete user {name}?",
+  "users.delete.returns.oidc": "This user signs in with single sign-on. They come back the next time they sign in, unless you also remove them at the identity provider.",
+  "users.delete.returns.proxy": "This user signs in through the proxy. They come back at their next visit, unless you also remove them at the proxy.",
+  "users.delete.self": "You cannot delete yourself. Another user must do it.",
+  "users.delete.signout": "Sign the user out everywhere.",
+  "users.delete.tokens": {
+    "one": "Delete their {count} API token.",
+    "other": "Delete their {count} API tokens."
+  },
+  "users.done.deleted": "The user was deleted.",
+  "users.done.password": "Your password is changed. You were signed out everywhere else.",
+  "users.fact.created": "Created",
+  "users.fact.kind": "Signs in with",
+  "users.intro": "Every user is an admin. Any user can delete another user, but not themselves.",
+  "users.kind.oidc": "Single sign-on",
+  "users.kind.password": "Password",
+  "users.kind.proxy": "Proxy",
+  "users.list.heading": "All users",
+  "users.password.busy": "Foreman is busy checking other passwords. Try again in a moment.",
+  "users.password.button": "Change password",
+  "users.password.confirm": "New password again",
+  "users.password.confirm.mismatch": "The two new passwords are different. Type the same password in both.",
+  "users.password.confirm.missing": "Type the new password again.",
+  "users.password.current": "Current password",
+  "users.password.current.missing": "Enter your current password.",
+  "users.password.current.wrong": "The current password is wrong.",
+  "users.password.heading": "Your password",
+  "users.password.limited": "Too many wrong passwords. Wait a few minutes and try again.",
+  "users.password.managed": "Your sign-in is managed elsewhere, so you have no password to change here.",
+  "users.password.managed.oidc": "You sign in with single sign-on, so your sign-in is managed by the identity provider. You have no password here.",
+  "users.password.managed.proxy": "You sign in through the proxy, so your sign-in is managed there. You have no password here.",
+  "users.password.new": "New password",
+  "users.password.new.hint": {
+    "one": "At least {count} character.",
+    "other": "At least {count} characters."
+  },
+  "users.password.new.long": {
+    "one": "The new password is too long. Use at most {count} byte.",
+    "other": "The new password is too long. Use at most {count} bytes."
+  },
+  "users.password.new.missing": "Enter a new password.",
+  "users.password.new.short": {
+    "one": "The new password is too short. Use at least {count} character.",
+    "other": "The new password is too short. Use at least {count} characters."
+  },
+  "users.password.sessions": "Changing it signs you out everywhere else.",
+  "users.title": "Users",
+  "users.you": "You"
+}

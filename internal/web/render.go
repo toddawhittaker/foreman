@@ -80,8 +80,15 @@ type Problem struct {
 // "Show older".
 const maxListRows = 50
 
-// SignedOutPage confirms that sign-out ended the session (SPEC 12.8).
-type SignedOutPage struct{}
+// SignedOutPage confirms that sign-out ended the session (SPEC 12.8). It
+// offers the sign-in methods that are on, as the sign-in page does.
+type SignedOutPage struct {
+	// OIDC offers single sign-on (SPEC 12.7).
+	OIDC bool
+	// NoLocal is set when oidc is on and local is not, so password sign-in
+	// is not offered. The zero value is the local-only page.
+	NoLocal bool
+}
 
 // SignInPage is the local-account sign-in form (SPEC 12.3, 12.4).
 type SignInPage struct {
@@ -100,6 +107,11 @@ type SignInPage struct {
 	// Busy replaces the field errors with a message to try again shortly:
 	// too many password checks were already running.
 	Busy bool
+	// OIDC adds the single sign-on button (SPEC 12.7).
+	OIDC bool
+	// NoLocal is set when oidc is on and local is not: the page then has
+	// no password form. The zero value is the local-only page.
+	NoLocal bool
 }
 
 // SetupPage creates the first admin account on first run (SPEC 12.3).
@@ -133,6 +145,22 @@ func (SignedOutPage) templateName() string { return "signedout" }
 func (SignInPage) templateName() string    { return "signin" }
 func (SetupPage) templateName() string     { return "setup" }
 func (ErrorPage) templateName() string     { return "error" }
+
+// OIDCPath is where the single sign-on button goes (SPEC 12.7).
+func (SignInPage) OIDCPath() string { return PathOIDCStart }
+
+// OIDCPath is where the single sign-on button goes (SPEC 12.7).
+func (SignedOutPage) OIDCPath() string { return PathOIDCStart }
+
+// signInPage and signedOutPage say which sign-in methods are on.
+func (s *server) signInPage(p SignInPage) SignInPage {
+	p.OIDC, p.NoLocal = s.cfg.AuthOIDC, s.cfg.AuthOIDC && !s.cfg.AuthLocal
+	return p
+}
+
+func (s *server) signedOutPage() SignedOutPage {
+	return SignedOutPage{OIDC: s.cfg.AuthOIDC, NoLocal: s.cfg.AuthOIDC && !s.cfg.AuthLocal}
+}
 
 func (p SignInPage) hasErrors() bool { return p.RateLimited || p.Busy || len(p.Problems()) > 0 }
 func (p SetupPage) hasErrors() bool  { return len(p.Problems()) > 0 }

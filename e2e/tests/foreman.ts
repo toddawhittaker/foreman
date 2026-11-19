@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { spawn, type ChildProcess } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -14,6 +15,7 @@ import { crc32 } from "node:zlib";
 const binary = join(import.meta.dirname, "..", "..", "bin", "foreman");
 const fakeGameBinary = join(import.meta.dirname, "..", "..", "bin", "fakegame");
 const fakePortalBinary = join(import.meta.dirname, "..", "..", "bin", "fakeportal");
+const fakeIdPBinary = join(import.meta.dirname, "..", "..", "bin", "fakeidp");
 
 // SPEC 17.1 names WCAG 2.2 AA.
 export const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -267,6 +269,84 @@ async function startFakePortal(): Promise<FakePortal & { stop: () => Promise<voi
   };
 }
 
+// A fake OpenID Connect identity provider (cmd/fakeidp), over https with a test certificate. Foreman is
+// given its issuer, its made-up client id and secret and its certificate (SSL_CERT_FILE); the browser must
+// accept the certificate, so a spec using it sets test.use({ ignoreHTTPSErrors: true }). Its control hooks
+// are listed at controlHandler in cmd/fakeidp/main.go.
+export interface FakeIdP {
+  issuer: string;
+  // PEM file of the test certificate.
+  caFile: string;
+  clientId: string;
+  clientSecret: string;
+  // The group the default user is in, and the one Foreman requires.
+  group: string;
+  // The claims of every sign-in from now on; fields left out are the default user's (idpSubject, idpUser,
+  // groups [group]). The fake also takes nonce, aud, iss and expired, to send a bad token.
+  setNext: (claims: { sub?: string; preferred_username?: string; groups?: string[] }) => Promise<void>;
+  // The authorize requests seen and the tokens issued.
+  state: () => Promise<{ authorizes: { client_id: string; redirect_uri: string; scope: string; code_challenge_method: string; has_nonce: boolean }[]; tokens: number }>;
+  // Ends the provider, as an outage would. The fixture's teardown copes with it.
+  kill: () => Promise<void>;
+}
+
+// The default user's name and subject in the fake (cmd/fakeidp/idp).
+export const idpUser = "sso-player";
+export const idpSubject = "fake-subject-1";
+
+async function startFakeIdP(): Promise<FakeIdP & { stop: () => Promise<void> }> {
+  const dir = mkdtempSync(join(tmpdir(), "fakeidp-e2e-"));
+  const proc = spawn(fakeIdPBinary, ["-dir", dir], { stdio: ["ignore", "pipe", "pipe"] });
+  let err = "";
+  proc.stderr.on("data", (d) => (err += d));
+  const lines = createInterface({ input: proc.stdout })[Symbol.asyncIterator]();
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`fakeidp did not start:\n${err}`)), 10_000),
+  );
+  const exited = new Promise<never>((_, reject) =>
+    proc.once("exit", (code) => reject(new Error(`fakeidp exited ${code}:\n${err}`))),
+  );
+  const first = await Promise.race([lines.next(), timeout, exited]);
+  const ready = JSON.parse(first.value as string) as { issuer: string; ca: string; control: string; client_id: string; client_secret: string; group: string };
+  const kill = async () => {
+    if (proc.exitCode === null && proc.signalCode === null) {
+      const done = new Promise((r) => proc.once("exit", r));
+      proc.kill("SIGTERM");
+      await done;
+    }
+  };
+  return {
+    issuer: ready.issuer,
+    caFile: ready.ca,
+    clientId: ready.client_id,
+    clientSecret: ready.client_secret,
+    group: ready.group,
+    setNext: async (claims) => {
+      const resp = await fetch(ready.control + "/next", { method: "POST", body: JSON.stringify(claims) });
+      if (!resp.ok) throw new Error(`fakeidp /next ${JSON.stringify(claims)}: ${resp.status} ${await resp.text()}`);
+    },
+    state: async () => (await fetch(ready.control + "/state")).json(),
+    kill,
+    stop: async () => {
+      await kill();
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+
+// A port nobody listens on now. Foreman must know its own address before it starts, because the
+// identity provider sends the browser back to FOREMAN_PUBLIC_URL.
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.once("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address() as { port: number };
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
 // True when the test body failed or timed out and the test was not declared with test.fail(), which expects
 // exactly that. Skips and interruptions (another test's failure under --max-failures) are not failures.
 function failedUnexpectedly(testInfo: TestInfo): boolean {
@@ -304,12 +384,27 @@ export const test = base.extend<{
   // Opt in with test.use({ portalAccountOn: true }) beside fakePortalOn: Foreman then starts with the fake's
   // factorio.com account in its environment (SPEC 9.11), so mod downloads are on.
   portalAccountOn: boolean;
+  // Opt in with test.use({ fakeIdPOn: true, ignoreHTTPSErrors: true, foremanEnv: { FOREMAN_AUTH_METHODS: "oidc" } }):
+  // Foreman then starts with the fake identity provider's issuer, client and certificate, and with the public
+  // URL of its own port (SPEC 12.7).
+  fakeIdPOn: boolean;
+  fakeIdP: FakeIdP | undefined;
 }>({
   foremanEnv: [{}, { option: true }],
   fakeGameOn: [false, { option: true }],
   sidecar: [undefined, { option: true }],
   fakePortalOn: [false, { option: true }],
   portalAccountOn: [false, { option: true }],
+  fakeIdPOn: [false, { option: true }],
+  fakeIdP: async ({ fakeIdPOn }, use) => {
+    if (!fakeIdPOn) {
+      await use(undefined);
+      return;
+    }
+    const i = await startFakeIdP();
+    await use(i);
+    await i.stop();
+  },
   fakePortal: async ({ fakePortalOn }, use) => {
     if (!fakePortalOn) {
       await use(undefined);
@@ -328,13 +423,25 @@ export const test = base.extend<{
     await use(g);
     await g.stop();
   },
-  foreman: async ({ foremanEnv, fakeGame, fakePortal, portalAccountOn, sidecar }, use, testInfo) => {
+  foreman: async ({ foremanEnv, fakeGame, fakePortal, portalAccountOn, fakeIdP, sidecar }, use, testInfo) => {
+    const ownPort = fakeIdP ? await freePort() : 0;
     const env = {
       ...(fakeGame ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork } : {}),
       ...(fakeGame && sidecar ? { FOREMAN_GAME_NETWORK_CONTAINER: sidecar.name } : {}),
       // Loopback addresses are never proxied, so only the portal's hosts go through.
       ...(fakePortal ? { HTTPS_PROXY: fakePortal.proxy, SSL_CERT_FILE: fakePortal.caFile } : {}),
       ...(fakePortal && portalAccountOn ? { FOREMAN_FACTORIO_USERNAME: fakePortal.username, FOREMAN_FACTORIO_TOKEN: fakePortal.token } : {}),
+      ...(fakeIdP
+        ? {
+            FOREMAN_LISTEN: `127.0.0.1:${ownPort}`,
+            FOREMAN_PUBLIC_URL: `http://127.0.0.1:${ownPort}`,
+            FOREMAN_OIDC_ISSUER: fakeIdP.issuer,
+            FOREMAN_OIDC_CLIENT_ID: fakeIdP.clientId,
+            FOREMAN_OIDC_CLIENT_SECRET: fakeIdP.clientSecret,
+            FOREMAN_OIDC_REQUIRED_GROUP: fakeIdP.group,
+            SSL_CERT_FILE: fakeIdP.caFile,
+          }
+        : {}),
       ...foremanEnv,
     };
     const f = await startForeman(env);

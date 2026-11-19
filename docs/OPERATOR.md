@@ -7,11 +7,9 @@ start the server and join it. It also covers the security advice every
 operator needs, running behind a reverse proxy, importing and switching
 worlds, webhook notifications, the low-disk warning, what to do when
 something fails, and, optionally, letting players join through a VPN
-sidecar such as Tailscale.
-
-The rest of the guide comes later, with Epic 11 (docs/SPEC.md, section
-18): signing in with OpenID Connect, the archive, Foreman's settings page
-and API tokens.
+sidecar such as Tailscale. It also covers signing in with OpenID Connect
+(section 17), Foreman's own settings, users and audit log (section 18) and
+archiving worlds (section 19).
 
 ## 1. What you need
 
@@ -35,7 +33,8 @@ version, and mods. It never downloads anything when it starts.
 
 ## 2. Get the image
 
-No image is published yet; it will be in Epic 11. Build it yourself:
+No image is published yet; it will come with the release (Epic 11b).
+Build it yourself:
 
 ```sh
 git clone https://github.com/toddawhittaker/foreman.git
@@ -46,6 +45,11 @@ make image
 The image is tagged `foreman:dev`. Use `make image` rather than a bare
 `docker build`: the Makefile passes the exact Go build image the project
 pins. The build takes a few minutes the first time.
+
+Foreman's image is built for amd64 and arm64, so it also runs on an arm64
+host. Be aware that the Factorio game image is
+experimental on arm64 upstream, and Foreman's tests against a real game run
+on amd64 only. Plan on amd64 for a server that matters.
 
 ## 3. The data directory
 
@@ -109,6 +113,15 @@ root on the host.
 
 Never publish the socket proxy's port. Foreman cannot see a published port
 from inside its own container, so it cannot warn you.
+
+`DOCKER_HOST` is a `tcp://` address in the compose file below, because the
+socket proxy is another container. A `tcp://` Docker address is not
+encrypted and has no sign-in. Anyone who can send packets to it along the
+network path has root on the host, as if they held the socket. Keep it on a
+private Docker network that holds only Foreman and the socket proxy, as the
+compose file does, and prefer the socket proxy to pointing Foreman at a
+Docker daemon that listens on the network. Never point `DOCKER_HOST` at an
+address on a network you do not fully control.
 
 ### RCON stays private
 
@@ -335,8 +348,9 @@ state and run a few actions through MCP (Model Context Protocol), at
 Admin tokens:
 
 - An **Admin** token can do nearly everything an admin can do in the web
-  pages: manage worlds, snapshots, mods, game settings, game versions,
-  players, the console, webhooks and the restart schedule. It cannot manage
+  pages: manage worlds (including archiving them, section 19), snapshots,
+  mods, game settings, game versions, players, the console, webhooks, the
+  restart schedule and the General settings (section 18). It cannot manage
   users, tokens or the MCP switch, and it cannot upload or download files.
   Give an admin token only to an assistant you trust to act for you, and
   prefer **Operate** or **Read** when that is enough. An assistant that is
@@ -1015,3 +1029,254 @@ force-stop recovery steps above. Reboot recovery still needs to be
 checked by you after restarting your test host: join with a game client
 and send a Console command before relying on unattended recovery. This
 example does not guarantee ordering.
+
+## 17. Optional: sign in with OpenID Connect
+
+Foreman can sign people in through any identity provider that speaks OpenID
+Connect (OIDC), whether you run it yourself or use a hosted one. Foreman
+needs no reverse proxy for this. The provider must be able to put a
+username and a list of groups in its ID token.
+
+### Set up the provider
+
+1. Register Foreman as a web application (a confidential client) that uses
+   the authorization code flow. Register this redirect URL, which is
+   `FOREMAN_PUBLIC_URL` followed by `/signin/oidc/callback`:
+
+   ```
+   https://factorio.example.com/signin/oidc/callback
+   ```
+
+2. Note the client ID and the client secret the provider gives you.
+3. Make a group for the people who may use Foreman, and add them to it.
+4. Make sure the ID token carries two claims. Foreman asks for the scopes
+   `openid profile email groups`. It reads `preferred_username`, which
+   becomes the user's name, and `groups`, a list of group names. These
+   claim names are fixed, not settings. If your provider keeps groups
+   under another scope or claim name, map them to `groups` in its
+   settings. Foreman reads only the ID token; it never calls the
+   provider's userinfo address.
+
+### Set up Foreman
+
+Add these settings to Foreman's `environment`, with your own values:
+
+```yaml
+      FOREMAN_PUBLIC_URL: https://factorio.example.com
+      FOREMAN_AUTH_METHODS: local,oidc
+      FOREMAN_OIDC_ISSUER: https://id.example.com
+      FOREMAN_OIDC_CLIENT_ID: foreman
+      FOREMAN_OIDC_CLIENT_SECRET_FILE: /run/secrets/foreman_oidc_secret
+      FOREMAN_OIDC_REQUIRED_GROUP: factorio-admins
+```
+
+- `FOREMAN_AUTH_METHODS` is a list. Add `oidc` to it. Keep `local` to keep
+  password accounts, or leave it out to use single sign-on alone.
+- `FOREMAN_OIDC_ISSUER` must be an `https` address. Foreman refuses to start
+  with an `http` one, so the client secret never crosses the network in the
+  clear. Write it exactly as the provider reports it, including any
+  trailing slash: the ID token's issuer must equal it letter for letter.
+- `FOREMAN_OIDC_CLIENT_SECRET` holds the secret. For Docker secrets, use
+  `FOREMAN_OIDC_CLIENT_SECRET_FILE`, which names a file holding it, as in
+  the example.
+- `FOREMAN_OIDC_REQUIRED_GROUP` is required. Everyone who signs in is an
+  admin, so without a group, anyone the provider signs in could use
+  Foreman. A person outside the group sees a page that says their account
+  is not allowed to use Foreman.
+- `FOREMAN_PUBLIC_URL` is required, because the provider sends people back
+  to it.
+- If any of these is missing, Foreman reports every missing one at startup
+  and does not start. It never prints the secret.
+
+### How it behaves
+
+- Foreman contacts the provider the first time someone signs in, never at
+  startup. A wrong issuer therefore shows up as a "cannot reach the
+  provider" page at sign-in, not as a startup error. Foreman keeps the
+  provider's answer once it works, and tries again at the next sign-in
+  after a failure.
+- Foreman, inside its container, must reach the issuer at the same address
+  your browser uses. A provider on the same host or network, reached by a
+  public name, often answers browsers but not containers on that host (a
+  "hairpin" problem). If sign-in says the provider is unavailable while the
+  provider's own page opens in your browser, make that name resolve and
+  connect from inside Foreman's container too, for example with a Docker
+  network alias or an `extra_hosts` entry. Calls to the provider take at
+  most 10 seconds and follow no redirects, so the issuer must be the final
+  address, not one that redirects. The provider's certificate must be valid
+  for that name.
+- A user is found by the provider's issuer and the `sub` claim, never by
+  name alone. A person who is renamed at the provider keeps their Foreman
+  account.
+- The first time someone signs in, Foreman creates a user with their
+  `preferred_username` and writes `user-create` with the detail `oidc` to
+  the audit log. If a Foreman user of that name already has a password, or
+  is already linked to another identity, Foreman refuses the sign-in with a
+  page that says why. Rename or remove that user in the Users tab
+  (section 18).
+- With `headers` on as well (section 6), the proxy still comes first: a
+  request the proxy signs in never goes to the provider. A user made by the
+  proxy has no password and no link, so the first single sign-on with the
+  same name links that user to the provider's identity, and they keep their
+  history.
+- With `local` on as well, the sign-in page shows the single sign-on button
+  and the password form. With `oidc` alone, the page is one button, and
+  there is no setup page and no password form; the first person to sign in
+  is the first user.
+- **Turn off self-service username changes at the provider.** The link by
+  name above is the reason. Until a proxy-made user has signed in through
+  single sign-on once, anyone in the group who can rename themselves at the
+  provider could rename themselves to that user's name and take over the
+  account. After the first sign-in the link is by `sub`, and a rename no
+  longer matters. If you never combine `headers` and `oidc`, there is no
+  such user.
+- Foreman checks the group only at sign-in. Removing someone from the group
+  stops their next sign-in, not a session already open (sessions end after
+  `FOREMAN_SESSION_IDLE`, 7 days by default). To cut someone off now,
+  remove them from the group, then delete them in the Users tab.
+- Signing out ends only Foreman's session, not the provider's. With `oidc`
+  alone, the signed-out page offers the same single sign-on button, and if
+  the provider's session is still open you are signed straight back in.
+
+## 18. Foreman's settings pages
+
+**Settings** in the menu opens Foreman's own pages, as tabs: Account,
+General, Restart schedule, Notifications, Public mods, API tokens, Users
+and Audit log. The restart schedule, notifications, public mods and API
+tokens are covered in sections 14, 12 and 6. This section covers General,
+Users and Audit log.
+
+### General
+
+The General tab holds the settings that have no environment variable. Each
+one says "Set here"; nothing in the environment sets or overrides them.
+
+| Setting | Range | Default |
+|---|---|---|
+| Automatic snapshots to keep per world | 1 to 100 | 10 |
+| Default stop countdown (seconds) | 0 to 600 | 60 |
+| Keep audit entries for (days) | 7 to 3650 | 365 |
+| Largest save upload (MB) | 100 to 8192 | 1024 (1 GB) |
+| Largest mod upload (MB) | 10 to 2048 | 200 |
+
+- **Automatic snapshots to keep.** Each world keeps this many of its newest
+  automatic snapshots. Manual snapshots are not removed by it. Lowering it
+  deletes nothing when you save. Each world drops its extra automatic
+  snapshots at its next automatic snapshot. If the new value would remove
+  any, Foreman first asks "Keep fewer automatic snapshots?" and says how
+  many snapshots, in how many worlds, will go. Choose **Save settings** on
+  that page to go ahead, or the link below it to keep the current settings.
+- **Default stop countdown.** The warning a stop or restart gives players
+  when it is not given a countdown of its own. 0 means no warning. A
+  scheduled restart keeps its own fixed 60-second countdown (section 14).
+- **Audit retention.** See "Audit log" below.
+- **Upload limits.** The largest file Foreman accepts when someone uploads
+  a save or a mod. "MB" means 1,048,576 bytes, as the upload pages say it.
+  A change applies to the next upload. The mod limit also caps a mod
+  downloaded from the mod portal, so a mod you can upload can also be
+  downloaded again. The limits on `mod-settings.dat`, favorite files and
+  unpacked sizes stay fixed. A reverse proxy in front of Foreman may have
+  its own, smaller body limit; raise that too, or large uploads still fail.
+- A value outside its range refuses the whole form and saves nothing. Each
+  changed setting is written to the audit log as `snapshot-retention-set`,
+  `stop-countdown-set`, `audit-retention-set`, `save-upload-limit-set` or
+  `mod-upload-limit-set`, with the old and new value.
+- An admin API token (section 6) can read these with `foreman_settings` and
+  change them with `set_foreman_settings`. It works in two steps: the first
+  call changes nothing and returns each change from old to new, with how
+  many snapshots and audit entries the change will remove; the second call,
+  with the confirm code, applies it. Arguments left out keep their value.
+
+### Users
+
+The Users tab lists every user with how they sign in (password, proxy or
+single sign-on) and the date they were created. Every user is an admin.
+
+- **Delete a user.** Choose **Delete** beside another user. A confirm page
+  names the user and says how many API tokens go with them. Their sessions
+  end, so their next request is signed out, and their API tokens stop
+  working. Their old audit log entries keep their name. Foreman writes
+  `user-delete` to the audit log before it deletes, and refuses to delete
+  if it cannot. You cannot delete yourself, so someone who can sign in is
+  always left.
+- **Proxy and single sign-on users come back.** If you delete a user who
+  signs in through the proxy or the identity provider, Foreman creates them
+  again at their next request while the proxy or provider still vouches for
+  them. Foreman keeps no block list. To keep such a person out, remove them
+  at the proxy or the provider (or take them out of the required group),
+  not only here.
+- **Change your password.** The tab shows a form for your own password, and
+  only if you sign in with one: the current password, the new one twice, at
+  least 12 characters. A wrong current password counts against the same
+  sign-in limit as a wrong password at sign-in. The change signs you out
+  everywhere else, keeps this browser signed in, and is written to the
+  audit log as `password-change`. Proxy and single sign-on users have no
+  password and see no form: a password would let a proxy user get around
+  the proxy.
+- The web pages cannot reset another user's password.
+
+#### Reset a forgotten password
+
+Run this on the host. It reads the new password from standard input, so put
+the password in a file and feed the file in:
+
+```sh
+docker exec -i <container> foreman reset-password <username> < new-password.txt
+```
+
+`<container>` is Foreman's container name from `docker ps`.
+
+- Create `new-password.txt` with your editor, with the password alone on one
+  line, and make it readable only by you (`chmod 600 new-password.txt`).
+  Delete the file afterwards.
+- Why standard input from a file: a password written on the command line
+  shows in the host's process list and in your shell history, and one typed
+  at the terminal appears on the screen as you type it. A file shows
+  neither. Foreman never prints the password.
+- The password needs at least 12 characters. The command reads the first
+  line only.
+- The command ends all of that user's sessions, so they sign in again with
+  the new password, and writes `password-change` to the audit log as done
+  by `system`.
+- Only a user who signs in with a password can be reset. A proxy or single
+  sign-on user is refused, because their sign-in is managed elsewhere.
+
+### Audit log
+
+The Audit log tab lists what was done, newest first, 50 entries a page.
+Each entry shows the time (in your time zone), the user, the name of the
+API token as a badge when an assistant did it, the action in words, the
+world and a detail. The log never holds a secret.
+
+- Use **User**, **Action** and **World**, then choose **Filter**, to narrow
+  the list. The menus list what the log holds. **Clear filters** shows
+  everything again. **Older entries** at the foot gives the next page and
+  keeps your filters. An entry for a deleted world shows the world's id and
+  says it is deleted.
+- Foreman keeps entries for 365 days by default. Set the number of days on
+  the General tab (7 to 3650). Once an hour Foreman deletes entries older
+  than that. The deletion itself is not written to the log, but a change to
+  the setting is. Lowering the number removes the older entries for good at
+  the next hourly deletion.
+
+## 19. Archive a world
+
+Archive a world you no longer play but do not want to delete. Open the
+world's page (**Worlds**, then the world) and choose **Archive world**. It
+takes one click.
+
+- Only a mark on the world changes. Its files and snapshots stay as they
+  are, so Foreman takes no snapshot for it.
+- An archived world leaves the main Worlds list. It shows in a closed
+  **Archived** foldout at the foot of that page, and the pickers that
+  switch worlds leave it out.
+- It cannot be started, restarted or switched to, from the web pages, from
+  MCP or from the restart schedule.
+- The active world cannot be archived. Switch to another world first.
+- To bring it back, open its page and choose **Unarchive world**.
+- Restoring a snapshot keeps the world's current archive state, whatever
+  the snapshot recorded.
+- Archiving and unarchiving are written to the audit log as `world-archive`
+  and `world-unarchive`. An admin API token can do both (`archive_world`
+  and `unarchive_world`, one call each), and `list_worlds` shows which
+  worlds are archived.

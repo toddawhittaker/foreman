@@ -1,0 +1,27 @@
+{{define "title"}}{{t "users.delete.question" "name" .Page.User.Username}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1 id="confirm-heading">{{t "users.delete.question" "name" .User.Username}}</h1>
+{{template "settings-tabs" "user"}}
+<section class="confirm">
+  <p>{{t "common.confirm.will"}}</p>
+  <ul>
+    <li>{{t "users.delete.signout"}}</li>
+    <li id="user-delete-tokens">{{t "users.delete.tokens" "count" .Tokens}}</li>
+    <li>{{t "users.delete.audit"}}</li>
+  </ul>
+  {{- if ne .User.Kind "password"}}
+  <div class="message message--warning" id="user-delete-returns">
+    <p><strong>{{t "common.label.warning"}}</strong> {{if eq .User.Kind "oidc"}}{{t "users.delete.returns.oidc"}}{{else}}{{t "users.delete.returns.proxy"}}{{end}}</p>
+  </div>
+  {{- end}}
+  <form method="post" action="{{.User.DeletePath}}" novalidate>
+    <div class="actions">
+      <button type="submit" class="button button--danger" id="act-user-delete">{{t "users.delete.button"}}</button>
+      <a href="{{.BackPath}}">{{t "users.delete.cancel"}}</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}

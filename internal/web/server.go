@@ -373,7 +373,7 @@ func (s *server) fail(w http.ResponseWriter, r *http.Request, what string, err e
 }
 
 func (s *server) handleSignedOut(w http.ResponseWriter, r *http.Request) {
-	s.page(w, r, http.StatusOK, "", SignedOutPage{})
+	s.page(w, r, http.StatusOK, "", s.signedOutPage())
 }
 
 // LangCookie holds the language the menu chose, as a supported BCP 47 tag

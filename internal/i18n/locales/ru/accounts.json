@@ -10,6 +10,9 @@
   "accounts.username.control": "Уберите управляющие символы из имени пользователя",
   "accounts.signin.title": "Вход",
   "accounts.signin.submit": "Войти",
+  "accounts.signin.sso": "Войти через единый вход",
+  "accounts.signin.sso.heading": "Единый вход",
+  "accounts.signin.local.heading": "Учётная запись Foreman",
   "accounts.signin.ratelimited.unknown": "Слишком много неудачных попыток входа. Подождите несколько минут и попробуйте снова.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Слишком много неудачных попыток входа. Подождите {count} минуту и попробуйте снова.",

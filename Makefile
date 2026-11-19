@@ -41,7 +41,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test test-shards coverage-floor typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
+.PHONY: verify check-go fmt-check fmt vet lint test test-shards coverage-floor typecheck build build-fakegame build-fakeportal build-fakeidp image run e2e e2e-deps \
 	test-game test-game-resources test-catalogue game-images e2e-game vuln ci tidy i18n-hash deploy design-export
 
 verify: check-go fmt-check vet lint test typecheck
@@ -281,6 +281,10 @@ build-fakegame:
 build-fakeportal:
 	CGO_ENABLED=0 go build -trimpath -o bin/fakeportal ./cmd/fakeportal
 
+# The fake OpenID Connect provider for the end-to-end tests, likewise never in the image.
+build-fakeidp:
+	CGO_ENABLED=0 go build -trimpath -o bin/fakeidp ./cmd/fakeidp
+
 # The two build values on their own, for CI's image build, which calls the
 # docker build action rather than make image and so needs the same rules.
 .PHONY: foreman-version foreman-commit
@@ -305,7 +309,7 @@ SHARD ?=
 # E2E_ARGS passes specs or flags to Playwright, e.g. E2E_ARGS="tests/tips.spec.ts".
 E2E_ARGS ?=
 
-e2e: build build-fakegame build-fakeportal e2e-deps
+e2e: build build-fakegame build-fakeportal build-fakeidp e2e-deps
 	$(DOCKER_RUN) --ipc=host -e CI -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD)) $(E2E_ARGS)
 
 # Foreman runs a world on the plain tag factoriotools/factorio:<version>, so
