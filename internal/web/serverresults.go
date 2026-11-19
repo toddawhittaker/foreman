@@ -59,7 +59,7 @@ func (p ServerPage) switchBackOffer() *SwitchOffer {
 	if p.Busy() || !p.HaveResult || p.Result.Action != game.AuditSwitch || p.Result.Err != nil || p.Result.From == "" {
 		return nil
 	}
-	return &SwitchOffer{Path: switchPath(p.Result.From), Name: p.name(p.Result.From)}
+	return p.switchOffer(p.Result.From)
 }
 
 // RecoverSwitch offers the switch back after a crash loop, or is nil.

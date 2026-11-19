@@ -25,8 +25,12 @@ type launch struct {
 
 // launchLocked starts the world's container, then waits until the game is
 // in game and answers over RCON (SPEC 7.3). The caller holds the world's
-// lock.
+// lock. Every start goes through here, so an archived world is refused for
+// a mod change, an update or a restore too (SPEC 5.9).
 func (c *Controller) launchLocked(ctx context.Context, o *opRun) error {
+	if c.archived(o.w.id) {
+		return errArchived()
+	}
 	p, err := c.prepareContainer(ctx, o)
 	if err != nil {
 		return err
@@ -268,6 +272,9 @@ const (
 	// the catalogue names in Reason.Kind, such as a port in use; Detail is
 	// Docker's words (SPEC 8.7).
 	StartDockerRefused = "docker-refused"
+	// StartArchived: the world is archived, so it cannot start or be
+	// switched to (SPEC 5.9).
+	StartArchived = "archived"
 )
 
 // startRefused names the reason Docker refused to start the container,
@@ -313,6 +320,8 @@ func (e *StartError) Error() string {
 			return head + ": another program already uses the game's port (" + e.Detail + ")"
 		}
 		return head + ": Docker refused to start it (" + e.Detail + ")"
+	case StartArchived:
+		return head + ": the world is archived. Unarchive it first"
 	}
 	return head
 }
