@@ -40,7 +40,7 @@
   "apitokens.mcp.heading": "Dostęp MCP",
   "apitokens.mcp.state.forced": "Dostęp MCP jest wyłączony, bo Foreman uruchomiono z {env}. Nie można go tu włączyć.",
   "apitokens.mcp.state.off": "Dostęp MCP jest wyłączony. Każde żądanie do punktu końcowego MCP jest odrzucane, niezależnie od tokenu.",
-  "apitokens.mcp.state.on": "Dostęp MCP jest włączony. Programy z działającym tokenem API mogą korzystać z Foremana.",
+  "apitokens.mcp.state.on": "Dostęp MCP jest włączony. Programy z ważnym tokenem API mogą korzystać z Foremana.",
   "apitokens.mcp.turn_off": "Wyłącz dostęp MCP",
   "apitokens.mcp.turn_on": "Włącz dostęp MCP",
   "apitokens.mine.empty": "Brak tokenów API.",
@@ -63,7 +63,7 @@
   "apitokens.scope.read.hint": "Podgląd serwera, światów, graczy, dziennika, migawek i modyfikacji. Niczego nie zmienia.",
   "apitokens.state.expired": "Wygasł",
   "apitokens.state.revoked": "Unieważniony",
-  "apitokens.state.working": "Działa",
+  "apitokens.state.working": "Ważny",
   "apitokens.tab": "Tokeny API",
   "apitokens.title": "Tokeny API"
 }

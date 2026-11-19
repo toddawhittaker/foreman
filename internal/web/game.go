@@ -404,7 +404,21 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 	p := s.serverPage(r.Context(), sum, s.game.Status(sum.ID))
 	p.FocusResult = followsOwnAction(r)
 	p.PlayerResult = s.playerResults.take(u.ID, sum.ID, PathServer)
+	p.RecentSnapshots = s.recentSnapshots(sum.ID)
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// recentSnapshotCount is how many of the newest snapshots the Server page lists.
+const recentSnapshotCount = 3
+
+// recentSnapshots is the world's newest few snapshots for the Server page,
+// read once per page load, never per live update. A failed read lists none.
+func (s *server) recentSnapshots(id string) []world.Snapshot {
+	list, err := s.worlds.Snapshots(id)
+	if err != nil {
+		return nil
+	}
+	return list[:min(len(list), recentSnapshotCount)]
 }
 
 // startable returns the world in the path when it is the active one, the

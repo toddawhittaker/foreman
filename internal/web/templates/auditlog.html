@@ -55,7 +55,7 @@
 </form>
 
 <section class="audit-entries" aria-labelledby="entries-heading">
-  <h2 id="entries-heading">{{t "audit.list.heading"}}</h2>
+  <h2 id="entries-heading" class="visually-hidden">{{t "audit.list.heading"}}</h2>
   {{- if .Rows}}
   {{- /* The cells carry data-label so a phone shows each row as a compact block (DESIGN 8.15). */}}
   <table class="audit-table" role="table" id="audit-list">

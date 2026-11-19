@@ -58,6 +58,20 @@
   {{template "server-player-result" .}}
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
+{{- /* The newest snapshots sit under the world's pages, so the last safe point is in view before a restart or a stop. */}}
+<section class="panel card recent-snaps" aria-labelledby="recent-snaps-heading">
+  <h2 id="recent-snaps-heading">{{t "common.nav.snapshots"}}</h2>
+  {{- with .RecentSnapshots}}
+  <ul class="recent-snaps__list" role="list">
+    {{- range .}}
+    <li><span class="recent-snaps__name">{{with snapReason .}}<span class="snap-kind">{{.}}</span>{{end}}<span>{{snapLabel .}}</span></span>{{template "when" .TakenAt}}</li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty">{{t "worlds.snapshots.empty"}}</p>
+  {{- end}}
+  <div class="actions"><a href="{{.SnapshotsPath}}" id="act-recent-snapshots">{{t "worlds.snapshots.list"}}</a></div>
+</section>
 </div>
 {{- end}}
 {{- end}}
@@ -431,8 +445,8 @@
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{msg .StartLabel}}</button></form>
   {{- end}}
   {{- if .CanSnapshot}}
-  {{- /* While the game runs, the safe everyday step is the page's one primary; Restart and Stop stay plain (DESIGN 7.1). */}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button{{if eq .Status.State "running"}} button--primary{{end}}" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+  {{- /* One rule for the plate: only a step that brings the game up is primary; while it runs, every routine control is plain (DESIGN 7.1). */}}
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
   {{- end}}
   {{- if .CanRestart}}
   <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>

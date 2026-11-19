@@ -23,7 +23,10 @@ import (
 type ServerPage struct {
 	World    world.Summary
 	HasWorld bool
-	Status   game.Status
+	// RecentSnapshots is the world's newest snapshots, newest first; only
+	// the page load fills it, so live updates never read the disk for it.
+	RecentSnapshots []world.Snapshot
+	Status          game.Status
 	// Players is who is online, when PlayersKnown; PlayersError says the
 	// game could not be asked.
 	Players      []game.Player

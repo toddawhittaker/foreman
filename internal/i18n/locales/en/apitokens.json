@@ -40,7 +40,7 @@
   "apitokens.mcp.heading": "MCP access",
   "apitokens.mcp.state.forced": "MCP access is off because Foreman was started with {env}. It cannot be turned on here.",
   "apitokens.mcp.state.off": "MCP access is off. Every request to the MCP endpoint is refused, whatever its token.",
-  "apitokens.mcp.state.on": "MCP access is on. Programs with a working API token can use Foreman.",
+  "apitokens.mcp.state.on": "MCP access is on. Programs with a valid API token can use Foreman.",
   "apitokens.mcp.turn_off": "Turn off MCP access",
   "apitokens.mcp.turn_on": "Turn on MCP access",
   "apitokens.mine.empty": "You have no API tokens yet.",
@@ -63,7 +63,7 @@
   "apitokens.scope.read.hint": "See the server, worlds, players, log, snapshots and mods. Changes nothing.",
   "apitokens.state.expired": "Expired",
   "apitokens.state.revoked": "Revoked",
-  "apitokens.state.working": "Working",
+  "apitokens.state.working": "Valid",
   "apitokens.tab": "API tokens",
   "apitokens.title": "API tokens"
 }

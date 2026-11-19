@@ -23,11 +23,15 @@
   <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.import.done" "name" .}}</p>
 </div>
 {{- end}}
+{{- if .Favorites}}
+<div class="message message--warning favorite-export-warning" id="favorite-export-warning">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
+</div>
+{{- end}}
 {{- /* The list leads; importing one, the rarer task, sits in the rail beside it. */}}
 <div class="split">
 <section class="panel" aria-label="{{t "favorites.title"}}">
   {{- with .Favorites}}
-  <p class="hint favorite-export-warning" id="favorite-export-warning"><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
   <ul class="favorite-list" role="list">
     {{- range .}}
     {{- $name := .Name}}

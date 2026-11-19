@@ -115,7 +115,7 @@ a phone can find where a page and a section start.
 | `--text-lg` | 1.125rem (18 px) | 1.333 | 650 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
 | `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings; the Server plate's figures on a phone |
 | `--text-2xl` | 1.5rem (24 px) | 1.167 | 600 | Stat figures: the Server plate's gauges, tabular |
-| `--text-3xl` | 1.75rem (28 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
+| `--text-3xl` | 2rem (32 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
 
 `h3` is 1.0625rem (17 px, no token) at weight 600. So is an operation's
 heading (`h2.op-heading`) and the connected-players heading in the

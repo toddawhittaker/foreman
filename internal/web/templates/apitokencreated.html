@@ -4,20 +4,21 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow">{{t "common.nav.settings"}}</p>
-<h1>{{t "apitokens.created.title" "name" .Token.Name}}</h1>
+<header class="page-head">
+  <p class="eyebrow">{{t "common.nav.settings"}}</p>
+  <h1>{{t "apitokens.created.title" "name" .Token.Name}}</h1>
+</header>
 {{template "settings-tabs" "api-token"}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{t "apitokens.created.done" "name" .Token.Name "scope" (msg .Token.ScopeWord)}}</p>
-</div>
-{{- /* The secret is shown here once and never again; the page is sent with no-store (SPEC 14.19). */}}
-<div class="message message--warning" id="secret-once">
-  <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.created.once"}}</p>
-</div>
-{{- /* Each value is a read-only line with its copy button at the field's end. */}}
-<div class="exchange">
+{{- /* One panel, read top to bottom: what was made, the secret with its warning right above it, then where to use it and until when. */}}
+<section class="panel token-created" aria-labelledby="done-message">
+  <p class="token-created__done" id="done-message" tabindex="-1" autofocus><strong>{{t "common.label.done"}}</strong> {{t "apitokens.created.done" "name" .Token.Name "scope" (msg .Token.ScopeWord)}}</p>
+  {{- /* The secret is shown here once and never again; the page is sent with no-store (SPEC 14.19). */}}
+  <div class="exchange">
   <div class="field">
     <label for="token-secret">{{t "apitokens.created.secret"}}</label>
+    <div class="message message--warning" id="secret-once">
+      <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.created.once"}}</p>
+    </div>
     <div class="copy-field">
       <textarea id="token-secret" class="exchange__value" readonly rows="1" spellcheck="false" autocomplete="off" translate="no" aria-describedby="secret-once">{{.Secret}}</textarea>
       <button type="button" class="button button--primary" id="token-secret-copy" data-copy-from="token-secret" data-done="token-secret-done" hidden>{{t "apitokens.created.copy_secret"}}</button>
@@ -32,17 +33,23 @@
     </div>
     <p class="copy-done" id="token-endpoint-done" hidden>{{t "apitokens.created.copied_endpoint"}}</p>
   </div>
-</div>
-<dl class="facts facts--inline">
-  <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Token.Expires}}</dd></div>
-</dl>
-{{- if not .MCPOn}}
-<div class="message message--note" id="mcp-off-note">
-  <p><strong>{{t "common.label.note"}}</strong> {{t "apitokens.created.mcp_off"}}</p>
-</div>
-{{- end}}
-<div class="actions">
-  <a href="{{.BackPath}}" class="button" id="act-token-back">{{t "apitokens.created.back"}}</a>
-</div>
+  </div>
+  <dl class="facts facts--inline">
+    <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .Token.ScopeWord}}</dd></div>
+    <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Token.Expires}}</dd></div>
+    <div><dt>{{t "apitokens.mcp.heading"}}</dt><dd><span class="state state--mcp-{{if .MCPOn}}on{{else}}off{{end}}">{{if .MCPOn}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</span></dd></div>
+  </dl>
+  {{- if not .MCPOn}}
+  <div class="message message--note" id="mcp-off-note">
+    <p><strong>{{t "common.label.note"}}</strong> {{t "apitokens.created.mcp_off"}}</p>
+    {{- if .Admin}}
+    <div class="actions"><a href="{{.BackPath}}#mcp-access">{{t "apitokens.mcp.turn_on"}}</a></div>
+    {{- end}}
+  </div>
+  {{- end}}
+  <div class="actions token-created__foot">
+    <a href="{{.BackPath}}" class="button" id="act-token-back">{{t "apitokens.created.back"}}</a>
+  </div>
+</section>
 {{- end}}
 {{- end}}

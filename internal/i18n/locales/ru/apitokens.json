@@ -40,7 +40,7 @@
   "apitokens.mcp.heading": "Доступ по MCP",
   "apitokens.mcp.state.forced": "Доступ по MCP выключен, потому что Foreman запущен с {env}. Включить его здесь нельзя.",
   "apitokens.mcp.state.off": "Доступ по MCP выключен. Любой запрос к MCP-адресу отклоняется, какой бы ни был токен.",
-  "apitokens.mcp.state.on": "Доступ по MCP включён. Программы с действующим API-токеном могут работать с Foreman.",
+  "apitokens.mcp.state.on": "Доступ по MCP включён. Программы с действительным API-токеном могут работать с Foreman.",
   "apitokens.mcp.turn_off": "Выключить доступ по MCP",
   "apitokens.mcp.turn_on": "Включить доступ по MCP",
   "apitokens.mine.empty": "У вас пока нет API-токенов.",
@@ -63,7 +63,7 @@
   "apitokens.scope.read.hint": "Просмотр сервера, миров, игроков, журнала, снимков и модов. Ничего не меняет.",
   "apitokens.state.expired": "Истёк",
   "apitokens.state.revoked": "Отозван",
-  "apitokens.state.working": "Действует",
+  "apitokens.state.working": "Действителен",
   "apitokens.tab": "API-токены",
   "apitokens.title": "API-токены"
 }
