@@ -443,8 +443,8 @@
 </div>
 {{- end}}
 {{- if .CanForceStop}}
-{{- /* The emergency stop is not a peer of the routine controls: it sits at the plate's foot under a danger rule, with what it does in one line. On a phone it folds under an Emergency actions disclosure, so it does not push the facts down; on a wide screen the script opens it and hides the summary. */}}
-<details class="disclosure emergency" data-open-wide>
+{{- /* The emergency stop is not a peer of the routine controls: it sits at the plate's foot under a danger rule, with what it does in one line. It folds under a closed Emergency actions disclosure at every width, so a rare action does not take the routine controls' room. */}}
+<details class="disclosure emergency">
   <summary>{{t "server.force.group"}}</summary>
   <div class="danger-row">
     <a href="{{.ForceStopPath}}" id="act-force-stop">{{t "server.action.force_stop"}}</a>

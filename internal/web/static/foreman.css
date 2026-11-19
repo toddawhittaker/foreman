@@ -314,7 +314,7 @@ h1 {
 /* A section heading: 20/26, the same on every page. */
 h2 {
   font-size: var(--text-xl);
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.005em;
 }
@@ -322,7 +322,7 @@ h2 {
 /* A group heading inside a section: 18/24. */
 h3 {
   font-size: var(--text-lg);
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.333;
 }
 
@@ -1446,13 +1446,14 @@ legend {
   overflow-wrap: anywhere;
 }
 
-/* A hint: 14/20 in the quiet colour. It is smaller than body text, so
-   its measure in ch is longer. */
+/* A hint: 13/19 in the quiet colour, a clear step under the 16 px body
+   so a field's help never competes with its label. Its measure in ch is
+   longer, as the text is smaller. */
 .hint {
   max-inline-size: 80ch;
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  line-height: 1.43;
+  font-size: var(--text-xs);
+  line-height: 1.45;
 }
 
 /* A link in a hint's smaller text still makes the 24 px target floor
@@ -7971,12 +7972,18 @@ main:has(> .gate)::before {
   }
 }
 
-/* Helper text: 14 px at a 1.5 line height, held to about 60 characters, so
-   it reads as help under its field and never competes with content. */
+/* Helper text: 13 px at a 1.45 line height, held to about 66 characters,
+   so it reads as help under its field and never competes with content. A
+   card's one-line description under its heading stays 14 px. */
 .hint,
-.panel > :is(h2, .section-head) + :is(p.hint, p:not([class])),
-.panel > :is(h2, .section-head) + .hint,
 main > h1 + p.hint {
+  max-inline-size: 66ch;
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.panel > :is(h2, .section-head) + :is(p.hint, p:not([class])),
+.panel > :is(h2, .section-head) + .hint {
   max-inline-size: 60ch;
   font-size: var(--text-sm);
   line-height: 1.5;
@@ -10501,4 +10508,109 @@ main:has(> .public-world) {
     justify-content: flex-end;
     align-self: center;
   }
+}
+
+/* The Audit log is one card like its sibling settings pages: the filter
+   row is the card's head band above a hairline, the entries under it. */
+.audit-panel {
+  gap: var(--space-5);
+}
+
+.audit-panel > .audit-filter {
+  padding-block-end: var(--space-5);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+/* A badge is one line: a long "Needed by" name stays a pill, never a
+   two-line lozenge. */
+.badge {
+  white-space: nowrap;
+}
+
+/* Clear plan lines up with the card's text edge, not indented by its
+   quiet face's padding. */
+.plan-panel__clear .button--quiet {
+  padding-inline: 0;
+}
+
+/* A plan that destroys nothing keeps the review frame but trades the
+   hazard stripe for a plain orange edge (DESIGN 7.1). */
+.confirm--plain::before {
+  block-size: 4px;
+  background: var(--color-primary);
+}
+
+/* Revoke and Delete in a row of people or tokens are red words that gain
+   their outline only when pointed at, so a column of them does not shout. */
+.token-list .button--risky:not(:hover, :focus-visible) {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* The drop zone: 160 px, an upload mark over one line of words, the
+   limits in the hint above it. */
+.dropzone--on .dropzone__area {
+  min-block-size: 10rem;
+}
+
+.dropzone__prompt:not([hidden]) {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.dropzone__prompt::before {
+  content: "";
+  inline-size: 2rem;
+  block-size: 2rem;
+  background: var(--color-text-muted);
+  mask: var(--i-upload) center / contain no-repeat;
+}
+
+@container (min-width: 56rem) {
+  .import-upload > .field.dropzone {
+    align-self: start;
+  }
+
+  .import-upload > .field.dropzone .dropzone__area {
+    block-size: auto;
+  }
+}
+
+/* The admin-scope warning shows once Admin is the chosen scope; it stays
+   in the document, so the radio's description still reads it. */
+.token-create:has(input[name="scope"]:checked):not(:has(#scope-admin:checked)) > #scope-admin-warning {
+  display: none;
+}
+
+/* Game settings on a wide card: a section's fields flow two to a row, so
+   the long form uses the width beside its titles instead of one narrow
+   column. Lists, notes and anything that is not a field run across both. */
+@container (min-width: 72rem) {
+  .settings > fieldset > .setting-row__body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .settings > fieldset > .setting-row__body > :not(.field, .setting-check, fieldset) {
+    grid-column: 1 / -1;
+  }
+}
+
+.audit-panel > form.audit-filter {
+  display: flex;
+}
+
+/* A token's name stays one pill (names are at most 32 characters). */
+@container (width > 52rem) {
+  .audit-table .audit-token .badge {
+    white-space: nowrap;
+  }
+}
+
+/* A save bar's note leads it, the action ends it. */
+.form-foot > .form-foot__note {
+  margin: 0 auto 0 0;
+  margin-inline: 0 auto;
 }

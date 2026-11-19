@@ -5,7 +5,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{worldsPath}}">{{t "worlds.back.worlds"}}</a></div>
+<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <h1>{{t "worlds.import.title"}}</h1>
 <p class="page-intro">{{t "worlds.import.intro"}}</p>
 {{- with .Result}}

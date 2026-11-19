@@ -67,18 +67,7 @@
   </div>
 </section>
 
-<section class="panel" aria-labelledby="mine-heading">
-  <h2 id="mine-heading">{{t "apitokens.mine.heading"}}</h2>
-  {{- with .Mine}}
-  {{template "token-head"}}
-  <ul class="token-list" role="list" id="my-tokens">
-    {{- range .}}{{template "token-card" .}}{{end}}
-  </ul>
-  {{- else}}
-  <p class="empty" id="my-tokens-empty">{{t "apitokens.mine.empty"}}</p>
-  {{- end}}
-</section>
-
+{{- /* Creating a token comes before the lists, so the two lists of tokens read one after the other. */}}
 <section class="panel" aria-labelledby="create-heading">
   <h2 id="create-heading">{{t "apitokens.create.heading"}}</h2>
   <form method="post" action="{{.Path}}" class="token-create" novalidate>
@@ -109,6 +98,18 @@
     </div>
   </form>
 </section>
+<section class="panel" aria-labelledby="mine-heading">
+  <h2 id="mine-heading">{{t "apitokens.mine.heading"}}</h2>
+  {{- with .Mine}}
+  {{template "token-head"}}
+  <ul class="token-list" role="list" id="my-tokens">
+    {{- range .}}{{template "token-card" .}}{{end}}
+  </ul>
+  {{- else}}
+  <p class="empty" id="my-tokens-empty">{{t "apitokens.mine.empty"}}</p>
+  {{- end}}
+</section>
+
 
 {{- if .Admin}}
 <section class="panel" aria-labelledby="all-heading">

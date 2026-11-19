@@ -7,7 +7,7 @@
 {{with .Page}}
 <p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <h1>{{t "worlds.generate.title"}}</h1>
-<p class="hint">{{t "worlds.generate.intro"}}</p>
+<p class="page-intro">{{t "worlds.generate.intro"}}</p>
 {{- if .FavoritesOn}}
 {{- /* A plain GET, so without script the page reloads filled in (SPEC 5.12). */}}
 <form method="get" action="{{.Path}}" class="panel" id="favorite-chooser" aria-labelledby="favorite-chooser-heading">

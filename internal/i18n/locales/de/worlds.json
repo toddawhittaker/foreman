@@ -11,7 +11,6 @@
   "worlds.allsnapshots.title": "Snapshots",
   "worlds.allsnapshots.world_adds": "Die Snapshots dieser Welt belegen zusätzlich {size}.",
   "worlds.back.world": "Zurück zu {world}",
-  "worlds.back.worlds": "Zurück zu den Welten",
   "worlds.badge.active": "Aktiv",
   "worlds.busy.action.force_stop": "erzwungener Stopp",
   "worlds.busy.action.image_download": "Image-Download",

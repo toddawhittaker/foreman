@@ -7,7 +7,7 @@
 {{with .Page}}
 <p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <h1>{{t "favorites.title"}}</h1>
-<p class="hint">{{t "favorites.intro"}}</p>
+<p class="page-intro">{{t "favorites.intro"}}</p>
 {{- with .Deleted}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.deleted" "name" .}}</p>

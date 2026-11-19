@@ -11,7 +11,6 @@
   "worlds.allsnapshots.title": "快照",
   "worlds.allsnapshots.world_adds": "此世界的快照额外占用 {size}。",
   "worlds.back.world": "返回 {world}",
-  "worlds.back.worlds": "返回世界列表",
   "worlds.badge.active": "活动",
   "worlds.busy.action.force_stop": "强制停止",
   "worlds.busy.action.image_download": "镜像下载",
