@@ -15,7 +15,7 @@
     "other": "Bude smazáno {count} tokenů API tohoto uživatele."
   },
   "users.done.deleted": "Uživatel byl smazán.",
-  "users.done.password": "Heslo je změněno. Všechny ostatní relace byly odhlášeny.",
+  "users.done.password": "Heslo bylo změněno. Všechny ostatní relace byly odhlášeny.",
   "users.fact.created": "Vytvořen",
   "users.fact.kind": "Způsob přihlášení",
   "users.intro": "Každý uživatel je správce. Kterýkoli uživatel může smazat jiného, ale ne sebe.",

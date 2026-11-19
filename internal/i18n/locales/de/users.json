@@ -1,6 +1,6 @@
 {
   "users.delete": "Löschen",
-  "users.delete.audit": "Den Namen in den Einträgen des Audit-Logs behalten, die die Person erzeugt hat.",
+  "users.delete.audit": "Den Namen in den Einträgen des Audit-Protokolls behalten, die die Person erzeugt hat.",
   "users.delete.button": "Benutzer löschen",
   "users.delete.cancel": "Benutzer behalten",
   "users.delete.name": "Benutzer {name} löschen",
@@ -10,8 +10,8 @@
   "users.delete.self": "Du kannst dich nicht selbst löschen. Das muss ein anderer Benutzer tun.",
   "users.delete.signout": "Den Benutzer überall abmelden.",
   "users.delete.tokens": {
-    "one": "Sein {count} API-Token löschen.",
-    "other": "Seine {count} API-Tokens löschen."
+    "one": "{count} API-Token der Person löschen.",
+    "other": "{count} API-Tokens der Person löschen."
   },
   "users.done.deleted": "Der Benutzer wurde gelöscht.",
   "users.done.password": "Dein Passwort ist geändert. Überall sonst wurdest du abgemeldet.",
