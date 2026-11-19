@@ -10479,3 +10479,26 @@ main:has(> .public-world) {
 .panel > .token-list > .token-card + .token-card {
   border-block-start: var(--border-width) solid var(--color-line);
 }
+
+/* Generate: starting from a favorite is one row on a wide card, the heading,
+   the choice and the link to the list side by side. */
+@container (min-width: 64rem) {
+  form#favorite-chooser {
+    grid-template-columns: auto minmax(0, 34rem) 1fr;
+    column-gap: var(--space-6);
+    align-items: end;
+  }
+
+  #favorite-chooser > h2 {
+    align-self: center;
+  }
+
+  #favorite-chooser > :not(h2, .field, .actions) {
+    grid-column: 1 / -1;
+  }
+
+  #favorite-chooser > .actions {
+    justify-content: flex-end;
+    align-self: center;
+  }
+}
