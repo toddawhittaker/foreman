@@ -6725,6 +6725,11 @@ main:has(> .gate) > .gate {
   gap: 0;
 }
 
+/* The source hint is a note above the first section, so it gets the gap a hint has before a section. */
+.setting-rows > #general-source {
+  margin-block-end: var(--space-4);
+}
+
 :is(.setting-row, .settings > fieldset) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -9691,6 +9696,34 @@ main:has(> .gate) > .gate + .gate {
 .audit-table .audit-detail,
 .audit-table .audit-user {
   overflow-wrap: anywhere;
+}
+
+/* The fixed columns keep their words whole and the detail takes what is left, so
+   one long detail never squeezes them. The time stays on one line, age included;
+   the user, token and world keep a floor of 12 characters, so a short value never
+   breaks, and still break inside a word when a 32-character value is wider. The
+   action keeps a floor of 16 characters and wraps only between words, so a long
+   label in another language (German runs to 52 characters) never pushes the table
+   past its container. */
+@container (width > 52rem) {
+  .audit-table .audit-time {
+    white-space: nowrap;
+  }
+
+  .audit-table .audit-action {
+    min-inline-size: 16ch;
+    overflow-wrap: normal;
+  }
+
+  .audit-table :is(.audit-user, .audit-token, .audit-world) {
+    min-inline-size: 12ch;
+    overflow-wrap: anywhere;
+  }
+
+  .audit-table .audit-token .badge {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* An entry's world link is a full-size target that does not make its row taller

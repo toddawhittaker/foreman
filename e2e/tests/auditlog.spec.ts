@@ -200,6 +200,102 @@ test("on a wide screen the filters share one row and the table keeps six fixed c
   await checkPage(page);
 });
 
+// Time, user and action stay whole on one line, and the detail takes what is left and wraps.
+test("on a wide screen one long detail does not squeeze the other columns", async ({ page, foreman }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await createAdmin(page);
+  seedWorld(foreman);
+  const now = Math.floor(Date.now() / 1000);
+  seed(
+    foreman,
+    Array.from({ length: 12 }, (_, i) => ({
+      time: now - 60 * (i + 1),
+      username: "alice",
+      action: "console",
+      world: i % 3 === 0 ? "base" : null,
+      detail: i === 5 ? "x".repeat(300) : `entry-${i}`,
+      token: i % 4 === 0 ? "Claude" : "",
+    })),
+  );
+  await openAuditLog(page);
+  await expect(page.locator("#audit-list")).toHaveCSS("display", "table");
+
+  for (const cls of ["audit-time", "audit-user", "audit-action", "audit-token", "audit-world"]) {
+    const bad = await page.evaluate((c) => {
+      const out: string[] = [];
+      for (const td of document.querySelectorAll<HTMLElement>(`#audit-list td.${c}`)) {
+        if (!td.textContent!.trim()) continue;
+        // The text's own line boxes, not a badge's border box: one line has one top.
+        const tops = new Set<number>();
+        const walker = document.createTreeWalker(td, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.textContent!.trim()) continue;
+          const r = document.createRange();
+          r.selectNodeContents(n);
+          for (const x of r.getClientRects()) tops.add(Math.round(x.top));
+        }
+        if (tops.size > 1) out.push(`${td.parentElement!.id}: ${tops.size} lines`);
+      }
+      return out;
+    }, cls);
+    expect(bad, `${cls} cells that wrap`).toEqual([]);
+  }
+
+  // Every row but the one with the long detail is one line of text tall.
+  // A short row is the yardstick, so the check holds for any font and line height.
+  const heights = await rows(page).evaluateAll((trs) => trs.map((tr) => tr.getBoundingClientRect().height));
+  const short = Math.min(...heights);
+  expect(Number.isFinite(short) && short > 0).toBe(true);
+  const tall = heights.filter((h) => h > short * 1.5);
+  expect(tall.length, `tall rows ${heights}`).toBeLessThanOrEqual(1);
+
+  // The long detail wraps inside its column; the page does not scroll sideways.
+  const root = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  expect(root.scroll).toBeLessThanOrEqual(root.client);
+  await checkPage(page);
+});
+
+// The table layout holds down to the narrowest container that still gets it, even
+// with the longest user and token names the app allows.
+test("just above the stacking width, long names and a long detail do not scroll the page sideways", async ({ page, foreman }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await createAdmin(page);
+  seedWorld(foreman);
+  const now = Math.floor(Date.now() / 1000);
+  seed(foreman, [
+    { time: now - 30, username: "u".repeat(32), action: "start", world: "base", detail: "x".repeat(300), token: "T".repeat(32) },
+    { time: now - 20, username: "alice", action: "console", world: null, detail: "short", token: "Claude" },
+  ]);
+  await openAuditLog(page);
+  await expect(page.locator("#audit-list")).toHaveCSS("display", "table");
+  const root = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  expect(root.scroll).toBeLessThanOrEqual(root.client);
+  const table = await page.locator("#audit-list").evaluate((el) => ({ right: el.getBoundingClientRect().right, parent: el.parentElement!.getBoundingClientRect().right }));
+  expect(table.right).toBeLessThanOrEqual(table.parent + 1);
+  await checkPage(page);
+});
+
+// Action labels run long in other languages (German's longest is 52 characters);
+// they wrap between words instead of pushing the table past its container.
+test("just above the stacking width, a long German action label does not scroll the page sideways", async ({ page, foreman, context }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await createAdmin(page);
+  seedWorld(foreman);
+  const now = Math.floor(Date.now() / 1000);
+  seed(foreman, [
+    { time: now - 30, username: "u".repeat(32), action: "save-upload-limit-set", world: "base", detail: "x".repeat(300), token: "T".repeat(32) },
+    { time: now - 20, username: "alice", action: "public-mods-set", world: null, detail: "short", token: "Claude" },
+  ]);
+  await context.addCookies([{ name: "foreman_lang", value: "de", url: foreman.url }]);
+  await page.goto("/settings/audit-log");
+  await expect(page.locator("#audit-list")).toHaveCSS("display", "table");
+  await expect(page.locator("#audit-list")).toContainText("Limit für das Hochladen");
+  const root = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  expect(root.scroll).toBeLessThanOrEqual(root.client);
+  const table = await page.locator("#audit-list").evaluate((el) => ({ right: el.getBoundingClientRect().right, parent: el.parentElement!.getBoundingClientRect().right }));
+  expect(table.right).toBeLessThanOrEqual(table.parent + 1);
+});
+
 test("at 320 px the table stacks each row, with no sideways scroll", async ({ page, foreman }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await createAdmin(page);
