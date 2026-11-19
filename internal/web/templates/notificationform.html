@@ -20,7 +20,7 @@
     <p class="hint" id="preset-{{.Value}}-hint">{{msgHTML .Hint}}</p>
     {{- end}}
   </fieldset>
-  <div class="field">
+  <div class="field" id="webhook-url-field">
     <label for="webhook-url"{{if .URLRequired}} class="required"{{end}}>{{t "notify.url.label"}}</label>
     {{- if .Edit}}
     <p class="hint" id="webhook-url-hint">{{if .Kept.Unreadable}}{{t "notify.url.unreadable"}}{{else}}{{t "notify.url.kept" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{end}}</p>
@@ -34,6 +34,27 @@
     <p class="error" id="webhook-url-error"><strong>{{t "common.error.label"}}</strong> {{msg .URLError}}</p>
     {{- end}}
   </div>
+  {{- /* Pushover's address is fixed; its two keys are write-only like an address. */}}
+  <fieldset id="webhook-keys">
+    <legend>{{t "notify.keys.legend"}}</legend>
+    <p class="hint" id="webhook-keys-hint">{{if .KeysKept}}{{t "notify.keys.kept"}}{{else}}{{t "notify.keys.hint"}}{{end}}</p>
+    <div class="field">
+      <label for="webhook-app-token">{{t "notify.key.app_token"}}</label>
+      <input id="webhook-app-token" name="app_token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"
+        {{- if not .AppTokenError.IsZero}} aria-invalid="true"{{end}} aria-describedby="{{.KeyDescribedBy "webhook-app-token" .AppTokenError}}">
+      {{- if not .AppTokenError.IsZero}}
+      <p class="error" id="webhook-app-token-error"><strong>{{t "common.error.label"}}</strong> {{msg .AppTokenError}}</p>
+      {{- end}}
+    </div>
+    <div class="field">
+      <label for="webhook-user-key">{{t "notify.key.user_key"}}</label>
+      <input id="webhook-user-key" name="user_key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"
+        {{- if not .UserKeyError.IsZero}} aria-invalid="true"{{end}} aria-describedby="{{.KeyDescribedBy "webhook-user-key" .UserKeyError}}">
+      {{- if not .UserKeyError.IsZero}}
+      <p class="error" id="webhook-user-key-error"><strong>{{t "common.error.label"}}</strong> {{msg .UserKeyError}}</p>
+      {{- end}}
+    </div>
+  </fieldset>
   <fieldset{{if not .EventsError.IsZero}} aria-describedby="webhook-events-error"{{end}}>
     <legend>{{t "notify.form.events"}}</legend>
     {{- if not .EventsError.IsZero}}

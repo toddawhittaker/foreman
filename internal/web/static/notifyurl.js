@@ -4,6 +4,20 @@
 // the note shows only on the edit page of an http:// webhook.
 (() => {
   "use strict";
+  // Pushover's address is fixed, so its two keys take the address field's
+  // place while it is chosen. Without script both show.
+  const urlField = document.getElementById("webhook-url-field");
+  const keys = document.getElementById("webhook-keys");
+  if (urlField && keys) {
+    const radios = document.querySelectorAll('input[name="preset"]');
+    const swap = () => {
+      const pushover = document.getElementById("preset-pushover")?.checked === true;
+      urlField.hidden = pushover;
+      keys.hidden = !pushover;
+    };
+    radios.forEach((r) => r.addEventListener("change", swap));
+    swap();
+  }
   const field = document.getElementById("webhook-url");
   const note = document.getElementById("webhook-url-plain");
   if (!field || !note) return;

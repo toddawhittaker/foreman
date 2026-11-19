@@ -12,16 +12,17 @@ type Preset string
 
 // The presets. Discord is the default.
 const (
-	Discord Preset = "discord"
-	Ntfy    Preset = "ntfy"
-	Generic Preset = "generic"
+	Discord  Preset = "discord"
+	Ntfy     Preset = "ntfy"
+	Generic  Preset = "generic"
+	Pushover Preset = "pushover"
 )
 
 // Presets lists the presets in the order the page shows them.
-var Presets = []Preset{Discord, Ntfy, Generic}
+var Presets = []Preset{Discord, Ntfy, Pushover, Generic}
 
 // Known reports whether p is one of Presets.
-func (p Preset) Known() bool { return p == Discord || p == Ntfy || p == Generic }
+func (p Preset) Known() bool { return p == Discord || p == Ntfy || p == Generic || p == Pushover }
 
 // MaxURLLength bounds a webhook address.
 const MaxURLLength = 2048
@@ -35,7 +36,52 @@ var (
 	ErrURLHasUser    = errors.New("the webhook address holds a user name or password")
 	ErrURLNotDiscord = errors.New("the webhook address is not a Discord webhook address")
 	ErrURLNoTopic    = errors.New("the webhook address names no ntfy topic")
+	ErrKeyMissing    = errors.New("a Pushover key was not given")
+	ErrKeyInvalid    = errors.New("a Pushover key holds a character other than a letter or digit, or is too long")
 )
+
+// Pushover's endpoint is fixed, so the admin gives only the two keys.
+const (
+	PushoverEndpoint = "https://api.pushover.net/1/messages.json"
+	PushoverHost     = "api.pushover.net"
+	// MaxKeyLength bounds a Pushover key; Pushover's are 30 characters.
+	MaxKeyLength = 64
+)
+
+// CheckKey checks one Pushover key. The error never holds the key.
+func CheckKey(key string) error {
+	if key == "" {
+		return ErrKeyMissing
+	}
+	if len(key) > MaxKeyLength {
+		return ErrKeyInvalid
+	}
+	for _, r := range key {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
+			return ErrKeyInvalid
+		}
+	}
+	return nil
+}
+
+// pushoverAddress is what a Pushover webhook keeps sealed in its address:
+// the endpoint with the two keys in its query. Only send reads the keys
+// back, and it posts them in the body, never in the address.
+func pushoverAddress(token, user string) string {
+	return PushoverEndpoint + "?" + url.Values{"token": {token}, "user": {user}}.Encode()
+}
+
+// pushoverKeys splits a stored Pushover address into the address to post
+// to and the two keys.
+func pushoverKeys(raw string) (endpoint, token, user string) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", "", ""
+	}
+	q := u.Query()
+	u.RawQuery = ""
+	return u.String(), q.Get("token"), q.Get("user")
+}
 
 // discordHosts are the hosts Discord gives webhook addresses on.
 var discordHosts = map[string]bool{

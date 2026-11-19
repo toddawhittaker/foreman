@@ -44,12 +44,13 @@ const ntfyExample = "https://ntfy.sh/your-topic"
 // WebhookView is one webhook as the pages show it: the preset and host,
 // never the address.
 type WebhookView struct {
-	ID       int64
-	Preset   i18n.Msg
-	Host     string
-	LangTag  i18n.Locale
-	LangName string
-	AllOn    bool
+	ID          int64
+	Preset      i18n.Msg
+	PresetValue notify.Preset
+	Host        string
+	LangTag     i18n.Locale
+	LangName    string
+	AllOn       bool
 	// Unreadable: the address cannot be opened, so nothing is sent until it
 	// is typed again. Plain: the address is http://.
 	Unreadable bool
@@ -122,10 +123,12 @@ type WebhookFormPage struct {
 	Events  []EventOption
 	Langs   []LangOption
 
-	PresetError i18n.Msg
-	URLError    i18n.Msg
-	EventsError i18n.Msg
-	LangError   i18n.Msg
+	PresetError   i18n.Msg
+	URLError      i18n.Msg
+	AppTokenError i18n.Msg
+	UserKeyError  i18n.Msg
+	EventsError   i18n.Msg
+	LangError     i18n.Msg
 }
 
 func (WebhookFormPage) templateName() string { return "notificationform" }
@@ -145,6 +148,20 @@ func (WebhookFormPage) BackPath() string { return PathNotifications }
 
 // URLRequired is true when there is no readable address to keep.
 func (p WebhookFormPage) URLRequired() bool { return !p.Edit || p.Kept.Unreadable }
+
+// KeysKept is true when the edit page's stored Pushover keys can be kept.
+func (p WebhookFormPage) KeysKept() bool {
+	return p.Edit && !p.Kept.Unreadable && p.Kept.PresetValue == notify.Pushover
+}
+
+// KeyDescribedBy is a Pushover key field's aria-describedby.
+func (p WebhookFormPage) KeyDescribedBy(field string, err i18n.Msg) string {
+	ids := []string{"webhook-keys-hint"}
+	if !err.IsZero() {
+		ids = append(ids, field+"-error")
+	}
+	return strings.Join(ids, " ")
+}
 
 // PlainNote shows the unencrypted note at first: the stored address is
 // http://. A script shows and hides it as an address is typed.
@@ -170,6 +187,8 @@ func (p WebhookFormPage) Problems() []Problem {
 	return problems(
 		Problem{"preset-" + string(notify.Discord), p.PresetError},
 		Problem{"webhook-url", p.URLError},
+		Problem{"webhook-app-token", p.AppTokenError},
+		Problem{"webhook-user-key", p.UserKeyError},
 		Problem{"webhook-event-" + string(notify.Start), p.EventsError},
 		Problem{"webhook-lang", p.LangError},
 	)
@@ -202,6 +221,8 @@ func presetName(p notify.Preset) i18n.Msg {
 		return i18n.M("notify.preset.ntfy")
 	case notify.Generic:
 		return i18n.M("notify.preset.generic")
+	case notify.Pushover:
+		return i18n.M("notify.preset.pushover")
 	}
 	return i18n.M("notify.preset.discord")
 }
@@ -212,6 +233,8 @@ func presetHint(p notify.Preset) i18n.Msg {
 		return i18n.M("notify.preset.ntfy.hint", "example", i18n.Code(ntfyExample))
 	case notify.Generic:
 		return i18n.M("notify.preset.generic.hint")
+	case notify.Pushover:
+		return i18n.M("notify.preset.pushover.hint", "host", i18n.Code(notify.PushoverHost))
 	}
 	return i18n.M("notify.preset.discord.hint")
 }
@@ -271,7 +294,7 @@ func languageName(l i18n.Locale) string {
 
 // webhookView makes the row for w in loc's language.
 func webhookView(loc i18n.Locale, w notify.Webhook) WebhookView {
-	v := WebhookView{ID: w.ID, Preset: presetName(w.Preset), Host: w.Host, LangTag: w.Lang, LangName: languageName(w.Lang), AllOn: w.AllOn(),
+	v := WebhookView{ID: w.ID, Preset: presetName(w.Preset), PresetValue: w.Preset, Host: w.Host, LangTag: w.Lang, LangName: languageName(w.Lang), AllOn: w.AllOn(),
 		Unreadable: w.Unreadable, Plain: w.Plain}
 	var names []string
 	for _, e := range w.OnEvents() {
@@ -387,10 +410,12 @@ func postedSetup(r *http.Request) notify.Setup {
 		}
 	}
 	return notify.Setup{
-		Preset: notify.Preset(r.PostFormValue("preset")),
-		URL:    secret.New(strings.TrimSpace(r.PostFormValue("url"))),
-		Events: on,
-		Lang:   i18n.Locale(r.PostFormValue("lang")),
+		Preset:   notify.Preset(r.PostFormValue("preset")),
+		URL:      secret.New(strings.TrimSpace(r.PostFormValue("url"))),
+		AppToken: secret.New(strings.TrimSpace(r.PostFormValue("app_token"))),
+		UserKey:  secret.New(strings.TrimSpace(r.PostFormValue("user_key"))),
+		Events:   on,
+		Lang:     i18n.Locale(r.PostFormValue("lang")),
 	}
 }
 
@@ -402,7 +427,12 @@ func checkSetup(st notify.Setup, kept *notify.Webhook) WebhookFormPage {
 		p.PresetError = i18n.M("notify.preset.invalid")
 	}
 	raw := st.URL.Reveal()
+	if st.Preset == notify.Pushover {
+		checkKeys(&p, st, kept)
+		raw = ""
+	}
 	switch {
+	case st.Preset == notify.Pushover:
 	case raw != "":
 		if st.Preset.Known() {
 			if _, err := notify.CheckURL(st.Preset, raw); err != nil {
@@ -424,7 +454,33 @@ func checkSetup(st notify.Setup, kept *notify.Webhook) WebhookFormPage {
 	if raw != "" && p.URLError.IsZero() && len(p.Problems()) > 0 {
 		p.URLError = i18n.M("notify.url.retype")
 	}
+	if st.Preset == notify.Pushover && len(p.Problems()) > 0 {
+		if st.AppToken.Reveal() != "" && p.AppTokenError.IsZero() {
+			p.AppTokenError = i18n.M("notify.key.retype")
+		}
+		if st.UserKey.Reveal() != "" && p.UserKeyError.IsZero() {
+			p.UserKeyError = i18n.M("notify.key.retype")
+		}
+	}
 	return p
+}
+
+// checkKeys checks the two Pushover keys. An empty key is fine on the edit
+// page of a readable Pushover webhook, which keeps the stored one.
+func checkKeys(p *WebhookFormPage, st notify.Setup, kept *notify.Webhook) {
+	canKeep := kept != nil && !kept.Unreadable && kept.Preset == notify.Pushover
+	check := func(key string) i18n.Msg {
+		switch err := notify.CheckKey(key); {
+		case err == nil, key == "" && canKeep:
+			return i18n.Msg{}
+		case errors.Is(err, notify.ErrKeyMissing):
+			return i18n.M("notify.key.missing")
+		default:
+			return i18n.M("notify.key.invalid", "count", notify.MaxKeyLength)
+		}
+	}
+	p.AppTokenError = check(st.AppToken.Reveal())
+	p.UserKeyError = check(st.UserKey.Reveal())
 }
 
 // urlProblem says what to fix in an address without echoing it.
