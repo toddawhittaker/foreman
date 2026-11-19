@@ -8944,6 +8944,11 @@ main:has(> .gate) > * + :not(h1, .gate) {
   margin-block-start: var(--space-4);
 }
 
+/* Single sign-on and the password form, side by side in the column. */
+main:has(> .gate) > .gate + .gate {
+  margin-block-start: var(--space-4);
+}
+
 /* Generate and Mod settings on a phone: 24 px between field groups, 8 px
    between a label, its hint and its control, 16 px inside the card. */
 @media (max-width: 39.99rem) {

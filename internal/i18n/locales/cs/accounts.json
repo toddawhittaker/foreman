@@ -10,6 +10,9 @@
   "accounts.username.control": "Z uživatelského jména je třeba odstranit řídicí znaky",
   "accounts.signin.title": "Přihlášení",
   "accounts.signin.submit": "Přihlásit",
+  "accounts.signin.sso": "Přihlásit jednotným přihlášením",
+  "accounts.signin.sso.heading": "Jednotné přihlášení",
+  "accounts.signin.local.heading": "Účet Foremanu",
   "accounts.signin.ratelimited.unknown": "Příliš mnoho neúspěšných přihlášení. Je třeba počkat několik minut a zkusit to znovu.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Příliš mnoho neúspěšných přihlášení. Je třeba počkat {count} minutu a zkusit to znovu.",

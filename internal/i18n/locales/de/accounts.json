@@ -9,6 +9,9 @@
   "accounts.username.control": "Entferne die Steuerzeichen aus dem Benutzernamen",
   "accounts.signin.title": "Anmelden",
   "accounts.signin.submit": "Anmelden",
+  "accounts.signin.sso": "Mit Einmalanmeldung anmelden",
+  "accounts.signin.sso.heading": "Einmalanmeldung",
+  "accounts.signin.local.heading": "Foreman-Konto",
   "accounts.signin.ratelimited.unknown": "Zu viele fehlgeschlagene Anmeldungen. Warte ein paar Minuten und versuche es dann erneut.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Zu viele fehlgeschlagene Anmeldungen. Warte {count} Minute und versuche es dann erneut.",

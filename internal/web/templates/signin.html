@@ -4,7 +4,24 @@
 <img class="gate-logo" src="{{static "icons/logo-96.png"}}" srcset="{{static "icons/logo-192.png"}} 2x" alt="" width="96" height="96">
 <h1>{{t "accounts.signin.title"}}</h1>
 {{with .Page}}
+{{- if .OIDC}}
+<form method="get" action="{{.OIDCPath}}" class="panel gate">
+  {{- if not .NoLocal}}
+  <h2>{{t "accounts.signin.sso.heading"}}</h2>
+  {{- end}}
+  {{- with .Next}}
+  <input type="hidden" name="next" value="{{.}}">
+  {{- end}}
+  <div class="actions">
+    <button type="submit" class="button button--primary">{{t "accounts.signin.sso"}}</button>
+  </div>
+</form>
+{{- end}}
+{{- if not .NoLocal}}
 <form method="post" action="{{signInPath}}" class="panel gate" novalidate>
+  {{- if .OIDC}}
+  <h2>{{t "accounts.signin.local.heading"}}</h2>
+  {{- end}}
   {{- if .RateLimited}}
   <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
     <p><strong>{{t "common.error.label"}}</strong> {{msg .RateLimitMessage}}</p>
@@ -37,8 +54,9 @@
   <input type="hidden" name="next" value="{{.}}">
   {{- end}}
   <div class="actions">
-    <button type="submit" class="button button--primary">{{t "accounts.signin.submit"}}</button>
+    <button type="submit" class="button{{if not .OIDC}} button--primary{{end}}">{{t "accounts.signin.submit"}}</button>
   </div>
 </form>
+{{- end}}
 {{end}}
 {{- end}}

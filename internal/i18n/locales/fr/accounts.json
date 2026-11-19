@@ -9,6 +9,9 @@
   "accounts.username.control": "Retirez les caractères de contrôle du nom d’utilisateur",
   "accounts.signin.title": "Connexion",
   "accounts.signin.submit": "Se connecter",
+  "accounts.signin.sso": "Se connecter avec l’authentification unique",
+  "accounts.signin.sso.heading": "Authentification unique",
+  "accounts.signin.local.heading": "Compte Foreman",
   "accounts.signin.ratelimited.unknown": "Trop de connexions échouées. Attendez quelques minutes, puis réessayez.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Trop de connexions échouées. Attendez {count} minute, puis réessayez.",
