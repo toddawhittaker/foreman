@@ -77,5 +77,15 @@
   "notify.msg.restart_ran": "{world}: el reinicio programado se ha ejecutado.",
   "notify.msg.restart_skipped": "{world}: el reinicio programado se ha omitido porque había jugadores conectados.",
   "notify.msg.low_disk": "{world}: solo quedan {free} de espacio en disco. Los autoguardados pueden fallar cuando se acabe.",
-  "notify.msg.token_expiring": "El token de API {token} de {owner} caduca el {expires}."
+  "notify.msg.token_expiring": "El token de API {token} de {owner} caduca el {expires}.",
+  "notify.preset.pushover": "Pushover",
+  "notify.preset.pushover.hint": "Foreman envía a {host} con tu token de aplicación y tu clave de usuario.",
+  "notify.keys.legend": "Claves de Pushover",
+  "notify.keys.hint": "En pushover.net: la clave de usuario está en tu panel; el token de aplicación está en la página de una aplicación que crees.",
+  "notify.keys.kept": "Las claves se conservan. Escribe una clave nueva para cambiarla; un campo vacío conserva su clave.",
+  "notify.key.app_token": "Token de aplicación",
+  "notify.key.user_key": "Clave de usuario",
+  "notify.key.missing": "Escribe la clave.",
+  "notify.key.invalid": "Escribe una clave solo con letras y dígitos, de {count} caracteres como máximo.",
+  "notify.key.retype": "Escribe de nuevo la clave. Foreman no guarda una clave de un formulario que rechazó."
 }

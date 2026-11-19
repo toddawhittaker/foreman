@@ -150,6 +150,50 @@ test.describe("with a secret key", () => {
     expect(foreman.logs()).not.toContain(token);
   });
 
+  // SPEC 8.11, 14.8: Pushover takes two keys in place of an address; the
+  // keys are never shown back, and an empty key field keeps its key.
+  test("add and edit a Pushover webhook", async ({ page, foreman }) => {
+    const appToken = "e2eTOKENsecret6612aaaaaaaaaaaa";
+    const userKey = "e2eUSERsecret6613bbbbbbbbbbbbb";
+    await createAdmin(page);
+    await page.goto("/settings/notifications/new");
+    const keys = page.locator("#webhook-keys");
+    await expect(keys).toBeHidden();
+    await page.getByRole("radio", { name: "Pushover" }).check();
+    await expect(keys).toBeVisible();
+    await expect(page.getByLabel("Webhook address")).toBeHidden();
+    await expect(page.locator("#preset-pushover-hint")).toContainText("api.pushover.net");
+    await checkPage(page);
+
+    // One key alone is refused.
+    await page.getByLabel("Application token").fill(appToken);
+    await page.getByRole("button", { name: "Add webhook" }).click();
+    await expect(page.locator("#webhook-user-key-error")).toHaveText("Error: Enter the key.");
+    await expect(page.getByLabel("Application token")).toHaveValue("");
+    await expect(page.getByRole("radio", { name: "Pushover" })).toBeChecked();
+    await checkPage(page);
+
+    await page.getByLabel("Application token").fill(appToken);
+    await page.getByLabel("User key").fill(userKey);
+    await page.getByRole("button", { name: "Add webhook" }).click();
+    await expect(page.locator("#done-message")).toHaveText("Done: Added the Pushover webhook to api.pushover.net.");
+
+    await page.getByRole("link", { name: "Edit the Pushover webhook to api.pushover.net" }).click();
+    await expect(page.locator("#webhook-keys-hint")).toContainText("The keys are kept.");
+    await expect(page.getByLabel("Application token")).toHaveValue("");
+    await expect(page.getByLabel("User key")).toHaveValue("");
+    await checkPage(page);
+    // Only a new user key: the token is kept, so the save goes through.
+    await page.getByLabel("User key").fill("e2eNEWuser42");
+    await page.getByRole("checkbox", { name: "A player joins" }).uncheck();
+    await page.getByRole("button", { name: "Save webhook" }).click();
+    await expect(page.locator("#done-message")).toHaveText("Done: Saved the Pushover webhook to api.pushover.net.");
+    for (const k of [appToken, userKey, "e2eNEWuser42"]) {
+      expect(await page.content(), "the page shows a key").not.toContain(k);
+      expect(foreman.logs()).not.toContain(k);
+    }
+  });
+
   test("an http:// address is accepted with a note that it is unencrypted", async ({ page, foreman }) => {
     await createAdmin(page);
     await page.goto("/settings/notifications/new");

@@ -78,5 +78,15 @@
   "notify.msg.restart_ran": "{world}: plánovaný restart byl proveden.",
   "notify.msg.restart_skipped": "{world}: plánovaný restart byl přeskočen, protože hráči zůstali online.",
   "notify.msg.low_disk": "{world}: na disku zbývá jen {free} volného místa. Až dojde, automatická uložení mohou selhat.",
-  "notify.msg.token_expiring": "Platnost tokenu API {token} (vlastník: {owner}) vyprší {expires}."
+  "notify.msg.token_expiring": "Platnost tokenu API {token} (vlastník: {owner}) vyprší {expires}.",
+  "notify.preset.pushover": "Pushover",
+  "notify.preset.pushover.hint": "Foreman odesílá zprávy na {host} s tokenem aplikace a klíčem uživatele.",
+  "notify.keys.legend": "Klíče Pushover",
+  "notify.keys.hint": "Na pushover.net je klíč uživatele na nástěnce a token aplikace na stránce vytvořené aplikace.",
+  "notify.keys.kept": "Klíče zůstávají uložené. Pro změnu klíče je třeba zadat nový; prázdné pole svůj klíč zachová.",
+  "notify.key.app_token": "Token aplikace",
+  "notify.key.user_key": "Klíč uživatele",
+  "notify.key.missing": "Je třeba zadat klíč.",
+  "notify.key.invalid": "Je třeba zadat klíč pouze z písmen a číslic, nejvýše {count} znaků.",
+  "notify.key.retype": "Je třeba zadat klíč znovu. Foreman neuchovává klíč z odmítnutého formuláře."
 }
