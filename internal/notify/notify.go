@@ -151,12 +151,15 @@ func isPlain(raw string) bool {
 }
 
 // Setup is what an admin enters for a webhook. On an edit, an empty URL
-// keeps the stored address.
+// keeps the stored address. Pushover takes AppToken and UserKey in place of
+// URL; on an edit each one left empty keeps its stored value.
 type Setup struct {
-	Preset Preset
-	URL    secret.Secret
-	Events map[Event]bool
-	Lang   i18n.Locale
+	Preset   Preset
+	URL      secret.Secret
+	AppToken secret.Secret
+	UserKey  secret.Secret
+	Events   map[Event]bool
+	Lang     i18n.Locale
 }
 
 func (n *Notifier) check(s Setup) error {
@@ -217,8 +220,7 @@ func (n *Notifier) Add(ctx context.Context, s Setup, by string) (Webhook, error)
 	if err := n.check(s); err != nil {
 		return Webhook{}, err
 	}
-	raw := s.URL.Reveal()
-	host, err := CheckURL(s.Preset, raw)
+	raw, host, err := n.address(s, "")
 	if err != nil {
 		return Webhook{}, err
 	}
@@ -247,17 +249,21 @@ func (n *Notifier) Update(ctx context.Context, id int64, s Setup, by string) (We
 	}
 	row := store.Webhook{ID: id, Preset: old.Preset, Host: old.Host, EventsOff: eventsOff(s.Events), Lang: string(s.Lang), UpdatedBy: by}
 	kept := n.view(old)
-	raw := s.URL.Reveal()
-	// An address that cannot be read cannot be kept: it must be typed again.
-	if raw == "" && kept.Unreadable {
+	stored := ""
+	if Preset(old.Preset) == s.Preset {
+		stored, _ = n.open(old)
+	}
+	raw, host := "", ""
+	if s.changesAddress() {
+		if raw, host, err = n.address(s, stored); err != nil {
+			return Webhook{}, err
+		}
+	} else if kept.Unreadable {
+		// An address that cannot be read cannot be kept: it must be typed again.
 		return Webhook{}, ErrURLMissing
 	}
 	var sealed []byte
 	if raw != "" {
-		host, err := CheckURL(s.Preset, raw)
-		if err != nil {
-			return Webhook{}, err
-		}
 		if sealed, err = n.box.Seal(rowName(id), []byte(raw)); err != nil {
 			return Webhook{}, fmt.Errorf("seal the webhook address: %w", err)
 		}
@@ -272,6 +278,40 @@ func (n *Notifier) Update(ctx context.Context, id int64, s Setup, by string) (We
 		w.Plain = isPlain(raw)
 	}
 	return w, nil
+}
+
+// changesAddress reports whether s gives a new address or a new key.
+func (s Setup) changesAddress() bool {
+	if s.Preset == Pushover {
+		return s.AppToken.Reveal() != "" || s.UserKey.Reveal() != ""
+	}
+	return s.URL.Reveal() != ""
+}
+
+// address is the address s gives and its host. For Pushover it is made
+// from the two keys; a key left empty comes from stored, the opened
+// address of the same webhook when it already is Pushover. The error never
+// holds the address or a key.
+func (n *Notifier) address(s Setup, stored string) (raw, host string, err error) {
+	if s.Preset != Pushover {
+		raw = strings.TrimSpace(s.URL.Reveal())
+		host, err = CheckURL(s.Preset, raw)
+		return raw, host, err
+	}
+	_, token, user := pushoverKeys(stored)
+	if t := s.AppToken.Reveal(); t != "" {
+		token = t
+	}
+	if u := s.UserKey.Reveal(); u != "" {
+		user = u
+	}
+	if err := CheckKey(token); err != nil {
+		return "", "", err
+	}
+	if err := CheckKey(user); err != nil {
+		return "", "", err
+	}
+	return pushoverAddress(token, user), PushoverHost, nil
 }
 
 // Delete removes a webhook.

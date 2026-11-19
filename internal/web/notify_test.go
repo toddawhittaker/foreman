@@ -401,3 +401,79 @@ func TestMigratedWebhookKeepsTokenExpiringOff(t *testing.T) {
 		t.Errorf("after the save %+v", got)
 	}
 }
+
+// Made-up Pushover keys: no page, log line or audit entry may hold them (SPEC 14.8).
+const (
+	pushToken = "pushTOKENsecret4417aaaaaaaaaaa" //nolint:gosec // made up, to prove it never leaks
+	pushUser  = "pushUSERsecret9921bbbbbbbbbbbb" //nolint:gosec // made up, to prove it never leaks
+)
+
+func (nh *notifyHarness) wantNoKeys(where, body string) {
+	nh.t.Helper()
+	for _, k := range []string{pushToken, pushUser} {
+		if strings.Contains(body, k) || strings.Contains(nh.logs.String(), k) {
+			nh.t.Errorf("%s or the log holds a Pushover key", where)
+		}
+	}
+	list, _ := nh.store.ListAudit(context.Background(), store.AuditFilter{Limit: 100})
+	for _, e := range list {
+		if strings.Contains(e.Detail, pushToken) || strings.Contains(e.Detail, pushUser) {
+			nh.t.Errorf("an audit entry holds a Pushover key after %s", where)
+		}
+	}
+}
+
+// SPEC 8.11, 14.8: a Pushover webhook takes two keys in place of an
+// address; the keys are never shown again, and an empty key field on the
+// edit page keeps that key.
+func TestWebhookPushover(t *testing.T) {
+	nh := newNotifyHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
+	c := nh.signIn()
+	ctx := context.Background()
+
+	form := nh.get(PathNotifications+"/new", withCookie(c)).Body.String()
+	for _, want := range []string{`id="preset-pushover"`, `name="app_token" type="password"`, `name="user_key" type="password"`, "api.pushover.net"} {
+		if !strings.Contains(form, want) {
+			t.Errorf("form lacks %q", want)
+		}
+	}
+	// One key missing: refused, and the given key must be typed again.
+	f := hookForm("pushover", "")
+	f.Set("app_token", pushToken)
+	rec := nh.post(PathNotifications+"/new", f, withCookie(c))
+	body := rec.Body.String()
+	if rec.Code != http.StatusBadRequest || !strings.Contains(body, `id="webhook-user-key-error"`) || !strings.Contains(body, `id="webhook-app-token-error"`) {
+		t.Errorf("one key: %d\n%s", rec.Code, body)
+	}
+	nh.wantNoKeys("a refused form", body)
+
+	f.Set("user_key", pushUser)
+	nh.wantRedirect(nh.post(PathNotifications+"/new", f, withCookie(c)), PathNotifications+"?done=added&host=api.pushover.net&preset=pushover")
+	list, _ := nh.n.List(ctx)
+	if len(list) != 1 || list[0].Preset != notify.Pushover || list[0].Host != notify.PushoverHost {
+		t.Fatalf("stored %+v", list)
+	}
+	id := list[0].ID
+	if got := nh.audits(AuditWebhookAdd); len(got) != 1 || got[0] != "alice  webhook 1: pushover, api.pushover.net" {
+		t.Errorf("audit %q", got)
+	}
+	nh.wantNoKeys("the list", nh.get(PathNotifications, withCookie(c)).Body.String())
+
+	edit := nh.get(webhookPath(id), withCookie(c)).Body.String()
+	if !strings.Contains(edit, "The keys are kept.") || strings.Contains(edit, `name="app_token" type="password" value`) {
+		t.Errorf("edit form\n%s", edit)
+	}
+	nh.wantNoKeys("the edit form", edit)
+
+	// Empty keys keep both; a change of events alone saves.
+	f = hookForm("pushover", "", "crash")
+	nh.wantRedirect(nh.post(webhookPath(id), f, withCookie(c)), PathNotifications+"?done=saved&host=api.pushover.net&preset=pushover")
+	// Only a new user key: the token is kept.
+	f.Set("user_key", "otherUSER77")
+	nh.wantRedirect(nh.post(webhookPath(id), f, withCookie(c)), PathNotifications+"?done=saved&host=api.pushover.net&preset=pushover")
+	got, _ := nh.n.Get(ctx, id)
+	if got.Unreadable || got.On(notify.Start) || !got.On(notify.Crash) {
+		t.Errorf("after edits %+v", got)
+	}
+	nh.wantNoKeys("the edits", "")
+}

@@ -77,5 +77,15 @@
   "notify.msg.restart_ran": "{world}: Der geplante Neustart wurde ausgeführt.",
   "notify.msg.restart_skipped": "{world}: Der geplante Neustart wurde übersprungen, weil Spieler online blieben.",
   "notify.msg.low_disk": "{world}: Nur noch {free} Speicherplatz sind frei. Autosaves können fehlschlagen, wenn er ausgeht.",
-  "notify.msg.token_expiring": "Das API-Token {token} von {owner} läuft am {expires} ab."
+  "notify.msg.token_expiring": "Das API-Token {token} von {owner} läuft am {expires} ab.",
+  "notify.preset.pushover": "Pushover",
+  "notify.preset.pushover.hint": "Foreman sendet mit deinem Anwendungstoken und deinem Benutzerschlüssel an {host}.",
+  "notify.keys.legend": "Pushover-Schlüssel",
+  "notify.keys.hint": "Auf pushover.net: Der Benutzerschlüssel steht auf deinem Dashboard, das Anwendungstoken auf der Seite einer Anwendung, die du anlegst.",
+  "notify.keys.kept": "Die Schlüssel bleiben gespeichert. Gib einen neuen Schlüssel ein, um ihn zu ändern; ein leeres Feld behält seinen Schlüssel.",
+  "notify.key.app_token": "Anwendungstoken",
+  "notify.key.user_key": "Benutzerschlüssel",
+  "notify.key.missing": "Gib den Schlüssel ein.",
+  "notify.key.invalid": "Gib einen Schlüssel nur aus Buchstaben und Ziffern ein, höchstens {count} Zeichen.",
+  "notify.key.retype": "Gib den Schlüssel noch einmal ein. Foreman behält keinen Schlüssel aus einem abgelehnten Formular."
 }

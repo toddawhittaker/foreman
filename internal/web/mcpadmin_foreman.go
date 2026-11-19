@@ -32,9 +32,11 @@ func (s *server) addForemanTools(srv *mcp.Server) {
 			"With enabled false the other fields are ignored and the schedule is off.", schedule.MaxLimitHours)}, s.mcpSetSchedule)
 	mcp.AddTool(srv, &mcp.Tool{Name: "add_webhook", Annotations: oneStep,
 		Description: "Add a webhook that Foreman sends its events to. url is the address; it is kept sealed and never shown again, so no tool returns it. " +
+			"For preset pushover, give app_token and user_key from pushover.net instead of url; they are kept and never returned the same way. " +
 			"preset is " + presetList() + "; events lists " + eventList() + " and defaults to the ones the Notifications page starts with; lang is a language tag such as en, default en."}, s.mcpAddWebhook)
 	mcp.AddTool(srv, &mcp.Tool{Name: "change_webhook", Annotations: oneStep,
 		Description: "Change a webhook. Leave url out to keep its stored address; a new one replaces it and is never shown again. " +
+			"For pushover, app_token and user_key each keep their stored value when left out. " +
 			"A preset, events or lang left out keeps its saved value. webhook_id is from foreman_settings."}, s.mcpChangeWebhook)
 	mcp.AddTool(srv, &mcp.Tool{Name: "delete_webhook", Annotations: twoStep,
 		Description: "Delete a webhook, in two calls: the first returns a preview and a confirm_code and changes nothing; " +
@@ -226,16 +228,20 @@ func (s *server) mcpSetSchedule(ctx context.Context, req *mcp.CallToolRequest, i
 var errNoWebhookKey = errors.New("webhooks cannot be stored because FOREMAN_SECRET_KEY is not set; the operator guide says how to set it")
 
 type mcpAddWebhookIn struct {
-	Preset string   `json:"preset" jsonschema:"discord, ntfy or generic"`
-	URL    string   `json:"url,omitempty" jsonschema:"the address to send to, required; kept sealed and never returned"`
-	Events []string `json:"events,omitempty" jsonschema:"the events to send; the Notifications page's defaults when left out"`
-	Lang   string   `json:"lang,omitempty" jsonschema:"the language of the messages, a tag such as en; en when left out"`
+	Preset   string   `json:"preset" jsonschema:"discord, ntfy, pushover or generic"`
+	URL      string   `json:"url,omitempty" jsonschema:"the address to send to, required except for pushover; kept sealed and never returned"`
+	AppToken string   `json:"app_token,omitempty" jsonschema:"pushover only: the application's API token, required; kept sealed and never returned"`
+	UserKey  string   `json:"user_key,omitempty" jsonschema:"pushover only: the user or group key, required; kept sealed and never returned"`
+	Events   []string `json:"events,omitempty" jsonschema:"the events to send; the Notifications page's defaults when left out"`
+	Lang     string   `json:"lang,omitempty" jsonschema:"the language of the messages, a tag such as en; en when left out"`
 }
 
 type mcpChangeWebhookIn struct {
 	WebhookID int64    `json:"webhook_id" jsonschema:"the webhook's id from foreman_settings"`
-	Preset    string   `json:"preset,omitempty" jsonschema:"discord, ntfy or generic; the saved one when left out"`
+	Preset    string   `json:"preset,omitempty" jsonschema:"discord, ntfy, pushover or generic; the saved one when left out"`
 	URL       string   `json:"url,omitempty" jsonschema:"a new address, kept sealed and never returned; the stored address is kept when left out"`
+	AppToken  string   `json:"app_token,omitempty" jsonschema:"pushover only: a new application token, kept sealed and never returned; the stored one is kept when left out"`
+	UserKey   string   `json:"user_key,omitempty" jsonschema:"pushover only: a new user key, kept sealed and never returned; the stored one is kept when left out"`
 	Events    []string `json:"events,omitempty" jsonschema:"the events to send; the saved ones when left out"`
 	Lang      string   `json:"lang,omitempty" jsonschema:"the language of the messages; the saved one when left out"`
 }
@@ -273,7 +279,8 @@ func (s *server) mcpAddWebhook(ctx context.Context, req *mcp.CallToolRequest, in
 	if in.Lang == "" {
 		lang = i18n.English
 	}
-	st := notify.Setup{Preset: notify.Preset(in.Preset), URL: secret.New(strings.TrimSpace(in.URL)), Events: on, Lang: lang}
+	st := notify.Setup{Preset: notify.Preset(in.Preset), URL: secret.New(strings.TrimSpace(in.URL)),
+		AppToken: secret.New(strings.TrimSpace(in.AppToken)), UserKey: secret.New(strings.TrimSpace(in.UserKey)), Events: on, Lang: lang}
 	hook, p, err := s.addWebhook(ctx, mcpActor(req), st)
 	if err != nil {
 		return nil, mcpWebhookOut{}, s.mcpFail("add the webhook", err)
@@ -313,7 +320,8 @@ func (s *server) mcpChangeWebhook(ctx context.Context, req *mcp.CallToolRequest,
 			return nil, mcpWebhookOut{}, err
 		}
 	}
-	st := notify.Setup{Preset: hook.Preset, URL: secret.New(strings.TrimSpace(in.URL)), Events: on, Lang: hook.Lang}
+	st := notify.Setup{Preset: hook.Preset, URL: secret.New(strings.TrimSpace(in.URL)),
+		AppToken: secret.New(strings.TrimSpace(in.AppToken)), UserKey: secret.New(strings.TrimSpace(in.UserKey)), Events: on, Lang: hook.Lang}
 	if in.Preset != "" {
 		st.Preset = notify.Preset(in.Preset)
 	}

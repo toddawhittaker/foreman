@@ -78,5 +78,15 @@
   "notify.msg.restart_ran": "{world}: плановый перезапуск выполнен.",
   "notify.msg.restart_skipped": "{world}: плановый перезапуск пропущен, потому что игроки оставались в сети.",
   "notify.msg.low_disk": "{world}: свободно только {free} места на диске. Когда место закончится, автосохранения могут не сработать.",
-  "notify.msg.token_expiring": "Срок действия API-токена {token} (владелец: {owner}) истекает {expires}."
+  "notify.msg.token_expiring": "Срок действия API-токена {token} (владелец: {owner}) истекает {expires}.",
+  "notify.preset.pushover": "Pushover",
+  "notify.preset.pushover.hint": "Foreman отправляет сообщения на {host} с вашим токеном приложения и ключом пользователя.",
+  "notify.keys.legend": "Ключи Pushover",
+  "notify.keys.hint": "На pushover.net ключ пользователя указан на вашей панели, а токен приложения — на странице созданного вами приложения.",
+  "notify.keys.kept": "Ключи сохранены. Чтобы изменить ключ, введите новый; пустое поле сохраняет свой ключ.",
+  "notify.key.app_token": "Токен приложения",
+  "notify.key.user_key": "Ключ пользователя",
+  "notify.key.missing": "Введите ключ.",
+  "notify.key.invalid": "Введите ключ только из букв и цифр, не длиннее {count} символов.",
+  "notify.key.retype": "Введите ключ ещё раз. Foreman не хранит ключ из отклонённой формы."
 }

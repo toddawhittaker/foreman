@@ -38,7 +38,7 @@ func sample() []Message {
 func TestGenericBodyGolden(t *testing.T) {
 	var out bytes.Buffer
 	for _, m := range sample() {
-		r, err := build(Generic, i18n.English, m)
+		r, err := build(Generic, "", i18n.English, m)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestGenericBodyGolden(t *testing.T) {
 // RFC 3339 in UTC.
 func TestGenericBodyFields(t *testing.T) {
 	for _, m := range sample() {
-		r, _ := build(Generic, i18n.English, m)
+		r, _ := build(Generic, "", i18n.English, m)
 		var got map[string]any
 		if err := json.Unmarshal(r.body, &got); err != nil {
 			t.Fatal(err)
@@ -115,7 +115,7 @@ func TestEveryEventHasText(t *testing.T) {
 func TestDiscordBody(t *testing.T) {
 	// A name of nothing but markdown doubles when escaped; the message still
 	// fits and no escape is cut in half.
-	r, err := build(Discord, i18n.English, Message{Event: PlayerJoin, World: World{Name: strings.Repeat("*", 3000)}, Player: "@everyone"})
+	r, err := build(Discord, "", i18n.English, Message{Event: PlayerJoin, World: World{Name: strings.Repeat("*", 3000)}, Player: "@everyone"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestDiscordBody(t *testing.T) {
 
 func TestNtfyPriority(t *testing.T) {
 	for e, want := range map[Event]string{Crash: "high", CrashLoop: "high", LowDisk: "high", Start: "", PlayerJoin: ""} {
-		r, _ := build(Ntfy, i18n.English, Message{Event: e, World: world})
+		r, _ := build(Ntfy, "", i18n.English, Message{Event: e, World: world})
 		if got := r.headers["Priority"]; got != want {
 			t.Errorf("%s: priority %q, want %q", e, got, want)
 		}
@@ -152,7 +152,7 @@ func TestNtfyPriority(t *testing.T) {
 func TestTokenExpiringBody(t *testing.T) {
 	at := time.Date(2026, 11, 12, 18, 30, 5, 0, time.UTC)
 	m := Message{Event: TokenExpiring, Time: at, Token: Token{Name: "Claude", Owner: "ann", Expires: at.Add(24 * time.Hour)}}
-	r, err := build(Generic, i18n.English, m)
+	r, err := build(Generic, "", i18n.English, m)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestTokenExpiringBody(t *testing.T) {
 		t.Errorf("world %v, want empty", got.World)
 	}
 	// Other events carry no token field.
-	other, _ := build(Generic, i18n.English, Message{Event: Start, World: world})
+	other, _ := build(Generic, "", i18n.English, Message{Event: Start, World: world})
 	if bytes.Contains(other.body, []byte(`"token"`)) {
 		t.Errorf("a start body has a token: %s", other.body)
 	}
@@ -181,7 +181,7 @@ func TestTokenExpiringBody(t *testing.T) {
 // name, so neither can format the message or ping anyone.
 func TestTokenExpiringDiscordEscapes(t *testing.T) {
 	m := Message{Event: TokenExpiring, Token: Token{Name: "*bold* @everyone", Owner: strings.Repeat("_", 3000), Expires: time.Unix(0, 0)}}
-	r, err := build(Discord, i18n.English, m)
+	r, err := build(Discord, "", i18n.English, m)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -130,7 +130,7 @@ func (n *Notifier) drain(ctx context.Context, s *sender) {
 // refusal that would only repeat, such as a 404 or a redirect, is not
 // retried.
 func (n *Notifier) send(ctx context.Context, t target, m Message) {
-	req, err := build(t.hook.Preset, t.hook.Lang, m)
+	req, err := build(t.hook.Preset, t.raw, t.hook.Lang, m)
 	if err != nil {
 		n.log.Error("notification not sent: its body could not be made", "webhook", t.hook.ID, "event", string(m.Event), "error", err)
 		return
@@ -160,7 +160,7 @@ func (n *Notifier) send(ctx context.Context, t target, m Message) {
 func (n *Notifier) attempt(ctx context.Context, t target, r request) (retry bool, problem string) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.raw, bytes.NewReader(r.body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewReader(r.body))
 	if err != nil {
 		return false, "the request could not be made"
 	}

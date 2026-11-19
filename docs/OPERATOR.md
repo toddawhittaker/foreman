@@ -503,6 +503,17 @@ message:
   Mentions are turned off, so a world or player name cannot ping anyone.
 - **ntfy**: the address of an ntfy topic. The message is plain text. Crash,
   crash loop and low disk are sent at high priority.
+- **Pushover**: no address, just two keys; Foreman always posts to
+  `https://api.pushover.net/1/messages.json`. Sign in at pushover.net:
+  your **user key** is at the top of your dashboard (a group key works
+  too). For the **application token**, choose "Create an Application/API
+  Token" at the bottom of the dashboard, name it Foreman, and copy the API
+  token the new application's page shows. Crash, crash loop and low disk
+  are sent at high priority (1), everything else at normal priority (0);
+  Foreman never uses emergency priority. Messages longer than Pushover's
+  1,024 characters are cut. Both keys are kept like an address: never
+  shown again or logged. When you edit the webhook, leave a key field
+  empty to keep that key.
 - **Generic JSON**: any address. Foreman posts the JSON body described
   below.
 

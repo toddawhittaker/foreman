@@ -76,5 +76,15 @@
   "notify.msg.restart_ran": "{world}：定时重启已执行。",
   "notify.msg.restart_skipped": "{world}：因玩家一直在线，定时重启已跳过。",
   "notify.msg.low_disk": "{world}：磁盘空间仅剩 {free}。空间用完时自动存档可能失败。",
-  "notify.msg.token_expiring": "API 令牌 {token}（所有者：{owner}）将于 {expires} 到期。"
+  "notify.msg.token_expiring": "API 令牌 {token}（所有者：{owner}）将于 {expires} 到期。",
+  "notify.preset.pushover": "Pushover",
+  "notify.preset.pushover.hint": "Foreman 使用应用令牌和用户密钥向 {host} 发送消息。",
+  "notify.keys.legend": "Pushover 密钥",
+  "notify.keys.hint": "在 pushover.net 上，用户密钥位于控制面板，应用令牌位于所创建应用的页面。",
+  "notify.keys.kept": "密钥已保留。输入新密钥即可更改；留空的字段保留原密钥。",
+  "notify.key.app_token": "应用令牌",
+  "notify.key.user_key": "用户密钥",
+  "notify.key.missing": "请输入密钥。",
+  "notify.key.invalid": "请输入仅含字母和数字的密钥，最多 {count} 个字符。",
+  "notify.key.retype": "请重新输入密钥。Foreman 不会保留被拒绝表单中的密钥。"
 }
