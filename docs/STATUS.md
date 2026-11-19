@@ -13,8 +13,11 @@ Epics 1 to 9, the Gate A fixes, the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
 the Resource amounts epic, fixes batches 5, 6 and 7 and the Mod settings epic
 are done. Epic 9b (VPN sidecars) is built, but its live acceptance is still
-open (see its section). Epic 9c (public mods and autosave tidy) and Epic
-10a (API tokens and MCP) are done.
+open (see its section). Epic 9c (public mods and autosave tidy), Epic
+10a (API tokens and MCP) and Epic 10b (MCP admin tools) are done. Epic 11
+was split on 2026-11-18: Epic 11a (sign-in, audit log, archive, settings and
+users) is built, with its gate on the trial deployment still to run, and
+Epic 11b (the release and Gate C) is next.
 Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
 now, at Todd's choice, when the Mod settings epic started; it is still owed
 before Gate C.
@@ -4049,4 +4052,186 @@ Rulings (Todd, 2026-11-17), now in SPEC 12.9, 21.5 and 21.8:
 - **The 18.10b gate with a real Claude Code client on trial** is the
   orchestrator's check before the epic merges, not part of the build.
 - **Not built, on purpose:** snapshot `taken_by_token`, the raw settings
-  editor over MCP and archive (Epic 11).
+  editor over MCP and archive (Epic 11; archive came in Epic 11a).
+
+## Epic 11a: Sign-in, audit log, archive, settings and users
+
+Serves SPEC 12.7, 12.9, 12.12 (new), 5.9, 13.1, 6.6, 7.6, 14.6, 14.10, 21.7,
+21.8, 18.11a and the operator guide (14.2), with edits to 3.1, 3.2, 6.5, 14.1,
+14.14, 17.5 and 21.4. Epic 11 was split on 2026-11-18: this epic is
+everything but publishing the image and Gate C, which are Epic 11b (SPEC
+18.11b). The task pull requests were #707 (the plan), #708 (R1, the image and
+the release workflow), #709 (T0, the scaffold), #710 (T2, archive), #711 (T4,
+General tab), #712 (T1, OIDC), #713 (T3, audit log), #714 (a status race fix),
+#715 (T7, users), #716 (T5, the sign-in page), #717 (T8, the operator guide),
+#718 (T6, the settings reach the pages), #719 (T10, translation review), #720
+(integration fixes) and #721 (T9, the gate tests). The epic gate (SPEC 18.11a)
+is Todd's check on the trial deployment and is not recorded here.
+
+Rulings (Todd, 2026-11-18, and later in the epic), now in SPEC:
+
+1. Epic 11 splits into 11a and 11b (18.11a, 18.11b).
+2. OIDC needs a required group. Username from `preferred_username`, groups
+   from `groups`, scopes `openid profile email groups`. Fixed names (12.7, 3.2).
+3. A user is matched by issuer and subject. A header-made user with no
+   password and no link is linked once by name; any other name clash refuses
+   (12.7, ADR 0027). Todd accepted the risk of that link.
+4. The audit log keeps 365 days (7 to 3650), swept hourly. The sweep is not
+   audited (12.9).
+5. The issuer must be `https`. Discovery is lazy. Calls take 10 seconds, follow
+   no redirects and are size-limited (12.7, 14.1, 14.10).
+6. The audit log is a Settings tab with filters and 50 entries a page (12.9).
+7. `list_worlds` includes archived worlds. `archive_world` and
+   `unarchive_world` are one call each (21.4, 21.7).
+8. Lowering retention deletes nothing on save, and the count is shown (6.6).
+9. A restore keeps a live world's archive state (5.9, 6.5).
+10. `set_foreman_settings` is two-step (21.7, 21.8).
+11. The save and mod upload limits are settings (14.6, 13.1).
+12. The General tab holds five settings (13.1).
+13. The Users tab (12.12).
+14. The image is built for amd64 and arm64 (3.1).
+15. Tags and signing are Epic 11b, with ADR 0028 (not written yet).
+16. One mod limit covers uploads and portal downloads (14.10).
+17. A deleted proxy or OIDC user comes back at their next request (12.12).
+18. `foreman reset-password` resets a forgotten password on the host (12.12).
+
+Later rulings in the epic, now in SPEC: a retention change shows a confirm page
+whenever it would remove automatic snapshots, counting every world including
+archived ones (17.5, 6.6); a deleted world restored from its final snapshot
+comes back unarchived (6.5); the world-level mod zip ceiling is 2 GB and the
+setting is the real limit (14.6); `user-delete` is audited before the delete
+(12.9, 12.12); `reset-password` reads the first line of standard input and is
+audited as `password-change` by `system` (12.12).
+
+### Delivered
+
+- **OpenID Connect sign-in (SPEC 12.7, 3.2, 14.10; #712, #716, ADR 0027).**
+  `oidc` joins `FOREMAN_AUTH_METHODS`, with `FOREMAN_OIDC_ISSUER`,
+  `_CLIENT_ID`, `_CLIENT_SECRET` (and `_FILE`) and `_REQUIRED_GROUP`, all
+  required with `FOREMAN_PUBLIC_URL`; an `http` issuer is a startup error.
+  `GET /signin/oidc` and `/signin/oidc/callback` run the authorization code
+  flow with PKCE (S256), a state and a nonce. The ID token's signature, issuer,
+  audience, expiry, nonce and the required group are checked. Discovery runs at
+  the first sign-in, is kept once it works, and is refused when it names an
+  endpoint that is not `https`. Pending sign-ins live in memory (10 minutes,
+  once, 1000 at most) with the `foreman_oidc` binding cookie. A failed
+  callback counts against the address, but only after it names a sign-in this
+  browser started, and each address may start 20 sign-ins a minute. Users are
+  found by issuer and subject (migration 0011), created with the issuer and
+  subject in one insert, and a headers-made user is linked once. The sign-in
+  and signed-out pages show a "Sign in with single sign-on" button, alone with
+  `oidc` only or beside the password form. Refusal pages say what happened and
+  offer "Try single sign-on again" or "Back to sign in". `cmd/fakeidp` is a
+  fake provider over `https` for tests. New libraries: go-oidc v3.21.0,
+  go-jose v4.1.9 and oauth2 v0.36.0 (STACK 1, 7).
+- **The audit log viewer and retention (SPEC 12.9, 17.11; #713).** The Audit
+  log tab, `/settings/audit-log`, filters by user, action and world, newest
+  first, 50 entries a page with an "Older entries" link that keeps the
+  filters. Each entry shows time, user, token badge, action in words, world
+  (a link, or its id marked deleted) and detail. The hourly sweep deletes
+  entries older than the retention setting and writes nothing. A new `audit`
+  text area has words for every action, and a test fails when a later
+  `Audit...` constant has none.
+- **Archive (SPEC 5.9, 6.5, 21.4, 21.7; #710).** `world.json` gains
+  `"archived": true`; no snapshot is taken. The active world cannot be
+  archived. Start, restart, switch and every relaunch path refuse an archived
+  world, in the UI, MCP and the scheduler. The Worlds list holds them in a
+  closed "Archived worlds (n)" foldout, and switch pickers leave them out.
+  `archive_world`, `unarchive_world` and `list_worlds` (with `archived`) cover
+  MCP. A restore keeps the live world's flag; a deleted world restored from its
+  final snapshot comes back unarchived.
+- **The General tab (SPEC 13.1, 6.6, 7.6, 14.6, 21.7, 21.8; #711, #718,
+  #720).** `/settings/general` holds snapshot retention, the default stop
+  countdown, audit retention and the save and mod upload limits, each audited
+  with old and new value. Retention is now `Manager.SetKeepAutomatic`; the
+  trim count and the pruning share one function. A save that would remove
+  snapshots shows a confirm page with the count; a save that removes none goes
+  ahead. `set_foreman_settings` is a two-step tool, and `foreman_settings`
+  reports every setting. The settings reach the pages: every stop form and
+  default uses the countdown setting, every upload reads its limit per
+  request, the drop zones show the current figure, and the portal download cap
+  is the mod upload limit. The mod zip ceiling is 2 GB.
+- **Users (SPEC 12.12, 12.9; #715).** The Users tab lists users with their
+  sign-in kind and creation date. Any user may delete another through a confirm
+  page (`user-delete` is audited first, with the name and token count;
+  sessions and tokens go with the user; deleting yourself, or two users
+  deleting each other, is refused). A user with a password may change their own
+  (current password, new twice, 12 characters, rate-limited, other sessions
+  end). Proxy and single sign-on users have no password form.
+  `foreman reset-password <username>` resets a password from the host, reading
+  one line of standard input.
+- **The settings tabs (DESIGN 6, 8.15; #709, #720).** Eight tabs, in two
+  columns on phones and wrapping from 40 rem, with 44 px cells.
+- **The image and release workflow (SPEC 3.1, STACK 10; #708).** The
+  Dockerfile cross-compiles for amd64 and arm64 and carries OCI labels.
+  `.github/workflows/release.yml` builds both and publishes nothing.
+- **The operator guide (SPEC 14.2; #717).** OIDC for any provider (with the
+  hairpin and renaming warnings), the General, Users and Audit log tabs,
+  archive, the `tcp://` warning and the arm64 note.
+- **Translation review (SPEC 22.6; #719)** in all seven non-English languages,
+  with new text areas `audit`, `general` and `users`.
+- **A fix found on the way (#714).** `server_status` read the controller's
+  state before the action's result, so a finished action could appear beside a
+  stale running state. It now reads the result first.
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck`, the Go tests of
+  its packages and the end-to-end specs for the pages it touched. The OIDC
+  tests run against the fake provider over `https`. New end-to-end specs:
+  `oidc`, `archive`, `auditlog`, `general`, `users`, `settings-reach` and
+  `settings-tabs`, each at 320 px and desktop width in both themes with an
+  axe scan.
+- The gate tests (#721) cover the 11a gate in code: a replayed or foreign
+  state, a missing binding cookie, a wrong nonce, audience or issuer, an
+  expired token and a missing group are refused; a header user is linked once
+  and the link cannot move; archived worlds cannot be started, restarted,
+  switched to or relaunched, through the pages, MCP and the scheduler; restore
+  keeps the flag; users cannot delete themselves, and a delete that cannot be
+  audited changes nothing; a password change is rate-limited; and
+  `set_foreman_settings` makes no change on its first call, refuses out-of-range
+  values and gives a fresh preview when a value moved. They found one defect:
+  a failed single sign-on page repeated the callback's code and state in the
+  layout's hidden return fields. The integration fixes (#720) return those
+  pages to sign-in, and the test passes.
+- The whole-epic runs (`make verify`, the full end-to-end suite and the
+  real-game tests) are the orchestrator's and are recorded in the epic's pull
+  request.
+
+### Gaps left
+
+- **Group membership is checked only at sign-in (SPEC 12.7).** Removing someone
+  from the group at the provider does not end a session already open (7 days
+  idle by default). Delete them on the Users tab.
+- **A header user is linked to OIDC by name on first sign-in (SPEC 12.7, ADR
+  0027).** Until that user signs in once through OIDC, anyone in the group who
+  can rename themselves at the provider could take the account. Todd accepted
+  the risk. Operators must turn off self-service renaming at the provider; the
+  guide says so.
+- **Two tabs that start single sign-on at once** overwrite each other's
+  binding cookie, so the first tab fails safe and the person tries again.
+- **A database fault when reading an upload limit** falls back to the default
+  limit, not a refusal.
+- **The deleted-user message is generic by design.** It names no user, so a
+  name from the address is never echoed.
+- **The real identity provider is checked only by hand,** at the 11a gate on
+  the trial deployment. Every automated test uses the fake provider.
+- **No sign-out at the provider, userinfo call, token refresh or per-provider
+  claim settings.** Left out on purpose.
+- **The audit log has no date-range filter or CSV export,** and the action
+  menu is sorted by recorded name, not by the translated words.
+- **No user rename, role, password reset in the UI or block list.** A user
+  made by a name clash must be deleted by an admin. `reset-password` reads
+  standard input as it is, so a terminal shows what is typed; the guide shows
+  the `< file` form.
+- **Users are not in MCP** (SPEC 21.7).
+- **The 320 px language layout test does not visit** the user delete page,
+  because that needs a second user. Its fit was reviewed by reading only.
+- **The release workflow was never run on GitHub.** It builds both
+  architectures locally and passes the workflow linter. Publishing, login,
+  attestation and the extra permissions are Epic 11b. The operator guide says
+  no image is published until then.
+- **The arm64 game image is experimental upstream,** and real-game tests run
+  on amd64 only.
+- **docs/I18N.md section 7's list of text areas** still omits several older
+  areas (`about`, `account`, `apitokens`, `favorites`, `mods`).

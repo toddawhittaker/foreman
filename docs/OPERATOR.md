@@ -1112,7 +1112,7 @@ Add these settings to Foreman's `environment`, with your own values:
   `preferred_username` and writes `user-create` with the detail `oidc` to
   the audit log. If a Foreman user of that name already has a password, or
   is already linked to another identity, Foreman refuses the sign-in with a
-  page that says why. Rename or remove that user in the Users tab
+  page that says why. Delete that user in the Users tab
   (section 18).
 - With `headers` on as well (section 6), the proxy still comes first: a
   request the proxy signs in never goes to the provider. A user made by the

@@ -50,6 +50,12 @@ is a copy and goes stale if they change without it.
   rules and number formats (SPEC 22), v0.43.0.
 - `github.com/modelcontextprotocol/go-sdk` v1.8.0, direct from Epic 10a,
   for the MCP endpoint (section 8).
+- `github.com/coreos/go-oidc/v3` v3.21.0, direct from Epic 11a, for OIDC
+  sign-in (SPEC 12.7, section 7). It brings in `github.com/go-jose/go-jose/v4`
+  v4.1.9 (indirect), which checks the ID token's signature.
+  `golang.org/x/oauth2` v0.36.0 is now direct too (it was indirect): go-oidc
+  v3.21.0 needs at least that version, and Foreman uses it for the
+  authorization-code exchange and PKCE.
 - `golang.org/x/image` v0.47.0, direct from fixes batch 2, to draw the
   demolisher territory labels into a downloaded map preview PNG (SPEC
   5.6): its `font/opentype` rasteriser and the Go Bold font, because the
@@ -61,7 +67,13 @@ is a copy and goes stale if they change without it.
   `actions/setup-go` v7.0.0, `actions/cache` v6.1.0,
   `docker/setup-buildx-action` v4.4.1 and `docker/build-push-action`
   v7.4.0. CI reads `GO_VERSION` and `GO_IMAGE` from the Makefile, so the
-  Go pin stays in one place. Dependabot proposes updates weekly
+  Go pin stays in one place. The release workflow
+  (`.github/workflows/release.yml`, from Epic 11a) uses the same pinned
+  `docker/setup-buildx-action` and `docker/build-push-action`. It runs on
+  `workflow_dispatch` and on `v*` tags, builds `linux/amd64` and
+  `linux/arm64` with `push: false`, and holds only `contents: read`: no
+  login, no attestation, nothing published. A tag whose commit is not on
+  `main` fails. Publishing is Epic 11b (SPEC 18.11b). Dependabot proposes updates weekly
   (`.github/dependabot.yml`).
 - Game test images, one per supported line (SPEC 10.8), each the line's
   latest patch release, pinned by digest. Earlier patches are not run
@@ -191,9 +203,19 @@ saved.
 - **Cross-site request forgery (CSRF)**: Go's `http.CrossOriginProtection`
   plus SameSite=Lax cookies. Rejected: gorilla/csrf form tokens, a
   dependency the standard library now makes unnecessary.
-- **OIDC sign-in (SPEC 12.7)**: `coreos/go-oidc` v3 with
-  `golang.org/x/oauth2`. Rejected: zitadel/oidc, which is larger and
-  mostly server-side features Foreman does not need.
+- **OIDC sign-in (SPEC 12.7)**: `coreos/go-oidc` v3 (v3.21.0) with
+  `go-jose/go-jose` v4 (v4.1.9) and `golang.org/x/oauth2` (v0.36.0),
+  chosen in Epic 11a. go-oidc reads the provider's discovery document and
+  checks an ID token's signature, issuer, audience and expiry. Foreman
+  checks the nonce and the required group itself, and passes go-oidc an
+  HTTP client that limits time, size and redirects (SPEC 14.10). Verifying
+  signed tokens by hand is a security risk: the key set, the algorithm
+  choice and the claim checks are each easy to get subtly wrong, and a
+  maintained library gets them reviewed by many eyes. The three modules are
+  the price. Matching a user by issuer and subject: ADR 0027. Rejected:
+  zitadel/oidc, which is larger and mostly server-side features Foreman
+  does not need; and writing the token check on `go-jose` alone, which is
+  the by-hand route above.
 - **Stored portal credentials (SPEC 9.11)**: AES-GCM from the standard
   library, with the key derived through HKDF from `FOREMAN_SECRET_KEY`.
   Each stored value starts with a version byte so the format can change.
@@ -270,7 +292,11 @@ The image is built in stages from a pinned `golang` image with
 `CGO_ENABLED=0 -trimpath`, onto `gcr.io/distroless/static` (the Debian 13
 variant if available), pinned by digest. It runs as `USER 845:845` (SPEC
 3.6). There is no shell, so the health check is a `foreman healthcheck`
-subcommand.
+subcommand. From Epic 11a the build stage runs on the build machine's own
+platform and cross-compiles for `linux/amd64` and `linux/arm64`
+(`TARGETOS` and `TARGETARCH`, with CGO off), so no emulation is needed,
+and the image carries OCI labels (title, description, source, licence,
+version, revision).
 
 Rejected:
 
