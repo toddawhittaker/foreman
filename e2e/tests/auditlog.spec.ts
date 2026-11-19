@@ -39,9 +39,9 @@ function count(f: Foreman, where = "1 = 1") {
   }
 }
 
-// 120 entries an hour or more ago, oldest first, so entry-119 is the newest.
+// 120 entries an hour from now, oldest first, so entry-119 is the newest, ahead of the entries the app records itself.
 function manyEntries(): Seed[] {
-  const base = Math.floor(Date.now() / 1000) - 7200;
+  const base = Math.floor(Date.now() / 1000) + 3600;
   return Array.from({ length: 120 }, (_, i) => ({
     time: base + i,
     username: i % 2 === 0 ? "alice" : "bob",
@@ -204,7 +204,7 @@ for (const [tag, title, started] of [
     await pickLanguage(page, tag);
     await page.goto("/settings/audit-log");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
-    await expect(rows(page).first()).toContainText(started);
+    await expect(rows(page).filter({ hasText: started }).first()).toContainText(started);
     await checkPage(page);
   });
 }
