@@ -13,7 +13,7 @@ import (
 var (
 	ErrModZip    = errors.New("this is not a mod zip: it has no readable info.json in a top-level folder")
 	ErrModName   = errors.New("the mod's info.json gives a name or version Foreman cannot use as a file name")
-	ErrModTooBig = errors.New("the mod zip is too big (over 200 MB)")
+	ErrModTooBig = errors.New("the mod zip is too big")
 )
 
 var modVersionRE = regexp.MustCompile(`^\d+(\.\d+){1,3}$`)
@@ -40,7 +40,7 @@ func readModZipIn(root *os.Root, name string) (ModInfo, error) {
 		return ModInfo{}, err
 	}
 	defer func() { _ = f.Close() }()
-	if st.Size() > maxModZip {
+	if st.Size() > MaxModZip {
 		return ModInfo{}, ErrModTooBig
 	}
 	info, ok := readZipInfo(f, st.Size())

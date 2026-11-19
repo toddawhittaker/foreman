@@ -66,8 +66,8 @@ func (s *server) modFileRoutes() {
 func modZipError(err error) i18n.Msg {
 	switch {
 	case errors.Is(err, world.ErrModTooBig):
-		// The world package's own 200 MB cap, not the upload setting.
-		return i18n.M("worlds.upload.too_large", "limit", sizeLimit(MaxModUpload))
+		// The world package's ceiling, which is also the setting's largest value.
+		return i18n.M("worlds.upload.too_large", "limit", sizeLimit(world.MaxModZip))
 	case errors.Is(err, world.ErrModName):
 		return i18n.M("mods.upload.bad_name")
 	}

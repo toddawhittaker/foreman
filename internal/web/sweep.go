@@ -47,11 +47,10 @@ func (s *server) sweepOnce(ctx context.Context, idle time.Duration) {
 
 // sweepAudit deletes audit entries older than the retention setting. The
 // sweep is not itself audited (SPEC 12.9). When the setting cannot be read
-// nothing is deleted.
+// nothing is deleted; readInt has already logged why.
 func (s *server) sweepAudit(ctx context.Context) {
 	days, ok := s.readInt(ctx, settingAuditRetention)
 	if !ok {
-		s.log.Error("the audit retention could not be read, so no audit entry was deleted")
 		return
 	}
 	n, err := s.store.DeleteAuditBefore(ctx, s.now().AddDate(0, 0, -days))

@@ -58,7 +58,7 @@ var (
 		Default: MaxSaveUpload >> 20, Min: 100, Max: 8192, Action: AuditSaveUploadLimitSet,
 		Label: "general.uploads.save.label"}
 	settingModUpload = intSetting{Name: "mod_upload_mb", Key: "mod_upload_mb",
-		Default: modUploadMB, Min: 10, Max: 2048, Action: AuditModUploadLimitSet,
+		Default: modUploadMB, Min: 10, Max: world.MaxModZip >> 20, Action: AuditModUploadLimitSet,
 		Label: "general.uploads.mod.label"}
 )
 

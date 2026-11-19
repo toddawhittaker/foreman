@@ -358,8 +358,8 @@ var ErrCountdown = errors.New("the stop countdown must be between 0 and 10 minut
 // StopOptions changes how a graceful stop warns players (SPEC 7.6: the
 // countdown is configurable per action, SPEC 7.6).
 type StopOptions struct {
-	// Countdown is how long players are warned; zero warns nobody. Callers
-	// pass StopCountdown for the default.
+	// Countdown is how long players are warned; zero warns nobody. The caller
+	// supplies its own default; the web layer passes the app setting.
 	Countdown time.Duration
 	// WarnEmpty counts down even with nobody online, so a player who joins
 	// meanwhile is warned and can be waited for. Only Restart honours it,
