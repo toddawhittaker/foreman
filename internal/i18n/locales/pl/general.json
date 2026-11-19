@@ -1,0 +1,32 @@
+{
+  "general.audit.heading": "Dziennik audytu",
+  "general.audit.label": "Czas przechowywania wpisów dziennika audytu (dni)",
+  "general.audit.text": "Jak długo dziennik audytu przechowuje wpis. Foreman usuwa starsze wpisy raz na godzinę.",
+  "general.confirm.cancel": "Anuluj, zachowaj obecne ustawienia",
+  "general.confirm.change": "{setting}: z {from} na {to}",
+  "general.confirm.question": "Przechowywać mniej automatycznych migawek?",
+  "general.done": "Zapisano. Nowe ustawienia obowiązują od teraz.",
+  "general.error.range": "Wpisz liczbę całkowitą od {min} do {max}.",
+  "general.range.hint": "Liczba całkowita od {min} do {max}.",
+  "general.save": "Zapisz ustawienia",
+  "general.snapshots.heading": "Migawki",
+  "general.snapshots.hint": "Niższa wartość niczego teraz nie usuwa. Każdy świat usuwa nadmiarowe automatyczne migawki przy następnej automatycznej migawce.",
+  "general.snapshots.label": "Liczba automatycznych migawek przechowywanych dla świata",
+  "general.snapshots.text": "Foreman przechowuje najnowsze automatyczne migawki każdego świata. Migawki ręczne i migawka wykonana przed usunięciem świata nigdy nie są usuwane.",
+  "general.source": "Ustawiane tutaj. Żadna zmienna środowiskowa tego nie ustawia.",
+  "general.stop.heading": "Zatrzymywanie serwera",
+  "general.stop.hint": "0 oznacza brak ostrzeżenia.",
+  "general.stop.label": "Domyślne odliczanie przed zatrzymaniem (sekundy)",
+  "general.stop.text": "Odliczanie, od którego zaczyna się zatrzymanie lub restart, gdy nie podano innego. Zaplanowany restart ma własne, stałe odliczanie.",
+  "general.trim.snapshots": {
+    "one": "Zostanie usunięta {count} automatyczna migawka — przy następnej automatycznej migawce jej świata.",
+    "few": "Zostaną usunięte {count} automatyczne migawki — każda przy następnej automatycznej migawce swojego świata.",
+    "many": "Zostanie usuniętych {count} automatycznych migawek — każda przy następnej automatycznej migawce swojego świata."
+  },
+  "general.trim.worlds": "Dotyczy światów: {count}.",
+  "general.uploads.heading": "Przesyłanie plików",
+  "general.uploads.mod.hint": "Ten sam limit obowiązuje modyfikację pobieraną z portalu modyfikacji.",
+  "general.uploads.mod.label": "Maksymalny rozmiar przesyłanej modyfikacji (MB)",
+  "general.uploads.save.label": "Maksymalny rozmiar przesyłanego zapisu (MB)",
+  "general.uploads.text": "Największy plik, jaki Foreman przyjmuje przy przesyłaniu zapisu lub modyfikacji. Zmiana obowiązuje od następnego przesłania."
+}

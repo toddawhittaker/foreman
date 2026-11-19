@@ -290,7 +290,7 @@ func TestPruneKeepsTheNewestBeforeUpdateSnapshot(t *testing.T) {
 	id := updateWorld(t, m, "2.0.77", "save")
 	update(t, m, id, "2.1.23")
 	newest := update(t, m, id, "2.1.24")
-	for range KeepAutomatic * 2 {
+	for range DefaultKeepAutomatic * 2 {
 		if _, err := m.AutoSnapshot(id, ReasonBeforeRestore, LabelBeforeRestore, "alice"); err != nil {
 			t.Fatal(err)
 		}
@@ -317,7 +317,7 @@ func TestPruneKeepsTheNewestBeforeUpdateSnapshot(t *testing.T) {
 			automatic++
 		}
 	}
-	if automatic > KeepAutomatic+1 {
-		t.Errorf("%d automatic snapshots kept, want at most %d", automatic, KeepAutomatic+1)
+	if automatic > DefaultKeepAutomatic+1 {
+		t.Errorf("%d automatic snapshots kept, want at most %d", automatic, DefaultKeepAutomatic+1)
 	}
 }

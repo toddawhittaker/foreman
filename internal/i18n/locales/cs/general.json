@@ -1,0 +1,32 @@
+{
+  "general.audit.heading": "Protokol auditu",
+  "general.audit.label": "Doba uchování záznamů auditu (dny)",
+  "general.audit.text": "Jak dlouho protokol auditu záznam uchovává. Foreman maže starší záznamy jednou za hodinu.",
+  "general.confirm.cancel": "Zrušit, ponechat současné nastavení",
+  "general.confirm.change": "{setting}: z {from} na {to}",
+  "general.confirm.question": "Uchovávat méně automatických snímků?",
+  "general.done": "Uloženo. Nové nastavení platí od teď.",
+  "general.error.range": "Je třeba zadat celé číslo od {min} do {max}.",
+  "general.range.hint": "Celé číslo od {min} do {max}.",
+  "general.save": "Uložit nastavení",
+  "general.snapshots.heading": "Snímky",
+  "general.snapshots.hint": "Nižší hodnota teď nic nesmaže. Každý svět zahodí přebytečné automatické snímky při svém dalším automatickém snímku.",
+  "general.snapshots.label": "Počet automatických snímků uchovávaných na svět",
+  "general.snapshots.text": "Foreman uchovává nejnovější automatické snímky každého světa. Ruční snímky a snímek pořízený před smazáním světa se nikdy neodstraňují.",
+  "general.source": "Nastavuje se zde. Žádná proměnná prostředí to nenastavuje.",
+  "general.stop.heading": "Zastavení serveru",
+  "general.stop.hint": "0 znamená bez upozornění.",
+  "general.stop.label": "Výchozí odpočet při zastavení (sekundy)",
+  "general.stop.text": "Odpočet, kterým začíná zastavení nebo restart, když žádný není zadán. Naplánovaný restart má vlastní pevný odpočet.",
+  "general.trim.snapshots": {
+    "one": "Bude odstraněn {count} automatický snímek — při dalším automatickém snímku jeho světa.",
+    "few": "Budou odstraněny {count} automatické snímky — každý při dalším automatickém snímku svého světa.",
+    "other": "Bude odstraněno {count} automatických snímků — každý při dalším automatickém snímku svého světa."
+  },
+  "general.trim.worlds": "Dotčené světy: {count}.",
+  "general.uploads.heading": "Nahrávání souborů",
+  "general.uploads.mod.hint": "Stejný limit platí pro mod stahovaný z portálu modů.",
+  "general.uploads.mod.label": "Nejvyšší velikost nahrávaného modu (MB)",
+  "general.uploads.save.label": "Nejvyšší velikost nahrávané uložené hry (MB)",
+  "general.uploads.text": "Největší soubor, který Foreman přijme při nahrání uložené hry nebo modu. Změna platí od dalšího nahrání."
+}

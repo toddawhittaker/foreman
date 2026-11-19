@@ -2,6 +2,7 @@ package world
 
 import (
 	"cmp"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path"
 	"regexp"
@@ -47,8 +49,26 @@ const (
 	LabelBeforeMods = "Before mod change"
 )
 
-// KeepAutomatic is how many automatic snapshots each world keeps (SPEC 6.6).
-const KeepAutomatic = 10
+// DefaultKeepAutomatic is how many automatic snapshots each world keeps until
+// the General setting says otherwise (SPEC 6.6).
+const DefaultKeepAutomatic = 10
+
+// SetKeepAutomatic sets how many automatic snapshots each world keeps. It
+// takes effect at each world's next automatic snapshot; nothing is removed
+// now. n below 1 is ignored.
+func (m *Manager) SetKeepAutomatic(n int) {
+	if n >= 1 {
+		m.keepAutomatic.Store(int32(min(n, math.MaxInt32))) //nolint:gosec // clamped
+	}
+}
+
+// KeepAutomatic is how many automatic snapshots each world keeps.
+func (m *Manager) KeepAutomatic() int {
+	if n := m.keepAutomatic.Load(); n > 0 {
+		return int(n)
+	}
+	return DefaultKeepAutomatic
+}
 
 // snapshotTimeFormat names a snapshot folder by its UTC time (SPEC 6.7).
 const snapshotTimeFormat = "20060102T150405Z"
@@ -585,6 +605,56 @@ func readManifest(snaps *os.Root, name string) (Manifest, error) {
 	return man, nil
 }
 
+// automaticToRemove picks the automatic snapshots beyond the newest keep.
+// list is newest first. The newest "Before update" snapshot is always kept
+// and does not count, since a rollback restores it (SPEC 10.4). Manual and
+// before-delete snapshots are never picked.
+func automaticToRemove(list []Snapshot, keep int) []Snapshot {
+	var out []Snapshot
+	kept := 0
+	updateKept := false
+	for _, s := range list {
+		if !s.Automatic() {
+			continue
+		}
+		if s.Reason == ReasonGameUpdate && !updateKept {
+			updateKept = true
+			continue
+		}
+		if kept++; kept <= keep {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// TrimCount reports how many automatic snapshots, across how many worlds,
+// would go at each world's next automatic snapshot if every world kept only
+// keep (SPEC 6.6).
+func (m *Manager) TrimCount(ctx context.Context, keep int) (snapshots, worlds int, err error) {
+	list, err := m.List(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, w := range list {
+		// An archived world takes no automatic snapshots, so retention
+		// never removes any of its.
+		if w.Archived {
+			continue
+		}
+		snaps, err := m.Snapshots(w.ID)
+		if err != nil {
+			return 0, 0, err
+		}
+		if n := len(automaticToRemove(snaps, keep)); n > 0 {
+			snapshots += n
+			worlds++
+		}
+	}
+	return snapshots, worlds, nil
+}
+
 // prune removes a world's automatic snapshots beyond the newest
 // KeepAutomatic. Manual and before-delete snapshots are never removed.
 func (m *Manager) prune(id string) error {
@@ -597,20 +667,7 @@ func (m *Manager) prune(id string) error {
 		return err
 	}
 	defer func() { _ = snaps.Close() }()
-	kept := 0
-	updateKept := false
-	for _, s := range list {
-		if !s.Automatic() {
-			continue
-		}
-		// Rollback restores the newest "Before update" snapshot (SPEC 10.4).
-		if s.Reason == ReasonGameUpdate && !updateKept {
-			updateKept = true
-			continue
-		}
-		if kept++; kept <= KeepAutomatic {
-			continue
-		}
+	for _, s := range automaticToRemove(list, m.KeepAutomatic()) {
 		// Renamed first, so a crash mid-removal leaves a leftover, not a
 		// half snapshot.
 		gone := PrefixDeleting + randomSuffix()

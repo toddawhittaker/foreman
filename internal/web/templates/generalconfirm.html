@@ -1,0 +1,26 @@
+{{define "title"}}{{t "general.confirm.question"}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1 id="confirm-heading">{{t "general.confirm.question"}}</h1>
+{{template "settings-tabs" "general"}}
+<section class="confirm">
+  <p>{{t "common.confirm.will"}}</p>
+  <ul>
+    <li id="general-trim">{{t "general.trim.snapshots" "count" .Trim.Snapshots}} {{t "general.trim.worlds" "count" .Trim.Worlds}}</li>
+    {{- range .Changes}}
+    <li>{{t "general.confirm.change" "setting" (msg .Label) "from" .From "to" .To}}</li>
+    {{- end}}
+  </ul>
+  <form method="post" action="{{.Path}}" novalidate>
+    {{- range .Hidden}}
+    <input type="hidden" name="{{.Name}}" value="{{.Value}}">
+    {{- end}}
+    <div class="actions">
+      <button type="submit" class="button button--danger" id="act-general-confirm">{{t "general.save"}}</button>
+      <a href="{{.CancelPath}}">{{t "general.confirm.cancel"}}</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}

@@ -61,7 +61,7 @@ func TestRestoreSucceedsWhenRetentionFailsAfterTheSwap(t *testing.T) {
 	m, _ := newTestManager(t)
 	id := seedWorld(t, m)
 	var first Snapshot
-	for i := range KeepAutomatic {
+	for i := range DefaultKeepAutomatic {
 		s, err := m.AutoSnapshot(id, ReasonBeforeRestore, LabelBeforeRestore, "a")
 		if err != nil {
 			t.Fatal(err)
@@ -153,7 +153,7 @@ func TestAutoSnapshotSucceedsWhenRetentionFails(t *testing.T) {
 	m, _ := newTestManager(t)
 	id := seedWorld(t, m)
 	var first Snapshot
-	for i := range KeepAutomatic {
+	for i := range DefaultKeepAutomatic {
 		s, err := m.AutoSnapshot(id, ReasonBeforeRestore, LabelBeforeRestore, "a")
 		if err != nil {
 			t.Fatal(err)

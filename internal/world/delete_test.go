@@ -34,7 +34,7 @@ func TestDeleteTakesFinalSnapshotAndKeepsItThroughRetention(t *testing.T) {
 
 	now := t0
 	m.now = func() time.Time { now = now.Add(time.Minute); return now }
-	for range KeepAutomatic + 2 {
+	for range DefaultKeepAutomatic + 2 {
 		if _, err := m.AutoSnapshot(id, ReasonBeforeRestore, LabelBeforeRestore, "a"); err != nil {
 			t.Fatal(err)
 		}
@@ -62,8 +62,8 @@ func TestDeleteTakesFinalSnapshotAndKeepsItThroughRetention(t *testing.T) {
 	if final == nil || final.Label != LabelBeforeDelete || final.TakenBy != "bob" {
 		t.Fatalf("no final snapshot in %+v", list)
 	}
-	if automatic != KeepAutomatic {
-		t.Errorf("%d automatic snapshots kept, want %d", automatic, KeepAutomatic)
+	if automatic != DefaultKeepAutomatic {
+		t.Errorf("%d automatic snapshots kept, want %d", automatic, DefaultKeepAutomatic)
 	}
 
 	// The final snapshot holds the whole world, and retention running

@@ -1,0 +1,31 @@
+{
+  "general.audit.heading": "Audit-Protokoll",
+  "general.audit.label": "Audit-Einträge aufbewahren (Tage)",
+  "general.audit.text": "Wie lange das Audit-Protokoll einen Eintrag aufbewahrt. Foreman löscht ältere Einträge einmal pro Stunde.",
+  "general.confirm.cancel": "Abbrechen, aktuelle Einstellungen behalten",
+  "general.confirm.change": "{setting}: {from} auf {to}",
+  "general.confirm.question": "Weniger automatische Snapshots behalten?",
+  "general.done": "Gespeichert. Die neuen Einstellungen gelten ab jetzt.",
+  "general.error.range": "Gib eine ganze Zahl von {min} bis {max} ein.",
+  "general.range.hint": "Eine ganze Zahl von {min} bis {max}.",
+  "general.save": "Einstellungen speichern",
+  "general.snapshots.heading": "Snapshots",
+  "general.snapshots.hint": "Ein niedrigerer Wert löscht jetzt nichts. Jede Welt verwirft ihre überzähligen automatischen Snapshots beim nächsten automatischen Snapshot.",
+  "general.snapshots.label": "Automatische Snapshots pro Welt behalten",
+  "general.snapshots.text": "Foreman behält die neuesten automatischen Snapshots jeder Welt. Manuelle Snapshots und der Snapshot vor dem Löschen einer Welt werden nie entfernt.",
+  "general.source": "Hier festgelegt. Keine Umgebungsvariable legt dies fest.",
+  "general.stop.heading": "Server stoppen",
+  "general.stop.hint": "0 bedeutet keine Warnung.",
+  "general.stop.label": "Standard-Countdown beim Stoppen (Sekunden)",
+  "general.stop.text": "Der Countdown, mit dem ein Stopp oder Neustart beginnt, wenn keiner angegeben wird. Ein geplanter Neustart behält seinen eigenen festen Countdown.",
+  "general.trim.snapshots": {
+    "one": "{count} automatischer Snapshot wird beim nächsten automatischen Snapshot seiner Welt entfernt.",
+    "other": "{count} automatische Snapshots werden jeweils beim nächsten automatischen Snapshot ihrer Welt entfernt."
+  },
+  "general.trim.worlds": "Betroffene Welten: {count}.",
+  "general.uploads.heading": "Hochladen",
+  "general.uploads.mod.hint": "Eine Mod, die vom Mod-Portal heruntergeladen wird, unterliegt demselben Limit.",
+  "general.uploads.mod.label": "Maximale Größe einer hochgeladenen Mod (MB)",
+  "general.uploads.save.label": "Maximale Größe eines hochgeladenen Speicherstands (MB)",
+  "general.uploads.text": "Die größte Datei, die Foreman annimmt, wenn jemand einen Speicherstand oder eine Mod hochlädt. Eine Änderung gilt für das nächste Hochladen."
+}

@@ -137,6 +137,7 @@ test("the Settings tab is current on the four Foreman settings pages", async ({ 
     ["/settings/factorio-account", "true"],
     ["/settings/notifications", "true"],
     ["/settings/public-mods", "true"],
+    ["/settings/general", "true"],
   ]) {
     await page.goto(path);
     const tab = mainNav(page).getByRole("link", { name: "Settings" });
