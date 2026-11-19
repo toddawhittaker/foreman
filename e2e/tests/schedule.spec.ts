@@ -87,10 +87,11 @@ test("the five Foreman settings pages share one sub-navigation", async ({ page }
     ["/settings/notifications", "Notifications"],
     ["/settings/public-mods", "Public mods"],
     ["/settings/api-tokens", "API tokens"],
+    ["/settings/audit-log", "Audit log"],
   ]) {
     await page.goto(path);
     const nav = settingsNav(page);
-    await expect(nav.getByRole("link")).toHaveText(["factorio.com account", "Restart schedule", "Notifications", "Public mods", "API tokens"]);
+    await expect(nav.getByRole("link")).toHaveText(["factorio.com account", "Restart schedule", "Notifications", "Public mods", "API tokens", "Audit log"]);
     await expect(nav.getByRole("link", { name: current })).toHaveAttribute("aria-current", "page");
     await expect(nav.locator("[aria-current]")).toHaveCount(1);
     // It sits under the page's heading.

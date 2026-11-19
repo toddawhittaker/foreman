@@ -402,7 +402,7 @@ func TestAuditCarriesTokenName(t *testing.T) {
 	s := &server{store: hn.store, now: hn.clock.Now, log: hn.slog}
 	u := hn.addUser("alice", testPassword)
 	s.audit(context.Background(), game.Actor{UserID: u.ID, Username: u.Username, Token: "Claude"}, AuditScheduleSet, "", "on")
-	list, err := hn.store.ListAudit(context.Background(), 10)
+	list, err := hn.store.ListAudit(context.Background(), store.AuditFilter{Limit: 10})
 	if err != nil {
 		t.Fatal(err)
 	}

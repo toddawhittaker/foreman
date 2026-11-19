@@ -44,7 +44,7 @@ func newWorldsRig(t *testing.T) *worldsRig {
 
 func (r *worldsRig) audits() []store.AuditEntry {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 100)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 100})
 	if err != nil {
 		r.t.Fatal(err)
 	}
