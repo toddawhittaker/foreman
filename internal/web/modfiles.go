@@ -31,11 +31,8 @@ const (
 	settingsUploadMB = world.MaxModSettings >> 20
 )
 
-// MaxModUpload and MaxSettingsUpload are those limits in bytes.
-const (
-	MaxModUpload      = modUploadMB << 20
-	MaxSettingsUpload = settingsUploadMB << 20
-)
+// MaxSettingsUpload is that limit in bytes.
+const MaxSettingsUpload = settingsUploadMB << 20
 
 // sizeLimit says an upload limit as the spec words it: a whole number of
 // binary units, "200 MB" for 200 MiB and "1 GB" for 1 GiB, rather than the

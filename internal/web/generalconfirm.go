@@ -45,8 +45,9 @@ func (GeneralConfirmPage) CancelPath() string { return generalPath() }
 // generalConfirmPage returns the confirm page when the retention in want
 // would remove snapshots and the request does not already carry the count
 // that is true now. It decides on the real count, not on whether the figure
-// is lower, since a raise can still remove snapshots (a world unarchived
-// after a lowering). needed is false when nothing would go, and the save
+// is lower, since a raise can still remove snapshots (a world that has not
+// yet taken an automatic snapshot since an earlier lowering). Archived worlds
+// count like any other, as they take automatic snapshots too. needed is false when nothing would go, and the save
 // then goes ahead at once.
 func (s *server) generalConfirmPage(ctx context.Context, r *http.Request, want map[string]int) (_ GeneralConfirmPage, needed bool, _ error) {
 	n := want[settingSnapshotRetention.Key]

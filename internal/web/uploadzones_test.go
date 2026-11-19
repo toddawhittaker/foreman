@@ -89,7 +89,7 @@ func TestUploadLimitsAreOneFigure(t *testing.T) {
 		bytes uint64
 		want  string
 	}{
-		{"mod zip", MaxModUpload, "200 MB"},
+		{"mod zip", uint64(modUploadMB) << 20, "200 MB"},
 		{"mod-settings.dat", MaxSettingsUpload, "4 MB"},
 		{"save", MaxSaveUpload, "1 GB"},
 		{"favorite", world.MaxFavoriteUpload, "8 MB"},

@@ -334,11 +334,19 @@ type SwitchOffer struct {
 // it had not, the old world is still active and its Start button is the way
 // on.
 func (p ServerPage) SwitchBack() *SwitchOffer {
+	if id := p.switchBackFrom(); id != "" {
+		return p.switchOffer(id)
+	}
+	return nil
+}
+
+// switchBackFrom is the world SwitchBack would offer, archived or not.
+func (p ServerPage) switchBackFrom() string {
 	sw := p.switchInfo()
 	if sw == nil || !sw.Presented || p.Busy() {
-		return nil
+		return ""
 	}
-	return p.switchOffer(sw.From)
+	return sw.From
 }
 
 // switchOffer is the offer to switch to a world, or nil when it is archived,

@@ -497,7 +497,7 @@
   "worlds.badge.archived": "В архиве",
   "worlds.archive.refused": "Этот мир в архиве, поэтому его нельзя запустить. Сначала разархивируйте его.",
   "worlds.error.archive_active": "Это активный мир, а активный мир нельзя архивировать. Сначала переключитесь на другой мир.",
-  "worlds.list.archived": "В архиве ({count})",
+  "worlds.list.archived": "Миры в архиве ({count})",
   "worlds.world.archive.heading": "Архивирование",
   "worlds.world.archive.text": "Скройте этот мир из основного списка. Пока вы не разархивируете его, запустить его нельзя. Его файлы и снимки останутся без изменений.",
   "worlds.world.archive.button": "Архивировать мир",

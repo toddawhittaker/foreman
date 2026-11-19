@@ -18,6 +18,7 @@
   "general.stop.hint": "0 znamená bez upozornění.",
   "general.stop.label": "Výchozí odpočet při zastavení (sekundy)",
   "general.stop.text": "Odpočet, kterým začíná zastavení nebo restart, když žádný není zadán. Naplánovaný restart má vlastní pevný odpočet.",
+  "general.trim.final": "Odstraněné snímky nelze obnovit. Aby se zachovaly, je třeba číslo znovu zvýšit před dalším automatickým snímkem.",
   "general.trim.snapshots": {
     "one": "Bude odstraněn {count} automatický snímek — při dalším automatickém snímku jeho světa.",
     "few": "Budou odstraněny {count} automatické snímky — každý při dalším automatickém snímku svého světa.",

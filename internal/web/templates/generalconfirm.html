@@ -3,11 +3,12 @@
 {{define "content" -}}
 {{with .Page}}
 <h1 id="confirm-heading">{{t "general.confirm.question"}}</h1>
-{{template "settings-tabs" "general"}}
+{{template "settings-tabs" "general-confirm"}}
 <section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li id="general-trim">{{t "general.trim.snapshots" "count" .Trim.Snapshots}} {{t "general.trim.worlds" "count" .Trim.Worlds}}</li>
+    <li>{{t "general.trim.final"}}</li>
     {{- range .Changes}}
     <li>{{t "general.confirm.change" "setting" (msg .Label) "from" .From "to" .To}}</li>
     {{- end}}

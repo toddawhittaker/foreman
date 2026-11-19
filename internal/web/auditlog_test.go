@@ -63,7 +63,7 @@ func TestAuditLogNeedsSignInAndShowsItsTab(t *testing.T) {
 		t.Errorf("signed out: %d, want a redirect to sign in", rec.Code)
 	}
 	body := hn.auditPage(hn.signInAgain("alice"), "").Body.String()
-	nav := between(body, `<nav class="subnav"`, "</nav>")
+	nav := between(body, `<nav class="subnav subnav--settings"`, "</nav>")
 	if !strings.Contains(nav, `href="`+auditLogPath()+`" aria-current="page"`) {
 		t.Errorf("the Audit log tab is not current:\n%s", nav)
 	}

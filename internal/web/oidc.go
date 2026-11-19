@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -84,10 +85,8 @@ func (o *oidcSignIn) start(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Discovery errors name the provider's addresses, never a user's claims.
 		s.log.Warn("single sign-on is unavailable", "error", err)
-		s.page(w, r, http.StatusServiceUnavailable, "", ErrorPage{
-			Status: http.StatusServiceUnavailable,
-			Detail: i18n.M("accounts.oidc.unavailable"),
-		})
+		s.page(w, r, http.StatusServiceUnavailable, "", oidcRefusal(http.StatusServiceUnavailable,
+			i18n.M("accounts.oidc.unavailable"), true, returnPath(r.URL.Query().Get("next"))))
 		return
 	}
 	o.pending.add(req.State, oidcStarted{
@@ -109,9 +108,11 @@ func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 	client := auth.ClientAddr(r, s.cfg.TrustedProxies)
 	// The cookie has done its job whatever happens next.
 	http.SetCookie(w, o.cookie("", -1))
-	failed := func(status int, detail i18n.Msg, reason string) {
+	// next is the page the sign-in was for, known once its state is found.
+	var next string
+	failed := func(status int, detail i18n.Msg, retry bool, reason string) {
 		s.log.Info("single sign-on failed", "client", client, "reason", reason)
-		s.page(w, r, status, "", ErrorPage{Status: status, Detail: detail})
+		s.page(w, r, status, "", oidcRefusal(status, detail, retry, next))
 	}
 	tryAgain := i18n.M("accounts.oidc.failed")
 
@@ -119,12 +120,13 @@ func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 	state := q.Get("state")
 	bound, err := r.Cookie(oidcCookie)
 	if state == "" || err != nil || subtle.ConstantTimeCompare([]byte(bound.Value), []byte(state)) != 1 {
-		failed(http.StatusBadRequest, tryAgain, "the state does not match the browser's cookie")
+		failed(http.StatusBadRequest, tryAgain, true, "the state does not match the browser's cookie")
 		return
 	}
 	started, ok := o.pending.take(state)
+	next = started.next
 	if !ok {
-		failed(http.StatusBadRequest, tryAgain, "the sign-in is unknown, used or expired")
+		failed(http.StatusBadRequest, tryAgain, true, "the sign-in is unknown, used or expired")
 		return
 	}
 	if ok, wait := s.limiter.AllowAddr(client); !ok {
@@ -133,23 +135,23 @@ func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if q.Get("error") != "" {
-		failed(http.StatusBadRequest, tryAgain, "the identity provider answered with an error")
+		failed(http.StatusBadRequest, tryAgain, true, "the identity provider answered with an error")
 		return
 	}
 	id, err := o.client.Finish(ctx, q.Get("code"), started.verifier, started.nonce)
 	switch {
 	case errors.Is(err, auth.ErrOIDCNotAllowed):
-		failed(http.StatusForbidden, i18n.M("accounts.proxy.refused"), err.Error())
+		failed(http.StatusForbidden, i18n.M("accounts.proxy.refused"), false, err.Error())
 		return
 	case errors.Is(err, auth.ErrOIDCUnavailable):
 		// A provider that is down is not a guess; it gives the attempt back.
 		s.limiter.ReleaseAddr(client)
 		s.log.Warn("single sign-on is unavailable", "error", err)
-		failed(http.StatusServiceUnavailable, i18n.M("accounts.oidc.unavailable"), "the identity provider is unavailable")
+		failed(http.StatusServiceUnavailable, i18n.M("accounts.oidc.unavailable"), true, "the identity provider is unavailable")
 		return
 	case err != nil:
 		// Finish's errors hold fixed words only.
-		failed(http.StatusBadRequest, tryAgain, err.Error())
+		failed(http.StatusBadRequest, tryAgain, true, err.Error())
 		return
 	}
 	u, err := s.oidcUser(ctx, id)
@@ -160,10 +162,10 @@ func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case errors.Is(err, errOIDCNameTaken):
-		failed(http.StatusForbidden, i18n.M("accounts.oidc.name_taken"), err.Error())
+		failed(http.StatusForbidden, i18n.M("accounts.oidc.name_taken"), false, err.Error())
 		return
 	case errors.Is(err, errOIDCBadName):
-		failed(http.StatusForbidden, i18n.M("accounts.oidc.bad_username"), err.Error())
+		failed(http.StatusForbidden, i18n.M("accounts.oidc.bad_username"), false, err.Error())
 		return
 	case err != nil:
 		s.fail(w, r, "find the single sign-on user", err)
@@ -173,11 +175,27 @@ func (o *oidcSignIn) callback(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, "start session", err)
 		return
 	}
-	next := started.next
 	if next == "" {
 		next = s.home()
 	}
 	http.Redirect(w, r, next, http.StatusSeeOther)
+}
+
+// oidcRefusal is the page for a sign-in that did not work. Where trying
+// again can help it offers that, carrying the page asked for; otherwise it
+// offers the sign-in page (DESIGN 9).
+func oidcRefusal(status int, detail i18n.Msg, retry bool, next string) ErrorPage {
+	p := ErrorPage{
+		Status: status, Detail: detail, Title: i18n.M("accounts.oidc.heading"),
+		ActionLabel: i18n.M("accounts.oidc.back"), ActionPath: PathSignIn,
+	}
+	if retry {
+		p.ActionLabel, p.ActionPath = i18n.M("accounts.oidc.retry"), PathOIDCStart
+		if next != "" {
+			p.ActionPath += "?next=" + url.QueryEscape(next)
+		}
+	}
+	return p
 }
 
 // cookie is the binding cookie, sent only to the OIDC routes. Secure

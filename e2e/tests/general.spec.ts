@@ -103,8 +103,10 @@ test("lowering retention that trims asks first, and Cancel saves nothing", async
   await modLimit(page).fill("300");
   await page.getByRole("button", { name: "Save settings" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Keep fewer automatic snapshots?");
-  await expect(settingsNav(page).getByRole("link", { name: "General" })).toHaveAttribute("aria-current", "page");
+  // The confirm page is under General, not General itself.
+  await expect(settingsNav(page).getByRole("link", { name: "General" })).toHaveAttribute("aria-current", "true");
   const box = page.locator("section.confirm");
+  await expect(box).toContainText("Removed snapshots cannot be restored. To keep them, raise the number again before the next automatic snapshot.");
   await expect(box.locator("#general-trim")).toContainText("3 automatic snapshots will be removed, each at its world's next automatic snapshot.");
   await expect(box.locator("#general-trim")).toContainText("Worlds affected: 1.");
   await expect(box).toContainText("Automatic snapshots to keep per world: 10 to 1");

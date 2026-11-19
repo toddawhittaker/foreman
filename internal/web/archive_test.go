@@ -53,7 +53,7 @@ func TestArchiveAndUnarchiveFromThePages(t *testing.T) {
 
 	// The list keeps it out of the main list and shows it in a closed foldout.
 	list := r.get(PathWorlds, withCookie(r.cookie)).Body.String()
-	if !strings.Contains(list, `<summary>Archived (1)</summary>`) || strings.Contains(list, `<details class="disclosure" id="archived-worlds" open`) {
+	if !strings.Contains(list, `<summary>Archived worlds (1)</summary>`) || strings.Contains(list, `<details class="disclosure" id="archived-worlds" open`) {
 		t.Errorf("worlds list:\n%s", list)
 	}
 	mainList, foldout, _ := strings.Cut(list, `id="archived-worlds"`)
@@ -110,7 +110,7 @@ func TestWorldsPageWhenEveryWorldIsArchived(t *testing.T) {
 	// The active world goes by hand: archive refuses it.
 	r.archiveByHand(r.activeID())
 	list := r.get(PathWorlds, withCookie(r.cookie)).Body.String()
-	for _, want := range []string{"All your worlds are archived.", `id="act-upload-save"`, `<summary>Archived (2)</summary>`, `<h2 id="world-` + id + `">`} {
+	for _, want := range []string{"All your worlds are archived.", `id="act-upload-save"`, `<summary>Archived worlds (2)</summary>`, `<h2 id="world-` + id + `">`} {
 		if !strings.Contains(list, want) {
 			t.Errorf("worlds list lacks %q:\n%s", want, list)
 		}

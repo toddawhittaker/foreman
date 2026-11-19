@@ -497,7 +497,7 @@
   "worlds.badge.archived": "Archivovaný",
   "worlds.archive.refused": "Tento svět je archivovaný, a proto ho nelze spustit. Nejprve je třeba ho vyjmout z archivu.",
   "worlds.error.archive_active": "Toto je aktivní svět a aktivní svět nelze archivovat. Nejprve je třeba přepnout na jiný svět.",
-  "worlds.list.archived": "Archivované ({count})",
+  "worlds.list.archived": "Archivované světy ({count})",
   "worlds.world.archive.heading": "Archivace",
   "worlds.world.archive.text": "Skryje tento svět v hlavním seznamu. Nelze ho spustit, dokud není vyjmut z archivu. Jeho soubory a snímky zůstanou beze změny.",
   "worlds.world.archive.button": "Archivovat svět",

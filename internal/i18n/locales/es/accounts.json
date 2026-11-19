@@ -51,5 +51,8 @@
   "accounts.oidc.failed": "El inicio de sesión único no ha funcionado. Vuelve a intentarlo. Si sigue fallando, pregunta a la persona que gestiona Foreman.",
   "accounts.oidc.unavailable": "Foreman no puede contactar ahora con el proveedor de inicio de sesión único. Vuelve a intentarlo dentro de un minuto.",
   "accounts.oidc.name_taken": "Foreman ya tiene un usuario con tu nombre que inicia sesión de otra forma, así que el inicio de sesión único no puede iniciar tu sesión. Pide a la persona que gestiona Foreman que cambie el nombre de ese usuario o lo elimine.",
-  "accounts.oidc.bad_username": "Tu cuenta de inicio de sesión único no tiene un nombre de usuario que Foreman pueda usar, así que volver a intentarlo no servirá. Pide a la persona que gestiona Foreman que revise tu cuenta en el proveedor de identidad."
+  "accounts.oidc.bad_username": "Tu cuenta de inicio de sesión único no tiene un nombre de usuario que Foreman pueda usar, así que volver a intentarlo no servirá. Pide a la persona que gestiona Foreman que revise tu cuenta en el proveedor de identidad.",
+  "accounts.oidc.heading": "El inicio de sesión único no ha funcionado",
+  "accounts.oidc.retry": "Volver a intentar el inicio de sesión único",
+  "accounts.oidc.back": "Volver a iniciar sesión"
 }

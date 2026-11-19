@@ -496,3 +496,49 @@ func TestSetupRecordsUserCreate(t *testing.T) {
 		t.Errorf("user-create entries %q", got)
 	}
 }
+
+// DESIGN 9: a refused single sign-on says so in its heading and offers the
+// likely next step as a button: retry when trying again can work, a way back
+// to the sign-in page when it cannot. A retry carries the page asked for.
+func TestOIDCRefusalPagesOfferTheNextStep(t *testing.T) {
+	const heading = "Single sign-on did not work"
+	retry := PathOIDCStart + "?next=%2Fschedule"
+	check := func(t *testing.T, rec *httptest.ResponseRecorder, status int, label, href string) {
+		t.Helper()
+		body := rec.Body.String()
+		if rec.Code != status || !strings.Contains(body, "<h1>"+heading+"</h1>") {
+			t.Fatalf("got %d without the heading %q", rec.Code, heading)
+		}
+		if !strings.Contains(body, `<a class="button button--primary" href="`+href+`">`+label+"</a>") {
+			t.Errorf("no primary button %q to %s:\n%s", label, href, between(body, `<div class="panel">`, "</main>"))
+		}
+	}
+	t.Run("provider unavailable", func(t *testing.T) {
+		o := newOIDCHarness(t, "oidc", nil)
+		o.tr.unusable.Store(true)
+		check(t, o.get(PathOIDCStart+"?next=%2Fschedule"), http.StatusServiceUnavailable, "Try single sign-on again", retry)
+	})
+	t.Run("failed", func(t *testing.T) {
+		o := newOIDCHarness(t, "oidc", nil)
+		c := idp.DefaultClaims()
+		c.Nonce = "not-the-nonce"
+		o.idp.SetNext(c)
+		check(t, o.signIn("/schedule"), http.StatusBadRequest, "Try single sign-on again", retry)
+	})
+	t.Run("failed with no page asked for", func(t *testing.T) {
+		o := newOIDCHarness(t, "oidc", nil)
+		check(t, o.get(PathOIDCCallback), http.StatusBadRequest, "Try single sign-on again", PathOIDCStart)
+	})
+	t.Run("name taken", func(t *testing.T) {
+		o := newOIDCHarness(t, "local,oidc", nil)
+		o.addUser(idp.Username, testPassword)
+		check(t, o.signIn("/schedule"), http.StatusForbidden, "Back to sign in", PathSignIn)
+	})
+	t.Run("bad username", func(t *testing.T) {
+		o := newOIDCHarness(t, "oidc", nil)
+		c := idp.DefaultClaims()
+		c.Username = ""
+		o.idp.SetNext(c)
+		check(t, o.signIn("/schedule"), http.StatusForbidden, "Back to sign in", PathSignIn)
+	})
+}

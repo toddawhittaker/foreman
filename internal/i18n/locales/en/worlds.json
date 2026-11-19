@@ -480,7 +480,7 @@
   "worlds.badge.archived": "Archived",
   "worlds.archive.refused": "This world is archived, so it cannot start. Unarchive it first.",
   "worlds.error.archive_active": "This is the active world, and the active world cannot be archived. Switch to another world first.",
-  "worlds.list.archived": "Archived ({count})",
+  "worlds.list.archived": "Archived worlds ({count})",
   "worlds.world.archive.heading": "Archive",
   "worlds.world.archive.text": "Hide this world from the main list. It cannot start until you unarchive it. Its files and snapshots stay as they are.",
   "worlds.world.archive.button": "Archive world",

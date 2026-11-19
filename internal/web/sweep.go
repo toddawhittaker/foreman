@@ -19,10 +19,10 @@ const remindEvery = 15 * time.Minute
 // emitter is the part of the notifier the reminders use.
 type emitter interface{ Emit(notify.Message) }
 
-// SweepSessions deletes sessions idle for longer than idle, and audit
+// Sweep deletes sessions idle for longer than idle, and audit
 // entries older than the retention setting, once an hour until ctx ends.
 // Lookup already refuses expired sessions; this only keeps the tables small.
-func (h *Handler) SweepSessions(ctx context.Context, idle time.Duration) {
+func (h *Handler) Sweep(ctx context.Context, idle time.Duration) {
 	t := time.NewTicker(sweepEvery)
 	defer t.Stop()
 	for {

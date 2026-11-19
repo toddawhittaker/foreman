@@ -80,14 +80,23 @@ type Problem struct {
 // "Show older".
 const maxListRows = 50
 
+// SignInMethods is which sign-in methods a page offers (SPEC 12.7). The
+// zero value is the local-only page.
+type SignInMethods struct {
+	// OIDC offers single sign-on.
+	OIDC bool
+	// NoLocal is set when oidc is on and local is not, so password sign-in
+	// is not offered.
+	NoLocal bool
+}
+
+// OIDCPath is where the single sign-on button goes.
+func (SignInMethods) OIDCPath() string { return PathOIDCStart }
+
 // SignedOutPage confirms that sign-out ended the session (SPEC 12.8). It
 // offers the sign-in methods that are on, as the sign-in page does.
 type SignedOutPage struct {
-	// OIDC offers single sign-on (SPEC 12.7).
-	OIDC bool
-	// NoLocal is set when oidc is on and local is not, so password sign-in
-	// is not offered. The zero value is the local-only page.
-	NoLocal bool
+	SignInMethods
 }
 
 // SignInPage is the local-account sign-in form (SPEC 12.3, 12.4).
@@ -107,11 +116,8 @@ type SignInPage struct {
 	// Busy replaces the field errors with a message to try again shortly:
 	// too many password checks were already running.
 	Busy bool
-	// OIDC adds the single sign-on button (SPEC 12.7).
-	OIDC bool
-	// NoLocal is set when oidc is on and local is not: the page then has
-	// no password form. The zero value is the local-only page.
-	NoLocal bool
+	// The page then has no password form when NoLocal is set.
+	SignInMethods
 }
 
 // SetupPage creates the first admin account on first run (SPEC 12.3).
@@ -131,6 +137,12 @@ type SetupPage struct {
 type ErrorPage struct {
 	Status int
 	Detail i18n.Msg
+	// Title, when set, replaces the status's heading.
+	Title i18n.Msg
+	// ActionPath, when set, adds a primary button with ActionLabel before
+	// the link home: the likely next step.
+	ActionLabel i18n.Msg
+	ActionPath  string
 }
 
 // publicPage is a page anyone may see without signing in (SPEC 9.16). It is
@@ -146,20 +158,18 @@ func (SignInPage) templateName() string    { return "signin" }
 func (SetupPage) templateName() string     { return "setup" }
 func (ErrorPage) templateName() string     { return "error" }
 
-// OIDCPath is where the single sign-on button goes (SPEC 12.7).
-func (SignInPage) OIDCPath() string { return PathOIDCStart }
+// signInMethods says which sign-in methods are on.
+func (s *server) signInMethods() SignInMethods {
+	return SignInMethods{OIDC: s.cfg.AuthOIDC, NoLocal: s.cfg.AuthOIDC && !s.cfg.AuthLocal}
+}
 
-// OIDCPath is where the single sign-on button goes (SPEC 12.7).
-func (SignedOutPage) OIDCPath() string { return PathOIDCStart }
-
-// signInPage and signedOutPage say which sign-in methods are on.
 func (s *server) signInPage(p SignInPage) SignInPage {
-	p.OIDC, p.NoLocal = s.cfg.AuthOIDC, s.cfg.AuthOIDC && !s.cfg.AuthLocal
+	p.SignInMethods = s.signInMethods()
 	return p
 }
 
 func (s *server) signedOutPage() SignedOutPage {
-	return SignedOutPage{OIDC: s.cfg.AuthOIDC, NoLocal: s.cfg.AuthOIDC && !s.cfg.AuthLocal}
+	return SignedOutPage{s.signInMethods()}
 }
 
 func (p SignInPage) hasErrors() bool { return p.RateLimited || p.Busy || len(p.Problems()) > 0 }
@@ -219,6 +229,9 @@ func problems(all ...Problem) []Problem {
 
 // Heading is the page's h1 and title for its status.
 func (p ErrorPage) Heading() i18n.Msg {
+	if !p.Title.IsZero() {
+		return p.Title
+	}
 	switch p.Status {
 	case http.StatusForbidden:
 		return i18n.M("common.error.forbidden.heading")
@@ -385,9 +398,6 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"generalPath":       generalPath,
 		"usersPath":         usersPath,
 		"auditLogPath":      auditLogPath,
-		"generalTabOn":      func() bool { return generalTabOn },
-		"usersTabOn":        func() bool { return usersTabOn },
-		"auditTabOn":        func() bool { return auditTabOn },
 		"aboutPath":         func() string { return PathAbout },
 		"about":             version.Get,
 		"notificationsPath": func() string { return PathNotifications },

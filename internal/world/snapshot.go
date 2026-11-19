@@ -638,11 +638,8 @@ func (m *Manager) TrimCount(ctx context.Context, keep int) (snapshots, worlds in
 		return 0, 0, err
 	}
 	for _, w := range list {
-		// An archived world takes no automatic snapshots, so retention
-		// never removes any of its.
-		if w.Archived {
-			continue
-		}
+		// An archived world still takes automatic snapshots (a mod change,
+		// a settings edit, a game update), so it is counted like any other.
 		snaps, err := m.Snapshots(w.ID)
 		if err != nil {
 			return 0, 0, err

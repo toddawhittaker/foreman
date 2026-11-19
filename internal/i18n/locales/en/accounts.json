@@ -51,5 +51,8 @@
   "accounts.oidc.failed": "Single sign-on did not work. Try again. If it keeps failing, ask the person who runs Foreman.",
   "accounts.oidc.unavailable": "Foreman cannot reach the single sign-on provider right now. Try again in a minute.",
   "accounts.oidc.name_taken": "Foreman already has a user with your name who signs in another way, so single sign-on cannot sign you in. Ask the person who runs Foreman to rename or remove that user.",
-  "accounts.oidc.bad_username": "Your single sign-on account has no username Foreman can use, so trying again will not help. Ask the person who runs Foreman to check your account at the identity provider."
+  "accounts.oidc.bad_username": "Your single sign-on account has no username Foreman can use, so trying again will not help. Ask the person who runs Foreman to check your account at the identity provider.",
+  "accounts.oidc.heading": "Single sign-on did not work",
+  "accounts.oidc.retry": "Try single sign-on again",
+  "accounts.oidc.back": "Back to sign in"
 }

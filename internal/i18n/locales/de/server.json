@@ -599,5 +599,7 @@
   "server.disk.low": "Nur noch {free} Speicherplatz ist frei. Unter {reserve} können automatische Speicherungen scheitern, und Snapshots werden nicht mehr erstellt. Lösche Snapshots oder Welten, die du nicht mehr brauchst.",
   "server.disk.snapshots": "Snapshots",
   "server.lan.unpublished": "Spieler im lokalen Netzwerk können das Spiel nicht erreichen: {sidecar} veröffentlicht UDP 34197 nicht auf dem Host.",
-  "server.force.group": "Notfallaktionen"
+  "server.force.group": "Notfallaktionen",
+  "server.crash.switch_archived": "{world} ist archiviert, deshalb kann Foreman nicht dorthin zurückwechseln.",
+  "server.crash.unarchive": "{world} öffnen, um die Archivierung aufzuheben"
 }

@@ -17,9 +17,6 @@ import (
 // The General tab: the settings an admin changes in the UI that have no
 // environment form (SPEC 13.1, 6.6, 7.6, 14.6, 12.9).
 
-// generalTabOn shows the General tab.
-const generalTabOn = true
-
 // generalDoneSaved is the result the page reports after a save.
 const generalDoneSaved = "saved"
 

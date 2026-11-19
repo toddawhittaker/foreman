@@ -18,6 +18,7 @@
   "general.stop.hint": "0 oznacza brak ostrzeżenia.",
   "general.stop.label": "Domyślne odliczanie przed zatrzymaniem (sekundy)",
   "general.stop.text": "Odliczanie, od którego zaczyna się zatrzymanie lub restart, gdy nie podano innego. Zaplanowany restart ma własne, stałe odliczanie.",
+  "general.trim.final": "Usuniętych migawek nie można przywrócić. Aby je zachować, należy ponownie zwiększyć liczbę przed następną automatyczną migawką.",
   "general.trim.snapshots": {
     "one": "Zostanie usunięta {count} automatyczna migawka — przy następnej automatycznej migawce jej świata.",
     "few": "Zostaną usunięte {count} automatyczne migawki — każda przy następnej automatycznej migawce swojego świata.",

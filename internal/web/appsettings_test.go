@@ -243,6 +243,9 @@ func TestMCPSetForemanSettingsPreviewThenConfirm(t *testing.T) {
 	if out["snapshots_to_remove"] != 3.0 || out["worlds_affected"] != 1.0 || out["audit_entries_to_delete"] != 2.0 {
 		t.Errorf("counts %s", asJSON(out))
 	}
+	if !strings.Contains(asJSON(out["will"]), "Removed snapshots cannot be restored.") {
+		t.Errorf("the preview does not say removed snapshots stay gone: %s", asJSON(out["will"]))
+	}
 	if got := r.generalServer().snapshotRetention(ctx); got != 10 || r.auditCount() != before || r.worlds.KeepAutomatic() != 10 {
 		t.Fatalf("the preview changed something: retention %d, audit %d to %d", got, before, r.auditCount())
 	}

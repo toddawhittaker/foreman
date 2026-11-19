@@ -44,6 +44,17 @@ test("a dropped save fills the field, names the file, and imports", async ({ pag
   expect(readdirSync(join(foreman.dataDir, "worlds", "dropped", "saves"))).toEqual(["dropped.zip"]);
 });
 
+// The limits are whole MiB and say "MB" (SPEC 14.6), so the chosen file's size uses the same units.
+test("the chosen file's size is in the same 1024-based units as the limit", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/import");
+  const form = uploadForm(page);
+  const chooser = page.waitForEvent("filechooser");
+  await form.locator(".dropzone__area").click({ position: { x: 10, y: 10 } });
+  await (await chooser).setFiles({ name: "big.zip", mimeType: "application/zip", buffer: Buffer.alloc(1536 * 1024) });
+  await expect(form.locator(".dropzone__file")).toHaveText("Chosen: big.zip, 1.5 MB");
+});
+
 test("a click anywhere on the zone, or Space on it, opens the picker", async ({ page }) => {
   await createAdmin(page);
   await page.goto("/import");

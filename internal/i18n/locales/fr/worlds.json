@@ -480,7 +480,7 @@
   "worlds.badge.archived": "Archivé",
   "worlds.archive.refused": "Ce monde est archivé, il ne peut donc pas démarrer. Désarchivez-le d’abord.",
   "worlds.error.archive_active": "C’est le monde actif, et le monde actif ne peut pas être archivé. Basculez d’abord vers un autre monde.",
-  "worlds.list.archived": "Archivés ({count})",
+  "worlds.list.archived": "Mondes archivés ({count})",
   "worlds.world.archive.heading": "Archiver",
   "worlds.world.archive.text": "Masquez ce monde de la liste principale. Il ne peut pas démarrer tant que vous ne l’avez pas désarchivé. Ses fichiers et ses instantanés restent tels quels.",
   "worlds.world.archive.button": "Archiver le monde",

@@ -13,9 +13,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
-// auditTabOn shows the Audit log tab (SPEC 12.9).
-const auditTabOn = true
-
 // auditPageSize is how many entries a page of the log shows (SPEC 12.9).
 const auditPageSize = 50
 
@@ -42,36 +39,36 @@ var auditActionWords = map[string]i18n.Msg{
 	game.AuditUpdateRefused:  i18n.M("audit.action.game-update-refused"),
 	game.AuditModsRefused:    i18n.M("audit.action.mods-refused"),
 
-	game.AuditSettingsSave:   i18n.M("audit.action.settings-save"),
-	game.AuditPlayer:         i18n.M("audit.action.player"),
-	game.AuditAutosaveTidy:   i18n.M("audit.action.autosave-tidy"),
-	game.AuditChat:           i18n.M("audit.action.chat"),
-	AuditScheduleSet:         i18n.M("audit.action.restart-schedule-set"),
-	AuditWebhookAdd:          i18n.M("audit.action.webhook-add"),
-	AuditWebhookChange:       i18n.M("audit.action.webhook-change"),
-	AuditWebhookDelete:       i18n.M("audit.action.webhook-delete"),
-	AuditClone:               i18n.M("audit.action.clone"),
-	AuditWhitelistSwitch:     i18n.M("audit.action.whitelist-switch"),
-	AuditGenerate:            i18n.M("audit.action.generate"),
-	AuditTokenCreate:         i18n.M("audit.action.token-create"),
-	AuditTokenRenew:          i18n.M("audit.action.token-renew"),
-	AuditTokenRevoke:         i18n.M("audit.action.token-revoke"),
-	AuditMCPSet:              i18n.M("audit.action.mcp-set"),
-	AuditAccountSet:          i18n.M("audit.action.factorio-account-set"),
-	AuditAccountRemove:       i18n.M("audit.action.factorio-account-remove"),
-	AuditPublicModsSet:       i18n.M("audit.action.public-mods-set"),
-	AuditSnapshotDelete:      i18n.M("audit.action.snapshot-delete"),
-	AuditWorldDelete:         i18n.M("audit.action.world-delete"),
-	AuditWorldArchive:        i18n.M("audit.action.world-archive"),
-	AuditWorldUnarchive:      i18n.M("audit.action.world-unarchive"),
-	AuditUserCreate:          i18n.M("audit.action.user-create"),
-	"user-delete":            i18n.M("audit.action.user-delete"),
-	"password-change":        i18n.M("audit.action.password-change"),
-	"snapshot-retention-set": i18n.M("audit.action.snapshot-retention-set"),
-	"stop-countdown-set":     i18n.M("audit.action.stop-countdown-set"),
-	"audit-retention-set":    i18n.M("audit.action.audit-retention-set"),
-	"save-upload-limit-set":  i18n.M("audit.action.save-upload-limit-set"),
-	"mod-upload-limit-set":   i18n.M("audit.action.mod-upload-limit-set"),
+	game.AuditSettingsSave:    i18n.M("audit.action.settings-save"),
+	game.AuditPlayer:          i18n.M("audit.action.player"),
+	game.AuditAutosaveTidy:    i18n.M("audit.action.autosave-tidy"),
+	game.AuditChat:            i18n.M("audit.action.chat"),
+	AuditScheduleSet:          i18n.M("audit.action.restart-schedule-set"),
+	AuditWebhookAdd:           i18n.M("audit.action.webhook-add"),
+	AuditWebhookChange:        i18n.M("audit.action.webhook-change"),
+	AuditWebhookDelete:        i18n.M("audit.action.webhook-delete"),
+	AuditClone:                i18n.M("audit.action.clone"),
+	AuditWhitelistSwitch:      i18n.M("audit.action.whitelist-switch"),
+	AuditGenerate:             i18n.M("audit.action.generate"),
+	AuditTokenCreate:          i18n.M("audit.action.token-create"),
+	AuditTokenRenew:           i18n.M("audit.action.token-renew"),
+	AuditTokenRevoke:          i18n.M("audit.action.token-revoke"),
+	AuditMCPSet:               i18n.M("audit.action.mcp-set"),
+	AuditAccountSet:           i18n.M("audit.action.factorio-account-set"),
+	AuditAccountRemove:        i18n.M("audit.action.factorio-account-remove"),
+	AuditPublicModsSet:        i18n.M("audit.action.public-mods-set"),
+	AuditSnapshotDelete:       i18n.M("audit.action.snapshot-delete"),
+	AuditWorldDelete:          i18n.M("audit.action.world-delete"),
+	AuditWorldArchive:         i18n.M("audit.action.world-archive"),
+	AuditWorldUnarchive:       i18n.M("audit.action.world-unarchive"),
+	AuditUserCreate:           i18n.M("audit.action.user-create"),
+	AuditUserDelete:           i18n.M("audit.action.user-delete"),
+	AuditPasswordChange:       i18n.M("audit.action.password-change"),
+	AuditSnapshotRetentionSet: i18n.M("audit.action.snapshot-retention-set"),
+	AuditStopCountdownSet:     i18n.M("audit.action.stop-countdown-set"),
+	AuditAuditRetentionSet:    i18n.M("audit.action.audit-retention-set"),
+	AuditSaveUploadLimitSet:   i18n.M("audit.action.save-upload-limit-set"),
+	AuditModUploadLimitSet:    i18n.M("audit.action.mod-upload-limit-set"),
 }
 
 // AuditRow is one entry of the log as the page shows it.

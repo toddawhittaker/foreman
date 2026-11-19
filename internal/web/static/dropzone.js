@@ -18,11 +18,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const t = (key, args) => strings[key].replace(/\{(\w+)\}/g, (_, k) => args[k] ?? "");
 
-  // A size in the server's words and 1000-based units: "512 B", "1.5 MB".
+  // A size in the server's words and 1024-based units, as the limits are: "512 B", "1.5 MB".
   function size(n) {
     const units = ["common.bytes.b", "common.bytes.kb", "common.bytes.mb", "common.bytes.gb"];
     let i = 0;
-    while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
     const digits = i ? 1 : 0;
     const num = new Intl.NumberFormat(document.documentElement.lang || undefined,
       { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false }).format(n);
