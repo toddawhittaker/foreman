@@ -482,6 +482,10 @@ func menuReturnPath(p string) string {
 	switch u.Path {
 	case PathSetup, PathSignedOut:
 		return u.Path
+	case PathOIDCStart, PathOIDCCallback:
+		// The callback's query holds the provider's code, state and words
+		// (SPEC 14.8, 14.14), so a page there returns to sign-in, never to it.
+		return PathSignIn
 	case PathSignIn:
 		if next := returnPath(u.Query().Get("next")); next != "" {
 			return PathSignIn + "?next=" + url.QueryEscape(next)
