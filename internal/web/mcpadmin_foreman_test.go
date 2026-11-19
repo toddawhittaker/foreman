@@ -73,7 +73,7 @@ var keyed = map[string]string{"FOREMAN_SECRET_KEY": acctKey}
 
 func (r *foremanRig) auditRows(action string) []store.AuditEntry {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 500)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 500})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func (r *foremanRig) publicOn() bool {
 // auditCount is every audit row, to show a call changed nothing.
 func (r *foremanRig) auditCount() int {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 1000)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 1000})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func (r *foremanRig) auditCount() int {
 // wantNoSecrets fails when text, the log or any audit entry holds a secret.
 func (r *foremanRig) wantNoSecrets(where, text string) {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 1000)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 1000})
 	if err != nil {
 		r.t.Fatal(err)
 	}

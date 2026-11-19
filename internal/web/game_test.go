@@ -142,7 +142,7 @@ func (g *gameRig) wantRedirectTo(path string, rep reply) {
 
 func (g *gameRig) audit() []store.AuditEntry {
 	g.t.Helper()
-	list, err := g.store.ListAudit(context.Background(), 100)
+	list, err := g.store.ListAudit(context.Background(), store.AuditFilter{Limit: 100})
 	if err != nil {
 		g.t.Fatal(err)
 	}

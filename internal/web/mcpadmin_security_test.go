@@ -15,6 +15,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/modportal/modportaltest"
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/secret"
+	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -205,7 +206,7 @@ func gateClient(t *testing.T) *mcp.ClientSession {
 // auditDump is every audit row as text, so a test sees any change to it.
 func auditDump(t *testing.T, hn *harness) string {
 	t.Helper()
-	list, err := hn.store.ListAudit(context.Background(), 1000)
+	list, err := hn.store.ListAudit(context.Background(), store.AuditFilter{Limit: 1000})
 	if err != nil {
 		t.Fatal(err)
 	}
