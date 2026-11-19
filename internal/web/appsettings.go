@@ -261,7 +261,7 @@ type GeneralPage struct {
 }
 
 func (GeneralPage) templateName() string { return "generalsettings" }
-func (GeneralPage) navItem() string      { return PathSchedule }
+func (GeneralPage) navItem() string      { return generalPath() + navPage }
 func (p GeneralPage) hasErrors() bool    { return len(p.Problems()) > 0 }
 
 // Path is where the form posts.

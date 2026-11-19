@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -45,7 +46,7 @@ func (hn *harness) auditPage(c *http.Cookie, query string) *httptest.ResponseRec
 	return rec
 }
 
-var reAuditIDs = regexp.MustCompile(`<li id="audit-(\d+)"`)
+var reAuditIDs = regexp.MustCompile(`<tr role="row" id="audit-(\d+)"`)
 
 func auditIDs(body string) []string {
 	var out []string
@@ -226,8 +227,8 @@ func TestAuditLogRows(t *testing.T) {
 		if i < 0 {
 			t.Fatalf("no row for %s", action)
 		}
-		start := strings.LastIndex(body[:i], `<li id="audit-`)
-		return body[start : start+strings.Index(body[start:], "</li>")]
+		start := strings.LastIndex(body[:i], `<tr role="row" id="audit-`)
+		return body[start : start+strings.Index(body[start:], "</tr>")]
 	}
 
 	start := row("Server started")
@@ -252,8 +253,192 @@ func TestAuditLogRows(t *testing.T) {
 	if c := row("Console command"); !strings.Contains(c, "/c rcon_password ***") {
 		t.Errorf("a masked console argument changed:\n%s", c)
 	}
-	if tidy := row("Autosaves tidied"); strings.Contains(tidy, "audit.fact.token") || strings.Contains(tidy, "API token") {
-		t.Errorf("an entry with no token shows a token:\n%s", tidy)
+	// The token cell is there, empty, so the columns never move.
+	tidy := row("Autosaves tidied")
+	if strings.Contains(tidy, `class="badge`) || !strings.Contains(tidy, `class="audit-token" data-label="API token"></td>`) {
+		t.Errorf("an entry with no token has no empty token cell:\n%s", tidy)
+	}
+	for _, r := range []string{start, unknown, tidy} {
+		if got := strings.Count(r, "<td "); got != 6 {
+			t.Errorf("a row has %d cells, want the 6 fixed columns:\n%s", got, r)
+		}
+	}
+}
+
+var (
+	reAuditNewer = regexp.MustCompile(`<a href="([^"]+)"[^>]*id="act-audit-newer"`)
+	reAuditOlder = regexp.MustCompile(`<a href="([^"]+)"[^>]*id="act-audit-older"`)
+)
+
+// auditLinkQuery returns the query of a pager link, or "" and false when there is none.
+func auditLinkQuery(t *testing.T, re *regexp.Regexp, body string) (string, bool) {
+	t.Helper()
+	m := re.FindStringSubmatch(body)
+	if m == nil {
+		return "", false
+	}
+	u, err := url.Parse(strings.ReplaceAll(m[1], "&amp;", "&"))
+	if err != nil || u.Path != auditLogPath() {
+		t.Fatalf("pager link %q: %v", m[1], err)
+	}
+	return u.RawQuery, true
+}
+
+func addAuditN(hn *harness, n int) {
+	var entries []store.AuditEntry
+	for i := 0; i < n; i++ {
+		entries = append(entries, store.AuditEntry{Username: "bob", Action: "stop", Detail: "n" + strconv.Itoa(i)})
+	}
+	hn.addAudit(entries...)
+}
+
+// A page size from the menu sets the page, any other value is 50, and the
+// choice is in the menu and in the links (SPEC 12.9).
+func TestAuditLogPageSize(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	addAuditN(hn, 230)
+	for _, tc := range []struct {
+		size string
+		want int
+	}{
+		{"", 50}, {"25", 25}, {"50", 50}, {"100", 100}, {"200", 200},
+		{"30", 50}, {"0", 50}, {"-25", 50}, {"1000", 50}, {"abc", 50}, {"25abc", 50},
+	} {
+		query := ""
+		if tc.size != "" {
+			query = "size=" + url.QueryEscape(tc.size)
+		}
+		body := hn.auditPage(c, query).Body.String()
+		if got := len(auditIDs(body)); got != tc.want {
+			t.Errorf("size=%q: %d entries, want %d", tc.size, got, tc.want)
+		}
+		for _, n := range []string{"25", "50", "100", "200"} {
+			sel := `<option value="` + n + `">`
+			if n == strconv.Itoa(tc.want) {
+				sel = `<option value="` + n + `" selected>`
+			}
+			if !strings.Contains(body, sel) {
+				t.Errorf("size=%q: menu lacks %s", tc.size, sel)
+			}
+		}
+	}
+	// A size other than the default rides in the links, the default does not.
+	older, _ := auditLinkQuery(t, reAuditOlder, hn.auditPage(c, "size=25").Body.String())
+	if !strings.Contains(older, "size=25") {
+		t.Errorf("Older link %q drops the page size", older)
+	}
+	older, _ = auditLinkQuery(t, reAuditOlder, hn.auditPage(c, "").Body.String())
+	if strings.Contains(older, "size=") {
+		t.Errorf("Older link %q names the default size", older)
+	}
+}
+
+// Newer and Older walk the whole log both ways, once each, at any size, and
+// the ends have no link past them (SPEC 12.9).
+func TestAuditLogNewerAndOlder(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	addAuditN(hn, 60)
+	for _, size := range []int{25, 50} {
+		sz := "size=" + strconv.Itoa(size)
+		first := hn.auditPage(c, sz).Body.String()
+		if _, ok := auditLinkQuery(t, reAuditNewer, first); ok {
+			t.Errorf("size %d: the newest page has a Newer link", size)
+		}
+		var down [][]string
+		body := first
+		for {
+			down = append(down, auditIDs(body))
+			q, ok := auditLinkQuery(t, reAuditOlder, body)
+			if !ok {
+				break
+			}
+			body = hn.auditPage(c, q).Body.String()
+			if _, ok := auditLinkQuery(t, reAuditNewer, body); !ok {
+				t.Fatalf("size %d: a later page has no Newer link", size)
+			}
+		}
+		total := 0
+		for _, ids := range down {
+			total += len(ids)
+		}
+		if total != 60 {
+			t.Fatalf("size %d: walked %d entries, want 60", size, total)
+		}
+		// Now back up: each Newer page is exactly the page above it.
+		for i := len(down) - 2; i >= 0; i-- {
+			q, ok := auditLinkQuery(t, reAuditNewer, body)
+			if !ok {
+				t.Fatalf("size %d: no Newer link at page %d", size, i+2)
+			}
+			body = hn.auditPage(c, q).Body.String()
+			if got := auditIDs(body); !slices.Equal(got, down[i]) {
+				t.Errorf("size %d: Newer from page %d gave %v, want %v", size, i+2, got, down[i])
+			}
+			if size != auditPageSize && !strings.Contains(q, sz) {
+				t.Errorf("size %d: Newer link %q drops the size", size, q)
+			}
+		}
+		if _, ok := auditLinkQuery(t, reAuditNewer, body); ok {
+			t.Errorf("size %d: back at the top there is still a Newer link", size)
+		}
+	}
+}
+
+// A last page that holds exactly one page of entries still has no Older link,
+// and the filters ride in Newer as well as Older.
+func TestAuditLogPagerEndsAndFilters(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	addAuditN(hn, 50)
+	hn.addAudit(store.AuditEntry{Username: "alice", Action: "start"})
+	// 51 entries: one on the first page's successor.
+	older, ok := auditLinkQuery(t, reAuditOlder, hn.auditPage(c, "").Body.String())
+	if !ok {
+		t.Fatal("51 entries and no Older link")
+	}
+	last := hn.auditPage(c, older).Body.String()
+	if _, ok := auditLinkQuery(t, reAuditOlder, last); ok {
+		t.Error("the last page has an Older link")
+	}
+	// Exactly 50 matching entries: one page, no links at all.
+	only := hn.auditPage(c, "user=bob").Body.String()
+	if _, ok := auditLinkQuery(t, reAuditOlder, only); ok {
+		t.Error("50 matching entries have an Older link")
+	}
+	if _, ok := auditLinkQuery(t, reAuditNewer, only); ok {
+		t.Error("the newest page has a Newer link")
+	}
+	// With filters and a size, both links keep them.
+	q := "user=bob&action=stop&size=25"
+	older, _ = auditLinkQuery(t, reAuditOlder, hn.auditPage(c, q).Body.String())
+	mid := hn.auditPage(c, older).Body.String()
+	newer, ok := auditLinkQuery(t, reAuditNewer, mid)
+	if !ok {
+		t.Fatal("no Newer link on the second page")
+	}
+	for _, want := range []string{"user=bob", "action=stop", "size=25", "after="} {
+		if !strings.Contains(newer, want) {
+			t.Errorf("Newer link %q lacks %s", newer, want)
+		}
+	}
+	if !strings.Contains(mid, `id="act-audit-clear"`) || !strings.Contains(mid, `href="`+auditLogPath()+`?size=25"`) {
+		t.Error("Clear filters does not keep the page size")
+	}
+}
+
+// A cursor past either end of the log, or after wins over before, shows a
+// real page, not an empty one.
+func TestAuditLogCursorPastTheEnds(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	addAuditN(hn, 3)
+	for _, q := range []string{"before=1.1", "after=99999999999.1", "after=99999999999.1&before=1.1"} {
+		rec := hn.get(auditLogPath()+"?"+q, withCookie(c))
+		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != auditLogPath() {
+			t.Errorf("%s: %d to %q, want a redirect to the first page", q, rec.Code, rec.Header().Get("Location"))
+		}
 	}
 }
 

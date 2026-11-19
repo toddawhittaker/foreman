@@ -1,4 +1,5 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo, openPlanetRow } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo, openPlanetRow, wcagTags } from "./foreman.js";
+import AxeBuilder from "@axe-core/playwright";
 import { countClicks, expectWithin } from "./clicks.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -800,3 +801,16 @@ for (const [name, size, axis] of [
     expect(seen[2].pos).toBeGreaterThan(seen[1].pos);
   });
 }
+
+// SPEC 17.1: in forced colours the Generate world button keeps enough contrast,
+// in the dark scheme too (STATUS recorded 1.11:1 by axe).
+test.describe("the Generate world button in forced colours", () => {
+  test.use({ colorScheme: "dark" });
+  test("keeps its contrast", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+    await page.emulateMedia({ forcedColors: "active", colorScheme: "dark" });
+    const results = await new AxeBuilder({ page }).include("#generate-button").withTags(wcagTags).analyze();
+    expect(results.violations, "axe on the Generate world button with forced colours, dark").toEqual([]);
+  });
+});

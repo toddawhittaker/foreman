@@ -95,7 +95,7 @@ test.describe("with a secret key", () => {
     await createAdmin(page);
     await mainNav(page).getByRole("link", { name: "Settings" }).focus();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL("/settings/restart-schedule");
+    await expect(page).toHaveURL("/settings/general");
     await tabTo(page, page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "factorio.com account" }));
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL("/settings/factorio-account");

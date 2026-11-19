@@ -98,7 +98,7 @@ type UsersPage struct {
 }
 
 func (UsersPage) templateName() string { return "users" }
-func (UsersPage) navItem() string      { return PathSchedule }
+func (UsersPage) navItem() string      { return generalPath() }
 
 func (p UsersPage) hasErrors() bool { return !p.Error.IsZero() || len(p.Problems()) > 0 }
 
@@ -121,7 +121,7 @@ type UserDeletePage struct {
 }
 
 func (UserDeletePage) templateName() string { return "userdelete" }
-func (UserDeletePage) navItem() string      { return PathSchedule }
+func (UserDeletePage) navItem() string      { return generalPath() }
 
 // BackPath is the Users tab.
 func (UserDeletePage) BackPath() string { return usersPath() }

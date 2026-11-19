@@ -490,7 +490,7 @@ frame (7.4).
         <li><a href="/" aria-current="page">Server</a></li>
         <li><a href="/worlds">Worlds</a></li>
         <li><a href="/snapshots">Snapshots</a></li>
-        <li><a href="/settings/restart-schedule">Settings</a></li>
+        <li><a href="/settings/general">Settings</a></li>
       </ul>
     </nav>
     <details class="menu">
@@ -563,9 +563,10 @@ frame (7.4).
   looks the same but does not tell a screen reader it is on the list
   itself. There are four tabs: Server, Worlds, Snapshots and Settings. Console is a
   tab of the Server view (see "Sub-navigation"). Settings is Foreman's own
-  settings (8.15): it opens the restart schedule, the one most used, and is
-  marked on all three settings pages and the pages under them, "page" on
-  the restart schedule and "true" on the others. No page shows two
+  settings (8.15): it opens General, and is marked on every settings page and
+  the pages under them, "page" on General and "true" on the others. It once
+  opened the restart schedule, as the one most used; Todd reversed that on
+  2026-11-19 (#726), so the first tab is the one it opens. No page shows two
   navigation links with the same name, so a world's own settings tab is
   "Game settings", and a world's own Snapshots tab keeps its one word on
   screen but is named "Snapshots of this world" (an `aria-label` that
@@ -3387,11 +3388,10 @@ with the other tab words.
 
 Foreman has eight pages that belong to Foreman, not a world, as tabs of
 one sub-navigation (6, "Sub-navigation"), named "Foreman settings", under
-each page's `h1`. In order: the factorio.com account (8.11), General,
-Restart schedule, Notifications (8.16), Public mods (8.20), API tokens
-(8.21), Users and Audit log. The main navigation's Settings tab (6) is
-their one home and is marked current on all of them and the pages under
-them. Moving between them is one click, and reaching any of them from any
+each page's `h1`. In order: General, Restart schedule, Notifications
+(8.16), Public mods (8.20), API tokens (8.21), Users, Audit log and the
+factorio.com account (8.11). The main navigation's Settings tab (6) opens
+General and is marked current on all of them and the pages under them. Moving between them is one click, and reaching any of them from any
 page is two at most. A page that sits under a tab, such as the General
 confirm page or a user's delete page, marks that tab `aria-current="true"`,
 not `"page"`, since it is the way to the tab but not the tab itself.
@@ -3535,15 +3535,35 @@ message for a proxy or single sign-on user (they come back unless removed
 at the proxy or provider), and has one danger button and no typed name.
 
 **The Audit log tab** (`GET /settings/audit-log`, `auditlog.html`). A
-filter form leads: three selects (user, action, world), each with an
-"all" first choice, one Apply button and, when a filter is on, a "Clear"
-link. It is a plain GET form, so a filtered view can be bookmarked. The
-entries follow as an `ol.audit-list`, never a table: each entry's heading
-is the action in words, then a `dl` of time, user, token name as a badge,
-and world, then the detail in monospace. A world that still exists is a
-link, with its current name; a deleted one shows its id and the word
-"deleted". At the foot an "Older entries" button carries the filters. An
-empty log, and an empty filtered view, each say so.
+filter form leads, as one row that wraps only when it must (two to a row at
+320 px): three selects (user, action, world), each with an "all" first
+choice, "Entries per page" (25, 50, 100 or 200; 50 is the default), one
+Filter button and, when a filter is on, a "Clear filters" link, which keeps
+the page size. It is a plain GET form, so a filtered view can be bookmarked.
+The entries follow as a real table with the caption "Entries" and six
+fixed columns, in order: Time, User, API token, Action, World and Detail.
+The token cell is empty when no token was used. A world that still exists
+is a link, with its current name; a deleted one shows its id and the word
+"deleted". The links "Newer entries" and "Older entries" sit at the foot
+in a navigation named "Log pages"; both keep the filters and a page size
+other than 50. The newest page has no Newer link and the last page has no
+Older link. A link to a page past either end of the log goes to the first
+page. An empty log, and an empty filtered view, each say so.
+
+*Narrow width.* Where the entries section is under 52 rem wide (a container
+query, so it follows the section, not the screen), each row stacks into a
+compact block: the action is the title, then Time, User, API token and
+World as inline label and value pairs that wrap, then Detail on its own
+line. An empty token or world cell is hidden from sight but still read, so
+a screen reader gives each cell under its own column. The column headers stay
+for screen readers. Chosen over a table that scrolls sideways because six
+columns cannot fit 296 px in any of the eight languages, and a sideways
+scroll hides Detail and the token off screen with nothing to say they are
+there; it would also need a focusable scroll region. The stack follows the
+`data-label` pattern the other narrow tables use. A short entry is about
+130 px tall at 320 px. The page uses a keyset cursor (time and id), not an
+offset, so entries that arrive while a page is open do not shift or repeat
+rows.
 
 ### 8.16 Notifications (SPEC 8.10 to 8.12, Epic 9)
 
@@ -3629,8 +3649,20 @@ get messages." or "No webhooks yet.", then the list, then "Add a webhook"
 ```
 
 - **Service** defaults to Discord, the most common, so adding a Discord
-  webhook takes no choice. Each preset's hint says where its address
-  comes from.
+  webhook takes no choice. The presets are Discord, ntfy, Pushover and
+  Generic JSON. Each preset's hint says where its address comes from.
+- **Pushover's keys.** The address is fixed, so choosing Pushover hides the
+  address field and shows a "Pushover keys" fieldset (`#webhook-keys`) in its
+  place: "Application token" and "User key", each a `type="password"` field
+  with `autocomplete="off"`. A hint says where to find them at pushover.net.
+  `notifyurl.js` swaps the two blocks on the radio change; without script
+  both show. Both are write-only like the address: never in a value
+  attribute, empty after a refused form (its error says "Type the key
+  again."), and on the edit page each is optional, with a hint that the keys
+  are kept and that an empty field keeps its key. A key error names the
+  field and says to use letters and digits, at most 64 characters, without
+  echoing it. The `hidden` attribute needs its own rule, because `.field`
+  and `fieldset` are `display: grid`.
 - **The address** is write-only, as the game password is (8.10). It is
   never put back in a value attribute: after a refused form the field is
   empty and its error asks for it again ("Type the address again. Foreman
@@ -3710,7 +3742,7 @@ its clicks.
 | Edit the ban list or whitelist of a stopped world (Game settings, Preview changes, Save settings) | 3 |
 | Read the chat (Chat) | 1 |
 | Send a chat message (Chat, Send) | 2 |
-| Set a nightly restart (Settings, Save schedule) | 2 |
+| Set the first restart schedule (Settings, Restart schedule, Save schedule) | 3 |
 | Change the restart schedule while one is set (Next restart, Save schedule) | 2 |
 | Open Notifications (Settings, Notifications) | 2 |
 | Add a Discord webhook (Settings, Notifications, Add a webhook, Add webhook) | 4 |

@@ -2,6 +2,7 @@ import { test, expect, checkPage, createAdmin, postFrom, adminPassword, seedWorl
 import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { catalogue, languages, pluralCategory, t, type Lang } from "./i18n.js";
 
 // SPEC 22: the language follows a cookie, else Accept-Language, else English;
@@ -377,6 +378,19 @@ function seedArchived(f: Foreman) {
   copyFileSync(join(fixtures, "2.1.24-no-space-age.zip"), join(dir, "saves", "base.zip"));
 }
 
+// Writes audit entries with a token, an unknown world and a long detail, so the audit table's stacked rows at 320 px hold every kind of cell (SPEC 12.9).
+function seedAuditEntries(f: Foreman) {
+  const db = new DatabaseSync(join(f.dataDir, "foreman.db"));
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const add = db.prepare("INSERT INTO audit_log (time, username, action, world_id, detail, token_name) VALUES (?, ?, ?, ?, ?, ?)");
+    add.run(now - 20, "a-user-with-a-very-long-name-indeed", "start", "base", "x".repeat(150), "A-token-name-of-32-characters-xx");
+    add.run(now - 10, "carol", "frobnicate", "gone-world-with-a-long-id", "/c game.print(" + "word ".repeat(30) + ")", "");
+  } finally {
+    db.close();
+  }
+}
+
 // Writes n automatic snapshots into the base world's folder, as Foreman would have taken them, so lowering retention has something to trim.
 function seedAutomaticSnapshots(f: Foreman, n: number) {
   const dir = join(f.dataDir, "snapshots", "base");
@@ -405,6 +419,7 @@ test.describe("layout at 320 px in every language", () => {
       seedSecond(foreman);
       seedThird(foreman);
       seedArchived(foreman);
+      seedAuditEntries(foreman);
       await fakeGame!.call("/image", { ref: image21, on: true });
 
       // An update leaves the "Before update" snapshot, which makes a rollback page.

@@ -61,11 +61,14 @@
   "audit.filter.apply": "Filtern",
   "audit.filter.clear": "Filter zurücksetzen",
   "audit.filter.heading": "Protokoll filtern",
+  "audit.filter.size": "Einträge pro Seite",
   "audit.filter.user": "Benutzer",
   "audit.filter.world": "Welt",
   "audit.intro": "Wer wann was getan hat, neueste zuerst. Das Protokoll enthält nie ein Passwort oder einen Token.",
   "audit.list.heading": "Einträge",
+  "audit.newer": "Neuere Einträge",
   "audit.older": "Ältere Einträge",
+  "audit.pager": "Seiten des Protokolls",
   "audit.title": "Audit-Protokoll",
   "audit.world.deleted": "{world} (gelöscht)"
 }

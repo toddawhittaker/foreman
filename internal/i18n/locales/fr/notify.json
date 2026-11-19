@@ -77,5 +77,15 @@
   "notify.msg.restart_ran": "{world} : le redémarrage planifié a eu lieu.",
   "notify.msg.restart_skipped": "{world} : le redémarrage planifié a été sauté, car des joueurs sont restés en ligne.",
   "notify.msg.low_disk": "{world} : il ne reste que {free} d’espace disque. Les sauvegardes automatiques peuvent échouer quand il est épuisé.",
-  "notify.msg.token_expiring": "Le jeton d’API {token} de {owner} expire le {expires}."
+  "notify.msg.token_expiring": "Le jeton d’API {token} de {owner} expire le {expires}.",
+  "notify.preset.pushover": "Pushover",
+  "notify.preset.pushover.hint": "Foreman envoie à {host} avec votre jeton d’application et votre clé utilisateur.",
+  "notify.keys.legend": "Clés Pushover",
+  "notify.keys.hint": "Sur pushover.net : la clé utilisateur figure sur votre tableau de bord ; le jeton d’application figure sur la page d’une application que vous créez.",
+  "notify.keys.kept": "Les clés sont conservées. Saisissez une nouvelle clé pour la changer ; un champ vide conserve sa clé.",
+  "notify.key.app_token": "Jeton d’application",
+  "notify.key.user_key": "Clé utilisateur",
+  "notify.key.missing": "Saisissez la clé.",
+  "notify.key.invalid": "Saisissez une clé composée uniquement de lettres et de chiffres, de {count} caractères au plus.",
+  "notify.key.retype": "Saisissez de nouveau la clé. Foreman ne conserve pas une clé d’un formulaire refusé."
 }

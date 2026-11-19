@@ -77,5 +77,15 @@
   "notify.msg.restart_ran": "{world}: the scheduled restart ran.",
   "notify.msg.restart_skipped": "{world}: the scheduled restart was skipped because players stayed online.",
   "notify.msg.low_disk": "{world}: only {free} of disk space is free. Autosaves can fail when it runs out.",
-  "notify.msg.token_expiring": "The API token {token}, owned by {owner}, expires at {expires}."
+  "notify.msg.token_expiring": "The API token {token}, owned by {owner}, expires at {expires}.",
+  "notify.preset.pushover": "Pushover",
+  "notify.preset.pushover.hint": "Foreman posts to {host} with your application token and user key.",
+  "notify.keys.legend": "Pushover keys",
+  "notify.keys.hint": "At pushover.net: the user key is on your dashboard; the application token is on the page of an application you create.",
+  "notify.keys.kept": "The keys are kept. Type a new key to change it; an empty field keeps its key.",
+  "notify.key.app_token": "Application token",
+  "notify.key.user_key": "User key",
+  "notify.key.missing": "Enter the key.",
+  "notify.key.invalid": "Enter a key of letters and digits only, at most {count} characters.",
+  "notify.key.retype": "Type the key again. Foreman does not keep a key from a form it refused."
 }

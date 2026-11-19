@@ -61,11 +61,14 @@
   "audit.filter.apply": "Filtrovat",
   "audit.filter.clear": "Zrušit filtry",
   "audit.filter.heading": "Filtrování protokolu",
+  "audit.filter.size": "Záznamů na stránku",
   "audit.filter.user": "Uživatel",
   "audit.filter.world": "Svět",
   "audit.intro": "Kdo, co a kdy udělal, od nejnovějších. Protokol nikdy neobsahuje heslo ani token.",
   "audit.list.heading": "Záznamy",
+  "audit.newer": "Novější záznamy",
   "audit.older": "Starší záznamy",
+  "audit.pager": "Stránky protokolu",
   "audit.title": "Protokol auditu",
   "audit.world.deleted": "{world} (smazán)"
 }

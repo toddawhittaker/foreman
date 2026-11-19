@@ -61,11 +61,14 @@
   "audit.filter.apply": "Filter",
   "audit.filter.clear": "Clear filters",
   "audit.filter.heading": "Filter the log",
+  "audit.filter.size": "Entries per page",
   "audit.filter.user": "User",
   "audit.filter.world": "World",
   "audit.intro": "Who did what and when, newest first. The log never holds a password or a token.",
   "audit.list.heading": "Entries",
+  "audit.newer": "Newer entries",
   "audit.older": "Older entries",
+  "audit.pager": "Log pages",
   "audit.title": "Audit log",
   "audit.world.deleted": "{world} (deleted)"
 }

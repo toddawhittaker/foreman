@@ -14,11 +14,11 @@ test("the Chat tab sits beside Overview and Console and opens the Chat page", as
   await checkPage(page);
 });
 
-test("the Settings tab leads to the Restart schedule and Notifications pages", async ({ page }) => {
+test("the Settings tab leads to General, and from there to the Notifications page", async ({ page }) => {
   await createAdmin(page);
   await mainNav(page).getByRole("link", { name: "Settings" }).click();
-  await expect(page).toHaveURL("/settings/restart-schedule");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart schedule");
+  await expect(page).toHaveURL("/settings/general");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("General");
   await page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "Notifications" }).click();
   await expect(page).toHaveURL("/settings/notifications");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Notifications");

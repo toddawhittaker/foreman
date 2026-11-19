@@ -61,11 +61,14 @@
   "audit.filter.apply": "筛选",
   "audit.filter.clear": "清除筛选",
   "audit.filter.heading": "筛选日志",
+  "audit.filter.size": "每页条目数",
   "audit.filter.user": "用户",
   "audit.filter.world": "世界",
   "audit.intro": "谁在何时做了什么，最新的在前。日志中从不包含密码或令牌。",
   "audit.list.heading": "条目",
+  "audit.newer": "更新的条目",
   "audit.older": "更早的条目",
+  "audit.pager": "日志分页",
   "audit.title": "审计日志",
   "audit.world.deleted": "{world}（已删除）"
 }
