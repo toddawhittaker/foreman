@@ -476,5 +476,18 @@
   "worlds.generate.resources.retry": "Réessayer",
   "worlds.generate.resources.not_counted": "Ce téléchargement demande des quantités de ressources ou des territoires des démolisseurs qui ne sont pas encore disponibles. Relancez-le depuis la page « Générer un monde », qui les obtient d’abord.",
   "worlds.generate.resources.not_kept": "Les paramètres ont changé pendant le comptage des ressources, les quantités n’ont donc pas été conservées. Réessayez.",
-  "worlds.list.col.world": "Monde"
+  "worlds.list.col.world": "Monde",
+  "worlds.badge.archived": "Archivé",
+  "worlds.archive.refused": "Ce monde est archivé, il ne peut donc pas démarrer. Désarchivez-le d’abord.",
+  "worlds.error.archive_active": "C’est le monde actif, et le monde actif ne peut pas être archivé. Basculez d’abord vers un autre monde.",
+  "worlds.list.archived": "Archivés ({count})",
+  "worlds.world.archive.heading": "Archiver",
+  "worlds.world.archive.text": "Masquez ce monde de la liste principale. Il ne peut pas démarrer tant que vous ne l’avez pas désarchivé. Ses fichiers et ses instantanés restent tels quels.",
+  "worlds.world.archive.button": "Archiver le monde",
+  "worlds.world.archive.done": "{name} est archivé.",
+  "worlds.world.archived.heading": "Monde archivé",
+  "worlds.world.archived.text": "Ce monde est masqué de la liste principale ; il ne peut ni démarrer ni être la cible d’un basculement. Ses fichiers et ses instantanés restent tels quels.",
+  "worlds.world.unarchive.button": "Désarchiver le monde",
+  "worlds.world.unarchive.done": "{name} n’est plus archivé.",
+  "worlds.list.all_archived": "Tous vos mondes sont archivés."
 }

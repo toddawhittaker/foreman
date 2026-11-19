@@ -32,6 +32,11 @@ func (s *server) addWorldTools(srv *mcp.Server) {
 		Description: "Copy a world into a new one, as the Clone page does: keep its map (a copy of its newest save) or start a fresh map with the same settings and mods."}, s.mcpClone)
 	mcp.AddTool(srv, &mcp.Tool{Name: "rename_world", Annotations: oneStep,
 		Description: "Change a world's display name. Its files and id stay the same."}, s.mcpRenameWorld)
+	mcp.AddTool(srv, &mcp.Tool{Name: "archive_world", Annotations: oneStep,
+		Description: "Archive a world that is not the active one, as its page does: it is hidden from the main list and cannot be started or switched to until unarchive_world. " +
+			"Nothing is deleted; its files and snapshots stay where they are."}, s.mcpArchiveWorld)
+	mcp.AddTool(srv, &mcp.Tool{Name: "unarchive_world", Annotations: oneStep,
+		Description: "Unarchive a world, so it shows in the main list again and can be switched to."}, s.mcpUnarchiveWorld)
 	mcp.AddTool(srv, &mcp.Tool{Name: "delete_world", Annotations: twoStep,
 		Description: "Delete a world that is not the active one, as its Delete page does, in two steps: the first call changes nothing and returns a preview and a confirm_code; " +
 			"call again with the same arguments and the code to delete. A final snapshot is taken first unless final_snapshot is false. " +
@@ -252,6 +257,38 @@ func (s *server) mcpRenameWorld(ctx context.Context, _ *mcp.CallToolRequest, in 
 	}
 	ref := mcpWorldRef{ID: sum.ID, Name: strings.TrimSpace(in.Name)}
 	return mcpText("World %s is now named %s.", sum.Name, ref.Name), ref, nil
+}
+
+type mcpArchiveWorldIn struct {
+	WorldID string `json:"world_id" jsonschema:"the world's id from list_worlds"`
+}
+
+type mcpArchiveWorldOut struct {
+	World    mcpWorldRef `json:"world"`
+	Archived bool        `json:"archived"`
+}
+
+func (s *server) mcpArchiveWorld(ctx context.Context, req *mcp.CallToolRequest, in mcpArchiveWorldIn) (*mcp.CallToolResult, mcpArchiveWorldOut, error) {
+	return s.mcpSetArchived(ctx, req, in, true)
+}
+
+func (s *server) mcpUnarchiveWorld(ctx context.Context, req *mcp.CallToolRequest, in mcpArchiveWorldIn) (*mcp.CallToolResult, mcpArchiveWorldOut, error) {
+	return s.mcpSetArchived(ctx, req, in, false)
+}
+
+func (s *server) mcpSetArchived(ctx context.Context, req *mcp.CallToolRequest, in mcpArchiveWorldIn, on bool) (*mcp.CallToolResult, mcpArchiveWorldOut, error) {
+	sum, err := s.mcpNamed(ctx, in.WorldID)
+	if err != nil {
+		return nil, mcpArchiveWorldOut{}, err
+	}
+	if err := s.archiveWorld(ctx, mcpActor(req), sum.ID, on); err != nil {
+		return nil, mcpArchiveWorldOut{}, s.mcpWorldFail("change the world's archive state", err)
+	}
+	out := mcpArchiveWorldOut{World: worldRef(sum), Archived: on}
+	if on {
+		return mcpText("World %s is archived.", sum.Name), out, nil
+	}
+	return mcpText("World %s is unarchived.", sum.Name), out, nil
 }
 
 type mcpDeleteWorldIn struct {

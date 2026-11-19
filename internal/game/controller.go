@@ -1036,7 +1036,7 @@ var refusedActions = map[string]string{
 // check (SPEC 7.4) or a switch refusal.
 func IsRefusal(err error) bool {
 	var pe *PrecheckError
-	return errors.As(err, &pe) ||
+	return errors.As(err, &pe) || isArchived(err) ||
 		errors.Is(err, ErrSwitchSame) || errors.Is(err, ErrSwitchNotActive) ||
 		errors.Is(err, ErrSwitchNoTarget) || errors.Is(err, ErrSwitchTargetRunning) ||
 		errors.Is(err, world.ErrModsChanged)

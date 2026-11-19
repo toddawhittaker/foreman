@@ -53,6 +53,10 @@ const (
 	varSecretKey        = "FOREMAN_SECRET_KEY"
 	varNetworkContainer = "FOREMAN_GAME_NETWORK_CONTAINER"
 	varMCP              = "FOREMAN_MCP"
+	varOIDCIssuer       = "FOREMAN_OIDC_ISSUER"
+	varOIDCClientID     = "FOREMAN_OIDC_CLIENT_ID"
+	varOIDCSecret       = "FOREMAN_OIDC_CLIENT_SECRET" //nolint:gosec // a variable name, not a credential
+	varOIDCGroup        = "FOREMAN_OIDC_REQUIRED_GROUP"
 )
 
 // Config is Foreman's validated configuration.
@@ -67,6 +71,7 @@ type Config struct {
 	PublicAddress  string
 	AuthLocal      bool
 	AuthHeaders    bool
+	AuthOIDC       bool
 	UserHeader     string // canonical header name
 	GroupsHeader   string // canonical header name, may be empty
 	RequiredGroup  string
@@ -86,6 +91,9 @@ type Config struct {
 	// MCPForcedOff is FOREMAN_MCP=off: MCP access stays off whatever the
 	// admin setting says (SPEC 21.2).
 	MCPForcedOff bool
+	// OIDC is the identity provider's settings; zero unless AuthOIDC
+	// (SPEC 12.7).
+	OIDC OIDC
 }
 
 // SecureCookies reports whether session cookies carry the Secure flag,
@@ -148,7 +156,7 @@ func load(e env) (*Config, error) {
 
 	if raw, ok := e.get(varAuthMethods); !ok {
 		c.AuthLocal = true
-	} else if c.AuthLocal, c.AuthHeaders, err = parseAuthMethods(raw); err != nil {
+	} else if c.AuthLocal, c.AuthHeaders, c.AuthOIDC, err = parseAuthMethods(raw); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -174,6 +182,10 @@ func load(e env) (*Config, error) {
 		if len(c.TrustedProxies) == 0 {
 			fail("%s must list at least one address range when %s includes headers", varProxies, varAuthMethods)
 		}
+	}
+
+	if c.AuthOIDC {
+		loadOIDC(e, c, &errs)
 	}
 
 	loadSidecar(e, c, &errs)
@@ -328,7 +340,7 @@ func parsePublicAddress(raw string) (string, error) {
 	return net.JoinHostPort(host, port), nil
 }
 
-func parseAuthMethods(raw string) (local, headers bool, err error) {
+func parseAuthMethods(raw string) (local, headers, oidc bool, err error) {
 	var unknown []string
 	count := 0
 	for _, m := range strings.Split(raw, ",") {
@@ -340,6 +352,8 @@ func parseAuthMethods(raw string) (local, headers bool, err error) {
 			local = true
 		case "headers":
 			headers = true
+		case "oidc":
+			oidc = true
 		default:
 			unknown = append(unknown, m)
 		}
@@ -347,11 +361,11 @@ func parseAuthMethods(raw string) (local, headers bool, err error) {
 	}
 	switch {
 	case len(unknown) > 0:
-		return false, false, fmt.Errorf("%s has unknown methods %q; use local, headers or both", varAuthMethods, strings.Join(unknown, ","))
+		return false, false, false, fmt.Errorf("%s has unknown methods %q; use any of local, headers and oidc", varAuthMethods, strings.Join(unknown, ","))
 	case count == 0:
-		return false, false, fmt.Errorf("%s lists no methods; use local, headers or both", varAuthMethods)
+		return false, false, false, fmt.Errorf("%s lists no methods; use any of local, headers and oidc", varAuthMethods)
 	}
-	return local, headers, nil
+	return local, headers, oidc, nil
 }
 
 // parseProxies accepts address ranges (10.0.0.0/8) and single addresses,

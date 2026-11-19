@@ -49,5 +49,9 @@
   "accounts.proxy.refused": "To konto nie ma uprawnień do korzystania z Foremana. Należy poprosić osobę zarządzającą Foremanem o nadanie dostępu.",
   "accounts.proxy.waiting": "Foreman nie może jeszcze przyjmować logowań przez proxy, ponieważ nie zna jeszcze sieci kontenera gry. Należy spróbować ponownie za minutę.",
   "accounts.proxy.waiting_local": "Foreman nie może jeszcze przyjmować logowań przez proxy, ponieważ nie zna jeszcze sieci kontenera gry. Należy spróbować ponownie za minutę. Logowanie hasłem nadal działa: wystarczy otworzyć {path}.",
-  "accounts.proxy.missing": "Foreman nie otrzymał logowania od proxy. Należy zalogować się przez proxy, a potem ponownie otworzyć tę stronę."
+  "accounts.proxy.missing": "Foreman nie otrzymał logowania od proxy. Należy zalogować się przez proxy, a potem ponownie otworzyć tę stronę.",
+  "accounts.oidc.failed": "Logowanie jednokrotne nie powiodło się. Należy spróbować ponownie. Jeśli błąd się powtarza, należy zwrócić się do osoby zarządzającej Foremanem.",
+  "accounts.oidc.unavailable": "Foreman nie może teraz połączyć się z dostawcą logowania jednokrotnego. Należy spróbować ponownie za minutę.",
+  "accounts.oidc.name_taken": "W Foremanie jest już użytkownik o tej nazwie, który loguje się w inny sposób, więc logowanie jednokrotne nie jest możliwe. Należy poprosić osobę zarządzającą Foremanem o zmianę nazwy lub usunięcie tego użytkownika.",
+  "accounts.oidc.bad_username": "To konto logowania jednokrotnego nie ma nazwy użytkownika, której Foreman może użyć, więc ponowna próba nie pomoże. Należy poprosić osobę zarządzającą Foremanem o sprawdzenie konta u dostawcy tożsamości."
 }

@@ -159,6 +159,8 @@ func startErrorMsg(e *game.StartError) i18n.Msg {
 		return i18n.M("server.start.rcon_timeout", "wait", waitWords(e.Timeout))
 	case game.StartRCONRefused:
 		return i18n.M("server.start.rcon_refused")
+	case game.StartArchived:
+		return i18n.M("worlds.archive.refused")
 	}
 	return i18n.M("server.error.start_failed")
 }

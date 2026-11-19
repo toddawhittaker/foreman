@@ -37,6 +37,9 @@ type ServerPage struct {
 	// WorldNames holds the names of the worlds a switch, or the notice of
 	// an unfinished one, speaks of, by id.
 	WorldNames map[string]string
+	// ArchivedWorlds marks the worlds in WorldNames that are archived, so
+	// no offer to switch to one is made (SPEC 5.9).
+	ArchivedWorlds map[string]bool
 	// Image is the game image the world runs, and ImageMissing whether
 	// Docker lacks it; both are looked up only while the game can start
 	// (SPEC 3.7).
