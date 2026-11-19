@@ -5,7 +5,14 @@
 <div class="panel">
   <p>{{t "accounts.signedout.text"}}</p>
   <div class="actions">
+    {{- with .Page}}
+    {{- if .OIDC}}
+    <a class="button button--primary" href="{{.OIDCPath}}">{{t "accounts.signin.sso"}}</a>
+    {{- end}}
+    {{- if not .NoLocal}}
     <a class="button" href="{{serverPath}}">{{t "accounts.signedout.again"}}</a>
+    {{- end}}
+    {{- end}}
   </div>
 </div>
 {{- end}}

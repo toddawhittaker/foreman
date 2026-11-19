@@ -9,6 +9,9 @@
   "accounts.username.control": "Remove control characters from the username",
   "accounts.signin.title": "Sign in",
   "accounts.signin.submit": "Sign in",
+  "accounts.signin.sso": "Sign in with single sign-on",
+  "accounts.signin.sso.heading": "Single sign-on",
+  "accounts.signin.local.heading": "Foreman account",
   "accounts.signin.ratelimited.unknown": "Too many failed sign-ins. Wait a few minutes, then try again.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Too many failed sign-ins. Wait {count} minute, then try again.",

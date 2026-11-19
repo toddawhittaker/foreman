@@ -10,6 +10,9 @@
   "accounts.username.control": "Należy usunąć znaki sterujące z nazwy użytkownika",
   "accounts.signin.title": "Logowanie",
   "accounts.signin.submit": "Zaloguj",
+  "accounts.signin.sso": "Zaloguj logowaniem jednokrotnym",
+  "accounts.signin.sso.heading": "Logowanie jednokrotne",
+  "accounts.signin.local.heading": "Konto Foremana",
   "accounts.signin.ratelimited.unknown": "Zbyt wiele nieudanych logowań. Należy odczekać kilka minut i spróbować ponownie.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Zbyt wiele nieudanych logowań. Należy odczekać {count} minutę i spróbować ponownie.",

@@ -9,6 +9,9 @@
   "accounts.username.control": "Quita los caracteres de control del nombre de usuario",
   "accounts.signin.title": "Iniciar sesión",
   "accounts.signin.submit": "Iniciar sesión",
+  "accounts.signin.sso": "Iniciar sesión con inicio de sesión único",
+  "accounts.signin.sso.heading": "Inicio de sesión único",
+  "accounts.signin.local.heading": "Cuenta de Foreman",
   "accounts.signin.ratelimited.unknown": "Demasiados inicios de sesión fallidos. Espera unos minutos y vuelve a intentarlo.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Demasiados inicios de sesión fallidos. Espera {count} minuto y vuelve a intentarlo.",
