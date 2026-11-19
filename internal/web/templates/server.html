@@ -445,8 +445,8 @@
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{msg .StartLabel}}</button></form>
   {{- end}}
   {{- if .CanSnapshot}}
-  {{- /* One rule for the plate: only a step that brings the game up is primary; while it runs, every routine control is plain (DESIGN 7.1). */}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+  {{- /* While the game runs, the safe step leads: Take snapshot is the plate's primary (DESIGN 7.1). */}}
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button{{if eq .Status.State "running"}} button--primary{{end}}" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
   {{- end}}
   {{- if .CanRestart}}
   <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>

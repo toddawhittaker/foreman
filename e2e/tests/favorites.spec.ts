@@ -105,9 +105,9 @@ function seedFavorite(dataDir: string) {
 async function exportAndDelete(page: Page, dataDir: string, name = "Shared pack"): Promise<Buffer> {
   await page.goto("/favorites");
   const row = favRow(page, name);
-  await expect(page.locator("#favorite-export-warning")).toContainText("a mod may keep a token");
-  await expect(page.locator(".favorite-export-warning")).toHaveCount(1);
   await row.locator("summary").click();
+  await expect(row.locator(".favorite-export-warning")).toContainText("a mod may keep a token");
+  await expect(row.locator(".favorite-export-warning")).toHaveCount(1);
   const title = row.getByRole("link", { name: /Signs of the Factory/ });
   await expect(title).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-signs");
   await expect(title).toHaveAttribute("target", "_blank");

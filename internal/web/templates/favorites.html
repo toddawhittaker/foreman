@@ -23,11 +23,6 @@
   <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.import.done" "name" .}}</p>
 </div>
 {{- end}}
-{{- if .Favorites}}
-<div class="message message--warning favorite-export-warning" id="favorite-export-warning">
-  <p><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
-</div>
-{{- end}}
 {{- /* The list leads; importing one, the rarer task, sits in the rail beside it. */}}
 <div class="split">
 <section class="panel" aria-label="{{t "favorites.title"}}">
@@ -74,8 +69,12 @@
             <p class="error" id="favorite-{{.ID}}-rename-error"><strong>{{t "common.error.label"}}</strong> {{msg $rename.Error}}</p>
             {{- end}}
           </form>
+          {{- /* The warning sits with the one action it is about, not over the whole page. */}}
+          <div class="message message--warning favorite-export-warning" id="favorite-{{.ID}}-export-warning">
+            <p><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
+          </div>
           <div class="actions">
-            <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-export-warning">{{t "favorites.export.button"}}</a>
+            <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-{{.ID}}-export-warning">{{t "favorites.export.button"}}</a>
             {{- /* A trash icon, as the webhook list has: red but borderless, so Delete does not weigh as much as Generate (DESIGN 7.1). */}}
             <a href="{{.DeletePath}}" class="button button--icon" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
           </div>

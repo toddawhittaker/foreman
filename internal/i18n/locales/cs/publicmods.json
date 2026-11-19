@@ -24,5 +24,10 @@
   "publicmods.title": "Mody tohoto serveru",
   "publicmods.unchecked": "Portál modů se teď nepodařilo zkontrolovat, takže žádný mod není označen jako chybějící na portálu. Stahování přesto funguje.",
   "publicmods.where.heading": "Kam mody patří",
-  "publicmods.where.text": "Soubor zip každého modu je třeba vložit bez rozbalení do složky modů klienta Factorio: Windows {windows}, macOS {macos}, Linux {linux}. Soubor ze „Stáhnout vše“ obsahuje soubory zip modů, takže do složky se rozbalí jen tento soubor."
+  "publicmods.where.os.linux": "Linux",
+  "publicmods.where.os.macos": "macOS",
+  "publicmods.where.os.windows": "Windows",
+  "publicmods.where.step_download": "Zvolte „Stáhnout vše“. Vznikne jeden soubor zip, který obsahuje soubor zip každého modu.",
+  "publicmods.where.step_keep": "Soubor zip každého modu se nerozbaluje; Factorio jej čte tak, jak je.",
+  "publicmods.where.step_unpack": "Tento jeden soubor je třeba rozbalit do složky modů klienta Factorio:"
 }

@@ -69,6 +69,13 @@
       <li>
         <h2 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a> <span class="badge">{{t "worlds.badge.archived"}}</span></h2>
         {{template "world-facts" $.Page.Facts .}}
+        {{- /* An archived world's two next steps sit on its row, as Switch does on the live list (SPEC 5.9). */}}
+        <div class="actions">
+          <a href="{{worldsPath}}/{{.ID}}/saves" class="button" aria-describedby="world-{{.ID}}">{{t "worlds.world.saves"}}</a>
+          {{- if not .Newer}}
+          <form method="post" action="{{worldsPath}}/{{.ID}}/unarchive"><button type="submit" class="button" id="act-unarchive-{{.ID}}" aria-describedby="world-{{.ID}}">{{t "worlds.world.unarchive.button"}}</button></form>
+          {{- end}}
+        </div>
       </li>
       {{- end}}
     </ul>

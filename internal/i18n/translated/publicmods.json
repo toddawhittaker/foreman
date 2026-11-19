@@ -24,5 +24,10 @@
   "publicmods.title": "b6892849",
   "publicmods.unchecked": "eea3dda4",
   "publicmods.where.heading": "38f2971f",
-  "publicmods.where.text": "f7909bff"
+  "publicmods.where.os.linux": "4828e602",
+  "publicmods.where.os.macos": "aed6b7aa",
+  "publicmods.where.os.windows": "d598026a",
+  "publicmods.where.step_download": "a5f145e7",
+  "publicmods.where.step_keep": "559feb38",
+  "publicmods.where.step_unpack": "42a05a72"
 }

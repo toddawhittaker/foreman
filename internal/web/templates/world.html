@@ -224,6 +224,9 @@
     <form method="post" action="{{.ArchivePath}}" class="actions">
       <button type="submit" class="button" id="act-archive">{{t "worlds.world.archive.button"}}</button>
     </form>
+    {{- else}}
+    {{- /* The refusal's next step is a link, not an instruction (DESIGN 7.3). */}}
+    <div class="actions"><a href="{{worldsPath}}" id="act-archive-switch">{{t "server.links.switch"}}</a></div>
     {{- end}}
   </div>
 </section>

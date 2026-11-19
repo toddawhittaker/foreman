@@ -94,7 +94,18 @@
 {{- /* Where the files go, as the mod settings note says it (SPEC 9.6). */}}
 <section class="panel public-where" aria-labelledby="public-where-heading">
   <h2 id="public-where-heading">{{t "publicmods.where.heading"}}</h2>
-  <p>{{tHTML "publicmods.where.text" "windows" (code `%APPDATA%\Factorio\mods`) "macos" (code "~/Library/Application Support/factorio/mods") "linux" (code "~/.factorio/mods")}}</p>
+  {{- /* Three steps in the order a player takes them; each system's folder on its own line, to select and copy. */}}
+  <ol class="where-steps" role="list">
+    <li>{{t "publicmods.where.step_download"}}</li>
+    <li>{{t "publicmods.where.step_unpack"}}
+      <dl class="where-paths">
+        <div><dt>{{t "publicmods.where.os.windows"}}</dt><dd><code translate="no">%APPDATA%\Factorio\mods</code></dd></div>
+        <div><dt>{{t "publicmods.where.os.macos"}}</dt><dd><code translate="no">~/Library/Application Support/factorio/mods</code></dd></div>
+        <div><dt>{{t "publicmods.where.os.linux"}}</dt><dd><code translate="no">~/.factorio/mods</code></dd></div>
+      </dl>
+    </li>
+    <li>{{t "publicmods.where.step_keep"}}</li>
+  </ol>
 </section>
 {{end}}
 {{- end}}

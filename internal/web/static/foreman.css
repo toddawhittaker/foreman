@@ -10449,7 +10449,7 @@ main:has(> .public-world) {
 
 @media (min-width: 64rem) {
   main:has(> .public-world) {
-    grid-template-columns: minmax(0, 1fr) 24rem;
+    grid-template-columns: minmax(0, 1fr) 30rem;
   }
 
   main:has(> .public-world) > :not(.public-world, .public-where) {
@@ -11041,4 +11041,199 @@ main table th[scope="col"] {
 /* A badge never breaks inside itself. */
 .badge {
   white-space: nowrap;
+}
+
+/* Server page: each card ends after its own content. The players take the
+   wide column at their own height; the world's pages and the newest
+   snapshots stack in the narrow one. */
+@media (min-width: 64rem) {
+  .server-grid > .panel:has(#players-heading) {
+    align-self: start;
+  }
+
+  .server-grid > .recent-snaps {
+    align-self: start;
+    grid-template-rows: auto;
+  }
+}
+
+/* Emergency actions is a quiet foldout like any other; only once opened
+   does Force stop show, inside a red-edged area that says what it costs. */
+.disclosure.emergency > summary {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.disclosure.emergency > summary::marker {
+  color: var(--color-text-muted);
+}
+
+.emergency[open] > .danger-row {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-danger-bg);
+  border: var(--border-width) solid var(--color-danger);
+  border-radius: var(--radius);
+}
+
+/* The Danger zone is a card like the others, set apart by its red edge and
+   red headings, whether or not its actions are offered now. */
+main > .panel.danger-zone,
+main > .panel.danger-zone.danger-zone--blocked {
+  background: var(--color-surface);
+  border-color: var(--color-danger);
+  box-shadow: var(--shadow-card);
+}
+
+.danger-zone .setting-row__head > h2,
+.danger-zone.danger-zone--blocked > h2 {
+  color: var(--color-danger-text);
+}
+
+/* The map exchange string shows five whole lines and scrolls; Copy sits in
+   the foot below it, never over the text. */
+.exchange .copy-field--block > textarea.exchange__value {
+  block-size: calc(5lh + 2 * var(--space-2));
+  min-block-size: 0;
+  padding-block-end: 0;
+  overflow-y: auto;
+  /* Text scrolls under the bottom padding; an edge in the field's own face clips it on a whole line. */
+  border-block-end: var(--space-2) solid var(--color-deep);
+}
+
+/* A chosen search result keeps the neutral face: the 4 px selected edge
+   and the In plan pill say it, so the plan's button stays the one orange
+   area. */
+.hit {
+  border-inline-start-width: 4px;
+}
+
+.hit:has(.badge--chosen) {
+  background: transparent;
+  border-inline-start-color: var(--color-selected);
+}
+
+@media (min-width: 48rem) {
+  .hit__act .badge--needed {
+    max-inline-size: none;
+    white-space: nowrap;
+  }
+}
+
+/* The Audit log's column names stay in view while its rows scroll. */
+.audit-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  padding-block-start: var(--space-2);
+  background: var(--color-surface);
+}
+
+/* Settings rows: a 240 px title column, so the controls start sooner and
+   the long forms use the width beside their titles. */
+@container (min-width: 60rem) {
+  :is(.setting-row, .settings > fieldset) {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    column-gap: var(--space-5);
+  }
+}
+
+
+/* An archived world's row holds two actions on one line, Saves then
+   Unarchive world, at the end of the row as Switch is above. */
+@media (min-width: 64rem) {
+  #archived-worlds :is(.worlds-head, .worlds > li) {
+    grid-template-columns: 19rem minmax(0, 1fr) 17rem;
+  }
+
+  #archived-worlds .worlds > li > .facts ~ .actions {
+    flex-wrap: wrap;
+  }
+
+  #archived-worlds .worlds > li > .facts ~ .actions .button {
+    inline-size: auto;
+    white-space: nowrap;
+  }
+}
+
+/* Public mods: Where the mods go as three numbered steps; the folder for
+   each system sits on its own line in a code box, to select and copy. */
+.where-steps {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: where-step;
+}
+
+.where-steps > li {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  column-gap: var(--space-3);
+  row-gap: var(--space-3);
+  align-items: baseline;
+  max-inline-size: none;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  counter-increment: where-step;
+}
+
+.where-steps > li::before {
+  content: counter(where-step);
+  grid-row: 1;
+  align-self: start;
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 50%;
+  color: var(--color-heading);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.where-paths {
+  grid-column: 2;
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.where-paths > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.where-paths dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.where-paths dd {
+  margin: 0;
+}
+
+.where-paths code {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* Favorites: each row gets the 12 px rhythm of the other lists, so the
+   rows read apart and Generate sits centred in its own band. */
+.favorite-list > .favorite {
+  padding-block: var(--space-3);
+}
+
+.favorite-list > .favorite:first-child {
+  padding-block-start: 0;
 }

@@ -24,5 +24,10 @@
   "publicmods.title": "Mods de ce serveur",
   "publicmods.unchecked": "Le portail de mods n’a pas pu être vérifié pour l’instant, donc aucun mod n’est signalé comme absent du portail. Les téléchargements fonctionnent quand même.",
   "publicmods.where.heading": "Où placer les mods",
-  "publicmods.where.text": "Placez le fichier zip de chaque mod, sans le décompresser, dans le dossier de mods de votre client Factorio : Windows {windows}, macOS {macos}, Linux {linux}. Le fichier de « Tout télécharger » contient les fichiers zip des mods : décompressez seulement celui-ci dans le dossier."
+  "publicmods.where.os.linux": "Linux",
+  "publicmods.where.os.macos": "macOS",
+  "publicmods.where.os.windows": "Windows",
+  "publicmods.where.step_download": "Choisissez « Tout télécharger ». Vous obtenez un fichier zip qui contient le fichier zip de chaque mod.",
+  "publicmods.where.step_keep": "Laissez le fichier zip de chaque mod compressé ; Factorio le lit tel quel.",
+  "publicmods.where.step_unpack": "Décompressez ce seul fichier dans le dossier de mods de votre client Factorio :"
 }

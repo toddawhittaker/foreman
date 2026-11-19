@@ -24,5 +24,10 @@
   "publicmods.title": "此服务器的模组",
   "publicmods.unchecked": "暂时无法检查模组门户，因此没有模组被标记为门户上缺失。下载仍然可用。",
   "publicmods.where.heading": "模组放在哪里",
-  "publicmods.where.text": "将每个模组的 zip 文件原样（不要解压）放入 Factorio 客户端的模组文件夹：Windows {windows}，macOS {macos}，Linux {linux}。“全部下载”得到的文件包含各模组的 zip 文件，只需将它解压到该文件夹。"
+  "publicmods.where.os.linux": "Linux",
+  "publicmods.where.os.macos": "macOS",
+  "publicmods.where.os.windows": "Windows",
+  "publicmods.where.step_download": "选择“全部下载”，得到一个 zip 文件，其中包含每个模组各自的 zip 文件。",
+  "publicmods.where.step_keep": "每个模组自己的 zip 文件保持原样，不要解压；Factorio 会直接读取。",
+  "publicmods.where.step_unpack": "将这一个文件解压到 Factorio 客户端的模组文件夹："
 }

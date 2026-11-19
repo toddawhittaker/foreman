@@ -24,5 +24,10 @@
   "publicmods.title": "Моды для этого сервера",
   "publicmods.unchecked": "Сейчас не удалось проверить портал модов, поэтому ни один мод не отмечен как отсутствующий на нём. Скачивание всё равно работает.",
   "publicmods.where.heading": "Куда положить моды",
-  "publicmods.where.text": "Положите zip-файл каждого мода, не распаковывая его, в папку модов вашего клиента Factorio: Windows {windows}, macOS {macos}, Linux {linux}. Файл из «Скачать все» содержит zip-файлы модов, поэтому распакуйте в папку только его."
+  "publicmods.where.os.linux": "Linux",
+  "publicmods.where.os.macos": "macOS",
+  "publicmods.where.os.windows": "Windows",
+  "publicmods.where.step_download": "Выберите «Скачать все». Вы получите один zip-файл, в котором лежит zip-файл каждого мода.",
+  "publicmods.where.step_keep": "Не распаковывайте zip-файл каждого мода: Factorio читает его как есть.",
+  "publicmods.where.step_unpack": "Распакуйте этот один файл в папку модов вашего клиента Factorio:"
 }

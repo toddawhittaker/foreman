@@ -374,7 +374,7 @@ func TestFavoriteExportAndImport(t *testing.T) {
 
 	list := hn.get(PathFavorites, withCookie(c)).Body.String()
 	for _, want := range []string{
-		`href="` + row.ExportPath() + `"`, `id="favorite-export-warning"`, "may keep a token",
+		`href="` + row.ExportPath() + `"`, `id="favorite-` + favID + `-export-warning"`, "may keep a token",
 		`href="https://mods.factorio.com/mod/Krastorio2"`, `action="` + PathFavoriteImport + `"`,
 		`enctype="multipart/form-data"`, `name="` + favoriteImportField + `"`, `accept=".zip"`,
 	} {

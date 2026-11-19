@@ -6,7 +6,7 @@
     <label for="{{.ID}}-value" class="visually-hidden">{{t "mapgen.exchange.label"}}</label>
     {{- /* The copy button sits in the field's foot, so the string and its action read as one control. */}}
     <div class="copy-field copy-field--block">
-      <textarea id="{{.ID}}-value" class="exchange__value" readonly rows="4" spellcheck="false" autocomplete="off"
+      <textarea id="{{.ID}}-value" class="exchange__value" readonly rows="5" spellcheck="false" autocomplete="off"
         aria-describedby="{{.ID}}-note{{with .Owner}} {{.}}{{end}}">{{.Value}}</textarea>
       <div class="copy-field__foot">
         <span class="copy-done" id="{{.ID}}-done" hidden>{{t "mapgen.exchange.copied"}}</span>
