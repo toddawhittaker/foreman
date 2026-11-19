@@ -35,7 +35,7 @@ var ErrNotLinkable = errors.New("store: user cannot be linked to an OIDC subject
 
 const userColumns = "id, username, password_hash, role, created_at, oidc_issuer, oidc_subject"
 
-func scanUser(row *sql.Row) (User, error) {
+func scanUser(row interface{ Scan(...any) error }) (User, error) {
 	var u User
 	var created int64
 	var issuer, subject sql.NullString
@@ -151,6 +151,46 @@ func (s *Store) LinkOIDC(ctx context.Context, id int64, issuer, subject string) 
 		return ErrNotLinkable
 	}
 	return nil
+}
+
+// ListUsers returns every user, oldest first.
+func (s *Store) ListUsers(ctx context.Context) (_ []User, err error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT "+userColumns+" FROM users ORDER BY created_at, id")
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	defer func() {
+		if cerr := rows.Close(); err == nil && cerr != nil {
+			err = fmt.Errorf("list users: %w", cerr)
+		}
+	}()
+	var out []User
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, fmt.Errorf("list users: %w", err)
+		}
+		out = append(out, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	return out, nil
+}
+
+// DeleteUser removes a user. Their sessions and API tokens go with them by
+// the tables' foreign key cascades, and their audit entries keep the name
+// (SPEC 12.9). found is false when no such user exists.
+func (s *Store) DeleteUser(ctx context.Context, id int64) (found bool, err error) {
+	res, err := s.db.ExecContext(ctx, "DELETE FROM users WHERE id = ?", id)
+	if err != nil {
+		return false, fmt.Errorf("delete user: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("delete user: %w", err)
+	}
+	return n > 0, nil
 }
 
 func (s *Store) queryUser(ctx context.Context, query string, args ...any) (User, bool, error) {

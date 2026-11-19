@@ -1,0 +1,55 @@
+{
+  "users.delete": "Borrar",
+  "users.delete.audit": "Conservar su nombre en las entradas del registro de auditoría que creó.",
+  "users.delete.button": "Borrar usuario",
+  "users.delete.cancel": "Conservar el usuario",
+  "users.delete.name": "Borrar el usuario {name}",
+  "users.delete.question": "¿Borrar el usuario {name}?",
+  "users.delete.returns.oidc": "Este usuario inicia sesión con inicio de sesión único. Volverá la próxima vez que inicie sesión, salvo que también lo quites en el proveedor de identidad.",
+  "users.delete.returns.proxy": "Este usuario inicia sesión a través del proxy. Volverá en su próxima visita, salvo que también lo quites en el proxy.",
+  "users.delete.self": "No puedes borrarte a ti mismo. Debe hacerlo otro usuario.",
+  "users.delete.signout": "Cerrar la sesión del usuario en todas partes.",
+  "users.delete.tokens": {
+    "one": "Borrar su {count} token de API.",
+    "other": "Borrar sus {count} tokens de API."
+  },
+  "users.done.deleted": "El usuario {name} está borrado.",
+  "users.done.password": "Tu contraseña está cambiada. Se cerró tu sesión en todas las demás partes.",
+  "users.fact.created": "Creado",
+  "users.fact.kind": "Inicia sesión con",
+  "users.intro": "Todos los usuarios son administradores. Cualquier usuario puede borrar a otro, pero no a sí mismo.",
+  "users.kind.oidc": "Inicio de sesión único",
+  "users.kind.password": "Contraseña",
+  "users.kind.proxy": "Proxy",
+  "users.list.heading": "Todos los usuarios",
+  "users.password.busy": "Foreman está comprobando otras contraseñas. Vuelve a intentarlo en un momento.",
+  "users.password.button": "Cambiar contraseña",
+  "users.password.confirm": "Repite la nueva contraseña",
+  "users.password.confirm.mismatch": "Las dos contraseñas nuevas son distintas. Escribe la misma contraseña en ambas.",
+  "users.password.confirm.missing": "Escribe otra vez la nueva contraseña.",
+  "users.password.current": "Contraseña actual",
+  "users.password.current.missing": "Escribe tu contraseña actual.",
+  "users.password.current.wrong": "La contraseña actual es incorrecta.",
+  "users.password.heading": "Tu contraseña",
+  "users.password.limited": "Demasiadas contraseñas incorrectas. Espera unos minutos y vuelve a intentarlo.",
+  "users.password.managed": "Tu inicio de sesión se gestiona en otro lugar, así que aquí no tienes contraseña que cambiar.",
+  "users.password.managed.oidc": "Inicias sesión con inicio de sesión único, así que lo gestiona el proveedor de identidad. Aquí no tienes contraseña.",
+  "users.password.managed.proxy": "Inicias sesión a través del proxy, así que se gestiona allí. Aquí no tienes contraseña.",
+  "users.password.new": "Nueva contraseña",
+  "users.password.new.hint": {
+    "one": "Al menos {count} carácter.",
+    "other": "Al menos {count} caracteres."
+  },
+  "users.password.new.long": {
+    "one": "La nueva contraseña es demasiado larga. Usa como máximo {count} byte.",
+    "other": "La nueva contraseña es demasiado larga. Usa como máximo {count} bytes."
+  },
+  "users.password.new.missing": "Escribe una nueva contraseña.",
+  "users.password.new.short": {
+    "one": "La nueva contraseña es demasiado corta. Usa al menos {count} carácter.",
+    "other": "La nueva contraseña es demasiado corta. Usa al menos {count} caracteres."
+  },
+  "users.password.sessions": "Al cambiarla se cierra tu sesión en todas las demás partes.",
+  "users.title": "Usuarios",
+  "users.you": "Tú"
+}

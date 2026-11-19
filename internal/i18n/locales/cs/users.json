@@ -1,0 +1,59 @@
+{
+  "users.delete": "Smazat",
+  "users.delete.audit": "Jméno uživatele zůstane u záznamů v auditním protokolu, které vytvořil.",
+  "users.delete.button": "Smazat uživatele",
+  "users.delete.cancel": "Ponechat uživatele",
+  "users.delete.name": "Smazat uživatele {name}",
+  "users.delete.question": "Smazat uživatele {name}?",
+  "users.delete.returns.oidc": "Tento uživatel se přihlašuje jednotným přihlášením. Při příštím přihlášení se vrátí, pokud není odebrán i u poskytovatele identity.",
+  "users.delete.returns.proxy": "Tento uživatel se přihlašuje přes proxy. Při příští návštěvě se vrátí, pokud není odebrán i na proxy.",
+  "users.delete.self": "Sebe sama smazat nelze. Musí to udělat jiný uživatel.",
+  "users.delete.signout": "Uživatel bude všude odhlášen.",
+  "users.delete.tokens": {
+    "one": "Bude smazán {count} token API tohoto uživatele.",
+    "few": "Budou smazány {count} tokeny API tohoto uživatele.",
+    "other": "Bude smazáno {count} tokenů API tohoto uživatele."
+  },
+  "users.done.deleted": "Uživatel {name} je smazán.",
+  "users.done.password": "Heslo je změněno. Všechny ostatní relace byly odhlášeny.",
+  "users.fact.created": "Vytvořen",
+  "users.fact.kind": "Způsob přihlášení",
+  "users.intro": "Každý uživatel je správce. Kterýkoli uživatel může smazat jiného, ale ne sebe.",
+  "users.kind.oidc": "Jednotné přihlášení",
+  "users.kind.password": "Heslo",
+  "users.kind.proxy": "Proxy",
+  "users.list.heading": "Všichni uživatelé",
+  "users.password.busy": "Foreman právě ověřuje jiná hesla. Je třeba to za chvíli zkusit znovu.",
+  "users.password.button": "Změnit heslo",
+  "users.password.confirm": "Nové heslo znovu",
+  "users.password.confirm.mismatch": "Obě nová hesla se liší. Do obou polí je třeba zadat stejné heslo.",
+  "users.password.confirm.missing": "Je třeba znovu zadat nové heslo.",
+  "users.password.current": "Současné heslo",
+  "users.password.current.missing": "Je třeba zadat současné heslo.",
+  "users.password.current.wrong": "Současné heslo je chybné.",
+  "users.password.heading": "Heslo",
+  "users.password.limited": "Příliš mnoho chybných hesel. Je třeba několik minut počkat a zkusit to znovu.",
+  "users.password.managed": "Přihlášení je spravováno jinde, takže zde není heslo ke změně.",
+  "users.password.managed.oidc": "Přihlášení probíhá jednotným přihlášením, takže ho spravuje poskytovatel identity. Zde žádné heslo není.",
+  "users.password.managed.proxy": "Přihlášení probíhá přes proxy, takže je spravováno tam. Zde žádné heslo není.",
+  "users.password.new": "Nové heslo",
+  "users.password.new.hint": {
+    "one": "Alespoň {count} znak.",
+    "few": "Alespoň {count} znaky.",
+    "other": "Alespoň {count} znaků."
+  },
+  "users.password.new.long": {
+    "one": "Nové heslo je příliš dlouhé. Povolen je nejvýše {count} bajt.",
+    "few": "Nové heslo je příliš dlouhé. Povoleny jsou nejvýše {count} bajty.",
+    "other": "Nové heslo je příliš dlouhé. Povoleno je nejvýše {count} bajtů."
+  },
+  "users.password.new.missing": "Je třeba zadat nové heslo.",
+  "users.password.new.short": {
+    "one": "Nové heslo je příliš krátké. Je potřeba alespoň {count} znak.",
+    "few": "Nové heslo je příliš krátké. Jsou potřeba alespoň {count} znaky.",
+    "other": "Nové heslo je příliš krátké. Je potřeba alespoň {count} znaků."
+  },
+  "users.password.sessions": "Změna hesla odhlásí všechny ostatní relace.",
+  "users.title": "Uživatelé",
+  "users.you": "Aktuální uživatel"
+}

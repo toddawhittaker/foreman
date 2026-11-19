@@ -67,3 +67,13 @@ func (s *Store) DeleteSessionsIdleSince(ctx context.Context, cutoff time.Time) (
 	}
 	return n, nil
 }
+
+// DeleteUserSessions ends every session of one user, as a password change
+// does.
+func (s *Store) DeleteUserSessions(ctx context.Context, userID int64) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM sessions WHERE user_id = ?", userID)
+	if err != nil {
+		return fmt.Errorf("delete a user's sessions: %w", err)
+	}
+	return nil
+}
