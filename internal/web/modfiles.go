@@ -57,8 +57,8 @@ const (
 )
 
 func (s *server) modFileRoutes() {
-	s.handleUpload("POST "+PathModUpload, MaxModUpload, s.requireUser(s.guardUpload(s.handleModUpload)))
-	s.handleUpload("POST "+PathModSettings, MaxSettingsUpload, s.requireUser(s.guardUpload(s.handleSettingsUpload)))
+	s.handleUpload("POST "+PathModUpload, s.modUploadLimit, s.requireUser(s.guardUpload(s.handleModUpload)))
+	s.handleUpload("POST "+PathModSettings, fixedLimit(MaxSettingsUpload), s.requireUser(s.guardUpload(s.handleSettingsUpload)))
 	s.handleLong("GET "+PathModSettings, s.requireUser(s.handleSettingsDownload))
 }
 
@@ -66,7 +66,8 @@ func (s *server) modFileRoutes() {
 func modZipError(err error) i18n.Msg {
 	switch {
 	case errors.Is(err, world.ErrModTooBig):
-		return i18n.M("worlds.upload.too_large", "limit", sizeLimit(MaxModUpload))
+		// The world package's ceiling, which is also the setting's largest value.
+		return i18n.M("worlds.upload.too_large", "limit", sizeLimit(world.MaxModZip))
 	case errors.Is(err, world.ErrModName):
 		return i18n.M("mods.upload.bad_name")
 	}
@@ -118,7 +119,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	token := q.Get(draftField)
 	plan, sync := s.drafts.get(token, u.ID, sum.ID)
 	sync = sync && plan.Kind == mods.KindSync
-	countdown := defaultCountdown()
+	countdown := s.countdownForm(r.Context())
 	if c := q.Get("countdown"); c != "" {
 		countdown.Countdown = c
 	}
@@ -145,7 +146,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	defer func() { _ = worlds.Close() }()
-	up, err := s.receiveStaged(r, worlds, modUploadField, MaxModUpload, map[string]string{})
+	up, err := s.receiveStaged(r, worlds, modUploadField, s.modUploadLimit(r.Context()), map[string]string{})
 	if err != nil {
 		if status, msg := worldError(err); status != http.StatusInternalServerError && !msg.IsZero() {
 			refuse(msg, status)
@@ -207,7 +208,7 @@ func (s *server) handleSettingsUpload(w http.ResponseWriter, r *http.Request, u 
 	up, err := receiveFileWithFields(r, worlds, ".", settingsUploadField, s.worlds.Dirs().Worlds, MaxSettingsUpload, values)
 	if err != nil {
 		if status, msg := worldError(err); status != http.StatusInternalServerError && !msg.IsZero() {
-			refuse(msg, status, defaultCountdown())
+			refuse(msg, status, s.countdownForm(r.Context()))
 			return
 		}
 		s.fail(w, r, "receive mod-settings.dat", err)
@@ -220,12 +221,12 @@ func (s *server) handleSettingsUpload(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	if len(data) == 0 {
-		refuse(i18n.M("mods.settings.empty"), http.StatusUnprocessableEntity, defaultCountdown())
+		refuse(i18n.M("mods.settings.empty"), http.StatusUnprocessableEntity, s.countdownForm(r.Context()))
 		return
 	}
 	// The countdown came before the file in the form, so it is read here.
 	r.PostForm = url.Values{"countdown": {values["countdown"]}}
-	form, stop := readCountdown(r)
+	form, stop := s.readCountdown(r)
 	running := game.IsRunning(s.game.Status(sum.ID).State)
 	if running && !form.CountdownError.IsZero() {
 		refuse(i18n.Msg{}, http.StatusBadRequest, form)

@@ -400,9 +400,9 @@ func (v PreviewView) ZipPath() string {
 }
 
 func (s *server) previewRoutes() {
-	s.handleUpload("POST "+PathGeneratePreview, generateFormLimit, s.requireUser(s.handleGeneratePreview))
-	s.handleUpload("POST "+pathTerritories, generateFormLimit, s.requireUser(s.handleGenerateTerritories))
-	s.handleUpload("POST "+pathResources, generateFormLimit, s.requireUser(s.handleGenerateResources))
+	s.handleUpload("POST "+PathGeneratePreview, fixedLimit(generateFormLimit), s.requireUser(s.handleGeneratePreview))
+	s.handleUpload("POST "+pathTerritories, fixedLimit(generateFormLimit), s.requireUser(s.handleGenerateTerritories))
+	s.handleUpload("POST "+pathResources, fixedLimit(generateFormLimit), s.requireUser(s.handleGenerateResources))
 	s.mux.HandleFunc("GET "+pathPicture, s.requireUser(s.handlePicture))
 	// A zip of five planets is several MB; a slow link needs the idle deadline.
 	s.handleLong("GET "+pathPictureDownload, s.requireUser(s.handlePictureDownload))

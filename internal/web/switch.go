@@ -173,7 +173,7 @@ func (s *server) handleSwitchForm(w http.ResponseWriter, r *http.Request, u stor
 	if !ok {
 		return
 	}
-	p, err := s.switchPage(r.Context(), "", to, defaultCountdown())
+	p, err := s.switchPage(r.Context(), "", to, s.countdownForm(r.Context()))
 	if err != nil {
 		s.fail(w, r, "build the switch page", err)
 		return
@@ -201,7 +201,7 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 			Detail: i18n.M("server.switch.no_from")})
 		return
 	}
-	form, stop := readCountdown(r)
+	form, stop := s.readCountdown(r)
 	p, err := s.switchPage(r.Context(), from, to, form)
 	if err != nil {
 		s.fail(w, r, "build the switch page", err)

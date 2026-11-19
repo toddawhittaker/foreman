@@ -3,12 +3,10 @@ package web
 import (
 	"context"
 	"log/slog"
-	"strconv"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/notify"
-	"github.com/toddawhittaker/foreman/internal/store"
 )
 
 const sweepEvery = time.Hour
@@ -21,10 +19,10 @@ const remindEvery = 15 * time.Minute
 // emitter is the part of the notifier the reminders use.
 type emitter interface{ Emit(notify.Message) }
 
-// SweepSessions deletes sessions idle for longer than idle, once an hour,
-// until ctx ends. Lookup already refuses expired sessions; this only keeps
-// the table small.
-func SweepSessions(ctx context.Context, st *store.Store, idle time.Duration, log *slog.Logger) {
+// SweepSessions deletes sessions idle for longer than idle, and audit
+// entries older than the retention setting, once an hour until ctx ends.
+// Lookup already refuses expired sessions; this only keeps the tables small.
+func (h *Handler) SweepSessions(ctx context.Context, idle time.Duration) {
 	t := time.NewTicker(sweepEvery)
 	defer t.Stop()
 	for {
@@ -32,58 +30,35 @@ func SweepSessions(ctx context.Context, st *store.Store, idle time.Duration, log
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			sweepOnce(ctx, st, idle, time.Now(), log)
+			h.srv.sweepOnce(ctx, idle)
 		}
 	}
 }
 
-func sweepOnce(ctx context.Context, st *store.Store, idle time.Duration, now time.Time, log *slog.Logger) {
-	n, err := st.DeleteSessionsIdleSince(ctx, now.Add(-idle))
+func (s *server) sweepOnce(ctx context.Context, idle time.Duration) {
+	n, err := s.store.DeleteSessionsIdleSince(ctx, s.now().Add(-idle))
 	if err != nil {
-		log.Error("sweep idle sessions", "error", err)
+		s.log.Error("sweep idle sessions", "error", err)
 	} else {
-		log.Debug("swept idle sessions", "count", n)
+		s.log.Debug("swept idle sessions", "count", n)
 	}
-	sweepAudit(ctx, st, now, log)
+	s.sweepAudit(ctx)
 }
 
-// The audit log's retention setting (SPEC 12.9, 13.1), in days.
-const (
-	auditRetentionSetting     = "audit_retention_days"
-	defaultAuditRetentionDays = 365
-	minAuditRetentionDays     = 7
-	maxAuditRetentionDays     = 3650
-)
-
-// auditRetention reads the retention in days. A missing or out-of-range
-// value gives the default, never a shorter time than was set.
-func auditRetention(ctx context.Context, st *store.Store) (int, error) {
-	v, found, err := st.AppSetting(ctx, auditRetentionSetting)
-	if err != nil || !found {
-		return defaultAuditRetentionDays, err
-	}
-	days, err := strconv.Atoi(v)
-	if err != nil || days < minAuditRetentionDays || days > maxAuditRetentionDays {
-		return defaultAuditRetentionDays, nil
-	}
-	return days, nil
-}
-
-// sweepAudit deletes audit entries older than the retention. The sweep is
-// not itself audited (SPEC 12.9). When the setting cannot be read nothing is
-// deleted.
-func sweepAudit(ctx context.Context, st *store.Store, now time.Time, log *slog.Logger) {
-	days, err := auditRetention(ctx, st)
-	if err != nil {
-		log.Error("read the audit retention", "error", err)
+// sweepAudit deletes audit entries older than the retention setting. The
+// sweep is not itself audited (SPEC 12.9). When the setting cannot be read
+// nothing is deleted; readInt has already logged why.
+func (s *server) sweepAudit(ctx context.Context) {
+	days, ok := s.readInt(ctx, settingAuditRetention)
+	if !ok {
 		return
 	}
-	n, err := st.DeleteAuditBefore(ctx, now.AddDate(0, 0, -days))
+	n, err := s.store.DeleteAuditBefore(ctx, s.now().AddDate(0, 0, -days))
 	if err != nil {
-		log.Error("sweep old audit entries", "error", err)
+		s.log.Error("sweep old audit entries", "error", err)
 		return
 	}
-	log.Debug("swept old audit entries", "count", n)
+	s.log.Debug("swept old audit entries", "count", n)
 }
 
 // RemindTokens sends the token-expiring event for each reminder that is

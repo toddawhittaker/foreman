@@ -125,7 +125,7 @@ func (s *server) worldRoutes() {
 	s.mux.HandleFunc("GET "+PathDeleted, s.requireUser(s.handleDeleted))
 	s.mux.HandleFunc("GET "+PathImport, s.requireUser(s.handleImportForm))
 	s.handleLong("POST "+PathImportFolder, s.requireUser(s.handleImportFolder))
-	s.handleUpload("POST "+PathImportUpload, MaxSaveUpload, s.requireUser(s.guardUpload(s.handleImportUpload)))
+	s.handleUpload("POST "+PathImportUpload, s.saveUploadLimit, s.requireUser(s.guardUpload(s.handleImportUpload)))
 }
 
 // WorldPage is one world's page (SPEC 5.4, 5.8; DESIGN 8.2).
@@ -406,7 +406,7 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	var done i18n.Msg
 	var failure *Failure
 	if followsOwnAction(r) {
-		done, failure = s.updateOutcome(sum)
+		done, failure = s.updateOutcome(r.Context(), sum)
 	}
 	p := s.worldPage(r.Context(), sum, sum.Name, i18n.Msg{})
 	p.UpdateDone, p.UpdateFailure = done, failure

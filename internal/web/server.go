@@ -120,7 +120,7 @@ type server struct {
 	gameSeen sync.Map
 	mux      *http.ServeMux
 	// uploadLimits holds the body limit of each upload route, by pattern.
-	uploadLimits map[string]int64
+	uploadLimits map[string]limitFunc
 	// uploadSlots holds one entry per upload in progress (see guardUpload).
 	uploadSlots chan struct{}
 	// publicSlots holds one entry per public download in progress. marks
@@ -136,6 +136,8 @@ type server struct {
 type Handler struct {
 	http.Handler
 	runs *gameRuns
+	// srv is the server behind the handler, for the background sweeps.
+	srv *server
 }
 
 // Close ends the live pages, then interrupts the server control actions
@@ -191,7 +193,7 @@ func NewHandler(d Deps) (*Handler, error) {
 			Trusted:       d.Config.TrustedProxies,
 		},
 		mux:          http.NewServeMux(),
-		uploadLimits: map[string]int64{},
+		uploadLimits: map[string]limitFunc{},
 		uploadSlots:  make(chan struct{}, maxUploads),
 		publicSlots:  make(chan struct{}, maxPublicDownloads),
 
@@ -203,7 +205,7 @@ func NewHandler(d Deps) (*Handler, error) {
 	if d.Portal != nil {
 		s.portal, s.planner = d.Portal, &mods.Planner{Worlds: d.Worlds, Portal: d.Portal}
 		if d.Game != nil {
-			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal})
+			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal, limit: s.modUploadLimit})
 			d.Game.SetModCheck(s.planner)
 		}
 		s.marks = newPortalMarks(now, s.checkPortalForPublic)
@@ -227,7 +229,7 @@ func NewHandler(d Deps) (*Handler, error) {
 	h = s.limitBody(h)
 	h = s.recoverPanic(h)
 	h = s.accessLog(h)
-	return &Handler{Handler: h, runs: s.runs}, nil
+	return &Handler{Handler: h, runs: s.runs, srv: s}, nil
 }
 
 func (s *server) routes() {

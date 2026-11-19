@@ -2,6 +2,7 @@ package modportal
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha1" //nolint:gosec // the portal publishes SHA-1 sums
 	"encoding/hex"
@@ -21,8 +22,11 @@ func releaseOf(s modportaltest.Served) Release {
 	return Release{Version: s.Version, FileName: s.FileName, DownloadURL: s.DownloadURL, SHA1: s.SHA1, FactorioVersion: modportaltest.GameLine}
 }
 
+// testLimit is a download limit no test file reaches.
+const testLimit = 200 << 20
+
 func download(c *Client, r Release, dst *os.File) error {
-	return c.Download(context.Background(), modportaltest.Username, modportaltest.Token, r, dst)
+	return c.Download(context.Background(), modportaltest.Username, modportaltest.Token, r, dst, testLimit)
 }
 
 func TestDownloadWritesAndChecks(t *testing.T) {
@@ -78,19 +82,20 @@ func TestDownloadFailures(t *testing.T) {
 		mode   modportaltest.Mode
 		want   error
 		setup  func(*Client)
+		limit  int64 // the download limit; 0 is testLimit
 		manual func(*Client, Release) error
 	}
 	cases := []failCase{
 		{name: "wrong sha1", mode: modportaltest.WrongSHA1, want: ErrChecksum},
-		{name: "oversized stream", mode: modportaltest.Oversized, want: ErrUnreachable, setup: func(c *Client) { c.maxDownload = 4096 }},
+		{name: "oversized stream", mode: modportaltest.Oversized, want: ErrUnreachable, limit: 4096},
 		{name: "foreign redirect", mode: modportaltest.RedirectForeign, want: ErrUnreachable},
 		{name: "login redirect", mode: modportaltest.RedirectLogin, want: ErrUnauthorized},
 		{name: "401", mode: modportaltest.Unauthorized, want: ErrUnauthorized},
 		{name: "server error", mode: modportaltest.ServerError, want: ErrUnreachable},
 		{name: "slow reply", mode: modportaltest.Slow, want: ErrUnreachable, setup: func(c *Client) { c.downloadTimeout = 150 * time.Millisecond }},
-		{name: "declared too large", mode: modportaltest.Normal, want: ErrUnreachable, setup: func(c *Client) { c.maxDownload = 10 }},
+		{name: "declared too large", mode: modportaltest.Normal, want: ErrUnreachable, limit: 10},
 		{name: "wrong credentials", mode: modportaltest.Normal, want: ErrUnauthorized, manual: func(c *Client, r Release) error {
-			return c.Download(context.Background(), modportaltest.Username, "wrong-"+modportaltest.Token, r, tempFile(t))
+			return c.Download(context.Background(), modportaltest.Username, "wrong-"+modportaltest.Token, r, tempFile(t), testLimit)
 		}},
 		{name: "no checksum published", mode: modportaltest.Normal, want: ErrChecksum, manual: func(c *Client, r Release) error {
 			r.SHA1 = ""
@@ -99,7 +104,7 @@ func TestDownloadFailures(t *testing.T) {
 		{name: "cancelled", mode: modportaltest.Slow, want: ErrUnreachable, manual: func(c *Client, r Release) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
-			return c.Download(ctx, modportaltest.Username, modportaltest.Token, r, tempFile(t))
+			return c.Download(ctx, modportaltest.Username, modportaltest.Token, r, tempFile(t), testLimit)
 		}},
 	}
 	for _, tc := range cases {
@@ -115,7 +120,7 @@ func TestDownloadFailures(t *testing.T) {
 			if tc.manual != nil {
 				err = tc.manual(c, releaseOf(s))
 			} else {
-				err = download(c, releaseOf(s), dst)
+				err = c.Download(context.Background(), modportaltest.Username, modportaltest.Token, releaseOf(s), dst, cmp.Or(tc.limit, testLimit))
 			}
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("got %v, want %v", err, tc.want)
@@ -300,7 +305,7 @@ func TestRealRequestShape(t *testing.T) {
 		return &http.Response{StatusCode: 401, Header: http.Header{}, Body: http.NoBody, Request: r}
 	})
 	r := Release{Version: "3.1.0", FileName: "Flow Control_3.1.0.zip", DownloadURL: "/download/Flow%20Control/abc", SHA1: "x"}
-	_ = c.Download(context.Background(), "bob", "t o+k", r, tempFile(t))
+	_ = c.Download(context.Background(), "bob", "t o+k", r, tempFile(t), testLimit)
 	if got.URL.Scheme != "https" || got.URL.Host != "mods.factorio.com" || got.URL.EscapedPath() != "/download/Flow%20Control/abc" ||
 		got.URL.Query().Get("username") != "bob" || got.URL.Query().Get("token") != "t o+k" {
 		t.Errorf("request was %s", got.URL.Redacted())
@@ -327,5 +332,22 @@ func TestDownloadRedirectSendsNoReferer(t *testing.T) {
 	}
 	if len(referer) != 1 || referer[0] != "" {
 		t.Errorf("Referer on the redirected request %q, want none", referer)
+	}
+}
+
+// The limit comes with each call (SPEC 14.10): the same file is refused one
+// byte under its size and taken at its size.
+func TestDownloadLimitIsPerCall(t *testing.T) {
+	p, c, _ := fakePortal(t)
+	s := p.AddZip("m", "1.0.0")
+	size := int64(len(s.Body))
+	for _, tc := range []struct {
+		limit int64
+		want  error
+	}{{size - 1, ErrUnreachable}, {size, nil}} {
+		err := c.Download(context.Background(), modportaltest.Username, modportaltest.Token, releaseOf(s), tempFile(t), tc.limit)
+		if !errors.Is(err, tc.want) {
+			t.Errorf("limit %d: got %v, want %v", tc.limit, err, tc.want)
+		}
 	}
 }

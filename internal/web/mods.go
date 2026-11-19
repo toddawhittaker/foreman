@@ -45,7 +45,7 @@ type ModPortal interface {
 	mods.Portal
 	Search(ctx context.Context, line, query string) ([]modportal.Hit, error)
 	Lookup(ctx context.Context, line, name string) (modportal.Hit, error)
-	Download(ctx context.Context, username, token string, r modportal.Release, dst *os.File) error
+	Download(ctx context.Context, username, token string, r modportal.Release, dst *os.File, maxBytes int64) error
 	// KnownMissing says the portal's cached answer is "no such mod"; it never asks the portal.
 	KnownMissing(name string) bool
 }
@@ -55,6 +55,8 @@ type ModPortal interface {
 type accountFetcher struct {
 	account *factorioaccount.Service
 	portal  ModPortal
+	// limit is the mod upload limit, which also caps a download (SPEC 14.10).
+	limit limitFunc
 }
 
 func (f accountFetcher) Download(ctx context.Context, r modportal.Release, dst *os.File) error {
@@ -65,7 +67,7 @@ func (f accountFetcher) Download(ctx context.Context, r modportal.Release, dst *
 	if src != factorioaccount.Env && src != factorioaccount.Stored {
 		return game.ErrNoModFetcher
 	}
-	return f.portal.Download(ctx, acct.Username.Reveal(), acct.Token.Reveal(), r, dst)
+	return f.portal.Download(ctx, acct.Username.Reveal(), acct.Token.Reveal(), r, dst, f.limit(ctx))
 }
 
 func modsPath(id string) string { return worldPath(id) + "/mods" }
@@ -160,9 +162,11 @@ func (s *server) loadingSave(id string) (string, error) {
 
 // ModsPage is a world's Mods tab (SPEC 9).
 type ModsPage struct {
-	World world.Summary
-	Live  LiveState
-	Mods  []world.InstalledMod
+	// UploadLimit is the mod upload limit in bytes, which the drop zone shows.
+	UploadLimit uint64
+	World       world.Summary
+	Live        LiveState
+	Mods        []world.InstalledMod
 	// NoAccount says mod downloads are off (SPEC 9.11).
 	NoAccount bool
 	// LoadSave is the save that loads, whose mods "Match" reads; "" for none.
@@ -196,7 +200,7 @@ type ModsPage struct {
 // UploadZone and SettingsZone are the tab's two upload fields (DESIGN 7.10).
 func (p ModsPage) UploadZone() DropZone {
 	return DropZone{ID: "mod-file", Name: modUploadField, Label: i18n.M("mods.upload.label"),
-		Accept: ".zip", MaxBytes: MaxModUpload, Error: p.UploadError}
+		Accept: ".zip", MaxBytes: p.UploadLimit, Error: p.UploadError}
 }
 
 func (p ModsPage) SettingsZone() DropZone {
@@ -403,7 +407,7 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 
 // modsPage reads the world's mods and what the tab offers.
 func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, error) {
-	p := ModsPage{World: sum, Live: s.liveState(sum.ID, sum.Active), CountdownForm: defaultCountdown()}
+	p := ModsPage{World: sum, Live: s.liveState(sum.ID, sum.Active), CountdownForm: s.countdownForm(ctx), UploadLimit: zoneLimit(s.modUploadLimit(ctx))}
 	if sum.Newer || sum.Unreadable {
 		return p, nil
 	}
@@ -1034,9 +1038,12 @@ func readPlanForm(v url.Values) (planForm, bool) {
 
 // ModPlanPage shows a mod change before it applies (SPEC 9.2, 17.5, 17.8).
 type ModPlanPage struct {
-	World world.Summary
-	Form  planForm
-	Plan  mods.Plan
+	// UploadLimit is the mod upload limit in bytes, which an unresolved
+	// mod's drop zone shows.
+	UploadLimit uint64
+	World       world.Summary
+	Form        planForm
+	Plan        mods.Plan
 	// Hash is the plan's digest the form posts back; Fingerprint the mods
 	// folder's.
 	Hash, Fingerprint string
@@ -1193,7 +1200,7 @@ func (p ModPlanPage) UploadAction(name string) string {
 // form, which cannot hold a second form, and posts as the mod's own form
 // (DESIGN 7.10).
 func (p ModPlanPage) UploadZone(name string, version string) DropZone {
-	z := DropZone{ID: modID(name, "zip"), Name: modUploadField, Accept: ".zip", MaxBytes: MaxModUpload,
+	z := DropZone{ID: modID(name, "zip"), Name: modUploadField, Accept: ".zip", MaxBytes: p.UploadLimit,
 		Label: i18n.M("mods.unresolved.upload_label", "mod", i18n.Ident(name), "version", version),
 		Form:  modID(name, "zip") + "-form"}
 	if p.UploadFor == name {
@@ -1501,7 +1508,7 @@ func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	token := q.Get(draftField)
-	form := defaultCountdown()
+	form := s.countdownForm(r.Context())
 	if c, ok := q["countdown"]; ok {
 		form.Countdown = c[0]
 	}
@@ -1627,7 +1634,7 @@ func (s *server) handlePlanRedraw(w http.ResponseWriter, r *http.Request, u stor
 		http.Redirect(w, r, draftPath(sum.ID, token, more...), http.StatusSeeOther) //nolint:gosec // a local path under this world's mods pages
 		return
 	}
-	countdown := defaultCountdown()
+	countdown := s.countdownForm(r.Context())
 	if c := r.PostForm.Get("countdown"); c != "" {
 		countdown.Countdown = c
 	}
@@ -1676,7 +1683,7 @@ func planStatus(p ModPlanPage) int {
 
 // planPage works out the plan for f now. A failure to do so is in Error.
 func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, form CountdownForm) ModPlanPage {
-	p := ModPlanPage{World: sum, Form: f, CountdownForm: form, ConfirmErrors: map[string]i18n.Msg{}}
+	p := ModPlanPage{World: sum, Form: f, CountdownForm: form, ConfirmErrors: map[string]i18n.Msg{}, UploadLimit: zoneLimit(s.modUploadLimit(ctx))}
 	st := s.game.Status(sum.ID)
 	p.Running = game.IsRunning(st.State)
 	if !p.Running {
@@ -1925,7 +1932,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	form, stop := readCountdown(r)
+	form, stop := s.readCountdown(r)
 	p := s.planPage(r.Context(), sum, f, form)
 	p.Draft = s.drafts.keep(r.PostForm.Get(draftField), u.ID, sum.ID, p.Form)
 	if !p.Running {

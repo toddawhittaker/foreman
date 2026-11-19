@@ -106,7 +106,7 @@ func download(t *testing.T, c *modportal.Client, user, token, mod, version strin
 		t.Fatal(err)
 	}
 	defer func() { _ = f.Close() }()
-	return c.Download(context.Background(), user, token, rel, f)
+	return c.Download(context.Background(), user, token, rel, f, 200<<20)
 }
 
 func TestRealClientReadsTheFakeThroughTheProxy(t *testing.T) {

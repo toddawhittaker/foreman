@@ -58,7 +58,7 @@ var (
 		Default: MaxSaveUpload >> 20, Min: 100, Max: 8192, Action: AuditSaveUploadLimitSet,
 		Label: "general.uploads.save.label"}
 	settingModUpload = intSetting{Name: "mod_upload_mb", Key: "mod_upload_mb",
-		Default: modUploadMB, Min: 10, Max: 2048, Action: AuditModUploadLimitSet,
+		Default: modUploadMB, Min: 10, Max: world.MaxModZip >> 20, Action: AuditModUploadLimitSet,
 		Label: "general.uploads.mod.label"}
 )
 
@@ -92,7 +92,10 @@ func (d intSetting) rangeMsg() i18n.Msg {
 func (s *server) readInt(ctx context.Context, d intSetting) (n int, ok bool) {
 	v, found, err := s.store.AppSetting(ctx, d.Name)
 	if err != nil {
-		s.log.Error("read an app setting", "setting", d.Name, "error", err)
+		// A browser that left mid-page cancels the request; that is not a fault.
+		if ctx.Err() == nil {
+			s.log.Error("read an app setting", "setting", d.Name, "error", err)
+		}
 		return d.Default, false
 	}
 	if !found {

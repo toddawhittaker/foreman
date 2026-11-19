@@ -108,9 +108,9 @@ type mcpActionOut struct {
 }
 
 // stopOptions reads the countdown, which defaults to the app's (SPEC 7.6).
-func stopOptions(seconds *int) (game.StopOptions, error) {
+func (s *server) stopOptions(ctx context.Context, seconds *int) (game.StopOptions, error) {
 	if seconds == nil {
-		return game.StopOptions{Countdown: game.StopCountdown}, nil
+		return game.StopOptions{Countdown: s.stopCountdown(ctx)}, nil
 	}
 	if *seconds < 0 || *seconds > maxCountdownSeconds {
 		return game.StopOptions{}, fmt.Errorf("countdown_seconds must be a whole number from 0 to %d", maxCountdownSeconds)
@@ -242,7 +242,7 @@ func (s *server) mcpStop(ctx context.Context, req *mcp.CallToolRequest, in mcpSt
 	if err != nil {
 		return nil, mcpActionOut{}, err
 	}
-	stop, err := stopOptions(in.CountdownSeconds)
+	stop, err := s.stopOptions(ctx, in.CountdownSeconds)
 	if err != nil {
 		return nil, mcpActionOut{}, err
 	}
@@ -257,7 +257,7 @@ func (s *server) mcpRestart(ctx context.Context, req *mcp.CallToolRequest, in mc
 	if err != nil {
 		return nil, mcpActionOut{}, err
 	}
-	stop, err := stopOptions(in.CountdownSeconds)
+	stop, err := s.stopOptions(ctx, in.CountdownSeconds)
 	if err != nil {
 		return nil, mcpActionOut{}, err
 	}
@@ -276,7 +276,7 @@ func (s *server) mcpSwitch(ctx context.Context, req *mcp.CallToolRequest, in mcp
 	if err != nil {
 		return nil, mcpActionOut{}, err
 	}
-	stop, err := stopOptions(in.CountdownSeconds)
+	stop, err := s.stopOptions(ctx, in.CountdownSeconds)
 	if err != nil {
 		return nil, mcpActionOut{}, err
 	}
