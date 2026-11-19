@@ -638,6 +638,11 @@ func (m *Manager) TrimCount(ctx context.Context, keep int) (snapshots, worlds in
 		return 0, 0, err
 	}
 	for _, w := range list {
+		// An archived world takes no automatic snapshots, so retention
+		// never removes any of its.
+		if w.Archived {
+			continue
+		}
 		snaps, err := m.Snapshots(w.ID)
 		if err != nil {
 			return 0, 0, err
