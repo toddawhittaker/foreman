@@ -1,0 +1,55 @@
+{
+  "users.delete": "Supprimer",
+  "users.delete.audit": "Garder son nom sur les entrées du journal d’audit qu’il a créées.",
+  "users.delete.button": "Supprimer l’utilisateur",
+  "users.delete.cancel": "Garder l’utilisateur",
+  "users.delete.name": "Supprimer l’utilisateur {name}",
+  "users.delete.question": "Supprimer l’utilisateur {name} ?",
+  "users.delete.returns.oidc": "Cet utilisateur se connecte par authentification unique. Il reviendra à sa prochaine connexion, sauf si vous le retirez aussi chez le fournisseur d’identité.",
+  "users.delete.returns.proxy": "Cet utilisateur se connecte par le proxy. Il reviendra à sa prochaine visite, sauf si vous le retirez aussi au niveau du proxy.",
+  "users.delete.self": "Vous ne pouvez pas vous supprimer vous-même. Un autre utilisateur doit le faire.",
+  "users.delete.signout": "Déconnecter l’utilisateur partout.",
+  "users.delete.tokens": {
+    "one": "Supprimer son {count} jeton d’API.",
+    "other": "Supprimer ses {count} jetons d’API."
+  },
+  "users.done.deleted": "L’utilisateur a été supprimé.",
+  "users.done.password": "Votre mot de passe est modifié. Vous avez été déconnecté partout ailleurs.",
+  "users.fact.created": "Créé le",
+  "users.fact.kind": "Se connecte par",
+  "users.intro": "Chaque utilisateur est admin. Tout utilisateur peut en supprimer un autre, mais pas lui-même.",
+  "users.kind.oidc": "Authentification unique",
+  "users.kind.password": "Mot de passe",
+  "users.kind.proxy": "Proxy",
+  "users.list.heading": "Tous les utilisateurs",
+  "users.password.busy": "Foreman vérifie d’autres mots de passe. Réessayez dans un instant.",
+  "users.password.button": "Changer le mot de passe",
+  "users.password.confirm": "Nouveau mot de passe, encore",
+  "users.password.confirm.mismatch": "Les deux nouveaux mots de passe diffèrent. Saisissez le même mot de passe dans les deux champs.",
+  "users.password.confirm.missing": "Saisissez de nouveau le nouveau mot de passe.",
+  "users.password.current": "Mot de passe actuel",
+  "users.password.current.missing": "Saisissez votre mot de passe actuel.",
+  "users.password.current.wrong": "Le mot de passe actuel est incorrect.",
+  "users.password.heading": "Votre mot de passe",
+  "users.password.limited": "Trop de mots de passe incorrects. Attendez quelques minutes et réessayez.",
+  "users.password.managed": "Votre connexion est gérée ailleurs : vous n’avez donc pas de mot de passe à changer ici.",
+  "users.password.managed.oidc": "Vous vous connectez par authentification unique : votre connexion est donc gérée par le fournisseur d’identité. Vous n’avez pas de mot de passe ici.",
+  "users.password.managed.proxy": "Vous vous connectez par le proxy : votre connexion est donc gérée là-bas. Vous n’avez pas de mot de passe ici.",
+  "users.password.new": "Nouveau mot de passe",
+  "users.password.new.hint": {
+    "one": "Au moins {count} caractère.",
+    "other": "Au moins {count} caractères."
+  },
+  "users.password.new.long": {
+    "one": "Le nouveau mot de passe est trop long. Utilisez au plus {count} octet.",
+    "other": "Le nouveau mot de passe est trop long. Utilisez au plus {count} octets."
+  },
+  "users.password.new.missing": "Saisissez un nouveau mot de passe.",
+  "users.password.new.short": {
+    "one": "Le nouveau mot de passe est trop court. Utilisez au moins {count} caractère.",
+    "other": "Le nouveau mot de passe est trop court. Utilisez au moins {count} caractères."
+  },
+  "users.password.sessions": "Le changer vous déconnecte partout ailleurs.",
+  "users.title": "Utilisateurs",
+  "users.you": "Vous"
+}

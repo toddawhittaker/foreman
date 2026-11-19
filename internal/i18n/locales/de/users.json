@@ -1,0 +1,55 @@
+{
+  "users.delete": "Löschen",
+  "users.delete.audit": "Den Namen in den Einträgen des Audit-Logs behalten, die die Person erzeugt hat.",
+  "users.delete.button": "Benutzer löschen",
+  "users.delete.cancel": "Benutzer behalten",
+  "users.delete.name": "Benutzer {name} löschen",
+  "users.delete.question": "Benutzer {name} löschen?",
+  "users.delete.returns.oidc": "Dieser Benutzer meldet sich per Einmalanmeldung an. Er kommt bei der nächsten Anmeldung zurück, wenn du ihn nicht auch beim Identitätsanbieter entfernst.",
+  "users.delete.returns.proxy": "Dieser Benutzer meldet sich über den Proxy an. Er kommt beim nächsten Besuch zurück, wenn du ihn nicht auch beim Proxy entfernst.",
+  "users.delete.self": "Du kannst dich nicht selbst löschen. Das muss ein anderer Benutzer tun.",
+  "users.delete.signout": "Den Benutzer überall abmelden.",
+  "users.delete.tokens": {
+    "one": "Sein {count} API-Token löschen.",
+    "other": "Seine {count} API-Tokens löschen."
+  },
+  "users.done.deleted": "Der Benutzer wurde gelöscht.",
+  "users.done.password": "Dein Passwort ist geändert. Überall sonst wurdest du abgemeldet.",
+  "users.fact.created": "Erstellt",
+  "users.fact.kind": "Meldet sich an mit",
+  "users.intro": "Jeder Benutzer ist Admin. Jeder Benutzer kann einen anderen löschen, aber nicht sich selbst.",
+  "users.kind.oidc": "Einmalanmeldung",
+  "users.kind.password": "Passwort",
+  "users.kind.proxy": "Proxy",
+  "users.list.heading": "Alle Benutzer",
+  "users.password.busy": "Foreman prüft gerade andere Passwörter. Versuche es gleich noch einmal.",
+  "users.password.button": "Passwort ändern",
+  "users.password.confirm": "Neues Passwort wiederholen",
+  "users.password.confirm.mismatch": "Die beiden neuen Passwörter sind verschieden. Gib in beide Felder dasselbe Passwort ein.",
+  "users.password.confirm.missing": "Gib das neue Passwort noch einmal ein.",
+  "users.password.current": "Aktuelles Passwort",
+  "users.password.current.missing": "Gib dein aktuelles Passwort ein.",
+  "users.password.current.wrong": "Das aktuelle Passwort ist falsch.",
+  "users.password.heading": "Dein Passwort",
+  "users.password.limited": "Zu viele falsche Passwörter. Warte ein paar Minuten und versuche es erneut.",
+  "users.password.managed": "Deine Anmeldung wird anderswo verwaltet, deshalb hast du hier kein Passwort zum Ändern.",
+  "users.password.managed.oidc": "Du meldest dich per Einmalanmeldung an, deine Anmeldung verwaltet also der Identitätsanbieter. Du hast hier kein Passwort.",
+  "users.password.managed.proxy": "Du meldest dich über den Proxy an, deine Anmeldung wird also dort verwaltet. Du hast hier kein Passwort.",
+  "users.password.new": "Neues Passwort",
+  "users.password.new.hint": {
+    "one": "Mindestens {count} Zeichen.",
+    "other": "Mindestens {count} Zeichen."
+  },
+  "users.password.new.long": {
+    "one": "Das neue Passwort ist zu lang. Verwende höchstens {count} Byte.",
+    "other": "Das neue Passwort ist zu lang. Verwende höchstens {count} Bytes."
+  },
+  "users.password.new.missing": "Gib ein neues Passwort ein.",
+  "users.password.new.short": {
+    "one": "Das neue Passwort ist zu kurz. Verwende mindestens {count} Zeichen.",
+    "other": "Das neue Passwort ist zu kurz. Verwende mindestens {count} Zeichen."
+  },
+  "users.password.sessions": "Eine Änderung meldet dich überall sonst ab.",
+  "users.title": "Benutzer",
+  "users.you": "Du"
+}

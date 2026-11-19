@@ -1,0 +1,83 @@
+{{define "title"}}{{t "users.title"}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<p class="eyebrow">{{t "common.nav.settings"}}</p>
+<h1>{{t "users.title"}}</h1>
+{{template "settings-tabs" "users"}}
+{{- template "summary" .Problems}}
+{{- if .Done}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "deleted"}}{{t "users.done.deleted"}}{{else}}{{t "users.done.password"}}{{end}}</p>
+</div>
+{{- end}}
+{{- if not .Error.IsZero}}
+<div class="message message--error" id="users-refusal" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+</div>
+{{- end}}
+<p>{{t "users.intro"}}</p>
+
+<section aria-labelledby="users-heading">
+  <h2 id="users-heading">{{t "users.list.heading"}}</h2>
+  <ul class="token-list" role="list" id="user-list">
+    {{- range .Users}}
+    <li id="user-{{.ID}}" class="token-card">
+      <h3 class="token-card__title"><span class="ident">{{.Username}}</span>{{if .Me}} <span class="state">{{t "users.you"}}</span>{{end}}</h3>
+      <dl class="facts facts--inline">
+        <div><dt>{{t "users.fact.kind"}}</dt><dd>{{msg .KindWord}}</dd></div>
+        <div><dt>{{t "users.fact.created"}}</dt><dd><time datetime="{{isoTime .Created}}">{{day .Created}}</time></dd></div>
+      </dl>
+      {{- if not .Me}}
+      <div class="actions">
+        <a href="{{.DeletePath}}" class="button button--risky" id="act-user-delete-{{.ID}}" aria-label="{{t "users.delete.name" "name" .Username}}">{{t "users.delete"}}</a>
+      </div>
+      {{- end}}
+    </li>
+    {{- end}}
+  </ul>
+</section>
+
+<section aria-labelledby="password-heading">
+  <h2 id="password-heading">{{t "users.password.heading"}}</h2>
+  {{- if eq .MyKind "password"}}
+  <form method="post" action="{{.PasswordPath}}" class="panel" novalidate>
+    {{template "required-note"}}
+    <div class="field">
+      <label for="password-current" class="required">{{t "users.password.current"}}</label>
+      <input id="password-current" name="current" type="password" required autocomplete="current-password"
+        {{- if not .Form.CurrentError.IsZero}} aria-invalid="true" aria-describedby="password-current-error"{{end}}>
+      {{- if not .Form.CurrentError.IsZero}}
+      <p class="error" id="password-current-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.CurrentError}}</p>
+      {{- end}}
+    </div>
+    <div class="field">
+      <label for="password-new" class="required">{{t "users.password.new"}}</label>
+      <p class="hint" id="password-new-hint">{{t "users.password.new.hint" "count" .MinLength}}</p>
+      <input id="password-new" name="password" type="password" required autocomplete="new-password" minlength="{{.MinLength}}"
+        {{- if not .Form.NewError.IsZero}} aria-invalid="true"{{end}} aria-describedby="password-new-hint{{if not .Form.NewError.IsZero}} password-new-error{{end}}">
+      {{- if not .Form.NewError.IsZero}}
+      <p class="error" id="password-new-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.NewError}}</p>
+      {{- end}}
+    </div>
+    <div class="field">
+      <label for="password-confirm" class="required">{{t "users.password.confirm"}}</label>
+      <input id="password-confirm" name="confirm" type="password" required autocomplete="new-password"
+        {{- if not .Form.ConfirmError.IsZero}} aria-invalid="true" aria-describedby="password-confirm-error"{{end}}>
+      {{- if not .Form.ConfirmError.IsZero}}
+      <p class="error" id="password-confirm-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.ConfirmError}}</p>
+      {{- end}}
+    </div>
+    <p class="hint" id="password-sessions">{{t "users.password.sessions"}}</p>
+    <div class="actions">
+      <button type="submit" class="button button--primary" id="act-password">{{t "users.password.button"}}</button>
+    </div>
+  </form>
+  {{- else if eq .MyKind "oidc"}}
+  <p id="password-managed">{{t "users.password.managed.oidc"}}</p>
+  {{- else}}
+  <p id="password-managed">{{t "users.password.managed.proxy"}}</p>
+  {{- end}}
+</section>
+{{- end}}
+{{- end}}
