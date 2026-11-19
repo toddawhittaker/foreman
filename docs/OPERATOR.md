@@ -1254,15 +1254,16 @@ docker exec -i <container> foreman reset-password <username> < new-password.txt
 
 ### Audit log
 
-The Audit log tab lists what was done, newest first, 50 entries a page.
-Each entry shows the time (in your time zone), the user, the name of the
+The Audit log tab lists what was done, newest first, in a table. It shows
+50 entries a page by default; **Entries per page** offers 25, 50, 100 or
+200. Each entry shows the time (in your time zone), the user, the name of the
 API token as a badge when an assistant did it, the action in words, the
 world and a detail. The log never holds a secret.
 
 - Use **User**, **Action** and **World**, then choose **Filter**, to narrow
   the list. The menus list what the log holds. **Clear filters** shows
-  everything again. **Older entries** at the foot gives the next page and
-  keeps your filters. An entry for a deleted world shows the world's id and
+  everything again. **Older entries** and **Newer entries** at the foot move
+  between pages and keep your filters and the page size. An entry for a deleted world shows the world's id and
   says it is deleted.
 - Foreman keeps entries for 365 days by default. Set the number of days on
   the General tab (7 to 3650). Once an hour Foreman deletes entries older
