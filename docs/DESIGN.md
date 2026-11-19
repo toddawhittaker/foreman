@@ -647,8 +647,7 @@ frame (7.4).
   preview (8.6).
 - **Sub-navigation.** The tabs' look, under the page's `h1`, with a 1 px
   `line` under the row: the Server view has Overview, Console and Chat
-  (8.14); Foreman's own settings pages have the factorio.com account,
-  Restart schedule and Notifications (8.15); a world has Overview, Saves,
+  (8.14); Foreman's own settings pages have eight tabs (8.15); a world has Overview, Saves,
   Snapshots, Mods and Game settings. Each is a `nav` with its own name
   ("Server pages", "World pages") holding a list of links; the current
   page's link has `aria-current="page"` and is weight 600. On a wide
@@ -659,7 +658,11 @@ frame (7.4).
   in which the last two cells are each half the width, so no tab sits
   alone). Each cell has its own 1 px `line` underneath, 4 px apart from its
   neighbour's, and the current cell's `selected` underline covers exactly
-  that cell; no rule runs across the whole width. The words are
+  that cell; no rule runs across the whole width. Foreman's settings tabs
+  (`subnav--settings`), eight in all, are the exception to the counts above:
+  below 40rem they are an even grid of two columns, with 44 px cells and
+  words that wrap; from 40rem the row wraps onto more lines. It never
+  scrolls sideways and never cuts a tab off, in any language. The words are
   `--text-sm`, weight 600, centred, and wrap inside their cell (`--text-xs`
   below 23rem). On Game settings the rail of section links is hidden on a
   phone and a "Jump to section" disclosure (`details.disclosure`) under the
@@ -1759,6 +1762,14 @@ a link in `heading` colour that is underlined only under the pointer. The
 active world's row has a 3px leading edge in `selected` that reaches the
 card's edge, and takes the server's state colour while the badge shows
 (`ok`, `warn` or `danger`, as the Server plate's rule does).
+
+Archived worlds (SPEC 5.9) are not in this list. They sit in a closed
+`details.disclosure` at its foot, "Archived worlds (n)", whose rows share
+the list's `world-facts` and use `h2` headings with an "Archived" badge.
+When every world is archived, the list's place says so and keeps the upload
+link. A world's page shows the badge and an Unarchive button, and the
+other worlds' pages an Archive row. The switch pickers leave archived
+worlds out.
 
 ### 8.3 Tables (saves, snapshots, players)
 
@@ -3374,14 +3385,16 @@ with the other tab words.
 
 ### 8.15 Foreman settings: the restart schedule (SPEC 7.12, Epic 9)
 
-Foreman has three pages that belong to Foreman, not a world: the
-factorio.com account (8.11), the restart schedule, and notifications
-(8.16). The main navigation's Settings tab (6) is their one home: it
-opens the restart schedule, the page most used, and is marked current on
-all three and the pages under them. Each of the three carries a
-sub-navigation under its `h1` (6, "Sub-navigation"), named "Foreman
-settings", with the same three links in that order, so moving between
-them is one click, and reaching any of them from any page is two at most.
+Foreman has eight pages that belong to Foreman, not a world, as tabs of
+one sub-navigation (6, "Sub-navigation"), named "Foreman settings", under
+each page's `h1`. In order: the factorio.com account (8.11), General,
+Restart schedule, Notifications (8.16), Public mods (8.20), API tokens
+(8.21), Users and Audit log. The main navigation's Settings tab (6) is
+their one home and is marked current on all of them and the pages under
+them. Moving between them is one click, and reaching any of them from any
+page is two at most. A page that sits under a tab, such as the General
+confirm page or a user's delete page, marks that tab `aria-current="true"`,
+not `"page"`, since it is the way to the tab but not the tab itself.
 
 **The schedule page** (`GET /settings/restart-schedule`,
 `schedule.html`). One schedule restarts whichever world is active
@@ -3491,6 +3504,46 @@ ways, none of them a new component:
 Strings: the page, its fields and errors go in `schedule`; the Server
 page's fact, notes and the operation heading in `server`; the menu and
 sub-navigation link words in `common`.
+
+**The General tab** (`GET /settings/general`, `generalsettings.html`, SPEC
+13.1). One form, `.setting-rows`, with one section per setting group, each
+a heading and a hint beside its number fields: snapshot retention, the
+default stop countdown, audit retention, and the save and mod upload
+limits. A hint under each field states the range, and a line at the top
+says each is "set here", since none has an environment form (17.16). Each
+field is a text input with `inputmode="numeric"`, never a number spinner. A
+bad value refuses the whole form, with the errors in the summary and beside
+the fields (7.2). A save that lowers retention below what worlds hold shows
+the **confirm page** (7.4, `generalconfirm.html`) first: it lists the
+snapshot and world counts, a line saying removed snapshots cannot be
+restored and that raising the figure before the next automatic snapshot
+keeps them, and each change from old to new, with one danger button and a
+Cancel link. After any save, the Done message repeats the count when it
+is above zero.
+
+**The Users tab** (`GET /settings/users`, `users.html`). The list leads, as
+cards in `.token-list` like the API tokens (8.21), never a table: each
+card holds the name (with "you" on your own), how the user signs in
+(password, proxy or single sign-on) and the day they were created, and a
+Delete button on every card but your own. Below it, "Your password" is a
+form of the current password, the new one and its confirmation, for a user
+with a password only. A proxy or single sign-on user sees a sentence
+saying their sign-in is managed there, and no form. Delete leads to a
+**confirm page** (7.4) that names the user, lists what will happen (signed
+out, tokens deleted with a count, audit entries kept), shows a warning
+message for a proxy or single sign-on user (they come back unless removed
+at the proxy or provider), and has one danger button and no typed name.
+
+**The Audit log tab** (`GET /settings/audit-log`, `auditlog.html`). A
+filter form leads: three selects (user, action, world), each with an
+"all" first choice, one Apply button and, when a filter is on, a "Clear"
+link. It is a plain GET form, so a filtered view can be bookmarked. The
+entries follow as an `ol.audit-list`, never a table: each entry's heading
+is the action in words, then a `dl` of time, user, token name as a badge,
+and world, then the detail in monospace. A world that still exists is a
+link, with its current name; a deleted one shows its id and the word
+"deleted". At the foot an "Older entries" button carries the filters. An
+empty log, and an empty filtered view, each say so.
 
 ### 8.16 Notifications (SPEC 8.10 to 8.12, Epic 9)
 
@@ -3759,6 +3812,10 @@ button that returns to the same page.
 - Errors say what happened and what to do next, in that order.
 - Never show a secret: no RCON password, token or game password appears
   in any message, field value or log view (SPEC 14.8).
+- A refused single sign-on says so in its heading ("Single sign-on did not
+  work") and offers the next step as a button: "Try single sign-on again"
+  when trying again can help, "Back to sign in" when it cannot. It never
+  repeats anything from the callback address (SPEC 12.7, 14.14).
 - Numbers carry units ("2.1 GB", "60 seconds"), and times say whose zone
   when it matters (scheduled restarts).
 - Times (SPEC 17.11): the server writes UTC in a `time` element with a

@@ -59,7 +59,11 @@ mechanism is open.
 3.1. **One container.** Foreman ships as one container image, published
 with an exact version tag. It needs no other service to run. The
 image is published to GHCR (GitHub's container registry) as
-`ghcr.io/toddawhittaker/foreman`. (P0)
+`ghcr.io/toddawhittaker/foreman`. The image is built for `linux/amd64` and
+`linux/arm64`, on the build machine's own architecture and cross-compiled,
+so no emulation is needed. A release workflow builds both and, until Epic
+11b (18.11b), publishes nothing. The game image for arm64 is experimental
+upstream, so real-game tests run on amd64 only. (P0)
 
 3.2. **Configuration.** Everything an operator sets at install comes
 from environment variables. Any secret value can instead come from a file
@@ -78,13 +82,17 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_GAME_NETWORK` | none | The Docker network the game joins (4.4). Required when Foreman runs in a container, or when `FOREMAN_GAME_NETWORK_CONTAINER` is set |
 | `FOREMAN_GAME_NETWORK_CONTAINER` | none | A VPN sidecar container whose network the game shares (4.13). Optional. Needs `FOREMAN_GAME_NETWORK` |
 | `FOREMAN_LISTEN` | `:8080` | The address Foreman listens on |
-| `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7) |
+| `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7). Required when `oidc` is on, because the identity provider sends people back to it (12.7) |
 | `FOREMAN_PUBLIC_ADDRESS` | none | The host name or IP address players type into Factorio, with an optional port (34197 when none is given). The Server page shows it as a join line (7.1). When it is blank the line is hidden: Foreman never guesses the address |
-| `FOREMAN_AUTH_METHODS` | `local` | A comma-separated list of `local` and `headers`. Empty means `local`. `oidc` joins the list with OIDC (12.7) |
+| `FOREMAN_AUTH_METHODS` | `local` | A comma-separated list of `local`, `headers` and `oidc`. Empty means `local` |
 | `FOREMAN_AUTH_USER_HEADER` | none | Header that names the user. Required when `headers` is on (12.5) |
 | `FOREMAN_AUTH_GROUPS_HEADER` | none | Header that lists the user's groups. Required when `headers` is on (12.5) |
 | `FOREMAN_AUTH_REQUIRED_GROUP` | none | Group a user must belong to. Required when `headers` is on (12.5) |
 | `FOREMAN_TRUSTED_PROXIES` | none | Address ranges whose headers are honoured. Required when `headers` is on (12.6) |
+| `FOREMAN_OIDC_ISSUER` | none | The identity provider's issuer address, which must start with `https://`. Required when `oidc` is on (12.7) |
+| `FOREMAN_OIDC_CLIENT_ID` | none | The client ID the provider gave Foreman. Required when `oidc` is on |
+| `FOREMAN_OIDC_CLIENT_SECRET` | none | The client secret. Required when `oidc` is on. It may use its `_FILE` form |
+| `FOREMAN_OIDC_REQUIRED_GROUP` | none | Group a user must belong to. Required when `oidc` is on: without it, anyone the provider signs in would become an admin (12.7) |
 | `FOREMAN_SESSION_IDLE` | `168h` | Idle time before a session ends, as a Go duration (12.8) |
 | `FOREMAN_FACTORIO_USERNAME`, `FOREMAN_FACTORIO_TOKEN` | none | The factorio.com account that downloads mods (9.11). Set both or neither: one alone is a startup error. Either may use its `_FILE` form |
 | `FOREMAN_SECRET_KEY` | none | At least 32 characters; a shorter key is a startup error. It seals secrets an admin enters in the UI (9.11). Without it, an account cannot be stored in the UI. Changing it makes stored secrets unreadable, so they must be entered again. It may use its `_FILE` form |
@@ -906,6 +914,32 @@ keep the save. (P1)
 5.9. **Archive** a world: it is hidden from the main list and cannot be
 started until unarchived. Its files stay where they are. (P1)
 
+- **What changes.** Only the world's `world.json` gains `"archived": true`
+  (left out when false; the format version stays 1). No snapshot is taken,
+  as for a rename (5.8), since nothing is deleted or overwritten. Archive
+  and unarchive are one click each, and are recorded as `world-archive` and
+  `world-unarchive` (12.9).
+- **The active world cannot be archived.** The refusal is made inside the
+  world lock that a switch also holds, so a world is never archived and
+  active at once.
+- **What is refused.** Start, restart (including a scheduled one) and switch
+  refuse an archived world, through the pages, MCP and the scheduler alike.
+  So does every path that relaunches a game (restore, a mod change, a
+  version update, a settings save). The refusal is recorded like any other
+  start, restart or switch refusal. A scheduled restart of a stopped
+  archived world does nothing, as for any stopped game (7.12).
+- **Where it shows.** The Worlds list leaves archived worlds out of its main
+  list and shows them in a closed "Archived worlds (n)" foldout at its foot.
+  Switch pickers leave them out. An archived world's page shows an
+  "Archived" badge and an Unarchive button, and the other worlds' pages
+  have an Archive row. When every world is archived the list says so and
+  keeps the upload link.
+- **Snapshots.** An archived world keeps its snapshots and still counts in
+  the retention figures (6.6). Restoring keeps its archive state (6.5).
+- **MCP.** `list_worlds` includes archived worlds, with `archived: true`
+  (21.4). `archive_world` and `unarchive_world` take `world_id` and are one
+  call each (21.7).
+
 5.10. **Delete** a world. Delete always offers a final snapshot first,
 defaulting to yes, and asks the admin to type the world's name. The active
 world cannot be deleted. (P0)
@@ -1030,11 +1064,26 @@ staging folder, renaming the live folder aside, and renaming the staged
 folder into place, so the path `worlds/<world-id>` never holds a half
 restored world. If Foreman stops partway, startup recovery finishes or
 reverses the swap. Before it writes anything, restore checks that every
-file still matches the snapshot (6.7). (P0)
+file still matches the snapshot (6.7). A restore of a live world keeps
+that world's current archive state (5.9), whatever the snapshot's
+`world.json` says. A deleted world has no current state, so one restored
+from its final snapshot comes back unarchived, and an archived world can
+never become active through a restore. (P0)
 
-6.6. **Retention** is an app setting: keep the newest *n* automatic
-snapshots per world (default 10). Manual snapshots and the final snapshot
-of a deleted world are never removed automatically. Foreman shows what
+6.6. **Retention** is an app setting, set on the General tab (13.1): keep
+the newest *n* automatic snapshots per world, from 1 to 100 (default 10).
+Manual snapshots and the final snapshot of a deleted world are never
+removed automatically. Saving a lower figure deletes nothing at once. Each
+world drops its extra automatic snapshots at its own next automatic
+snapshot, as it always has. The General tab and the MCP preview (21.8) say
+how many automatic snapshots, across how many worlds, that will remove.
+The count includes archived worlds (5.9), which also take automatic
+snapshots, and it is made by the same function that prunes, so the two
+cannot disagree. When a save would remove snapshots, the General tab first
+shows a confirmation page with the count. It says that removed snapshots
+cannot be restored and that raising the figure before the next automatic
+snapshot keeps them (17.5). A save that would remove none goes ahead
+at once. Foreman shows what
 snapshots cost as "Snapshots add X": the space held only by snapshot files
 that no world also holds, which deleting them would free. A save or mod
 zip a world holds by hard link (6.8) adds nothing, and a file shared by
@@ -1235,8 +1284,10 @@ then says the mods could not be checked. (P0)
 7.5. **Stop** is graceful by default (section 7.6). (P0)
 
 7.6. **A graceful stop**: if players are online, warn them in game with a
-countdown (default 60 seconds; each stop or restart asks for its own, from
-0 to 600 seconds, where 0 means no warning); run `/server-save` over RCON
+countdown (default 60 seconds, an app setting on the General tab (13.1);
+each stop or restart asks for its own, from 0 to 600 seconds, where 0
+means no warning, and an MCP stop that gives none uses the setting;
+a scheduled restart keeps its fixed countdown, 7.12); run `/server-save` over RCON
 and wait for it to finish; then stop the container with Docker's stop
 (SIGTERM, with a 120-second timeout). The warnings are chat lines from the
 server, sent at the start of the countdown and again at 30 and 10 seconds
@@ -2326,8 +2377,75 @@ says so in plain words without any header value. Existing sessions and
 local password sign-in are unaffected. The monitor refreshes the ranges.
 (P0)
 
-12.7. **OpenID Connect**: discovery URL, client ID and client secret
-(env or `_FILE`), and an optional required group claim. (P1)
+12.7. **OpenID Connect** (OIDC), for any provider that can put a username
+and a list of groups in its ID token. (P1)
+
+- **Settings (3.2).** `oidc` in `FOREMAN_AUTH_METHODS` needs
+  `FOREMAN_OIDC_ISSUER`, `FOREMAN_OIDC_CLIENT_ID`,
+  `FOREMAN_OIDC_CLIENT_SECRET` (or `_FILE`), `FOREMAN_OIDC_REQUIRED_GROUP`
+  and `FOREMAN_PUBLIC_URL`. A missing value is a startup error, reported
+  with the others. The required group is mandatory for the reason 12.5
+  gives. The issuer must be `https`; an `http` issuer is a startup error,
+  so the client secret never crosses the network in the clear. No message
+  quotes the secret (14.8). (Todd's rulings, 2026-11-18.)
+- **The flow.** The authorization code flow with PKCE (S256), a state and a
+  nonce. `GET /signin/oidc` starts it and `GET /signin/oidc/callback`
+  ends it; the redirect address is `FOREMAN_PUBLIC_URL` plus the callback
+  path. The scopes asked for are `openid profile email groups`. The
+  username comes from the claim `preferred_username` and the groups from
+  `groups`. These claim names are fixed, not settings. Foreman reads only
+  the ID token: no userinfo call and no refresh. It checks the token's
+  signature, issuer, audience, expiry and nonce, and that the required group
+  is in `groups`.
+- **Pending sign-ins** are kept in memory by state. Each lasts 10 minutes,
+  works once (a failed callback uses it up too), and at most 1000 are held;
+  a new one drops the oldest. A cookie, `foreman_oidc`, holds the state in
+  the browser that started the sign-in. It is `HttpOnly`, `SameSite=Lax`,
+  `Secure` as in 12.8, and `Path=/signin/oidc`. A callback whose cookie is
+  missing or does not match is refused and cancels no one's sign-in. The
+  `next` address passes the same check as after a local sign-in (14.17).
+- **Limits (12.11).** A failed callback counts against the client's
+  address, but only once it names a sign-in this browser started, so a
+  hostile page that makes a browser load the callback cannot lock the
+  address out. A success gives its count back. An address may start 20
+  sign-ins a minute and gets a 429 page beyond that. A refused sign-in is
+  logged as in 14.14.
+- **Calls to the provider (14.10).** Foreman fetches the provider's
+  discovery document the first time someone signs in, never at startup,
+  keeps it once it works, and tries again at the next sign-in after a
+  failure. While one fetch is under way, and for 10 seconds after one
+  fails, a sign-in gets the "unavailable" page (503) at once. A discovery
+  document that names an authorize, token or keys address that is not
+  `https` is refused.
+- **Matching a user.** A user is found by the provider's issuer and the
+  `sub` claim, never by name alone, so a rename at the provider keeps the
+  account. On first sight, Foreman links to an existing user of the same
+  name only when that user has no password and no link, which means a user
+  made by trusted headers. The link is made once and cannot move. Any other
+  name clash refuses the sign-in with a page that says why (a 403 page).
+  Otherwise the user is created, as the first admin when there are no users
+  yet, and `user-create` is recorded with the detail `oidc` (12.9).
+  **Accepted risk (Todd's ruling, 2026-11-18; ADR 0027):** until a
+  headers-made user has signed in through OIDC once, anyone in the group
+  who may rename themselves at the provider could take that name and the
+  account. The operator guide tells operators to turn off self-service
+  renaming at the provider.
+- **After sign-in.** A normal session starts (12.8). A user outside the
+  required group gets a 403 page. Foreman checks the group only at
+  sign-in: removing someone from the group stops their next sign-in, not
+  a session already open. Delete the user (12.12) to end it now. Signing
+  out ends only Foreman's session. Two tabs that start sign-in at once
+  overwrite each other's cookie, so the first tab's callback fails safe
+  with a page that offers "Try single sign-on again".
+- **The pages.** With `oidc` alone, the sign-in page is one "Sign in with
+  single sign-on" button, there is no setup page and no password form
+  (12.3), and the signed-out page offers the same button. With `local` too,
+  the page shows both, the single sign-on button first and the only primary
+  button. Each refusal page says what happened and offers a button: "Try
+  single sign-on again" for a failure or an unavailable provider, "Back to
+  sign in" for the others.
+- **With trusted headers (12.5)** the proxy still comes first: a request it
+  signs in never goes to the provider.
 
 12.8. Sessions are server-side, expire after a configurable idle time,
 and end on sign-out. The default idle time is 7 days
@@ -2339,7 +2457,7 @@ who is signed in, and signing out of Foreman ends nothing for them. (P0)
 12.9. **Audit log**: who did what and when, for start, stop, restart,
 switch, snapshot and restore, generate and clone, mod changes, settings
 changes, user changes, and every RCON command. Viewable and filterable
-in the UI. Never holds a secret. Each entry holds the time, the user
+in the UI (below). Never holds a secret. Each entry holds the time, the user
 (the name stays on the entry after the user is deleted), the action, the
 world, a detail and, for anything done through an API token, the token's
 name (12.10). Server control records start, stop, restart, forced stop,
@@ -2361,10 +2479,34 @@ whitelist switch are recorded before they take effect and are refused if
 the record cannot be written. Deleting a world records `world-delete`
 with the world's name and whether a final snapshot was taken; it too is
 recorded before the delete, which is refused if the record cannot be
-written. (Todd's ruling, 2026-11-17.) A schedule or webhook change is recorded
+written. (Todd's ruling, 2026-11-17.) Deleting a user records `user-delete`
+the same way (12.12). A schedule or webhook change is recorded
 after it, and a failure to record it is only logged. (P1, except RCON
 commands, which are recorded from the first version that has a console:
 P0)
+
+- **The actions Epic 11a adds.** `world-archive` and `world-unarchive`
+  (5.9). `user-create`, with the detail `setup`, `headers` or `oidc`
+  (12.3, 12.5, 12.7). `user-delete`, with the detail
+  `<name>: requested; API tokens: <n>`, recorded before the delete.
+  `password-change`, with no detail (12.12). A change on the General tab
+  (13.1) records `snapshot-retention-set`, `stop-countdown-set`,
+  `audit-retention-set`, `save-upload-limit-set` or `mod-upload-limit-set`,
+  with the detail "from A to B" (nothing is recorded for a value that did
+  not change). An action through MCP carries the token's name as always.
+- **The viewer.** The audit log is a Settings tab, "Audit log", at
+  `/settings/audit-log`. It lists entries newest first, 50 a page, with an
+  "Older entries" link that keeps the filters. It filters by user, action
+  and world, each an exact match picked from the values the log holds. Each
+  entry shows its time in the viewer's zone (17.11), the user, the token's
+  name as a badge, the action in words (or as recorded when no words
+  exist), the world (its current name as a link, or its id marked deleted)
+  and the detail, escaped. Console arguments are masked when recorded, so
+  they stay masked. (Todd's rulings, 2026-11-18.) (P1)
+- **Retention.** The log keeps 365 days by default. The setting takes 7 to
+  3650 days (13.1). An hourly sweep deletes older entries. The sweep is not
+  recorded; a change to the setting is. If the setting cannot be read, or
+  holds a value out of range, the sweep deletes nothing.
 
 12.10. **API tokens.** A personal API token lets a program, such as an
 AI assistant, act as the user who made it. Only the MCP endpoint accepts
@@ -2438,14 +2580,76 @@ restarts. Because the limit is per username, anyone who can reach the
 sign-in page can keep a known username locked out by failing on purpose;
 the per-address limit does not prevent this. (P0)
 
+12.12. **Users.** The Users tab (`/settings/users`) lists every user, oldest
+first, with how they sign in (password, proxy or single sign-on) and when
+they were created. (P1)
+
+- **Deleting.** Any user may delete another user, from a confirm page
+  (`/settings/users/{id}/delete`) that names the user and how many API
+  tokens will go with them, and has one danger button and no typed name,
+  since nothing on disk is lost. Deleting yourself is refused, so the last
+  user can never be deleted and nobody locks everyone out through the UI.
+  The delete also requires that the deleting user still exists, so two
+  users cannot delete each other. `user-delete` is recorded before the
+  delete, and the delete is refused if the record cannot be written. The
+  user's sessions and API tokens go with them (12.10): their next request
+  is signed out, their live streams end at the next heartbeat, and
+  `/mcp` answers 401 for their tokens. Old audit entries keep the name
+  (12.9). The result message is the same whoever was deleted.
+- **A deleted proxy or single sign-on user** is created again at their next
+  request while the proxy or the provider still vouches for them. There is
+  no block list. The confirm page says to remove them at the proxy or the
+  provider to keep them out. (Todd's ruling, 2026-11-18.)
+- **Changing a password.** Only a user with a password may change it, and
+  only their own: the current password, the new one twice, at least 12
+  characters (12.4), hashed as 12.4 says. A wrong current password counts in
+  the sign-in limit (12.11), and once the limit is reached even the right
+  password is refused. The new hash and the end of the user's sessions are
+  one transaction. A change ends every session of the user and starts a
+  fresh one for the browser that made it, and is recorded as
+  `password-change` with no detail.
+- **Proxy and single sign-on users** have no password and see no form to set
+  one, only a line saying their sign-in is managed by the proxy or the
+  provider. A posted form from them is refused, because a password would let
+  them past the proxy.
+- **No reset in the UI.** A forgotten password is reset on the host with
+  `foreman reset-password <username>`, run with `docker exec -i`. It reads
+  the first line of standard input as the new password (at least 12
+  characters), never prints it, ends that user's sessions and refuses a
+  user without a password. It is recorded as `password-change` by `system`,
+  with the user's name as the detail. (Todd's ruling, 2026-11-18.)
+- Users are not in MCP (21.7).
+
 ## 13. Foreman's own settings
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
-default stop countdown, scheduled restarts, notifications, the public
+default stop countdown, audit retention and the two upload limits (the
+General tab, below), scheduled restarts, notifications, the public
 mods page (9.16), MCP access (21.2), and portal credentials when not set
 by environment. Each shows where its value comes from (environment or
 UI), and environment values cannot be changed in the UI. (P0 for those
 whose features are P0)
+
+Foreman's settings are eight tabs under Settings, in this order: the
+factorio.com account, General, Restart schedule, Notifications, Public
+mods, API tokens, Users (12.12) and Audit log (12.9).
+
+**The General tab** (`/settings/general`) holds five settings. None has an
+environment form, so each says "set here". A bad value refuses the whole
+form and stores nothing. (Todd's rulings, 2026-11-18.)
+
+| Setting | Range | Default | Audit action |
+|---|---|---|---|
+| Snapshot retention (6.6) | 1 to 100 | 10 | `snapshot-retention-set` |
+| Default stop countdown (7.6), seconds | 0 to 600 | 60 | `stop-countdown-set` |
+| Audit retention (12.9), days | 7 to 3650 | 365 | `audit-retention-set` |
+| Save upload limit (14.6), MB | 100 to 8192 | 1024 | `save-upload-limit-set` |
+| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 200 | `mod-upload-limit-set` |
+
+A scheduled restart keeps its fixed countdown (7.12). The upload limits are
+in whole MB, meaning MiB, as the pages say them. A stored value that is
+missing, unreadable or out of range gives the default. These settings are
+also read and changed through MCP (21.7, 21.8). (P1)
 
 ## 14. Security
 
@@ -2463,6 +2667,7 @@ reviews against.
 | Game container | Factorio and its RCON port | Nothing; its logs and files are input |
 | VPN sidecar | An optional container the operator runs, whose network the game shares (4.13) | Nothing; Foreman did not create it (14.16) |
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
+| Identity provider | The OIDC provider an operator configured (12.7) | Only the ID tokens it signs for this client; nothing else it sends |
 | Internet | Mod portal, image registry and its tag list, release list, webhook targets | Nothing |
 | AI client | A program, usually an AI assistant, calling the MCP endpoint with an API token (section 21) | Only its token's scope; steerable by text it reads (14.12) |
 | Player | Anyone who can reach the public mods page (9.16) | Nothing; may be a script |
@@ -2575,8 +2780,9 @@ to stay inside the intended directory before use. Symlinks inside a world
 are not followed out of it. Uploaded zips are checked entry by entry and
 refused if any entry would land outside its target. (P0)
 
-14.6. **Uploads** have size limits (an app setting, default 1 GB for a
-save, 200 MB for a mod) and are written to a temporary file and checked
+14.6. **Uploads** have size limits (app settings on the General tab, 13.1:
+a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 200 MB;
+each a whole number of MB, meaning MiB) and are written to a temporary file and checked
 before they replace anything. Pasted text has limits too: a map exchange
 string is at most 64 KB and inflates to at most 1 MB (5.6), and a settings
 or map-gen JSON text, including the raw editors' and the files written to a
@@ -2608,7 +2814,12 @@ string setting value is at most 10,000 bytes. A mod or `mod-settings.dat` upload
 staging file at the top of the worlds folder, and a staged mod nobody
 applied is removed an hour later. A favorite file is at most 8 MiB, is read in
 memory and is checked in full before anything is written (5.12). A save whose
-name ends in `.tmp.zip` is refused. **Every upload uses one drop zone**
+name ends in `.tmp.zip` is refused. The upload limits are read for each
+request, so a change applies to the next upload, and the drop zones, hints
+and refusals show the current figure. The limits of the `mod-settings.dat`
+file, a favorite file and what a mod zip may unpack to stay fixed. A mod zip
+is never opened above 2 GB, the setting's largest value; the setting is the
+real limit. **Every upload uses one drop zone**
 (DESIGN 7.10): its checks of type, count and size only answer sooner, and the
 server checks every upload as before. An upload happens in place when its
 result is used on that page; otherwise a link marked with a chevron goes to
@@ -2673,7 +2884,8 @@ and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
 4 mod detail requests run at once. A download link is followed only when it
 starts with `/download/` on that base, and its `file_name` must equal
 `<name>_<version>.zip`. A download takes at most 5 minutes, reads at most
-200 MB, and follows at most 2 redirects, each only to an `https` address
+the mod upload limit (14.6), so a mod that can be uploaded can also be
+downloaded again, and follows at most 2 redirects, each only to an `https` address
 whose host ends in `.factorio.com`. The real portal redirects to
 `dl-mod.factorio.com`. The redirect carries no `Referer` header, because Go
 would copy the token-bearing address into it. An error message never holds
@@ -2681,7 +2893,11 @@ the request's query string, because the token rides in it (14.8).
 A mod plan request names at most 500 mods and ticks at most 500 optional
 ones, so one request cannot start unbounded portal calls. A plan page
 opened by a request marked cross-site or same-site in `Sec-Fetch-Site` is
-refused with a page that offers "Try again", and asks the portal nothing. (P0)
+refused with a page that offers "Try again", and asks the portal nothing.
+The OIDC provider (12.7) is the one other address Foreman calls, and only
+when someone signs in. Its calls take at most 10 seconds, follow no
+redirects, and read at most 64 KiB (the discovery document) or 1 MiB (the
+signing keys and the token answer). Its address must be `https`. (P0)
 
 14.11. **Least privilege.** Foreman's container runs as non-root with a
 read-only root filesystem except its data directory and a temporary
@@ -2711,7 +2927,9 @@ and trick a click. (P0)
 
 14.14. **Sign-in logs name the client, never the username.** A failed or
 refused sign-in is logged with the client address and no username,
-because people sometimes type a password into the username field. (P0)
+because people sometimes type a password into the username field. A
+refused single sign-on (12.7) is logged with the address and a fixed
+reason, never a claim, a code, a state or a token. (P0)
 
 14.15. (Removed: adopted mode was dropped; ADR 0005.)
 
@@ -2873,7 +3091,11 @@ Light / Dark choice in the user menu, remembered per browser. (P1)
 crash-looping each have a word. (P0)
 
 17.5. Destructive actions say exactly what they will do and which snapshot
-will be taken first, and need a confirmation. (P0)
+will be taken first, and need a confirmation. Lowering snapshot retention
+(6.6) shows a confirmation page whenever the change would remove automatic
+snapshots, with how many and in how many worlds, counting every world,
+archived ones too. No snapshot is taken, since removing snapshots is its
+purpose. (P0)
 
 17.6. A design document, docs/DESIGN.md, sets type, colour tokens,
 spacing and components before the first UI epic. (P0)
@@ -3114,10 +3336,28 @@ another token, tool or arguments, after 5 minutes, and on a second use.
 Restore, a mod change and a game version update through MCP take the
 same snapshots as the UI, checked against a real game container.
 
-18.11. **Epic 11: Release.** OIDC (12.7), the full audit log (12.9),
-archive (5.9), Foreman's settings page (13.1), the operator guide with the
-socket proxy example (14.2), and the first public image
-on GHCR (3.1).
+18.11. **Epic 11** is two epics, 11a and 11b, split on 2026-11-18. The
+licence is MIT.
+
+18.11a. **Epic 11a: Sign-in, audit log, archive, settings and users.**
+OIDC (12.7, 3.2, 14.10), the audit log viewer, filters and retention
+(12.9), archive (5.9, 21.7), the General settings tab (13.1, 6.6, 7.6,
+14.6), the Users tab (12.12), the operator guide with the socket proxy
+example (14.2), a multi-platform image and a build-only release workflow
+(3.1). Built; see STATUS.md, Epic 11a. **Gate (on the trial deployment):**
+sign in through a real OIDC provider, where a user outside the group gets
+the 403 page and an existing header user is linked; archive a world, see
+its start refused in the UI and through MCP, and unarchive it; the audit
+tab filters by user and by world; lowering retention shows the count, the
+countdown default appears on the stop forms, and an upload over a lowered
+limit is refused; delete a second user and see that user's token stop
+working; the release workflow's dry run builds both architectures.
+
+18.11b. **Epic 11b: Release and Gate C.** Publishing: on a `v*` tag whose
+commit is on `main`, build amd64 and arm64, push
+`ghcr.io/toddawhittaker/foreman:<X.Y.Z>` with an exact version tag and no
+`latest`, and attach a GitHub artifact attestation. Gate C (19.3), on
+`1.0.0-rc.1`, then `1.0.0` on the same image digest. Not built yet.
 
 ## 19. Milestone gates
 
@@ -3134,10 +3374,10 @@ gate passes.
 19.2. **Gate B, after Epic 8: the new-user path works.** From `docker run`
 to a running Space Age server with three portal mods in under ten
 minutes, following only Foreman's own operator guide.
-Until Epic 11 publishes the image, the ten minutes start after `make
+Until Epic 11b publishes the image, the ten minutes start after `make
 image` (Todd's ruling, 2026-11-11).
 
-19.3. **Gate C, after Epic 11: v1.** Every P0 and P1 requirement is met; a
+19.3. **Gate C, after Epic 11b: v1.** Every P0 and P1 requirement is met; a
 bad mod update is undone in one click; security-reviewer finds nothing
 open in section 14; the image is published.
 
@@ -3182,7 +3422,8 @@ the action running now and the last action's result, as the Server page
 shows them; list worlds (5.4); players online (8.1); the most recent log
 lines, with secrets removed (8.6); list snapshots (6.4); list a world's
 mods and available updates (9.3). The tools are `server_status`,
-`list_worlds`, `list_players`, `recent_log` (the newest 200 lines),
+`list_worlds` (which includes archived worlds, with `archived: true`, 5.9),
+`list_players`, `recent_log` (the newest 200 lines),
 `list_snapshots` and `list_mods`. `world_id` is optional on these and
 means the active world when left out. Player and portal text in any
 result is marked untrusted (14.12). (P1)
@@ -3213,8 +3454,8 @@ limit, and is audited as sent. (Todd's ruling, 2026-11-17.) (P1)
 21.7. **Admin tools** (admin only): everything an admin can do in the UI
 in these areas:
 
-- worlds: rename, generate (without the preview picture), clone, delete,
-  favorites (5);
+- worlds: rename, archive and unarchive, generate (without the preview
+  picture), clone, delete, favorites (5);
 - which save loads (7.11);
 - snapshots: restore and delete (6);
 - forced stop (7.7) and the game image download;
@@ -3227,7 +3468,8 @@ in these areas:
 - the public mods page (9.16);
 - the factorio.com account (9.11), write-only;
 - game versions (section 10);
-- game settings, including the autosave tidy (section 11).
+- game settings, including the autosave tidy (section 11);
+- the General settings (13.1).
 
 Not available through MCP: managing users, API tokens or MCP access;
 uploading or downloading files (saves, mod zips, `mod-settings.dat`,
@@ -3236,7 +3478,8 @@ favorite files); and map preview pictures.
 The tool names are fixed, one tool per action:
 
 - worlds, favorites and saves: `generate_world`, `clone_world`,
-  `rename_world`, `delete_world`, `list_deleted_worlds`, `list_favorites`,
+  `rename_world`, `archive_world`, `unarchive_world`, `delete_world`,
+  `list_deleted_worlds`, `list_favorites`,
   `make_favorite`, `rename_favorite`, `delete_favorite`, `list_saves`,
   `choose_save`;
 - snapshots and live operations: `restore_snapshot`, `delete_snapshots`,
@@ -3247,7 +3490,8 @@ The tool names are fixed, one tool per action:
 - game settings and versions: `get_game_settings`, `change_game_settings`,
   `set_whitelist_switch`, `list_game_versions`, `update_game_version`,
   `rollback_game_version`;
-- Foreman-wide: `foreman_settings`, `set_restart_schedule`, `add_webhook`,
+- Foreman-wide: `foreman_settings` (which reports every General tab
+  setting), `set_foreman_settings`, `set_restart_schedule`, `add_webhook`,
   `change_webhook`, `delete_webhook`, `set_factorio_account`,
   `remove_factorio_account`, `set_public_mods`.
 
@@ -3279,8 +3523,8 @@ form's fields only, not the raw editor. (Todd's rulings, 2026-11-17.)
 The two-step tools are `delete_world`, `delete_favorite`,
 `restore_snapshot`, `delete_snapshots`, `force_stop`, `kick_player`,
 `ban_player`, `run_console_command`, `change_mods`, `change_mod_settings`,
-`change_game_settings`, `update_game_version`, `rollback_game_version` and
-`delete_webhook`. Each carries `DestructiveHint: true`. The tools that
+`change_game_settings`, `update_game_version`, `rollback_game_version`,
+`delete_webhook` and `set_foreman_settings`. Each carries `DestructiveHint: true`. The tools that
 change nothing carry `ReadOnlyHint: true` instead, and every other admin
 tool sets `DestructiveHint` to `false` explicitly. A two-step tool requires `world_id` where it acts on a
 world, and its confirm call must repeat the first call's arguments. A confirm
@@ -3289,7 +3533,16 @@ it. Only a bad, used, expired or mismatched code gets the one fixed
 message (14.19). Any other refusal, such as a busy or active world or a
 page check, keeps its own message, and the code is still spent. A moved
 state is refused with a fresh preview and code. Every audit entry written
-by an admin tool carries the token's name (12.9). (P1)
+by an admin tool carries the token's name (12.9). `archive_world` and
+`unarchive_world` are one call each, since neither deletes or overwrites
+anything. `set_foreman_settings` changes any General tab setting (13.1);
+arguments left out keep their value. Its preview lists each change from old
+to new value, how many automatic snapshots across how many worlds the
+retention will remove (6.6), and how many audit entries the next hourly
+sweep deletes. The state a code stands for is the current values, so a
+confirm call is refused with a fresh preview and code if any value has
+changed since. A call that changes nothing returns no code. (Todd's
+rulings, 2026-11-18.) (P1)
 
 ## 22. Languages
 
