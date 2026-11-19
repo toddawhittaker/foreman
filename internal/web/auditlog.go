@@ -13,8 +13,22 @@ import (
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
-// auditPageSize is how many entries a page of the log shows (SPEC 12.9).
+// auditPageSizes are the page sizes the viewer offers (SPEC 12.9).
+var auditPageSizes = []int{25, 50, 100, 200}
+
+// auditPageSize is how many entries a page of the log shows unless the viewer
+// picks another (SPEC 12.9).
 const auditPageSize = 50
+
+// parseAuditSize reads the size query value. Anything but an offered size is
+// the default.
+func parseAuditSize(v string) int {
+	n, err := strconv.Atoi(v)
+	if err != nil || !slices.Contains(auditPageSizes, n) {
+		return auditPageSize
+	}
+	return n
+}
 
 // auditActionWords is the action of each audit entry in words. An action
 // not in this table is shown as it was recorded.
@@ -106,10 +120,22 @@ type AuditLogPage struct {
 	Users   []AuditOption
 	Actions []AuditOption
 	Worlds  []AuditOption
+	// Sizes are the page sizes to pick from; Size is the one in force.
+	Sizes []AuditSize
+	Size  int
 	// Filtered is true when any filter is set.
 	Filtered bool
-	// Older is the address of the next page, "" on the last one.
-	Older string
+	// Newer and Older are the addresses of the neighbouring pages, "" when
+	// there is none (the newest and the oldest page).
+	Newer, Older string
+	// ClearPath is the address with no filters, keeping the page size.
+	ClearPath string
+}
+
+// AuditSize is one choice of the page-size menu.
+type AuditSize struct {
+	Value    int
+	Selected bool
 }
 
 func (AuditLogPage) templateName() string { return "auditlog" }
@@ -158,17 +184,74 @@ func auditOptions(values []string, selected string, label func(string) AuditOpti
 	return out
 }
 
+// auditQuery is the address's query for a page: the filters and a page size
+// other than the default, plus one cursor when given.
+func auditQuery(q url.Values, size int, cursorKey, cursor string) string {
+	next := url.Values{}
+	for _, k := range []string{"user", "action", "world"} {
+		if v := q.Get(k); v != "" {
+			next.Set(k, v)
+		}
+	}
+	if size != auditPageSize {
+		next.Set("size", strconv.Itoa(size))
+	}
+	if cursorKey != "" {
+		next.Set(cursorKey, cursor)
+	}
+	if len(next) == 0 {
+		return auditLogPath()
+	}
+	return auditLogPath() + "?" + next.Encode()
+}
+
 func (s *server) handleAuditLog(w http.ResponseWriter, r *http.Request, u store.User) {
 	ctx := r.Context()
 	q := r.URL.Query()
+	size := parseAuditSize(q.Get("size"))
 	f := store.AuditFilter{
 		Username: q.Get("user"), Action: q.Get("action"), WorldID: q.Get("world"),
-		Before: parseAuditCursor(q.Get("before")), Limit: auditPageSize + 1,
+		Before: parseAuditCursor(q.Get("before")), After: parseAuditCursor(q.Get("after")), Limit: size + 1,
+	}
+	// After wins when both are given: the viewer came up from an older page.
+	if !f.After.Time.IsZero() {
+		f.Before = store.AuditCursor{}
 	}
 	entries, err := s.store.ListAudit(ctx, f)
 	if err != nil {
 		s.fail(w, r, "list the audit log", err)
 		return
+	}
+	hasCursor := !f.Before.Time.IsZero() || !f.After.Time.IsZero()
+	if hasCursor && len(entries) == 0 {
+		// A cursor past either end of the log: show the first page.
+		http.Redirect(w, r, auditQuery(q, size, "", ""), http.StatusSeeOther)
+		return
+	}
+	// The extra entry fetched says whether the page has a neighbour in the
+	// direction of travel; one probe says whether the other side has one.
+	more := len(entries) > size
+	if more {
+		if f.After.Time.IsZero() {
+			entries = entries[:size]
+		} else {
+			entries = entries[len(entries)-size:]
+		}
+	}
+	var back bool
+	if hasCursor {
+		probe := store.AuditFilter{Username: f.Username, Action: f.Action, WorldID: f.WorldID, Limit: 1}
+		if f.After.Time.IsZero() {
+			probe.After = auditCursorOf(entries[0])
+		} else {
+			probe.Before = auditCursorOf(entries[len(entries)-1])
+		}
+		got, err := s.store.ListAudit(ctx, probe)
+		if err != nil {
+			s.fail(w, r, "list the audit log", err)
+			return
+		}
+		back = len(got) > 0
 	}
 	values, err := s.store.AuditFilterValues(ctx)
 	if err != nil {
@@ -185,17 +268,23 @@ func (s *server) handleAuditLog(w http.ResponseWriter, r *http.Request, u store.
 		names[sum.ID] = sum.Name
 	}
 
-	p := AuditLogPage{Filtered: f.Username != "" || f.Action != "" || f.WorldID != ""}
-	if len(entries) > auditPageSize {
-		entries = entries[:auditPageSize]
-		next := url.Values{}
-		for _, k := range []string{"user", "action", "world"} {
-			if v := q.Get(k); v != "" {
-				next.Set(k, v)
-			}
-		}
-		next.Set("before", auditCursorText(entries[len(entries)-1]))
-		p.Older = auditLogPath() + "?" + next.Encode()
+	p := AuditLogPage{
+		Filtered:  f.Username != "" || f.Action != "" || f.WorldID != "",
+		Size:      size,
+		ClearPath: auditQuery(url.Values{}, size, "", ""),
+	}
+	for _, n := range auditPageSizes {
+		p.Sizes = append(p.Sizes, AuditSize{Value: n, Selected: n == size})
+	}
+	olderExists, newerExists := back, more
+	if f.After.Time.IsZero() {
+		olderExists, newerExists = more, back
+	}
+	if olderExists && len(entries) > 0 {
+		p.Older = auditQuery(q, size, "before", auditCursorText(entries[len(entries)-1]))
+	}
+	if newerExists && len(entries) > 0 {
+		p.Newer = auditQuery(q, size, "after", auditCursorText(entries[0]))
 	}
 	for _, e := range entries {
 		row := AuditRow{
@@ -217,4 +306,8 @@ func (s *server) handleAuditLog(w http.ResponseWriter, r *http.Request, u store.
 		return AuditOption{Word: i18n.M("audit.world.deleted", "world", v)}
 	})
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+func auditCursorOf(e store.AuditEntry) store.AuditCursor {
+	return store.AuditCursor{Time: e.Time, ID: e.ID}
 }

@@ -61,11 +61,14 @@
   "audit.filter.apply": "638e249f",
   "audit.filter.clear": "7179ea00",
   "audit.filter.heading": "940e54d5",
+  "audit.filter.size": "bab2dcf4",
   "audit.filter.user": "b512d97e",
   "audit.filter.world": "78ae647d",
   "audit.intro": "62e2bd6f",
   "audit.list.heading": "7cb76b4a",
+  "audit.newer": "61d6ff4e",
   "audit.older": "62f32f74",
+  "audit.pager": "6da33837",
   "audit.title": "e4d36f9a",
   "audit.world.deleted": "97b4caeb"
 }

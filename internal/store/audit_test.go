@@ -205,6 +205,56 @@ func TestListAuditCursorWalksEveryEntryOnce(t *testing.T) {
 	}
 }
 
+// After pages toward the newest, each page still newest first, and the pages
+// joined are the same entries as walking down by Before.
+func TestListAuditAfterWalksBackUp(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	var rows []AuditEntry
+	for i := 0; i < 7; i++ {
+		rows = append(rows, AuditEntry{Time: t0.Add(time.Duration(i/3) * time.Second), Username: "ann", Action: "start"})
+	}
+	all := seedAudit(t, s, rows) // newest first
+	oldest := all[len(all)-1]
+	var walked []int64 // oldest first
+	cur := AuditCursor{Time: oldest.Time, ID: oldest.ID}
+	for {
+		page, err := s.ListAudit(ctx, AuditFilter{After: cur, Limit: 3})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		for i := 1; i < len(page); i++ {
+			if page[i].ID > page[i-1].ID {
+				t.Fatalf("page is not newest first: %v", page)
+			}
+		}
+		// The first of a page is its newest: the cursor for the next one up.
+		cur = AuditCursor{Time: page[0].Time, ID: page[0].ID}
+		for i := len(page) - 1; i >= 0; i-- {
+			walked = append(walked, page[i].ID)
+		}
+	}
+	if len(walked) != len(all)-1 {
+		t.Fatalf("walked %d entries, want %d", len(walked), len(all)-1)
+	}
+	for i, id := range walked {
+		if want := all[len(all)-2-i].ID; id != want {
+			t.Errorf("position %d: id %d, want %d", i, id, want)
+		}
+	}
+}
+
+func TestListAuditRefusesBeforeAndAfterTogether(t *testing.T) {
+	s, _ := openTemp(t)
+	c := AuditCursor{Time: t0, ID: 1}
+	if _, err := s.ListAudit(context.Background(), AuditFilter{Before: c, After: c, Limit: 1}); err == nil {
+		t.Error("both cursors set: want an error")
+	}
+}
+
 func TestAuditFilterValues(t *testing.T) {
 	s, _ := openTemp(t)
 	seedAudit(t, s, []AuditEntry{

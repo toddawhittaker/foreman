@@ -1,5 +1,7 @@
 import { test, expect, createAdmin, seedWorld, image21 } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 // SPEC 17.2 and 22: at 320 px in a language with long words, Generate's
 // action buttons hold their labels and the main tabs never break a word
@@ -44,6 +46,37 @@ test.describe("long words at 320 px", () => {
         // A real overflow stays and still fails once the poll times out.
         await page.evaluate(() => document.fonts.ready);
         await expect.poll(() => layoutProblems(page), { message: `${lang} at ${size}%` }).toEqual([]);
+      }
+    });
+  }
+});
+
+// SPEC 12.9, DESIGN 8.15: the audit log's table stacks each row at 320 px, and a
+// long user, token, world and detail wrap inside it in every long language, at
+// normal and large text.
+test.describe("the audit log at 320 px", () => {
+  for (const lang of ["de", "fr", "es", "pl", "ru"]) {
+    test(`${lang}: the table's rows hold their words`, async ({ page, foreman }) => {
+      await page.setViewportSize({ width: 320, height: 640 });
+      await createAdmin(page);
+      seedWorld(foreman);
+      const db = new DatabaseSync(join(foreman.dataDir, "foreman.db"));
+      try {
+        const now = Math.floor(Date.now() / 1000);
+        const add = db.prepare("INSERT INTO audit_log (time, username, action, world_id, detail, token_name) VALUES (?, ?, ?, ?, ?, ?)");
+        add.run(now - 20, "a-user-with-a-very-long-name-indeed", "start", "base", "x".repeat(150), "A-token-name-of-32-characters-xx");
+        add.run(now - 10, "carol", "frobnicate-the-unrecognised-action-name", "gone-world-with-a-long-id", "/c game.print(" + "word ".repeat(30) + ")", "");
+      } finally {
+        db.close();
+      }
+      await page.context().addCookies([{ name: "foreman_lang", value: lang, url: foreman.url }]);
+      for (const size of [100, 200]) {
+        await page.goto("/settings/audit-log");
+        await expect(page.locator("html")).toHaveAttribute("lang", lang);
+        await page.evaluate((p) => (document.documentElement.style.fontSize = `${p}%`), size);
+        await page.evaluate(() => document.fonts.ready);
+        await expect.poll(() => layoutProblems(page), { message: `${lang} at ${size}%` }).toEqual([]);
+        await expect(page.locator("#audit-list tbody tr").first()).toBeVisible();
       }
     });
   }

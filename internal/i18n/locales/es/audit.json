@@ -61,11 +61,14 @@
   "audit.filter.apply": "Filtrar",
   "audit.filter.clear": "Quitar los filtros",
   "audit.filter.heading": "Filtrar el registro",
+  "audit.filter.size": "Entradas por página",
   "audit.filter.user": "Usuario",
   "audit.filter.world": "Mundo",
   "audit.intro": "Quién hizo qué y cuándo, lo más reciente primero. El registro nunca guarda una contraseña ni un token.",
   "audit.list.heading": "Entradas",
+  "audit.newer": "Entradas más recientes",
   "audit.older": "Entradas anteriores",
+  "audit.pager": "Páginas del registro",
   "audit.title": "Registro de auditoría",
   "audit.world.deleted": "{world} (borrado)"
 }

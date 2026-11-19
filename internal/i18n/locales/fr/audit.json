@@ -61,11 +61,14 @@
   "audit.filter.apply": "Filtrer",
   "audit.filter.clear": "Effacer les filtres",
   "audit.filter.heading": "Filtrer le journal",
+  "audit.filter.size": "Entrées par page",
   "audit.filter.user": "Utilisateur",
   "audit.filter.world": "Monde",
   "audit.intro": "Qui a fait quoi et quand, du plus récent au plus ancien. Le journal ne contient jamais de mot de passe ni de jeton.",
   "audit.list.heading": "Entrées",
+  "audit.newer": "Entrées plus récentes",
   "audit.older": "Entrées plus anciennes",
+  "audit.pager": "Pages du journal",
   "audit.title": "Journal d’audit",
   "audit.world.deleted": "{world} (supprimé)"
 }

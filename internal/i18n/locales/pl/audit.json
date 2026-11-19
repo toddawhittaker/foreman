@@ -61,11 +61,14 @@
   "audit.filter.apply": "Filtruj",
   "audit.filter.clear": "Wyczyść filtry",
   "audit.filter.heading": "Filtrowanie dziennika",
+  "audit.filter.size": "Wpisów na stronę",
   "audit.filter.user": "Użytkownik",
   "audit.filter.world": "Świat",
   "audit.intro": "Kto, co i kiedy zrobił, od najnowszych. Dziennik nigdy nie zawiera hasła ani tokenu.",
   "audit.list.heading": "Wpisy",
+  "audit.newer": "Nowsze wpisy",
   "audit.older": "Starsze wpisy",
+  "audit.pager": "Strony dziennika",
   "audit.title": "Dziennik audytu",
   "audit.world.deleted": "{world} (usunięty)"
 }

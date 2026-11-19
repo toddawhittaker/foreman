@@ -6421,6 +6421,16 @@ main h2[id]::before {
   box-shadow: none;
 }
 
+/* Forced colours paint the button's face in the system colour but keep its dark label, which
+   is unreadable on black; the label takes the system text colour too (SPEC 17.1). */
+@media (forced-colors: active) {
+  .button--primary,
+  .button--primary:hover,
+  .button--primary[aria-busy="true"]:disabled {
+    color: ButtonText;
+  }
+}
+
 .button:active {
   box-shadow: none;
 }
@@ -9636,39 +9646,139 @@ main:has(> .gate) > .gate + .gate {
   list-style: none;
 }
 
-/* DESIGN 8.15 Audit log (SPEC 12.9): entries are rows divided by a rule, each
-   a title line and its facts, so one layout serves every width. */
-.audit-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* DESIGN 8.15 Audit log (SPEC 12.9). The filters are one row of controls that
+   wraps when it must. The entries are a table of six fixed columns; where the
+   section is too narrow for six columns each row becomes a compact block of
+   labelled values instead, so the page never scrolls sideways. */
+.audit-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3) var(--space-4);
 }
 
-.audit-list > li {
-  display: grid;
-  gap: var(--space-2);
-  padding-block: var(--space-3);
-  border-block-end: var(--border-width) solid var(--color-line);
+.audit-filter > .field {
+  flex: 1 1 8.5rem;
+  min-inline-size: 0;
 }
 
-.audit-list > li:first-child {
-  padding-block-start: 0;
+.audit-filter > .field--size {
+  flex: 0 1 8.5rem;
 }
 
-.audit-list > li:last-child {
-  border-block-end: 0;
+.audit-filter .field select {
+  max-inline-size: none;
 }
 
-.audit-list :is(h3, p) {
-  margin: 0;
+.audit-filter > .actions {
+  flex: none;
 }
 
-/* An entry's world link is a full-size target. */
-.audit-list .facts a {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: var(--target-min);
+.audit-entries {
+  container-type: inline-size;
+}
+
+/* Every cell of a row shares one baseline, whether or not it holds a link. */
+.audit-table td {
+  vertical-align: baseline;
+}
+
+.audit-table th:first-child,
+.audit-table td:first-child {
+  overflow-wrap: normal;
+}
+
+.audit-table .audit-detail,
+.audit-table .audit-user {
+  overflow-wrap: anywhere;
+}
+
+/* An entry's world link is a full-size target that does not make its row taller
+   than the rows without one. */
+.audit-table .audit-world a {
+  display: inline-block;
+  padding-block: calc((var(--target-min) - 1lh) / 2);
+  margin-block: calc((var(--target-min) - 1lh) / -2);
+}
+
+@container (max-width: 52rem) {
+  .audit-table,
+  .audit-table caption,
+  .audit-table tbody,
+  .audit-table tr,
+  .audit-table td {
+    display: block;
+  }
+
+  .audit-table thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  /* The action is the row's title; the other facts follow as label and value pairs. */
+  .audit-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    padding-block: var(--space-3);
+    border-block-end: var(--border-width) solid var(--color-line);
+    position: relative;
+  }
+
+  .audit-table tbody tr:first-child {
+    padding-block-start: 0;
+  }
+
+  .audit-table td {
+    min-inline-size: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .audit-table td::before {
+    content: attr(data-label) " ";
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* An empty cell (no API token) is hidden from sight only, so screen
+     readers still count it and read each cell under its own column. */
+  .audit-table td:empty {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .audit-table .audit-action {
+    order: -1;
+    flex: 1 1 100%;
+    font-weight: 600;
+  }
+
+  .audit-table .audit-action::before {
+    display: none;
+  }
+
+  .audit-table .audit-detail {
+    flex: 1 1 100%;
+  }
+
+  /* A 32-character token name has no break point, and at large text it is wider than the row. */
+  .audit-table .audit-token {
+    max-inline-size: 100%;
+  }
+
+  .audit-table .audit-token .badge {
+    max-inline-size: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* DESIGN 8.21 API tokens (SPEC 12.10). Each token is a card that sizes itself from
