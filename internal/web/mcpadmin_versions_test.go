@@ -142,9 +142,9 @@ func TestMCPUpdateMoved(t *testing.T) {
 func TestMCPVersionPreviewParity(t *testing.T) {
 	sum := world.Summary{ID: "w1", Name: "Base", GameVersion: oldVersion}
 	for _, running := range []bool{false, true} {
-		up := UpdatePage{World: sum, Target: newVersion, Running: running, CountdownForm: defaultCountdown()}
+		up := UpdatePage{World: sum, Target: newVersion, Running: running, CountdownForm: CountdownForm{Countdown: "60"}}
 		wantWill(t, updateWill(up), pageText(t, up))
-		rb := RollbackPage{World: sum, Running: running, Version: "2.0.77", CountdownForm: defaultCountdown(),
+		rb := RollbackPage{World: sum, Running: running, Version: "2.0.77", CountdownForm: CountdownForm{Countdown: "60"},
 			Snapshot: world.Snapshot{Name: "s1", Label: world.LabelBeforeUpdate, Reason: world.ReasonGameUpdate, TakenAt: time.Date(2026, 11, 17, 9, 30, 0, 0, time.UTC)}}
 		wantWill(t, rollbackWill(rb), pageText(t, rb))
 	}

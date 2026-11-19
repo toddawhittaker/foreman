@@ -19,7 +19,6 @@ const (
 	cacheLifetime   = 15 * time.Minute
 	maxList         = 16 << 20
 	maxFull         = 2 << 20
-	maxDownload     = 200 << 20
 	maxRedirects    = 2
 	maxFullAtOnce   = 4
 )
@@ -35,7 +34,6 @@ type Client struct {
 
 	callTimeout     time.Duration
 	downloadTimeout time.Duration
-	maxDownload     int64
 
 	full  chan struct{} // holds a slot for each /full request in flight
 	lists cache[[]listEntry]
@@ -89,7 +87,6 @@ func newClient(base string, redirectOK func(*url.URL) bool) *Client {
 		now:             time.Now,
 		callTimeout:     callTimeout,
 		downloadTimeout: downloadTimeout,
-		maxDownload:     maxDownload,
 		full:            make(chan struct{}, maxFullAtOnce),
 	}
 }

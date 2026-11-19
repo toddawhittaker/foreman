@@ -275,7 +275,7 @@ func TestSearchPortalDown(t *testing.T) {
 func TestLimitsAreTheRulings(t *testing.T) {
 	c := New()
 	if c.base != "https://mods.factorio.com" || c.callTimeout != 10*time.Second ||
-		c.downloadTimeout != 5*time.Minute || c.maxDownload != 200<<20 ||
+		c.downloadTimeout != 5*time.Minute ||
 		maxList != 16<<20 || maxFull != 2<<20 || cacheLifetime != 15*time.Minute ||
 		maxRedirects != 2 || cap(c.full) != 4 {
 		t.Errorf("a limit differs from the documented limits: %+v", c)

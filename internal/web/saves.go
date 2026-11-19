@@ -36,7 +36,7 @@ const loadErrorID = "load-save-error"
 
 func (s *server) saveRoutes() {
 	s.mux.HandleFunc("GET "+patternSaves, s.requireUser(s.handleSaves))
-	s.handleUpload("POST "+patternSaves, MaxSaveUpload, s.requireUser(s.guardUpload(s.handleSaveUpload)))
+	s.handleUpload("POST "+patternSaves, s.saveUploadLimit, s.requireUser(s.guardUpload(s.handleSaveUpload)))
 	s.handleLong("GET "+patternSave, s.requireUser(s.handleSaveDownload))
 	s.mux.HandleFunc("POST "+patternLoadSave, s.requireUser(s.handleLoadSave))
 }
@@ -58,7 +58,9 @@ type SaveRow struct {
 
 // SavesPage is a world's saves (SPEC 5.11, DESIGN 8.3).
 type SavesPage struct {
-	WorldName string
+	// UploadLimit is the save upload limit in bytes, which the drop zone shows.
+	UploadLimit uint64
+	WorldName   string
 	// Active marks the active world in the heading, as on its Overview.
 	Active    bool
 	WorldHref string
@@ -85,7 +87,7 @@ type SavesPage struct {
 // UploadZone is the upload form's save field (DESIGN 7.10).
 func (p SavesPage) UploadZone() DropZone {
 	return DropZone{ID: "save-file", Name: saveUploadField, Label: i18n.M("worlds.saves.upload.label"),
-		Accept: ".zip", MaxBytes: MaxSaveUpload, Error: p.UploadError}
+		Accept: ".zip", MaxBytes: p.UploadLimit, Error: p.UploadError}
 }
 
 func (SavesPage) templateName() string { return "saves" }
@@ -196,6 +198,7 @@ func (s *server) showSaves(w http.ResponseWriter, r *http.Request, u store.User,
 	if sum, err := s.worlds.Get(r.Context(), r.PathValue("id")); err == nil {
 		p.Active = sum.Active
 	}
+	p.UploadLimit = zoneLimit(s.saveUploadLimit(r.Context()))
 	if edit != nil {
 		edit(&p)
 	}
@@ -235,7 +238,7 @@ func (s *server) handleSaveUpload(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 
-	up, err := receiveFile(r, root, world.SavesDir, saveUploadField, root.Name(), MaxSaveUpload)
+	up, err := receiveFile(r, root, world.SavesDir, saveUploadField, root.Name(), s.saveUploadLimit(r.Context()))
 	if err != nil {
 		refuse(err)
 		return

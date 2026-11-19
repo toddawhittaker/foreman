@@ -247,9 +247,9 @@ func TestRestoreWillMatchesThePage(t *testing.T) {
 	snap := world.Snapshot{Name: "20261102T120000Z", Manifest: world.Manifest{Label: "Keep me", Reason: world.ReasonManual,
 		TakenAt: time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC), Files: []world.ManifestEntry{{Path: "saves/base.zip", Size: 2048}, {Path: "map.json", Size: 10}}}}
 	for name, p := range map[string]RestorePage{
-		"stopped": {WorldID: "base", WorldName: "Base", Snapshot: snap, CountdownForm: defaultCountdown()},
-		"running": {WorldID: "base", WorldName: "Base", Snapshot: snap, Running: true, CountdownForm: defaultCountdown()},
-		"deleted": {WorldID: "base", WorldName: "Base", Snapshot: snap, Deleted: true, CountdownForm: defaultCountdown()},
+		"stopped": {WorldID: "base", WorldName: "Base", Snapshot: snap, CountdownForm: CountdownForm{Countdown: "60"}},
+		"running": {WorldID: "base", WorldName: "Base", Snapshot: snap, Running: true, CountdownForm: CountdownForm{Countdown: "60"}},
+		"deleted": {WorldID: "base", WorldName: "Base", Snapshot: snap, Deleted: true, CountdownForm: CountdownForm{Countdown: "60"}},
 	} {
 		t.Run(name, func(t *testing.T) { wantWill(t, restoreWill(p), pageText(t, p)) })
 	}

@@ -153,7 +153,7 @@ func (s *server) favoriteRoutes() {
 	s.mux.HandleFunc("POST "+PathFavoriteDelete, s.requireUser(s.handleFavoriteDelete))
 	s.mux.HandleFunc("POST "+PathFavoriteRename, s.requireUser(s.handleFavoriteRename))
 	s.mux.HandleFunc("GET "+PathFavoriteExport, s.requireUser(s.handleFavoriteExport))
-	s.handleUpload("POST "+PathFavoriteImport, favoriteImportLimit, s.requireUser(s.guardUpload(s.handleFavoriteImport)))
+	s.handleUpload("POST "+PathFavoriteImport, fixedLimit(favoriteImportLimit), s.requireUser(s.guardUpload(s.handleFavoriteImport)))
 }
 
 // favoriteImportLimit is the import body's limit: the file plus room for

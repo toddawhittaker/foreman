@@ -90,6 +90,8 @@ func (b BulkSkipped) AlonePath() string {
 // ImportForm is one of the two import forms. Source is the uploaded file;
 // Folders are the ticked inbox folders.
 type ImportForm struct {
+	// UploadLimit is the save upload limit in bytes, which the drop zone shows.
+	UploadLimit  uint64
 	Source       string
 	Folders      []string
 	Name         string
@@ -119,7 +121,7 @@ type ImportForm struct {
 // SourceZone is the upload form's save field.
 func (f ImportForm) SourceZone() DropZone {
 	return DropZone{ID: "upload-source", Name: "save", Label: i18n.M("worlds.saves.upload.label"),
-		Accept: ".zip", MaxBytes: MaxSaveUpload, Error: f.SourceError}
+		Accept: ".zip", MaxBytes: f.UploadLimit, Error: f.SourceError}
 }
 
 func (ImportPage) templateName() string { return "import" }
@@ -259,6 +261,7 @@ func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User
 		}
 	}
 	folder.IDPrefix, upload.IDPrefix = "folder", "upload"
+	upload.UploadLimit = zoneLimit(s.saveUploadLimit(r.Context()))
 	folder.CanDownload, upload.CanDownload = s.game != nil, s.game != nil
 	dir := s.worlds.Dirs().Imports
 	if s.hostData != "" {
@@ -561,7 +564,7 @@ func (s *server) receiveImport(r *http.Request) (id string, f ImportForm, unchec
 	defer func() { _ = root.Close() }()
 
 	values := map[string]string{"name": "", "game_version": "", "game_version_typed": "", "space_age": "", "download": ""}
-	up, err := receiveFileWithFields(r, root, ".", "save", worldsDir, MaxSaveUpload, values)
+	up, err := receiveFileWithFields(r, root, ".", "save", worldsDir, s.saveUploadLimit(r.Context()), values)
 	typed := chosenVersion(values["game_version"], values["game_version_typed"])
 	f = importFields(values["name"], typed, values["space_age"], values["download"])
 	if err != nil {

@@ -23,7 +23,7 @@ func sweptAudit(t *testing.T, hn *harness, ages ...time.Duration) []string {
 			t.Fatal(err)
 		}
 	}
-	sweepOnce(ctx, hn.store, oneDay, hn.clock.Now(), hn.slog)
+	hn.generalServer().sweepOnce(ctx, oneDay)
 	list, err := hn.store.ListAudit(ctx, store.AuditFilter{Limit: 100})
 	if err != nil {
 		t.Fatal(err)
@@ -56,17 +56,17 @@ func TestSweepUsesTheAuditRetentionSetting(t *testing.T) {
 	}
 }
 
-// A value outside 7 to 3650, or not a number, never deletes more than the
-// default would.
-func TestSweepIgnoresABadAuditRetention(t *testing.T) {
+// A value outside 7 to 3650, or not a number, makes the sweep delete nothing:
+// when in doubt, keep the entries (fail safe).
+func TestSweepKeepsEverythingOnABadAuditRetention(t *testing.T) {
 	for _, v := range []string{"1", "0", "-5", "99999", "soon", ""} {
 		hn := newHarness(t, nil)
 		if err := hn.store.SetAppSetting(context.Background(), "audit_retention_days", v, "ann", hn.clock.Now()); err != nil {
 			t.Fatal(err)
 		}
 		got := sweptAudit(t, hn, 366*oneDay, 100*oneDay, time.Hour)
-		if !slices.Equal(got, []string{"a2", "a1"}) {
-			t.Errorf("setting %q: left %v, want the default's a2 and a1", v, got)
+		if !slices.Equal(got, []string{"a2", "a1", "a0"}) {
+			t.Errorf("setting %q: left %v, want every entry kept", v, got)
 		}
 	}
 }

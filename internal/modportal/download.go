@@ -16,7 +16,7 @@ import (
 // the portal published (SPEC 9.12). On any failure dst is truncated; the
 // caller removes the file. The username and token go in the query string, as
 // the portal asks, so no error returned from here carries a URL.
-func (c *Client) Download(ctx context.Context, username, token string, r Release, dst *os.File) error {
+func (c *Client) Download(ctx context.Context, username, token string, r Release, dst *os.File, maxBytes int64) error {
 	secrets := []string{token, username}
 	if err := checkRelease(r); err != nil {
 		return err
@@ -47,13 +47,13 @@ func (c *Client) Download(ctx context.Context, username, token string, r Release
 	default:
 		return &statusError{resp.StatusCode}
 	}
-	if resp.ContentLength > c.maxDownload {
+	if resp.ContentLength > maxBytes {
 		return fmt.Errorf("%w: the file is too large", ErrUnreachable)
 	}
 
 	h := sha1.New() //nolint:gosec // see import
 	out := &recordingWriter{w: io.MultiWriter(dst, h)}
-	n, err := io.Copy(out, io.LimitReader(resp.Body, c.maxDownload+1))
+	n, err := io.Copy(out, io.LimitReader(resp.Body, maxBytes+1))
 	switch {
 	case out.err != nil:
 		_ = dst.Truncate(0)
@@ -61,7 +61,7 @@ func (c *Client) Download(ctx context.Context, username, token string, r Release
 	case err != nil:
 		_ = dst.Truncate(0)
 		return requestError(err, secrets...)
-	case n > c.maxDownload:
+	case n > maxBytes:
 		_ = dst.Truncate(0)
 		return fmt.Errorf("%w: the file is too large", ErrUnreachable)
 	case r.SHA1 == "" || !strings.EqualFold(hex.EncodeToString(h.Sum(nil)), r.SHA1):

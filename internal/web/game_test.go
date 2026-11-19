@@ -280,6 +280,7 @@ func TestStopCountdownIsChecked(t *testing.T) {
 }
 
 func TestReadCountdown(t *testing.T) {
+	s := newHarness(t, nil).generalServer()
 	cases := []struct {
 		form url.Values
 		want game.StopOptions
@@ -297,7 +298,7 @@ func TestReadCountdown(t *testing.T) {
 	for _, c := range cases {
 		r, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(c.form.Encode()))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		form, got := readCountdown(r)
+		form, got := s.readCountdown(r)
 		if got != c.want || !form.CountdownError.IsZero() != c.bad {
 			t.Errorf("%v: got %+v, error %q", c.form, got, form.CountdownError)
 		}

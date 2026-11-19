@@ -60,7 +60,7 @@ func (c *countPortal) Lookup(context.Context, string, string) (modportal.Hit, er
 	return modportal.Hit{}, nil
 }
 func (c *countPortal) KnownMissing(string) bool { return false }
-func (c *countPortal) Download(context.Context, string, string, modportal.Release, *os.File) error {
+func (c *countPortal) Download(context.Context, string, string, modportal.Release, *os.File, int64) error {
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -87,11 +88,13 @@ var idleLimit = 60 * time.Second
 func (s *server) limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, pattern := s.mux.Handler(r)
-		switch {
-		case pattern == PathMCP:
+		switch pattern {
+		case PathMCP:
 			r.Body = http.MaxBytesReader(w, r.Body, mcpMaxBody)
-		case s.uploadLimits[pattern] == 0:
-			r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
+		default:
+			if _, upload := s.uploadLimits[pattern]; !upload {
+				r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
+			}
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -112,6 +115,7 @@ func (s *server) handleLong(pattern string, h http.HandlerFunc) {
 		// close the connection after a body that is too large.
 		w := rw
 		limit := int64(maxFormBytes)
+		upload := s.uploadLimits[pattern]
 		_, state, err := s.identify(r)
 		if err != nil {
 			s.fail(w, r, "identify user", err)
@@ -131,20 +135,29 @@ func (s *server) handleLong(pattern string, h http.HandlerFunc) {
 			}
 			r.Body = idleBody{ReadCloser: r.Body, rc: rc}
 			w = idleWriter{ResponseWriter: w, rc: rc}
-			if l := s.uploadLimits[pattern]; l > 0 {
-				limit = l
+			if upload != nil {
+				limit = upload(r.Context())
 			}
 		}
-		if s.uploadLimits[pattern] > 0 {
+		if upload != nil {
 			r.Body = http.MaxBytesReader(rw, r.Body, limit)
 		}
 		h(w, r)
 	})
 }
 
+// limitFunc gives an upload route's body limit. It is asked on every
+// request, so a limit that is a setting applies to the next upload (SPEC 14.6).
+type limitFunc func(ctx context.Context) int64
+
+// fixedLimit is the limitFunc of a route whose limit is not a setting.
+func fixedLimit(n int64) limitFunc {
+	return func(context.Context) int64 { return n }
+}
+
 // handleUpload registers an upload route with its own body limit instead of
 // maxFormBytes, for signed-in requests only.
-func (s *server) handleUpload(pattern string, limit int64, h http.HandlerFunc) {
+func (s *server) handleUpload(pattern string, limit limitFunc, h http.HandlerFunc) {
 	s.uploadLimits[pattern] = limit
 	s.handleLong(pattern, h)
 }

@@ -40,7 +40,7 @@ func (s *server) modSettingsRoutes() {
 	// write deadline, and a large mod pack's form outgrows the usual body
 	// limit.
 	s.handleLong("GET "+PathModSettingsForm, s.requireUser(s.handleModSettingsForm))
-	s.handleUpload("POST "+PathModSettingsEdit, MaxSettingsUpload, s.requireUser(s.handleModSettingsSave))
+	s.handleUpload("POST "+PathModSettingsEdit, fixedLimit(MaxSettingsUpload), s.requireUser(s.handleModSettingsSave))
 }
 
 // Field kinds, one control each.
@@ -265,7 +265,7 @@ type settingsState struct {
 // the form, with setting names in lang. A failure the page can word is in
 // RunError; err is Foreman's own fault.
 func (s *server) modSettingsPage(ctx context.Context, lang string, sum world.Summary) (ModSettingsPage, settingsState, error) {
-	p := ModSettingsPage{World: sum, Loaded: true, CountdownForm: defaultCountdown()}
+	p := ModSettingsPage{World: sum, Loaded: true, CountdownForm: s.countdownForm(ctx)}
 	p.Running = game.IsRunning(s.game.Status(sum.ID).State)
 	p.HasFile = s.hasModSettings(sum.ID)
 	var st settingsState
@@ -611,7 +611,7 @@ func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u
 	if !s.readForm(w, r) {
 		return
 	}
-	countdown, stop := readCountdown(r)
+	countdown, stop := s.readCountdown(r)
 	p, st, err := s.modSettingsPage(r.Context(), localeOf(r).String(), sum)
 	if err != nil {
 		s.fail(w, r, "read the mod settings", err)

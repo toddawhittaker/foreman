@@ -38,7 +38,7 @@ const (
 func gamePath(id, action string) string { return worldPath(id) + "/" + action }
 
 // The stop countdown field (SPEC 7.6): whole seconds from 0 to the
-// controller's limit, 60 when left empty.
+// controller's limit; left empty it is the app setting, 60 until changed.
 var (
 	maxCountdownSeconds     = int(game.MaxStopCountdown / time.Second)
 	defaultCountdownSeconds = int(game.StopCountdown / time.Second)
@@ -321,7 +321,7 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 // serverPage builds the server page for a world from its status, asking
 // the game who is online when it is running.
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
-	p := ServerPage{World: sum, HasWorld: true, Status: st, Now: s.now(), JoinAddress: s.joinAddress()}
+	p := ServerPage{World: sum, HasWorld: true, Status: st, Now: s.now(), JoinAddress: s.joinAddress(), StopSeconds: s.stopSeconds(ctx)}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	if !p.HaveResult && s.runs.cancelPending(sum.ID) {
 		p.Result, p.HaveResult = cancelledByOperation(st, s.now())
@@ -506,12 +506,12 @@ type CountdownForm struct {
 }
 
 // readCountdown reads the countdown field. A problem is worded for the
-// field; an empty field means the default countdown, and 0 means no warning
+// field; an empty field means the countdown setting, and 0 means no warning
 // (SPEC 7.6).
-func readCountdown(r *http.Request) (CountdownForm, game.StopOptions) {
+func (s *server) readCountdown(r *http.Request) (CountdownForm, game.StopOptions) {
 	f := CountdownForm{Countdown: strings.TrimSpace(r.PostFormValue("countdown"))}
 	if f.Countdown == "" {
-		return f, game.StopOptions{Countdown: game.StopCountdown}
+		return f, game.StopOptions{Countdown: s.stopCountdown(r.Context())}
 	}
 	n, err := strconv.Atoi(f.Countdown)
 	if err != nil || n < 0 || n > maxCountdownSeconds {
@@ -521,8 +521,14 @@ func readCountdown(r *http.Request) (CountdownForm, game.StopOptions) {
 	return f, game.StopOptions{Countdown: time.Duration(n) * time.Second}
 }
 
-func defaultCountdown() CountdownForm {
-	return CountdownForm{Countdown: strconv.Itoa(defaultCountdownSeconds)}
+// stopSeconds is the stop countdown setting in whole seconds.
+func (s *server) stopSeconds(ctx context.Context) int {
+	return int(s.stopCountdown(ctx) / time.Second)
+}
+
+// countdownForm is the countdown form showing the app setting (SPEC 7.6).
+func (s *server) countdownForm(ctx context.Context) CountdownForm {
+	return CountdownForm{Countdown: strconv.Itoa(s.stopSeconds(ctx))}
 }
 
 // Online is who is in the game, for a form that stops it (SPEC 7.6, 7.7).
@@ -619,7 +625,7 @@ func (s *server) handleStopForm(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	restart := strings.HasSuffix(r.URL.Path, "/restart")
-	form := defaultCountdown()
+	form := s.countdownForm(r.Context())
 	form.Online = s.online(r.Context(), sum.ID)
 	s.page(w, r, http.StatusOK, u.Username, StopPage{World: sum, Restart: restart, From: returnPath(r.URL.Query().Get(fromQuery)), CountdownForm: form})
 }
@@ -640,7 +646,7 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 	if !ok {
 		return
 	}
-	form, stop := readCountdown(r)
+	form, stop := s.readCountdown(r)
 	if !form.CountdownError.IsZero() {
 		form.Online = s.online(r.Context(), sum.ID)
 		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, From: returnPath(r.URL.Query().Get(fromQuery)), CountdownForm: form})

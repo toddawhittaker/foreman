@@ -190,8 +190,8 @@ func (f GenerateForm) AtDefaults() bool { return f.Preset == defaultPreset && !f
 
 func (s *server) generateRoutes() {
 	s.mux.HandleFunc("GET "+PathGenerate, s.requireUser(s.handleGenerateForm))
-	s.handleUpload("POST "+PathGenerate, generateFormLimit, s.requireUser(s.handleGenerate))
-	s.handleUpload("POST "+PathGenerateRefresh, generateFormLimit, s.requireUser(s.handleGenerateRefresh))
+	s.handleUpload("POST "+PathGenerate, fixedLimit(generateFormLimit), s.requireUser(s.handleGenerate))
+	s.handleUpload("POST "+PathGenerateRefresh, fixedLimit(generateFormLimit), s.requireUser(s.handleGenerateRefresh))
 	s.previewRoutes()
 }
 

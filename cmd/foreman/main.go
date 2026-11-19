@@ -166,7 +166,7 @@ func serve(cfg *config.Config) error {
 	sweeping.Add(1)
 	go func() {
 		defer sweeping.Done()
-		web.SweepSessions(sweepCtx, st, cfg.SessionIdle, slog.Default())
+		handler.SweepSessions(sweepCtx, cfg.SessionIdle)
 	}()
 	// Token reminders go out once at start, so one that came due while
 	// Foreman was down is not missed (SPEC 8.10).
