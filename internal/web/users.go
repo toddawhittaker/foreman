@@ -15,9 +15,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
-// usersTabOn shows the Users tab in the settings sub-navigation.
-const usersTabOn = true
-
 // pathUserPassword is where the password form posts.
 const pathUserPassword = "/settings/users/password"
 

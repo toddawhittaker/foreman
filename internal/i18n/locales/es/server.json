@@ -599,5 +599,7 @@
   "server.disk.low": "Solo quedan {free} de espacio en disco. Por debajo de {reserve} los guardados automáticos pueden fallar y las instantáneas se detienen. Borra las instantáneas o los mundos que ya no necesites.",
   "server.disk.snapshots": "Instantáneas",
   "server.lan.unpublished": "Los jugadores de la red local no pueden llegar al juego: {sidecar} no publica UDP 34197 en el host.",
-  "server.force.group": "Acciones de emergencia"
+  "server.force.group": "Acciones de emergencia",
+  "server.crash.switch_archived": "{world} está archivado, así que Foreman no puede volver a cambiar a él.",
+  "server.crash.unarchive": "Abrir {world} para desarchivarlo"
 }

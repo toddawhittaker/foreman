@@ -6,6 +6,9 @@
   <p>{{msg .Page.Explanation}}</p>
   <p class="hint">{{t "common.error.code" "code" (print .Page.Status)}}</p>
   <div class="actions">
+    {{- if .Page.ActionPath}}
+    <a class="button button--primary" href="{{.Page.ActionPath}}">{{msg .Page.ActionLabel}}</a>
+    {{- end}}
     <a class="button" href="{{serverPath}}">{{t "common.error.home"}}</a>
   </div>
 </div>

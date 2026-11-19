@@ -18,6 +18,7 @@
   "general.stop.hint": "0 means no warning.",
   "general.stop.label": "Default stop countdown (seconds)",
   "general.stop.text": "The countdown a stop or restart starts with when it asks for none. A scheduled restart keeps its own fixed countdown.",
+  "general.trim.final": "Removed snapshots cannot be restored. To keep them, raise the number again before the next automatic snapshot.",
   "general.trim.snapshots": {
     "one": "{count} automatic snapshot will be removed, at its world's next automatic snapshot.",
     "other": "{count} automatic snapshots will be removed, each at its world's next automatic snapshot."

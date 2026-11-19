@@ -463,7 +463,7 @@
   "worlds.badge.archived": "已归档",
   "worlds.archive.refused": "此世界已归档，无法启动。请先取消归档。",
   "worlds.error.archive_active": "这是活动世界，而活动世界无法归档。请先切换到其他世界。",
-  "worlds.list.archived": "已归档（{count}）",
+  "worlds.list.archived": "已归档的世界（{count}）",
   "worlds.world.archive.heading": "归档",
   "worlds.world.archive.text": "将此世界从主列表中隐藏。取消归档前无法启动。其文件和快照保持不变。",
   "worlds.world.archive.button": "归档世界",

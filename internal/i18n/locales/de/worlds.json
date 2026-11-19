@@ -480,7 +480,7 @@
   "worlds.badge.archived": "Archiviert",
   "worlds.archive.refused": "Diese Welt ist archiviert und kann nicht starten. Hebe zuerst die Archivierung auf.",
   "worlds.error.archive_active": "Das ist die aktive Welt, und die aktive Welt kann nicht archiviert werden. Wechsle zuerst zu einer anderen Welt.",
-  "worlds.list.archived": "Archiviert ({count})",
+  "worlds.list.archived": "Archivierte Welten ({count})",
   "worlds.world.archive.heading": "Archivieren",
   "worlds.world.archive.text": "Blende diese Welt in der Hauptliste aus. Sie kann erst wieder starten, wenn du die Archivierung aufhebst. Ihre Dateien und Snapshots bleiben unverändert.",
   "worlds.world.archive.button": "Welt archivieren",

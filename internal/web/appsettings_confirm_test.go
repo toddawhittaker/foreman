@@ -45,7 +45,8 @@ func TestGeneralLoweringThatTrimsAsksFirst(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		`id="confirm-heading"`, `aria-current="page">General</a>`, "2 automatic snapshots will be removed", "Worlds affected: 1.",
+		`id="confirm-heading"`, `aria-current="true">General</a>`, "2 automatic snapshots will be removed", "Worlds affected: 1.",
+		"Removed snapshots cannot be restored. To keep them, raise the number again before the next automatic snapshot.",
 		"Automatic snapshots to keep per world: 10 to 2", "Largest mod upload (MB): 200 to 300", `id="act-general-confirm"`,
 		`name="trim_snapshots" value="2"`, `name="trim_worlds" value="1"`, `name="snapshot_retention" value="2"`, `name="mod_upload_mb" value="300"`,
 	} {

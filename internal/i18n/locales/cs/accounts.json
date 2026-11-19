@@ -56,5 +56,8 @@
   "accounts.oidc.failed": "Jednotné přihlášení se nezdařilo. Je třeba to zkusit znovu. Pokud selhává dál, je třeba se obrátit na správce Foremanu.",
   "accounts.oidc.unavailable": "Foreman se teď nemůže spojit s poskytovatelem jednotného přihlášení. Je třeba to zkusit znovu za minutu.",
   "accounts.oidc.name_taken": "Ve Foremanu už existuje uživatel s tímto jménem, který se přihlašuje jinak, proto jednotné přihlášení nelze použít. Je třeba požádat správce Foremanu, aby tohoto uživatele přejmenoval nebo odstranil.",
-  "accounts.oidc.bad_username": "Tento účet jednotného přihlášení nemá uživatelské jméno, které by Foreman mohl použít, takže další pokus nepomůže. Je třeba požádat správce Foremanu o kontrolu účtu u poskytovatele identity."
+  "accounts.oidc.bad_username": "Tento účet jednotného přihlášení nemá uživatelské jméno, které by Foreman mohl použít, takže další pokus nepomůže. Je třeba požádat správce Foremanu o kontrolu účtu u poskytovatele identity.",
+  "accounts.oidc.heading": "Jednotné přihlášení se nezdařilo",
+  "accounts.oidc.retry": "Zkusit jednotné přihlášení znovu",
+  "accounts.oidc.back": "Zpět na přihlášení"
 }

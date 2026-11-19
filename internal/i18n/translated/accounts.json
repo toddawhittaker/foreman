@@ -1,7 +1,10 @@
 {
+  "accounts.oidc.back": "71fe31cc",
   "accounts.oidc.bad_username": "6674a5c5",
   "accounts.oidc.failed": "e918adf6",
+  "accounts.oidc.heading": "baa79ae4",
   "accounts.oidc.name_taken": "1e795fcf",
+  "accounts.oidc.retry": "21438d97",
   "accounts.oidc.unavailable": "7d7229c8",
   "accounts.password.label": "e7cf3ef4",
   "accounts.proxy.missing": "21255f12",

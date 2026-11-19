@@ -559,6 +559,7 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 		}
 		if trim.Snapshots > 0 {
 			p.Will = append(p.Will, inEnglish(i18n.M("general.trim.snapshots", "count", trim.Snapshots))+" "+inEnglish(i18n.M("general.trim.worlds", "count", trim.Worlds)))
+			p.Will = append(p.Will, inEnglish(i18n.M("general.trim.final")))
 		}
 		p.Will = append(p.Will, fmt.Sprintf("Audit entries the next hourly sweep deletes: %d.", trim.AuditEntries))
 		out.mcpPreview = p

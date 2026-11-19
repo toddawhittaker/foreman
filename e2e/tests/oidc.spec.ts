@@ -54,12 +54,12 @@ test.describe("single sign-on alone", () => {
     const answer = page.waitForResponse((r) => r.url().includes("/signin/oidc/callback"));
     await page.getByRole("button", { name: button }).click();
     expect((await answer).status()).toBe(403);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Access refused");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Single sign-on did not work");
     await expect(page.getByText("Your account is not allowed to use Foreman. Ask the person who runs Foreman to give you access.")).toBeVisible();
     await expect(page.getByText("Signed in as")).toHaveCount(0);
     await checkPage(page);
     // The next step is a control: it leads back to sign-in, not to a dead end.
-    await page.getByRole("link", { name: "Go to the home page" }).click();
+    await page.getByRole("link", { name: "Back to sign in" }).click();
     await expect(page.getByRole("button", { name: button })).toBeVisible();
   });
 
@@ -67,7 +67,7 @@ test.describe("single sign-on alone", () => {
     await fakeIdP!.setNext({ preferred_username: "x".repeat(65) });
     await page.goto("/signin");
     await page.getByRole("button", { name: button }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Access refused");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Single sign-on did not work");
     await expect(page.getByText("trying again will not help")).toBeVisible();
     await checkPage(page);
   });
@@ -78,8 +78,9 @@ test.describe("single sign-on alone", () => {
     const answer = page.waitForResponse((r) => new URL(r.url()).pathname === "/signin/oidc");
     await page.getByRole("button", { name: button }).click();
     expect((await answer).status()).toBe(503);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Request failed");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Single sign-on did not work");
     await expect(page.getByText("Foreman cannot reach the single sign-on provider right now. Try again in a minute.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Try single sign-on again" })).toHaveAttribute("href", "/signin/oidc");
     await checkPage(page);
   });
 
@@ -140,7 +141,7 @@ test.describe("single sign-on beside a password", () => {
     const answer = page.waitForResponse((r) => r.url().includes("/signin/oidc/callback"));
     await page.getByRole("button", { name: button }).click();
     expect((await answer).status()).toBe(403);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Access refused");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Single sign-on did not work");
     await expect(page.getByText("Ask the person who runs Foreman to rename or remove that user.")).toBeVisible();
     await expect(page.getByText("Signed in as")).toHaveCount(0);
     await checkPage(page);
@@ -197,7 +198,7 @@ test.describe("single sign-on beside trusted headers", () => {
     await signOut(page);
     await fakeIdP!.setNext({ sub: "another-subject" });
     await page.getByRole("link", { name: button }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Access refused");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Single sign-on did not work");
     expect(users()).toEqual([{ username: idpUser, sub: idpSubject }]);
     await checkPage(page);
   });

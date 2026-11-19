@@ -18,6 +18,7 @@
   "general.stop.hint": "0 significa sin aviso.",
   "general.stop.label": "Cuenta atrás predeterminada al detener (segundos)",
   "general.stop.text": "La cuenta atrás con la que empieza una detención o un reinicio que no indica ninguna. Un reinicio programado conserva su propia cuenta atrás fija.",
+  "general.trim.final": "Las instantáneas eliminadas no se pueden restaurar. Para conservarlas, vuelve a subir el número antes de la siguiente instantánea automática.",
   "general.trim.snapshots": {
     "one": "Se eliminará {count} instantánea automática, en la siguiente instantánea automática de su mundo.",
     "other": "Se eliminarán {count} instantáneas automáticas, cada una en la siguiente instantánea automática de su mundo."

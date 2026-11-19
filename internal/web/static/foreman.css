@@ -8279,6 +8279,33 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
+/* Foreman's settings have eight tabs: on a phone an even grid of two
+   columns, words free to wrap in their 44 px cells; from 40 rem the row
+   wraps onto a second line rather than cutting a tab off or scrolling. */
+@media (max-width: 39.99rem) {
+  .subnav--settings ul,
+  .subnav--settings ul:has(> li:nth-child(5)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subnav--settings ul:has(> li:nth-child(5)) > li,
+  .subnav--settings ul:has(> li:nth-child(5)) > li:nth-child(n + 4) {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 40rem) {
+  .subnav--settings ul {
+    flex-wrap: wrap;
+    overflow: visible;
+    mask-image: none;
+  }
+
+  .subnav--settings ul::after {
+    content: none;
+  }
+}
+
 /* An icon-only button on a phone shows its whole 44 px box, the frame of
    the secondary button beside it, so the target reads at its true size. */
 @media (max-width: 39.99rem) {
