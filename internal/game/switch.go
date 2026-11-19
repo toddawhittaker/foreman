@@ -134,6 +134,8 @@ func (c *Controller) planSwitch(ctx context.Context, from, to string, portal boo
 		return SwitchPlan{}, ErrSwitchUnreadable
 	case meta.Newer():
 		return SwitchPlan{}, ErrSwitchNewer
+	case meta.Archived:
+		return SwitchPlan{}, errArchived()
 	}
 	cur, next := c.Status(from), c.Status(to)
 	if busy(cur.Operation) || busy(next.Operation) {

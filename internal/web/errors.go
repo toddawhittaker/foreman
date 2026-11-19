@@ -44,6 +44,8 @@ func worldError(err error) (int, i18n.Msg) {
 		return http.StatusConflict, i18n.M("worlds.error.newer_format")
 	case errors.Is(err, world.ErrActive):
 		return http.StatusConflict, i18n.M("worlds.error.active")
+	case errors.Is(err, world.ErrArchiveActive):
+		return http.StatusConflict, i18n.M("worlds.error.archive_active")
 	case errors.Is(err, world.ErrSaveExists):
 		return http.StatusConflict, i18n.M("worlds.error.save_exists")
 	case errors.Is(err, world.ErrUnreadable):

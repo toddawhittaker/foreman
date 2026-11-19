@@ -444,6 +444,8 @@ func TestMCPAdminGateNoSecretFromAnyTool(t *testing.T) {
 		{"clone_world", arg(map[string]any{"world_id": stopped, "name": "Copy", "map": "keep"})},
 		{"generate_world", arg(map[string]any{"name": "Fresh", "game_version": v20})},
 		{"rename_world", arg(map[string]any{"world_id": stopped, "name": "Stopped two"})},
+		{"archive_world", arg(map[string]any{"world_id": stopped})},
+		{"unarchive_world", arg(map[string]any{"world_id": stopped})},
 		{"delete_world", arg(map[string]any{"world_id": stopped})},
 	}
 	// make_favorite's id is needed by the calls after it.

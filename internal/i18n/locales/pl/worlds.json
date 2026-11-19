@@ -493,5 +493,18 @@
   "worlds.generate.resources.retry": "Spróbuj ponownie",
   "worlds.generate.resources.not_counted": "To pobieranie wymaga ilości zasobów lub terytoriów dewastatorów, których jeszcze nie ma. Należy pobrać ponownie ze strony „Wygeneruj świat”, która najpierw je ustali.",
   "worlds.generate.resources.not_kept": "Ustawienia zmieniły się podczas liczenia zasobów, więc ilości nie zostały zapisane. Należy spróbować ponownie.",
-  "worlds.list.col.world": "Świat"
+  "worlds.list.col.world": "Świat",
+  "worlds.badge.archived": "Zarchiwizowany",
+  "worlds.archive.refused": "Ten świat jest zarchiwizowany, więc nie można go uruchomić. Najpierw trzeba cofnąć archiwizację.",
+  "worlds.error.archive_active": "To jest aktywny świat, a aktywnego świata nie można zarchiwizować. Najpierw należy przełączyć się na inny świat.",
+  "worlds.list.archived": "Zarchiwizowane ({count})",
+  "worlds.world.archive.heading": "Archiwizacja",
+  "worlds.world.archive.text": "Ukrywa ten świat na głównej liście. Nie można go uruchomić, dopóki archiwizacja nie zostanie cofnięta. Jego pliki i migawki pozostają bez zmian.",
+  "worlds.world.archive.button": "Zarchiwizuj świat",
+  "worlds.world.archive.done": "Świat {name} został zarchiwizowany.",
+  "worlds.world.archived.heading": "Zarchiwizowany świat",
+  "worlds.world.archived.text": "Ten świat jest ukryty na głównej liście i nie można go uruchomić ani przełączyć się na niego. Jego pliki i migawki pozostają bez zmian.",
+  "worlds.world.unarchive.button": "Cofnij archiwizację świata",
+  "worlds.world.unarchive.done": "Archiwizacja świata {name} została cofnięta.",
+  "worlds.list.all_archived": "Wszystkie światy są zarchiwizowane."
 }

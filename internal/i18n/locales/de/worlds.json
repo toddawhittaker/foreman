@@ -476,5 +476,18 @@
   "worlds.generate.resources.retry": "Erneut versuchen",
   "worlds.generate.resources.not_counted": "Dieser Download verlangt Ressourcenmengen oder Zertrümmerer-Territorien, die noch nicht vorliegen. Lade ihn erneut über die Seite „Welt generieren“ herunter, die sie zuerst ermittelt.",
   "worlds.generate.resources.not_kept": "Die Einstellungen haben sich beim Zählen der Ressourcen geändert, daher wurden die Mengen nicht gespeichert. Versuche es erneut.",
-  "worlds.list.col.world": "Welt"
+  "worlds.list.col.world": "Welt",
+  "worlds.badge.archived": "Archiviert",
+  "worlds.archive.refused": "Diese Welt ist archiviert und kann nicht starten. Hebe zuerst die Archivierung auf.",
+  "worlds.error.archive_active": "Das ist die aktive Welt, und die aktive Welt kann nicht archiviert werden. Wechsle zuerst zu einer anderen Welt.",
+  "worlds.list.archived": "Archiviert ({count})",
+  "worlds.world.archive.heading": "Archivieren",
+  "worlds.world.archive.text": "Blende diese Welt in der Hauptliste aus. Sie kann erst wieder starten, wenn du die Archivierung aufhebst. Ihre Dateien und Snapshots bleiben unverändert.",
+  "worlds.world.archive.button": "Welt archivieren",
+  "worlds.world.archive.done": "{name} ist archiviert.",
+  "worlds.world.archived.heading": "Archivierte Welt",
+  "worlds.world.archived.text": "Diese Welt ist in der Hauptliste ausgeblendet und kann weder starten noch als Ziel eines Wechsels dienen. Ihre Dateien und Snapshots bleiben unverändert.",
+  "worlds.world.unarchive.button": "Archivierung der Welt aufheben",
+  "worlds.world.unarchive.done": "{name} ist nicht mehr archiviert.",
+  "worlds.list.all_archived": "Alle deine Welten sind archiviert."
 }
