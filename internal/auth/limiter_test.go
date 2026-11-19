@@ -49,6 +49,36 @@ func TestLimiterPerAddress(t *testing.T) {
 	}
 }
 
+// SPEC 12.7, 12.11: an OIDC callback counts against its address in the
+// same table as password sign-in, and a success gives its attempt back.
+func TestLimiterAddrOnly(t *testing.T) {
+	clk := newClock()
+	l := NewLimiter(clk.Now)
+	if ok, _ := l.AllowAddr("192.0.2.1"); !ok {
+		t.Fatal("first attempt blocked")
+	}
+	l.ReleaseAddr("192.0.2.1")
+	for i := range LimitPerAddress - 1 {
+		if ok, _ := l.AllowAddr("192.0.2.1"); !ok {
+			t.Fatalf("blocked after only %d attempts", i)
+		}
+	}
+	// A password attempt shares the address's count.
+	if ok, _ := l.Allow("alice", "192.0.2.1"); !ok {
+		t.Fatal("password attempt blocked early")
+	}
+	if ok, left := l.AllowAddr("192.0.2.1"); ok || left <= 0 {
+		t.Errorf("address not blocked: ok=%v left=%v", ok, left)
+	}
+	if ok, _ := l.Allow("bob", "192.0.2.1"); ok {
+		t.Error("password sign-in not blocked by OIDC failures")
+	}
+	// No username was counted.
+	if ok, _ := l.Allow("", "192.0.2.9"); !ok {
+		t.Error("the empty username was counted")
+	}
+}
+
 func TestLimiterWindowExpiry(t *testing.T) {
 	clk := newClock()
 	l := NewLimiter(clk.Now)
