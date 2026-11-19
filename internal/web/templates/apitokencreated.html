@@ -14,27 +14,26 @@
 <div class="message message--warning" id="secret-once">
   <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.created.once"}}</p>
 </div>
+{{- /* Each value is a read-only line with its copy button at the field's end. */}}
 <div class="exchange">
   <div class="field">
     <label for="token-secret">{{t "apitokens.created.secret"}}</label>
-    <textarea id="token-secret" class="exchange__value" readonly rows="2" spellcheck="false" autocomplete="off" translate="no" aria-describedby="secret-once">{{.Secret}}</textarea>
+    <div class="copy-field">
+      <textarea id="token-secret" class="exchange__value" readonly rows="1" spellcheck="false" autocomplete="off" translate="no" aria-describedby="secret-once">{{.Secret}}</textarea>
+      <button type="button" class="button button--primary" id="token-secret-copy" data-copy-from="token-secret" data-done="token-secret-done" hidden>{{t "apitokens.created.copy_secret"}}</button>
+    </div>
+    <p class="copy-done" id="token-secret-done" hidden>{{t "apitokens.created.copied_secret"}}</p>
   </div>
-  <div class="actions">
-    <button type="button" class="button" id="token-secret-copy" data-copy-from="token-secret" data-done="token-secret-done" hidden>{{t "apitokens.created.copy_secret"}}</button>
-    <span id="token-secret-done" hidden>{{t "apitokens.created.copied_secret"}}</span>
-  </div>
-</div>
-<div class="exchange">
   <div class="field">
     <label for="token-endpoint">{{t "apitokens.created.endpoint"}}</label>
-    <textarea id="token-endpoint" class="exchange__value" readonly rows="1" spellcheck="false" autocomplete="off" translate="no">{{.Endpoint}}</textarea>
-  </div>
-  <div class="actions">
-    <button type="button" class="button" id="token-endpoint-copy" data-copy-from="token-endpoint" data-done="token-endpoint-done" hidden>{{t "apitokens.created.copy_endpoint"}}</button>
-    <span id="token-endpoint-done" hidden>{{t "apitokens.created.copied_endpoint"}}</span>
+    <div class="copy-field">
+      <textarea id="token-endpoint" class="exchange__value" readonly rows="1" spellcheck="false" autocomplete="off" translate="no">{{.Endpoint}}</textarea>
+      <button type="button" class="button" id="token-endpoint-copy" data-copy-from="token-endpoint" data-done="token-endpoint-done" hidden>{{t "apitokens.created.copy_endpoint"}}</button>
+    </div>
+    <p class="copy-done" id="token-endpoint-done" hidden>{{t "apitokens.created.copied_endpoint"}}</p>
   </div>
 </div>
-<dl class="facts">
+<dl class="facts facts--inline">
   <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Token.Expires}}</dd></div>
 </dl>
 {{- if not .MCPOn}}
@@ -43,7 +42,7 @@
 </div>
 {{- end}}
 <div class="actions">
-  <a href="{{.BackPath}}" class="button button--primary" id="act-token-back">{{t "apitokens.created.back"}}</a>
+  <a href="{{.BackPath}}" class="button" id="act-token-back">{{t "apitokens.created.back"}}</a>
 </div>
 {{- end}}
 {{- end}}

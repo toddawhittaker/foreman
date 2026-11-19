@@ -5,13 +5,13 @@
 <li id="{{.IDPrefix}}token-{{.ID}}" class="token-card">
   <h3 class="token-card__title"><span class="ident">{{.Name}}</span> <span class="state state--token-{{.StateClass}}">{{msg .StateWord}}</span></h3>
   <dl class="facts facts--inline">
-    <div><dt>{{t "apitokens.fact.owner"}}</dt><dd>{{.Owner}}</dd></div>
-    <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .ScopeWord}}</dd></div>
+    <div class="token-card__owner"><dt>{{t "apitokens.fact.owner"}}</dt><dd>{{.Owner}}</dd></div>
+    <div class="token-card__scope"><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .ScopeWord}}</dd></div>
     {{- if not .Revoked}}
-    <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Expires}}</dd></div>
+    <div class="token-card__expires"><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Expires}}</dd></div>
     {{- end}}
-    <div><dt>{{t "apitokens.fact.created"}}</dt><dd>{{template "when" .Created}}</dd></div>
-    <div><dt>{{t "apitokens.fact.used"}}</dt><dd>{{if .LastUsed.IsZero}}{{t "apitokens.fact.never"}}{{else}}{{template "when" .LastUsed}}{{end}}</dd></div>
+    <div class="token-card__created"><dt>{{t "apitokens.fact.created"}}</dt><dd>{{template "when" .Created}}</dd></div>
+    <div class="token-card__used"><dt>{{t "apitokens.fact.used"}}</dt><dd>{{if .LastUsed.IsZero}}{{t "apitokens.fact.never"}}{{else}}{{template "when" .LastUsed}}{{end}}</dd></div>
   </dl>
   {{- if not .Revoked}}
   <div class="actions">
@@ -26,6 +26,9 @@
 </li>
 {{- end}}
 
+{{/* The column names of a token list on a wide screen; each row keeps its own for screen readers. */}}
+{{define "token-head"}}<div class="token-head" aria-hidden="true"><span>{{t "apitokens.create.name"}}</span><span>{{t "apitokens.fact.owner"}}</span><span>{{t "apitokens.fact.scope"}}</span><span>{{t "apitokens.fact.expires"}}</span><span>{{t "apitokens.fact.created"}}</span><span>{{t "apitokens.fact.used"}}</span></div>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow">{{t "common.nav.settings"}}</p>
@@ -37,7 +40,7 @@
   <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "revoked"}}{{t "apitokens.done.revoked" "name" .DoneName}}{{else if eq .Done "mcp-on"}}{{t "apitokens.done.mcp_on"}}{{else}}{{t "apitokens.done.mcp_off"}}{{end}}</p>
 </div>
 {{- end}}
-<p>{{t "apitokens.intro"}}</p>
+<p class="page-intro">{{t "apitokens.intro"}}</p>
 
 {{- /* MCP access leads, as each settings page leads with its state (DESIGN 8.15). One button flips it (SPEC 21.2). */}}
 <section class="panel setting-row" aria-labelledby="mcp-heading">
@@ -57,27 +60,28 @@
       {{- if .MCPOn}}
       <button type="submit" class="button" name="mcp" value="off" id="act-mcp">{{t "apitokens.mcp.turn_off"}}</button>
       {{- else}}
-      <button type="submit" class="button button--primary" name="mcp" value="on" id="act-mcp">{{t "apitokens.mcp.turn_on"}}</button>
+      <button type="submit" class="button" name="mcp" value="on" id="act-mcp">{{t "apitokens.mcp.turn_on"}}</button>
       {{- end}}
     </form>
     {{- end}}
   </div>
 </section>
 
-<section aria-labelledby="mine-heading">
+<section class="panel" aria-labelledby="mine-heading">
   <h2 id="mine-heading">{{t "apitokens.mine.heading"}}</h2>
   {{- with .Mine}}
+  {{template "token-head"}}
   <ul class="token-list" role="list" id="my-tokens">
     {{- range .}}{{template "token-card" .}}{{end}}
   </ul>
   {{- else}}
-  <p id="my-tokens-empty">{{t "apitokens.mine.empty"}}</p>
+  <p class="empty" id="my-tokens-empty">{{t "apitokens.mine.empty"}}</p>
   {{- end}}
 </section>
 
-<section aria-labelledby="create-heading">
+<section class="panel" aria-labelledby="create-heading">
   <h2 id="create-heading">{{t "apitokens.create.heading"}}</h2>
-  <form method="post" action="{{.Path}}" class="panel" novalidate>
+  <form method="post" action="{{.Path}}" class="token-create" novalidate>
     {{template "required-note"}}
     <div class="field">
       <label for="token-name" class="required">{{t "apitokens.create.name"}}</label>
@@ -107,15 +111,16 @@
 </section>
 
 {{- if .Admin}}
-<section aria-labelledby="all-heading">
+<section class="panel" aria-labelledby="all-heading">
   <h2 id="all-heading">{{t "apitokens.all.heading"}}</h2>
   <p class="hint">{{t "apitokens.all.hint"}}</p>
   {{- with .All}}
+  {{template "token-head"}}
   <ul class="token-list" role="list" id="all-tokens">
     {{- range .}}{{template "token-card" .}}{{end}}
   </ul>
   {{- else}}
-  <p id="all-tokens-empty">{{t "apitokens.all.empty"}}</p>
+  <p class="empty" id="all-tokens-empty">{{t "apitokens.all.empty"}}</p>
   {{- end}}
 </section>
 {{- end}}

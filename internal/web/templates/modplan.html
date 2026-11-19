@@ -91,6 +91,8 @@
     {{- end}}
     <input type="hidden" name="hash" value="{{.Hash}}">
     <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
+    {{- /* On a wide screen the changes lead and what happens next sits beside them, with the button. */}}
+    <div class="confirm__main">
     {{- if .AsksRequired}}
     {{template "required-note"}}
     {{- end}}
@@ -190,6 +192,8 @@
     {{- /* With script, a change redraws the plan; without it, this button does. */}}
     <noscript><div class="actions"><button type="submit" class="button" formaction="{{.RedrawPath}}" formnovalidate>{{t "mods.plan.recalculate"}}</button></div></noscript>
     {{- end}}
+    </div>
+    <div class="confirm__side">
     {{- /* A plan with a conflict cannot be applied, so it does not say what applying does (SPEC 17.8). */}}
     {{- if not (or .Plan.Conflicts .Form.FavoriteVersion .Nothing)}}
     <p id="plan-steps">{{t "common.confirm.will"}}</p>
@@ -217,6 +221,7 @@
       <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}</button>
       {{- end}}
       <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
+    </div>
     </div>
   </form>
   {{- /* The unresolved mods' zip forms, empty: each one's field and button sit in the mod's group above. */}}

@@ -55,7 +55,7 @@
 <p class="empty" id="public-none">{{t "publicmods.none"}}</p>
 {{- end}}
 {{- range $i, $w := .Worlds}}
-<section class="public-world" aria-labelledby="public-world-name-{{$i}}">
+<section class="panel public-world" aria-labelledby="public-world-name-{{$i}}">
   <h2 id="public-world-name-{{$i}}" translate="no">{{.Name}}</h2>
   <dl class="facts">
     <div><dt>{{t "publicmods.game_version"}}</dt><dd>{{.GameVersion}}</dd></div>
@@ -92,7 +92,7 @@
 </section>
 {{- end}}
 {{- /* Where the files go, as the mod settings note says it (SPEC 9.6). */}}
-<section aria-labelledby="public-where-heading">
+<section class="panel public-where" aria-labelledby="public-where-heading">
   <h2 id="public-where-heading">{{t "publicmods.where.heading"}}</h2>
   <p>{{tHTML "publicmods.where.text" "windows" (code `%APPDATA%\Factorio\mods`) "macos" (code "~/Library/Application Support/factorio/mods") "linux" (code "~/.factorio/mods")}}</p>
 </section>
