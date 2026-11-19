@@ -10243,8 +10243,8 @@ main:has(> .gate) > .gate + .gate {
   flex: 1 1 auto;
   min-block-size: var(--target-min);
   padding-block: 0.6rem;
-  overflow: hidden;
-  white-space: nowrap;
+  /* One line where the value fits; on a phone it grows to show it whole. */
+  field-sizing: content;
   resize: none;
   min-inline-size: 0;
   max-inline-size: none;
@@ -10361,11 +10361,11 @@ main:has(> .gate) > .gate + .gate {
   }
 }
 
-/* Settings rows: the title's column is a fixed 280 px from a wide card, so
+/* Settings rows: the title's column is a fixed 336 px from a wide card, so
    a title such as "New world from this one" keeps one line. */
 @container (min-width: 60rem) {
   :is(.setting-row, .settings > fieldset) {
-    grid-template-columns: 17.5rem minmax(0, 1fr);
+    grid-template-columns: 21rem minmax(0, 1fr);
   }
 
   .setting-row__body > * {
