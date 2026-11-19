@@ -88,9 +88,11 @@ test("a value outside its range is refused with its error, and nothing is saved"
   await expect(modLimit(page)).toHaveValue("200");
 });
 
-// SPEC 6.6: lowering retention deletes nothing when saved; the page says how
-// many automatic snapshots will go at the worlds' next automatic snapshot.
-test("lowering retention deletes nothing and the page counts what will go", async ({ page, foreman }) => {
+const snapshotFolders = (f: Foreman) => readdirSync(join(f.dataDir, "snapshots", "base")).filter((n) => /^\d{8}T/.test(n));
+
+// SPEC 17.5, 6.6: lowering retention below what snapshots exist asks first;
+// Cancel saves nothing; confirming saves, and deletes nothing yet.
+test("lowering retention that trims asks first, and Cancel saves nothing", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedAutomaticSnapshots(foreman, 4);
@@ -98,19 +100,59 @@ test("lowering retention deletes nothing and the page counts what will go", asyn
   await expect(page.locator("#general-trim")).toHaveCount(0);
 
   await retention(page).fill("1");
+  await modLimit(page).fill("300");
   await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Keep fewer automatic snapshots?");
+  await expect(settingsNav(page).getByRole("link", { name: "General" })).toHaveAttribute("aria-current", "page");
+  const box = page.locator("section.confirm");
+  await expect(box.locator("#general-trim")).toContainText("3 automatic snapshots will be removed, each at its world's next automatic snapshot.");
+  await expect(box.locator("#general-trim")).toContainText("Worlds affected: 1.");
+  await expect(box).toContainText("Automatic snapshots to keep per world: 10 to 1");
+  await expect(box).toContainText("Largest mod upload (MB): 200 to 300");
+  await checkPage(page);
+
+  await box.getByRole("link", { name: "Cancel, keep the current settings" }).click();
+  await expect(page).toHaveURL("/settings/general");
+  await expect(retention(page)).toHaveValue("10");
+  await expect(modLimit(page)).toHaveValue("200");
+  expect(snapshotFolders(foreman)).toHaveLength(4);
+});
+
+test("confirming saves every value and deletes nothing yet", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedAutomaticSnapshots(foreman, 4);
+  await page.goto("/settings/general");
+  await retention(page).fill("1");
+  await modLimit(page).fill("300");
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await page.locator("section.confirm").getByRole("button", { name: "Save settings" }).click();
+  await expect(page).toHaveURL("/settings/general?done=saved");
   // The count is in the Saved box, which takes focus after the save.
   const trim = page.locator("#done-message #general-trim");
-  await expect(trim).toContainText("3 automatic snapshots will be removed, each at its world's next automatic snapshot.");
-  await expect(trim).toContainText("Worlds affected: 1.");
+  await expect(trim).toContainText("3 automatic snapshots will be removed");
+  await expect(retention(page)).toHaveValue("1");
+  await expect(modLimit(page)).toHaveValue("300");
   await checkPage(page);
-  expect(readdirSync(join(foreman.dataDir, "snapshots", "base")).filter((n) => /^\d{8}T/.test(n))).toHaveLength(4);
+  expect(snapshotFolders(foreman)).toHaveLength(4);
 
-  // Raising it again leaves nothing to remove.
+  // Raising it again leaves nothing to remove, and saves in one click.
   await retention(page).fill("10");
   await page.getByRole("button", { name: "Save settings" }).click();
   await expect(page.locator("#done-message")).toBeVisible();
   await expect(page.locator("#general-trim")).toHaveCount(0);
+});
+
+test("lowering retention with nothing to remove saves at once", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedAutomaticSnapshots(foreman, 2);
+  await page.goto("/settings/general");
+  await retention(page).fill("2");
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page).toHaveURL("/settings/general?done=saved");
+  await expect(page.locator("#general-trim")).toHaveCount(0);
+  await expect(retention(page)).toHaveValue("2");
 });
 
 test("the page is translated", async ({ page }) => {

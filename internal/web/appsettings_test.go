@@ -173,7 +173,7 @@ func TestGeneralLoweringRetentionDeletesNothingAndCounts(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	hn.wantRedirect(hn.post(generalPath(), generalForm(map[string]string{"snapshot_retention": "1"}), withCookie(c)), generalPath()+"?done=saved")
+	hn.wantRedirect(hn.post(generalPath(), confirmedForm(map[string]string{"snapshot_retention": "1"}, 3, 1), withCookie(c)), generalPath()+"?done=saved")
 	list, err := hn.worlds.Snapshots(id)
 	if err != nil || len(list) != 4 {
 		t.Fatalf("%d snapshots after saving, %v; want 4", len(list), err)

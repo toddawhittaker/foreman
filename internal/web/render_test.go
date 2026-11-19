@@ -180,6 +180,8 @@ func pageCases() []pageCase {
 		{"general saved with a trim", "todd", 200, generalTestPage(GeneralPage{Saved: true, Trims: true, Trim: trimCount{Snapshots: 1, Worlds: 1}})},
 		{"general errors", "todd", 400, generalTestPage(GeneralPage{SnapshotRetention: GeneralField{Value: "0", Error: settingSnapshotRetention.rangeMsg()},
 			ModUpload: GeneralField{Value: "x", Error: settingModUpload.rangeMsg()}})},
+		{"general confirm", "todd", 200, GeneralConfirmPage{Trim: trimCount{Snapshots: 3, Worlds: 2}, Hidden: []GeneralHidden{{Name: "snapshot_retention", Value: "2"}},
+			Changes: []GeneralChange{{Label: i18n.M(settingSnapshotRetention.Label), From: 10, To: 2}}}},
 		{"public mods settings off", "todd", 200, PublicModsSettingsPage{}},
 		{"public mods settings on", "todd", 200, PublicModsSettingsPage{On: true, Done: PublicModsOn}},
 		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},

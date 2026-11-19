@@ -40,19 +40,26 @@ type intSetting struct {
 	Default   int
 	Min, Max  int
 	Action    string
+	// Label is the catalogue key of the setting's field label.
+	Label string
 }
 
 var (
 	settingSnapshotRetention = intSetting{Name: "snapshot_retention", Key: "snapshot_retention",
-		Default: world.DefaultKeepAutomatic, Min: 1, Max: 100, Action: AuditSnapshotRetentionSet}
+		Default: world.DefaultKeepAutomatic, Min: 1, Max: 100, Action: AuditSnapshotRetentionSet,
+		Label: "general.snapshots.label"}
 	settingStopCountdown = intSetting{Name: "stop_countdown", Key: "stop_countdown_seconds",
-		Default: defaultCountdownSeconds, Min: 0, Max: maxCountdownSeconds, Action: AuditStopCountdownSet}
+		Default: defaultCountdownSeconds, Min: 0, Max: maxCountdownSeconds, Action: AuditStopCountdownSet,
+		Label: "general.stop.label"}
 	settingAuditRetention = intSetting{Name: "audit_retention_days", Key: "audit_retention_days",
-		Default: 365, Min: 7, Max: 3650, Action: AuditAuditRetentionSet}
+		Default: 365, Min: 7, Max: 3650, Action: AuditAuditRetentionSet,
+		Label: "general.audit.label"}
 	settingSaveUpload = intSetting{Name: "save_upload_mb", Key: "save_upload_mb",
-		Default: MaxSaveUpload >> 20, Min: 100, Max: 8192, Action: AuditSaveUploadLimitSet}
+		Default: MaxSaveUpload >> 20, Min: 100, Max: 8192, Action: AuditSaveUploadLimitSet,
+		Label: "general.uploads.save.label"}
 	settingModUpload = intSetting{Name: "mod_upload_mb", Key: "mod_upload_mb",
-		Default: modUploadMB, Min: 10, Max: 2048, Action: AuditModUploadLimitSet}
+		Default: modUploadMB, Min: 10, Max: 2048, Action: AuditModUploadLimitSet,
+		Label: "general.uploads.mod.label"}
 )
 
 // generalSettings lists the settings in the order the page shows them.
@@ -211,16 +218,26 @@ type trimCount struct {
 func (s *server) trimCount(ctx context.Context, retention, auditDays int) (trimCount, error) {
 	var t trimCount
 	var err error
-	if s.worlds != nil {
-		if t.Snapshots, t.Worlds, err = s.worlds.TrimCount(ctx, retention); err != nil {
-			return trimCount{}, fmt.Errorf("count the snapshots retention would remove: %w", err)
-		}
+	if t.Snapshots, t.Worlds, err = s.snapshotTrim(ctx, retention); err != nil {
+		return trimCount{}, err
 	}
 	cutoff := s.now().AddDate(0, 0, -auditDays)
 	if t.AuditEntries, err = s.store.CountAuditBefore(ctx, cutoff); err != nil {
 		return trimCount{}, fmt.Errorf("count the audit entries a sweep would remove: %w", err)
 	}
 	return t, nil
+}
+
+// snapshotTrim counts the automatic snapshots, and the worlds holding them,
+// that retention n would remove.
+func (s *server) snapshotTrim(ctx context.Context, n int) (snapshots, worlds int, err error) {
+	if s.worlds == nil {
+		return 0, 0, nil
+	}
+	if snapshots, worlds, err = s.worlds.TrimCount(ctx, n); err != nil {
+		return 0, 0, fmt.Errorf("count the snapshots retention would remove: %w", err)
+	}
+	return snapshots, worlds, nil
 }
 
 // GeneralField is one setting's input on the page.
@@ -330,6 +347,15 @@ func (s *server) handleGeneralSave(w http.ResponseWriter, r *http.Request, u sto
 	}
 	if p.hasErrors() {
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	confirm, needed, err := s.generalConfirmPage(ctx, r, want)
+	if err != nil {
+		s.fail(w, r, "check what the new retention removes", err)
+		return
+	}
+	if needed {
+		s.page(w, r, http.StatusOK, u.Username, confirm)
 		return
 	}
 	if err := s.saveGeneral(ctx, actor(u), want); err != nil {
