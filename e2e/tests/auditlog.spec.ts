@@ -219,8 +219,13 @@ test("at 320 px the table stacks each row, with no sideways scroll", async ({ pa
   await expect(withToken.locator(".audit-user")).toBeVisible();
   const box = await withToken.boundingBox();
   expect(box!.width).toBeLessThanOrEqual(320);
-  // An entry with no token shows no empty gap or label for one.
-  await expect(rows(page).filter({ hasText: "Autosaves tidied" }).locator(".audit-token")).toBeHidden();
+  // An entry with no token shows no empty gap or label for one, but its
+  // empty cell stays in the table, so a screen reader reads every cell under
+  // its own column.
+  const tidyRow = rows(page).filter({ hasText: "Autosaves tidied" });
+  const tokenBox = await tidyRow.locator(".audit-token").boundingBox();
+  expect(tokenBox === null || (tokenBox.width <= 1 && tokenBox.height <= 1)).toBe(true);
+  for (const r of await rows(page).all()) await expect(r.getByRole("cell")).toHaveCount(6);
   // Compact: a short entry takes four lines or fewer, not a screen of stacked facts.
   const tidy = await rows(page).filter({ hasText: "Autosaves tidied" }).boundingBox();
   expect(tidy!.height).toBeLessThan(150);
