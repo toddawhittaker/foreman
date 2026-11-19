@@ -17,7 +17,8 @@ open (see its section). Epic 9c (public mods and autosave tidy), Epic
 10a (API tokens and MCP) and Epic 10b (MCP admin tools) are done. Epic 11
 was split on 2026-11-18: Epic 11a (sign-in, audit log, archive, settings and
 users) is built, with its gate on the trial deployment still to run, and
-Epic 11b (the release and Gate C) is next.
+Epic 11b (the release and Gate C) is next. Fixes batch 13 (three issues from
+checking Epic 11a on the trial deployment) is done.
 Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
 now, at Todd's choice, when the Mod settings epic started; it is still owed
 before Gate C.
@@ -2442,6 +2443,8 @@ failed on the epic head passed after.
 - **Forced-colours contrast** of the Generate world button
   (`#generate-button`) in the dark theme is 1.11:1 by axe. It predates
   this batch; the forced-colours scan covers only the preparation block.
+  (Closed in fixes batch 13: the primary button takes `ButtonText` in forced
+  colours, and a test checks it.)
 - **`preview.js` is about 1,300 lines**, past the 800-line split point.
 - **Arrow keys in the large view** still step the planet during a
   preparation, which ends it (SPEC 5.6). (Closed in fixes batch 9: the
@@ -4235,3 +4238,95 @@ audited as `password-change` by `system` (12.12).
   on amd64 only.
 - **docs/I18N.md section 7's list of text areas** still omits several older
   areas (`about`, `account`, `apitokens`, `favorites`, `mods`).
+
+## Fixes batch 13
+
+Serves SPEC 8.11, 12.9, 13.1, 14.8, 17.1, 17.10 and 21.7, with DESIGN 6, 8.15
+and 8.16. Issues: #724, #725 and #726, filed by Todd while checking Epic 11a on
+the trial deployment. The plan was #729. The pull requests were #730 (settings
+tab order), #731 (Pushover) and #732 (audit log table).
+
+Rulings (Todd, 2026-11-19, and from the plan):
+
+1. Pushover's two keys are stored in the existing sealed `url` column, with no
+   migration. Pages and MCP show the host `api.pushover.net` only. Rejected:
+   two new columns, which need a migration and a second copy of the secret
+   rules.
+2. Pushover priority is 1 for a crash, a crash loop and low disk, 0 otherwise,
+   never 2. There is no device field and no test-notification button.
+3. The audit log at 320 px stacks each row instead of scrolling sideways.
+4. The Generate button's forced-colours contrast is fixed with one rule, as
+   STATUS had recorded it at 1.11:1 since fixes batch 6.
+5. The Settings link opens General (reversing the earlier choice that it open
+   the restart schedule), and is marked current on every settings page.
+6. Setting the first restart schedule costs 3 clicks (Settings, Restart
+   schedule, Save schedule). Changing an existing one stays 2, through the
+   Server page's next-restart link.
+
+### Delivered
+
+- **Settings tabs (#726, SPEC 13.1, 17.10, DESIGN 6 and 8.15; #730).** The
+  tabs run General, Restart schedule, Notifications, Public mods, API tokens,
+  Users, Audit log and the factorio.com account. The main Settings link opens
+  General. It is marked `aria-current="page"` on General and `"true"` on every
+  other settings page and sub-page, by changing what each page reports as its
+  navigation target in Go (`navItem`). Direct links to a tab from other pages
+  are unchanged. `TestSettingsSubnav` checks the order, the one current tab
+  and the link's target and mark on all eight pages.
+- **Pushover preset (#725, SPEC 8.11, 14.8, 21.7, DESIGN 8.16; #731).** The
+  sealed `url` column holds the endpoint with the application token and user
+  key; only the sender reads the keys back, and it posts them in the form body
+  to the bare endpoint, so no key is in a request address. Keys are letters
+  and digits, at most 64 characters. The body is form-encoded `token`, `user`,
+  `message` (cut to 1,024 characters), `title` ("Foreman", cut to 250) and
+  `priority`; cuts fall on a character boundary. The form swaps the address
+  field for two password fields while Pushover is chosen (`notifyurl.js`); on
+  an edit each empty field keeps its stored key; a refused form asks for the
+  keys again. MCP `add_webhook` and `change_webhook` take `app_token` and
+  `user_key`, and no answer holds a key. The operator guide, section 12, says
+  where to find both keys.
+- **Audit log as a filter bar and a table (#724, SPEC 12.9, DESIGN 8.15;
+  #732).** The filters and an "Entries per page" choice (25, 50, 100, 200;
+  default 50) sit on one row. The entries are a table with six fixed columns:
+  Time, User, API token, Action, World and Detail. Newer and Older links keep
+  the filters and a page size other than 50. The query uses a keyset cursor
+  (`AuditFilter.After` beside `Before`), so pages do not shift while new
+  entries arrive; a cursor past either end goes to the first page. At 320 px
+  each row stacks (DESIGN 8.15).
+- **Forced-colours Generate button (SPEC 17.1; #732).** One rule gives
+  `.button--primary` and its hover and busy states `ButtonText`. The new test
+  in `generate.spec.ts` failed on the base (axe, 1.11:1) and passes on all four
+  projects.
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck`, its Go tests and
+  its end-to-end specs. New tests were written first and failed on the base
+  where they cover a change in behaviour.
+- S1: `go test ./internal/web -run 'Account|Settings|Schedule'`; end-to-end
+  `schedule`, `live-ops-scaffold` and `user-menu` (104 passed), and
+  `click-budgets`, `account`, `general` and `settings-tabs` (224 passed).
+- N1: `go test ./internal/notify ./internal/i18n ./internal/store
+  ./internal/web`, including a golden body for each priority, truncation at
+  both limits with multi-byte text, delivery to a fake endpoint (keys in the
+  body, none in the address or logs, 400 not retried, 429 retried) and MCP
+  answers, logs and audit entries with no keys; `notifications.spec.ts` (32
+  passed) and `i18n.spec.ts` (46 in each of four projects).
+- A1: `go test ./internal/store ./internal/i18n` and the whole
+  `./internal/web` package; `auditlog.spec.ts` and `long-words.spec.ts` (80
+  passed), the forced-colours test in `generate.spec.ts`, and `i18n.spec.ts`,
+  whose 320 px layout test now seeds a token and a long detail.
+- The whole-epic runs (`make verify` and the full end-to-end suite) are the
+  orchestrator's, on the epic head.
+
+### Gaps left
+
+- **The Pushover end-to-end test adds and edits a webhook but sends nothing.**
+  Delivery is tested in Go only, against a fake endpoint.
+- **There is no test-notification button,** for any preset (ruled out).
+- **Screen readers read the labels of a stacked table twice** (the visible
+  label and the header). This is the repo-wide table pattern and is not
+  changed here.
+- **The audit log still has no date-range filter or CSV export** (from Epic
+  11a).
+- Still deferred: as listed under Epic 11a.

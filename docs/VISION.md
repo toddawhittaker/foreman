@@ -86,7 +86,7 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
   mismatch, a failed save load, a version mismatch, a port in use) and flags a crash
   loop instead of letting it spin.
 - Notifications: webhooks on start, stop, crash, player join and leave, and scheduled
-  restarts. Presets for Discord and ntfy, plus a generic JSON webhook.
+  restarts. Presets for Discord, ntfy and Pushover, plus a generic JSON webhook.
 
 ### Worlds
 - Create a world in one of three ways:

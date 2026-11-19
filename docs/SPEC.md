@@ -1662,7 +1662,7 @@ except `token-expiring`, which names a token and its owner and no world.
   passed while Foreman was down is sent at the next check if the token
   is still Working.
 
-8.11. Presets for Discord and ntfy, plus a generic JSON webhook whose body
+8.11. Presets for Discord, ntfy and Pushover, plus a generic JSON webhook whose body
 format is documented in the operator guide. Each webhook has its own
 language for the message, defaulting to the language of the admin who adds
 it.
@@ -1671,6 +1671,14 @@ it.
   `allowed_mentions` set to none, so no name can ping anyone.
 - **ntfy** posts the message as plain text with a `Title` header, and high
   priority for a crash, a crash loop and low disk.
+- **Pushover** posts a form with `token`, `user`, `message` (at most 1,024
+  characters), `title` (at most 250) and `priority`: 1 for a crash, a crash
+  loop and low disk, 0 otherwise, never 2. The address is fixed
+  (`api.pushover.net`); the admin gives the application token and the user
+  key, which are secrets (14.8) and are letters and digits, at most 64
+  characters each. On an edit, each key field left empty keeps its key. The
+  MCP tools `add_webhook` and `change_webhook` take them as `app_token` and
+  `user_key` (21.7). There is no test-notification button for any preset.
 - **Generic** posts JSON, version 1:
   `{"version":1,"event":"<id>","time": "<RFC 3339,
   UTC>","world":{"id","name"},"text":"<message>"}`, plus `player` for a
@@ -1684,8 +1692,8 @@ it.
   with a warning that messages then go unencrypted. It has a host, no user
   name or password, no space or control character, and at most 2,048
   characters. A Discord address is on discord.com (or discordapp.com) under
-  `/api/webhooks/`; an ntfy address names a topic. Webhook addresses are
-  secrets (14.8). (P1)
+  `/api/webhooks/`; an ntfy address names a topic. Webhook addresses and
+  Pushover keys are secrets (14.8). (P1)
 
 8.12. **Delivery.** Emitting an event never blocks or delays a server
 operation, even when a target hangs or a queue is full: the event goes into
@@ -2495,13 +2503,17 @@ P0)
   with the detail "from A to B" (nothing is recorded for a value that did
   not change). An action through MCP carries the token's name as always.
 - **The viewer.** The audit log is a Settings tab, "Audit log", at
-  `/settings/audit-log`. It lists entries newest first, 50 a page, with an
-  "Older entries" link that keeps the filters. It filters by user, action
-  and world, each an exact match picked from the values the log holds. Each
-  entry shows its time in the viewer's zone (17.11), the user, the token's
-  name as a badge, the action in words (or as recorded when no words
-  exist), the world (its current name as a link, or its id marked deleted)
-  and the detail, escaped. Console arguments are masked when recorded, so
+  `/settings/audit-log`. It lists entries newest first in a table with the
+  columns Time, User, API token, Action, World and Detail, 50 a page by
+  default (25, 100 or 200 by choice), with Newer and Older links. The
+  filters and the page size carry across pages. The filters (user, action
+  and world, each an exact match picked from the values the log holds) and
+  the page size sit on one row. At a narrow width each row stacks into a
+  block instead of scrolling sideways. Each entry shows its time in the
+  viewer's zone (17.11), the user, the token's name (empty when there is
+  none), the action in words (or as recorded when no words exist), the
+  world (its current name as a link, or its id marked deleted) and the
+  detail, escaped. Console arguments are masked when recorded, so
   they stay masked. (Todd's rulings, 2026-11-18.) (P1)
 - **Retention.** The log keeps 365 days by default. The setting takes 7 to
   3650 days (13.1). An hourly sweep deletes older entries. The sweep is not
@@ -2630,9 +2642,10 @@ by environment. Each shows where its value comes from (environment or
 UI), and environment values cannot be changed in the UI. (P0 for those
 whose features are P0)
 
-Foreman's settings are eight tabs under Settings, in this order: the
-factorio.com account, General, Restart schedule, Notifications, Public
-mods, API tokens, Users (12.12) and Audit log (12.9).
+Foreman's settings are eight tabs under Settings, in this order: General,
+Restart schedule, Notifications, Public mods, API tokens, Users (12.12),
+Audit log (12.9) and the factorio.com account. The Settings link in the main
+navigation opens General.
 
 **The General tab** (`/settings/general`) holds five settings. None has an
 environment form, so each says "set here". A bad value refuses the whole
@@ -2858,8 +2871,9 @@ accepted risk (4.5).
 
 A webhook URL often carries a token in its path, so it is stored sealed
 with `FOREMAN_SECRET_KEY`, as the stored factorio.com account is (ADR 0013,
-ADR 0018). Pages show only the preset and the host, and changing a URL
-means typing it again. Without the key, webhooks are unavailable. (P0)
+ADR 0018). A Pushover webhook's two keys are kept in the same sealed value
+and are never put in a request address. Pages show only the preset and the
+host, and changing a URL means typing it again. Without the key, webhooks are unavailable. (P0)
 
 14.9. **RCON input.** Commands built by Foreman from user text (chat
 messages, player names, reasons) are refused, never escaped, when the text
@@ -3161,7 +3175,7 @@ with the defaults accepted, these take at most:
 | Kick a player (the player, Kick, Kick *player*) | 3 |
 | Ban a player (the player, Ban, Ban *player*) | 3 |
 | Change the restart schedule while one is set (Next restart, Save schedule) | 2 |
-| Set a nightly restart (Settings, Save schedule) | 2 |
+| Set the first restart schedule (Settings, Restart schedule, Save schedule; Settings opens General) | 3 |
 | Open Notifications (Settings, Notifications) | 2 |
 | Try a failed mod change again (Try again, Install N mods) | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
@@ -3462,8 +3476,8 @@ in these areas:
 - players, the admin list, ban list and whitelist (8.2, 8.3);
 - the raw console (8.4);
 - the restart schedule (7.12);
-- webhooks (8.10, 8.11), whose address is accepted but never returned
-  (14.8);
+- webhooks (8.10, 8.11), whose address and Pushover keys are accepted but
+  never returned (14.8);
 - mods and mod settings (section 9);
 - the public mods page (9.16);
 - the factorio.com account (9.11), write-only;
@@ -3494,6 +3508,10 @@ The tool names are fixed, one tool per action:
   setting), `set_foreman_settings`, `set_restart_schedule`, `add_webhook`,
   `change_webhook`, `delete_webhook`, `set_factorio_account`,
   `remove_factorio_account`, `set_public_mods`.
+
+`add_webhook` and `change_webhook` take `url`, or for the Pushover preset
+`app_token` and `user_key` (8.11); an omitted key keeps its stored value on a
+change, and no answer returns an address or a key (14.8).
 
 Each tool that acts on a world requires `world_id`, except where a
 favorite or webhook is named instead. Player, portal, game-log and snapshot
