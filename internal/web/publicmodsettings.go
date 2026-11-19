@@ -27,7 +27,7 @@ type PublicModsSettingsPage struct {
 }
 
 func (PublicModsSettingsPage) templateName() string { return "publicmodssettings" }
-func (PublicModsSettingsPage) navItem() string      { return PathSchedule }
+func (PublicModsSettingsPage) navItem() string      { return generalPath() }
 
 // Path is where the form posts.
 func (PublicModsSettingsPage) Path() string { return PathPublicModsSettings }

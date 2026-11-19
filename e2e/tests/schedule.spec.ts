@@ -15,6 +15,8 @@ test("a new schedule is offered at 04:00 UTC and saves", async ({ page }) => {
   await createAdmin(page);
 
   await mainNav(page).getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL("/settings/general");
+  await settingsNav(page).getByRole("link", { name: "Restart schedule" }).click();
   await expect(page).toHaveURL("/settings/restart-schedule");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart schedule");
   await expect(page.locator("#schedule-state")).toHaveText("No restart is scheduled.");
@@ -82,7 +84,6 @@ test("a wrong limit is refused with its error, and nothing is saved", async ({ p
 test("the Foreman settings pages share one sub-navigation", async ({ page }) => {
   await createAdmin(page);
   for (const [path, current] of [
-    ["/settings/factorio-account", "factorio.com account"],
     ["/settings/general", "General"],
     ["/settings/restart-schedule", "Restart schedule"],
     ["/settings/notifications", "Notifications"],
@@ -90,10 +91,11 @@ test("the Foreman settings pages share one sub-navigation", async ({ page }) => 
     ["/settings/api-tokens", "API tokens"],
     ["/settings/users", "Users"],
     ["/settings/audit-log", "Audit log"],
+    ["/settings/factorio-account", "factorio.com account"],
   ]) {
     await page.goto(path);
     const nav = settingsNav(page);
-    await expect(nav.getByRole("link")).toHaveText(["factorio.com account", "General", "Restart schedule", "Notifications", "Public mods", "API tokens", "Users", "Audit log"]);
+    await expect(nav.getByRole("link")).toHaveText(["General", "Restart schedule", "Notifications", "Public mods", "API tokens", "Users", "Audit log", "factorio.com account"]);
     await expect(nav.getByRole("link", { name: current })).toHaveAttribute("aria-current", "page");
     await expect(nav.locator("[aria-current]")).toHaveCount(1);
     // It sits under the page's heading.

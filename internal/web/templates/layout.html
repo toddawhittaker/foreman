@@ -35,8 +35,8 @@
       <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}>{{t "common.nav.server"}}<span id="nav-lamp">{{template "nav-lamp" .Lamp}}</span></a></li>
       <li><a href="{{worldsPath}}"{{if .Current (print worldsPath "#page")}} aria-current="page"{{else if .Current worldsPath}} aria-current="true"{{end}}>{{t "common.nav.worlds"}}</a></li>
       <li><a href="{{snapshotsTabPath}}"{{if .Current (print snapshotsTabPath "#page")}} aria-current="page"{{else if .Current snapshotsTabPath}} aria-current="true"{{end}}>{{t "common.nav.snapshots"}}</a></li>
-      {{- /* Foreman's own settings (DESIGN 8.15); the tab opens the restart schedule. */}}
-      <li><a href="{{schedulePath}}"{{if .Current (print schedulePath "#page")}} aria-current="page"{{else if .Current schedulePath}} aria-current="true"{{end}}>{{t "common.nav.settings"}}</a></li>
+      {{- /* Foreman's own settings (DESIGN 8.15); the tab opens General. */}}
+      <li><a href="{{generalPath}}"{{if .Current (print generalPath "#page")}} aria-current="page"{{else if .Current generalPath}} aria-current="true"{{end}}>{{t "common.nav.settings"}}</a></li>
     </ul>
   </nav>
   {{- end}}
@@ -242,7 +242,6 @@
 {{define "settings-tabs" -}}
 <nav class="subnav subnav--settings" aria-label="{{t "common.settings.label"}}">
   <ul role="list">
-    <li><a href="{{accountPath}}"{{if eq . "account"}} aria-current="page"{{end}}>{{t "account.title"}}</a></li>
     <li><a href="{{generalPath}}"{{if eq . "general"}} aria-current="page"{{else if eq . "general-confirm"}} aria-current="true"{{end}}>{{t "common.menu.general"}}</a></li>
     <li><a href="{{schedulePath}}"{{if eq . "schedule"}} aria-current="page"{{end}}>{{t "common.menu.schedule"}}</a></li>
     <li><a href="{{notificationsPath}}"{{if eq . "notifications"}} aria-current="page"{{else if eq . "notification"}} aria-current="true"{{end}}>{{t "common.menu.notifications"}}</a></li>
@@ -250,6 +249,7 @@
     <li><a href="{{apiTokensPath}}"{{if eq . "api-tokens"}} aria-current="page"{{else if eq . "api-token"}} aria-current="true"{{end}}>{{t "apitokens.tab"}}</a></li>
     <li><a href="{{usersPath}}"{{if eq . "users"}} aria-current="page"{{else if eq . "user"}} aria-current="true"{{end}}>{{t "common.menu.users"}}</a></li>
     <li><a href="{{auditLogPath}}"{{if eq . "audit-log"}} aria-current="page"{{end}}>{{t "common.menu.auditlog"}}</a></li>
+    <li><a href="{{accountPath}}"{{if eq . "account"}} aria-current="page"{{end}}>{{t "account.title"}}</a></li>
   </ul>
 </nav>
 {{- end}}

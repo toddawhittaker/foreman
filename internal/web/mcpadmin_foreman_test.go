@@ -583,3 +583,43 @@ func TestMCPDeleteWebhookGoneStillSpendsCode(t *testing.T) {
 		t.Errorf("the code was not spent: %s", resultText(res))
 	}
 }
+
+// SPEC 21.7, 14.8: add_webhook and change_webhook take Pushover's two
+// keys, and no answer, log line or audit entry holds either.
+func TestMCPWebhookPushover(t *testing.T) {
+	r := newForemanRig(t, keyed)
+	const tok, usr = "mcpTOKENsecret4417", "mcpUSERsecret9921" //nolint:gosec // made up, to prove they never leak
+	check := func(where string, res *mcp.CallToolResult, out map[string]any) {
+		t.Helper()
+		for _, k := range []string{tok, usr} {
+			if strings.Contains(resultText(res), k) || strings.Contains(asJSON(out), k) || strings.Contains(r.logs.String(), k) {
+				t.Errorf("%s: a key leaked", where)
+			}
+		}
+		all, _ := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 500})
+		for _, row := range all {
+			if strings.Contains(row.Detail, tok) || strings.Contains(row.Detail, usr) {
+				t.Errorf("%s: an audit entry holds a key", where)
+			}
+		}
+	}
+	res, out := r.run(t, "add_webhook", map[string]any{"preset": "pushover", "app_token": tok})
+	if !res.IsError {
+		t.Errorf("one key was accepted: %s", resultText(res))
+	}
+	check("refused add", res, out)
+	res, out = r.run(t, "add_webhook", map[string]any{"preset": "pushover", "app_token": tok, "user_key": usr})
+	hook, _ := out["webhook"].(map[string]any)
+	if res.IsError || hook == nil || hook["preset"] != "pushover" || hook["host"] != "api.pushover.net" {
+		t.Fatalf("add: %s %s", resultText(res), asJSON(out))
+	}
+	check("add", res, out)
+	id := hook["id"]
+	res, out = r.run(t, "change_webhook", map[string]any{"webhook_id": id, "user_key": "newUSER5"})
+	if res.IsError {
+		t.Errorf("change: %s", resultText(res))
+	}
+	check("change", res, out)
+	res, out = r.run(t, "foreman_settings", map[string]any{})
+	check("settings", res, out)
+}

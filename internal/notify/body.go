@@ -2,6 +2,8 @@ package notify
 
 import (
 	"encoding/json"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,8 +75,48 @@ var discordEscaper = strings.NewReplacer(
 	`#`, `\#`, `[`, `\[`, `]`, `\]`, `(`, `\(`, `)`, `\)`, `-`, `\-`, `<`, `\<`, `@`, `\@`,
 )
 
-// request is what one delivery posts.
+// Pushover's limits on a message and its title, in characters.
+const (
+	pushoverMaxMessage = 1024
+	pushoverMaxTitle   = 250
+)
+
+// truncate keeps at most n characters of s, cutting on a character.
+func truncate(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n])
+	}
+	return s
+}
+
+// highPriority is the events ntfy and Pushover mark urgent (SPEC 8.11).
+func highPriority(e Event) bool { return e == Crash || e == CrashLoop || e == LowDisk }
+
+// pushoverBody is the form Pushover takes. Priority is 1 or 0, never 2,
+// which keeps alerting until someone acknowledges it.
+func pushoverBody(loc i18n.Locale, m Message, token, user string) []byte {
+	priority := 0
+	if highPriority(m.Event) {
+		priority = 1
+	}
+	return pushoverForm(token, user, Text(loc, m, plain), "Foreman", priority)
+}
+
+// pushoverForm encodes the form, cutting the message and title to
+// Pushover's limits.
+func pushoverForm(token, user, message, title string, priority int) []byte {
+	return []byte(url.Values{
+		"token":    {token},
+		"user":     {user},
+		"message":  {truncate(message, pushoverMaxMessage)},
+		"title":    {truncate(title, pushoverMaxTitle)},
+		"priority": {strconv.Itoa(priority)},
+	}.Encode())
+}
+
+// request is what one delivery posts, and where.
 type request struct {
+	url         string
 	contentType string
 	headers     map[string]string
 	body        []byte
@@ -116,22 +158,26 @@ type allowedMentions struct {
 	Parse []string `json:"parse"`
 }
 
-// build makes the request for m to a webhook of preset p in loc's language.
-func build(p Preset, loc i18n.Locale, m Message) (request, error) {
+// build makes the request for m to a webhook of preset p, whose opened
+// address is raw, in loc's language.
+func build(p Preset, raw string, loc i18n.Locale, m Message) (request, error) {
 	switch p {
 	case Discord:
 		text := Text(loc, m, discordName)
 		b, err := json.Marshal(discordBody{Content: text, Username: "Foreman", AllowedMentions: allowedMentions{Parse: []string{}}})
-		return request{contentType: "application/json", body: b}, err
+		return request{url: raw, contentType: "application/json", body: b}, err
 	case Ntfy:
 		h := map[string]string{"Title": "Foreman"}
-		if m.Event == Crash || m.Event == CrashLoop || m.Event == LowDisk {
+		if highPriority(m.Event) {
 			h["Priority"] = "high"
 		}
-		return request{contentType: "text/plain; charset=utf-8", headers: h, body: []byte(Text(loc, m, plain))}, nil
+		return request{url: raw, contentType: "text/plain; charset=utf-8", headers: h, body: []byte(Text(loc, m, plain))}, nil
+	case Pushover:
+		endpoint, token, user := pushoverKeys(raw)
+		return request{url: endpoint, contentType: "application/x-www-form-urlencoded", body: pushoverBody(loc, m, token, user)}, nil
 	default:
 		b, err := json.Marshal(generic(loc, m))
-		return request{contentType: "application/json", body: b}, err
+		return request{url: raw, contentType: "application/json", body: b}, err
 	}
 }
 

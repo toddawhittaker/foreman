@@ -9865,3 +9865,9 @@ main:has(> .gate) > .gate + .gate {
   min-width: 0;
   margin: 0;
 }
+
+/* The webhook form swaps the address field and Pushover's keys (DESIGN 8.16). */
+#webhook-url-field[hidden],
+#webhook-keys[hidden] {
+  display: none;
+}

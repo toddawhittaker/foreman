@@ -78,5 +78,15 @@
   "notify.msg.restart_ran": "{world}: zaplanowany restart został wykonany.",
   "notify.msg.restart_skipped": "{world}: zaplanowany restart został pominięty, ponieważ gracze pozostali online.",
   "notify.msg.low_disk": "{world}: na dysku zostało tylko {free} wolnego miejsca. Gdy się skończy, autozapisy mogą się nie udać.",
-  "notify.msg.token_expiring": "Token API {token} (właściciel: {owner}) wygasa {expires}."
+  "notify.msg.token_expiring": "Token API {token} (właściciel: {owner}) wygasa {expires}.",
+  "notify.preset.pushover": "Pushover",
+  "notify.preset.pushover.hint": "Foreman wysyła wiadomości do {host} z tokenem aplikacji i kluczem użytkownika.",
+  "notify.keys.legend": "Klucze Pushover",
+  "notify.keys.hint": "Na pushover.net klucz użytkownika jest na pulpicie, a token aplikacji na stronie utworzonej aplikacji.",
+  "notify.keys.kept": "Klucze pozostają zapisane. Aby zmienić klucz, należy wpisać nowy; puste pole zachowuje swój klucz.",
+  "notify.key.app_token": "Token aplikacji",
+  "notify.key.user_key": "Klucz użytkownika",
+  "notify.key.missing": "Należy wpisać klucz.",
+  "notify.key.invalid": "Należy wpisać klucz złożony tylko z liter i cyfr, o długości najwyżej {count} znaków.",
+  "notify.key.retype": "Należy ponownie wpisać klucz. Foreman nie przechowuje klucza z odrzuconego formularza."
 }

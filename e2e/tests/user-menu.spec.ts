@@ -129,19 +129,22 @@ test("a theme chosen by keyboard returns to the same page; each choice has a nam
 });
 
 // SPEC 17.10 and DESIGN 8.15: the Settings tab is the one way in, marked on
-// all three pages and the pages under them.
-test("the Settings tab is current on the four Foreman settings pages", async ({ page }) => {
+// every settings page and the pages under them; it opens General.
+test("the Settings tab is current on every Foreman settings page, and opens General", async ({ page }) => {
   await createAdmin(page);
   for (const [path, mark] of [
-    ["/settings/restart-schedule", "page"],
+    ["/settings/general", "page"],
+    ["/settings/restart-schedule", "true"],
     ["/settings/factorio-account", "true"],
     ["/settings/notifications", "true"],
     ["/settings/public-mods", "true"],
-    ["/settings/general", "true"],
+    ["/settings/api-tokens", "true"],
+    ["/settings/users", "true"],
+    ["/settings/audit-log", "true"],
   ]) {
     await page.goto(path);
     const tab = mainNav(page).getByRole("link", { name: "Settings" });
-    await expect(tab).toHaveAttribute("href", "/settings/restart-schedule");
+    await expect(tab).toHaveAttribute("href", "/settings/general");
     await expect(tab).toHaveAttribute("aria-current", mark);
     await expect(mainNav(page).locator("[aria-current]")).toHaveCount(1);
   }
