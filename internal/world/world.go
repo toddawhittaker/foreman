@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -55,6 +56,9 @@ type Manager struct {
 	// createMu is held while a new world's id is chosen and its folder made,
 	// so two creations cannot pick the same id or name.
 	createMu sync.Mutex
+
+	// keepAutomatic is the retention setting; 0 means the default.
+	keepAutomatic atomic.Int32
 
 	// addSaveWait is how long AddSave waits for a busy world.
 	addSaveWait time.Duration

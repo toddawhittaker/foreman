@@ -37,6 +37,9 @@ type ServerPage struct {
 	// WorldNames holds the names of the worlds a switch, or the notice of
 	// an unfinished one, speaks of, by id.
 	WorldNames map[string]string
+	// ArchivedWorlds marks the worlds in WorldNames that are archived, so
+	// no offer to switch to one is made (SPEC 5.9).
+	ArchivedWorlds map[string]bool
 	// Image is the game image the world runs, and ImageMissing whether
 	// Docker lacks it; both are looked up only while the game can start
 	// (SPEC 3.7).
@@ -72,6 +75,9 @@ type ServerPage struct {
 	Lists PlayerLists
 	// Schedule is where the restart schedule stands (DESIGN 8.15).
 	Schedule schedule.State
+	// StopSeconds is the stop countdown setting, which the go-ahead box of a
+	// refusal repeats (SPEC 7.6).
+	StopSeconds int
 }
 
 // navPage marks a nav item as the page itself rather than a page inside its
@@ -776,7 +782,7 @@ type Anyway struct {
 func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 	a := &Anyway{
 		Path: p.StartPath(), Verb: i18n.M("server.anyway.start"), Open: i18n.M("server.anyway.start_open"), Offer: i18n.M("server.anyway.start_offer"), World: p.World.Name,
-		Countdown: defaultCountdownSeconds,
+		Countdown: p.StopSeconds,
 		Running:   game.IsRunning(p.Status.State),
 	}
 	switch p.Result.Action {
@@ -798,8 +804,8 @@ func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 
 // updateAnyway is the offer to update a world that is not active past the
 // pre-start check, shown on the world's own page (SPEC 10.3, 7.4).
-func updateAnyway(check world.PreCheck, sum world.Summary, version string) *Anyway {
-	a := &Anyway{World: sum.Name, Countdown: defaultCountdownSeconds}
+func updateAnyway(check world.PreCheck, sum world.Summary, version string, countdown int) *Anyway {
+	a := &Anyway{World: sum.Name, Countdown: countdown}
 	a.toUpdate(sum.ID, version)
 	a.Seen = game.AnywayFingerprint(check, a.Running)
 	return a

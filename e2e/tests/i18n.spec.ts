@@ -366,6 +366,28 @@ function seedThird(f: Foreman) {
   copyFileSync(join(fixtures, "2.1.24-no-space-age.zip"), join(dir, "saves", "base.zip"));
 }
 
+// A fourth world that is archived (SPEC 5.9), so its page shows the badge and Unarchive.
+function seedArchived(f: Foreman) {
+  const dir = join(f.dataDir, "worlds", "fourth");
+  for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
+  writeFileSync(
+    join(dir, "world.json"),
+    JSON.stringify({ format_version: 1, name: "Fourth world with a rather long name for a heading", game_version: "2.1.24", space_age: false, created_at: "2026-11-03T10:00:00Z", archived: true }),
+  );
+  copyFileSync(join(fixtures, "2.1.24-no-space-age.zip"), join(dir, "saves", "base.zip"));
+}
+
+// Writes n automatic snapshots into the base world's folder, as Foreman would have taken them, so lowering retention has something to trim.
+function seedAutomaticSnapshots(f: Foreman, n: number) {
+  const dir = join(f.dataDir, "snapshots", "base");
+  for (let i = 0; i < n; i++) {
+    const at = new Date(Date.UTC(2026, 10, 1, 10, i));
+    const name = at.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    mkdirSync(join(dir, name), { recursive: true });
+    writeFileSync(join(dir, name, "snapshot.json"), JSON.stringify({ label: "Before switch", reason: "switch", taken_at: at.toISOString(), taken_by: "admin", files: [] }));
+  }
+}
+
 test.describe("layout at 320 px in every language", () => {
   test.use({ fakeGameOn: true });
   oneProjectPerLanguage();
@@ -382,6 +404,7 @@ test.describe("layout at 320 px in every language", () => {
       seedWorld(foreman);
       seedSecond(foreman);
       seedThird(foreman);
+      seedArchived(foreman);
       await fakeGame!.call("/image", { ref: image21, on: true });
 
       // An update leaves the "Before update" snapshot, which makes a rollback page.
@@ -446,6 +469,11 @@ test.describe("layout at 320 px in every language", () => {
           "/worlds/base/clone",
           "/worlds/base/settings",
           "/worlds/base/settings/raw/server-settings.json",
+          // Epic 11a: the settings tabs, and a world page with the archived badge.
+          "/settings/general",
+          "/settings/users",
+          "/settings/audit-log",
+          "/worlds/fourth",
         ],
         failures,
       );
@@ -540,6 +568,21 @@ test.describe("layout at 320 px in every language", () => {
           await page.locator("#name").fill("");
           await page.locator("form[action$=rename] button[type=submit]").click();
           await expect(page.locator("#name-error")).toBeVisible();
+        },
+        failures,
+      );
+
+      // Lowering retention below what exists asks first (SPEC 6.6, 17.5).
+      seedAutomaticSnapshots(foreman, 4);
+      await sweepSubmit(
+        page,
+        lang,
+        "/settings/general confirm",
+        async () => {
+          await page.goto("/settings/general");
+          await page.locator("input[name=snapshot_retention]").fill("1");
+          await page.locator("#act-general-save").click();
+          await expect(page.locator("#general-trim")).toBeVisible();
         },
         failures,
       );

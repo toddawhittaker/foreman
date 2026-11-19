@@ -123,9 +123,9 @@ func (s *server) mcpUpdateGameVersion(ctx context.Context, req *mcp.CallToolRequ
 		return nil, mcpVersionOut{}, errors.New(inEnglish(p.Refusal))
 	}
 	// The countdown matters only to a running game, as on the update page.
-	stop := game.StopOptions{Countdown: game.StopCountdown}
+	stop := game.StopOptions{Countdown: s.stopCountdown(ctx)}
 	if p.Running {
-		if stop, err = stopOptions(in.CountdownSeconds); err != nil {
+		if stop, err = s.stopOptions(ctx, in.CountdownSeconds); err != nil {
 			return nil, mcpVersionOut{}, err
 		}
 	}
@@ -203,16 +203,16 @@ func (s *server) mcpRollbackGameVersion(ctx context.Context, req *mcp.CallToolRe
 	if err != nil {
 		return nil, mcpVersionOut{}, err
 	}
-	p, err := s.rollbackPage(sum)
+	p, err := s.rollbackPage(ctx, sum)
 	if err != nil {
 		return nil, mcpVersionOut{}, s.mcpFail("find the rollback snapshot", err)
 	}
 	if !p.Error.IsZero() {
 		return nil, mcpVersionOut{}, errors.New(inEnglish(p.Error))
 	}
-	stop := game.StopOptions{Countdown: game.StopCountdown}
+	stop := game.StopOptions{Countdown: s.stopCountdown(ctx)}
 	if p.Running {
-		if stop, err = stopOptions(in.CountdownSeconds); err != nil {
+		if stop, err = s.stopOptions(ctx, in.CountdownSeconds); err != nil {
 			return nil, mcpVersionOut{}, err
 		}
 	}

@@ -11,6 +11,7 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -175,6 +176,12 @@ func pageCases() []pageCase {
 				{Name: "a", Title: longName, Version: "1.0.0", DownloadPath: PublicModFilePath("w", "a_1.0.0.zip"), NotOnPortal: true, Hidden: true},
 				{Name: "b", Version: "2.0.0", Folder: true},
 			}}}}}},
+		{"general", "todd", 200, generalTestPage(GeneralPage{})},
+		{"general saved with a trim", "todd", 200, generalTestPage(GeneralPage{Saved: true, Trims: true, Trim: trimCount{Snapshots: 1, Worlds: 1}})},
+		{"general errors", "todd", 400, generalTestPage(GeneralPage{SnapshotRetention: GeneralField{Value: "0", Error: settingSnapshotRetention.rangeMsg()},
+			ModUpload: GeneralField{Value: "x", Error: settingModUpload.rangeMsg()}})},
+		{"general confirm", "todd", 200, GeneralConfirmPage{Trim: trimCount{Snapshots: 3, Worlds: 2}, Hidden: []GeneralHidden{{Name: "snapshot_retention", Value: "2"}},
+			Changes: []GeneralChange{{Label: i18n.M(settingSnapshotRetention.Label), From: 10, To: 2}}}},
 		{"public mods settings off", "todd", 200, PublicModsSettingsPage{}},
 		{"public mods settings on", "todd", 200, PublicModsSettingsPage{On: true, Done: PublicModsOn}},
 		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},
@@ -186,6 +193,23 @@ func pageCases() []pageCase {
 		{"api tokens forced off", "todd", 200, APITokensPage{MCPForced: true, Done: tokenDoneRevoked, DoneName: "Claude", Form: TokenForm{Scope: "read"}}},
 		{"api token created", "todd", 200, APITokenCreatedPage{Token: TokenRow{ID: 1, Name: "Claude", Scope: "read", State: auth.TokenWorking}, Secret: "fmn_x", Endpoint: "https://f.example/mcp"}},
 		{"api token revoke", "todd", 200, APITokenRevokePage{Token: TokenRow{ID: 1, Owner: "bob", Name: "Claude", Scope: "read", State: auth.TokenExpired}}},
+		{"users", "todd", 200, UsersPage{MyKind: SignInPassword, MinLength: 12, Done: userDoneDeleted, Users: []UserRow{
+			{ID: 1, Username: "todd", Kind: SignInPassword, Me: true}, {ID: 2, Username: "carol", Kind: SignInOIDC}, {ID: 3, Username: "dave", Kind: SignInProxy}}}},
+		{"users errors", "todd", 401, UsersPage{MyKind: SignInPassword, MinLength: 12, Error: i18n.M("users.password.limited"),
+			Form: PasswordForm{CurrentError: i18n.M("users.password.current.wrong"), NewError: i18n.M("users.password.new.short", "count", 12), ConfirmError: i18n.M("users.password.confirm.mismatch")}}},
+		{"users oidc", "carol", 200, UsersPage{MyKind: SignInOIDC, Done: userDonePassword}},
+		{"users proxy", "dave", 200, UsersPage{MyKind: SignInProxy}},
+		{"user delete", "todd", 200, UserDeletePage{User: UserRow{ID: 3, Username: "dave", Kind: SignInProxy}, Tokens: 2}},
+		{"user delete oidc", "todd", 200, UserDeletePage{User: UserRow{ID: 2, Username: "carol", Kind: SignInOIDC}}},
+		{"audit log empty", "todd", 200, AuditLogPage{}},
+		{"audit log filtered", "todd", 200, AuditLogPage{Filtered: true, Older: "/settings/audit-log?before=1.2",
+			Users:   []AuditOption{{Value: "todd", Label: "todd", Selected: true}},
+			Actions: []AuditOption{{Value: "start", Word: i18n.M("audit.action.start")}, {Value: "odd", Label: "odd"}},
+			Worlds:  []AuditOption{{Value: "gone", Word: i18n.M("audit.world.deleted", "world", "gone")}},
+			Rows: []AuditRow{
+				{ID: 2, Time: time.Date(2026, 11, 2, 9, 7, 30, 0, time.UTC), User: "todd", Token: "Claude", Action: "start", Word: i18n.M("audit.action.start"), WorldID: "base", WorldName: "Base", WorldKnown: true, Detail: "<b>x</b>"},
+				{ID: 1, Time: time.Date(2026, 11, 2, 9, 7, 0, 0, time.UTC), User: "system", Action: "odd", WorldID: "gone"},
+			}}},
 		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1"}.withZones()},
 		{"schedule on", "todd", 200, SchedulePage{On: true, Next: time.Date(2026, 11, 13, 4, 0, 0, 0, time.UTC), SavedClock: "04:00", SavedZone: "Europe/London",
 			Enabled: true, Clock: "04:00", Zone: "Europe/London", Limit: "1", Saved: true}.withZones()},
@@ -206,6 +230,11 @@ func pageCases() []pageCase {
 			Error: i18n.M("account.error.nokey")}},
 		{"signed out", "", 200, SignedOutPage{}},
 		{"sign in empty", "", 200, SignInPage{}},
+		{"sign in with single sign-on only", "", 200, SignInPage{SignInMethods: SignInMethods{OIDC: true, NoLocal: true}, Next: "/worlds"}},
+		{"sign in with both", "", 200, SignInPage{SignInMethods: SignInMethods{OIDC: true}, Next: "/worlds"}},
+		{"sign in with both and an error", "", 401, SignInPage{SignInMethods: SignInMethods{OIDC: true}, Username: longName, PasswordError: i18n.M("accounts.signin.bad")}},
+		{"signed out with single sign-on only", "", 200, SignedOutPage{SignInMethods{OIDC: true, NoLocal: true}}},
+		{"signed out with both", "", 200, SignedOutPage{SignInMethods{OIDC: true}}},
 		{"sign in one error", "", 401, SignInPage{Username: "todd",
 			PasswordError: i18n.M("accounts.signin.bad")}},
 		{"sign in two errors", "", 400, SignInPage{UsernameError: i18n.M("accounts.signin.username.missing"), PasswordError: i18n.M("accounts.signin.password.missing")}},
@@ -296,7 +325,7 @@ func pageCases() []pageCase {
 			p.Status.LastCrash, p.Status.Crash = scheduleNow, game.LoadReason{Kind: crashreasons.OutOfMemory}
 			p.Status.LowDisk, p.Status.FreeBytes = true, 3_140_000_000
 		})},
-		{"stop", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, CountdownForm: defaultCountdown()}},
+		{"stop", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, CountdownForm: CountdownForm{Countdown: "60"}}},
 		{"kick confirm", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: longName}, Action: game.PlayerKick, Name: "Alice", Online: true}},
 		{"kick player gone", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerKick, Name: "Alice", Gone: true}},
 		{"ban reason error", "todd", 400, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerBan, Name: "Alice",
@@ -306,12 +335,12 @@ func pageCases() []pageCase {
 		{"restart countdown error", "todd", 400, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true,
 			CountdownForm: CountdownForm{Countdown: "-1", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
 		{"switch running", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: longName}, To: world.Summary{ID: "other", Name: longName},
-			Plan: game.SwitchPlan{Running: true}, CountdownForm: defaultCountdown()}},
+			Plan: game.SwitchPlan{Running: true}, CountdownForm: CountdownForm{Countdown: "60"}}},
 		{"switch with a download and problems", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
 			Plan: game.SwitchPlan{Running: true, Download: true, Image: "factoriotools/factorio:2.0.76",
 				Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemModMissing, Text: "Mod a is missing.", StartAnyway: true}}}},
 			ImageSize: 345678901, Lead: i18n.M("server.switch.problems_lead", "world", "Other"), CheckProblems: []i18n.Msg{i18n.M("server.problem.other", "text", "Mod a is missing.")},
-			CountdownForm: defaultCountdown()}},
+			CountdownForm: CountdownForm{Countdown: "60"}}},
 		{"switch stopped", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"}}},
 		{"switch countdown error", "todd", 400, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
 			Plan: game.SwitchPlan{Running: true}, CountdownForm: CountdownForm{Countdown: "x", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
@@ -320,7 +349,7 @@ func pageCases() []pageCase {
 		{"force stop", "todd", 200, ForceStopPage{World: world.Summary{ID: "base", Name: longName,
 			LastPlayed: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)}}},
 		{"restore running", "todd", 200, RestorePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0],
-			Running: true, CountdownForm: defaultCountdown()}},
+			Running: true, CountdownForm: CountdownForm{Countdown: "60"}}},
 		{"restore countdown error", "todd", 400, RestorePage{WorldID: "base", WorldName: "Base", Snapshot: snapshotsCase().Snapshots[0],
 			Running: true, CountdownForm: CountdownForm{Countdown: "x", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
 		{"console no world", "todd", 200, ConsolePage{}},
@@ -342,7 +371,7 @@ func pageCases() []pageCase {
 		{"versions", "todd", 200, VersionPicker{}},
 		{"update stopped", "todd", 200, UpdatePage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", Active: true}}},
 		{"update running", "todd", 200, UpdatePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77", Active: true},
-			Target: "2.1.24", Running: true, CountdownForm: defaultCountdown()}},
+			Target: "2.1.24", Running: true, CountdownForm: CountdownForm{Countdown: "60"}}},
 		{"update errors", "todd", 400, UpdatePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77", Active: true},
 			Target: "2.0.70", VersionError: i18n.M("server.error.version_not_newer"), Running: true,
 			CountdownForm: CountdownForm{Countdown: "x", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
@@ -351,7 +380,7 @@ func pageCases() []pageCase {
 		{"rollback stopped", "todd", 200, RollbackPage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.1.24"},
 			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77"}},
 		{"rollback running", "todd", 200, RollbackPage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.1.24"},
-			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77", Running: true, CountdownForm: defaultCountdown(),
+			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77", Running: true, CountdownForm: CountdownForm{Countdown: "60"},
 			Error: i18n.M("server.error.image_missing")}},
 		{"settings form", "todd", 200, settingsFormCase(false)},
 		{"settings form errors", "todd", 400, settingsFormCase(true)},
@@ -1225,4 +1254,16 @@ func TestPlayerIDsAreUniqueWhateverTheName(t *testing.T) {
 			}
 		}
 	}
+}
+
+// generalTestPage fills the fields a page always has, with the default
+// value where the case gave none.
+func generalTestPage(p GeneralPage) GeneralPage {
+	p = p.withFields()
+	for _, d := range generalSettings {
+		if f := p.field(d.Key); f.Value == "" {
+			f.Value = strconv.Itoa(d.Default)
+		}
+	}
+	return p
 }

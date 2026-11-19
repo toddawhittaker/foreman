@@ -31,7 +31,7 @@ func returnPath(p string) string {
 		return ""
 	}
 	switch u.Path {
-	case PathSignIn, PathSetup, PathSignedOut, PathSignOut:
+	case PathSignIn, PathSetup, PathSignedOut, PathSignOut, PathOIDCStart, PathOIDCCallback:
 		return ""
 	}
 	return p

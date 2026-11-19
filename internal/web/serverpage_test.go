@@ -299,6 +299,7 @@ func TestOtherActionsErrorShownApart(t *testing.T) {
 func TestRefusalBoxAndStepWord(t *testing.T) {
 	refused := func(anyway bool, action string, state game.State) ServerPage {
 		return serverCase(state, func(p *ServerPage) {
+			p.StopSeconds = 60
 			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemModMissing,
 				Text: "a.zip uses m, but this world has no file for it.", Mods: []string{"m"}, StartAnyway: anyway}}}}
 			p.Status.Operation = &game.Operation{Action: action, Done: true, Error: err.Error(), Steps: []game.Step{
@@ -318,6 +319,11 @@ func TestRefusalBoxAndStepWord(t *testing.T) {
 		{"restart anyway", refused(true, game.AuditRestart, game.StateRunning),
 			[]string{`action="/worlds/base/restart"`, `name="countdown" value="60"`, "60-second countdown", ">Restart anyway</button>"},
 			[]string{"Fix the world first"}},
+		{"restart anyway follows the countdown setting", func() ServerPage {
+			p := refused(true, game.AuditRestart, game.StateRunning)
+			p.StopSeconds = 20
+			return p
+		}(), []string{`name="countdown" value="20"`, "20-second countdown"}, []string{"60-second"}},
 		{"restart anyway of a stopped game", refused(true, game.AuditRestart, game.StateStopped),
 			[]string{">Restart anyway</button>", `&#34;Before start anyway&#34;`},
 			[]string{"countdown, save the game and stop it"}},

@@ -115,6 +115,8 @@
   "server.crash.once_earlier_at.mods": "10555639",
   "server.crash.once_earlier_at.none": "20868175",
   "server.crash.once_earlier_at.said": "f5afa41e",
+  "server.crash.switch_archived": "e2742234",
+  "server.crash.unarchive": "86197939",
   "server.disk.low": "bb1ceb0e",
   "server.disk.snapshots": "f187f78e",
   "server.done.box": "d23d7225",

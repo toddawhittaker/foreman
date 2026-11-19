@@ -78,7 +78,7 @@ func TestScheduleDefaults(t *testing.T) {
 		`id="schedule-limit" name="limit_hours" type="text" inputmode="numeric" value="1" required`,
 		`Then it restarts the server after warning players in the game for 60 seconds.`,
 		`Hours, 0 to 12.`,
-		`<nav class="subnav" aria-label="Foreman settings">`,
+		`<nav class="subnav subnav--settings" aria-label="Foreman settings">`,
 		`<a href="/settings/restart-schedule" aria-current="page">Restart schedule</a>`,
 	} {
 		if !strings.Contains(body, want) {
@@ -220,7 +220,7 @@ func TestSettingsSubnav(t *testing.T) {
 		{PathNotifications, PathNotifications},
 	} {
 		body := hn.get(p.path, withCookie(c)).Body.String()
-		nav := between(body, `<nav class="subnav" aria-label="Foreman settings">`, "</nav>")
+		nav := between(body, `<nav class="subnav subnav--settings" aria-label="Foreman settings">`, "</nav>")
 		if nav == "" {
 			t.Errorf("%s: no Foreman settings sub-navigation", p.path)
 			continue

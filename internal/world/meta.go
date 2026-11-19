@@ -38,6 +38,9 @@ type Meta struct {
 	// UseWhitelist starts the game so that only players on the world's
 	// whitelist can join (SPEC 8.3).
 	UseWhitelist bool
+	// Archived hides the world from the main list and keeps it from
+	// starting, until it is unarchived (SPEC 5.9).
+	Archived bool
 
 	unknown map[string]json.RawMessage
 }
@@ -53,6 +56,7 @@ type metaKnown struct {
 	ImportedFrom  *ImportedFrom `json:"imported_from,omitempty"`
 	NewMap        *NewMap       `json:"new_map,omitempty"`
 	UseWhitelist  bool          `json:"use_whitelist,omitempty"`
+	Archived      bool          `json:"archived,omitempty"`
 }
 
 // NewMap says how the world's first start makes its map: the game's own
@@ -73,7 +77,7 @@ type ImportedFrom struct {
 	At        time.Time `json:"at"`
 }
 
-var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from", "new_map", "use_whitelist"}
+var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from", "new_map", "use_whitelist", "archived"}
 
 // Newer reports whether a newer Foreman wrote m, so this one must not change it.
 func (m Meta) Newer() bool { return m.FormatVersion > FormatVersion }
@@ -90,6 +94,7 @@ func (m Meta) MarshalJSON() ([]byte, error) {
 		ImportedFrom:  m.ImportedFrom,
 		NewMap:        m.NewMap,
 		UseWhitelist:  m.UseWhitelist,
+		Archived:      m.Archived,
 	})
 	if err != nil {
 		return nil, err
@@ -134,6 +139,7 @@ func (m *Meta) UnmarshalJSON(b []byte) error {
 		ImportedFrom:  k.ImportedFrom,
 		NewMap:        k.NewMap,
 		UseWhitelist:  k.UseWhitelist,
+		Archived:      k.Archived,
 		unknown:       all,
 	}
 	return nil

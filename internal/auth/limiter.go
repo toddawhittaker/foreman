@@ -37,8 +37,8 @@ func NewLimiter(now func() time.Time) *Limiter {
 func newLimiter(now func() time.Time, maxEntries int) *Limiter {
 	return &Limiter{
 		now:   now,
-		users: newFailureTable(LimitPerUsername, maxEntries),
-		addrs: newFailureTable(LimitPerAddress, maxEntries),
+		users: newFailureTable(LimitPerUsername, maxEntries, LimitWindow),
+		addrs: newFailureTable(LimitPerAddress, maxEntries, LimitWindow),
 	}
 }
 
@@ -100,6 +100,27 @@ func (l *Limiter) Succeed(username, addr string) {
 	l.addrs.release(addrKey(addr))
 }
 
+// AllowAddr is Allow for a sign-in that names no username, such as an OIDC
+// callback (SPEC 12.7): it counts against the address only.
+func (l *Limiter) AllowAddr(addr string) (ok bool, retryAfter time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now, k := l.now(), addrKey(addr)
+	if r := l.addrs.remaining(k, now); r > 0 {
+		return false, r
+	}
+	l.addrs.add(k, now)
+	return true, 0
+}
+
+// ReleaseAddr gives back an attempt AllowAddr counted, because it worked.
+// Earlier failures stay.
+func (l *Limiter) ReleaseAddr(addr string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.addrs.release(addrKey(addr))
+}
+
 // AddrLimiter counts API token checks per client address, apart from
 // sign-in's counts, so guessing at the MCP endpoint cannot lock anyone out
 // of the browser sign-in (SPEC 14.19). It has sign-in's address limit and
@@ -113,7 +134,19 @@ type AddrLimiter struct {
 
 // NewAddrLimiter returns an AddrLimiter with the settled limits.
 func NewAddrLimiter(now func() time.Time) *AddrLimiter {
-	return &AddrLimiter{now: now, addrs: newFailureTable(LimitPerAddress, limitMaxEntries)}
+	return &AddrLimiter{now: now, addrs: newFailureTable(LimitPerAddress, limitMaxEntries, LimitWindow)}
+}
+
+// Limits on starting OIDC sign-ins, apart from the failure counts, so one
+// address cannot push other people's started sign-ins out (SPEC 12.7).
+const (
+	OIDCStartsPerAddress = 20
+	OIDCStartWindow      = time.Minute
+)
+
+// NewOIDCStartLimiter returns an AddrLimiter that counts every OIDC start.
+func NewOIDCStartLimiter(now func() time.Time) *AddrLimiter {
+	return &AddrLimiter{now: now, addrs: newFailureTable(OIDCStartsPerAddress, limitMaxEntries, OIDCStartWindow)}
 }
 
 // Allow reports whether a token check from addr may proceed and, if so,
@@ -148,17 +181,18 @@ type failure struct {
 // the one to evict when the table is full.
 type failureTable struct {
 	limit, maxEntries int
+	window            time.Duration
 	byKey             map[string]*list.Element
 	order             *list.List
 }
 
-func newFailureTable(limit, maxEntries int) *failureTable {
-	return &failureTable{limit: limit, maxEntries: maxEntries, byKey: map[string]*list.Element{}, order: list.New()}
+func newFailureTable(limit, maxEntries int, window time.Duration) *failureTable {
+	return &failureTable{limit: limit, maxEntries: maxEntries, window: window, byKey: map[string]*list.Element{}, order: list.New()}
 }
 
 func (t *failureTable) expire(now time.Time) {
 	for e := t.order.Front(); e != nil; e = t.order.Front() {
-		if now.Sub(e.Value.(*failure).start) < LimitWindow {
+		if now.Sub(e.Value.(*failure).start) < t.window {
 			return
 		}
 		t.remove(e)
@@ -181,7 +215,7 @@ func (t *failureTable) remaining(key string, now time.Time) time.Duration {
 	if f.count < t.limit {
 		return 0
 	}
-	return f.start.Add(LimitWindow).Sub(now)
+	return f.start.Add(t.window).Sub(now)
 }
 
 func (t *failureTable) add(key string, now time.Time) {

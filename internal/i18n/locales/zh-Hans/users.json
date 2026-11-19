@@ -1,0 +1,51 @@
+{
+  "users.delete": "删除",
+  "users.delete.audit": "该用户在审计日志中留下的条目保留其名称。",
+  "users.delete.button": "删除用户",
+  "users.delete.cancel": "保留该用户",
+  "users.delete.name": "删除用户 {name}",
+  "users.delete.question": "删除用户 {name}？",
+  "users.delete.returns.oidc": "该用户通过单点登录登录。除非同时在身份提供方处移除，否则下次登录时会再次出现。",
+  "users.delete.returns.proxy": "该用户通过代理登录。除非同时在代理处移除，否则下次访问时会再次出现。",
+  "users.delete.self": "不能删除自己，须由其他用户操作。",
+  "users.delete.signout": "在所有地方退出该用户的登录。",
+  "users.delete.tokens": {
+    "other": "删除其 {count} 个 API 令牌。"
+  },
+  "users.done.deleted": "用户已删除。",
+  "users.done.password": "密码已更改，其他所有地方的登录均已退出。",
+  "users.fact.created": "创建时间",
+  "users.fact.kind": "登录方式",
+  "users.intro": "每个用户都是管理员。任何用户都可以删除其他用户，但不能删除自己。",
+  "users.kind.oidc": "单点登录",
+  "users.kind.password": "密码",
+  "users.kind.proxy": "代理",
+  "users.list.heading": "所有用户",
+  "users.password.busy": "Foreman 正在校验其他密码，请稍后再试。",
+  "users.password.button": "更改密码",
+  "users.password.confirm": "再次输入新密码",
+  "users.password.confirm.mismatch": "两次输入的新密码不同。请在两个框中输入相同的密码。",
+  "users.password.confirm.missing": "请再次输入新密码。",
+  "users.password.current": "当前密码",
+  "users.password.current.missing": "请输入当前密码。",
+  "users.password.current.wrong": "当前密码不正确。",
+  "users.password.heading": "密码",
+  "users.password.limited": "错误密码次数过多。请等待几分钟后再试。",
+  "users.password.managed": "登录由其他地方管理，此处没有可更改的密码。",
+  "users.password.managed.oidc": "通过单点登录登录，登录由身份提供方管理。此处没有密码。",
+  "users.password.managed.proxy": "通过代理登录，登录由代理管理。此处没有密码。",
+  "users.password.new": "新密码",
+  "users.password.new.hint": {
+    "other": "至少 {count} 个字符。"
+  },
+  "users.password.new.long": {
+    "other": "新密码过长。最多 {count} 字节。"
+  },
+  "users.password.new.missing": "请输入新密码。",
+  "users.password.new.short": {
+    "other": "新密码过短。至少需要 {count} 个字符。"
+  },
+  "users.password.sessions": "更改后，其他所有地方的登录都会退出。",
+  "users.title": "用户",
+  "users.you": "当前用户"
+}

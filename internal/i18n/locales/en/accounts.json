@@ -9,6 +9,9 @@
   "accounts.username.control": "Remove control characters from the username",
   "accounts.signin.title": "Sign in",
   "accounts.signin.submit": "Sign in",
+  "accounts.signin.sso": "Sign in with single sign-on",
+  "accounts.signin.sso.heading": "Single sign-on",
+  "accounts.signin.local.heading": "Foreman account",
   "accounts.signin.ratelimited.unknown": "Too many failed sign-ins. Wait a few minutes, then try again.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Too many failed sign-ins. Wait {count} minute, then try again.",
@@ -44,5 +47,12 @@
   "accounts.proxy.refused": "Your account is not allowed to use Foreman. Ask the person who runs Foreman to give you access.",
   "accounts.proxy.waiting": "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute.",
   "accounts.proxy.waiting_local": "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute. Password sign-in still works: open {path} to use it.",
-  "accounts.proxy.missing": "Foreman did not get your sign-in from the proxy. Sign in through the proxy, then open this page again."
+  "accounts.proxy.missing": "Foreman did not get your sign-in from the proxy. Sign in through the proxy, then open this page again.",
+  "accounts.oidc.failed": "Single sign-on did not work. Try again. If it keeps failing, ask the person who runs Foreman.",
+  "accounts.oidc.unavailable": "Foreman cannot reach the single sign-on provider right now. Try again in a minute.",
+  "accounts.oidc.name_taken": "Foreman already has a user with your name who signs in another way, so single sign-on cannot sign you in. Ask the person who runs Foreman to rename or remove that user.",
+  "accounts.oidc.bad_username": "Your single sign-on account has no username Foreman can use, so trying again will not help. Ask the person who runs Foreman to check your account at the identity provider.",
+  "accounts.oidc.heading": "Single sign-on did not work",
+  "accounts.oidc.retry": "Try single sign-on again",
+  "accounts.oidc.back": "Back to sign in"
 }

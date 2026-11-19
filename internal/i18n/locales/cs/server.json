@@ -619,5 +619,7 @@
   "server.disk.low": "Volné je jen {free} místa na disku. Pod {reserve} mohou automatická uložení selhat a snímky se přestanou pořizovat. Smažte nepotřebné snímky nebo světy.",
   "server.disk.snapshots": "Snímky",
   "server.lan.unpublished": "Hráči v místní síti se ke hře nemohou připojit: {sidecar} nepublikuje UDP 34197 na hostiteli.",
-  "server.force.group": "Nouzové akce"
+  "server.force.group": "Nouzové akce",
+  "server.crash.switch_archived": "Svět {world} je archivovaný, a proto se na něj nelze přepnout zpět.",
+  "server.crash.unarchive": "Otevřít svět {world} a vyjmout ho z archivu"
 }

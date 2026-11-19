@@ -8279,6 +8279,33 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
+/* Foreman's settings have eight tabs: on a phone an even grid of two
+   columns, words free to wrap in their 44 px cells; from 40 rem the row
+   wraps onto a second line rather than cutting a tab off or scrolling. */
+@media (max-width: 39.99rem) {
+  .subnav--settings ul,
+  .subnav--settings ul:has(> li:nth-child(5)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subnav--settings ul:has(> li:nth-child(5)) > li,
+  .subnav--settings ul:has(> li:nth-child(5)) > li:nth-child(n + 4) {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 40rem) {
+  .subnav--settings ul {
+    flex-wrap: wrap;
+    overflow: visible;
+    mask-image: none;
+  }
+
+  .subnav--settings ul::after {
+    content: none;
+  }
+}
+
 /* An icon-only button on a phone shows its whole 44 px box, the frame of
    the secondary button beside it, so the target reads at its true size. */
 @media (max-width: 39.99rem) {
@@ -8944,6 +8971,11 @@ main:has(> .gate) > * + :not(h1, .gate) {
   margin-block-start: var(--space-4);
 }
 
+/* Single sign-on and the password form, side by side in the column. */
+main:has(> .gate) > .gate + .gate {
+  margin-block-start: var(--space-4);
+}
+
 /* Generate and Mod settings on a phone: 24 px between field groups, 8 px
    between a label, its hint and its control, 16 px inside the card. */
 @media (max-width: 39.99rem) {
@@ -9602,6 +9634,41 @@ main:has(> .gate) > * + :not(h1, .gate) {
   gap: var(--space-1);
   padding: 0;
   list-style: none;
+}
+
+/* DESIGN 8.15 Audit log (SPEC 12.9): entries are rows divided by a rule, each
+   a title line and its facts, so one layout serves every width. */
+.audit-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audit-list > li {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.audit-list > li:first-child {
+  padding-block-start: 0;
+}
+
+.audit-list > li:last-child {
+  border-block-end: 0;
+}
+
+.audit-list :is(h3, p) {
+  margin: 0;
+}
+
+/* An entry's world link is a full-size target. */
+.audit-list .facts a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
 }
 
 /* DESIGN 8.21 API tokens (SPEC 12.10). Each token is a card that sizes itself from

@@ -16,7 +16,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// MaxSaveUpload is the size limit of a save upload (SPEC 14.6).
+// MaxSaveUpload is the default size limit of a save upload; the General
+// setting replaces it (SPEC 14.6).
 const MaxSaveUpload = 1 << 30
 
 // maxZipRatio caps a zip's stated unpacked size at this many times its own
@@ -56,7 +57,12 @@ func (e uploadError) Error() string { return i18n.English.Format(e.msg) }
 
 // tooLarge says the limit as the page's hint does (sizeLimit).
 func tooLarge(limit int64) uploadError {
-	return uploadError{i18n.M("worlds.upload.too_large", "limit", sizeLimit(uint64(limit)))} //nolint:gosec // limit is a positive constant
+	return uploadError{i18n.M("worlds.upload.too_large", "limit", sizeLimit(zoneLimit(limit)))}
+}
+
+// zoneLimit is an upload limit as a drop zone and a refusal say it.
+func zoneLimit(n int64) uint64 {
+	return uint64(n) //nolint:gosec // an upload limit is a positive number
 }
 
 // uploaded is a file received into a temp file beside its destination.

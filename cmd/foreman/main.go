@@ -2,18 +2,24 @@
 //
 //	foreman [serve]       serve the web app (the default)
 //	foreman healthcheck   exit 0 when the local server answers its health path
+//	foreman reset-password <username>
+//	                      set a user's new password, read as one line from
+//	                      standard input, and end their sessions
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/toddawhittaker/foreman/internal/releases"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -54,10 +60,81 @@ func main() {
 			fmt.Fprintln(os.Stderr, "foreman:", err)
 			os.Exit(1)
 		}
+	case "reset-password":
+		if len(os.Args) != 3 {
+			fmt.Fprintln(os.Stderr, resetPasswordUsage)
+			os.Exit(2)
+		}
+		if err := resetPasswordCommand(os.Args[2]); err != nil {
+			fmt.Fprintln(os.Stderr, "foreman:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("The password of %s is changed, and their sessions are ended.\n", os.Args[2])
 	default:
-		fmt.Fprintf(os.Stderr, "foreman: unknown command %q; use serve or healthcheck\n", cmd)
+		fmt.Fprintf(os.Stderr, "foreman: unknown command %q; use serve, healthcheck or reset-password\n", cmd)
 		os.Exit(1)
 	}
+}
+
+const resetPasswordUsage = `usage: foreman reset-password <username>
+
+Reads the new password as one line from standard input and never prints it.
+For example, from the host:
+
+  docker exec -i foreman foreman reset-password alice < new-password.txt
+
+The password needs at least 12 characters. Only a user who signs in with a
+password can be reset. The user's sessions end, and the change is recorded
+in the audit log as password-change by system.`
+
+// resetPasswordCommand opens the database in the data directory and resets
+// the user's password (SPEC 12.12).
+func resetPasswordCommand(username string) error {
+	dataDir := os.Getenv("FOREMAN_DATA_DIR")
+	if dataDir == "" {
+		dataDir = config.DefaultDataDir
+	}
+	ctx := context.Background()
+	st, err := store.Open(ctx, datadir.Database(dataDir))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = st.Close() }()
+	return resetPassword(ctx, st, username, os.Stdin, time.Now())
+}
+
+// resetPassword reads one line from in as username's new password, stores
+// its hash, ends the user's sessions and records password-change by
+// system. A user without a password is refused: a password would let a
+// proxy or single sign-on user past the proxy or identity provider.
+func resetPassword(ctx context.Context, st *store.Store, username string, in io.Reader, now time.Time) error {
+	u, found, err := st.UserByUsername(ctx, username)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("there is no user named %q", username)
+	}
+	if u.PasswordHash == "" {
+		return fmt.Errorf("%s signs in through the proxy or single sign-on, so has no password to reset", u.Username)
+	}
+	// One byte past the longest password, so a longer one is refused, not cut.
+	line, err := bufio.NewReader(io.LimitReader(in, auth.MaxPasswordBytes+2)).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("read the new password: %w", err)
+	}
+	password := strings.TrimSuffix(strings.TrimSuffix(line, "\n"), "\r")
+	if password == "" {
+		return errors.New("no password was given on standard input")
+	}
+	hash, err := auth.Hash(password)
+	if err != nil {
+		return err
+	}
+	if err := st.SetPasswordEndSessions(ctx, u.ID, hash); err != nil {
+		return err
+	}
+	return st.AddAudit(ctx, store.AuditEntry{Time: now, Username: "system", Action: web.AuditPasswordChange, Detail: u.Username})
 }
 
 func listenAddr() string {
@@ -166,7 +243,7 @@ func serve(cfg *config.Config) error {
 	sweeping.Add(1)
 	go func() {
 		defer sweeping.Done()
-		web.SweepSessions(sweepCtx, st, cfg.SessionIdle, slog.Default())
+		handler.Sweep(sweepCtx, cfg.SessionIdle)
 	}()
 	// Token reminders go out once at start, so one that came due while
 	// Foreman was down is not missed (SPEC 8.10).

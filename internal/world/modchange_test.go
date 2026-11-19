@@ -338,7 +338,7 @@ func TestReadModZipRefusesBadZips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Truncate(maxModZip + 1); err != nil {
+	if err := f.Truncate(MaxModZip + 1); err != nil {
 		t.Fatal(err)
 	}
 	_ = f.Close()

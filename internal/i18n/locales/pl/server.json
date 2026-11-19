@@ -619,5 +619,7 @@
   "server.disk.low": "Wolne jest tylko {free} miejsca na dysku. Poniżej {reserve} automatyczne zapisy mogą się nie udać, a migawki przestają być wykonywane. Należy usunąć niepotrzebne migawki lub światy.",
   "server.disk.snapshots": "Migawki",
   "server.lan.unpublished": "Gracze w sieci lokalnej nie mogą dotrzeć do gry: {sidecar} nie publikuje UDP 34197 na hoście.",
-  "server.force.group": "Działania awaryjne"
+  "server.force.group": "Działania awaryjne",
+  "server.crash.switch_archived": "Świat {world} jest zarchiwizowany, więc Foreman nie może się na niego przełączyć z powrotem.",
+  "server.crash.unarchive": "Otwórz świat {world}, aby cofnąć archiwizację"
 }

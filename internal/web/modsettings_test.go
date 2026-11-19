@@ -493,7 +493,7 @@ func modSettingsPageCases() []pageCase {
 			startup[0].Fields[i].Error = i18n.M("mods.settings.edit.err.range", "min", "1", "max", "10", "setting", "Startup integer")
 		}
 	}
-	base := ModSettingsPage{World: w, Loaded: true, Startup: startup, Map: mapGroups, PerUser: perUser, HasFile: true, Fingerprint: "f", Seen: "s", CountdownForm: defaultCountdown()}
+	base := ModSettingsPage{World: w, Loaded: true, Startup: startup, Map: mapGroups, PerUser: perUser, HasFile: true, Fingerprint: "f", Seen: "s", CountdownForm: CountdownForm{Countdown: "60"}}
 	running := base
 	running.Running, running.NewMap = true, true
 	return []pageCase{

@@ -599,5 +599,7 @@
   "server.disk.low": "Il ne reste que {free} d’espace disque libre. En dessous de {reserve}, les sauvegardes automatiques peuvent échouer et les instantanés s’arrêtent. Supprimez les instantanés ou les mondes dont vous n’avez plus besoin.",
   "server.disk.snapshots": "Instantanés",
   "server.lan.unpublished": "Les joueurs du réseau local ne peuvent pas rejoindre le jeu : {sidecar} ne publie pas UDP 34197 sur l’hôte.",
-  "server.force.group": "Actions d’urgence"
+  "server.force.group": "Actions d’urgence",
+  "server.crash.switch_archived": "{world} est archivé, Foreman ne peut donc pas y rebasculer.",
+  "server.crash.unarchive": "Ouvrir {world} pour le désarchiver"
 }

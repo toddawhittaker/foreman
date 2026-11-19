@@ -295,7 +295,7 @@ func (s *server) mcpChangeMods(ctx context.Context, req *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, mcpChangeModsOut{}, err
 	}
-	stop, err := stopOptions(in.CountdownSeconds)
+	stop, err := s.stopOptions(ctx, in.CountdownSeconds)
 	if err != nil {
 		return nil, mcpChangeModsOut{}, err
 	}
@@ -509,7 +509,7 @@ func (s *server) mcpChangeModSettings(ctx context.Context, req *mcp.CallToolRequ
 	if err != nil {
 		return nil, mcpChangeModSettingsOut{}, err
 	}
-	stop, err := stopOptions(in.CountdownSeconds)
+	stop, err := s.stopOptions(ctx, in.CountdownSeconds)
 	if err != nil {
 		return nil, mcpChangeModSettingsOut{}, err
 	}

@@ -10,6 +10,9 @@
   "accounts.username.control": "Z uživatelského jména je třeba odstranit řídicí znaky",
   "accounts.signin.title": "Přihlášení",
   "accounts.signin.submit": "Přihlásit",
+  "accounts.signin.sso": "Přihlásit se jednotným přihlášením",
+  "accounts.signin.sso.heading": "Jednotné přihlášení",
+  "accounts.signin.local.heading": "Účet Foremanu",
   "accounts.signin.ratelimited.unknown": "Příliš mnoho neúspěšných přihlášení. Je třeba počkat několik minut a zkusit to znovu.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Příliš mnoho neúspěšných přihlášení. Je třeba počkat {count} minutu a zkusit to znovu.",
@@ -49,5 +52,12 @@
   "accounts.proxy.refused": "Tento účet nemá povolený přístup k Foremanu. Je třeba požádat správce Foremanu o přístup.",
   "accounts.proxy.waiting": "Foreman zatím nemůže přijmout přihlášení přes proxy, protože ještě nezná sítě herního kontejneru. Je třeba to zkusit znovu za minutu.",
   "accounts.proxy.waiting_local": "Foreman zatím nemůže přijmout přihlášení přes proxy, protože ještě nezná sítě herního kontejneru. Je třeba to zkusit znovu za minutu. Přihlášení heslem stále funguje: stačí otevřít {path}.",
-  "accounts.proxy.missing": "Foreman nedostal přihlášení od proxy. Je třeba se přihlásit přes proxy a potom tuto stránku otevřít znovu."
+  "accounts.proxy.missing": "Foreman nedostal přihlášení od proxy. Je třeba se přihlásit přes proxy a potom tuto stránku otevřít znovu.",
+  "accounts.oidc.failed": "Jednotné přihlášení se nezdařilo. Je třeba to zkusit znovu. Pokud selhává dál, je třeba se obrátit na správce Foremanu.",
+  "accounts.oidc.unavailable": "Foreman se teď nemůže spojit s poskytovatelem jednotného přihlášení. Je třeba to zkusit znovu za minutu.",
+  "accounts.oidc.name_taken": "Ve Foremanu už existuje uživatel s tímto jménem, který se přihlašuje jinak, proto jednotné přihlášení nelze použít. Je třeba požádat správce Foremanu, aby tohoto uživatele přejmenoval nebo odstranil.",
+  "accounts.oidc.bad_username": "Tento účet jednotného přihlášení nemá uživatelské jméno, které by Foreman mohl použít, takže další pokus nepomůže. Je třeba požádat správce Foremanu o kontrolu účtu u poskytovatele identity.",
+  "accounts.oidc.heading": "Jednotné přihlášení se nezdařilo",
+  "accounts.oidc.retry": "Zkusit jednotné přihlášení znovu",
+  "accounts.oidc.back": "Zpět na přihlášení"
 }

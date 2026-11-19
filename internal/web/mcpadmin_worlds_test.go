@@ -44,7 +44,7 @@ func newWorldsRig(t *testing.T) *worldsRig {
 
 func (r *worldsRig) audits() []store.AuditEntry {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 100)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 100})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -421,7 +421,7 @@ func TestMCPWorldToolsHints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mine := []string{"generate_world", "clone_world", "rename_world", "delete_world", "list_deleted_worlds", "list_favorites",
+	mine := []string{"generate_world", "clone_world", "rename_world", "archive_world", "unarchive_world", "delete_world", "list_deleted_worlds", "list_favorites",
 		"make_favorite", "rename_favorite", "delete_favorite", "list_saves", "choose_save"}
 	seen := 0
 	for _, tool := range res.Tools {

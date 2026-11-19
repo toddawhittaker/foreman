@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +37,15 @@ const (
 	PathStatic    = "/static/"
 	PathFavicon   = "/favicon.ico"
 )
+
+// Foreman's own settings pages (SPEC 12.9, 12.12, 13.1).
+func generalPath() string  { return "/settings/general" }
+func usersPath() string    { return "/settings/users" }
+func auditLogPath() string { return "/settings/audit-log" }
+
+func userDeletePath(id int64) string {
+	return usersPath() + "/" + strconv.FormatInt(id, 10) + "/delete"
+}
 
 // faviconFile is the static file answered at PathFavicon.
 const faviconFile = "icons/favicon.ico"
@@ -70,8 +80,24 @@ type Problem struct {
 // "Show older".
 const maxListRows = 50
 
-// SignedOutPage confirms that sign-out ended the session (SPEC 12.8).
-type SignedOutPage struct{}
+// SignInMethods is which sign-in methods a page offers (SPEC 12.7). The
+// zero value is the local-only page.
+type SignInMethods struct {
+	// OIDC offers single sign-on.
+	OIDC bool
+	// NoLocal is set when oidc is on and local is not, so password sign-in
+	// is not offered.
+	NoLocal bool
+}
+
+// OIDCPath is where the single sign-on button goes.
+func (SignInMethods) OIDCPath() string { return PathOIDCStart }
+
+// SignedOutPage confirms that sign-out ended the session (SPEC 12.8). It
+// offers the sign-in methods that are on, as the sign-in page does.
+type SignedOutPage struct {
+	SignInMethods
+}
 
 // SignInPage is the local-account sign-in form (SPEC 12.3, 12.4).
 type SignInPage struct {
@@ -90,6 +116,8 @@ type SignInPage struct {
 	// Busy replaces the field errors with a message to try again shortly:
 	// too many password checks were already running.
 	Busy bool
+	// The page then has no password form when NoLocal is set.
+	SignInMethods
 }
 
 // SetupPage creates the first admin account on first run (SPEC 12.3).
@@ -109,6 +137,12 @@ type SetupPage struct {
 type ErrorPage struct {
 	Status int
 	Detail i18n.Msg
+	// Title, when set, replaces the status's heading.
+	Title i18n.Msg
+	// ActionPath, when set, adds a primary button with ActionLabel before
+	// the link home: the likely next step.
+	ActionLabel i18n.Msg
+	ActionPath  string
 }
 
 // publicPage is a page anyone may see without signing in (SPEC 9.16). It is
@@ -123,6 +157,20 @@ func (SignedOutPage) templateName() string { return "signedout" }
 func (SignInPage) templateName() string    { return "signin" }
 func (SetupPage) templateName() string     { return "setup" }
 func (ErrorPage) templateName() string     { return "error" }
+
+// signInMethods says which sign-in methods are on.
+func (s *server) signInMethods() SignInMethods {
+	return SignInMethods{OIDC: s.cfg.AuthOIDC, NoLocal: s.cfg.AuthOIDC && !s.cfg.AuthLocal}
+}
+
+func (s *server) signInPage(p SignInPage) SignInPage {
+	p.SignInMethods = s.signInMethods()
+	return p
+}
+
+func (s *server) signedOutPage() SignedOutPage {
+	return SignedOutPage{s.signInMethods()}
+}
 
 func (p SignInPage) hasErrors() bool { return p.RateLimited || p.Busy || len(p.Problems()) > 0 }
 func (p SetupPage) hasErrors() bool  { return len(p.Problems()) > 0 }
@@ -181,6 +229,9 @@ func problems(all ...Problem) []Problem {
 
 // Heading is the page's h1 and title for its status.
 func (p ErrorPage) Heading() i18n.Msg {
+	if !p.Title.IsZero() {
+		return p.Title
+	}
 	switch p.Status {
 	case http.StatusForbidden:
 		return i18n.M("common.error.forbidden.heading")
@@ -344,6 +395,9 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"snapshotsTabPath":  func() string { return PathSnapshots },
 		"accountPath":       func() string { return PathAccount },
 		"apiTokensPath":     func() string { return PathAPITokens },
+		"generalPath":       generalPath,
+		"usersPath":         usersPath,
+		"auditLogPath":      auditLogPath,
 		"aboutPath":         func() string { return PathAbout },
 		"about":             version.Get,
 		"notificationsPath": func() string { return PathNotifications },

@@ -132,7 +132,6 @@ func TestLoadAuthMethods(t *testing.T) {
 		{name: "spaces and case", vars: with(" HEADERS ,  Local"), local: true, hdrs: true},
 		{name: "duplicates", vars: map[string]string{"FOREMAN_AUTH_METHODS": "local,local"}, local: true},
 		{name: "unknown", vars: map[string]string{"FOREMAN_AUTH_METHODS": "local,ldap"}, wantErr: "FOREMAN_AUTH_METHODS has unknown methods \"ldap\""},
-		{name: "oidc is not yet known", vars: map[string]string{"FOREMAN_AUTH_METHODS": "oidc"}, wantErr: "unknown methods \"oidc\""},
 		{name: "empty means the default", vars: map[string]string{"FOREMAN_AUTH_METHODS": ""}, local: true},
 		{name: "only commas", vars: map[string]string{"FOREMAN_AUTH_METHODS": " , ,"}, wantErr: "lists no methods"},
 	}

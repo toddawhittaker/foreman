@@ -328,7 +328,7 @@ func (s *server) restorePage(ctx context.Context, id, snapName string) (RestoreP
 		// A deleted world's snapshots stay restorable (SPEC 6.6).
 		name = s.worlds.SnapshotWorldName(id, snapName)
 	}
-	p := RestorePage{WorldID: id, WorldName: name, Snapshot: snap, Deleted: !found, CountdownForm: defaultCountdown()}
+	p := RestorePage{WorldID: id, WorldName: name, Snapshot: snap, Deleted: !found, CountdownForm: s.countdownForm(ctx)}
 	p.Active = found && sum.Active
 	if found {
 		p.ModUndo = s.modUndo(id, snap)
@@ -371,10 +371,10 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 		before, err = s.worlds.Restore(r.Context(), p.WorldID, p.Snapshot.Name, u.Username)
 	case p.Running || p.Active:
 		// A stopped game has nobody to warn, so it takes the default countdown.
-		stop := game.StopOptions{Countdown: game.StopCountdown}
+		stop := game.StopOptions{Countdown: s.stopCountdown(r.Context())}
 		if p.Running {
 			var form CountdownForm
-			form, stop = readCountdown(r)
+			form, stop = s.readCountdown(r)
 			if !form.CountdownError.IsZero() {
 				form.Online, p.CountdownForm = p.Online, form
 				s.page(w, r, http.StatusBadRequest, u.Username, p)
@@ -390,7 +390,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 		})
 		return
 	default:
-		before, err = s.game.Restore(r.Context(), p.WorldID, actor(u), p.Snapshot.Name, game.StopOptions{Countdown: game.StopCountdown})
+		before, err = s.game.Restore(r.Context(), p.WorldID, actor(u), p.Snapshot.Name, game.StopOptions{Countdown: s.stopCountdown(r.Context())})
 	}
 	if err != nil {
 		if before.Name == "" {

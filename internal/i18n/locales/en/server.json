@@ -599,5 +599,7 @@
   "server.disk.low": "Only {free} of disk space is free. Autosaves can fail below {reserve}, and snapshots stop below it. Delete snapshots or worlds you no longer need.",
   "server.disk.snapshots": "Snapshots",
   "server.lan.unpublished": "LAN players cannot reach the game: {sidecar} does not publish UDP 34197 on the host.",
-  "server.force.group": "Emergency actions"
+  "server.force.group": "Emergency actions",
+  "server.crash.switch_archived": "{world} is archived, so Foreman cannot switch back to it.",
+  "server.crash.unarchive": "Open {world} to unarchive it"
 }

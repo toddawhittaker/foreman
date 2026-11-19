@@ -103,7 +103,7 @@ func (s *server) mcpRestoreSnapshot(ctx context.Context, req *mcp.CallToolReques
 	}
 	// A restore warns a running game with a countdown; one that is not
 	// running takes the default, as the confirm page's form does.
-	stop, err := stopOptions(in.CountdownSeconds)
+	stop, err := s.stopOptions(ctx, in.CountdownSeconds)
 	if err != nil {
 		return nil, mcpRestoreOut{}, err
 	}
@@ -149,7 +149,7 @@ func (s *server) mcpRestoreSnapshot(ctx context.Context, req *mcp.CallToolReques
 		}
 	}
 	if !p.Running {
-		stop = game.StopOptions{Countdown: game.StopCountdown}
+		stop = game.StopOptions{Countdown: s.stopCountdown(ctx)}
 	}
 	id, snap, by := p.WorldID, p.Snapshot.Name, mcpActor(req)
 	res, act, err := s.mcpRun(ctx, sum, game.ActionRestore, []string{id}, true, func(ctx context.Context) actionResult {

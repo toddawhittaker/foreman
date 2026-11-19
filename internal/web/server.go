@@ -69,12 +69,17 @@ type Deps struct {
 	HostDataDir string
 	Log         *slog.Logger
 	Now         func() time.Time // time.Now when nil
+	// OIDCTransport makes the calls to the identity provider; nil means the
+	// default. Tests give one that trusts their certificate.
+	OIDCTransport http.RoundTripper
 }
 
 type server struct {
-	cfg    *config.Config
-	store  *store.Store
-	worlds *world.Manager
+	// generalMu serialises saves of the General settings.
+	generalMu sync.Mutex
+	cfg       *config.Config
+	store     *store.Store
+	worlds    *world.Manager
 	// favorites is nil when this handler offers none (SPEC 5.12).
 	favorites *world.Favorites
 	game      *game.Controller
@@ -115,7 +120,7 @@ type server struct {
 	gameSeen sync.Map
 	mux      *http.ServeMux
 	// uploadLimits holds the body limit of each upload route, by pattern.
-	uploadLimits map[string]int64
+	uploadLimits map[string]limitFunc
 	// uploadSlots holds one entry per upload in progress (see guardUpload).
 	uploadSlots chan struct{}
 	// publicSlots holds one entry per public download in progress. marks
@@ -123,12 +128,16 @@ type server struct {
 	// Foreman has no portal (SPEC 9.16, 14.18).
 	publicSlots chan struct{}
 	marks       *portalMarks
+	// oidcTransport is Deps.OIDCTransport.
+	oidcTransport http.RoundTripper
 }
 
 // Handler is the HTTP handler for the whole app.
 type Handler struct {
 	http.Handler
 	runs *gameRuns
+	// srv is the server behind the handler, for the background sweeps.
+	srv *server
 }
 
 // Close ends the live pages, then interrupts the server control actions
@@ -184,9 +193,11 @@ func NewHandler(d Deps) (*Handler, error) {
 			Trusted:       d.Config.TrustedProxies,
 		},
 		mux:          http.NewServeMux(),
-		uploadLimits: map[string]int64{},
+		uploadLimits: map[string]limitFunc{},
 		uploadSlots:  make(chan struct{}, maxUploads),
 		publicSlots:  make(chan struct{}, maxPublicDownloads),
+
+		oidcTransport: d.OIDCTransport,
 	}
 	if s.gameNets == nil && d.Game != nil {
 		s.gameNets = d.Game
@@ -194,11 +205,12 @@ func NewHandler(d Deps) (*Handler, error) {
 	if d.Portal != nil {
 		s.portal, s.planner = d.Portal, &mods.Planner{Worlds: d.Worlds, Portal: d.Portal}
 		if d.Game != nil {
-			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal})
+			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal, limit: s.modUploadLimit})
 			d.Game.SetModCheck(s.planner)
 		}
 		s.marks = newPortalMarks(now, s.checkPortalForPublic)
 	}
+	s.applyRetention(context.Background())
 	s.routes()
 
 	cop := http.NewCrossOriginProtection()
@@ -217,7 +229,7 @@ func NewHandler(d Deps) (*Handler, error) {
 	h = s.limitBody(h)
 	h = s.recoverPanic(h)
 	h = s.accessLog(h)
-	return &Handler{Handler: h, runs: s.runs}, nil
+	return &Handler{Handler: h, runs: s.runs, srv: s}, nil
 }
 
 func (s *server) routes() {
@@ -253,13 +265,21 @@ func (s *server) routes() {
 	s.publicModsPageRoutes()
 	s.publicModsSettingsRoutes()
 	s.apiTokenRoutes()
+	s.generalRoutes()
+	s.usersRoutes()
+	s.auditRoutes()
 	s.mcpRoutes()
+	// Setup and the password form are local sign-in's alone (SPEC 12.3); the
+	// sign-in page also offers OIDC (SPEC 12.7).
+	if s.cfg.AuthLocal || s.cfg.AuthOIDC {
+		s.mux.HandleFunc("GET "+PathSignIn, s.handleSignInForm)
+	}
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
-		s.mux.HandleFunc("GET "+PathSignIn, s.handleSignInForm)
 		s.mux.HandleFunc("POST "+PathSignIn, s.handleSignIn)
 	}
+	s.oidcRoutes()
 	s.mux.HandleFunc("/", s.handleUnknown)
 }
 
@@ -353,7 +373,7 @@ func (s *server) fail(w http.ResponseWriter, r *http.Request, what string, err e
 }
 
 func (s *server) handleSignedOut(w http.ResponseWriter, r *http.Request) {
-	s.page(w, r, http.StatusOK, "", SignedOutPage{})
+	s.page(w, r, http.StatusOK, "", s.signedOutPage())
 }
 
 // LangCookie holds the language the menu chose, as a supported BCP 47 tag
@@ -462,6 +482,10 @@ func menuReturnPath(p string) string {
 	switch u.Path {
 	case PathSetup, PathSignedOut:
 		return u.Path
+	case PathOIDCStart, PathOIDCCallback:
+		// The callback's query holds the provider's code, state and words
+		// (SPEC 14.8, 14.14), so a page there returns to sign-in, never to it.
+		return PathSignIn
 	case PathSignIn:
 		if next := returnPath(u.Query().Get("next")); next != "" {
 			return PathSignIn + "?next=" + url.QueryEscape(next)

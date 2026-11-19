@@ -707,7 +707,7 @@ func modPageCases() []pageCase {
 	form := planForm{Kind: mods.KindSync, Save: "base.zip", Choices: map[string]mods.ChoiceKind{"old": mods.ChoiceWithout}, Confirmed: map[string]bool{}}
 	return []pageCase{
 		{"mods", "todd", 200, ModsPage{World: w, Mods: installed, NoAccount: true, LoadSave: "base.zip", HasSettings: true, Running: true,
-			CountdownForm: defaultCountdown(),
+			CountdownForm: CountdownForm{Countdown: "60"},
 			Done:          i18n.M("mods.done", "world", w.Name, "label", "x"), Undo: &Offer{Path: "/x", Label: i18n.M("mods.undo")}}},
 		{"mods errors", "todd", 200, ModsPage{World: w, Mods: installed[:1], UploadError: i18n.M("mods.upload.not_mod"),
 			SettingsError: i18n.M("mods.settings.empty"), Failure: &Failure{Message: i18n.M("mods.error.changed")}}},
@@ -720,10 +720,10 @@ func modPageCases() []pageCase {
 			Results: pageOfHits([]modportal.Hit{{Name: "alpha", Title: "Alpha", Summary: longName, LatestVersion: "1.0.0", FactorioVersion: "2.0", Downloads: 12345}, {Name: "beta", Title: "beta"}, {Name: longName, Title: longName, Summary: "s"}, {Name: "m4"}, {Name: "m5"}, {Name: "m6"}, {Name: "m7"}, {Name: "m8"}, {Name: "m9"}, {Name: "m10"}, {Name: "m11"}}, 1)}},
 		{"mod search empty", "todd", 200, ModSearchPage{World: w, QueryError: i18n.M("mods.search.missing")}},
 		{"mod search down", "todd", 200, ModSearchPage{World: w, Query: "x", Unreachable: true}},
-		{"mod plan", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Running: true, CountdownForm: defaultCountdown(), NoAccount: true,
+		{"mod plan", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Running: true, CountdownForm: CountdownForm{Countdown: "60"}, NoAccount: true,
 			Changed: true, Drops: []string{"gamma"}, DropsError: dropsMissing([]string{"gamma"}),
 			ConfirmErrors: map[string]i18n.Msg{"old": i18n.M("mods.unresolved.confirm_missing", "mod", "old")}}},
-		{"mod plan ready", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}}, Plan: mods.Plan{Changes: plan.Changes[:1]}, Running: true, CountdownForm: defaultCountdown()}},
+		{"mod plan ready", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}}, Plan: mods.Plan{Changes: plan.Changes[:1]}, Running: true, CountdownForm: CountdownForm{Countdown: "60"}}},
 		{"mod plan error", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}, Error: i18n.M("mods.error.portal"), Retry: true, Draft: "tok"}},
 		{"mod plan nothing", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}}},
 		{"mod plan zip refused", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindSync, Save: "base.zip"},

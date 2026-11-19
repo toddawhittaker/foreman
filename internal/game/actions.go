@@ -122,6 +122,9 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 		return err
 	}
 	defer unlock()
+	if err := c.checkArchived(ctx, by, AuditStart, id); err != nil {
+		return err
+	}
 	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
@@ -160,6 +163,36 @@ func (e NotActiveError) Error() string {
 	return e.Name + " is not the active world. Switch to it first"
 }
 func (e NotActiveError) Is(target error) bool { return target == ErrWorldNotActive }
+
+// errArchived is the refusal to start or switch to an archived world
+// (SPEC 5.9).
+func errArchived() error { return &StartError{Kind: StartArchived} }
+
+// isArchived reports whether err is that refusal.
+func isArchived(err error) bool {
+	se, ok := errors.AsType[*StartError](err)
+	return ok && se.Kind == StartArchived
+}
+
+// checkArchived refuses a start or restart of an archived world before
+// anything else runs, and records the refusal. launchLocked refuses again
+// for every other way a game is started. The caller holds the world's
+// lock, which archiving takes too, so the flag cannot change meanwhile. A
+// world.json that cannot be read is left to the pre-start check, which says
+// so.
+func (c *Controller) checkArchived(ctx context.Context, by Actor, action, id string) error {
+	if !c.archived(id) {
+		return nil
+	}
+	return c.refused(ctx, by, action, id, "", errArchived())
+}
+
+// archived reports whether the world is archived; an unreadable world.json
+// is not.
+func (c *Controller) archived(id string) bool {
+	meta, err := c.readMeta(id)
+	return err == nil && meta.Archived
+}
 
 // checkActive refuses a start of a world that is not the active one: a
 // start runs the active world (SPEC 7.3), and only a switch changes which
@@ -325,8 +358,8 @@ var ErrCountdown = errors.New("the stop countdown must be between 0 and 10 minut
 // StopOptions changes how a graceful stop warns players (SPEC 7.6: the
 // countdown is configurable per action, SPEC 7.6).
 type StopOptions struct {
-	// Countdown is how long players are warned; zero warns nobody. Callers
-	// pass StopCountdown for the default.
+	// Countdown is how long players are warned; zero warns nobody. The caller
+	// supplies its own default; the web layer passes the app setting.
 	Countdown time.Duration
 	// WarnEmpty counts down even with nobody online, so a player who joins
 	// meanwhile is warned and can be waited for. Only Restart honours it,
@@ -804,6 +837,13 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	// Compared before the stop, so a restart never refuses with the game
 	// already stopped.
 	opts.running = IsRunning(c.Status(id).State)
+	// A schedule's restart of a stopped game skips on its own, so it is not
+	// refused here (SPEC 7.12).
+	if opts.running || !stop.OnlyRunning {
+		if err := c.checkArchived(ctx, by, AuditRestart, id); err != nil {
+			return err
+		}
+	}
 	opts.portal = true
 	if err := c.checkNetwork(ctx); err != nil {
 		return c.checkFailed(ctx, by, AuditRestart, id, opts.auditDetail(), err)

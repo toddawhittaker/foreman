@@ -1,0 +1,31 @@
+{
+  "general.audit.heading": "审计日志",
+  "general.audit.label": "审计条目保留天数",
+  "general.audit.text": "审计日志将每条记录保留多久。Foreman 每小时删除一次更早的记录。",
+  "general.confirm.cancel": "取消，保留当前设置",
+  "general.confirm.change": "{setting}：{from} 改为 {to}",
+  "general.confirm.question": "减少保留的自动快照数量？",
+  "general.done": "已保存。新设置从现在起生效。",
+  "general.error.range": "请输入 {min} 到 {max} 之间的整数。",
+  "general.range.hint": "{min} 到 {max} 之间的整数。",
+  "general.save": "保存设置",
+  "general.snapshots.heading": "快照",
+  "general.snapshots.hint": "调低该数值不会立即删除任何内容。每个世界会在下一次自动快照时丢弃多余的自动快照。",
+  "general.snapshots.label": "每个世界保留的自动快照数量",
+  "general.snapshots.text": "Foreman 保留每个世界最新的自动快照。手动快照和删除世界前创建的快照永远不会被删除。",
+  "general.source": "在此设置。没有环境变量可以设置它。",
+  "general.stop.heading": "停止服务器",
+  "general.stop.hint": "0 表示不发出警告。",
+  "general.stop.label": "默认停止倒计时（秒）",
+  "general.stop.text": "停止或重启在未指定倒计时时使用的倒计时。计划重启使用自己固定的倒计时。",
+  "general.trim.final": "已删除的快照无法恢复。若要保留它们，请在下一次自动快照之前重新调高该数值。",
+  "general.trim.snapshots": {
+    "other": "将删除 {count} 个自动快照，每个在其所属世界的下一次自动快照时删除。"
+  },
+  "general.trim.worlds": "涉及的世界数：{count}。",
+  "general.uploads.heading": "上传",
+  "general.uploads.mod.hint": "从模组门户下载的模组受同样的限制。",
+  "general.uploads.mod.label": "上传模组的最大大小（MB）",
+  "general.uploads.save.label": "上传存档的最大大小（MB）",
+  "general.uploads.text": "有人上传存档或模组时，Foreman 接受的最大文件。更改从下一次上传起生效。"
+}

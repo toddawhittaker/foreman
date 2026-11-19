@@ -161,7 +161,7 @@ func TestLongRoutesRelaxLimitsOnlyForSignedInRequests(t *testing.T) {
 		cfg: hn.cfg, store: hn.store, log: hn.slog, now: hn.clock.Now,
 		sessions:     auth.NewSessionManager(hn.store, hn.cfg.SessionIdle, hn.cfg.SecureCookies(), hn.clock.Now),
 		mux:          http.NewServeMux(),
-		uploadLimits: map[string]int64{},
+		uploadLimits: map[string]limitFunc{},
 	}
 	const limit = 1 << 20
 	probe := func(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +171,7 @@ func TestLongRoutesRelaxLimitsOnlyForSignedInRequests(t *testing.T) {
 			w.WriteHeader(http.StatusRequestEntityTooLarge)
 		}
 	}
-	s.handleUpload("POST /up", limit, probe)
+	s.handleUpload("POST /up", fixedLimit(limit), probe)
 	s.handleLong("GET /down", probe)
 	s.mux.HandleFunc("POST /form", probe)
 	h := s.limitBody(s.mux)
@@ -244,7 +244,7 @@ func TestSaveRoutesRefuseAnonymousWithoutLiftingDeadlines(t *testing.T) {
 // SPEC 14.19: an /mcp body may be up to 4 MiB, more than a form's cap, and
 // no more.
 func TestLimitBodyLetsMCPBodiesReachFourMiB(t *testing.T) {
-	s := &server{mux: http.NewServeMux(), uploadLimits: map[string]int64{}}
+	s := &server{mux: http.NewServeMux(), uploadLimits: map[string]limitFunc{}}
 	s.mux.HandleFunc(PathMCP, func(w http.ResponseWriter, r *http.Request) {
 		if _, err := io.Copy(io.Discard, r.Body); err != nil {
 			w.WriteHeader(http.StatusRequestEntityTooLarge)

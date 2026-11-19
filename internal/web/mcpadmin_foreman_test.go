@@ -73,7 +73,7 @@ var keyed = map[string]string{"FOREMAN_SECRET_KEY": acctKey}
 
 func (r *foremanRig) auditRows(action string) []store.AuditEntry {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 500)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 500})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func (r *foremanRig) publicOn() bool {
 // auditCount is every audit row, to show a call changed nothing.
 func (r *foremanRig) auditCount() int {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 1000)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 1000})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func (r *foremanRig) auditCount() int {
 // wantNoSecrets fails when text, the log or any audit entry holds a secret.
 func (r *foremanRig) wantNoSecrets(where, text string) {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 1000)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 1000})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func hookArgs(raw string) map[string]any {
 	return map[string]any{"preset": "discord", "url": raw, "lang": "en"}
 }
 
-// SPEC 21.8, 21.7: only delete_webhook is two-step; every other Foreman-wide
+// SPEC 21.8, 21.7: only delete_webhook and set_foreman_settings are two-step; every other Foreman-wide
 // tool carries an explicit false destructive hint.
 func TestMCPForemanToolsAnnotations(t *testing.T) {
 	r := newForemanRig(t, keyed)
@@ -150,7 +150,7 @@ func TestMCPForemanToolsAnnotations(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]bool{"foreman_settings": false, "set_restart_schedule": false, "add_webhook": false, "change_webhook": false,
-		"delete_webhook": true, "set_factorio_account": false, "remove_factorio_account": false, "set_public_mods": false}
+		"delete_webhook": true, "set_factorio_account": false, "remove_factorio_account": false, "set_public_mods": false, "set_foreman_settings": true}
 	seen := 0
 	for _, tl := range tools.Tools {
 		two, ok := want[tl.Name]

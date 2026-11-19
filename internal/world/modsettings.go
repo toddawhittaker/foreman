@@ -415,7 +415,7 @@ func zipLocale(root *os.Root, name string, codes []string, lim *localeLimit) map
 		return nil
 	}
 	defer func() { _ = f.Close() }()
-	if st.Size() > maxModZip || zipEntriesOver(f, st.Size(), maxModZipEntries) {
+	if st.Size() > MaxModZip || zipEntriesOver(f, st.Size(), maxModZipEntries) {
 		return nil
 	}
 	zr, err := zip.NewReader(f, st.Size())

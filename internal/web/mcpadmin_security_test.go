@@ -15,6 +15,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/modportal/modportaltest"
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/secret"
+	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -134,6 +135,14 @@ var gateCases = map[string]func(t *testing.T) gateCase{
 			}
 		}}
 	},
+	"set_foreman_settings": func(t *testing.T) gateCase {
+		r := newForemanRig(t, keyed)
+		return gateCase{hn: r.harness, cs: r.cs, args: map[string]any{"snapshot_retention": 4, "mod_upload_mb": 300}, still: func(t *testing.T) {
+			if got := r.generalServer().snapshotRetention(context.Background()); got != 10 {
+				t.Errorf("retention is %d after the preview", got)
+			}
+		}}
+	},
 }
 
 // gameState is what the fake game was asked to do and how its containers
@@ -197,7 +206,7 @@ func gateClient(t *testing.T) *mcp.ClientSession {
 // auditDump is every audit row as text, so a test sees any change to it.
 func auditDump(t *testing.T, hn *harness) string {
 	t.Helper()
-	list, err := hn.store.ListAudit(context.Background(), 1000)
+	list, err := hn.store.ListAudit(context.Background(), store.AuditFilter{Limit: 1000})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,6 +445,8 @@ func TestMCPAdminGateNoSecretFromAnyTool(t *testing.T) {
 		{"clone_world", arg(map[string]any{"world_id": stopped, "name": "Copy", "map": "keep"})},
 		{"generate_world", arg(map[string]any{"name": "Fresh", "game_version": v20})},
 		{"rename_world", arg(map[string]any{"world_id": stopped, "name": "Stopped two"})},
+		{"archive_world", arg(map[string]any{"world_id": stopped})},
+		{"unarchive_world", arg(map[string]any{"world_id": stopped})},
 		{"delete_world", arg(map[string]any{"world_id": stopped})},
 	}
 	// make_favorite's id is needed by the calls after it.
@@ -485,6 +496,7 @@ func TestMCPAdminGateNoSecretFromAnyTool(t *testing.T) {
 		{"foreman_settings", arg(map[string]any{})},
 		{"remove_factorio_account", arg(map[string]any{})},
 		{"set_public_mods", arg(map[string]any{"on": true})},
+		{"set_foreman_settings", arg(map[string]any{"snapshot_retention": 5})},
 		{"set_restart_schedule", arg(map[string]any{"enabled": false})},
 	}, ran)
 	wantNoSecretIn(t, "a Foreman tool", append([]string{hookURL, hookToken, acctKey}, factorioSecrets...),

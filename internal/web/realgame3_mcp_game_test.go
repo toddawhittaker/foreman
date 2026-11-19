@@ -159,7 +159,7 @@ func TestRealGameMCP(t *testing.T) {
 
 func auditRows(t *testing.T, hn *harness) []store.AuditEntry {
 	t.Helper()
-	list, err := hn.store.ListAudit(context.Background(), 100)
+	list, err := hn.store.ListAudit(context.Background(), store.AuditFilter{Limit: 100})
 	if err != nil {
 		t.Fatal(err)
 	}

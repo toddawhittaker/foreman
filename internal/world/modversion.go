@@ -23,8 +23,9 @@ import (
 const (
 	// maxInfoJSON caps what is read from a mod's info.json.
 	maxInfoJSON = 64 << 10
-	// maxModZip is the largest mod zip opened (SPEC 14.6).
-	maxModZip = 200 << 20
+	// MaxModZip is the largest mod zip opened: a ceiling only. The mod upload
+	// setting is the real limit and cannot be set above it (SPEC 14.6, 14.10).
+	MaxModZip = 2048 << 20
 	// maxModZipEntries is the most files a mod zip may list before it is
 	// left unread.
 	maxModZipEntries = 10000
@@ -176,7 +177,7 @@ func cloneModInfo(info ModInfo) ModInfo {
 // folder, and the file is in it. ok is false when anything is missing or
 // unreadable, and for a zip over the size or entry limit.
 func readZipInfo(r io.ReaderAt, size int64) (ModInfo, bool) {
-	if size > maxModZip || zipEntriesOver(r, size, maxModZipEntries) {
+	if size > MaxModZip || zipEntriesOver(r, size, maxModZipEntries) {
 		return ModInfo{}, false
 	}
 	zr, err := zip.NewReader(r, size)

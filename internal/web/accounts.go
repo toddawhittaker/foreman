@@ -115,6 +115,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("first admin created", "username", clip(u.Username))
+	s.audit(ctx, actor(u), AuditUserCreate, "", "setup")
 	if err := s.sessions.Start(ctx, w, u.ID); err != nil {
 		s.fail(w, r, "start session", err)
 		return
@@ -123,7 +124,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleSignInForm(w http.ResponseWriter, r *http.Request) {
-	s.page(w, r, http.StatusOK, "", SignInPage{Next: returnPath(r.URL.Query().Get("next"))})
+	s.page(w, r, http.StatusOK, "", s.signInPage(SignInPage{Next: returnPath(r.URL.Query().Get("next"))}))
 }
 
 // handleSignIn checks a local account (SPEC 12.4). It never says whether
@@ -138,7 +139,7 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	client := auth.ClientAddr(r, s.cfg.TrustedProxies)
 
 	next := returnPath(r.PostFormValue("next"))
-	pg := SignInPage{Username: username, Next: next}
+	pg := s.signInPage(SignInPage{Username: username, Next: next})
 	if username == "" {
 		pg.UsernameError = i18n.M("accounts.signin.username.missing")
 	}
@@ -154,7 +155,7 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	if ok, wait := s.limiter.Allow(username, client); !ok {
 		s.log.Info("sign-in refused: too many failures", "client", client)
 		w.Header().Set("Retry-After", fmt.Sprint(int(wait.Seconds())+1))
-		s.page(w, r, http.StatusTooManyRequests, "", SignInPage{Username: username, Next: next, RateLimited: true, RetryAfter: wait})
+		s.page(w, r, http.StatusTooManyRequests, "", s.signInPage(SignInPage{Username: username, Next: next, RateLimited: true, RetryAfter: wait}))
 		return
 	}
 

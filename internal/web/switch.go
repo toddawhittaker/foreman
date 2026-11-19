@@ -173,7 +173,7 @@ func (s *server) handleSwitchForm(w http.ResponseWriter, r *http.Request, u stor
 	if !ok {
 		return
 	}
-	p, err := s.switchPage(r.Context(), "", to, defaultCountdown())
+	p, err := s.switchPage(r.Context(), "", to, s.countdownForm(r.Context()))
 	if err != nil {
 		s.fail(w, r, "build the switch page", err)
 		return
@@ -201,7 +201,7 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 			Detail: i18n.M("server.switch.no_from")})
 		return
 	}
-	form, stop := readCountdown(r)
+	form, stop := s.readCountdown(r)
 	p, err := s.switchPage(r.Context(), from, to, form)
 	if err != nil {
 		s.fail(w, r, "build the switch page", err)
@@ -257,16 +257,21 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 // worldName returns a world's name for a sentence, or its id when the name
 // cannot be read.
 func (s *server) worldName(id string) string {
+	if meta, ok := s.worldMeta(id); ok && meta.Name != "" {
+		return meta.Name
+	}
+	return id
+}
+
+// worldMeta reads a world's world.json; ok is false when it cannot be read.
+func (s *server) worldMeta(id string) (world.Meta, bool) {
 	root, err := s.worlds.OpenWorld(id)
 	if err != nil {
-		return id
+		return world.Meta{}, false
 	}
 	defer func() { _ = root.Close() }()
 	meta, err := world.ReadMeta(root)
-	if err != nil || meta.Name == "" {
-		return id
-	}
-	return meta.Name
+	return meta, err == nil
 }
 
 // switchNames fills in the names of the worlds the page speaks of.
@@ -277,15 +282,23 @@ func (s *server) switchNames(p *ServerPage) {
 	} else if n := p.Status.Notice; n != nil {
 		sw = &n.SwitchInfo
 	}
-	p.WorldNames = map[string]string{}
+	p.WorldNames, p.ArchivedWorlds = map[string]string{}, map[string]bool{}
+	note := func(id string) {
+		meta, ok := s.worldMeta(id)
+		p.WorldNames[id], p.ArchivedWorlds[id] = id, ok && meta.Archived
+		if ok && meta.Name != "" {
+			p.WorldNames[id] = meta.Name
+		}
+	}
 	if sw != nil {
-		p.WorldNames[sw.From], p.WorldNames[sw.To] = s.worldName(sw.From), s.worldName(sw.To)
+		note(sw.From)
+		note(sw.To)
 	}
 	// A switch the checks refused never began an operation, but its box
 	// still names the world it would switch to.
 	for _, id := range []string{p.Result.Target, p.Result.From} {
 		if p.HaveResult && id != "" && p.WorldNames[id] == "" {
-			p.WorldNames[id] = s.worldName(id)
+			note(id)
 		}
 	}
 }
@@ -321,11 +334,28 @@ type SwitchOffer struct {
 // it had not, the old world is still active and its Start button is the way
 // on.
 func (p ServerPage) SwitchBack() *SwitchOffer {
+	if id := p.switchBackFrom(); id != "" {
+		return p.switchOffer(id)
+	}
+	return nil
+}
+
+// switchBackFrom is the world SwitchBack would offer, archived or not.
+func (p ServerPage) switchBackFrom() string {
 	sw := p.switchInfo()
 	if sw == nil || !sw.Presented || p.Busy() {
+		return ""
+	}
+	return sw.From
+}
+
+// switchOffer is the offer to switch to a world, or nil when it is archived,
+// which a switch would refuse (SPEC 5.9).
+func (p ServerPage) switchOffer(id string) *SwitchOffer {
+	if p.ArchivedWorlds[id] {
 		return nil
 	}
-	return &SwitchOffer{Path: switchPath(sw.From), Name: p.name(sw.From)}
+	return &SwitchOffer{Path: switchPath(id), Name: p.name(id)}
 }
 
 // SwitchNote says where a failed switch left the worlds, or is zero.

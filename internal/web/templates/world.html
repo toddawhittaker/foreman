@@ -7,7 +7,7 @@
 {{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
 <p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <div class="title-row">
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
 </div>
 {{template "world-tabs" .Tabs}}
@@ -17,11 +17,16 @@
 <p>{{t "worlds.error.newer_format"}}</p>
 {{- end}}
 {{- if not .Done.IsZero}}
-<div class="message message--success">
+<div class="message message--success" id="world-done" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
   {{- with .ImportSync}}
   <div class="actions"><a href="{{.}}" class="button" id="act-import-sync">{{t "mods.sync.import"}}</a></div>
   {{- end}}
+</div>
+{{- end}}
+{{- if not .ArchiveError.IsZero}}
+<div class="message message--error" id="archive-error" tabindex="-1" autofocus>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .ArchiveError}}</p>
 </div>
 {{- end}}
 {{- if not .Warning.IsZero}}
@@ -60,7 +65,17 @@
 {{- end}}
 </div>
 {{- /* The world page's one primary action, on a world that is not active (SPEC 7.9). */}}
-{{- if .CanSwitch}}
+{{- if .World.Archived}}
+<section class="panel" aria-labelledby="archived-heading">
+  <h2 id="archived-heading">{{t "worlds.world.archived.heading"}}</h2>
+  <p class="hint">{{t "worlds.world.archived.text"}}</p>
+  {{- if not .World.Newer}}
+  <form method="post" action="{{.UnarchivePath}}" class="actions">
+    <button type="submit" class="button button--primary" id="act-unarchive">{{t "worlds.world.unarchive.button"}}</button>
+  </form>
+  {{- end}}
+</section>
+{{- else if .CanSwitch}}
 <section class="panel" aria-label="{{t "worlds.world.switch.heading"}}">
   <p class="hint">{{t "worlds.world.switch.text"}}</p>
   {{- with .MissingImage}}
@@ -188,6 +203,21 @@
     </div>
   </div>
 </form>
+{{- end}}
+{{- if not .World.Archived}}
+<section class="setting-row" aria-labelledby="archive-heading">
+  <div class="setting-row__head">
+    <h2 id="archive-heading">{{t "worlds.world.archive.heading"}}</h2>
+    <p class="hint">{{if .World.Active}}{{t "worlds.error.archive_active"}}{{else}}{{t "worlds.world.archive.text"}}{{end}}</p>
+  </div>
+  <div class="setting-row__body">
+    {{- if not .World.Active}}
+    <form method="post" action="{{.ArchivePath}}" class="actions">
+      <button type="submit" class="button" id="act-archive">{{t "worlds.world.archive.button"}}</button>
+    </form>
+    {{- end}}
+  </div>
+</section>
 {{- end}}
 </div>
 {{- end}}

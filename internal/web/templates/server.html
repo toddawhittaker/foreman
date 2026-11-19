@@ -283,6 +283,9 @@
   {{- end}}{{end}}
   {{- if .CrashLooping}}
   <p>{{if or .RecoverRestore .RecoverSwitch}}{{t "server.crash.fix_or" "world" .World.Name}}{{else}}{{t "server.crash.fix" "world" .World.Name}}{{end}}</p>
+  {{- with .ArchivedSwitchBack}}
+  <p>{{t "server.crash.switch_archived" "world" .Name}} <a href="{{.Path}}" id="act-unarchive-switch-back">{{t "server.crash.unarchive" "world" .Name}}</a></p>
+  {{- end}}
   {{- if or .RecoverRestore .RecoverSwitch}}
   <div class="actions">
     {{- with .RecoverRestore}}

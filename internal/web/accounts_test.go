@@ -334,7 +334,7 @@ func TestSweepOnceRemovesIdleSessions(t *testing.T) {
 	if err := hn.store.CreateSession(ctx, "fresh", u.ID, hn.clock.Now()); err != nil {
 		t.Fatal(err)
 	}
-	sweepOnce(ctx, hn.store, 24*time.Hour, hn.clock.Now(), hn.slog)
+	hn.generalServer().sweepOnce(ctx, 24*time.Hour)
 	if _, _, found, _ := hn.store.SessionUser(ctx, "old"); found {
 		t.Error("the idle session survived the sweep")
 	}

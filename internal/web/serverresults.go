@@ -53,13 +53,21 @@ func (p ServerPage) CrashCause() i18n.Msg { return crashCause(p.Status.Crash) }
 // still holds its result. A restart of Foreman forgets the latter
 // (SPEC 7.9, 17.9).
 func (p ServerPage) switchBackOffer() *SwitchOffer {
-	if o := p.SwitchBack(); o != nil {
-		return o
+	if id := p.switchBackTarget(); id != "" {
+		return p.switchOffer(id)
 	}
-	if p.Busy() || !p.HaveResult || p.Result.Action != game.AuditSwitch || p.Result.Err != nil || p.Result.From == "" {
-		return nil
+	return nil
+}
+
+// switchBackTarget is the world switchBackOffer is about, archived or not.
+func (p ServerPage) switchBackTarget() string {
+	if id := p.switchBackFrom(); id != "" {
+		return id
 	}
-	return &SwitchOffer{Path: switchPath(p.Result.From), Name: p.name(p.Result.From)}
+	if p.Busy() || !p.HaveResult || p.Result.Action != game.AuditSwitch || p.Result.Err != nil {
+		return ""
+	}
+	return p.Result.From
 }
 
 // RecoverSwitch offers the switch back after a crash loop, or is nil.
@@ -68,6 +76,16 @@ func (p ServerPage) RecoverSwitch() *SwitchOffer {
 		return nil
 	}
 	return p.switchBackOffer()
+}
+
+// ArchivedSwitchBack is the world RecoverSwitch would offer, when it is
+// archived and so cannot be, with a link to its page to unarchive it (SPEC 5.9).
+func (p ServerPage) ArchivedSwitchBack() *SwitchOffer {
+	id := p.switchBackTarget()
+	if !p.CrashLooping() || id == "" || !p.ArchivedWorlds[id] {
+		return nil
+	}
+	return &SwitchOffer{Path: worldPath(id), Name: p.name(id)}
 }
 
 // LoneSwitchBack is SwitchBack when the crash box does not already offer it.

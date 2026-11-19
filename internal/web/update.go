@@ -182,7 +182,7 @@ func (s *server) handleUpdateForm(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 	target := strings.TrimSpace(r.URL.Query().Get("game_version"))
-	s.page(w, r, http.StatusOK, u.Username, s.updatePage(sum, target, defaultCountdown()))
+	s.page(w, r, http.StatusOK, u.Username, s.updatePage(sum, target, s.countdownForm(r.Context())))
 }
 
 // handleUpdate moves a world to a newer game version in the background
@@ -202,7 +202,7 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	target := chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed"))
-	form, stop := readCountdown(r)
+	form, stop := s.readCountdown(r)
 	p := s.updatePage(sum, target, form)
 	if !p.Refusal.IsZero() {
 		s.page(w, r, http.StatusConflict, u.Username, p)
@@ -234,7 +234,7 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 // ended, for the world's own page: what was done, or why not, with the
 // offer to go ahead anyway when the pre-start check allows it (SPEC 10.3,
 // 17.9). Both are empty when the world's last action was not an update.
-func (s *server) updateOutcome(sum world.Summary) (i18n.Msg, *Failure) {
+func (s *server) updateOutcome(ctx context.Context, sum world.Summary) (i18n.Msg, *Failure) {
 	if s.game == nil || sum.Active || sum.Unreadable || sum.Newer {
 		return i18n.Msg{}, nil
 	}
@@ -258,7 +258,7 @@ func (s *server) updateOutcome(sum world.Summary) (i18n.Msg, *Failure) {
 	f.Problems = problemMsgs(pe.Check.Problems)
 	f.Fix = syncOffer(pe.Check, sum.ID)
 	if pe.Check.CanStartAnyway() {
-		f.Anyway = updateAnyway(pe.Check, sum, res.Version)
+		f.Anyway = updateAnyway(pe.Check, sum, res.Version, s.stopSeconds(ctx))
 	}
 	return i18n.Msg{}, f
 }
@@ -274,7 +274,7 @@ func (s *server) rollbackPageFor(w http.ResponseWriter, r *http.Request, u store
 	if !ok {
 		return RollbackPage{}, false
 	}
-	p, err := s.rollbackPage(sum)
+	p, err := s.rollbackPage(r.Context(), sum)
 	if err != nil {
 		s.notFoundOrFail(w, r, u, "find the rollback snapshot", err)
 		return RollbackPage{}, false
@@ -284,8 +284,8 @@ func (s *server) rollbackPageFor(w http.ResponseWriter, r *http.Request, u store
 
 // rollbackPage builds the rollback confirmation; Error says why there is
 // none. It needs server control.
-func (s *server) rollbackPage(sum world.Summary) (RollbackPage, error) {
-	p := RollbackPage{World: sum, CountdownForm: defaultCountdown(), Running: game.IsRunning(s.game.Status(sum.ID).State)}
+func (s *server) rollbackPage(ctx context.Context, sum world.Summary) (RollbackPage, error) {
+	p := RollbackPage{World: sum, CountdownForm: s.countdownForm(ctx), Running: game.IsRunning(s.game.Status(sum.ID).State)}
 	snap, version, err := s.worlds.RollbackTarget(sum.ID)
 	switch {
 	case errors.Is(err, world.ErrNoRollback):
@@ -327,7 +327,7 @@ func (s *server) handleRollback(w http.ResponseWriter, r *http.Request, u store.
 	}
 	id, by := p.World.ID, actor(u)
 	if p.Running {
-		form, stop := readCountdown(r)
+		form, stop := s.readCountdown(r)
 		if !form.CountdownError.IsZero() {
 			p.CountdownForm = form
 			s.page(w, r, http.StatusBadRequest, u.Username, p)
@@ -342,7 +342,7 @@ func (s *server) handleRollback(w http.ResponseWriter, r *http.Request, u store.
 		})
 		return
 	}
-	before, err := s.game.Rollback(r.Context(), id, by, game.StopOptions{Countdown: game.StopCountdown})
+	before, err := s.game.Rollback(r.Context(), id, by, game.StopOptions{Countdown: s.stopCountdown(r.Context())})
 	if err == nil {
 		http.Redirect(w, r, snapshotsPath(id)+"?undo="+before.Name, http.StatusSeeOther)
 		return

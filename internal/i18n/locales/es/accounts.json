@@ -9,6 +9,9 @@
   "accounts.username.control": "Quita los caracteres de control del nombre de usuario",
   "accounts.signin.title": "Iniciar sesión",
   "accounts.signin.submit": "Iniciar sesión",
+  "accounts.signin.sso": "Iniciar sesión con inicio de sesión único",
+  "accounts.signin.sso.heading": "Inicio de sesión único",
+  "accounts.signin.local.heading": "Cuenta de Foreman",
   "accounts.signin.ratelimited.unknown": "Demasiados inicios de sesión fallidos. Espera unos minutos y vuelve a intentarlo.",
   "accounts.signin.ratelimited.minutes": {
     "one": "Demasiados inicios de sesión fallidos. Espera {count} minuto y vuelve a intentarlo.",
@@ -44,5 +47,12 @@
   "accounts.proxy.refused": "Tu cuenta no tiene permiso para usar Foreman. Pide a la persona que gestiona Foreman que te dé acceso.",
   "accounts.proxy.waiting": "Foreman aún no puede aceptar inicios de sesión desde el proxy, porque todavía no ha visto las redes del contenedor del juego. Vuelve a intentarlo dentro de un minuto.",
   "accounts.proxy.waiting_local": "Foreman aún no puede aceptar inicios de sesión desde el proxy, porque todavía no ha visto las redes del contenedor del juego. Vuelve a intentarlo dentro de un minuto. El inicio de sesión con contraseña sigue funcionando: abre {path} para usarlo.",
-  "accounts.proxy.missing": "Foreman no ha recibido tu inicio de sesión desde el proxy. Inicia sesión a través del proxy y vuelve a abrir esta página."
+  "accounts.proxy.missing": "Foreman no ha recibido tu inicio de sesión desde el proxy. Inicia sesión a través del proxy y vuelve a abrir esta página.",
+  "accounts.oidc.failed": "El inicio de sesión único no ha funcionado. Vuelve a intentarlo. Si sigue fallando, pregunta a la persona que gestiona Foreman.",
+  "accounts.oidc.unavailable": "Foreman no puede contactar ahora con el proveedor de inicio de sesión único. Vuelve a intentarlo dentro de un minuto.",
+  "accounts.oidc.name_taken": "Foreman ya tiene un usuario con tu nombre que inicia sesión de otra forma, así que el inicio de sesión único no puede iniciar tu sesión. Pide a la persona que gestiona Foreman que cambie el nombre de ese usuario o lo elimine.",
+  "accounts.oidc.bad_username": "Tu cuenta de inicio de sesión único no tiene un nombre de usuario que Foreman pueda usar, así que volver a intentarlo no servirá. Pide a la persona que gestiona Foreman que revise tu cuenta en el proveedor de identidad.",
+  "accounts.oidc.heading": "El inicio de sesión único no ha funcionado",
+  "accounts.oidc.retry": "Volver a intentar el inicio de sesión único",
+  "accounts.oidc.back": "Volver a iniciar sesión"
 }

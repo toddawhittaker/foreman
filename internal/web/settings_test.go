@@ -16,6 +16,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -200,7 +201,7 @@ func (r *settingsRig) snapshots() []world.SnapshotUse {
 
 func (r *settingsRig) auditActions() []string {
 	r.t.Helper()
-	list, err := r.store.ListAudit(context.Background(), 50)
+	list, err := r.store.ListAudit(context.Background(), store.AuditFilter{Limit: 50})
 	if err != nil {
 		r.t.Fatal(err)
 	}

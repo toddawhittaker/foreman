@@ -54,7 +54,7 @@ func (s *server) settingsRoutes() {
 	s.mux.HandleFunc("GET "+PathSettings, s.requireUser(h.handleForm))
 	s.mux.HandleFunc("POST "+PathSettings, s.requireUser(h.handlePreview))
 	s.mux.HandleFunc("GET "+PathSettingsRaw, s.requireUser(h.handleRawForm))
-	s.handleUpload("POST "+PathSettingsRaw, rawBodyLimit, s.requireUser(h.handleRawPreview))
+	s.handleUpload("POST "+PathSettingsRaw, fixedLimit(rawBodyLimit), s.requireUser(h.handleRawPreview))
 	// A running game saves before its snapshot (SPEC 6.10), which can outlast
 	// the usual deadlines.
 	s.handleLong("POST "+PathSettingsConfirm, s.requireUser(h.handleConfirm))
