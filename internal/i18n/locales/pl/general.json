@@ -6,7 +6,7 @@
   "general.confirm.change": "{setting}: z {from} na {to}",
   "general.confirm.question": "Przechowywać mniej automatycznych migawek?",
   "general.done": "Zapisano. Nowe ustawienia obowiązują od teraz.",
-  "general.error.range": "Wpisz liczbę całkowitą od {min} do {max}.",
+  "general.error.range": "Należy wpisać liczbę całkowitą od {min} do {max}.",
   "general.range.hint": "Liczba całkowita od {min} do {max}.",
   "general.save": "Zapisz ustawienia",
   "general.snapshots.heading": "Migawki",

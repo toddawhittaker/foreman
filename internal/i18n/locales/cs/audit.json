@@ -46,7 +46,7 @@
   "audit.action.whitelist-switch": "Seznam povolených zapnut nebo vypnut",
   "audit.action.world-archive": "Svět archivován",
   "audit.action.world-delete": "Svět smazán",
-  "audit.action.world-unarchive": "Svět obnoven z archivu",
+  "audit.action.world-unarchive": "Svět vyjmut z archivu",
   "audit.empty": "Zatím nebylo nic zaznamenáno.",
   "audit.empty.filtered": "Těmto filtrům neodpovídá žádný záznam.",
   "audit.fact.detail": "Podrobnosti",

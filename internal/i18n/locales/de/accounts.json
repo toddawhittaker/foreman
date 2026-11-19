@@ -50,6 +50,6 @@
   "accounts.proxy.missing": "Foreman hat deine Anmeldung nicht vom Proxy erhalten. Melde dich über den Proxy an und öffne diese Seite dann erneut.",
   "accounts.oidc.failed": "Die Einmalanmeldung hat nicht funktioniert. Versuche es erneut. Wenn es weiter fehlschlägt, frag die Person, die Foreman betreibt.",
   "accounts.oidc.unavailable": "Foreman erreicht den Anbieter der Einmalanmeldung gerade nicht. Versuche es in einer Minute erneut.",
-  "accounts.oidc.name_taken": "Foreman hat schon ein Konto mit deinem Namen, das sich anders anmeldet, deshalb kann dich die Einmalanmeldung nicht anmelden. Bitte die Person, die Foreman betreibt, dieses Konto umzubenennen oder zu entfernen.",
+  "accounts.oidc.name_taken": "Foreman hat schon einen Benutzer mit deinem Namen, der sich anders anmeldet, deshalb kann dich die Einmalanmeldung nicht anmelden. Bitte die Person, die Foreman betreibt, diesen Benutzer umzubenennen oder zu entfernen.",
   "accounts.oidc.bad_username": "Dein Konto für die Einmalanmeldung hat keinen Benutzernamen, den Foreman verwenden kann, deshalb hilft ein neuer Versuch nicht. Bitte die Person, die Foreman betreibt, dein Konto beim Identitätsanbieter zu prüfen."
 }

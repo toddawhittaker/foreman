@@ -8,7 +8,7 @@
   "accounts.username.control": "请删除用户名中的控制字符",
   "accounts.signin.title": "登录",
   "accounts.signin.submit": "登录",
-  "accounts.signin.sso": "使用单点登录",
+  "accounts.signin.sso": "通过单点登录登录",
   "accounts.signin.sso.heading": "单点登录",
   "accounts.signin.local.heading": "Foreman 账户",
   "accounts.signin.ratelimited.unknown": "登录失败次数过多。请等待几分钟后再试。",

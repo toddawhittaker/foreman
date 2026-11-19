@@ -7,14 +7,14 @@
   "users.delete.question": "¿Borrar el usuario {name}?",
   "users.delete.returns.oidc": "Este usuario inicia sesión con inicio de sesión único. Volverá la próxima vez que inicie sesión, salvo que también lo quites en el proveedor de identidad.",
   "users.delete.returns.proxy": "Este usuario inicia sesión a través del proxy. Volverá en su próxima visita, salvo que también lo quites en el proxy.",
-  "users.delete.self": "No puedes borrarte a ti mismo. Debe hacerlo otro usuario.",
+  "users.delete.self": "No puedes borrar tu propio usuario. Debe hacerlo otro usuario.",
   "users.delete.signout": "Cerrar la sesión del usuario en todas partes.",
   "users.delete.tokens": {
     "one": "Borrar su {count} token de API.",
     "other": "Borrar sus {count} tokens de API."
   },
   "users.done.deleted": "El usuario se ha borrado.",
-  "users.done.password": "Tu contraseña está cambiada. Se cerró tu sesión en todas las demás partes.",
+  "users.done.password": "Tu contraseña se ha cambiado. Se cerró tu sesión en todas las demás partes.",
   "users.fact.created": "Creado",
   "users.fact.kind": "Inicia sesión con",
   "users.intro": "Todos los usuarios son administradores. Cualquier usuario puede borrar a otro, pero no a sí mismo.",

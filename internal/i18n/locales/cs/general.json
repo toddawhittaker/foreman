@@ -26,7 +26,7 @@
   "general.trim.worlds": "Dotčené světy: {count}.",
   "general.uploads.heading": "Nahrávání souborů",
   "general.uploads.mod.hint": "Stejný limit platí pro mod stahovaný z portálu modů.",
-  "general.uploads.mod.label": "Nejvyšší velikost nahrávaného modu (MB)",
-  "general.uploads.save.label": "Nejvyšší velikost nahrávané uložené hry (MB)",
+  "general.uploads.mod.label": "Maximální velikost nahrávaného modu (MB)",
+  "general.uploads.save.label": "Maximální velikost nahrávané uložené hry (MB)",
   "general.uploads.text": "Největší soubor, který Foreman přijme při nahrání uložené hry nebo modu. Změna platí od dalšího nahrání."
 }

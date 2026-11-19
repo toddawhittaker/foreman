@@ -46,7 +46,7 @@
   "audit.action.whitelist-switch": "Biała lista włączona lub wyłączona",
   "audit.action.world-archive": "Świat zarchiwizowany",
   "audit.action.world-delete": "Świat usunięty",
-  "audit.action.world-unarchive": "Świat przywrócony z archiwum",
+  "audit.action.world-unarchive": "Archiwizacja świata cofnięta",
   "audit.empty": "Nic jeszcze nie zostało zapisane.",
   "audit.empty.filtered": "Żaden wpis nie pasuje do tych filtrów.",
   "audit.fact.detail": "Szczegóły",

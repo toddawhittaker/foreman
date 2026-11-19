@@ -24,7 +24,7 @@
   "users.list.heading": "Tous les utilisateurs",
   "users.password.busy": "Foreman vérifie d’autres mots de passe. Réessayez dans un instant.",
   "users.password.button": "Changer le mot de passe",
-  "users.password.confirm": "Nouveau mot de passe, encore",
+  "users.password.confirm": "Confirmer le nouveau mot de passe",
   "users.password.confirm.mismatch": "Les deux nouveaux mots de passe diffèrent. Saisissez le même mot de passe dans les deux champs.",
   "users.password.confirm.missing": "Saisissez de nouveau le nouveau mot de passe.",
   "users.password.current": "Mot de passe actuel",

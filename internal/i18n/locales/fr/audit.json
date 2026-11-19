@@ -22,7 +22,7 @@
   "audit.action.restart-refused": "Redémarrage refusé",
   "audit.action.restart-schedule-set": "Planification des redémarrages modifiée",
   "audit.action.restore": "Instantané restauré",
-  "audit.action.rollback": "Version du jeu rétablie par retour en arrière",
+  "audit.action.rollback": "Retour en arrière de la version du jeu",
   "audit.action.save-upload-limit-set": "Limite d’envoi des sauvegardes modifiée",
   "audit.action.settings-save": "Paramètres du jeu enregistrés",
   "audit.action.snapshot": "Instantané pris",
