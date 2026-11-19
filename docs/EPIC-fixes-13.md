@@ -36,7 +36,11 @@ branch in and regenerates the i18n hash.
    test-notification button (out of scope; it would serve every preset).
 3. **A1 chooses the 320 px layout** (scroll inside the table, or a card
    per row) and records why in its PR body; the fold moves it into DESIGN.
-4. **S1: "Settings" opens General**, and is marked current on every
+4. **A1 also checks the Generate button's contrast in dark forced-colours
+   mode** (STATUS records 1.11:1; SPEC 17.1) and fixes it with one
+   stylesheet rule if it is still there (Todd's ruling, 2026-11-19). The
+   Generate page's e2e spec is an allowed extra file for A1.
+5. **S1: "Settings" opens General**, and is marked current on every
    settings tab. Direct links to a tab (for example the mods page's link
    to the factorio.com account tab) are unchanged.
 
