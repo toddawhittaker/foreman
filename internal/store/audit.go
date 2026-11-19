@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"time"
 )
 
@@ -41,20 +42,24 @@ func (s *Store) AddAudit(ctx context.Context, e AuditEntry) error {
 	return nil
 }
 
-// AuditCursor marks a place in the log: entries older than the one with this
-// time and id. The zero value means the newest entry (SPEC 12.9).
+// AuditCursor marks a place in the log: the entry with this time and id. As
+// Before it selects older entries, as After newer ones. The zero value means
+// no cursor (SPEC 12.9).
 type AuditCursor struct {
 	Time time.Time
 	ID   int64
 }
 
 // AuditFilter selects entries. An empty field matches every entry; the others
-// must match exactly. Limit is the most entries to return.
+// must match exactly. Limit is the most entries to return. Before and After
+// are not set together; with After the entries still come back newest first,
+// the Limit ones just newer than the cursor.
 type AuditFilter struct {
 	Username string
 	Action   string
 	WorldID  string
 	Before   AuditCursor
+	After    AuditCursor
 	Limit    int
 }
 
@@ -66,17 +71,31 @@ const listAuditSQL = `SELECT id, time, user_id, username, action, world_id, deta
 	  AND (time, id) < (?, ?)
 	ORDER BY time DESC, id DESC LIMIT ?`
 
+// listAuditAfterSQL reads toward the newest entry, so LIMIT keeps the ones
+// nearest the cursor; ListAudit puts them back newest first.
+const listAuditAfterSQL = `SELECT id, time, user_id, username, action, world_id, detail, token_name FROM audit_log
+	WHERE (? = '' OR username = ?) AND (? = '' OR action = ?) AND (? = '' OR world_id = ?)
+	  AND (time, id) > (?, ?)
+	ORDER BY time ASC, id ASC LIMIT ?`
+
 // ListAudit returns up to f.Limit entries that match f, newest first.
 func (s *Store) ListAudit(ctx context.Context, f AuditFilter) (_ []AuditEntry, err error) {
 	if f.Limit < 1 {
 		return nil, errors.New("list audit log: limit must be at least 1")
 	}
+	if !f.After.Time.IsZero() && !f.Before.Time.IsZero() {
+		return nil, errors.New("list audit log: Before and After cannot both be set")
+	}
+	query := listAuditSQL
 	// The first page starts after the largest possible time and id.
 	beforeTime, beforeID := int64(math.MaxInt64), int64(math.MaxInt64)
 	if !f.Before.Time.IsZero() {
 		beforeTime, beforeID = f.Before.Time.Unix(), f.Before.ID
 	}
-	rows, err := s.db.QueryContext(ctx, listAuditSQL,
+	if !f.After.Time.IsZero() {
+		query, beforeTime, beforeID = listAuditAfterSQL, f.After.Time.Unix(), f.After.ID
+	}
+	rows, err := s.db.QueryContext(ctx, query,
 		f.Username, f.Username, f.Action, f.Action, f.WorldID, f.WorldID,
 		beforeTime, beforeID, f.Limit)
 	if err != nil {
@@ -107,6 +126,9 @@ func (s *Store) ListAudit(ctx context.Context, f AuditFilter) (_ []AuditEntry, e
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list audit log: %w", err)
+	}
+	if !f.After.Time.IsZero() {
+		slices.Reverse(out)
 	}
 	return out, nil
 }

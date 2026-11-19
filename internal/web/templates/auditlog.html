@@ -7,9 +7,9 @@
 {{template "settings-tabs" "audit-log"}}
 <p>{{t "audit.intro"}}</p>
 
-{{- /* A plain GET form: the filters live in the address, so a filtered view can be bookmarked and the Older link keeps them. */}}
-<form method="get" action="{{.Path}}" class="panel" id="audit-filter" aria-labelledby="filter-heading">
-  <h2 id="filter-heading">{{t "audit.filter.heading"}}</h2>
+{{- /* A plain GET form: the filters live in the address, so a filtered view can be bookmarked and the Newer and Older links keep them. One row of controls that wraps only when it must. */}}
+<form method="get" action="{{.Path}}" class="audit-filter" id="audit-filter" aria-labelledby="filter-heading">
+  <h2 id="filter-heading" class="visually-hidden">{{t "audit.filter.heading"}}</h2>
   <div class="field">
     <label for="audit-user">{{t "audit.filter.user"}}</label>
     <select id="audit-user" name="user">
@@ -37,48 +37,65 @@
       {{- end}}
     </select>
   </div>
+  <div class="field field--size">
+    <label for="audit-size">{{t "audit.filter.size"}}</label>
+    <select id="audit-size" name="size">
+      {{- range .Sizes}}
+      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Value}}</option>
+      {{- end}}
+    </select>
+  </div>
   <div class="actions">
     <button type="submit" class="button button--primary" id="act-audit-filter">{{t "audit.filter.apply"}}</button>
     {{- if .Filtered}}
-    <a href="{{.Path}}" class="button" id="act-audit-clear">{{t "audit.filter.clear"}}</a>
+    <a href="{{.ClearPath}}" class="button" id="act-audit-clear">{{t "audit.filter.clear"}}</a>
     {{- end}}
   </div>
 </form>
 
-<section aria-labelledby="entries-heading">
+<section class="audit-entries" aria-labelledby="entries-heading">
   <h2 id="entries-heading">{{t "audit.list.heading"}}</h2>
   {{- if .Rows}}
-  <ol class="audit-list" role="list" id="audit-list">
-    {{- range .Rows}}
-    <li id="audit-{{.ID}}">
-      <h3>{{if .Word.IsZero}}<span class="ident" translate="no">{{.Action}}</span>{{else}}{{msg .Word}}{{end}}</h3>
-      <dl class="facts facts--inline">
-        <div><dt>{{t "audit.fact.time"}}</dt><dd>{{template "when" .Time}}</dd></div>
-        <div><dt>{{t "audit.fact.user"}}</dt><dd>{{.User}}</dd></div>
-        {{- if .Token}}
-        <div><dt>{{t "audit.fact.token"}}</dt><dd><span class="badge ident" translate="no">{{.Token}}</span></dd></div>
-        {{- end}}
-        {{- if .WorldID}}
-        <div><dt>{{t "audit.fact.world"}}</dt><dd>{{if .WorldKnown}}<a href="{{.WorldPath}}">{{.WorldName}}</a>{{else}}<span class="ident">{{t "audit.world.deleted" "world" .WorldID}}</span>{{end}}</dd></div>
-        {{- end}}
-      </dl>
-      {{- if .Detail}}
-      <dl class="facts">
-        <div><dt>{{t "audit.fact.detail"}}</dt><dd class="ident">{{.Detail}}</dd></div>
-      </dl>
+  {{- /* The cells carry data-label so a phone shows each row as a compact block (DESIGN 8.15). */}}
+  <table class="audit-table" role="table" id="audit-list">
+    <caption>{{t "audit.list.heading"}}</caption>
+    <thead role="rowgroup">
+      <tr role="row">
+        <th scope="col" role="columnheader">{{t "audit.fact.time"}}</th>
+        <th scope="col" role="columnheader">{{t "audit.fact.user"}}</th>
+        <th scope="col" role="columnheader">{{t "audit.fact.token"}}</th>
+        <th scope="col" role="columnheader">{{t "audit.filter.action"}}</th>
+        <th scope="col" role="columnheader">{{t "audit.fact.world"}}</th>
+        <th scope="col" role="columnheader">{{t "audit.fact.detail"}}</th>
+      </tr>
+    </thead>
+    <tbody role="rowgroup">
+      {{- range .Rows}}
+      <tr role="row" id="audit-{{.ID}}">
+        <td role="cell" class="audit-time" data-label="{{t "audit.fact.time"}}">{{template "when" .Time}}</td>
+        <td role="cell" class="audit-user" data-label="{{t "audit.fact.user"}}">{{.User}}</td>
+        <td role="cell" class="audit-token" data-label="{{t "audit.fact.token"}}">{{if .Token}}<span class="badge ident" translate="no">{{.Token}}</span>{{end}}</td>
+        <td role="cell" class="audit-action" data-label="{{t "audit.filter.action"}}">{{if .Word.IsZero}}<span class="ident" translate="no">{{.Action}}</span>{{else}}{{msg .Word}}{{end}}</td>
+        <td role="cell" class="audit-world" data-label="{{t "audit.fact.world"}}">{{if .WorldID}}{{if .WorldKnown}}<a href="{{.WorldPath}}">{{.WorldName}}</a>{{else}}<span class="ident">{{t "audit.world.deleted" "world" .WorldID}}</span>{{end}}{{end}}</td>
+        <td role="cell" class="audit-detail ident" data-label="{{t "audit.fact.detail"}}">{{.Detail}}</td>
+      </tr>
       {{- end}}
-    </li>
-    {{- end}}
-  </ol>
+    </tbody>
+  </table>
   {{- else if .Filtered}}
   <p id="audit-empty">{{t "audit.empty.filtered"}}</p>
   {{- else}}
   <p id="audit-empty">{{t "audit.empty"}}</p>
   {{- end}}
-  {{- if .Older}}
-  <div class="actions">
+  {{- if or .Newer .Older}}
+  <nav class="actions" aria-label="{{t "audit.pager"}}">
+    {{- if .Newer}}
+    <a href="{{.Newer}}" class="button" id="act-audit-newer" rel="prev">{{t "audit.newer"}}</a>
+    {{- end}}
+    {{- if .Older}}
     <a href="{{.Older}}" class="button" id="act-audit-older" rel="next">{{t "audit.older"}}</a>
-  </div>
+    {{- end}}
+  </nav>
   {{- end}}
 </section>
 {{- end}}

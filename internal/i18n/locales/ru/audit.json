@@ -61,11 +61,14 @@
   "audit.filter.apply": "Применить",
   "audit.filter.clear": "Сбросить фильтры",
   "audit.filter.heading": "Фильтр журнала",
+  "audit.filter.size": "Записей на странице",
   "audit.filter.user": "Пользователь",
   "audit.filter.world": "Мир",
   "audit.intro": "Кто, что и когда сделал, сначала новые. В журнале никогда нет паролей и токенов.",
   "audit.list.heading": "Записи",
+  "audit.newer": "Более новые записи",
   "audit.older": "Более старые записи",
+  "audit.pager": "Страницы журнала",
   "audit.title": "Журнал аудита",
   "audit.world.deleted": "{world} (удалён)"
 }
