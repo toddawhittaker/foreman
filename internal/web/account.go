@@ -56,7 +56,7 @@ type AccountPage struct {
 
 func (AccountPage) templateName() string { return "account" }
 
-// The Settings tab opens the restart schedule, so it marks this page's section (DESIGN 6).
+// The Settings tab opens General, so it marks this page's section (DESIGN 6).
 func (AccountPage) navItem() string   { return generalPath() }
 func (p AccountPage) hasErrors() bool { return len(p.Problems()) > 0 || !p.Error.IsZero() }
 

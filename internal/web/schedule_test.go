@@ -257,9 +257,9 @@ func TestSettingsSubnav(t *testing.T) {
 }
 
 // The Settings tab marks its section on the pages under Notifications too.
-func TestSettingsTabOnWebhookPages(t *testing.T) {
+func TestSettingsTabOnSubPages(t *testing.T) {
 	r := newTestRenderer(t)
-	for _, p := range []Page{WebhookFormPage{}, WebhookDeletePage{}} {
+	for _, p := range []Page{WebhookFormPage{}, WebhookDeletePage{}, GeneralConfirmPage{}, APITokenCreatedPage{}, APITokenRevokePage{}, UserDeletePage{}} {
 		_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
 		wantIn(t, p.templateName(), body, `<a href="`+generalPath()+`" aria-current="true">Settings</a>`)
 	}

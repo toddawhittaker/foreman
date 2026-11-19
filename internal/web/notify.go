@@ -85,7 +85,7 @@ func (p NotificationsPage) Sending() int {
 
 func (NotificationsPage) templateName() string { return "notifications" }
 
-// The Settings tab opens the restart schedule, so it marks this page's section (DESIGN 6).
+// The Settings tab opens General, so it marks this page's section (DESIGN 6).
 func (NotificationsPage) navItem() string { return generalPath() }
 
 // AddPath is the add form.
