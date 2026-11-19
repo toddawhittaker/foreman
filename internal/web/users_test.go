@@ -94,11 +94,11 @@ func TestUserDeleteEndsSessionsAndTokens(t *testing.T) {
 	}
 
 	rec := hn.post(userDeletePath(bob.ID), url.Values{}, withCookie(c))
-	hn.wantRedirect(rec, usersPath()+"?done=deleted&name=bob")
+	hn.wantRedirect(rec, usersPath()+"?done=deleted")
 	if _, ok, _ := hn.store.UserByID(ctx, bob.ID); ok {
 		t.Fatal("bob survived")
 	}
-	if got := strings.Join(hn.audits(AuditUserDelete), "|"); got != "alice  bob; API tokens: 2" {
+	if got := strings.Join(hn.audits(AuditUserDelete), "|"); got != "alice  bob: requested; API tokens: 2" {
 		t.Errorf("audit %q", got)
 	}
 	if got := hn.audits(AuditTokenCreate); len(got) != 1 || !strings.HasPrefix(got[0], "bob ") {
@@ -110,7 +110,7 @@ func TestUserDeleteEndsSessionsAndTokens(t *testing.T) {
 	if rec := mcpReq(hn, peerUntrusted, bearer(secret)); rec.Code != http.StatusUnauthorized {
 		t.Errorf("bob's token after the delete: %d", rec.Code)
 	}
-	if !strings.Contains(hn.get(usersPath()+"?done=deleted&name=bob", withCookie(c)).Body.String(), "User bob is deleted.") {
+	if !strings.Contains(hn.get(usersPath()+"?done=deleted&name=mallory", withCookie(c)).Body.String(), "The user was deleted.") {
 		t.Error("no done message")
 	}
 }

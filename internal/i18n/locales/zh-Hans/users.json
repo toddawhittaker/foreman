@@ -12,7 +12,7 @@
   "users.delete.tokens": {
     "other": "删除其 {count} 个 API 令牌。"
   },
-  "users.done.deleted": "用户 {name} 已删除。",
+  "users.done.deleted": "用户已删除。",
   "users.done.password": "密码已更改，其他所有地方的登录均已退出。",
   "users.fact.created": "创建时间",
   "users.fact.kind": "登录方式",

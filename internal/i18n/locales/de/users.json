@@ -13,7 +13,7 @@
     "one": "Sein {count} API-Token löschen.",
     "other": "Seine {count} API-Tokens löschen."
   },
-  "users.done.deleted": "Benutzer {name} ist gelöscht.",
+  "users.done.deleted": "Der Benutzer wurde gelöscht.",
   "users.done.password": "Dein Passwort ist geändert. Überall sonst wurdest du abgemeldet.",
   "users.fact.created": "Erstellt",
   "users.fact.kind": "Meldet sich an mit",

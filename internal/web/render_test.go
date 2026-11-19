@@ -11,6 +11,7 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -175,6 +176,12 @@ func pageCases() []pageCase {
 				{Name: "a", Title: longName, Version: "1.0.0", DownloadPath: PublicModFilePath("w", "a_1.0.0.zip"), NotOnPortal: true, Hidden: true},
 				{Name: "b", Version: "2.0.0", Folder: true},
 			}}}}}},
+		{"general", "todd", 200, generalTestPage(GeneralPage{})},
+		{"general saved with a trim", "todd", 200, generalTestPage(GeneralPage{Saved: true, Trims: true, Trim: trimCount{Snapshots: 1, Worlds: 1}})},
+		{"general errors", "todd", 400, generalTestPage(GeneralPage{SnapshotRetention: GeneralField{Value: "0", Error: settingSnapshotRetention.rangeMsg()},
+			ModUpload: GeneralField{Value: "x", Error: settingModUpload.rangeMsg()}})},
+		{"general confirm", "todd", 200, GeneralConfirmPage{Trim: trimCount{Snapshots: 3, Worlds: 2}, Hidden: []GeneralHidden{{Name: "snapshot_retention", Value: "2"}},
+			Changes: []GeneralChange{{Label: i18n.M(settingSnapshotRetention.Label), From: 10, To: 2}}}},
 		{"public mods settings off", "todd", 200, PublicModsSettingsPage{}},
 		{"public mods settings on", "todd", 200, PublicModsSettingsPage{On: true, Done: PublicModsOn}},
 		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},
@@ -186,7 +193,7 @@ func pageCases() []pageCase {
 		{"api tokens forced off", "todd", 200, APITokensPage{MCPForced: true, Done: tokenDoneRevoked, DoneName: "Claude", Form: TokenForm{Scope: "read"}}},
 		{"api token created", "todd", 200, APITokenCreatedPage{Token: TokenRow{ID: 1, Name: "Claude", Scope: "read", State: auth.TokenWorking}, Secret: "fmn_x", Endpoint: "https://f.example/mcp"}},
 		{"api token revoke", "todd", 200, APITokenRevokePage{Token: TokenRow{ID: 1, Owner: "bob", Name: "Claude", Scope: "read", State: auth.TokenExpired}}},
-		{"users", "todd", 200, UsersPage{MyKind: SignInPassword, MinLength: 12, Done: userDoneDeleted, DoneName: "bob", Users: []UserRow{
+		{"users", "todd", 200, UsersPage{MyKind: SignInPassword, MinLength: 12, Done: userDoneDeleted, Users: []UserRow{
 			{ID: 1, Username: "todd", Kind: SignInPassword, Me: true}, {ID: 2, Username: "carol", Kind: SignInOIDC}, {ID: 3, Username: "dave", Kind: SignInProxy}}}},
 		{"users errors", "todd", 401, UsersPage{MyKind: SignInPassword, MinLength: 12, Error: i18n.M("users.password.limited"),
 			Form: PasswordForm{CurrentError: i18n.M("users.password.current.wrong"), NewError: i18n.M("users.password.new.short", "count", 12), ConfirmError: i18n.M("users.password.confirm.mismatch")}}},
@@ -194,6 +201,15 @@ func pageCases() []pageCase {
 		{"users proxy", "dave", 200, UsersPage{MyKind: SignInProxy}},
 		{"user delete", "todd", 200, UserDeletePage{User: UserRow{ID: 3, Username: "dave", Kind: SignInProxy}, Tokens: 2}},
 		{"user delete oidc", "todd", 200, UserDeletePage{User: UserRow{ID: 2, Username: "carol", Kind: SignInOIDC}}},
+		{"audit log empty", "todd", 200, AuditLogPage{}},
+		{"audit log filtered", "todd", 200, AuditLogPage{Filtered: true, Older: "/settings/audit-log?before=1.2",
+			Users:   []AuditOption{{Value: "todd", Label: "todd", Selected: true}},
+			Actions: []AuditOption{{Value: "start", Word: i18n.M("audit.action.start")}, {Value: "odd", Label: "odd"}},
+			Worlds:  []AuditOption{{Value: "gone", Word: i18n.M("audit.world.deleted", "world", "gone")}},
+			Rows: []AuditRow{
+				{ID: 2, Time: time.Date(2026, 11, 2, 9, 7, 30, 0, time.UTC), User: "todd", Token: "Claude", Action: "start", Word: i18n.M("audit.action.start"), WorldID: "base", WorldName: "Base", WorldKnown: true, Detail: "<b>x</b>"},
+				{ID: 1, Time: time.Date(2026, 11, 2, 9, 7, 0, 0, time.UTC), User: "system", Action: "odd", WorldID: "gone"},
+			}}},
 		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1"}.withZones()},
 		{"schedule on", "todd", 200, SchedulePage{On: true, Next: time.Date(2026, 11, 13, 4, 0, 0, 0, time.UTC), SavedClock: "04:00", SavedZone: "Europe/London",
 			Enabled: true, Clock: "04:00", Zone: "Europe/London", Limit: "1", Saved: true}.withZones()},
@@ -1233,4 +1249,16 @@ func TestPlayerIDsAreUniqueWhateverTheName(t *testing.T) {
 			}
 		}
 	}
+}
+
+// generalTestPage fills the fields a page always has, with the default
+// value where the case gave none.
+func generalTestPage(p GeneralPage) GeneralPage {
+	p = p.withFields()
+	for _, d := range generalSettings {
+		if f := p.field(d.Key); f.Value == "" {
+			f.Value = strconv.Itoa(d.Default)
+		}
+	}
+	return p
 }

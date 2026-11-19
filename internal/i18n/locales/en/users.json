@@ -13,7 +13,7 @@
     "one": "Delete their {count} API token.",
     "other": "Delete their {count} API tokens."
   },
-  "users.done.deleted": "User {name} is deleted.",
+  "users.done.deleted": "The user was deleted.",
   "users.done.password": "Your password is changed. You were signed out everywhere else.",
   "users.fact.created": "Created",
   "users.fact.kind": "Signs in with",

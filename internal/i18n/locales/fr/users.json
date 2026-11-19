@@ -13,7 +13,7 @@
     "one": "Supprimer son {count} jeton d’API.",
     "other": "Supprimer ses {count} jetons d’API."
   },
-  "users.done.deleted": "L’utilisateur {name} est supprimé.",
+  "users.done.deleted": "L’utilisateur a été supprimé.",
   "users.done.password": "Votre mot de passe est modifié. Vous avez été déconnecté partout ailleurs.",
   "users.fact.created": "Créé le",
   "users.fact.kind": "Se connecte par",

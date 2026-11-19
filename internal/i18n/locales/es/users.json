@@ -13,7 +13,7 @@
     "one": "Borrar su {count} token de API.",
     "other": "Borrar sus {count} tokens de API."
   },
-  "users.done.deleted": "El usuario {name} está borrado.",
+  "users.done.deleted": "El usuario se ha borrado.",
   "users.done.password": "Tu contraseña está cambiada. Se cerró tu sesión en todas las demás partes.",
   "users.fact.created": "Creado",
   "users.fact.kind": "Inicia sesión con",

@@ -75,9 +75,11 @@ type Deps struct {
 }
 
 type server struct {
-	cfg    *config.Config
-	store  *store.Store
-	worlds *world.Manager
+	// generalMu serialises saves of the General settings.
+	generalMu sync.Mutex
+	cfg       *config.Config
+	store     *store.Store
+	worlds    *world.Manager
 	// favorites is nil when this handler offers none (SPEC 5.12).
 	favorites *world.Favorites
 	game      *game.Controller
@@ -206,6 +208,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		}
 		s.marks = newPortalMarks(now, s.checkPortalForPublic)
 	}
+	s.applyRetention(context.Background())
 	s.routes()
 
 	cop := http.NewCrossOriginProtection()

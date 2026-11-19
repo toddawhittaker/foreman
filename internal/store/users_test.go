@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 )
@@ -62,7 +63,7 @@ func TestDeleteUserCascades(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	found, err := s.DeleteUser(ctx, bob.ID)
+	found, err := s.DeleteUser(ctx, bob.ID, alice.ID)
 	if err != nil || !found {
 		t.Fatalf("DeleteUser = %v, %v", found, err)
 	}
@@ -78,19 +79,68 @@ func TestDeleteUserCascades(t *testing.T) {
 	if _, ok, _ := s.APITokenByHash(ctx, "secret-alice"); !ok {
 		t.Error("alice's token went too")
 	}
-	entries, err := s.ListAudit(ctx, 10)
+	entries, err := s.ListAudit(ctx, AuditFilter{Limit: 10})
 	if err != nil || len(entries) != 1 || entries[0].Username != "bob" || entries[0].UserID != 0 {
 		t.Errorf("audit after delete = %+v, %v", entries, err)
 	}
-	if found, err := s.DeleteUser(ctx, bob.ID); err != nil || found {
+	if found, err := s.DeleteUser(ctx, bob.ID, alice.ID); err != nil || found {
 		t.Errorf("second delete = %v, %v", found, err)
 	}
 }
 
-func TestDeleteUserSessions(t *testing.T) {
+// SPEC 12.12: deleting yourself is refused, and so is a delete by a user
+// who no longer exists.
+func TestDeleteUserNeedsALiveOtherDeleter(t *testing.T) {
 	s, _ := openTemp(t)
 	ctx := context.Background()
 	alice, _ := s.CreateUser(ctx, "alice", "h", t0)
+	bob, _ := s.CreateUser(ctx, "bob", "h", t0)
+	if found, err := s.DeleteUser(ctx, alice.ID, alice.ID); err != nil || found {
+		t.Errorf("self delete = %v, %v", found, err)
+	}
+	if found, err := s.DeleteUser(ctx, alice.ID, 999); err != nil || found {
+		t.Errorf("delete by a missing user = %v, %v", found, err)
+	}
+	if found, err := s.DeleteUser(ctx, alice.ID, bob.ID); err != nil || !found {
+		t.Errorf("delete = %v, %v", found, err)
+	}
+}
+
+// SPEC 12.12: two users deleting each other at once never empty the table.
+func TestDeleteUserMutualRaceKeepsOne(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	for range 20 {
+		alice, err := s.CreateUser(ctx, "alice", "h", t0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		bob, err := s.CreateUser(ctx, "bob", "h", t0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var wg sync.WaitGroup
+		wg.Go(func() { _, _ = s.DeleteUser(ctx, bob.ID, alice.ID) })
+		wg.Go(func() { _, _ = s.DeleteUser(ctx, alice.ID, bob.ID) })
+		wg.Wait()
+		users, err := s.ListUsers(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(users) != 1 {
+			t.Fatalf("%d users left, want 1", len(users))
+		}
+		if _, err := s.db.ExecContext(ctx, "DELETE FROM users"); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// SPEC 12.12: a password change ends every session of that user only.
+func TestSetPasswordEndSessions(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	alice, _ := s.CreateUser(ctx, "alice", "old", t0)
 	bob, _ := s.CreateUser(ctx, "bob", "h", t0)
 	for _, h := range []string{"a1", "a2"} {
 		if err := s.CreateSession(ctx, h, alice.ID, t0); err != nil {
@@ -100,8 +150,11 @@ func TestDeleteUserSessions(t *testing.T) {
 	if err := s.CreateSession(ctx, "b1", bob.ID, t0); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.DeleteUserSessions(ctx, alice.ID); err != nil {
+	if err := s.SetPasswordEndSessions(ctx, alice.ID, "new"); err != nil {
 		t.Fatal(err)
+	}
+	if u, _, _ := s.UserByID(ctx, alice.ID); u.PasswordHash != "new" {
+		t.Errorf("hash %q", u.PasswordHash)
 	}
 	for _, h := range []string{"a1", "a2"} {
 		if _, _, ok, _ := s.SessionUser(ctx, h); ok {
@@ -110,5 +163,8 @@ func TestDeleteUserSessions(t *testing.T) {
 	}
 	if _, _, ok, _ := s.SessionUser(ctx, "b1"); !ok {
 		t.Error("bob's session went too")
+	}
+	if err := s.SetPasswordEndSessions(ctx, 999, "x"); err == nil {
+		t.Error("a missing user was accepted")
 	}
 }

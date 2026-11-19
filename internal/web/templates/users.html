@@ -8,7 +8,7 @@
 {{- template "summary" .Problems}}
 {{- if .Done}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "deleted"}}{{t "users.done.deleted" "name" .DoneName}}{{else}}{{t "users.done.password"}}{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "deleted"}}{{t "users.done.deleted"}}{{else}}{{t "users.done.password"}}{{end}}</p>
 </div>
 {{- end}}
 {{- if not .Error.IsZero}}

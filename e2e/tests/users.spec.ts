@@ -62,10 +62,10 @@ test("the tab lists users and deletes another one, signing them out", async ({ p
   await checkPage(page);
   await page.getByRole("button", { name: "Delete user" }).click();
   await expect(page).toHaveURL(/\/settings\/users\?done=deleted/);
-  await expect(page.locator("#done-message")).toHaveText("Done: User bob is deleted.");
+  await expect(page.locator("#done-message")).toHaveText("Done: The user was deleted.");
   await expect(page.locator("#user-list")).not.toContainText("bob");
   expect(sql(foreman, "SELECT count(*) AS n FROM api_tokens")[0].n).toBe(0);
-  expect(sql(foreman, "SELECT username, detail FROM audit_log WHERE action = 'user-delete'")).toEqual([{ username: "admin", detail: "bob; API tokens: 1" }]);
+  expect(sql(foreman, "SELECT username, detail FROM audit_log WHERE action = 'user-delete'")).toEqual([{ username: "admin", detail: "bob: requested; API tokens: 1" }]);
   await checkPage(page);
 
   // Bob's next request is signed out.

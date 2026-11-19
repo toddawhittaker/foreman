@@ -36,7 +36,8 @@ func TestResetPassword(t *testing.T) {
 	if err := st.CreateSession(ctx, "s1", u.ID, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := resetPassword(ctx, st, "alice", strings.NewReader("a new passphrase\r\n"), now); err != nil {
+	// Only the first line counts: later lines, valid or not, are ignored.
+	if err := resetPassword(ctx, st, "alice", strings.NewReader("a new passphrase\r\nshort\nanother long line here\n"), now); err != nil {
 		t.Fatal(err)
 	}
 	got, _, _ := st.UserByUsername(ctx, "alice")
@@ -46,8 +47,8 @@ func TestResetPassword(t *testing.T) {
 	if _, _, ok, _ := st.SessionUser(ctx, "s1"); ok {
 		t.Error("the session survived")
 	}
-	entries, _ := st.ListAudit(ctx, 10)
-	if len(entries) != 1 || entries[0].Action != web.AuditPasswordChange || entries[0].Username != "system" || entries[0].Detail != "" || entries[0].UserID != 0 {
+	entries, _ := st.ListAudit(ctx, store.AuditFilter{Limit: 10})
+	if len(entries) != 1 || entries[0].Action != web.AuditPasswordChange || entries[0].Username != "system" || entries[0].Detail != "alice" || entries[0].UserID != 0 {
 		t.Errorf("audit %+v", entries)
 	}
 }
@@ -86,7 +87,7 @@ func TestResetPasswordRefusals(t *testing.T) {
 	if u, _, _ := st.UserByUsername(ctx, "bob"); u.PasswordHash != "" {
 		t.Error("a proxy user got a password")
 	}
-	if entries, _ := st.ListAudit(ctx, 10); len(entries) != 0 {
+	if entries, _ := st.ListAudit(ctx, store.AuditFilter{Limit: 10}); len(entries) != 0 {
 		t.Errorf("a refused reset was recorded: %+v", entries)
 	}
 }

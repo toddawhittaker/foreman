@@ -14,7 +14,7 @@
     "few": "Budou smazány {count} tokeny API tohoto uživatele.",
     "other": "Bude smazáno {count} tokenů API tohoto uživatele."
   },
-  "users.done.deleted": "Uživatel {name} je smazán.",
+  "users.done.deleted": "Uživatel byl smazán.",
   "users.done.password": "Heslo je změněno. Všechny ostatní relace byly odhlášeny.",
   "users.fact.created": "Vytvořen",
   "users.fact.kind": "Způsob přihlášení",

@@ -1,0 +1,31 @@
+{
+  "general.audit.heading": "Registro de auditoría",
+  "general.audit.label": "Conservar las entradas de auditoría (días)",
+  "general.audit.text": "Cuánto tiempo conserva el registro de auditoría cada entrada. Foreman borra las entradas más antiguas una vez por hora.",
+  "general.confirm.cancel": "Cancelar, mantener la configuración actual",
+  "general.confirm.change": "{setting}: de {from} a {to}",
+  "general.confirm.question": "¿Conservar menos instantáneas automáticas?",
+  "general.done": "Guardado. La nueva configuración se aplica desde ahora.",
+  "general.error.range": "Introduce un número entero de {min} a {max}.",
+  "general.range.hint": "Un número entero de {min} a {max}.",
+  "general.save": "Guardar configuración",
+  "general.snapshots.heading": "Instantáneas",
+  "general.snapshots.hint": "Un valor más bajo no borra nada ahora. Cada mundo descarta sus instantáneas automáticas sobrantes en su siguiente instantánea automática.",
+  "general.snapshots.label": "Instantáneas automáticas que conservar por mundo",
+  "general.snapshots.text": "Foreman conserva las instantáneas automáticas más recientes de cada mundo. Las instantáneas manuales y la que se toma antes de borrar un mundo nunca se eliminan.",
+  "general.source": "Se define aquí. Ninguna variable de entorno lo define.",
+  "general.stop.heading": "Detener el servidor",
+  "general.stop.hint": "0 significa sin aviso.",
+  "general.stop.label": "Cuenta atrás predeterminada al detener (segundos)",
+  "general.stop.text": "La cuenta atrás con la que empieza una detención o un reinicio que no indica ninguna. Un reinicio programado conserva su propia cuenta atrás fija.",
+  "general.trim.snapshots": {
+    "one": "Se eliminará {count} instantánea automática, en la siguiente instantánea automática de su mundo.",
+    "other": "Se eliminarán {count} instantáneas automáticas, cada una en la siguiente instantánea automática de su mundo."
+  },
+  "general.trim.worlds": "Mundos afectados: {count}.",
+  "general.uploads.heading": "Subida de archivos",
+  "general.uploads.mod.hint": "Un mod descargado del portal de mods tiene el mismo límite.",
+  "general.uploads.mod.label": "Tamaño máximo de un mod subido (MB)",
+  "general.uploads.save.label": "Tamaño máximo de una partida guardada subida (MB)",
+  "general.uploads.text": "El archivo más grande que Foreman acepta cuando alguien sube una partida guardada o un mod. Un cambio se aplica a la siguiente subida."
+}

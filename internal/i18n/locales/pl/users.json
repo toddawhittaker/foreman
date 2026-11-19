@@ -14,7 +14,7 @@
     "few": "Zostaną usunięte {count} tokeny API tego użytkownika.",
     "many": "Zostanie usuniętych {count} tokenów API tego użytkownika."
   },
-  "users.done.deleted": "Użytkownik {name} został usunięty.",
+  "users.done.deleted": "Użytkownik został usunięty.",
   "users.done.password": "Hasło zostało zmienione. Wszystkie inne sesje zostały wylogowane.",
   "users.fact.created": "Utworzono",
   "users.fact.kind": "Sposób logowania",

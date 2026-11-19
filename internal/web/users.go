@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -98,7 +97,6 @@ type UsersPage struct {
 	// Error is a refusal of the whole form, such as too many tries.
 	Error     i18n.Msg
 	Done      string
-	DoneName  string
 	MinLength int
 }
 
@@ -158,9 +156,7 @@ func (s *server) handleUsers(w http.ResponseWriter, r *http.Request, u store.Use
 	}
 	q := r.URL.Query()
 	switch d := q.Get("done"); d {
-	case userDoneDeleted:
-		p.Done, p.DoneName = d, q.Get("name")
-	case userDonePassword:
+	case userDoneDeleted, userDonePassword:
 		p.Done = d
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
@@ -229,7 +225,7 @@ func (s *server) handleUserDelete(w http.ResponseWriter, r *http.Request, u stor
 		s.fail(w, r, "record a user delete in the audit log", err)
 		return
 	}
-	found, err := s.store.DeleteUser(ctx, t.ID)
+	found, err := s.store.DeleteUser(ctx, t.ID, u.ID)
 	if err != nil {
 		s.fail(w, r, "delete user", err)
 		return
@@ -239,13 +235,15 @@ func (s *server) handleUserDelete(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 	s.log.Info("user deleted", "username", clip(t.Username), "by", clip(u.Username))
-	http.Redirect(w, r, usersPath()+"?"+url.Values{"done": {userDoneDeleted}, "name": {t.Username}}.Encode(), http.StatusSeeOther)
+	http.Redirect(w, r, usersPath()+"?done="+userDoneDeleted, http.StatusSeeOther)
 }
 
 // userDeleteDetail is user-delete's detail: the name and how many API
-// tokens went with the user.
+// tokens go with the user. The record is written before the delete, which
+// can still find nothing, so it says the delete was requested, as
+// world-delete does.
 func userDeleteDetail(name string, tokens int) string {
-	return fmt.Sprintf("%s; API tokens: %d", name, tokens)
+	return fmt.Sprintf("%s: requested; API tokens: %d", name, tokens)
 }
 
 // handlePasswordChange changes the signed-in user's own password. Only a
@@ -323,19 +321,20 @@ func (s *server) handlePasswordChange(w http.ResponseWriter, r *http.Request, u 
 		s.fail(w, r, "hash password", err)
 		return
 	}
-	if err := s.store.SetPasswordHash(ctx, u.ID, hash); err != nil {
+	_, hadSession, err := s.sessions.Check(ctx, r)
+	if err != nil {
+		s.fail(w, r, "check the session", err)
+		return
+	}
+	if err := s.store.SetPasswordEndSessions(ctx, u.ID, hash); err != nil {
 		s.fail(w, r, "set password", err)
 		return
 	}
-	_, hadSession, err := s.sessions.Check(ctx, r)
-	if err == nil {
-		err = s.store.DeleteUserSessions(ctx, u.ID)
-	}
-	if err == nil && hadSession {
+	if hadSession {
 		err = s.sessions.Start(ctx, w, u.ID)
 	}
 	if err != nil {
-		s.fail(w, r, "end the other sessions after a password change", err)
+		s.fail(w, r, "start a session after a password change", err)
 		return
 	}
 	s.audit(ctx, actor(u), AuditPasswordChange, "", "")

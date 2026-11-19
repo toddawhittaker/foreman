@@ -14,7 +14,7 @@
     "few": "Удалить его {count} API-токена.",
     "many": "Удалить его {count} API-токенов."
   },
-  "users.done.deleted": "Пользователь {name} удалён.",
+  "users.done.deleted": "Пользователь удалён.",
   "users.done.password": "Пароль изменён. Все остальные ваши сеансы завершены.",
   "users.fact.created": "Создан",
   "users.fact.kind": "Способ входа",

@@ -215,7 +215,7 @@ func TestRetentionKeepsManualAndBeforeDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	var autos []string
-	for range KeepAutomatic + 3 {
+	for range DefaultKeepAutomatic + 3 {
 		s, err := m.AutoSnapshot(id, ReasonBeforeRestore, LabelBeforeRestore, "alice")
 		if err != nil {
 			t.Fatal(err)
@@ -226,8 +226,8 @@ func TestRetentionKeepsManualAndBeforeDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list) != KeepAutomatic+2 {
-		t.Fatalf("%d snapshots, want %d", len(list), KeepAutomatic+2)
+	if len(list) != DefaultKeepAutomatic+2 {
+		t.Fatalf("%d snapshots, want %d", len(list), DefaultKeepAutomatic+2)
 	}
 	have := map[string]bool{}
 	reasons := map[string]int{}

@@ -131,13 +131,10 @@ func resetPassword(ctx context.Context, st *store.Store, username string, in io.
 	if err != nil {
 		return err
 	}
-	if err := st.SetPasswordHash(ctx, u.ID, hash); err != nil {
+	if err := st.SetPasswordEndSessions(ctx, u.ID, hash); err != nil {
 		return err
 	}
-	if err := st.DeleteUserSessions(ctx, u.ID); err != nil {
-		return err
-	}
-	return st.AddAudit(ctx, store.AuditEntry{Time: now, Username: "system", Action: web.AuditPasswordChange})
+	return st.AddAudit(ctx, store.AuditEntry{Time: now, Username: "system", Action: web.AuditPasswordChange, Detail: u.Username})
 }
 
 func listenAddr() string {
