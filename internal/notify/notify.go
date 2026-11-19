@@ -238,7 +238,8 @@ func (n *Notifier) Add(ctx context.Context, s Setup, by string) (Webhook, error)
 }
 
 // Update changes a webhook. With an empty URL the address, preset and host
-// stay as they were.
+// stay as they were. For a Pushover webhook that stays Pushover, an empty
+// application token or user key keeps that key's stored value.
 func (n *Notifier) Update(ctx context.Context, id int64, s Setup, by string) (Webhook, error) {
 	if err := n.check(s); err != nil {
 		return Webhook{}, err
