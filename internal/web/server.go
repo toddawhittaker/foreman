@@ -69,6 +69,9 @@ type Deps struct {
 	HostDataDir string
 	Log         *slog.Logger
 	Now         func() time.Time // time.Now when nil
+	// OIDCTransport makes the calls to the identity provider; nil means the
+	// default. Tests give one that trusts their certificate.
+	OIDCTransport http.RoundTripper
 }
 
 type server struct {
@@ -125,6 +128,8 @@ type server struct {
 	// Foreman has no portal (SPEC 9.16, 14.18).
 	publicSlots chan struct{}
 	marks       *portalMarks
+	// oidcTransport is Deps.OIDCTransport.
+	oidcTransport http.RoundTripper
 }
 
 // Handler is the HTTP handler for the whole app.
@@ -189,6 +194,8 @@ func NewHandler(d Deps) (*Handler, error) {
 		uploadLimits: map[string]int64{},
 		uploadSlots:  make(chan struct{}, maxUploads),
 		publicSlots:  make(chan struct{}, maxPublicDownloads),
+
+		oidcTransport: d.OIDCTransport,
 	}
 	if s.gameNets == nil && d.Game != nil {
 		s.gameNets = d.Game
@@ -260,10 +267,14 @@ func (s *server) routes() {
 	s.usersRoutes()
 	s.auditRoutes()
 	s.mcpRoutes()
+	// Setup and the password form are local sign-in's alone (SPEC 12.3); the
+	// sign-in page also offers OIDC (SPEC 12.7).
+	if s.cfg.AuthLocal || s.cfg.AuthOIDC {
+		s.mux.HandleFunc("GET "+PathSignIn, s.handleSignInForm)
+	}
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
-		s.mux.HandleFunc("GET "+PathSignIn, s.handleSignInForm)
 		s.mux.HandleFunc("POST "+PathSignIn, s.handleSignIn)
 	}
 	s.oidcRoutes()

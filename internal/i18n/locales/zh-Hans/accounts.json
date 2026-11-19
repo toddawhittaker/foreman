@@ -39,5 +39,9 @@
   "accounts.proxy.refused": "此账户无权使用 Foreman。请让运行 Foreman 的人开通访问权限。",
   "accounts.proxy.waiting": "Foreman 暂时无法接受来自代理的登录，因为它还没有看到游戏容器的网络。请一分钟后再试。",
   "accounts.proxy.waiting_local": "Foreman 暂时无法接受来自代理的登录，因为它还没有看到游戏容器的网络。请一分钟后再试。密码登录仍然可用：打开 {path} 即可使用。",
-  "accounts.proxy.missing": "Foreman 没有从代理收到登录信息。请通过代理登录，然后再次打开此页面。"
+  "accounts.proxy.missing": "Foreman 没有从代理收到登录信息。请通过代理登录，然后再次打开此页面。",
+  "accounts.oidc.failed": "单点登录未成功。请重试。如果一直失败，请联系运行 Foreman 的人。",
+  "accounts.oidc.unavailable": "Foreman 目前无法连接单点登录提供方。请一分钟后再试。",
+  "accounts.oidc.name_taken": "Foreman 中已有同名用户使用其他方式登录，因此无法通过单点登录进入。请让运行 Foreman 的人重命名或删除该用户。",
+  "accounts.oidc.bad_username": "该单点登录账户没有 Foreman 可用的用户名，因此重试也无济于事。请让运行 Foreman 的人在身份提供方处检查该账户。"
 }

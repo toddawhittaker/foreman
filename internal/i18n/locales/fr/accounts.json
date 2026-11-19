@@ -44,5 +44,9 @@
   "accounts.proxy.refused": "Votre compte n’est pas autorisé à utiliser Foreman. Demandez à la personne qui gère Foreman de vous donner l’accès.",
   "accounts.proxy.waiting": "Foreman ne peut pas encore accepter de connexion par le proxy, car il n’a pas encore vu les réseaux du conteneur du jeu. Réessayez dans une minute.",
   "accounts.proxy.waiting_local": "Foreman ne peut pas encore accepter de connexion par le proxy, car il n’a pas encore vu les réseaux du conteneur du jeu. Réessayez dans une minute. La connexion par mot de passe fonctionne toujours : ouvrez {path} pour l’utiliser.",
-  "accounts.proxy.missing": "Foreman n’a pas reçu votre connexion du proxy. Connectez-vous par le proxy, puis rouvrez cette page."
+  "accounts.proxy.missing": "Foreman n’a pas reçu votre connexion du proxy. Connectez-vous par le proxy, puis rouvrez cette page.",
+  "accounts.oidc.failed": "L’authentification unique n’a pas fonctionné. Réessayez. Si l’échec persiste, adressez-vous à la personne qui gère Foreman.",
+  "accounts.oidc.unavailable": "Foreman ne parvient pas à joindre le fournisseur d’authentification unique pour le moment. Réessayez dans une minute.",
+  "accounts.oidc.name_taken": "Foreman a déjà un utilisateur portant votre nom qui se connecte autrement : l’authentification unique ne peut donc pas vous connecter. Demandez à la personne qui gère Foreman de renommer ou de supprimer cet utilisateur.",
+  "accounts.oidc.bad_username": "Votre compte d’authentification unique n’a pas de nom d’utilisateur que Foreman puisse utiliser : réessayer ne servira à rien. Demandez à la personne qui gère Foreman de vérifier votre compte auprès du fournisseur d’identité."
 }
