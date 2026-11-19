@@ -53,7 +53,7 @@ is a copy and goes stale if they change without it.
 - `github.com/coreos/go-oidc/v3` v3.21.0, direct from Epic 11a, for OIDC
   sign-in (SPEC 12.7, section 7). It brings in `github.com/go-jose/go-jose/v4`
   v4.1.9 (indirect), which checks the ID token's signature.
-  `golang.org/x/oauth2` v0.36.0 is now direct too (it was indirect): go-oidc
+  `golang.org/x/oauth2` v0.38.0 is now direct too (it was indirect): go-oidc
   v3.21.0 needs at least that version, and Foreman uses it for the
   authorization-code exchange and PKCE.
 - `golang.org/x/image` v0.48.0, direct from fixes batch 2, to draw the
@@ -204,7 +204,7 @@ saved.
   plus SameSite=Lax cookies. Rejected: gorilla/csrf form tokens, a
   dependency the standard library now makes unnecessary.
 - **OIDC sign-in (SPEC 12.7)**: `coreos/go-oidc` v3 (v3.21.0) with
-  `go-jose/go-jose` v4 (v4.1.9) and `golang.org/x/oauth2` (v0.36.0),
+  `go-jose/go-jose` v4 (v4.1.9) and `golang.org/x/oauth2` (v0.38.0),
   chosen in Epic 11a. go-oidc reads the provider's discovery document and
   checks an ID token's signature, issuer, audience and expiry. Foreman
   checks the nonce and the required group itself, and passes go-oidc an
