@@ -326,47 +326,15 @@ test("the form works with the keyboard alone", async ({ page, foreman }) => {
   await expect(page.locator(".message--success")).toBeVisible();
 });
 
-// Below the rail's width, "Jump to section" is a disclosure of plain links
-// (DESIGN 6, 8.10): an arrow key on it does nothing, and it works without script.
-test.describe("Jump to section on a narrow screen", () => {
-  test.use({ viewport: { width: 320, height: 640 } });
-
-  test("Down on its summary does not move the page, and a link reaches its section", async ({ page, foreman }) => {
-    await setUp(page, foreman);
-    await page.goto("/worlds/base/settings");
-    const jump = page.locator("details.settings-jump");
-    const summary = jump.locator("summary");
-    await expect(summary).toHaveText("Jump to section");
-    await summary.focus();
-    await page.keyboard.press("ArrowDown");
-    await expect(page).toHaveURL(/\/worlds\/base\/settings$/);
-    await expect(summary).toBeFocused();
-    await expect(jump).not.toHaveAttribute("open");
-
-    await page.keyboard.press("Enter");
-    await expect(jump).toHaveAttribute("open");
-    await page.keyboard.press("ArrowDown");
-    await expect(page).toHaveURL(/\/worlds\/base\/settings$/);
-    const bans = jump.getByRole("link", { name: "Ban list" });
-    expect((await bans.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await bans.click();
-    await expect(page).toHaveURL(/#settings-bans$/);
-    await expect(page.locator("#settings-bans")).toBeInViewport();
-    await checkPage(page);
-  });
-
-  test.describe("without script", () => {
-    test.use({ javaScriptEnabled: false });
-
-    test("its links still reach their sections", async ({ page, foreman }) => {
-      await setUp(page, foreman);
-      await page.goto("/worlds/base/settings");
-      await page.locator("details.settings-jump > summary").click();
-      await page.locator("details.settings-jump").getByRole("link", { name: "Saving" }).click();
-      await expect(page).toHaveURL(/#settings-saving$/);
-      await expect(page.locator("#settings-saving")).toBeInViewport();
-    });
-  });
+// The page has no section list of its own: one page with headed sections,
+// the world's pages the only navigation (DESIGN 6). A section's id still
+// reaches it from a link.
+test("a section id reaches its section, with no section list on the page", async ({ page, foreman }) => {
+  await setUp(page, foreman);
+  await page.goto("/worlds/base/settings#settings-bans");
+  await expect(page.locator("#settings-bans")).toBeInViewport();
+  await expect(page.locator("details.settings-jump")).toHaveCount(0);
+  await checkPage(page);
 });
 
 test("a long name and a long description do not break the layout", async ({ page, foreman }) => {
@@ -550,23 +518,13 @@ test("a raw editor error puts the caret on the line it names", async ({ page, fo
   expect(await editor.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 });
 
-// DESIGN 8.10: a rail of section links beside the form on a panel at least
-// 44rem wide; on a phone the form alone, with the raw editor's link after it.
-test("the settings rail shows on a wide panel only", async ({ page, foreman }) => {
+// DESIGN 6: no rail of section links at any width; the raw editor's link
+// follows the form.
+test("the settings page has no section rail, and the raw editor's link follows the form", async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings");
-  const rail = page.getByRole("navigation", { name: "Settings sections" });
-  const wide = (page.viewportSize()?.width ?? 1280) > 800;
-  if (wide) {
-    await expect(rail).toBeVisible();
-    await rail.getByRole("link", { name: "Saving" }).click();
-    await expect(page).toHaveURL(/#settings-saving$/);
-    await expect(rail.getByRole("link", { name: "Edit server-settings.json as JSON" })).toBeVisible();
-    await expect(page.locator(".settings-raw-link")).toBeHidden();
-  } else {
-    await expect(rail).toBeHidden();
-    await expect(page.locator(".settings-raw-link").getByRole("link", { name: "Edit server-settings.json as JSON" })).toBeVisible();
-  }
+  await expect(page.getByRole("navigation", { name: "Settings sections" })).toHaveCount(0);
+  await expect(page.locator(".settings-raw-link").getByRole("link", { name: "Edit server-settings.json as JSON" })).toBeVisible();
   // No back link: the world's tabs lead back.
   await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   await checkPage(page);

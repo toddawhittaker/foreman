@@ -137,7 +137,6 @@
   "settings.preview.undo": "Pour annuler, restaurez cet instantané depuis la page Instantanés ; le message affiché après l’enregistrement y renvoie par un lien.",
   "settings.preview.save": "Enregistrer les paramètres",
   "settings.preview.back": "Revenir et modifier",
-  "settings.rail.label": "Sections des paramètres",
   "settings.bans.legend": "Liste des bannis",
   "settings.bans.label": "Joueurs bannis",
   "settings.bans.hint": "Un nom de joueur par ligne. Les motifs déjà présents dans le fichier sont conservés ; un nom ajouté ici n’a pas de motif.",
@@ -172,7 +171,6 @@
   "settings.diff.unbanned": "{name} débanni",
   "settings.diff.whitelist_added": "{name} ajouté à la liste blanche",
   "settings.diff.whitelist_removed": "{name} retiré de la liste blanche",
-  "settings.jump.label": "Aller à la section",
   "settings.whitelist.enforce_heading": "Application de la liste blanche",
   "settings.whitelist.list_note": "Les modifications de la liste sont incluses dans « Prévisualiser les modifications »."
 }

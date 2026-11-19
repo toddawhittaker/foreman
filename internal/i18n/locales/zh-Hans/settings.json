@@ -135,7 +135,6 @@
   "settings.preview.undo": "要撤销，请在“快照”页面恢复该快照；保存后的提示中有指向它的链接。",
   "settings.preview.save": "保存设置",
   "settings.preview.back": "返回并编辑",
-  "settings.rail.label": "设置分区",
   "settings.bans.legend": "封禁列表",
   "settings.bans.label": "已封禁的玩家",
   "settings.bans.hint": "每行一个玩家名称。文件中已有的原因会保留；在此添加的名称没有原因。",
@@ -170,7 +169,6 @@
   "settings.diff.unbanned": "已解封 {name}",
   "settings.diff.whitelist_added": "已将 {name} 加入白名单",
   "settings.diff.whitelist_removed": "已将 {name} 移出白名单",
-  "settings.jump.label": "跳转到部分",
   "settings.whitelist.enforce_heading": "白名单限制",
   "settings.whitelist.list_note": "名单的更改包含在“预览更改”中。"
 }

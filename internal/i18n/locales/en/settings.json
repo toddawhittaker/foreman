@@ -137,7 +137,6 @@
   "settings.preview.undo": "To undo, restore that snapshot from the Snapshots page; the message after saving links to it.",
   "settings.preview.save": "Save settings",
   "settings.preview.back": "Go back and edit",
-  "settings.rail.label": "Settings sections",
   "settings.bans.legend": "Ban list",
   "settings.bans.label": "Banned players",
   "settings.bans.hint": "One player name per line. Reasons already in the file are kept; a name added here has no reason.",
@@ -172,7 +171,6 @@
   "settings.diff.unbanned": "Unbanned {name}",
   "settings.diff.whitelist_added": "Added {name} to the whitelist",
   "settings.diff.whitelist_removed": "Removed {name} from the whitelist",
-  "settings.jump.label": "Jump to section",
   "settings.whitelist.enforce_heading": "Whitelist enforcement",
   "settings.whitelist.list_note": "List changes are included in Preview changes."
 }

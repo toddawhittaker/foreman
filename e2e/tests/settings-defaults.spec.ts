@@ -122,18 +122,20 @@ test("fork saving carries its note, and the pause-while-joining setting is hidde
   await checkPage(page);
 });
 
-// Below the rail's width the jump disclosure holds plain links, so the
-// sections are reachable without script.
+// The page has no section list; each new section keeps its id and heading,
+// so a link reaches it without script.
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false, viewport: { width: 320, height: 640 } });
 
-  test("the jump links reach the new sections", async ({ page, foreman }) => {
+  test("the new sections are headed and reachable by their ids", async ({ page, foreman }) => {
     await setUp(page, foreman);
-    const jump = page.locator("details.settings-jump");
-    await jump.locator("summary").click();
-    await expect(jump.getByRole("link")).toHaveText(["Listing", "Players and access", "Gameplay", "Saving", "Network", "Admins", "Whitelist", "Ban list"]);
-    await jump.getByRole("link", { name: "Network" }).click();
+    const sections: [string, string][] = [["listing", "Listing"], ["joining", "Players and access"], ["gameplay", "Gameplay"], ["saving", "Saving"], ["network", "Network"], ["admins", "Admins"], ["whitelist", "Whitelist"], ["bans", "Ban list"]];
+    for (const [id, name] of sections) {
+      await expect(page.locator(`#settings-${id} > legend`)).toHaveText(name);
+    }
+    await page.goto("/worlds/base/settings#settings-network");
     await expect(page).toHaveURL(/#settings-network$/);
+    await expect(page.locator("#settings-network")).toBeInViewport();
   });
 });
 

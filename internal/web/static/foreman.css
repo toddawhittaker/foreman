@@ -11237,3 +11237,90 @@ main > .panel.danger-zone.danger-zone--blocked {
 .favorite-list > .favorite:first-child {
   padding-block-start: 0;
 }
+
+/* Game settings is one page of headed sections with no section list of its
+   own, so its form takes the whole column and the raw editor's link
+   follows the form at every width. */
+.settings-layout,
+.settings-layout:has(> .settings-main) {
+  display: block;
+}
+
+.settings-raw-link,
+.settings-wrap .settings-raw-link {
+  display: flex;
+}
+
+/* One navigation pattern for every area with sub-pages: from 64rem the
+   Server's, a world's and the settings' pages are a 240 px column on the
+   start side, the current page marked by an orange edge on the accent face;
+   the area's title and state sit in the page header beside it. */
+@media (min-width: 64rem) {
+  main:has(> .subnav) {
+    position: relative;
+    padding-inline-start: calc(var(--space-6) + 15rem + var(--space-6));
+  }
+
+  main > .subnav {
+    position: absolute;
+    inset-block-start: var(--space-6);
+    inset-inline-start: var(--space-6);
+    inline-size: 15rem;
+    margin: 0;
+    padding-inline-end: var(--space-5);
+    border-block-end: 0;
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  main > .subnav ul {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    overflow: visible;
+    mask-image: none;
+    border: 0;
+  }
+
+  main > .subnav ul::after {
+    content: none;
+  }
+
+  main > .subnav li {
+    flex: none;
+  }
+
+  main > .subnav a {
+    justify-content: flex-start;
+    min-block-size: 2.5rem;
+    margin: 0;
+    padding-inline: var(--space-3);
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: var(--color-text);
+    font-size: var(--text-md);
+    font-weight: 500;
+    white-space: normal;
+    transition: background-color var(--dur-1) var(--ease);
+  }
+
+  main > .subnav a::after {
+    content: none;
+  }
+
+  main > .subnav a:hover {
+    background: var(--color-secondary-hover);
+  }
+
+  main > .subnav a[aria-current] {
+    background: var(--color-accent-bg);
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+    font-weight: 600;
+  }
+
+  main > .subnav a:focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: -1px;
+  }
+}

@@ -73,36 +73,9 @@
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.note.running"}}</p>
 </div>
 {{- end}}
-{{/* The rail of section links shows only on a wide panel (DESIGN 8.10); a phone scrolls. */}}
+{{- /* One page with clear section headings; the world's pages are the only navigation (DESIGN 6). */}}
 <div class="settings-wrap">
-{{- /* Below the rail's width, one disclosure of links jumps to a section; plain links, so it needs no script (DESIGN 6). */}}
-<details class="disclosure settings-jump">
-  <summary>{{t "settings.jump.label"}}</summary>
-  <ul role="list">
-    <li><a href="#settings-listing">{{t "settings.listing"}}</a></li>
-    <li><a href="#settings-joining">{{t "settings.joining"}}</a></li>
-    <li><a href="#settings-gameplay">{{t "settings.gameplay"}}</a></li>
-    <li><a href="#settings-saving">{{t "settings.saving"}}</a></li>
-    <li><a href="#settings-network">{{t "settings.network"}}</a></li>
-    <li><a href="#settings-admins">{{t "settings.admins.legend"}}</a></li>
-    <li><a href="#settings-whitelist">{{t "settings.whitelist.legend"}}</a></li>
-    <li><a href="#settings-bans">{{t "settings.bans.legend"}}</a></li>
-  </ul>
-</details>
 <div class="settings-layout">
-<nav class="settings-rail" aria-label="{{t "settings.rail.label"}}">
-  <ul role="list">
-    <li><a href="#settings-listing">{{t "settings.listing"}}</a></li>
-    <li><a href="#settings-joining">{{t "settings.joining"}}</a></li>
-    <li><a href="#settings-gameplay">{{t "settings.gameplay"}}</a></li>
-    <li><a href="#settings-saving">{{t "settings.saving"}}</a></li>
-    <li><a href="#settings-network">{{t "settings.network"}}</a></li>
-    <li><a href="#settings-admins">{{t "settings.admins.legend"}}</a></li>
-    <li><a href="#settings-bans">{{t "settings.bans.legend"}}</a></li>
-    <li><a href="#settings-whitelist">{{t "settings.whitelist.legend"}}</a></li>
-    <li><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></li>
-  </ul>
-</nav>
 <div class="settings-main">
 <form method="post" action="{{.Path}}" class="panel settings" novalidate>
   {{template "summary" .Problems}}
