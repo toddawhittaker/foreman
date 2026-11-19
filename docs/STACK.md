@@ -18,7 +18,7 @@ is a copy and goes stale if they change without it.
   only the language minimum, `go 1.27.0` (ADR 0001).
 - Build image: `golang:1.27.4-trixie@sha256:f18c3d73a184fb0582828510722e723b63a93f7188d11dd223d9be6f6880e65d`.
 - golangci-lint: `golangci/golangci-lint:v2.15.0@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481`.
-- Runtime image: `gcr.io/distroless/static-debian13@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f`,
+- Runtime image: `gcr.io/distroless/static-debian13@sha256:1a64f46364620465ef9e9a8f5413757dfdf22695e050bbfd7303eeaf17a59383`,
   run as `USER 845:845`.
 - Playwright image: `mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f`.
 - npm packages in `e2e/package.json`, with `e2e/package-lock.json`:
@@ -42,21 +42,21 @@ is a copy and goes stale if they change without it.
   as a dependency; nothing is fetched at build or start. The static
   handler serves `.svg` as `image/svg+xml` with a `sandbox` content
   security policy, and does not serve the licence or `SHA256SUMS`.
-- Go modules in `go.mod`: `modernc.org/sqlite` v1.61.1,
-  `golang.org/x/crypto` v0.58.0 and `golang.org/x/sys` v0.49.0 (direct
+- Go modules in `go.mod`: `modernc.org/sqlite` v1.62.0,
+  `golang.org/x/crypto` v0.59.0 and `golang.org/x/sys` v0.50.0 (direct
   since Epic 2: hardlinks into a snapshot folder, which the standard
   library cannot make relative to an open folder).
 - `golang.org/x/text`, direct from Epic 6, for language matching, plural
-  rules and number formats (SPEC 22), v0.43.0.
+  rules and number formats (SPEC 22), v0.44.0.
 - `github.com/modelcontextprotocol/go-sdk` v1.8.0, direct from Epic 10a,
   for the MCP endpoint (section 8).
 - `github.com/coreos/go-oidc/v3` v3.21.0, direct from Epic 11a, for OIDC
   sign-in (SPEC 12.7, section 7). It brings in `github.com/go-jose/go-jose/v4`
   v4.1.9 (indirect), which checks the ID token's signature.
-  `golang.org/x/oauth2` v0.36.0 is now direct too (it was indirect): go-oidc
+  `golang.org/x/oauth2` v0.38.0 is now direct too (it was indirect): go-oidc
   v3.21.0 needs at least that version, and Foreman uses it for the
   authorization-code exchange and PKCE.
-- `golang.org/x/image` v0.47.0, direct from fixes batch 2, to draw the
+- `golang.org/x/image` v0.48.0, direct from fixes batch 2, to draw the
   demolisher territory labels into a downloaded map preview PNG (SPEC
   5.6): its `font/opentype` rasteriser and the Go Bold font, because the
   standard library cannot draw text. A committed subset of Noto Sans CJK
@@ -204,7 +204,7 @@ saved.
   plus SameSite=Lax cookies. Rejected: gorilla/csrf form tokens, a
   dependency the standard library now makes unnecessary.
 - **OIDC sign-in (SPEC 12.7)**: `coreos/go-oidc` v3 (v3.21.0) with
-  `go-jose/go-jose` v4 (v4.1.9) and `golang.org/x/oauth2` (v0.36.0),
+  `go-jose/go-jose` v4 (v4.1.9) and `golang.org/x/oauth2` (v0.38.0),
   chosen in Epic 11a. go-oidc reads the provider's discovery document and
   checks an ID token's signature, issuer, audience and expiry. Foreman
   checks the nonce and the required group itself, and passes go-oidc an
