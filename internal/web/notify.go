@@ -86,7 +86,7 @@ func (p NotificationsPage) Sending() int {
 func (NotificationsPage) templateName() string { return "notifications" }
 
 // The Settings tab opens the restart schedule, so it marks this page's section (DESIGN 6).
-func (NotificationsPage) navItem() string { return PathSchedule }
+func (NotificationsPage) navItem() string { return generalPath() }
 
 // AddPath is the add form.
 func (NotificationsPage) AddPath() string { return PathNotifications + "/new" }
@@ -129,7 +129,7 @@ type WebhookFormPage struct {
 }
 
 func (WebhookFormPage) templateName() string { return "notificationform" }
-func (WebhookFormPage) navItem() string      { return PathSchedule }
+func (WebhookFormPage) navItem() string      { return generalPath() }
 func (p WebhookFormPage) hasErrors() bool    { return len(p.Problems()) > 0 }
 
 // Path is where the form posts.
@@ -181,7 +181,7 @@ type WebhookDeletePage struct {
 }
 
 func (WebhookDeletePage) templateName() string { return "notificationdelete" }
-func (WebhookDeletePage) navItem() string      { return PathSchedule }
+func (WebhookDeletePage) navItem() string      { return generalPath() }
 
 // BackPath is the list.
 func (WebhookDeletePage) BackPath() string { return PathNotifications }

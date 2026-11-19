@@ -169,7 +169,7 @@ type APITokensPage struct {
 }
 
 func (APITokensPage) templateName() string { return "apitokens" }
-func (APITokensPage) navItem() string      { return PathSchedule }
+func (APITokensPage) navItem() string      { return generalPath() }
 
 func (p APITokensPage) hasErrors() bool { return len(p.Problems()) > 0 }
 
@@ -193,7 +193,7 @@ type APITokenCreatedPage struct {
 }
 
 func (APITokenCreatedPage) templateName() string { return "apitokencreated" }
-func (APITokenCreatedPage) navItem() string      { return PathSchedule }
+func (APITokenCreatedPage) navItem() string      { return generalPath() }
 
 // BackPath is the tokens page.
 func (APITokenCreatedPage) BackPath() string { return PathAPITokens }
@@ -204,7 +204,7 @@ type APITokenRevokePage struct {
 }
 
 func (APITokenRevokePage) templateName() string { return "apitokenrevoke" }
-func (APITokenRevokePage) navItem() string      { return PathSchedule }
+func (APITokenRevokePage) navItem() string      { return generalPath() }
 
 // BackPath is the tokens page.
 func (APITokenRevokePage) BackPath() string { return PathAPITokens }

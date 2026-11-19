@@ -36,7 +36,7 @@ type GeneralConfirmPage struct {
 }
 
 func (GeneralConfirmPage) templateName() string { return "generalconfirm" }
-func (GeneralConfirmPage) navItem() string      { return PathSchedule }
+func (GeneralConfirmPage) navItem() string      { return generalPath() }
 
 // Path is where the confirm form posts, and CancelPath where Cancel goes.
 func (GeneralConfirmPage) Path() string       { return generalPath() }

@@ -113,7 +113,7 @@ type AuditLogPage struct {
 }
 
 func (AuditLogPage) templateName() string { return "auditlog" }
-func (AuditLogPage) navItem() string      { return PathSchedule }
+func (AuditLogPage) navItem() string      { return generalPath() }
 
 // Path is where the filter form sends its query.
 func (AuditLogPage) Path() string { return auditLogPath() }
