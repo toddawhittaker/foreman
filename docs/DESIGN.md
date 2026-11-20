@@ -2202,8 +2202,12 @@ narrower than 34rem so their steps stay sliders,
 (items 1 to 4 and the achievements summary) on the left, and the preview in
 a column of 20 to 26rem on the right that stays in view while the settings
 change. That column (`gen-preview`) is sticky at `--space-5` from the top,
-at most as tall as the window less that, scrolling on its own if the
-picture is taller; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
+as tall as the window between the top strip and the action bar; one
+planet's picture is a square sized by the smaller of the column's width and
+the height its controls leave (never under 6rem), and the download links
+and the kept note sit tight under it, so at common desktop heights the whole
+pane, Preview size included, is seen without scrolling, and only a very
+short window scrolls the pane on its own; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
 and `--space-4` of padding, and sizes its own controls from its width, as
 the settings do from theirs (8.7). Several planets are thumbnails, two to a
 row. From 100rem the preview column takes about two fifths of the page.

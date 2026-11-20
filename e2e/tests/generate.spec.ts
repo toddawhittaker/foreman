@@ -198,6 +198,35 @@ test("a long world name fits at any width", async ({ page, foreman, fakeGame }) 
   await checkPage(page);
 });
 
+// DESIGN 8.6: on a desktop the whole preview pane fits between the top strip
+// and the action bar, the picture shrinking to the room left, so Preview size
+// is in reach without the pane scrolling.
+for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
+  test(`the preview pane fits the window at ${width}x${height}`, async ({ page, foreman, fakeGame }, info) => {
+    test.skip(info.project.name.startsWith("phone"), "a desktop layout");
+    await page.setViewportSize({ width, height });
+    await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+    await page.getByRole("button", { name: "Preview map" }).click();
+    await page.locator("label.tab", { hasText: "One planet" }).click();
+    await expect(page.locator(".gen-preview .pictures img")).toHaveCount(1);
+    // Scroll the page until the pane sticks below the top strip.
+    await page.evaluate(() => window.scrollBy(0, document.querySelector(".gen-preview")!.getBoundingClientRect().top - 40));
+    const m = await page.evaluate(() => {
+      const pane = document.querySelector(".gen-preview")!;
+      return {
+        scroll: pane.scrollHeight,
+        client: pane.clientHeight,
+        slider: document.querySelector(".gen-preview .field.step")!.getBoundingClientRect().bottom,
+        bar: document.querySelector(".gen-actions")!.getBoundingClientRect().top,
+      };
+    });
+    expect(m.scroll).toBeLessThanOrEqual(m.client + 1);
+    expect(m.slider).toBeLessThanOrEqual(m.bar);
+    await page.screenshot({ path: `../screenshots/generate-preview-fit-${width}x${height}-${info.project.name}.png` });
+  });
+}
+
 // DESIGN 8.6: side-by-side fields share label, hint and control rows, so a
 // control lines up with its neighbour's even when only one has a hint.
 test("paired fields line up their controls on a wide screen", async ({ page, foreman, fakeGame }) => {

@@ -4884,15 +4884,75 @@ a[target="_blank"]::after {
     gap: var(--space-6);
   }
 
+  /* The pane fills the window between the top strip and the action bar, and
+     one picture shrinks to the height its controls leave, so the whole pane
+     is seen without a scrollbar of its own (DESIGN 8.6). */
   .gen-preview {
+    --gen-top: var(--space-4);
+    --gen-foot: calc(var(--target-min) + 2 * var(--space-3) + var(--border-width) + var(--space-4));
     position: sticky;
-    inset-block-start: var(--space-5);
-    max-block-size: calc(100dvh - 2 * var(--space-5));
+    inset-block-start: var(--gen-top);
+    block-size: calc(100dvh - var(--gen-top) - var(--gen-foot));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     overflow-y: auto;
     padding: var(--space-4);
     background: var(--color-raised);
     border: var(--border-width) solid var(--color-line);
     border-radius: var(--radius-lg);
+  }
+
+  /* Clear of the shell's sticky 3.5rem top strip. */
+  @media (min-width: 64rem) {
+    body:has(> .site > nav) .gen-preview {
+      --gen-top: calc(3.5rem + var(--space-4));
+    }
+  }
+
+  .gen-preview > *,
+  .gen-preview > .preview > section > * {
+    flex: none;
+  }
+
+  /* The path down to one picture takes the height left over. */
+  .gen-preview > .preview:has(.pictures),
+  .gen-preview > .preview > section:has(> .pictures) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+    gap: var(--space-3);
+    min-block-size: 0;
+  }
+
+  /* A square no wider than the column and no taller than the room left,
+     less its frame, caption and download link; 6rem at the least. */
+  .gen-preview .pictures:not(:has(> li + li)) {
+    flex: 1 1 0;
+    min-block-size: calc(6rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    container-type: size;
+  }
+
+  .gen-preview .pictures:not(:has(> li + li)) > li {
+    inline-size: 100%;
+  }
+
+  /* The frame shrinks, not the row, so its download link keeps the column's width. */
+  .gen-preview .pictures:not(:has(> li + li)) > li > figure {
+    inline-size: min(100%, max(6rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+  }
+
+  /* The download links and the note on how long they are kept read as one
+     tight group under the picture, not as separate sections. */
+  /* Two text links stacked as a list: 24px targets or more (WCAG 2.5.8), not
+     44px boxes that read as separate sections. */
+  .gen-preview .preview .download {
+    min-block-size: calc(1lh + 2 * var(--space-1));
+  }
+
+  .gen-preview .pictures ~ *,
+  .gen-preview > .preview-status {
+    margin-block-start: calc(var(--space-1) - var(--space-3));
   }
 
   .gen-preview .pictures {
