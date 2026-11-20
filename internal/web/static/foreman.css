@@ -6054,12 +6054,11 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 
 /* A save bar's note leads it, the action ends it. */
 .form-foot > .form-foot__note {
-  margin: 0 auto 0 0;
+  margin-block: 0;
   margin-inline: 0 auto;
 }
 
 .form-foot > .form-foot__note:not([hidden]) {
-  margin-inline: 0 auto;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
