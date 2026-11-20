@@ -860,12 +860,18 @@ time {
 
 /* The theme row: its word at the start, three icon buttons at the end. The
    legend floats, so it lays out as an ordinary item of the row. */
+/* "Signed in as" and Theme start where the rows' words do: the row's
+   padding plus its 3 px start edge. */
+.menu__themes,
+.menu__panel > .hint {
+  padding-inline-start: calc(var(--space-3) + 3px);
+}
+
 .menu__themes {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-2);
-  padding-inline-start: var(--space-3);
 }
 
 .menu__themes legend {
@@ -966,6 +972,11 @@ main {
 
   .menu__panel .menu__item {
     padding-inline: var(--space-2);
+  }
+
+  .menu__themes,
+  .menu__panel > .hint {
+    padding-inline-start: calc(var(--space-2) + 3px);
   }
 
   .product__name {
@@ -11913,9 +11924,13 @@ header > .subnav {
     margin: 0 var(--space-6) 0 0;
   }
 
+  /* Anchored to the button, so its own width, not the button's, so every
+     language's name keeps one line and the theme row fits (DESIGN 6). */
   body:has(> .site > nav) > .site > .menu > .menu__panel {
     inset-block-start: calc(100% + var(--space-2));
     inset-inline-end: 0;
+    inline-size: 18rem;
+    max-inline-size: calc(100vw - 2 * var(--space-3));
   }
 
   body:has(> .site > nav) > main {
