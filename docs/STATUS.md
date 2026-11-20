@@ -4417,7 +4417,25 @@ Rulings (the plan, then Todd and the orchestrator, 2026-11-20):
 
 ### Verified
 
-VERIFIED-PLACEHOLDER
+- **No change beyond the issues, proved by pixels.** The climb's capture tool
+  took all 28 pages in light and dark at 1920 and 390 px (94 shots) for the
+  base, for each refactor task (L1, C1 to C6) and for the epic head. Two
+  captures of the base differ only in the console's log times, the RCON port
+  and the free-space figure; each refactor task and the epic head (against
+  B1's final head) differ from their base only there. B1's differences are
+  the breadcrumb and the labels Todd approved from side-by-side screenshots.
+- Each task ran `make check-go fmt-check vet lint typecheck`, its Go tests and
+  the end-to-end specs for the pages it touches. Each task's head also passed
+  `make verify` and the full end-to-end suite. Runs that failed only under
+  machine load passed when the specs were rerun alone; the one real failure,
+  a save bar covering the focused control by 3 px after B1's first version,
+  was fixed in B1 without changing the test.
+- Code reviews ran on every task; L1 also had a security review and B1 an
+  accessibility review. Their findings were fixed or ruled on above.
+- The epic head before this fold (d1d80a88): `make verify` passed, and the
+  full end-to-end suite passed 3,798 tests (290 skipped by design).
+- No real-game check: nothing touches server control, worlds, snapshots, mods
+  or game versions.
 
 ### Gaps left
 
