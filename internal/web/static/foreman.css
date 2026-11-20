@@ -3217,9 +3217,12 @@ td > .hint {
   padding-block: var(--space-3);
 }
 
-/* The preset, "[modified]" and its reset share a row while they fit. */
+/* The preset, "[modified]" and its reset share a row while they fit: the
+   select gives up width before the reset is pushed to a line of its own. */
 .preset-row > select {
-  flex: 0 1 auto;
+  flex: 1 1 14rem;
+  inline-size: auto;
+  min-inline-size: 0;
 }
 
 .modified {
@@ -4840,8 +4843,13 @@ a[target="_blank"]::after {
 }
 
 /* Generate: the settings beside a preview that stays in view while they
-   change (DESIGN 8.6). One column below 68.75rem. The preview sizes its
-   controls from its own column, as the settings do from theirs (8.7). */
+   change (DESIGN 8.6). Two columns only where the form leaves the settings
+   34rem, so their steps stay sliders (8.7) beside the shell's rail; one
+   column otherwise. The preview sizes its controls from its own column. */
+.generate {
+  container-name: generate;
+}
+
 .gen-preview {
   container: map-section / inline-size;
 }
@@ -4859,9 +4867,9 @@ a[target="_blank"]::after {
   gap: var(--space-4);
 }
 
-@media (min-width: 68.75rem) {
+@container generate (min-width: 56rem) {
   .gen-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(22rem, 26rem);
+    grid-template-columns: minmax(34rem, 1fr) minmax(20rem, 26rem);
     gap: var(--space-6);
   }
 
