@@ -226,6 +226,13 @@ for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
     if (height >= 950) expect(m.scroll).toBeLessThanOrEqual(m.client + 1);
     expect(m.slider).toBeLessThanOrEqual(m.bar);
     await expect(page.locator(".gen-preview .field.step")).toBeInViewport({ ratio: 1 });
+    // A card narrower than the column sits in its middle.
+    const [left, right] = await page.evaluate(() => {
+      const f = document.querySelector(".gen-preview .pictures figure")!.getBoundingClientRect();
+      const l = document.querySelector(".gen-preview .pictures")!.getBoundingClientRect();
+      return [f.left - l.left, l.right - f.right];
+    });
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: `../screenshots/generate-preview-fit-${width}x${height}-${info.project.name}.png` });
     // It comes before the picture in the code too, so Tab meets it where the eye does (WCAG 2.4.3).
     const before = await page.evaluate(() => {

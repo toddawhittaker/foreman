@@ -4943,9 +4943,11 @@ a[target="_blank"]::after {
     inline-size: 100%;
   }
 
-  /* The frame shrinks, not the row, so its download link keeps the column's width. */
+  /* The frame shrinks, not the row, so its download link keeps the column's width;
+     a frame narrower than the column sits in its middle. */
   .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li > figure {
     inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    justify-self: center;
   }
 
   /* The download links and the kept note read as one tight group under the
