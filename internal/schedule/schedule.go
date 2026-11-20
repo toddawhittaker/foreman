@@ -311,7 +311,10 @@ func (s *Scheduler) step(ctx context.Context) time.Duration {
 func (s *Scheduler) begin(ctx context.Context, due time.Time, limit time.Duration) time.Duration {
 	id, name, ok, err := s.cfg.Active(ctx)
 	if err != nil {
-		s.cfg.Log.Error("the scheduled restart could not find the active world, so it did not run", "error", err)
+		// Foreman stopping cancels ctx mid-query; that is not a fault.
+		if ctx.Err() == nil {
+			s.cfg.Log.Error("the scheduled restart could not find the active world, so it did not run", "error", err)
+		}
 		return pollIdle
 	}
 	if !ok {
@@ -393,7 +396,7 @@ func (s *Scheduler) startCountdown(ctx context.Context, id string, now time.Time
 	s.mu.Unlock()
 	s.restarts.Go(func() {
 		err := s.cfg.Game.Restart(ctx, id, Actor, game.StopOptions{Countdown: Warning, WarnEmpty: true, OnlyRunning: true}, game.StartOptions{})
-		s.restartEnded(err)
+		s.restartEnded(ctx, err)
 	})
 }
 
@@ -424,7 +427,7 @@ func (s *Scheduler) watchCountdown(ctx context.Context) time.Duration {
 		s.mu.Lock()
 		s.cancelled = false
 		s.mu.Unlock()
-		if !errors.Is(err, game.ErrNoCountdown) {
+		if !errors.Is(err, game.ErrNoCountdown) && ctx.Err() == nil {
 			s.cfg.Log.Error("the scheduled restart could not cancel its countdown", "world", id, "error", err)
 		}
 	}
@@ -432,7 +435,7 @@ func (s *Scheduler) watchCountdown(ctx context.Context) time.Duration {
 }
 
 // restartEnded settles the day when the restart ends.
-func (s *Scheduler) restartEnded(err error) {
+func (s *Scheduler) restartEnded(ctx context.Context, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.st.Phase != PhaseCountdown {
@@ -449,8 +452,11 @@ func (s *Scheduler) restartEnded(err error) {
 		s.skipLocked(SkipAdmin, s.cfg.Now())
 		return
 	default:
-		// The restart's own result shows on the Server page.
-		s.cfg.Log.Error("the scheduled restart failed", "world", s.st.WorldID, "error", err)
+		// The restart's own result shows on the Server page. A restart cut
+		// short because Foreman is stopping is not a fault.
+		if ctx.Err() == nil {
+			s.cfg.Log.Error("the scheduled restart failed", "world", s.st.WorldID, "error", err)
+		}
 		s.st = State{Next: s.next}
 	}
 	s.changedLocked()
