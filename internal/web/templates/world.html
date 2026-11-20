@@ -7,7 +7,7 @@
 {{define "content" -}}
 {{with .Page}}
 {{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
-<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{.World.Name}}</span></p>
+{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .World.Name)}}
 <div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}</h1>
 </div>

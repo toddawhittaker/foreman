@@ -7,7 +7,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{t "favorites.title"}}</span></p>
+{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "favorites.title"))}}
 <h1>{{t "favorites.title"}}</h1>
 {{template "rail" $}}
 <p class="page-intro">{{t "favorites.intro"}}</p>

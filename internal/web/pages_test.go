@@ -49,7 +49,7 @@ func TestBackLinks(t *testing.T) {
 		page Page
 		want string
 	}{
-		{ImportPage{}, `<p class="crumb"><a href="/worlds">Worlds</a><span aria-current="page">`},
+		{ImportPage{}, `<nav class="crumb" aria-label="Breadcrumb"><ol role="list"><li><a href="/worlds">Worlds</a></li><li><span aria-current="page">`},
 		{DeletePage{World: world.Summary{ID: "base", Name: "Base", Active: true}}, `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
 	} {
 		_, body := render(t, r, pageCase{status: 200, user: "todd", page: c.page})

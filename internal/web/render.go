@@ -376,6 +376,23 @@ func share(part, rest uint64) int {
 	return max(1, int(float64(part)/(float64(part)+float64(rest))*100))
 }
 
+// crumbStep is one step of a breadcrumb (DESIGN 6). An empty Href marks the
+// page shown.
+type crumbStep struct{ Href, Label string }
+
+// crumbs makes a breadcrumb's steps from href and label pairs, for the crumb
+// partial: {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .Name)}}.
+func crumbs(pairs ...string) ([]crumbStep, error) {
+	if len(pairs)%2 != 0 {
+		return nil, fmt.Errorf("crumbs: %d arguments, want href and label pairs", len(pairs))
+	}
+	steps := make([]crumbStep, 0, len(pairs)/2)
+	for i := 0; i < len(pairs); i += 2 {
+		steps = append(steps, crumbStep{Href: pairs[i], Label: pairs[i+1]})
+	}
+	return steps, nil
+}
+
 // Renderer holds the parsed templates, once per language, and the
 // embedded static files.
 type Renderer struct {
@@ -407,6 +424,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"flag":              r.flagURL,
 		"figure":            figure,
 		"share":             share,
+		"crumbs":            crumbs,
 		"chatPath":          func() string { return PathChat },
 		"utc":               func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
 		"isoTime":           func(t time.Time) string { return t.UTC().Format(time.RFC3339) },

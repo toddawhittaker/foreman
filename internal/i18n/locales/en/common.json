@@ -1,6 +1,7 @@
 {
   "common.skip": "Skip to content",
   "common.error.label": "Error:",
+  "common.crumb.label": "Breadcrumb",
   "common.nav.label": "Main",
   "common.nav.server": "Server",
   "common.nav.console": "Console",
