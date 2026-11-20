@@ -488,5 +488,7 @@
   "worlds.world.archived.text": "Este mundo está oculto de la lista principal y no puede iniciarse ni ser el destino de un cambio. Sus archivos y sus instantáneas se quedan como están.",
   "worlds.world.unarchive.button": "Desarchivar mundo",
   "worlds.world.unarchive.done": "{name} ya no está archivado.",
-  "worlds.list.all_archived": "Todos tus mundos están archivados."
+  "worlds.list.all_archived": "Todos tus mundos están archivados.",
+  "worlds.area.all": "Todos los mundos",
+  "worlds.area.label": "Páginas de mundos"
 }

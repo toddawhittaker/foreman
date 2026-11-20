@@ -188,23 +188,23 @@ dialog (black at 50%) and the shadows' own values (4).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#110e0b` | `#e6e1d8` | The page |
-| `--color-surface` | `#211c18` | `#fffdf9` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#2d2621` | `#f2ede4` | The secondary button's face, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
-| `--color-deep` | `#0e0c0a` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#433a32` | `#cfc8bc` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
-| `--color-text` | `#ede7de` | `#1c1915` | Body text, field text |
-| `--color-heading` | `#f9f5ee` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
-| `--color-text-muted` | `#c4bbae` | `#4f493f` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
-| `--color-border` | `#9a8f80` | `#6f6659` | Edge of fields, secondary buttons and the menu |
+| `--color-bg` | `#131210` | `#f1ede5` | The page |
+| `--color-surface` | `#1e1c19` | `#fffdf9` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#292622` | `#f6f2ea` | The secondary button's face, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-deep` | `#0d0c0b` | `#ffffff` | Form fields, the log and console |
+| `--color-line` | `#3b3732` | `#ddd6ca` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
+| `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
+| `--color-text-muted` | `#c2baae` | `#4f493f` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
+| `--color-border` | `#958b7e` | `#8a8073` | Edge of fields, secondary buttons and the menu |
 | `--color-link` | `#ffb357` | `#9a4800` | Links (always underlined), quiet buttons, the "Active" badge |
 | `--color-selected` | `#f39a2a` | `#bd6500` | The current tab's underline, the current item in the menu, the live world's edge, checked boxes, progress bars |
-| `--color-accent-bg` | `#33220e` | `#fdecd5` | A pale orange tint: the current item in the menu, the "Active" badge |
+| `--color-accent-bg` | `#352610` | `#fdecd5` | A pale orange tint: the current item in the menu, the "Active" badge |
 | `--color-primary` | `#f39a2a` | `#f39a2a` | Primary button face, the line across the top of the header |
 | `--color-primary-hover` | `#f7ae4f` | `#f6ad52` | Primary button hover |
 | `--color-primary-edge` | `#f39a2a` | `#a35200` | Primary button edge (the face is too pale to carry it in light) |
 | `--color-on-primary` | `#1a1004` | `#1a1004` | Primary button text |
-| `--color-secondary-hover` | `#3a322b` | `#ebe5db` | Secondary button, menu item and menu button face under the pointer |
+| `--color-secondary-hover` | `#34302b` | `#eee8de` | Secondary button, menu item and menu button face under the pointer |
 | `--color-danger` | `#e5553c` | `#b3301d` | Danger button face, "crash-looping" badge background, the confirmation box's edge, the Server plate's state rule when the game has crashed |
 | `--color-danger-hover` | `#ef7560` | `#932616` | Danger button hover |
 | `--color-on-danger` | `#1a0503` | `#ffffff` | Danger button text, "crash-looping" badge text |
@@ -212,10 +212,10 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-danger-bg` | `#3a1913` | `#fbe6e1` | Error message and "crashed" badge background, risky and trash buttons under the pointer |
 | `--color-ok` | `#86d672` | `#1f6a2a` | "Done" word, "running" badge, the Server plate's state word and rule while the game runs |
 | `--color-ok-bg` | `#172a12` | `#e3f1de` | Success message and "running" badge background |
-| `--color-warn` | `#f2c14e` | `#7a5000` | "Warning" word, "starting" and "stopping" badges, the Server plate's state word and rule while stopping |
-| `--color-warn-bg` | `#33280c` | `#f8edcf` | Warning message and "starting"/"stopping" badge background |
-| `--color-info` | `#b4c2cc` | `#4a5866` | "Note" word; the Server plate's state word and rule while starting |
-| `--color-info-bg` | `#25201b` | `#efeae2` | Notice background |
+| `--color-warn` | `#e9d24a` | `#665400` | "Warning" word, "starting" and "stopping" badges, the Server plate's state word and rule while stopping |
+| `--color-warn-bg` | `#2b2a0c` | `#f5f0c2` | Warning message and "starting"/"stopping" badge background |
+| `--color-info` | `#8ec1ea` | `#1d5a8a` | "Note" word; the Server plate's state word and rule while starting |
+| `--color-info-bg` | `#13222f` | `#e2eef7` | Notice background |
 | `--color-focus` | `#f7ae4f` | `#b35c00` | Focus outline |
 
 The map's own colours are tokens too, the same in both themes, because
@@ -397,6 +397,8 @@ Other fixed values, also tokens:
 | `--target-inline` | 1.5rem (24 px) | Minimum block size of a link inside an error or an empty state's sentence (WCAG 2.5.8) |
 | `--measure` | 68ch | Maximum line length of prose |
 | `--page-max` | 100rem | Maximum width of `main` |
+| `--rail` | 15rem | Width of the start-side rail from 64rem |
+| `--rail-sub-top` | 13.5rem | Where the current area's own pages start in the rail, under the four areas |
 | `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |
 | `--dur-1` | 120ms | Hover and pressed fills easing in |
 | `--dur-2` | 200ms | A chevron turning, a meter moving |

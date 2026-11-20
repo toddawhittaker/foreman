@@ -505,5 +505,7 @@
   "worlds.world.archived.text": "Ten świat jest ukryty na głównej liście i nie można go uruchomić ani przełączyć się na niego. Jego pliki i migawki pozostają bez zmian.",
   "worlds.world.unarchive.button": "Cofnij archiwizację świata",
   "worlds.world.unarchive.done": "Archiwizacja świata {name} została cofnięta.",
-  "worlds.list.all_archived": "Wszystkie światy są zarchiwizowane."
+  "worlds.list.all_archived": "Wszystkie światy są zarchiwizowane.",
+  "worlds.area.all": "Wszystkie światy",
+  "worlds.area.label": "Strony światów"
 }

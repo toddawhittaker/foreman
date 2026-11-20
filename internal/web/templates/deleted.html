@@ -4,6 +4,7 @@
 {{with .Page}}
 <p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <h1>{{t "worlds.deleted.title"}}</h1>
+{{template "worlds-area-tabs" "deleted"}}
 <p class="page-intro">{{t "worlds.deleted.intro"}}</p>
 {{- range .Worlds}}
 <section class="panel" aria-labelledby="world-{{.ID}}">

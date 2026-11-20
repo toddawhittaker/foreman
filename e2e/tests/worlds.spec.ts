@@ -53,16 +53,18 @@ test("/ is the Server page and the world list is at /worlds", async ({ page }) =
   await expect(page).toHaveURL("/worlds");
 });
 
-// A Favorites button sits beside Generate and Import, as a button and not a
-// text link, and works without script (SPEC 5.12).
-test("the Worlds page has a Favorites button that opens the favorites list", async ({ page }) => {
+// Generate and Import sit by the heading as buttons; Favorites is one of the
+// Worlds area's own pages, in the same column as every area's pages, and
+// works without script (SPEC 5.12, DESIGN 6).
+test("the Worlds page has a Favorites link that opens the favorites list", async ({ page }) => {
   await createAdmin(page);
   const actions = page.locator("header .actions");
   const buttons = actions.locator("a.button");
   await expect(buttons.nth(0)).toHaveText("Generate a world");
   await expect(buttons.nth(1)).toHaveText("Import a world");
-  const favorites = actions.getByRole("link", { name: "Favorites", exact: true });
-  await expect(favorites).toHaveClass(/\bbutton\b/);
+  const area = page.getByRole("navigation", { name: "Worlds pages" });
+  await expect(area.getByRole("link", { name: "All worlds" })).toHaveAttribute("aria-current", "page");
+  const favorites = area.getByRole("link", { name: "Favorites", exact: true });
   expect((await favorites.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await favorites.click();
   await expect(page).toHaveURL("/favorites");

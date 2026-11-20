@@ -1,17 +1,16 @@
 {{define "title"}}{{t "worlds.title"}}{{end}}
 
 {{define "content" -}}
-{{- /* The two ways to make a world sit by the heading; the list is the page (DESIGN 8.2). */}}
+{{- /* The two ways to make a world sit by the heading; Favorites and Deleted worlds are the area's own pages in its column (DESIGN 6, 8.2). */}}
 <header class="page-head page-head--row">
   <p class="eyebrow">{{t "common.nav.worlds"}}</p>
   <h1>{{t "worlds.title"}}</h1>
   <div class="actions">
     <a href="{{.Page.GeneratePath}}" class="button button--primary">{{t "worlds.list.generate"}}</a>
     <a href="{{.Page.ImportPath}}" class="button">{{t "worlds.list.import"}}</a>
-    <a href="{{.Page.FavoritesPath}}" class="button">{{t "favorites.title"}}</a>
-    <a href="{{deletedPath}}" class="button" id="act-deleted">{{t "worlds.deleted.title"}}</a>
   </div>
 </header>
+{{template "worlds-area-tabs" "worlds"}}
 {{- with .Page.Deleted}}
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{if $.Page.DeletedKept}}{{t "worlds.list.deleted_kept" "name" .}}{{else}}{{t "worlds.list.deleted_gone" "name" .}}{{end}}</p>

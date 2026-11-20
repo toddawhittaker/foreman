@@ -107,23 +107,23 @@
   --text-2xl: 1.5rem;
   --text-3xl: 2rem;
 
-  --color-bg: light-dark(#e6e1d8, #110e0b);
-  --color-surface: light-dark(#fffdf9, #211c18);
-  --color-raised: light-dark(#f2ede4, #2d2621);
-  --color-deep: light-dark(#ffffff, #0e0c0a);
-  --color-line: light-dark(#cfc8bc, #433a32);
-  --color-border: light-dark(#6f6659, #9a8f80);
-  --color-text: light-dark(#1c1915, #ede7de);
-  --color-heading: light-dark(#13110e, #f9f5ee);
-  --color-text-muted: light-dark(#4f493f, #c4bbae);
+  --color-bg: light-dark(#f1ede5, #131210);
+  --color-surface: light-dark(#fffdf9, #1e1c19);
+  --color-raised: light-dark(#f6f2ea, #292622);
+  --color-deep: light-dark(#ffffff, #0d0c0b);
+  --color-line: light-dark(#ddd6ca, #3b3732);
+  --color-border: light-dark(#8a8073, #958b7e);
+  --color-text: light-dark(#1c1915, #ece7df);
+  --color-heading: light-dark(#13110e, #f8f5ef);
+  --color-text-muted: light-dark(#4f493f, #c2baae);
   --color-link: light-dark(#9a4800, #ffb357);
   --color-selected: light-dark(#bd6500, #f39a2a);
-  --color-accent-bg: light-dark(#fdecd5, #33220e);
+  --color-accent-bg: light-dark(#fdecd5, #352610);
   --color-primary: #f39a2a;
   --color-primary-hover: light-dark(#f6ad52, #f7ae4f);
   --color-primary-edge: light-dark(#a35200, #f39a2a);
   --color-on-primary: #1a1004;
-  --color-secondary-hover: light-dark(#ebe5db, #3a322b);
+  --color-secondary-hover: light-dark(#eee8de, #34302b);
   --color-danger: light-dark(#b3301d, #e5553c);
   --color-danger-hover: light-dark(#932616, #ef7560);
   --color-on-danger: light-dark(#ffffff, #1a0503);
@@ -131,10 +131,10 @@
   --color-danger-bg: light-dark(#fbe6e1, #3a1913);
   --color-ok: light-dark(#1f6a2a, #86d672);
   --color-ok-bg: light-dark(#e3f1de, #172a12);
-  --color-warn: light-dark(#7a5000, #f2c14e);
-  --color-warn-bg: light-dark(#f8edcf, #33280c);
-  --color-info: light-dark(#4a5866, #b4c2cc);
-  --color-info-bg: light-dark(#efeae2, #25201b);
+  --color-warn: light-dark(#665400, #e9d24a);
+  --color-warn-bg: light-dark(#f5f0c2, #2b2a0c);
+  --color-info: light-dark(#1d5a8a, #8ec1ea);
+  --color-info-bg: light-dark(#e2eef7, #13222f);
   --color-focus: light-dark(#b35c00, #f7ae4f);
   /* Each theme's shadow is its own layers; the other theme's layers are
      transparent, because light-dark() takes only colours. */
@@ -11885,4 +11885,457 @@ main > h1 + p.hint,
   vertical-align: -0.125em;
   background: currentColor;
   mask: var(--i-chevron) center / contain no-repeat;
+}
+
+/* ==== The shell (DESIGN 6, Shell). From 64rem the header is a rail on the
+   start side: the logo, the four areas, then the current area's own pages
+   under a hairline. A status strip over the content names the live world
+   and its state, with the user menu at its end. Every page's content starts
+   at the same place. Below 64rem the header stays a bar with tab rows. ==== */
+:root {
+  --rail: 15rem;
+  /* Where the area's own pages start in the rail: under the four areas. */
+  --rail-sub-top: 13.5rem;
+}
+
+.site-world {
+  display: none;
+}
+
+/* On a phone the strip's parts sit in the header bar as before. */
+.site-strip {
+  display: contents;
+}
+
+@media (min-width: 64rem) {
+  body:has(> .site > nav) {
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    grid-template-rows: 3.5rem auto 1fr;
+    min-block-size: 100dvh;
+  }
+
+  /* The rail's face runs the full height of the page. */
+  body:has(> .site > nav)::before {
+    content: "";
+    grid-column: 1;
+    grid-row: 1 / -1;
+    background: var(--color-surface);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  body:has(> .site > nav) > .site {
+    display: contents;
+  }
+
+  body:has(> .site > nav) > .site > .product {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+    padding-inline: var(--space-5);
+    border-block-end: var(--border-width) solid var(--color-line);
+    border-inline-end: var(--border-width) solid var(--color-line);
+    /* A faint drafting grid behind the maker's mark, as on sign-in. */
+    background:
+      linear-gradient(to right, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
+      linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
+      var(--color-surface);
+  }
+
+  body:has(> .site > nav) > .site > nav {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    order: 0;
+    margin: 0;
+    padding: var(--space-4) var(--space-3) var(--space-3);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  .site > nav .tabs {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+  }
+
+  .site > nav .tabs li {
+    flex: none;
+  }
+
+  body .site > nav .tabs a {
+    justify-content: flex-start;
+    gap: var(--space-3);
+    min-block-size: 2.75rem;
+    margin: 0;
+    padding-inline: var(--space-3);
+    background: none;
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: none;
+    color: var(--color-text);
+    font-size: var(--text-md);
+    font-weight: 500;
+    transition: background-color var(--dur-1) var(--ease);
+  }
+
+  body .site > nav .tabs a:hover {
+    background: var(--color-secondary-hover);
+    color: var(--color-heading);
+  }
+
+  body .site > nav .tabs a[aria-current] {
+    background: var(--color-accent-bg);
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+    font-weight: 600;
+  }
+
+  body .site > nav .tabs a:focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: -1px;
+  }
+
+  /* The status strip: the live world and its state, read from anywhere. */
+  body:has(> .site > nav) .site-strip {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-inline-size: 0;
+    padding-inline: var(--space-6) 20rem;
+    background: var(--color-surface);
+    border-block-end: 2px solid var(--color-line);
+  }
+
+  .site-strip:has(.lamp--running) { border-block-end-color: var(--color-ok); }
+  .site-strip:has(.lamp--starting) { border-block-end-color: var(--color-info); }
+  .site-strip:has(.lamp--stopping) { border-block-end-color: var(--color-warn); }
+  .site-strip:has(:is(.lamp--crashed, .lamp--crash-looping)) { border-block-end-color: var(--color-danger); }
+
+  .site-world {
+    display: block;
+    overflow: hidden;
+    color: var(--color-heading);
+    font-size: var(--text-md);
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body:has(> .site > nav) .site-state:not(:empty) {
+    flex: none;
+    min-block-size: 1.75rem;
+    padding-inline: var(--space-2) var(--space-3);
+    background: var(--color-raised);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: 999px;
+    color: var(--color-heading);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .site-state:has(.lamp--running) { background: var(--color-ok-bg) !important; border-color: color-mix(in srgb, var(--color-ok) 45%, transparent) !important; color: var(--color-ok) !important; }
+  .site-state:has(.lamp--starting) { background: var(--color-info-bg) !important; border-color: color-mix(in srgb, var(--color-info) 45%, transparent) !important; color: var(--color-info) !important; }
+  .site-state:has(.lamp--stopping) { background: var(--color-warn-bg) !important; border-color: color-mix(in srgb, var(--color-warn) 45%, transparent) !important; color: var(--color-warn) !important; }
+  .site-state:has(:is(.lamp--crashed, .lamp--crash-looping)) { background: var(--color-danger-bg) !important; border-color: color-mix(in srgb, var(--color-danger) 45%, transparent) !important; color: var(--color-danger-text) !important; }
+
+  body:has(> .site > nav) > .site > .menu {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+    position: relative;
+    z-index: 30;
+    margin: 0 var(--space-6) 0 0;
+  }
+
+  body:has(> .site > nav) > .site > .menu > .menu__panel {
+    inset-block-start: calc(100% + var(--space-2));
+    inset-inline-end: 0;
+  }
+
+  body:has(> .site > nav) > main {
+    position: relative;
+    grid-column: 2;
+    grid-row: 2 / -1;
+    justify-self: start;
+    inline-size: 100%;
+    max-inline-size: calc(var(--page-max) + 2 * var(--space-6));
+    padding: var(--space-6);
+  }
+
+  /* The area's own pages sit in the rail, under the four areas. */
+  body:has(> .site > nav) > main:has(> .subnav) {
+    padding-inline-start: var(--space-6);
+  }
+
+  body:has(> .site > nav) > main > .subnav {
+    position: absolute;
+    z-index: 2;
+    inset-block-start: var(--rail-sub-top);
+    inset-inline-start: calc(-1 * var(--rail));
+    inline-size: var(--rail);
+    margin: 0;
+    padding: var(--space-4) var(--space-3) var(--space-5);
+    border: 0;
+    border-block-start: var(--border-width) solid var(--color-line);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  /* The list's name, taken from its own label, over its links. */
+  body:has(> .site > nav) > main > .subnav::before {
+    content: attr(aria-label) / "";
+    display: block;
+    padding: 0 var(--space-3) var(--space-2);
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  body:has(> .site > nav) > main > .subnav > ul > li > a {
+    min-block-size: 2.75rem;
+    font-size: var(--text-md);
+  }
+}
+
+/* ==== Labels as stamped plates (DESIGN 5): the overline, column names and
+   fact names in Plex Mono capitals, so labels read apart from content. ==== */
+.eyebrow,
+main table thead th,
+main table th[scope="col"],
+.token-head,
+.worlds-head,
+.facts dt,
+.plate dt,
+.status-card dt {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:lang(zh-Hans) :is(.eyebrow, main table thead th, main table th[scope="col"], .token-head, .worlds-head, .facts dt) {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+/* A breadcrumb is quiet: orange is kept for the primary action, the current
+   place and focus (DESIGN 3). */
+.eyebrow a,
+.crumb a {
+  color: var(--color-text-muted);
+}
+
+.eyebrow a:hover,
+.crumb a:hover {
+  color: var(--color-heading);
+}
+
+/* Disclosure triangles are quiet too. */
+summary::marker,
+summary::-webkit-details-marker {
+  color: var(--color-text-muted);
+}
+
+/* Machine-written figures in mono with tabular digits. */
+.ver,
+.mod-ver,
+.facts dd,
+time {
+  font-variant-numeric: tabular-nums;
+}
+
+.ver,
+.mod-ver {
+  font-family: var(--font-mono);
+  font-size: 0.9375em;
+}
+
+h1,
+h2 {
+  text-wrap: balance;
+}
+
+main p {
+  text-wrap: pretty;
+}
+
+h2 {
+  font-weight: 650;
+}
+
+h3 {
+  font-weight: 600;
+}
+
+/* ==== Controls: buttons are raised plates, fields are sunk wells, so a
+   button beside a field never reads as a second field (DESIGN 7.1, 7.2). ==== */
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky) {
+  background: var(--color-raised);
+  box-shadow:
+    inset 0 1px 0 light-dark(rgb(255 255 255 / 90%), rgb(255 255 255 / 6%)),
+    0 1px 0 light-dark(rgb(60 45 25 / 12%), rgb(0 0 0 / 45%));
+}
+
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky):hover {
+  background: var(--color-secondary-hover);
+}
+
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky):active {
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 15%), rgb(0 0 0 / 40%));
+}
+
+.button--primary {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 25%),
+    0 1px 0 var(--color-primary-edge);
+}
+
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), select, textarea) {
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 10%), rgb(0 0 0 / 35%));
+}
+
+/* Short in-row actions on a mouse-driven screen; touch keeps 44 px. */
+@media (min-width: 64rem) and (pointer: fine) {
+  :is(td, .token-card, .worlds > li, .favorite-list > li, .notify-list > li) .button:not(.button--primary) {
+    min-block-size: 2.25rem;
+  }
+}
+
+/* ==== Notices: the box fits its text up to a comfortable measure rather
+   than stretching across a wide card (DESIGN 7.3). ==== */
+main > .message,
+.panel > .message,
+.settings-main > .message {
+  inline-size: fit-content;
+  max-inline-size: min(100%, 52rem);
+}
+
+/* ==== Empty states as blueprint ghosts: the missing thing drawn as a
+   planned outline on a drafting grid, then a sentence (DESIGN 7.6). ==== */
+.empty--art {
+  position: relative;
+  padding-block-start: var(--space-5);
+}
+
+.empty--art::before {
+  inline-size: 10rem;
+  block-size: 6rem;
+  background:
+    linear-gradient(to right, color-mix(in srgb, var(--color-info) 18%, transparent) 1px, transparent 1px) -1px -1px / 1rem 1rem,
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-info) 18%, transparent) 1px, transparent 1px) -1px -1px / 1rem 1rem,
+    var(--color-info-bg);
+  border: var(--border-width) dashed color-mix(in srgb, var(--color-info) 70%, transparent);
+  border-radius: var(--radius);
+  mask: none;
+}
+
+.empty--art::after {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(var(--space-5) + 1.5rem);
+  inset-inline-start: calc(50% - 1.5rem);
+  inline-size: 3rem;
+  block-size: 3rem;
+  background: var(--color-info);
+  mask: var(--icon, var(--i-file)) center / contain no-repeat;
+}
+
+/* ==== The Server plate (DESIGN 7.5): four rivets in its corners, and Stop
+   server set apart from the routine actions after a rule. ==== */
+.plate {
+  position: relative;
+}
+
+.plate::after {
+  content: "";
+  position: absolute;
+  inset: 0.625rem;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 3px 3px, var(--color-border) 0 2px, transparent 2.5px) top left / 6px 6px no-repeat,
+    radial-gradient(circle at 3px 3px, var(--color-border) 0 2px, transparent 2.5px) top right / 6px 6px no-repeat,
+    radial-gradient(circle at 3px 3px, var(--color-border) 0 2px, transparent 2.5px) bottom left / 6px 6px no-repeat,
+    radial-gradient(circle at 3px 3px, var(--color-border) 0 2px, transparent 2.5px) bottom right / 6px 6px no-repeat;
+  opacity: 0.7;
+}
+
+@media (min-width: 64rem) {
+  .server-actions > :has(> #act-stop),
+  .server-actions > #act-stop {
+    margin-inline-start: var(--space-3);
+    padding-inline-start: var(--space-5);
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* ==== The console's log fills the window on a wide screen. ==== */
+@media (min-width: 64rem) {
+  #console-panel .log,
+  .terminal .log {
+    block-size: max(24rem, calc(100dvh - 22rem));
+    max-block-size: none;
+  }
+}
+
+@media (min-width: 64rem) {
+  body .site > nav .tabs a::after {
+    content: none;
+  }
+
+  body:has(> .site > nav) > .site > .product {
+    color: var(--color-heading);
+  }
+}
+
+/* ==== Blueprint blue marks what is planned but not yet built: a mod in the
+   plan, as the game draws a ghost before it is placed (DESIGN 3). ==== */
+.hit:has(.badge--chosen) {
+  background: color-mix(in srgb, var(--color-info-bg) 55%, transparent);
+  border-inline-start-color: var(--color-info);
+}
+
+.badge--chosen {
+  background: var(--color-info-bg);
+  border-color: color-mix(in srgb, var(--color-info) 60%, transparent);
+  color: var(--color-info);
+}
+
+.badge--chosen::before {
+  background: var(--color-info);
+}
+
+/* Wide settings forms put their groups two to a row, so a page of short
+   fields fills the card instead of one long column (DESIGN 8.15). */
+@container (min-width: 92rem) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(.settings-sub, fieldset)) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(.settings-sub, fieldset)) > :not(.setting-row) {
+    grid-column: 1 / -1;
+  }
+
+  /* Each pair of groups shares one rule above it. */
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(.settings-sub, fieldset)) > .setting-row {
+    margin-block-start: var(--space-5);
+    padding-block-start: var(--space-5);
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(.settings-sub, fieldset)) > .setting-row:is(:nth-of-type(1), :nth-of-type(2)) {
+    margin-block-start: 0;
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
 }

@@ -72,6 +72,9 @@ func (WorldsPage) SwitchPath(id string) string { return switchPath(id) }
 type LiveState struct {
 	State game.State
 	Have  bool
+	// Name is the active world's name, set only for the status strip
+	// over every page (DESIGN 6); empty elsewhere.
+	Name string
 }
 
 // Word is the state badge's word.

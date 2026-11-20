@@ -419,6 +419,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 			return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04:05 UTC"))
 		},
 		"deletedPath":   func() string { return PathDeleted },
+		"favoritesPath": func() string { return PathFavorites },
 		"signInPath":    func() string { return PathSignIn },
 		"setupPath":     func() string { return PathSetup },
 		"signOutPath":   func() string { return PathSignOut },
