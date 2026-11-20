@@ -182,7 +182,9 @@
       <label class="check"><input type="checkbox" id="large-amounts"> {{t "worlds.generate.resources.label"}}</label>
       {{- /* The bar is seen; the status line says the sentence once as the count starts, after any news of the picture or planet, and says when the amounts are ready (SPEC 17.15). */}}
       <div class="wait resource-amounts__counting" id="large-counting" hidden>
-        <p class="hint" id="large-counting-text">{{t "worlds.generate.resources.counting"}}</p>
+        {{- /* The whole sentence is the status line's, under the title; beside the box only the short word shows (DESIGN 8.8). */}}
+        <p class="visually-hidden" id="large-counting-text">{{t "worlds.generate.resources.counting"}}</p>
+        <p class="hint" aria-hidden="true">{{t "worlds.generate.resources.counting_short"}}</p>
         {{- /* The sentence is said as the count starts; the bar is not named again (DESIGN 8.8). */}}
         <progress aria-hidden="true"></progress>
       </div>
