@@ -2208,7 +2208,7 @@ and `--space-4` of padding, and sizes its own controls from its width, as
 the settings do from theirs (8.7). Several planets are thumbnails, two to a
 row. From 100rem the preview column takes about two fifths of the page.
 From 90rem the world's name and its game version pair up, and on a map
-section at least 40rem wide the preset and the seed pair up; starting
+section at least 40rem wide the preset and the seed pair up; a pair shares a label row, a hint row and a control row, so the controls line up and a field without a hint leaves that row blank; starting
 from a favorite is one row on a card at least 64rem wide. Narrower than that it is one column in source order, and on a phone (30rem
 and narrower) the preview comes straight after the preset and seed, so it
 is on the first screens, and the planets' rows in the settings start

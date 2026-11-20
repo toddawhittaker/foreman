@@ -198,6 +198,28 @@ test("a long world name fits at any width", async ({ page, foreman, fakeGame }) 
   await checkPage(page);
 });
 
+// DESIGN 8.6: side-by-side fields share label, hint and control rows, so a
+// control lines up with its neighbour's even when only one has a hint.
+test("paired fields line up their controls on a wide screen", async ({ page, foreman, fakeGame }) => {
+  test.skip(test.info().project.name.startsWith("phone"), "a phone project emulates a phone; the widths are set here on desktop");
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+  const top = async (sel: string) => (await box(sel)).y;
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  expect(await top("#generate-name")).toBeCloseTo(await top("#generate-version-select"), 0);
+  expect(await top("#generate-preset")).toBeCloseTo(await top("#generate-seed"), 0);
+  // The narrowest widths at which each pair sits side by side: 90rem for name
+  // and version, and a map section of 40rem for preset and seed.
+  for (const width of [1440, 1200, 1100]) {
+    await page.setViewportSize({ width, height: 1080 });
+    if ((await box("#generate-version-select")).x > (await box("#generate-name")).x)
+      expect(await top("#generate-name")).toBeCloseTo(await top("#generate-version-select"), 0);
+    if ((await box("#generate-seed")).x > (await box("#generate-preset")).x)
+      expect(await top("#generate-preset")).toBeCloseTo(await top("#generate-seed"), 0);
+  }
+});
+
 // DESIGN 8.6: the map options follow the game version and Space Age.
 test("choosing another game line redraws the presets, and Space Age is refused for 1.1", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);

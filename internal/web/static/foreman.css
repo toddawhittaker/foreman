@@ -11257,6 +11257,57 @@ form.settings[hidden] {
     grid-column: auto;
   }
 
+  /* Preset and seed share message, label, hint, control and error rows,
+     so the select and the input line up (DESIGN 8.6). */
+  :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field) {
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    row-gap: var(--space-2);
+  }
+
+  #preset-box > .message {
+    grid-row: 1;
+  }
+
+  #preset-box > .field {
+    grid-row: 2 / span 4;
+    grid-template-rows: subgrid;
+  }
+
+  #preset-box > .field > label {
+    grid-row: 1;
+  }
+
+  #preset-box + .field > label {
+    grid-row: 2;
+  }
+
+  #preset-box + .field > .hint {
+    grid-row: 3;
+  }
+
+  #preset-box + .field > .inline-row {
+    grid-row: 4;
+  }
+
+  #preset-box + .field > .error {
+    grid-row: 5;
+  }
+
+  #preset-box > .field > .inline-row {
+    grid-row: 3;
+  }
+
+  /* A shared row is as tall as the taller control; each starts at its top. */
+  :is(#preset-box > .field, #preset-box + .field) > * {
+    align-self: start;
+  }
+
+  #preset-box > .field > .error {
+    grid-row: 4;
+  }
+
   .map-section .modes {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -11281,6 +11332,37 @@ form.settings[hidden] {
   .gen-settings > .field:has(#generate-name),
   .gen-settings > .version-fields {
     grid-column: auto;
+  }
+
+  /* Name and version share label, hint and control rows, so the input and
+     the select line up; what follows the control flows below (DESIGN 8.6). */
+  .gen-settings > .field:has(#generate-name),
+  .gen-settings > .version-fields {
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    row-gap: var(--space-2);
+  }
+
+  .gen-settings > .field:has(#generate-name) > .error {
+    grid-row: 4;
+  }
+
+  .version-fields > .field:has(#generate-version-select) {
+    grid-row: 1 / span 3;
+    grid-template-rows: subgrid;
+  }
+
+  #generate-version-select {
+    grid-row: 3;
+  }
+
+  .version-fields > .disclosure {
+    grid-row: 4;
+  }
+
+  .version-fields > .field:has(#generate-space-age) {
+    grid-row: 5;
   }
 }
 
