@@ -44,3 +44,13 @@ test("column heads and fact names are 13 px sentence case; the overline keeps ca
   expect(await style(page.locator("main .eyebrow").first(), "textTransform")).toBe("uppercase");
   await checkPage(page);
 });
+
+test("a Settings page opens with its breadcrumb in place of the overline", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/settings/restart-schedule");
+  const crumb = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(crumb.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings/general");
+  await expect(crumb.locator('li:last-child [aria-current="page"]')).toHaveText("Restart schedule");
+  await expect(page.locator("main .eyebrow")).toHaveCount(0);
+  await checkPage(page);
+});

@@ -22,7 +22,7 @@ test("a new schedule is offered at 04:00 UTC and saves", async ({ page }) => {
   await expect(page.locator("#schedule-state")).toHaveText("No restart is scheduled.");
   // How it works comes before the form, as a numbered list.
   await expect(page.getByRole("heading", { name: "How it works" })).toBeVisible();
-  await expect(page.locator("main ol > li")).toHaveCount(5);
+  await expect(page.locator("main ol:not(.crumb > ol) > li")).toHaveCount(5);
   // A new schedule is offered ticked, at 04:00 UTC with a one-hour limit.
   await expect(page.getByLabel("Restart the active world every day")).toBeChecked();
   await expect(page.getByLabel("Time", { exact: true })).toHaveValue("04:00");

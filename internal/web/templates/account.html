@@ -25,7 +25,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow">{{t "common.nav.settings"}}</p>
+{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "account.title"))}}
 <h1>{{t "account.title"}}</h1>
 {{template "rail" $}}
 {{- if not .Done.IsZero}}
