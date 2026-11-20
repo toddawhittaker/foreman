@@ -24,6 +24,14 @@ test("the breadcrumb is a navigation landmark holding an ordered list", async ({
   expect(await style(link, "textDecorationColor")).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
   expect(await style(crumb.locator("[aria-current]"), "textDecorationLine")).toBe("none");
   await checkPage(page);
+
+  // The chevron is a mask; with forced colours it is painted in the text
+  // colour, so it does not vanish into the page.
+  await page.emulateMedia({ forcedColors: "active" });
+  const paint = await link.evaluate((el) => [getComputedStyle(el, "::after").backgroundColor, getComputedStyle(document.body).backgroundColor]);
+  expect(paint[0], "the chevron's paint differs from the page").not.toBe(paint[1]);
+  expect(paint[0], "the chevron is in the text colour").toBe(await page.evaluate(() => getComputedStyle(document.body).color));
+  await page.emulateMedia({ forcedColors: "none" });
 });
 
 test("column heads and fact names are 13 px sentence case; the overline keeps capitals", async ({ page, foreman }) => {
