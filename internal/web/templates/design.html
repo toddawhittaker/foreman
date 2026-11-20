@@ -54,6 +54,8 @@
   <li><button type="button" class="button button--danger">{{t "worlds.world.delete.button"}}</button><code>button--danger</code></li>
   <li><a href="#design-buttons" class="button button--risky">{{t "worlds.world.delete.button"}}</a><code>button--risky</code></li>
   <li><button type="button" class="button button--icon"><span class="visually-hidden">{{t "worlds.snapshots.delete.button"}}</span></button><code>button--icon</code></li>
+  <li><a href="#design-buttons" class="button button--remove"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{t "worlds.snapshots.delete.button"}}</span></a><code>button--remove</code></li>
+  <li><a href="#design-buttons" class="button button--ghost">{{t "settings.cancel"}}</a><code>button--ghost</code></li>
   <li><button type="button" class="button" disabled>{{t "worlds.snapshots.take.button"}}</button><code>disabled</code></li>
   <li><button type="button" class="button button--primary" disabled aria-busy="true">{{t "server.state.starting"}}</button><code>aria-busy</code></li>
   <li><button type="button" class="button" disabled aria-busy="true">{{t "worlds.snapshots.take.button"}}</button><code>aria-busy</code></li>
@@ -125,8 +127,8 @@
     <input id="{{.Theme}}-confirm-name" type="text" autocomplete="off">
   </div>
   <div class="actions">
-    <button type="button" class="button button--danger">{{t "worlds.world.delete.button"}}</button>
     <a href="#design-messages">{{t "worlds.delete.cancel"}}</a>
+    <button type="button" class="button button--danger">{{t "worlds.world.delete.button"}}</button>
   </div>
 </section>
 {{- end}}

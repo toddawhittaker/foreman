@@ -1,9 +1,11 @@
 {{define "title"}}{{t "users.delete.question" "name" .Page.User.Username}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "user"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <h1 id="confirm-heading">{{t "users.delete.question" "name" .User.Username}}</h1>
-{{template "settings-tabs" "user"}}
+{{template "rail" $}}
 <section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
@@ -18,8 +20,8 @@
   {{- end}}
   <form method="post" action="{{.User.DeletePath}}" novalidate>
     <div class="actions">
-      <button type="submit" class="button button--danger" id="act-user-delete">{{t "users.delete.button"}}</button>
       <a href="{{.BackPath}}">{{t "users.delete.cancel"}}</a>
+      <button type="submit" class="button button--danger" id="act-user-delete">{{t "users.delete.button"}}</button>
     </div>
   </form>
 </section>

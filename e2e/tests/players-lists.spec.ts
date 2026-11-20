@@ -34,7 +34,7 @@ async function start(page: Page) {
 test("a stopped world's ban list and whitelist are saved through the preview, with a snapshot", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!, { running: false });
   writeFileSync(config(foreman, "server-banlist.json"), JSON.stringify([{ username: "bob", reason: "griefing" }]));
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=bans");
   await expect(page.getByLabel("Banned players")).toHaveValue("bob");
   await checkPage(page);
 
@@ -43,7 +43,12 @@ test("a stopped world's ban list and whitelist are saved through the preview, wi
   await expect(page.locator("#bans-error")).toContainText("Line 2 is not a usable player name");
   await expect(page.getByLabel("Banned players")).toHaveAttribute("aria-invalid", "true");
 
+  // A ban on its sub-page and a whitelist change on the next go into one
+  // preview: the draft keeps the first while the second is made.
+  await page.goto("/worlds/base/settings?section=bans");
   await page.getByLabel("Banned players").fill("bob\ncarl");
+  await page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Whitelist" }).click();
+  await expect(page).toHaveURL(/section=whitelist/);
   await page.getByLabel("Whitelisted players", { exact: true }).fill("hank");
   await page.getByRole("button", { name: "Preview changes" }).click();
   await expect(page.getByRole("heading", { name: "Changes to the ban list" })).toBeVisible();
@@ -60,7 +65,7 @@ test("a stopped world's ban list and whitelist are saved through the preview, wi
 
 test("the whitelist switch is saved per world, and the next start enforces the whitelist", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!, { running: false });
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=whitelist");
   await expect(page.getByText('The game checks this list only while "Only whitelisted players can join" is on.')).toBeVisible();
   const box = page.getByLabel("Only whitelisted players can join");
   await expect(box).not.toBeChecked();
@@ -73,7 +78,7 @@ test("the whitelist switch is saved per world, and the next start enforces the w
 
   // Started with the switch on, the game keeps the whitelist: it is edited live.
   await start(page);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=whitelist");
   const card = page.locator("section#settings-whitelist");
   await expect(card.getByText("Nobody is on the whitelist.")).toBeVisible();
   await card.getByLabel("Add a player").fill("hank");
@@ -97,7 +102,7 @@ test("the whitelist switch is saved per world, and the next start enforces the w
 
 test("on a running world a ban confirms with a reason, and unban acts at once with Undo", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!, { running: true });
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=bans");
   const card = page.locator("section#settings-bans");
   await expect(card.getByText("The server is running, so changes here go to the game at once. No snapshot is taken.")).toBeVisible();
   await expect(card.getByText("Nobody is banned.")).toBeVisible();

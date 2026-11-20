@@ -27,8 +27,9 @@
   {{- /* The logo is decorative beside the name, so the link's name is "Foreman". */}}
   <a href="{{serverPath}}" class="product"><img src="{{static "icons/logo-32.png"}}" srcset="{{static "icons/logo-64.png"}} 2x" alt="" width="32" height="32"><span class="product__name">Foreman</span></a>
   {{- if .User}}
-  {{- /* The state shows here on every width; Server's tab says it to screen readers (DESIGN 7.5). */}}
-  <span id="site-state" class="site-state" aria-hidden="true">{{template "nav-lamp" .Lamp}}</span>
+  {{- /* The state shows here on every width; Server's tab says it to screen readers (DESIGN 7.5).
+       From 64rem it is the status strip over the content, after the live world's name (DESIGN 6, Shell). */}}
+  <div class="site-strip">{{with .Lamp.Name}}<span class="site-world" aria-hidden="true">{{.}}</span>{{end}}<span id="site-state" class="site-state" aria-hidden="true">{{template "nav-lamp" .Lamp}}</span></div>
   <nav aria-label="{{t "common.nav.label"}}">
     <ul class="tabs" role="list">
       {{- /* "page" only on the page itself; "true" on the section a page belongs to (DESIGN 6). */}}
@@ -39,6 +40,10 @@
       <li><a href="{{generalPath}}"{{if .Current (print generalPath "#page")}} aria-current="page"{{else if .Current generalPath}} aria-current="true"{{end}}>{{t "common.nav.settings"}}</a></li>
     </ul>
   </nav>
+  {{- /* The area's own pages follow the four areas in the rail from 64rem, so
+       the keyboard meets them where the eye does; below that the page shows
+       the same list under its heading (DESIGN 6, Shell). */}}
+  {{- block "rail" .}}{{end}}
   {{- end}}
   {{- /* A native details element, so the menu opens by keyboard and without script (DESIGN 6, "User menu"). */}}
   {{- $langName := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$langName = .Name}}{{end}}{{end}}
@@ -254,6 +259,19 @@
 </nav>
 {{- end}}
 
+{{/* The Worlds area's own pages: the list, Favorites and Deleted worlds
+     (DESIGN 6, "Sub-navigation"). Takes "worlds", "favorites", "deleted", or
+     "" on a page under Worlds that is none of them (Generate, Import). */}}
+{{define "worlds-area-tabs" -}}
+<nav class="subnav subnav--worlds" aria-label="{{t "worlds.area.label"}}">
+  <ul role="list">
+    <li><a href="{{worldsPath}}"{{if eq . "worlds"}} aria-current="page"{{end}}>{{t "worlds.area.all"}}</a></li>
+    <li><a href="{{favoritesPath}}"{{if eq . "favorites"}} aria-current="page"{{end}}>{{t "favorites.title"}}</a></li>
+    <li><a href="{{deletedPath}}"{{if eq . "deleted"}} aria-current="page"{{end}}>{{t "worlds.deleted.title"}}</a></li>
+  </ul>
+</nav>
+{{- end}}
+
 {{/* The tabs of a world's pages (DESIGN 6, "Sub-navigation"). Takes WorldTabs. */}}
 {{/* The server's state beside the active world's name, on each of its pages (DESIGN 7.5). Takes LiveState. */}}
 {{define "live-state" -}}
@@ -270,7 +288,15 @@
     <li><a href="{{.Path}}/snapshots" aria-label="{{t "worlds.world.snapshots_name"}}"{{if eq .Current "snapshots"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
     {{- if .Settings}}
     <li><a href="{{.Path}}/mods"{{if eq .Current "mods"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "mods.tab"}}</a></li>
-    <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a></li>
+    <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a>
+      {{- if .Sub}}
+      <ul class="subnav__sub" role="list">
+        {{- range .Sub}}
+        {{- /* The dot that marks a sub-page holding unsaved edits is drawn, so its words are here for screen readers; settingsdraft.js shows them. */}}
+        <li><a href="{{.Href}}" data-section="{{.Section}}"{{if .Current}} aria-current="page"{{end}}>{{msg .Label}}<span class="visually-hidden" data-unsaved-note hidden> {{t "settings.draft.unsaved_mark"}}</span></a></li>
+        {{- end}}
+      </ul>
+      {{- end}}</li>
     {{- end}}
   </ul>
 </nav>

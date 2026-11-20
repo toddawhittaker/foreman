@@ -2,11 +2,13 @@
 
 {{define "scripts"}}<script src="{{static "schedule.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "schedule"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "common.menu.schedule"}}</h1>
-{{template "settings-tabs" "schedule"}}
+{{template "rail" $}}
 {{- if .Saved}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{if .On}}{{tHTML "schedule.done.next" "next" (momentUTC .Next)}}{{else}}{{t "schedule.done.off"}}{{end}}</p>

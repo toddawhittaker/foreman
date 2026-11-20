@@ -1,10 +1,12 @@
 {{define "title"}}{{t "publicmods.settings.title"}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "public-mods"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "publicmods.settings.title"}}</h1>
-{{template "settings-tabs" "public-mods"}}
+{{template "rail" $}}
 {{- if .Done}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "on"}}{{t "publicmods.settings.done.on"}}{{else}}{{t "publicmods.settings.done.off"}}{{end}}</p>

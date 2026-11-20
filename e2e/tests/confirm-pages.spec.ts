@@ -79,7 +79,8 @@ test("every confirmation page has one heading, no Back link and one main action"
   await page.goto("/deleted");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Deleted worlds");
   await expect(page.locator("main").getByRole("link", { name: /^Back to/ })).toHaveCount(0);
-  expect(await page.locator("main").evaluate((m) => m.firstElementChild?.tagName)).toBe("H1");
+  // Deleted worlds sits under Worlds, so only its breadcrumb comes before the heading (DESIGN 8.1).
+  expect(await page.locator("main").evaluate((m) => [...m.children].slice(0, 2).map((c) => `${c.tagName}.${c.className}`))).toEqual(["P.crumb", "H1."]);
   await checkPage(page);
   await page.getByRole("link", { name: /^Restore/ }).first().click();
   await expectPlainConfirmation(page, "restore deleted world");

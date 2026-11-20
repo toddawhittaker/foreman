@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, checkPage, createAdmin, mainNav, openLanguages, openMenu, pickLanguage, seedWorld } from "./foreman.js";
+import { darkBg, test, expect, checkPage, createAdmin, mainNav, openLanguages, openMenu, pickLanguage, seedWorld } from "./foreman.js";
 
 // DESIGN 6 ("User menu"), 8.15; SPEC 17.1, 17.2, 17.3, 22.2. The user menu
 // holds a language row that folds the other seven languages, a theme row
@@ -7,7 +7,6 @@ import { test, expect, checkPage, createAdmin, mainNav, openLanguages, openMenu,
 // Settings tab. Every project runs these, at 320 px and at desktop width.
 
 const flagFiles = ["gb", "de", "ru", "cn", "fr", "es", "pl", "cz"];
-const darkBg = "rgb(20, 17, 14)";
 
 const langRow = (page: Page) => page.locator("details.menu__langs > summary");
 const themes = (page: Page) => page.getByRole("group", { name: "Theme" });
@@ -191,7 +190,7 @@ for (const lang of ["de", "ru"]) {
       expect(size.scroll).toBeLessThanOrEqual(size.client);
     };
     await fits();
-    const tabs = page.locator("header.site nav a");
+    const tabs = page.locator("header.site > nav:not(.subnav) a");
     await expect(tabs).toHaveCount(4);
     for (const el of [...(await tabs.all()), page.locator("details.menu > summary")]) {
       const box = (await el.boundingBox())!;

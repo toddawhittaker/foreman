@@ -1,10 +1,12 @@
 {{define "title"}}{{if .Page.Nothing}}{{t "settings.preview.nothing_title" "world" .Page.WorldName}}{{else}}{{t "settings.preview.heading" "world" .Page.WorldName}}{{end}}{{end}}
 
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- if .Nothing}}
 <h1>{{t "settings.preview.nothing_title" "world" .WorldName}}</h1>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{- if .FileChanged}}
 <div class="message message--note" id="file-changed" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.nothing_left"}}</p>
@@ -15,7 +17,7 @@
 <div class="actions"><a href="{{.BackPath}}" class="button">{{t "settings.preview.back_fresh"}}</a></div>
 {{- else}}
 <h1>{{t "settings.preview.heading" "world" .WorldName}}</h1>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{- if .FileChanged}}
 <div class="message message--warning" id="file-changed" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.warning"}}</strong> {{t "settings.preview.changed" "file" .File}}</p>

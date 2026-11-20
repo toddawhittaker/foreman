@@ -309,7 +309,8 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 	for _, want := range []string{
 		`<input type="checkbox" id="large-amounts"> Show resource amounts</label>`,
 		`<div class="wait resource-amounts__counting" id="large-counting" hidden>`,
-		`<p class="hint" id="large-counting-text">Counting resources in the map… This can take up to a minute.</p>`,
+		`<p class="visually-hidden" id="large-counting-text">Counting resources in the map… This can take up to a minute.</p>`,
+		`<p class="hint" aria-hidden="true">Counting…</p>`,
 		// The sentence is said as a count starts; the bar is not named again (DESIGN 8.8).
 		`<progress aria-hidden="true"></progress>`,
 		`data-ready="Resource amounts ready."`,

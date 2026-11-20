@@ -24,5 +24,10 @@
   "publicmods.title": "Modyfikacje tego serwera",
   "publicmods.unchecked": "Nie udało się teraz sprawdzić portalu modyfikacji, więc żadna modyfikacja nie jest oznaczona jako brakująca na nim. Pobieranie działa mimo to.",
   "publicmods.where.heading": "Gdzie umieścić modyfikacje",
-  "publicmods.where.text": "Plik zip każdej modyfikacji należy umieścić bez rozpakowywania w folderze modyfikacji klienta Factorio: Windows {windows}, macOS {macos}, Linux {linux}. Plik z „Pobierz wszystko” zawiera pliki zip modyfikacji, więc do folderu należy rozpakować tylko ten plik."
+  "publicmods.where.os.linux": "Linux",
+  "publicmods.where.os.macos": "macOS",
+  "publicmods.where.os.windows": "Windows",
+  "publicmods.where.step_download": "Wybierz „Pobierz wszystko”. Powstaje jeden plik zip, który zawiera plik zip każdej modyfikacji.",
+  "publicmods.where.step_keep": "Pliku zip każdej modyfikacji nie należy rozpakowywać; Factorio odczytuje go bez zmian.",
+  "publicmods.where.step_unpack": "Ten jeden plik należy rozpakować do folderu modyfikacji klienta Factorio:"
 }

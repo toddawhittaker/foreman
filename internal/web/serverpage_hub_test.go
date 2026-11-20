@@ -254,7 +254,7 @@ func TestTakeSnapshotOffered(t *testing.T) {
 		game.StateStarting: false, game.StateStopping: false, game.StateCrashed: false, game.StateUnknown: false,
 	} {
 		html := controlHTML(t, serverCase(state, func(*ServerPage) {}))
-		// While the game runs, Take snapshot is the page's one primary action.
+		// Take snapshot is plain beside Start, and the primary once nothing brings the game up.
 		face := `class="button"`
 		if state == game.StateRunning {
 			face = `class="button button--primary"`

@@ -8,6 +8,7 @@
   "apitokens.create.admin_warning": "Avant une action d’admin destructrice, Foreman demande au programme de la confirmer une seconde fois. Cela protège des erreurs, pas d’une IA guidée par ce qu’elle a lu, comme le message d’un joueur dans le chat. N’accordez la portée admin que si vous en avez besoin.",
   "apitokens.create.button": "Créer le jeton",
   "apitokens.create.heading": "Créer un jeton",
+  "apitokens.create.mcp_off": "L’accès MCP est désactivé : ce jeton ne fonctionnera pas tant que vous n’aurez pas activé l’accès MCP.",
   "apitokens.create.name": "Nom",
   "apitokens.create.name.hint": "Jusqu’à {max} lettres, chiffres, espaces, points, tirets bas et traits d’union. Les messages envoyés avec le jeton commencent par ce nom.",
   "apitokens.create.name.invalid": "Saisissez un nom de 1 à {max} lettres, chiffres, espaces, points, tirets bas ou traits d’union.",

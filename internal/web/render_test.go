@@ -149,7 +149,7 @@ func pageCases() []pageCase {
 		{"notifications no key", "todd", 200, NotificationsPage{NoKey: true}},
 		{"notifications list", "todd", 200, NotificationsPage{Done: i18n.M("notify.done.added", "preset", i18n.M("notify.preset.discord"), "host", "discord.com"), Hooks: []WebhookView{
 			{ID: 1, Preset: i18n.M("notify.preset.discord"), Host: "discord.com", LangTag: "en", LangName: "English", AllOn: true},
-			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", Events: "Crash, low disk", Plain: true},
+			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", EventList: []string{"Crash", "Low disk"}, Plain: true},
 			{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: "hooks.example.org", LangTag: "fr", LangName: "Français", AllOn: true, Unreadable: true},
 		}}},
 		{"notification add", "todd", 200, formPage(notify.Discord, defaultEvents(), "en")},
@@ -187,7 +187,7 @@ func pageCases() []pageCase {
 		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},
 		{"api tokens listed", "todd", 200, APITokensPage{Admin: true, MCPOn: true,
 			Mine: []TokenRow{{ID: 1, Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}},
-			All:  []TokenRow{{ID: 1, IDPrefix: "all-", Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}, {ID: 2, IDPrefix: "all-", Owner: "bob", Name: "Old", Scope: "admin", State: auth.TokenRevoked}},
+			All:  []TokenRow{{ID: 1, Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}, {ID: 2, Owner: "bob", Name: "Old", Scope: "admin", State: auth.TokenRevoked}},
 			Form: TokenForm{Name: "a[b]", Scope: "admin", NameError: i18n.M("apitokens.create.name.taken")}}},
 		{"api tokens used", "todd", 200, APITokensPage{Form: TokenForm{Scope: "read"}, Mine: []TokenRow{{ID: 3, Owner: "todd", Name: "Used", Scope: "read", State: auth.TokenWorking, Mine: true, LastUsed: time.Date(2026, 11, 2, 9, 7, 30, 0, time.UTC)}}}},
 		{"api tokens forced off", "todd", 200, APITokensPage{MCPForced: true, Done: tokenDoneRevoked, DoneName: "Claude", Form: TokenForm{Scope: "read"}}},

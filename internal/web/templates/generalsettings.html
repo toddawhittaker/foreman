@@ -9,11 +9,13 @@
 {{- end}}
 {{- end}}
 
+{{define "rail"}}{{template "settings-tabs" "general"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "common.menu.general"}}</h1>
-{{template "settings-tabs" "general"}}
+{{template "rail" $}}
 {{- if .Saved}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{t "general.done"}}</p>
@@ -25,7 +27,7 @@
 {{template "summary" .Problems}}
 <form method="post" action="{{.Path}}" class="panel setting-rows" novalidate>
   {{template "required-note"}}
-  <p class="hint" id="general-source">{{t "general.source"}}</p>
+  {{- /* The two retention groups pair first, then the stop countdown beside the upload limits. */}}
   <section class="setting-row" aria-labelledby="general-snapshots-heading">
     <div class="setting-row__head">
       <h2 id="general-snapshots-heading">{{t "general.snapshots.heading"}}</h2>
@@ -44,19 +46,6 @@
       </div>
     </div>
   </section>
-  <section class="setting-row" aria-labelledby="general-stop-heading">
-    <div class="setting-row__head">
-      <h2 id="general-stop-heading">{{t "general.stop.heading"}}</h2>
-      <p class="hint">{{t "general.stop.text"}}</p>
-    </div>
-    <div class="setting-row__body">
-      <div class="field">
-        <label for="{{.StopCountdown.ID}}" class="required">{{t "general.stop.label"}}</label>
-        <p class="hint" id="{{.StopCountdown.ID}}-hint">{{t "general.range.hint" "min" .StopCountdown.Min "max" .StopCountdown.Max}} {{t "general.stop.hint"}}</p>
-        {{template "general-input" .StopCountdown}}
-      </div>
-    </div>
-  </section>
   <section class="setting-row" aria-labelledby="general-audit-heading">
     <div class="setting-row__head">
       <h2 id="general-audit-heading">{{t "general.audit.heading"}}</h2>
@@ -67,6 +56,19 @@
         <label for="{{.AuditRetention.ID}}" class="required">{{t "general.audit.label"}}</label>
         <p class="hint" id="{{.AuditRetention.ID}}-hint">{{t "general.range.hint" "min" .AuditRetention.Min "max" .AuditRetention.Max}}</p>
         {{template "general-input" .AuditRetention}}
+      </div>
+    </div>
+  </section>
+  <section class="setting-row" aria-labelledby="general-stop-heading">
+    <div class="setting-row__head">
+      <h2 id="general-stop-heading">{{t "general.stop.heading"}}</h2>
+      <p class="hint">{{t "general.stop.text"}}</p>
+    </div>
+    <div class="setting-row__body">
+      <div class="field">
+        <label for="{{.StopCountdown.ID}}" class="required">{{t "general.stop.label"}}</label>
+        <p class="hint" id="{{.StopCountdown.ID}}-hint">{{t "general.range.hint" "min" .StopCountdown.Min "max" .StopCountdown.Max}} {{t "general.stop.hint"}}</p>
+        {{template "general-input" .StopCountdown}}
       </div>
     </div>
   </section>
@@ -88,7 +90,9 @@
       </div>
     </div>
   </section>
-  <div class="actions">
+  {{- /* The save bar sticks to the window's foot, as Game settings' does; where the values come from leads it. */}}
+  <div class="actions form-foot">
+    <p class="hint form-foot__note" id="general-source">{{t "general.source"}}</p>
     <button type="submit" class="button button--primary" id="act-general-save">{{t "general.save"}}</button>
   </div>
 </form>

@@ -3,11 +3,14 @@
 {{define "scripts"}}<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
 {{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}{{end}}
 
+{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{t "worlds.generate.title"}}</span></p>
 <h1>{{t "worlds.generate.title"}}</h1>
-<p class="hint">{{t "worlds.generate.intro"}}</p>
+{{template "rail" $}}
+<p class="page-intro">{{t "worlds.generate.intro"}}</p>
 {{- if .FavoritesOn}}
 {{- /* A plain GET, so without script the page reloads filled in (SPEC 5.12). */}}
 <form method="get" action="{{.Path}}" class="panel" id="favorite-chooser" aria-labelledby="favorite-chooser-heading">
@@ -164,8 +167,9 @@
         {{- if $.Page.CanPreview}}
         {{/* Says a new preview is being drawn as the settings change; the script fills it. */}}
         <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
-        {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider and redraws on a change. */}}
-        <div class="field step">
+        {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider, redraws on a change,
+             and moves it into the drawn preview's slot above the picture, carrying it across each reply (DESIGN 8.6). */}}
+        <div class="field step" id="preview-size-field">
           <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
           <select id="generate-preview-size" name="preview_size"
             {{- if not .PreviewSizeError.IsZero}} aria-invalid="true" aria-describedby="generate-preview-size-hint generate-preview-size-error"{{else}} aria-describedby="generate-preview-size-hint"{{end}}>
@@ -184,12 +188,12 @@
   {{- end}}
   </div>
   <div class="actions gen-actions">
-    <button type="submit" class="button button--primary" id="generate-button">{{t "worlds.generate.button"}}</button>
+    <a href="{{worldsPath}}">{{t "worlds.cancel"}}</a>
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
       hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
     {{- end}}
-    <a href="{{worldsPath}}">{{t "worlds.cancel"}}</a>
+    <button type="submit" class="button button--primary" id="generate-button">{{t "worlds.generate.button"}}</button>
   </div>
 </form>
 {{/* Foreman's own question when leaving with settings that are not saved (DESIGN 7.4, 12); the script opens it. */}}

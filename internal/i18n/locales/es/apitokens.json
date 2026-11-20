@@ -8,6 +8,7 @@
   "apitokens.create.admin_warning": "Antes de una acción de administración destructiva, Foreman pide al programa que la confirme una segunda vez. Eso protege de errores, no de una IA guiada por algo que ha leído, como el mensaje de chat de un jugador. Da el alcance de administración solo si lo necesitas.",
   "apitokens.create.button": "Crear token",
   "apitokens.create.heading": "Crear un token",
+  "apitokens.create.mcp_off": "El acceso MCP está desactivado, así que este token no funcionará hasta que actives el acceso MCP.",
   "apitokens.create.name": "Nombre",
   "apitokens.create.name.hint": "Hasta {max} letras, dígitos, espacios, puntos, guiones bajos y guiones. El chat enviado con el token empieza por este nombre.",
   "apitokens.create.name.invalid": "Escribe un nombre de 1 a {max} letras, dígitos, espacios, puntos, guiones bajos o guiones.",

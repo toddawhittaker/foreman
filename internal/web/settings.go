@@ -64,7 +64,6 @@ func (s *server) settingsRoutes() {
 // settingsWorld is a world and its settings files as they are on disk now.
 type settingsWorld struct {
 	sum  world.Summary
-	live LiveState
 	line string
 	// cfg and adminCfg are server-settings.json and server-adminlist.json.
 	cfg, adminCfg world.ConfigRead
@@ -127,7 +126,7 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 // loadWorld reads a world's settings files and player lists as they are now.
 func (h *settingsHandlers) loadWorld(ctx context.Context, sum world.Summary) (settingsWorld, error) {
 	s := h.s
-	sw := settingsWorld{sum: sum, live: s.liveState(sum.ID, sum.Active)}
+	sw := settingsWorld{sum: sum}
 	sw.line, _ = mapgen.Line(sum.GameVersion)
 	var err error
 	if sw.cfg, err = s.worlds.ReadConfig(sum.ID, world.ServerSettingsFile); err != nil {
@@ -184,8 +183,8 @@ func (h *settingsHandlers) formPage(ctx context.Context, sw settingsWorld, text 
 // formPage fills the form from the settings text and admin names given.
 func (sw settingsWorld) formPage(text []byte, names []string) SettingsPage {
 	p := SettingsPage{
-		WorldID: sw.sum.ID, WorldName: sw.sum.Name, Active: sw.sum.Active, Live: sw.live, ReadOnly: sw.readOnly,
-		Running: sw.running, AdminsBroken: sw.adminsBroken,
+		WorldID: sw.sum.ID, WorldName: sw.sum.Name, Active: sw.sum.Active, ReadOnly: sw.readOnly,
+		Running: sw.running, AdminsBroken: sw.adminsBroken, ShowAll: true,
 		Admins:         strings.Join(names, "\n"),
 		HasPauseOnJoin: sw.caps().PauseOnJoin, ForkOff: sw.forkOff(), HostOS: sw.hostOS,
 	}
@@ -265,10 +264,21 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 		refillLists(&p, c)
 	}
 	p.Edit = edit
+	p.ShowAll = false
+	p.Section = settingsSection(r.URL.Query().Get(sectionQuery))
+	if fromEdit && c.Section != "" && r.URL.Query().Get(sectionQuery) == "" {
+		p.Section = c.Section
+	}
 	p.Connected = h.connected(r.Context(), sw, p.Admins)
 	p.PasswordPending = p.PasswordSet && !bytes.Equal(carriedPassword(sw.formText()), carriedPassword(text))
 	h.fillDone(&p, sw, r)
 	p.Player = h.s.playerResults.take(u.ID, sw.sum.ID, settingsPath(sw.sum.ID))
+	if p.Player != nil {
+		p.Section = playerSection(p.Player.Action)
+	}
+	if r.URL.Query().Get(switchQuery) != "" {
+		p.Section = "whitelist"
+	}
 	h.s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -316,9 +326,14 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 	if !s.readForm(w, r) {
 		return
 	}
+	// The sub-page the form was posted from, kept on every page this answers with.
+	var section string
+	if v := r.PostFormValue(sectionQuery); v != "" {
+		section = settingsSection(v)
+	}
 	if !sw.readOnly.IsZero() {
 		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
-		p.Error = sw.readOnly
+		p.Error, p.Section = sw.readOnly, section
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
@@ -326,6 +341,7 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 	_, readable := readServerValues(text)
 	if !readable {
 		p := h.formPage(r.Context(), sw, text, sw.admins)
+		p.Section = section
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
@@ -347,7 +363,7 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 	if errs.has() {
 		p := h.formPage(r.Context(), sw, text, sw.admins)
 		p.setPosted(in)
-		p.Admins, p.Edit, p.formErrors = in.Admins, edit, errs
+		p.Admins, p.Edit, p.formErrors, p.Section = in.Admins, edit, errs, section
 		p.Bans, p.Whitelist = in.Bans, in.Whitelist
 		p.Connected = h.connected(r.Context(), sw, in.Admins)
 		p.PasswordDropped = in.Password != ""
@@ -357,7 +373,7 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	h.showPreview(w, r, u, sw, pendingChange{UserID: u.ID, WorldID: sw.sum.ID, Form: &edit2, Files: files}, false)
+	h.showPreview(w, r, u, sw, pendingChange{UserID: u.ID, WorldID: sw.sum.ID, Form: &edit2, Files: files, Section: section}, false)
 }
 
 // formChange turns a posted settings form into the files it changes,
@@ -501,7 +517,7 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 	}
 	if !sw.readOnly.IsZero() {
 		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
-		p.Error = sw.readOnly
+		p.Error, p.Section = sw.readOnly, c.Section
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
@@ -520,6 +536,9 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 	}
 	if res.Live {
 		to += "&live=1"
+	}
+	if c.Section != "" && c.Section != settingsSections[0].Key {
+		to += "&" + sectionQuery + "=" + c.Section
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
 }
@@ -576,7 +595,7 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 	if pe, ok := errors.AsType[*game.PartialSaveError](err); ok {
 		saved, failed = pe.Saved, pe.Failed
 	}
-	rest := &pendingChange{UserID: c.UserID, WorldID: c.WorldID, Raw: c.Raw, Form: c.Form}
+	rest := &pendingChange{UserID: c.UserID, WorldID: c.WorldID, Raw: c.Raw, Form: c.Form, Section: c.Section}
 	for _, f := range c.Files {
 		if !slices.Contains(saved, f.File) {
 			rest.Files = append(rest.Files, f)
@@ -597,7 +616,7 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 		status, msg = http.StatusInternalServerError, i18n.M("settings.error.failed")
 	}
 	p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
-	p.Error = msg
+	p.Error, p.Section = msg, c.Section
 	if len(saved) > 0 {
 		p.Error = i18n.M("settings.error.partial", "saved", strings.Join(saved, ", "), "failed", strings.Join(failed, ", "), "reason", msg)
 	}

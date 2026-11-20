@@ -1,9 +1,11 @@
 {{define "title"}}{{t "general.confirm.question"}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "general-confirm"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <h1 id="confirm-heading">{{t "general.confirm.question"}}</h1>
-{{template "settings-tabs" "general-confirm"}}
+{{template "rail" $}}
 <section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
@@ -18,8 +20,8 @@
     <input type="hidden" name="{{.Name}}" value="{{.Value}}">
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger" id="act-general-confirm">{{t "general.save"}}</button>
       <a href="{{.CancelPath}}">{{t "general.confirm.cancel"}}</a>
+      <button type="submit" class="button button--danger" id="act-general-confirm">{{t "general.save"}}</button>
     </div>
   </form>
 </section>

@@ -198,6 +198,79 @@ test("a long world name fits at any width", async ({ page, foreman, fakeGame }) 
   await checkPage(page);
 });
 
+// DESIGN 8.6: on a desktop Preview size sits above the picture, in reach
+// without scrolling, and where the window is tall enough the whole pane fits
+// between the top strip and the action bar, the picture shrinking to the room left.
+for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
+  test(`the preview pane keeps Preview size in reach at ${width}x${height}`, async ({ page, foreman, fakeGame }, info) => {
+    test.skip(info.project.name.startsWith("phone"), "a desktop layout");
+    await page.setViewportSize({ width, height });
+    await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+    // The page draws One planet by itself; pressing Preview map as well raced its reply on CI.
+    await expect(page.locator(".gen-preview .pictures img")).toHaveCount(1);
+    // Scroll the page until the pane sticks below the top strip.
+    await page.evaluate(() => window.scrollBy(0, document.querySelector(".gen-preview")!.getBoundingClientRect().top - 40));
+    const m = await page.evaluate(() => {
+      const pane = document.querySelector(".gen-preview")!;
+      return {
+        top: pane.scrollTop,
+        scroll: pane.scrollHeight,
+        client: pane.clientHeight,
+        slider: document.querySelector(".gen-preview .field.step")!.getBoundingClientRect().bottom,
+        bar: document.querySelector(".gen-actions")!.getBoundingClientRect().top,
+      };
+    });
+    expect(m.top).toBe(0);
+    if (height >= 950) expect(m.scroll).toBeLessThanOrEqual(m.client + 1);
+    expect(m.slider).toBeLessThanOrEqual(m.bar);
+    await expect(page.locator(".gen-preview .field.step")).toBeInViewport({ ratio: 1 });
+    // A card narrower than the column sits in its middle.
+    const [left, right] = await page.evaluate(() => {
+      const f = document.querySelector(".gen-preview .pictures figure")!.getBoundingClientRect();
+      const l = document.querySelector(".gen-preview .pictures")!.getBoundingClientRect();
+      return [f.left - l.left, l.right - f.right];
+    });
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: `../screenshots/generate-preview-fit-${width}x${height}-${info.project.name}.png` });
+    // It comes before the picture in the code too, so Tab meets it where the eye does (WCAG 2.4.3).
+    const before = await page.evaluate(() => {
+      const field = document.querySelector("#preview-size-field")!;
+      const list = document.querySelector(".gen-preview .pictures")!;
+      return Boolean(field.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(before).toBe(true);
+    // A step redraws the picture; the control keeps its focus and value across the reply.
+    const control = page.locator("#preview-size-field").getByRole(width > 1500 ? "slider" : "combobox");
+    await control.focus();
+    await page.keyboard.press(width > 1500 ? "ArrowRight" : "ArrowDown");
+    await expect(page.locator(".gen-preview .pictures img")).toHaveAttribute("width", "1408");
+    await expect(control).toBeFocused();
+  });
+}
+
+// DESIGN 8.6: side-by-side fields share label, hint and control rows, so a
+// control lines up with its neighbour's even when only one has a hint.
+test("paired fields line up their controls on a wide screen", async ({ page, foreman, fakeGame }) => {
+  test.skip(test.info().project.name.startsWith("phone"), "a phone project emulates a phone; the widths are set here on desktop");
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+  const top = async (sel: string) => (await box(sel)).y;
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  expect(await top("#generate-name")).toBeCloseTo(await top("#generate-version-select"), 0);
+  expect(await top("#generate-preset")).toBeCloseTo(await top("#generate-seed"), 0);
+  // The narrowest widths at which each pair sits side by side: 90rem for name
+  // and version, and a map section of 40rem for preset and seed.
+  for (const width of [1440, 1200, 1100]) {
+    await page.setViewportSize({ width, height: 1080 });
+    if ((await box("#generate-version-select")).x > (await box("#generate-name")).x)
+      expect(await top("#generate-name")).toBeCloseTo(await top("#generate-version-select"), 0);
+    if ((await box("#generate-seed")).x > (await box("#generate-preset")).x)
+      expect(await top("#generate-preset")).toBeCloseTo(await top("#generate-seed"), 0);
+  }
+});
+
 // DESIGN 8.6: the map options follow the game version and Space Age.
 test("choosing another game line redraws the presets, and Space Age is refused for 1.1", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
@@ -427,8 +500,8 @@ test("a preset world with a seed is made with the keyboard alone, previewing fir
   await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
   await expect(page.getByRole("button", { name: "Preview map" })).toBeFocused();
   await expect(page.locator("#generate-seed")).toHaveValue("777");
-  // The primary button comes first in the action row.
-  await page.keyboard.press("Shift+Tab");
+  // The primary button ends the action row, after Preview map (DESIGN 7.1).
+  await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Generate world" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL("/worlds/keys-only?generated=1");
@@ -774,8 +847,8 @@ test.describe("without script", () => {
   });
 });
 
-// DESIGN 8.6, WCAG 1.3.2 and 2.4.3: the action bar shows Generate world,
-// Preview map, Cancel in code order at every width, so the eye and Tab agree.
+// DESIGN 7.1, WCAG 1.3.2 and 2.4.3: the action bar shows Cancel, Preview map
+// and Generate world in code order at every width, so the eye and Tab agree.
 for (const [name, size, axis] of [
   ["a wide screen", { width: 1280, height: 800 }, "x"],
   ["a phone", { width: 360, height: 740 }, "y"],
@@ -786,7 +859,7 @@ for (const [name, size, axis] of [
     await page.goto("/generate");
     const bar = page.locator(".generate > .gen-actions");
     await expect(page.locator("#preview-button")).toBeVisible();
-    await page.locator("#generate-button").focus();
+    await bar.getByRole("link", { name: "Cancel" }).focus();
     const seen: { id: string; pos: number }[] = [];
     for (let i = 0; i < 3; i++) {
       if (i > 0) await page.keyboard.press("Tab");
@@ -796,7 +869,7 @@ for (const [name, size, axis] of [
         return { id: el.contains(f) ? (f.id || f.tagName) : "outside", pos: axis === "x" ? r.left : r.top };
       }, axis));
     }
-    expect(seen.map((s) => s.id)).toEqual(["generate-button", "preview-button", "A"]);
+    expect(seen.map((s) => s.id)).toEqual(["A", "preview-button", "generate-button"]);
     expect(seen[1].pos).toBeGreaterThan(seen[0].pos);
     expect(seen[2].pos).toBeGreaterThan(seen[1].pos);
   });

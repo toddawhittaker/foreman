@@ -41,8 +41,8 @@
     <input type="hidden" name="world" value="{{.}}">
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger">{{msg .Heading}}</button>
       <a href="{{.BackPath}}">{{t "worlds.snapshots.bulk.cancel"}}</a>
+      <button type="submit" class="button button--danger">{{msg .Heading}}</button>
     </div>
   </form>
 </section>

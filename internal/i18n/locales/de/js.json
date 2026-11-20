@@ -35,5 +35,9 @@
   "js.preview.prepare_planets_wait": "Die Planeten warten, während der Download vorbereitet wird. Brich ihn zuerst ab.",
   "js.preview.prepare_retry": "Erneut versuchen: {planet}",
   "js.preview.prepare_started": "Download gestartet.",
-  "js.preview.prepare_redrawing": "Die Kartenvorschau wird für die neuen Einstellungen gezeichnet. Lade erneut herunter, sobald sie fertig ist."
+  "js.preview.prepare_redrawing": "Die Kartenvorschau wird für die neuen Einstellungen gezeichnet. Lade erneut herunter, sobald sie fertig ist.",
+  "js.settings.unsaved": {
+    "one": "{count} ungespeicherte Änderung, bleibt beim Wechsel zwischen Abschnitten erhalten.",
+    "other": "{count} ungespeicherte Änderungen, bleiben beim Wechsel zwischen Abschnitten erhalten."
+  }
 }

@@ -3,11 +3,14 @@
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
 <script src="{{static "copy.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "worlds-area-tabs" "favorites"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{t "favorites.title"}}</span></p>
 <h1>{{t "favorites.title"}}</h1>
-<p class="hint">{{t "favorites.intro"}}</p>
+{{template "rail" $}}
+<p class="page-intro">{{t "favorites.intro"}}</p>
 {{- with .Deleted}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.deleted" "name" .}}</p>
@@ -23,9 +26,10 @@
   <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.import.done" "name" .}}</p>
 </div>
 {{- end}}
+{{- /* The list leads; importing one, the rarer task, sits in the rail beside it. */}}
+<div class="split">
 <section class="panel" aria-label="{{t "favorites.title"}}">
   {{- with .Favorites}}
-  <p class="hint favorite-export-warning" id="favorite-export-warning"><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
   <ul class="favorite-list" role="list">
     {{- range .}}
     {{- $name := .Name}}
@@ -68,10 +72,14 @@
             <p class="error" id="favorite-{{.ID}}-rename-error"><strong>{{t "common.error.label"}}</strong> {{msg $rename.Error}}</p>
             {{- end}}
           </form>
+          {{- /* The warning sits with the one action it is about, not over the whole page. */}}
+          <div class="message message--warning favorite-export-warning" id="favorite-{{.ID}}-export-warning">
+            <p><strong>{{t "common.label.warning"}}</strong> {{t "favorites.export.warning"}}</p>
+          </div>
           <div class="actions">
-            <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-export-warning">{{t "favorites.export.button"}}</a>
+            <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-{{.ID}}-export-warning">{{t "favorites.export.button"}}</a>
             {{- /* A trash icon, as the webhook list has: red but borderless, so Delete does not weigh as much as Generate (DESIGN 7.1). */}}
-            <a href="{{.DeletePath}}" class="button button--icon" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
+            <a href="{{.DeletePath}}" class="button button--remove" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
           </div>
         </div>
       </details>
@@ -84,6 +92,7 @@
   <div class="actions"><a href="{{worldsPath}}">{{t "favorites.empty.link"}}</a></div>
   {{- end}}
 </section>
+<div class="split__rail">
 <section class="panel" aria-labelledby="favorite-import-heading">
   <h2 id="favorite-import-heading">{{t "favorites.import.heading"}}</h2>
   {{template "summary" .Problems}}
@@ -96,5 +105,7 @@
     </div>
   </form>
 </section>
+</div>
+</div>
 {{- end}}
 {{- end}}

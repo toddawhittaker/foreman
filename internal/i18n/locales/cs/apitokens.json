@@ -8,6 +8,7 @@
   "apitokens.create.admin_warning": "Před destruktivní akcí správce Foreman žádá program o druhé potvrzení. To chrání před omyly, ne před AI řízenou něčím, co si přečetla, například zprávou hráče v chatu. Rozsah správce je vhodné udělit jen v případě potřeby.",
   "apitokens.create.button": "Vytvořit token",
   "apitokens.create.heading": "Vytvořit token",
+  "apitokens.create.mcp_off": "Přístup MCP je vypnutý, takže tento token nebude fungovat, dokud se přístup MCP nezapne.",
   "apitokens.create.name": "Název",
   "apitokens.create.name.hint": "Až {max} písmen, číslic, mezer, teček, podtržítek a pomlček. Zprávy do chatu odeslané tokenem začínají tímto názvem.",
   "apitokens.create.name.invalid": "Je třeba zadat název o 1 až {max} písmenech, číslicích, mezerách, tečkách, podtržítkách nebo pomlčkách.",

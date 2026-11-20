@@ -66,6 +66,20 @@ test.describe("click budgets, with the fake game", () => {
   });
 
   // SPEC 17.10: Settings, then Notifications in the Foreman settings tabs.
+  // SPEC 17.10: a game setting outside Listing is one click more than one in
+  // it: Game settings, its sub-page, Preview changes, Save settings.
+  test("change a game setting outside Listing: 4 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.getByRole("link", { name: "Game settings" }).click();
+    await page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Players and access" }).click();
+    await page.getByLabel("Maximum players").fill("8");
+    await page.getByRole("button", { name: "Preview changes" }).click();
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page.locator(".message--success")).toContainText("Settings saved.");
+    expect(JSON.parse(readFileSync(join(foreman.dataDir, "worlds", "base", "config", "server-settings.json"), "utf8")).max_players).toBe(8);
+    await expectWithin(clicks, 4, "change a game setting outside Listing");
+  });
+
   test("open Notifications: 2 clicks", async ({ page, foreman, fakeGame }) => {
     const clicks = await setUp(page, foreman, fakeGame!);
     await mainNav(page).getByRole("link", { name: "Settings" }).click();

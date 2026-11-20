@@ -483,6 +483,13 @@ test.describe("layout at 320 px in every language", () => {
           "/generate",
           "/worlds/base/clone",
           "/worlds/base/settings",
+          "/worlds/base/settings?section=players",
+          "/worlds/base/settings?section=gameplay",
+          "/worlds/base/settings?section=saving",
+          "/worlds/base/settings?section=network",
+          "/worlds/base/settings?section=admins",
+          "/worlds/base/settings?section=bans",
+          "/worlds/base/settings?section=whitelist",
           "/worlds/base/settings/raw/server-settings.json",
           // Epic 11a: the settings tabs, and a world page with the archived badge.
           "/settings/general",
@@ -538,6 +545,17 @@ test.describe("layout at 320 px in every language", () => {
         async () => {
           await page.goto("/worlds/base/settings");
           await page.locator("#name").fill("Base server");
+          await page.locator("form.settings button.button--primary").click();
+          await expect(page.locator("ul.changes")).toBeVisible();
+        },
+        failures,
+      );
+      await sweepSubmit(
+        page,
+        lang,
+        "/worlds/base/settings players change preview",
+        async () => {
+          await page.goto("/worlds/base/settings?section=players");
           await page.locator("#max-players").fill("7");
           await page.locator("form.settings button.button--primary").click();
           await expect(page.locator("ul.changes")).toBeVisible();

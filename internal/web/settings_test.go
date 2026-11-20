@@ -743,7 +743,7 @@ func TestSettingsNewerWorldIsReadOnly(t *testing.T) {
 	}
 	body := r.getAs(r.cookie, r.path("")).Body.String()
 	if !strings.Contains(body, "A newer version of Foreman wrote this world, so this version cannot change it.") ||
-		strings.Contains(body, "Preview changes") || !strings.Contains(body, `<fieldset id="settings-listing" disabled>`) {
+		strings.Contains(body, "Preview changes") || !strings.Contains(body, `<fieldset id="settings-listing" data-section="listing" disabled>`) {
 		t.Errorf("read-only form:\n%s", body)
 	}
 	raw := r.getAs(r.cookie, r.path("/raw/server-settings.json")).Body.String()

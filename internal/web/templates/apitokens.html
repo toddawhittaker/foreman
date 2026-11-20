@@ -2,49 +2,53 @@
 
 {{/* One token as a card: its facts, then its buttons (SPEC 12.10). Never the secret. */}}
 {{define "token-card" -}}
-<li id="{{.IDPrefix}}token-{{.ID}}" class="token-card">
+<li id="token-{{.ID}}" class="token-card"{{if .Mine}} data-mine{{end}}>
   <h3 class="token-card__title"><span class="ident">{{.Name}}</span> <span class="state state--token-{{.StateClass}}">{{msg .StateWord}}</span></h3>
   <dl class="facts facts--inline">
-    <div><dt>{{t "apitokens.fact.owner"}}</dt><dd>{{.Owner}}</dd></div>
-    <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .ScopeWord}}</dd></div>
+    <div class="token-card__owner"><dt>{{t "apitokens.fact.owner"}}</dt><dd>{{.Owner}}</dd></div>
+    <div class="token-card__scope"><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .ScopeWord}}</dd></div>
     {{- if not .Revoked}}
-    <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Expires}}</dd></div>
+    <div class="token-card__expires"><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Expires}}</dd></div>
     {{- end}}
-    <div><dt>{{t "apitokens.fact.created"}}</dt><dd>{{template "when" .Created}}</dd></div>
-    <div><dt>{{t "apitokens.fact.used"}}</dt><dd>{{if .LastUsed.IsZero}}{{t "apitokens.fact.never"}}{{else}}{{template "when" .LastUsed}}{{end}}</dd></div>
+    <div class="token-card__created"><dt>{{t "apitokens.fact.created"}}</dt><dd>{{template "when" .Created}}</dd></div>
+    <div class="token-card__used"><dt>{{t "apitokens.fact.used"}}</dt><dd>{{if .LastUsed.IsZero}}{{t "apitokens.fact.never"}}{{else}}{{template "when" .LastUsed}}{{end}}</dd></div>
   </dl>
   {{- if not .Revoked}}
   <div class="actions">
     {{- if .Mine}}
     <form method="post" action="{{.RenewPath}}">
-      <button type="submit" class="button" id="{{.IDPrefix}}act-token-renew-{{.ID}}" aria-label="{{t "apitokens.renew.name" "name" .Name}}">{{t "apitokens.renew"}}</button>
+      <button type="submit" class="button" id="act-token-renew-{{.ID}}" aria-label="{{t "apitokens.renew.name" "name" .Name}}">{{t "apitokens.renew"}}</button>
     </form>
     {{- end}}
-    <a href="{{.RevokePath}}" class="button button--risky" id="{{.IDPrefix}}act-token-revoke-{{.ID}}" aria-label="{{t "apitokens.revoke.name" "name" .Name "owner" .Owner}}">{{t "apitokens.revoke"}}</a>
+    <a href="{{.RevokePath}}" class="button button--remove button--revoke" id="act-token-revoke-{{.ID}}" aria-label="{{t "apitokens.revoke.name" "name" .Name "owner" .Owner}}">{{t "apitokens.revoke"}}</a>
   </div>
   {{- end}}
 </li>
 {{- end}}
 
+{{/* The column names of a token list on a wide screen; each row keeps its own for screen readers. */}}
+{{define "token-head"}}<div class="token-head" aria-hidden="true"><span>{{t "apitokens.create.name"}}</span><span>{{t "apitokens.fact.owner"}}</span><span>{{t "apitokens.fact.scope"}}</span><span>{{t "apitokens.fact.expires"}}</span><span>{{t "apitokens.fact.created"}}</span><span>{{t "apitokens.fact.used"}}</span></div>{{end}}
+
+{{define "rail"}}{{template "settings-tabs" "api-tokens"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow">{{t "common.nav.settings"}}</p>
-<h1>{{t "apitokens.title"}}</h1>
-{{template "settings-tabs" "api-tokens"}}
+<header class="page-head page-head--row">
+  <p class="eyebrow">{{t "common.nav.settings"}}</p>
+  <h1>{{t "apitokens.title"}}</h1>
+</header>
+{{template "rail" $}}
 {{- template "summary" .Problems}}
 {{- if .Done}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "revoked"}}{{t "apitokens.done.revoked" "name" .DoneName}}{{else if eq .Done "mcp-on"}}{{t "apitokens.done.mcp_on"}}{{else}}{{t "apitokens.done.mcp_off"}}{{end}}</p>
 </div>
 {{- end}}
-<p>{{t "apitokens.intro"}}</p>
-
-{{- /* MCP access leads, as each settings page leads with its state (DESIGN 8.15). One button flips it (SPEC 21.2). */}}
-<section class="panel setting-row" aria-labelledby="mcp-heading">
-  <div class="setting-row__head">
-    <h2 id="mcp-heading">{{t "apitokens.mcp.heading"}}</h2>
-  </div>
-  <div class="setting-row__body">
+<p class="page-intro">{{t "apitokens.intro"}}</p>
+{{- /* MCP access is the switch every token depends on: said once, as a state plate with its one control, before the tokens (SPEC 12.10). */}}
+<section class="state-plate state-plate--{{if .MCPOn}}on{{else}}off{{end}}" id="mcp-access" aria-labelledby="mcp-heading">
+  <div class="state-plate__text">
+    <h2 id="mcp-heading">{{t "apitokens.mcp.heading"}} <span class="state state--mcp-{{if .MCPOn}}on{{else}}off{{end}}">{{if .MCPOn}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</span></h2>
     {{- if .MCPForced}}
     <p id="mcp-state">{{tHTML "apitokens.mcp.state.forced" "env" (code "FOREMAN_MCP=off")}}</p>
     {{- else if .MCPOn}}
@@ -52,32 +56,53 @@
     {{- else}}
     <p id="mcp-state">{{t "apitokens.mcp.state.off"}}</p>
     {{- end}}
-    {{- if and .Admin (not .MCPForced)}}
-    <form method="post" action="{{.MCPPath}}" class="actions">
-      {{- if .MCPOn}}
-      <button type="submit" class="button" name="mcp" value="off" id="act-mcp">{{t "apitokens.mcp.turn_off"}}</button>
-      {{- else}}
-      <button type="submit" class="button button--primary" name="mcp" value="on" id="act-mcp">{{t "apitokens.mcp.turn_on"}}</button>
-      {{- end}}
-    </form>
-    {{- end}}
   </div>
-</section>
-
-<section aria-labelledby="mine-heading">
-  <h2 id="mine-heading">{{t "apitokens.mine.heading"}}</h2>
-  {{- with .Mine}}
-  <ul class="token-list" role="list" id="my-tokens">
-    {{- range .}}{{template "token-card" .}}{{end}}
-  </ul>
-  {{- else}}
-  <p id="my-tokens-empty">{{t "apitokens.mine.empty"}}</p>
+  {{- if and .Admin (not .MCPForced)}}
+  <form method="post" action="{{.MCPPath}}" id="mcp-form">
+    {{- if .MCPOn}}
+    <button type="submit" class="button" name="mcp" value="off" id="act-mcp">{{t "apitokens.mcp.turn_off"}}</button>
+    {{- else}}
+    <button type="submit" class="button" name="mcp" value="on" id="act-mcp">{{t "apitokens.mcp.turn_on"}}</button>
+    {{- end}}
+  </form>
   {{- end}}
 </section>
 
-<section aria-labelledby="create-heading">
+
+{{- /* One list of tokens. An admin sees every user's and filters it to their own or all; the filter is CSS only, so nothing reloads (SPEC 12.10). */}}
+<section class="panel token-table" aria-labelledby="tokens-heading">
+  <div class="token-table__head">
+    {{- if .Admin}}
+    <h2 id="tokens-heading" class="visually-hidden">{{t "apitokens.title"}}</h2>
+    <fieldset class="segmented">
+      <legend class="visually-hidden">{{t "apitokens.title"}}</legend>
+      <label><input type="radio" name="token-show" id="token-show-mine" value="mine" checked> {{t "apitokens.mine.heading"}}</label>
+      <label><input type="radio" name="token-show" id="token-show-all" value="all"> {{t "apitokens.all.heading"}}</label>
+    </fieldset>
+    {{- else}}
+    <h2 id="tokens-heading">{{t "apitokens.mine.heading"}}</h2>
+    {{- end}}
+  </div>
+  {{- if .Admin}}
+  <p class="hint token-all-hint">{{t "apitokens.all.hint"}}</p>
+  {{- end}}
+  {{- with .Rows}}
+  {{template "token-head"}}
+  <ul class="token-list" role="list" id="my-tokens">
+    {{- range .}}{{template "token-card" .}}{{end}}
+  </ul>
+  {{- end}}
+  {{- if not .Mine}}
+  <p class="empty" id="my-tokens-empty">{{t "apitokens.mine.empty"}}</p>
+  {{- end}}
+  {{- if and .Admin (not .All)}}
+  <p class="empty" id="all-tokens-empty">{{t "apitokens.all.empty"}}</p>
+  {{- end}}
+</section>
+{{- /* Creating a token follows the list it adds to; its button is the page's one primary action. */}}
+<section class="panel" id="create-token" aria-labelledby="create-heading">
   <h2 id="create-heading">{{t "apitokens.create.heading"}}</h2>
-  <form method="post" action="{{.Path}}" class="panel" novalidate>
+  <form method="post" action="{{.Path}}" class="token-create" novalidate>
     {{template "required-note"}}
     <div class="field">
       <label for="token-name" class="required">{{t "apitokens.create.name"}}</label>
@@ -100,24 +125,13 @@
     <div class="message message--warning" id="scope-admin-warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
     </div>
+    {{- if not .MCPOn}}
+    <p class="hint" id="token-mcp-off">{{t "apitokens.create.mcp_off"}}</p>
+    {{- end}}
     <div class="actions">
       <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>
     </div>
   </form>
 </section>
-
-{{- if .Admin}}
-<section aria-labelledby="all-heading">
-  <h2 id="all-heading">{{t "apitokens.all.heading"}}</h2>
-  <p class="hint">{{t "apitokens.all.hint"}}</p>
-  {{- with .All}}
-  <ul class="token-list" role="list" id="all-tokens">
-    {{- range .}}{{template "token-card" .}}{{end}}
-  </ul>
-  {{- else}}
-  <p id="all-tokens-empty">{{t "apitokens.all.empty"}}</p>
-  {{- end}}
-</section>
-{{- end}}
 {{- end}}
 {{- end}}

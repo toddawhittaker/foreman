@@ -360,7 +360,13 @@ func (s *server) lamp(r *http.Request, user string) LiveState {
 	if err != nil || !found {
 		return LiveState{}
 	}
-	return s.liveState(id, true)
+	l := s.liveState(id, true)
+	if s.worlds != nil {
+		if name, err := s.worlds.Name(id); err == nil {
+			l.Name = name
+		}
+	}
+	return l
 }
 
 // fail logs err and sends the 500 page. The page never carries err.

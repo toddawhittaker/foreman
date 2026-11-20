@@ -54,8 +54,6 @@ type TokenRow struct {
 	LastUsed time.Time // zero when never used
 	// Mine is true for the signed-in user's own token, which they renew.
 	Mine bool
-	// IDPrefix keeps ids unique when a token is in both lists.
-	IDPrefix string
 }
 
 func tokenRow(t store.APIToken, me int64, now time.Time) TokenRow {
@@ -178,6 +176,14 @@ func (p APITokensPage) Problems() []Problem {
 	return problems(Problem{"token-name", p.Form.NameError})
 }
 
+// Rows is the one token list: every token for an admin, else the user's own.
+func (p APITokensPage) Rows() []TokenRow {
+	if p.Admin {
+		return p.All
+	}
+	return p.Mine
+}
+
 // Path is where the create form posts.
 func (APITokensPage) Path() string { return PathAPITokens }
 
@@ -190,6 +196,8 @@ type APITokenCreatedPage struct {
 	Secret   string
 	Endpoint string
 	MCPOn    bool
+	// Admin may turn MCP access on, so the off note links to the switch.
+	Admin bool
 }
 
 func (APITokenCreatedPage) templateName() string { return "apitokencreated" }
@@ -240,7 +248,6 @@ func (s *server) tokensPage(ctx context.Context, u store.User, f TokenForm) (API
 			p.Mine = append(p.Mine, row)
 		}
 		if p.Admin {
-			row.IDPrefix = "all-"
 			p.All = append(p.All, row)
 		}
 	}
@@ -296,7 +303,7 @@ func (s *server) handleAPITokenCreate(w http.ResponseWriter, r *http.Request, u 
 	// Render sends every signed-in page with no-store; the secret is never
 	// cached or shown again (SPEC 14.19).
 	s.page(w, r, http.StatusOK, u.Username, APITokenCreatedPage{
-		Token: tokenRow(t, u.ID, s.now()), Secret: secret, Endpoint: s.mcpEndpoint(r), MCPOn: s.mcpOn(r.Context()),
+		Token: tokenRow(t, u.ID, s.now()), Secret: secret, Endpoint: s.mcpEndpoint(r), MCPOn: s.mcpOn(r.Context()), Admin: isAdmin(u),
 	})
 }
 

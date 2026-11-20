@@ -51,8 +51,10 @@ test.describe("with a secret key", () => {
     await expect(page.locator("#notify-state")).toHaveText("1 webhook gets messages.");
     const row = page.locator("#webhook-1");
     await expect(row.getByRole("heading", { level: 2 })).toHaveText("Discord discord.com");
-    await expect(row).toContainText("Start, stop, crash, crash loop, player joins, player leaves, scheduled restart, low disk");
-    await expect(row).not.toContainText("token expiring");
+    // The events are chips, one per event turned on (DESIGN 8.16).
+    const events = row.locator("dd ul.chips > li");
+    await expect(events).toHaveText(["Start", "Stop", "Crash", "Crash loop", "Player joins", "Player leaves", "Scheduled restart", "Low disk"]);
+    await expect(row).not.toContainText(/token expiring/i);
     await expectNoAddress(page);
     await checkPage(page);
 
@@ -68,7 +70,7 @@ test.describe("with a secret key", () => {
     await page.getByLabel("Language of the messages").selectOption("de");
     await page.getByRole("button", { name: "Save webhook" }).click();
     await expect(page.locator("#done-message")).toHaveText("Done: Saved the Discord webhook to discord.com.");
-    await expect(row).toContainText("Start, stop, crash, crash loop, scheduled restart, low disk, token expiring");
+    await expect(events).toHaveText(["Start", "Stop", "Crash", "Crash loop", "Scheduled restart", "Low disk", "Token expiring"]);
     await expect(row.locator('dd[lang="de"]')).toHaveText("Deutsch");
 
     // Delete asks first; Cancel keeps it.
