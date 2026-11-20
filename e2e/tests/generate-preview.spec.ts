@@ -361,6 +361,9 @@ test.describe("with script", () => {
   // so paging with the arrow keys never moves the planet controls.
   for (const width of [1920, 390]) {
     test(`paging planets in the large view keeps the controls still at ${width} px`, async ({ page }, info) => {
+      // About seventeen 1.5 s samples of stillness take 28 s on a quiet machine,
+      // too close to the 30 s default for a loaded one.
+      test.slow();
       await page.setViewportSize({ width, height: width > 600 ? 950 : 800 });
       await page.goto("/generate");
       await expect(pictures(page)).toHaveCount(1);
