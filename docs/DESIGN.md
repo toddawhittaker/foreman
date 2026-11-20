@@ -188,11 +188,11 @@ dialog (black at 50%) and the shadows' own values (4).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#131210` | `#f1ede5` | The page |
+| `--color-bg` | `#131210` | `#e9e3d6` | The page |
 | `--color-surface` | `#1e1c19` | `#fffdf9` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#292622` | `#f6f2ea` | The secondary button's face, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-raised` | `#292622` | `#f5f0e6` | The secondary button's face, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
 | `--color-deep` | `#0d0c0b` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#3b3732` | `#ddd6ca` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-line` | `#3b3732` | `#d8d0bf` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
 | `--color-text-muted` | `#c2baae` | `#4f493f` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
@@ -212,8 +212,8 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-danger-bg` | `#3a1913` | `#fbe6e1` | Error message and "crashed" badge background, risky and trash buttons under the pointer |
 | `--color-ok` | `#86d672` | `#1f6a2a` | "Done" word, "running" badge, the Server plate's state word and rule while the game runs |
 | `--color-ok-bg` | `#172a12` | `#e3f1de` | Success message and "running" badge background |
-| `--color-warn` | `#e9d24a` | `#665400` | "Warning" word, "starting" and "stopping" badges, the Server plate's state word and rule while stopping |
-| `--color-warn-bg` | `#2b2a0c` | `#f5f0c2` | Warning message and "starting"/"stopping" badge background |
+| `--color-warn` | `#f2c14e` | `#665400` | "Warning" word, "starting" and "stopping" badges, the Server plate's state word and rule while stopping |
+| `--color-warn-bg` | `#33280c` | `#f5f0c2` | Warning message and "starting"/"stopping" badge background |
 | `--color-info` | `#8ec1ea` | `#1d5a8a` | "Note" word; the Server plate's state word and rule while starting |
 | `--color-info-bg` | `#13222f` | `#e2eef7` | Notice background |
 | `--color-focus` | `#f7ae4f` | `#b35c00` | Focus outline |

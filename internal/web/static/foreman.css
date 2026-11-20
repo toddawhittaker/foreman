@@ -107,11 +107,11 @@
   --text-2xl: 1.5rem;
   --text-3xl: 2rem;
 
-  --color-bg: light-dark(#f1ede5, #131210);
+  --color-bg: light-dark(#e9e3d6, #131210);
   --color-surface: light-dark(#fffdf9, #1e1c19);
-  --color-raised: light-dark(#f6f2ea, #292622);
+  --color-raised: light-dark(#f5f0e6, #292622);
   --color-deep: light-dark(#ffffff, #0d0c0b);
-  --color-line: light-dark(#ddd6ca, #3b3732);
+  --color-line: light-dark(#d8d0bf, #3b3732);
   --color-border: light-dark(#8a8073, #958b7e);
   --color-text: light-dark(#1c1915, #ece7df);
   --color-heading: light-dark(#13110e, #f8f5ef);
@@ -131,8 +131,8 @@
   --color-danger-bg: light-dark(#fbe6e1, #3a1913);
   --color-ok: light-dark(#1f6a2a, #86d672);
   --color-ok-bg: light-dark(#e3f1de, #172a12);
-  --color-warn: light-dark(#665400, #e9d24a);
-  --color-warn-bg: light-dark(#f5f0c2, #2b2a0c);
+  --color-warn: light-dark(#665400, #f2c14e);
+  --color-warn-bg: light-dark(#f5f0c2, #33280c);
   --color-info: light-dark(#1d5a8a, #8ec1ea);
   --color-info-bg: light-dark(#e2eef7, #13222f);
   --color-focus: light-dark(#b35c00, #f7ae4f);
@@ -12547,4 +12547,331 @@ main:has(> .gate) > .gate + .gate {
   border-start-start-radius: 0;
   border-start-end-radius: 0;
   box-shadow: var(--shadow-card);
+}
+
+/* ==== The status strip says the live world's state once, on every page
+   (DESIGN 6, Shell; 7.5): the pill fits its word like a table badge, the
+   strip stays in view while the page scrolls, and page titles carry no
+   second state badge. ==== */
+@media (min-width: 64rem) {
+  body:has(> .site > nav) .site-strip,
+  body:has(> .site > nav) > .site > .product,
+  body:has(> .site > nav) > .site > .menu {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 30;
+  }
+
+  body:has(> .site > nav) > .site > .menu {
+    z-index: 31;
+  }
+
+  body:has(> .site > nav) .site-state:not(:empty) {
+    flex: none;
+    min-inline-size: 0;
+    min-block-size: 1.5rem;
+    padding: 0.125rem 0.625rem 0.125rem var(--space-2);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+
+  :root {
+    --rail-sub-top: 13.125rem;
+  }
+
+  /* The area's list is named in the interface face, so the mono capitals
+     stay for overlines and fact names (DESIGN 5). */
+  body:has(> .site > nav) > main > .subnav::before {
+    font-family: var(--font-sans);
+    letter-spacing: 0.04em;
+  }
+
+  /* The current place: a neutral raised face and the orange edge, not a
+     brown tint (DESIGN 3). */
+  body .site > nav .tabs a[aria-current],
+  main > .subnav a[aria-current],
+  main > .subnav--settings a[aria-current],
+  main > .subnav .subnav__sub a[aria-current] {
+    background: var(--color-raised);
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
+  }
+
+  main > .subnav a[aria-current="true"] {
+    background: none;
+    box-shadow: none;
+  }
+}
+
+/* The Server page's plate already states the state large; Console and Chat
+   leave it to the strip. The words stay for screen readers. */
+#server-title .state {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The plate's corner rivets read as stray dots; the plate's state edge is
+   its one mark. */
+.plate::after {
+  content: none;
+}
+
+/* ==== The breadcrumb names where you are (DESIGN 6): ancestors as quiet
+   links, the current page in the heading colour, chevrons between. ==== */
+.crumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.crumb::after {
+  content: none;
+}
+
+.crumb a {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.2em;
+}
+
+.crumb a:hover {
+  color: var(--color-heading);
+  text-decoration-color: currentColor;
+}
+
+/* The chevron follows each ancestor; a link's ::before is its 44 px hit area. */
+.crumb > :not(:last-child)::after {
+  content: "";
+  display: inline-block;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  margin-inline-start: var(--space-2);
+  background: var(--color-text-muted);
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+.crumb > a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.crumb > span[aria-current] {
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}
+
+[dir="rtl"] .crumb > :not(:last-child)::after {
+  transform: scaleX(-1);
+}
+
+/* ==== Labels: column names in the interface face, quiet and small; the
+   mono capitals stay for overlines and fact names (DESIGN 5). Figures in
+   table cells take the mono face with tabular digits. ==== */
+main table thead th,
+main table th[scope="col"],
+.token-head,
+.worlds-head {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+main td.num,
+main td time,
+main td .ver,
+.token-card time,
+.worlds > li .facts dd {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==== A feature's on-or-off state said once, with its one control at the
+   end: a hairline plate with a 4 px edge in the state's colour (DESIGN 7.3). ==== */
+.state-plate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  max-inline-size: min(100%, 64rem);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.state-plate--off {
+  background: var(--color-warn-bg);
+  border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
+  border-inline-start-color: var(--color-warn);
+}
+
+.state-plate--on {
+  border-inline-start-color: var(--color-ok);
+}
+
+.state-plate__text {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  flex: 1 1 24rem;
+}
+
+.state-plate h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.state-plate p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.state-plate form {
+  flex: none;
+  margin: 0;
+}
+
+/* ==== General settings: the pairs keep a clear gap above the save bar,
+   so the last field never sits under it (DESIGN 8.15). ==== */
+form.setting-rows > .form-foot {
+  margin-block-start: var(--space-5);
+}
+
+/* ==== Planned mods are blueprint blue by edge and badge only; the row
+   keeps the card's face (DESIGN 3). ==== */
+.hit:has(.badge--chosen) {
+  background: none;
+  border-inline-start: 3px solid var(--color-info);
+}
+
+/* ==== One completion footer: the way out is a quiet button just before
+   the primary action at the end (DESIGN 7.1). ==== */
+.generate > .gen-actions {
+  justify-content: flex-end;
+}
+
+.generate > .gen-actions > a:not(.button) {
+  order: -1;
+}
+
+.generate > .gen-actions > .button--primary {
+  order: 1;
+}
+
+.confirm .actions:has(> :is(.button--primary, .button--danger) + a:not(.button):last-child) {
+  justify-content: flex-end;
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.confirm .actions:has(> :is(.button--primary, .button--danger) + a:not(.button):last-child) > a:not(.button) {
+  order: -1;
+}
+
+/* ==== Mods: before a search the results panel is one quiet line, so the
+   installed list starts higher (DESIGN 8.11). ==== */
+#results:not(:has(.hits, .error, .message)) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-3);
+  background: none;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+#results:not(:has(.hits, .error, .message)) > h2 {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+#results:not(:has(.hits, .error, .message)) > .empty {
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  text-align: start;
+}
+
+#results:not(:has(.hits, .error, .message)) > .empty::before {
+  content: none;
+}
+
+/* ==== Add a webhook: the four services two by two, the nine events three
+   by three, never a lone last item (DESIGN 8.16). ==== */
+@container (min-width: 30rem) {
+  .webhook-form__presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .webhook-form__event-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ==== The account menu's button names its two parts apart: the person,
+   a rule, then the language (DESIGN 6, User menu). ==== */
+@media (min-width: 64rem) {
+  .menu > summary > .menu__user {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* A round badge with the person cut out of it, then a globe before the language. */
+  .menu > summary > .menu__user::before {
+    content: "";
+    flex: none;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+    mask: var(--i-account) center / 0.875rem no-repeat, linear-gradient(black 0 0);
+    mask-composite: exclude;
+  }
+
+  .menu > summary > .menu__lang::before {
+    content: "";
+    flex: none;
+    inline-size: 1rem;
+    block-size: 1rem;
+    background: currentColor;
+    mask: var(--i-worlds) center / contain no-repeat;
+  }
+
+  .menu > summary > .menu__lang {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .menu > summary > .menu__user + .menu__lang {
+    padding-inline-start: var(--space-3);
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
 }

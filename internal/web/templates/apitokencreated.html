@@ -37,7 +37,6 @@
   <dl class="facts facts--inline">
     <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .Token.ScopeWord}}</dd></div>
     <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Token.Expires}}</dd></div>
-    <div><dt>{{t "apitokens.mcp.heading"}}</dt><dd><span class="state state--mcp-{{if .MCPOn}}on{{else}}off{{end}}">{{if .MCPOn}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</span></dd></div>
   </dl>
   {{- if not .MCPOn}}
   <div class="message message--note" id="mcp-off-note">

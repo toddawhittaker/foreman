@@ -2,7 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{t "worlds.deleted.title"}}</span></p>
 <h1>{{t "worlds.deleted.title"}}</h1>
 {{template "worlds-area-tabs" "deleted"}}
 <p class="page-intro">{{t "worlds.deleted.intro"}}</p>

@@ -4,7 +4,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><a href="{{.Tabs.Path}}">{{.World.Name}}</a><a href="{{.Tabs.Path}}/mods">{{t "mods.tab"}}</a></p>
 {{- /* A redraw swaps in the heading too, as adding or taking out a mod changes it. */}}
 <h1 id="confirm-heading"{{if .Redraw}} hx-swap-oob="true"{{end}}>{{msgHTML .Heading}}</h1>
 {{template "world-tabs" .Tabs}}

@@ -43,6 +43,28 @@
 </div>
 {{- end}}
 <p class="page-intro">{{t "apitokens.intro"}}</p>
+{{- /* MCP access is the switch every token depends on: said once, as a state plate with its one control, before the tokens (SPEC 12.10). */}}
+<section class="state-plate state-plate--{{if .MCPOn}}on{{else}}off{{end}}" id="mcp-access" aria-labelledby="mcp-heading">
+  <div class="state-plate__text">
+    <h2 id="mcp-heading">{{t "apitokens.mcp.heading"}} <span class="state state--mcp-{{if .MCPOn}}on{{else}}off{{end}}">{{if .MCPOn}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</span></h2>
+    {{- if .MCPForced}}
+    <p id="mcp-state">{{tHTML "apitokens.mcp.state.forced" "env" (code "FOREMAN_MCP=off")}}</p>
+    {{- else if .MCPOn}}
+    <p id="mcp-state">{{t "apitokens.mcp.state.on"}}</p>
+    {{- else}}
+    <p id="mcp-state">{{t "apitokens.mcp.state.off"}}</p>
+    {{- end}}
+  </div>
+  {{- if and .Admin (not .MCPForced)}}
+  <form method="post" action="{{.MCPPath}}" id="mcp-form">
+    {{- if .MCPOn}}
+    <button type="submit" class="button" name="mcp" value="off" id="act-mcp">{{t "apitokens.mcp.turn_off"}}</button>
+    {{- else}}
+    <button type="submit" class="button" name="mcp" value="on" id="act-mcp">{{t "apitokens.mcp.turn_on"}}</button>
+    {{- end}}
+  </form>
+  {{- end}}
+</section>
 
 
 {{- /* One list of tokens. An admin sees every user's and filters it to their own or all; the filter is CSS only, so nothing reloads (SPEC 12.10). */}}
@@ -58,28 +80,7 @@
     {{- else}}
     <h2 id="tokens-heading">{{t "apitokens.mine.heading"}}</h2>
     {{- end}}
-    {{- /* MCP access is the switch every token depends on, so its state sits on the list's own head. */}}
-    <div class="token-mcp" id="mcp-access">
-      <h3 id="mcp-heading">{{t "apitokens.mcp.heading"}}</h3>
-      <span class="state state--mcp-{{if .MCPOn}}on{{else}}off{{end}}">{{if .MCPOn}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</span>
-      {{- if and .Admin (not .MCPForced)}}
-      <form method="post" action="{{.MCPPath}}" id="mcp-form">
-        {{- if .MCPOn}}
-        <button type="submit" class="button" name="mcp" value="off" id="act-mcp">{{t "apitokens.mcp.turn_off"}}</button>
-        {{- else}}
-        <button type="submit" class="button" name="mcp" value="on" id="act-mcp">{{t "apitokens.mcp.turn_on"}}</button>
-        {{- end}}
-      </form>
-      {{- end}}
-    </div>
   </div>
-  {{- if .MCPForced}}
-  <p class="hint token-mcp__state" id="mcp-state">{{tHTML "apitokens.mcp.state.forced" "env" (code "FOREMAN_MCP=off")}}</p>
-  {{- else if .MCPOn}}
-  <p class="hint token-mcp__state" id="mcp-state">{{t "apitokens.mcp.state.on"}}</p>
-  {{- else}}
-  <p class="hint token-mcp__state" id="mcp-state">{{t "apitokens.mcp.state.off"}}</p>
-  {{- end}}
   {{- if .Admin}}
   <p class="hint token-all-hint">{{t "apitokens.all.hint"}}</p>
   {{- end}}
@@ -122,15 +123,6 @@
     <div class="message message--warning" id="scope-admin-warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
     </div>
-    {{- /* The switch every token depends on is stated before the one-time secret is made, with its fix beside it. */}}
-    {{- if not .MCPOn}}
-    <div class="message message--warning token-create__mcp" id="create-mcp-off">
-      <p><strong>{{t "common.label.warning"}}</strong> {{if .MCPForced}}{{t "apitokens.mcp.forced"}}{{else}}{{t "apitokens.mcp.state.off"}}{{end}}</p>
-      {{- if and .Admin (not .MCPForced)}}
-      <div class="actions"><button type="submit" class="button" form="mcp-form" name="mcp" value="on" id="act-mcp-create">{{t "apitokens.mcp.turn_on"}}</button></div>
-      {{- end}}
-    </div>
-    {{- end}}
     <div class="actions">
       <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>
     </div>

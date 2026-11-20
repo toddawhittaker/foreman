@@ -3,10 +3,9 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><a href="{{.Tabs.Path}}">{{.World.Name}}</a><span aria-current="page">{{t "mods.tab"}}</span></p>
 <div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-{{template "live-state" .Live}}
 </div>
 {{template "world-tabs" .Tabs}}
 {{template "summary" .Problems}}

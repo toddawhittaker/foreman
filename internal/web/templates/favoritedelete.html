@@ -2,7 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow crumb"><a href="{{.ListPath}}">{{t "favorites.title"}}</a></p>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><a href="{{.ListPath}}">{{t "favorites.title"}}</a></p>
 <h1 id="confirm-heading">{{t "favorites.delete.question" "name" .Favorite.Name}}</h1>
 <section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
