@@ -4778,11 +4778,6 @@ html:has(.large-view[open]) {
   display: inline;
 }
 
-/* Generate's large view with the planet's settings beside the map (DESIGN
-   8.8). The settings column is 38rem, so its fields stay sliders (a
-   map-section of 34rem) after its padding and scroll bar; it shows once the
-   map beside it can be as wide again, 77rem in all. Narrower, map only. */
-
 /* Close sits in the body, before the settings in Tab order, at the stage's top corner. */
 .large-view__body {
   position: relative;
@@ -4793,6 +4788,10 @@ html:has(.large-view[open]) {
   min-block-size: 0;
 }
 
+/* Generate's large view with the planet's settings beside the map (DESIGN
+   8.8). The settings column is 38rem, so its fields stay sliders (a
+   map-section of 34rem) after its padding and scroll bar; it shows once the
+   map beside it can be as wide again, 77rem in all. Narrower, map only. */
 .large-view__settings {
   display: none;
 }
