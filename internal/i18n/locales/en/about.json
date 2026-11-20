@@ -6,6 +6,8 @@
   "about.heading": "About Foreman",
   "about.licence": "Licence",
   "about.modified": "modified",
+  "about.newer": "Foreman {version} is available. {link}",
+  "about.newer.link": "See what's new",
   "about.source": "The source code and the issue tracker are on {link}.",
   "about.source.link": "GitHub",
   "about.title": "About",

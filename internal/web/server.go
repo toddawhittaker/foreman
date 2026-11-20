@@ -51,6 +51,9 @@ type Deps struct {
 	// Releases lists Factorio versions and releases (SPEC 10.2, 10.7);
 	// nil means Foreman makes no outbound calls for them.
 	Releases Releases
+	// Updates is the background check for a newer Foreman release
+	// (SPEC 14.10); nil shows no notice in About.
+	Updates UpdateCheck
 	// Previewer makes the map previews of Generate (SPEC 5.6); nil means the
 	// page offers no preview.
 	Previewer MapPreviewer
@@ -84,6 +87,7 @@ type server struct {
 	favorites *world.Favorites
 	game      *game.Controller
 	releases  Releases
+	updates   UpdateCheck
 	// previewer and previews: the map preview maker, and the pictures it
 	// made, held for 15 minutes (SPEC 5.6).
 	previewer MapPreviewer
@@ -169,6 +173,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		worlds:    d.Worlds,
 		game:      d.Game,
 		releases:  d.Releases,
+		updates:   d.Updates,
 		previewer: d.Previewer,
 		previews:  newPreviewStore(now),
 		drafts:    newDraftStore(now),
@@ -335,7 +340,7 @@ func clientGone(r *http.Request, err error) bool {
 // unless the browser left: that is no server fault and nobody is left to answer.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user string, p Page) {
 	r = s.dropSpoofedRenewed(r, user)
-	err := s.render.Render(w, r, status, user, s.lamp(r, user), s.tokenBanner(r, user), p)
+	err := s.render.Render(w, r, status, user, s.lamp(r, user), s.tokenBanner(r, user), s.newerRelease(r, user), p)
 	if err == nil {
 		return
 	}
@@ -344,7 +349,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user s
 		return
 	}
 	s.log.Error("render page", "method", r.Method, "path", r.URL.Path, "error", err)
-	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", LiveState{}, nil, ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
+	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", LiveState{}, nil, "", ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

@@ -23,6 +23,10 @@
     "other": "将删除 {count} 个自动快照，每个在其所属世界的下一次自动快照时删除。"
   },
   "general.trim.worlds": "涉及的世界数：{count}。",
+  "general.updates.heading": "Foreman 新版本",
+  "general.updates.hint": "关闭后，Foreman 不会为此联系 GitHub。",
+  "general.updates.label": "在 GitHub 上检查 Foreman 新版本",
+  "general.updates.text": "Foreman 可以每 6 小时询问一次 GitHub 是否有更新的 Foreman 版本，并在“关于”中提示。不会发送任何关于用户或世界的信息。",
   "general.uploads.heading": "上传",
   "general.uploads.mod.hint": "从模组门户下载的模组受同样的限制。",
   "general.uploads.mod.label": "上传模组的最大大小（MB）",

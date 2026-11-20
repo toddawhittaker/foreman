@@ -24,6 +24,10 @@
     "other": "Se eliminarán {count} instantáneas automáticas, cada una en la siguiente instantánea automática de su mundo."
   },
   "general.trim.worlds": "Mundos afectados: {count}.",
+  "general.updates.heading": "Nuevas versiones de Foreman",
+  "general.updates.hint": "Desactivado, Foreman nunca contacta con GitHub para esto.",
+  "general.updates.label": "Buscar en GitHub nuevas versiones de Foreman",
+  "general.updates.text": "Foreman puede preguntar a GitHub cada 6 horas si hay una versión más reciente de Foreman, y Acerca de lo indica. No envía nada sobre ti ni tus mundos.",
   "general.uploads.heading": "Subida de archivos",
   "general.uploads.mod.hint": "Un mod descargado del portal de mods tiene el mismo límite.",
   "general.uploads.mod.label": "Tamaño máximo de un mod subido (MB)",

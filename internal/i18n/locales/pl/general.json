@@ -25,6 +25,10 @@
     "many": "Zostanie usuniętych {count} automatycznych migawek — każda przy następnej automatycznej migawce swojego świata."
   },
   "general.trim.worlds": "Dotyczy światów: {count}.",
+  "general.updates.heading": "Nowe wersje Foremana",
+  "general.updates.hint": "Po wyłączeniu Foreman nigdy nie łączy się w tym celu z GitHubem.",
+  "general.updates.label": "Sprawdzaj na GitHubie nowe wersje Foremana",
+  "general.updates.text": "Foreman może co 6 godzin pytać GitHub, czy jest nowsza wersja Foremana, a okno „O programie” wtedy o tym informuje. Nie są wysyłane żadne dane o użytkowniku ani o światach.",
   "general.uploads.heading": "Przesyłanie plików",
   "general.uploads.mod.hint": "Ten sam limit obowiązuje modyfikację pobieraną z portalu modyfikacji.",
   "general.uploads.mod.label": "Maksymalny rozmiar przesyłanej modyfikacji (MB)",

@@ -87,6 +87,15 @@ func (c *Checker) Run(ctx context.Context) {
 	}
 }
 
+// CheckSoon starts one check in the background, for when an admin turns
+// the switch on; the caller does not wait for GitHub.
+func (c *Checker) CheckSoon() {
+	if _, ok := parse(c.running); !ok {
+		return
+	}
+	go c.checkOnce(context.Background())
+}
+
 // checkOnce asks GitHub when the switch is on. A failure keeps the last
 // good answer and logs one line; users never see it as an error.
 func (c *Checker) checkOnce(ctx context.Context) {

@@ -6,6 +6,8 @@
   "about.heading": "O Foremanie",
   "about.licence": "Licencja",
   "about.modified": "zmodyfikowano",
+  "about.newer": "Dostępny jest Foreman {version}. {link}",
+  "about.newer.link": "Zobacz, co nowego",
   "about.source": "Kod źródłowy i zgłoszenia znajdują się na {link}.",
   "about.source.link": "GitHub",
   "about.title": "O programie",

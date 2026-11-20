@@ -24,6 +24,10 @@
     "other": "{count} automatische Snapshots werden jeweils beim nächsten automatischen Snapshot ihrer Welt entfernt."
   },
   "general.trim.worlds": "Betroffene Welten: {count}.",
+  "general.updates.heading": "Neue Foreman-Versionen",
+  "general.updates.hint": "Ausgeschaltet fragt Foreman GitHub dafür nie.",
+  "general.updates.label": "Auf GitHub nach neuen Foreman-Versionen suchen",
+  "general.updates.text": "Foreman kann GitHub alle 6 Stunden fragen, ob eine neuere Version von Foreman erschienen ist; „Über“ zeigt es dann an. Dabei wird nichts über dich oder deine Welten gesendet.",
   "general.uploads.heading": "Hochladen",
   "general.uploads.mod.hint": "Eine Mod, die vom Mod-Portal heruntergeladen wird, unterliegt demselben Limit.",
   "general.uploads.mod.label": "Maximale Größe einer hochgeladenen Mod (MB)",

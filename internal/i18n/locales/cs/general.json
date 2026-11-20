@@ -25,6 +25,10 @@
     "other": "Bude odstraněno {count} automatických snímků — každý při dalším automatickém snímku svého světa."
   },
   "general.trim.worlds": "Dotčené světy: {count}.",
+  "general.updates.heading": "Nové verze Foremanu",
+  "general.updates.hint": "Po vypnutí se Foreman kvůli tomu na GitHub nikdy neobrací.",
+  "general.updates.label": "Kontrolovat nové verze Foremanu na GitHubu",
+  "general.updates.text": "Foreman se může každých 6 hodin zeptat GitHubu, zda vyšla novější verze Foremanu, a okno O aplikaci to pak uvede. Neodesílá se nic o uživateli ani o světech.",
   "general.uploads.heading": "Nahrávání souborů",
   "general.uploads.mod.hint": "Stejný limit platí pro mod stahovaný z portálu modů.",
   "general.uploads.mod.label": "Maximální velikost nahrávaného modu (MB)",

@@ -25,6 +25,10 @@
     "many": "Будут удалены {count} автоматических снимков — каждый при следующем автоматическом снимке своего мира."
   },
   "general.trim.worlds": "Затронуто миров: {count}.",
+  "general.updates.heading": "Новые версии Foreman",
+  "general.updates.hint": "Если выключено, Foreman никогда не обращается к GitHub для этого.",
+  "general.updates.label": "Проверять новые версии Foreman на GitHub",
+  "general.updates.text": "Foreman может раз в 6 часов спрашивать GitHub, вышла ли более новая версия Foreman, и тогда об этом сообщит окно «О программе». Ничего о вас или ваших мирах не отправляется.",
   "general.uploads.heading": "Загрузка файлов",
   "general.uploads.mod.hint": "Тот же лимит действует для мода, скачиваемого с портала модов.",
   "general.uploads.mod.label": "Максимальный размер загружаемого мода (МБ)",

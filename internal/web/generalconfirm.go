@@ -66,6 +66,10 @@ func (s *server) generalConfirmPage(ctx context.Context, r *http.Request, want m
 			p.Changes = append(p.Changes, GeneralChange{Label: i18n.M(d.Label), From: current[d.Key], To: want[d.Key]})
 		}
 	}
+	// The switch rides along, so confirming does not turn it off.
+	if r.PostFormValue(settingUpdateCheck.Key) == "on" {
+		p.Hidden = append(p.Hidden, GeneralHidden{Name: settingUpdateCheck.Key, Value: "on"})
+	}
 	p.Hidden = append(p.Hidden,
 		GeneralHidden{Name: trimSnapshotsField, Value: strconv.Itoa(snapshots)},
 		GeneralHidden{Name: trimWorldsField, Value: strconv.Itoa(worlds)})
