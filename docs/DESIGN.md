@@ -2196,9 +2196,11 @@ in this order:
 6. One achievements summary (below), then the action bar: Cancel,
    "Preview map" and "Generate world" (primary).
 
-**Layout.** From 68.75rem the page is two columns, `gen-grid`: the settings
+**Layout.** Once the form is 56rem wide (a container query, so the rail's
+width counts) the page is two columns, `gen-grid`: the settings, never
+narrower than 34rem so their steps stay sliders,
 (items 1 to 4 and the achievements summary) on the left, and the preview in
-a column of 20 to 22rem on the right that stays in view while the settings
+a column of 20 to 26rem on the right that stays in view while the settings
 change. That column (`gen-preview`) is sticky at `--space-5` from the top,
 at most as tall as the window less that, scrolling on its own if the
 picture is taller; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
@@ -2207,7 +2209,7 @@ the settings do from theirs (8.7). Several planets are thumbnails, two to a
 row. From 100rem the preview column takes about two fifths of the page.
 From 90rem the world's name and its game version pair up, and on a map
 section at least 40rem wide the preset and the seed pair up; starting
-from a favorite is one row on a card at least 64rem wide. Below 68.75rem it is one column in source order, and on a phone (30rem
+from a favorite is one row on a card at least 64rem wide. Narrower than that it is one column in source order, and on a phone (30rem
 and narrower) the preview comes straight after the preset and seed, so it
 is on the first screens, and the planets' rows in the settings start
 closed. **The action bar** is one bar at the foot of the card, `raised`
@@ -2279,7 +2281,8 @@ summary on every page it sends. When a warning first appears it is said
 once through `#announcer`.
 
 **Preview slot.** The preview sits in its own column beside the settings
-from 68.75rem, and after the settings below that (Layout, above; 8.8).
+when the form is two columns, and after the settings otherwise (Layout,
+above; 8.8).
 
 On success the browser lands on the new world's page with a Done message
 (7.3): "Generated Family base 2026. Its map is made when it first
@@ -2448,7 +2451,8 @@ the setting beside the map; it was three, or four for a Terrain setting:
 close the view, the tab, the setting, and the picture again).
 
 - **Where.** A "Map preview" `section` (h2): in the preview column beside
-  the settings from 68.75rem, after the settings below that (8.6, Layout).
+  the settings when the form is two columns, after the settings otherwise
+  (8.6, Layout).
   The heading's line also holds the seed used, "Seed
   123456", at its end while it fits, so the picture sits close to its
   controls.
