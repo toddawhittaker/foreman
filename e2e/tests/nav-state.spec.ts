@@ -75,7 +75,7 @@ test("in German the state word fits the header", async ({ page, foreman, fakeGam
   await fakeGame!.call("/image", { ref: image21, on: true });
   await pickLanguage(page, "de");
   await page.goto("/worlds");
-  await expect(page.locator("header.site nav").getByRole("link", { name: /^Server\s+Gestoppt$/ })).toBeVisible();
+  await expect(page.locator("header.site > nav:not(.subnav)").getByRole("link", { name: /^Server\s+Gestoppt$/ })).toBeVisible();
   const width = page.viewportSize()!.width;
   const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
   const logo = await box("header.site .product");
@@ -85,10 +85,10 @@ test("in German the state word fits the header", async ({ page, foreman, fakeGam
   expect(menu.x + menu.width).toBeLessThanOrEqual(width);
   // The tabs keep one row; in the wide rail they keep one column.
   const isWideNow = isWide(page);
-  const lines = await page.locator("header.site nav a").evaluateAll((els, wide) => new Set(els.map((a) => Math.round(wide ? a.getBoundingClientRect().left : a.getBoundingClientRect().top))).size, isWideNow);
+  const lines = await page.locator("header.site > nav:not(.subnav) a").evaluateAll((els, wide) => new Set(els.map((a) => Math.round(wide ? a.getBoundingClientRect().left : a.getBoundingClientRect().top))).size, isWideNow);
   expect(lines).toBe(1);
   const state = await box("header.site #site-state");
-  const nav = await box("header.site nav");
+  const nav = await box("header.site > nav:not(.subnav)");
   expect(state.x).toBeGreaterThanOrEqual(logo.x + logo.width);
   expect(state.x + state.width).toBeLessThanOrEqual((isPhone(page) || isWideNow ? menu.x : nav.x) + 1);
   await checkPage(page);
@@ -122,7 +122,7 @@ for (const [lang, short, long] of [
       const after = await show("crash-looping", long);
       expect(after, `${width} px`).toBe(before);
       // On the logo's row, the longest word stays clear of the tabs.
-      const [state, nav, logo] = await Promise.all(["#site-state", "header.site nav", "header.site .product"].map((q) => page.locator(q).boundingBox()));
+      const [state, nav, logo] = await Promise.all(["#site-state", "header.site > nav:not(.subnav)", "header.site .product"].map((q) => page.locator(q).boundingBox()));
       if (nav!.y < logo!.y + logo!.height) expect(state!.x + state!.width, `${width} px`).toBeLessThanOrEqual(nav!.x + 1);
     }
   });

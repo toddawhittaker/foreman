@@ -1,12 +1,14 @@
 {{define "title"}}{{if .Page.Edit}}{{t "notify.edit.named" "preset" (msg .Page.Kept.Preset) "host" .Page.Kept.Host}}{{else}}{{t "notify.add"}}{{end}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "notification"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <header class="page-head">
   <p class="eyebrow">{{t "common.nav.settings"}}</p>
   <h1>{{if .Edit}}{{t "notify.edit.named" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{else}}{{t "notify.add"}}{{end}}</h1>
 </header>
-{{template "settings-tabs" "notification"}}
+{{template "rail" $}}
 {{template "summary" .Problems}}
 {{- /* The address is write-only: it is never put back in a value attribute (DESIGN 8.16). */}}
 <form method="post" action="{{.Path}}" class="panel webhook-form" novalidate>

@@ -191,7 +191,7 @@ for (const lang of ["de", "ru"]) {
       expect(size.scroll).toBeLessThanOrEqual(size.client);
     };
     await fits();
-    const tabs = page.locator("header.site nav a");
+    const tabs = page.locator("header.site > nav:not(.subnav) a");
     await expect(tabs).toHaveCount(4);
     for (const el of [...(await tabs.all()), page.locator("details.menu > summary")]) {
       const box = (await el.boundingBox())!;

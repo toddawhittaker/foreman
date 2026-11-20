@@ -1,10 +1,12 @@
 {{define "title"}}{{t "worlds.deleted.title"}}{{end}}
 
+{{define "rail"}}{{template "worlds-area-tabs" "deleted"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{t "worlds.deleted.title"}}</span></p>
 <h1>{{t "worlds.deleted.title"}}</h1>
-{{template "worlds-area-tabs" "deleted"}}
+{{template "rail" $}}
 <p class="page-intro">{{t "worlds.deleted.intro"}}</p>
 {{- range .Worlds}}
 <section class="panel" aria-labelledby="world-{{.ID}}">

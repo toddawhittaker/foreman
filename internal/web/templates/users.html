@@ -1,10 +1,12 @@
 {{define "title"}}{{t "users.title"}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "users"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "users.title"}}</h1>
-{{template "settings-tabs" "users"}}
+{{template "rail" $}}
 {{- template "summary" .Problems}}
 {{- if .Done}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>

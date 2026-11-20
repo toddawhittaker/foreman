@@ -40,6 +40,10 @@
       <li><a href="{{generalPath}}"{{if .Current (print generalPath "#page")}} aria-current="page"{{else if .Current generalPath}} aria-current="true"{{end}}>{{t "common.nav.settings"}}</a></li>
     </ul>
   </nav>
+  {{- /* The area's own pages follow the four areas in the rail from 64rem, so
+       the keyboard meets them where the eye does; below that the page shows
+       the same list under its heading (DESIGN 6, Shell). */}}
+  {{- block "rail" .}}{{end}}
   {{- end}}
   {{- /* A native details element, so the menu opens by keyboard and without script (DESIGN 6, "User menu"). */}}
   {{- $langName := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$langName = .Name}}{{end}}{{end}}
@@ -288,7 +292,8 @@
       {{- if .Sub}}
       <ul class="subnav__sub" role="list">
         {{- range .Sub}}
-        <li><a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{msg .Label}}</a></li>
+        {{- /* The dot that marks a sub-page holding unsaved edits is drawn, so its words are here for screen readers; settingsdraft.js shows them. */}}
+        <li><a href="{{.Href}}" data-section="{{.Section}}"{{if .Current}} aria-current="page"{{end}}>{{msg .Label}}<span class="visually-hidden" data-unsaved-note hidden> {{t "settings.draft.unsaved_mark"}}</span></a></li>
         {{- end}}
       </ul>
       {{- end}}</li>

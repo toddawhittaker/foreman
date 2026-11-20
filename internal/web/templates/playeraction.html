@@ -45,12 +45,12 @@
       {{- end}}
     </div>
     <div class="actions">
+      <a href="{{.Back}}">{{t "players.cancel" "name" .Name}}</a>
       {{- if .IsBan}}
       <button type="submit" class="button button--danger" id="act-confirm-ban">{{t "players.ban.button" "name" .Name}}</button>
       {{- else}}
       <button type="submit" class="button button--danger" id="act-confirm-kick">{{t "players.kick.button" "name" .Name}}</button>
       {{- end}}
-      <a href="{{.Back}}">{{t "players.cancel" "name" .Name}}</a>
     </div>
   </form>
 </section>

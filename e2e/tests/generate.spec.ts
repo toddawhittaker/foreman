@@ -427,8 +427,8 @@ test("a preset world with a seed is made with the keyboard alone, previewing fir
   await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
   await expect(page.getByRole("button", { name: "Preview map" })).toBeFocused();
   await expect(page.locator("#generate-seed")).toHaveValue("777");
-  // The primary button comes first in the action row.
-  await page.keyboard.press("Shift+Tab");
+  // The primary button ends the action row, after Preview map (DESIGN 7.1).
+  await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Generate world" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL("/worlds/keys-only?generated=1");
@@ -774,8 +774,8 @@ test.describe("without script", () => {
   });
 });
 
-// DESIGN 8.6, WCAG 1.3.2 and 2.4.3: the action bar shows Generate world,
-// Preview map, Cancel in code order at every width, so the eye and Tab agree.
+// DESIGN 7.1, WCAG 1.3.2 and 2.4.3: the action bar shows Cancel, Preview map
+// and Generate world in code order at every width, so the eye and Tab agree.
 for (const [name, size, axis] of [
   ["a wide screen", { width: 1280, height: 800 }, "x"],
   ["a phone", { width: 360, height: 740 }, "y"],
@@ -786,7 +786,7 @@ for (const [name, size, axis] of [
     await page.goto("/generate");
     const bar = page.locator(".generate > .gen-actions");
     await expect(page.locator("#preview-button")).toBeVisible();
-    await page.locator("#generate-button").focus();
+    await bar.getByRole("link", { name: "Cancel" }).focus();
     const seen: { id: string; pos: number }[] = [];
     for (let i = 0; i < 3; i++) {
       if (i > 0) await page.keyboard.press("Tab");
@@ -796,7 +796,7 @@ for (const [name, size, axis] of [
         return { id: el.contains(f) ? (f.id || f.tagName) : "outside", pos: axis === "x" ? r.left : r.top };
       }, axis));
     }
-    expect(seen.map((s) => s.id)).toEqual(["generate-button", "preview-button", "A"]);
+    expect(seen.map((s) => s.id)).toEqual(["A", "preview-button", "generate-button"]);
     expect(seen[1].pos).toBeGreaterThan(seen[0].pos);
     expect(seen[2].pos).toBeGreaterThan(seen[1].pos);
   });

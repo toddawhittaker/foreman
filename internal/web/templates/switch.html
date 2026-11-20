@@ -62,11 +62,11 @@
     <input type="hidden" name="seen" value="{{.Seen}}">
     {{- end}}
     <div class="actions">
+      <a href="{{.ActivePath}}">{{t "server.switch.cancel" "from" .From.Name}}</a>
       <button type="submit" name="choice" value="stopped" class="button">{{t "server.switch.button_stopped"}}</button>
       {{- if .CanAnyway}}
       <button type="submit" name="choice" value="anyway" class="button button--danger">{{t "server.switch.button_anyway"}}</button>
       {{- end}}
-      <a href="{{.ActivePath}}">{{t "server.switch.cancel" "from" .From.Name}}</a>
     </div>
     {{- else}}
     {{- if not .Plan.Running}}
@@ -76,8 +76,8 @@
     </label>
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger">{{t "server.switch.title" "world" .To.Name}}</button>
       <a href="{{.ActivePath}}">{{t "server.switch.cancel" "from" .From.Name}}</a>
+      <button type="submit" class="button button--danger">{{t "server.switch.title" "world" .To.Name}}</button>
     </div>
     {{- end}}
   </form>

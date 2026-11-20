@@ -16,7 +16,7 @@ for (const lang of ["en", "de"]) {
       await page.goto("/settings/general");
       await expect(page.locator("html")).toHaveAttribute("lang", lang);
 
-      const nav = page.locator("nav.subnav--settings");
+      const nav = page.locator("nav.subnav--settings:visible");
       const links = nav.locator("li a");
       await expect(links).toHaveCount(tabs);
 

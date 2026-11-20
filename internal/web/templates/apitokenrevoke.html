@@ -1,9 +1,11 @@
 {{define "title"}}{{t "apitokens.revoke.question" "name" .Page.Token.Name "owner" .Page.Token.Owner}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "api-token"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <h1 id="confirm-heading">{{t "apitokens.revoke.question" "name" .Token.Name "owner" .Token.Owner}}</h1>
-{{template "settings-tabs" "api-token"}}
+{{template "rail" $}}
 <section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
@@ -12,8 +14,8 @@
   </ul>
   <form method="post" action="{{.Token.RevokePath}}" novalidate>
     <div class="actions">
-      <button type="submit" class="button button--danger" id="act-token-revoke">{{t "apitokens.revoke.button"}}</button>
       <a href="{{.BackPath}}">{{t "apitokens.revoke.cancel"}}</a>
+      <button type="submit" class="button button--danger" id="act-token-revoke">{{t "apitokens.revoke.button"}}</button>
     </div>
   </form>
 </section>

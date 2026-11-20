@@ -107,3 +107,29 @@ test("the phone Console command bar never covers the focused control", async ({ 
   await page.goto("/console");
   await tabsClearOf(page, await markBar(page.locator(".terminal .console-form")), true);
 });
+
+// From 64rem the status strip sticks to the window's top, so a control
+// reached backwards with Shift+Tab is scrolled clear of it, never left
+// behind it (WCAG 2.4.11, DESIGN 6, Shell).
+test("the status strip never covers a control reached with Shift+Tab", async ({ page, foreman, fakeGame }) => {
+  test.skip((page.viewportSize()?.width ?? 0) < 1024, "the strip sticks from 64rem only");
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await page.goto("/generate");
+  const strip = page.locator(".site-strip");
+  const field = page.getByLabel("World name");
+  await field.focus();
+  await page.keyboard.press("Tab");
+  await expect(field).not.toBeFocused();
+  // Scroll so the field sits under the strip, half hidden by it.
+  const stripBottom = (await strip.boundingBox())!.y + (await strip.boundingBox())!.height;
+  const fieldTop = (await field.boundingBox())!.y;
+  await page.evaluate((by) => window.scrollBy(0, by), fieldTop - (stripBottom - 20));
+  expect((await field.boundingBox())!.y, "the field starts under the strip").toBeLessThan(stripBottom);
+
+  await page.keyboard.press("Shift+Tab");
+  await expect(field).toBeFocused();
+  const strip2 = (await strip.boundingBox())!;
+  expect((await field.boundingBox())!.y, "the focused field starts below the strip").toBeGreaterThanOrEqual(strip2.y + strip2.height - 0.5);
+});

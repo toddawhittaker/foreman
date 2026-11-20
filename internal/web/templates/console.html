@@ -3,11 +3,13 @@
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
 <script src="{{static "log.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "server-tabs" "console"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- if not .HasWorld}}
 <h1>{{t "server.console.title"}}</h1>
-{{template "server-tabs" "console"}}
+{{template "rail" $}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
   <p class="empty">{{t "server.console.none"}}</p>
@@ -21,7 +23,7 @@
   <p class="eyebrow">{{t "common.nav.server"}}</p>
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
 </header>
-{{template "server-tabs" "console"}}
+{{template "rail" $}}
 {{- /* One terminal card: the game log, then past commands, then the command
      row at its foot, as a terminal reads (DESIGN 8.5). */}}
 <div class="card terminal">

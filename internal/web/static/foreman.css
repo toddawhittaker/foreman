@@ -933,7 +933,6 @@ main {
 }
 
 @media (min-width: 40rem) {
-
   .site > nav {
     order: 0;
     flex-basis: auto;
@@ -948,7 +947,6 @@ main {
     order: 1;
     margin-inline-start: 0;
   }
-
 
   main {
     gap: var(--space-5);
@@ -1153,7 +1151,6 @@ main > h1 + p.hint {
   line-height: 1.43;
 }
 
-
 /* Single-column grids use minmax(0, 1fr), so a long word or a wide child
    cannot push the track past its box (DESIGN 7, 320 px rules). */
 .panel,
@@ -1343,7 +1340,6 @@ fieldset,
   padding: 0;
   font-size: 0;
 }
-
 
 /* Disabled reads as unavailable in both themes; busy keeps the progress cursor. */
 .button:disabled,
@@ -2951,7 +2947,6 @@ td > .hint {
       min-block-size: 1.5rem;
       block-size: 1.5rem;
     }
-
   }
 }
 
@@ -4161,70 +4156,9 @@ form:has(#mode-exchange:checked) .achievements {
   tab-size: 2;
 }
 
-/* The settings rail: section links beside the form on a wide panel only;
-   it may stay in view there because it never covers the form (DESIGN 8.10). */
+/* Game settings' rows lay out by the width of the settings column. */
 .settings-wrap {
   container: settings / inline-size;
-}
-
-.settings-rail {
-  display: none;
-}
-
-@container settings (min-width: 44rem) {
-  .settings-layout {
-    display: grid;
-    grid-template-columns: 12rem minmax(0, 1fr);
-    gap: var(--space-5);
-    align-items: start;
-  }
-
-  .settings-rail {
-    display: block;
-    position: sticky;
-    inset-block-start: var(--space-4);
-  }
-
-  .settings-rail ul {
-    display: grid;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .settings-rail a {
-    display: flex;
-    align-items: center;
-    min-block-size: var(--target-min);
-    padding-inline-start: var(--space-3);
-    color: var(--color-text-muted);
-    border-inline-start: 3px solid var(--color-line);
-    font-weight: 500;
-    text-decoration: none;
-    overflow-wrap: anywhere;
-  }
-
-  .settings-rail a:hover {
-    color: var(--color-heading);
-    border-inline-start-color: var(--color-selected);
-  }
-
-  /* The raw editor is another page, so its link is set apart below the sections. */
-  .settings-rail li:last-child {
-    margin-block-start: var(--space-3);
-  }
-
-  .settings-rail li:last-child a {
-    color: var(--color-text);
-    border-inline-start-color: transparent;
-    font-size: var(--text-sm);
-    text-decoration: underline;
-  }
-
-  /* The rail holds the raw editor's link. */
-  .settings-raw-link {
-    display: none;
-  }
 }
 
 .settings-main {
@@ -4679,10 +4613,6 @@ a[target="_blank"]::after {
   gap: var(--space-3);
 }
 
-.pager__at {
-  font-size: var(--text-sm);
-}
-
 /* Foreman's own question when leaving Generate with settings that are not
    saved (DESIGN 7.4, 12): the confirmation box look, over a dimmed page. */
 .leave-dialog {
@@ -4961,7 +4891,7 @@ a[target="_blank"]::after {
 }
 
 /* The actions are one bar at the form's foot, in code order at every width:
-   Generate world, Preview map, then Cancel (DESIGN 8.6). */
+   Cancel, Preview map, then Generate world (DESIGN 7.1). */
 .generate > .gen-actions {
   display: flex;
   flex-wrap: wrap;
@@ -5040,9 +4970,8 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 }
 
 @media (max-width: 30rem) {
-  /* On a phone the three stack full width in source order, Generate world
-     first, so no language's long label is squeezed into a third of the bar
-     (DESIGN 8.6). */
+  /* On a phone the three stack full width in source order, so no
+     language's long label is squeezed into a third of the bar (DESIGN 8.6). */
   .generate > .gen-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -7062,17 +6991,7 @@ main:has(> .gate) > .gate {
   }
 }
 
-/* A world's settings: the form leads from the page's start edge, and the
-   section links sit after it as a list of what is on the page. */
 @container settings (min-width: 44rem) {
-  .settings-layout {
-    grid-template-columns: minmax(0, 1fr) 11rem;
-  }
-
-  .settings-rail {
-    order: 1;
-  }
-
   /* The note on the asterisk starts the fields' column. */
   .settings > .required-note {
     padding-inline-start: calc(max(15rem, (100% - var(--space-6)) / 3) + var(--space-6));
@@ -7219,66 +7138,6 @@ main > h1 + p.hint {
   container: plate-facts / inline-size;
 }
 
-.status-card.plate .facts-block > :has(> .facts.stats) {
-  display: grid;
-  gap: var(--space-4);
-}
-
-@container plate-facts (min-width: 48rem) {
-  .status-card.plate .facts-block > :has(> .facts.stats) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: center;
-  }
-}
-
-.facts.stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-  margin: 0;
-}
-
-.facts.stats > .stat {
-  display: grid;
-  align-content: start;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-raised);
-  border: var(--border-width) solid var(--color-line);
-  border-radius: var(--radius);
-}
-
-.facts.stats dt {
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.facts.stats dd {
-  margin: 0;
-  color: var(--color-heading);
-  font-size: 1.75rem;
-  font-weight: 600;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
-}
-
-.facts.stats dd .unit {
-  font-size: var(--text-sm);
-}
-
-.facts.stats .meter {
-  block-size: 6px;
-  max-inline-size: none;
-  border-radius: 3px;
-}
-
-.facts.stats .gauge:not(.gauge--warn, .gauge--danger) .meter > span {
-  background: var(--color-primary);
-}
-
 /* Console: the log, then the command row under it; on a phone the row is a
    bar stuck to the card's foot (DESIGN 8.5). */
 .terminal .log-frame > .button {
@@ -7346,58 +7205,6 @@ main > h1 + p.hint {
 
   .setting-row__body:has(> .field--short + .field--short) > :not(.field--short) {
     grid-column: 1 / -1;
-  }
-}
-
-/* On a phone the section links lead the form as one scrolling row of chips. */
-@container settings (max-width: 43.99rem) {
-  .settings-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-  }
-
-  .settings-rail {
-    display: block;
-    min-inline-size: 0;
-  }
-
-  .settings-rail ul {
-    display: flex;
-    gap: var(--space-2);
-    margin: 0;
-    padding: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-    list-style: none;
-  }
-
-  .settings-rail li {
-    flex: none;
-  }
-
-  /* The raw editor's own link follows the form on a phone. */
-  .settings-rail li:last-child {
-    display: none;
-  }
-
-  .settings-rail a {
-    display: inline-flex;
-    align-items: center;
-    min-block-size: var(--target-min);
-    padding-inline: var(--space-4);
-    color: var(--color-text);
-    background: var(--color-surface);
-    border: var(--border-width) solid var(--color-line);
-    border-radius: 999px;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .settings-rail a:hover {
-    border-color: var(--color-border);
   }
 }
 
@@ -7554,12 +7361,6 @@ main:has(> .gate)::before {
 
   .subnav ul::after {
     content: none;
-  }
-
-  /* One sideways scroller per page: on a phone the settings' section links
-     give way to the page's own scroll, under the world tabs. */
-  .settings-rail {
-    display: none;
   }
 }
 
@@ -7946,33 +7747,9 @@ main:has(> .gate)::before {
   font-weight: 600;
 }
 
-/* Game settings on a phone: a disclosure of links jumps to a section; it
-   goes when the rail of section links shows beside the form. */
-.settings-jump {
-  margin-block-end: var(--space-4);
-}
-
-.settings-jump > ul {
-  margin: 0;
-  padding: var(--space-1) var(--space-3);
-  list-style: none;
-}
-
-.settings-jump a {
-  display: flex;
-  align-items: center;
-  min-block-size: var(--target-min);
-}
-
 #settings-listing, #settings-joining, #settings-saving, #settings-admins,
 #settings-whitelist, #settings-bans {
   scroll-margin-block-start: var(--space-4);
-}
-
-@container settings (min-width: 44rem) {
-  .settings-jump {
-    display: none;
-  }
 }
 
 /* Helper text: 13 px at a 1.45 line height, held to about 66 characters,
@@ -9262,7 +9039,6 @@ main:has(> .gate) > .gate + .gate {
   }
 }
 
-
 /* Keep simultaneous server warnings visually separate. */
 .disk-notice > div {
   display: grid;
@@ -9949,37 +9725,21 @@ main:has(> .gate) > .gate + .gate {
   color: var(--color-text-muted);
 }
 
-/* Settings on a wide screen: the tabs become a 240 px rail beside the page,
-   the current one marked by an orange edge on the accent face. The rail is
-   drawn beside main's column, so the page's own parts keep their places. */
+/* Settings on a wide screen: the tabs are a list in the rail, the current
+   one marked by an orange edge on the accent face. */
 @media (min-width: 64rem) {
-  main:has(> .subnav--settings) {
-    position: relative;
-    padding-inline-start: calc(var(--space-6) + 15rem + var(--space-6));
-  }
-
-  main > .subnav--settings {
-    position: absolute;
-    inset-block-start: var(--space-6);
-    inset-inline-start: var(--space-6);
-    inline-size: 15rem;
-    padding-inline-end: var(--space-5);
-    border-block-end: 0;
-    border-inline-end: var(--border-width) solid var(--color-line);
-  }
-
-  main > .subnav--settings ul {
+  header > .subnav--settings ul {
     flex-direction: column;
     gap: 2px;
     overflow: visible;
     mask-image: none;
   }
 
-  main > .subnav--settings ul::after {
+  header > .subnav--settings ul::after {
     content: none;
   }
 
-  main > .subnav--settings a {
+  header > .subnav--settings a {
     justify-content: flex-start;
     min-block-size: 2.5rem;
     margin: 0;
@@ -9992,17 +9752,17 @@ main:has(> .gate) > .gate + .gate {
     transition: background-color var(--dur-1) var(--ease);
   }
 
-  main > .subnav--settings a:hover {
+  header > .subnav--settings a:hover {
     background: var(--color-secondary-hover);
   }
 
-  main > .subnav--settings a[aria-current] {
+  header > .subnav--settings a[aria-current] {
     background: var(--color-accent-bg);
     border-inline-start-color: var(--color-selected);
     color: var(--color-heading);
   }
 
-  main > .subnav--settings a:focus-visible {
+  header > .subnav--settings a:focus-visible {
     outline: var(--focus-width) solid var(--color-focus);
     outline-offset: -1px;
   }
@@ -10682,24 +10442,6 @@ main:has(> .public-world) {
   pointer-events: none;
 }
 
-.token-mcp {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.token-mcp > h3 {
-  margin: 0;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.token-mcp > form {
-  display: contents;
-}
-
 .state--mcp-on {
   background-color: var(--color-ok-bg);
   color: var(--color-ok);
@@ -10712,11 +10454,6 @@ main:has(> .public-world) {
 .state--mcp-off {
   background-color: var(--color-raised);
   color: var(--color-text-muted);
-}
-
-.token-mcp__state {
-  margin: 0;
-  margin-block-end: var(--space-2);
 }
 
 /* The owner filter: the list shows only the user's own tokens until All
@@ -11138,7 +10875,6 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-
 /* An archived world's row holds two actions on one line, Saves then
    Unarchive world, at the end of the row as Switch is above. */
 @media (min-width: 64rem) {
@@ -11238,16 +10974,8 @@ main > .panel.danger-zone.danger-zone--blocked {
   padding-block-start: 0;
 }
 
-/* Game settings is one page of headed sections with no section list of its
-   own, so its form takes the whole column and the raw editor's link
-   follows the form at every width. */
-.settings-layout,
-.settings-layout:has(> .settings-main) {
-  display: block;
-}
-
-.settings-raw-link,
-.settings-wrap .settings-raw-link {
+/* The raw editor's link follows the form at every width. */
+.settings-raw-link {
   display: flex;
 }
 
@@ -11256,23 +10984,7 @@ main > .panel.danger-zone.danger-zone--blocked {
    start side, the current page marked by an orange edge on the accent face;
    the area's title and state sit in the page header beside it. */
 @media (min-width: 64rem) {
-  main:has(> .subnav) {
-    position: relative;
-    padding-inline-start: calc(var(--space-6) + 15rem + var(--space-6));
-  }
-
-  main > .subnav {
-    position: absolute;
-    inset-block-start: var(--space-6);
-    inset-inline-start: var(--space-6);
-    inline-size: 15rem;
-    margin: 0;
-    padding-inline-end: var(--space-5);
-    border-block-end: 0;
-    border-inline-end: var(--border-width) solid var(--color-line);
-  }
-
-  main > .subnav ul {
+  header > .subnav ul {
     flex-direction: column;
     flex-wrap: nowrap;
     gap: 2px;
@@ -11281,15 +10993,15 @@ main > .panel.danger-zone.danger-zone--blocked {
     border: 0;
   }
 
-  main > .subnav ul::after {
+  header > .subnav ul::after {
     content: none;
   }
 
-  main > .subnav li {
+  header > .subnav li {
     flex: none;
   }
 
-  main > .subnav a {
+  header > .subnav a {
     justify-content: flex-start;
     min-block-size: 2.5rem;
     margin: 0;
@@ -11304,22 +11016,22 @@ main > .panel.danger-zone.danger-zone--blocked {
     transition: background-color var(--dur-1) var(--ease);
   }
 
-  main > .subnav a::after {
+  header > .subnav a::after {
     content: none;
   }
 
-  main > .subnav a:hover {
+  header > .subnav a:hover {
     background: var(--color-secondary-hover);
   }
 
-  main > .subnav a[aria-current] {
+  header > .subnav a[aria-current] {
     background: var(--color-accent-bg);
     border-inline-start-color: var(--color-selected);
     color: var(--color-heading);
     font-weight: 600;
   }
 
-  main > .subnav a:focus-visible {
+  header > .subnav a:focus-visible {
     outline: var(--focus-width) solid var(--color-focus);
     outline-offset: -1px;
   }
@@ -11340,12 +11052,12 @@ form.settings[hidden] {
 }
 
 @media (min-width: 64rem) {
-  main > .subnav li:has(> .subnav__sub) {
+  header > .subnav li:has(> .subnav__sub) {
     display: grid;
     gap: 2px;
   }
 
-  main > .subnav .subnav__sub {
+  header > .subnav .subnav__sub {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -11354,7 +11066,7 @@ form.settings[hidden] {
     border-inline-start: var(--border-width) solid var(--color-line);
   }
 
-  main > .subnav .subnav__sub a {
+  header > .subnav .subnav__sub a {
     min-block-size: 2.25rem;
     margin-inline-start: -1px;
     font-size: var(--text-sm);
@@ -11362,18 +11074,18 @@ form.settings[hidden] {
     color: var(--color-text-muted);
   }
 
-  main > .subnav .subnav__sub a:hover {
+  header > .subnav .subnav__sub a:hover {
     color: var(--color-heading);
   }
 
-  main > .subnav .subnav__sub a[aria-current] {
+  header > .subnav .subnav__sub a[aria-current] {
     color: var(--color-heading);
     font-weight: 600;
   }
 
   /* The parent of the open sub-page reads as a group title, not a second
      current item. */
-  main > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
+  header > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
     background: none;
     border-inline-start-color: transparent;
     font-weight: 600;
@@ -11713,7 +11425,7 @@ form.settings[hidden] {
   font-size: var(--text-sm);
 }
 
-.form-foot > #settings-unsaved:not([hidden]) {
+.form-foot > #settings-unsaved {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -11731,33 +11443,50 @@ form.settings[hidden] {
   background: var(--color-selected);
 }
 
+/* The note stays in the page while empty, so its status region is heard when it fills. */
+#settings-unsaved:empty::before {
+  content: none;
+}
+
+/* On a narrow form the unsaved count takes its own line over the actions,
+   so Cancel and Preview changes keep their words whole. */
+@container settings (max-width: 36rem) {
+  .form-foot:has(> #settings-unsaved:not(:empty)) {
+    flex-wrap: wrap;
+  }
+
+  .form-foot > #settings-unsaved:not(:empty) {
+    flex-basis: 100%;
+  }
+}
+
 /* The page column marks the current place once: the parent of an open
    sub-page keeps the orange start edge in bold, and the sub-page itself
    takes the accent face, the same face as a current Settings item. */
 @media (min-width: 64rem) {
-  main > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
+  header > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
     border-inline-start-color: var(--color-selected);
     color: var(--color-heading);
     font-weight: 700;
   }
 
-  main > .subnav .subnav__sub a {
+  header > .subnav .subnav__sub a {
     font-size: var(--text-md);
     color: var(--color-text);
   }
 
-  main > .subnav .subnav__sub a[aria-current] {
+  header > .subnav .subnav__sub a[aria-current] {
     background: var(--color-accent-bg);
     border-inline-start-color: var(--color-selected);
     font-weight: 600;
   }
 
-  main > .subnav .subnav__sub a[data-unsaved] {
+  header > .subnav .subnav__sub a[data-unsaved] {
     justify-content: space-between;
     gap: var(--space-2);
   }
 
-  main > .subnav .subnav__sub a[data-unsaved]::after {
+  header > .subnav .subnav__sub a[data-unsaved]::after {
     content: "";
   }
 }
@@ -11861,11 +11590,6 @@ form.settings[hidden] {
   }
 }
 
-/* MCP access stated inside Create a token, before the one-time secret. */
-.token-create__mcp {
-  max-inline-size: 52rem;
-}
-
 /* Type roles stand apart: 13 px helper text in the quiet colour under
    15 px body. */
 .hint,
@@ -11894,8 +11618,11 @@ main > h1 + p.hint,
    at the same place. Below 64rem the header stays a bar with tab rows. ==== */
 :root {
   --rail: 15rem;
-  /* Where the area's own pages start in the rail: under the four areas. */
-  --rail-sub-top: 13.5rem;
+}
+
+/* The rail's copy of the area's own pages shows from 64rem only. */
+header > .subnav {
+  display: none;
 }
 
 .site-world {
@@ -12067,17 +11794,17 @@ main > h1 + p.hint,
     padding: var(--space-6);
   }
 
-  /* The area's own pages sit in the rail, under the four areas. */
-  body:has(> .site > nav) > main:has(> .subnav) {
-    padding-inline-start: var(--space-6);
+  /* The area's own pages sit in the rail, under the four areas; the copy
+     under the page's heading is for narrower screens. */
+  body:has(> .site > nav) > main > .subnav {
+    display: none;
   }
 
-  body:has(> .site > nav) > main > .subnav {
-    position: absolute;
-    z-index: 2;
-    inset-block-start: var(--rail-sub-top);
-    inset-inline-start: calc(-1 * var(--rail));
-    inline-size: var(--rail);
+  body:has(> .site > nav) > header > .subnav {
+    display: block;
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
     margin: 0;
     padding: var(--space-4) var(--space-3) var(--space-5);
     border: 0;
@@ -12086,7 +11813,7 @@ main > h1 + p.hint,
   }
 
   /* The list's name, taken from its own label, over its links. */
-  body:has(> .site > nav) > main > .subnav::before {
+  body:has(> .site > nav) > header > .subnav::before {
     content: attr(aria-label) / "";
     display: block;
     padding: 0 var(--space-3) var(--space-2);
@@ -12098,7 +11825,7 @@ main > h1 + p.hint,
     text-transform: uppercase;
   }
 
-  body:has(> .site > nav) > main > .subnav > ul > li > a {
+  body:has(> .site > nav) > header > .subnav > ul > li > a {
     min-block-size: 2.75rem;
     font-size: var(--text-md);
   }
@@ -12204,7 +11931,7 @@ h3 {
 
 /* Short in-row actions on a mouse-driven screen; touch keeps 44 px. */
 @media (min-width: 64rem) and (pointer: fine) {
-  :is(td, .token-card, .worlds > li, .favorite-list > li, .notify-list > li) .button:not(.button--primary) {
+  :is(td, .token-card, .worlds > li, .favorite-list > li) .button:not(.button--primary) {
     min-block-size: 2.25rem;
   }
 }
@@ -12315,25 +12042,25 @@ main > .message,
 /* Wide settings forms put their groups two to a row, so a page of short
    fields fills the card instead of one long column (DESIGN 8.15). */
 @container (min-width: 92rem) {
-  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(.settings-sub, fieldset)) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: var(--space-6);
     align-items: start;
   }
 
-  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(.settings-sub, fieldset)) > :not(.setting-row) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > :not(.setting-row) {
     grid-column: 1 / -1;
   }
 
   /* Each pair of groups shares one rule above it. */
-  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(.settings-sub, fieldset)) > .setting-row {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > .setting-row {
     margin-block-start: var(--space-5);
     padding-block-start: var(--space-5);
     border-block-start: var(--border-width) solid var(--color-line);
   }
 
-  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(.settings-sub, fieldset)) > .setting-row:is(:nth-of-type(1), :nth-of-type(2)) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > .setting-row:is(:nth-of-type(1), :nth-of-type(2)) {
     margin-block-start: 0;
     padding-block-start: 0;
     border-block-start: 0;
@@ -12566,6 +12293,16 @@ main:has(> .gate) > .gate + .gate {
     z-index: 31;
   }
 
+  /* A control scrolled into view stops below the strip, never behind it
+     (WCAG 2.4.11); the audit log's column names stick under it too. */
+  html:has(body > .site > nav) {
+    scroll-padding-block-start: calc(3.5rem + var(--space-3));
+  }
+
+  body:has(> .site > nav) .audit-table thead th {
+    inset-block-start: 3.5rem;
+  }
+
   body:has(> .site > nav) .site-state:not(:empty) {
     flex: none;
     min-inline-size: 0;
@@ -12575,13 +12312,9 @@ main:has(> .gate) > .gate + .gate {
     line-height: 1.4;
   }
 
-  :root {
-    --rail-sub-top: 13.125rem;
-  }
-
   /* The area's list is named in the interface face, so the mono capitals
      stay for overlines and fact names (DESIGN 5). */
-  body:has(> .site > nav) > main > .subnav::before {
+  body:has(> .site > nav) > header > .subnav::before {
     font-family: var(--font-sans);
     letter-spacing: 0.04em;
   }
@@ -12589,14 +12322,14 @@ main:has(> .gate) > .gate + .gate {
   /* The current place: a neutral raised face and the orange edge, not a
      brown tint (DESIGN 3). */
   body .site > nav .tabs a[aria-current],
-  main > .subnav a[aria-current],
-  main > .subnav--settings a[aria-current],
-  main > .subnav .subnav__sub a[aria-current] {
+  header > .subnav a[aria-current],
+  header > .subnav--settings a[aria-current],
+  header > .subnav .subnav__sub a[aria-current] {
     background: var(--color-raised);
     box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
   }
 
-  main > .subnav a[aria-current="true"] {
+  header > .subnav a[aria-current="true"] {
     background: none;
     box-shadow: none;
   }
@@ -12769,27 +12502,16 @@ form.setting-rows > .form-foot {
 }
 
 /* ==== One completion footer: the way out is a quiet button just before
-   the primary action at the end (DESIGN 7.1). ==== */
+   the primary action at the end, in code order too, so the keyboard meets
+   them as the eye does (DESIGN 7.1). ==== */
 .generate > .gen-actions {
   justify-content: flex-end;
 }
 
-.generate > .gen-actions > a:not(.button) {
-  order: -1;
-}
-
-.generate > .gen-actions > .button--primary {
-  order: 1;
-}
-
-.confirm .actions:has(> :is(.button--primary, .button--danger) + a:not(.button):last-child) {
+.confirm .actions:has(> a:not(.button):first-child ~ :is(.button--primary, .button--danger)) {
   justify-content: flex-end;
   padding-block-start: var(--space-4);
   border-block-start: var(--border-width) solid var(--color-line);
-}
-
-.confirm .actions:has(> :is(.button--primary, .button--danger) + a:not(.button):last-child) > a:not(.button) {
-  order: -1;
 }
 
 /* ==== Mods: before a search the results panel is one quiet line, so the
@@ -12834,8 +12556,9 @@ form.setting-rows > .form-foot {
   }
 }
 
-/* ==== The account menu's button names its two parts apart: the person,
-   a rule, then the language (DESIGN 6, User menu). ==== */
+/* ==== The account menu's button: the person, then the language in quiet
+   text, one button with no rule between, so the language does not read as
+   a control of its own (DESIGN 6, User menu). ==== */
 @media (min-width: 64rem) {
   .menu > summary > .menu__user {
     display: inline-flex;
@@ -12843,7 +12566,7 @@ form.setting-rows > .form-foot {
     gap: var(--space-2);
   }
 
-  /* A round badge with the person cut out of it, then a globe before the language. */
+  /* A round badge with the person cut out of it. */
   .menu > summary > .menu__user::before {
     content: "";
     flex: none;
@@ -12853,25 +12576,5 @@ form.setting-rows > .form-foot {
     background: var(--color-text-muted);
     mask: var(--i-account) center / 0.875rem no-repeat, linear-gradient(black 0 0);
     mask-composite: exclude;
-  }
-
-  .menu > summary > .menu__lang::before {
-    content: "";
-    flex: none;
-    inline-size: 1rem;
-    block-size: 1rem;
-    background: currentColor;
-    mask: var(--i-worlds) center / contain no-repeat;
-  }
-
-  .menu > summary > .menu__lang {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  .menu > summary > .menu__user + .menu__lang {
-    padding-inline-start: var(--space-3);
-    border-inline-start: var(--border-width) solid var(--color-line);
   }
 }

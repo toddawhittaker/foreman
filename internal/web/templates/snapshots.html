@@ -2,13 +2,15 @@
 
 {{define "scripts"}}<script src="{{static "ticks.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><a href="{{.Tabs.Path}}">{{.WorldName}}</a><span aria-current="page">{{t "worlds.world.snapshots"}}</span></p>
 <div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 </div>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{- if not .Done.IsZero}}
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>

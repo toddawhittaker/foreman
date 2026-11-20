@@ -9,11 +9,13 @@
 {{- end}}
 {{- end}}
 
+{{define "rail"}}{{template "settings-tabs" "general"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "common.menu.general"}}</h1>
-{{template "settings-tabs" "general"}}
+{{template "rail" $}}
 {{- if .Saved}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{t "general.done"}}</p>

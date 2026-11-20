@@ -2,13 +2,15 @@
 
 {{define "scripts"}}<script src="{{static "copy.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "api-token"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <header class="page-head">
   <p class="eyebrow">{{t "common.nav.settings"}}</p>
   <h1>{{t "apitokens.created.title" "name" .Token.Name}}</h1>
 </header>
-{{template "settings-tabs" "api-token"}}
+{{template "rail" $}}
 {{- /* One panel, read top to bottom: what was made, the secret with its warning right above it, then where to use it and until when. */}}
 <section class="panel token-created" aria-labelledby="done-message">
   <p class="token-created__done" id="done-message" tabindex="-1" autofocus><strong>{{t "common.label.done"}}</strong> {{t "apitokens.created.done" "name" .Token.Name "scope" (msg .Token.ScopeWord)}}</p>

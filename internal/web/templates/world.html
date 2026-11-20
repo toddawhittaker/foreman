@@ -2,6 +2,8 @@
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
 <script src="{{static "copy.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
@@ -9,7 +11,7 @@
 <div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}</h1>
 </div>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{- if .World.Unreadable}}
 <p>{{tHTML "worlds.unreadable" "folder" (code .World.ID)}}</p>
 {{- else if .World.Newer}}

@@ -1,10 +1,12 @@
 {{define "title"}}{{t "worlds.delete.title" "world" .Page.World.Name}}{{end}}
 
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- $refusal := .Refusal}}
 <h1 id="confirm-heading">{{if $refusal.IsZero}}{{t "worlds.delete.question" "world" .World.Name}}{{else}}{{t "worlds.delete.title" "world" .World.Name}}{{end}}</h1>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{template "summary" .Problems}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
@@ -37,8 +39,8 @@
       {{- end}}
     </div>
     <div class="actions">
-      <button type="submit" class="button button--danger">{{t "worlds.world.delete.button"}}</button>
       <a href="{{.WorldPath}}">{{t "worlds.delete.cancel"}}</a>
+      <button type="submit" class="button button--danger">{{t "worlds.world.delete.button"}}</button>
     </div>
   </form>
 </section>

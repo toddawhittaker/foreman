@@ -150,7 +150,7 @@ test("renames a world and refuses a duplicate name", async ({ page, foreman }) =
   await page.getByRole("link", { name: "Base", exact: true }).click();
   await expect(page).toHaveURL("/worlds/base");
   await expect(page.getByRole("link", { name: "Saves" })).toHaveAttribute("href", "/worlds/base/saves");
-  await expect(page.locator("#main").getByRole("link", { name: "Snapshots" })).toHaveAttribute("href", "/worlds/base/snapshots");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Snapshots" })).toHaveAttribute("href", "/worlds/base/snapshots");
   await checkPage(page);
 
   await page.getByLabel("Name", { exact: true }).fill("OTHER");

@@ -1,10 +1,12 @@
 {{define "title"}}{{t "audit.title"}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "audit-log"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "audit.title"}}</h1>
-{{template "settings-tabs" "audit-log"}}
+{{template "rail" $}}
 <p class="page-intro">{{t "audit.intro"}}</p>
 
 {{- /* A plain GET form: the filters live in the address, so a filtered view can be bookmarked and the Newer and Older links keep them. One row of controls that wraps only when it must. */}}

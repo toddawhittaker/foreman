@@ -1,5 +1,7 @@
 {{define "title"}}{{t "common.menu.notifications"}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "notifications"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <header class="page-head page-head--row">
@@ -11,7 +13,7 @@
   </div>
   {{- end}}
 </header>
-{{template "settings-tabs" "notifications"}}
+{{template "rail" $}}
 {{- if .NoKey}}
 {{- /* Without the key no address can be sealed or read, so a note stands in for the list and form (DESIGN 8.16). */}}
 <div class="message message--note" id="notify-nokey">

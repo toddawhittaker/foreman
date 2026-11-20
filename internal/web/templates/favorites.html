@@ -3,11 +3,13 @@
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
 <script src="{{static "copy.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "worlds-area-tabs" "favorites"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{t "favorites.title"}}</span></p>
 <h1>{{t "favorites.title"}}</h1>
-{{template "worlds-area-tabs" "favorites"}}
+{{template "rail" $}}
 <p class="page-intro">{{t "favorites.intro"}}</p>
 {{- with .Deleted}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
