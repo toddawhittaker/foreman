@@ -168,7 +168,7 @@ test("the whitelist buttons show only while the running game keeps the whitelist
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
   // The switch is read at the start, so it is set before.
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=whitelist");
   await page.getByLabel("Only whitelisted players can join").check();
   await page.getByRole("button", { name: "Save whitelist enforcement" }).click();
   await expect(page.locator("#done-message")).toBeVisible();

@@ -18,6 +18,10 @@ const fakePortalBinary = join(import.meta.dirname, "..", "..", "bin", "fakeporta
 const fakeIdPBinary = join(import.meta.dirname, "..", "..", "bin", "fakeidp");
 
 // SPEC 17.1 names WCAG 2.2 AA.
+// The page background, --color-bg, in each theme (DESIGN 3, "Tokens").
+export const darkBg = "rgb(19, 18, 16)";
+export const lightBg = "rgb(233, 227, 214)";
+
 export const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 // Resolves with the port Foreman reports in its "listening" log line, which
@@ -194,7 +198,8 @@ async function startFakeGame(sidecar?: SidecarSeed): Promise<FakeGame & { stop: 
 
 // A fake Factorio mod portal (cmd/fakeportal). It is an HTTPS proxy: Foreman gets
 // HTTPS_PROXY and SSL_CERT_FILE, so its unchanged portal client reaches the fake
-// as mods.factorio.com, and the proxy refuses every other host. The hooks are
+// as mods.factorio.com (and its update check reaches it as api.github.com), and
+// the proxy refuses every other host. The hooks are
 // listed at controlHandler in cmd/fakeportal/control.go.
 export interface FakePortal {
   proxy: string;
@@ -214,6 +219,8 @@ export interface FakePortal {
   failApi: (status: number) => Promise<void>;
   // The proxy refuses every tunnel with 503 while true.
   setDown: (down: boolean) => Promise<void>;
+  // Foreman's latest release on the fake GitHub, such as "v99.0.0"; "" answers 404.
+  setGitHubTag: (tag: string) => Promise<void>;
   // Requests seen inside tunnels (host and path, never the query), tunnels
   // opened, and the hosts the proxy refused.
   state: () => Promise<PortalState>;
@@ -256,6 +263,7 @@ async function startFakePortal(): Promise<FakePortal & { stop: () => Promise<voi
     setMode: async (name, version, mode) => void (await post("/mode", { name, version, mode })),
     failApi: async (status) => void (await post("/fail", { status })),
     setDown: async (down) => void (await post("/down", { down })),
+    setGitHubTag: async (tag) => void (await post("/github", { tag })),
     state,
     count: async (host, pathPrefix) => (await state()).requests.filter((r) => r.host === host && r.path.startsWith(pathPrefix)).length,
     stop: async () => {
@@ -685,9 +693,12 @@ export async function expectFollowed(page: Page, sentence: string) {
   expect(await page.evaluate(() => document.activeElement?.id)).toBe("control-heading");
 }
 
-// The Snapshots selection bar and Generate's action bar stick to the window's
-// foot (DESIGN 8.3, 8.6), so at some scroll positions one lies over a row's
-// control and axe's target-size rule counts that control as partly covered.
+// The Snapshots selection bar, Generate's action bar and the save bars of
+// long forms stick to the window's foot (DESIGN 6, "The 320 px rules", rule
+// 7), and from 64rem the status strip, the rail's logo cell and the user menu
+// stick to its top (DESIGN 6, Shell). So at some scroll positions one lies
+// over a control (a row's, or a rail link scrolled up under the logo) and
+// axe's target-size rule counts that control as partly covered.
 // That is not a barrier: a pointer user scrolls the control out from under the
 // bar, and the page's scroll-padding keeps a focused control clear of it
 // (WCAG 2.4.11, tested per bar in sticky-bars.spec.ts). So a target-size
@@ -695,7 +706,7 @@ export async function expectFollowed(page: Page, sentence: string) {
 // small, the control's own box is at least 24 by 24 px, and it lies under one
 // of those bars while the bar is sticky. Every other finding still fails.
 // Todd approved this exception on 2026-11-13.
-const stickyBars = ".select-bar, .generate > .gen-actions";
+const stickyBars = ".select-bar, .generate > .gen-actions, .form-foot, .site-strip, .site > .product, .site > .menu";
 type AxeCheck = { id: string; data?: unknown };
 type AxeNode = { target: unknown[]; any?: AxeCheck[]; all?: AxeCheck[]; none?: AxeCheck[] };
 type AxeViolation = { id: string; nodes: AxeNode[] };

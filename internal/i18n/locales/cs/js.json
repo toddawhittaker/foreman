@@ -36,5 +36,10 @@
   "js.preview.prepare_planets_wait": "Planety čekají, než se stažení připraví. Je třeba ho nejprve zrušit.",
   "js.preview.prepare_retry": "Zkusit znovu: {planet}",
   "js.preview.prepare_started": "Stahování bylo zahájeno.",
-  "js.preview.prepare_redrawing": "Náhled mapy se vykresluje pro nové nastavení. Stáhnout bude možné, až bude hotový."
+  "js.preview.prepare_redrawing": "Náhled mapy se vykresluje pro nové nastavení. Stáhnout bude možné, až bude hotový.",
+  "js.settings.unsaved": {
+    "one": "{count} neuložená změna, zůstává zachována při přechodu mezi sekcemi.",
+    "few": "{count} neuložené změny, zůstávají zachovány při přechodu mezi sekcemi.",
+    "other": "{count} neuložených změn, zůstává zachováno při přechodu mezi sekcemi."
+  }
 }

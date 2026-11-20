@@ -6,6 +6,8 @@
   "about.heading": "О Foreman",
   "about.licence": "Лицензия",
   "about.modified": "изменено",
+  "about.newer": "Доступен Foreman {version}. {link}",
+  "about.newer.link": "Что нового",
   "about.source": "Исходный код и трекер задач находятся на {link}.",
   "about.source.link": "GitHub",
   "about.title": "О программе",

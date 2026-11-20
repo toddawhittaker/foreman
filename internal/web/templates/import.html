@@ -3,11 +3,14 @@
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
 <script src="{{static "import.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{worldsPath}}">{{t "worlds.back.worlds"}}</a></div>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{t "worlds.import.title"}}</span></p>
 <h1>{{t "worlds.import.title"}}</h1>
-<p>{{t "worlds.import.intro"}}</p>
+{{template "rail" $}}
+<p class="page-intro">{{t "worlds.import.intro"}}</p>
 {{- with .Result}}
 {{- if .Imported}}
 <div class="message message--success" id="import-result" tabindex="-1" autofocus>
@@ -33,6 +36,22 @@
 </div>
 {{- end}}
 {{- end}}
+
+{{- /* Uploading a save is the common way in, so it comes first (SPEC 5.1). */}}
+<form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel import-upload" novalidate aria-labelledby="upload-heading">
+  <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>
+  {{template "summary" .Upload.Problems}}
+  <p>{{t "worlds.import.upload.intro"}}</p>
+  {{- with .Upload}}
+  {{template "required-note"}}
+  {{template "import-fields" .}}
+  {{/* The file comes last: the server reads the text fields before it. */}}
+  {{template "dropzone" .SourceZone}}
+  {{- end}}
+  <div class="actions">
+    <button type="submit" class="button{{if not .Importable}} button--primary{{end}}">{{t "worlds.import.upload.button"}}</button>
+  </div>
+</form>
 
 <form method="post" action="{{.FolderPath}}" class="panel" novalidate aria-labelledby="folder-heading">
   <h2 id="folder-heading">{{t "worlds.import.folder.heading"}}</h2>
@@ -71,26 +90,16 @@
     {{- end}}
   </ul>
   {{- end}}
+  {{- /* With nothing to import there is nothing to fill in or press: the note above says what to do. */}}
+  {{- if $.Page.Importable}}
   {{template "import-fields" .}}
   {{- end}}
+  {{- end}}
+  {{- if .Importable}}
   <div class="actions">
     <button type="submit" class="button button--primary">{{t "worlds.import.folder.button"}}</button>
   </div>
-</form>
-
-<form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel" novalidate aria-labelledby="upload-heading">
-  <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>
-  {{template "summary" .Upload.Problems}}
-  <p>{{t "worlds.import.upload.intro"}}</p>
-  {{- with .Upload}}
-  {{template "required-note"}}
-  {{template "import-fields" .}}
-  {{/* The file comes last: the server reads the text fields before it. */}}
-  {{template "dropzone" .SourceZone}}
   {{- end}}
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{t "worlds.import.upload.button"}}</button>
-  </div>
 </form>
 {{end}}
 {{- end}}

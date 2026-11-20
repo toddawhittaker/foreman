@@ -1,13 +1,16 @@
 {{define "title"}}{{t "audit.title"}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "audit-log"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "audit.title"}}</h1>
-{{template "settings-tabs" "audit-log"}}
-<p>{{t "audit.intro"}}</p>
+{{template "rail" $}}
+<p class="page-intro">{{t "audit.intro"}}</p>
 
 {{- /* A plain GET form: the filters live in the address, so a filtered view can be bookmarked and the Newer and Older links keep them. One row of controls that wraps only when it must. */}}
+<div class="panel audit-panel">
 <form method="get" action="{{.Path}}" class="audit-filter" id="audit-filter" aria-labelledby="filter-heading">
   <h2 id="filter-heading" class="visually-hidden">{{t "audit.filter.heading"}}</h2>
   <div class="field">
@@ -46,7 +49,7 @@
     </select>
   </div>
   <div class="actions">
-    <button type="submit" class="button button--primary" id="act-audit-filter">{{t "audit.filter.apply"}}</button>
+    <button type="submit" class="button" id="act-audit-filter">{{t "audit.filter.apply"}}</button>
     {{- if .Filtered}}
     <a href="{{.ClearPath}}" class="button" id="act-audit-clear">{{t "audit.filter.clear"}}</a>
     {{- end}}
@@ -54,7 +57,7 @@
 </form>
 
 <section class="audit-entries" aria-labelledby="entries-heading">
-  <h2 id="entries-heading">{{t "audit.list.heading"}}</h2>
+  <h2 id="entries-heading" class="visually-hidden">{{t "audit.list.heading"}}</h2>
   {{- if .Rows}}
   {{- /* The cells carry data-label so a phone shows each row as a compact block (DESIGN 8.15). */}}
   <table class="audit-table" role="table" id="audit-list">
@@ -98,5 +101,6 @@
   </nav>
   {{- end}}
 </section>
+</div>
 {{- end}}
 {{- end}}

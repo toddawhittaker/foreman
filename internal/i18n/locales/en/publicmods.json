@@ -24,5 +24,10 @@
   "publicmods.title": "Mods for this server",
   "publicmods.unchecked": "The mod portal could not be checked just now, so no mod is marked as missing from it. The downloads work anyway.",
   "publicmods.where.heading": "Where the mods go",
-  "publicmods.where.text": "Put each mod's zip file, without unpacking it, in your Factorio client's mods folder: Windows {windows}, macOS {macos}, Linux {linux}. The file from Download all holds the mods' zip files, so unpack that one into the folder."
+  "publicmods.where.os.linux": "Linux",
+  "publicmods.where.os.macos": "macOS",
+  "publicmods.where.os.windows": "Windows",
+  "publicmods.where.step_download": "Choose Download all. You get one zip file that holds each mod's own zip file.",
+  "publicmods.where.step_keep": "Leave each mod's own zip file packed; Factorio reads it as it is.",
+  "publicmods.where.step_unpack": "Unpack that one file into your Factorio client's mods folder:"
 }

@@ -11,7 +11,6 @@
   "worlds.allsnapshots.title": "Migawki",
   "worlds.allsnapshots.world_adds": "Migawki tego świata dodają {size}.",
   "worlds.back.world": "Wróć do {world}",
-  "worlds.back.worlds": "Wróć do światów",
   "worlds.badge.active": "Aktywny",
   "worlds.busy.action.force_stop": "wymuszone zatrzymanie",
   "worlds.busy.action.image_download": "pobieranie obrazu",
@@ -506,5 +505,7 @@
   "worlds.world.archived.text": "Ten świat jest ukryty na głównej liście i nie można go uruchomić ani przełączyć się na niego. Jego pliki i migawki pozostają bez zmian.",
   "worlds.world.unarchive.button": "Cofnij archiwizację świata",
   "worlds.world.unarchive.done": "Archiwizacja świata {name} została cofnięta.",
-  "worlds.list.all_archived": "Wszystkie światy są zarchiwizowane."
+  "worlds.list.all_archived": "Wszystkie światy są zarchiwizowane.",
+  "worlds.area.all": "Wszystkie światy",
+  "worlds.area.label": "Strony światów"
 }

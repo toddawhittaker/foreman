@@ -38,6 +38,7 @@
   "audit.action.token-create": "Token API vytvořen",
   "audit.action.token-renew": "Token API obnoven",
   "audit.action.token-revoke": "Token API odvolán",
+  "audit.action.update-check-set": "Kontrola aktualizací zapnuta nebo vypnuta",
   "audit.action.user-create": "Uživatel vytvořen",
   "audit.action.user-delete": "Uživatel smazán",
   "audit.action.webhook-add": "Webhook přidán",

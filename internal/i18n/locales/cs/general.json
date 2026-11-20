@@ -18,6 +18,8 @@
   "general.stop.hint": "0 znamená bez upozornění.",
   "general.stop.label": "Výchozí odpočet při zastavení (sekundy)",
   "general.stop.text": "Odpočet, kterým začíná zastavení nebo restart, když žádný není zadán. Naplánovaný restart má vlastní pevný odpočet.",
+  "general.switch.off": "vypnuto",
+  "general.switch.on": "zapnuto",
   "general.trim.final": "Odstraněné snímky nelze obnovit. Aby se zachovaly, je třeba číslo znovu zvýšit před dalším automatickým snímkem.",
   "general.trim.snapshots": {
     "one": "Bude odstraněn {count} automatický snímek — při dalším automatickém snímku jeho světa.",
@@ -25,6 +27,10 @@
     "other": "Bude odstraněno {count} automatických snímků — každý při dalším automatickém snímku svého světa."
   },
   "general.trim.worlds": "Dotčené světy: {count}.",
+  "general.updates.heading": "Nové verze Foremanu",
+  "general.updates.hint": "Po vypnutí se Foreman kvůli tomu na GitHub nikdy neobrací.",
+  "general.updates.label": "Kontrolovat nové verze Foremanu na GitHubu",
+  "general.updates.text": "Foreman se může každých 6 hodin zeptat GitHubu, zda vyšla novější verze Foremanu, a okno O aplikaci to pak uvede. Neodesílá se nic o uživateli ani o světech.",
   "general.uploads.heading": "Nahrávání souborů",
   "general.uploads.mod.hint": "Stejný limit platí pro mod stahovaný z portálu modů.",
   "general.uploads.mod.label": "Maximální velikost nahrávaného modu (MB)",

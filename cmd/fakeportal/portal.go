@@ -26,12 +26,23 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/modportal/modportaltest"
+	"github.com/toddawhittaker/foreman/internal/updatecheck"
 )
 
 const (
 	portalHost   = "mods.factorio.com"
 	downloadHost = "dl-mod.factorio.com"
 )
+
+// githubHost and githubPath are where Foreman asks for its latest release
+// (SPEC 14.10); the fake answers with the tag a test set.
+var githubHost, githubPath = func() (string, string) {
+	u, err := url.Parse(updatecheck.LatestURL)
+	if err != nil {
+		panic(err)
+	}
+	return u.Host, u.Path
+}()
 
 // Fake is the fake mod portal behind a test-only HTTPS proxy (SPEC 9.12; the
 // product has no portal address setting). Foreman is started with
@@ -54,6 +65,7 @@ type Fake struct {
 	reqs    []request
 	served  map[string]modportaltest.Served // by name_version
 	added   []string                        // mod names added, in order
+	tag     string                          // the latest Foreman release on the fake GitHub, "" for none
 }
 
 type request struct {
@@ -121,7 +133,7 @@ func hostAllowed(hostport string) bool {
 	if err != nil || port != "443" {
 		return false
 	}
-	return host == portalHost || (strings.HasSuffix(host, ".factorio.com") && len(host) > len(".factorio.com"))
+	return host == portalHost || host == githubHost || (strings.HasSuffix(host, ".factorio.com") && len(host) > len(".factorio.com"))
 }
 
 func (f *Fake) serveProxy(w http.ResponseWriter, r *http.Request) {
@@ -199,8 +211,17 @@ func (f *Fake) servePortal(w http.ResponseWriter, r *http.Request) {
 	}
 	f.mu.Lock()
 	f.reqs = append(f.reqs, request{Host: host, Path: r.URL.Path})
+	tag := f.tag
 	f.mu.Unlock()
 
+	if host == githubHost {
+		if r.URL.Path != githubPath || tag == "" {
+			http.NotFound(w, r)
+			return
+		}
+		reply(w, map[string]string{"tag_name": tag})
+		return
+	}
 	if host != portalHost {
 		// A download host serves files only; the portal's API is not there.
 		if !strings.HasPrefix(r.URL.Path, "/cdn/") {
@@ -317,7 +338,7 @@ func makeCerts() (caPEM []byte, leaf tls.Certificate, err error) {
 	leafTmpl := &x509.Certificate{
 		SerialNumber: big.NewInt(2),
 		Subject:      pkix.Name{CommonName: portalHost},
-		DNSNames:     []string{portalHost, "*.factorio.com"},
+		DNSNames:     []string{portalHost, "*.factorio.com", githubHost},
 		NotBefore:    now.Add(-time.Hour),
 		NotAfter:     now.Add(24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,

@@ -11,7 +11,6 @@
   "worlds.allsnapshots.title": "Snapshots",
   "worlds.allsnapshots.world_adds": "Die Snapshots dieser Welt belegen zusätzlich {size}.",
   "worlds.back.world": "Zurück zu {world}",
-  "worlds.back.worlds": "Zurück zu den Welten",
   "worlds.badge.active": "Aktiv",
   "worlds.busy.action.force_stop": "erzwungener Stopp",
   "worlds.busy.action.image_download": "Image-Download",
@@ -489,5 +488,7 @@
   "worlds.world.archived.text": "Diese Welt ist in der Hauptliste ausgeblendet und kann weder starten noch als Ziel eines Wechsels dienen. Ihre Dateien und Snapshots bleiben unverändert.",
   "worlds.world.unarchive.button": "Archivierung der Welt aufheben",
   "worlds.world.unarchive.done": "{name} ist nicht mehr archiviert.",
-  "worlds.list.all_archived": "Alle deine Welten sind archiviert."
+  "worlds.list.all_archived": "Alle deine Welten sind archiviert.",
+  "worlds.area.all": "Alle Welten",
+  "worlds.area.label": "Welten-Seiten"
 }

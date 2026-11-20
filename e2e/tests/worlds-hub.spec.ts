@@ -61,10 +61,12 @@ test("on a world page Switch is the main action, Rename is plain and Delete come
   await expect(page.getByRole("link", { name: "Switch to this world" })).toHaveClass(/button--primary/);
   await expect(page.getByRole("button", { name: "Rename world" })).not.toHaveClass(/button--primary/);
   await expect(page.locator("main .button--primary")).toHaveCount(1);
-  // Switch leads, right under the tabs; the Danger zone, Delete world, is last.
-  const regions = await page.locator("main > section").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label") ?? el.querySelector("h2")?.textContent));
+  // Switch leads, right under the tabs; the Danger zone card is last, and
+  // Delete world is its last row (DESIGN 7.4, 8.2).
+  const regions = await page.locator("main > :is(section, .panel)").evaluateAll((els) => els.map((el) =>
+    el.classList.contains("danger-zone") ? `danger zone: ${[...el.querySelectorAll(":scope > section h2")].map((h) => h.textContent).join(", ")}` : el.getAttribute("aria-label") ?? el.querySelector("h2")?.textContent));
   expect(regions[0]).toBe("Switch");
-  expect(regions.at(-1)).toBe("Delete world");
+  expect(regions.at(-1)).toMatch(/^danger zone: .*Delete world$/);
   await checkPage(page);
 });
 

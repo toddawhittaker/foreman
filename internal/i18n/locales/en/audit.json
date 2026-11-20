@@ -38,6 +38,7 @@
   "audit.action.token-create": "API token created",
   "audit.action.token-renew": "API token renewed",
   "audit.action.token-revoke": "API token revoked",
+  "audit.action.update-check-set": "Update check turned on or off",
   "audit.action.user-create": "User created",
   "audit.action.user-delete": "User deleted",
   "audit.action.webhook-add": "Webhook added",

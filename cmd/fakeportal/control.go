@@ -30,6 +30,8 @@ var modes = map[string]modportaltest.Mode{
 //	POST /mode   {"name","version","mode"} sets how that release downloads
 //	POST /fail   {"status":N} makes every /api reply carry N; 0 restores them
 //	POST /down   {"down":true} makes the proxy refuse every tunnel with 503
+//	POST /github {"tag":"v1.2.3"} sets Foreman's latest release on the fake
+//	             GitHub; "" makes it answer 404
 func (f *Fake) controlHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /state", func(w http.ResponseWriter, _ *http.Request) {
@@ -97,6 +99,16 @@ func (f *Fake) controlHandler() http.Handler {
 		}
 		f.mu.Lock()
 		f.down = in.Down
+		f.mu.Unlock()
+		reply(w, map[string]bool{"ok": true})
+	})
+	mux.HandleFunc("POST /github", func(w http.ResponseWriter, r *http.Request) {
+		var in struct{ Tag string }
+		if !decode(w, r, &in) {
+			return
+		}
+		f.mu.Lock()
+		f.tag = in.Tag
 		f.mu.Unlock()
 		reply(w, map[string]bool{"ok": true})
 	})

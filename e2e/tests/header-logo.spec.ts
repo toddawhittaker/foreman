@@ -95,3 +95,37 @@ test.describe("without JavaScript", () => {
     await expect(page).toHaveURL("/setup");
   });
 });
+
+// DESIGN 6, User menu: the panel is sized for its rows, not its button, so
+// every language's name keeps one line and the theme buttons sit inside it,
+// on a wide screen and at 390 px.
+test("the user menu panel holds its rows on one line at 1920 and 390 px", async ({ page }) => {
+  test.skip(test.info().project.name.startsWith("phone"), "the widths are set here on desktop");
+  await createAdmin(page);
+  for (const width of [1920, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await openMenu(page);
+    const panel = (await page.locator(".menu__panel").boundingBox())!;
+    expect(panel.x).toBeGreaterThanOrEqual(0);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(width);
+    const inside = async (sel: string) => {
+      for (const b of await page.locator(sel).all()) {
+        const r = (await b.boundingBox())!;
+        expect(r.x).toBeGreaterThanOrEqual(panel.x);
+        expect(r.x + r.width).toBeLessThanOrEqual(panel.x + panel.width);
+      }
+    };
+    await inside(".menu__icon");
+    await inside("details.menu__langs > summary");
+    await page.locator("details.menu__langs > summary").click();
+    // Each name is one line: its box is no taller than one line of its text.
+    for (const n of await page.locator(".menu__panel .menu__name").all()) {
+      const lines = await n.evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight));
+      expect(lines).toBeLessThan(1.5);
+    }
+    await inside(".menu__langs .menu__item");
+    if (width === 1920) await page.screenshot({ path: `test-results/menu-${test.info().project.name}.png` });
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+  }
+});

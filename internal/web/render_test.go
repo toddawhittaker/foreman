@@ -24,7 +24,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/schedule"
-	"github.com/toddawhittaker/foreman/internal/version"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -149,7 +148,7 @@ func pageCases() []pageCase {
 		{"notifications no key", "todd", 200, NotificationsPage{NoKey: true}},
 		{"notifications list", "todd", 200, NotificationsPage{Done: i18n.M("notify.done.added", "preset", i18n.M("notify.preset.discord"), "host", "discord.com"), Hooks: []WebhookView{
 			{ID: 1, Preset: i18n.M("notify.preset.discord"), Host: "discord.com", LangTag: "en", LangName: "English", AllOn: true},
-			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", Events: "Crash, low disk", Plain: true},
+			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", EventList: []string{"Crash", "Low disk"}, Plain: true},
 			{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: "hooks.example.org", LangTag: "fr", LangName: "Français", AllOn: true, Unreadable: true},
 		}}},
 		{"notification add", "todd", 200, formPage(notify.Discord, defaultEvents(), "en")},
@@ -187,7 +186,7 @@ func pageCases() []pageCase {
 		{"api tokens empty", "todd", 200, APITokensPage{Admin: true, Form: TokenForm{Scope: "read"}}},
 		{"api tokens listed", "todd", 200, APITokensPage{Admin: true, MCPOn: true,
 			Mine: []TokenRow{{ID: 1, Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}},
-			All:  []TokenRow{{ID: 1, IDPrefix: "all-", Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}, {ID: 2, IDPrefix: "all-", Owner: "bob", Name: "Old", Scope: "admin", State: auth.TokenRevoked}},
+			All:  []TokenRow{{ID: 1, Owner: "todd", Name: "Claude", Scope: "operate", State: auth.TokenWorking, Mine: true}, {ID: 2, Owner: "bob", Name: "Old", Scope: "admin", State: auth.TokenRevoked}},
 			Form: TokenForm{Name: "a[b]", Scope: "admin", NameError: i18n.M("apitokens.create.name.taken")}}},
 		{"api tokens used", "todd", 200, APITokensPage{Form: TokenForm{Scope: "read"}, Mine: []TokenRow{{ID: 3, Owner: "todd", Name: "Used", Scope: "read", State: auth.TokenWorking, Mine: true, LastUsed: time.Date(2026, 11, 2, 9, 7, 30, 0, time.UTC)}}}},
 		{"api tokens forced off", "todd", 200, APITokensPage{MCPForced: true, Done: tokenDoneRevoked, DoneName: "Claude", Form: TokenForm{Scope: "read"}}},
@@ -216,7 +215,7 @@ func pageCases() []pageCase {
 		{"schedule saved off", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1", Saved: true}.withZones()},
 		{"schedule errors", "todd", 400, SchedulePage{Enabled: true, Clock: "25:00", Zone: "Mars", Limit: "x",
 			ClockError: i18n.M("schedule.time.error"), ZoneError: i18n.M("schedule.zone.error"), LimitError: i18n.M("schedule.limit.error", "max", 12)}.withZones()},
-		{"about", "todd", 200, AboutPage{Info: version.Get()}},
+		{"about", "todd", 200, AboutPage{Info: aboutOf("")}},
 		{"account none", "todd", 200, AccountPage{Source: factorioaccount.None, CanStore: true}},
 		{"account stored", "todd", 200, AccountPage{Source: factorioaccount.Stored, CanStore: true, UpdatedAt: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC),
 			UpdatedBy: longName, Return: "/worlds/base/mods", Done: i18n.M("account.done.saved")}},
@@ -483,7 +482,7 @@ func render(t *testing.T, r *Renderer, c pageCase) (*httptest.ResponseRecorder, 
 func renderIn(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) (*httptest.ResponseRecorder, string) {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	if err := r.Render(rec, requestIn(loc), c.status, c.user, LiveState{}, nil, c.page); err != nil {
+	if err := r.Render(rec, requestIn(loc), c.status, c.user, LiveState{}, nil, "", c.page); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	return rec, rec.Body.String()

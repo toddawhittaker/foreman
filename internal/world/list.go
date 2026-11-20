@@ -164,3 +164,23 @@ func lastPlayed(root *os.Root) (time.Time, error) {
 	}
 	return save.ModTime, nil
 }
+
+// Name returns one world's display name from its metadata alone, without
+// the disk walk Get makes, for the status strip on every page (DESIGN 6).
+func (m *Manager) Name(id string) (string, error) {
+	if !ValidID(id) {
+		return "", fs.ErrNotExist
+	}
+	worlds, err := openFolder(m.dirs.Worlds)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = worlds.Close() }()
+	w, err := openDir(worlds, id)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = w.Close() }()
+	meta, err := ReadMeta(w)
+	return displayName(id, meta, err), nil
+}

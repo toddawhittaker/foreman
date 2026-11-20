@@ -2,11 +2,13 @@
 
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><a href="{{.Tabs.Path}}">{{.WorldName}}</a><span aria-current="page">{{t "worlds.world.saves"}}</span></p>
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{template "summary" .Problems}}
 {{- if .Uploaded}}
 <div class="message message--success" tabindex="-1"{{if not .Chosen}} autofocus{{end}}>
@@ -24,6 +26,8 @@
 </div>
 {{- end}}
 
+{{- /* The list leads; uploading one, the rarer task, sits in the rail beside it on a wide screen. */}}
+<div class="split split--saves">
 <section class="panel" aria-labelledby="saves-heading">
   <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
   {{- if .LoadMissing}}
@@ -39,7 +43,6 @@
   <p>{{if and .LoadSave (not .LoadMissing)}}{{tHTML "worlds.saves.load.pinned" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.load.text"}}{{end}}</p>
   <form method="post" action="{{.LoadHref}}">
   {{- end}}
-  <p class="hint" id="saves-time-hint">{{t "worlds.saves.time_hint"}}</p>
   <table class="save-list" role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
@@ -65,6 +68,7 @@
   {{- if not .Newer}}
   </form>
   {{- end}}
+  <p class="hint" id="saves-time-hint">{{t "worlds.saves.time_hint"}}</p>
   {{- if .OlderHref}}
   <div class="actions"><a href="{{.OlderHref}}">{{t "worlds.saves.older"}}</a></div>
   {{- end}}
@@ -74,6 +78,7 @@
 </section>
 
 {{- if not .Newer}}
+<div class="split__rail">
 <section class="panel" aria-labelledby="upload-heading">
   <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>
   <form method="post" action="{{.SavesHref}}" enctype="multipart/form-data" novalidate>
@@ -85,7 +90,8 @@
     </div>
   </form>
 </section>
-
+</div>
 {{- end}}
+</div>
 {{end}}
 {{- end}}

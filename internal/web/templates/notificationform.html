@@ -1,25 +1,36 @@
 {{define "title"}}{{if .Page.Edit}}{{t "notify.edit.named" "preset" (msg .Page.Kept.Preset) "host" .Page.Kept.Host}}{{else}}{{t "notify.add"}}{{end}}{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "notification"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<h1>{{if .Edit}}{{t "notify.edit.named" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{else}}{{t "notify.add"}}{{end}}</h1>
-{{template "settings-tabs" "notification"}}
+<header class="page-head">
+  <p class="eyebrow">{{t "common.nav.settings"}}</p>
+  <h1>{{if .Edit}}{{t "notify.edit.named" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{else}}{{t "notify.add"}}{{end}}</h1>
+</header>
+{{template "rail" $}}
 {{template "summary" .Problems}}
 {{- /* The address is write-only: it is never put back in a value attribute (DESIGN 8.16). */}}
-<form method="post" action="{{.Path}}" class="panel" novalidate>
+<form method="post" action="{{.Path}}" class="panel webhook-form" novalidate>
   {{- if .URLRequired}}
   {{template "required-note"}}
   {{- end}}
-  <fieldset{{if not .PresetError.IsZero}} aria-describedby="webhook-preset-error"{{end}}>
+  <div class="webhook-form__top">
+  <fieldset class="webhook-form__service"{{if not .PresetError.IsZero}} aria-describedby="webhook-preset-error"{{end}}>
     <legend>{{t "notify.form.service"}}</legend>
     {{- if not .PresetError.IsZero}}
     <p class="error" id="webhook-preset-error"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>
     {{- end}}
+    <div class="webhook-form__presets">
     {{- range .Presets}}
+    <div class="webhook-preset">
     <label class="check"><input type="radio" name="preset" value="{{.Value}}" id="preset-{{.Value}}"{{if .Checked}} checked{{end}} aria-describedby="preset-{{.Value}}-hint"> {{msg .Name}}</label>
     <p class="hint" id="preset-{{.Value}}-hint">{{msgHTML .Hint}}</p>
+    </div>
     {{- end}}
+    </div>
   </fieldset>
+  <div class="webhook-form__where">
   <div class="field" id="webhook-url-field">
     <label for="webhook-url"{{if .URLRequired}} class="required"{{end}}>{{t "notify.url.label"}}</label>
     {{- if .Edit}}
@@ -55,16 +66,20 @@
       {{- end}}
     </div>
   </fieldset>
-  <fieldset{{if not .EventsError.IsZero}} aria-describedby="webhook-events-error"{{end}}>
+  </div>
+  </div>
+  <fieldset class="webhook-form__events"{{if not .EventsError.IsZero}} aria-describedby="webhook-events-error"{{end}}>
     <legend>{{t "notify.form.events"}}</legend>
     {{- if not .EventsError.IsZero}}
     <p class="error" id="webhook-events-error"><strong>{{t "common.error.label"}}</strong> {{msg .EventsError}}</p>
     {{- end}}
+    <div class="webhook-form__event-grid">
     {{- range .Events}}
     <label class="check"><input type="checkbox" name="events" value="{{.Value}}" id="webhook-event-{{.Value}}"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
     {{- end}}
+    </div>
   </fieldset>
-  <div class="field">
+  <div class="field webhook-form__lang">
     <label for="webhook-lang">{{t "notify.lang.label"}}</label>
     <p class="hint" id="webhook-lang-hint">{{t "notify.lang.hint"}}</p>
     <select id="webhook-lang" name="lang" aria-describedby="webhook-lang-hint{{if not .LangError.IsZero}} webhook-lang-error{{end}}"{{if not .LangError.IsZero}} aria-invalid="true"{{end}}>
@@ -76,9 +91,9 @@
     <p class="error" id="webhook-lang-error"><strong>{{t "common.error.label"}}</strong> {{msg .LangError}}</p>
     {{- end}}
   </div>
-  <div class="actions">
-    <button type="submit" class="button button--primary" id="act-webhook-save">{{if .Edit}}{{t "notify.form.save"}}{{else}}{{t "notify.form.add"}}{{end}}</button>
+  <div class="actions form-foot">
     <a href="{{.BackPath}}">{{t "worlds.cancel"}}</a>
+    <button type="submit" class="button button--primary" id="act-webhook-save">{{if .Edit}}{{t "notify.form.save"}}{{else}}{{t "notify.form.add"}}{{end}}</button>
   </div>
 </form>
 <script src="{{static "notifyurl.js"}}" defer></script>

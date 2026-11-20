@@ -24,5 +24,10 @@
   "publicmods.title": "Mods de este servidor",
   "publicmods.unchecked": "No se pudo consultar el portal de mods en este momento, así que ningún mod aparece marcado como ausente en él. Las descargas funcionan igualmente.",
   "publicmods.where.heading": "Dónde van los mods",
-  "publicmods.where.text": "Pon el archivo zip de cada mod, sin descomprimirlo, en la carpeta de mods de tu cliente de Factorio: Windows {windows}, macOS {macos}, Linux {linux}. El archivo de «Descargar todo» contiene los archivos zip de los mods, así que descomprime solo ese en la carpeta."
+  "publicmods.where.os.linux": "Linux",
+  "publicmods.where.os.macos": "macOS",
+  "publicmods.where.os.windows": "Windows",
+  "publicmods.where.step_download": "Selecciona «Descargar todo». Obtienes un archivo zip que contiene el archivo zip de cada mod.",
+  "publicmods.where.step_keep": "Deja el archivo zip de cada mod sin descomprimir; Factorio lo lee tal cual.",
+  "publicmods.where.step_unpack": "Descomprime ese único archivo en la carpeta de mods de tu cliente de Factorio:"
 }

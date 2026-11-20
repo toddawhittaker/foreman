@@ -2,11 +2,14 @@
 
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><a href="{{.Tabs.Path}}">{{.World.Name}}</a><a href="{{.Tabs.Path}}/mods">{{t "mods.tab"}}</a></p>
 {{- /* A redraw swaps in the heading too, as adding or taking out a mod changes it. */}}
 <h1 id="confirm-heading"{{if .Redraw}} hx-swap-oob="true"{{end}}>{{msgHTML .Heading}}</h1>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{- /* A redraw says the new plan through #announcer; focus stays where it was, except after a conflict fix, which moves it to the conflicts or changes and so gets a short sentence (WCAG 4.1.3). */}}
 {{- if .Redraw}}
 <div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
@@ -91,6 +94,8 @@
     {{- end}}
     <input type="hidden" name="hash" value="{{.Hash}}">
     <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
+    {{- /* On a wide screen the changes lead and what happens next sits beside them, with the button. */}}
+    <div class="confirm__main">
     {{- if .AsksRequired}}
     {{template "required-note"}}
     {{- end}}
@@ -190,6 +195,8 @@
     {{- /* With script, a change redraws the plan; without it, this button does. */}}
     <noscript><div class="actions"><button type="submit" class="button" formaction="{{.RedrawPath}}" formnovalidate>{{t "mods.plan.recalculate"}}</button></div></noscript>
     {{- end}}
+    </div>
+    <div class="confirm__side">
     {{- /* A plan with a conflict cannot be applied, so it does not say what applying does (SPEC 17.8). */}}
     {{- if not (or .Plan.Conflicts .Form.FavoriteVersion .Nothing)}}
     <p id="plan-steps">{{t "common.confirm.will"}}</p>
@@ -213,10 +220,11 @@
     {{template "countdown" .CountdownForm}}
     {{- end}}
     <div class="actions">
+      <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
       {{- if .CanApply}}
       <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}</button>
       {{- end}}
-      <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
+    </div>
     </div>
   </form>
   {{- /* The unresolved mods' zip forms, empty: each one's field and button sit in the mod's group above. */}}

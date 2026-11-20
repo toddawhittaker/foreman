@@ -2,15 +2,16 @@
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
 <script src="{{static "copy.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
-<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
+<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><span aria-current="page">{{.World.Name}}</span></p>
 <div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}</h1>
-{{template "live-state" .Live}}
 </div>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{- if .World.Unreadable}}
 <p>{{tHTML "worlds.unreadable" "folder" (code .World.ID)}}</p>
 {{- else if .World.Newer}}
@@ -104,7 +105,58 @@
   </dl>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
-{{- /* Version, name and copy share one card of rows: a row's title in the first column, its control in the second (DESIGN 4). */}}
+{{- /* Sharing the world comes first: its map string and a favorite made from it, side by side on a wide screen. */}}
+{{- if or .Exchange .CanFavorite}}
+<div class="world-share">
+{{- with .Exchange}}
+<section class="panel card world-share__item" aria-labelledby="exchange-heading">
+  <div class="world-share__head">
+    <h2 id="exchange-heading">{{t "mapgen.exchange.heading"}}</h2>
+  </div>
+  <div class="world-share__body">
+    {{template "exchange-string" .}}
+  </div>
+</section>
+{{- end}}
+{{- if .CanFavorite}}
+<form method="post" action="{{.FavoritePath}}" class="panel card world-share__item" novalidate aria-labelledby="favorite-heading">
+  <div class="world-share__head">
+    <h2 id="favorite-heading">{{t "favorites.make.heading"}}</h2>
+    <p class="hint" id="favorite-hint">{{t "favorites.make.text"}}{{if .FavDefaultMap}} {{t "favorites.make.default_map"}}{{end}}</p>
+  </div>
+  <div class="world-share__body">
+    {{- with .FavMade}}
+    <div class="message message--success" id="favorite-made" tabindex="-1" autofocus>
+      <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.made" "name" .Name}}</p>
+      {{- if .DefaultMap}}
+      <p>{{t "favorites.made.default_map"}}</p>
+      {{- end}}
+      {{- with .LeftOut}}
+      <p>{{t "favorites.made.left_out" "count" (len .)}}</p>
+      <ul>
+        {{- range .}}<li><span class="ident" translate="no">{{.}}</span></li>{{end}}
+      </ul>
+      {{- end}}
+      <div class="actions"><a href="{{$.Page.FavoritesPath}}" id="act-favorites">{{t "favorites.list.link"}}</a></div>
+    </div>
+    {{- end}}
+    <div class="field">
+      <label for="favorite-name" class="required">{{t "favorites.make.label"}}</label>
+      <div class="inline-row">
+        <input id="favorite-name" name="favorite_name" type="text" value="{{.FavName}}" required maxlength="100" autocomplete="off"
+          {{- if not .FavError.IsZero}} aria-invalid="true" aria-describedby="favorite-hint favorite-name-error" autofocus{{else}} aria-describedby="favorite-hint"{{end}}>
+        <button type="submit" class="button" id="act-favorite">{{t "favorites.make.button"}}</button>
+      </div>
+      {{- if not .FavError.IsZero}}
+      <p class="error" id="favorite-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .FavError}}</p>
+      {{- end}}
+    </div>
+  </div>
+</form>
+{{- end}}
+</div>
+{{- end}}
+{{- /* Managing the world: version, name and copy share one card of rows, a row's title in the first column, its control in the second (DESIGN 4). */}}
 <div class="panel setting-rows">
 <section class="setting-row" aria-labelledby="version-heading">
   <div class="setting-row__head">
@@ -158,53 +210,11 @@
     </div>
   </div>
 </section>
-{{- with .Exchange}}
-<section class="setting-row" aria-labelledby="exchange-heading">
-  <div class="setting-row__head">
-    <h2 id="exchange-heading">{{t "mapgen.exchange.heading"}}</h2>
-  </div>
-  <div class="setting-row__body">
-    {{template "exchange-string" .}}
-  </div>
-</section>
+</div>
 {{- end}}
-{{- if .CanFavorite}}
-<form method="post" action="{{.FavoritePath}}" class="setting-row" novalidate aria-labelledby="favorite-heading">
-  <div class="setting-row__head">
-    <h2 id="favorite-heading">{{t "favorites.make.heading"}}</h2>
-    <p class="hint" id="favorite-hint">{{t "favorites.make.text"}}{{if .FavDefaultMap}} {{t "favorites.make.default_map"}}{{end}}</p>
-  </div>
-  <div class="setting-row__body">
-    {{- with .FavMade}}
-    <div class="message message--success" id="favorite-made" tabindex="-1" autofocus>
-      <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.made" "name" .Name}}</p>
-      {{- if .DefaultMap}}
-      <p>{{t "favorites.made.default_map"}}</p>
-      {{- end}}
-      {{- with .LeftOut}}
-      <p>{{t "favorites.made.left_out" "count" (len .)}}</p>
-      <ul>
-        {{- range .}}<li><span class="ident" translate="no">{{.}}</span></li>{{end}}
-      </ul>
-      {{- end}}
-      <div class="actions"><a href="{{$.Page.FavoritesPath}}" id="act-favorites">{{t "favorites.list.link"}}</a></div>
-    </div>
-    {{- end}}
-    <div class="field">
-      <label for="favorite-name" class="required">{{t "favorites.make.label"}}</label>
-      <div class="inline-row">
-        <input id="favorite-name" name="favorite_name" type="text" value="{{.FavName}}" required maxlength="100" autocomplete="off"
-          {{- if not .FavError.IsZero}} aria-invalid="true" aria-describedby="favorite-hint favorite-name-error" autofocus{{else}} aria-describedby="favorite-hint"{{end}}>
-        <button type="submit" class="button" id="act-favorite">{{t "favorites.make.button"}}</button>
-      </div>
-      {{- if not .FavError.IsZero}}
-      <p class="error" id="favorite-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .FavError}}</p>
-      {{- end}}
-    </div>
-  </div>
-</form>
-{{- end}}
-{{- if not .World.Archived}}
+{{- /* What takes the world out of use or destroys it sits last, apart from everything safe above (DESIGN 7.4). */}}
+<div class="panel danger-zone setting-rows{{if not .DeleteRefusal.IsZero}} danger-zone--blocked{{end}}">
+{{- if not (or .World.Archived .World.Newer .World.Unreadable)}}
 <section class="setting-row" aria-labelledby="archive-heading">
   <div class="setting-row__head">
     <h2 id="archive-heading">{{t "worlds.world.archive.heading"}}</h2>
@@ -215,14 +225,15 @@
     <form method="post" action="{{.ArchivePath}}" class="actions">
       <button type="submit" class="button" id="act-archive">{{t "worlds.world.archive.button"}}</button>
     </form>
+    {{- else}}
+    {{- /* The refusal's next step is a link, not an instruction (DESIGN 7.3). */}}
+    <div class="actions"><a href="{{worldsPath}}" id="act-archive-switch">{{t "server.links.switch"}}</a></div>
     {{- end}}
   </div>
 </section>
 {{- end}}
-</div>
-{{- end}}
-{{- /* What destroys the world sits last, in the Danger zone, apart from the safe copy above (DESIGN 7.4). */}}
-<section class="panel danger-zone{{if not .DeleteRefusal.IsZero}} danger-zone--blocked{{end}}" aria-labelledby="delete-heading">
+<section class="setting-row" aria-labelledby="delete-heading">
+  <div class="setting-row__head">
   <h2 id="delete-heading">{{t "worlds.world.delete.button"}}</h2>
   {{- $refusal := .DeleteRefusal}}
   {{- if not $refusal.IsZero}}
@@ -230,6 +241,8 @@
   {{- else}}
   <p class="hint">{{t "worlds.world.delete.text"}}</p>
   {{- end}}
+  </div>
+  <div class="setting-row__body">
   {{- if $refusal.IsZero}}
   <div class="actions">
     <a href="{{.DeletePath}}" class="button button--risky">{{t "worlds.world.delete.button"}}</a>
@@ -239,6 +252,8 @@
     <a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a>
   </div>
   {{- end}}
+  </div>
 </section>
+</div>
 {{end}}
 {{- end}}

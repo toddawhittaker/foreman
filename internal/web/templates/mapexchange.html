@@ -4,14 +4,17 @@
   {{- if .Have}}
   <div class="field">
     <label for="{{.ID}}-value" class="visually-hidden">{{t "mapgen.exchange.label"}}</label>
-    <textarea id="{{.ID}}-value" class="exchange__value" readonly rows="4" spellcheck="false" autocomplete="off"
-      aria-describedby="{{.ID}}-note{{with .Owner}} {{.}}{{end}}">{{.Value}}</textarea>
+    {{- /* The copy button sits in the field's foot, so the string and its action read as one control. */}}
+    <div class="copy-field copy-field--block">
+      <textarea id="{{.ID}}-value" class="exchange__value" readonly rows="5" spellcheck="false" autocomplete="off"
+        aria-describedby="{{.ID}}-note{{with .Owner}} {{.}}{{end}}">{{.Value}}</textarea>
+      <div class="copy-field__foot">
+        <span class="copy-done" id="{{.ID}}-done" hidden>{{t "mapgen.exchange.copied"}}</span>
+        <button type="button" class="button" id="{{.ID}}-copy" data-copy-from="{{.ID}}-value" data-done="{{.ID}}-done" aria-describedby="{{.ID}}-note{{with .Owner}} {{.}}{{end}}" hidden>{{t "mapgen.exchange.copy"}}</button>
+      </div>
+    </div>
   </div>
   <p class="hint" id="{{.ID}}-note">{{t "mapgen.exchange.note"}}</p>
-  <div class="actions">
-    <button type="button" class="button" id="{{.ID}}-copy" data-copy-from="{{.ID}}-value" data-done="{{.ID}}-done" aria-describedby="{{.ID}}-note{{with .Owner}} {{.}}{{end}}" hidden>{{t "mapgen.exchange.copy"}}</button>
-    <span id="{{.ID}}-done" hidden>{{t "mapgen.exchange.copied"}}</span>
-  </div>
   {{- else}}
   {{- if not .Reason.IsZero}}
   <p class="hint" id="{{.ID}}-reason">{{msg .Reason}}</p>

@@ -31,7 +31,7 @@ func pageWords(body string) string {
 func pageText(t *testing.T, p Page) string {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	if err := newTestRenderer(t).Render(rec, httptest.NewRequest(http.MethodGet, "/", nil), 200, "alice", LiveState{}, nil, p); err != nil {
+	if err := newTestRenderer(t).Render(rec, httptest.NewRequest(http.MethodGet, "/", nil), 200, "alice", LiveState{}, nil, "", p); err != nil {
 		t.Fatal(err)
 	}
 	return pageWords(rec.Body.String())

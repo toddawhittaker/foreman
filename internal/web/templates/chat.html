@@ -3,11 +3,13 @@
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
 <script src="{{static "log.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "server-tabs" "chat"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- if not .HasWorld}}
 <h1>{{t "common.nav.chat"}}</h1>
-{{template "server-tabs" "chat"}}
+{{template "rail" $}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
   <p class="empty">{{t "chat.none"}}</p>
@@ -21,7 +23,7 @@
   <p class="eyebrow">{{t "common.nav.server"}}</p>
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
 </header>
-{{template "server-tabs" "chat"}}
+{{template "rail" $}}
 <section class="panel" aria-labelledby="chat-heading">
   <h2 id="chat-heading" class="visually-hidden">{{t "common.nav.chat"}}</h2>
   {{- /* Always there, and hidden by the style sheet while the heading's live badge says the game runs, so it follows the game without a reload (DESIGN 8.14). */}}

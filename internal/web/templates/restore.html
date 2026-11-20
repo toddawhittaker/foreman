@@ -51,8 +51,8 @@
     {{template "countdown" .CountdownForm}}
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger">{{t "server.restore.button"}}</button>
       <a href="{{.SnapshotsPath}}">{{t "server.restore.cancel"}}</a>
+      <button type="submit" class="button button--danger">{{t "server.restore.button"}}</button>
     </div>
   </form>
 </section>

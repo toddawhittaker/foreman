@@ -47,8 +47,8 @@
     {{template "countdown" .CountdownForm}}
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger">{{t "server.update.button"}}</button>
       <a href="{{.WorldPath}}">{{t "server.update.cancel" "version" .World.GameVersion}}</a>
+      <button type="submit" class="button button--danger">{{t "server.update.button"}}</button>
     </div>
   </form>
 </section>

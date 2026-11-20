@@ -24,5 +24,10 @@
   "publicmods.title": "Mods für diesen Server",
   "publicmods.unchecked": "Das Mod-Portal konnte gerade nicht geprüft werden, daher ist keine Mod als dort fehlend markiert. Die Downloads funktionieren trotzdem.",
   "publicmods.where.heading": "Wohin die Mods gehören",
-  "publicmods.where.text": "Lege die ZIP-Datei jeder Mod ohne sie zu entpacken, in den Mod-Ordner deines Factorio-Clients: Windows {windows}, macOS {macos}, Linux {linux}. Die Datei von „Alle herunterladen“ enthält die ZIP-Dateien der Mods, also entpacke nur diese in den Ordner."
+  "publicmods.where.os.linux": "Linux",
+  "publicmods.where.os.macos": "macOS",
+  "publicmods.where.os.windows": "Windows",
+  "publicmods.where.step_download": "Wähle „Alle herunterladen“. Du erhältst eine ZIP-Datei, die die ZIP-Datei jeder Mod enthält.",
+  "publicmods.where.step_keep": "Lass die ZIP-Datei jeder Mod gepackt; Factorio liest sie so, wie sie ist.",
+  "publicmods.where.step_unpack": "Entpacke diese eine Datei in den Mod-Ordner deines Factorio-Clients:"
 }

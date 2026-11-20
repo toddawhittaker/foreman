@@ -53,16 +53,18 @@ test("/ is the Server page and the world list is at /worlds", async ({ page }) =
   await expect(page).toHaveURL("/worlds");
 });
 
-// A Favorites button sits beside Generate and Import, as a button and not a
-// text link, and works without script (SPEC 5.12).
-test("the Worlds page has a Favorites button that opens the favorites list", async ({ page }) => {
+// Generate and Import sit by the heading as buttons; Favorites is one of the
+// Worlds area's own pages, in the same column as every area's pages, and
+// works without script (SPEC 5.12, DESIGN 6).
+test("the Worlds page has a Favorites link that opens the favorites list", async ({ page }) => {
   await createAdmin(page);
   const actions = page.locator("header .actions");
   const buttons = actions.locator("a.button");
   await expect(buttons.nth(0)).toHaveText("Generate a world");
   await expect(buttons.nth(1)).toHaveText("Import a world");
-  const favorites = actions.getByRole("link", { name: "Favorites", exact: true });
-  await expect(favorites).toHaveClass(/\bbutton\b/);
+  const area = page.getByRole("navigation", { name: "Worlds pages" });
+  await expect(area.getByRole("link", { name: "All worlds" })).toHaveAttribute("aria-current", "page");
+  const favorites = area.getByRole("link", { name: "Favorites", exact: true });
   expect((await favorites.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await favorites.click();
   await expect(page).toHaveURL("/favorites");
@@ -148,7 +150,7 @@ test("renames a world and refuses a duplicate name", async ({ page, foreman }) =
   await page.getByRole("link", { name: "Base", exact: true }).click();
   await expect(page).toHaveURL("/worlds/base");
   await expect(page.getByRole("link", { name: "Saves" })).toHaveAttribute("href", "/worlds/base/saves");
-  await expect(page.locator("#main").getByRole("link", { name: "Snapshots" })).toHaveAttribute("href", "/worlds/base/snapshots");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Snapshots" })).toHaveAttribute("href", "/worlds/base/snapshots");
   await checkPage(page);
 
   await page.getByLabel("Name", { exact: true }).fill("OTHER");
@@ -187,8 +189,10 @@ test("a very long world name wraps on the list and the world page", async ({ pag
 });
 
 // DESIGN 6, Shell: the Worlds tab is the current page on the list and marks
-// the section on every other page about worlds; the current tab is underlined
-// in the selected colour and a hovered tab only brightens its text.
+// the section on every other page about worlds. Below 64rem the current tab
+// is underlined in the selected colour and a hovered tab only brightens its
+// text; from 64rem the rail row has the selected edge on its start side and
+// a hovered row takes the hover face.
 test("the Worlds tab marks the current page and the section", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "alpha", { name: "Alpha", game_version: "2.0.72", space_age: false });
@@ -203,7 +207,12 @@ test("the Worlds tab marks the current page and the section", async ({ page, for
     await page.goto(path);
     await expect(tab, path).toHaveAttribute("aria-current", "true");
   }
-  const look = () => tab.evaluate((el) => ({ line: getComputedStyle(el).borderBottomColor, text: getComputedStyle(el).color }));
+  const wide = (page.viewportSize()?.width ?? 0) >= 1024;
+  const look = () => tab.evaluate((el, wide) => {
+    const s = getComputedStyle(el);
+    // What hover changes: the text below 64rem, the row's face from 64rem.
+    return { line: wide ? s.borderInlineStartColor : s.borderBottomColor, hovered: wide ? s.backgroundColor : s.color };
+  }, wide);
   const selected = await page.evaluate(() => {
     const probe = document.createElement("span");
     probe.style.color = "var(--color-selected)";
@@ -219,7 +228,7 @@ test("the Worlds tab marks the current page and the section", async ({ page, for
   expect(idle.line).not.toBe(selected);
   await tab.hover();
   const hover = await look();
-  expect(hover.text).not.toBe(idle.text);
+  expect(hover.hovered).not.toBe(idle.hovered);
   expect(hover.line).not.toBe(selected);
 });
 

@@ -18,6 +18,8 @@
   "general.stop.hint": "0 oznacza brak ostrzeżenia.",
   "general.stop.label": "Domyślne odliczanie przed zatrzymaniem (sekundy)",
   "general.stop.text": "Odliczanie, od którego zaczyna się zatrzymanie lub restart, gdy nie podano innego. Zaplanowany restart ma własne, stałe odliczanie.",
+  "general.switch.off": "wyłączone",
+  "general.switch.on": "włączone",
   "general.trim.final": "Usuniętych migawek nie można przywrócić. Aby je zachować, należy ponownie zwiększyć liczbę przed następną automatyczną migawką.",
   "general.trim.snapshots": {
     "one": "Zostanie usunięta {count} automatyczna migawka — przy następnej automatycznej migawce jej świata.",
@@ -25,6 +27,10 @@
     "many": "Zostanie usuniętych {count} automatycznych migawek — każda przy następnej automatycznej migawce swojego świata."
   },
   "general.trim.worlds": "Dotyczy światów: {count}.",
+  "general.updates.heading": "Nowe wersje Foremana",
+  "general.updates.hint": "Po wyłączeniu Foreman nigdy nie łączy się w tym celu z GitHubem.",
+  "general.updates.label": "Sprawdzaj na GitHubie nowe wersje Foremana",
+  "general.updates.text": "Foreman może co 6 godzin pytać GitHub, czy jest nowsza wersja Foremana, a okno „O programie” wtedy o tym informuje. Nie są wysyłane żadne dane o użytkowniku ani o światach.",
   "general.uploads.heading": "Przesyłanie plików",
   "general.uploads.mod.hint": "Ten sam limit obowiązuje modyfikację pobieraną z portalu modyfikacji.",
   "general.uploads.mod.label": "Maksymalny rozmiar przesyłanej modyfikacji (MB)",

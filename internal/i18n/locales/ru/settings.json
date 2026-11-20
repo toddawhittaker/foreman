@@ -1,4 +1,5 @@
 {
+  "settings.draft.unsaved_mark": "(несохранённые изменения)",
   "settings.link": "Настройки игры",
   "settings.title": "Настройки мира {world}",
   "settings.readonly.unreadable": "Файл world.json этого мира не читается, поэтому его настройки здесь изменить нельзя.",
@@ -139,7 +140,6 @@
   "settings.preview.undo": "Чтобы отменить, восстановите этот снимок на странице «Снимки»; ссылка на него есть в сообщении после сохранения.",
   "settings.preview.save": "Сохранить настройки",
   "settings.preview.back": "Вернуться и изменить",
-  "settings.rail.label": "Разделы настроек",
   "settings.bans.legend": "Список блокировок",
   "settings.bans.label": "Заблокированные игроки",
   "settings.bans.hint": "Одно имя игрока на строку. Причины, уже записанные в файле, сохраняются; у имени, добавленного здесь, причины нет.",
@@ -174,7 +174,6 @@
   "settings.diff.unbanned": "Разблокирован {name}",
   "settings.diff.whitelist_added": "{name} добавлен в белый список",
   "settings.diff.whitelist_removed": "{name} убран из белого списка",
-  "settings.jump.label": "Перейти к разделу",
   "settings.whitelist.enforce_heading": "Проверка по белому списку",
   "settings.whitelist.list_note": "Изменения списка входят в «Посмотреть изменения»."
 }

@@ -66,12 +66,19 @@ func (p WorldsPage) StateWord() i18n.Msg { return stateWord(p.ActiveState) }
 // SwitchPath is where a world's Switch button goes.
 func (WorldsPage) SwitchPath(id string) string { return switchPath(id) }
 
+// SavesPath and UnarchivePath are an archived row's two actions (SPEC 5.9).
+func (WorldsPage) SavesPath(id string) string     { return savesPath(id) }
+func (WorldsPage) UnarchivePath(id string) string { return unarchivePath(id) }
+
 // LiveState is the server's state beside the active world's name on each
 // of its pages (DESIGN 7.5). Have is false for any other world, or without
 // server control.
 type LiveState struct {
 	State game.State
 	Have  bool
+	// Name is the active world's name, set only for the status strip
+	// over every page (DESIGN 6); empty elsewhere.
+	Name string
 }
 
 // Word is the state badge's word.
@@ -91,6 +98,10 @@ func (WorldsPage) navItem() string { return PathWorlds + navPage }
 
 func worldPath(id string) string { return PathWorlds + "/" + id }
 
+func savesPath(id string) string { return worldPath(id) + "/saves" }
+
+func unarchivePath(id string) string { return worldPath(id) + "/unarchive" }
+
 // WorldTabs are the links between a world's pages; Current is the one shown
 // ("overview", "saves", "snapshots" or "settings"), and Settings is false for
 // a world whose settings cannot be read (DESIGN 6, "Sub-navigation").
@@ -100,6 +111,8 @@ type WorldTabs struct {
 	// Under marks Current as the section the page belongs to, not the page
 	// itself (aria-current "true", not "page"; DESIGN 6).
 	Under bool
+	// Sub are the current page's own sub-pages, listed under it.
+	Sub []SubTab
 }
 
 func worldTabs(w world.Summary, current string) WorldTabs {
@@ -131,7 +144,6 @@ func (s *server) worldRoutes() {
 // WorldPage is one world's page (SPEC 5.4, 5.8; DESIGN 8.2).
 type WorldPage struct {
 	World world.Summary
-	Live  LiveState
 	// Name refills the rename field.
 	Name      string
 	NameError i18n.Msg
@@ -207,7 +219,7 @@ func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.Name
 func (p WorldPage) WorldPath() string     { return worldPath(p.World.ID) }
 func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/rename" }
 func (p WorldPage) ArchivePath() string   { return worldPath(p.World.ID) + "/archive" }
-func (p WorldPage) UnarchivePath() string { return worldPath(p.World.ID) + "/unarchive" }
+func (p WorldPage) UnarchivePath() string { return unarchivePath(p.World.ID) }
 func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/snapshots" }
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
 func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }
@@ -457,7 +469,6 @@ func archiveDone(change string, sum world.Summary) i18n.Msg {
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, nameError i18n.Msg) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
 	if s.game != nil {
-		p.Live = s.liveState(sum.ID, sum.Active)
 		op := s.game.Status(sum.ID).Operation
 		p.Busy = busyText(op, s.worldName)
 		if !p.Busy.IsZero() {

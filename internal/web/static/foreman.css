@@ -101,29 +101,29 @@
      section heading, figure, page title. */
   --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
-  --text-md: 1rem;
+  --text-md: 0.9375rem;
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
-  --text-3xl: 1.75rem;
+  --text-3xl: 2rem;
 
-  --color-bg: light-dark(#ece9e3, #14110e);
-  --color-surface: light-dark(#fffdfa, #26211c);
-  --color-raised: light-dark(#f4f0e9, #332c25);
-  --color-deep: light-dark(#ffffff, #0e0c0a);
-  --color-line: light-dark(#d9d4cb, #4a4239);
-  --color-border: light-dark(#857c70, #8a8073);
-  --color-text: light-dark(#1c1915, #ede7de);
-  --color-heading: light-dark(#13110e, #f9f5ee);
-  --color-text-muted: light-dark(#58524a, #b3a99c);
+  --color-bg: light-dark(#e9e3d6, #131210);
+  --color-surface: light-dark(#fffdf9, #1e1c19);
+  --color-raised: light-dark(#f5f0e6, #292622);
+  --color-deep: light-dark(#ffffff, #0d0c0b);
+  --color-line: light-dark(#d8d0bf, #3b3732);
+  --color-border: light-dark(#8a8073, #958b7e);
+  --color-text: light-dark(#1c1915, #ece7df);
+  --color-heading: light-dark(#13110e, #f8f5ef);
+  --color-text-muted: light-dark(#4f493f, #c2baae);
   --color-link: light-dark(#9a4800, #ffb357);
   --color-selected: light-dark(#bd6500, #f39a2a);
-  --color-accent-bg: light-dark(#fdecd5, #33220e);
+  --color-accent-bg: light-dark(#fdecd5, #352610);
   --color-primary: #f39a2a;
   --color-primary-hover: light-dark(#f6ad52, #f7ae4f);
   --color-primary-edge: light-dark(#a35200, #f39a2a);
   --color-on-primary: #1a1004;
-  --color-secondary-hover: light-dark(#ede8e0, #3d352d);
+  --color-secondary-hover: light-dark(#eee8de, #34302b);
   --color-danger: light-dark(#b3301d, #e5553c);
   --color-danger-hover: light-dark(#932616, #ef7560);
   --color-on-danger: light-dark(#ffffff, #1a0503);
@@ -131,15 +131,15 @@
   --color-danger-bg: light-dark(#fbe6e1, #3a1913);
   --color-ok: light-dark(#1f6a2a, #86d672);
   --color-ok-bg: light-dark(#e3f1de, #172a12);
-  --color-warn: light-dark(#7a5000, #f2c14e);
-  --color-warn-bg: light-dark(#f8edcf, #33280c);
-  --color-info: light-dark(#2a567f, #9fc3e6);
-  --color-info-bg: light-dark(#e8eef4, #18232e);
+  --color-warn: light-dark(#665400, #f2c14e);
+  --color-warn-bg: light-dark(#f5f0c2, #33280c);
+  --color-info: light-dark(#1d5a8a, #8ec1ea);
+  --color-info-bg: light-dark(#e2eef7, #13222f);
   --color-focus: light-dark(#b35c00, #f7ae4f);
   /* Each theme's shadow is its own layers; the other theme's layers are
      transparent, because light-dark() takes only colours. */
   --shadow-card: inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 3%)),
-    0 1px 2px light-dark(rgb(60 45 25 / 6%), transparent),
+    0 1px 2px light-dark(rgb(60 45 25 / 8%), transparent),
     0 1px 1px light-dark(rgb(60 45 25 / 4%), transparent);
   --shadow-pop: 0 8px 24px light-dark(transparent, rgb(0 0 0 / 45%)),
     0 10px 28px light-dark(rgb(60 45 25 / 18%), transparent);
@@ -171,7 +171,7 @@
   --color-territory-border: rgb(255 30 30);
   --color-territory-outline: #101010;
   --measure: 68ch;
-  --page-max: 78rem;
+  --page-max: 100rem;
 }
 
 /* The user menu's theme choice (SPEC 17.3) on html; on any other element it
@@ -239,6 +239,9 @@
   --i-theme-auto: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 8a2.83 2.83 0 0 0 4 4 4 4 0 1 1-4-4'/%3E%3Cpath d='M12 2v2M12 20v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4'/%3E%3C/svg%3E");
   --i-theme-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41'/%3E%3C/svg%3E");
   --i-theme-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'/%3E%3C/svg%3E");
+  --i-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E");
+  --i-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
+  --i-error: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6'/%3E%3Cpath d='m9 9 6 6'/%3E%3C/svg%3E");
 }
 
 /* Reset */
@@ -314,7 +317,7 @@ h1 {
 /* A section heading: 20/26, the same on every page. */
 h2 {
   font-size: var(--text-xl);
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.005em;
 }
@@ -322,7 +325,7 @@ h2 {
 /* A group heading inside a section: 18/24. */
 h3 {
   font-size: var(--text-lg);
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.333;
 }
 
@@ -857,12 +860,18 @@ time {
 
 /* The theme row: its word at the start, three icon buttons at the end. The
    legend floats, so it lays out as an ordinary item of the row. */
+/* "Signed in as" and Theme start where the rows' words do: the row's
+   padding plus its 3 px start edge. */
+.menu__themes,
+.menu__panel > .hint {
+  padding-inline-start: calc(var(--space-3) + 3px);
+}
+
 .menu__themes {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-2);
-  padding-inline-start: var(--space-3);
 }
 
 .menu__themes legend {
@@ -930,7 +939,6 @@ main {
 }
 
 @media (min-width: 40rem) {
-
   .site > nav {
     order: 0;
     flex-basis: auto;
@@ -945,7 +953,6 @@ main {
     order: 1;
     margin-inline-start: 0;
   }
-
 
   main {
     gap: var(--space-5);
@@ -965,6 +972,11 @@ main {
 
   .menu__panel .menu__item {
     padding-inline: var(--space-2);
+  }
+
+  .menu__themes,
+  .menu__panel > .hint {
+    padding-inline-start: calc(var(--space-2) + 3px);
   }
 
   .product__name {
@@ -1149,7 +1161,6 @@ main > h1 + p.hint {
   font-size: var(--text-sm);
   line-height: 1.43;
 }
-
 
 /* Single-column grids use minmax(0, 1fr), so a long word or a wide child
    cannot push the track past its box (DESIGN 7, 320 px rules). */
@@ -1341,7 +1352,6 @@ fieldset,
   font-size: 0;
 }
 
-
 /* Disabled reads as unavailable in both themes; busy keeps the progress cursor. */
 .button:disabled,
 .button[aria-disabled="true"],
@@ -1446,19 +1456,25 @@ legend {
   overflow-wrap: anywhere;
 }
 
-/* A hint: 14/20 in the quiet colour. It is smaller than body text, so
-   its measure in ch is longer. */
+/* A hint: 13/19 in the quiet colour, a clear step under the 16 px body
+   so a field's help never competes with its label. Its measure in ch is
+   longer, as the text is smaller. */
 .hint {
   max-inline-size: 80ch;
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  line-height: 1.43;
+  font-size: var(--text-xs);
+  line-height: 1.45;
 }
 
-/* A link in a hint's smaller text still makes the 24 px target floor
-   (SPEC 17.2); inline padding grows the box without moving the lines. */
+/* A link in running text makes the 24 px target floor (SPEC 17.2) at the
+   15 px body size and at a hint's 13 px; inline padding grows the box
+   without moving the lines. */
+:where(p) > a:where(:not([class])) {
+  padding-block: 0.2em;
+}
+
 .hint a {
-  padding-block: 0.25em;
+  padding-block: 0.3em;
 }
 
 /* Checkboxes and radios keep their own 1.25rem look; the .check label is the
@@ -1596,11 +1612,17 @@ legend {
   padding-block-end: var(--space-1);
 }
 
-/* A link standing alone in a list is a full-size target (DESIGN 7 rule 3). */
-.message ul a {
+/* A link standing alone in a list, or beside an imported folder's
+   checkbox, is a full-size target (DESIGN 6, "The 320 px rules", rule 3). */
+.message ul a,
+fieldset > .check + a {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);
+}
+
+fieldset > .check + a {
+  justify-self: start;
 }
 
 /* The Done message's close button sits at its top end corner, in a 44 px
@@ -2560,6 +2582,12 @@ td > .hint {
   gap: var(--space-1) var(--space-3);
 }
 
+/* A long "Loads next" in a narrow row wraps inside its pill rather than widen the page. */
+.save-name > .badge {
+  max-inline-size: 100%;
+  white-space: normal;
+}
+
 .save-name > a {
   display: inline-flex;
   align-items: center;
@@ -2947,7 +2975,6 @@ td > .hint {
       min-block-size: 1.5rem;
       block-size: 1.5rem;
     }
-
   }
 }
 
@@ -3201,9 +3228,12 @@ td > .hint {
   padding-block: var(--space-3);
 }
 
-/* The preset, "[modified]" and its reset share a row while they fit. */
+/* The preset, "[modified]" and its reset share a row while they fit: the
+   select gives up width before the reset is pushed to a line of its own. */
 .preset-row > select {
-  flex: 0 1 auto;
+  flex: 1 1 14rem;
+  inline-size: auto;
+  min-inline-size: 0;
 }
 
 .modified {
@@ -3596,6 +3626,8 @@ form:has(#mode-exchange:checked) .achievements {
   display: flex;
   min-block-size: 0;
   overflow: auto;
+  /* Panned by drag, keys and wheel; no scroll bars, so zooming never narrows the map. */
+  scrollbar-width: none;
   touch-action: none;
   user-select: none;
   background: var(--color-deep);
@@ -3766,6 +3798,9 @@ form:has(#mode-exchange:checked) .achievements {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* A label at the edge is cut at the map's edge rather than widen what holds
+     the map: in the large view that would scroll the frame and narrow it. */
+  overflow: clip;
 }
 
 /* The thumbnail's picture has a border; the overlays cover only the map. */
@@ -3824,6 +3859,12 @@ form:has(#mode-exchange:checked) .achievements {
 
 .preview:has(#preview-territories:checked) .territory-result:empty {
   display: block;
+}
+
+/* Once found, the counts are for screen readers only, so the held line
+   goes and no empty band sits under the picture (DESIGN 8.8). */
+.preview:has(#preview-territories:checked) .territory-result:has(> .territory-counts:only-child) {
+  min-block-size: 0;
 }
 
 .message pre {
@@ -3955,6 +3996,35 @@ form:has(#mode-exchange:checked) .achievements {
 
 .large-view__territories[hidden] {
   display: none;
+}
+
+/* Wide, Show resource amounts and Vulcanus's Show demolisher territories
+   share one line, amounts first, so on another planet the territories'
+   place is only empty space at the line's end and no row comes or goes. */
+@container large-view (min-width: 48rem) {
+  .large-view__bar {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "head head" "news news" "amounts territories";
+    column-gap: var(--space-6);
+  }
+
+  .large-view__head { grid-area: head; }
+  .large-view__news { grid-area: news; }
+  .large-view__bar > .resource-amounts { grid-area: amounts; }
+  /* One target tall, as the amounts box is, so the shared line keeps its height. */
+  .large-view__bar > .large-view__territories {
+    grid-area: territories;
+    block-size: var(--target-min);
+  }
+}
+
+/* Narrower they cannot share a line, so on a map with Vulcanus its row is
+   held, unseen, on every planet, and paging never moves the controls. */
+@container large-view (max-width: 47.99rem) {
+  body:has(#preview-planets > option[value="vulcanus"]) .large-view__territories[hidden] {
+    display: flex;
+    visibility: hidden;
+  }
 }
 
 .large-view__territories > .hint {
@@ -4157,70 +4227,9 @@ form:has(#mode-exchange:checked) .achievements {
   tab-size: 2;
 }
 
-/* The settings rail: section links beside the form on a wide panel only;
-   it may stay in view there because it never covers the form (DESIGN 8.10). */
+/* Game settings' rows lay out by the width of the settings column. */
 .settings-wrap {
   container: settings / inline-size;
-}
-
-.settings-rail {
-  display: none;
-}
-
-@container settings (min-width: 44rem) {
-  .settings-layout {
-    display: grid;
-    grid-template-columns: 12rem minmax(0, 1fr);
-    gap: var(--space-5);
-    align-items: start;
-  }
-
-  .settings-rail {
-    display: block;
-    position: sticky;
-    inset-block-start: var(--space-4);
-  }
-
-  .settings-rail ul {
-    display: grid;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .settings-rail a {
-    display: flex;
-    align-items: center;
-    min-block-size: var(--target-min);
-    padding-inline-start: var(--space-3);
-    color: var(--color-text-muted);
-    border-inline-start: 3px solid var(--color-line);
-    font-weight: 500;
-    text-decoration: none;
-    overflow-wrap: anywhere;
-  }
-
-  .settings-rail a:hover {
-    color: var(--color-heading);
-    border-inline-start-color: var(--color-selected);
-  }
-
-  /* The raw editor is another page, so its link is set apart below the sections. */
-  .settings-rail li:last-child {
-    margin-block-start: var(--space-3);
-  }
-
-  .settings-rail li:last-child a {
-    color: var(--color-text);
-    border-inline-start-color: transparent;
-    font-size: var(--text-sm);
-    text-decoration: underline;
-  }
-
-  /* The rail holds the raw editor's link. */
-  .settings-raw-link {
-    display: none;
-  }
 }
 
 .settings-main {
@@ -4675,10 +4684,6 @@ a[target="_blank"]::after {
   gap: var(--space-3);
 }
 
-.pager__at {
-  font-size: var(--text-sm);
-}
-
 /* Foreman's own question when leaving Generate with settings that are not
    saved (DESIGN 7.4, 12): the confirmation box look, over a dimmed page. */
 .leave-dialog {
@@ -4889,8 +4894,13 @@ a[target="_blank"]::after {
 }
 
 /* Generate: the settings beside a preview that stays in view while they
-   change (DESIGN 8.6). One column below 68.75rem. The preview sizes its
-   controls from its own column, as the settings do from theirs (8.7). */
+   change (DESIGN 8.6). Two columns only where the form leaves the settings
+   34rem, so their steps stay sliders (8.7) beside the shell's rail; one
+   column otherwise. The preview sizes its controls from its own column. */
+.generate {
+  container-name: generate;
+}
+
 .gen-preview {
   container: map-section / inline-size;
 }
@@ -4908,21 +4918,105 @@ a[target="_blank"]::after {
   gap: var(--space-4);
 }
 
-@media (min-width: 68.75rem) {
+@container generate (min-width: 56rem) {
   .gen-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(22rem, 26rem);
+    grid-template-columns: minmax(34rem, 1fr) minmax(20rem, 26rem);
     gap: var(--space-6);
   }
 
+  /* The pane fills the window between the top strip and the action bar, and
+     one picture shrinks to the height its controls leave, so the whole pane
+     is seen without a scrollbar of its own (DESIGN 8.6). */
   .gen-preview {
+    --gen-top: var(--space-4);
+    --gen-foot: calc(var(--target-min) + 2 * var(--space-3) + var(--border-width) + var(--space-4));
     position: sticky;
-    inset-block-start: var(--space-5);
-    max-block-size: calc(100dvh - 2 * var(--space-5));
+    inset-block-start: var(--gen-top);
+    block-size: calc(100dvh - var(--gen-top) - var(--gen-foot));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     overflow-y: auto;
     padding: var(--space-4);
     background: var(--color-raised);
     border: var(--border-width) solid var(--color-line);
     border-radius: var(--radius-lg);
+  }
+
+  /* Clear of the shell's sticky 3.5rem top strip. */
+  @media (min-width: 64rem) {
+    body:has(> .site > nav) .gen-preview {
+      --gen-top: calc(3.5rem + var(--space-4));
+    }
+  }
+
+  /* Once a picture is drawn, the section's parts are the pane's own rows,
+     so the picture can take the height left over (DESIGN 8.6). */
+  .gen-preview > .preview:has(> section > .pictures),
+  .gen-preview > .preview > section:has(> .pictures),
+  .js-on .gen-preview > .preview:has(> .preview-placeholder),
+  .js-on .gen-preview > .preview > .preview-placeholder {
+    display: contents;
+  }
+
+  /* The held box before the first picture is sized the same way, so the
+     picture lands in it (DESIGN 8.8). */
+  .gen-preview .preview-placeholder__picture {
+    flex: 1 1 0;
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    container-type: size;
+    align-content: start;
+  }
+
+  .gen-preview .preview-placeholder__frame {
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    justify-self: center;
+  }
+
+  .gen-preview .preview-placeholder__picture > .preview-placeholder__control,
+  .gen-preview .preview-placeholder__picture ~ .preview-placeholder__control {
+    min-block-size: calc(1lh + 2 * var(--space-1));
+  }
+
+  .gen-preview .preview-placeholder__picture ~ * {
+    margin-block-start: calc(var(--space-1) - var(--space-3));
+  }
+
+  .gen-preview > * ,
+  .gen-preview > .preview > section > * {
+    flex: none;
+  }
+
+  /* A square no wider than the column and no taller than the room left,
+     less its frame, caption and download link; never under 16rem, so its
+     amounts stay readable, and the pane scrolls below that. While the
+     territories are written under it the list keeps its own height. */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) {
+    flex: 1 1 0;
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    container-type: size;
+  }
+
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li {
+    inline-size: 100%;
+  }
+
+  /* The frame shrinks, not the row, so its download link keeps the column's width;
+     a frame narrower than the column sits in its middle. */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li > figure {
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    justify-self: center;
+  }
+
+  /* The download links and the kept note read as one tight group under the
+     picture: text links of 24px or more (WCAG 2.5.8), not 44px boxes. */
+  .gen-preview .preview .download {
+    min-block-size: calc(1lh + 2 * var(--space-1));
+  }
+
+  .gen-preview .pictures ~ *,
+  .gen-preview > .preview-status {
+    margin-block-start: calc(var(--space-1) - var(--space-3));
   }
 
   .gen-preview .pictures {
@@ -4957,7 +5051,7 @@ a[target="_blank"]::after {
 }
 
 /* The actions are one bar at the form's foot, in code order at every width:
-   Generate world, Preview map, then Cancel (DESIGN 8.6). */
+   Cancel, Preview map, then Generate world (DESIGN 7.1). */
 .generate > .gen-actions {
   display: flex;
   flex-wrap: wrap;
@@ -5036,9 +5130,8 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 }
 
 @media (max-width: 30rem) {
-  /* On a phone the three stack full width in source order, Generate world
-     first, so no language's long label is squeezed into a third of the bar
-     (DESIGN 8.6). */
+  /* On a phone the three stack full width in source order, so no
+     language's long label is squeezed into a third of the bar (DESIGN 8.6). */
   .generate > .gen-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -7058,17 +7151,7 @@ main:has(> .gate) > .gate {
   }
 }
 
-/* A world's settings: the form leads from the page's start edge, and the
-   section links sit after it as a list of what is on the page. */
 @container settings (min-width: 44rem) {
-  .settings-layout {
-    grid-template-columns: minmax(0, 1fr) 11rem;
-  }
-
-  .settings-rail {
-    order: 1;
-  }
-
   /* The note on the asterisk starts the fields' column. */
   .settings > .required-note {
     padding-inline-start: calc(max(15rem, (100% - var(--space-6)) / 3) + var(--space-6));
@@ -7215,66 +7298,6 @@ main > h1 + p.hint {
   container: plate-facts / inline-size;
 }
 
-.status-card.plate .facts-block > :has(> .facts.stats) {
-  display: grid;
-  gap: var(--space-4);
-}
-
-@container plate-facts (min-width: 48rem) {
-  .status-card.plate .facts-block > :has(> .facts.stats) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: center;
-  }
-}
-
-.facts.stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-  margin: 0;
-}
-
-.facts.stats > .stat {
-  display: grid;
-  align-content: start;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-raised);
-  border: var(--border-width) solid var(--color-line);
-  border-radius: var(--radius);
-}
-
-.facts.stats dt {
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.facts.stats dd {
-  margin: 0;
-  color: var(--color-heading);
-  font-size: 1.75rem;
-  font-weight: 600;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
-}
-
-.facts.stats dd .unit {
-  font-size: var(--text-sm);
-}
-
-.facts.stats .meter {
-  block-size: 6px;
-  max-inline-size: none;
-  border-radius: 3px;
-}
-
-.facts.stats .gauge:not(.gauge--warn, .gauge--danger) .meter > span {
-  background: var(--color-primary);
-}
-
 /* Console: the log, then the command row under it; on a phone the row is a
    bar stuck to the card's foot (DESIGN 8.5). */
 .terminal .log-frame > .button {
@@ -7328,7 +7351,12 @@ main > h1 + p.hint {
   }
 
   .setting-row__body > * {
-    max-inline-size: 40rem;
+    max-inline-size: 30rem;
+  }
+
+  /* A long string reads better on a wider box. */
+  .setting-row__body > .exchange {
+    max-inline-size: 44rem;
   }
 
   .setting-row__body:has(> .field--short + .field--short) {
@@ -7337,58 +7365,6 @@ main > h1 + p.hint {
 
   .setting-row__body:has(> .field--short + .field--short) > :not(.field--short) {
     grid-column: 1 / -1;
-  }
-}
-
-/* On a phone the section links lead the form as one scrolling row of chips. */
-@container settings (max-width: 43.99rem) {
-  .settings-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-  }
-
-  .settings-rail {
-    display: block;
-    min-inline-size: 0;
-  }
-
-  .settings-rail ul {
-    display: flex;
-    gap: var(--space-2);
-    margin: 0;
-    padding: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-    list-style: none;
-  }
-
-  .settings-rail li {
-    flex: none;
-  }
-
-  /* The raw editor's own link follows the form on a phone. */
-  .settings-rail li:last-child {
-    display: none;
-  }
-
-  .settings-rail a {
-    display: inline-flex;
-    align-items: center;
-    min-block-size: var(--target-min);
-    padding-inline: var(--space-4);
-    color: var(--color-text);
-    background: var(--color-surface);
-    border: var(--border-width) solid var(--color-line);
-    border-radius: 999px;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .settings-rail a:hover {
-    border-color: var(--color-border);
   }
 }
 
@@ -7545,12 +7521,6 @@ main:has(> .gate)::before {
 
   .subnav ul::after {
     content: none;
-  }
-
-  /* One sideways scroller per page: on a phone the settings' section links
-     give way to the page's own scroll, under the world tabs. */
-  .settings-rail {
-    display: none;
   }
 }
 
@@ -7937,41 +7907,23 @@ main:has(> .gate)::before {
   font-weight: 600;
 }
 
-/* Game settings on a phone: a disclosure of links jumps to a section; it
-   goes when the rail of section links shows beside the form. */
-.settings-jump {
-  margin-block-end: var(--space-4);
-}
-
-.settings-jump > ul {
-  margin: 0;
-  padding: var(--space-1) var(--space-3);
-  list-style: none;
-}
-
-.settings-jump a {
-  display: flex;
-  align-items: center;
-  min-block-size: var(--target-min);
-}
-
 #settings-listing, #settings-joining, #settings-saving, #settings-admins,
 #settings-whitelist, #settings-bans {
   scroll-margin-block-start: var(--space-4);
 }
 
-@container settings (min-width: 44rem) {
-  .settings-jump {
-    display: none;
-  }
+/* Helper text: 13 px at a 1.45 line height, held to about 66 characters,
+   so it reads as help under its field and never competes with content. A
+   card's one-line description under its heading stays 14 px. */
+.hint,
+main > h1 + p.hint {
+  max-inline-size: 66ch;
+  font-size: var(--text-xs);
+  line-height: 1.45;
 }
 
-/* Helper text: 14 px at a 1.5 line height, held to about 60 characters, so
-   it reads as help under its field and never competes with content. */
-.hint,
 .panel > :is(h2, .section-head) + :is(p.hint, p:not([class])),
-.panel > :is(h2, .section-head) + .hint,
-main > h1 + p.hint {
+.panel > :is(h2, .section-head) + .hint {
   max-inline-size: 60ch;
   font-size: var(--text-sm);
   line-height: 1.5;
@@ -9049,11 +9001,11 @@ main:has(> .gate) > .gate + .gate {
     grid-template-columns: 19rem minmax(0, 1fr) 6rem;
   }
 
-  /* Last played keeps room for a full date and its age, 24 px clear of
-     Disk use. */
+  /* Last played takes the widest share and wraps between its date, clock
+     and age when the page beside the rail is narrow, 24 px clear of Disk use. */
   .worlds-head__facts,
   .worlds > li > .facts {
-    grid-template-columns: 7.5rem 6rem minmax(17rem, 1.4fr) minmax(0, 1fr);
+    grid-template-columns: 5rem 5rem minmax(0, 2fr) minmax(0, 1.2fr);
     column-gap: var(--space-5);
   }
 
@@ -9246,7 +9198,6 @@ main:has(> .gate) > .gate + .gate {
     flex-wrap: wrap;
   }
 }
-
 
 /* Keep simultaneous server warnings visually separate. */
 .disk-notice > div {
@@ -9631,8 +9582,12 @@ main:has(> .gate) > .gate + .gate {
   border-block-end: var(--border-width) solid var(--color-line);
 }
 
+/* The download link makes the 24 px target floor (SPEC 17.2) without
+   making its row taller. */
 .public-mods__name {
   min-inline-size: 0;
+  padding-block: var(--space-1);
+  margin-block: calc(-1 * var(--space-1));
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -9904,3 +9859,3118 @@ main:has(> .gate) > .gate + .gate {
 #webhook-keys[hidden] {
   display: none;
 }
+
+/* ==== The wide frame (DESIGN 4). The page column is 1600 px wide with 32 px
+   gutters from 64rem; Foreman's settings put their tabs in a rail on the
+   start side; lists of tokens and users read as tables, as Worlds does. ==== */
+
+/* Figures line up in every value, time and table cell. */
+:where(time, td, dd, output, .ver, .mod-ver, .count, .badge, .state) {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 64rem) {
+  main {
+    padding-inline: var(--space-6);
+  }
+
+  .site {
+    padding-inline: max(var(--space-6), calc((100% - var(--page-max)) / 2 + var(--space-6)));
+  }
+
+  .menu__panel {
+    inset-inline-end: max(var(--space-6), calc((100% - var(--page-max)) / 2 + var(--space-6)));
+  }
+}
+
+/* A page's description under its title: one quiet line at the measure. */
+.page-intro {
+  max-inline-size: var(--measure);
+  color: var(--color-text-muted);
+}
+
+/* Settings on a wide screen: the tabs are a list in the rail, the current
+   one marked by an orange edge on the accent face. */
+@media (min-width: 64rem) {
+  header > .subnav--settings ul {
+    flex-direction: column;
+    gap: 2px;
+    overflow: visible;
+    mask-image: none;
+  }
+
+  header > .subnav--settings ul::after {
+    content: none;
+  }
+
+  header > .subnav--settings a {
+    justify-content: flex-start;
+    min-block-size: 2.5rem;
+    margin: 0;
+    padding-inline: var(--space-3);
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: var(--text-md);
+    white-space: normal;
+    transition: background-color var(--dur-1) var(--ease);
+  }
+
+  header > .subnav--settings a:hover {
+    background: var(--color-secondary-hover);
+  }
+
+  header > .subnav--settings a[aria-current] {
+    background: var(--color-accent-bg);
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+  }
+
+  header > .subnav--settings a:focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: -1px;
+  }
+}
+
+/* Rows are as wide as their list, not the reading measure. */
+.token-list > li,
+.favorite-list > li,
+.plan-items > li,
+.public-mods > li {
+  max-inline-size: none;
+}
+
+/* Tokens and users: a card each on a phone; on a wide card one row each
+   under a row of column names, values centred on the row (as Worlds). */
+.token-head {
+  display: none;
+}
+
+@container (min-width: 52rem) {
+  .token-head,
+  .token-list > .token-card {
+    display: grid;
+    grid-template-columns: minmax(15rem, 1.3fr) minmax(4.5rem, 0.5fr) minmax(4.5rem, 0.5fr) repeat(3, minmax(0, 1fr)) 12.5rem;
+    column-gap: var(--space-5);
+    align-items: center;
+  }
+
+  .token-head {
+    padding-block-end: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .token-list {
+    gap: 0;
+  }
+
+  .token-list > .token-card {
+    container-type: normal;
+    min-block-size: 3.5rem;
+    padding: var(--space-2) 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .token-list > .token-card + .token-card {
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  .token-card > .facts {
+    display: contents;
+  }
+
+  .token-card > .facts > div {
+    grid-row: 1;
+    font-size: var(--text-sm);
+  }
+
+  .token-card > .facts dd {
+    font-weight: 400;
+  }
+
+  /* A time's age takes the line under its date, in the quiet colour. */
+  .token-card > .facts time > span:last-child:not(.nowrap) {
+    display: block;
+    color: var(--color-text-muted);
+  }
+
+  .token-card > .facts dt {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .token-card > .token-card__title {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .token-card__owner { grid-column: 2; }
+  .token-card__scope { grid-column: 3; }
+  .token-card__expires { grid-column: 4; }
+  .token-card__created { grid-column: 5; }
+  .token-card__used { grid-column: 6; }
+
+  .token-card > .actions {
+    grid-column: 7;
+    grid-row: 1;
+    justify-content: flex-end;
+    margin: 0;
+  }
+}
+
+/* The users list is in the rail's neighbour, so it turns into a table sooner. */
+@container (min-width: 34rem) {
+  .token-head--users,
+  .token-list--users > .token-card {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 7rem;
+    column-gap: var(--space-5);
+    align-items: center;
+  }
+
+  .token-head--users {
+    padding-block-end: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .token-list--users {
+    gap: 0;
+  }
+
+  .token-list--users > .token-card {
+    container-type: normal;
+    min-block-size: 3.5rem;
+    padding: var(--space-2) 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .token-list--users > .token-card + .token-card {
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  .token-list--users > .token-card > .facts {
+    display: contents;
+  }
+
+  .token-list--users > .token-card > .facts > div {
+    grid-row: 1;
+  }
+
+  .token-list--users > .token-card > .facts dd {
+    font-weight: 400;
+  }
+
+  .token-list--users > .token-card > .facts time > span:last-child:not(.nowrap) {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .token-list--users > .token-card > .facts dt {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .token-list--users > .token-card > .token-card__title {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .token-list--users .token-card__kind { grid-column: 2; }
+  .token-list--users .token-card__created { grid-column: 3; }
+
+  .token-list--users > .token-card > .actions {
+    grid-column: 4;
+    grid-row: 1;
+    justify-content: flex-end;
+    margin: 0;
+  }
+}
+
+/* Create a token: the name and button on the start side, the three scopes
+   side by side beside them, the admin warning across the foot. */
+.token-create {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@container (min-width: 52rem) {
+  form.token-create {
+    grid-template-columns: 20rem minmax(0, 1fr);
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .token-create > .required-note,
+  .token-create > .message {
+    grid-column: 1 / -1;
+  }
+
+  .token-create > .field {
+    grid-column: 1;
+  }
+
+  .token-create > fieldset {
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: var(--space-5);
+    row-gap: var(--space-1);
+    align-content: start;
+  }
+
+  .token-create > fieldset > #scope-hint { grid-column: 1 / -1; grid-row: 1; }
+  .token-create > fieldset > label:nth-of-type(1) { grid-column: 1; grid-row: 2; }
+  .token-create > fieldset > label:nth-of-type(2) { grid-column: 2; grid-row: 2; }
+  .token-create > fieldset > label:nth-of-type(3) { grid-column: 3; grid-row: 2; }
+  .token-create > fieldset > p:nth-of-type(2) { grid-column: 1; grid-row: 3; }
+  .token-create > fieldset > p:nth-of-type(3) { grid-column: 2; grid-row: 3; }
+  .token-create > fieldset > p:nth-of-type(4) { grid-column: 3; grid-row: 3; }
+
+  .token-create > .message {
+    grid-row: 3;
+  }
+
+  .token-create > .actions {
+    grid-column: 1;
+    grid-row: 4;
+    margin: 0;
+  }
+}
+
+/* A form inside a card that carries the heading: fields stacked, 16 px apart. */
+.form-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* A read-only value with its copy button joined to the field's end edge. */
+.copy-field {
+  display: flex;
+  align-items: stretch;
+  min-inline-size: 0;
+}
+
+.exchange .field .copy-field:not(.copy-field--block) > textarea.exchange__value {
+  flex: 1 1 auto;
+  min-block-size: var(--target-min);
+  padding-block: 0.6rem;
+  /* One line where the value fits; on a phone it grows to show it whole. */
+  field-sizing: content;
+  resize: none;
+  min-inline-size: 0;
+  max-inline-size: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-overflow: clip;
+}
+
+.copy-field > .exchange__value:has(+ .button:not([hidden])) {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.copy-field > .button {
+  flex: none;
+  margin-inline-start: calc(-1 * var(--border-width));
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.copy-done {
+  color: var(--color-ok);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* The token page's two values sit at a width a token fits on one line. */
+.exchange:has(.copy-field:not(.copy-field--block)) {
+  max-inline-size: 52rem;
+}
+
+/* A long string: the text box and a foot bar holding Copy, drawn as one field. */
+.copy-field--block {
+  display: grid;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.exchange .copy-field--block > textarea.exchange__value {
+  min-block-size: 7.5rem;
+  border: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: none;
+  line-height: 1.5;
+  resize: none;
+}
+
+.exchange .copy-field--block > textarea.exchange__value:focus {
+  outline-offset: -2px;
+}
+
+.copy-field__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.copy-field__foot:not(:has(> .button:not([hidden]))) {
+  display: none;
+}
+
+/* Every select not drawn elsewhere takes the field's look: 44 px, the deep
+   face, the control edge and the one chevron (DESIGN 7.2). */
+:where(select:not([multiple], [size])) {
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3) 2.25rem;
+  background: var(--color-deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23857c70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0.75rem center / 1rem;
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 50%));
+  font-size: var(--text-sm);
+  appearance: none;
+  text-overflow: ellipsis;
+}
+
+:where(select:not([multiple], [size])):focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .plan-row__version select {
+    min-block-size: 2.5rem;
+  }
+}
+
+/* The mod review on a wide screen: the changes lead, and what happens, the
+   countdown and the button sit in a column beside them. */
+.confirm__main,
+.confirm__side {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+@container (min-width: 64rem) {
+  .confirm form:has(> .confirm__side) {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .confirm__side:not(:empty) {
+    padding-inline-start: var(--space-6);
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* Settings rows: the title's column is a fixed 336 px from a wide card, so
+   a title such as "New world from this one" keeps one line. */
+@container (min-width: 60rem) {
+  :is(.setting-row, .settings > fieldset) {
+    grid-template-columns: 21rem minmax(0, 1fr);
+  }
+
+  .setting-row__body > * {
+    max-inline-size: 30rem;
+  }
+
+  /* A long string reads better on a wider box. */
+  .setting-row__body > .exchange {
+    max-inline-size: 44rem;
+  }
+}
+
+/* The mods rail is wider once the page is, so the plan's rows keep one line. */
+@container (min-width: 80rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) 26rem;
+  }
+}
+
+/* Import: the save upload's fields on the start side and the drop zone
+   beside them, as tall as the fields; the order stays the form's. */
+@container (min-width: 56rem) {
+  form.import-upload {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-auto-flow: row dense;
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .import-upload > :not(.field, .actions) {
+    grid-column: 1 / -1;
+  }
+
+  .import-upload > .field {
+    grid-column: 1;
+  }
+
+  .import-upload > .field.dropzone {
+    grid-column: 2;
+    grid-row: span 4;
+    align-self: stretch;
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .import-upload > .field.dropzone .dropzone__area {
+    block-size: 100%;
+  }
+
+  .import-upload > .actions {
+    grid-column: 1 / -1;
+  }
+
+  .import-upload .field input:not([type="checkbox"], [type="radio"], [type="file"]),
+  .import-upload .field select {
+    max-inline-size: none;
+  }
+}
+
+/* The public mods page: the running world's card leads, and where the files
+   go is a note in a rail beside it; a players' page, so a narrower frame. */
+main:has(> .public-world) {
+  max-inline-size: 80rem;
+}
+
+@container (min-width: 56rem) {
+  .public-world,
+  .public-where {
+    align-self: start;
+  }
+}
+
+@media (min-width: 64rem) {
+  main:has(> .public-world) {
+    grid-template-columns: minmax(0, 1fr) 30rem;
+  }
+
+  main:has(> .public-world) > :not(.public-world, .public-where) {
+    grid-column: 1 / -1;
+  }
+
+  main > .public-world {
+    grid-column: 1;
+  }
+
+  main > .public-where {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+}
+
+.public-where > p {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+/* Inside a card, a token or user is a row between hairlines, not a card in
+   a card, at every width. */
+.panel > .token-list {
+  gap: 0;
+}
+
+.panel > .token-list > .token-card {
+  padding: var(--space-3) 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.panel > .token-list > .token-card + .token-card {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+/* Generate: starting from a favorite is one row on a wide card, the heading,
+   the choice and the link to the list side by side. */
+@container (min-width: 64rem) {
+  form#favorite-chooser {
+    grid-template-columns: auto minmax(0, 34rem) 1fr;
+    column-gap: var(--space-6);
+    align-items: end;
+  }
+
+  #favorite-chooser > h2 {
+    align-self: center;
+  }
+
+  #favorite-chooser > :not(h2, .field, .actions) {
+    grid-column: 1 / -1;
+  }
+
+  #favorite-chooser > .actions {
+    justify-content: flex-end;
+    align-self: center;
+  }
+}
+
+/* The Audit log is one card like its sibling settings pages: the filter
+   row is the card's head band above a hairline, the entries under it. */
+.audit-panel {
+  gap: var(--space-5);
+}
+
+.audit-panel > .audit-filter {
+  padding-block-end: var(--space-5);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+/* A badge is one line: a long "Needed by" name stays a pill, never a
+   two-line lozenge. */
+.badge {
+  white-space: nowrap;
+}
+
+/* Clear plan lines up with the card's text edge, not indented by its
+   quiet face's padding. */
+.plan-panel__clear .button--quiet {
+  padding-inline: 0;
+}
+
+/* A plan that destroys nothing keeps the review frame but trades the
+   hazard stripe for a plain orange edge (DESIGN 7.1). */
+.confirm--plain::before {
+  block-size: 4px;
+  background: var(--color-primary);
+}
+
+/* Revoke and Delete in a row of people or tokens are red words that gain
+   their outline only when pointed at, so a column of them does not shout. */
+.token-list .button--risky:not(:hover, :focus-visible) {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* The drop zone: 160 px, an upload mark over one line of words, the
+   limits in the hint above it. */
+.dropzone--on .dropzone__area {
+  min-block-size: 10rem;
+}
+
+.dropzone__prompt:not([hidden]) {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.dropzone__prompt::before {
+  content: "";
+  inline-size: 2rem;
+  block-size: 2rem;
+  background: var(--color-text-muted);
+  mask: var(--i-upload) center / contain no-repeat;
+}
+
+@container (min-width: 56rem) {
+  .import-upload > .field.dropzone {
+    align-self: start;
+  }
+
+  .import-upload > .field.dropzone .dropzone__area {
+    block-size: auto;
+  }
+}
+
+/* The admin-scope warning shows once Admin is the chosen scope; it stays
+   in the document, so the radio's description still reads it. */
+.token-create:has(input[name="scope"]:checked):not(:has(#scope-admin:checked)) > #scope-admin-warning {
+  display: none;
+}
+
+/* Game settings on a wide card: a section's fields flow two to a row, so
+   the long form uses the width beside its titles instead of one narrow
+   column. Lists, notes and anything that is not a field run across both. */
+@container (min-width: 72rem) {
+  .settings > fieldset > .setting-row__body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .settings > fieldset > .setting-row__body > :not(.field, .setting-check, fieldset) {
+    grid-column: 1 / -1;
+  }
+}
+
+.audit-panel > form.audit-filter {
+  display: flex;
+}
+
+/* A save bar's note leads it, the action ends it. */
+.form-foot > .form-foot__note {
+  margin: 0 auto 0 0;
+  margin-inline: 0 auto;
+}
+
+/* API tokens (DESIGN 8.21): one list under a head band that carries the
+   owner filter and MCP access, then the form that adds to it. */
+.token-table {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.token-table__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+}
+
+.token-table__head h2 {
+  margin: 0;
+}
+
+.segmented {
+  display: inline-flex;
+  margin: 0;
+  padding: 3px;
+  min-inline-size: 0;
+  background: var(--color-bg);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: calc(var(--radius) + 3px);
+}
+
+.segmented > label {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: calc(var(--target-min) - 8px);
+  padding-inline: var(--space-4);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmented > label:hover {
+  color: var(--color-heading);
+}
+
+.segmented > label:has(:checked) {
+  background: var(--color-surface);
+  color: var(--color-heading);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-border);
+}
+
+.segmented > label:has(:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  inline-size: 1px;
+  block-size: 1px;
+  pointer-events: none;
+}
+
+.state--mcp-on {
+  background-color: var(--color-ok-bg);
+  color: var(--color-ok);
+}
+
+.state--mcp-on::before {
+  background-image: linear-gradient(currentColor, currentColor);
+}
+
+.state--mcp-off {
+  background-color: var(--color-raised);
+  color: var(--color-text-muted);
+}
+
+/* The owner filter: the list shows only the user's own tokens until All
+   tokens is chosen; each choice has its own empty line. */
+.token-table:has(#token-show-mine:checked) .token-card:not([data-mine]),
+.token-table:has(#token-show-mine:checked) #all-tokens-empty,
+.token-table:has(#token-show-mine:checked) .token-all-hint,
+.token-table:has(#token-show-all:checked) #my-tokens-empty,
+.token-table:has(#token-show-mine:checked):not(:has(.token-card[data-mine])) .token-head {
+  display: none;
+}
+
+.token-table .token-all-hint {
+  margin: 0;
+}
+
+/* Each row closes with its own rule, so a filtered-out row leaves no double line. */
+@container (min-width: 52rem) {
+  .token-list > .token-card + .token-card {
+    border-block-start: 0;
+  }
+
+  .token-list > .token-card {
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* The token-created page: one panel at a form's width. */
+.token-created {
+  display: grid;
+  gap: var(--space-5);
+  max-inline-size: 52rem;
+}
+
+.token-created__done {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 4px solid var(--color-ok);
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+}
+
+.token-created__done > strong {
+  color: var(--color-ok);
+}
+
+.token-created .exchange {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.token-created .field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.token-created .field > .message {
+  margin: 0;
+  max-inline-size: none;
+}
+
+/* Focus lands on the result so it is read out; it is not a control, so no ring. */
+.token-created__done:focus {
+  outline: none;
+}
+
+.token-created__foot {
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+/* Server page: the state word is the largest thing on the plate, on a
+   64 px band, so it reads from across the room before any button. */
+.plate__band {
+  min-block-size: 4rem;
+  padding-block: var(--space-3);
+}
+
+.plate__state {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.plate__state::before {
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+}
+
+/* Players fill the wide column; the world's pages and the newest
+   snapshots stack in the narrow one, and both columns end on one line. */
+@media (min-width: 64rem) {
+  .server-grid > .panel:has(#players-heading) {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+    align-self: stretch;
+    align-content: start;
+  }
+
+  .server-grid > .shortcuts.card {
+    align-self: start;
+  }
+
+  .server-grid > .recent-snaps {
+    grid-row: 2;
+    grid-column: 2;
+    align-self: stretch;
+  }
+}
+
+.recent-snaps {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-3);
+}
+
+.recent-snaps__list {
+  display: grid;
+  align-content: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-snaps__list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+  font-size: var(--text-sm);
+  max-inline-size: none;
+}
+
+.recent-snaps__list > li:first-child {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.recent-snaps__name {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.recent-snaps__name > .snap-kind {
+  order: 0;
+}
+
+.recent-snaps__list time {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.recent-snaps > .actions {
+  margin: 0;
+}
+
+/* World Overview: facts, then sharing (map string and favorite) side by
+   side, then managing the world, then what retires or destroys it. */
+.world-share {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@container (min-width: 64rem) {
+  .world-share {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+
+  .world-share:has(> :only-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.world-share__item {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.world-share__head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.world-share__body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.world-share__item .inline-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.world-share__item .inline-row > input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.danger-zone:not(.danger-zone--blocked) #delete-heading {
+  color: var(--color-danger-text);
+}
+
+/* One notice everywhere: a tinted face, a hairline, a 4 px edge and an
+   icon in the notice's own colour; the bold first word says the kind. */
+.message {
+  --notice-tone: var(--color-info);
+  --notice-face: var(--color-info-bg);
+  --notice-icon: var(--i-info);
+  position: relative;
+  padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-4) + 1.25rem + var(--space-3));
+  background: var(--notice-face);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid var(--notice-tone);
+  border-radius: var(--radius);
+}
+
+.message::before {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(var(--space-3) + 0.125rem);
+  inset-inline-start: var(--space-4);
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: var(--notice-tone);
+  mask: var(--notice-icon) center / contain no-repeat;
+}
+
+.message--note {
+  --notice-tone: var(--color-info);
+  --notice-face: var(--color-info-bg);
+  --notice-icon: var(--i-info);
+  background: var(--notice-face);
+  border-color: var(--color-line);
+  border-inline-start: 4px solid var(--notice-tone);
+}
+
+.message--success {
+  --notice-tone: var(--color-ok);
+  --notice-face: var(--color-ok-bg);
+  --notice-icon: var(--i-check);
+}
+
+.message--warning {
+  --notice-tone: var(--color-warn);
+  --notice-face: var(--color-warn-bg);
+  --notice-icon: var(--i-alert);
+}
+
+.message--error {
+  --notice-tone: var(--color-danger-text);
+  --notice-face: var(--color-danger-bg);
+  --notice-icon: var(--i-error);
+}
+
+.message :is(h2, p):first-child > strong:first-child {
+  color: var(--notice-tone);
+}
+
+/* In a narrow box, such as a phone at 200% text, the icon sits over the
+   words instead of taking a column of its own, so the words keep the width
+   (320 px rule 2). The query's rem follows the reader's text size. */
+@container (max-width: 13rem) {
+  .message {
+    padding-inline-start: var(--space-4);
+  }
+
+  .message::before {
+    position: static;
+  }
+
+  .message ul {
+    padding-inline-start: var(--space-3);
+  }
+}
+
+@media (forced-colors: active) {
+  .message::before {
+    background: CanvasText;
+  }
+}
+
+/* Helper text: 14/20 in the quiet colour (at least 7:1 on a card in both
+   themes), held to about 66 characters. */
+.hint,
+main > h1 + p.hint,
+.panel > :is(h2, .section-head) + :is(p.hint, p:not([class])),
+.panel > :is(h2, .section-head) + .hint {
+  max-inline-size: 66ch;
+  font-size: var(--text-sm);
+  line-height: 1.43;
+}
+
+/* Every table's column names share one style: 13 px capitals, tracked, in
+   the quiet colour, over a hairline, the same as the token and user lists. */
+main table thead th,
+main table th[scope="col"] {
+  padding-block: 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* Audit rows: every cell starts on the row's top line, so a wrapped detail
+   leaves the short cells level. A stacked row keeps its own spacing. */
+.audit-table td {
+  vertical-align: top;
+}
+
+@container (width > 52rem) {
+  .audit-table td {
+    padding-block: var(--space-3);
+  }
+}
+
+@container (width > 64rem) {
+  .audit-table :is(.audit-user, .audit-world) {
+    white-space: nowrap;
+  }
+
+  .audit-table .audit-detail {
+    inline-size: 100%;
+    min-inline-size: 15rem;
+  }
+}
+
+/* A badge never breaks inside itself. */
+.badge {
+  white-space: nowrap;
+}
+
+/* Server page: each card ends after its own content. The players take the
+   wide column at their own height; the world's pages and the newest
+   snapshots stack in the narrow one. */
+@media (min-width: 64rem) {
+  .server-grid > .panel:has(#players-heading) {
+    align-self: start;
+  }
+
+  .server-grid > .recent-snaps {
+    align-self: start;
+    grid-template-rows: auto;
+  }
+}
+
+/* Emergency actions is a quiet foldout like any other; only once opened
+   does Force stop show, inside a red-edged area that says what it costs. */
+.disclosure.emergency > summary {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.disclosure.emergency > summary::marker {
+  color: var(--color-text-muted);
+}
+
+.emergency[open] > .danger-row {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-danger-bg);
+  border: var(--border-width) solid var(--color-danger);
+  border-radius: var(--radius);
+}
+
+/* The Danger zone is a card like the others, set apart by its red edge and
+   red headings, whether or not its actions are offered now. */
+main > .panel.danger-zone,
+main > .panel.danger-zone.danger-zone--blocked {
+  background: var(--color-surface);
+  border-color: var(--color-danger);
+  box-shadow: var(--shadow-card);
+}
+
+.danger-zone .setting-row__head > h2,
+.danger-zone.danger-zone--blocked > h2 {
+  color: var(--color-danger-text);
+}
+
+/* The map exchange string shows five whole lines and scrolls; Copy sits in
+   the foot below it, never over the text. */
+.exchange .copy-field--block > textarea.exchange__value {
+  block-size: calc(5lh + 2 * var(--space-2));
+  min-block-size: 0;
+  padding-block-end: 0;
+  overflow-y: auto;
+  /* Text scrolls under the bottom padding; an edge in the field's own face clips it on a whole line. */
+  border-block-end: var(--space-2) solid var(--color-deep);
+}
+
+/* A chosen search result keeps the neutral face: the 4 px selected edge
+   and the In plan pill say it, so the plan's button stays the one orange
+   area. */
+.hit {
+  border-inline-start-width: 4px;
+}
+
+.hit:has(.badge--chosen) {
+  background: transparent;
+  border-inline-start-color: var(--color-selected);
+}
+
+@media (min-width: 48rem) {
+  .hit__act .badge--needed {
+    max-inline-size: none;
+    white-space: nowrap;
+  }
+}
+
+/* The Audit log's column names stay in view while its rows scroll. */
+.audit-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  padding-block-start: var(--space-2);
+  background: var(--color-surface);
+}
+
+/* Settings rows: a 240 px title column, so the controls start sooner and
+   the long forms use the width beside their titles. */
+@container (min-width: 60rem) {
+  :is(.setting-row, .settings > fieldset) {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    column-gap: var(--space-5);
+  }
+}
+
+/* Below 64rem an archived world's two actions take a line under its facts,
+   so its name keeps the row's width (DESIGN 8.2). */
+@media (max-width: 63.99rem) {
+  #archived-worlds .worlds > li > .facts ~ .actions {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+}
+
+/* An archived world's row holds two actions on one line, Saves then
+   Unarchive world, at the end of the row as Switch is above. */
+@media (min-width: 64rem) {
+  #archived-worlds .worlds > li > .facts ~ .actions {
+    flex-wrap: wrap;
+  }
+
+  #archived-worlds .worlds > li > .facts ~ .actions .button {
+    inline-size: auto;
+    white-space: nowrap;
+  }
+}
+
+/* Public mods: Where the mods go as three numbered steps; the folder for
+   each system sits on its own line in a code box, to select and copy. */
+.where-steps {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: where-step;
+}
+
+.where-steps > li {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  column-gap: var(--space-3);
+  row-gap: var(--space-3);
+  align-items: baseline;
+  max-inline-size: none;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  counter-increment: where-step;
+}
+
+.where-steps > li::before {
+  content: counter(where-step);
+  grid-row: 1;
+  align-self: start;
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 50%;
+  color: var(--color-heading);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.where-paths {
+  grid-column: 2;
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.where-paths > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.where-paths dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.where-paths dd {
+  margin: 0;
+}
+
+.where-paths code {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* Favorites: each row gets the 12 px rhythm of the other lists, so the
+   rows read apart and Generate sits centred in its own band. */
+.favorite-list > .favorite {
+  padding-block: var(--space-3);
+}
+
+.favorite-list > .favorite:first-child {
+  padding-block-start: 0;
+}
+
+/* The raw editor's link follows the form at every width. */
+.settings-raw-link {
+  display: flex;
+}
+
+/* One navigation pattern for every area with sub-pages: from 64rem the
+   Server's, a world's and the settings' pages are a 240 px column on the
+   start side, the current page marked by an orange edge on the accent face;
+   the area's title and state sit in the page header beside it. */
+@media (min-width: 64rem) {
+  header > .subnav ul {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    overflow: visible;
+    mask-image: none;
+    border: 0;
+  }
+
+  header > .subnav ul::after {
+    content: none;
+  }
+
+  header > .subnav li {
+    flex: none;
+  }
+
+  header > .subnav a {
+    justify-content: flex-start;
+    min-block-size: 2.5rem;
+    margin: 0;
+    padding-inline: var(--space-3);
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: var(--color-text);
+    font-size: var(--text-md);
+    font-weight: 500;
+    white-space: normal;
+    transition: background-color var(--dur-1) var(--ease);
+  }
+
+  header > .subnav a::after {
+    content: none;
+  }
+
+  header > .subnav a:hover {
+    background: var(--color-secondary-hover);
+  }
+
+  header > .subnav a[aria-current] {
+    background: var(--color-accent-bg);
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+    font-weight: 600;
+  }
+
+  header > .subnav a:focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: -1px;
+  }
+}
+
+/* Game settings' sub-pages: one fieldset each, the others kept in the form
+   but out of sight, so a save leaves them as they are (DESIGN 6). */
+.settings > fieldset[hidden],
+.settings-main > section.panel[hidden],
+form.settings[hidden] {
+  display: none !important;
+}
+
+/* Sub-pages sit under their page in the page column: indented, a hairline
+   on the start side, 36 px rows, the current one marked as its parent is. */
+.subnav__sub {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  header > .subnav li:has(> .subnav__sub) {
+    display: grid;
+    gap: 2px;
+  }
+
+  header > .subnav .subnav__sub {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: var(--space-1) 0 var(--space-2) var(--space-4);
+    padding: 0;
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+
+  header > .subnav .subnav__sub a {
+    min-block-size: 2.25rem;
+    margin-inline-start: -1px;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+  }
+
+  header > .subnav .subnav__sub a:hover {
+    color: var(--color-heading);
+  }
+
+  header > .subnav .subnav__sub a[aria-current] {
+    color: var(--color-heading);
+    font-weight: 600;
+  }
+
+  /* The parent of the open sub-page reads as a group title, not a second
+     current item. */
+  header > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
+    background: none;
+    border-inline-start-color: transparent;
+    font-weight: 600;
+  }
+}
+
+/* On a phone the sub-pages are their own scrolling row under the world's
+   tabs, 44 px chips that keep their words whole. */
+@media (max-width: 63.99rem) {
+  .subnav li:has(> .subnav__sub) {
+    display: contents;
+  }
+
+  .subnav .subnav__sub {
+    display: flex;
+    grid-column: 1 / -1;
+    flex-basis: 100%;
+    gap: var(--space-2);
+    margin-block-start: var(--space-3);
+    padding: 0 0 var(--space-1);
+    overflow-x: auto;
+    scrollbar-width: none;
+    list-style: none;
+  }
+
+  .subnav .subnav__sub li {
+    flex: none;
+    box-shadow: none;
+  }
+
+  .subnav .subnav__sub a,
+  .subnav .subnav__sub a[aria-current] {
+    display: flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+    padding-inline: var(--space-3);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+    white-space: nowrap;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    box-shadow: none;
+  }
+
+  .subnav .subnav__sub a::after {
+    content: none;
+  }
+
+  .subnav .subnav__sub a[aria-current] {
+    border-color: var(--color-selected);
+    background: var(--color-accent-bg);
+    color: var(--color-heading);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .subnav ul:has(> li:nth-child(5)) > li:has(> .subnav__sub) > a {
+    grid-column: span 3;
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .subnav ul:has(> li:nth-child(5)) > li:has(> .subnav__sub) > a[aria-current] {
+    box-shadow: inset 0 -2px 0 var(--color-selected);
+  }
+}
+
+@media (min-width: 40rem) and (max-width: 63.99rem) {
+  .subnav ul:has(.subnav__sub) {
+    flex-wrap: wrap;
+    overflow: visible;
+    mask-image: none;
+  }
+}
+
+/* Foreman's settings on a phone: one scrolling row of eight tabs rather than
+   a grid four rows tall; the current tab is brought into view (subnav.js). */
+@media (max-width: 39.99rem) {
+  .subnav--settings ul,
+  .subnav--settings ul:has(> li:nth-child(5)) {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-padding-inline: var(--space-5);
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .subnav--settings ul > li,
+  .subnav--settings ul:has(> li:nth-child(5)) > li {
+    flex: none;
+    box-shadow: none;
+  }
+
+  .subnav--settings a,
+  .subnav--settings a[aria-current],
+  .subnav--settings li:first-child a,
+  .subnav--settings li:last-child a {
+    padding-inline: var(--space-3);
+    white-space: nowrap;
+  }
+}
+
+/* Generate on a wide screen: the basics pair up, name beside version and
+   preset beside seed, so the map's settings start a screen sooner. */
+@container map-section (min-width: 40rem) {
+  :has(> #preset-box + .field) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+    align-items: start;
+  }
+
+  :has(> #preset-box + .field) > * {
+    grid-column: 1 / -1;
+  }
+
+  :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field) {
+    grid-column: auto;
+  }
+
+  /* Preset and seed share message, label, hint, control and error rows,
+     so the select and the input line up (DESIGN 8.6). */
+  :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field) {
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    row-gap: var(--space-2);
+  }
+
+  #preset-box > .message {
+    grid-row: 1;
+  }
+
+  #preset-box > .field {
+    grid-row: 2 / span 4;
+    grid-template-rows: subgrid;
+  }
+
+  #preset-box > .field > label {
+    grid-row: 1;
+  }
+
+  #preset-box + .field > label {
+    grid-row: 2;
+  }
+
+  #preset-box + .field > .hint {
+    grid-row: 3;
+  }
+
+  #preset-box + .field > .inline-row {
+    grid-row: 4;
+  }
+
+  #preset-box + .field > .error {
+    grid-row: 5;
+  }
+
+  #preset-box > .field > .inline-row {
+    grid-row: 3;
+  }
+
+  /* A shared row is as tall as the taller control; each starts at its top. */
+  :is(#preset-box > .field, #preset-box + .field) > * {
+    align-self: start;
+  }
+
+  #preset-box > .field > .error {
+    grid-row: 4;
+  }
+
+  .map-section .modes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+  }
+
+  .map-section .modes > legend {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 90rem) {
+  .gen-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+  }
+
+  .gen-settings > * {
+    grid-column: 1 / -1;
+  }
+
+  .gen-settings > .field:has(#generate-name),
+  .gen-settings > .version-fields {
+    grid-column: auto;
+  }
+
+  /* Name and version share label, hint and control rows, so the input and
+     the select line up; what follows the control flows below (DESIGN 8.6). */
+  .gen-settings > .field:has(#generate-name),
+  .gen-settings > .version-fields {
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    row-gap: var(--space-2);
+  }
+
+  .gen-settings > .field:has(#generate-name) > .error {
+    grid-row: 4;
+  }
+
+  .version-fields > .field:has(#generate-version-select) {
+    grid-row: 1 / span 3;
+    grid-template-rows: subgrid;
+  }
+
+  #generate-version-select {
+    grid-row: 3;
+  }
+
+  .version-fields > .disclosure {
+    grid-row: 4;
+  }
+
+  .version-fields > .field:has(#generate-space-age) {
+    grid-row: 5;
+  }
+}
+
+/* The Audit log on a wide screen: compact 44 px rows at 14 px, the age
+   after each time in the quiet colour, and actions kept on one line. */
+@media (min-width: 64rem) {
+  .audit-table :is(td, th) {
+    padding-block: var(--space-2);
+  }
+
+  .audit-table td {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .audit-table .audit-time time > span:last-child:not(.nowrap) {
+    color: var(--color-text-muted);
+  }
+
+  .audit-table .audit-action {
+    white-space: nowrap;
+  }
+}
+
+/* Both world tables share one column grid, so the archived table's columns
+   sit under the live table's; actions end the row. The columns are shares of
+   the row, not fixed widths, so the facts keep room beside the rail. */
+@media (min-width: 64rem) {
+  .worlds-head,
+  .worlds > li,
+  #archived-worlds :is(.worlds-head, .worlds > li) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) 13rem;
+  }
+
+  .worlds > li > .facts ~ .actions {
+    justify-content: flex-end;
+  }
+}
+
+/* The webhook form: each service is a 2-by-2 choice of framed options,
+   the address or keys beside it, the events in columns, and the save in
+   the same foot bar as the other settings forms. */
+.webhook-form__presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-3);
+}
+
+.webhook-preset {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.webhook-preset:has(input:checked) {
+  border-color: var(--color-selected);
+  box-shadow: inset 3px 0 0 var(--color-selected);
+  background: var(--color-raised);
+}
+
+.webhook-preset > .hint {
+  margin: 0;
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+.webhook-form__event-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-2) var(--space-5);
+}
+
+.webhook-form__top,
+.webhook-form__where {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 80rem) {
+  .webhook-form__top {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    column-gap: var(--space-6);
+  }
+
+  .webhook-form > .webhook-form__lang {
+    max-inline-size: 30rem;
+  }
+}
+
+/* A webhook's Edit and Delete sit side by side at the row's end, each its
+   own width. */
+@media (min-width: 64rem) {
+  .webhook-list > li > .facts ~ .actions {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .webhook-list > li > .facts ~ .actions .button {
+    inline-size: auto;
+  }
+}
+
+/* One row-action rule: safe actions are outline buttons sized to their
+   words; destructive ones are ghost buttons in the danger colour with an
+   icon and a word, never a bare icon or plain red text (DESIGN 7.1). */
+.button--remove,
+.button--ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  padding-inline: var(--space-3);
+}
+
+.button--remove {
+  color: var(--color-danger-text);
+}
+
+.button--remove::before {
+  content: "";
+  flex: none;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  background: currentColor;
+  mask: var(--icon, var(--i-trash)) center / contain no-repeat;
+}
+
+.button--revoke {
+  --icon: var(--i-close);
+}
+
+.button--remove:hover {
+  background: var(--color-danger-bg);
+  border-color: currentColor;
+  color: var(--color-danger-text);
+}
+
+.button--ghost {
+  color: var(--color-heading);
+}
+
+.button--ghost:hover {
+  background: var(--color-secondary-hover);
+  border-color: transparent;
+}
+
+.token-list .button--remove:not(:hover, :focus-visible) {
+  border-color: transparent;
+}
+
+@media (forced-colors: active) {
+  .button--remove::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+}
+
+/* Row buttons on a desktop are 40 px tall and as wide as their words, at
+   least 88 px, ending the row; a phone keeps the 44 px target. */
+@media (min-width: 64rem) {
+  :is(.worlds, .token-list, .row-actions, .webhook-list) .button {
+    min-block-size: 2.5rem;
+  }
+
+  .worlds > li > .facts ~ .actions .button,
+  #archived-worlds .worlds > li > .facts ~ .actions .button {
+    inline-size: auto;
+    min-inline-size: 5.5rem;
+    white-space: nowrap;
+  }
+}
+
+/* A form's foot bar: what is pending leads it; Cancel sits just before
+   the primary action at the end. It wraps rather than squeeze a button's
+   words out of its box at large text (320 px rule 5). */
+.form-foot {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.form-foot > a {
+  margin-inline-end: 0;
+}
+
+.form-foot > .form-foot__note:not([hidden]) {
+  margin-inline: 0 auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.form-foot > #settings-unsaved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+#settings-unsaved::before,
+.subnav__sub a[data-unsaved]::after {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-selected);
+}
+
+/* The note stays in the page while empty, so its status region is heard when it fills. */
+#settings-unsaved:empty::before {
+  content: none;
+}
+
+/* On a narrow form the unsaved count takes its own line over the actions,
+   so Cancel and Preview changes keep their words whole. */
+@container settings (max-width: 36rem) {
+  .form-foot:has(> #settings-unsaved:not(:empty)) {
+    flex-wrap: wrap;
+  }
+
+  .form-foot > #settings-unsaved:not(:empty) {
+    flex-basis: 100%;
+  }
+}
+
+/* The page column marks the current place once: the parent of an open
+   sub-page keeps the orange start edge in bold, and the sub-page itself
+   takes the accent face, the same face as a current Settings item. */
+@media (min-width: 64rem) {
+  header > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  header > .subnav .subnav__sub a {
+    font-size: var(--text-md);
+    color: var(--color-text);
+  }
+
+  header > .subnav .subnav__sub a[aria-current] {
+    background: var(--color-accent-bg);
+    border-inline-start-color: var(--color-selected);
+    font-weight: 600;
+  }
+
+  header > .subnav .subnav__sub a[data-unsaved] {
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  header > .subnav .subnav__sub a[data-unsaved]::after {
+    content: "";
+  }
+}
+
+.subnav__sub a::after {
+  content: none;
+}
+
+/* A webhook's events are small chips, wrapping under the label. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips > li {
+  padding: 1px var(--space-2);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.webhook-list .facts dd {
+  font-weight: 400;
+}
+
+/* Every recent snapshot has one layout: the kind, the name, then the time. */
+.recent-snaps__list > li {
+  display: grid;
+  justify-content: stretch;
+  gap: 2px;
+}
+
+.recent-snaps__name {
+  font-size: var(--text-sm);
+}
+
+.recent-snaps__list time {
+  font-size: var(--text-xs);
+  white-space: normal;
+}
+
+/* A mod's portal news is one quiet 13 px line with an icon for its kind;
+   the leading word stays for screen readers (SPEC 17.4). */
+.mod-flags > p {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  max-inline-size: 72ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.mod-flags > p > strong {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mod-flags > p::before {
+  content: "";
+  flex: none;
+  align-self: center;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  background: var(--color-info);
+  mask: var(--i-info) center / contain no-repeat;
+}
+
+.mod-flags > .mod-flag--warning::before {
+  background: var(--color-warn);
+  mask-image: var(--i-alert);
+}
+
+.mod-flags > .mod-flag--error {
+  color: var(--color-danger-text);
+}
+
+.mod-flags > .mod-flag--error::before {
+  background: var(--color-danger-text);
+  mask-image: var(--i-error);
+}
+
+@media (forced-colors: active) {
+  .mod-flags > p::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
+/* Type roles stand apart: 13 px helper text in the quiet colour under
+   15 px body. */
+.hint,
+main > h1 + p.hint,
+.panel > :is(h2, .section-head) + .hint {
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+/* A link that goes to another page ends in a chevron. */
+#act-recent-snapshots::after {
+  content: "";
+  display: inline-block;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  margin-inline-start: var(--space-1);
+  vertical-align: -0.125em;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+/* ==== The shell (DESIGN 6, Shell). From 64rem the header is a rail on the
+   start side: the logo, the four areas, then the current area's own pages
+   under a hairline. A status strip over the content names the live world
+   and its state, with the user menu at its end. Every page's content starts
+   at the same place. Below 64rem the header stays a bar with tab rows. ==== */
+:root {
+  --rail: 15rem;
+}
+
+/* The rail's copy of the area's own pages shows from 64rem only. */
+header > .subnav {
+  display: none;
+}
+
+.site-world {
+  display: none;
+}
+
+/* On a phone the strip's parts sit in the header bar as before. */
+.site-strip {
+  display: contents;
+}
+
+@media (min-width: 64rem) {
+  body:has(> .site > nav) {
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    grid-template-rows: 3.5rem auto 1fr;
+    min-block-size: 100dvh;
+  }
+
+  /* The rail's face runs the full height of the page. */
+  body:has(> .site > nav)::before {
+    content: "";
+    grid-column: 1;
+    grid-row: 1 / -1;
+    background: var(--color-surface);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  body:has(> .site > nav) > .site {
+    display: contents;
+  }
+
+  body:has(> .site > nav) > .site > .product {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+    padding-inline: var(--space-5);
+    border-block-end: var(--border-width) solid var(--color-line);
+    border-inline-end: var(--border-width) solid var(--color-line);
+    /* A faint drafting grid behind the maker's mark, as on sign-in. */
+    background:
+      linear-gradient(to right, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
+      linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
+      var(--color-surface);
+  }
+
+  body:has(> .site > nav) > .site > nav {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    order: 0;
+    margin: 0;
+    padding: var(--space-4) var(--space-3) var(--space-3);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  .site > nav .tabs {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+  }
+
+  .site > nav .tabs li {
+    flex: none;
+  }
+
+  body .site > nav .tabs a {
+    justify-content: flex-start;
+    gap: var(--space-3);
+    min-block-size: 2.75rem;
+    margin: 0;
+    padding-inline: var(--space-3);
+    background: none;
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: none;
+    color: var(--color-text);
+    font-size: var(--text-md);
+    font-weight: 500;
+    transition: background-color var(--dur-1) var(--ease);
+  }
+
+  body .site > nav .tabs a:hover {
+    background: var(--color-secondary-hover);
+    color: var(--color-heading);
+  }
+
+  body .site > nav .tabs a[aria-current] {
+    background: var(--color-accent-bg);
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+    font-weight: 600;
+  }
+
+  body .site > nav .tabs a:focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: -1px;
+  }
+
+  /* The status strip: the live world and its state, read from anywhere. */
+  body:has(> .site > nav) .site-strip {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-inline-size: 0;
+    padding-inline: var(--space-6) 20rem;
+    background: var(--color-surface);
+    border-block-end: 2px solid var(--color-line);
+  }
+
+  .site-strip:has(.lamp--running) { border-block-end-color: var(--color-ok); }
+  .site-strip:has(.lamp--starting) { border-block-end-color: var(--color-info); }
+  .site-strip:has(.lamp--stopping) { border-block-end-color: var(--color-warn); }
+  .site-strip:has(:is(.lamp--crashed, .lamp--crash-looping)) { border-block-end-color: var(--color-danger); }
+
+  .site-world {
+    display: block;
+    overflow: hidden;
+    color: var(--color-heading);
+    font-size: var(--text-md);
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body:has(> .site > nav) .site-state:not(:empty) {
+    flex: none;
+    min-block-size: 1.75rem;
+    padding-inline: var(--space-2) var(--space-3);
+    background: var(--color-raised);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: 999px;
+    color: var(--color-heading);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .site-state:has(.lamp--running) { background: var(--color-ok-bg) !important; border-color: color-mix(in srgb, var(--color-ok) 45%, transparent) !important; color: var(--color-ok) !important; }
+  .site-state:has(.lamp--starting) { background: var(--color-info-bg) !important; border-color: color-mix(in srgb, var(--color-info) 45%, transparent) !important; color: var(--color-info) !important; }
+  .site-state:has(.lamp--stopping) { background: var(--color-warn-bg) !important; border-color: color-mix(in srgb, var(--color-warn) 45%, transparent) !important; color: var(--color-warn) !important; }
+  .site-state:has(:is(.lamp--crashed, .lamp--crash-looping)) { background: var(--color-danger-bg) !important; border-color: color-mix(in srgb, var(--color-danger) 45%, transparent) !important; color: var(--color-danger-text) !important; }
+
+  body:has(> .site > nav) > .site > .menu {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+    position: relative;
+    z-index: 30;
+    margin: 0 var(--space-6) 0 0;
+  }
+
+  /* Anchored to the button, so its own width, not the button's, so every
+     language's name keeps one line and the theme row fits (DESIGN 6). */
+  body:has(> .site > nav) > .site > .menu > .menu__panel {
+    inset-block-start: calc(100% + var(--space-2));
+    inset-inline-end: 0;
+    inline-size: 18rem;
+    max-inline-size: calc(100vw - 2 * var(--space-3));
+  }
+
+  body:has(> .site > nav) > main {
+    position: relative;
+    grid-column: 2;
+    grid-row: 2 / -1;
+    justify-self: start;
+    inline-size: 100%;
+    max-inline-size: calc(var(--page-max) + 2 * var(--space-6));
+    padding: var(--space-6);
+  }
+
+  /* The area's own pages sit in the rail, under the four areas; the copy
+     under the page's heading is for narrower screens. */
+  body:has(> .site > nav) > main > .subnav {
+    display: none;
+  }
+
+  body:has(> .site > nav) > header > .subnav {
+    display: block;
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
+    margin: 0;
+    padding: var(--space-4) var(--space-3) var(--space-5);
+    border: 0;
+    border-block-start: var(--border-width) solid var(--color-line);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  /* The list's name, taken from its own label, over its links. */
+  body:has(> .site > nav) > header > .subnav::before {
+    content: attr(aria-label) / "";
+    display: block;
+    padding: 0 var(--space-3) var(--space-2);
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  body:has(> .site > nav) > header > .subnav > ul > li > a {
+    min-block-size: 2.75rem;
+    font-size: var(--text-md);
+  }
+}
+
+/* ==== Labels as stamped plates (DESIGN 5): the overline, column names and
+   fact names in Plex Mono capitals, so labels read apart from content. ==== */
+.eyebrow,
+main table thead th,
+main table th[scope="col"],
+.token-head,
+.worlds-head,
+.facts dt,
+.plate dt,
+.status-card dt {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:lang(zh-Hans) :is(.eyebrow, main table thead th, main table th[scope="col"], .token-head, .worlds-head, .facts dt) {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+/* A breadcrumb is quiet: orange is kept for the primary action, the current
+   place and focus (DESIGN 3). */
+.eyebrow a,
+.crumb a {
+  color: var(--color-text-muted);
+}
+
+.eyebrow a:hover,
+.crumb a:hover {
+  color: var(--color-heading);
+}
+
+/* Disclosure triangles are quiet too. */
+:is(details, .disclosure:not(.player-actions)) > summary::marker,
+summary::-webkit-details-marker {
+  color: var(--color-text-muted);
+}
+
+/* Machine-written figures in mono with tabular digits. */
+.ver,
+.mod-ver,
+.facts dd,
+time {
+  font-variant-numeric: tabular-nums;
+}
+
+.ver,
+.mod-ver {
+  font-family: var(--font-mono);
+  font-size: 0.9375em;
+}
+
+h1,
+h2 {
+  text-wrap: balance;
+}
+
+main p {
+  text-wrap: pretty;
+}
+
+h2 {
+  font-weight: 650;
+}
+
+h3 {
+  font-weight: 600;
+}
+
+/* ==== Controls: buttons are raised plates, fields are sunk wells, so a
+   button beside a field never reads as a second field (DESIGN 7.1, 7.2). ==== */
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky) {
+  background: var(--color-raised);
+  box-shadow:
+    inset 0 1px 0 light-dark(rgb(255 255 255 / 90%), rgb(255 255 255 / 6%)),
+    0 1px 0 light-dark(rgb(60 45 25 / 12%), rgb(0 0 0 / 45%));
+}
+
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky):hover {
+  background: var(--color-secondary-hover);
+}
+
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky):active {
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 15%), rgb(0 0 0 / 40%));
+}
+
+.button--primary {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 25%),
+    0 1px 0 var(--color-primary-edge);
+}
+
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), select, textarea) {
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 10%), rgb(0 0 0 / 35%));
+}
+
+/* Short in-row actions on a mouse-driven screen; touch keeps 44 px. */
+@media (min-width: 64rem) and (pointer: fine) {
+  :is(td, .token-card, .worlds > li, .favorite-list > li) .button:not(.button--primary) {
+    min-block-size: 2.25rem;
+  }
+}
+
+/* ==== Notices: the box fits its text up to a comfortable measure rather
+   than stretching across a wide card (DESIGN 7.3). ==== */
+main > .message,
+.panel > .message,
+.settings-main > .message {
+  inline-size: fit-content;
+  max-inline-size: min(100%, 52rem);
+}
+
+/* ==== Empty states as blueprint ghosts: the missing thing drawn as a
+   planned outline on a drafting grid, then a sentence (DESIGN 7.6). ==== */
+.empty--art {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block-start: var(--space-5);
+}
+
+/* The ghost shrinks with a narrow card at large text (320 px rule 1). */
+.empty--art::before {
+  inline-size: 10rem;
+  max-inline-size: 100%;
+  block-size: 6rem;
+  background:
+    linear-gradient(to right, color-mix(in srgb, var(--color-info) 18%, transparent) 1px, transparent 1px) -1px -1px / 1rem 1rem,
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-info) 18%, transparent) 1px, transparent 1px) -1px -1px / 1rem 1rem,
+    var(--color-info-bg);
+  border: var(--border-width) dashed color-mix(in srgb, var(--color-info) 70%, transparent);
+  border-radius: var(--radius);
+  mask: none;
+}
+
+.empty--art::after {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(var(--space-5) + 1.5rem);
+  inset-inline-start: calc(50% - 1.5rem);
+  inline-size: 3rem;
+  block-size: 3rem;
+  background: var(--color-info);
+  mask: var(--icon, var(--i-file)) center / contain no-repeat;
+}
+
+/* ==== The Server plate (DESIGN 7.5): four rivets in its corners, and Stop
+   server set apart from the routine actions after a rule. ==== */
+.plate {
+  position: relative;
+}
+
+.plate::after {
+  content: "";
+  position: absolute;
+  inset: 0.625rem;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 3px 3px, var(--color-border) 0 2px, transparent 2.5px) top left / 6px 6px no-repeat,
+    radial-gradient(circle at 3px 3px, var(--color-border) 0 2px, transparent 2.5px) top right / 6px 6px no-repeat,
+    radial-gradient(circle at 3px 3px, var(--color-border) 0 2px, transparent 2.5px) bottom left / 6px 6px no-repeat,
+    radial-gradient(circle at 3px 3px, var(--color-border) 0 2px, transparent 2.5px) bottom right / 6px 6px no-repeat;
+  opacity: 0.7;
+}
+
+@media (min-width: 64rem) {
+  .server-actions > :has(> #act-stop),
+  .server-actions > #act-stop {
+    margin-inline-start: var(--space-3);
+    padding-inline-start: var(--space-5);
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* ==== The console's log fills the window on a wide screen. ==== */
+@media (min-width: 64rem) {
+  #console-panel .log,
+  .terminal .log {
+    block-size: max(24rem, calc(100dvh - 22rem));
+    max-block-size: none;
+  }
+
+  /* The past commands stay only as tall as they hold, so the newest reply
+     sits under the field (DESIGN 8.5). */
+  #console-panel .console-past > .log,
+  .terminal .console-past > .log {
+    block-size: auto;
+    max-block-size: min(40vh, 20rem);
+  }
+}
+
+@media (min-width: 64rem) {
+  body .site > nav .tabs a::after {
+    content: none;
+  }
+
+  body:has(> .site > nav) > .site > .product {
+    color: var(--color-heading);
+  }
+}
+
+/* ==== Blueprint blue marks what is planned but not yet built: a mod in the
+   plan, as the game draws a ghost before it is placed (DESIGN 3). ==== */
+.hit:has(.badge--chosen) {
+  background: color-mix(in srgb, var(--color-info-bg) 55%, transparent);
+  border-inline-start-color: var(--color-info);
+}
+
+.badge--chosen {
+  background: var(--color-info-bg);
+  border-color: color-mix(in srgb, var(--color-info) 60%, transparent);
+  color: var(--color-info);
+}
+
+.badge--chosen::before {
+  background: var(--color-info);
+}
+
+/* Wide settings forms put their groups two to a row, so a page of short
+   fields fills the card instead of one long column (DESIGN 8.15). */
+@container (min-width: 92rem) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > :not(.setting-row) {
+    grid-column: 1 / -1;
+  }
+
+  /* Each pair of groups shares one rule above it. */
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > .setting-row {
+    margin-block-start: var(--space-5);
+    padding-block-start: var(--space-5);
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > .setting-row:is(:nth-of-type(1), :nth-of-type(2)) {
+    margin-block-start: 0;
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+}
+
+/* A plan that destroys nothing is drawn in blueprint blue: planned, not yet
+   built; the hazard stripe stays for destructive ones (DESIGN 7.1). */
+.confirm--plain::before {
+  background: var(--color-info);
+}
+
+/* ==== What an action will do, as an assembly line: each step a numbered
+   square station joined to the next by a rail (DESIGN 7.1). ==== */
+ol.plan-steps {
+  counter-reset: station;
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+ol.plan-steps > li {
+  position: relative;
+  counter-increment: station;
+  min-block-size: 2.75rem;
+  margin: 0;
+  padding-block: 0.25rem var(--space-3);
+  padding-inline-start: 2.75rem;
+}
+
+ol.plan-steps > li::before {
+  content: counter(station);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-heading);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+ol.plan-steps > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-block: 1.75rem 0;
+  inset-inline-start: calc(0.875rem - 1px);
+  inline-size: 2px;
+  background: var(--color-line);
+}
+
+/* A confirmation's way out is a quiet button beside the action, not bare
+   underlined text (DESIGN 7.1). */
+.confirm .actions > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.confirm .actions > a:not(.button):hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+/* The world's facts read as a nameplate: stamped names over larger values. */
+main > .panel > .facts dd {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+/* Every foot bar's Cancel is a quiet button beside the primary. */
+:is(.gen-actions, .form-foot) > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+:is(.gen-actions, .form-foot) > a:not(.button):hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+/* On a very wide screen the map preview gets about two fifths of the page,
+   so the picture that decides the world is large (DESIGN 8.6). */
+@media (min-width: 100rem) {
+  .gen-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(26rem, 1fr);
+  }
+}
+
+/* On a very wide screen the Server page's lower row is three columns:
+   who is playing, the last safe points, then the world's own pages. */
+@media (min-width: 100rem) {
+  .server-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(16rem, 0.7fr);
+  }
+
+  .server-grid > .panel:has(#players-heading) {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .server-grid > .recent-snaps {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .server-grid > .shortcuts.card {
+    grid-row: 1;
+    grid-column: 3;
+  }
+}
+
+/* The plate's gauges run the width of their cell, so a reading of 40 %
+   is a long bar that reads from across the room. */
+.plate .facts .meter {
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  block-size: 0.5rem;
+}
+
+/* An on-or-off feature states its state as a switch plate: a 4 px edge in
+   the state's colour on the raised face, then the sentence (DESIGN 8.20). */
+#public-mods-state {
+  inline-size: fit-content;
+  max-inline-size: min(100%, 52rem);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 500;
+}
+
+main:has(#act-public-mods-open) #public-mods-state {
+  background: var(--color-ok-bg);
+  border-inline-start-color: var(--color-ok);
+}
+
+/* What the page shares gets half the card, not the narrow title column. */
+@container (min-width: 60rem) {
+  .panel.setting-row:has(> .setting-row__head #public-mods-shares-heading) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* A token's name in an audit row keeps the row's height. */
+.audit-token .badge {
+  padding-block: 0;
+  line-height: 1.4;
+}
+
+/* Clearing the plan throws work away, so it reads as a quiet danger
+   action, not a plain link (DESIGN 7.1). */
+.plan-panel__clear .button--quiet {
+  padding-inline: var(--space-3);
+  margin-inline-start: calc(-1 * var(--space-3));
+  border: var(--border-width) solid transparent;
+  color: var(--color-danger-text);
+  text-decoration: none;
+}
+
+.plan-panel__clear .button--quiet:hover {
+  background: var(--color-danger-bg);
+  border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+}
+
+/* A search result's name is its row title: semibold, underlined only when
+   pointed at; links inside sentences keep their underline. */
+.hit__title a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hit__title a:hover {
+  text-decoration: underline;
+}
+
+/* Sign-in with both ways is one composed panel: single sign-on above, the
+   Foreman account below a hairline, so it reads as one entry point. */
+main:has(> .gate) > .gate:has(+ .gate) {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+main:has(> .gate) > .gate + .gate {
+  margin-block-start: 0;
+  border-block-start: 0;
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+  box-shadow: var(--shadow-card);
+}
+
+/* ==== The status strip says the live world's state once, on every page
+   (DESIGN 6, Shell; 7.5): the pill fits its word like a table badge, the
+   strip stays in view while the page scrolls, and page titles carry no
+   second state badge. ==== */
+@media (min-width: 64rem) {
+  body:has(> .site > nav) .site-strip,
+  body:has(> .site > nav) > .site > .product,
+  body:has(> .site > nav) > .site > .menu {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 30;
+  }
+
+  body:has(> .site > nav) > .site > .menu {
+    z-index: 31;
+  }
+
+  /* A control scrolled into view stops below the strip, never behind it
+     (WCAG 2.4.11); the audit log's column names stick under it too. */
+  html:has(body > .site > nav) {
+    scroll-padding-block-start: calc(3.5rem + var(--space-3));
+  }
+
+  body:has(> .site > nav) .audit-table thead th {
+    inset-block-start: 3.5rem;
+  }
+
+  body:has(> .site > nav) .site-state:not(:empty) {
+    flex: none;
+    min-inline-size: 0;
+    min-block-size: 1.5rem;
+    padding: 0.125rem 0.625rem 0.125rem var(--space-2);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+
+  /* The area's list is named in the interface face, so the mono capitals
+     stay for overlines and fact names (DESIGN 5). */
+  body:has(> .site > nav) > header > .subnav::before {
+    font-family: var(--font-sans);
+    letter-spacing: 0.04em;
+  }
+
+  /* The current place: a neutral raised face and the orange edge, not a
+     brown tint (DESIGN 3). */
+  body .site > nav .tabs a[aria-current],
+  header > .subnav a[aria-current],
+  header > .subnav--settings a[aria-current],
+  header > .subnav .subnav__sub a[aria-current] {
+    background: var(--color-raised);
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
+  }
+
+  header > .subnav a[aria-current="true"] {
+    background: none;
+    box-shadow: none;
+  }
+}
+
+/* The Server page's plate already states the state large; Console and Chat
+   leave it to the strip. The words stay for screen readers. */
+#server-title .state {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The plate's corner rivets read as stray dots; the plate's state edge is
+   its one mark. */
+.plate::after {
+  content: none;
+}
+
+/* ==== The breadcrumb names where you are (DESIGN 6): ancestors as quiet
+   links, the current page in the heading colour, chevrons between. ==== */
+.crumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.crumb::after {
+  content: none;
+}
+
+.crumb a {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.2em;
+}
+
+.crumb a:hover {
+  color: var(--color-heading);
+  text-decoration-color: currentColor;
+}
+
+/* The chevron follows each ancestor; a link's ::before is its 44 px hit area. */
+.crumb > :not(:last-child)::after {
+  content: "";
+  display: inline-block;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  margin-inline-start: var(--space-2);
+  background: var(--color-text-muted);
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+.crumb > a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.crumb > span[aria-current] {
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}
+
+[dir="rtl"] .crumb > :not(:last-child)::after {
+  transform: scaleX(-1);
+}
+
+/* ==== Labels: column names in the interface face, quiet and small; the
+   mono capitals stay for overlines and fact names (DESIGN 5). Figures in
+   table cells take the mono face with tabular digits. ==== */
+main table thead th,
+main table th[scope="col"],
+.token-head,
+.worlds-head {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+main td.num,
+main td time,
+main td .ver,
+.token-card time,
+.worlds > li .facts dd {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==== A feature's on-or-off state said once, with its one control at the
+   end: a hairline plate with a 4 px edge in the state's colour (DESIGN 7.3). ==== */
+.state-plate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  max-inline-size: min(100%, 64rem);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.state-plate--off {
+  background: var(--color-warn-bg);
+  border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
+  border-inline-start-color: var(--color-warn);
+}
+
+.state-plate--on {
+  border-inline-start-color: var(--color-ok);
+}
+
+.state-plate__text {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  flex: 1 1 24rem;
+}
+
+.state-plate h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.state-plate p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.state-plate form {
+  flex: none;
+  margin: 0;
+}
+
+/* ==== General settings: the pairs keep a clear gap above the save bar,
+   so the last field never sits under it (DESIGN 8.15). ==== */
+form.setting-rows > .form-foot {
+  margin-block-start: var(--space-5);
+}
+
+/* ==== Planned mods are blueprint blue by edge and badge only; the row
+   keeps the card's face (DESIGN 3). ==== */
+.hit:has(.badge--chosen) {
+  background: none;
+  border-inline-start: 3px solid var(--color-info);
+}
+
+/* ==== One completion footer: the way out is a quiet button just before
+   the primary action at the end, in code order too, so the keyboard meets
+   them as the eye does (DESIGN 7.1). ==== */
+.generate > .gen-actions {
+  justify-content: flex-end;
+}
+
+.confirm .actions:has(> a:not(.button):first-child ~ :is(.button--primary, .button--danger)) {
+  justify-content: flex-end;
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+/* ==== Mods: before a search the results panel is one quiet line, so the
+   installed list starts higher (DESIGN 8.11). ==== */
+#results:not(:has(.hits, .error, .message)) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-3);
+  background: none;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+#results:not(:has(.hits, .error, .message)) > h2 {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+#results:not(:has(.hits, .error, .message)) > .empty {
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  text-align: start;
+}
+
+#results:not(:has(.hits, .error, .message)) > .empty::before {
+  content: none;
+}
+
+/* ==== Add a webhook: the four services two by two, the nine events three
+   by three, never a lone last item (DESIGN 8.16). ==== */
+@container (min-width: 30rem) {
+  .webhook-form__presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .webhook-form__event-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ==== The account menu's button: the person, then the language in quiet
+   text, one button with no rule between, so the language does not read as
+   a control of its own (DESIGN 6, User menu). ==== */
+@media (min-width: 64rem) {
+  .menu > summary > .menu__user {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* A round badge with the person cut out of it. */
+  .menu > summary > .menu__user::before {
+    content: "";
+    flex: none;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+    mask: var(--i-account) center / 0.875rem no-repeat, linear-gradient(black 0 0);
+    mask-composite: exclude;
+  }
+}
+
+/* A heading's own rule is the line above its first row, so that row drops
+   its divider; the rows after it keep theirs (DESIGN 8.7). */
+:is(h2, h3) + .mapgen-body > .autoplace:first-child {
+  border-block-start: 0;
+}
+
+/* The All resources row's rule under it is the next row's divider too. */
+.js-on .autoplace--all + .autoplace {
+  border-block-start: 0;
+}
+
+/* The amounts list's place in the settings column takes no row while empty. */
+.large-view__amounts-text:empty {
+  display: none;
+}
+
+/* Preview size's place above the picture takes no row until the script moves it in. */
+.preview-size-slot:empty {
+  display: none;
+}
+
+/* The page behind the open large view does not scroll, so its scroll bar does
+   not show at the window's edge beside the view (DESIGN 8.8). */
+html:has(.large-view[open]) {
+  overflow: hidden;
+}
+
+/* Paging the large view changes only what its lines say, never their
+   height (DESIGN 8.8). The news line is one line, cut rather than wrapped. */
+.large-view__news {
+  flex-wrap: nowrap;
+  block-size: 1lh;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* The counting line is one text line: the words, cut if need be, and a
+   bar no taller than the text beside them. */
+#large-amounts-bar {
+  flex-wrap: nowrap;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+#large-counting:not([hidden]) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+#large-counting > p {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#large-counting > progress {
+  flex: 0 0 4rem;
+  block-size: 0.5rem;
+}
+
+#large-amounts-result {
+  flex: 1 1 0;
+}
+
+/* Narrow, the box and what it shows cannot share a line, so a second line
+   is always held for the count, the list or nothing, and ticking moves nothing. */
+@container large-view (max-width: 47.99rem) {
+  #large-amounts-bar {
+    flex-wrap: wrap;
+    align-content: start;
+    min-block-size: calc(var(--target-min) + var(--space-1) + var(--target-min));
+  }
+
+  #large-amounts-bar > #large-counting:not([hidden]),
+  #large-amounts-bar > #large-amounts-result {
+    flex-basis: 100%;
+  }
+}
+
+/* The title holds its line while paging empties and refills it, and the
+   download button keeps its place, unseen, while its picture is drawn. */
+.large-view__head h2 {
+  min-block-size: 1lh;
+}
+
+#large-download[hidden] {
+  display: inline-grid;
+  visibility: hidden;
+}
+
+/* All planets: each card is three rows of the list's grid (the framed
+   picture, the territories in words, the download), so cards side by side
+   share their heights and their links line up (DESIGN 8.8). */
+.pictures:has(> li + li) {
+  row-gap: var(--space-2);
+}
+
+.pictures:has(> li + li) > li {
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-2);
+  padding-block-end: var(--space-3);
+}
+
+.pictures:has(> li + li) > li > figure { grid-row: 1; }
+.pictures:has(> li + li) > li > .territory-result { grid-row: 2; }
+.pictures:has(> li + li) > li > .download { grid-row: 3; align-self: start; }

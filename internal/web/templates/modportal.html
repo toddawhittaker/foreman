@@ -131,7 +131,7 @@
 <section class="panel plan-panel{{if not .Picks}} plan-panel--empty{{end}}" id="plan-panel" aria-labelledby="plan-heading">
   <div class="group__head plan-panel__head">
     <h2 id="plan-heading" tabindex="-1">{{t "mods.plan_panel.heading"}}</h2>
-    {{- with .Picks}}<span class="count" aria-hidden="true">{{len .}}</span>{{end}}
+    {{- with .Picks}}<span class="count" aria-hidden="true">{{if and $.Count (not $.Unreachable)}}{{$.Count}}{{else}}{{len .}}{{end}}</span>{{end}}
   </div>
   {{- if not .Said.IsZero}}
   <p class="visually-hidden" data-said data-focus="{{.Focus}}">{{msg .Said}}</p>

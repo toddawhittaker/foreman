@@ -930,10 +930,15 @@ started until unarchived. Its files stay where they are. (P1)
   archived world does nothing, as for any stopped game (7.12).
 - **Where it shows.** The Worlds list leaves archived worlds out of its main
   list and shows them in a closed "Archived worlds (n)" foldout at its foot.
-  Switch pickers leave them out. An archived world's page shows an
-  "Archived" badge and an Unarchive button, and the other worlds' pages
-  have an Archive row. When every world is archived the list says so and
-  keeps the upload link.
+  Each archived row ends with two buttons: Saves, which opens the world's
+  Saves tab, and Unarchive world, which unarchives it in one click (left
+  out for a world newer than this Foreman reads), so an archived world's
+  saves and its way back are found from the list. Switch pickers leave
+  them out. An archived world's page shows an "Archived" badge and an
+  Unarchive button, and the other worlds' pages have an Archive row in
+  their Danger zone. On the active world that row says why it cannot be
+  archived and links to the Worlds list to switch. When every world is
+  archived the list says so and keeps the upload link.
 - **Snapshots.** An archived world keeps its snapshots and still counts in
   the retention figures (6.6). Restoring keeps its archive state (6.5).
 - **MCP.** `list_worlds` includes archived worlds, with `archived: true`
@@ -958,6 +963,11 @@ download is allowed. (P0)
 5.12. **Favorites.** A favorite is a saved bundle to start new worlds from:
 a game version, Space Age, a map, server settings, mods and mod settings.
 (P1)
+
+- **Where it lives in the UI.** The Favorites page (`/favorites`) is one of
+  the Worlds area's pages, with All worlds and Deleted worlds, reached
+  from the Worlds area's list of pages (17.18), not from a button in the
+  Worlds header. Generate and Import stay buttons in that header.
 
 - **Made only from a world.** A world's page has "Make a favorite from this
   world", with a name field already filled with the world's name. Making a
@@ -1020,8 +1030,9 @@ a game version, Space Age, a map, server settings, mods and mod settings.
   where Generate saved them as picks.
 - **Export and import** (P1). A favorite exports as `<name>-favorite.zip`:
   its folder plus `foreman-favorite.json`, which holds the file format
-  version. `mod-settings.dat` travels with it, and a visible warning above
-  the list says a mod may keep a token there. An import takes a `.zip` of at
+  version. `mod-settings.dat` travels with it, and a visible warning in
+  each favorite's details, just above its Export button, says a mod may
+  keep a token there. An import takes a `.zip` of at
   most 8 MiB through the drop zone (14.6) and checks all of it before writing
   anything: the format version, six known entry names with no folder, link
   or repeat, each entry's unpacked size, no unknown field in either JSON
@@ -1654,13 +1665,13 @@ except `token-expiring`, which names a token and its owner and no world.
   something that happened before it. The first state Foreman sees is only
   noted, and a join or leave is sent only for a log line stamped after
   Foreman started. Events that happen while Foreman is down are not sent. (P1)
-- **Token expiring** is sent 5 days and again 1 day before a Working
+- **Token expiring** is sent 5 days and again 1 day before a Valid
   token expires, naming the token, its owner and its expiry, never the
   secret. Foreman checks at start and every 15 minutes. Each reminder is
   sent once per period. The token records which reminders were sent, and
   renewing starts over. Unlike other events, a reminder whose time
   passed while Foreman was down is sent at the next check if the token
-  is still Working.
+  is still Valid.
 
 8.11. Presets for Discord, ntfy and Pushover, plus a generic JSON webhook whose body
 format is documented in the operator guide. Each webhook has its own
@@ -2181,12 +2192,23 @@ raw JSON editor for everything else. (P0 form; P1 raw editor)
   that lacks one of the three.
 - **The form changes only the keys it shows.** Every other key, and the
   file's layout and key order, are kept.
-- **Groups.** Players and access (game password, max players, returning
-  players skip the cap, user verification, AFK kick), Gameplay (auto-pause,
-  pause while someone joins, only admins can pause, who may use console
-  commands), Saving (interval, slots, fork saving) and Network (upload limit
-  and slots, collapsed). `auto_pause_when_players_connect` is hidden on 1.1
-  and never written there.
+- **Groups.** Listing (name, description, visibility), Players and access
+  (game password, max players, returning players skip the cap, user
+  verification, AFK kick), Gameplay (auto-pause, pause while someone joins,
+  only admins can pause, who may use console commands), Saving (interval,
+  slots, fork saving), Network (upload limit and slots), Admins, the ban
+  list and the whitelist (8.3). `auto_pause_when_players_connect` is hidden
+  on 1.1 and never written there.
+- **One group per sub-page** (17.18). The form is too long to read whole,
+  so each group is a sub-page of Game settings, listed under it in the
+  world's list of pages; the plain Game settings link opens Listing. It is
+  still one form: the other groups are kept in it, hidden, so a save
+  changes only what was edited, and a form with errors shows every group.
+  With script, edits made on one sub-page are kept in the browser tab
+  while the person moves to another, so one preview covers them all, and
+  the save bar counts the unsaved changes; saving or Cancel drops them.
+  Without script each sub-page previews and saves on its own. A save
+  returns to the sub-page it came from.
 - **Every unset field shows the value that applies** (17.16). A
   whole-number field the file lacks is empty with the game's default as its
   placeholder and in a hint; a true-or-false field the file lacks shows the
@@ -2543,7 +2565,7 @@ one (section 21). (P1)
 
   A token never does more than its owner may do at the time of the call
   (12.1).
-- **States.** **Working**: accepted. **Expired**: its time ran out. It
+- **States.** **Valid**: accepted. **Expired**: its time ran out. It
   is refused, and its owner can renew it. **Revoked**: ended by its
   owner or an admin. It is refused, and this is final: it can never be
   renewed.
@@ -2635,19 +2657,21 @@ they were created. (P1)
 ## 13. Foreman's own settings
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
-default stop countdown, audit retention and the two upload limits (the
-General tab, below), scheduled restarts, notifications, the public
+default stop countdown, audit retention, the two upload limits and the
+update check (the General tab, below), scheduled restarts, notifications, the public
 mods page (9.16), MCP access (21.2), and portal credentials when not set
 by environment. Each shows where its value comes from (environment or
 UI), and environment values cannot be changed in the UI. (P0 for those
 whose features are P0)
 
-Foreman's settings are eight tabs under Settings, in this order: General,
-Restart schedule, Notifications, Public mods, API tokens, Users (12.12),
-Audit log (12.9) and the factorio.com account. The Settings link in the main
-navigation opens General.
+Foreman's settings are eight pages under Settings, listed in the Settings
+area's list of pages (17.18), in this order: General, Restart schedule,
+Notifications, Public mods, API tokens, Users (12.12), Audit log (12.9) and
+the factorio.com account. The Settings link in the main navigation opens
+General.
 
-**The General tab** (`/settings/general`) holds five settings. None has an
+**The General tab** (`/settings/general`) holds five number settings and
+one switch. None has an
 environment form, so each says "set here". A bad value refuses the whole
 form and stores nothing. (Todd's rulings, 2026-11-18.)
 
@@ -2658,11 +2682,15 @@ form and stores nothing. (Todd's rulings, 2026-11-18.)
 | Audit retention (12.9), days | 7 to 3650 | 365 | `audit-retention-set` |
 | Save upload limit (14.6), MB | 100 to 8192 | 1024 | `save-upload-limit-set` |
 | Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 200 | `mod-upload-limit-set` |
+| Check GitHub for new Foreman versions (14.10) | on or off | on | `update-check-set` |
 
 A scheduled restart keeps its fixed countdown (7.12). The upload limits are
 in whole MB, meaning MiB, as the pages say them. A stored value that is
-missing, unreadable or out of range gives the default. These settings are
-also read and changed through MCP (21.7, 21.8). (P1)
+missing, unreadable or out of range gives the default. The switch is a
+checkbox; its audit detail reads "from on to off" or "from off to on".
+Turning it off stops the check and hides any notice at once; turning it
+on checks at once, in the background. These settings are also read and
+changed through MCP (21.7, 21.8). (P1)
 
 ## 14. Security
 
@@ -2681,7 +2709,7 @@ reviews against.
 | VPN sidecar | An optional container the operator runs, whose network the game shares (4.13) | Nothing; Foreman did not create it (14.16) |
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
 | Identity provider | The OIDC provider an operator configured (12.7) | Only the ID tokens it signs for this client; nothing else it sends |
-| Internet | Mod portal, image registry and its tag list, release list, webhook targets | Nothing |
+| Internet | Mod portal, image registry and its tag list, release list, GitHub's latest Foreman release, webhook targets | Nothing |
 | AI client | A program, usually an AI assistant, calling the MCP endpoint with an API token (section 21) | Only its token's scope; steerable by text it reads (14.12) |
 | Player | Anyone who can reach the public mods page (9.16) | Nothing; may be a script |
 
@@ -2884,7 +2912,8 @@ a control character or line break, and a chat message that starts with `/`
 
 14.10. **Outbound requests.** Foreman talks only to the mod portal, the
 factorio.com release list, Docker Hub's list of `factoriotools/factorio`
-tags (`hub.docker.com`, 10.7), and webhook URLs an admin configured. Calls
+tags (`hub.docker.com`, 10.7), GitHub's latest Foreman release
+(`api.github.com`, below), and webhook URLs an admin configured. Calls
 to the release list and to Docker Hub follow no redirects, take at most 10
 seconds, and read at most 2 MB (tag list) or 64 KB (release list). The
 size of a game image is one request for a single tag, read at most 64 KB and
@@ -2892,6 +2921,18 @@ limited to 3 seconds, made only when the image is missing and a page says
 how big the download is; any failure leaves the size out. Image
 pulls are made by the Docker daemon, not by Foreman. It does not follow
 redirects for webhooks, and each try takes at most 5 seconds (8.12).
+The update check asks
+`https://api.github.com/repos/toddawhittaker/foreman/releases/latest`
+about one minute after start and then every 6 hours, and at once when an
+admin turns its switch on (13.1). It never runs for a build without a
+release version, or while the switch is off. It follows no redirects,
+takes at most 10 seconds, reads at most 64 KB, and sends a `User-Agent` of
+"Foreman/" and its version, nothing about the user. Only `tag_name` is
+read; it is cut to version characters and must be major.minor.patch, and
+About links to the release page built from that version, never to an
+address GitHub sent. The answer is kept in memory only. A failure logs one
+warning line and shows nothing. About names the release only when it is
+strictly newer than the running build's major.minor.patch (P1).
 The mod portal's base is fixed at `https://mods.factorio.com`; there is no
 setting for it. Its API calls take at most 10 seconds, follow no redirects,
 and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
@@ -3054,7 +3095,7 @@ for shipping section 21. (P1)
 - **Accepted risks.**
   - Renewing keeps the secret, so a leaked token must be revoked, not
     renewed.
-  - A user removed at the proxy or the OIDC provider keeps their Working
+  - A user removed at the proxy or the OIDC provider keeps their Valid
     tokens until those expire, at most 30 days later (renewing needs a
     browser sign-in), or until an admin revokes them.
   - The two-step confirm guards against mistakes, not against a steered
@@ -3180,12 +3221,15 @@ with the defaults accepted, these take at most:
 | Try a failed mod change again (Try again, Install N mods) | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
+| Change a game setting in Listing (Game settings, Preview changes, Save settings; a setting in another group first opens its sub-page, 11.1) | 3 (4 in another group) |
 
 A click is one activation of a button, link or choice in a list. Typing
 in a field doesn't count; ticking a box does. A phone is a window narrower
 than 64rem, where the Mods tab's rarer tools fold under one "Mod tools"
-disclosure (DESIGN 8.11). Each task's end-to-end test counts its clicks
-and fails when a task goes over budget. (P1)
+disclosure (DESIGN 8.11). The page lists of 17.18 hold the same links at
+every width, so the counts are the same on a phone, except where a row
+says otherwise. Each task's end-to-end test counts its clicks and fails
+when a task goes over budget. (P1)
 
 17.11. **Times show in the viewer's time zone.** A time on a page is a
 `time` element with a UTC `datetime`. In the browser it is shown in the
@@ -3278,6 +3322,33 @@ preview, 5.6), or in a posted form (a snapshot selection, 6.12). Every address
 stays under 512 bytes, and the pages that carry plans or selections have a
 test for it. Left as they are, one short value each: a note, a favorite's id,
 a player name, a game version, a search and its page, the versions filter. (P0)
+
+17.18. **One navigation pattern.** Every signed-in page shares one frame
+(DESIGN 6, "Shell"). From a window 64rem wide, a column on the start side
+(the product rail) holds the logo and the four areas (Server, Worlds,
+Snapshots, Settings), and a strip across the top of the page names the
+live world and the server's state, in words, and holds the user menu; the
+strip stays in view while the page scrolls. Below 64rem the same parts
+are a header bar with the areas as a row of tabs. (P1)
+
+- **Sub-pages in one place.** Any area with sub-pages lists them in that
+  column, under the four areas: the Server view (Overview, Console, Chat),
+  Settings (13.1), the Worlds area (All worlds, Favorites, Deleted worlds),
+  and a world (Overview, Saves, Snapshots, Mods, Game settings). Below
+  64rem each list is a row of tabs under the page's heading. The ids and
+  addresses are the same at every width.
+- **No in-page section lists.** A page never carries its own list of links
+  to its sections. A page too long to read whole is split into sub-pages
+  in that column instead, as Game settings is (11.1). The current page's
+  link is marked `aria-current="page"`; its parent, when a sub-page is
+  open, `aria-current="true"`.
+- **Where you are.** Every page under Worlds opens with a breadcrumb of
+  its full path (for example "Worlds > Nauvis Prime > Mods"); the Server,
+  Settings, Worlds and Snapshots pages name their area in a line above the
+  heading. No page has a "Back to" link above its heading.
+- **The state is said once.** The strip (or, below 64rem, the header)
+  is where the server's state shows on every page. Page headings do not
+  repeat it visibly; the Server view's heading keeps it for screen readers.
 
 ## 18. Epics, in order
 

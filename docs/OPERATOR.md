@@ -1169,7 +1169,17 @@ one says "Set here"; nothing in the environment sets or overrides them.
 | Keep audit entries for (days) | 7 to 3650 | 365 |
 | Largest save upload (MB) | 100 to 8192 | 1024 (1 GB) |
 | Largest mod upload (MB) | 10 to 2048 | 200 |
+| Check GitHub for new Foreman versions | on or off | on |
 
+- **Check GitHub for new Foreman versions.** About a minute after it
+  starts, and then every 6 hours, Foreman asks `api.github.com` for its
+  latest release. When that is newer than the running version, About says
+  so and links to the release notes. The request sends only "Foreman" and
+  its version; nothing about you, your users or your worlds. Builds without
+  a release version never ask. To stop it, untick this box and choose
+  **Save settings**: Foreman then makes no request to GitHub. If your
+  network blocks GitHub, the check fails quietly with one warning line in
+  the log.
 - **Automatic snapshots to keep.** Each world keeps this many of its newest
   automatic snapshots. Manual snapshots are not removed by it. Lowering it
   deletes nothing when you save. Each world drops its extra automatic

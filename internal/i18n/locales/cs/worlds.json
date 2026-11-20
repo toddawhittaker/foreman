@@ -11,7 +11,6 @@
   "worlds.allsnapshots.title": "Snímky",
   "worlds.allsnapshots.world_adds": "Snímky tohoto světa přidávají {size}.",
   "worlds.back.world": "Zpět na {world}",
-  "worlds.back.worlds": "Zpět na světy",
   "worlds.badge.active": "Aktivní",
   "worlds.busy.action.force_stop": "vynucené zastavení",
   "worlds.busy.action.image_download": "stažení obrazu",
@@ -506,5 +505,7 @@
   "worlds.world.archived.text": "Tento svět je skrytý v hlavním seznamu a nelze ho spustit ani na něj přepnout. Jeho soubory a snímky zůstanou beze změny.",
   "worlds.world.unarchive.button": "Vyjmout svět z archivu",
   "worlds.world.unarchive.done": "Svět {name} byl vyjmut z archivu.",
-  "worlds.list.all_archived": "Všechny světy jsou archivované."
+  "worlds.list.all_archived": "Všechny světy jsou archivované.",
+  "worlds.area.all": "Všechny světy",
+  "worlds.area.label": "Stránky světů"
 }

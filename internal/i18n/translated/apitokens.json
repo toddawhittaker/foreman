@@ -8,6 +8,7 @@
   "apitokens.create.admin_warning": "cfe0cf19",
   "apitokens.create.button": "5d8e8e30",
   "apitokens.create.heading": "245d1bd1",
+  "apitokens.create.mcp_off": "959abc96",
   "apitokens.create.name": "dcd1d522",
   "apitokens.create.name.hint": "ff412266",
   "apitokens.create.name.invalid": "b2a368c5",
@@ -40,7 +41,7 @@
   "apitokens.mcp.heading": "14bb8a51",
   "apitokens.mcp.state.forced": "70098918",
   "apitokens.mcp.state.off": "3aba3a6c",
-  "apitokens.mcp.state.on": "f6785fa5",
+  "apitokens.mcp.state.on": "a0340434",
   "apitokens.mcp.turn_off": "d0143721",
   "apitokens.mcp.turn_on": "472b6d03",
   "apitokens.mine.empty": "8f166c56",
@@ -63,7 +64,7 @@
   "apitokens.scope.read.hint": "08aee57d",
   "apitokens.state.expired": "424a2551",
   "apitokens.state.revoked": "f6f738d0",
-  "apitokens.state.working": "a92f0449",
+  "apitokens.state.working": "f5162206",
   "apitokens.tab": "fa884c0e",
   "apitokens.title": "fa884c0e"
 }

@@ -98,8 +98,8 @@ test("the Foreman settings pages share one sub-navigation", async ({ page }) => 
     await expect(nav.getByRole("link")).toHaveText(["General", "Restart schedule", "Notifications", "Public mods", "API tokens", "Users", "Audit log", "factorio.com account"]);
     await expect(nav.getByRole("link", { name: current })).toHaveAttribute("aria-current", "page");
     await expect(nav.locator("[aria-current]")).toHaveCount(1);
-    // It sits under the page's heading.
-    await expect(page.locator("main h1 + nav.subnav")).toHaveCount(1);
+    // It sits under the page's heading, or under the page head that holds the heading and its action (DESIGN 8.1).
+    await expect(page.locator("main > :is(h1, header.page-head:has(> h1)) + nav.subnav")).toHaveCount(1);
   }
   // Moving between them is one click.
   await settingsNav(page).getByRole("link", { name: "Restart schedule" }).click();

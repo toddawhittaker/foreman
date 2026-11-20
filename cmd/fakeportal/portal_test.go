@@ -15,6 +15,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/modportal/modportaltest"
+	"github.com/toddawhittaker/foreman/internal/updatecheck"
 )
 
 var fake *Fake
@@ -287,5 +288,27 @@ func TestStateNeverHoldsTheToken(t *testing.T) {
 		if strings.Contains(raw, secret) {
 			t.Errorf("state holds %q:\n%s", secret, raw)
 		}
+	}
+}
+
+// Foreman's update check reaches the fake GitHub through the same proxy and
+// gets the tag a test set; with none set it gets 404 (SPEC 14.10).
+func TestFakeGitHubLatestRelease(t *testing.T) {
+	get := func() (int, string) {
+		resp, err := http.Get(updatecheck.LatestURL) //nolint:noctx // reaches the fake through HTTPS_PROXY
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+		b, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(b)
+	}
+	if code, _ := get(); code != http.StatusNotFound {
+		t.Errorf("with no tag set: %d", code)
+	}
+	control(t, "/github", map[string]string{"tag": "v9.9.9"})
+	t.Cleanup(func() { control(t, "/github", map[string]string{"tag": ""}) })
+	if code, body := get(); code != http.StatusOK || !strings.Contains(body, `"tag_name":"v9.9.9"`) {
+		t.Errorf("with a tag set: %d %s", code, body)
 	}
 }

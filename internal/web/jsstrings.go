@@ -47,5 +47,6 @@ func init() {
 		"js.live.moved",
 		"common.label.note",
 		"js.live.stopped",
+		"js.settings.unsaved",
 	}
 }

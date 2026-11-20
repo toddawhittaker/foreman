@@ -51,8 +51,10 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, fakeGame!);
     const pages = page.locator(".server-grid > .shortcuts");
     const players = page.locator(".server-grid > section:has(#players-heading)");
-    const order = await page.locator(".server-grid > *").evaluateAll((els) => els.map((el) => (el.classList.contains("shortcuts") ? "pages" : "players")));
-    expect(order).toEqual(["pages", "players"]);
+    // The newest snapshots follow the players (DESIGN 6, "What a phone shows first").
+    const order = await page.locator(".server-grid > *").evaluateAll((els) => els.map((el) =>
+      el.classList.contains("shortcuts") ? "pages" : el.classList.contains("recent-snaps") ? "snapshots" : el.querySelector("#players-heading") ? "players" : el.className));
+    expect(order).toEqual(["pages", "players", "snapshots"]);
     const p = (await pages.boundingBox())!;
     const q = (await players.boundingBox())!;
     const wide = page.viewportSize()!.width >= 1024;

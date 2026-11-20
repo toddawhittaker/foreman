@@ -472,12 +472,40 @@ document.addEventListener("DOMContentLoaded", () => {
     return node.matches("a.picture") ? "#preview " + planet : `#preview li:has(${planet}) a.download`;
   }
 
+  // Preview size sits above the picture when one is drawn, in the section's slot, and
+  // otherwise after the section, where the page puts it (DESIGN 8.6). It is one field
+  // moved, never redrawn, so a drag and its value survive each reply.
+  function placeSize(section) {
+    const field = document.getElementById("preview-size-field");
+    if (!field || !section) return;
+    const slot = section.querySelector("#preview-size-slot");
+    const parent = slot || section.parentNode;
+    const before = slot ? null : section.nextSibling;
+    if (field.parentNode === parent && (slot || field.previousSibling === section)) return;
+    const had = field.contains(document.activeElement) ? document.activeElement : null;
+    if (parent.moveBefore) parent.moveBefore(field, before);
+    else parent.insertBefore(field, before);
+    if (had && document.activeElement !== had) had.focus({ preventScroll: true });
+  }
+  placeSize(document.getElementById("preview"));
+  // Preview map's own htmx swap replaces the section whole, so the field steps out first and back after.
+  document.addEventListener("htmx:beforeSwap", (e) => {
+    const field = document.getElementById("preview-size-field");
+    const section = document.getElementById("preview");
+    if (field && section && e.detail.target === section && section.contains(field)) section.after(field);
+  });
+  document.addEventListener("htmx:afterSettle", () => placeSize(document.getElementById("preview")));
+
   // Puts the new section in place; a control that had focus there keeps it.
   function swap(fresh) {
     const slot = document.getElementById("preview");
     if (!slot) return;
     const key = slot.contains(document.activeElement) ? focusKey(document.activeElement) : "";
-    slot.replaceWith(document.importNode(fresh, true));
+    const node = document.importNode(fresh, true);
+    // In beside the old one first, so Preview size moves between two live places and keeps its focus.
+    slot.after(node);
+    placeSize(node);
+    slot.remove();
     if (key) {
       const again = document.querySelector(key);
       if (again) again.focus({ preventScroll: true });
@@ -507,7 +535,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // The settings shown in the large view count as where they came from.
   function counts(t) {
     if (!t.closest || !t.closest("#generate-form")) return false;
-    if (t.closest("#preview, .version-fields, .tabset")) return false;
+    if (t.closest("#preview, .version-fields, .tabset") && !t.closest("#preview-size-field")) return false;
     if (t.closest("#large-view") && !t.closest("#large-settings")) return false;
     return !["generate-name", "generate-download"].includes(t.id);
   }
@@ -653,6 +681,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // The Try again button or the list's summary goes with the slot, so focus goes back to the box.
     if (slot && slot.contains(document.activeElement)) el(at.box).focus();
     if (slot) slot.replaceChildren();
+    if (at === places.large) {
+      const text = el("large-amounts-text");
+      if (text && text.contains(document.activeElement)) el(at.box).focus();
+      if (text) text.replaceChildren();
+    }
     counting(at, false);
     const news = el(at.news);
     if (news) news.textContent = "";
@@ -730,7 +763,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // The server holds this count now, so the planet's download can draw it.
     if (result.hasAttribute("data-kept")) markCounted(planet);
     amountDownloads();
-    if (at === places.large) largeDownload(planet);
+    if (at === places.large) {
+      largeDownload(planet);
+      // Beside the map's settings, the list goes last in their column, out of the header (DESIGN 8.8).
+      const panel = el("large-settings");
+      const list = slot.querySelector(".resource-text");
+      if (list && panel && !panel.hidden && panel.offsetParent) el("large-amounts-text").replaceChildren(list);
+    }
     const overlay = reply.querySelector(".resources");
     const map = at.map(planet);
     if (overlay && map) writeLabels(at, map, map.insertBefore(document.importNode(overlay, true), map.querySelector(".pin")));
@@ -1351,7 +1390,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     dialog.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.target.closest && e.target.closest("#large-settings")) return;
+      // The settings keep their keys; the amounts list at their foot is not a setting, so the map keeps its keys there.
+      if (e.target.closest && e.target.closest("#large-settings") && !e.target.closest("#large-amounts-text")) return;
       const panning = e.target === frame() && zoom > 1;
       // Stepping would end a download being prepared here, so the arrows wait (SPEC 17.1).
       if (arrows[e.key] && !panning && prep && prep.inView) {

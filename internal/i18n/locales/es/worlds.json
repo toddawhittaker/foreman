@@ -11,7 +11,6 @@
   "worlds.allsnapshots.title": "Instantáneas",
   "worlds.allsnapshots.world_adds": "Las instantáneas de este mundo añaden {size}.",
   "worlds.back.world": "Volver a {world}",
-  "worlds.back.worlds": "Volver a los mundos",
   "worlds.badge.active": "Activo",
   "worlds.busy.action.force_stop": "detención forzada",
   "worlds.busy.action.image_download": "descarga de la imagen",
@@ -489,5 +488,7 @@
   "worlds.world.archived.text": "Este mundo está oculto de la lista principal y no puede iniciarse ni ser el destino de un cambio. Sus archivos y sus instantáneas se quedan como están.",
   "worlds.world.unarchive.button": "Desarchivar mundo",
   "worlds.world.unarchive.done": "{name} ya no está archivado.",
-  "worlds.list.all_archived": "Todos tus mundos están archivados."
+  "worlds.list.all_archived": "Todos tus mundos están archivados.",
+  "worlds.area.all": "Todos los mundos",
+  "worlds.area.label": "Páginas de mundos"
 }

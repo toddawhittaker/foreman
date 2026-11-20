@@ -718,7 +718,7 @@ test.describe("names", () => {
     seedWorld(foreman);
     await page.goto("/worlds");
     const summary = page.locator("details.menu > summary");
-    await expect(summary).toHaveAccessibleName("admin, English: user menu");
+    await expect(summary).toHaveAccessibleName("admin, English: account menu");
     await expect(summary).toHaveText(/admin\s+English/);
     await openMenu(page);
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();

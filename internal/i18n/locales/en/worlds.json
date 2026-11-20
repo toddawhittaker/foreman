@@ -11,7 +11,6 @@
   "worlds.allsnapshots.title": "Snapshots",
   "worlds.allsnapshots.world_adds": "Snapshots of this world add {size}.",
   "worlds.back.world": "Back to {world}",
-  "worlds.back.worlds": "Back to worlds",
   "worlds.badge.active": "Active",
   "worlds.busy.action.force_stop": "forced stop",
   "worlds.busy.action.image_download": "image download",
@@ -489,5 +488,7 @@
   "worlds.world.archived.text": "This world is hidden from the main list and cannot start or be switched to. Its files and snapshots stay as they are.",
   "worlds.world.unarchive.button": "Unarchive world",
   "worlds.world.unarchive.done": "{name} is unarchived.",
-  "worlds.list.all_archived": "All your worlds are archived."
+  "worlds.list.all_archived": "All your worlds are archived.",
+  "worlds.area.all": "All worlds",
+  "worlds.area.label": "Worlds pages"
 }

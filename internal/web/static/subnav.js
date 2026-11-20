@@ -17,10 +17,15 @@
       else delete row.dataset.more;
     };
     const current = row.querySelector("[aria-current], :checked + *, [aria-selected='true']");
-    if (current && row.scrollWidth > row.clientWidth) {
-      current.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
-    mark();
+    const reveal = () => {
+      if (current && row.scrollWidth > row.clientWidth) {
+        current.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+      mark();
+    };
+    reveal();
+    // The tabs widen once the web fonts arrive, which can push the current one part way out again.
+    document.fonts.ready.then(reveal);
     row.addEventListener("scroll", mark, { passive: true });
     window.addEventListener("resize", mark);
   }

@@ -165,7 +165,6 @@ type ModsPage struct {
 	// UploadLimit is the mod upload limit in bytes, which the drop zone shows.
 	UploadLimit uint64
 	World       world.Summary
-	Live        LiveState
 	Mods        []world.InstalledMod
 	// NoAccount says mod downloads are off (SPEC 9.11).
 	NoAccount bool
@@ -229,7 +228,7 @@ func (p ModsPage) SearchPath() string   { return modsPath(p.World.ID) + "/search
 func (p ModsPage) SyncPath() string     { return syncPath(p.World.ID) }
 func (p ModsPage) UploadPath() string   { return modsPath(p.World.ID) + "/upload" }
 func (p ModsPage) SettingsPath() string { return modsPath(p.World.ID) + "/" + world.ModSettingsFile }
-func (p ModsPage) SavesPath() string    { return worldPath(p.World.ID) + "/saves" }
+func (p ModsPage) SavesPath() string    { return savesPath(p.World.ID) }
 func (p ModsPage) AccountPath() string  { return accountLink(p.Path()) }
 func (p ModsPage) Tabs() WorldTabs      { return worldTabs(p.World, "mods") }
 
@@ -407,7 +406,7 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 
 // modsPage reads the world's mods and what the tab offers.
 func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, error) {
-	p := ModsPage{World: sum, Live: s.liveState(sum.ID, sum.Active), CountdownForm: s.countdownForm(ctx), UploadLimit: zoneLimit(s.modUploadLimit(ctx))}
+	p := ModsPage{World: sum, CountdownForm: s.countdownForm(ctx), UploadLimit: zoneLimit(s.modUploadLimit(ctx))}
 	if sum.Newer || sum.Unreadable {
 		return p, nil
 	}
@@ -1254,7 +1253,7 @@ func (p ModPlanPage) Announce() i18n.Msg {
 func (p ModPlanPage) Path() string       { return modsPath(p.World.ID) + "/plan" }
 func (p ModPlanPage) ModsPath() string   { return modsPath(p.World.ID) }
 func (p ModPlanPage) UploadPath() string { return modsPath(p.World.ID) + "/upload" }
-func (p ModPlanPage) SavesPath() string  { return worldPath(p.World.ID) + "/saves" }
+func (p ModPlanPage) SavesPath() string  { return savesPath(p.World.ID) }
 func (p ModPlanPage) Line() string       { return mods.GameLine(p.World.GameVersion) }
 
 // AccountPath returns here after the account is entered. An upload cannot

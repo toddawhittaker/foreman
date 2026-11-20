@@ -463,41 +463,45 @@ func (s *server) mcpSetPublicMods(ctx context.Context, req *mcp.CallToolRequest,
 // mcpGeneralOut is every General-page setting, under the names
 // set_foreman_settings takes.
 type mcpGeneralOut struct {
-	SnapshotRetention    int `json:"snapshot_retention"`
-	StopCountdownSeconds int `json:"stop_countdown_seconds"`
-	AuditRetentionDays   int `json:"audit_retention_days"`
-	SaveUploadMB         int `json:"save_upload_mb"`
-	ModUploadMB          int `json:"mod_upload_mb"`
+	SnapshotRetention    int  `json:"snapshot_retention"`
+	StopCountdownSeconds int  `json:"stop_countdown_seconds"`
+	AuditRetentionDays   int  `json:"audit_retention_days"`
+	SaveUploadMB         int  `json:"save_upload_mb"`
+	ModUploadMB          int  `json:"mod_upload_mb"`
+	UpdateCheck          bool `json:"update_check"`
 }
 
 func (s *server) mcpGeneral(ctx context.Context) mcpGeneralOut {
-	return mcpGeneralOf(s.generalValues(ctx))
+	return mcpGeneralOf(s.generalValues(ctx), s.readBool(ctx, settingUpdateCheck))
 }
 
-func mcpGeneralOf(v map[string]int) mcpGeneralOut {
+func mcpGeneralOf(v map[string]int, updateCheck bool) mcpGeneralOut {
 	return mcpGeneralOut{
 		SnapshotRetention:    v[settingSnapshotRetention.Key],
 		StopCountdownSeconds: v[settingStopCountdown.Key],
 		AuditRetentionDays:   v[settingAuditRetention.Key],
 		SaveUploadMB:         v[settingSaveUpload.Key],
 		ModUploadMB:          v[settingModUpload.Key],
+		UpdateCheck:          updateCheck,
 	}
 }
 
 type mcpSetSettingsIn struct {
 	mcpConfirmIn
-	SnapshotRetention    *int `json:"snapshot_retention,omitempty" jsonschema:"automatic snapshots kept per world, 1 to 100"`
-	StopCountdownSeconds *int `json:"stop_countdown_seconds,omitempty" jsonschema:"the default stop countdown in seconds, 0 to 600; 0 means no warning"`
-	AuditRetentionDays   *int `json:"audit_retention_days,omitempty" jsonschema:"days the audit log keeps an entry, 7 to 3650"`
-	SaveUploadMB         *int `json:"save_upload_mb,omitempty" jsonschema:"the largest save upload in MB, 100 to 8192"`
-	ModUploadMB          *int `json:"mod_upload_mb,omitempty" jsonschema:"the largest mod upload in MB, 10 to 2048"`
+	SnapshotRetention    *int  `json:"snapshot_retention,omitempty" jsonschema:"automatic snapshots kept per world, 1 to 100"`
+	StopCountdownSeconds *int  `json:"stop_countdown_seconds,omitempty" jsonschema:"the default stop countdown in seconds, 0 to 600; 0 means no warning"`
+	AuditRetentionDays   *int  `json:"audit_retention_days,omitempty" jsonschema:"days the audit log keeps an entry, 7 to 3650"`
+	SaveUploadMB         *int  `json:"save_upload_mb,omitempty" jsonschema:"the largest save upload in MB, 100 to 8192"`
+	ModUploadMB          *int  `json:"mod_upload_mb,omitempty" jsonschema:"the largest mod upload in MB, 10 to 2048"`
+	UpdateCheck          *bool `json:"update_check,omitempty" jsonschema:"whether Foreman checks GitHub every 6 hours for a newer Foreman release"`
 }
 
-// mcpGeneralChange is one setting a call changes.
+// mcpGeneralChange is one setting a call changes. From and To are numbers,
+// or true and false for a switch.
 type mcpGeneralChange struct {
 	Setting string `json:"setting"`
-	From    int    `json:"from"`
-	To      int    `json:"to"`
+	From    any    `json:"from"`
+	To      any    `json:"to"`
 }
 
 type mcpSetSettingsOut struct {
@@ -515,11 +519,12 @@ type mcpSetSettingsOut struct {
 }
 
 // generalSeen is the state a preview shows: every current value.
-func generalSeen(v map[string]int) string {
+func generalSeen(v map[string]int, updateCheck bool) string {
 	var b strings.Builder
 	for _, d := range generalSettings {
 		fmt.Fprintf(&b, "%s=%d ", d.Key, v[d.Key])
 	}
+	fmt.Fprintf(&b, "%s=%t", settingUpdateCheck.Key, updateCheck)
 	return b.String()
 }
 
@@ -549,7 +554,13 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 			changes = append(changes, mcpGeneralChange{Setting: d.Key, From: current[d.Key], To: *n})
 		}
 	}
-	out := mcpSetSettingsOut{Changes: changes, Settings: mcpGeneralOf(want)}
+	currentCheck := s.readBool(ctx, settingUpdateCheck)
+	wantCheck := currentCheck
+	if in.UpdateCheck != nil && *in.UpdateCheck != currentCheck {
+		wantCheck = *in.UpdateCheck
+		changes = append(changes, mcpGeneralChange{Setting: settingUpdateCheck.Key, From: currentCheck, To: wantCheck})
+	}
+	out := mcpSetSettingsOut{Changes: changes, Settings: mcpGeneralOf(want, wantCheck)}
 	if len(changes) == 0 {
 		out.Changes = []mcpGeneralChange{}
 		return mcpText("Nothing to change: every setting already has the value asked for, or none was named. Nothing was saved."), out, nil
@@ -559,7 +570,7 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, mcpSetSettingsOut{}, s.mcpFail("count what the new settings remove", err)
 	}
 	out.SnapshotsToRemove, out.WorldsAffected, out.AuditEntriesToDelete = trim.Snapshots, trim.Worlds, trim.AuditEntries
-	seen := generalSeen(current)
+	seen := generalSeen(current, currentCheck)
 	preview := func() (*mcp.CallToolResult, mcpSetSettingsOut, error) {
 		p, err := s.mcpAsk(req, in, seen)
 		if err != nil {
@@ -582,6 +593,11 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 	if err := s.saveGeneral(ctx, mcpActor(req), want); err != nil {
 		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
 	}
+	checkChanged, err := s.setBoolSetting(ctx, mcpActor(req), settingUpdateCheck, wantCheck)
+	if err != nil {
+		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
+	}
+	s.updateCheckSaved(checkChanged, wantCheck)
 	out.Done = true
 	return mcpText("Saved %d setting(s).", len(changes)), out, nil
 }

@@ -131,7 +131,7 @@ test("a settings save between two mod changes ends the sharing", async ({ page, 
   await setUpModsWorld(page, foreman, fakeGame!, { mods });
   await change(page, "disable", "fp-a", "Disable 1 mod");
 
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("Maximum players").fill("8");
   await page.getByRole("button", { name: "Preview changes" }).click();
   await page.getByRole("button", { name: "Save settings" }).click();

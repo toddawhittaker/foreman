@@ -34,6 +34,21 @@ async function runs(fakeGame: Hooks) {
   return (await fakeGame.state()).calls.filter((c) => c.includes("/containers/create")).length;
 }
 
+// The most any of the elements moves, in px, over 1.5 s of animation frames from now.
+function still(page: Page, ids: string[]) {
+  return page.evaluate((ids) => new Promise<number>((done) => {
+    const at = () => ids.map((id) => { const r = document.querySelector(id)!.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; });
+    const base = at();
+    let most = 0;
+    const end = performance.now() + 1500;
+    const tick = () => {
+      at().forEach((b, i) => b.forEach((v, j) => { most = Math.max(most, Math.abs(v - base[i][j])); }));
+      if (performance.now() < end) requestAnimationFrame(tick); else done(most);
+    };
+    requestAnimationFrame(tick);
+  }), ids);
+}
+
 test.describe("with script", () => {
   test.beforeEach(async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
@@ -305,6 +320,128 @@ test.describe("with script", () => {
     await expect(page.locator("#error-summary")).toBeFocused();
     await expect(page.locator("#generate-preview-size")).toHaveValue("3072");
   });
+
+  // DESIGN 8.8: in All planets, cards side by side share their heights, so
+  // pictures, captions and download links line up, with territories off or on.
+  test("All planets cards in a row line up, with territories off and on", async ({ page }, info) => {
+    test.skip(info.project.name.startsWith("phone"), "one card to a row on a phone");
+    await page.setViewportSize({ width: 1920, height: 950 });
+    await page.goto("/generate");
+    await expect(pictures(page)).toHaveCount(1);
+    await page.locator("label.tab", { hasText: "All planets" }).click();
+    await expect(pictures(page)).toHaveCount(5);
+    const rows = () => page.evaluate(() => {
+      const byRow = new Map<number, number[][]>();
+      for (const li of document.querySelectorAll("#preview .pictures > li")) {
+        const f = li.querySelector("figure")!.getBoundingClientRect();
+        const i = li.querySelector("img")!.getBoundingClientRect();
+        const c = li.querySelector("figcaption")!.getBoundingClientRect();
+        const d = li.querySelector("a.download")!.getBoundingClientRect();
+        const key = Math.round(f.top);
+        byRow.set(key, [...(byRow.get(key) ?? []), [f.height, i.width, i.height, c.top, d.top, d.top - f.bottom]]);
+      }
+      return [...byRow.values()];
+    });
+    const check = async (when: string) => {
+      for (const row of await rows()) {
+        for (const card of row) card.forEach((v, j) => expect(Math.abs(v - row[0][j]), `${when}: measure ${j}`).toBeLessThanOrEqual(1));
+      }
+      // The gap from a card to its link is the same in every row: no band held under one row.
+      const gaps = (await rows()).map((row) => row[0][5]);
+      for (const g of gaps) expect(Math.abs(g - gaps[0]), `${when}: card-to-link gap`).toBeLessThanOrEqual(2);
+    };
+    await check("territories off");
+    await section(page).getByLabel("Show demolisher territories").check();
+    await expect(section(page).locator("#territory-result .territory-counts")).toHaveCount(1);
+    await check("territories on");
+    await section(page).locator(".pictures").screenshot({ path: `../screenshots/all-planets-territories-${info.project.name}.png` });
+  });
+
+  // DESIGN 8.8: the large view's header keeps one height on every planet of the map,
+  // so paging with the arrow keys never moves the planet controls.
+  for (const width of [1920, 390]) {
+    test(`paging planets in the large view keeps the controls still at ${width} px`, async ({ page }, info) => {
+      await page.setViewportSize({ width, height: width > 600 ? 950 : 800 });
+      await page.goto("/generate");
+      await expect(pictures(page)).toHaveCount(1);
+      await section(page).getByRole("link", { name: /opens the large view/ }).click();
+      const dialog = page.locator("#large-view");
+      await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+      if (width > 600) {
+        // DESIGN 8.7: a heading's rule is the only line above its first row.
+        for (const id of ["#large-resources", "#large-terrain"]) {
+          await expect(dialog.locator(`${id} > .mapgen-body > .autoplace`).first()).toHaveCSS("border-top-width", "0px");
+        }
+      }
+      // With the amounts on, each planet is counted after its picture; the count is slowed so its line shows.
+      await page.route(/\/generate\/preview\/resources/, async (r) => { await new Promise((ok) => setTimeout(ok, 400)); await r.continue(); });
+      await dialog.locator("#large-amounts").check();
+      if (width === 1920) {
+        await expect(dialog.locator("#large-counting")).toBeVisible();
+        await page.screenshot({ path: `../screenshots/large-view-counting-1920-${info.project.name}.png`, clip: { x: 0, y: 0, width, height: 200 } });
+      }
+      await expect(dialog.locator("#large-status")).toHaveText("Resource amounts ready.");
+      if (width === 1920) await page.screenshot({ path: `../screenshots/large-view-ready-1920-${info.project.name}.png`, clip: { x: 0, y: 0, width, height: 200 } });
+      await dialog.locator("#large-frame").focus();
+      const watched = ["#large-prev", "#large-next", "#large-amounts", "#large-frame"];
+      const boxes = () => page.evaluate((ids) => ids.map((id) => { const r = document.querySelector(id)!.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; }), watched);
+      const first = await boxes();
+      for (const planet of ["Vulcanus", "Gleba", "Fulgora", "Aquilo", "Nauvis"]) {
+        const sampling = still(page, watched);
+        await page.keyboard.press("ArrowRight");
+        expect(await sampling, planet).toBeLessThanOrEqual(0.5);
+        if (planet === "Vulcanus" || planet === "Nauvis") {
+          // Ticking and unticking either box moves nothing either, as counting or finding starts and ends.
+          const boxesHere = planet === "Vulcanus" ? ["#large-amounts", "#large-territories"] : ["#large-amounts"];
+          for (const id of boxesHere) {
+            for (let i = 0; i < 4; i++) {
+              const moving = still(page, watched);
+              await dialog.locator(id).click();
+              expect(await moving, `${planet} ${id} toggle ${i}`).toBeLessThanOrEqual(0.5);
+            }
+          }
+        }
+        await expect(page.getByRole("dialog", { name: planet })).toBeVisible();
+        await expect(dialog.getByRole("img", { name: new RegExp(`^Map preview of ${planet}`) })).toBeVisible();
+        const now = await boxes();
+        now.forEach((b, i) => b.forEach((v, j) => expect(Math.abs(v - first[i][j]), `${planet} ${watched[i]}`).toBeLessThanOrEqual(0.5)));
+        if (width === 1920 && (planet === "Vulcanus" || planet === "Nauvis")) {
+          await page.screenshot({ path: `../screenshots/large-view-${planet.toLowerCase()}-1920-${info.project.name}.png` });
+        }
+      }
+    });
+  }
+
+  // DESIGN 8.8: nothing in the map's column scrolls while the map fits, and the
+  // amounts list sits last in the settings column, out of the header.
+  for (const [width, height] of [[2000, 1005], [1920, 950], [1440, 780]] as const) {
+    test(`the large view's map column has no scroll bar at ${width}x${height}`, async ({ page }, info) => {
+      test.skip(info.project.name.startsWith("phone"), "a desktop layout");
+      await page.setViewportSize({ width, height });
+      await page.goto("/generate");
+      await expect(pictures(page)).toHaveCount(1);
+      await section(page).getByRole("link", { name: /opens the large view/ }).click();
+      const dialog = page.locator("#large-view");
+      await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+      const gutter = () => dialog.locator("#large-frame").evaluate((f) => [(f as HTMLElement).offsetWidth - f.clientWidth, (f as HTMLElement).offsetHeight - f.clientHeight]);
+      const bare = await gutter();
+      await dialog.locator("#large-amounts").check();
+      await expect(dialog.locator("#large-amounts-text summary")).toHaveText(/^Resource amounts as text/);
+      // The labels never give the map box a scroll bar, so it keeps its width.
+      expect(await gutter()).toEqual(bare);
+      const scrolling = await dialog.locator(".large-view__stage").evaluate((stage) =>
+        [stage, ...stage.querySelectorAll("*")].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).map((e) => e.id || e.className));
+      expect(scrolling).toEqual([]);
+      // Neither the view nor the page behind it scrolls, so no scroll bar shows at the window's edge.
+      const outer = await page.evaluate(() => [document.querySelector("#large-view")!, document.documentElement].map((e) => getComputedStyle(e).overflowY !== "hidden" && e.scrollHeight > e.clientHeight + 1));
+      expect(outer).toEqual([false, false]);
+      if (width === 1920) {
+        await page.screenshot({ path: `../screenshots/large-view-header-1920-${info.project.name}.png`, clip: { x: 0, y: 0, width, height: 200 } });
+        await dialog.locator("#large-settings").evaluate((p) => { p.scrollTop = p.scrollHeight; });
+        await dialog.locator("#large-settings").screenshot({ path: `../screenshots/large-view-panel-bottom-1920-${info.project.name}.png` });
+      }
+    });
+  }
 
   test("the large view works by keyboard alone at 320 px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });

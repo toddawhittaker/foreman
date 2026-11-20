@@ -20,7 +20,9 @@ const labels = (page: Page) => dialog(page).locator(".resources__label");
 const counting = (page: Page) => page.locator("#large-counting");
 const status = (page: Page) => page.locator("#large-status");
 const result = (page: Page) => page.locator("#large-amounts-result");
-const summary = (page: Page) => result(page).locator("summary");
+// The amounts as text: under the box, or last in the settings column when that shows (DESIGN 8.8).
+const list = (page: Page) => page.locator("#large-amounts-result .resource-text, #large-amounts-text .resource-text");
+const summary = (page: Page) => list(page).locator("summary");
 const isResources = (url: string) => new URL(url).pathname.endsWith("/generate/preview/resources");
 // One matcher, so unroute finds the route it set.
 const resourceURL = (u: URL) => u.pathname.endsWith("/generate/preview/resources");
@@ -130,20 +132,20 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   for (const hidden of ["250K", "90K", "3K"]) expect(texts).not.toContain(hidden);
   // The text list is collapsed, and names each resource with its total.
   await expect(summary(page)).toHaveText("Resource amounts as text (7 patches)");
-  await expect(result(page).locator("details")).not.toHaveAttribute("open");
+  await expect(list(page)).not.toHaveAttribute("open");
   await summary(page).click();
   // The totals sit under one heading for the list, a level below the settings' sections.
-  await expect(result(page).getByRole("heading", { level: 3 })).toHaveText("Resource amounts as text (7 patches)");
-  await expect(result(page).getByRole("heading", { level: 4 })).toHaveText([
+  await expect(list(page).getByRole("heading", { level: 3 })).toHaveText("Resource amounts as text (7 patches)");
+  await expect(list(page).getByRole("heading", { level: 4 })).toHaveText([
     "Iron ore: 12,685,678 in total",
     "Copper ore: 1,503,000 in total",
     "Crude oil: 350% yield in total",
   ]);
-  await expect(result(page).getByRole("listitem").first()).toHaveText("12,345,678 at (-50, -30)");
+  await expect(list(page).getByRole("listitem").first()).toHaveText("12,345,678 at (-50, -30)");
   for (const hidden of ["250,000 at (-40, -30)", "90,000 at (-38, -22)", "3,000 at (36, 46)"]) {
-    await expect(result(page).getByRole("listitem").filter({ hasText: hidden })).toHaveCount(1);
+    await expect(list(page).getByRole("listitem").filter({ hasText: hidden })).toHaveCount(1);
   }
-  await expect(result(page).getByRole("listitem").filter({ hasText: "yield" })).toHaveText(["300% yield at (50, -50)", "50% yield at (-60, 60)"]);
+  await expect(list(page).getByRole("listitem").filter({ hasText: "yield" })).toHaveText(["300% yield at (50, -50)", "50% yield at (-60, 60)"]);
   await shot(page, "resources-text");
   await checkPage(page);
   // Kept while the page lives: closed and opened again, it is still ticked and shows at once.
@@ -282,7 +284,7 @@ test("another planet drops the count and counts the planet shown, around its dem
   expect(l.kept.length).toBeGreaterThan(1);
   // Named as the planet's own map setting is.
   await summary(page).click();
-  await expect(result(page).getByRole("heading", { level: 4 }).first()).toHaveText(/^Coal: /);
+  await expect(list(page).getByRole("heading", { level: 4 }).first()).toHaveText(/^Coal: /);
 });
 
 test("a settings change drops the labels at once and counts again after the new picture", async ({ page }) => {
@@ -340,9 +342,9 @@ test("from the keyboard: tick the box, then read the amounts as text", async ({ 
   await expect(status(page)).toHaveText("Resource amounts ready.");
   await tabTo(page, summary(page));
   await page.keyboard.press("Enter");
-  await expect(result(page).locator("details")).toHaveAttribute("open");
-  await expect(result(page).getByRole("listitem")).toHaveCount(7);
-  await expect(result(page).getByText("Positions are in tiles from where players start, as (x, y).")).toBeVisible();
+  await expect(list(page)).toHaveAttribute("open");
+  await expect(list(page).getByRole("listitem")).toHaveCount(7);
+  await expect(list(page).getByText("Positions are in tiles from where players start, as (x, y).")).toBeVisible();
   // Another planet empties the list; focus goes back to the box rather than being lost.
   await summary(page).focus();
   await page.keyboard.press("ArrowRight");
