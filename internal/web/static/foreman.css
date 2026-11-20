@@ -407,6 +407,8 @@ h2.op-heading {
   display: inline-flex;
   align-items: center;
   min-block-size: 1.5rem;
+  /* The running-text link's padding, which it had as a paragraph's child. */
+  padding-block: 0.2em;
   color: var(--color-text-muted);
   text-decoration-line: underline;
   text-decoration-color: color-mix(in srgb, currentColor 68%, transparent);
@@ -430,10 +432,10 @@ h2.op-heading {
   text-decoration-color: currentColor;
 }
 
-/* The chevron follows each ancestor, drawn by CSS so it is not read out. */
-.crumb li:not(:last-child)::after {
+/* The chevron follows each ancestor inside its link, as it always has,
+   drawn by CSS so it is not read out. */
+.crumb li:not(:last-child) > a::after {
   content: "";
-  flex: none;
   display: inline-block;
   inline-size: 0.5rem;
   block-size: 0.5rem;
@@ -447,7 +449,7 @@ h2.op-heading {
   overflow-wrap: anywhere;
 }
 
-[dir="rtl"] .crumb li:not(:last-child)::after {
+[dir="rtl"] .crumb li:not(:last-child) > a::after {
   transform: scaleX(-1);
 }
 
