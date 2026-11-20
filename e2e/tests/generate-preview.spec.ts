@@ -321,6 +321,39 @@ test.describe("with script", () => {
     await expect(page.locator("#generate-preview-size")).toHaveValue("3072");
   });
 
+  // DESIGN 8.8: in All planets, cards side by side share their heights, so
+  // pictures, captions and download links line up, with territories off or on.
+  test("All planets cards in a row line up, with territories off and on", async ({ page }, info) => {
+    test.skip(info.project.name.startsWith("phone"), "one card to a row on a phone");
+    await page.setViewportSize({ width: 1920, height: 950 });
+    await page.goto("/generate");
+    await expect(pictures(page)).toHaveCount(1);
+    await page.locator("label.tab", { hasText: "All planets" }).click();
+    await expect(pictures(page)).toHaveCount(5);
+    const rows = () => page.evaluate(() => {
+      const byRow = new Map<number, number[][]>();
+      for (const li of document.querySelectorAll("#preview .pictures > li")) {
+        const f = li.querySelector("figure")!.getBoundingClientRect();
+        const i = li.querySelector("img")!.getBoundingClientRect();
+        const c = li.querySelector("figcaption")!.getBoundingClientRect();
+        const d = li.querySelector("a.download")!.getBoundingClientRect();
+        const key = Math.round(f.top);
+        byRow.set(key, [...(byRow.get(key) ?? []), [f.height, i.width, i.height, c.top, d.top]]);
+      }
+      return [...byRow.values()];
+    });
+    const check = async (when: string) => {
+      for (const row of await rows()) {
+        for (const card of row) card.forEach((v, j) => expect(Math.abs(v - row[0][j]), `${when}: measure ${j}`).toBeLessThanOrEqual(1));
+      }
+    };
+    await check("territories off");
+    await section(page).getByLabel("Show demolisher territories").check();
+    await expect(section(page).locator("#territory-result")).not.toBeEmpty();
+    await check("territories on");
+    await section(page).locator(".pictures").screenshot({ path: `../screenshots/all-planets-territories-${info.project.name}.png` });
+  });
+
   // DESIGN 8.8: the large view's header keeps one height on every planet of the map,
   // so paging with the arrow keys never moves the planet controls.
   for (const width of [1920, 390]) {

@@ -12925,3 +12925,21 @@ html:has(.large-view[open]) {
   display: inline-grid;
   visibility: hidden;
 }
+
+/* All planets: each card is three rows of the list's grid (the framed
+   picture, the territories in words, the download), so cards side by side
+   share their heights and their links line up (DESIGN 8.8). */
+.pictures:has(> li + li) {
+  row-gap: var(--space-2);
+}
+
+.pictures:has(> li + li) > li {
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-2);
+  padding-block-end: var(--space-3);
+}
+
+.pictures:has(> li + li) > li > figure { grid-row: 1; }
+.pictures:has(> li + li) > li > .territory-result { grid-row: 2; }
+.pictures:has(> li + li) > li > .download { grid-row: 3; align-self: start; }
