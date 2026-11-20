@@ -18,6 +18,7 @@
 <script src="{{static "subnav.js"}}" defer></script>
 {{- if .User}}
 <script src="{{static "about.js"}}" defer></script>
+<script src="{{static "live.js"}}" defer></script>
 {{- end}}
 {{block "scripts" .}}{{end}}
 </head>
@@ -107,7 +108,7 @@
   </div>
 </dialog>
 {{- end}}
-<main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
+<main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{else}}{{with .StripURL}} hx-ext="sse" sse-connect="{{.}}" sse-swap="strip" hx-swap="none" hx-disinherit="hx-swap"{{end}}{{end}}>
 {{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here (SPEC 12.10). */}}
 {{- with .Renewed}}
 <div class="message message--success" id="renewed-message" tabindex="-1" autofocus>

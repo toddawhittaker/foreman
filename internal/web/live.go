@@ -256,3 +256,95 @@ func (l *liveStream) comment() error {
 	}
 	return l.rc.Flush()
 }
+
+// stripEvent names the status strip's update on pages that stream only it.
+const stripEvent = "strip"
+
+// handleStripEvents streams the status strip's state to a signed-in page
+// that has no stream of its own (SPEC 16.3, DESIGN 6 Shell, #736). Each
+// event carries only the two out-of-band swaps the Server page's facts
+// carry for the strip and the Server tab, never the facts themselves. The
+// stream follows the world active when it opened and ends when another
+// becomes active, so the browser reconnects to the new one; it also ends
+// when its user is no longer signed in and at shutdown.
+func (s *server) handleStripEvents(w http.ResponseWriter, r *http.Request, _ store.User) {
+	if !s.runs.track() {
+		http.Error(w, localeOf(r).T("server.stream.shutting_down"), http.StatusServiceUnavailable)
+		return
+	}
+	defer s.runs.wg.Done()
+	opened := s.now()
+	id, found, err := s.store.ActiveWorld(r.Context())
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	out, err := s.openStream(w, localeOf(r))
+	if err != nil {
+		return
+	}
+	var updates <-chan game.Update
+	sent := ""
+	if found {
+		view, ups, stop := s.game.Watch(id)
+		defer stop()
+		updates = ups
+		// The page was drawn with the state it shows; the first event is
+		// sent anyway, so a page that reconnects misses nothing.
+		if sent, err = out.strip(LiveState{State: view.Status.State, Have: true}, ""); err != nil {
+			return
+		}
+	}
+	beat := time.NewTicker(heartbeatEvery)
+	defer beat.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-s.runs.ctx.Done():
+			return
+		case up, open := <-updates:
+			if !open {
+				return
+			}
+			if up.Kind != game.UpdateStatus {
+				continue
+			}
+			if sent, err = out.strip(LiveState{State: up.Status.State, Have: true}, sent); err != nil {
+				return
+			}
+		case <-beat.C:
+			if !s.stillSignedIn(r, opened) {
+				return
+			}
+			if now, ok, err := s.store.ActiveWorld(r.Context()); err != nil || ok != found || now != id {
+				return
+			}
+			if err := out.comment(); err != nil {
+				return
+			}
+		}
+	}
+}
+
+// strip sends the strip's and the Server tab's state when it is not last,
+// the HTML last sent, and returns what it sent.
+func (l *liveStream) strip(st LiveState, last string) (string, error) {
+	t, err := l.render.template(l.loc, ServerPage{})
+	if err != nil {
+		return last, err
+	}
+	var lamp strings.Builder
+	if err := t.ExecuteTemplate(&lamp, "nav-lamp", st); err != nil {
+		return last, err
+	}
+	data := `<span id="site-state" hx-swap-oob="innerHTML">` + lamp.String() + `</span>` +
+		`<span id="nav-lamp" hx-swap-oob="innerHTML">` + lamp.String() + `</span>`
+	if data == last {
+		return last, nil
+	}
+	if err := l.event(stripEvent, data); err != nil {
+		return last, err
+	}
+	return data, l.rc.Flush()
+}

@@ -3,6 +3,8 @@
 // pages still work; they just do not follow the game.
 (() => {
   "use strict";
+  // Every signed-in page loads this script, and a live page loads it again.
+  if (window.foremanLive) return;
 
   // A stream that ends by design is back within a few seconds, before this.
   const graceMs = 5000;
@@ -115,6 +117,8 @@
       announce(doc.body.textContent.trim());
       return;
     }
+    // The strip's update swaps only out of band; nothing on the page moves.
+    if (e.target.getAttribute("sse-swap") === "strip") return;
     held = e.target.contains(document.activeElement) ? e.target : null;
     heldFocus = held ? document.activeElement.id : "";
     openRows = Array.from(e.target.querySelectorAll("details[open][id]"), (d) => d.id);
