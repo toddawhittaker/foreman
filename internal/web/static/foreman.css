@@ -3987,11 +3987,29 @@ form:has(#mode-exchange:checked) .achievements {
   display: none;
 }
 
-/* On a map with Vulcanus its row is held, unseen, on every planet, so paging
-   never moves the picture or its controls (DESIGN 8.8). */
-body:has(#preview-planets > option[value="vulcanus"]) .large-view__territories[hidden] {
-  display: flex;
-  visibility: hidden;
+/* Wide, Show resource amounts and Vulcanus's Show demolisher territories
+   share one line, amounts first, so on another planet the territories'
+   place is only empty space at the line's end and no row comes or goes. */
+@container large-view (min-width: 48rem) {
+  .large-view__bar {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "head head" "news news" "amounts territories";
+    column-gap: var(--space-6);
+  }
+
+  .large-view__head { grid-area: head; }
+  .large-view__news { grid-area: news; }
+  .large-view__bar > .resource-amounts { grid-area: amounts; }
+  .large-view__bar > .large-view__territories { grid-area: territories; }
+}
+
+/* Narrower they cannot share a line, so on a map with Vulcanus its row is
+   held, unseen, on every planet, and paging never moves the controls. */
+@container large-view (max-width: 47.99rem) {
+  body:has(#preview-planets > option[value="vulcanus"]) .large-view__territories[hidden] {
+    display: flex;
+    visibility: hidden;
+  }
 }
 
 .large-view__territories > .hint {

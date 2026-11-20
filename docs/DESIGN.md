@@ -2637,7 +2637,10 @@ close the view, the tab, the setting, and the picture again).
   wins, and a new draw, a change of settings or another planet viewed
   drops the one on its way. Meanwhile a line under the picture says
   "Finding the demolisher territories…"; that line's height is held while
-  the box is ticked.
+  the box is ticked. In the large view the box shares one line with "Show resource
+  amounts" (amounts first) where the view is 48rem wide or more, so paging
+  to another planet only empties the line's end; narrower, its row is held
+  on every planet of a map with Vulcanus, so the controls never move.
   - The large view's territory box sits in the view's bar, under the
     status line and above "Show resource amounts", with its hint beside
     it while they fit and under it when they do not. It has no name; the
