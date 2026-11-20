@@ -167,8 +167,9 @@
         {{- if $.Page.CanPreview}}
         {{/* Says a new preview is being drawn as the settings change; the script fills it. */}}
         <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
-        {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider and redraws on a change. */}}
-        <div class="field step">
+        {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider, redraws on a change,
+             and moves it into the drawn preview's slot above the picture, carrying it across each reply (DESIGN 8.6). */}}
+        <div class="field step" id="preview-size-field">
           <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
           <select id="generate-preview-size" name="preview_size"
             {{- if not .PreviewSizeError.IsZero}} aria-invalid="true" aria-describedby="generate-preview-size-hint generate-preview-size-error"{{else}} aria-describedby="generate-preview-size-hint"{{end}}>

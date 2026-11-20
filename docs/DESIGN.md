@@ -2206,8 +2206,14 @@ narrower than 34rem so their steps stay sliders,
 (items 1 to 4 and the achievements summary) on the left, and the preview in
 a column of 20 to 26rem on the right that stays in view while the settings
 change. That column (`gen-preview`) is sticky at `--space-5` from the top,
-at most as tall as the window less that, scrolling on its own if the
-picture is taller; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
+as tall as the window between the top strip and the action bar. Once a
+picture is drawn its order is: the heading and seed, the One planet and All
+planets tabs, Show resource amounts, Preview size, the picture, then the
+download links and the kept note as one tight group. Preview size is above
+the picture so it is always in reach without scrolling. One planet's picture
+is a square sized by the smaller of the column's width and the height left,
+never under 16rem so its amounts stay readable; where the window is tall
+enough the whole pane fits, and below that the pane scrolls on its own; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
 and `--space-4` of padding, and sizes its own controls from its width, as
 the settings do from theirs (8.7). Several planets are thumbnails, two to a
 row. From 100rem the preview column takes about two fifths of the page.
@@ -2635,7 +2641,18 @@ close the view, the tab, the setting, and the picture again).
   wins, and a new draw, a change of settings or another planet viewed
   drops the one on its way. Meanwhile a line under the picture says
   "Finding the demolisher territories…"; that line's height is held while
-  the box is ticked.
+  the box is ticked. In the large view the box shares one line with "Show resource
+  amounts" (amounts first) where the view is 48rem wide or more, so paging
+  to another planet only empties the line's end; narrower, its row is held
+  on every planet of a map with Vulcanus, so the controls never move. Every
+  line of the large view's header keeps one height whatever it holds: the
+  status line is one line, cut rather than wrapped; the counting line is
+  the words and a bar no taller than them, beside the box when wide and on
+  a line always held under it when narrow; the title and its download
+  button hold their place while a planet is drawn. Amount and territory
+  labels are cut at the map's edge, and the map's frame pans without
+  scroll bars, so paging, ticking or unticking either box, counting and its
+  end never move a control or the map's edge.
   - The large view's territory box sits in the view's bar, under the
     status line and above "Show resource amounts", with its hint beside
     it while they fit and under it when they do not. It has no name; the
@@ -2719,9 +2736,11 @@ close the view, the tab, the setting, and the picture again).
     a `ResizeObserver` on the map, at most once a frame, with a 64 px cell
     grid so a few thousand labels stay cheap. Zooming in therefore shows
     more labels, and a label is never smaller or larger.
-  - **The text list.** Under the box, a collapsed `details`, "Resource
-    amounts as text (N patches)", also in the settings-column view and
-    readable inside the dialog. A hidden `h3` heads it; each resource is an
+  - **The text list.** A collapsed `details`, "Resource amounts as
+    text (N patches)", under the box; in the large view with the settings
+    column it goes last in that column instead, so the header keeps one
+    height, and the arrow keys still page planets from it, as it is not a
+    setting. It is readable inside the dialog. A hidden `h3` heads it; each resource is an
     `h4` giving its total (or its total yield) and a list of its patches
     sorted by amount, each as "12,345,678 at (-50, -30)" or "300% yield at
     (50, -50)". One sentence says positions are tiles from where players

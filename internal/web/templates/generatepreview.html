@@ -50,6 +50,8 @@
     <div class="js-only"><div class="resource-box"><label class="check"><input type="checkbox" id="preview-amounts"> {{t "worlds.generate.resources.label"}}</label>
       <span class="hint resource-box__busy" id="preview-amounts-busy" aria-hidden="true">{{t "worlds.generate.resources.counting_short"}}</span></div></div>
     {{- end}}
+    {{/* The script moves Preview size here, above the picture, so the order seen and the order tabbed agree (DESIGN 8.6). */}}
+    <div class="preview-size-slot" id="preview-size-slot"></div>
     <ul class="pictures" role="list">
       {{- range .Pictures}}
       {{- $terr := $.Preview.IsTerritoryPicture .}}
@@ -124,6 +126,8 @@
     {{- end}}
     {{- /* The One planet picture's "Show resource amounts" box. */}}
     <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
+    {{- /* Preview size comes here, above the held picture, as it will above the picture (DESIGN 8.6). */}}
+    <div class="preview-size-slot" id="preview-size-slot"></div>
     <div class="preview-placeholder__picture">
       {{- /* Says what fills it; the status line above already reads this out, so it is hidden from screen readers. */}}
       {{- /* Framed as the picture and its caption will be, so the box is the picture's own. */}}
@@ -180,7 +184,9 @@
       <label class="check"><input type="checkbox" id="large-amounts"> {{t "worlds.generate.resources.label"}}</label>
       {{- /* The bar is seen; the status line says the sentence once as the count starts, after any news of the picture or planet, and says when the amounts are ready (SPEC 17.15). */}}
       <div class="wait resource-amounts__counting" id="large-counting" hidden>
-        <p class="hint" id="large-counting-text">{{t "worlds.generate.resources.counting"}}</p>
+        {{- /* The whole sentence is the status line's, under the title; beside the box only the short word shows (DESIGN 8.8). */}}
+        <p class="visually-hidden" id="large-counting-text">{{t "worlds.generate.resources.counting"}}</p>
+        <p class="hint" aria-hidden="true">{{t "worlds.generate.resources.counting_short"}}</p>
         {{- /* The sentence is said as the count starts; the bar is not named again (DESIGN 8.8). */}}
         <progress aria-hidden="true"></progress>
       </div>
@@ -213,6 +219,8 @@
       <section id="large-terrain" aria-labelledby="large-terrain-heading">
         <h3 id="large-terrain-heading">{{t "mapgen.tab.terrain"}}</h3>
       </section>
+      {{- /* The amounts as text, the map's labels in words, last in the column so the header keeps its height (DESIGN 8.8). */}}
+      <div class="large-view__amounts-text" id="large-amounts-text"></div>
     </div>
     {{/* The controls sit over the picture; the frame scrolls when zoomed, so it takes focus for the arrow keys. */}}
     <div class="large-view__stage">

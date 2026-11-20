@@ -3626,6 +3626,8 @@ form:has(#mode-exchange:checked) .achievements {
   display: flex;
   min-block-size: 0;
   overflow: auto;
+  /* Panned by drag, keys and wheel; no scroll bars, so zooming never narrows the map. */
+  scrollbar-width: none;
   touch-action: none;
   user-select: none;
   background: var(--color-deep);
@@ -3796,6 +3798,9 @@ form:has(#mode-exchange:checked) .achievements {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* A label at the edge is cut at the map's edge rather than widen what holds
+     the map: in the large view that would scroll the frame and narrow it. */
+  overflow: clip;
 }
 
 /* The thumbnail's picture has a border; the overlays cover only the map. */
@@ -3854,6 +3859,12 @@ form:has(#mode-exchange:checked) .achievements {
 
 .preview:has(#preview-territories:checked) .territory-result:empty {
   display: block;
+}
+
+/* Once found, the counts are for screen readers only, so the held line
+   goes and no empty band sits under the picture (DESIGN 8.8). */
+.preview:has(#preview-territories:checked) .territory-result:has(> .territory-counts:only-child) {
+  min-block-size: 0;
 }
 
 .message pre {
@@ -3985,6 +3996,35 @@ form:has(#mode-exchange:checked) .achievements {
 
 .large-view__territories[hidden] {
   display: none;
+}
+
+/* Wide, Show resource amounts and Vulcanus's Show demolisher territories
+   share one line, amounts first, so on another planet the territories'
+   place is only empty space at the line's end and no row comes or goes. */
+@container large-view (min-width: 48rem) {
+  .large-view__bar {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "head head" "news news" "amounts territories";
+    column-gap: var(--space-6);
+  }
+
+  .large-view__head { grid-area: head; }
+  .large-view__news { grid-area: news; }
+  .large-view__bar > .resource-amounts { grid-area: amounts; }
+  /* One target tall, as the amounts box is, so the shared line keeps its height. */
+  .large-view__bar > .large-view__territories {
+    grid-area: territories;
+    block-size: var(--target-min);
+  }
+}
+
+/* Narrower they cannot share a line, so on a map with Vulcanus its row is
+   held, unseen, on every planet, and paging never moves the controls. */
+@container large-view (max-width: 47.99rem) {
+  body:has(#preview-planets > option[value="vulcanus"]) .large-view__territories[hidden] {
+    display: flex;
+    visibility: hidden;
+  }
 }
 
 .large-view__territories > .hint {
@@ -4884,15 +4924,99 @@ a[target="_blank"]::after {
     gap: var(--space-6);
   }
 
+  /* The pane fills the window between the top strip and the action bar, and
+     one picture shrinks to the height its controls leave, so the whole pane
+     is seen without a scrollbar of its own (DESIGN 8.6). */
   .gen-preview {
+    --gen-top: var(--space-4);
+    --gen-foot: calc(var(--target-min) + 2 * var(--space-3) + var(--border-width) + var(--space-4));
     position: sticky;
-    inset-block-start: var(--space-5);
-    max-block-size: calc(100dvh - 2 * var(--space-5));
+    inset-block-start: var(--gen-top);
+    block-size: calc(100dvh - var(--gen-top) - var(--gen-foot));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     overflow-y: auto;
     padding: var(--space-4);
     background: var(--color-raised);
     border: var(--border-width) solid var(--color-line);
     border-radius: var(--radius-lg);
+  }
+
+  /* Clear of the shell's sticky 3.5rem top strip. */
+  @media (min-width: 64rem) {
+    body:has(> .site > nav) .gen-preview {
+      --gen-top: calc(3.5rem + var(--space-4));
+    }
+  }
+
+  /* Once a picture is drawn, the section's parts are the pane's own rows,
+     so the picture can take the height left over (DESIGN 8.6). */
+  .gen-preview > .preview:has(> section > .pictures),
+  .gen-preview > .preview > section:has(> .pictures),
+  .js-on .gen-preview > .preview:has(> .preview-placeholder),
+  .js-on .gen-preview > .preview > .preview-placeholder {
+    display: contents;
+  }
+
+  /* The held box before the first picture is sized the same way, so the
+     picture lands in it (DESIGN 8.8). */
+  .gen-preview .preview-placeholder__picture {
+    flex: 1 1 0;
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    container-type: size;
+    align-content: start;
+  }
+
+  .gen-preview .preview-placeholder__frame {
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    justify-self: center;
+  }
+
+  .gen-preview .preview-placeholder__picture > .preview-placeholder__control,
+  .gen-preview .preview-placeholder__picture ~ .preview-placeholder__control {
+    min-block-size: calc(1lh + 2 * var(--space-1));
+  }
+
+  .gen-preview .preview-placeholder__picture ~ * {
+    margin-block-start: calc(var(--space-1) - var(--space-3));
+  }
+
+  .gen-preview > * ,
+  .gen-preview > .preview > section > * {
+    flex: none;
+  }
+
+  /* A square no wider than the column and no taller than the room left,
+     less its frame, caption and download link; never under 16rem, so its
+     amounts stay readable, and the pane scrolls below that. While the
+     territories are written under it the list keeps its own height. */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) {
+    flex: 1 1 0;
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    container-type: size;
+  }
+
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li {
+    inline-size: 100%;
+  }
+
+  /* The frame shrinks, not the row, so its download link keeps the column's width;
+     a frame narrower than the column sits in its middle. */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li > figure {
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    justify-self: center;
+  }
+
+  /* The download links and the kept note read as one tight group under the
+     picture: text links of 24px or more (WCAG 2.5.8), not 44px boxes. */
+  .gen-preview .preview .download {
+    min-block-size: calc(1lh + 2 * var(--space-1));
+  }
+
+  .gen-preview .pictures ~ *,
+  .gen-preview > .preview-status {
+    margin-block-start: calc(var(--space-1) - var(--space-3));
   }
 
   .gen-preview .pictures {
@@ -12738,3 +12862,115 @@ form.setting-rows > .form-foot {
     mask-composite: exclude;
   }
 }
+
+/* A heading's own rule is the line above its first row, so that row drops
+   its divider; the rows after it keep theirs (DESIGN 8.7). */
+:is(h2, h3) + .mapgen-body > .autoplace:first-child {
+  border-block-start: 0;
+}
+
+/* The All resources row's rule under it is the next row's divider too. */
+.js-on .autoplace--all + .autoplace {
+  border-block-start: 0;
+}
+
+/* The amounts list's place in the settings column takes no row while empty. */
+.large-view__amounts-text:empty {
+  display: none;
+}
+
+/* Preview size's place above the picture takes no row until the script moves it in. */
+.preview-size-slot:empty {
+  display: none;
+}
+
+/* The page behind the open large view does not scroll, so its scroll bar does
+   not show at the window's edge beside the view (DESIGN 8.8). */
+html:has(.large-view[open]) {
+  overflow: hidden;
+}
+
+/* Paging the large view changes only what its lines say, never their
+   height (DESIGN 8.8). The news line is one line, cut rather than wrapped. */
+.large-view__news {
+  flex-wrap: nowrap;
+  block-size: 1lh;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* The counting line is one text line: the words, cut if need be, and a
+   bar no taller than the text beside them. */
+#large-amounts-bar {
+  flex-wrap: nowrap;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+#large-counting:not([hidden]) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+#large-counting > p {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#large-counting > progress {
+  flex: 0 0 4rem;
+  block-size: 0.5rem;
+}
+
+#large-amounts-result {
+  flex: 1 1 0;
+}
+
+/* Narrow, the box and what it shows cannot share a line, so a second line
+   is always held for the count, the list or nothing, and ticking moves nothing. */
+@container large-view (max-width: 47.99rem) {
+  #large-amounts-bar {
+    flex-wrap: wrap;
+    align-content: start;
+    min-block-size: calc(var(--target-min) + var(--space-1) + var(--target-min));
+  }
+
+  #large-amounts-bar > #large-counting:not([hidden]),
+  #large-amounts-bar > #large-amounts-result {
+    flex-basis: 100%;
+  }
+}
+
+/* The title holds its line while paging empties and refills it, and the
+   download button keeps its place, unseen, while its picture is drawn. */
+.large-view__head h2 {
+  min-block-size: 1lh;
+}
+
+#large-download[hidden] {
+  display: inline-grid;
+  visibility: hidden;
+}
+
+/* All planets: each card is three rows of the list's grid (the framed
+   picture, the territories in words, the download), so cards side by side
+   share their heights and their links line up (DESIGN 8.8). */
+.pictures:has(> li + li) {
+  row-gap: var(--space-2);
+}
+
+.pictures:has(> li + li) > li {
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-2);
+  padding-block-end: var(--space-3);
+}
+
+.pictures:has(> li + li) > li > figure { grid-row: 1; }
+.pictures:has(> li + li) > li > .territory-result { grid-row: 2; }
+.pictures:has(> li + li) > li > .download { grid-row: 3; align-self: start; }

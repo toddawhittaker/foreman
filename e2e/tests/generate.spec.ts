@@ -198,6 +198,57 @@ test("a long world name fits at any width", async ({ page, foreman, fakeGame }) 
   await checkPage(page);
 });
 
+// DESIGN 8.6: on a desktop Preview size sits above the picture, in reach
+// without scrolling, and where the window is tall enough the whole pane fits
+// between the top strip and the action bar, the picture shrinking to the room left.
+for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
+  test(`the preview pane keeps Preview size in reach at ${width}x${height}`, async ({ page, foreman, fakeGame }, info) => {
+    test.skip(info.project.name.startsWith("phone"), "a desktop layout");
+    await page.setViewportSize({ width, height });
+    await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+    // The page draws One planet by itself; pressing Preview map as well raced its reply on CI.
+    await expect(page.locator(".gen-preview .pictures img")).toHaveCount(1);
+    // Scroll the page until the pane sticks below the top strip.
+    await page.evaluate(() => window.scrollBy(0, document.querySelector(".gen-preview")!.getBoundingClientRect().top - 40));
+    const m = await page.evaluate(() => {
+      const pane = document.querySelector(".gen-preview")!;
+      return {
+        top: pane.scrollTop,
+        scroll: pane.scrollHeight,
+        client: pane.clientHeight,
+        slider: document.querySelector(".gen-preview .field.step")!.getBoundingClientRect().bottom,
+        bar: document.querySelector(".gen-actions")!.getBoundingClientRect().top,
+      };
+    });
+    expect(m.top).toBe(0);
+    if (height >= 950) expect(m.scroll).toBeLessThanOrEqual(m.client + 1);
+    expect(m.slider).toBeLessThanOrEqual(m.bar);
+    await expect(page.locator(".gen-preview .field.step")).toBeInViewport({ ratio: 1 });
+    // A card narrower than the column sits in its middle.
+    const [left, right] = await page.evaluate(() => {
+      const f = document.querySelector(".gen-preview .pictures figure")!.getBoundingClientRect();
+      const l = document.querySelector(".gen-preview .pictures")!.getBoundingClientRect();
+      return [f.left - l.left, l.right - f.right];
+    });
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: `../screenshots/generate-preview-fit-${width}x${height}-${info.project.name}.png` });
+    // It comes before the picture in the code too, so Tab meets it where the eye does (WCAG 2.4.3).
+    const before = await page.evaluate(() => {
+      const field = document.querySelector("#preview-size-field")!;
+      const list = document.querySelector(".gen-preview .pictures")!;
+      return Boolean(field.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(before).toBe(true);
+    // A step redraws the picture; the control keeps its focus and value across the reply.
+    const control = page.locator("#preview-size-field").getByRole(width > 1500 ? "slider" : "combobox");
+    await control.focus();
+    await page.keyboard.press(width > 1500 ? "ArrowRight" : "ArrowDown");
+    await expect(page.locator(".gen-preview .pictures img")).toHaveAttribute("width", "1408");
+    await expect(control).toBeFocused();
+  });
+}
+
 // DESIGN 8.6: side-by-side fields share label, hint and control rows, so a
 // control lines up with its neighbour's even when only one has a hint.
 test("paired fields line up their controls on a wide screen", async ({ page, foreman, fakeGame }) => {
