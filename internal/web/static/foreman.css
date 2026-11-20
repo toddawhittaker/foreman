@@ -12533,3 +12533,18 @@ main:has(#act-public-mods-open) #public-mods-state {
 .hit__title a:hover {
   text-decoration: underline;
 }
+
+/* Sign-in with both ways is one composed panel: single sign-on above, the
+   Foreman account below a hairline, so it reads as one entry point. */
+main:has(> .gate) > .gate:has(+ .gate) {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+main:has(> .gate) > .gate + .gate {
+  margin-block-start: 0;
+  border-block-start: 0;
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+  box-shadow: var(--shadow-card);
+}
