@@ -677,7 +677,11 @@ frame (7.4).
      hash, with "(modified)" after it when the tree had changes); the
      **Go version** it was built with; and the **Licence** (MIT). Then a
      line that sends the person to GitHub, and a Close button that takes
-     focus. A build with neither version nor commit shows "development
+     focus. When the update check (SPEC 14.10) knows of a newer release, a
+     note message comes first: "Foreman 1.3.0 is available. See what's
+     new", the link opening that release's page on GitHub in a new tab.
+     Everyone who can open About sees it; the user menu itself shows
+     nothing. A build with neither version nor commit shows "development
      build" as its version. The browser keeps focus inside, Escape and
      Close shut it, and focus goes back to the menu's button (the menu
      closes as focus enters the dialog). The names Foreman and MIT are not
