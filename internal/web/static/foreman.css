@@ -4953,8 +4953,33 @@ a[target="_blank"]::after {
   /* Once a picture is drawn, the section's parts are the pane's own rows,
      so the picture can take the height left over (DESIGN 8.6). */
   .gen-preview > .preview:has(> section > .pictures),
-  .gen-preview > .preview > section:has(> .pictures) {
+  .gen-preview > .preview > section:has(> .pictures),
+  .js-on .gen-preview > .preview:has(> .preview-placeholder),
+  .js-on .gen-preview > .preview > .preview-placeholder {
     display: contents;
+  }
+
+  /* The held box before the first picture is sized the same way, so the
+     picture lands in it (DESIGN 8.8). */
+  .gen-preview .preview-placeholder__picture {
+    flex: 1 1 0;
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    container-type: size;
+    align-content: start;
+  }
+
+  .gen-preview .preview-placeholder__frame {
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    justify-self: center;
+  }
+
+  .gen-preview .preview-placeholder__picture > .preview-placeholder__control,
+  .gen-preview .preview-placeholder__picture ~ .preview-placeholder__control {
+    min-block-size: calc(1lh + 2 * var(--space-1));
+  }
+
+  .gen-preview .preview-placeholder__picture ~ * {
+    margin-block-start: calc(var(--space-1) - var(--space-3));
   }
 
   .gen-preview > * ,

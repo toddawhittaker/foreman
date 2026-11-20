@@ -207,8 +207,7 @@ for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
     await page.setViewportSize({ width, height });
     await setUp(page, foreman, fakeGame!);
     await page.goto("/generate");
-    await page.getByRole("button", { name: "Preview map" }).click();
-    await page.locator("label.tab", { hasText: "One planet" }).click();
+    // The page draws One planet by itself; pressing Preview map as well raced its reply on CI.
     await expect(page.locator(".gen-preview .pictures img")).toHaveCount(1);
     // Scroll the page until the pane sticks below the top strip.
     await page.evaluate(() => window.scrollBy(0, document.querySelector(".gen-preview")!.getBoundingClientRect().top - 40));

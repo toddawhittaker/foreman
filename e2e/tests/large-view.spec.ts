@@ -486,9 +486,11 @@ test.describe("the planet viewed", () => {
 });
 
 // The preview picture fills its column, capped by the window's height and centred.
-// At 1920 the preview is a column beside the settings, so a short window is
-// what caps it there. The picture sits inside its frame, so it fills the
-// column less the frame's padding and border.
+// At 1920 the preview is a pane beside the settings (DESIGN 8.6): the picture
+// takes the height its controls leave in the pane, never under 16rem, so a
+// tall enough window shows the whole pane and a short one keeps the 16rem
+// floor. The picture sits inside its frame, so it fills the column less the
+// frame's padding and border.
 for (const [w, h] of [[1280, 1600], [1920, 900], [1920, 400], [320, 640]]) {
   test(`the preview picture fills its column at ${w} by ${h}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
@@ -501,8 +503,18 @@ for (const [w, h] of [[1280, 1600], [1920, 900], [1920, 400], [320, 640]]) {
       const s = getComputedStyle(f);
       return parseFloat(s.paddingLeft) + parseFloat(s.paddingRight) + parseFloat(s.borderLeftWidth) + parseFloat(s.borderRightWidth);
     });
-    const cap = Math.max(256, h - 2 * 44 - 16);
-    expect(box.width).toBeCloseTo(Math.min(column.width, cap) - frame, 0);
+    if (w === 1920) {
+      // The pane's rule: no smaller than 16rem, no wider than the column, and
+      // above the floor only as large as fits, so the pane does not scroll.
+      expect(box.width).toBeGreaterThanOrEqual(256 - frame - 0.5);
+      expect(box.width).toBeLessThanOrEqual(column.width - frame + 0.5);
+      const pane = await page.locator(".gen-preview").evaluate((p) => [p.scrollHeight, p.clientHeight]);
+      if (box.width > 256 - frame + 0.5) expect(pane[0]).toBeLessThanOrEqual(pane[1] + 1);
+      if (h === 400) expect(box.width).toBeCloseTo(256 - frame, 0);
+    } else {
+      const cap = Math.max(256, h - 2 * 44 - 16);
+      expect(box.width).toBeCloseTo(Math.min(column.width, cap) - frame, 0);
+    }
     expect(box.height).toBeCloseTo(box.width, 0);
     expect(box.x + box.width / 2).toBeCloseTo(column.x + column.width / 2, 0);
     if (w === 1280) expect(box.width).toBeCloseTo(column.width - frame, 0);
