@@ -4330,3 +4330,113 @@ Rulings (Todd, 2026-11-19, and from the plan):
 - **The audit log still has no date-range filter or CSV export** (from Epic
   11a).
 - Still deferred: as listed under Epic 11a.
+
+## Fixes batch 14
+
+Serves SPEC 16.3, 17 and 22, with DESIGN 2, 6, 8.1, 8.3 and 11. Issues: #736,
+#737, #738 and #740 from the whole-app UI climb (#741), and #751, which Todd
+added on 2026-11-20. The plan was #744. The pull requests were #745, #747,
+#748 and #749 (#740, folding the climb's override blocks), #746 (#736, the live
+status strip), #752 (#737 and #738, the breadcrumb and the labels), #753 and
+#754 (#751, folding the remaining repeated selectors) and #750 (a test time
+limit).
+
+Rulings (the plan, then Todd and the orchestrator, 2026-11-20):
+
+1. The live status strip reuses the existing stream: the same server-sent
+   state update and out-of-band swap of `#site-state` that the Server page
+   uses, sent to every signed-in page. Server, Console and Chat keep their own
+   stream and are not connected twice.
+2. The CSS tasks are pure refactors: nothing may look or behave differently.
+   Each override was folded into the earliest rule for the same selector and
+   condition. Where a fold would change which rule wins, the task kept the
+   result the same or left the rule in place.
+3. Every refactor task is proved by a pixel comparison of every page before
+   and after.
+4. Todd approves the breadcrumb and label screenshots before that pull request
+   (B1).
+5. The climb's "wide frame" part of `foreman.css` was also override blocks, so
+   #740 covered it too. The orchestrator added two tasks for it: #748 (the
+   first half) and #749 (the rest).
+6. Todd added #751 (the selectors still defined more than once in the older
+   parts of `foreman.css`) to this batch. It became #753 (the first half of the
+   file) and #754 (the second half).
+7. The breadcrumb also goes on the Settings pages, as "Settings > page", with
+   Settings linking to General and shown as plain text on General itself. The
+   Server page gets none: its trail would be one item. Column names and fact
+   names are 13 px sentence case; only the overline keeps mono capitals.
+8. B1 also hides a closed player row's buttons
+   (`.player-actions:not([open]) > .actions`), because the shorter
+   sentence-case header otherwise squeezed the hidden Kick button at 320 px
+   in Polish. Nothing visible changes.
+9. The large view paging test gets Playwright's slow time limit (#750). Its
+   samples alone take 28.4 to 28.9 seconds of the 30 second default on a quiet
+   machine, and it timed out in 3 of 5 full runs under load. No assertion
+   changed.
+
+### Delivered
+
+- **The status strip is live on every signed-in page (#736, SPEC 16.3,
+  DESIGN 6; #746).** A new route, `GET /state/events`, sends a `strip` event
+  holding only the two out-of-band swaps of `#site-state` and `#nav-lamp`,
+  and only when the state changes. It ends on sign-out or idle expiry, at
+  shutdown, and when another world becomes active, so the browser reconnects
+  to the new one. A signed-in page that shows a state and has no stream of its
+  own connects through its `<main>` element (`view.StripURL`). `live.js` now
+  loads on every signed-in page, so the "live updates stopped" note works the
+  same way there. SPEC 16.3 now says so in one sentence.
+- **The CSS override blocks are folded (#740; #745, #747, #748, #749).** Every
+  block the climb added near the end of `foreman.css` was folded into the rule
+  it restyled, or moved into the section it belongs to. The shell's wide-screen
+  rail now sits with the shell, and each component's narrow, wide-screen,
+  forced-colours and reduced-motion rules sit with the component. The stamped
+  labels (the overline and the fact names) were the last blocks left late
+  because equal-weight label rules came earlier; #749 folded them too, and
+  the file now ends with the webhook form. #749 also removed `.crumb::after`
+  and `.plate::after`, which nothing drew.
+- **Repeated selectors folded (#751; #753, #754).** The older sections of
+  `foreman.css` defined 170 selectors more than once, 215 extra definitions in
+  all. Each was folded into one rule unless it was a shared group. The count
+  fell to 79 selectors and 87 extra definitions. DESIGN 11 describes the layout and the shared groups.
+- **The breadcrumb is navigation (#737, DESIGN 6 and 8.1, SPEC 17; #752).**
+  One shared `crumb` partial in `layout.html`, fed by a small `crumbs`
+  template function, renders `<nav class="crumb" aria-label="Breadcrumb"><ol>`
+  with the current page last and marked `aria-current="page"`. All 25 pages
+  that had a `.crumb` call it, and so do the 11 Settings pages. Links keep a 1 px
+  underline at 68 % of their colour (3:1 or better, WCAG 1.4.11) and take the
+  full colour on hover. The chevrons are drawn by CSS and painted `CanvasText`
+  in forced colours. The new string `common.crumb.label` is in all eight
+  languages. The Settings pages open with "Settings > page" in place of their
+  overline.
+- **Labels in sentence case (#738, DESIGN 2; #752).** Table column names, the
+  heads of the world, token and user lists, and fact names are 13 px Plex Sans
+  at weight 600 with no capitals, tracking or mono face. The rule for the
+  plate and status card fact names, which repeated `.facts dt`, is gone. The
+  Chinese exception now covers only the overline.
+- **The paging test no longer times out under load (#750).**
+
+### Verified
+
+VERIFIED-PLACEHOLDER
+
+### Gaps left
+
+- **The world name in the status strip (and on the Server page) does not
+  update live after a world switch** until the page reloads. The state beside
+  it does.
+- **87 extra definitions of 79 selectors remain in `foreman.css`.** Every
+  one is a shared group kept on purpose, where one rule gives several
+  selectors the same look and a member also has a rule of its own. Splitting
+  them would copy values or change which rule wins. #753 and #754 list them.
+- **Some declarations look dead but were not provably dead, so they stay:**
+  the phone tab grid's `flex-wrap`, `scroll-padding-inline` and the
+  `.subnav ul::after` sizes; the `flex` values of `.mod-status__line > p` and
+  `.page-head--row`; the repeated padding of `.empty--art`; the weight of
+  `.facts.stat-grid dd code`; and the properties of `main h2[id]::before`
+  under `content: none`. A later pass with a computed-style comparison could
+  remove them.
+- **Four breadcrumbs still end on a link rather than on the page shown:** a
+  favorite's delete step, the notification form, the created API token and the
+  mod plan. As before, the page is a step under another page.
+- **The Server page has no breadcrumb.** "Server > Console" and "Server >
+  Chat" would be a meaningful trail on those two tabs; it is not built.

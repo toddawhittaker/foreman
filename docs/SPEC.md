@@ -3126,7 +3126,8 @@ does not extend its idle time, so an open page cannot keep a session alive.
 A stream for a user signed in by trusted headers ends after 5 minutes and
 reconnects through the proxy, since those headers are checked only when the
 connection opens. A page whose connection stays down for 5 seconds says so
-and tells the user to reload. (P0)
+and tells the user to reload. The status strip, which shows the server's
+state, follows it the same way on every signed-in page. (P0)
 
 ## 17. Accessibility and design
 
