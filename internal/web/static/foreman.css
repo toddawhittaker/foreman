@@ -12475,3 +12475,61 @@ main > .panel > .facts dd {
   max-inline-size: 20rem;
   block-size: 0.5rem;
 }
+
+/* An on-or-off feature states its state as a switch plate: a 4 px edge in
+   the state's colour on the raised face, then the sentence (DESIGN 8.20). */
+#public-mods-state {
+  inline-size: fit-content;
+  max-inline-size: min(100%, 52rem);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 500;
+}
+
+main:has(#act-public-mods-open) #public-mods-state {
+  background: var(--color-ok-bg);
+  border-inline-start-color: var(--color-ok);
+}
+
+/* What the page shares gets half the card, not the narrow title column. */
+@container (min-width: 60rem) {
+  .panel.setting-row:has(> .setting-row__head #public-mods-shares-heading) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* A token's name in an audit row keeps the row's height. */
+.audit-token .badge {
+  padding-block: 0;
+  line-height: 1.4;
+}
+
+/* Clearing the plan throws work away, so it reads as a quiet danger
+   action, not a plain link (DESIGN 7.1). */
+.plan-panel__clear .button--quiet {
+  padding-inline: var(--space-3);
+  margin-inline-start: calc(-1 * var(--space-3));
+  border: var(--border-width) solid transparent;
+  color: var(--color-danger-text);
+  text-decoration: none;
+}
+
+.plan-panel__clear .button--quiet:hover {
+  background: var(--color-danger-bg);
+  border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+}
+
+/* A search result's name is its row title: semibold, underlined only when
+   pointed at; links inside sentences keep their underline. */
+.hit__title a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hit__title a:hover {
+  text-decoration: underline;
+}
