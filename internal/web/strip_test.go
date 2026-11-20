@@ -80,7 +80,7 @@ func TestStripStreamOnPages(t *testing.T) {
 	g := newGameRig(t, image21)
 	g.startRunning()
 	worlds := g.get(PathWorlds)
-	if !strings.Contains(worlds, `sse-connect="`+PathStripEvents+`" sse-swap="strip" hx-swap="none" hx-disinherit="hx-swap"`) {
+	if !strings.Contains(worlds, `<div hidden hx-ext="sse" sse-connect="`+PathStripEvents+`" sse-swap="strip" hx-swap="none"></div>`) {
 		t.Error("Worlds does not stream the strip")
 	}
 	server := g.get(PathServer)
