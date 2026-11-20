@@ -173,34 +173,7 @@
   --measure: 68ch;
   --page-max: 100rem;
   --rail: 15rem;
-}
-
-/* The user menu's theme choice (SPEC 17.3) on html; on any other element it
-   draws that part of the page in one theme, as the component page does. */
-[data-theme="light"] {
-  color-scheme: light;
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-}
-
-/* A card's padding follows the window, not the text size, so at 200% text
-   the content keeps its width (WCAG 1.4.4). */
-@media (max-width: 48rem) {
-  :root {
-    --card-pad: min(var(--space-4), 4vw);
-  }
-}
-
-@media (min-width: 48rem) {
-  :root {
-    --card-pad: var(--space-5);
-  }
-}
-
-/* The icon set, each a mask image (see "Line icons" below). */
-:root {
+  /* The icon set, each a mask image (see "Line icons" below). */
   --i-server: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='20' height='8' x='2' y='2' rx='2' ry='2'/%3E %3Crect width='20' height='8' x='2' y='14' rx='2' ry='2'/%3E %3Cline x1='6' x2='6.01' y1='6' y2='6'/%3E %3Cline x1='6' x2='6.01' y1='18' y2='18'/%3E%3C/svg%3E");
   --i-worlds: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E %3Cpath d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/%3E %3Cpath d='M2 12h20'/%3E%3C/svg%3E");
   --i-snapshot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z'/%3E %3Ccircle cx='12' cy='13' r='3'/%3E%3C/svg%3E");
@@ -243,6 +216,30 @@
   --i-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E");
   --i-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
   --i-error: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6'/%3E%3Cpath d='m9 9 6 6'/%3E%3C/svg%3E");
+}
+
+/* The user menu's theme choice (SPEC 17.3) on html; on any other element it
+   draws that part of the page in one theme, as the component page does. */
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* A card's padding follows the window, not the text size, so at 200% text
+   the content keeps its width (WCAG 1.4.4). */
+@media (max-width: 48rem) {
+  :root {
+    --card-pad: min(var(--space-4), 4vw);
+  }
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --card-pad: var(--space-5);
+  }
 }
 
 /* Reset */
@@ -504,7 +501,6 @@ main h2[id]::before {
 #act-restart { --icon: var(--i-restart); }
 #act-snapshot { --icon: var(--i-snapshot); }
 #act-pull { --icon: var(--i-download); }
-:is(#act-force-stop, .design-force-stop) { --icon: var(--i-force); }
 #act-world { --icon: var(--i-map); }
 #act-mods { --icon: var(--i-mods); }
 #act-settings { --icon: var(--i-settings); }
@@ -617,23 +613,17 @@ time {
   font-variant-numeric: tabular-nums;
 }
 
-/* Machine-written figures in mono with tabular digits. */
-.ver,
-.mod-ver,
-.facts dd,
-time {
-  font-variant-numeric: tabular-nums;
-}
-
 /* Figures line up in every value, time and table cell. */
 :where(time, td, dd, output, .ver, .mod-ver, .count, .badge, .state) {
   font-variant-numeric: tabular-nums;
 }
 
+/* Machine-written figures in mono with tabular digits. */
 .ver,
 .mod-ver {
   font-family: var(--font-mono);
   font-size: 0.9375em;
+  font-variant-numeric: tabular-nums;
 }
 
 .visually-hidden,
@@ -775,6 +765,7 @@ time {
   margin: 0;
   padding: 0;
   overflow-x: auto;
+  scroll-padding-inline: var(--space-4);
   scrollbar-width: none;
   list-style: none;
 }
@@ -1157,11 +1148,6 @@ main {
 
 /* A row of tabs wider than its box scrolls; subnav.js marks which edge has
    more, and that edge fades over 24 px so a cut tab reads as "more this way". */
-.subnav ul,
-.js-on .tablist {
-  scroll-padding-inline: var(--space-4);
-}
-
 .subnav ul::after {
   content: "";
   flex: none;
@@ -1787,8 +1773,7 @@ legend {
    target. A slider is no box either: padding would stop its knob short of the
    track's ends. */
 .field input:not([type="checkbox"], [type="radio"], [type="range"]),
-.field select,
-.field textarea {
+.field select {
   inline-size: 100%;
   max-inline-size: 40ch;
   min-block-size: var(--target-min);
@@ -2296,8 +2281,11 @@ ol.plan-steps > li:not(:last-child)::after {
   color: var(--color-ok);
 }
 
+/* A running server's square glows faintly, the one bit of motion-free light
+   on the page. */
 .state--running::before {
   background-image: linear-gradient(currentColor, currentColor);
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
 }
 
 .state--stopping {
@@ -2335,12 +2323,6 @@ ol.plan-steps > li:not(:last-child)::after {
 
 .state--unknown::before {
   border-radius: 50%;
-}
-
-/* A running server's square glows faintly, the one bit of motion-free light
-   on the page. */
-.state--running::before {
-  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
 }
 
 /* 7.6 Long-running operations */
@@ -2515,9 +2497,7 @@ ol.plan-steps > li:not(:last-child)::after {
 
 .facts dd {
   font-weight: 500;
-}
-
-.facts dd {
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 
@@ -2732,6 +2712,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 /* Force stop is a link, not a button face, drawn with .button--risky's
    colours and size so every opener of a destructive step looks alike. */
 :is(#act-force-stop, .design-force-stop) {
+  --icon: var(--i-force);
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -2864,6 +2845,7 @@ td {
 /* Only the name column breaks inside words, so dates and sizes stay whole (DESIGN 8.3). */
 th:first-child,
 td:first-child {
+  padding-inline-start: 0;
   overflow-wrap: anywhere;
 }
 
@@ -2898,11 +2880,6 @@ td > a:not(.button) {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);
-}
-
-th:first-child,
-td:first-child {
-  padding-inline-start: 0;
 }
 
 th:last-child,
@@ -2959,10 +2936,14 @@ main td .ver,
   gap: var(--space-2) var(--space-4);
 }
 
+/* A world's name over its snapshots is a heading first: text colour, with
+   the link shown by its underline only under the pointer. */
 .group__head h3 a {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);
+  color: var(--color-heading);
+  text-decoration: none;
 }
 
 .row-actions {
@@ -3032,12 +3013,12 @@ td > .hint {
 
   .snapshot-list:has(.row-actions),
   .snapshot-list:has(.row-actions) caption,
-  .snapshot-list:has(.row-actions) tbody,
-  .snapshot-list:has(.row-actions) tr {
+  .snapshot-list:has(.row-actions) tbody {
     display: block;
   }
 
   .snapshot-list:has(.row-actions) tr {
+    display: block;
     padding-block: var(--space-4);
     border-block-end: var(--border-width) solid var(--color-line);
   }
@@ -3125,7 +3106,7 @@ td > .hint {
   }
 
   .snapshot-list:has(.row-actions) .row-actions .button--icon {
-    flex: 0 0 var(--target-min);
+    flex: none;
   }
 }
 
@@ -3190,15 +3171,14 @@ td > .hint {
    snapshot, when it was taken, its size. The header row stays for screen
    readers; a cell with a data-label says what it is. */
 @container (max-width: 14rem) {
-  table,
   table caption,
   table tbody,
-  table tr,
   table td {
     display: block;
   }
 
   table {
+    display: block;
     inline-size: auto;
     margin-inline: 0;
   }
@@ -3212,6 +3192,7 @@ td > .hint {
   }
 
   table tr {
+    display: block;
     padding-block: var(--space-2);
     border-block-end: var(--border-width) solid var(--color-line);
   }
@@ -3266,11 +3247,13 @@ td > .hint {
 /* 8.7 The map settings: tabs, then groups that size themselves from the room they have. */
 .map-section {
   container: map-section / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
 }
 
 .mode-panel,
 .gen-main,
-.gen-preview,
 .tab-panel,
 .mapgen-body {
   display: grid;
@@ -3303,6 +3286,7 @@ td > .hint {
 .js-on .tablist {
   display: flex;
   flex-wrap: wrap;
+  scroll-padding-inline: var(--space-4);
   border-block-end: var(--border-width) solid var(--color-line);
 }
 
@@ -3441,7 +3425,6 @@ td > .hint {
 
 /* A setting of steps: its name, then the select or, with script on a wide
    panel, a slider with the step in words at the end of the name's row (DESIGN 7.2). */
-.step__range,
 .step__value {
   display: none;
 }
@@ -3457,6 +3440,7 @@ td > .hint {
   .js-on .autoplace {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
     row-gap: var(--space-2);
+    padding-block-start: var(--space-2);
   }
 
   /* Fixed rows: the name and the step in words, then the slider, then the
@@ -3493,7 +3477,8 @@ td > .hint {
      name leaves no room, and keep it. */
   .js-on .step__value {
     display: block;
-    min-inline-size: 20ch;
+    flex: none;
+    min-inline-size: 0;
     color: var(--color-text);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
@@ -3520,21 +3505,17 @@ td > .hint {
    mouse, 24 px sliders and planet rows, the WCAG 2.2 floor (SPEC 17.2).
    Narrow panels and touch screens keep 44 px. */
 @container map-section (min-width: 34rem) {
-  .js-on .autoplace {
-    padding-block-start: var(--space-2);
-  }
-
   .js-on .autoplace > legend {
     margin-block-end: var(--space-1);
   }
 
-  .js-on .mapgen-body,
   .js-on .mode-panel details > .field {
     padding-block: var(--space-2);
   }
 
   .js-on .mapgen-body {
     row-gap: var(--space-2);
+    padding-block: var(--space-2);
   }
 
   @media (pointer: fine) {
@@ -3558,13 +3539,10 @@ td > .hint {
     grid-column: 1 / -1;
   }
 
-  :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field) {
-    grid-column: auto;
-  }
-
   /* Preset and seed share message, label, hint, control and error rows,
      so the select and the input line up (DESIGN 8.6). */
   :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field) {
+    grid-column: auto;
     display: grid;
     grid-row: span 5;
     grid-template-rows: subgrid;
@@ -3638,6 +3616,7 @@ td > .hint {
   --track: var(--color-border);
   --done: var(--color-text);
   --knob: var(--color-heading);
+  display: none;
   appearance: none;
   background: transparent;
 }
@@ -4050,15 +4029,6 @@ summary::-webkit-details-marker {
   font-family: var(--font-mono);
 }
 
-.field textarea {
-  max-inline-size: 60ch;
-  padding-block: var(--space-2);
-  line-height: 1.45;
-  resize: vertical;
-}
-
-.version-fields,
-.preview,
 .preview > section {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -4069,10 +4039,12 @@ summary::-webkit-details-marker {
    caption and download line, so it is seen whole; never under 16rem. */
 .preview {
   --picture-most: max(16rem, calc(100dvh - 2 * var(--target-min) - var(--space-4)));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
-.version-fields,
-.map-section {
+.version-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
@@ -4223,8 +4195,10 @@ form:has(#mode-exchange:checked) .achievements {
   place-items: center;
   inline-size: 100%;
   aspect-ratio: 1;
+  align-content: center;
+  gap: var(--space-2);
   padding: var(--space-4);
-  background: var(--color-deep);
+  background: var(--color-raised);
   border: var(--border-width) solid var(--color-border);
   color: var(--color-text-muted);
   font-size: var(--text-sm);
@@ -4258,6 +4232,7 @@ form:has(#mode-exchange:checked) .achievements {
    panned in a scrolling frame with sharp pixels (one tile is one pixel on
    2.x). The controls sit over the picture. */
 .large-view {
+  container: large-view / inline-size;
   inline-size: 100%;
   max-inline-size: 100%;
   block-size: 100%;
@@ -4293,8 +4268,10 @@ html:has(.large-view[open]) {
   min-inline-size: 0;
 }
 
+/* The key help shares the planet's line, at its end, while it fits. */
 .large-view__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   min-inline-size: 0;
@@ -4712,11 +4689,6 @@ html:has(.large-view[open]) {
   font-weight: 400;
 }
 
-/* The key help shares the planet's line, at its end, while it fits. */
-.large-view__head {
-  flex-wrap: wrap;
-}
-
 .large-view__head > .large-view__keys {
   margin-inline-start: auto;
 }
@@ -4810,9 +4782,6 @@ html:has(.large-view[open]) {
    8.8). The settings column is 38rem, so its fields stay sliders (a
    map-section of 34rem) after its padding and scroll bar; it shows once the
    map beside it can be as wide again, 77rem in all. Narrower, map only. */
-.large-view {
-  container: large-view / inline-size;
-}
 
 /* Close sits in the body, before the settings in Tab order, at the stage's top corner. */
 .large-view__body {
@@ -4968,16 +4937,8 @@ html:has(.large-view[open]) {
   border-radius: var(--radius);
   font: inherit;
   font-size: var(--text-md);
+  text-overflow: ellipsis;
   resize: vertical;
-}
-
-.field textarea:focus {
-  outline: var(--focus-width) solid var(--color-focus);
-  outline-offset: 2px;
-}
-
-.field textarea[aria-invalid="true"] {
-  border: 2px solid var(--color-danger-text);
 }
 
 /* The JSON editor keeps its lines; a long one scrolls inside the box. */
@@ -5131,19 +5092,16 @@ html:has(.large-view[open]) {
   min-inline-size: 0;
 }
 
-.mod-name {
-  min-inline-size: 0;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
 /* The name is the portal link, a full-size target (DESIGN 8.3). A name
    shown as plain text keeps the same box, so every row's name lines up with
    its Disable button. */
 .mod-name {
   display: inline-flex;
   align-items: center;
+  min-inline-size: 0;
   min-block-size: var(--target-min);
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 /* A mod's actions keep one order (DESIGN 8.11): what the portal offers,
@@ -5289,7 +5247,6 @@ html:has(.large-view[open]) {
    the actions sit beside the name, their groups one above the other when
    the column is too narrow for both. */
 @container (max-width: 36rem) {
-  .mod-list tr,
   .mod-list td {
     display: block;
   }
@@ -5303,6 +5260,7 @@ html:has(.large-view[open]) {
   }
 
   .mod-list tr {
+    display: block;
     padding-block: var(--space-2);
     border-block-end: var(--border-width) solid var(--color-line);
   }
@@ -5723,6 +5681,10 @@ a[target="_blank"]::after {
 
 .gen-preview {
   container: map-section / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-inline-size: 0;
 }
 
 .gen-grid,
@@ -5884,15 +5846,11 @@ a[target="_blank"]::after {
     grid-column: 1 / -1;
   }
 
-  .gen-settings > .field:has(#generate-name),
-  .gen-settings > .version-fields {
-    grid-column: auto;
-  }
-
   /* Name and version share label, hint and control rows, so the input and
      the select line up; what follows the control flows below (DESIGN 8.6). */
   .gen-settings > .field:has(#generate-name),
   .gen-settings > .version-fields {
+    grid-column: auto;
     display: grid;
     grid-row: span 5;
     grid-template-rows: subgrid;
@@ -5934,12 +5892,6 @@ a[target="_blank"]::after {
 .preview-placeholder__map {
   border-color: var(--color-line);
   border-radius: var(--radius);
-}
-
-.preview-placeholder__map {
-  align-content: center;
-  gap: var(--space-2);
-  background: var(--color-raised);
 }
 
 .preview-placeholder__map::before {
@@ -6167,10 +6119,12 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 }
 
 /* The log pane runs to the card's edges; long lines scroll sideways rather
-   than wrap inside a word. */
+   than wrap inside a word. The frame takes the command strip's face, so the
+   row under the pane reads as the strip's head. */
 .terminal .log-frame {
   gap: 0;
   margin-inline: calc(-1 * var(--card-pad));
+  background: var(--color-raised);
 }
 
 /* The game log shows whole lines on a warm paper surface: 20 px lines in a
@@ -6197,12 +6151,7 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 }
 
 /* "Jump to the newest" sits under the pane, at its end, so it covers no
-   line; its row is kept while it is hidden, so showing it moves nothing.
-   The row takes the command strip's face, so it reads as the strip's head. */
-.terminal .log-frame {
-  background: var(--color-raised);
-}
-
+   line; its row is kept while it is hidden, so showing it moves nothing. */
 .terminal .log-frame > .button {
   margin: var(--space-2) var(--card-pad) 0;
 }
@@ -6210,11 +6159,6 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 .terminal__console {
   padding-block: var(--space-2) var(--space-4);
   background: var(--color-raised);
-}
-
-#console-panel {
-  display: grid;
-  gap: var(--space-3);
 }
 
 .terminal #console-panel > .log {
@@ -6651,11 +6595,6 @@ main:has(> .gate) > h1 {
 /* Every slider's first row is the same: its name at the start, the step in
    words at the end, on one line; the slider takes the row under it. */
 @container map-section (min-width: 34rem) {
-  .js-on .step__value {
-    flex: none;
-    min-inline-size: 0;
-  }
-
   /* Unseen, the longest step's words hold the box's width, so the name
      beside it never changes width while the slider moves (DESIGN 8.7). */
   .js-on .step__value::after {
@@ -6729,27 +6668,31 @@ main:has(> .gate) > h1 {
   }
 }
 
-@container (max-width: 30rem) {
-  .snapshot-list:has(.row-actions) .row-actions .button--icon {
-    flex: none;
-  }
-}
-
-/* A world's name over its snapshots is a heading first: text colour, with
-   the link shown by its underline only under the pointer. */
-.group__head h3 a {
-  color: var(--color-heading);
-  text-decoration: none;
-}
-
 .group__head h3 a:hover {
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }
 
 /* The player name's chevron (8.12): the one disclosure that keeps a
-   chevron at its end instead of the foldout triangle. */
+   chevron at its end instead of the foldout triangle. A player's name opens
+   their actions in its own cell. The summary is a full-cell target with the
+   disclosure chevron but no raised face or border, so the table still reads
+   as a table. Open, the actions wrap under the name, each full width of the
+   cell on a phone (.actions). */
 .player-actions.disclosure > summary {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-block-size: var(--target-min);
+  padding: 0;
+  padding-inline-end: var(--space-5);
+  background: none;
+  color: var(--color-heading);
+  border: 0;
+  border-radius: 0;
+  font-weight: 500;
   list-style: none;
   cursor: pointer;
 }
@@ -6758,11 +6701,16 @@ main:has(> .gate) > h1 {
   display: none;
 }
 
+/* The chevron keeps to the end of the name's first line, whatever wraps. */
 .player-actions.disclosure > summary::after {
   content: "";
+  position: absolute;
+  inset-inline-end: var(--space-1);
+  inset-block-start: calc(var(--target-min) / 2 - 0.25rem);
   flex: none;
   inline-size: 0.5rem;
   block-size: 0.5rem;
+  margin: 0;
   border-inline-end: 2px solid currentColor;
   border-block-end: 2px solid currentColor;
   transform: translateY(-2px) rotate(45deg);
@@ -6888,34 +6836,6 @@ main:has(> .gate) > h1 {
 }
 
 /* Epic 9: live operations (DESIGN 8.12 to 8.19). */
-
-/* 8.12 A player's name opens their actions in its own cell. The summary is
-   a full-cell target with the disclosure chevron but no raised face or
-   border, so the table still reads as a table. Open, the actions wrap
-   under the name, each full width of the cell on a phone (.actions). */
-.player-actions.disclosure > summary {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-2);
-  min-block-size: var(--target-min);
-  padding: 0;
-  padding-inline-end: var(--space-5);
-  background: none;
-  color: var(--color-heading);
-  border: 0;
-  border-radius: 0;
-  font-weight: 500;
-}
-
-/* The chevron keeps to the end of the name's first line, whatever wraps. */
-.player-actions.disclosure > summary::after {
-  position: absolute;
-  inset-inline-end: var(--space-1);
-  inset-block-start: calc(var(--target-min) / 2 - 0.25rem);
-  margin: 0;
-}
 
 .player-actions.disclosure > summary:hover {
   background: none;
