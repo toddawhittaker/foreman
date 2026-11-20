@@ -3861,6 +3861,12 @@ form:has(#mode-exchange:checked) .achievements {
   display: block;
 }
 
+/* Once found, the counts are for screen readers only, so the held line
+   goes and no empty band sits under the picture (DESIGN 8.8). */
+.preview:has(#preview-territories:checked) .territory-result:has(> .territory-counts:only-child) {
+  min-block-size: 0;
+}
+
 .message pre {
   max-block-size: 12rem;
   margin: 0;

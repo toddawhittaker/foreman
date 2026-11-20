@@ -338,7 +338,7 @@ test.describe("with script", () => {
         const c = li.querySelector("figcaption")!.getBoundingClientRect();
         const d = li.querySelector("a.download")!.getBoundingClientRect();
         const key = Math.round(f.top);
-        byRow.set(key, [...(byRow.get(key) ?? []), [f.height, i.width, i.height, c.top, d.top]]);
+        byRow.set(key, [...(byRow.get(key) ?? []), [f.height, i.width, i.height, c.top, d.top, d.top - f.bottom]]);
       }
       return [...byRow.values()];
     });
@@ -346,10 +346,13 @@ test.describe("with script", () => {
       for (const row of await rows()) {
         for (const card of row) card.forEach((v, j) => expect(Math.abs(v - row[0][j]), `${when}: measure ${j}`).toBeLessThanOrEqual(1));
       }
+      // The gap from a card to its link is the same in every row: no band held under one row.
+      const gaps = (await rows()).map((row) => row[0][5]);
+      for (const g of gaps) expect(Math.abs(g - gaps[0]), `${when}: card-to-link gap`).toBeLessThanOrEqual(2);
     };
     await check("territories off");
     await section(page).getByLabel("Show demolisher territories").check();
-    await expect(section(page).locator("#territory-result")).not.toBeEmpty();
+    await expect(section(page).locator("#territory-result .territory-counts")).toHaveCount(1);
     await check("territories on");
     await section(page).locator(".pictures").screenshot({ path: `../screenshots/all-planets-territories-${info.project.name}.png` });
   });
