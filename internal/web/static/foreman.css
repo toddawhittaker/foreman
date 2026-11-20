@@ -3626,6 +3626,8 @@ form:has(#mode-exchange:checked) .achievements {
   display: flex;
   min-block-size: 0;
   overflow: auto;
+  /* Panned by drag, keys and wheel; no scroll bars, so zooming never narrows the map. */
+  scrollbar-width: none;
   touch-action: none;
   user-select: none;
   background: var(--color-deep);
@@ -3796,6 +3798,9 @@ form:has(#mode-exchange:checked) .achievements {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* A label at the edge is cut at the map's edge rather than widen what holds
+     the map: in the large view that would scroll the frame and narrow it. */
+  overflow: clip;
 }
 
 /* The thumbnail's picture has a border; the overlays cover only the map. */
@@ -4000,7 +4005,11 @@ form:has(#mode-exchange:checked) .achievements {
   .large-view__head { grid-area: head; }
   .large-view__news { grid-area: news; }
   .large-view__bar > .resource-amounts { grid-area: amounts; }
-  .large-view__bar > .large-view__territories { grid-area: territories; }
+  /* One target tall, as the amounts box is, so the shared line keeps its height. */
+  .large-view__bar > .large-view__territories {
+    grid-area: territories;
+    block-size: var(--target-min);
+  }
 }
 
 /* Narrower they cannot share a line, so on a map with Vulcanus its row is
@@ -12848,4 +12857,71 @@ form.setting-rows > .form-foot {
    not show at the window's edge beside the view (DESIGN 8.8). */
 html:has(.large-view[open]) {
   overflow: hidden;
+}
+
+/* Paging the large view changes only what its lines say, never their
+   height (DESIGN 8.8). The news line is one line, cut rather than wrapped. */
+.large-view__news {
+  flex-wrap: nowrap;
+  block-size: 1lh;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* The counting line is one text line: the words, cut if need be, and a
+   bar no taller than the text beside them. */
+#large-amounts-bar {
+  flex-wrap: nowrap;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+#large-counting:not([hidden]) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+#large-counting > p {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#large-counting > progress {
+  flex: 0 0 4rem;
+  block-size: 0.5rem;
+}
+
+#large-amounts-result {
+  flex: 1 1 0;
+}
+
+/* Narrow, the box and what it shows cannot share a line, so a second line
+   is always held for the count, the list or nothing, and ticking moves nothing. */
+@container large-view (max-width: 47.99rem) {
+  #large-amounts-bar {
+    flex-wrap: wrap;
+    align-content: start;
+    min-block-size: calc(var(--target-min) + var(--space-1) + var(--target-min));
+  }
+
+  #large-amounts-bar > #large-counting:not([hidden]),
+  #large-amounts-bar > #large-amounts-result {
+    flex-basis: 100%;
+  }
+}
+
+/* The title holds its line while paging empties and refills it, and the
+   download button keeps its place, unseen, while its picture is drawn. */
+.large-view__head h2 {
+  min-block-size: 1lh;
+}
+
+#large-download[hidden] {
+  display: inline-grid;
+  visibility: hidden;
 }

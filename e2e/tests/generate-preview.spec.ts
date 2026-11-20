@@ -34,6 +34,21 @@ async function runs(fakeGame: Hooks) {
   return (await fakeGame.state()).calls.filter((c) => c.includes("/containers/create")).length;
 }
 
+// The most any of the elements moves, in px, over 1.5 s of animation frames from now.
+function still(page: Page, ids: string[]) {
+  return page.evaluate((ids) => new Promise<number>((done) => {
+    const at = () => ids.map((id) => { const r = document.querySelector(id)!.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; });
+    const base = at();
+    let most = 0;
+    const end = performance.now() + 1500;
+    const tick = () => {
+      at().forEach((b, i) => b.forEach((v, j) => { most = Math.max(most, Math.abs(v - base[i][j])); }));
+      if (performance.now() < end) requestAnimationFrame(tick); else done(most);
+    };
+    requestAnimationFrame(tick);
+  }), ids);
+}
+
 test.describe("with script", () => {
   test.beforeEach(async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
@@ -322,14 +337,38 @@ test.describe("with script", () => {
           await expect(dialog.locator(`${id} > .mapgen-body > .autoplace`).first()).toHaveCSS("border-top-width", "0px");
         }
       }
+      // With the amounts on, each planet is counted after its picture; the count is slowed so its line shows.
+      await page.route(/\/generate\/preview\/resources/, async (r) => { await new Promise((ok) => setTimeout(ok, 400)); await r.continue(); });
+      await dialog.locator("#large-amounts").check();
+      if (width === 1920) {
+        await expect(dialog.locator("#large-counting")).toBeVisible();
+        await page.screenshot({ path: `../screenshots/large-view-counting-1920-${info.project.name}.png`, clip: { x: 0, y: 0, width, height: 200 } });
+      }
+      await expect(dialog.locator("#large-status")).toHaveText("Resource amounts ready.");
+      if (width === 1920) await page.screenshot({ path: `../screenshots/large-view-ready-1920-${info.project.name}.png`, clip: { x: 0, y: 0, width, height: 200 } });
       await dialog.locator("#large-frame").focus();
-      const top =() => dialog.locator("#large-next").evaluate((b) => b.getBoundingClientRect().top);
-      const first = await top();
+      const watched = ["#large-prev", "#large-next", "#large-amounts", "#large-frame"];
+      const boxes = () => page.evaluate((ids) => ids.map((id) => { const r = document.querySelector(id)!.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; }), watched);
+      const first = await boxes();
       for (const planet of ["Vulcanus", "Gleba", "Fulgora", "Aquilo", "Nauvis"]) {
+        const sampling = still(page, watched);
         await page.keyboard.press("ArrowRight");
+        expect(await sampling, planet).toBeLessThanOrEqual(0.5);
+        if (planet === "Vulcanus" || planet === "Nauvis") {
+          // Ticking and unticking either box moves nothing either, as counting or finding starts and ends.
+          const boxesHere = planet === "Vulcanus" ? ["#large-amounts", "#large-territories"] : ["#large-amounts"];
+          for (const id of boxesHere) {
+            for (let i = 0; i < 4; i++) {
+              const moving = still(page, watched);
+              await dialog.locator(id).click();
+              expect(await moving, `${planet} ${id} toggle ${i}`).toBeLessThanOrEqual(0.5);
+            }
+          }
+        }
         await expect(page.getByRole("dialog", { name: planet })).toBeVisible();
         await expect(dialog.getByRole("img", { name: new RegExp(`^Map preview of ${planet}`) })).toBeVisible();
-        expect(await top(), planet).toBe(first);
+        const now = await boxes();
+        now.forEach((b, i) => b.forEach((v, j) => expect(Math.abs(v - first[i][j]), `${planet} ${watched[i]}`).toBeLessThanOrEqual(0.5)));
         if (width === 1920 && (planet === "Vulcanus" || planet === "Nauvis")) {
           await page.screenshot({ path: `../screenshots/large-view-${planet.toLowerCase()}-1920-${info.project.name}.png` });
         }
@@ -348,8 +387,12 @@ test.describe("with script", () => {
       await section(page).getByRole("link", { name: /opens the large view/ }).click();
       const dialog = page.locator("#large-view");
       await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+      const gutter = () => dialog.locator("#large-frame").evaluate((f) => [(f as HTMLElement).offsetWidth - f.clientWidth, (f as HTMLElement).offsetHeight - f.clientHeight]);
+      const bare = await gutter();
       await dialog.locator("#large-amounts").check();
       await expect(dialog.locator("#large-amounts-text summary")).toHaveText(/^Resource amounts as text/);
+      // The labels never give the map box a scroll bar, so it keeps its width.
+      expect(await gutter()).toEqual(bare);
       const scrolling = await dialog.locator(".large-view__stage").evaluate((stage) =>
         [stage, ...stage.querySelectorAll("*")].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).map((e) => e.id || e.className));
       expect(scrolling).toEqual([]);

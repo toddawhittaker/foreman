@@ -2640,7 +2640,15 @@ close the view, the tab, the setting, and the picture again).
   the box is ticked. In the large view the box shares one line with "Show resource
   amounts" (amounts first) where the view is 48rem wide or more, so paging
   to another planet only empties the line's end; narrower, its row is held
-  on every planet of a map with Vulcanus, so the controls never move.
+  on every planet of a map with Vulcanus, so the controls never move. Every
+  line of the large view's header keeps one height whatever it holds: the
+  status line is one line, cut rather than wrapped; the counting line is
+  the words and a bar no taller than them, beside the box when wide and on
+  a line always held under it when narrow; the title and its download
+  button hold their place while a planet is drawn. Amount and territory
+  labels are cut at the map's edge, and the map's frame pans without
+  scroll bars, so paging, ticking or unticking either box, counting and its
+  end never move a control or the map's edge.
   - The large view's territory box sits in the view's bar, under the
     status line and above "Show resource amounts", with its hint beside
     it while they fit and under it when they do not. It has no name; the
