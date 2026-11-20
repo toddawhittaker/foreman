@@ -339,7 +339,7 @@ test.describe("with script", () => {
 
   // DESIGN 8.8: nothing in the map's column scrolls while the map fits, and the
   // amounts list sits last in the settings column, out of the header.
-  for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
+  for (const [width, height] of [[2000, 1005], [1920, 950], [1440, 780]] as const) {
     test(`the large view's map column has no scroll bar at ${width}x${height}`, async ({ page }, info) => {
       test.skip(info.project.name.startsWith("phone"), "a desktop layout");
       await page.setViewportSize({ width, height });
@@ -353,6 +353,9 @@ test.describe("with script", () => {
       const scrolling = await dialog.locator(".large-view__stage").evaluate((stage) =>
         [stage, ...stage.querySelectorAll("*")].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).map((e) => e.id || e.className));
       expect(scrolling).toEqual([]);
+      // Neither the view nor the page behind it scrolls, so no scroll bar shows at the window's edge.
+      const outer = await page.evaluate(() => [document.querySelector("#large-view")!, document.documentElement].map((e) => getComputedStyle(e).overflowY !== "hidden" && e.scrollHeight > e.clientHeight + 1));
+      expect(outer).toEqual([false, false]);
       if (width === 1920) {
         await page.screenshot({ path: `../screenshots/large-view-header-1920-${info.project.name}.png`, clip: { x: 0, y: 0, width, height: 200 } });
         await dialog.locator("#large-settings").evaluate((p) => { p.scrollTop = p.scrollHeight; });
