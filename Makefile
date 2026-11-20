@@ -309,6 +309,8 @@ SHARD ?=
 # E2E_ARGS passes specs or flags to Playwright, e.g. E2E_ARGS="tests/tips.spec.ts".
 E2E_ARGS ?=
 
+# e2e builds Foreman with a release version so the update check (SPEC 13.1) runs; the fake portal answers GitHub.
+e2e: FOREMAN_VERSION := v0.0.0-e2e
 e2e: build build-fakegame build-fakeportal build-fakeidp e2e-deps
 	$(DOCKER_RUN) --ipc=host -e CI -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD)) $(E2E_ARGS)
 
