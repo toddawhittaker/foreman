@@ -6940,6 +6940,12 @@ td > .badge {
   padding-block: var(--space-2) var(--space-3);
 }
 
+/* A closed row's buttons take no room, so the name column is sized by what
+   shows, not by a squeezed button nobody can see. */
+.player-actions:not([open]) > .actions {
+  display: none;
+}
+
 /* An open row keeps its time level with the name, not with the buttons. */
 tr:has(> td > .player-actions[open]) > td.num {
   vertical-align: top;
