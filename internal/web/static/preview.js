@@ -653,6 +653,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // The Try again button or the list's summary goes with the slot, so focus goes back to the box.
     if (slot && slot.contains(document.activeElement)) el(at.box).focus();
     if (slot) slot.replaceChildren();
+    if (at === places.large) {
+      const text = el("large-amounts-text");
+      if (text && text.contains(document.activeElement)) el(at.box).focus();
+      if (text) text.replaceChildren();
+    }
     counting(at, false);
     const news = el(at.news);
     if (news) news.textContent = "";
@@ -730,7 +735,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // The server holds this count now, so the planet's download can draw it.
     if (result.hasAttribute("data-kept")) markCounted(planet);
     amountDownloads();
-    if (at === places.large) largeDownload(planet);
+    if (at === places.large) {
+      largeDownload(planet);
+      // Beside the map's settings, the list goes last in their column, out of the header (DESIGN 8.8).
+      const panel = el("large-settings");
+      const list = slot.querySelector(".resource-text");
+      if (list && panel && !panel.hidden && panel.offsetParent) el("large-amounts-text").replaceChildren(list);
+    }
     const overlay = reply.querySelector(".resources");
     const map = at.map(planet);
     if (overlay && map) writeLabels(at, map, map.insertBefore(document.importNode(overlay, true), map.querySelector(".pin")));
@@ -1351,7 +1362,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     dialog.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.target.closest && e.target.closest("#large-settings")) return;
+      // The settings keep their keys; the amounts list at their foot is not a setting, so the map keeps its keys there.
+      if (e.target.closest && e.target.closest("#large-settings") && !e.target.closest("#large-amounts-text")) return;
       const panning = e.target === frame() && zoom > 1;
       // Stepping would end a download being prepared here, so the arrows wait (SPEC 17.1).
       if (arrows[e.key] && !panning && prep && prep.inView) {

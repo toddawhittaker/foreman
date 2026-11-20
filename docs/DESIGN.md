@@ -2719,9 +2719,11 @@ close the view, the tab, the setting, and the picture again).
     a `ResizeObserver` on the map, at most once a frame, with a 64 px cell
     grid so a few thousand labels stay cheap. Zooming in therefore shows
     more labels, and a label is never smaller or larger.
-  - **The text list.** Under the box, a collapsed `details`, "Resource
-    amounts as text (N patches)", also in the settings-column view and
-    readable inside the dialog. A hidden `h3` heads it; each resource is an
+  - **The text list.** A collapsed `details`, "Resource amounts as
+    text (N patches)", under the box; in the large view with the settings
+    column it goes last in that column instead, so the header keeps one
+    height, and the arrow keys still page planets from it, as it is not a
+    setting. It is readable inside the dialog. A hidden `h3` heads it; each resource is an
     `h4` giving its total (or its total yield) and a list of its patches
     sorted by amount, each as "12,345,678 at (-50, -30)" or "300% yield at
     (50, -50)". One sentence says positions are tiles from where players

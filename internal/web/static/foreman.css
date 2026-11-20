@@ -4933,19 +4933,20 @@ a[target="_blank"]::after {
   }
 
   /* A square no wider than the column and no taller than the room left,
-     less its frame, caption and download link; 6rem at the least. */
-  .gen-preview .pictures:not(:has(> li + li)) {
+     less its frame, caption and download link; 6rem at the least. While
+     the territories are written under it the list keeps its own height. */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) {
     flex: 1 1 0;
     min-block-size: calc(6rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
     container-type: size;
   }
 
-  .gen-preview .pictures:not(:has(> li + li)) > li {
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li {
     inline-size: 100%;
   }
 
   /* The frame shrinks, not the row, so its download link keeps the column's width. */
-  .gen-preview .pictures:not(:has(> li + li)) > li > figure {
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li > figure {
     inline-size: min(100%, max(6rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
   }
 
@@ -12815,4 +12816,9 @@ form.setting-rows > .form-foot {
 /* The All resources row's rule under it is the next row's divider too. */
 .js-on .autoplace--all + .autoplace {
   border-block-start: 0;
+}
+
+/* The amounts list's place in the settings column takes no row while empty. */
+.large-view__amounts-text:empty {
+  display: none;
 }

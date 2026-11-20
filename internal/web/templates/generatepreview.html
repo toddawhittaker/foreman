@@ -213,6 +213,8 @@
       <section id="large-terrain" aria-labelledby="large-terrain-heading">
         <h3 id="large-terrain-heading">{{t "mapgen.tab.terrain"}}</h3>
       </section>
+      {{- /* The amounts as text, the map's labels in words, last in the column so the header keeps its height (DESIGN 8.8). */}}
+      <div class="large-view__amounts-text" id="large-amounts-text"></div>
     </div>
     {{/* The controls sit over the picture; the frame scrolls when zoomed, so it takes focus for the arrow keys. */}}
     <div class="large-view__stage">
