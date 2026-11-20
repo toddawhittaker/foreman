@@ -1455,10 +1455,15 @@ legend {
   line-height: 1.45;
 }
 
-/* A link in a hint's smaller text still makes the 24 px target floor
-   (SPEC 17.2); inline padding grows the box without moving the lines. */
+/* A link in running text makes the 24 px target floor (SPEC 17.2) at the
+   15 px body size and at a hint's 13 px; inline padding grows the box
+   without moving the lines. */
+:where(p) > a:where(:not([class])) {
+  padding-block: 0.2em;
+}
+
 .hint a {
-  padding-block: 0.25em;
+  padding-block: 0.3em;
 }
 
 /* Checkboxes and radios keep their own 1.25rem look; the .check label is the
@@ -1596,11 +1601,17 @@ legend {
   padding-block-end: var(--space-1);
 }
 
-/* A link standing alone in a list is a full-size target (DESIGN 7 rule 3). */
-.message ul a {
+/* A link standing alone in a list, or beside an imported folder's
+   checkbox, is a full-size target (DESIGN 6, "The 320 px rules", rule 3). */
+.message ul a,
+fieldset > .check + a {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);
+}
+
+fieldset > .check + a {
+  justify-self: start;
 }
 
 /* The Done message's close button sits at its top end corner, in a 44 px
@@ -2558,6 +2569,12 @@ td > .hint {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-3);
+}
+
+/* A long "Loads next" in a narrow row wraps inside its pill rather than widen the page. */
+.save-name > .badge {
+  max-inline-size: 100%;
+  white-space: normal;
 }
 
 .save-name > a {
@@ -8841,11 +8858,11 @@ main:has(> .gate) > .gate + .gate {
     grid-template-columns: 19rem minmax(0, 1fr) 6rem;
   }
 
-  /* Last played keeps room for a full date and its age, 24 px clear of
-     Disk use. */
+  /* Last played takes the widest share and wraps between its date, clock
+     and age when the page beside the rail is narrow, 24 px clear of Disk use. */
   .worlds-head__facts,
   .worlds > li > .facts {
-    grid-template-columns: 7.5rem 6rem minmax(17rem, 1.4fr) minmax(0, 1fr);
+    grid-template-columns: 5rem 5rem minmax(0, 2fr) minmax(0, 1.2fr);
     column-gap: var(--space-5);
   }
 
@@ -9422,8 +9439,12 @@ main:has(> .gate) > .gate + .gate {
   border-block-end: var(--border-width) solid var(--color-line);
 }
 
+/* The download link makes the 24 px target floor (SPEC 17.2) without
+   making its row taller. */
 .public-mods__name {
   min-inline-size: 0;
+  padding-block: var(--space-1);
+  margin-block: calc(-1 * var(--space-1));
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -10365,13 +10386,6 @@ main:has(> .public-world) {
   display: flex;
 }
 
-/* A token's name stays one pill (names are at most 32 characters). */
-@container (width > 52rem) {
-  .audit-table .audit-token .badge {
-    white-space: nowrap;
-  }
-}
-
 /* A save bar's note leads it, the action ends it. */
 .form-foot > .form-foot__note {
   margin: 0 auto 0 0;
@@ -10725,6 +10739,23 @@ main:has(> .public-world) {
   color: var(--notice-tone);
 }
 
+/* In a narrow box, such as a phone at 200% text, the icon sits over the
+   words instead of taking a column of its own, so the words keep the width
+   (320 px rule 2). The query's rem follows the reader's text size. */
+@container (max-width: 13rem) {
+  .message {
+    padding-inline-start: var(--space-4);
+  }
+
+  .message::before {
+    position: static;
+  }
+
+  .message ul {
+    padding-inline-start: var(--space-3);
+  }
+}
+
 @media (forced-colors: active) {
   .message::before {
     background: CanvasText;
@@ -10758,10 +10789,15 @@ main table th[scope="col"] {
 }
 
 /* Audit rows: every cell starts on the row's top line, so a wrapped detail
-   leaves the short cells level. */
+   leaves the short cells level. A stacked row keeps its own spacing. */
 .audit-table td {
   vertical-align: top;
-  padding-block: var(--space-3);
+}
+
+@container (width > 52rem) {
+  .audit-table td {
+    padding-block: var(--space-3);
+  }
 }
 
 @container (width > 64rem) {
@@ -10875,13 +10911,18 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
+/* Below 64rem an archived world's two actions take a line under its facts,
+   so its name keeps the row's width (DESIGN 8.2). */
+@media (max-width: 63.99rem) {
+  #archived-worlds .worlds > li > .facts ~ .actions {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+}
+
 /* An archived world's row holds two actions on one line, Saves then
    Unarchive world, at the end of the row as Switch is above. */
 @media (min-width: 64rem) {
-  #archived-worlds :is(.worlds-head, .worlds > li) {
-    grid-template-columns: 19rem minmax(0, 1fr) 17rem;
-  }
-
   #archived-worlds .worlds > li > .facts ~ .actions {
     flex-wrap: wrap;
   }
@@ -11257,12 +11298,13 @@ form.settings[hidden] {
 }
 
 /* Both world tables share one column grid, so the archived table's columns
-   sit under the live table's; actions end the row. */
+   sit under the live table's; actions end the row. The columns are shares of
+   the row, not fixed widths, so the facts keep room beside the rail. */
 @media (min-width: 64rem) {
   .worlds-head,
   .worlds > li,
   #archived-worlds :is(.worlds-head, .worlds > li) {
-    grid-template-columns: 19rem minmax(0, 1fr) 17rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) 13rem;
   }
 
   .worlds > li > .facts ~ .actions {
@@ -11409,8 +11451,10 @@ form.settings[hidden] {
 }
 
 /* A form's foot bar: what is pending leads it; Cancel sits just before
-   the primary action at the end. */
+   the primary action at the end. It wraps rather than squeeze a button's
+   words out of its box at large text (320 px rule 5). */
 .form-foot {
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-3);
 }
@@ -11949,11 +11993,14 @@ main > .message,
    planned outline on a drafting grid, then a sentence (DESIGN 7.6). ==== */
 .empty--art {
   position: relative;
+  grid-template-columns: minmax(0, 1fr);
   padding-block-start: var(--space-5);
 }
 
+/* The ghost shrinks with a narrow card at large text (320 px rule 1). */
 .empty--art::before {
   inline-size: 10rem;
+  max-inline-size: 100%;
   block-size: 6rem;
   background:
     linear-gradient(to right, color-mix(in srgb, var(--color-info) 18%, transparent) 1px, transparent 1px) -1px -1px / 1rem 1rem,
@@ -12009,6 +12056,14 @@ main > .message,
   .terminal .log {
     block-size: max(24rem, calc(100dvh - 22rem));
     max-block-size: none;
+  }
+
+  /* The past commands stay only as tall as they hold, so the newest reply
+     sits under the field (DESIGN 8.5). */
+  #console-panel .console-past > .log,
+  .terminal .console-past > .log {
+    block-size: auto;
+    max-block-size: min(40vh, 20rem);
   }
 }
 

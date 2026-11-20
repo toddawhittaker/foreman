@@ -1936,8 +1936,11 @@ Space Age, Last played, Disk use) in the column-name style (8.3), over a
 1 px `line`, heads the list. The header row is `aria-hidden`, because each row
 keeps its own fact names for screen readers, visually hidden there. Every
 row is at least 56 px tall, with its name, chip and values centred on the
-row, on columns shared by every row; Last played keeps room for a full
-date and its age, 24 px clear of Disk use. The list sits in the page's card, and its rows are separated by a 1px `line`
+row, on columns shared by every row. The columns are shares of the row,
+not fixed widths, so they fit beside the rail; Last played takes the
+widest share and wraps between its date, clock and age when it must,
+24 px clear of Disk use. Below 64rem an archived row's two buttons take
+a line under its facts. The list sits in the page's card, and its rows are separated by a 1px `line`
 border, not boxed as cards of their own. A world's name is its row's title,
 a link in `heading` colour that is underlined only under the pointer. The
 active world's row has a 3px leading edge in `selected` that reaches the
