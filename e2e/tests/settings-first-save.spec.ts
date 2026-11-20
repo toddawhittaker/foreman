@@ -24,6 +24,7 @@ test("the first save of a name, a password and max players writes the keys the g
     "The file has no visibility yet. Hidden will be written unless another is chosen.",
   );
 
+  await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("New password").fill(typed);
   await page.getByLabel("Maximum players").fill("8");
   await page.getByRole("button", { name: "Preview changes" }).click();
@@ -39,6 +40,7 @@ test("the first save of a name, a password and max players writes the keys the g
   expect(saved.game_password).toBe(typed);
 
   // The saved file is what the form shows next time, and the password does not show.
+  await page.goto("/worlds/base/settings");
   await expect(page.getByLabel("Server name")).toHaveValue("Base");
   expect(await page.content()).not.toContain(typed);
 });

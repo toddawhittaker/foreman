@@ -35,7 +35,9 @@ type pendingChange struct {
 	Raw   bool
 	Files []pendingFile
 	// Form is the form submission behind the change, nil for a raw edit.
-	Form    *formEdit
+	Form *formEdit
+	// Section is the Game settings sub-page the form was sent from.
+	Section string
 	expires time.Time
 	created time.Time
 }

@@ -73,11 +73,14 @@
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.note.running"}}</p>
 </div>
 {{- end}}
-{{- /* One page with clear section headings; the world's pages are the only navigation (DESIGN 6). */}}
+{{- /* Each section is a sub-page listed under Game settings in the world's page column (DESIGN 6); the others stay in the form, hidden, so a save keeps them as they are. */}}
 <div class="settings-wrap">
 <div class="settings-layout">
 <div class="settings-main">
-<form method="post" action="{{.Path}}" class="panel settings" novalidate>
+<form method="post" action="{{.Path}}" class="panel settings" novalidate{{if not .FormShown}} hidden{{end}}>
+  {{- if .Section}}
+  <input type="hidden" name="section" value="{{.Section}}">
+  {{- end}}
   {{template "summary" .Problems}}
   {{- if .Editable}}
   {{template "required-note"}}
@@ -89,7 +92,7 @@
   {{- if .Edit}}
   <input type="hidden" name="edit" value="{{.Edit}}">
   {{- end}}
-  <fieldset id="settings-listing"{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-listing"{{if not ($page.Show "listing")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.listing"}}</legend>
     <div class="setting-row__body">
     <div class="field">
@@ -115,7 +118,7 @@
     </div>
   </fieldset>
 
-  <fieldset id="settings-joining"{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-joining"{{if not ($page.Show "players")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.joining"}}</legend>
     <div class="setting-row__body">
     <fieldset>
@@ -169,7 +172,7 @@
     </div>
   </fieldset>
 
-  <fieldset id="settings-gameplay"{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-gameplay"{{if not ($page.Show "gameplay")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.gameplay"}}</legend>
     <div class="setting-row__body">
     <div class="setting-check">
@@ -198,7 +201,7 @@
     </div>
   </fieldset>
 
-  <fieldset id="settings-saving"{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-saving"{{if not ($page.Show "saving")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.saving"}}</legend>
     <div class="setting-row__body">
     <div class="field field--short">
@@ -233,10 +236,10 @@
     </div>
   </fieldset>
 
-  <fieldset id="settings-network"{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-network"{{if not ($page.Show "network")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.network"}}</legend>
     <div class="setting-row__body">
-    <details class="disclosure"{{if .NetworkOpen}} open{{end}}>
+    <details class="disclosure"{{if or .NetworkOpen (eq .Section "network")}} open{{end}}>
       <summary>{{t "settings.network.summary"}}</summary>
       <div class="field field--short">
         <label for="max-upload">{{t "settings.upload.label"}}</label>
@@ -263,7 +266,7 @@
   </fieldset>
 
   {{/* readonly, not disabled: the list can still be focused and scrolled on a world that cannot be changed. */}}
-  <fieldset id="settings-admins">
+  <fieldset id="settings-admins"{{if not ($page.Show "admins")}} hidden{{end}}>
     <legend>{{t "settings.admins.legend"}}</legend>
     <div class="setting-row__body">
     {{- if .AdminsBroken}}
@@ -293,7 +296,7 @@
   </fieldset>
   {{- if not .LiveBans}}
 
-  <fieldset id="settings-bans">
+  <fieldset id="settings-bans"{{if not ($page.Show "bans")}} hidden{{end}}>
     <legend>{{t "settings.bans.legend"}}</legend>
     <div class="setting-row__body">
     {{- if .BansBroken}}
@@ -315,7 +318,7 @@
   {{- end}}
   {{- if not .LiveWhitelist}}
 
-  <fieldset id="settings-whitelist">
+  <fieldset id="settings-whitelist"{{if not ($page.Show "whitelist")}} hidden{{end}}>
     <legend>{{t "settings.whitelist.legend"}}</legend>
     <div class="setting-row__body">
     {{- if .WhitelistBroken}}
@@ -353,7 +356,7 @@
      its own card after the form rather than inside it, and the form's
      Preview changes covers only the list (DESIGN 8.13). */}}
 {{- if and .Editable (not .LiveWhitelist)}}
-<section class="panel setting-row" id="settings-whitelist-enforce" aria-labelledby="whitelist-enforce-heading">
+<section class="panel setting-row" id="settings-whitelist-enforce"{{if not ($page.Show "whitelist")}} hidden{{end}} aria-labelledby="whitelist-enforce-heading">
   <div class="setting-row__head">
   <h2 id="whitelist-enforce-heading">{{t "settings.whitelist.enforce_heading"}}</h2>
   </div>
@@ -363,7 +366,7 @@
 </section>
 {{- end}}
 {{- if and .LiveBans .Editable}}
-<section class="panel setting-row" id="settings-bans" aria-labelledby="bans-heading">
+<section class="panel setting-row" id="settings-bans"{{if not ($page.Show "bans")}} hidden{{end}} aria-labelledby="bans-heading">
   <div class="setting-row__head">
   <h2 id="bans-heading">{{t "settings.bans.legend"}}</h2>
   <p class="hint">{{t "settings.lists.live"}}</p>
@@ -405,7 +408,7 @@
 </section>
 {{- end}}
 {{- if and .LiveWhitelist .Editable}}
-<section class="panel setting-row" id="settings-whitelist" aria-labelledby="whitelist-heading">
+<section class="panel setting-row" id="settings-whitelist"{{if not ($page.Show "whitelist")}} hidden{{end}} aria-labelledby="whitelist-heading">
   <div class="setting-row__head">
   <h2 id="whitelist-heading">{{t "settings.whitelist.legend"}}</h2>
   <p class="hint">{{t "settings.lists.live"}}</p>

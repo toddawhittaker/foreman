@@ -43,25 +43,22 @@ test("change a setting from the Server page in three clicks, and the password ne
 
   await page.getByRole("link", { name: "Game settings" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base Active");
-  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Game settings" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText("A password is set.")).toBeVisible();
-  await expect(page.getByLabel("New password")).toHaveValue("");
+  const worldPages = page.getByRole("navigation", { name: "World pages" });
+  await expect(worldPages.getByRole("link", { name: "Game settings" })).toHaveAttribute("aria-current", "true");
+  await expect(worldPages.getByRole("link", { name: "Listing", exact: true })).toHaveAttribute("aria-current", "page");
   await expectNoSecret(page);
   await checkPage(page);
 
-  await page.getByLabel("Maximum players").fill("8");
   await page.getByLabel("Description").fill("Come play\nBring snacks");
   await page.getByRole("button", { name: "Preview changes" }).click();
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Save these changes to Base?");
   const rows = page.locator("ul.changes > li");
-  await expect(rows).toHaveCount(2);
-  await expect(rows.filter({ hasText: "max_players" })).toContainText("Added");
-  await expect(rows.filter({ hasText: "max_players" }).locator("ins")).toHaveText("8");
+  await expect(rows).toHaveCount(1);
   await expect(rows.filter({ hasText: "description" }).locator("ins")).toHaveText('"Come play\\nBring snacks"');
   await expect(page.getByText("Take an automatic snapshot of Base")).toBeVisible();
   await expect(page.getByText("To undo, restore that snapshot from the Snapshots page; the message after saving links to it.")).toBeVisible();
-  expect(read(foreman.dataDir)).not.toContain("max_players");
+  expect(read(foreman.dataDir)).not.toContain("description");
   await expectNoSecret(page);
   await checkPage(page);
 
@@ -70,20 +67,39 @@ test("change a setting from the Server page in three clicks, and the password ne
   const done = page.locator(".message--success");
   await expect(done).toContainText('Settings saved. Foreman took the snapshot "Before settings change" first.');
   await expect(done.getByRole("link", { name: "Go to the snapshot" })).toBeVisible();
-  await expect(page.getByLabel("Maximum players")).toHaveValue("8");
+  await expect(page.getByLabel("Description")).toHaveValue("Come play\nBring snacks");
   await expectNoSecret(page);
   await checkPage(page);
   await expectWithin(clicks, 3, "change a setting from the Server page");
 
+  // The players sub-page holds the other setting; it is a second save.
+  await worldPages.getByRole("link", { name: "Players and access" }).click();
+  await expect(worldPages.getByRole("link", { name: "Players and access" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("A password is set.")).toBeVisible();
+  await expect(page.getByLabel("New password")).toHaveValue("");
+  await page.getByLabel("Maximum players").fill("8");
+  await page.getByRole("button", { name: "Preview changes" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Save these changes to Base?");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.filter({ hasText: "max_players" })).toContainText("Added");
+  await expect(rows.filter({ hasText: "max_players" }).locator("ins")).toHaveText("8");
+  await expectNoSecret(page);
+  await checkPage(page);
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page).toHaveURL(/\/worlds\/base\/settings\?saved=1.*section=players/);
+  await expect(page.getByLabel("Maximum players")).toHaveValue("8");
+  await expectNoSecret(page);
+  await checkPage(page);
+
   const saved = JSON.parse(read(foreman.dataDir));
   expect(saved).toMatchObject({ name: "Base", max_players: 8, description: "Come play\nBring snacks", game_password: secret });
   const snaps = readdirSync(join(foreman.dataDir, "snapshots", "base"));
-  expect(snaps.length).toBe(1);
+  expect(snaps.length).toBe(2);
 });
 
 test("a new password is set without being shown, and the diff only says so", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("New password").fill(typed);
   await page.getByRole("button", { name: "Preview changes" }).click();
   const row = page.locator("ul.changes > li");
@@ -109,7 +125,7 @@ test("a new password is set without being shown, and the diff only says so", asy
 
 test("a refused form says to enter a typed password again, but Go back and edit does not", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=players");
   const note = "Enter the new password again; it is never kept in the page.";
   await page.getByLabel("Maximum players").fill("ten");
   await page.getByRole("button", { name: "Preview changes" }).click();
@@ -141,6 +157,8 @@ test("the form shows every error at once and keeps what was typed", async ({ pag
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings");
   await page.getByLabel("Server name").fill("");
+  await page.getByRole("button", { name: "Preview changes" }).click();
+  // The page with problems shows every section, so the other fields can be filled now.
   await page.getByLabel("Maximum players").fill("ten");
   await page.getByLabel("Admin names").fill("alice\nbad\u0001name");
   await page.getByRole("button", { name: "Preview changes" }).click();
@@ -165,12 +183,12 @@ test("nothing changed offers no save", async ({ page, foreman }) => {
   await checkPage(page);
   await page.getByRole("link", { name: "Back to the settings" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base Active");
-  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Game settings" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Game settings" })).toHaveAttribute("aria-current", "true");
 });
 
 test("go back and edit keeps the edits", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("Maximum players").fill("5");
   await page.getByRole("button", { name: "Preview changes" }).click();
   await page.getByRole("link", { name: "Go back and edit" }).click();
@@ -182,7 +200,7 @@ test("go back and edit keeps the edits", async ({ page, foreman }) => {
 
 test("admins are edited one per line, and the list is written while stopped", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=admins");
   await page.getByLabel("Admin names").fill("Alice\nBob");
   await page.getByRole("button", { name: "Preview changes" }).click();
   await expect(page.getByText("Added admin Alice")).toBeVisible();
@@ -251,7 +269,7 @@ test("the JSON editor refuses a bad edit with the line, then saves a good one an
 
 test("a file changed after the preview shows the new changes with a warning", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("Maximum players").fill("5");
   await page.getByRole("button", { name: "Preview changes" }).click();
   writeFileSync(
@@ -273,7 +291,7 @@ test("a file changed after the preview shows the new changes with a warning", as
 
 test("a preview already saved cannot be saved again, and says so", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("Maximum players").fill("5");
   await page.getByRole("button", { name: "Preview changes" }).click();
   const token = await page.locator('input[name="token"]').inputValue();
@@ -293,7 +311,10 @@ test("a world a newer Foreman wrote is read-only", async ({ page, foreman }) => 
   await page.goto("/worlds/base/settings");
   await expect(page.getByText("A newer version of Foreman wrote this world, so this version cannot change it.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview changes" })).toHaveCount(0);
+  await page.goto("/worlds/base/settings?section=players");
+  await expect(page.getByRole("button", { name: "Preview changes" })).toHaveCount(0);
   await expect(page.getByLabel("Maximum players")).toBeDisabled();
+  await page.goto("/worlds/base/settings?section=admins");
   // The admin list is read-only, not disabled, so the keyboard can reach and scroll it.
   const admins = page.getByLabel("Admin names");
   await expect(admins).toHaveAttribute("readonly", "");
@@ -310,7 +331,7 @@ test("a world a newer Foreman wrote is read-only", async ({ page, foreman }) => 
 
 test("the form works with the keyboard alone", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("Maximum players").focus();
   await page.keyboard.type("4");
   const preview = page.getByRole("button", { name: "Preview changes" });
@@ -331,7 +352,7 @@ test("the form works with the keyboard alone", async ({ page, foreman }) => {
 // reaches it from a link.
 test("a section id reaches its section, with no section list on the page", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  await page.goto("/worlds/base/settings#settings-bans");
+  await page.goto("/worlds/base/settings?section=bans#settings-bans");
   await expect(page.locator("#settings-bans")).toBeInViewport();
   await expect(page.locator("details.settings-jump")).toHaveCount(0);
   await checkPage(page);
@@ -357,7 +378,13 @@ test.describe("a running world", () => {
     await page.getByRole("link", { name: "Game settings" }).click();
     await expect(page.getByText("The server is running. Changes to these settings take effect after a restart. Changes to admins apply at once.")).toBeVisible();
     await checkPage(page);
+    const pages = page.getByRole("navigation", { name: "World pages" });
+    await pages.getByRole("link", { name: "Players and access" }).click();
     await page.getByLabel("Maximum players").fill("8");
+    await page.getByRole("button", { name: "Preview changes" }).click();
+    // The edit is kept while the admins sub-page is filled, so one preview covers both files.
+    await page.getByRole("link", { name: "Go back and edit" }).click();
+    await pages.getByRole("link", { name: "Admins" }).click();
     await page.getByLabel("Admin names").fill("Alice");
     await page.getByRole("button", { name: "Preview changes" }).click();
     await expect(page.getByText("The server is running. These changes take effect after a restart.")).toBeVisible();
@@ -391,14 +418,16 @@ test.describe("auto-pause (SPEC 11.1)", () => {
     await createAdmin(page);
     seedWorld(foreman);
     expect(existsSync(settingsFile(foreman.dataDir))).toBe(false);
-    await page.goto("/worlds/base/settings");
+    await page.goto("/worlds/base/settings?section=gameplay");
     await expect(page.getByLabel("Pause when no one is online")).toBeChecked();
+    await page.goto("/worlds/base/settings?section=players");
     await page.getByLabel("Maximum players").fill("8");
     await page.getByRole("button", { name: "Preview changes" }).click();
     await expect(page.locator("ul.changes > li").filter({ hasText: "auto_pause" })).toContainText("Added");
     await page.getByRole("button", { name: "Save settings" }).click();
     await expect(page).toHaveURL(/\/worlds\/base\/settings\?saved=1/);
     expect(JSON.parse(read(foreman.dataDir))).toMatchObject({ ...required, auto_pause: true, max_players: 8 });
+    await page.goto("/worlds/base/settings?section=gameplay");
     await expect(page.getByLabel("Pause when no one is online")).toBeChecked();
   });
 
@@ -406,14 +435,15 @@ test.describe("auto-pause (SPEC 11.1)", () => {
     await createAdmin(page);
     seedWorld(foreman);
     writeSettings(foreman.dataDir, required);
-    await page.goto("/worlds/base/settings");
+    await page.goto("/worlds/base/settings?section=gameplay");
     await expect(page.getByLabel("Pause when no one is online")).toBeChecked();
     await page.getByRole("button", { name: "Preview changes" }).click();
     await expect(page.getByText("Nothing changed.")).toBeVisible();
 
     writeSettings(foreman.dataDir, { ...required, auto_pause: false });
-    await page.goto("/worlds/base/settings");
+    await page.goto("/worlds/base/settings?section=gameplay");
     await expect(page.getByLabel("Pause when no one is online")).not.toBeChecked();
+    await page.goto("/worlds/base/settings?section=players");
     await page.getByLabel("Maximum players").fill("8");
     await page.getByRole("button", { name: "Preview changes" }).click();
     await expect(page.locator("ul.changes > li")).toHaveCount(1);
@@ -437,7 +467,7 @@ test.describe("a running world with players", () => {
 
   test("Make admin sits by each connected player who is not an admin, and goes through the preview", async ({ page, foreman, fakeGame }) => {
     await startRunning(page, foreman, fakeGame!);
-    await page.goto("/worlds/base/settings");
+    await page.goto("/worlds/base/settings?section=admins");
     await expect(page.getByRole("heading", { name: "Connected now" })).toHaveCount(0);
 
     await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
@@ -455,12 +485,14 @@ test.describe("a running world with players", () => {
     await checkPage(page);
 
     // Enter in a field previews the form; it does not press the first Make admin button.
+    await page.goto("/worlds/base/settings?section=players");
     await page.getByLabel("Maximum players").fill("8");
     await page.getByLabel("Maximum players").press("Enter");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Save these changes to Base?");
     await expect(page.getByText("Added admin")).toHaveCount(0);
     await page.getByRole("link", { name: "Go back and edit" }).click();
 
+    await page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Admins" }).click();
     await page.getByRole("button", { name: "Make admin alice" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Save these changes to Base?");
     await expect(page.getByText("Added admin alice")).toBeVisible();
@@ -474,7 +506,7 @@ test.describe("a running world with players", () => {
 
   test("the Restart link after a save opens the Server page's stop page, and Cancel returns to the settings", async ({ page, foreman, fakeGame }) => {
     await startRunning(page, foreman, fakeGame!);
-    await page.goto("/worlds/base/settings");
+    await page.goto("/worlds/base/settings?section=players");
     await page.getByLabel("Maximum players").fill("8");
     await page.getByRole("button", { name: "Preview changes" }).click();
     await page.getByRole("button", { name: "Save settings" }).click();

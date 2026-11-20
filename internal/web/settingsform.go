@@ -406,6 +406,8 @@ type SettingsPage struct {
 	Broken bool
 	// Edit is the token of the previewed change the form was refilled from.
 	Edit string
+	// Section is the sub-page shown (settingssections.go); "" shows them all.
+	Section string
 
 	Name, Description string
 	// Visibility is "lan", "hidden", or "" when neither is chosen.
@@ -506,7 +508,20 @@ func (SettingsPage) navItem() string      { return PathWorlds }
 
 // Tabs are the world's pages, with Settings current (DESIGN 6).
 func (p SettingsPage) Tabs() WorldTabs {
-	return settingsTabs(p.WorldID, false)
+	t := settingsTabs(p.WorldID, false)
+	if p.Section == "" {
+		return t
+	}
+	t.Under = true
+	for _, s := range settingsSections {
+		href := settingsSectionPath(p.WorldID, s.Key)
+		if p.Edit != "" {
+			// A previewed change being edited goes with the person between sub-pages.
+			href = settingsPath(p.WorldID) + "?" + sectionQuery + "=" + s.Key + "&edit=" + url.QueryEscape(p.Edit)
+		}
+		t.Sub = append(t.Sub, SubTab{Href: href, Label: s.Label, Current: s.Key == p.Section})
+	}
+	return t
 }
 
 func (p SettingsPage) hasErrors() bool { return p.has() || !p.Error.IsZero() }

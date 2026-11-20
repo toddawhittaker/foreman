@@ -100,6 +100,8 @@ type WorldTabs struct {
 	// Under marks Current as the section the page belongs to, not the page
 	// itself (aria-current "true", not "page"; DESIGN 6).
 	Under bool
+	// Sub are the current page's own sub-pages, listed under it.
+	Sub []SubTab
 }
 
 func worldTabs(w world.Summary, current string) WorldTabs {

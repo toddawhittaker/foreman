@@ -23,25 +23,34 @@ async function setUp(page: Page, f: Foreman, version = "2.1.24") {
 
 test("every unset field shows the game's default, and an untouched form changes nothing", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  for (const [label, value] of [
-    ["Maximum players", "0"],
-    ["Kick idle players after this many minutes", "0"],
-    ["Autosave interval in minutes", "10"],
-    ["Autosave slots", "5"],
-    ["Upload limit in KB per second", "0"],
-    ["Upload slots", "5"],
-  ] as const) {
+  const unset = async (label: string, value: string) => {
     const field = page.getByLabel(label);
     await expect(field).toHaveValue("");
     await expect(field).toHaveAttribute("placeholder", value);
-  }
+  };
+  await page.goto("/worlds/base/settings?section=players");
+  await unset("Maximum players", "0");
+  await unset("Kick idle players after this many minutes", "0");
+  await expect(page.getByLabel("Require user verification")).toBeChecked();
+  await checkPage(page);
+
+  await page.goto("/worlds/base/settings?section=saving");
+  await unset("Autosave interval in minutes", "10");
+  await unset("Autosave slots", "5");
   await expect(page.locator("#autosave-slots-hint")).toContainText("Game default: 5");
   await expect(page.locator("#autosave-slots-hint")).toContainText("Foreman gives new worlds 20 slots.");
-  await expect(page.getByLabel("Require user verification")).toBeChecked();
+  await expect(page.getByLabel("Save without pausing the game")).not.toBeChecked();
+  await checkPage(page);
+
+  await page.goto("/worlds/base/settings?section=network");
+  await unset("Upload limit in KB per second", "0");
+  await unset("Upload slots", "5");
+  await checkPage(page);
+
+  await page.goto("/worlds/base/settings?section=gameplay");
   await expect(page.getByLabel("Only admins can pause the game")).toBeChecked();
   await expect(page.getByLabel("Pause when no one is online")).toBeChecked();
   await expect(page.getByLabel("Pause the game while a player is joining")).not.toBeChecked();
-  await expect(page.getByLabel("Save without pausing the game")).not.toBeChecked();
   await expect(page.getByLabel("Who can use console commands")).toHaveValue("admins-only");
   await expect(page.locator("#settings-gameplay")).toContainText("Game default: on");
   await expect(page.locator("#settings-gameplay")).toContainText("Game default: off");
@@ -54,26 +63,40 @@ test("every unset field shows the game's default, and an untouched form changes 
 test("a new world's form shows Foreman's 20 autosave slots", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=saving");
   await expect(page.getByLabel("Autosave slots")).toHaveValue("20");
 });
 
-test("each new field writes its own key, and the Network group opens when it holds a value", async ({ page, foreman }) => {
+test("each new field writes its own key, and the Network group is open on its sub-page", async ({ page, foreman }) => {
   await setUp(page, foreman);
-  const network = page.locator("#settings-network details");
-  await expect(network).not.toHaveAttribute("open");
+  const save = async (section: string) => {
+    await page.getByRole("button", { name: "Preview changes" }).click();
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page).toHaveURL(new RegExp(`/worlds/base/settings\\?saved=1.*section=${section}`));
+  };
+  await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("Returning players can join when the server is full").check();
   await page.getByLabel("Kick idle players after this many minutes").fill("15");
+  await save("players");
+
+  await page.goto("/worlds/base/settings?section=gameplay");
   await page.getByLabel("Pause the game while a player is joining").check();
   await page.getByLabel("Only admins can pause the game").uncheck();
   await page.getByLabel("Who can use console commands").selectOption("false");
+  await save("gameplay");
+
+  await page.goto("/worlds/base/settings?section=saving");
   await page.getByLabel("Save without pausing the game").check();
-  await network.locator("summary").click();
+  await save("saving");
+
+  // The disclosure is open on its own sub-page, so no click is needed to reach the fields.
+  await page.goto("/worlds/base/settings?section=network");
+  const network = page.locator("#settings-network details");
+  await expect(network).toHaveAttribute("open", "");
   await page.getByLabel("Upload limit in KB per second").fill("512");
   await page.getByLabel("Upload slots").fill("3");
-  await page.getByRole("button", { name: "Preview changes" }).click();
-  await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page).toHaveURL(/\/worlds\/base\/settings\?saved=1/);
+  await save("network");
+
   expect(read(foreman.dataDir)).toMatchObject({
     ignore_player_limit_for_returning_players: true,
     afk_autokick_interval: 15,
@@ -84,13 +107,14 @@ test("each new field writes its own key, and the Network group opens when it hol
     max_upload_in_kilobytes_per_second: 512,
     max_upload_slots: 3,
   });
-  await expect(page.locator("#settings-network details")).toHaveAttribute("open", "");
+  await expect(network).toHaveAttribute("open", "");
   await expect(page.getByLabel("Upload slots")).toHaveValue("3");
   await checkPage(page);
 });
 
 test("clearing a field the file sets removes its key and brings back the default hint", async ({ page, foreman }) => {
   await setUp(page, foreman);
+  await page.goto("/worlds/base/settings?section=saving");
   const slots = page.getByLabel("Autosave slots");
   await slots.fill("7");
   await page.getByRole("button", { name: "Preview changes" }).click();
@@ -114,7 +138,9 @@ test("clearing a field the file sets removes its key and brings back the default
 
 test("fork saving carries its note, and the pause-while-joining setting is hidden on 1.1", async ({ page, foreman }) => {
   await setUp(page, foreman, "1.1.110");
+  await page.goto("/worlds/base/settings?section=gameplay");
   await expect(page.getByLabel("Pause the game while a player is joining")).toHaveCount(0);
+  await page.goto("/worlds/base/settings?section=saving");
   const note = page.locator("#non-blocking-saving-note");
   await expect(note).toContainText("highly experimental");
   await expect(note).toContainText("close to double");
@@ -129,11 +155,22 @@ test.describe("without script", () => {
 
   test("the new sections are headed and reachable by their ids", async ({ page, foreman }) => {
     await setUp(page, foreman);
-    const sections: [string, string][] = [["listing", "Listing"], ["joining", "Players and access"], ["gameplay", "Gameplay"], ["saving", "Saving"], ["network", "Network"], ["admins", "Admins"], ["whitelist", "Whitelist"], ["bans", "Ban list"]];
-    for (const [id, name] of sections) {
+    const sections: [string, string, string][] = [
+      ["listing", "listing", "Listing"],
+      ["players", "joining", "Players and access"],
+      ["gameplay", "gameplay", "Gameplay"],
+      ["saving", "saving", "Saving"],
+      ["network", "network", "Network"],
+      ["admins", "admins", "Admins"],
+      ["whitelist", "whitelist", "Whitelist"],
+      ["bans", "bans", "Ban list"],
+    ];
+    for (const [section, id, name] of sections) {
+      await page.goto(`/worlds/base/settings?section=${section}`);
       await expect(page.locator(`#settings-${id} > legend`)).toHaveText(name);
+      await expect(page.locator(`#settings-${id}`)).toBeVisible();
     }
-    await page.goto("/worlds/base/settings#settings-network");
+    await page.goto("/worlds/base/settings?section=network#settings-network");
     await expect(page).toHaveURL(/#settings-network$/);
     await expect(page.locator("#settings-network")).toBeInViewport();
   });
@@ -146,13 +183,14 @@ for (const lang of ["de", "ru"]) {
     test("the form fits and passes axe", async ({ page, foreman }) => {
       await setUp(page, foreman);
       await pickLanguage(page, lang);
-      await page.goto("/worlds/base/settings");
-      await expect(page.locator("html")).toHaveAttribute("lang", lang);
-      await page.evaluate(() => {
-        document.documentElement.style.fontSize = "200%";
-      });
-      await page.locator("#settings-network details summary").click();
-      await checkPage(page);
+      for (const section of ["listing", "players", "gameplay", "saving", "network", "admins", "bans", "whitelist"]) {
+        await page.goto(`/worlds/base/settings?section=${section}`);
+        await expect(page.locator("html")).toHaveAttribute("lang", lang);
+        await page.evaluate(() => {
+          document.documentElement.style.fontSize = "200%";
+        });
+        await checkPage(page);
+      }
     });
   });
 }

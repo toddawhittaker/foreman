@@ -2,8 +2,15 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow">{{t "common.nav.settings"}}</p>
-<h1>{{t "common.menu.notifications"}}</h1>
+<header class="page-head page-head--row">
+  <p class="eyebrow">{{t "common.nav.settings"}}</p>
+  <h1>{{t "common.menu.notifications"}}</h1>
+  {{- if not .NoKey}}
+  <div class="actions">
+    <a href="{{.AddPath}}" class="button button--primary" id="act-webhook-add">{{t "notify.add"}}</a>
+  </div>
+  {{- end}}
+</header>
 {{template "settings-tabs" "notifications"}}
 {{- if .NoKey}}
 {{- /* Without the key no address can be sealed or read, so a note stands in for the list and form (DESIGN 8.16). */}}
@@ -17,6 +24,7 @@
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
 </div>
 {{- end}}
+<div class="panel webhook-panel">
 {{- with .Hooks}}
 <p id="notify-state">{{t "notify.state" "count" $.Page.Sending}}</p>
 <ul class="worlds webhook-list" role="list">
@@ -42,8 +50,6 @@
 {{- else}}
 <p class="empty empty--art empty--settings empty--notify" id="notify-empty">{{t "notify.empty"}}</p>
 {{- end}}
-<div class="actions">
-  <a href="{{.AddPath}}" class="button button--primary" id="act-webhook-add">{{t "notify.add"}}</a>
 </div>
 {{- end}}
 {{- end}}

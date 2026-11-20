@@ -265,10 +265,20 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 		refillLists(&p, c)
 	}
 	p.Edit = edit
+	p.Section = settingsSection(r.URL.Query().Get(sectionQuery))
+	if fromEdit && c.Section != "" && r.URL.Query().Get(sectionQuery) == "" {
+		p.Section = c.Section
+	}
 	p.Connected = h.connected(r.Context(), sw, p.Admins)
 	p.PasswordPending = p.PasswordSet && !bytes.Equal(carriedPassword(sw.formText()), carriedPassword(text))
 	h.fillDone(&p, sw, r)
 	p.Player = h.s.playerResults.take(u.ID, sw.sum.ID, settingsPath(sw.sum.ID))
+	if p.Player != nil {
+		p.Section = playerSection(p.Player.Action)
+	}
+	if r.URL.Query().Get(switchQuery) != "" {
+		p.Section = "whitelist"
+	}
 	h.s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -357,7 +367,11 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	h.showPreview(w, r, u, sw, pendingChange{UserID: u.ID, WorldID: sw.sum.ID, Form: &edit2, Files: files}, false)
+	var section string
+	if v := r.PostFormValue(sectionQuery); v != "" {
+		section = settingsSection(v)
+	}
+	h.showPreview(w, r, u, sw, pendingChange{UserID: u.ID, WorldID: sw.sum.ID, Form: &edit2, Files: files, Section: section}, false)
 }
 
 // formChange turns a posted settings form into the files it changes,
@@ -520,6 +534,9 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 	}
 	if res.Live {
 		to += "&live=1"
+	}
+	if c.Section != "" && c.Section != settingsSections[0].Key {
+		to += "&" + sectionQuery + "=" + c.Section
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
 }

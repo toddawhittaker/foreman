@@ -270,7 +270,14 @@
     <li><a href="{{.Path}}/snapshots" aria-label="{{t "worlds.world.snapshots_name"}}"{{if eq .Current "snapshots"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
     {{- if .Settings}}
     <li><a href="{{.Path}}/mods"{{if eq .Current "mods"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "mods.tab"}}</a></li>
-    <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a></li>
+    <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a>
+      {{- if .Sub}}
+      <ul class="subnav__sub" role="list">
+        {{- range .Sub}}
+        <li><a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{msg .Label}}</a></li>
+        {{- end}}
+      </ul>
+      {{- end}}</li>
     {{- end}}
   </ul>
 </nav>

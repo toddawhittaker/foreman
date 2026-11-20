@@ -26,7 +26,7 @@ async function setUp(page: Page, f: Parameters<typeof seedWorld>[0]) {
     const at = new Date(start + n * 60_000);
     utimesSync(p, at, at);
   }
-  await page.goto("/worlds/base/settings");
+  await page.goto("/worlds/base/settings?section=saving");
 }
 
 test("lowering the slots says what the next start keeps and removes, and the start does it", async ({ page, foreman, fakeGame }) => {

@@ -51,6 +51,9 @@ test("checkboxes and radios are tick-sized on every page that has one", async ({
   await expectTickSized(page, "/generate (Enemy tab)");
   await expectSmallControls(page, "/worlds/second/switch", 1);
   await expectSmallControls(page, "/worlds/base/clone", 2);
-  await expectSmallControls(page, "/worlds/base/settings", 4);
+  await expectSmallControls(page, "/worlds/base/settings", 2); // listing: visibility radios
+  await expectSmallControls(page, "/worlds/base/settings?section=players", 2);
+  await expectSmallControls(page, "/worlds/base/settings?section=gameplay", 4);
+  await expectSmallControls(page, "/worlds/base/settings?section=saving", 1);
   await expectSmallControls(page, "/worlds/second/delete", 1);
 });

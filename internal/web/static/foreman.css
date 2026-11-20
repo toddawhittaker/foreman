@@ -107,15 +107,15 @@
   --text-2xl: 1.5rem;
   --text-3xl: 2rem;
 
-  --color-bg: light-dark(#ece9e3, #14110e);
-  --color-surface: light-dark(#fffdfa, #26211c);
-  --color-raised: light-dark(#f4f0e9, #332c25);
+  --color-bg: light-dark(#e6e1d8, #110e0b);
+  --color-surface: light-dark(#fffdf9, #211c18);
+  --color-raised: light-dark(#f2ede4, #2d2621);
   --color-deep: light-dark(#ffffff, #0e0c0a);
-  --color-line: light-dark(#d9d4cb, #4a4239);
-  --color-border: light-dark(#857c70, #8a8073);
+  --color-line: light-dark(#cfc8bc, #433a32);
+  --color-border: light-dark(#6f6659, #9a8f80);
   --color-text: light-dark(#1c1915, #ede7de);
   --color-heading: light-dark(#13110e, #f9f5ee);
-  --color-text-muted: light-dark(#58524a, #b3a99c);
+  --color-text-muted: light-dark(#4f493f, #c4bbae);
   --color-link: light-dark(#9a4800, #ffb357);
   --color-selected: light-dark(#bd6500, #f39a2a);
   --color-accent-bg: light-dark(#fdecd5, #33220e);
@@ -123,7 +123,7 @@
   --color-primary-hover: light-dark(#f6ad52, #f7ae4f);
   --color-primary-edge: light-dark(#a35200, #f39a2a);
   --color-on-primary: #1a1004;
-  --color-secondary-hover: light-dark(#ede8e0, #3d352d);
+  --color-secondary-hover: light-dark(#ebe5db, #3a322b);
   --color-danger: light-dark(#b3301d, #e5553c);
   --color-danger-hover: light-dark(#932616, #ef7560);
   --color-on-danger: light-dark(#ffffff, #1a0503);
@@ -139,7 +139,7 @@
   /* Each theme's shadow is its own layers; the other theme's layers are
      transparent, because light-dark() takes only colours. */
   --shadow-card: inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 3%)),
-    0 1px 2px light-dark(rgb(60 45 25 / 6%), transparent),
+    0 1px 2px light-dark(rgb(60 45 25 / 8%), transparent),
     0 1px 1px light-dark(rgb(60 45 25 / 4%), transparent);
   --shadow-pop: 0 8px 24px light-dark(transparent, rgb(0 0 0 / 45%)),
     0 10px 28px light-dark(rgb(60 45 25 / 18%), transparent);
@@ -11322,5 +11322,317 @@ main > .panel.danger-zone.danger-zone--blocked {
   main > .subnav a:focus-visible {
     outline: var(--focus-width) solid var(--color-focus);
     outline-offset: -1px;
+  }
+}
+
+/* Game settings' sub-pages: one fieldset each, the others kept in the form
+   but out of sight, so a save leaves them as they are (DESIGN 6). */
+.settings > fieldset[hidden],
+.settings-main > section.panel[hidden],
+form.settings[hidden] {
+  display: none !important;
+}
+
+/* Sub-pages sit under their page in the page column: indented, a hairline
+   on the start side, 36 px rows, the current one marked as its parent is. */
+.subnav__sub {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  main > .subnav li:has(> .subnav__sub) {
+    display: grid;
+    gap: 2px;
+  }
+
+  main > .subnav .subnav__sub {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: var(--space-1) 0 var(--space-2) var(--space-4);
+    padding: 0;
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+
+  main > .subnav .subnav__sub a {
+    min-block-size: 2.25rem;
+    margin-inline-start: -1px;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+  }
+
+  main > .subnav .subnav__sub a:hover {
+    color: var(--color-heading);
+  }
+
+  main > .subnav .subnav__sub a[aria-current] {
+    color: var(--color-heading);
+    font-weight: 600;
+  }
+
+  /* The parent of the open sub-page reads as a group title, not a second
+     current item. */
+  main > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
+    background: none;
+    border-inline-start-color: transparent;
+    font-weight: 600;
+  }
+}
+
+/* On a phone the sub-pages are their own scrolling row under the world's
+   tabs, 44 px chips that keep their words whole. */
+@media (max-width: 63.99rem) {
+  .subnav li:has(> .subnav__sub) {
+    display: contents;
+  }
+
+  .subnav .subnav__sub {
+    display: flex;
+    grid-column: 1 / -1;
+    flex-basis: 100%;
+    gap: var(--space-2);
+    margin-block-start: var(--space-3);
+    padding: 0 0 var(--space-1);
+    overflow-x: auto;
+    scrollbar-width: none;
+    list-style: none;
+  }
+
+  .subnav .subnav__sub li {
+    flex: none;
+    box-shadow: none;
+  }
+
+  .subnav .subnav__sub a,
+  .subnav .subnav__sub a[aria-current] {
+    display: flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+    padding-inline: var(--space-3);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+    white-space: nowrap;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    box-shadow: none;
+  }
+
+  .subnav .subnav__sub a::after {
+    content: none;
+  }
+
+  .subnav .subnav__sub a[aria-current] {
+    border-color: var(--color-selected);
+    background: var(--color-accent-bg);
+    color: var(--color-heading);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .subnav ul:has(> li:nth-child(5)) > li:has(> .subnav__sub) > a {
+    grid-column: span 3;
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .subnav ul:has(> li:nth-child(5)) > li:has(> .subnav__sub) > a[aria-current] {
+    box-shadow: inset 0 -2px 0 var(--color-selected);
+  }
+}
+
+@media (min-width: 40rem) and (max-width: 63.99rem) {
+  .subnav ul:has(.subnav__sub) {
+    flex-wrap: wrap;
+    overflow: visible;
+    mask-image: none;
+  }
+}
+
+/* Foreman's settings on a phone: one scrolling row of eight tabs rather than
+   a grid four rows tall; the current tab is brought into view (subnav.js). */
+@media (max-width: 39.99rem) {
+  .subnav--settings ul,
+  .subnav--settings ul:has(> li:nth-child(5)) {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-padding-inline: var(--space-5);
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .subnav--settings ul > li,
+  .subnav--settings ul:has(> li:nth-child(5)) > li {
+    flex: none;
+    box-shadow: none;
+  }
+
+  .subnav--settings a,
+  .subnav--settings a[aria-current],
+  .subnav--settings li:first-child a,
+  .subnav--settings li:last-child a {
+    padding-inline: var(--space-3);
+    white-space: nowrap;
+  }
+}
+
+/* The sign-in page's drafting grid, carried faintly behind every working
+   page: 32 px squares of the line colour at a quarter strength. */
+body:not(:has(main > .gate)) {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-line) 40%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-line) 40%, transparent) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+  background-attachment: fixed;
+}
+
+/* Generate on a wide screen: the basics pair up, name beside version and
+   preset beside seed, so the map's settings start a screen sooner. */
+@container map-section (min-width: 40rem) {
+  :has(> #preset-box + .field) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+    align-items: start;
+  }
+
+  :has(> #preset-box + .field) > * {
+    grid-column: 1 / -1;
+  }
+
+  :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field) {
+    grid-column: auto;
+  }
+
+  .map-section .modes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+  }
+
+  .map-section .modes > legend {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 90rem) {
+  .gen-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+  }
+
+  .gen-settings > * {
+    grid-column: 1 / -1;
+  }
+
+  .gen-settings > .field:has(#generate-name),
+  .gen-settings > .version-fields {
+    grid-column: auto;
+  }
+}
+
+/* The Audit log on a wide screen: compact 44 px rows at 14 px, the age
+   after each time in the quiet colour, and actions kept on one line. */
+@media (min-width: 64rem) {
+  .audit-table :is(td, th) {
+    padding-block: var(--space-2);
+  }
+
+  .audit-table td {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .audit-table .audit-time time > span:last-child:not(.nowrap) {
+    color: var(--color-text-muted);
+  }
+
+  .audit-table .audit-action {
+    white-space: nowrap;
+  }
+}
+
+/* Both world tables share one column grid, so the archived table's columns
+   sit under the live table's; actions end the row. */
+@media (min-width: 64rem) {
+  .worlds-head,
+  .worlds > li,
+  #archived-worlds :is(.worlds-head, .worlds > li) {
+    grid-template-columns: 19rem minmax(0, 1fr) 17rem;
+  }
+
+  .worlds > li > .facts ~ .actions {
+    justify-content: flex-end;
+  }
+}
+
+/* The webhook form: each service is a 2-by-2 choice of framed options,
+   the address or keys beside it, the events in columns, and the save in
+   the same foot bar as the other settings forms. */
+.webhook-form__presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-3);
+}
+
+.webhook-preset {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.webhook-preset:has(input:checked) {
+  border-color: var(--color-selected);
+  box-shadow: inset 3px 0 0 var(--color-selected);
+  background: var(--color-raised);
+}
+
+.webhook-preset > .hint {
+  margin: 0;
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+.webhook-form__event-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-2) var(--space-5);
+}
+
+.webhook-form__top,
+.webhook-form__where {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 80rem) {
+  .webhook-form__top {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    column-gap: var(--space-6);
+  }
+
+  .webhook-form > .webhook-form__lang {
+    max-inline-size: 30rem;
+  }
+}
+
+/* A webhook's Edit and Delete sit side by side at the row's end, each its
+   own width. */
+@media (min-width: 64rem) {
+  .webhook-list > li > .facts ~ .actions {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .webhook-list > li > .facts ~ .actions .button {
+    inline-size: auto;
   }
 }
