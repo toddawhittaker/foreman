@@ -39,6 +39,8 @@ type Checker struct {
 	log     *slog.Logger
 	first   time.Duration
 	every   time.Duration
+	limit   time.Duration // the most one call to GitHub may take
+	soon    chan struct{} // CheckSoon's request to Run, at most one waiting
 
 	mu     sync.Mutex
 	latest string // the newer release's plain version, or empty
@@ -55,18 +57,24 @@ func New(running string, enabled func(context.Context) bool, log *slog.Logger) *
 			return errors.New("redirects are not followed")
 		},
 	}
-	return &Checker{url: LatestURL, hc: hc, running: running, enabled: enabled, log: log, first: firstDelay, every: checkEvery}
+	return &Checker{url: LatestURL, hc: hc, running: running, enabled: enabled, log: log,
+		first: firstDelay, every: checkEvery, limit: callTimeout, soon: make(chan struct{}, 1)}
 }
 
 // Newer returns the plain version of a release newer than the running one,
 // or empty. It is empty whenever the switch is off.
 func (c *Checker) Newer(ctx context.Context) string {
-	if c == nil || !c.enabled(ctx) {
+	if c == nil {
 		return ""
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.latest
+	latest := c.latest
+	c.mu.Unlock()
+	// The database is read only when there is something to hide.
+	if latest == "" || !c.enabled(ctx) {
+		return ""
+	}
+	return latest
 }
 
 // Run checks after the first delay and then on every interval until ctx
@@ -81,20 +89,22 @@ func (c *Checker) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case <-c.soon:
+			c.checkOnce(ctx)
 		case <-t.C:
+			c.checkOnce(ctx)
+			t.Reset(c.every)
 		}
-		c.checkOnce(ctx)
-		t.Reset(c.every)
 	}
 }
 
-// CheckSoon starts one check in the background, for when an admin turns
-// the switch on; the caller does not wait for GitHub.
+// CheckSoon asks Run for a check now, for when an admin turns the switch
+// on. It never waits, and a request already waiting covers this one.
 func (c *Checker) CheckSoon() {
-	if _, ok := parse(c.running); !ok {
-		return
+	select {
+	case c.soon <- struct{}{}:
+	default:
 	}
-	go c.checkOnce(context.Background())
 }
 
 // checkOnce asks GitHub when the switch is on. A failure keeps the last
@@ -115,7 +125,7 @@ func (c *Checker) checkOnce(ctx context.Context) {
 }
 
 func (c *Checker) fetch(ctx context.Context) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.limit)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url, nil)
 	if err != nil {

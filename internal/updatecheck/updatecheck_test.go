@@ -108,10 +108,13 @@ func TestCheckTimeout(t *testing.T) {
 	defer srv.Close()
 	defer close(release)
 	c := testChecker(srv.URL, on)
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	if _, err := c.fetch(ctx); err == nil {
+	c.limit = 50 * time.Millisecond
+	start := time.Now()
+	if _, err := c.fetch(context.Background()); err == nil {
 		t.Fatal("a reply that never comes should fail")
+	}
+	if time.Since(start) > 5*time.Second {
+		t.Error("the call limit was not applied")
 	}
 }
 
@@ -153,6 +156,34 @@ func TestRunSchedule(t *testing.T) {
 	<-done
 	if calls.Load() < 3 {
 		t.Fatalf("checks = %d, want repeated checks", calls.Load())
+	}
+}
+
+// CheckSoon makes Run check at once, long before the first delay, and
+// requests made while one waits fold into it.
+func TestCheckSoon(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		_, _ = io.WriteString(w, `{"tag_name":"v1.3.0"}`)
+	}))
+	defer srv.Close()
+	c := testChecker(srv.URL, on)
+	c.first = time.Hour
+	c.CheckSoon()
+	c.CheckSoon() // never blocks, and folds into the one waiting
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { c.Run(ctx); close(done) }()
+	deadline := time.Now().Add(5 * time.Second)
+	for c.Newer(context.Background()) == "" && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	<-done
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("checks = %d, want 1", got)
 	}
 }
 
