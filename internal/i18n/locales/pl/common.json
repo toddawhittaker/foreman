@@ -1,6 +1,7 @@
 {
   "common.skip": "Przejdź do treści",
   "common.error.label": "Błąd:",
+  "common.crumb.label": "Ścieżka nawigacji",
   "common.nav.label": "Menu główne",
   "common.nav.server": "Serwer",
   "common.nav.console": "Konsola",

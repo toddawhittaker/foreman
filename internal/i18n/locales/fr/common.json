@@ -1,6 +1,7 @@
 {
   "common.skip": "Aller au contenu",
   "common.error.label": "Erreur :",
+  "common.crumb.label": "Fil d'Ariane",
   "common.nav.label": "Navigation principale",
   "common.nav.server": "Serveur",
   "common.nav.console": "Console",

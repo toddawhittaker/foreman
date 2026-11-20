@@ -1,6 +1,7 @@
 {
   "common.skip": "Přejít na obsah",
   "common.error.label": "Chyba:",
+  "common.crumb.label": "Drobečková navigace",
   "common.nav.label": "Hlavní nabídka",
   "common.nav.server": "Server",
   "common.nav.console": "Konzole",
