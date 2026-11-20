@@ -189,8 +189,10 @@ test("a very long world name wraps on the list and the world page", async ({ pag
 });
 
 // DESIGN 6, Shell: the Worlds tab is the current page on the list and marks
-// the section on every other page about worlds; the current tab is underlined
-// in the selected colour and a hovered tab only brightens its text.
+// the section on every other page about worlds. Below 64rem the current tab
+// is underlined in the selected colour and a hovered tab only brightens its
+// text; from 64rem the rail row has the selected edge on its start side and
+// a hovered row takes the hover face.
 test("the Worlds tab marks the current page and the section", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "alpha", { name: "Alpha", game_version: "2.0.72", space_age: false });
@@ -205,7 +207,12 @@ test("the Worlds tab marks the current page and the section", async ({ page, for
     await page.goto(path);
     await expect(tab, path).toHaveAttribute("aria-current", "true");
   }
-  const look = () => tab.evaluate((el) => ({ line: getComputedStyle(el).borderBottomColor, text: getComputedStyle(el).color }));
+  const wide = (page.viewportSize()?.width ?? 0) >= 1024;
+  const look = () => tab.evaluate((el, wide) => {
+    const s = getComputedStyle(el);
+    // What hover changes: the text below 64rem, the row's face from 64rem.
+    return { line: wide ? s.borderInlineStartColor : s.borderBottomColor, hovered: wide ? s.backgroundColor : s.color };
+  }, wide);
   const selected = await page.evaluate(() => {
     const probe = document.createElement("span");
     probe.style.color = "var(--color-selected)";
@@ -221,7 +228,7 @@ test("the Worlds tab marks the current page and the section", async ({ page, for
   expect(idle.line).not.toBe(selected);
   await tab.hover();
   const hover = await look();
-  expect(hover.text).not.toBe(idle.text);
+  expect(hover.hovered).not.toBe(idle.hovered);
   expect(hover.line).not.toBe(selected);
 });
 

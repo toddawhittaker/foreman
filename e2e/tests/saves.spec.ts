@@ -462,7 +462,12 @@ test("every autosave's file name starts at the left edge of its label, on a line
     const f = (await file.boundingBox())!;
     expect(Math.abs(f.x - l.x), `${name} starts at the label's left edge`).toBeLessThanOrEqual(0.5);
     expect(f.y, `${name} is under the label`).toBeGreaterThanOrEqual(l.y + l.height - 0.5);
-    labels.add(Math.round((await row.locator(".save-label").boundingBox())!.width));
+    // The words' own width, summed over their lines, since the label's box may span its cell.
+    labels.add(await row.locator(".save-label").evaluate((el) => {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      return Math.round([...r.getClientRects()].reduce((sum, x) => sum + x.width, 0));
+    }));
   }
   // On a desktop the labels really are different widths, so the check above could fail
   // (at 320 px a label wraps to the column's width).

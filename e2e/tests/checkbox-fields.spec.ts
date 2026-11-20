@@ -53,7 +53,8 @@ test("checkboxes and radios are tick-sized on every page that has one", async ({
   await expectSmallControls(page, "/worlds/base/clone", 2);
   await expectSmallControls(page, "/worlds/base/settings", 2); // listing: visibility radios
   await expectSmallControls(page, "/worlds/base/settings?section=players", 2);
-  await expectSmallControls(page, "/worlds/base/settings?section=gameplay", 4);
+  // The sub-page shows its own section only (DESIGN 8.10): the three pause checkboxes.
+  await expectSmallControls(page, "/worlds/base/settings?section=gameplay", 3);
   await expectSmallControls(page, "/worlds/base/settings?section=saving", 1);
   await expectSmallControls(page, "/worlds/second/delete", 1);
 });

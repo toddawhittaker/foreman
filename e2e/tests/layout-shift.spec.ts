@@ -20,7 +20,10 @@ async function frame(page: Page, path: string) {
   return {
     heading: { x: (await box("h1")).x },
     nav: await box("nav[aria-label='Main']"),
-    header: await box("header.site"),
+    // From 64rem the header is no box of its own (DESIGN 6, Shell), so its two
+    // ends stand for it: the logo and the account menu.
+    logo: await box("header.site > .product"),
+    menu: await box("header.site > .menu"),
     main: await box("main"),
   };
 }

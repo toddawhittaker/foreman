@@ -175,9 +175,9 @@ async function expectDetails(page: Page, name: string) {
   await expect(row.getByRole("button", { name: "Rename" })).toBeVisible();
   await expect(row.getByRole("link", { name: "Export" })).toBeVisible();
   await expect(row.getByRole("link", { name: "Delete favorite" })).toBeVisible();
-  // The order is facts, mods, exchange string, Rename, then Export and Delete.
+  // The order is facts, mods, exchange string, Rename, the export warning, then Export and Delete (DESIGN 7.11).
   const order = await row.locator(".favorite__body > *").evaluateAll((els) => els.map((e) => e.className || e.tagName));
-  expect(order).toEqual(["facts facts--inline", "favorite__part", "favorite__part", "field favorite__rename", "actions"]);
+  expect(order).toEqual(["facts facts--inline", "favorite__part", "favorite__part", "field favorite__rename", "message message--warning favorite-export-warning", "actions"]);
   return row;
 }
 

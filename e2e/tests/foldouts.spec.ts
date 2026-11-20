@@ -1,8 +1,8 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, pickLanguage } from "./foreman.js";
 import type { Locator, Page } from "@playwright/test";
 
-// DESIGN 7.8 (#657): every foldout has the orange triangle at its start, a
-// line only between stacked foldouts, and 44 px rows on touch.
+// DESIGN 7.8: every foldout has the muted triangle at its start, a line
+// only between stacked foldouts, and 44 px rows on touch.
 test.use({ fakeGameOn: true });
 
 test.beforeEach(async ({ page, foreman, fakeGame }) => {
@@ -14,21 +14,24 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 const lone = (page: Page) => page.locator(".version-fields > details.disclosure");
 const planet = (page: Page, name: string) => page.locator(`#mg-resources-${name}`);
 const topLine = (d: Locator) => d.evaluate((e) => getComputedStyle(e).borderTopWidth);
-const primary = (page: Page) =>
-  page.evaluate(() => {
+// A colour token's value, read inside the element, so a pane drawn in the
+// other theme (the component page) is measured in its own theme.
+const token = (inside: Locator, name: string) =>
+  inside.evaluate((el, name) => {
     const probe = document.createElement("span");
-    probe.style.color = "var(--color-primary)";
-    document.body.append(probe);
+    probe.style.color = `var(${name})`;
+    el.append(probe);
     const c = getComputedStyle(probe).color;
     probe.remove();
     return c;
-  });
+  }, name);
+const muted = (inside: Locator) => token(inside, "--color-text-muted");
 const marker = (d: Locator) =>
   d.locator("> summary").evaluate((s) => ({ color: getComputedStyle(s, "::marker").color, type: getComputedStyle(s).listStyleType }));
 
 // The projects run each test in both themes.
 {
-  test("a lone foldout has no line above, stacked planets do, and the marker is orange and turns", async ({ page }) => {
+  test("a lone foldout has no line above, stacked planets do, and the marker is muted and turns", async ({ page }) => {
     await page.goto("/generate");
     expect(await topLine(lone(page))).toBe("0px");
     // Nauvis is the first planet row, so no line; Gleba follows another row.
@@ -36,7 +39,7 @@ const marker = (d: Locator) =>
     expect(await topLine(planet(page, "gleba"))).toBe("1px");
 
     const before = await marker(lone(page));
-    expect(before.color).toBe(await primary(page));
+    expect(before.color).toBe(await muted(lone(page)));
     expect(before.type).toBe("disclosure-closed");
     await lone(page).locator("> summary").click();
     await expect(lone(page)).toHaveJSProperty("open", true);
@@ -52,15 +55,20 @@ const marker = (d: Locator) =>
   });
 }
 
-// Ruling 8: Emergency actions keeps its danger label; only the marker is orange.
-test("Emergency actions keeps its danger label with an orange marker", async ({ page }) => {
+// DESIGN 7.8: Emergency actions is as quiet as any foldout, a step smaller;
+// only its opened area is red.
+test("Emergency actions is a quiet foldout whose opened area is red", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto("/design");
   const e = page.locator("details.emergency").first();
   const m = await marker(e);
-  expect(m.color).toBe(await primary(page));
-  const label = await e.locator("> summary").evaluate((s) => getComputedStyle(s).color);
-  expect(label).not.toBe(m.color);
+  expect(m.color).toBe(await muted(e));
+  const label = await e.locator("> summary").evaluate((s) => ({ color: getComputedStyle(s).color, size: getComputedStyle(s).fontSize }));
+  expect(label.color).toBe(await muted(e));
+  expect(label.size).toBe("14px");
+  await e.locator("> summary").click();
+  await expect(e).toHaveJSProperty("open", true);
+  expect(await e.locator("> .danger-row").evaluate((r) => getComputedStyle(r).borderTopColor)).toBe(await token(e, "--color-danger"));
 });
 
 for (const lang of ["de", "ru"]) {
