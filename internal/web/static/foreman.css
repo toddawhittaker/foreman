@@ -9502,7 +9502,7 @@ main > h1 + p.hint,
   border: 0;
 }
 
-/* A world that cannot be deleted now keeps the card and its red edge and
+/* A world that cannot be deleted keeps the card and its red edge and
    headings; the hazard stripe appears only when Delete is offered. */
 main > .panel.danger-zone.danger-zone--blocked {
   padding-block-start: var(--card-pad);

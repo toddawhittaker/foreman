@@ -300,6 +300,16 @@ func (v view) LiveURL() string {
 	return l.liveURL()
 }
 
+// StripURL is where a signed-in page without a stream of its own gets the
+// status strip's live state, or "" when it has a stream or shows no state
+// (SPEC 16.3, DESIGN 6 Shell).
+func (v view) StripURL() string {
+	if v.User == "" || !v.Lamp.Have || v.LiveURL() != "" {
+		return ""
+	}
+	return PathStripEvents
+}
+
 // Failed is true when a form page is showing errors, so the title can say
 // so first (WCAG 3.3.1 and 2.4.2).
 func (v view) Failed() bool {

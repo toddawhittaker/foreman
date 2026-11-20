@@ -935,8 +935,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 21 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, subnav.js, about.js, the logo at two sizes, the logo again in the About dialog and eight flags, found %v", found)
+	if len(found) != 22 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, subnav.js, about.js, live.js, the logo at two sizes, the logo again in the About dialog and eight flags, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

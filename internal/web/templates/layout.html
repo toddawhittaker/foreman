@@ -18,6 +18,7 @@
 <script src="{{static "subnav.js"}}" defer></script>
 {{- if .User}}
 <script src="{{static "about.js"}}" defer></script>
+<script src="{{static "live.js"}}" defer></script>
 {{- end}}
 {{block "scripts" .}}{{end}}
 </head>
@@ -106,6 +107,10 @@
     <button type="button" class="button button--primary" id="about-close">{{t "about.close"}}</button>
   </div>
 </dialog>
+{{- end}}
+{{- /* A page without a stream of its own follows the status strip's state through a hidden element of its own, outside <main>, so no page rule that styles swap targets or <main>'s children applies (SPEC 16.3, DESIGN 6 Shell). */}}
+{{- with .StripURL}}
+<div hidden hx-ext="sse" sse-connect="{{.}}" sse-swap="strip" hx-swap="none"></div>
 {{- end}}
 <main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
 {{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here (SPEC 12.10). */}}
