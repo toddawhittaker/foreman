@@ -432,9 +432,19 @@ h2.op-heading {
   text-decoration-color: currentColor;
 }
 
-/* The chevron follows each ancestor inside its link, as it always has,
+/* An ancestor shown as plain text, where its link would lead to the page
+   shown, keeps a link's box and colour, without the underline. */
+.crumb li:not(:last-child) > span {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 1.5rem;
+  padding-block: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+/* The chevron follows each ancestor inside its box, as it always has,
    drawn by CSS so it is not read out. */
-.crumb li:not(:last-child) > a::after {
+.crumb li:not(:last-child) > :is(a, span)::after {
   content: "";
   display: inline-block;
   inline-size: 0.5rem;
@@ -449,14 +459,14 @@ h2.op-heading {
   overflow-wrap: anywhere;
 }
 
-[dir="rtl"] .crumb li:not(:last-child) > a::after {
+[dir="rtl"] .crumb li:not(:last-child) > :is(a, span)::after {
   transform: scaleX(-1);
 }
 
 /* The chevron is painted through a mask, so forced colours would drop its
    background; it takes the system text colour instead. */
 @media (forced-colors: active) {
-  .crumb li:not(:last-child) > a::after {
+  .crumb li:not(:last-child) > :is(a, span)::after {
     background: CanvasText;
   }
 }

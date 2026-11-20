@@ -253,3 +253,14 @@ func TestModSettingsCrumb(t *testing.T) {
 		`<li><a href="/worlds/base/mods">Mods</a></li>`+
 		`<li><span aria-current="page">Mod settings</span></li></ol></nav>`)
 }
+
+// DESIGN 6: on General, "Settings" would link to the page shown, so it is
+// plain text; only the last step is marked current.
+func TestGeneralCrumbHasNoSelfLink(t *testing.T) {
+	r := newTestRenderer(t)
+	p := GeneralPage{}
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
+	wantIn(t, p.templateName(), body, `<nav class="crumb" aria-label="Breadcrumb"><ol role="list">`+
+		`<li><span>Settings</span></li>`+
+		`<li><span aria-current="page">General</span></li></ol></nav>`)
+}
