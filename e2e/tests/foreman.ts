@@ -198,7 +198,8 @@ async function startFakeGame(sidecar?: SidecarSeed): Promise<FakeGame & { stop: 
 
 // A fake Factorio mod portal (cmd/fakeportal). It is an HTTPS proxy: Foreman gets
 // HTTPS_PROXY and SSL_CERT_FILE, so its unchanged portal client reaches the fake
-// as mods.factorio.com, and the proxy refuses every other host. The hooks are
+// as mods.factorio.com (and its update check reaches it as api.github.com), and
+// the proxy refuses every other host. The hooks are
 // listed at controlHandler in cmd/fakeportal/control.go.
 export interface FakePortal {
   proxy: string;
@@ -218,6 +219,8 @@ export interface FakePortal {
   failApi: (status: number) => Promise<void>;
   // The proxy refuses every tunnel with 503 while true.
   setDown: (down: boolean) => Promise<void>;
+  // Foreman's latest release on the fake GitHub, such as "v99.0.0"; "" answers 404.
+  setGitHubTag: (tag: string) => Promise<void>;
   // Requests seen inside tunnels (host and path, never the query), tunnels
   // opened, and the hosts the proxy refused.
   state: () => Promise<PortalState>;
@@ -260,6 +263,7 @@ async function startFakePortal(): Promise<FakePortal & { stop: () => Promise<voi
     setMode: async (name, version, mode) => void (await post("/mode", { name, version, mode })),
     failApi: async (status) => void (await post("/fail", { status })),
     setDown: async (down) => void (await post("/down", { down })),
+    setGitHubTag: async (tag) => void (await post("/github", { tag })),
     state,
     count: async (host, pathPrefix) => (await state()).requests.filter((r) => r.host === host && r.path.startsWith(pathPrefix)).length,
     stop: async () => {
