@@ -207,8 +207,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    # The longest slice takes about 15 minutes, so 20 leaves room for a slow runner.
-    timeout-minutes: 20
+    # The longest slice now takes about 20 minutes (19m55s on #742), so 30 leaves room for a slow runner.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
