@@ -316,8 +316,14 @@ test.describe("with script", () => {
       await section(page).getByRole("link", { name: /opens the large view/ }).click();
       const dialog = page.locator("#large-view");
       await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+      if (width > 600) {
+        // DESIGN 8.7: a heading's rule is the only line above its first row.
+        for (const id of ["#large-resources", "#large-terrain"]) {
+          await expect(dialog.locator(`${id} > .mapgen-body > .autoplace`).first()).toHaveCSS("border-top-width", "0px");
+        }
+      }
       await dialog.locator("#large-frame").focus();
-      const top = () => dialog.locator("#large-next").evaluate((b) => b.getBoundingClientRect().top);
+      const top =() => dialog.locator("#large-next").evaluate((b) => b.getBoundingClientRect().top);
       const first = await top();
       for (const planet of ["Vulcanus", "Gleba", "Fulgora", "Aquilo", "Nauvis"]) {
         await page.keyboard.press("ArrowRight");

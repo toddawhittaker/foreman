@@ -12805,3 +12805,14 @@ form.setting-rows > .form-foot {
     mask-composite: exclude;
   }
 }
+
+/* A heading's own rule is the line above its first row, so that row drops
+   its divider; the rows after it keep theirs (DESIGN 8.7). */
+:is(h2, h3) + .mapgen-body > .autoplace:first-child {
+  border-block-start: 0;
+}
+
+/* The All resources row's rule under it is the next row's divider too. */
+.js-on .autoplace--all + .autoplace {
+  border-block-start: 0;
+}
