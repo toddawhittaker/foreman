@@ -401,8 +401,8 @@ h2.op-heading {
 }
 
 /* A link keeps a faint underline at rest, so it reads apart from the
-   current page by more than colour; it is 3:1 against the page in both
-   themes (WCAG 1.4.11). */
+   current page by more than colour. Against the page and a panel it is
+   3.33:1 and 3.72:1 in light, 5.05:1 and 4.79:1 in dark (WCAG 1.4.11). */
 .crumb a {
   display: inline-flex;
   align-items: center;
@@ -451,6 +451,14 @@ h2.op-heading {
 
 [dir="rtl"] .crumb li:not(:last-child) > a::after {
   transform: scaleX(-1);
+}
+
+/* The chevron is painted through a mask, so forced colours would drop its
+   background; it takes the system text colour instead. */
+@media (forced-colors: active) {
+  .crumb li:not(:last-child) > a::after {
+    background: CanvasText;
+  }
 }
 
 /* The Server overview's plate states the server's state large, so the
