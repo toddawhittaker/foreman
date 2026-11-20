@@ -398,12 +398,14 @@ h2.op-heading {
 }
 
 /* A link keeps a faint underline at rest, so it reads apart from the
-   current page by more than colour; it is 3:1 against the page in both
-   themes (WCAG 1.4.11). */
+   current page by more than colour. Against the page and a panel it is
+   3.33:1 and 3.72:1 in light, 5.05:1 and 4.79:1 in dark (WCAG 1.4.11). */
 .crumb a {
   display: inline-flex;
   align-items: center;
   min-block-size: 1.5rem;
+  /* The running-text link's padding, which it had as a paragraph's child. */
+  padding-block: 0.2em;
   color: var(--color-text-muted);
   text-decoration-line: underline;
   text-decoration-color: color-mix(in srgb, currentColor 68%, transparent);
@@ -427,10 +429,20 @@ h2.op-heading {
   text-decoration-color: currentColor;
 }
 
-/* The chevron follows each ancestor, drawn by CSS so it is not read out. */
-.crumb li:not(:last-child)::after {
+/* An ancestor shown as plain text, where its link would lead to the page
+   shown, keeps a link's box and colour, without the underline. */
+.crumb li:not(:last-child) > span {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 1.5rem;
+  padding-block: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+/* The chevron follows each ancestor inside its box, as it always has,
+   drawn by CSS so it is not read out. */
+.crumb li:not(:last-child) > :is(a, span)::after {
   content: "";
-  flex: none;
   display: inline-block;
   inline-size: 0.5rem;
   block-size: 0.5rem;
@@ -444,8 +456,16 @@ h2.op-heading {
   overflow-wrap: anywhere;
 }
 
-[dir="rtl"] .crumb li:not(:last-child)::after {
+[dir="rtl"] .crumb li:not(:last-child) > :is(a, span)::after {
   transform: scaleX(-1);
+}
+
+/* The chevron is painted through a mask, so forced colours would drop its
+   background; it takes the system text colour instead. */
+@media (forced-colors: active) {
+  .crumb li:not(:last-child) > :is(a, span)::after {
+    background: CanvasText;
+  }
 }
 
 /* The Server overview's plate states the server's state large, so the

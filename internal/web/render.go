@@ -386,9 +386,12 @@ func share(part, rest uint64) int {
 	return max(1, int(float64(part)/(float64(part)+float64(rest))*100))
 }
 
-// crumbStep is one step of a breadcrumb (DESIGN 6). An empty Href marks the
-// page shown.
-type crumbStep struct{ Href, Label string }
+// crumbStep is one step of a breadcrumb (DESIGN 6). A step with no Href is
+// plain text; the last such step is the page shown, marked Current.
+type crumbStep struct {
+	Href, Label string
+	Current     bool
+}
 
 // crumbs makes a breadcrumb's steps from href and label pairs, for the crumb
 // partial: {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .Name)}}.
@@ -397,8 +400,11 @@ func crumbs(pairs ...string) ([]crumbStep, error) {
 		return nil, fmt.Errorf("crumbs: %d arguments, want href and label pairs", len(pairs))
 	}
 	steps := make([]crumbStep, 0, len(pairs)/2)
-	for i := 0; i < len(pairs); i += 2 {
-		steps = append(steps, crumbStep{Href: pairs[i], Label: pairs[i+1]})
+	for i := 1; i < len(pairs); i += 2 {
+		steps = append(steps, crumbStep{Href: pairs[i-1], Label: pairs[i]})
+	}
+	if last := len(steps) - 1; last >= 0 && steps[last].Href == "" {
+		steps[last].Current = true
 	}
 	return steps, nil
 }

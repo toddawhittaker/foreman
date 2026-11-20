@@ -270,10 +270,11 @@
 </nav>
 {{- end}}
 
-{{/* Where a page sits, as navigation (DESIGN 6): its ancestors as links, then
-     the page shown, marked current. Takes the steps from crumbs. */}}
+{{/* Where a page sits, as navigation (DESIGN 6): its ancestors as links (plain
+     text where a link would lead to the page shown), then the page shown,
+     marked current. Takes the steps from crumbs. */}}
 {{define "crumb" -}}
-<nav class="crumb" aria-label="{{t "common.crumb.label"}}"><ol role="list">{{range .}}<li>{{if .Href}}<a href="{{.Href}}">{{.Label}}</a>{{else}}<span aria-current="page">{{.Label}}</span>{{end}}</li>{{end}}</ol></nav>
+<nav class="crumb" aria-label="{{t "common.crumb.label"}}"><ol role="list">{{range .}}<li>{{if .Href}}<a href="{{.Href}}">{{.Label}}</a>{{else if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<span>{{.Label}}</span>{{end}}</li>{{end}}</ol></nav>
 {{- end}}
 
 {{/* The Worlds area's own pages: the list, Favorites and Deleted worlds

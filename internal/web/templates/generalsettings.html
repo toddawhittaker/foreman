@@ -13,7 +13,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.general"))}}
+{{template "crumb" (crumbs "" (t "common.nav.settings") "" (t "common.menu.general"))}}
 <h1>{{t "common.menu.general"}}</h1>
 {{template "rail" $}}
 {{- if .Saved}}
