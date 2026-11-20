@@ -18,12 +18,18 @@
   "general.stop.hint": "0 significa sin aviso.",
   "general.stop.label": "Cuenta atrás predeterminada al detener (segundos)",
   "general.stop.text": "La cuenta atrás con la que empieza una detención o un reinicio que no indica ninguna. Un reinicio programado conserva su propia cuenta atrás fija.",
+  "general.switch.off": "desactivado",
+  "general.switch.on": "activado",
   "general.trim.final": "Las instantáneas eliminadas no se pueden restaurar. Para conservarlas, vuelve a subir el número antes de la siguiente instantánea automática.",
   "general.trim.snapshots": {
     "one": "Se eliminará {count} instantánea automática, en la siguiente instantánea automática de su mundo.",
     "other": "Se eliminarán {count} instantáneas automáticas, cada una en la siguiente instantánea automática de su mundo."
   },
   "general.trim.worlds": "Mundos afectados: {count}.",
+  "general.updates.heading": "Nuevas versiones de Foreman",
+  "general.updates.hint": "Desactivado, Foreman nunca contacta con GitHub para esto.",
+  "general.updates.label": "Buscar en GitHub nuevas versiones de Foreman",
+  "general.updates.text": "Foreman puede preguntar a GitHub cada 6 horas si hay una versión más reciente de Foreman, y Acerca de lo indica. No envía nada sobre ti ni tus mundos.",
   "general.uploads.heading": "Subida de archivos",
   "general.uploads.mod.hint": "Un mod descargado del portal de mods tiene el mismo límite.",
   "general.uploads.mod.label": "Tamaño máximo de un mod subido (MB)",

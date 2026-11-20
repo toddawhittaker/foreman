@@ -6,6 +6,8 @@
   "about.heading": "O Foremanu",
   "about.licence": "Licence",
   "about.modified": "změněno",
+  "about.newer": "Je k dispozici Foreman {version}. {link}",
+  "about.newer.link": "Zobrazit novinky",
   "about.source": "Zdrojový kód a sledování problémů najdete na {link}.",
   "about.source.link": "GitHub",
   "about.title": "O aplikaci",

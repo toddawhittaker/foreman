@@ -21,7 +21,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
-	"github.com/toddawhittaker/foreman/internal/version"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -279,6 +278,9 @@ type view struct {
 	// Renewed names the token a banner Renew just renewed, for the Done
 	// message at the top of whichever page it came back to.
 	Renewed string
+	// Newer is the version of a newer Foreman release for About, else empty
+	// (SPEC 17).
+	Newer string
 }
 
 // Current is true when the nav link to path names this page, so it gets
@@ -399,7 +401,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"usersPath":         usersPath,
 		"auditLogPath":      auditLogPath,
 		"aboutPath":         func() string { return PathAbout },
-		"about":             version.Get,
+		"about":             aboutOf,
 		"notificationsPath": func() string { return PathNotifications },
 		"schedulePath":      func() string { return PathSchedule },
 		"flag":              r.flagURL,
@@ -632,15 +634,16 @@ func menuReturn(req *http.Request) string {
 // in the language of req (localeOf). user is the signed-in username, or
 // empty to hide the sign-out form. lamp is the server's state for the
 // main navigation, unset to show none. banner is the signed-in user's API
-// tokens near or past expiry (SPEC 12.10). The page is rendered in full
+// tokens near or past expiry (SPEC 12.10). newer is a newer Foreman
+// release for About, else empty. The page is rendered in full
 // before anything is written, so on error the response is untouched and the
 // caller can still send an ErrorPage.
-func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, banner []TokenRow, p Page) error {
+func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, banner []TokenRow, newer string, p Page) error {
 	t, err := r.template(localeOf(req), p)
 	if err != nil {
 		return err
 	}
-	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp, Banner: banner, Renewed: renewedName(req, user)}
+	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp, Banner: banner, Renewed: renewedName(req, user), Newer: newer}
 	layout := "layout"
 	_, public := p.(publicPage)
 	if public {

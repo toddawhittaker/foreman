@@ -18,12 +18,18 @@
   "general.stop.hint": "0 means no warning.",
   "general.stop.label": "Default stop countdown (seconds)",
   "general.stop.text": "The countdown a stop or restart starts with when it asks for none. A scheduled restart keeps its own fixed countdown.",
+  "general.switch.off": "off",
+  "general.switch.on": "on",
   "general.trim.final": "Removed snapshots cannot be restored. To keep them, raise the number again before the next automatic snapshot.",
   "general.trim.snapshots": {
     "one": "{count} automatic snapshot will be removed, at its world's next automatic snapshot.",
     "other": "{count} automatic snapshots will be removed, each at its world's next automatic snapshot."
   },
   "general.trim.worlds": "Worlds affected: {count}.",
+  "general.updates.heading": "New Foreman versions",
+  "general.updates.hint": "Turned off, Foreman never contacts GitHub for this.",
+  "general.updates.label": "Check GitHub for new Foreman versions",
+  "general.updates.text": "Foreman can ask GitHub every 6 hours whether a newer release of Foreman is out, and About then says so. It sends nothing about you or your worlds.",
   "general.uploads.heading": "Uploads",
   "general.uploads.mod.hint": "A mod downloaded from the mod portal is held to the same limit.",
   "general.uploads.mod.label": "Largest mod upload (MB)",

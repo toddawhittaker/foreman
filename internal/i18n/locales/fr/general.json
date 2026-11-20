@@ -18,12 +18,18 @@
   "general.stop.hint": "0 signifie aucun avertissement.",
   "general.stop.label": "Compte à rebours d’arrêt par défaut (secondes)",
   "general.stop.text": "Le compte à rebours par lequel commence un arrêt ou un redémarrage qui n’en demande pas. Un redémarrage planifié garde son propre compte à rebours fixe.",
+  "general.switch.off": "désactivé",
+  "general.switch.on": "activé",
   "general.trim.final": "Les instantanés supprimés ne peuvent pas être restaurés. Pour les conserver, augmentez de nouveau le nombre avant le prochain instantané automatique.",
   "general.trim.snapshots": {
     "one": "{count} instantané automatique sera supprimé, au prochain instantané automatique de son monde.",
     "other": "{count} instantanés automatiques seront supprimés, chacun au prochain instantané automatique de son monde."
   },
   "general.trim.worlds": "Mondes concernés : {count}.",
+  "general.updates.heading": "Nouvelles versions de Foreman",
+  "general.updates.hint": "Désactivé, Foreman ne contacte jamais GitHub pour cela.",
+  "general.updates.label": "Rechercher sur GitHub les nouvelles versions de Foreman",
+  "general.updates.text": "Foreman peut demander à GitHub toutes les 6 heures si une version plus récente de Foreman est sortie, et À propos l’indique alors. Aucune information sur vous ou vos mondes n’est envoyée.",
   "general.uploads.heading": "Envoi de fichiers",
   "general.uploads.mod.hint": "Un mod téléchargé depuis le portail de mods est soumis à la même limite.",
   "general.uploads.mod.label": "Taille maximale d’un mod envoyé (Mo)",

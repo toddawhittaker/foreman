@@ -38,6 +38,7 @@
   "audit.action.token-create": "6265942e",
   "audit.action.token-renew": "44c97f91",
   "audit.action.token-revoke": "71fc47f6",
+  "audit.action.update-check-set": "dc4d9a91",
   "audit.action.user-create": "e50df770",
   "audit.action.user-delete": "d1f16e5c",
   "audit.action.webhook-add": "a2674713",

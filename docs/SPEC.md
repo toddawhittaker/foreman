@@ -2657,8 +2657,8 @@ they were created. (P1)
 ## 13. Foreman's own settings
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
-default stop countdown, audit retention and the two upload limits (the
-General tab, below), scheduled restarts, notifications, the public
+default stop countdown, audit retention, the two upload limits and the
+update check (the General tab, below), scheduled restarts, notifications, the public
 mods page (9.16), MCP access (21.2), and portal credentials when not set
 by environment. Each shows where its value comes from (environment or
 UI), and environment values cannot be changed in the UI. (P0 for those
@@ -2670,7 +2670,8 @@ Notifications, Public mods, API tokens, Users (12.12), Audit log (12.9) and
 the factorio.com account. The Settings link in the main navigation opens
 General.
 
-**The General tab** (`/settings/general`) holds five settings. None has an
+**The General tab** (`/settings/general`) holds five number settings and
+one switch. None has an
 environment form, so each says "set here". A bad value refuses the whole
 form and stores nothing. (Todd's rulings, 2026-11-18.)
 
@@ -2681,11 +2682,15 @@ form and stores nothing. (Todd's rulings, 2026-11-18.)
 | Audit retention (12.9), days | 7 to 3650 | 365 | `audit-retention-set` |
 | Save upload limit (14.6), MB | 100 to 8192 | 1024 | `save-upload-limit-set` |
 | Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 200 | `mod-upload-limit-set` |
+| Check GitHub for new Foreman versions (14.10) | on or off | on | `update-check-set` |
 
 A scheduled restart keeps its fixed countdown (7.12). The upload limits are
 in whole MB, meaning MiB, as the pages say them. A stored value that is
-missing, unreadable or out of range gives the default. These settings are
-also read and changed through MCP (21.7, 21.8). (P1)
+missing, unreadable or out of range gives the default. The switch is a
+checkbox; its audit detail reads "from on to off" or "from off to on".
+Turning it off stops the check and hides any notice at once; turning it
+on checks at once, in the background. These settings are also read and
+changed through MCP (21.7, 21.8). (P1)
 
 ## 14. Security
 
@@ -2704,7 +2709,7 @@ reviews against.
 | VPN sidecar | An optional container the operator runs, whose network the game shares (4.13) | Nothing; Foreman did not create it (14.16) |
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
 | Identity provider | The OIDC provider an operator configured (12.7) | Only the ID tokens it signs for this client; nothing else it sends |
-| Internet | Mod portal, image registry and its tag list, release list, webhook targets | Nothing |
+| Internet | Mod portal, image registry and its tag list, release list, GitHub's latest Foreman release, webhook targets | Nothing |
 | AI client | A program, usually an AI assistant, calling the MCP endpoint with an API token (section 21) | Only its token's scope; steerable by text it reads (14.12) |
 | Player | Anyone who can reach the public mods page (9.16) | Nothing; may be a script |
 
@@ -2907,7 +2912,8 @@ a control character or line break, and a chat message that starts with `/`
 
 14.10. **Outbound requests.** Foreman talks only to the mod portal, the
 factorio.com release list, Docker Hub's list of `factoriotools/factorio`
-tags (`hub.docker.com`, 10.7), and webhook URLs an admin configured. Calls
+tags (`hub.docker.com`, 10.7), GitHub's latest Foreman release
+(`api.github.com`, below), and webhook URLs an admin configured. Calls
 to the release list and to Docker Hub follow no redirects, take at most 10
 seconds, and read at most 2 MB (tag list) or 64 KB (release list). The
 size of a game image is one request for a single tag, read at most 64 KB and
@@ -2915,6 +2921,18 @@ limited to 3 seconds, made only when the image is missing and a page says
 how big the download is; any failure leaves the size out. Image
 pulls are made by the Docker daemon, not by Foreman. It does not follow
 redirects for webhooks, and each try takes at most 5 seconds (8.12).
+The update check asks
+`https://api.github.com/repos/toddawhittaker/foreman/releases/latest`
+about one minute after start and then every 6 hours, and at once when an
+admin turns its switch on (13.1). It never runs for a build without a
+release version, or while the switch is off. It follows no redirects,
+takes at most 10 seconds, reads at most 64 KB, and sends a `User-Agent` of
+"Foreman/" and its version, nothing about the user. Only `tag_name` is
+read; it is cut to version characters and must be major.minor.patch, and
+About links to the release page built from that version, never to an
+address GitHub sent. The answer is kept in memory only. A failure logs one
+warning line and shows nothing. About names the release only when it is
+strictly newer than the running build's major.minor.patch (P1).
 The mod portal's base is fixed at `https://mods.factorio.com`; there is no
 setting for it. Its API calls take at most 10 seconds, follow no redirects,
 and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most

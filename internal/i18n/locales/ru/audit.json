@@ -38,6 +38,7 @@
   "audit.action.token-create": "API-токен создан",
   "audit.action.token-renew": "API-токен продлён",
   "audit.action.token-revoke": "API-токен отозван",
+  "audit.action.update-check-set": "Проверка обновлений включена или выключена",
   "audit.action.user-create": "Пользователь создан",
   "audit.action.user-delete": "Пользователь удалён",
   "audit.action.webhook-add": "Вебхук добавлен",

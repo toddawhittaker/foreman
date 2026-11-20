@@ -101,7 +101,7 @@
 {{- if and .User (not (.Current aboutPath))}}
 <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-facts">
   <h2 id="about-title" class="about__heading">{{template "about-logo"}}{{t "about.heading"}}</h2>
-  {{template "about-details" about}}
+  {{template "about-details" (about .Newer)}}
   <div class="actions">
     <button type="button" class="button button--primary" id="about-close">{{t "about.close"}}</button>
   </div>
@@ -149,6 +149,12 @@
      Go version, the licence and the project's address. Takes version.Info. The
      names Foreman and MIT are never translated. */}}
 {{define "about-details" -}}
+{{- /* A newer release from the background check (SPEC 14.10, 17). */}}
+{{- if .Newer}}
+<div class="message message--note" id="about-newer">
+  <p><strong>{{t "common.label.note"}}</strong> {{tHTML "about.newer" "version" .Newer "link" (extLink .NewerURL "about.newer.link")}}</p>
+</div>
+{{- end}}
 <dl class="about__facts" id="about-facts">
   {{- /* A release version, else the commit names the build; a build with neither is a development build. */}}
   {{- if .Version}}

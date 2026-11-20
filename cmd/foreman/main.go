@@ -34,6 +34,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/schedule"
 	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/updatecheck"
+	"github.com/toddawhittaker/foreman/internal/version"
 	"github.com/toddawhittaker/foreman/internal/web"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -230,7 +232,14 @@ func serve(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Favorites: favorites, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: scheduler, HostDataDir: hostDir, Log: slog.Default()})
+	// The check reads the switch from the store, so it stops before the
+	// store closes (SPEC 14.10).
+	updates := updatecheck.New(version.Get().Version, web.UpdateCheckEnabled(st), slog.Default())
+	updateCtx, stopUpdates := context.WithCancel(context.Background())
+	var updating sync.WaitGroup
+	updating.Go(func() { updates.Run(updateCtx) })
+	defer func() { stopUpdates(); updating.Wait() }()
+	handler, err := web.NewHandler(web.Deps{Updates: updates, Config: cfg, Store: st, Worlds: worlds, Favorites: favorites, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: scheduler, HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
 	}

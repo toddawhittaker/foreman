@@ -38,6 +38,7 @@
   "audit.action.token-create": "已创建 API 令牌",
   "audit.action.token-renew": "已续期 API 令牌",
   "audit.action.token-revoke": "已吊销 API 令牌",
+  "audit.action.update-check-set": "已开启或关闭更新检查",
   "audit.action.user-create": "已创建用户",
   "audit.action.user-delete": "已删除用户",
   "audit.action.webhook-add": "已添加 Webhook",

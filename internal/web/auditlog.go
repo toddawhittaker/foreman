@@ -83,6 +83,7 @@ var auditActionWords = map[string]i18n.Msg{
 	AuditAuditRetentionSet:    i18n.M("audit.action.audit-retention-set"),
 	AuditSaveUploadLimitSet:   i18n.M("audit.action.save-upload-limit-set"),
 	AuditModUploadLimitSet:    i18n.M("audit.action.mod-upload-limit-set"),
+	AuditUpdateCheckSet:       i18n.M("audit.action.update-check-set"),
 }
 
 // AuditRow is one entry of the log as the page shows it.
