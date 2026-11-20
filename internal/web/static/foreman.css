@@ -5087,7 +5087,8 @@ html:has(.large-view[open]) {
 
 /* The portal's summary: one quiet line of counts, each led by its shape,
    that wraps to a second line on a phone; Update all sits beside the
-   Installed mods heading. */
+   Installed mods heading. The line is not held to the reading measure, so
+   Update all ends the summary's row. */
 .mod-status__line > p {
   flex: 1 1 20rem;
   min-inline-size: 0;
