@@ -604,6 +604,11 @@ time {
   font-variant-numeric: tabular-nums;
 }
 
+/* Figures line up in every value, time and table cell. */
+:where(time, td, dd, output, .ver, .mod-ver, .count, .badge, .state) {
+  font-variant-numeric: tabular-nums;
+}
+
 .ver,
 .mod-ver {
   font-family: var(--font-mono);
@@ -1154,6 +1159,190 @@ main {
   mask-image: linear-gradient(to right, transparent, currentColor 1.5rem, currentColor calc(100% - 1.5rem), transparent);
 }
 
+/* The shell from 64rem (DESIGN 6, Shell): the header is a rail on the start
+   side: the logo, the four areas, then the current area's own pages under a
+   hairline. A status strip over the content names the live world and its
+   state, with the user menu at its end. Every page's content starts at the
+   same place. Below 64rem the header stays a bar with tab rows. */
+@media (min-width: 64rem) {
+  body:has(> .site > nav) {
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    grid-template-rows: 3.5rem auto 1fr;
+    min-block-size: 100dvh;
+  }
+
+  /* The rail's face runs the full height of the page. */
+  body:has(> .site > nav)::before {
+    content: "";
+    grid-column: 1;
+    grid-row: 1 / -1;
+    background: var(--color-surface);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  body:has(> .site > nav) > .site {
+    display: contents;
+  }
+
+  body:has(> .site > nav) > .site > .product {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+    padding-inline: var(--space-5);
+    border-block-end: var(--border-width) solid var(--color-line);
+    border-inline-end: var(--border-width) solid var(--color-line);
+    /* A faint drafting grid behind the maker's mark, as on sign-in. */
+    background:
+      linear-gradient(to right, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
+      linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
+      var(--color-surface);
+    color: var(--color-heading);
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 30;
+  }
+
+  body:has(> .site > nav) > .site > nav {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    order: 0;
+    margin: 0;
+    padding: var(--space-4) var(--space-3) var(--space-3);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  .site > nav .tabs {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+  }
+
+  .site > nav .tabs li {
+    flex: none;
+  }
+
+  body .site > nav .tabs a {
+    justify-content: flex-start;
+    gap: var(--space-3);
+    min-block-size: 2.75rem;
+    margin: 0;
+    padding-inline: var(--space-3);
+    background: none;
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: none;
+    color: var(--color-text);
+    font-size: var(--text-md);
+    font-weight: 500;
+    transition: background-color var(--dur-1) var(--ease);
+  }
+
+  body .site > nav .tabs a:hover {
+    background: var(--color-secondary-hover);
+    color: var(--color-heading);
+  }
+
+  /* The current place: a neutral raised face and the orange edge, not a
+     brown tint (DESIGN 3). */
+  body .site > nav .tabs a[aria-current] {
+    background: var(--color-raised);
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+    font-weight: 600;
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
+  }
+
+  body .site > nav .tabs a:focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: -1px;
+  }
+
+  body .site > nav .tabs a::after {
+    content: none;
+  }
+
+  body:has(> .site > nav) > .site > .menu {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 31;
+    margin: 0 var(--space-6) 0 0;
+  }
+
+  /* A control scrolled into view stops below the strip, never behind it
+     (WCAG 2.4.11); the audit log's column names stick under it too. */
+  html:has(body > .site > nav) {
+    scroll-padding-block-start: calc(3.5rem + var(--space-3));
+  }
+
+  body:has(> .site > nav) .audit-table thead th {
+    inset-block-start: 3.5rem;
+  }
+
+  /* Anchored to the button, so its own width, not the button's, so every
+     language's name keeps one line and the theme row fits (DESIGN 6). */
+  body:has(> .site > nav) > .site > .menu > .menu__panel {
+    inset-block-start: calc(100% + var(--space-2));
+    inset-inline-end: 0;
+    inline-size: 18rem;
+    max-inline-size: calc(100vw - 2 * var(--space-3));
+  }
+
+  body:has(> .site > nav) > main {
+    position: relative;
+    grid-column: 2;
+    grid-row: 2 / -1;
+    justify-self: start;
+    inline-size: 100%;
+    max-inline-size: calc(var(--page-max) + 2 * var(--space-6));
+    padding: var(--space-6);
+  }
+
+  /* The area's own pages sit in the rail, under the four areas; the copy
+     under the page's heading is for narrower screens. */
+  body:has(> .site > nav) > main > .subnav {
+    display: none;
+  }
+
+  body:has(> .site > nav) > header > .subnav {
+    display: block;
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
+    margin: 0;
+    padding: var(--space-4) var(--space-3) var(--space-5);
+    border: 0;
+    border-block-start: var(--border-width) solid var(--color-line);
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  /* The list's name, taken from its own label, over its links. It is named
+     in the interface face, so the mono capitals stay for overlines and fact
+     names (DESIGN 5). */
+  body:has(> .site > nav) > header > .subnav::before {
+    content: attr(aria-label) / "";
+    display: block;
+    padding: 0 var(--space-3) var(--space-2);
+    color: var(--color-text-muted);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  body:has(> .site > nav) > header > .subnav > ul > li > a {
+    min-block-size: 2.75rem;
+    font-size: var(--text-md);
+  }
+}
+
 /* A section of a page is a card: the surface colour, a hairline edge and
    one padding, so every page reads as a set of panels on its background. */
 .panel {
@@ -1244,6 +1433,12 @@ main > h1 + p.hint {
   max-inline-size: var(--measure);
   font-size: var(--text-sm);
   line-height: 1.43;
+}
+
+/* A page's description under its title: one quiet line at the measure. */
+.page-intro {
+  max-inline-size: var(--measure);
+  color: var(--color-text-muted);
 }
 
 /* Labels and legends: 14/20 semibold. :where() keeps this below any
@@ -1957,6 +2152,29 @@ ol.plan-steps > li:not(:last-child)::after {
   }
 }
 
+/* The mod review on a wide screen: the changes lead, and what happens, the
+   countdown and the button sit in a column beside them. */
+.confirm__main,
+.confirm__side {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+@container (min-width: 64rem) {
+  .confirm form:has(> .confirm__side) {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .confirm__side:not(:empty) {
+    padding-inline-start: var(--space-6);
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+}
+
 /* 7.5 Server-state badge: the word plus a drawn shape, never colour alone. */
 .state {
   display: inline-flex;
@@ -2512,7 +2730,24 @@ main:has(> .gate) {
   }
 }
 
-/* The "Active" badge: the state badge's shape, without the drawn square. */
+/* From 64rem the side margin is 32 px. */
+@media (min-width: 64rem) {
+  main {
+    padding-inline: var(--space-6);
+  }
+
+  .site {
+    padding-inline: max(var(--space-6), calc((100% - var(--page-max)) / 2 + var(--space-6)));
+  }
+
+  .menu__panel {
+    inset-inline-end: max(var(--space-6), calc((100% - var(--page-max)) / 2 + var(--space-6)));
+  }
+}
+
+/* The "Active" badge: the state badge's shape, without the drawn square.
+   It is one line: a long "Needed by" name stays a pill, never a two-line
+   lozenge. */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -2524,6 +2759,7 @@ main:has(> .gate) {
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1.5;
+  white-space: nowrap;
 }
 
 /* A neutral outline with a pin: it marks the live world without taking
@@ -5255,6 +5491,13 @@ a[target="_blank"]::after {
   }
 }
 
+/* The mods rail is wider once the page is, so the plan's rows keep one line. */
+@container (min-width: 80rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) 26rem;
+  }
+}
+
 /* Generate: the settings beside a preview that stays in view while they
    change (DESIGN 8.6). Two columns only where the form leaves the settings
    34rem, so their steps stay sliders (8.7) beside the shell's rail; one
@@ -5391,6 +5634,29 @@ a[target="_blank"]::after {
   }
 }
 
+/* Generate: starting from a favorite is one row on a wide card, the heading,
+   the choice and the link to the list side by side. */
+@container (min-width: 64rem) {
+  form#favorite-chooser {
+    grid-template-columns: auto minmax(0, 34rem) 1fr;
+    column-gap: var(--space-6);
+    align-items: end;
+  }
+
+  #favorite-chooser > h2 {
+    align-self: center;
+  }
+
+  #favorite-chooser > :not(h2, .field, .actions) {
+    grid-column: 1 / -1;
+  }
+
+  #favorite-chooser > .actions {
+    justify-content: flex-end;
+    align-self: center;
+  }
+}
+
 /* On a very wide screen the map preview gets about two fifths of the page,
    so the picture that decides the world is large (DESIGN 8.6). */
 @media (min-width: 100rem) {
@@ -5517,6 +5783,12 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 :is(.gen-actions, .form-foot) > a:not(.button):hover {
   background: var(--color-secondary-hover);
   border-color: var(--color-line);
+}
+
+/* A save bar's note leads it, the action ends it. */
+.form-foot > .form-foot__note {
+  margin: 0 auto 0 0;
+  margin-inline: 0 auto;
 }
 
 @media (max-width: 30rem) {
@@ -5795,9 +6067,9 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   transform: scaleX(-1);
 }
 
-/* On a wide screen the players take two columns of three and the world's
-   pages the third; the pages card runs down to the players card's foot, so
-   both columns end on one line, its rows staying at the top. */
+/* On a wide screen the players take two columns of three and fill them;
+   the world's pages and the newest snapshots stack in the third, and both
+   columns end on one line. */
 @media (min-width: 64rem) {
   .server-grid {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -5815,8 +6087,21 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   }
 
   .server-grid > .shortcuts.card {
+    align-self: start;
+    align-content: start;
+  }
+
+  .server-grid > .panel:has(#players-heading) {
+    grid-row: 1 / span 2;
+    grid-column: 1;
     align-self: stretch;
     align-content: start;
+  }
+
+  .server-grid > .recent-snaps {
+    grid-row: 2;
+    grid-column: 2;
+    align-self: stretch;
   }
 }
 
@@ -5857,6 +6142,58 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   .shortcuts > #act-switch-world::after {
     content: none;
   }
+}
+
+.recent-snaps {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-3);
+}
+
+.recent-snaps__list {
+  display: grid;
+  align-content: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-snaps__list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+  font-size: var(--text-sm);
+  max-inline-size: none;
+}
+
+.recent-snaps__list > li:first-child {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.recent-snaps__name {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.recent-snaps__name > .snap-kind {
+  order: 0;
+}
+
+.recent-snaps__list time {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.recent-snaps > .actions {
+  margin: 0;
 }
 
 /* The sign-in page carries the full-size mark above its heading. */
@@ -6646,6 +6983,61 @@ header > .subnav {
   }
 }
 
+@media (min-width: 64rem) {
+  /* The status strip: the live world and its state, read from anywhere. It
+     says the state once, on every page, and stays in view while the page
+     scrolls (DESIGN 6, Shell; 7.5). */
+  body:has(> .site > nav) .site-strip {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-inline-size: 0;
+    padding-inline: var(--space-6) 20rem;
+    background: var(--color-surface);
+    border-block-end: 2px solid var(--color-line);
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 30;
+  }
+
+  .site-strip:has(.lamp--running) { border-block-end-color: var(--color-ok); }
+  .site-strip:has(.lamp--starting) { border-block-end-color: var(--color-info); }
+  .site-strip:has(.lamp--stopping) { border-block-end-color: var(--color-warn); }
+  .site-strip:has(:is(.lamp--crashed, .lamp--crash-looping)) { border-block-end-color: var(--color-danger); }
+
+  .site-world {
+    display: block;
+    overflow: hidden;
+    color: var(--color-heading);
+    font-size: var(--text-md);
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body:has(> .site > nav) .site-state:not(:empty) {
+    flex: none;
+    min-inline-size: 0;
+    min-block-size: 1.5rem;
+    padding: 0.125rem 0.625rem 0.125rem var(--space-2);
+    background: var(--color-raised);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: 999px;
+    color: var(--color-heading);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .site-state:has(.lamp--running) { background: var(--color-ok-bg) !important; border-color: color-mix(in srgb, var(--color-ok) 45%, transparent) !important; color: var(--color-ok) !important; }
+  .site-state:has(.lamp--starting) { background: var(--color-info-bg) !important; border-color: color-mix(in srgb, var(--color-info) 45%, transparent) !important; color: var(--color-info) !important; }
+  .site-state:has(.lamp--stopping) { background: var(--color-warn-bg) !important; border-color: color-mix(in srgb, var(--color-warn) 45%, transparent) !important; color: var(--color-warn) !important; }
+  .site-state:has(:is(.lamp--crashed, .lamp--crash-looping)) { background: var(--color-danger-bg) !important; border-color: color-mix(in srgb, var(--color-danger) 45%, transparent) !important; color: var(--color-danger-text) !important; }
+}
+
 .tabs :is(#nav-lamp, .nav-lamp) {
   position: absolute;
   inline-size: 1px;
@@ -6773,14 +7165,14 @@ header > .subnav {
   border-inline-start-color: var(--color-line);
 }
 
-/* The plate's band leads with the state, behind a 6 px rule in the
-   state's colour, so it reads from across the room. */
+/* The plate's band, 64 px tall, leads with the state behind a 6 px rule in
+   the state's colour, so it reads from across the room before any button. */
 .plate__band {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-5);
-  min-block-size: 3.5rem;
+  min-block-size: 4rem;
   padding: var(--space-2) var(--card-pad);
   background: var(--color-raised);
   color: var(--color-heading);
@@ -6789,6 +7181,7 @@ header > .subnav {
   font-size: var(--text-md);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  padding-block: var(--space-3);
 }
 
 .plate__fact {
@@ -6984,6 +7377,26 @@ select.select {
   background-position: left 0.75rem center;
 }
 
+/* Every select not drawn elsewhere takes the field's look: 44 px, the deep
+   face, the control edge and the one chevron (DESIGN 7.2). */
+:where(select:not([multiple], [size])) {
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3) 2.25rem;
+  background: var(--color-deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23857c70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0.75rem center / 1rem;
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 50%));
+  font-size: var(--text-sm);
+  appearance: none;
+  text-overflow: ellipsis;
+}
+
+:where(select:not([multiple], [size])):focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 /* Checkboxes and radios are drawn, so an empty one never reads as disabled
    in dark: a sunk 20 px box; chosen, the heading colour fills it under a
    tick. The fill is neutral, so orange stays the primary action's. */
@@ -7092,6 +7505,14 @@ td > input[type="checkbox"]:checked::before {
   background: repeating-linear-gradient(-45deg, var(--color-danger) 0 8px, var(--color-danger-bg) 8px 16px);
   border-start-start-radius: var(--radius-lg);
   border-start-end-radius: var(--radius-lg);
+}
+
+/* A plan that destroys nothing keeps the review frame but is drawn in
+   blueprint blue: planned, not yet built; the hazard stripe stays for
+   destructive ones (DESIGN 7.1). */
+.confirm--plain::before {
+  block-size: 4px;
+  background: var(--color-info);
 }
 
 .confirm {
@@ -8321,21 +8742,23 @@ main:has(> .gate)::before {
 .plate__band:has(.plate__state--crashed),
 .plate__band:has(.plate__state--crash-looping) { --plate-state: var(--color-danger); }
 
+/* The state word is the largest thing on the plate. */
 .plate__state {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   color: var(--plate-state-text, var(--color-heading));
-  font-size: var(--text-xl);
-  font-weight: 650;
   line-height: 1.2;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .plate__state::before {
   content: "";
   flex: none;
-  inline-size: 0.75rem;
-  block-size: 0.75rem;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
   border: 2px solid currentColor;
   border-radius: 2px;
 }
@@ -8427,6 +8850,38 @@ main > h1 + p.hint {
   max-inline-size: 66ch;
   font-size: var(--text-xs);
   line-height: 1.45;
+}
+
+/* Settings rows: the title's column is a fixed 336 px from a wide card, so
+   a title such as "New world from this one" keeps one line. */
+@container (min-width: 60rem) {
+  :is(.setting-row, .settings > fieldset) {
+    grid-template-columns: 21rem minmax(0, 1fr);
+  }
+
+  .setting-row__body > * {
+    max-inline-size: 30rem;
+  }
+
+  /* A long string reads better on a wider box. */
+  .setting-row__body > .exchange {
+    max-inline-size: 44rem;
+  }
+}
+
+/* Game settings on a wide card: a section's fields flow two to a row, so
+   the long form uses the width beside its titles instead of one narrow
+   column. Lists, notes and anything that is not a field run across both. */
+@container (min-width: 72rem) {
+  .settings > fieldset > .setting-row__body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .settings > fieldset > .setting-row__body > :not(.field, .setting-check, fieldset) {
+    grid-column: 1 / -1;
+  }
 }
 
 .panel > :is(h2, .section-head) + :is(p.hint, p:not([class])),
@@ -8659,6 +9114,59 @@ main > .panel.danger-zone.danger-zone--blocked {
   color: var(--color-heading);
 }
 
+/* World Overview: facts, then sharing (map string and favorite) side by
+   side, then managing the world, then what retires or destroys it. */
+.world-share {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@container (min-width: 64rem) {
+  .world-share {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+
+  .world-share:has(> :only-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.world-share__item {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.world-share__head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.world-share__body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.world-share__item .inline-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.world-share__item .inline-row > input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.danger-zone:not(.danger-zone--blocked) #delete-heading {
+  color: var(--color-danger-text);
+}
+
 /* Version numbers in facts are values like their neighbours: the sans at
    the same size and weight, with tabular figures. Mono stays for the log,
    commands, file names and code chips. */
@@ -8812,6 +9320,50 @@ main > .panel.danger-zone.danger-zone--blocked {
 
   .subnav--settings ul::after {
     content: none;
+  }
+}
+
+/* Settings on a wide screen: the tabs are a list in the rail, the current
+   one marked by an orange edge on a raised face. */
+@media (min-width: 64rem) {
+  header > .subnav--settings ul {
+    flex-direction: column;
+    gap: 2px;
+    overflow: visible;
+    mask-image: none;
+  }
+
+  header > .subnav--settings ul::after {
+    content: none;
+  }
+
+  header > .subnav--settings a {
+    justify-content: flex-start;
+    min-block-size: 2.5rem;
+    margin: 0;
+    padding-inline: var(--space-3);
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: var(--text-md);
+    white-space: normal;
+    transition: background-color var(--dur-1) var(--ease);
+  }
+
+  header > .subnav--settings a:hover {
+    background: var(--color-secondary-hover);
+  }
+
+  header > .subnav--settings a[aria-current] {
+    background: var(--color-raised);
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
+  }
+
+  header > .subnav--settings a:focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: -1px;
   }
 }
 
@@ -9347,6 +9899,22 @@ main > .panel.danger-zone.danger-zone--blocked {
   color: var(--color-text);
   background: var(--color-secondary-hover);
   border-color: var(--color-line);
+}
+
+/* Clearing the plan throws work away, so it reads as a quiet danger
+   action, not a plain link (DESIGN 7.1). It lines up with the card's text
+   edge: the negative margin takes back its padding. */
+.plan-panel__clear .button--quiet {
+  padding-inline: var(--space-3);
+  margin-inline-start: calc(-1 * var(--space-3));
+  border: var(--border-width) solid transparent;
+  color: var(--color-danger-text);
+  text-decoration: none;
+}
+
+.plan-panel__clear .button--quiet:hover {
+  background: var(--color-danger-bg);
+  border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
 }
 
 .plan-panel__go {
@@ -9932,12 +10500,13 @@ main:has(> .gate) > .gate + .gate {
 /* U1 drop zone (DESIGN 7.10). Without script .dropzone is a plain .field.
    With script the native input is stretched, transparent, over a dashed
    area, so a click, Enter or Space anywhere on it opens the picker. A drag
-   is shown by a solid, thicker border and new words, not colour alone. */
+   is shown by a solid, thicker border and new words, not colour alone.
+   The area is 160 px tall; the limits are in the hint above it. */
 .dropzone--on .dropzone__area {
   position: relative;
   display: grid;
   place-items: center;
-  min-block-size: 6rem;
+  min-block-size: 10rem;
   padding: var(--space-4);
   background: var(--color-deep);
   border: 2px dashed var(--color-border);
@@ -10022,6 +10591,60 @@ main:has(> .gate) > .gate + .gate {
   }
 }
 
+/* Import: the save upload's fields on the start side and the drop zone
+   beside them at its own height; the order stays the form's. */
+@container (min-width: 56rem) {
+  form.import-upload {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-auto-flow: row dense;
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .import-upload > :not(.field, .actions) {
+    grid-column: 1 / -1;
+  }
+
+  .import-upload > .field {
+    grid-column: 1;
+  }
+
+  .import-upload > .field.dropzone {
+    grid-column: 2;
+    grid-row: span 4;
+    align-self: start;
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .import-upload > .field.dropzone .dropzone__area {
+    block-size: auto;
+  }
+
+  .import-upload > .actions {
+    grid-column: 1 / -1;
+  }
+
+  .import-upload .field input:not([type="checkbox"], [type="radio"], [type="file"]),
+  .import-upload .field select {
+    max-inline-size: none;
+  }
+}
+
+/* The drop zone's words: an upload mark over one line. */
+.dropzone__prompt:not([hidden]) {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.dropzone__prompt::before {
+  content: "";
+  inline-size: 2rem;
+  block-size: 2rem;
+  background: var(--color-text-muted);
+  mask: var(--i-upload) center / contain no-repeat;
+}
+
 /* Saves tab: an autosave reads as the world's name and time, and its file
    name sits on its own line under them as smaller, quieter text, so every
    file name starts at the same left edge. The label's digits are tabular, as
@@ -10093,6 +10716,12 @@ main:has(> .gate) > .gate + .gate {
   max-inline-size: 100%;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .plan-row__version select {
+    min-block-size: 2.5rem;
+  }
+}
+
 /* An offered mod: the tick box is its own target, apart from the title
    link, so following the link never ticks it. */
 .plan-offer {
@@ -10148,6 +10777,86 @@ main:has(> .gate) > .gate + .gate {
   overflow-wrap: anywhere;
   text-overflow: clip;
   resize: vertical;
+}
+
+/* A read-only value with its copy button joined to the field's end edge. */
+.copy-field {
+  display: flex;
+  align-items: stretch;
+  min-inline-size: 0;
+}
+
+.exchange .field .copy-field:not(.copy-field--block) > textarea.exchange__value {
+  flex: 1 1 auto;
+  min-block-size: var(--target-min);
+  padding-block: 0.6rem;
+  /* One line where the value fits; on a phone it grows to show it whole. */
+  field-sizing: content;
+  resize: none;
+  min-inline-size: 0;
+  max-inline-size: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-overflow: clip;
+}
+
+.copy-field > .exchange__value:has(+ .button:not([hidden])) {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.copy-field > .button {
+  flex: none;
+  margin-inline-start: calc(-1 * var(--border-width));
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.copy-done {
+  color: var(--color-ok);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* The token page's two values sit at a width a token fits on one line. */
+.exchange:has(.copy-field:not(.copy-field--block)) {
+  max-inline-size: 52rem;
+}
+
+/* A long string: the text box and a foot bar holding Copy, drawn as one field. */
+.copy-field--block {
+  display: grid;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.exchange .copy-field--block > textarea.exchange__value {
+  min-block-size: 7.5rem;
+  border: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: none;
+  line-height: 1.5;
+  resize: none;
+}
+
+.exchange .copy-field--block > textarea.exchange__value:focus {
+  outline-offset: -2px;
+}
+
+.copy-field__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.copy-field__foot:not(:has(> .button:not([hidden]))) {
+  display: none;
 }
 
 /* ---- The public mods page (SPEC 9.16, DESIGN 8.20): a plain list of the
@@ -10223,6 +10932,45 @@ main:has(#act-public-mods-open) #public-mods-state {
   }
 }
 
+/* The public mods page: the running world's card leads, and where the files
+   go is a note in a rail beside it; a players' page, so a narrower frame. */
+main:has(> .public-world) {
+  max-inline-size: 80rem;
+}
+
+@container (min-width: 56rem) {
+  .public-world,
+  .public-where {
+    align-self: start;
+  }
+}
+
+@media (min-width: 64rem) {
+  main:has(> .public-world) {
+    grid-template-columns: minmax(0, 1fr) 30rem;
+  }
+
+  main:has(> .public-world) > :not(.public-world, .public-where) {
+    grid-column: 1 / -1;
+  }
+
+  main > .public-world {
+    grid-column: 1;
+  }
+
+  main > .public-where {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+}
+
+.public-where > p {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
 /* DESIGN 8.15 Audit log (SPEC 12.9). The filters are one row of controls that
    wraps when it must. The entries are a table of six fixed columns; where the
    section is too narrow for six columns each row becomes a compact block of
@@ -10249,6 +10997,21 @@ main:has(#act-public-mods-open) #public-mods-state {
 
 .audit-filter > .actions {
   flex: none;
+}
+
+/* The Audit log is one card like its sibling settings pages: the filter
+   row is the card's head band above a hairline, the entries under it. */
+.audit-panel {
+  gap: var(--space-5);
+}
+
+.audit-panel > .audit-filter {
+  padding-block-end: var(--space-5);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.audit-panel > form.audit-filter {
+  display: flex;
 }
 
 .audit-entries {
@@ -10475,320 +11238,6 @@ main:has(#act-public-mods-open) #public-mods-state {
   flex: 1 1 16rem;
   min-width: 0;
   margin: 0;
-}
-
-/* The webhook form swaps the address field and Pushover's keys (DESIGN 8.16). */
-#webhook-url-field[hidden],
-#webhook-keys[hidden] {
-  display: none;
-}
-
-/* ==== The wide frame (DESIGN 4). The page column is 1600 px wide with 32 px
-   gutters from 64rem; Foreman's settings put their tabs in a rail on the
-   start side; lists of tokens and users read as tables, as Worlds does. ==== */
-
-/* Figures line up in every value, time and table cell. */
-:where(time, td, dd, output, .ver, .mod-ver, .count, .badge, .state) {
-  font-variant-numeric: tabular-nums;
-}
-
-@media (min-width: 64rem) {
-  main {
-    padding-inline: var(--space-6);
-  }
-
-  .site {
-    padding-inline: max(var(--space-6), calc((100% - var(--page-max)) / 2 + var(--space-6)));
-  }
-
-  .menu__panel {
-    inset-inline-end: max(var(--space-6), calc((100% - var(--page-max)) / 2 + var(--space-6)));
-  }
-
-  /* The shell (DESIGN 6, Shell): the header is a rail on the start side:
-     the logo, the four areas, then the current area's own pages under a
-     hairline. A status strip over the content names the live world and its
-     state, with the user menu at its end. Every page's content starts at the
-     same place. Below 64rem the header stays a bar with tab rows. */
-  body:has(> .site > nav) {
-    display: grid;
-    grid-template-columns: var(--rail) minmax(0, 1fr);
-    grid-template-rows: 3.5rem auto 1fr;
-    min-block-size: 100dvh;
-  }
-
-  /* The rail's face runs the full height of the page. */
-  body:has(> .site > nav)::before {
-    content: "";
-    grid-column: 1;
-    grid-row: 1 / -1;
-    background: var(--color-surface);
-    border-inline-end: var(--border-width) solid var(--color-line);
-  }
-
-  body:has(> .site > nav) > .site {
-    display: contents;
-  }
-
-  body:has(> .site > nav) > .site > .product {
-    grid-column: 1;
-    grid-row: 1;
-    align-self: stretch;
-    padding-inline: var(--space-5);
-    border-block-end: var(--border-width) solid var(--color-line);
-    border-inline-end: var(--border-width) solid var(--color-line);
-    /* A faint drafting grid behind the maker's mark, as on sign-in. */
-    background:
-      linear-gradient(to right, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
-      linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
-      var(--color-surface);
-    color: var(--color-heading);
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 30;
-  }
-
-  body:has(> .site > nav) > .site > nav {
-    grid-column: 1;
-    grid-row: 2;
-    align-self: start;
-    order: 0;
-    margin: 0;
-    padding: var(--space-4) var(--space-3) var(--space-3);
-    border-inline-end: var(--border-width) solid var(--color-line);
-  }
-
-  .site > nav .tabs {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    gap: 2px;
-  }
-
-  .site > nav .tabs li {
-    flex: none;
-  }
-
-  body .site > nav .tabs a {
-    justify-content: flex-start;
-    gap: var(--space-3);
-    min-block-size: 2.75rem;
-    margin: 0;
-    padding-inline: var(--space-3);
-    background: none;
-    border: 0;
-    border-inline-start: 3px solid transparent;
-    border-radius: 0 var(--radius) var(--radius) 0;
-    box-shadow: none;
-    color: var(--color-text);
-    font-size: var(--text-md);
-    font-weight: 500;
-    transition: background-color var(--dur-1) var(--ease);
-  }
-
-  body .site > nav .tabs a:hover {
-    background: var(--color-secondary-hover);
-    color: var(--color-heading);
-  }
-
-  /* The current place: a neutral raised face and the orange edge, not a
-     brown tint (DESIGN 3). */
-  body .site > nav .tabs a[aria-current] {
-    background: var(--color-raised);
-    border-inline-start-color: var(--color-selected);
-    color: var(--color-heading);
-    font-weight: 600;
-    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
-  }
-
-  body .site > nav .tabs a:focus-visible {
-    outline: var(--focus-width) solid var(--color-focus);
-    outline-offset: -1px;
-  }
-
-  body .site > nav .tabs a::after {
-    content: none;
-  }
-
-  /* The status strip: the live world and its state, read from anywhere. It
-     says the state once, on every page, and stays in view while the page
-     scrolls (DESIGN 6, Shell; 7.5). */
-  body:has(> .site > nav) .site-strip {
-    grid-column: 2;
-    grid-row: 1;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-inline-size: 0;
-    padding-inline: var(--space-6) 20rem;
-    background: var(--color-surface);
-    border-block-end: 2px solid var(--color-line);
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 30;
-  }
-
-  .site-strip:has(.lamp--running) { border-block-end-color: var(--color-ok); }
-  .site-strip:has(.lamp--starting) { border-block-end-color: var(--color-info); }
-  .site-strip:has(.lamp--stopping) { border-block-end-color: var(--color-warn); }
-  .site-strip:has(:is(.lamp--crashed, .lamp--crash-looping)) { border-block-end-color: var(--color-danger); }
-
-  .site-world {
-    display: block;
-    overflow: hidden;
-    color: var(--color-heading);
-    font-size: var(--text-md);
-    font-weight: 650;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  body:has(> .site > nav) .site-state:not(:empty) {
-    flex: none;
-    min-inline-size: 0;
-    min-block-size: 1.5rem;
-    padding: 0.125rem 0.625rem 0.125rem var(--space-2);
-    background: var(--color-raised);
-    border: var(--border-width) solid var(--color-line);
-    border-radius: 999px;
-    color: var(--color-heading);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    line-height: 1.4;
-    white-space: nowrap;
-  }
-
-  .site-state:has(.lamp--running) { background: var(--color-ok-bg) !important; border-color: color-mix(in srgb, var(--color-ok) 45%, transparent) !important; color: var(--color-ok) !important; }
-  .site-state:has(.lamp--starting) { background: var(--color-info-bg) !important; border-color: color-mix(in srgb, var(--color-info) 45%, transparent) !important; color: var(--color-info) !important; }
-  .site-state:has(.lamp--stopping) { background: var(--color-warn-bg) !important; border-color: color-mix(in srgb, var(--color-warn) 45%, transparent) !important; color: var(--color-warn) !important; }
-  .site-state:has(:is(.lamp--crashed, .lamp--crash-looping)) { background: var(--color-danger-bg) !important; border-color: color-mix(in srgb, var(--color-danger) 45%, transparent) !important; color: var(--color-danger-text) !important; }
-
-  body:has(> .site > nav) > .site > .menu {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: end;
-    align-self: center;
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 31;
-    margin: 0 var(--space-6) 0 0;
-  }
-
-  /* A control scrolled into view stops below the strip, never behind it
-     (WCAG 2.4.11); the audit log's column names stick under it too. */
-  html:has(body > .site > nav) {
-    scroll-padding-block-start: calc(3.5rem + var(--space-3));
-  }
-
-  body:has(> .site > nav) .audit-table thead th {
-    inset-block-start: 3.5rem;
-  }
-
-  /* Anchored to the button, so its own width, not the button's, so every
-     language's name keeps one line and the theme row fits (DESIGN 6). */
-  body:has(> .site > nav) > .site > .menu > .menu__panel {
-    inset-block-start: calc(100% + var(--space-2));
-    inset-inline-end: 0;
-    inline-size: 18rem;
-    max-inline-size: calc(100vw - 2 * var(--space-3));
-  }
-
-  body:has(> .site > nav) > main {
-    position: relative;
-    grid-column: 2;
-    grid-row: 2 / -1;
-    justify-self: start;
-    inline-size: 100%;
-    max-inline-size: calc(var(--page-max) + 2 * var(--space-6));
-    padding: var(--space-6);
-  }
-
-  /* The area's own pages sit in the rail, under the four areas; the copy
-     under the page's heading is for narrower screens. */
-  body:has(> .site > nav) > main > .subnav {
-    display: none;
-  }
-
-  body:has(> .site > nav) > header > .subnav {
-    display: block;
-    grid-column: 1;
-    grid-row: 3;
-    align-self: start;
-    margin: 0;
-    padding: var(--space-4) var(--space-3) var(--space-5);
-    border: 0;
-    border-block-start: var(--border-width) solid var(--color-line);
-    border-inline-end: var(--border-width) solid var(--color-line);
-  }
-
-  /* The list's name, taken from its own label, over its links. It is named
-     in the interface face, so the mono capitals stay for overlines and fact
-     names (DESIGN 5). */
-  body:has(> .site > nav) > header > .subnav::before {
-    content: attr(aria-label) / "";
-    display: block;
-    padding: 0 var(--space-3) var(--space-2);
-    color: var(--color-text-muted);
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  body:has(> .site > nav) > header > .subnav > ul > li > a {
-    min-block-size: 2.75rem;
-    font-size: var(--text-md);
-  }
-}
-
-/* A page's description under its title: one quiet line at the measure. */
-.page-intro {
-  max-inline-size: var(--measure);
-  color: var(--color-text-muted);
-}
-
-/* Settings on a wide screen: the tabs are a list in the rail, the current
-   one marked by an orange edge on a raised face. */
-@media (min-width: 64rem) {
-  header > .subnav--settings ul {
-    flex-direction: column;
-    gap: 2px;
-    overflow: visible;
-    mask-image: none;
-  }
-
-  header > .subnav--settings ul::after {
-    content: none;
-  }
-
-  header > .subnav--settings a {
-    justify-content: flex-start;
-    min-block-size: 2.5rem;
-    margin: 0;
-    padding-inline: var(--space-3);
-    border: 0;
-    border-inline-start: 3px solid transparent;
-    border-radius: 0 var(--radius) var(--radius) 0;
-    font-size: var(--text-md);
-    white-space: normal;
-    transition: background-color var(--dur-1) var(--ease);
-  }
-
-  header > .subnav--settings a:hover {
-    background: var(--color-secondary-hover);
-  }
-
-  header > .subnav--settings a[aria-current] {
-    background: var(--color-raised);
-    border-inline-start-color: var(--color-selected);
-    color: var(--color-heading);
-    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
-  }
-
-  header > .subnav--settings a:focus-visible {
-    outline: var(--focus-width) solid var(--color-focus);
-    outline-offset: -1px;
-  }
 }
 
 /* Rows are as wide as their list, not the reading measure. */
@@ -11025,237 +11474,6 @@ main:has(#act-public-mods-open) #public-mods-state {
   gap: var(--space-4);
 }
 
-/* A read-only value with its copy button joined to the field's end edge. */
-.copy-field {
-  display: flex;
-  align-items: stretch;
-  min-inline-size: 0;
-}
-
-.exchange .field .copy-field:not(.copy-field--block) > textarea.exchange__value {
-  flex: 1 1 auto;
-  min-block-size: var(--target-min);
-  padding-block: 0.6rem;
-  /* One line where the value fits; on a phone it grows to show it whole. */
-  field-sizing: content;
-  resize: none;
-  min-inline-size: 0;
-  max-inline-size: none;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  text-overflow: clip;
-}
-
-.copy-field > .exchange__value:has(+ .button:not([hidden])) {
-  border-start-end-radius: 0;
-  border-end-end-radius: 0;
-}
-
-.copy-field > .button {
-  flex: none;
-  margin-inline-start: calc(-1 * var(--border-width));
-  border-start-start-radius: 0;
-  border-end-start-radius: 0;
-}
-
-.copy-done {
-  color: var(--color-ok);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-/* The token page's two values sit at a width a token fits on one line. */
-.exchange:has(.copy-field:not(.copy-field--block)) {
-  max-inline-size: 52rem;
-}
-
-/* A long string: the text box and a foot bar holding Copy, drawn as one field. */
-.copy-field--block {
-  display: grid;
-  background: var(--color-deep);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-}
-
-.exchange .copy-field--block > textarea.exchange__value {
-  min-block-size: 7.5rem;
-  border: 0;
-  border-radius: var(--radius) var(--radius) 0 0;
-  box-shadow: none;
-  line-height: 1.5;
-  resize: none;
-}
-
-.exchange .copy-field--block > textarea.exchange__value:focus {
-  outline-offset: -2px;
-}
-
-.copy-field__foot {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-2);
-  background: var(--color-raised);
-  border-block-start: var(--border-width) solid var(--color-line);
-  border-radius: 0 0 var(--radius) var(--radius);
-}
-
-.copy-field__foot:not(:has(> .button:not([hidden]))) {
-  display: none;
-}
-
-/* Every select not drawn elsewhere takes the field's look: 44 px, the deep
-   face, the control edge and the one chevron (DESIGN 7.2). */
-:where(select:not([multiple], [size])) {
-  min-block-size: var(--target-min);
-  padding-inline: var(--space-3) 2.25rem;
-  background: var(--color-deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23857c70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0.75rem center / 1rem;
-  color: var(--color-text);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 50%));
-  font-size: var(--text-sm);
-  appearance: none;
-  text-overflow: ellipsis;
-}
-
-:where(select:not([multiple], [size])):focus-visible {
-  outline: var(--focus-width) solid var(--color-focus);
-  outline-offset: 2px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .plan-row__version select {
-    min-block-size: 2.5rem;
-  }
-}
-
-/* The mod review on a wide screen: the changes lead, and what happens, the
-   countdown and the button sit in a column beside them. */
-.confirm__main,
-.confirm__side {
-  display: grid;
-  align-content: start;
-  gap: var(--space-4);
-  min-inline-size: 0;
-}
-
-@container (min-width: 64rem) {
-  .confirm form:has(> .confirm__side) {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-    column-gap: var(--space-6);
-    align-items: start;
-  }
-
-  .confirm__side:not(:empty) {
-    padding-inline-start: var(--space-6);
-    border-inline-start: var(--border-width) solid var(--color-line);
-  }
-}
-
-/* Settings rows: the title's column is a fixed 336 px from a wide card, so
-   a title such as "New world from this one" keeps one line. */
-@container (min-width: 60rem) {
-  :is(.setting-row, .settings > fieldset) {
-    grid-template-columns: 21rem minmax(0, 1fr);
-  }
-
-  .setting-row__body > * {
-    max-inline-size: 30rem;
-  }
-
-  /* A long string reads better on a wider box. */
-  .setting-row__body > .exchange {
-    max-inline-size: 44rem;
-  }
-}
-
-/* The mods rail is wider once the page is, so the plan's rows keep one line. */
-@container (min-width: 80rem) {
-  .split {
-    grid-template-columns: minmax(0, 1fr) 26rem;
-  }
-}
-
-/* Import: the save upload's fields on the start side and the drop zone
-   beside them, as tall as the fields; the order stays the form's. */
-@container (min-width: 56rem) {
-  form.import-upload {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-auto-flow: row dense;
-    column-gap: var(--space-6);
-    align-items: start;
-  }
-
-  .import-upload > :not(.field, .actions) {
-    grid-column: 1 / -1;
-  }
-
-  .import-upload > .field {
-    grid-column: 1;
-  }
-
-  .import-upload > .field.dropzone {
-    grid-column: 2;
-    grid-row: span 4;
-    align-self: stretch;
-    grid-template-rows: auto auto 1fr;
-  }
-
-  .import-upload > .field.dropzone .dropzone__area {
-    block-size: 100%;
-  }
-
-  .import-upload > .actions {
-    grid-column: 1 / -1;
-  }
-
-  .import-upload .field input:not([type="checkbox"], [type="radio"], [type="file"]),
-  .import-upload .field select {
-    max-inline-size: none;
-  }
-}
-
-/* The public mods page: the running world's card leads, and where the files
-   go is a note in a rail beside it; a players' page, so a narrower frame. */
-main:has(> .public-world) {
-  max-inline-size: 80rem;
-}
-
-@container (min-width: 56rem) {
-  .public-world,
-  .public-where {
-    align-self: start;
-  }
-}
-
-@media (min-width: 64rem) {
-  main:has(> .public-world) {
-    grid-template-columns: minmax(0, 1fr) 30rem;
-  }
-
-  main:has(> .public-world) > :not(.public-world, .public-where) {
-    grid-column: 1 / -1;
-  }
-
-  main > .public-world {
-    grid-column: 1;
-  }
-
-  main > .public-where {
-    grid-column: 2;
-    grid-row: 2;
-    align-self: start;
-  }
-}
-
-.public-where > p {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  line-height: 1.6;
-}
-
 /* Inside a card, a token or user is a row between hairlines, not a card in
    a card, at every width. */
 .panel > .token-list {
@@ -11273,70 +11491,6 @@ main:has(> .public-world) {
   border-block-start: var(--border-width) solid var(--color-line);
 }
 
-/* Generate: starting from a favorite is one row on a wide card, the heading,
-   the choice and the link to the list side by side. */
-@container (min-width: 64rem) {
-  form#favorite-chooser {
-    grid-template-columns: auto minmax(0, 34rem) 1fr;
-    column-gap: var(--space-6);
-    align-items: end;
-  }
-
-  #favorite-chooser > h2 {
-    align-self: center;
-  }
-
-  #favorite-chooser > :not(h2, .field, .actions) {
-    grid-column: 1 / -1;
-  }
-
-  #favorite-chooser > .actions {
-    justify-content: flex-end;
-    align-self: center;
-  }
-}
-
-/* The Audit log is one card like its sibling settings pages: the filter
-   row is the card's head band above a hairline, the entries under it. */
-.audit-panel {
-  gap: var(--space-5);
-}
-
-.audit-panel > .audit-filter {
-  padding-block-end: var(--space-5);
-  border-block-end: var(--border-width) solid var(--color-line);
-}
-
-/* A badge is one line: a long "Needed by" name stays a pill, never a
-   two-line lozenge. */
-.badge {
-  white-space: nowrap;
-}
-
-/* Clearing the plan throws work away, so it reads as a quiet danger
-   action, not a plain link (DESIGN 7.1). It lines up with the card's text
-   edge: the negative margin takes back its padding. */
-.plan-panel__clear .button--quiet {
-  padding-inline: var(--space-3);
-  margin-inline-start: calc(-1 * var(--space-3));
-  border: var(--border-width) solid transparent;
-  color: var(--color-danger-text);
-  text-decoration: none;
-}
-
-.plan-panel__clear .button--quiet:hover {
-  background: var(--color-danger-bg);
-  border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
-}
-
-/* A plan that destroys nothing keeps the review frame but is drawn in
-   blueprint blue: planned, not yet built; the hazard stripe stays for
-   destructive ones (DESIGN 7.1). */
-.confirm--plain::before {
-  block-size: 4px;
-  background: var(--color-info);
-}
-
 /* Revoke and Delete in a row of people or tokens are red words that gain
    their outline only when pointed at, so a column of them does not shout. */
 .token-list .button--risky:not(:hover, :focus-visible) {
@@ -11344,65 +11498,10 @@ main:has(> .public-world) {
   box-shadow: none;
 }
 
-/* The drop zone: 160 px, an upload mark over one line of words, the
-   limits in the hint above it. */
-.dropzone--on .dropzone__area {
-  min-block-size: 10rem;
-}
-
-.dropzone__prompt:not([hidden]) {
-  display: grid;
-  justify-items: center;
-  gap: var(--space-2);
-}
-
-.dropzone__prompt::before {
-  content: "";
-  inline-size: 2rem;
-  block-size: 2rem;
-  background: var(--color-text-muted);
-  mask: var(--i-upload) center / contain no-repeat;
-}
-
-@container (min-width: 56rem) {
-  .import-upload > .field.dropzone {
-    align-self: start;
-  }
-
-  .import-upload > .field.dropzone .dropzone__area {
-    block-size: auto;
-  }
-}
-
 /* The admin-scope warning shows once Admin is the chosen scope; it stays
    in the document, so the radio's description still reads it. */
 .token-create:has(input[name="scope"]:checked):not(:has(#scope-admin:checked)) > #scope-admin-warning {
   display: none;
-}
-
-/* Game settings on a wide card: a section's fields flow two to a row, so
-   the long form uses the width beside its titles instead of one narrow
-   column. Lists, notes and anything that is not a field run across both. */
-@container (min-width: 72rem) {
-  .settings > fieldset > .setting-row__body {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: var(--space-6);
-    align-items: start;
-  }
-
-  .settings > fieldset > .setting-row__body > :not(.field, .setting-check, fieldset) {
-    grid-column: 1 / -1;
-  }
-}
-
-.audit-panel > form.audit-filter {
-  display: flex;
-}
-
-/* A save bar's note leads it, the action ends it. */
-.form-foot > .form-foot__note {
-  margin: 0 auto 0 0;
-  margin-inline: 0 auto;
 }
 
 /* API tokens (DESIGN 8.21): one list under a head band that carries the
@@ -11552,148 +11651,10 @@ main:has(> .public-world) {
   border-block-start: var(--border-width) solid var(--color-line);
 }
 
-/* Server page: the state word is the largest thing on the plate, on a
-   64 px band, so it reads from across the room before any button. */
-.plate__band {
-  min-block-size: 4rem;
-  padding-block: var(--space-3);
-}
-
-.plate__state {
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.plate__state::before {
-  inline-size: 0.875rem;
-  block-size: 0.875rem;
-}
-
-/* Players fill the wide column; the world's pages and the newest
-   snapshots stack in the narrow one, and both columns end on one line. */
-@media (min-width: 64rem) {
-  .server-grid > .panel:has(#players-heading) {
-    grid-row: 1 / span 2;
-    grid-column: 1;
-    align-self: stretch;
-    align-content: start;
-  }
-
-  .server-grid > .shortcuts.card {
-    align-self: start;
-  }
-
-  .server-grid > .recent-snaps {
-    grid-row: 2;
-    grid-column: 2;
-    align-self: stretch;
-  }
-}
-
-.recent-snaps {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: var(--space-3);
-}
-
-.recent-snaps__list {
-  display: grid;
-  align-content: start;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.recent-snaps__list > li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-1) var(--space-4);
-  padding-block: var(--space-3);
-  border-block-end: var(--border-width) solid var(--color-line);
-  font-size: var(--text-sm);
-  max-inline-size: none;
-}
-
-.recent-snaps__list > li:first-child {
-  border-block-start: var(--border-width) solid var(--color-line);
-}
-
-.recent-snaps__name {
-  display: grid;
-  gap: 2px;
-  min-inline-size: 0;
-  color: var(--color-heading);
-  font-weight: 600;
-}
-
-.recent-snaps__name > .snap-kind {
-  order: 0;
-}
-
-.recent-snaps__list time {
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.recent-snaps > .actions {
-  margin: 0;
-}
-
-/* World Overview: facts, then sharing (map string and favorite) side by
-   side, then managing the world, then what retires or destroys it. */
-.world-share {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-}
-
-@container (min-width: 64rem) {
-  .world-share {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-5);
-  }
-
-  .world-share:has(> :only-child) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.world-share__item {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  align-content: start;
-  gap: var(--space-4);
-  min-inline-size: 0;
-}
-
-.world-share__head {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.world-share__body {
-  display: grid;
-  align-content: start;
-  gap: var(--space-3);
-  min-inline-size: 0;
-}
-
-.world-share__item .inline-row {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.world-share__item .inline-row > input {
-  flex: 1 1 auto;
-  min-inline-size: 0;
-}
-
-.danger-zone:not(.danger-zone--blocked) #delete-heading {
-  color: var(--color-danger-text);
+/* The webhook form swaps the address field and Pushover's keys (DESIGN 8.16). */
+#webhook-url-field[hidden],
+#webhook-keys[hidden] {
+  display: none;
 }
 
 /* One notice everywhere: a tinted face, a hairline, a 4 px edge and an
