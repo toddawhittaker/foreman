@@ -50,6 +50,8 @@
     <div class="js-only"><div class="resource-box"><label class="check"><input type="checkbox" id="preview-amounts"> {{t "worlds.generate.resources.label"}}</label>
       <span class="hint resource-box__busy" id="preview-amounts-busy" aria-hidden="true">{{t "worlds.generate.resources.counting_short"}}</span></div></div>
     {{- end}}
+    {{/* The script moves Preview size here, above the picture, so the order seen and the order tabbed agree (DESIGN 8.6). */}}
+    <div class="preview-size-slot" id="preview-size-slot"></div>
     <ul class="pictures" role="list">
       {{- range .Pictures}}
       {{- $terr := $.Preview.IsTerritoryPicture .}}

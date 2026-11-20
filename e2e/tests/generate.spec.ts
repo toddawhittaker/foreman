@@ -227,6 +227,19 @@ for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
     expect(m.slider).toBeLessThanOrEqual(m.bar);
     await expect(page.locator(".gen-preview .field.step")).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: `../screenshots/generate-preview-fit-${width}x${height}-${info.project.name}.png` });
+    // It comes before the picture in the code too, so Tab meets it where the eye does (WCAG 2.4.3).
+    const before = await page.evaluate(() => {
+      const field = document.querySelector("#preview-size-field")!;
+      const list = document.querySelector(".gen-preview .pictures")!;
+      return Boolean(field.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(before).toBe(true);
+    // A step redraws the picture; the control keeps its focus and value across the reply.
+    const control = page.locator("#preview-size-field").getByRole(width > 1500 ? "slider" : "combobox");
+    await control.focus();
+    await page.keyboard.press(width > 1500 ? "ArrowRight" : "ArrowDown");
+    await expect(page.locator(".gen-preview .pictures img")).toHaveAttribute("width", "1408");
+    await expect(control).toBeFocused();
   });
 }
 

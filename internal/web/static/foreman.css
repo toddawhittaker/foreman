@@ -4917,9 +4917,8 @@ a[target="_blank"]::after {
     }
   }
 
-  /* Once a picture is drawn, the section's parts are the pane's own rows, so
-     Preview size can sit above the picture, always in reach, while the
-     downloads and the kept note stay under it (DESIGN 8.6). */
+  /* Once a picture is drawn, the section's parts are the pane's own rows,
+     so the picture can take the height left over (DESIGN 8.6). */
   .gen-preview > .preview:has(> section > .pictures),
   .gen-preview > .preview > section:has(> .pictures) {
     display: contents;
@@ -4928,16 +4927,6 @@ a[target="_blank"]::after {
   .gen-preview > * ,
   .gen-preview > .preview > section > * {
     flex: none;
-  }
-
-  .gen-preview:has(.pictures) > .field.step {
-    order: 1;
-  }
-
-  .gen-preview .pictures,
-  .gen-preview .pictures ~ *,
-  .gen-preview:has(.pictures) > .preview ~ :not(.field) {
-    order: 2;
   }
 
   /* A square no wider than the column and no taller than the room left,
@@ -12827,5 +12816,10 @@ form.setting-rows > .form-foot {
 
 /* The amounts list's place in the settings column takes no row while empty. */
 .large-view__amounts-text:empty {
+  display: none;
+}
+
+/* Preview size's place above the picture takes no row until the script moves it in. */
+.preview-size-slot:empty {
   display: none;
 }
