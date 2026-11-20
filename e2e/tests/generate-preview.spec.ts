@@ -306,6 +306,31 @@ test.describe("with script", () => {
     await expect(page.locator("#generate-preview-size")).toHaveValue("3072");
   });
 
+  // DESIGN 8.8: the large view's header keeps one height on every planet of the map,
+  // so paging with the arrow keys never moves the planet controls.
+  for (const width of [1920, 390]) {
+    test(`paging planets in the large view keeps the controls still at ${width} px`, async ({ page }, info) => {
+      await page.setViewportSize({ width, height: width > 600 ? 950 : 800 });
+      await page.goto("/generate");
+      await expect(pictures(page)).toHaveCount(1);
+      await section(page).getByRole("link", { name: /opens the large view/ }).click();
+      const dialog = page.locator("#large-view");
+      await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+      await dialog.locator("#large-frame").focus();
+      const top = () => dialog.locator("#large-next").evaluate((b) => b.getBoundingClientRect().top);
+      const first = await top();
+      for (const planet of ["Vulcanus", "Gleba", "Fulgora", "Aquilo", "Nauvis"]) {
+        await page.keyboard.press("ArrowRight");
+        await expect(page.getByRole("dialog", { name: planet })).toBeVisible();
+        await expect(dialog.getByRole("img", { name: new RegExp(`^Map preview of ${planet}`) })).toBeVisible();
+        expect(await top(), planet).toBe(first);
+        if (width === 1920 && (planet === "Vulcanus" || planet === "Nauvis")) {
+          await page.screenshot({ path: `../screenshots/large-view-${planet.toLowerCase()}-1920-${info.project.name}.png` });
+        }
+      }
+    });
+  }
+
   test("the large view works by keyboard alone at 320 px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto("/generate");

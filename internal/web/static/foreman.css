@@ -3987,6 +3987,13 @@ form:has(#mode-exchange:checked) .achievements {
   display: none;
 }
 
+/* On a map with Vulcanus its row is held, unseen, on every planet, so paging
+   never moves the picture or its controls (DESIGN 8.8). */
+body:has(#preview-planets > option[value="vulcanus"]) .large-view__territories[hidden] {
+  display: flex;
+  visibility: hidden;
+}
+
 .large-view__territories > .hint {
   margin: 0;
 }
