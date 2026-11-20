@@ -76,7 +76,7 @@
           <div class="actions">
             <a href="{{.ExportPath}}" class="button button--quiet" id="act-favorite-export-{{.ID}}" download aria-describedby="favorite-{{.ID}}-name favorite-{{.ID}}-export-warning">{{t "favorites.export.button"}}</a>
             {{- /* A trash icon, as the webhook list has: red but borderless, so Delete does not weigh as much as Generate (DESIGN 7.1). */}}
-            <a href="{{.DeletePath}}" class="button button--icon" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
+            <a href="{{.DeletePath}}" class="button button--remove" id="act-favorite-delete-{{.ID}}" aria-describedby="favorite-{{.ID}}-name"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{t "favorites.delete.button"}}</span></a>
           </div>
         </div>
       </details>

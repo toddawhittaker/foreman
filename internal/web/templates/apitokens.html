@@ -20,7 +20,7 @@
       <button type="submit" class="button" id="act-token-renew-{{.ID}}" aria-label="{{t "apitokens.renew.name" "name" .Name}}">{{t "apitokens.renew"}}</button>
     </form>
     {{- end}}
-    <a href="{{.RevokePath}}" class="button button--risky" id="act-token-revoke-{{.ID}}" aria-label="{{t "apitokens.revoke.name" "name" .Name "owner" .Owner}}">{{t "apitokens.revoke"}}</a>
+    <a href="{{.RevokePath}}" class="button button--remove button--revoke" id="act-token-revoke-{{.ID}}" aria-label="{{t "apitokens.revoke.name" "name" .Name "owner" .Owner}}">{{t "apitokens.revoke"}}</a>
   </div>
   {{- end}}
 </li>
@@ -63,7 +63,7 @@
       <h3 id="mcp-heading">{{t "apitokens.mcp.heading"}}</h3>
       <span class="state state--mcp-{{if .MCPOn}}on{{else}}off{{end}}">{{if .MCPOn}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</span>
       {{- if and .Admin (not .MCPForced)}}
-      <form method="post" action="{{.MCPPath}}">
+      <form method="post" action="{{.MCPPath}}" id="mcp-form">
         {{- if .MCPOn}}
         <button type="submit" class="button" name="mcp" value="off" id="act-mcp">{{t "apitokens.mcp.turn_off"}}</button>
         {{- else}}
@@ -122,6 +122,15 @@
     <div class="message message--warning" id="scope-admin-warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
     </div>
+    {{- /* The switch every token depends on is stated before the one-time secret is made, with its fix beside it. */}}
+    {{- if not .MCPOn}}
+    <div class="message message--warning token-create__mcp" id="create-mcp-off">
+      <p><strong>{{t "common.label.warning"}}</strong> {{if .MCPForced}}{{t "apitokens.mcp.forced"}}{{else}}{{t "apitokens.mcp.state.off"}}{{end}}</p>
+      {{- if and .Admin (not .MCPForced)}}
+      <div class="actions"><button type="submit" class="button" form="mcp-form" name="mcp" value="on" id="act-mcp-create">{{t "apitokens.mcp.turn_on"}}</button></div>
+      {{- end}}
+    </div>
+    {{- end}}
     <div class="actions">
       <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>
     </div>

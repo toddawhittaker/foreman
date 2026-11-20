@@ -26,14 +26,14 @@
   <ul class="token-list token-list--users" role="list" id="user-list">
     {{- range .Users}}
     <li id="user-{{.ID}}" class="token-card">
-      <h3 class="token-card__title"><span class="ident">{{.Username}}</span>{{if .Me}} <span class="state">{{t "users.you"}}</span>{{end}}</h3>
+      <h3 class="token-card__title"><span class="ident">{{.Username}}</span>{{if .Me}} <span class="badge">{{t "users.you"}}</span>{{end}}</h3>
       <dl class="facts facts--inline">
         <div class="token-card__kind"><dt>{{t "users.fact.kind"}}</dt><dd>{{msg .KindWord}}</dd></div>
         <div class="token-card__created"><dt>{{t "users.fact.created"}}</dt><dd><time datetime="{{isoTime .Created}}">{{day .Created}}</time></dd></div>
       </dl>
       {{- if not .Me}}
       <div class="actions">
-        <a href="{{.DeletePath}}" class="button button--risky" id="act-user-delete-{{.ID}}" aria-label="{{t "users.delete.name" "name" .Username}}">{{t "users.delete"}}</a>
+        <a href="{{.DeletePath}}" class="button button--remove" id="act-user-delete-{{.ID}}" aria-label="{{t "users.delete.name" "name" .Username}}">{{t "users.delete"}}</a>
       </div>
       {{- end}}
     </li>

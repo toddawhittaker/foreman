@@ -34,5 +34,8 @@
   "js.preview.prepare_planets_wait": "下载准备期间无法切换星球。请先取消下载。",
   "js.preview.prepare_retry": "重试：{planet}",
   "js.preview.prepare_started": "下载已开始。",
-  "js.preview.prepare_redrawing": "正在按新设置绘制地图预览。就绪后再下载。"
+  "js.preview.prepare_redrawing": "正在按新设置绘制地图预览。就绪后再下载。",
+  "js.settings.unsaved": {
+    "other": "{count} 项更改尚未保存，在各部分之间切换时会保留。"
+  }
 }

@@ -98,7 +98,7 @@ test("the MCP switch turns access on and off", async ({ page, foreman }) => {
   await createAdmin(page);
   await openTokens(page);
   await expect(page.locator("#mcp-state")).toContainText("MCP access is off.");
-  await page.getByRole("button", { name: "Turn on MCP access" }).click();
+  await page.locator("#act-mcp").click();
   await expect(page.locator("#done-message")).toHaveText("Done: Turned MCP access on.");
   await expect(page.locator("#mcp-state")).toContainText("MCP access is on.");
   await checkPage(page);

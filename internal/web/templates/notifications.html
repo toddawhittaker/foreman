@@ -33,7 +33,7 @@
     <h2 class="webhook-list__title">{{msg .Preset}} <span class="ident" translate="no">{{.Host}}</span></h2>
     <dl class="facts facts--inline">
       <div><dt>{{t "notify.fact.language"}}</dt><dd lang="{{.LangTag}}">{{.LangName}}</dd></div>
-      <div><dt>{{t "notify.fact.events"}}</dt><dd>{{if .AllOn}}{{t "notify.events.all"}}{{else}}{{.Events}}{{end}}</dd></div>
+      <div><dt>{{t "notify.fact.events"}}</dt><dd>{{if .AllOn}}{{t "notify.events.all"}}{{else}}<ul class="chips" role="list">{{range .EventList}}<li>{{.}}</li>{{end}}</ul>{{end}}</dd></div>
     </dl>
     {{- if .Unreadable}}
     <div class="message message--warning" id="webhook-{{.ID}}-unreadable">
@@ -42,7 +42,7 @@
     {{- end}}
     <div class="actions">
       <a href="{{.EditPath}}" class="button" id="act-webhook-edit-{{.ID}}"><span aria-hidden="true">{{t "notify.edit"}}</span><span class="visually-hidden">{{t "notify.edit.named" "preset" (msg .Preset) "host" .Host}}</span></a>
-      <a href="{{.DeletePath}}" class="button button--risky button--icon" id="act-webhook-delete-{{.ID}}"><span class="visually-hidden">{{t "notify.delete.named" "preset" (msg .Preset) "host" .Host}}</span></a>
+      <a href="{{.DeletePath}}" class="button button--remove" id="act-webhook-delete-{{.ID}}"><span aria-hidden="true">{{t "users.delete"}}</span><span class="visually-hidden">{{t "notify.delete.named" "preset" (msg .Preset) "host" .Host}}</span></a>
     </div>
   </li>
   {{- end}}

@@ -55,8 +55,10 @@ type WebhookView struct {
 	// is typed again. Plain: the address is http://.
 	Unreadable bool
 	Plain      bool
-	// Events names the events turned on, as one list in the page's language.
-	Events string
+	// Events names the events turned on, as one list in the page's language;
+	// EventList holds the same names one by one, for the row's chips.
+	Events    string
+	EventList []string
 }
 
 // EditPath, DeletePath and the ids are the row's links.
@@ -299,6 +301,7 @@ func webhookView(loc i18n.Locale, w notify.Webhook) WebhookView {
 	var names []string
 	for _, e := range w.OnEvents() {
 		names = append(names, loc.Format(eventShort(e)))
+		v.EventList = append(v.EventList, upperFirst(loc.Format(eventShort(e))))
 	}
 	v.Events = upperFirst(strings.Join(names, loc.T("common.list.sep")))
 	return v

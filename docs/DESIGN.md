@@ -111,7 +111,7 @@ a phone can find where a page and a section start.
 |---|---|---|---|---|
 | `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | The overline: a page's eyebrow and fact names (capitals, `0.06em`), badges; the game log below 40rem |
 | `--text-sm` | 0.875rem (14 px) | 1.43 | 400 | Hints and card descriptions (these at a 1.5 line height, 60ch), table captions and headers, timestamps, the log and console, labels (600), state badges (600), units beside a figure |
-| `--text-md` | 1rem (16 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells, row titles (600) |
+| `--text-md` | 0.9375rem (15 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells, row titles (600) |
 | `--text-lg` | 1.125rem (18 px) | 1.333 | 650 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
 | `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings; the Server plate's figures on a phone |
 | `--text-2xl` | 1.5rem (24 px) | 1.167 | 600 | Stat figures: the Server plate's gauges, tabular |
@@ -214,8 +214,8 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-ok-bg` | `#172a12` | `#e3f1de` | Success message and "running" badge background |
 | `--color-warn` | `#f2c14e` | `#7a5000` | "Warning" word, "starting" and "stopping" badges, the Server plate's state word and rule while stopping |
 | `--color-warn-bg` | `#33280c` | `#f8edcf` | Warning message and "starting"/"stopping" badge background |
-| `--color-info` | `#9fc3e6` | `#2a567f` | "Note" word; the Server plate's state word and rule while starting |
-| `--color-info-bg` | `#18232e` | `#e8eef4` | Notice background |
+| `--color-info` | `#b4c2cc` | `#4a5866` | "Note" word; the Server plate's state word and rule while starting |
+| `--color-info-bg` | `#25201b` | `#efeae2` | Notice background |
 | `--color-focus` | `#f7ae4f` | `#b35c00` | Focus outline |
 
 The map's own colours are tokens too, the same in both themes, because

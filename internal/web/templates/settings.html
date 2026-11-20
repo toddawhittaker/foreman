@@ -1,5 +1,7 @@
 {{define "title"}}{{t "settings.title" "world" .Page.WorldName}}{{end}}
 
+{{define "scripts"}}<script src="{{static "settingsdraft.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- $page := .}}
@@ -77,7 +79,7 @@
 <div class="settings-wrap">
 <div class="settings-layout">
 <div class="settings-main">
-<form method="post" action="{{.Path}}" class="panel settings" novalidate{{if not .FormShown}} hidden{{end}}>
+<form method="post" action="{{.Path}}" class="panel settings" novalidate{{if not .FormShown}} hidden{{end}}{{if and .Editable (not .Edit) (not .Problems)}} data-draft{{end}}>
   {{- if .Section}}
   <input type="hidden" name="section" value="{{.Section}}">
   {{- end}}
@@ -344,7 +346,8 @@
 
   {{- if .Editable}}
   <div class="actions form-foot">
-    <a href="{{.WorldPath}}">{{t "settings.cancel"}}</a>
+    <p class="form-foot__note" id="settings-unsaved" role="status" hidden></p>
+    <a href="{{.WorldPath}}" class="button button--ghost" data-draft-drop>{{t "settings.cancel"}}</a>
     <button type="submit" class="button button--primary">{{t "settings.preview.button"}}</button>
   </div>
   {{- end}}

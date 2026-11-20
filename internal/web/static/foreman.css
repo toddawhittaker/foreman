@@ -101,7 +101,7 @@
      section heading, figure, page title. */
   --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
-  --text-md: 1rem;
+  --text-md: 0.9375rem;
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
@@ -133,8 +133,8 @@
   --color-ok-bg: light-dark(#e3f1de, #172a12);
   --color-warn: light-dark(#7a5000, #f2c14e);
   --color-warn-bg: light-dark(#f8edcf, #33280c);
-  --color-info: light-dark(#2a567f, #9fc3e6);
-  --color-info-bg: light-dark(#e8eef4, #18232e);
+  --color-info: light-dark(#4a5866, #b4c2cc);
+  --color-info-bg: light-dark(#efeae2, #25201b);
   --color-focus: light-dark(#b35c00, #f7ae4f);
   /* Each theme's shadow is its own layers; the other theme's layers are
      transparent, because light-dark() takes only colours. */
@@ -11479,16 +11479,6 @@ form.settings[hidden] {
   }
 }
 
-/* The sign-in page's drafting grid, carried faintly behind every working
-   page: 32 px squares of the line colour at a quarter strength. */
-body:not(:has(main > .gate)) {
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--color-line) 40%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--color-line) 40%, transparent) 1px, transparent 1px);
-  background-size: 2rem 2rem;
-  background-attachment: fixed;
-}
-
 /* Generate on a wide screen: the basics pair up, name beside version and
    preset beside seed, so the map's settings start a screen sooner. */
 @container map-section (min-width: 40rem) {
@@ -11635,4 +11625,264 @@ body:not(:has(main > .gate)) {
   .webhook-list > li > .facts ~ .actions .button {
     inline-size: auto;
   }
+}
+
+/* One row-action rule: safe actions are outline buttons sized to their
+   words; destructive ones are ghost buttons in the danger colour with an
+   icon and a word, never a bare icon or plain red text (DESIGN 7.1). */
+.button--remove,
+.button--ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  padding-inline: var(--space-3);
+}
+
+.button--remove {
+  color: var(--color-danger-text);
+}
+
+.button--remove::before {
+  content: "";
+  flex: none;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  background: currentColor;
+  mask: var(--icon, var(--i-trash)) center / contain no-repeat;
+}
+
+.button--revoke {
+  --icon: var(--i-close);
+}
+
+.button--remove:hover {
+  background: var(--color-danger-bg);
+  border-color: currentColor;
+  color: var(--color-danger-text);
+}
+
+.button--ghost {
+  color: var(--color-heading);
+}
+
+.button--ghost:hover {
+  background: var(--color-secondary-hover);
+  border-color: transparent;
+}
+
+.token-list .button--remove:not(:hover, :focus-visible) {
+  border-color: transparent;
+}
+
+@media (forced-colors: active) {
+  .button--remove::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+}
+
+/* Row buttons on a desktop are 40 px tall and as wide as their words, at
+   least 88 px, ending the row; a phone keeps the 44 px target. */
+@media (min-width: 64rem) {
+  :is(.worlds, .token-list, .row-actions, .webhook-list) .button {
+    min-block-size: 2.5rem;
+  }
+
+  .worlds > li > .facts ~ .actions .button,
+  #archived-worlds .worlds > li > .facts ~ .actions .button {
+    inline-size: auto;
+    min-inline-size: 5.5rem;
+    white-space: nowrap;
+  }
+}
+
+/* A form's foot bar: what is pending leads it; Cancel sits just before
+   the primary action at the end. */
+.form-foot {
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.form-foot > a {
+  margin-inline-end: 0;
+}
+
+.form-foot > .form-foot__note:not([hidden]) {
+  margin-inline: 0 auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.form-foot > #settings-unsaved:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+#settings-unsaved::before,
+.subnav__sub a[data-unsaved]::after {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-selected);
+}
+
+/* The page column marks the current place once: the parent of an open
+   sub-page keeps the orange start edge in bold, and the sub-page itself
+   takes the accent face, the same face as a current Settings item. */
+@media (min-width: 64rem) {
+  main > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
+    border-inline-start-color: var(--color-selected);
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  main > .subnav .subnav__sub a {
+    font-size: var(--text-md);
+    color: var(--color-text);
+  }
+
+  main > .subnav .subnav__sub a[aria-current] {
+    background: var(--color-accent-bg);
+    border-inline-start-color: var(--color-selected);
+    font-weight: 600;
+  }
+
+  main > .subnav .subnav__sub a[data-unsaved] {
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  main > .subnav .subnav__sub a[data-unsaved]::after {
+    content: "";
+  }
+}
+
+.subnav__sub a::after {
+  content: none;
+}
+
+/* A webhook's events are small chips, wrapping under the label. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips > li {
+  padding: 1px var(--space-2);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.webhook-list .facts dd {
+  font-weight: 400;
+}
+
+/* Every recent snapshot has one layout: the kind, the name, then the time. */
+.recent-snaps__list > li {
+  display: grid;
+  justify-content: stretch;
+  gap: 2px;
+}
+
+.recent-snaps__name {
+  font-size: var(--text-sm);
+}
+
+.recent-snaps__list time {
+  font-size: var(--text-xs);
+  white-space: normal;
+}
+
+/* A mod's portal news is one quiet 13 px line with an icon for its kind;
+   the leading word stays for screen readers (SPEC 17.4). */
+.mod-flags > p {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  max-inline-size: 72ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.mod-flags > p > strong {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mod-flags > p::before {
+  content: "";
+  flex: none;
+  align-self: center;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  background: var(--color-info);
+  mask: var(--i-info) center / contain no-repeat;
+}
+
+.mod-flags > .mod-flag--warning::before {
+  background: var(--color-warn);
+  mask-image: var(--i-alert);
+}
+
+.mod-flags > .mod-flag--error {
+  color: var(--color-danger-text);
+}
+
+.mod-flags > .mod-flag--error::before {
+  background: var(--color-danger-text);
+  mask-image: var(--i-error);
+}
+
+@media (forced-colors: active) {
+  .mod-flags > p::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
+/* MCP access stated inside Create a token, before the one-time secret. */
+.token-create__mcp {
+  max-inline-size: 52rem;
+}
+
+/* Type roles stand apart: 13 px helper text in the quiet colour under
+   15 px body. */
+.hint,
+main > h1 + p.hint,
+.panel > :is(h2, .section-head) + .hint {
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+/* A link that goes to another page ends in a chevron. */
+#act-recent-snapshots::after {
+  content: "";
+  display: inline-block;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  margin-inline-start: var(--space-1);
+  vertical-align: -0.125em;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
 }

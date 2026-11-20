@@ -175,7 +175,7 @@ func TestWebhookLifecycle(t *testing.T) {
 		t.Errorf("after edit %+v", got)
 	}
 	body = nh.get(PathNotifications, withCookie(c)).Body.String()
-	if !strings.Contains(body, "Crash, low disk") || !strings.Contains(body, `<dd lang="fr">Français</dd>`) {
+	if !strings.Contains(body, `<ul class="chips" role="list"><li>Crash</li><li>Low disk</li></ul>`) || !strings.Contains(body, `<dd lang="fr">Français</dd>`) {
 		t.Errorf("list after edit\n%s", body)
 	}
 	if got := nh.audits(AuditWebhookChange); len(got) != 1 {
@@ -358,7 +358,7 @@ func TestTokenExpiringIsOffForANewWebhook(t *testing.T) {
 		t.Fatalf("stored %+v", list)
 	}
 	body := nh.get(PathNotifications, withCookie(c)).Body.String()
-	if strings.Contains(body, "All events") || strings.Contains(body, "token expiring") || !strings.Contains(body, "low disk") {
+	if strings.Contains(body, "All events") || strings.Contains(body, "<li>Token expiring</li>") || !strings.Contains(body, "<li>Low disk</li>") {
 		t.Errorf("the list shows the wrong events\n%s", body)
 	}
 	// Ticking it turns it on, and unticking it turns it off again.
