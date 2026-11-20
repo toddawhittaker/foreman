@@ -1,4 +1,5 @@
 {
+  "settings.draft.unsaved_mark": "(cambios sin guardar)",
   "settings.link": "Configuración del juego",
   "settings.title": "Configuración de {world}",
   "settings.readonly.unreadable": "El world.json de este mundo no se puede leer, así que su configuración no se puede cambiar aquí.",

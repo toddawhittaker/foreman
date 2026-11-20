@@ -58,7 +58,7 @@ test("change a setting from the Server page in three clicks, and the password ne
   await expect(rows.filter({ hasText: "description" }).locator("ins")).toHaveText('"Come play\\nBring snacks"');
   await expect(page.getByText("Take an automatic snapshot of Base")).toBeVisible();
   await expect(page.getByText("To undo, restore that snapshot from the Snapshots page; the message after saving links to it.")).toBeVisible();
-  expect(read(foreman.dataDir)).not.toContain("description");
+  expect(read(foreman.dataDir)).not.toContain("Bring snacks");
   await expectNoSecret(page);
   await checkPage(page);
 
@@ -72,27 +72,32 @@ test("change a setting from the Server page in three clicks, and the password ne
   await checkPage(page);
   await expectWithin(clicks, 3, "change a setting from the Server page");
 
-  // The players sub-page holds the other setting; it is a second save.
+  // Two fields on two sub-pages go into one preview: the draft keeps the
+  // first while the second is changed (DESIGN 6).
   await worldPages.getByRole("link", { name: "Players and access" }).click();
   await expect(worldPages.getByRole("link", { name: "Players and access" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("A password is set.")).toBeVisible();
   await expect(page.getByLabel("New password")).toHaveValue("");
   await page.getByLabel("Maximum players").fill("8");
+  await worldPages.getByRole("link", { name: "Listing", exact: true }).click();
+  await page.getByLabel("Description").fill("Come play\nBring snacks\nAnd friends");
   await page.getByRole("button", { name: "Preview changes" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Save these changes to Base?");
-  await expect(rows).toHaveCount(1);
+  await expect(rows).toHaveCount(2);
   await expect(rows.filter({ hasText: "max_players" })).toContainText("Added");
   await expect(rows.filter({ hasText: "max_players" }).locator("ins")).toHaveText("8");
+  await expect(rows.filter({ hasText: "description" }).locator("ins")).toHaveText('"Come play\\nBring snacks\\nAnd friends"');
+  expect(read(foreman.dataDir)).not.toContain("max_players");
   await expectNoSecret(page);
   await checkPage(page);
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page).toHaveURL(/\/worlds\/base\/settings\?saved=1.*section=players/);
-  await expect(page.getByLabel("Maximum players")).toHaveValue("8");
+  await expect(page).toHaveURL(/\/worlds\/base\/settings\?saved=1/);
+  await expect(page.getByLabel("Description")).toHaveValue("Come play\nBring snacks\nAnd friends");
   await expectNoSecret(page);
   await checkPage(page);
 
   const saved = JSON.parse(read(foreman.dataDir));
-  expect(saved).toMatchObject({ name: "Base", max_players: 8, description: "Come play\nBring snacks", game_password: secret });
+  expect(saved).toMatchObject({ name: "Base", max_players: 8, description: "Come play\nBring snacks\nAnd friends", game_password: secret });
   const snaps = readdirSync(join(foreman.dataDir, "snapshots", "base"));
   expect(snaps.length).toBe(2);
 });

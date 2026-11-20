@@ -1,4 +1,5 @@
 {
+  "settings.draft.unsaved_mark": "(modifications non enregistrées)",
   "settings.link": "Paramètres du jeu",
   "settings.title": "Paramètres de {world}",
   "settings.readonly.unreadable": "Le fichier world.json de ce monde est illisible, donc ses paramètres ne peuvent pas être modifiés ici.",

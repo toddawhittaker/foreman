@@ -1,11 +1,10 @@
 package web
 
 import (
-	"github.com/toddawhittaker/foreman/internal/i18n"
 	"net/url"
-	"slices"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
 // settingsSections are Game settings' sub-pages, each one fieldset of the one
@@ -57,28 +56,34 @@ func playerSection(a game.PlayerAction) string {
 	return "admins"
 }
 
-// SubTab is one sub-page link in a world's page column.
+// SubTab is one sub-page link in a world's page column. Section is its key,
+// which the draft script matches to a fieldset's data-section.
 type SubTab struct {
 	Href    string
 	Label   i18n.Msg
+	Section string
 	Current bool
 }
 
-// Show reports whether the section key is on this page: every section shows
-// while the form has problems, so none is out of sight.
+// Show reports whether the section key is on this page: one sub-page, or
+// every section when ShowAll is set, so a refused form hides no problem.
 func (p SettingsPage) Show(key string) bool {
-	return p.Section == "" || p.Section == key
+	return p.ShowAll || p.Section == key
 }
 
-// FormShown reports whether any fieldset of the form is on this page.
+// FormShown reports whether any fieldset of the form is on this page. A list
+// the running game keeps is a card of its own, not a fieldset.
 func (p SettingsPage) FormShown() bool {
-	if p.Section == "" || !slices.Contains([]string{"bans", "whitelist"}, p.Section) {
+	if p.ShowAll {
 		return true
 	}
-	if p.Section == "bans" {
+	switch p.Section {
+	case "bans":
 		return !p.LiveBans
+	case "whitelist":
+		return !p.LiveWhitelist
 	}
-	return !p.LiveWhitelist
+	return true
 }
 
 // SectionPath is this sub-page's own link.

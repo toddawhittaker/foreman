@@ -43,25 +43,23 @@ test("a stopped world's ban list and whitelist are saved through the preview, wi
   await expect(page.locator("#bans-error")).toContainText("Line 2 is not a usable player name");
   await expect(page.getByLabel("Banned players")).toHaveAttribute("aria-invalid", "true");
 
+  // A ban on its sub-page and a whitelist change on the next go into one
+  // preview: the draft keeps the first while the second is made.
+  await page.goto("/worlds/base/settings?section=bans");
   await page.getByLabel("Banned players").fill("bob\ncarl");
+  await page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Whitelist" }).click();
+  await expect(page).toHaveURL(/section=whitelist/);
+  await page.getByLabel("Whitelisted players", { exact: true }).fill("hank");
   await page.getByRole("button", { name: "Preview changes" }).click();
   await expect(page.getByRole("heading", { name: "Changes to the ban list" })).toBeVisible();
   await expect(page.getByText("Banned carl")).toBeVisible();
+  await expect(page.getByText("Added hank to the whitelist")).toBeVisible();
   await checkPage(page);
   await page.getByRole("button", { name: "Save settings" }).click();
   await expect(page.locator(".message--success")).toContainText("Settings saved.");
 
   const bans = JSON.parse(readConfig(foreman, "server-banlist.json"));
   expect(bans).toEqual([{ username: "bob", reason: "griefing" }, "carl"]);
-
-  // The whitelist is its own sub-page and its own save.
-  await page.goto("/worlds/base/settings?section=whitelist");
-  await page.getByLabel("Whitelisted players", { exact: true }).fill("hank");
-  await page.getByRole("button", { name: "Preview changes" }).click();
-  await expect(page.getByText("Added hank to the whitelist")).toBeVisible();
-  await checkPage(page);
-  await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page.locator(".message--success")).toContainText("Settings saved.");
   expect(JSON.parse(readConfig(foreman, "server-whitelist.json"))).toEqual(["hank"]);
 });
 

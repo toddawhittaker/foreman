@@ -1,4 +1,5 @@
 {
+  "settings.draft.unsaved_mark": "(несохранённые изменения)",
   "settings.link": "Настройки игры",
   "settings.title": "Настройки мира {world}",
   "settings.readonly.unreadable": "Файл world.json этого мира не читается, поэтому его настройки здесь изменить нельзя.",

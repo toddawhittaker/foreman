@@ -3,21 +3,17 @@
 // so one Preview changes covers every section. The foot bar counts them and
 // the page column marks the sub-pages that hold them. A save or Cancel
 // drops the draft; without script each sub-page saves on its own as before.
+// The draft is kept per person, and a password is never put in it (SPEC 11.4).
 (() => {
   "use strict";
   const form = document.querySelector("form.settings[data-draft]");
   if (!form) return;
-  const key = "foreman.settings-draft:" + new URL(form.action, location.href).pathname;
+  const key = "foreman.settings-draft:" + form.dataset.draft + ":" + new URL(form.action, location.href).pathname;
   const note = document.getElementById("settings-unsaved");
   const strings = JSON.parse(document.getElementById("i18n").textContent);
-  const sectionOf = {
-    "settings-listing": "listing", "settings-joining": "players", "settings-gameplay": "gameplay",
-    "settings-saving": "saving", "settings-network": "network", "settings-admins": "admins",
-    "settings-bans": "bans", "settings-whitelist": "whitelist",
-  };
 
   const controls = () => [...form.elements].filter((el) =>
-    el.id && el.name && !el.disabled && !["hidden", "submit", "button", "reset", "file"].includes(el.type));
+    el.id && el.name && !el.disabled && !["hidden", "submit", "button", "reset", "file", "password"].includes(el.type));
   const changed = (el) => {
     if (el.type === "checkbox" || el.type === "radio") return el.checked !== el.defaultChecked;
     if (el.tagName === "SELECT") return [...el.options].some((o) => o.selected !== o.defaultSelected);
@@ -44,24 +40,29 @@
     for (const el of controls()) {
       if (!changed(el)) continue;
       draft[el.id] = el.type === "checkbox" || el.type === "radio" ? el.checked : el.value;
-      const box = el.closest("form.settings > fieldset[id]");
-      if (box && sectionOf[box.id]) sections.add(sectionOf[box.id]);
+      const box = el.closest("form.settings > fieldset[data-section]");
+      if (box) sections.add(box.dataset.section);
     }
     const count = Object.keys(draft).length;
     if (count) sessionStorage.setItem(key, JSON.stringify(draft));
     else sessionStorage.removeItem(key);
     if (note) {
-      note.hidden = count === 0;
+      // The note is a status region: it stays in the page and is written only
+      // when its words change, so a screen reader hears each change once.
+      let text = "";
       if (count) {
         const lang = document.documentElement.lang;
-        const text = strings["js.settings.unsaved"];
-        const form = text[new Intl.PluralRules(lang).select(count)] ?? text.other;
-        note.textContent = form.replace("{count}", count.toLocaleString(lang));
+        const forms = strings["js.settings.unsaved"];
+        const form = forms[new Intl.PluralRules(lang).select(count)] ?? forms.other;
+        text = form.replace("{count}", count.toLocaleString(lang));
       }
+      if (note.textContent !== text) note.textContent = text;
     }
-    for (const a of document.querySelectorAll(".subnav__sub a")) {
-      const s = new URL(a.href, location.href).searchParams.get("section") || "listing";
-      a.toggleAttribute("data-unsaved", sections.has(s));
+    for (const a of document.querySelectorAll(".subnav__sub a[data-section]")) {
+      const has = sections.has(a.dataset.section);
+      a.toggleAttribute("data-unsaved", has);
+      const words = a.querySelector("[data-unsaved-note]");
+      if (words) words.hidden = !has;
     }
   };
 

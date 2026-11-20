@@ -394,7 +394,6 @@ type SettingsPage struct {
 	WorldID, WorldName string
 	// Active marks the active world in the heading, as on its Overview.
 	Active bool
-	Live   LiveState
 	// ReadOnly says why nothing can be changed; zero when the world is open
 	// to editing.
 	ReadOnly i18n.Msg
@@ -406,8 +405,12 @@ type SettingsPage struct {
 	Broken bool
 	// Edit is the token of the previewed change the form was refilled from.
 	Edit string
-	// Section is the sub-page shown (settingssections.go); "" shows them all.
+	// Section is the sub-page shown and marked current (settingssections.go);
+	// "" when the page came from no sub-page, such as an expired preview.
 	Section string
+	// ShowAll shows every section at once: a page that came from no
+	// sub-page, or a refused form, whose problems may be on any of them.
+	ShowAll bool
 
 	Name, Description string
 	// Visibility is "lan", "hidden", or "" when neither is chosen.
@@ -519,7 +522,7 @@ func (p SettingsPage) Tabs() WorldTabs {
 			// A previewed change being edited goes with the person between sub-pages.
 			href = settingsPath(p.WorldID) + "?" + sectionQuery + "=" + s.Key + "&edit=" + url.QueryEscape(p.Edit)
 		}
-		t.Sub = append(t.Sub, SubTab{Href: href, Label: s.Label, Current: s.Key == p.Section})
+		t.Sub = append(t.Sub, SubTab{Href: href, Label: s.Label, Section: s.Key, Current: s.Key == p.Section})
 	}
 	return t
 }

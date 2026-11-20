@@ -2,6 +2,8 @@
 
 {{define "scripts"}}<script src="{{static "settingsdraft.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- $page := .}}
@@ -9,7 +11,7 @@
 <div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 </div>
-{{template "world-tabs" .Tabs}}
+{{template "rail" $}}
 {{- if not .Done.IsZero}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
@@ -78,7 +80,7 @@
 <div class="settings-wrap">
 <div class="settings-layout">
 <div class="settings-main">
-<form method="post" action="{{.Path}}" class="panel settings" novalidate{{if not .FormShown}} hidden{{end}}{{if and .Editable (not .Edit) (not .Problems)}} data-draft{{end}}>
+<form method="post" action="{{.Path}}" class="panel settings" novalidate{{if not .FormShown}} hidden{{end}}{{if and .Editable (not .Problems)}} data-draft="{{$.User}}"{{end}}>
   {{- if .Section}}
   <input type="hidden" name="section" value="{{.Section}}">
   {{- end}}
@@ -93,7 +95,7 @@
   {{- if .Edit}}
   <input type="hidden" name="edit" value="{{.Edit}}">
   {{- end}}
-  <fieldset id="settings-listing"{{if not ($page.Show "listing")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-listing" data-section="listing"{{if not ($page.Show "listing")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.listing"}}</legend>
     <div class="setting-row__body">
     <div class="field">
@@ -119,7 +121,7 @@
     </div>
   </fieldset>
 
-  <fieldset id="settings-joining"{{if not ($page.Show "players")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-joining" data-section="players"{{if not ($page.Show "players")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.joining"}}</legend>
     <div class="setting-row__body">
     <fieldset>
@@ -173,7 +175,7 @@
     </div>
   </fieldset>
 
-  <fieldset id="settings-gameplay"{{if not ($page.Show "gameplay")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-gameplay" data-section="gameplay"{{if not ($page.Show "gameplay")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.gameplay"}}</legend>
     <div class="setting-row__body">
     <div class="setting-check">
@@ -202,7 +204,7 @@
     </div>
   </fieldset>
 
-  <fieldset id="settings-saving"{{if not ($page.Show "saving")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-saving" data-section="saving"{{if not ($page.Show "saving")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.saving"}}</legend>
     <div class="setting-row__body">
     <div class="field field--short">
@@ -237,7 +239,7 @@
     </div>
   </fieldset>
 
-  <fieldset id="settings-network"{{if not ($page.Show "network")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-network" data-section="network"{{if not ($page.Show "network")}} hidden{{end}}{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.network"}}</legend>
     <div class="setting-row__body">
     <details class="disclosure"{{if or .NetworkOpen (eq .Section "network")}} open{{end}}>
@@ -267,7 +269,7 @@
   </fieldset>
 
   {{/* readonly, not disabled: the list can still be focused and scrolled on a world that cannot be changed. */}}
-  <fieldset id="settings-admins"{{if not ($page.Show "admins")}} hidden{{end}}>
+  <fieldset id="settings-admins" data-section="admins"{{if not ($page.Show "admins")}} hidden{{end}}>
     <legend>{{t "settings.admins.legend"}}</legend>
     <div class="setting-row__body">
     {{- if .AdminsBroken}}
@@ -297,7 +299,7 @@
   </fieldset>
   {{- if not .LiveBans}}
 
-  <fieldset id="settings-bans"{{if not ($page.Show "bans")}} hidden{{end}}>
+  <fieldset id="settings-bans" data-section="bans"{{if not ($page.Show "bans")}} hidden{{end}}>
     <legend>{{t "settings.bans.legend"}}</legend>
     <div class="setting-row__body">
     {{- if .BansBroken}}
@@ -319,7 +321,7 @@
   {{- end}}
   {{- if not .LiveWhitelist}}
 
-  <fieldset id="settings-whitelist"{{if not ($page.Show "whitelist")}} hidden{{end}}>
+  <fieldset id="settings-whitelist" data-section="whitelist"{{if not ($page.Show "whitelist")}} hidden{{end}}>
     <legend>{{t "settings.whitelist.legend"}}</legend>
     <div class="setting-row__body">
     {{- if .WhitelistBroken}}
@@ -345,7 +347,7 @@
 
   {{- if .Editable}}
   <div class="actions form-foot">
-    <p class="form-foot__note" id="settings-unsaved" role="status" hidden></p>
+    <p class="form-foot__note" id="settings-unsaved" role="status"></p>
     <a href="{{.WorldPath}}" class="button button--ghost" data-draft-drop>{{t "settings.cancel"}}</a>
     <button type="submit" class="button button--primary">{{t "settings.preview.button"}}</button>
   </div>

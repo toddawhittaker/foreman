@@ -1,4 +1,5 @@
 {
+  "settings.draft.unsaved_mark": "(niezapisane zmiany)",
   "settings.link": "Ustawienia gry",
   "settings.title": "Ustawienia świata {world}",
   "settings.readonly.unreadable": "Plik world.json tego świata nie jest czytelny, więc jego ustawień nie można tu zmienić.",

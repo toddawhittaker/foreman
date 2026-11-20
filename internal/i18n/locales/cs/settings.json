@@ -1,4 +1,5 @@
 {
+  "settings.draft.unsaved_mark": "(neuložené změny)",
   "settings.link": "Nastavení hry",
   "settings.title": "Nastavení světa {world}",
   "settings.readonly.unreadable": "Soubor world.json tohoto světa nelze přečíst, proto zde nelze měnit jeho nastavení.",

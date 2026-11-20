@@ -1,4 +1,5 @@
 {
+  "settings.draft.unsaved_mark": "（有未保存的更改）",
   "settings.link": "游戏设置",
   "settings.title": "{world} 的设置",
   "settings.readonly.unreadable": "此世界的 world.json 无法读取，因此无法在此更改其设置。",
