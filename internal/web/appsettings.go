@@ -67,11 +67,14 @@ type boolSetting struct {
 	Name, Key string
 	Default   bool
 	Action    string
+	// Label is the catalogue key of the switch's label.
+	Label string
 }
 
 // settingUpdateCheck turns the check for a newer Foreman release on GitHub
 // on or off (SPEC 13.1, 14.10).
-var settingUpdateCheck = boolSetting{Name: "update_check", Key: "update_check", Default: true, Action: AuditUpdateCheckSet}
+var settingUpdateCheck = boolSetting{Name: "update_check", Key: "update_check", Default: true, Action: AuditUpdateCheckSet,
+	Label: "general.updates.label"}
 
 // readBoolSetting reads a switch from the store. A missing row gives the
 // default; a failed read or an unknown value gives the default too.
@@ -91,15 +94,24 @@ func readBoolSetting(ctx context.Context, st *store.Store, d boolSetting) (on, o
 }
 
 // UpdateCheckEnabled reads the update check switch, for the background
-// check that runs outside the web server (SPEC 14.10).
+// check that runs outside the web server (SPEC 14.10). A switch that cannot
+// be read counts as off, so a fault never sends a request.
 func UpdateCheckEnabled(st *store.Store) func(context.Context) bool {
 	return func(ctx context.Context) bool {
-		on, _ := readBoolSetting(ctx, st, settingUpdateCheck)
-		return on
+		on, ok := readBoolSetting(ctx, st, settingUpdateCheck)
+		return on && ok
 	}
 }
 
-func (s *server) boolSetting(ctx context.Context, d boolSetting) bool {
+// switchWord is a switch's state in words, for the confirm page.
+func switchWord(on bool) i18n.Msg {
+	if on {
+		return i18n.M("general.switch.on")
+	}
+	return i18n.M("general.switch.off")
+}
+
+func (s *server) readBool(ctx context.Context, d boolSetting) bool {
 	on, ok := readBoolSetting(ctx, s.store, d)
 	if !ok && ctx.Err() == nil {
 		s.log.Error("an app setting could not be read or holds an unusable value, so its default is used", "setting", d.Name)
@@ -108,23 +120,28 @@ func (s *server) boolSetting(ctx context.Context, d boolSetting) bool {
 }
 
 // setBoolSetting stores on and audits the change as "from on to off" under
-// by. Nothing is stored or audited when the value does not change. Turning
-// the update check on asks GitHub at once, in the background.
-func (s *server) setBoolSetting(ctx context.Context, by game.Actor, d boolSetting, on bool) error {
+// by. Nothing is stored or audited when the stored value already is on;
+// changed reports whether it was stored.
+func (s *server) setBoolSetting(ctx context.Context, by game.Actor, d boolSetting, on bool) (changed bool, err error) {
 	s.generalMu.Lock()
 	defer s.generalMu.Unlock()
-	old := s.boolSetting(ctx, d)
-	if old == on {
-		return nil
+	old, ok := readBoolSetting(ctx, s.store, d)
+	if ok && old == on {
+		return false, nil
 	}
 	if err := s.store.SetAppSetting(ctx, d.Name, onOff(on), by.Username, s.now()); err != nil {
-		return err
+		return false, err
 	}
 	s.audit(ctx, by, d.Action, "", fmt.Sprintf("from %s to %s", onOff(old), onOff(on)))
-	if d == settingUpdateCheck && on && s.updates != nil {
+	return true, nil
+}
+
+// updateCheckSaved asks GitHub at once when the switch was just turned on
+// (SPEC 13.1).
+func (s *server) updateCheckSaved(changed, on bool) {
+	if changed && on && s.updates != nil {
 		s.updates.CheckSoon()
 	}
-	return nil
 }
 
 // generalSettings lists the settings in the order the page shows them.
@@ -384,7 +401,7 @@ func (s *server) generalPage(ctx context.Context) GeneralPage {
 		s.log.Error("count what retention will remove", "error", err)
 	}
 	p.Trim, p.Trims = t, err == nil && t.Snapshots > 0
-	p.UpdateCheck = s.boolSetting(ctx, settingUpdateCheck)
+	p.UpdateCheck = s.readBool(ctx, settingUpdateCheck)
 	return p
 }
 
@@ -434,9 +451,11 @@ func (s *server) handleGeneralSave(w http.ResponseWriter, r *http.Request, u sto
 		s.fail(w, r, "save the general settings", err)
 		return
 	}
-	if err := s.setBoolSetting(ctx, actor(u), settingUpdateCheck, p.UpdateCheck); err != nil {
+	changed, err := s.setBoolSetting(ctx, actor(u), settingUpdateCheck, p.UpdateCheck)
+	if err != nil {
 		s.fail(w, r, "save the general settings", err)
 		return
 	}
+	s.updateCheckSaved(changed, p.UpdateCheck)
 	http.Redirect(w, r, generalPath()+"?done="+generalDoneSaved, http.StatusSeeOther)
 }

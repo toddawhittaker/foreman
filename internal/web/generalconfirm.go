@@ -21,10 +21,11 @@ const (
 // GeneralHidden is one submitted value carried through the confirm form.
 type GeneralHidden struct{ Name, Value string }
 
-// GeneralChange is one setting the save changes.
+// GeneralChange is one setting the save changes. From and To are numbers,
+// or words for a switch.
 type GeneralChange struct {
 	Label    i18n.Msg
-	From, To int
+	From, To any
 }
 
 // GeneralConfirmPage asks before a save that lowers retention removes
@@ -66,9 +67,13 @@ func (s *server) generalConfirmPage(ctx context.Context, r *http.Request, want m
 			p.Changes = append(p.Changes, GeneralChange{Label: i18n.M(d.Label), From: current[d.Key], To: want[d.Key]})
 		}
 	}
-	// The switch rides along, so confirming does not turn it off.
-	if r.PostFormValue(settingUpdateCheck.Key) == "on" {
+	// The switch rides along as posted, so confirming keeps what the admin ticked.
+	wantCheck := r.PostFormValue(settingUpdateCheck.Key) == "on"
+	if wantCheck {
 		p.Hidden = append(p.Hidden, GeneralHidden{Name: settingUpdateCheck.Key, Value: "on"})
+	}
+	if was := s.readBool(ctx, settingUpdateCheck); was != wantCheck {
+		p.Changes = append(p.Changes, GeneralChange{Label: i18n.M(settingUpdateCheck.Label), From: switchWord(was), To: switchWord(wantCheck)})
 	}
 	p.Hidden = append(p.Hidden,
 		GeneralHidden{Name: trimSnapshotsField, Value: strconv.Itoa(snapshots)},

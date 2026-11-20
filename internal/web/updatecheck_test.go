@@ -111,3 +111,56 @@ func TestMCPUpdateCheck(t *testing.T) {
 		t.Errorf("audit rows %+v", rows)
 	}
 }
+
+// SPEC 14.10: a switch that cannot be read, or holds an unknown value,
+// counts as off for the background check, so a fault sends no request.
+func TestUpdateCheckEnabledFailsClosed(t *testing.T) {
+	hn := newHarness(t, nil)
+	ctx := context.Background()
+	enabled := UpdateCheckEnabled(hn.store)
+	if !enabled(ctx) {
+		t.Fatal("the switch is off with nothing stored")
+	}
+	if err := hn.store.SetAppSetting(ctx, settingUpdateCheck.Name, "maybe", "alice", hn.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if enabled(ctx) {
+		t.Error("an unknown stored value counts as on")
+	}
+	if err := hn.store.SetAppSetting(ctx, settingUpdateCheck.Name, "on", "alice", hn.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if enabled(cancelled) {
+		t.Error("a failed read counts as on")
+	}
+}
+
+// SPEC 13.1, 17.5: the confirm page lists the switch when it changes and
+// carries it through, so confirming keeps a ticked box on and turns it off
+// only when the admin unticked it.
+func TestGeneralConfirmCarriesTheSwitch(t *testing.T) {
+	hn, _ := newUpdatesHarness(t)
+	c := hn.signIn()
+	hn.seedAutos(4)
+	ticked := map[string]string{"snapshot_retention": "2", "update_check": "on"}
+	body := hn.post(generalPath(), generalForm(ticked), withCookie(c)).Body.String()
+	if !strings.Contains(body, `name="update_check" value="on"`) || strings.Contains(body, "Check GitHub for new Foreman versions:") {
+		t.Error("a ticked, unchanged switch is not carried, or is listed as a change")
+	}
+	hn.wantRedirect(hn.post(generalPath(), confirmedForm(ticked, 2, 1), withCookie(c)), generalPath()+"?done=saved")
+	if !UpdateCheckEnabled(hn.store)(context.Background()) || len(hn.audits(AuditUpdateCheckSet)) != 0 {
+		t.Fatal("confirming with the box ticked changed the switch")
+	}
+
+	unticked := map[string]string{"snapshot_retention": "1"}
+	body = hn.post(generalPath(), generalForm(unticked), withCookie(c)).Body.String()
+	if strings.Contains(body, `name="update_check"`) || !strings.Contains(body, "Check GitHub for new Foreman versions: on to off") {
+		t.Error("an unticked switch is carried, or its change is not listed")
+	}
+	hn.wantRedirect(hn.post(generalPath(), confirmedForm(unticked, 3, 1), withCookie(c)), generalPath()+"?done=saved")
+	if UpdateCheckEnabled(hn.store)(context.Background()) {
+		t.Error("confirming with the box unticked left the switch on")
+	}
+}

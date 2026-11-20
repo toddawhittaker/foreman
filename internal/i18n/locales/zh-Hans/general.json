@@ -18,6 +18,8 @@
   "general.stop.hint": "0 表示不发出警告。",
   "general.stop.label": "默认停止倒计时（秒）",
   "general.stop.text": "停止或重启在未指定倒计时时使用的倒计时。计划重启使用自己固定的倒计时。",
+  "general.switch.off": "关闭",
+  "general.switch.on": "开启",
   "general.trim.final": "已删除的快照无法恢复。若要保留它们，请在下一次自动快照之前重新调高该数值。",
   "general.trim.snapshots": {
     "other": "将删除 {count} 个自动快照，每个在其所属世界的下一次自动快照时删除。"

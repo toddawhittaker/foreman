@@ -472,7 +472,7 @@ type mcpGeneralOut struct {
 }
 
 func (s *server) mcpGeneral(ctx context.Context) mcpGeneralOut {
-	return mcpGeneralOf(s.generalValues(ctx), s.boolSetting(ctx, settingUpdateCheck))
+	return mcpGeneralOf(s.generalValues(ctx), s.readBool(ctx, settingUpdateCheck))
 }
 
 func mcpGeneralOf(v map[string]int, updateCheck bool) mcpGeneralOut {
@@ -554,7 +554,7 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 			changes = append(changes, mcpGeneralChange{Setting: d.Key, From: current[d.Key], To: *n})
 		}
 	}
-	currentCheck := s.boolSetting(ctx, settingUpdateCheck)
+	currentCheck := s.readBool(ctx, settingUpdateCheck)
 	wantCheck := currentCheck
 	if in.UpdateCheck != nil && *in.UpdateCheck != currentCheck {
 		wantCheck = *in.UpdateCheck
@@ -593,9 +593,11 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 	if err := s.saveGeneral(ctx, mcpActor(req), want); err != nil {
 		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
 	}
-	if err := s.setBoolSetting(ctx, mcpActor(req), settingUpdateCheck, wantCheck); err != nil {
+	checkChanged, err := s.setBoolSetting(ctx, mcpActor(req), settingUpdateCheck, wantCheck)
+	if err != nil {
 		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
 	}
+	s.updateCheckSaved(checkChanged, wantCheck)
 	out.Done = true
 	return mcpText("Saved %d setting(s).", len(changes)), out, nil
 }
