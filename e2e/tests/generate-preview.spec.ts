@@ -337,6 +337,30 @@ test.describe("with script", () => {
     });
   }
 
+  // DESIGN 8.8: nothing in the map's column scrolls while the map fits, and the
+  // amounts list sits last in the settings column, out of the header.
+  for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
+    test(`the large view's map column has no scroll bar at ${width}x${height}`, async ({ page }, info) => {
+      test.skip(info.project.name.startsWith("phone"), "a desktop layout");
+      await page.setViewportSize({ width, height });
+      await page.goto("/generate");
+      await expect(pictures(page)).toHaveCount(1);
+      await section(page).getByRole("link", { name: /opens the large view/ }).click();
+      const dialog = page.locator("#large-view");
+      await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+      await dialog.locator("#large-amounts").check();
+      await expect(dialog.locator("#large-amounts-text summary")).toHaveText(/^Resource amounts as text/);
+      const scrolling = await dialog.locator(".large-view__stage").evaluate((stage) =>
+        [stage, ...stage.querySelectorAll("*")].filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).map((e) => e.id || e.className));
+      expect(scrolling).toEqual([]);
+      if (width === 1920) {
+        await page.screenshot({ path: `../screenshots/large-view-header-1920-${info.project.name}.png`, clip: { x: 0, y: 0, width, height: 200 } });
+        await dialog.locator("#large-settings").evaluate((p) => { p.scrollTop = p.scrollHeight; });
+        await dialog.locator("#large-settings").screenshot({ path: `../screenshots/large-view-panel-bottom-1920-${info.project.name}.png` });
+      }
+    });
+  }
+
   test("the large view works by keyboard alone at 320 px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto("/generate");
