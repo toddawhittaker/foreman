@@ -12139,7 +12139,7 @@ main table th[scope="col"],
 }
 
 /* Disclosure triangles are quiet too. */
-summary::marker,
+:is(details, .disclosure:not(.player-actions)) > summary::marker,
 summary::-webkit-details-marker {
   color: var(--color-text-muted);
 }
@@ -12338,4 +12338,140 @@ main > .message,
     padding-block-start: 0;
     border-block-start: 0;
   }
+}
+
+/* A plan that destroys nothing is drawn in blueprint blue: planned, not yet
+   built; the hazard stripe stays for destructive ones (DESIGN 7.1). */
+.confirm--plain::before {
+  background: var(--color-info);
+}
+
+/* ==== What an action will do, as an assembly line: each step a numbered
+   square station joined to the next by a rail (DESIGN 7.1). ==== */
+ol.plan-steps {
+  counter-reset: station;
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+ol.plan-steps > li {
+  position: relative;
+  counter-increment: station;
+  min-block-size: 2.75rem;
+  margin: 0;
+  padding-block: 0.25rem var(--space-3);
+  padding-inline-start: 2.75rem;
+}
+
+ol.plan-steps > li::before {
+  content: counter(station);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-heading);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+ol.plan-steps > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-block: 1.75rem 0;
+  inset-inline-start: calc(0.875rem - 1px);
+  inline-size: 2px;
+  background: var(--color-line);
+}
+
+/* A confirmation's way out is a quiet button beside the action, not bare
+   underlined text (DESIGN 7.1). */
+.confirm .actions > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.confirm .actions > a:not(.button):hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+/* The world's facts read as a nameplate: stamped names over larger values. */
+main > .panel > .facts dd {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+/* Every foot bar's Cancel is a quiet button beside the primary. */
+:is(.gen-actions, .form-foot) > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+:is(.gen-actions, .form-foot) > a:not(.button):hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+/* On a very wide screen the map preview gets about two fifths of the page,
+   so the picture that decides the world is large (DESIGN 8.6). */
+@media (min-width: 100rem) {
+  .gen-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(26rem, 1fr);
+  }
+}
+
+/* On a very wide screen the Server page's lower row is three columns:
+   who is playing, the last safe points, then the world's own pages. */
+@media (min-width: 100rem) {
+  .server-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(16rem, 0.7fr);
+  }
+
+  .server-grid > .panel:has(#players-heading) {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .server-grid > .recent-snaps {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .server-grid > .shortcuts.card {
+    grid-row: 1;
+    grid-column: 3;
+  }
+}
+
+/* The plate's gauges run the width of their cell, so a reading of 40 %
+   is a long bar that reads from across the room. */
+.plate .facts .meter {
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  block-size: 0.5rem;
 }
