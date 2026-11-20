@@ -365,26 +365,69 @@ h2.op-heading {
   text-decoration-color: currentColor;
 }
 
-/* On a page inside a section, the overline is the way back to the section's
-   list: a link with a slash after it, ahead of the page's own title. */
+/* The breadcrumb names where you are (DESIGN 6): ancestors as quiet links,
+   the current page in the heading colour, chevrons between. */
+.crumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .crumb a {
   display: inline-flex;
   align-items: center;
   min-block-size: 1.5rem;
   color: var(--color-text-muted);
   text-decoration-line: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-decoration-color: transparent;
   text-underline-offset: 0.2em;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }
 
 .crumb a:hover {
   color: var(--color-heading);
+  text-decoration-color: currentColor;
 }
 
 .crumb::after {
-  content: "/" / "";
+  content: none;
   margin-inline-start: var(--space-2);
   color: var(--color-text-muted);
+}
+
+/* The chevron follows each ancestor; a link's ::before is its 44 px hit area. */
+.crumb > :not(:last-child)::after {
+  content: "";
+  display: inline-block;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  margin-inline-start: var(--space-2);
+  background: var(--color-text-muted);
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+.crumb > a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.crumb > span[aria-current] {
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}
+
+[dir="rtl"] .crumb > :not(:last-child)::after {
+  transform: scaleX(-1);
 }
 
 /* The Server overview's plate states the server's state large, so the
@@ -784,6 +827,29 @@ time {
 
 .menu__lang {
   color: var(--color-text-muted);
+}
+
+/* The account menu's button on a wide screen: the person, then the language
+   in quiet text, one button with no rule between, so the language does not
+   read as a control of its own (DESIGN 6, User menu). */
+@media (min-width: 64rem) {
+  .menu > summary > .menu__user {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* A round badge with the person cut out of it. */
+  .menu > summary > .menu__user::before {
+    content: "";
+    flex: none;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+    mask: var(--i-account) center / 0.875rem no-repeat, linear-gradient(black 0 0);
+    mask-composite: exclude;
+  }
 }
 
 .menu__panel {
@@ -1709,6 +1775,58 @@ fieldset > .check + a {
   color: var(--color-warn);
 }
 
+/* A feature's on-or-off state said once, with its one control at the end: a
+   hairline plate with a 4 px edge in the state's colour (DESIGN 7.3). */
+.state-plate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  max-inline-size: min(100%, 64rem);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.state-plate--off {
+  background: var(--color-warn-bg);
+  border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
+  border-inline-start-color: var(--color-warn);
+}
+
+.state-plate--on {
+  border-inline-start-color: var(--color-ok);
+}
+
+.state-plate__text {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  flex: 1 1 24rem;
+}
+
+.state-plate h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.state-plate p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.state-plate form {
+  flex: none;
+  margin: 0;
+}
+
 /* 7.4 Confirming risky actions: a flat danger box, no bevel. */
 .confirm {
   container-type: inline-size;
@@ -1799,6 +1917,14 @@ ol.plan-steps > li:not(:last-child)::after {
   border-color: var(--color-line);
 }
 
+/* When the way out comes first, it and the action end the confirmation as
+   one completion footer over a hairline (DESIGN 7.1). */
+.confirm .actions:has(> a:not(.button):first-child ~ :is(.button--primary, .button--danger)) {
+  justify-content: flex-end;
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
 .check {
   display: flex;
   align-items: center;
@@ -1869,6 +1995,17 @@ ol.plan-steps > li:not(:last-child)::after {
 #server-title > .state::before {
   inline-size: 0.875rem;
   block-size: 0.875rem;
+}
+
+/* The Server page's plate already states the state large; Console and Chat
+   leave it to the strip. The words stay for screen readers. */
+#server-title .state {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Starting is blue with a turning ring: work under way, not a warning. */
@@ -2924,6 +3061,17 @@ td > .hint {
   border-block-start: var(--border-width) solid var(--color-line);
 }
 
+/* A heading's own rule is the line above its first row, so that row drops
+   its divider; the rows after it keep theirs (DESIGN 8.7). */
+:is(h2, h3) + .mapgen-body > .autoplace:first-child {
+  border-block-start: 0;
+}
+
+/* The All resources row's rule under it is the next row's divider too. */
+.js-on .autoplace--all + .autoplace {
+  border-block-start: 0;
+}
+
 /* A control's name is quieter than the tab's, so the groups read as one list (DESIGN 8.7). */
 .autoplace > legend {
   margin-block-end: var(--space-2);
@@ -3610,6 +3758,24 @@ form:has(#mode-exchange:checked) .achievements {
   inline-size: 100%;
 }
 
+/* All planets: each card is three rows of the list's grid (the framed
+   picture, the territories in words, the download), so cards side by side
+   share their heights and their links line up (DESIGN 8.8). */
+.pictures:has(> li + li) {
+  row-gap: var(--space-2);
+}
+
+.pictures:has(> li + li) > li {
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-2);
+  padding-block-end: var(--space-3);
+}
+
+.pictures:has(> li + li) > li > figure { grid-row: 1; }
+.pictures:has(> li + li) > li > .territory-result { grid-row: 2; }
+.pictures:has(> li + li) > li > .download { grid-row: 3; align-self: start; }
+
 /* A download link is a full-height target of its own. */
 .preview .download {
   display: inline-flex;
@@ -3620,6 +3786,11 @@ form:has(#mode-exchange:checked) .achievements {
 /* An older picture stays in place, faded, while the next one is drawn. */
 .preview[aria-busy="true"] .pictures img {
   opacity: 0.6;
+}
+
+/* Preview size's place above the picture takes no row until the script moves it in. */
+.preview-size-slot:empty {
+  display: none;
 }
 
 /* Before the first picture, its box is held (script only: without it nothing draws by itself). */
@@ -3710,6 +3881,12 @@ form:has(#mode-exchange:checked) .achievements {
   background: var(--color-bg);
 }
 
+/* The page behind the open large view does not scroll, so its scroll bar does
+   not show at the window's edge beside the view (DESIGN 8.8). */
+html:has(.large-view[open]) {
+  overflow: hidden;
+}
+
 .large-view__bar {
   display: grid;
   gap: var(--space-1);
@@ -3723,10 +3900,18 @@ form:has(#mode-exchange:checked) .achievements {
   min-inline-size: 0;
 }
 
+/* The title holds its line while paging empties and refills it, and the
+   download button keeps its place, unseen, while its picture is drawn. */
 .large-view__head h2 {
   min-inline-size: 0;
+  min-block-size: 1lh;
   margin: 0;
   font-size: var(--text-lg);
+}
+
+#large-download[hidden] {
+  display: inline-grid;
+  visibility: hidden;
 }
 
 /* Its line is held, so news does not shrink the picture. */
@@ -4051,6 +4236,43 @@ form:has(#mode-exchange:checked) .achievements {
   display: none;
 }
 
+/* The amounts list's place in the settings column takes no row while empty. */
+.large-view__amounts-text:empty {
+  display: none;
+}
+
+/* The counting line is one text line: the words, cut if need be, and a
+   bar no taller than the text beside them. */
+#large-amounts-bar {
+  flex-wrap: nowrap;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+#large-counting:not([hidden]) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+#large-counting > p {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#large-counting > progress {
+  flex: 0 0 4rem;
+  block-size: 0.5rem;
+}
+
+#large-amounts-result {
+  flex: 1 1 0;
+}
+
 .resource-text[open] {
   display: grid;
   gap: var(--space-2);
@@ -4146,6 +4368,20 @@ form:has(#mode-exchange:checked) .achievements {
     display: flex;
     visibility: hidden;
   }
+
+  /* The box and what it shows cannot share a line either, so a second line
+     is always held for the count, the list or nothing, and ticking moves
+     nothing. */
+  #large-amounts-bar {
+    flex-wrap: wrap;
+    align-content: start;
+    min-block-size: calc(var(--target-min) + var(--space-1) + var(--target-min));
+  }
+
+  #large-amounts-bar > #large-counting:not([hidden]),
+  #large-amounts-bar > #large-amounts-result {
+    flex-basis: 100%;
+  }
 }
 
 .large-view__territories > .hint {
@@ -4230,12 +4466,17 @@ form:has(#mode-exchange:checked) .achievements {
   line-height: 1.3;
 }
 
-/* The status line and the drawing line share the held line while they fit. */
+/* The status line and the drawing line share the held line. Paging the
+   large view changes only what its lines say, never their height (DESIGN
+   8.8), so the line is cut rather than wrapped. */
 .large-view__news {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0 var(--space-3);
   min-inline-size: 0;
+  block-size: 1lh;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .large-view__drawing {
@@ -5179,12 +5420,14 @@ a[target="_blank"]::after {
   mask: var(--i-map) center / contain no-repeat;
 }
 
-/* The actions are one bar at the form's foot, in code order at every width:
-   Cancel, Preview map, then Generate world (DESIGN 7.1). */
+/* The actions are one bar at the form's foot, gathered at its end, in code
+   order at every width: Cancel, Preview map, then Generate world, so the
+   keyboard meets them as the eye does (DESIGN 7.1). */
 .generate > .gen-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2) var(--space-3);
   margin: 0 calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
   padding: var(--space-3) var(--card-pad);
@@ -6510,8 +6753,10 @@ header > .subnav {
   position: relative;
 }
 
+/* The plate's corner rivets read as stray dots; the plate's state edge is
+   its one mark. */
 .plate::after {
-  content: "";
+  content: none;
   position: absolute;
   inset: 0.625rem;
   pointer-events: none;
@@ -7028,6 +7273,12 @@ main:has(> .gate) > .gate {
 }
 
 .setting-rows > .setting-row + .setting-row {
+  margin-block-start: var(--space-5);
+}
+
+/* General settings: the pairs keep a clear gap above the save bar, so the
+   last field never sits under it (DESIGN 8.15). */
+form.setting-rows > .form-foot {
   margin-block-start: var(--space-5);
 }
 
@@ -8696,6 +8947,36 @@ main > .panel.danger-zone.danger-zone--blocked {
   font-size: var(--text-sm);
 }
 
+/* Before a search the results panel is one quiet line, so the installed
+   list starts higher (DESIGN 8.11). */
+#results:not(:has(.hits, .error, .message)) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-3);
+  background: none;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+#results:not(:has(.hits, .error, .message)) > h2 {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+#results:not(:has(.hits, .error, .message)) > .empty {
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  text-align: start;
+}
+
+#results:not(:has(.hits, .error, .message)) > .empty::before {
+  content: none;
+}
+
 .hits {
   max-inline-size: none;
   margin: 0;
@@ -9291,8 +9572,8 @@ main:has(> .gate) > .gate + .gate {
   }
 }
 
-/* The breadcrumb looks like an overline but is a full 44 px target: an
-   invisible hit area reaches 10 px above and below the 24 px link. */
+/* Each breadcrumb link is a full 44 px target: an invisible hit area
+   reaches 10 px above and below the 24 px link. */
 .crumb a {
   position: relative;
 }
@@ -10262,6 +10543,9 @@ main:has(#act-public-mods-open) #public-mods-state {
       linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
       var(--color-surface);
     color: var(--color-heading);
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 30;
   }
 
   body:has(> .site > nav) > .site > nav {
@@ -10306,11 +10590,14 @@ main:has(#act-public-mods-open) #public-mods-state {
     color: var(--color-heading);
   }
 
+  /* The current place: a neutral raised face and the orange edge, not a
+     brown tint (DESIGN 3). */
   body .site > nav .tabs a[aria-current] {
-    background: var(--color-accent-bg);
+    background: var(--color-raised);
     border-inline-start-color: var(--color-selected);
     color: var(--color-heading);
     font-weight: 600;
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
   }
 
   body .site > nav .tabs a:focus-visible {
@@ -10322,7 +10609,9 @@ main:has(#act-public-mods-open) #public-mods-state {
     content: none;
   }
 
-  /* The status strip: the live world and its state, read from anywhere. */
+  /* The status strip: the live world and its state, read from anywhere. It
+     says the state once, on every page, and stays in view while the page
+     scrolls (DESIGN 6, Shell; 7.5). */
   body:has(> .site > nav) .site-strip {
     grid-column: 2;
     grid-row: 1;
@@ -10333,6 +10622,9 @@ main:has(#act-public-mods-open) #public-mods-state {
     padding-inline: var(--space-6) 20rem;
     background: var(--color-surface);
     border-block-end: 2px solid var(--color-line);
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 30;
   }
 
   .site-strip:has(.lamp--running) { border-block-end-color: var(--color-ok); }
@@ -10352,14 +10644,16 @@ main:has(#act-public-mods-open) #public-mods-state {
 
   body:has(> .site > nav) .site-state:not(:empty) {
     flex: none;
-    min-block-size: 1.75rem;
-    padding-inline: var(--space-2) var(--space-3);
+    min-inline-size: 0;
+    min-block-size: 1.5rem;
+    padding: 0.125rem 0.625rem 0.125rem var(--space-2);
     background: var(--color-raised);
     border: var(--border-width) solid var(--color-line);
     border-radius: 999px;
     color: var(--color-heading);
     font-size: var(--text-sm);
     font-weight: 600;
+    line-height: 1.4;
     white-space: nowrap;
   }
 
@@ -10373,9 +10667,20 @@ main:has(#act-public-mods-open) #public-mods-state {
     grid-row: 1;
     justify-self: end;
     align-self: center;
-    position: relative;
-    z-index: 30;
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 31;
     margin: 0 var(--space-6) 0 0;
+  }
+
+  /* A control scrolled into view stops below the strip, never behind it
+     (WCAG 2.4.11); the audit log's column names stick under it too. */
+  html:has(body > .site > nav) {
+    scroll-padding-block-start: calc(3.5rem + var(--space-3));
+  }
+
+  body:has(> .site > nav) .audit-table thead th {
+    inset-block-start: 3.5rem;
   }
 
   /* Anchored to the button, so its own width, not the button's, so every
@@ -10415,16 +10720,18 @@ main:has(#act-public-mods-open) #public-mods-state {
     border-inline-end: var(--border-width) solid var(--color-line);
   }
 
-  /* The list's name, taken from its own label, over its links. */
+  /* The list's name, taken from its own label, over its links. It is named
+     in the interface face, so the mono capitals stay for overlines and fact
+     names (DESIGN 5). */
   body:has(> .site > nav) > header > .subnav::before {
     content: attr(aria-label) / "";
     display: block;
     padding: 0 var(--space-3) var(--space-2);
     color: var(--color-text-muted);
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: 0.75rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 
@@ -10441,7 +10748,7 @@ main:has(#act-public-mods-open) #public-mods-state {
 }
 
 /* Settings on a wide screen: the tabs are a list in the rail, the current
-   one marked by an orange edge on the accent face. */
+   one marked by an orange edge on a raised face. */
 @media (min-width: 64rem) {
   header > .subnav--settings ul {
     flex-direction: column;
@@ -10472,9 +10779,10 @@ main:has(#act-public-mods-open) #public-mods-state {
   }
 
   header > .subnav--settings a[aria-current] {
-    background: var(--color-accent-bg);
+    background: var(--color-raised);
     border-inline-start-color: var(--color-selected);
     color: var(--color-heading);
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
   }
 
   header > .subnav--settings a:focus-visible {
@@ -11478,19 +11786,43 @@ main > h1 + p.hint,
   line-height: 1.43;
 }
 
-/* Every table's column names share one style: 13 px capitals, tracked, in
-   the quiet colour, over a hairline, the same as the token and user lists. */
+/* Every table's column names share one style: 12 px capitals in the
+   interface face, tracked, in the quiet colour, over a hairline, the same as
+   the token and user lists. The mono capitals stay for overlines and fact
+   names (DESIGN 5). */
 main table thead th,
 main table th[scope="col"] {
   padding-block: 0 var(--space-3);
   color: var(--color-text-muted);
-  font-size: var(--text-xs);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   line-height: 1.3;
   text-transform: uppercase;
   white-space: nowrap;
   vertical-align: bottom;
+}
+
+.token-head,
+.worlds-head {
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Figures in table cells take the mono face with tabular digits. */
+main td.num,
+main td time,
+main td .ver,
+.token-card time,
+.worlds > li .facts dd {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Audit rows: every cell starts on the row's top line, so a wrapped detail
@@ -11603,16 +11935,16 @@ main > .panel.danger-zone.danger-zone--blocked {
 }
 
 /* A mod in the plan is drawn in blueprint blue, planned but not yet built,
-   as the game draws a ghost before it is placed (DESIGN 3): the 4 px edge
-   and the In plan pill say it, so the plan's button stays the one orange
-   area. */
+   as the game draws a ghost before it is placed (DESIGN 3): a 3 px blue
+   edge and the In plan pill say it, and the row keeps the card's face, so
+   the plan's button stays the one orange area. */
 .hit {
   border-inline-start-width: 4px;
 }
 
 .hit:has(.badge--chosen) {
-  background: color-mix(in srgb, var(--color-info-bg) 55%, transparent);
-  border-inline-start-color: var(--color-info);
+  background: none;
+  border-inline-start: 3px solid var(--color-info);
 }
 
 @media (min-width: 48rem) {
@@ -11751,7 +12083,7 @@ main > .panel.danger-zone.danger-zone--blocked {
 
 /* One navigation pattern for every area with sub-pages: from 64rem the
    Server's, a world's and the settings' pages are a 240 px column on the
-   start side, the current page marked by an orange edge on the accent face;
+   start side, the current page marked by an orange edge on a raised face;
    the area's title and state sit in the page header beside it. */
 @media (min-width: 64rem) {
   header > .subnav ul {
@@ -11795,10 +12127,16 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 
   header > .subnav a[aria-current] {
-    background: var(--color-accent-bg);
+    background: var(--color-raised);
     border-inline-start-color: var(--color-selected);
     color: var(--color-heading);
     font-weight: 600;
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
+  }
+
+  header > .subnav a[aria-current="true"] {
+    background: none;
+    box-shadow: none;
   }
 
   header > .subnav a:focus-visible {
@@ -12158,6 +12496,18 @@ form.settings[hidden] {
   gap: var(--space-2) var(--space-5);
 }
 
+/* Once there is room, the four services sit two by two and the nine events
+   three by three, never a lone last item (DESIGN 8.16). */
+@container (min-width: 30rem) {
+  .webhook-form__presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .webhook-form__event-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .webhook-form__top,
 .webhook-form__where {
   display: grid;
@@ -12317,7 +12667,7 @@ form.settings[hidden] {
 
 /* The page column marks the current place once: the parent of an open
    sub-page keeps the orange start edge in bold, and the sub-page itself
-   takes the accent face, the same face as a current Settings item. */
+   takes the raised face, the same face as a current Settings item. */
 @media (min-width: 64rem) {
   header > .subnav a[aria-current="true"]:has(+ .subnav__sub) {
     border-inline-start-color: var(--color-selected);
@@ -12331,9 +12681,10 @@ form.settings[hidden] {
   }
 
   header > .subnav .subnav__sub a[aria-current] {
-    background: var(--color-accent-bg);
+    background: var(--color-raised);
     border-inline-start-color: var(--color-selected);
     font-weight: 600;
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
   }
 
   header > .subnav .subnav__sub a[data-unsaved] {
@@ -12466,13 +12817,9 @@ main > h1 + p.hint,
   mask: var(--i-chevron) center / contain no-repeat;
 }
 
-/* ==== Labels as stamped plates (DESIGN 5): the overline, column names and
-   fact names in Plex Mono capitals, so labels read apart from content. ==== */
+/* ==== Labels as stamped plates (DESIGN 5): the overline and fact names in
+   Plex Mono capitals, so labels read apart from content. ==== */
 .eyebrow,
-main table thead th,
-main table th[scope="col"],
-.token-head,
-.worlds-head,
 .facts dt,
 .plate dt,
 .status-card dt {
@@ -12487,418 +12834,3 @@ main table th[scope="col"],
   font-family: var(--font-sans);
   letter-spacing: 0;
 }
-
-/* ==== The status strip says the live world's state once, on every page
-   (DESIGN 6, Shell; 7.5): the pill fits its word like a table badge, the
-   strip stays in view while the page scrolls, and page titles carry no
-   second state badge. ==== */
-@media (min-width: 64rem) {
-  body:has(> .site > nav) .site-strip,
-  body:has(> .site > nav) > .site > .product,
-  body:has(> .site > nav) > .site > .menu {
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 30;
-  }
-
-  body:has(> .site > nav) > .site > .menu {
-    z-index: 31;
-  }
-
-  /* A control scrolled into view stops below the strip, never behind it
-     (WCAG 2.4.11); the audit log's column names stick under it too. */
-  html:has(body > .site > nav) {
-    scroll-padding-block-start: calc(3.5rem + var(--space-3));
-  }
-
-  body:has(> .site > nav) .audit-table thead th {
-    inset-block-start: 3.5rem;
-  }
-
-  body:has(> .site > nav) .site-state:not(:empty) {
-    flex: none;
-    min-inline-size: 0;
-    min-block-size: 1.5rem;
-    padding: 0.125rem 0.625rem 0.125rem var(--space-2);
-    font-size: var(--text-sm);
-    line-height: 1.4;
-  }
-
-  /* The area's list is named in the interface face, so the mono capitals
-     stay for overlines and fact names (DESIGN 5). */
-  body:has(> .site > nav) > header > .subnav::before {
-    font-family: var(--font-sans);
-    letter-spacing: 0.04em;
-  }
-
-  /* The current place: a neutral raised face and the orange edge, not a
-     brown tint (DESIGN 3). */
-  body .site > nav .tabs a[aria-current],
-  header > .subnav a[aria-current],
-  header > .subnav--settings a[aria-current],
-  header > .subnav .subnav__sub a[aria-current] {
-    background: var(--color-raised);
-    box-shadow: inset 0 0 0 var(--border-width) var(--color-line);
-  }
-
-  header > .subnav a[aria-current="true"] {
-    background: none;
-    box-shadow: none;
-  }
-}
-
-/* The Server page's plate already states the state large; Console and Chat
-   leave it to the strip. The words stay for screen readers. */
-#server-title .state {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* The plate's corner rivets read as stray dots; the plate's state edge is
-   its one mark. */
-.plate::after {
-  content: none;
-}
-
-/* ==== The breadcrumb names where you are (DESIGN 6): ancestors as quiet
-   links, the current page in the heading colour, chevrons between. ==== */
-.crumb {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--space-2);
-  margin: 0;
-  color: var(--color-text-muted);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1.5;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.crumb::after {
-  content: none;
-}
-
-.crumb a {
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-  color: var(--color-text-muted);
-  text-decoration-line: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 0.2em;
-}
-
-.crumb a:hover {
-  color: var(--color-heading);
-  text-decoration-color: currentColor;
-}
-
-/* The chevron follows each ancestor; a link's ::before is its 44 px hit area. */
-.crumb > :not(:last-child)::after {
-  content: "";
-  display: inline-block;
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  margin-inline-start: var(--space-2);
-  background: var(--color-text-muted);
-  mask: var(--i-chevron) center / contain no-repeat;
-}
-
-.crumb > a {
-  display: inline-flex;
-  align-items: center;
-}
-
-.crumb > span[aria-current] {
-  color: var(--color-heading);
-  overflow-wrap: anywhere;
-}
-
-[dir="rtl"] .crumb > :not(:last-child)::after {
-  transform: scaleX(-1);
-}
-
-/* ==== Labels: column names in the interface face, quiet and small; the
-   mono capitals stay for overlines and fact names (DESIGN 5). Figures in
-   table cells take the mono face with tabular digits. ==== */
-main table thead th,
-main table th[scope="col"],
-.token-head,
-.worlds-head {
-  font-family: var(--font-sans);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-}
-
-main td.num,
-main td time,
-main td .ver,
-.token-card time,
-.worlds > li .facts dd {
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ==== A feature's on-or-off state said once, with its one control at the
-   end: a hairline plate with a 4 px edge in the state's colour (DESIGN 7.3). ==== */
-.state-plate {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3) var(--space-5);
-  max-inline-size: min(100%, 64rem);
-  padding: var(--space-4) var(--space-5);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-line);
-  border-inline-start: 4px solid var(--color-border);
-  border-radius: var(--radius);
-}
-
-.state-plate--off {
-  background: var(--color-warn-bg);
-  border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
-  border-inline-start-color: var(--color-warn);
-}
-
-.state-plate--on {
-  border-inline-start-color: var(--color-ok);
-}
-
-.state-plate__text {
-  display: grid;
-  gap: var(--space-1);
-  min-inline-size: 0;
-  flex: 1 1 24rem;
-}
-
-.state-plate h2 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0;
-  font-size: var(--text-lg);
-}
-
-.state-plate p {
-  margin: 0;
-  color: var(--color-text);
-}
-
-.state-plate form {
-  flex: none;
-  margin: 0;
-}
-
-/* ==== General settings: the pairs keep a clear gap above the save bar,
-   so the last field never sits under it (DESIGN 8.15). ==== */
-form.setting-rows > .form-foot {
-  margin-block-start: var(--space-5);
-}
-
-/* ==== Planned mods are blueprint blue by edge and badge only; the row
-   keeps the card's face (DESIGN 3). ==== */
-.hit:has(.badge--chosen) {
-  background: none;
-  border-inline-start: 3px solid var(--color-info);
-}
-
-/* ==== One completion footer: the way out is a quiet button just before
-   the primary action at the end, in code order too, so the keyboard meets
-   them as the eye does (DESIGN 7.1). ==== */
-.generate > .gen-actions {
-  justify-content: flex-end;
-}
-
-.confirm .actions:has(> a:not(.button):first-child ~ :is(.button--primary, .button--danger)) {
-  justify-content: flex-end;
-  padding-block-start: var(--space-4);
-  border-block-start: var(--border-width) solid var(--color-line);
-}
-
-/* ==== Mods: before a search the results panel is one quiet line, so the
-   installed list starts higher (DESIGN 8.11). ==== */
-#results:not(:has(.hits, .error, .message)) {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-  padding-block: var(--space-3);
-  background: none;
-  border-style: dashed;
-  box-shadow: none;
-}
-
-#results:not(:has(.hits, .error, .message)) > h2 {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-#results:not(:has(.hits, .error, .message)) > .empty {
-  margin: 0;
-  padding: 0;
-  font-size: var(--text-sm);
-  text-align: start;
-}
-
-#results:not(:has(.hits, .error, .message)) > .empty::before {
-  content: none;
-}
-
-/* ==== Add a webhook: the four services two by two, the nine events three
-   by three, never a lone last item (DESIGN 8.16). ==== */
-@container (min-width: 30rem) {
-  .webhook-form__presets {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .webhook-form__event-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* ==== The account menu's button: the person, then the language in quiet
-   text, one button with no rule between, so the language does not read as
-   a control of its own (DESIGN 6, User menu). ==== */
-@media (min-width: 64rem) {
-  .menu > summary > .menu__user {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  /* A round badge with the person cut out of it. */
-  .menu > summary > .menu__user::before {
-    content: "";
-    flex: none;
-    inline-size: 1.5rem;
-    block-size: 1.5rem;
-    border-radius: 50%;
-    background: var(--color-text-muted);
-    mask: var(--i-account) center / 0.875rem no-repeat, linear-gradient(black 0 0);
-    mask-composite: exclude;
-  }
-}
-
-/* A heading's own rule is the line above its first row, so that row drops
-   its divider; the rows after it keep theirs (DESIGN 8.7). */
-:is(h2, h3) + .mapgen-body > .autoplace:first-child {
-  border-block-start: 0;
-}
-
-/* The All resources row's rule under it is the next row's divider too. */
-.js-on .autoplace--all + .autoplace {
-  border-block-start: 0;
-}
-
-/* The amounts list's place in the settings column takes no row while empty. */
-.large-view__amounts-text:empty {
-  display: none;
-}
-
-/* Preview size's place above the picture takes no row until the script moves it in. */
-.preview-size-slot:empty {
-  display: none;
-}
-
-/* The page behind the open large view does not scroll, so its scroll bar does
-   not show at the window's edge beside the view (DESIGN 8.8). */
-html:has(.large-view[open]) {
-  overflow: hidden;
-}
-
-/* Paging the large view changes only what its lines say, never their
-   height (DESIGN 8.8). The news line is one line, cut rather than wrapped. */
-.large-view__news {
-  flex-wrap: nowrap;
-  block-size: 1lh;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-/* The counting line is one text line: the words, cut if need be, and a
-   bar no taller than the text beside them. */
-#large-amounts-bar {
-  flex-wrap: nowrap;
-  align-items: center;
-  min-block-size: var(--target-min);
-}
-
-#large-counting:not([hidden]) {
-  display: flex;
-  flex: 1 1 0;
-  align-items: center;
-  gap: var(--space-2);
-  min-inline-size: 0;
-}
-
-#large-counting > p {
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#large-counting > progress {
-  flex: 0 0 4rem;
-  block-size: 0.5rem;
-}
-
-#large-amounts-result {
-  flex: 1 1 0;
-}
-
-/* Narrow, the box and what it shows cannot share a line, so a second line
-   is always held for the count, the list or nothing, and ticking moves nothing. */
-@container large-view (max-width: 47.99rem) {
-  #large-amounts-bar {
-    flex-wrap: wrap;
-    align-content: start;
-    min-block-size: calc(var(--target-min) + var(--space-1) + var(--target-min));
-  }
-
-  #large-amounts-bar > #large-counting:not([hidden]),
-  #large-amounts-bar > #large-amounts-result {
-    flex-basis: 100%;
-  }
-}
-
-/* The title holds its line while paging empties and refills it, and the
-   download button keeps its place, unseen, while its picture is drawn. */
-.large-view__head h2 {
-  min-block-size: 1lh;
-}
-
-#large-download[hidden] {
-  display: inline-grid;
-  visibility: hidden;
-}
-
-/* All planets: each card is three rows of the list's grid (the framed
-   picture, the territories in words, the download), so cards side by side
-   share their heights and their links line up (DESIGN 8.8). */
-.pictures:has(> li + li) {
-  row-gap: var(--space-2);
-}
-
-.pictures:has(> li + li) > li {
-  grid-row: span 3;
-  grid-template-rows: subgrid;
-  row-gap: var(--space-2);
-  padding-block-end: var(--space-3);
-}
-
-.pictures:has(> li + li) > li > figure { grid-row: 1; }
-.pictures:has(> li + li) > li > .territory-result { grid-row: 2; }
-.pictures:has(> li + li) > li > .download { grid-row: 3; align-self: start; }
