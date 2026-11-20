@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	realURL = "https://api.github.com/repos/toddawhittaker/foreman/releases/latest"
+	// LatestURL is GitHub's latest Foreman release; the e2e fake answers it too.
+	LatestURL = "https://api.github.com/repos/toddawhittaker/foreman/releases/latest"
 
 	// ReleaseTagURL is the release page a notice links to, followed by the plain version.
 	ReleaseTagURL = "https://github.com/toddawhittaker/foreman/releases/tag/v"
@@ -54,7 +55,7 @@ func New(running string, enabled func(context.Context) bool, log *slog.Logger) *
 			return errors.New("redirects are not followed")
 		},
 	}
-	return &Checker{url: realURL, hc: hc, running: running, enabled: enabled, log: log, first: firstDelay, every: checkEvery}
+	return &Checker{url: LatestURL, hc: hc, running: running, enabled: enabled, log: log, first: firstDelay, every: checkEvery}
 }
 
 // Newer returns the plain version of a release newer than the running one,
