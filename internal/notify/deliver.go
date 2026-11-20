@@ -74,7 +74,10 @@ func (n *Notifier) dispatch(ctx context.Context, m Message, senders map[int64]*s
 	}
 	rows, err := n.rows.ListWebhooks(ctx)
 	if err != nil {
-		n.log.Error("notification not sent: the webhooks could not be read", "event", string(m.Event), "error", err)
+		// Foreman stopping cancels ctx mid-query; that is not a fault.
+		if ctx.Err() == nil {
+			n.log.Error("notification not sent: the webhooks could not be read", "event", string(m.Event), "error", err)
+		}
 		return
 	}
 	live := map[int64]bool{}

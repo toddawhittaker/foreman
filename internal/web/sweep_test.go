@@ -141,3 +141,35 @@ func TestRemindTokensLogsAStoreFailure(t *testing.T) {
 		t.Errorf("sent %v, logs %s", out.all(), hn.logs.String())
 	}
 }
+
+// Foreman ending while a background job reads the database is not a fault,
+// so it logs no ERROR line; the e2e harness fails a test on one.
+func TestBackgroundJobsStayQuietWhenTheirContextEnds(t *testing.T) {
+	hn := newHarness(t, nil)
+	tokens := auth.NewAPITokens(hn.store, hn.clock.Now)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var out emitted
+	remindOnce(ctx, tokens, &out, hn.slog)
+	hn.generalServer().sweepOnce(ctx, time.Hour)
+
+	if got := hn.logs.String(); strings.Contains(got, `"level":"ERROR"`) {
+		t.Errorf("a job whose context ended logged an error: %s", got)
+	}
+	if len(out.all()) != 0 {
+		t.Errorf("sent %v", out.all())
+	}
+}
+
+// A real failure while the context is live still logs an ERROR line.
+func TestSweepLogsAStoreFailure(t *testing.T) {
+	hn := newHarness(t, nil)
+	if err := hn.store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	hn.generalServer().sweepOnce(context.Background(), time.Hour)
+	if got := hn.logs.String(); !strings.Contains(got, `"level":"ERROR"`) || !strings.Contains(got, "sweep idle sessions") {
+		t.Errorf("logs %s", got)
+	}
+}

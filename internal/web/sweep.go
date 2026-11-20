@@ -38,7 +38,10 @@ func (h *Handler) Sweep(ctx context.Context, idle time.Duration) {
 func (s *server) sweepOnce(ctx context.Context, idle time.Duration) {
 	n, err := s.store.DeleteSessionsIdleSince(ctx, s.now().Add(-idle))
 	if err != nil {
-		s.log.Error("sweep idle sessions", "error", err)
+		// Foreman stopping cancels ctx mid-query; that is not a fault.
+		if ctx.Err() == nil {
+			s.log.Error("sweep idle sessions", "error", err)
+		}
 	} else {
 		s.log.Debug("swept idle sessions", "count", n)
 	}
@@ -55,7 +58,9 @@ func (s *server) sweepAudit(ctx context.Context) {
 	}
 	n, err := s.store.DeleteAuditBefore(ctx, s.now().AddDate(0, 0, -days))
 	if err != nil {
-		s.log.Error("sweep old audit entries", "error", err)
+		if ctx.Err() == nil {
+			s.log.Error("sweep old audit entries", "error", err)
+		}
 		return
 	}
 	s.log.Debug("swept old audit entries", "count", n)
@@ -86,7 +91,10 @@ func RemindTokens(ctx context.Context, tokens *auth.APITokens, n *notify.Notifie
 func remindOnce(ctx context.Context, tokens *auth.APITokens, n emitter, log *slog.Logger) {
 	due, err := tokens.DueReminders(ctx)
 	if err != nil {
-		log.Error("find due token reminders", "error", err)
+		// Foreman stopping cancels ctx mid-query; that is not a fault.
+		if ctx.Err() == nil {
+			log.Error("find due token reminders", "error", err)
+		}
 		return
 	}
 	for _, r := range due {
@@ -94,6 +102,9 @@ func remindOnce(ctx context.Context, tokens *auth.APITokens, n emitter, log *slo
 			Name: r.Token.Name, Owner: r.Token.Owner, Expires: auth.ExpiresAt(r.Token),
 		}})
 		if err := tokens.MarkReminded(ctx, r); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
 			log.Error("record a token reminder", "token", r.Token.Name, "error", err)
 		}
 	}
