@@ -2202,12 +2202,14 @@ narrower than 34rem so their steps stay sliders,
 (items 1 to 4 and the achievements summary) on the left, and the preview in
 a column of 20 to 26rem on the right that stays in view while the settings
 change. That column (`gen-preview`) is sticky at `--space-5` from the top,
-as tall as the window between the top strip and the action bar; one
-planet's picture is a square sized by the smaller of the column's width and
-the height its controls leave (never under 6rem), and the download links
-and the kept note sit tight under it, so at common desktop heights the whole
-pane, Preview size included, is seen without scrolling, and only a very
-short window scrolls the pane on its own; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
+as tall as the window between the top strip and the action bar. Once a
+picture is drawn its order is: the heading and seed, the One planet and All
+planets tabs, Show resource amounts, Preview size, the picture, then the
+download links and the kept note as one tight group. Preview size is above
+the picture so it is always in reach without scrolling. One planet's picture
+is a square sized by the smaller of the column's width and the height left,
+never under 16rem so its amounts stay readable; where the window is tall
+enough the whole pane fits, and below that the pane scrolls on its own; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
 and `--space-4` of padding, and sizes its own controls from its width, as
 the settings do from theirs (8.7). Several planets are thumbnails, two to a
 row. From 100rem the preview column takes about two fifths of the page.

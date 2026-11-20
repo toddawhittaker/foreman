@@ -4917,27 +4917,36 @@ a[target="_blank"]::after {
     }
   }
 
-  .gen-preview > *,
+  /* Once a picture is drawn, the section's parts are the pane's own rows, so
+     Preview size can sit above the picture, always in reach, while the
+     downloads and the kept note stay under it (DESIGN 8.6). */
+  .gen-preview > .preview:has(> section > .pictures),
+  .gen-preview > .preview > section:has(> .pictures) {
+    display: contents;
+  }
+
+  .gen-preview > * ,
   .gen-preview > .preview > section > * {
     flex: none;
   }
 
-  /* The path down to one picture takes the height left over. */
-  .gen-preview > .preview:has(.pictures),
-  .gen-preview > .preview > section:has(> .pictures) {
-    display: flex;
-    flex-direction: column;
-    flex: 1 0 auto;
-    gap: var(--space-3);
-    min-block-size: 0;
+  .gen-preview:has(.pictures) > .field.step {
+    order: 1;
+  }
+
+  .gen-preview .pictures,
+  .gen-preview .pictures ~ *,
+  .gen-preview:has(.pictures) > .preview ~ :not(.field) {
+    order: 2;
   }
 
   /* A square no wider than the column and no taller than the room left,
-     less its frame, caption and download link; 6rem at the least. While
-     the territories are written under it the list keeps its own height. */
+     less its frame, caption and download link; never under 16rem, so its
+     amounts stay readable, and the pane scrolls below that. While the
+     territories are written under it the list keeps its own height. */
   .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) {
     flex: 1 1 0;
-    min-block-size: calc(6rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
     container-type: size;
   }
 
@@ -4947,13 +4956,11 @@ a[target="_blank"]::after {
 
   /* The frame shrinks, not the row, so its download link keeps the column's width. */
   .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li > figure {
-    inline-size: min(100%, max(6rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
   }
 
-  /* The download links and the note on how long they are kept read as one
-     tight group under the picture, not as separate sections. */
-  /* Two text links stacked as a list: 24px targets or more (WCAG 2.5.8), not
-     44px boxes that read as separate sections. */
+  /* The download links and the kept note read as one tight group under the
+     picture: text links of 24px or more (WCAG 2.5.8), not 44px boxes. */
   .gen-preview .preview .download {
     min-block-size: calc(1lh + 2 * var(--space-1));
   }

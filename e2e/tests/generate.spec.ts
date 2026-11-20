@@ -198,11 +198,11 @@ test("a long world name fits at any width", async ({ page, foreman, fakeGame }) 
   await checkPage(page);
 });
 
-// DESIGN 8.6: on a desktop the whole preview pane fits between the top strip
-// and the action bar, the picture shrinking to the room left, so Preview size
-// is in reach without the pane scrolling.
+// DESIGN 8.6: on a desktop Preview size sits above the picture, in reach
+// without scrolling, and where the window is tall enough the whole pane fits
+// between the top strip and the action bar, the picture shrinking to the room left.
 for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
-  test(`the preview pane fits the window at ${width}x${height}`, async ({ page, foreman, fakeGame }, info) => {
+  test(`the preview pane keeps Preview size in reach at ${width}x${height}`, async ({ page, foreman, fakeGame }, info) => {
     test.skip(info.project.name.startsWith("phone"), "a desktop layout");
     await page.setViewportSize({ width, height });
     await setUp(page, foreman, fakeGame!);
@@ -215,14 +215,17 @@ for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
     const m = await page.evaluate(() => {
       const pane = document.querySelector(".gen-preview")!;
       return {
+        top: pane.scrollTop,
         scroll: pane.scrollHeight,
         client: pane.clientHeight,
         slider: document.querySelector(".gen-preview .field.step")!.getBoundingClientRect().bottom,
         bar: document.querySelector(".gen-actions")!.getBoundingClientRect().top,
       };
     });
-    expect(m.scroll).toBeLessThanOrEqual(m.client + 1);
+    expect(m.top).toBe(0);
+    if (height >= 950) expect(m.scroll).toBeLessThanOrEqual(m.client + 1);
     expect(m.slider).toBeLessThanOrEqual(m.bar);
+    await expect(page.locator(".gen-preview .field.step")).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: `../screenshots/generate-preview-fit-${width}x${height}-${info.project.name}.png` });
   });
 }
