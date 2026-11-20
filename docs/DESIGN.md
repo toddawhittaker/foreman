@@ -497,9 +497,10 @@ frame (7.4).
 - Nothing sticky may cover the focused element (2.4.11). On a phone the
   header is not sticky. From 64rem the status strip, with the logo and
   the user menu in its row, sticks to the top of the window. It is 56 px
-  tall, so an element focused by keyboard can end up under it; the page
-  should keep focus clear of it with `scroll-padding-block-start`, which it
-  does not yet set. The open user menu covers the top of the
+  tall, so the page sets `scroll-padding-block-start` to the strip's
+  height plus a small gap from 64rem, and an element focused by keyboard
+  scrolls into view below it. The Audit log's sticky column names stick
+  just below the strip. The open user menu covers the top of the
   page, but it closes on Escape and on a click outside, and focus stays
   inside it while open. Generate's preview column is also sticky on a wide
   screen; it sits beside the form, never over it.
@@ -636,8 +637,10 @@ frame (7.4).
   name in weight 600 and the current language in `text-muted` ("todd
   English"), so a person who landed in a language they cannot read still
   finds it, and a small chevron drawn in CSS that turns over when the menu
-  is open. From 64rem a round person badge leads the name, and a hairline
-  and a globe icon lead the language. On the sign-in and setup pages
+  is open. From 64rem a round person badge leads the name; the language
+  follows as quiet text. Its accessible name says it is the account menu
+  ("todd, English: account menu"), and the language list is a row inside
+  it. On the sign-in and setup pages
   it shows only the language. The two words wrap between them, never inside
   one. Inside, on a `surface` panel (1 px `border`, `--radius-lg`,
   `--shadow-pop`, at most 18rem wide): "Signed in as todd", then four
