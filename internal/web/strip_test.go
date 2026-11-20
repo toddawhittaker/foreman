@@ -2,6 +2,7 @@ package web
 
 import (
 	"bufio"
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -9,7 +10,7 @@ import (
 	"time"
 )
 
-// SPEC 16.3, DESIGN 6 (Shell), #736: a signed-in page without a stream of
+// SPEC 16.3, DESIGN 6 (Shell): a signed-in page without a stream of
 // its own streams only the status strip's state; the Server page keeps its
 // own stream; a signed-out page streams nothing.
 func TestStripStream(t *testing.T) {
@@ -90,5 +91,41 @@ func TestStripStreamOnPages(t *testing.T) {
 	rec := g.harness.get(PathSignIn)
 	if strings.Contains(rec.Body.String(), "sse-connect") {
 		t.Error("a signed-out page streams")
+	}
+}
+
+// When another world becomes active, the strip's stream ends at the old
+// world's next state change rather than show that world's state, so the
+// browser reconnects and follows the new one (SPEC 16.3).
+func TestStripStreamEndsWhenTheActiveWorldChanges(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	other := g.newWorld("Other", "2.1.24-no-space-age.zip", false)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, g.url+PathStripEvents, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.AddCookie(g.cookie)
+	resp, err := g.client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	r := bufio.NewReader(resp.Body)
+	if _, _, err := readEvent(t, r); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.store.SetActiveWorld(context.Background(), other, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
+	for {
+		name, data, err := readEvent(t, r)
+		if err != nil {
+			return // the stream ended, as it should
+		}
+		if name == stripEvent {
+			t.Fatalf("the old world's state reached the strip: %s", data)
+		}
 	}
 }

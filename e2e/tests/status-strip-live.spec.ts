@@ -1,8 +1,8 @@
 import { test, expect, createAdmin, seedWorld, image21, live, stateBadge } from "./foreman.js";
 
 // SPEC 16.3, DESIGN 6 (Shell) and 7.5: the status strip follows the server's
-// state live on every signed-in page, not only on Server, Console and Chat
-// (#736). Signed-out pages open no stream.
+// state live on every signed-in page, not only on Server, Console and Chat.
+// Signed-out pages open no stream.
 
 test.use({ fakeGameOn: true });
 

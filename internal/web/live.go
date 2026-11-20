@@ -261,7 +261,7 @@ func (l *liveStream) comment() error {
 const stripEvent = "strip"
 
 // handleStripEvents streams the status strip's state to a signed-in page
-// that has no stream of its own (SPEC 16.3, DESIGN 6 Shell, #736). Each
+// that has no stream of its own (SPEC 16.3, DESIGN 6 Shell). Each
 // event carries only the two out-of-band swaps the Server page's facts
 // carry for the strip and the Server tab, never the facts themselves. The
 // stream follows the world active when it opened and ends when another
@@ -310,6 +310,12 @@ func (s *server) handleStripEvents(w http.ResponseWriter, r *http.Request, _ sto
 			if up.Kind != game.UpdateStatus {
 				continue
 			}
+			// A switch makes another world active; end here so the browser
+			// reconnects and follows it, rather than show the old world's
+			// state.
+			if s.movedOn(r, id, found) {
+				return
+			}
 			if sent, err = out.strip(LiveState{State: up.Status.State, Have: true}, sent); err != nil {
 				return
 			}
@@ -317,7 +323,7 @@ func (s *server) handleStripEvents(w http.ResponseWriter, r *http.Request, _ sto
 			if !s.stillSignedIn(r, opened) {
 				return
 			}
-			if now, ok, err := s.store.ActiveWorld(r.Context()); err != nil || ok != found || now != id {
+			if s.movedOn(r, id, found) {
 				return
 			}
 			if err := out.comment(); err != nil {
@@ -325,6 +331,13 @@ func (s *server) handleStripEvents(w http.ResponseWriter, r *http.Request, _ sto
 			}
 		}
 	}
+}
+
+// movedOn is true when the active world is no longer the one a strip
+// stream follows, or cannot be read.
+func (s *server) movedOn(r *http.Request, id string, found bool) bool {
+	now, ok, err := s.store.ActiveWorld(r.Context())
+	return err != nil || ok != found || now != id
 }
 
 // strip sends the strip's and the Server tab's state when it is not last,
