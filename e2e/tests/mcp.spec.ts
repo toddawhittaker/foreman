@@ -17,7 +17,7 @@ test("a token made on the page calls /mcp until it is revoked or MCP is off", as
   await page.goto("/");
   await mainNav(page).getByRole("link", { name: "Settings" }).click();
   await page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "API tokens" }).click();
-  await page.locator("#act-mcp").click();
+  await page.getByRole("button", { name: "Turn on MCP access" }).click();
   await expect(page.locator("#mcp-state")).toContainText("MCP access is on.");
 
   await page.getByLabel("Name").fill("Claude");

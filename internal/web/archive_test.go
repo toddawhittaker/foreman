@@ -258,3 +258,30 @@ func (r *worldsRig) archiveByHand(id string) {
 		r.t.Fatal(err)
 	}
 }
+
+// SPEC 5.9: an archived world's row in the foldout offers its two next
+// steps, Saves and Unarchive, each named by the world it acts on, and
+// Unarchive there brings the world back.
+func TestArchivedRowOffersSavesAndUnarchive(t *testing.T) {
+	r := newWorldsRig(t)
+	_, id := r.seedTwo()
+	if rec := r.post(worldPath(id)+"/archive", url.Values{}, withCookie(r.cookie)); rec.Code != http.StatusSeeOther {
+		t.Fatalf("archive: %d", rec.Code)
+	}
+	list := r.get(PathWorlds, withCookie(r.cookie)).Body.String()
+	mainList, foldout, _ := strings.Cut(list, `id="archived-worlds"`)
+	for _, want := range []string{
+		`<a href="` + savesPath(id) + `" class="button" aria-describedby="world-` + id + `">Saves</a>`,
+		`<form method="post" action="` + unarchivePath(id) + `"><button type="submit" class="button" id="act-unarchive-` + id + `" aria-describedby="world-` + id + `">`,
+	} {
+		if !strings.Contains(foldout, want) {
+			t.Errorf("archived row lacks %q:\n%s", want, foldout)
+		}
+	}
+	if strings.Contains(mainList, `id="act-unarchive-`) {
+		t.Error("the main list offers Unarchive")
+	}
+	if rec := r.post(unarchivePath(id), url.Values{}, withCookie(r.cookie)); rec.Code != http.StatusSeeOther || r.archived(id) {
+		t.Fatalf("unarchive from the row: %d, archived %v", rec.Code, r.archived(id))
+	}
+}

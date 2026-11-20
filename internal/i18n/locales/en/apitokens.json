@@ -8,6 +8,7 @@
   "apitokens.create.admin_warning": "Before a destructive admin action, Foreman asks the program to confirm it a second time. That guards against mistakes, not against an AI steered by something it read, such as a player's chat message. Give admin scope only when you need it.",
   "apitokens.create.button": "Create token",
   "apitokens.create.heading": "Create a token",
+  "apitokens.create.mcp_off": "MCP access is off, so this token will not work until you turn it on.",
   "apitokens.create.name": "Name",
   "apitokens.create.name.hint": "Up to {max} letters, digits, spaces, dots, underscores and hyphens. Chat sent through the token starts with it.",
   "apitokens.create.name.invalid": "Enter a name of 1 to {max} letters, digits, spaces, dots, underscores or hyphens.",

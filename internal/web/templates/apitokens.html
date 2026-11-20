@@ -29,13 +29,15 @@
 {{/* The column names of a token list on a wide screen; each row keeps its own for screen readers. */}}
 {{define "token-head"}}<div class="token-head" aria-hidden="true"><span>{{t "apitokens.create.name"}}</span><span>{{t "apitokens.fact.owner"}}</span><span>{{t "apitokens.fact.scope"}}</span><span>{{t "apitokens.fact.expires"}}</span><span>{{t "apitokens.fact.created"}}</span><span>{{t "apitokens.fact.used"}}</span></div>{{end}}
 
+{{define "rail"}}{{template "settings-tabs" "api-tokens"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <header class="page-head page-head--row">
   <p class="eyebrow">{{t "common.nav.settings"}}</p>
   <h1>{{t "apitokens.title"}}</h1>
 </header>
-{{template "settings-tabs" "api-tokens"}}
+{{template "rail" $}}
 {{- template "summary" .Problems}}
 {{- if .Done}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
@@ -123,6 +125,9 @@
     <div class="message message--warning" id="scope-admin-warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
     </div>
+    {{- if not .MCPOn}}
+    <p class="hint" id="token-mcp-off">{{t "apitokens.create.mcp_off"}}</p>
+    {{- end}}
     <div class="actions">
       <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>
     </div>

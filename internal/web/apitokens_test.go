@@ -359,3 +359,18 @@ func TestAPITokenRenewedMessageOnlyForWorkingToken(t *testing.T) {
 		t.Error("an expired token's name showed a Renewed message")
 	}
 }
+
+// SPEC 12.10: while MCP access is off, Create a token says the new token
+// will not work until access is turned on; once it is on, the line goes.
+func TestAPITokenCreateSaysMCPIsOff(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	line := `<p class="hint" id="token-mcp-off">MCP access is off, so this token will not work until you turn it on.</p>`
+	if page := hn.get(PathAPITokens, withCookie(c)).Body.String(); !strings.Contains(page, line) {
+		t.Errorf("MCP off: the create form lacks the note:\n%s", page)
+	}
+	turnMCPOn(t, hn)
+	if page := hn.get(PathAPITokens, withCookie(c)).Body.String(); strings.Contains(page, `id="token-mcp-off"`) {
+		t.Error("MCP on: the create form still says it is off")
+	}
+}

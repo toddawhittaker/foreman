@@ -40,7 +40,7 @@ test("admin tools change nothing on the preview and show their effect after the 
 
   await mainNav(page).getByRole("link", { name: "Settings" }).click();
   await page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "API tokens" }).click();
-  await page.locator("#act-mcp").click();
+  await page.getByRole("button", { name: "Turn on MCP access" }).click();
   await expect(page.locator("#mcp-state")).toContainText("MCP access is on.");
   await page.getByLabel("Name").fill("Claude");
   await page.getByRole("radio", { name: "Admin" }).check();

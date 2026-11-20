@@ -1,5 +1,7 @@
 {{define "title"}}{{t "worlds.title"}}{{end}}
 
+{{define "rail"}}{{template "worlds-area-tabs" "worlds"}}{{end}}
+
 {{define "content" -}}
 {{- /* The two ways to make a world sit by the heading; Favorites and Deleted worlds are the area's own pages in its column (DESIGN 6, 8.2). */}}
 <header class="page-head page-head--row">
@@ -10,7 +12,7 @@
     <a href="{{.Page.ImportPath}}" class="button">{{t "worlds.list.import"}}</a>
   </div>
 </header>
-{{template "worlds-area-tabs" "worlds"}}
+{{template "rail" $}}
 {{- with .Page.Deleted}}
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{if $.Page.DeletedKept}}{{t "worlds.list.deleted_kept" "name" .}}{{else}}{{t "worlds.list.deleted_gone" "name" .}}{{end}}</p>
@@ -70,9 +72,9 @@
         {{template "world-facts" $.Page.Facts .}}
         {{- /* An archived world's two next steps sit on its row, as Switch does on the live list (SPEC 5.9). */}}
         <div class="actions">
-          <a href="{{worldsPath}}/{{.ID}}/saves" class="button" aria-describedby="world-{{.ID}}">{{t "worlds.world.saves"}}</a>
+          <a href="{{$.Page.SavesPath .ID}}" class="button" aria-describedby="world-{{.ID}}">{{t "worlds.world.saves"}}</a>
           {{- if not .Newer}}
-          <form method="post" action="{{worldsPath}}/{{.ID}}/unarchive"><button type="submit" class="button" id="act-unarchive-{{.ID}}" aria-describedby="world-{{.ID}}">{{t "worlds.world.unarchive.button"}}</button></form>
+          <form method="post" action="{{$.Page.UnarchivePath .ID}}"><button type="submit" class="button" id="act-unarchive-{{.ID}}" aria-describedby="world-{{.ID}}">{{t "worlds.world.unarchive.button"}}</button></form>
           {{- end}}
         </div>
       </li>

@@ -26,7 +26,10 @@ type ServerPage struct {
 	// RecentSnapshots is the world's newest snapshots, newest first; only
 	// the page load fills it, so live updates never read the disk for it.
 	RecentSnapshots []world.Snapshot
-	Status          game.Status
+	// RecentFailed is true when the snapshots could not be read, so the card
+	// offers only the link to them rather than saying there are none.
+	RecentFailed bool
+	Status       game.Status
 	// Players is who is online, when PlayersKnown; PlayersError says the
 	// game could not be asked.
 	Players      []game.Player
@@ -105,7 +108,7 @@ func (p ServerPage) liveURL() string {
 
 // Paths the server page links and posts to.
 func (p ServerPage) WorldPath() string     { return worldPath(p.World.ID) }
-func (p ServerPage) SavesPath() string     { return worldPath(p.World.ID) + "/saves" }
+func (p ServerPage) SavesPath() string     { return savesPath(p.World.ID) }
 func (p ServerPage) SnapshotsPath() string { return snapshotsPath(p.World.ID) }
 func (p ServerPage) StartPath() string     { return gamePath(p.World.ID, "start") }
 func (p ServerPage) StopPath() string      { return gamePath(p.World.ID, "stop") }

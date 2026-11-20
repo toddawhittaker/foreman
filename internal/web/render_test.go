@@ -149,7 +149,7 @@ func pageCases() []pageCase {
 		{"notifications no key", "todd", 200, NotificationsPage{NoKey: true}},
 		{"notifications list", "todd", 200, NotificationsPage{Done: i18n.M("notify.done.added", "preset", i18n.M("notify.preset.discord"), "host", "discord.com"), Hooks: []WebhookView{
 			{ID: 1, Preset: i18n.M("notify.preset.discord"), Host: "discord.com", LangTag: "en", LangName: "English", AllOn: true},
-			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", Events: "Crash, low disk", Plain: true},
+			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", EventList: []string{"Crash", "Low disk"}, Plain: true},
 			{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: "hooks.example.org", LangTag: "fr", LangName: "Français", AllOn: true, Unreadable: true},
 		}}},
 		{"notification add", "todd", 200, formPage(notify.Discord, defaultEvents(), "en")},

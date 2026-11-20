@@ -55,9 +55,8 @@ type WebhookView struct {
 	// is typed again. Plain: the address is http://.
 	Unreadable bool
 	Plain      bool
-	// Events names the events turned on, as one list in the page's language;
-	// EventList holds the same names one by one, for the row's chips.
-	Events    string
+	// EventList names the events turned on in the page's language, one per
+	// chip.
 	EventList []string
 }
 
@@ -298,16 +297,13 @@ func languageName(l i18n.Locale) string {
 func webhookView(loc i18n.Locale, w notify.Webhook) WebhookView {
 	v := WebhookView{ID: w.ID, Preset: presetName(w.Preset), PresetValue: w.Preset, Host: w.Host, LangTag: w.Lang, LangName: languageName(w.Lang), AllOn: w.AllOn(),
 		Unreadable: w.Unreadable, Plain: w.Plain}
-	var names []string
 	for _, e := range w.OnEvents() {
-		names = append(names, loc.Format(eventShort(e)))
 		v.EventList = append(v.EventList, upperFirst(loc.Format(eventShort(e))))
 	}
-	v.Events = upperFirst(strings.Join(names, loc.T("common.list.sep")))
 	return v
 }
 
-// upperFirst starts a list of lower-case event names with a capital.
+// upperFirst starts a lower-case event name with a capital.
 func upperFirst(s string) string {
 	r, n := utf8.DecodeRuneInString(s)
 	if n == 0 {

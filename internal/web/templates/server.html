@@ -4,6 +4,8 @@
 <script src="{{static "countdown.js"}}" defer></script>
 <script src="{{static "copy.js"}}" defer></script>{{end}}
 
+{{define "rail"}}{{template "server-tabs" "overview"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 {{- if not .HasWorld}}
@@ -11,7 +13,7 @@
   <p class="eyebrow">{{t "common.nav.server"}}</p>
   <h1>{{t "server.title"}}</h1>
 </header>
-{{template "server-tabs" "overview"}}
+{{template "rail" $}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
   <p class="empty">{{t "server.none.text"}}</p>
@@ -28,7 +30,7 @@
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
   {{template "server-join" .JoinAddress}}
 </header>
-{{template "server-tabs" "overview"}}
+{{template "rail" $}}
 {{- /* One plate holds what the server is doing and what to do about it: a
      band tinted by the state, the actions, then the gauges (DESIGN 7.5). */}}
 <div class="card status-card plate">
@@ -67,9 +69,9 @@
     <li><span class="recent-snaps__name">{{with snapReason .}}<span class="snap-kind">{{.}}</span>{{end}}<span>{{snapLabel .}}</span></span>{{template "when" .TakenAt}}</li>
     {{- end}}
   </ul>
-  {{- else}}
+  {{- else}}{{if not .RecentFailed}}
   <p class="empty">{{t "worlds.snapshots.empty"}}</p>
-  {{- end}}
+  {{- end}}{{end}}
   <div class="actions"><a href="{{.SnapshotsPath}}" id="act-recent-snapshots">{{t "worlds.snapshots.list"}}</a></div>
 </section>
 </div>
