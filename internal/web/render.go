@@ -397,8 +397,8 @@ func crumbs(pairs ...string) ([]crumbStep, error) {
 		return nil, fmt.Errorf("crumbs: %d arguments, want href and label pairs", len(pairs))
 	}
 	steps := make([]crumbStep, 0, len(pairs)/2)
-	for i := 0; i < len(pairs); i += 2 {
-		steps = append(steps, crumbStep{Href: pairs[i], Label: pairs[i+1]})
+	for i := 1; i < len(pairs); i += 2 {
+		steps = append(steps, crumbStep{Href: pairs[i-1], Label: pairs[i]})
 	}
 	return steps, nil
 }
