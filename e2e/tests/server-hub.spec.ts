@@ -280,6 +280,7 @@ test.describe("with the fake game, a snapshot meanwhile", () => {
     await expect(done(other)).toBeVisible(live);
     await expect(card.locator(".recent-snaps__list > li")).toHaveCount(1, live);
     await expect(card).not.toContainText("No snapshots yet");
+    await checkPage(page);
     await other.close();
   });
 });
