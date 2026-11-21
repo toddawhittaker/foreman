@@ -256,47 +256,40 @@ func TestAPISec401NamesTheState(t *testing.T) {
 // SPEC 12.10, 14.19: a revoke takes effect at once, so a call whose body
 // arrives after the revoke is refused, and the tool never runs.
 func TestAPISecRevokeWhileBodyIsHeldBack(t *testing.T) {
-	ls := newLiveServer(t, nil)
-	u := ls.addUser("alice", testPassword)
-	apiOnFor(t, ls.harness)
-	secret, tok := apiToken(t, ls.harness, u, "Script", auth.ScopeAdmin)
-	before := auditCount(t, ls.harness)
+	hn := newHarness(t, nil)
+	apiOnFor(t, hn)
+	u, _, _ := hn.store.UserByUsername(context.Background(), "alice")
+	secret, tok := apiToken(t, hn, u, "Script", auth.ScopeAdmin)
+	before := auditCount(t, hn)
 
-	pr, pw := io.Pipe()
-	req, _ := http.NewRequest(http.MethodPost, ls.url+toolPath("set_foreman_settings"), pr)
-	req.Header = http.Header{"Content-Type": {"application/json"}, "Authorization": {"Bearer " + secret}}
-	type result struct {
-		code int
-		body string
-		err  error
+	// The body signals when the handler first reads it, which is after the
+	// first token check passed.
+	body := newHeldBody()
+	body.r = strings.NewReader(`{"stop_countdown_seconds":45}`)
+	r := httptest.NewRequest(http.MethodPost, toolPath("set_foreman_settings"), body)
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Authorization", "Bearer "+secret)
+	r.RemoteAddr = peerUntrusted
+	rec := httptest.NewRecorder()
+	done := make(chan struct{})
+	go func() { hn.h.ServeHTTP(rec, r); close(done) }()
+	select {
+	case <-body.reading:
+	case <-done:
+		t.Fatalf("answered %d before reading the body: %q", rec.Code, rec.Body)
 	}
-	done := make(chan result, 1)
-	go func() {
-		resp, err := ls.client.Do(req)
-		if err != nil {
-			done <- result{err: err}
-			return
-		}
-		defer func() { _ = resp.Body.Close() }()
-		b, _ := io.ReadAll(resp.Body)
-		done <- result{code: resp.StatusCode, body: string(b)}
-	}()
-	time.Sleep(200 * time.Millisecond)
-	if _, err := auth.NewAPITokens(ls.store, ls.clock.Now).Revoke(context.Background(), tok.ID); err != nil {
+	if _, err := auth.NewAPITokens(hn.store, hn.clock.Now).Revoke(context.Background(), tok.ID); err != nil {
+		close(body.release)
+		<-done
 		t.Fatal(err)
 	}
-	_, _ = io.WriteString(pw, `{"stop_countdown_seconds":45}`)
-	_ = pw.Close()
-	select {
-	case r := <-done:
-		if r.err != nil || r.code != http.StatusUnauthorized || !strings.Contains(r.body, "revoked") {
-			t.Errorf("a revoked token's late body: %d %q %v", r.code, r.body, r.err)
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("no answer")
+	close(body.release)
+	<-done
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), "revoked") {
+		t.Errorf("a revoked token's late body: %d %q", rec.Code, rec.Body)
 	}
 	// The revoke itself may audit; the tool must not have.
-	if n := auditCount(t, ls.harness); n > before+1 {
+	if n := auditCount(t, hn); n > before+1 {
 		t.Errorf("the refused call wrote audit entries: %d to %d", before, n)
 	}
 }
