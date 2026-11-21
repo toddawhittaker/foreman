@@ -268,11 +268,8 @@
   "mods.plan.row.from_to": "z {from} na {to}",
   "mods.plan.row.uploaded": "{version}, z nahraného zipu",
   "mods.plan.item.why": "{item} ({why})",
-  "mods.plan.why.required_by": {
-    "one": "potřebuje ho {mods}",
-    "few": "potřebují ho {mods}",
-    "other": "potřebují ho {mods}"
-  },
+  "mods.plan.why.required_by": "potřebuje ho {mod}",
+  "mods.plan.why.required_by_several": "potřebují ho {mods}",
   "mods.plan.why.optional_of": "nabízí ho {mod}",
   "mods.plan.why.recommended_by": "doporučuje ho {mod}",
   "mods.plan.why.from_save": "uložená hra ho používá",

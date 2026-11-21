@@ -251,10 +251,8 @@
   "mods.plan.row.from_to": "{from} vers {to}",
   "mods.plan.row.uploaded": "{version}, depuis le zip envoyé",
   "mods.plan.item.why": "{item} ({why})",
-  "mods.plan.why.required_by": {
-    "one": "{mods} en a besoin",
-    "other": "{mods} en ont besoin"
-  },
+  "mods.plan.why.required_by": "{mod} en a besoin",
+  "mods.plan.why.required_by_several": "{mods} en ont besoin",
   "mods.plan.why.optional_of": "proposé par {mod}",
   "mods.plan.why.recommended_by": "recommandé par {mod}",
   "mods.plan.why.from_save": "la sauvegarde l’utilise",

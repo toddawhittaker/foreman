@@ -1413,7 +1413,10 @@ func (p ModPlanPage) changeText(c mods.Change) i18n.Msg {
 	switch c.Why.Code {
 	case mods.WhyRequiredBy:
 		needers := p.neededBy(c)
-		why = i18n.M("mods.plan.why.required_by", "count", len(needers), "mods", andNames(needers))
+		why = i18n.M("mods.plan.why.required_by", "mod", needers[0])
+		if len(needers) > 1 {
+			why = i18n.M("mods.plan.why.required_by_several", "mods", andNames(needers))
+		}
 	case mods.WhyOptionalOf:
 		why = i18n.M("mods.plan.why.optional_of", "mod", p.ident(c.Why.Of))
 	case mods.WhyRecommendedBy:

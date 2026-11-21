@@ -251,10 +251,8 @@
   "mods.plan.row.from_to": "{from} a {to}",
   "mods.plan.row.uploaded": "{version}, del zip subido",
   "mods.plan.item.why": "{item} ({why})",
-  "mods.plan.why.required_by": {
-    "one": "{mods} lo necesita",
-    "other": "{mods} lo necesitan"
-  },
+  "mods.plan.why.required_by": "{mod} lo necesita",
+  "mods.plan.why.required_by_several": "{mods} lo necesitan",
   "mods.plan.why.optional_of": "ofrecido por {mod}",
   "mods.plan.why.recommended_by": "recomendado por {mod}",
   "mods.plan.why.from_save": "la partida guardada lo usa",
