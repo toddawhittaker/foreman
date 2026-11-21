@@ -31,10 +31,11 @@ const mcpWriteTime = 65 * time.Second
 // mcpTokenKey holds the request's API token in the SDK's TokenInfo.
 const mcpTokenKey = "foreman_token"
 
-// mcpRoutes adds the MCP endpoint (SPEC 21). Each request passes, in order:
-// MCP on (403), no foreign Origin (403), POST only (405), the per-address failure limit (429), the
-// bearer token (401), the per-token limits (429) and one JSON-RPC message
-// per body (400).
+// mcpRoutes adds the MCP endpoint (SPEC 21) and the REST API (SPEC 23),
+// which share one set of token checks and so one budget per token and per
+// address (SPEC 23.9). Each /mcp request passes, in order: MCP on (403), no
+// foreign Origin (403), POST only (405), the shared checks of tokenChecks,
+// and one JSON-RPC message per body (400).
 // Nothing here reads a cookie or a trusted header (SPEC 14.19).
 func (s *server) mcpRoutes() {
 	servers := s.mcpServers()
@@ -47,32 +48,9 @@ func (s *server) mcpRoutes() {
 		// trip the SDK's own check. limitBody caps the body.
 		DisableLocalhostProtection: true,
 	})
-	limits := auth.NewTokenLimiter(s.now)
-	addrs := auth.NewAddrLimiter(s.now)
-	bearer := mcpauth.RequireBearerToken(s.mcpVerifier(s.tokens, addrs), &mcpauth.RequireBearerTokenOptions{
-		// Foreman's own state check decides expiry, by its own clock.
-		AllowMissingExpiration: true,
-	})
-	inner := bearer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tok := mcpRequestToken(mcpauth.TokenInfoFromContext(r.Context()))
-		release, wait, ok := limits.Acquire(tok.ID)
-		if !ok {
-			tooMany(w, wait, "Too many requests for this token.")
-			return
-		}
-		defer release()
-		// The server's 30-second write timeout would cut off an action's
-		// 50-second wait (SPEC 21.5).
-		if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(mcpWriteTime)); err != nil {
-			s.log.Error("lift the MCP write deadline", "error", err)
-		}
+	checks := s.tokenChecks()
+	inner := checks(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !oneMessage(w, r) {
-			return
-		}
-		// The body may have taken a while: a revoke made meanwhile counts
-		// (SPEC 12.10, "takes effect at once").
-		if err := s.tokens.Recheck(r.Context(), tok.ID); err != nil {
-			s.refuseToken(w, err)
 			return
 		}
 		sdk.ServeHTTP(w, r)
@@ -91,12 +69,57 @@ func (s *server) mcpRoutes() {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if ok, wait := addrs.Allow(auth.ClientAddr(r, s.cfg.TrustedProxies)); !ok {
-			tooMany(w, wait, "Too many failed token checks from this address.")
-			return
-		}
 		inner.ServeHTTP(w, r)
 	})
+	s.apiRoutes(checks, sdk, servers)
+}
+
+// tokenChecks builds the checks a token request passes after its path's own
+// gate: the per-address failure limit (429), the bearer token (401), the
+// per-token limits (429), the whole body read (413, 400) and the token
+// checked again once the body is in. Its limiters are made once, so /mcp
+// and /api/ share them (SPEC 23.9). The wrapped handler gets the body back
+// unread.
+func (s *server) tokenChecks() func(http.Handler) http.Handler {
+	limits := auth.NewTokenLimiter(s.now)
+	addrs := auth.NewAddrLimiter(s.now)
+	bearer := mcpauth.RequireBearerToken(s.mcpVerifier(s.tokens, addrs), &mcpauth.RequireBearerTokenOptions{
+		// Foreman's own state check decides expiry, by its own clock.
+		AllowMissingExpiration: true,
+	})
+	return func(next http.Handler) http.Handler {
+		checked := bearer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tok := mcpRequestToken(mcpauth.TokenInfoFromContext(r.Context()))
+			release, wait, ok := limits.Acquire(tok.ID)
+			if !ok {
+				tooMany(w, wait, "Too many requests for this token.")
+				return
+			}
+			defer release()
+			// The server's 30-second write timeout would cut off an action's
+			// 50-second wait (SPEC 21.5).
+			if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(mcpWriteTime)); err != nil {
+				s.log.Error("lift the MCP write deadline", "error", err)
+			}
+			if !readBody(w, r) {
+				return
+			}
+			// The body may have taken a while: a revoke made meanwhile counts
+			// (SPEC 12.10, "takes effect at once").
+			if err := s.tokens.Recheck(r.Context(), tok.ID); err != nil {
+				s.refuseToken(w, err)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if ok, wait := addrs.Allow(auth.ClientAddr(r, s.cfg.TrustedProxies)); !ok {
+				tooMany(w, wait, "Too many failed token checks from this address.")
+				return
+			}
+			checked.ServeHTTP(w, r)
+		})
+	}
 }
 
 // mcpOrigin reports whether a request's Origin may reach /mcp: none, or
@@ -117,10 +140,9 @@ func tooMany(w http.ResponseWriter, wait time.Duration, text string) {
 	http.Error(w, text, http.StatusTooManyRequests)
 }
 
-// oneMessage reads the body and refuses a JSON-RPC batch, which the SDK
-// still accepts from older protocol versions (SPEC 14.19). It puts the body
-// back for the SDK and reports whether the request may go on.
-func oneMessage(w http.ResponseWriter, r *http.Request) bool {
+// readBody reads the whole body, so a slow one ends before the token's
+// second check, and puts it back. It reports whether the request may go on.
+func readBody(w http.ResponseWriter, r *http.Request) bool {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
@@ -130,6 +152,15 @@ func oneMessage(w http.ResponseWriter, r *http.Request) bool {
 		http.Error(w, "The request body could not be read.", http.StatusBadRequest)
 		return false
 	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	return true
+}
+
+// oneMessage refuses a JSON-RPC batch, which the SDK still accepts from
+// older protocol versions (SPEC 14.19). readBody has already read the body
+// into memory, so this read cannot fail.
+func oneMessage(w http.ResponseWriter, r *http.Request) bool {
+	body, _ := io.ReadAll(r.Body)
 	if t := bytes.TrimLeft(body, " \t\r\n"); len(t) > 0 && t[0] == '[' {
 		http.Error(w, "Send one JSON-RPC message per request; batches are refused.", http.StatusBadRequest)
 		return false
