@@ -18,7 +18,7 @@ import (
 // mod the portal does not know is ErrNotOnPortal. At most four of these
 // requests run at once, however many callers there are.
 func (c *Client) Mod(ctx context.Context, name string) (Mod, error) {
-	if !safeName(name) {
+	if !world.ValidModName(name) {
 		return Mod{}, ErrNotOnPortal
 	}
 	if m, ok := c.mods.get(name, c.now()); ok {
@@ -162,7 +162,7 @@ func cloneMod(m Mod) Mod {
 	return m
 }
 
-// safeName accepts a name that is safe as a URL path part and as a file name
+// safeName accepts a release version or file name that is safe as a URL path part and as a file name
 // part: not empty, no slash or backslash, no "..", no leading dot, no control
 // character.
 func safeName(s string) bool {

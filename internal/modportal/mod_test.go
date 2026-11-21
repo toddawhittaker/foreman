@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -100,14 +101,20 @@ func TestModNotOnPortal(t *testing.T) {
 }
 
 func TestModBadNamesAskNothing(t *testing.T) {
-	p, c, _ := fakePortal(t)
-	for _, name := range []string{"", ".", "..", "../x", "a/b", `a\b`, ".hidden", "a\x00b", "a\nb"} {
+	var requests atomic.Int32
+	c := handlerClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		http.NotFound(w, r)
+	})
+	names := []string{"", ".", "..", "../x", "a/b", `a\b`, ".hidden", "a\x00b", "a\nb",
+		strings.Repeat("a", 201), "a\u0085b", "a\u009fb", "a\ufffdb"}
+	for _, name := range names {
 		if _, err := c.Mod(context.Background(), name); !errors.Is(err, ErrNotOnPortal) {
 			t.Errorf("%q: got %v", name, err)
 		}
 	}
-	if p.FullCalls("") != 0 || p.FullCalls("..") != 0 {
-		t.Error("a bad name reached the portal")
+	if n := requests.Load(); n != 0 {
+		t.Errorf("%d bad names reached the portal", n)
 	}
 }
 
