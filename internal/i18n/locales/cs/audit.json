@@ -1,4 +1,5 @@
 {
+  "audit.action.api-set": "Přístup REST API zapnut nebo vypnut",
   "audit.action.audit-retention-set": "Uchovávání protokolu auditu změněno",
   "audit.action.autosave-tidy": "Automatická uložení uklizena",
   "audit.action.chat": "Zpráva chatu",

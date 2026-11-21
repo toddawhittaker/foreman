@@ -97,6 +97,7 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_FACTORIO_USERNAME`, `FOREMAN_FACTORIO_TOKEN` | none | The factorio.com account that downloads mods (9.11). Set both or neither: one alone is a startup error. Either may use its `_FILE` form |
 | `FOREMAN_SECRET_KEY` | none | At least 32 characters; a shorter key is a startup error. It seals secrets an admin enters in the UI (9.11). Without it, an account cannot be stored in the UI. Changing it makes stored secrets unreadable, so they must be entered again. It may use its `_FILE` form |
 | `FOREMAN_MCP` | none | `off` forces MCP access off (21.2). The setting then shows that the environment turned it off and cannot be changed. Any other value is a startup error |
+| `FOREMAN_API` | none | `off` forces REST API access off (23.8), as `FOREMAN_MCP` does for MCP. Any other value is a startup error |
 | `DOCKER_HOST` | `unix:///var/run/docker.sock` | The Docker socket, or a socket proxy |
 
 A `tcp://` `DOCKER_HOST` is not encrypted and not authenticated. Use it
@@ -2369,8 +2370,8 @@ separate design (issue #207).
 
 12.1. **One role in v1**: every user is a full admin, and every page
 needs a signed-in user, except the public mods page (9.16) while an
-admin has it turned on. The MCP endpoint (section 21) is not a page. It
-accepts only API tokens (12.10). The user model keeps a role field so a
+admin has it turned on. The MCP endpoint (section 21) and the REST API
+(section 23) are not pages. They accept only API tokens (12.10). The user model keeps a role field so a
 read-only viewer can be added later without a migration. (P0)
 
 12.2. Three sign-in methods, any combination enabled by configuration:
@@ -2518,7 +2519,7 @@ and `restore`, with the token's name when they come through MCP. API
 tokens record `token-create`, `token-renew` and
 `token-revoke`, each naming the token, its owner and its scope. Turning
 MCP access on or off records `mcp-set` with the detail "on" or "off"
-(21.2). An action through MCP is recorded exactly as the same action in
+(21.2), and REST API access `api-set` the same way (23.8). An action through MCP is recorded exactly as the same action in
 the UI: same action name, same before-or-after rule, plus the token's
 name. Read tools change nothing and are not recorded. The token's "last
 used" time covers them (12.10). Player actions, chat messages and the
@@ -2560,16 +2561,17 @@ P0)
   holds a value out of range, the sweep deletes nothing.
 
 12.10. **API tokens.** A personal API token lets a program, such as an
-AI assistant, act as the user who made it. Only the MCP endpoint accepts
-one (section 21). (P1)
+AI assistant or a script, act as the user who made it. Only the MCP
+endpoint (section 21) and the REST API (section 23) accept one. (P1)
 
 - **Creating.** On the API tokens page (`/settings/api-tokens`), a
   signed-in user names a token and picks its scope. Read is picked by
   default. A name is 1 to 32 characters of letters, digits, spaces, `.`,
   `_` and `-`. It must differ from the names of the owner's other tokens
   that are not revoked. The secret is shown once, on the page that
-  answers the create, beside the endpoint's address (21.1). That address
-  is `FOREMAN_PUBLIC_URL` plus `/mcp` when it is set. Otherwise it uses
+  answers the create, beside the MCP endpoint's address (21.1) and the
+  REST API's base address (23.1). These are `FOREMAN_PUBLIC_URL` plus
+  `/mcp` and `/api/v1` when it is set. Otherwise they use
   the request's host, and takes its scheme from `X-Forwarded-Proto` only
   when the request comes from a trusted proxy (12.5). Foreman stores
   only its hash (14.19).
@@ -2892,8 +2894,8 @@ that opens a new tab points off the site, and a test checks it. (P0)
 protection against cross-site request forgery. A browser post is
 accepted only from Foreman's own origin, or from the origin of
 `FOREMAN_PUBLIC_URL` when that is set, which covers a proxy that
-rewrites the `Host` header. The MCP endpoint (`/mcp`) is the one
-exception. It takes only a bearer API token and never reads a cookie or
+rewrites the `Host` header. The MCP endpoint (`/mcp`) and the REST API
+(`/api/`) are the exceptions. Each takes only a bearer API token and never reads a cookie or
 trusted header. A browser does not send that header on its own, so a
 forged cross-site request carries no identity. It still refuses a
 request whose `Origin` header is present and is not one of the origins
@@ -2976,8 +2978,9 @@ read-only root filesystem except its data directory and a temporary
 directory. The game container is also unprivileged (4.6): a game user or
 group ID of 0 is refused at start (3.6). (P0)
 
-14.12. **AI clients.** An AI client connected through MCP (section 21)
-is its own trust zone. It is trusted only for its token's scope and
+14.12. **Token clients.** An AI client connected through MCP (section 21)
+is its own trust zone, and so is a program on the REST API (section 23),
+which gets the same tools and the same untrusted fields. It is trusted only for its token's scope and
 assumed to be steerable by any text it reads. Players control chat,
 player names and much of the game log. The mod portal controls mod
 titles, summaries and changelogs. Either can write instructions aimed at
@@ -3068,8 +3071,8 @@ carries none. (P0)
   audited.
 
 
-14.19. **API tokens and the MCP endpoint.** Every line is a condition
-for shipping section 21. (P1)
+14.19. **API tokens, the MCP endpoint and the REST API.** Every line is
+a condition for shipping sections 21 and 23. (P1)
 
 - **Format.** A secret is `fmn_` followed by 43 base64url characters: 32
   bytes from the system's secure random source. The prefix lets secret
@@ -3089,11 +3092,13 @@ for shipping section 21. (P1)
   numbers of 12.11: 20 in a 15-minute window, counting IPv6 by its /64.
   Each token may make 120 requests a minute (fixed window) with at most
   4 running at once. Beyond any of these limits the answer is 429 with
-  `Retry-After`. Counts are in memory. A request body is at most 4 MiB
-  and holds one JSON-RPC message.
+  `Retry-After`. Counts are in memory, and `/mcp` and `/api/` requests
+  count together. A request body is at most 4 MiB. On `/mcp` it holds
+  one JSON-RPC message, on `/api/` one JSON object.
 - **Off means off.** While MCP access is off (21.2), every `/mcp`
-  request gets 403 saying so, before its token is read.
-- **Origin.** On `/mcp`, any request with an `Origin` header is refused
+  request gets 403 saying so, before its token is read. While REST API
+  access is off (23.8), every `/api/` request does the same.
+- **Origin.** On `/mcp` and `/api/`, any request with an `Origin` header is refused
   unless it is exactly the origin of `FOREMAN_PUBLIC_URL`. With that
   unset, any `Origin` is refused. Real MCP clients send none. The
   generic same-origin check is not enough here: under DNS rebinding (a
@@ -3105,10 +3110,11 @@ for shipping section 21. (P1)
   held in memory, so a Foreman restart voids them. A token holds at most
   10 at once, and an eleventh drops the oldest. A code is never logged.
 - **Forward-auth proxies.** A proxy that demands its own sign-in blocks
-  bearer clients. The operator guide says to either let `/mcp` reach
+  bearer clients. The operator guide says to either let `/mcp` and
+  `/api/` reach
   Foreman without proxy sign-in, or point the client at Foreman directly
   on a trusted network. It names no particular proxy. Trusted headers
-  are never read on `/mcp` (12.5).
+  are never read on `/mcp` or `/api/` (12.5).
 - **Accepted risks.**
   - Renewing keeps the secret, so a leaked token must be revoked, not
     renewed.
@@ -3441,6 +3447,19 @@ another token, tool or arguments, after 5 minutes, and on a second use.
 Restore, a mod change and a game version update through MCP take the
 same snapshots as the UI, checked against a real game container.
 
+18.10c. **Epic 10c: REST API.** Section 23 and its changes to 3, 12.1,
+12.9, 12.10, 14.7, 14.12 and 14.19. Built; see STATUS.md, Epic 10c.
+**Gate:** against a real
+`factoriotools/factorio` container, using `curl` only, an operate token
+lists its tools, reads status, takes a snapshot, sends a chat that
+players see as "[name] ...", and restarts with a countdown; it is
+refused an admin tool with 404. An admin token deletes a snapshot in two
+calls: the first changes nothing, and a code from `/mcp` works on
+`/api/`. With API access off, every `/api/` call gets 403 while `/mcp`
+still works, and the reverse. A token's 121st request in a minute, split
+across `/mcp` and `/api/`, gets 429. The OpenAPI document validates as
+OpenAPI 3.1 and lists exactly the token's tools.
+
 18.11. **Epic 11** is two epics, 11a and 11b, split on 2026-11-18. The
 licence is MIT.
 
@@ -3741,3 +3760,66 @@ it has them. A second pass reviews each before its epic merges. (P0)
 every control contains its visible text in every language (label in
 name, WCAG 2.5.3), including where a hidden part is added to a visible
 word. (P0)
+
+## 23. REST API
+
+23.1. **Endpoint.** Foreman serves a JSON API on its main listener.
+`GET /api/v1/tools` lists the tools the token's scope allows, each with
+its name, description, whether it is read-only or two-step (21.8), and
+the JSON Schema of its arguments and of its result.
+`POST /api/v1/tools/<name>` calls one tool. Any other method on these
+paths answers 405. (P1)
+
+23.2. **Same tools, same code.** The API offers exactly the MCP tools of
+section 21: the same names, arguments, results, scopes and refusals. Each
+call runs the code an MCP call runs, so the pre-start check, the
+snapshots, the token snapshot cap (21.5), the chat prefix (21.6), the
+50-second wait (21.5), the two-step confirm (21.8), the untrusted fields
+(14.12) and the audit entries with the token's name (12.9) are the same.
+A tool outside the token's scope answers 404, as an unknown tool.
+Results and errors are in English (22.3) and never hold a secret (14.8).
+(P1)
+
+23.3. **Who may call.** Only an API token in `Authorization: Bearer`
+(14.19). The API never reads a session, cookie or trusted header. (P1)
+
+23.4. **Request.** The body is one JSON object holding the tool's
+arguments, sent as `application/json`. An empty body means no arguments.
+Another content type answers 415. A body that is not a JSON object
+answers 400. A body over 4 MiB answers 413. (P1)
+
+23.5. **Answers.** A call that works answers 200 with `message`, the
+tool's one-line summary, and `result`, the tool's result exactly as MCP
+returns it. Every refusal by a tool answers 422 with `error` in English,
+plus `result` when the tool gave one, such as a fresh preview and code.
+A fault Foreman cannot word answers 500 with `error` in general terms; the
+reason goes to its log (14.8).
+Refusals made before a tool runs (401, 403, 413, 429) are plain text, as
+on `/mcp`. (P1)
+
+23.6. **Two-step confirm.** The first POST changes nothing. It answers
+200 with `done: false`, the preview and a confirm code. The second POST
+repeats the arguments with `confirm_code`. All of 21.8 and 14.19 apply.
+A code is bound to its token, tool and arguments, not to the endpoint,
+so a code from `/mcp` works on `/api/` and the reverse. (P1)
+
+23.7. **Versions.** Within `/api/v1/`, Foreman may add tools, optional
+arguments and result fields. It never removes or renames them, or
+changes what one means, without a new version path. This binds the tools
+of section 21 too. (P1)
+
+23.8. **On and off.** REST API access is off by default and separate
+from MCP access (21.2). An admin turns it on or off on the API tokens
+page (12.10). The choice is stored as an app setting (13.1), takes
+effect at once, and is audited as `api-set`. `FOREMAN_API=off` forces it
+off. The page then shows that and the switch cannot be used. While it is
+off, every `/api/` request is refused (14.19). (P1)
+
+23.9. **Shared limits.** The per-address failure limit and each token's
+120 requests a minute with at most 4 running at once (14.19) count
+`/mcp` and `/api/` requests together. (P1)
+
+23.10. **OpenAPI.** `GET /api/v1/openapi.json` serves an OpenAPI 3.1
+document generated at startup from the same tool schemas, describing
+the tools the token's scope allows. It needs a token, like the tool
+list, and is never written by hand. (P1)

@@ -85,11 +85,21 @@ line per step, so the run survives a context reset.
     the same lane when one is still to run, otherwise into a small fix
     task started at once, not saved up for the end. Land fixes the same
     way, then have the reviewer confirm its findings are closed.
-11. **Real-game check** when the epic touches server control, world
-    switching, snapshots, mods or versions: run the change against a real
-    `factoriotools/factorio` container (the WORKFLOW.md procedure, once
-    written) and confirm the game reaches "InGame" with the expected save
-    and mods.
+11. **Real-game check, sized to what the epic touched**, when it touches
+    server control, world switching, snapshots, mods or versions. Run the
+    change against a real `factoriotools/factorio` container and confirm
+    the game reaches "InGame" with the expected save and mods.
+    - Run the full `make test-game` only when the epic changes game,
+      world, snapshot, mod or version code itself (`internal/game`,
+      `internal/world`, the mod and version code). It takes about an hour.
+    - Otherwise run only the real-game tests for the areas it changed,
+      for example `go test -tags game -count=1 -p 1 -v -run
+      'TestRealGameAPI|TestRealGameMCP' ./internal/web/`, with the image
+      variables the Makefile's `GAME_GO_TEST` sets. An epic that reaches
+      the game only through existing code (the API layer, a page) needs
+      no more than that.
+    - Run the resource tests (`make test-game-resources`, about 40
+      minutes) only when map generation or resource counting changed.
 12. **Fold task** (last task PR): write the epic's STATUS section from the
     task PR bodies, move lasting rules into SPEC.md, put any "why" into an
     ADR, delete the plan, and carry a `Fixes #N` line for each issue.

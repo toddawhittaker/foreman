@@ -116,7 +116,8 @@ Orchestration rules:
   minimum, a bug fix starts with a failing test that reproduces it.
 - Anything that touches server control, world switching, snapshots, mods
   or game versions is also checked against a real `factoriotools/factorio`
-  container before its epic PR.
+  container before its epic PR, sized to what it touched (`epic-run`
+  skill, step 11).
 - Never lower a coverage floor or weaken a test to make a run pass; say so
   and let the user decide.
 

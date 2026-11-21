@@ -35,16 +35,27 @@
     </div>
     <p class="copy-done" id="token-endpoint-done" hidden>{{t "apitokens.created.copied_endpoint"}}</p>
   </div>
+  <div class="field">
+    <label for="token-api-base">{{t "apitokens.created.api_base"}}</label>
+    <div class="copy-field">
+      <textarea id="token-api-base" class="exchange__value" readonly rows="1" spellcheck="false" autocomplete="off" translate="no">{{.APIBase}}</textarea>
+      <button type="button" class="button" id="token-api-base-copy" data-copy-from="token-api-base" data-done="token-api-base-done" hidden>{{t "apitokens.created.copy_api_base"}}</button>
+    </div>
+    <p class="copy-done" id="token-api-base-done" hidden>{{t "apitokens.created.copied_api_base"}}</p>
+  </div>
   </div>
   <dl class="facts facts--inline">
     <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .Token.ScopeWord}}</dd></div>
     <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Token.Expires}}</dd></div>
   </dl>
-  {{- if not .MCPOn}}
-  <div class="message message--note" id="mcp-off-note">
-    <p><strong>{{t "common.label.note"}}</strong> {{t "apitokens.created.mcp_off"}}</p>
-    {{- if .Admin}}
-    <div class="actions"><a href="{{.BackPath}}#mcp-access">{{t "apitokens.mcp.turn_on"}}</a></div>
+  {{- if not .AccessOn}}
+  <div class="message message--note" id="access-off-note">
+    <p><strong>{{t "common.label.note"}}</strong> {{t "apitokens.both_off"}}</p>
+    {{- if and .Admin (or (not .MCPForced) (not .APIForced))}}
+    <div class="actions">
+      {{- if not .MCPForced}}<a href="{{.BackPath}}#mcp-access">{{t "apitokens.mcp.turn_on"}}</a>{{end}}
+      {{- if not .APIForced}}<a href="{{.BackPath}}#api-access">{{t "apitokens.api.turn_on"}}</a>{{end}}
+    </div>
     {{- end}}
   </div>
   {{- end}}

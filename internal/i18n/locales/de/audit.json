@@ -1,4 +1,5 @@
 {
+  "audit.action.api-set": "REST-API-Zugriff ein- oder ausgeschaltet",
   "audit.action.audit-retention-set": "Aufbewahrung des Audit-Protokolls geändert",
   "audit.action.autosave-tidy": "Automatische Speicherstände aufgeräumt",
   "audit.action.chat": "Chatnachricht",

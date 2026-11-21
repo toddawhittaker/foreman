@@ -1,4 +1,5 @@
 {
+  "audit.action.api-set": "Acceso REST API activado o desactivado",
   "audit.action.audit-retention-set": "Retención del registro de auditoría cambiada",
   "audit.action.autosave-tidy": "Autoguardados limpiados",
   "audit.action.chat": "Mensaje del chat",

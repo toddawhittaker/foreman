@@ -408,17 +408,126 @@ Things to know:
   `[Claude] Restarting in 5 minutes`.
 - A token can take at most 10 snapshots per world. An admin deleting some
   in the web UI frees room.
-- Set `FOREMAN_PUBLIC_URL` (section 6). Foreman refuses any `/mcp` request
-  that carries an `Origin` header unless it equals that address. Real MCP
-  clients send none. Without `FOREMAN_PUBLIC_URL`, any `Origin` is refused.
+- Set `FOREMAN_PUBLIC_URL` (section 6). Foreman refuses any `/mcp` or `/api/`
+  request that carries an `Origin` header unless it equals that address.
+  Real MCP clients and scripts send none. Without `FOREMAN_PUBLIC_URL`, any `Origin` is refused.
 - If a proxy in front of Foreman asks people to sign in, it will also block
-  the assistant, which cannot sign in that way. Add one rule to the proxy:
-  requests whose path starts with `/mcp` go to Foreman without the proxy's
-  sign-in. Foreman checks the token itself and ignores any sign-in header on
-  this path. Every other path stays behind the proxy. Or point the assistant
-  at Foreman directly on a network you trust.
+  the assistant, which cannot sign in that way, and any script that uses the
+  REST API (next section). Add one rule to the proxy: requests whose path
+  starts with `/mcp` or `/api/` go to Foreman without the proxy's sign-in.
+  Foreman checks the token itself and ignores any sign-in header on these
+  paths. Every other path stays behind the proxy. Or point the assistant or
+  script at Foreman directly on a network you trust.
 - Test it from a machine that is not signed in. A call with the token
   should work. A call with no token should get 401.
+
+### Use the REST API
+
+The same tokens also work on a REST API, for scripts and programs that do
+not speak MCP (SPEC section 23). It offers the same tools as MCP, with the
+same names, arguments, results and scopes, and it runs the same code, so
+the snapshots, the two-step confirm and the audit log work the same way.
+It is off until an admin turns it on.
+
+1. Open **Settings**, **API tokens**, and turn REST API access on. It has
+   its own switch, apart from MCP access: each can be on while the other
+   is off. To keep it off whatever the page says, set `FOREMAN_API: off`
+   in the compose file. `off` is the only value Foreman accepts; anything
+   else stops it at startup. The page then says the environment turned
+   REST API access off.
+2. Use a token from the same page. The page that shows a new secret also
+   shows the REST API's base address, `/api/v1`, after your Foreman's
+   address.
+3. Send the token in an `Authorization: Bearer` header, and send a body
+   as `application/json`. A token in the address (the query string) or in
+   a cookie is ignored. In these examples `$FOREMAN_TOKEN` holds the token
+   and `https://foreman.example` stands for your Foreman.
+
+List the tools your token may use, each with its description, whether it
+only reads or works in two steps, and the schema of its arguments and its
+result:
+
+```sh
+curl -H "Authorization: Bearer $FOREMAN_TOKEN" \
+  https://foreman.example/api/v1/tools
+```
+
+Call a tool with `POST /api/v1/tools/<name>`. The body is a JSON object
+with the tool's arguments. A tool that needs none takes `{}`, or an empty
+body:
+
+```sh
+curl -X POST -H "Authorization: Bearer $FOREMAN_TOKEN" \
+  -H "Content-Type: application/json" -d '{}' \
+  https://foreman.example/api/v1/tools/server_status
+```
+
+An action names the world it acts on. This one needs an **Operate** or
+**Admin** token; take the world's id from `list_worlds`:
+
+```sh
+curl -X POST -H "Authorization: Bearer $FOREMAN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"world_id": "<world id>", "label": "Before the update"}' \
+  https://foreman.example/api/v1/tools/take_snapshot
+```
+
+An action that deletes or overwrites something works in two steps, as in
+"Admin tokens" above. The first call changes nothing. It answers
+`done: false`, a preview and a `confirm_code`:
+
+```sh
+curl -X POST -H "Authorization: Bearer $FOREMAN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"world_id": "<world id>"}' \
+  https://foreman.example/api/v1/tools/force_stop
+```
+
+Read the preview. To go ahead, send the second call within 5 minutes:
+the same arguments plus the code. A code works once, and only for that
+token, tool and arguments. A code from `/mcp` works here too, and the
+other way round.
+
+```sh
+curl -X POST -H "Authorization: Bearer $FOREMAN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"world_id": "<world id>", "confirm_code": "<code from the first call>"}' \
+  https://foreman.example/api/v1/tools/force_stop
+```
+
+What the answers mean:
+
+- **200**: the call worked. The body has `message`, a one-line summary,
+  and `result`, the tool's result exactly as MCP gives it. A two-step
+  tool's first call is also a 200, with `done: false` in its result.
+- **422**: the tool refused the call. The body has `error`, in English,
+  and `result` when the tool gave one. If something changed since a
+  preview, `result` holds a fresh preview and code.
+- **404**: no such tool for this token. A tool outside the token's scope
+  looks the same as one that does not exist.
+- **400**: the body is not a JSON object. **415**: the content type is
+  not `application/json`. **405**: any method other than `GET` on the
+  tool list or `POST` on a tool.
+- **401, 403, 413 and 429** come before any tool runs and are plain
+  text, as on `/mcp`. 401 is a missing, unknown, expired or revoked token
+  (an expired or revoked one says so). 403 means REST API access is off.
+  413 means a body over 4 MiB. 429 means a limit was hit
+  and comes with `Retry-After`.
+- **500**: Foreman failed in a way it cannot word; the body has `error`,
+  and the reason is in Foreman's log.
+
+Limits are the same as for MCP, and `/mcp` and `/api/` count together:
+a token may make 120 requests a minute with at most 4 running at once, and
+failed token checks are limited per address. A token cannot double its
+share by using both.
+
+`GET /api/v1/openapi.json` serves an OpenAPI 3.1 description of the API,
+for tools that build clients from one. It needs a token, like the tool
+list, and describes only the tools that token's scope allows.
+
+Within `/api/v1/`, Foreman may add tools, optional arguments and result
+fields. It will not remove or rename them, or change what one means,
+without a new version path.
 
 ## 7. First run: create the admin
 
@@ -1459,6 +1568,7 @@ variable stops Foreman at startup.
 | `FOREMAN_SECRET_KEY` | none | At least 32 characters. Encrypts the factorio.com account and webhook addresses entered in the web pages (sections 5 and 12). File form. |
 | `FOREMAN_FACTORIO_USERNAME`, `FOREMAN_FACTORIO_TOKEN` | none | The factorio.com account for mod downloads, instead of entering it in the web pages. Set both or neither. File form, each. |
 | `FOREMAN_MCP` | none | `off` keeps MCP access off whatever the settings page says. Any other value stops Foreman at startup (section 6). |
+| `FOREMAN_API` | none | `off` keeps REST API access off whatever the settings page says. Any other value stops Foreman at startup (section 6). |
 | `DOCKER_HOST` | `unix:///var/run/docker.sock` | How Foreman reaches Docker; with the compose file, the socket proxy (sections 4 and 5). |
 
 Foreman also passes a few `FOREMAN_*` variables to the game's container

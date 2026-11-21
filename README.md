@@ -105,7 +105,8 @@ assistant gets its own token with a scope: **Read** only looks,
 **Operate** can also start, stop and switch, and **Admin** can change
 worlds, mods and settings. Actions that delete or overwrite something
 show a preview and need a second, confirming call. Everything a token
-does is in the audit log under its name.
+does is in the audit log under its name. The same tokens also work on a
+REST API, so a script can call the same tools with `curl`.
 
 <img src="docs/screenshots/mcp.webp" width="900" alt="The API tokens settings page: MCP access switched on, and a list of tokens with their scopes and expiry dates.">
 
