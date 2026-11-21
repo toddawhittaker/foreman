@@ -124,7 +124,9 @@ and server-sent events (SSE) drive the live pages (SPEC 16.3). htmx and its
 SSE extension are vendored into the repository with their checksums and
 embedded in the binary, so nothing loads from a CDN (SPEC 3.7). CSS is
 hand-written and follows docs/DESIGN.md (SPEC 17.6). There is no build
-step and no public JSON API.
+step. The pages use no JSON API. The only one is the token API (SPEC 23),
+which passes each call to the MCP tools (section 8), so its contract is
+the MCP tool set.
 
 Rejected:
 
@@ -231,7 +233,10 @@ AI clients are configured with it.
 The MCP endpoint (SPEC 21) uses `modelcontextprotocol/go-sdk`, mounted at
 `/mcp` on the main server, with bearer API tokens (SPEC 12.10). It runs
 in the SDK's stateless mode with plain JSON answers (SPEC 21.1), and only
-the `internal/web/mcp*.go` files import it, so it stays cheap to swap.
+the `internal/web/mcp*.go` and `api*.go` files import it, so it stays
+cheap to swap. The REST API (SPEC 23) passes each call through the same
+SDK servers and adds no dependency; its OpenAPI document is built from
+the tools' JSON Schemas with no OpenAPI library.
 
 Rejected:
 
