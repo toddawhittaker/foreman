@@ -7054,7 +7054,7 @@ tr:has(> td > .player-actions) > td.num {
    then Switch, centred on the row. */
 @media (min-width: 64rem) {
   .worlds > li {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) 13rem;
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
     align-items: center;
     column-gap: var(--space-5);
     min-block-size: 3.5rem;
@@ -7073,12 +7073,39 @@ tr:has(> td > .player-actions) > td.num {
   }
 
   /* Last played takes the widest share and wraps between its date, clock
-     and age when the page beside the rail is narrow, 24 px clear of Disk use. */
+     and age when the page beside the rail is narrow, 24 px clear of Disk use.
+     Each column keeps a floor, so a value never spills into the next. */
   .worlds > li > .facts {
     grid-row: 1;
     grid-column: 2;
-    grid-template-columns: 5rem 5rem minmax(0, 2fr) minmax(0, 1.2fr);
+    grid-template-columns: 5rem 5rem minmax(4.5rem, 2fr) minmax(4.5rem, 1.2fr);
     column-gap: var(--space-5);
+  }
+
+  /* Its cell is a container, so a narrow column shows the age alone, as a
+     narrow panel does (DESIGN 8.2); from 9rem the full text fits in every
+     language. The age stays on one line, as the date and the clock do. */
+  .worlds > li > .facts > div:nth-child(3) {
+    container: last-played / inline-size;
+  }
+
+  /* Each piece is a box as wide as its words: it stays whole while it
+     fits and wraps inside only when it cannot, as with wide text spacing
+     (WCAG 1.4.12), so it never spills into Disk use. */
+  .worlds time[data-age-only] .time-full > * {
+    display: inline-block;
+    max-inline-size: 100%;
+    white-space: normal;
+  }
+
+  @container last-played (min-width: 9rem) {
+    .worlds time[data-age-only] .time-full {
+      display: inline;
+    }
+
+    .worlds time[data-age-only] .time-short {
+      display: none;
+    }
   }
 
   .worlds > li > .facts ~ .actions {
@@ -7152,9 +7179,11 @@ main > .panel > .facts > div {
   display: none;
 }
 
+/* A world's page keeps its time on one line; the world list's Last played
+   wraps between its date, clock and age instead, so it never runs into
+   Disk use (DESIGN 8.2, 8.3). */
 @media (min-width: 48rem) {
-  main > .panel > .facts time,
-  .worlds .facts time {
+  main > .panel > .facts time {
     white-space: nowrap;
   }
 }
@@ -9677,10 +9706,11 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-/* Mods: search, the results, the plan and the tools, then the list. On a
-   wide screen the plan and the tools are a rail beside the rest; on a phone
-   the plan follows the results and the tools fold under one 44 px Mod tools
-   disclosure (DESIGN 8.11). */
+/* Mods: search, the results, the plan, Match mods to the save, the list,
+   then the tools, in that order at every width. On a wide screen the plan
+   is alone in a rail beside the rest, so nothing passes under it while it
+   sticks; on a phone it follows the results and the tools fold under one
+   44 px Mod tools disclosure (DESIGN 8.11). */
 .split.split--mods {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: none;
@@ -9703,18 +9733,64 @@ main > .panel.danger-zone.danger-zone--blocked {
     grid-row: 1 / span 3;
     align-self: stretch;
     align-content: start;
-    gap: var(--space-4);
   }
 
-  .split--mods > .panel {
+  .split--mods > .panel,
+  .split--mods > .mod-rail {
     grid-column: 1;
   }
 
-  /* The plan stays in view while the results scroll past it. */
+  /* The Mods tab's main column: search, results, Match, Installed mods and
+     the tools; the search page has only the first two. */
+  .split--mods:has(> .mod-rail) {
+    grid-template-rows: repeat(4, auto) 1fr;
+  }
+
+  .split--mods:has(> .mod-rail) > .mod-side {
+    grid-row: 1 / span 5;
+  }
+}
+
+/* The plan stays in view while the results scroll past it, clear of the
+   shell's sticky 3.5rem top strip. It is never taller than the window: the
+   heading and Review stay put and only the list of mods scrolls, newest at
+   its top. In a window too short for even its fixed parts the whole card
+   scrolls; below 30rem it does not stick at all (DESIGN 8.11). */
+@media (min-width: 64rem) and (min-height: 30rem) {
   .mod-side > .plan-panel {
+    --plan-top: var(--space-4);
     position: sticky;
-    inset-block-start: var(--space-4);
+    inset-block-start: var(--plan-top);
     z-index: 1;
+    display: flex;
+    flex-direction: column;
+    max-block-size: calc(100dvh - var(--plan-top) - var(--space-4));
+    overflow-y: auto;
+  }
+
+  body:has(> .site > nav) .mod-side > .plan-panel {
+    --plan-top: calc(3.5rem + var(--space-4));
+  }
+
+  .mod-side > .plan-panel > *,
+  .mod-side > .plan-panel .plan-panel__list::details-content > * {
+    flex: none;
+  }
+
+  .mod-side > .plan-panel > .plan-panel__list,
+  .mod-side > .plan-panel .plan-panel__list::details-content {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-block-size: 0;
+  }
+
+  .mod-side > .plan-panel .plan-panel__list > .plan-tree {
+    flex: 0 1 auto;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: var(--space-2);
   }
 }
 
@@ -10294,7 +10370,7 @@ main > .panel.danger-zone.danger-zone--blocked {
 @media (min-width: 64rem) {
   .worlds-head {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) 13rem;
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
     column-gap: var(--space-5);
     padding-block-end: var(--space-2);
     border-block-end: var(--border-width) solid var(--color-line);
@@ -10302,7 +10378,7 @@ main > .panel.danger-zone.danger-zone--blocked {
 
   .worlds-head__facts {
     display: grid;
-    grid-template-columns: 5rem 5rem minmax(0, 2fr) minmax(0, 1.2fr);
+    grid-template-columns: 5rem 5rem minmax(4.5rem, 2fr) minmax(4.5rem, 1.2fr);
     gap: var(--space-4);
     column-gap: var(--space-5);
   }
@@ -10394,7 +10470,7 @@ main:has(> .gate) > .gate + .gate {
    fixed widths, so the facts keep room beside the rail. */
 @media (min-width: 64rem) {
   #archived-worlds :is(.worlds-head, .worlds > li) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) 13rem;
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
   }
 
   .worlds > li:first-child {

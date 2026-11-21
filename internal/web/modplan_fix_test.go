@@ -147,3 +147,21 @@ func planRows(body string) string {
 	}
 	return strings.Join(out, "\n")
 }
+
+// SPEC 9.2: a dependency two planned mods need names both on the review
+// page, not only the first.
+func TestPlanSharedDependencyNamesEveryMod(t *testing.T) {
+	r := newTestRenderer(t)
+	p := ModPlanPage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha", "beta"}}, Hash: "h",
+		Plan: mods.Plan{Changes: []mods.Change{
+			{Name: "alpha", To: "1.0.0", Action: mods.ActInstall, Why: mods.Reason{Code: mods.WhyAsked}},
+			{Name: "beta", To: "1.0.0", Action: mods.ActInstall, Why: mods.Reason{Code: mods.WhyAsked}},
+			{Name: "lib", To: "2.0.0", Action: mods.ActInstall, Why: mods.Reason{Code: mods.WhyRequiredBy, Of: "alpha"}},
+		}, Requires: map[string][]string{"alpha": {"lib", "base"}, "beta": {"lib"}}}}
+	_, body := renderIn(t, r, pageCase{"plan", "todd", 200, p}, "en")
+	rows := planRows(plain(body))
+	wantIn(t, "shared row", rows, "lib 2.0.0 (alpha and beta need it)")
+	if n := strings.Count(rows, "lib 2.0.0"); n != 1 {
+		t.Errorf("lib has %d rows:\n%s", n, rows)
+	}
+}

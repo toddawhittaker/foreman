@@ -1065,7 +1065,8 @@ the run still holds it takes a new snapshot (9.4, ADR 0014). (P0)
 6.3. An admin can take a snapshot by hand at any time. (P0)
 
 6.4. Snapshots are listed per world, newest first, with label, reason,
-time and size. (P0)
+time and size. The Server page's list of them updates live (16.3), so a
+snapshot an operation has just taken shows without a reload. (P0)
 
 6.5. **Restore** puts a world back exactly as the snapshot recorded it,
 in one click with a confirmation. Restoring the active world stops it
@@ -1583,7 +1584,9 @@ failed load). It names the reason when it can, by one of these stable ids, and
 otherwise says the reason is unknown:
 
 - from the game's log: `mod-missing-dependency`, `mod-error` (a mod that
-  failed to load) and `save-unreadable` (a corrupt or unreadable save);
+  failed to load, or that raised the game's "The mod X (version) caused a
+  non-recoverable error", which names the mod and its version) and
+  `save-unreadable` (a corrupt or unreadable save);
 - from the mods the game lists for another Factorio:
   `mods-for-other-version`;
 - from Docker's start error: `port-in-use`, only for "port is already
@@ -1802,8 +1805,10 @@ search result's "+" adds the mod to the world's plan, shown in a panel
 beside the results on the Mods tab; several mods are one plan, one snapshot
 and one restart. The panel is a tree. It lists each mod picked with "+" and,
 indented under it and marked "Needed by *mod*", the required dependencies
-the plan would change. A dependency two picks share shows under each; the
-"Review and install N mods" count counts each distinct mod once. Only changes
+the plan would change. The newest pick is at the top. A dependency two picks
+share is listed once, under the topmost pick that needs it, and its "Needed
+by" names every mod that needs it, as does its reason on the review page;
+the "Review and install N mods" count counts each distinct mod once. Only changes
 show: built-in mods and a dependency already installed at a fitting version
 are hidden, and one that must be updated says "Will update to *version*". A
 dependency that cannot be had (gone from the portal, or without a release
@@ -2160,7 +2165,10 @@ page that shows the picker, like the release check in 10.2, never at
 startup or on a timer. It keeps the Docker Hub list and the latest
 releases (10.2) in memory for 5 minutes, and does not keep a failed
 answer. The admin may also type a version; Foreman accepts only an exact
-patch release of a supported line. When Docker Hub cannot be reached, the
+patch release of a supported line. A page that already has a target
+version, such as the update page reached from a world's Update link, shows
+it chosen in the list as well as in the typed box; a target not on the
+list leaves "Choose a version" chosen and the typed box keeps it. When Docker Hub cannot be reached, the
 page says so and the typed version still works. An import also refuses a
 typed version that is neither downloaded nor on the list, unless Docker
 Hub cannot be reached (5.5). (P0)
@@ -3142,7 +3150,9 @@ A stream for a user signed in by trusted headers ends after 5 minutes and
 reconnects through the proxy, since those headers are checked only when the
 connection opens. A page whose connection stays down for 5 seconds says so
 and tells the user to reload. The status strip, which shows the server's
-state, follows it the same way on every signed-in page. (P0)
+state, follows it the same way on every signed-in page. The Server page's
+snapshot list is read again when its stream opens, when an operation ends and
+when an action stores its result, not on every status update. (P0)
 
 ## 17. Accessibility and design
 

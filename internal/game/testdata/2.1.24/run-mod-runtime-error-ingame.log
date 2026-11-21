@@ -1,0 +1,80 @@
+2026-11-21T17:03:19.087198512Z    0.000 2026-11-21 17:03:19; Factorio 2.1.24 (build 87808, linux64, headless, space-age)
+2026-11-21T17:03:19.087220775Z    0.000 Operating system: Linux
+2026-11-21T17:03:19.087224051Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--server-settings" "/factorio/config/server-settings.json" "--server-banlist" "/factorio/config/server-banlist.json" "--rcon-port" "27015" "--server-whitelist" "/factorio/config/server-whitelist.json" "--use-server-whitelist" "--server-adminlist" "/factorio/config/server-adminlist.json" "--rcon-password" <private> "--server-id" "/factorio/config/server-id.json" "--mod-directory" "/factorio/mods" "--port" "34197" "--start-server-load-latest" 
+2026-11-21T17:03:19.087234882Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-21T17:03:19.087238529Z    0.000 Read data path: /opt/factorio/data
+2026-11-21T17:03:19.087240783Z    0.000 Write data path: /factorio [352256/928723MB]
+2026-11-21T17:03:19.087243208Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-21T17:03:19.093755263Z    0.006 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+2026-11-21T17:03:19.093766414Z    0.006 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEO_DRIVER=<unset> SDL_ENABLE_STEAM_SCREEN_KEYBOARD=<unset> SteamDeck=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-21T17:03:19.099377999Z    0.012 Running in headless mode
+2026-11-21T17:03:19.099387867Z    0.012 Audio is disabled
+2026-11-21T17:03:19.100023733Z    0.012 Info ModManager.cpp:455: FeatureFlag: expansion, expansion-shaders, freezing, quality, rail-bridges, segmented-units, space-travel, spoiling
+2026-11-21T17:03:19.102088599Z    0.015 Loading mod core 0.0.0 (data.lua)
+2026-11-21T17:03:19.113743092Z    0.026 Loading mod base 2.1.24 (data.lua)
+2026-11-21T17:03:19.248947637Z    0.161 Loading mod elevated-rails 2.1.24 (data.lua)
+2026-11-21T17:03:19.264435155Z    0.177 Loading mod recycler 2.1.24 (data.lua)
+2026-11-21T17:03:19.272736691Z    0.185 Loading mod quality 2.1.24 (data.lua)
+2026-11-21T17:03:19.278514182Z    0.191 Loading mod space-age 2.1.24 (data.lua)
+2026-11-21T17:03:19.452197956Z    0.365 Loading mod base 2.1.24 (data-updates.lua)
+2026-11-21T17:03:19.461398489Z    0.374 Loading mod recycler 2.1.24 (data-updates.lua)
+2026-11-21T17:03:19.476468089Z    0.389 Loading mod quality 2.1.24 (data-updates.lua)
+2026-11-21T17:03:19.489206364Z    0.402 Loading mod space-age 2.1.24 (data-updates.lua)
+2026-11-21T17:03:19.586052179Z    0.498 Checksum for core: 3668028660
+2026-11-21T17:03:19.586073530Z    0.498 Checksum of base: 3864816957
+2026-11-21T17:03:19.586076716Z    0.498 Checksum of elevated-rails: 1429039930
+2026-11-21T17:03:19.586079161Z    0.498 Checksum of even-distribution: 0
+2026-11-21T17:03:19.586081355Z    0.498 Checksum of recycler: 3293728126
+2026-11-21T17:03:19.586083439Z    0.498 Checksum of quality: 4220722184
+2026-11-21T17:03:19.586085573Z    0.498 Checksum of space-age: 3636981730
+2026-11-21T17:03:20.080014639Z    0.992 Prototype list checksum: 1446647465
+2026-11-21T17:03:20.158938042Z    1.071 Info PlayerData.cpp:580: Local player-data.json available
+2026-11-21T17:03:20.159870765Z    1.072 Factorio initialised
+2026-11-21T17:03:20.160085695Z    1.073 Info ServerSynchronizer.cpp:22: nextHeartbeatSequenceNumber(0) initialized Synchronizer nextTickClosureTick(0).
+2026-11-21T17:03:20.160094312Z    1.073 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(Ready) to(PreparedToHostGame)
+2026-11-21T17:03:20.160097538Z    1.073 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(PreparedToHostGame) to(CreatingGame)
+2026-11-21T17:03:20.160342165Z    1.073 Loading map /factorio/saves/_autosave1.zip: 523967 bytes.
+2026-11-21T17:03:20.169891455Z    1.082 Loading level.dat: 668828 bytes.
+2026-11-21T17:03:20.169903118Z    1.082 Info Scenario.cpp:152: Map version 2.1.24-1
+2026-11-21T17:03:20.204357174Z    1.117 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+2026-11-21T17:03:20.205612583Z    1.118 Loading script.dat: 1211 bytes.
+2026-11-21T17:03:20.207704932Z    1.120 Checksum for script __level__/control.lua: 2385776952
+2026-11-21T17:03:20.208294018Z    1.121 Checksum for script __even-distribution__/control.lua: 1733663980
+2026-11-21T17:03:20.210248283Z    1.123 Info UDPSocket.cpp:38: Opening socket at (IP ADDR:({0.0.0.0:34197}))
+2026-11-21T17:03:20.210369645Z    1.123 Hosting game at IP ADDR:({0.0.0.0:34197})
+2026-11-21T17:03:20.210437114Z    1.123 Info HttpSharedState.cpp:57: Downloading https://auth.factorio.com/generate-server-padlock-2?api_version=6
+2026-11-21T17:03:20.423930519Z    1.336 Info AuthServerConnector.cpp:112: Obtained serverPadlock for serverHash (1QhU1ba1M4OihnQpZUTRSFjNPqIiVop7) from the auth server.
+2026-11-21T17:03:20.423952300Z    1.336 Info ServerMultiplayerManager.cpp:809: updateTick(0) changing state from(CreatingGame) to(InGame)
+2026-11-21T17:03:20.426343079Z    1.339 Info ServerRouter.cpp:668: Asking pingpong servers (pingpong1.factorio.com:34197, pingpong2.factorio.com:34197, pingpong3.factorio.com:34197, pingpong4.factorio.com:34197) for own address
+2026-11-21T17:03:20.426403164Z    1.339 Info UDPSocket.cpp:50: Opening socket for broadcast
+2026-11-21T17:03:20.426558251Z    1.339 Error InterruptibleStdioStream.cpp:72: Got EOF on stdin; closing
+2026-11-21T17:03:20.426589540Z    1.339 Info RemoteCommandProcessor.cpp:119: Starting RCON interface at IP ADDR:({0.0.0.0:27015})
+2026-11-21T17:03:20.426611212Z    1.339 Info CommandLineMultiplayer.cpp:297: Maximum segment size = 100; minimum segment size = 25; maximum-segment-size peer count = 10; minimum-segment-size peer count = 20
+2026-11-21T17:03:20.444179968Z    1.357 Error MainLoop.cpp:1505: Exception at tick 0: The mod Even Distribution (2.1.0) caused a non-recoverable error.
+2026-11-21T17:03:20.444199906Z Please report this error to the mod author.
+2026-11-21T17:03:20.444202832Z 
+2026-11-21T17:03:20.444228281Z Error while running event even-distribution::on_nth_tick(60)
+2026-11-21T17:03:20.444232589Z __even-distribution__/control.lua:1: deliberate failure for capture
+2026-11-21T17:03:20.444234843Z stack traceback:
+2026-11-21T17:03:20.444237057Z 	[C]: in function 'error'
+2026-11-21T17:03:20.444239592Z 	__even-distribution__/control.lua:1: in function <__even-distribution__/control.lua:1>
+2026-11-21T17:03:20.444242037Z    1.357 Error ServerMultiplayerManager.cpp:85: MultiplayerManager failed: "The mod Even Distribution (2.1.0) caused a non-recoverable error.
+2026-11-21T17:03:20.444244582Z Please report this error to the mod author.
+2026-11-21T17:03:20.444246716Z 
+2026-11-21T17:03:20.444248810Z Error while running event even-distribution::on_nth_tick(60)
+2026-11-21T17:03:20.444251024Z __even-distribution__/control.lua:1: deliberate failure for capture
+2026-11-21T17:03:20.444253218Z stack traceback:
+2026-11-21T17:03:20.444255332Z 	[C]: in function 'error'
+2026-11-21T17:03:20.444257526Z 	__even-distribution__/control.lua:1: in function <__even-distribution__/control.lua:1>"
+2026-11-21T17:03:20.444259851Z    1.357 Info ServerMultiplayerManager.cpp:809: updateTick(0) changing state from(InGame) to(Failed)
+2026-11-21T17:03:20.460247125Z    1.373 Quitting: multiplayer error.
+2026-11-21T17:03:20.460270950Z    1.373 Info GlobalContext.cpp:763: Deleting active scenario.
+2026-11-21T17:03:20.650991543Z    1.563 Info ServerMultiplayerManager.cpp:147: Quitting multiplayer connection.
+2026-11-21T17:03:20.651012984Z    1.563 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(Failed) to(Closed)
+2026-11-21T17:03:20.651016300Z    1.563 Info ServerMultiplayerManager.cpp:167: Deleting active scenario (global = true).
+2026-11-21T17:03:20.651054964Z    1.564 Info UDPSocket.cpp:238: Closing socket
+2026-11-21T17:03:20.651069662Z    1.564 Info UDPSocket.cpp:268: Socket closed
+2026-11-21T17:03:20.651074051Z    1.564 Info UDPSocket.cpp:238: Closing socket
+2026-11-21T17:03:20.755553856Z    1.668 Info UDPSocket.cpp:238: Closing socket
+2026-11-21T17:03:20.755578894Z    1.668 Info UDPSocket.cpp:268: Socket closed
+2026-11-21T17:03:20.758061519Z    1.670 Goodbye

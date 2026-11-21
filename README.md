@@ -3,6 +3,7 @@
 # Foreman
 
 [![ci](https://github.com/toddawhittaker/foreman/actions/workflows/ci.yml/badge.svg)](https://github.com/toddawhittaker/foreman/actions/workflows/ci.yml)
+[![AI transparency](https://img.shields.io/badge/AI-transparency_notice-6f42c1)](AI-DISCLOSURE.md)
 
 Foreman (a working name) is a small, self-hosted web app that runs
 Factorio servers through Docker.
@@ -182,6 +183,8 @@ setting.
 - [docs/I18N.md](docs/I18N.md): the languages, the glossary and the rules
   for writing and translating text.
 - [docs/adr/](docs/adr/): decision records.
+- [AI-DISCLOSURE.md](AI-DISCLOSURE.md): where AI helps make Foreman,
+  and what Foreman itself does not do.
 
 ## Development
 

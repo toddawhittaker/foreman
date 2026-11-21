@@ -252,6 +252,7 @@
   "mods.plan.row.uploaded": "{version}, from the uploaded zip",
   "mods.plan.item.why": "{item} ({why})",
   "mods.plan.why.required_by": "{mod} needs it",
+  "mods.plan.why.required_by_several": "{mods} need it",
   "mods.plan.why.optional_of": "offered by {mod}",
   "mods.plan.why.recommended_by": "recommended by {mod}",
   "mods.plan.why.from_save": "the save uses it",

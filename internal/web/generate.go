@@ -175,7 +175,7 @@ func (GeneratePage) Path() string        { return PathGenerate }
 func (GeneratePage) RefreshPath() string { return PathGenerateRefresh }
 func (GeneratePage) PreviewPath() string { return PathGeneratePreview }
 func (GeneratePage) VersionsPath() string {
-	return versionsPath("")
+	return versionsPath("", "")
 }
 
 // RefreshPath is where the settings are redrawn.

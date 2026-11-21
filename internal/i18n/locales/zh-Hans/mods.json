@@ -235,6 +235,7 @@
   "mods.plan.row.uploaded": "{version}，来自已上传的 zip 文件",
   "mods.plan.item.why": "{item}（{why}）",
   "mods.plan.why.required_by": "{mod} 需要它",
+  "mods.plan.why.required_by_several": "{mods} 需要它",
   "mods.plan.why.optional_of": "由 {mod} 提供",
   "mods.plan.why.recommended_by": "由 {mod} 推荐",
   "mods.plan.why.from_save": "存档使用它",
