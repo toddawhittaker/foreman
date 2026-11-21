@@ -228,6 +228,28 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		c.changedLocked(w, true)
 		return true
 	}
+	stale = c.takeRunLocked(w, cont, read)
+	c.crashLoopLocked(w, cont.ID)
+	if w.dockerStatus == "running" && !w.following && !w.stopping && !w.noSecrets {
+		since := w.startedAt
+		if w.followedRun.Equal(w.startedAt) && !w.lastLineAt.IsZero() {
+			// The stream broke while the same run went on: resume after the
+			// last line by Docker's own time, since Docker keeps a line
+			// written at the since time itself.
+			since = w.lastLineAt.Add(time.Nanosecond)
+		}
+		c.followLocked(w, cont.ID, since)
+	}
+	c.changedLocked(w, true)
+	return true
+}
+
+// takeRunLocked takes in what a look at the world's own container says
+// about its run: each Docker restart is a crash, and a new run resets what
+// the last one knew (SPEC 8.7). It returns the RCON connection to a run
+// that ended, for the caller to close after the unlock, or nil. w.mu is
+// held.
+func (c *Controller) takeRunLocked(w *worldRun, cont *docker.Container, read *crashLog) (stale *rcon.Client) {
 	now := c.now()
 	if n := cont.RestartCount - w.seenRestarts; n > 0 {
 		// Docker restarted the game, which it only does after an exit
@@ -267,30 +289,25 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		// on it would fail, so the next one dials the new run.
 		stale = w.rc
 	}
+	return stale
+}
+
+// crashLoopLocked stops a game that crashed CrashLoopCount times within
+// the window, and asks again while a crash-loop stop has not held (SPEC
+// 8.9). cid is the world's container. w.mu is held.
+func (c *Controller) crashLoopLocked(w *worldRun, cid string) {
 	active := w.dockerStatus == "running" || w.dockerStatus == "restarting"
 	switch {
 	case len(w.crashes) >= CrashLoopCount && !w.crashLoop && !w.stopping:
 		w.crashLoop, w.stopping, w.expectRunning = true, true, false
 		c.log.Warn("the game crashed again and again, so Foreman stopped it", "world", w.id)
-		c.stopCrashLoopLocked(w, cont.ID)
+		c.stopCrashLoopLocked(w, cid)
 	case w.crashLoop && !w.stopping && !w.crashStopping && active:
 		// Docker refused the earlier stop, or the game ran again: ask once
 		// more, at most once a poll (SPEC 8.9).
 		w.stopping = true
-		c.stopCrashLoopLocked(w, cont.ID)
+		c.stopCrashLoopLocked(w, cid)
 	}
-	if w.dockerStatus == "running" && !w.following && !w.stopping && !w.noSecrets {
-		since := w.startedAt
-		if w.followedRun.Equal(w.startedAt) && !w.lastLineAt.IsZero() {
-			// The stream broke while the same run went on: resume after the
-			// last line by Docker's own time, since Docker keeps a line
-			// written at the since time itself.
-			since = w.lastLineAt.Add(time.Nanosecond)
-		}
-		c.followLocked(w, cont.ID, since)
-	}
-	c.changedLocked(w, true)
-	return true
 }
 
 // exited reports whether a container in this Docker state has a game

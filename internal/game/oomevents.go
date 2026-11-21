@@ -2,6 +2,8 @@ package game
 
 import (
 	"context"
+	"errors"
+	"io"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
@@ -24,6 +26,7 @@ func (c *Controller) watchOOM(ctx context.Context) {
 	var since time.Time          // the newest event's time; zero asks for new events only
 	oomLast := map[string]bool{} // by container: its newest event was oom
 	var failed error             // the last failure to open the stream; nil once one opens
+	var broke error              // the last error an open stream ended with; nil once one works
 	for {
 		s, err := c.docker.Events(ctx, docker.EventOptions{
 			Actions: []string{"oom", "die"},
@@ -43,9 +46,19 @@ func (c *Controller) watchOOM(ctx context.Context) {
 			c.eventsLive.Store(true)
 			for {
 				ev, err := s.Next()
-				if err != nil {
+				if errors.Is(err, io.EOF) {
+					broke = nil
 					break
 				}
+				if err != nil {
+					// Shutdown cuts the stream too; that is no fault.
+					if ctx.Err() == nil {
+						c.logFault("cannot follow Docker events", broke, err)
+						broke = err
+					}
+					break
+				}
+				broke = nil
 				if ev.Time.After(since) {
 					since = ev.Time
 				}
