@@ -513,6 +513,8 @@ What the answers mean:
   (an expired or revoked one says so). 403 means REST API access is off.
   413 means a body over 4 MiB. 429 means a limit was hit
   and comes with `Retry-After`.
+- **500**: Foreman failed in a way it cannot word; the body has `error`,
+  and the reason is in Foreman's log.
 
 Limits are the same as for MCP, and `/mcp` and `/api/` count together:
 a token may make 120 requests a minute with at most 4 running at once, and

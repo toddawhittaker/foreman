@@ -57,9 +57,9 @@ func (s *server) apiRoutes(checks func(http.Handler) http.Handler, sdk http.Hand
 	s.mux.Handle(PathAPITools, s.apiGate(http.MethodGet, list))
 	s.mux.Handle(PathAPITool, s.apiGate(http.MethodPost, call))
 	s.mux.Handle(PathAPIOpenAPI, s.apiGate(http.MethodGet, checks(apiOpenAPI(tools))))
-	s.mux.Handle(PathAPI, s.apiGate("", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	s.mux.Handle(PathAPI, s.apiGate("", checks(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		apiError(w, http.StatusNotFound, "No such API path; GET "+PathAPITools+" lists the tools.")
-	})))
+	}))))
 }
 
 // apiGate refuses a request while API access is off, before its token is
