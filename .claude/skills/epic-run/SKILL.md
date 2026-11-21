@@ -38,25 +38,26 @@ line per step, so the run survives a context reset.
 6. **Write the shared rules file** in the scratchpad (template below) and
    point every task prompt at it. Each prompt adds the task row, the base
    commit, the files in scope, and what done looks like.
-7. **Verify each report** before merging: the orchestrator runs the full
-   `make verify` and the browser suite for every touched file (below) in
-   its own background runs, under the machine load gate. Read the diff,
-   check that the files it claims are in the PR (`gh pr view <n> --json
-   files`), and rule on anything it did outside its file list. Then run
-   the browser tests for every file the task touched (below). Task PRs
-   into the epic run no GitHub
-   CI; CI runs on each push to the epic branch. After a merge, check
-   that push's run (`gh run list --branch epic/<n>-<name> --limit 1`)
-   when it finishes; a failure becomes a fix task at once. The full CI
-   run gates the epic PR into main (step 13).
+7. **Verify each report** before merging: read the diff, check that the
+   files it claims are in the PR (`gh pr view <n> --json files`), and
+   rule on anything it did outside its file list. Then the orchestrator
+   runs `make verify` and the browser tests for the files the task
+   touched (below), in its own background runs, under the machine load
+   gate. Never run the full browser suite for a task: CI runs it. Task
+   PRs into the epic run no GitHub CI; CI runs the full suite on each
+   push to the epic branch. After a merge, check that push's run
+   (`gh run list --branch epic/<n>-<name> --limit 1`) when it finishes;
+   a failure becomes a fix task at once. The full CI run gates the epic
+   PR into main (step 13).
    - **Browser tests by file, not by task.** For each changed file, run
      every e2e spec that loads a page using it: a template, its handler,
      and the specs that visit that page; a script, every page that loads
      it; a locale file, the i18n specs plus the pages that show its keys.
      Find them with `grep -l` over `e2e/tests` for the route, template or
      element ids. A change to a file every page uses (`foreman.css`,
-     `layout.html`, `live.js`, `render.go`, `server.go`, the e2e helpers)
-     runs the whole suite. Pass the list as `make e2e E2E_ARGS="tests/a.spec.ts
+     `layout.html`, `live.js`, `time.js`, `render.go`, `server.go`, the
+     e2e helpers) runs the specs for the pages the change is aimed at;
+     CI covers the rest. Pass the list as `make e2e E2E_ARGS="tests/a.spec.ts
      tests/b.spec.ts"`.
 8. **Land with gh.** Once a task PR passes step 7, run
    `gh pr merge --squash <n>`, confirm it merged, and delete its
@@ -64,9 +65,8 @@ line per step, so the run survives a context reset.
    at the epic level. Never merge a PR into `main`. Main-into-epic and
    epic-into-main use merge commits. Hand a list of PRs to merger when
    there are several to land, or one that conflicts. PRs are not checked
-   together, so after a wave lands, run `make verify` and the full
-   `make e2e` on the epic head and chase any failure before the next wave
-   or the reviews.
+   together; CI's full run on each epic push catches how they fit, so
+   chase any failure there before the next wave builds on it.
    Merge only after reading the check result: never chain `gh pr merge`
    after a wait in one command.
 9. **Reviews, per task as it lands.** As soon as a task PR merges, start
@@ -97,8 +97,9 @@ line per step, so the run survives a context reset.
     it was verified (WORKFLOW.md, "Pull requests"). Keep the body in the
     scratchpad and create the PR with `gh pr create --base main
     --body-file <path>`.
-14. **Check it yourself.** Run the full local checks on the epic head
-    after merging `main` in, not just on the merger's word.
+14. **Check it yourself.** After merging `main` in, run `make verify` on
+    the epic head and read CI's full run on the epic PR yourself, not
+    just the merger's word.
 15. **Stop.** Report the PR and wait. Todd merges main.
 
 ## Gotchas
@@ -116,9 +117,12 @@ line per step, so the run survives a context reset.
 - Agents share the scratchpad; give each its own subfolder.
 - Tell running agents not to wait for their PR to land; waiting on a
   merge can deadlock.
-- Run at most two full `make e2e` suites on the machine at once. More
-  than that loads it so heavily that every run slows and timing tests
-  flake. Tell agents which specs to run, or to queue the full suite.
+- Run at most two `make e2e` runs on the machine at once. More than that
+  loads it so heavily that every run slows and timing tests flake. Tell
+  agents which specs to run.
+- A background job's time limit counts time spent waiting in a queue.
+  Start each check as its own job when the one before it ends, rather
+  than chaining waits into one long job.
 - An agent that reports "waiting on its own background work" for more
   than ten minutes has usually stalled on a monitor. Resume it with
   SendMessage and tell it to finish its runs in the foreground.
@@ -148,8 +152,9 @@ docs/EPIC-<n>.md on the epic branch; read your task's row.
   170`), and the e2e specs for the pages your files touch (`make e2e
   E2E_ARGS="tests/a.spec.ts ... --workers=4"`, split so each run is under
   3 minutes). Never run the full `make verify`, the full `make e2e`,
-  `make test-game` or `make e2e-game`: the orchestrator runs them and sends
-  failures back to you. Report the commands and counts.
+  `make test-game` or `make e2e-game`: the orchestrator runs `make verify`
+  and the real-game checks, CI runs the full suite, and failures come
+  back to you. Report the commands and counts.
 - Do not edit docs/STATUS.md, the plan, or the SPEC.md epic list. Put a
   proposed STATUS line (delivered, gaps left) in the PR body.
 - Never `git add -A`. No attribution lines. Never force-push; merge the
