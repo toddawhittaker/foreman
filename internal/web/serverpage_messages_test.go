@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -42,6 +43,26 @@ func TestCrashMessageNamesReasonAndLinksConsole(t *testing.T) {
 	unknown := controlHTML(t, serverCase(game.StateCrashed, func(*ServerPage) {}))
 	if !strings.Contains(unknown, "Foreman could not tell why from the log.") {
 		t.Errorf("an unknown reason is not said:\n%s", unknown)
+	}
+}
+
+// SPEC 8.7: a crash loop caused by a mod's non-recoverable error names the
+// mod and its version, and says a mod failed, instead of saying Foreman
+// could not tell why.
+func TestCrashLoopNamesTheModThatCausedAnError(t *testing.T) {
+	html := controlHTML(t, serverCase(game.StateCrashLooping, func(p *ServerPage) {
+		p.Status.Crash = game.LoadReason{Kind: crashreasons.ModError, Said: "The mod Even Distribution (2.1.0) caused a non-recoverable error"}
+	}))
+	for _, want := range []string{
+		`so Foreman stopped it. Factorio said: <span lang="en">The mod Even Distribution (2.1.0) caused a non-recoverable error</span>.`,
+		`A mod failed to load.`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("missing %q in\n%s", want, html)
+		}
+	}
+	if strings.Contains(html, "could not tell why") {
+		t.Errorf("a named reason still says Foreman could not tell why:\n%s", html)
 	}
 }
 

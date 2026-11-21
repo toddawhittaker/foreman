@@ -42,6 +42,9 @@ func TestLoadReasonKindFromRealCaptures(t *testing.T) {
 		{"1.1.110/run-mod-lua-error.log", crashreasons.ModError},
 		{"2.0.77/run-mod-lua-error.log", crashreasons.ModError},
 		{"2.1.24/run-mod-lua-error.log", crashreasons.ModError},
+		{"2.1.24/run-mod-runtime-error.log", crashreasons.ModError},
+		{"2.1.24/run-mod-runtime-error-ingame.log", crashreasons.ModError},
+		{"2.1.24/run-mod-real-on-init-error.log", crashreasons.ModError},
 		{"2.0.77/run-mod-missing-dep.log", crashreasons.ModMissingDependency},
 		{"2.1.24/run-mod-missing-dep.log", crashreasons.ModMissingDependency},
 		// 1.1 skips the mod and starts.
@@ -60,6 +63,65 @@ func TestLoadReasonKindFromRealCaptures(t *testing.T) {
 		if got := f.reason(masking()).Kind; got != tc.want {
 			t.Errorf("%s: kind %q, want %q", tc.file, got, tc.want)
 		}
+	}
+}
+
+// SPEC 8.7: a mod's non-recoverable error is worded as the game's own
+// sentence, which names the mod and its version, with none of the
+// MultiplayerManager wrapper or its stray opening quote, whether the game
+// failed while loading or while running.
+func TestLoadReasonNamesTheModThatCausedAnError(t *testing.T) {
+	const want = "The mod Even Distribution (2.1.0) caused a non-recoverable error"
+	for _, fx := range []string{"2.1.24/run-mod-runtime-error.log", "2.1.24/run-mod-runtime-error-ingame.log", "2.1.24/run-mod-real-on-init-error.log"} {
+		var f loadFailure
+		for _, l := range capturedRun(t, fx) {
+			f.add(l)
+		}
+		r, _, final := f.crashReason(masking())
+		if r.Kind != crashreasons.ModError || r.Said != want || !final {
+			t.Errorf("%s: got %+v (final %v), want kind %q saying %q", fx, r, final, crashreasons.ModError, want)
+		}
+	}
+}
+
+// A mod's title may hold parentheses; the whole sentence is still kept.
+func TestLoadReasonKeepsATitleWithParentheses(t *testing.T) {
+	const want = "The mod Foo (Bar) (1.0.0) caused a non-recoverable error"
+	var f loadFailure
+	f.add(`   1.357 Error MainLoop.cpp:1505: Exception at tick 0: ` + want + `.`)
+	if got := f.reason(masking()); got.Kind != crashreasons.ModError || got.Said != want {
+		t.Errorf("got %+v, want kind %q saying %q", got, crashreasons.ModError, want)
+	}
+}
+
+// The catalogue's pattern and the sentence loadFailure keeps are two
+// copies of one rule: every mod-error fixture that holds the game's
+// non-recoverable line must give back the clean sentence, so they cannot
+// drift apart unnoticed.
+func TestEveryNonRecoverableFixtureGivesTheCleanSentence(t *testing.T) {
+	checked := 0
+	for _, e := range crashreasons.Entries() {
+		if e.ID != crashreasons.ModError {
+			continue
+		}
+		for _, fx := range e.Fixtures {
+			lines := capturedRun(t, fx)
+			if !slices.ContainsFunc(lines, func(l string) bool { return strings.Contains(l, "non-recoverable") }) {
+				continue
+			}
+			checked++
+			var f loadFailure
+			for _, l := range lines {
+				f.add(l)
+			}
+			said := f.reason(masking()).Said
+			if !strings.HasPrefix(said, "The mod ") || !strings.HasSuffix(said, " caused a non-recoverable error") {
+				t.Errorf("%s: said %q, want the game's own sentence", fx, said)
+			}
+		}
+	}
+	if checked < 3 {
+		t.Errorf("only %d non-recoverable fixtures checked", checked)
 	}
 }
 

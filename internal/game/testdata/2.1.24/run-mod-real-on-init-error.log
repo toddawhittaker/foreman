@@ -1,0 +1,80 @@
+2026-11-21T17:13:53.116686739Z    0.000 2026-11-21 17:13:53; Factorio 2.1.24 (build 87808, linux64, headless, space-age)
+2026-11-21T17:13:53.116704293Z    0.000 Operating system: Linux
+2026-11-21T17:13:53.116707489Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--server-settings" "/factorio/config/server-settings.json" "--server-banlist" "/factorio/config/server-banlist.json" "--rcon-port" "27015" "--server-whitelist" "/factorio/config/server-whitelist.json" "--use-server-whitelist" "--server-adminlist" "/factorio/config/server-adminlist.json" "--rcon-password" <private> "--server-id" "/factorio/config/server-id.json" "--mod-directory" "/factorio/mods" "--port" "34197" "--start-server-load-latest" 
+2026-11-21T17:13:53.116719602Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-21T17:13:53.116722417Z    0.000 Read data path: /opt/factorio/data
+2026-11-21T17:13:53.116724632Z    0.000 Write data path: /factorio [349342/928723MB]
+2026-11-21T17:13:53.116726896Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-21T17:13:53.126665801Z    0.010 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+2026-11-21T17:13:53.126685810Z    0.010 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEO_DRIVER=<unset> SDL_ENABLE_STEAM_SCREEN_KEYBOARD=<unset> SteamDeck=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-21T17:13:53.133651763Z    0.017 Running in headless mode
+2026-11-21T17:13:53.133664778Z    0.017 Audio is disabled
+2026-11-21T17:13:53.134421154Z    0.017 Info ModManager.cpp:455: FeatureFlag: expansion, expansion-shaders, freezing, quality, rail-bridges, segmented-units, space-travel, spoiling
+2026-11-21T17:13:53.136057701Z    0.019 Loading mod settings even-distribution 2.1.0 (settings.lua)
+2026-11-21T17:13:53.139013029Z    0.022 Loading mod core 0.0.0 (data.lua)
+2026-11-21T17:13:53.152140799Z    0.035 Loading mod base 2.1.24 (data.lua)
+2026-11-21T17:13:53.339958629Z    0.223 Loading mod elevated-rails 2.1.24 (data.lua)
+2026-11-21T17:13:53.365418068Z    0.248 Loading mod even-distribution 2.1.0 (data.lua)
+2026-11-21T17:13:53.373576700Z    0.257 Loading mod recycler 2.1.24 (data.lua)
+2026-11-21T17:13:53.386945992Z    0.270 Loading mod quality 2.1.24 (data.lua)
+2026-11-21T17:13:53.394767961Z    0.278 Loading mod space-age 2.1.24 (data.lua)
+2026-11-21T17:13:53.602161845Z    0.484 Loading mod base 2.1.24 (data-updates.lua)
+2026-11-21T17:13:53.619097914Z    0.502 Loading mod recycler 2.1.24 (data-updates.lua)
+2026-11-21T17:13:53.643015535Z    0.526 Loading mod quality 2.1.24 (data-updates.lua)
+2026-11-21T17:13:53.657784622Z    0.541 Loading mod space-age 2.1.24 (data-updates.lua)
+2026-11-21T17:13:53.762778969Z    0.646 Checksum for core: 3668028660
+2026-11-21T17:13:53.762801021Z    0.646 Checksum of base: 3864816957
+2026-11-21T17:13:53.762804347Z    0.646 Checksum of elevated-rails: 1429039930
+2026-11-21T17:13:53.762806792Z    0.646 Checksum of even-distribution: 281457414
+2026-11-21T17:13:53.762808976Z    0.646 Checksum of recycler: 3293728126
+2026-11-21T17:13:53.762820227Z    0.646 Checksum of quality: 4220722184
+2026-11-21T17:13:53.762822602Z    0.646 Checksum of space-age: 3636981730
+2026-11-21T17:13:54.246722948Z    1.130 Prototype list checksum: 2405931119
+2026-11-21T17:13:54.328412795Z    1.211 Info PlayerData.cpp:580: Local player-data.json available
+2026-11-21T17:13:54.330612238Z    1.214 Factorio initialised
+2026-11-21T17:13:54.331698123Z    1.215 Info ServerSynchronizer.cpp:22: nextHeartbeatSequenceNumber(0) initialized Synchronizer nextTickClosureTick(0).
+2026-11-21T17:13:54.331706269Z    1.215 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(Ready) to(PreparedToHostGame)
+2026-11-21T17:13:54.331709996Z    1.215 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(PreparedToHostGame) to(CreatingGame)
+2026-11-21T17:13:54.331966426Z    1.215 Loading map /factorio/saves/_autosave1.zip: 523967 bytes.
+2026-11-21T17:13:54.340742579Z    1.224 Loading level.dat: 668828 bytes.
+2026-11-21T17:13:54.340759722Z    1.224 Info Scenario.cpp:152: Map version 2.1.24-1
+2026-11-21T17:13:54.361972765Z    1.245 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+2026-11-21T17:13:54.363668566Z    1.247 Loading script.dat: 1211 bytes.
+2026-11-21T17:13:54.365701461Z    1.249 Checksum for script __level__/control.lua: 2385776952
+2026-11-21T17:13:54.366529133Z    1.250 Script @__even-distribution__/framework.lua:22: 0 [ED] Initializing framework... DEBUG = false
+2026-11-21T17:13:54.366535134Z    1.250 Script @__even-distribution__/framework.lua:22: 0 [ED] Registering custom scripts...
+2026-11-21T17:13:54.366537759Z    1.250 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: metatables
+2026-11-21T17:13:54.366654512Z    1.250 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: util
+2026-11-21T17:13:54.366802535Z    1.250 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: helpers
+2026-11-21T17:13:54.367189154Z    1.250 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: setup
+2026-11-21T17:13:54.367625438Z    1.251 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: remote
+2026-11-21T17:13:54.367689521Z    1.251 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: visuals
+2026-11-21T17:13:54.367846711Z    1.251 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: gui-tools
+2026-11-21T17:13:54.368061401Z    1.251 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: drag
+2026-11-21T17:13:54.368493718Z    1.252 Script @__even-distribution__/framework.lua:22: 0 [ED] Script: cleanup
+2026-11-21T17:13:54.368722495Z    1.252 Script @__even-distribution__/framework.lua:22: 0 [ED] GUI-Script: settings-gui
+2026-11-21T17:13:54.369394389Z    1.252 Script @__even-distribution__/framework.lua:22: 0 [ED] Registering default event handlers...
+2026-11-21T17:13:54.369606835Z    1.253 Script @__even-distribution__/framework.lua:22: 0 [ED] Registering custom inputs...
+2026-11-21T17:13:54.369613238Z    1.253 Script @__even-distribution__/framework.lua:22: 0 [ED] Input: inventory-cleanup   event: on_inventory_cleanup
+2026-11-21T17:13:54.369616864Z    1.253 Script @__even-distribution__/framework.lua:22: 0 [ED] Input: fast-entity-transfer-hook   event: on_fast_entity_transfer_hook
+2026-11-21T17:13:54.369626613Z    1.253 Script @__even-distribution__/framework.lua:22: 0 [ED] Input: fast-entity-split-hook   event: on_fast_entity_split_hook
+2026-11-21T17:13:54.370481056Z    1.254 Script @__even-distribution__/framework.lua:22: 0 [ED] Successfully initialized
+2026-11-21T17:13:54.370489192Z    1.254 Checksum for script __even-distribution__/control.lua: 4082500616
+2026-11-21T17:13:54.393591675Z    1.277 Error ServerMultiplayerManager.cpp:85: MultiplayerManager failed: "The mod Even Distribution (2.1.0) caused a non-recoverable error.
+2026-11-21T17:13:54.393614870Z Please report this error to the mod author.
+2026-11-21T17:13:54.393618186Z 
+2026-11-21T17:13:54.393620601Z Error while running event even-distribution::on_init()
+2026-11-21T17:13:54.393622895Z LuaItemPrototype doesn't contain key fuel_category.
+2026-11-21T17:13:54.393625129Z stack traceback:
+2026-11-21T17:13:54.393627424Z 	[C]: in function '__index'
+2026-11-21T17:13:54.393629868Z 	__even-distribution__/scripts/setup.lua:297: in function 'generateTrashItemList'
+2026-11-21T17:13:54.393632313Z 	__even-distribution__/scripts/setup.lua:16: in function 'func'
+2026-11-21T17:13:54.393634547Z 	__even-distribution__/framework.lua:49: in function 'handleEvent'
+2026-11-21T17:13:54.393636741Z 	__even-distribution__/framework.lua:58: in function <__even-distribution__/framework.lua:58>"
+2026-11-21T17:13:54.393639326Z    1.277 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(CreatingGame) to(InitializationFailed)
+2026-11-21T17:13:54.393642232Z    1.277 Info CommandLineMultiplayer.cpp:216: Exit point.
+2026-11-21T17:13:54.397556673Z    1.281 Info ServerMultiplayerManager.cpp:147: Quitting multiplayer connection.
+2026-11-21T17:13:54.397568766Z    1.281 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(InitializationFailed) to(Closed)
+2026-11-21T17:13:54.397571512Z    1.281 Info ServerMultiplayerManager.cpp:167: Deleting active scenario (global = true).
+2026-11-21T17:13:54.447158142Z    1.330 Info UDPSocket.cpp:238: Closing socket
+2026-11-21T17:13:54.449425656Z    1.332 Goodbye
