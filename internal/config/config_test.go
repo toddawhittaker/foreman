@@ -194,6 +194,11 @@ func TestLoadErrors(t *testing.T) {
 			vars map[string]string
 			want string
 		}{"mcp " + v, map[string]string{"FOREMAN_MCP": v}, "FOREMAN_MCP may only be off"})
+		tests = append(tests, struct {
+			name string
+			vars map[string]string
+			want string
+		}{"api " + v, map[string]string{"FOREMAN_API": v}, "FOREMAN_API may only be off"})
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -208,6 +213,20 @@ func TestLoadErrors(t *testing.T) {
 				t.Errorf("error = %q, want containing %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// SPEC 23.8: FOREMAN_API=off forces the REST API off, apart from MCP.
+func TestLoadAPIOff(t *testing.T) {
+	c, err := load(map[string]string{"FOREMAN_API": "off"})
+	if err != nil || !c.APIForcedOff || c.MCPForcedOff {
+		t.Fatalf("FOREMAN_API=off: %+v %v", c, err)
+	}
+	for _, vars := range []map[string]string{{}, {"FOREMAN_API": ""}, {"FOREMAN_MCP": "off"}} {
+		c, err := load(vars)
+		if err != nil || c.APIForcedOff {
+			t.Errorf("%v: forced off=%v err=%v", vars, c != nil && c.APIForcedOff, err)
+		}
 	}
 }
 

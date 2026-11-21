@@ -53,6 +53,7 @@ const (
 	varSecretKey        = "FOREMAN_SECRET_KEY"
 	varNetworkContainer = "FOREMAN_GAME_NETWORK_CONTAINER"
 	varMCP              = "FOREMAN_MCP"
+	varAPI              = "FOREMAN_API"
 	varOIDCIssuer       = "FOREMAN_OIDC_ISSUER"
 	varOIDCClientID     = "FOREMAN_OIDC_CLIENT_ID"
 	varOIDCSecret       = "FOREMAN_OIDC_CLIENT_SECRET" //nolint:gosec // a variable name, not a credential
@@ -91,6 +92,9 @@ type Config struct {
 	// MCPForcedOff is FOREMAN_MCP=off: MCP access stays off whatever the
 	// admin setting says (SPEC 21.2).
 	MCPForcedOff bool
+	// APIForcedOff is FOREMAN_API=off: REST API access stays off whatever
+	// the admin setting says (SPEC 23.8).
+	APIForcedOff bool
 	// OIDC is the identity provider's settings; zero unless AuthOIDC
 	// (SPEC 12.7).
 	OIDC OIDC
@@ -206,6 +210,13 @@ func load(e env) (*Config, error) {
 			c.MCPForcedOff = true
 		} else {
 			fail("%s may only be off, not %q; leave it unset to let an admin choose", varMCP, raw)
+		}
+	}
+	if raw, ok := e.get(varAPI); ok {
+		if raw == "off" {
+			c.APIForcedOff = true
+		} else {
+			fail("%s may only be off, not %q; leave it unset to let an admin choose", varAPI, raw)
 		}
 	}
 
