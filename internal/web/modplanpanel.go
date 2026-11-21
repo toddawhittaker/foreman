@@ -63,8 +63,10 @@ type PlanNode struct {
 	Name, Title, Version string
 	// NotOnPortal says the portal lacks the mod, so its name is not linked.
 	NotOnPortal bool
-	// Of is the title of the mod this one shows under; empty for a pick.
-	Of string
+	// Of names every mod that needs this one; zero for a pick (SPEC 9.2).
+	Of i18n.Msg
+	// parent is the title of the mod this one shows under.
+	parent string
 	// Note says what changes for a mod already installed.
 	Note     i18n.Msg
 	Warnings []i18n.Msg
@@ -139,8 +141,8 @@ func (s *server) portalTitle(ctx context.Context, name string) string {
 }
 
 // planTree turns a resolved plan into the panel's tree: each pick with the
-// dependencies that change under it, a shared one under each mod that
-// needs it, built-in and already fitting mods left out (SPEC 9.2).
+// dependencies that change under it, a shared one once, under the first mod
+// that needs it, naming them all; built-in and already fitting mods left out (SPEC 9.2).
 type planTree struct {
 	plan    mods.Plan
 	line    string
@@ -166,7 +168,52 @@ func (t *planTree) build(picks []string) ([]PlanNode, int, map[string]string) {
 		roots = append(roots, root)
 		t.count(root, counted, neededBy)
 	}
+	parents := map[string][]string{}
+	gatherParents(roots, parents)
+	placed := map[string]bool{}
+	for i := range roots {
+		roots[i].Children = placeOnce(roots[i].Children, parents, placed)
+	}
 	return roots, len(counted), neededBy
+}
+
+// gatherParents records, for each dependency, the titles of the mods it
+// shows under, in order.
+func gatherParents(ns []PlanNode, parents map[string][]string) {
+	for _, n := range ns {
+		if n.parent != "" && !slices.Contains(parents[n.Name], n.parent) {
+			parents[n.Name] = append(parents[n.Name], n.parent)
+		}
+		gatherParents(n.Children, parents)
+	}
+}
+
+// placeOnce keeps each dependency's first row, naming every mod that needs
+// it, and drops its later rows.
+func placeOnce(ns []PlanNode, parents map[string][]string, placed map[string]bool) []PlanNode {
+	var out []PlanNode
+	for _, n := range ns {
+		if placed[n.Name] {
+			continue
+		}
+		placed[n.Name] = true
+		n.Of = titleList(parents[n.Name])
+		n.Children = placeOnce(n.Children, parents, placed)
+		out = append(out, n)
+	}
+	return out
+}
+
+// titleList lists mod titles as "a, b and c".
+func titleList(titles []string) i18n.Msg {
+	if len(titles) == 0 {
+		return i18n.Msg{}
+	}
+	items := make([]i18n.Msg, len(titles))
+	for i, t := range titles {
+		items[i] = i18n.M("server.list.names", "names", i18n.Ident(t))
+	}
+	return andNames(items)
 }
 
 // count adds the tree's changing mods to counted, and each dependency's
@@ -175,8 +222,8 @@ func (t *planTree) count(n PlanNode, counted map[string]bool, neededBy map[strin
 	if t.changing(n.Name) {
 		counted[n.Name] = true
 	}
-	if n.Of != "" && neededBy[n.Name] == "" {
-		neededBy[n.Name] = n.Of
+	if n.parent != "" && neededBy[n.Name] == "" {
+		neededBy[n.Name] = n.parent
 	}
 	for _, c := range n.Children {
 		t.count(c, counted, neededBy)
@@ -216,7 +263,7 @@ func (t *planTree) shown(name string) bool {
 }
 
 func (t *planTree) node(name, of string) PlanNode {
-	n := PlanNode{Name: name, Title: t.titleOf(name), Of: of, Warnings: t.warnings(name)}
+	n := PlanNode{Name: name, Title: t.titleOf(name), parent: of, Warnings: t.warnings(name)}
 	for _, c := range t.plan.Conflicts {
 		if c.Code == mods.ConflictNotOnPortal && c.Mod == name {
 			n.NotOnPortal = true

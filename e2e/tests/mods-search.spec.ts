@@ -140,10 +140,11 @@ test("+ adds a mod in place: Adding…, In plan with −, and the panel's tree",
   await expect(panel(page)).toContainText("No mods in the plan yet.");
 });
 
-// Rulings 2-4: two picks that share a dependency show it under each; an
+// Rulings 2-4, SPEC 9.2: two picks that share a dependency show it once,
+// under the first, naming both; an
 // installed mod that must change shows its update; a dependency that cannot
 // be had shows a warning; Review counts each mod once.
-test("two picks share a dependency: it shows under each, counted once, with an update and a warning", async ({ page }) => {
+test("two picks share a dependency: it shows once naming both, counted once, with an update and a warning", async ({ page }) => {
   await page.goto("/worlds/base/mods");
   const box = page.getByLabel("Mod name");
   for (const n of ["fp-rails", "fp-trains"]) {
@@ -167,7 +168,8 @@ test("two picks share a dependency: it shows under each, counted once, with an u
   await expect(picks).toHaveCount(2);
   await expect(picks.nth(0)).toContainText("fp-core");
   await expect(picks.nth(0)).toContainText("Will update to 1.1.0");
-  await expect(picks.nth(1)).toContainText("fp-core");
+  await expect(picks.nth(0).locator(".plan-tree__why").first()).toHaveText("Needed by fp-rails and fp-trains");
+  await expect(picks.nth(1)).not.toContainText("fp-core");
   await expect(picks.nth(1).locator(".plan-tree__why").first()).toHaveText("Needed by fp-trains");
   await expect(picks.nth(1).locator(".plan-tree__warn")).toHaveText("Warning: Not on the mod portal");
   // Each name links to its portal page in a new tab, apart from the cross; a
@@ -194,6 +196,8 @@ test("two picks share a dependency: it shows under each, counted once, with an u
   // The link names no mods: the review reads the saved picks (SPEC 17).
   await expect(page).toHaveURL(/\/mods\/plan\?kind=install$/);
   await expect(page.locator("#mod-plan")).toContainText("fp-trains");
+  // The review page names both too, on the shared dependency's one row.
+  await expect(page.locator("#mod-plan")).toContainText("fp-rails and fp-trains need it");
 });
 
 // Ruling 5: the cross takes a pick out with the dependencies nothing else

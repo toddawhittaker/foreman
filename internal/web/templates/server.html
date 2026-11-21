@@ -63,15 +63,8 @@
 {{- /* The newest snapshots sit under the world's pages, so the last safe point is in view before a restart or a stop. */}}
 <section class="panel card recent-snaps" aria-labelledby="recent-snaps-heading">
   <h2 id="recent-snaps-heading">{{t "common.nav.snapshots"}}</h2>
-  {{- with .RecentSnapshots}}
-  <ul class="recent-snaps__list" role="list">
-    {{- range .}}
-    <li><span class="recent-snaps__name">{{with snapReason .}}<span class="snap-kind">{{.}}</span>{{end}}<span>{{snapLabel .}}</span></span>{{template "when" .TakenAt}}</li>
-    {{- end}}
-  </ul>
-  {{- else}}{{if not .RecentFailed}}
-  <p class="empty">{{t "worlds.snapshots.empty"}}</p>
-  {{- end}}{{end}}
+  {{- /* Live, so a snapshot an operation took shows when it ends (SPEC 16.3). */}}
+  <div sse-swap="snaps">{{template "server-snaps" .}}</div>
   <div class="actions"><a href="{{.SnapshotsPath}}" id="act-recent-snapshots">{{t "worlds.snapshots.list"}}</a></div>
 </section>
 </div>
@@ -493,4 +486,17 @@
   {{- end}}
 </div>
 {{- end}}
+{{- end}}
+
+{{/* The Server page's newest snapshots. Takes the ServerPage. */}}
+{{define "server-snaps"}}
+{{- with .RecentSnapshots}}
+  <ul class="recent-snaps__list" role="list">
+    {{- range .}}
+    <li><span class="recent-snaps__name">{{with snapReason .}}<span class="snap-kind">{{.}}</span>{{end}}<span>{{snapLabel .}}</span></span>{{template "when" .TakenAt}}</li>
+    {{- end}}
+  </ul>
+  {{- else}}{{if not .RecentFailed}}
+  <p class="empty">{{t "worlds.snapshots.empty"}}</p>
+  {{- end}}{{end}}
 {{- end}}

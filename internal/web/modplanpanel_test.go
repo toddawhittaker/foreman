@@ -25,13 +25,13 @@ import (
 // samplePanel is a panel with a tree, a shared dependency, an update and a
 // warning, for the every-page render test.
 func samplePanel(w world.Summary) PlanPanel {
-	lib := PlanNode{Name: "lib", Title: "Library", Version: "1.0.0", Of: "Alpha"}
+	lib := PlanNode{Name: "lib", Title: "Library", Version: "1.0.0", Of: i18n.M("server.list.names", "names", i18n.Ident("Alpha"))}
 	return PlanPanel{World: w, Picks: []string{"alpha", longName}, Started: time.Date(2026, 11, 15, 9, 0, 0, 0, time.UTC), Count: 4, Return: modsPath(w.ID),
 		Roots: []PlanNode{
 			{Name: "alpha", Title: "Alpha", Version: "1.0.0", Children: []PlanNode{lib,
-				{Name: "old", Title: "old", Version: "1.0.0", Of: "Alpha", Note: i18n.M("mods.plan_panel.update", "version", "2.0.0")}}},
-			{Name: longName, Title: longName, Version: "0.1.0", Children: []PlanNode{{Name: "lib", Title: "Library", Version: "1.0.0", Of: longName},
-				{Name: "gone", Title: "gone", Of: longName, Warnings: []i18n.Msg{i18n.M("mods.plan_panel.warn.not_on_portal")}}}},
+				{Name: "old", Title: "old", Version: "1.0.0", Of: i18n.M("server.list.names", "names", i18n.Ident("Alpha")), Note: i18n.M("mods.plan_panel.update", "version", "2.0.0")}}},
+			{Name: longName, Title: longName, Version: "0.1.0", Children: []PlanNode{
+				{Name: "gone", Title: "gone", Of: i18n.M("server.list.names", "names", i18n.Ident(longName)), Warnings: []i18n.Msg{i18n.M("mods.plan_panel.warn.not_on_portal")}}}},
 		},
 		neededBy: map[string]string{"lib": "Alpha"}}
 }
@@ -237,12 +237,16 @@ func TestPlanPanelTree(t *testing.T) {
 		return `<span class="plan-tree__name">` + portalName(name) + `</span><span class="mod-ver" translate="no">` + version +
 			`</span></div><p class="plan-tree__why">Needed by ` + of + `</p>`
 	}
-	wantIn(t, "alpha", alpha, dep("lib", "1.0.0", "alpha"), dep("core", "1.0.0", "lib"))
-	wantIn(t, "beta", beta, dep("lib", "1.0.0", "beta"), dep("core", "1.0.0", "lib"),
+	// lib, which both need, has one row naming both (SPEC 9.2).
+	wantIn(t, "alpha", alpha, dep("lib", "1.0.0", "alpha and beta"), dep("core", "1.0.0", "lib"))
+	if strings.Contains(beta, portalName("lib")) || strings.Contains(beta, portalName("core")) {
+		t.Errorf("beta repeats the shared lib:\n%s", beta)
+	}
+	wantIn(t, "beta", beta,
 		dep("old", "1.0.0", "beta")+`<p class="plan-tree__note">Will update to 2.0.0</p>`,
 		`<span class="plan-tree__name"><span class="mod-title ident" translate="no">gone</span></span></div><p class="plan-tree__why">Needed by beta</p><p class="plan-tree__warn"><strong class="visually-hidden">Warning:</strong> Not on the mod portal</p>`)
 	// core hangs under lib, not beside it.
-	if !strings.Contains(alpha, `<p class="plan-tree__why">Needed by alpha</p><ul class="plan-tree__deps" role="list"><li class="plan-tree__dep"><div class="plan-tree__row">`+
+	if !strings.Contains(alpha, `<p class="plan-tree__why">Needed by alpha and beta</p><ul class="plan-tree__deps" role="list"><li class="plan-tree__dep"><div class="plan-tree__row">`+
 		`<span class="plan-tree__name">`+portalName("core")+`</span>`) {
 		t.Error("core is not nested under lib")
 	}
@@ -361,18 +365,19 @@ func TestPlanTreeBuild(t *testing.T) {
 	roots, count, needed := tr.build([]string{"a", "b"})
 	names := func(ns []PlanNode) (out []string) {
 		for _, n := range ns {
-			out = append(out, n.Name+"<"+n.Of)
+			out = append(out, n.Name+"<"+english(n.Of))
 		}
 		return out
 	}
 	// kept is hidden, so deep is lifted into its place under A.
-	if got := names(roots[0].Children); !slices.Equal(got, []string{"lib<A", "deep<A"}) {
+	// lib, which B needs too, shows once, under A, naming both.
+	if got := names(roots[0].Children); !slices.Equal(got, []string{"lib<A and B", "deep<A"}) {
 		t.Errorf("a's children %v", got)
 	}
 	if got := names(roots[0].Children[0].Children); !slices.Equal(got, []string{"loop<LIB"}) || len(roots[0].Children[0].Children[0].Children) != 0 {
 		t.Errorf("lib's children %v", got)
 	}
-	if got := names(roots[1].Children); !slices.Equal(got, []string{"lib<B"}) {
+	if got := names(roots[1].Children); len(got) != 0 {
 		t.Errorf("b's children %v", got)
 	}
 	if count != 5 || needed["lib"] != "A" || needed["deep"] != "A" || needed["b"] != "" {
