@@ -126,6 +126,9 @@ func TestAPIOpenAPI(t *testing.T) {
 			if len(tool.OutputSchema) > 0 && compact(t, result) != compact(t, tool.OutputSchema) {
 				t.Errorf("%s: %s output schema differs:\n%s\n%s", scope, tool.Name, result, tool.OutputSchema)
 			}
+			if refused := op.Responses["422"].Content["application/json"].Schema.Properties["result"]; compact(t, refused) != "{}" {
+				t.Errorf("%s: %s 422 result schema %s, want the empty schema", scope, tool.Name, refused)
+			}
 			for _, code := range []string{"200", "400", "401", "403", "404", "413", "415", "422", "429"} {
 				if _, ok := op.Responses[code]; !ok {
 					t.Errorf("%s: %s has no %s response", scope, tool.Name, code)

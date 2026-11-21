@@ -116,7 +116,8 @@ func openAPIToolOperation(t apiTool) map[string]any {
 			"404": openAPIError("No tool of this name for this token.", nil),
 			"413": openAPIPlain("The body is over 4 MiB."),
 			"415": openAPIError("The body is not application/json.", nil),
-			"422": openAPIError("The tool refused the call, or the arguments do not fit its schema. result holds what the tool gave, such as a fresh preview and confirm code.", result),
+			// A refusal's result, such as a preview, need not fit the output schema.
+			"422": openAPIError("The tool refused the call, or the arguments do not fit its schema. result holds what the tool gave, such as a fresh preview and confirm code.", map[string]any{}),
 			"429": openAPIPlain("Too many requests for this token or address."),
 		},
 	}
