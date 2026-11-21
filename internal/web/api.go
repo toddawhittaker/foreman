@@ -23,6 +23,12 @@ const (
 	PathAPITool  = "/api/v1/tools/{name}"
 )
 
+// jsonRPCInternalError is the JSON-RPC code for a fault on the server's side.
+const jsonRPCInternalError = -32603
+
+// apiLogBody is how much of an unexpected SDK answer the log keeps.
+const apiLogBody = 200
+
 // apiTool is one entry of GET /api/v1/tools (SPEC 23.1).
 type apiTool struct {
 	Name         string `json:"name"`
@@ -50,6 +56,7 @@ func (s *server) apiRoutes(checks func(http.Handler) http.Handler, sdk http.Hand
 	}))
 	s.mux.Handle(PathAPITools, s.apiGate(http.MethodGet, list))
 	s.mux.Handle(PathAPITool, s.apiGate(http.MethodPost, call))
+	s.mux.Handle(PathAPIOpenAPI, s.apiGate(http.MethodGet, checks(apiOpenAPI(tools))))
 	s.mux.Handle(PathAPI, s.apiGate("", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		apiError(w, http.StatusNotFound, "No such API path; GET "+PathAPITools+" lists the tools.")
 	})))
@@ -156,7 +163,12 @@ func (s *server) apiCall(w http.ResponseWriter, r *http.Request, sdk http.Handle
 	rec := httptest.NewRecorder()
 	sdk.ServeHTTP(rec, inner)
 	if rec.Code != http.StatusOK {
-		s.apiFault(w, "run a tool", fmt.Errorf("the MCP handler answered %d: %s", rec.Code, strings.TrimSpace(rec.Body.String())))
+		// The body may say more than the log should hold.
+		shown := bytes.TrimSpace(rec.Body.Bytes())
+		if len(shown) > apiLogBody {
+			shown = shown[:apiLogBody]
+		}
+		s.apiFault(w, "run a tool", fmt.Errorf("the MCP handler answered %d: %s", rec.Code, shown))
 		return
 	}
 	var answer struct {
@@ -169,6 +181,7 @@ func (s *server) apiCall(w http.ResponseWriter, r *http.Request, sdk http.Handle
 			IsError    bool            `json:"isError"`
 		} `json:"result"`
 		Error *struct {
+			Code    int    `json:"code"`
 			Message string `json:"message"`
 		} `json:"error"`
 	}
@@ -177,6 +190,9 @@ func (s *server) apiCall(w http.ResponseWriter, r *http.Request, sdk http.Handle
 		return
 	}
 	switch {
+	case answer.Error != nil && answer.Error.Code == jsonRPCInternalError:
+		// Foreman's own fault, such as a recovered panic in a tool.
+		s.apiFault(w, "run a tool", fmt.Errorf("internal error: %s", answer.Error.Message))
 	case answer.Error != nil:
 		// The SDK refused the call before the tool ran, for example
 		// arguments that do not fit the schema (SPEC 23.5, every refusal).

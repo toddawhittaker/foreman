@@ -89,7 +89,7 @@ func (s *server) limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, pattern := s.mux.Handler(r)
 		switch pattern {
-		case PathMCP, PathAPITools, PathAPITool:
+		case PathMCP, PathAPITools, PathAPITool, PathAPIOpenAPI:
 			r.Body = http.MaxBytesReader(w, r.Body, mcpMaxBody)
 		default:
 			if _, upload := s.uploadLimits[pattern]; !upload {
