@@ -662,6 +662,62 @@ func TestChosenVersion(t *testing.T) {
 	}
 }
 
+func TestUpdateVersionChoice(t *testing.T) {
+	for _, c := range []struct{ name, picked, typed, opened, want string }{
+		{"dropdown changed from the opened target", "2.1.25", "2.1.26", "2.1.26", "2.1.25"},
+		{"typed box edited", "2.1.25", "2.1.27", "2.1.26", "2.1.27"},
+		{"both agree with the target", "2.1.26", "2.1.26", "2.1.26", "2.1.26"},
+		{"target not in the list, dropdown untouched", "", "2.1.26", "2.1.26", "2.1.26"},
+		{"typed with no opened target", "2.1.25", "2.1.26", "", "2.1.26"},
+		{"box cleared", "2.1.25", "", "2.1.26", "2.1.25"},
+		{"spaces around the box", "2.1.25", " 2.1.26 ", "2.1.26", "2.1.25"},
+	} {
+		if got := updateVersion(c.picked, c.typed, c.opened); got != c.want {
+			t.Errorf("%s: updateVersion(%q, %q, %q) = %q, want %q", c.name, c.picked, c.typed, c.opened, got, c.want)
+		}
+	}
+}
+
+// SPEC 10.3, 10.7: a page opened with a target fills both fields. Changing
+// the dropdown, and not the box, is a choice of that version; editing the box
+// is a choice of the box's version; the carried target is only compared.
+func TestUpdateDropdownChangeBeatsTheOpenedTarget(t *testing.T) {
+	const target = "2.1.26"
+	g := newUpdateRig(t, &fakeReleases{})
+	id := g.newWorld("Alpha", fixtureNoSA, false)
+	for _, v := range []string{newVersion, target} {
+		g.addImage(v)
+	}
+	g.wantContains("form", g.get(updateURL(id)+"?game_version="+target), `name="game_version_opened" value="`+target+`"`)
+	g.wantMissing("form without a target", g.get(updateURL(id)), "game_version_opened")
+
+	form := func(picked, typed string) url.Values {
+		return url.Values{"game_version": {picked}, "game_version_typed": {typed}, "game_version_opened": {target}}
+	}
+	// The dropdown moved to a different version; the box still holds the target.
+	if err := g.finished(g.post(updateURL(id), form(newVersion, target)), id, game.AuditUpdate); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.version(id); got != newVersion {
+		t.Errorf("dropdown change: version %s, want %s", got, newVersion)
+	}
+
+	// The box was edited: it wins, and is checked as always (not newer than 2.1.25 here).
+	rep := g.post(updateURL(id), form("2.1.26", "2.1.25"))
+	if rep.StatusCode != http.StatusBadRequest {
+		t.Errorf("an edited box that is not newer: status %d", rep.StatusCode)
+	}
+	g.wantContains("refused", rep.body, `id="update-version-error"`, `value="2.1.25"`)
+
+	// Both agree with the target.
+	if err := g.finished(g.post(updateURL(id), form(target, target)), id, game.AuditUpdate); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.version(id); got != target {
+		t.Errorf("both agree: version %s, want %s", got, target)
+	}
+}
+
 // SPEC 7.6: the countdown of an update is checked like a stop's, and a bad
 // one stops nothing.
 func TestUpdateCountdownIsChecked(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -60,8 +61,12 @@ func newer(v, than string) bool {
 
 // handleVersions fills a game version input's suggestion list (SPEC 10.7).
 func (s *server) handleVersions(w http.ResponseWriter, r *http.Request, _ store.User) {
-	above := strings.TrimSpace(r.URL.Query().Get("above"))
-	s.fragment(w, r, s.versionPicker(r.Context(), above), "version-list")
+	q := r.URL.Query()
+	p := s.versionPicker(r.Context(), strings.TrimSpace(q.Get("above")))
+	if sel := strings.TrimSpace(q.Get("selected")); slices.Contains(p.Versions, sel) {
+		p.Selected = sel
+	}
+	s.fragment(w, r, p, "version-list")
 }
 
 // versionPicker lists the image versions newer than above. The list needs
@@ -189,7 +194,7 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return
 	}
-	target := chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed"))
+	target := updateVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed"), r.PostFormValue("game_version_opened"))
 	form, stop := s.readCountdown(r)
 	p := s.updatePage(sum, target, form)
 	if !p.Refusal.IsZero() {
