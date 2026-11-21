@@ -473,11 +473,6 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 	if err := mkdirAll(dst, path.Dir(f.Path)); err != nil {
 		return false, err
 	}
-	if f.Path == RCONPasswordFile {
-		// Its own copy, at 0640 before the password is written, whatever
-		// mode the source had (SPEC 14.8).
-		return false, copyRCONPassword(src, dst)
-	}
 	if isZip(f.Path) {
 		if linkFile(src, dst, f.Path) == nil {
 			return false, nil
@@ -665,13 +660,7 @@ func (m *Manager) prune(id string) error {
 	}
 	defer func() { _ = snaps.Close() }()
 	for _, s := range automaticToRemove(list, m.KeepAutomatic()) {
-		// Renamed first, so a crash mid-removal leaves a leftover, not a
-		// half snapshot.
-		gone := PrefixDeleting + randomSuffix()
-		if err := snaps.Rename(s.Name, gone); err != nil {
-			return err
-		}
-		if err := snaps.RemoveAll(gone); err != nil {
+		if err := removeAside(snaps, s.Name, PrefixDeleting+randomSuffix()); err != nil {
 			return err
 		}
 	}

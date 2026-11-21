@@ -82,7 +82,7 @@ func probe(dataDir string, uid, gid, gameUID, gameGID int) error {
 	}
 	f, err := os.CreateTemp(dataDir, ".foreman-probe-*")
 	if err != nil {
-		return fmt.Errorf("foreman (user %d, group %d) cannot write to the data directory %s. Give that user or group write access", uid, gid, dataDir)
+		return fmt.Errorf("foreman (user %d, group %d) cannot write to the data directory %s: %w. Give that user or group write access", uid, gid, dataDir, err)
 	}
 	name := f.Name()
 	_ = f.Close()

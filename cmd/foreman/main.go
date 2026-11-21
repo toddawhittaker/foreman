@@ -136,7 +136,10 @@ func resetPassword(ctx context.Context, st *store.Store, username string, in io.
 	if err := st.SetPasswordEndSessions(ctx, u.ID, hash); err != nil {
 		return err
 	}
-	return st.AddAudit(ctx, store.AuditEntry{Time: now, Username: "system", Action: web.AuditPasswordChange, Detail: u.Username})
+	if err := st.AddAudit(ctx, store.AuditEntry{Time: now, Username: "system", Action: web.AuditPasswordChange, Detail: u.Username}); err != nil {
+		return fmt.Errorf("the password was changed, but the audit entry was not recorded: %w", err)
+	}
+	return nil
 }
 
 func listenAddr() string {

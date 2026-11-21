@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -33,11 +34,6 @@ const (
 	pageSize      = 100
 	maxPages      = 10
 )
-
-// lines are the game lines Foreman supports (SPEC 10.8). Each tag is also
-// checked with validVersion, so a stale entry here cannot let an unsupported
-// version through.
-var lines = []string{"2.1", "2.0", "1.1"}
 
 // ErrUnreachable wraps every network, status, size and parse failure.
 var ErrUnreachable = errors.New("release information is unreachable")
@@ -152,7 +148,9 @@ func cached[T any](ctx context.Context, c *Client, e *entry[T], fetch func(conte
 func (c *Client) fetchVersions(ctx context.Context) ([]string, error) {
 	seen := map[string]bool{}
 	var out []string
-	for _, line := range lines {
+	// Every supported line (SPEC 10.8). Each tag is also checked with
+	// validVersion, so an unsupported version cannot get through.
+	for _, line := range mapgen.Lines {
 		for page := 1; page <= maxPages; page++ {
 			names, more, err := c.tagPage(ctx, line, page)
 			if err != nil {
@@ -169,7 +167,7 @@ func (c *Client) fetchVersions(ctx context.Context) ([]string, error) {
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return compareVersions(out[i], out[j]) > 0 })
+	sort.Slice(out, func(i, j int) bool { return world.CompareGameVersions(out[i], out[j]) > 0 })
 	return out, nil
 }
 
@@ -266,19 +264,3 @@ func (c *Client) get(ctx context.Context, rawURL string, limit int64) ([]byte, e
 }
 
 var validVersion = world.SupportedGameVersion
-
-// compareVersions orders two valid versions by their three numbers.
-func compareVersions(a, b string) int {
-	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
-	for i := range pa {
-		x, _ := strconv.Atoi(pa[i])
-		y, _ := strconv.Atoi(pb[i])
-		if x != y {
-			if x < y {
-				return -1
-			}
-			return 1
-		}
-	}
-	return 0
-}

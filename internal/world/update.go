@@ -15,7 +15,7 @@ const (
 // Update and rollback refusals. The text is shown to the admin.
 var (
 	ErrVersionNotNewer    = errors.New("the version to update to must be newer than the world's current version")
-	ErrVersionUnsupported = errors.New("enter an exact Factorio release of 1.1, 2.0 or 2.1, such as 2.0.72")
+	ErrVersionUnsupported = errors.New("enter an exact Factorio release of " + supportedLines("or") + ", such as 2.0.72")
 	ErrNoRollback         = errors.New("there is no snapshot from before an update to an older version to roll back to")
 )
 
@@ -85,17 +85,7 @@ func (m *Manager) RollbackTarget(id string) (Snapshot, string, error) {
 
 // snapshotGameVersion reads the game version from a snapshot's world.json.
 func (m *Manager) snapshotGameVersion(id, name string) (string, error) {
-	snaps, err := m.openSnapshots(id, false)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = snaps.Close() }()
-	dir, err := openDir(snaps, name)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = dir.Close() }()
-	meta, err := ReadMeta(dir)
+	meta, err := m.snapshotMeta(id, name)
 	if err != nil {
 		return "", err
 	}

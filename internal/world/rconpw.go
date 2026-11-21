@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"strings"
@@ -83,37 +82,6 @@ func createRCONPassword(root *os.Root) error {
 // createPasswordTemp is CreateTemp for the password (SPEC 14.8).
 func createPasswordTemp(root *os.Root, dir string) (*os.File, string, error) {
 	return createTempMode(root, dir, rconPasswordMode)
-}
-
-// copyRCONPassword copies the password file from one world folder to
-// another, at 0640 throughout, keeping its modification time.
-func copyRCONPassword(src, dst *os.Root) error {
-	in, info, err := openRegular(src, RCONPasswordFile)
-	if err != nil {
-		return fmt.Errorf("copy %s: %w", RCONPasswordFile, err)
-	}
-	defer func() { _ = in.Close() }()
-	out, temp, err := createPasswordTemp(dst, ConfigDir)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(out, in)
-	if err == nil {
-		err = out.Sync()
-	}
-	if cerr := out.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = dst.Chtimes(temp, info.ModTime(), info.ModTime())
-	}
-	if err == nil {
-		err = Commit(dst, temp, RCONPasswordFile)
-	}
-	if err != nil {
-		_ = dst.Remove(temp)
-	}
-	return err
 }
 
 // narrowRCONPassword takes away any permission beyond 0640 from an existing

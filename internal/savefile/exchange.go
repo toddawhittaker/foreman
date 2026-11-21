@@ -2,8 +2,6 @@ package savefile
 
 import (
 	"archive/zip"
-	"bufio"
-	"compress/zlib"
 	"errors"
 	"io"
 	"path"
@@ -73,20 +71,11 @@ func readLevelInit(f *zip.File) ([]byte, error) {
 		return nil, ErrFormat
 	}
 	defer func() { _ = rc.Close() }()
-	br := bufio.NewReader(rc)
-	head, err := br.Peek(2)
+	src, done, err := openLevel(rc)
 	if err != nil {
-		return nil, ErrTruncated
+		return nil, err
 	}
-	var src io.Reader = br
-	if isZlib(head) {
-		z, err := zlib.NewReader(br)
-		if err != nil {
-			return nil, ErrFormat
-		}
-		defer func() { _ = z.Close() }()
-		src = z
-	}
+	defer done()
 	data, err := io.ReadAll(io.LimitReader(src, maxLevelInit+1))
 	switch {
 	case err != nil:

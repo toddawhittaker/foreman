@@ -288,12 +288,7 @@ func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge
 		return "", err
 	}
 	committed = true
-	if err := syncDir(worlds, "."); err != nil {
-		return "", err
-	}
-	if err := m.activateIfNone(ctx, id); err != nil {
-		return "", err
-	}
+	m.finishCommitted(ctx, worlds, id)
 	return id, nil
 }
 
@@ -320,6 +315,19 @@ func writeMetaIn(worlds *os.Root, dir string, meta Meta) error {
 		return err
 	}
 	return syncDir(w, ".")
+}
+
+// finishCommitted does the work after a world's folder was renamed into
+// place: sync the worlds folder and make the world active when none is. The
+// world exists by now, so a failure here is logged, not returned, and a
+// caller that went away does not stop the activation.
+func (m *Manager) finishCommitted(ctx context.Context, worlds *os.Root, id string) {
+	if err := syncDir(worlds, "."); err != nil {
+		m.log.Warn("could not sync the worlds folder", "world", id, "error", err)
+	}
+	if err := m.activateIfNone(context.WithoutCancel(ctx), id); err != nil {
+		m.log.Warn("could not make the new world active", "world", id, "error", err)
+	}
 }
 
 // activateIfNone makes id active when no world is.

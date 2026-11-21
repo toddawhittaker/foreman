@@ -138,5 +138,8 @@ func TestProbeDirectoryProblems(t *testing.T) {
 	}
 	if err := probe(ro, 845, 845, 845, 845); err == nil || !strings.Contains(err.Error(), "cannot write") {
 		t.Errorf("read-only: %v", err)
+	} else if !errors.Is(err, os.ErrPermission) || !strings.Contains(err.Error(), "permission denied") {
+		// The cause is kept, so a full disk reads as one and not as a permission problem.
+		t.Errorf("read-only: the error does not carry its cause: %v", err)
 	}
 }

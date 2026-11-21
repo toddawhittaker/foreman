@@ -84,14 +84,7 @@ func (m *Manager) removeWorld(id string) error {
 		return err
 	}
 	defer func() { _ = worlds.Close() }()
-	gone := PrefixDeleting + id + "-" + randomSuffix()
-	if err := worlds.Rename(id, gone); err != nil {
-		return err
-	}
-	if err := syncDir(worlds, "."); err != nil {
-		return err
-	}
-	return worlds.RemoveAll(gone)
+	return removeAside(worlds, id, PrefixDeleting+id+"-"+randomSuffix())
 }
 
 // DeletedWorld is a world whose folder is gone but whose snapshots remain.

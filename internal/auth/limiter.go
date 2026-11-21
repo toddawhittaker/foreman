@@ -105,12 +105,7 @@ func (l *Limiter) Succeed(username, addr string) {
 func (l *Limiter) AllowAddr(addr string) (ok bool, retryAfter time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	now, k := l.now(), addrKey(addr)
-	if r := l.addrs.remaining(k, now); r > 0 {
-		return false, r
-	}
-	l.addrs.add(k, now)
-	return true, 0
+	return l.addrs.take(addrKey(addr), l.now())
 }
 
 // ReleaseAddr gives back an attempt AllowAddr counted, because it worked.
@@ -154,12 +149,7 @@ func NewOIDCStartLimiter(now func() time.Time) *AddrLimiter {
 func (l *AddrLimiter) Allow(addr string) (ok bool, retryAfter time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	now, k := l.now(), addrKey(addr)
-	if r := l.addrs.remaining(k, now); r > 0 {
-		return false, r
-	}
-	l.addrs.add(k, now)
-	return true, 0
+	return l.addrs.take(addrKey(addr), l.now())
 }
 
 // Succeed gives back the attempt Allow counted, because the token was
@@ -216,6 +206,16 @@ func (t *failureTable) remaining(key string, now time.Time) time.Duration {
 		return 0
 	}
 	return f.start.Add(t.window).Sub(now)
+}
+
+// take counts an attempt for key, or reports how long until the window ends
+// when the key is already over its limit.
+func (t *failureTable) take(key string, now time.Time) (ok bool, retryAfter time.Duration) {
+	if r := t.remaining(key, now); r > 0 {
+		return false, r
+	}
+	t.add(key, now)
+	return true, 0
 }
 
 func (t *failureTable) add(key string, now time.Time) {
