@@ -3167,7 +3167,9 @@ bar keeps its frame while the other cards lie flat.
 - "Plan" lists each pick with a quiet cross ("Remove *mod* from the
   plan"), its version, and under it, indented on a rule, each required
   dependency that changes, labelled "Needed by *mod*", nested as deep as
-  it goes. A dependency two picks share shows under each. Built-in mods
+  it goes. A dependency two picks share shows once, under the topmost pick that
+  needs it, its label naming every mod that needs it ("Needed by Beta and
+  Alpha"); the newest pick is at the top. Built-in mods
   and installed mods that already fit are left out; an installed one that
   must change says "Will update to *x.y.z*" ("Will change to" for an older
   one, "Will be enabled" for one that is off). A dependency that cannot be
