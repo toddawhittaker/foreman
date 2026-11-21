@@ -153,6 +153,24 @@ func TestSearchShortAndEmpty(t *testing.T) {
 	}
 }
 
+// SPEC 9.1: a search under 2 characters sent without script asks the portal
+// nothing either, and the page says what to type, as it does with script.
+func TestSearchShortWithoutScript(t *testing.T) {
+	g, id := pagerRig(t)
+	calls := g.portal.ListCalls()
+	for _, q := range []string{"p", "%20p%20", "%C3%A9"} {
+		code, body := g.getStatus(modsPath(id) + "/search?q=" + q)
+		if code != http.StatusOK {
+			t.Fatalf("short %q: %d", q, code)
+		}
+		wantIn(t, "short "+q, body, `<h2 id="results-heading" tabindex="-1">Mods matching</h2>`,
+			`<p class="empty">Type at least 2 characters of a mod&#39;s name in Find a mod. Matching mods show here.</p>`)
+	}
+	if g.portal.ListCalls() != calls {
+		t.Error("a search under 2 characters without script asked the portal")
+	}
+}
+
 // The Mods tab's own requests keep its address: their page controls ask for
 // the tab's results and push no history.
 func TestSearchForTheTabKeepsItsAddress(t *testing.T) {

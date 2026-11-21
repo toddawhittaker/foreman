@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -85,7 +84,7 @@ func (s *server) mcpSearchMods(ctx context.Context, _ *mcp.CallToolRequest, in m
 	}
 	query := strings.TrimSpace(in.Query)
 	switch {
-	case utf8.RuneCountInString(query) < 2:
+	case searchTooShort(query):
 		return nil, mcpSearchModsOut{}, errors.New(inEnglish(i18n.M("mods.search.missing")))
 	case searchTooLong(query):
 		return nil, mcpSearchModsOut{}, errors.New(inEnglish(i18n.M("mods.search.long", "count", maxSearchQuery)))

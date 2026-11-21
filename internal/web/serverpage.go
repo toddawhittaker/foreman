@@ -14,6 +14,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/schedule"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -1015,7 +1016,7 @@ func (p ServerPage) ShowNextRestart() bool {
 // NextRestartUTC is the next restart's text before time.js puts it in the
 // viewer's zone.
 func (p ServerPage) NextRestartUTC() string {
-	return p.Schedule.Next.UTC().Format("2006-01-02 15:04 UTC")
+	return p.Schedule.Next.UTC().Format(notify.TimeLayout)
 }
 
 // scheduleHere reports whether the schedule's wait, countdown or skip is

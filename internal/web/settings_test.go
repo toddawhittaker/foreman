@@ -764,6 +764,51 @@ func TestSettingsNewerWorldIsReadOnly(t *testing.T) {
 	}
 }
 
+// SPEC 11.3: a confirm refused because the world cannot be changed keeps the
+// preview, so the admin can confirm it once the world can be changed; a
+// confirm that saves spends it, so it cannot save twice.
+func TestSettingsReadOnlyConfirmKeepsThePreview(t *testing.T) {
+	r := newSettingsRig(t)
+	form := settingsFormValues()
+	form.Set("max_players", "9")
+	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
+
+	meta := filepath.Join(r.dir, "world.json")
+	was, err := os.ReadFile(meta) //nolint:gosec // a test temp folder
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(meta, []byte(`{"format_version": 99, "name": "Base", "game_version": "2.1.24"}`), 0o600); err != nil { //nolint:gosec // a test temp folder
+		t.Fatal(err)
+	}
+	refused := r.postAs(r.cookie, r.path("/confirm"), url.Values{"token": {token}})
+	if refused.Code != http.StatusConflict || !strings.Contains(refused.Body.String(), "A newer version of Foreman wrote this world") {
+		t.Fatalf("confirm on a read-only world: %d\n%s", refused.Code, refused.Body.String())
+	}
+	if r.read(world.ServerSettingsFile) != settingsFile || len(r.snapshots()) != 0 {
+		t.Fatal("a refused confirm wrote the file or took a snapshot")
+	}
+
+	if err := os.WriteFile(meta, was, 0o600); err != nil { //nolint:gosec // a test temp folder
+		t.Fatal(err)
+	}
+	saved := r.postAs(r.cookie, r.path("/confirm"), url.Values{"token": {token}})
+	if saved.Code != http.StatusSeeOther {
+		t.Fatalf("confirm once the world can be changed: %d\n%s", saved.Code, saved.Body.String())
+	}
+	if !strings.Contains(r.read(world.ServerSettingsFile), `"max_players": 9`) || len(r.snapshots()) != 1 {
+		t.Fatal("the kept preview did not save")
+	}
+
+	again := r.postAs(r.cookie, r.path("/confirm"), url.Values{"token": {token}})
+	if again.Code != http.StatusConflict || !strings.Contains(again.Body.String(), "This preview has expired, or its changes were already saved.") {
+		t.Errorf("a saved preview confirmed again: %d\n%s", again.Code, again.Body.String())
+	}
+	if len(r.snapshots()) != 1 {
+		t.Error("the replayed confirm took a snapshot")
+	}
+}
+
 func TestSettingsNeedsSignInAndAWorld(t *testing.T) {
 	r := newSettingsRig(t)
 	for _, p := range []string{r.path(""), r.path("/raw/server-settings.json")} {

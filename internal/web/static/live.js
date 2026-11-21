@@ -17,7 +17,8 @@
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const t = (key) => strings[key];
 
-  // Reads a sentence out through #announcer. The region is emptied first and
+  // Reads a sentence out through #announcer. Other scripts call it as
+  // window.foremanLive.announce. The region is emptied first and
   // filled a moment later, so a sentence the same as the last one is still
   // read (DESIGN 7.5).
   function announce(said) {
@@ -59,7 +60,7 @@
     document.getElementById("live-lost")?.remove();
   }
 
-  window.foremanLive = { lost, back };
+  window.foremanLive = { lost, back, announce };
 
   document.addEventListener("htmx:sseError", () => lost());
   document.addEventListener("htmx:sseOpen", () => back());

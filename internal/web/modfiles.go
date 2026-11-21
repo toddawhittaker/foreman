@@ -116,10 +116,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	token := q.Get(draftField)
 	plan, sync := s.drafts.get(token, u.ID, sum.ID)
 	sync = sync && plan.Kind == mods.KindSync
-	countdown := s.countdownForm(r.Context())
-	if c := q.Get("countdown"); c != "" {
-		countdown.Countdown = c
-	}
+	countdown := s.carriedCountdown(r.Context(), q)
 	refuse := func(msg i18n.Msg, status int) {
 		if sync {
 			p := s.planPage(r.Context(), sum, plan, countdown)

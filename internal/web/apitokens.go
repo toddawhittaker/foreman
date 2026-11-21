@@ -486,7 +486,7 @@ func (s *server) handleMCPSet(w http.ResponseWriter, r *http.Request, u store.Us
 // every signed-in page (SPEC 12.10, "Reminder"). An htmx request draws no
 // layout, so it skips the lookup; a failed lookup shows none.
 func (s *server) tokenBanner(r *http.Request, user string) []TokenRow {
-	if user == "" || s.tokens == nil || s.store == nil || r.Header.Get("HX-Request") != "" {
+	if user == "" || s.tokens == nil || s.store == nil || isHTMX(r) {
 		return nil
 	}
 	ctx := r.Context()
