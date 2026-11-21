@@ -57,6 +57,9 @@ func TestAPITokenCreateShowsSecretOnce(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), `>http://example.com/mcp</textarea>`) {
 		t.Errorf("the endpoint is not the request's own address")
 	}
+	if !strings.Contains(rec.Body.String(), `>http://example.com/api/v1</textarea>`) {
+		t.Errorf("the REST API base address is not the request's own address")
+	}
 	if _, err := hn.tokensFor(t).Check(context.Background(), secret); err != nil {
 		t.Errorf("the shown secret does not check: %v", err)
 	}
@@ -96,6 +99,22 @@ func TestAPITokenEndpointUsesPublicURL(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), `>https://foreman.example.org/mcp</textarea>`) {
 		t.Errorf("the endpoint ignores FOREMAN_PUBLIC_URL")
 	}
+	if !strings.Contains(rec.Body.String(), `>https://foreman.example.org/api/v1</textarea>`) {
+		t.Errorf("the REST API base address ignores FOREMAN_PUBLIC_URL")
+	}
+}
+
+// SPEC 12.10: a FOREMAN_PUBLIC_URL with a path prefix puts both addresses
+// under it.
+func TestAPITokenAddressesKeepPublicURLPath(t *testing.T) {
+	hn := newHarness(t, map[string]string{"FOREMAN_PUBLIC_URL": "https://example.org/foreman"})
+	c := hn.signIn()
+	_, rec := hn.createToken(c, "x", auth.ScopeRead)
+	for _, want := range []string{"https://example.org/foreman/mcp", "https://example.org/foreman/api/v1"} {
+		if !strings.Contains(rec.Body.String(), ">"+want+"</textarea>") {
+			t.Errorf("the page lacks %s", want)
+		}
+	}
 }
 
 // S1: behind a trusted proxy the scheme comes from X-Forwarded-Proto, so a
@@ -110,14 +129,14 @@ func TestAPITokenEndpointScheme(t *testing.T) {
 		mods []func(*http.Request)
 		want string
 	}{
-		{"trusted proxy", []func(*http.Request){withPeer("10.1.2.3:5555"), proto}, "https://example.com/mcp"},
-		{"untrusted peer", []func(*http.Request){proto}, "http://example.com/mcp"},
-		{"trusted, odd value", []func(*http.Request){withPeer("10.1.2.3:5555"), withHeader("X-Forwarded-Proto", "gopher")}, "http://example.com/mcp"},
+		{"trusted proxy", []func(*http.Request){withPeer("10.1.2.3:5555"), proto}, "https://example.com"},
+		{"untrusted peer", []func(*http.Request){proto}, "http://example.com"},
+		{"trusted, odd value", []func(*http.Request){withPeer("10.1.2.3:5555"), withHeader("X-Forwarded-Proto", "gopher")}, "http://example.com"},
 	}
 	for i, k := range cases {
 		mods := append([]func(*http.Request){withCookie(c)}, k.mods...)
 		rec := hn.post(PathAPITokens, url.Values{"name": {"t" + string(rune('a'+i))}, "scope": {"read"}}, mods...)
-		if !strings.Contains(rec.Body.String(), ">"+k.want+"</textarea>") {
+		if !strings.Contains(rec.Body.String(), ">"+k.want+"/mcp</textarea>") || !strings.Contains(rec.Body.String(), ">"+k.want+"/api/v1</textarea>") {
 			t.Errorf("%s: want %s (status %d)", k.name, k.want, rec.Code)
 		}
 	}
@@ -232,6 +251,79 @@ func TestAPITokenMCPForcedOff(t *testing.T) {
 		t.Error("the setting was turned on while forced off")
 	}
 	if len(hn.audits(AuditMCPSet)) != 0 {
+		t.Error("a refused switch was audited")
+	}
+}
+
+// storedSetting is an app setting's stored value, "" when never saved.
+func storedSetting(hn *harness, name string) string {
+	hn.t.Helper()
+	v, _, err := hn.store.AppSetting(context.Background(), name)
+	if err != nil {
+		hn.t.Fatal(err)
+	}
+	return v
+}
+
+// SPEC 23.8: REST API access is off by default, has its own switch beside
+// MCP's, takes effect at once and is audited as api-set.
+func TestAPITokenAPISwitch(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	if body := hn.get(PathAPITokens, withCookie(c)).Body.String(); !strings.Contains(body, `name="api" value="on"`) || !strings.Contains(body, `name="mcp" value="on"`) {
+		t.Fatal("REST API access is not off by default, beside MCP's switch")
+	}
+	if storedSetting(hn, SettingAPI) == APIOn {
+		t.Fatal("the setting is on before the switch is used")
+	}
+	hn.wantRedirect(hn.post(pathAPITokenAPI, url.Values{"api": {"on"}}, withCookie(c)), PathAPITokens+"?done=api-on")
+	if storedSetting(hn, SettingAPI) != APIOn {
+		t.Error("the switch did not turn REST API access on")
+	}
+	if storedSetting(hn, SettingMCP) == MCPOn {
+		t.Error("the REST API switch turned MCP on")
+	}
+	body := hn.get(PathAPITokens+"?done=api-on", withCookie(c)).Body.String()
+	if !strings.Contains(body, `name="api" value="off"`) || !strings.Contains(body, `name="mcp" value="on"`) || !strings.Contains(body, "Turned REST API access on.") {
+		t.Error("the page does not show REST API on and MCP still off")
+	}
+	hn.wantRedirect(hn.post(pathAPITokenAPI, url.Values{"api": {"off"}}, withCookie(c)), PathAPITokens+"?done=api-off")
+	if storedSetting(hn, SettingAPI) == APIOn {
+		t.Error("the switch did not turn REST API access off")
+	}
+	if got := strings.Join(hn.audits(AuditAPISet), "|"); got != "alice  off|alice  on" { // newest first
+		t.Errorf("audit %q", got)
+	}
+	if len(hn.audits(AuditMCPSet)) != 0 {
+		t.Error("the REST API switch wrote an mcp-set entry")
+	}
+	if rec := hn.post(pathAPITokenAPI, url.Values{"api": {"yes"}}, withCookie(c)); rec.Code != http.StatusBadRequest {
+		t.Errorf("a bad value: %d", rec.Code)
+	}
+}
+
+// SPEC 23.8: FOREMAN_API=off shows that, offers no switch, refuses a post
+// and writes nothing.
+func TestAPITokenAPIForcedOff(t *testing.T) {
+	hn := newHarness(t, map[string]string{"FOREMAN_API": "off"})
+	c := hn.signIn()
+	body := hn.get(PathAPITokens, withCookie(c)).Body.String()
+	if !strings.Contains(body, "FOREMAN_API=off") || strings.Contains(body, `name="api"`) {
+		t.Error("the forced-off page does not say so, or offers the switch")
+	}
+	if !strings.Contains(body, `name="mcp" value="on"`) {
+		t.Error("FOREMAN_API=off took away the MCP switch")
+	}
+	if rec := hn.post(pathAPITokenAPI, url.Values{"api": {"on"}}, withCookie(c)); rec.Code != http.StatusConflict {
+		t.Errorf("switching while forced off: %d", rec.Code)
+	}
+	if v, found, _ := hn.store.AppSetting(context.Background(), SettingAPI); found && v == APIOn {
+		t.Error("the setting was turned on while forced off")
+	}
+	if storedSetting(hn, SettingAPI) == APIOn {
+		t.Error("REST API access is on while forced off")
+	}
+	if len(hn.audits(AuditAPISet)) != 0 {
 		t.Error("a refused switch was audited")
 	}
 }
@@ -360,17 +452,67 @@ func TestAPITokenRenewedMessageOnlyForWorkingToken(t *testing.T) {
 	}
 }
 
-// SPEC 12.10: while MCP access is off, Create a token says the new token
-// will not work until access is turned on; once it is on, the line goes.
-func TestAPITokenCreateSaysMCPIsOff(t *testing.T) {
-	hn := newHarness(t, nil)
-	c := hn.signIn()
-	line := `<p class="hint" id="token-mcp-off">MCP access is off, so this token will not work until you turn it on.</p>`
-	if page := hn.get(PathAPITokens, withCookie(c)).Body.String(); !strings.Contains(page, line) {
-		t.Errorf("MCP off: the create form lacks the note:\n%s", page)
+// SPEC 12.10: a token works while MCP or REST API access is on, so the
+// create form and the created page warn only when both are off, a forced-off
+// one counting as off.
+func TestAPITokenWarnsOnlyWhenBothAccessesAreOff(t *testing.T) {
+	const words = "MCP and REST API access are both off, so this token will not work until an admin turns one on."
+	cases := []struct {
+		name string
+		env  map[string]string
+		mcp  bool
+		api  bool
+		warn bool
+	}{
+		{"both off", nil, false, false, true},
+		{"only MCP on", nil, true, false, false},
+		{"only REST on", nil, false, true, false},
+		{"both on", nil, true, true, false},
+		{"REST on but MCP forced off", map[string]string{"FOREMAN_MCP": "off"}, false, true, false},
+		{"MCP on but REST forced off", map[string]string{"FOREMAN_API": "off"}, true, false, false},
+		{"both forced off", map[string]string{"FOREMAN_MCP": "off", "FOREMAN_API": "off"}, false, false, true},
 	}
-	turnMCPOn(t, hn)
-	if page := hn.get(PathAPITokens, withCookie(c)).Body.String(); strings.Contains(page, `id="token-mcp-off"`) {
-		t.Error("MCP on: the create form still says it is off")
+	for _, k := range cases {
+		t.Run(k.name, func(t *testing.T) {
+			hn := newHarness(t, k.env)
+			c := hn.signIn()
+			ctx := context.Background()
+			if k.mcp {
+				turnMCPOn(t, hn)
+			}
+			if k.api {
+				if err := hn.store.SetAppSetting(ctx, SettingAPI, APIOn, "alice", hn.clock.Now()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			form := hn.get(PathAPITokens, withCookie(c)).Body.String()
+			_, rec := hn.createToken(c, "x", auth.ScopeRead)
+			created := rec.Body.String()
+			for _, p := range []struct{ name, body, id string }{{"create form", form, `id="token-access-off"`}, {"created page", created, `id="access-off-note"`}} {
+				if got := strings.Contains(p.body, p.id); got != k.warn {
+					t.Errorf("%s: warning shown %v, want %v", p.name, got, k.warn)
+				}
+				if got := strings.Contains(p.body, words); got != k.warn {
+					t.Errorf("%s: wording shown %v, want %v", p.name, got, k.warn)
+				}
+			}
+		})
+	}
+}
+
+// The created page's note links an admin to each switch that can be used.
+func TestAPITokenWarningLinksOnlyUsableSwitches(t *testing.T) {
+	hn := newHarness(t, map[string]string{"FOREMAN_API": "off"})
+	c := hn.signIn()
+	_, rec := hn.createToken(c, "x", auth.ScopeRead)
+	body := rec.Body.String()
+	if !strings.Contains(body, `#mcp-access`) || strings.Contains(body, `#api-access`) {
+		t.Errorf("with REST forced off the note should link MCP's switch only:\n%s", body)
+	}
+	hn = newHarness(t, nil)
+	c = hn.signIn()
+	_, rec = hn.createToken(c, "x", auth.ScopeRead)
+	if body := rec.Body.String(); !strings.Contains(body, `#mcp-access`) || !strings.Contains(body, `#api-access`) {
+		t.Errorf("with both off the note should link both switches:\n%s", body)
 	}
 }

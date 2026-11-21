@@ -1,4 +1,5 @@
 {
+  "audit.action.api-set": "REST API access turned on or off",
   "audit.action.audit-retention-set": "Audit log retention changed",
   "audit.action.autosave-tidy": "Autosaves tidied",
   "audit.action.chat": "Chat message",
