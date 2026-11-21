@@ -291,6 +291,41 @@ test.describe("with script", () => {
     await expect(pictures(page)).toHaveCount(5);
   });
 
+  // DESIGN 8.8: a Preview map that lands while the large view is open shows
+  // its own picture and download there, not the older section's.
+  test("a Preview map reply that lands under the open large view shows there", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(pictures(page)).toHaveCount(1);
+    let release = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    let held = () => {};
+    const arrived = new Promise<void>((r) => { held = r; });
+    await page.route("**/generate/preview", async (route) => {
+      if (field(route.request(), "auto") === "1") return route.continue();
+      held();
+      await gate;
+      await route.continue().catch(() => {});
+    });
+    // A new seed, so the reply's pictures are another map's; pressed within the pause.
+    await page.locator("#generate-seed").fill("1234");
+    await page.getByRole("button", { name: "Preview map" }).click();
+    await arrived;
+    await section(page).getByRole("link", { name: /opens the large view/ }).first().click();
+    const dialog = page.locator("#large-view");
+    await expect(dialog).toBeVisible();
+    release();
+    await expect(pictures(page)).toHaveCount(5);
+    await expect(page.getByRole("button", { name: "Preview map" })).not.toHaveAttribute("aria-disabled", "true");
+    const fresh = await page.evaluate(() => {
+      const link = document.querySelector<HTMLAnchorElement>('#preview a.picture[data-planet="nauvis"]')!;
+      const download = link.closest("li")!.querySelector<HTMLAnchorElement>("a.download")!;
+      return { img: link.querySelector("img")!.src, download: new URL(download.href).pathname };
+    });
+    await expect.poll(() => page.locator("#large-img").evaluate((i: HTMLImageElement) => i.src)).toBe(fresh.img);
+    await expect.poll(() => page.locator("#large-download").evaluate((a: HTMLAnchorElement) => new URL(a.href).pathname)).toBe(fresh.download);
+    await expect(dialog).toBeVisible();
+  });
+
   test("a world with one planet offers no choice", async ({ page }) => {
     await page.goto("/generate");
     await page.getByLabel("Space Age is on").uncheck();

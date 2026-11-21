@@ -421,6 +421,21 @@ test.describe("coming back to Generate", () => {
     await expect(page.locator("#ach-summary")).toBeHidden();
   });
 
+  // Playwright's Chromium keeps no back-forward cache, so the restore is stood in
+  // for: a box changed with no event, then the pageshow such a restore fires.
+  test("a page restored from the back-forward cache draws its marks and preview from its fields", async ({ page }) => {
+    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(1);
+    const drawn = page.waitForRequest((r) => r.url().endsWith("/generate/preview") && new URLSearchParams(r.postData() ?? "").get("auto") === "1");
+    await page.evaluate(() => {
+      (document.getElementById("ms-pollution-enabled") as HTMLInputElement).checked = false;
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+    });
+    await expect(page.locator("#preset-modified")).toHaveText("[modified]");
+    await expect(page.locator("#ach-summary")).toBeVisible();
+    await expect(page.locator("#ms-pollution-enabled-ach")).not.toBeEmpty();
+    expect(new URLSearchParams((await drawn).postData() ?? "").has("ms.pollution.enabled")).toBe(false);
+  });
+
   test("a preset chosen on the earlier visit is not put back, so the first Generate world makes the map shown", async ({ page, foreman }) => {
     await page.locator("#generate-preset").selectOption({ label: "Ribbon world" });
     await expect(page.locator("#mg-nauvis-iron-ore-size")).not.toHaveValue("100");
