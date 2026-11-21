@@ -71,6 +71,28 @@ func TestVersionsListsOnlyVersionsAbove(t *testing.T) {
 	}
 }
 
+// SPEC 10.3, 10.7: a list asked for with a target marks that version
+// selected, so the update page's dropdown agrees with the typed box. A target
+// the list does not hold marks nothing, and the placeholder stays chosen.
+func TestVersionsMarksTheTargetSelected(t *testing.T) {
+	g := newUpdateRig(t, pickerRel())
+
+	body := g.get(versionsPathSelecting("2.0.76", "2.1.24"))
+	g.wantContains("picker", body, `<option value="2.1.24" selected>`)
+	if n := strings.Count(body, " selected"); n != 1 {
+		t.Errorf("%d options selected, want 1:\n%s", n, body)
+	}
+
+	for name, target := range map[string]string{"not in the list": "2.9.9", "not newer than the world": "2.0.76", "empty": ""} {
+		if body := g.get(versionsPathSelecting("2.0.76", target)); strings.Contains(body, "selected") {
+			t.Errorf("%s: an option is selected:\n%s", name, body)
+		}
+	}
+
+	// A hostile target is never written into the page.
+	wantNoMarkup(t, "hostile target", g.get(versionsPathSelecting("2.0.76", hostileAttr)))
+}
+
 // SPEC 10.7: when Docker Hub cannot be reached the page still works: the list
 // holds only a disabled option saying why, the answer is 200, and the error's words (which may hold an
 // address) are not shown. The same holds with no release source at all.
@@ -198,4 +220,15 @@ func TestReleaseNoticeWhenTheSourceFails(t *testing.T) {
 			}
 		})
 	}
+}
+
+// SPEC 10.3, 10.7: the update page asks for its list with the target, so
+// the dropdown agrees with the typed box; without a target it asks as before.
+func TestUpdatePageAsksForTheTargetSelected(t *testing.T) {
+	g := newUpdateRig(t, pickerRel())
+	id := g.newWorld("Alpha", fixtureNoSA, false)
+
+	body := g.get(updateURL(id) + "?game_version=2.1.25")
+	g.wantContains("update page", body, `selected=2.1.25`, `value="2.1.25"`)
+	g.wantMissing("update page without a target", g.get(updateURL(id)), "selected=")
 }

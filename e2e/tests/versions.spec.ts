@@ -119,6 +119,31 @@ test.describe("with the fake game", () => {
     await checkPage(page);
   });
 
+  // SPEC 10.3, 10.7: a page opened with a target (the release notice's Update link) shows it in both
+  // fields. Docker Hub is unreachable here, so the list is answered by hand, in the server's own markup.
+  test("the update page's dropdown shows the target once the list loads", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    let asked = new URLSearchParams();
+    await page.route("**/versions?*", (route) => {
+      asked = new URL(route.request().url()).searchParams;
+      const pick = asked.get("selected");
+      const option = (v: string) => `<option value="${v}"${v === pick ? " selected" : ""}>${v}</option>`;
+      return route.fulfill({ contentType: "text/html", body: ["2.1.25", "2.1.24"].map(option).join("\n") });
+    });
+    await page.goto("/worlds/base/update?game_version=2.1.25");
+    await expect(page.locator("#update-version-select option")).toHaveCount(3);
+    await expect(page.locator("#update-version-select")).toHaveValue("2.1.25");
+    await expect(page.getByLabel("Or type a version")).toHaveValue("2.1.25");
+    expect(asked.get("selected")).toBe("2.1.25");
+    await checkPage(page);
+
+    // A target the list does not hold leaves the placeholder chosen, and the typed box keeps it.
+    await page.goto("/worlds/base/update?game_version=2.9.9");
+    await expect(page.locator("#update-version-select option")).toHaveCount(3);
+    await expect(page.locator("#update-version-select")).toHaveValue("");
+    await expect(page.getByLabel("Or type a version")).toHaveValue("2.9.9");
+  });
+
   // SPEC 10.3, 6.2: a stopped world updates to the typed version, snapshot first, and stays stopped.
   test("a stopped world updates to a typed version and stays stopped", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;

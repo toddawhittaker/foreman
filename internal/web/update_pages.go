@@ -10,8 +10,9 @@ import (
 
 // VersionPicker fills the game version select's options
 // (SPEC 10.7). Above, when set, leaves out versions not newer than it.
+// Selected, when it is one of the listed versions, is the option chosen.
 type VersionPicker struct {
-	Above                string
+	Above, Selected      string
 	Versions             []string
 	Stable, Experimental string
 	Unreachable          bool
@@ -56,11 +57,22 @@ type RollbackOffer struct {
 }
 
 // versionsPath is where the picker's suggestion list loads from.
-func versionsPath(above string) string {
-	if above == "" {
+func versionsPath(above string) string { return versionsPathSelecting(above, "") }
+
+// versionsPathSelecting is versionsPath for a page that already names a
+// version, so the list comes back with that one chosen.
+func versionsPathSelecting(above, selected string) string {
+	q := url.Values{}
+	if above != "" {
+		q.Set("above", above)
+	}
+	if selected != "" {
+		q.Set("selected", selected)
+	}
+	if len(q) == 0 {
 		return PathVersions
 	}
-	return PathVersions + "?" + url.Values{"above": {above}}.Encode()
+	return PathVersions + "?" + q.Encode()
 }
 
 func (VersionPicker) templateName() string { return "versions" }
@@ -104,10 +116,12 @@ func chosenVersion(picked, typed string) string {
 }
 
 // Paths the pages link and post to.
-func (p UpdatePage) Path() string         { return worldPath(p.World.ID) + "/update" }
-func (p UpdatePage) WorldPath() string    { return worldPath(p.World.ID) }
-func (p UpdatePage) VersionsPath() string { return versionsPath(p.World.GameVersion) }
-func (p RollbackPage) Path() string       { return worldPath(p.World.ID) + "/rollback" }
-func (p RollbackPage) WorldPath() string  { return worldPath(p.World.ID) }
-func (p WorldPage) UpdatePath() string    { return worldPath(p.World.ID) + "/update" }
-func (ImportForm) VersionsPath() string   { return versionsPath("") }
+func (p UpdatePage) Path() string      { return worldPath(p.World.ID) + "/update" }
+func (p UpdatePage) WorldPath() string { return worldPath(p.World.ID) }
+func (p UpdatePage) VersionsPath() string {
+	return versionsPathSelecting(p.World.GameVersion, p.Target)
+}
+func (p RollbackPage) Path() string      { return worldPath(p.World.ID) + "/rollback" }
+func (p RollbackPage) WorldPath() string { return worldPath(p.World.ID) }
+func (p WorldPage) UpdatePath() string   { return worldPath(p.World.ID) + "/update" }
+func (ImportForm) VersionsPath() string  { return versionsPath("") }
