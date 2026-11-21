@@ -18,7 +18,8 @@ open (see its section). Epic 9c (public mods and autosave tidy), Epic
 was split on 2026-11-18: Epic 11a (sign-in, audit log, archive, settings and
 users) is built, with its gate on the trial deployment still to run, and
 Epic 11b (the release and Gate C) is next. Fixes batch 13 (three issues from
-checking Epic 11a on the trial deployment) is done.
+checking Epic 11a on the trial deployment) is done, and so are fixes batches 14 and
+15.
 Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
 now, at Todd's choice, when the Mod settings epic started; it is still owed
 before Gate C.
@@ -4458,3 +4459,102 @@ Rulings (the plan, then Todd and the orchestrator, 2026-11-20):
   mod plan. As before, the page is a step under another page.
 - **The Server page has no breadcrumb.** "Server > Console" and "Server >
   Chat" would be a meaningful trail on those two tabs; it is not built.
+
+## Fixes batch 15
+
+Serves SPEC 5.4, 6.4, 8.7, 9.2, 10.7 and 16.3, with DESIGN 8.2, 8.8 and 8.11.
+Issues: #759, #760 and the seven items of #761, all found while taking the
+screenshots for the documentation pass (#758). The plan was #763. The pull
+requests were #764 (U1), #766 (R1), #767 (M1), #770 (G1), #772 (S1), #783 (P1)
+and #782 (the epic-run skill).
+
+Rulings (the plan, then Todd, 2026-11-21):
+
+1. The crash warning for #760 reuses the existing message "A mod failed to
+   load." rather than a new one, so no locale file changed.
+2. A shared dependency is listed once, naming every mod that needs it, in the
+   plan panel and on the review page.
+3. Item 6 of #761 was reproduced first against a real
+   `factoriotools/factorio` 2.1.24 container; item 7 is fixed from the
+   mechanism without a reproduction.
+4. Todd added task P1 during the batch: the Mods page's Plan card is capped to
+   the window on wide screens, lists picks newest first and is alone in the side
+   column.
+5. From this batch the epic-run skill tests a task only on what it touched;
+   CI runs the full suite on each push to an epic branch (#782).
+
+### Delivered
+
+- **Last played no longer runs into Disk use (#759, DESIGN 8.2; #772).** The
+  worlds list no longer forbids wrapping in its time. The date, the clock and
+  the age break only between themselves, 24 px clear of Disk use, at every width
+  and in every language, and a narrow cell shows the age alone.
+- **The sticky Plan card clears the top strip (#761 item 1, DESIGN 8.11;
+  #772).** It now sticks below the shell's top strip, as the Generate preview
+  does, so its heading never slides out of sight.
+- **The Plan card is capped, newest pick first, and alone in the side column
+  (#761, SPEC 9.2, DESIGN 8.11; #783).** On a wide screen the card is never
+  taller than the window below the top strip: the heading, Clear plan and
+  Review stay in view and only the list of mods scrolls. The newest pick is at
+  the top, and a new pick scrolls the list back to it. Mod tools and the "Match
+  mods to the save" card moved to the main column, so nothing passes under the
+  sticking card. While keyboard focus is on a card under the Plan, the Plan stops
+  sticking so the focused control is never hidden (WCAG 2.4.11).
+- **A shared dependency is listed once (#761 item 2, SPEC 9.2; #767).** The
+  plan panel shows it under the topmost pick that needs it, and both the panel
+  and the review page name every mod that needs it. The review reason has its
+  own message for several needing mods, in all eight languages.
+- **The Server page's snapshot card updates live (#761 item 5, SPEC 6.4 and
+  16.3; #767).** The card is a live region. The event stream reads the list when
+  it opens, when an operation ends and when an action stores its result, so a
+  snapshot a mod install has just taken shows with no reload.
+- **The update page's dropdown shows the target (#761 item 4, SPEC 10.7;
+  #764).** The server marks the target selected once the list loads. A target not
+  in the list leaves "Choose a version" chosen, and the typed box keeps it.
+- **Generate no longer restores stale fields on Back (#761 items 3 and 6, SPEC
+  5.6; #770).** The Generate form turns off the browser's form restore, so a
+  page reached by Back shows the server's whole, consistent form. The first
+  Generate world then makes the map shown (the Ribbon world refusal was
+  Foreman's own refill message, caused by a restored preset beside a stale hidden
+  field; the real 2.1.24 game makes that world without complaint). A page restored
+  from the back-forward cache redraws its "[modified]" mark, warnings and
+  preview.
+- **A newer preview draw cancels a running Preview map (#761 item 7, DESIGN 8.8;
+  #770).** Its older reply can no longer put in its own seed, and a Preview map
+  reply that lands under the open large view shows there.
+- **A mod's non-recoverable error is named (#760, SPEC 8.7; #766).** The game's
+  line "The mod X (version) caused a non-recoverable error" is recognised as the
+  `mod-error` reason, and the crash warning says the mod and version without the
+  stray quote it had before. Two real 2.1.24 captures are in
+  `internal/game/testdata/2.1.24/`.
+- **The epic-run skill tests only what a task touched (#782).** CI runs the
+  full suite on each push to an epic branch and on the epic pull request.
+
+Verified: VERIFIED-PLACEHOLDER
+
+### Gaps left
+
+- **#760 was not reproduced.** The "could not tell why" warning did not appear
+  with the real mod on a real 2.1.24 game, on a normal start, on a Foreman
+  restart in the middle of a crash loop, or after the loop stopped. The batch adds
+  recognition and clean wording of "The mod X (version) caused a non-recoverable
+  error". What could not be tested is the deployment that took the screenshots
+  (the mod installed from the portal through the web UI, on its build at the time).
+- **#761 item 3's cause is inferred, not reproduced.** The likely cause is the
+  browser restoring the visible fields on Back but not the hidden preset fields.
+  No cause was found on a fresh visit.
+- **#761 item 7 was fixed from the mechanism and never seen live.** An end-to-end
+  test that delays the first reply pins it.
+- **The crash wording "A mod failed to load." is slightly off for a mod that fails
+  while the game runs.** #785 suggests "A mod stopped the game." in all eight
+  languages.
+- **The Server page's snapshot card does not follow a snapshot taken or deleted on
+  the Snapshots page in another tab.** That page runs inline, with no task, so no
+  live event fires (#784).
+- **With a long plan, a pointer user cannot see Mod tools on a wide screen**,
+  because they scroll under the sticking Plan card. Keyboard users now reach them.
+  This was so before the batch.
+- **The worlds screenshots in the README still show the old layout.**
+  `docs/screenshots/worlds.webp` and `worlds-light.webp` were not retaken: the
+  docs pass made them on a throwaway stack with real worlds that no longer
+  exists, and no script for it was kept.
