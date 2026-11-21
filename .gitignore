@@ -15,6 +15,7 @@
 
 # Screenshots taken by agents
 screenshots/
+!/docs/screenshots/
 
 # Your own make settings (DEPLOY_DIR)
 /local.mk
