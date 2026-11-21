@@ -364,7 +364,7 @@ Rejected:
 
 ## 14. Left out on purpose
 
-- No public REST API. The spec needs only the UI and MCP.
+- No JSON API for the pages. The only one is the token API (SPEC 23, section 8).
 - No ORM, CSS framework or state-management library.
 - No release tooling (such as GoReleaser) until Epic 11.
 - Nothing for running several worlds at once, beyond the schema leaving
