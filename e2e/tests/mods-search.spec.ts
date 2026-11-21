@@ -60,11 +60,11 @@ test("25 results: a list a page at a time, with Previous, a page box and Next ab
   if (phone(page)) expect(planBox.y).toBeGreaterThan(searchBox.y + searchBox.height);
   else {
     expect(Math.abs(planBox.y - searchBox.y)).toBeLessThan(2);
-    // It stays in view while the list scrolls past.
+    // It stays in view while the list scrolls past, clear of the 56 px top strip (issue 761).
     await page.getByRole("navigation", { name: "Result pages, below the list" }).scrollIntoViewIfNeeded();
     const held = (await panel(page).boundingBox())!;
-    expect(held.y).toBeGreaterThanOrEqual(0);
-    expect(held.y).toBeLessThan(40);
+    expect(held.y).toBeGreaterThanOrEqual(56);
+    expect(held.y).toBeLessThan(96);
   }
   await checkPage(page);
   await shot(page, "mods-search-25");
@@ -140,10 +140,11 @@ test("+ adds a mod in place: Adding…, In plan with −, and the panel's tree",
   await expect(panel(page)).toContainText("No mods in the plan yet.");
 });
 
-// Rulings 2-4: two picks that share a dependency show it under each; an
+// Rulings 2-4, SPEC 9.2: two picks that share a dependency show it once,
+// under the topmost, naming both; the newest pick is listed first; an
 // installed mod that must change shows its update; a dependency that cannot
 // be had shows a warning; Review counts each mod once.
-test("two picks share a dependency: it shows under each, counted once, with an update and a warning", async ({ page }) => {
+test("two picks share a dependency: it shows once naming both, counted once, with an update and a warning", async ({ page }) => {
   await page.goto("/worlds/base/mods");
   const box = page.getByLabel("Mod name");
   for (const n of ["fp-rails", "fp-trains"]) {
@@ -157,27 +158,31 @@ test("two picks share a dependency: it shows under each, counted once, with an u
     const bar = (await plan.boundingBox())!;
     expect(Math.round(bar.y + bar.height)).toBeLessThanOrEqual(page.viewportSize()!.height + 1);
     await expect(plan.locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
-    await expect(plan.locator(".plan-panel__names")).toHaveText("fp-rails, fp-trains");
+    await expect(plan.locator(".plan-panel__names")).toHaveText("fp-trains, fp-rails");
     await expect(plan.getByRole("link", { name: "Review and install 4 mods" })).toBeVisible();
     await checkPage(page);
     await shot(page, "mods-plan-bar");
     await plan.locator("#plan-list > summary").click();
   }
+  // fp-trains, picked last, is listed first, with the shared fp-core under it.
   const picks = plan.locator(".plan-tree__pick");
   await expect(picks).toHaveCount(2);
-  await expect(picks.nth(0)).toContainText("fp-core");
-  await expect(picks.nth(0)).toContainText("Will update to 1.1.0");
-  await expect(picks.nth(1)).toContainText("fp-core");
-  await expect(picks.nth(1).locator(".plan-tree__why").first()).toHaveText("Needed by fp-trains");
-  await expect(picks.nth(1).locator(".plan-tree__warn")).toHaveText("Warning: Not on the mod portal");
+  const trains = picks.nth(0);
+  const rails = picks.nth(1);
+  await expect(trains).toContainText("fp-core");
+  await expect(trains.locator(".plan-tree__why").first()).toHaveText("Needed by fp-trains and fp-rails");
+  await expect(trains.locator(".plan-tree__warn")).toHaveText("Warning: Not on the mod portal");
+  await expect(rails).not.toContainText("fp-core");
+  await expect(rails).toContainText("Will update to 1.1.0");
+  await expect(rails.locator(".plan-tree__why").first()).toHaveText("Needed by fp-rails");
   // Each name links to its portal page in a new tab, apart from the cross; a
   // mod the portal lacks is not linked (ruling on #623).
-  const rails = picks.nth(0).getByRole("link", { name: "fp-rails on the mod portal, opens in a new tab" });
-  await expect(rails).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-rails");
-  await expect(rails).toHaveAttribute("target", "_blank");
-  await expect(picks.nth(0).getByRole("link", { name: "fp-core on the mod portal, opens in a new tab" }).first()).toBeVisible();
-  await expect(picks.nth(1).getByRole("link", { name: /^fp-gone/ })).toHaveCount(0);
-  await expect(picks.nth(0).getByRole("button", { name: "Remove fp-rails from the plan" })).toBeVisible();
+  const railsLink = rails.getByRole("link", { name: "fp-rails on the mod portal, opens in a new tab" });
+  await expect(railsLink).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-rails");
+  await expect(railsLink).toHaveAttribute("target", "_blank");
+  await expect(trains.getByRole("link", { name: "fp-core on the mod portal, opens in a new tab" }).first()).toBeVisible();
+  await expect(trains.getByRole("link", { name: /^fp-gone/ })).toHaveCount(0);
+  await expect(rails.getByRole("button", { name: "Remove fp-rails from the plan" })).toBeVisible();
   // fp-rails, fp-trains, fp-core and fp-lib; fp-gone cannot be had.
   await expect(plan.getByRole("link", { name: "Review and install 4 mods" })).toBeVisible();
   await expect(plan).toContainText(/Started /);
@@ -194,6 +199,8 @@ test("two picks share a dependency: it shows under each, counted once, with an u
   // The link names no mods: the review reads the saved picks (SPEC 17).
   await expect(page).toHaveURL(/\/mods\/plan\?kind=install$/);
   await expect(page.locator("#mod-plan")).toContainText("fp-trains");
+  // The review page names both too, on the shared dependency's one row.
+  await expect(page.locator("#mod-plan")).toContainText("fp-rails and fp-trains need it");
 });
 
 // Ruling 5: the cross takes a pick out with the dependencies nothing else

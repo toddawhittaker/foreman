@@ -117,7 +117,11 @@
       var full = document.createElement("span");
       full.className = "time-full";
       full.append.apply(full, el.childNodes);
-      full.append(age);
+      // The space before the age sits outside its span, so a style sheet
+      // can keep the age on one line and still break before it.
+      age.textContent = "(" + relative(date) + ")";
+      ages[ages.length - 1].bare = true;
+      full.append(" ", age);
       var short = document.createElement("span");
       short.className = "time-short";
       short.textContent = relative(date);
@@ -133,7 +137,7 @@
       return a.el.isConnected;
     });
     ages.forEach(function (a) {
-      a.el.textContent = a.plain ? relative(a.date) : " (" + relative(a.date) + ")";
+      a.el.textContent = a.plain ? relative(a.date) : (a.bare ? "(" : " (") + relative(a.date) + ")";
     });
   }
 

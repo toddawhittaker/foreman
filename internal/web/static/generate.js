@@ -521,10 +521,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("submit", (e) => {
     if (e.target === formEl() && !e.defaultPrevented) submitting = true;
   });
-  // A page restored from the back-forward cache did not leave after all.
-  window.addEventListener("pageshow", () => {
+  // A page restored from the back-forward cache did not leave after all. Its
+  // marks are drawn again from its fields, so the two cannot disagree.
+  window.addEventListener("pageshow", (e) => {
     submitting = false;
     leaving = false;
+    if (!e.persisted) return;
+    syncAll();
+    blockedBefore = refresh();
   });
 
   // Leaving by a link or a form of the page (the menu, the language, sign out,

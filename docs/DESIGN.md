@@ -1653,11 +1653,12 @@ on its background instead of one long list.
   (`container-type: inline-size`), so what is inside lays itself out from
   the card's width, not the window's. The headings that CSS names by id
   carry a small line icon in `text-muted` before their words (7.9).
-- **Side by side.** A `.split` is a main column and a rail: the Mods tab
-  puts "Find a mod" and "Installed mods" in the main column and the rarer
-  tools (match to the save, upload, mod settings) in a 22.5rem rail from
-  64rem; narrower, the tools fold under one "Mod tools" disclosure under
-  the search (8.11). The Saves tab puts the list in the main column and
+- **Side by side.** A `.split` is a main column and a rail: from 64rem
+  the Mods tab puts "Plan" alone in a 22.5rem rail, and "Find a mod", the
+  results, "Match mods to the save", "Installed mods" and the rarer tools
+  (upload, mod settings) in the main column, in that order; narrower,
+  the plan follows the results and the tools fold under one "Mod tools"
+  disclosure after "Installed mods" (8.11). The Saves tab puts the list in the main column and
   Upload a save in the rail (8.3); the Users page puts the list beside
   Your password (8.15). Other two-column places: the world Overview (map
   exchange string and Make a favorite side by side from 64rem, 8.2), the
@@ -3009,17 +3010,20 @@ written with.
 
 **The Mods tab.** One `h1`, the world's name with the Active badge, and the
 game's state badge beside it (7.5), then sections in the order below, each
-a `section.panel` (a card, 7.8). The three rarer tools ("Match mods to the
-save", "Upload a mod", "Mod settings") sit inside one `details.disclosure`,
-"Mod tools", so each tool appears once on the page. Below 64rem that
-disclosure is a closed 44 px row after "Plan", with the tools' full
-cards inside, and "Installed mods" follows it. From 64rem `subnav.js`
-opens it and hides its summary (`data-open-wide`), and the cards are a
-22.5rem rail under "Plan", beside the rest. A refused upload
-opens it, so the error summary's link reaches the field. In the rail the
-tools' buttons (Match mods to the save, Edit mod settings, Upload a mod
-zip) are as wide as their words, not the rail's width, so they do not
-compete with the rows' own Update buttons; they are 40 px tall under a
+a `section.panel` (a card, 7.8). The markup order is the order seen at
+every width, so focus follows what is seen (WCAG 1.3.2, 2.4.3): "Plan",
+then "Match mods to the save", where a save mismatch is seen before the
+list it would change, then "Installed mods", then the two rarer tools
+("Upload a mod", "Mod settings") inside one `details.disclosure`, "Mod
+tools", so each tool appears once on the page. Below 64rem that
+disclosure is a closed 44 px row after "Installed mods", with the tools'
+full cards inside. From 64rem `subnav.js` opens it and hides its summary
+(`data-open-wide`); "Plan" is alone in a 22.5rem rail beside the rest, so
+nothing passes under it while it sticks, and every other card is in the
+main column. A refused upload opens the disclosure, so the error summary's
+link reaches the field. From 64rem the tools' buttons (Edit mod settings,
+Upload a mod zip) are as wide as their words, not the column's width, so
+they do not compete with the rows' own Update buttons; they are 40 px tall under a
 fine pointer and 44 px on touch. The sections, in order:
 
 - A Note when Foreman has no factorio.com account: "Mod downloads are off
@@ -3027,6 +3031,13 @@ fine pointer and 44 px on touch. The sections, in order:
   back to this tab.
 - "Find a mod": one `role="search"` form, a field and Search, then
   "Mods matching" and "Plan" as described under Search below.
+- "Match mods to the save": the tab reads the save that loads (SPEC 9.9)
+  and says "The mods match the save base.zip." with no button, or "The mods
+  differ from the save base.zip:" with a list of counts (not installed,
+  disabled here, at another version, enabled and not in the save) and a
+  secondary button to the sync plan. A save Foreman cannot read keeps the
+  general sentence and the button; a world with no save says so and links
+  to upload one.
 - "Installed mods". A status block (`role="status"`, so a late answer is
   announced) loads after the page ("Checking the mod portal for updates…"),
   then shows one quiet line of counts in `text`, each led by its shape and
@@ -3085,13 +3096,6 @@ fine pointer and 44 px on touch. The sections, in order:
   and the visible action takes a line of its own under the name and
   notes, so a name never breaks letter by letter (17.12: the table roles
   stay).
-- "Match mods to the save": the tab reads the save that loads (SPEC 9.9)
-  and says "The mods match the save base.zip." with no button, or "The mods
-  differ from the save base.zip:" with a list of counts (not installed,
-  disabled here, at another version, enabled and not in the save) and a
-  secondary button to the sync plan. A save Foreman cannot read keeps the
-  general sentence and the button; a world with no save says so and links
-  to upload one.
 - "Upload a mod": one line, then a closed `details.disclosure` "Upload a
   mod zip" holding a drop zone (7.10) and the upload button, which goes to
   the plan page. A refused file opens it.
@@ -3113,9 +3117,12 @@ change", which goes to the restore confirmation (7.4).
 **Search and the plan panel** (SPEC 9.1, 9.2, 9.14). The Mods tab and the
 search page (`/worlds/{id}/mods/search?q=`, the same results without
 script) show three things in this order: "Find a mod", "Mods matching" and
-"Plan". On a wide screen (64rem and up) "Plan" heads the rail, above Mod
-tools, beside the other two, and holds to the top of the screen
-(`position: sticky`) while the results scroll past it. On a phone it
+"Plan". On a wide screen (64rem and up) "Plan" is alone in the rail,
+beside the other two, and holds to the top of the screen
+(`position: sticky`) while the results scroll past it. It is never taller
+than the window below the top strip: the heading and Review stay in view
+and only the list of mods scrolls, the newest pick at its top. In a window
+under 30rem tall it does not stick. On a phone it
 follows the results; once it has a mod it holds to the bottom of the
 screen as a bar with the count ("2 mods in the plan"), the names cut to
 one line, and "Review and install N mods". The bar's line is a `details`
@@ -3160,7 +3167,9 @@ bar keeps its frame while the other cards lie flat.
 - "Plan" lists each pick with a quiet cross ("Remove *mod* from the
   plan"), its version, and under it, indented on a rule, each required
   dependency that changes, labelled "Needed by *mod*", nested as deep as
-  it goes. A dependency two picks share shows under each. Built-in mods
+  it goes. A dependency two picks share shows once, under the topmost pick that
+  needs it, its label naming every mod that needs it ("Needed by Beta and
+  Alpha"); the newest pick is at the top. Built-in mods
   and installed mods that already fit are left out; an installed one that
   must change says "Will update to *x.y.z*" ("Will change to" for an older
   one, "Will be enabled" for one that is off). A dependency that cannot be

@@ -252,6 +252,7 @@
   "mods.plan.row.uploaded": "{version}, aus der hochgeladenen Zip-Datei",
   "mods.plan.item.why": "{item} ({why})",
   "mods.plan.why.required_by": "{mod} braucht sie",
+  "mods.plan.why.required_by_several": "{mods} brauchen sie",
   "mods.plan.why.optional_of": "von {mod} angeboten",
   "mods.plan.why.recommended_by": "von {mod} empfohlen",
   "mods.plan.why.from_save": "der Speicherstand nutzt sie",

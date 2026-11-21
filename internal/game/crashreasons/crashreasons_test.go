@@ -117,6 +117,29 @@ func TestOtherRealLogsAreUnknown(t *testing.T) {
 	}
 }
 
+// A mod that raises an error while the game runs is a mod error too: the
+// real 2.1.24 game prints "The mod X (version) caused a non-recoverable
+// error", which the load-time pattern did not match (SPEC 8.7).
+func TestModRuntimeErrorIsNamed(t *testing.T) {
+	for _, fx := range []string{"2.1.24/run-mod-runtime-error.log", "2.1.24/run-mod-runtime-error-ingame.log", "2.1.24/run-mod-real-on-init-error.log"} {
+		if got := logReason(readLines(t, fx)); got != ModError {
+			t.Errorf("%s: named %q, want %q", fx, got, ModError)
+		}
+	}
+	for _, line := range []string{
+		`   1.357 Error MainLoop.cpp:1505: Exception at tick 0: The mod Even Distribution (2.1.0) caused a non-recoverable error.`,
+		`   1.268 Error ServerMultiplayerManager.cpp:85: MultiplayerManager failed: "The mod Even Distribution (2.1.0) caused a non-recoverable error.`,
+	} {
+		if got := Line(line); got != ModError {
+			t.Errorf("%q named %q", line, got)
+		}
+	}
+	// The mod's Lua error text on a later line is not a reason by itself.
+	if got := Line("Error while running event even-distribution::on_nth_tick(60)"); got != "" {
+		t.Errorf("a stack line was named %q", got)
+	}
+}
+
 func TestNoMatchIsUnknown(t *testing.T) {
 	if got := logReason([]string{"", "   1.000 Goodbye", "Error Util.cpp:81: something new"}); got != "" {
 		t.Errorf("got %q, want unknown", got)

@@ -10,12 +10,13 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // liveRegions are the parts of the server page a live update replaces.
 // Each is sent only when it changed, so an update to one never moves focus
 // out of another.
-var liveRegions = []string{"active", "facts", "loads", "schedule", "disk", "players", "control"}
+var liveRegions = []string{"active", "facts", "loads", "schedule", "disk", "players", "control", "snaps"}
 
 // reconnectAfter is how soon a browser reconnects after a stream ends, so
 // a stream that ends by design (proxyStreamLimit) is back before the page
@@ -50,9 +51,23 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	beat := time.NewTicker(heartbeatEvery)
 	defer beat.Stop()
 	st, changed := view.Status, true
+	// The snapshot card is read when the stream opens and again when an
+	// operation ends or an action stores its result, as either may follow
+	// a snapshot (SPEC 6.1).
+	var snaps []world.Snapshot
+	snapsFailed, reread, snapsOp := false, true, uint64(0)
 	for {
 		if changed {
-			if err := out.send(s.serverPage(r.Context(), sum, st)); err != nil {
+			if o := st.Operation; o != nil && o.Done && o.ID != snapsOp {
+				reread, snapsOp = true, o.ID
+			}
+			if reread {
+				snaps, snapsFailed = s.recentSnapshots(sum.ID)
+				reread = false
+			}
+			p := s.serverPage(r.Context(), sum, st)
+			p.RecentSnapshots, p.RecentFailed = snaps, snapsFailed
+			if err := out.send(p); err != nil {
 				return
 			}
 		}
@@ -80,7 +95,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 				return
 			}
 		case <-results:
-			results = s.runs.watch()
+			results, reread = s.runs.watch(), true
 			st = s.game.Status(sum.ID)
 		case <-scheduled:
 			// The schedule's wait, countdown, skip or next time changed

@@ -265,3 +265,22 @@ test.describe("with Docker unreachable", () => {
     await checkPage(page);
   });
 });
+
+// SPEC 6.1, 16.3: a snapshot taken while the Server page is open shows in
+// its snapshot card when the operation ends, with no reload.
+test.describe("with the fake game, a snapshot meanwhile", () => {
+  test.use({ fakeGameOn: true });
+  test("the snapshot card shows a snapshot taken while the page is open", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    const card = page.locator(".recent-snaps");
+    await expect(card).toContainText("No snapshots yet");
+    const other = await page.context().newPage();
+    await other.goto("/");
+    await other.getByRole("button", { name: "Take snapshot" }).click();
+    await expect(done(other)).toBeVisible(live);
+    await expect(card.locator(".recent-snaps__list > li")).toHaveCount(1, live);
+    await expect(card).not.toContainText("No snapshots yet");
+    await checkPage(page);
+    await other.close();
+  });
+});
