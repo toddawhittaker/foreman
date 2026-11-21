@@ -12,7 +12,9 @@
 #   After you restart or recreate it, restart the game from Foreman.
 services:
   foreman:
-    image: foreman:dev
+    # The newest release (docs/OPERATOR.md, section 2), or foreman:dev if
+    # you built the image yourself.
+    image: ghcr.io/toddawhittaker/foreman:1.0.0
     restart: unless-stopped
     environment:
       FOREMAN_DATA_DIR: /data
