@@ -270,7 +270,7 @@ func (s *server) redirectToSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 	// The browser follows a 303 inside an htmx request and hands htmx the page
 	// to swap into a fragment; HX-Redirect makes htmx leave the page instead.
-	if r.Header.Get("HX-Request") != "" {
+	if isHTMX(r) {
 		w.Header().Set("HX-Redirect", to)
 		w.WriteHeader(http.StatusOK)
 		return

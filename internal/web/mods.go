@@ -392,7 +392,7 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 	}
 	// Only the activity block polls; once the action ends the page reloads
 	// whole, so the list is current.
-	if r.Header.Get("HX-Request") != "" && !p.Working {
+	if isHTMX(r) && !p.Working {
 		w.Header().Set("HX-Refresh", "true")
 	}
 	if ended {
@@ -857,16 +857,17 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 	if q.Get("full") == "1" {
 		p.Plan.Error = planFull()
 	}
-	// Typed text under 2 characters asks the portal nothing: the results
-	// say what to type (SPEC 9.1).
-	if r.Header.Get("HX-Request") != "" && utf8.RuneCountInString(p.Query) < 2 {
-		p.Query = ""
-		s.page(w, r, http.StatusOK, u.Username, p)
-		return
-	}
-	if p.Query == "" {
+	// A search left empty without script is refused. Other text under 2
+	// characters asks the portal nothing, with or without script: the
+	// results say what to type (SPEC 9.1).
+	if p.Query == "" && !isHTMX(r) {
 		p.QueryError = i18n.M("mods.search.missing")
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	if searchTooShort(p.Query) {
+		p.Query = ""
+		s.page(w, r, http.StatusOK, u.Username, p)
 		return
 	}
 	if searchTooLong(p.Query) {
@@ -920,6 +921,10 @@ func searchTooLong(query string) bool {
 	}
 	return len(query) > maxSearchQuery
 }
+
+// searchTooShort says a search is too short to send to the portal, for the
+// page and the MCP tool alike (SPEC 9.1).
+func searchTooShort(query string) bool { return utf8.RuneCountInString(query) < 2 }
 
 // maxPickName bounds one picked mod name, which the plan saves; the
 // portal's names are far shorter.
@@ -1515,16 +1520,12 @@ func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	token := q.Get(draftField)
-	form := s.countdownForm(r.Context())
-	if c, ok := q["countdown"]; ok {
-		form.Countdown = c[0]
-	}
-	p := s.planPage(r.Context(), sum, f, form)
+	p := s.planPage(r.Context(), sum, f, s.carriedCountdown(r.Context(), q))
 	p.Draft, p.DraftLost = s.drafts.keep(token, u.ID, sum.ID, p.Form), lost
 	p.Generated = q.Get(generatedQuery) != ""
 	// htmx swaps only a 2xx reply, so a redraw that finds a conflict or a
 	// portal failure still answers 200 for the page to show it.
-	if r.Header.Get("HX-Request") != "" {
+	if isHTMX(r) {
 		p.Redraw = true
 		s.page(w, r, http.StatusOK, u.Username, p)
 		return
@@ -1637,7 +1638,7 @@ func (s *server) handlePlanRedraw(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 	token := r.PostForm.Get(draftField)
-	if r.Header.Get("HX-Request") == "" {
+	if !isHTMX(r) {
 		token = s.drafts.keep(token, u.ID, sum.ID, f)
 		var more []string
 		if c := r.PostForm.Get("countdown"); c != "" && len(c) <= maxCountdownField {
@@ -1646,13 +1647,19 @@ func (s *server) handlePlanRedraw(w http.ResponseWriter, r *http.Request, u stor
 		http.Redirect(w, r, draftPath(sum.ID, token, more...), http.StatusSeeOther) //nolint:gosec // a local path under this world's mods pages
 		return
 	}
-	countdown := s.countdownForm(r.Context())
-	if c := r.PostForm.Get("countdown"); c != "" {
-		countdown.Countdown = c
-	}
-	p := s.planPage(r.Context(), sum, f, countdown)
+	p := s.planPage(r.Context(), sum, f, s.carriedCountdown(r.Context(), r.PostForm))
 	p.Draft, p.Redraw = s.drafts.keep(token, u.ID, sum.ID, p.Form), true
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// carriedCountdown is the stop countdown a plan page shows: the one v
+// carries from the page before, or Foreman's default when it carries none.
+func (s *server) carriedCountdown(ctx context.Context, v url.Values) CountdownForm {
+	f := s.countdownForm(ctx)
+	if c := v.Get("countdown"); c != "" {
+		f.Countdown = c
+	}
+	return f
 }
 
 // maxCountdownField bounds the countdown a redraw's address carries; a

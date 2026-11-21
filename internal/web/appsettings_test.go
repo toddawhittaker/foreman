@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -59,6 +60,30 @@ func TestGeneralSettingDefaults(t *testing.T) {
 	}
 	if s.snapshotRetention(ctx) != 100 || s.stopCountdown(ctx) != 0 || s.auditRetentionDays(ctx) != 3650 || s.modUploadLimit(ctx) != 2048<<20 || s.saveUploadLimit(ctx) != 8192<<20 {
 		t.Error("a value at the edge of its range was refused")
+	}
+}
+
+// SPEC 12.9: a change from a stored value that could not be read is audited
+// as from unknown, not from the default the page fell back to.
+func TestSettingChangeFromUnreadableValue(t *testing.T) {
+	hn := newHarness(t, nil)
+	s, ctx := hn.generalServer(), context.Background()
+	by := game.Actor{Username: "alice"}
+	for name, v := range map[string]string{settingUpdateCheck.Name: "maybe", settingSnapshotRetention.Name: "ten"} {
+		if err := hn.store.SetAppSetting(ctx, name, v, "alice", hn.clock.Now()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if changed, err := s.setBoolSetting(ctx, by, settingUpdateCheck, true); err != nil || !changed {
+		t.Fatalf("set the switch: changed %t, %v", changed, err)
+	}
+	if err := s.setIntSetting(ctx, by, settingSnapshotRetention, 5); err != nil {
+		t.Fatal(err)
+	}
+	for action, want := range map[string]string{AuditUpdateCheckSet: "alice  from unknown to on", AuditSnapshotRetentionSet: "alice  from unknown to 5"} {
+		if got := hn.audits(action); len(got) != 1 || got[0] != want {
+			t.Errorf("%s audit %q, want %q", action, got, want)
+		}
 	}
 }
 

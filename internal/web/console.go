@@ -298,7 +298,7 @@ func refill(command string) string {
 // respond answers a console post. A script (htmx) gets the panel alone, and
 // always with 200 so that it swaps a refusal in as it does a reply.
 func (s *server) respond(w http.ResponseWriter, r *http.Request, status int, user string, p ConsolePage) {
-	if r.Header.Get("HX-Request") != "true" {
+	if !isHTMX(r) {
 		s.page(w, r, status, user, p)
 		return
 	}
@@ -342,7 +342,7 @@ func (s *server) handleConsoleSend(w http.ResponseWriter, r *http.Request, u sto
 		reply = game.Mask
 	}
 	s.console.add(sum.ID, consoleEntry{Command: shown, Reply: reply})
-	if r.Header.Get("HX-Request") != "true" {
+	if !isHTMX(r) {
 		// The fragment makes a browser without JavaScript scroll the
 		// history box to the reply.
 		http.Redirect(w, r, PathConsole+"#last-reply", http.StatusSeeOther)

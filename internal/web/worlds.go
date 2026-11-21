@@ -426,7 +426,7 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	// action has ended, it reloads whole, so the version and the rollback
 	// offer are current.
 	// Only the activity block sends htmx requests for this page.
-	if r.Header.Get("HX-Request") != "" && !p.Working {
+	if isHTMX(r) && !p.Working {
 		w.Header().Set("HX-Refresh", "true")
 	}
 	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)

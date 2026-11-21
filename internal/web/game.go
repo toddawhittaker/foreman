@@ -740,7 +740,7 @@ func (s *server) handleDismissResult(w http.ResponseWriter, r *http.Request, u s
 	if at, err := strconv.ParseInt(r.PostFormValue("at"), 10, 64); err == nil {
 		s.runs.dismiss(sum.ID, at)
 	}
-	if r.Header.Get("HX-Request") == "true" {
+	if isHTMX(r) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

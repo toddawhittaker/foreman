@@ -144,7 +144,7 @@ func chatRefusal(err error) i18n.Msg {
 // respondChat answers a chat post. A script (htmx) gets the panel alone, and
 // always with 200 so that it swaps a refusal in as it does a success.
 func (s *server) respondChat(w http.ResponseWriter, r *http.Request, status int, user string, p ChatPage) {
-	if r.Header.Get("HX-Request") != "true" {
+	if !isHTMX(r) {
 		s.page(w, r, status, user, p)
 		return
 	}
@@ -184,7 +184,7 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request, u store.
 		s.respondChat(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	if r.Header.Get("HX-Request") != "true" {
+	if !isHTMX(r) {
 		http.Redirect(w, r, PathChat, http.StatusSeeOther)
 		return
 	}

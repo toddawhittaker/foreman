@@ -340,7 +340,7 @@ func (s *server) handlePlanMods(w http.ResponseWriter, r *http.Request, u store.
 // script an error page, with htmx the panel saying so.
 func (s *server) badPlanName(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary) {
 	msg := i18n.M("mods.plan_panel.bad_name")
-	if r.Header.Get("HX-Request") == "" {
+	if !isHTMX(r) {
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest, Detail: msg})
 		return
 	}
@@ -350,15 +350,7 @@ func (s *server) badPlanName(w http.ResponseWriter, r *http.Request, u store.Use
 		return
 	}
 	panel.Error, panel.Said, panel.Focus = msg, msg, "plan-heading"
-	var b strings.Builder
-	if err := s.render.Fragment(&b, localeOf(r), PlanUpdate{Search: ModSearchPage{World: sum, Plan: panel}}, "plan-update"); err != nil {
-		s.fail(w, r, "render plan-update", err)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(http.StatusBadRequest)
-	_, _ = w.Write([]byte(b.String()))
+	s.fragmentStatus(w, r, http.StatusBadRequest, PlanUpdate{Search: ModSearchPage{World: sum, Plan: panel}}, "plan-update")
 }
 
 func (s *server) handlePlanClear(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -385,7 +377,7 @@ type planChange struct {
 // person was; with htmx it sends the panel and the page's result rows.
 func (s *server) planChanged(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, c planChange) {
 	back := planReturn(sum.ID, r.PostFormValue("return"))
-	if r.Header.Get("HX-Request") == "" {
+	if !isHTMX(r) {
 		loc, _ := url.Parse(back)
 		q := loc.Query()
 		q.Del("full")

@@ -9,15 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const t = (key, args = {}) => strings[key].replace(/\{(\w+)\}/g, (_, name) => args[name]);
 
-  // Reads the change out politely, emptying the region first so a repeated
-  // sentence is still read.
-  function announce(said) {
-    const announcer = document.getElementById("announcer");
-    if (!announcer) return;
-    announcer.textContent = "";
-    setTimeout(() => { announcer.textContent = said; }, 50);
-  }
-
   // Keeps a name field filled with suggestions until the admin types in it,
   // and returns the sentence to read out, or "".
   // suggested is what this script, or the server, last put there.
@@ -43,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     file.addEventListener("change", () => {
       if (file.files.length !== 1) return;
       const said = suggestUploadName(file.files[0].name.replace(/\.zip$/i, ""));
-      if (said) announce(said);
+      if (said) window.foremanLive?.announce(said);
     });
   }
 
@@ -90,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!el) return;
     el.addEventListener(el === typed ? "input" : "change", () => {
       const said = showWarning();
-      if (said) announce(said);
+      if (said) window.foremanLive?.announce(said);
     });
   });
 
@@ -151,7 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       said.push(showWarning());
       const text = said.filter((s) => s).join(" ");
-      if (text) announce(text);
+      if (text) window.foremanLive?.announce(text);
     });
   });
 });

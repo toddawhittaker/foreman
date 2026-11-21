@@ -2,8 +2,10 @@ package game
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -192,5 +194,68 @@ func TestStartDoesNotWaitForDieWithoutEvents(t *testing.T) {
 	r.c.awaitDie(context.Background(), r.c.world(id), cid, time.Now())
 	if time.Since(began) > 100*time.Millisecond {
 		t.Errorf("waited %v with no event stream", time.Since(began))
+	}
+}
+
+// eventsLogFault runs a controller whose every event stream gets status and
+// body, until the watcher has asked twice, and returns the controller's log.
+func eventsLogFault(t *testing.T, status int, body string) string {
+	t.Helper()
+	var logs lockedBuffer
+	r := newRig(t, rigOptions{noRun: true})
+	var asked atomic.Int32
+	r.proxyDocker(rigOptions{logs: &logs}, func(w http.ResponseWriter, req *http.Request, next http.Handler) {
+		if !strings.HasSuffix(req.URL.Path, "/events") {
+			next.ServeHTTP(w, req)
+			return
+		}
+		asked.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	})
+	eventually(t, func() bool { return asked.Load() >= 2 }, "the watcher to ask again")
+	r.stop()
+	return logs.String()
+}
+
+// A stream that cannot open is logged once while the same fault lasts,
+// not at every retry.
+func TestEventStreamThatCannotOpenIsLoggedOnce(t *testing.T) {
+	got := eventsLogFault(t, http.StatusInternalServerError, `{"message":"daemon busy"}`)
+	if n := strings.Count(got, "cannot follow Docker events"); n != 1 {
+		t.Errorf("logged %d times, want once:\n%s", n, got)
+	}
+	if !strings.Contains(got, "daemon busy") {
+		t.Errorf("log %q, want Docker's words", got)
+	}
+}
+
+// A stream that opens and then breaks off is logged once while the same
+// fault lasts, like one that cannot open.
+func TestEventStreamThatBreaksIsLoggedOnce(t *testing.T) {
+	got := eventsLogFault(t, http.StatusOK, `{"Type":"container","Action":`)
+	if n := strings.Count(got, "cannot follow Docker events"); n != 1 {
+		t.Errorf("logged %d times, want once:\n%s", n, got)
+	}
+	if !strings.Contains(got, "broke off") {
+		t.Errorf("log %q, want the break", got)
+	}
+}
+
+// A stream that simply ends, as when a proxy drops an idle connection, or
+// that shutdown cuts, is no fault to log.
+func TestEventStreamThatEndsIsNotLogged(t *testing.T) {
+	var logs lockedBuffer
+	r := newRig(t, rigOptions{noRun: true, logs: &logs})
+	d := r.game.Daemon()
+	d.AllowEvents(true)
+	stop := watch(t, r.c)
+	eventually(t, func() bool { return d.OpenEventStreams() == 1 }, "the event stream to open")
+	d.CutEvents()
+	eventually(t, func() bool { return d.EventStreams() == 2 && d.OpenEventStreams() == 1 }, "the stream to reopen")
+	stop()
+	if got := logs.String(); strings.Contains(got, "cannot follow Docker events") {
+		t.Errorf("an ordinary end was logged:\n%s", got)
 	}
 }

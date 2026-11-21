@@ -115,13 +115,13 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	}
 	cont, err := c.docker.InspectContainer(ctx, cid)
 	if err != nil {
-		return err
+		return c.stopFailedStart(ctx, w, cid, err)
 	}
 	// Before the next monitor look, so a new game's range is refused at once.
 	c.noteGameSubnets(ctx, cont)
 	ep, err := c.gameEndpoint(ctx, cont)
 	if err != nil {
-		return err
+		return c.stopFailedStart(ctx, w, cid, err)
 	}
 	w.mu.Lock()
 	if err := ctx.Err(); err != nil {
@@ -166,6 +166,23 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	}
 	o.done(StepRCON)
 	return nil
+}
+
+// stopFailedStart stops a container Docker started for a start that then
+// failed before Foreman took in the run, so the failure it reports matches
+// what runs (SPEC 7.3). The stop outlives a cancelled start; StopContainer
+// bounds it by its grace. A run this new has nothing to save, so it gets
+// the short crash-loop grace. It returns err, the start's failure.
+func (c *Controller) stopFailedStart(ctx context.Context, w *worldRun, cid string, err error) error {
+	ctx = context.WithoutCancel(ctx)
+	restore := c.markStopping(w)
+	if stopErr := c.docker.StopContainer(ctx, cid, CrashLoopStopGraceSeconds); stopErr != nil && !errors.Is(stopErr, docker.ErrNotModified) && !errors.Is(stopErr, docker.ErrNotFound) {
+		restore()
+		c.log.Warn("could not stop the game after its start failed", "world", w.id, "container", cid, "error", stopErr)
+		return err
+	}
+	c.refresh(ctx, w, cid)
+	return err
 }
 
 // waitInGame waits for the log to say the game is in game, or that it

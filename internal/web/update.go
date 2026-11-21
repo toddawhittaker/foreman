@@ -54,18 +54,6 @@ func (s *server) updateRoutes() {
 	s.mux.HandleFunc("GET "+PathVersions, s.requireUser(s.handleVersions))
 }
 
-// fragment answers with one named template of a page, for htmx.
-func (s *server) fragment(w http.ResponseWriter, r *http.Request, p Page, name string) {
-	var b strings.Builder
-	if err := s.render.Fragment(&b, localeOf(r), p, name); err != nil {
-		s.fail(w, r, "render "+name, err)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	_, _ = w.Write([]byte(b.String()))
-}
-
 func newer(v, than string) bool {
 	return v != "" && (than == "" || world.CompareGameVersions(v, than) > 0)
 }

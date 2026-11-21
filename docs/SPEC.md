@@ -1229,7 +1229,12 @@ active are refused; the admin switches to it instead (7.9). It reports success o
 has reached "InGame" **and** answers over RCON; reaching "InGame" alone is
 not enough, because the RCON port can fail to open after it. If that does
 not happen within a time limit (default 5 minutes), Foreman reports a
-failed start with the reason if it can name one (section 8.7). Before the
+failed start with the reason if it can name one (section 8.7). A start
+that fails after Docker started the container but before Foreman could
+inspect it and find its address stops the container, so the failure it
+reports matches what runs; a start that times out loading or reaching
+RCON leaves the game running and watched, since a large map may still
+finish loading. Before the
 check, a world with no `mods/mod-list.json` gets one that enables `base`
 plus the built-in mods its game version and Space Age flag imply (9.7);
 without it, 2.x would turn Space Age on by itself. The start steps are shown
@@ -1739,7 +1744,9 @@ the path after `/mod/` (nothing is fetched from the link); text that is
 not such a link is an ordinary search. With script the results follow the
 typing, from 2 characters, a short pause after the last key, both on the
 search page and under the Mods tab's "Find a mod" box, which keeps its own
-address; without it the Search button works as before. A link "Browse the
+address; without it the Search button works as before. Text under 2
+characters asks the portal nothing, with or without script and over MCP
+(21.8); a search left empty without script is refused. A link "Browse the
 mod portal" opens the portal's most downloaded list for the game line in a
 new tab. It does this because the portal's own search needs credentials,
 and search must work without them (9.11, ADR 0012).
@@ -2261,7 +2268,9 @@ takes a snapshot first. (P0)
   The pending change is held on the server, in memory, under a random
   token tied to the user and the world, for 15 minutes and at most 8 per
   user, so no setting and no secret sits in a hidden field. One preview
-  saves once.
+  saves once. A confirm refused because the world is read-only (a newer
+  Foreman wrote it, or its settings cannot be read) does not spend the
+  token, so the same preview can be confirmed once that is put right.
 - **One confirmation takes one snapshot and writes one audit entry**, even
   when it changes several files. In order, it takes the world's lock,
   saves a running game (6.10), checks that every file is as it was at the
