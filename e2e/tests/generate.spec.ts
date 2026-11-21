@@ -394,6 +394,47 @@ test.describe("map preview", () => {
   });
 });
 
+// SPEC 5.6: the Generate page reached by Back shows the server's settings
+// whole. A browser that put back some fields from the earlier visit, and not
+// the hidden ones that say which preset filled them, showed an untouched
+// Default as "[modified]" and stopped the first Generate world.
+test.describe("coming back to Generate", () => {
+  test.beforeEach(async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+  });
+
+  test("settings changed on the earlier visit are not put back, so Default stays unmodified after Preview map", async ({ page }) => {
+    await tab(page, "Advanced").click();
+    await page.locator("#ms-pollution-enabled").uncheck();
+    await tab(page, "Enemy").click();
+    await page.locator("#ms-enemy-expansion-enabled").uncheck();
+    await expect(page.locator("#preset-modified")).toHaveText("[modified]");
+    await page.goto("/");
+    await page.goBack();
+    await expect(page.locator("#generate-preset")).toHaveValue("default");
+    await page.getByRole("button", { name: "Preview map" }).click();
+    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+    await expect(page.locator("#ms-pollution-enabled")).toBeChecked();
+    await expect(page.locator("#ms-enemy-expansion-enabled")).toBeChecked();
+    await expect(page.locator("#preset-modified")).toHaveText("");
+    await expect(page.locator("#ach-summary")).toBeHidden();
+  });
+
+  test("a preset chosen on the earlier visit is not put back, so the first Generate world makes the map shown", async ({ page, foreman }) => {
+    await page.locator("#generate-preset").selectOption({ label: "Ribbon world" });
+    await expect(page.locator("#mg-nauvis-iron-ore-size")).not.toHaveValue("100");
+    await page.goto("/");
+    await page.goBack();
+    await page.getByLabel("World name").fill("Again");
+    const shown = await page.locator("#generate-preset").inputValue();
+    await page.getByRole("button", { name: "Generate world" }).click();
+    await expect(page).toHaveURL("/worlds/again?generated=1");
+    // The Default preset is passed as none (SPEC 5.6).
+    expect(worldJSON(foreman.dataDir, "again").new_map.preset || "default").toBe(shown);
+  });
+});
+
 // DESIGN 8.8, SPEC 17.3: the person who pressed Preview map keeps their place,
 // hears what happened, and is never told about errors they have fixed.
 test.describe("the preview keeps focus and says what happened", () => {

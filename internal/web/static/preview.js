@@ -337,6 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function draw(say, change) {
     if (refreshing > 0) return; // the redraw's end asks again, with the settings it brings
     drop();
+    dropAsked();
     waiting = false;
     const n = sent;
     if (nothingToDraw()) {
@@ -521,11 +522,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (say) announce(words(slot.querySelector(".message")));
   }
 
+  // A Preview map still running is older than this change or draw, so it goes
+  // too: its reply would otherwise put in its own pictures and seed over the newer one's.
+  function dropAsked() {
+    if (button().getAttribute("aria-disabled") === "true") htmx.trigger(button(), "htmx:abort");
+  }
+
   function soon() {
     drop();
     waiting = true;
-    // A preview the person asked for is older than this change, so it goes too.
-    if (button().getAttribute("aria-disabled") === "true") htmx.trigger(button(), "htmx:abort");
+    dropAsked();
     timer = setTimeout(() => draw(true, true), pause);
   }
 
