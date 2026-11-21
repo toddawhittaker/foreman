@@ -404,8 +404,8 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 const recentSnapshotCount = 3
 
 // recentSnapshots is the world's newest few snapshots for the Server page,
-// read once per page load, never per live update. failed is true when the
-// read failed, which is logged.
+// read at page load and by the live stream when an operation ends.
+// failed is true when the read failed, which is logged.
 func (s *server) recentSnapshots(id string) (list []world.Snapshot, failed bool) {
 	list, err := s.worlds.Snapshots(id)
 	if err != nil {

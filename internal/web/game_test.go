@@ -595,3 +595,49 @@ func TestServerPageNamesTheOlderSaveThatLoadsNext(t *testing.T) {
 		t.Errorf("the newest chosen again, yet the page names a save:\n%s", body)
 	}
 }
+
+// SPEC 6.1, 16.3: a snapshot taken while the Server page is open, as a mod
+// install takes one before it writes, shows in the page's snapshot card
+// once the operation ends, with no reload.
+func TestSnapshotCardFollowsAnEndedOperation(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	g.waitPage(stopped, "No snapshots yet")
+
+	resp := g.openEvents(id, true)
+	defer func() { _ = resp.Body.Close() }()
+	r := bufio.NewReader(resp.Body)
+	for seen := map[string]bool{}; len(seen) < len(liveRegions); {
+		name, _, err := readEvent(t, r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen[name] = true
+	}
+	// Written after the page read its list, the way an install's snapshot is.
+	if _, err := g.worlds.TakeSnapshot(id, "Taken meanwhile", "alice"); err != nil {
+		t.Fatal(err)
+	}
+	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
+	got := make(chan string, 1)
+	go func() {
+		for {
+			name, data, err := readEvent(t, r)
+			if err != nil {
+				return
+			}
+			if name == "snaps" && strings.Contains(data, "Taken meanwhile") {
+				got <- data
+				return
+			}
+		}
+	}()
+	select {
+	case data := <-got:
+		if strings.Contains(data, "No snapshots yet") {
+			t.Errorf("the card still says there are none:\n%s", data)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the snapshot card never showed the new snapshot")
+	}
+}
