@@ -146,8 +146,8 @@
     <div class="message message--warning" id="scope-admin-warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
     </div>
-    {{- if not .MCPOn}}
-    <p class="hint" id="token-mcp-off">{{t "apitokens.create.mcp_off"}}</p>
+    {{- if not (or .MCPOn .APIOn)}}
+    <p class="hint" id="token-access-off">{{t "apitokens.both_off"}}</p>
     {{- end}}
     <div class="actions">
       <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>

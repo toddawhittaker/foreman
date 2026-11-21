@@ -48,11 +48,14 @@
     <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .Token.ScopeWord}}</dd></div>
     <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Token.Expires}}</dd></div>
   </dl>
-  {{- if not .MCPOn}}
-  <div class="message message--note" id="mcp-off-note">
-    <p><strong>{{t "common.label.note"}}</strong> {{t "apitokens.created.mcp_off"}}</p>
-    {{- if .Admin}}
-    <div class="actions"><a href="{{.BackPath}}#mcp-access">{{t "apitokens.mcp.turn_on"}}</a></div>
+  {{- if not .AccessOn}}
+  <div class="message message--note" id="access-off-note">
+    <p><strong>{{t "common.label.note"}}</strong> {{t "apitokens.both_off"}}</p>
+    {{- if and .Admin (or (not .MCPForced) (not .APIForced))}}
+    <div class="actions">
+      {{- if not .MCPForced}}<a href="{{.BackPath}}#mcp-access">{{t "apitokens.mcp.turn_on"}}</a>{{end}}
+      {{- if not .APIForced}}<a href="{{.BackPath}}#api-access">{{t "apitokens.api.turn_on"}}</a>{{end}}
+    </div>
     {{- end}}
   </div>
   {{- end}}

@@ -452,17 +452,67 @@ func TestAPITokenRenewedMessageOnlyForWorkingToken(t *testing.T) {
 	}
 }
 
-// SPEC 12.10: while MCP access is off, Create a token says the new token
-// will not work until access is turned on; once it is on, the line goes.
-func TestAPITokenCreateSaysMCPIsOff(t *testing.T) {
-	hn := newHarness(t, nil)
-	c := hn.signIn()
-	line := `<p class="hint" id="token-mcp-off">MCP access is off, so this token will not work until you turn it on.</p>`
-	if page := hn.get(PathAPITokens, withCookie(c)).Body.String(); !strings.Contains(page, line) {
-		t.Errorf("MCP off: the create form lacks the note:\n%s", page)
+// SPEC 12.10: a token works while MCP or REST API access is on, so the
+// create form and the created page warn only when both are off, a forced-off
+// one counting as off.
+func TestAPITokenWarnsOnlyWhenBothAccessesAreOff(t *testing.T) {
+	const words = "MCP and REST API access are both off, so this token will not work until an admin turns one on."
+	cases := []struct {
+		name string
+		env  map[string]string
+		mcp  bool
+		api  bool
+		warn bool
+	}{
+		{"both off", nil, false, false, true},
+		{"only MCP on", nil, true, false, false},
+		{"only REST on", nil, false, true, false},
+		{"both on", nil, true, true, false},
+		{"REST on but MCP forced off", map[string]string{"FOREMAN_MCP": "off"}, false, true, false},
+		{"MCP on but REST forced off", map[string]string{"FOREMAN_API": "off"}, true, false, false},
+		{"both forced off", map[string]string{"FOREMAN_MCP": "off", "FOREMAN_API": "off"}, false, false, true},
 	}
-	turnMCPOn(t, hn)
-	if page := hn.get(PathAPITokens, withCookie(c)).Body.String(); strings.Contains(page, `id="token-mcp-off"`) {
-		t.Error("MCP on: the create form still says it is off")
+	for _, k := range cases {
+		t.Run(k.name, func(t *testing.T) {
+			hn := newHarness(t, k.env)
+			c := hn.signIn()
+			ctx := context.Background()
+			if k.mcp {
+				turnMCPOn(t, hn)
+			}
+			if k.api {
+				if err := hn.store.SetAppSetting(ctx, SettingAPI, APIOn, "alice", hn.clock.Now()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			form := hn.get(PathAPITokens, withCookie(c)).Body.String()
+			_, rec := hn.createToken(c, "x", auth.ScopeRead)
+			created := rec.Body.String()
+			for _, p := range []struct{ name, body, id string }{{"create form", form, `id="token-access-off"`}, {"created page", created, `id="access-off-note"`}} {
+				if got := strings.Contains(p.body, p.id); got != k.warn {
+					t.Errorf("%s: warning shown %v, want %v", p.name, got, k.warn)
+				}
+				if got := strings.Contains(p.body, words); got != k.warn {
+					t.Errorf("%s: wording shown %v, want %v", p.name, got, k.warn)
+				}
+			}
+		})
+	}
+}
+
+// The created page's note links an admin to each switch that can be used.
+func TestAPITokenWarningLinksOnlyUsableSwitches(t *testing.T) {
+	hn := newHarness(t, map[string]string{"FOREMAN_API": "off"})
+	c := hn.signIn()
+	_, rec := hn.createToken(c, "x", auth.ScopeRead)
+	body := rec.Body.String()
+	if !strings.Contains(body, `#mcp-access`) || strings.Contains(body, `#api-access`) {
+		t.Errorf("with REST forced off the note should link MCP's switch only:\n%s", body)
+	}
+	hn = newHarness(t, nil)
+	c = hn.signIn()
+	_, rec = hn.createToken(c, "x", auth.ScopeRead)
+	if body := rec.Body.String(); !strings.Contains(body, `#mcp-access`) || !strings.Contains(body, `#api-access`) {
+		t.Errorf("with both off the note should link both switches:\n%s", body)
 	}
 }

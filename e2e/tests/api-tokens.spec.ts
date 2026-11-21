@@ -42,7 +42,7 @@ test("create a token, see the secret once, renew and revoke it", async ({ page, 
   const secret = await create(page, "Claude");
   expect(secret).toMatch(/^fmn_[A-Za-z0-9_-]{43}$/);
   await expect(page.locator("#token-endpoint")).toHaveValue(/\/mcp$/);
-  await expect(page.locator("#mcp-off-note")).toBeVisible();
+  await expect(page.locator("#access-off-note")).toBeVisible();
   await checkPage(page);
 
   await page.getByRole("link", { name: "Back to API tokens" }).click();
@@ -135,6 +135,34 @@ test("the REST API switch is its own control and turns access on and off", async
   const rows = sql(foreman, "SELECT detail FROM audit_log WHERE action = 'api-set' ORDER BY id");
   expect(rows.map((r) => r.detail)).toEqual(["on", "off"]);
   expect(sql(foreman, "SELECT detail FROM audit_log WHERE action = 'mcp-set'")).toEqual([]);
+});
+
+test("the warning that a token will not work shows only while MCP and REST API access are both off", async ({ page }) => {
+  const words = "MCP and REST API access are both off, so this token will not work until an admin turns one on.";
+  await createAdmin(page);
+  await openTokens(page);
+  await expect(page.locator("#token-access-off")).toHaveText(words);
+
+  await page.getByRole("button", { name: "Turn on MCP access" }).click();
+  await expect(page.locator("#mcp-state")).toContainText("MCP access is on.");
+  await expect(page.locator("#token-access-off")).toHaveCount(0);
+  await page.getByRole("button", { name: "Turn off MCP access" }).click();
+  await expect(page.locator("#token-access-off")).toHaveText(words);
+
+  await page.getByRole("button", { name: "Turn on REST API access" }).click();
+  await expect(page.locator("#api-state")).toContainText("REST API access is on.");
+  await expect(page.locator("#token-access-off")).toHaveCount(0);
+  await create(page, "Script");
+  await expect(page.locator("#access-off-note")).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Back to API tokens" }).click();
+  await page.getByRole("button", { name: "Turn off REST API access" }).click();
+  await expect(page.locator("#token-access-off")).toHaveText(words);
+  await create(page, "Second");
+  await expect(page.locator("#access-off-note")).toContainText(words);
+  await expect(page.locator("#access-off-note").getByRole("link", { name: "Turn on MCP access" })).toBeVisible();
+  await expect(page.locator("#access-off-note").getByRole("link", { name: "Turn on REST API access" })).toBeVisible();
+  await checkPage(page);
 });
 
 test("the REST API switch has a visible name and a visible focus ring", async ({ page }) => {

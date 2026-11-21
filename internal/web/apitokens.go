@@ -208,8 +208,13 @@ type APITokenCreatedPage struct {
 	// Endpoint is the MCP address and APIBase the REST API's base address.
 	Endpoint string
 	APIBase  string
-	MCPOn    bool
-	// Admin may turn MCP access on, so the off note links to the switch.
+	// AccessOn is true when MCP or REST API access is on; the note shows
+	// only when both are off, a forced-off one counting as off.
+	AccessOn bool
+	// MCPForced and APIForced hide the note's link to a switch that cannot be used.
+	MCPForced bool
+	APIForced bool
+	// Admin may turn access on, so the off note links to the switches.
 	Admin bool
 }
 
@@ -317,7 +322,8 @@ func (s *server) handleAPITokenCreate(w http.ResponseWriter, r *http.Request, u 
 	// Render sends every signed-in page with no-store; the secret is never
 	// cached or shown again (SPEC 14.19).
 	s.page(w, r, http.StatusOK, u.Username, APITokenCreatedPage{
-		Token: tokenRow(t, u.ID, s.now()), Secret: secret, Endpoint: s.publicAddress(r, PathMCP), APIBase: s.publicAddress(r, path.Dir(PathAPITools)), MCPOn: s.mcpOn(r.Context()), Admin: isAdmin(u),
+		Token: tokenRow(t, u.ID, s.now()), Secret: secret, Endpoint: s.publicAddress(r, PathMCP), APIBase: s.publicAddress(r, path.Dir(PathAPITools)),
+		AccessOn: s.mcpOn(r.Context()) || s.apiOn(r.Context()), MCPForced: s.cfg.MCPForcedOff, APIForced: s.cfg.APIForcedOff, Admin: isAdmin(u),
 	})
 }
 
