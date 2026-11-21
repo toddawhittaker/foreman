@@ -2,6 +2,7 @@ package world
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
@@ -26,6 +27,13 @@ func gameMinor(gameVersion string) string {
 func SupportedGameVersion(gameVersion string) bool {
 	_, ok := mapgen.LineOf(gameVersion)
 	return ok && ValidGameVersion(gameVersion)
+}
+
+// supportedLines spells out the supported game lines for an error text:
+// "1.1, 2.0 or 2.1" for the conjunction "or".
+func supportedLines(conjunction string) string {
+	n := len(mapgen.Lines)
+	return strings.Join(mapgen.Lines[:n-1], ", ") + " " + conjunction + " " + mapgen.Lines[n-1]
 }
 
 // BuiltinMods lists the mods that ship with this game version: base, any

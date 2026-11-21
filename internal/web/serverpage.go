@@ -677,6 +677,15 @@ func (f *Failure) Class() string {
 // was no longer true, so the admin must read it again (SPEC 7.4, 17.5).
 var changedLead = i18n.M("server.precheck.changed")
 
+// resultWorldID is the world the last action was for: a switch's target,
+// else this page's world.
+func (p ServerPage) resultWorldID() string {
+	if p.Result.Action == game.AuditSwitch && p.Result.Target != "" {
+		return p.Result.Target
+	}
+	return p.World.ID
+}
+
 // Failure returns the last action's error, or nil.
 func (p ServerPage) Failure() *Failure {
 	if !p.HaveResult || p.Result.Err == nil || p.cancelled() {
@@ -713,11 +722,7 @@ func (p ServerPage) Failure() *Failure {
 		if pe.Check.CanStartAnyway() {
 			f.Anyway = p.anyway(pe.Check)
 		}
-		id := p.World.ID
-		if switching && p.Result.Target != "" {
-			id = p.Result.Target
-		}
-		f.Fix = precheckFix(pe.Check, id)
+		f.Fix = precheckFix(pe.Check, p.resultWorldID())
 	case errors.Is(err, world.ErrModsChanged):
 		f.Message, f.Next = failureText(err), &Offer{Path: modsPath(p.World.ID), Label: i18n.M("mods.changed.next")}
 	case errors.As(err, &de):
@@ -726,11 +731,7 @@ func (p ServerPage) Failure() *Failure {
 			break
 		}
 		// The version to fix belongs to the world the image is for.
-		id := p.World.ID
-		if p.Result.Action == game.AuditSwitch && p.Result.Target != "" {
-			id = p.Result.Target
-		}
-		f.Message, f.Next = noImageLead(de), &Offer{Path: worldPath(id), Label: i18n.M("server.download.no_image_advice")}
+		f.Message, f.Next = noImageLead(de), &Offer{Path: worldPath(p.resultWorldID()), Label: i18n.M("server.download.no_image_advice")}
 	case errors.Is(err, game.ErrImageMissing):
 		// The download is for this page's world only: a switch whose new
 		// world lacks its image must never offer the old world's.

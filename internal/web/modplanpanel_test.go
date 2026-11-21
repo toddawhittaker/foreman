@@ -212,7 +212,7 @@ func TestPlanPanelLimit(t *testing.T) {
 	}
 }
 
-// SPEC 9.2 (rulings 2-4): each pick shows the dependencies that change under
+// SPEC 9.2: each pick shows the dependencies that change under
 // it, a shared one under each pick, nested as deep as they go; built-in mods
 // and installed ones that fit are left out; an update says its version; a
 // dependency that cannot be had shows a warning. The count is of distinct

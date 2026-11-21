@@ -28,7 +28,7 @@ func TestCancelPendingEndsWithTheRun(t *testing.T) {
 	}
 
 	release := make(chan struct{})
-	g.run("w", true, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, true, func(context.Context) actionResult {
 		<-release
 		return actionResult{Action: game.AuditStop, Err: game.ErrStopCancelled}
 	})
@@ -43,7 +43,7 @@ func TestCancelPendingEndsWithTheRun(t *testing.T) {
 	}
 
 	snapshot := make(chan struct{})
-	g.run("w", true, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, true, func(context.Context) actionResult {
 		<-snapshot
 		return actionResult{Action: actionSnapshot}
 	})

@@ -729,11 +729,7 @@ func (s *server) deleteWorld(ctx context.Context, by game.Actor, sum world.Summa
 		return err
 	}
 	unlock()
-	err = s.store.AddAudit(ctx, store.AuditEntry{
-		Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token,
-		Action: AuditWorldDelete, WorldID: sum.ID, Detail: deleteDetail(sum.Name, final),
-	})
-	if err != nil {
+	if err := s.addAudit(ctx, by, AuditWorldDelete, sum.ID, deleteDetail(sum.Name, final)); err != nil {
 		return fmt.Errorf("record the delete in the audit log: %w", err)
 	}
 	if err := s.worlds.Delete(ctx, sum.ID, typedName, final, by.Username); err != nil {

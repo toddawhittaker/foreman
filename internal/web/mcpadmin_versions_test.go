@@ -112,7 +112,7 @@ func TestMCPVersionRefusals(t *testing.T) {
 	wantDataUnchanged(t, g, "the refusals", tree, audits)
 }
 
-// SPEC 21.8 ruling 2: an update confirmed after the game started is
+// SPEC 21.8: an update confirmed after the game started is
 // refused with a fresh preview and code.
 func TestMCPUpdateMoved(t *testing.T) {
 	g, cs := t5VersionRig(t)

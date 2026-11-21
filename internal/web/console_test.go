@@ -390,3 +390,28 @@ func TestConsoleNeedsSignIn(t *testing.T) {
 		t.Errorf("POST signed out: %d", rep.StatusCode)
 	}
 }
+
+// A reply over the limit is cut at a character's start, never inside one,
+// and the cut is reported; one at or under the limit is left whole.
+func TestCutUTF8(t *testing.T) {
+	cases := []struct {
+		in      string
+		n       int
+		want    string
+		wantCut bool
+	}{
+		{"hello", 5, "hello", false},
+		{"hello", 10, "hello", false},
+		{"hello", 3, "hel", true},
+		{"ab€", 3, "ab", true}, // € is three bytes; cutting at 3 would split it
+		{"ab€", 4, "ab", true},
+		{"ab€", 5, "ab€", false},
+		{"€", 0, "", true},
+	}
+	for _, c := range cases {
+		got, cut := cutUTF8(c.in, c.n)
+		if got != c.want || cut != c.wantCut {
+			t.Errorf("cutUTF8(%q, %d) = %q, %v; want %q, %v", c.in, c.n, got, cut, c.want, c.wantCut)
+		}
+	}
+}

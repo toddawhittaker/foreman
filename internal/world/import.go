@@ -72,7 +72,7 @@ func (f InboxFolder) Importable() bool { return f.Saves > 0 && f.Clash == nil }
 
 // ErrBadGameVersion is returned for a game version that is not an exact
 // release of a supported line (SPEC 10.8), such as 2.0.77.
-var ErrBadGameVersion = errors.New("enter the game version as three numbers from a supported line (1.1, 2.0 or 2.1), such as 2.0.77")
+var ErrBadGameVersion = errors.New("enter the game version as three numbers from a supported line (" + supportedLines("or") + "), such as 2.0.77")
 
 // ErrSpaceAgeOld is returned for Space Age on a game version before 2.0,
 // which has no Space Age.

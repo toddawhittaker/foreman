@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // fakeDaemon answers the three calls this client makes and records every
@@ -241,6 +242,46 @@ func TestUnixSocket(t *testing.T) {
 	}
 	if _, err := c.Version(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A slow answer to GET /version holds up only the call that waits for it:
+// another caller gives up at its own deadline.
+func TestSlowVersionLookupDoesNotHoldOtherCallers(t *testing.T) {
+	reached, release := make(chan struct{}, 2), make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		reached <- struct{}{}
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release) })
+	c, err := New("tcp://" + strings.TrimPrefix(srv.URL, "http://"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	slow, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	firstDone := make(chan struct{})
+	go func() {
+		defer close(firstDone)
+		_, _ = c.APIVersion(slow)
+	}()
+	defer func() { cancel(); <-firstDone }()
+	select {
+	case <-reached:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the first lookup never reached the daemon")
+	}
+	ctx, cancel2 := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel2()
+	start := time.Now()
+	if _, err := c.APIVersion(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("err = %v, want deadline exceeded", err)
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Errorf("the second lookup took %v, past its own deadline", d)
 	}
 }
 

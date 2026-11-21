@@ -129,7 +129,7 @@ func TestMCPChangeGameSettings(t *testing.T) {
 	}
 }
 
-// SPEC 21.8 ruling 2: a confirm call after a settings file moved is refused
+// SPEC 21.8: a confirm call after a settings file moved is refused
 // with a fresh preview and code, and saves nothing.
 func TestMCPChangeGameSettingsMoved(t *testing.T) {
 	g, cs := mcpRig(t, auth.ScopeAdmin, image21)

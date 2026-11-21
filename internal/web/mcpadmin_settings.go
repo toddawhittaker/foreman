@@ -18,7 +18,7 @@ import (
 
 // The game settings tools (SPEC 21.7, 11). They run the Settings tab's
 // code: get_game_settings reads what the form shows, change_game_settings
-// posts the form's fields (never the raw editor, ruling 5) and saves through
+// posts the form's fields (never the raw editor, SPEC 21.8) and saves through
 // the same preview and save, and set_whitelist_switch is the tab's switch.
 
 // addSettingsTools adds the game settings tools (SPEC 21.7).
@@ -245,7 +245,7 @@ func settingsForm(p SettingsPage, in mcpChangeSettingsIn) (url.Values, error) {
 
 // settingsSeen is the state a settings preview showed: the world and its
 // four files' hashes, as moved() compares them, and whether the game runs
-// and keeps the whitelist (SPEC 21.8, ruling 2).
+// and keeps the whitelist (SPEC 21.8).
 func settingsSeen(sw settingsWorld) string {
 	return strings.Join([]string{sw.sum.ID, sw.cfg.Hash, sw.adminCfg.Hash, sw.lists.banCfg.Hash, sw.lists.wlCfg.Hash,
 		strconv.FormatBool(sw.running), strconv.FormatBool(sw.lists.kept)}, "\n")
@@ -329,7 +329,7 @@ func (s *server) mcpChangeGameSettings(ctx context.Context, req *mcp.CallToolReq
 	h := s.settings
 	// A confirm call spends its code before any check, so a refused
 	// confirm cannot be tried again with the same code.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpChangeSettingsOut{}, err
 	}

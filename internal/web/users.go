@@ -214,11 +214,7 @@ func (s *server) handleUserDelete(w http.ResponseWriter, r *http.Request, u stor
 		s.fail(w, r, "list a user's API tokens", err)
 		return
 	}
-	err = s.store.AddAudit(ctx, store.AuditEntry{
-		Time: s.now(), UserID: u.ID, Username: u.Username,
-		Action: AuditUserDelete, Detail: userDeleteDetail(t.Username, len(tokens)),
-	})
-	if err != nil {
+	if err := s.addAudit(ctx, actor(u), AuditUserDelete, "", userDeleteDetail(t.Username, len(tokens))); err != nil {
 		s.fail(w, r, "record a user delete in the audit log", err)
 		return
 	}

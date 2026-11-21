@@ -390,7 +390,7 @@ func TestMCPDeleteWebhookTwoSteps(t *testing.T) {
 	}
 }
 
-// SPEC 21.8, ruling 2: a webhook that changed since the preview is not
+// SPEC 21.8: a webhook that changed since the preview is not
 // deleted; the call returns a fresh preview and code.
 func TestMCPDeleteWebhookMovedState(t *testing.T) {
 	r := newForemanRig(t, keyed)

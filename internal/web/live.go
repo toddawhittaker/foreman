@@ -32,8 +32,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return
 	}
-	if !s.runs.track() {
-		http.Error(w, localeOf(r).T("server.stream.shutting_down"), http.StatusServiceUnavailable)
+	if !s.trackStream(w, r) {
 		return
 	}
 	defer s.runs.wg.Done()
@@ -73,18 +72,12 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 			}
 			// Only the newest status waiting is sent, so a slow send (the
 			// player list asks the game over RCON) never falls behind.
-			for drained := false; !drained; {
-				select {
-				case up, open := <-updates:
-					if !open {
-						return
-					}
-					if up.Kind == game.UpdateStatus {
-						st, changed = up.Status, true
-					}
-				default:
-					drained = true
+			if !drain(updates, func(up game.Update) {
+				if up.Kind == game.UpdateStatus {
+					st, changed = up.Status, true
 				}
+			}) {
+				return
 			}
 		case <-results:
 			results = s.runs.watch()
@@ -94,13 +87,43 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 			// (DESIGN 8.15).
 			scheduled = s.scheduleChanged()
 		case <-beat.C:
-			if !s.stillSignedIn(r, opened) {
-				return
-			}
-			if err := out.comment(); err != nil {
+			if !s.heartbeat(r, opened, out) {
 				return
 			}
 			changed = false
+		}
+	}
+}
+
+// trackStream counts a stream as in flight, so shutdown waits for it to
+// end, or answers 503 once shutdown has begun. A stream it counts must call
+// s.runs.wg.Done when it ends.
+func (s *server) trackStream(w http.ResponseWriter, r *http.Request) bool {
+	if !s.runs.track() {
+		http.Error(w, localeOf(r).T("server.stream.shutting_down"), http.StatusServiceUnavailable)
+		return false
+	}
+	return true
+}
+
+// heartbeat keeps a stream's connection open while its user is still
+// signed in. It is false when the stream must end.
+func (s *server) heartbeat(r *http.Request, opened time.Time, out *liveStream) bool {
+	return s.stillSignedIn(r, opened) && out.comment() == nil
+}
+
+// drain hands take every update already waiting, without blocking, so one
+// event carries them all. It is false when updates has closed.
+func drain(updates <-chan game.Update, take func(game.Update)) bool {
+	for {
+		select {
+		case up, open := <-updates:
+			if !open {
+				return false
+			}
+			take(up)
+		default:
+			return true
 		}
 	}
 }
@@ -268,14 +291,16 @@ const stripEvent = "strip"
 // becomes active, so the browser reconnects to the new one; it also ends
 // when its user is no longer signed in and at shutdown.
 func (s *server) handleStripEvents(w http.ResponseWriter, r *http.Request, _ store.User) {
-	if !s.runs.track() {
-		http.Error(w, localeOf(r).T("server.stream.shutting_down"), http.StatusServiceUnavailable)
+	if !s.trackStream(w, r) {
 		return
 	}
 	defer s.runs.wg.Done()
 	opened := s.now()
 	id, found, err := s.store.ActiveWorld(r.Context())
 	if err != nil {
+		if r.Context().Err() == nil {
+			s.log.Error("find the active world for the strip stream", "method", r.Method, "path", r.URL.Path, "error", err)
+		}
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

@@ -148,14 +148,7 @@ func (s *server) respondChat(w http.ResponseWriter, r *http.Request, status int,
 		s.page(w, r, status, user, p)
 		return
 	}
-	var b strings.Builder
-	if err := s.render.Fragment(&b, localeOf(r), p, "chat-response"); err != nil {
-		s.fail(w, r, "render chat panel", err)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	_, _ = w.Write([]byte(b.String()))
+	s.fragment(w, r, p, "chat-response")
 }
 
 // handleChatSend says one message in the game and records it (SPEC 8.5, 12.9).
@@ -212,8 +205,7 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 	if !ok {
 		return
 	}
-	if !s.runs.track() {
-		http.Error(w, localeOf(r).T("server.stream.shutting_down"), http.StatusServiceUnavailable)
+	if !s.trackStream(w, r) {
 		return
 	}
 	defer s.runs.wg.Done()
@@ -269,25 +261,14 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 			}
 			take(up)
 			// Whatever else is waiting goes in the same event.
-			for drained := false; !drained; {
-				select {
-				case up, open := <-feed.Updates:
-					if !open {
-						return
-					}
-					take(up)
-				default:
-					drained = true
-				}
+			if !drain(feed.Updates, take) {
+				return
 			}
 			if len(batch) > 0 && out.chatLines(batch) != nil {
 				return
 			}
 		case <-beat.C:
-			if !s.stillSignedIn(r, opened) {
-				return
-			}
-			if out.comment() != nil {
+			if !s.heartbeat(r, opened, out) {
 				return
 			}
 		}

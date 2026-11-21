@@ -11,7 +11,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/secret"
@@ -26,22 +25,25 @@ var ErrLogin = errors.New("rcon: the server refused the login")
 // ErrBadCommand is returned for a command that cannot be framed.
 var ErrBadCommand = errors.New("rcon: a command cannot contain a zero byte")
 
-// Client talks to one RCON server. Create it with New or NewChecked. It
-// dials on the first command and keeps the connection until a call fails;
-// the next call then dials again.
+// Client talks to one RCON server. Create it with New or NewChecked; the
+// zero value is not usable. It dials on the first command and keeps the
+// connection until a call fails; the next call then dials again.
 type Client struct {
 	addr     string
 	password secret.Secret
 	check    func(context.Context) error // nil: none
 
-	mu     sync.Mutex // held for a whole command, so only one runs at a time
+	// sem is a one-slot semaphore held for a whole command, so only one
+	// runs at a time. Unlike a mutex, a caller waiting for it can give up
+	// when its context ends.
+	sem    chan struct{}
 	conn   net.Conn
 	lastID int32
 }
 
 // New returns a client for host:port. It does not connect.
 func New(addr string, password secret.Secret) *Client {
-	return &Client{addr: addr, password: password}
+	return &Client{addr: addr, password: password, sem: make(chan struct{}, 1)}
 }
 
 // NewChecked is New with a check run on each new connection after it is
@@ -52,13 +54,15 @@ func New(addr string, password secret.Secret) *Client {
 // client. It narrows, but cannot close, the time between the check and the
 // login in which the server at addr could change.
 func NewChecked(addr string, password secret.Secret, check func(context.Context) error) *Client {
-	return &Client{addr: addr, password: password, check: check}
+	c := New(addr, password)
+	c.check = check
+	return c
 }
 
-// Close drops the connection, if any.
+// Close drops the connection, if any. It waits for a command running now.
 func (c *Client) Close() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.sem <- struct{}{}
+	defer func() { <-c.sem }()
 	return c.drop()
 }
 
@@ -72,19 +76,24 @@ func (c *Client) drop() error {
 }
 
 // Exec runs one command and returns its reply. The context's deadline
-// covers dialling, login and the reply; without one, DefaultTimeout applies.
+// covers waiting for a command already running, dialling, login and the
+// reply; without one, DefaultTimeout applies.
 func (c *Client) Exec(ctx context.Context, command string) (string, error) {
 	if strings.IndexByte(command, 0) >= 0 {
 		return "", ErrBadCommand
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, DefaultTimeout)
 		defer cancel()
 	}
+	select {
+	case c.sem <- struct{}{}:
+	case <-ctx.Done():
+		return "", fmt.Errorf("rcon: %w", ctx.Err())
+	}
+	defer func() { <-c.sem }()
+
 	reply, err := c.exec(ctx, command)
 	if err != nil {
 		// The stream may be out of step; start clean next time.

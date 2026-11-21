@@ -180,7 +180,7 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 	var out PreCheck
 	if !SupportedGameVersion(meta.GameVersion) {
 		out.Problems = append(out.Problems, Problem{Kind: ProblemGameVersion, GameVersion: meta.GameVersion,
-			Text: fmt.Sprintf("The world is set to Factorio %s. Foreman runs only Factorio 1.1, 2.0 and 2.1.", meta.GameVersion)})
+			Text: fmt.Sprintf("The world is set to Factorio %s. Foreman runs only Factorio %s.", meta.GameVersion, supportedLines("and"))})
 		return out, nil
 	}
 	mods, err := readModList(root)
@@ -240,7 +240,7 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 	switch {
 	case errors.As(err, &unsupported):
 		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnsupported, Save: name, SaveVersion: unsupported.Version.String(),
-			Text: fmt.Sprintf("The save %s was made by Factorio %s. Foreman runs only saves from Factorio 1.1, 2.0 and 2.1.", name, unsupported.Version)})
+			Text: fmt.Sprintf("The save %s was made by Factorio %s. Foreman runs only saves from Factorio %s.", name, unsupported.Version, supportedLines("and"))})
 		return finish()
 	case isSaveFormatError(err):
 		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnreadable, StartAnyway: true, Save: name, Detail: err.Error(), Cause: err,

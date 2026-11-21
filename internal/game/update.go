@@ -99,9 +99,8 @@ func (c *Controller) updateLocked(ctx context.Context, o *opRun, by Actor, versi
 		o.skip(StepDownload)
 	}
 
-	err := c.stopLocked(ctx, o, countdown)
-	wasRunning := err == nil
-	if err != nil && !errors.Is(err, ErrNotRunning) {
+	wasRunning, err := c.stopIfRunning(ctx, o, countdown)
+	if err != nil {
 		return err
 	}
 

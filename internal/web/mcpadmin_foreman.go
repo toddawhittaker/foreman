@@ -14,7 +14,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/schedule"
-	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 // The Foreman-wide settings tools (SPEC 21.7): the restart schedule (7.12),
@@ -279,8 +278,7 @@ func (s *server) mcpAddWebhook(ctx context.Context, req *mcp.CallToolRequest, in
 	if in.Lang == "" {
 		lang = i18n.English
 	}
-	st := notify.Setup{Preset: notify.Preset(in.Preset), URL: secret.New(strings.TrimSpace(in.URL)),
-		AppToken: secret.New(strings.TrimSpace(in.AppToken)), UserKey: secret.New(strings.TrimSpace(in.UserKey)), Events: on, Lang: lang}
+	st := newSetup(notify.Preset(in.Preset), in.URL, in.AppToken, in.UserKey, on, lang)
 	hook, p, err := s.addWebhook(ctx, mcpActor(req), st)
 	if err != nil {
 		return nil, mcpWebhookOut{}, s.mcpFail("add the webhook", err)
@@ -291,6 +289,11 @@ func (s *server) mcpAddWebhook(ctx context.Context, req *mcp.CallToolRequest, in
 	return mcpText("Webhook %d was added: %s, %s.", hook.ID, hook.Preset, hook.Host), mcpWebhookOut{Webhook: mcpWebhookOf(hook)}, nil
 }
 
+// errNoWebhookID is the refusal for a webhook id that names no webhook.
+func errNoWebhookID(id int64) error {
+	return fmt.Errorf("no webhook has the id %d; foreman_settings lists them", id)
+}
+
 // mcpWebhookNamed finds the webhook a call names.
 func (s *server) mcpWebhookNamed(ctx context.Context, id int64) (notify.Webhook, error) {
 	if !s.notifier.CanStore() {
@@ -298,7 +301,7 @@ func (s *server) mcpWebhookNamed(ctx context.Context, id int64) (notify.Webhook,
 	}
 	hook, err := s.notifier.Get(ctx, id)
 	if errors.Is(err, notify.ErrNoWebhook) {
-		return notify.Webhook{}, fmt.Errorf("no webhook has the id %d; foreman_settings lists them", id)
+		return notify.Webhook{}, errNoWebhookID(id)
 	}
 	if err != nil {
 		return notify.Webhook{}, s.mcpFail("read the webhook", err)
@@ -311,17 +314,13 @@ func (s *server) mcpChangeWebhook(ctx context.Context, req *mcp.CallToolRequest,
 	if err != nil {
 		return nil, mcpWebhookOut{}, err
 	}
-	on := map[notify.Event]bool{}
-	for _, e := range hook.OnEvents() {
-		on[e] = true
-	}
+	on := hookEvents(hook)
 	if in.Events != nil {
 		if on, err = mcpEvents(in.Events); err != nil {
 			return nil, mcpWebhookOut{}, err
 		}
 	}
-	st := notify.Setup{Preset: hook.Preset, URL: secret.New(strings.TrimSpace(in.URL)),
-		AppToken: secret.New(strings.TrimSpace(in.AppToken)), UserKey: secret.New(strings.TrimSpace(in.UserKey)), Events: on, Lang: hook.Lang}
+	st := newSetup(hook.Preset, in.URL, in.AppToken, in.UserKey, on, hook.Lang)
 	if in.Preset != "" {
 		st.Preset = notify.Preset(in.Preset)
 	}
@@ -330,7 +329,7 @@ func (s *server) mcpChangeWebhook(ctx context.Context, req *mcp.CallToolRequest,
 	}
 	saved, p, err := s.changeWebhook(ctx, mcpActor(req), hook, st)
 	if errors.Is(err, notify.ErrNoWebhook) {
-		return nil, mcpWebhookOut{}, fmt.Errorf("no webhook has the id %d; foreman_settings lists them", in.WebhookID)
+		return nil, mcpWebhookOut{}, errNoWebhookID(in.WebhookID)
 	}
 	if err != nil {
 		return nil, mcpWebhookOut{}, s.mcpFail("save the webhook", err)
@@ -358,7 +357,7 @@ func webhookDeleteWill() []string {
 
 func (s *server) mcpDeleteWebhook(ctx context.Context, req *mcp.CallToolRequest, in mcpDeleteWebhookIn) (*mcp.CallToolResult, mcpDeleteWebhookOut, error) {
 	// A code is spent before any check, so a refused call spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpDeleteWebhookOut{}, err
 	}
@@ -388,7 +387,7 @@ func (s *server) mcpDeleteWebhook(ctx context.Context, req *mcp.CallToolRequest,
 	}
 	if err := s.deleteWebhook(ctx, mcpActor(req), hook); err != nil {
 		if errors.Is(err, notify.ErrNoWebhook) {
-			return nil, mcpDeleteWebhookOut{}, fmt.Errorf("no webhook has the id %d; foreman_settings lists them", in.WebhookID)
+			return nil, mcpDeleteWebhookOut{}, errNoWebhookID(in.WebhookID)
 		}
 		return nil, mcpDeleteWebhookOut{}, s.mcpFail("delete the webhook", err)
 	}
@@ -530,7 +529,7 @@ func generalSeen(v map[string]int, updateCheck bool) string {
 
 func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, in mcpSetSettingsIn) (*mcp.CallToolResult, mcpSetSettingsOut, error) {
 	// A code is spent before any check, so a refused call spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpSetSettingsOut{}, err
 	}

@@ -146,6 +146,12 @@ func TestExchangeStringRefusesBadSaves(t *testing.T) {
 		{"cut before the map settings", editInit(t, good, cut(250)), ErrNoMapSettings},
 		{"cut before the surface", editInit(t, good, cut(100000)), ErrNoMapSettings},
 		{"garbage after the header", editInit(t, good, garbage), ErrFormat},
+		{"one byte", editInit(t, good, cut(1)), ErrTruncated},
+		{"compressed stream cut short", editInit(t, good, func(raw []byte) []byte {
+			c := compressed(raw)
+			return c[:len(c)/2]
+		}), ErrFormat},
+		{"bad compressed header", editInit(t, good, func([]byte) []byte { return []byte{0x78, 0x01, 0xff, 0xff} }), ErrFormat},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

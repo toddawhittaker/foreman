@@ -284,19 +284,45 @@ func TestServerActionsRefuseBadRequests(t *testing.T) {
 	g.wantUntouched(id, "a refused request", base, audits, len(snaps))
 }
 
-// SPEC 12.8, 16.3: both live streams end when their session ends, by
+// liveStreams are the server-sent event streams, each with its path for
+// world id.
+var liveStreams = []struct {
+	name string
+	path func(id string) string
+}{
+	{"events", func(id string) string { return worldPath(id) + "/events" }},
+	{"console", func(id string) string { return consoleSendPath(id) + "/events" }},
+	{"chat", func(id string) string { return chatPath(id, "/events") }},
+	{"strip", func(string) string { return PathStripEvents }},
+}
+
+// SPEC 16.3: once Foreman has begun to shut down, every live stream is
+// refused with 503 and says why, rather than open one shutdown must wait on.
+func TestStreamsRefusedDuringShutdown(t *testing.T) {
+	g := newSecRig(t)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	g.harness.h.(*Handler).Close()
+	for _, stream := range liveStreams {
+		rep := g.do(http.MethodGet, stream.path(id), nil, http.Header{"Cookie": {g.cookie.String()}})
+		if rep.StatusCode != http.StatusServiceUnavailable || !strings.Contains(rep.body, "Foreman is shutting down.") {
+			t.Errorf("%s: %d %q, want 503 saying Foreman is shutting down", stream.name, rep.StatusCode, rep.body)
+		}
+	}
+}
+
+// SPEC 12.8, 16.3: every live stream ends when its session ends, by
 // sign-out or by idle expiry, checked at each heartbeat.
 func TestEventsStreamEndsWithTheSession(t *testing.T) {
 	was := heartbeatEvery
 	heartbeatEvery = 50 * time.Millisecond
 	t.Cleanup(func() { heartbeatEvery = was })
 
-	for _, stream := range []string{"events", "console/events"} {
+	for _, stream := range liveStreams {
 		for _, how := range []string{"sign-out", "expiry"} {
-			t.Run(stream+" "+how, func(t *testing.T) {
+			t.Run(stream.name+" "+how, func(t *testing.T) {
 				g := newSecRig(t)
 				id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
-				_, ended, closeIt := g.collectStream(worldPath(id) + "/" + stream)
+				_, ended, closeIt := g.collectStream(stream.path(id))
 				defer closeIt()
 				time.Sleep(200 * time.Millisecond)
 				select {
@@ -327,11 +353,11 @@ func TestHeartbeatDoesNotKeepTheSessionAlive(t *testing.T) {
 	heartbeatEvery = 20 * time.Millisecond
 	t.Cleanup(func() { heartbeatEvery = was })
 
-	for _, stream := range []string{"events", "console/events"} {
-		t.Run(stream, func(t *testing.T) {
+	for _, stream := range liveStreams {
+		t.Run(stream.name, func(t *testing.T) {
 			g := newSecRig(t)
 			id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
-			_, ended, closeIt := g.collectStream(worldPath(id) + "/" + stream)
+			_, ended, closeIt := g.collectStream(stream.path(id))
 			defer closeIt()
 			// Each step is well inside the idle limit, and a few heartbeats
 			// pass between steps, so a heartbeat that used the session would

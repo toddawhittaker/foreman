@@ -154,3 +154,42 @@ func TestSwitchSavesAGameBackInGameBeforeAnyLook(t *testing.T) {
 		t.Error("the game back in game was stopped without a save")
 	}
 }
+
+// SPEC 8.7: an action's own look at the restart (catchUp) is newer than a
+// monitor look read before it, which may still be reading the crash log.
+// That older look is dropped: it would set the restart count back, end the
+// new run's state, and let the next poll count the crash a second time.
+func TestCatchUpDropsAnOlderMonitorLook(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Catch up race")
+	r.start(id)
+	ctx := context.Background()
+	w := r.c.world(id)
+	stale, ops := lookAt(t, r, w, r.container(id).ID)
+	crashUnseen(t, r, id)
+	r.c.catchUpWorld(ctx, id)
+	type seen struct {
+		crashes, restarts int
+		inGame            bool
+	}
+	look := func() seen {
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		return seen{len(w.crashes), w.seenRestarts, w.run.inGame}
+	}
+	eventually(t, func() bool { return look().inGame }, "the new run to be in game")
+	want := look()
+	if want.crashes != 1 || want.restarts != 1 {
+		t.Fatalf("after the catch-up: %+v, want one crash and one restart seen", want)
+	}
+	if r.c.observe(w, &stale, ops, nil) {
+		t.Error("the older look was taken in")
+	}
+	if got := look(); got != want {
+		t.Errorf("after the older look: %+v, want %+v", got, want)
+	}
+	r.c.tick(ctx)
+	if got := look(); got != want {
+		t.Errorf("after the next poll: %+v, want %+v", got, want)
+	}
+}

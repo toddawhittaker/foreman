@@ -381,16 +381,7 @@ func downloadFailure(de *game.ImageDownloadError, switching bool) i18n.Msg {
 
 // gameRefusal is refusal for server control errors.
 func (s *server) gameRefusal(w http.ResponseWriter, r *http.Request, u store.User, what string, err error) (status int, msg i18n.Msg, ok bool) {
-	status, msg = gameError(err)
-	switch status {
-	case http.StatusNotFound:
-		s.notFound(w, r, u)
-		return 0, i18n.Msg{}, false
-	case http.StatusInternalServerError:
-		s.fail(w, r, what, err)
-		return 0, i18n.Msg{}, false
-	}
-	return status, msg, true
+	return s.refusalBy(gameError, w, r, u, what, err)
 }
 
 // failureText words an action's error; one the admin cannot fix is logged

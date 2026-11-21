@@ -333,7 +333,7 @@ func (c *Controller) lockWorlds(ids ...string) (unlock func(), err error) {
 // is made active.
 func (c *Controller) switchLocked(ctx context.Context, o *opRun, from, to string, by Actor, countdown time.Duration, opts StartOptions, start bool) error {
 	o.w = c.world(from)
-	if err := c.stopLocked(ctx, o, countdown); err != nil && !errors.Is(err, ErrNotRunning) {
+	if _, err := c.stopIfRunning(ctx, o, countdown); err != nil {
 		return err
 	}
 

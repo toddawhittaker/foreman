@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"math"
-	"net/http"
 	"net/url"
 	"slices"
 	"sort"
@@ -273,7 +272,7 @@ type MapGenAllSelect struct {
 }
 
 // MapGenForm is the map-gen part of Generate's form and what a post is read
-// back into. Build one with NewMapGenFormForPreset or ParseMapGenForm. Its
+// back into. Build one with NewMapGenFormForPreset or parseMapGenValues. Its
 // fields fall into the tabs the game's map generator has: Resources and Terrain per
 // planet, Enemy, and Advanced (DESIGN 8.7).
 type MapGenForm struct {
@@ -837,17 +836,12 @@ func allResources(planet string, groups []MapGenGroup) *MapGenAll {
 	return all
 }
 
-// ParseMapGenForm reads the post into the form and the text of
+// parseMapGenValues reads the posted values into the form and the text of
 // map-gen-settings.json. The form always comes back holding what was posted
 // (except a value the form never offers), with errors on its fields; mapGen
 // is nil when problems is not empty. Form fields win over the raw box for
 // every key they cover (DESIGN 8.7). The result has passed
 // gamesettings.Validate for the line (SPEC 11.2).
-func ParseMapGenForm(r *http.Request, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
-	_ = r.ParseForm() // the middleware caps the body; a bad body leaves what parsed, and the fields then fail their own checks
-	return parseMapGenValues(r.PostForm, line, spaceAge)
-}
-
 func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
 	posted := func(name string) (string, bool) {
 		vs, ok := vals[name]

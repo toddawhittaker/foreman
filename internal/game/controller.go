@@ -423,9 +423,10 @@ type worldRun struct {
 	opCancel context.CancelFunc
 	opDone   chan struct{} // nil when no operation is running
 	opRun    *opRun        // the operation running now; nil when none
-	// ops counts each operation's beginning and end, and each stop's last
-	// look at the container, so the monitor can drop a look at Docker taken
-	// before or during one: it would undo what that one did.
+	// ops counts each operation's beginning and end, each stop's last look
+	// at the container, and each look an action takes itself (catchUp), so
+	// the monitor can drop a look at Docker taken before or during one: it
+	// would undo what that one did.
 	ops uint64
 	// countdownCancel ends the stop countdown running now; nil when there
 	// is none. It is set and cleared under mu, so a cancel is either in
@@ -1050,6 +1051,8 @@ func (c *Controller) checkFailed(ctx context.Context, by Actor, action, id, deta
 		return c.refused(ctx, by, action, id, detail, err)
 	}
 	if aerr := c.audit(ctx, by, action, id, detail); aerr != nil {
+		// Only the audit fault is returned, so the check's own is logged.
+		c.log.Error("a check before the action failed, and so did its audit entry", "world", id, "action", action, "error", err)
 		return aerr
 	}
 	return err

@@ -399,8 +399,30 @@ func (s *server) handleWebhookNew(w http.ResponseWriter, r *http.Request, u stor
 	s.page(w, r, http.StatusOK, u.Username, formPage(notify.Discord, defaultEvents(), localeOf(r)))
 }
 
-// postedSetup reads the form. The address is wrapped at once so it can
-// never be printed.
+// newSetup builds a webhook setup from what a form or an MCP call gave. The
+// address and the Pushover keys are trimmed and wrapped at once, here, so
+// they can never be printed.
+func newSetup(preset notify.Preset, url, appToken, userKey string, on map[notify.Event]bool, lang i18n.Locale) notify.Setup {
+	return notify.Setup{
+		Preset:   preset,
+		URL:      secret.New(strings.TrimSpace(url)),
+		AppToken: secret.New(strings.TrimSpace(appToken)),
+		UserKey:  secret.New(strings.TrimSpace(userKey)),
+		Events:   on,
+		Lang:     lang,
+	}
+}
+
+// hookEvents is the set of events hook is on for.
+func hookEvents(hook notify.Webhook) map[notify.Event]bool {
+	on := map[notify.Event]bool{}
+	for _, e := range hook.OnEvents() {
+		on[e] = true
+	}
+	return on
+}
+
+// postedSetup reads the form.
 func postedSetup(r *http.Request) notify.Setup {
 	on := map[notify.Event]bool{}
 	for _, v := range r.PostForm["events"] {
@@ -408,14 +430,8 @@ func postedSetup(r *http.Request) notify.Setup {
 			on[e] = true
 		}
 	}
-	return notify.Setup{
-		Preset:   notify.Preset(r.PostFormValue("preset")),
-		URL:      secret.New(strings.TrimSpace(r.PostFormValue("url"))),
-		AppToken: secret.New(strings.TrimSpace(r.PostFormValue("app_token"))),
-		UserKey:  secret.New(strings.TrimSpace(r.PostFormValue("user_key"))),
-		Events:   on,
-		Lang:     i18n.Locale(r.PostFormValue("lang")),
-	}
+	return newSetup(notify.Preset(r.PostFormValue("preset")), r.PostFormValue("url"), r.PostFormValue("app_token"),
+		r.PostFormValue("user_key"), on, i18n.Locale(r.PostFormValue("lang")))
 }
 
 // checkSetup finds the problems a page can show before anything is stored.
@@ -568,11 +584,7 @@ func (s *server) handleWebhookEditForm(w http.ResponseWriter, r *http.Request, u
 	if !ok {
 		return
 	}
-	on := map[notify.Event]bool{}
-	for _, e := range hook.OnEvents() {
-		on[e] = true
-	}
-	s.page(w, r, http.StatusOK, u.Username, editPage(localeOf(r), formPage(hook.Preset, on, hook.Lang), hook))
+	s.page(w, r, http.StatusOK, u.Username, editPage(localeOf(r), formPage(hook.Preset, hookEvents(hook), hook.Lang), hook))
 }
 
 // changeWebhook checks and stores the new setup of hook, the stored

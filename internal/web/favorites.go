@@ -528,15 +528,10 @@ func mapSettingsValues(version, preset string, file []byte) url.Values {
 	return vals
 }
 
-// favoriteMapFiles writes the world's map files as the favorite's with the
-// form's fields laid over them, so settings the form has no field for are
-// kept (SPEC 5.12). It is false, with the form's error set, when they cannot
-// be made.
-func (s *server) favoriteMapFiles(f *GenerateForm, nw *world.NewWorld, files world.FavoriteFiles, r *http.Request) bool {
-	return s.favoriteMapFilesFrom(f, nw, files, r.PostForm)
-}
-
-// favoriteMapFilesFrom is favoriteMapFiles on the posted values.
+// favoriteMapFilesFrom writes the world's map files as the favorite's with
+// the posted fields laid over them, so settings the form has no field for
+// are kept (SPEC 5.12). It is false, with the form's error set, when they
+// cannot be made.
 func (s *server) favoriteMapFilesFrom(f *GenerateForm, nw *world.NewWorld, files world.FavoriteFiles, form url.Values) bool {
 	if nw.MapGenSettings == nil {
 		mg, ok := buildMapGen(f.MapGen, rawOrEmpty(f.MapGen.Raw.Value))

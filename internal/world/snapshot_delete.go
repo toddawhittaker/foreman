@@ -47,16 +47,7 @@ func (m *Manager) DeleteSnapshot(id, name string, before func(Snapshot) error) e
 	if err := before(Snapshot{Name: name, Manifest: man}); err != nil {
 		return err
 	}
-	// Renamed first, so a crash mid-removal leaves a leftover that startup
-	// clears, not a half snapshot that looks whole.
-	gone := PrefixDeleting + randomSuffix()
-	if err := snaps.Rename(name, gone); err != nil {
-		return err
-	}
-	if err := syncDir(snaps, "."); err != nil {
-		return err
-	}
-	return snaps.RemoveAll(gone)
+	return removeAside(snaps, name, PrefixDeleting+randomSuffix())
 }
 
 // SnapshotUse is one snapshot with the world it belongs to and the bytes

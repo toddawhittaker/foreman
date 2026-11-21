@@ -72,7 +72,7 @@ func (s *server) exampleDelete(notes *exampleNotes) mcp.ToolHandlerFor[exampleDe
 		defer notes.mu.Unlock()
 		// The code is spent first, before any check, so a refused confirm
 		// spends it too.
-		seen, err := s.spendIfCode(req, in, in.ConfirmCode)
+		seen, err := s.spendIfCode(req, in)
 		if err != nil {
 			return nil, exampleDeleteOut{}, err
 		}
@@ -345,7 +345,7 @@ func TestConfirmArgsCanonical(t *testing.T) {
 		t.Fatal(err)
 	}
 	in.ConfirmCode = p.ConfirmCode
-	if seen, err := s.mcpSpend(fakeTokenReq(1), in); err != nil || seen.moved("seen") || !seen.moved("other") {
+	if seen, err := s.spendIfCode(fakeTokenReq(1), in); err != nil || seen.moved("seen") || !seen.moved("other") {
 		t.Errorf("spend: %v", err)
 	}
 }
@@ -366,7 +366,7 @@ func TestConfirmEleventhDropsOldest(t *testing.T) {
 		codes = append(codes, p.ConfirmCode)
 	}
 	spend := func(tok int64, world, code string) error {
-		_, err := s.mcpSpend(fakeTokenReq(tok), confirmArgsIn{mcpConfirmIn: mcpConfirmIn{code}, World: world})
+		_, err := s.spendIfCode(fakeTokenReq(tok), confirmArgsIn{mcpConfirmIn: mcpConfirmIn{code}, World: world})
 		return err
 	}
 	if err := spend(1, "0", codes[0]); !errors.Is(err, errConfirmRefused) {
@@ -433,6 +433,36 @@ func TestMCPDetached(t *testing.T) {
 	}
 	close(release)
 	<-ended
+}
+
+// A failure the caller receives is left to the caller to log; one that
+// ends after the caller stopped waiting is logged, since nothing else
+// reports it.
+func TestMCPDetachedLogsOnlyWhenNobodyWaits(t *testing.T) {
+	logs := &syncBuffer{}
+	s := &server{runs: newGameRuns(), log: slog.New(slog.NewTextHandler(logs, nil))}
+	t.Cleanup(s.runs.close)
+	if done, err := s.mcpDetached(context.Background(), func(context.Context) error { return errors.New("busy") }); !done || err == nil {
+		t.Fatalf("quick work: %v %v", done, err)
+	}
+	if strings.Contains(logs.String(), "detached work failed") {
+		t.Errorf("a failure the caller received was logged too: %s", logs.String())
+	}
+	was := mcpWait
+	mcpWait = 10 * time.Millisecond
+	t.Cleanup(func() { mcpWait = was })
+	release := make(chan struct{})
+	if done, err := s.mcpDetached(context.Background(), func(context.Context) error {
+		<-release
+		return errors.New("late")
+	}); done || err != nil {
+		t.Fatalf("slow work: %v %v", done, err)
+	}
+	close(release)
+	s.runs.close()
+	if !strings.Contains(logs.String(), "detached work failed") || !strings.Contains(logs.String(), "late") {
+		t.Errorf("a failure nobody waited for was not logged: %s", logs.String())
+	}
 }
 
 // Shutdown waits for detached work that is still running.

@@ -19,7 +19,7 @@ func TestDismissForgetsOnlyTheMatchingResult(t *testing.T) {
 	g := newGameRuns()
 	defer g.close()
 	end := func(id string, res actionResult) actionResult {
-		g.run(id, true, func(context.Context) actionResult { return res })
+		g.runOn([]string{id}, true, func(context.Context) actionResult { return res })
 		waitRuns(t, func() bool { return !g.inFlight(id) })
 		got, ok := g.result(id)
 		if !ok {
@@ -74,11 +74,11 @@ func TestDismissLeavesAsidesAndRunningActions(t *testing.T) {
 	g := newGameRuns()
 	defer g.close()
 	first, second := make(chan struct{}), make(chan struct{})
-	g.run("w", true, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, true, func(context.Context) actionResult {
 		<-first
 		return actionResult{Action: game.AuditUpdate}
 	})
-	g.run("w", true, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, true, func(context.Context) actionResult {
 		<-second
 		return actionResult{Action: game.AuditRestart, Err: errors.New("boom")}
 	})

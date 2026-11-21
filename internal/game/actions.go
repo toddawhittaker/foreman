@@ -465,11 +465,18 @@ func (c *Controller) planStop(ctx context.Context, w *worldRun) (stopPlan, error
 // catchUp takes the monitor's look at the world's running container when
 // Docker restarted the game since the last look, as the next poll would:
 // it counts the crash, follows the new run's log and drops the RCON
-// connection to the run that ended (SPEC 8.7, #646). It reports whether it
-// took the look. A look is not taken while an operation runs.
+// connection to the run that ended (SPEC 8.7). It reports whether it took
+// the look. A look is not taken while an operation runs.
 func (c *Controller) catchUp(ctx context.Context, w *worldRun, cont docker.Container) bool {
 	w.mu.Lock()
 	unseen := w.containerID == cont.ID && cont.RestartCount > w.seenRestarts
+	if unseen && w.opDone == nil {
+		// A monitor look read before this one would set the restart count
+		// back and count the crash again, so this look counts as an
+		// operation (see worldRun.ops), as in refresh: the older look is
+		// dropped, whenever it arrives.
+		w.ops++
+	}
 	ops := w.ops
 	w.mu.Unlock()
 	return unseen && c.observe(w, &cont, ops, c.readCrashLog(ctx, w, cont, ops))
@@ -499,6 +506,17 @@ func (c *Controller) answers(ctx context.Context, rc *rcon.Client) bool {
 // skipped, when there is no game to stop. The caller holds the world's lock.
 func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Duration) error {
 	return c.stopWarn(ctx, o, countdown, StopOptions{})
+}
+
+// stopIfRunning is stopLocked for an action that goes on whether or not a
+// game was running: it reports whether one was stopped, and a game already
+// stopped is not an error.
+func (c *Controller) stopIfRunning(ctx context.Context, o *opRun, countdown time.Duration) (wasRunning bool, err error) {
+	err = c.stopLocked(ctx, o, countdown)
+	if errors.Is(err, ErrNotRunning) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // stopWarn is stopLocked that honours opts.WarnEmpty and opts.OnlyRunning.

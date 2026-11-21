@@ -87,7 +87,12 @@ func Commit(root *os.Root, temp, final string) error {
 // rename, fsync the folder. Readers see the old file or the new one, never
 // half of either.
 func WriteFileAtomic(root *os.Root, name string, data []byte) error {
-	f, temp, err := CreateTemp(root, path.Dir(name))
+	return writeFileAtomicWith(root, name, data, FileMode)
+}
+
+// writeFileAtomicWith is WriteFileAtomic with a mode of the caller's choice.
+func writeFileAtomicWith(root *os.Root, name string, data []byte, mode fs.FileMode) error {
+	f, temp, err := createTempMode(root, path.Dir(name), mode)
 	if err != nil {
 		return err
 	}
@@ -132,6 +137,19 @@ func openDirFile(root *os.Root, dir string) (*os.File, error) {
 		return nil, err
 	}
 	return f, nil
+}
+
+// removeAside renames name to gone, flushes the folder and removes it, so a
+// crash mid-removal leaves a leftover that startup clears, never a half
+// removed folder that looks whole. gone is a PrefixDeleting name.
+func removeAside(root *os.Root, name, gone string) error {
+	if err := root.Rename(name, gone); err != nil {
+		return err
+	}
+	if err := syncDir(root, "."); err != nil {
+		return err
+	}
+	return root.RemoveAll(gone)
 }
 
 // syncDir flushes folder dir inside root to disk, so a rename or new file

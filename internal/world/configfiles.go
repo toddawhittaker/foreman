@@ -32,8 +32,8 @@ var ConfigFiles = []string{
 
 // copyMode is the mode for a file copied to name inside a world: files
 // under config/ are readable by the game's group only, since the game
-// password sits in server-settings.json (SPEC 14.8). Everything else is
-// FileMode.
+// password sits in server-settings.json and the RCON password in
+// RCONPasswordFile (SPEC 14.8). Everything else is FileMode.
 func copyMode(name string) fs.FileMode {
 	if strings.HasPrefix(name, ConfigDir+"/") {
 		return rconPasswordMode
@@ -170,22 +170,5 @@ func (m *Manager) SaveSettingsHeld(id string, changes []ConfigChange, by string,
 
 // writeFileAtomicMode is WriteFileAtomic with the mode copyMode gives name.
 func writeFileAtomicMode(root *os.Root, name string, data []byte) error {
-	f, temp, err := createTempMode(root, path.Dir(name), copyMode(name))
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(data)
-	if err == nil {
-		err = f.Sync()
-	}
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = Commit(root, temp, name)
-	}
-	if err != nil {
-		_ = root.Remove(temp)
-	}
-	return err
+	return writeFileAtomicWith(root, name, data, copyMode(name))
 }

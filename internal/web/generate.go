@@ -549,9 +549,9 @@ func (f GenerateForm) tabOf(id string) string {
 // the version or Space Age moved on from what the map settings were made
 // for, or a new preset was chosen without the page filling its values, the
 // settings are filled from the preset and ok is false with no error (Reset,
-// Refilled); the exchange string does not depend on them.
+// Refilled); the exchange string does not depend on them. The caller has
+// already parsed the post with readForm.
 func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, nw world.NewWorld, ok bool) {
-	_ = r.ParseForm() // the middleware caps the body; a bad body leaves what parsed, and the fields then fail their own checks
 	return s.readGenerateValues(r.Context(), r.PostForm, kind)
 }
 

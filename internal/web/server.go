@@ -213,7 +213,7 @@ func NewHandler(d Deps) (*Handler, error) {
 			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal, limit: s.modUploadLimit})
 			d.Game.SetModCheck(s.planner)
 		}
-		s.marks = newPortalMarks(now, s.checkPortalForPublic)
+		s.marks = newPortalMarks(now, s.runs, s.checkPortalForPublic)
 	}
 	s.applyRetention(context.Background())
 	s.routes()

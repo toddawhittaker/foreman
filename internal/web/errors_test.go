@@ -57,6 +57,25 @@ func TestWorldErrorMapsEveryRefusal(t *testing.T) {
 	}
 }
 
+// The clone and generate refusals that a form shows on one of its fields
+// carry that field's words, so the handler can place them (SPEC 5.6, 5.7).
+func TestWorldErrorWordsFieldRefusals(t *testing.T) {
+	for _, tc := range []struct {
+		err    error
+		status int
+		key    string
+	}{
+		{fmt.Errorf("clone: %w", world.ErrCloneNoSave), http.StatusBadRequest, "worlds.clone.error.no_save"},
+		{fmt.Errorf("generate: %w", world.ErrSpaceAgeOld), http.StatusBadRequest, "worlds.error.space_age_old"},
+		{fmt.Errorf("generate: %w", world.ErrBadPreset), http.StatusBadRequest, "worlds.generate.error.preset"},
+	} {
+		status, msg := worldError(tc.err)
+		if status != tc.status || msg.Key != tc.key {
+			t.Errorf("%v: %d %q, want %d %q", tc.err, status, msg.Key, tc.status, tc.key)
+		}
+	}
+}
+
 // A refusal reads in every language, with its figures filled in.
 func TestWorldErrorIsTranslated(t *testing.T) {
 	_, msg := worldError(&world.NoSpaceError{Need: 3e9, Reserve: 2e9, Free: 1e9})

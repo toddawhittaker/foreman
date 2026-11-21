@@ -36,7 +36,7 @@ func TestInFlightEndsWithTheResultStored(t *testing.T) {
 		t.Fatal("an action in flight before any ran")
 	}
 	release := make(chan struct{})
-	g.run("w", true, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, true, func(context.Context) actionResult {
 		<-release
 		return actionResult{Action: game.AuditUpdate}
 	})
@@ -56,12 +56,12 @@ func TestStartDuringDownloadIsTheResult(t *testing.T) {
 	g := newGameRuns()
 	defer g.close()
 	release := make(chan struct{})
-	g.run("w", false, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, false, func(context.Context) actionResult {
 		<-release
 		return actionResult{Action: game.AuditImageDownload}
 	})
 	startErr := precheckErr()
-	g.run("w", true, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, true, func(context.Context) actionResult {
 		return actionResult{Action: game.AuditStart, Err: startErr}
 	})
 	waitRuns(t, func() bool { _, ok := g.result("w"); return ok })
@@ -81,11 +81,11 @@ func TestDownloadNeverHidesAnActionsResult(t *testing.T) {
 	g := newGameRuns()
 	defer g.close()
 	release := make(chan struct{})
-	g.run("w", true, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, true, func(context.Context) actionResult {
 		<-release
 		return actionResult{Action: game.AuditStart, Err: game.ErrStartFailed}
 	})
-	g.run("w", false, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, false, func(context.Context) actionResult {
 		return actionResult{Action: game.AuditImageDownload}
 	})
 	waitRuns(t, func() bool { return len(g.others("w")) == 1 })
@@ -96,7 +96,7 @@ func TestDownloadNeverHidesAnActionsResult(t *testing.T) {
 	}
 
 	// Alone, a download's result is the world's result.
-	g.run("w", false, func(context.Context) actionResult {
+	g.runOn([]string{"w"}, false, func(context.Context) actionResult {
 		return actionResult{Action: game.AuditImageDownload}
 	})
 	waitRuns(t, func() bool { res, ok := g.result("w"); return ok && res.Action == game.AuditImageDownload })

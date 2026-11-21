@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -194,26 +195,20 @@ func (s *server) mcpAsk(req *mcp.CallToolRequest, in any, seen string) (mcpPrevi
 	return mcpPreview{ConfirmCode: code, ExpiresAt: mcpTime(expires)}, nil
 }
 
-// mcpSpend spends the code in the arguments and returns the hash of the
-// seen state its preview kept; seen.moved(now) compares it. Any use spends
-// the code; every refusal is errConfirmRefused.
-func (s *server) mcpSpend(req *mcp.CallToolRequest, in any) (confirmSeen, error) {
+// spendIfCode spends the confirm code of a two-step call, when it has one,
+// and returns the hash of the state its preview showed; seen.moved(now)
+// compares it. Every two-step tool calls it first, before any refusal
+// check, so a refused confirm still spends the code. Every refusal is
+// errConfirmRefused.
+func (s *server) spendIfCode(req *mcp.CallToolRequest, in any) (confirmSeen, error) {
 	code, args, err := confirmArgs(in)
-	if err != nil || code == "" {
+	if err != nil {
 		return confirmSeen{}, errConfirmRefused
 	}
-	return s.confirms.spend(code, mcpToken(req).ID, mcpTool(req), args)
-}
-
-// spendIfCode spends the confirm code of a two-step call, when it has one,
-// and returns the hash of the state its preview showed. Every two-step tool
-// calls it first, before any refusal check, so a refused confirm still
-// spends the code.
-func (s *server) spendIfCode(req *mcp.CallToolRequest, in any, code string) (confirmSeen, error) {
 	if code == "" {
 		return confirmSeen{}, nil
 	}
-	return s.mcpSpend(req, in)
+	return s.confirms.spend(code, mcpToken(req).ID, mcpTool(req), args)
 }
 
 // mcpRetryPreview answers a confirm call whose state moved: a fresh preview
@@ -232,29 +227,38 @@ func mcpRetryPreview[O any](preview func() (*mcp.CallToolResult, O, error), form
 // waits up to mcpWait; finished is false when the work is still running.
 // The work goes on if the client leaves, and shutdown waits for it.
 // server_status does not show detached work: its result shows in the audit
-// log and on the pages, and a failure is logged, since the caller may have
-// stopped waiting.
+// log and on the pages. A failure is logged only when the caller stopped
+// waiting; otherwise the caller words it and logs what needs logging.
 func (s *server) mcpDetached(ctx context.Context, do func(ctx context.Context) error) (finished bool, err error) {
 	if !s.runs.track() {
 		return false, errors.New("foreman is shutting down")
 	}
+	// claimed is set by whichever comes first: the work handing its result
+	// to the caller, or the caller giving up on it.
+	var claimed atomic.Bool
 	done := make(chan error, 1)
 	go func() {
 		defer s.runs.wg.Done()
 		err := do(s.runs.ctx)
-		if err != nil {
+		done <- err
+		if !claimed.CompareAndSwap(false, true) && err != nil {
 			s.log.Error("mcp: detached work failed", "error", err)
 		}
-		done <- err
 	}()
 	timer := time.NewTimer(mcpWait)
 	defer timer.Stop()
+	giveUp := func(err error) (bool, error) {
+		if claimed.CompareAndSwap(false, true) {
+			return false, err
+		}
+		return true, <-done
+	}
 	select {
 	case err := <-done:
 		return true, err
 	case <-timer.C:
-		return false, nil
+		return giveUp(nil)
 	case <-ctx.Done():
-		return false, ctx.Err()
+		return giveUp(ctx.Err())
 	}
 }

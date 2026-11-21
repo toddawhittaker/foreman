@@ -286,7 +286,7 @@ func TestWebhookDoneIgnoresOddLinks(t *testing.T) {
 	}
 }
 
-// Todd's ruling: http:// is allowed, and the form says it is unencrypted.
+// SPEC 8.11: http:// is allowed, and the form says it is unencrypted.
 func TestWebhookPlainHTTP(t *testing.T) {
 	nh := newNotifyHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
 	c := nh.signIn()

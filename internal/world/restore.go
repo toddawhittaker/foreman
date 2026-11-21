@@ -199,10 +199,8 @@ func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) 
 		_ = worlds.RemoveAll(staging)
 		return err
 	}
-	if err := syncDir(worlds, "."); err != nil {
-		m.log.Warn("restore: could not sync the worlds folder", "world", id, "error", err)
-	}
-	return m.activateIfNone(ctx, id)
+	m.finishCommitted(ctx, worlds, id)
+	return nil
 }
 
 // checkFiles refuses a snapshot whose files no longer match its manifest,

@@ -55,15 +55,14 @@ const (
 	marksCheckLimit = 2 * time.Minute
 )
 
+// settingPublicMods is the public mods switch for reading only; its
+// writes are audited by their callers rather than through setBoolSetting.
+var settingPublicMods = boolSetting{Name: SettingPublicMods, Default: false}
+
 // publicModsOn reports whether the page is on. A setting that cannot be read
 // counts as off, so a database fault never opens the page.
 func (s *server) publicModsOn(ctx context.Context) bool {
-	v, found, err := s.store.AppSetting(ctx, SettingPublicMods)
-	if err != nil {
-		s.log.Error("read the public mods setting", "error", err)
-		return false
-	}
-	return found && v == PublicModsOn
+	return s.readBool(ctx, settingPublicMods)
 }
 
 // setPublicMods stores the admin's choice and takes effect at once. The caller
@@ -284,6 +283,9 @@ func (s *server) checkPortalForPublic(ctx context.Context, id string) ([]mods.Fl
 type portalMarks struct {
 	now   func() time.Time
 	check func(ctx context.Context, worldID string) ([]mods.Flag, error)
+	// runs is the server's background work: a check runs on its context
+	// and is counted in its wait group, so shutdown ends it and waits for it.
+	runs *gameRuns
 	// wait is how long get waits for a check.
 	wait time.Duration
 
@@ -300,12 +302,13 @@ type marksEntry struct {
 	running chan struct{}
 }
 
-func newPortalMarks(now func() time.Time, check func(context.Context, string) ([]mods.Flag, error)) *portalMarks {
-	return &portalMarks{now: now, check: check, wait: marksWait, byWorld: map[string]*marksEntry{}}
+func newPortalMarks(now func() time.Time, runs *gameRuns, check func(context.Context, string) ([]mods.Flag, error)) *portalMarks {
+	return &portalMarks{now: now, check: check, runs: runs, wait: marksWait, byWorld: map[string]*marksEntry{}}
 }
 
 // get returns the flags for the world's mods as fp names them. ok is false
-// when the check failed or took longer than p.wait.
+// when the check failed or took longer than p.wait, or when shutdown has
+// begun.
 func (p *portalMarks) get(ctx context.Context, id, fp string) (flags []mods.Flag, ok bool) {
 	timeout := time.NewTimer(p.wait)
 	defer timeout.Stop()
@@ -323,6 +326,10 @@ func (p *portalMarks) get(ctx context.Context, id, fp string) (flags []mods.Flag
 		}
 		done := e.running
 		if done == nil {
+			if !p.runs.track() {
+				p.mu.Unlock()
+				return nil, false
+			}
 			done = make(chan struct{})
 			e.running = done
 			go p.run(id, fp, e, done) //nolint:gosec // the check must outlive the visitor who started it
@@ -339,9 +346,11 @@ func (p *portalMarks) get(ctx context.Context, id, fp string) (flags []mods.Flag
 }
 
 // run asks the portal and keeps the answer. It does not end when the visitor
-// who started it leaves, so the next visitor finds the answer.
+// who started it leaves, so the next visitor finds the answer; it ends at
+// shutdown.
 func (p *portalMarks) run(id, fp string, e *marksEntry, done chan struct{}) {
-	ctx, cancel := context.WithTimeout(context.Background(), marksCheckLimit)
+	defer p.runs.wg.Done()
+	ctx, cancel := context.WithTimeout(p.runs.ctx, marksCheckLimit)
 	defer cancel()
 	flags, err := p.check(ctx, id)
 	p.mu.Lock()

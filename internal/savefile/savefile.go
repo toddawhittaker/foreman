@@ -115,23 +115,33 @@ func levelFile(zr *zip.Reader) *zip.File {
 	return dat
 }
 
-// headerBytes returns at most maxHeader bytes of the level data, inflating
-// it first when the game stored it zlib-compressed.
-func headerBytes(rc io.Reader) ([]byte, error) {
+// openLevel returns a reader over the level data, inflating it when the game
+// stored it zlib-compressed, and a function that releases the reader. A file
+// too short to tell is ErrTruncated and a bad zlib header is ErrFormat.
+func openLevel(rc io.Reader) (io.Reader, func(), error) {
 	br := bufio.NewReader(rc)
 	head, err := br.Peek(2)
 	if err != nil {
-		return nil, ErrTruncated
+		return nil, nil, ErrTruncated
 	}
-	var src io.Reader = br
-	if isZlib(head) {
-		zr, err := zlib.NewReader(br)
-		if err != nil {
-			return nil, ErrFormat
-		}
-		defer func() { _ = zr.Close() }()
-		src = zr
+	if !isZlib(head) {
+		return br, func() {}, nil
 	}
+	zr, err := zlib.NewReader(br)
+	if err != nil {
+		return nil, nil, ErrFormat
+	}
+	return zr, func() { _ = zr.Close() }, nil
+}
+
+// headerBytes returns at most maxHeader bytes of the level data, inflating
+// it first when the game stored it zlib-compressed.
+func headerBytes(rc io.Reader) ([]byte, error) {
+	src, done, err := openLevel(rc)
+	if err != nil {
+		return nil, err
+	}
+	defer done()
 	data, err := io.ReadAll(io.LimitReader(src, maxHeader))
 	if err != nil && len(data) == 0 {
 		if errors.Is(err, io.ErrUnexpectedEOF) {

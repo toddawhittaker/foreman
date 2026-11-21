@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -89,5 +90,43 @@ func TestResetPasswordRefusals(t *testing.T) {
 	}
 	if entries, _ := st.ListAudit(ctx, store.AuditFilter{Limit: 10}); len(entries) != 0 {
 		t.Errorf("a refused reset was recorded: %+v", entries)
+	}
+}
+
+// The password change and the end of sessions commit together; when the
+// audit entry then cannot be written, the command still fails, but its error
+// says the password was changed so the admin does not repeat the reset.
+func TestResetPasswordSaysItChangedThePasswordWhenTheAuditWriteFails(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "foreman.db")
+	st, err := store.Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	now := time.Unix(1_700_000_000, 0)
+	hash, _ := auth.Hash("the old passphrase")
+	if _, err := st.CreateUser(ctx, "alice", hash, now); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := db.ExecContext(ctx, "DROP TABLE audit_log"); err != nil {
+		t.Fatal(err)
+	}
+
+	err = resetPassword(ctx, st, "alice", strings.NewReader("a new passphrase\n"), now)
+	if err == nil {
+		t.Fatal("the failed audit write was not reported")
+	}
+	if want := "the password was changed, but the audit entry was not recorded"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not say %q", err, want)
+	}
+	got, _, _ := st.UserByUsername(ctx, "alice")
+	if ok, _, err := auth.Verify("a new passphrase", got.PasswordHash); err != nil || !ok {
+		t.Errorf("the new password does not verify: %v", err)
 	}
 }

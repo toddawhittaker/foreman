@@ -491,7 +491,11 @@ func (s *server) tokenBanner(r *http.Request, user string) []TokenRow {
 	}
 	ctx := r.Context()
 	u, found, err := s.store.UserByUsername(ctx, user)
-	if err != nil || !found {
+	if err != nil {
+		s.log.Warn("read the signed-in user for the token banner", "error", err)
+		return nil
+	}
+	if !found {
 		return nil
 	}
 	ts, err := s.tokens.Expiring(ctx, u.ID)
@@ -529,11 +533,16 @@ func (s *server) ownsLiveToken(ctx context.Context, user, name string) bool {
 		return false
 	}
 	u, found, err := s.store.UserByUsername(ctx, user)
-	if err != nil || !found {
+	if err != nil {
+		s.log.Warn("read the signed-in user to check a renewed token", "error", err)
+		return false
+	}
+	if !found {
 		return false
 	}
 	ts, err := s.tokens.OwnedBy(ctx, u.ID)
 	if err != nil {
+		s.log.Warn("list the signed-in user's API tokens to check a renewed token", "error", err)
 		return false
 	}
 	now := s.now()

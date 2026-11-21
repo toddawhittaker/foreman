@@ -66,6 +66,12 @@ func worldError(err error) (int, i18n.Msg) {
 		return http.StatusBadRequest, msgNoSaves()
 	case errors.Is(err, world.ErrWrongName):
 		return http.StatusBadRequest, i18n.M("worlds.error.wrong_name")
+	case errors.Is(err, world.ErrCloneNoSave):
+		return http.StatusBadRequest, i18n.M("worlds.clone.error.no_save")
+	case errors.Is(err, world.ErrSpaceAgeOld):
+		return http.StatusBadRequest, msgSpaceAgeOld()
+	case errors.Is(err, world.ErrBadPreset):
+		return http.StatusBadRequest, i18n.M("worlds.generate.error.preset")
 	}
 	return http.StatusInternalServerError, i18n.Msg{}
 }
@@ -99,7 +105,12 @@ func damagedMsg(e *world.DamagedError) i18n.Msg {
 // refusal maps err with worldError. When err has no words for the page it
 // answers the request itself, 404 or 500, and returns ok false.
 func (s *server) refusal(w http.ResponseWriter, r *http.Request, u store.User, what string, err error) (status int, msg i18n.Msg, ok bool) {
-	status, msg = worldError(err)
+	return s.refusalBy(worldError, w, r, u, what, err)
+}
+
+// refusalBy is refusal with the mapper that words err.
+func (s *server) refusalBy(words func(error) (int, i18n.Msg), w http.ResponseWriter, r *http.Request, u store.User, what string, err error) (status int, msg i18n.Msg, ok bool) {
+	status, msg = words(err)
 	switch status {
 	case http.StatusNotFound:
 		s.notFound(w, r, u)
