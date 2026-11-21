@@ -40,6 +40,9 @@ const (
 var (
 	// "Error Util.cpp:81: message", after the game's seconds prefix.
 	errorLine = regexp.MustCompile(`^Error [A-Za-z]+\.cpp:\d+: (.*)$`)
+	// The game's sentence for a mod whose error it cannot recover from,
+	// inside the error line that wraps it.
+	modFatalSentence = regexp.MustCompile(`The mod .+ \(.+\) caused a non-recoverable error`)
 	// The game lists a mod it cannot load as a bullet line.
 	modBullet = regexp.MustCompile(`^•\s+(\S+)$`)
 	// The reason under that bullet.
@@ -143,6 +146,11 @@ func (f *loadFailure) addAt(at time.Time, raw string) {
 	}
 	if m := errorLine.FindStringSubmatch(line); m != nil {
 		f.errLine = m[1]
+		// The mod's name and version are the reason; the wrapper around
+		// them (the game's source function, a stray quote) is not.
+		if s := modFatalSentence.FindString(m[1]); s != "" {
+			f.errLine = s
+		}
 	}
 }
 

@@ -259,6 +259,14 @@ Files in each version folder:
 - `run-mod-lua-error.log`, `run-mod-missing-dep.log`, `mod-error-state.txt`:
   a mod whose `data.lua` calls `error(...)`, and a mod depending on a mod
   that is not installed; the state file is `docker inspect` after 20 s.
+- `run-mod-runtime-error.log`, `run-mod-runtime-error-ingame.log`: a mod
+  (title "Even Distribution", 2.1.0, a stub made for the capture) whose
+  `control.lua` raises a Lua error, in an existing save, 2.1.24. The first
+  fails in `on_configuration_changed` while the save loads; the second in
+  `on_nth_tick` after the game is running (auto-pause off), where the game
+  also prints `Error MainLoop.cpp:NN: Exception at tick 0: The mod ...`.
+  Both exit non-zero and print `The mod Even Distribution (2.1.0) caused a
+  non-recoverable error.` inside `MultiplayerManager failed: "..."`.
 - `run-oom.log`, `oom-state.txt`: the start under `--memory 96m
   --memory-swap 96m`.
 
@@ -391,6 +399,17 @@ So Foreman must refuse, not just prefix, a message whose first non-space
 character is `/`.
 
 ### A mod that fails to load
+
+A mod's Lua error that the game cannot recover from is a different line, in
+2.1.24 (the message continues for several lines, with the mod's stack
+trace, inside the quotes):
+
+```
+Error ServerMultiplayerManager.cpp:NN: MultiplayerManager failed: "The mod Even Distribution (2.1.0) caused a non-recoverable error.
+Please report this error to the mod author.
+
+Error while running event even-distribution::on_nth_tick(60)
+```
 
 The game exits 1 before loading the map (all three for the Lua error):
 

@@ -1,0 +1,57 @@
+2026-11-21T17:02:12.179893273Z    0.000 2026-11-21 17:02:12; Factorio 2.1.24 (build 87808, linux64, headless, space-age)
+2026-11-21T17:02:12.179912149Z    0.000 Operating system: Linux
+2026-11-21T17:02:12.179915576Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--server-settings" "/factorio/config/server-settings.json" "--server-banlist" "/factorio/config/server-banlist.json" "--rcon-port" "27015" "--server-whitelist" "/factorio/config/server-whitelist.json" "--use-server-whitelist" "--server-adminlist" "/factorio/config/server-adminlist.json" "--rcon-password" <private> "--server-id" "/factorio/config/server-id.json" "--mod-directory" "/factorio/mods" "--port" "34197" "--start-server-load-latest" 
+2026-11-21T17:02:12.179927729Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-21T17:02:12.179930194Z    0.000 Read data path: /opt/factorio/data
+2026-11-21T17:02:12.179932338Z    0.000 Write data path: /factorio [354246/928723MB]
+2026-11-21T17:02:12.179934642Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-21T17:02:12.187296131Z    0.007 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+2026-11-21T17:02:12.187319576Z    0.007 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEO_DRIVER=<unset> SDL_ENABLE_STEAM_SCREEN_KEYBOARD=<unset> SteamDeck=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-21T17:02:12.194600220Z    0.014 Running in headless mode
+2026-11-21T17:02:12.194617192Z    0.014 Audio is disabled
+2026-11-21T17:02:12.195298525Z    0.015 Info ModManager.cpp:455: FeatureFlag: expansion, expansion-shaders, freezing, quality, rail-bridges, segmented-units, space-travel, spoiling
+2026-11-21T17:02:12.197440057Z    0.017 Loading mod core 0.0.0 (data.lua)
+2026-11-21T17:02:12.213529887Z    0.033 Loading mod base 2.1.24 (data.lua)
+2026-11-21T17:02:12.374304048Z    0.193 Loading mod elevated-rails 2.1.24 (data.lua)
+2026-11-21T17:02:12.391904565Z    0.212 Loading mod recycler 2.1.24 (data.lua)
+2026-11-21T17:02:12.400936927Z    0.221 Loading mod quality 2.1.24 (data.lua)
+2026-11-21T17:02:12.407024802Z    0.227 Loading mod space-age 2.1.24 (data.lua)
+2026-11-21T17:02:12.611104667Z    0.431 Loading mod base 2.1.24 (data-updates.lua)
+2026-11-21T17:02:12.621916940Z    0.442 Loading mod recycler 2.1.24 (data-updates.lua)
+2026-11-21T17:02:12.637799825Z    0.458 Loading mod quality 2.1.24 (data-updates.lua)
+2026-11-21T17:02:12.646887422Z    0.467 Loading mod space-age 2.1.24 (data-updates.lua)
+2026-11-21T17:02:12.762217133Z    0.582 Checksum for core: 3668028660
+2026-11-21T17:02:12.762235468Z    0.582 Checksum of base: 3864816957
+2026-11-21T17:02:12.762238053Z    0.582 Checksum of elevated-rails: 1429039930
+2026-11-21T17:02:12.762239856Z    0.582 Checksum of even-distribution: 0
+2026-11-21T17:02:12.762241570Z    0.582 Checksum of recycler: 3293728126
+2026-11-21T17:02:12.762243213Z    0.582 Checksum of quality: 4220722184
+2026-11-21T17:02:12.762244886Z    0.582 Checksum of space-age: 3636981730
+2026-11-21T17:02:13.295896126Z    1.116 Prototype list checksum: 1446647465
+2026-11-21T17:02:13.380804367Z    1.201 Info PlayerData.cpp:580: Local player-data.json available
+2026-11-21T17:02:13.381807735Z    1.202 Factorio initialised
+2026-11-21T17:02:13.382001365Z    1.202 Info ServerSynchronizer.cpp:22: nextHeartbeatSequenceNumber(0) initialized Synchronizer nextTickClosureTick(0).
+2026-11-21T17:02:13.382007928Z    1.202 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(Ready) to(PreparedToHostGame)
+2026-11-21T17:02:13.382011885Z    1.202 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(PreparedToHostGame) to(CreatingGame)
+2026-11-21T17:02:13.382266852Z    1.202 Loading map /factorio/saves/_autosave1.zip: 523967 bytes.
+2026-11-21T17:02:13.394492838Z    1.214 Loading level.dat: 668828 bytes.
+2026-11-21T17:02:13.394507095Z    1.214 Info Scenario.cpp:152: Map version 2.1.24-1
+2026-11-21T17:02:13.417568419Z    1.237 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+2026-11-21T17:02:13.418452678Z    1.238 Loading script.dat: 1211 bytes.
+2026-11-21T17:02:13.420925174Z    1.241 Checksum for script __level__/control.lua: 2385776952
+2026-11-21T17:02:13.421569155Z    1.241 Checksum for script __even-distribution__/control.lua: 1711382818
+2026-11-21T17:02:13.448719993Z    1.268 Error ServerMultiplayerManager.cpp:85: MultiplayerManager failed: "The mod Even Distribution (2.1.0) caused a non-recoverable error.
+2026-11-21T17:02:13.448739140Z Please report this error to the mod author.
+2026-11-21T17:02:13.448743629Z 
+2026-11-21T17:02:13.448746945Z Error while running event even-distribution::on_configuration_changed
+2026-11-21T17:02:13.448750211Z __even-distribution__/control.lua:1: deliberate failure for capture
+2026-11-21T17:02:13.448753397Z stack traceback:
+2026-11-21T17:02:13.448756473Z 	[C]: in function 'error'
+2026-11-21T17:02:13.448759840Z 	__even-distribution__/control.lua:1: in function <__even-distribution__/control.lua:1>"
+2026-11-21T17:02:13.448763326Z    1.268 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(CreatingGame) to(InitializationFailed)
+2026-11-21T17:02:13.448766613Z    1.269 Info CommandLineMultiplayer.cpp:216: Exit point.
+2026-11-21T17:02:13.452294144Z    1.272 Info ServerMultiplayerManager.cpp:147: Quitting multiplayer connection.
+2026-11-21T17:02:13.452300867Z    1.272 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(InitializationFailed) to(Closed)
+2026-11-21T17:02:13.452352456Z    1.272 Info ServerMultiplayerManager.cpp:167: Deleting active scenario (global = true).
+2026-11-21T17:02:13.500742576Z    1.321 Info UDPSocket.cpp:238: Closing socket
+2026-11-21T17:02:13.503962830Z    1.324 Goodbye

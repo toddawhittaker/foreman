@@ -9,8 +9,11 @@
     {
       "id": "mod-error",
       "source": "game-log",
-      "pattern": "Failed to load mod \"[^\"]+\": \\S",
-      "fixtures": ["1.1.110/run-mod-lua-error.log", "2.0.77/run-mod-lua-error.log", "2.1.24/run-mod-lua-error.log"]
+      "pattern": "Failed to load mod \"[^\"]+\": \\S|The mod .+ \\(.+\\) caused a non-recoverable error",
+      "fixtures": [
+        "1.1.110/run-mod-lua-error.log", "2.0.77/run-mod-lua-error.log", "2.1.24/run-mod-lua-error.log",
+        "2.1.24/run-mod-runtime-error.log", "2.1.24/run-mod-runtime-error-ingame.log"
+      ]
     },
     {
       "id": "save-unreadable",

@@ -42,6 +42,8 @@ func TestLoadReasonKindFromRealCaptures(t *testing.T) {
 		{"1.1.110/run-mod-lua-error.log", crashreasons.ModError},
 		{"2.0.77/run-mod-lua-error.log", crashreasons.ModError},
 		{"2.1.24/run-mod-lua-error.log", crashreasons.ModError},
+		{"2.1.24/run-mod-runtime-error.log", crashreasons.ModError},
+		{"2.1.24/run-mod-runtime-error-ingame.log", crashreasons.ModError},
 		{"2.0.77/run-mod-missing-dep.log", crashreasons.ModMissingDependency},
 		{"2.1.24/run-mod-missing-dep.log", crashreasons.ModMissingDependency},
 		// 1.1 skips the mod and starts.
@@ -59,6 +61,24 @@ func TestLoadReasonKindFromRealCaptures(t *testing.T) {
 		}
 		if got := f.reason(masking()).Kind; got != tc.want {
 			t.Errorf("%s: kind %q, want %q", tc.file, got, tc.want)
+		}
+	}
+}
+
+// SPEC 8.7: a mod's non-recoverable error is worded as the game's own
+// sentence, which names the mod and its version, with none of the
+// MultiplayerManager wrapper or its stray opening quote, whether the game
+// failed while loading or while running.
+func TestLoadReasonNamesTheModThatCausedAnError(t *testing.T) {
+	const want = "The mod Even Distribution (2.1.0) caused a non-recoverable error"
+	for _, fx := range []string{"2.1.24/run-mod-runtime-error.log", "2.1.24/run-mod-runtime-error-ingame.log"} {
+		var f loadFailure
+		for _, l := range capturedRun(t, fx) {
+			f.add(l)
+		}
+		r, _, final := f.crashReason(masking())
+		if r.Kind != crashreasons.ModError || r.Said != want || !final {
+			t.Errorf("%s: got %+v (final %v), want kind %q saying %q", fx, r, final, crashreasons.ModError, want)
 		}
 	}
 }
