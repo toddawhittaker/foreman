@@ -7054,7 +7054,7 @@ tr:has(> td > .player-actions) > td.num {
    then Switch, centred on the row. */
 @media (min-width: 64rem) {
   .worlds > li {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) 13rem;
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
     align-items: center;
     column-gap: var(--space-5);
     min-block-size: 3.5rem;
@@ -7073,12 +7073,34 @@ tr:has(> td > .player-actions) > td.num {
   }
 
   /* Last played takes the widest share and wraps between its date, clock
-     and age when the page beside the rail is narrow, 24 px clear of Disk use. */
+     and age when the page beside the rail is narrow, 24 px clear of Disk use.
+     Each column keeps a floor, so a value never spills into the next. */
   .worlds > li > .facts {
     grid-row: 1;
     grid-column: 2;
-    grid-template-columns: 5rem 5rem minmax(0, 2fr) minmax(0, 1.2fr);
+    grid-template-columns: 5rem 5rem minmax(4.5rem, 2fr) minmax(4.5rem, 1.2fr);
     column-gap: var(--space-5);
+  }
+
+  /* Its cell is a container, so a narrow column shows the age alone, as a
+     narrow panel does (DESIGN 8.2); from 9rem the full text fits in every
+     language. The age stays on one line, as the date and the clock do. */
+  .worlds > li > .facts > div:nth-child(3) {
+    container: last-played / inline-size;
+  }
+
+  .worlds time[data-age-only] .time-full > :last-child {
+    white-space: nowrap;
+  }
+
+  @container last-played (min-width: 9rem) {
+    .worlds time[data-age-only] .time-full {
+      display: inline;
+    }
+
+    .worlds time[data-age-only] .time-short {
+      display: none;
+    }
   }
 
   .worlds > li > .facts ~ .actions {
@@ -7152,9 +7174,11 @@ main > .panel > .facts > div {
   display: none;
 }
 
+/* A world's page keeps its time on one line; the world list's Last played
+   wraps between its date, clock and age instead, so it never runs into
+   Disk use (DESIGN 8.2, 8.3). */
 @media (min-width: 48rem) {
-  main > .panel > .facts time,
-  .worlds .facts time {
+  main > .panel > .facts time {
     white-space: nowrap;
   }
 }
@@ -9710,11 +9734,16 @@ main > .panel.danger-zone.danger-zone--blocked {
     grid-column: 1;
   }
 
-  /* The plan stays in view while the results scroll past it. */
+  /* The plan stays in view while the results scroll past it, clear of the
+     shell's sticky 3.5rem top strip, over the cards that scroll under it. */
   .mod-side > .plan-panel {
     position: sticky;
     inset-block-start: var(--space-4);
     z-index: 1;
+  }
+
+  body:has(> .site > nav) .mod-side > .plan-panel {
+    inset-block-start: calc(3.5rem + var(--space-4));
   }
 }
 
@@ -10294,7 +10323,7 @@ main > .panel.danger-zone.danger-zone--blocked {
 @media (min-width: 64rem) {
   .worlds-head {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) 13rem;
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
     column-gap: var(--space-5);
     padding-block-end: var(--space-2);
     border-block-end: var(--border-width) solid var(--color-line);
@@ -10302,7 +10331,7 @@ main > .panel.danger-zone.danger-zone--blocked {
 
   .worlds-head__facts {
     display: grid;
-    grid-template-columns: 5rem 5rem minmax(0, 2fr) minmax(0, 1.2fr);
+    grid-template-columns: 5rem 5rem minmax(4.5rem, 2fr) minmax(4.5rem, 1.2fr);
     gap: var(--space-4);
     column-gap: var(--space-5);
   }
@@ -10394,7 +10423,7 @@ main:has(> .gate) > .gate + .gate {
    fixed widths, so the facts keep room beside the rail. */
 @media (min-width: 64rem) {
   #archived-worlds :is(.worlds-head, .worlds > li) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr) 13rem;
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
   }
 
   .worlds > li:first-child {
