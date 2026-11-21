@@ -84,6 +84,47 @@ func TestLoadReasonNamesTheModThatCausedAnError(t *testing.T) {
 	}
 }
 
+// A mod's title may hold parentheses; the whole sentence is still kept.
+func TestLoadReasonKeepsATitleWithParentheses(t *testing.T) {
+	const want = "The mod Foo (Bar) (1.0.0) caused a non-recoverable error"
+	var f loadFailure
+	f.add(`   1.357 Error MainLoop.cpp:1505: Exception at tick 0: ` + want + `.`)
+	if got := f.reason(masking()); got.Kind != crashreasons.ModError || got.Said != want {
+		t.Errorf("got %+v, want kind %q saying %q", got, crashreasons.ModError, want)
+	}
+}
+
+// The catalogue's pattern and the sentence loadFailure keeps are two
+// copies of one rule: every mod-error fixture that holds the game's
+// non-recoverable line must give back the clean sentence, so they cannot
+// drift apart unnoticed.
+func TestEveryNonRecoverableFixtureGivesTheCleanSentence(t *testing.T) {
+	checked := 0
+	for _, e := range crashreasons.Entries() {
+		if e.ID != crashreasons.ModError {
+			continue
+		}
+		for _, fx := range e.Fixtures {
+			lines := capturedRun(t, fx)
+			if !slices.ContainsFunc(lines, func(l string) bool { return strings.Contains(l, "non-recoverable") }) {
+				continue
+			}
+			checked++
+			var f loadFailure
+			for _, l := range lines {
+				f.add(l)
+			}
+			said := f.reason(masking()).Said
+			if !strings.HasPrefix(said, "The mod ") || !strings.HasSuffix(said, " caused a non-recoverable error") {
+				t.Errorf("%s: said %q, want the game's own sentence", fx, said)
+			}
+		}
+	}
+	if checked < 3 {
+		t.Errorf("only %d non-recoverable fixtures checked", checked)
+	}
+}
+
 func TestLoadReasonKindForModsMadeForAnotherVersion(t *testing.T) {
 	var f loadFailure
 	f.add("• lonely")
