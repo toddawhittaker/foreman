@@ -28,7 +28,7 @@ without review and tests.
 
 Using AI does not mean working without discipline. The maintainer's note
 [AI-assisted software engineering](https://github.com/toddawhittaker/ipeds-oracle/blob/main/docs/AI_ASSISTED_ENGINEERING.md),
-written for another of his projects, explains the approach. In short:
+written for another of the maintainer's projects, explains the approach. In short:
 each new layer of programming tools, from compilers onwards, was called
 "not real engineering", and each time the engineer's judgment moved up a
 level instead of going away. With AI writing much of the routine code,
