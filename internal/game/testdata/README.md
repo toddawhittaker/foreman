@@ -267,6 +267,12 @@ Files in each version folder:
   also prints `Error MainLoop.cpp:NN: Exception at tick 0: The mod ...`.
   Both exit non-zero and print `The mod Even Distribution (2.1.0) caused a
   non-recoverable error.` inside `MultiplayerManager failed: "..."`.
+- `run-mod-real-on-init-error.log`: the real Even Distribution 2.1.0 mod
+  (from the mod portal), with Space Age on, added to an existing save. Its
+  `on_init` fails with `LuaItemPrototype doesn't contain key fuel_category`;
+  the game prints the same `The mod Even Distribution (2.1.0) caused a
+  non-recoverable error.` line as the stubs above. The mod also logs many
+  `[ED]` lines first, none of them errors.
 - `run-oom.log`, `oom-state.txt`: the start under `--memory 96m
   --memory-swap 96m`.
 

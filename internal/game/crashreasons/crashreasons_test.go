@@ -121,7 +121,7 @@ func TestOtherRealLogsAreUnknown(t *testing.T) {
 // real 2.1.24 game prints "The mod X (version) caused a non-recoverable
 // error", which the load-time pattern did not match (SPEC 8.7).
 func TestModRuntimeErrorIsNamed(t *testing.T) {
-	for _, fx := range []string{"2.1.24/run-mod-runtime-error.log", "2.1.24/run-mod-runtime-error-ingame.log"} {
+	for _, fx := range []string{"2.1.24/run-mod-runtime-error.log", "2.1.24/run-mod-runtime-error-ingame.log", "2.1.24/run-mod-real-on-init-error.log"} {
 		if got := logReason(readLines(t, fx)); got != ModError {
 			t.Errorf("%s: named %q, want %q", fx, got, ModError)
 		}

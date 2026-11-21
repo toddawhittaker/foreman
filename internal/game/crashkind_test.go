@@ -44,6 +44,7 @@ func TestLoadReasonKindFromRealCaptures(t *testing.T) {
 		{"2.1.24/run-mod-lua-error.log", crashreasons.ModError},
 		{"2.1.24/run-mod-runtime-error.log", crashreasons.ModError},
 		{"2.1.24/run-mod-runtime-error-ingame.log", crashreasons.ModError},
+		{"2.1.24/run-mod-real-on-init-error.log", crashreasons.ModError},
 		{"2.0.77/run-mod-missing-dep.log", crashreasons.ModMissingDependency},
 		{"2.1.24/run-mod-missing-dep.log", crashreasons.ModMissingDependency},
 		// 1.1 skips the mod and starts.
@@ -71,7 +72,7 @@ func TestLoadReasonKindFromRealCaptures(t *testing.T) {
 // failed while loading or while running.
 func TestLoadReasonNamesTheModThatCausedAnError(t *testing.T) {
 	const want = "The mod Even Distribution (2.1.0) caused a non-recoverable error"
-	for _, fx := range []string{"2.1.24/run-mod-runtime-error.log", "2.1.24/run-mod-runtime-error-ingame.log"} {
+	for _, fx := range []string{"2.1.24/run-mod-runtime-error.log", "2.1.24/run-mod-runtime-error-ingame.log", "2.1.24/run-mod-real-on-init-error.log"} {
 		var f loadFailure
 		for _, l := range capturedRun(t, fx) {
 			f.add(l)
