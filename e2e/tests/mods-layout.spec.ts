@@ -1,4 +1,4 @@
-import { test, expect, createAdmin, seedWorld, openModTools } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, openModTools } from "./foreman.js";
 
 // Issue 761: on a wide screen the Plan card sticks in view while the page
 // scrolls, clear of the top strip and over the "Match mods to the save"
@@ -34,4 +34,5 @@ test("the sticking Plan card stays on top of the cards under it", async ({ page,
   const planBox = (await page.locator("#plan-panel").boundingBox())!;
   const syncBox = (await sync.boundingBox())!;
   expect(syncBox.y).toBeLessThan(planBox.y + planBox.height);
+  await checkPage(page);
 });

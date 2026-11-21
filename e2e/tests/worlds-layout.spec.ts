@@ -1,11 +1,12 @@
-import { test, expect, createAdmin, pickLanguage } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, pickLanguage } from "./foreman.js";
 import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // Issue 759: on the world list, Last played wraps between its date, clock
 // and age, and never runs into Disk use (DESIGN 8.2). The projects run this
 // in both themes; it sets its own widths, so the phone projects skip it.
-test.use({ fakeGameOn: true });
+// The zone is UTC, so the text, and so its width, is the same on every machine.
+test.use({ fakeGameOn: true, timezoneId: "UTC" });
 
 // Where the visible Last played text ends, and where its cell and the Disk
 // use text are, for every row of the list.
@@ -24,7 +25,11 @@ async function measure(page: import("@playwright/test").Page) {
         text: time.innerText,
         age: time.querySelector(".time-short")?.textContent ?? "",
         // Lines the age takes in the full form, 0 while the short form shows.
-        ageLines: [...time.querySelector(".time-full > :last-child")!.getClientRects()].filter((r) => r.width > 0).length,
+        ageLines: (() => {
+          const age = time.querySelector(".time-full > :last-child")!;
+          const box = age.getBoundingClientRect();
+          return box.width ? Math.round(box.height / parseFloat(getComputedStyle(age).lineHeight)) : 0;
+        })(),
         timeRight: Math.max(...rects.map((r) => r.right)),
         timeTop: Math.min(...rects.map((r) => r.top)),
         timeBottom: Math.max(...rects.map((r) => r.bottom)),
@@ -37,11 +42,21 @@ async function measure(page: import("@playwright/test").Page) {
   );
 }
 
-const widths = [1440, 1024, 1100, 1200, 1280, 1920, 320, 375, 480, 640, 768, 800, 900, 1000];
+// The phone, the stacked list's widths, either side of the table's 64rem
+// start, where the full text returns, and wide.
+const widths = [320, 390, 768, 1023, 1024, 1150, 1440, 1920];
+
+// WCAG 1.4.12: text spaced out this far still fits.
+const spacing = "* { letter-spacing: 0.12em !important; word-spacing: 0.16em !important; line-height: 1.5 !important; }";
+
+const cases = [
+  ...["en", "de", "ru", "zh-Hans", "fr", "es", "pl", "cs"].map((lang) => ({ lang, spaced: false, widths })),
+  ...["de", "ru"].map((lang) => ({ lang, spaced: true, widths: [1024, 1100, 1150, 1280] })),
+];
 
 // All eight languages: German, Russian and Polish are the long ones.
-for (const lang of ["en", "de", "ru", "zh-Hans", "fr", "es", "pl", "cs"]) {
-  test(`Last played stays clear of Disk use at every width (${lang})`, async ({ page, foreman }, info) => {
+for (const { lang, spaced, widths } of cases) {
+  test(`Last played stays clear of Disk use at every width (${lang}${spaced ? ", text spacing" : ""})`, async ({ page, foreman }, info) => {
     test.skip(info.project.name.startsWith("phone"), "sets its own widths");
     await createAdmin(page);
     if (lang !== "en") await pickLanguage(page, lang);
@@ -61,6 +76,7 @@ for (const lang of ["en", "de", "ru", "zh-Hans", "fr", "es", "pl", "cs"]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/worlds");
       await expect(page.locator("ul.worlds time[data-local]")).toHaveCount(2);
+      if (spaced) await page.addStyleTag({ content: spacing });
       const wide = width >= 1024;
       for (const row of await measure(page)) {
         const where = `${lang} at ${width} px: "${row.text}"`;
@@ -68,9 +84,9 @@ for (const lang of ["en", "de", "ru", "zh-Hans", "fr", "es", "pl", "cs"]) {
         expect(row.age, where).not.toBe("");
         expect(row.text, where).toContain(row.age);
         // On the table the full form breaks only between date, clock and age.
-        if (wide) expect(row.ageLines, where).toBeLessThanOrEqual(1);
+        if (wide && !spaced) expect(row.ageLines, where).toBeLessThanOrEqual(1);
         // Where the row has room, the date and clock show as before.
-        if (width >= 1440) expect(row.text, where).toContain("UTC");
+        if (width >= 1440 && !spaced) expect(row.text, where).toContain("UTC");
         // The text never spills out of its own cell.
         expect(row.timeRight, where).toBeLessThanOrEqual(row.cellRight + 0.5);
         // Side by side, Disk use starts at least 24 px after it ends.
@@ -79,5 +95,6 @@ for (const lang of ["en", "de", "ru", "zh-Hans", "fr", "es", "pl", "cs"]) {
         if (sideBySide && wide) expect(row.diskLeft - row.timeRight, where).toBeGreaterThanOrEqual(24);
       }
     }
+    await checkPage(page);
   });
 }

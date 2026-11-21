@@ -7089,8 +7089,13 @@ tr:has(> td > .player-actions) > td.num {
     container: last-played / inline-size;
   }
 
-  .worlds time[data-age-only] .time-full > :last-child {
-    white-space: nowrap;
+  /* Each piece is a box as wide as its words: it stays whole while it
+     fits and wraps inside only when it cannot, as with wide text spacing
+     (WCAG 1.4.12), so it never spills into Disk use. */
+  .worlds time[data-age-only] .time-full > * {
+    display: inline-block;
+    max-inline-size: 100%;
+    white-space: normal;
   }
 
   @container last-played (min-width: 9rem) {
