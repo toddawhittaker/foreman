@@ -23,6 +23,7 @@ func (c *Controller) watchOOM(ctx context.Context) {
 	retry := eventRetryFirst
 	var since time.Time          // the newest event's time; zero asks for new events only
 	oomLast := map[string]bool{} // by container: its newest event was oom
+	var failed error             // the last failure to open the stream; nil once one opens
 	for {
 		s, err := c.docker.Events(ctx, docker.EventOptions{
 			Actions: []string{"oom", "die"},
@@ -33,8 +34,12 @@ func (c *Controller) watchOOM(ctx context.Context) {
 			c.log.Info("Docker events are not allowed by the socket proxy, so Foreman finds out-of-memory kills by polling and can miss one; set EVENTS=1 on the proxy to name every one", "error", err)
 			return
 		}
+		if err != nil && ctx.Err() == nil {
+			c.logFault("cannot follow Docker events", failed, err)
+			failed = err
+		}
 		if err == nil {
-			retry = eventRetryFirst
+			retry, failed = eventRetryFirst, nil
 			c.eventsLive.Store(true)
 			for {
 				ev, err := s.Next()

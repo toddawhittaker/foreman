@@ -607,14 +607,8 @@ func (c *Controller) ImageFor(ctx context.Context, id string) (ref string, prese
 	if err != nil {
 		return "", false, err
 	}
-	_, err = c.docker.InspectImage(ctx, ref)
-	if errors.Is(err, docker.ErrNotFound) {
-		return ref, false, nil
-	}
-	if err != nil {
-		return ref, false, err
-	}
-	return ref, true, nil
+	present, err = c.HasImage(ctx, meta.GameVersion)
+	return ref, present, err
 }
 
 // secrets returns the world's RCON password and, with it, every secret the

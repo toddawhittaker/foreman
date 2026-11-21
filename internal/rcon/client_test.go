@@ -168,6 +168,34 @@ func TestCancelStopsAHangingCommand(t *testing.T) {
 	}
 }
 
+// A command waiting behind another gives up at its own deadline.
+func TestWaitForAnotherCommandHonoursTheContext(t *testing.T) {
+	srv := rcontest.Start(t, rcontest.Config{Password: testPassword, Hang: true})
+	c := newClient(t, srv.Addr())
+	first, cancel := context.WithCancel(context.Background())
+	firstDone := make(chan struct{})
+	defer func() { cancel(); <-firstDone }()
+	go func() {
+		defer close(firstDone)
+		_, _ = c.Exec(first, "/first")
+	}()
+	deadline := time.Now().Add(3 * time.Second)
+	for srv.Logins() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the first command never logged in")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	start := time.Now()
+	_, err := c.Exec(ctxWithTimeout(t, 100*time.Millisecond), "/second")
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want deadline exceeded", err)
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Errorf("the waiting command took %v, past its own deadline", d)
+	}
+}
+
 func TestSilentServerDuringLoginTimesOut(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

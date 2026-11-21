@@ -494,10 +494,7 @@ func (c *Controller) attachEndpoint(w *worldRun, cont docker.Container) endpoint
 // The game opens RCON only once in game, and the log line that said so may
 // be gone from Docker's rotated log (SPEC 3.8).
 func (c *Controller) probeInGame(w *worldRun, cid string, rc *rcon.Client) {
-	ctx, cancel := context.WithTimeout(c.ctx, c.rconCallLimit)
-	_, err := rc.Exec(ctx, "/players online")
-	cancel()
-	if err != nil {
+	if !c.answers(c.ctx, rc) {
 		return
 	}
 	w.mu.Lock()

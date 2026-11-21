@@ -249,12 +249,15 @@ func (c *Client) Version(ctx context.Context) (VersionInfo, error) {
 }
 
 // APIVersion returns the API version agreed with the daemon, asking it
-// once and remembering the answer.
+// once and remembering the answer. The lock is not held while asking, so a
+// slow daemon holds up only callers that wait for it themselves; callers
+// that ask at once each ask, and agree on the same answer.
 func (c *Client) APIVersion(ctx context.Context) (string, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.apiVersion != "" {
-		return c.apiVersion, nil
+	known := c.apiVersion
+	c.mu.Unlock()
+	if known != "" {
+		return known, nil
 	}
 	v, err := c.Version(ctx)
 	if err != nil {
@@ -264,7 +267,9 @@ func (c *Client) APIVersion(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	c.mu.Lock()
 	c.apiVersion = agreed
+	c.mu.Unlock()
 	return agreed, nil
 }
 

@@ -2,7 +2,6 @@ package game
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -276,9 +275,8 @@ func (c *Controller) Restore(ctx context.Context, id string, by Actor, name stri
 }
 
 func (c *Controller) restoreLocked(ctx context.Context, o *opRun, by Actor, name string, countdown time.Duration) (world.Snapshot, error) {
-	err := c.stopLocked(ctx, o, countdown)
-	wasRunning := err == nil
-	if err != nil && !errors.Is(err, ErrNotRunning) {
+	wasRunning, err := c.stopIfRunning(ctx, o, countdown)
+	if err != nil {
 		return world.Snapshot{}, err
 	}
 	o.begin(StepRestore)
