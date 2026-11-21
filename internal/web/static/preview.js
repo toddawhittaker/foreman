@@ -337,6 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function draw(say, change) {
     if (refreshing > 0) return; // the redraw's end asks again, with the settings it brings
     drop();
+    dropAsked();
     waiting = false;
     const n = sent;
     if (nothingToDraw()) {
@@ -521,11 +522,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (say) announce(words(slot.querySelector(".message")));
   }
 
+  // A Preview map still running is older than this change or draw, so it goes
+  // too: its reply would otherwise put in its own pictures and seed over the newer one's.
+  function dropAsked() {
+    if (button().getAttribute("aria-disabled") === "true") htmx.trigger(button(), "htmx:abort");
+  }
+
   function soon() {
     drop();
     waiting = true;
-    // A preview the person asked for is older than this change, so it goes too.
-    if (button().getAttribute("aria-disabled") === "true") htmx.trigger(button(), "htmx:abort");
+    dropAsked();
     timer = setTimeout(() => draw(true, true), pause);
   }
 
@@ -593,8 +599,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // way when the view opens keeps fillPanel waiting until it lands.
       putBack();
     }
-    // Preview map asks for every planet; nothing automatic may overwrite it,
-    // and later draws keep showing them all.
+    // Preview map asks for every planet; later automatic draws keep showing
+    // them all, and a newer one cancels it.
     if (e.detail.elt === button()) {
       drop();
       showAll = true;
@@ -610,6 +616,9 @@ document.addEventListener("DOMContentLoaded", () => {
     keepPageAmounts();
     territories(false);
     amounts();
+    // As a draw's reply does: the open view shows the new picture, never the old section's.
+    const planet = viewing || firstPlanet();
+    if (dialog && dialog.open && !document.querySelector("#preview .message") && pictureLink(planet)) show(planet);
   });
   document.body.addEventListener("htmx:afterRequest", (e) => {
     if (!isRefresh(e)) return;
@@ -1437,6 +1446,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (places.page.unsaid) sayAmounts(places.page, el(places.page.slot));
     });
   }
+
+  // A page restored from the back-forward cache draws from its fields again.
+  window.addEventListener("pageshow", (e) => { if (e.persisted) draw(false); });
 
   draw(false);
 });
