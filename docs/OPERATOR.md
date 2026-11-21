@@ -5,18 +5,19 @@ players can join. It covers the new-user path: install Foreman, create the
 first admin, generate a Space Age world, install mods from the mod portal,
 start the server and join it. It also covers the security advice every
 operator needs, running behind a reverse proxy, importing and switching
-worlds, webhook notifications, the low-disk warning, what to do when
-something fails, and, optionally, letting players join through a VPN
-sidecar such as Tailscale. It also covers signing in with OpenID Connect
-(section 17), Foreman's own settings, users and audit log (section 18) and
-archiving worlds (section 19).
+worlds, webhook notifications, the low-disk warning, the restart
+schedule, what to do when something fails, and, optionally, letting
+players join through a VPN sidecar such as Tailscale. It also covers
+signing in with OpenID Connect (section 17), Foreman's own settings, users
+and audit log (section 18) and archiving worlds (section 19). Sections 20
+to 22 are for running Foreman over time: upgrading it, backing up and
+restoring, and every environment variable in one table. Logs and the
+health check are in section 15.
 
 ## 1. What you need
 
 - **A Linux host with Docker** and Docker Compose. Foreman runs in a
   container and creates the game's container itself.
-- **git and make**, to build Foreman's image (section 2). No image is
-  published yet.
 - **A factorio.com account**, to download mods from the mod portal. Foreman
   needs its username and its token. Sign in at factorio.com and open
   <https://factorio.com/profile>: both are shown there. The token is not
@@ -33,8 +34,32 @@ version, and mods. It never downloads anything when it starts.
 
 ## 2. Get the image
 
-No image is published yet; it will come with the release (Epic 11b).
-Build it yourself:
+Foreman's image is published to GitHub's container registry as
+`ghcr.io/toddawhittaker/foreman`. Each release has an exact version tag,
+such as `1.0.0`; there is no `latest` tag, so you always know which
+version you run and nothing changes under you. Use the newest release
+listed on the [releases page](https://github.com/toddawhittaker/foreman/releases).
+This guide writes it as `1.0.0`.
+
+```sh
+docker pull ghcr.io/toddawhittaker/foreman:1.0.0
+```
+
+Until the first release is published, building from source (below) is
+the only way to get the image.
+
+**Optional: check where the image came from.** Each published image has
+a GitHub artifact attestation, a signed record that it was built by this
+repository's release workflow. With the GitHub command-line tool, `gh`:
+
+```sh
+gh attestation verify oci://ghcr.io/toddawhittaker/foreman:1.0.0 --owner toddawhittaker
+```
+
+It succeeds only for an image the release workflow built.
+
+**Alternative: build from source.** You need git and make as well as
+Docker:
 
 ```sh
 git clone https://github.com/toddawhittaker/foreman.git
@@ -42,9 +67,10 @@ cd foreman
 make image
 ```
 
-The image is tagged `foreman:dev`. Use `make image` rather than a bare
-`docker build`: the Makefile passes the exact Go build image the project
-pins. The build takes a few minutes the first time.
+The image is tagged `foreman:dev`; use that name in the compose file
+(section 5) instead of the published one. Use `make image` rather than a
+bare `docker build`: the Makefile passes the exact Go build image the
+project pins. The build takes a few minutes the first time.
 
 Foreman's image is built for amd64 and arm64, so it also runs on an arm64
 host. Be aware that the Factorio game image is
@@ -157,7 +183,9 @@ kept by Foreman) and no reverse proxy. Put it next to `data/` as
 ```yaml
 services:
   foreman:
-    image: foreman:dev
+    # The newest release from the releases page (section 2), or
+    # foreman:dev if you built the image yourself.
+    image: ghcr.io/toddawhittaker/foreman:1.0.0
     restart: unless-stopped
     environment:
       FOREMAN_DATA_DIR: /data
@@ -687,10 +715,22 @@ makes are recorded under the name "restart schedule".
 
 - **Foreman's own log.** Run `docker compose logs -f foreman`. Every error
   page that says "the details are in Foreman's log" means this log. It
-  never holds a password or token.
+  never holds a password or token. Foreman writes it to standard output as
+  JSON (one object per line, with the time, level and message), so any log
+  collector that reads Docker's logs can keep it. Docker keeps it only as
+  long as the container exists; set up log rotation or a collector if you
+  need history.
 - **The game's log.** Choose **Console** in the menu: it streams the
   game's log as the game prints it, with the RCON password hidden.
-  **Download log** saves it.
+  **Download log** saves it. The game's container is named
+  `foreman-<world-id>`, so `docker logs foreman-<world-id>` also shows it,
+  but without that filtering: the raw log can hold the game password, so
+  do not paste it anywhere public.
+- **The health check.** The image has a Docker health check: every 30
+  seconds it asks Foreman's `/healthz` page, which answers `ok` while
+  Foreman can serve requests. `docker compose ps` shows the result as
+  healthy or unhealthy. It checks only Foreman itself, not the game; the
+  Server page shows the game's state.
 - **The Server page** says why a start failed, in the game's own words
   where it can, and offers **Try to start again**.
 - **Foreman will not start.** The log names the setting that is wrong.
@@ -1302,3 +1342,125 @@ takes one click.
   and `world-unarchive`. An admin API token can do both (`archive_world`
   and `unarchive_world`, one call each), and `list_worlds` shows which
   worlds are archived.
+
+## 20. Upgrade Foreman
+
+Take a backup first (section 21). Then change the version in the `image:`
+line of the compose file to the new release, and run:
+
+```sh
+docker compose pull
+docker compose up -d
+```
+
+Read the release notes before you upgrade; the About page links to them
+when a newer release is out (section 18).
+
+- **The game keeps running.** Upgrading Foreman never stops or touches a
+  running game. The new Foreman finds the game container again when it
+  starts.
+- **The database is migrated.** At start, Foreman brings its database up
+  to date by applying each change the new version needs, one at a time.
+  Each change is all or nothing, so a failure leaves the database at the
+  last good step and Foreman does not start; the log says why.
+- **World files.** If a new version changes how the data directory is
+  laid out, it takes a snapshot of every world it affects before it
+  changes any file (SPEC 3.8).
+- **Downgrading is not supported once the database has changed.** An
+  older Foreman refuses to start with a database a newer one has migrated,
+  and its log says the database is at a newer version. To go back, stop
+  Foreman, put back `foreman.db` from the backup you took before the
+  upgrade, delete any `foreman.db-wal` and `foreman.db-shm` beside it that
+  the backup does not have, and start the older image. Anything done since that backup, such
+  as new users or audit entries, is lost; worlds and snapshots are not in
+  the database, so they stay.
+
+If you built the image from source, pull the new code, run `make image`
+again, and run `docker compose up -d`.
+
+## 21. Back up and restore
+
+Everything Foreman knows is in the data directory (section 3), plus the
+compose file and the secrets you gave it:
+
+| Path | What it holds |
+|---|---|
+| `foreman.db` | The database: users, sessions, API tokens, settings, webhooks, the stored factorio.com account, the restart schedule, the audit log and which world is active. The SQLite database keeps recent changes in `foreman.db-wal` and `foreman.db-shm` beside it; copy those with it. |
+| `worlds/` | One folder per world: its saves, mods, settings and game version. |
+| `snapshots/` | Every snapshot of every world. |
+| `favorites/` | The favorites made from worlds. |
+| `import/` | Folders you placed for import. Foreman only reads them. |
+
+Keep `FOREMAN_SECRET_KEY` with the backup but apart from it, for example
+in a password manager. The factorio.com account and the webhook addresses
+in the database are encrypted with that key, and a restored database is
+no use for them without it (section 5).
+
+**Back up.** Stop the game from the Server page, so no autosave is being
+written, then stop Foreman, copy the whole directory, and start Foreman
+again:
+
+```sh
+docker compose stop foreman
+sudo tar -C . -czf foreman-backup.tar.gz data
+docker compose start foreman
+```
+
+Copy the whole directory in one command, as above: save and mod files in
+snapshots are hard links to the world's files (section 15), and `tar` or
+`cp -a` keep them as links, so the copy is no larger than the original.
+Copying `foreman.db` alone while Foreman runs can catch it half written.
+
+**Restore.** Stop Foreman, move the current data directory aside, unpack
+the backup, give it back to user 845, and start Foreman:
+
+```sh
+docker compose stop foreman
+sudo mv data data.old
+sudo tar -C . -xzf foreman-backup.tar.gz
+sudo chown -R 845:845 data
+docker compose start foreman
+```
+
+Use the same Foreman version as the backup, or a newer one (section 20).
+Once the restored Foreman works, delete `data.old`. To put back a single
+world rather than everything, restore one of its snapshots instead
+(section 15).
+
+## 22. Environment variables
+
+Foreman reads these when it starts. A variable that is set but empty
+counts as unset. If any is wrong, Foreman reports every problem at once
+and does not start. The variables marked "file form" can instead name a
+file that holds the value, with `_FILE` added to the name (for example
+`FOREMAN_SECRET_KEY_FILE`), for Docker secrets. Setting both forms of one
+variable stops Foreman at startup.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `FOREMAN_DATA_DIR` | `/data` | The data directory inside the container (section 3). |
+| `FOREMAN_HOST_DATA_DIR` | found from Foreman's own mounts | The same directory's path on the host. Set it only if Foreman says it cannot find it (section 3). |
+| `FOREMAN_GAME_UID`, `FOREMAN_GAME_GID` | `845` | The game's user and group. Never 0 (section 3). |
+| `FOREMAN_GAME_NETWORK` | none | The Docker network the game joins. Required when Foreman runs in a container or uses a VPN sidecar (section 5). |
+| `FOREMAN_GAME_NETWORK_CONTAINER` | none | The VPN sidecar whose network the game shares (section 16). |
+| `FOREMAN_LISTEN` | `:8080` | The address and port Foreman listens on, inside its container. |
+| `FOREMAN_PUBLIC_URL` | none | The address people use to reach Foreman, such as `https://factorio.example.com`. An `https://` address makes the sign-in cookie secure. Required for OpenID Connect, and checked by MCP (sections 6 and 17). |
+| `FOREMAN_PUBLIC_ADDRESS` | none | The host name or IP address players type into Factorio, with an optional port. Shown on the Server page; without it, no join address is shown (section 5). |
+| `FOREMAN_AUTH_METHODS` | `local` | Which sign-in methods are on: a comma-separated list of `local`, `headers` and `oidc` (sections 6 and 17). |
+| `FOREMAN_AUTH_USER_HEADER` | none | The header that names the user. Required with `headers` (section 6). |
+| `FOREMAN_AUTH_GROUPS_HEADER` | none | The header that lists the user's groups. Required with `headers`. |
+| `FOREMAN_AUTH_REQUIRED_GROUP` | none | The group a header user must be in. Required with `headers`. |
+| `FOREMAN_TRUSTED_PROXIES` | none | The addresses whose headers Foreman trusts, such as `172.30.0.10/32`. Required with `headers`. |
+| `FOREMAN_OIDC_ISSUER` | none | The identity provider's issuer address, which must start with `https://`. Required with `oidc` (section 17). |
+| `FOREMAN_OIDC_CLIENT_ID` | none | The client ID the provider gave Foreman. Required with `oidc`. |
+| `FOREMAN_OIDC_CLIENT_SECRET` | none | The client secret. Required with `oidc`. File form. |
+| `FOREMAN_OIDC_REQUIRED_GROUP` | none | The group a single sign-on user must be in. Required with `oidc`. |
+| `FOREMAN_SESSION_IDLE` | `168h` (7 days) | How long a session lasts without use, written like `12h` or `30m`. |
+| `FOREMAN_SECRET_KEY` | none | At least 32 characters. Encrypts the factorio.com account and webhook addresses entered in the web pages (sections 5 and 12). File form. |
+| `FOREMAN_FACTORIO_USERNAME`, `FOREMAN_FACTORIO_TOKEN` | none | The factorio.com account for mod downloads, instead of entering it in the web pages. Set both or neither. File form, each. |
+| `FOREMAN_MCP` | none | `off` keeps MCP access off whatever the settings page says. Any other value stops Foreman at startup (section 6). |
+| `DOCKER_HOST` | `unix:///var/run/docker.sock` | How Foreman reaches Docker; with the compose file, the socket proxy (sections 4 and 5). |
+
+Foreman also passes a few `FOREMAN_*` variables to the game's container
+itself, such as the world's id. Those are not settings; do not set them
+on Foreman.
