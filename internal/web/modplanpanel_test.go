@@ -93,7 +93,7 @@ func TestPlanPanelAddRemoveClear(t *testing.T) {
 
 	_, tab := g.getStatus(modsPath(id))
 	panel := plain(between(tab, `id="plan-panel"`, "</section>"))
-	wantIn(t, "tab", panel, `<span class="plan-panel__sum">2 mods in the plan</span> <span class="plan-panel__names" translate="no">alpha, beta</span>`,
+	wantIn(t, "tab", panel, `<span class="plan-panel__sum">2 mods in the plan</span> <span class="plan-panel__names" translate="no">beta, alpha</span>`,
 		`<span class="plan-tree__name">`+portalName("alpha")+`</span> <span class="mod-ver" translate="no">1.0.0</span>`,
 		`id="mod-alpha-unpick"><span class="visually-hidden">Remove alpha from the plan</span>`,
 		`>Clear plan</button>`, "Started <time",
@@ -230,23 +230,24 @@ func TestPlanPanelTree(t *testing.T) {
 	g.pick(id, "alpha", "beta")
 	_, body := g.getStatus(modsPath(id))
 	panel := squash(plain(between(body, `id="plan-panel"`, "</section>")))
-	alpha := panel[strings.Index(panel, `<li class="plan-tree__pick">`):strings.LastIndex(panel, `<li class="plan-tree__pick">`)]
-	beta := panel[strings.LastIndex(panel, `<li class="plan-tree__pick">`):]
+	// beta, picked last, is listed first.
+	beta := panel[strings.Index(panel, `<li class="plan-tree__pick">`):strings.LastIndex(panel, `<li class="plan-tree__pick">`)]
+	alpha := panel[strings.LastIndex(panel, `<li class="plan-tree__pick">`):]
 
 	dep := func(name, version, of string) string {
 		return `<span class="plan-tree__name">` + portalName(name) + `</span><span class="mod-ver" translate="no">` + version +
 			`</span></div><p class="plan-tree__why">Needed by ` + of + `</p>`
 	}
-	// lib, which both need, has one row naming both (SPEC 9.2).
-	wantIn(t, "alpha", alpha, dep("lib", "1.0.0", "alpha and beta"), dep("core", "1.0.0", "lib"))
-	if strings.Contains(beta, portalName("lib")) || strings.Contains(beta, portalName("core")) {
-		t.Errorf("beta repeats the shared lib:\n%s", beta)
+	// lib, which both need, has one row under the topmost, naming both (SPEC 9.2).
+	wantIn(t, "beta", beta, dep("lib", "1.0.0", "beta and alpha"), dep("core", "1.0.0", "lib"))
+	if strings.Contains(alpha, portalName("lib")) || strings.Contains(alpha, portalName("core")) {
+		t.Errorf("alpha repeats the shared lib:\n%s", alpha)
 	}
 	wantIn(t, "beta", beta,
 		dep("old", "1.0.0", "beta")+`<p class="plan-tree__note">Will update to 2.0.0</p>`,
 		`<span class="plan-tree__name"><span class="mod-title ident" translate="no">gone</span></span></div><p class="plan-tree__why">Needed by beta</p><p class="plan-tree__warn"><strong class="visually-hidden">Warning:</strong> Not on the mod portal</p>`)
 	// core hangs under lib, not beside it.
-	if !strings.Contains(alpha, `<p class="plan-tree__why">Needed by alpha and beta</p><ul class="plan-tree__deps" role="list"><li class="plan-tree__dep"><div class="plan-tree__row">`+
+	if !strings.Contains(beta, `<p class="plan-tree__why">Needed by beta and alpha</p><ul class="plan-tree__deps" role="list"><li class="plan-tree__dep"><div class="plan-tree__row">`+
 		`<span class="plan-tree__name">`+portalName("core")+`</span>`) {
 		t.Error("core is not nested under lib")
 	}
@@ -410,4 +411,42 @@ func TestPlanPanelAnnouncesTitles(t *testing.T) {
 	wantIn(t, "add", squash(plain(add.Body.String())), `>Title of alpha added to the plan. The plan has 1 mod.</p>`)
 	rm := g.harness.post(planModsPath(id), url.Values{"name": {"alpha"}, "op": {"remove"}, "from": {"panel"}}, withCookie(g.cookie), withHeader("HX-Request", "true"))
 	wantIn(t, "remove", squash(plain(rm.Body.String())), `>Title of alpha removed from the plan. The plan has 0 mods.</p>`)
+}
+
+// Todd's ruling for the plan card: the newest pick is listed first, so the
+// latest additions show above the earliest, and a dependency two picks
+// share sits under the topmost of them (SPEC 9.2).
+func TestPlanPanelNewestFirst(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0", "lib")
+	g.portal.AddZip("beta", "1.0.0", "lib")
+	g.portal.AddZip("gamma", "1.0.0")
+	g.portal.AddZip("lib", "1.0.0")
+	id := g.world20("Base")
+	g.pick(id, "alpha", "beta", "gamma")
+	_, body := g.getStatus(modsPath(id))
+	panel := squash(plain(between(body, `id="plan-panel"`, "</section>")))
+	picks := strings.Split(panel, `<li class="plan-tree__pick">`)[1:]
+	var order []string
+	for _, p := range picks {
+		for _, n := range []string{"alpha", "beta", "gamma"} {
+			if strings.HasPrefix(p, `<div class="plan-tree__row"><span class="plan-tree__name">`+portalName(n)) {
+				order = append(order, n)
+			}
+		}
+	}
+	if !slices.Equal(order, []string{"gamma", "beta", "alpha"}) {
+		t.Fatalf("picks in order %v, want newest first", order)
+	}
+	wantIn(t, "beta", picks[1], portalName("lib"), `<p class="plan-tree__why">Needed by beta and alpha</p>`)
+	if strings.Contains(picks[2], portalName("lib")) {
+		t.Error("lib shows again under alpha")
+	}
+	// The phone bar's one line names them in the same order.
+	wantIn(t, "names", panel, `<span class="plan-panel__names" translate="no">gamma, beta, alpha</span>`)
+
+	// Taking a pick out from the panel puts focus on the cross of the top row.
+	rec := g.harness.post(planModsPath(id), url.Values{"name": {"beta"}, "op": {"remove"}, "from": {"panel"}},
+		withCookie(g.cookie), withHeader("HX-Request", "true"))
+	wantIn(t, "remove", plain(rec.Body.String()), `data-focus="`+modID("gamma", "unpick")+`"`)
 }

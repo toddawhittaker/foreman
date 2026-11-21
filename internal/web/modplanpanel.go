@@ -36,10 +36,11 @@ func (s *server) modPlanRoutes() {
 type PlanPanel struct {
 	World world.Summary
 	// Picks are the mods picked with "+", oldest first; Started is when the
-	// first was picked.
+	// first was picked. Roots list them newest first.
 	Picks   []string
 	Started time.Time
-	// Roots are the picks, each with the dependencies that change under it.
+	// Roots are the picks, newest first so the latest show at the top of a
+	// capped card, each with the dependencies that change under it.
 	Roots []PlanNode
 	// Count is how many distinct mods the plan installs or changes.
 	Count int
@@ -116,18 +117,20 @@ func (s *server) planPanel(ctx context.Context, sum world.Summary, ret string) (
 	for _, m := range picked {
 		p.Picks = append(p.Picks, m.Name)
 	}
+	newest := slices.Clone(p.Picks)
+	slices.Reverse(newest)
 	plan, _, err := s.planner.Plan(ctx, sum.ID, mods.Request{Kind: mods.KindInstall, Names: p.Picks})
 	if err != nil {
 		s.portalTrouble("work out the mod plan", sum.ID, err)
 		p.Unreachable = true
-		for _, n := range p.Picks {
+		for _, n := range newest {
 			p.Roots = append(p.Roots, PlanNode{Name: n, Title: n})
 		}
 		return p, nil
 	}
 	t := planTree{plan: plan, line: mods.GameLine(sum.GameVersion), titles: map[string]string{}, changes: map[string]mods.Change{},
 		title: func(name string) string { return s.portalTitle(ctx, name) }}
-	p.Roots, p.Count, p.neededBy = t.build(p.Picks)
+	p.Roots, p.Count, p.neededBy = t.build(newest)
 	return p, nil
 }
 
@@ -468,7 +471,7 @@ func (s *server) planChanged(w http.ResponseWriter, r *http.Request, u store.Use
 	case c.full || c.op == "clear" || count == 0:
 		up.Search.Plan.Focus = "plan-heading"
 	case c.fromPanel:
-		up.Search.Plan.Focus = panel.RemoveID(panel.Picks[0])
+		up.Search.Plan.Focus = panel.RemoveID(panel.Roots[0].Name)
 	default:
 		up.Search.Plan.Focus = modID(c.name, "plan")
 	}
