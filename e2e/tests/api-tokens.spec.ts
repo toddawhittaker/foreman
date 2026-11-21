@@ -1,4 +1,5 @@
 import { test, expect, checkPage, createAdmin, mainNav } from "./foreman.js";
+import { languages } from "./i18n.js";
 import type { Page } from "@playwright/test";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -115,6 +116,79 @@ test.describe("with FOREMAN_MCP=off", () => {
     await openTokens(page);
     await expect(page.locator("#mcp-state")).toContainText("FOREMAN_MCP=off");
     await expect(page.getByRole("button", { name: /MCP access/ })).toHaveCount(0);
+    await checkPage(page);
+  });
+});
+
+test("the REST API switch is its own control and turns access on and off", async ({ page, foreman }) => {
+  await createAdmin(page);
+  await openTokens(page);
+  await expect(page.locator("#api-state")).toContainText("REST API access is off.");
+  await page.getByRole("button", { name: "Turn on REST API access" }).click();
+  await expect(page.locator("#done-message")).toHaveText("Done: Turned REST API access on.");
+  await expect(page.locator("#api-state")).toContainText("REST API access is on.");
+  await expect(page.locator("#mcp-state")).toContainText("MCP access is off.");
+  await checkPage(page);
+  await page.getByRole("button", { name: "Turn off REST API access" }).click();
+  await expect(page.locator("#done-message")).toHaveText("Done: Turned REST API access off.");
+  await expect(page.locator("#api-state")).toContainText("REST API access is off.");
+  const rows = sql(foreman, "SELECT detail FROM audit_log WHERE action = 'api-set' ORDER BY id");
+  expect(rows.map((r) => r.detail)).toEqual(["on", "off"]);
+  expect(sql(foreman, "SELECT detail FROM audit_log WHERE action = 'mcp-set'")).toEqual([]);
+});
+
+test("the REST API switch has a visible name and a visible focus ring", async ({ page }) => {
+  await createAdmin(page);
+  await openTokens(page);
+  const button = page.getByRole("button", { name: "Turn on REST API access" });
+  await expect(page.locator("#api-heading")).toContainText("REST API access");
+  await button.focus();
+  await expect(button).toBeFocused();
+  expect(await button.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
+});
+
+test("a new token's page shows both addresses, each with its own copy button", async ({ page, context }) => {
+  await createAdmin(page);
+  await openTokens(page);
+  await create(page, "Claude");
+  await expect(page.locator("#token-endpoint")).toHaveValue(/^http:\/\/[^/]+\/mcp$/);
+  await expect(page.locator("#token-api-base")).toHaveValue(/^http:\/\/[^/]+\/api\/v1$/);
+  await expect(page.getByLabel("MCP endpoint")).toBeVisible();
+  await expect(page.getByLabel("REST API base address")).toBeVisible();
+  await checkPage(page);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy REST API address" }).click();
+  await expect(page.locator("#token-api-base-done")).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/api\/v1$/);
+  await page.getByRole("button", { name: "Copy MCP endpoint" }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/mcp$/);
+});
+
+// The language sweep of i18n.spec.ts does not visit this page, so its two screens
+// are checked here: the longest translations still fit at 320 px and pass axe.
+test("the page and the created page fit and pass axe in every language", async ({ page, foreman }) => {
+  test.setTimeout(170_000);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await createAdmin(page);
+  for (const lang of languages) {
+    await page.context().addCookies([{ name: "foreman_lang", value: lang, url: foreman.url }]);
+    await page.goto("/settings/api-tokens");
+    await checkPage(page);
+    await page.locator("#token-name").fill("T-" + lang);
+    await page.locator("#act-token-create").click();
+    await expect(page.locator("#token-api-base")).toBeVisible();
+    await checkPage(page);
+  }
+});
+
+test.describe("with FOREMAN_API=off", () => {
+  test.use({ foremanEnv: { FOREMAN_API: "off" } });
+  test("the page says so and offers no REST API switch", async ({ page }) => {
+    await createAdmin(page);
+    await openTokens(page);
+    await expect(page.locator("#api-state")).toContainText("FOREMAN_API=off");
+    await expect(page.getByRole("button", { name: /REST API access/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Turn on MCP access" })).toBeVisible();
     await checkPage(page);
   });
 });

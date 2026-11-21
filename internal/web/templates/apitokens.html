@@ -41,7 +41,7 @@
 {{- template "summary" .Problems}}
 {{- if .Done}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "revoked"}}{{t "apitokens.done.revoked" "name" .DoneName}}{{else if eq .Done "mcp-on"}}{{t "apitokens.done.mcp_on"}}{{else}}{{t "apitokens.done.mcp_off"}}{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "revoked"}}{{t "apitokens.done.revoked" "name" .DoneName}}{{else if eq .Done "mcp-on"}}{{t "apitokens.done.mcp_on"}}{{else if eq .Done "mcp-off"}}{{t "apitokens.done.mcp_off"}}{{else if eq .Done "api-on"}}{{t "apitokens.done.api_on"}}{{else}}{{t "apitokens.done.api_off"}}{{end}}</p>
 </div>
 {{- end}}
 <p class="page-intro">{{t "apitokens.intro"}}</p>
@@ -67,7 +67,28 @@
   </form>
   {{- end}}
 </section>
-
+{{- /* REST API access has its own switch, built as MCP's is (SPEC 23.8). The badge reuses the MCP state classes, which carry only the on and off colours. */}}
+<section class="state-plate state-plate--{{if .APIOn}}on{{else}}off{{end}}" id="api-access" aria-labelledby="api-heading">
+  <div class="state-plate__text">
+    <h2 id="api-heading">{{t "apitokens.api.heading"}} <span class="state state--mcp-{{if .APIOn}}on{{else}}off{{end}}">{{if .APIOn}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</span></h2>
+    {{- if .APIForced}}
+    <p id="api-state">{{tHTML "apitokens.api.state.forced" "env" (code "FOREMAN_API=off")}}</p>
+    {{- else if .APIOn}}
+    <p id="api-state">{{t "apitokens.api.state.on"}}</p>
+    {{- else}}
+    <p id="api-state">{{t "apitokens.api.state.off"}}</p>
+    {{- end}}
+  </div>
+  {{- if and .Admin (not .APIForced)}}
+  <form method="post" action="{{.APIPath}}" id="api-form">
+    {{- if .APIOn}}
+    <button type="submit" class="button" name="api" value="off" id="act-api">{{t "apitokens.api.turn_off"}}</button>
+    {{- else}}
+    <button type="submit" class="button" name="api" value="on" id="act-api">{{t "apitokens.api.turn_on"}}</button>
+    {{- end}}
+  </form>
+  {{- end}}
+</section>
 
 {{- /* One list of tokens. An admin sees every user's and filters it to their own or all; the filter is CSS only, so nothing reloads (SPEC 12.10). */}}
 <section class="panel token-table" aria-labelledby="tokens-heading">

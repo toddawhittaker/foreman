@@ -1,4 +1,5 @@
 {
+  "audit.action.api-set": "Dostęp REST API włączony lub wyłączony",
   "audit.action.audit-retention-set": "Przechowywanie dziennika audytu zmienione",
   "audit.action.autosave-tidy": "Autozapisy uporządkowane",
   "audit.action.chat": "Wiadomość czatu",

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ const PathAPITokens = "/settings/api-tokens"
 // Paths under PathAPITokens.
 const (
 	pathAPITokenMCP = PathAPITokens + "/mcp"
+	pathAPITokenAPI = PathAPITokens + "/api"
 	pathAPIToken    = PathAPITokens + "/{id}"
 )
 
@@ -29,6 +31,7 @@ const (
 	AuditTokenRenew  = "token-renew"
 	AuditTokenRevoke = "token-revoke"
 	AuditMCPSet      = "mcp-set"
+	AuditAPISet      = "api-set"
 )
 
 // Done messages the page shows after a redirect.
@@ -37,6 +40,8 @@ const (
 	tokenDoneRevoked = "revoked"
 	tokenDoneMCPOn   = "mcp-on"
 	tokenDoneMCPOff  = "mcp-off"
+	tokenDoneAPIOn   = "api-on"
+	tokenDoneAPIOff  = "api-off"
 )
 
 // roleAdmin is the users table's only role in v1 (SPEC 12.1).
@@ -151,7 +156,7 @@ func (f TokenForm) Scopes() []ScopeOption {
 // NameMax is the longest name.
 func (TokenForm) NameMax() int { return auth.TokenNameMax }
 
-// APITokensPage lists tokens, creates them and switches MCP access.
+// APITokensPage lists tokens, creates them and switches MCP and REST API access.
 type APITokensPage struct {
 	Mine []TokenRow
 	// All is every user's token; only an admin sees it (SPEC 12.10).
@@ -161,6 +166,9 @@ type APITokensPage struct {
 	// MCPOn is the stored choice; MCPForced is FOREMAN_MCP=off.
 	MCPOn     bool
 	MCPForced bool
+	// APIOn and APIForced are the same for REST API access (SPEC 23.8).
+	APIOn     bool
+	APIForced bool
 	// Done is the action just finished and DoneName the token it named.
 	Done     string
 	DoneName string
@@ -190,11 +198,16 @@ func (APITokensPage) Path() string { return PathAPITokens }
 // MCPPath is where the switch posts.
 func (APITokensPage) MCPPath() string { return pathAPITokenMCP }
 
+// APIPath is where the REST API switch posts.
+func (APITokensPage) APIPath() string { return pathAPITokenAPI }
+
 // APITokenCreatedPage shows a new secret, once (SPEC 12.10, 14.19).
 type APITokenCreatedPage struct {
-	Token    TokenRow
-	Secret   string
+	Token  TokenRow
+	Secret string
+	// Endpoint is the MCP address and APIBase the REST API's base address.
 	Endpoint string
+	APIBase  string
 	MCPOn    bool
 	// Admin may turn MCP access on, so the off note links to the switch.
 	Admin bool
@@ -221,6 +234,7 @@ func (s *server) apiTokenRoutes() {
 	s.mux.HandleFunc("GET "+PathAPITokens, s.requireUser(s.handleAPITokens))
 	s.mux.HandleFunc("POST "+PathAPITokens, s.requireUser(s.handleAPITokenCreate))
 	s.mux.HandleFunc("POST "+pathAPITokenMCP, s.requireUser(s.handleMCPSet))
+	s.mux.HandleFunc("POST "+pathAPITokenAPI, s.requireUser(s.handleAPISet))
 	s.mux.HandleFunc("POST "+pathAPIToken+"/renew", s.requireUser(s.handleAPITokenRenew))
 	s.mux.HandleFunc("GET "+pathAPIToken+"/revoke", s.requireUser(s.handleAPITokenRevokeAsk))
 	s.mux.HandleFunc("POST "+pathAPIToken+"/revoke", s.requireUser(s.handleAPITokenRevoke))
@@ -241,7 +255,7 @@ func (s *server) tokensPage(ctx context.Context, u store.User, f TokenForm) (API
 		return APITokensPage{}, err
 	}
 	now := s.now()
-	p := APITokensPage{Admin: isAdmin(u), Form: f, MCPOn: s.mcpOn(ctx), MCPForced: s.cfg.MCPForcedOff}
+	p := APITokensPage{Admin: isAdmin(u), Form: f, MCPOn: s.mcpOn(ctx), MCPForced: s.cfg.MCPForcedOff, APIOn: s.apiOn(ctx), APIForced: s.cfg.APIForcedOff}
 	for _, t := range all {
 		row := tokenRow(t, u.ID, now)
 		if row.Mine {
@@ -264,7 +278,7 @@ func (s *server) handleAPITokens(w http.ResponseWriter, r *http.Request, u store
 	switch d := q.Get("done"); d {
 	case tokenDoneRevoked:
 		p.Done, p.DoneName = d, q.Get("name")
-	case tokenDoneMCPOn, tokenDoneMCPOff:
+	case tokenDoneMCPOn, tokenDoneMCPOff, tokenDoneAPIOn, tokenDoneAPIOff:
 		p.Done = d
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
@@ -303,7 +317,7 @@ func (s *server) handleAPITokenCreate(w http.ResponseWriter, r *http.Request, u 
 	// Render sends every signed-in page with no-store; the secret is never
 	// cached or shown again (SPEC 14.19).
 	s.page(w, r, http.StatusOK, u.Username, APITokenCreatedPage{
-		Token: tokenRow(t, u.ID, s.now()), Secret: secret, Endpoint: s.mcpEndpoint(r), MCPOn: s.mcpOn(r.Context()), Admin: isAdmin(u),
+		Token: tokenRow(t, u.ID, s.now()), Secret: secret, Endpoint: s.publicAddress(r, PathMCP), APIBase: s.publicAddress(r, path.Dir(PathAPITools)), MCPOn: s.mcpOn(r.Context()), Admin: isAdmin(u),
 	})
 }
 
@@ -315,11 +329,12 @@ func tokenAudit(t store.APIToken) string {
 		" owner=" + strconv.Quote(t.Owner) + " scope=" + t.Scope
 }
 
-// mcpEndpoint is the MCP address: FOREMAN_PUBLIC_URL's, else this request's.
-func (s *server) mcpEndpoint(r *http.Request) string {
+// publicAddress is this server's address for the path suffix:
+// FOREMAN_PUBLIC_URL's, else this request's (SPEC 12.10).
+func (s *server) publicAddress(r *http.Request, suffix string) string {
 	if s.cfg.PublicURL != nil {
 		u := *s.cfg.PublicURL
-		u.Path = strings.TrimSuffix(u.Path, "/") + "/mcp"
+		u.Path = strings.TrimSuffix(u.Path, "/") + suffix
 		u.RawQuery, u.Fragment = "", ""
 		return u.String()
 	}
@@ -335,7 +350,7 @@ func (s *server) mcpEndpoint(r *http.Request) string {
 			scheme = p
 		}
 	}
-	return (&url.URL{Scheme: scheme, Host: r.Host, Path: "/mcp"}).String()
+	return (&url.URL{Scheme: scheme, Host: r.Host, Path: suffix}).String()
 }
 
 // tokenFromPath reads the token the path names, or answers 404.
@@ -480,6 +495,33 @@ func (s *server) handleMCPSet(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	s.audit(r.Context(), actor(u), AuditMCPSet, "", v)
 	http.Redirect(w, r, PathAPITokens+"?done=mcp-"+v, http.StatusSeeOther)
+}
+
+// handleAPISet turns REST API access on or off; FOREMAN_API=off refuses it
+// (SPEC 23.8).
+func (s *server) handleAPISet(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	if !isAdmin(u) {
+		s.page(w, r, http.StatusForbidden, u.Username, ErrorPage{Status: http.StatusForbidden})
+		return
+	}
+	if s.cfg.APIForcedOff {
+		s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict, Detail: i18n.M("apitokens.api.forced")})
+		return
+	}
+	v := r.PostFormValue("api")
+	if v != APIOn && v != APIOff {
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
+		return
+	}
+	if err := s.setAPI(r.Context(), v, u.Username); err != nil {
+		s.fail(w, r, "save the REST API setting", err)
+		return
+	}
+	s.audit(r.Context(), actor(u), AuditAPISet, "", v)
+	http.Redirect(w, r, PathAPITokens+"?done=api-"+v, http.StatusSeeOther)
 }
 
 // tokenBanner is the expiry banner's tokens for the signed-in user, on

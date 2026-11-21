@@ -1,4 +1,5 @@
 {
+  "audit.action.api-set": "已开启或关闭 REST API 访问",
   "audit.action.audit-retention-set": "已更改审计日志保留设置",
   "audit.action.autosave-tidy": "已整理自动存档",
   "audit.action.chat": "聊天消息",

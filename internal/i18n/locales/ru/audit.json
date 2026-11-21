@@ -1,4 +1,5 @@
 {
+  "audit.action.api-set": "Доступ по REST API включён или выключен",
   "audit.action.audit-retention-set": "Срок хранения журнала аудита изменён",
   "audit.action.autosave-tidy": "Автосохранения очищены",
   "audit.action.chat": "Сообщение чата",

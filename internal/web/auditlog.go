@@ -68,6 +68,7 @@ var auditActionWords = map[string]i18n.Msg{
 	AuditTokenRenew:           i18n.M("audit.action.token-renew"),
 	AuditTokenRevoke:          i18n.M("audit.action.token-revoke"),
 	AuditMCPSet:               i18n.M("audit.action.mcp-set"),
+	AuditAPISet:               i18n.M("audit.action.api-set"),
 	AuditAccountSet:           i18n.M("audit.action.factorio-account-set"),
 	AuditAccountRemove:        i18n.M("audit.action.factorio-account-remove"),
 	AuditPublicModsSet:        i18n.M("audit.action.public-mods-set"),
