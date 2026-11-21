@@ -1412,7 +1412,8 @@ func (p ModPlanPage) changeText(c mods.Change) i18n.Msg {
 	var why i18n.Msg
 	switch c.Why.Code {
 	case mods.WhyRequiredBy:
-		why = i18n.M("mods.plan.why.required_by", "mod", p.ident(c.Why.Of))
+		needers := p.neededBy(c)
+		why = i18n.M("mods.plan.why.required_by", "count", len(needers), "mods", andNames(needers))
 	case mods.WhyOptionalOf:
 		why = i18n.M("mods.plan.why.optional_of", "mod", p.ident(c.Why.Of))
 	case mods.WhyRecommendedBy:
@@ -1431,6 +1432,18 @@ func (p ModPlanPage) changeText(c mods.Change) i18n.Msg {
 		what = join(what, i18n.M("mods.plan.warn.older"))
 	}
 	return what
+}
+
+// neededBy names every mod in the plan that needs c, the one its reason
+// names first (SPEC 9.2).
+func (p ModPlanPage) neededBy(c mods.Change) []i18n.Msg {
+	out := []i18n.Msg{i18n.M("server.list.names", "names", p.ident(c.Why.Of))}
+	for _, o := range p.Plan.Changes {
+		if o.Name != c.Why.Of && slices.Contains(p.Plan.Requires[o.Name], c.Name) {
+			out = append(out, i18n.M("server.list.names", "names", p.ident(o.Name)))
+		}
+	}
+	return out
 }
 
 func (p ModPlanPage) conflictText(c mods.Conflict) i18n.Msg {

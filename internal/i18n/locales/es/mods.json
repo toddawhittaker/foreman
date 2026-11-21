@@ -251,7 +251,10 @@
   "mods.plan.row.from_to": "{from} a {to}",
   "mods.plan.row.uploaded": "{version}, del zip subido",
   "mods.plan.item.why": "{item} ({why})",
-  "mods.plan.why.required_by": "{mod} lo necesita",
+  "mods.plan.why.required_by": {
+    "one": "{mods} lo necesita",
+    "other": "{mods} lo necesitan"
+  },
   "mods.plan.why.optional_of": "ofrecido por {mod}",
   "mods.plan.why.recommended_by": "recomendado por {mod}",
   "mods.plan.why.from_save": "la partida guardada lo usa",
@@ -416,7 +419,7 @@
   },
   "mods.plan_panel.started": "Empezado {when}.",
   "mods.plan_panel.review_hint": "La revisión muestra cada cambio antes de instalar nada.",
-  "mods.plan_panel.needed_by": "Lo necesita {mod}",
+  "mods.plan_panel.needed_by": "Necesario para {mod}",
   "mods.plan_panel.update": "Se actualizará a {version}",
   "mods.plan_panel.change": "Cambiará a {version}",
   "mods.plan_panel.enable": "Se activará",

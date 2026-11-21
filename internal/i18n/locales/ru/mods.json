@@ -268,7 +268,11 @@
   "mods.plan.row.from_to": "с {from} на {to}",
   "mods.plan.row.uploaded": "{version} из загруженного zip-файла",
   "mods.plan.item.why": "{item} ({why})",
-  "mods.plan.why.required_by": "нужен для {mod}",
+  "mods.plan.why.required_by": {
+    "one": "нужен для {mods}",
+    "few": "нужен для {mods}",
+    "many": "нужен для {mods}"
+  },
   "mods.plan.why.optional_of": "предлагается модом {mod}",
   "mods.plan.why.recommended_by": "рекомендует {mod}",
   "mods.plan.why.from_save": "используется в сохранении",
@@ -451,7 +455,7 @@
   },
   "mods.plan_panel.started": "Начат {when}.",
   "mods.plan_panel.review_hint": "При проверке видно каждое изменение до того, как что-либо будет установлено.",
-  "mods.plan_panel.needed_by": "Нужен моду {mod}",
+  "mods.plan_panel.needed_by": "Нужен для {mod}",
   "mods.plan_panel.update": "Будет обновлён до {version}",
   "mods.plan_panel.change": "Будет заменён на {version}",
   "mods.plan_panel.enable": "Будет включён",
