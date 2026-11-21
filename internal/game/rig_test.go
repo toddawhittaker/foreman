@@ -5,7 +5,13 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"log/slog"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -245,6 +251,32 @@ func (r *rig) run(c *Controller) func() {
 	}
 	r.t.Cleanup(stop)
 	return stop
+}
+
+// proxyDocker puts front between the fake Docker and a new controller,
+// which becomes the rig's and runs. front passes a call on through next.
+// Make the rig with noRun, so no other controller runs beside it.
+func (r *rig) proxyDocker(opts rigOptions, front func(w http.ResponseWriter, req *http.Request, next http.Handler)) {
+	r.t.Helper()
+	sock := strings.TrimPrefix(r.game.Host(), "unix://")
+	proxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "docker"})
+	proxy.FlushInterval = -1
+	proxy.ErrorLog = log.New(io.Discard, "", 0) // a call cut off when the test ends is expected
+	proxy.Transport = &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		var d net.Dialer
+		return d.DialContext(ctx, "unix", sock)
+	}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		front(w, req, proxy)
+	}))
+	r.t.Cleanup(srv.Close)
+	dc, err := docker.New("tcp://" + strings.TrimPrefix(srv.URL, "http://"))
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	r.docker = dc
+	r.c = r.newController(opts)
+	r.stop = r.run(r.c)
 }
 
 // newWorld makes a 2.1 world without Space Age, with one save that the

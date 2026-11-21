@@ -1,21 +1,12 @@
 package game
 
 import (
-	"context"
-	"io"
-	"log"
-	"net"
 	"net/http"
-	"net/http/httptest"
-	"net/http/httputil"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/toddawhittaker/foreman/internal/docker"
 )
 
 // slowStops sits between the controller and the fake Docker. Every stop
@@ -38,20 +29,12 @@ func (s *slowStops) peak() int {
 	return s.most
 }
 
-// newSlowStops swaps the rig's Docker client for one that goes through a
-// slowStops, and makes the rig's controller on it.
+// newSlowStops puts a slowStops between the fake Docker and a new
+// controller, which becomes the rig's.
 func newSlowStops(t *testing.T, r *rig) *slowStops {
 	t.Helper()
 	s := &slowStops{release: make(chan struct{})}
-	sock := strings.TrimPrefix(r.game.Host(), "unix://")
-	proxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "docker"})
-	proxy.FlushInterval = -1
-	proxy.ErrorLog = log.New(io.Discard, "", 0) // a stop cut off when the test ends is expected
-	proxy.Transport = &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-		var d net.Dialer
-		return d.DialContext(ctx, "unix", sock)
-	}}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	r.proxyDocker(rigOptions{}, func(w http.ResponseWriter, req *http.Request, next http.Handler) {
 		if req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/stop") {
 			s.mu.Lock()
 			s.now++
@@ -64,17 +47,9 @@ func newSlowStops(t *testing.T, r *rig) *slowStops {
 				s.mu.Unlock()
 			}()
 		}
-		proxy.ServeHTTP(w, req)
-	}))
-	t.Cleanup(srv.Close)
+		next.ServeHTTP(w, req)
+	})
 	t.Cleanup(s.free) // runs first, so a failed test never leaves a stop hanging
-	dc, err := docker.New("tcp://" + strings.TrimPrefix(srv.URL, "http://"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	r.docker = dc
-	r.c = r.newController(rigOptions{})
-	r.stop = r.run(r.c)
 	return s
 }
 

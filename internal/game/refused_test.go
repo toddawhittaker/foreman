@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -82,5 +83,23 @@ func TestRefusalIsAuditedAndLoggedWithReason(t *testing.T) {
 				t.Errorf("the log line does not give the reason:\n%s", logs.String())
 			}
 		})
+	}
+}
+
+// SPEC 12.9: when a check fails and its audit entry cannot be written
+// either, only the audit fault is returned, so the check's own error goes
+// to the log rather than being lost.
+func TestCheckFaultIsLoggedWhenItsAuditFails(t *testing.T) {
+	var logs lockedBuffer
+	r := newRig(t, rigOptions{logs: &logs})
+	id := r.newWorld("Unaudited check")
+	r.audit.setFail(true)
+	err := r.c.checkFailed(context.Background(), admin, AuditStart, id, "", errors.New("the disk is on fire"))
+	if err == nil || !strings.Contains(err.Error(), "the database is gone") {
+		t.Fatalf("got %v, want the audit fault", err)
+	}
+	got := logs.String()
+	if !strings.Contains(got, "a check before the action failed, and so did its audit entry") || !strings.Contains(got, "the disk is on fire") {
+		t.Errorf("log %q, want the check's own error", got)
 	}
 }
