@@ -129,14 +129,20 @@ func TestAPIOpenAPI(t *testing.T) {
 			if refused := op.Responses["422"].Content["application/json"].Schema.Properties["result"]; compact(t, refused) != "{}" {
 				t.Errorf("%s: %s 422 result schema %s, want the empty schema", scope, tool.Name, refused)
 			}
-			for _, code := range []string{"200", "400", "401", "403", "404", "413", "415", "422", "429"} {
+			for _, code := range []string{"200", "400", "401", "403", "404", "405", "413", "415", "422", "429", "500"} {
 				if _, ok := op.Responses[code]; !ok {
 					t.Errorf("%s: %s has no %s response", scope, tool.Name, code)
 				}
 			}
 		}
+		listOp := doc.Paths[PathAPITools]["get"]
 		if _, ok := doc.Paths[PathAPITools]["get"]; !ok {
 			t.Errorf("%s: no GET %s", scope, PathAPITools)
+		}
+		for _, code := range []string{"405", "500"} {
+			if _, ok := listOp.Responses[code]; !ok {
+				t.Errorf("%s: GET %s has no %s response", scope, PathAPITools, code)
+			}
 		}
 	}
 	if counts[auth.ScopeRead] == 0 || counts[auth.ScopeRead] >= counts[auth.ScopeOperate] || counts[auth.ScopeOperate] >= counts[auth.ScopeAdmin] {

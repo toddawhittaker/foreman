@@ -76,7 +76,9 @@ func openAPIListOperation() map[string]any {
 			},
 			"401": openAPIPlain("The token is missing, wrong, expired or revoked."),
 			"403": openAPIPlain("REST API access is off, or the request came from a web page."),
+			"405": openAPIPlain("The method is not GET."),
 			"429": openAPIPlain("Too many requests for this token or address."),
+			"500": openAPIError("Foreman failed in a way it cannot word. The reason is in Foreman's log.", nil),
 		},
 	}
 }
@@ -110,15 +112,17 @@ func openAPIToolOperation(t apiTool) map[string]any {
 					"required": []any{"message", "result"},
 				}),
 			},
-			"400": openAPIError("The body is not one JSON object.", nil),
+			"400": openAPIError("The body is not one JSON object, or could not be read (then plain text).", nil),
 			"401": openAPIPlain("The token is missing, wrong, expired or revoked."),
 			"403": openAPIPlain("REST API access is off, or the request came from a web page."),
 			"404": openAPIError("No tool of this name for this token.", nil),
+			"405": openAPIPlain("The method is not POST."),
 			"413": openAPIPlain("The body is over 4 MiB."),
 			"415": openAPIError("The body is not application/json.", nil),
 			// A refusal's result, such as a preview, need not fit the output schema.
 			"422": openAPIError("The tool refused the call, or the arguments do not fit its schema. result holds what the tool gave, such as a fresh preview and confirm code.", map[string]any{}),
 			"429": openAPIPlain("Too many requests for this token or address."),
+			"500": openAPIError("Foreman failed in a way it cannot word. The reason is in Foreman's log.", nil),
 		},
 	}
 }

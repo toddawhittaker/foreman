@@ -3781,6 +3781,8 @@ answers 400. A body over 4 MiB answers 413. (P1)
 tool's one-line summary, and `result`, the tool's result exactly as MCP
 returns it. Every refusal by a tool answers 422 with `error` in English,
 plus `result` when the tool gave one, such as a fresh preview and code.
+A fault Foreman cannot word answers 500 with `error` in general terms; the
+reason goes to its log (14.8).
 Refusals made before a tool runs (401, 403, 413, 429) are plain text, as
 on `/mcp`. (P1)
 
