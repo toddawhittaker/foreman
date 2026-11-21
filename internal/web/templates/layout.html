@@ -18,6 +18,7 @@
 <script src="{{static "subnav.js"}}" defer></script>
 {{- if .User}}
 <script src="{{static "about.js"}}" defer></script>
+<script src="{{static "live.js"}}" defer></script>
 {{- end}}
 {{block "scripts" .}}{{end}}
 </head>
@@ -106,6 +107,10 @@
     <button type="button" class="button button--primary" id="about-close">{{t "about.close"}}</button>
   </div>
 </dialog>
+{{- end}}
+{{- /* A page without a stream of its own follows the status strip's state through a hidden element of its own, outside <main>, so no page rule that styles swap targets or <main>'s children applies (SPEC 16.3, DESIGN 6 Shell). */}}
+{{- with .StripURL}}
+<div hidden hx-ext="sse" sse-connect="{{.}}" sse-swap="strip" hx-swap="none"></div>
 {{- end}}
 <main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
 {{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here (SPEC 12.10). */}}
@@ -263,6 +268,13 @@
     <li><a href="{{accountPath}}"{{if eq . "account"}} aria-current="page"{{end}}>{{t "account.title"}}</a></li>
   </ul>
 </nav>
+{{- end}}
+
+{{/* Where a page sits, as navigation (DESIGN 6): its ancestors as links (plain
+     text where a link would lead to the page shown), then the page shown,
+     marked current. Takes the steps from crumbs. */}}
+{{define "crumb" -}}
+<nav class="crumb" aria-label="{{t "common.crumb.label"}}"><ol role="list">{{range .}}<li>{{if .Href}}<a href="{{.Href}}">{{.Label}}</a>{{else if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<span>{{.Label}}</span>{{end}}</li>{{end}}</ol></nav>
 {{- end}}
 
 {{/* The Worlds area's own pages: the list, Favorites and Deleted worlds

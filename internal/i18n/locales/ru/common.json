@@ -1,6 +1,7 @@
 {
   "common.skip": "Перейти к содержимому",
   "common.error.label": "Ошибка:",
+  "common.crumb.label": "Навигационная цепочка",
   "common.nav.label": "Главное меню",
   "common.nav.server": "Сервер",
   "common.nav.console": "Консоль",

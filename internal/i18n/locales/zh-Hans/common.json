@@ -1,6 +1,7 @@
 {
   "common.skip": "跳到正文",
   "common.error.label": "错误：",
+  "common.crumb.label": "面包屑导航",
   "common.nav.label": "主菜单",
   "common.nav.server": "服务器",
   "common.nav.console": "控制台",

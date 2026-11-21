@@ -49,7 +49,7 @@ func TestBackLinks(t *testing.T) {
 		page Page
 		want string
 	}{
-		{ImportPage{}, `<p class="crumb"><a href="/worlds">Worlds</a><span aria-current="page">`},
+		{ImportPage{}, `<nav class="crumb" aria-label="Breadcrumb"><ol role="list"><li><a href="/worlds">Worlds</a></li><li><span aria-current="page">`},
 		{DeletePage{World: world.Summary{ID: "base", Name: "Base", Active: true}}, `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
 	} {
 		_, body := render(t, r, pageCase{status: 200, user: "todd", page: c.page})
@@ -231,4 +231,36 @@ func TestWorldListAfterDelete(t *testing.T) {
 	body := hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String()
 	wantIn(t, "world list", body, `class="message message--success"`,
 		`Deleted Second. Its snapshots are under Deleted worlds.`, `<a href="/deleted">Go to Deleted worlds</a>`)
+}
+
+// DESIGN 6: a breadcrumb is made of href and label pairs, so an odd count is
+// a template mistake, refused rather than drawn short.
+func TestCrumbsOddArguments(t *testing.T) {
+	if steps, err := crumbs("/worlds", "Worlds", "/worlds/base"); err == nil {
+		t.Fatalf("crumbs with 3 arguments = %v, want an error", steps)
+	}
+}
+
+// DESIGN 6: the longest trail, Mod settings, is a nav holding an ordered
+// list: three ancestors as links, then the page shown, marked current.
+func TestModSettingsCrumb(t *testing.T) {
+	r := newTestRenderer(t)
+	p := ModSettingsPage{World: world.Summary{ID: "base", Name: "Base"}}
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
+	wantIn(t, p.templateName(), body, `<nav class="crumb" aria-label="Breadcrumb"><ol role="list">`+
+		`<li><a href="/worlds">Worlds</a></li>`+
+		`<li><a href="/worlds/base">Base</a></li>`+
+		`<li><a href="/worlds/base/mods">Mods</a></li>`+
+		`<li><span aria-current="page">Mod settings</span></li></ol></nav>`)
+}
+
+// DESIGN 6: on General, "Settings" would link to the page shown, so it is
+// plain text; only the last step is marked current.
+func TestGeneralCrumbHasNoSelfLink(t *testing.T) {
+	r := newTestRenderer(t)
+	p := GeneralPage{}
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
+	wantIn(t, p.templateName(), body, `<nav class="crumb" aria-label="Breadcrumb"><ol role="list">`+
+		`<li><span>Settings</span></li>`+
+		`<li><span aria-current="page">General</span></li></ol></nav>`)
 }

@@ -6,7 +6,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow">{{t "common.nav.settings"}}</p>
+{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.schedule"))}}
 <h1>{{t "common.menu.schedule"}}</h1>
 {{template "rail" $}}
 {{- if .Saved}}

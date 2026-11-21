@@ -4,8 +4,8 @@
 
 {{define "content" -}}
 {{with .Page}}
+{{template "crumb" (crumbs generalPath (t "common.nav.settings") notificationsPath (t "common.menu.notifications"))}}
 <header class="page-head">
-  <p class="eyebrow">{{t "common.nav.settings"}}</p>
   <h1>{{if .Edit}}{{t "notify.edit.named" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{else}}{{t "notify.add"}}{{end}}</h1>
 </header>
 {{template "rail" $}}

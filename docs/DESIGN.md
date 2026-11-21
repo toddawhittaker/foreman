@@ -65,9 +65,9 @@ and nothing in it should suggest it is an official product.
   IBM Plex Mono. So are the figures a machine writes when they stand as
   values: a version (`.ver`, `.mod-ver`), and the sizes, times and versions
   in table cells and in the world list's facts, at 13 px with tabular
-  digits. The overline and fact names are Plex Mono capitals too (2).
-  Everything a person wrote, or Foreman wrote for a person, is in IBM Plex
-  Sans, and so are table column names (8.3).
+  digits. The overline is Plex Mono capitals too (2). Everything a person
+  wrote, or Foreman wrote for a person, is in IBM Plex Sans, and so are
+  table column names (8.3) and fact names (2).
 - **Dense, not cramped.** Lists and tables inside cards, not grids of
   tiles. A world list is a list of rows divided by rules. A save list is a
   table.
@@ -116,7 +116,7 @@ a phone can find where a page and a section start.
 
 | Token | Size | Line height | Weight | Use |
 |---|---|---|---|---|
-| `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | Hints (weight 400, a 1.5 line height, 66ch), badges, a mod's portal news line, figures in table cells (Plex Mono); the game log below 40rem |
+| `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | Column names and fact names (Plex Sans, sentence case, `text-muted`), hints (weight 400, a 1.5 line height, 66ch), badges, a mod's portal news line, figures in table cells (Plex Mono); the game log below 40rem |
 | `--text-sm` | 0.875rem (14 px) | 1.43 | 400 | A card's one-line description under its heading (a 1.5 line height, 60ch), table captions, timestamps, the log and console, labels (600), state badges (600), units beside a figure, breadcrumbs (500) |
 | `--text-md` | 0.9375rem (15 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells, row titles (600) |
 | `--text-lg` | 1.125rem (18 px) | 1.333 | 650 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
@@ -124,10 +124,14 @@ a phone can find where a page and a section start.
 | `--text-2xl` | 1.5rem (24 px) | 1.167 | 600 | Stat figures: the Server plate's gauges, tabular |
 | `--text-3xl` | 2rem (32 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
 
-Three labels sit under the scale at 0.75rem (12 px, no token), weight
-600, in capitals and `text-muted`: the overline and fact names in Plex
-Mono, tracked `0.06em`, and table column names in Plex Sans, tracked
-`0.04em`. Their text stays sentence case in the markup.
+Column names (table heads and the heads of the world, token and user
+lists) and fact names (`dt`) are labels set apart from content by colour
+and weight, not by capitals: `--text-xs` (13 px), weight 600,
+`text-muted`, in Plex Sans and sentence case, so a long German or Russian
+name stays easy to read. Only the overline (`p.eyebrow`, 8.1) keeps the
+stamped look: 0.75rem (12 px, no token), weight 600, `text-muted`, in Plex
+Mono capitals tracked `0.06em`. Its text stays sentence case in the
+markup, and a Chinese overline uses Plex Sans untracked.
 
 `h3` is 1.0625rem (17 px, no token) at weight 600. So is an operation's
 heading (`h2.op-heading`) and the connected-players heading in the
@@ -138,7 +142,7 @@ Rules:
 
 - Body is 15 px, helper text 13 px and section headings 20 px, so help,
   body and headings are three distinct steps. Text smaller than 13 px is
-  only the 12 px labels above. Form controls take the body size.
+  only the 12 px overline and the rail's list name (6). Form controls take the body size.
 - Body text is limited to `max-inline-size: 68ch` (`--measure`). A hint is
   13 px at a 1.5 line height, held to 66ch, so long help never reads as a
   grey wall. Tables and the log are not limited.
@@ -158,9 +162,8 @@ Rules:
   pushing the page wider than 320 px.
 - Copy is sentence case. Buttons start with a verb ("Start server",
   "Delete world", "Take snapshot"), never "Submit" or "OK". The one
-  exception is drawn by CSS, not written: the overline, the fact names,
-  table column names and the disk strip's title are shown in capitals, and
-  their text stays sentence case.
+  exception is drawn by CSS, not written: the overline and the rail's list
+  name (6) are shown in capitals, and their text stays sentence case.
 - Headings never skip a level. Each page has exactly one `h1`.
 
 ## 3. Colour
@@ -557,7 +560,7 @@ frame (7.4).
     </details>
   </header>
   <main id="main" tabindex="-1">
-    <p class="crumb"><a href="/worlds">Worlds</a><span aria-current="page">Family base 2025</span></p>
+    <nav class="crumb" aria-label="Breadcrumb"><ol role="list"><li><a href="/worlds">Worlds</a></li><li><span aria-current="page">Family base 2025</span></li></ol></nav>
     <h1>…</h1>
     <nav class="subnav" aria-label="World pages">…</nav>
     …
@@ -885,7 +888,7 @@ order and the picture agree.
   `repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr))` with
   `gap: var(--space-3) var(--space-5)`, two to a row when the card is under
   24rem wide, so they are two or three to a row at 320 px. Each is a small
-  capitalised name over its value at `--text-xl`, weight 600, in `heading`;
+  name in 13 px sentence case over its value at `--text-xl`, weight 600, in `heading`;
   the game version is set in the same face and size as the other values.
   Elsewhere `dl.facts--inline` is a wrapping flex row with `gap:
   var(--space-2) var(--space-5)` (the disk strip, 7.8).
@@ -1496,8 +1499,8 @@ holds only the word. A template always writes the modifier, even for
   The `dl` is a grid in the Server page's status card (section 6, "What a
   phone shows first") and a grid, `repeat(auto-fit, minmax(min(100%, 7rem),
   1fr))`, on a world's page; both are two or more to a row at 320 px.
-  `dt` is 0.75rem Plex Mono, weight 600, `text-muted`, in capitals with
-  0.06em letter-spacing (the text itself stays sentence case); `dd` is
+  `dt` is `--text-xs` (13 px) Plex Sans, weight 600, `text-muted`, in
+  sentence case; `dd` is
   `--text-md`, weight 500, in `text`, with tabular figures. On a world's
   Overview the facts card reads as a nameplate: its values are
   `--text-lg`, weight 600, in `heading`. In the world list a fact's value
@@ -1677,7 +1680,7 @@ on its background instead of one long list.
   its kind and label (`heading`, weight 600) with its time at the end in
   `text-muted`, then "All snapshots" (section 6).
 - **The disk strip** (`panel disk-strip`, on the Snapshots pages) is a
-  compact card: its title in capitals at `--text-xs`, the two figures
+  compact card: the two figures
   (name beside value) and the one-line explanation on a single wrapping row,
   so the forms and the list stay near the top. A warning inside it takes a
   row of its own.
@@ -1887,21 +1890,32 @@ says where the page sits. There are two kinds, and no page has a "Back
 to" link above its heading:
 
 - **An overline** (`p.eyebrow`: 12 px Plex Mono capitals, weight 600,
-  `text-muted`, 2) names the area on the pages of the Server view, of
-  Foreman's settings and on the top-level Worlds and Snapshots pages
-  ("Server", "Settings", "Worlds", "Snapshots").
-- **A breadcrumb** (`p.crumb`) opens the pages under Worlds: a world's
-  pages (Overview, Saves, Snapshots, Mods, Mod search, the mod plan, Mod
+  `text-muted`, 2) names the area on the pages of the Server view and on
+  the top-level Worlds and Snapshots pages ("Server", "Worlds",
+  "Snapshots"). The Server page has no breadcrumb: its trail would be one
+  item.
+- **A breadcrumb** (`nav.crumb`, named "Breadcrumb", holding an `ol` with
+  one `li` per step) opens the pages under Worlds: a world's pages
+  (Overview, Saves, Snapshots, Mods, Mod search, the mod plan, Mod
   settings, Game settings), Generate, Import, Favorites, a favorite's
-  delete step and Deleted worlds. It is the
-  full path, in Plex Sans at `--text-sm`, weight 500: each ancestor a
-  quiet link in `text-muted`, underlined and `heading` only under the
-  pointer, then an 8 px chevron; the current page last, in `heading`, with
-  `aria-current="page"`; no trailing mark. For example "Worlds > Nauvis
-  Prime > Mods", "Worlds > Nauvis Prime > Mods > Mod settings", or
-  "Worlds > Import a world". Each link is a 44 px target through an
+  delete step and Deleted worlds. It also opens each of Foreman's settings
+  pages as "Settings > *page*", with Settings linking to General; on
+  General itself, Settings is plain text, so it never links to the page
+  shown. It is the full path, in Plex Sans at `--text-sm`, weight 500:
+  each ancestor a link in `text-muted` with a 1 px underline at 68 % of
+  its colour (so a link differs from the current page by more than colour;
+  3:1 or better against the page and a card, WCAG 1.4.11), and `heading`
+  with a full-colour underline under the pointer, then an 8 px chevron; the
+  current page last, in `heading`, not underlined, marked
+  `aria-current="page"`; no trailing mark. The chevrons are drawn by CSS,
+  so a screen reader does not read them, and in forced colours they are
+  painted `CanvasText`. For example "Worlds > Nauvis Prime > Mods",
+  "Worlds > Nauvis Prime > Mods > Mod settings", "Worlds > Import a world"
+  or "Settings > Audit log". Each link is a 44 px target through an
   invisible hit area above and below it. The chevrons turn over in
-  right-to-left text.
+  right-to-left text. Four trails end on a link rather than on the page
+  shown, because the page is a step under another: a favorite's delete
+  step, the notification form, the created API token and the mod plan.
 
 A page's one-line description under its title (`p.page-intro`) is
 `text-muted` at the measure.
@@ -1981,8 +1995,8 @@ a content column; from a 60rem card the title column is 240 px.
 one of which may be actions. The name column wraps with
 `overflow-wrap: anywhere`; numbers are right-aligned and tabular. Column
 names (and the token, user and world lists' header rows) are labels, set
-apart from content: 12 px Plex Sans capitals, weight 600, tracked 0.04em,
-in `text-muted`, on one line. The figures in cells (sizes, times,
+apart from content: 13 px Plex Sans in sentence case, weight 600, in
+`text-muted`, on one line. The figures in cells (sizes, times,
 versions) are 13 px Plex Mono with tabular digits, so the numbers carry
 the mono voice, not the labels. Every row has a bottom border of
 1px `line` (the last has none). No zebra stripes; a body row under the
@@ -4213,11 +4227,15 @@ The end-to-end tests for each screen check, in both themes
 
 One stylesheet, `internal/web/static/foreman.css`, in this order: tokens
 (both themes on `:root`, then the forced themes), a small reset, base elements
-(`body`, headings, links, `code`, `table`), the shell, then one block per
-component in the order of section 7. A last part restyles the shell and
-the components for the wide frame (the rail, the status strip, notices,
-labels, row actions and foot bars); it comes last because it overrides
-earlier rules, and each of its blocks names the section it serves. No
+(`body`, headings, links, `code`, `table`), the shell (with its wide-screen
+rail), then one block per component in the order of section 7 and section 8.
+A component's narrow, wide-screen, forced-colours and reduced-motion rules sit
+with the component. A rule that restyles another is folded into that rule,
+never added as a later override, and nothing at the end of the file restyles
+what came before. The shared groups that remain on purpose (the reset and base
+type, the line icons, the single-column grids, and pairs of selectors that
+share a look) may list a member that also has a rule of its own, where
+splitting the group would copy its values or change which rule wins. No
 preprocessor, no `@import`.
 
 ## 12. Deliberately deferred

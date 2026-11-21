@@ -7,7 +7,7 @@
 {{define "content" -}}
 {{with .Page}}
 {{- $page := .}}
-<p class="crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a><a href="{{.Tabs.Path}}">{{.WorldName}}</a><span aria-current="page">{{t "worlds.world.settings"}}</span></p>
+{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .WorldName "" (t "worlds.world.settings"))}}
 <div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 </div>

@@ -33,8 +33,8 @@
 
 {{define "content" -}}
 {{with .Page}}
+{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "apitokens.tab"))}}
 <header class="page-head page-head--row">
-  <p class="eyebrow">{{t "common.nav.settings"}}</p>
   <h1>{{t "apitokens.title"}}</h1>
 </header>
 {{template "rail" $}}

@@ -300,6 +300,16 @@ func (v view) LiveURL() string {
 	return l.liveURL()
 }
 
+// StripURL is where a signed-in page without a stream of its own gets the
+// status strip's live state, or "" when it has a stream or shows no state
+// (SPEC 16.3, DESIGN 6 Shell).
+func (v view) StripURL() string {
+	if v.User == "" || !v.Lamp.Have || v.LiveURL() != "" {
+		return ""
+	}
+	return PathStripEvents
+}
+
 // Failed is true when a form page is showing errors, so the title can say
 // so first (WCAG 3.3.1 and 2.4.2).
 func (v view) Failed() bool {
@@ -376,6 +386,29 @@ func share(part, rest uint64) int {
 	return max(1, int(float64(part)/(float64(part)+float64(rest))*100))
 }
 
+// crumbStep is one step of a breadcrumb (DESIGN 6). A step with no Href is
+// plain text; the last such step is the page shown, marked Current.
+type crumbStep struct {
+	Href, Label string
+	Current     bool
+}
+
+// crumbs makes a breadcrumb's steps from href and label pairs, for the crumb
+// partial: {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .Name)}}.
+func crumbs(pairs ...string) ([]crumbStep, error) {
+	if len(pairs)%2 != 0 {
+		return nil, fmt.Errorf("crumbs: %d arguments, want href and label pairs", len(pairs))
+	}
+	steps := make([]crumbStep, 0, len(pairs)/2)
+	for i := 1; i < len(pairs); i += 2 {
+		steps = append(steps, crumbStep{Href: pairs[i-1], Label: pairs[i]})
+	}
+	if last := len(steps) - 1; last >= 0 && steps[last].Href == "" {
+		steps[last].Current = true
+	}
+	return steps, nil
+}
+
 // Renderer holds the parsed templates, once per language, and the
 // embedded static files.
 type Renderer struct {
@@ -407,6 +440,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"flag":              r.flagURL,
 		"figure":            figure,
 		"share":             share,
+		"crumbs":            crumbs,
 		"chatPath":          func() string { return PathChat },
 		"utc":               func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
 		"isoTime":           func(t time.Time) string { return t.UTC().Format(time.RFC3339) },

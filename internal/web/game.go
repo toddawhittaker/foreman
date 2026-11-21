@@ -26,6 +26,9 @@ const (
 	PathGameSwitch  = "/worlds/{id}/switch"
 	PathGamePull    = "/worlds/{id}/pull-image"
 	PathGameEvents  = "/worlds/{id}/events"
+	// PathStripEvents streams the status strip to signed-in pages that
+	// have no stream of their own (SPEC 16.3, DESIGN 6 Shell).
+	PathStripEvents = "/state/events"
 	// PathGameCancel ends the stop countdown on the world whose game is
 	// stopping; in a switch that is the world switched from (SPEC 7.6).
 	PathGameCancel   = "/worlds/{id}/cancel-stop"
@@ -302,6 +305,7 @@ func (s *server) gameRoutes() {
 	s.mux.HandleFunc("POST "+PathGameDismiss, s.requireUser(s.handleDismissResult))
 	s.switchRoutes()
 	s.handleLong("GET "+PathGameEvents, s.requireUser(s.handleEvents))
+	s.handleLong("GET "+PathStripEvents, s.requireUser(s.handleStripEvents))
 }
 
 // activeWorld returns the active world; found is false when none is.

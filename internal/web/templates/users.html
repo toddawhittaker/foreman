@@ -4,7 +4,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow">{{t "common.nav.settings"}}</p>
+{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.users"))}}
 <h1>{{t "users.title"}}</h1>
 {{template "rail" $}}
 {{- template "summary" .Problems}}
