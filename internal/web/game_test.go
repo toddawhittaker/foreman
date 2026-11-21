@@ -598,8 +598,25 @@ func TestServerPageNamesTheOlderSaveThatLoadsNext(t *testing.T) {
 
 // SPEC 6.1, 16.3: a snapshot taken while the Server page is open, as a mod
 // install takes one before it writes, shows in the page's snapshot card
-// once the operation ends, with no reload.
+// once the operation ends, with no reload. The page's own action stores a
+// task result; a scheduled restart or an API action calls the controller
+// directly and stores none, so only the operation's end can say so.
 func TestSnapshotCardFollowsAnEndedOperation(t *testing.T) {
+	for name, end := range map[string]func(g *gameRig, id string){
+		"with a task result": func(g *gameRig, id string) {
+			g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
+		},
+		"without a task result": func(g *gameRig, id string) {
+			if err := g.ctrl.Start(context.Background(), id, game.Actor{Username: "alice"}, game.StartOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) { snapshotCardFollows(t, end) })
+	}
+}
+
+func snapshotCardFollows(t *testing.T, end func(g *gameRig, id string)) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	g.waitPage(stopped, "No snapshots yet")
@@ -618,7 +635,7 @@ func TestSnapshotCardFollowsAnEndedOperation(t *testing.T) {
 	if _, err := g.worlds.TakeSnapshot(id, "Taken meanwhile", "alice"); err != nil {
 		t.Fatal(err)
 	}
-	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
+	end(g, id)
 	got := make(chan string, 1)
 	go func() {
 		for {
