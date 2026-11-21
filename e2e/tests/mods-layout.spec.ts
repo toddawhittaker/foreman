@@ -2,9 +2,10 @@ import { test, expect, checkPage, createAdmin, seedWorld, openModTools, setUpMod
 import type { Page } from "@playwright/test";
 
 // Issue 761: on a wide screen the Plan card sticks in view while the page
-// scrolls, clear of the top strip and over the "Match mods to the save"
-// card that scrolls under it (DESIGN 8.11). The projects run this in both
-// themes; a phone holds the plan as a bar at the foot instead.
+// scrolls, clear of the top strip, alone in its rail: the tools sit in the
+// main column, "Match mods to the save" above Installed mods and the others
+// below it, so nothing passes under the plan (DESIGN 8.11). The projects run
+// this in both themes; a phone holds the plan as a bar at the foot instead.
 test.use({ fakeGameOn: true });
 
 test("the sticking Plan card stays on top of the cards under it", async ({ page, foreman }, info) => {
@@ -31,21 +32,44 @@ test("the sticking Plan card stays on top of the cards under it", async ({ page,
     });
     expect(covered, `scrolled ${by} px`).toEqual([]);
   }
-  // By then the Match card has scrolled up under the plan.
+  // The plan is alone in its rail; Match sits in the main column above
+  // Installed mods, and Upload below it.
+  expect(await page.evaluate(() => [...document.querySelector(".mod-side")!.children].map((el) => el.id))).toEqual(["plan-panel"]);
   const planBox = (await page.locator("#plan-panel").boundingBox())!;
   const syncBox = (await sync.boundingBox())!;
-  expect(syncBox.y).toBeLessThan(planBox.y + planBox.height);
+  const installedBox = (await page.locator('section[aria-labelledby="installed-heading"]').boundingBox())!;
+  const uploadBox = (await page.locator('section[aria-labelledby="upload-heading"]').boundingBox())!;
+  expect(syncBox.x + syncBox.width).toBeLessThan(planBox.x);
+  expect(syncBox.x).toBe(installedBox.x);
+  expect(syncBox.y + syncBox.height).toBeLessThan(installedBox.y);
+  expect(installedBox.y + installedBox.height).toBeLessThan(uploadBox.y);
+  expect(uploadBox.x).toBe(installedBox.x);
   await checkPage(page);
 });
 
 // Todd's ruling on #761: on a wide screen the Plan card is never taller than
 // the window below the top strip. Its heading and Review stay in view, only
-// the list of mods scrolls, the newest pick is at its top, and keyboard
-// focus in the cards under it is never hidden behind it (WCAG 2.1.1, 2.4.11).
+// the list of mods scrolls, the newest pick is at its top, and no control
+// reached by keyboard is ever behind it (WCAG 2.1.1, 2.4.11). In a window
+// too short to hold it, it does not stick and Review is still reached.
 test.describe("a long plan on a wide screen", () => {
   test.use({ fakePortalOn: true, portalAccountOn: true });
   const caps = Array.from({ length: 8 }, (_, i) => `fp-cap-${i}`);
   const shot = (page: Page, name: string) => page.screenshot({ path: `../screenshots/${name}-${test.info().project.name}.png` });
+  const plan = (page: Page) => page.locator("#plan-panel");
+  const add = async (page: Page, n: string) => {
+    await page.locator(`#mod-${n}-hit`).getByRole("button", { name: `Add ${n} to the plan`, exact: true }).click();
+    await expect(page.locator(`#mod-${n}-hit`)).toContainText("In plan");
+    await expect(plan(page).locator(".plan-tree__pick")).toHaveCount(caps.indexOf(n) + 1);
+  };
+  // The element is inside the window and is what a click at its centre hits.
+  const seen = (page: Page, sel: string) =>
+    page.evaluate((sel) => {
+      const el = document.querySelector(sel)!;
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return r.top >= 0 && r.bottom <= innerHeight && !!hit && (el === hit || el.contains(hit));
+    }, sel);
 
   test.beforeEach(async ({ page, foreman, fakeGame, fakePortal }, info) => {
     test.skip(info.project.name.startsWith("phone"), "the plan is a bar at the foot on a phone");
@@ -58,18 +82,12 @@ test.describe("a long plan on a wide screen", () => {
     await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { other: "2.0" } });
   });
 
-  test("the card holds to the window, its list scrolls by keyboard, newest first, and focus below it stays in view", async ({ page }) => {
+  test("the card holds to the window, its list scrolls by keyboard, newest first, and no focused control is behind it", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 600 });
     await page.goto("/worlds/base/mods");
     await page.getByLabel("Mod name").fill("fp-cap");
-    const plan = page.locator("#plan-panel");
-    const list = plan.locator(".plan-tree");
-    const add = async (n: string) => {
-      await page.locator(`#mod-${n}-hit`).getByRole("button", { name: `Add ${n} to the plan`, exact: true }).click();
-      await expect(page.locator(`#mod-${n}-hit`)).toContainText("In plan");
-      await expect(plan.locator(".plan-tree__pick")).toHaveCount(caps.indexOf(n) + 1);
-    };
-    for (const n of caps.slice(0, -1)) await add(n);
+    const list = plan(page).locator(".plan-tree");
+    for (const n of caps.slice(0, -1)) await add(page, n);
     // The list is longer than the card lets it be, so it scrolls inside the card.
     expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight + 20)).toBe(true);
 
@@ -77,25 +95,18 @@ test.describe("a long plan on a wide screen", () => {
     // where the new pick is.
     await list.evaluate((el) => (el.scrollTop = el.scrollHeight));
     const last = caps[caps.length - 1];
-    await add(last);
+    await add(page, last);
     expect(await list.evaluate((el) => el.scrollTop)).toBe(0);
-    const picks = plan.locator(".plan-tree__pick > .plan-tree__row .plan-tree__name");
+    const picks = plan(page).locator(".plan-tree__pick > .plan-tree__row .plan-tree__name");
     await expect(picks).toHaveText([...caps].reverse().map((n) => new RegExp(`^${n} on the mod portal`)));
 
-    const inView = async (sel: string) =>
-      page.evaluate((sel) => {
-        const el = document.querySelector(sel)!;
-        const r = el.getBoundingClientRect();
-        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        return r.top >= 0 && r.bottom <= innerHeight && !!hit && (el === hit || el.contains(hit));
-      }, sel);
     const fits = async () => {
       // The card ends inside the window, its heading and Review are seen, and so is the newest pick.
-      const box = (await plan.boundingBox())!;
+      const box = (await plan(page).boundingBox())!;
       expect(box.y + box.height).toBeLessThanOrEqual(600 + 1);
-      expect(await inView("#plan-heading")).toBe(true);
-      expect(await inView("#act-review-plan")).toBe(true);
-      expect(await inView(`#mod-${last}-unpick`)).toBe(true);
+      expect(await seen(page, "#plan-heading")).toBe(true);
+      expect(await seen(page, "#act-review-plan")).toBe(true);
+      expect(await seen(page, `#mod-${last}-unpick`)).toBe(true);
     };
     await fits();
     // Once the page scrolls the card sticks, and still fits.
@@ -113,21 +124,42 @@ test.describe("a long plan on a wide screen", () => {
     }
     await expect(page.locator(`#mod-${caps[0]}-unpick`)).toBeFocused();
     expect(await list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-    expect(await inView(`#mod-${caps[0]}-unpick`)).toBe(true);
+    expect(await seen(page, `#mod-${caps[0]}-unpick`)).toBe(true);
 
-    // On through Review to "Match mods to the save", which is never behind the card.
+    // On out of the plan, through Match, Installed mods and the tools below
+    // it: every control focused is seen, never behind the sticking plan.
     await openModTools(page);
-    const match = page.getByRole("link", { name: "Match mods to the save" });
-    for (let i = 0; i < 40; i++) {
-      if (await match.evaluate((el) => el === document.activeElement)) break;
+    const visited: string[] = [];
+    for (let i = 0; i < 80; i++) {
       await page.keyboard.press("Tab");
+      const at = await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement | null;
+        if (!el || !el.closest(".split--mods")) return null;
+        if (el.closest("#plan-panel")) return { name: "plan", ok: true };
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return { name: el.id || el.textContent!.trim(), ok: r.top >= 0 && r.bottom <= innerHeight && !!hit && (el === hit || el.contains(hit)) };
+      });
+      if (!at) break;
+      if (at.name === "plan") continue;
+      expect(at.ok, `${at.name} is seen when focused`).toBe(true);
+      visited.push(at.name);
     }
-    await expect(match).toBeFocused();
-    expect(await match.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return r.top >= 0 && r.bottom <= innerHeight && !!hit && (el === hit || el.contains(hit));
-    })).toBe(true);
+    expect(visited).toContain("act-sync");
+    expect(visited).toContain("mod-upload-summary");
     await checkPage(page);
+  });
+
+  test("in a window too short for the card, it does not stick and Review is still reached", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 420 });
+    await page.goto("/worlds/base/mods");
+    await page.getByLabel("Mod name").fill("fp-cap");
+    for (const n of caps) await add(page, n);
+    expect(await plan(page).evaluate((el) => getComputedStyle(el).position)).not.toBe("sticky");
+    const review = page.locator("#act-review-plan");
+    await review.focus();
+    expect(await seen(page, "#act-review-plan")).toBe(true);
+    await checkPage(page);
+    await shot(page, "mods-plan-short");
   });
 });

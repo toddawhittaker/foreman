@@ -47,7 +47,7 @@
 </div>
 {{- end}}
 
-{{- /* On a wide screen search, results and the list take the main column; the plan and the rarer tools sit in a rail beside them. On a phone the plan follows the results (DESIGN 8.11). */}}
+{{- /* On a wide screen search, results, the list and the rarer tools take the main column; the plan sits alone in a rail beside them. On a phone the plan follows the results (DESIGN 8.11). */}}
 <div class="split split--mods">
 {{- /* Finding a mod is one row above the results: what it searches in the first column, the field in the second (DESIGN 4). */}}
 <section class="panel setting-row" aria-labelledby="search-heading">
@@ -70,9 +70,10 @@
   </form>
 </section>
 {{template "mod-results" .Search}}
-{{- /* The plan, then the rarer tools: a rail beside the results on a wide screen; on a phone the plan follows the results and the tools fold under one 44 px Mod tools disclosure. */}}
+{{- /* The plan, then the rarer tools. On a wide screen the plan is alone in the rail beside the rest, and the tools join the main column: Match above Installed mods, the others below it. On a phone the plan follows the results and the tools fold under one 44 px Mod tools disclosure (DESIGN 8.11). */}}
 <div class="mod-side">
 {{template "plan-panel" .Plan}}
+</div>
 <details class="disclosure mod-rail" id="mod-tools" data-open-wide="64rem"{{if or (not .UploadError.IsZero) (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
 <summary class="mod-rail__toggle" id="mod-tools-summary">{{t "mods.tools.label"}}</summary>
 <div class="split__rail">
@@ -164,7 +165,6 @@
 {{- end}}
 </div>
 </details>
-</div>
 <section class="panel" aria-labelledby="installed-heading">
   <div class="group__head">
     <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>

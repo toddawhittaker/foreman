@@ -3014,9 +3014,12 @@ save", "Upload a mod", "Mod settings") sit inside one `details.disclosure`,
 "Mod tools", so each tool appears once on the page. Below 64rem that
 disclosure is a closed 44 px row after "Plan", with the tools' full
 cards inside, and "Installed mods" follows it. From 64rem `subnav.js`
-opens it and hides its summary (`data-open-wide`), and the cards are a
-22.5rem rail under "Plan", beside the rest. A refused upload
-opens it, so the error summary's link reaches the field. In the rail the
+opens it and hides its summary (`data-open-wide`), "Plan" is alone in a
+22.5rem rail beside the rest, so nothing passes under it while it sticks,
+and the tools' cards join the main column: "Match mods to the save" just
+above "Installed mods", where a save mismatch is seen before the list it
+would change, and "Upload a mod" and "Mod settings" below it. A refused upload
+opens it, so the error summary's link reaches the field. From 64rem the
 tools' buttons (Match mods to the save, Edit mod settings, Upload a mod
 zip) are as wide as their words, not the rail's width, so they do not
 compete with the rows' own Update buttons; they are 40 px tall under a
@@ -3113,9 +3116,12 @@ change", which goes to the restore confirmation (7.4).
 **Search and the plan panel** (SPEC 9.1, 9.2, 9.14). The Mods tab and the
 search page (`/worlds/{id}/mods/search?q=`, the same results without
 script) show three things in this order: "Find a mod", "Mods matching" and
-"Plan". On a wide screen (64rem and up) "Plan" heads the rail, above Mod
-tools, beside the other two, and holds to the top of the screen
-(`position: sticky`) while the results scroll past it. On a phone it
+"Plan". On a wide screen (64rem and up) "Plan" is alone in the rail,
+beside the other two, and holds to the top of the screen
+(`position: sticky`) while the results scroll past it. It is never taller
+than the window below the top strip: the heading and Review stay in view
+and only the list of mods scrolls, the newest pick at its top. In a window
+under 30rem tall it does not stick. On a phone it
 follows the results; once it has a mod it holds to the bottom of the
 screen as a bar with the count ("2 mods in the plan"), the names cut to
 one line, and "Review and install N mods". The bar's line is a `details`

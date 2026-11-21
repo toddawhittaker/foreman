@@ -9707,8 +9707,10 @@ main > .panel.danger-zone.danger-zone--blocked {
 }
 
 /* Mods: search, the results, the plan and the tools, then the list. On a
-   wide screen the plan and the tools are a rail beside the rest; on a phone
-   the plan follows the results and the tools fold under one 44 px Mod tools
+   wide screen the plan is alone in a rail beside the rest, so nothing passes
+   under it while it sticks, and the tools join the main column: Match above
+   Installed mods, Upload and Mod settings below it. On a phone the plan
+   follows the results and the tools fold under one 44 px Mod tools
    disclosure (DESIGN 8.11). */
 .split.split--mods {
   grid-template-columns: minmax(0, 1fr);
@@ -9732,17 +9734,44 @@ main > .panel.danger-zone.danger-zone--blocked {
     grid-row: 1 / span 3;
     align-self: stretch;
     align-content: start;
-    gap: var(--space-4);
   }
 
-  .split--mods > .panel {
+  .split--mods > .panel,
+  .split--mods > .mod-rail {
     grid-column: 1;
   }
 
-  /* The plan stays in view while the results scroll past it, clear of the
-     shell's sticky 3.5rem top strip, over the cards that scroll under it.
-     It is never taller than the window: the heading and Review stay put
-     and only the list of mods scrolls, newest at its top (DESIGN 8.11). */
+  /* Opened by subnav.js, the tools' cards are the main column's own rows:
+     search, results, Match, Installed mods, Upload, Mod settings. */
+  .split--mods:has(> .mod-rail[data-wide]) {
+    grid-template-rows: repeat(5, auto) 1fr;
+  }
+
+  .split--mods:has(> .mod-rail[data-wide]) > .mod-side {
+    grid-row: 1 / span 6;
+  }
+
+  .mod-rail[data-wide],
+  .mod-rail[data-wide]::details-content,
+  .mod-rail[data-wide] > .split__rail {
+    display: contents;
+  }
+
+  .mod-rail[data-wide] > .split__rail > .panel {
+    grid-column: 1;
+  }
+
+  .mod-rail[data-wide] > .split__rail > .panel:not([aria-labelledby="sync-heading"]) {
+    order: 1;
+  }
+}
+
+/* The plan stays in view while the results scroll past it, clear of the
+   shell's sticky 3.5rem top strip. It is never taller than the window: the
+   heading and Review stay put and only the list of mods scrolls, newest at
+   its top. In a window too short for even its fixed parts the whole card
+   scrolls; below 30rem it does not stick at all (DESIGN 8.11). */
+@media (min-width: 64rem) and (min-height: 30rem) {
   .mod-side > .plan-panel {
     --plan-top: var(--space-4);
     position: sticky;
@@ -9751,6 +9780,7 @@ main > .panel.danger-zone.danger-zone--blocked {
     display: flex;
     flex-direction: column;
     max-block-size: calc(100dvh - var(--plan-top) - var(--space-4));
+    overflow-y: auto;
   }
 
   body:has(> .site > nav) .mod-side > .plan-panel {
@@ -9776,14 +9806,6 @@ main > .panel.danger-zone.danger-zone--blocked {
     overflow-y: auto;
     overscroll-behavior: contain;
     scroll-padding-block: var(--space-2);
-  }
-
-  /* While keyboard focus is in a card under the plan, the plan lets go and
-     scrolls away with the page, so the focused control is never behind it
-     (WCAG 2.4.11). */
-  .mod-side:has(> :not(.plan-panel) :focus-visible) > .plan-panel {
-    position: relative;
-    inset-block-start: 0;
   }
 }
 
