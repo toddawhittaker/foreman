@@ -70,13 +70,10 @@
   </form>
 </section>
 {{template "mod-results" .Search}}
-{{- /* The plan, then the rarer tools. On a wide screen the plan is alone in the rail beside the rest, and the tools join the main column: Match above Installed mods, the others below it. On a phone the plan follows the results and the tools fold under one 44 px Mod tools disclosure (DESIGN 8.11). */}}
+{{- /* The plan, then Match mods to the save, Installed mods and the rarer tools, in that order at every width. On a wide screen the plan is alone in the rail beside the rest; on a phone it follows the results. The tools fold under one 44 px Mod tools disclosure on a phone (DESIGN 8.11). */}}
 <div class="mod-side">
 {{template "plan-panel" .Plan}}
 </div>
-<details class="disclosure mod-rail" id="mod-tools" data-open-wide="64rem"{{if or (not .UploadError.IsZero) (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
-<summary class="mod-rail__toggle" id="mod-tools-summary">{{t "mods.tools.label"}}</summary>
-<div class="split__rail">
 <section class="panel" aria-labelledby="sync-heading">
   <h2 id="sync-heading">{{t "mods.sync.heading"}}</h2>
   {{- if not .LoadSave}}
@@ -102,69 +99,6 @@
   <div class="actions"><a href="{{.SyncPath}}" class="button" id="act-sync">{{t "mods.sync.button"}}</a></div>
   {{- end}}
 </section>
-
-<section class="panel" aria-labelledby="upload-heading">
-  <h2 id="upload-heading">{{t "mods.upload.heading"}}</h2>
-  <p>{{t "mods.upload.text"}}</p>
-  {{- /* Rare, so it folds away; a refused file opens it, so the error summary's link reaches the field. */}}
-  <details class="disclosure" id="mod-upload"{{if not .UploadError.IsZero}} open{{end}}>
-    <summary id="mod-upload-summary">{{t "mods.upload.summary"}}</summary>
-    <form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel" novalidate aria-labelledby="mod-upload-summary">
-      {{template "required-note"}}
-      <p class="hint">{{t "mods.upload.hint"}}</p>
-      {{template "dropzone" .UploadZone}}
-      <div class="actions">
-        <button type="submit" class="button">{{t "mods.upload.button"}}</button>
-      </div>
-    </form>
-  </details>
-</section>
-
-{{- if .ShowSettings}}
-<section class="panel" aria-labelledby="settings-heading">
-  <h2 id="settings-heading">{{t "mods.settings.heading"}}</h2>
-  <p>{{tHTML "mods.settings.text" "file" (code .SettingsFile)}}</p>
-  <div class="actions"><a href="{{.EditSettingsPath}}" class="button" id="act-settings-edit">{{t "mods.settings.edit.link"}}</a></div>
-  {{- if .HasSettings}}
-  <div class="actions"><a href="{{.SettingsPath}}" download id="act-settings-download">{{t "mods.settings.download"}}</a></div>
-  {{- else}}
-  <p class="empty">{{tHTML "mods.settings.none" "file" (code .SettingsFile)}}</p>
-  {{- end}}
-  <details class="disclosure" id="mod-settings-replace"{{if or (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
-    <summary id="mod-settings-summary">{{tHTML "mods.settings.summary" "file" (code .SettingsFile)}}</summary>
-    {{- /* The form says what will happen, so it is the confirmation (DESIGN 7.4); replacing is undone by the snapshot, so it is not red. */}}
-    <form method="post" action="{{.SettingsPath}}" enctype="multipart/form-data" class="panel" novalidate aria-labelledby="mod-settings-summary">
-      <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
-      {{- /* Where the file is, then the field, then what the upload will do beside its button. */}}
-      <p id="settings-file-help">{{tHTML "mods.settings.where" "windows" (code `%APPDATA%\Factorio\mods`) "macos" (code "~/Library/Application Support/factorio/mods") "linux" (code "~/.factorio/mods")}} {{if .Running}}{{t "mods.settings.apply_running"}}{{else}}{{t "mods.settings.apply"}}{{end}}</p>
-      {{template "required-note"}}
-      {{template "dropzone" .SettingsZone}}
-      {{- if .Running}}
-      {{template "countdown" .CountdownForm}}
-      {{- end}}
-      <div class="mod-settings-will">
-        <p>{{t "common.confirm.will"}}</p>
-        <ul>
-          {{- if .Running}}
-          <li>{{t "mods.plan.warn_stop"}}</li>
-          {{- end}}
-          <li>{{t "mods.plan.snapshot" "world" .World.Name "label" (m "worlds.snapshot.label.before_mods")}}</li>
-          <li>{{tHTML "mods.settings.replace" "file" (code .SettingsFile)}}</li>
-          {{- if .Running}}
-          <li>{{t "mods.plan.start"}}</li>
-          {{- end}}
-          <li>{{t "mods.plan.undo"}}</li>
-        </ul>
-      </div>
-      <div class="actions">
-        <button type="submit" class="button">{{t "mods.settings.button"}}</button>
-      </div>
-    </form>
-  </details>
-</section>
-{{- end}}
-</div>
-</details>
 <section class="panel" aria-labelledby="installed-heading">
   <div class="group__head">
     <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
@@ -244,6 +178,71 @@
     {{- end}}</p>
   {{- end}}
 </section>
+<details class="disclosure mod-rail" id="mod-tools" data-open-wide="64rem"{{if or (not .UploadError.IsZero) (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
+<summary class="mod-rail__toggle" id="mod-tools-summary">{{t "mods.tools.label"}}</summary>
+<div class="split__rail">
+<section class="panel" aria-labelledby="upload-heading">
+  <h2 id="upload-heading">{{t "mods.upload.heading"}}</h2>
+  <p>{{t "mods.upload.text"}}</p>
+  {{- /* Rare, so it folds away; a refused file opens it, so the error summary's link reaches the field. */}}
+  <details class="disclosure" id="mod-upload"{{if not .UploadError.IsZero}} open{{end}}>
+    <summary id="mod-upload-summary">{{t "mods.upload.summary"}}</summary>
+    <form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel" novalidate aria-labelledby="mod-upload-summary">
+      {{template "required-note"}}
+      <p class="hint">{{t "mods.upload.hint"}}</p>
+      {{template "dropzone" .UploadZone}}
+      <div class="actions">
+        <button type="submit" class="button">{{t "mods.upload.button"}}</button>
+      </div>
+    </form>
+  </details>
+</section>
+
+{{- if .ShowSettings}}
+<section class="panel" aria-labelledby="settings-heading">
+  <h2 id="settings-heading">{{t "mods.settings.heading"}}</h2>
+  <p>{{tHTML "mods.settings.text" "file" (code .SettingsFile)}}</p>
+  <div class="actions"><a href="{{.EditSettingsPath}}" class="button" id="act-settings-edit">{{t "mods.settings.edit.link"}}</a></div>
+  {{- if .HasSettings}}
+  <div class="actions"><a href="{{.SettingsPath}}" download id="act-settings-download">{{t "mods.settings.download"}}</a></div>
+  {{- else}}
+  <p class="empty">{{tHTML "mods.settings.none" "file" (code .SettingsFile)}}</p>
+  {{- end}}
+  <details class="disclosure" id="mod-settings-replace"{{if or (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
+    <summary id="mod-settings-summary">{{tHTML "mods.settings.summary" "file" (code .SettingsFile)}}</summary>
+    {{- /* The form says what will happen, so it is the confirmation (DESIGN 7.4); replacing is undone by the snapshot, so it is not red. */}}
+    <form method="post" action="{{.SettingsPath}}" enctype="multipart/form-data" class="panel" novalidate aria-labelledby="mod-settings-summary">
+      <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
+      {{- /* Where the file is, then the field, then what the upload will do beside its button. */}}
+      <p id="settings-file-help">{{tHTML "mods.settings.where" "windows" (code `%APPDATA%\Factorio\mods`) "macos" (code "~/Library/Application Support/factorio/mods") "linux" (code "~/.factorio/mods")}} {{if .Running}}{{t "mods.settings.apply_running"}}{{else}}{{t "mods.settings.apply"}}{{end}}</p>
+      {{template "required-note"}}
+      {{template "dropzone" .SettingsZone}}
+      {{- if .Running}}
+      {{template "countdown" .CountdownForm}}
+      {{- end}}
+      <div class="mod-settings-will">
+        <p>{{t "common.confirm.will"}}</p>
+        <ul>
+          {{- if .Running}}
+          <li>{{t "mods.plan.warn_stop"}}</li>
+          {{- end}}
+          <li>{{t "mods.plan.snapshot" "world" .World.Name "label" (m "worlds.snapshot.label.before_mods")}}</li>
+          <li>{{tHTML "mods.settings.replace" "file" (code .SettingsFile)}}</li>
+          {{- if .Running}}
+          <li>{{t "mods.plan.start"}}</li>
+          {{- end}}
+          <li>{{t "mods.plan.undo"}}</li>
+        </ul>
+      </div>
+      <div class="actions">
+        <button type="submit" class="button">{{t "mods.settings.button"}}</button>
+      </div>
+    </form>
+  </details>
+</section>
+{{- end}}
+</div>
+</details>
 </div>
 {{- end}}
 {{end}}

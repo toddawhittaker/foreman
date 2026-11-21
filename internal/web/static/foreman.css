@@ -9706,12 +9706,11 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-/* Mods: search, the results, the plan and the tools, then the list. On a
-   wide screen the plan is alone in a rail beside the rest, so nothing passes
-   under it while it sticks, and the tools join the main column: Match above
-   Installed mods, Upload and Mod settings below it. On a phone the plan
-   follows the results and the tools fold under one 44 px Mod tools
-   disclosure (DESIGN 8.11). */
+/* Mods: search, the results, the plan, Match mods to the save, the list,
+   then the tools, in that order at every width. On a wide screen the plan
+   is alone in a rail beside the rest, so nothing passes under it while it
+   sticks; on a phone it follows the results and the tools fold under one
+   44 px Mod tools disclosure (DESIGN 8.11). */
 .split.split--mods {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: none;
@@ -9741,28 +9740,14 @@ main > .panel.danger-zone.danger-zone--blocked {
     grid-column: 1;
   }
 
-  /* Opened by subnav.js, the tools' cards are the main column's own rows:
-     search, results, Match, Installed mods, Upload, Mod settings. */
-  .split--mods:has(> .mod-rail[data-wide]) {
-    grid-template-rows: repeat(5, auto) 1fr;
+  /* The Mods tab's main column: search, results, Match, Installed mods and
+     the tools; the search page has only the first two. */
+  .split--mods:has(> .mod-rail) {
+    grid-template-rows: repeat(4, auto) 1fr;
   }
 
-  .split--mods:has(> .mod-rail[data-wide]) > .mod-side {
-    grid-row: 1 / span 6;
-  }
-
-  .mod-rail[data-wide],
-  .mod-rail[data-wide]::details-content,
-  .mod-rail[data-wide] > .split__rail {
-    display: contents;
-  }
-
-  .mod-rail[data-wide] > .split__rail > .panel {
-    grid-column: 1;
-  }
-
-  .mod-rail[data-wide] > .split__rail > .panel:not([aria-labelledby="sync-heading"]) {
-    order: 1;
+  .split--mods:has(> .mod-rail) > .mod-side {
+    grid-row: 1 / span 5;
   }
 }
 

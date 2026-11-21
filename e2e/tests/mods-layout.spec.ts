@@ -2,9 +2,9 @@ import { test, expect, checkPage, createAdmin, seedWorld, openModTools, setUpMod
 import type { Page } from "@playwright/test";
 
 // Issue 761: on a wide screen the Plan card sticks in view while the page
-// scrolls, clear of the top strip, alone in its rail: the tools sit in the
-// main column, "Match mods to the save" above Installed mods and the others
-// below it, so nothing passes under the plan (DESIGN 8.11). The projects run
+// scrolls, clear of the top strip, alone in its rail: "Match mods to the
+// save" sits above Installed mods and the other tools below it, in the main
+// column, so nothing passes under the plan (DESIGN 8.11). The projects run
 // this in both themes; a phone holds the plan as a bar at the foot instead.
 test.use({ fakeGameOn: true });
 
@@ -46,6 +46,31 @@ test("the sticking Plan card stays on top of the cards under it", async ({ page,
   expect(uploadBox.x).toBe(installedBox.x);
   await checkPage(page);
 });
+
+// DESIGN 8.11, WCAG 1.3.2 and 2.4.3: the cards' markup order is the order
+// they are seen in, on a phone and on a wide screen, so focus follows it.
+for (const width of [390, 1280]) {
+  test(`at ${width} px the Mods cards are seen in their markup order`, async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman, { mods: { other: "2.1", b: "2.1", c: "2.1" } });
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/worlds/base/mods");
+    const cards = ["search-heading", "results-heading", "sync-heading", "installed-heading", "mod-tools"];
+    const order = await page.evaluate((cards) => {
+      const els = cards.map((id) => {
+        const el = document.getElementById(id)!;
+        return el.tagName === "H2" ? el.closest("section")! : el;
+      });
+      const inDom = els.every((el, i) => i === 0 || els[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const tops = els.map((el) => el.getBoundingClientRect().top + scrollY);
+      return { inDom, tops };
+    }, cards);
+    expect(order.inDom).toBe(true);
+    for (let i = 1; i < order.tops.length; i++) expect(order.tops[i], cards[i]).toBeGreaterThan(order.tops[i - 1]);
+    if (width < 1024) await expect(page.locator("#mod-tools")).toHaveJSProperty("open", false);
+    await checkPage(page);
+  });
+}
 
 // Todd's ruling on #761: on a wide screen the Plan card is never taller than
 // the window below the top strip. Its heading and Review stay in view, only
