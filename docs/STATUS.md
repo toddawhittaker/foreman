@@ -4530,7 +4530,7 @@ Rulings (the plan, then Todd, 2026-11-21):
 - **The epic-run skill tests only what a task touched (#782).** CI runs the
   full suite on each push to an epic branch and on the epic pull request.
 
-Verified: VERIFIED-PLACEHOLDER
+Verified: each task with `make verify` and the e2e specs for the files it touched; S1 and M1 also with the full e2e suite (3,820 and 3,770 passed; M1's 32 failures were one plural rule, then fixed and rerun green); CI's full run on each push to the epic branch; `make verify` on the fold head dacb2e11 (coverage 90.8%); `make test-game` on 171b2a2d, where seven tests lost the game port to another real-game run and then passed on a rerun; real 2.1.24 containers for the Even Distribution crash loop (R1) and a Ribbon world with Space Age off (G1).
 
 ### Gaps left
 
