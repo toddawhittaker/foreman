@@ -21,6 +21,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -442,7 +443,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"share":             share,
 		"crumbs":            crumbs,
 		"chatPath":          func() string { return PathChat },
-		"utc":               func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
+		"utc":               func(t time.Time) string { return t.UTC().Format(notify.TimeLayout) },
 		"isoTime":           func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 		// day and clock are a table's timestamp in two parts that each
 		// never wrap (DESIGN 8.3).
@@ -775,5 +776,5 @@ func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name st
 // momentUTC is a <time> element for t in UTC, for a sentence that holds a
 // time (SPEC 17.11).
 func momentUTC(t time.Time) i18n.Fragment {
-	return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04 UTC"))
+	return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format(notify.TimeLayout))
 }

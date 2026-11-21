@@ -119,6 +119,10 @@ func (s *server) readBool(ctx context.Context, d boolSetting) bool {
 	return on
 }
 
+// unknownValue stands in an audit detail for an old value that could not be
+// read, so the entry does not claim the default was stored.
+const unknownValue = "unknown"
+
 // setBoolSetting stores on and audits the change as "from on to off" under
 // by. Nothing is stored or audited when the stored value already is on;
 // changed reports whether it was stored.
@@ -132,7 +136,11 @@ func (s *server) setBoolSetting(ctx context.Context, by game.Actor, d boolSettin
 	if err := s.store.SetAppSetting(ctx, d.Name, onOff(on), by.Username, s.now()); err != nil {
 		return false, err
 	}
-	s.audit(ctx, by, d.Action, "", fmt.Sprintf("from %s to %s", onOff(old), onOff(on)))
+	from := unknownValue
+	if ok {
+		from = onOff(old)
+	}
+	s.audit(ctx, by, d.Action, "", fmt.Sprintf("from %s to %s", from, onOff(on)))
 	return true, nil
 }
 
@@ -210,7 +218,11 @@ func (s *server) setIntSetting(ctx context.Context, by game.Actor, d intSetting,
 	if err := s.store.SetAppSetting(ctx, d.Name, strconv.Itoa(n), by.Username, s.now()); err != nil {
 		return err
 	}
-	s.audit(ctx, by, d.Action, "", fmt.Sprintf("from %d to %d", old, n))
+	from := unknownValue
+	if ok {
+		from = strconv.Itoa(old)
+	}
+	s.audit(ctx, by, d.Action, "", fmt.Sprintf("from %s to %d", from, n))
 	return nil
 }
 

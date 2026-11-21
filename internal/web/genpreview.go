@@ -430,7 +430,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		}
 		// htmx swaps only a 2xx answer, and then the whole form, with its errors.
 		status := http.StatusBadRequest
-		if r.Header.Get("HX-Request") == "true" {
+		if isHTMX(r) {
 			status = http.StatusOK
 			h := w.Header()
 			h.Set("HX-Retarget", "#generate-form")
@@ -489,7 +489,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	// Without script the territories are read here, after the pictures; with
 	// it the page asks for them once the picture has arrived (DESIGN 8.8).
-	script := auto || r.Header.Get("HX-Request") == "true"
+	script := auto || isHTMX(r)
 	view.Territories = s.territoryBox(w, r, u, req, f.Name, view, !script)
 	if view.Token != "" {
 		_, view.TerritoriesHeld = s.previews.territoriesOf(u.ID, key)

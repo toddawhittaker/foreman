@@ -7,13 +7,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const zones = () => document.querySelectorAll("[data-dropzone]");
 
-  function announce(said) {
-    const announcer = document.getElementById("announcer");
-    if (!announcer) return;
-    announcer.textContent = "";
-    setTimeout(() => { announcer.textContent = said; }, 50);
-  }
-
   // Text from the page's #i18n block, with {name} placeholders filled in.
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const t = (key, args) => strings[key].replace(/\{(\w+)\}/g, (_, k) => args[k] ?? "");
@@ -83,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
       input.setAttribute("aria-describedby", ids);
       if (text || serverInvalid) input.setAttribute("aria-invalid", "true");
       else input.removeAttribute("aria-invalid");
-      if (text) announce(text);
+      if (text) window.foremanLive?.announce(text);
     }
 
     function showChosen() {
@@ -140,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
       input.value = "";
       input.dispatchEvent(new Event("change", { bubbles: true }));
       input.focus();
-      announce(zone.dataset.cleared);
+      window.foremanLive?.announce(zone.dataset.cleared);
     });
   }
 

@@ -41,7 +41,7 @@ func returnPath(p string) string {
 // carrying the page they asked for when it is one they could open again by
 // following a link.
 func signInURL(r *http.Request) string {
-	if (r.Method != http.MethodGet && r.Method != http.MethodHead) || r.Header.Get("HX-Request") != "" {
+	if (r.Method != http.MethodGet && r.Method != http.MethodHead) || isHTMX(r) {
 		return PathSignIn
 	}
 	next := returnPath(r.URL.RequestURI())

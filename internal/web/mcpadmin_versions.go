@@ -10,6 +10,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -182,7 +183,7 @@ func rollbackWill(p RollbackPage) []string {
 	will = append(will,
 		inEnglish(i18n.M("server.rollback.snapshot", "world", p.World.Name, "label", before)),
 		inEnglish(i18n.M("server.rollback.restore", "label", snapshotLabelArg(p.Snapshot),
-			"time", p.Snapshot.TakenAt.UTC().Format("2006-01-02 15:04 UTC"), "version", p.Version)))
+			"time", p.Snapshot.TakenAt.UTC().Format(notify.TimeLayout), "version", p.Version)))
 	if p.Running {
 		will = append(will, inEnglish(i18n.M("server.rollback.start", "version", p.Version)))
 	}

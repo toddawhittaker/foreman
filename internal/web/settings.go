@@ -508,17 +508,27 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 	}
 	id := sw.sum.ID
 	token := r.PostFormValue("token")
-	c, ok := h.pending.take(token, u.ID, id)
-	if !ok {
+	expired := func() {
 		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
 		p.Error = i18n.M("settings.error.expired")
 		s.page(w, r, http.StatusConflict, u.Username, p)
+	}
+	c, ok := h.pending.get(token, u.ID, id)
+	if !ok {
+		expired()
 		return
 	}
+	// Refused before the token is spent, so the admin can confirm the same
+	// preview once the world can be changed.
 	if !sw.readOnly.IsZero() {
 		p := h.formPage(r.Context(), sw, sw.formText(), sw.admins)
 		p.Error, p.Section = sw.readOnly, c.Section
 		s.page(w, r, http.StatusConflict, u.Username, p)
+		return
+	}
+	// Spent before any write, so one preview saves once.
+	if c, ok = h.pending.take(token, u.ID, id); !ok {
+		expired()
 		return
 	}
 	if h.moved(sw, c) {

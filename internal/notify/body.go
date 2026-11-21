@@ -49,14 +49,14 @@ func Text(loc i18n.Locale, m Message, esc func(string) string) string {
 		return loc.T("notify.msg.low_disk", "world", world, "free", loc.Bytes(m.FreeBytes))
 	case TokenExpiring:
 		return loc.T("notify.msg.token_expiring", "token", esc(m.Token.Name), "owner", esc(m.Token.Owner),
-			"expires", m.Token.Expires.UTC().Format(expiryLayout))
+			"expires", m.Token.Expires.UTC().Format(TimeLayout))
 	}
 	return ""
 }
 
-// expiryLayout writes a token's expiry the way the pages do, in UTC, so the
-// message reads the same in every language.
-const expiryLayout = "2006-01-02 15:04 UTC"
+// TimeLayout writes a time to the minute in UTC, as the pages and the
+// messages here both write it, so a time reads the same in every language.
+const TimeLayout = "2006-01-02 15:04 UTC"
 
 func plain(s string) string { return s }
 
