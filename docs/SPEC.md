@@ -3448,7 +3448,8 @@ Restore, a mod change and a game version update through MCP take the
 same snapshots as the UI, checked against a real game container.
 
 18.10c. **Epic 10c: REST API.** Section 23 and its changes to 3, 12.1,
-12.9, 12.10, 14.7, 14.12 and 14.19. **Gate:** against a real
+12.9, 12.10, 14.7, 14.12 and 14.19. Built; see STATUS.md, Epic 10c.
+**Gate:** against a real
 `factoriotools/factorio` container, using `curl` only, an operate token
 lists its tools, reads status, takes a snapshot, sends a chat that
 players see as "[name] ...", and restarts with a countdown; it is
