@@ -14,7 +14,8 @@ fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
 the Resource amounts epic, fixes batches 5, 6 and 7 and the Mod settings epic
 are done. Epic 9b (VPN sidecars) is built, but its live acceptance is still
 open (see its section). Epic 9c (public mods and autosave tidy), Epic
-10a (API tokens and MCP) and Epic 10b (MCP admin tools) are done. Epic 11
+10a (API tokens and MCP), Epic 10b (MCP admin tools) and Epic 10c
+(REST API) are done. Epic 11
 was split on 2026-11-18: Epic 11a (sign-in, audit log, archive, settings and
 users) is built, with its gate on the trial deployment still to run, and
 Epic 11b (the release and Gate C) is next. Fixes batch 13 (three issues from
@@ -4057,6 +4058,124 @@ Rulings (Todd, 2026-11-17), now in SPEC 12.9, 21.5 and 21.8:
   orchestrator's check before the epic merges, not part of the build.
 - **Not built, on purpose:** snapshot `taken_by_token`, the raw settings
   editor over MCP and archive (Epic 11; archive came in Epic 11a).
+
+## Epic 10c: REST API
+
+Serves SPEC 23, with the edits to 3, 12.1, 12.9, 12.10, 14.7, 14.12 and
+14.19, and the gate in 18.10c. The task pull requests were #776 (A1, the
+core), #771 (D1, the operator guide), #779 (T1, the token page and switch),
+#777 (O1, the OpenAPI document), #778 (V1, the invariant tests) and #780
+(F1, integration fixes).
+
+Rulings (Todd, 2026-11-21), now in SPEC 23 and 14.19:
+
+1. The routes are `GET /api/v1/tools` and `POST /api/v1/tools/<name>`, not
+   resource-style routes.
+2. REST API access has its own switch, off by default, with `FOREMAN_API=off`
+   and the audit action `api-set`. The MCP switch is unchanged.
+3. The REST API is P1 and was built before Epic 11b, so Gate C's security
+   review covers it.
+4. An OpenAPI 3.1 document is generated from the tool schemas at
+   `/api/v1/openapi.json`. It needs a token and describes that token's scope.
+   No OpenAPI library was added.
+5. Every tool refusal is 422 with an English `error`. A fault Foreman cannot
+   word is 500.
+6. One token has one budget across `/mcp` and `/api/`.
+7. A call is handed in process to the same per-scope SDK server `/mcp` uses
+   (ADR 0029).
+8. No new dependency.
+
+### Delivered
+
+- **The REST API core (SPEC 23.1 to 23.9; ADR 0029; #776).**
+  `GET /api/v1/tools` and `POST /api/v1/tools/<name>` in
+  `internal/web/api.go`. A call becomes an MCP `tools/call` message and goes,
+  in the same process and with the request context kept, to the SDK server
+  for the token's scope. No tool file changed, so scopes, schema checks,
+  confirm codes, the snapshot cap, the chat prefix and the audit entries are
+  the MCP ones. The answers are 200, 422 (with the result when the tool gave
+  one), 404 for a tool outside the scope, 400, 415, 405 with `Allow`, 413 and
+  the plain-text refusals of `/mcp`. Every other `/api/` path is gated, then
+  answers 404.
+- **One set of token checks for both paths (SPEC 14.19, 23.9; #776, #780).**
+  The address failure limit, the bearer token, the per-token limits, the write
+  deadline lift, the whole-body read and the second token check are built once
+  in `tokenChecks` in `internal/web/mcp.go`. A token has one budget across
+  `/mcp` and `/api/`. Each path keeps its own switch, Origin and method
+  checks. An unknown `/api/` path needs a valid token too: 401 without one,
+  the JSON 404 with one (#780).
+- **The REST switch (SPEC 23.8; #776, #779).** The `api` app setting is off by
+  default, and `FOREMAN_API=off` forces it off. With it off, every `/api/`
+  request gets 403 before the token is read. The API tokens page has a second
+  switch beside the MCP one, admin only, audited as `api-set`. When
+  `FOREMAN_API=off` is set the page says so and shows no button. The 4 MiB
+  body cap covers the tool paths.
+- **Both addresses on the token page (SPEC 12.10; #779).** The page that shows
+  a new secret shows the MCP endpoint and the REST API base address `/api/v1`,
+  both copyable, using `FOREMAN_PUBLIC_URL` when it is set. The "will not
+  work" hint shows only when MCP and REST access are both off. New strings
+  are in all eight languages.
+- **The OpenAPI document (SPEC 23.10; #777, #780).** `GET /api/v1/openapi.json`
+  is built once at startup from the same per-scope tool lists, in
+  `internal/web/apiopenapi.go`. Each tool gets its input schema unchanged, a
+  200 answer with its output schema, and the 400, 401, 403, 404, 405, 413,
+  415, 422, 429 and 500 answers. It needs a token and describes that token's
+  scope.
+- **Fault answers (SPEC 23.5; #777, #780).** A JSON-RPC internal error (code
+  -32603, such as a recovered panic) answers 500 with a general `error`, and
+  other JSON-RPC errors answer 422. When the SDK handler answers with a status
+  other than 200, the log keeps only the status and the first 200 bytes.
+- **The operator guide (#771).** `docs/OPERATOR.md` has a "Use the REST API"
+  subsection with `curl` examples (the tool list, a read, an action, a
+  two-step call) and the meaning of each answer. `FOREMAN_API` is in the
+  settings table, and the forward-auth and Origin notes cover `/api/`.
+  `README.md` mentions it.
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck` and the tests of
+  the files it touched. The orchestrator ran `make verify` on each task and on
+  the epic head.
+- `api_test.go` (#776) covers every status, a confirm code moving between
+  `/mcp` and `/api/` in both directions, the 403 while off, `FOREMAN_API=off`,
+  the shared per-token and address budgets, and an answer outliving the
+  server's write timeout. Every existing `mcp_*_test.go` passes unchanged.
+- `api_parity_test.go` and `api_security_test.go` (#778) were written from SPEC
+  23 and 14.19, not from the code. For the read, operate and admin scopes,
+  `/api/v1/tools` lists exactly the tools `/mcp` lists, with the same
+  descriptions, schemas and flags. A tool outside a scope answers 404 with no
+  audit entry and no snapshot. With the switch off, the answer is 403 for any
+  token and the token is never looked up. Each switch turns off only its own
+  path. The Origin rule holds. A token in the query string or a cookie, a
+  session cookie and trusted headers all get 401. Expired and revoked tokens
+  get 401s naming the state, and a revoke while the body is held back is
+  refused. The limits are shared. A code is refused for other arguments or
+  another tool and is spent by any use, on either path. The snapshot cap is
+  shared, the audit entries name the token, and no secret appears in an answer
+  or a log line.
+- `api.spec.ts` (#779) makes a token in the browser, turns REST access on,
+  calls the API with Playwright's request API, then turns it off and gets 403.
+  `api-tokens.spec.ts` checks both token screens in all eight languages at 320
+  px, with axe and no horizontal scroll. It caught a button pushed off screen
+  in German, Russian and Czech, so the button reads "Copy REST API address".
+- **Whole-epic checks (orchestrator).** `make verify` passed on the epic head.
+  The full browser suite passed on the epic head (3826 passed, 0 failed). The
+  real-game suite, `make test-game`, passed on 4cc1dd81 with 0 failures,
+  including `TestRealGameAPI` (`realgame5_api_game_test.go`, #778), which runs
+  the SPEC 18.10c gate over HTTP against a real `factoriotools/factorio`
+  container. The OpenAPI document was linted with `@redocly/cli` 1.25.11 with
+  no structural errors.
+
+### Gaps left
+
+- **The REST switch's badge reuses the MCP badge's CSS classes**
+  `state--mcp-on` and `state--mcp-off`. A neutral class name would be clearer.
+- **The OpenAPI document has no `servers` entry.** A client generated from it,
+  under a `FOREMAN_PUBLIC_URL` with a path prefix, must have its base address
+  set by hand.
+- **The linter's `info.license` warning is not addressed.**
+- **The language sweep in `i18n.spec.ts` does not visit the API tokens page.**
+  `api-tokens.spec.ts` covers its eight languages.
 
 ## Epic 11a: Sign-in, audit log, archive, settings and users
 
