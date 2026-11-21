@@ -9706,10 +9706,11 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-/* Mods: search, the results, the plan and the tools, then the list. On a
-   wide screen the plan and the tools are a rail beside the rest; on a phone
-   the plan follows the results and the tools fold under one 44 px Mod tools
-   disclosure (DESIGN 8.11). */
+/* Mods: search, the results, the plan, Match mods to the save, the list,
+   then the tools, in that order at every width. On a wide screen the plan
+   is alone in a rail beside the rest, so nothing passes under it while it
+   sticks; on a phone it follows the results and the tools fold under one
+   44 px Mod tools disclosure (DESIGN 8.11). */
 .split.split--mods {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: none;
@@ -9732,23 +9733,64 @@ main > .panel.danger-zone.danger-zone--blocked {
     grid-row: 1 / span 3;
     align-self: stretch;
     align-content: start;
-    gap: var(--space-4);
   }
 
-  .split--mods > .panel {
+  .split--mods > .panel,
+  .split--mods > .mod-rail {
     grid-column: 1;
   }
 
-  /* The plan stays in view while the results scroll past it, clear of the
-     shell's sticky 3.5rem top strip, over the cards that scroll under it. */
+  /* The Mods tab's main column: search, results, Match, Installed mods and
+     the tools; the search page has only the first two. */
+  .split--mods:has(> .mod-rail) {
+    grid-template-rows: repeat(4, auto) 1fr;
+  }
+
+  .split--mods:has(> .mod-rail) > .mod-side {
+    grid-row: 1 / span 5;
+  }
+}
+
+/* The plan stays in view while the results scroll past it, clear of the
+   shell's sticky 3.5rem top strip. It is never taller than the window: the
+   heading and Review stay put and only the list of mods scrolls, newest at
+   its top. In a window too short for even its fixed parts the whole card
+   scrolls; below 30rem it does not stick at all (DESIGN 8.11). */
+@media (min-width: 64rem) and (min-height: 30rem) {
   .mod-side > .plan-panel {
+    --plan-top: var(--space-4);
     position: sticky;
-    inset-block-start: var(--space-4);
+    inset-block-start: var(--plan-top);
     z-index: 1;
+    display: flex;
+    flex-direction: column;
+    max-block-size: calc(100dvh - var(--plan-top) - var(--space-4));
+    overflow-y: auto;
   }
 
   body:has(> .site > nav) .mod-side > .plan-panel {
-    inset-block-start: calc(3.5rem + var(--space-4));
+    --plan-top: calc(3.5rem + var(--space-4));
+  }
+
+  .mod-side > .plan-panel > *,
+  .mod-side > .plan-panel .plan-panel__list::details-content > * {
+    flex: none;
+  }
+
+  .mod-side > .plan-panel > .plan-panel__list,
+  .mod-side > .plan-panel .plan-panel__list::details-content {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-block-size: 0;
+  }
+
+  .mod-side > .plan-panel .plan-panel__list > .plan-tree {
+    flex: 0 1 auto;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: var(--space-2);
   }
 }
 
