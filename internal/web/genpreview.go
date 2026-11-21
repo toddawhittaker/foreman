@@ -649,7 +649,9 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 			return
 		}
 	}
-	_ = zw.Close()
+	if err := zw.Close(); err != nil && !clientGone(r, err) {
+		s.log.Warn("finish the preview pictures zip", "path", r.URL.Path, "error", err)
+	}
 }
 
 // drawnDownload is a planet's picture src with what the download asks for

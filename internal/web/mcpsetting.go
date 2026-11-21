@@ -10,6 +10,10 @@ const (
 	MCPOff     = "off"
 )
 
+// settingMCP is the MCP switch for reading only; its writes audit as
+// mcp-set rather than through setBoolSetting.
+var settingMCP = boolSetting{Name: SettingMCP, Default: false}
+
 // mcpOn reports whether MCP access is on. FOREMAN_MCP=off wins over the
 // setting, and a setting that cannot be read counts as off, so a database
 // fault never opens the endpoint.
@@ -17,12 +21,7 @@ func (s *server) mcpOn(ctx context.Context) bool {
 	if s.cfg.MCPForcedOff {
 		return false
 	}
-	v, found, err := s.store.AppSetting(ctx, SettingMCP)
-	if err != nil {
-		s.log.Error("read the MCP setting", "error", err)
-		return false
-	}
-	return found && v == MCPOn
+	return s.readBool(ctx, settingMCP)
 }
 
 // setMCP stores the admin's choice and takes effect at once. The caller

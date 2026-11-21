@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"maps"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -328,9 +327,7 @@ func TestFileFillSetsNoEnemiesOnlyWhenTheFileDoes(t *testing.T) {
 func TestFavoriteMapFilesRefusesWhenMapSettingsCannotBeMade(t *testing.T) {
 	f := GenerateForm{Version: "9.9.9", Preset: defaultPreset, Line: favLine, MapGen: NewMapGenFormForPreset(favLine, true, defaultPreset)}
 	nw := world.NewWorld{}
-	r := httptest.NewRequest(http.MethodPost, PathGenerate, nil)
-	r.PostForm = url.Values{}
-	if (&server{}).favoriteMapFiles(&f, &nw, world.FavoriteFiles{MapSettings: favoriteMapSettings(t)}, r) {
+	if (&server{}).favoriteMapFilesFrom(&f, &nw, world.FavoriteFiles{MapSettings: favoriteMapSettings(t)}, url.Values{}) {
 		t.Fatal("made map files without map settings")
 	}
 	if f.FormError.IsZero() || nw.MapSettings != nil {

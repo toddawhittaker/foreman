@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -77,7 +76,7 @@ func forceStopWill(p ForceStopPage) []string {
 
 func (s *server) mcpForceStop(ctx context.Context, req *mcp.CallToolRequest, in mcpForceStopIn) (*mcp.CallToolResult, mcpForceStopOut, error) {
 	// The code is spent before any check, so a refused confirm spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpForceStopOut{}, err
 	}
@@ -204,7 +203,7 @@ func (s *server) mcpPlayerDone(ctx context.Context, req *mcp.CallToolRequest, su
 // mcpKickBan is kick_player and ban_player; the tool's name says which.
 func (s *server) mcpKickBan(ctx context.Context, req *mcp.CallToolRequest, in mcpKickBanIn) (*mcp.CallToolResult, mcpPlayerOut, error) {
 	// The code is spent before any check, so a refused confirm spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpPlayerOut{}, err
 	}
@@ -307,7 +306,7 @@ func consoleWill(sum world.Summary) []string {
 
 func (s *server) mcpConsole(ctx context.Context, req *mcp.CallToolRequest, in mcpConsoleIn) (*mcp.CallToolResult, mcpConsoleOut, error) {
 	// The code is spent before any check, so a refused confirm spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpConsoleOut{}, err
 	}
@@ -353,12 +352,6 @@ func (s *server) mcpConsole(ctx context.Context, req *mcp.CallToolRequest, in mc
 	}
 	s.console.add(sum.ID, consoleEntry{Command: shown, Reply: reply})
 	out := mcpConsoleOut{mcpPreview: mcpPreview{Done: true}, World: worldRef(sum), Command: shown, UntrustedReply: reply}
-	if len(reply) > maxReplyBytes {
-		cut := maxReplyBytes
-		for cut > 0 && !utf8.RuneStart(reply[cut]) {
-			cut--
-		}
-		out.UntrustedReply, out.ReplyCut = reply[:cut], true
-	}
+	out.UntrustedReply, out.ReplyCut = cutUTF8(reply, maxReplyBytes)
 	return mcpText("The command was sent to %s; the game's answer is in untrusted_reply.", sum.Name), out, nil
 }

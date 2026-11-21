@@ -219,11 +219,7 @@ func whitelistWord(on bool) string {
 // setWhitelistSwitch records the change in the audit log, then sets the
 // world's whitelist switch (SPEC 8.3, 12.9).
 func (s *server) setWhitelistSwitch(ctx context.Context, by game.Actor, id string, on bool) error {
-	err := s.store.AddAudit(ctx, store.AuditEntry{
-		Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token, Action: AuditWhitelistSwitch,
-		WorldID: id, Detail: whitelistWord(on),
-	})
-	if err != nil {
+	if err := s.addAudit(ctx, by, AuditWhitelistSwitch, id, whitelistWord(on)); err != nil {
 		return err
 	}
 	return s.worlds.SetUseWhitelist(id, on)

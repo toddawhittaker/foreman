@@ -3,8 +3,6 @@ package web
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"slices"
@@ -27,17 +25,10 @@ var testLines = []struct {
 	{"1.1", false}, {"2.0", false}, {"2.0", true}, {"2.1", false}, {"2.1", true},
 }
 
-func postForm(t *testing.T, v url.Values) *http.Request {
-	t.Helper()
-	r := httptest.NewRequest(http.MethodPost, "/worlds/generate", strings.NewReader(v.Encode()))
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	return r
-}
-
 // parseOK posts v and wants no problem.
 func parseOK(t *testing.T, line string, spaceAge bool, v url.Values) (MapGenForm, map[string]any) {
 	t.Helper()
-	form, out, problems := ParseMapGenForm(postForm(t, v), line, spaceAge)
+	form, out, problems := parseMapGenValues(v, line, spaceAge)
 	if len(problems) > 0 || out == nil {
 		t.Fatalf("%s: problems %+v", line, problems)
 	}
@@ -306,9 +297,9 @@ func TestSeed(t *testing.T) {
 // echoed, and a closed group holding one opens (DESIGN 8.7).
 func TestBadValuesAreRefusedAtTheirField(t *testing.T) {
 	bad := fieldName("vulcanus", "calcite", "size")
-	f, out, problems := ParseMapGenForm(postForm(t, url.Values{
+	f, out, problems := parseMapGenValues(url.Values{
 		mgSeed: {"abc"}, mgWidth: {"-1"}, mgHeight: {"1.5"}, mgStart: {"<script>"}, bad: {"9999"},
-	}), "2.0", true)
+	}, "2.0", true)
 	if out != nil {
 		t.Error("a file was built from bad input")
 	}
@@ -352,7 +343,7 @@ func TestUnknownControlIsRefused(t *testing.T) {
 		"mg.nauvis.bogus.frequency", "mg.nauvis.iron-ore.speed", "mg.mars.iron-ore.size", "mg.rubbish",
 		"mg.nauvis.iron-ore.frequency.extra", "mg.__proto__.x.y",
 	} {
-		f, out, problems := ParseMapGenForm(postForm(t, url.Values{name: {"200"}}), "2.0", true)
+		f, out, problems := parseMapGenValues(url.Values{name: {"200"}}, "2.0", true)
 		if out != nil || len(problems) == 0 {
 			t.Errorf("%s: accepted (problems %v)", name, problems)
 			continue
@@ -366,7 +357,7 @@ func TestUnknownControlIsRefused(t *testing.T) {
 		}
 	}
 	// A line the game data lacks is refused whole.
-	if _, out, problems := ParseMapGenForm(postForm(t, url.Values{}), "3.0", false); out != nil || len(problems) == 0 {
+	if _, out, problems := parseMapGenValues(url.Values{}, "3.0", false); out != nil || len(problems) == 0 {
 		t.Error("an unknown line was accepted")
 	}
 	// A real field for another line or for Space Age is not an attack: it
@@ -522,7 +513,7 @@ func TestRawBoxErrors(t *testing.T) {
 		{"out of range", "{\n  \"cliff_settings\": {\n    \"richness\": 99\n  }\n}", 3, "mapgen.raw.err.range"},
 	}
 	for _, c := range cases {
-		f, out, problems := ParseMapGenForm(postForm(t, url.Values{mgRaw: {c.raw}}), "1.1", false)
+		f, out, problems := parseMapGenValues(url.Values{mgRaw: {c.raw}}, "1.1", false)
 		if out != nil || len(problems) == 0 {
 			t.Errorf("%s: accepted", c.name)
 			continue
@@ -543,13 +534,13 @@ func TestRawBoxErrors(t *testing.T) {
 		}
 	}
 	// Two mistakes are two problems.
-	_, _, problems := ParseMapGenForm(postForm(t, url.Values{mgRaw: {"{\"width\": \"a\", \"peaceful_mode\": 3}"}}), "2.0", false)
+	_, _, problems := parseMapGenValues(url.Values{mgRaw: {"{\"width\": \"a\", \"peaceful_mode\": 3}"}}, "2.0", false)
 	if len(problems) != 2 {
 		t.Errorf("%d problems for two mistakes", len(problems))
 	}
 	// The limit is the settings limit (SPEC 14.6).
 	big := "{\"x\": \"" + strings.Repeat("a", gamesettings.MaxBytes) + "\"}"
-	if _, out, problems := ParseMapGenForm(postForm(t, url.Values{mgRaw: {big}}), "2.0", false); out != nil || len(problems) == 0 || problems[0].Message.Key != "mapgen.raw.err.too_large" {
+	if _, out, problems := parseMapGenValues(url.Values{mgRaw: {big}}, "2.0", false); out != nil || len(problems) == 0 || problems[0].Message.Key != "mapgen.raw.err.too_large" {
 		t.Error("an over-size raw box was not refused")
 	}
 	// An empty box is allowed.
@@ -561,14 +552,14 @@ func TestRawBoxErrors(t *testing.T) {
 var rePlaceholderLeft = regexp.MustCompile(`\{[a-z_]+\}`)
 
 func TestMessagesRenderInEveryLanguage(t *testing.T) {
-	_, _, problems := ParseMapGenForm(postForm(t, url.Values{
+	_, _, problems := parseMapGenValues(url.Values{
 		mgSeed: {"x"}, mgWidth: {"x"}, mgStart: {"x"}, fieldName("nauvis", "coal", "size"): {"x"}, "mg.bogus": {"1"},
 		fieldName("vulcanus", "calcite", "size"): {"x"},
 		mgRaw:                                    {"{\"width\": [1], \"cliff_settings\": {\"richness\": 99}, \"seed\": \"s\",\n\"peaceful_mode\": 3,\n \"x\": ,}"},
-	}), "2.0", true)
-	_, _, more := ParseMapGenForm(postForm(t, url.Values{mgRaw: {"{\"cliff_settings\": {\"richness\": 99},\n \"starting_areas\": 1,\n \"seed\": \"s\", \"autoplace_controls\": {\"coal\": {\"size\": -1}}}"}}), "1.1", false)
+	}, "2.0", true)
+	_, _, more := parseMapGenValues(url.Values{mgRaw: {"{\"cliff_settings\": {\"richness\": 99},\n \"starting_areas\": 1,\n \"seed\": \"s\", \"autoplace_controls\": {\"coal\": {\"size\": -1}}}"}}, "1.1", false)
 	problems = append(problems, more...)
-	_, _, more = ParseMapGenForm(postForm(t, url.Values{mgRaw: {"[1]"}}), "1.1", false)
+	_, _, more = parseMapGenValues(url.Values{mgRaw: {"[1]"}}, "1.1", false)
 	problems = append(problems, more...)
 	if len(problems) < 8 {
 		t.Fatalf("only %d problems to check", len(problems))

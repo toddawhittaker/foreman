@@ -75,8 +75,10 @@ func (p *publicRig) server() *server {
 		cfg: p.cfg, store: p.store, worlds: p.worlds, game: p.ctrl, log: p.slog, now: p.clock.Now,
 		publicSlots: make(chan struct{}, maxPublicDownloads),
 		planner:     &mods.Planner{Worlds: p.worlds, Portal: modportal.NewForTest(p.portal.URL)},
+		runs:        newGameRuns(),
 	}
-	s.marks = newPortalMarks(p.clock.Now, s.checkPortalForPublic)
+	p.t.Cleanup(s.runs.close)
+	s.marks = newPortalMarks(p.clock.Now, s.runs, s.checkPortalForPublic)
 	return s
 }
 
@@ -290,7 +292,9 @@ func TestPortalMarksKeepAnswersAndFailures(t *testing.T) {
 		}
 		return []mods.Flag{{Code: mods.FlagNotOnPortal, Name: "a", Version: "1"}}, nil
 	}
-	pm := newPortalMarks(clock.Now, check)
+	runs := newGameRuns()
+	t.Cleanup(runs.close)
+	pm := newPortalMarks(clock.Now, runs, check)
 	ctx := context.Background()
 	ask := func(fp string) bool {
 		_, ok := pm.get(ctx, "w", fp)
@@ -343,7 +347,9 @@ func TestPortalMarksOneCheckAtATimeAndABoundedWait(t *testing.T) {
 		<-release
 		return []mods.Flag{{Code: mods.FlagDeprecated, Name: "a", Version: "1"}}, nil
 	}
-	pm := newPortalMarks(clock.Now, check)
+	runs := newGameRuns()
+	t.Cleanup(runs.close)
+	pm := newPortalMarks(clock.Now, runs, check)
 	pm.wait = 100 * time.Millisecond
 
 	var wg sync.WaitGroup
@@ -377,7 +383,9 @@ func TestPortalMarksOneCheckAtATimeAndABoundedWait(t *testing.T) {
 func TestPortalMarksStopWaitingWhenTheVisitorLeaves(t *testing.T) {
 	block := make(chan struct{})
 	defer close(block)
-	pm := newPortalMarks(time.Now, func(context.Context, string) ([]mods.Flag, error) { <-block; return nil, nil })
+	runs := newGameRuns()
+	t.Cleanup(runs.close)
+	pm := newPortalMarks(time.Now, runs, func(context.Context, string) ([]mods.Flag, error) { <-block; return nil, nil })
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	done := make(chan bool)
@@ -389,6 +397,45 @@ func TestPortalMarksStopWaitingWhenTheVisitorLeaves(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("the wait did not end when the visitor left")
+	}
+}
+
+// A portal check nobody waits for any more still ends when Foreman shuts
+// down, and shutdown waits for it, as for any other background work.
+func TestPortalMarksCheckEndsAtShutdown(t *testing.T) {
+	hn := newHarnessDeps(t, nil, nil, func(d *Deps) { d.Portal = modportal.NewForTest("http://127.0.0.1:1") })
+	h := hn.h.(*Handler)
+	pm := h.srv.marks
+	started, ended := make(chan struct{}), make(chan struct{})
+	pm.check = func(ctx context.Context, _ string) ([]mods.Flag, error) {
+		close(started)
+		<-ctx.Done()
+		close(ended)
+		return nil, ctx.Err()
+	}
+	pm.wait = 10 * time.Millisecond
+	if _, ok := pm.get(context.Background(), "w", "f"); ok {
+		t.Fatal("a check that has not ended gave an answer")
+	}
+	<-started
+	closed := make(chan struct{})
+	go func() { h.Close(); close(closed) }()
+	select {
+	case <-ended:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the check's context did not end at shutdown")
+	}
+	select {
+	case <-closed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shutdown did not end")
+	}
+	pm.check = func(context.Context, string) ([]mods.Flag, error) {
+		t.Error("a check started after shutdown")
+		return nil, nil
+	}
+	if _, ok := pm.get(context.Background(), "w", "other"); ok {
+		t.Error("a get after shutdown gave an answer")
 	}
 }
 
@@ -624,7 +671,7 @@ func TestPublicModsDataSkipsThePortalWhenNoModHasAZip(t *testing.T) {
 	}
 	var calls atomic.Int32
 	s := p.server()
-	s.marks = newPortalMarks(p.clock.Now, func(context.Context, string) ([]mods.Flag, error) {
+	s.marks = newPortalMarks(p.clock.Now, s.runs, func(context.Context, string) ([]mods.Flag, error) {
 		calls.Add(1)
 		return nil, errors.New("portal down")
 	})

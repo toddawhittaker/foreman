@@ -657,11 +657,7 @@ func (h *settingsHandlers) save(ctx context.Context, by game.Actor, id string, f
 		changes[i] = world.ConfigChange{File: f.File, Data: f.New, SeenHash: f.Hash}
 	}
 	snap, err := s.worlds.SaveSettingsHeld(id, changes, by.Username, func() error {
-		err := s.store.AddAudit(ctx, store.AuditEntry{
-			Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token, Action: game.AuditSettingsSave,
-			WorldID: id, Detail: strings.Join(fileNames(files), ", "),
-		})
-		if err != nil {
+		if err := s.addAudit(ctx, by, game.AuditSettingsSave, id, strings.Join(fileNames(files), ", ")); err != nil {
 			return fmt.Errorf("record settings save: %w", err)
 		}
 		return nil

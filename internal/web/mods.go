@@ -64,7 +64,7 @@ func (f accountFetcher) Download(ctx context.Context, r modportal.Release, dst *
 	if err != nil {
 		return err
 	}
-	if src != factorioaccount.Env && src != factorioaccount.Stored {
+	if !canDownload(src) {
 		return game.ErrNoModFetcher
 	}
 	return f.portal.Download(ctx, acct.Username.Reveal(), acct.Token.Reveal(), r, dst, f.limit(ctx))
@@ -136,6 +136,13 @@ func (s *server) downloadsOn(ctx context.Context) bool {
 		s.log.Error("read the factorio.com account", "error", err)
 		return false
 	}
+	return canDownload(src)
+}
+
+// canDownload reports whether an account from src can download mods: one
+// from the environment or stored in the UI, not a missing or unreadable one
+// (SPEC 9.11).
+func canDownload(src factorioaccount.Source) bool {
 	return src == factorioaccount.Env || src == factorioaccount.Stored
 }
 
@@ -346,7 +353,7 @@ func (m ModName) IsName() bool { return m.Title == m.Name }
 
 // modName is the mod-name partial's input. title falls back to name; link
 // is false for a folder mod or one the portal lacks, and a built-in mod is
-// never linked (ruling on #623; SPEC 9.7).
+// never linked (SPEC 9.15).
 func modName(name, title string, link bool) ModName {
 	if strings.TrimSpace(title) == "" {
 		title = name
@@ -433,8 +440,9 @@ func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, err
 	}
 	p.HasSettings = s.hasModSettings(sum.ID)
 	p.NoAccount = !s.downloadsOn(ctx)
-	op := s.game.Status(sum.ID).Operation
-	p.Running = game.IsRunning(s.game.Status(sum.ID).State)
+	st := s.game.Status(sum.ID)
+	op := st.Operation
+	p.Running = game.IsRunning(st.State)
 	p.Busy = busyText(op, s.worldName)
 	p.ServerLink = !p.Busy.IsZero() && (sum.Active || op.Switch != nil)
 	p.Working = !p.Busy.IsZero() || s.runs.inFlight(sum.ID)
@@ -1567,9 +1575,14 @@ func alsoAdd(f *planForm, list []string, name string, fixed bool) []string {
 	return append(list, name)
 }
 
+// newInstallForm is an install plan with nothing chosen yet.
+func newInstallForm() planForm {
+	return planForm{Kind: mods.KindInstall, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}, Versions: map[string]string{}}
+}
+
 // picksForm installs the world's saved picks (SPEC 9.14).
 func (s *server) picksForm(ctx context.Context, id string) planForm {
-	f := planForm{Kind: mods.KindInstall, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}, Versions: map[string]string{}}
+	f := newInstallForm()
 	picks, err := s.store.ModPlan(ctx, id)
 	if err != nil {
 		s.log.Warn("read the mod plan", "world", id, "error", err)
@@ -1593,7 +1606,7 @@ func (s *server) favoriteForm(ctx context.Context, sum world.Summary, id string)
 	if err != nil {
 		return s.picksForm(ctx, sum.ID), true, true
 	}
-	f := planForm{Kind: mods.KindInstall, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}, Versions: map[string]string{}}
+	f := newInstallForm()
 	favLine, known := mapgen.Line(fav.GameVersion)
 	if !known || !world.SupportedGameVersion(fav.GameVersion) {
 		f.FavoriteVersion = fav.GameVersion
@@ -1718,7 +1731,7 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 // looked up the mods it changes, so those come from the portal client's
 // cache. An offered mod may be one the plan never asked about, so at most
 // store.MaxModPlanNames offered mods are asked for; the rest show by title
-// alone, or by name (ruling 22 of the fixes-11 plan).
+// alone, or by name (SPEC 9.2).
 func (s *server) planFacts(ctx context.Context, p ModPlanPage) map[string]ModFacts {
 	out := map[string]ModFacts{}
 	installed := map[string]world.InstalledMod{}
@@ -2059,14 +2072,10 @@ const maxSummary = 500
 // clipSummary cuts an audit summary at maxSummary bytes, never inside a
 // character, and marks the cut.
 func clipSummary(s string) string {
-	if len(s) <= maxSummary {
-		return s
+	if cut, ok := cutUTF8(s, maxSummary); ok {
+		return cut + "…"
 	}
-	n := maxSummary
-	for n > 0 && !utf8.RuneStart(s[n]) {
-		n--
-	}
-	return s[:n] + "…"
+	return s
 }
 
 // applyMods runs one mod change in the background (SPEC 9.13). The
@@ -2089,7 +2098,7 @@ func (s *server) modAction(id string, by game.Actor, op game.ModOp, stop game.St
 	return func(ctx context.Context) actionResult {
 		err := s.game.ApplyMods(ctx, id, by, op, stop)
 		if unused != "" {
-			_ = s.worlds.RemoveStaged(unused)
+			s.removeStaged(unused)
 		}
 		res := s.finish(id, game.AuditMods, err)
 		res.Mods = shown

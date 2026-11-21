@@ -94,7 +94,7 @@ func restoreSeen(p RestorePage, steps []string) string {
 
 func (s *server) mcpRestoreSnapshot(ctx context.Context, req *mcp.CallToolRequest, in mcpRestoreIn) (*mcp.CallToolResult, mcpRestoreOut, error) {
 	// The code is spent before any check, so a refused confirm spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpRestoreOut{}, err
 	}
@@ -237,7 +237,7 @@ func (s *server) bulkFailure(err error) (i18n.Msg, bool) {
 
 func (s *server) mcpDeleteSnapshots(ctx context.Context, req *mcp.CallToolRequest, in mcpDeleteSnapshotsIn) (*mcp.CallToolResult, mcpDeleteSnapshotsOut, error) {
 	// The code is spent before any check, so a refused confirm spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpDeleteSnapshotsOut{}, err
 	}
@@ -306,10 +306,7 @@ func (s *server) mcpDeleteSnapshots(ctx context.Context, req *mcp.CallToolReques
 			if !slices.Contains(stayed, ref) {
 				continue
 			}
-			why := it.Refusal
-			if f, ok := failures[ref]; ok {
-				why = f
-			}
+			why := stayReason(it, failures)
 			s.log.Info("mcp: snapshot stayed", "world", ref.WorldID, "snapshot", ref.Name, "why", inEnglish(why))
 		}
 		return nil
@@ -329,11 +326,7 @@ func (s *server) mcpDeleteSnapshots(ctx context.Context, req *mcp.CallToolReques
 		case slices.Contains(deleted, ref.Name) && !it.Gone:
 			out.Deleting = append(out.Deleting, snapshotItem(it.Snapshot))
 		case slices.Contains(stayed, ref):
-			why := it.Refusal
-			if f, ok := failures[ref]; ok {
-				why = f
-			}
-			out.Staying = append(out.Staying, mcpStaying{snapshotItem(it.Snapshot), inEnglish(why)})
+			out.Staying = append(out.Staying, mcpStaying{snapshotItem(it.Snapshot), inEnglish(stayReason(it, failures))})
 		}
 	}
 	// A snapshot already gone counts as done for the delete, but was not
@@ -345,4 +338,13 @@ func (s *server) mcpDeleteSnapshots(ctx context.Context, req *mcp.CallToolReques
 		res.IsError = out.DeletedCount == 0
 	}
 	return res, out, nil
+}
+
+// stayReason says why it stayed: the delete's failure when one was
+// attempted, else the refusal the preview showed.
+func stayReason(it DeleteItem, failures map[world.SnapshotRef]i18n.Msg) i18n.Msg {
+	if f, ok := failures[world.SnapshotRef{WorldID: it.WorldID, Name: it.Snapshot.Name}]; ok {
+		return f
+	}
+	return it.Refusal
 }

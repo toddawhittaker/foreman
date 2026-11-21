@@ -109,7 +109,7 @@ func updateWill(p UpdatePage) []string {
 func (s *server) mcpUpdateGameVersion(ctx context.Context, req *mcp.CallToolRequest, in mcpUpdateIn) (*mcp.CallToolResult, mcpVersionOut, error) {
 	// A confirm call spends its code before any check, so a refused
 	// confirm cannot be tried again with the same code.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpVersionOut{}, err
 	}
@@ -195,7 +195,7 @@ func rollbackWill(p RollbackPage) []string {
 func (s *server) mcpRollbackGameVersion(ctx context.Context, req *mcp.CallToolRequest, in mcpRollbackIn) (*mcp.CallToolResult, mcpVersionOut, error) {
 	// A confirm call spends its code before any check, so a refused
 	// confirm cannot be tried again with the same code.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpVersionOut{}, err
 	}

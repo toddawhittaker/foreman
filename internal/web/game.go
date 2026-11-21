@@ -128,11 +128,6 @@ func (g *gameRuns) trackLocked() bool {
 	return true
 }
 
-// run starts an action in the background on one world.
-func (g *gameRuns) run(id string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
-	return g.runOn([]string{id}, holdsLock, do)
-}
-
 // runOn starts an action in the background on every world in ids; a switch
 // holds two, and each world's page shows its result. holdsLock is true for
 // the actions that take the world's lock (start, stop, restart, restore,
@@ -389,17 +384,10 @@ func (s *server) startAnywaySnapshot(id string) *world.Snapshot {
 }
 
 func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.User) {
-	list, err := s.worlds.List(r.Context())
+	sum, found, err := s.activeWorld(r.Context())
 	if err != nil {
 		s.fail(w, r, "find the active world", err)
 		return
-	}
-	var sum world.Summary
-	found := false
-	for _, ws := range list {
-		if ws.Active {
-			sum, found = ws, true
-		}
 	}
 	if !found {
 		s.page(w, r, http.StatusOK, u.Username, ServerPage{})
@@ -759,9 +747,6 @@ func (s *server) handleDismissResult(w http.ResponseWriter, r *http.Request, u s
 	http.Redirect(w, r, PathServer, http.StatusSeeOther)
 }
 
-// handleCancelStop ends the stop countdown on the world in the path, so the
-// action that began it ends with nothing changed (SPEC 7.6). It returns once
-// that action has ended, so the Server page shows how it ended.
 // cancelStop ends a world's stop countdown. The action is marked cancelled
 // first so its result is not reported as a stop; the mark is lifted when
 // there was nothing to cancel.
@@ -774,6 +759,9 @@ func (s *server) cancelStop(ctx context.Context, id string, by game.Actor) error
 	return err
 }
 
+// handleCancelStop ends the stop countdown on the world in the path, so the
+// action that began it ends with nothing changed (SPEC 7.6). It returns once
+// that action has ended, so the Server page shows how it ended.
 func (s *server) handleCancelStop(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) {
 		return

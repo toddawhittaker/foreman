@@ -97,7 +97,7 @@ func TestMapTypeIsWritten(t *testing.T) {
 			t.Errorf("%s: default map type wrote elevation %v", c.line, got)
 		}
 	}
-	_, _, problems := ParseMapGenForm(postForm(t, url.Values{mgMapType: {"elevation_lakes"}}), "1.1", false)
+	_, _, problems := parseMapGenValues(url.Values{mgMapType: {"elevation_lakes"}}, "1.1", false)
 	if len(problems) != 1 || problems[0].FieldID != "mg-map-type" {
 		t.Errorf("a map type 1.1 lacks: problems %+v", problems)
 	}
@@ -113,7 +113,7 @@ func TestTerrainScalesAreWritten(t *testing.T) {
 	if pen["control:aux:frequency"] != "6" {
 		t.Errorf("aux %v, want \"6\"", pen["control:aux:frequency"])
 	}
-	_, _, problems := ParseMapGenForm(postForm(t, url.Values{mgMoistureScale: {"141"}}), "2.1", false)
+	_, _, problems := parseMapGenValues(url.Values{mgMoistureScale: {"141"}}, "2.1", false)
 	if len(problems) != 1 || problems[0].FieldID != "mg-moisture-scale" {
 		t.Errorf("water's 141%% step is not the moisture scale's: problems %+v", problems)
 	}
@@ -180,7 +180,7 @@ func TestBiasIsWrittenOnlyWhenSet(t *testing.T) {
 			t.Errorf("default bias wrote %s = %v", k, v)
 		}
 	}
-	_, _, problems := ParseMapGenForm(postForm(t, url.Values{mgAuxBias: {"7"}}), "2.1", false)
+	_, _, problems := parseMapGenValues(url.Values{mgAuxBias: {"7"}}, "2.1", false)
 	if len(problems) != 1 || problems[0].FieldID != "mg-aux-bias" {
 		t.Errorf("a bias off the steps: problems %+v", problems)
 	}

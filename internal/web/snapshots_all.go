@@ -275,10 +275,7 @@ func (s *server) deleteSnapshot(ctx context.Context, by game.Actor, id, name str
 		return errOperationRunning
 	}
 	return s.worlds.DeleteSnapshot(id, name, func(sn world.Snapshot) error {
-		return s.store.AddAudit(ctx, store.AuditEntry{
-			Time: s.now(), UserID: by.UserID, Username: by.Username, TokenName: by.Token, Action: AuditSnapshotDelete,
-			WorldID: id, Detail: fmt.Sprintf("%s (%s, %s)", sn.Name, sn.Label, sn.Reason),
-		})
+		return s.addAudit(ctx, by, AuditSnapshotDelete, id, fmt.Sprintf("%s (%s, %s)", sn.Name, sn.Label, sn.Reason))
 	})
 }
 

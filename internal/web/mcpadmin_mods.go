@@ -291,7 +291,7 @@ func planRefusal(p ModPlanPage) string {
 // 9.2, 9.14, 17.8, 21.8).
 func (s *server) mcpChangeMods(ctx context.Context, req *mcp.CallToolRequest, in mcpChangeModsIn) (*mcp.CallToolResult, mcpChangeModsOut, error) {
 	// Spent before any check, so a refused confirm spends it too.
-	seen, err := s.spendIfCode(req, in, in.ConfirmCode)
+	seen, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpChangeModsOut{}, err
 	}
@@ -505,7 +505,7 @@ func modSettingsWill(p ModSettingsPage, run time.Time) []string {
 // handleModSettingsSave does (SPEC 9.6, 9.13, 21.8).
 func (s *server) mcpChangeModSettings(ctx context.Context, req *mcp.CallToolRequest, in mcpChangeModSettingsIn) (*mcp.CallToolResult, mcpChangeModSettingsOut, error) {
 	// Spent before any check, so a refused confirm spends it too.
-	seen, err := s.spendIfCode(req, in, in.ConfirmCode)
+	seen, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpChangeModSettingsOut{}, err
 	}

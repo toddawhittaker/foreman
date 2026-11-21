@@ -93,18 +93,24 @@ type consoleHistory struct {
 	byWorld map[string][]consoleEntry
 }
 
+// cutUTF8 cuts s to at most n bytes, never inside a character, and reports
+// whether it cut anything.
+func cutUTF8(s string, n int) (string, bool) {
+	if len(s) <= n {
+		return s, false
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n], true
+}
+
 func newConsoleHistory() *consoleHistory {
 	return &consoleHistory{byWorld: map[string][]consoleEntry{}}
 }
 
 func (h *consoleHistory) add(id string, e consoleEntry) {
-	if len(e.Reply) > maxReplyBytes {
-		cut := maxReplyBytes
-		for cut > 0 && !utf8.RuneStart(e.Reply[cut]) {
-			cut--
-		}
-		e.Reply, e.Cut = e.Reply[:cut], true
-	}
+	e.Reply, e.Cut = cutUTF8(e.Reply, maxReplyBytes)
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	list := append(h.byWorld[id], e)
@@ -296,14 +302,7 @@ func (s *server) respond(w http.ResponseWriter, r *http.Request, status int, use
 		s.page(w, r, status, user, p)
 		return
 	}
-	var b strings.Builder
-	if err := s.render.Fragment(&b, localeOf(r), p, "console-response"); err != nil {
-		s.fail(w, r, "render console panel", err)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	_, _ = w.Write([]byte(b.String()))
+	s.fragment(w, r, p, "console-response")
 }
 
 // handleConsoleSend sends one command and records it (SPEC 8.4, 12.9).
@@ -365,8 +364,7 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 	if !ok {
 		return
 	}
-	if !s.runs.track() {
-		http.Error(w, localeOf(r).T("server.stream.shutting_down"), http.StatusServiceUnavailable)
+	if !s.trackStream(w, r) {
 		return
 	}
 	defer s.runs.wg.Done()
@@ -398,27 +396,18 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 				batch = append(batch, up.Line)
 			}
 			// Whatever else is waiting goes in the same event.
-			for drained := false; !drained; {
-				select {
-				case up, open := <-updates:
-					if !open {
-						return
-					}
-					if up.Kind == game.UpdateLine {
-						batch = append(batch, up.Line)
-					}
-				default:
-					drained = true
+			if !drain(updates, func(up game.Update) {
+				if up.Kind == game.UpdateLine {
+					batch = append(batch, up.Line)
 				}
+			}) {
+				return
 			}
 			if len(batch) > 0 && out.lines("lines", batch) != nil {
 				return
 			}
 		case <-beat.C:
-			if !s.stillSignedIn(r, opened) {
-				return
-			}
-			if out.comment() != nil {
+			if !s.heartbeat(r, opened, out) {
 				return
 			}
 		}

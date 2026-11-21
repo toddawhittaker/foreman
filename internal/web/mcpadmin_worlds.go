@@ -332,7 +332,7 @@ func deletePreview(p DeletePage) (will []string, snapshot string) {
 // state is the world's id, name and size, which the preview shows.
 func (s *server) mcpDeleteWorld(ctx context.Context, req *mcp.CallToolRequest, in mcpDeleteWorldIn) (*mcp.CallToolResult, mcpDeleteWorldOut, error) {
 	// A code is spent before any check, so a refused call spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpDeleteWorldOut{}, err
 	}
@@ -528,7 +528,7 @@ func favoriteDeletePreview(FavoriteDeletePage) []string {
 // seen state is the favorite's id and name.
 func (s *server) mcpDeleteFavorite(_ context.Context, req *mcp.CallToolRequest, in mcpDeleteFavoriteIn) (*mcp.CallToolResult, mcpDeleteFavoriteOut, error) {
 	// A code is spent before any check, so a refused call spends it too.
-	was, err := s.spendIfCode(req, in, in.ConfirmCode)
+	was, err := s.spendIfCode(req, in)
 	if err != nil {
 		return nil, mcpDeleteFavoriteOut{}, err
 	}

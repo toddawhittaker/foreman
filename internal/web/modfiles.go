@@ -154,14 +154,14 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	}
 	info, err := s.worlds.ReadStaged(up.Temp)
 	if err != nil {
-		_ = s.worlds.RemoveStaged(up.Temp)
+		s.removeStaged(up.Temp)
 		refuse(modZipError(err), http.StatusUnprocessableEntity)
 		return
 	}
 	f := planForm{Kind: mods.KindUpload, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}}
 	if sync {
 		if want := q.Get("for"); info.Name != want {
-			_ = s.worlds.RemoveStaged(up.Temp)
+			s.removeStaged(up.Temp)
 			refuse(i18n.M("mods.upload.wrong_mod", "mod", want, "got", info.Name), http.StatusUnprocessableEntity)
 			return
 		}
@@ -270,4 +270,13 @@ func (s *server) handleSettingsDownload(w http.ResponseWriter, r *http.Request, 
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Cache-Control", "private, no-cache")
 	http.ServeContent(w, r, world.ModSettingsFile, st.ModTime(), f)
+}
+
+// removeStaged removes a staged mod zip nothing will use. A failure leaves
+// the file for world.Recover to clear at the next start, so it is only
+// logged.
+func (s *server) removeStaged(name string) {
+	if err := s.worlds.RemoveStaged(name); err != nil {
+		s.log.Warn("remove a staged mod zip", "file", name, "error", err)
+	}
 }
