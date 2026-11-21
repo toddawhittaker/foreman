@@ -46,21 +46,21 @@ func pickerRel() *fakeReleases {
 func TestVersionsListsOnlyVersionsAbove(t *testing.T) {
 	g := newUpdateRig(t, pickerRel())
 
-	body := g.get(versionsPath("2.0.77"))
+	body := g.get(versionsPath("2.0.77", ""))
 	if got := strings.Join(optionValues(body), " "); got != "2.1.25 2.1.24" {
 		t.Errorf("above 2.0.77 lists %q:\n%s", got, body)
 	}
 	g.wantContains("picker", body, `>2.1.25 (experimental)<`)
 	g.wantMissing("picker", body, "stable", "2.0.76", "1.1.110")
 
-	body = g.get(versionsPath("2.0.76"))
+	body = g.get(versionsPath("2.0.76", ""))
 	if got := strings.Join(optionValues(body), " "); got != "2.1.25 2.1.24 2.0.77" {
 		t.Errorf("above 2.0.76 lists %q:\n%s", got, body)
 	}
 	g.wantContains("picker", body, `>2.0.77 (stable)<`, `>2.1.25 (experimental)<`)
 
 	// Nothing is above the newest, and the list is still a good answer.
-	rep := g.do(http.MethodGet, versionsPath("2.1.25"), nil, http.Header{"Cookie": {g.cookie.String()}})
+	rep := g.do(http.MethodGet, versionsPath("2.1.25", ""), nil, http.Header{"Cookie": {g.cookie.String()}})
 	if rep.StatusCode != http.StatusOK || len(optionValues(rep.body)) != 0 {
 		t.Errorf("above the newest: %d\n%s", rep.StatusCode, rep.body)
 	}
@@ -77,20 +77,20 @@ func TestVersionsListsOnlyVersionsAbove(t *testing.T) {
 func TestVersionsMarksTheTargetSelected(t *testing.T) {
 	g := newUpdateRig(t, pickerRel())
 
-	body := g.get(versionsPathSelecting("2.0.76", "2.1.24"))
+	body := g.get(versionsPath("2.0.76", "2.1.24"))
 	g.wantContains("picker", body, `<option value="2.1.24" selected>`)
 	if n := strings.Count(body, " selected"); n != 1 {
 		t.Errorf("%d options selected, want 1:\n%s", n, body)
 	}
 
 	for name, target := range map[string]string{"not in the list": "2.9.9", "not newer than the world": "2.0.76", "empty": ""} {
-		if body := g.get(versionsPathSelecting("2.0.76", target)); strings.Contains(body, "selected") {
+		if body := g.get(versionsPath("2.0.76", target)); strings.Contains(body, "selected") {
 			t.Errorf("%s: an option is selected:\n%s", name, body)
 		}
 	}
 
 	// A hostile target is never written into the page.
-	wantNoMarkup(t, "hostile target", g.get(versionsPathSelecting("2.0.76", hostileAttr)))
+	wantNoMarkup(t, "hostile target", g.get(versionsPath("2.0.76", hostileAttr)))
 }
 
 // SPEC 10.7: when Docker Hub cannot be reached the page still works: the list
@@ -105,7 +105,7 @@ func TestVersionsShowsNothingWhenTheSourceFails(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			g := newUpdateRig(t, rel)
-			rep := g.do(http.MethodGet, versionsPath("2.0.77"), nil, http.Header{"Cookie": {g.cookie.String()}})
+			rep := g.do(http.MethodGet, versionsPath("2.0.77", ""), nil, http.Header{"Cookie": {g.cookie.String()}})
 			if rep.StatusCode != http.StatusOK {
 				t.Fatalf("status %d\n%s", rep.StatusCode, rep.body)
 			}
@@ -123,7 +123,7 @@ func TestVersionsWithoutLatestReleasesMarksNothing(t *testing.T) {
 	rel := pickerRel()
 	rel.latestErr = errHub
 	g := newUpdateRig(t, rel)
-	rep := g.do(http.MethodGet, versionsPath("2.0.77"), nil, http.Header{"Cookie": {g.cookie.String()}})
+	rep := g.do(http.MethodGet, versionsPath("2.0.77", ""), nil, http.Header{"Cookie": {g.cookie.String()}})
 	if rep.StatusCode != http.StatusOK {
 		t.Fatalf("status %d", rep.StatusCode)
 	}
@@ -142,14 +142,14 @@ func TestVersionsNeverRendersHostileText(t *testing.T) {
 	g.addImage(newVersion)
 	header := http.Header{"Cookie": {g.cookie.String()}}
 
-	for _, p := range []string{PathVersions, versionsPath("2.0.1"), releasesURL(id), PathVersions + "?above=" + url.QueryEscape(hostile)} {
+	for _, p := range []string{PathVersions, versionsPath("2.0.1", ""), releasesURL(id), PathVersions + "?above=" + url.QueryEscape(hostile)} {
 		rep := g.do(http.MethodGet, p, nil, header)
 		if rep.StatusCode != http.StatusOK {
 			t.Errorf("%s: status %d", p, rep.StatusCode)
 		}
 		wantNoMarkup(t, p, rep.body)
 	}
-	g.wantContains("picker", g.get(versionsPath("2.0.1")), `value="2.1.25"`)
+	g.wantContains("picker", g.get(versionsPath("2.0.1", "")), `value="2.1.25"`)
 }
 
 // SPEC 10.2: a newer release is shown with a link to the wiki's version

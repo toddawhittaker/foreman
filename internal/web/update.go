@@ -194,7 +194,7 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return
 	}
-	target := chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed"))
+	target := updateVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed"), r.PostFormValue("game_version_opened"))
 	form, stop := s.readCountdown(r)
 	p := s.updatePage(sum, target, form)
 	if !p.Refusal.IsZero() {

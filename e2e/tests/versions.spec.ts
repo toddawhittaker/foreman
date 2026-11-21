@@ -144,6 +144,22 @@ test.describe("with the fake game", () => {
     await expect(page.getByLabel("Or type a version")).toHaveValue("2.9.9");
   });
 
+  // SPEC 10.3, 10.7: opened with a target, changing the dropdown (and not the box) chooses that version.
+  test("changing the dropdown on a page opened with a target updates to the dropdown's version", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await page.route("**/versions?*", (route) => {
+      const pick = new URL(route.request().url()).searchParams.get("selected");
+      const option = (v: string) => `<option value="${v}"${v === pick ? " selected" : ""}>${v}</option>`;
+      return route.fulfill({ contentType: "text/html", body: ["2.1.26", "2.1.25"].map(option).join("\n") });
+    });
+    await page.goto("/worlds/base/update?game_version=2.1.26");
+    await expect(page.locator("#update-version-select")).toHaveValue("2.1.26");
+    await page.locator("#update-version-select").selectOption("2.1.25");
+    await expect(page.getByLabel("Or type a version")).toHaveValue("2.1.26");
+    await page.getByRole("button", { name: "Update game version" }).click();
+    await expect.poll(() => diskVersion(foreman, "base"), live).toBe("2.1.25");
+  });
+
   // SPEC 10.3, 6.2: a stopped world updates to the typed version, snapshot first, and stays stopped.
   test("a stopped world updates to a typed version and stays stopped", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;

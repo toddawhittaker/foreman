@@ -56,12 +56,10 @@ type RollbackOffer struct {
 	Path     string
 }
 
-// versionsPath is where the picker's suggestion list loads from.
-func versionsPath(above string) string { return versionsPathSelecting(above, "") }
-
-// versionsPathSelecting is versionsPath for a page that already names a
-// version, so the list comes back with that one chosen.
-func versionsPathSelecting(above, selected string) string {
+// versionsPath is where the picker's suggestion list loads from. A page that
+// already names a version passes it as selected, so the list comes back with
+// that one chosen.
+func versionsPath(above, selected string) string {
 	q := url.Values{}
 	if above != "" {
 		q.Set("above", above)
@@ -115,13 +113,25 @@ func chosenVersion(picked, typed string) string {
 	return strings.TrimSpace(picked)
 }
 
+// updateVersion is chosenVersion for the update form, which opens with its
+// target in both fields. A box that still holds the target it was opened with
+// was not edited, so a different pick in the dropdown is the admin's choice.
+// opened is only compared, never used as a version.
+func updateVersion(picked, typed, opened string) string {
+	picked, typed, opened = strings.TrimSpace(picked), strings.TrimSpace(typed), strings.TrimSpace(opened)
+	if opened != "" && typed == opened && picked != "" {
+		return picked
+	}
+	return chosenVersion(picked, typed)
+}
+
 // Paths the pages link and post to.
 func (p UpdatePage) Path() string      { return worldPath(p.World.ID) + "/update" }
 func (p UpdatePage) WorldPath() string { return worldPath(p.World.ID) }
 func (p UpdatePage) VersionsPath() string {
-	return versionsPathSelecting(p.World.GameVersion, p.Target)
+	return versionsPath(p.World.GameVersion, p.Target)
 }
 func (p RollbackPage) Path() string      { return worldPath(p.World.ID) + "/rollback" }
 func (p RollbackPage) WorldPath() string { return worldPath(p.World.ID) }
 func (p WorldPage) UpdatePath() string   { return worldPath(p.World.ID) + "/update" }
-func (ImportForm) VersionsPath() string  { return versionsPath("") }
+func (ImportForm) VersionsPath() string  { return versionsPath("", "") }

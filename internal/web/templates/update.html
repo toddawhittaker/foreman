@@ -11,6 +11,9 @@
 {{- end}}
 <section class="confirm">
   <form method="post" action="{{.Path}}" novalidate>
+    {{- if .Target}}
+    <input type="hidden" name="game_version_opened" value="{{.Target}}">
+    {{- end}}
     <p id="update-forward">{{t "server.update.forward"}}</p>
     <div class="field">
       <label for="update-version-select">{{t "server.update.select"}}</label>
