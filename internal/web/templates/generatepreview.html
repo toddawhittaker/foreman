@@ -89,6 +89,22 @@
       </li>
       {{- end}}
     </ul>
+    {{- with .ChartPlanet}}
+    {{/* A 2.1 world's one picture can be drawn again from a real game, which shows terrain mods
+         make by script; it takes seconds, so only on request, and it needs script (SPEC 5.6, 14.3).
+         The script puts the reply in the slot and hides the fast picture until Back. */}}
+    <div class="js-only" id="preview-chart-box" data-planet="{{.}}" data-path="{{$.Preview.ChartPath}}" data-ready="{{t "mapgen.chart.ready"}}" data-failed="{{t "mapgen.chart.failed"}}">
+      <div class="preview-limit" id="preview-chart-offer">
+        <p><button type="button" class="button" id="preview-chart-button">{{t "mapgen.chart.draw"}}</button>{{template "tip-button" $.Preview.ChartTip}}</p>
+        {{- template "tip-text" $.Preview.ChartTip}}
+      </div>
+      <div class="wait" id="preview-chart-wait" hidden>
+        <p class="hint">{{t "mapgen.chart.drawing"}}</p>
+        <progress aria-hidden="true"></progress>
+      </div>
+      <div id="preview-chart"></div>
+    </div>
+    {{- end}}
     {{- /* Under the list, not in a card, so the cards keep the height the pane gives them (DESIGN 8.8). */}}
     {{- with .OneColor}}
     <p class="hint preview-one-color" id="preview-one-color">{{t "mapgen.preview.one_color"}}{{if gt (len $.Preview.Pictures) 1}} {{t "mapgen.preview.one_color_planets"}} {{range $i, $p := .}}{{if $i}}{{t "mapgen.list_sep"}}{{end}}{{if .Foreign}}<span translate="no">{{msg .Name}}</span>{{else}}{{msg .Name}}{{end}}{{end}}{{end}}</p>
@@ -268,6 +284,28 @@
 {{/* The answer to the large view's request for one planet's resource amounts:
      the labels, which the script puts over the large view's map, and the same
      amounts as text, or why there are none. Takes GeneratePage. */}}
+{{/* The answer to the page's request for a real-game picture of one planet (SPEC 5.6): the
+     picture with its caption and the way back, or why there is none. Takes GeneratePage. */}}
+{{define "generate-chart" -}}
+<div id="chart-reply">
+  {{- with .Preview.Chart}}{{if .Error.IsZero}}
+  <ul class="pictures" role="list">
+    <li>
+      <figure>
+        <span class="map"><img src="{{.Path}}" width="{{.Tiles}}" height="{{.Tiles}}" alt="{{t "mapgen.chart.alt" "planet" (msg .Name) "seed" .Seed}}"></span>
+        <figcaption>{{if .Foreign}}<span translate="no">{{msg .Name}}</span>{{else}}{{msg .Name}}{{end}} <span class="hint">{{t "mapgen.chart.caption"}}</span></figcaption>
+      </figure>
+    </li>
+  </ul>
+  <p><button type="button" class="button" id="preview-chart-back">{{t "mapgen.chart.back"}}</button></p>
+  {{- else}}
+  <div class="message message--error">
+    <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  </div>
+  {{- end}}{{end}}
+</div>
+{{- end}}
+
 {{define "generate-resources" -}}
 <div id="resource-reply">
   {{- with .Preview.Resources}}{{if .Error.IsZero}}{{template "resource-overlay" .}}{{end}}

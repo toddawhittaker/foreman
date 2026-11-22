@@ -230,5 +230,18 @@
   "mapgen.exchange.reason.no_settings": "Najnowszy zapis świata nie zawiera ustawień mapy, które Foreman potrafi odczytać, więc nie ma kodu.",
   "mapgen.exchange.reason.unsupported": "Ta mapa pochodzi z Factorio {version}, dla którego Foreman nie może utworzyć kodu.",
   "mapgen.exchange.reason.unreadable": "Nie można odczytać najnowszego zapisu świata, więc nie ma kodu.",
-  "mapgen.exchange.reason.failed": "Nie można teraz utworzyć kodu. Odświeżenie strony pozwoli spróbować ponownie."
+  "mapgen.exchange.reason.failed": "Nie można teraz utworzyć kodu. Odświeżenie strony pozwoli spróbować ponownie.",
+  "mapgen.chart.draw": "Narysuj z prawdziwej gry (około 15–40 s)",
+  "mapgen.chart.caption": "Z prawdziwej gry, 1024 pola",
+  "mapgen.chart.back": "Wróć do szybkiego podglądu",
+  "mapgen.chart.drawing": "Rysowanie z prawdziwej gry. Trwa to około 15–40 sekund.",
+  "mapgen.chart.alt": "Mapa {planet} z prawdziwej gry, ziarno {seed}",
+  "mapgen.chart.busy": "Trwa inny podgląd mapy. Spróbuj ponownie za chwilę.",
+  "mapgen.chart.timeout": "Prawdziwa gra zbyt długo rysowała tę planetę. Spróbuj ponownie.",
+  "mapgen.chart.oom": "Prawdziwej grze zabrakło pamięci podczas rysowania tej planety.",
+  "mapgen.chart.failed": "Foreman nie mógł narysować tej planety z prawdziwej gry.",
+  "mapgen.chart.invalid": "Popraw ustawienia mapy przed rysowaniem z prawdziwej gry.",
+  "mapgen.chart.tip_about": "co robi rysowanie z prawdziwej gry",
+  "mapgen.chart.tip": "Foreman tworzy w prawdziwej grze jednorazową mapę z modami tego świata i pokazuje 1024 pola wokół startu. Widać na niej teren tworzony przez mody skryptem, czego szybki podgląd nie pokazuje.",
+  "mapgen.chart.ready": "Obraz z prawdziwej gry jest gotowy."
 }

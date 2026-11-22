@@ -230,5 +230,18 @@
   "mapgen.exchange.reason.no_settings": "此世界最新的存档中没有 Foreman 能读取的地图设置，因此没有代码。",
   "mapgen.exchange.reason.unsupported": "此地图来自 Factorio {version}，Foreman 无法为其生成代码。",
   "mapgen.exchange.reason.unreadable": "Foreman 无法读取此世界最新的存档，因此没有代码。",
-  "mapgen.exchange.reason.failed": "Foreman 暂时无法生成代码。重新加载页面即可重试。"
+  "mapgen.exchange.reason.failed": "Foreman 暂时无法生成代码。重新加载页面即可重试。",
+  "mapgen.chart.draw": "从真实游戏绘制（约 15 到 40 秒）",
+  "mapgen.chart.caption": "来自真实游戏，1024 格",
+  "mapgen.chart.back": "返回快速预览",
+  "mapgen.chart.drawing": "正在从真实游戏绘制，约需 15 到 40 秒。",
+  "mapgen.chart.alt": "{planet} 的真实游戏地图，种子 {seed}",
+  "mapgen.chart.busy": "另一个地图预览正在运行。请稍后重试。",
+  "mapgen.chart.timeout": "真实游戏绘制此星球用时过长。请重试。",
+  "mapgen.chart.oom": "真实游戏绘制此星球时内存不足。",
+  "mapgen.chart.failed": "Foreman 无法从真实游戏绘制此星球。",
+  "mapgen.chart.invalid": "请先修正地图设置，再从真实游戏绘制。",
+  "mapgen.chart.tip_about": "从真实游戏绘制的作用",
+  "mapgen.chart.tip": "Foreman 会用此世界的模组在真实游戏中创建一张临时地图，并显示出生点周围的 1024 格。模组用脚本生成的地形也会显示出来，这是快速预览做不到的。",
+  "mapgen.chart.ready": "真实游戏图片已就绪。"
 }

@@ -230,5 +230,18 @@
   "mapgen.exchange.reason.no_settings": "The world's newest save holds no map settings that Foreman can read, so there is no string.",
   "mapgen.exchange.reason.unsupported": "This map comes from Factorio {version}, which Foreman cannot make a string for.",
   "mapgen.exchange.reason.unreadable": "Foreman could not read the world's newest save, so there is no string.",
-  "mapgen.exchange.reason.failed": "Foreman could not make the string just now. Reload the page to try again."
+  "mapgen.exchange.reason.failed": "Foreman could not make the string just now. Reload the page to try again.",
+  "mapgen.chart.draw": "Draw from a real game (about 15 to 40 s)",
+  "mapgen.chart.caption": "From a real game, 1024 tiles",
+  "mapgen.chart.back": "Back to the fast preview",
+  "mapgen.chart.drawing": "Drawing from a real game. This takes about 15 to 40 seconds.",
+  "mapgen.chart.alt": "Map of {planet} from a real game, seed {seed}",
+  "mapgen.chart.busy": "Another map preview is running. Try again in a moment.",
+  "mapgen.chart.timeout": "The real game took too long to draw this planet. Try again.",
+  "mapgen.chart.oom": "The real game ran out of memory while drawing this planet.",
+  "mapgen.chart.failed": "Foreman could not draw this planet from a real game.",
+  "mapgen.chart.invalid": "Fix the map settings before drawing from a real game.",
+  "mapgen.chart.tip_about": "what drawing from a real game does",
+  "mapgen.chart.tip": "Foreman makes a throwaway map with this world's mods in a real game and pictures the 1024 tiles around the start. It shows terrain that mods make by script, which the fast preview cannot.",
+  "mapgen.chart.ready": "Real-game picture ready."
 }
