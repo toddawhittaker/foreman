@@ -3,7 +3,10 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
+	"hash/fnv"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -65,7 +68,10 @@ type SavePlayersPanel struct {
 	First   bool
 	// Running is true while a game runs on this Foreman, so a read needs
 	// the memory note; Memory is what the game uses now, when HaveMemory.
-	Running    bool
+	Running bool
+	// Live says this world's game runs, so the panel asks again every few
+	// seconds for players who joined or left.
+	Live       bool
 	Memory     uint64
 	HaveMemory bool
 	// Refused says why a click on the read button was refused.
@@ -100,6 +106,29 @@ func (p SavePlayersPanel) Count() int { return len(p.Rows) }
 
 // Polls says the panel asks again, because a read runs.
 func (p SavePlayersPanel) Polls() bool { return p.Kind == playersReading }
+
+// Version says what the panel shows of the players, so a poll that finds
+// the same answer can be told nothing changed.
+func (p SavePlayersPanel) Version() string {
+	var b strings.Builder
+	fmt.Fprint(&b, p.Kind, p.Total, p.TotalKnown, p.Inexact)
+	for _, r := range p.Rows {
+		fmt.Fprint(&b, "|", r.Name, r.PlayTime, r.Online, r.LastSeen.UnixNano(), r.BeforeForeman)
+	}
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(b.String())) // a hash never fails to write
+	return fmt.Sprintf("%x", h.Sum64())
+}
+
+// unchangedSince says a poll that carried version v finds what it shows.
+func (p SavePlayersPanel) unchangedSince(v string) bool {
+	return v != "" && p.Kind != playersReading && v == p.Version()
+}
+
+// LivePollPath is where a running world's panel asks, with the version it shows.
+func (p SavePlayersPanel) LivePollPath() string {
+	return p.PlayersPath() + "?v=" + p.Version()
+}
 
 // PollPath is where the poll asks. A read the admin started carries that, so
 // the poll that sees it end can say so.
@@ -235,23 +264,25 @@ func (s *server) savePlayersPanel(ctx context.Context, sum world.Summary) SavePl
 		return SavePlayersPanel{World: sum, Kind: playersUnavailable}
 	}
 	_, hasSave, _ := s.worlds.LoadTarget(sum.ID)
-	running, memory := s.runningMemory(ctx)
-	return panelOf(sum, v, hasSave, running, memory)
+	running, memory, activeID := s.runningMemory(ctx)
+	p := panelOf(sum, v, hasSave, running, memory)
+	p.Live = running && activeID == sum.ID
+	return p
 }
 
 // runningMemory says whether a game runs on this Foreman, and the memory it
 // uses now, which a read beside it needs about as much of (SPEC 8.14).
-func (s *server) runningMemory(ctx context.Context) (running bool, memory uint64) {
+func (s *server) runningMemory(ctx context.Context) (running bool, memory uint64, activeID string) {
 	active, found, err := s.activeWorld(ctx)
 	if err != nil || !found {
-		return false, 0
+		return false, 0, ""
 	}
 	st := s.game.Status(active.ID)
 	switch st.State {
 	case game.StateRunning, game.StateStarting, game.StateStopping:
-		return true, st.MemoryBytes
+		return true, st.MemoryBytes, active.ID
 	}
-	return false, 0
+	return false, 0, ""
 }
 
 // handleSavePlayers answers the panel, which the world page asks for.
@@ -265,6 +296,12 @@ func (s *server) handleSavePlayers(w http.ResponseWriter, r *http.Request, u sto
 		return
 	}
 	p := s.savePlayersPanel(r.Context(), sum)
+	// A live poll that finds what the page shows changes nothing: no swap,
+	// so focus and the screen reader's place stay.
+	if p.unchangedSince(r.URL.Query().Get("v")) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	// A poll of a read the admin started: keep asking while it runs, and say
 	// once how it ended.
 	if r.URL.Query().Get("started") == "1" {

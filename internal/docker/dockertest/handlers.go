@@ -227,6 +227,11 @@ func (d *Daemon) create(w http.ResponseWriter, r *http.Request) {
 			c.Mounts = append(c.Mounts, docker.Mount{Source: parts[0], Destination: parts[1]})
 		}
 	}
+	// Binds given as fields count too, as on a real daemon. Whether one is
+	// read-only stays in Spec.HostConfig.Mounts.
+	for _, m := range spec.HostConfig.Mounts {
+		c.Mounts = append(c.Mounts, docker.Mount{Source: m.Source, Destination: m.Target})
+	}
 	d.containers = append(d.containers, c)
 	d.broadcast()
 	if f, failing := d.callFail["POST create"]; failing {

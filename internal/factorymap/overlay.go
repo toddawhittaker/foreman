@@ -18,10 +18,10 @@ const (
 	maxEntityTypes = 4096
 	// maxLineBytes is the longest line read: the type line is the longest.
 	maxLineBytes = 1 << 20
-	// maxBoxTiles is the longest side of a box, in tiles. The largest real
+	// MaxBoxTiles is the longest side of a box, in tiles. The largest real
 	// building is about 20 tiles; the limit keeps the cost of drawing a file
 	// of MaxEntities boxes bounded.
-	maxBoxTiles = 64
+	MaxBoxTiles = 64
 	// maxCoordinate is the largest whole number the output may hold (14.6).
 	maxCoordinate = 1 << 53
 )
@@ -104,8 +104,8 @@ func drawOverlay(entities io.Reader, s Surface, maxEntities int) (map[Category]*
 		if x2 <= x1 || y2 <= y1 {
 			return nil, 0, fmt.Errorf("overlay: entity %d: empty box", n)
 		}
-		if x2-x1 > maxBoxTiles || y2-y1 > maxBoxTiles {
-			return nil, 0, fmt.Errorf("overlay: entity %d: box over %d tiles a side", n, maxBoxTiles)
+		if x2-x1 > MaxBoxTiles || y2-y1 > MaxBoxTiles {
+			return nil, 0, fmt.Errorf("overlay: entity %d: box over %d tiles a side", n, MaxBoxTiles)
 		}
 		writes += drawBox(layers[cats[ti]], x1, y1, x2, y2, int64(s.TilesPerPixel))
 	}

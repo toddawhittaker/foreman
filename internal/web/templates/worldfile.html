@@ -1,0 +1,65 @@
+{{define "title"}}{{t "worldimport.title"}}{{end}}
+
+{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .ImportPath (t "worlds.import.title") "" (t "worldimport.title"))}}
+<h1>{{t "worldimport.title"}}</h1>
+{{template "rail" $}}
+<p class="page-intro">{{t "worldimport.intro"}}</p>
+<form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="world-file-heading">
+  <h2 id="world-file-heading">{{t "worldimport.heading"}}</h2>
+  {{template "summary" .Problems}}
+  {{- if not .Error.IsZero}}
+  <div class="message message--error" id="world-file-refusal" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+    <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  </div>
+  {{- end}}
+  <dl class="facts">
+    {{- with .ForemanVersion}}
+    <div><dt>{{t "worldimport.fact.made_by"}}</dt><dd><code>{{.}}</code></dd></div>
+    {{- end}}
+    <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .Info.GameVersion}}<span class="ver"><code>{{.Info.GameVersion}}</code></span>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
+    <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .Info.SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
+    <div><dt>{{t "worldimport.fact.saves"}}</dt><dd>{{t "worldimport.saves.count" "count" .Info.Saves}}</dd></div>
+    <div><dt>{{t "worldimport.fact.mod_files"}}</dt><dd>{{t "worldimport.mod_files.count" "count" .Info.ModFiles}}</dd></div>
+    <div><dt>{{t "worldimport.fact.size"}}</dt><dd>{{bytes .Size}}</dd></div>
+    <div><dt>{{t "worldimport.fact.loads"}}</dt><dd>{{if .Info.LoadSave}}<code>{{.Info.LoadSave}}</code>{{else}}{{t "worldimport.loads.none"}}{{end}}</dd></div>
+  </dl>
+  {{- if .Info.GamePasswordSet}}
+  <div class="message message--warning" id="world-file-password-warning">
+    <p><strong>{{t "common.label.warning"}}</strong> {{t "worldimport.password_warning"}}</p>
+  </div>
+  {{- end}}
+  <div class="message message--warning" id="world-file-mods-warning">
+    <p><strong>{{t "common.label.warning"}}</strong> {{t "worldimport.mods_warning"}}</p>
+  </div>
+  {{template "required-note"}}
+  <input type="hidden" name="{{.StagedField}}" value="{{.Staged}}">
+  <div class="field">
+    <label for="world-file-name" class="required">{{t "worldimport.name.label"}}</label>
+    <p class="hint" id="world-file-name-hint">{{t "worlds.import.name.hint" "count" 100}}</p>
+    <input id="world-file-name" name="name" type="text" value="{{.Name}}" required maxlength="100" autocomplete="off" placeholder="{{t "worlds.name.placeholder"}}"
+      {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="world-file-name-hint world-file-name-error"{{else}} aria-describedby="world-file-name-hint"{{end}}>
+    {{- if not .NameError.IsZero}}
+    <p class="error" id="world-file-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
+    {{- end}}
+  </div>
+  {{- if .CanDownload}}
+  {{- if .ImageHere}}
+  <p id="world-file-image">{{t "worldimport.image.here" "version" .Info.GameVersion}}</p>
+  {{- else}}
+  <div class="field">
+    <label class="check"><input type="checkbox" id="world-file-download" name="download" aria-describedby="world-file-download-hint"{{if .Download}} checked{{end}}> {{t "worlds.import.download.label"}}</label>
+    <p class="hint" id="world-file-download-hint">{{tHTML "worlds.import.download.hint" "image" (code "factoriotools/factorio")}}</p>
+  </div>
+  {{- end}}
+  {{- end}}
+  <div class="actions">
+    <button type="submit" class="button button--primary" id="act-import-world-file">{{t "worldimport.button"}}</button>
+    <a href="{{.ImportPath}}">{{t "worlds.cancel"}}</a>
+  </div>
+</form>
+{{end}}
+{{- end}}

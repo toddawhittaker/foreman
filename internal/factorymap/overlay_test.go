@@ -259,17 +259,17 @@ func TestOverlayLargestBoxesCostABoundedNumberOfWrites(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(typesLine + "\n")
 	for i := 0; i < boxes; i++ {
-		fmt.Fprintf(&b, "[1,%d,%d,%d,%d]\n", i%3000, i%3000, i%3000+maxBoxTiles, i%3000+maxBoxTiles)
+		fmt.Fprintf(&b, "[1,%d,%d,%d,%d]\n", i%3000, i%3000, i%3000+MaxBoxTiles, i%3000+MaxBoxTiles)
 	}
 	start := time.Now()
 	_, writes, err := drawOverlay(strings.NewReader(b.String()), surf(MaxSidePixels, MaxSidePixels, 1), MaxEntities)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := int64(boxes) * maxBoxTiles * maxBoxTiles; writes != want {
+	if want := int64(boxes) * MaxBoxTiles * MaxBoxTiles; writes != want {
 		t.Errorf("%d pixel writes, want %d (every box whole on the picture)", writes, want)
 	}
-	if maxWrites := int64(MaxEntities) * maxBoxTiles * maxBoxTiles; maxWrites > 1<<33 {
+	if maxWrites := int64(MaxEntities) * MaxBoxTiles * MaxBoxTiles; maxWrites > 1<<33 {
 		t.Errorf("a full file costs %d writes, over the bound", maxWrites)
 	}
 	if d := time.Since(start); d > 5*time.Minute {

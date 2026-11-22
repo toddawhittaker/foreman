@@ -313,3 +313,41 @@ func TestPlayTime(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 16.3: a running world's panel asks again every 5 s with the version
+// it shows; a stopped world's does not.
+func TestSavePlayersLivePollAttribute(t *testing.T) {
+	v := viewOf(game.SavePlayersReady, game.SavePlayer{Name: "A", PlayTime: time.Hour})
+	live := panelFor(testWorld, v, false, true, true, 0)
+	live.Live = true
+	body := panelHTML(t, i18n.English, live)
+	mustHave(t, body, `hx-trigger="every 5s"`, `hx-get="/worlds/base/players?v=`+live.Version()+`"`)
+	mustNotHave(t, body, "hx-swap-oob", `role="status"`)
+
+	mustNotHave(t, panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, false, 0)), "hx-trigger")
+
+	other := v
+	other.Players = append([]game.SavePlayer{}, v.Players...)
+	other.Players[0].Online = true
+	if panelFor(testWorld, other, false, true, true, 0).Version() == live.Version() {
+		t.Error("a player coming online did not change the version")
+	}
+}
+
+// SPEC 16.3: a poll that finds the same list gets 204 and no swap; a join
+// or a leave is a new version, and a read in progress is never "unchanged".
+func TestSavePlayersUnchangedSince(t *testing.T) {
+	before := panelFor(testWorld, viewOf(game.SavePlayersReady, game.SavePlayer{Name: "A", PlayTime: time.Hour}), false, true, true, 0)
+	v := before.Version()
+	if !before.unchangedSince(v) || before.unchangedSince("") || before.unchangedSince("other") {
+		t.Error("the same version is unchanged, and nothing else is")
+	}
+	joined := panelFor(testWorld, viewOf(game.SavePlayersReady, game.SavePlayer{Name: "A", PlayTime: time.Hour},
+		game.SavePlayer{Name: "bob", Online: true}), false, true, true, 0)
+	if joined.unchangedSince(v) {
+		t.Error("a join was called unchanged")
+	}
+	if p := panelFor(testWorld, viewOf(game.SavePlayersReading), false, true, true, 0); p.unchangedSince(p.Version()) {
+		t.Error("a read in progress was called unchanged")
+	}
+}

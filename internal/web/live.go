@@ -16,7 +16,7 @@ import (
 // liveRegions are the parts of the server page a live update replaces.
 // Each is sent only when it changed, so an update to one never moves focus
 // out of another.
-var liveRegions = []string{"active", "facts", "loads", "schedule", "disk", "players", "control", "snaps"}
+var liveRegions = []string{"active", "facts", "playtime", "saveplayers", "loads", "schedule", "disk", "players", "control", "snaps"}
 
 // reconnectAfter is how soon a browser reconnects after a stream ends, so
 // a stream that ends by design (proxyStreamLimit) is back before the page
@@ -82,16 +82,17 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 			if !open {
 				return
 			}
-			changed = up.Kind == game.UpdateStatus
-			if changed {
+			changed = wakesServerPage(up.Kind)
+			if up.Kind == game.UpdateStatus {
 				st = up.Status
 			}
 			// Only the newest status waiting is sent, so a slow send (the
 			// player list asks the game over RCON) never falls behind.
 			if !drain(updates, func(up game.Update) {
 				if up.Kind == game.UpdateStatus {
-					st, changed = up.Status, true
+					st = up.Status
 				}
+				changed = changed || wakesServerPage(up.Kind)
 			}) {
 				return
 			}
@@ -109,6 +110,14 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 			changed = false
 		}
 	}
+}
+
+// wakesServerPage says whether an update of this kind makes a live Server
+// page draw its regions again: the state's, and a change to the players
+// record, whose play time and count the page shows (SPEC 8.15). Console
+// lines and other kinds do not.
+func wakesServerPage(k game.UpdateKind) bool {
+	return k == game.UpdateStatus || k == game.UpdateSavePlayers
 }
 
 // snapshotsChanged wakes the live Server pages to read their snapshot card
