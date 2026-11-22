@@ -134,6 +134,11 @@ func planExport(root *os.Root, meta Meta, saves ExportSaves) (plan []ManifestEnt
 		loaded = name
 	}
 	for _, f := range files {
+		// Hidden files are not exported (SPEC 5.13), under mods/ too: a mod
+		// folder kept in git holds .git/config, which can hold a token.
+		if strings.HasPrefix(f.Path, ModsDir+"/") && hasHiddenSegment(f.Path) {
+			continue
+		}
 		kind, ok := worldFileEntry(f.Path)
 		if !ok {
 			// Only the mods folder's names are Foreman's to refuse: they are
@@ -158,6 +163,11 @@ func planExport(root *os.Root, meta Meta, saves ExportSaves) (plan []ManifestEnt
 	return plan, loaded, nil
 }
 
+// hasHiddenSegment reports whether any segment of p starts with a dot.
+func hasHiddenSegment(p string) bool {
+	return slices.ContainsFunc(strings.Split(p, "/"), func(s string) bool { return strings.HasPrefix(s, ".") })
+}
+
 // stageExport builds the staging folder and the WorldExport over it. The
 // caller holds the world's lock.
 func (m *Manager) stageExport(ctx context.Context, id string, root *os.Root, meta Meta, saves ExportSaves, loaded string, plan []ManifestEntry) (_ *WorldExport, err error) {
@@ -171,13 +181,18 @@ func (m *Manager) stageExport(ctx context.Context, id string, root *os.Root, met
 		return nil, err
 	}
 	var stage *os.Root
+	// A failure or a panic removes the staging folder; the panic goes on.
 	defer func() {
-		if err != nil {
+		r := recover()
+		if err != nil || r != nil {
 			if stage != nil {
 				_ = stage.Close()
 			}
 			_ = worlds.RemoveAll(dirName)
 			_ = worlds.Close()
+		}
+		if r != nil {
+			panic(r)
 		}
 	}()
 	if stage, err = openDir(worlds, dirName); err != nil {
