@@ -25,6 +25,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -33,8 +34,10 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	saveplayersmod "github.com/toddawhittaker/foreman/internal/game/saveplayers"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/saveplayers"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -324,6 +327,22 @@ func (e *gameEnv) spWorld(t *testing.T, tag, version string, spaceAge bool) stri
 	return id
 }
 
+// spModList gives a world that has never been started the mod list the game
+// would write at its first start. A read's pre-start check wants one.
+func (e *gameEnv) spModList(t *testing.T, id, version string, spaceAge bool) {
+	t.Helper()
+	p := filepath.Join(e.worldDir(id), world.ModsDir, world.ModListFile)
+	if _, err := os.Stat(p); err == nil {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, world.DefaultModList(version, spaceAge), 0o600); err != nil { //nolint:gosec // the test's own world folder
+		t.Fatal(err)
+	}
+}
+
 // runSavePlayersRead checks one read. with a fixture, the world is made from it
 // and first played for a few seconds; with none, source is the path of a
 // ready save with players.
@@ -338,7 +357,9 @@ func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source
 		if err != nil {
 			t.Fatal(err)
 		}
-		id = e.spWorld(t, tag, version, os.Getenv(spPlayersSpaceAgeEnv) != "")
+		spaceAge := os.Getenv(spPlayersSpaceAgeEnv) != ""
+		id = e.spWorld(t, tag, version, spaceAge)
+		e.spModList(t, id, version, spaceAge)
 		e.putSave(t, id, "main.zip", b, time.Now().Add(-time.Hour))
 	}
 	saveName := "main.zip"
@@ -467,56 +488,68 @@ func hostileScript(save string) string {
 	}, "\n")
 }
 
-// runSavePlayersHostile makes a work folder the way a save read does (the
-// world's save hard-linked into it, then mounted read-only over the link) and
-// runs the hostile script in the same one-off container spec. The container
-// must exit 0 (every attempt refused) and the world's save must not change.
-//
-// TODO(A12, after A1 merges): build the container with A1's spec function
-// instead of this copy of the mount shape.
+// spHostileMod is the players read's mod, as A1's own test builds it.
+var spHostileMod = saveCopyMod{controlMod: controlMod{
+	kind:      gameenv.KindSavePlayers,
+	what:      "players",
+	name:      saveplayersmod.ModName,
+	dir:       saveplayersmod.ModDir,
+	control:   saveplayersmod.Control,
+	output:    gameenv.SavePlayersFile,
+	maxOutput: saveplayers.MaxOutputBytes,
+}}
+
+// runSavePlayersHostile makes the work folder and the container spec exactly
+// as a save read does (A1's makeSaveCopyDir, addControlMod and saveCopySpec,
+// through the same previewRunIn), replaces the command with the hostile
+// script, and runs it. The container must exit 0 (every attempt refused) and
+// the world's save must not change.
 func (e *gameEnv) runSavePlayersHostile(t *testing.T, tag, fixture, version string) {
 	ctx := context.Background()
 	c, _ := e.controller(t)
 	id := e.newWorld(t, tag, version, "hostile", fixture, map[string]time.Duration{"main.zip": time.Hour})
 	savePath := filepath.Join(e.worldDir(id), world.SavesDir, "main.zip")
+	e.spModList(t, id, version, false)
 	before := spWorldState(t, e.worldDir(id))
+	line, ok := mapgen.Line(version)
+	if !ok {
+		t.Fatalf("no game line for %s", version)
+	}
 
-	base, err := c.previewBase()
-	if err != nil {
-		t.Fatal(err)
+	var link string
+	plan := previewPlan{
+		gameVersion: version, kind: gameenv.KindSavePlayers, limit: 2 * time.Minute,
+		fill: func(base *os.Root) (string, error) {
+			name, _, _, err := c.makeSaveCopyDir(base, id, version, spHostileMod)
+			return name, err
+		},
 	}
-	defer func() { _ = base.Close() }()
-	dir, err := newWorkDir(base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(c.previewPath(), dir)) })
-	link := filepath.Join(c.previewPath(), dir, "save.zip")
-	if err := os.Link(savePath, link); err != nil {
-		t.Fatalf("hard link of the save: %v", err)
-	}
-	ref, err := c.imageFor(version)
-	if err != nil {
-		t.Fatal(err)
-	}
-	spec := docker.ContainerSpec{
-		Image:      ref,
-		Labels:     map[string]string{gameenv.LabelPreview: c.hostData},
-		Env:        []string{gameenv.PreviewKind + "=" + gameenv.KindSavePlayers},
-		Entrypoint: []string{"/bin/sh"},
-		Cmd:        []string{"-c", hostileScript(gameenv.SaveCopyMount)},
-		User:       c.user,
-		HostConfig: c.oneOffHostConfigMem(dir, previewMemory),
-	}
-	spec.HostConfig.Mounts = []docker.BindMount{{
-		Type: "bind", Source: filepath.Join(c.hostData, previewDir, dir, "save.zip"),
-		Target: gameenv.SaveCopyMount, ReadOnly: true,
-	}}
-
-	runCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-	name := "foreman-" + gameenv.KindSavePlayers + "-" + dir
-	err = c.runOneOff(runCtx, name, spec)
+	err := c.previewRunIn(ctx, plan, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
+		if err := addControlMod(base, name, spHostileMod.controlMod, saveCopyInfo(spHostileMod, line)); err != nil {
+			return err
+		}
+		spec, err := c.saveCopySpec(base, ref, name, spHostileMod)
+		if err != nil {
+			return err
+		}
+		// The read's own spec, with only its command replaced.
+		spec.Cmd = []string{"-c", hostileScript(gameenv.SaveCopyMount)}
+		link = filepath.Join(c.previewPath(), name, saveCopySave)
+		if err := container(spec); err != nil {
+			return err
+		}
+		if _, err := base.Stat(path.Join(name, "control.txt")); err != nil {
+			t.Errorf("the control write left no file: %v", err)
+		}
+		// The attempts to remove or move the link failed too, so it still is
+		// the save's inode: the test proves what it says.
+		linkInfo, lerr := os.Stat(link)
+		saveInfo, serr := os.Stat(savePath)
+		if lerr != nil || serr != nil || !os.SameFile(linkInfo, saveInfo) {
+			t.Errorf("the work folder's link is not the save's inode after the run (%v, %v)", lerr, serr)
+		}
+		return nil
+	})
 	var pe *PreviewError
 	switch {
 	case err == nil:
@@ -525,18 +558,9 @@ func (e *gameEnv) runSavePlayersHostile(t *testing.T, tag, fixture, version stri
 	default:
 		t.Fatalf("the hostile run: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(c.previewPath(), dir, "control.txt")); err != nil {
-		t.Errorf("the control write left no file: %v", err)
-	}
 
 	// The world is exactly as it was: the link shares the save's inode, so a
 	// write through it would show here.
 	spSameWorld(t, before, spWorldState(t, e.worldDir(id)))
-	// The attempts to remove or move the link failed too, so it still is the
-	// save's own inode: the test proves what it says.
-	linkInfo, lerr := os.Stat(link)
-	saveInfo, serr := os.Stat(savePath)
-	if lerr != nil || serr != nil || !os.SameFile(linkInfo, saveInfo) {
-		t.Errorf("the work folder's link is not the save's inode after the run (%v, %v)", lerr, serr)
-	}
+	e.previewLeftovers(t, "after the hostile run")
 }
