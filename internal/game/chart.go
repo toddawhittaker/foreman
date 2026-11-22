@@ -27,10 +27,6 @@ const ChartLimit = 90 * time.Second
 // chartLimit is ChartLimit; tests shorten it.
 var chartLimit = ChartLimit
 
-// chartTicks is the most ticks --test-save runs. The helper gives up and
-// writes nothing well before it (SPEC 14.3); charting took about 100 ticks.
-const chartTicks = 4000
-
 // chartSave is the throwaway map the run makes. It goes to the work folder,
 // not the tmpfs, which counts against the memory limit.
 const chartSave = "chart.zip"
@@ -57,24 +53,28 @@ var chartMod = controlMod{
 // player so the helper can chart, and moves the helper's folder to the work
 // folder. Values come from the environment (gameenv), so no value of a
 // request is built into it.
-var chartScript = strings.Join([]string{
-	chartMod.params + ` || exit 1`,
-	`game="` + gameBinary + ` --config ` + gameenv.PreviewMount + `/config.ini --mod-directory ` + gameenv.PreviewMount + `/` + world.ModsDir + `"`,
-	`set -- --create ` + gameenv.PreviewMount + `/` + chartSave + ` --map-gen-seed "$` + gameenv.Seed + `"`,
-	`if [ -n "$` + gameenv.Preset + `" ]; then set -- "$@" --preset "$` + gameenv.Preset + `"; fi`,
-	`if [ -f ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + ` ]; then set -- "$@" --map-gen-settings ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + `; fi`,
-	`if [ -f ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + ` ]; then set -- "$@" --map-settings ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + `; fi`,
-	`$game "$@" || exit 1`,
-	`$game --test-save ` + gameenv.PreviewMount + `/` + chartSave + ` --test-ticks ` + strconv.Itoa(chartTicks) + ` || exit 1`,
-	`mv ` + previewWrite + `/script-output/` + gameenv.ChartDir + ` ` + gameenv.PreviewMount + `/` + gameenv.ChartDir,
-}, "\n")
+var chartScript = strings.Join(slices.Concat(
+	[]string{
+		chartMod.params + ` || exit 1`,
+		`game="` + gameBinary + ` --config ` + gameenv.PreviewMount + `/config.ini --mod-directory ` + gameenv.PreviewMount + `/` + world.ModsDir + `"`,
+	},
+	createLines("", chartSave),
+	[]string{
+		`$game "$@" || exit 1`,
+		`$game --test-save ` + gameenv.PreviewMount + `/` + chartSave + ` --test-ticks ` + strconv.Itoa(chart.Ticks) + ` || exit 1`,
+		`mv ` + previewWrite + `/script-output/` + gameenv.ChartDir + ` ` + gameenv.PreviewMount + `/` + gameenv.ChartDir,
+	},
+), "\n")
+
+// testSaveLine is the one game line with --test-save among the supported lines.
+const testSaveLine = "2.1"
 
 // ChartSupported reports whether a world of the game version can have a
 // real-game picture: only 2.1 has --test-save among the supported lines
 // (SPEC 5.6).
 func ChartSupported(gameVersion string) bool {
 	line, ok := mapgen.Line(gameVersion)
-	return ok && line == "2.1"
+	return ok && line == testSaveLine
 }
 
 // Chart draws planet of the world req names from a real game (SPEC 5.6,
@@ -88,7 +88,12 @@ func ChartSupported(gameVersion string) bool {
 // are not used. Errors are ErrPreviewInvalid, ErrPreviewBusy,
 // ErrPreviewImageMissing, ErrPreviewTimeout, a *PreviewError (OOM set when
 // the run ran out of memory), one wrapping ErrChartBadOutput, or what
-// making the work folder returns (world.ErrBusy, world.ErrModsTooBig).
+// making the work folder returns (world.ErrBusy, world.ErrModsTooBig). A
+// helper that gives up or a game that crashes is a *PreviewError, and a chart
+// that is read but refused is ErrChartBadOutput; the UI shows the one "could
+// not draw this planet" message for both. An ErrChartBadOutput may also match
+// ErrSaveCopyBadOutput, since the chart is read with the factory map's
+// readers, so a caller tests ErrChartBadOutput first.
 func (c *Controller) Chart(ctx context.Context, req PreviewRequest, planet string) (PNG, error) {
 	line, err := checkChart(req, planet)
 	if err != nil {
@@ -128,7 +133,7 @@ func (c *Controller) Chart(ctx context.Context, req PreviewRequest, planet strin
 func checkChart(req PreviewRequest, planet string) (string, error) {
 	line, ok := mapgen.Line(req.GameVersion)
 	switch {
-	case !ok || !ChartSupported(req.GameVersion):
+	case !ok || line != testSaveLine:
 		return "", fmt.Errorf("%w: there is no real-game picture for Factorio %q", ErrPreviewInvalid, req.GameVersion)
 	case req.World == "":
 		return "", fmt.Errorf("%w: a real-game picture is of a world", ErrPreviewInvalid)

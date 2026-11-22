@@ -453,47 +453,28 @@ func readPlanetsOutput(base *os.Root, dir string) ([]byte, error) {
 // is held, so one fill runs at a time. The game runs without the lock. A
 // world that server control holds is world.ErrBusy.
 func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string) (key, name string, locale map[string]map[string][][]byte, err error) {
-	name, err = newWorkDir(base)
+	check := func(meta world.Meta) error {
+		if meta.GameVersion != gameVersion {
+			// The image was chosen for another version.
+			return world.ErrBusy
+		}
+		return nil
+	}
+	name, err = c.fillWorldWorkDir(base, id, PreviewRequest{}, check, func(*os.Root) error {
+		var err error
+		if key, err = c.worlds.ModSettingsKey(id); err != nil {
+			return err
+		}
+		locale, err = c.worlds.ModLocaleFiles(id)
+		if err != nil {
+			// Locale text is decoration: the page shows setting names instead.
+			c.log.Warn("could not read the mods' locale files", "world", id, "error", err)
+			locale = nil
+		}
+		return nil
+	})
 	if err != nil {
 		return "", "", nil, err
-	}
-	fail := func(err error) (string, string, map[string]map[string][][]byte, error) {
-		_ = base.RemoveAll(name)
-		return "", "", nil, err
-	}
-	dir, err := base.OpenRoot(name)
-	if err != nil {
-		return fail(err)
-	}
-	werr := dir.WriteFile("config.ini", []byte(previewConfig), world.FileMode)
-	_ = dir.Close()
-	if werr != nil {
-		return fail(werr)
-	}
-	unlock, err := c.worlds.Lock(id)
-	if err != nil {
-		return fail(err)
-	}
-	defer unlock()
-	meta, err := c.readMeta(id)
-	if err != nil {
-		return fail(err)
-	}
-	if meta.GameVersion != gameVersion {
-		// The image was chosen for another version.
-		return fail(world.ErrBusy)
-	}
-	if key, err = c.worlds.ModSettingsKey(id); err != nil {
-		return fail(err)
-	}
-	if err := c.worlds.LinkModsInto(id, filepath.Join(c.previewPath(), name)); err != nil {
-		return fail(fmt.Errorf("could not put the world's mods in the work folder: %w", err))
-	}
-	locale, err = c.worlds.ModLocaleFiles(id)
-	if err != nil {
-		// Locale text is decoration: the page shows setting names instead.
-		c.log.Warn("could not read the mods' locale files", "world", id, "error", err)
-		locale = nil
 	}
 	return key, name, locale, nil
 }
