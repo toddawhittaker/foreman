@@ -253,6 +253,7 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 		snap, err = s.worlds.TakeSnapshot(id, label, u.Username)
 	}
 	if problem.IsZero() && err == nil {
+		s.runs.snapshotsChanged()
 		http.Redirect(w, r, snapshotsPath(id)+"?taken="+snap.Name, http.StatusSeeOther)
 		return
 	}
