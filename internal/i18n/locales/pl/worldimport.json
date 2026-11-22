@@ -1,0 +1,33 @@
+{
+  "worldimport.title": "Importowanie pliku świata",
+  "worldimport.intro": "Należy sprawdzić zawartość pliku. Nic nie zostanie zaimportowane, dopóki nie zostanie wybrane „Importuj świat”.",
+  "worldimport.heading": "Zawartość pliku",
+  "worldimport.zone.label": "Plik świata",
+  "worldimport.fact.made_by": "Wersja Foremana",
+  "worldimport.fact.saves": "Zapisy",
+  "worldimport.fact.mod_files": "Pliki modyfikacji",
+  "worldimport.saves.count": {
+    "one": "{count} zapis",
+    "few": "{count} zapisy",
+    "many": "{count} zapisów"
+  },
+  "worldimport.mod_files.count": {
+    "one": "{count} plik modyfikacji",
+    "few": "{count} pliki modyfikacji",
+    "many": "{count} plików modyfikacji"
+  },
+  "worldimport.fact.size": "Rozmiar po rozpakowaniu",
+  "worldimport.fact.loads": "Zapis, który zostanie wczytany",
+  "worldimport.loads.none": "Brak: świat utworzy mapę przy pierwszym uruchomieniu.",
+  "worldimport.password_warning": "Hasła do gry nie było w pliku. Ten świat uruchomi się bez hasła, dopóki nie zostanie ustawione w sekcji „Ustawienia gry”.",
+  "worldimport.mods_warning": "Foreman nie sprawdza, co zawierają zapisy i modyfikacje z tego pliku. Należy importować tylko pliki, którym można ufać. Modyfikacja może przechowywać wszystko, co wybrał jej autor, także token.",
+  "worldimport.name.label": "Nazwa świata",
+  "worldimport.image.here": "Obraz gry w wersji {version} jest już na tym hoście.",
+  "worldimport.button": "Importuj świat",
+  "worldimport.error.bad": "Foreman nie może odczytać tego pliku świata. Może być uszkodzony, ucięty lub wyeksportowany nie przez Foremana.",
+  "worldimport.error.newer": "Ten plik świata utworzyła nowsza wersja Foremana, więc ta wersja nie może go odczytać. Należy zaktualizować Foremana i spróbować ponownie.",
+  "worldimport.refused.title": "Foreman nie może zaimportować tego pliku",
+  "worldimport.retry": "Wróć do importu",
+  "worldimport.gone.title": "Przesłanego pliku już nie ma",
+  "worldimport.gone": "Foreman przechowuje przesłany plik świata przez godzinę, a tego już nie ma. Należy przesłać go ponownie."
+}
