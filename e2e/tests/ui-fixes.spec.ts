@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, openMenu, openPlanetRow } from "./foreman.js";
 import type { Page, Request } from "@playwright/test";
+import { openNewMap, newMapPath, oldGameStep1 } from "./newmap.js";
 
 // Fixes from the UI batch's reviews: the map preview's large view and its
 // announcements (SPEC 5.6, 17; DESIGN 8.8), the world tabs (DESIGN 6), and
@@ -32,7 +33,7 @@ test.describe("Generate", () => {
 
   // SPEC 5.6: a resource that is off sends none of its settings, so its fields are off too, at once.
   test("unticking a resource turns its fields off and ticking it turns them on", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Resources").click();
     await openPlanetRow(page);
     const iron = page.getByRole("checkbox", { name: "Iron ore", exact: true });
@@ -48,7 +49,8 @@ test.describe("Generate", () => {
     for (const f of await fields.all()) await expect(f).toBeEnabled();
     // The form shown again with an error keeps the unticked resource's fields off.
     await iron.uncheck();
-    await page.getByRole("button", { name: "Generate world" }).click();
+    await page.locator("#generate-seed").fill("not a number");
+    await page.getByRole("button", { name: "Save map settings" }).click();
     await expect(page.locator("#error-summary")).toBeVisible();
     await expect(page.getByRole("checkbox", { name: "Iron ore", exact: true })).not.toBeChecked();
     for (const f of await page.locator("#mg-nauvis-iron-ore").locator("select, input[type=range]").all()) await expect(f).toBeDisabled();
@@ -58,18 +60,20 @@ test.describe("Generate", () => {
   test("the preview's picture box is held before the first picture arrives", async ({ page }) => {
     let release!: () => void;
     const held = new Promise<void>((r) => (release = r));
+    // Step 3 is opened again once the route is set, so its own preview is the one held.
+    const id = await openNewMap(page);
     await page.route("**/generate/preview", async (route) => {
       await held;
       await route.continue();
     });
-    await page.goto("/generate");
+    await page.goto(newMapPath(id));
     const box = page.locator(".preview-placeholder__map");
     await expect(box).toBeVisible();
     // A faint line says what will fill it, so the space does not read as empty.
     await expect(box).toHaveText("Drawing the map preview for the current settings…");
     await checkPage(page);
     const before = (await box.boundingBox())!;
-    const actions = (await page.locator("#generate-button").boundingBox())!;
+    const actions = (await page.locator("#newmap-save").boundingBox())!;
     expect(before.height).toBeCloseTo(before.width, 0);
     release();
     const img = section(page).getByRole("img");
@@ -81,7 +85,7 @@ test.describe("Generate", () => {
     expect(after.width).toBeCloseTo(before.width, 0);
     expect(after.x).toBeCloseTo(before.x, 0);
     // What is below moves by a line at most: the seed and file names are not known yet.
-    const moved = (await page.locator("#generate-button").boundingBox())!.y - actions.y;
+    const moved = (await page.locator("#newmap-save").boundingBox())!.y - actions.y;
     expect(Math.abs(moved)).toBeLessThan(48);
   });
 
@@ -92,7 +96,7 @@ test.describe("Generate", () => {
     await page.getByLabel("Username").fill("admin");
     await page.getByLabel("Password").fill("correct horse battery");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(page.locator(".preview-placeholder")).toBeHidden();
     await context.close();
   });
@@ -100,6 +104,7 @@ test.describe("Generate", () => {
   // DESIGN 8.8: pictures are kept 15 minutes; one gone from the server is drawn again, not shown broken.
   test("a picture the server no longer has is drawn again in the large view", async ({ page }) => {
     let gone = true;
+    const id = await openNewMap(page);
     await page.route(/\/generate\/preview\/[^/]+\/[a-z-]+$/, (route) => (gone ? route.fulfill({ status: 404, body: "" }) : route.continue()));
     const sent: Request[] = [];
     // The picture is back from the moment the new request starts, before its reply asks for the file.
@@ -108,7 +113,7 @@ test.describe("Generate", () => {
       sent.push(r);
       if (sent.length === 2) gone = false;
     });
-    await page.goto("/generate");
+    await page.goto(newMapPath(id));
     await expect.poll(() => sent.length).toBe(1);
     await expect(section(page).getByRole("link", { name: /opens the large view/ })).toBeVisible();
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -125,7 +130,7 @@ test.describe("Generate", () => {
 
   // A failing preview with the large view open is said once and never asked for again.
   test("a failing preview with the large view open makes one request and says why", async ({ page, fakeGame }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
@@ -142,7 +147,7 @@ test.describe("Generate", () => {
   });
 
   test("Next onto a planet not drawn yet names it at once and says it when drawn", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
     await page.keyboard.press("ArrowRight");
@@ -154,7 +159,7 @@ test.describe("Generate", () => {
 
   // Previous before a planet's picture arrives drops that draw: the earlier picture, its status and Close's focus stay right.
   test("Previous before an undrawn planet arrives keeps the earlier planet and its focus", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
@@ -179,7 +184,7 @@ test.describe("Generate", () => {
 
   // Close while a planet is still being drawn: focus stays on a picture that is there, and the late reply changes nothing.
   test("closing the large view while a planet is drawing keeps focus on a picture", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
@@ -200,7 +205,7 @@ test.describe("Generate", () => {
 
   // After one failed draw, Previous and Next still move and try again, one request for each press.
   test("after a failed draw in the large view, Previous and Next still move and retry", async ({ page, fakeGame }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
@@ -221,7 +226,7 @@ test.describe("Generate", () => {
   for (const [w, h] of [[320, 200], [568, 320]]) {
     test(`the large view keeps the picture usable at ${w} by ${h}`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: h });
-      await page.goto("/generate");
+      await openNewMap(page);
       await expect(section(page).getByRole("img")).toHaveCount(1);
       await section(page).getByRole("link", { name: /opens the large view/ }).click();
       await expect(dialog(page)).toBeVisible();
@@ -234,7 +239,7 @@ test.describe("Generate", () => {
 
   // WCAG 4.1.3: problems with the automatic preview are said, without moving focus.
   test("a seed that is not a number is said and marks the field", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     const seed = page.getByLabel("Seed");
     await seed.fill("abc");
@@ -247,7 +252,7 @@ test.describe("Generate", () => {
   });
 
   test("a preview request that fails outright is said", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await page.route("**/generate/preview", (route) => route.abort());
     await page.getByLabel("Seed").fill("77");
@@ -255,7 +260,7 @@ test.describe("Generate", () => {
   });
 
   test("Preview map says at once that it started", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     const seen = await recordAnnouncer(page);
     await page.getByRole("button", { name: "Preview map" }).click();
@@ -264,7 +269,7 @@ test.describe("Generate", () => {
 
   // A focused picture link keeps focus when a pending redraw lands (DESIGN 8.8: nothing automatic moves focus).
   test("a focused picture link keeps focus across a redraw", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     const sent: Request[] = [];
     page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
@@ -282,7 +287,7 @@ test.describe("Generate", () => {
   // SPEC 5.6, 17.9: Reset to defaults throws every change away, so
   // Undo takes its place with the focus, and one press brings them back.
   test("Reset to defaults offers Undo in its place, which brings every change back", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await page.locator("#generate-preset").selectOption("rich-resources");
     await expect(page.locator("#mg-nauvis-iron-ore-richness")).not.toHaveValue("100");
     const richness = await page.locator("#mg-nauvis-iron-ore-richness").inputValue();
@@ -322,7 +327,7 @@ test.describe("Generate", () => {
   });
 
   test("a change after Reset to defaults ends the Undo, so it cannot throw the change away", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
     await page.getByRole("button", { name: "Reset to defaults" }).click();
@@ -335,7 +340,7 @@ test.describe("Generate", () => {
 
   // A tab is a view, not a setting (SPEC 5.6), so showing another one keeps the Undo.
   test("showing another settings tab after Reset to defaults keeps the Undo, which still works", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
     await page.getByRole("button", { name: "Reset to defaults" }).click();
@@ -370,13 +375,13 @@ test.describe("Generate", () => {
   // The reset's reply replaces the fields anyway, so Undo is always offered after it and
   // brings back the settings as they were when Reset was pressed; focus stays where it was.
   test("a change made while Reset is on its way still gets Undo, which brings back the settings from before the reset", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
     const seen = await recordAnnouncer(page);
     let release!: () => void;
     const held = new Promise<void>((r) => (release = r));
-    await page.route("**/generate/refresh", async (route) => {
+    await page.route("**/new-map/refresh", async (route) => {
       await held;
       await route.continue().catch(() => {});
     });
@@ -387,14 +392,14 @@ test.describe("Generate", () => {
     await expect(undo).toBeVisible();
     await expect(page.getByLabel("Maximum expansion distance")).toBeFocused();
     await expect.poll(seen).toContain("Map settings reset to the defaults for this game version. Undo reset brings your changes back.");
-    await page.unroute("**/generate/refresh");
+    await page.unroute("**/new-map/refresh");
     await undo.click();
     await expect(page.getByLabel("Maximum expansion distance")).toHaveValue("3");
   });
 
   // Focus never falls to the page when the Undo it was on ends.
   test("when the focused Undo ends, focus goes to Reset to defaults", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
     await page.getByRole("button", { name: "Reset to defaults" }).press("Enter");
@@ -411,7 +416,7 @@ test.describe("Generate", () => {
 
   // The way back to one planet stays after a failed draw of every planet (DESIGN 8.8).
   test("after All planets fails to draw, One planet is still there and draws one", async ({ page, fakeGame }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await tab(page, "All planets").click();
     await expect(section(page).getByRole("img")).toHaveCount(5);
@@ -426,7 +431,7 @@ test.describe("Generate", () => {
   });
 
   test("the achievement warning names the setting, and its end is said", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Enemy").click();
     await page.getByRole("checkbox", { name: "Peaceful mode" }).check();
     await expect(page.locator("#announcer")).toHaveText("Peaceful mode turns off some achievements.");
@@ -437,7 +442,7 @@ test.describe("Generate", () => {
   // Like the game, a minimum and its maximum stay at least their gap apart: the other field moves,
   // within its own ends, and what moved is said (SPEC 5.6).
   test("on 2.1, the expansion distance and cooldown keep their order", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Enemy").click();
     const low = page.getByLabel("Minimum expansion distance");
     const high = page.getByLabel("Maximum expansion distance");
@@ -479,13 +484,7 @@ test.describe("Generate", () => {
   });
 
   test("on 1.1, the settler group sizes keep their order", async ({ page }) => {
-    await page.goto("/generate");
-    await page.locator(".version-fields > details.disclosure > summary").click();
-    const refreshed = page.waitForResponse((r) => r.url().endsWith("/generate/refresh"));
-    await page.getByLabel("Type a version").fill("1.1.110");
-    await page.getByLabel("Type a version").press("Tab");
-    await refreshed;
-    await expect(page.locator("#announcer")).toHaveText(/^Map options updated/);
+    await openNewMap(page, { step1: oldGameStep1 });
     await tab(page, "Enemy").click();
     const low = page.getByLabel("Minimum group size");
     const high = page.getByLabel("Maximum group size");
@@ -503,7 +502,7 @@ test.describe("Generate", () => {
 
   // A change that moves a field and also turns the achievement warning on says both, in one announcement.
   test("a live-fit move that also turns the achievement warning on says both", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Enemy").click();
     const low = page.getByLabel("Minimum expansion distance");
     const seen = await recordAnnouncer(page);
@@ -517,16 +516,9 @@ test.describe("Generate", () => {
     await expect.poll(seen).toContain("Minimum expansion distance turns off some achievements. Maximum expansion distance set to 10 to keep the range valid.");
   });
 
-  // A preset chosen after the game line changed fills the new line's settings.
-  test("after typing a 1.1 version, choosing Marathon refills the settings", async ({ page }) => {
-    await page.goto("/generate");
-    await page.locator(".version-fields > details.disclosure > summary").click();
-    const refreshed = page.waitForResponse((r) => r.url().endsWith("/generate/refresh"));
-    await page.getByLabel("Type a version").fill("1.1.110");
-    await page.getByLabel("Type a version").press("Tab");
-    await refreshed;
-    // The redraw has landed once it is said.
-    await expect(page.locator("#announcer")).toHaveText(/^Map options updated/);
+  // A preset chosen on a 1.1 world fills that line's settings.
+  test("on a 1.1 world, choosing Marathon refills the settings", async ({ page }) => {
+    await openNewMap(page, { step1: oldGameStep1 });
     const price = page.locator("#ms-difficulty-settings-technology-price-multiplier");
     await expect(price).toHaveValue("1");
     await page.locator("#generate-preset").selectOption({ label: "Marathon" });
@@ -541,7 +533,7 @@ test.describe("Generate", () => {
   // A turned-off slider takes `border` for its fill and knob.
   test("the sliders are drawn in neutrals, and greyed while off", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, "Resources").click();
     const range = page.locator("#mg-nauvis-uranium-ore-frequency-range");
     await expect(range).toBeVisible();

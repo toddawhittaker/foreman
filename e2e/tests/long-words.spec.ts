@@ -1,5 +1,6 @@
 import { test, expect, createAdmin, seedWorld, image21 } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { openNewMap, newMapPath } from "./newmap.js";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -46,6 +47,16 @@ test.describe("long words at 320 px", () => {
         // A real overflow stays and still fails once the poll times out.
         await page.evaluate(() => document.fonts.ready);
         await expect.poll(() => layoutProblems(page), { message: `${lang} at ${size}%` }).toEqual([]);
+      }
+      // Step 3 holds the map settings' action bar (SPEC 5.6).
+      const id = await openNewMap(page);
+      for (const size of [100, 200]) {
+        await page.goto(newMapPath(id));
+        await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
+        await expect(page.locator("html")).toHaveAttribute("lang", lang);
+        await page.evaluate((p) => (document.documentElement.style.fontSize = `${p}%`), size);
+        await page.evaluate(() => document.fonts.ready);
+        await expect.poll(() => layoutProblems(page), { message: `${lang} step 3 at ${size}%` }).toEqual([]);
       }
     });
   }

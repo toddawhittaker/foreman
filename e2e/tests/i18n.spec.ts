@@ -4,6 +4,7 @@ import { copyFileSync, mkdirSync, rmSync, statSync, utimesSync, writeFileSync } 
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { catalogue, languages, pluralCategory, t, type Lang } from "./i18n.js";
+import { openNewMap, newMapPath } from "./newmap.js";
 
 // SPEC 22: the language follows a cookie, else Accept-Language, else English;
 // counted text uses each language's plural forms; sizes use the language's
@@ -421,6 +422,8 @@ test.describe("layout at 320 px in every language", () => {
       seedArchived(foreman);
       seedAuditEntries(foreman);
       await fakeGame!.call("/image", { ref: image21, on: true });
+      // A world whose map is not made yet has a step 3 to look at.
+      const mapWorld = await openNewMap(page, { name: "Map world" });
 
       // An update leaves the "Before update" snapshot, which makes a rollback page.
       await page.goto("/worlds/base/update");
@@ -508,20 +511,24 @@ test.describe("layout at 320 px in every language", () => {
         failures,
       );
 
-      // Generate with an exchange string, on its other tabs, with its errors, and the settings
-      // change preview (SPEC 5.6, 5.7, 11; DESIGN 8.6 to 8.10).
-      for (const [label, radio] of [
-        ["exchange string mode", "#mode-exchange"],
+      // Step 3 of Generate with its exchange string open, on its other tabs, with its errors,
+      // and the settings change preview (SPEC 5.6, 5.7, 11; DESIGN 8.6 to 8.10).
+      const openStep3 = async () => {
+        await page.goto(newMapPath(mapWorld));
+        await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
+      };
+      for (const [label, control] of [
+        ["exchange string open", "#exchange-fill summary"],
         ["Enemy tab", "label.tab:has(#tab-enemy)"],
         ["Advanced tab", "label.tab:has(#tab-advanced)"],
       ] as const) {
         await sweepSubmit(
           page,
           lang,
-          `/generate in ${label}`,
+          `step 3 in ${label}`,
           async () => {
-            await page.goto("/generate");
-            await page.locator(radio).click();
+            await openStep3();
+            await page.locator(control).click();
           },
           failures,
         );
@@ -529,11 +536,11 @@ test.describe("layout at 320 px in every language", () => {
       await sweepSubmit(
         page,
         lang,
-        "/generate with its errors",
+        "step 3 with its errors",
         async () => {
-          await page.goto("/generate");
-          await page.locator("#mode-exchange").check();
-          await page.locator("#generate-button").click();
+          await openStep3();
+          await page.locator("#exchange-fill summary").click();
+          await page.locator("#exchange-fill-button").click();
           await expect(page.locator("#error-summary")).toBeVisible();
         },
         failures,
