@@ -109,22 +109,31 @@ func (in *instance) run(name, args string) (reply string, logs []string) {
 	return "", nil
 }
 
-// playTime answers plain /time with the game's total play time, in the
-// English form SPEC 8.15 reads: "H hours and M minutes", or "M minutes"
-// under an hour. Resolution is one minute, as in the game.
+// playTime answers plain /time with the game's total play time in the form
+// SPEC 8.15 reads: hours, minutes and seconds, zero parts left out, joined
+// with ", " and " and " before the last, singular for one.
 func (in *instance) playTime() string {
-	minutes := int(in.elapsedLocked() / 60)
-	hours, minutes := minutes/60, minutes%60
-	unit := func(n int, word string) string {
-		if n == 1 {
-			return fmt.Sprintf("%d %s", n, word)
+	secs := int(in.elapsedLocked())
+	counts := []int{secs / 3600, secs / 60 % 60, secs % 60}
+	words := []string{"hour", "minute", "second"}
+	var parts []string
+	for i, n := range counts {
+		if n == 0 {
+			continue
 		}
-		return fmt.Sprintf("%d %ss", n, word)
+		word := words[i]
+		if n != 1 {
+			word += "s"
+		}
+		parts = append(parts, fmt.Sprintf("%d %s", n, word))
 	}
-	if hours == 0 {
-		return unit(minutes, "minute") + "\n"
+	if len(parts) == 0 {
+		return "0 seconds\n"
 	}
-	return unit(hours, "hour") + " and " + unit(minutes, "minute") + "\n"
+	if len(parts) == 1 {
+		return parts[0] + "\n"
+	}
+	return strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1] + "\n"
 }
 
 // firstWord splits at the first space; the rest has its leading spaces
