@@ -18,6 +18,8 @@
 <h2 id="save-players-heading">{{t "saveplayers.heading"}}</h2>
 {{- if .Polls}}
 <div hidden hx-get="{{.PollPath}}" hx-trigger="every 3s" hx-target="#save-players" hx-swap="innerHTML"></div>
+{{- else if .Live}}
+<div hidden hx-get="{{.LivePollPath}}" hx-trigger="every 5s" hx-target="#save-players" hx-swap="innerHTML"></div>
 {{- end}}
 {{- if not .Announce.IsZero}}
 <div id="save-players-live" hx-swap-oob="innerHTML">{{msg .Announce}}</div>
