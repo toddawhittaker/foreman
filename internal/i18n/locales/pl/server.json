@@ -621,5 +621,13 @@
   "server.lan.unpublished": "Gracze w sieci lokalnej nie mogą dotrzeć do gry: {sidecar} nie publikuje UDP 34197 na hoście.",
   "server.force.group": "Działania awaryjne",
   "server.crash.switch_archived": "Świat {world} jest zarchiwizowany, więc Foreman nie może się na niego przełączyć z powrotem.",
-  "server.crash.unarchive": "Otwórz świat {world}, aby cofnąć archiwizację"
+  "server.crash.unarchive": "Otwórz świat {world}, aby cofnąć archiwizację",
+  "server.playtime.label": "Czas gry",
+  "server.playtime.value": "{hours} h {minutes} min",
+  "server.playtime.players": {
+    "one": "{count} gracz w tym zapisie",
+    "few": "{count} graczy w tym zapisie",
+    "many": "{count} graczy w tym zapisie"
+  },
+  "server.playtime.reading": "Trwa odczyt"
 }

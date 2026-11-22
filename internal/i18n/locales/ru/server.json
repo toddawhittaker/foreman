@@ -621,5 +621,13 @@
   "server.lan.unpublished": "Игроки из локальной сети не могут подключиться к игре: {sidecar} не публикует UDP 34197 на хосте.",
   "server.force.group": "Экстренные действия",
   "server.crash.switch_archived": "Мир {world} в архиве, поэтому Foreman не может вернуться к нему.",
-  "server.crash.unarchive": "Открыть мир {world}, чтобы разархивировать его"
+  "server.crash.unarchive": "Открыть мир {world}, чтобы разархивировать его",
+  "server.playtime.label": "Время игры",
+  "server.playtime.value": "{hours} ч {minutes} мин",
+  "server.playtime.players": {
+    "one": "{count} игрок в этом сохранении",
+    "few": "{count} игрока в этом сохранении",
+    "many": "{count} игроков в этом сохранении"
+  },
+  "server.playtime.reading": "Читается"
 }

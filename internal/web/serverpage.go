@@ -85,6 +85,10 @@ type ServerPage struct {
 	// StopSeconds is the stop countdown setting, which the go-ahead box of a
 	// refusal repeats (SPEC 7.6).
 	StopSeconds int
+	// SavePlayers is the world's players record as the page shows it (SPEC
+	// 8.15), when HaveSavePlayers; a view that could not be read is left out.
+	SavePlayers     game.SavePlayersView
+	HaveSavePlayers bool
 }
 
 // navPage marks a nav item as the page itself rather than a page inside its
@@ -118,6 +122,45 @@ func (p ServerPage) ForceStopPath() string { return gamePath(p.World.ID, "force-
 func (p ServerPage) PullPath() string      { return gamePath(p.World.ID, "pull-image") }
 func (p ServerPage) ConsolePath() string   { return consolePath(p.World.ID, "") }
 func (p ServerPage) SnapshotPath() string  { return gamePath(p.World.ID, "take-snapshot") }
+
+// ShowPlayTime is true when the page says something about the save's play
+// time: its figure, or that the save is being read (SPEC 8.15). With no
+// record, nothing is shown, so no figure is invented.
+func (p ServerPage) ShowPlayTime() bool {
+	return p.HaveSavePlayers && (p.SavePlayers.GameTimeKnown || p.SavePlayers.State == game.SavePlayersReading)
+}
+
+// PlayTimeKnown is true when the save's play time is a figure.
+func (p ServerPage) PlayTimeKnown() bool { return p.HaveSavePlayers && p.SavePlayers.GameTimeKnown }
+
+// PlayTime is the save's total play time in hours and minutes. Hours are not
+// folded into days: a world's total is long, and the figure is what /time
+// says (SPEC 8.15).
+func (p ServerPage) PlayTime() i18n.Msg {
+	m := int(p.SavePlayers.GameTime / time.Minute)
+	return i18n.M("server.playtime.value", "hours", m/60, "minutes", m%60)
+}
+
+// ShowSavePlayers is true when there are players to count. A save that is
+// not read, or cannot be, has none, and the page never counts a guess.
+func (p ServerPage) ShowSavePlayers() bool {
+	if !p.HaveSavePlayers {
+		return false
+	}
+	switch p.SavePlayers.State {
+	case game.SavePlayersNone, game.SavePlayersNotSupported:
+		return false
+	}
+	return len(p.SavePlayers.Players) > 0
+}
+
+// SavePlayersText says how many players the save has.
+func (p ServerPage) SavePlayersText() i18n.Msg {
+	return i18n.M("server.playtime.players", "count", len(p.SavePlayers.Players))
+}
+
+// SavePlayersLink is the list on the world's Overview page.
+func (p ServerPage) SavePlayersLink() string { return worldPath(p.World.ID) + "#" + savePlayersAnchor }
 
 // switchOp returns the switch running now, or nil.
 func (p ServerPage) switchOp() *game.SwitchInfo {
