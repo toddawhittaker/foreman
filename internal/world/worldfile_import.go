@@ -243,7 +243,10 @@ func (wf *worldFile) check(lim WorldFileLimits) error {
 			return ErrWorldFileBad
 		}
 		limit := entryLimit(kind, e.Name, lim)
-		if limit <= 0 || e.UncompressedSize64 > uint64(limit) {
+		// A stored entry's two sizes are the same; differing sizes mean a
+		// header that lies, caught here before any data is read.
+		storedLie := e.Method == zip.Store && e.CompressedSize64 != e.UncompressedSize64
+		if storedLie || limit <= 0 || e.UncompressedSize64 > uint64(limit) {
 			return ErrWorldFileBad
 		}
 		wf.bytes += e.UncompressedSize64

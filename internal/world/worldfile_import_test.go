@@ -14,28 +14,28 @@ import (
 	"time"
 )
 
-var wfLimits = WorldFileLimits{Save: 1 << 20, Mod: 1 << 20}
+var importLimits = WorldFileLimits{Save: 1 << 20, Mod: 1 << 20}
 
-type wfEntry struct {
+type importEntry struct {
 	name   string
 	body   []byte
 	method uint16
 	mode   os.FileMode
 }
 
-const wfFormat = `{"format_version":1,"exported_at":"2026-11-22T10:00:00Z","foreman_version":"1.0.0","saves":"all","game_password_set":true}`
+const importFormat = `{"format_version":1,"exported_at":"2026-11-22T10:00:00Z","foreman_version":"1.0.0","saves":"all","game_password_set":true}`
 
-func wfMeta(extra string) string {
+func importMeta(extra string) string {
 	return `{"format_version":1,"name":"Old name","game_version":"2.0.77","space_age":true,"load_save":"b.zip","created_at":"2025-01-01T00:00:00Z",` +
 		`"imported_from":{"folder":"x","save":"a.zip","save_size":1,"save_mtime":"2025-01-01T00:00:00Z","at":"2025-01-01T00:00:00Z"},` +
 		`"archived":true,"use_whitelist":true,"future_field":{"k":1}` + extra + `}`
 }
 
 // goodWorldFile is a world file as an export writes it.
-func goodWorldFile() []wfEntry {
-	return []wfEntry{
-		{name: WorldFileFormatFile, body: []byte(wfFormat)},
-		{name: MetaFile, body: []byte(wfMeta(""))},
+func goodWorldFile() []importEntry {
+	return []importEntry{
+		{name: WorldFileFormatFile, body: []byte(importFormat)},
+		{name: MetaFile, body: []byte(importMeta(""))},
 		{name: "saves/a.zip", body: []byte("save a"), method: zip.Store},
 		{name: "saves/b.zip", body: []byte("save b"), method: zip.Store},
 		{name: "mods/mod-list.json", body: []byte(`{"mods":[]}`)},
@@ -46,14 +46,14 @@ func goodWorldFile() []wfEntry {
 	}
 }
 
-var wfTime = time.Date(2024, 5, 6, 7, 8, 9, 0, time.UTC)
+var importTime = time.Date(2024, 5, 6, 7, 8, 9, 0, time.UTC)
 
-func wfZip(t *testing.T, entries []wfEntry) []byte {
+func importZip(t *testing.T, entries []importEntry) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	for _, e := range entries {
-		h := &zip.FileHeader{Name: e.name, Method: e.method, Modified: wfTime}
+		h := &zip.FileHeader{Name: e.name, Method: e.method, Modified: importTime}
 		if h.Method == 0 {
 			h.Method = zip.Deflate
 		}
@@ -74,8 +74,8 @@ func wfZip(t *testing.T, entries []wfEntry) []byte {
 	return buf.Bytes()
 }
 
-// stageWorldFile writes data as a staged world file and returns its name.
-func stageWorldFile(t *testing.T, m *Manager, data []byte) string {
+// stageImport writes data as a staged world file and returns its name.
+func stageImport(t *testing.T, m *Manager, data []byte) string {
 	t.Helper()
 	f, name, err := m.CreateWorldFileTemp()
 	if err != nil {
@@ -98,12 +98,12 @@ func staged(m *Manager, name string) bool {
 func TestWorldFileRoundTrip(t *testing.T) {
 	m, _ := newTestManager(t)
 	ctx := context.Background()
-	temp := stageWorldFile(t, m, wfZip(t, goodWorldFile()))
+	temp := stageImport(t, m, importZip(t, goodWorldFile()))
 	if !strings.HasPrefix(temp, PrefixWorldFile) {
 		t.Fatalf("staged name %q", temp)
 	}
 
-	info, err := m.ReadWorldFile(temp, wfLimits)
+	info, err := m.ReadWorldFile(temp, importLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestWorldFileRoundTrip(t *testing.T) {
 		t.Fatalf("info %+v, want %+v", info, want)
 	}
 
-	id, err := m.ImportWorldFile(ctx, temp, "New name", wfLimits)
+	id, err := m.ImportWorldFile(ctx, temp, "New name", importLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,8 +127,8 @@ func TestWorldFileRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !info.ModTime().Equal(wfTime) {
-			t.Errorf("%s time %v, want %v", p, info.ModTime(), wfTime)
+		if !info.ModTime().Equal(importTime) {
+			t.Errorf("%s time %v, want %v", p, info.ModTime(), importTime)
 		}
 	}
 	if got := mode(t, filepath.Join(dir, "config/server-whitelist.json")); got != rconPasswordMode {
@@ -164,13 +164,13 @@ func TestWorldFileRoundTrip(t *testing.T) {
 
 func TestWorldFileWritesServerSettingsWhenMissing(t *testing.T) {
 	m, _ := newTestManager(t)
-	var entries []wfEntry
+	var entries []importEntry
 	for _, e := range goodWorldFile() {
 		if e.name != "config/server-settings.json" {
 			entries = append(entries, e)
 		}
 	}
-	id, err := m.ImportWorldFile(context.Background(), stageWorldFile(t, m, wfZip(t, entries)), "W", wfLimits)
+	id, err := m.ImportWorldFile(context.Background(), stageImport(t, m, importZip(t, entries)), "W", importLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,8 +182,8 @@ func TestWorldFileWritesServerSettingsWhenMissing(t *testing.T) {
 func TestWorldFileDropsMissingLoadSave(t *testing.T) {
 	m, _ := newTestManager(t)
 	entries := goodWorldFile()
-	entries[1].body = []byte(strings.Replace(wfMeta(""), `"b.zip"`, `"gone.zip"`, 1))
-	info, err := m.ReadWorldFile(stageWorldFile(t, m, wfZip(t, entries)), wfLimits)
+	entries[1].body = []byte(strings.Replace(importMeta(""), `"b.zip"`, `"gone.zip"`, 1))
+	info, err := m.ReadWorldFile(stageImport(t, m, importZip(t, entries)), importLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,14 +199,14 @@ func TestWorldFileKeepsStagedOnNameClash(t *testing.T) {
 	if _, err := m.Create(ctx, "Taken", "2.0.77", false); err != nil {
 		t.Fatal(err)
 	}
-	temp := stageWorldFile(t, m, wfZip(t, goodWorldFile()))
-	if _, err := m.ImportWorldFile(ctx, temp, "taken", wfLimits); !errors.Is(err, ErrNameTaken) {
+	temp := stageImport(t, m, importZip(t, goodWorldFile()))
+	if _, err := m.ImportWorldFile(ctx, temp, "taken", importLimits); !errors.Is(err, ErrNameTaken) {
 		t.Fatalf("err %v", err)
 	}
 	if !staged(m, temp) {
 		t.Fatal("staged file removed on a name clash")
 	}
-	if _, err := m.ImportWorldFile(ctx, temp, "Free", wfLimits); err != nil {
+	if _, err := m.ImportWorldFile(ctx, temp, "Free", importLimits); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -214,8 +214,8 @@ func TestWorldFileKeepsStagedOnNameClash(t *testing.T) {
 func TestWorldFileKeepsStagedOnNoSpace(t *testing.T) {
 	m, _ := newTestManager(t)
 	defer SetFreeBytesForTest(0)()
-	temp := stageWorldFile(t, m, wfZip(t, goodWorldFile()))
-	if _, err := m.ImportWorldFile(context.Background(), temp, "W", wfLimits); !errors.Is(err, ErrNoSpace) {
+	temp := stageImport(t, m, importZip(t, goodWorldFile()))
+	if _, err := m.ImportWorldFile(context.Background(), temp, "W", importLimits); !errors.Is(err, ErrNoSpace) {
 		t.Fatalf("err %v", err)
 	}
 	if !staged(m, temp) {
@@ -224,7 +224,7 @@ func TestWorldFileKeepsStagedOnNoSpace(t *testing.T) {
 }
 
 func TestWorldFileRefusals(t *testing.T) {
-	replace := func(name string, body []byte) []wfEntry {
+	replace := func(name string, body []byte) []importEntry {
 		entries := goodWorldFile()
 		for i := range entries {
 			if entries[i].name == name {
@@ -233,9 +233,9 @@ func TestWorldFileRefusals(t *testing.T) {
 		}
 		return entries
 	}
-	add := func(e ...wfEntry) []wfEntry { return append(goodWorldFile(), e...) }
-	without := func(name string) []wfEntry {
-		var out []wfEntry
+	add := func(e ...importEntry) []importEntry { return append(goodWorldFile(), e...) }
+	without := func(name string) []importEntry {
+		var out []importEntry
 		for _, e := range goodWorldFile() {
 			if e.name != name {
 				out = append(out, e)
@@ -245,29 +245,29 @@ func TestWorldFileRefusals(t *testing.T) {
 	}
 	big := bytes.Repeat([]byte{0}, 2<<20)
 	cases := map[string]struct {
-		entries []wfEntry
+		entries []importEntry
 		want    error
 	}{
-		"zip slip":           {add(wfEntry{name: "mods/../../x"}), ErrWorldFileBad},
-		"absolute":           {add(wfEntry{name: "/etc/x"}), ErrWorldFileBad},
-		"rconpw":             {add(wfEntry{name: "config/rconpw", body: []byte("pw")}), ErrWorldFileBad},
-		"nested save":        {add(wfEntry{name: "saves/x/a.zip"}), ErrWorldFileBad},
-		"repeated name":      {add(wfEntry{name: "saves/a.zip", body: []byte("again")}), ErrWorldFileBad},
-		"symlink":            {add(wfEntry{name: "mods/link", body: []byte("/etc"), mode: os.ModeSymlink | 0o777}), ErrWorldFileBad},
-		"file under file":    {add(wfEntry{name: "mods/mod-list.json/x"}), ErrWorldFileBad},
+		"zip slip":           {add(importEntry{name: "mods/../../x"}), ErrWorldFileBad},
+		"absolute":           {add(importEntry{name: "/etc/x"}), ErrWorldFileBad},
+		"rconpw":             {add(importEntry{name: "config/rconpw", body: []byte("pw")}), ErrWorldFileBad},
+		"nested save":        {add(importEntry{name: "saves/x/a.zip"}), ErrWorldFileBad},
+		"repeated name":      {add(importEntry{name: "saves/a.zip", body: []byte("again")}), ErrWorldFileBad},
+		"symlink":            {add(importEntry{name: "mods/link", body: []byte("/etc"), mode: os.ModeSymlink | 0o777}), ErrWorldFileBad},
+		"file under file":    {add(importEntry{name: "mods/mod-list.json/x"}), ErrWorldFileBad},
 		"no format file":     {without(WorldFileFormatFile), ErrWorldFileBad},
 		"no world.json":      {without(MetaFile), ErrWorldFileBad},
 		"newer format":       {replace(WorldFileFormatFile, []byte(`{"format_version":2,"new":true}`)), ErrWorldFileNewer},
-		"format unknown key": {replace(WorldFileFormatFile, []byte(strings.Replace(wfFormat, "{", `{"x":1,`, 1))), ErrWorldFileBad},
-		"format two values":  {replace(WorldFileFormatFile, []byte(wfFormat+wfFormat)), ErrWorldFileBad},
-		"newer world.json":   {replace(MetaFile, []byte(strings.Replace(wfMeta(""), `"format_version":1`, `"format_version":2`, 1))), ErrWorldFileNewer},
-		"bad game version":   {replace(MetaFile, []byte(strings.Replace(wfMeta(""), "2.0.77", "9.9.9", 1))), ErrWorldFileBad},
-		"space age on 1.1":   {replace(MetaFile, []byte(strings.Replace(wfMeta(""), "2.0.77", "1.1.110", 1))), ErrWorldFileBad},
+		"format unknown key": {replace(WorldFileFormatFile, []byte(strings.Replace(importFormat, "{", `{"x":1,`, 1))), ErrWorldFileBad},
+		"format two values":  {replace(WorldFileFormatFile, []byte(importFormat+importFormat)), ErrWorldFileBad},
+		"newer world.json":   {replace(MetaFile, []byte(strings.Replace(importMeta(""), `"format_version":1`, `"format_version":2`, 1))), ErrWorldFileNewer},
+		"bad game version":   {replace(MetaFile, []byte(strings.Replace(importMeta(""), "2.0.77", "9.9.9", 1))), ErrWorldFileBad},
+		"space age on 1.1":   {replace(MetaFile, []byte(strings.Replace(importMeta(""), "2.0.77", "1.1.110", 1))), ErrWorldFileBad},
 		"world.json array":   {replace(MetaFile, []byte(`[]`)), ErrWorldFileBad},
 		"server not object":  {replace("config/server-settings.json", []byte(`[1]`)), ErrWorldFileBad},
 		"save over limit":    {replace("saves/a.zip", big), ErrWorldFileBad},
-		"no saves": {func() []wfEntry {
-			var out []wfEntry
+		"no saves": {func() []importEntry {
+			var out []importEntry
 			for _, e := range goodWorldFile() {
 				if !strings.HasPrefix(e.name, "saves/") {
 					out = append(out, e)
@@ -279,11 +279,11 @@ func TestWorldFileRefusals(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			m, _ := newTestManager(t)
-			temp := stageWorldFile(t, m, wfZip(t, c.entries))
-			if _, err := m.ReadWorldFile(temp, wfLimits); !errors.Is(err, c.want) {
+			temp := stageImport(t, m, importZip(t, c.entries))
+			if _, err := m.ReadWorldFile(temp, importLimits); !errors.Is(err, c.want) {
 				t.Fatalf("read: err %v, want %v", err, c.want)
 			}
-			if _, err := m.ImportWorldFile(context.Background(), temp, "W", wfLimits); !errors.Is(err, c.want) {
+			if _, err := m.ImportWorldFile(context.Background(), temp, "W", importLimits); !errors.Is(err, c.want) {
 				t.Fatalf("import: err %v, want %v", err, c.want)
 			}
 			if staged(m, temp) {
@@ -299,11 +299,11 @@ func TestWorldFileRefusals(t *testing.T) {
 // A world with new_map needs no save.
 func TestWorldFileNewMapNeedsNoSave(t *testing.T) {
 	m, _ := newTestManager(t)
-	entries := []wfEntry{
-		{name: WorldFileFormatFile, body: []byte(wfFormat)},
+	entries := []importEntry{
+		{name: WorldFileFormatFile, body: []byte(importFormat)},
 		{name: MetaFile, body: []byte(`{"format_version":1,"name":"n","game_version":"2.0.77","created_at":"2025-01-01T00:00:00Z","new_map":{"preset":""}}`)},
 	}
-	if _, err := m.ImportWorldFile(context.Background(), stageWorldFile(t, m, wfZip(t, entries)), "W", wfLimits); err != nil {
+	if _, err := m.ImportWorldFile(context.Background(), stageImport(t, m, importZip(t, entries)), "W", importLimits); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -313,8 +313,8 @@ func TestWorldFileRatio(t *testing.T) {
 	entries := goodWorldFile()
 	entries[2].body = bytes.Repeat([]byte{0}, 1<<20-1)
 	entries[2].method = zip.Deflate
-	temp := stageWorldFile(t, m, wfZip(t, entries))
-	if _, err := m.ReadWorldFile(temp, wfLimits); !errors.Is(err, ErrWorldFileBad) {
+	temp := stageImport(t, m, importZip(t, entries))
+	if _, err := m.ReadWorldFile(temp, importLimits); !errors.Is(err, ErrWorldFileBad) {
 		t.Fatalf("err %v", err)
 	}
 }
@@ -323,11 +323,11 @@ func TestWorldFileRatio(t *testing.T) {
 // is left behind.
 func TestWorldFileDamagedEntry(t *testing.T) {
 	m, _ := newTestManager(t)
-	data := wfZip(t, goodWorldFile())
+	data := importZip(t, goodWorldFile())
 	i := bytes.Index(data, []byte("save a"))
 	data[i] = 'X'
-	temp := stageWorldFile(t, m, data)
-	if _, err := m.ImportWorldFile(context.Background(), temp, "W", wfLimits); !errors.Is(err, ErrWorldFileBad) {
+	temp := stageImport(t, m, data)
+	if _, err := m.ImportWorldFile(context.Background(), temp, "W", importLimits); !errors.Is(err, ErrWorldFileBad) {
 		t.Fatalf("err %v", err)
 	}
 	if staged(m, temp) {
@@ -353,7 +353,7 @@ func TestWorldFileTooManyEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	m, _ := newTestManager(t)
-	if _, err := m.ReadWorldFile(stageWorldFile(t, m, buf.Bytes()), wfLimits); !errors.Is(err, ErrWorldFileBad) {
+	if _, err := m.ReadWorldFile(stageImport(t, m, buf.Bytes()), importLimits); !errors.Is(err, ErrWorldFileBad) {
 		t.Fatalf("err %v", err)
 	}
 }
@@ -361,7 +361,7 @@ func TestWorldFileTooManyEntries(t *testing.T) {
 func TestWorldFileTempNames(t *testing.T) {
 	m, _ := newTestManager(t)
 	for _, name := range []string{"../x", PrefixWorldFile + "a/../../x", "world.json", ".partial-other"} {
-		if _, err := m.ReadWorldFile(name, wfLimits); err == nil {
+		if _, err := m.ReadWorldFile(name, importLimits); err == nil {
 			t.Errorf("%q read", name)
 		}
 	}
@@ -371,19 +371,19 @@ func TestWorldFileTempNames(t *testing.T) {
 // is removed when a new one is staged.
 func TestWorldFileStagedPrune(t *testing.T) {
 	m, _ := newTestManager(t)
-	a := stageWorldFile(t, m, []byte("a"))
+	a := stageImport(t, m, []byte("a"))
 	old := t0.Add(-2 * time.Hour)
 	if err := os.Chtimes(filepath.Join(m.dirs.Worlds, a), old, old); err != nil {
 		t.Fatal(err)
 	}
-	b := stageWorldFile(t, m, []byte("b"))
+	b := stageImport(t, m, []byte("b"))
 	if staged(m, a) {
 		t.Error("an hour-old staged file was kept")
 	}
 	_ = os.Chtimes(filepath.Join(m.dirs.Worlds, b), t0.Add(-10*time.Minute), t0.Add(-10*time.Minute))
-	c := stageWorldFile(t, m, []byte("c"))
+	c := stageImport(t, m, []byte("c"))
 	_ = os.Chtimes(filepath.Join(m.dirs.Worlds, c), t0.Add(-5*time.Minute), t0.Add(-5*time.Minute))
-	d := stageWorldFile(t, m, []byte("d"))
+	d := stageImport(t, m, []byte("d"))
 	if staged(m, b) || !staged(m, c) || !staged(m, d) {
 		t.Errorf("b %v c %v d %v; want only the two newest", staged(m, b), staged(m, c), staged(m, d))
 	}
