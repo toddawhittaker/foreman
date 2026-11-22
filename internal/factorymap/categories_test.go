@@ -8,6 +8,7 @@ func TestCategoryOf(t *testing.T) {
 		"underground-belt":            CategoryBelts,
 		"splitter":                    CategoryBelts,
 		"loader-1x1":                  CategoryBelts,
+		"lane-splitter":               CategoryBelts,
 		"linked-belt":                 CategoryBelts,
 		"inserter":                    CategoryBelts,
 		"assembling-machine":          CategoryProduction,

@@ -10,6 +10,7 @@ var categoryByType = map[string]Category{
 	"transport-belt":   CategoryBelts,
 	"underground-belt": CategoryBelts,
 	"splitter":         CategoryBelts,
+	"lane-splitter":    CategoryBelts,
 	"loader":           CategoryBelts,
 	"loader-1x1":       CategoryBelts,
 	"linked-belt":      CategoryBelts,

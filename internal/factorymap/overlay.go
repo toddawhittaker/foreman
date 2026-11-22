@@ -21,7 +21,7 @@ const (
 	// maxBoxTiles is the longest side of a box, in tiles. The largest real
 	// building is about 20 tiles; the limit keeps the cost of drawing a file
 	// of MaxEntities boxes bounded.
-	maxBoxTiles = 256
+	maxBoxTiles = 64
 	// maxCoordinate is the largest whole number the output may hold (14.6).
 	maxCoordinate = 1 << 53
 )
@@ -48,7 +48,7 @@ const fillAlpha = 90
 // skipped: output outside the chart is not a reason to lose the drawing. Every
 // category has a layer, empty or not, so the layers share the base's grid. It
 // reads the file as untrusted: anything malformed is an error, including a
-// blank line in the middle (F1's mod never writes one) and a box over 256
+// blank line in the middle (F1's mod never writes one) and a box over 64
 // tiles a side.
 func DrawOverlay(entities io.Reader, s Surface) (map[Category]*image.Paletted, error) {
 	return drawOverlay(entities, s, MaxEntities)
