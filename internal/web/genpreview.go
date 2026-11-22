@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"image/color"
 	"image/png"
 	"io/fs"
 	"maps"
@@ -362,19 +363,36 @@ type PreviewView struct {
 	// Resources is one planet's resource amounts for the large view, or why
 	// there are none; set only in the answer to its own request.
 	Resources *ResourceView
+	// OfWorld is true for a preview of a world's own mods, which can make
+	// terrain by script the fast preview cannot draw (SPEC 5.6).
+	OfWorld bool
+	// Fallback says why the world's planet list could not be read, so the
+	// preview shows the game's own planets (SPEC 5.6); zero when it was read.
+	Fallback i18n.Msg
+	// OneColor names the pictures that are almost all one color: what is
+	// near the start lies outside the map (SPEC 5.6).
+	OneColor []MapGenName
+}
+
+// LimitTip is the toggletip on what the fast preview cannot show.
+func (PreviewView) LimitTip() Toggletip {
+	return Toggletip{ID: "preview-limit", About: i18n.M("mapgen.preview.limit_about"), Text: i18n.M("mapgen.preview.limit_tip")}
 }
 
 // PreviewPlanet is one planet the preview can draw.
 type PreviewPlanet struct {
 	Planet string
 	Name   i18n.Msg
+	// Foreign marks a mod's own label for the planet (SPEC 14.6).
+	Foreign bool
 }
 
 // PreviewPicture is one planet's picture.
 type PreviewPicture struct {
-	Planet string
-	Name   i18n.Msg
-	Path   string
+	Planet  string
+	Name    i18n.Msg
+	Foreign bool
+	Path    string
 }
 
 // Choice is true when the world has several planets, so the section offers
@@ -436,6 +454,12 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		}
 		// htmx swaps only a 2xx answer, and then the whole form, with its errors.
 		status := http.StatusBadRequest
+		if isHTMX(r) && in.world {
+			// Step 3's form is not Generate's, so only the preview slot
+			// changes, with the problems linked to their fields.
+			s.fragment(w, r, s.generatePage(r.Context(), f, nil), "generate-preview-invalid")
+			return
+		}
 		if isHTMX(r) {
 			status = http.StatusOK
 			h := w.Header()
@@ -465,9 +489,17 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	req := in.req
-	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10), Size: f.PreviewSize, ShowsAll: len(planets) > 1}
+	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10), Size: f.PreviewSize, ShowsAll: len(planets) > 1,
+		OfWorld: in.world}
+	switch {
+	case errors.Is(in.catErr, game.ErrControlModTaken):
+		view.Fallback = i18n.M("mapgen.preview.control_mod_taken")
+	case in.catErr != nil:
+		view.Fallback = i18n.M("mapgen.preview.fallback")
+	}
 	for _, planet := range all {
-		view.Planets = append(view.Planets, PreviewPlanet{Planet: planet, Name: planetMsg(planet)})
+		n := catPlanetName(f.cat, planet)
+		view.Planets = append(view.Planets, PreviewPlanet{Planet: planet, Name: n.Name, Foreign: n.Foreign})
 	}
 	key := in.key
 	view.Token, req.Planets = s.previews.missing(u.ID, key, f.Name, planets)
@@ -486,7 +518,12 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 			}
 		}
 		for _, planet := range planets {
-			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet)})
+			n := catPlanetName(f.cat, planet)
+			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: n.Name, Foreign: n.Foreign, Path: pictureURL(view.Token, planet)})
+			// Only a world's own mods can leave the start outside the map.
+			if b, ok := s.previews.get(view.Token, u.ID, planet); ok && in.world && oneColor(b) {
+				view.OneColor = append(view.OneColor, n)
+			}
 		}
 	} else {
 		view.Token = ""
@@ -526,6 +563,10 @@ type previewInput struct {
 	req game.PreviewRequest
 	key previewKey
 	ok  bool
+	// world is true for a world's own preview (step 3); catErr is why its
+	// planet list could not be read.
+	world  bool
+	catErr error
 }
 
 // worldCatalogue is a world's planets and controls, from its mod-settings
@@ -601,7 +642,8 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		// once its planet run works.
 		mods += " fallback"
 	}
-	spaceAge := sum.SpaceAge && lineHasSpaceAge(line)
+	// The catalogue says whether the world's mods enable Space Age (SPEC 5.6).
+	spaceAge := cat.SpaceAge && lineHasSpaceAge(line)
 	form := r.PostForm
 	mk := mapKey(line, spaceAge)
 	mf, files, ok := readMapForm(form, kindPreview, mapInput{
@@ -613,7 +655,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		f.clearErrors()
 		ok = false
 	}
-	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil}
+	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil, world: true, catErr: catErr}
 	if in.ok {
 		in.req = game.PreviewRequest{
 			GameVersion: sum.GameVersion, SpaceAge: spaceAge, Preset: files.Preset, Seed: *files.Seed,
@@ -664,9 +706,13 @@ func (s *server) previewFailure(r *http.Request, version string, err error) i18n
 			return i18n.M("worlds.generate.preview.oom")
 		}
 	case errors.Is(err, errPreviewNotKept):
-	case errors.Is(err, game.ErrControlModTaken), errors.Is(err, game.ErrPreviewInvalid):
-		// A world mod named like Foreman's helper, or a request the world's
-		// game does not take: the same on every try (SPEC 5.6, ADR 0033).
+	case errors.Is(err, game.ErrControlModTaken):
+		// A world mod named like Foreman's helper: the same on every try
+		// until that mod goes (SPEC 5.6, ADR 0033).
+		s.log.Warn("map preview refused", "version", version, "error", err)
+		return i18n.M("mapgen.preview.control_mod_taken")
+	case errors.Is(err, game.ErrPreviewInvalid):
+		// A request the world's game does not take (SPEC 5.6, ADR 0033).
 		s.log.Warn("map preview refused", "version", version, "error", err)
 	default:
 		if r.Context().Err() == nil {
@@ -899,4 +945,31 @@ func rfc5987(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// oneColorShare is how much of a picture one color must cover for the
+// note that the start is outside the map (SPEC 5.6).
+const oneColorShare = 0.99
+
+// oneColor reports whether a preview picture is almost all one color. It
+// samples a grid of pixels; a picture it cannot read is not.
+func oneColor(b []byte) bool {
+	img, err := png.Decode(bytes.NewReader(b))
+	if err != nil {
+		return false
+	}
+	bounds := img.Bounds()
+	step := max(1, min(bounds.Dx(), bounds.Dy())/128)
+	counts := map[color.RGBA64]int{}
+	total, most := 0, 0
+	for y := bounds.Min.Y; y < bounds.Max.Y; y += step {
+		for x := bounds.Min.X; x < bounds.Max.X; x += step {
+			r, g, bl, a := img.At(x, y).RGBA()
+			c := color.RGBA64{uint16(r), uint16(g), uint16(bl), uint16(a)} //nolint:gosec // RGBA returns 16-bit values
+			counts[c]++
+			most = max(most, counts[c])
+			total++
+		}
+	}
+	return total > 0 && float64(most) >= oneColorShare*float64(total)
 }

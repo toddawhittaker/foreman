@@ -1,8 +1,11 @@
 package web
 
 import (
+	"strings"
+
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
 
 // Names the game shows, in our language. The wording of each language is the
@@ -118,4 +121,51 @@ func mapTypeMsg(line, name string) i18n.Msg {
 		return m
 	}
 	return i18n.M("mapgen.map_type.other", "name", name)
+}
+
+// modLabelMax caps a mod's label, which is untrusted text (SPEC 14.6).
+const modLabelMax = 80
+
+// MapGenName is a planet's or control's name as the form shows it. Foreign
+// is a mod's own label for a name Foreman does not know: shown as written,
+// escaped, and marked translate="no" (SPEC 5.6, 14.6, 22).
+type MapGenName struct {
+	Name    i18n.Msg
+	Foreign bool
+}
+
+// modLabel is a mod's label for name, or name, cut to modLabelMax runes.
+func modLabel(label, name string) string {
+	s := strings.TrimSpace(label)
+	if s == "" {
+		s = name
+	}
+	if r := []rune(s); len(r) > modLabelMax {
+		s = string(r[:modLabelMax-1]) + "…"
+	}
+	return s
+}
+
+// catControlName names a control of a catalogue: Foreman's own translated
+// name when it knows the control, else the mod's label.
+func catControlName(cat mapgen.Catalogue, name string) MapGenName {
+	if m, ok := controlNames[name]; ok {
+		return MapGenName{Name: m}
+	}
+	return MapGenName{Name: i18n.M("mapgen.mod_name", "name", modLabel(cat.Controls[name].Label, name)), Foreign: true}
+}
+
+// catPlanetName names a planet of a catalogue as catControlName does a
+// control.
+func catPlanetName(cat mapgen.Catalogue, name string) MapGenName {
+	if m, ok := planetNames[name]; ok {
+		return MapGenName{Name: m}
+	}
+	label := ""
+	for _, p := range cat.Planets {
+		if p.Name == name {
+			label = p.Label
+		}
+	}
+	return MapGenName{Name: i18n.M("mapgen.mod_name", "name", modLabel(label, name)), Foreign: true}
 }

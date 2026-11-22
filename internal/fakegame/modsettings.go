@@ -90,12 +90,14 @@ func cannedModSettingDefs() []modSettingDef {
 }
 
 // FakePlanetMod is the e2e test mod whose world gets one more planet,
-// FakePlanet, with one more resource control, FakeOre, from the fake game's
-// planet run. On 1.1 the control is on the one surface.
+// FakePlanet, with one more resource control, FakeOre, and Nauvis's stone
+// shared, from the fake game's planet run. On 1.1 the control is on the one surface.
 const (
 	FakePlanetMod = "fake-planet"
 	FakePlanet    = "fake-planet"
 	FakeOre       = "fake-ore"
+	// FakeOreRichness is FakePlanet's own default richness for FakeOre.
+	FakeOreRichness = 150
 )
 
 // The planet file's shape, as internal/mapgen/catalogue.go documents it.
@@ -160,7 +162,9 @@ func cannedPlanets(line string, mods []string) fakePlanetFile {
 		f.Resources = append(f.Resources, fakeResource{Name: FakeOre, Control: FakeOre, LocName: []string{"entity-name." + FakeOre}})
 		f.Planets = append(f.Planets, fakePlanetEntry{
 			Name: FakePlanet, LocName: []string{"space-location-name." + FakePlanet},
-			Controls:  map[string]map[string]float64{FakeOre: defaults()},
+			// Its own richness default, as Moshine's steam_geyser has, and
+			// Nauvis's stone, shared (SPEC 5.6).
+			Controls:  map[string]map[string]float64{FakeOre: {"frequency": 1, "size": 1, "richness": FakeOreRichness}, "stone": defaults()},
 			Resources: []string{FakeOre},
 		})
 	}
