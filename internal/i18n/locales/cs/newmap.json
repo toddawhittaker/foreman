@@ -28,8 +28,8 @@
   "newmap.exchange.button": "Vyplnit nastavení",
   "newmap.gone.text": {
     "one": "Uložená nastavení obsahují tento parametr, který mody světa už nepřidávají. Při uložení bude vynechán.",
-    "few": "Uložená nastavení obsahují tyto parametry, které mody světa už nepřidávají. Při uložení budou vynechány.",
-    "other": "Uložená nastavení obsahují tyto parametry, které mody světa už nepřidávají. Při uložení budou vynechány."
+    "few": "Uložená nastavení obsahují tyto {count} parametry, které mody světa už nepřidávají. Při uložení budou vynechány.",
+    "other": "Uložená nastavení obsahují těchto {count} parametrů, které mody světa už nepřidávají. Při uložení budou vynechány."
   },
   "newmap.ready": "Nastavení mapy je připraveno.",
   "newmap.error.builtin": "Planety modů tohoto světa se nepodařilo načíst, takže uložení teď by zahodilo nastavení jejich planet. Nic nebylo uloženo. Zkuste to znovu, nebo zkontrolujte mody světa.",

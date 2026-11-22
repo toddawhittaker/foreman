@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, pickLanguage } from "./foreman.js";
 import type { Locator, Page } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
 
 // DESIGN 7.8: every foldout has the muted triangle at its start, a line
 // only between stacked foldouts, and 44 px rows on touch.
@@ -34,9 +35,6 @@ const marker = (d: Locator) =>
   test("a lone foldout has no line above, stacked planets do, and the marker is muted and turns", async ({ page }) => {
     await page.goto("/generate");
     expect(await topLine(lone(page))).toBe("0px");
-    // Nauvis is the first planet row, so no line; Gleba follows another row.
-    expect(await topLine(planet(page, "nauvis"))).toBe("0px");
-    expect(await topLine(planet(page, "gleba"))).toBe("1px");
 
     const before = await marker(lone(page));
     expect(before.color).toBe(await muted(lone(page)));
@@ -52,6 +50,14 @@ const marker = (d: Locator) =>
     const outline = await lone(page).locator("> summary").evaluate((s) => getComputedStyle(s).outlineStyle);
     expect(outline).not.toBe("none");
     await checkPage(page);
+  });
+
+  // The planet rows are the map settings of step 3 (SPEC 5.6).
+  test("the first planet row has no line above and the next one does", async ({ page }) => {
+    await openNewMap(page);
+    // Nauvis is the first planet row, so no line; Gleba follows another row.
+    expect(await topLine(planet(page, "nauvis"))).toBe("0px");
+    expect(await topLine(planet(page, "gleba"))).toBe("1px");
   });
 }
 
@@ -77,11 +83,21 @@ for (const lang of ["de", "ru"]) {
     await pickLanguage(page, lang);
     await page.goto("/generate");
     await page.addStyleTag({ content: "html { font-size: 200% }" });
-    for (const d of [lone(page), planet(page, "nauvis")]) {
-      const b = (await d.locator("> summary").boundingBox())!;
-      expect(b.x).toBeGreaterThanOrEqual(0);
-      expect(b.x + b.width).toBeLessThanOrEqual(320);
-    }
+    const b = (await lone(page).locator("> summary").boundingBox())!;
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width).toBeLessThanOrEqual(320);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    await checkPage(page);
+  });
+
+  test(`at 320 px and 200% text in ${lang}, the map settings' foldouts fit`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await pickLanguage(page, lang);
+    await openNewMap(page);
+    await page.addStyleTag({ content: "html { font-size: 200% }" });
+    const b = (await planet(page, "nauvis").locator("> summary").boundingBox())!;
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width).toBeLessThanOrEqual(320);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
     await checkPage(page);
   });
@@ -93,7 +109,13 @@ test.describe("on a touch screen", () => {
   test("foldout rows are 44 px tall", async ({ page }) => {
     await page.goto("/generate");
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
-    for (const d of [lone(page), planet(page, "nauvis"), planet(page, "gleba")]) {
+    expect((await lone(page).locator("> summary").boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  });
+
+  test("planet foldout rows are 44 px tall", async ({ page }) => {
+    await openNewMap(page);
+    expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
+    for (const d of [planet(page, "nauvis"), planet(page, "gleba")]) {
       expect((await d.locator("> summary").boundingBox())!.height).toBeGreaterThanOrEqual(44);
     }
   });

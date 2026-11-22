@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, signOut } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
 
 // DESIGN 7.2: every field the server refuses when empty carries the required
 // attribute, an asterisk after its label (drawn by the style sheet with empty
@@ -75,6 +76,15 @@ test("every required field is marked, on every form", async ({ page, foreman }) 
     await expectMarked(page, ids, unmarkedByDesign[path]);
     await checkPage(page);
   }
+  // Step 3 (SPEC 5.6) has no field the server refuses when empty, so none carries a mark.
+  await openNewMap(page, {
+    step1: async (p) => {
+      const download = p.getByLabel("Download the game image", { exact: false });
+      if (await download.count()) await download.uncheck();
+    },
+  });
+  await expectMarked(page, []);
+  await checkPage(page);
   await signOut(page);
   await page.goto("/signin");
   await expectMarked(page, ["username", "password"]);
