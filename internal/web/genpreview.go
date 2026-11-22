@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"image/png"
+	"io/fs"
 	"maps"
 	"net/http"
 	"slices"
@@ -69,12 +70,13 @@ type MapPreviewer interface {
 // previewTTL is how long a preview's pictures are kept (SPEC 5.6).
 const previewTTL = 15 * time.Minute
 
-// The pictures held at once: 8 users' previews and 96 MiB in all, so a few
-// admins cannot fill the memory (SPEC 5.6). One user's Space Age set at the
-// largest size is about 35 MB, so a second user does not evict it.
+// The pictures held at once: 8 users' previews and 160 MiB in all, so a few
+// admins cannot fill the memory (SPEC 5.6, 14.3). One user's Space Age set at
+// the largest size is about 35 MB, so a second user does not evict it; a
+// world's mods can add planets, hence the room above that.
 const (
 	maxPreviews     = 8
-	maxPreviewBytes = 96 << 20
+	maxPreviewBytes = 160 << 20
 )
 
 // previewEntry is one user's current preview: the pictures drawn so far
@@ -422,7 +424,11 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	auto := r.PostFormValue(previewAutoField) == "1"
-	f, nw, ok := s.readGenerate(r, kindPreview)
+	in, handled := s.readPreview(w, r, u)
+	if handled {
+		return
+	}
+	f, ok := in.f, in.ok
 	if !ok {
 		if auto {
 			s.fragment(w, r, s.generatePage(r.Context(), f, nil), "generate-preview-invalid")
@@ -458,16 +464,16 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	req := previewRequest(f, nw)
+	req := in.req
 	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10), Size: f.PreviewSize, ShowsAll: len(planets) > 1}
 	for _, planet := range all {
 		view.Planets = append(view.Planets, PreviewPlanet{Planet: planet, Name: planetMsg(planet)})
 	}
-	key := settingsKey(req)
+	key := in.key
 	view.Token, req.Planets = s.previews.missing(u.ID, key, f.Name, planets)
 	var err error
 	if view.Token == "" {
-		view.Token, err = s.drawPreview(w, r, u, req, key, f.Name, view.Seed)
+		view.Token, err = s.drawPreview(w, r, u, req, key, all, f.Name, view.Seed)
 	}
 	if err == nil {
 		counted := s.previews.countedPlanets(u.ID, key)
@@ -484,12 +490,12 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		}
 	} else {
 		view.Token = ""
-		view.Error = s.previewFailure(r, nw.GameVersion, err)
+		view.Error = s.previewFailure(r, req.GameVersion, err)
 	}
 	// Without script the territories are read here, after the pictures; with
 	// it the page asks for them once the picture has arrived (DESIGN 8.8).
 	script := auto || isHTMX(r)
-	view.Territories = s.territoryBox(w, r, u, req, f.Name, view, !script)
+	view.Territories = s.territoryBox(w, r, u, req, key, f.Name, view, !script)
 	if view.Token != "" {
 		_, view.TerritoriesHeld = s.previews.territoriesOf(u.ID, key)
 	}
@@ -509,9 +515,120 @@ func previewRequest(f GenerateForm, nw world.NewWorld) game.PreviewRequest {
 	}
 }
 
-// drawPreview runs the preview for req.Planets and keeps the pictures. The
-// request gets its own write deadline, as the run may outlast the server's.
-func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, key previewKey, name, seed string) (string, error) {
+// previewWorldField names the world whose mods a preview loads (SPEC 5.6,
+// ADR 0033). Without it the preview is of the base game and Space Age alone.
+const previewWorldField = "world"
+
+// previewInput is a posted preview form read: the form to show again, the
+// request it makes, and its key in the store. ok is as readGenerate says.
+type previewInput struct {
+	f   GenerateForm
+	req game.PreviewRequest
+	key previewKey
+	ok  bool
+}
+
+// worldCatalogue is a world's planets and controls, from its mod-settings
+// run (SPEC 5.6); tests replace it.
+var worldCatalogue = func(s *server, ctx context.Context, id string, loc i18n.Locale) (mapgen.Catalogue, error) {
+	if s.game == nil {
+		return mapgen.Catalogue{}, errNoGame
+	}
+	return s.game.WorldCatalogue(ctx, id, loc.String())
+}
+
+// errNoGame means this mode runs no games, so it has no world's planets.
+var errNoGame = errors.New("no game controller")
+
+// previewModsKey is what of a world's mods changes its map: the mods, their
+// files and their setting values (SPEC 5.6, ADR 0033). ModSettingsKey adds
+// what is inside folder mods; ModsFingerprint adds mod-settings.dat.
+func (s *server) previewModsKey(id string) (string, error) {
+	defs, err := s.worlds.ModSettingsKey(id)
+	if err != nil {
+		return "", err
+	}
+	files, err := s.worlds.ModsFingerprint(id)
+	if err != nil {
+		return "", err
+	}
+	return hashJSON([]string{defs, files}), nil
+}
+
+// readPreview reads a posted preview form. With the world field the
+// settings are laid out from that world's own catalogue, and the planets
+// the run may draw come from it alone, never from the form (SPEC 5.6, 14.3,
+// 14.6). handled is true when it answered the request itself.
+func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.User) (in previewInput, handled bool) {
+	id := r.PostFormValue(previewWorldField)
+	if id == "" {
+		f, nw, ok := s.readGenerate(r, kindPreview)
+		in = previewInput{f: f, ok: ok}
+		if ok {
+			in.req = previewRequest(f, nw)
+		}
+		in.key = settingsKey(in.req, f.cat, "")
+		return in, false
+	}
+	ctx := r.Context()
+	sum, err := s.worlds.Get(ctx, id)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			s.notFound(w, r, u)
+		} else {
+			s.fail(w, r, "read the world for a map preview", err)
+		}
+		return in, true
+	}
+	line, lineOK := mapgen.Line(sum.GameVersion)
+	if !lineOK {
+		// The world is there, but its game has no map settings Foreman knows.
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest, Detail: i18n.M("worlds.generate.preview.failed")})
+		return in, true
+	}
+	cat, catErr := worldCatalogue(s, ctx, id, localeOf(r))
+	if catErr != nil {
+		// The built-in planets come back with the error, and are used (SPEC 5.6).
+		s.log.Warn("read the world's planets for a map preview", "world", id, "error", catErr)
+	}
+	mods, err := s.previewModsKey(id)
+	if err != nil {
+		s.fail(w, r, "read the world's mods for a map preview", err)
+		return in, true
+	}
+	if catErr != nil {
+		// Pictures from the built-in planets never stand for the world's own
+		// once its planet run works.
+		mods += " fallback"
+	}
+	spaceAge := sum.SpaceAge && lineHasSpaceAge(line)
+	form := r.PostForm
+	mk := mapKey(line, spaceAge)
+	mf, files, ok := readMapForm(form, kindPreview, mapInput{
+		Line: line, Cat: cat, MapKey: mk, Version: sum.GameVersion,
+		Stale: form.Get(settingsShown) != "" && form.Get("map_key") != mk,
+	})
+	f := GenerateForm{Name: sum.Name, Typed: sum.GameVersion, Version: sum.GameVersion, SpaceAge: spaceAge, MapForm: mf}
+	if f.Reset || f.Refilled {
+		f.clearErrors()
+		ok = false
+	}
+	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil}
+	if in.ok {
+		in.req = game.PreviewRequest{
+			GameVersion: sum.GameVersion, SpaceAge: spaceAge, Preset: files.Preset, Seed: *files.Seed,
+			MapGenSettings: files.MapGenSettings, MapSettings: files.MapSettings, Size: f.PreviewSize,
+			World: id, KnownPlanets: cat.PlanetNames(),
+		}
+	}
+	in.key = settingsKey(in.req, cat, mods)
+	return in, false
+}
+
+// drawPreview runs the preview for req.Planets and keeps the pictures, in
+// the order of order, the request's planets. The request gets its own write
+// deadline, as the run may outlast the server's.
+func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, key previewKey, order []string, name, seed string) (string, error) {
 	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(previewDeadline)); err != nil {
 		s.log.Warn("set the map preview's write deadline", "error", err)
 	}
@@ -519,8 +636,7 @@ func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.Use
 	if err != nil {
 		return "", err
 	}
-	line, _ := mapgen.Line(req.GameVersion)
-	token, err := s.previews.add(u.ID, key, name, seed, images, mapgen.Builtin(line, req.SpaceAge).PlanetNames())
+	token, err := s.previews.add(u.ID, key, name, seed, images, order)
 	if err != nil {
 		s.log.Error("keep map preview", "error", err)
 		return "", errPreviewNotKept
@@ -548,6 +664,10 @@ func (s *server) previewFailure(r *http.Request, version string, err error) i18n
 			return i18n.M("worlds.generate.preview.oom")
 		}
 	case errors.Is(err, errPreviewNotKept):
+	case errors.Is(err, game.ErrControlModTaken), errors.Is(err, game.ErrPreviewInvalid):
+		// A world mod named like Foreman's helper, or a request the world's
+		// game does not take: the same on every try (SPEC 5.6, ADR 0033).
+		s.log.Warn("map preview refused", "version", version, "error", err)
 	default:
 		if r.Context().Err() == nil {
 			s.log.Error("map preview", "version", version, "error", err)
