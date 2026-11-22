@@ -98,15 +98,23 @@ func modFile(dir, file string) string {
 }
 
 // runControlMod runs m for req in the preview slot (previewRun) and returns
-// the bytes of its output file. info is the mod's info.json, env the
-// container's own environment beside the kind, seed and preset.
+// the bytes of its output file. With req.World set the world's mods load
+// beside m, and a world mod with m's name is ErrControlModTaken. info is the
+// mod's info.json, env the container's own environment beside the kind,
+// seed and preset.
 func (c *Controller) runControlMod(ctx context.Context, req PreviewRequest, m controlMod, info []byte, env []string) ([]byte, error) {
 	var out []byte
-	err := c.previewRun(ctx, req, m.kind, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
+	err := c.previewRun(ctx, req, m.kind, 1, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
 		if err := addControlMod(base, name, m, info); err != nil {
 			return err
 		}
-		if err := container(c.controlModSpec(ref, name, req, m, env)); err != nil {
+		spec := c.controlModSpec(ref, name, req, m, env)
+		mounts, err := c.worldModMounts(base, name, req)
+		if err != nil {
+			return err
+		}
+		spec.HostConfig.Mounts = mounts
+		if err := container(spec); err != nil {
 			return err
 		}
 		b, err := readControlModOutput(base, name, m)
@@ -125,16 +133,16 @@ type modEntry struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// errControlModTaken means the work folder already holds a mod with the
+// ErrControlModTaken means the work folder already holds a mod with the
 // control mod's name, a mod of the world's that would stand in for Foreman's
 // reader.
-var errControlModTaken = errors.New("the world has a mod with the name of a mod Foreman adds to read it")
+var ErrControlModTaken = errors.New("the world has a mod with the name of a mod Foreman adds to read it")
 
 // addControlMod puts the control-only mod in the work folder and enables it
 // in the mod list that is already in the work folder's mods folder
 // (makePreviewDir writes one, and so does Manager.LinkModsInto). A work
 // folder that holds a mod of that name, as a zip, a folder or a list entry,
-// is errControlModTaken.
+// is ErrControlModTaken.
 func addControlMod(base *os.Root, name string, m controlMod, info []byte) error {
 	dir, err := base.OpenRoot(name)
 	if err != nil {
@@ -178,7 +186,7 @@ func checkControlModFree(dir *os.Root, name string) error {
 	for _, e := range entries {
 		mod := strings.TrimSuffix(e.Name(), ".zip")
 		if mod == name || strings.HasPrefix(mod, name+"_") {
-			return fmt.Errorf("%w: %s", errControlModTaken, name)
+			return fmt.Errorf("%w: %s", ErrControlModTaken, name)
 		}
 	}
 	return nil
@@ -200,7 +208,7 @@ func withControlMod(list []byte, name string) ([]byte, error) {
 	for _, raw := range mods {
 		var e modEntry
 		if json.Unmarshal(raw, &e) == nil && e.Name == name {
-			return nil, fmt.Errorf("%w: %s", errControlModTaken, name)
+			return nil, fmt.Errorf("%w: %s", ErrControlModTaken, name)
 		}
 	}
 	entry, err := json.Marshal(modEntry{name, true})

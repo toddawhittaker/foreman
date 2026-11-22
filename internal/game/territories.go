@@ -43,7 +43,8 @@ func territoryInfo(line string) []byte {
 // preview of req would draw (SPEC 5.6). It is a one-off container like
 // Preview's, with the same single slot, stale cleanup, work folder and
 // limits (SPEC 14.3), that creates the map with a control-only mod and
-// leaves a JSON file. req must be for Space Age on a line with Vulcanus, and
+// leaves a JSON file. req must be for Space Age with Vulcanus among its
+// known planets (PreviewRequest.KnownPlanets for a world), and
 // Size no more than territory.MaxSize; Planets is ignored. The result is
 // checked by territory.Parse against the picture's size. Errors are
 // ErrPreviewInvalid, ErrPreviewBusy, ErrPreviewImageMissing,
@@ -67,8 +68,8 @@ func checkTerritories(req PreviewRequest) (line string, err error) {
 	switch {
 	case !ok:
 		return "", fmt.Errorf("%w: there are no territories for Factorio %q", ErrPreviewInvalid, req.GameVersion)
-	case !req.SpaceAge || !slices.Contains(mapgen.Planets(line, true), territoriesPlanet):
-		return "", fmt.Errorf("%w: Factorio %s without Space Age has no demolisher territories", ErrPreviewInvalid, line)
+	case !req.SpaceAge || !slices.Contains(req.knownPlanets(line), territoriesPlanet):
+		return "", fmt.Errorf("%w: Factorio %s has no Vulcanus, so no demolisher territories", ErrPreviewInvalid, line)
 	case req.size() > territory.MaxSize:
 		return "", fmt.Errorf("%w: size %d is more than %d, the most territories are read for", ErrPreviewInvalid, req.size(), territory.MaxSize)
 	}

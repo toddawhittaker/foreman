@@ -778,8 +778,8 @@ func TestAddControlModRefusesATakenName(t *testing.T) {
 				writeTestFile(t, filepath.Join(mods, world.ModListFile), `{"mods":[]}`)
 			}
 			setup(mods)
-			if err := addControlMod(base, "p", resourceMod, nil); !errors.Is(err, errControlModTaken) {
-				t.Errorf("error %v, want errControlModTaken", err)
+			if err := addControlMod(base, "p", resourceMod, nil); !errors.Is(err, ErrControlModTaken) {
+				t.Errorf("error %v, want ErrControlModTaken", err)
 			}
 			if _, err := os.Stat(filepath.Join(mods, resourceMod.dir)); err == nil {
 				t.Error("the control mod was written")
@@ -939,7 +939,7 @@ func TestModSettingDefsRefusesAModNamedLikeTheReader(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_, err := r.c.ModSettingDefs(ctx, r.id)
-			if !errors.Is(err, ErrModSettingsBadOutput) || !errors.Is(err, errControlModTaken) {
+			if !errors.Is(err, ErrModSettingsBadOutput) || !errors.Is(err, ErrControlModTaken) {
 				t.Fatalf("error %v, want ErrModSettingsBadOutput for a taken name", err)
 			}
 			if r.creates() != 0 || len(r.previewFolders()) != 0 {
