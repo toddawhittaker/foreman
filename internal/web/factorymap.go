@@ -72,23 +72,26 @@ const (
 	// once its errors exist.
 	refusedNoSave   = "no_save"
 	refusedArchived = "archived"
+	// refusedConfirmMemory is the page's own: the box is not ticked.
+	refusedConfirmMemory = "confirm_memory"
 )
 
-// refusedMsgs are the words of each refusal; the keys are written out so each
-// is seen where it is used.
-var refusedMsgs = map[string]string{
-	refusedOff:           "factorymap.refused.off",
-	refusedNotSupported:  "factorymap.refused.not_supported",
-	refusedPlayersOnline: "factorymap.refused.players_online",
-	refusedNoSave:        "factorymap.refused.no_save",
-	refusedArchived:      "factorymap.refused.archived",
-}
-
 // refusedMsg is the words for the refusal named name; the zero Msg for a name
-// that is not one.
+// that is not one. Each key is written out, so the catalogue check sees it.
 func refusedMsg(name string) i18n.Msg {
-	if key, ok := refusedMsgs[name]; ok {
-		return i18n.M(key)
+	switch name {
+	case refusedOff:
+		return i18n.M("factorymap.refused.off")
+	case refusedNotSupported:
+		return i18n.M("factorymap.refused.not_supported")
+	case refusedPlayersOnline:
+		return i18n.M("factorymap.refused.players_online")
+	case refusedNoSave:
+		return i18n.M("factorymap.refused.no_save")
+	case refusedArchived:
+		return i18n.M("factorymap.refused.archived")
+	case refusedConfirmMemory:
+		return i18n.M("factorymap.refused.confirm_memory")
 	}
 	return i18n.Msg{}
 }
@@ -430,6 +433,7 @@ func (h *factoryMapHandlers) handleDraw(w http.ResponseWriter, r *http.Request, 
 	status := http.StatusConflict
 	if out.NeedMemory {
 		p.NeedMemory, p.MemoryBytes, status = true, h.b.RunningMemory(sum.ID), http.StatusOK
+		p.Refused = refusedMsg(refusedConfirmMemory)
 	} else {
 		p.Refused = refusedMsg(out.Refused)
 	}
