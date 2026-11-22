@@ -13,7 +13,8 @@ import (
 )
 
 // makePreview does what a preview container was started for: pictures, or
-// a territory or resource run's JSON, or a mod settings run's files.
+// a territory or resource run's JSON, a mod settings run's files, or what a
+// save read leaves.
 func makePreview(c dockertest.Container) error {
 	switch envValue(c.Spec.Env, gameenv.PreviewKind) {
 	case gameenv.KindTerritories:
@@ -22,6 +23,10 @@ func makePreview(c dockertest.Container) error {
 		return writeResources(c)
 	case gameenv.KindModSettings:
 		return writeModSettings(c)
+	case gameenv.KindSavePlayers:
+		return fakeSavePlayers(c)
+	case gameenv.KindFactoryMap:
+		return fakeFactoryMap(c)
 	}
 	return drawPreview(c)
 }

@@ -1,0 +1,1 @@
+-- Foreman's save players mod. Written by task A2 (docs/EPIC-fixes-16.md).

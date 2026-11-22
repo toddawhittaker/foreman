@@ -105,6 +105,8 @@
   </dl>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
+{{- /* The players of the save the world loads (SPEC 8.14); A9's partial. */}}
+{{template "world-players" .}}
 {{- /* Sharing the world comes first: its map string and a favorite made from it, side by side on a wide screen. */}}
 {{- if or .Exchange .CanFavorite}}
 <div class="world-share">
@@ -156,6 +158,8 @@
 {{- end}}
 </div>
 {{- end}}
+{{- /* Export the world as one file (SPEC 5.13); T6's partial. */}}
+{{template "world-export" .}}
 {{- /* Managing the world: version, name and copy share one card of rows, a row's title in the first column, its control in the second (DESIGN 4). */}}
 <div class="panel setting-rows">
 <section class="setting-row" aria-labelledby="version-heading">

@@ -29,6 +29,7 @@ func (c *Controller) Run(ctx context.Context) {
 	// Foreman up (SPEC 8.12).
 	go c.deliverEvents()
 	c.spawn(func() { c.watchOOM(c.ctx) })
+	c.spawn(c.factoryMapLoop) // returns when c.ctx ends (SPEC 5.16)
 	t := time.NewTicker(c.pollInterval)
 	defer t.Stop()
 	for {
