@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -87,10 +89,91 @@ func cannedModSettingDefs() []modSettingDef {
 	return append(defs, hidden, forced, weird)
 }
 
+// FakePlanetMod is the e2e test mod whose world gets one more planet,
+// FakePlanet, with one more resource control, FakeOre, from the fake game's
+// planet run. On 1.1 the control is on the one surface.
+const (
+	FakePlanetMod = "fake-planet"
+	FakePlanet    = "fake-planet"
+	FakeOre       = "fake-ore"
+)
+
+// The planet file's shape, as internal/mapgen/catalogue.go documents it.
+type (
+	fakePlanetFile struct {
+		Planets   []fakePlanetEntry  `json:"planets"`
+		Controls  []fakeControlEntry `json:"autoplace_controls"`
+		Resources []fakeResource     `json:"resources"`
+	}
+	fakePlanetEntry struct {
+		Name      string                        `json:"name"`
+		LocName   []string                      `json:"localised_name"`
+		Controls  map[string]map[string]float64 `json:"autoplace_controls"`
+		Resources []string                      `json:"resources"`
+	}
+	fakeControlEntry struct {
+		Name          string   `json:"name"`
+		Category      string   `json:"category"`
+		Richness      bool     `json:"richness"`
+		CanBeDisabled bool     `json:"can_be_disabled"`
+		Order         string   `json:"order"`
+		LocName       []string `json:"localised_name"`
+	}
+	fakeResource struct {
+		Name    string   `json:"name"`
+		Control string   `json:"control"`
+		LocName []string `json:"localised_name"`
+	}
+)
+
+// cannedPlanets is the planet file for a game line and the enabled mods: the
+// built-in catalogue, so a world without the fake mod looks as before, plus
+// FakePlanet and FakeOre when FakePlanetMod is enabled. Each control's order
+// keeps the built-in order.
+func cannedPlanets(line string, mods []string) fakePlanetFile {
+	cat := mapgen.Builtin(line, slices.Contains(mods, "space-age"))
+	f := fakePlanetFile{Planets: []fakePlanetEntry{}, Controls: []fakeControlEntry{}, Resources: []fakeResource{}}
+	defaults := func() map[string]float64 { return map[string]float64{"frequency": 1, "size": 1, "richness": 1} }
+	seen := map[string]bool{}
+	for _, p := range cat.Planets {
+		entry := fakePlanetEntry{Name: p.Name, LocName: []string{"space-location-name." + p.Name}, Controls: map[string]map[string]float64{}, Resources: []string{}}
+		for _, n := range p.Controls {
+			entry.Controls[n] = defaults()
+			if seen[n] {
+				continue
+			}
+			seen[n] = true
+			c := cat.Controls[n].Control
+			f.Controls = append(f.Controls, fakeControlEntry{
+				Name: c.Name, Category: c.Category, Richness: c.Richness, CanBeDisabled: c.CanBeDisabled,
+				Order: fmt.Sprintf("a%03d", len(f.Controls)), LocName: []string{"autoplace-control-names." + n},
+			})
+		}
+		f.Planets = append(f.Planets, entry)
+	}
+	if slices.Contains(mods, FakePlanetMod) {
+		f.Controls = append(f.Controls, fakeControlEntry{
+			Name: FakeOre, Category: "resource", Richness: true, CanBeDisabled: true,
+			Order: "z", LocName: []string{"autoplace-control-names." + FakeOre},
+		})
+		f.Resources = append(f.Resources, fakeResource{Name: FakeOre, Control: FakeOre, LocName: []string{"entity-name." + FakeOre}})
+		f.Planets = append(f.Planets, fakePlanetEntry{
+			Name: FakePlanet, LocName: []string{"space-location-name." + FakePlanet},
+			Controls:  map[string]map[string]float64{FakeOre: defaults()},
+			Resources: []string{FakeOre},
+		})
+	}
+	if cat.NoPlanets {
+		// 1.1 has no planets: every control is on the one surface.
+		f.Planets = []fakePlanetEntry{}
+	}
+	return f
+}
+
 // writeModSettings is a mod settings definitions run: it leaves
-// gameenv.ModSettingsDefsFile in the work folder and the game's defaults in
-// the work folder's mods folder as world.ModSettingsFile, where the game
-// writes it.
+// gameenv.ModSettingsDefsFile and gameenv.PlanetsFile in the work folder and
+// the game's defaults in the work folder's mods folder as
+// world.ModSettingsFile, where the game writes it.
 func writeModSettings(c dockertest.Container) error {
 	dir := mountSource(c, gameenv.PreviewMount)
 	if dir == "" {
@@ -107,5 +190,11 @@ func writeModSettings(c dockertest.Container) error {
 	if err := os.WriteFile(filepath.Join(mods, world.ModSettingsFile), modSettingsDefaults, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, gameenv.ModSettingsDefsFile), b, world.FileMode) //nolint:gosec // the fake's own test folder
+	if err := os.WriteFile(filepath.Join(dir, gameenv.ModSettingsDefsFile), b, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
+		return err
+	}
+	v := imageVersion(c.Spec.Image)
+	// Plain strings, numbers and maps: marshalling cannot fail.
+	planets, _ := json.Marshal(cannedPlanets(fmt.Sprintf("%d.%d", v[0], v[1]), enabledMods(dir)))
+	return os.WriteFile(filepath.Join(dir, gameenv.PlanetsFile), planets, world.FileMode) //nolint:gosec // the fake's own test folder
 }

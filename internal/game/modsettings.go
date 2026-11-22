@@ -49,15 +49,46 @@ var (
 	ErrModSettingsBadOutput = errors.New("the game did not report the mod settings in a form Foreman can read")
 )
 
+// Why a world's planet list is the built-in one (ModSettingDefs.PlanetsErr).
+// Neither fails the run: the settings are still shown (SPEC 5.6, 14.6).
+var (
+	// ErrPlanetsMissing means the run left no usable planet file.
+	ErrPlanetsMissing = errors.New("the game did not report the planets of this world's mods")
+	// ErrPlanetsRefused means the planet file was past a limit or not of
+	// the expected shape.
+	ErrPlanetsRefused = errors.New("the planets this world's mods report could not be used")
+)
+
 // ModSettingDefs is what one definitions run yields for a world: the
 // setting definitions, the mod-settings.dat the game wrote with every
-// default, and the settings' text in Foreman's eight languages. The value is
-// shared between callers and must not be changed.
+// default, the settings' text in Foreman's eight languages, and the world's
+// planets. The value is shared between callers and must not be changed.
 type ModSettingDefs struct {
 	Defs     modsettings.Definitions
 	Defaults []byte
 	Locale   modsettings.Locale
+	// Catalogues holds the world's planets, controls and resources with
+	// labels in each of Foreman's languages. When the run gave no usable
+	// planet file it holds the built-in catalogue under "en" only, and
+	// PlanetsErr says why (SPEC 5.6).
+	Catalogues map[string]mapgen.Catalogue
+	PlanetsErr error
 }
+
+// Catalogue returns the world's catalogue labelled in lang, or in English
+// when there is none for lang.
+func (d *ModSettingDefs) Catalogue(lang string) mapgen.Catalogue {
+	if c, ok := d.Catalogues[lang]; ok {
+		return c
+	}
+	return d.Catalogues["en"]
+}
+
+// planetsCopy copies the planet file out of the container, after the
+// definitions. A missing file is not a failed run: the Go side falls back to
+// the built-in catalogue, and a missing definitions file is caught when it
+// is read.
+const planetsCopy = `cp ` + previewWrite + `/script-output/` + gameenv.PlanetsFile + ` ` + gameenv.PreviewMount + `/` + gameenv.PlanetsFile + ` 2>/dev/null || :`
 
 // modSettingsMod is the definitions run's control mod. It needs no params
 // file; the container's script runs a no-op where the others write theirs.
@@ -254,7 +285,8 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 			return name, err
 		},
 	}
-	var defsJSON, defaults []byte
+	var defsJSON, defaults, planetsJSON []byte
+	var planetsErr error
 	err = c.previewRunIn(ctx, plan, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
 		if err := addControlMod(base, name, modSettingsMod, modSettingsInfo(line)); err != nil {
 			return err
@@ -265,11 +297,16 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 		}
 		spec := c.controlModSpec(ref, name, req, modSettingsMod, nil)
 		spec.HostConfig.Mounts = mounts
+		spec.Cmd[len(spec.Cmd)-1] += "\n" + planetsCopy
 		if err := container(spec); err != nil {
 			return err
 		}
 		defsJSON, defaults, err = readModSettingsOutput(base, name)
-		return err
+		if err != nil {
+			return err
+		}
+		planetsJSON, planetsErr = readPlanetsOutput(base, name)
+		return nil
 	})
 	if err != nil {
 		return nil, "", modSettingsError(err)
@@ -284,7 +321,50 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	// The control mod has no settings, but a file that lists one is not
 	// shown.
 	defs = slices.DeleteFunc(defs, func(d modsettings.Definition) bool { return d.Mod == modsettingsmod.ModName })
-	return &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: c.modSettingsLocale(id, defs, localeCfgs)}, key, nil
+	sections := c.localeSections(id, localeCfgs)
+	out := &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: modSettingsLocale(sections, defs)}
+	out.Catalogues, out.PlanetsErr = worldCatalogues(planetsJSON, planetsErr, sections, line, meta.SpaceAge)
+	if out.PlanetsErr != nil {
+		c.log.Warn("using the built-in planets for the world", "world", id, "error", out.PlanetsErr)
+	}
+	return out, key, nil
+}
+
+// worldCatalogues parses the run's planet file once for each of Foreman's
+// languages, each with English behind it. A file that is missing or refused
+// gives the built-in catalogue and the reason (SPEC 5.6, 14.6).
+func worldCatalogues(data []byte, readErr error, sections map[string]modsettings.LocaleSections, line string, spaceAge bool) (map[string]mapgen.Catalogue, error) {
+	builtin := func(err error) (map[string]mapgen.Catalogue, error) {
+		return map[string]mapgen.Catalogue{"en": mapgen.Builtin(line, spaceAge)}, err
+	}
+	if readErr != nil {
+		return builtin(fmt.Errorf("%w: %w", ErrPlanetsMissing, readErr))
+	}
+	out := map[string]mapgen.Catalogue{}
+	for lang := range modsettings.FactorioLocales {
+		layers := []modsettings.LocaleSections{sections[lang]}
+		if lang != "en" && sections["en"] != nil {
+			layers = append(layers, sections["en"])
+		}
+		cat, err := mapgen.ParseWorldPlanets(data, layers...)
+		if err != nil {
+			return builtin(fmt.Errorf("%w: %w", ErrPlanetsRefused, err))
+		}
+		out[lang] = cat
+	}
+	return out, nil
+}
+
+// readPlanetsOutput reads the planet file the run left in the work folder,
+// under the same rules as the definitions: a regular file within its limit
+// (SPEC 14.6).
+func readPlanetsOutput(base *os.Root, dir string) ([]byte, error) {
+	root, err := base.OpenRoot(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	return world.ReadSmallFile(root, gameenv.PlanetsFile, mapgen.MaxPlanetFileBytes)
 }
 
 // makeModSettingsDir makes the run's work folder: the game's config and the
@@ -417,16 +497,11 @@ func modSettingsError(err error) error {
 	return err
 }
 
-// modSettingsLocale builds the settings' names and descriptions in Foreman's
-// languages from the enabled mods' raw locale files. Locale text is
-// decoration: a file that does not parse is logged and skipped, so a world
-// shows the setting names instead. Files merge in the order of mod name, then
-// as given. As in the game, a setting's own localised name or description,
-// when it has one, is the text: resolved in the language with English behind
-// it key by key, and empty when it does not resolve. Only a setting without
-// one takes its [mod-setting-name] or [mod-setting-description] entry
-// (SPEC 9.6). The page falls back to English, then to the setting's name.
-func (c *Controller) modSettingsLocale(id string, defs modsettings.Definitions, files map[string]map[string][][]byte) modsettings.Locale {
+// localeSections merges the enabled mods' raw locale files into sections for
+// each of Foreman's languages. Locale text is decoration: a file that does
+// not parse is logged and skipped, so a world shows names instead. Files
+// merge in the order of mod name, then as given.
+func (c *Controller) localeSections(id string, files map[string]map[string][][]byte) map[string]modsettings.LocaleSections {
 	mods := make([]string, 0, len(files))
 	for mod := range files {
 		mods = append(mods, mod)
@@ -449,6 +524,17 @@ func (c *Controller) modSettingsLocale(id string, defs modsettings.Definitions, 
 			all[lang] = secs
 		}
 	}
+	return all
+}
+
+// modSettingsLocale builds the settings' names and descriptions in Foreman's
+// languages from the mods' merged locale sections. As in the game, a
+// setting's own localised name or description, when it has one, is the text:
+// resolved in the language with English behind it key by key, and empty when
+// it does not resolve. Only a setting without one takes its
+// [mod-setting-name] or [mod-setting-description] entry (SPEC 9.6). The page
+// falls back to English, then to the setting's name.
+func modSettingsLocale(all map[string]modsettings.LocaleSections, defs modsettings.Definitions) modsettings.Locale {
 	out := modsettings.Locale{}
 	for lang, secs := range all {
 		texts := map[string]modsettings.LocaleText{}
