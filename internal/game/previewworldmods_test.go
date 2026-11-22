@@ -124,8 +124,8 @@ func TestPreviewRunsRefuseAWorldModNamedLikeTheControlMod(t *testing.T) {
 			} else {
 				_, err = r.c.Resources(context.Background(), worldRequest(id), "nauvis")
 			}
-			if !errors.Is(err, errControlModTaken) {
-				t.Fatalf("error %v, want errControlModTaken", err)
+			if !errors.Is(err, ErrControlModTaken) {
+				t.Fatalf("error %v, want ErrControlModTaken", err)
 			}
 			if n := len(r.calls("POST /containers/create")); n != 0 || len(r.previewFolders()) != 0 {
 				t.Errorf("%d containers made, folders %v", n, r.previewFolders())
@@ -211,13 +211,13 @@ func TestPreviewWithAWorldRefusals(t *testing.T) {
 	q := worldRequest(id)
 	q.SpaceAge = false
 	q.Planets = []string{"nauvis"}
-	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, world.ErrBusy) {
-		t.Errorf("another Space Age: error %v, want world.ErrBusy", err)
+	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, ErrPreviewInvalid) {
+		t.Errorf("another Space Age: error %v, want ErrPreviewInvalid", err)
 	}
 	q = worldRequest(id)
 	q.GameVersion = "2.0.77"
-	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, world.ErrBusy) {
-		t.Errorf("another game version: error %v, want world.ErrBusy", err)
+	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, ErrPreviewInvalid) {
+		t.Errorf("another game version: error %v, want ErrPreviewInvalid", err)
 	}
 	restore := world.SetLinkLimitsForTest(1, 1<<20)
 	defer restore()

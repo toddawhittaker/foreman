@@ -417,9 +417,9 @@ func writePreviewFiles(dir *os.Root, req PreviewRequest) error {
 // makePreviewDir writes them, the world's mods linked in as for the mod
 // settings run, and copies of its mod-list.json and mod-settings.dat. It
 // never holds the world's own folder, and it holds the world's lock only
-// while it reads the world. A world that server control holds, or whose
-// game version or Space Age is not the request's, is world.ErrBusy; mods
-// past the link caps are world.ErrModsTooBig. The run mounts the linked
+// while it reads the world. A world that server control holds is
+// world.ErrBusy; one whose game version or Space Age is not the request's
+// is ErrPreviewInvalid; mods past the link caps are world.ErrModsTooBig. The run mounts the linked
 // zips read-only with worldModMounts.
 func (c *Controller) makeWorldPreviewDir(base *os.Root, req PreviewRequest) (string, error) {
 	name, err := newWorkDir(base)
@@ -448,8 +448,7 @@ func (c *Controller) makeWorldPreviewDir(base *os.Root, req PreviewRequest) (str
 		return fail(err)
 	}
 	if meta.GameVersion != req.GameVersion || meta.SpaceAge != req.SpaceAge {
-		// The image and the known planets were chosen for the world as it was.
-		return fail(world.ErrBusy)
+		return fail(fmt.Errorf("%w: the world is Factorio %s with Space Age %t", ErrPreviewInvalid, meta.GameVersion, meta.SpaceAge))
 	}
 	if err := c.worlds.LinkModsInto(req.World, filepath.Join(c.previewPath(), name)); err != nil {
 		return fail(fmt.Errorf("could not put the world's mods in the work folder: %w", err))
