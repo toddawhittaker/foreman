@@ -178,7 +178,7 @@ func openFolder(parent *os.Root, name string, create bool) (*os.Root, error) {
 
 // readFacts reads and checks factorymap.json from the world's folder.
 func readFacts(root *os.Root) (facts, error) {
-	f, err := root.Open(factsFile)
+	f, err := openRegular(root, factsFile)
 	if err != nil {
 		return facts{}, err
 	}
@@ -429,11 +429,11 @@ func (s *Store) openPNG(surface int, layer Category) (*os.File, error) {
 	return f, nil
 }
 
-// openRegular opens a stored picture without blocking and refuses anything
-// but a regular file, so a named pipe planted in the folder cannot hang a
-// reader.
+// openRegular opens a stored file without blocking and refuses a link or
+// anything but a regular file, so a named pipe planted in the folder cannot
+// hang a reader.
 func openRegular(root *os.Root, name string) (*os.File, error) {
-	f, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	f, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return nil, err
 	}
