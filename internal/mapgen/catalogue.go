@@ -5,8 +5,10 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
+	"math"
 	"regexp"
 	"slices"
+	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/modsettings"
 )
@@ -19,17 +21,36 @@ const (
 	MaxControls        = 512
 	MaxPlanetControls  = 128
 	MaxResources       = 512
+	// MaxOrderChars bounds a control's sort key.
+	MaxOrderChars = 64
+	// MaxControlMultiplier is the largest frequency, size or richness the
+	// map form offers (600%); a planet default above it is not used.
+	MaxControlMultiplier = 6
 )
 
 var (
 	errPlanetsSize  = errors.New("mapgen: the planet file is too large")
 	errPlanetsJSON  = errors.New("mapgen: the planet file is not valid")
 	errPlanetsCount = errors.New("mapgen: the planet file lists too many entries")
+	errPlanetsNone  = errors.New("mapgen: the planet file has no usable planet")
 )
 
 // nameRE is the shape Foreman accepts for a planet, control or resource name
 // from a world's mods; others are left out and counted.
 var nameRE = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
+
+// validCategory holds the control categories the game has (SPEC 14.6); a
+// control of any other category is left out.
+var validCategory = map[string]bool{CategoryResource: true, CategoryTerrain: true, CategoryCliff: true, "enemy": true}
+
+// inRange returns v when it is finite and a value the form can show, else
+// nil, which means the game's default (SPEC 14.6).
+func inRange(v *float64) *float64 {
+	if v == nil || math.IsNaN(*v) || *v < 0 || *v > MaxControlMultiplier {
+		return nil
+	}
+	return v
+}
 
 // Catalogue is what a world's map generator offers: its planets, each with
 // its autoplace controls, and the resources the mods define. Builtin gives
@@ -236,13 +257,20 @@ func (l *luaList[T]) UnmarshalJSON(b []byte) error {
 
 // ParseWorldPlanets reads a world's planet file under the SPEC 14.6 limits: a file over
 // MaxPlanetFileBytes or any count limit, or not of the shape above, is
-// refused whole. A planet, control or resource whose name is not
+// refused whole. line is the world's game line, as Builtin takes it: on 1.1
+// the file's controls make the one surface "nauvis"; on any other line a
+// file with no usable planet is refused, so the caller falls back to the
+// built-in planets. A planet, control or resource whose name is not
 // ^[a-z0-9_-]{1,64}$, or repeats one before it, is left out and counted
-// in Dropped, as is a planet's control the file does not define. Labels
+// in Dropped, as is a planet's control the file does not define and a
+// control whose category is not resource, terrain, cliff or enemy or whose
+// order is over MaxOrderChars. A planet default outside 0 to
+// MaxControlMultiplier is ignored, so the game's default is used. A
+// resource names its control only when some planet uses it. Labels
 // are resolved from the locale sections, stripped of rich text and cut to
 // 100 characters; a name that does not resolve is its own label. A planet's
 // controls are in the game's order (order, then name).
-func ParseWorldPlanets(data []byte, sections ...modsettings.LocaleSections) (Catalogue, error) {
+func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleSections) (Catalogue, error) {
 	if len(data) > MaxPlanetFileBytes {
 		return Catalogue{}, errPlanetsSize
 	}
@@ -255,11 +283,11 @@ func ParseWorldPlanets(data []byte, sections ...modsettings.LocaleSections) (Cat
 		return Catalogue{}, errPlanetsCount
 	}
 	for _, p := range raw.Planets {
-		if len(p.Controls) > MaxPlanetControls {
+		if len(p.Controls) > MaxPlanetControls || len(p.Resources) > MaxResources {
 			return Catalogue{}, errPlanetsCount
 		}
 	}
-	c := Catalogue{NoPlanets: len(raw.Planets) == 0, Controls: map[string]CatalogueControl{}}
+	c := Catalogue{NoPlanets: line == "1.1", Controls: map[string]CatalogueControl{}}
 	label := func(loc json.RawMessage, name string) string {
 		if s, ok := modsettings.ResolveLocalised(loc, sections...); ok {
 			if s = modsettings.StripRichText(s); s != "" {
@@ -271,7 +299,8 @@ func ParseWorldPlanets(data []byte, sections ...modsettings.LocaleSections) (Cat
 	defined := map[string]CatalogueControl{}
 	var order []string
 	for _, r := range raw.Controls {
-		if _, dup := defined[r.Name]; dup || !nameRE.MatchString(r.Name) {
+		if _, dup := defined[r.Name]; dup || !nameRE.MatchString(r.Name) ||
+			!validCategory[r.Category] || utf8.RuneCountInString(r.Order) > MaxOrderChars {
 			c.Dropped++
 			continue
 		}
@@ -291,6 +320,9 @@ func ParseWorldPlanets(data []byte, sections ...modsettings.LocaleSections) (Cat
 	}
 	seen := map[string]bool{}
 	for _, r := range raw.Planets {
+		if c.NoPlanets {
+			break
+		}
 		if seen[r.Name] || !nameRE.MatchString(r.Name) {
 			c.Dropped++
 			continue
@@ -303,17 +335,22 @@ func ParseWorldPlanets(data []byte, sections ...modsettings.LocaleSections) (Cat
 				continue
 			}
 			p.Controls = append(p.Controls, n)
-			p.Defaults[n] = d
+			p.Defaults[n] = ControlDefault{Frequency: inRange(d.Frequency), Size: inRange(d.Size), Richness: inRange(d.Richness)}
 		}
 		slices.SortFunc(p.Controls, byOrder)
+		have := map[string]bool{}
 		for _, n := range r.Resources {
-			if nameRE.MatchString(n) && !slices.Contains(p.Resources, n) {
+			if nameRE.MatchString(n) && !have[n] {
+				have[n] = true
 				p.Resources = append(p.Resources, n)
 			} else {
 				c.Dropped++
 			}
 		}
 		c.Planets = append(c.Planets, p)
+	}
+	if !c.NoPlanets && len(c.Planets) == 0 {
+		return Catalogue{}, errPlanetsNone
 	}
 	for _, p := range c.Planets {
 		for _, n := range p.Controls {
@@ -331,7 +368,7 @@ func ParseWorldPlanets(data []byte, sections ...modsettings.LocaleSections) (Cat
 		}
 		seenRes[r.Name] = true
 		ctl := r.Control
-		if _, ok := defined[ctl]; !ok {
+		if _, ok := c.Controls[ctl]; !ok {
 			ctl = ""
 		}
 		c.Resources = append(c.Resources, Resource{Name: r.Name, Control: ctl, Label: label(r.LocName, r.Name)})

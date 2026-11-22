@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/modsettings"
 )
@@ -47,7 +48,7 @@ const twoX = `{
   {"name": "corrundum", "autoplace_controls": {"calcite": {}, "missing": {}}},
   {"name": "Bad Name", "autoplace_controls": {}},
   {"name": "maraxsis-trench", "autoplace_controls": {}},
-  {"name": "moshine", "autoplace_controls": {"steam_geyser": {"richness": 150}}, "extra": [1,2]}
+  {"name": "moshine", "autoplace_controls": {"steam_geyser": {"richness": 4}}, "extra": [1,2]}
  ],
  "autoplace_controls": [
   {"name": "vulcanus_volcanism", "category": "terrain", "can_be_disabled": false, "order": "b"},
@@ -65,7 +66,7 @@ func TestParseWorldPlanets2x(t *testing.T) {
 		"space-location-name":     {"vulcanus": "[planet=vulcanus] Vulcanus"},
 		"autoplace-control-names": {"calcite": "[entity=calcite] Calcite"},
 	}
-	c, err := ParseWorldPlanets([]byte(twoX), sec)
+	c, err := ParseWorldPlanets("2.0", []byte(twoX), sec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +98,7 @@ func TestParseWorldPlanets2x(t *testing.T) {
 	if len(c.Planets[2].Controls) != 0 {
 		t.Error("trench should have no controls")
 	}
-	if r := c.Planets[3].Defaults["steam_geyser"].Richness; r == nil || *r != 150 {
+	if r := c.Planets[3].Defaults["steam_geyser"].Richness; r == nil || *r != 4 {
 		t.Errorf("moshine steam_geyser richness = %v", r)
 	}
 	if cc := c.Controls["vulcanus_volcanism"]; cc.CanBeDisabled || cc.Category != CategoryTerrain {
@@ -113,7 +114,7 @@ func TestParseWorldPlanets11(t *testing.T) {
 	  {"name": "stone", "category": "resource", "richness": true, "order": "b"},
 	  {"name": "iron-ore", "category": "resource", "richness": true, "order": "a"}],
 	 "resources": [{"name": "iron-ore", "control": "iron-ore"}, {"name": "x", "control": "nope"}]}`
-	c, err := ParseWorldPlanets([]byte(data))
+	c, err := ParseWorldPlanets("1.1", []byte(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +138,7 @@ func TestParseWorldPlanetsHostile(t *testing.T) {
 		return "[" + strings.Join(parts, ",") + "]"
 	}
 	ctl := func(i int) string { return fmt.Sprintf(`{"name":"c%d"}`, i) }
-	perPlanet := "{" + strings.TrimSuffix(strings.Repeat(`"a":{},`, 1), ",")
+	perPlanet := `{"a":{}`
 	for i := range MaxPlanetControls + 1 {
 		perPlanet += fmt.Sprintf(`,"c%d":{}`, i)
 	}
@@ -158,22 +159,120 @@ func TestParseWorldPlanetsHostile(t *testing.T) {
 		"empty":          ``,
 	}
 	for name, data := range cases {
-		if _, err := ParseWorldPlanets([]byte(data)); err == nil {
+		if _, err := ParseWorldPlanets("2.0", []byte(data)); err == nil {
 			t.Errorf("%s: accepted", name)
 		} else if strings.Contains(err.Error(), "nauvis") {
 			t.Errorf("%s: error carries file text", name)
 		}
 	}
 	// Bad names are left out and counted, not refused.
-	c, err := ParseWorldPlanets([]byte(`{"autoplace_controls":[{"name":"` + strings.Repeat("a", 65) +
-		`"},{"name":"ok"},{"name":"ok"},{"name":"<script>"},{"name":""}]}`))
+	const res = `,"category":"resource"`
+	c, err := ParseWorldPlanets("1.1", []byte(`{"autoplace_controls":[{"name":"`+strings.Repeat("a", 65)+
+		`"`+res+`},{"name":"ok"`+res+`},{"name":"ok"`+res+`},{"name":"<script>"`+res+`},{"name":""`+res+`}]}`))
 	if err != nil || c.Dropped != 4 || len(c.Controls) != 1 {
 		t.Errorf("bad names: err=%v dropped=%d controls=%d", err, c.Dropped, len(c.Controls))
 	}
 	// A long localised name is cut.
-	c, err = ParseWorldPlanets([]byte(`{"autoplace_controls":[{"name":"a","localised_name":["s.a"]}]}`),
+	c, err = ParseWorldPlanets("1.1", []byte(`{"autoplace_controls":[{"name":"a","category":"resource","localised_name":["s.a"]}]}`),
 		modsettings.LocaleSections{"s": {"a": strings.Repeat("x", 300)}})
 	if err != nil || len([]rune(c.Controls["a"].Label)) != modsettings.MaxLabelChars {
 		t.Errorf("long label: err=%v label len=%d", err, len(c.Controls["a"].Label))
+	}
+}
+
+// A planet's own resources list is capped, and a file near the byte limit
+// full of distinct names is refused quickly (SPEC 14.6).
+func TestParseWorldPlanetsRefusesLongResourceList(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(`{"planets":[{"name":"p","resources":[`)
+	for i := range 100000 {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, `"r%d"`, i)
+	}
+	b.WriteString(`]}]}`)
+	if b.Len() > MaxPlanetFileBytes {
+		t.Fatalf("test file is %d bytes, over the limit", b.Len())
+	}
+	start := time.Now()
+	if _, err := ParseWorldPlanets("2.0", []byte(b.String())); err == nil {
+		t.Error("a planet with too many resources was accepted")
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Errorf("took %v", d)
+	}
+}
+
+func TestParseWorldPlanetsControlFields(t *testing.T) {
+	long := strings.Repeat("o", 65)
+	data := `{"planets":[{"name":"p","autoplace_controls":{"a":{},"b":{},"c":{},"d":{},"e":{},"f":{},"g":{},"h":{}}}],
+	 "autoplace_controls":[
+	  {"name":"a","category":"resource"},{"name":"b","category":"terrain"},
+	  {"name":"c","category":"cliff"},{"name":"d","category":"enemy"},
+	  {"name":"e","category":"bogus"},{"name":"f"},
+	  {"name":"g","category":"resource","order":"` + long + `"},
+	  {"name":"h","category":"resource","order":"` + long[:64] + `"}]}`
+	c, err := ParseWorldPlanets("2.0", []byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// e, f and g are left out (3), and the planet's three references to them
+	// are counted too (3).
+	if c.Dropped != 6 {
+		t.Errorf("Dropped = %d, want 6", c.Dropped)
+	}
+	if got := c.Planets[0].Controls; !slices.Equal(got, []string{"a", "b", "c", "d", "h"}) {
+		t.Errorf("planet controls = %v", got)
+	}
+}
+
+func TestParseWorldPlanetsDefaultsInRange(t *testing.T) {
+	data := `{"planets":[{"name":"p","autoplace_controls":{
+	  "a":{"frequency":0,"size":6,"richness":6},
+	  "b":{"frequency":6.5,"size":-1,"richness":150},
+	  "c":{"frequency":0.5}}}],
+	 "autoplace_controls":[{"name":"a","category":"resource"},{"name":"b","category":"resource"},{"name":"c","category":"resource"}]}`
+	c, err := ParseWorldPlanets("2.0", []byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := c.Planets[0].Defaults
+	if a := d["a"]; a.Frequency == nil || *a.Frequency != 0 || a.Size == nil || *a.Size != 6 || a.Richness == nil || *a.Richness != 6 {
+		t.Errorf("in-range values were changed: %+v", a)
+	}
+	if b := d["b"]; b.Frequency != nil || b.Size != nil || b.Richness != nil {
+		t.Errorf("out-of-range values were kept: %+v", b)
+	}
+	if cc := d["c"]; cc.Frequency == nil || *cc.Frequency != 0.5 || cc.Size != nil {
+		t.Errorf("c = %+v", cc)
+	}
+}
+
+// The line decides whether the file describes planets; an empty planet list
+// on 2.x is a file that did not export them, not a 1.1 world (SPEC 14.6).
+func TestParseWorldPlanetsLine(t *testing.T) {
+	ctl := `"autoplace_controls":[{"name":"a","category":"resource"}]`
+	for _, data := range []string{`{` + ctl + `}`, `{"planets":{},` + ctl + `}`, `{"planets":[{"name":"Bad Name"}],` + ctl + `}`} {
+		if _, err := ParseWorldPlanets("2.0", []byte(data)); err == nil {
+			t.Errorf("2.x file with no usable planet was accepted: %s", data)
+		}
+	}
+	c, err := ParseWorldPlanets("1.1", []byte(`{`+ctl+`}`))
+	if err != nil || !c.NoPlanets || len(c.Planets) != 1 || c.Planets[0].Name != "nauvis" {
+		t.Errorf("1.1: err=%v catalogue=%+v", err, c)
+	}
+}
+
+func TestParseWorldPlanetsResourceControlMustBeUsed(t *testing.T) {
+	data := `{"planets":[{"name":"p","autoplace_controls":{"used":{}}}],
+	 "autoplace_controls":[{"name":"used","category":"resource"},{"name":"idle","category":"resource"}],
+	 "resources":[{"name":"r1","control":"used"},{"name":"r2","control":"idle"}]}`
+	c, err := ParseWorldPlanets("2.0", []byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Resources[0].Control != "used" || c.Resources[1].Control != "" {
+		t.Errorf("resources = %+v", c.Resources)
 	}
 }
