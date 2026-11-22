@@ -183,6 +183,27 @@ func TestSavePlayersReadsAStoppedWorldByItself(t *testing.T) {
 	}
 }
 
+// Config.NoAutoPlayersRead, which test rigs set: a view starts no read, and
+// "Read again" still does (SPEC 8.14).
+func TestSavePlayersNoAutoReadOnlyByClick(t *testing.T) {
+	r := newSeedRig(t)
+	r.c.seeds.noAuto = true
+	v, err := r.c.SavePlayers(context.Background(), r.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.State != SavePlayersNone || r.c.seedRunning(r.id) {
+		t.Fatalf("state %q, running %v: a view started a read", v.State, r.c.seedRunning(r.id))
+	}
+	if err := r.c.ReadSavePlayersAgain(context.Background(), r.id, Actor{Username: "alice"}); err != nil {
+		t.Fatal(err)
+	}
+	r.waitIdle()
+	if r.count() != 1 {
+		t.Fatalf("%d reads after the click, want 1", r.count())
+	}
+}
+
 func TestSavePlayersMatchingRecordIsNotReadAgain(t *testing.T) {
 	r := newSeedRig(t)
 	r.view()

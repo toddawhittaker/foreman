@@ -73,6 +73,8 @@ type seedState struct {
 	// gameTime is the running world's last /time reading (SPEC 8.15). Nil
 	// means liveGameTime; tests replace it.
 	gameTime func(id string) (d time.Duration, at time.Time, ok bool)
+	// noAuto is Config.NoAutoPlayersRead: only a click starts a read.
+	noAuto bool
 }
 
 // SavePlayersView is what the web layer shows of a world's players record.
@@ -124,7 +126,7 @@ func (c *Controller) SavePlayers(ctx context.Context, id string) (SavePlayersVie
 	reading := c.seedRunning(id)
 	// A record from a newer Foreman is replaced only on a click, so a
 	// downgrade does not lose it.
-	if !reading && due && !newer && c.noGameRuns() {
+	if !reading && due && !newer && !c.seeds.noAuto && c.noGameRuns() {
 		reading = c.startSeed(id)
 	}
 	v := SavePlayersView{State: SavePlayersNone, Save: target.Name}
