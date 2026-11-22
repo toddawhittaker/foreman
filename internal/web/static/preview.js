@@ -105,6 +105,7 @@ startPreviewWithForm(() => {
     setStatus(false);
     endPrep(strings["js.preview.prepare_canceled"]);
     dropTerritories();
+    endChart();
     clearAmounts(places.page);
     clearAmounts(places.large);
   }
@@ -435,6 +436,99 @@ startPreviewWithForm(() => {
     }
     if (say) announce(error ? words(error) : strings["js.generate.preview_ready"]);
   }
+
+  // The real-game picture (SPEC 5.6, 14.3): one planet drawn from a real game
+  // on request, in the preview's turn. While it draws the form's actions wait,
+  // as they do for Preview map, and the section is busy; a new draw or a change
+  // of settings drops it. The result is said once. It takes the fast
+  // picture's place until "Back to the fast preview".
+  const chartActions = "#preview-button, #generate-button, #generate-default, #newmap-save, #preview-chart-button";
+  let chartCtrl = null;
+  function chartBusy(on) {
+    const wait = el("preview-chart-wait");
+    if (wait) {
+      wait.hidden = !on;
+      // The wait line shows as htmx shows Preview map's own.
+      wait.classList.toggle("htmx-request", on);
+    }
+    const slot = el("preview");
+    if (slot) slot.setAttribute("aria-busy", on ? "true" : "false");
+    document.querySelectorAll(chartActions).forEach((b) => {
+      if (on) b.setAttribute("aria-disabled", "true");
+      else b.removeAttribute("aria-disabled");
+    });
+  }
+  function endChart() {
+    if (!chartCtrl) return;
+    chartCtrl.abort();
+    chartCtrl = null;
+    chartBusy(false);
+  }
+  function fastShown(on) {
+    const list = document.querySelector("#preview section > ul.pictures");
+    // The list's own display outranks the hidden attribute.
+    if (list) list.style.display = on ? "" : "none";
+    const offer = el("preview-chart-offer");
+    if (offer) offer.hidden = !on;
+  }
+  // A busy action does nothing while the picture draws.
+  document.addEventListener("click", (e) => {
+    if (chartCtrl && e.target.closest && e.target.closest(chartActions)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true);
+  document.addEventListener("click", async (e) => {
+    if (!e.target.closest) return;
+    if (e.target.closest("#preview-chart-back")) {
+      el("preview-chart").replaceChildren();
+      fastShown(true);
+      // The button pressed is gone, so focus goes to the one that drew the picture.
+      const draw = el("preview-chart-button");
+      if (draw) draw.focus();
+      return;
+    }
+    if (!e.target.closest("#preview-chart-button") || chartCtrl) return;
+    const box = el("preview-chart-box");
+    const body = new URLSearchParams(new FormData(formEl()));
+    body.set("planet", box.dataset.planet);
+    const ctrl = new AbortController();
+    chartCtrl = ctrl;
+    el("preview-chart").replaceChildren();
+    chartBusy(true);
+    const wait = el("preview-chart-wait");
+    if (wait) announce(words(wait));
+    let html = "";
+    try {
+      html = await inTurn(box.dataset.path, body, ctrl.signal);
+    } catch {
+      if (ctrl.signal.aborted) return;
+    }
+    if (chartCtrl !== ctrl) return;
+    chartCtrl = null;
+    chartBusy(false);
+    const slot = el("preview-chart");
+    const reply = html && new DOMParser().parseFromString(html, "text/html").getElementById("chart-reply");
+    if (!reply) {
+      const msg = document.createElement("div");
+      msg.className = "message message--error";
+      const p = document.createElement("p");
+      p.textContent = box.dataset.failed;
+      msg.append(p);
+      slot.replaceChildren(msg);
+      announce(box.dataset.failed);
+      return;
+    }
+    slot.replaceChildren(...reply.childNodes);
+    if (slot.querySelector("img")) {
+      fastShown(false);
+      el("preview-chart-back").focus();
+      announce(box.dataset.ready);
+      return;
+    }
+    const error = slot.querySelector(".message");
+    if (error) announce(words(error));
+  });
 
   // The newest previewed seed, for a seed box that had focus when it came.
   let seedToFill = "";

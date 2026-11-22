@@ -105,6 +105,11 @@ type previewStore struct {
 	now    func() time.Time
 	byUser map[int64]*previewEntry
 	order  []int64 // least recently added to first
+	// charts are the real-game pictures, oldest first, kept apart from the
+	// previews: no time limit drops them (SPEC 5.6).
+	charts []*chartEntry
+	// charting are the users whose real-game picture is being drawn (SPEC 14.3).
+	charting map[int64]bool
 }
 
 func newPreviewStore(now func() time.Time) *previewStore {
@@ -285,6 +290,9 @@ func (p *previewStore) keepLocked(user int64, e *previewEntry, name string) stri
 	for len(p.order) > 0 && (len(p.order) >= maxPreviews || p.totalLocked()+e.bytes > maxPreviewBytes) {
 		p.dropLocked(p.order[0])
 	}
+	for len(p.charts) > 0 && p.totalLocked()+e.bytes > maxPreviewBytes {
+		p.charts = p.charts[1:]
+	}
 	p.byUser[user] = e
 	p.order = append(p.order, user)
 	return e.token
@@ -329,7 +337,7 @@ func (p *previewStore) dropLocked(user int64) {
 }
 
 func (p *previewStore) totalLocked() int {
-	n := 0
+	n := p.chartBytesLocked()
 	for _, e := range p.byUser {
 		n += e.bytes
 	}
@@ -372,6 +380,11 @@ type PreviewView struct {
 	// OneColor names the pictures that are almost all one color: what is
 	// near the start lies outside the map (SPEC 5.6).
 	OneColor []MapGenName
+	// ChartOffered is true on a world's preview whose game can draw a planet
+	// from a real game (SPEC 5.6); Chart is that picture, set only in the
+	// answer to its own request.
+	ChartOffered bool
+	Chart        *ChartView
 }
 
 // LimitTip is the toggletip on what the fast preview cannot show.
@@ -424,6 +437,7 @@ func (s *server) previewRoutes() {
 	s.handleUpload("POST "+pathTerritories, fixedLimit(generateFormLimit), s.requireUser(s.handleGenerateTerritories))
 	s.handleUpload("POST "+pathResources, fixedLimit(generateFormLimit), s.requireUser(s.handleGenerateResources))
 	s.mux.HandleFunc("GET "+pathPicture, s.requireUser(s.handlePicture))
+	s.chartRoutes()
 	// A zip of five planets is several MB; a slow link needs the idle deadline.
 	s.handleLong("GET "+pathPictureDownload, s.requireUser(s.handlePictureDownload))
 	s.handleLong("GET "+pathPicturesZip, s.requireUser(s.handlePicturesZip))
@@ -491,6 +505,9 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	req := in.req
 	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10), Size: f.PreviewSize, ShowsAll: len(planets) > 1,
 		OfWorld: in.world}
+	if _, drawer := s.chartDrawer(); drawer && in.world && in.ok {
+		view.ChartOffered = game.ChartSupported(req.GameVersion)
+	}
 	switch {
 	case errors.Is(in.catErr, game.ErrControlModTaken):
 		view.Fallback = i18n.M("mapgen.preview.control_mod_taken")
@@ -567,6 +584,8 @@ type previewInput struct {
 	// planet list could not be read.
 	world  bool
 	catErr error
+	// mods is the world's mods key, as the store's keys hold it.
+	mods string
 }
 
 // worldCatalogue is a world's planets and controls, from its mod-settings
@@ -663,7 +682,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 			World: id, KnownPlanets: cat.PlanetNames(),
 		}
 	}
-	in.key = settingsKey(in.req, cat, mods)
+	in.key, in.mods = settingsKey(in.req, cat, mods), mods
 	return in, false
 }
 

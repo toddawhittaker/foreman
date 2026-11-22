@@ -230,5 +230,18 @@
   "mapgen.exchange.reason.no_settings": "Der neueste Speicherstand der Welt enthält keine Karteneinstellungen, die Foreman lesen kann. Deshalb gibt es keinen Code.",
   "mapgen.exchange.reason.unsupported": "Diese Karte stammt aus Factorio {version}. Dafür kann Foreman keinen Code erzeugen.",
   "mapgen.exchange.reason.unreadable": "Foreman konnte den neuesten Speicherstand der Welt nicht lesen. Deshalb gibt es keinen Code.",
-  "mapgen.exchange.reason.failed": "Foreman konnte den Code gerade nicht erzeugen. Lade die Seite neu, um es noch einmal zu versuchen."
+  "mapgen.exchange.reason.failed": "Foreman konnte den Code gerade nicht erzeugen. Lade die Seite neu, um es noch einmal zu versuchen.",
+  "mapgen.chart.draw": "Aus einem echten Spiel zeichnen (etwa 15 bis 40 Sekunden)",
+  "mapgen.chart.caption": "Aus einem echten Spiel, 1024 Felder",
+  "mapgen.chart.back": "Zurück zur schnellen Vorschau",
+  "mapgen.chart.drawing": "Wird aus einem echten Spiel gezeichnet. Das dauert etwa 15 bis 40 Sekunden.",
+  "mapgen.chart.alt": "Karte von {planet} aus einem echten Spiel, Seed {seed}",
+  "mapgen.chart.busy": "Eine andere Kartenvorschau läuft gerade. Versuche es gleich noch einmal.",
+  "mapgen.chart.timeout": "Das echte Spiel hat zu lange gebraucht, um diesen Planeten zu zeichnen. Versuche es noch einmal.",
+  "mapgen.chart.oom": "Dem echten Spiel ist beim Zeichnen dieses Planeten der Speicher ausgegangen.",
+  "mapgen.chart.failed": "Foreman konnte diesen Planeten nicht aus einem echten Spiel zeichnen.",
+  "mapgen.chart.invalid": "Korrigiere die Karteneinstellungen, bevor du aus einem echten Spiel zeichnest.",
+  "mapgen.chart.tip_about": "was das Zeichnen aus einem echten Spiel macht",
+  "mapgen.chart.tip": "Foreman erstellt in einem echten Spiel mit den Mods dieser Welt eine Wegwerfkarte und zeigt die 1024 Felder um den Start. So sind Gelände zu sehen, die Mods per Skript erzeugen, was die schnelle Vorschau nicht kann.",
+  "mapgen.chart.ready": "Bild aus dem echten Spiel fertig."
 }
