@@ -230,5 +230,18 @@
   "mapgen.exchange.reason.no_settings": "Nejnovější uložená hra světa neobsahuje nastavení mapy, které by Foreman uměl přečíst, proto řetězec neexistuje.",
   "mapgen.exchange.reason.unsupported": "Tato mapa pochází z Factoria {version}, pro které Foreman nemůže řetězec vytvořit.",
   "mapgen.exchange.reason.unreadable": "Nejnovější uloženou hru světa se nepodařilo přečíst, proto řetězec neexistuje.",
-  "mapgen.exchange.reason.failed": "Řetězec se právě teď nepodařilo vytvořit. Opětovným načtením stránky lze zkusit znovu."
+  "mapgen.exchange.reason.failed": "Řetězec se právě teď nepodařilo vytvořit. Opětovným načtením stránky lze zkusit znovu.",
+  "mapgen.chart.draw": "Vykreslit ze skutečné hry (asi 15 až 40 sekund)",
+  "mapgen.chart.caption": "Ze skutečné hry, 1024 políček",
+  "mapgen.chart.back": "Zpět na rychlý náhled",
+  "mapgen.chart.drawing": "Vykresluje se ze skutečné hry. Trvá to asi 15 až 40 sekund.",
+  "mapgen.chart.alt": "Mapa {planet} ze skutečné hry, seed {seed}",
+  "mapgen.chart.busy": "Právě běží jiný náhled mapy. Zkuste to za chvíli znovu.",
+  "mapgen.chart.timeout": "Skutečné hře trvalo vykreslení této planety příliš dlouho. Zkuste to znovu.",
+  "mapgen.chart.oom": "Skutečné hře při vykreslování této planety došla paměť.",
+  "mapgen.chart.failed": "Foreman nedokázal tuto planetu vykreslit ze skutečné hry.",
+  "mapgen.chart.invalid": "Než budete kreslit ze skutečné hry, opravte nastavení mapy.",
+  "mapgen.chart.tip_about": "co dělá vykreslení ze skutečné hry",
+  "mapgen.chart.tip": "Foreman ve skutečné hře vytvoří s mody tohoto světa jednorázovou mapu a zobrazí 1024 políček kolem startu. Je na ní vidět terén, který mody vytvářejí skriptem, což rychlý náhled neumí.",
+  "mapgen.chart.ready": "Obrázek ze skutečné hry je hotový."
 }

@@ -230,5 +230,18 @@
   "mapgen.exchange.reason.no_settings": "La partida guardada más reciente del mundo no tiene ajustes del mapa que Foreman pueda leer, así que no hay cadena.",
   "mapgen.exchange.reason.unsupported": "Este mapa es de Factorio {version}, y Foreman no puede crear una cadena para esa versión.",
   "mapgen.exchange.reason.unreadable": "Foreman no pudo leer la partida guardada más reciente del mundo, así que no hay cadena.",
-  "mapgen.exchange.reason.failed": "Foreman no pudo crear la cadena en este momento. Recarga la página para intentarlo de nuevo."
+  "mapgen.exchange.reason.failed": "Foreman no pudo crear la cadena en este momento. Recarga la página para intentarlo de nuevo.",
+  "mapgen.chart.draw": "Dibujar desde una partida real (unos 15 a 40 segundos)",
+  "mapgen.chart.caption": "Desde una partida real, 1024 casillas",
+  "mapgen.chart.back": "Volver a la vista previa rápida",
+  "mapgen.chart.drawing": "Dibujando desde una partida real. Tarda unos 15 a 40 segundos.",
+  "mapgen.chart.alt": "Mapa de {planet} desde una partida real, semilla {seed}",
+  "mapgen.chart.busy": "Hay otra vista previa del mapa en curso. Inténtalo de nuevo en un momento.",
+  "mapgen.chart.timeout": "La partida real tardó demasiado en dibujar este planeta. Inténtalo de nuevo.",
+  "mapgen.chart.oom": "La partida real se quedó sin memoria al dibujar este planeta.",
+  "mapgen.chart.failed": "Foreman no pudo dibujar este planeta desde una partida real.",
+  "mapgen.chart.invalid": "Corrige los ajustes del mapa antes de dibujar desde una partida real.",
+  "mapgen.chart.tip_about": "qué hace dibujar desde una partida real",
+  "mapgen.chart.tip": "Foreman crea un mapa desechable con los mods de este mundo en una partida real y muestra las 1024 casillas alrededor del inicio. Así se ve el terreno que los mods crean por script, algo que la vista previa rápida no puede mostrar.",
+  "mapgen.chart.ready": "Imagen de la partida real lista."
 }

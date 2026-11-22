@@ -1,6 +1,8 @@
 package web
 
 import (
+	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -237,6 +240,30 @@ func TestNewMapSaveRefusedOnTheBuiltinFallback(t *testing.T) {
 	}
 	if hn.config(id, world.MapGenSettingsFile).Found || hn.meta(id).NewMap.Preset != "" || len(hn.audits(AuditNewMap)) != 0 {
 		t.Error("something was saved")
+	}
+}
+
+// SPEC 5.6, ADR 0033: a world mod named like Foreman's helper mod says so on
+// step 3, with the way to the Mods step, not that the planets could not be
+// read, and a save is refused as with any fallback.
+func TestNewMapNamesTheHelperModClash(t *testing.T) {
+	hn := newGenerateHarness(t, nil)
+	c := hn.signIn()
+	id := newMapWorld(t, hn, c)
+	withWorldCatalogue(t, mapgen.Builtin("2.0", true), fmt.Errorf("%w: %w", game.ErrModSettingsBadOutput, game.ErrControlModTaken))
+	body := getLong(hn, newMapPath(id)+"?wait=1", c).Body.String()
+	if !strings.Contains(body, html.EscapeString(i18n.English.T("mapgen.preview.control_mod_taken"))) {
+		t.Errorf("no helper-mod message in:\n%s", body)
+	}
+	if strings.Contains(body, html.EscapeString(i18n.English.T("newmap.builtin.failed"))) {
+		t.Error("the generic message is shown too")
+	}
+	if !strings.Contains(body, `id="newmap-builtin-mods"`) {
+		t.Error("no link to the Mods step")
+	}
+	form := newMapPageValues(t, hn, c, id)
+	if rec := hn.postLong(newMapPath(id), form, c); rec.Code != http.StatusConflict || hn.config(id, world.MapGenSettingsFile).Found {
+		t.Errorf("status %d, or the settings were saved", rec.Code)
 	}
 }
 

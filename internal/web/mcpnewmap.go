@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"net/url"
 	"slices"
 	"strconv"
@@ -62,6 +63,9 @@ type newMapControl struct {
 	toggle         bool
 	settings       map[string]newMapSetting
 	planets        []string
+	// defaults is each planet's own default code for a setting, by planet and
+	// setting key, where the planet has one (SPEC 5.6).
+	defaults map[string]map[string]string
 }
 
 // newMapLayout is the planets and controls the map form offers a world, in
@@ -77,13 +81,26 @@ func layoutNewMap(line string, cat mapgen.Catalogue) newMapLayout {
 		for _, c := range p.controls {
 			nc := l.controls[c.name]
 			if nc == nil {
-				nc = &newMapControl{name: c.name, category: c.category, toggle: c.toggle, settings: map[string]newMapSetting{}}
+				nc = &newMapControl{name: c.name, category: c.category, toggle: c.toggle, settings: map[string]newMapSetting{}, defaults: map[string]map[string]string{}}
 				for _, st := range c.settings {
 					nc.settings[st.key] = newMapSetting{none: st.none}
 				}
 				l.controls[c.name] = nc
 			}
 			nc.planets = append(nc.planets, p.name)
+			for _, st := range c.settings {
+				// The code the form's select starts on, for the planet's own default.
+				v, ok := c.defaultOf(st)
+				if !ok {
+					continue
+				}
+				if code, _ := planetDefaultStep(v, st.invert, optionsFrequency); code != "" {
+					if nc.defaults[p.name] == nil {
+						nc.defaults[p.name] = map[string]string{}
+					}
+					nc.defaults[p.name][st.key] = code
+				}
+			}
 		}
 	}
 	return l
@@ -192,9 +209,9 @@ type mcpNewMapControl struct {
 	Category       string   `json:"category"`
 	HasRichness    bool     `json:"has_richness"`
 	CanBeDisabled  bool     `json:"can_be_disabled"`
-	Frequency      int      `json:"frequency"`
-	Size           int      `json:"size"`
-	Richness       *int     `json:"richness,omitempty"`
+	Frequency      float64  `json:"frequency"`
+	Size           float64  `json:"size"`
+	Richness       *float64 `json:"richness,omitempty"`
 	Enabled        *bool    `json:"enabled,omitempty"`
 	AlsoChanges    []string `json:"also_changes,omitempty"`
 }
@@ -239,6 +256,18 @@ func mapGenChosen(f MapGenForm) (steps map[string]string, boxes map[string]bool)
 		group(g)
 	}
 	return steps, boxes
+}
+
+// mcpPercent is the percentage a select's code shows: a step's own number,
+// or the value of a planet's own default, which the form shows to two
+// places (SPEC 5.6).
+func mcpPercent(code string) float64 {
+	if _, ok := stepValue(code); ok {
+		n, _ := strconv.Atoi(code)
+		return float64(n)
+	}
+	v, _ := codeValue(code)
+	return math.Round(v*10000) / 100
 }
 
 // mcpControlLabel is a control's label: the world's own when its mods gave
@@ -292,10 +321,7 @@ func (s *server) mcpGetNewMap(ctx context.Context, _ *mcp.CallToolRequest, in mc
 		for _, c := range p.controls {
 			nc := w.layout.controls[c.name]
 			item := mcpNewMapControl{Name: c.name, UntrustedLabel: mcpControlLabel(w, c.name), Category: c.category, CanBeDisabled: c.toggle}
-			value := func(key string) int {
-				n, _ := strconv.Atoi(steps[fieldName(p.name, c.name, key)])
-				return n
-			}
+			value := func(key string) float64 { return mcpPercent(steps[fieldName(p.name, c.name, key)]) }
 			item.Frequency, item.Size = value("frequency"), value("size")
 			if _, ok := nc.settings["richness"]; ok {
 				item.HasRichness = true
@@ -329,12 +355,12 @@ type mcpSetNewMapIn struct {
 // mcpSetNewControl sets one control of one planet. A value is a percentage as
 // the form shows it. Leave out what stays at the preset's value.
 type mcpSetNewControl struct {
-	Planet    string `json:"planet" jsonschema:"the planet's name from get_new_map"`
-	Control   string `json:"control" jsonschema:"the control's name from get_new_map"`
-	Frequency *int   `json:"frequency,omitempty" jsonschema:"percent: 17, 25, 33, 50, 71, 100, 141, 200, 300, 400 or 600; for terrain the form's Scale"`
-	Size      *int   `json:"size,omitempty" jsonschema:"percent, as frequency, or 0 for none where the control allows it"`
-	Richness  *int   `json:"richness,omitempty" jsonschema:"percent, as size; only for a control that has richness"`
-	Enabled   *bool  `json:"enabled,omitempty" jsonschema:"false switches the control off; only for a control that can be disabled"`
+	Planet    string   `json:"planet" jsonschema:"the planet's name from get_new_map"`
+	Control   string   `json:"control" jsonschema:"the control's name from get_new_map"`
+	Frequency *float64 `json:"frequency,omitempty" jsonschema:"percent: 17, 25, 33, 50, 71, 100, 141, 200, 300, 400 or 600, or the planet's own default for the control as get_new_map shows it; for terrain the form's Scale"`
+	Size      *float64 `json:"size,omitempty" jsonschema:"percent, as frequency, or 0 for none where the control allows it"`
+	Richness  *float64 `json:"richness,omitempty" jsonschema:"percent, as size; only for a control that has richness"`
+	Enabled   *bool    `json:"enabled,omitempty" jsonschema:"false switches the control off; only for a control that can be disabled"`
 }
 
 type mcpSetNewMapOut struct {
@@ -376,7 +402,7 @@ func (l newMapLayout) controlValues(entries []mcpSetNewControl) (url.Values, err
 		if e.Frequency == nil && e.Size == nil && e.Richness == nil && e.Enabled == nil {
 			return nil, fmt.Errorf("%s gives no value", who)
 		}
-		set := func(key string, pct *int) error {
+		set := func(key string, pct *float64) error {
 			if pct == nil {
 				return nil
 			}
@@ -384,9 +410,12 @@ func (l newMapLayout) controlValues(entries []mcpSetNewControl) (url.Values, err
 			if !ok {
 				return fmt.Errorf("%s has no %s", who, key)
 			}
-			code := strconv.Itoa(*pct)
-			if _, known := stepValue(code); !known || (*pct == 0 && !st.none) {
-				return fmt.Errorf("%s: %s %d is not a value the control supports; use %s%s", who, key, *pct, mcpNewMapPercents, noneWord(st.none))
+			code, ok := c.codeOf(e.Planet, key, *pct)
+			if !ok || (*pct == 0 && !st.none) {
+				return fmt.Errorf("%s: %s %v is not a value the control supports; use %s%s%s", who, key, *pct, mcpNewMapPercents, noneWord(st.none), c.ownWord(e.Planet, key))
+			}
+			if err := c.sharedCode(e.Planet, key, code); err != nil {
+				return fmt.Errorf("%s: %s %v: %w", who, key, *pct, err)
 			}
 			if prev, dup := asked[c.name+"."+key]; dup && prev.code != code {
 				return fmt.Errorf("%s: %s is %s here but %s under planet %s, and planets share the control as one value", who, key, code, prev.code, mcpNewMapName(prev.planet))
@@ -399,7 +428,7 @@ func (l newMapLayout) controlValues(entries []mcpSetNewControl) (url.Values, err
 		}
 		for _, v := range []struct {
 			key string
-			pct *int
+			pct *float64
 		}{{"frequency", e.Frequency}, {"size", e.Size}, {"richness", e.Richness}} {
 			if err := set(v.key, v.pct); err != nil {
 				return nil, err
@@ -430,9 +459,49 @@ func checkEnabled(c *newMapControl, e mcpSetNewControl, who string) error {
 	case *e.Enabled && e.Size != nil && *e.Size == 0:
 		return fmt.Errorf("%s: enabled is true but size is 0, which switches it off", who)
 	case !*e.Enabled && e.Size != nil && *e.Size != 0:
-		return fmt.Errorf("%s: enabled is false, so size %d would be ignored", who, *e.Size)
+		return fmt.Errorf("%s: enabled is false, so size %v would be ignored", who, *e.Size)
 	}
 	return nil
+}
+
+// codeOf is the code of a percentage given under a planet: a step, or the
+// planet's own default for the setting when that is the percentage (SPEC 5.6).
+func (c *newMapControl) codeOf(planet, key string, pct float64) (string, bool) {
+	if pct >= 0 && pct <= mgPlanetDefaultMax*100 && pct == math.Trunc(pct) {
+		code := strconv.Itoa(int(pct))
+		if _, known := stepValue(code); known {
+			return code, true
+		}
+	}
+	if own := c.defaults[planet][key]; own != "" && mcpPercent(own) == pct {
+		return own, true
+	}
+	return "", false
+}
+
+// sharedCode refuses a planet's own default for a control another planet
+// shows, where that planet does not offer it: the control is one value, and
+// the form would refuse the code under that planet.
+func (c *newMapControl) sharedCode(planet, key, code string) error {
+	if _, step := stepValue(code); step {
+		return nil
+	}
+	for _, p := range c.planets {
+		if c.defaults[p][key] != code {
+			return fmt.Errorf("it is the default of planet %s only, and planets share the control as one value; planet %s does not have it", mcpNewMapName(planet), mcpNewMapName(p))
+		}
+	}
+	return nil
+}
+
+// ownWord names the planet's own default for the setting, when it has one
+// that no step stands for.
+func (c *newMapControl) ownWord(planet, key string) string {
+	own := c.defaults[planet][key]
+	if _, step := stepValue(own); own == "" || step {
+		return ""
+	}
+	return fmt.Sprintf(", or %v, this planet's own default", mcpPercent(own))
 }
 
 func noneWord(none bool) string {
