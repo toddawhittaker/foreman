@@ -6,8 +6,7 @@ import (
 )
 
 // MaxLabelChars is the longest label, in characters, Foreman shows for a name
-// a mod supplies, such as a planet or autoplace control (SPEC 14.6, Epic 12
-// ruling R11).
+// a mod supplies, such as a planet or autoplace control (SPEC 14.6).
 const MaxLabelChars = 100
 
 // richTextRE matches one game rich-text tag: [entity=iron-ore], [img=a/b],

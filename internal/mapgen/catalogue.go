@@ -11,7 +11,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/modsettings"
 )
 
-// Limits on a world's planet file (Epic 12 ruling R11, SPEC 14.6). A file
+// Limits on a world's planet file (SPEC 14.6). A file
 // past any of them is refused whole and the built-in catalogue is used.
 const (
 	MaxPlanetFileBytes = 1 << 20
@@ -78,7 +78,7 @@ type CatalogueControl struct {
 	Label string
 	// Planets lists every planet that uses the control, in planet order. A
 	// control on two or more planets is one value, shown under each with
-	// "Also changes ..." (R14).
+	// "Also changes ..." (SPEC 5.6).
 	Planets []string
 }
 
@@ -116,7 +116,7 @@ func (c Catalogue) PlanetNames() []string {
 }
 
 // AlsoChanges returns the other planets a control on planet also changes
-// (R14), or nil when it is the planet's alone.
+// (SPEC 5.6), or nil when it is the planet's alone.
 func (c Catalogue) AlsoChanges(control, planet string) []string {
 	var out []string
 	for _, p := range c.Controls[control].Planets {
@@ -234,7 +234,7 @@ func (l *luaList[T]) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// ParseWorldPlanets reads a world's planet file under R11: a file over
+// ParseWorldPlanets reads a world's planet file under the SPEC 14.6 limits: a file over
 // MaxPlanetFileBytes or any count limit, or not of the shape above, is
 // refused whole. A planet, control or resource whose name is not
 // ^[a-z0-9_-]{1,64}$, or repeats one before it, is left out and counted
