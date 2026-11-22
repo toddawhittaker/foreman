@@ -1,0 +1,6 @@
+{
+  "worldexport.busy": "Trwają już dwa eksporty. Należy poczekać na zakończenie jednego i spróbować ponownie.",
+  "worldexport.error.file": "Ten świat zawiera plik, którego plik świata nie może zachować: {path}. Jest to dowiązanie symboliczne lub plik specjalny, ma nazwę niedozwoloną w pliku świata albo jest to server-settings.json, który nie jest jednym obiektem JSON. Należy go poprawić lub usunąć, a następnie spróbować ponownie.",
+  "worldexport.error.saves": "Należy wybrać wszystkie zapisy albo tylko zapis, który zostanie wczytany jako następny.",
+  "worldexport.error.too_many": "Ten świat ma więcej plików, niż może pomieścić plik świata, więc nie można go wyeksportować."
+}

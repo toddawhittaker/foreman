@@ -48,6 +48,8 @@
   "audit.action.whitelist-switch": "Liste blanche activée ou désactivée",
   "audit.action.world-archive": "Monde archivé",
   "audit.action.world-delete": "Monde supprimé",
+  "audit.action.world-export": "Monde exporté",
+  "audit.action.world-import": "Monde importé",
   "audit.action.world-unarchive": "Monde désarchivé",
   "audit.empty": "Rien n’a encore été enregistré.",
   "audit.empty.filtered": "Aucune entrée ne correspond à ces filtres.",

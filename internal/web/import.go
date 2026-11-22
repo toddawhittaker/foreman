@@ -44,6 +44,9 @@ type ImportPage struct {
 	Upload  ImportForm
 	// Result says what a bulk import did; nil otherwise.
 	Result *BulkResult
+	// WorldFileError is the refusal of the last world file upload that the
+	// form can fix, such as no file chosen (SPEC 5.14).
+	WorldFileError i18n.Msg
 }
 
 // ImportRow is one importable inbox folder as the form shows it.
@@ -126,7 +129,9 @@ func (f ImportForm) SourceZone() DropZone {
 
 func (ImportPage) templateName() string { return "import" }
 func (ImportPage) navItem() string      { return PathWorlds }
-func (p ImportPage) hasErrors() bool    { return len(p.Folder.Problems())+len(p.Upload.Problems()) > 0 }
+func (p ImportPage) hasErrors() bool {
+	return len(p.Folder.Problems())+len(p.Upload.Problems())+len(p.WorldFileProblems()) > 0
+}
 
 // FolderPath and UploadPath are where the two forms post.
 func (ImportPage) FolderPath() string { return PathImportFolder }
@@ -244,6 +249,11 @@ func (s *server) handleImportForm(w http.ResponseWriter, r *http.Request, u stor
 
 // importPage renders the import page with the given state of each form.
 func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User, status int, folder, upload ImportForm, result *BulkResult) {
+	s.importPageWith(w, r, u, status, folder, upload, result, i18n.Msg{})
+}
+
+// importPageWith is importPage with the world file form's refusal.
+func (s *server) importPageWith(w http.ResponseWriter, r *http.Request, u store.User, status int, folder, upload ImportForm, result *BulkResult, worldFileErr i18n.Msg) {
 	inbox, err := s.worlds.Inbox(r.Context())
 	if err != nil {
 		s.fail(w, r, "list import folder", err)
@@ -268,12 +278,13 @@ func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User
 		dir = datadir.Imports(s.hostData)
 	}
 	s.page(w, r, status, u.Username, ImportPage{
-		InboxDir: dir,
-		Inbox:    inbox,
-		Missing:  s.missingImages(r.Context(), inbox),
-		Folder:   folder,
-		Upload:   upload,
-		Result:   result,
+		InboxDir:       dir,
+		Inbox:          inbox,
+		Missing:        s.missingImages(r.Context(), inbox),
+		Folder:         folder,
+		Upload:         upload,
+		Result:         result,
+		WorldFileError: worldFileErr,
 	})
 }
 

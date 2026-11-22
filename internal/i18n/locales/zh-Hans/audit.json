@@ -48,6 +48,8 @@
   "audit.action.whitelist-switch": "已开启或关闭白名单",
   "audit.action.world-archive": "已归档世界",
   "audit.action.world-delete": "已删除世界",
+  "audit.action.world-export": "已导出世界",
+  "audit.action.world-import": "已导入世界",
   "audit.action.world-unarchive": "已取消归档世界",
   "audit.empty": "还没有任何记录。",
   "audit.empty.filtered": "没有符合这些筛选条件的条目。",
