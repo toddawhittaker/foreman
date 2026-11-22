@@ -68,8 +68,11 @@ const msgExchangeOtherLine = "newmap.error.exchange_other_line"
 func (p NewMapPage) ExchangeOtherLine() bool { return p.Form.ExchangeError.Key == msgExchangeOtherLine }
 
 // BuiltinFailed is true when the world's planets could not be read at all,
-// so the warning offers its Mods tab.
-func (p NewMapPage) BuiltinFailed() bool { return p.Builtin.Key == "newmap.builtin.failed" }
+// or because a mod is named like Foreman's helper, so the warning offers its
+// Mods tab.
+func (p NewMapPage) BuiltinFailed() bool {
+	return p.Builtin.Key == "newmap.builtin.failed" || p.Builtin.Key == "mapgen.preview.control_mod_taken"
+}
 
 // ModsPath is the world's Mods tab, step 2.
 func (p NewMapPage) ModsPath() string { return modsPath(p.World.ID) }
@@ -194,6 +197,10 @@ func (s *server) catalogue(ctx context.Context, r *http.Request, sum world.Summa
 	// The reason may hold text a mod wrote, so it goes to the log only.
 	s.log.Warn("read the world's planets", "world", sum.ID, "error", err)
 	switch {
+	case errors.Is(err, game.ErrControlModTaken):
+		// A world mod named like Foreman's helper: it stays so until that mod
+		// goes (SPEC 5.6, ADR 0033).
+		return cat, i18n.M("mapgen.preview.control_mod_taken")
 	case errors.Is(err, game.ErrPlanetsRefused):
 		return cat, i18n.M("newmap.builtin.refused")
 	case errors.Is(err, game.ErrPlanetsMissing):
