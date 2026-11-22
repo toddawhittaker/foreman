@@ -724,3 +724,67 @@ func TestSweepDoesNotFollowALink(t *testing.T) {
 		t.Errorf("link kept: %v", err)
 	}
 }
+
+// A reader whose record goes stale more often than any small retry count
+// still gets a whole drawing: it starts over for as long as Replace keeps
+// finishing, and fails only when the drawing is truly gone. The hook runs a
+// Replace after every read of the record for the first 10 reads of each call.
+func TestReaderOutlastsManyConcurrentReplaces(t *testing.T) {
+	s, _ := openStore(t, "w1")
+	red, blue := color.NRGBA{255, 0, 0, 255}, color.NRGBA{0, 0, 255, 255}
+	set := func(c color.NRGBA) map[string][]byte {
+		return map[string][]byte{
+			PNGName(0, ""):            pngOf(t, 4, 2, c, 0),
+			PNGName(0, CategoryBelts): pngOf(t, 4, 2, c, 1),
+		}
+	}
+	sets := []map[string][]byte{set(red), set(blue)}
+	if err := s.Replace(drawing("a", 0), sets[0]); err != nil {
+		t.Fatal(err)
+	}
+	reads, flips := 0, 0
+	afterFacts = func() {
+		reads++
+		if reads%11 == 0 { // every call's 11th attempt is the first one left alone
+			return
+		}
+		flips++
+		if err := s.Replace(drawing("x", 0), sets[flips%2]); err != nil {
+			t.Error(err)
+		}
+	}
+	defer func() { afterFacts = nil }()
+	img, err := s.Composite(0, []Category{CategoryBelts})
+	if err != nil {
+		t.Fatalf("Composite: %v", err)
+	}
+	if img.At(0, 0) != img.At(1, 0) {
+		t.Error("mixed drawing: base and layer differ")
+	}
+	reads = 0
+	f, err := s.OpenPNG(0, "")
+	if err != nil {
+		t.Fatalf("OpenPNG: %v", err)
+	}
+	_ = f.Close()
+	if flips < 20 {
+		t.Errorf("only %d replaces ran during the reads", flips)
+	}
+}
+
+// The wait is for the record to stop moving, not for ever: a drawing that is
+// removed while a reader waits ends the wait.
+func TestReaderGivesUpWhenTheDrawingIsGone(t *testing.T) {
+	s, dir := openStore(t, "w1")
+	if err := s.Replace(drawing("a", 0), map[string][]byte{PNGName(0, ""): pngOf(t, 4, 2, color.NRGBA{A: 255})}); err != nil {
+		t.Fatal(err)
+	}
+	afterFacts = func() { _ = Remove(dir, "w1") }
+	defer func() { afterFacts = nil }()
+	if _, err := s.Composite(0, nil); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("Composite = %v, want not exist", err)
+	}
+	if _, err := s.OpenPNG(0, ""); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("OpenPNG = %v, want not exist", err)
+	}
+}
