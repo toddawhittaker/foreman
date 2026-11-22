@@ -13,14 +13,29 @@
 // the script starts once the form is in; every other page starts at once.
 function startGenerateWithForm(start) {
   document.addEventListener("DOMContentLoaded", () => {
-    if (!document.getElementById("newmap-load")) {
+    const load = document.getElementById("newmap-load");
+    if (!load) {
       start();
       return;
     }
+    // The wait is said once: its text goes into the live region after the
+    // page has loaded, not with it (SPEC 17.19).
+    const status = document.getElementById("newmap-load-status");
+    if (status) setTimeout(() => { status.textContent = status.dataset.text; }, 100);
+    let focusWasIn = false;
+    document.body.addEventListener("htmx:beforeSwap", (e) => {
+      if (e.detail.target === load) focusWasIn = load.contains(document.activeElement);
+    });
     document.body.addEventListener("htmx:afterSettle", function loaded() {
       if (document.getElementById("newmap-load") || !document.getElementById("generate-form")) return;
       document.body.removeEventListener("htmx:afterSettle", loaded);
       start();
+      // Focus left inside the replaced box goes to the page's heading.
+      const heading = document.getElementById("newmap-heading");
+      if (focusWasIn && heading) heading.focus();
+      const body = document.getElementById("newmap-body");
+      const announcer = document.getElementById("announcer");
+      if (body && announcer) announcer.textContent = body.dataset.ready;
     });
   });
 }

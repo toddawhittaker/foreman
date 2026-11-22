@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -200,5 +201,114 @@ func TestFlowSteps(t *testing.T) {
 		if s.Current != (i == 1) {
 			t.Errorf("step %d current %t", i+1, s.Current)
 		}
+	}
+}
+
+// newMapPageValues are the values step 3's form on the waited page sends.
+func newMapPageValues(t *testing.T, hn *harness, c *http.Cookie, id string) url.Values {
+	t.Helper()
+	page := getLong(hn, newMapPath(id)+"?wait=1", c).Body.String()
+	m := regexp.MustCompile(`(?s)<form method="post" action="` + newMapPath(id) + `"[^>]*>(.*?)</form>`).FindStringSubmatch(page)
+	if m == nil {
+		t.Fatalf("no step 3 form:\n%s", page)
+	}
+	return fieldValues(m[1])
+}
+
+// SPEC 5.6, 17.9: when the world's own planets cannot be read, the save is
+// refused with nothing written, and the message links to try again and to
+// the Mods step.
+func TestNewMapSaveRefusedOnTheBuiltinFallback(t *testing.T) {
+	hn := newGenerateHarness(t, nil)
+	c := hn.signIn()
+	id := newMapWorld(t, hn, c)
+	withWorldCatalogue(t, mapgen.Builtin("2.0", true), game.ErrPlanetsMissing)
+	form := newMapPageValues(t, hn, c, id)
+	form.Set("mg.width", "100")
+	rec := hn.postLong(newMapPath(id), form, c)
+	body := rec.Body.String()
+	if rec.Code != http.StatusConflict || !strings.Contains(body, "Nothing was saved") {
+		t.Fatalf("status %d", rec.Code)
+	}
+	for _, want := range []string{`href="` + newMapPath(id) + `" id="newmap-retry"`, `href="` + modsPath(id) + `" id="newmap-to-mods"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("no %s", want)
+		}
+	}
+	if hn.config(id, world.MapGenSettingsFile).Found || hn.meta(id).NewMap.Preset != "" || len(hn.audits(AuditNewMap)) != 0 {
+		t.Error("something was saved")
+	}
+}
+
+// SPEC 5.6, 17.9: a save while the world's server is up is refused under
+// the world's lock, with a link to the Server page.
+func TestNewMapSaveRefusedWhileTheServerIsUp(t *testing.T) {
+	hn := newGenerateHarness(t, nil)
+	c := hn.signIn()
+	id := newMapWorld(t, hn, c)
+	old := newMapSaveIdle
+	newMapSaveIdle = func(*server, string) error { return errNewMapServerUp }
+	t.Cleanup(func() { newMapSaveIdle = old })
+	rec := hn.postLong(newMapPath(id), newMapPost("preset", "rich-resources"), c)
+	body := rec.Body.String()
+	if rec.Code != http.StatusConflict || !strings.Contains(body, "Stop the server before changing the map settings") || !strings.Contains(body, `href="`+PathServer+`" id="newmap-to-server"`) {
+		t.Fatalf("status %d", rec.Code)
+	}
+	if hn.meta(id).NewMap.Preset == "rich-resources" {
+		t.Error("the preset was saved")
+	}
+}
+
+// SPEC 5.6: a control no longer in the mods is listed, and the next save
+// leaves it out of the file.
+func TestNewMapSaveDropsAGoneControl(t *testing.T) {
+	hn := newGenerateHarness(t, nil)
+	c := hn.signIn()
+	id := newMapWorld(t, hn, c)
+	file := filepath.Join(hn.worlds.Dirs().Worlds, id, "config", world.MapGenSettingsFile)
+	if err := os.MkdirAll(filepath.Dir(file), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(`{"autoplace_controls":{"fake-ore":{"frequency":1,"size":1,"richness":1}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	page := getLong(hn, newMapPath(id)+"?wait=1", c).Body.String()
+	if !strings.Contains(page, `id="newmap-gone"`) || !strings.Contains(page, ">fake-ore<") {
+		t.Fatal("the gone control is not listed")
+	}
+	form := newMapPageValues(t, hn, c, id)
+	form.Set("mg.width", "100")
+	if rec := hn.postLong(newMapPath(id), form, c); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status %d:\n%s", rec.Code, rec.Body.String())
+	}
+	saved := hn.config(id, world.MapGenSettingsFile)
+	if !saved.Found || strings.Contains(string(saved.Data), "fake-ore") {
+		t.Errorf("saved file %s", saved.Data)
+	}
+}
+
+// SPEC 5.6, ADR 0033: step 3 lays out the world's own catalogue, and its
+// form's preview draws from it, the world named.
+func TestNewMapPreviewDrawsTheWorldsCatalogue(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	hn.withActive("2.1.24")
+	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1"), c))
+	withWorldCatalogue(t, cerysCatalogue(), nil)
+	form := newMapPageValues(t, hn, c, id)
+	if form.Get("world") != id {
+		t.Fatalf("world field %q", form.Get("world"))
+	}
+	if !strings.Contains(getLong(hn, newMapPath(id)+"?wait=1", c).Body.String(), `data-planet="cerys"`) {
+		t.Error("no Cerys row on step 3")
+	}
+	form.Set("planet", "cerys")
+	rec := hn.postLong(PathGeneratePreview, form, c)
+	if rec.Code != http.StatusOK || len(prev.got) != 1 {
+		t.Fatalf("status %d, runs %d", rec.Code, len(prev.got))
+	}
+	if got := prev.got[0]; got.World != id || !slices.Equal(got.Planets, []string{"cerys"}) || !slices.Contains(got.KnownPlanets, "cerys") {
+		t.Errorf("request %+v", got)
 	}
 }

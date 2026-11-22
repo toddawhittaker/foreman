@@ -503,7 +503,7 @@ func (s *server) mcpSetNewMap(ctx context.Context, req *mcp.CallToolRequest, in 
 	if err != nil {
 		return nil, mcpSetNewMapOut{}, err
 	}
-	spaceAge := w.meta.SpaceAge && lineHasSpaceAge(w.line)
+	spaceAge := w.cat.SpaceAge
 	f, files, ok := readMapForm(post, kindGenerate, mapInput{Line: w.line, Cat: w.cat, MapKey: mapKey(w.line, spaceAge), Version: w.meta.GameVersion})
 	if !ok {
 		return nil, mcpSetNewMapOut{}, mcpProblems("the map settings were not saved", f.Problems())

@@ -29,5 +29,10 @@
   "newmap.gone.text": {
     "one": "The saved settings name this control, which the world's mods no longer add. Saving leaves it out.",
     "other": "The saved settings name these controls, which the world's mods no longer add. Saving leaves them out."
-  }
+  },
+  "newmap.ready": "Map settings ready.",
+  "newmap.error.builtin": "The planets of this world's mods could not be read, so saving now would drop the settings of their planets. Nothing was saved. Try again, or check the world's mods.",
+  "newmap.link.retry": "Try again",
+  "newmap.link.mods": "Go to step 2, Mods",
+  "newmap.link.server": "Go to the Server page to stop it"
 }

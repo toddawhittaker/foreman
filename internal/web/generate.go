@@ -769,7 +769,7 @@ func readMapForm(form url.Values, kind readKind, in mapInput) (f MapForm, files 
 	case modeSettings:
 		files.Seed = f.settingsFiles(&files, in.Version, mapGen, overrides)
 	case modeExchange:
-		if res, decoded := decodeExchange(&f, in.Version); decoded {
+		if res, decoded := decodeExchange(&f, in.Version, generateOtherLine); decoded {
 			files.MapGenSettings, files.MapSettings = res.MapGenSettings, res.MapSettings
 			files.Seed = settingsSeed(&f, res.MapGenSettings)
 		}
@@ -878,7 +878,10 @@ func settingsSeed(f *MapForm, mapGen []byte) *uint32 {
 
 // decodeExchange reads the map exchange string and checks it fits the
 // world's game version: same line, and not newer (SPEC 5.6).
-func decodeExchange(f *MapForm, version string) (mapexchange.Result, bool) {
+// otherLine words a string of another game line, made by made for a world
+// on game: Generate's says to choose another version, step 3's to change the
+// world's.
+func decodeExchange(f *MapForm, version string, otherLine func(made, game string) i18n.Msg) (mapexchange.Result, bool) {
 	text := strings.TrimSpace(f.Exchange)
 	switch {
 	case text == "":
@@ -900,7 +903,7 @@ func decodeExchange(f *MapForm, version string) (mapexchange.Result, bool) {
 	made := versionText(res.Version)
 	madeLine := fmt.Sprintf("%d.%d", res.Version[0], res.Version[1])
 	if line, _ := mapgen.Line(version); madeLine != line {
-		f.ExchangeError = i18n.M("worlds.generate.error.exchange_other_line", "version", made, "game", version)
+		f.ExchangeError = otherLine(made, version)
 		return mapexchange.Result{}, false
 	}
 	if world.CompareGameVersions(made, version) > 0 {
@@ -916,6 +919,11 @@ func decodeExchange(f *MapForm, version string) (mapexchange.Result, bool) {
 		return mapexchange.Result{}, false
 	}
 	return res, true
+}
+
+// generateOtherLine is Generate's refusal of a string of another game line.
+func generateOtherLine(made, game string) i18n.Msg {
+	return i18n.M("worlds.generate.error.exchange_other_line", "version", made, "game", game)
 }
 
 // versionText is the first three numbers of a version; the fourth is the

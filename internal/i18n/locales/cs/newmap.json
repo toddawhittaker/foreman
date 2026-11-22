@@ -30,5 +30,10 @@
     "one": "Uložená nastavení obsahují tento parametr, který mody světa už nepřidávají. Při uložení bude vynechán.",
     "few": "Uložená nastavení obsahují tyto parametry, které mody světa už nepřidávají. Při uložení budou vynechány.",
     "other": "Uložená nastavení obsahují tyto parametry, které mody světa už nepřidávají. Při uložení budou vynechány."
-  }
+  },
+  "newmap.ready": "Nastavení mapy je připraveno.",
+  "newmap.error.builtin": "Planety modů tohoto světa se nepodařilo načíst, takže uložení teď by zahodilo nastavení jejich planet. Nic nebylo uloženo. Zkuste to znovu, nebo zkontrolujte mody světa.",
+  "newmap.link.retry": "Zkusit znovu",
+  "newmap.link.mods": "Přejít na krok 2, mody",
+  "newmap.link.server": "Přejít na stránku serveru a zastavit ho"
 }

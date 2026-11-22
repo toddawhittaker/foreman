@@ -6,7 +6,8 @@
 {{- else if .Page.Loading}}
 {{- /* With script the form part is loaded after the page; without it the page
      reloads itself and the server waits for the planet list (SPEC 5.6). */}}
-<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script><script src="{{static "preview.js"}}" defer></script>
+<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
+{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}
 <noscript><meta http-equiv="refresh" content="0; url={{.Page.WaitPath}}"></noscript>
 {{- end}}{{end}}
 
@@ -15,7 +16,7 @@
 {{define "content" -}}
 {{with .Page}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .World.Name "" (t "newmap.title"))}}
-<h1>{{t "newmap.title"}}</h1>
+<h1 id="newmap-heading" tabindex="-1">{{t "newmap.title"}}</h1>
 {{template "rail" $}}
 {{- if not .Why.IsZero}}
 <div class="message message--note" id="newmap-why">
@@ -26,13 +27,14 @@
 {{template "genflow-steps" .Steps}}
 <p class="page-intro">{{t "newmap.intro" "name" .World.Name}}</p>
 {{- if .Loading}}
-<div id="newmap-load" class="wait" role="status" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">
-  <p>{{t "newmap.loading"}}</p>
+{{- /* The script writes the text into the live region once the page has loaded, so it is said once (SPEC 17.19). */}}
+<div id="newmap-load" class="wait" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">
+  <p role="status" id="newmap-load-status" data-text="{{t "newmap.loading"}}"></p>
   <progress aria-label="{{t "newmap.loading_label"}}"></progress>
   <p><a href="{{.WaitPath}}">{{t "newmap.loading_link"}}</a></p>
 </div>
 {{- else}}
-<div id="newmap-body">
+<div id="newmap-body" data-ready="{{t "newmap.ready"}}">
 {{- if .Done}}
 <div class="message message--success" id="newmap-done" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .DoneMsg}}</p>
@@ -42,6 +44,9 @@
 {{- if not .Builtin.IsZero}}
 <div class="message message--warning" id="newmap-builtin">
   <p><strong>{{t "common.label.warning"}}</strong> {{msg .Builtin}}</p>
+  {{- if .BuiltinFailed}}
+  <div class="actions"><a href="{{.ModsPath}}" id="newmap-builtin-mods">{{t "newmap.link.mods"}}</a></div>
+  {{- end}}
 </div>
 {{- end}}
 {{- if .Gone}}
@@ -81,6 +86,9 @@
           {{- if not .ExchangeError.IsZero}} aria-invalid="true" aria-describedby="exchange-hint exchange-string-error"{{else}} aria-describedby="exchange-hint"{{end}}>{{.Exchange}}</textarea>
         {{- if not .ExchangeError.IsZero}}
         <p class="error" id="exchange-string-error"><strong>{{t "common.error.label"}}</strong> {{msg .ExchangeError}}</p>
+        {{- if $.Page.ExchangeOtherLine}}
+        <p><a href="{{$.Page.WorldPath}}" id="exchange-to-world">{{t "newmap.to_world"}}</a></p>
+        {{- end}}
         {{- end}}
       </div>
       <div class="actions"><button type="submit" class="button" id="exchange-fill-button" name="fill" value="1" formaction="{{.RefreshPath}}">{{t "newmap.exchange.button"}}</button></div>
@@ -138,6 +146,13 @@
   </div>
   {{- if not .SaveError.IsZero}}
   <p class="error" id="newmap-save-error"><strong>{{t "common.error.label"}}</strong> {{msg .SaveError}}</p>
+  {{- with .SaveLinks}}
+  <div class="actions">
+    {{- range .}}
+    <a href="{{.Path}}" id="{{.ID}}">{{msg .Label}}</a>
+    {{- end}}
+  </div>
+  {{- end}}
   {{- end}}
   <div class="actions gen-actions">
     <a href="{{.WorldPath}}">{{t "worlds.cancel"}}</a>

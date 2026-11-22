@@ -4,15 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
-	"github.com/toddawhittaker/foreman/internal/mapexchange"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -49,9 +46,41 @@ type NewMapPage struct {
 	// SaveError says why the save was refused; Done follows a save.
 	SaveError i18n.Msg
 	Done      bool
+	// SaveLinks are the links that do what SaveError says to (SPEC 17.9).
+	SaveLinks []NewMapLink
 	// Unsaved says the form holds settings the world does not have yet,
 	// though the page loaded with them, as after a fill (SPEC 5.6).
 	Unsaved bool
+}
+
+// NewMapLink is a link a message offers, to do what it says (SPEC 17.9).
+type NewMapLink struct {
+	ID, Path string
+	Label    i18n.Msg
+}
+
+// msgExchangeOtherLine refuses a map exchange string of another game line,
+// telling the person to change the world's version (SPEC 5.6).
+const msgExchangeOtherLine = "newmap.error.exchange_other_line"
+
+// ExchangeOtherLine is true when the exchange string was of another game
+// line, so the error offers the world's page, where its version changes.
+func (p NewMapPage) ExchangeOtherLine() bool { return p.Form.ExchangeError.Key == msgExchangeOtherLine }
+
+// BuiltinFailed is true when the world's planets could not be read at all,
+// so the warning offers its Mods tab.
+func (p NewMapPage) BuiltinFailed() bool { return p.Builtin.Key == "newmap.builtin.failed" }
+
+// ModsPath is the world's Mods tab, step 2.
+func (p NewMapPage) ModsPath() string { return modsPath(p.World.ID) }
+
+// newMapSaveIdle checks the world's server is down before a save; tests
+// replace it. A mode without server control runs no server.
+var newMapSaveIdle = func(s *server, id string) error {
+	if s.game == nil {
+		return nil
+	}
+	return s.newMapIdle(id)
 }
 
 // NewMapForm is the map part of step 3, with the world it is for.
@@ -154,10 +183,11 @@ func (s *server) newMapWorld(w http.ResponseWriter, r *http.Request, u store.Use
 // fails: the planet list comes only from the world's mods, never from a form.
 func (s *server) catalogue(ctx context.Context, r *http.Request, sum world.Summary) (mapgen.Catalogue, i18n.Msg) {
 	line, _ := mapgen.Line(sum.GameVersion)
-	if s.game == nil {
+	cat, err := worldCatalogue(s, ctx, sum.ID, localeOf(r))
+	if errors.Is(err, errNoGame) {
+		// This mode runs no games, so there are no mods to read the planets of.
 		return mapgen.Builtin(line, sum.SpaceAge && lineHasSpaceAge(line)), i18n.Msg{}
 	}
-	cat, err := s.game.WorldCatalogue(ctx, sum.ID, localeOf(r).String())
 	if err == nil {
 		return cat, i18n.Msg{}
 	}
@@ -172,16 +202,10 @@ func (s *server) catalogue(ctx context.Context, r *http.Request, sum world.Summa
 	return cat, i18n.M("newmap.builtin.failed")
 }
 
-// catSpaceAge reports whether a catalogue is laid out with Space Age's
-// planets, which decides the presets' Space Age values.
-func catSpaceAge(line string, cat mapgen.Catalogue) bool {
-	return lineHasSpaceAge(line) && slices.Contains(cat.PlanetNames(), "vulcanus")
-}
-
 // newMapInput is what step 3's map form is laid out for.
 func newMapInput(sum world.Summary, cat mapgen.Catalogue) mapInput {
 	line, _ := mapgen.Line(sum.GameVersion)
-	return mapInput{Line: line, Cat: cat, MapKey: mapKey(line, catSpaceAge(line, cat)), Version: sum.GameVersion}
+	return mapInput{Line: line, Cat: cat, MapKey: mapKey(line, cat.SpaceAge), Version: sum.GameVersion}
 }
 
 // handleNewMap shows step 3. Without wait the page comes at once, and its
@@ -196,6 +220,7 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 	p.Done = q.Get(newMapSavedQuery) != ""
 	if q.Get(newMapWaitQuery) == "" && !p.Done {
 		p.Loading = true
+		p.CanPreview = s.previewer != nil
 		s.page(w, r, http.StatusOK, u.Username, p)
 		return
 	}
@@ -233,6 +258,10 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 		}
 	}
 	if len(files.MapGenSettings) > 0 || len(files.MapSettings) > 0 {
+		// A control the mods no longer add would ride along in the raw box,
+		// so it is taken out before the form is filled (SPEC 5.6).
+		p.Gone = goneControls(files.MapGenSettings, cat)
+		files.MapGenSettings = withoutControls(files.MapGenSettings, p.Gone)
 		// The files are laid over the preset; damaged ones leave the preset.
 		g := GenerateForm{Version: in.Version, MapForm: f}
 		g.fillFromFiles(files)
@@ -242,12 +271,11 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 				f.MapGen.Seed.Value = seed.Value
 			}
 		}
-		p.Gone = goneControls(files.MapGenSettings, cat)
 	}
 	rules, _ := mapgen.AchievementRules(in.Version)
 	f.MapGen.markAchievements(rules)
 	f.reasons(in.Version, nil, nil, rules)
-	p.Form = s.newMapForm(p.World, f)
+	p.Form = newMapForm(p.World, f)
 	p.CanPreview = s.previewer != nil
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
@@ -285,9 +313,34 @@ func goneControls(mapGen []byte, cat mapgen.Catalogue) []string {
 	return gone
 }
 
+// withoutControls is a map-gen-settings.json without the named autoplace
+// controls, its other members in their order; a file it cannot read comes
+// back as it is.
+func withoutControls(mapGen []byte, names []string) []byte {
+	if len(names) == 0 {
+		return mapGen
+	}
+	top, ok := orderedMembers(mapGen)
+	if !ok {
+		return mapGen
+	}
+	for i, m := range top {
+		if m.key != "autoplace_controls" {
+			continue
+		}
+		controls, ok := orderedMembers(m.val)
+		if !ok {
+			return mapGen
+		}
+		controls = slices.DeleteFunc(controls, func(c jsonMember) bool { return slices.Contains(names, c.key) })
+		top[i].val = writeMembers(controls)
+	}
+	return writeMembers(top)
+}
+
 // newMapForm wraps a map form with the world it is for.
-func (s *server) newMapForm(sum world.Summary, f MapForm) NewMapForm {
-	return NewMapForm{MapForm: f, ID: sum.ID, Name: sum.Name, Version: sum.GameVersion, SpaceAge: catSpaceAge(f.Line, f.cat)}
+func newMapForm(sum world.Summary, f MapForm) NewMapForm {
+	return NewMapForm{MapForm: f, ID: sum.ID, Name: sum.Name, Version: sum.GameVersion, SpaceAge: f.cat.SpaceAge}
 }
 
 // readNewMap reads a posted step 3 form with the world's own catalogue.
@@ -298,7 +351,7 @@ func (s *server) readNewMap(r *http.Request, p *NewMapPage, kind readKind) (worl
 	// The settings are stale when laid out for another line or Space Age setting.
 	in.Stale = r.PostForm.Get(settingsShown) != "" && r.PostForm.Get("map_key") != in.MapKey
 	f, files, ok := readMapForm(r.PostForm, kind, in)
-	p.Form = s.newMapForm(p.World, f)
+	p.Form = newMapForm(p.World, f)
 	p.CanPreview = s.previewer != nil
 	return files, ok
 }
@@ -329,11 +382,10 @@ func (s *server) handleNewMapRefresh(w http.ResponseWriter, r *http.Request, u s
 // which must be of the world's game line (SPEC 5.6). The string itself is
 // not kept: the settings it gave are what is saved.
 func fillFromExchange(f *NewMapForm) bool {
-	res, ok := decodeExchange(&f.MapForm, f.Version)
+	res, ok := decodeExchange(&f.MapForm, f.Version, func(made, game string) i18n.Msg {
+		return i18n.M("newmap.error.exchange_other_line", "version", made, "game", game)
+	})
 	if !ok {
-		if made, other := otherLine(f.Exchange, f.Line); other {
-			f.ExchangeError = i18n.M("newmap.error.exchange_other_line", "version", made, "game", f.Version)
-		}
 		return false
 	}
 	g := GenerateForm{Version: f.Version, MapForm: f.MapForm}
@@ -349,17 +401,6 @@ func fillFromExchange(f *NewMapForm) bool {
 	mapGen, _ := buildMapGen(f.MapGen, rawOrEmpty(f.MapGen.Raw.Value))
 	f.reasons(f.Version, mapGen, nil, rules)
 	return true
-}
-
-// otherLine reports whether a map exchange string was made by a game line
-// other than line, and the version that made it.
-func otherLine(text, line string) (string, bool) {
-	res, err := mapexchange.Decode(strings.TrimSpace(text))
-	if err != nil {
-		return "", false
-	}
-	made := fmt.Sprintf("%d.%d", res.Version[0], res.Version[1])
-	return versionText(res.Version), made != line
 }
 
 // handleNewMapSave saves step 3's map settings (SPEC 5.6). It takes no
@@ -382,16 +423,26 @@ func (s *server) handleNewMapSave(w http.ResponseWriter, r *http.Request, u stor
 		s.page(w, r, status, u.Username, p)
 		return
 	}
-	if s.game != nil {
-		// Checked under the world's lock, so a start cannot slip in between.
-		id := p.World.ID
-		files.Idle = func() error { return s.newMapIdle(id) }
+	if !p.Builtin.IsZero() {
+		// The world's own planets could not be read, so saving the built-in
+		// ones would drop every setting of its mods' planets (SPEC 5.6).
+		p.SaveError = i18n.M("newmap.error.builtin")
+		p.SaveLinks = []NewMapLink{
+			{ID: "newmap-retry", Path: newMapPath(p.World.ID), Label: i18n.M("newmap.link.retry")},
+			{ID: "newmap-to-mods", Path: modsPath(p.World.ID), Label: i18n.M("newmap.link.mods")},
+		}
+		s.page(w, r, http.StatusConflict, u.Username, p)
+		return
 	}
+	// Checked under the world's lock, so a start cannot slip in between.
+	id := p.World.ID
+	files.Idle = func() error { return newMapSaveIdle(s, id) }
 	err := s.worlds.SetNewMap(r.Context(), p.World.ID, files)
 	switch {
 	case err == nil:
 	case errors.Is(err, errNewMapServerUp):
 		p.SaveError = i18n.M("newmap.error.running")
+		p.SaveLinks = []NewMapLink{{ID: "newmap-to-server", Path: PathServer, Label: i18n.M("newmap.link.server")}}
 	case errors.Is(err, world.ErrBusy):
 		p.SaveError = i18n.M("newmap.error.busy")
 	case errors.Is(err, world.ErrMapMade), errors.Is(err, world.ErrNotNewMap):

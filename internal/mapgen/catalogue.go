@@ -69,6 +69,9 @@ type Catalogue struct {
 	Controls map[string]CatalogueControl
 	// Resources are the resource entities, in the file's order.
 	Resources []Resource
+	// SpaceAge is true when the catalogue is laid out with Space Age on:
+	// Builtin's argument, or whether the world's mods enable Space Age.
+	SpaceAge bool
 	// Dropped counts planets, controls and resources left out for a bad or
 	// repeated name, or for naming a control the file does not define.
 	Dropped int
@@ -158,7 +161,7 @@ func (c Catalogue) AlsoChanges(control, planet string) []string {
 // for each. Labels are the control names; it returns an empty catalogue
 // for an unknown line.
 func Builtin(line string, spaceAge bool) Catalogue {
-	c := Catalogue{NoPlanets: line == "1.1", Controls: map[string]CatalogueControl{}}
+	c := Catalogue{NoPlanets: line == "1.1", Controls: map[string]CatalogueControl{}, SpaceAge: spaceAge && line != "1.1"}
 	for _, name := range Planets(line, spaceAge) {
 		p := Planet{Name: name, Label: name}
 		for _, ctl := range Controls(line, name) {

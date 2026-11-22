@@ -29,5 +29,10 @@
   "newmap.gone.text": {
     "one": "Die gespeicherten Einstellungen nennen diese Steuerung, die die Mods der Welt nicht mehr hinzufügen. Beim Speichern fällt sie weg.",
     "other": "Die gespeicherten Einstellungen nennen diese Steuerungen, die die Mods der Welt nicht mehr hinzufügen. Beim Speichern fallen sie weg."
-  }
+  },
+  "newmap.ready": "Karteneinstellungen bereit.",
+  "newmap.error.builtin": "Die Planeten der Mods dieser Welt konnten nicht gelesen werden; ein Speichern jetzt würde die Einstellungen ihrer Planeten verwerfen. Es wurde nichts gespeichert. Versuche es erneut oder prüfe die Mods der Welt.",
+  "newmap.link.retry": "Erneut versuchen",
+  "newmap.link.mods": "Zu Schritt 2, Mods",
+  "newmap.link.server": "Zur Serverseite, um ihn zu stoppen"
 }

@@ -29,5 +29,10 @@
   "newmap.gone.text": {
     "one": "Los ajustes guardados nombran este control, que los mods del mundo ya no añaden. Al guardar se omite.",
     "other": "Los ajustes guardados nombran estos controles, que los mods del mundo ya no añaden. Al guardar se omiten."
-  }
+  },
+  "newmap.ready": "Ajustes del mapa listos.",
+  "newmap.error.builtin": "No se pudieron leer los planetas de los mods de este mundo, así que guardar ahora descartaría los ajustes de sus planetas. No se guardó nada. Inténtalo de nuevo o revisa los mods del mundo.",
+  "newmap.link.retry": "Reintentar",
+  "newmap.link.mods": "Ir al paso 2, mods",
+  "newmap.link.server": "Ir a la página del servidor para detenerlo"
 }

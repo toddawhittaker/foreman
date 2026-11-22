@@ -28,5 +28,10 @@
   "newmap.exchange.button": "填入设置",
   "newmap.gone.text": {
     "other": "已保存的设置包含以下控制项，但此世界的模组已不再添加它们。保存时会将其去除。"
-  }
+  },
+  "newmap.ready": "地图设置已就绪。",
+  "newmap.error.builtin": "无法读取此世界的模组的星球，现在保存会丢弃这些星球的设置。未保存任何内容。请重试，或检查世界的模组。",
+  "newmap.link.retry": "重试",
+  "newmap.link.mods": "前往第 2 步：模组",
+  "newmap.link.server": "前往服务器页面停止服务器"
 }

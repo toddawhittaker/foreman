@@ -40,6 +40,7 @@ test("step 3 shows the step bar, saves a preset and lands on a next step", async
   await page.locator("#generate-seed").fill("4242");
   await page.getByRole("button", { name: "Save map settings" }).click();
   await expect(page.locator("#newmap-done")).toContainText("Saved the map settings of Step three");
+  await checkPage(page);
   const next = page.getByRole("link", { name: "Next: go to the world" });
   await expect(next).toBeVisible();
   const meta = worldJSON(foreman.dataDir, id);
@@ -54,6 +55,7 @@ test("a world whose map is made says why and offers no form", async ({ page, for
   await page.goto(newMapPath("base"));
   await expect(page.locator("#newmap-why")).toContainText("map is already made");
   await expect(page.locator("#generate-form")).toHaveCount(0);
+  await checkPage(page);
 });
 
 test("a planet a mod adds is laid out, and one no longer in the mods is listed", async ({ page, foreman, fakeGame }) => {
@@ -69,6 +71,7 @@ test("a planet a mod adds is laid out, and one no longer in the mods is listed",
   addFakePlanet(foreman.dataDir, id, false);
   await page.goto(newMapPath(id));
   await expect(page.locator("#newmap-gone")).toContainText("fake-ore", { timeout: 60_000 });
+  await checkPage(page);
   await expect(page.locator('#generate-form details[data-planet="fake-planet"]')).toHaveCount(0);
 });
 
@@ -79,6 +82,9 @@ test("a map exchange string fills the form; one of another line is refused", asy
   await page.locator("#exchange-string").fill(exchange("2.0.77.txt"));
   await page.getByRole("button", { name: "Fill the settings" }).click();
   await expect(page.locator("#exchange-string-error")).toContainText("Change the world's game version on its page");
+  // The message carries the link that does what it says (SPEC 17.9).
+  await expect(page.locator("#exchange-to-world")).toHaveAttribute("href", /^\/worlds\/[^/]+$/);
+  await checkPage(page);
 
   // The box stays open after the refusal.
   await expect(page.locator("#exchange-fill")).toHaveAttribute("open", "");
@@ -97,8 +103,46 @@ test("leaving step 3 with a changed setting asks first", async ({ page, foreman,
   await page.locator("#generate-seed").fill("99");
   await page.getByRole("link", { name: "Cancel" }).click();
   await expect(page.locator("#leave-dialog")).toBeVisible();
+  await checkPage(page);
   await page.getByRole("button", { name: "Stay on this page" }).click();
   await expect(page.locator("#leave-dialog")).toBeHidden();
+});
+
+test("the wait is said once, then the form's arrival, and focus moves to the heading", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  const id = await openNewMap(page, { name: "Waiting" });
+  // Hold the form back, so the loading box can be looked at.
+  let release = () => {};
+  const held = new Promise<void>((done) => { release = done; });
+  await page.route(/new-map\?wait=1/, async (route) => { await held; await route.continue(); });
+  await page.goto(newMapPath(id));
+  const status = page.locator("#newmap-load-status");
+  await expect(status).toHaveAttribute("role", "status");
+  await expect(status).toContainText("Reading the planets");
+  await checkPage(page);
+  await page.locator("#newmap-load a").focus();
+  release();
+  await expect(page.locator("#generate-form")).toBeVisible();
+  await expect(page.locator("#announcer")).toHaveText("Map settings ready.");
+  await expect(page.locator("#newmap-heading")).toBeFocused();
+});
+
+test("when the world's planets cannot be read, the page says so and the save is refused", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  const id = await openNewMap(page, { name: "Unread" });
+  addFakePlanet(foreman.dataDir, id);
+  // Without the game image the planet run cannot start.
+  await fakeGame!.call("/image", { ref: image21, on: false });
+  await page.goto(newMapPath(id));
+  await expect(page.locator("#newmap-builtin")).toContainText("could not be read", { timeout: 60_000 });
+  await expect(page.locator("#newmap-builtin-mods")).toHaveAttribute("href", `/worlds/${id}/mods`);
+  await checkPage(page);
+  await page.getByRole("button", { name: "Save map settings" }).click();
+  await expect(page.locator("#newmap-save-error")).toContainText("Nothing was saved");
+  await expect(page.locator("#newmap-retry")).toHaveAttribute("href", newMapPath(id));
+  await expect(page.locator("#newmap-to-mods")).toHaveAttribute("href", `/worlds/${id}/mods`);
+  await checkPage(page);
+  expect(worldJSON(foreman.dataDir, id).new_map.preset).toBe("");
 });
 
 test.describe("without script", () => {

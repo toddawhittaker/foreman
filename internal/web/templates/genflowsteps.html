@@ -3,11 +3,11 @@
 {{- /* In a div: a subnav straight under main is the area tabs' phone copy, hidden on a wide screen. */}}
 <div>
 <nav class="subnav" aria-label="{{t "newmap.steps.label"}}" id="flow-steps">
-  <ul role="list">
+  <ol role="list">
     {{- range .}}
     <li><a href="{{.Path}}"{{if .Current}} aria-current="step"{{end}}>{{msg .Label}}</a></li>
     {{- end}}
-  </ul>
+  </ol>
 </nav>
 </div>
 {{- end}}
