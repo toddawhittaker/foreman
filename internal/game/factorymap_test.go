@@ -795,7 +795,7 @@ func TestDrawFactoryMapFilesHugeManifest(t *testing.T) {
 // off at the limit and refused.
 func TestReadManifestCutsOffAtTheLimit(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), make([]byte, maxManifestBytes), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), make([]byte, factorymap.MaxManifestBytes), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	root, err := os.OpenRoot(dir)
@@ -805,13 +805,13 @@ func TestReadManifestCutsOffAtTheLimit(t *testing.T) {
 	defer func() { _ = root.Close() }()
 	budget := &outputBudget{left: 4 << 20}
 	b, err := readManifest(root, budget)
-	if err != nil || len(b) != maxManifestBytes {
+	if err != nil || len(b) != factorymap.MaxManifestBytes {
 		t.Fatalf("a manifest at the limit: %d bytes, %v", len(b), err)
 	}
-	if budget.left != 4<<20-maxManifestBytes {
+	if budget.left != 4<<20-factorymap.MaxManifestBytes {
 		t.Errorf("budget left %d, want the manifest charged", budget.left)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), make([]byte, maxManifestBytes+1), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), make([]byte, factorymap.MaxManifestBytes+1), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := readManifest(root, &outputBudget{left: 4 << 20}); !errors.Is(err, ErrSaveCopyBadOutput) {
