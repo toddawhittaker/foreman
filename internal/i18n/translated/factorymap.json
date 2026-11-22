@@ -34,7 +34,7 @@
   "factorymap.mode.skip_online": "d45b32cd",
   "factorymap.mode.skip_online_hint": "0a50abc4",
   "factorymap.refused.archived": "f0772528",
-  "factorymap.refused.confirm_memory": "241f5ee9",
+  "factorymap.refused.confirm_memory": "6a363807",
   "factorymap.refused.no_save": "b6ca022a",
   "factorymap.refused.not_supported": "c48b2db2",
   "factorymap.refused.off": "020f50a4",
@@ -53,7 +53,6 @@
   "factorymap.view.fit": "9f872ed4",
   "factorymap.view.keys": "19ffb054",
   "factorymap.view.scale": "092e0fe2",
-  "factorymap.view.zoom": "4b516611",
   "factorymap.view.zoom_in": "0e47f09a",
   "factorymap.view.zoom_out": "bc7b631a"
 }

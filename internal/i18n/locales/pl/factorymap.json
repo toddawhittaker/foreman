@@ -34,7 +34,7 @@
   "factorymap.mode.skip_online": "Nie rysuj działającego świata, gdy gracze są online",
   "factorymap.mode.skip_online_hint": "Odczyt zapisu działającego świata zużywa dodatkową pamięć hosta.",
   "factorymap.refused.archived": "Ten świat jest zarchiwizowany, więc mapa fabryki nie jest rysowana.",
-  "factorymap.refused.confirm_memory": "Zaznacz pole, aby rysować obok działającej gry.",
+  "factorymap.refused.confirm_memory": "Rysowanie obok działającej gry wymaga najpierw potwierdzenia.",
   "factorymap.refused.no_save": "Ten świat nie ma jeszcze zapisu do narysowania.",
   "factorymap.refused.not_supported": "Mapy fabryki wymagają Factorio 2.0.61 lub nowszego.",
   "factorymap.refused.off": "Mapa fabryki jest wyłączona dla tego świata.",
@@ -57,7 +57,6 @@
     "few": "Jeden piksel to {count} pola szerokości.",
     "many": "Jeden piksel to {count} pól szerokości."
   },
-  "factorymap.view.zoom": "Powiększenie {level}",
   "factorymap.view.zoom_in": "Powiększ",
   "factorymap.view.zoom_out": "Pomniejsz"
 }
