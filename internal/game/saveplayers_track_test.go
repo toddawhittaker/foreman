@@ -280,16 +280,23 @@ func TestStopAndReattachTrackRecord(t *testing.T) {
 	if err := c2.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, func() bool {
-		p, _ := trackedOf(r.playersRecord(id), "erin")
-		return p.LastSeen != nil && p.LastSeen.After(joined)
-	}, "the stop to close erin's session")
+	// The stop's own save also moves erin's last seen, so the wait is for
+	// the run's end itself.
 	tw := c2.tracked(id)
-	tw.mu.Lock()
-	open, ended := maps.Clone(tw.open), tw.endedAt
-	tw.mu.Unlock()
+	var open map[string]time.Time
+	var ended time.Time
+	eventually(t, func() bool {
+		tw.mu.Lock()
+		defer tw.mu.Unlock()
+		open, ended = maps.Clone(tw.open), tw.endedAt
+		return !ended.IsZero()
+	}, "the stop's end to be taken in")
 	if len(open) != 0 {
 		t.Errorf("sessions %v open after the run ended at %v", open, ended)
+	}
+	p, _ := trackedOf(r.playersRecord(id), "erin")
+	if p.LastSeen == nil || !p.LastSeen.After(joined) || !p.LastSeen.Equal(ended) {
+		t.Errorf("erin last seen %v, want the stop's end %v (joined %v)", p.LastSeen, ended, joined)
 	}
 }
 

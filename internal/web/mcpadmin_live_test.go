@@ -447,11 +447,12 @@ func TestMCPTwoStepToolsSpendTheCodeBeforeTheirChecks(t *testing.T) {
 	}
 	t.Run("run_console_command", func(t *testing.T) {
 		g, cs, id := liveRig(t)
-		args := map[string]any{"world_id": id, "command": "/time"}
+		// Not /time: Foreman asks that itself at the stop's save (SPEC 8.15).
+		args := map[string]any{"world_id": id, "command": "/evolution"}
 		code := askCode(t, cs, "run_console_command", args)
 		call(t, cs, "stop_server", map[string]any{"world_id": id, "countdown_seconds": 0})
 		spent(t, cs, "run_console_command", args, code)
-		if slices.Contains(g.consoleCommands(id), "/time") {
+		if slices.Contains(g.consoleCommands(id), "/evolution") {
 			t.Errorf("sent %q", g.consoleCommands(id))
 		}
 	})
