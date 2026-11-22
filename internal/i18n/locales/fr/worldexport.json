@@ -1,0 +1,5 @@
+{
+  "worldexport.busy": "Deux exportations sont déjà en cours. Attendez la fin de l’une d’elles, puis réessayez.",
+  "worldexport.error.saves": "Choisissez toutes les sauvegardes ou seulement la sauvegarde qui sera chargée ensuite.",
+  "worldexport.error.special_file": "Ce monde contient un fichier qu’un fichier de monde ne peut pas conserver : {path} est un lien symbolique ou un fichier spécial. Supprimez-le ou remplacez-le par une copie, puis réessayez."
+}

@@ -1,0 +1,5 @@
+{
+  "worldexport.busy": "Již probíhají dva exporty. Je třeba počkat na dokončení jednoho a zkusit to znovu.",
+  "worldexport.error.saves": "Je třeba vybrat všechny uložené hry, nebo jen uloženou hru, která se načte jako další.",
+  "worldexport.error.special_file": "Tento svět obsahuje soubor, který soubor světa nemůže uchovat: {path} je symbolický odkaz nebo speciální soubor. Je třeba ho odstranit nebo nahradit kopií a zkusit to znovu."
+}

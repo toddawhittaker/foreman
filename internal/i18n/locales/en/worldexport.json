@@ -1,0 +1,5 @@
+{
+  "worldexport.busy": "Two exports are already running. Wait for one to finish and try again.",
+  "worldexport.error.saves": "Choose all saves or only the save that loads next.",
+  "worldexport.error.special_file": "This world holds a file that a world file cannot keep: {path} is a symlink or special file. Remove it or replace it with a copy, then try again."
+}

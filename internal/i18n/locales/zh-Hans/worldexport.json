@@ -1,0 +1,5 @@
+{
+  "worldexport.busy": "已有两个导出正在进行。请等待其中一个完成后重试。",
+  "worldexport.error.saves": "请选择所有存档，或仅选择下次加载的存档。",
+  "worldexport.error.special_file": "此世界包含世界文件无法保存的文件：{path} 是符号链接或特殊文件。请将其删除或替换为副本，然后重试。"
+}
