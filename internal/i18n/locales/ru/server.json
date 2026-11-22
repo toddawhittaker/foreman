@@ -352,6 +352,8 @@
   "server.problem.modlist_space_age_off": "Space Age выключен для этого мира, но mod-list.json включает: {mods} (или файла нет, и тогда игра включает их сама). Исправьте список модов перед запуском.",
   "server.problem.save_newer": "Сохранение {save} создано в Factorio {save_version}, которая новее, чем Factorio {version} этого мира. Более старая игра не может его загрузить.",
   "server.problem.space_age_off": "{save} использует Space Age ({mods}), но для этого мира Space Age выключен.",
+  "server.problem.stale_controls": "В настройках карты мира указаны параметры, которых больше нет в его модах: {names}. С ними игра не может создать карту. Сохраните настройки карты ещё раз, чтобы убрать их.",
+  "server.problem.stale_controls_fix": "Открыть настройки карты",
   "server.problem.mod_missing_one": "{save} использует {mods}, но в этом мире нет файла для него.",
   "server.problem.mod_missing_many": "{save} использует {mods}, но в этом мире нет соответствующих файлов.",
   "server.problem.mod_disabled_one": "{save} использует {mods}, но в этом мире он отключён.",

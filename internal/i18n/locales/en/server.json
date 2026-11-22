@@ -338,6 +338,8 @@
   "server.problem.modlist_space_age_off": "Space Age is off for this world, but mod-list.json enables {mods} (or the file is missing, so the game enables them). Fix the mod list before starting.",
   "server.problem.save_newer": "The save {save} was made by Factorio {save_version}, newer than this world's Factorio {version}. An older game cannot load it.",
   "server.problem.space_age_off": "{save} uses Space Age ({mods}), but Space Age is off for this world.",
+  "server.problem.stale_controls": "The world's map settings name controls its mods no longer have: {names}. The game cannot make the map with them. Save the map settings again to drop them.",
+  "server.problem.stale_controls_fix": "Open the map settings",
   "server.problem.mod_missing_one": "{save} uses {mods}, but this world has no file for it.",
   "server.problem.mod_missing_many": "{save} uses {mods}, but this world has no files for them.",
   "server.problem.mod_disabled_one": "{save} uses {mods}, but it is disabled in this world.",

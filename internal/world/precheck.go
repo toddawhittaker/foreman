@@ -43,6 +43,10 @@ const (
 	// longer offers, so players' games cannot download them to join. The
 	// game package finds it, since it needs the portal.
 	ProblemModGone ProblemKind = "mod-gone"
+	// ProblemStaleControls: an Unfinished world's map settings name an
+	// autoplace control its mods no longer have, so the game cannot make
+	// the map. The game package finds it, since it needs the planet list.
+	ProblemStaleControls ProblemKind = "stale-controls"
 )
 
 // Problem is one reason not to start, in words for the admin.

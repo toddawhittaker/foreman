@@ -297,6 +297,9 @@ func (c *Controller) precheck(ctx context.Context, id string, opts StartOptions)
 	if err != nil {
 		return world.PreCheck{}, err
 	}
+	if check, err = c.staleControlsCheck(ctx, id, check); err != nil {
+		return world.PreCheck{}, err
+	}
 	check = c.portalCheck(ctx, id, check, opts)
 	return check, c.allowStart(check, opts)
 }
@@ -320,6 +323,9 @@ func (c *Controller) precheckReadOnly(ctx context.Context, id, version string, o
 		check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool {
 			return p.Kind == world.ProblemModListSpaceAge
 		})
+	}
+	if check, err = c.staleControlsCheck(ctx, id, check); err != nil {
+		return world.PreCheck{}, err
 	}
 	check = c.portalCheck(ctx, id, check, opts)
 	return check, c.allowStart(check, opts)

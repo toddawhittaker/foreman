@@ -338,6 +338,8 @@
   "server.problem.modlist_space_age_off": "L’Ère spatiale est désactivée pour ce monde, mais mod-list.json active {mods} (ou le fichier est absent, auquel cas le jeu les active). Corrigez la liste des mods avant de démarrer.",
   "server.problem.save_newer": "La sauvegarde {save} a été créée par Factorio {save_version}, plus récent que le Factorio {version} de ce monde. Un jeu plus ancien ne peut pas la charger.",
   "server.problem.space_age_off": "{save} utilise l’Ère spatiale ({mods}), mais l’Ère spatiale est désactivée pour ce monde.",
+  "server.problem.stale_controls": "Les paramètres de la carte du monde nomment des réglages que ses mods n’ont plus : {names}. Le jeu ne peut pas créer la carte avec eux. Enregistrez de nouveau les paramètres de la carte pour les retirer.",
+  "server.problem.stale_controls_fix": "Ouvrir les paramètres de la carte",
   "server.problem.mod_missing_one": "{save} utilise {mods}, mais ce monde n’a pas de fichier pour lui.",
   "server.problem.mod_missing_many": "{save} utilise {mods}, mais ce monde n’a pas de fichiers pour eux.",
   "server.problem.mod_disabled_one": "{save} utilise {mods}, mais il est désactivé dans ce monde.",
