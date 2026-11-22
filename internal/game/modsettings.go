@@ -355,14 +355,21 @@ func (c *Controller) readOnlyZipMounts(base *os.Root, dir string) ([]docker.Bind
 		if !e.Type().IsRegular() || !strings.HasSuffix(e.Name(), ".zip") {
 			continue
 		}
-		out = append(out, docker.BindMount{
-			Type:     "bind",
-			Source:   filepath.Join(c.hostData, previewDir, mods, e.Name()),
-			Target:   gameenv.PreviewMount + "/" + world.ModsDir + "/" + e.Name(),
-			ReadOnly: true,
-		})
+		out = append(out, c.readOnlyMount(filepath.Join(mods, e.Name()), gameenv.PreviewMount+"/"+world.ModsDir+"/"+e.Name()))
 	}
 	return out, nil
+}
+
+// readOnlyMount mounts the file rel, a path under the preview folder, at
+// target in the container, read-only. A save read mounts the save's link
+// this way (SPEC 8.16).
+func (c *Controller) readOnlyMount(rel, target string) docker.BindMount {
+	return docker.BindMount{
+		Type:     "bind",
+		Source:   filepath.Join(c.hostData, previewDir, rel),
+		Target:   target,
+		ReadOnly: true,
+	}
 }
 
 // readModSettingsOutput reads the definitions JSON and the defaults file the
