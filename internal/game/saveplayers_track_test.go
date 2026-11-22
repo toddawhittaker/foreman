@@ -419,3 +419,98 @@ func TestTrackIgnoresLinesReadAgain(t *testing.T) {
 		t.Errorf("ann played %d seconds, want %d", p.PlayedSeconds(), 10*60)
 	}
 }
+
+// SPEC 8.14: a stop's last save line, read after the monitor saw the stop,
+// still moves the record to that save, so it matches the save that loads
+// next. A late join is still dropped.
+func TestTrackLateSaveAfterStopRebases(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Late save")
+	r.putPlayersRecord(id, trackT0)
+	r.c.trackLine(id, Event{Kind: KindLoadStarted, Time: trackT0.Add(time.Second)}, "base.zip", true)
+	r.c.trackRunEnd(id, runEnd{at: trackT0.Add(10 * time.Minute), started: trackT0})
+	r.putSave(id, "2.1.24-no-space-age.zip", "_autosave1.zip", time.Now())
+	r.c.trackLine(id, joinAt("ann", trackT0.Add(8*time.Minute)), "", true)
+	r.c.trackLine(id, Event{Kind: KindSaveFinished, Time: trackT0.Add(9 * time.Minute)}, "", true)
+	rec := r.playersRecord(id)
+	if want, _ := r.c.loadTarget(id); !rec.Basis.Same(want) {
+		t.Errorf("basis %+v, want the save that loads next %+v", rec.Basis, want)
+	}
+	if _, ok := trackedOf(rec, "ann"); ok {
+		t.Error("a join read after the stop was taken in")
+	}
+}
+
+// SPEC 8.14: a crash end the monitor reports after the restarted run's
+// lines were read marks the record inexact but keeps the new run's
+// sessions open.
+func TestTrackLateCrashKeepsNewRun(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Late crash")
+	r.putPlayersRecord(id, trackT0)
+	r.c.trackLine(id, Event{Kind: KindLoadStarted, Time: trackT0.Add(4 * time.Minute)}, "base.zip", true)
+	r.c.trackLine(id, joinAt("ann", trackT0.Add(5*time.Minute)), "", true)
+	r.c.trackRunEnd(id, runEnd{at: trackT0.Add(3 * time.Minute), unseen: true})
+	tw := r.c.tracked(id)
+	tw.mu.Lock()
+	_, open := tw.open["ann"]
+	target := tw.target
+	tw.mu.Unlock()
+	if !open || target == (saveplayers.Basis{}) {
+		t.Errorf("the new run's state was cleared: ann open %v, target %+v", open, target)
+	}
+	if !r.playersRecord(id).Inexact {
+		t.Error("the crash did not mark the record inexact")
+	}
+	r.c.trackLine(id, leaveAt("ann", trackT0.Add(15*time.Minute)), "", true)
+	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.PlayedSeconds() != 10*60 {
+		t.Errorf("ann played %d seconds, want %d", p.PlayedSeconds(), 10*60)
+	}
+}
+
+// SPEC 8.15: a /time answer that comes back after its run ended is dropped,
+// and a kept one tells the pages once.
+func TestGameTimeAnswerKeptOnlyForItsRun(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Late time")
+	r.putPlayersRecord(id, trackT0)
+	updates, stop := r.c.world(id).hub.Subscribe()
+	defer stop()
+
+	r.c.takeGameTime(id, time.Hour, trackT0.Add(time.Minute), time.Time{})
+	if got := r.playersRecord(id).GameTicks; got != 3600*saveplayers.TicksPerSecond {
+		t.Errorf("game ticks %d after a kept answer", got)
+	}
+	if n := countUpdates(updates, UpdateSavePlayers); n != 1 {
+		t.Errorf("%d updates for one answer, want 1", n)
+	}
+
+	r.c.trackRunEnd(id, runEnd{at: trackT0.Add(2 * time.Minute), started: trackT0})
+	countUpdates(updates, UpdateSavePlayers)
+	r.c.takeGameTime(id, 2*time.Hour, trackT0.Add(3*time.Minute), time.Time{})
+	if got := r.playersRecord(id).GameTicks; got != 3600*saveplayers.TicksPerSecond {
+		t.Errorf("game ticks %d: an answer from an ended run was kept", got)
+	}
+	tw := r.c.tracked(id)
+	tw.mu.Lock()
+	kept := tw.gameTimeAt
+	tw.mu.Unlock()
+	if !kept.IsZero() {
+		t.Error("an answer from an ended run is shown")
+	}
+}
+
+// countUpdates drains ch and counts the updates of kind k.
+func countUpdates(ch <-chan Update, k UpdateKind) int {
+	n := 0
+	for {
+		select {
+		case u := <-ch:
+			if u.Kind == k {
+				n++
+			}
+		default:
+			return n
+		}
+	}
+}

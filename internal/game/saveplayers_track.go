@@ -39,6 +39,9 @@ type trackedWorld struct {
 	// for a run Foreman did not see begin; a record is moved to a new save
 	// only from its target (SPEC 8.14).
 	target saveplayers.Basis
+	// endedTarget is the target of the run that ended last, for a save
+	// line of it read after its end.
+	endedTarget saveplayers.Basis
 	// endedAt is the newest run end taken in, so a stopped container seen
 	// at every poll reads the record once. lineAt is Docker's time of the
 	// newest line taken in.
@@ -76,15 +79,16 @@ func (c *Controller) updatePlayersRecord(id string, f func(*saveplayers.Record) 
 	t := c.tracked(id)
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return c.updateRecordLocked(id, f)
+	_, err := c.updateRecordLocked(id, f)
+	return err
 }
 
 // updateRecordLocked is updatePlayersRecord with the world's tracking mu
-// held.
-func (c *Controller) updateRecordLocked(id string, f func(*saveplayers.Record) error) error {
+// held. It reports whether it wrote the record.
+func (c *Controller) updateRecordLocked(id string, f func(*saveplayers.Record) error) (bool, error) {
 	old, err := c.worlds.ReadPlayersRecord(id)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
+		return false, err
 	}
 	var r saveplayers.Record
 	if len(old) > 0 {
@@ -96,29 +100,30 @@ func (c *Controller) updateRecordLocked(id string, f func(*saveplayers.Record) e
 		}
 	}
 	if err := f(&r); err != nil {
-		return err
+		return false, err
 	}
 	if r.FormatVersion == 0 {
-		return nil
+		return false, nil
 	}
 	b, err := r.Marshal()
 	if err != nil {
-		return err
+		return false, err
 	}
 	if bytes.Equal(b, old) {
-		return nil
+		return false, nil
 	}
 	if err := c.worlds.WritePlayersRecord(id, b); err != nil {
-		return err
+		return false, err
 	}
 	c.world(id).hub.Publish(Update{Kind: UpdateSavePlayers})
-	return nil
+	return true, nil
 }
 
 // trackRecord changes the world's record when it has one, and logs a
-// failure: tracking never stops the game or its log.
-func (c *Controller) trackRecord(id string, f func(*saveplayers.Record)) {
-	err := c.updateRecordLocked(id, func(r *saveplayers.Record) error {
+// failure: tracking never stops the game or its log. It reports whether
+// it wrote the record, which tells the world's pages.
+func (c *Controller) trackRecord(id string, f func(*saveplayers.Record)) bool {
+	written, err := c.updateRecordLocked(id, func(r *saveplayers.Record) error {
 		if r.FormatVersion != 0 {
 			f(r)
 		}
@@ -127,6 +132,7 @@ func (c *Controller) trackRecord(id string, f func(*saveplayers.Record)) {
 	if err != nil {
 		c.log.Warn("cannot update the players record", "world", id, "error", err)
 	}
+	return written
 }
 
 // foldOpen counts every open session up to at, all from the same AsOf,
@@ -153,9 +159,18 @@ func (c *Controller) trackLine(id string, ev Event, loaded string, live bool) {
 	t := c.tracked(id)
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !at.After(t.endedAt) || !at.After(t.lineAt) {
-		// A line read again as the log is followed anew: it was taken in
-		// already, or its run has ended and its sessions with it.
+	if !at.After(t.lineAt) {
+		// A line read again as the log is followed anew.
+		return
+	}
+	if !at.After(t.endedAt) {
+		// A line of a run that has ended: its sessions ended with it. A
+		// save it finished last, read only after the end was seen, still
+		// says which save loads next.
+		if ev.Kind == KindSaveFinished {
+			t.lineAt = at
+			c.trackLateSave(id, t, live)
+		}
 		return
 	}
 	t.lineAt = at
@@ -173,7 +188,7 @@ func (c *Controller) trackLine(id string, ev Event, loaded string, live bool) {
 		// Every run begins here: players of a run before it are gone.
 		c.trackRecord(id, func(r *saveplayers.Record) { foldOpen(r, t.open, at) })
 		clear(t.open)
-		t.target = saveplayers.Basis{}
+		t.target, t.endedTarget = saveplayers.Basis{}, saveplayers.Basis{}
 		if live {
 			if s, ok := c.loadTarget(id); ok && s.Save == loaded {
 				t.target = s
@@ -203,6 +218,24 @@ func (c *Controller) trackSaved(id string, t *trackedWorld, at time.Time, live b
 	if live {
 		c.askGameTimeLocked(id, t)
 	}
+}
+
+// trackLateSave takes in a save finished by a run whose end was seen
+// already: the record moves to it as trackSaved would, and nothing else
+// changes. t.mu is held.
+func (c *Controller) trackLateSave(id string, t *trackedWorld, live bool) {
+	if !live || t.endedTarget == (saveplayers.Basis{}) {
+		return
+	}
+	next, _ := c.loadTarget(id)
+	if next != (saveplayers.Basis{}) {
+		c.trackRecord(id, func(r *saveplayers.Record) {
+			if !r.Inexact && r.Basis.Same(t.endedTarget) {
+				r.Rebase(next, time.Time{})
+			}
+		})
+	}
+	t.endedTarget = next
 }
 
 // loadTarget is the save the world would load now, as a basis.
@@ -252,8 +285,13 @@ func (c *Controller) trackRunEnd(id string, e runEnd) {
 			r.Inexact = true
 		}
 	})
+	if e.at.Before(t.lineAt) {
+		// Docker started the game again and the new run's lines were read
+		// before this end was seen: what is open now is the new run's.
+		return
+	}
 	clear(t.open)
-	t.target = saveplayers.Basis{}
+	t.target, t.endedTarget = saveplayers.Basis{}, t.target
 	t.gameTime, t.gameTimeAt = 0, time.Time{}
 }
 
@@ -286,28 +324,45 @@ func (c *Controller) askGameTimeLocked(id string, t *trackedWorld) {
 	if t.asking {
 		return
 	}
-	if c.spawn(func() { c.readGameTime(id) }) {
+	ended := t.endedAt
+	if c.spawn(func() { c.readGameTime(id, ended) }) {
 		t.asking, t.asked = true, c.now()
 	}
 }
 
 // readGameTime asks the running game for its play time with plain /time,
 // never Lua, so achievements stay on (SPEC 8.15), and keeps the answer.
-func (c *Controller) readGameTime(id string) {
-	t := c.tracked(id)
+// ended is the world's newest run end when the ask began.
+func (c *Controller) readGameTime(id string, ended time.Time) {
 	d, at, err := c.askGameTime(id)
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.asking = false
 	if err != nil {
+		t := c.tracked(id)
+		t.mu.Lock()
+		t.asking = false
+		t.mu.Unlock()
 		c.log.Debug("cannot read the game's play time", "world", id, "error", err)
 		return
 	}
+	c.takeGameTime(id, d, at, ended)
+}
+
+// takeGameTime keeps a /time answer d, true at at, unless the run it was
+// asked of has ended since: ended is the newest run end when it was asked.
+func (c *Controller) takeGameTime(id string, d time.Duration, at, ended time.Time) {
+	t := c.tracked(id)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.asking = false
+	if !t.endedAt.Equal(ended) {
+		return
+	}
 	t.gameTime, t.gameTimeAt = d, at
-	c.trackRecord(id, func(r *saveplayers.Record) {
+	written := c.trackRecord(id, func(r *saveplayers.Record) {
 		r.SetGameTicks(int64(d/time.Second)*saveplayers.TicksPerSecond, at)
 	})
-	c.world(id).hub.Publish(Update{Kind: UpdateSavePlayers})
+	if !written {
+		c.world(id).hub.Publish(Update{Kind: UpdateSavePlayers})
+	}
 }
 
 // askGameTime sends /time to the world's running game.
