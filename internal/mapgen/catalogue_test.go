@@ -48,7 +48,7 @@ const twoX = `{
   {"name": "corrundum", "autoplace_controls": {"calcite": {}, "missing": {}}},
   {"name": "Bad Name", "autoplace_controls": {}},
   {"name": "maraxsis-trench", "autoplace_controls": {}},
-  {"name": "moshine", "autoplace_controls": {"steam_geyser": {"richness": 4}}, "extra": [1,2]}
+  {"name": "moshine", "autoplace_controls": {"steam_geyser": {"richness": 150}}, "extra": [1,2]}
  ],
  "autoplace_controls": [
   {"name": "vulcanus_volcanism", "category": "terrain", "can_be_disabled": false, "order": "b"},
@@ -98,7 +98,7 @@ func TestParseWorldPlanets2x(t *testing.T) {
 	if len(c.Planets[2].Controls) != 0 {
 		t.Error("trench should have no controls")
 	}
-	if r := c.Planets[3].Defaults["steam_geyser"].Richness; r == nil || *r != 4 {
+	if r := c.Planets[3].Defaults["steam_geyser"].Richness; r == nil || *r != 150 {
 		t.Errorf("moshine steam_geyser richness = %v", r)
 	}
 	if cc := c.Controls["vulcanus_volcanism"]; cc.CanBeDisabled || cc.Category != CategoryTerrain {
@@ -229,8 +229,8 @@ func TestParseWorldPlanetsControlFields(t *testing.T) {
 
 func TestParseWorldPlanetsDefaultsInRange(t *testing.T) {
 	data := `{"planets":[{"name":"p","autoplace_controls":{
-	  "a":{"frequency":0,"size":6,"richness":6},
-	  "b":{"frequency":6.5,"size":-1,"richness":150},
+	  "a":{"frequency":0,"size":1000,"richness":150},
+	  "b":{"frequency":1000.5,"size":-1,"richness":1e9},
 	  "c":{"frequency":0.5}}}],
 	 "autoplace_controls":[{"name":"a","category":"resource"},{"name":"b","category":"resource"},{"name":"c","category":"resource"}]}`
 	c, err := ParseWorldPlanets("2.0", []byte(data))
@@ -238,7 +238,7 @@ func TestParseWorldPlanetsDefaultsInRange(t *testing.T) {
 		t.Fatal(err)
 	}
 	d := c.Planets[0].Defaults
-	if a := d["a"]; a.Frequency == nil || *a.Frequency != 0 || a.Size == nil || *a.Size != 6 || a.Richness == nil || *a.Richness != 6 {
+	if a := d["a"]; a.Frequency == nil || *a.Frequency != 0 || a.Size == nil || *a.Size != 1000 || a.Richness == nil || *a.Richness != 150 {
 		t.Errorf("in-range values were changed: %+v", a)
 	}
 	if b := d["b"]; b.Frequency != nil || b.Size != nil || b.Richness != nil {
@@ -274,5 +274,16 @@ func TestParseWorldPlanetsResourceControlMustBeUsed(t *testing.T) {
 	}
 	if c.Resources[0].Control != "used" || c.Resources[1].Control != "" {
 		t.Errorf("resources = %+v", c.Resources)
+	}
+}
+
+func TestValidName(t *testing.T) {
+	for s, want := range map[string]bool{
+		"iron-ore": true, "a_b-9": true, strings.Repeat("a", 64): true,
+		"": false, strings.Repeat("a", 65): false, "Upper": false, "a b": false, "a\n": false, "é": false,
+	} {
+		if got := ValidName(s); got != want {
+			t.Errorf("ValidName(%q) = %v, want %v", s, got, want)
+		}
 	}
 }

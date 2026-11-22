@@ -23,9 +23,10 @@ const (
 	MaxResources       = 512
 	// MaxOrderChars bounds a control's sort key.
 	MaxOrderChars = 64
-	// MaxControlMultiplier is the largest frequency, size or richness the
-	// map form offers (600%); a planet default above it is not used.
-	MaxControlMultiplier = 6
+	// MaxPlanetDefault is the largest frequency, size or richness a planet
+	// may default to (SPEC 14.6). Mods set real values far above the form's
+	// steps, such as Moshine's steam_geyser richness of 150.
+	MaxPlanetDefault = 1000
 )
 
 var (
@@ -39,14 +40,18 @@ var (
 // from a world's mods; others are left out and counted.
 var nameRE = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
 
+// ValidName reports whether s is a planet, control or resource name Foreman
+// accepts from a world's mods: ^[a-z0-9_-]{1,64}$ (SPEC 14.6).
+func ValidName(s string) bool { return nameRE.MatchString(s) }
+
 // validCategory holds the control categories the game has (SPEC 14.6); a
 // control of any other category is left out.
 var validCategory = map[string]bool{CategoryResource: true, CategoryTerrain: true, CategoryCliff: true, "enemy": true}
 
-// inRange returns v when it is finite and a value the form can show, else
+// inRange returns v when it is finite and from 0 to MaxPlanetDefault, else
 // nil, which means the game's default (SPEC 14.6).
 func inRange(v *float64) *float64 {
-	if v == nil || math.IsNaN(*v) || *v < 0 || *v > MaxControlMultiplier {
+	if v == nil || math.IsNaN(*v) || *v < 0 || *v > MaxPlanetDefault {
 		return nil
 	}
 	return v
@@ -265,7 +270,7 @@ func (l *luaList[T]) UnmarshalJSON(b []byte) error {
 // in Dropped, as is a planet's control the file does not define and a
 // control whose category is not resource, terrain, cliff or enemy or whose
 // order is over MaxOrderChars. A planet default outside 0 to
-// MaxControlMultiplier is ignored, so the game's default is used. A
+// MaxPlanetDefault is ignored, so the game's default is used. A
 // resource names its control only when some planet uses it. Labels
 // are resolved from the locale sections, stripped of rich text and cut to
 // 100 characters; a name that does not resolve is its own label. A planet's
@@ -299,7 +304,7 @@ func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleS
 	defined := map[string]CatalogueControl{}
 	var order []string
 	for _, r := range raw.Controls {
-		if _, dup := defined[r.Name]; dup || !nameRE.MatchString(r.Name) ||
+		if _, dup := defined[r.Name]; dup || !ValidName(r.Name) ||
 			!validCategory[r.Category] || utf8.RuneCountInString(r.Order) > MaxOrderChars {
 			c.Dropped++
 			continue
@@ -323,7 +328,7 @@ func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleS
 		if c.NoPlanets {
 			break
 		}
-		if seen[r.Name] || !nameRE.MatchString(r.Name) {
+		if seen[r.Name] || !ValidName(r.Name) {
 			c.Dropped++
 			continue
 		}
@@ -340,7 +345,7 @@ func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleS
 		slices.SortFunc(p.Controls, byOrder)
 		have := map[string]bool{}
 		for _, n := range r.Resources {
-			if nameRE.MatchString(n) && !have[n] {
+			if ValidName(n) && !have[n] {
 				have[n] = true
 				p.Resources = append(p.Resources, n)
 			} else {
@@ -362,7 +367,7 @@ func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleS
 	}
 	seenRes := map[string]bool{}
 	for _, r := range raw.Resources {
-		if seenRes[r.Name] || !nameRE.MatchString(r.Name) {
+		if seenRes[r.Name] || !ValidName(r.Name) {
 			c.Dropped++
 			continue
 		}
