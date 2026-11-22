@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -451,5 +452,52 @@ func TestSavesSkipTheGamesTemporaryFiles(t *testing.T) {
 	newest, found, err := m.NewestSave(id)
 	if err != nil || !found || newest.Name != "_autosave1.zip" {
 		t.Errorf("newest %+v, %v, %v; want _autosave1.zip", newest, found, err)
+	}
+}
+
+// An upload can carry a modification time that falls inside the window of a
+// read of the save, so the record it would be matched against goes (SPEC
+// 8.14, plan rule 10).
+func TestAddSaveRemovesThePlayersRecord(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	record := filepath.Join(dir, PlayersFile)
+	if err := m.WritePlayersRecord(id, []byte(`{"format_version":1}`)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := m.AddSave(id, "up.zip", uploadTemp(t, m, id, "data")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(record); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("players.json after an upload: %v", err)
+	}
+	assertSavesFolder(t, dir, "up.zip")
+
+	// A world with no record takes an upload as before.
+	if err := m.AddSave(id, "up2.zip", uploadTemp(t, m, id, "data2")); err != nil {
+		t.Fatalf("upload without a record: %v", err)
+	}
+}
+
+// A refused upload changes nothing, the record included.
+func TestAddSaveRefusedKeepsThePlayersRecord(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	putSave(t, dir, "up.zip", "old", t0)
+	record := []byte(`{"format_version":1}`)
+	if err := m.WritePlayersRecord(id, record); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := m.AddSave(id, "up.zip", uploadTemp(t, m, id, "again")); !errors.Is(err, ErrSaveExists) {
+		t.Fatalf("duplicate: %v", err)
+	}
+	if err := m.AddSave(id, "bad/name.zip", uploadTemp(t, m, id, "x")); !errors.Is(err, ErrSaveName) {
+		t.Fatalf("bad name: %v", err)
+	}
+	got, err := m.ReadPlayersRecord(id)
+	if err != nil || string(got) != string(record) {
+		t.Fatalf("record after refused uploads: %q, %v", got, err)
 	}
 }
