@@ -68,7 +68,7 @@ type gameRuns struct {
 	results   map[string]actionResult   // by world id
 	asides    map[string][]actionResult // actions asked for while another ran
 	cancelled map[string]bool           // worlds whose running action had its stop cancelled
-	changed   chan struct{}             // closed and replaced when a result is stored
+	changed   chan struct{}             // closed and replaced when a result is stored, or when a snapshot is taken or deleted outside a task
 	closeOnce sync.Once
 }
 
@@ -322,6 +322,13 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
 	p := ServerPage{World: sum, HasWorld: true, Status: st, Now: s.now(), JoinAddress: s.joinAddress(), StopSeconds: s.stopSeconds(ctx)}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
+	if p.HaveResult && st.Operation != nil && !st.Operation.Done {
+		// A result is stored only after its operation ended, so a status read
+		// before that, which still shows it running, is stale (#781): read it
+		// again, or the page would say Done with no way back.
+		st = s.game.Status(sum.ID)
+		p.Status = st
+	}
 	if !p.HaveResult && s.runs.cancelPending(sum.ID) {
 		p.Result, p.HaveResult = cancelledByOperation(st, s.now())
 	}

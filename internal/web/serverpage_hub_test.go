@@ -435,6 +435,45 @@ func TestServerPageSwitchesAndSwitchesBack(t *testing.T) {
 	g.wantContains("after the switch", body, `href="`+switchPath(a)+`" class="button" id="act-undo">Switch back to Alpha</a>`)
 }
 
+// SPEC 7.9, 17.7, 17.10, #781: a page built from a status read just before a
+// switch ended and a result stored just after still offers the way back. The
+// status here is a copy of the finished switch's with its operation not done,
+// as a request landing in that gap reads it; serverPage reads it again once it
+// finds a result, because a result is stored only after its operation ended.
+func TestServerPageStaleStatusWithStoredResult(t *testing.T) {
+	g := newGameRig(t, image21)
+	a := g.newWorld("Alpha", fixtureNoSA, false)
+	b := g.newWorld("Bravo", fixtureNoSA, false)
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
+	g.waitPage("The worlds are switched, from Alpha to Bravo.")
+
+	done := g.ctrl.Status(b)
+	if done.Operation == nil || !done.Operation.Done {
+		t.Fatalf("the switch's status %+v has no finished operation", done)
+	}
+	stale := done
+	op := *done.Operation
+	op.Done = false
+	stale.Operation = &op
+
+	runs := newGameRuns()
+	t.Cleanup(runs.close)
+	runs.results[b] = actionResult{Action: game.AuditSwitch, Target: b, From: a, At: g.clock.Now()}
+	s := &server{game: g.ctrl, runs: runs, worlds: g.worlds, store: g.store, cfg: g.cfg, log: g.slog, now: g.clock.Now}
+	sum, err := g.worlds.Get(t.Context(), b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p := s.serverPage(t.Context(), sum, stale)
+	if p.Busy() || p.ShowOperation() {
+		t.Errorf("the page still shows the switch running: busy %v, operation shown %v", p.Busy(), p.ShowOperation())
+	}
+	if o := p.Undo(); o == nil || o.Path != switchPath(a) {
+		t.Errorf("Undo = %+v, want the way back to Alpha", o)
+	}
+}
+
 // SPEC 3.7: a world that is not active says on its page when this host
 // lacks its game image, before any switch.
 func TestWorldPageSaysImageIsMissing(t *testing.T) {
