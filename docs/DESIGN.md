@@ -2532,6 +2532,11 @@ close the view, the tab, the setting, and the picture again).
   The heading's line also holds the seed used, "Seed
   123456", at its end while it fits, so the picture sits close to its
   controls.
+- **A picture's own actions share its Download line.** On a 2.1 world's
+  one picture, "Draw from a real game" and its toggletip follow the
+  Download link on the same line, so the pane gives no row of its own to
+  an action the person seldom takes. On a narrow pane the line wraps,
+  and the picture leaves room for the second row.
 - **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
   wide panel, a select of 17 sizes elsewhere) above the section, outside
   the part a reply replaces: 1024 to 3072 tiles square in steps of 128,

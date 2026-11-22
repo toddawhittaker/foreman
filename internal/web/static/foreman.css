@@ -5847,8 +5847,18 @@ a[target="_blank"]::after {
   /* The frame shrinks, not the row, so its download link keeps the column's width;
      a frame narrower than the column sits in its middle. */
   .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li > figure {
-    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min) - var(--chart-row, 0px)));
     justify-self: center;
+  }
+
+  /* The Download line also offers the real-game picture. Below 100rem the
+     pane is narrow and the line wraps to two control rows, so the picture
+     keeps room for both; on a wider pane it is one row (DESIGN 8.8). */
+  @media (max-width: 99.98rem) {
+    .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
+      --chart-row: calc(var(--target-min) + var(--space-1));
+      min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
+    }
   }
 
   /* The download links and the kept note read as one tight group under the

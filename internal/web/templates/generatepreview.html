@@ -80,11 +80,17 @@
         </div>
         {{/* Shown by the script when its request for the territories fails. */}}
         <template id="territory-failed">{{template "territory-result" $.Preview.Territories.RequestFailed}}</template>
+        {{- $chart := eq .Planet $.Preview.ChartPlanet}}
+        {{- if $chart}}<div class="picture-actions">{{end}}
         <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}" data-both="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}">
           {{- if $.Preview.Territories.Drawn}}{{t "worlds.generate.territories.download" "planet" (msg .Name)}}{{else}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{end}}</a>
+        {{- if $chart}} {{template "chart-offer" $.Preview}}</div>{{template "tip-text" $.Preview.ChartTip}}{{end}}
         {{- else}}
         {{/* The script adds the amounts, and says so, while the box above is ticked and they are counted (SPEC 5.6). */}}
+        {{- $chart := eq .Planet $.Preview.ChartPlanet}}
+        {{- if $chart}}<div class="picture-actions">{{end}}
         <a href="{{.DownloadPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}">{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
+        {{- if $chart}} {{template "chart-offer" $.Preview}}</div>{{template "tip-text" $.Preview.ChartTip}}{{end}}
         {{- end}}
       </li>
       {{- end}}
@@ -94,10 +100,6 @@
          make by script; it takes seconds, so only on request, and it needs script (SPEC 5.6, 14.3).
          The script puts the reply in the slot and hides the fast picture until Back. */}}
     <div class="js-only" id="preview-chart-box" data-planet="{{.}}" data-path="{{$.Preview.ChartPath}}" data-ready="{{t "mapgen.chart.ready"}}" data-failed="{{t "mapgen.chart.failed"}}">
-      <div class="preview-limit" id="preview-chart-offer">
-        <p><button type="button" class="button" id="preview-chart-button">{{t "mapgen.chart.draw"}}</button>{{template "tip-button" $.Preview.ChartTip}}</p>
-        {{- template "tip-text" $.Preview.ChartTip}}
-      </div>
       <div class="wait" id="preview-chart-wait" hidden>
         <p class="hint">{{t "mapgen.chart.drawing"}}</p>
         <progress aria-hidden="true"></progress>
@@ -406,4 +408,10 @@
     </ul>
   </div>
 </div>
+{{- end}}
+
+{{/* The real-game picture's offer, on its picture's Download line so the pane keeps
+     the picture's room (DESIGN 8.8); the script hides it while that picture shows. Takes PreviewView. */}}
+{{define "chart-offer" -}}
+<span class="js-only"><span id="preview-chart-offer"><button type="button" class="button" id="preview-chart-button">{{t "mapgen.chart.draw"}}</button>{{template "tip-button" .ChartTip}}</span></span>
 {{- end}}
