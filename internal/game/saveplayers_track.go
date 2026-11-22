@@ -18,9 +18,6 @@ import (
 // its play time (SPEC 8.15).
 const gameTimeEvery = time.Minute
 
-// ticksPerSecond is the game's fixed update rate.
-const ticksPerSecond = 60
-
 // recordState is the players records' mutexes, one per world, with what
 // tracking knows of each world's run and its last /time reading (SPEC 8.14,
 // 8.15).
@@ -130,17 +127,14 @@ func (c *Controller) trackRecord(id string, f func(*saveplayers.Record)) {
 	}
 }
 
-// foldOpen counts every open session up to at, then makes the totals true
-// at at. Each session is counted from the same AsOf, since AddSession
-// moves it; a moment no later than AsOf was counted already, so a replayed
-// line changes nothing (SPEC 8.14).
+// foldOpen counts every open session up to at, all from the same AsOf,
+// then makes the totals true at at. A moment no later than AsOf was counted
+// already, so a replayed line changes nothing (SPEC 8.14).
 func foldOpen(r *saveplayers.Record, open map[string]time.Time, at time.Time) {
 	if !at.After(r.AsOf) {
 		return
 	}
-	from := r.AsOf
 	for _, name := range slices.Sorted(maps.Keys(open)) {
-		r.AsOf = from
 		r.AddSession(name, open[name], at)
 	}
 	r.AsOf = at
@@ -157,6 +151,11 @@ func (c *Controller) trackLine(id string, ev Event, loaded string, live bool) {
 	t := c.tracked(id)
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if !at.After(t.endedAt) {
+		// A line of a run that has ended, read again as the log is
+		// followed anew: its sessions were closed with it.
+		return
+	}
 	switch ev.Kind {
 	case KindPlayerJoined:
 		c.trackRecord(id, func(r *saveplayers.Record) {
@@ -193,7 +192,7 @@ func (c *Controller) trackSaved(id string, t *trackedWorld, at time.Time, live b
 	}
 	c.trackRecord(id, func(r *saveplayers.Record) {
 		foldOpen(r, t.open, at)
-		if next != (saveplayers.Basis{}) && !r.Inexact && sameBasis(r.Basis, t.target) {
+		if next != (saveplayers.Basis{}) && !r.Inexact && r.Basis.Same(t.target) {
 			r.Rebase(next, at)
 		}
 	})
@@ -215,11 +214,6 @@ func (c *Controller) loadTarget(id string) (saveplayers.Basis, bool) {
 // basisOfSave is the basis of a world's save.
 func basisOfSave(s world.Save) saveplayers.Basis {
 	return saveplayers.Basis{Save: s.Name, Size: s.Size, Modified: s.ModTime}
-}
-
-// sameBasis reports whether two bases name the same save as it was.
-func sameBasis(a, b saveplayers.Basis) bool {
-	return a.Save == b.Save && a.Size == b.Size && a.Modified.Equal(b.Modified)
 }
 
 // runEnd is a run of the game that ended, as a look at Docker found it.
@@ -308,7 +302,7 @@ func (c *Controller) readGameTime(id string) {
 	}
 	t.gameTime, t.gameTimeAt = d, at
 	c.trackRecord(id, func(r *saveplayers.Record) {
-		r.SetGameTicks(int64(d/time.Second)*ticksPerSecond, at)
+		r.SetGameTicks(int64(d/time.Second)*saveplayers.TicksPerSecond, at)
 	})
 	c.world(id).hub.Publish(Update{Kind: UpdateSavePlayers})
 }

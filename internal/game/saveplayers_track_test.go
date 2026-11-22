@@ -14,18 +14,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// needRecords skips a test until the players record can be written and read.
-func needRecords(t *testing.T) {
-	t.Helper()
-	b, err := saveplayers.Record{FormatVersion: saveplayers.FormatVersion}.Marshal()
-	if err == nil {
-		_, err = saveplayers.Parse(b)
-	}
-	if err != nil {
-		t.Skipf("the players record is not built yet: %v", err)
-	}
-}
-
 // putRecord writes a record for the save the world loads, true at asOf.
 func (r *rig) putPlayersRecord(id string, asOf time.Time) saveplayers.Record {
 	r.t.Helper()
@@ -83,7 +71,6 @@ var trackT0 = time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
 
 // SPEC 8.14: two players on at once each get their whole time.
 func TestTrackOverlappingSessions(t *testing.T) {
-	needRecords(t)
 	r := newRig(t, rigOptions{noRun: true})
 	id := r.newWorld("Overlap")
 	r.putPlayersRecord(id, trackT0)
@@ -95,7 +82,7 @@ func TestTrackOverlappingSessions(t *testing.T) {
 	rec := r.playersRecord(id)
 	for name, want := range map[string]int64{"ann": 30 * 60, "bob": 30 * 60} {
 		p, ok := trackedOf(rec, name)
-		if !ok || p.TrackedSeconds != want {
+		if !ok || p.PlayedSeconds() != want {
 			t.Errorf("%s: %+v (found %v), want %d tracked seconds", name, p, ok, want)
 		}
 	}
@@ -110,7 +97,6 @@ func TestTrackOverlappingSessions(t *testing.T) {
 // SPEC 8.14: replaying the log after a re-attach never counts a session
 // twice, and still counts the part Foreman missed.
 func TestTrackReplayCountsOnce(t *testing.T) {
-	needRecords(t)
 	r := newRig(t, rigOptions{noRun: true})
 	id := r.newWorld("Replay")
 	r.putPlayersRecord(id, trackT0)
@@ -123,21 +109,20 @@ func TestTrackReplayCountsOnce(t *testing.T) {
 	r.c.trackLine(id, joinAt("ann", trackT0.Add(20*time.Minute)), "", false)
 	r.c.trackLine(id, leaveAt("ann", trackT0.Add(25*time.Minute)), "", false)
 
-	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.TrackedSeconds != 15*60 {
-		t.Errorf("ann tracked %d seconds, want %d", p.TrackedSeconds, 15*60)
+	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.PlayedSeconds() != 15*60 {
+		t.Errorf("ann tracked %d seconds, want %d", p.PlayedSeconds(), 15*60)
 	}
 }
 
 // SPEC 8.14: time before the record's moment was in the save already.
 func TestTrackCountsOnlyAfterTheRecord(t *testing.T) {
-	needRecords(t)
 	r := newRig(t, rigOptions{noRun: true})
 	id := r.newWorld("After")
 	r.putPlayersRecord(id, trackT0)
 	r.c.trackLine(id, joinAt("ann", trackT0.Add(-time.Hour)), "", true)
 	r.c.trackLine(id, leaveAt("ann", trackT0.Add(5*time.Minute)), "", true)
-	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.TrackedSeconds != 5*60 {
-		t.Errorf("ann tracked %d seconds, want %d", p.TrackedSeconds, 5*60)
+	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.PlayedSeconds() != 5*60 {
+		t.Errorf("ann tracked %d seconds, want %d", p.PlayedSeconds(), 5*60)
 	}
 }
 
@@ -157,22 +142,20 @@ func TestTrackWithoutRecordWritesNothing(t *testing.T) {
 
 // SPEC 8.14: a new run (a load line) ends the sessions of the run before.
 func TestTrackLoadEndsOpenSessions(t *testing.T) {
-	needRecords(t)
 	r := newRig(t, rigOptions{noRun: true})
 	id := r.newWorld("Load")
 	r.putPlayersRecord(id, trackT0)
 	r.c.trackLine(id, joinAt("ann", trackT0), "", true)
 	r.c.trackLine(id, Event{Kind: KindLoadStarted, Time: trackT0.Add(3 * time.Minute)}, "base.zip", true)
 	r.c.trackLine(id, leaveAt("ann", trackT0.Add(time.Hour)), "", true)
-	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.TrackedSeconds != 3*60 {
-		t.Errorf("ann tracked %d seconds, want %d", p.TrackedSeconds, 3*60)
+	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.PlayedSeconds() != 3*60 {
+		t.Errorf("ann tracked %d seconds, want %d", p.PlayedSeconds(), 3*60)
 	}
 }
 
 // SPEC 8.14: a stop closes open sessions when the game ended; a crash also
 // marks the record inexact (rule D7).
 func TestTrackRunEnd(t *testing.T) {
-	needRecords(t)
 	for _, crash := range []bool{false, true} {
 		r := newRig(t, rigOptions{noRun: true})
 		id := r.newWorld("End")
@@ -183,16 +166,16 @@ func TestTrackRunEnd(t *testing.T) {
 		// A later poll of the same stopped container changes nothing.
 		r.c.trackRunEnd(id, runEnd{at: trackT0.Add(21 * time.Minute), started: trackT0, unseen: crash})
 		rec := r.playersRecord(id)
-		if p, _ := trackedOf(rec, "ann"); p.TrackedSeconds != 20*60 {
-			t.Errorf("crash %v: ann tracked %d seconds, want %d", crash, p.TrackedSeconds, 20*60)
+		if p, _ := trackedOf(rec, "ann"); p.PlayedSeconds() != 20*60 {
+			t.Errorf("crash %v: ann tracked %d seconds, want %d", crash, p.PlayedSeconds(), 20*60)
 		}
 		if rec.Inexact != crash {
 			t.Errorf("crash %v: inexact %v", crash, rec.Inexact)
 		}
 		// The sessions are closed: a later leave line adds nothing.
 		r.c.trackLine(id, leaveAt("ann", trackT0.Add(time.Hour)), "", false)
-		if p, _ := trackedOf(r.playersRecord(id), "ann"); p.TrackedSeconds != 20*60 {
-			t.Errorf("crash %v: a leave after the end counted, %d seconds", crash, p.TrackedSeconds)
+		if p, _ := trackedOf(r.playersRecord(id), "ann"); p.PlayedSeconds() != 20*60 {
+			t.Errorf("crash %v: a leave after the end counted, %d seconds", crash, p.PlayedSeconds())
 		}
 	}
 }
@@ -200,7 +183,6 @@ func TestTrackRunEnd(t *testing.T) {
 // SPEC 8.14 (rule D7): a run that began after the record's moment and ended
 // with nothing tracked ran while Foreman was down.
 func TestTrackRunWhileForemanDown(t *testing.T) {
-	needRecords(t)
 	r := newRig(t, rigOptions{noRun: true})
 	id := r.newWorld("Down")
 	r.putPlayersRecord(id, trackT0)
@@ -221,7 +203,6 @@ func TestTrackRunWhileForemanDown(t *testing.T) {
 // still matches the save that loads next; but only from the save the run
 // went on from, and not once the record is inexact.
 func TestTrackSaveRebases(t *testing.T) {
-	needRecords(t)
 	cases := []struct {
 		name       string
 		live       bool
@@ -256,7 +237,6 @@ func TestTrackSaveRebases(t *testing.T) {
 
 // A crash is seen by the monitor and marks the record inexact (SPEC 8.14).
 func TestCrashMarksRecordInexact(t *testing.T) {
-	needRecords(t)
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Crash record")
 	r.putPlayersRecord(id, trackT0)
@@ -277,7 +257,6 @@ func TestCrashMarksRecordInexact(t *testing.T) {
 // A stop closes the open sessions, and a game Foreman takes on after a
 // restart marks the record inexact (SPEC 8.14).
 func TestStopAndReattachTrackRecord(t *testing.T) {
-	needRecords(t)
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Stop record")
 	r.putPlayersRecord(id, trackT0)
@@ -353,7 +332,6 @@ func TestGameTimeAskedOnceAMinute(t *testing.T) {
 
 // SPEC 8.15: the /time answer becomes the record's game time.
 func TestGameTimeReachesRecord(t *testing.T) {
-	needRecords(t)
 	if _, err := ParseTimeReply("1 minute"); err != nil {
 		t.Skipf("the /time parser is not built yet: %v", err)
 	}
@@ -367,7 +345,7 @@ func TestGameTimeReachesRecord(t *testing.T) {
 		d, _, ok = r.c.liveGameTime(id)
 		return ok
 	}, "a /time reading")
-	if got, want := r.playersRecord(id).GameTicks, int64(d/time.Second)*ticksPerSecond; got != want {
+	if got, want := r.playersRecord(id).GameTicks, int64(d/time.Second)*saveplayers.TicksPerSecond; got != want {
 		t.Errorf("game ticks %d, want %d from %v", got, want, d)
 	}
 }
@@ -403,5 +381,20 @@ func TestUpdatePlayersRecord(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(filepath.Join(r.worldDir(id), world.PlayersFile)); string(b) != "not json" { //nolint:gosec // the test's own folder
 		t.Errorf("a refused update wrote %q", b)
+	}
+}
+
+// SPEC 8.14: a join line of an ended run, read again, opens no session that
+// the next run would count through the time the game was stopped.
+func TestTrackIgnoresLinesOfAnEndedRun(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Ended")
+	r.putPlayersRecord(id, trackT0)
+	r.c.trackLine(id, joinAt("ann", trackT0.Add(time.Minute)), "", true)
+	r.c.trackRunEnd(id, runEnd{at: trackT0.Add(11 * time.Minute)})
+	r.c.trackLine(id, joinAt("ann", trackT0.Add(time.Minute)), "", false)
+	r.c.trackLine(id, Event{Kind: KindLoadStarted, Time: trackT0.Add(5 * time.Hour)}, "base.zip", true)
+	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.PlayedSeconds() != 10*60 {
+		t.Errorf("ann tracked %d seconds, want %d", p.PlayedSeconds(), 10*60)
 	}
 }
