@@ -105,6 +105,7 @@
 {{- /* A world file made by Export world on another Foreman (SPEC 5.14). The upload is staged and a preview follows; nothing is imported until it is confirmed. */}}
 <form method="post" action="{{.WorldFilePath}}" enctype="multipart/form-data" class="panel import-world-file" novalidate aria-labelledby="world-file-heading">
   <h2 id="world-file-heading">{{t "worldfile.import.heading"}}</h2>
+  {{template "summary" .WorldFileProblems}}
   <p>{{t "worldfile.import.intro"}}</p>
   {{template "required-note"}}
   {{template "dropzone" .WorldFileZone}}
