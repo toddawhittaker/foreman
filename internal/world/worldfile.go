@@ -25,7 +25,7 @@ const (
 	MaxWorldFile int64 = 64 << 30
 	// maxWorldFileEntries is the most entries a world file may hold, counted
 	// before the ZIP's directory is built (SPEC 14.6).
-	maxWorldFileEntries = 100_000 //nolint:unused // used by the import, task T2
+	maxWorldFileEntries = 100_000
 	// PrefixWorldFile begins the name of a staged upload of a world file;
 	// the .partial- prefix means Recover clears it at startup.
 	PrefixWorldFile = PrefixPartial + "worldfile-"
