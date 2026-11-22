@@ -4677,3 +4677,185 @@ Verified: each task with `make verify` and the e2e specs for the files it touche
   `docs/screenshots/worlds.webp` and `worlds-light.webp` were not retaken: the
   docs pass made them on a throwaway stack with real worlds that no longer
   exists, and no script for it was kept.
+
+## Fixes batch 16
+
+Serves SPEC 5.1, 5.5, 5.13 to 5.16, 8.7, 8.14 to 8.16, 12.9, 14.3, 14.5,
+14.6, 16.3 and 21.7, with DESIGN 7.12, 8.2 and 8.22, and ADRs 0030, 0031
+and 0032. Issues: three small fixes (#781, #784, #785) and three features:
+the players of a save with their play time (#769), the factory map (#773)
+and world file export and import (#774). The plan was #791 and the spec and
+ADR task #792. The task pull requests were #793 to #808, #811 to #823 and
+#825 to #832; #809, #810 and #824 were closed because a later pull request
+included them.
+
+Rulings (the plan, then Todd, 2026-11-21):
+
+1. A save is read in a one-off benchmark run with a control-only helper mod,
+   never by starting a server (ADR 0030). The same run serves #769 and #773.
+2. The players record is `worlds/<id>/players.json`, so snapshots, restores
+   and clones carry it with no new code; a world file leaves it out.
+3. A read, and an automatic map drawing, run by themselves only while no
+   game runs on this Foreman. Beside a running game they run only on an
+   admin's click, which first shows the memory the read needs.
+4. The factory map is P1 with its full overlay, viewer and modes. Its
+   default mode is manual for every world, new or existing. "Skip while
+   players are online" governs the click to draw a running world, and is on
+   by default.
+5. A world file holds no snapshots for now (5.15 records format 2 as P2),
+   only ever makes a new world, and is not in MCP or the REST API.
+
+### Delivered
+
+- **Switch back no longer goes missing (#781, SPEC 16.3; #793).** The Server
+  page no longer shows Done without Switch back when a request lands
+  between a switch ending and its result being stored. The page reads the
+  status again when a result is stored while the status still shows an
+  operation running.
+- **The Server page's snapshot card follows the Snapshots page (#784, SPEC
+  6.4, 16.3; #795).** A snapshot taken or deleted inline on the Snapshots
+  page, in another tab, now shows on the Server page with no reload, and so
+  does a settings save.
+- **"A mod stopped the game." (#785, SPEC 8.7; #794).** The mod-error crash
+  now reads this way in all eight languages, since it can also happen while
+  the game runs.
+- **Reading a copy of a save (#769, #773, SPEC 8.16, 14.3; #816, #797,
+  #818).** The world's own image runs the save in benchmark mode for 8
+  ticks in a one-off container with no network, 12 GiB of memory with no
+  swap and 5 minutes, in the one preview slot. The save is hard-linked into
+  the work folder and mounted read-only over the link (copied when linking
+  fails, after the disk check). `mod-list.json` and `mod-settings.dat` are
+  copies, and `config/`, `rconpw` and `server-settings.json` never enter the
+  folder. The game writes only to a 1 GiB in-memory folder, and only the
+  helper's named output is moved out. The pre-start check runs first, and
+  the players read also compares the helper's list of active mods with the
+  world's enabled mods afterwards. A start marks the world as starting, then
+  cancels its reads and waits for their containers to go, and a read asked
+  for meanwhile is refused before any container is made. Two helper mods,
+  `internal/game/saveplayers` and `internal/game/factorymap`, each write
+  their output on 1.1, 2.0 and 2.1.
+- **Players of a save (#769, SPEC 8.14; #804, #801, #806, #822, #825).**
+  The players record is read from a copy of the save when the world page
+  asks, by itself while no game runs, or on an admin's click beside a
+  running game. It is kept only for the save that loads next. After the
+  read, join and leave lines add each session, under one lock per world
+  shared by reading and tracking, so replayed lines count once. A crash, a
+  game re-attached after a Foreman restart, or a container gone while
+  running marks the record inexact, and the next view while stopped reads
+  it again. Mod runs ignore the record, an upload of a save removes it, a
+  keep-save clone carries it and a fresh-map clone has none. The world's
+  Overview lists every player with play time, last seen or "Online now", and
+  "Played before Foreman tracked this world". It has states for reading,
+  inexact, a failed read ("tracked since"), never read, no save and an
+  unsupported game version, and a "Read again" button that, beside a running
+  game, states the memory the read needs. The panel works without script;
+  with script it asks again every 3 seconds while a read runs.
+- **Total play time (#769, SPEC 8.15; #805, #822, #826).** Foreman parses the
+  game's plain `/time` reply (hours, minutes and seconds, in the game's own
+  list form) and refuses any form it has not seen. While the game runs it
+  asks at most once a minute and at each finished save, never through Lua.
+  The Server page shows "Play time" in hours and minutes and an "N players in
+  this save" link to the Overview's list; it says nothing until a record
+  exists and "Not read yet" while the first read runs. It follows
+  `UpdateSavePlayers` live.
+- **The factory map (#773, SPEC 5.16; #799, #800, #802, #818, #820, #821,
+  #829).** One picture per surface from the game's own chart, at most 4096
+  pixels a side, with a transparent outline layer for each of eight
+  building categories on the same grid. Pictures are kept in
+  `factorymaps/<world-id>/` under the data folder, replaced atomically, and
+  removed when the world is deleted (and at startup for a world deleted
+  while Foreman was down). The mode (automatic, manual or off, and "skip
+  while players are online") is in `world.json`, and a missing or damaged
+  setting reads as manual with skipping on. Automatic mode draws a world
+  stopped for 2 minutes when no game runs on this Foreman. A draw beside a
+  running game asks the game who is online, and refuses when it cannot ask.
+  The helper's output is checked as untrusted: regular files only, opened
+  without blocking, held to 512 MiB in all and to the counts of 14.6. The
+  viewer is a world tab after Snapshots: zoom by wheel, keys, buttons or
+  pinch, pan by drag, arrow keys or a tap, a surface list, a checkbox and
+  colour swatch per layer, and a download of the base or of the base with
+  the ticked layers, at most 2 combined downloads at once. While a drawing
+  runs the page polls every 3 seconds and keeps focus across the swap.
+- **World file export (#774, SPEC 5.13; #814, #823, #827).** "Export world
+  file" on a world's Overview streams one ZIP: all saves (the default) or
+  only the save that loads next. The world's lock is held only while the
+  files are hard-linked into a staging folder. Secrets, `rconpw`,
+  `players.json`, hidden files and leftovers stay out, and each entry keeps
+  its file's modification time. At most 2 exports run at once, and a failure
+  partway breaks the download. Each export is audited as `world-export`.
+- **World file import (#774, SPEC 5.14, 14.5, 14.6; #812, #828, #827).** A
+  third form on the Import page uploads a world file to a staged name, which
+  is checked under every limit of 14.6. A preview shows the facts, the
+  game-password and mod-data warnings, the name field and the image
+  download. Confirm makes a new world. A name in use, an empty name or too
+  little disk space shows the preview again with no second upload. No file
+  chosen, or a file over the limit, shows on the Import page's own field.
+  Each import is audited as `world-import`.
+- **Tests.** A fake game answers the players read and the map run (#798,
+  #813). Hostile-output tests cover the map parser and store (#807, #830),
+  and attack tests the world file import (in #812). End-to-end specs cover
+  the map (#811), world files (#815) and the players of a save (#803).
+  Real-game tests cover the map on 2.0.77, 2.1.24 and 1.1.110 (#819), the
+  world file round trip on 2.1.24 (#817), and the players read on 2.0.77 and
+  2.1.24 with a hostile write to the save that must fail (#808).
+- **Translations.** New locale areas `saveplayers`, `factorymap`,
+  `worldexport`, `worldimport` and `worldfile`, with additions to `server`,
+  `audit` and `crash`, in all eight languages, reviewed a second time
+  (#832).
+
+Verified: each task with `make verify` and the e2e specs for the files it
+touched; CI's full run on each push to the epic branch; the real-game tests
+above; the fold head with `make e2e E2E_ARGS="tests/design.spec.ts
+--workers=4"`. The epic's full `make test-game` and the hand check of three
+trial saves are recorded in the epic pull request.
+
+### Gaps left
+
+- **A staged world file is not tied to the user who uploaded it.** Foreman
+  has no roles, and the staged name is 64 random bits, so any signed-in
+  user who learned it could confirm it.
+- **No test sends a cross-site POST to the new routes.** The server-wide
+  check covers them.
+- **The players record:** `not-supported` is never returned yet, because no
+  game line is known to refuse benchmark mode. There is no time limit on
+  how long a re-attached game's replayed log may take to catch up. Without
+  script the players panel shows the state at load and does not refresh
+  while a read runs. The Overview's players panel polls every 5 seconds
+  while the world runs, instead of following the live stream.
+- **Players read end to end:** a start cancelling a read and the
+  not-supported state are covered by unit tests only, since the fake's reads
+  finish at once. The real-game test checks the player list only on a save
+  with no players, unless a played save is named in
+  `FOREMAN_TEST_PLAYERS_SAVE`.
+- **A copied save blocks other work.** If hard links fail and a players read
+  copies the save, Update, Rollback, Restore and a snapshot are refused with
+  "another operation is running" until the copy ends.
+- **Map runs skip the after-run check of the mods the game loaded.** Only the
+  pre-start check runs. A wrong mod set can only draw a slightly different
+  picture and never touches a world file.
+- **A failed map drawing is tried again once after a Foreman restart**,
+  because the store keeps a failure next to the previous picture's save
+  rather than the save that failed.
+- **Map surfaces past the helper mod's 360 MiB chart cap are left out**,
+  with no note on the page.
+- **The map pans only by arrow keys, drag or tap.** There are no pan buttons,
+  and a screen reader's browse mode keeps the arrow keys.
+- **The layer swatch colours are written twice**, in
+  `internal/factorymap/categories.go` and `static/factorymap.css`. The map
+  viewer's zoom code is also separate from the Generate preview's (#833).
+- **The map real-game test needs a played save** named in
+  `FOREMAN_TEST_CHARTED_SAVE_2_0` or `_2_1`, since a headless game charts
+  nothing, so `make test-game` skips that case unless it is set. The "other"
+  and rail layers are not asserted. Automatic mode's timing is unit-tested
+  only.
+- **World file export:** the audit entry is written before streaming starts,
+  so it records an export that was begun, and a download that fails after
+  its first byte can only break the connection. The card's note about a
+  running game is always shown, because the world page does not know
+  whether the game runs. The real-game round trip covers only 2.1.24 and
+  "All saves".
+- **World file import:** a bad or newer file, or an unsupported game
+  version, gets an error page with a way back, not a field error on the
+  Import page. A staged file that fails a version check stays until the
+  hourly cleanup.
+- **The fake game's players setting is per process**, not per world.

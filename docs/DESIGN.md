@@ -1507,6 +1507,12 @@ holds only the word. A template always writes the modifier, even for
   is 13 px Plex Mono (8.2). A second figure
   under a value (`fact-note`, such as what a world's snapshots add) is
   `--text-xs`, weight 400, `text-muted`.
+- **Play time** (SPEC 8.15) sits below the Server page's facts grid: a
+  "Play time" fact in hours and minutes (hours are not folded into days)
+  and a quiet link "N players in this save" to the players panel on the
+  world's Overview (8.2). It is a live region of its own, because its link
+  takes focus, and is sent only when its HTML changes. It says nothing
+  until a record exists, and "Not read yet" while the first read runs.
 - When the state changes live (SPEC 16.3), the server sends the new
   badge, and a short sentence goes to `#announcer` ("Server is now
   running"). Uptime, CPU and memory update silently; they must never be
@@ -1875,6 +1881,34 @@ the rail).
   place, so a failure leaves nothing. Success shows the list with "Done:
   Imported the favorite *name*." in focus.
 
+### 7.12 World files (SPEC 5.13, 5.14)
+
+**Export** is a card on a world's Overview, after sharing (8.2) and before
+the managing rows. It is a form that posts, because it does work and is
+audited; the answer is the file. In order: the heading "Export world file";
+a hint with what it is and the estimated size; a radio group "Saves in the
+file" ("All saves" checked, and "Only the save that loads next" with a
+caption); a note that a running game exports its last save on disk and
+that each export is recorded in the audit log; one line on what is left
+out; the Warning message (7.3) about mod-held data, tied to the button by
+`aria-describedby`; then the Export world button. A world a newer Foreman
+wrote has no card.
+
+**Import** is a third panel on the Import page, after the folder form: a
+heading, one sentence, one drop zone (7.10) for a `.zip` and an "Upload
+world file" button, which goes to the preview page. It is a plain upload
+form without script. No file chosen, or a file over the limit, shows on the
+field with the error summary (7.2).
+
+**The preview** is a form page: the facts list, then the warnings (a game
+password was set; what mods may hold), then the name field, the image
+download box, and Import world with Cancel. Warnings sit above the name, as
+in the favorites export (7.11). A refusal that can be fixed here (the name,
+disk space) shows the preview again with the field error and the error
+summary, so the person types another name with no second upload. A file
+that cannot be imported gets an error page with a way back to Import. No new
+CSS.
+
 ## 8. Patterns for later screens
 
 These are not built in Epic 1. They are here so Epics 2 and 3 start from
@@ -1983,12 +2017,29 @@ link. A world's page shows the badge and an Unarchive button, and the
 other worlds' pages an Archive row in the Danger zone (7.4). The switch
 pickers leave archived worlds out.
 
-**A world's Overview**, in order: the facts card (7.5); then sharing,
-the map exchange string (8.8) and Make a favorite (7.11), as two cards
-side by side from 64rem; then one card of setting rows for managing the
-world, Game version, Rename and Clone; then the Danger zone with Archive
-and Delete (7.4). A setting row is a title column (heading and hint) and
-a content column; from a 60rem card the title column is 240 px.
+**A world's Overview**, in order: the facts card (7.5); then Players in
+this save (below); then sharing, the map exchange string (8.8) and Make a
+favorite (7.11), as two cards side by side from 64rem; then Export world
+file (7.12); then one card of setting rows for managing the world, Game
+version, Rename and Clone; then the Danger zone with Archive and Delete
+(7.4). A setting row is a title column (heading and hint) and a content
+column; from a 60rem card the title column is 240 px.
+
+**Players in this save** (SPEC 8.14) is a panel under the facts,
+`id="save-players"`, the target of the Server page's "N players in this
+save" link. It is rendered with the page and works without script. It
+shows one sentence for the state (reading, never read, tracked since a date
+after a failed read, no save, unsupported version), then a two-column
+table: the player's name with "Last seen <date>", "Online now" or "Not seen
+by Foreman" under it, and the play time as hours and minutes (a figure
+never splits) with "Played before Foreman tracked this world" under it.
+Two columns, because three do not fit 320 px with the table rules of 8.3.
+An inexact record adds a note. "Read again" (or "Read players from the
+newest save" before any read) is a normal button, there whenever a read is
+possible. While a game runs, a hint under it says the read needs about as
+much memory as the game uses now and shows that figure. After a click the
+status takes focus and is read out. With script the panel asks again every
+3 s while a read runs, and every 5 s while the world runs.
 
 ### 8.3 Tables (saves, snapshots, players)
 
@@ -4189,6 +4240,38 @@ The **expiry banner** sits at the top of `main` on every signed-in page,
 a warning message with one line per token from 5 days before expiry and
 while Expired. Each line names the token and the time, with a Renew
 button that returns to the same page.
+
+### 8.22 Factory map (SPEC 5.16)
+
+`/worlds/{id}/map` is a world tab after Snapshots. In order: the summary
+(the state, and "Drawn <time> from <save>, Factorio <version>"); the draw
+form; the surface list (links with `aria-current`, shown when there is more
+than one surface); the viewer; the layer checkboxes; one download link; then
+the "When to draw" panel (radios Automatic, Manual and Off with hints, the
+"Do not draw a running world while players are online" checkbox, and Save).
+
+- **The viewer** is on the page, not in a dialog. Its frame has a fixed
+  height (min(70svh, 48rem), at least 16rem), the `deep` face, and focus. It
+  is named by the surface heading and described by the key line "Keys:
+  arrows pan, + − zoom, 0 fit. Drag to pan, tap to center." Zoom out, Fit
+  and Zoom in icon buttons sit in its bottom corner (24 px, 44 px under a
+  coarse pointer; `aria-disabled` at the limits), with a status line under
+  it. The zoom steps and limits are those of the Generate page's large view
+  (8.8). A zoom from a key or a button is announced; a wheel or a pinch is
+  not.
+- **Layers** are a fieldset "Buildings to show on the map", one checkbox per
+  category in the fixed order. Each has a 1rem swatch in the layer's
+  colour with a black edge, which gives 3:1 or better on both themes. The
+  text names the layer, so colour is never the only sign. A ticked layer is
+  drawn over the base on the same grid, and the download includes the
+  ticked layers.
+- **Beside a running game** the draw button reads "Draw it beside the
+  running game", under a note with the memory figure.
+- **While drawing** the page polls every 3 s and replaces the region,
+  keeping focus, zoom and ticked layers. The outcome is said once, through
+  a visually hidden status outside the region.
+- The page's own styles are in `static/factorymap.css`, linked from its
+  scripts block, and use the tokens.
 
 ## 9. Writing
 
