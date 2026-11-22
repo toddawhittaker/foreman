@@ -13,6 +13,7 @@ package game
 // `make test-game`, never by `make verify`.
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"errors"
@@ -78,6 +79,56 @@ func (e *gameEnv) chartWorld(t *testing.T, version, dir string) string {
 		fmt.Fprintf(&b, `{"name":%q,"enabled":true}`, name)
 	}
 	if err := os.WriteFile(filepath.Join(mods, world.ModListFile), []byte(`{"mods":[`+b.String()+`]}`), 0o640); err != nil { //nolint:gosec // the test's own world
+		t.Fatal(err)
+	}
+	return id
+}
+
+// stallMod is a world mod that deletes the origin chunk of Nauvis on every
+// tick, so the chunks the helper charts are never all there and it gives up
+// after its tick cap (SPEC 14.3).
+const (
+	stallModName = "foreman-test-stall"
+	stallInfo    = `{"name":"` + stallModName + `","version":"0.0.1","title":"Foreman test stall","author":"test","factorio_version":"2.1","dependencies":["base"]}`
+	stallControl = `script.on_event(defines.events.on_tick, function()
+  local s = game.surfaces["nauvis"]
+  if s then s.delete_chunk({ 0, 0 }) end
+end)
+`
+)
+
+// stallWorld makes a world of version whose only extra mod is stallMod, and
+// returns its id.
+func (e *gameEnv) stallWorld(t *testing.T, version string) string {
+	t.Helper()
+	id, err := e.worlds.Create(context.Background(), "chart stall "+e.run, version, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mods := filepath.Join(e.worlds.Dirs().Worlds, id, world.ModsDir)
+	if err := os.MkdirAll(mods, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	var zb bytes.Buffer
+	zw := zip.NewWriter(&zb)
+	for _, f := range [][2]string{{"info.json", stallInfo}, {"control.lua", stallControl}} {
+		w, err := zw.Create(stallModName + "_0.0.1/" + f[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(f[1])); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mods, stallModName+"_0.0.1.zip"), zb.Bytes(), 0o640); err != nil { //nolint:gosec // the test's own world
+		t.Fatal(err)
+	}
+	list := `{"mods":[{"name":"base","enabled":true},{"name":"elevated-rails","enabled":true},{"name":"quality","enabled":true},` +
+		`{"name":"recycler","enabled":true},{"name":"space-age","enabled":true},{"name":"` + stallModName + `","enabled":true}]}`
+	if err := os.WriteFile(filepath.Join(mods, world.ModListFile), []byte(list), 0o640); err != nil { //nolint:gosec // the test's own world
 		t.Fatal(err)
 	}
 	return id
@@ -241,6 +292,30 @@ func TestRealGameChartOfAModdedPlanet(t *testing.T) {
 			t.Errorf("the real-game picture's commonest colour %v is the fast preview's", chart.dominant)
 		}
 		e.previewLeftovers(t, "after the preview")
+	})
+
+	t.Run("a planet that never finishes charting fails within 90 s and leaves nothing", func(t *testing.T) {
+		stall := req
+		stall.World = e.stallWorld(t, version)
+		begin := time.Now()
+		_, err := c.Chart(context.Background(), stall, "nauvis")
+		took := time.Since(begin)
+		t.Logf("TIMING chart that never finishes: %s, error %v", took.Round(100*time.Millisecond), err)
+		var perr *PreviewError
+		if !errors.As(err, &perr) {
+			t.Fatalf("error %v, want a *PreviewError", err)
+		}
+		if perr.OOM || perr.ExitCode == 0 {
+			t.Errorf("exit %d, out of memory %v: want the helper's own failure", perr.ExitCode, perr.OOM)
+		}
+		// The helper's own give-up line shows the run failed for this reason.
+		if !strings.Contains(perr.Log, "did not finish") {
+			t.Errorf("the game's log does not say charting did not finish: %q", perr.Log)
+		}
+		if took > ChartLimit {
+			t.Errorf("took %s, more than %s", took, ChartLimit)
+		}
+		e.previewLeftovers(t, "after the chart that never finished")
 	})
 
 	if after := listFolder(t, mods); !slices.Equal(after, before) {
