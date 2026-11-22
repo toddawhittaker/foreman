@@ -1,5 +1,5 @@
 {
-  "crash.kind.mod_error": "Mod se nepodařilo načíst.",
+  "crash.kind.mod_error": "Mod zastavil hru.",
   "crash.kind.mod_missing_dependency": "Mod potřebuje jiný mod, který není nainstalovaný.",
   "crash.kind.mods_for_other_version": "Některé mody byly vytvořeny pro jinou verzi Factorio.",
   "crash.kind.out_of_memory": "Hře došla paměť, a tak ji systém zastavil.",

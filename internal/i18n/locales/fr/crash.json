@@ -1,5 +1,5 @@
 {
-  "crash.kind.mod_error": "Un mod n’a pas pu être chargé.",
+  "crash.kind.mod_error": "Un mod a arrêté le jeu.",
   "crash.kind.mod_missing_dependency": "Un mod a besoin d’un autre mod qui n’est pas installé.",
   "crash.kind.mods_for_other_version": "Certains mods ont été faits pour une autre version de Factorio.",
   "crash.kind.out_of_memory": "Le jeu a manqué de mémoire, et le système l’a arrêté.",
