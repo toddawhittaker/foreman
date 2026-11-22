@@ -32,6 +32,9 @@ local MAX_CHART_BYTES = 360 * 1024 * 1024
 local MAX_SURFACES = 300
 local MAX_CHUNKS_PER_SURFACE = 65536
 local MAX_ENTITIES = 2000000
+-- The longest side of a building's box, in tiles. The parser refuses the whole
+-- entity file for one box over it, so a bigger building is left out.
+local MAX_BOX = 64
 
 -- Types that are not a building: they come and go, or are not part of the
 -- factory.
@@ -46,6 +49,14 @@ local SKIP_TYPES = {
   ["item-entity"] = true,
   ["highlight-box"] = true,
   ["smoke-with-trigger"] = true,
+  ["fire"] = true,
+  ["sticker"] = true,
+  ["projectile"] = true,
+  ["artillery-projectile"] = true,
+  ["stream"] = true,
+  ["combat-robot"] = true,
+  ["car"] = true,
+  ["spider-vehicle"] = true,
 }
 
 -- Output is buffered, since write_file opens the file on every call.
@@ -159,11 +170,14 @@ local function write_entities(force, s, file, min_x, min_y, max_x, max_y, entiti
   local width, height = (max_x - min_x + 1) * CHUNK, (max_y - min_y + 1) * CHUNK
   local type_index, types = {}, {}
   local lines = {}
+  -- The bytes of the lines made so far: emit counts them only when they are
+  -- written, after the loop.
+  local pending_bytes = 0
   local written, truncated = 0, false
   for _, e in pairs(s.find_entities_filtered({ force = force })) do
-    local t = e.type
-    if not SKIP_TYPES[t] and e.valid then
-      if written >= entities_left or total_bytes >= MAX_BYTES then
+    if e.valid and not SKIP_TYPES[e.type] then
+      local t = e.type
+      if written >= entities_left or total_bytes + pending_bytes >= MAX_BYTES then
         truncated = true
         break
       end
@@ -176,19 +190,23 @@ local function write_entities(force, s, file, min_x, min_y, max_x, max_y, entiti
       local y2 = math.ceil(corner(rb, "y")) - origin_y
       if x2 <= x1 then x2 = x1 + 1 end
       if y2 <= y1 then y2 = y1 + 1 end
-      if x1 < 0 then x1 = 0 end
-      if y1 < 0 then y1 = 0 end
-      if x2 > width then x2 = width end
-      if y2 > height then y2 = height end
-      if x1 < x2 and y1 < y2 then
-        local i = type_index[t]
-        if i == nil then
-          i = #types
-          type_index[t] = i
-          types[#types + 1] = t
+      if x2 - x1 <= MAX_BOX and y2 - y1 <= MAX_BOX then
+        if x1 < 0 then x1 = 0 end
+        if y1 < 0 then y1 = 0 end
+        if x2 > width then x2 = width end
+        if y2 > height then y2 = height end
+        if x1 < x2 and y1 < y2 then
+          local i = type_index[t]
+          if i == nil then
+            i = #types
+            type_index[t] = i
+            types[#types + 1] = t
+          end
+          local line = "[" .. string.format("%d,%d,%d,%d,%d", i, x1, y1, x2, y2) .. "]\n"
+          lines[#lines + 1] = line
+          pending_bytes = pending_bytes + #line
+          written = written + 1
         end
-        lines[#lines + 1] = "[" .. string.format("%d,%d,%d,%d,%d", i, x1, y1, x2, y2) .. "]\n"
-        written = written + 1
       end
     end
   end
