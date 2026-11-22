@@ -165,8 +165,8 @@ func TestChartRefusesAWorldModNamedLikeTheHelper(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	id := newModdedWorld(t, r)
 	r.writeFile(id, filepath.Join(world.ModsDir, chart.ModDir+".zip"), []byte("PK"))
-	if _, err := r.c.Chart(context.Background(), worldRequest(id), "nauvis"); !errors.Is(err, errControlModTaken) {
-		t.Fatalf("error %v, want errControlModTaken", err)
+	if _, err := r.c.Chart(context.Background(), worldRequest(id), "nauvis"); !errors.Is(err, ErrControlModTaken) {
+		t.Fatalf("error %v, want ErrControlModTaken", err)
 	}
 	if n := len(r.calls("POST /containers/create")); n != 0 {
 		t.Errorf("%d containers made", n)
