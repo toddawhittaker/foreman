@@ -103,8 +103,41 @@ func (in *instance) run(name, args string) (reply string, logs []string) {
 		return in.whitelistCommand(player, rest)
 	case "c", "command", "silent-command", "sc":
 		return in.lua(name == "c" || name == "command", args)
+	case "time":
+		return in.playTime(), nil
 	}
 	return "", nil
+}
+
+// playTime answers plain /time with the game's total play time in the form
+// SPEC 8.15 reads: hours, minutes and seconds, zero parts left out, joined
+// with ", " and " and " before the last, singular for one.
+func (in *instance) playTime() string {
+	return formatPlayTime(int(in.elapsedLocked()))
+}
+
+// formatPlayTime is the reply for a total of secs whole seconds.
+func formatPlayTime(secs int) string {
+	counts := []int{secs / 3600, secs / 60 % 60, secs % 60}
+	words := []string{"hour", "minute", "second"}
+	var parts []string
+	for i, n := range counts {
+		if n == 0 {
+			continue
+		}
+		word := words[i]
+		if n != 1 {
+			word += "s"
+		}
+		parts = append(parts, fmt.Sprintf("%d %s", n, word))
+	}
+	if len(parts) == 0 {
+		return "0 seconds\n"
+	}
+	if len(parts) == 1 {
+		return parts[0] + "\n"
+	}
+	return strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1] + "\n"
 }
 
 // firstWord splits at the first space; the rest has its leading spaces

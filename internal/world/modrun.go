@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"os"
 	"slices"
 )
 
@@ -50,7 +51,7 @@ func (m *Manager) writeModRun(id string, snap Snapshot) error {
 		return err
 	}
 	defer func() { _ = w.Close() }()
-	files, err := worldFiles(w)
+	files, err := modRunFiles(w)
 	if err != nil {
 		return err
 	}
@@ -96,11 +97,24 @@ func (m *Manager) ModRunSnapshot(id string) (Snapshot, bool) {
 		return Snapshot{}, false
 	}
 	defer func() { _ = w.Close() }()
-	files, err := worldFiles(w)
+	files, err := modRunFiles(w)
 	if err != nil || !slices.EqualFunc(files, run.Files, sameEntry) {
 		return Snapshot{}, false
 	}
 	return Snapshot{Name: run.Snapshot, Manifest: man}, true
+}
+
+// modRunFiles lists the world's files as the run's marker compares them. It
+// leaves out players.json: a read of the save writes it between two mod
+// changes, and it is not a change to the world's mods, so it must not end
+// the run or cost the next change a snapshot (SPEC 8.14, 9.4). It is still in
+// the snapshot itself.
+func modRunFiles(w *os.Root) ([]ManifestEntry, error) {
+	files, err := worldFiles(w)
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(files, func(e ManifestEntry) bool { return e.Path == PlayersFile }), nil
 }
 
 func sameEntry(a, b ManifestEntry) bool {
