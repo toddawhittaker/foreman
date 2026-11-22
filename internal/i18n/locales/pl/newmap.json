@@ -28,8 +28,8 @@
   "newmap.exchange.button": "Wypełnij ustawienia",
   "newmap.gone.text": {
     "one": "Zapisane ustawienia zawierają ten parametr, którego modyfikacje świata już nie dodają. Zapisanie go pominie.",
-    "few": "Zapisane ustawienia zawierają te parametry, których modyfikacje świata już nie dodają. Zapisanie je pominie.",
-    "many": "Zapisane ustawienia zawierają te parametry, których modyfikacje świata już nie dodają. Zapisanie je pominie."
+    "few": "Zapisane ustawienia zawierają te {count} parametry, których modyfikacje świata już nie dodają. Zapisanie je pominie.",
+    "many": "Zapisane ustawienia zawierają tych {count} parametrów, których modyfikacje świata już nie dodają. Zapisanie je pominie."
   },
   "newmap.ready": "Ustawienia mapy gotowe.",
   "newmap.error.builtin": "Nie udało się odczytać planet z modyfikacji tego świata, więc zapisanie teraz usunęłoby ustawienia ich planet. Nic nie zapisano. Można spróbować ponownie lub sprawdzić modyfikacje świata.",

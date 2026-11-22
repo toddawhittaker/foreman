@@ -28,7 +28,7 @@
   "newmap.exchange.button": "Rellenar los ajustes",
   "newmap.gone.text": {
     "one": "Los ajustes guardados nombran este control, que los mods del mundo ya no añaden. Al guardar se omite.",
-    "other": "Los ajustes guardados nombran estos controles, que los mods del mundo ya no añaden. Al guardar se omiten."
+    "other": "Los ajustes guardados nombran estos {count} controles, que los mods del mundo ya no añaden. Al guardar se omiten."
   },
   "newmap.ready": "Ajustes del mapa listos.",
   "newmap.error.builtin": "No se pudieron leer los planetas de los mods de este mundo, así que guardar ahora descartaría los ajustes de sus planetas. No se guardó nada. Inténtalo de nuevo o revisa los mods del mundo.",
