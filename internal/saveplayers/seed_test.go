@@ -128,3 +128,14 @@ func TestParseSeedLimitsInclusive(t *testing.T) {
 		t.Fatalf("%d mods, %d players, tick %d", len(s.Mods), len(s.Players), s.Tick)
 	}
 }
+
+// Only ASCII letters fold: names that Unicode folding would join are two
+// players, and the read is good.
+func TestParseSeedFoldsASCIIOnly(t *testing.T) {
+	in := seedWith(`[{"name":"sam","online_ticks":1},{"name":"ſam","online_ticks":2},{"name":"ς","online_ticks":3},{"name":"σ","online_ticks":4}]`,
+		`[{"name":"base","version":"2.0.77"}]`, "")
+	s, err := ParseSeed([]byte(in))
+	if err != nil || len(s.Players) != 4 {
+		t.Fatalf("%v %+v", err, s.Players)
+	}
+}
