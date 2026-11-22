@@ -71,7 +71,7 @@ type seedState struct {
 	// output. Nil means readSavePlayers; tests replace it.
 	read func(ctx context.Context, id string) (saveplayers.Basis, []byte, error)
 	// gameTime is the running world's last /time reading (SPEC 8.15). Nil
-	// means none is known; tests set it.
+	// means liveGameTime; tests replace it.
 	gameTime func(id string) (d time.Duration, at time.Time, ok bool)
 }
 
@@ -86,7 +86,10 @@ type SavePlayersView struct {
 	// GameTime is the save's total play time, true when GameTimeKnown.
 	GameTime      time.Duration
 	GameTimeKnown bool
-	Players       []SavePlayer
+	// Inexact is true when Foreman may have missed play time (a crash, or
+	// Foreman down during a run) since the record was read.
+	Inexact bool
+	Players []SavePlayer
 }
 
 // SavePlayer is one player of the save.
@@ -133,8 +136,12 @@ func (c *Controller) SavePlayers(ctx context.Context, id string) (SavePlayersVie
 	}
 	// While the world runs, total play time is the game's own /time
 	// reading (SPEC 8.15).
-	if c.seeds.gameTime != nil && c.Status(id).State == StateRunning {
-		if d, _, ok := c.seeds.gameTime(id); ok {
+	if c.Status(id).State == StateRunning {
+		gameTime := c.seeds.gameTime
+		if gameTime == nil {
+			gameTime = c.liveGameTime
+		}
+		if d, _, ok := gameTime(id); ok {
 			v.GameTime, v.GameTimeKnown = d, true
 		}
 	}
@@ -181,6 +188,7 @@ func (c *Controller) savePlayersView(id string, rec saveplayers.Record) SavePlay
 		State: SavePlayersReady, Save: rec.Basis.Save, TrackedSince: rec.TrackedSince,
 		GameTime:      time.Duration(rec.GameSeconds()) * time.Second,
 		GameTimeKnown: rec.GameTicks > 0,
+		Inexact:       rec.Inexact,
 	}
 	if rec.Seed.Result != saveplayers.ResultOK {
 		v.State, v.Failure = SavePlayersTrackedOnly, rec.Seed.Result
@@ -286,7 +294,7 @@ func (c *Controller) seedRecord(ctx context.Context, id string) (saveplayers.Rec
 	if err != nil || !found {
 		return saveplayers.Record{}, false
 	}
-	basis := basisOf(target)
+	basis := basisOfSave(target)
 	read := c.seeds.read
 	if read == nil {
 		read = c.readSavePlayers
@@ -369,10 +377,6 @@ func asciiLower(s string) string {
 		}
 	}
 	return string(b)
-}
-
-func basisOf(s world.Save) saveplayers.Basis {
-	return saveplayers.Basis{Save: s.Name, Size: s.Size, Modified: s.ModTime}
 }
 
 // sameSave reports whether a record's basis is the save s.

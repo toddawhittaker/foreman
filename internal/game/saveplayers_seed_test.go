@@ -79,7 +79,7 @@ func (r *seedRig) basis(id string) saveplayers.Basis {
 	if err != nil || !found {
 		r.t.Fatalf("load target: %v %v", found, err)
 	}
-	return basisOf(s)
+	return basisOfSave(s)
 }
 
 // seedOutput is the helper's output for the world's enabled mods plus extra,
@@ -214,7 +214,16 @@ func TestSavePlayersReadsAgainWhenInexact(t *testing.T) {
 	if err := r.worlds.WritePlayersRecord(r.id, b); err != nil {
 		t.Fatal(err)
 	}
-	r.view()
+	r.hold = make(chan struct{})
+	v, err := r.c.SavePlayers(context.Background(), r.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Inexact || v.State != SavePlayersReading || len(v.Players) != 2 {
+		t.Fatalf("view %+v, want the inexact record's players while it is read again", v)
+	}
+	close(r.hold)
+	r.waitIdle()
 	if r.count() != 2 {
 		t.Fatalf("%d reads, want 2", r.count())
 	}
