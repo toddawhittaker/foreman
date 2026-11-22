@@ -140,7 +140,7 @@ func countMsg(c territory.Count) i18n.Msg {
 // before anything runs, or is zero when they can be.
 func territoryRefusal(req game.PreviewRequest) i18n.Msg {
 	line, _ := mapgen.Line(req.GameVersion)
-	if !req.SpaceAge || !slices.Contains(mapgen.Planets(line, true), territoryPlanet) {
+	if !req.SpaceAge || !slices.Contains(mapgen.Builtin(line, true).PlanetNames(), territoryPlanet) {
 		return i18n.M("worlds.generate.territories.no_vulcanus")
 	}
 	return i18n.Msg{}

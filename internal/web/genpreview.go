@@ -141,7 +141,7 @@ func (p *previewStore) missing(user int64, key previewKey, name string, planets 
 // add keeps new pictures and returns the preview's token. Pictures of the
 // same settings join the user's current preview; other settings replace
 // it. Other users' previews go, oldest first, to keep the limits. The
-// planets are kept in order, the world's planet order (mapgen.Planets), so
+// planets are kept in order, the world's planet order (its catalogue's), so
 // a planet drawn again after a change of its own settings keeps its place.
 func (p *previewStore) add(user int64, key previewKey, name, seed string, images []game.PNG, order []string) (string, error) {
 	p.mu.Lock()
@@ -443,8 +443,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
 		return
 	}
-	line, _ := mapgen.Line(nw.GameVersion)
-	all := mapgen.Planets(line, nw.SpaceAge)
+	all := f.cat.PlanetNames()
 	planets := all
 	switch p := r.PostFormValue(previewPlanetField); {
 	case p != "" && slices.Contains(all, p):
@@ -521,7 +520,7 @@ func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		return "", err
 	}
 	line, _ := mapgen.Line(req.GameVersion)
-	token, err := s.previews.add(u.ID, key, name, seed, images, mapgen.Planets(line, req.SpaceAge))
+	token, err := s.previews.add(u.ID, key, name, seed, images, mapgen.Builtin(line, req.SpaceAge).PlanetNames())
 	if err != nil {
 		s.log.Error("keep map preview", "error", err)
 		return "", errPreviewNotKept

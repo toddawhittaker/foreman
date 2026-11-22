@@ -458,15 +458,14 @@ func (FavoriteDeletePage) ListPath() string { return PathFavorites }
 // cannot read put an error on the chooser, so the form never shows other
 // settings than the world would get.
 func (f *GenerateForm) fillFromFiles(files world.FavoriteFiles) {
-	sa := f.SpaceAge && lineHasSpaceAge(f.Line)
 	damaged := func() { f.FavoriteError = i18n.M("favorites.error.map_damaged") }
 	if len(files.MapGenSettings) > 0 {
 		if _, ok := orderedMembers(files.MapGenSettings); !ok {
 			damaged()
 			return
 		}
-		f.MapGen = NewMapGenFormFromFile(f.Line, sa, files.MapGenSettings)
-		f.MapGen.withPreset(NewMapGenFormForPreset(f.Line, sa, f.Preset))
+		f.MapGen = mapGenFormFromFile(f.Line, f.cat, files.MapGenSettings)
+		f.MapGen.withPreset(mapGenFormForPreset(f.Line, f.cat, f.Preset))
 	}
 	if len(files.MapSettings) > 0 {
 		vals := mapSettingsValues(f.Version, f.Preset, files.MapSettings)
