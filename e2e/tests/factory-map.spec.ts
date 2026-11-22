@@ -635,33 +635,39 @@ test("the memory question, with a kept picture on the page, passes axe", async (
   await checkPage(page);
 });
 
-// A poll swaps the state region while a drawing runs (3 seconds, the plan's page contract). Someone using
+// A poll swaps what the state region shows while a drawing runs (3 seconds, the plan's page contract). Someone using
 // the keys on the picture must not lose their place: focus stays on the frame through a poll that finds
 // the run still going, and comes back to the same control when the drawing ends.
-test("focus on the map frame survives a poll while drawing over a kept picture", async ({ page, fakeGame }) => {
+test("focus, zoom and ticked layers survive polls while drawing over a kept picture", async ({ page, fakeGame }) => {
   const g = fakeGame as FakeGame;
   await page.goto(base);
   await draw(page);
   await g.call("/preview-mode", { mode: "hang" });
   await ui.draw(page).click();
   await expect(ui.state(page)).toHaveAttribute("data-state", "drawing", live);
+  // Work on the picture: a layer ticked, zoomed in, focus on the frame.
+  await ui.layer(page, "Production").check();
+  await expect(ui.layers(page)).toHaveCount(1);
   await ui.frame(page).focus();
-  await expect(ui.frame(page)).toBeFocused();
-  // The page's script marks each region it swaps in; wait until it has swapped one, then past a second.
-  const swaps = () => page.evaluate(() => document.getElementById("factorymap-state")!.dataset.swapped ?? "");
-  await page.evaluate(() => {
-    const seen = document.getElementById("factorymap-state")!;
-    new MutationObserver(() => {
-      const now = document.getElementById("factorymap-state");
-      if (now && now !== seen) now.dataset.swapped = "yes";
-    }).observe(document.querySelector("main")!, { childList: true, subtree: true });
-  });
-  await expect.poll(swaps, { timeout: 8_000 }).toBe("yes");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("+");
+  await expect(ui.status(page)).toHaveText("Zoom 152%");
+  const zoomed = await width(page);
+  const picture = await ui.base(page).getAttribute("src");
+  // Wait for the page's own polls (the region's fragment), however it swaps what it gets in, twice, and a
+  // moment for the second swap.
+  const poll = () => page.waitForResponse((r) => r.url().includes("fragment=1"), { timeout: 8_000 });
+  await poll();
+  await poll();
+  await page.waitForTimeout(500);
   await expect(ui.state(page)).toHaveAttribute("data-state", "drawing");
   await expect(ui.frame(page)).toBeFocused();
+  expect(await width(page)).toBeCloseTo(zoomed, 0);
+  await expect(ui.layer(page, "Production")).toBeChecked();
+  await expect(ui.layers(page)).toHaveCount(1);
+  await expect(ui.base(page)).toHaveAttribute("src", picture!);
   // The keys still work from there.
   await page.keyboard.press("+");
-  await expect(ui.status(page)).toHaveText("Zoom 115%");
+  await expect(ui.status(page)).toHaveText("Zoom 175%");
 });
 
 test("focus returns to the same control when the drawing ends", async ({ page, fakeGame }) => {
