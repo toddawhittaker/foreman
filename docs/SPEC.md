@@ -445,6 +445,11 @@ this accepts.
   `new_map`, such as `{"preset": "rich-resources", "seed": 123}`, where
   either part may be missing. It lets the next start create the map (4.3,
   5.6); Foreman clears it once that start reaches the in-game state.
+  It also holds the factory map mode, `factory_map` (5.16), when one was
+  set;
+- `players.json`, when present: Foreman's record of the players of the
+  save the world loads (8.14). Foreman writes it without a snapshot, as it
+  does `world.json`.
 
 A person can read, back up and move a world without Foreman. `world.json`
 is plain JSON with snake_case keys and a `format_version` (1 today). Fields
@@ -484,7 +489,8 @@ server's own layout imports as it is. It copies `mods/` and the `config/`
 files that 5.1 lists, except `rconpw`: Foreman makes its own (4.5). Other
 files are not copied. A save name found both at the top level and in
 `saves/` makes the folder not importable, and the message names the file.
-A save zip can also be uploaded to make a new world. (P0)
+A save zip can also be uploaded to make a new world. A world file
+exported by Foreman is imported on this page too (5.14). (P0)
 
 Import also does the following.
 
@@ -1045,10 +1051,131 @@ a game version, Space Age, a map, server settings, mods and mod settings.
 - **Limits.** The saved picks and the review take at most 500 mod names
   (9.14), so a favorite of 120 mods installs in one review.
 
+5.13. **Export a world file.** A world's page offers "Export world", which
+downloads one ZIP, `<name>-world.zip`. ADR 0031 records the format. (P1)
+
+- **What it holds.** `foreman-world.json` first: the file's own
+  `format_version` (1 today), the export time, Foreman's version, which
+  saves it holds, and whether a game password was set (never the
+  password). Then `world.json` without `imported_from` or `archived`; the
+  saves; every regular file under `mods/`, at any depth; and the 5.1
+  config files except `rconpw`, with every secret removed from
+  `server-settings.json` (14.8). Nothing else in the world folder is in it:
+  no `.tmp.zip`, no hidden or stray file, no `players.json` (8.14; the new
+  host reads its own), and nothing from the app database.
+- **Which saves.** The export card offers "All saves" (the default) or
+  "Only the save that loads next" (7.11).
+- **The file.** Saves and zips are stored, not compressed again. Each entry
+  keeps its file's modification time, so "last played" survives the move.
+  Unpacked, a world file is a world folder in the 5.1 layout, so it also
+  imports by hand as an inbox folder (5.5).
+- **The lowest version rule.** A writer uses the lowest format version that
+  can hold what it writes, so an older Foreman can still read every file
+  that needs nothing newer.
+- **A consistent copy.** Foreman takes the world's lock only while it
+  hard-links the files into a staging folder (copying when a link fails,
+  6.8). It then streams the ZIP from that folder without the lock and
+  without holding the file in memory, and removes the folder afterwards.
+  A busy world is refused at once.
+- **Refusals.** A world that holds a symlink or other special file is
+  refused, naming the path. A world a newer Foreman wrote has no Export.
+- **A running world** exports the last save on disk, and the card says so.
+- **A Warning** above the button says that saves and `mod-settings.dat` may
+  hold what a mod stores, a token included, and that the game password is
+  not exported. The card also lists what stays behind in the database:
+  saved mod picks, mod plan drafts, the audit log, the restart schedule,
+  notifications, and which world is active.
+- **Limits.** At most 2 exports run at once; a third is refused as busy. A
+  failure partway breaks the download, so no complete-looking partial file
+  is saved.
+- **Separate from archive.** Archive (5.9) is unchanged; an archived world
+  can still be exported, since export only reads.
+- Recorded as `world-export` with "all saves" or "loaded save" (12.9). Not
+  in MCP or the REST API (21.7).
+
+5.14. **Import a world file.** The Import page (5.5) takes a world file
+through its own drop zone. (P1)
+
+- **Upload, preview, confirm.** The upload is staged and checked (14.5,
+  14.6). A preview then shows the name (editable), game version, Space
+  Age, how many saves and mod files, the unpacked size, which save loads,
+  whether the game image is on this host (with its download ticked by
+  default, 5.5), and a warning when the export had a game password: the
+  world will start with no password until one is set. The staged file is
+  named by a posted field, never in the address (17.17).
+- **Always a new world.** Import world makes a new world with a fresh id
+  (5.2). A file never replaces an existing world. A name in use is refused
+  on the name field, and the staged file is kept for another try.
+- **What arrives.** The world arrives unarchived, with its saves, mods,
+  config and `world.json` (name, which save loads, the whitelist switch,
+  `new_map`, and fields this Foreman does not know). Secrets are stripped
+  again, and `rconpw` is made at its first start (4.5). It never marks
+  "already imported" (`imported_from` is for inbox folders only).
+- **Checks.** A file whose format version is newer than this Foreman reads
+  is refused, saying a newer Foreman made it. A game version must pass the
+  checks of 5.5, and at least one save is needed unless `world.json` has
+  `new_map`. A `load_save` that names no save in the file is dropped. A
+  refusal of a bad file uses one fixed message that never repeats what
+  the file holds.
+- **Staged files** are removed after an hour, at startup, or when a third
+  is staged.
+- **Writing** goes through a staging folder, so any failure changes
+  nothing.
+- Recorded as `world-import` with the new world and the file's Foreman
+  version (12.9). Not in MCP or the REST API (21.7).
+
+5.15. **Snapshots in a world file.** An export may include the world's
+snapshots, as format version 2. An export without snapshots stays format 1
+(5.13). Not scheduled. (P2)
+
+5.16. **Factory map.** A picture of each surface's built factory, read from
+a copy of a save (8.16). (P1)
+
+- **What it draws.** One PNG per surface (planets, space platforms and
+  modded surfaces) from the game's own chart
+  (`force.get_chunk_chart`), plus building outlines by category from the
+  same run. Games from 2.0.61; a 1.1 or older 2.0 world says "not
+  supported".
+- **Categories** are fixed and come from the engine's prototype type, so a
+  modded building lands in one too: belts and inserters, production,
+  power, fluids, rail, defence, logistic network and storage, and other.
+- **Pictures are drawn on the server**: the base picture and one
+  transparent PNG per category, on the same pixel grid, at most 4096
+  pixels a side. A larger charted area is scaled down, and the page says
+  how many tiles a pixel is.
+- **Where they are kept.** In `factorymaps/<world-id>/` under the data
+  directory, never in a world or a snapshot. One drawing per world. It is
+  removed when the world no longer exists.
+- **The viewer** is its own page, `/worlds/{id}/map`, a world tab after
+  Snapshots. It works like the Generate page's large view (5.6): zoom by
+  wheel, keys, buttons or pinch in steps of 1.15; pan by drag, keys or a
+  tap; a list of surfaces; and a checkbox per category that adds its
+  layer. Downloads: the base PNG, or the base with the ticked layers
+  combined on the server.
+- **Modes.** Each world has a mode, stored in `world.json` as
+  `factory_map: {"mode": "automatic" | "manual" | "off", "skip_online":
+  true}` and set on the map page. The default is manual for every world,
+  new or existing. A change is not audited and takes no snapshot (it is
+  Foreman's own setting, like the display name).
+- **Automatic** draws when the world has been stopped for 2 minutes, no
+  game is running on this Foreman, the world is not archived, and the save
+  that loads differs from the last picture's. A check every minute covers
+  this, and a restart of Foreman too.
+- **Manual** is a "Draw factory map" button. Beside a running game it runs
+  only on that click, which says the run needs about as much memory as the
+  running game uses now and shows that figure.
+- **Skip while players are online** (on by default) refuses that click
+  while players are online. An automatic run never happens beside a
+  running game, so it does not apply there.
+- **Off** hides the button and stops automatic runs. The last picture stays
+  until the save changes.
+- A start of the world cancels its run.
+- Not in MCP or the REST API (21.7).
+
 ## 6. Snapshots
 
-6.1. A snapshot holds a world's saves, mods, config and `world.json` as
-they were at one moment, plus a label, the time, who took it, and why
+6.1. A snapshot holds a world's saves, mods, config, `world.json` and,
+when present, `players.json` (8.14) as they were at one moment, plus a label, the time, who took it, and why
 (the risky operation it preceded, or "manual"). (P0)
 
 6.2. Foreman takes a snapshot automatically before every risky operation,
@@ -1734,6 +1861,77 @@ All worlds share the disk, so one state covers them: switching worlds or
 restarting Foreman never sends the event twice, and the first reading after
 Foreman starts is shown but not sent. The Server page warning links to the
 Snapshots page, where space can be freed. (P1)
+
+### Players of a save
+
+8.14. **Players of a save.** Foreman lists every player who has joined a
+world's save, with each one's play time and, when Foreman saw it, when
+they were last seen. (P1)
+
+- **Seeded, then tracked.** The list starts from a read of a copy of the
+  save (8.16). After that, Foreman adds each session from the game's join
+  and leave lines (8.1). Time a player had before the read shows as
+  "played before Foreman tracked this world". A read that failed leaves
+  the list "tracked since" a date, with no earlier totals.
+- **The record** is `worlds/<id>/players.json` (5.1): the save it matches,
+  the moment its totals are true for, the read's result, whether it may
+  be inexact, the game time, and each player's totals and last seen. It
+  matches only while the save that loads next (7.11) is the save it was
+  made for. Snapshots, restores and clones carry it. A world file does not
+  (5.13). An upload of a save removes it.
+- **Last seen** is a real date from a session Foreman tracked, or nothing.
+  The save's own `connected` and `last_online` are never used, because
+  they are wrong for players who were online when it was saved.
+- **When a read runs.** A read starts only from a page view, never from a
+  scheduler, and the result arrives live. It runs by itself when the
+  record is missing, does not match, or is inexact, while the world is
+  stopped and no game runs on this Foreman. While the world runs, it runs
+  only when an admin clicks "Read players from the newest save". The
+  button says the read needs about as much memory as the running game
+  uses now, and shows that figure. A read that failed for one save is not
+  tried again until the save changes or an admin clicks "Read again".
+- **Drift.** A crash, or Foreman being down during a run, marks the record
+  inexact. It is read again at the next view while the world is stopped.
+  A "Read again" button is always there.
+- **Where it shows.** The full list is on the world's Overview page. The
+  Server page shows total play time (8.15) and an "N players in this save"
+  link to that list.
+- A read changes no file the game uses, so it is not audited and takes no
+  snapshot. Not in MCP or the REST API (21.7); `list_players` stays "online
+  now" (21.4).
+
+8.15. **Total play time.** A world shows how long its map has been played,
+as hours and minutes. It is `game.tick`, which the game's `/time` command
+reports. While the game runs it comes from plain `/time` over RCON, never
+from Lua, so achievements stay on; Foreman asks at most once a minute and
+at each finished save. Otherwise it comes from the record (8.14). (P1)
+
+8.16. **Reading a copy of a save.** Foreman reads a save's players (8.14)
+and its factory map (5.16) by running the save in a one-off container
+(14.3), never by starting a server. ADR 0030 records the method. (P1)
+
+- **The run.** The world's own game image runs
+  `--benchmark <save> --benchmark-ticks 8 --benchmark-runs 1`, with no
+  network, the world's mods, and a small control-only helper mod that
+  writes JSON into the work folder. The game exits by itself.
+- **The save is never written.** It is hard-linked into the work folder
+  and mounted read-only over the link, or copied when the link fails,
+  after the disk check of 6.11. The work folder holds the world's mods as
+  9.6 does, with copies (not links) of `mod-list.json` and
+  `mod-settings.dat`, because the game rewrites both. `config/`, `rconpw`
+  and `server-settings.json` never enter it.
+- **Mods are checked twice**, because the game drops a missing mod
+  silently and still succeeds. The pre-start check (7.4) runs first. After
+  the run, the mods the helper saw must equal the world's enabled mods and
+  versions. Either failure gives `mods-differ`, and no figures are kept.
+- **The result is kept** only if the save that loads next is still the
+  save that was read.
+- **A start of the world cancels** any read of it.
+- **Limits:** 12 GiB of memory with no swap, 5 minutes, and the one preview
+  slot (14.3). Measured: 6.9 GB and 44 seconds for a 187 MB save with 44
+  mods.
+- **Failures** are named `image-missing`, `out-of-memory`, `timeout`,
+  `mods-differ`, `save-newer` and `bad-output`.
 
 ## 9. Mods (per world)
 
@@ -2513,7 +2711,8 @@ switch (on the world switched from, with both ids), game image download
 and every console command (8.4), every player action and chat message
 (8.2, 8.5), a change to the whitelist switch (8.3), and a change to the
 restart schedule or to a webhook (7.12, 8.10), never with the webhook's
-address, the autosave tidy (11.6), and turning the public mods page on
+address, a world file export and import as `world-export` and
+`world-import` (5.13, 5.14), the autosave tidy (11.6), and turning the public mods page on
 or off (9.16). A manual snapshot and a restore are recorded as `snapshot`
 and `restore`, with the token's name when they come through MCP. API
 tokens record `token-create`, `token-renew` and
@@ -2527,7 +2726,9 @@ whitelist switch are recorded before they take effect and are refused if
 the record cannot be written. Deleting a world records `world-delete`
 with the world's name and whether a final snapshot was taken; it too is
 recorded before the delete, which is refused if the record cannot be
-written. (Todd's ruling, 2026-11-17.) Deleting a user records `user-delete`
+written. (Todd's ruling, 2026-11-17.) Reading a copy of a save (8.16)
+and the factory map mode (5.16) are not recorded, since neither changes a
+file the game uses. Deleting a user records `user-delete`
 the same way (12.12). A schedule or webhook change is recorded
 after it, and a failure to record it is only logged. (P1, except RCON
 commands, which are recorded from the first version that has a console:
@@ -2817,6 +3018,19 @@ folder or its `mod-settings.dat`. A world mod named `foreman-modsettings`
 refuses the run. Foreman reads the output through the work folder and checks
 it under the limits in 14.6.
 
+Reading a copy of a save (8.16) uses a fifth and a sixth kind,
+`foreman-saveplayers-<folder>` for the players of a save (8.14) and
+`foreman-factorymap-<folder>` for the factory map (5.16), in the same way:
+the same label, endpoints, host settings, slot and cleanup, with a memory
+limit of 12 GiB with no swap and a time limit of 5 minutes. Each runs the
+world's own image in benchmark mode with a control-only helper mod. Its
+work folder holds the save as a hard link mounted read-only over the link
+(a copy when the link fails), the world's mods as for the fourth kind, and
+copies of `mod-list.json` and `mod-settings.dat`; never `config/`,
+`rconpw` or `server-settings.json`. The factory map run's game write folder
+is in the work folder, since the tmpfs cannot hold its output. A world mod
+with the helper's name refuses the run. No new Docker endpoint is used.
+
 To share a network with the game (4.4), Foreman reads its own container
 with `GET /containers/{id}/json`, which gives the networks it is on and
 their address ranges. It names the game network in the
@@ -2835,7 +3049,8 @@ the Docker socket into the game, or bind-mount any host path outside the
 data directory. (P0)
 
 14.5. **Paths from users.** Every path built from user input (world names,
-save names, snapshot folder names, uploaded zip entries, mod file names) is resolved and checked
+save names, snapshot folder names, uploaded zip entries, world file
+entries, mod file names) is resolved and checked
 to stay inside the intended directory before use. Symlinks inside a world
 are not followed out of it. Uploaded zips are checked entry by entry and
 refused if any entry would land outside its target. (P0)
@@ -2873,7 +3088,24 @@ are ignored and an unknown setting type is shown as not editable. A mod's
 string setting value is at most 10,000 bytes. A mod or `mod-settings.dat` upload waits in a
 staging file at the top of the worlds folder, and a staged mod nobody
 applied is removed an hour later. A favorite file is at most 8 MiB, is read in
-memory and is checked in full before anything is written (5.12). A save whose
+memory and is checked in full before anything is written (5.12). A world
+file (5.14) is at most 64 GiB, a fixed limit, and the disk check of 6.11
+runs twice: on the upload's length, then on the sum of its unpacked sizes
+before anything is extracted. It may list at most 100,000 entries, counted
+from the end record. Each entry name must be `foreman-world.json`,
+`world.json`, `saves/<save>` with a valid save name, `config/<file>` for a
+5.1 config file other than `rconpw`, or `mods/<path>` with no `.` or `..`
+segment, empty segment or backslash; any other entry, a repeated name or a
+link refuses the whole file. Each entry is limited while it is read:
+`foreman-world.json` 1 KiB, `world.json` 64 KiB, each config file 1 MiB,
+`mod-settings.dat` as above, a save the save upload limit, and a mod file
+the mod upload limit. The unpacked total is at most 50 times the file. The
+players output of a save read (8.16) is at most 1 MiB, 10,000 players and
+1,000 mods, with names under the 8.2 rule and unknown fields refused. The
+factory map output (5.16) is at most 512 MiB in all, 300 surfaces, 65,536
+charted chunks a surface and 2,000,000 entities in all, and each decoded
+chunk must be exactly 32 by 32 pixels. In both, every number is a whole
+number from 0 to 2^53. A save whose
 name ends in `.tmp.zip` is refused. The upload limits are read for each
 request, so a change applies to the next upload, and the drop zones, hints
 and refusals show the current figure. The limits of the `mod-settings.dat`
@@ -3597,7 +3829,8 @@ in these areas:
 
 Not available through MCP: managing users, API tokens or MCP access;
 uploading or downloading files (saves, mod zips, `mod-settings.dat`,
-favorite files); and map preview pictures.
+favorite files, world files, 5.13 and 5.14); map preview pictures;
+factory map pictures (5.16); and the players of a save (8.14).
 
 The tool names are fixed, one tool per action:
 

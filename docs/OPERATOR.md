@@ -4,7 +4,7 @@ This guide takes you from nothing to a running Factorio server that
 players can join. It covers the new-user path: install Foreman, create the
 first admin, generate a Space Age world, install mods from the mod portal,
 start the server and join it. It also covers the security advice every
-operator needs, running behind a reverse proxy, importing and switching
+operator needs, running behind a reverse proxy, importing, moving and switching
 worlds, webhook notifications, the low-disk warning, the restart
 schedule, what to do when something fails, and, optionally, letting
 players join through a VPN sidecar such as Tailscale. It also covers
@@ -619,6 +619,35 @@ To switch, choose **Switch** next to another world on the Worlds page. The
 confirmation says which world stops. Both worlds get a "Before switch"
 snapshot, and the game starts again on the new world, with that world's
 game version, if it was running.
+
+### Move a world to another Foreman
+
+A world file moves a whole world in one ZIP: its saves, mods, settings and
+which save loads.
+
+1. On the old Foreman, open the world's page and choose **Export world**.
+   Pick **All saves** or **Only the save that loads next**. A running world
+   exports the last save on disk.
+2. On the new Foreman, choose **Worlds**, then **Import a world**, and drop
+   the file on **Import a world file**. Check the preview, change the name
+   if you like, and choose **Import world**.
+
+The game password, your factorio.com login and the RCON password are not
+in the file. Set a game password again in **Game settings**. A mod may keep
+a token in `mod-settings.dat` or in a save, and that does travel, so treat
+the file like a save. The audit log, restart schedule, notifications and
+saved mod picks stay on the old Foreman. A world file always makes a new
+world; it never replaces one.
+
+### Memory for reading a large save
+
+To list the players of a save and draw its factory map, Foreman runs a
+copy of the save in a one-off game container for a few seconds. Its peak
+memory is about as much as running that save: I measured 6.9 GB for a
+187 MB save with 44 mods. Foreman does this by itself only when no game is
+running. Beside a running game it does it only when you click, and the
+button shows how much memory the running game uses now. If the host has
+too little memory, the read fails and nothing else is harmed.
 
 ## 12. Webhooks
 
