@@ -649,6 +649,16 @@ func settingsError(err error) (int, i18n.Msg) {
 // (SPEC 6.10, 11.3). With none there is no game to save, so Foreman takes the
 // lock and runs the same world function.
 func (h *settingsHandlers) save(ctx context.Context, by game.Actor, id string, files []pendingFile) (game.SettingsResult, error) {
+	res, err := h.saveFiles(ctx, by, id, files)
+	if err == nil {
+		// The save took a snapshot and may have pruned older automatic ones,
+		// with no task for the Server page's snapshot card to follow (SPEC 6.1).
+		h.s.runs.snapshotsChanged()
+	}
+	return res, err
+}
+
+func (h *settingsHandlers) saveFiles(ctx context.Context, by game.Actor, id string, files []pendingFile) (game.SettingsResult, error) {
 	s := h.s
 	if s.game != nil {
 		changes := make([]game.SettingsChange, len(files))
