@@ -48,7 +48,7 @@ func planetsRun(t *testing.T, image, modList string) mapgen.Catalogue {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := mapgen.ParseWorldPlanets(b)
+	c, err := mapgen.ParseWorldPlanets(image[len("factoriotools/factorio:"):len("factoriotools/factorio:")+3], b)
 	if err != nil {
 		t.Fatalf("the planet file does not parse: %v\n%s", err, b)
 	}

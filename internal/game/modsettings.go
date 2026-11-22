@@ -375,7 +375,7 @@ func worldCatalogues(data []byte, readErr error, sections map[string]modsettings
 		if lang != "en" && sections["en"] != nil {
 			layers = append(layers, sections["en"])
 		}
-		cat, err := mapgen.ParseWorldPlanets(data, layers...)
+		cat, err := mapgen.ParseWorldPlanets(line, data, layers...)
 		if err != nil {
 			return builtin(fmt.Errorf("%w: %w", ErrPlanetsRefused, err))
 		}
