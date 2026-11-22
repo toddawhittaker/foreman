@@ -589,12 +589,6 @@ func TestSavePlayersRefusedAndNewerRecords(t *testing.T) {
 	}
 }
 
-// sameBasis compares two bases with the time's instant, not its location: a
-// record read back is in UTC.
-func sameBasis(a, b saveplayers.Basis) bool {
-	return a.Save == b.Save && a.Size == b.Size && a.Modified.Equal(b.Modified)
-}
-
 // A read keeps the last seen dates Foreman tracked, matching names with
 // ASCII-only case folding, and never a date after the new record's as_of.
 func TestKeepLastSeen(t *testing.T) {
