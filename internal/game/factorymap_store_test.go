@@ -176,7 +176,7 @@ func TestFactoryMapRealStore(t *testing.T) {
 	if err := r.c.ForgetFactoryMap(id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(r.c.dataDir(), factoryMapsDir, id)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(r.c.dataDir(), "factorymaps", id)); !os.IsNotExist(err) {
 		t.Errorf("a deleted world's pictures are still there: %v", err)
 	}
 }
@@ -191,7 +191,7 @@ func TestFactoryMapDamagedRecord(t *testing.T) {
 	}
 	r.waitIdle(id)
 	<-r.started
-	record := filepath.Join(r.c.dataDir(), factoryMapsDir, id, "factorymap.json")
+	record := filepath.Join(r.c.dataDir(), "factorymaps", id, "factorymap.json")
 	if err := os.WriteFile(record, []byte("{broken"), 0o600); err != nil {
 		t.Fatal(err)
 	}

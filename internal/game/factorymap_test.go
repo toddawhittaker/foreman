@@ -127,7 +127,7 @@ func (r *mapRig) runSave(ctx context.Context, id string, m saveCopyMod, read fun
 	block, runErr, change := r.block, r.runErr, r.changeSave
 	r.mu.Unlock()
 	r.started <- id
-	if m.kind != gameenv.KindFactoryMap || !m.outputOnDisk || m.memory != FactoryMapMemory {
+	if m.kind != gameenv.KindFactoryMap || m.memory != FactoryMapMemory {
 		return saveplayers.Basis{}, fmt.Errorf("wrong mod %+v", m.controlMod)
 	}
 	target, _, err := r.worlds.LoadTarget(id)
@@ -746,8 +746,8 @@ func TestDrawFactoryMapFilesRefuseNonRegular(t *testing.T) {
 // The run moves the helper's folder out of script-output, and the helper's
 // info.json names the world's game line, or the game refuses the mod.
 func TestFactoryMapModShape(t *testing.T) {
-	if factoryMapMod.output != gameenv.FactoryMapDir || !factoryMapMod.outputOnDisk {
-		t.Errorf("mod %+v, want the %s folder written in the work folder", factoryMapMod, gameenv.FactoryMapDir)
+	if factoryMapMod.output != gameenv.FactoryMapDir {
+		t.Errorf("mod %+v, want the %s folder moved into the work folder", factoryMapMod, gameenv.FactoryMapDir)
 	}
 	for line, want := range map[string]string{"2.0": `"factorio_version": "2.0"`, "2.1": `"factorio_version": "2.1"`} {
 		info := string(saveCopyInfo(factoryMapMod, line))

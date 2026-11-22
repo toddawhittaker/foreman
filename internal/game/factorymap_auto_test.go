@@ -203,7 +203,8 @@ func TestFactoryMapAutoOneRunPerTick(t *testing.T) {
 	}
 }
 
-// SPEC 5.16: pictures are removed once their world no longer exists.
+// SPEC 5.16: at startup, pictures of worlds deleted while Foreman was down
+// are removed.
 func TestFactoryMapSweepRemovesDeletedWorlds(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	id := r.newWorld("Kept")
@@ -211,13 +212,21 @@ func TestFactoryMapSweepRemovesDeletedWorlds(t *testing.T) {
 	if !world.ValidID(gone) {
 		t.Skip("the id format changed")
 	}
-	maps := filepath.Join(r.c.dataDir(), factoryMapsDir)
+	maps := filepath.Join(r.c.dataDir(), "factorymaps")
 	for _, d := range []string{id, gone} {
 		if err := os.MkdirAll(filepath.Join(maps, d), 0o750); err != nil {
 			t.Fatal(err)
 		}
 	}
-	r.c.sweepFactoryMaps()
+	r.c.factoryMaps.every = time.Hour
+	r.stop = r.run(r.c)
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(filepath.Join(maps, gone)); os.IsNotExist(err) {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	if _, err := os.Stat(filepath.Join(maps, id)); err != nil {
 		t.Errorf("a world's pictures were removed: %v", err)
 	}
