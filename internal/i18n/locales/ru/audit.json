@@ -48,6 +48,8 @@
   "audit.action.whitelist-switch": "Белый список включён или выключен",
   "audit.action.world-archive": "Мир архивирован",
   "audit.action.world-delete": "Мир удалён",
+  "audit.action.world-export": "Мир экспортирован",
+  "audit.action.world-import": "Мир импортирован",
   "audit.action.world-unarchive": "Мир разархивирован",
   "audit.empty": "Пока ничего не записано.",
   "audit.empty.filtered": "Нет записей, подходящих под эти фильтры.",
