@@ -31,6 +31,10 @@ const (
 	// PreviewLimit is how long a preview may take before its container is
 	// killed.
 	PreviewLimit = 60 * time.Second
+	// PreviewWorldLimitMax is the most a run with a world's mods may take in
+	// all, however many planets it draws, so it cannot hold the one slot for
+	// long.
+	PreviewWorldLimitMax = 10 * time.Minute
 	// PreviewWait is how long a preview waits for the one running before it
 	// to end, before it is ErrPreviewBusy.
 	PreviewWait = 20 * time.Second
@@ -206,19 +210,24 @@ func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, er
 // the one slot, the image check, the base folder with its stale sweep, and
 // a work folder removed afterwards. run is called with the work folder's
 // name; the container func it is given runs one container to its end within
-// previewLimit, as "foreman-<kind>-<folder>". A run with a world's mods gets
-// previewLimit for each of the drawn planets (SPEC 14.3). The slot and
-// folder are held until run returns, so run may read the folder.
+// previewRunLimit, as "foreman-<kind>-<folder>". The slot and folder are
+// held until run returns, so run may read the folder.
 func (c *Controller) previewRun(ctx context.Context, req PreviewRequest, kind string, drawn int,
 	run func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error) error {
-	limit := c.previewLimit
-	if req.World != "" {
-		limit *= time.Duration(drawn)
-	}
 	return c.previewRunIn(ctx, previewPlan{
-		gameVersion: req.GameVersion, kind: kind, limit: limit,
+		gameVersion: req.GameVersion, kind: kind, limit: previewRunLimit(c.previewLimit, req, drawn),
 		fill: func(base *os.Root) (string, error) { return c.makePreviewDirFor(base, req) },
 	}, run)
+}
+
+// previewRunLimit is how long a run of req that draws drawn planets may
+// take: limit, or with a world's mods limit for each planet, at most
+// PreviewWorldLimitMax (SPEC 14.3).
+func previewRunLimit(limit time.Duration, req PreviewRequest, drawn int) time.Duration {
+	if req.World == "" {
+		return limit
+	}
+	return min(limit*time.Duration(drawn), PreviewWorldLimitMax)
 }
 
 // previewPlan is what differs between the kinds of preview run.
@@ -417,9 +426,9 @@ func writePreviewFiles(dir *os.Root, req PreviewRequest) error {
 // makePreviewDir writes them, the world's mods linked in as for the mod
 // settings run, and copies of its mod-list.json and mod-settings.dat. It
 // never holds the world's own folder, and it holds the world's lock only
-// while it reads the world. A world that server control holds, or whose
-// game version or Space Age is not the request's, is world.ErrBusy; mods
-// past the link caps are world.ErrModsTooBig. The run mounts the linked
+// while it reads the world. A world that server control holds is
+// world.ErrBusy; one whose game version or Space Age is not the request's
+// is ErrPreviewInvalid; mods past the link caps are world.ErrModsTooBig. The run mounts the linked
 // zips read-only with worldModMounts.
 func (c *Controller) makeWorldPreviewDir(base *os.Root, req PreviewRequest) (string, error) {
 	name, err := newWorkDir(base)
@@ -448,8 +457,7 @@ func (c *Controller) makeWorldPreviewDir(base *os.Root, req PreviewRequest) (str
 		return fail(err)
 	}
 	if meta.GameVersion != req.GameVersion || meta.SpaceAge != req.SpaceAge {
-		// The image and the known planets were chosen for the world as it was.
-		return fail(world.ErrBusy)
+		return fail(fmt.Errorf("%w: the world is Factorio %s with Space Age %t", ErrPreviewInvalid, meta.GameVersion, meta.SpaceAge))
 	}
 	if err := c.worlds.LinkModsInto(req.World, filepath.Join(c.previewPath(), name)); err != nil {
 		return fail(fmt.Errorf("could not put the world's mods in the work folder: %w", err))

@@ -124,8 +124,8 @@ func TestPreviewRunsRefuseAWorldModNamedLikeTheControlMod(t *testing.T) {
 			} else {
 				_, err = r.c.Resources(context.Background(), worldRequest(id), "nauvis")
 			}
-			if !errors.Is(err, errControlModTaken) {
-				t.Fatalf("error %v, want errControlModTaken", err)
+			if !errors.Is(err, ErrControlModTaken) {
+				t.Fatalf("error %v, want ErrControlModTaken", err)
 			}
 			if n := len(r.calls("POST /containers/create")); n != 0 || len(r.previewFolders()) != 0 {
 				t.Errorf("%d containers made, folders %v", n, r.previewFolders())
@@ -194,6 +194,31 @@ func TestPreviewWithAWorldHasALimitPerPlanet(t *testing.T) {
 	}
 }
 
+// SPEC 14.3: the limit per planet has a ceiling, so a world with many
+// planets cannot hold the one preview slot for long; without a world the
+// limit is the preview's alone.
+func TestPreviewRunLimit(t *testing.T) {
+	withWorld := PreviewRequest{World: "w"}
+	for _, tc := range []struct {
+		req   PreviewRequest
+		drawn int
+		want  time.Duration
+	}{
+		{PreviewRequest{}, 5, PreviewLimit},
+		{withWorld, 1, PreviewLimit},
+		{withWorld, 3, 3 * PreviewLimit},
+		{withWorld, 10, PreviewWorldLimitMax},
+		{withWorld, 64, PreviewWorldLimitMax},
+	} {
+		if got := previewRunLimit(PreviewLimit, tc.req, tc.drawn); got != tc.want {
+			t.Errorf("world %q, %d planets: limit %v, want %v", tc.req.World, tc.drawn, got, tc.want)
+		}
+	}
+	if PreviewWorldLimitMax != 10*time.Minute {
+		t.Errorf("ceiling %v, want 10 minutes", PreviewWorldLimitMax)
+	}
+}
+
 // SPEC 14.3: a world that server control holds, a request for another game
 // version or Space Age than the world's, and mods past the link caps refuse
 // the run before any container is made, and leave no folder.
@@ -211,13 +236,13 @@ func TestPreviewWithAWorldRefusals(t *testing.T) {
 	q := worldRequest(id)
 	q.SpaceAge = false
 	q.Planets = []string{"nauvis"}
-	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, world.ErrBusy) {
-		t.Errorf("another Space Age: error %v, want world.ErrBusy", err)
+	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, ErrPreviewInvalid) {
+		t.Errorf("another Space Age: error %v, want ErrPreviewInvalid", err)
 	}
 	q = worldRequest(id)
 	q.GameVersion = "2.0.77"
-	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, world.ErrBusy) {
-		t.Errorf("another game version: error %v, want world.ErrBusy", err)
+	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, ErrPreviewInvalid) {
+		t.Errorf("another game version: error %v, want ErrPreviewInvalid", err)
 	}
 	restore := world.SetLinkLimitsForTest(1, 1<<20)
 	defer restore()
