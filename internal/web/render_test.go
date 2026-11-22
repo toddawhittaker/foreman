@@ -139,6 +139,7 @@ func pageCases() []pageCase {
 		})}},
 		{"generate untested layout", "todd", 200, GeneratePage{Form: generateCase(func(f *GenerateForm) {
 			f.Version, f.Line, f.MapKey, f.Presets = "2.1.15", "2.1", "2.1|1", mapgen.Presets("2.1")
+			f.cat = mapgen.Builtin("2.1", true)
 			f.fill("2.1.15", nil)
 		})}},
 		{"clone with save", "todd", 200, ClonePage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", SpaceAge: true},
@@ -450,6 +451,7 @@ func TestVersionFragments(t *testing.T) {
 func generateCase(edit func(*GenerateForm)) GenerateForm {
 	f := GenerateForm{Version: "2.0.77", DefaultVersion: "2.0.77", SpaceAge: true, Download: true, CanDownload: true,
 		Mode: modeSettings, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Tab: tabResources}
+	f.cat = mapgen.Builtin("2.0", true)
 	f.fill("2.0.77", &MapGenText{Value: "42"})
 	if edit != nil {
 		edit(&f)

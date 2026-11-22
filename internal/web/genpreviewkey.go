@@ -114,7 +114,7 @@ func splitControls(line string, mapGen []byte) (rest []byte, own map[string]map[
 }
 
 // defaultFiles are the files Generate writes for the default preset once a
-// setting is changed (generate.go, settingsWorld): the form's map-gen file
+// setting is changed (generate.go, settingsFiles): the form's map-gen file
 // and, where the layout is tested, the preset's map settings.
 func defaultFiles(line, version string, spaceAge bool) (mapGen, mapSettings []byte) {
 	_, mapGen, _ = parseMapGenValues(url.Values{}, line, spaceAge)

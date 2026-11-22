@@ -686,29 +686,38 @@ var knownFieldNames = func() map[string]bool {
 	known := map[string]bool{mgWidth: true, mgHeight: true, mgStart: true, mgPeaceful: true, mgNoEnemies: true, mgRaw: true,
 		mgMapType: true, mgMoistureScale: true, mgAuxScale: true, mgMoistureBias: true, mgAuxBias: true}
 	for _, line := range mapgen.Lines {
-		for _, p := range mgPlanets(line, mapgen.Builtin(line, true)) {
-			for _, c := range p.controls {
-				if c.toggle {
-					known[fieldName(p.name, c.name, mgOn)] = true
-				}
-				for _, s := range c.settings {
-					known[fieldName(p.name, c.name, s.key)] = true
-				}
-			}
-		}
+		addControlFields(known, line, mapgen.Builtin(line, true))
 	}
 	return known
 }()
+
+// addControlFields adds the field names of every control a catalogue lays
+// out for the line.
+func addControlFields(known map[string]bool, line string, cat mapgen.Catalogue) {
+	for _, p := range mgPlanets(line, cat) {
+		for _, c := range p.controls {
+			if c.toggle {
+				known[fieldName(p.name, c.name, mgOn)] = true
+			}
+			for _, s := range c.settings {
+				known[fieldName(p.name, c.name, s.key)] = true
+			}
+		}
+	}
+}
+
+// knownFieldsIn is knownFieldNames with the fields of a catalogue's own
+// planets and controls, which a world's mods may add (SPEC 5.6).
+func knownFieldsIn(line string, cat mapgen.Catalogue) func(string) bool {
+	own := map[string]bool{}
+	addControlFields(own, line, cat)
+	return func(name string) bool { return knownFieldNames[name] || own[name] }
+}
 
 // enemyTips are the game's tips for an enemy control's settings, by key.
 var enemyTips = map[string]i18n.Msg{
 	"frequency": i18n.M("mapgen.tip.enemy_frequency"),
 	"size":      i18n.M("mapgen.tip.enemy_size"),
-}
-
-// buildMapGenForm is buildMapGenFormIn with the line's built-in catalogue.
-func buildMapGenForm(line string, spaceAge bool, posted func(name string) (string, bool)) MapGenForm {
-	return buildMapGenFormIn(line, mapgen.Builtin(line, spaceAge), posted)
 }
 
 // buildMapGenFormIn lays out the form for a catalogue; posted says what the
@@ -893,8 +902,9 @@ func parseMapGenIn(vals url.Values, line string, cat mapgen.Catalogue) (form Map
 		fail(mgSeedID, i18n.M("mapgen.err.unknown"))
 		return form, nil, problems
 	}
+	known := knownFieldsIn(line, cat)
 	for name := range vals {
-		if strings.HasPrefix(name, mgPrefix) && !knownFieldNames[name] {
+		if strings.HasPrefix(name, mgPrefix) && !known(name) {
 			// Never echoed: it is not one of this form's fields.
 			fail(mgSeedID, i18n.M("mapgen.err.unknown"))
 			break

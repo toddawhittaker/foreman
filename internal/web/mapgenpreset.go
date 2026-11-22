@@ -36,12 +36,6 @@ type presetSettings struct {
 	PropertyNames map[string]json.RawMessage `json:"property_expression_names"`
 }
 
-// NewMapGenFormForPreset is mapGenFormForPreset with the line's built-in
-// catalogue.
-func NewMapGenFormForPreset(line string, spaceAge bool, preset string) MapGenForm {
-	return mapGenFormForPreset(line, mapgen.Builtin(line, spaceAge), preset)
-}
-
 // mapGenFormForPreset is the form filled with a preset's values for the
 // line, laid out from a catalogue. Keys the fields do not cover, such as an
 // island's terrain type, fill the raw box.
@@ -50,21 +44,11 @@ func mapGenFormForPreset(line string, cat mapgen.Catalogue, preset string) MapGe
 	return form
 }
 
-// presetValues is presetValuesIn with the line's built-in catalogue.
-func presetValues(line string, spaceAge bool, preset, seed string) url.Values {
-	return presetValuesIn(line, mapgen.Builtin(line, spaceAge), preset, seed)
-}
-
 // presetValuesIn are the post of the form opened on a preset: what the
 // preset sets, and the game's defaults elsewhere. Nauvis holds every control
 // a preset names. A value that is on no step is left at the default.
 func presetValuesIn(line string, cat mapgen.Catalogue, preset, seed string) url.Values {
 	return fileValuesIn(line, cat, mapgen.PresetMapGen(line, preset), seed, rawPrefillFor(line, preset), false)
-}
-
-// fileValues is fileValuesIn with the line's built-in catalogue.
-func fileValues(line string, spaceAge bool, file []byte, seed, raw string, wholeFile bool) url.Values {
-	return fileValuesIn(line, mapgen.Builtin(line, spaceAge), file, seed, raw, wholeFile)
 }
 
 // fileValuesIn are the post of the form opened on a map-gen-settings.json:
@@ -211,12 +195,6 @@ func rawPrefillFor(line, preset string) string {
 		ms = append(ms, jsonMember{"property_expression_names", writeMembers(lay(nil))})
 	}
 	return string(indent(writeMembers(ms))) + "\n"
-}
-
-// NewMapGenFormFromFile is mapGenFormFromFile with the line's built-in
-// catalogue.
-func NewMapGenFormFromFile(line string, spaceAge bool, file []byte) MapGenForm {
-	return mapGenFormFromFile(line, mapgen.Builtin(line, spaceAge), file)
 }
 
 // mapGenFormFromFile is the form filled from a saved map-gen-settings.json,
