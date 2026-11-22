@@ -355,8 +355,9 @@ func TestRealGameWorldFile(t *testing.T) {
 		info.Saves < 1 || info.ModFiles < 2 || !info.GamePasswordSet || info.ForemanVersion != "t8-test" || info.Bytes <= 0 {
 		t.Errorf("preview: %+v", info)
 	}
-	if left, _ := filepath.Glob(filepath.Join(b.hn.worlds.Dirs().Worlds, "*")); len(left) != 0 {
-		t.Errorf("reading the file for the preview changed the worlds folder: %v", left)
+	// Only the staged upload is there, a hidden file: no world folder yet.
+	if left, _ := os.ReadDir(b.hn.worlds.Dirs().Worlds); slices.ContainsFunc(left, func(d os.DirEntry) bool { return !strings.HasPrefix(d.Name(), ".") }) {
+		t.Errorf("reading the file for the preview made a world folder: %v", left)
 	}
 	idB, err := b.hn.worlds.ImportWorldFile(ctx, temp, "worldfile-realgame6-copy", lim)
 	if err != nil {
@@ -395,8 +396,9 @@ func TestRealGameWorldFile(t *testing.T) {
 	if mb["name"] != "worldfile-realgame6-copy" || mb["game_version"] != worldFileGameVersion || mb["archived"] != nil || mb["imported_from"] != nil || mb["new_map"] != nil {
 		t.Errorf("world.json on host B: %s", metaB)
 	}
+	// A ZIP entry keeps its time to the second, so the sub-second part is lost.
 	targetB, found, err := b.hn.worlds.LoadTarget(idB)
-	if err != nil || !found || targetB.Name != targetA.Name || targetB.Size != targetA.Size || !targetB.ModTime.Equal(targetA.ModTime) {
+	if err != nil || !found || targetB.Name != targetA.Name || targetB.Size != targetA.Size || !targetB.ModTime.Equal(targetA.ModTime.Truncate(time.Second)) {
 		t.Errorf("the save that loads: host A %+v, host B %+v (found %v, %v)", targetA, targetB, found, err)
 	}
 
