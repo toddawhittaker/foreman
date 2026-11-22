@@ -238,6 +238,111 @@ test.describe("the list on the world's Overview page", () => {
   });
 });
 
+// DESIGN 7 and SPEC 17.1: the panel passes axe at WCAG 2.2 AA (checkPage runs wcagTags) in each
+// state it can be in, and a read that takes a while does not take the keyboard from the person.
+// A "hang" preview never ends by itself, so a read stays "reading" until the world starts, which
+// cancels it (SPEC 8.16).
+test.describe("accessibility of the players panel", () => {
+  const readingNote = (section: Locator) => section.getByRole("status").filter({ hasText: /reading/i });
+  const worldTab = (page: Page) => page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Saves" });
+  const focusedId = (page: Page) => page.evaluate(() => document.activeElement?.id ?? document.activeElement?.tagName ?? "");
+
+  test("the reading state passes axe", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await fakeGame!.call("/preview-mode", { mode: "hang" });
+    const section = await overview(page);
+    await expect(readingNote(section)).toBeVisible(live);
+    await checkPage(page);
+  });
+
+  test("the ready state with a note that it may be inexact passes axe", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    writeRecord(foreman, { inexact: true, gameTicks: 12 * hour, players: [{ name: "alice", hours: 5 }, { name: "bob", hours: 1, trackedSeconds: 600, lastSeen: "2026-11-20T18:30:00Z" }] });
+    // The game runs, so the inexact record is shown as it is and no read starts (D2).
+    await start(page);
+    const section = await overview(page);
+    await expect(entries(section)).toHaveCount(2);
+    await expect(section).toContainText(/inexact|exact|may/i);
+    await expect(readNewest(page)).toBeVisible();
+    await checkPage(page);
+  });
+
+  test("the tracked-only state passes axe", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    writeRecord(foreman, { result: "mods-differ", trackedSince: "2026-11-10T08:00:00Z", players: [{ name: "carol", trackedSeconds: 5400, lastSeen: "2026-11-20T18:30:00Z" }] });
+    const section = await overview(page);
+    await expect(section).toContainText(/tracked since/i);
+    await expect(readAgain(page)).toBeVisible();
+    await checkPage(page);
+  });
+
+  test("the Server page with the players link passes axe", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    writeRecord(foreman, { gameTicks: 59_760_005, players: [{ name: "alice", hours: 5 }, { name: "bob", hours: 2 }] });
+    await page.goto("/");
+    await expect(page.locator("main").getByRole("link", { name: /2 players in this save/i })).toBeVisible();
+    await checkPage(page);
+  });
+
+  // A read can take minutes, and the panel asks again every few seconds. Neither the poll nor
+  // the swap may put focus back on the "Reading" note: a person who has moved on keeps their place.
+  test("during a read, focus is not put back on the Reading note", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    writeRecord(foreman, { result: "out-of-memory", players: [{ name: "carol", trackedSeconds: 60 }] });
+    await fakeGame!.call("/preview-mode", { mode: "hang" });
+    const section = await overview(page);
+
+    // The click may take focus once, so the person hears that the read began.
+    await readAgain(page).click();
+    await expect(readingNote(section)).toBeVisible(live);
+
+    // The person moves on to another link. Two polls later (every 3 s) they are still there.
+    await worldTab(page).focus();
+    expect(await focusedId(page)).toBe("A");
+    await page.waitForTimeout(7_500);
+    await expect(readingNote(section)).toBeVisible();
+    await expect(worldTab(page)).toBeFocused();
+    // Nor does a page view that starts the read by itself take focus (no click).
+    await page.reload();
+    await expect(readingNote(section)).toBeVisible(live);
+    await worldTab(page).focus();
+    await page.waitForTimeout(4_000);
+    await expect(worldTab(page)).toBeFocused();
+
+    // Starting the world cancels the read (8.16); the test ends with nothing left running.
+    await start(page);
+  });
+
+  // The button that was pressed is replaced when the read ends, so focus would fall to the page.
+  // It lands on the panel's heading, or the outcome is announced to a screen reader.
+  test("when a read ends, focus lands on the panel heading or the outcome is announced", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    writeRecord(foreman, { result: "out-of-memory", players: [{ name: "carol", trackedSeconds: 60 }] });
+    await fakeGame!.call("/preview-mode", { mode: "slow" });
+    const section = await overview(page);
+    await readAgain(page).click();
+    // The read ends by itself (the slow fake takes half a second) and the panel shows the result.
+    await expect.poll(async () => (existsSync(recordPath(foreman)) ? readRecord(foreman).seed.result : ""), live).toBe("ok");
+    await expect(section).not.toContainText(/tracked since/i, live);
+    await expect(readingNote(section)).toHaveCount(0, live);
+
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const panel = document.querySelector("#save-players") ?? document.body;
+            const heading = panel.querySelector("h2");
+            if (heading && document.activeElement === heading) return "heading";
+            const live = [...panel.querySelectorAll('[role="status"],[role="alert"],[aria-live]'), ...document.querySelectorAll("#announcer")];
+            if (live.some((el) => (el.textContent ?? "").trim() !== "")) return "announced";
+            return `lost: focus on ${document.activeElement?.tagName}`;
+          }),
+        live,
+      )
+      .toMatch(/^(heading|announced)$/);
+  });
+});
+
 test.describe("while the game runs", () => {
   // SPEC 8.14, D2: a running world is never read by a view. The admin's click does it, and the
   // button says what it costs in memory.
