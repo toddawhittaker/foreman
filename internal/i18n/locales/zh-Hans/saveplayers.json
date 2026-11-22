@@ -1,6 +1,5 @@
 {
   "saveplayers.heading": "此存档中的玩家",
-  "saveplayers.loading": "正在加载此存档的玩家…",
   "saveplayers.reading": "正在读取最新存档以找出其中的玩家，大约需要一分钟。完成后列表会显示在这里。",
   "saveplayers.unavailable": "目前无法显示此存档的玩家。",
   "saveplayers.no_save": "此世界还没有存档，因此没有可列出的玩家。",

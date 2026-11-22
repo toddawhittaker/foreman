@@ -1,6 +1,5 @@
 {
   "saveplayers.heading": "Gracze w tym zapisie",
-  "saveplayers.loading": "Wczytywanie graczy z tego zapisu…",
   "saveplayers.reading": "Trwa odczyt najnowszego zapisu w celu znalezienia graczy. Zajmuje to około minuty. Lista pojawi się tutaj po zakończeniu.",
   "saveplayers.unavailable": "Nie można teraz wyświetlić graczy z tego zapisu.",
   "saveplayers.no_save": "Ten świat nie ma jeszcze zapisu, więc nie ma graczy do wyświetlenia.",

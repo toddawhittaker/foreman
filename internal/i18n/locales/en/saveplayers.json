@@ -1,6 +1,5 @@
 {
   "saveplayers.heading": "Players in this save",
-  "saveplayers.loading": "Loading the players of this save…",
   "saveplayers.reading": "Reading the newest save to find its players. This takes about a minute. The list appears here when it is done.",
   "saveplayers.unavailable": "The players of this save cannot be shown right now.",
   "saveplayers.no_save": "This world has no save yet, so there are no players to list.",

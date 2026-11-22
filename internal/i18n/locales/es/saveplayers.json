@@ -1,6 +1,5 @@
 {
   "saveplayers.heading": "Jugadores de esta partida guardada",
-  "saveplayers.loading": "Cargando los jugadores de esta partida guardada…",
   "saveplayers.reading": "Leyendo la partida guardada más reciente para encontrar a sus jugadores. Tarda cerca de un minuto. La lista aparecerá aquí cuando termine.",
   "saveplayers.unavailable": "Ahora mismo no se pueden mostrar los jugadores de esta partida guardada.",
   "saveplayers.no_save": "Este mundo aún no tiene ninguna partida guardada, así que no hay jugadores que mostrar.",

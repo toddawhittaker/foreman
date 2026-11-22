@@ -1,6 +1,5 @@
 {
   "saveplayers.heading": "Joueurs de cette sauvegarde",
-  "saveplayers.loading": "Chargement des joueurs de cette sauvegarde…",
   "saveplayers.reading": "Lecture de la sauvegarde la plus récente pour trouver ses joueurs. Cela prend environ une minute. La liste apparaîtra ici une fois la lecture terminée.",
   "saveplayers.unavailable": "Les joueurs de cette sauvegarde ne peuvent pas être affichés pour le moment.",
   "saveplayers.no_save": "Ce monde n'a pas encore de sauvegarde ; il n'y a donc aucun joueur à lister.",

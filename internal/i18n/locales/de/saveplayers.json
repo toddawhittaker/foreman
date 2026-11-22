@@ -1,6 +1,5 @@
 {
   "saveplayers.heading": "Spieler in diesem Speicherstand",
-  "saveplayers.loading": "Die Spieler dieses Speicherstands werden geladen …",
   "saveplayers.reading": "Der neueste Speicherstand wird gelesen, um seine Spieler zu finden. Das dauert etwa eine Minute. Die Liste erscheint hier, sobald sie fertig ist.",
   "saveplayers.unavailable": "Die Spieler dieses Speicherstands können gerade nicht angezeigt werden.",
   "saveplayers.no_save": "Diese Welt hat noch keinen Speicherstand, also gibt es keine Spieler aufzulisten.",

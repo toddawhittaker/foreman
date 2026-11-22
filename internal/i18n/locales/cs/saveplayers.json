@@ -1,6 +1,5 @@
 {
   "saveplayers.heading": "Hráči v této uložené hře",
-  "saveplayers.loading": "Načítají se hráči z této uložené hry…",
   "saveplayers.reading": "Čte se nejnovější uložená hra, aby se zjistili její hráči. Trvá to asi minutu. Seznam se zde objeví, až bude hotovo.",
   "saveplayers.unavailable": "Hráče z této uložené hry nelze teď zobrazit.",
   "saveplayers.no_save": "Tento svět zatím nemá žádnou uloženou hru, takže není koho vypsat.",
