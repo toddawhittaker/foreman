@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -119,7 +120,24 @@ func (g *gameRig) startRunning() string {
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
 	g.waitPage(running)
+	// The page that shows the game running asks it for /time in the
+	// background (SPEC 8.15), and asks again only a minute later. Waiting
+	// for that ask to reach the game keeps it out of what a test counts as
+	// sent from here on.
+	g.waitCommand(id, "/time")
 	return id
+}
+
+// waitCommand waits until the world's game has received the command.
+func (g *gameRig) waitCommand(id, command string) {
+	g.t.Helper()
+	deadline := time.Now().Add(15 * time.Second)
+	for !slices.Contains(g.commands(id), command) {
+		if time.Now().After(deadline) {
+			g.t.Fatalf("the game never received %q; it received %q", command, g.commands(id))
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func consoleSendPath(id string) string { return worldPath(id) + "/console" }
