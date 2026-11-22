@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -63,16 +64,29 @@ type controlMod struct {
 // folder. The values come from the environment (gameenv), so no value of a
 // request is built into it.
 func (m controlMod) script() string {
-	return strings.Join([]string{
-		m.params + ` || exit 1`,
-		`set -- --config ` + gameenv.PreviewMount + `/config.ini --mod-directory ` + gameenv.PreviewMount + `/` + world.ModsDir +
-			` --create ` + gameenv.PreviewMount + `/` + m.save + ` --map-gen-seed "$` + gameenv.Seed + `"`,
+	lead := `--config ` + gameenv.PreviewMount + `/config.ini --mod-directory ` + gameenv.PreviewMount + `/` + world.ModsDir + ` `
+	return strings.Join(slices.Concat(
+		[]string{m.params + ` || exit 1`},
+		createLines(lead, m.save),
+		[]string{
+			gameBinary + ` "$@" || exit 1`,
+			`cp ` + previewWrite + `/script-output/` + m.output + ` ` + gameenv.PreviewMount + `/` + m.output,
+		},
+	), "\n")
+}
+
+// createLines are the shell lines that put the arguments of a map creation
+// in "$@": lead (empty, or ending in a space) first, then --create for the
+// save in the work folder and the seed, the preset when there is one, and
+// the settings files when the work folder has them. Both control-mod runs
+// that create a map use them.
+func createLines(lead, save string) []string {
+	return []string{
+		`set -- ` + lead + `--create ` + gameenv.PreviewMount + `/` + save + ` --map-gen-seed "$` + gameenv.Seed + `"`,
 		`if [ -n "$` + gameenv.Preset + `" ]; then set -- "$@" --preset "$` + gameenv.Preset + `"; fi`,
 		`if [ -f ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + ` ]; then set -- "$@" --map-gen-settings ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + `; fi`,
 		`if [ -f ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + ` ]; then set -- "$@" --map-settings ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + `; fi`,
-		gameBinary + ` "$@" || exit 1`,
-		`cp ` + previewWrite + `/script-output/` + m.output + ` ` + gameenv.PreviewMount + `/` + m.output,
-	}, "\n")
+	}
 }
 
 // modInfo is a control mod's info.json. The game loads a mod only when its

@@ -340,6 +340,23 @@ func TestReadChartRefusesALink(t *testing.T) {
 	}
 }
 
+// A chart is read with the factory map's readers, so a refused chart can
+// match ErrSaveCopyBadOutput too; it must always match ErrChartBadOutput,
+// which callers test first (SPEC 14.6).
+func TestReadChartErrorMatchesChartBeforeSaveCopy(t *testing.T) {
+	base := writeChartOutput(t, validChartOutput())
+	if err := os.Remove(filepath.Join(base.Name(), "w", gameenv.ChartDir, "manifest.json")); err != nil {
+		t.Fatal(err)
+	}
+	_, err := readChart(base, "w", "cerys")
+	if !errors.Is(err, ErrChartBadOutput) {
+		t.Fatalf("error %v, want ErrChartBadOutput", err)
+	}
+	if !errors.Is(err, ErrSaveCopyBadOutput) {
+		t.Errorf("error %v no longer matches ErrSaveCopyBadOutput: update Chart's doc comment", err)
+	}
+}
+
 // SPEC 14.6: a bad chart is ErrChartBadOutput, and the error carries
 // nothing the file says.
 func TestReadChartErrors(t *testing.T) {
