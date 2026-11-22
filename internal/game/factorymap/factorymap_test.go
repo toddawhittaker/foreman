@@ -53,6 +53,9 @@ func TestLimitsMatchTheParser(t *testing.T) {
 	if got := luaConst(t, "CHUNK"); got != factorymap.ChunkPixels {
 		t.Errorf("CHUNK %d, parser %d", got, factorymap.ChunkPixels)
 	}
+	if got := luaConst(t, "MAX_BOX"); got != factorymap.MaxBoxTiles {
+		t.Errorf("MAX_BOX %d, parser %d", got, factorymap.MaxBoxTiles)
+	}
 	maxBytes, maxChart := luaConst(t, "MAX_BYTES"), luaConst(t, "MAX_CHART_BYTES")
 	if maxBytes >= factorymap.MaxOutputBytes {
 		t.Errorf("MAX_BYTES %d leaves no room under %d", maxBytes, factorymap.MaxOutputBytes)
@@ -131,6 +134,22 @@ func TestEntityLineContract(t *testing.T) {
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("control.lua lacks %q", want)
+		}
+	}
+	// Each of these lines of the building pass is what the review asked for.
+	pass := src[strings.Index(src, "local function write_entities"):]
+	pass = pass[:strings.Index(pass, "\nend\n")]
+	if strings.Index(pass, "e.valid") > strings.Index(pass, "e.type") {
+		t.Error("e.valid must be checked before e.type")
+	}
+	for _, want := range []string{"total_bytes + pending_bytes >= MAX_BYTES", "pending_bytes = pending_bytes + #line", "x2 - x1 <= MAX_BOX and y2 - y1 <= MAX_BOX"} {
+		if !strings.Contains(pass, want) {
+			t.Errorf("the building pass lacks %q", want)
+		}
+	}
+	for _, typ := range []string{"fire", "sticker", "projectile", "artillery-projectile", "stream", "combat-robot", "car", "spider-vehicle"} {
+		if !strings.Contains(src, `["`+typ+`"] = true`) {
+			t.Errorf("the skip list lacks %s", typ)
 		}
 	}
 	// The manifest is written last, so a stopped run leaves none.
