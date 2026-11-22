@@ -1249,7 +1249,9 @@ figures can add up to less than the total. (P0)
 example `20261103T142501Z`, with `-2` added on a clash. The manifest
 holds the label, the reason (`manual`, `before-delete`, `before-restore`,
 `settings`, `mods`, `autosaves`, or the risky operation), the time, who took it, and for each file its
-path, size and modification time to the nanosecond. For each save and mod
+path, size and modification time to the nanosecond, read from the copy the
+snapshot holds once it is placed, so the manifest matches the snapshot even
+when a file such as `players.json` changed while it was taken. For each save and mod
 zip it also holds a SHA-256 hash, which Foreman reuses from the previous
 snapshot when the file's inode, size and modification time are unchanged.
 Restore checks every hash first and refuses a changed snapshot, naming the
@@ -1939,8 +1941,18 @@ and its factory map (5.16) by running the save in a one-off container
   versions. Either failure gives `mods-differ`, and no figures are kept.
 - **The result is kept** only if the save that loads next is still the
   save that was read.
-- **A start of the world cancels** any read of it and waits for its
-  container to go; a read asked for while the world starts is refused.
+- **Every start cancels a read.** A start of the world, a switch, an
+  update, a rollback, a mod change or a restart cancels any read of it and
+  waits until its container is removed before the game's container is
+  made; a read asked for meanwhile is refused.
+- **A world's lock cancels a read.** Any operation that takes a world's
+  lock, a person's or Foreman's own (a snapshot, a restore, the mod
+  settings run), first cancels that world's players read or factory map
+  run and waits for it to release the world, so it is never refused as
+  busy because of one. A cancelled read keeps nothing, and the next view
+  reads again. The reads themselves take the lock without cancelling
+  anything (`world.Manager.Lock` and `LockBackground`,
+  `beginStartSaveCopies` in `internal/game/savecopy.go`).
 - **Limits:** 12 GiB of memory with no swap, 5 minutes, and the one preview
   slot (14.3). Measured: 6.9 GB and 44 seconds for a 187 MB save with 44
   mods.

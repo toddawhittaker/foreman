@@ -4686,8 +4686,8 @@ and 0032. Issues: three small fixes (#781, #784, #785) and three features:
 the players of a save with their play time (#769), the factory map (#773)
 and world file export and import (#774). The plan was #791 and the spec and
 ADR task #792. The task pull requests were #793 to #808, #811 to #823 and
-#825 to #832; #809, #810 and #824 were closed because a later pull request
-included them.
+#825 to #832, and the CI fix #835; #809, #810 and #824 were closed because a
+later pull request included them.
 
 Rulings (the plan, then Todd, 2026-11-21):
 
@@ -4729,9 +4729,13 @@ Rulings (the plan, then Todd, 2026-11-21):
   folder. The game writes only to a 1 GiB in-memory folder, and only the
   helper's named output is moved out. The pre-start check runs first, and
   the players read also compares the helper's list of active mods with the
-  world's enabled mods afterwards. A start marks the world as starting, then
-  cancels its reads and waits for their containers to go, and a read asked
-  for meanwhile is refused before any container is made. Two helper mods,
+  world's enabled mods afterwards. Every start (a switch, an update, a
+  rollback, a mod change or a restart too) cancels a running read and waits
+  for its container to go before the game's container is made, and a read
+  asked for meanwhile is refused (#835). Any operation that takes a world's
+  lock, a person's or Foreman's own such as the mod settings run, cancels a
+  running background read or map run instead of being refused as busy
+  (#835). Two helper mods,
   `internal/game/saveplayers` and `internal/game/factorymap`, each write
   their output on 1.1, 2.0 and 2.1.
 - **Players of a save (#769, SPEC 8.14; #804, #801, #806, #822, #825).**
@@ -4797,19 +4801,29 @@ Rulings (the plan, then Todd, 2026-11-21):
   the map (#811), world files (#815) and the players of a save (#803).
   Real-game tests cover the map on 2.0.77, 2.1.24 and 1.1.110 (#819), the
   world file round trip on 2.1.24 (#817), and the players read on 2.0.77 and
-  2.1.24 with a hostile write to the save that must fail (#808). #803 and
-  #808 were still open when this section was written; their lines come from
-  their pull request bodies.
+  2.1.24, with the tick and players checked against a separate game run and a
+  hostile write to the save that must fail (#808). The e2e tests count only
+  game creates, since a page view may now start a players read (#835).
+- **A snapshot always matches its files (#835, SPEC 6.7).** A snapshot now
+  records each file's size and time from the copy it holds. Before, a
+  session ending while a snapshot was taken could rewrite `players.json`
+  between the listing and the copy, and a restore was then refused with
+  "players.json has changed".
 - **Translations.** New locale areas `saveplayers`, `factorymap`,
   `worldexport`, `worldimport` and `worldfile`, with additions to `server`,
   `audit` and `crash`, in all eight languages, reviewed a second time
   (#832).
 
 Verified: each task with `make verify` and the e2e specs for the files it
-touched; CI's full run on each push to the epic branch; the real-game tests
-above; the fold head with `make e2e E2E_ARGS="tests/design.spec.ts
---workers=4"`. The epic's full `make test-game` and the hand check of three
-trial saves are recorded in the epic pull request.
+touched; CI's full run on each push to the epic branch; `make verify` on
+the combined branches; `make test-game` in full on 76eba729 (61 minutes,
+with the map's played saves on 2.0 and 2.1, and the 4 resource label skips
+that were there before); `TestRealGameWorldFile` and A12's players tests,
+including two played saves (`FOREMAN_TEST_PLAYERS_SAVE`, `_SPACE_AGE` and
+`_MODS`): dans-2.0 on 2.0.77 and cur-2.1 on 2.1.24, two players each; and
+the fold head with `make e2e E2E_ARGS="tests/design.spec.ts
+--workers=4"`. The hand check of the three trial saves is recorded in the
+epic pull request.
 
 ### Gaps left
 
@@ -4826,12 +4840,9 @@ trial saves are recorded in the epic pull request.
   while the world runs, instead of following the live stream.
 - **Players read end to end:** a start cancelling a read and the
   not-supported state are covered by unit tests only, since the fake's reads
-  finish at once. The real-game test checks the player list only on a save
-  with no players, unless a played save is named in
-  `FOREMAN_TEST_PLAYERS_SAVE`.
-- **A copied save blocks other work.** If hard links fail and a players read
-  copies the save, Update, Rollback, Restore and a snapshot are refused with
-  "another operation is running" until the copy ends.
+  finish at once. The real-game test checks a played save's player list only
+  when one is named in `FOREMAN_TEST_PLAYERS_SAVE`, since no save with
+  players is committed.
 - **Map runs skip the after-run check of the mods the game loaded.** Only the
   pre-start check runs. A wrong mod set can only draw a slightly different
   picture and never touches a world file.
