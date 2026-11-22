@@ -524,7 +524,6 @@ const previewWorldField = "world"
 type previewInput struct {
 	f   GenerateForm
 	req game.PreviewRequest
-	cat mapgen.Catalogue
 	key previewKey
 	ok  bool
 }
@@ -542,7 +541,8 @@ var worldCatalogue = func(s *server, ctx context.Context, id string, loc i18n.Lo
 var errNoGame = errors.New("no game controller")
 
 // previewModsKey is what of a world's mods changes its map: the mods, their
-// files and their setting values (SPEC 5.6, ADR 0033).
+// files and their setting values (SPEC 5.6, ADR 0033). ModSettingsKey adds
+// what is inside folder mods; ModsFingerprint adds mod-settings.dat.
 func (s *server) previewModsKey(id string) (string, error) {
 	defs, err := s.worlds.ModSettingsKey(id)
 	if err != nil {
@@ -563,11 +563,11 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 	id := r.PostFormValue(previewWorldField)
 	if id == "" {
 		f, nw, ok := s.readGenerate(r, kindPreview)
-		in = previewInput{f: f, cat: f.cat, ok: ok}
+		in = previewInput{f: f, ok: ok}
 		if ok {
 			in.req = previewRequest(f, nw)
 		}
-		in.key = settingsKey(in.req, in.cat, "")
+		in.key = settingsKey(in.req, f.cat, "")
 		return in, false
 	}
 	ctx := r.Context()
@@ -582,18 +582,24 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 	}
 	line, lineOK := mapgen.Line(sum.GameVersion)
 	if !lineOK {
-		s.notFound(w, r, u)
+		// The world is there, but its game has no map settings Foreman knows.
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest, Detail: i18n.M("worlds.generate.preview.failed")})
 		return in, true
 	}
-	cat, err := worldCatalogue(s, ctx, id, localeOf(r))
-	if err != nil {
+	cat, catErr := worldCatalogue(s, ctx, id, localeOf(r))
+	if catErr != nil {
 		// The built-in planets come back with the error, and are used (SPEC 5.6).
-		s.log.Warn("read the world's planets for a map preview", "world", id, "error", err)
+		s.log.Warn("read the world's planets for a map preview", "world", id, "error", catErr)
 	}
 	mods, err := s.previewModsKey(id)
 	if err != nil {
 		s.fail(w, r, "read the world's mods for a map preview", err)
 		return in, true
+	}
+	if catErr != nil {
+		// Pictures from the built-in planets never stand for the world's own
+		// once its planet run works.
+		mods += " fallback"
 	}
 	spaceAge := sum.SpaceAge && lineHasSpaceAge(line)
 	form := r.PostForm
@@ -607,7 +613,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		f.clearErrors()
 		ok = false
 	}
-	in = previewInput{f: f, cat: cat, ok: ok && !f.failed() && files.Seed != nil}
+	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil}
 	if in.ok {
 		in.req = game.PreviewRequest{
 			GameVersion: sum.GameVersion, SpaceAge: spaceAge, Preset: files.Preset, Seed: *files.Seed,

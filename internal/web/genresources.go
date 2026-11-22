@@ -270,7 +270,7 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	view.Resources = s.resources(w, r, u, in.req, in.cat, in.key, f.Name, planet)
+	view.Resources = s.resources(w, r, u, in.req, f.cat, in.key, f.Name, planet)
 	s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-resources")
 }
 

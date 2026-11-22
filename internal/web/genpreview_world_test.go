@@ -1,19 +1,26 @@
 package web
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/resource"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // cerysCatalogue is the 2.1 Space Age planets plus a modded planet, Cerys,
@@ -179,9 +186,114 @@ func TestWorldPreviewRefusalsAreWorded(t *testing.T) {
 	}
 }
 
-// SPEC 5.6, 14.3: the preview store holds 160 MiB.
+// SPEC 5.6, 14.3: the store holds 160 MiB. About 100 MB of pictures are all
+// kept; past 160 MiB the oldest preview goes to make room.
 func TestPreviewStoreHolds160MiB(t *testing.T) {
-	if maxPreviewBytes != 160<<20 {
-		t.Errorf("store holds %d bytes", maxPreviewBytes)
+	st := newPreviewStore(time.Now)
+	pics := func(prefix string, n int) []game.PNG {
+		var out []game.PNG
+		for i := range n {
+			out = append(out, game.PNG{Planet: prefix + strconv.Itoa(i), Data: make([]byte, game.MaxPreviewPNG)})
+		}
+		return out
+	}
+	first, err := st.add(1, testKey("a"), "", "1", pics("a", 6), nil) // 96 MiB
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := st.add(2, testKey("b"), "", "1", pics("b", 3), nil) // 144 MiB in all
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := st.get(first, 1, "a0"); !ok {
+		t.Fatal("a preview was evicted under 160 MiB")
+	}
+	if _, err := st.add(3, testKey("c"), "", "1", pics("c", 2), nil); err != nil { // 176 MiB
+		t.Fatal(err)
+	}
+	if _, ok := st.get(first, 1, "a0"); ok {
+		t.Error("the oldest preview survived past 160 MiB")
+	}
+	if _, ok := st.get(second, 2, "b0"); !ok {
+		t.Error("a newer preview was evicted too")
+	}
+}
+
+// SPEC 5.6 (R11 of the plan's rulings is the fallback): when the world's
+// planet run fails, the built-in planets are drawn, a warning is logged, and
+// the pictures are keyed apart from the world's own planets.
+func TestWorldPreviewFallsBackToBuiltinPlanets(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	id, err := hn.worlds.Create(t.Context(), "Modded", "2.1.24", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	builtin := mapgen.Builtin("2.1", true)
+	withWorldCatalogue(t, builtin, errors.New("planet run failed"))
+	form := worldPreviewForm(id, "planet", "nauvis")
+	if rec := hn.postLong(PathGeneratePreview, form, c); rec.Code != http.StatusOK || len(prev.got) != 1 {
+		t.Fatalf("fallback: status %d, %d runs", rec.Code, len(prev.got))
+	}
+	if !slices.Equal(prev.got[0].KnownPlanets, builtin.PlanetNames()) {
+		t.Errorf("fallback planets %v", prev.got[0].KnownPlanets)
+	}
+	if !strings.Contains(hn.logs.String(), "read the world's planets for a map preview") {
+		t.Error("the fallback is not logged")
+	}
+	// The real catalogue's pictures are not the fallback's.
+	withWorldCatalogue(t, builtin, nil)
+	if rec := hn.postLong(PathGeneratePreview, form, c); rec.Code != http.StatusOK || len(prev.got) != 2 {
+		t.Errorf("the real catalogue reused the fallback's picture: %d runs", len(prev.got))
+	}
+}
+
+// SPEC 5.6: a world whose game version has no map settings Foreman knows is
+// refused with the preview's failed message, and nothing runs.
+func TestWorldPreviewOfAnUnknownLine(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	withWorldCatalogue(t, cerysCatalogue(), nil)
+	id, err := hn.worlds.Create(t.Context(), "Odd", "2.1.24", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta := filepath.Join(hn.worlds.Dirs().Worlds, id, world.MetaFile)
+	b, err := os.ReadFile(meta) //nolint:gosec // a test temp file
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(meta, bytes.ReplaceAll(b, []byte(`"2.1.24"`), []byte(`"9.9.9"`)), 0o600); err != nil { //nolint:gosec // a test temp file
+		t.Fatal(err)
+	}
+	rec := hn.postLong(PathGeneratePreview, worldPreviewForm(id, "planet", "nauvis"), c)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), html.EscapeString(i18n.English.T("worlds.generate.preview.failed"))) || len(prev.got) != 0 {
+		t.Errorf("status %d, %d runs", rec.Code, len(prev.got))
+	}
+}
+
+// SPEC 5.6, ADR 0033: territories of a world are read with its mods and
+// kept under its key: asking again reads none, another world reads its own.
+func TestWorldTerritoriesAreKeyedByTheWorld(t *testing.T) {
+	hn, prev, c := newTerritoryHarness(t)
+	withWorldCatalogue(t, cerysCatalogue(), nil)
+	var ids []string
+	for _, n := range []string{"One", "Two"} {
+		id, err := hn.worlds.Create(t.Context(), n, "2.1.24", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	for i, id := range []string{ids[0], ids[0], ids[1]} {
+		rec := hn.postLong(pathTerritories, worldPreviewForm(id), c)
+		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `class="territories"`) {
+			t.Fatalf("post %d: status %d: %s", i, rec.Code, rec.Body.String())
+		}
+	}
+	if len(prev.runs) != 2 || prev.runs[0].World != ids[0] || prev.runs[1].World != ids[1] {
+		t.Errorf("runs %+v", prev.runs)
 	}
 }
