@@ -1,11 +1,13 @@
 package web
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"html"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -89,6 +91,12 @@ func newGenerateHarness(t *testing.T, prev MapPreviewer) *harness {
 // postLong sends a form to a long route (Generate's, Clone's).
 func (hn *harness) postLong(p string, form url.Values, c *http.Cookie, mods ...func(*http.Request)) *httptest.ResponseRecorder {
 	hn.t.Helper()
+	// Only step 3 has a map form, so a preview names its world (SPEC 5.6):
+	// one without is posted for an Unfinished world of its version and name.
+	if c != nil && form.Get(previewWorldField) == "" && slices.Contains([]string{PathGeneratePreview, pathResources, pathTerritories}, p) {
+		form = maps.Clone(form)
+		form.Set(previewWorldField, hn.previewWorld(form, c))
+	}
 	r := httptest.NewRequest(http.MethodPost, p, strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if c != nil {
@@ -483,6 +491,37 @@ func pagePresetValues(t *testing.T, hn *harness, c *http.Cookie, version, preset
 	return v
 }
 
+// previewWorlds holds the Unfinished worlds previewWorld made.
+var previewWorlds sync.Map
+
+// previewWorld is an Unfinished world of a preview form's version, Space Age
+// and name, made through step 1 the first time it is asked for.
+func (hn *harness) previewWorld(form url.Values, c *http.Cookie) string {
+	hn.t.Helper()
+	version := cmp.Or(chosenVersion(form.Get("game_version"), form.Get("game_version_typed")), "2.0.77")
+	name := cmp.Or(strings.TrimSpace(form.Get("name")), "Preview")
+	type key struct {
+		hn                *harness
+		version, sa, name string
+	}
+	k := key{hn, version, form.Get("space_age"), name}
+	if id, ok := previewWorlds.Load(k); ok {
+		return id.(string)
+	}
+	// The world's own name names the downloads; a name taken by another of
+	// these worlds gets its version and Space Age added.
+	rec := hn.postLong(PathGenerate, url.Values{"name": {name}, "game_version_typed": {version}, "space_age": {k.sa}}, c)
+	if rec.Code != http.StatusSeeOther {
+		rec = hn.postLong(PathGenerate, url.Values{"name": {name + " " + version + " " + k.sa}, "game_version_typed": {version}, "space_age": {k.sa}}, c)
+	}
+	if rec.Code != http.StatusSeeOther {
+		hn.t.Fatalf("make the preview's world: status %d\n%s", rec.Code, rec.Body.String())
+	}
+	id := idFromLocation(hn.t, rec)
+	previewWorlds.Store(k, id)
+	return id
+}
+
 // stepThree holds one Unfinished world per harness and version, whose step 3
 // redraws the map form (SPEC 5.6).
 var stepThree sync.Map
@@ -855,7 +894,7 @@ func TestPreviewKeepsTheFilledSeedForCustomMode(t *testing.T) {
 		t.Errorf("request %+v\n%s", prev.got, body)
 	}
 	fixedSeed(t, 1)
-	id := idFromLocation(t, hn.postLong(PathGenerate, changed(t, hn, c, "mg.width", "512", "seed", "777"), c))
+	id := idFromLocation(t, hn.postLong(PathGenerate, changed(t, hn, c, "mg.width", "512", "seed", "777", "name", "Made"), c))
 	if m := hn.meta(id); *m.NewMap.Seed != 777 {
 		t.Errorf("seed %d, want the previewed 777", *m.NewMap.Seed)
 	}
@@ -869,6 +908,7 @@ func TestExchangeStringSeedIsUsedByPreviewAndWorld(t *testing.T) {
 	hn.withActive("2.0.77")
 	form := generateForm("mode", "exchange", "exchange", fixture(t, "2.0.77.txt"))
 	hn.postLong(PathGeneratePreview, form, c)
+	form.Set("name", "Made")
 	id := idFromLocation(t, hn.postLong(PathGenerate, form, c))
 	if m := hn.meta(id); m.NewMap == nil || m.NewMap.Seed == nil || *m.NewMap.Seed != prev.got[0].Seed {
 		t.Errorf("seed %+v, previewed %d", m.NewMap, prev.got[0].Seed)
@@ -886,7 +926,8 @@ func TestPreviewOfAnExchangeStringSendsBothFiles(t *testing.T) {
 	}
 }
 
-// A bad form shows its errors in the whole form for htmx, and makes no preview.
+// A bad form makes no preview; for htmx, step 3's preview slot shows the
+// errors and the form stays as it is.
 func TestPreviewRefusesABadFormWithoutCallingTheGame(t *testing.T) {
 	prev := &fakePreviewer{}
 	hn := newGenerateHarness(t, prev)
@@ -898,7 +939,7 @@ func TestPreviewRefusesABadFormWithoutCallingTheGame(t *testing.T) {
 		t.Errorf("plain: status %d, %d previews", rec.Code, len(prev.got))
 	}
 	rec = hn.postLong(PathGeneratePreview, form, c, withHeader("HX-Request", "true"))
-	if rec.Code != http.StatusOK || rec.Header().Get("HX-Retarget") != "#generate-form" || rec.Header().Get("HX-Reswap") != "outerHTML" {
+	if rec.Code != http.StatusOK || rec.Header().Get("HX-Retarget") != "" || len(prev.got) != 0 {
 		t.Errorf("htmx: status %d, headers %v", rec.Code, rec.Header())
 	}
 	if !strings.Contains(rec.Body.String(), "Foreman could not read this as a map exchange string.") {
@@ -944,7 +985,7 @@ func TestPreviewFailuresSayWhatToDo(t *testing.T) {
 			hn.withActive("2.0.77")
 			rec := hn.postLong(PathGeneratePreview, generateForm(), c)
 			body := rec.Body.String()
-			if rec.Code != http.StatusOK || !strings.Contains(body, tc.want) || !strings.Contains(body, `id="generate-button"`) {
+			if rec.Code != http.StatusOK || !strings.Contains(body, tc.want) || !strings.Contains(body, `id="newmap-save"`) {
 				t.Errorf("status %d\n%s", rec.Code, body)
 			}
 			// The game's output goes to Foreman's log, never to the page.

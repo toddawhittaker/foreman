@@ -285,16 +285,6 @@ func TestGenerateFormFillsTheFavoritesMapAndPreviewUsesIt(t *testing.T) {
 	}
 }
 
-// containsAfter reports whether want appears within a few thousand bytes
-// after the first marker.
-func containsAfter(body, marker, want string) bool {
-	i := strings.Index(body, marker)
-	if i < 0 {
-		return false
-	}
-	return strings.Contains(body[i:min(len(body), i+4000)], want)
-}
-
 func TestPresetFillStaysNauvisOnly(t *testing.T) {
 	defaults := NewMapGenFormForPreset(favLine, true, defaultPreset).chosen()
 	for _, preset := range mapgen.Presets(favLine) {

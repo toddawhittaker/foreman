@@ -484,7 +484,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		if f.Reset {
 			status = http.StatusOK
 		}
-		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
+		s.previewPage(w, r, u, status, in, nil)
 		return
 	}
 	all := f.cat.PlanetNames()
@@ -558,7 +558,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-preview")
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, s.generatePage(r.Context(), f, view))
+	s.previewPage(w, r, u, http.StatusOK, in, view)
 }
 
 // previewRequest is the preview of the settings Generate would write.
@@ -583,6 +583,7 @@ type previewInput struct {
 	// world is true for a world's own preview (step 3); catErr is why its
 	// planet list could not be read.
 	world  bool
+	sum    world.Summary
 	catErr error
 	// mods is the world's mods key, as the store's keys hold it.
 	mods string
@@ -647,6 +648,10 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		return in, true
 	}
 	cat, catErr := worldCatalogue(s, ctx, id, localeOf(r))
+	if errors.Is(catErr, errNoGame) {
+		// This mode runs no games, so the world has no mods to add planets, as on step 3.
+		cat, catErr = mapgen.Builtin(line, sum.SpaceAge && lineHasSpaceAge(line)), nil
+	}
 	if catErr != nil {
 		// The built-in planets come back with the error, and are used (SPEC 5.6).
 		s.log.Warn("read the world's planets for a map preview", "world", id, "error", catErr)
@@ -674,7 +679,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		f.clearErrors()
 		ok = false
 	}
-	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil, world: true, catErr: catErr}
+	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil, world: true, sum: sum, catErr: catErr}
 	if in.ok {
 		in.req = game.PreviewRequest{
 			GameVersion: sum.GameVersion, SpaceAge: spaceAge, Preset: files.Preset, Seed: *files.Seed,

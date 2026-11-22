@@ -305,7 +305,7 @@ func TestPreviewStoreKeepsResourcesPerPlanet(t *testing.T) {
 // form never sends it, and the counting line hidden until it counts.
 func TestLargeViewHasTheResourceBox(t *testing.T) {
 	hn, _, c := newResourceHarness(t)
-	body := hn.get(PathGenerate, withCookie(c)).Body.String()
+	body := getLong(hn, strings.TrimSuffix(refreshPath(t, hn, c, "2.1.24"), "/refresh")+"?wait=1", c).Body.String()
 	for _, want := range []string{
 		`<input type="checkbox" id="large-amounts"> Show resource amounts</label>`,
 		`<div class="wait resource-amounts__counting" id="large-counting" hidden>`,

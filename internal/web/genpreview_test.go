@@ -271,7 +271,9 @@ func TestASlowPreviewOutlastsTheWriteTimeout(t *testing.T) {
 	srv.Start()
 	defer srv.Close()
 
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+PathGeneratePreview, strings.NewReader(generateForm().Encode()))
+	form := generateForm()
+	form.Set(previewWorldField, hn.previewWorld(form, c))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+PathGeneratePreview, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(c)
 	resp, err := srv.Client().Do(req)
@@ -482,7 +484,9 @@ func TestPreviewSizeSurvivesAnErrorRoundTrip(t *testing.T) {
 	hn := newGenerateHarness(t, &fakePreviewer{})
 	c := hn.signIn()
 	hn.withActive("2.1.24")
-	rec := hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "name", " ", "preview_size", "2816"), c)
+	// Step 3 holds the size; a seed error sends its form back.
+	save := strings.TrimSuffix(refreshPath(t, hn, c, "2.1.24"), "/refresh")
+	rec := hn.postLong(save, newMapPost("map_key", "2.1|1", "seed", "x", "preview_size", "2816"), c)
 	body := rec.Body.String()
 	if rec.Code != http.StatusBadRequest || !strings.Contains(body, `<option value="2816" selected>`) {
 		t.Errorf("status %d; the size was not kept:\n%s", rec.Code, body)
