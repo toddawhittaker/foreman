@@ -44,8 +44,8 @@ async function container(g: FakeGame, name: string) {
   return state.containers.filter((c) => c.name === name).at(-1);
 }
 
-const creates = async (g: FakeGame) =>
-  (await g.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
+// Game server creates only: a view of a stopped world may start a players read by itself (SPEC 8.14).
+const creates = async (g: FakeGame) => (await g.state()).game_creates.length;
 const pulls = async (g: FakeGame) => (await g.state()).calls.filter((c) => c.includes("/images/create"));
 
 // Asks the fake Docker host whether it holds an image; the call log keeps no query strings.

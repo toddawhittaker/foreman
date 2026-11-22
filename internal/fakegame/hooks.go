@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/gameenv"
 )
 
 // The hooks act on a container by name, because Foreman makes a new
@@ -263,11 +265,15 @@ type State struct {
 	// Containers leaves it out, as it leaves out the self container.
 	Sidecar *SidecarState `json:"sidecar"`
 	Calls   []string      `json:"calls"` // every Docker call received, as "METHOD /path"
+	// GameCreates names every create asked for of a game server container,
+	// in order: Calls less the one-off containers (gameenv.LabelPreview),
+	// such as a read of a save's players.
+	GameCreates []string `json:"game_creates"`
 }
 
 // State returns a snapshot.
 func (g *Game) State() State {
-	out := State{Containers: []ContainerState{}, Calls: []string{}, Sidecar: g.sidecarState()}
+	out := State{Containers: []ContainerState{}, Calls: []string{}, GameCreates: []string{}, Sidecar: g.sidecarState()}
 	for _, c := range g.daemon.Containers() {
 		if c.ID == g.selfID || (out.Sidecar != nil && c.ID == out.Sidecar.ID) {
 			continue
@@ -297,6 +303,11 @@ func (g *Game) State() State {
 	}
 	for _, c := range g.daemon.Calls() {
 		out.Calls = append(out.Calls, c.Method+" "+c.Path)
+	}
+	for _, c := range g.daemon.Creates() {
+		if _, oneOff := c.Spec.Labels[gameenv.LabelPreview]; !oneOff {
+			out.GameCreates = append(out.GameCreates, c.Name)
+		}
 	}
 	return out
 }

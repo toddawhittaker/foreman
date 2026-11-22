@@ -210,6 +210,7 @@ func (d *Daemon) create(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = fmt.Sprintf("fake_%d", d.serial+1)
 	}
+	d.creates = append(d.creates, Container{Name: name, Spec: spec})
 	if other := d.findName(name); other != nil {
 		reply(w, http.StatusConflict, fmt.Sprintf(
 			"Conflict. The container name \"/%s\" is already in use by container \"%s\". "+

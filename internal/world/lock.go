@@ -14,12 +14,39 @@ var ErrBusy = errors.New("another operation is running on this world. Wait for i
 type locks struct {
 	mu   sync.Mutex
 	held map[string]bool
+	// yield is SetLockYield's function, nil for none.
+	yield func(id string) (done func())
 }
 
-// Lock takes the world's lock, or returns ErrBusy at once if it is held.
-// Call the returned function to release it. Server control holds it across
-// stop, snapshot, restore and start, so no two of them overlap.
+// SetLockYield gives Lock work to call before it takes a world's lock:
+// yield ends the background work Foreman started on the world by itself
+// (a read of a copy of its save, SPEC 8.16), waits until that work has
+// released the world, and keeps new work from beginning until the returned
+// function is called, which Lock does once it has the lock or has refused.
+// So a user's operation is never refused because of Foreman's own work.
+func (m *Manager) SetLockYield(yield func(id string) (done func())) {
+	m.locks.mu.Lock()
+	defer m.locks.mu.Unlock()
+	m.locks.yield = yield
+}
+
+// Lock takes the world's lock, or returns ErrBusy at once if another
+// operation holds it. Background work that yields (SetLockYield) is ended
+// first. Call the returned function to release it. Server control holds it
+// across stop, snapshot, restore and start, so no two of them overlap.
 func (m *Manager) Lock(id string) (unlock func(), err error) {
+	m.locks.mu.Lock()
+	yield := m.locks.yield
+	m.locks.mu.Unlock()
+	if yield != nil {
+		defer yield(id)()
+	}
+	return m.LockBackground(id)
+}
+
+// LockBackground is Lock for the background work Lock yields to: it ends
+// nothing first, so that work must not call Lock itself.
+func (m *Manager) LockBackground(id string) (unlock func(), err error) {
 	l := &m.locks
 	l.mu.Lock()
 	defer l.mu.Unlock()

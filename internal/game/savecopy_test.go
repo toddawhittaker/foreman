@@ -682,3 +682,69 @@ func TestWithDefaults(t *testing.T) {
 		t.Error("with a mod list the states must stay as they are")
 	}
 }
+
+// SPEC 8.16: every start of the world cancels its read, also a start that
+// is not Start (a switch, an update, a mod change, a restart all launch
+// through launchLocked), and the read's container is gone before the game's
+// is made.
+func TestLaunchCancelsARunningRead(t *testing.T) {
+	r := newSaveCopyRig(t)
+	ch := r.ask(context.Background(), testSaveCopyMod)
+	r.waitRunning()
+	ctx, o := r.c.beginOp(context.Background(), r.c.world(r.id), AuditStart, startSteps(StartOptions{}))
+	if err := o.end(r.c.launchLocked(ctx, o)); err != nil {
+		t.Fatal(err)
+	}
+	if out := r.outcome(ch); !errors.Is(out.err, context.Canceled) {
+		t.Errorf("read err = %v, want context.Canceled", out.err)
+	}
+	var order []string
+	for _, c := range r.game.Daemon().Calls() {
+		if c.Method == "DELETE" || c.Path == "/containers/create" {
+			order = append(order, c.Method+" "+c.Path+" "+c.Query.Get("name"))
+		}
+	}
+	if len(order) < 2 || !strings.HasPrefix(order[0], "POST /containers/create foreman-"+gameenv.KindSavePlayers) ||
+		!strings.HasPrefix(order[1], "DELETE ") || order[len(order)-1] != "POST /containers/create "+ContainerName(r.id) {
+		t.Errorf("calls %q: want the read made, removed, then the game made", order)
+	}
+}
+
+// A user's operation that needs the world's lock is never refused because
+// of a read Foreman started by itself: the read is cancelled first, whether
+// it holds the lock (making its work folder) or runs its container.
+func TestUserOperationCancelsAReadInsteadOfBeingBusy(t *testing.T) {
+	t.Run("the read holds the lock", func(t *testing.T) {
+		r := newSaveCopyRig(t)
+		unlock, err := r.worlds.LockBackground(r.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		run := &saveCopyRun{done: make(chan struct{})}
+		remove, err := r.c.saveCopies.add(r.id, run)
+		if err != nil {
+			t.Fatal(err)
+		}
+		run.cancel = func() { unlock(); remove() }
+		if err := r.worlds.Rename(context.Background(), r.id, "Renamed"); err != nil {
+			t.Errorf("rename: %v, want no refusal", err)
+		}
+		if err := r.c.Stop(context.Background(), r.id, admin, StopOptions{}); errors.Is(err, world.ErrBusy) {
+			t.Errorf("stop: %v", err)
+		}
+	})
+	t.Run("the read runs its container", func(t *testing.T) {
+		r := newSaveCopyRig(t)
+		ch := r.ask(context.Background(), testSaveCopyMod)
+		r.waitRunning()
+		if _, err := r.worlds.TakeSnapshot(r.id, "mine", admin.Username); err != nil {
+			t.Errorf("snapshot: %v", err)
+		}
+		if out := r.outcome(ch); !errors.Is(out.err, context.Canceled) {
+			t.Errorf("read err = %v, want context.Canceled", out.err)
+		}
+		if n := len(r.previewContainers()); n != 0 {
+			t.Errorf("%d read containers left", n)
+		}
+	})
+}
