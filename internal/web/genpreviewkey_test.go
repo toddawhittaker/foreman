@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/resource"
 )
 
@@ -45,8 +46,8 @@ var bigControl = map[string]any{"frequency": 6, "size": 6, "richness": 6}
 // on the real 2.1.24 game), so they leave its key alone; its own controls,
 // and every shared setting, change it.
 func TestSettingsKeyIsPerPlanet(t *testing.T) {
-	base := settingsKey(spaceAgeReq(t, map[string]any{"iron-ore": map[string]any{"size": 1}, "scrap": map[string]any{"size": 1}}))
-	fulgora := settingsKey(spaceAgeReq(t, map[string]any{"iron-ore": map[string]any{"size": 1}, "scrap": bigControl}))
+	base := builtinKey(spaceAgeReq(t, map[string]any{"iron-ore": map[string]any{"size": 1}, "scrap": map[string]any{"size": 1}}))
+	fulgora := builtinKey(spaceAgeReq(t, map[string]any{"iron-ore": map[string]any{"size": 1}, "scrap": bigControl}))
 	if fulgora.all == base.all {
 		t.Error("a change left the whole key the same")
 	}
@@ -61,7 +62,7 @@ func TestSettingsKeyIsPerPlanet(t *testing.T) {
 	// The order of the JSON's members is not a change.
 	reordered := spaceAgeReq(t, nil)
 	reordered.MapGenSettings = []byte(`{"autoplace_controls":{"scrap":{"size":1},"iron-ore":{"size":1}},"starting_area":1}`)
-	if got := settingsKey(reordered); got.planet("nauvis") != base.planet("nauvis") {
+	if got := builtinKey(reordered); got.planet("nauvis") != base.planet("nauvis") {
 		t.Error("the members' order changed Nauvis's key")
 	}
 
@@ -80,7 +81,7 @@ func TestSettingsKeyIsPerPlanet(t *testing.T) {
 	for name, change := range shared {
 		req := spaceAgeReq(t, map[string]any{"iron-ore": map[string]any{"size": 1}, "scrap": map[string]any{"size": 1}})
 		change(&req)
-		got := settingsKey(req)
+		got := builtinKey(req)
 		for _, p := range []string{"nauvis", "vulcanus", "gleba", "fulgora", "aquilo"} {
 			if got.planet(p) == base.planet(p) {
 				t.Errorf("the %s left %s's key the same", name, p)
@@ -94,7 +95,7 @@ func TestSettingsKeyIsPerPlanet(t *testing.T) {
 func TestSettingsKeyOfUnreadableSettings(t *testing.T) {
 	req := spaceAgeReq(t, nil)
 	req.MapGenSettings = []byte(`[1]`)
-	k := settingsKey(req)
+	k := builtinKey(req)
 	if k.planets != nil || k.planet("nauvis") != k.all {
 		t.Errorf("key %+v", k)
 	}
@@ -105,8 +106,8 @@ func TestSettingsKeyOfUnreadableSettings(t *testing.T) {
 func TestPreviewStoreKeepsPlanetsWhoseSettingsDidNotChange(t *testing.T) {
 	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	before := settingsKey(spaceAgeReq(t, nil))
-	after := settingsKey(spaceAgeReq(t, map[string]any{"scrap": bigControl}))
+	before := builtinKey(spaceAgeReq(t, nil))
+	after := builtinKey(spaceAgeReq(t, map[string]any{"scrap": bigControl}))
 	fulgoraCount := resource.Result{Planet: "fulgora", Resources: map[string]resource.Resource{"scrap": {Total: 5}}}
 
 	_, _ = st.add(1, before, "World", "7", []game.PNG{{Planet: "nauvis", Data: pngBytes}, {Planet: "fulgora", Data: pngBytes}}, nil)
@@ -141,11 +142,11 @@ func TestPreviewStoreKeepsPlanetsWhoseSettingsDidNotChange(t *testing.T) {
 	// A seed change drops them all.
 	seed := spaceAgeReq(t, map[string]any{"scrap": bigControl})
 	seed.Seed = 8
-	_, _ = st.add(1, settingsKey(seed), "World", "8", onePNG("fulgora"), nil)
-	if _, ok := st.resourcesOf(1, settingsKey(seed), "nauvis"); ok {
+	_, _ = st.add(1, builtinKey(seed), "World", "8", onePNG("fulgora"), nil)
+	if _, ok := st.resourcesOf(1, builtinKey(seed), "nauvis"); ok {
 		t.Error("a new seed kept Nauvis's count")
 	}
-	if _, miss := st.missing(1, settingsKey(seed), "World", []string{"nauvis"}); len(miss) != 1 {
+	if _, miss := st.missing(1, builtinKey(seed), "World", []string{"nauvis"}); len(miss) != 1 {
 		t.Error("a new seed kept Nauvis's picture")
 	}
 }
@@ -173,8 +174,8 @@ func TestResourcesSurviveAnotherPlanetsChange(t *testing.T) {
 func TestLateCountJoinsANewerPreviewOfTheSamePlanet(t *testing.T) {
 	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	before := settingsKey(spaceAgeReq(t, nil))
-	after := settingsKey(spaceAgeReq(t, map[string]any{"scrap": bigControl}))
+	before := builtinKey(spaceAgeReq(t, nil))
+	after := builtinKey(spaceAgeReq(t, map[string]any{"scrap": bigControl}))
 	tok, _ := st.add(1, after, "World", "7", onePNG("fulgora"), nil)
 	if got, err := st.addResources(1, before, "World", "7", "nauvis", nauvisCount); err != nil || got != tok {
 		t.Errorf("token %q, want %q, %v", got, tok, err)
@@ -188,4 +189,10 @@ func TestLateCountJoinsANewerPreviewOfTheSamePlanet(t *testing.T) {
 	if got, _ := st.addResources(1, before, "World", "7", "fulgora", nauvisCount); got != "" {
 		t.Error("a late count of a changed planet was kept")
 	}
+}
+
+// builtinKey is the key of a request without a world, as the handlers make it.
+func builtinKey(req game.PreviewRequest) previewKey {
+	line, _ := mapgen.Line(req.GameVersion)
+	return settingsKey(req, mapgen.Builtin(line, req.SpaceAge && lineHasSpaceAge(line)), "")
 }

@@ -68,7 +68,7 @@ type ResourceList struct {
 
 // resourceView turns the amounts counted on planet for a picture of size
 // tiles into what the large view shows, worded in loc.
-func resourceView(loc i18n.Locale, line, planet string, res resource.Result, size int) *ResourceView {
+func resourceView(loc i18n.Locale, cat mapgen.Catalogue, planet string, res resource.Result, size int) *ResourceView {
 	v := &ResourceView{Patches: len(res.Patches), Labels: resourceLabels(res, size)}
 	byName := map[string][]resource.Patch{}
 	for _, p := range res.Patches {
@@ -86,7 +86,7 @@ func resourceView(loc i18n.Locale, line, planet string, res resource.Result, siz
 		ps := byName[n]
 		slices.SortStableFunc(ps, func(a, b resource.Patch) int { return cmp.Compare(b.Amount, a.Amount) })
 		r := res.Resources[n]
-		label := resourceName(loc, line, planet, n)
+		label := resourceName(loc, cat, planet, n)
 		list := ResourceList{Total: loc.T("worlds.generate.resources.total", "resource", label, "amount", r.Total)}
 		// The total is a yield by the same rule as a patch's.
 		if y, ok := totalYield(r); ok {
@@ -149,12 +149,28 @@ func totalYield(r resource.Resource) (percent float64, ok bool) {
 func wholePercent(y float64) int64 { return int64(math.Round(y)) }
 
 // resourceName is the name of the planet's map generator control that sets
-// the resource, as the settings show it; a resource with none shows its
-// game name.
-func resourceName(loc i18n.Locale, line, planet, entity string) string {
-	for _, c := range mapgen.Builtin(line, true).PlanetControls(planet) {
-		if c.Category == mapgen.CategoryResource && resource.EntityName(planet, c.Name) == entity {
+// the resource, as the settings show it; a resource with none shows the
+// name the catalogue resolved for it (a world's mods name their own, SPEC
+// 5.6, 14.6), else its game name. cat is the request's planets and controls.
+func resourceName(loc i18n.Locale, cat mapgen.Catalogue, planet, entity string) string {
+	for _, c := range cat.PlanetControls(planet) {
+		if c.Category != mapgen.CategoryResource {
+			continue
+		}
+		if resource.EntityName(planet, c.Name) == entity || slices.ContainsFunc(cat.Resources, func(r mapgen.Resource) bool {
+			return r.Name == entity && r.Control == c.Name
+		}) {
+			if _, builtin := controlNames[c.Name]; !builtin {
+				if l := cat.Controls[c.Name].Label; l != "" {
+					return l
+				}
+			}
 			return loc.Format(controlMsg(c.Name))
+		}
+	}
+	for _, r := range cat.Resources {
+		if r.Name == entity && r.Label != "" {
+			return r.Label
 		}
 	}
 	return entity
@@ -162,11 +178,10 @@ func resourceName(loc i18n.Locale, line, planet, entity string) string {
 
 // resources returns the amounts of planet in req: from the user's preview
 // when they were counted already, else counted now.
-func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, name, planet string) *ResourceView {
-	line, _ := mapgen.Line(req.GameVersion)
-	key := settingsKey(req)
+// cat is req's planets and controls and key its key in the store.
+func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, cat mapgen.Catalogue, key previewKey, name, planet string) *ResourceView {
 	if res, ok := s.previews.resourcesOf(u.ID, key, planet); ok {
-		v := resourceView(localeOf(r), line, planet, res, req.Size)
+		v := resourceView(localeOf(r), cat, planet, res, req.Size)
 		v.Kept = true
 		return v
 	}
@@ -184,7 +199,7 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 		s.log.Error("keep resource amounts", "error", err)
 		return &ResourceView{Error: i18n.M("worlds.generate.resources.failed"), Retry: true}
 	}
-	v := resourceView(localeOf(r), line, planet, res, req.Size)
+	v := resourceView(localeOf(r), cat, planet, res, req.Size)
 	v.Kept = token != ""
 	return v
 }
@@ -238,9 +253,13 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 	if !s.readForm(w, r) {
 		return
 	}
-	f, nw, ok := s.readGenerate(r, kindPreview)
+	in, handled := s.readPreview(w, r, u)
+	if handled {
+		return
+	}
+	f := in.f
 	view := &PreviewView{Size: f.PreviewSize}
-	if !ok {
+	if !in.ok {
 		view.Resources = &ResourceView{Error: i18n.M("worlds.generate.resources.invalid")}
 		s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-resources")
 		return
@@ -251,7 +270,7 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	view.Resources = s.resources(w, r, u, previewRequest(f, nw), f.Name, planet)
+	view.Resources = s.resources(w, r, u, in.req, in.cat, in.key, f.Name, planet)
 	s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-resources")
 }
 
