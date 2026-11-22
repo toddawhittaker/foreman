@@ -113,7 +113,11 @@ func (in *instance) run(name, args string) (reply string, logs []string) {
 // SPEC 8.15 reads: hours, minutes and seconds, zero parts left out, joined
 // with ", " and " and " before the last, singular for one.
 func (in *instance) playTime() string {
-	secs := int(in.elapsedLocked())
+	return formatPlayTime(int(in.elapsedLocked()))
+}
+
+// formatPlayTime is the reply for a total of secs whole seconds.
+func formatPlayTime(secs int) string {
 	counts := []int{secs / 3600, secs / 60 % 60, secs % 60}
 	words := []string{"hour", "minute", "second"}
 	var parts []string
