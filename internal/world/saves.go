@@ -256,6 +256,13 @@ func (m *Manager) AddSave(id, name, temp string) error {
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
+	// The upload's modification time can fall inside the window of a read of
+	// the save, so a players record could pass as the new save's own. The
+	// record goes first: a lost record is only read again, and a failed
+	// commit costs nothing else (SPEC 8.14).
+	if err := root.Remove(PlayersFile); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
 	return Commit(root, temp, final)
 }
 
