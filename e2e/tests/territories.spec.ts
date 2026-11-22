@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page, Route } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
 
 // SPEC 5.6, DESIGN 8.8: Vulcanus's demolisher territories on the map preview.
 // One box, beside the planet choice, off by default and shown only for
@@ -32,7 +33,7 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 });
 
 async function vulcanus(page: Page) {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
@@ -53,7 +54,7 @@ function holdTerritories(page: Page) {
 }
 
 test("the box shows only beside Vulcanus on a Space Age world, and is off", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await expect(box(page)).toHaveCount(0);
   await page.locator("#mg-resources-vulcanus summary").click();
@@ -67,11 +68,12 @@ test("the box shows only beside Vulcanus on a Space Age world, and is off", asyn
   await page.locator("#mg-resources-gleba summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Gleba/ })).toBeVisible();
   await expect(box(page)).toHaveCount(0);
-  // Without Space Age there is no Vulcanus, so no box.
+  // Without Space Age there is no Vulcanus, so no box. Space Age is chosen before step 3, so this is a world made without it.
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeVisible();
-  await page.getByLabel("Space Age is on").uncheck();
+  await openNewMap(page, { name: "Plain world", step1: (p) => p.getByLabel("Space Age is on").uncheck() });
   await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
+  await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(0);
   await expect(box(page)).toHaveCount(0);
 });
 
@@ -405,7 +407,7 @@ test("the large view's box is reached and worked by keyboard, with focus shown",
 });
 
 test("the large view's box is disabled while Vulcanus is drawn, then works", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
   await openLarge(page);
   // Hold the draw of the next planet, so the large view shows Vulcanus before its picture exists.
@@ -448,7 +450,7 @@ test.describe("on a phone", () => {
   test.use({ viewport: { width: 320, height: 640 }, hasTouch: true });
 
   test("the large view's box is a 44 px target and fits at 320 px, at 200% text too", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await page.locator("#mg-resources-vulcanus").evaluate((d) => ((d as HTMLDetailsElement).open = true));
     await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
@@ -481,7 +483,7 @@ test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 
   test("Preview map with the box ticked draws the territories after the pictures", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(section(page).getByRole("img")).toHaveCount(5);
     await box(page).check();

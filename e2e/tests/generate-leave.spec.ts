@@ -1,7 +1,8 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, openLanguages, openMenu, tabTo } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { newMapPath, openNewMap } from "./newmap.js";
 
-// SPEC 5.6: leaving Generate with settings that differ from what was loaded
+// SPEC 5.6: leaving step 3 of the guided Generate with settings that differ from what was loaded
 // asks first. A link or form of the page asks in Foreman's own dialog, which
 // says what is lost; reload, closing the tab, the address bar and Back keep
 // the browser's own "leave this page?" question (beforeunload). Nothing
@@ -34,26 +35,28 @@ const stay = (page: Page) => leaveDialog(page).getByRole("button", { name: "Stay
 const leave = (page: Page) => leaveDialog(page).getByRole("button", { name: "Leave without saving" });
 const cancel = (page: Page) => page.getByRole("link", { name: "Cancel" });
 
+// Opens step 3 of a new world and types a seed, so the form differs from what was loaded; returns the world's id.
 async function edit(page: Page) {
-  await page.goto("/generate");
-  await page.getByLabel("World name").fill("Half done");
+  const world = await openNewMap(page);
+  await page.locator("#generate-seed").fill("424242");
+  return world;
 }
 
 test("an unchanged form leaves without asking, even after the preview filled the seed", async ({ page }) => {
   const asked = browserQuestions(page);
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
   await expect(page.locator("#generate-seed")).toHaveValue(/^\d+$/);
   // A tab and a planet row are views, not settings.
   await page.locator("label.tab", { hasText: /^\s*Terrain\s*$/ }).click();
   await cancel(page).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL(`/worlds/${world}`);
   expect(asked).toEqual([]);
 });
 
 test("a changed setting asks in Foreman's dialog before leaving, and staying keeps it and the focus", async ({ page }) => {
   const asked = browserQuestions(page);
-  await edit(page);
+  const world = await edit(page);
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
   await expect(leaveDialog(page).getByText("The new world's settings are not saved. If you leave, they are lost.")).toBeVisible();
@@ -61,40 +64,40 @@ test("a changed setting asks in Foreman's dialog before leaving, and staying kee
   await expect(stay(page)).toBeFocused();
   await stay(page).click();
   await expect(leaveDialog(page)).toBeHidden();
-  await expect(page).toHaveURL("/generate");
-  await expect(page.getByLabel("World name")).toHaveValue("Half done");
+  await expect(page).toHaveURL(newMapPath(world));
+  await expect(page.locator("#generate-seed")).toHaveValue("424242");
   await expect(cancel(page)).toBeFocused();
   expect(asked).toEqual([]);
 });
 
 test("Escape closes the dialog like Stay, and focus goes back to the link", async ({ page }) => {
-  await edit(page);
+  const world = await edit(page);
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(leaveDialog(page)).toBeHidden();
-  await expect(page).toHaveURL("/generate");
-  await expect(page.getByLabel("World name")).toHaveValue("Half done");
+  await expect(page).toHaveURL(newMapPath(world));
+  await expect(page.locator("#generate-seed")).toHaveValue("424242");
   await expect(cancel(page)).toBeFocused();
 });
 
 test("leaving from the dialog goes on to the link, and the browser asks nothing more", async ({ page }) => {
   const asked = browserQuestions(page);
-  await edit(page);
+  const world = await edit(page);
   await cancel(page).click();
   await leave(page).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL(`/worlds/${world}`);
   expect(asked).toEqual([]);
 });
 
 test("a header link asks too, and staying returns focus to it", async ({ page }) => {
   const asked = browserQuestions(page);
-  await edit(page);
+  const world = await edit(page);
   const link = page.getByRole("banner").getByRole("link", { name: "Snapshots" });
   await link.click();
   await expect(leaveDialog(page)).toBeVisible();
   await stay(page).click();
-  await expect(page).toHaveURL("/generate");
+  await expect(page).toHaveURL(newMapPath(world));
   await expect(link).toBeFocused();
   await link.click();
   await leave(page).click();
@@ -104,14 +107,14 @@ test("a header link asks too, and staying returns focus to it", async ({ page })
 
 test("the language menu and Sign out ask, and leaving carries them out", async ({ page }) => {
   const asked = browserQuestions(page);
-  await edit(page);
+  const world = await edit(page);
   await openLanguages(page);
   const german = page.locator('details.menu button[name="lang"][value="de"]');
   await german.click();
   await expect(leaveDialog(page)).toBeVisible();
   await stay(page).click();
-  await expect(page).toHaveURL("/generate");
-  await expect(page.getByLabel("World name")).toHaveValue("Half done");
+  await expect(page).toHaveURL(newMapPath(world));
+  await expect(page.locator("#generate-seed")).toHaveValue("424242");
   // Focus is back in the menu: on the button used, or on the menu's own button if the menu closed meanwhile.
   await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest("details.menu")))).toBe(true);
   await openLanguages(page);
@@ -134,9 +137,9 @@ test("Sign out asks, and leaving signs out", async ({ page }) => {
 
 test("a click that is not leaving asks nothing: in-page links, the picture, and a link opened beside the page", async ({ page, context }) => {
   const asked = browserQuestions(page);
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
-  await page.getByLabel("World name").fill("Half done");
+  await page.locator("#generate-seed").fill("424242");
   // The skip link stays on the page.
   await page.keyboard.press("Tab");
   await page.getByRole("link", { name: "Skip to" }).press("Enter");
@@ -153,13 +156,13 @@ test("a click that is not leaving asks nothing: in-page links, the picture, and 
   await cancel(page).click({ modifiers: ["Control"] });
   await (await opened).close();
   await expect(leaveDialog(page)).toBeHidden();
-  await expect(page).toHaveURL(/\/generate/);
+  await expect(page).toHaveURL(`${newMapPath(world)}#main`);
   expect(asked).toEqual([]);
 });
 
 test("a preset change asks, even once it is changed back", async ({ page }) => {
   const asked = browserQuestions(page);
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await page.locator("#generate-preset").selectOption("rich-resources");
   await expect(page.locator("#mg-nauvis-iron-ore-richness")).not.toHaveValue("100");
   // The redraw put in fields that load with the edited values, so the mark is
@@ -169,12 +172,12 @@ test("a preset change asks, even once it is changed back", async ({ page }) => {
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
   await leave(page).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL(`/worlds/${world}`);
   expect(asked).toEqual([]);
 });
 
 test("an edit thrown away by Reset to defaults still asks, as Undo can bring it back", async ({ page }) => {
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await page.locator("#generate-preset").selectOption("rich-resources");
   await expect(page.locator("#mg-nauvis-iron-ore-richness")).not.toHaveValue("100");
   await page.getByRole("button", { name: "Reset to defaults" }).click();
@@ -183,11 +186,11 @@ test("an edit thrown away by Reset to defaults still asks, as Undo can bring it 
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
   await stay(page).click();
-  await expect(page).toHaveURL("/generate");
+  await expect(page).toHaveURL(newMapPath(world));
 });
 
 test("a typed seed still asks after Preview map rewrites the seed field", async ({ page }) => {
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
   await page.locator("#generate-seed").fill("4242");
   await page.getByRole("button", { name: "Preview map" }).click();
@@ -195,9 +198,10 @@ test("a typed seed still asks after Preview map rewrites the seed field", async 
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
   await stay(page).click();
-  await expect(page).toHaveURL("/generate");
+  await expect(page).toHaveURL(newMapPath(world));
 });
 
+// Space Age is not a field of step 3, so this one stays on Generate.
 test("an edited setting still asks after Space Age is ticked and unticked", async ({ page }) => {
   await page.goto("/generate");
   await expect(pictures(page)).toHaveCount(1);
@@ -218,7 +222,7 @@ test("an edited setting still asks after Space Age is ticked and unticked", asyn
 
 test("the preview size and the territory box are views: changing them leaves without asking", async ({ page }) => {
   const asked = browserQuestions(page);
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
   await page.locator("#generate-preview-size").selectOption("2048", { force: true });
   await expect(pictures(page)).toHaveAttribute("width", "2048");
@@ -226,36 +230,36 @@ test("the preview size and the territory box are views: changing them leaves wit
   await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus/);
   await page.locator("#preview").getByLabel("Show demolisher territories").check();
   await cancel(page).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL(`/worlds/${world}`);
   expect(asked).toEqual([]);
 });
 
-test("a world made successfully leaves without asking", async ({ page }) => {
+test("map settings saved successfully leave without asking", async ({ page }) => {
   const asked = browserQuestions(page);
-  await page.goto("/generate");
-  await page.getByLabel("World name").fill("Made here");
-  await page.getByRole("button", { name: "Generate world" }).click();
-  await expect(page).toHaveURL("/worlds/made-here?generated=1");
+  const world = await edit(page);
+  await page.getByRole("button", { name: "Save map settings" }).click();
+  await expect(page).toHaveURL(`${newMapPath(world)}?saved=1`);
   await expect(leaveDialog(page)).toBeHidden();
   expect(asked).toEqual([]);
 });
 
 test("a form sent back with errors asks before leaving", async ({ page }) => {
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await page.locator("#generate-seed").fill("777");
-  // No name, so the form comes back with its error.
-  await page.getByRole("button", { name: "Generate world" }).click();
+  // A decimal field that is no number, so the form comes back with its error.
+  await page.locator('#generate-form input[type="text"][inputmode="decimal"][name]').first().evaluate((i: HTMLInputElement) => { i.value = "x"; });
+  await page.getByRole("button", { name: "Save map settings" }).click();
   await expect(page.locator("#error-summary")).toBeVisible();
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
   await stay(page).click();
-  await expect(page).toHaveURL(/\/generate$/);
+  await expect(page).toHaveURL(newMapPath(world));
   await expect(page.locator("#generate-seed")).toHaveValue("777");
 });
 
 test("a download link is not leaving, so it asks nothing", async ({ page }) => {
   const asked = browserQuestions(page);
-  await edit(page);
+  const world = await edit(page);
   await page.evaluate(() => {
     const a = document.createElement("a");
     a.href = "/worlds";
@@ -267,7 +271,7 @@ test("a download link is not leaving, so it asks nothing", async ({ page }) => {
   await page.getByRole("link", { name: "Save the list" }).click();
   await download;
   await expect(leaveDialog(page)).toBeHidden();
-  await expect(page).toHaveURL("/generate");
+  await expect(page).toHaveURL(newMapPath(world));
   expect(asked).toEqual([]);
 });
 
@@ -298,13 +302,13 @@ test("after Leave, a navigation that does not happen is asked about again", asyn
   // A file sent as a download: the page stays where it is.
   await page.route("**/snapshots", (route) => route.fulfill({ status: 200, headers: { "content-disposition": "attachment; filename=x.txt", "content-type": "text/plain" }, body: "x" }));
   const asked = browserQuestions(page, "dismiss");
-  await edit(page);
+  const world = await edit(page);
   const link = page.getByRole("banner").getByRole("link", { name: "Snapshots" });
   await link.click();
   const download = page.waitForEvent("download");
   await leave(page).click();
   await download;
-  await expect(page).toHaveURL("/generate");
+  await expect(page).toHaveURL(newMapPath(world));
   expect(asked).toEqual([]);
   await link.click();
   await expect(leaveDialog(page)).toBeVisible();

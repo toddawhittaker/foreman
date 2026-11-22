@@ -1,6 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import { countClicks, expectWithin } from "./clicks.js";
 import type { Page, Request } from "@playwright/test";
+import { openNewMap, newMapPath } from "./newmap.js";
 
 // SPEC 5.6, 17; DESIGN 8.8: on a screen wide enough for both, the
 // large view holds the viewed planet's Resources and Terrain settings to the
@@ -28,12 +29,15 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await fakeGame!.call("/image", { ref: image21, on: true });
 });
 
-async function openLarge(page: Page) {
-  await page.goto("/generate");
+// Opens step 3 of a new world, or of the one given, and its large view; returns the world's id.
+async function openLarge(page: Page, world?: string) {
+  if (world) await page.goto(newMapPath(world));
+  else world = await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await section(page).getByRole("link", { name: /opens the large view/ }).click();
   await expect(dialog(page)).toBeVisible();
   await expect.poll(() => page.locator("#large-img").evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  return world;
 }
 
 // The id of a planet's first setting of steps in a tab, read from its row on the page.
@@ -44,9 +48,9 @@ test.describe("on a wide screen", () => {
   test.beforeEach(({ page }) => test.skip(!isWide(page), "the settings show beside the map only where both fit"));
 
   test("the planet's Resources and Terrain settings sit left of the map, and are the form's own fields", async ({ page }) => {
-    await page.goto("/generate");
+    const world = await openNewMap(page);
     const iron = (await firstSelect(page, "resources", "nauvis"))!;
-    await openLarge(page);
+    await openLarge(page, world);
     await expect(panel(page).locator(`#${iron}`)).toHaveCount(1);
     await expect(panel(page)).toBeVisible();
     await expect(panel(page).getByRole("heading", { level: 3, name: "Resources" })).toBeVisible();
@@ -142,7 +146,7 @@ test.describe("on a wide screen", () => {
       asked.push(d.type());
       await d.dismiss();
     });
-    await openLarge(page);
+    const world = await openLarge(page);
     await page.locator("#large-terrain .step__range").first().focus();
     await page.keyboard.press("ArrowLeft");
     await page.keyboard.press("Escape");
@@ -151,11 +155,11 @@ test.describe("on a wide screen", () => {
     await expect(page.getByRole("dialog", { name: "Leave without saving these map settings?" })).toBeVisible();
     await page.getByRole("button", { name: "Stay on this page" }).click();
     expect(asked).toEqual([]);
-    await expect(page).toHaveURL("/generate");
+    await expect(page).toHaveURL(newMapPath(world));
   });
 
   test("another planet viewed brings its own settings", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     const nauvis = (await firstSelect(page, "resources", "nauvis"))!;
     const vulcanus = (await firstSelect(page, "resources", "vulcanus"))!;
     const gleba = (await firstSelect(page, "terrain", "gleba"))!;
@@ -180,13 +184,13 @@ test.describe("on a wide screen", () => {
 
   // A settings redraw on its way when the view opens: the view takes the redrawn fields once it lands, so there is one copy of each.
   test("opening the view while the settings are redrawn shows the new fields, one copy of each", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     const sent: Request[] = [];
     page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
     let release!: () => void;
     const held = new Promise<void>((r) => (release = r));
-    await page.route("**/generate/refresh", async (route) => {
+    await page.route("**/new-map/refresh", async (route) => {
       await held;
       await route.continue().catch(() => {});
     });
@@ -213,9 +217,9 @@ test.describe("on a wide screen", () => {
   // Every way the view closes puts the fields back, not only Close and Escape. The view fills the
   // screen, so there is no backdrop to click; a script's close stands in for any other way.
   test("closing the view another way puts the fields back", async ({ page }) => {
-    await page.goto("/generate");
+    const world = await openNewMap(page);
     const iron = (await firstSelect(page, "resources", "nauvis"))!;
-    await openLarge(page);
+    await openLarge(page, world);
     await expect(panel(page).locator(`#${iron}`)).toHaveCount(1);
     await page.evaluate(() => (document.getElementById("large-view") as HTMLDialogElement).close());
     await expect(dialog(page)).toBeHidden();
