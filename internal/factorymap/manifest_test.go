@@ -78,7 +78,7 @@ func TestParseManifestRefuses(t *testing.T) {
 		"chart for another index":  manifestWith(sub(`"surface-1.jsonl"`, `"surface-2.jsonl"`)),
 		"entities with a slash":    manifestWith(sub(`"surface-1-entities.jsonl"`, `"a/surface-1-entities.jsonl"`)),
 		"no entities name":         manifestWith(sub(`"surface-1-entities.jsonl"`, `""`)),
-		"huge":                     manifestWith(goodSurface) + strings.Repeat(" ", maxManifestBytes),
+		"huge":                     manifestWith(goodSurface) + strings.Repeat(" ", MaxManifestBytes),
 	}
 	for name, body := range cases {
 		_, err := ParseManifest(strings.NewReader(body))
@@ -114,7 +114,7 @@ func TestParseManifestStopsReadingAtTheLimit(t *testing.T) {
 	if _, err := ParseManifest(r); !errors.Is(err, ErrManifest) {
 		t.Errorf("endless input: %v", err)
 	}
-	if r.n > maxManifestBytes+4096 {
+	if r.n > MaxManifestBytes+4096 {
 		t.Errorf("read %d bytes of an endless input", r.n)
 	}
 }
