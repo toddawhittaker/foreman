@@ -1,0 +1,31 @@
+{
+  "worldimport.title": "Importar un archivo de mundo",
+  "worldimport.intro": "Revisa qué contiene el archivo. No se importa nada hasta que pulses «Importar mundo».",
+  "worldimport.heading": "Contenido del archivo",
+  "worldimport.zone.label": "Archivo de mundo",
+  "worldimport.fact.made_by": "Versión de Foreman",
+  "worldimport.fact.saves": "Partidas guardadas",
+  "worldimport.fact.mod_files": "Archivos de mods",
+  "worldimport.saves.count": {
+    "one": "{count} partida guardada",
+    "other": "{count} partidas guardadas"
+  },
+  "worldimport.mod_files.count": {
+    "one": "{count} archivo de mod",
+    "other": "{count} archivos de mods"
+  },
+  "worldimport.fact.size": "Tamaño descomprimido",
+  "worldimport.fact.loads": "Partida guardada que se carga",
+  "worldimport.loads.none": "Ninguna: el mundo crea su mapa en el primer inicio.",
+  "worldimport.password_warning": "La contraseña del juego no estaba en el archivo. Este mundo se iniciará sin contraseña hasta que definas una en «Configuración del juego».",
+  "worldimport.mods_warning": "Foreman no comprueba qué contienen las partidas guardadas y los mods de este archivo. Importa solo archivos de confianza. Un mod puede guardar lo que su autor haya elegido, incluido un token.",
+  "worldimport.name.label": "Nombre del mundo",
+  "worldimport.image.here": "La imagen del juego para la versión {version} ya está en este host.",
+  "worldimport.button": "Importar mundo",
+  "worldimport.error.bad": "Foreman no puede leer este archivo de mundo. Puede estar dañado, cortado o no haber sido exportado por Foreman.",
+  "worldimport.error.newer": "Una versión más reciente de Foreman creó este archivo de mundo, así que esta versión no puede leerlo. Actualiza Foreman e inténtalo de nuevo.",
+  "worldimport.refused.title": "Foreman no puede importar este archivo",
+  "worldimport.retry": "Volver a Importar",
+  "worldimport.gone.title": "El archivo subido ya no está",
+  "worldimport.gone": "Foreman conserva un archivo de mundo subido durante una hora, y este ya no está. Súbelo de nuevo."
+}

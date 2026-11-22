@@ -274,9 +274,13 @@ func (s *server) deleteSnapshot(ctx context.Context, by game.Actor, id, name str
 	if s.operationRunning(id) {
 		return errOperationRunning
 	}
-	return s.worlds.DeleteSnapshot(id, name, func(sn world.Snapshot) error {
+	err := s.worlds.DeleteSnapshot(id, name, func(sn world.Snapshot) error {
 		return s.addAudit(ctx, by, AuditSnapshotDelete, id, fmt.Sprintf("%s (%s, %s)", sn.Name, sn.Label, sn.Reason))
 	})
+	if err == nil {
+		s.runs.snapshotsChanged()
+	}
+	return err
 }
 
 // handleSnapshotDelete deletes one snapshot after the confirmation

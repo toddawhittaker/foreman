@@ -16,9 +16,9 @@ const uploadForm = (page: Page) => page.locator("form", { has: page.getByRole("h
 // drag states first.
 async function drop(page: Page, files: { name: string; body: string }[]) {
   await dropFile(page, "upload-source", files, async () => {
-    await expect(page.locator("[data-dropzone]")).toHaveClass(/dropzone--page/);
+    await expect(page.locator("[data-dropzone]").first()).toHaveClass(/dropzone--page/);
     await expect(page.locator("#upload-source").locator("..").getByText("Drop the file to choose it")).toBeVisible();
-    await expect(page.locator("[data-dropzone]")).toHaveClass(/dropzone--over/);
+    await expect(page.locator("[data-dropzone]").first()).toHaveClass(/dropzone--over/);
   });
 }
 
@@ -31,7 +31,7 @@ test("a dropped save fills the field, names the file, and imports", async ({ pag
   await checkPage(page);
 
   await drop(page, [{ name: "dropped.zip", body: emptyZip.toString("latin1") }]);
-  await expect(page.locator("[data-dropzone]")).not.toHaveClass(/dropzone--page|dropzone--over/);
+  await expect(page.locator("[data-dropzone]").first()).not.toHaveClass(/dropzone--page|dropzone--over/);
   await expect(form.locator(".dropzone__chosen")).toHaveText("Chosen: dropped.zip, 22 B Clear Save file");
   // The page's own listener still runs: the name is suggested from the file.
   await expect(form.getByLabel("World name")).toHaveValue("dropped");
@@ -217,7 +217,7 @@ for (const lang of ["de", "ru"]) {
       });
       await checkPage(page);
       await dropFile(page, "upload-source", [{ name: "a-save-with-a-fairly-long-name-for-a-phone.zip", body: emptyZip }]);
-      await expect(page.locator(".dropzone__chosen")).toBeVisible();
+      await expect(page.locator(".dropzone__chosen").first()).toBeVisible();
       await checkPage(page);
     });
   });

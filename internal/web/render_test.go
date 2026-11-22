@@ -18,6 +18,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
+	"github.com/toddawhittaker/foreman/internal/factorymap"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 	"github.com/toddawhittaker/foreman/internal/i18n"
@@ -64,6 +65,8 @@ func pageCases() []pageCase {
 			{ID: "broken", Name: "broken", Unreadable: true},
 			{ID: "odd", Name: "Odd", SizeUnknown: true},
 		}}},
+		{"factory map drawn", "todd", 200, factoryMapCase(false)},
+		{"factory map refused", "todd", 409, factoryMapCase(true)},
 		{"snapshots empty", "todd", 200, SnapshotsPage{WorldID: "base", WorldName: longName}},
 		{"all snapshots", "todd", 200, allSnapshotsCase()},
 		{"all snapshots empty", "todd", 200, AllSnapshotsPage{}},
@@ -143,6 +146,12 @@ func pageCases() []pageCase {
 		{"clone fresh only errors", "todd", 400, ClonePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "1.1.110"},
 			Name: "", Choice: cloneFresh, FreshOnlyWhy: i18n.M("worlds.clone.no_save"), NameError: msgNameEmpty(),
 			Error: msgBusy(), ErrorBusy: true}},
+		{"world file preview", "todd", 200, WorldFilePage{Staged: world.PrefixWorldFile + "0123456789abcdef", Name: longName, CanDownload: true, Download: true,
+			Info: world.WorldFileInfo{Name: longName, GameVersion: "2.0.77", SpaceAge: true, Saves: 3, ModFiles: 12, Bytes: 2_100_000_000,
+				LoadSave: longName + ".zip", ForemanVersion: "1.4.0", GamePasswordSet: true}}},
+		{"world file preview errors", "todd", 507, WorldFilePage{Staged: world.PrefixWorldFile + "0123456789abcdef", Name: "", ImageHere: true, CanDownload: true,
+			NameError: msgNameEmpty(), Error: i18n.M("worlds.error.nospace", "need", "3 GB", "reserve", "2 GB", "free", "1 GB"),
+			Info: world.WorldFileInfo{GameVersion: "2.1.24", Saves: 1}}},
 		{"chat", "todd", 200, ChatPage{}},
 		{"notifications", "todd", 200, NotificationsPage{}},
 		{"notifications no key", "todd", 200, NotificationsPage{NoKey: true}},
@@ -1263,6 +1272,34 @@ func generalTestPage(p GeneralPage) GeneralPage {
 		if f := p.field(d.Key); f.Value == "" {
 			f.Value = strconv.Itoa(d.Default)
 		}
+	}
+	return p
+}
+
+// factoryMapCase is the factory map page with a kept drawing of two surfaces;
+// refused adds the refusal a click on the draw button meets.
+func factoryMapCase(refused bool) FactoryMapPage {
+	p := FactoryMapPage{
+		World:      world.Summary{ID: "base", Name: longName, Active: true},
+		Categories: factorymap.Categories,
+		Surface:    1,
+		CanDraw:    true,
+		CanSetMode: true,
+		View: game.FactoryMapView{
+			State: "drawn",
+			Mode:  world.FactoryMapMode{Mode: world.FactoryMapManual, SkipOnline: true},
+			Drawing: factorymap.Drawing{
+				DrawnAt: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC), GameVersion: "2.0.77",
+				Surfaces: []factorymap.Surface{
+					{Index: 1, Name: "nauvis", Kind: "planet", Width: 900, Height: 700, TilesPerPixel: 1},
+					{Index: 4, Name: "Big <b>one</b>", Kind: "surface", Width: 4096, Height: 4096, TilesPerPixel: 3},
+				},
+			},
+		},
+	}
+	if refused {
+		p.View.Running, p.View.PlayersOnline = true, true
+		p.Refused = refusedMsg(refusedPlayersOnline)
 	}
 	return p
 }

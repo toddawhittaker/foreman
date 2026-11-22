@@ -197,6 +197,9 @@ type WorldPage struct {
 	// Exchange is the map exchange string to copy, or why there is none
 	// (SPEC 5.6); nil for a world this Foreman cannot read.
 	Exchange *ExchangeField
+	// Players is the players of the save the world loads (SPEC 8.14); nil
+	// when this page has none to show.
+	Players *SavePlayersPanel
 }
 
 func (WorldPage) templateName() string { return "world" }
@@ -422,6 +425,9 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	}
 	p := s.worldPage(r.Context(), sum, sum.Name, i18n.Msg{})
 	p.UpdateDone, p.UpdateFailure = done, failure
+	if !isHTMX(r) { // the activity block's reload needs no list
+		s.fillSavePlayers(r.Context(), &p)
+	}
 	// The page reloads its activity block while an action runs; when the
 	// action has ended, it reloads whole, so the version and the rollback
 	// offer are current.
@@ -734,6 +740,12 @@ func (s *server) deleteWorld(ctx context.Context, by game.Actor, sum world.Summa
 	}
 	if err := s.worlds.Delete(ctx, sum.ID, typedName, final, by.Username); err != nil {
 		return err
+	}
+	// No factory map outlives its world (SPEC 5.16).
+	if s.game != nil {
+		if err := s.game.ForgetFactoryMap(sum.ID); err != nil {
+			s.log.Warn("remove the factory map of a deleted world", "world", sum.ID, "error", err)
+		}
 	}
 	// A deleted world's unfinished mod plan goes with it (SPEC 3.4).
 	if err := s.store.ClearModPlan(ctx, sum.ID); err != nil {

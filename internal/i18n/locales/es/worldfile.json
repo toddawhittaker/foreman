@@ -1,0 +1,17 @@
+{
+  "worldfile.export.heading": "Exportar archivo de mundo",
+  "worldfile.export.text": "Descarga el mundo como un único archivo ZIP para importarlo en otro Foreman: sus partidas guardadas, mods, ajustes de los mods y ajustes del juego.",
+  "worldfile.export.size": "Tamaño estimado: {size}.",
+  "worldfile.export.saves.legend": "Partidas guardadas en el archivo",
+  "worldfile.export.saves.all": "Todas las partidas guardadas",
+  "worldfile.export.saves.loaded": "Solo la partida guardada que se carga a continuación",
+  "worldfile.export.saves.loaded_hint": "Un archivo más pequeño. Las partidas guardadas más antiguas y los autoguardados se quedan fuera.",
+  "worldfile.export.running": "Si el juego está en marcha, el archivo contiene su partida guardada más reciente en el disco, que puede ir unos minutos por detrás de lo que ven los jugadores. Detén el juego antes para incluirlo todo.",
+  "worldfile.export.left_out": "El archivo no incluye instantáneas, la contraseña del juego ni los registros de Foreman sobre este mundo, como su registro de auditoría, su programa de reinicio y sus notificaciones.",
+  "worldfile.export.audit": "Cada exportación queda anotada en el registro de auditoría.",
+  "worldfile.export.warning": "Las partidas guardadas y el archivo de ajustes de los mods pueden contener lo que un mod almacena, como un token. Comparte el archivo solo con personas de confianza.",
+  "worldfile.export.button": "Exportar mundo",
+  "worldfile.import.heading": "Importar un archivo de mundo",
+  "worldfile.import.intro": "Sube un archivo creado con «Exportar mundo» en otro Foreman. Verás lo que contiene antes de que se importe nada.",
+  "worldfile.import.button": "Subir archivo de mundo"
+}

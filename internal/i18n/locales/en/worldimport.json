@@ -1,0 +1,31 @@
+{
+  "worldimport.title": "Import a world file",
+  "worldimport.intro": "Check what is in the file. Nothing is imported until you press \"Import world\".",
+  "worldimport.heading": "What the file holds",
+  "worldimport.zone.label": "World file",
+  "worldimport.fact.made_by": "Foreman version",
+  "worldimport.fact.saves": "Saves",
+  "worldimport.fact.mod_files": "Mod files",
+  "worldimport.saves.count": {
+    "one": "{count} save",
+    "other": "{count} saves"
+  },
+  "worldimport.mod_files.count": {
+    "one": "{count} mod file",
+    "other": "{count} mod files"
+  },
+  "worldimport.fact.size": "Unpacked size",
+  "worldimport.fact.loads": "Save that loads",
+  "worldimport.loads.none": "None: the world makes its map when it first starts.",
+  "worldimport.password_warning": "The game password was not in the file. This world will start with no password until you set one in Game settings.",
+  "worldimport.mods_warning": "Foreman does not check what the saves and mods in this file hold. Import only a file you trust. A mod can keep anything its author chose, a token included.",
+  "worldimport.name.label": "World name",
+  "worldimport.image.here": "The game image for version {version} is already on this host.",
+  "worldimport.button": "Import world",
+  "worldimport.error.bad": "This is not a world file Foreman can read. It may be damaged, cut short, or not exported by Foreman.",
+  "worldimport.error.newer": "A newer version of Foreman made this world file, so this version cannot read it. Update Foreman and try again.",
+  "worldimport.refused.title": "Foreman cannot import this file",
+  "worldimport.retry": "Back to Import",
+  "worldimport.gone.title": "The uploaded file is gone",
+  "worldimport.gone": "Foreman keeps an uploaded world file for one hour, and this one is no longer here. Upload it again."
+}
