@@ -5,7 +5,7 @@
   "newmap.done": "a6297172",
   "newmap.error.builtin": "90c5b734",
   "newmap.error.busy": "fb1b52bc",
-  "newmap.error.exchange_other_line": "92133caf",
+  "newmap.error.exchange_other_line": "5f78a435",
   "newmap.error.running": "e57bf1c1",
   "newmap.exchange.button": "31fdcbf6",
   "newmap.exchange.hint": "ab5e1d25",
@@ -31,5 +31,5 @@
   "newmap.why.made": "265fcadb",
   "newmap.why.newer": "56f8ae47",
   "newmap.why.unreadable": "7a91b533",
-  "newmap.why.version": "b8396d88"
+  "newmap.why.version": "51c0bed8"
 }
