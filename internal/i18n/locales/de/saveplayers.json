@@ -5,7 +5,7 @@
   "saveplayers.no_save": "Diese Welt hat noch keinen Speicherstand, also gibt es keine Spieler aufzulisten.",
   "saveplayers.never": "Foreman hat die Spieler des neuesten Speicherstands noch nicht gelesen. Er liest sie nur von selbst, solange kein Spiel läuft.",
   "saveplayers.unsupported": "Aus einem Speicherstand dieser Spielversion lassen sich keine Spieler lesen, daher zählt nur die Zeit, die Foreman selbst sieht.",
-  "saveplayers.tracked_since": "Foreman verfolgt diese Welt seit {when}. Die Zeit davor ist nicht bekannt.",
+  "saveplayers.tracked_since": "Foreman verfolgt diese Welt seit dem {when}. Die Zeit davor ist nicht bekannt.",
   "saveplayers.inexact": "Diese Spielzeiten können leicht abweichen. Ein Absturz oder eine Zeit, in der Foreman nicht zugesehen hat, kann Spielzeit verborgen haben. Erneutes Lesen des Speicherstands korrigiert sie.",
   "saveplayers.total": "Gesamtspielzeit dieses Speicherstands: {time}",
   "saveplayers.caption": {

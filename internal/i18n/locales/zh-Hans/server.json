@@ -582,7 +582,7 @@
   "server.force.group": "紧急操作",
   "server.crash.switch_archived": "{world} 已归档，因此 Foreman 无法切换回它。",
   "server.crash.unarchive": "打开 {world} 以取消归档",
-  "server.playtime.label": "游戏时长",
+  "server.playtime.label": "游玩时间",
   "server.playtime.value": "{hours} 小时 {minutes} 分钟",
   "server.playtime.players": {
     "other": "此存档中有 {count} 名玩家"

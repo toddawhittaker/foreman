@@ -608,5 +608,5 @@
     "one": "{count} jugador en esta partida guardada",
     "other": "{count} jugadores en esta partida guardada"
   },
-  "server.playtime.reading": "Leyéndose"
+  "server.playtime.reading": "Leyendo"
 }
