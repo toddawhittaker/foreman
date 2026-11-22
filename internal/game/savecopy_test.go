@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -221,6 +222,10 @@ func TestSaveCopyMountsTheSaveReadOnlyAndCopiesTheModFiles(t *testing.T) {
 	if hc.NetworkMode != "none" || !hc.ReadonlyRootfs || hc.Memory != SaveCopyMemory || hc.MemorySwap != SaveCopyMemory {
 		t.Errorf("host config %+v is not the locked-down save read shape", hc)
 	}
+	// The game writes only to memory: a 1 GiB tmpfs, inside the memory limit.
+	if got := hc.Tmpfs[previewWrite]; !strings.Contains(got, "size=1g") || len(hc.Tmpfs) != 1 {
+		t.Errorf("tmpfs %q", hc.Tmpfs)
+	}
 	if got := c.Spec.Env; len(got) != 1 || got[0] != gameenv.PreviewKind+"="+gameenv.KindSavePlayers {
 		t.Errorf("env %q", got)
 	}
@@ -370,16 +375,12 @@ func TestSaveCopyCommandRunsTheBenchmark(t *testing.T) {
 	if strings.Contains(tmp, "--start-server") || strings.Contains(tmp, "rcon") {
 		t.Errorf("command %q starts a server", tmp)
 	}
-	disk := testSaveCopyMod
-	disk.outputOnDisk = true
-	disk.output = gameenv.FactoryMapDir
-	if got := saveCopyCommand(disk); !strings.Contains(got, "mv "+saveCopyWrite+"/script-output/"+gameenv.FactoryMapDir+" ") {
-		t.Errorf("on-disk command %q", got)
+	dir := testSaveCopyMod
+	dir.output = gameenv.FactoryMapDir
+	if got := saveCopyCommand(dir); !strings.Contains(got, "mv "+previewWrite+"/script-output/"+gameenv.FactoryMapDir+" "+gameenv.PreviewMount+"/"+gameenv.FactoryMapDir) {
+		t.Errorf("folder output command %q", got)
 	}
-	if got := saveCopyConfig(disk); !strings.Contains(got, "write-data="+saveCopyWrite+"\n") {
-		t.Errorf("on-disk config %q", got)
-	}
-	if got := saveCopyConfig(testSaveCopyMod); !strings.Contains(got, "write-data="+previewWrite+"\n") || !strings.Contains(got, "read-data=/opt/factorio/data\n") {
+	if got := saveCopyConfig; !strings.Contains(got, "write-data="+previewWrite+"\n") || !strings.Contains(got, "read-data=/opt/factorio/data\n") {
 		t.Errorf("config %q", got)
 	}
 }
@@ -456,5 +457,228 @@ func TestSaveCopyWithNoOutputIsBadOutput(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("runSaveCopy did not return")
+	}
+}
+
+// A start never fails because a save read slipped in before its lock: reads
+// asked for while it runs are refused, and reads already running are ended
+// (SPEC 8.16).
+func TestStartIsNeverBusyBecauseOfASaveRead(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	if err := r.game.SetPreviewMode(fakegame.PreviewHangs); err != nil {
+		t.Fatal(err)
+	}
+	id := r.newWorld("Saves")
+	if err := r.worlds.EnsureModList(id); err != nil {
+		t.Fatal(err)
+	}
+	sr := &saveCopyRig{rig: r, id: id}
+	first := sr.ask(context.Background(), testSaveCopyMod)
+	sr.waitRunning()
+
+	// Reads asked for in a loop while the start runs; each gives up after a
+	// moment, so none outlives the test.
+	stop := make(chan struct{})
+	hammered := make(chan int, 1)
+	go func() {
+		refused := 0
+		for {
+			select {
+			case <-stop:
+				hammered <- refused
+				return
+			default:
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+			_, err := r.c.runSaveCopy(ctx, id, testSaveCopyMod, func(*os.Root, string) error { return nil })
+			cancel()
+			if errors.Is(err, errSaveCopyStarting) {
+				refused++
+			}
+		}
+	}()
+	r.start(id) // fails the test on any error, ErrBusy included
+	close(stop)
+	t.Logf("%d reads were refused while the start ran", <-hammered)
+	if o := sr.outcome(first); !errors.Is(o.err, context.Canceled) {
+		t.Errorf("the running read: err = %v, want context.Canceled", o.err)
+	}
+	r.c.saveCopies.mu.Lock()
+	left := len(r.c.saveCopies.starting)
+	r.c.saveCopies.mu.Unlock()
+	if left != 0 {
+		t.Errorf("%d worlds still marked starting after Start returned", left)
+	}
+}
+
+// A read asked for while the world is starting begins nothing.
+func TestSaveCopyRefusedWhileStarting(t *testing.T) {
+	r := newSaveCopyRig(t)
+	end := r.c.saveCopies.beginStart(r.id)
+	o := r.outcome(r.ask(context.Background(), testSaveCopyMod))
+	if !errors.Is(o.err, world.ErrBusy) || !errors.Is(o.err, errSaveCopyStarting) {
+		t.Errorf("err = %v, want the starting refusal", o.err)
+	}
+	if n := len(r.game.Daemon().Containers()); n != 0 {
+		t.Errorf("%d containers were made", n)
+	}
+	end()
+	end() // a second call changes nothing
+	ch := r.ask(context.Background(), testSaveCopyMod)
+	r.game.Daemon().Exit(r.waitRunning().ID, 1, false)
+	if o := r.outcome(ch); errors.Is(o.err, errSaveCopyStarting) {
+		t.Error("a read after the start ended was refused")
+	}
+}
+
+// When the save cannot be hard-linked it is copied, after the disk check
+// (SPEC 6.11): a copy with the save's bytes and time, not the save itself.
+func TestSaveCopyCopiesTheSaveWhenLinkingFails(t *testing.T) {
+	was := linkFile
+	linkFile = func(string, string) error { return errors.New("cross-device link") }
+	t.Cleanup(func() { linkFile = was })
+
+	t.Run("copied", func(t *testing.T) {
+		r := newSaveCopyRig(t)
+		ch := r.ask(context.Background(), testSaveCopyMod)
+		c := r.waitRunning()
+		got := filepath.Join(r.workDir(c), saveCopySave)
+		orig := filepath.Join(r.worldDir(r.id), world.SavesDir, "base.zip")
+		if sameInode(t, got, orig) {
+			t.Error("the save was linked, not copied")
+		}
+		a, err := os.ReadFile(got) //nolint:gosec // the test's own work folder
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := os.ReadFile(orig) //nolint:gosec // the test's own world
+		if err != nil {
+			t.Fatal(err)
+		}
+		gi, _ := os.Stat(got)
+		oi, _ := os.Stat(orig)
+		if string(a) != string(b) || !gi.ModTime().Equal(oi.ModTime()) {
+			t.Error("the copy differs from the save in bytes or time")
+		}
+		r.finish(c, append(worldMods, saveplayers.Mod{Name: saveplayersmod.ModName, Version: saveplayersmod.ModVersion}))
+		o := r.outcome(ch)
+		if o.err != nil {
+			t.Fatal(o.err)
+		}
+		if o.basis.Size != oi.Size() || !o.basis.Modified.Equal(oi.ModTime()) {
+			t.Errorf("basis %+v", o.basis)
+		}
+	})
+	t.Run("no room", func(t *testing.T) {
+		r := newSaveCopyRig(t)
+		defer world.SetFreeBytesForTest(world.SpaceReserve)()
+		o := r.outcome(r.ask(context.Background(), testSaveCopyMod))
+		if !errors.Is(o.err, world.ErrNoSpace) {
+			t.Errorf("err = %v, want world.ErrNoSpace", o.err)
+		}
+		if n := len(r.game.Daemon().Containers()); n != 0 {
+			t.Errorf("%d containers were made", n)
+		}
+	})
+}
+
+// A saves folder swapped for a link to another world's is refused, and
+// nothing of the other world is linked or run (SPEC 8.16, 14.8).
+func TestSaveCopyRefusesASavesFolderLinkedToAnotherWorld(t *testing.T) {
+	r := newSaveCopyRig(t)
+	other := r.newWorld("Other")
+	saves := filepath.Join(r.worldDir(r.id), world.SavesDir)
+	if err := os.RemoveAll(saves); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(r.worldDir(other), world.SavesDir), saves); err != nil {
+		t.Fatal(err)
+	}
+	if o := r.outcome(r.ask(context.Background(), testSaveCopyMod)); o.err == nil {
+		t.Fatal("the read ran through the link")
+	}
+	if n := len(r.game.Daemon().Containers()); n != 0 {
+		t.Errorf("%d containers were made", n)
+	}
+	info, err := os.Stat(filepath.Join(r.worldDir(other), world.SavesDir, "base.zip"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st, ok := info.Sys().(*syscall.Stat_t); ok && st.Nlink != 1 {
+		t.Errorf("the other world's save has %d links", st.Nlink)
+	}
+}
+
+// A link that lands on another file than the one the world's root saw, as a
+// swap between the check and the link would make, is refused and removed.
+func TestLinkSaveRefusesAnotherFile(t *testing.T) {
+	r := newSaveCopyRig(t)
+	decoy := filepath.Join(t.TempDir(), "decoy.zip")
+	if err := os.WriteFile(decoy, []byte("decoy"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	was := linkFile
+	linkFile = func(_, dst string) error { return os.Link(decoy, dst) }
+	t.Cleanup(func() { linkFile = was })
+
+	base, err := r.c.previewBase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = base.Close() }()
+	name, err := newWorkDir(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := base.OpenRoot(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = dir.Close() }()
+	if _, err := r.c.linkSave(r.id, "base.zip", dir, name); !errors.Is(err, errSaveCopyLinkChanged) {
+		t.Errorf("err = %v, want errSaveCopyLinkChanged", err)
+	}
+	if _, err := dir.Lstat(saveCopySave); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the wrong link is still there: %v", err)
+	}
+}
+
+// A world with no mod-list.json yet (never started, a fresh import) is read
+// with the default list, as its first start would load it, not refused as
+// mods-differ.
+func TestSaveCopyWorldWithNoModList(t *testing.T) {
+	r := newSaveCopyRig(t)
+	if err := os.Remove(filepath.Join(r.worldDir(r.id), world.ModsDir, world.ModListFile)); err != nil {
+		t.Fatal(err)
+	}
+	ch := r.ask(context.Background(), testSaveCopyMod)
+	c := r.waitRunning()
+	if _, err := os.Lstat(filepath.Join(r.worldDir(r.id), world.ModsDir, world.ModListFile)); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("a mod list was written to the world: %v", err)
+	}
+	// Space Age off: the default list leaves its mods off; fmtest is on.
+	r.finish(c, append(worldMods, saveplayers.Mod{Name: saveplayersmod.ModName, Version: saveplayersmod.ModVersion}))
+	if o := r.outcome(ch); o.err != nil {
+		t.Fatalf("err = %v, want a read", o.err)
+	}
+
+	ch = r.ask(context.Background(), testSaveCopyMod)
+	r.finish(r.waitRunning(), append(append([]saveplayers.Mod{}, worldMods...), saveplayers.Mod{Name: "space-age", Version: "2.1.24"}))
+	if o := r.outcome(ch); !errors.Is(o.err, ErrSaveCopyModsDiffer) {
+		t.Errorf("with Space Age loaded: err = %v, want ErrSaveCopyModsDiffer", o.err)
+	}
+}
+
+func TestWithDefaults(t *testing.T) {
+	mods := []world.InstalledMod{{Name: "base", Enabled: true}, {Name: "space-age", Enabled: true}, {Name: "fmtest", Enabled: false}}
+	got := withDefaults(mods, map[string]bool{"base": true, "space-age": false})
+	if !got[0].Enabled || got[1].Enabled || !got[2].Enabled {
+		t.Errorf("withDefaults = %+v", got)
+	}
+	if !mods[1].Enabled {
+		t.Error("withDefaults changed its input")
+	}
+	if got := withDefaults(mods, nil); got[2].Enabled {
+		t.Error("with a mod list the states must stay as they are")
 	}
 }
