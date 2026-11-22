@@ -39,6 +39,15 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
+// The map's states (SPEC 5.16), which F5 defines as FactoryMap* constants in
+// internal/game/factorymap.go.
+const (
+	fmDrawingState     = "drawing"
+	fmFailedState      = "failed"
+	fmDrawnState       = "drawn"
+	fmUnsupportedState = "unsupported"
+)
+
 func TestRealGameFactoryMap(t *testing.T) {
 	only := os.Getenv("FOREMAN_TEST_GAME_TAG")
 	e := newGameEnv(t)
@@ -49,7 +58,7 @@ func TestRealGameFactoryMap(t *testing.T) {
 		t.Run("v"+g.tag, func(t *testing.T) {
 			e.requireImage(t, ImageRef(g.version))
 			if g.tag == "1.1" {
-				e.runFactoryMapUnsupported(t, g.tag, g.fixture, g.version)
+				e.runfmUnsupportedState(t, g.tag, g.fixture, g.version)
 				return
 			}
 			t.Run("fixture has no chart", func(t *testing.T) { e.runFactoryMapNoChart(t, g.tag, g.fixture, g.version) })
@@ -72,7 +81,7 @@ func (e *gameEnv) drawFactoryMapAndWait(t *testing.T, c *Controller, id string) 
 			t.Fatalf("view: %v", err)
 		}
 		view = v
-		return v.State != FactoryMapDrawing
+		return v.State != fmDrawingState
 	})
 	t.Logf("TIMING draw: %s", time.Since(begin).Round(100*time.Millisecond))
 	return view
@@ -83,11 +92,12 @@ func (e *gameEnv) drawFactoryMapAndWait(t *testing.T, c *Controller, id string) 
 func (e *gameEnv) runFactoryMapNoChart(t *testing.T, tag, fixture, version string) {
 	c, _ := e.controller(t)
 	id := e.newWorld(t, tag, version, "fmap", fixture, map[string]time.Duration{"main.zip": time.Hour})
+	e.fmEnsureModList(t, id)
 	files := fmWorldFiles(t, e.worldDir(id))
 	oneOffs := e.fmOneOffs(t)
 
 	view := e.drawFactoryMapAndWait(t, c, id)
-	if view.State == FactoryMapFailed || view.Failure != "" {
+	if view.State == fmFailedState || view.Failure != "" {
 		t.Fatalf("the drawing failed: state %q, failure %q", view.State, view.Failure)
 	}
 	store, err := c.FactoryMapStore(id)
@@ -106,6 +116,21 @@ func (e *gameEnv) runFactoryMapNoChart(t *testing.T, tag, fixture, version strin
 	}
 	fmSameWorldFiles(t, files, fmWorldFiles(t, e.worldDir(id)))
 	e.fmNoNewOneOffs(t, oneOffs)
+}
+
+// fmEnsureModList writes the world's mod list as Foreman does before a start,
+// so the game enables the mods the world has and no others.
+func (e *gameEnv) fmEnsureModList(t *testing.T, id string) {
+	t.Helper()
+	unlock, err := e.worlds.Lock(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e.worlds.EnsureModList(id)
+	unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 // fmProbeLua lists the surfaces of the game that have a charted chunk, as the
@@ -244,15 +269,7 @@ func (e *gameEnv) runFactoryMapPlayed(t *testing.T, tag, version string) {
 			}
 		}
 	} else {
-		unlock, err := e.worlds.Lock(id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = e.worlds.EnsureModList(id)
-		unlock()
-		if err != nil {
-			t.Fatal(err)
-		}
+		e.fmEnsureModList(t, id)
 	}
 	at := time.Now().Add(-time.Hour)
 	e.putSave(t, id, "played.zip", save, at)
@@ -264,8 +281,8 @@ func (e *gameEnv) runFactoryMapPlayed(t *testing.T, tag, version string) {
 	oneOffs := e.fmOneOffs(t)
 
 	view := e.drawFactoryMapAndWait(t, c, id)
-	if view.State != FactoryMapDrawn {
-		t.Fatalf("the drawing ended in state %q (failure %q), want %q", view.State, view.Failure, FactoryMapDrawn)
+	if view.State != fmDrawnState {
+		t.Fatalf("the drawing ended in state %q (failure %q), want %q", view.State, view.Failure, fmDrawnState)
 	}
 	fmSameWorldFiles(t, files, fmWorldFiles(t, e.worldDir(id)))
 	e.fmNoNewOneOffs(t, oneOffs)
@@ -459,10 +476,10 @@ func fmDrawnPixels(img image.Image) int {
 	return n
 }
 
-// runFactoryMapUnsupported checks a 1.1 world: the map says it is not
+// runfmUnsupportedState checks a 1.1 world: the map says it is not
 // supported, a draw is refused, nothing is kept, no container is made, and the
 // save is untouched.
-func (e *gameEnv) runFactoryMapUnsupported(t *testing.T, tag, fixture, version string) {
+func (e *gameEnv) runfmUnsupportedState(t *testing.T, tag, fixture, version string) {
 	ctx := context.Background()
 	c, _ := e.controller(t)
 	id := e.newWorld(t, tag, version, "fmap", fixture, map[string]time.Duration{"old.zip": time.Hour})
@@ -474,8 +491,8 @@ func (e *gameEnv) runFactoryMapUnsupported(t *testing.T, tag, fixture, version s
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.State != FactoryMapUnsupported {
-		t.Errorf("the map's state is %q, want %q", view.State, FactoryMapUnsupported)
+	if view.State != fmUnsupportedState {
+		t.Errorf("the map's state is %q, want %q", view.State, fmUnsupportedState)
 	}
 	if err := c.DrawFactoryMap(ctx, id); err == nil {
 		t.Error("a draw on a 1.1 world was not refused")
