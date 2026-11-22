@@ -552,7 +552,8 @@ not) or a map exchange string, with Space Age on or off. (P0)
   Generate button" means its save button.
 - **Unfinished worlds.** A world with `new_map` and no save is shown as
   "Unfinished" on the Worlds list and on its page, with a Continue link
-  that resumes the flow. It is derived, not stored. Foreman never deletes
+  that opens where work remains: step 2 while the world has mod picks not
+  yet installed (9.14), otherwise step 3. It is derived, not stored. Foreman never deletes
   one by itself; Delete works as for any world (5.10).
 - **Planets come from the world's mods** (#775). Step 3 offers the planets
   and autoplace controls that the world's own game image and mods define,

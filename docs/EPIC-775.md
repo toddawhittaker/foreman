@@ -321,9 +321,9 @@ unset. Nothing is downloaded.
 - **R21** Real-game picture output limits (14.6): one planet per run, at most 1,024 chunks of exactly 32 by 32 pixels, the file at most 4 MiB.
 - **R22** `get_new_map` is admin scope, like `list_mod_settings` and `get_game_settings` (21.7).
 
-## Open question for Todd
+- **R23** (Todd, 2026-11-22) Continue opens where work remains: step 2 while the world has mod picks not yet installed, otherwise step 3.
 
-1. **Continue's step** (R2). Which step does Continue open?
+Todd approved this plan and its spec changes on 2026-11-22.
 
 ## Left out
 
