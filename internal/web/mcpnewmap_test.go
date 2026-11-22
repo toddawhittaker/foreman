@@ -9,10 +9,12 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/toddawhittaker/foreman/internal/fakegame"
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -440,6 +442,40 @@ func TestMCPSetNewMapRefusedWhileTheServerRuns(t *testing.T) {
 	}
 	if diff := diffStat(tree, dataStat(t, r.worlds.Dirs())); diff != "" || len(r.audit()) != audits {
 		t.Errorf("a refusal changed something: %s", diff)
+	}
+}
+
+// SPEC 5.6: a game that crashed is about to restart, so it is refused too, and a
+// world another action holds is refused as busy; nothing changes either way.
+func TestMCPSetNewMapRefusedAfterACrashAndWhileBusy(t *testing.T) {
+	r := newNMRig(t)
+	id := r.newMapWorld("Fresh", "2.1.24", false)
+	r.startGame(id)
+	if err := r.fake.Crash(game.ContainerName(id), 1, false); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for st := r.ctrl.Status(id).State; st != game.StateCrashed && time.Now().Before(deadline); st = r.ctrl.Status(id).State {
+		time.Sleep(20 * time.Millisecond)
+	}
+	tree, audits := dataStat(t, r.worlds.Dirs()), len(r.audit())
+	res, _ := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "preset": "marathon"})
+	if !res.IsError || !strings.Contains(resultText(res), "running or starting") {
+		t.Errorf("after a crash (%s): %q", r.ctrl.Status(id).State, resultText(res))
+	}
+	if diff := diffStat(tree, dataStat(t, r.worlds.Dirs())); diff != "" || len(r.audit()) != audits {
+		t.Errorf("a refusal changed something: %s", diff)
+	}
+
+	busy := r.newMapWorld("Busy", "2.1.24", false)
+	unlock, err := r.worlds.Lock(busy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	res, _ = call(t, r.cs, "set_new_map", map[string]any{"world_id": busy, "preset": "marathon"})
+	if !res.IsError || resultText(res) != inEnglish(msgBusy()) {
+		t.Errorf("busy world: %q, want %q", resultText(res), inEnglish(msgBusy()))
 	}
 }
 

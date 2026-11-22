@@ -13,7 +13,6 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -128,11 +127,7 @@ func mcpNewMapRefusal(sum world.Summary, meta world.Meta) error {
 // mcpNewMapFor finds the world a call names and reads what its settings are
 // laid out from. A world with a save, or one not waiting for a map, is
 // refused before any planet list is read.
-func (s *server) mcpNewMapFor(ctx context.Context, id string) (mcpNewMapWorld, error) {
-	sum, err := s.mcpNamed(ctx, id)
-	if err != nil {
-		return mcpNewMapWorld{}, err
-	}
+func (s *server) mcpNewMapFor(ctx context.Context, sum world.Summary) (mcpNewMapWorld, error) {
 	meta, err := s.readWorldMeta(sum.ID)
 	if err != nil {
 		return mcpNewMapWorld{}, s.mcpWorldFail("read the world", err)
@@ -146,6 +141,9 @@ func (s *server) mcpNewMapFor(ctx context.Context, id string) (mcpNewMapWorld, e
 	}
 	// Catalogue labels are English: the call's results are (SPEC 22.3).
 	cat, err := s.game.WorldCatalogue(ctx, sum.ID, "en")
+	if err != nil {
+		s.log.Warn("mcp: the world's own planets could not be read, so the built-in planets are used", "world", sum.ID, "error", err)
+	}
 	if len(cat.Planets) == 0 {
 		return mcpNewMapWorld{}, errors.New("this world has no planets to set a map for")
 	}
@@ -208,12 +206,12 @@ func (s *server) mcpNewMapFormValues(w mcpNewMapWorld, preset string) (f MapGenF
 	if err != nil {
 		return f, false, err
 	}
+	if mg.Found {
+		return mapGenFormFromFile(w.line, w.cat, mg.Data), true, nil
+	}
 	ms, err := s.worlds.ReadConfig(w.sum.ID, world.MapSettingsFile)
 	if err != nil {
 		return f, false, err
-	}
-	if mg.Found {
-		return mapGenFormFromFile(w.line, w.cat, mg.Data), true, nil
 	}
 	return mapGenFormForPreset(w.line, w.cat, preset), ms.Found, nil
 }
@@ -260,7 +258,11 @@ func mcpPlanetLabel(p mapgen.Planet, name string) string {
 }
 
 func (s *server) mcpGetNewMap(ctx context.Context, _ *mcp.CallToolRequest, in mcpActionIn) (*mcp.CallToolResult, mcpNewMapOut, error) {
-	w, err := s.mcpNewMapFor(ctx, in.WorldID)
+	sum, err := s.mcpNamed(ctx, in.WorldID)
+	if err != nil {
+		return nil, mcpNewMapOut{}, err
+	}
+	w, err := s.mcpNewMapFor(ctx, sum)
 	if err != nil {
 		return nil, mcpNewMapOut{}, err
 	}
@@ -403,26 +405,34 @@ func (l newMapLayout) controlValues(entries []mcpSetNewControl) (url.Values, err
 				return nil, err
 			}
 		}
-		if e.Enabled == nil {
-			continue
-		}
-		switch {
-		case !c.toggle:
-			return nil, fmt.Errorf("%s cannot be switched off", who)
-		case *e.Enabled && e.Size != nil && *e.Size == 0:
-			return nil, fmt.Errorf("%s: enabled is true but size is 0, which switches it off", who)
-		case !*e.Enabled && e.Size != nil && *e.Size != 0:
-			return nil, fmt.Errorf("%s: enabled is false, so size %d would be ignored", who, *e.Size)
-		}
-		state := "off"
-		if *e.Enabled {
-			state = mgOn
-		}
-		for _, p := range c.planets {
-			post.Set(fieldName(p, c.name, mgOn), state)
+		if e.Enabled != nil {
+			if err := checkEnabled(c, e, who); err != nil {
+				return nil, err
+			}
+			state := "off"
+			if *e.Enabled {
+				state = mgOn
+			}
+			for _, p := range c.planets {
+				post.Set(fieldName(p, c.name, mgOn), state)
+			}
 		}
 	}
 	return post, nil
+}
+
+// checkEnabled refuses an enabled value the control cannot take or that the
+// entry's size contradicts, so neither is dropped silently.
+func checkEnabled(c *newMapControl, e mcpSetNewControl, who string) error {
+	switch {
+	case !c.toggle:
+		return fmt.Errorf("%s cannot be switched off", who)
+	case *e.Enabled && e.Size != nil && *e.Size == 0:
+		return fmt.Errorf("%s: enabled is true but size is 0, which switches it off", who)
+	case !*e.Enabled && e.Size != nil && *e.Size != 0:
+		return fmt.Errorf("%s: enabled is false, so size %d would be ignored", who, *e.Size)
+	}
+	return nil
 }
 
 func noneWord(none bool) string {
@@ -464,22 +474,12 @@ func mcpNewMapPost(w mcpNewMapWorld, in mcpSetNewMapIn) (url.Values, error) {
 
 // mcpNewMapSaveFail words a refusal of the save.
 func (s *server) mcpNewMapSaveFail(err error) error {
-	for _, known := range []error{world.ErrMapMade, world.ErrNotNewMap, world.ErrWorldArchived} {
+	for _, known := range []error{world.ErrMapMade, world.ErrNotNewMap, world.ErrWorldArchived, errNewMapServerUp} {
 		if errors.Is(err, known) {
 			return known
 		}
 	}
 	return s.mcpWorldFail("save the map settings", err)
-}
-
-// mcpNewMapIdle refuses a world whose server is up or coming up, which reads
-// its map settings files.
-func (s *server) mcpNewMapIdle(id string) error {
-	switch st := s.game.Status(id).State; {
-	case st == game.StateStarting, game.IsRunning(st), st == game.StateStopping, st == game.StateCrashLooping:
-		return errors.New("this world's server is running or starting, so its map settings cannot be changed now; stop it first")
-	}
-	return nil
 }
 
 func (s *server) mcpSetNewMap(ctx context.Context, req *mcp.CallToolRequest, in mcpSetNewMapIn) (*mcp.CallToolResult, mcpSetNewMapOut, error) {
@@ -490,10 +490,12 @@ func (s *server) mcpSetNewMap(ctx context.Context, req *mcp.CallToolRequest, in 
 	if sum.Archived {
 		return nil, mcpSetNewMapOut{}, world.ErrWorldArchived
 	}
-	if err := s.mcpNewMapIdle(sum.ID); err != nil {
+	// Checked early too, so a running world is told so rather than that its map is made;
+	// the check that counts runs again under the world's lock in SetNewMap.
+	if err := s.newMapIdle(sum.ID); err != nil {
 		return nil, mcpSetNewMapOut{}, err
 	}
-	w, err := s.mcpNewMapFor(ctx, in.WorldID)
+	w, err := s.mcpNewMapFor(ctx, sum)
 	if err != nil {
 		return nil, mcpSetNewMapOut{}, err
 	}
@@ -506,6 +508,7 @@ func (s *server) mcpSetNewMap(ctx context.Context, req *mcp.CallToolRequest, in 
 	if !ok {
 		return nil, mcpSetNewMapOut{}, mcpProblems("the map settings were not saved", f.Problems())
 	}
+	files.Idle = func() error { return s.newMapIdle(w.sum.ID) }
 	if err := s.worlds.SetNewMap(ctx, w.sum.ID, files); err != nil {
 		return nil, mcpSetNewMapOut{}, s.mcpNewMapSaveFail(err)
 	}

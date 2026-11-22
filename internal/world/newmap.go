@@ -26,6 +26,11 @@ type NewMapFiles struct {
 	Seed           *uint32
 	MapGenSettings []byte
 	MapSettings    []byte
+	// Idle, when set, is the caller's check that the world's server is down.
+	// SetNewMap calls it holding the world's lock, after the save check, and
+	// returns its error unchanged, so no start can slip in between the check
+	// and the write.
+	Idle func() error
 }
 
 // SetNewMap saves step 3 for a world that has new_map and no save: it
@@ -34,9 +39,9 @@ type NewMapFiles struct {
 // preset and seed in new_map. It takes the world's lock, so a busy world
 // is refused with ErrBusy. It refuses a world with a save (ErrMapMade), one
 // without new_map (ErrNotNewMap), an archived one (ErrWorldArchived) and
-// one a newer Foreman wrote (ErrNewerFormat). It takes no snapshot, since
-// the world has no save to lose (SPEC 5.6, 11.3). Nothing changes when it
-// refuses.
+// one a newer Foreman wrote (ErrNewerFormat), and whatever Idle returns. It
+// takes no snapshot, since the world has no save to lose (SPEC 5.6, 11.3).
+// Nothing changes when it refuses.
 func (m *Manager) SetNewMap(ctx context.Context, id string, files NewMapFiles) error {
 	if err := checkMapFiles(files.Preset, files.MapGenSettings, files.MapSettings); err != nil {
 		return err
@@ -66,6 +71,11 @@ func (m *Manager) SetNewMap(ctx context.Context, id string, files NewMapFiles) e
 	}
 	if meta.NewMap == nil {
 		return ErrNotNewMap
+	}
+	if files.Idle != nil {
+		if err := files.Idle(); err != nil {
+			return err
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return err
