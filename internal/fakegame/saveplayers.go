@@ -36,6 +36,9 @@ type SavePlayersOutput struct {
 	// Raw, when not empty, is written as the file's bytes instead of JSON, for
 	// the bad-output result. The other fields are then ignored.
 	Raw string `json:"raw"`
+	// NoOutput makes the run exit 0 and leave no file, as a game that ran
+	// without the helper writing anything does (bad-output).
+	NoOutput bool `json:"no_output"`
 }
 
 // DefaultSavePlayers is the canned read: 276 hours 40 minutes of game time
@@ -133,6 +136,9 @@ func fakeSavePlayers(c dockertest.Container) error {
 		return fmt.Errorf("the fake game's save players container has no save file at %s", save)
 	}
 	cfg := currentSavePlayers()
+	if cfg.NoOutput {
+		return nil
+	}
 	var b []byte
 	if cfg.Raw != "" {
 		b = []byte(cfg.Raw)

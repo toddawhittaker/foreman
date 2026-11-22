@@ -167,6 +167,24 @@ func TestSavePlayersRunEmptyAndRaw(t *testing.T) {
 	}
 }
 
+// NoOutput ends the run with 0 and no file.
+func TestSavePlayersRunNoOutput(t *testing.T) {
+	t.Cleanup(fakegame.ResetSavePlayers)
+	fakegame.SetSavePlayers(fakegame.SavePlayersOutput{NoOutput: true})
+	r := newRig(t, fakegame.Config{})
+	c, work := savePlayersRun(t, r, image21, listOf2, nil, true)
+	if c.State.Status != "exited" || c.State.ExitCode != 0 {
+		t.Fatalf("state %+v, want exited with 0", c.State)
+	}
+	if _, err := os.Stat(filepath.Join(work, gameenv.SavePlayersFile)); err == nil {
+		t.Error("a no-output run left a file")
+	}
+	h := r.game.HookHandler()
+	if w := hook(t, h, http.MethodPost, "/save-players", `{"no_output":true}`); w.Code != http.StatusNoContent {
+		t.Errorf("the hook answered %d", w.Code)
+	}
+}
+
 // The preview modes still end a save read: a failure leaves no file.
 func TestSavePlayersRunHonoursPreviewMode(t *testing.T) {
 	fakegame.ResetSavePlayers()
