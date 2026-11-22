@@ -377,8 +377,8 @@ func TestHostileEntitiesRefused(t *testing.T) {
 		"inverted box":          types + "[0,5,5,1,1]\n",
 		"two values a line":     types + "[0,1,1,2,2][0,1,1,2,2]\n",
 		"fractional box":        types + "[0,0.5,0.5,1.5,1.5]\n",
-		"box over 256 wide":     types + "[0,0,0,257,1]\n",
-		"box over 256 tall":     types + "[0,0,0,1,257]\n",
+		"box over 64 wide":      types + "[0,0,0,65,1]\n",
+		"box over 64 tall":      types + "[0,0,0,1,65]\n",
 	}
 	for name, in := range cases {
 		t.Run(name, func(t *testing.T) {
