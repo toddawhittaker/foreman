@@ -253,3 +253,26 @@ func TestPreviewWithAWorldRefusals(t *testing.T) {
 		t.Errorf("%d containers made, folders %v", n, r.previewFolders())
 	}
 }
+
+// SPEC 5.6: a world's Space Age is whether its mods enable it, as its
+// catalogue says. A world whose flag says Space Age but whose mod list turns
+// space-age off previews and charts as a world without it, and one that
+// still asks for Space Age is refused.
+func TestPreviewWithAWorldUsesTheModsSpaceAge(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := newModdedWorld(t, r)
+	r.writeFile(id, filepath.Join(world.ModsDir, world.ModListFile),
+		[]byte(`{"mods":[{"name":"base","enabled":true},{"name":"space-age","enabled":false},{"name":"planet","enabled":true}]}`))
+	q := worldRequest(id)
+	q.SpaceAge = false
+	if _, err := r.c.Preview(context.Background(), q); err != nil {
+		t.Errorf("preview without Space Age: %v", err)
+	}
+	if _, err := r.c.Chart(context.Background(), q, "cerys"); err != nil {
+		t.Errorf("chart without Space Age: %v", err)
+	}
+	q.SpaceAge = true
+	if _, err := r.c.Preview(context.Background(), q); !errors.Is(err, ErrPreviewInvalid) {
+		t.Errorf("preview with Space Age: error %v, want ErrPreviewInvalid", err)
+	}
+}

@@ -14,6 +14,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -38,7 +39,8 @@ func (s *server) addNewMapTools(srv *mcp.Server) {
 			"Give a preset, a seed and per-planet control values in controls, or give map_exchange_string alone. " +
 			"The call replaces whatever was saved: controls are laid over the preset, anything not given is the preset's, and a seed left out is chosen at random. " +
 			"Use get_new_map for the planets, controls and what each supports. A planet or control the world does not have, a value a control does not support, " +
-			"or a map exchange string from another game line refuses the whole call. Refused for a world with a save, an archived one, or one whose server is running or starting."}, s.mcpSetNewMap)
+			"or a map exchange string from another game line refuses the whole call. Refused for a world with a save, an archived one, one whose server is running or starting, " +
+			"or one whose own planet list cannot be read (get_new_map says built_in_planets), since saving would drop its mods' planets."}, s.mcpSetNewMap)
 }
 
 // mcpNewMapPercents lists the percentages a frequency, size or richness takes.
@@ -141,17 +143,19 @@ func mcpNewMapRefusal(sum world.Summary, meta world.Meta) error {
 	return nil
 }
 
-// mcpNewMapFor finds the world a call names and reads what its settings are
-// laid out from. A world with a save, or one not waiting for a map, is
-// refused before any planet list is read.
-func (s *server) mcpNewMapFor(ctx context.Context, sum world.Summary) (mcpNewMapWorld, error) {
+// mcpNewMapMeta reads the world.json of the world a call names, and refuses
+// a world with a save or one not waiting for a map.
+func (s *server) mcpNewMapMeta(sum world.Summary) (world.Meta, error) {
 	meta, err := s.readWorldMeta(sum.ID)
 	if err != nil {
-		return mcpNewMapWorld{}, s.mcpWorldFail("read the world", err)
+		return world.Meta{}, s.mcpWorldFail("read the world", err)
 	}
-	if err := mcpNewMapRefusal(sum, meta); err != nil {
-		return mcpNewMapWorld{}, err
-	}
+	return meta, mcpNewMapRefusal(sum, meta)
+}
+
+// mcpNewMapFor reads what a world's settings are laid out from, for a world
+// mcpNewMapMeta let through.
+func (s *server) mcpNewMapFor(ctx context.Context, sum world.Summary, meta world.Meta) (mcpNewMapWorld, error) {
 	line, ok := mapgen.Line(meta.GameVersion)
 	if !ok {
 		return mcpNewMapWorld{}, errors.New("this world's game version has no map settings Foreman knows")
@@ -165,16 +169,6 @@ func (s *server) mcpNewMapFor(ctx context.Context, sum world.Summary) (mcpNewMap
 		return mcpNewMapWorld{}, errors.New("this world has no planets to set a map for")
 	}
 	return mcpNewMapWorld{sum: sum, meta: meta, line: line, cat: cat, layout: layoutNewMap(line, cat), builtIn: err != nil}, nil
-}
-
-// readWorldMeta reads a world's world.json.
-func (s *server) readWorldMeta(id string) (world.Meta, error) {
-	root, err := s.worlds.OpenWorld(id)
-	if err != nil {
-		return world.Meta{}, err
-	}
-	defer func() { _ = root.Close() }()
-	return world.ReadMeta(root)
 }
 
 const mcpNewMapBuiltInNote = "The world's own planet list could not be read, so the game's built-in planets are listed; a planet or control only its mods add is not offered."
@@ -291,7 +285,11 @@ func (s *server) mcpGetNewMap(ctx context.Context, _ *mcp.CallToolRequest, in mc
 	if err != nil {
 		return nil, mcpNewMapOut{}, err
 	}
-	w, err := s.mcpNewMapFor(ctx, sum)
+	meta, err := s.mcpNewMapMeta(sum)
+	if err != nil {
+		return nil, mcpNewMapOut{}, err
+	}
+	w, err := s.mcpNewMapFor(ctx, sum, meta)
 	if err != nil {
 		return nil, mcpNewMapOut{}, err
 	}
@@ -364,11 +362,10 @@ type mcpSetNewControl struct {
 }
 
 type mcpSetNewMapOut struct {
-	World          mcpWorldRef `json:"world"`
-	Preset         string      `json:"preset,omitempty"`
-	Seed           string      `json:"seed"`
-	Modified       bool        `json:"modified"`
-	BuiltInPlanets bool        `json:"built_in_planets"`
+	World    mcpWorldRef `json:"world"`
+	Preset   string      `json:"preset,omitempty"`
+	Seed     string      `json:"seed"`
+	Modified bool        `json:"modified"`
 }
 
 // mcpNewMapName quotes a name a caller sent, cut short, so a refusal names
@@ -559,14 +556,24 @@ func (s *server) mcpSetNewMap(ctx context.Context, req *mcp.CallToolRequest, in 
 	if sum.Archived {
 		return nil, mcpSetNewMapOut{}, world.ErrWorldArchived
 	}
-	// Checked early too, so a running world is told so rather than that its map is made;
-	// the check that counts runs again under the world's lock in SetNewMap.
+	// In step 3's order: a world with a save is told so even while its server runs.
+	meta, err := s.mcpNewMapMeta(sum)
+	if err != nil {
+		return nil, mcpSetNewMapOut{}, err
+	}
+	// Checked before the planet run too; the check that counts runs again
+	// under the world's lock in SetNewMap.
 	if err := s.newMapIdle(sum.ID); err != nil {
 		return nil, mcpSetNewMapOut{}, err
 	}
-	w, err := s.mcpNewMapFor(ctx, sum)
+	w, err := s.mcpNewMapFor(ctx, sum, meta)
 	if err != nil {
 		return nil, mcpSetNewMapOut{}, err
+	}
+	if w.builtIn {
+		// Saving the built-in planets would drop every setting of the mods'
+		// planets, so step 3 refuses it too (SPEC 5.6).
+		return nil, mcpSetNewMapOut{}, errors.New(inEnglish(i18n.M("newmap.error.builtin")))
 	}
 	post, err := mcpNewMapPost(w, in)
 	if err != nil {
@@ -581,10 +588,10 @@ func (s *server) mcpSetNewMap(ctx context.Context, req *mcp.CallToolRequest, in 
 	if err := s.worlds.SetNewMap(ctx, w.sum.ID, files); err != nil {
 		return nil, mcpSetNewMapOut{}, s.mcpNewMapSaveFail(err)
 	}
-	s.audit(ctx, mcpActor(req), AuditNewMap, w.sum.ID, newMapDetail(f))
-	out := mcpSetNewMapOut{World: worldRef(w.sum), Preset: f.Preset, Modified: f.Modified, BuiltInPlanets: w.builtIn}
+	s.audit(ctx, mcpActor(req), AuditNewMap, w.sum.ID, newMapDetail(f, w.meta.GameVersion))
+	out := mcpSetNewMapOut{World: worldRef(w.sum), Preset: f.Preset, Modified: f.Modified}
 	if files.Seed != nil {
 		out.Seed = strconv.FormatUint(uint64(*files.Seed), 10)
 	}
-	return mcpText("The map settings of %s were saved (%s).", w.sum.Name, newMapDetail(f)), out, nil
+	return mcpText("The map settings of %s were saved (%s).", w.sum.Name, newMapDetail(f, w.meta.GameVersion)), out, nil
 }

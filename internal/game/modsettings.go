@@ -328,12 +328,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	defs = slices.DeleteFunc(defs, func(d modsettings.Definition) bool { return d.Mod == modsettingsmod.ModName })
 	sections := c.localeSections(id, localeCfgs)
 	out := &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: modSettingsLocale(sections, defs)}
-	// Space Age is whether the world's mods enable it, as WorldCatalogue reads it.
-	spaceAge := meta.SpaceAge
-	if enabled, err := c.enabledModNames(id); err == nil {
-		spaceAge = enabled[world.ModSpaceAge]
-	}
-	out.Catalogues, out.PlanetsErr = worldCatalogues(planetsJSON, planetsErr, sections, line, spaceAge)
+	out.Catalogues, out.PlanetsErr = worldCatalogues(planetsJSON, planetsErr, sections, line, c.worldSpaceAge(id, meta))
 	if out.PlanetsErr != nil {
 		c.log.Warn("using the built-in planets for the world", "world", id, "error", out.PlanetsErr)
 	}
@@ -395,6 +390,18 @@ func (c *Controller) worldCatalogue(ctx context.Context, id, lang string, cached
 		return builtin, defs.PlanetsErr
 	}
 	return defs.Catalogue(lang), nil
+}
+
+// worldSpaceAge is whether the world has Space Age (SPEC 5.6): whether its
+// mods enable it, which an imported world's flag may not say, or the flag
+// when its mods cannot be read. Its catalogue, previews and charts all use
+// this one answer.
+func (c *Controller) worldSpaceAge(id string, meta world.Meta) bool {
+	enabled, err := c.enabledModNames(id)
+	if err != nil {
+		return meta.SpaceAge
+	}
+	return enabled[world.ModSpaceAge]
 }
 
 // cachedModSettingDefs is the world's cached mod settings, if any.

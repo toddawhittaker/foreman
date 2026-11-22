@@ -32,10 +32,9 @@ func (k previewKey) planet(p string) string {
 // settingsKey hashes everything that changes the map, so the same settings
 // find the pictures and counts already made. The size is part of it, as it
 // changes every picture; the planet asked for and the world name are not.
-// cat is the planets and controls the settings are laid out from: the
-// line's built-in ones, or the world's own when req.World is set. mods is
-// the world's mods key, or "" without a world: the same settings with other
-// mods make another map (SPEC 5.6, ADR 0033).
+// cat is the world's planets and controls, which the settings are laid out
+// from and split by. mods is the world's mods key: the same settings with
+// other mods make another map (SPEC 5.6, ADR 0033).
 func settingsKey(req game.PreviewRequest, cat mapgen.Catalogue, mods string) previewKey {
 	shared := func(mapGen, mapSettings []byte) string {
 		return hashJSON(struct {
@@ -56,13 +55,7 @@ func settingsKey(req game.PreviewRequest, cat mapgen.Catalogue, mods string) pre
 		// (checked on the real 2.1.24 game), so they share a key.
 		mapGen, mapSettings = defaultFiles(line, req.GameVersion, cat)
 	}
-	// Without a world every built-in planet's controls are split out, as a
-	// control of a planet the world lacks cannot change its map either.
-	split := cat
-	if req.World == "" {
-		split = mapgen.Builtin(line, true)
-	}
-	rest, own, ok := splitControls(split, mapGen)
+	rest, own, ok := splitControls(cat, mapGen)
 	if !ok {
 		return k
 	}

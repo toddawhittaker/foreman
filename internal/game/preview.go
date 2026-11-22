@@ -424,13 +424,13 @@ func writePreviewFiles(dir *os.Root, req PreviewRequest) error {
 // settings run, and copies of its mod-list.json and mod-settings.dat. It
 // never holds the world's own folder, and it holds the world's lock only
 // while it reads the world. A world that server control holds is
-// world.ErrBusy; one whose game version or Space Age is not the request's
-// is ErrPreviewInvalid; mods past the link caps are world.ErrModsTooBig. The
+// world.ErrBusy; one whose game version or Space Age (worldSpaceAge) is not
+// the request's is ErrPreviewInvalid; mods past the link caps are world.ErrModsTooBig. The
 // run mounts the linked zips read-only with worldModMounts.
 func (c *Controller) makeWorldPreviewDir(base *os.Root, req PreviewRequest) (string, error) {
 	check := func(meta world.Meta) error {
-		if meta.GameVersion != req.GameVersion || meta.SpaceAge != req.SpaceAge {
-			return fmt.Errorf("%w: the world is Factorio %s with Space Age %t", ErrPreviewInvalid, meta.GameVersion, meta.SpaceAge)
+		if spaceAge := c.worldSpaceAge(req.World, meta); meta.GameVersion != req.GameVersion || spaceAge != req.SpaceAge {
+			return fmt.Errorf("%w: the world is Factorio %s with Space Age %t", ErrPreviewInvalid, meta.GameVersion, spaceAge)
 		}
 		return nil
 	}

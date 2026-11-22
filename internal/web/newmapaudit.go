@@ -5,13 +5,14 @@ package web
 const AuditNewMap = "new-map"
 
 // newMapDetail is the audit detail of a saved map: the preset, and whether
-// the settings change it, or that a map exchange string made it.
-func newMapDetail(f MapForm) string {
-	if f.Mode == modeExchange {
-		return "map exchange string"
+// the settings change it, or that a map exchange string made it, then the
+// world's game version. The page and set_new_map both write it.
+func newMapDetail(f MapForm, version string) string {
+	switch {
+	case f.Mode == modeExchange:
+		return "map exchange string, " + version
+	case f.Modified:
+		return "preset " + f.Preset + ", modified, " + version
 	}
-	if f.Modified {
-		return "preset " + f.Preset + ", modified"
-	}
-	return "preset " + f.Preset
+	return "preset " + f.Preset + ", " + version
 }

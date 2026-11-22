@@ -17,7 +17,9 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -262,5 +264,33 @@ func TestAPINewMapToolsMatchMCP(t *testing.T) {
 	_, mcpFailed := mcpCall(t, g.harness, secret, "set_new_map", bad)
 	if rec.Code == http.StatusOK || !mcpFailed || !strings.Contains(rec.Body.String(), "nope") {
 		t.Errorf("a bad planet over REST: %d %q (mcp refused: %v)", rec.Code, rec.Body, mcpFailed)
+	}
+}
+
+// SPEC 23.2, 5.6: when a world's own planets cannot be read, set_new_map is
+// refused the same way over REST and /mcp, with step 3's reason, and neither
+// writes anything.
+func TestAPISetNewMapRefusesTheBuiltInPlanetsAsMCPDoes(t *testing.T) {
+	g := newModsRig(t, false)
+	apiOnFor(t, g.harness)
+	u, _, _ := g.store.UserByUsername(context.Background(), "alice")
+	secret, _ := apiToken(t, g.harness, u, "Script", auth.ScopeAdmin)
+	nm := &nmRig{modsRig: g}
+	// 2.1.20 has no game image on this rig, so the planet run cannot start.
+	viaAPI := nm.newMapWorld("Through REST", "2.1.20", true, fakegame.FakePlanetMod)
+	viaMCP := nm.newMapWorld("Through MCP", "2.1.20", true, fakegame.FakePlanetMod)
+	want := inEnglish(i18n.M("newmap.error.builtin"))
+	tree := dataStat(t, g.worlds.Dirs())
+
+	body, _ := json.Marshal(map[string]any{"world_id": viaAPI, "preset": "marathon"})
+	rec := apiReq(g.harness, http.MethodPost, toolPath("set_new_map"), string(body), bearer(secret))
+	if rec.Code == http.StatusOK || !strings.Contains(rec.Body.String(), want) {
+		t.Errorf("REST: %d %q, want %q", rec.Code, rec.Body, want)
+	}
+	if out, failed := mcpCall(t, g.harness, secret, "set_new_map", map[string]any{"world_id": viaMCP, "preset": "marathon"}); !failed {
+		t.Errorf("MCP saved: %s", asJSON(out))
+	}
+	if diff := diffStat(tree, dataStat(t, g.worlds.Dirs())); diff != "" {
+		t.Errorf("a refusal changed something: %s", diff)
 	}
 }

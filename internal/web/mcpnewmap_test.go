@@ -13,8 +13,11 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -227,7 +230,7 @@ func TestMCPSetNewMapPreset(t *testing.T) {
 	if r.config(id, world.MapGenSettingsFile).Found || r.config(id, world.MapSettingsFile).Found {
 		t.Error("an unchanged preset wrote a file")
 	}
-	if want := []string{"Claude|alice|" + id + "|preset rich-resources"}; strings.Join(r.newMapAudits(), ";") != strings.Join(want, ";") {
+	if want := []string{"Claude|alice|" + id + "|preset rich-resources, 2.0.77"}; strings.Join(r.newMapAudits(), ";") != strings.Join(want, ";") {
 		t.Errorf("audit %q, want %q", r.newMapAudits(), want)
 	}
 	if len(r.snapshotsOf(id)) != before {
@@ -288,7 +291,7 @@ func TestMCPSetNewMapControlsWriteBothFiles(t *testing.T) {
 	if !ms.Found {
 		t.Error("map-settings.json is missing")
 	}
-	if want := "Claude|alice|" + id + "|preset rich-resources, modified"; strings.Join(r.newMapAudits(), ";") != want {
+	if want := "Claude|alice|" + id + "|preset rich-resources, modified, 2.1.24"; strings.Join(r.newMapAudits(), ";") != want {
 		t.Errorf("audit %q, want %q", r.newMapAudits(), want)
 	}
 }
@@ -376,7 +379,7 @@ func TestMCPSetNewMapExchangeString(t *testing.T) {
 	if !r.config(id, world.MapGenSettingsFile).Found || !r.config(id, world.MapSettingsFile).Found {
 		t.Error("the string's two files were not written")
 	}
-	if want := "Claude|alice|" + id + "|map exchange string"; strings.Join(r.newMapAudits(), ";") != want {
+	if want := "Claude|alice|" + id + "|map exchange string, 2.0.77"; strings.Join(r.newMapAudits(), ";") != want {
 		t.Errorf("audit %q, want %q", r.newMapAudits(), want)
 	}
 }
@@ -429,12 +432,52 @@ func TestMCPNewMapRefusesAWorldThatCannotTakeIt(t *testing.T) {
 	}
 }
 
+// waitState waits until server control shows the world in state want.
+func (r *nmRig) waitState(id string, want game.State) {
+	r.t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for r.ctrl.Status(id).State != want && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if st := r.ctrl.Status(id).State; st != want {
+		r.t.Fatalf("state %s, want %s", st, want)
+	}
+}
+
+// startStillWaiting starts the world's server, then gives the world back its
+// new_map and takes away the save the start made, so it waits for its map
+// while its server is up, as it does early in a first start.
+func (r *nmRig) startStillWaiting(id string) {
+	r.t.Helper()
+	nm := r.meta(id).NewMap
+	r.startGame(id)
+	root, err := r.worlds.OpenWorld(id)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	meta, err := world.ReadMeta(root)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	meta.NewMap = nm
+	if err := world.WriteMeta(root, meta); err != nil {
+		r.t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(r.worlds.Dirs().Worlds, id, world.SavesDir)); err != nil {
+		r.t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(r.worlds.Dirs().Worlds, id, world.SavesDir), 0o750); err != nil {
+		r.t.Fatal(err)
+	}
+}
+
 // SPEC 5.6: set_new_map is refused while the world's server is running or
 // starting, and nothing changes.
 func TestMCPSetNewMapRefusedWhileTheServerRuns(t *testing.T) {
 	r := newNMRig(t)
 	id := r.newMapWorld("Fresh", "2.1.24", false)
-	r.startGame(id)
+	r.startStillWaiting(id)
 	tree, audits := dataStat(t, r.worlds.Dirs()), len(r.audit())
 	res, _ := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "preset": "rich-resources"})
 	if !res.IsError || !strings.Contains(resultText(res), "running or starting") {
@@ -450,14 +493,11 @@ func TestMCPSetNewMapRefusedWhileTheServerRuns(t *testing.T) {
 func TestMCPSetNewMapRefusedAfterACrashAndWhileBusy(t *testing.T) {
 	r := newNMRig(t)
 	id := r.newMapWorld("Fresh", "2.1.24", false)
-	r.startGame(id)
+	r.startStillWaiting(id)
 	if err := r.fake.Crash(game.ContainerName(id), 1, false); err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(10 * time.Second)
-	for st := r.ctrl.Status(id).State; st != game.StateCrashed && time.Now().Before(deadline); st = r.ctrl.Status(id).State {
-		time.Sleep(20 * time.Millisecond)
-	}
+	r.waitState(id, game.StateCrashed)
 	tree, audits := dataStat(t, r.worlds.Dirs()), len(r.audit())
 	res, _ := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "preset": "marathon"})
 	if !res.IsError || !strings.Contains(resultText(res), "running or starting") {
@@ -527,9 +567,47 @@ func TestMCPNewMapSaysWhenTheBuiltInPlanetsStandIn(t *testing.T) {
 	if out["built_in_planets"] != true || out["note"] == nil || hasPlanet(out, fakegame.FakePlanet) || !hasPlanet(out, "nauvis") {
 		t.Errorf("get_new_map: %s", asJSON(out))
 	}
-	res, set := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "preset": "marathon"})
-	if res.IsError || set["built_in_planets"] != true {
-		t.Errorf("set_new_map: %s %s", resultText(res), asJSON(set))
+	// Saving the built-in planets would drop the settings of the mods'
+	// planets, so set_new_map refuses as step 3 does, and writes nothing.
+	tree, audits := dataStat(t, r.worlds.Dirs()), len(r.audit())
+	res, _ := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "preset": "marathon"})
+	if want := inEnglish(i18n.M("newmap.error.builtin")); !res.IsError || resultText(res) != want {
+		t.Errorf("set_new_map: %q, want %q", resultText(res), want)
+	}
+	if diff := diffStat(tree, dataStat(t, r.worlds.Dirs())); diff != "" || len(r.audit()) != audits {
+		t.Errorf("a refusal changed something: %s", diff)
+	}
+}
+
+// SPEC 5.6: a world whose server state Foreman cannot tell may be running,
+// so set_new_map refuses it, and nothing changes.
+func TestMCPSetNewMapRefusedWhenTheStateIsUnknown(t *testing.T) {
+	r := newNMRig(t)
+	id := r.newMapWorld("Paused", "2.1.24", false)
+	// Docker shows the game paused, which server control cannot account for.
+	r.fake.Daemon().Seed(dockertest.Container{Name: game.ContainerName(id), Status: "paused",
+		Spec: docker.ContainerSpec{Labels: map[string]string{game.LabelWorld: id, game.LabelInstall: filepath.Dir(r.worlds.Dirs().Worlds)}}})
+	r.waitState(id, game.StateUnknown)
+	tree, audits := dataStat(t, r.worlds.Dirs()), len(r.audit())
+	res, _ := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "preset": "marathon"})
+	if !res.IsError || resultText(res) != errNewMapServerUp.Error() {
+		t.Errorf("set_new_map: %q", resultText(res))
+	}
+	if diff := diffStat(tree, dataStat(t, r.worlds.Dirs())); diff != "" || len(r.audit()) != audits {
+		t.Errorf("a refusal changed something: %s", diff)
+	}
+}
+
+// SPEC 5.6: a world with a save is told its map is made even while its
+// server runs, as step 3 tells it.
+func TestMCPSetNewMapSaysTheMapIsMadeBeforeTheServerRuns(t *testing.T) {
+	r := newNMRig(t)
+	id := r.newMapWorld("Made", "2.1.24", false)
+	r.startStillWaiting(id)
+	r.copySave(id, "2.1.24-no-space-age.zip")
+	res, _ := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "preset": "marathon"})
+	if !res.IsError || !strings.Contains(resultText(res), "already has a save") {
+		t.Errorf("set_new_map: %q", resultText(res))
 	}
 }
 

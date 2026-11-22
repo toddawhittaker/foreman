@@ -63,6 +63,10 @@ func TestReviewAndResultOfAnUnfinishedWorldOfferTheNextStep(t *testing.T) {
 	_, body := g.getStatus(kindPlanPath(id, "install", "alpha"))
 	wantIn(t, "review", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`, `id="plan-skip"`, `href="`+newMapPath(id)+`"`)
 	wantIn(t, "review text", plain(body), "Skip to map settings")
+	// Install is the step's own action, so the skip is a secondary link after it.
+	if apply, skip := strings.Index(body, `id="act-apply"`), strings.Index(body, `id="plan-skip"`); apply < 0 || skip < apply {
+		t.Errorf("Skip to map settings at %d comes before Install at %d", skip, apply)
+	}
 
 	g.wantRedirectTo(modsPath(id)+ownResultQuery, g.post(modsPath(id)+"/plan", planValues(t, body)))
 	if err := g.waitResult(id, game.AuditMods); err != nil {

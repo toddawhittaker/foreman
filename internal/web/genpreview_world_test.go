@@ -45,7 +45,7 @@ func cerysCatalogue() mapgen.Catalogue {
 func withWorldCatalogue(t *testing.T, cat mapgen.Catalogue, err error) {
 	t.Helper()
 	old := worldCatalogue
-	worldCatalogue = func(*server, context.Context, string, i18n.Locale) (mapgen.Catalogue, error) { return cat, err }
+	worldCatalogue = func(*server, context.Context, world.Summary, i18n.Locale) (mapgen.Catalogue, error) { return cat, err }
 	t.Cleanup(func() { worldCatalogue = old })
 }
 

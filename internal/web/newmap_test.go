@@ -181,19 +181,6 @@ func TestNewMapFillFromExchangeString(t *testing.T) {
 	}
 }
 
-// SPEC 5.6: controls the saved settings name that the mods no longer add
-// are listed, so the person knows the next save drops them.
-func TestGoneControls(t *testing.T) {
-	cat := mapgen.Builtin("2.0", true)
-	got := goneControls([]byte(`{"autoplace_controls":{"iron-ore":{},"fake-ore":{},"aaa-gone":{}}}`), cat)
-	if !slices.Equal(got, []string{"aaa-gone", "fake-ore"}) {
-		t.Errorf("gone %v", got)
-	}
-	if got := goneControls([]byte(`not json`), cat); got != nil {
-		t.Errorf("gone %v for a damaged file", got)
-	}
-}
-
 // SPEC 17.10: the step bar is three links, the current one marked.
 func TestFlowSteps(t *testing.T) {
 	steps := flowSteps("w1", flowStepMods)
@@ -204,6 +191,24 @@ func TestFlowSteps(t *testing.T) {
 		if s.Current != (i == 1) {
 			t.Errorf("step %d current %t", i+1, s.Current)
 		}
+	}
+}
+
+// SPEC 5.6: on step 1 there is no world yet, so the step bar marks step 1
+// and steps 2 and 3 are not links.
+func TestFlowStepsBeforeTheWorldExists(t *testing.T) {
+	steps := GeneratePage{}.Steps()
+	if len(steps) != 3 || steps[0].Path != PathGenerate || !steps[0].Current || steps[1].Path != "" || steps[2].Path != "" || steps[1].Current || steps[2].Current {
+		t.Fatalf("steps %+v", steps)
+	}
+	hn := newGenerateHarness(t, nil)
+	page := hn.get(PathGenerate, withCookie(hn.signIn())).Body.String()
+	bar := regexp.MustCompile(`(?s)<nav class="subnav"[^>]*id="flow-steps">.*?</nav>`).FindString(page)
+	if bar == "" {
+		t.Fatalf("no step bar on step 1:\n%s", page)
+	}
+	if n := strings.Count(bar, "<a "); n != 1 || !strings.Contains(bar, `<a href="`+PathGenerate+`" aria-current="step">`) {
+		t.Errorf("step 1's bar has %d links:\n%s", n, bar)
 	}
 }
 

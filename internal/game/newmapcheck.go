@@ -2,11 +2,10 @@ package game
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"slices"
 	"strings"
 
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -42,29 +41,15 @@ func (c *Controller) staleControlsCheck(ctx context.Context, id string, check wo
 	if !file.Found {
 		return check, nil
 	}
-	var settings struct {
-		Controls map[string]json.RawMessage `json:"autoplace_controls"`
-	}
-	// A file the game cannot read fails the create on its own; this check
-	// is only about controls.
-	if json.Unmarshal(file.Data, &settings) != nil {
-		return check, nil
-	}
 	cat, err := c.cachedWorldCatalogue(id, "en")
 	if err != nil {
 		c.log.Warn("did not check the map settings against the world's planets", "world", id, "error", err)
 		return check, nil
 	}
-	var stale []string
-	for name := range settings.Controls {
-		if _, ok := cat.Controls[name]; !ok {
-			stale = append(stale, name)
-		}
-	}
+	stale := mapgen.StaleControls(file.Data, cat)
 	if len(stale) == 0 {
 		return check, nil
 	}
-	slices.Sort(stale)
 	check.Problems = append(check.Problems, world.Problem{
 		Kind:  world.ProblemStaleControls,
 		Names: stale,

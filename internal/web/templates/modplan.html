@@ -227,10 +227,11 @@
     {{- end}}
     <div class="actions">
       <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
-      {{- if .InFlow}}<a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>{{end}}
       {{- if .CanApply}}
       <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}</button>
       {{- end}}
+      {{- /* The step's own action comes first; skipping it is the secondary way on (SPEC 5.6). */}}
+      {{- if .InFlow}}<a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>{{end}}
     </div>
     </div>
   </form>

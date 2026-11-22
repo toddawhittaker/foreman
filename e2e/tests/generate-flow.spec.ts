@@ -54,6 +54,18 @@ test("the whole flow: step 1, skip the mods, a preset on step 3, saved in five c
   await checkPage(page);
 });
 
+test("step 1 shows the step bar with step 1 current, and steps 2 and 3 are not links yet", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  const steps = page.getByRole("navigation", { name: "Steps to make the world" });
+  await expect(steps.getByRole("listitem")).toHaveCount(3);
+  await expect(steps.getByRole("link")).toHaveCount(1);
+  await expect(steps.getByRole("link", { name: "1. World" })).toHaveAttribute("aria-current", "step");
+  await expect(steps.getByRole("listitem").nth(1)).toHaveText("2. Mods");
+  await expect(steps.getByRole("listitem").nth(2)).toHaveText("3. Map settings");
+  await checkPage(page);
+});
+
 test("an Unfinished world says so on the list and its page, and Continue opens step 3", async ({ page, foreman, fakeGame }, info) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
