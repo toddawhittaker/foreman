@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, openPlanetRow } from "./foreman.js";
 import type { Locator, Page } from "@playwright/test";
+import { newMapPath, openNewMap } from "./newmap.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -16,7 +17,7 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
-  await page.goto("/generate");
+  await openNewMap(page);
   await openPlanetRow(page, "nauvis");
 });
 
@@ -105,12 +106,12 @@ test("moving Richness sets every ticked resource, leaves an unticked one and the
   expect(await keys()).toEqual(keysBefore);
   expect(keysBefore.some((k) => k.includes("all"))).toBe(false);
 
-  // What is generated reflects the values, and stone's box that was ticked again sends its own.
+  // What is saved reflects the values, and stone's box that was ticked again sends its own.
   await page.locator("#mg-nauvis-stone-on").uncheck();
-  await page.getByLabel("World name").fill("All rich");
-  await page.getByRole("button", { name: "Generate world" }).click();
-  await expect(page).toHaveURL("/worlds/all-rich?generated=1");
-  const mg = JSON.parse(readFileSync(configFile(foreman.dataDir, "all-rich", "map-gen-settings.json"), "utf8"));
+  const world = new URL(page.url()).pathname.split("/")[2];
+  await page.getByRole("button", { name: "Save map settings" }).click();
+  await expect(page).toHaveURL(`${newMapPath(world)}?saved=1`);
+  const mg = JSON.parse(readFileSync(configFile(foreman.dataDir, world, "map-gen-settings.json"), "utf8"));
   expect(mg.autoplace_controls["iron-ore"].richness).toBe(6);
   expect(mg.autoplace_controls["copper-ore"].richness).toBe(6);
   expect(mg.autoplace_controls["stone"].size).toBe(0);

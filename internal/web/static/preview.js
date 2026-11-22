@@ -30,6 +30,8 @@ function startPreviewWithForm(start) {
 startPreviewWithForm(() => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const formEl = () => document.getElementById("generate-form");
+  // Generate's radio is ticked for the settings, and step 3 has the settings only, in a hidden field.
+  const settingsMode = () => formEl().querySelector('#mode-settings:checked, input[type="hidden"][name="mode"][value="settings"]');
   const button = () => document.getElementById("preview-button");
   if (!formEl() || !button()) return;
   const path = button().getAttribute("formaction");
@@ -407,7 +409,7 @@ startPreviewWithForm(() => {
     // The seed used is kept, so the world made is the one previewed (SPEC 5.6).
     // It is the page's own choice, not the person's, so leaving does not warn about it.
     // A box with focus is left alone, as writing moves the caret and typing would be appended; it is filled when focus leaves.
-    if (seed && seed.value === seedSent && seedSent.trim() === "" && fresh.dataset.seed && formEl().querySelector("#mode-settings:checked")) {
+    if (seed && seed.value === seedSent && seedSent.trim() === "" && fresh.dataset.seed && settingsMode()) {
       if (document.activeElement === seed) seedToFill = fresh.dataset.seed;
       else fillSeed(seed, fresh.dataset.seed);
     }
@@ -543,7 +545,7 @@ startPreviewWithForm(() => {
     const value = seedToFill;
     if (seed.id !== "generate-seed") return;
     seedToFill = "";
-    if (value && seed.value.trim() === "" && formEl().querySelector("#mode-settings:checked")) fillSeed(seed, value);
+    if (value && seed.value.trim() === "" && settingsMode()) fillSeed(seed, value);
   });
 
   // A new section brings the page's amounts box unticked; it shows the choice made.
@@ -1253,7 +1255,7 @@ startPreviewWithForm(() => {
     if (!panel || !dialog.open || planet === panelPlanet || refreshing > 0) return;
     putBack();
     // An exchange string makes the map by itself; the settings are not used.
-    if (!formEl().querySelector("#mode-settings:checked")) return;
+    if (!settingsMode()) return;
     for (const tab of ["resources", "terrain"]) {
       const part = el("large-" + tab);
       const nodes = fieldsOf(tab, planet);

@@ -1,5 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo, openPlanetRow } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
+import { typeBadSeed } from "./newmaperror.js";
 
 // DESIGN 8.7, SPEC 5.6 and 17: with Space Age each tab shows one row per
 // planet. One planet is open at a time, the same in every tab, and the map
@@ -28,7 +30,7 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 // preview arrives (the first click once focused the row, which opened it,
 // and the click's own toggle shut it again).
 test("one click opens a planet row and it stays open", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await row(page, "resources", "gleba").locator("summary").click();
   await page.waitForTimeout(2000);
   expect(await isOpen(page, "resources", "gleba")).toBe(true);
@@ -40,7 +42,7 @@ test("one click opens a planet row and it stays open", async ({ page }) => {
 });
 
 test("opening a row closes the other and keeps focus on it", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   // On a phone the rows start closed, so the preview sits near the top.
   const phone = (page.viewportSize()?.width ?? 1280) <= 480;
   expect(await openRows(page, "resources")).toEqual(phone ? [] : ["nauvis"]);
@@ -53,19 +55,20 @@ test("opening a row closes the other and keeps focus on it", async ({ page }) =>
 });
 
 test("the open planet carries across tabs and over an error round trip", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await row(page, "resources", "fulgora").locator("summary").click();
   await tab(page, "Terrain").click();
   await expect.poll(() => openRows(page, "terrain")).toEqual(["fulgora"]);
-  // The name is left empty, so the form comes back with its error.
-  await page.getByRole("button", { name: "Generate world" }).click();
-  await expect(page.locator("#error-summary")).toContainText("name");
+  // The seed is no number, so the form comes back with its error.
+  await typeBadSeed(page);
+  await page.getByRole("button", { name: "Save map settings" }).click();
+  await expect(page.locator("#error-summary")).toContainText("seed");
   expect(await openRows(page, "resources")).toEqual(["fulgora"]);
   expect(await openRows(page, "terrain")).toEqual(["fulgora"]);
 });
 
 test("the open row stays open when a preset redraws the settings", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await row(page, "resources", "fulgora").locator("summary").click();
   await expect(page.locator("#open-planet")).toHaveValue("fulgora");
   await page.locator("#generate-preset").selectOption({ label: "Rail world" });
@@ -76,7 +79,7 @@ test("the open row stays open when a preset redraws the settings", async ({ page
 });
 
 test("opening a row switches the preview to that planet, and says so once", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis/);
   // Every text the live region is given, in order.
   await page.evaluate(() => {
@@ -97,7 +100,7 @@ test("opening a row switches the preview to that planet, and says so once", asyn
 });
 
 test("a planet the large view moves to opens its row without moving focus", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
   await page.getByRole("region", { name: "Map preview" }).getByRole("link", { name: /opens the large view/ }).click();
   await page.keyboard.press("ArrowRight");
@@ -116,7 +119,7 @@ test("a planet the large view moves to opens its row without moving focus", asyn
 });
 
 test("cliffs can be switched off, which disables their settings and marks the preset modified", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await openPlanetRow(page);
   await tab(page, "Terrain").click();
   const box = page.locator("#mg-nauvis-nauvis_cliff-on");
@@ -136,7 +139,7 @@ test("cliffs can be switched off, which disables their settings and marks the pr
 });
 
 test("a needed resource warns while off, under its box and in the summary", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await openPlanetRow(page);
   const summary = page.locator("#need-summary");
   await expect(summary).toBeHidden();
@@ -157,7 +160,7 @@ test("a needed resource warns while off, under its box and in the summary", asyn
 // The warning takes a line of its own under the resource's settings, so they
 // keep the columns every other resource's row has.
 test("a needed resource's warning leaves its settings in line with the other rows", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await openPlanetRow(page);
   const columns = (id: string) =>
     page.locator(`#${id} > .field`).evaluateAll((fs) => fs.map((f) => {
@@ -182,10 +185,11 @@ test("a needed resource's warning leaves its settings in line with the other row
 });
 
 test("the server shows the same warning after a round trip", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await openPlanetRow(page);
   await page.locator("#mg-nauvis-stone-on").uncheck();
-  await page.getByRole("button", { name: "Generate world" }).click();
+  await typeBadSeed(page);
+  await page.getByRole("button", { name: "Save map settings" }).click();
   await expect(page.locator("#error-summary")).toBeVisible();
   await expect(page.locator("#mg-nauvis-stone-on-need")).toHaveText(/^Without stone on Nauvis/);
   await expect(page.locator("#need-summary")).toBeVisible();
@@ -193,7 +197,7 @@ test("the server shows the same warning after a round trip", async ({ page }) =>
 
 test("the rows work by keyboard alone at 320 px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
-  await page.goto("/generate");
+  await openNewMap(page);
   const summary = row(page, "resources", "gleba").locator("summary");
   await tabTo(page, summary);
   await page.keyboard.press("Enter");

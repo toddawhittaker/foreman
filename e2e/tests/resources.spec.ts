@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page, Request, Route } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
 
 // SPEC 5.6, 17: "Show resource amounts" in the large view. Off on load and
 // kept while the page lives; ticked, the planet shown is counted once its
@@ -38,7 +39,7 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 });
 
 async function openLarge(page: Page) {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await section(page).getByRole("link", { name: /opens the large view/ }).click();
   await expect(dialog(page)).toBeVisible();
@@ -202,7 +203,7 @@ test("a tick during the pause after a settings change waits for the new picture"
 test("Preview map clicked during a change's pause leaves the box working", async ({ page }) => {
   const asked: string[] = [];
   page.on("request", (r) => { if (isResources(r.url())) asked.push(r.url()); });
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   // The change starts the pause; Preview map, at once, drops its draw and draws every planet.
   await page.locator("#generate-seed").fill("4242");
@@ -238,7 +239,7 @@ test("unticking or closing the view drops the count on its way", async ({ page }
 
 test("another planet drops the count and counts the planet shown, around its demolisher labels", async ({ page }) => {
   // Vulcanus's territories are ticked on the page first, so its large view has demolisher labels.
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
@@ -398,7 +399,7 @@ test.describe("on the One planet picture", () => {
   const announcer = (page: Page) => page.locator("#announcer");
 
   async function onePlanet(page: Page) {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
   }
 
