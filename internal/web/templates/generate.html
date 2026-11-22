@@ -1,7 +1,6 @@
 {{define "title"}}{{t "worlds.generate.title"}}{{end}}
 
-{{define "scripts"}}<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
-{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}{{end}}
+{{define "scripts"}}<script src="{{static "generate.js"}}" defer></script>{{end}}
 
 {{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
 
@@ -40,14 +39,9 @@
   <div class="actions"><a href="{{.FavoritesPath}}" id="act-favorites">{{t "favorites.list.link"}}</a></div>
 </form>
 {{- end}}
-{{- /* autocomplete="off": a browser coming Back would put back some fields from the last
-     visit but not the hidden ones naming the preset that filled them (SPEC 5.6). */}}
-<form method="post" action="{{.Path}}" class="panel generate" id="generate-form" novalidate autocomplete="off" data-tab="{{.Form.Tab}}" data-ach-word="{{t "mapgen.achievement.warning"}}">
-  {{- /* The first submit button is the one Enter presses; without this it would be the hidden preset reset. */}}
-  <button type="submit" id="generate-default" hidden></button>
+{{- /* Step 1 asks only what the world is; its mods and its map come in steps 2 and 3 (SPEC 5.6, 17.9). */}}
+<form method="post" action="{{.Path}}" class="panel generate" id="generate-form" novalidate>
   {{template "summary" .Problems}}
-  {{- /* On a wide screen the settings sit beside a preview that stays in view (DESIGN 8.6). */}}
-  <div class="gen-grid">
   <div class="gen-settings">
   {{template "required-note"}}
   {{- with .Form}}
@@ -60,6 +54,11 @@
     {{- end}}
   </div>
   {{- end}}
+  {{- /* The favorite's preset; its map files are read again when the world is made (SPEC 5.12). */}}
+  {{- if .Favorite}}
+  <input type="hidden" name="preset" value="{{.Preset}}">
+  <input type="hidden" name="filled_from" value="{{.Preset}}">
+  {{- end}}
   <div class="field">
     <label for="generate-name" class="required">{{t "worlds.import.name.label"}}</label>
     <p class="hint" id="generate-name-hint">{{t "worlds.import.name.hint" "count" 100}}</p>
@@ -69,8 +68,7 @@
     <p class="error" id="generate-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
     {{- end}}
   </div>
-  {{/* A change here redraws the map settings for the new line (htmx); without script the server does it when the form is sent. */}}
-  <div class="version-fields" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#line-box" hx-select="#line-box" hx-select-oob="#ach-summary,#need-summary" hx-swap="outerHTML" hx-sync="this:replace">
+  <div class="version-fields">
     <div class="field">
       <label for="generate-version-select">{{t "worlds.fact.game_version"}}</label>
       <select id="generate-version-select" name="game_version" hx-get="{{$.Page.VersionsPath}}" hx-trigger="load" hx-target="this" hx-select="unset" hx-swap="beforeend">
@@ -99,198 +97,24 @@
       {{- end}}
     </div>
   </div>
-
-  <div id="map-section" class="map-section">
-    <fieldset class="modes">
-      <legend>{{t "worlds.generate.mode.legend"}}</legend>
-      <div class="mode">
-        <label class="check"><input type="radio" id="mode-settings" name="mode" value="settings" aria-describedby="mode-settings-hint"{{if eq .Mode "settings"}} checked{{end}}> {{t "worlds.generate.mode.settings"}}</label>
-        <p class="hint" id="mode-settings-hint">{{t "worlds.generate.mode.settings_hint"}}</p>
-      </div>
-      <div class="mode">
-        <label class="check"><input type="radio" id="mode-exchange" name="mode" value="exchange" aria-describedby="mode-exchange-hint"{{if eq .Mode "exchange"}} checked{{end}}> {{t "worlds.generate.mode.exchange"}}</label>
-        <p class="hint" id="mode-exchange-hint">{{t "worlds.generate.mode.exchange_hint"}}</p>
-      </div>
-    </fieldset>
-    <input type="hidden" id="filled-seed" name="filled_seed" value="{{.FilledSeed}}">
-    {{- if not .FormError.IsZero}}
-    <p class="error" id="generate-form-error"><strong>{{t "common.error.label"}}</strong> {{msg .FormError}}</p>
-    {{- end}}
-
-      {{- /* Everything here follows the game line, so a version change redraws it whole. */}}
-      <div class="gen-main" id="line-box">
-        <div id="map-key-box">
-          <input type="hidden" name="map_key" value="{{.MapKey}}">
-          {{- if .Reset}}
-          <div class="message message--note" id="map-reset" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
-            <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.reset_note"}}</p>
-          </div>
-          {{- end}}
-        </div>
-        {{template "map-settings" .}}
-        <div class="mode-panel mode-panel--exchange">
-          <div class="field">
-            <label for="exchange-string">{{t "worlds.generate.exchange.label"}}</label>
-            <p class="hint" id="exchange-hint">{{t "worlds.generate.exchange.hint"}}</p>
-            <textarea id="exchange-string" name="exchange" rows="6" class="mono" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="soft"
-              {{- if not .ExchangeError.IsZero}} aria-invalid="true" aria-describedby="exchange-hint exchange-string-error"{{else}} aria-describedby="exchange-hint"{{end}}>{{.Exchange}}</textarea>
-            {{- if not .ExchangeError.IsZero}}
-            <p class="error" id="exchange-string-error"><strong>{{t "common.error.label"}}</strong> {{msg .ExchangeError}}</p>
-            {{- end}}
-          </div>
-        </div>
-      </div>
-  </div>
-  {{- /* The download is about the host, not the map, so it follows the map's settings. */}}
   {{- if .CanDownload}}
   <div class="field">
     <label class="check"><input type="checkbox" id="generate-download" name="download" aria-describedby="generate-download-hint"{{if .Download}} checked{{end}}> {{t "worlds.import.download.label"}}</label>
     <p class="hint" id="generate-download-hint">{{tHTML "worlds.generate.download.hint" "image" (code "factoriotools/factorio")}}</p>
   </div>
   {{- end}}
-  {{template "achievements" .}}
-  {{template "needs" .}}
-  </div>
-      <div class="gen-preview">
-        {{template "generate-preview" $.Page}}
-        <div id="preview-wait" class="wait" role="status">
-          <p>{{t "worlds.generate.preview.wait"}}</p>
-          <progress aria-label="{{t "worlds.generate.preview.wait_label"}}"></progress>
-        </div>
-        {{/* Shown by the script when the preview request itself fails; htmx swaps nothing then. */}}
-        <template id="preview-failed">
-          <section aria-labelledby="preview-failed-heading">
-            <h2 id="preview-failed-heading">{{t "worlds.generate.preview.heading"}}</h2>
-            <div class="message message--error">
-              <p><strong>{{t "common.error.label"}}</strong> {{t "worlds.generate.preview.request_failed"}}</p>
-            </div>
-          </section>
-        </template>
-        {{- if $.Page.CanPreview}}
-        {{/* Says a new preview is being drawn as the settings change; the script fills it. */}}
-        <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
-        {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider, redraws on a change,
-             and moves it into the drawn preview's slot above the picture, carrying it across each reply (DESIGN 8.6). */}}
-        <div class="field step" id="preview-size-field">
-          <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
-          <select id="generate-preview-size" name="preview_size"
-            {{- if not .PreviewSizeError.IsZero}} aria-invalid="true" aria-describedby="generate-preview-size-hint generate-preview-size-error"{{else}} aria-describedby="generate-preview-size-hint"{{end}}>
-            {{- range .PreviewSizes}}
-            <option value="{{.Size}}"{{if .Chosen}} selected{{end}}>{{if .Default}}{{t "worlds.generate.preview.size_default" "size" (print .Size)}}{{else}}{{t "worlds.generate.preview.size_option" "size" (print .Size)}}{{end}}</option>
-            {{- end}}
-          </select>
-          <p class="hint" id="generate-preview-size-hint">{{t "worlds.generate.preview.size_hint"}}</p>
-          {{- if not .PreviewSizeError.IsZero}}
-          <p class="error" id="generate-preview-size-error"><strong>{{t "common.error.label"}}</strong> {{msg .PreviewSizeError}}</p>
-          {{- end}}
-        </div>
-        {{template "generate-large-view"}}
-        {{- end}}
-      </div>
+  {{- if not .PresetError.IsZero}}
+  <p class="error" id="generate-preset" tabindex="-1"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>
+  {{- end}}
+  {{- if not .FormError.IsZero}}
+  <p class="error" id="mode-settings" tabindex="-1"><strong>{{t "common.error.label"}}</strong> {{msg .FormError}}</p>
+  {{- end}}
   {{- end}}
   </div>
-  <div class="actions gen-actions">
+  <div class="actions">
     <a href="{{worldsPath}}">{{t "worlds.cancel"}}</a>
-    {{- if .CanPreview}}
-    <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
-      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
-    {{- end}}
     <button type="submit" class="button button--primary" id="generate-button">{{t "worlds.generate.button"}}</button>
   </div>
 </form>
-{{/* Foreman's own question when leaving with settings that are not saved (DESIGN 7.4, 12); the script opens it. */}}
-<dialog id="leave-dialog" class="leave-dialog" aria-labelledby="leave-title" aria-describedby="leave-text">
-  <h2 id="leave-title">{{t "worlds.generate.leave.title"}}</h2>
-  <p id="leave-text">{{t "worlds.generate.leave.text"}}</p>
-  <div class="actions">
-    <button type="button" class="button button--primary" id="leave-stay">{{t "worlds.generate.leave.stay"}}</button>
-    <button type="button" class="button" id="leave-go">{{t "worlds.generate.leave.leave"}}</button>
-  </div>
-</dialog>
 {{end}}
-{{- end}}
-
-{{/* The map settings: the preset, the seed and the tabs. The preset select
-     and the reset redraw this part (htmx); without script the form is sent
-     and the server does it (DESIGN 8.6). Takes GenerateForm. */}}
-{{define "map-settings" -}}
-<div class="mode-panel mode-panel--settings">
-<div id="preset-box" class="mode-panel">
-  {{- if .Refilled}}
-  <div class="message message--note" id="map-refilled" tabindex="-1" autofocus>
-    <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.refilled" "preset" (.PresetMsg .Preset)}}</p>
-  </div>
-  {{- end}}
-  <div class="field">
-    <label for="generate-preset">{{t "worlds.generate.preset.label"}}</label>
-    <div class="inline-row preset-row">
-      <select id="generate-preset" name="preset" hx-post="{{.RefreshPath}}" hx-trigger="change" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary" hx-swap="outerHTML" hx-sync="this:replace"
-        aria-describedby="preset-modified{{if not .PresetError.IsZero}} generate-preset-error{{end}}"{{if not .PresetError.IsZero}} aria-invalid="true"{{end}}>
-        {{- range .Presets}}
-        <option value="{{.}}"{{if eq . $.Preset}} selected{{end}}>{{msg ($.PresetMsg .)}}</option>
-        {{- end}}
-      </select>
-      <span class="modified" id="preset-modified" data-word="{{t "mapgen.preset.modified"}}">{{if .Modified}}{{t "mapgen.preset.modified"}}{{end}}</span>
-      {{- /* One reset for the whole world, back to the version's default preset; the seed stays (SPEC 5.6). */}}
-      <button type="submit" class="button button--quiet" id="preset-reset" name="reset" value="1" formaction="{{.RefreshPath}}"
-        hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary,#generate-preset" hx-swap="outerHTML"{{if .AtDefaults}} hidden{{end}}>{{t "mapgen.preset.reset"}}</button>
-      {{- /* Takes the reset's place once it has run, and sends the settings it threw away back (script only). */}}
-      <button type="button" class="button button--quiet" id="preset-undo" hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary,#generate-preset" hx-swap="outerHTML" hidden>{{t "mapgen.preset.undo"}}</button>
-    </div>
-    {{- if not .PresetError.IsZero}}
-    <p class="error" id="generate-preset-error"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>
-    {{- end}}
-  </div>
-</div>
-  {{- /* The seed is not the preset's, so a redraw of the settings leaves it as typed. */}}
-  {{- with .MapGen.Seed}}
-  <div class="field">
-    <label for="{{.ID}}">{{t "mapgen.seed.label"}}</label>
-    <p class="hint" id="{{.ID}}-hint">{{t "mapgen.seed.hint"}}</p>
-    <div class="inline-row">
-      <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono" inputmode="numeric" autocomplete="off" spellcheck="false"
-        {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
-      {{- /* It needs script, so the style sheet shows it only once the script has run. */}}
-      <button type="button" class="button seed-random" id="seed-random">{{t "mapgen.seed.random"}}</button>
-    </div>
-    {{- if not .Error.IsZero}}
-    <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-    {{- end}}
-  </div>
-  {{- end}}
-</div>
-<div id="map-settings" class="mode-panel mode-panel--settings">
-  <input type="hidden" name="filled_from" value="{{.FilledFrom}}">
-  <input type="hidden" name="settings_shown" value="1">
-  <input type="hidden" name="open_planet" id="open-planet" value="{{.MapGen.OpenPlanet}}">
-  {{template "mapgen-panels" .}}
-</div>
-{{- end}}
-
-{{/* One summary of the achievements the settings turn off, by the Generate
-     button (SPEC 5.6). The script shows and hides its lines as fields change.
-     Takes GenerateForm. */}}
-{{define "achievements" -}}
-<div class="message message--warning achievements" id="ach-summary"{{if not .Blocked}} hidden{{end}}>
-  <p><strong>{{t "common.label.warning"}}</strong> {{t "mapgen.achievement.summary"}}</p>
-  <ul>
-    {{- range .Reasons}}
-    <li data-reason="{{.Key}}"{{if not .Active}} hidden{{end}}>{{msg .Msg}}</li>
-    {{- end}}
-  </ul>
-</div>
-{{- end}}
-
-{{/* One summary of the resources the game needs that are off, by the
-     Generate button; a warning, not a block (SPEC 5.6). The script shows and
-     hides its lines as boxes change. Takes GenerateForm. */}}
-{{define "needs" -}}
-<div class="message message--warning achievements" id="need-summary"{{if not .MapGen.NeedsOff}} hidden{{end}}>
-  <p><strong>{{t "common.label.warning"}}</strong> {{t "mapgen.need.summary"}}</p>
-  <ul>
-    {{- range .MapGen.Needs}}
-    <li data-need-key="{{.NeedKey}}"{{if .Checked}} hidden{{end}}>{{msg .Need}}</li>
-    {{- end}}
-  </ul>
-</div>
 {{- end}}

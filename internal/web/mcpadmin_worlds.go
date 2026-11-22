@@ -119,16 +119,14 @@ func (s *server) mcpGenerate(ctx context.Context, req *mcp.CallToolRequest, in m
 		form.Set("download", "on")
 	}
 	version, preset, spaceAge := in.GameVersion, in.Preset, in.SpaceAge
-	var files world.FavoriteFiles
 	if in.FavoriteID != "" {
 		if s.favorites == nil {
 			return nil, mcpGenerateOut{}, errors.New("favorites are off on this Foreman")
 		}
-		fav, ff, err := s.favorites.Get(in.FavoriteID)
+		fav, _, err := s.favorites.Get(in.FavoriteID)
 		if err != nil {
 			return nil, mcpGenerateOut{}, errors.New(inEnglish(i18n.M("favorites.error.gone")))
 		}
-		files = ff
 		form.Set(favoriteQuery, fav.ID)
 		version = cmp.Or(version, fav.GameVersion)
 		preset = cmp.Or(preset, fav.Preset)
@@ -154,23 +152,7 @@ func (s *server) mcpGenerate(ctx context.Context, req *mcp.CallToolRequest, in m
 		form.Set("preset", preset)
 	}
 	form.Set("filled_from", form.Get("preset"))
-	// A favorite's map settings file stands in for the fields the page
-	// would have filled from it.
-	if len(files.MapSettings) > 0 {
-		for k, v := range mapSettingsValues(version, cmp.Or(form.Get("preset"), defaultPreset), files.MapSettings) {
-			form[k] = v
-		}
-	}
-	f, nw, ok := s.readGenerateValues(ctx, form, kindGenerate)
-	if ok && in.FavoriteID != "" {
-		s.readFavorite(&f, in.FavoriteID)
-		if f.favoriteMap() {
-			f.fillFromFiles(files)
-			if nw.Seed != nil {
-				f.MapGen = f.MapGen.WithSeed(*nw.Seed)
-			}
-		}
-	}
+	f, nw, ok := s.readStepOne(ctx, form, false)
 	by := mcpActor(req)
 	id, err := s.generateWorld(ctx, by, &f, nw, ok, form)
 	switch {

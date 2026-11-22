@@ -102,10 +102,6 @@ func (s *server) handleGenerateChart(w http.ResponseWriter, r *http.Request, u s
 		return
 	}
 	bad := func() { s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest}) }
-	if !in.world {
-		bad()
-		return
-	}
 	id := r.PostFormValue(previewWorldField)
 	sum, err := s.worlds.Get(r.Context(), id)
 	if err != nil {
@@ -127,7 +123,7 @@ func (s *server) handleGenerateChart(w http.ResponseWriter, r *http.Request, u s
 	view := &PreviewView{Size: f.PreviewSize, OfWorld: true}
 	if !in.ok {
 		view.Chart = &ChartView{Error: i18n.M("mapgen.chart.invalid")}
-		s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-chart")
+		s.fragment(w, r, previewCarrier(in, view), "generate-chart")
 		return
 	}
 	key := chartKey(in.req, f.cat, in.mods, planet)
@@ -157,7 +153,7 @@ func (s *server) handleGenerateChart(w http.ResponseWriter, r *http.Request, u s
 		cv.Path = PathGeneratePreview + "-chart/" + token
 	}
 	view.Chart = cv
-	s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-chart")
+	s.fragment(w, r, previewCarrier(in, view), "generate-chart")
 }
 
 // chartMsgs is how a failed real-game picture is worded. A helper that gives

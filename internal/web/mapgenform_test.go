@@ -412,7 +412,7 @@ func renderPartial(t *testing.T, loc i18n.Locale, f MapGenForm) string {
 	t.Helper()
 	r := newTestRenderer(t)
 	var b bytes.Buffer
-	if err := r.pages[loc]["generate"].ExecuteTemplate(&b, "map-settings", GenerateForm{MapGen: f, Preset: "default", Presets: []string{"default"}}); err != nil {
+	if err := r.pages[loc]["newmap"].ExecuteTemplate(&b, "newmap-settings", NewMapForm{MapForm: MapForm{MapGen: f, Preset: "default", Presets: []string{"default"}}}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	return b.String()

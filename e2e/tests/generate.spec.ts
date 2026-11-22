@@ -52,7 +52,7 @@ async function save(page: Page) {
   await expect(page.locator("#newmap-done")).toBeVisible();
 }
 
-test("a preset world takes three clicks from the Server page and says its map is made at the first start", async ({ page, foreman, fakeGame }) => {
+test("a world with the defaults takes three clicks from the Server page and lands on its mods", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const clicks = await countClicks(page);
   await clicks.reset();
@@ -61,27 +61,24 @@ test("a preset world takes three clicks from the Server page and says its map is
   await page.getByRole("link", { name: "Generate a world" }).click();
   await expect(page).toHaveURL("/generate");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Generate a world");
-  // The version is the active world's, the preset is the default, the seed is blank, or the one a preview drawn on load used.
+  // Step 1 asks what the world is; its map settings are step 3's (SPEC 5.6).
   await expect(page.getByLabel("Game version")).toContainText("2.1.24, same as the active world");
-  await expect(mode(page, "Map settings")).toBeChecked();
-  await expect(page.locator("#generate-preset")).toHaveValue("default");
-  await expect(page.locator("#generate-seed")).toHaveValue(/^\d*$/);
+  await expect(page.locator("#generate-preset")).toHaveCount(0);
+  await expect(page.locator("#exchange-string")).toHaveCount(0);
   await checkPage(page);
 
   await page.getByLabel("World name").fill("Fresh start");
-  await page.locator("#generate-preset").selectOption({ label: "Rich resources" });
-  await page.locator("#generate-seed").fill("12345");
   await page.getByRole("button", { name: "Generate world" }).click();
 
-  await expect(page).toHaveURL("/worlds/fresh-start?generated=1");
-  await expect(page.locator(".message--success")).toHaveText("Done: Generated Fresh start. Its map is made when it first starts.");
-  await expectWithin(clicks, 3, "generate a preset world");
+  await expect(page).toHaveURL("/worlds/fresh-start/mods?generated=1");
+  await expectWithin(clicks, 3, "generate a world with the defaults");
   await checkPage(page);
 
   const meta = worldJSON(foreman.dataDir, "fresh-start");
-  expect(meta).toMatchObject({ game_version: "2.1.24", space_age: true, new_map: { preset: "rich-resources", seed: 12345 } });
+  expect(meta).toMatchObject({ game_version: "2.1.24", space_age: true });
+  expect(meta.new_map.seed).toEqual(expect.any(Number));
   expect(readdirSync(join(foreman.dataDir, "worlds", "fresh-start", "saves"))).toEqual([]);
-  // A preset needs no settings files.
+  // The default preset needs no settings files.
   expect(existsSync(configFile(foreman.dataDir, "fresh-start", "map-gen-settings.json"))).toBe(false);
   expect(existsSync(configFile(foreman.dataDir, "fresh-start", "map-settings.json"))).toBe(false);
 });
@@ -181,28 +178,6 @@ test("a seed error names the field, keeps what was typed and saves nothing", asy
   expect(worldJSON(foreman.dataDir, id).new_map).toEqual(before);
 });
 
-// A redraw that lands while the person has the seed selected leaves it selected,
-// so what they type replaces it rather than going in front of it (SPEC 5.6).
-test("a redraw keeps a selected seed selected, so typing replaces it", async ({ page, foreman, fakeGame }) => {
-  await setUp(page, foreman, fakeGame!);
-  await page.goto("/generate");
-  const seed = page.locator("#generate-seed");
-  await seed.fill("12345");
-  let release = () => {};
-  const held = new Promise<void>((r) => { release = r; });
-  await page.route("**/generate/refresh", async (route) => { await held; await route.continue(); });
-  await (await typedVersion(page)).fill("2.1.24");
-  const sent = page.waitForRequest("**/generate/refresh");
-  await seed.selectText(); // leaving the version box sends the redraw
-  await sent;
-  const swapped = page.evaluate(() => new Promise((r) => document.body.addEventListener("htmx:afterSettle", r, { once: true })));
-  release();
-  await swapped;
-  await expect(seed).toBeFocused();
-  await page.keyboard.insertText("not a number");
-  await expect(seed).toHaveValue("not a number");
-});
-
 test("a long world name fits at any width", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
@@ -298,29 +273,18 @@ test("the preset and seed line up their controls on a wide screen", async ({ pag
   }
 });
 
-// DESIGN 8.6: the map options follow the game version and Space Age. A version
-// typed on step 1 redraws the options there; the options themselves are step 3's.
-test("choosing another game line redraws the presets, and Space Age is refused for 1.1", async ({ page, foreman, fakeGame }) => {
+// SPEC 5.6: step 1 refuses Space Age on a game line without it, on the field.
+test("Space Age is refused for 1.1 on step 1, and the fixed form makes the world", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
-  const presets = page.locator("#generate-preset");
-  await expect(presets.locator("option", { hasText: "Lakes" })).toHaveCount(1);
-  await expect(page.locator('input[name="map_key"]')).toHaveValue("2.1|1");
-
   await (await typedVersion(page)).fill("1.1.110");
-  await (await typedVersion(page)).press("Tab");
-  await expect(page.locator('input[name="map_key"]')).toHaveValue("1.1|0");
-  await expect(presets.locator("option", { hasText: "Lakes" })).toHaveCount(0);
-  await expect(presets.locator("option", { hasText: "Ribbon world" })).toHaveCount(1);
-  await expect(page.locator("#announcer")).toContainText("Map options updated");
-
   await page.getByLabel("World name").fill("Old game");
   await page.getByLabel("Download the game image", { exact: false }).uncheck();
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page.locator("#error-summary")).toContainText("Space Age needs Factorio 2.0 or later");
   await page.getByLabel("Space Age is on").uncheck();
   await page.getByRole("button", { name: "Generate world" }).click();
-  await expect(page).toHaveURL("/worlds/old-game?generated=1");
+  await expect(page).toHaveURL("/worlds/old-game/mods?generated=1");
   expect(worldJSON(foreman.dataDir, "old-game")).toMatchObject({ game_version: "1.1.110", space_age: false });
 });
 
@@ -369,25 +333,6 @@ test("1.1 offers recipe, technology and research queue choices; 2.1 does not", a
   expect(ds).toMatchObject({ recipe_difficulty: 1, technology_difficulty: 0, research_queue_setting: "never" });
 });
 
-// DESIGN 8.8: the preview is optional and adds no screen to Generate. Turning
-// Space Age off on step 1 redraws the settings there.
-test("changed settings take the seed too, and Nauvis only without Space Age", async ({ page, foreman, fakeGame }) => {
-  await setUp(page, foreman, fakeGame!);
-  await page.goto("/generate");
-  await setStep(page, "mg-nauvis-iron-ore-size", "200");
-  await page.getByLabel("World name").fill("Custom preview");
-  await page.getByRole("button", { name: "Preview map" }).click();
-  const section = page.getByRole("region", { name: "Map preview" });
-  await expect(section.getByRole("img")).toHaveCount(5);
-  expect(await page.locator("#generate-seed").inputValue()).toMatch(/^\d+$/);
-  await page.getByLabel("Space Age is on").uncheck();
-  // Turning Space Age off redraws the settings for Nauvis alone; a new preview has one picture.
-  await expect(page.locator("#panel-resources details")).toHaveCount(0);
-  await page.getByRole("button", { name: "Preview map" }).click();
-  await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(1);
-  await page.getByRole("button", { name: "Generate world" }).click();
-  await expect(page).toHaveURL("/worlds/custom-preview?generated=1");
-});
 
 // DESIGN 8.8: the preview is optional and adds no screen to Generate.
 test.describe("map preview", () => {
@@ -441,11 +386,15 @@ test.describe("map preview", () => {
     await save(page);
   });
 
-  test("a bad form is shown again whole, with its errors", async ({ page }) => {
+  // Step 3 keeps its form as typed; the preview slot lists the problems, each linked to its field (SPEC 5.6).
+  test("a bad form keeps the form and lists its errors in the preview", async ({ page }) => {
     await page.locator("#generate-seed").fill("not a number");
     await page.getByRole("button", { name: "Preview map" }).click();
-    await expect(page.locator("#error-summary")).toContainText("Enter the seed as a whole number");
-    await expect(page.locator("#error-summary")).toBeFocused();
+    const preview = page.locator("#preview");
+    await expect(preview).toContainText("Enter the seed as a whole number");
+    await expect(page.locator("#generate-seed")).toHaveValue("not a number");
+    await preview.getByRole("link", { name: /Enter the seed/ }).click();
+    await expect(page.locator("#generate-seed")).toBeFocused();
   });
 });
 

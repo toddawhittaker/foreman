@@ -51,18 +51,12 @@ func TestPreviewNamesAModdedPlanet(t *testing.T) {
 }
 
 // SPEC 5.6: a world's preview says under its heading what the fast preview
-// cannot show, with a toggletip; Generate's preview of the base game does not.
+// cannot show, with a toggletip.
 func TestPreviewSaysWhatItCannotShow(t *testing.T) {
 	_, _, body := worldPreview(t, &fakePreviewer{}, cerysCatalogue(), nil, "planet", "nauvis")
 	line := html.EscapeString(i18n.English.T("mapgen.preview.limit"))
 	if !strings.Contains(body, `id="preview-limit-line"`) || !strings.Contains(body, line) || !strings.Contains(body, `id="preview-limit-tip"`) {
 		t.Errorf("no limit line and toggletip in:\n%s", body)
-	}
-	hn := newGenerateHarness(t, &fakePreviewer{})
-	c := hn.signIn()
-	rec := hn.postLong(PathGeneratePreview, generateForm(), c)
-	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), `id="preview-limit-line"`) {
-		t.Errorf("Generate's preview: status %d, limit line shown %t", rec.Code, strings.Contains(rec.Body.String(), `id="preview-limit-line"`))
 	}
 }
 
@@ -88,12 +82,6 @@ func TestPreviewNotesAOneColorPicture(t *testing.T) {
 	_, _, body = worldPreview(t, &fakePreviewer{png: solidPNG(t, 64, true)}, cerysCatalogue(), nil, "planet", "nauvis")
 	if strings.Contains(body, `preview-one-color`) {
 		t.Error("a two-color picture has the note")
-	}
-	// Generate's preview has no world mods, so no note.
-	hn := newGenerateHarness(t, &fakePreviewer{png: solidPNG(t, 64, false)})
-	c := hn.signIn()
-	if rec := hn.postLong(PathGeneratePreview, generateForm(), c); rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), `preview-one-color`) {
-		t.Errorf("Generate: status %d, note shown %t", rec.Code, strings.Contains(rec.Body.String(), `preview-one-color`))
 	}
 }
 

@@ -172,21 +172,6 @@ test.describe("with script", () => {
     await expect(page.locator("#preview-status")).toHaveText("");
   });
 
-  test("a setting change in any part of the form redraws, but the name does not", async ({ page }) => {
-    // The name is not a field of step 3, so this one stays on Generate.
-    await page.goto("/generate");
-    await expect(pictures(page)).toHaveCount(1);
-    const sent = autoRequests(page);
-    await page.getByLabel("World name").fill("Only a name");
-    await page.waitForTimeout(1200);
-    expect(sent).toHaveLength(0);
-    await page.locator("#mg-nauvis-iron-ore-size").evaluate((s) => {
-      (s as HTMLSelectElement).value = "200";
-      s.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    await expect.poll(() => sent.length).toBe(1);
-  });
-
   test("a setting change in any part of step 3's form redraws", async ({ page }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);

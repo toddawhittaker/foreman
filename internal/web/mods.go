@@ -201,6 +201,8 @@ type ModsPage struct {
 	// world's unfinished plan beside it (SPEC 9.1, 9.2).
 	Search ModSearchPage
 	Plan   PlanPanel
+	// Generated says step 1 has just made the world (SPEC 5.6, 17.9).
+	Generated bool
 }
 
 // InFlow says the tab is step 2 of the guided Generate: the world has
@@ -411,6 +413,10 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 	}
 	if ended {
 		s.modsOutcome(&p, res)
+	}
+	if r.URL.Query().Get(generatedQuery) != "" && p.InFlow() && p.Done.IsZero() {
+		picks, err := s.store.ModPlan(r.Context(), sum.ID)
+		p.Generated = err == nil && justMade(p.Mods, picks)
 	}
 	if !p.World.Newer && !p.World.Unreadable {
 		if p.Plan, err = s.planPanel(r.Context(), sum, p.Path()); err != nil {

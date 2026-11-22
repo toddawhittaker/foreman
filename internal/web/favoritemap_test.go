@@ -258,14 +258,16 @@ func TestGenerateFormFillsTheFavoritesMapAndPreviewUsesIt(t *testing.T) {
 	hn.withActive(favVersion)
 	favID := favoriteWithMap(t, hn, favs)
 
-	body := hn.get(generateFromPath(favID), withCookie(c)).Body.String()
-	form := NewMapGenFormFromFile(favLine, true, favoriteMapGen(t))
-	s := form.selects()[0]
-	if want := `value="` + s.Value + `" selected`; !containsAfter(body, `id="`+s.ID+`"`, want) {
-		t.Errorf("%s does not show the favorite's %s", s.ID, s.Value)
+	// Step 1 shows no map settings; the world it makes has the favorite's (SPEC 5.12).
+	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("name", "From favorite", "game_version_typed", favVersion, "favorite", favID, "map_key", ""), c))
+	made := leaves(t, hn.config(id, world.MapGenSettingsFile).Data)
+	for k, v := range leaves(t, favoriteMapGen(t)) {
+		if !reflect.DeepEqual(made[k], v) {
+			t.Errorf("world %s: %v, want the favorite's %v", k, made[k], v)
+		}
 	}
-	if !containsAfter(body, `id="generate-seed"`, `value="12345"`) {
-		t.Error("the seed is not the favorite's")
+	if m := hn.meta(id); m.NewMap == nil || m.NewMap.Seed == nil || *m.NewMap.Seed != 12345 {
+		t.Errorf("new_map %+v: the seed is not the favorite's", m.NewMap)
 	}
 
 	hn.postLong(PathGeneratePreview, favoritePost(t, favID), c)
@@ -281,16 +283,6 @@ func TestGenerateFormFillsTheFavoritesMapAndPreviewUsesIt(t *testing.T) {
 	if prev.got[0].Seed != 12345 {
 		t.Errorf("preview seed %s", strconv.FormatUint(uint64(prev.got[0].Seed), 10))
 	}
-}
-
-// containsAfter reports whether want appears within a few thousand bytes
-// after the first marker.
-func containsAfter(body, marker, want string) bool {
-	i := strings.Index(body, marker)
-	if i < 0 {
-		return false
-	}
-	return strings.Contains(body[i:min(len(body), i+4000)], want)
 }
 
 func TestPresetFillStaysNauvisOnly(t *testing.T) {
