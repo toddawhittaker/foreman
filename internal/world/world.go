@@ -6,6 +6,7 @@ package world
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -225,9 +226,14 @@ func (m *Manager) Create(ctx context.Context, name, gameVersion string, spaceAge
 
 // createOptions are the optional world.json fields a new world starts with.
 type createOptions struct {
-	from     *ImportedFrom
-	newMap   *NewMap
-	loadSave string
+	from         *ImportedFrom
+	newMap       *NewMap
+	loadSave     string
+	useWhitelist bool
+	factoryMap   *FactoryMapMode
+	// unknown are fields a newer Foreman wrote at the same format version,
+	// kept as SPEC 5.1 says.
+	unknown map[string]json.RawMessage
 }
 
 // create builds a whole new world, world.json included, in one staging
@@ -281,6 +287,9 @@ func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge
 		CreatedAt:     m.now().UTC(),
 		ImportedFrom:  opts.from,
 		NewMap:        opts.newMap,
+		UseWhitelist:  opts.useWhitelist,
+		FactoryMap:    opts.factoryMap,
+		unknown:       opts.unknown,
 	}); err != nil {
 		return "", err
 	}

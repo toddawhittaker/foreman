@@ -117,9 +117,9 @@ func (o StartOptions) auditDetail() string {
 // that outlives the request. A refusal by the pre-start check is a
 // *PrecheckError.
 func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartOptions) error {
-	// A start cancels any save read of the world, before it takes the lock
-	// a read may be holding (SPEC 8.16).
-	c.cancelSaveCopies(id)
+	// A start cancels any save read of the world, and keeps new ones from
+	// beginning, before it takes the lock a read may be holding (SPEC 8.16).
+	defer c.beginStartSaveCopies(id)()
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return err
