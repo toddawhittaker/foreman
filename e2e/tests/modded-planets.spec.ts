@@ -73,7 +73,7 @@ test("the preview says what it cannot show, and a one-color picture says why", a
   await line.getByRole("button", { name: /what the fast preview cannot show/ }).click();
   await expect(page.locator("#preview-limit-tip")).toBeVisible();
   // The fake game's pictures are one color.
-  await expect(page.locator(".preview-one-color").first()).toContainText("everything near the start outside the map");
+  await expect(page.locator(".preview-one-color").first()).toContainText("everything near the start is outside the map");
   await checkPage(page);
 });
 
