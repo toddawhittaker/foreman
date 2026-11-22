@@ -334,6 +334,9 @@ func fmCheckBoxes(t *testing.T, r fmHelperRun) {
 	for _, row := range rows[1:] {
 		have[strings.ReplaceAll(row, " ", "")] = true
 	}
+	if len(r.Placed) != 3 {
+		t.Fatalf("the probe placed %d buildings, want 3", len(r.Placed))
+	}
 	// Half-size of each building's footprint, in tiles, from its centre.
 	for _, p := range r.Placed {
 		var x1, y1, x2, y2 int
@@ -359,6 +362,7 @@ func fmCheckBoxes(t *testing.T, r fmHelperRun) {
 			continue
 		}
 		want := fmt.Sprintf("[%d,%d,%d,%d,%d]", idx, x1-originX, y1-originY, x2-originX, y2-originY)
+		t.Logf("%s at (%v,%v): expected line %s, chart corner %d,%d", p.Name, p.X, p.Y, want, originX, originY)
 		if !have[want] {
 			t.Errorf("%s at (%v,%v): the helper has no line %s (chart corner %d,%d)", p.Name, p.X, p.Y, want, originX, originY)
 		}
