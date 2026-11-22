@@ -40,8 +40,10 @@ type trackedWorld struct {
 	// only from its target (SPEC 8.14).
 	target saveplayers.Basis
 	// endedAt is the newest run end taken in, so a stopped container seen
-	// at every poll reads the record once.
+	// at every poll reads the record once. lineAt is Docker's time of the
+	// newest line taken in.
 	endedAt time.Time
+	lineAt  time.Time
 	// The last /time reading of the running game, true at gameTimeAt;
 	// asked is when the last ask began, and asking is set while it runs.
 	gameTime   time.Duration
@@ -86,7 +88,7 @@ func (c *Controller) updateRecordLocked(id string, f func(*saveplayers.Record) e
 	}
 	var r saveplayers.Record
 	if len(old) > 0 {
-		if r, err = saveplayers.Parse(old); err != nil {
+		if r, err = saveplayers.Parse(old, c.now()); err != nil {
 			// The game can write the world folder, so a bad record is
 			// read afresh rather than trusted (SPEC 14.6).
 			c.log.Warn("cannot read the players record, so it is read from the save again", "world", id, "error", err)
@@ -151,11 +153,12 @@ func (c *Controller) trackLine(id string, ev Event, loaded string, live bool) {
 	t := c.tracked(id)
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !at.After(t.endedAt) {
-		// A line of a run that has ended, read again as the log is
-		// followed anew: its sessions were closed with it.
+	if !at.After(t.endedAt) || !at.After(t.lineAt) {
+		// A line read again as the log is followed anew: it was taken in
+		// already, or its run has ended and its sessions with it.
 		return
 	}
+	t.lineAt = at
 	switch ev.Kind {
 	case KindPlayerJoined:
 		c.trackRecord(id, func(r *saveplayers.Record) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -44,7 +45,7 @@ func (r *rig) playersRecord(id string) saveplayers.Record {
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	rec, err := saveplayers.Parse(b)
+	rec, err := saveplayers.Parse(b, time.Now())
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -67,7 +68,8 @@ func leaveAt(name string, at time.Time) Event {
 	return Event{Kind: KindPlayerLeft, Player: name, Time: at}
 }
 
-var trackT0 = time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
+// trackT0 is a whole hour a day back, so every moment a test uses is past.
+var trackT0 = time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Hour)
 
 // SPEC 8.14: two players on at once each get their whole time.
 func TestTrackOverlappingSessions(t *testing.T) {
@@ -282,8 +284,12 @@ func TestStopAndReattachTrackRecord(t *testing.T) {
 		p, _ := trackedOf(r.playersRecord(id), "erin")
 		return p.LastSeen != nil && p.LastSeen.After(joined)
 	}, "the stop to close erin's session")
-	if n := len(c2.tracked(id).open); n != 0 {
-		t.Errorf("%d sessions open after the stop", n)
+	tw := c2.tracked(id)
+	tw.mu.Lock()
+	open, ended := maps.Clone(tw.open), tw.endedAt
+	tw.mu.Unlock()
+	if len(open) != 0 {
+		t.Errorf("sessions %v open after the run ended at %v", open, ended)
 	}
 }
 
@@ -396,5 +402,20 @@ func TestTrackIgnoresLinesOfAnEndedRun(t *testing.T) {
 	r.c.trackLine(id, Event{Kind: KindLoadStarted, Time: trackT0.Add(5 * time.Hour)}, "base.zip", true)
 	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.PlayedSeconds() != 10*60 {
 		t.Errorf("ann tracked %d seconds, want %d", p.PlayedSeconds(), 10*60)
+	}
+}
+
+// SPEC 8.14: the log followed anew within a run replays a join after its
+// leave; the player stays off.
+func TestTrackIgnoresLinesReadAgain(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Again")
+	r.putPlayersRecord(id, trackT0)
+	r.c.trackLine(id, joinAt("ann", trackT0.Add(time.Minute)), "", true)
+	r.c.trackLine(id, leaveAt("ann", trackT0.Add(11*time.Minute)), "", true)
+	r.c.trackLine(id, joinAt("ann", trackT0.Add(time.Minute)), "", false)
+	r.c.trackLine(id, Event{Kind: KindSaveFinished, Time: trackT0.Add(time.Hour)}, "", false)
+	if p, _ := trackedOf(r.playersRecord(id), "ann"); p.PlayedSeconds() != 10*60 {
+		t.Errorf("ann played %d seconds, want %d", p.PlayedSeconds(), 10*60)
 	}
 }
