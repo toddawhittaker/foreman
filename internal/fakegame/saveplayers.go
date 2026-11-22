@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -106,6 +108,12 @@ func savePlayersHook() http.Handler {
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 			return
 		}
+		if req.Reset && !reflect.DeepEqual(req.SavePlayersOutput, SavePlayersOutput{}) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "reset stands alone: it takes no other field"})
+			return
+		}
 		if req.Reset {
 			ResetSavePlayers()
 		} else {
@@ -168,42 +176,72 @@ type activeMod struct {
 	Version string `json:"version"`
 }
 
-// activeMods is what the game would load with the work folder's mod list.
+// modFile is the name of a mod's zip or folder: "<name>_<version>", the
+// version being three whole numbers, and ".zip" for a zip. The name may hold
+// underscores, so "alpha_beta_1.0.0.zip" is the mod alpha_beta.
+var modFile = regexp.MustCompile(`^(.+)_(\d+\.\d+\.\d+)(?:\.zip)?$`)
+
+// activeMods is what the game would load with the work folder's mod list,
+// sorted by name as the helper reports them. Like the game, it loads a mod
+// whose zip or folder is in the mods folder though the list does not name it
+// (the game adds such a mod to the list, enabled), and leaves out one the
+// list disables or one it enables that has no files.
 func activeMods(dir, gameVersion, drop string) []activeMod {
-	mods := []activeMod{{Name: world.ModBase, Version: gameVersion}}
-	builtin := world.BuiltinMods(gameVersion)
-	for _, name := range enabledMods(dir) {
-		switch {
-		case name == world.ModBase || name == drop:
-		case slices.Contains(builtin, name):
-			mods = append(mods, activeMod{name, gameVersion})
-		case name == saveplayers.ModName:
-			mods = append(mods, activeMod{name, saveplayers.ModVersion})
-		default:
-			if v, ok := installedModVersion(filepath.Join(dir, world.ModsDir), name); ok {
-				mods = append(mods, activeMod{name, v})
+	installed := installedMods(filepath.Join(dir, world.ModsDir))
+	enabled := map[string]bool{world.ModBase: true}
+	disabled := map[string]bool{}
+	if b, err := os.ReadFile(filepath.Join(dir, world.ModsDir, world.ModListFile)); err == nil { //nolint:gosec // the fake's own test folder
+		var list struct {
+			Mods []struct {
+				Name    string `json:"name"`
+				Enabled bool   `json:"enabled"`
+			} `json:"mods"`
+		}
+		if json.Unmarshal(b, &list) == nil {
+			for _, m := range list.Mods {
+				if m.Enabled {
+					enabled[m.Name] = true
+				} else {
+					disabled[m.Name] = true
+				}
 			}
 		}
 	}
+	for name := range installed {
+		if !disabled[name] {
+			enabled[name] = true
+		}
+	}
+	builtin := world.BuiltinMods(gameVersion)
+	var mods []activeMod
+	for name := range enabled {
+		switch v, ok := installed[name]; {
+		case name == drop:
+		case name == world.ModBase || slices.Contains(builtin, name):
+			mods = append(mods, activeMod{name, gameVersion})
+		case name == saveplayers.ModName && !ok:
+			mods = append(mods, activeMod{name, saveplayers.ModVersion})
+		case ok:
+			mods = append(mods, activeMod{name, v})
+		}
+	}
+	slices.SortFunc(mods, func(a, b activeMod) int { return strings.Compare(a.Name, b.Name) })
 	return mods
 }
 
-// installedModVersion finds the newest "<name>_<version>" zip or folder in
-// the mods folder, which is how the game finds a mod's files.
-func installedModVersion(modsDir, name string) (string, bool) {
-	entries, err := os.ReadDir(modsDir)
-	if err != nil {
-		return "", false
-	}
-	best, found := "", false
+// installedMods maps each mod with a zip or folder in the mods folder to its
+// newest version there, which is the one the game loads.
+func installedMods(modsDir string) map[string]string {
+	entries, _ := os.ReadDir(modsDir)
+	out := map[string]string{}
 	for _, e := range entries {
-		rest, ok := strings.CutPrefix(strings.TrimSuffix(e.Name(), ".zip"), name+"_")
-		if !ok || rest == "" {
+		m := modFile.FindStringSubmatch(e.Name())
+		if m == nil {
 			continue
 		}
-		if !found || world.CompareVersions(rest, best) > 0 {
-			best, found = rest, true
+		if v, ok := out[m[1]]; !ok || world.CompareVersions(m[2], v) > 0 {
+			out[m[1]] = m[2]
 		}
 	}
-	return best, found
+	return out
 }

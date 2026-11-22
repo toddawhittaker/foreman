@@ -118,9 +118,27 @@ func TestSavePlayersRunWritesTheHelpersOutput(t *testing.T) {
 	if !slices.Equal(out.Players, def.Players) {
 		t.Errorf("players %v, want %v", out.Players, def.Players)
 	}
-	want := []string{"base@2.1.24", "quality@2.1.24", "foreman-saveplayers@1.0.0", "alpha@1.10.0"}
+	want := []string{"alpha@1.10.0", "base@2.1.24", "foreman-saveplayers@1.0.0", "quality@2.1.24"}
 	if got := modNames(out); !slices.Equal(got, want) {
 		t.Errorf("active mods %v, want %v", got, want)
+	}
+}
+
+// A file whose text after the name is not a version does not count as that
+// mod ("alpha_beta_1.0.0.zip" is alpha_beta, not alpha), and a mod with files
+// the list does not name is loaded, as the game does; one the list disables
+// is not.
+func TestSavePlayersRunModFiles(t *testing.T) {
+	fakegame.ResetSavePlayers()
+	r := newRig(t, fakegame.Config{})
+	list := `{"mods":[{"name":"base","enabled":true},{"name":"alpha","enabled":true},{"name":"off","enabled":false}]}`
+	_, work := savePlayersRun(t, r, image21, list, []string{
+		"alpha_beta_1.0.0.zip", "alpha_x.zip", "unlisted_2.0.1.zip", "off_1.0.0.zip", "zeta_1.0.0",
+	}, true)
+	got := modNames(readSeed(t, work))
+	want := []string{"alpha_beta@1.0.0", "base@2.1.24", "unlisted@2.0.1", "zeta@1.0.0"}
+	if !slices.Equal(got, want) {
+		t.Errorf("active mods %v, want %v (alpha has no files, off is disabled)", got, want)
 	}
 }
 
@@ -245,6 +263,9 @@ func TestSavePlayersHook(t *testing.T) {
 	_, work = savePlayersRun(t, r, image21, listOf2, nil, true)
 	if out := readSeed(t, work); out.Tick != fakegame.DefaultSavePlayers().Tick {
 		t.Errorf("after reset the tick is %d", out.Tick)
+	}
+	if w := hook(t, h, http.MethodPost, "/save-players", `{"reset":true,"tick":5}`); w.Code != http.StatusBadRequest {
+		t.Errorf("a reset with another field answered %d", w.Code)
 	}
 	if w := hook(t, h, http.MethodPost, "/save-players", `{"nonsense":1}`); w.Code != http.StatusBadRequest {
 		t.Errorf("an unknown field answered %d", w.Code)
