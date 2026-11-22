@@ -121,7 +121,6 @@ var factoryMapMod = saveCopyMod{
 		output: gameenv.FactoryMapDir,
 		memory: FactoryMapMemory,
 	},
-	outputOnDisk: true,
 }
 
 // FactoryMapView is what the map page shows of a world's factory map.
