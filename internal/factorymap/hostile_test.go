@@ -601,7 +601,7 @@ func TestHostileStoreFolderSymlink(t *testing.T) {
 }
 
 // A sparse chart spread over the widest box the limits allow costs memory
-// bounded by the picture, not the box: under MaxOutputBytes in all.
+// bounded by the picture, not the box: under 256 MiB of peak heap.
 func TestHostileSparseChartMemoryBounded(t *testing.T) {
 	if testing.Short() {
 		t.Skip("draws 65,536 chunks")
@@ -646,7 +646,7 @@ func TestHostileSparseChartMemoryBounded(t *testing.T) {
 		return // refusing is within the rules
 	}
 	t.Logf("picture %v, %d tiles a pixel, peak heap %d MiB over the input", img.Bounds(), s.TilesPerPixel, used>>20)
-	if used > MaxOutputBytes {
-		t.Errorf("drawing a sparse chart peaked at %d MiB of heap, past the %d MiB output limit", used>>20, MaxOutputBytes>>20)
+	if used > 256<<20 {
+		t.Errorf("drawing a sparse chart peaked at %d MiB of heap, past the 256 MiB ceiling", used>>20)
 	}
 }
