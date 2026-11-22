@@ -121,15 +121,32 @@ test.describe("the list on the world's Overview page", () => {
     expect(await creates(fakeGame!)).toBe(before + 1);
     expect(await page.evaluate(() => (window as unknown as { marker?: number }).marker)).toBe(1);
 
+    // The fake's canned read (fakegame.DefaultSavePlayers): game tick 59,760,005 (276 h 40 min),
+    // alice online for 36,000,000 ticks (166 h 40 min) and bob for 216,000 (1 h).
     const record = readRecord(foreman);
     expect(record.format_version).toBe(1);
     expect(record.basis.save).toBe("base.zip");
     expect(record.seed.result).toBe("ok");
-    expect(record.players.length).toBeGreaterThan(0);
-    // Every name on the page is in the record, and the read is honest about its age: time from
-    // before Foreman looked is not presented as tracked.
-    for (const p of record.players) await expect(section).toContainText(p.name);
-    await expect(section).toContainText(/before foreman/i);
+    expect(record.game_ticks).toBe(59_760_005);
+    expect(record.players.map((p: { name: string; seeded_ticks: number; tracked_seconds: number }) => [p.name, p.seeded_ticks, p.tracked_seconds]).sort()).toEqual([
+      ["alice", 36_000_000, 0],
+      ["bob", 216_000, 0],
+    ]);
+    await expect(entries(section)).toHaveCount(2);
+    const alice = entries(section).filter({ hasText: "alice" });
+    const bob = entries(section).filter({ hasText: "bob" });
+    await expect(alice).toContainText(/166\D+40/);
+    await expect(bob).toContainText(/\b1\s*(h|hours?)\b/i);
+    // Neither was seen by Foreman, so neither has a date, and both say their time is from before it looked.
+    await expect(alice).toContainText(/before foreman/i);
+    await expect(bob).toContainText(/before foreman/i);
+    await expect(section.locator("time")).toHaveCount(0);
+    // The total play time, 276 hours and 40 minutes, is on the panel and on the Server page.
+    await expect(section).toContainText(/276\D+40/);
+    await page.goto("/");
+    await expect(page.locator("main")).toContainText(/276\D+40/);
+    await expect(page.locator("main").getByRole("link", { name: /2 players in this save/i })).toBeVisible();
+    await page.goBack();
     await expect(readAgain(page)).toBeVisible();
     await checkPage(page);
   });
@@ -433,7 +450,8 @@ test.describe("the Server page", () => {
     writeRecord(foreman, { gameTicks: 10 * hour, players: [{ name: "alice", hours: 5 }] });
     await start(page);
     await page.goto("/");
-    await expect(page.locator("main")).toContainText(/\d+\s*(h|hours?)\b/i);
+    // The fake answers /time with the time since the game started, so it may be seconds only.
+    await expect(page.locator("main")).toContainText(/\d+\s*(h|hours?|min|minutes?|s|seconds?)\b/i);
     await expect.poll(async () => (await fakeGame!.state()).containers.flatMap((c) => c.commands), live).toContain("/time");
     const commands = (await fakeGame!.state()).containers.flatMap((c) => c.commands);
     expect(commands.filter((c) => /^\/(c|sc|silent-command|command)\b/.test(c))).toEqual([]);
