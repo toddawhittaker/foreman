@@ -197,7 +197,6 @@ func TestDrawChartRefusesBadInput(t *testing.T) {
 	good := chartLineText(t, 0, 0, solid(0xF800))
 	short := chartLineText(t, 0, 0, solid(0xF800)[:2046])
 	long := chartLineText(t, 0, 0, append(solid(0xF800), 0, 0))
-	bomb := chartLineText(t, 0, 0, make([]byte, 64<<20)) // inflates far past a chunk
 	notZlib := fmt.Sprintf(`{"x":0,"y":0,"data":%q}`, base64.StdEncoding.EncodeToString([]byte("hello world, not zlib"))) + "\n"
 	cases := []struct {
 		name string
@@ -206,7 +205,6 @@ func TestDrawChartRefusesBadInput(t *testing.T) {
 	}{
 		{"chunk too small", short, ms(1, 0, 0, 0, 0)},
 		{"chunk too large", long, ms(1, 0, 0, 0, 0)},
-		{"inflate bomb", bomb, ms(1, 0, 0, 0, 0)},
 		{"not base64", `{"x":0,"y":0,"data":"!!!"}` + "\n", ms(1, 0, 0, 0, 0)},
 		{"not zlib", notZlib, ms(1, 0, 0, 0, 0)},
 		{"data not a string", `{"x":0,"y":0,"data":5}` + "\n", ms(1, 0, 0, 0, 0)},
@@ -265,5 +263,41 @@ func TestDrawChartFindsTheSurface(t *testing.T) {
 	}
 	if _, _, err := DrawChart(strings.NewReader(manifest), strings.NewReader(""), 9); err == nil {
 		t.Fatal("drew a surface the manifest does not have")
+	}
+}
+
+// The bomb is small enough to pass the line limit, so it is the inflate cap
+// that stops it, not the line limit.
+func TestDrawChartRefusesAnInflateBomb(t *testing.T) {
+	in := chartLineText(t, 0, 0, make([]byte, 4<<20))
+	if len(in) >= maxChartLine {
+		t.Fatalf("test bomb is %d bytes, over the line limit %d", len(in), maxChartLine)
+	}
+	_, _, err := drawChart(ms(1, 0, 0, 0, 0), strings.NewReader(in))
+	if err == nil || !strings.Contains(err.Error(), "a chunk must be 32 by 32 pixels") {
+		t.Fatalf("err = %v, want the chunk size refusal", err)
+	}
+}
+
+// 65,536 white chunks packed at the origin of a huge surface land in one
+// picture pixel: 67 million pixels of 255 per channel, which passes 32 bits.
+func TestDrawChartScaleSumsDoNotWrap(t *testing.T) {
+	line := chartLineText(t, 0, 0, solid(0xFFFF))
+	data := line[strings.Index(line, `"data":`):]
+	var in strings.Builder
+	for y := range 256 {
+		for x := range 256 {
+			fmt.Fprintf(&in, `{"x":%d,"y":%d,%s`, x, y, data)
+		}
+	}
+	img, s, err := drawChart(ms(65536, 0, 0, 1<<24, 255), strings.NewReader(in.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.TilesPerPixel < 4096 {
+		t.Fatalf("tiles per pixel = %d", s.TilesPerPixel)
+	}
+	if got := img.NRGBAAt(0, 0); got != (color.NRGBA{255, 255, 255, 255}) {
+		t.Fatalf("pixel (0,0) = %v, want white", got)
 	}
 }

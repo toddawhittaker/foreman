@@ -183,25 +183,29 @@ func rgb565(v uint16) (r, g, b uint8) {
 	return r5<<3 | r5>>2, g6<<2 | g6>>4, b5<<3 | b5>>2
 }
 
+// The sums are 64 bit: one picture pixel can take up to 67 million charted
+// pixels (65,536 chunks of 1,024), whose sum passes 32 bits.
+//
 // accumulator averages the charted pixels that fall into each pixel of a
 // scaled-down picture. An uncharted pixel adds nothing, so a picture pixel
 // with no charted pixel stays transparent, and one with any is opaque and the
 // mean of those.
 type accumulator struct {
-	w, h       int
-	r, g, b, n []uint32
+	w, h    int
+	r, g, b []uint64
+	n       []uint32
 }
 
 func newAccumulator(w, h int) *accumulator {
 	n := w * h
-	return &accumulator{w: w, h: h, r: make([]uint32, n), g: make([]uint32, n), b: make([]uint32, n), n: make([]uint32, n)}
+	return &accumulator{w: w, h: h, r: make([]uint64, n), g: make([]uint64, n), b: make([]uint64, n), n: make([]uint32, n)}
 }
 
 func (a *accumulator) add(x, y int, r, g, b uint8) {
 	i := y*a.w + x
-	a.r[i] += uint32(r)
-	a.g[i] += uint32(g)
-	a.b[i] += uint32(b)
+	a.r[i] += uint64(r)
+	a.g[i] += uint64(g)
+	a.b[i] += uint64(b)
 	a.n[i]++
 }
 
@@ -211,9 +215,9 @@ func (a *accumulator) image() *image.NRGBA {
 		if n == 0 {
 			continue
 		}
-		img.Pix[4*i] = uint8(min(a.r[i]/n, 255))
-		img.Pix[4*i+1] = uint8(min(a.g[i]/n, 255))
-		img.Pix[4*i+2] = uint8(min(a.b[i]/n, 255))
+		img.Pix[4*i] = uint8(min(a.r[i]/uint64(n), 255))
+		img.Pix[4*i+1] = uint8(min(a.g[i]/uint64(n), 255))
+		img.Pix[4*i+2] = uint8(min(a.b[i]/uint64(n), 255))
 		img.Pix[4*i+3] = 255
 	}
 	return img
