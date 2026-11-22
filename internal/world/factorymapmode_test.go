@@ -180,8 +180,49 @@ func TestUnknownStoredModeReadsManual(t *testing.T) {
 	id := seedWorld(t, m)
 	writeFactoryMapJSON(t, m, id, `{"mode":"always","skip_online":false}`)
 
-	got := readMetaOf(t, m, id).FactoryMapSetting()
-	if got.Mode != FactoryMapManual {
+	meta := readMetaOf(t, m, id)
+	if meta.FactoryMap == nil || meta.FactoryMap.Mode != FactoryMapManual {
+		t.Errorf("decoded FactoryMap %+v, want Mode manual", meta.FactoryMap)
+	}
+	if got := meta.FactoryMapSetting(); got.Mode != FactoryMapManual {
 		t.Errorf("mode %q read, want manual", got.Mode)
+	}
+}
+
+// Fail safe: a wrong-typed field falls back to its default, and the rest of
+// world.json still reads, so the world stays usable.
+func TestWrongTypedFactoryMapFallsBackAndWorldStillReads(t *testing.T) {
+	m, _ := newTestManager(t)
+	id := seedWorld(t, m)
+	name := readMetaOf(t, m, id).Name
+
+	for _, tc := range []struct {
+		raw  string
+		want FactoryMapMode
+	}{
+		{`{"mode":5}`, FactoryMapMode{Mode: FactoryMapManual, SkipOnline: true}},
+		{`{"skip_online":"yes"}`, FactoryMapMode{Mode: FactoryMapManual, SkipOnline: true}},
+		{`{"mode":"off","skip_online":"no"}`, FactoryMapMode{Mode: FactoryMapOff, SkipOnline: true}},
+		{`{"mode":["automatic"],"skip_online":false}`, FactoryMapMode{Mode: FactoryMapManual, SkipOnline: false}},
+		{`5`, FactoryMapMode{Mode: FactoryMapManual, SkipOnline: true}},
+		{`"automatic"`, FactoryMapMode{Mode: FactoryMapManual, SkipOnline: true}},
+		{`null`, FactoryMapMode{Mode: FactoryMapManual, SkipOnline: true}},
+	} {
+		writeFactoryMapJSON(t, m, id, tc.raw)
+		root, err := m.OpenWorld(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		meta, err := ReadMeta(root)
+		_ = root.Close()
+		if err != nil {
+			t.Fatalf("%s: ReadMeta failed: %v", tc.raw, err)
+		}
+		if meta.Name != name {
+			t.Errorf("%s: name %q, want %q", tc.raw, meta.Name, name)
+		}
+		if got := meta.FactoryMapSetting(); got != tc.want {
+			t.Errorf("%s: setting %+v, want %+v", tc.raw, got, tc.want)
+		}
 	}
 }

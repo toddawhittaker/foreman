@@ -30,22 +30,23 @@ func DefaultFactoryMapMode() FactoryMapMode {
 	return FactoryMapMode{Mode: FactoryMapManual, SkipOnline: true}
 }
 
-// UnmarshalJSON reads a stored setting, failing safe (SPEC 5.16): a missing
+// UnmarshalJSON reads a stored setting, failing safe (SPEC 5.16). A missing
 // skip_online reads as true, and a missing or unknown mode reads as manual.
+// A wrong-typed field, or a factory_map that is not an object, falls back to
+// its default and never fails the read, so the world stays usable.
 func (f *FactoryMapMode) UnmarshalJSON(b []byte) error {
-	var raw struct {
-		Mode       *string `json:"mode"`
-		SkipOnline *bool   `json:"skip_online"`
-	}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
 	*f = DefaultFactoryMapMode()
-	if raw.Mode != nil && validFactoryMapMode(*raw.Mode) {
-		f.Mode = *raw.Mode
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(b, &fields) != nil {
+		return nil
 	}
-	if raw.SkipOnline != nil {
-		f.SkipOnline = *raw.SkipOnline
+	var mode string
+	if json.Unmarshal(fields["mode"], &mode) == nil && validFactoryMapMode(mode) {
+		f.Mode = mode
+	}
+	var skip bool
+	if json.Unmarshal(fields["skip_online"], &skip) == nil {
+		f.SkipOnline = skip
 	}
 	return nil
 }
