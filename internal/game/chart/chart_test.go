@@ -2,6 +2,8 @@ package chart
 
 import (
 	"bytes"
+	"regexp"
+	"strconv"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/gameenv"
@@ -42,5 +44,26 @@ func TestControl(t *testing.T) {
 	manifest := bytes.Index(Control, []byte(`helpers.write_file(OUT .. "manifest.json"`))
 	if chart < 0 || manifest < chart {
 		t.Error("the manifest is not written after the chart")
+	}
+}
+
+// The helper's own give-up must come before --test-save stops, or the run
+// ends with no verdict: the map's creation (one tick), the settle and the
+// charting cap fit under Ticks (SPEC 14.3).
+func TestTicksCoverTheHelper(t *testing.T) {
+	number := func(name string) int {
+		m := regexp.MustCompile(`(?m)^local ` + name + ` = (\d+)$`).FindSubmatch(Control)
+		if m == nil {
+			t.Fatalf("control.lua has no `local %s = <number>`", name)
+		}
+		n, err := strconv.Atoi(string(m[1]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	const creation = 1
+	if total := creation + number("SETTLE") + number("CAP"); total > Ticks {
+		t.Errorf("creation, settle and cap take %d ticks, over Ticks %d", total, Ticks)
 	}
 }
