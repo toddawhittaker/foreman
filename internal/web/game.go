@@ -362,6 +362,12 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 		}
 	}
 	p.Schedule = s.scheduleState()
+	// The play time and the count of the save's players (SPEC 8.15). The view
+	// never waits for a read, whose result arrives as UpdateSavePlayers; when
+	// it cannot be had the page shows nothing rather than a guess.
+	if v, err := s.game.SavePlayers(ctx, sum.ID); err == nil {
+		p.SavePlayers, p.HaveSavePlayers = v, true
+	}
 	return p
 }
 

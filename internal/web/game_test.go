@@ -56,6 +56,9 @@ func newGameRigOn(t *testing.T, dockerHost string, fake *fakegame.Game) *gameRig
 			Docker: dc, Worlds: worlds, Audit: st, Switches: st,
 			HostDataDir: filepath.Dir(worlds.Dirs().Worlds), GameUID: 845, GameGID: 845,
 			Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+			// A page view would read the fixture save's players by itself
+			// (SPEC 8.14) and hold the world's lock while the test acts.
+			NoAutoPlayersRead: true,
 		})
 		if err != nil {
 			t.Fatal(err)
