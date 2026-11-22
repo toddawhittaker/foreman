@@ -21,7 +21,7 @@ import (
 
 // ChartLimit is how long a real-game picture may take in all, the map's
 // creation and the charting together, before its container is killed (SPEC
-// 14.3). One mod's planets took 13 to 21 seconds and all five 39 (#775).
+// 14.3). Measured with five planet mods: 13 to 39 seconds.
 const ChartLimit = 90 * time.Second
 
 // chartLimit is ChartLimit; tests shorten it.
@@ -155,10 +155,11 @@ func chartEnv(planet string) []string {
 }
 
 // readChart reads the helper's folder in the work folder dir and draws the
-// planet's picture as a PNG; any error wraps ErrChartBadOutput. The output is untrusted (SPEC 14.1, 14.6): one
-// planet surface named planet, whose bounds are the whole charted square, at
-// most chart.MaxChunks chunks of 32 by 32 pixels, the manifest under its own
-// limit and the chart file at most chart.MaxFileBytes, each a regular file.
+// planet's picture as a PNG; any error wraps ErrChartBadOutput. The output
+// is untrusted (SPEC 14.1, 14.6): one planet surface named planet, whose
+// bounds are the whole charted square, at most chart.MaxChunks chunks of 32
+// by 32 pixels, the manifest under its own limit and the chart file at most
+// chart.MaxFileBytes, each a regular file.
 func readChart(base *os.Root, dir, planet string) ([]byte, error) {
 	b, err := drawChartOutput(base, dir, planet)
 	if err != nil {

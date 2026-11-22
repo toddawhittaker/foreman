@@ -19,12 +19,12 @@ const ParamsFile = "params.lua"
 // The picture's fixed parts and its output limits (SPEC 14.3, 14.6).
 const (
 	// Radius is the half width of the charted square in chunks: 1024 by 1024
-	// tiles. Radius 32 took about 4 times as long and 1.5 GiB (#775).
+	// tiles.
 	Radius = 16
 	// MaxChunks is the most chunks a chart may hold: the whole square.
 	MaxChunks = (2 * Radius) * (2 * Radius)
-	// MaxFileBytes is the most bytes the chart file may hold. One planet
-	// measured about 275 KB (#775).
+	// MaxFileBytes is the most bytes the chart file may hold; one planet
+	// measured about 275 KB.
 	MaxFileBytes = 4 << 20
 )
 
