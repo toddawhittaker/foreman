@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"html"
 	"image"
 	"image/color"
 	"image/png"
@@ -20,28 +22,25 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/factorymap"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // fakeMapBackend stands in for the controller and the world manager, so the
 // handlers are tested apart from the runs that make the pictures.
 type fakeMapBackend struct {
-	view      game.FactoryMapView
-	viewErr   error
-	drawErr   error
-	drawn     int
-	afterDraw *game.FactoryMapView // the view once a draw failed
-	modes     []world.FactoryMapMode
-	modeErr   error
-	store     *fakePictures
-	memory    uint64
-	real      *factorymap.Store // when set, the pictures come from it
+	view    game.FactoryMapView
+	viewErr error
+	drawErr error
+	drawn   int
+	modes   []world.FactoryMapMode
+	modeErr error
+	store   *fakePictures
+	memory  uint64
+	real    *factorymap.Store // when set, the pictures come from it
 }
 
 func (f *fakeMapBackend) FactoryMap(string) (game.FactoryMapView, error) {
-	if f.drawn > 0 && f.afterDraw != nil {
-		return *f.afterDraw, f.viewErr
-	}
 	return f.view, f.viewErr
 }
 
@@ -164,28 +163,6 @@ func (m *mapRig) do(method, path string, form url.Values) *httptest.ResponseReco
 
 func (m *mapRig) base() string { return "/worlds/" + m.id + "/map" }
 
-func TestFactoryRefusal(t *testing.T) {
-	manual := world.FactoryMapMode{Mode: world.FactoryMapManual, SkipOnline: true}
-	cases := []struct {
-		name string
-		v    game.FactoryMapView
-		want string
-	}{
-		{"idle", game.FactoryMapView{Mode: manual}, ""},
-		{"mode off", game.FactoryMapView{Mode: world.FactoryMapMode{Mode: world.FactoryMapOff}}, "off"},
-		{"old game", game.FactoryMapView{Mode: manual, State: "unsupported"}, "not_supported"},
-		{"running, nobody online", game.FactoryMapView{Mode: manual, Running: true}, ""},
-		{"running, players, skip on", game.FactoryMapView{Mode: manual, Running: true, PlayersOnline: true}, "players_online"},
-		{"running, players, skip off", game.FactoryMapView{Mode: world.FactoryMapMode{Mode: world.FactoryMapManual}, Running: true, PlayersOnline: true}, ""},
-		{"stopped, players flag stale", game.FactoryMapView{Mode: manual, PlayersOnline: true}, ""},
-	}
-	for _, c := range cases {
-		if got := factoryRefusal(c.v); got != c.want {
-			t.Errorf("%s: refusal %q, want %q", c.name, got, c.want)
-		}
-	}
-}
-
 func TestDrawNeedsMemoryConfirmWhileRunning(t *testing.T) {
 	m := newMapRig(t)
 	m.be.view.Running = true
@@ -209,33 +186,73 @@ func TestDrawStoppedWorldNeedsNoConfirm(t *testing.T) {
 	}
 }
 
-func TestDrawRefusalsNeverStartARun(t *testing.T) {
-	for name, view := range map[string]game.FactoryMapView{
-		"off":            {Mode: world.FactoryMapMode{Mode: world.FactoryMapOff}},
-		"old":            {State: "unsupported", Mode: world.FactoryMapMode{Mode: world.FactoryMapManual}},
-		"players online": {Running: true, PlayersOnline: true, Mode: world.FactoryMapMode{Mode: world.FactoryMapManual, SkipOnline: true}},
-	} {
+// The game's answer wins: the view's "players online" is a guess from the
+// log, so a click is never refused on it, and is refused when the game says so.
+func TestDrawAsksTheGameEvenWhenTheViewSaysPlayersAreOnline(t *testing.T) {
+	m := newMapRig(t)
+	m.be.view.Running, m.be.view.PlayersOnline = true, true
+	h := &factoryMapHandlers{s: m.hn.h.(*Handler).srv, b: m.be}
+	out, err := h.draw(context.Background(), m.id, true)
+	if err != nil || !out.Started || m.be.drawn != 1 {
+		t.Fatalf("the page refused on its own guess: %+v, err %v, draws %d", out, err, m.be.drawn)
+	}
+}
+
+// refusalCases are the controller's refusals and the words each one gets.
+var refusalCases = []struct {
+	err  error
+	name string
+	key  string
+}{
+	{game.ErrFactoryMapPlayersOnline, "players_online", "factorymap.refused.players_online"},
+	{game.ErrFactoryMapNotSupported, "not_supported", "factorymap.refused.not_supported"},
+	{game.ErrFactoryMapOff, "off", "factorymap.refused.off"},
+	{game.ErrFactoryMapNoSave, "no_save", "factorymap.refused.no_save"},
+	{game.ErrFactoryMapArchived, "archived", "factorymap.refused.archived"},
+}
+
+func TestDrawMapsEachControllerRefusal(t *testing.T) {
+	for _, c := range refusalCases {
 		m := newMapRig(t)
-		m.be.view = view
+		// Wrapped, as a controller may return it.
+		m.be.drawErr = fmt.Errorf("draw: %w", c.err)
 		h := &factoryMapHandlers{s: m.hn.h.(*Handler).srv, b: m.be}
-		// Confirmed too: the memory box never overrides a refusal.
 		out, err := h.draw(context.Background(), m.id, true)
-		if err != nil || out.Refused == "" || out.Started || m.be.drawn != 0 {
-			t.Errorf("%s: %+v, err %v, draws %d", name, out, err, m.be.drawn)
+		if err != nil || out.Refused != c.name || out.Started {
+			t.Errorf("%v: got %+v, err %v; want refusal %q", c.err, out, err, c.name)
 		}
 	}
 }
 
-func TestDrawRefusedByControllerAfterOurLook(t *testing.T) {
+func TestDrawRefusalIsShownOnThePage(t *testing.T) {
+	for _, c := range refusalCases {
+		m := newMapRig(t)
+		m.be.drawErr = c.err
+		rec := m.do(http.MethodPost, m.base()+"/draw", url.Values{})
+		if rec.Code != http.StatusConflict {
+			t.Errorf("%v: status %d, want 409", c.err, rec.Code)
+			continue
+		}
+		if want := html.EscapeString(i18n.English.T(c.key)); !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("%v: the page does not say %q", c.err, want)
+		}
+	}
+}
+
+func TestDrawNeedsConfirmationPage(t *testing.T) {
 	m := newMapRig(t)
-	m.be.drawErr = errors.New("refused")
-	after := m.be.view
-	after.Running, after.PlayersOnline = true, true
-	m.be.afterDraw = &after
-	h := &factoryMapHandlers{s: m.hn.h.(*Handler).srv, b: m.be}
-	out, err := h.draw(context.Background(), m.id, true)
-	if err != nil || out.Refused != "players_online" {
-		t.Fatalf("got %+v, err %v; want the players-online refusal", out, err)
+	m.be.view.Running = true
+	m.be.memory = 3 << 30
+	rec := m.do(http.MethodPost, m.base()+"/draw", url.Values{})
+	if rec.Code != http.StatusOK || m.be.drawn != 0 {
+		t.Fatalf("status %d, draws %d; want the memory question and no run", rec.Code, m.be.drawn)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, `name="confirm_memory"`) {
+		t.Errorf("the page has no confirm_memory field")
+	}
+	m.hn.wantRedirect(m.do(http.MethodPost, m.base()+"/draw", url.Values{"confirm_memory": {"1"}}), m.base())
+	if m.be.drawn != 1 {
+		t.Errorf("draws %d after the confirmed click", m.be.drawn)
 	}
 }
 
@@ -245,6 +262,31 @@ func TestDrawOtherFailureIsAnError(t *testing.T) {
 	h := &factoryMapHandlers{s: m.hn.h.(*Handler).srv, b: m.be}
 	if _, err := h.draw(context.Background(), m.id, true); err == nil {
 		t.Fatal("a failed start was not reported")
+	}
+	if rec := m.do(http.MethodPost, m.base()+"/draw", url.Values{}); rec.Code != http.StatusInternalServerError {
+		t.Errorf("status %d, want 500", rec.Code)
+	}
+}
+
+func TestFragmentIsOnlyTheStateRegion(t *testing.T) {
+	m := newMapRig(t)
+	m.be.view.State = game.FactoryMapDrawing
+	rec := m.do(http.MethodGet, m.base()+"?fragment=1&surface=4", nil)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/html") {
+		t.Fatalf("status %d, type %q", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if !strings.Contains(body, `id="factorymap-state"`) || !strings.Contains(body, `data-state="drawing"`) {
+		t.Errorf("the region is missing or does not show the state: %.300s", body)
+	}
+	for _, not := range []string{"<html", "<head", "<body", "<title"} {
+		if strings.Contains(body, not) {
+			t.Errorf("the fragment holds the layout (%s)", not)
+		}
+	}
+	full := m.do(http.MethodGet, m.base(), nil).Body.String()
+	if !strings.Contains(full, "<html") || len(full) <= len(body) {
+		t.Errorf("the full page should hold the layout and be larger than the fragment")
 	}
 }
 
@@ -488,8 +530,8 @@ func TestMapPageData(t *testing.T) {
 		{"unknown surface falls back", func(*game.FactoryMapView) {}, "7", 1, true, true},
 		{"junk surface falls back", func(*game.FactoryMapView) {}, "-4", 1, true, true},
 		{"mode off keeps the picture, hides the button", func(v *game.FactoryMapView) { v.Mode.Mode = world.FactoryMapOff }, "", 1, false, true},
-		{"old game", func(v *game.FactoryMapView) { v.State = "unsupported"; v.Drawing = factorymap.Drawing{} }, "", 0, false, false},
-		{"drawing", func(v *game.FactoryMapView) { v.State = "drawing" }, "", 1, false, true},
+		{"old game", func(v *game.FactoryMapView) { v.State = game.FactoryMapUnsupported; v.Drawing = factorymap.Drawing{} }, "", 0, false, false},
+		{"drawing", func(v *game.FactoryMapView) { v.State = game.FactoryMapDrawing }, "", 1, false, true},
 		{"never drawn", func(v *game.FactoryMapView) { v.State = "never"; v.Drawing = factorymap.Drawing{} }, "", 0, true, true},
 	} {
 		m.be.view = game.FactoryMapView{State: "drawn", Mode: world.FactoryMapMode{Mode: world.FactoryMapManual}, Drawing: factorymap.Drawing{Surfaces: []factorymap.Surface{{Index: 1}, {Index: 4}}}}
