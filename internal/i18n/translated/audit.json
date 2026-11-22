@@ -48,6 +48,8 @@
   "audit.action.whitelist-switch": "69241da7",
   "audit.action.world-archive": "0e67932a",
   "audit.action.world-delete": "d23f5cdf",
+  "audit.action.world-export": "90859fe6",
+  "audit.action.world-import": "eaa77b8f",
   "audit.action.world-unarchive": "2245aaa8",
   "audit.empty": "b59069c7",
   "audit.empty.filtered": "0094a47b",

@@ -1,0 +1,31 @@
+{
+  "worldimport.title": "Importer un fichier de monde",
+  "worldimport.intro": "Vérifiez le contenu du fichier. Rien n’est importé tant que vous n’avez pas cliqué sur « Importer le monde ».",
+  "worldimport.heading": "Contenu du fichier",
+  "worldimport.zone.label": "Fichier de monde",
+  "worldimport.fact.made_by": "Version de Foreman",
+  "worldimport.fact.saves": "Sauvegardes",
+  "worldimport.fact.mod_files": "Fichiers de mods",
+  "worldimport.saves.count": {
+    "one": "{count} sauvegarde",
+    "other": "{count} sauvegardes"
+  },
+  "worldimport.mod_files.count": {
+    "one": "{count} fichier de mod",
+    "other": "{count} fichiers de mods"
+  },
+  "worldimport.fact.size": "Taille décompressée",
+  "worldimport.fact.loads": "Sauvegarde chargée",
+  "worldimport.loads.none": "Aucune : le monde crée sa carte au premier démarrage.",
+  "worldimport.password_warning": "Le mot de passe du jeu ne figurait pas dans le fichier. Ce monde démarrera sans mot de passe tant que vous n’en aurez pas défini un dans « Paramètres du jeu ».",
+  "worldimport.mods_warning": "Foreman ne vérifie pas ce que contiennent les sauvegardes et les mods de ce fichier. N’importez qu’un fichier de confiance. Un mod peut conserver tout ce que son auteur a choisi, jeton compris.",
+  "worldimport.name.label": "Nom du monde",
+  "worldimport.image.here": "L’image du jeu pour la version {version} est déjà présente sur cet hôte.",
+  "worldimport.button": "Importer le monde",
+  "worldimport.error.bad": "Foreman ne peut pas lire ce fichier de monde. Il est peut-être endommagé, tronqué ou n’a pas été exporté par Foreman.",
+  "worldimport.error.newer": "Une version plus récente de Foreman a créé ce fichier de monde, donc cette version ne peut pas le lire. Mettez Foreman à jour, puis réessayez.",
+  "worldimport.refused.title": "Foreman ne peut pas importer ce fichier",
+  "worldimport.retry": "Retour à l’importation",
+  "worldimport.gone.title": "Le fichier envoyé a disparu",
+  "worldimport.gone": "Foreman garde un fichier de monde envoyé pendant une heure, et celui-ci n’est plus là. Envoyez-le de nouveau."
+}
