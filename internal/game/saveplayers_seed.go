@@ -55,6 +55,9 @@ type seedState struct {
 	// read runs the save and returns the save it read and the helper's
 	// output. Nil means readSavePlayers; tests replace it.
 	read func(ctx context.Context, id string) (saveplayers.Basis, []byte, error)
+	// gameTime is the running world's last /time reading (SPEC 8.15). Nil
+	// means none is known; tests set it.
+	gameTime func(id string) (d time.Duration, at time.Time, ok bool)
 }
 
 // SavePlayersView is what the web layer shows of a world's players record.
@@ -104,16 +107,19 @@ func (c *Controller) SavePlayers(ctx context.Context, id string) (SavePlayersVie
 	if !reading && due && c.noGameRuns() {
 		reading = c.startSeed(id)
 	}
-	if !matches {
-		v := SavePlayersView{State: SavePlayersNone, Save: target.Name}
-		if reading {
-			v.State = SavePlayersReading
-		}
-		return v, nil
+	v := SavePlayersView{State: SavePlayersNone, Save: target.Name}
+	if matches {
+		v = c.savePlayersView(id, rec)
 	}
-	v := c.savePlayersView(id, rec)
 	if reading {
 		v.State = SavePlayersReading
+	}
+	// While the world runs, total play time is the game's own /time
+	// reading (SPEC 8.15).
+	if c.seeds.gameTime != nil && c.Status(id).State == StateRunning {
+		if d, _, ok := c.seeds.gameTime(id); ok {
+			v.GameTime, v.GameTimeKnown = d, true
+		}
 	}
 	return v, nil
 }

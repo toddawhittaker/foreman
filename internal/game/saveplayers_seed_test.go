@@ -267,6 +267,19 @@ func TestSavePlayersNoReadByItselfWhileAGameRuns(t *testing.T) {
 			if r.count() != 1 {
 				t.Fatalf("%d reads after the click, want 1", r.count())
 			}
+			if which != "this world" {
+				return
+			}
+			// While the world runs, total play time is the live /time
+			// reading, not the record's (SPEC 8.15).
+			r.c.seeds.gameTime = func(string) (time.Duration, time.Time, bool) { return 5 * time.Hour, time.Now(), true }
+			v, err = r.c.SavePlayers(context.Background(), r.id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !v.GameTimeKnown || v.GameTime != 5*time.Hour {
+				t.Fatalf("game time %v (known %v), want the live 5h", v.GameTime, v.GameTimeKnown)
+			}
 		})
 	}
 }
