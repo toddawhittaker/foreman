@@ -188,6 +188,9 @@ func (MapForm) Tabs() []string {
 
 // Paths the form uses.
 func (GeneratePage) Path() string { return PathGenerate }
+
+// Steps is the step bar on step 1, before the world exists (SPEC 5.6).
+func (GeneratePage) Steps() []FlowStep { return flowSteps("", flowStepWorld) }
 func (GeneratePage) VersionsPath() string {
 	return versionsPath("", "")
 }
@@ -261,15 +264,6 @@ func mapKey(line string, spaceAge bool) string {
 		return line + "|1"
 	}
 	return line + "|0"
-}
-
-// keyLine is the game line a posted map key names, or "".
-func keyLine(key string) string {
-	line, _, _ := strings.Cut(key, "|")
-	if slices.Contains(mapgen.Lines, line) {
-		return line
-	}
-	return ""
 }
 
 // handleGenerateForm shows the empty form: the default preset on the active
@@ -471,7 +465,7 @@ func (s *server) readStepOne(ctx context.Context, form url.Values, favSeed bool)
 			form[k] = v
 		}
 	}
-	f, nw, ok = s.readGenerateValues(ctx, form, kindGenerate)
+	f, nw, ok = s.readGenerateValues(ctx, form)
 	if ok && id != "" {
 		s.readFavorite(&f, id)
 		if f.favoriteMap() {
@@ -598,8 +592,9 @@ func (f MapForm) tabOf(id string) string {
 }
 
 // readGenerateValues reads and checks step 1's posted values, so MCP can make
-// a world through the same checks.
-func (s *server) readGenerateValues(ctx context.Context, form url.Values, kind readKind) (f GenerateForm, nw world.NewWorld, ok bool) {
+// a world through the same checks. Step 1 shows no map settings, so the map
+// is the posted preset's as it is (SPEC 5.6).
+func (s *server) readGenerateValues(ctx context.Context, form url.Values) (f GenerateForm, nw world.NewWorld, ok bool) {
 	f = GenerateForm{
 		Name:        form.Get("name"),
 		Typed:       chosenVersion(form.Get("game_version"), form.Get("game_version_typed")),
@@ -634,31 +629,21 @@ func (s *server) readGenerateValues(ctx context.Context, form url.Values, kind r
 		s.checkTypedVersion(ctx, &check)
 		f.VersionError = check.VersionError
 	}
-	posted := form.Get("map_key")
 	if !versionOK {
-		if line = keyLine(posted); line == "" {
-			line = mapgen.Lines[len(mapgen.Lines)-1]
-		}
+		line = mapgen.Lines[len(mapgen.Lines)-1]
 	}
 	mapSpaceAge := f.SpaceAge && lineHasSpaceAge(line)
 	in := mapInput{Line: line, Cat: mapgen.Builtin(line, mapSpaceAge), MapKey: mapKey(line, mapSpaceAge)}
 	if versionOK {
 		in.Version = f.Version
 	}
-	// The settings are stale when made for another line, or for the other Space Age setting.
-	in.Stale = versionOK && form.Get(settingsShown) != "" &&
-		(keyLine(posted) != line || (f.SpaceAgeError.IsZero() && posted != in.MapKey))
 
-	if kind == kindGenerate && strings.TrimSpace(f.Name) == "" {
+	if strings.TrimSpace(f.Name) == "" {
 		f.NameError = msgNameEmpty()
 	}
 	var files world.NewMapFiles
-	f.MapForm, files, ok = readMapForm(form, kind, in)
-	if f.Reset || f.Refilled {
-		f.clearErrors()
-		return f, nw, false
-	}
-	if kind == kindRefresh || !versionOK {
+	f.MapForm, files, ok = readMapForm(form, kindGenerate, in)
+	if !versionOK {
 		return f, nw, false
 	}
 	nw = world.NewWorld{Name: strings.TrimSpace(f.Name), GameVersion: f.Version, SpaceAge: f.SpaceAge,

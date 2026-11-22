@@ -102,15 +102,10 @@ func (s *server) handleGenerateChart(w http.ResponseWriter, r *http.Request, u s
 		return
 	}
 	bad := func() { s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest}) }
-	id := r.PostFormValue(previewWorldField)
-	sum, err := s.worlds.Get(r.Context(), id)
-	if err != nil {
-		s.fail(w, r, "read the world for a real-game picture", err)
-		return
-	}
+	sum := in.sum
 	if !sum.Unfinished {
 		// Its map is made, so pictures of the map it might have had go.
-		s.previews.dropCharts(id)
+		s.previews.dropCharts(sum.ID)
 		s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict})
 		return
 	}
@@ -140,7 +135,7 @@ func (s *server) handleGenerateChart(w http.ResponseWriter, r *http.Request, u s
 		}
 		png, err := drawer.Chart(r.Context(), in.req, planet)
 		if err == nil {
-			token, err = s.previews.addChart(u.ID, key, id, png.Data)
+			token, err = s.previews.addChart(u.ID, key, sum.ID, png.Data)
 			if err != nil {
 				s.log.Error("keep real-game picture", "error", err)
 			}

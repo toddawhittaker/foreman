@@ -11,6 +11,16 @@ import (
 	"github.com/toddawhittaker/foreman/internal/modsettings"
 )
 
+// ParseWorldPlanets decodes a planet file and labels it in one call, as most
+// of these tests want.
+func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleSections) (Catalogue, error) {
+	f, err := DecodeWorldPlanets(line, data)
+	if err != nil {
+		return Catalogue{}, err
+	}
+	return f.Labelled(sections...), nil
+}
+
 // One decode serves every language: each labelled copy has its own labels
 // and leaves the others as they were.
 func TestDecodeOnceLabelPerLanguage(t *testing.T) {
@@ -326,5 +336,22 @@ func TestBuiltinSpaceAge(t *testing.T) {
 		if got := Builtin(c.line, c.spaceAge).SpaceAge; got != c.want {
 			t.Errorf("Builtin(%s, %t).SpaceAge = %t", c.line, c.spaceAge, got)
 		}
+	}
+}
+
+// SPEC 5.6, 7.4: the controls saved settings name that the mods no longer
+// add are listed in order, for step 3 and the pre-start check alike; a file
+// that is not JSON names none.
+func TestStaleControls(t *testing.T) {
+	cat := Builtin("2.0", true)
+	got := StaleControls([]byte(`{"autoplace_controls":{"iron-ore":{},"fake-ore":{},"aaa-gone":{}}}`), cat)
+	if !slices.Equal(got, []string{"aaa-gone", "fake-ore"}) {
+		t.Errorf("stale %v", got)
+	}
+	if got := StaleControls([]byte(`not json`), cat); got != nil {
+		t.Errorf("stale %v for a damaged file", got)
+	}
+	if got := StaleControls([]byte(`{"autoplace_controls":{"iron-ore":{}}}`), cat); got != nil {
+		t.Errorf("stale %v with every control known", got)
 	}
 }

@@ -18,6 +18,11 @@ import (
 // 11.5). The tests state what the file must hold for the choices made, from
 // the game's own example files, not from what the code writes.
 
+// parseMapGenValues is parseMapGenIn with the line's built-in planets.
+func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
+	return parseMapGenIn(vals, line, mapgen.Builtin(line, spaceAge))
+}
+
 var testLines = []struct {
 	line     string
 	spaceAge bool

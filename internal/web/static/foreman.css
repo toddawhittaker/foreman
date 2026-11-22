@@ -732,7 +732,8 @@ time {
 /* A tab is a link with an underline when current. The underline is a border,
    so it is still drawn in forced colours. */
 .tabs a,
-.subnav a {
+.subnav a,
+.subnav .subnav-later {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -800,7 +801,8 @@ time {
   max-inline-size: none;
 }
 
-.subnav a {
+.subnav a,
+.subnav .subnav-later {
   margin-block-end: -1px;
 }
 
@@ -809,7 +811,8 @@ time {
     gap: 0;
   }
 
-  .subnav a {
+  .subnav a,
+  .subnav .subnav-later {
     padding-inline: 0.625rem;
     font-size: var(--text-sm);
   }
@@ -9399,7 +9402,8 @@ main > .panel.danger-zone.danger-zone--blocked {
     box-shadow: inset 0 -1px 0 var(--color-line);
   }
 
-  .subnav a {
+  .subnav a,
+  .subnav .subnav-later {
     min-block-size: var(--target-min);
     margin-block-end: 0;
   }
@@ -9415,7 +9419,8 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav a,
   .subnav a[aria-current],
   .subnav li:first-child a,
-  .subnav li:last-child a {
+  .subnav li:last-child a,
+  .subnav .subnav-later {
     padding-inline: var(--space-1);
     white-space: normal;
     text-align: center;
@@ -9429,7 +9434,8 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav a,
   .subnav a[aria-current],
   .subnav li:first-child a,
-  .subnav li:last-child a {
+  .subnav li:last-child a,
+  .subnav .subnav-later {
     font-size: var(--text-xs);
   }
 }

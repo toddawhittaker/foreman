@@ -568,16 +568,15 @@ type previewInput struct {
 }
 
 // worldCatalogue is a world's planets and controls, from its mod-settings
-// run (SPEC 5.6); tests replace it.
-var worldCatalogue = func(s *server, ctx context.Context, id string, loc i18n.Locale) (mapgen.Catalogue, error) {
+// run (SPEC 5.6); tests replace it. A mode that runs no games has no mods to
+// read the planets of, so the world gets the built-in ones.
+var worldCatalogue = func(s *server, ctx context.Context, sum world.Summary, loc i18n.Locale) (mapgen.Catalogue, error) {
 	if s.game == nil {
-		return mapgen.Catalogue{}, errNoGame
+		line, _ := mapgen.Line(sum.GameVersion)
+		return mapgen.Builtin(line, sum.SpaceAge), nil
 	}
-	return s.game.WorldCatalogue(ctx, id, loc.String())
+	return s.game.WorldCatalogue(ctx, sum.ID, loc.String())
 }
-
-// errNoGame means this mode runs no games, so it has no world's planets.
-var errNoGame = errors.New("no game controller")
 
 // previewModsKey is what of a world's mods changes its map: the mods, their
 // files and their setting values (SPEC 5.6, ADR 0033). ModSettingsKey adds
@@ -621,11 +620,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest, Detail: i18n.M("worlds.generate.preview.failed")})
 		return in, true
 	}
-	cat, catErr := worldCatalogue(s, ctx, id, localeOf(r))
-	if errors.Is(catErr, errNoGame) {
-		// This mode runs no games, so the world has no mods to add planets, as on step 3.
-		cat, catErr = mapgen.Builtin(line, sum.SpaceAge && lineHasSpaceAge(line)), nil
-	}
+	cat, catErr := worldCatalogue(s, ctx, sum, localeOf(r))
 	if catErr != nil {
 		// The built-in planets come back with the error, and are used (SPEC 5.6).
 		s.log.Warn("read the world's planets for a map preview", "world", id, "error", catErr)
@@ -641,7 +636,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		mods += " fallback"
 	}
 	// The catalogue says whether the world's mods enable Space Age (SPEC 5.6).
-	spaceAge := cat.SpaceAge && lineHasSpaceAge(line)
+	spaceAge := cat.SpaceAge
 	form := r.PostForm
 	mk := mapKey(line, spaceAge)
 	mf, files, ok := readMapForm(form, kindPreview, mapInput{

@@ -59,7 +59,7 @@ func inRange(v *float64) *float64 {
 
 // Catalogue is what a world's map generator offers: its planets, each with
 // its autoplace controls, and the resources the mods define. Builtin gives
-// the game's own; ParseWorldPlanets reads one exported from a world's mods.
+// the game's own; DecodeWorldPlanets reads one exported from a world's mods.
 type Catalogue struct {
 	// NoPlanets is true on 1.1: Planets then holds one entry, the world's
 	// single surface, named "nauvis".
@@ -154,6 +154,26 @@ func (c Catalogue) AlsoChanges(control, planet string) []string {
 		}
 	}
 	return out
+}
+
+// StaleControls lists, sorted, the autoplace controls a map-gen-settings.json
+// names that cat does not have (SPEC 5.6, 7.4). A file that is not JSON
+// names none: the game refuses it on its own.
+func StaleControls(mapGen []byte, cat Catalogue) []string {
+	var doc struct {
+		Controls map[string]json.RawMessage `json:"autoplace_controls"`
+	}
+	if json.Unmarshal(mapGen, &doc) != nil {
+		return nil
+	}
+	var stale []string
+	for name := range doc.Controls {
+		if _, ok := cat.Controls[name]; !ok {
+			stale = append(stale, name)
+		}
+	}
+	slices.Sort(stale)
+	return stale
 }
 
 // Builtin returns the game's own catalogue for a line, from the embedded
@@ -263,7 +283,17 @@ func (l *luaList[T]) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// ParseWorldPlanets reads a world's planet file under the SPEC 14.6 limits: a file over
+// PlanetFile is a checked planet file whose labels are not yet resolved, so
+// one decode serves every language.
+type PlanetFile struct {
+	cat Catalogue
+	// The localised names of the kept planets, controls and resources, by
+	// name.
+	planetLoc, controlLoc, resourceLoc map[string]json.RawMessage
+}
+
+// DecodeWorldPlanets reads a world's planet file under the SPEC 14.6 limits,
+// with every label left as its name until Labelled: a file over
 // MaxPlanetFileBytes or any count limit, or not of the shape above, is
 // refused whole. line is the world's game line, as Builtin takes it: on 1.1
 // the file's controls make the one surface "nauvis"; on any other line a
@@ -274,29 +304,8 @@ func (l *luaList[T]) UnmarshalJSON(b []byte) error {
 // control whose category is not resource, terrain, cliff or enemy or whose
 // order is over MaxOrderChars. A planet default outside 0 to
 // MaxPlanetDefault is ignored, so the game's default is used. A
-// resource names its control only when some planet uses it. Labels
-// are resolved from the locale sections, stripped of rich text and cut to
-// 100 characters; a name that does not resolve is its own label. A planet's
+// resource names its control only when some planet uses it. A planet's
 // controls are in the game's order (order, then name).
-func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleSections) (Catalogue, error) {
-	f, err := DecodeWorldPlanets(line, data)
-	if err != nil {
-		return Catalogue{}, err
-	}
-	return f.Labelled(sections...), nil
-}
-
-// PlanetFile is a checked planet file whose labels are not yet resolved, so
-// one decode serves every language.
-type PlanetFile struct {
-	cat Catalogue
-	// The localised names of the kept planets, controls and resources, by
-	// name.
-	planetLoc, controlLoc, resourceLoc map[string]json.RawMessage
-}
-
-// DecodeWorldPlanets checks a planet file as ParseWorldPlanets does, with
-// every label left as its name.
 func DecodeWorldPlanets(line string, data []byte) (PlanetFile, error) {
 	if len(data) > MaxPlanetFileBytes {
 		return PlanetFile{}, errPlanetsSize

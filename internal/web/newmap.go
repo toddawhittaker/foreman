@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
@@ -124,7 +123,8 @@ const (
 	flowStepMap
 )
 
-// FlowStep is one step of the guided Generate's step bar, a link to it.
+// FlowStep is one step of the guided Generate's step bar, a link to it, or
+// plain text when Path is empty because the step cannot be opened yet.
 type FlowStep struct {
 	Number  int
 	Path    string
@@ -132,12 +132,16 @@ type FlowStep struct {
 	Current bool
 }
 
-// flowSteps is the step bar of world id, with current marked.
+// flowSteps is the step bar of world id, with current marked. With no world
+// yet (step 1), step 1 is Generate's page and steps 2 and 3 have no path.
 func flowSteps(id string, current int) []FlowStep {
 	steps := []FlowStep{
-		{flowStepWorld, worldPath(id), i18n.M("newmap.steps.world"), false},
-		{flowStepMods, modsPath(id), i18n.M("newmap.steps.mods"), false},
-		{flowStepMap, newMapPath(id), i18n.M("newmap.steps.map"), false},
+		{flowStepWorld, PathGenerate, i18n.M("newmap.steps.world"), false},
+		{flowStepMods, "", i18n.M("newmap.steps.mods"), false},
+		{flowStepMap, "", i18n.M("newmap.steps.map"), false},
+	}
+	if id != "" {
+		steps[0].Path, steps[1].Path, steps[2].Path = worldPath(id), modsPath(id), newMapPath(id)
 	}
 	for i := range steps {
 		steps[i].Current = steps[i].Number == current
@@ -185,12 +189,7 @@ func (s *server) newMapWorld(w http.ResponseWriter, r *http.Request, u store.Use
 // are used when the world's own list cannot be (SPEC 5.6, 14.6). It never
 // fails: the planet list comes only from the world's mods, never from a form.
 func (s *server) catalogue(ctx context.Context, r *http.Request, sum world.Summary) (mapgen.Catalogue, i18n.Msg) {
-	line, _ := mapgen.Line(sum.GameVersion)
-	cat, err := worldCatalogue(s, ctx, sum.ID, localeOf(r))
-	if errors.Is(err, errNoGame) {
-		// This mode runs no games, so there are no mods to read the planets of.
-		return mapgen.Builtin(line, sum.SpaceAge && lineHasSpaceAge(line)), i18n.Msg{}
-	}
+	cat, err := worldCatalogue(s, ctx, sum, localeOf(r))
 	if err == nil {
 		return cat, i18n.Msg{}
 	}
@@ -237,12 +236,12 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 	f := MapForm{cat: cat, Mode: modeSettings, Preset: defaultPreset, Line: in.Line,
 		Presets: mapgen.Presets(in.Line), MapKey: in.MapKey, Tab: tabResources}
 	seed := MapGenText{}
-	nm, err := s.newMapOf(p.World.ID)
+	meta, err := s.readWorldMeta(p.World.ID)
 	if err != nil {
 		s.fail(w, r, "read the world's new map", err)
 		return
 	}
-	if nm != nil {
+	if nm := meta.NewMap; nm != nil {
 		if slices.Contains(f.Presets, nm.Preset) {
 			f.Preset = nm.Preset
 		}
@@ -267,7 +266,7 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 	if len(files.MapGenSettings) > 0 || len(files.MapSettings) > 0 {
 		// A control the mods no longer add would ride along in the raw box,
 		// so it is taken out before the form is filled (SPEC 5.6).
-		p.Gone = goneControls(files.MapGenSettings, cat)
+		p.Gone = mapgen.StaleControls(files.MapGenSettings, cat)
 		files.MapGenSettings = withoutControls(files.MapGenSettings, p.Gone)
 		// The files are laid over the preset; damaged ones leave the preset.
 		g := GenerateForm{Version: in.Version, MapForm: f}
@@ -285,39 +284,6 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 	p.Form = newMapForm(p.World, f)
 	p.CanPreview = s.previewer != nil
 	s.page(w, r, http.StatusOK, u.Username, p)
-}
-
-// newMapOf is the world's new_map, or nil.
-func (s *server) newMapOf(id string) (*world.NewMap, error) {
-	root, err := s.worlds.OpenWorld(id)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = root.Close() }()
-	meta, err := world.ReadMeta(root)
-	if err != nil {
-		return nil, err
-	}
-	return meta.NewMap, nil
-}
-
-// goneControls lists the autoplace controls a saved map-gen-settings.json
-// names that the catalogue no longer has (SPEC 5.6).
-func goneControls(mapGen []byte, cat mapgen.Catalogue) []string {
-	var doc struct {
-		Controls map[string]json.RawMessage `json:"autoplace_controls"`
-	}
-	if json.Unmarshal(mapGen, &doc) != nil {
-		return nil
-	}
-	var gone []string
-	for name := range doc.Controls {
-		if _, ok := cat.Controls[name]; !ok {
-			gone = append(gone, name)
-		}
-	}
-	slices.Sort(gone)
-	return gone
 }
 
 // withoutControls is a map-gen-settings.json without the named autoplace
@@ -466,6 +432,6 @@ func (s *server) handleNewMapSave(w http.ResponseWriter, r *http.Request, u stor
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	s.audit(r.Context(), actor(u), AuditNewMap, p.World.ID, newMapDetail(p.Form.MapForm)+", "+p.World.GameVersion)
+	s.audit(r.Context(), actor(u), AuditNewMap, p.World.ID, newMapDetail(p.Form.MapForm, p.World.GameVersion))
 	http.Redirect(w, r, newMapPath(p.World.ID)+"?"+newMapSavedQuery+"=1", http.StatusSeeOther) //nolint:gosec // the id is a world Foreman found, a local path segment
 }
