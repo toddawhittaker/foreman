@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 )
 
@@ -55,9 +54,12 @@ func failureResult(s string) bool {
 
 // Parse reads players.json bytes. The file sits in a folder the game can
 // write, so it is read as untrusted: at most MaxRecordBytes, no field it does
-// not know, every value checked. A failure is an ErrBadRecord; a file from a
-// newer format is also an ErrNewerFormat.
-func Parse(b []byte) (Record, error) {
+// not know, every value checked, and dates that make sense against now (the
+// caller's clock): as_of no later than now plus MaxClockSkew, tracked_since
+// and every last_seen no later than as_of. A failure is an ErrBadRecord, and
+// the caller treats the file as missing and reads the save again; a file from
+// a newer format is also an ErrNewerFormat.
+func Parse(b []byte, now time.Time) (Record, error) {
 	if len(b) > MaxRecordBytes {
 		return Record{}, fmt.Errorf("%w: %d bytes is over the %d byte limit", ErrBadRecord, len(b), MaxRecordBytes)
 	}
@@ -81,6 +83,9 @@ func Parse(b []byte) (Record, error) {
 	}
 	if err := r.validate(); err != nil {
 		return Record{}, fmt.Errorf("%w: %w", ErrBadRecord, err)
+	}
+	if r.AsOf.After(now.Add(MaxClockSkew)) {
+		return Record{}, fmt.Errorf("%w: as_of is in the future", ErrBadRecord)
 	}
 	return r, nil
 }
@@ -128,6 +133,9 @@ func (r Record) validate() error {
 	if r.AsOf.IsZero() || r.TrackedSince.IsZero() || r.Seed.At.IsZero() {
 		return fmt.Errorf("a date is missing")
 	}
+	if r.TrackedSince.After(r.AsOf) {
+		return fmt.Errorf("tracked_since is after as_of")
+	}
 	if r.Seed.Result != ResultOK && !failureResult(r.Seed.Result) {
 		return fmt.Errorf("seed result %q is not known", r.Seed.Result)
 	}
@@ -148,33 +156,39 @@ func (r Record) validate() error {
 		if err := validPlayerName(p.Name); err != nil {
 			return fmt.Errorf("a player name is refused: %w", err)
 		}
-		key := strings.ToLower(p.Name)
+		key := asciiLower(p.Name)
 		if seen[key] {
 			return fmt.Errorf("player %q is listed twice", p.Name)
 		}
 		seen[key] = true
-		if p.SeededTicks < 0 || p.SeededTicks > MaxWhole || p.TrackedSeconds < 0 || p.TrackedSeconds > MaxWhole {
+		if p.SeededTicks < 0 || p.SeededTicks > MaxWhole || p.TrackedMS < 0 || p.TrackedMS > MaxWhole {
 			return fmt.Errorf("a time of %q is out of range", p.Name)
 		}
-		if p.LastSeen != nil && p.LastSeen.IsZero() {
-			return fmt.Errorf("last_seen of %q is empty", p.Name)
+		if p.LastSeen != nil && (p.LastSeen.IsZero() || p.LastSeen.After(r.AsOf)) {
+			return fmt.Errorf("last_seen of %q is empty or after as_of", p.Name)
 		}
 	}
 	return nil
 }
 
 // AddSession folds one player's session. It counts only the part of
-// [from, to] after AsOf (nothing when to is at or before AsOf), rounded to the
-// nearest second, sets the player's last seen to to (never to an earlier
-// date than they already have), and adds the player when they are missing,
-// even for a session of no length. A session that ends before it starts, and
-// a name the game would not accept, change nothing.
+// [from, to] after AsOf (nothing when to is at or before AsOf), sets the
+// player's last seen to to (never to an earlier date than they already have),
+// and adds the player when they are missing, even for a session of no length.
+// A session that ends before it starts, and a name the game would not accept,
+// change nothing.
+//
+// The part counted is exact to the millisecond: it is the whole milliseconds
+// at its end less those at its start, so a play time cut into many folds, each
+// one starting where the last ended, adds up to the same total as one fold.
 //
 // It does not move AsOf. The caller folds every open session up to one moment
 // from the same starting AsOf, then sets AsOf to that moment; folding one
 // session and moving AsOf before the next would drop the overlap of two
 // players who were on together. Setting AsOf after the fold is also what
-// makes a replayed log line count once.
+// makes a replayed log line count once. The caller must never pass two
+// overlapping sessions of the same player in one fold: each is counted in
+// full, so the overlap would count twice.
 func (r *Record) AddSession(name string, from, to time.Time) {
 	if to.Before(from) {
 		return
@@ -188,7 +202,7 @@ func (r *Record) AddSession(name string, from, to time.Time) {
 		if start.Before(r.AsOf) {
 			start = r.AsOf
 		}
-		p.TrackedSeconds = min(p.TrackedSeconds+int64(to.Sub(start).Round(time.Second)/time.Second), MaxWhole)
+		p.TrackedMS = min(p.TrackedMS+to.UnixMilli()-start.UnixMilli(), MaxWhole)
 	}
 	if p.LastSeen == nil || to.After(*p.LastSeen) {
 		t := to.UTC()
@@ -196,12 +210,12 @@ func (r *Record) AddSession(name string, from, to time.Time) {
 	}
 }
 
-// player finds a player without regard to case, as the game compares names,
-// and adds them if they are new. It returns nil for a name the game would not
+// player finds a player by name, comparing ASCII letters without regard to
+// case (asciiLower), and adds them if they are new. It returns nil for a name the game would not
 // accept, or when the list is full.
 func (r *Record) player(name string) *Player {
 	for i := range r.Players {
-		if strings.EqualFold(r.Players[i].Name, name) {
+		if sameName(r.Players[i].Name, name) {
 			return &r.Players[i]
 		}
 	}

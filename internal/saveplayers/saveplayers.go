@@ -41,6 +41,10 @@ const (
 	MaxRecordBytes = 4 << 20
 )
 
+// MaxClockSkew is how far ahead of Foreman's clock a record's as_of may be
+// before Parse refuses the file.
+const MaxClockSkew = time.Hour
+
 // TicksPerSecond is the game's tick rate at normal speed.
 const TicksPerSecond = 60
 
@@ -101,18 +105,21 @@ type SeedInfo struct {
 }
 
 // Player is one player in a record. Their play time is the ticks the read
-// found plus the seconds Foreman tracked since (PlayedSeconds).
+// found plus the milliseconds Foreman tracked since (PlayedSeconds).
 type Player struct {
-	Name           string     `json:"name"`
-	SeededTicks    int64      `json:"seeded_ticks"`
-	TrackedSeconds int64      `json:"tracked_seconds"`
-	LastSeen       *time.Time `json:"last_seen"`
+	Name        string `json:"name"`
+	SeededTicks int64  `json:"seeded_ticks"`
+	// TrackedMS is the time of the sessions Foreman tracked, in
+	// milliseconds, so many short folds add up exactly.
+	TrackedMS int64      `json:"tracked_ms"`
+	LastSeen  *time.Time `json:"last_seen"`
 }
 
-// PlayedSeconds is the player's whole play time: the read's ticks, at the
-// game's 60 a second, plus the time Foreman tracked.
+// PlayedSeconds is the player's whole play time in seconds: the read's ticks,
+// at the game's 60 a second, plus the time Foreman tracked. The two are added
+// in milliseconds and rounded down once.
 func (p Player) PlayedSeconds() int64 {
-	return p.SeededTicks/TicksPerSecond + p.TrackedSeconds
+	return (p.SeededTicks*1000/TicksPerSecond + p.TrackedMS) / 1000
 }
 
 // Record is players.json.

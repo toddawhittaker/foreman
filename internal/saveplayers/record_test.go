@@ -12,8 +12,10 @@ import (
 )
 
 var (
-	t0    = time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
-	basis = Basis{Save: "_autosave3.zip", Size: 164000000, Modified: time.Date(2026, 11, 21, 10, 0, 0, 123456789, time.UTC)}
+	// testNow is a moment after every date the tests use.
+	testNow = time.Date(2026, 11, 22, 10, 0, 0, 0, time.UTC)
+	t0      = time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
+	basis   = Basis{Save: "_autosave3.zip", Size: 164000000, Modified: time.Date(2026, 11, 21, 10, 0, 0, 123456789, time.UTC)}
 )
 
 func seeded(t *testing.T) Record {
@@ -48,7 +50,7 @@ func TestFromSeed(t *testing.T) {
 		t.Fatalf("inexact %v, ticks %d", r.Inexact, r.GameTicks)
 	}
 	o := player(t, r, "OrcScorpion")
-	if o.SeededTicks != 28484153 || o.TrackedSeconds != 0 || o.LastSeen != nil {
+	if o.SeededTicks != 28484153 || o.TrackedMS != 0 || o.LastSeen != nil {
 		t.Fatalf("%+v", o)
 	}
 	if !r.Seeded() {
@@ -84,12 +86,13 @@ func TestFailedNormalisesUnknownResult(t *testing.T) {
 func TestRoundTrip(t *testing.T) {
 	r := seeded(t)
 	r.AddSession("OrcScorpion", t0.Add(time.Minute), t0.Add(time.Hour))
+	r.AsOf = t0.Add(time.Hour)
 	r.Inexact = true
 	b, err := r.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := Parse(b)
+	got, err := Parse(b, testNow)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,8 +193,8 @@ func TestParseRefuses(t *testing.T) {
 		"ticks over 2^53":  set(func(m map[string]any) { m["game_ticks"] = float64(MaxWhole) * 2 }),
 		"seeded negative":  set(func(m map[string]any) { pl(m)["seeded_ticks"] = -1 }),
 		"seeded over 2^53": set(func(m map[string]any) { pl(m)["seeded_ticks"] = float64(MaxWhole) * 2 }),
-		"tracked negative": set(func(m map[string]any) { pl(m)["tracked_seconds"] = -1 }),
-		"tracked fraction": set(func(m map[string]any) { pl(m)["tracked_seconds"] = 1.5 }),
+		"tracked negative": set(func(m map[string]any) { pl(m)["tracked_ms"] = -1 }),
+		"tracked fraction": set(func(m map[string]any) { pl(m)["tracked_ms"] = 1.5 }),
 		"bad name":         set(func(m map[string]any) { pl(m)["name"] = "a b" }),
 		"empty name":       set(func(m map[string]any) { pl(m)["name"] = "" }),
 		"duplicate name":   set(func(m map[string]any) { m["players"] = append(m["players"].([]any), pl(m)) }),
@@ -208,7 +211,7 @@ func TestParseRefuses(t *testing.T) {
 	}
 	for name, in := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := Parse([]byte(in)); err == nil {
+			if _, err := Parse([]byte(in), testNow); err == nil {
 				t.Fatal("accepted")
 			} else if !errors.Is(err, ErrBadRecord) {
 				t.Fatalf("error does not wrap ErrBadRecord: %v", err)
@@ -222,7 +225,7 @@ func TestParseNewerFormatIsDistinct(t *testing.T) {
 	m["format_version"] = FormatVersion + 1
 	m["something_new"] = true
 	b, _ := json.Marshal(m)
-	_, err := Parse(b)
+	_, err := Parse(b, testNow)
 	if !errors.Is(err, ErrNewerFormat) {
 		t.Fatalf("want ErrNewerFormat, got %v", err)
 	}
@@ -233,7 +236,7 @@ func TestParseTooBig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Parse(append(b, bytes.Repeat([]byte(" "), MaxRecordBytes)...)); !errors.Is(err, ErrBadRecord) {
+	if _, err := Parse(append(b, bytes.Repeat([]byte(" "), MaxRecordBytes)...), testNow); !errors.Is(err, ErrBadRecord) {
 		t.Fatalf("%v", err)
 	}
 }
@@ -250,7 +253,7 @@ func TestParseTooManyPlayers(t *testing.T) {
 
 func TestParseKeepsNullLastSeen(t *testing.T) {
 	b, _ := seeded(t).Marshal()
-	r, err := Parse(b)
+	r, err := Parse(b, testNow)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +263,7 @@ func TestParseKeepsNullLastSeen(t *testing.T) {
 }
 
 func TestPlayedSeconds(t *testing.T) {
-	p := Player{SeededTicks: 60*3600 + 59, TrackedSeconds: 125}
+	p := Player{SeededTicks: 60*3600 + 59, TrackedMS: 125_000}
 	if got := p.PlayedSeconds(); got != 3600+125 {
 		t.Fatalf("%d", got)
 	}
@@ -290,11 +293,11 @@ func TestBasisSame(t *testing.T) {
 func TestAddSessionCountsOnlyAfterAsOf(t *testing.T) {
 	r := seeded(t)
 	r.AddSession("OrcScorpion", t0.Add(-10*time.Minute), t0.Add(5*time.Minute))
-	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 300 {
-		t.Fatalf("tracked %d, want 300", got)
+	if got := player(t, r, "OrcScorpion").TrackedMS; got != 300_000 {
+		t.Fatalf("tracked %d, want 300000", got)
 	}
 	r.AddSession("OrcScorpion", t0.Add(time.Hour), t0.Add(2*time.Hour))
-	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 300+3600 {
+	if got := player(t, r, "OrcScorpion").TrackedMS; got != 300_000+3_600_000 {
 		t.Fatalf("tracked %d", got)
 	}
 }
@@ -304,7 +307,7 @@ func TestAddSessionAtOrBeforeAsOfAddsNoTime(t *testing.T) {
 	r := seeded(t)
 	r.AddSession("OrcScorpion", t0.Add(-time.Hour), t0)
 	r.AddSession("OrcScorpion", t0.Add(-2*time.Hour), t0.Add(-time.Hour))
-	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 0 {
+	if got := player(t, r, "OrcScorpion").TrackedMS; got != 0 {
 		t.Fatalf("tracked %d", got)
 	}
 }
@@ -327,16 +330,16 @@ func TestAddSessionOverlapFoldedAtOneMoment(t *testing.T) {
 	r.AddSession("OrcScorpion", t0, t0.Add(30*time.Minute))
 	r.AddSession("toddawhittaker", t0.Add(10*time.Minute), now)
 	r.AsOf = now
-	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 1800 {
+	if got := player(t, r, "OrcScorpion").TrackedMS; got != 1_800_000 {
 		t.Fatalf("first %d", got)
 	}
-	if got := player(t, r, "toddawhittaker").TrackedSeconds; got != 1800 {
-		t.Fatalf("second %d, want 1800", got)
+	if got := player(t, r, "toddawhittaker").TrackedMS; got != 1_800_000 {
+		t.Fatalf("second %d, want 1800000", got)
 	}
 	// Replaying the same lines after the caller moved AsOf adds nothing.
 	r.AddSession("OrcScorpion", t0, t0.Add(30*time.Minute))
 	r.AddSession("toddawhittaker", t0.Add(10*time.Minute), now)
-	if player(t, r, "OrcScorpion").TrackedSeconds != 1800 || player(t, r, "toddawhittaker").TrackedSeconds != 1800 {
+	if player(t, r, "OrcScorpion").TrackedMS != 1_800_000 || player(t, r, "toddawhittaker").TrackedMS != 1_800_000 {
 		t.Fatalf("a replay counted again: %+v", r.Players)
 	}
 }
@@ -350,7 +353,7 @@ func TestAddSessionSetsLastSeen(t *testing.T) {
 	}
 	r.AsOf = t0.Add(3 * time.Hour)
 	r.AddSession("toddawhittaker", t0, t0.Add(2*time.Hour)) // wholly before AsOf
-	if got := player(t, r, "toddawhittaker"); got.LastSeen == nil || !got.LastSeen.Equal(t0.Add(2*time.Hour)) || got.TrackedSeconds != 0 {
+	if got := player(t, r, "toddawhittaker"); got.LastSeen == nil || !got.LastSeen.Equal(t0.Add(2*time.Hour)) || got.TrackedMS != 0 {
 		t.Fatalf("%+v", got)
 	}
 }
@@ -361,9 +364,10 @@ func TestAddSessionAddsMissingPlayerEvenAtZeroLength(t *testing.T) {
 	at := t0.Add(time.Minute)
 	r.AddSession("Fresh", at, at)
 	p := player(t, r, "Fresh")
-	if p.TrackedSeconds != 0 || p.SeededTicks != 0 || p.LastSeen == nil || !p.LastSeen.Equal(at) {
+	if p.TrackedMS != 0 || p.SeededTicks != 0 || p.LastSeen == nil || !p.LastSeen.Equal(at) {
 		t.Fatalf("%+v", p)
 	}
+	r.AsOf = at
 	if _, err := r.Marshal(); err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +389,7 @@ func TestAddSessionIgnoresNonsense(t *testing.T) {
 func TestAddSessionNewPlayerAndCaseInsensitive(t *testing.T) {
 	r := seeded(t)
 	r.AddSession("NewPerson", t0, t0.Add(time.Hour))
-	if got := player(t, r, "NewPerson"); got.TrackedSeconds != 3600 || got.SeededTicks != 0 {
+	if got := player(t, r, "NewPerson"); got.TrackedMS != 3_600_000 || got.SeededTicks != 0 {
 		t.Fatalf("%+v", got)
 	}
 	// The game compares names without regard to case: one player.
@@ -393,16 +397,16 @@ func TestAddSessionNewPlayerAndCaseInsensitive(t *testing.T) {
 	if len(r.Players) != 3 {
 		t.Fatalf("a case difference made a new player: %+v", r.Players)
 	}
-	if got := player(t, r, "OrcScorpion"); got.TrackedSeconds != 3600 {
+	if got := player(t, r, "OrcScorpion"); got.TrackedMS != 3_600_000 {
 		t.Fatalf("%+v", got)
 	}
 }
 
-func TestAddSessionRoundsToSeconds(t *testing.T) {
+func TestAddSessionCountsMilliseconds(t *testing.T) {
 	r := seeded(t)
 	r.AddSession("OrcScorpion", t0, t0.Add(10*time.Second+400*time.Millisecond))
 	r.AddSession("OrcScorpion", t0.Add(11*time.Second), t0.Add(20*time.Second+600*time.Millisecond))
-	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 10+10 {
+	if got := player(t, r, "OrcScorpion").TrackedMS; got != 20_000 {
 		t.Fatalf("tracked %d", got)
 	}
 }
@@ -459,5 +463,121 @@ func TestRebaseKeepsWhatWasTracked(t *testing.T) {
 	if !reflect.DeepEqual(r.Players, before.Players) || r.Seed != before.Seed || !r.AsOf.Equal(before.AsOf) ||
 		!r.TrackedSince.Equal(before.TrackedSince) || r.GameTicks != before.GameTicks || r.Inexact != before.Inexact {
 		t.Fatalf("rebase changed more than the basis:\n%+v\n%+v", before, r)
+	}
+}
+
+// Many short folds neither lose nor invent time: the slices of a play time
+// add up to exactly the whole, to the millisecond, however the moments fall.
+func TestManyShortFoldsAreExact(t *testing.T) {
+	r := seeded(t)
+	start := t0.Add(300 * time.Microsecond) // not on a millisecond
+	r.AsOf = start
+	joined := start
+	at := start
+	const folds = 20000
+	for i := 0; i < folds; i++ {
+		at = at.Add(1700*time.Microsecond + time.Duration(i%7)*113*time.Nanosecond)
+		r.AddSession("OrcScorpion", joined, at)
+		r.AsOf = at // the caller's checkpoint; the session carries on from here
+		joined = at
+	}
+	want := at.UnixMilli() - start.UnixMilli()
+	if got := player(t, r, "OrcScorpion").TrackedMS; got != want {
+		t.Fatalf("%d folds gave %d ms, the whole is %d ms", folds, got, want)
+	}
+	// The same time in one fold gives the same total.
+	one := seeded(t)
+	one.AsOf = start
+	one.AddSession("OrcScorpion", start, at)
+	if got := player(t, one, "OrcScorpion").TrackedMS; got != want {
+		t.Fatalf("one fold gave %d ms, want %d", got, want)
+	}
+}
+
+func TestPlayedSecondsKeepsMilliseconds(t *testing.T) {
+	// 59 ticks and 999 ms of tracking: neither rounds away alone.
+	p := Player{SeededTicks: 59, TrackedMS: 999}
+	if got := p.PlayedSeconds(); got != 1 { // 983 ms + 999 ms
+		t.Fatalf("%d", got)
+	}
+	if got := (Player{SeededTicks: MaxWhole, TrackedMS: MaxWhole}).PlayedSeconds(); got <= 0 {
+		t.Fatalf("overflow: %d", got)
+	}
+}
+
+// The game compares names without regard to ASCII case only (the rule of SPEC
+// 12.11 for usernames): other letters compare exactly, so a name that folds
+// to another under Unicode rules is still its own player.
+func TestNamesFoldASCIIOnly(t *testing.T) {
+	r := seeded(t)
+	r.AddSession("sam", t0, t0.Add(time.Minute))
+	r.AddSession("SAM", t0, t0.Add(time.Minute))
+	r.AddSession("ſam", t0, t0.Add(time.Minute)) // U+017F, folds to s under Unicode rules
+	r.AddSession("ς", t0, t0.Add(time.Minute))
+	r.AddSession("σ", t0, t0.Add(time.Minute))
+	r.AddSession("Σ", t0, t0.Add(time.Minute))
+	names := map[string]int64{}
+	for _, p := range r.Players {
+		names[p.Name] = p.TrackedMS
+	}
+	if len(r.Players) != 2+5 || names["sam"] != 120_000 || names["ſam"] != 60_000 || names["ς"] != 60_000 || names["σ"] != 60_000 || names["Σ"] != 60_000 {
+		t.Fatalf("%+v", r.Players)
+	}
+	r.AsOf = t0.Add(time.Minute)
+	b, err := r.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Parse(b, testNow); err != nil {
+		t.Fatalf("a record with sam, ſam, ς, σ must parse: %v", err)
+	}
+}
+
+func TestDatesAreChecked(t *testing.T) {
+	good := func(t *testing.T, edit func(m map[string]any)) error {
+		t.Helper()
+		m := goodRecordJSON(t)
+		edit(m)
+		b, _ := json.Marshal(m)
+		_, err := Parse(b, t0.Add(time.Minute))
+		return err
+	}
+	ts := func(d time.Duration) string { return t0.Add(d).Format(time.RFC3339Nano) }
+	pl := func(m map[string]any) map[string]any { return m["players"].([]any)[0].(map[string]any) }
+	// as_of may be a little ahead of now (clocks differ), not far ahead.
+	for d, ok := range map[time.Duration]bool{
+		time.Minute + MaxClockSkew:               true,
+		time.Minute + MaxClockSkew + time.Second: false,
+		24 * time.Hour:                           false,
+	} {
+		err := good(t, func(m map[string]any) {
+			m["as_of"] = ts(d)
+			m["tracked_since"] = ts(0)
+			m["seed"].(map[string]any)["at"] = ts(0)
+		})
+		if (err == nil) != ok {
+			t.Errorf("as_of %v ahead of now: err %v, want ok=%v", d, err, ok)
+		}
+	}
+	if err := good(t, func(m map[string]any) { m["tracked_since"] = ts(time.Second) }); !errors.Is(err, ErrBadRecord) {
+		t.Errorf("tracked_since after as_of: %v", err)
+	}
+	if err := good(t, func(m map[string]any) { pl(m)["last_seen"] = ts(time.Second) }); !errors.Is(err, ErrBadRecord) {
+		t.Errorf("last_seen after as_of: %v", err)
+	}
+	if err := good(t, func(m map[string]any) { pl(m)["last_seen"] = ts(0) }); err != nil {
+		t.Errorf("last_seen equal to as_of: %v", err)
+	}
+	// Marshal will not write what Parse refuses on order.
+	r := seeded(t)
+	r.TrackedSince = r.AsOf.Add(time.Second)
+	if _, err := r.Marshal(); err == nil {
+		t.Error("wrote tracked_since after as_of")
+	}
+	r = seeded(t)
+	at := r.AsOf.Add(time.Second)
+	r.Players[0].LastSeen = &at
+	if _, err := r.Marshal(); err == nil {
+		t.Error("wrote last_seen after as_of")
 	}
 }

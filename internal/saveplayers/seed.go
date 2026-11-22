@@ -111,7 +111,7 @@ func parseSeed(b []byte) (Seed, error) {
 		if err := validPlayerName(*p.Name); err != nil {
 			return Seed{}, fmt.Errorf("a player name is refused: %w", err)
 		}
-		key := strings.ToLower(*p.Name)
+		key := asciiLower(*p.Name)
 		if seenPlayer[key] {
 			return Seed{}, fmt.Errorf("player %q is listed twice", *p.Name)
 		}
@@ -141,6 +141,46 @@ func wholeNumber(raw json.RawMessage) (int64, bool) {
 		return 0, false
 	}
 	return int64(f), true
+}
+
+// asciiLower lowers the ASCII letters of a name and nothing else, the rule of
+// SPEC 12.11 for usernames: other letters compare exactly, so no two names
+// that differ in a non-ASCII letter ever join. It is the one case rule for
+// player names, used by every duplicate check and lookup.
+func asciiLower(s string) string {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c >= 'A' && c <= 'Z' {
+			b := []byte(s)
+			for j := i; j < len(b); j++ {
+				if b[j] >= 'A' && b[j] <= 'Z' {
+					b[j] += 'a' - 'A'
+				}
+			}
+			return string(b)
+		}
+	}
+	return s
+}
+
+// sameName says whether two player names are one player: equal once ASCII
+// letters are lowered.
+func sameName(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		x, y := a[i], b[i]
+		if x >= 'A' && x <= 'Z' {
+			x += 'a' - 'A'
+		}
+		if y >= 'A' && y <= 'Z' {
+			y += 'a' - 'A'
+		}
+		if x != y {
+			return false
+		}
+	}
+	return true
 }
 
 // validPlayerName applies the player name rule of SPEC 8.2. It also refuses
