@@ -31,7 +31,14 @@ async function tabsClearOf(page: Page, bar: Locator, tallBox = false) {
     (barEl as HTMLElement).style.position = "static";
     const barTop = top(barEl);
     (barEl as HTMLElement).style.position = stuck;
-    const before = tabbable.filter((el) => top(el) < barTop && !inSticky(el)).sort((a, b) => top(a) - top(b));
+    // Only a control in the bar's columns can pass under it; a side column's
+    // links (a world's settings sections) sit beside the bar, never behind it.
+    const bx = barEl.getBoundingClientRect();
+    const across = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return r.left < bx.right && r.right > bx.left;
+    };
+    const before = tabbable.filter((el) => top(el) < barTop && !inSticky(el) && across(el)).sort((a, b) => top(a) - top(b));
     const fits = before.filter((el) => el.getBoundingClientRect().height <= room);
     const target = tallBox ? before[before.length - 1] : fits[fits.length - 1];
     if (!target) return { sticky: false, under: false, found: false };
@@ -48,7 +55,7 @@ async function tabsClearOf(page: Page, bar: Locator, tallBox = false) {
     target.setAttribute("data-under-bar", "");
     // Focus the control before it without scrolling, so Tab is what moves the page.
     tabbable[tabbable.indexOf(target) - 1].focus({ preventScroll: true });
-    return { sticky: getComputedStyle(barEl).position === "sticky", under: r.top < b.bottom && r.bottom > b.top, found: true };
+    return { sticky: getComputedStyle(barEl).position === "sticky", under: r.top < b.bottom && r.bottom > b.top && r.left < b.right && r.right > b.left, found: true };
   }, tallBox);
   expect(placed).toEqual({ sticky: true, under: true, found: true });
   await page.keyboard.press("Tab");
@@ -77,7 +84,9 @@ test("Generate's action bar never covers the focused control", async ({ page, fo
 test("a settings save bar never covers the focused control", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
-  await page.goto("/worlds/base/settings");
+  // Players and access is the longest section, so its save bar is stuck over
+  // its controls even on a desktop window.
+  await page.goto("/worlds/base/settings?section=players");
   await tabsClearOf(page, await markBar(page.locator(".form-foot")));
 });
 
