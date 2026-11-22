@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/saveplayers"
 )
@@ -515,5 +516,275 @@ func TestRemoveDoesNotFollowALink(t *testing.T) {
 	}
 	if _, err := os.Lstat(filepath.Join(dir, "factorymaps", "w1")); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("link kept: %v", err)
+	}
+}
+
+func TestFailureTextIsCutAndNeverMakesTheRecordUnreadable(t *testing.T) {
+	s, _ := openStore(t, "w1")
+	pics := map[string][]byte{PNGName(0, ""): pngOf(t, 4, 2, color.NRGBA{A: 255})}
+	if err := s.Replace(drawing("1", 0), pics); err != nil {
+		t.Fatal(err)
+	}
+	// 3-byte characters, so the cut at 4096 bytes falls inside one.
+	huge := strings.Repeat("€", 2<<20)
+	for name, prior := range map[string]bool{"with a previous drawing": true, "with none": false} {
+		if !prior {
+			s, _ = openStore(t, "w2")
+		}
+		if err := s.Replace(Drawing{Failure: huge}, nil); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		got, ok, err := s.Read()
+		if err != nil || !ok {
+			t.Fatalf("%s: record unreadable: %v %v", name, ok, err)
+		}
+		if len(got.Failure) == 0 || len(got.Failure) > MaxFailureBytes || !utf8.ValidString(got.Failure) {
+			t.Errorf("%s: failure is %d bytes, valid=%v", name, len(got.Failure), utf8.ValidString(got.Failure))
+		}
+	}
+	// A failure sent together with pictures is cut too.
+	if err := s.Replace(Drawing{Failure: huge}, pics); !errors.Is(err, ErrInvalid) {
+		t.Errorf("failure with pictures but no surface base: %v", err)
+	}
+}
+
+func TestFailureOnlyPathChecksTheDrawingToo(t *testing.T) {
+	s, _ := openStore(t, "w1")
+	pics := map[string][]byte{PNGName(0, ""): pngOf(t, 4, 2, color.NRGBA{A: 255})}
+	if err := s.Replace(drawing("1", 0), pics); err != nil {
+		t.Fatal(err)
+	}
+	year := func(y int) time.Time { return time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC) }
+	manySurfaces := make([]Surface, MaxSurfaces+1)
+	for i := range manySurfaces {
+		manySurfaces[i] = Surface{Index: i, Kind: "planet"}
+	}
+	cases := map[string]Drawing{
+		"year past 9999":    {Failure: "x", DrawnAt: year(10000)},
+		"modified too old":  {Failure: "x", Basis: saveplayers.Basis{Modified: year(-1)}},
+		"negative size":     {Failure: "x", Basis: saveplayers.Basis{Size: -1}},
+		"long save name":    {Failure: "x", Basis: saveplayers.Basis{Save: strings.Repeat("a", 256)}},
+		"long version":      {Failure: "x", GameVersion: strings.Repeat("1", 33)},
+		"too many surfaces": {Failure: "x", Surfaces: manySurfaces},
+		"negative surface":  {Failure: "x", Surfaces: []Surface{{Index: -1, Kind: "planet"}}},
+		"repeated surface":  {Failure: "x", Surfaces: []Surface{{Kind: "planet"}, {Kind: "planet"}}},
+		"unknown kind":      {Failure: "x", Surfaces: []Surface{{Kind: "galaxy"}}},
+		"long surface name": {Failure: "x", Surfaces: []Surface{{Kind: "planet", Name: strings.Repeat("n", 201)}}},
+		"huge picture":      {Failure: "x", Surfaces: []Surface{{Kind: "planet", Width: MaxSidePixels + 1}}},
+	}
+	for name, d := range cases {
+		if err := s.Replace(d, nil); !errors.Is(err, ErrInvalid) {
+			t.Errorf("failure only, %s: err = %v, want ErrInvalid", name, err)
+		}
+		d.Failure = ""
+		if err := s.Replace(d, pics); !errors.Is(err, ErrInvalid) {
+			t.Errorf("drawing, %s: err = %v, want ErrInvalid", name, err)
+		}
+	}
+	got, ok, err := s.Read()
+	if err != nil || !ok || got.GameVersion != "1" || got.Failure != "" {
+		t.Errorf("previous drawing damaged: %+v %v %v", got, ok, err)
+	}
+	// With no previous drawing a failure keeps no surfaces, so the record
+	// never lists a picture it does not have.
+	s2, _ := openStore(t, "w2")
+	if err := s2.Replace(Drawing{Failure: "x", Surfaces: []Surface{{Index: 3, Kind: "planet"}}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got, _, _ := s2.Read(); len(got.Surfaces) != 0 || got.Failure != "x" {
+		t.Errorf("failure alone: %+v", got)
+	}
+}
+
+func TestReplaceClearsWhatACrashLeftBehind(t *testing.T) {
+	pics := map[string][]byte{PNGName(0, ""): pngOf(t, 4, 2, color.NRGBA{A: 255})}
+	for name, replace := range map[string]func(*Store) error{
+		"a drawing": func(s *Store) error { return s.Replace(drawing("2", 0), pics) },
+		"a failure": func(s *Store) error { return s.Replace(Drawing{Failure: "timeout"}, nil) },
+	} {
+		s, dir := openStore(t, "w1")
+		if err := s.Replace(drawing("1", 0), pics); err != nil {
+			t.Fatal(err)
+		}
+		w := filepath.Join(dir, "factorymaps", "w1")
+		partial := filepath.Join(w, ".partial-0123456789abcdef")
+		orphan := filepath.Join(w, "g-fedcba9876543210")
+		stray := filepath.Join(w, "notes.txt")
+		if err := os.WriteFile(partial, []byte(`{"format":1`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(orphan, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(stray, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := replace(s); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		for _, p := range []string{partial, orphan} {
+			if _, err := os.Lstat(p); !errors.Is(err, fs.ErrNotExist) {
+				t.Errorf("%s: %s kept: %v", name, filepath.Base(p), err)
+			}
+		}
+		if _, err := os.Lstat(stray); err != nil {
+			t.Errorf("%s: removed a file that is not the store's: %v", name, err)
+		}
+		if _, ok, err := s.Read(); !ok || err != nil {
+			t.Errorf("%s: record lost: %v %v", name, ok, err)
+		}
+		if f, err := s.OpenPNG(0, ""); err != nil {
+			t.Errorf("%s: picture lost: %v", name, err)
+		} else {
+			_ = f.Close()
+		}
+	}
+}
+
+func TestSweepRemovesStoresOfWorldsThatAreGone(t *testing.T) {
+	dir := t.TempDir()
+	pics := map[string][]byte{PNGName(0, ""): pngOf(t, 4, 2, color.NRGBA{A: 255})}
+	for _, id := range []string{"keep-me", "gone-1", "gone-2"} {
+		s, _ := Open(dir, id)
+		if err := s.Replace(drawing("1", 0), pics); err != nil {
+			t.Fatal(err)
+		}
+	}
+	top := filepath.Join(dir, "factorymaps")
+	if err := os.WriteFile(filepath.Join(top, "Not_An_ID.txt"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var asked []string
+	kept, _ := Open(dir, "keep-me")
+	err := Sweep(dir, func(id string) bool {
+		asked = append(asked, id)
+		// The callback may use a store without deadlocking.
+		_, _, _ = kept.Read()
+		return id == "keep-me"
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"gone-1", "gone-2"} {
+		if _, err := os.Lstat(filepath.Join(top, id)); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s kept: %v", id, err)
+		}
+	}
+	if _, ok, err := kept.Read(); !ok || err != nil {
+		t.Errorf("a kept world lost its pictures: %v %v", ok, err)
+	}
+	if _, err := os.Lstat(filepath.Join(top, "Not_An_ID.txt")); err != nil {
+		t.Errorf("a file that is no store was removed: %v", err)
+	}
+	for _, id := range asked {
+		if id == "Not_An_ID.txt" {
+			t.Error("keep was asked about a name that is no world id")
+		}
+	}
+	if len(asked) != 3 {
+		t.Errorf("keep asked about %v, want the three stores", asked)
+	}
+}
+
+func TestSweepWithNothingToSweep(t *testing.T) {
+	never := func(string) bool { t.Error("keep called"); return true }
+	if err := Sweep(filepath.Join(t.TempDir(), "missing"), never); err != nil {
+		t.Errorf("no data dir: %v", err)
+	}
+	if err := Sweep(t.TempDir(), never); err != nil {
+		t.Errorf("no store folder: %v", err)
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "factorymaps"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Sweep(dir, never); err == nil {
+		t.Error("a file in place of the store folder was not reported")
+	}
+}
+
+func TestSweepDoesNotFollowALink(t *testing.T) {
+	dir, outside := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "keep"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "factorymaps"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "factorymaps", "gone")); err != nil {
+		t.Fatal(err)
+	}
+	if err := Sweep(dir, func(string) bool { return false }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "keep")); err != nil {
+		t.Errorf("Sweep followed a link: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(dir, "factorymaps", "gone")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("link kept: %v", err)
+	}
+}
+
+// A reader whose record goes stale more often than any small retry count
+// still gets a whole drawing: it starts over for as long as Replace keeps
+// finishing, and fails only when the drawing is truly gone. The hook runs a
+// Replace after every read of the record for the first 10 reads of each call.
+func TestReaderOutlastsManyConcurrentReplaces(t *testing.T) {
+	s, _ := openStore(t, "w1")
+	red, blue := color.NRGBA{255, 0, 0, 255}, color.NRGBA{0, 0, 255, 255}
+	set := func(c color.NRGBA) map[string][]byte {
+		return map[string][]byte{
+			PNGName(0, ""):            pngOf(t, 4, 2, c, 0),
+			PNGName(0, CategoryBelts): pngOf(t, 4, 2, c, 1),
+		}
+	}
+	sets := []map[string][]byte{set(red), set(blue)}
+	if err := s.Replace(drawing("a", 0), sets[0]); err != nil {
+		t.Fatal(err)
+	}
+	reads, flips := 0, 0
+	afterFacts = func() {
+		reads++
+		if reads%11 == 0 { // every call's 11th attempt is the first one left alone
+			return
+		}
+		flips++
+		if err := s.Replace(drawing("x", 0), sets[flips%2]); err != nil {
+			t.Error(err)
+		}
+	}
+	defer func() { afterFacts = nil }()
+	img, err := s.Composite(0, []Category{CategoryBelts})
+	if err != nil {
+		t.Fatalf("Composite: %v", err)
+	}
+	if img.At(0, 0) != img.At(1, 0) {
+		t.Error("mixed drawing: base and layer differ")
+	}
+	reads = 0
+	f, err := s.OpenPNG(0, "")
+	if err != nil {
+		t.Fatalf("OpenPNG: %v", err)
+	}
+	_ = f.Close()
+	if flips < 20 {
+		t.Errorf("only %d replaces ran during the reads", flips)
+	}
+}
+
+// The wait is for the record to stop moving, not for ever: a drawing that is
+// removed while a reader waits ends the wait.
+func TestReaderGivesUpWhenTheDrawingIsGone(t *testing.T) {
+	s, dir := openStore(t, "w1")
+	if err := s.Replace(drawing("a", 0), map[string][]byte{PNGName(0, ""): pngOf(t, 4, 2, color.NRGBA{A: 255})}); err != nil {
+		t.Fatal(err)
+	}
+	afterFacts = func() { _ = Remove(dir, "w1") }
+	defer func() { afterFacts = nil }()
+	if _, err := s.Composite(0, nil); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("Composite = %v, want not exist", err)
+	}
+	if _, err := s.OpenPNG(0, ""); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("OpenPNG = %v, want not exist", err)
 	}
 }
