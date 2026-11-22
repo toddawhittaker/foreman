@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"image"
@@ -13,7 +14,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/factorymap"
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -32,6 +35,7 @@ type fakeMapBackend struct {
 	modeErr   error
 	store     *fakePictures
 	memory    uint64
+	real      *factorymap.Store // when set, the pictures come from it
 }
 
 func (f *fakeMapBackend) FactoryMap(string) (game.FactoryMapView, error) {
@@ -46,7 +50,12 @@ func (f *fakeMapBackend) DrawFactoryMap(context.Context, string) error {
 	return f.drawErr
 }
 
-func (f *fakeMapBackend) Pictures(string) (pictureStore, error) { return f.store, nil }
+func (f *fakeMapBackend) Pictures(string) (pictureStore, error) {
+	if f.real != nil {
+		return f.real, nil
+	}
+	return f.store, nil
+}
 
 func (f *fakeMapBackend) SetMode(_ string, m world.FactoryMapMode) error {
 	f.modes = append(f.modes, m)
@@ -58,10 +67,16 @@ func (f *fakeMapBackend) RunningMemory(string) uint64 { return f.memory }
 // fakePictures keeps one PNG file per (surface, layer) and records what was
 // asked for.
 type fakePictures struct {
+	mu        sync.Mutex
 	dir       string
 	opened    []string
 	composed  [][]factorymap.Category
 	composeAt int
+	// entered, when set, gets a value as each Composite starts, and gate,
+	// when set, holds each one until it is closed.
+	entered chan struct{}
+	gate    chan struct{}
+	failing bool
 }
 
 func (p *fakePictures) OpenPNG(surface int, layer factorymap.Category) (*os.File, error) {
@@ -70,8 +85,19 @@ func (p *fakePictures) OpenPNG(surface int, layer factorymap.Category) (*os.File
 }
 
 func (p *fakePictures) Composite(surface int, layers []factorymap.Category) (image.Image, error) {
+	p.mu.Lock()
 	p.composed = append(p.composed, layers)
 	p.composeAt = surface
+	p.mu.Unlock()
+	if p.entered != nil {
+		p.entered <- struct{}{}
+	}
+	if p.gate != nil {
+		<-p.gate
+	}
+	if p.failing {
+		return nil, errors.New("disk trouble")
+	}
 	img := image.NewNRGBA(image.Rect(0, 0, 3, 2))
 	img.Set(1, 1, color.NRGBA{R: 200, A: 255})
 	return img, nil
@@ -506,5 +532,152 @@ func TestMapPagePaths(t *testing.T) {
 	}
 	if p.Tabs().Current != "map" || !p.Tabs().Settings {
 		t.Errorf("tabs %+v", p.Tabs())
+	}
+}
+
+// realStoreRig serves the handlers over a real factorymap.Store holding two
+// surfaces, one with a belts layer.
+func realStoreRig(t *testing.T) *mapRig {
+	t.Helper()
+	m := newMapRig(t)
+	st, err := factorymap.Open(t.TempDir(), m.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pic := func(c color.NRGBA) []byte {
+		img := image.NewNRGBA(image.Rect(0, 0, 4, 2))
+		img.Set(0, 0, c)
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Bytes()
+	}
+	d := factorymap.Drawing{GameVersion: "2.0.77", Surfaces: []factorymap.Surface{
+		{Index: 1, Name: "nauvis", Kind: "planet", Width: 4, Height: 2, TilesPerPixel: 1},
+		{Index: 4, Name: "vulcanus", Kind: "planet", Width: 4, Height: 2, TilesPerPixel: 1},
+	}}
+	err = st.Replace(d, map[string][]byte{
+		factorymap.PNGName(1, ""):                       pic(color.NRGBA{R: 255, A: 255}),
+		factorymap.PNGName(1, factorymap.CategoryBelts): pic(color.NRGBA{G: 255, A: 255}),
+		factorymap.PNGName(4, ""):                       pic(color.NRGBA{B: 255, A: 255}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.be.view.Drawing = d
+	m.be.real = st
+	return m
+}
+
+func TestPicturesFromTheRealStore(t *testing.T) {
+	m := realStoreRig(t)
+	for path, want := range map[string]int{
+		"/1.png":                             http.StatusOK,
+		"/1.png?layer=belts":                 http.StatusOK,
+		"/4.png":                             http.StatusOK,
+		"/4.png?layer=belts":                 http.StatusNotFound, // no such picture
+		"/1.png?layer=power":                 http.StatusNotFound,
+		"/1/download":                        http.StatusOK,
+		"/1/download?layer=belts&layer=rail": http.StatusOK, // rail has no picture: skipped
+		"/4/download?layer=belts":            http.StatusOK,
+	} {
+		rec := m.do(http.MethodGet, m.base()+path, nil)
+		if rec.Code != want {
+			t.Errorf("%s: %d, want %d", path, rec.Code, want)
+			continue
+		}
+		if want == http.StatusOK {
+			if _, err := png.Decode(rec.Body); err != nil {
+				t.Errorf("%s: %v", path, err)
+			}
+		}
+	}
+	rec := m.do(http.MethodGet, m.base()+"/1/download?layer=belts", nil)
+	img, err := png.Decode(rec.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The belts layer's pixel lies over the base's at (0,0).
+	if r, g, _, _ := img.At(0, 0).RGBA(); g == 0 || r == 0xffff && g == 0 {
+		t.Errorf("combined pixel r=%d g=%d: the layer is not on the base", r, g)
+	}
+}
+
+// limitedRig is a rig whose handlers allow two combined downloads at once
+// and wait 100 ms for a slot.
+func limitedRig(t *testing.T) *mapRig {
+	t.Helper()
+	m := newMapRig(t)
+	m.mux = http.NewServeMux()
+	h := &factoryMapHandlers{s: m.hn.h.(*Handler).srv, b: m.be, combine: make(chan struct{}, maxCombined), combineWait: 100 * time.Millisecond}
+	h.routes(m.mux, func(p string, f http.HandlerFunc) { m.mux.HandleFunc(p, f) })
+	return m
+}
+
+func TestCombinedDownloadsAreLimitedToTwo(t *testing.T) {
+	m := limitedRig(t)
+	pics := m.be.store
+	pics.entered, pics.gate = make(chan struct{}, 4), make(chan struct{})
+	var wg sync.WaitGroup
+	codes := make(chan int, 2)
+	for range maxCombined {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codes <- m.do(http.MethodGet, m.base()+"/1/download?layer=belts", nil).Code
+		}()
+	}
+	for range maxCombined {
+		<-pics.entered // both hold a slot now
+	}
+	third := m.do(http.MethodGet, m.base()+"/1/download?layer=belts", nil)
+	if third.Code != http.StatusServiceUnavailable || third.Header().Get("Retry-After") == "" {
+		t.Errorf("third at once: %d, Retry-After %q; want 503 with a Retry-After", third.Code, third.Header().Get("Retry-After"))
+	}
+	// A plain picture streams from disk and needs no slot.
+	if rec := m.do(http.MethodGet, m.base()+"/1.png?layer=belts", nil); rec.Code != http.StatusOK {
+		t.Errorf("single layer while both slots are held: %d", rec.Code)
+	}
+	close(pics.gate)
+	wg.Wait()
+	for range maxCombined {
+		if c := <-codes; c != http.StatusOK {
+			t.Errorf("a held download ended with %d", c)
+		}
+	}
+	if rec := m.do(http.MethodGet, m.base()+"/1/download", nil); rec.Code != http.StatusOK {
+		t.Errorf("after the others finished: %d, the slots were not given back", rec.Code)
+	}
+}
+
+func TestCombinedDownloadWaitsBrieflyForASlot(t *testing.T) {
+	m := limitedRig(t)
+	pics := m.be.store
+	pics.entered, pics.gate = make(chan struct{}, 4), make(chan struct{})
+	done := make(chan int, 3)
+	for range maxCombined {
+		go func() { done <- m.do(http.MethodGet, m.base()+"/1/download", nil).Code }()
+	}
+	for range maxCombined {
+		<-pics.entered
+	}
+	third := make(chan int, 1)
+	go func() { third <- m.do(http.MethodGet, m.base()+"/1/download", nil).Code }()
+	// Free the two slots inside the wait: the third gets one.
+	time.Sleep(20 * time.Millisecond)
+	close(pics.gate)
+	if c := <-third; c != http.StatusOK {
+		t.Errorf("the waiting request got %d, want 200", c)
+	}
+}
+
+func TestCombinedDownloadFailureGivesTheSlotBack(t *testing.T) {
+	m := limitedRig(t)
+	m.be.store.failing = true
+	for range maxCombined + 2 {
+		if rec := m.do(http.MethodGet, m.base()+"/1/download", nil); rec.Code != http.StatusInternalServerError {
+			t.Fatalf("status %d, want 500 every time (a leaked slot would give 503)", rec.Code)
+		}
 	}
 }

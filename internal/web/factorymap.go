@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/factorymap"
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -207,6 +209,44 @@ func (l liveFactoryMap) RunningMemory(id string) uint64 {
 type factoryMapHandlers struct {
 	s *server
 	b factoryMapBackend
+
+	// combine holds a slot for each combined download being drawn, which
+	// holds about 150 MiB while it is; combineWait is how long a request
+	// waits for one. Both default (maxCombined, combineWait) when unset.
+	combine     chan struct{}
+	combineWait time.Duration
+	once        sync.Once
+}
+
+// The combined download's limit: at most maxCombined are drawn at once in
+// the process (each holds about 150 MiB), and a request waits combineWait for
+// a slot before it is told to retry (SPEC 5.16, 14).
+const (
+	maxCombined        = 2
+	defaultCombineWait = 3 * time.Second
+	combineRetryAfter  = "10"
+)
+
+// slot takes a combined-download slot, waiting a little for one. The caller
+// calls the function it returns when done; ok is false when none came free.
+func (h *factoryMapHandlers) slot(ctx context.Context) (release func(), ok bool) {
+	h.once.Do(func() {
+		if h.combine == nil {
+			h.combine = make(chan struct{}, maxCombined)
+		}
+		if h.combineWait == 0 {
+			h.combineWait = defaultCombineWait
+		}
+	})
+	t := time.NewTimer(h.combineWait)
+	defer t.Stop()
+	select {
+	case h.combine <- struct{}{}:
+		return func() { <-h.combine }, true
+	case <-t.C:
+	case <-ctx.Done():
+	}
+	return nil, false
 }
 
 // factoryMapRoutes registers the factory map page and its pictures (SPEC
@@ -506,7 +546,16 @@ func (h *factoryMapHandlers) handleDownload(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-	img, err := pics.Composite(surface.Index, layers)
+	release, ok := h.slot(r.Context())
+	if !ok {
+		w.Header().Set("Retry-After", combineRetryAfter)
+		h.s.page(w, r, http.StatusServiceUnavailable, u.Username, ErrorPage{Status: http.StatusServiceUnavailable})
+		return
+	}
+	// The drawn picture is dropped inside combined, so the slot is released
+	// when the memory is.
+	body, err := combined(pics, surface.Index, layers)
+	release()
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
 			h.s.notFound(w, r, u)
@@ -515,15 +564,23 @@ func (h *factoryMapHandlers) handleDownload(w http.ResponseWriter, r *http.Reque
 		h.s.fail(w, r, "combine factory map pictures", err)
 		return
 	}
-	// Encoded before the reply starts, so a failure can still say so.
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		h.s.fail(w, r, "encode factory map picture", err)
-		return
-	}
 	stem := downloadStem(sum.Name, "factory-map", pictureStem(surface))
 	w.Header().Set("Content-Disposition", attachment(stem+".png"))
-	writePNG(w, buf.Bytes())
+	writePNG(w, body)
+}
+
+// combined draws the base picture with layers stacked and encodes it, before
+// any reply starts so a failure can still say so.
+func combined(pics pictureStore, surface int, layers []factorymap.Category) ([]byte, error) {
+	img, err := pics.Composite(surface, layers)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // pictureStem is a surface's part of a download's name: its name with path,
