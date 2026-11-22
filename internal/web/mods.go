@@ -203,6 +203,20 @@ type ModsPage struct {
 	Plan   PlanPanel
 }
 
+// InFlow says the tab is step 2 of the guided Generate: the world has
+// new_map and no save (SPEC 5.6).
+func (p ModsPage) InFlow() bool { return p.World.Unfinished }
+
+// Steps is the step bar with step 2 current.
+func (p ModsPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMods) }
+
+// NextPath is step 3, the map settings.
+func (p ModsPage) NextPath() string { return newMapPath(p.World.ID) }
+
+// ShowSkip says the tab offers a way past the mods. After a mod change the
+// result offers Next instead (SPEC 17.9).
+func (p ModsPage) ShowSkip() bool { return p.InFlow() && p.Done.IsZero() }
+
 // UploadZone and SettingsZone are the tab's two upload fields (DESIGN 7.10).
 func (p ModsPage) UploadZone() DropZone {
 	return DropZone{ID: "mod-file", Name: modUploadField, Label: i18n.M("mods.upload.label"),
@@ -1285,6 +1299,15 @@ func (p ModPlanPage) Tabs() WorldTabs {
 	return t
 }
 
+// InFlow says the review is step 2 of the guided Generate (SPEC 5.6).
+func (p ModPlanPage) InFlow() bool { return p.World.Unfinished }
+
+// Steps is the step bar with step 2 current.
+func (p ModPlanPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMods) }
+
+// NextPath is step 3, the map settings.
+func (p ModPlanPage) NextPath() string { return newMapPath(p.World.ID) }
+
 // Heading is the page's question, naming the world (DESIGN 7.4).
 func (p ModPlanPage) Heading() i18n.Msg {
 	w := p.World.Name
@@ -1595,6 +1618,21 @@ func alsoAdd(f *planForm, list []string, name string, fixed bool) []string {
 // newInstallForm is an install plan with nothing chosen yet.
 func newInstallForm() planForm {
 	return planForm{Kind: mods.KindInstall, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}, Versions: map[string]string{}}
+}
+
+// continuePath is where an Unfinished world's Continue opens: step 2 while
+// it has mod picks not yet installed, otherwise step 3 (SPEC 5.6, 9.14). A
+// picks table that cannot be read opens step 2, which shows the picks.
+func (s *server) continuePath(ctx context.Context, sum world.Summary) string {
+	picks, err := s.store.ModPlan(ctx, sum.ID)
+	if err != nil {
+		s.log.Warn("read the mod plan", "world", sum.ID, "error", err)
+		return modsPath(sum.ID)
+	}
+	if len(picks) > 0 {
+		return modsPath(sum.ID)
+	}
+	return newMapPath(sum.ID)
 }
 
 // picksForm installs the world's saved picks (SPEC 9.14).

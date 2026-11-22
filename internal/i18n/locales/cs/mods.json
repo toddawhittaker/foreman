@@ -485,5 +485,7 @@
   "mods.plan_panel.warn.space_age": "Vyžaduje Space Age, který je v tomto světě vypnutý",
   "mods.plan_panel.warn.other": "Nelze naplánovat; kontrola ukáže proč",
   "mods.plan_panel.bad_name": "Toto není název modu, který může Foreman přidat. Je třeba mod vyhledat a zvolit + vedle něj.",
-  "mods.plan_panel.wait": "Kontrola bude k dispozici, jakmile se plán aktualizuje."
+  "mods.plan_panel.wait": "Kontrola bude k dispozici, jakmile se plán aktualizuje.",
+  "mods.flow.skip": "Přeskočit na nastavení mapy",
+  "mods.flow.next": "Další: nastavení mapy"
 }
