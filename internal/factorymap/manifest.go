@@ -51,9 +51,9 @@ type ManifestSurface struct {
 	EntitiesTruncated bool   `json:"entities_truncated"`
 }
 
-// maxManifestBytes is the most a manifest may hold: 300 surfaces take about
+// MaxManifestBytes is the most a manifest may hold: 300 surfaces take about
 // 100 KiB, so 1 MiB leaves room and still stops a hostile file early.
-const maxManifestBytes = 1 << 20
+const MaxManifestBytes = 1 << 20
 
 // Bounds on the manifest's numbers. SPEC 14.6 says every number is a whole
 // number from 0 to 2^53; chunk bounds are the one exception, since chunk
@@ -86,12 +86,12 @@ func EntitiesFile(i int) string { return "surface-" + strconv.Itoa(i) + "-entiti
 // numbers only, and counts that fit the surface's bounds and the limits. The
 // helper mod's output is untrusted, so every field is checked.
 func ParseManifest(r io.Reader) (Manifest, error) {
-	data, err := io.ReadAll(io.LimitReader(r, maxManifestBytes+1))
+	data, err := io.ReadAll(io.LimitReader(r, MaxManifestBytes+1))
 	if err != nil {
 		return Manifest{}, err
 	}
-	if len(data) > maxManifestBytes {
-		return Manifest{}, refuse("larger than %d bytes", maxManifestBytes)
+	if len(data) > MaxManifestBytes {
+		return Manifest{}, refuse("larger than %d bytes", MaxManifestBytes)
 	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()

@@ -735,6 +735,12 @@ func (s *server) deleteWorld(ctx context.Context, by game.Actor, sum world.Summa
 	if err := s.worlds.Delete(ctx, sum.ID, typedName, final, by.Username); err != nil {
 		return err
 	}
+	// No factory map outlives its world (SPEC 5.16).
+	if s.game != nil {
+		if err := s.game.ForgetFactoryMap(sum.ID); err != nil {
+			s.log.Warn("remove the factory map of a deleted world", "world", sum.ID, "error", err)
+		}
+	}
 	// A deleted world's unfinished mod plan goes with it (SPEC 3.4).
 	if err := s.store.ClearModPlan(ctx, sum.ID); err != nil {
 		s.log.Warn("clear the mod plan of a deleted world", "world", sum.ID, "error", err)
