@@ -263,3 +263,83 @@ func TestCloneFreshMapCopiesThePresetOfASourceThatHasNotStarted(t *testing.T) {
 		t.Errorf("new_map %+v, want no preset", nm)
 	}
 }
+
+// A fresh map has no save, so no record of a save's players can match it.
+func TestCloneFreshMapDoesNotCarryThePlayersRecord(t *testing.T) {
+	m, src, _ := cloneSource(t)
+	if err := m.WritePlayersRecord(src, []byte(`{"format_version":1}`)); err != nil {
+		t.Fatal(err)
+	}
+	id, err := m.Clone(context.Background(), src, "Copy", false, seedPtr(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ReadPlayersRecord(id); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("clone with a fresh map has a record: %v", err)
+	}
+	if _, err := m.ReadPlayersRecord(src); err != nil {
+		t.Fatalf("the source lost its record: %v", err)
+	}
+}
+
+// Keeping the save copies it with its name, size and modification time, so
+// the record that matches it still does in the clone (SPEC 8.14: clones
+// carry it). The source keeps its own.
+func TestCloneKeepSaveCarriesThePlayersRecord(t *testing.T) {
+	m, src, srcDir := cloneSource(t)
+	record := []byte(`{"format_version":1,"players":[]}`)
+	if err := m.WritePlayersRecord(src, record); err != nil {
+		t.Fatal(err)
+	}
+	before := tree(t, srcDir)
+	id, err := m.Clone(context.Background(), src, "Copy", true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := m.ReadPlayersRecord(id)
+	if err != nil || string(got) != string(record) {
+		t.Fatalf("clone record %q, %v", got, err)
+	}
+	if after := tree(t, srcDir); strings.Join(before, "\n") != strings.Join(after, "\n") {
+		t.Errorf("source changed:\nbefore %v\nafter  %v", before, after)
+	}
+}
+
+// With no record, or one that is not a plain small file, the clone still
+// works and starts without one: a record is only ever re-made by a read.
+func TestCloneKeepSaveWithoutAUsablePlayersRecord(t *testing.T) {
+	m, src, srcDir := cloneSource(t)
+	id, err := m.Clone(context.Background(), src, "NoRecord", true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ReadPlayersRecord(id); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("clone invented a record: %v", err)
+	}
+
+	big := make([]byte, maxPlayersRecord+1)
+	if err := os.WriteFile(filepath.Join(srcDir, PlayersFile), big, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	id, err = m.Clone(context.Background(), src, "Huge", true, nil)
+	if err != nil {
+		t.Fatalf("an oversized record broke the clone: %v", err)
+	}
+	if _, err := m.ReadPlayersRecord(id); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("clone carried an oversized record: %v", err)
+	}
+
+	if err := os.Remove(filepath.Join(srcDir, PlayersFile)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/etc/hostname", filepath.Join(srcDir, PlayersFile)); err != nil {
+		t.Fatal(err)
+	}
+	id, err = m.Clone(context.Background(), src, "Link", true, nil)
+	if err != nil {
+		t.Fatalf("a linked record broke the clone: %v", err)
+	}
+	if _, err := m.ReadPlayersRecord(id); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("clone followed a link: %v", err)
+	}
+}
