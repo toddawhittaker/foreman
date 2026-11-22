@@ -18,7 +18,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/modsettings"
-	"github.com/toddawhittaker/foreman/internal/saveplayers"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -85,11 +84,16 @@ func (d *ModSettingDefs) Catalogue(lang string) mapgen.Catalogue {
 	return d.Catalogues["en"]
 }
 
-// planetsCopy copies the planet file out of the container, after the
-// definitions. A missing file is not a failed run: the Go side falls back to
-// the built-in catalogue, and a missing definitions file is caught when it
-// is read.
+// planetsCopy copies the planet file out of the container. A missing file is
+// not a failed run: the Go side falls back to the built-in catalogue.
 const planetsCopy = `cp ` + previewWrite + `/script-output/` + gameenv.PlanetsFile + ` ` + gameenv.PreviewMount + `/` + gameenv.PlanetsFile + ` 2>/dev/null || :`
+
+// withPlanetsCopy puts planetsCopy before the script's last line, the
+// definitions copy, so the container still exits non-zero when that fails.
+func withPlanetsCopy(script string) string {
+	i := strings.LastIndex(script, "\n")
+	return script[:i+1] + planetsCopy + "\n" + script[i+1:]
+}
 
 // modSettingsMod is the definitions run's control mod. It needs no params
 // file; the container's script runs a no-op where the others write theirs.
@@ -298,7 +302,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 		}
 		spec := c.controlModSpec(ref, name, req, modSettingsMod, nil)
 		spec.HostConfig.Mounts = mounts
-		spec.Cmd[len(spec.Cmd)-1] += "\n" + planetsCopy
+		spec.Cmd[len(spec.Cmd)-1] = withPlanetsCopy(spec.Cmd[len(spec.Cmd)-1])
 		if err := container(spec); err != nil {
 			return err
 		}
@@ -336,38 +340,79 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 // gets the built-in catalogue without a game run. It fails safe: when the
 // world's mods cannot be read, or the run fails or its planet file is
 // refused, it returns the built-in catalogue of the world's line, and the
-// error is only the reason to show.
+// error is only the reason to show. Space Age is whether the world's mods
+// enable it, which an imported world's flag may not say.
 func (c *Controller) WorldCatalogue(ctx context.Context, id, lang string) (mapgen.Catalogue, error) {
 	meta, err := c.readMeta(id)
 	if err != nil {
 		return mapgen.Builtin(mapgen.Lines[len(mapgen.Lines)-1], false), err
 	}
 	line, _ := mapgen.Line(meta.GameVersion)
-	builtin := mapgen.Builtin(line, meta.SpaceAge)
-	mods, err := c.enabledMods(id)
+	enabled, err := c.enabledModNames(id)
 	if err != nil {
-		return builtin, err
+		return mapgen.Builtin(line, meta.SpaceAge), err
 	}
+	builtin := mapgen.Builtin(line, enabled[world.ModSpaceAge])
 	shipped := world.BuiltinMods(meta.GameVersion)
-	if !slices.ContainsFunc(mods, func(m saveplayers.Mod) bool { return !slices.Contains(shipped, m.Name) }) {
+	onlyShipped := true
+	for name := range enabled {
+		if !slices.Contains(shipped, name) {
+			onlyShipped = false
+		}
+	}
+	if onlyShipped {
 		return builtin, nil
 	}
 	defs, err := c.ModSettingDefs(ctx, id)
 	if err != nil {
 		return builtin, err
 	}
-	return defs.Catalogue(lang), defs.PlanetsErr
+	if defs.PlanetsErr != nil {
+		return builtin, defs.PlanetsErr
+	}
+	return defs.Catalogue(lang), nil
 }
 
-// worldCatalogues parses the run's planet file once for each of Foreman's
-// languages, each with English behind it. A file that is missing or refused
-// gives the built-in catalogue and the reason (SPEC 5.6, 14.6).
-func worldCatalogues(data []byte, readErr error, sections map[string]modsettings.LocaleSections, line string, spaceAge bool) (map[string]mapgen.Catalogue, error) {
-	builtin := func(err error) (map[string]mapgen.Catalogue, error) {
-		return map[string]mapgen.Catalogue{"en": mapgen.Builtin(line, spaceAge)}, err
+// enabledModNames is the names of the mods the game loads for the world: each
+// mod file the game turns on and each mod mod-list.json enables, even one
+// with no file, such as a built-in mod.
+func (c *Controller) enabledModNames(id string) (map[string]bool, error) {
+	mods, err := c.enabledMods(id)
+	if err != nil {
+		return nil, err
 	}
+	out := map[string]bool{}
+	for _, m := range mods {
+		out[m.Name] = true
+	}
+	root, err := c.worlds.OpenWorld(id)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	states, err := world.ModListStates(root)
+	if err != nil {
+		return nil, err
+	}
+	for name, on := range states {
+		if on {
+			out[name] = true
+		}
+	}
+	return out, nil
+}
+
+// worldCatalogues decodes the run's planet file once and labels it in each of
+// Foreman's languages, each with English behind it. A file that is missing
+// or refused gives the built-in catalogue and the reason (SPEC 5.6, 14.6).
+func worldCatalogues(data []byte, readErr error, sections map[string]modsettings.LocaleSections, line string, spaceAge bool) (map[string]mapgen.Catalogue, error) {
+	builtin := map[string]mapgen.Catalogue{"en": mapgen.Builtin(line, spaceAge)}
 	if readErr != nil {
-		return builtin(fmt.Errorf("%w: %w", ErrPlanetsMissing, readErr))
+		return builtin, readErr
+	}
+	f, err := mapgen.DecodeWorldPlanets(line, data)
+	if err != nil {
+		return builtin, fmt.Errorf("%w: %w", ErrPlanetsRefused, err)
 	}
 	out := map[string]mapgen.Catalogue{}
 	for lang := range modsettings.FactorioLocales {
@@ -375,25 +420,29 @@ func worldCatalogues(data []byte, readErr error, sections map[string]modsettings
 		if lang != "en" && sections["en"] != nil {
 			layers = append(layers, sections["en"])
 		}
-		cat, err := mapgen.ParseWorldPlanets(line, data, layers...)
-		if err != nil {
-			return builtin(fmt.Errorf("%w: %w", ErrPlanetsRefused, err))
-		}
-		out[lang] = cat
+		out[lang] = f.Labelled(layers...)
 	}
 	return out, nil
 }
 
 // readPlanetsOutput reads the planet file the run left in the work folder,
 // under the same rules as the definitions: a regular file within its limit
-// (SPEC 14.6).
+// (SPEC 14.6). A file over the limit is ErrPlanetsRefused; any other failure
+// is ErrPlanetsMissing.
 func readPlanetsOutput(base *os.Root, dir string) ([]byte, error) {
 	root, err := base.OpenRoot(dir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrPlanetsMissing, err)
 	}
 	defer func() { _ = root.Close() }()
-	return world.ReadSmallFile(root, gameenv.PlanetsFile, mapgen.MaxPlanetFileBytes)
+	if info, err := root.Lstat(gameenv.PlanetsFile); err == nil && info.Mode().IsRegular() && info.Size() > mapgen.MaxPlanetFileBytes {
+		return nil, fmt.Errorf("%w: the file is over %d bytes", ErrPlanetsRefused, mapgen.MaxPlanetFileBytes)
+	}
+	b, err := world.ReadSmallFile(root, gameenv.PlanetsFile, mapgen.MaxPlanetFileBytes)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrPlanetsMissing, err)
+	}
+	return b, nil
 }
 
 // makeModSettingsDir makes the run's work folder: the game's config and the

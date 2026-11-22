@@ -276,31 +276,43 @@ func (l *luaList[T]) UnmarshalJSON(b []byte) error {
 // 100 characters; a name that does not resolve is its own label. A planet's
 // controls are in the game's order (order, then name).
 func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleSections) (Catalogue, error) {
+	f, err := DecodeWorldPlanets(line, data)
+	if err != nil {
+		return Catalogue{}, err
+	}
+	return f.Labelled(sections...), nil
+}
+
+// PlanetFile is a checked planet file whose labels are not yet resolved, so
+// one decode serves every language.
+type PlanetFile struct {
+	cat Catalogue
+	// The localised names of the kept planets, controls and resources, by
+	// name.
+	planetLoc, controlLoc, resourceLoc map[string]json.RawMessage
+}
+
+// DecodeWorldPlanets checks a planet file as ParseWorldPlanets does, with
+// every label left as its name.
+func DecodeWorldPlanets(line string, data []byte) (PlanetFile, error) {
 	if len(data) > MaxPlanetFileBytes {
-		return Catalogue{}, errPlanetsSize
+		return PlanetFile{}, errPlanetsSize
 	}
 	var raw rawPlanetFile
 	// Errors are replaced, so no text from the file reaches a log.
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return Catalogue{}, errPlanetsJSON
+		return PlanetFile{}, errPlanetsJSON
 	}
 	if len(raw.Planets) > MaxPlanets || len(raw.Controls) > MaxControls || len(raw.Resources) > MaxResources {
-		return Catalogue{}, errPlanetsCount
+		return PlanetFile{}, errPlanetsCount
 	}
 	for _, p := range raw.Planets {
 		if len(p.Controls) > MaxPlanetControls || len(p.Resources) > MaxResources {
-			return Catalogue{}, errPlanetsCount
+			return PlanetFile{}, errPlanetsCount
 		}
 	}
 	c := Catalogue{NoPlanets: line == "1.1", Controls: map[string]CatalogueControl{}}
-	label := func(loc json.RawMessage, name string) string {
-		if s, ok := modsettings.ResolveLocalised(loc, sections...); ok {
-			if s = modsettings.StripRichText(s); s != "" {
-				return s
-			}
-		}
-		return name
-	}
+	f := PlanetFile{planetLoc: map[string]json.RawMessage{}, controlLoc: map[string]json.RawMessage{}, resourceLoc: map[string]json.RawMessage{}}
 	defined := map[string]CatalogueControl{}
 	var order []string
 	for _, r := range raw.Controls {
@@ -312,8 +324,9 @@ func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleS
 		defined[r.Name] = CatalogueControl{
 			Control: Control{Name: r.Name, Category: r.Category, Richness: r.Richness, CanBeDisabled: r.CanBeDisabled},
 			Order:   r.Order,
-			Label:   label(r.LocName, r.Name),
+			Label:   r.Name,
 		}
+		f.controlLoc[r.Name] = r.LocName
 		order = append(order, r.Name)
 	}
 	byOrder := func(a, b string) int {
@@ -333,7 +346,8 @@ func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleS
 			continue
 		}
 		seen[r.Name] = true
-		p := Planet{Name: r.Name, Label: label(r.LocName, r.Name), Defaults: map[string]ControlDefault{}}
+		f.planetLoc[r.Name] = r.LocName
+		p := Planet{Name: r.Name, Label: r.Name, Defaults: map[string]ControlDefault{}}
 		for n, d := range r.Controls {
 			if _, ok := defined[n]; !ok {
 				c.Dropped++
@@ -355,7 +369,7 @@ func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleS
 		c.Planets = append(c.Planets, p)
 	}
 	if !c.NoPlanets && len(c.Planets) == 0 {
-		return Catalogue{}, errPlanetsNone
+		return PlanetFile{}, errPlanetsNone
 	}
 	for _, p := range c.Planets {
 		for _, n := range p.Controls {
@@ -376,7 +390,40 @@ func ParseWorldPlanets(line string, data []byte, sections ...modsettings.LocaleS
 		if _, ok := c.Controls[ctl]; !ok {
 			ctl = ""
 		}
-		c.Resources = append(c.Resources, Resource{Name: r.Name, Control: ctl, Label: label(r.LocName, r.Name)})
+		f.resourceLoc[r.Name] = r.LocName
+		c.Resources = append(c.Resources, Resource{Name: r.Name, Control: ctl, Label: r.Name})
 	}
-	return c, nil
+	f.cat = c
+	return f, nil
+}
+
+// Labelled returns the catalogue with labels resolved from the locale
+// sections, stripped of rich text and cut to 100 characters; a name that does
+// not resolve is its own label. Results share no slice or map they change.
+func (f PlanetFile) Labelled(sections ...modsettings.LocaleSections) Catalogue {
+	label := func(loc json.RawMessage, name string) string {
+		if s, ok := modsettings.ResolveLocalised(loc, sections...); ok {
+			if s = modsettings.StripRichText(s); s != "" {
+				return s
+			}
+		}
+		return name
+	}
+	c := f.cat
+	c.Planets = slices.Clone(c.Planets)
+	for i, p := range c.Planets {
+		if loc, ok := f.planetLoc[p.Name]; ok {
+			c.Planets[i].Label = label(loc, p.Name)
+		}
+	}
+	c.Controls = make(map[string]CatalogueControl, len(f.cat.Controls))
+	for n, cc := range f.cat.Controls {
+		cc.Label = label(f.controlLoc[n], n)
+		c.Controls[n] = cc
+	}
+	c.Resources = slices.Clone(c.Resources)
+	for i, r := range c.Resources {
+		c.Resources[i].Label = label(f.resourceLoc[r.Name], r.Name)
+	}
+	return c
 }

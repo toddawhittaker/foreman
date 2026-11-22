@@ -11,6 +11,33 @@ import (
 	"github.com/toddawhittaker/foreman/internal/modsettings"
 )
 
+// One decode serves every language: each labelled copy has its own labels
+// and leaves the others as they were.
+func TestDecodeOnceLabelPerLanguage(t *testing.T) {
+	data := []byte(`{"planets":[{"name":"moon","localised_name":["space-location-name.moon"],"autoplace_controls":{"rock":{}}}],
+	  "autoplace_controls":[{"name":"rock","category":"resource","localised_name":["autoplace-control-names.rock"]}],
+	  "resources":[{"name":"rock","control":"rock","localised_name":["entity-name.rock"]}]}`)
+	f, err := DecodeWorldPlanets("2.1", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	en := f.Labelled(modsettings.LocaleSections{"space-location-name": {"moon": "Moon"}, "autoplace-control-names": {"rock": "Rock"}, "entity-name": {"rock": "Rock ore"}})
+	de := f.Labelled(modsettings.LocaleSections{"space-location-name": {"moon": "Mond"}})
+	if en.Planets[0].Label != "Moon" || en.Controls["rock"].Label != "Rock" || en.Resources[0].Label != "Rock ore" {
+		t.Errorf("English labels %+v", en)
+	}
+	if de.Planets[0].Label != "Mond" || de.Controls["rock"].Label != "rock" || de.Resources[0].Label != "rock" {
+		t.Errorf("German labels %+v", de)
+	}
+	if en.Planets[0].Label != "Moon" {
+		t.Error("labelling German changed the English copy")
+	}
+	want, _ := ParseWorldPlanets("2.1", data, modsettings.LocaleSections{"space-location-name": {"moon": "Mond"}})
+	if !reflect.DeepEqual(want, de) {
+		t.Error("ParseWorldPlanets differs from decode then label")
+	}
+}
+
 func TestBuiltinMatchesEmbeddedData(t *testing.T) {
 	for _, line := range Lines {
 		for _, sa := range []bool{false, true} {

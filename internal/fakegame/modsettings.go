@@ -128,10 +128,11 @@ type (
 
 // cannedPlanets is the planet file for a game line and the enabled mods: the
 // built-in catalogue, so a world without the fake mod looks as before, plus
-// FakePlanet and FakeOre when FakePlanetMod is enabled. Each control's order
-// keeps the built-in order.
+// FakePlanet and FakeOre when FakePlanetMod is enabled. The built-in data has
+// no order strings, so each control's order is where it first appears,
+// planet by planet; a test checks every planet keeps its built-in order.
 func cannedPlanets(line string, mods []string) fakePlanetFile {
-	cat := mapgen.Builtin(line, slices.Contains(mods, "space-age"))
+	cat := mapgen.Builtin(line, slices.Contains(mods, world.ModSpaceAge))
 	f := fakePlanetFile{Planets: []fakePlanetEntry{}, Controls: []fakeControlEntry{}, Resources: []fakeResource{}}
 	defaults := func() map[string]float64 { return map[string]float64{"frequency": 1, "size": 1, "richness": 1} }
 	seen := map[string]bool{}
