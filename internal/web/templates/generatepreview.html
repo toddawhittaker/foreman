@@ -19,9 +19,9 @@
       {{- template "tip-text" .LimitTip}}
     </div>
     {{- end}}
-    {{- if .Fallback}}
+    {{- if not .Fallback.IsZero}}
     <div class="message message--note" id="preview-fallback">
-      <p><strong>{{t "common.label.note"}}</strong> {{t "mapgen.preview.fallback"}}</p>
+      <p><strong>{{t "common.label.note"}}</strong> {{msg .Fallback}}</p>
     </div>
     {{- end}}
     {{- if .Territories.Carry}}

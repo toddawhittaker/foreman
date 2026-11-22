@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"html"
 	"net/http"
 	"strings"
@@ -87,6 +88,21 @@ func TestPreviewNotesAOneColorPicture(t *testing.T) {
 	_, _, body = worldPreview(t, &fakePreviewer{png: solidPNG(t, 64, true)}, cerysCatalogue(), nil, "planet", "nauvis")
 	if strings.Contains(body, `preview-one-color`) {
 		t.Error("a two-color picture has the note")
+	}
+	// Generate's preview has no world mods, so no note.
+	hn := newGenerateHarness(t, &fakePreviewer{png: solidPNG(t, 64, false)})
+	c := hn.signIn()
+	if rec := hn.postLong(PathGeneratePreview, generateForm(), c); rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), `preview-one-color`) {
+		t.Errorf("Generate: status %d, note shown %t", rec.Code, strings.Contains(rec.Body.String(), `preview-one-color`))
+	}
+}
+
+// SPEC 5.6, ADR 0033: a planet list unread because a world mod is named
+// like Foreman's helper says so in the fallback note.
+func TestPreviewFallbackNamesTheHelperModClash(t *testing.T) {
+	_, _, body := worldPreview(t, &fakePreviewer{}, mapgen.Builtin("2.1", true), fmt.Errorf("%w: %w", game.ErrModSettingsBadOutput, game.ErrControlModTaken), "planet", "nauvis")
+	if !strings.Contains(body, `id="preview-fallback"`) || !strings.Contains(body, html.EscapeString(i18n.English.T("mapgen.preview.control_mod_taken"))) {
+		t.Errorf("no clash note in:\n%s", body)
 	}
 }
 

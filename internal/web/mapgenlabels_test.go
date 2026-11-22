@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
 
@@ -252,5 +253,114 @@ func TestOneColor(t *testing.T) {
 	}
 	if oneColor([]byte("not a png")) {
 		t.Error("an unreadable picture is one color")
+	}
+}
+
+// stoneSize is the size the file writes for stone.
+func stoneSize(t *testing.T, out []byte) any {
+	t.Helper()
+	var file struct {
+		Controls map[string]map[string]any `json:"autoplace_controls"`
+	}
+	if err := json.Unmarshal(out, &file); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	return file.Controls["stone"]["size"]
+}
+
+// renderedPost is the post the form makes as shown: every select and box
+// with its value, and each shared field's start value.
+func renderedPost(f MapGenForm) url.Values {
+	vals := url.Values{mgSeed: {"1"}}
+	for _, s := range f.selects() {
+		vals.Set(s.Name, s.Value)
+		if s.Shared {
+			vals.Set(s.StartName(), s.StartValue())
+		}
+	}
+	for _, c := range f.toggles() {
+		vals.Set(c.Name, map[bool]string{true: "on", false: "off"}[c.Checked])
+		if c.Shared {
+			vals.Set(c.StartName(), c.StartValue())
+		}
+	}
+	return vals
+}
+
+// SPEC 5.6: a form opened from a file with stone at 300% keeps the user's
+// edit of either planet's copy, and two copies moved to different values
+// are an error that names both planets.
+func TestSharedControlKeepsTheEditFromAFile(t *testing.T) {
+	cat := sharedCatalogue()
+	opened, _, problems := parseMapGenIn(fileValuesIn("2.1", cat, []byte(`{"autoplace_controls":{"stone":{"size":3}}}`), "1", "", true), "2.1", cat)
+	if len(problems) > 0 {
+		t.Fatalf("opening: %v", problems)
+	}
+	for planet, want := range map[string]float64{"nauvis": 0.5, "moshine": 0.5} {
+		vals := renderedPost(opened)
+		vals.Set(fieldName(planet, "stone", "size"), "50")
+		_, out, problems := parseMapGenIn(vals, "2.1", cat)
+		if len(problems) > 0 || stoneSize(t, out) != want {
+			t.Errorf("%s moved to 50%%: problems %v, size %v", planet, problems, stoneSize(t, out))
+		}
+	}
+	// Untouched, the file's value stays.
+	if _, out, _ := parseMapGenIn(renderedPost(opened), "2.1", cat); stoneSize(t, out) != 3.0 {
+		t.Errorf("untouched: size %v, want 3", stoneSize(t, out))
+	}
+	vals := renderedPost(opened)
+	vals.Set(fieldName("nauvis", "stone", "size"), "50")
+	vals.Set(fieldName("moshine", "stone", "size"), "200")
+	f, out, problems := parseMapGenIn(vals, "2.1", cat)
+	if out != nil || len(problems) != 2 || problems[0].Message.Key != "mapgen.err.shared" {
+		t.Fatalf("both moved: out %s, problems %v", out, problems)
+	}
+	if m := problems[0].Message; m.Args["first"].(i18n.Msg).Key != "mapgen.planet.nauvis" || m.Args["second"].(i18n.Msg).Args["name"] != "Moshine" {
+		t.Errorf("the error names %v", m.Args)
+	}
+	if s := selectOf(t, groupOf(t, f, "mg-moshine-stone"), "size"); s.Value != "200" || s.Start != "300" {
+		t.Errorf("Moshine's copy came back as %q from %q", s.Value, s.Start)
+	}
+}
+
+// SPEC 5.6: a small inverted default (a scale of 1/0.0005) is not shown,
+// so it can never be written as 0.
+func TestInvertedPlanetDefaultIsBounded(t *testing.T) {
+	tiny, ok := 0.0005, false
+	scale := mgSetting{key: "frequency", invert: true}
+	if _, ok = (mgControl{def: mapgen.ControlDefault{Frequency: &tiny}}).defaultOf(scale); ok {
+		t.Error("a default shown as 2000 is used")
+	}
+	cat := sharedCatalogue()
+	cat.Planets = slices.Clone(cat.Planets)
+	last := &cat.Planets[len(cat.Planets)-1]
+	last.Defaults = map[string]mapgen.ControlDefault{"moshine_dust": {Frequency: &tiny}}
+	_, out, problems := parseMapGenIn(url.Values{mgSeed: {"1"}}, "2.1", cat)
+	var file struct {
+		Controls map[string]map[string]any `json:"autoplace_controls"`
+	}
+	if len(problems) > 0 || json.Unmarshal(out, &file) != nil || file.Controls["moshine_dust"]["frequency"] == 0.0 {
+		t.Errorf("problems %v, dust %v", problems, file.Controls["moshine_dust"])
+	}
+	half := 0.5
+	if v, ok := (mgControl{def: mapgen.ControlDefault{Frequency: &half}}).defaultOf(scale); !ok || v != 0.5 {
+		t.Errorf("a scale of 200%% is not used: %v %t", v, ok)
+	}
+}
+
+// SPEC 5.6: a saved file or favorite holding the planet's own 150 opens on
+// that entry again.
+func TestSavedPlanetDefaultReopens(t *testing.T) {
+	cat := sharedCatalogue()
+	file := []byte(`{"autoplace_controls":{"steam_geyser":{"frequency":1,"size":1,"richness":150}}}`)
+	f, out, problems := parseMapGenIn(fileValuesIn("2.1", cat, file, "1", "", true), "2.1", cat)
+	if len(problems) > 0 {
+		t.Fatal(problems)
+	}
+	if s := selectOf(t, groupOf(t, f, "mg-moshine-steam_geyser"), "richness"); s.Value != "x150" {
+		t.Errorf("reopened on %q, want x150", s.Value)
+	}
+	if !bytes.Contains(out, []byte(`"richness": 150`)) {
+		t.Errorf("not written back as 150: %s", out)
 	}
 }

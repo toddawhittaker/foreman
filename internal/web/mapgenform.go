@@ -182,6 +182,11 @@ type MapGenSelect struct {
 	Blocked bool
 	// Plain is a select of names, not steps, so it never becomes a slider.
 	Plain bool
+	// Shared is a control on several planets; Start is the value the form
+	// showed it with, posted back so a copy the user moved is told from one
+	// left as it was (SPEC 5.6). "" means the value was not posted.
+	Shared bool
+	Start  string
 	// def is the value a bad post falls back to; "" means mgDefaultStep.
 	def string
 	// stored is the value's path in map-gen-settings.json and whether the
@@ -227,6 +232,33 @@ type MapGenCheck struct {
 	// cannot be finished without; NeedKey names it in the summary.
 	Need    i18n.Msg
 	NeedKey string
+	// Shared and Start are as MapGenSelect's; Start is "on" or "off".
+	Shared bool
+	Start  string
+}
+
+// mgStartPrefix starts the name of a shared field's start value. It is not
+// mgPrefix, so the field is no map setting.
+const mgStartPrefix = "mgstart."
+
+// StartName is the name the select's start value is posted under.
+func (s MapGenSelect) StartName() string { return mgStartPrefix + s.Name }
+
+// StartName is the name the box's start value is posted under.
+func (c MapGenCheck) StartName() string { return mgStartPrefix + c.Name }
+
+// StartValue is the start value to post: the one posted, else the value shown.
+func (s MapGenSelect) StartValue() string { return cmp.Or(s.Start, s.Value) }
+
+// StartValue is the start value to post: the one posted, else the box shown.
+func (c MapGenCheck) StartValue() string {
+	if c.Start != "" {
+		return c.Start
+	}
+	if c.Checked {
+		return "on"
+	}
+	return "off"
 }
 
 // MapGenGroup is the settings of one autoplace control, under its name.
@@ -305,6 +337,10 @@ type MapGenForm struct {
 	RawOpen, RawInvalid bool
 	// RawModified says the raw box differs from the preset's.
 	RawModified bool
+
+	// source is, per shared control and setting ("stone.size", "stone.on"),
+	// the planet whose copy is written (SPEC 5.6).
+	source map[string]string
 }
 
 // selects lists every select of the form, in page order.
@@ -665,7 +701,8 @@ const mgPlanetDefaultMax = 1000
 const planetDefaultPrefix = "x"
 
 // defaultOf is the setting's stored default on the planet, or false for the
-// game's default of 1.
+// game's default of 1. Both the stored value and the one shown (its inverse
+// for a scale) are bounded as codeValue bounds a code.
 func (c mgControl) defaultOf(s mgSetting) (float64, bool) {
 	var v *float64
 	switch s.key {
@@ -677,6 +714,9 @@ func (c mgControl) defaultOf(s mgSetting) (float64, bool) {
 		v = c.def.Richness
 	}
 	if v == nil || *v <= 0 || *v > mgPlanetDefaultMax || *v == 1 {
+		return 0, false
+	}
+	if s.invert && 1 / *v > mgPlanetDefaultMax {
 		return 0, false
 	}
 	return *v, true
@@ -857,7 +897,10 @@ func buildMapGenFormIn(line string, cat mapgen.Catalogue, posted func(name strin
 			}
 			if c.toggle {
 				g.Toggle = &MapGenCheck{ID: fieldID(p.name, c.name, mgOn), Name: fieldName(p.name, c.name, mgOn),
-					Label: c.legend, Checked: true, Preset: true}
+					Label: c.legend, Checked: true, Preset: true, Shared: len(c.also) > 0}
+				if v, ok := posted(g.Toggle.StartName()); ok && g.Toggle.Shared && (v == "on" || v == "off") {
+					g.Toggle.Start = v
+				}
 				if p.name == "nauvis" && slices.Contains(needed, c.name) {
 					g.Toggle.NeedKey = c.name
 					g.Toggle.Need = needMsgs[c.name]
@@ -866,7 +909,7 @@ func buildMapGenFormIn(line string, cat mapgen.Catalogue, posted func(name strin
 			for _, s := range c.settings {
 				name := fieldName(p.name, c.name, s.key)
 				sel := MapGenSelect{ID: fieldID(p.name, c.name, s.key), Name: name, Label: s.label,
-					Value: mgDefaultStep, Options: optionsFrequency, invert: s.invert}
+					Value: mgDefaultStep, Options: optionsFrequency, invert: s.invert, Shared: len(c.also) > 0}
 				if !c.topLevel {
 					sel.path = "autoplace_controls." + c.name + "." + s.key
 				}
@@ -882,6 +925,9 @@ func buildMapGenFormIn(line string, cat mapgen.Catalogue, posted func(name strin
 					if code, options := planetDefaultStep(v, s.invert, sel.Options); code != "" {
 						sel.Value, sel.def, sel.Options = code, code, options
 					}
+				}
+				if v, ok := posted(sel.StartName()); ok && sel.Shared && validStep(v, sel.Options) {
+					sel.Start = v
 				}
 				if v, ok := posted(name); ok && c.toggle && s.key == "size" && v == mgNone {
 					// A size of none is the box off, as the game shows it.
@@ -1071,6 +1117,9 @@ func parseMapGenIn(vals url.Values, line string, cat mapgen.Catalogue) (form Map
 			fail(mgRawID, rawErrorMsg(fe, form.Raw.Value))
 		}
 	}
+	for _, p := range form.resolveShared() {
+		fail(p.FieldID, p.Message)
+	}
 	form.setOpen("")
 	if len(problems) > 0 {
 		return form, nil, problems
@@ -1220,21 +1269,85 @@ func (f MapGenForm) resourceOn(planet, control string) bool {
 	return true
 }
 
-// moved reports whether a control's fields on a planet differ from where
-// the form starts them.
-func (f MapGenForm) moved(planet string, c mgControl) bool {
-	prefix := fieldName(planet, c.name, "")
-	for _, s := range f.selects() {
-		if strings.HasPrefix(s.Name, prefix) && s.Value != cmp.Or(s.def, mgDefaultStep) {
-			return true
+// sourceOf is the planet whose copy of a control's setting is written.
+func (f MapGenForm) sourceOf(planet, control, key string) string {
+	if p, ok := f.source[control+"."+key]; ok {
+		return p
+	}
+	return planet
+}
+
+// sharedCopy is one planet's field of a shared control's setting.
+type sharedCopy struct {
+	planet, value, start string
+	id                   string
+}
+
+// resolveShared chooses, for each setting of a control on several planets,
+// the copy that is written: the one the user moved from where the form
+// started it, else the first planet's. Copies moved to different values are
+// an error that names their planets, as no copy can be guessed (SPEC 5.6).
+func (f *MapGenForm) resolveShared() []Problem {
+	f.source = map[string]string{}
+	copies := map[string][]sharedCopy{}
+	var order []string
+	legends := map[string]i18n.Msg{}
+	add := func(key string, c sharedCopy, legend i18n.Msg) {
+		if _, ok := copies[key]; !ok {
+			order = append(order, key)
+			legends[key] = legend
+		}
+		copies[key] = append(copies[key], c)
+	}
+	for _, p := range f.Resources {
+		f.sharedOf(p, add)
+	}
+	for _, p := range f.Terrain {
+		f.sharedOf(p, add)
+	}
+	var problems []Problem
+	for _, key := range order {
+		var moved []sharedCopy
+		for _, c := range copies[key] {
+			if c.value != c.start {
+				moved = append(moved, c)
+			}
+		}
+		if len(moved) == 0 {
+			continue
+		}
+		if slices.ContainsFunc(moved, func(c sharedCopy) bool { return c.value != moved[0].value }) {
+			msg := i18n.M("mapgen.err.shared", "control", legends[key],
+				"first", catPlanetName(f.cat, moved[0].planet).Name, "second", catPlanetName(f.cat, moved[1].planet).Name)
+			for _, c := range moved {
+				problems = append(problems, Problem{FieldID: c.id, Message: msg})
+			}
+			continue
+		}
+		f.source[key] = moved[0].planet
+	}
+	return problems
+}
+
+// sharedOf hands add the shared fields of one planet's groups.
+func (f *MapGenForm) sharedOf(p MapGenPlanet, add func(string, sharedCopy, i18n.Msg)) {
+	for gi := range p.Groups {
+		g := &p.Groups[gi]
+		control := strings.TrimPrefix(g.ID, "mg-"+p.Planet+"-")
+		if t := g.Toggle; t != nil && t.Shared {
+			value := "off"
+			if t.Checked {
+				value = "on"
+			}
+			add(control+"."+mgOn, sharedCopy{p.Planet, value, cmp.Or(t.Start, "on"), t.ID}, g.Legend)
+		}
+		for _, s := range g.Selects {
+			if s.Shared {
+				key := s.Name[strings.LastIndex(s.Name, ".")+1:]
+				add(control+"."+key, sharedCopy{p.Planet, s.Value, cmp.Or(s.Start, s.def, mgDefaultStep), s.ID}, g.Legend)
+			}
 		}
 	}
-	for _, t := range f.toggles() {
-		if strings.HasPrefix(t.Name, prefix) && !t.Checked {
-			return true
-		}
-	}
-	return false
 }
 
 // num writes a multiplier without float noise.
@@ -1350,25 +1463,20 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 					}
 					entry = asMap(ms)
 				}
-				for _, s := range c.settings {
-					entry[s.key] = num(stored(p.name, c, s))
+				if known[c.name] {
+					// A control shared between planets is one value, written
+					// once from the copy resolveShared chose (SPEC 5.6).
+					continue
 				}
-				if c.toggle && !f.resourceOn(p.name, c.name) {
+				for _, s := range c.settings {
+					entry[s.key] = num(stored(f.sourceOf(p.name, c.name, s.key), c, s))
+				}
+				if c.toggle && !f.resourceOn(f.sourceOf(p.name, c.name, mgOn), c.name) {
 					// The game's own off value; frequency 0 crashes 2.1.
 					entry["size"] = num(0)
 				}
-				m := jsonMember{c.name, writeMembers(withPreferred(entry, "frequency", "size", "richness"))}
-				if known[c.name] {
-					// A control shared between planets is one value: a later
-					// planet's copy counts only when it was moved (SPEC 5.6).
-					if f.moved(p.name, c) {
-						at := slices.IndexFunc(controlOrder, func(o jsonMember) bool { return o.key == c.name })
-						controlOrder[at] = m
-					}
-					continue
-				}
 				known[c.name] = true
-				controlOrder = append(controlOrder, m)
+				controlOrder = append(controlOrder, jsonMember{c.name, writeMembers(withPreferred(entry, "frequency", "size", "richness"))})
 			}
 		}
 	}

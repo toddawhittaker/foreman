@@ -87,3 +87,26 @@ test("a step 3 preview with a problem stays on step 3", async ({ page, foreman, 
   await expect(page.locator("#generate-name")).toHaveCount(0);
   await checkPage(page);
 });
+
+test("the preview says when the world's planet list could not be read", async ({ page, foreman, fakeGame }) => {
+  const id = await openModded(page, foreman, fakeGame!);
+  // The game's runs fail, the planet run among them; a new mod makes it run again.
+  await fakeGame!.call("/preview-mode", { mode: "fail" });
+  copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), join(foreman.dataDir, "worlds", id, "mods", "other-mod_1.0.0.zip"));
+  await page.goto(newMapPath(id));
+  await expect(page.locator("#newmap-builtin")).toBeVisible({ timeout: 60_000 });
+  await page.locator("#preview-button").click();
+  await expect(page.locator("#preview-fallback")).toContainText("could not read this world's planet list", { timeout: 60_000 });
+  await checkPage(page);
+});
+
+test("a world mod named like Foreman's helper mod is said in the preview", async ({ page, foreman, fakeGame }) => {
+  const id = await openModded(page, foreman, fakeGame!);
+  // A mod with the name of the mod Foreman adds to read the planets.
+  copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), join(foreman.dataDir, "worlds", id, "mods", "foreman-modsettings_1.0.0.zip"));
+  await page.goto(newMapPath(id));
+  await expect(page.locator("#newmap-builtin")).toBeVisible({ timeout: 60_000 });
+  await page.locator("#preview-button").click();
+  await expect(page.locator("#preview-fallback")).toContainText("same name as a mod Foreman adds", { timeout: 60_000 });
+  await checkPage(page);
+});

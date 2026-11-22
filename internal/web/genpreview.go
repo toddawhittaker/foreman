@@ -366,9 +366,9 @@ type PreviewView struct {
 	// OfWorld is true for a preview of a world's own mods, which can make
 	// terrain by script the fast preview cannot draw (SPEC 5.6).
 	OfWorld bool
-	// Fallback is true when the world's planet list could not be read, so
-	// the preview shows the game's own planets (SPEC 5.6).
-	Fallback bool
+	// Fallback says why the world's planet list could not be read, so the
+	// preview shows the game's own planets (SPEC 5.6); zero when it was read.
+	Fallback i18n.Msg
 	// OneColor names the pictures that are almost all one color: what is
 	// near the start lies outside the map (SPEC 5.6).
 	OneColor []MapGenName
@@ -490,7 +490,13 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	req := in.req
 	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10), Size: f.PreviewSize, ShowsAll: len(planets) > 1,
-		OfWorld: in.world, Fallback: in.fallback}
+		OfWorld: in.world}
+	switch {
+	case errors.Is(in.catErr, game.ErrControlModTaken):
+		view.Fallback = i18n.M("mapgen.preview.control_mod_taken")
+	case in.catErr != nil:
+		view.Fallback = i18n.M("mapgen.preview.fallback")
+	}
 	for _, planet := range all {
 		n := catPlanetName(f.cat, planet)
 		view.Planets = append(view.Planets, PreviewPlanet{Planet: planet, Name: n.Name, Foreign: n.Foreign})
@@ -514,7 +520,8 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		for _, planet := range planets {
 			n := catPlanetName(f.cat, planet)
 			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: n.Name, Foreign: n.Foreign, Path: pictureURL(view.Token, planet)})
-			if b, ok := s.previews.get(view.Token, u.ID, planet); ok && oneColor(b) {
+			// Only a world's own mods can leave the start outside the map.
+			if b, ok := s.previews.get(view.Token, u.ID, planet); ok && in.world && oneColor(b) {
 				view.OneColor = append(view.OneColor, n)
 			}
 		}
@@ -556,9 +563,10 @@ type previewInput struct {
 	req game.PreviewRequest
 	key previewKey
 	ok  bool
-	// world is true for a world's own preview (step 3), and fallback when
-	// its planet list could not be read.
-	world, fallback bool
+	// world is true for a world's own preview (step 3); catErr is why its
+	// planet list could not be read.
+	world  bool
+	catErr error
 }
 
 // worldCatalogue is a world's planets and controls, from its mod-settings
@@ -647,7 +655,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		f.clearErrors()
 		ok = false
 	}
-	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil, world: true, fallback: catErr != nil}
+	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil, world: true, catErr: catErr}
 	if in.ok {
 		in.req = game.PreviewRequest{
 			GameVersion: sum.GameVersion, SpaceAge: spaceAge, Preset: files.Preset, Seed: *files.Seed,

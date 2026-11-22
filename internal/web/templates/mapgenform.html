@@ -134,7 +134,7 @@
 {{define "mapgen-group" -}}
 <fieldset class="autoplace" id="{{.ID}}"{{if .Also}} aria-describedby="{{.ID}}-also"{{end}}>
   {{- with .Toggle}}
-  <legend><input type="hidden" name="{{.Name}}" value="off"><label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" value="on" data-preset="{{if .Preset}}on{{end}}" data-disables="{{$.ID}}"
+  <legend><input type="hidden" name="{{.Name}}" value="off">{{if .Shared}}<input type="hidden" name="{{.StartName}}" value="{{.StartValue}}">{{end}}<label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" value="on" data-preset="{{if .Preset}}on{{end}}" data-disables="{{$.ID}}"
     {{- if .NeedKey}} data-need="{{msg .Need}}" data-need-clear="{{t "mapgen.need.clear" "resource" (msg .Label)}}" data-need-key="{{.NeedKey}}" aria-describedby="{{.ID}}-need"{{end}}{{if .Checked}} checked{{end}}> {{if $.Foreign}}<span translate="no">{{msg .Label}}</span>{{else}}{{msg .Label}}{{end}}</label></legend>
   {{- else}}
   <legend>{{if .Foreign}}<span translate="no">{{msg .Legend}}</span>{{else}}{{msg .Legend}}{{end}}</legend>
@@ -182,6 +182,8 @@
     <option value="{{.Value}}"{{if eq .Value $chosen}} selected{{end}}>{{msg .Label}}</option>
     {{- end}}
   </select>
+  {{- /* Where a shared control started, so the copy the user moved is the one kept (SPEC 5.6). */}}
+  {{- if .Shared}}<input type="hidden" name="{{.StartName}}" value="{{.StartValue}}">{{end}}
   <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
   {{- template "tip-text" .Toggletip}}
   {{- if not .Error.IsZero}}
