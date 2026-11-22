@@ -1,6 +1,9 @@
 package world
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
 
 // The factory map modes (SPEC 5.16).
 const (
@@ -27,10 +30,30 @@ func DefaultFactoryMapMode() FactoryMapMode {
 	return FactoryMapMode{Mode: FactoryMapManual, SkipOnline: true}
 }
 
+// UnmarshalJSON reads a stored setting, failing safe (SPEC 5.16): a missing
+// skip_online reads as true, and a missing or unknown mode reads as manual.
+func (f *FactoryMapMode) UnmarshalJSON(b []byte) error {
+	var raw struct {
+		Mode       *string `json:"mode"`
+		SkipOnline *bool   `json:"skip_online"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	*f = DefaultFactoryMapMode()
+	if raw.Mode != nil && validFactoryMapMode(*raw.Mode) {
+		f.Mode = *raw.Mode
+	}
+	if raw.SkipOnline != nil {
+		f.SkipOnline = *raw.SkipOnline
+	}
+	return nil
+}
+
 // FactoryMapSetting is the world's factory map setting, the default when
 // world.json has none.
 func (m Meta) FactoryMapSetting() FactoryMapMode {
-	if m.FactoryMap == nil {
+	if m.FactoryMap == nil || !validFactoryMapMode(m.FactoryMap.Mode) {
 		return DefaultFactoryMapMode()
 	}
 	return *m.FactoryMap

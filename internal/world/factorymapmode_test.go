@@ -1,6 +1,7 @@
 package world
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -105,5 +106,82 @@ func TestSetFactoryMapModeRefusesNewerFormat(t *testing.T) {
 	err := m.SetFactoryMapMode(id, FactoryMapMode{Mode: FactoryMapOff, SkipOnline: true})
 	if !errors.Is(err, ErrNewerFormat) {
 		t.Errorf("error %v, want ErrNewerFormat", err)
+	}
+}
+
+// writeFactoryMapJSON replaces world.json's factory_map with raw, keeping the
+// rest of the file as the seeded world wrote it.
+func writeFactoryMapJSON(t *testing.T, m *Manager, id, raw string) {
+	t.Helper()
+	p := filepath.Join(m.dirs.Worlds, id, MetaFile)
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	doc["factory_map"] = json.RawMessage(raw)
+	out, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, out, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Decoding fails safe (orchestrator ruling): a factory_map with no
+// skip_online decodes as skip-online on, and so does one with only a mode.
+func TestFactoryMapMissingSkipOnlineDecodesTrue(t *testing.T) {
+	m, _ := newTestManager(t)
+	id := seedWorld(t, m)
+
+	for _, raw := range []string{
+		`{"mode":"automatic"}`,
+		`{"mode":"off"}`,
+		`{}`,
+	} {
+		writeFactoryMapJSON(t, m, id, raw)
+		got := readMetaOf(t, m, id).FactoryMapSetting()
+		if !got.SkipOnline {
+			t.Errorf("%s decoded skip_online false, want true", raw)
+		}
+	}
+}
+
+// Decoding: a missing factory_map is manual with skip-online on.
+func TestMissingFactoryMapDecodesManualSkipOnline(t *testing.T) {
+	m, _ := newTestManager(t)
+	id := seedWorld(t, m)
+	if err := m.SetFactoryMapMode(id, FactoryMapMode{Mode: FactoryMapOff, SkipOnline: false}); err != nil {
+		t.Fatal(err)
+	}
+	// Drop the key entirely.
+	p := filepath.Join(m.dirs.Worlds, id, MetaFile)
+	b, _ := os.ReadFile(p)
+	var doc map[string]json.RawMessage
+	_ = json.Unmarshal(b, &doc)
+	delete(doc, "factory_map")
+	out, _ := json.Marshal(doc)
+	_ = os.WriteFile(p, out, 0o600)
+
+	got := readMetaOf(t, m, id).FactoryMapSetting()
+	if got != (FactoryMapMode{Mode: FactoryMapManual, SkipOnline: true}) {
+		t.Errorf("missing factory_map decoded %+v, want manual with skip-online on", got)
+	}
+}
+
+// Decoding: a mode outside the three is read as manual, and SetFactoryMapMode
+// refuses to store it.
+func TestUnknownStoredModeReadsManual(t *testing.T) {
+	m, _ := newTestManager(t)
+	id := seedWorld(t, m)
+	writeFactoryMapJSON(t, m, id, `{"mode":"always","skip_online":false}`)
+
+	got := readMetaOf(t, m, id).FactoryMapSetting()
+	if got.Mode != FactoryMapManual {
+		t.Errorf("mode %q read, want manual", got.Mode)
 	}
 }
