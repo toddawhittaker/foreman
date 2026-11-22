@@ -117,7 +117,9 @@ var factoryMapMod = saveCopyMod{
 		name:    factorymapmod.ModName,
 		dir:     factorymapmod.ModDir,
 		control: factorymapmod.Control,
-		memory:  FactoryMapMemory,
+		// The run moves the helper's whole folder into the work folder.
+		output: gameenv.FactoryMapDir,
+		memory: FactoryMapMemory,
 	},
 	outputOnDisk: true,
 }

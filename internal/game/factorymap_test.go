@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -738,6 +739,20 @@ func TestDrawFactoryMapFilesRefuseNonRegular(t *testing.T) {
 					t.Fatal("the drawing hung")
 				}
 			})
+		}
+	}
+}
+
+// The run moves the helper's folder out of script-output, and the helper's
+// info.json names the world's game line, or the game refuses the mod.
+func TestFactoryMapModShape(t *testing.T) {
+	if factoryMapMod.output != gameenv.FactoryMapDir || !factoryMapMod.outputOnDisk {
+		t.Errorf("mod %+v, want the %s folder written in the work folder", factoryMapMod, gameenv.FactoryMapDir)
+	}
+	for line, want := range map[string]string{"2.0": `"factorio_version": "2.0"`, "2.1": `"factorio_version": "2.1"`} {
+		info := string(saveCopyInfo(factoryMapMod, line))
+		if !strings.Contains(strings.ReplaceAll(info, `":"`, `": "`), want) {
+			t.Errorf("line %s: info.json %s lacks %s", line, info, want)
 		}
 	}
 }
