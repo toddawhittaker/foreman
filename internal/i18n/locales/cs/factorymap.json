@@ -53,9 +53,9 @@
   "factorymap.view.fit": "Přizpůsobit",
   "factorymap.view.keys": "Klávesy: šipky posun, + − přiblížení, 0 přizpůsobit. Tažením posunout, klepnutím vystředit.",
   "factorymap.view.scale": {
-    "one": "Jeden pixel je {count} pole na šířku.",
-    "few": "Jeden pixel jsou {count} pole na šířku.",
-    "other": "Jeden pixel je {count} polí na šířku."
+    "one": "Jeden pixel odpovídá {count} poli na šířku.",
+    "few": "Jeden pixel odpovídá {count} polím na šířku.",
+    "other": "Jeden pixel odpovídá {count} polím na šířku."
   },
   "factorymap.view.zoom_in": "Přiblížit",
   "factorymap.view.zoom_out": "Oddálit"

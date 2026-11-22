@@ -8,7 +8,7 @@
   "worldfile.export.saves.loaded_hint": "Un fichier plus petit. Les sauvegardes plus anciennes et les sauvegardes automatiques n’y figurent pas.",
   "worldfile.export.running": "Si le jeu est en cours d’exécution, le fichier contient sa dernière sauvegarde sur le disque, qui peut avoir quelques minutes de retard sur ce que voient les joueurs. Arrêtez d’abord le jeu pour tout inclure.",
   "worldfile.export.left_out": "Le fichier ne contient ni instantanés, ni mot de passe du jeu, ni les enregistrements de Foreman sur ce monde, comme son journal d’audit, son calendrier de redémarrage et ses notifications.",
-  "worldfile.export.audit": "Chaque export est consigné dans le journal d’audit.",
+  "worldfile.export.audit": "Chaque exportation est consignée dans le journal d’audit.",
   "worldfile.export.warning": "Les sauvegardes et le fichier des paramètres des mods peuvent contenir ce qu’un mod y garde, comme un jeton. Ne partagez le fichier qu’avec des personnes de confiance.",
   "worldfile.export.button": "Exporter le monde",
   "worldfile.import.heading": "Importer un fichier de monde",

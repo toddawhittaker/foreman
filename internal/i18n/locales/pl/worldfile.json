@@ -5,7 +5,7 @@
   "worldfile.export.saves.legend": "Zapisy w pliku",
   "worldfile.export.saves.all": "Wszystkie zapisy",
   "worldfile.export.saves.loaded": "Tylko zapis wczytywany jako następny",
-  "worldfile.export.saves.loaded_hint": "Mniejszy plik. Starsze zapisy i autozapisy w nim nie zostaną.",
+  "worldfile.export.saves.loaded_hint": "Mniejszy plik. Starsze zapisy i autozapisy nie zostaną w nim uwzględnione.",
   "worldfile.export.running": "Jeśli gra jest uruchomiona, plik zawiera jej najnowszy zapis z dysku, który może być o kilka minut starszy od tego, co widzą gracze. Aby plik zawierał wszystko, najpierw należy zatrzymać grę.",
   "worldfile.export.left_out": "Plik nie zawiera migawek, hasła do gry ani zapisów Foremana o tym świecie, takich jak dziennik audytu, harmonogram restartów i powiadomienia.",
   "worldfile.export.audit": "Każdy eksport jest zapisywany w dzienniku audytu.",

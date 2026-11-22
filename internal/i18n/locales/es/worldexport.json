@@ -2,5 +2,5 @@
   "worldexport.busy": "Ya hay dos exportaciones en curso. Espera a que termine una y vuelve a intentarlo.",
   "worldexport.error.file": "Este mundo contiene un archivo que un archivo de mundo no puede conservar: {path}. Es un enlace simbólico o un archivo especial, tiene un nombre que un archivo de mundo no admite, o es un server-settings.json que no es un único objeto JSON. Corrígelo o bórralo y vuelve a intentarlo.",
   "worldexport.error.saves": "Elige todas las partidas guardadas o solo la que se cargará a continuación.",
-  "worldexport.error.too_many": "Este mundo tiene más archivos de los que cabe en un archivo de mundo, así que no se puede exportar."
+  "worldexport.error.too_many": "Este mundo tiene más archivos de los que caben en un archivo de mundo, así que no se puede exportar."
 }

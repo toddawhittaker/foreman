@@ -1,5 +1,5 @@
 {
-  "worldimport.title": "Importowanie pliku świata",
+  "worldimport.title": "Import pliku świata",
   "worldimport.intro": "Należy sprawdzić zawartość pliku. Nic nie zostanie zaimportowane, dopóki nie zostanie wybrane „Importuj świat”.",
   "worldimport.heading": "Zawartość pliku",
   "worldimport.zone.label": "Plik świata",
@@ -24,7 +24,7 @@
   "worldimport.name.label": "Nazwa świata",
   "worldimport.image.here": "Obraz gry w wersji {version} jest już na tym hoście.",
   "worldimport.button": "Importuj świat",
-  "worldimport.error.bad": "Foreman nie może odczytać tego pliku świata. Może być uszkodzony, ucięty lub wyeksportowany nie przez Foremana.",
+  "worldimport.error.bad": "Foreman nie może odczytać tego pliku świata. Może być uszkodzony lub ucięty albo nie został wyeksportowany przez Foremana.",
   "worldimport.error.newer": "Ten plik świata utworzyła nowsza wersja Foremana, więc ta wersja nie może go odczytać. Należy zaktualizować Foremana i spróbować ponownie.",
   "worldimport.refused.title": "Foreman nie może zaimportować tego pliku",
   "worldimport.retry": "Wróć do importu",
