@@ -1,0 +1,18 @@
+{
+  "worldfile.export.heading": "Eksport pliku świata",
+  "worldfile.export.text": "Pobiera świat jako jeden plik ZIP do zaimportowania w innym Foremanie: z zapisami, modyfikacjami, ustawieniami modyfikacji i ustawieniami gry.",
+  "worldfile.export.size": "Szacowany rozmiar: {size}.",
+  "worldfile.export.saves.legend": "Zapisy w pliku",
+  "worldfile.export.saves.all": "Wszystkie zapisy",
+  "worldfile.export.saves.loaded": "Tylko zapis wczytywany jako następny",
+  "worldfile.export.saves.loaded_hint": "Mniejszy plik. Starsze zapisy i autozapisy w nim nie zostaną.",
+  "worldfile.export.running": "Jeśli gra jest uruchomiona, plik zawiera jej najnowszy zapis z dysku, który może być o kilka minut starszy od tego, co widzą gracze. Aby plik zawierał wszystko, najpierw należy zatrzymać grę.",
+  "worldfile.export.left_out": "Plik nie zawiera migawek, hasła do gry ani zapisów Foremana o tym świecie, takich jak dziennik audytu, harmonogram restartów i powiadomienia.",
+  "worldfile.export.audit": "Każdy eksport jest zapisywany w dzienniku audytu.",
+  "worldfile.export.warning": "Zapisy i plik ustawień modyfikacji mogą zawierać to, co przechowuje modyfikacja, na przykład token. Plik należy udostępniać tylko zaufanym osobom.",
+  "worldfile.export.button": "Eksportuj świat",
+  "worldfile.import.heading": "Import pliku świata",
+  "worldfile.import.intro": "Należy przesłać plik utworzony przez „Eksportuj świat” w innym Foremanie. Przed zaimportowaniem pokazane zostanie, co zawiera.",
+  "worldfile.import.label": "Plik świata",
+  "worldfile.import.button": "Prześlij plik świata"
+}

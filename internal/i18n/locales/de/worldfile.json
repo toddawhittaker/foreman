@@ -1,0 +1,18 @@
+{
+  "worldfile.export.heading": "Weltdatei exportieren",
+  "worldfile.export.text": "Lädt die Welt als eine ZIP-Datei herunter, die du in ein anderes Foreman importieren kannst: mit Speicherständen, Mods, Mod-Einstellungen und Spieleinstellungen.",
+  "worldfile.export.size": "Geschätzte Größe: {size}.",
+  "worldfile.export.saves.legend": "Speicherstände in der Datei",
+  "worldfile.export.saves.all": "Alle Speicherstände",
+  "worldfile.export.saves.loaded": "Nur der Speicherstand, der als Nächstes geladen wird",
+  "worldfile.export.saves.loaded_hint": "Eine kleinere Datei. Ältere Speicherstände und automatische Speicherstände bleiben zurück.",
+  "worldfile.export.running": "Läuft das Spiel, enthält die Datei seinen neuesten Speicherstand auf dem Datenträger, der einige Minuten hinter dem zurückliegen kann, was Spieler sehen. Stoppe das Spiel zuerst, damit alles enthalten ist.",
+  "worldfile.export.left_out": "Die Datei enthält keine Snapshots, kein Spielpasswort und keine Aufzeichnungen von Foreman zu dieser Welt, etwa das Audit-Protokoll, den Neustartplan und die Benachrichtigungen.",
+  "worldfile.export.audit": "Jeder Export wird im Audit-Protokoll festgehalten.",
+  "worldfile.export.warning": "Speicherstände und die Datei mit den Mod-Einstellungen können enthalten, was ein Mod speichert, etwa ein Token. Teile die Datei nur mit Leuten, denen du vertraust.",
+  "worldfile.export.button": "Welt exportieren",
+  "worldfile.import.heading": "Weltdatei importieren",
+  "worldfile.import.intro": "Lade eine Datei hoch, die mit „Welt exportieren“ in einem anderen Foreman erstellt wurde. Du siehst, was sie enthält, bevor etwas importiert wird.",
+  "worldfile.import.label": "Weltdatei",
+  "worldfile.import.button": "Weltdatei hochladen"
+}

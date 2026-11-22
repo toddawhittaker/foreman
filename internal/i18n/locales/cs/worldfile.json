@@ -1,0 +1,18 @@
+{
+  "worldfile.export.heading": "Export souboru světa",
+  "worldfile.export.text": "Stáhne svět jako jeden soubor ZIP, který lze importovat do jiného Foremanu: s uloženými hrami, mody, nastavením modů a nastavením hry.",
+  "worldfile.export.size": "Odhadovaná velikost: {size}.",
+  "worldfile.export.saves.legend": "Uložené hry v souboru",
+  "worldfile.export.saves.all": "Všechny uložené hry",
+  "worldfile.export.saves.loaded": "Jen uložená hra, která se načte jako další",
+  "worldfile.export.saves.loaded_hint": "Menší soubor. Starší uložené hry a automatická uložení v něm nebudou.",
+  "worldfile.export.running": "Pokud hra běží, soubor obsahuje její nejnovější uloženou hru z disku, která může být o několik minut starší než to, co vidí hráči. Aby soubor obsahoval vše, je třeba nejdřív hru zastavit.",
+  "worldfile.export.left_out": "Soubor neobsahuje snímky, heslo ke hře ani záznamy Foremanu o tomto světě, například protokol auditu, plán restartů a oznámení.",
+  "worldfile.export.audit": "Každý export se zaznamená do protokolu auditu.",
+  "worldfile.export.warning": "Uložené hry a soubor s nastavením modů mohou obsahovat to, co si mod ukládá, například token. Soubor je vhodné sdílet jen s důvěryhodnými lidmi.",
+  "worldfile.export.button": "Exportovat svět",
+  "worldfile.import.heading": "Import souboru světa",
+  "worldfile.import.intro": "Nahrát lze soubor vytvořený funkcí „Exportovat svět“ v jiném Foremanu. Před importem se zobrazí, co obsahuje.",
+  "worldfile.import.label": "Soubor světa",
+  "worldfile.import.button": "Nahrát soubor světa"
+}
