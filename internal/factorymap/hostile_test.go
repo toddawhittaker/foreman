@@ -376,6 +376,9 @@ func TestHostileEntitiesRefused(t *testing.T) {
 		"huge number":           types + "[0,1e400,1,2,2]\n",
 		"inverted box":          types + "[0,5,5,1,1]\n",
 		"two values a line":     types + "[0,1,1,2,2][0,1,1,2,2]\n",
+		"fractional box":        types + "[0,0.5,0.5,1.5,1.5]\n",
+		"box over 256 wide":     types + "[0,0,0,257,1]\n",
+		"box over 256 tall":     types + "[0,0,0,1,257]\n",
 	}
 	for name, in := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -393,8 +396,7 @@ func TestHostileEntityBoxesOutsideTheChart(t *testing.T) {
 	in := `["transport-belt"]` + "\n" +
 		"[0,-1000000,-1000000,-999999,-999999]\n" +
 		"[0,1000000,1000000,1000001,1000001]\n" +
-		"[0,-1e15,-1e15,1e15,1e15]\n" +
-		"[0,63.5,31.5,64.5,32.5]\n"
+		"[0,63,31,65,33]\n"
 	layers, err := hostileDrawOverlay(t, strings.NewReader(in), s)
 	if err != nil {
 		return // refusing them is also within the rules
