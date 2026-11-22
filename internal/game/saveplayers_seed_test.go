@@ -145,7 +145,7 @@ func (r *seedRig) record() (saveplayers.Record, bool) {
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	rec, err := saveplayers.Parse(b)
+	rec, err := saveplayers.Parse(b, time.Now())
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -563,4 +563,29 @@ func TestSavePlayersRefusedAndNewerRecords(t *testing.T) {
 // record read back is in UTC.
 func sameBasis(a, b saveplayers.Basis) bool {
 	return a.Save == b.Save && a.Size == b.Size && a.Modified.Equal(b.Modified)
+}
+
+// A read keeps the last seen dates Foreman tracked, matching names with
+// ASCII-only case folding, and never a date after the new record's as_of.
+func TestKeepLastSeen(t *testing.T) {
+	at := time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
+	before, after := at.Add(-time.Hour), at.Add(time.Hour)
+	old := saveplayers.Record{Players: []saveplayers.Player{
+		{Name: "OrcScorpion", LastSeen: &before},
+		{Name: "Late", LastSeen: &after},
+		{Name: "ÉCLAIR", LastSeen: &before},
+	}}
+	rec := saveplayers.Record{AsOf: at, Players: []saveplayers.Player{
+		{Name: "orcscorpion"}, {Name: "Late"}, {Name: "éclair"},
+	}}
+	keepLastSeen(&rec, old)
+	if p := rec.Players[0]; p.LastSeen == nil || !p.LastSeen.Equal(before) {
+		t.Errorf("orcscorpion: %v, want the old date", p.LastSeen)
+	}
+	if p := rec.Players[1]; p.LastSeen != nil {
+		t.Errorf("Late: %v, want none (after as_of)", p.LastSeen)
+	}
+	if p := rec.Players[2]; p.LastSeen != nil {
+		t.Errorf("éclair: %v, want none (only ASCII folds)", p.LastSeen)
+	}
 }

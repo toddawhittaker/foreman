@@ -2,7 +2,6 @@ package game
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -30,9 +29,6 @@ const (
 // SavePlayersMemory is the memory limit of a players read: a read takes
 // about as much as running the save (SPEC 8.16).
 const SavePlayersMemory = 12 << 30
-
-// ticksPerSecond is the game's fixed update rate.
-const ticksPerSecond = 60
 
 // savePlayersControl is the helper mod a players read runs with.
 var savePlayersControl = controlMod{
@@ -170,29 +166,20 @@ func (c *Controller) readPlayersRecord(id string) (rec saveplayers.Record, ok, n
 		}
 		return saveplayers.Record{}, false, false
 	}
-	rec, err = saveplayers.Parse(b)
+	rec, err = saveplayers.Parse(b, c.now())
 	if err != nil {
-		newer = newerRecord(b)
+		newer = errors.Is(err, saveplayers.ErrNewerFormat)
 		c.log.Warn("the players record is refused", "world", id, "newer", newer, "err", err)
 		return saveplayers.Record{}, false, newer
 	}
 	return rec, true, false
 }
 
-// newerRecord reports whether b names a format_version newer than this
-// Foreman writes.
-func newerRecord(b []byte) bool {
-	var doc struct {
-		FormatVersion int `json:"format_version"`
-	}
-	return json.Unmarshal(b, &doc) == nil && doc.FormatVersion > saveplayers.FormatVersion
-}
-
 // savePlayersView turns a record that matches the save into the page's view.
 func (c *Controller) savePlayersView(id string, rec saveplayers.Record) SavePlayersView {
 	v := SavePlayersView{
 		State: SavePlayersReady, Save: rec.Basis.Save, TrackedSince: rec.TrackedSince,
-		GameTime:      time.Duration(rec.GameTicks) * time.Second / ticksPerSecond,
+		GameTime:      time.Duration(rec.GameSeconds()) * time.Second,
 		GameTimeKnown: rec.GameTicks > 0,
 	}
 	if rec.Seed.Result != saveplayers.ResultOK {
@@ -211,7 +198,7 @@ func (c *Controller) savePlayersView(id string, rec saveplayers.Record) SavePlay
 	for _, p := range rec.Players {
 		sp := SavePlayer{
 			Name:          p.Name,
-			PlayTime:      time.Duration(p.SeededTicks)*time.Second/ticksPerSecond + time.Duration(p.TrackedSeconds)*time.Second,
+			PlayTime:      time.Duration(p.PlayedSeconds()) * time.Second,
 			Online:        online[p.Name],
 			BeforeForeman: p.SeededTicks > 0,
 		}
@@ -362,15 +349,26 @@ func seedFailure(err error) string {
 func keepLastSeen(rec *saveplayers.Record, old saveplayers.Record) {
 	seen := map[string]*time.Time{}
 	for _, p := range old.Players {
-		if p.LastSeen != nil {
-			seen[p.Name] = p.LastSeen
+		if p.LastSeen != nil && !p.LastSeen.After(rec.AsOf) {
+			seen[asciiLower(p.Name)] = p.LastSeen
 		}
 	}
 	for i := range rec.Players {
 		if rec.Players[i].LastSeen == nil {
-			rec.Players[i].LastSeen = seen[rec.Players[i].Name]
+			rec.Players[i].LastSeen = seen[asciiLower(rec.Players[i].Name)]
 		}
 	}
+}
+
+// asciiLower lowers ASCII letters only, as player names compare.
+func asciiLower(s string) string {
+	b := []byte(s)
+	for i, c := range b {
+		if c >= 'A' && c <= 'Z' {
+			b[i] = c + 'a' - 'A'
+		}
+	}
+	return string(b)
 }
 
 func basisOf(s world.Save) saveplayers.Basis {
