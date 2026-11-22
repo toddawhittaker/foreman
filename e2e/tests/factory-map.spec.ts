@@ -573,6 +573,119 @@ test("a failed drawing says so, keeps no picture, and can be tried again", async
   await draw(page);
 });
 
+// ---------------------------------------------------------------- axe in every state, and focus across the poll
+
+// checkPage is axe with the WCAG 2.2 AA rules (foreman.ts, wcagTags); the four projects run it in both
+// themes. The drawn, failed and memory-note states are scanned in their own tests above; these cover
+// the states those leave: a run going, with and without a kept picture, and the drawn page worked on.
+test("a drawing in progress with no picture kept yet passes axe", async ({ page, fakeGame }) => {
+  const g = fakeGame as FakeGame;
+  await g.call("/preview-mode", { mode: "hang" });
+  await page.goto(base);
+  await ui.draw(page).click();
+  await expect(ui.state(page)).toHaveAttribute("data-state", "drawing", live);
+  await expect(ui.draw(page)).toHaveCount(0);
+  await checkPage(page);
+});
+
+test("a drawing in progress over a kept picture passes axe and keeps the picture", async ({ page, fakeGame }) => {
+  const g = fakeGame as FakeGame;
+  await page.goto(base);
+  await draw(page);
+  await g.call("/preview-mode", { mode: "hang" });
+  await ui.draw(page).click();
+  await expect(ui.state(page)).toHaveAttribute("data-state", "drawing", live);
+  await expect(ui.base(page)).toBeVisible();
+  await checkPage(page);
+});
+
+test("the drawn page passes axe with layers ticked and the picture zoomed", async ({ page }) => {
+  await page.goto(base);
+  await draw(page);
+  await ui.layer(page, "Production").check();
+  await ui.layer(page, "Power").check();
+  await ui.frame(page).focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("+");
+  await expect(ui.status(page)).toHaveText("Zoom 175%");
+  await checkPage(page);
+});
+
+test("a failure over a kept picture passes axe", async ({ page, fakeGame }) => {
+  const g = fakeGame as FakeGame;
+  await page.goto(base);
+  await draw(page);
+  await g.call("/preview-mode", { mode: "oom" });
+  try {
+    await ui.draw(page).click();
+    await expect(ui.state(page)).toHaveAttribute("data-state", "failed", live);
+    await expect(ui.base(page)).toBeVisible();
+    await checkPage(page);
+  } finally {
+    await g.call("/preview-mode", { mode: "ok" });
+  }
+});
+
+test("the memory question, with a kept picture on the page, passes axe", async ({ page }) => {
+  await page.goto(base);
+  await draw(page);
+  await startWorld(page);
+  await page.goto(base);
+  await ui.draw(page).click();
+  await expect(ui.confirm(page)).toBeVisible();
+  await checkPage(page);
+});
+
+// A poll swaps the state region while a drawing runs (3 seconds, the plan's page contract). Someone using
+// the keys on the picture must not lose their place: focus stays on the frame through a poll that finds
+// the run still going, and comes back to the same control when the drawing ends.
+test("focus on the map frame survives a poll while drawing over a kept picture", async ({ page, fakeGame }) => {
+  const g = fakeGame as FakeGame;
+  await page.goto(base);
+  await draw(page);
+  await g.call("/preview-mode", { mode: "hang" });
+  await ui.draw(page).click();
+  await expect(ui.state(page)).toHaveAttribute("data-state", "drawing", live);
+  await ui.frame(page).focus();
+  await expect(ui.frame(page)).toBeFocused();
+  // The page's script marks each region it swaps in; wait until it has swapped one, then past a second.
+  const swaps = () => page.evaluate(() => document.getElementById("factorymap-state")!.dataset.swapped ?? "");
+  await page.evaluate(() => {
+    const seen = document.getElementById("factorymap-state")!;
+    new MutationObserver(() => {
+      const now = document.getElementById("factorymap-state");
+      if (now && now !== seen) now.dataset.swapped = "yes";
+    }).observe(document.querySelector("main")!, { childList: true, subtree: true });
+  });
+  await expect.poll(swaps, { timeout: 8_000 }).toBe("yes");
+  await expect(ui.state(page)).toHaveAttribute("data-state", "drawing");
+  await expect(ui.frame(page)).toBeFocused();
+  // The keys still work from there.
+  await page.keyboard.press("+");
+  await expect(ui.status(page)).toHaveText("Zoom 115%");
+});
+
+test("focus returns to the same control when the drawing ends", async ({ page, fakeGame }) => {
+  const g = fakeGame as FakeGame;
+  await page.goto(base);
+  await draw(page);
+  // The slow ending: the run is over a moment after it starts, and the page learns of it at its next poll.
+  await g.call("/preview-mode", { mode: "slow" });
+  try {
+    await ui.draw(page).click();
+    await expect(ui.state(page)).toHaveAttribute("data-state", "drawing");
+    await ui.frame(page).focus();
+    await expect(ui.frame(page)).toBeFocused();
+    await expect(ui.state(page)).toHaveAttribute("data-state", "drawn", live);
+    await expect(ui.frame(page)).toBeFocused();
+    await expect(ui.base(page)).toBeVisible();
+    // And the keys work again at once.
+    await page.keyboard.press("+");
+    await expect(ui.status(page)).toHaveText("Zoom 115%");
+  } finally {
+    await g.call("/preview-mode", { mode: "ok" });
+  }
+});
+
 // ---------------------------------------------------------------- keyboard and phone
 
 test("everything works from the keyboard alone", async ({ page }) => {
