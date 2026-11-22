@@ -1,7 +1,9 @@
 -- Foreman's mod setting reader (SPEC 9.6). When the map is made, it lists
 -- every mod setting prototype the world's mods define, in the game's order,
 -- and writes them as JSON to script-output/mod-settings-defs.json. It adds no
--- prototypes and has no settings of its own. Each setting carries its
+-- prototypes and has no settings of its own. It also writes the world's
+-- planets, autoplace controls and resources to script-output/planets.json,
+-- in the shape internal/mapgen/catalogue.go reads (SPEC 5.6). Each setting carries its
 -- localised name and description as the game holds them. The same script
 -- runs on 1.1, 2.0 and 2.1. A prototype lacks the fields that do not apply to its type
 -- (a bool has no minimum), and reading one raises, so each field is read
@@ -39,6 +41,94 @@ local function plain(setting_type, value)
     return plain_color(value)
   end
   return value
+end
+
+-- by_order sorts prototypes as the game lists them: by order, then name.
+local function by_order(a, b)
+  if a.order ~= b.order then
+    return a.order < b.order
+  end
+  return a.name < b.name
+end
+
+-- planet_file lists the planets (none on 1.1, which has one surface), every
+-- autoplace control and every resource entity. On 2.x a resource rarely
+-- names its control, so each planet lists the resources it places.
+local function planet_file()
+  local controls_proto, resources_proto
+  if prototypes then
+    controls_proto = prototypes.autoplace_control
+    resources_proto = prototypes.get_entity_filtered({ { filter = "type", type = "resource" } })
+  else
+    controls_proto = game.autoplace_control_prototypes
+    resources_proto = game.get_filtered_entity_prototypes({ { filter = "type", type = "resource" } })
+  end
+
+  local controls = {}
+  for name, c in pairs(controls_proto) do
+    controls[#controls + 1] = {
+      name = name,
+      category = read(c, "category"),
+      richness = read(c, "richness") or false,
+      can_be_disabled = read(c, "can_be_disabled") or false,
+      order = read(c, "order") or "",
+      localised_name = read(c, "localised_name"),
+    }
+  end
+  table.sort(controls, by_order)
+
+  local resources, is_resource = {}, {}
+  for name, e in pairs(resources_proto) do
+    is_resource[name] = true
+    local spec = read(e, "autoplace_specification")
+    local control = spec and read(spec, "control") or ""
+    resources[#resources + 1] = {
+      name = name,
+      control = control,
+      localised_name = read(e, "localised_name"),
+      order = read(e, "order") or "",
+    }
+  end
+  table.sort(resources, by_order)
+  for _, r in ipairs(resources) do
+    r.order = nil
+  end
+
+  -- 2.x has no prototypes.planet: planets are the space locations of type
+  -- planet.
+  local planets = {}
+  local locations = prototypes and read(prototypes, "space_location") or nil
+  for name, p in pairs(locations or {}) do
+    if read(p, "type") == "planet" then
+      local mgs = read(p, "map_gen_settings")
+      local planet = {
+        name = name,
+        localised_name = read(p, "localised_name"),
+        order = read(p, "order") or "",
+        autoplace_controls = {},
+        resources = {},
+      }
+      if mgs then
+        for control, v in pairs(mgs.autoplace_controls or {}) do
+          planet.autoplace_controls[control] = { frequency = v.frequency, size = v.size, richness = v.richness }
+        end
+        local entities = mgs.autoplace_settings and mgs.autoplace_settings.entity
+        for entity in pairs(entities and entities.settings or {}) do
+          if is_resource[entity] then
+            planet.resources[#planet.resources + 1] = entity
+          end
+        end
+        table.sort(planet.resources)
+      end
+      planets[#planets + 1] = planet
+    end
+  end
+  table.sort(planets, by_order)
+  for _, p in ipairs(planets) do
+    p.order = nil
+  end
+
+  return { planets = planets, autoplace_controls = controls, resources = resources }
 end
 
 script.on_init(function()
@@ -85,4 +175,8 @@ script.on_init(function()
   end
 
   h.write_file("mod-settings-defs.json", h.table_to_json({ settings = list }), false)
+  -- The planet list is extra: a failure here must not lose the settings.
+  pcall(function()
+    h.write_file("planets.json", h.table_to_json(planet_file()), false)
+  end)
 end)
