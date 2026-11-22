@@ -491,7 +491,7 @@
   "worlds.list.continue": "Kontynuuj",
   "worlds.unfinished.continue": "Kontynuuj konfigurację",
   "worlds.unfinished.continue_named": "Kontynuuj konfigurację świata {name}",
-  "worlds.unfinished.text": "Konfiguracja tego świata nie jest zakończona. Nadal można wybrać jego mody i ustawienia mapy.",
+  "worlds.unfinished.text": "Konfiguracja tego świata nie jest zakończona. Nadal można wybrać jego modyfikacje i ustawienia mapy.",
   "worlds.archive.refused": "Ten świat jest zarchiwizowany, więc nie można go uruchomić. Najpierw trzeba cofnąć archiwizację.",
   "worlds.error.archive_active": "To jest aktywny świat, a aktywnego świata nie można zarchiwizować. Najpierw należy przełączyć się na inny świat.",
   "worlds.list.archived": "Zarchiwizowane światy ({count})",
