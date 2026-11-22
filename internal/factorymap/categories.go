@@ -10,7 +10,6 @@ var categoryByType = map[string]Category{
 	"transport-belt":   CategoryBelts,
 	"underground-belt": CategoryBelts,
 	"splitter":         CategoryBelts,
-	"lane-splitter":    CategoryBelts,
 	"loader":           CategoryBelts,
 	"loader-1x1":       CategoryBelts,
 	"linked-belt":      CategoryBelts,
@@ -40,6 +39,7 @@ var categoryByType = map[string]Category{
 	"heat-interface":            CategoryPower,
 	"electric-energy-interface": CategoryPower,
 	"lightning-attractor":       CategoryPower,
+	"heating-tower":             CategoryPower,
 
 	// Fluids.
 	"pipe":           CategoryFluids,

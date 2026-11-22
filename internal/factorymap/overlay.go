@@ -18,6 +18,10 @@ const (
 	maxEntityTypes = 4096
 	// maxLineBytes is the longest line read: the type line is the longest.
 	maxLineBytes = 1 << 20
+	// maxBoxTiles is the longest side of a box, in tiles. The largest real
+	// building is about 20 tiles; the limit keeps the cost of drawing a file
+	// of MaxEntities boxes bounded.
+	maxBoxTiles = 256
 	// maxCoordinate is the largest whole number the output may hold (14.6).
 	maxCoordinate = 1 << 53
 )
@@ -43,7 +47,9 @@ const fillAlpha = 90
 // whole pixels. A box outside the picture is clipped or, when nothing is left,
 // skipped: output outside the chart is not a reason to lose the drawing. Every
 // category has a layer, empty or not, so the layers share the base's grid. It
-// reads the file as untrusted: anything malformed is an error.
+// reads the file as untrusted: anything malformed is an error, including a
+// blank line in the middle (F1's mod never writes one) and a box over 256
+// tiles a side.
 func DrawOverlay(entities io.Reader, s Surface) (map[Category]*image.Paletted, error) {
 	return drawOverlay(entities, s, MaxEntities)
 }
@@ -92,6 +98,9 @@ func drawOverlay(entities io.Reader, s Surface, maxEntities int) (map[Category]*
 		}
 		if x2 <= x1 || y2 <= y1 {
 			return nil, fmt.Errorf("overlay: entity %d: empty box", n)
+		}
+		if x2-x1 > maxBoxTiles || y2-y1 > maxBoxTiles {
+			return nil, fmt.Errorf("overlay: entity %d: box over %d tiles a side", n, maxBoxTiles)
 		}
 		drawBox(layers[cats[ti]], x1, y1, x2, y2, int64(s.TilesPerPixel))
 	}

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"testing/iotest"
+	"time"
 )
 
 // entityFile builds an entity file: the type line, then one line per box.
@@ -191,6 +192,9 @@ func TestOverlayRefusesBadOutput(t *testing.T) {
 		"string number":       {entityFile(typesLine, `[0,"1",1,2,2]`), surf(5, 5, 1)},
 		"over 2^53":           {entityFile(typesLine, "[0,1,1,9007199254740993,2]"), surf(5, 5, 1)},
 		"index past the list": {entityFile(typesLine, "[3,1,1,2,2]"), surf(5, 5, 1)},
+		"box 257 wide":        {entityFile(typesLine, "[0,0,0,257,1]"), surf(5, 5, 1)},
+		"box 257 tall":        {entityFile(typesLine, "[0,0,0,1,257]"), surf(5, 5, 1)},
+		"whole picture box":   {entityFile(typesLine, "[0,0,0,4096,4096]"), surf(MaxSidePixels, MaxSidePixels, 1)},
 		"empty box":           {entityFile(typesLine, "[0,1,1,1,2]"), surf(5, 5, 1)},
 		"backwards box":       {entityFile(typesLine, "[0,3,1,2,2]"), surf(5, 5, 1)},
 		"line too long":       {entityFile(typesLine, "[0,1,1,2,2"+strings.Repeat(" ", maxLineBytes)+"]"), surf(5, 5, 1)},
@@ -228,7 +232,7 @@ func TestOverlayPassesOnAReadError(t *testing.T) {
 }
 
 func TestOverlayMaxSizedPicture(t *testing.T) {
-	layers := draw(t, entityFile(typesLine, "[1,0,0,4096,4096]"), surf(MaxSidePixels, MaxSidePixels, 1))
+	layers := draw(t, entityFile(typesLine, "[1,3840,3840,4096,4096]"), surf(MaxSidePixels, MaxSidePixels, 1))
 	if got := layers[CategoryProduction].ColorIndexAt(4095, 4095); got != 1 {
 		t.Errorf("corner = %d, want 1", got)
 	}
@@ -243,5 +247,20 @@ func TestOverlayManyEntitiesIsQuick(t *testing.T) {
 	layers := draw(t, b.String(), surf(1000, 200, 1))
 	if got := countSet(layers[CategoryBelts]); got != 200000 {
 		t.Errorf("%d pixels, want 200000", got)
+	}
+}
+
+// A file of the largest allowed boxes costs a bounded, small amount: the
+// side limit is what keeps two million boxes from being 10^13 pixel writes.
+func TestOverlayLargestBoxesAreQuick(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(typesLine + "\n")
+	for i := 0; i < 20000; i++ {
+		fmt.Fprintf(&b, "[1,%d,%d,%d,%d]\n", i%3000, i%3000, i%3000+256, i%3000+256)
+	}
+	start := time.Now()
+	draw(t, b.String(), surf(MaxSidePixels, MaxSidePixels, 1))
+	if d := time.Since(start); d > 20*time.Second {
+		t.Errorf("20,000 boxes of 256 by 256 took %v", d)
 	}
 }
