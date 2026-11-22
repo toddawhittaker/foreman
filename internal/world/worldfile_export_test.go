@@ -613,3 +613,59 @@ func TestExportLeavesOutThePlayersRecord(t *testing.T) {
 		}
 	}
 }
+
+// Hidden files are not exported, under mods/ too: a mod folder kept in git
+// holds .git/config, which can hold a token.
+func TestExportLeavesOutHiddenFilesUnderMods(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := exportWorld(t, m)
+	for p, body := range map[string]string{ //nolint:gosec // fake credentials the test looks for
+		"mods/my-mod/.git/config":    "[remote] url = https://user:token@example.com/x.git",
+		"mods/my-mod/.git/HEAD":      "ref: refs/heads/main",
+		"mods/.hidden-file":          "x",
+		"mods/my-mod/.env":           "TOKEN=abc",
+		"mods/my-mod/control.lua":    "-- kept",
+		"mods/.hidden-dir/inner.lua": "x",
+	} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, p)), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		writeAt(t, filepath.Join(dir, p), body, t0)
+	}
+	zr, by := openZip(t, exportZip(t, m, id, ExportAllSaves))
+	for _, f := range zr.File {
+		if strings.HasPrefix(f.Name, "mods/") && hasHiddenSegment(f.Name) {
+			t.Errorf("the export holds hidden %s", f.Name)
+		}
+	}
+	if by["mods/my-mod/control.lua"] == nil {
+		t.Error("a visible file next to the hidden ones was left out")
+	}
+}
+
+// panicCtx is a context whose Err panics, to stop staging partway.
+type panicCtx struct{ context.Context }
+
+func (panicCtx) Err() error { panic("stop staging") }
+
+// A panic while staging still removes the staging folder, and goes on.
+func TestExportPanicWhileStagingCleansUp(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, _ := exportWorld(t, m)
+	func() {
+		defer func() {
+			if r := recover(); r != "stop staging" {
+				t.Errorf("recovered %v, want the panic to go on", r)
+			}
+		}()
+		_, _ = m.PrepareExport(panicCtx{t.Context()}, id, ExportAllSaves)
+	}()
+	if left := stagingFolders(t, m); len(left) != 0 {
+		t.Errorf("a panic left %v", left)
+	}
+	unlock, err := m.Lock(id)
+	if err != nil {
+		t.Fatalf("the world is still locked after the panic: %v", err)
+	}
+	unlock()
+}
