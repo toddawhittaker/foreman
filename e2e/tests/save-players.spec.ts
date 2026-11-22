@@ -61,7 +61,7 @@ function writeRecord(
     players: opts.players.map((p) => ({
       name: p.name,
       seeded_ticks: seeded ? Math.round((p.hours ?? 0) * hour) : 0,
-      tracked_seconds: p.trackedSeconds ?? 0,
+      tracked_ms: (p.trackedSeconds ?? 0) * 1000,
       last_seen: p.lastSeen ?? null,
     })),
   };
@@ -128,7 +128,7 @@ test.describe("the list on the world's Overview page", () => {
     expect(record.basis.save).toBe("base.zip");
     expect(record.seed.result).toBe("ok");
     expect(record.game_ticks).toBe(59_760_005);
-    expect(record.players.map((p: { name: string; seeded_ticks: number; tracked_seconds: number }) => [p.name, p.seeded_ticks, p.tracked_seconds]).sort()).toEqual([
+    expect(record.players.map((p: { name: string; seeded_ticks: number; tracked_ms: number }) => [p.name, p.seeded_ticks, p.tracked_ms]).sort()).toEqual([
       ["alice", 36_000_000, 0],
       ["bob", 216_000, 0],
     ]);
@@ -171,7 +171,8 @@ test.describe("the list on the world's Overview page", () => {
     await expect(alice).toContainText(/before foreman/i);
     // Bob was seen by Foreman: 1 hour seeded and 30 minutes tracked is 1 h 30 min, and the
     // date is a real one (never the save's own last_online, 8.14).
-    await expect(bob).toContainText(/1\s*(h|hours?)\b.*30\s*(m|min|minutes?)\b/i);
+    // No \b after the minutes: the text that follows them in the same cell has no space before it.
+    await expect(bob).toContainText(/1\s*(h|hours?)\b.*30\s*(m|min|minutes?)/i);
     await expect(bob).toContainText(/Nov 20/);
     await expect(bob.locator("time")).toHaveAttribute("datetime", "2026-11-20T18:30:00Z");
     // Alice was never seen by Foreman: no invented date.
@@ -193,7 +194,7 @@ test.describe("the list on the world's Overview page", () => {
     const section = await overview(page);
     await expect.poll(() => existsSync(recordPath(foreman)), live).toBe(true);
     expect(readRecord(foreman).seed.result).toBe("out-of-memory");
-    await expect(section).toContainText(/tracked since/i, live);
+    await expect(section).toContainText(/tracked this world since/i, live);
     await expect(section).not.toContainText(/before foreman/i);
     await expect(readAgain(page)).toBeVisible();
     expect(await creates(fakeGame!)).toBe(before + 1);
@@ -202,7 +203,7 @@ test.describe("the list on the world's Overview page", () => {
     await fakeGame!.call("/preview-mode", { mode: "ok" });
     await page.reload();
     await page.reload();
-    await expect(section).toContainText(/tracked since/i);
+    await expect(section).toContainText(/tracked this world since/i);
     expect(await creates(fakeGame!)).toBe(before + 1);
     await checkPage(page);
 
@@ -210,7 +211,7 @@ test.describe("the list on the world's Overview page", () => {
     await readAgain(page).click();
     await expect.poll(async () => (existsSync(recordPath(foreman)) ? readRecord(foreman).seed.result : ""), live).toBe("ok");
     await expect.poll(() => creates(fakeGame!), live).toBe(before + 2);
-    await expect(section).not.toContainText(/tracked since/i, live);
+    await expect(section).not.toContainText(/tracked this world since/i, live);
     await expect(entries(section).first()).toBeVisible();
   });
 
@@ -260,10 +261,12 @@ test.describe("the list on the world's Overview page", () => {
 // A "hang" preview never ends by itself, so a read stays "reading" until the world starts, which
 // cancels it (SPEC 8.16).
 test.describe("accessibility of the players panel", () => {
-  const readingNote = (section: Locator) => section.getByRole("status").filter({ hasText: /reading/i });
+  // The note is not itself a live region: a poll swaps it every few seconds, and a live region
+  // there would say it again each time. Its start and end are said in #save-players-live.
+  const readingNote = (section: Locator) => section.getByText(/reading the newest save to find its players/i);
   const worldTab = (page: Page) => page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Saves" });
   const liveRegion = (page: Page) => page.locator("#save-players-live");
-  const focusedId = (page: Page) => page.evaluate(() => document.activeElement?.id ?? document.activeElement?.tagName ?? "");
+  const focusedId = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName || "");
 
   test("the reading state passes axe", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
@@ -276,12 +279,18 @@ test.describe("accessibility of the players panel", () => {
   test("the ready state with a note that it may be inexact passes axe", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { inexact: true, gameTicks: 12 * hour, players: [{ name: "alice", hours: 5 }, { name: "bob", hours: 1, trackedSeconds: 600, lastSeen: "2026-11-20T18:30:00Z" }] });
+    // The Server page's view before Start sees a stopped world with an inexact record, so it reads
+    // again by itself (8.14). That read hangs and the start cancels it, so the record stays.
+    await fakeGame!.call("/preview-mode", { mode: "hang" });
     // The game runs, so the inexact record is shown as it is and no read starts (D2).
     await start(page);
     const section = await overview(page);
     await expect(entries(section)).toHaveCount(2);
     await expect(section).toContainText(/inexact|exact|may/i);
-    await expect(readNewest(page)).toBeVisible();
+    // A record exists, so the button is "Read again" (8.14: always there); "Read players from the
+    // newest save" is its name only before the first read. It says the memory a read needs.
+    await expect(readAgain(page)).toBeVisible();
+    await expect(section).toContainText(/memory/i);
     await checkPage(page);
   });
 
@@ -289,7 +298,7 @@ test.describe("accessibility of the players panel", () => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { result: "mods-differ", trackedSince: "2026-11-10T08:00:00Z", players: [{ name: "carol", trackedSeconds: 5400, lastSeen: "2026-11-20T18:30:00Z" }] });
     const section = await overview(page);
-    await expect(section).toContainText(/tracked since/i);
+    await expect(section).toContainText(/tracked this world since/i);
     await expect(readAgain(page)).toBeVisible();
     await checkPage(page);
   });
@@ -349,7 +358,7 @@ test.describe("accessibility of the players panel", () => {
     });
     await readAgain(page).click();
     await expect.poll(async () => (existsSync(recordPath(foreman)) ? readRecord(foreman).seed.result : ""), live).toBe("ok");
-    await expect(section).not.toContainText(/tracked since/i, live);
+    await expect(section).not.toContainText(/tracked this world since/i, live);
     await expect(readingNote(section)).toHaveCount(0, live);
     await expect(liveRegion(page)).toHaveText("The players of this save were read.", live);
     // Two more polls' time: the announcement is not made again, and focus has not been taken.
@@ -366,7 +375,11 @@ test.describe("while the game runs", () => {
   // button says what it costs in memory.
   test("a view does not read, and the button does, after saying what it needs", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
+    // The Server page's view before Start is a view of a stopped world, so it starts a read by
+    // itself (8.14). That read hangs, and the start cancels it, which leaves no record (8.16).
+    await fakeGame!.call("/preview-mode", { mode: "hang" });
     await start(page);
+    await fakeGame!.call("/preview-mode", { mode: "ok" });
     const before = await creates(fakeGame!);
 
     const section = await overview(page);
@@ -409,7 +422,7 @@ test.describe("while the game runs", () => {
     await expect(newcomer.locator("time")).toHaveCount(1);
     await expect.poll(() => readRecord(foreman).players.find((p: { name: string }) => p.name === "newcomer")?.last_seen ?? null, live).not.toBeNull();
     const kept = readRecord(foreman);
-    expect(kept.players.find((p: { name: string }) => p.name === "newcomer").tracked_seconds).toBeGreaterThanOrEqual(1);
+    expect(kept.players.find((p: { name: string }) => p.name === "newcomer").tracked_ms).toBeGreaterThanOrEqual(1000);
     // The seeded player's figures are untouched by anyone else's session.
     expect(kept.players.find((p: { name: string }) => p.name === "alice").seeded_ticks).toBe(5 * hour);
   });
@@ -437,7 +450,11 @@ test.describe("the Server page", () => {
   // SPEC 8.15: with no read yet the page does not invent a time or a count.
   test("shows no invented figures without a record", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
+    // The view before Start reads by itself while the world is stopped (8.14). That read hangs,
+    // and the start cancels it, so no record is written (8.16).
+    await fakeGame!.call("/preview-mode", { mode: "hang" });
     await start(page);
+    await page.goto("/");
     // The game runs, so nothing reads the save by itself.
     expect(existsSync(recordPath(foreman))).toBe(false);
     await expect(page.locator("main").getByRole("link", { name: /\d+ players? in this save/i })).toHaveCount(0);
