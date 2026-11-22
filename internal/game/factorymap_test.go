@@ -756,3 +756,65 @@ func TestFactoryMapModShape(t *testing.T) {
 		}
 	}
 }
+
+// A mod can write a huge manifest.json: it is refused as bad output under its
+// own 1 MiB limit, before it is read into memory, whatever the shared budget.
+func TestDrawFactoryMapFilesHugeManifest(t *testing.T) {
+	fd := useFakeDrawing(t, twoSurfaces())
+	dir := t.TempDir()
+	// A sparse file: 4 GiB long, almost nothing on disk.
+	f, err := os.Create(filepath.Join(dir, "manifest.json")) //nolint:gosec // a test temp folder
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Truncate(4 << 30); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	budget := &outputBudget{left: 8 << 30}
+	if _, err := readManifest(root, budget); !errors.Is(err, ErrSaveCopyBadOutput) || factoryMapFailureID(err) != "bad-output" {
+		t.Fatalf("err %v, want bad output", err)
+	}
+	if budget.left != 8<<30 {
+		t.Errorf("the refused manifest took %d bytes of the budget", 8<<30-budget.left)
+	}
+	if _, err := drawFactoryMapFilesUnder(root, 8<<30); !errors.Is(err, ErrSaveCopyBadOutput) {
+		t.Errorf("drawing: %v, want bad output", err)
+	}
+	if len(fd.order) != 0 {
+		t.Errorf("drew %v", fd.order)
+	}
+}
+
+// A manifest that grows past its limit after the size check is still cut
+// off at the limit and refused.
+func TestReadManifestCutsOffAtTheLimit(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), make([]byte, factorymap.MaxManifestBytes), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	budget := &outputBudget{left: 4 << 20}
+	b, err := readManifest(root, budget)
+	if err != nil || len(b) != factorymap.MaxManifestBytes {
+		t.Fatalf("a manifest at the limit: %d bytes, %v", len(b), err)
+	}
+	if budget.left != 4<<20-factorymap.MaxManifestBytes {
+		t.Errorf("budget left %d, want the manifest charged", budget.left)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), make([]byte, factorymap.MaxManifestBytes+1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readManifest(root, &outputBudget{left: 4 << 20}); !errors.Is(err, ErrSaveCopyBadOutput) {
+		t.Errorf("one byte over: %v, want bad output", err)
+	}
+}
