@@ -57,9 +57,15 @@ const (
 // seconds of waiting is fine, and one lock cannot deadlock.
 var mu sync.Mutex
 
-// retries is how often a reader starts over when a Replace removes the
-// generation it was about to open.
-const retries = 3
+// maxAttempts bounds how often a reader starts over when a Replace swaps the
+// drawing under it. Each start-over means a Replace finished since the last
+// look, so the wait ends as soon as the record holds still; the bound only
+// stops a runaway loop and is far above what any real run of Replaces does.
+const maxAttempts = 1000
+
+// afterFacts is a test hook: it runs after a reader has read the record and
+// before it opens a picture, which is where a Replace can slip in.
+var afterFacts func()
 
 // facts is factorymap.json.
 type facts struct {
@@ -482,13 +488,13 @@ func (f facts) checkPicture(surface int, layer Category) error {
 // else the layer's. A missing drawing, surface or picture is fs.ErrNotExist;
 // a layer that is no category is ErrInvalid. The caller closes it.
 func (s *Store) OpenPNG(surface int, layer Category) (*os.File, error) {
-	for range retries {
+	for range maxAttempts {
 		f, err := s.openPNG(surface, layer)
 		if !errors.Is(err, errGone) {
 			return f, err
 		}
 	}
-	return nil, fmt.Errorf("the drawing changed while it was read: %w", fs.ErrNotExist)
+	return nil, fmt.Errorf("the drawing kept changing while it was read: %w", fs.ErrNotExist)
 }
 
 // errGone says a generation was removed between reading factorymap.json and
@@ -504,6 +510,9 @@ func (s *Store) openPNG(surface int, layer Category) (*os.File, error) {
 	fc, err := readFacts(root)
 	if err != nil {
 		return nil, err
+	}
+	if afterFacts != nil {
+		afterFacts()
 	}
 	if err := fc.checkPicture(surface, layer); err != nil {
 		return nil, err
@@ -549,13 +558,13 @@ func (s *Store) Composite(surface int, layers []Category) (image.Image, error) {
 			return nil, fmt.Errorf("%w: layer %q", ErrInvalid, l)
 		}
 	}
-	for range retries {
+	for range maxAttempts {
 		img, err := s.composite(surface, layers)
 		if !errors.Is(err, errGone) {
 			return img, err
 		}
 	}
-	return nil, fmt.Errorf("the drawing changed while it was read: %w", fs.ErrNotExist)
+	return nil, fmt.Errorf("the drawing kept changing while it was read: %w", fs.ErrNotExist)
 }
 
 func (s *Store) composite(surface int, layers []Category) (image.Image, error) {
@@ -567,6 +576,9 @@ func (s *Store) composite(surface int, layers []Category) (image.Image, error) {
 	fc, err := readFacts(root)
 	if err != nil {
 		return nil, err
+	}
+	if afterFacts != nil {
+		afterFacts()
 	}
 	if err := fc.checkPicture(surface, ""); err != nil {
 		return nil, err
