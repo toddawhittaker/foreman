@@ -28,7 +28,7 @@
   "newmap.exchange.button": "Remplir les paramètres",
   "newmap.gone.text": {
     "one": "Les paramètres enregistrés nomment ce réglage, que les mods du monde n'ajoutent plus. L'enregistrement l'omet.",
-    "other": "Les paramètres enregistrés nomment ces réglages, que les mods du monde n'ajoutent plus. L'enregistrement les omet."
+    "other": "Les paramètres enregistrés nomment ces {count} réglages, que les mods du monde n'ajoutent plus. L'enregistrement les omet."
   },
   "newmap.ready": "Paramètres de la carte prêts.",
   "newmap.error.builtin": "Les planètes des mods de ce monde n'ont pas pu être lues ; enregistrer maintenant supprimerait les paramètres de leurs planètes. Rien n'a été enregistré. Réessayez ou vérifiez les mods du monde.",
