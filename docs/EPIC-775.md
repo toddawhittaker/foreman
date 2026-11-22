@@ -26,7 +26,7 @@ from the architect. None is reopened here.
 - **R4** A real-game picture is kept in memory in the preview store, keyed by map settings, seed, mods key, game version and planet, evicted only by the store's size limit and dropped when the map is created; a restart loses it.
 - **R5** The existing mod-settings run also writes the planet list: one run, one memory cache under `ModSettingsKey`.
 - **R6** Step 1 always lands on step 2 (Mods), which has a Skip to map settings; the 3-click budget stays.
-- **R7** MCP adds `get_new_map` (read scope; refused once the world has a save) and `set_new_map` (scope and annotations of `generate_world`; refused with a save or busy; unknown planets and controls refused, nothing dropped silently); REST gets both through the MCP-REST parity.
+- **R7** MCP adds `get_new_map` (admin scope, like `list_mod_settings`; Todd's "read" was the orchestrator's wording, corrected 2026-11-22; refused once the world has a save) and `set_new_map` (scope and annotations of `generate_world`; refused with a save or busy; unknown planets and controls refused, nothing dropped silently); REST gets both through the MCP-REST parity.
 - **R8** Without script each step is a plain page, the step bar is a list of links, and step 3 waits on the server for the planet run within its limit; with script the form part loads after the page.
 - **R9** One line under the preview heading names what the fast preview cannot show; 2.1 worlds get "Draw from a real game (about 15 to 40 s)", captioned "From a real game, 1024 tiles", with "Back to the fast preview" and a toggletip; 2.0 and 1.1 get the fast preview only.
 - **R10** The window stays on the origin; a picture about 99% one colour gets a note that a larger size may show more; offset panning is left out.
@@ -227,7 +227,7 @@ every push to the epic branch.
   and keys previews, counts and territories by the world's mods key too.
   The store holds 160 MiB (R13). Modded resources are labelled with their
   resolved names and map colours.
-- **M1.** `get_new_map` (every scope, read-only) returns the planets,
+- **M1.** `get_new_map` (admin, read-only annotations) returns the planets,
   their controls, what each supports, and current values; it is refused
   once the world has a save. `set_new_map` (admin, the annotations of
   `generate_world`) takes a preset, a seed, per-planet control values or
@@ -312,29 +312,18 @@ unset. Nothing is downloaded.
    path.
 7. On 1.1.110: a world's step 3 shows the one surface, and a start works.
 
-## Open questions
+## Rulings on the plan's open questions (orchestrator, 2026-11-22)
 
-These are not settled by R1 to R16. Each task that meets one stops and
-reports; the orchestrator brings it to Todd.
+- **R17** Step 2 without a favorite is the world's Mods tab; with a favorite that has mods, it is the review (9.14).
+- **R18** When the planet run fails, the pre-start check does not refuse: `--create` then fails without writing a save, so nothing is lost, and the start's error says why.
+- **R19** Saving step 3, from the page or `set_new_map`, records the audit entry `new-map`, naming the preset and whether it was modified (12.9).
+- **R20** The real-game picture runs in one container: `--create` then `--test-save`, within one 90 s limit.
+- **R21** Real-game picture output limits (14.6): one planet per run, at most 1,024 chunks of exactly 32 by 32 pixels, the file at most 4 MiB.
+- **R22** `get_new_map` is admin scope, like `list_mod_settings` and `get_game_settings` (21.7).
 
-1. **Continue's step.** R2 says Continue "resumes at the right step".
-   Which step: step 3 always, or step 2 while the world has saved mod
-   picks not yet installed?
-2. **Step 2 without a favorite.** The plan reads step 2 as the world's
-   Mods tab, and the review when a favorite has mods. Confirm.
-3. **Pre-start check when the planet run fails.** Proposed: the check
-   does not refuse, because `--create` then fails without writing a save,
-   so nothing is lost.
-4. **Audit entry for a step 3 save** (and `set_new_map`). Proposed: a new
-   action `new-map`, naming the preset and "modified", like `generate`.
-5. **Real-game picture container.** One container running `--create`
-   then `--test-save`, or two in a row within the 90 s?
-6. **Real-game picture output limits** (14.6). Proposed: one planet per
-   run, at most 1,024 chunks of exactly 32 by 32 pixels, the file at most
-   4 MiB.
-7. **`get_new_map`'s scope.** R7 says "read scope", so the plan puts it in
-   every scope, while `list_mod_settings` and `get_game_settings` are
-   admin only. Confirm.
+## Open question for Todd
+
+1. **Continue's step** (R2). Which step does Continue open?
 
 ## Left out
 

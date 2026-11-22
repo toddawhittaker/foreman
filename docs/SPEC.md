@@ -958,7 +958,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
       all. A control two planets share counts as part of each planet's
       share. The default preset sent
       as no files counts as the files the form writes for it.
-- Generate records the audit entry `generate` (12.9). A refusal appears on
+- Generate records the audit entry `generate` (12.9). Saving step 3, from the page or through
+  `set_new_map`, records `new-map`, naming the preset and whether it was
+  modified. A refusal appears on
   the form, in the page's language.
 
 5.7. **Clone** a world into a new world, then either start a fresh map or
@@ -3161,8 +3163,9 @@ runs `--create` to make a throwaway map, then `--test-save` on it, which
 loads it with a player; the helper creates the planet's surface, so the
 mods' own surface and chunk scripts run, charts the chunks within 16 of
 the origin (1024 by 1024 tiles) and writes the chart. Foreman reads it
-through the work folder, checks it under the factory map output's limits
-(14.6), and draws it as the factory map does (5.16). Measured with five planet mods on 2.1.24: 13 to 21 seconds for one
+through the work folder, checks it (one planet per run, at most 1,024
+chunks of exactly 32 by 32 pixels, the file at most 4 MiB; anything else
+refuses the picture, 14.6), and draws it as the factory map does (5.16). Measured with five planet mods on 2.1.24: 13 to 21 seconds for one
 mod's planets and 39 seconds for all five, at most 692 MiB (#775). No new
 Docker endpoint is used.
 
@@ -3871,7 +3874,7 @@ three steps and Unfinished worlds (5.6, 5.7, 5.12, 17.10, 17.19); the
 planet list from the mod-settings run (9.6, 14.6); previews, territories
 and resource counts with the world's mods, and the real-game picture on
 2.1 (5.6, 14.3, ADR 0033); the pre-start refusal of stale controls (7.4);
-`get_new_map` and `set_new_map` (21.4, 21.7). **Gate:** against real
+`get_new_map` and `set_new_map` (21.7). **Gate:** against real
 `factoriotools/factorio` containers on 1.1.110, 2.0.77 and 2.1.24, with
 five planet mods on 2.x: the mod-settings run lists 11 planets; each
 planet's preview draws within 60 seconds and 1 GiB; map settings saved
@@ -3946,11 +3949,7 @@ mods and available updates (9.3). The tools are `server_status`,
 `list_worlds` (which includes archived worlds, with `archived: true`, 5.9),
 `list_players`, `recent_log` (the newest 200 lines),
 `list_snapshots` and `list_mods`. `world_id` is optional on these and
-means the active world when left out. `get_new_map` (#775) returns an
-Unfinished world's planets (5.6), each control with what it supports, and
-the values saved for its new map; it requires `world_id`, and is refused
-once the world has a save. Planet and control names come from mods and
-are marked untrusted. Player and portal text in any
+means the active world when left out. Player and portal text in any
 result is marked untrusted (14.12). (P1)
 
 21.5. **Action tools** (operate and admin): start (7.3); graceful stop
@@ -4004,7 +4003,7 @@ factory map pictures (5.16); and the players of a save (8.14).
 
 The tool names are fixed, one tool per action:
 
-- worlds, favorites and saves: `generate_world`, `set_new_map`,
+- worlds, favorites and saves: `generate_world`, `get_new_map`, `set_new_map`,
   `clone_world`, `rename_world`, `archive_world`, `unarchive_world`, `delete_world`,
   `list_deleted_worlds`, `list_favorites`,
   `make_favorite`, `rename_favorite`, `delete_favorite`, `list_saves`,
@@ -4021,6 +4020,11 @@ The tool names are fixed, one tool per action:
   setting), `set_foreman_settings`, `set_restart_schedule`, `add_webhook`,
   `change_webhook`, `delete_webhook`, `set_factorio_account`,
   `remove_factorio_account`, `set_public_mods`.
+
+`get_new_map` (#775) returns an Unfinished world's planets (5.6), each
+control with what it supports, and the values saved for its new map; it
+requires `world_id`, and is refused once the world has a save. Planet and
+control names come from mods and are marked untrusted (14.12).
 
 `set_new_map` (#775) takes `world_id` and either a preset, a seed and
 values per planet and control, or a map exchange string, and saves them as
@@ -4189,7 +4193,7 @@ snapshots, the token snapshot cap (21.5), the chat prefix (21.6), the
 (14.12) and the audit entries with the token's name (12.9) are the same.
 A tool outside the token's scope answers 404, as an unknown tool.
 Results and errors are in English (22.3) and never hold a secret (14.8).
-This includes `get_new_map` and `set_new_map` (21.4, 21.7). (P1)
+This includes `get_new_map` and `set_new_map` (21.7). (P1)
 
 23.3. **Who may call.** Only an API token in `Authorization: Bearer`
 (14.19). The API never reads a session, cookie or trusted header. (P1)
