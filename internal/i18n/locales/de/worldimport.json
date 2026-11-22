@@ -1,0 +1,31 @@
+{
+  "worldimport.title": "Weltdatei importieren",
+  "worldimport.intro": "Sieh dir an, was in der Datei steckt. Erst wenn du „Welt importieren“ drückst, wird etwas importiert.",
+  "worldimport.heading": "Inhalt der Datei",
+  "worldimport.zone.label": "Weltdatei",
+  "worldimport.fact.made_by": "Foreman-Version",
+  "worldimport.fact.saves": "Speicherstände",
+  "worldimport.fact.mod_files": "Mod-Dateien",
+  "worldimport.saves.count": {
+    "one": "{count} Speicherstand",
+    "other": "{count} Speicherstände"
+  },
+  "worldimport.mod_files.count": {
+    "one": "{count} Mod-Datei",
+    "other": "{count} Mod-Dateien"
+  },
+  "worldimport.fact.size": "Entpackte Größe",
+  "worldimport.fact.loads": "Speicherstand, der geladen wird",
+  "worldimport.loads.none": "Keiner: Die Welt erstellt ihre Karte beim ersten Start.",
+  "worldimport.password_warning": "Das Spielpasswort war nicht in der Datei. Diese Welt startet ohne Passwort, bis du unter „Spieleinstellungen“ eines festlegst.",
+  "worldimport.mods_warning": "Foreman prüft nicht, was die Speicherstände und Mods in dieser Datei enthalten. Importiere nur Dateien, denen du vertraust. Eine Mod kann alles speichern, was ihr Autor gewählt hat, auch ein Token.",
+  "worldimport.name.label": "Name der Welt",
+  "worldimport.image.here": "Das Spiel-Image für Version {version} ist auf diesem Host schon vorhanden.",
+  "worldimport.button": "Welt importieren",
+  "worldimport.error.bad": "Das ist keine Weltdatei, die Foreman lesen kann. Sie ist vielleicht beschädigt, abgeschnitten oder nicht von Foreman exportiert worden.",
+  "worldimport.error.newer": "Eine neuere Version von Foreman hat diese Weltdatei erstellt, deshalb kann diese Version sie nicht lesen. Aktualisiere Foreman und versuche es erneut.",
+  "worldimport.refused.title": "Foreman kann diese Datei nicht importieren",
+  "worldimport.retry": "Zurück zum Import",
+  "worldimport.gone.title": "Die hochgeladene Datei ist weg",
+  "worldimport.gone": "Foreman behält eine hochgeladene Weltdatei eine Stunde lang, und diese ist nicht mehr da. Lade sie erneut hoch."
+}

@@ -73,7 +73,7 @@ test("imports a folder from the inbox, leaves it unchanged, and says Done", asyn
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/old-game?imported=1&unchecked=1");
   await expect(page.locator(".message--success")).toHaveText("Done: Imported Old game.");
-  await expect(page.locator(".message--warning")).toContainText("could not reach Docker Hub to check that Factorio 2.0.72 exists");
+  await expect(page.locator(".message--warning:not(#export-warning)")).toContainText("could not reach Docker Hub to check that Factorio 2.0.72 exists");
   await expect(page.locator("dl.facts")).toContainText("Imported fromThe folder saves-2025, save base.zip");
   await expect(page.locator("dl.facts")).toContainText("2.0.72");
   await checkPage(page);
@@ -225,7 +225,7 @@ test("several folders import at once, each reported", async ({ page, foreman, fa
   await expect(done).toContainText("Done: Imported 2 folders.");
   await expect(done.getByRole("link", { name: "Open sa" })).toHaveAttribute("href", "/worlds/sa");
   await expect(done).toContainText("Downloading the game image for Factorio 2.0.77, 2.1.24.");
-  await expect(page.locator(".message--warning")).toContainText("junk: Foreman could not read its save");
+  await expect(page.locator(".message--warning:not(#export-warning)")).toContainText("junk: Foreman could not read its save");
   await expect(page.locator("#import-result")).toBeFocused();
   await checkPage(page);
 

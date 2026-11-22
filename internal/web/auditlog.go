@@ -13,6 +13,13 @@ import (
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
+// Audit actions of the world file export and import (SPEC 12.9). The export
+// handler records the first; the import's confirm handler the second.
+const (
+	AuditWorldExport = "world-export"
+	AuditWorldImport = "world-import"
+)
+
 // auditPageSizes are the page sizes the viewer offers (SPEC 12.9).
 var auditPageSizes = []int{25, 50, 100, 200}
 
@@ -85,6 +92,8 @@ var auditActionWords = map[string]i18n.Msg{
 	AuditSaveUploadLimitSet:   i18n.M("audit.action.save-upload-limit-set"),
 	AuditModUploadLimitSet:    i18n.M("audit.action.mod-upload-limit-set"),
 	AuditUpdateCheckSet:       i18n.M("audit.action.update-check-set"),
+	AuditWorldExport:          i18n.M("audit.action.world-export"),
+	AuditWorldImport:          i18n.M("audit.action.world-import"),
 }
 
 // AuditRow is one entry of the log as the page shows it.

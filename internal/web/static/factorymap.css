@@ -1,0 +1,203 @@
+/* The factory map page (SPEC 5.16). Linked from the page's own scripts
+   block; the shared look stays in foreman.css. */
+
+.factorymap {
+  display: grid;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.factorymap__summary {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.factorymap__summary > p,
+.factorymap__draw > p,
+.factorymap__view figcaption > * {
+  margin: 0;
+}
+
+.factorymap__draw {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.factorymap__surfaces ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+}
+
+.factorymap__surfaces a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius, 0.375rem);
+  background: var(--color-surface);
+}
+
+.factorymap__surfaces a[aria-current] {
+  border-color: var(--color-selected);
+  background: var(--color-accent-bg);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.factorymap__view {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  min-inline-size: 0;
+}
+
+.factorymap__view h3 {
+  font-size: var(--text-lg);
+}
+
+.factorymap__stage {
+  position: relative;
+  display: grid;
+}
+
+/* A fixed-height frame, so the page does not jump as the picture loads; the
+   page's own gestures are off inside it once the script runs. */
+.factorymap__frame {
+  container-type: size;
+  display: flex;
+  block-size: min(70svh, 48rem);
+  min-block-size: 16rem;
+  overflow: auto;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  --zoom: 1;
+  --ratio: 1;
+}
+
+.factorymap__frame:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.factorymap[data-viewer] .factorymap__frame {
+  scrollbar-width: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.factorymap__frame[data-zoomed] {
+  cursor: grab;
+}
+
+.factorymap__frame[data-zoomed]:active {
+  cursor: grabbing;
+}
+
+/* Auto margins centre a fitted picture and never push a zoomed one out of
+   reach. Without the script the picture just fits the frame's width. */
+.factorymap__map {
+  position: relative;
+  flex: none;
+  margin: auto;
+  inline-size: 100%;
+}
+
+.factorymap[data-viewer] .factorymap__map {
+  inline-size: calc(min(100cqi, 100cqb * var(--ratio)) * var(--zoom));
+}
+
+.factorymap__map img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  image-rendering: pixelated;
+}
+
+/* Each ticked layer lies on the base picture: same pixel grid, same size. */
+.factorymap__map .factorymap__layer {
+  position: absolute;
+  inset: 0;
+}
+
+.factorymap__zoom {
+  position: absolute;
+  inset-block-end: var(--space-2);
+  inset-inline-end: var(--space-2);
+  display: flex;
+  gap: var(--space-2);
+}
+
+.factorymap__zoom[hidden] {
+  display: none;
+}
+
+.factorymap__status {
+  min-block-size: 1lh;
+  margin: 0;
+}
+
+.factorymap__layers {
+  margin: 0;
+}
+
+.factorymap__checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+}
+
+.factorymap-mode fieldset {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.factorymap-mode legend h2 {
+  margin: 0;
+}
+
+.factorymap-mode .hint {
+  margin: 0 0 var(--space-2);
+  padding-inline-start: 2rem;
+}
+
+/* A swatch per layer, the colour the server draws it in: keep these equal
+   to categoryColors in internal/factorymap/categories.go. The black edge
+   gives the light fills 3:1 against the light theme's face; on the dark
+   theme the fill itself stands out (WCAG 1.4.11). The label names the
+   layer, so the colour is never the only sign. */
+.factorymap__checks .check {
+  align-items: center;
+}
+
+.factorymap__swatch {
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  border: 2px solid var(--color-pin-edge);
+  border-radius: 2px;
+}
+
+.factorymap__swatch[data-layer="belts"] { background: #ffd11a; }
+.factorymap__swatch[data-layer="production"] { background: #3da5ff; }
+.factorymap__swatch[data-layer="power"] { background: #ff6b35; }
+.factorymap__swatch[data-layer="fluids"] { background: #2ee6d6; }
+.factorymap__swatch[data-layer="rail"] { background: #ff5ca8; }
+.factorymap__swatch[data-layer="defence"] { background: #ff3b3b; }
+.factorymap__swatch[data-layer="logistics"] { background: #8ce84a; }
+.factorymap__swatch[data-layer="other"] { background: #c8b4ff; }
+
+.factorymap__map img[hidden] {
+  display: none;
+}
+
+.factorymap__surfaces li,
+.factorymap__checks li {
+  list-style: none;
+}

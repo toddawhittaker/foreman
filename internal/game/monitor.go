@@ -207,7 +207,8 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		c.attach(w, *cont, ops)
 	}
 	var old, stale *rcon.Client
-	defer func() { closeRCON(old); closeRCON(stale) }() // runs after the unlock below
+	var end runEnd
+	defer func() { closeRCON(old); closeRCON(stale); c.trackRunEnd(w.id, end) }() // runs after the unlock below
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.opDone != nil || w.ops != ops {
@@ -217,6 +218,11 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 	if cont == nil {
 		w.attachFailed, w.attachErr = "", nil
 		if w.containerID != "" {
+			if gameLive(w.dockerStatus) {
+				// The container went while its game ran: when it ended is
+				// not known.
+				end = runEnd{at: c.now(), unseen: true}
+			}
 			old = c.dropContainerLocked(w)
 		}
 		c.changedLocked(w, true)
@@ -229,7 +235,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 		c.changedLocked(w, true)
 		return true
 	}
-	stale = c.takeRunLocked(w, cont, read)
+	stale, end = c.takeRunLocked(w, cont, read)
 	c.crashLoopLocked(w, cont.ID)
 	if w.dockerStatus == "running" && !w.following && !w.stopping && !w.noSecrets {
 		since := w.startedAt
@@ -248,11 +254,15 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64, re
 // takeRunLocked takes in what a look at the world's own container says
 // about its run: each Docker restart is a crash, and a new run resets what
 // the last one knew (SPEC 8.7). It returns the RCON connection to a run
-// that ended, for the caller to close after the unlock, or nil. w.mu is
-// held.
-func (c *Controller) takeRunLocked(w *worldRun, cont *docker.Container, read *crashLog) (stale *rcon.Client) {
+// that ended, for the caller to close after the unlock, or nil, and the
+// run that ended, for the players record (SPEC 8.14). w.mu is held.
+func (c *Controller) takeRunLocked(w *worldRun, cont *docker.Container, read *crashLog) (stale *rcon.Client, end runEnd) {
 	now := c.now()
 	if n := cont.RestartCount - w.seenRestarts; n > 0 {
+		end = runEnd{at: cont.State.FinishedAt, unseen: true}
+		if end.at.IsZero() {
+			end.at = now
+		}
 		// Docker restarted the game, which it only does after an exit
 		// nobody asked for (SPEC 8.7): each restart is one crash.
 		for range n {
@@ -273,8 +283,15 @@ func (c *Controller) takeRunLocked(w *worldRun, cont *docker.Container, read *cr
 	w.dockerStatus = cont.State.Status
 	if exited(cont.State.Status) {
 		exitSeenLocked(w, cont.State)
+		if end.at.IsZero() {
+			end = runEnd{at: cont.State.FinishedAt, started: cont.State.StartedAt}
+		}
 	}
 	if !cont.State.StartedAt.Equal(w.startedAt) {
+		if end.at.IsZero() && !w.startedAt.IsZero() && cont.State.FinishedAt.After(w.startedAt) {
+			// Restarted from outside, which leaves the restart count alone.
+			end = runEnd{at: cont.State.FinishedAt, started: w.startedAt}
+		}
 		if w.stopping && w.dockerStatus == "running" {
 			// The same container runs a new run, so a stop asked for
 			// earlier did not happen; its exit would be a crash again.
@@ -290,7 +307,7 @@ func (c *Controller) takeRunLocked(w *worldRun, cont *docker.Container, read *cr
 		// on it would fail, so the next one dials the new run.
 		stale = w.rc
 	}
-	return stale
+	return stale, end
 }
 
 // crashLoopLocked stops a game that crashed CrashLoopCount times within
@@ -461,13 +478,22 @@ func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 		c.log.Warn("cannot read the world's settings", "world", w.id, "error", err)
 	}
 	var old *rcon.Client
-	defer func() { closeRCON(old) }() // runs after the unlock below
+	reattached := false
+	defer func() {
+		closeRCON(old)
+		if reattached {
+			c.trackReattach(w.id)
+		}
+	}() // runs after the unlock below
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.opDone != nil || w.ops != ops || (w.containerID == cont.ID && !w.noSecrets) {
 		return
 	}
 	old = c.dropContainerLocked(w)
+	// A game running when it is taken on ran while Foreman was not
+	// watching, so its players' time may be missing (SPEC 8.14).
+	reattached = live
 	w.noSecrets = !live
 	w.attachFailed, w.attachErr = "", nil
 	w.containerID, w.logMark = cont.ID, w.logs.Mark()
@@ -657,12 +683,24 @@ func (c *Controller) follow(ctx context.Context, w *worldRun, cid string, since 
 // handleLine redacts one log line, keeps it for pages, and acts on what it
 // says (SPEC 8.6). The line comes with Docker's timestamp, which is kept
 // to resume from and left off what pages show. The line is added and
-// published under w.mu, so Watch never misses or repeats it.
+// published under w.mu, so Watch never misses or repeats it. The players
+// record follows after the unlock (SPEC 8.14).
 func (c *Controller) handleLine(w *worldRun, cid, text string) {
+	ev, loaded, live := c.relayLine(w, cid, text)
+	switch ev.Kind {
+	case KindPlayerJoined, KindPlayerLeft, KindLoadStarted, KindSaveFinished:
+		c.trackLine(w.id, ev, loaded, live)
+	}
+}
+
+// relayLine is handleLine's part under w.mu. It returns the line's event,
+// the save a load line names, and whether the line is live; the event is
+// KindOther for a line of another container.
+func (c *Controller) relayLine(w *worldRun, cid, text string) (ev Event, loaded string, live bool) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.containerID != cid {
-		return
+		return Event{}, "", false
 	}
 	// Only what is kept and shown is redacted: a short password such as
 	// "0" also matches inside the timestamps the line is understood by.
@@ -670,17 +708,18 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	if !at.IsZero() {
 		w.lastLineAt = at
 	}
-	live := w.liveLineLocked(at)
+	live = w.liveLineLocked(at)
 	line := w.redact(raw)
 	w.logs.Add(line)
 	w.hub.Publish(Update{Kind: UpdateLine, Line: line})
 
-	ev := ParseLine(text)
+	ev = ParseLine(text)
 	publish := true
 	switch ev.Kind {
 	case KindOther:
-		return
+		return ev, "", live
 	case KindLoadStarted:
+		loaded = loadedSave(raw)
 		// Every run of the game starts here; players from the last run are
 		// gone, and a save the last run was writing ended with it.
 		w.joins.Reset()
@@ -739,6 +778,7 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	w.evQuiet = !live
 	c.changedLocked(w, publish)
 	w.evQuiet = false
+	return ev, loaded, live
 }
 
 // redact hides the world's secrets and any secret a printed command set,

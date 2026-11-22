@@ -48,6 +48,8 @@
   "audit.action.whitelist-switch": "Whitelist turned on or off",
   "audit.action.world-archive": "World archived",
   "audit.action.world-delete": "World deleted",
+  "audit.action.world-export": "World exported",
+  "audit.action.world-import": "World imported",
   "audit.action.world-unarchive": "World unarchived",
   "audit.empty": "Nothing has been recorded yet.",
   "audit.empty.filtered": "No entries match these filters.",
