@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -137,10 +136,6 @@ func (r PreviewRequest) knownPlanets(line string) []string {
 	return mapgen.Planets(line, r.SpaceAge)
 }
 
-// validPlanetName is the shape of a planet name a run takes. Names go to a
-// shell script and a Lua string, so a world's list is held to it too.
-var validPlanetName = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
-
 // ValidPreviewSize reports whether n is a size a preview can be drawn at.
 func ValidPreviewSize(n int) bool {
 	return n >= PreviewSizeMin && n <= PreviewSizeMax && (n-PreviewSizeMin)%PreviewSizeStep == 0
@@ -191,9 +186,11 @@ func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, er
 	var pngs []PNG
 	err = c.previewRun(ctx, req, "preview", len(req.Planets), func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
 		spec := c.previewSpec(ref, name, line, req)
-		if spec.HostConfig.Mounts, err = c.worldModMounts(base, name, req); err != nil {
+		mounts, err := c.worldModMounts(base, name, req)
+		if err != nil {
 			return err
 		}
+		spec.HostConfig.Mounts = mounts
 		if err := container(spec); err != nil {
 			return err
 		}
@@ -325,7 +322,7 @@ func checkPreview(req PreviewRequest) (line string, err error) {
 		return "", fmt.Errorf("%w: planets", ErrPreviewInvalid)
 	}
 	for i, p := range req.Planets {
-		if !validPlanetName.MatchString(p) || !slices.Contains(known, p) || slices.Contains(req.Planets[:i], p) {
+		if !mapgen.ValidName(p) || !slices.Contains(known, p) || slices.Contains(req.Planets[:i], p) {
 			return "", fmt.Errorf("%w: planet %q", ErrPreviewInvalid, p)
 		}
 	}
@@ -428,9 +425,27 @@ func writePreviewFiles(dir *os.Root, req PreviewRequest) error {
 // never holds the world's own folder, and it holds the world's lock only
 // while it reads the world. A world that server control holds is
 // world.ErrBusy; one whose game version or Space Age is not the request's
-// is ErrPreviewInvalid; mods past the link caps are world.ErrModsTooBig. The run mounts the linked
-// zips read-only with worldModMounts.
+// is ErrPreviewInvalid; mods past the link caps are world.ErrModsTooBig. The
+// run mounts the linked zips read-only with worldModMounts.
 func (c *Controller) makeWorldPreviewDir(base *os.Root, req PreviewRequest) (string, error) {
+	check := func(meta world.Meta) error {
+		if meta.GameVersion != req.GameVersion || meta.SpaceAge != req.SpaceAge {
+			return fmt.Errorf("%w: the world is Factorio %s with Space Age %t", ErrPreviewInvalid, meta.GameVersion, meta.SpaceAge)
+		}
+		return nil
+	}
+	return c.fillWorldWorkDir(base, req.World, req, check, func(dir *os.Root) error {
+		return copyModSettings(c.worlds, req.World, dir)
+	})
+}
+
+// fillWorldWorkDir makes a work folder for a run that loads world id's mods:
+// the config and the settings files of req (only the config for a zero req),
+// then, with the world's lock held, check of the world's meta, the mods
+// linked in, and extra. All three run in the one hold, so they describe the
+// same world. Any failure removes the folder. A world that server control
+// holds is world.ErrBusy; mods past the link caps are world.ErrModsTooBig.
+func (c *Controller) fillWorldWorkDir(base *os.Root, id string, req PreviewRequest, check func(world.Meta) error, extra func(dir *os.Root) error) (string, error) {
 	name, err := newWorkDir(base)
 	if err != nil {
 		return "", err
@@ -447,22 +462,22 @@ func (c *Controller) makeWorldPreviewDir(base *os.Root, req PreviewRequest) (str
 	if err := writePreviewFiles(dir, req); err != nil {
 		return fail(err)
 	}
-	unlock, err := c.worlds.Lock(req.World)
+	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return fail(err)
 	}
 	defer unlock()
-	meta, err := c.readMeta(req.World)
+	meta, err := c.readMeta(id)
 	if err != nil {
 		return fail(err)
 	}
-	if meta.GameVersion != req.GameVersion || meta.SpaceAge != req.SpaceAge {
-		return fail(fmt.Errorf("%w: the world is Factorio %s with Space Age %t", ErrPreviewInvalid, meta.GameVersion, meta.SpaceAge))
+	if err := check(meta); err != nil {
+		return fail(err)
 	}
-	if err := c.worlds.LinkModsInto(req.World, filepath.Join(c.previewPath(), name)); err != nil {
+	if err := c.worlds.LinkModsInto(id, filepath.Join(c.previewPath(), name)); err != nil {
 		return fail(fmt.Errorf("could not put the world's mods in the work folder: %w", err))
 	}
-	if err := copyModSettings(c.worlds, req.World, dir); err != nil {
+	if err := extra(dir); err != nil {
 		return fail(err)
 	}
 	return name, nil
