@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/color"
 	"io"
 )
 
@@ -79,13 +78,12 @@ func drawChart(ms ManifestSurface, chunks io.Reader) (*image.NRGBA, Surface, err
 	k := (max(wTiles, hTiles) + MaxSidePixels - 1) / MaxSidePixels
 	w, h := (wTiles+k-1)/k, (hTiles+k-1)/k
 
-	var img *image.NRGBA
-	var acc *accumulator
-	if k == 1 {
-		img = image.NewNRGBA(image.Rect(0, 0, w, h))
-	} else {
-		acc = newAccumulator(w, h)
-	}
+	// The only large allocation is the picture itself. When it is scaled
+	// down, a picture pixel keeps the colour of the first charted tile that
+	// lands in it (point sampling): no sum buffers, and a charted chunk never
+	// vanishes, however far apart the chunks are.
+	img := image.NewNRGBA(image.Rect(0, 0, w, h))
+	dec := newChunkDecoder()
 
 	// The declared chunk count and the line limit already bound the read; the
 	// size limit is a second wall.
@@ -99,7 +97,7 @@ func drawChart(ms ManifestSurface, chunks io.Reader) (*image.NRGBA, Surface, err
 		if read > ms.Chunks {
 			return nil, Surface{}, fmt.Errorf("factorymap: chart has more chunks than the %d declared", ms.Chunks)
 		}
-		cx, cy, px, err := parseChartLine(line)
+		cx, cy, px, err := dec.parse(line)
 		if err != nil {
 			return nil, Surface{}, fmt.Errorf("factorymap: chart line %d: %w", read, err)
 		}
@@ -116,10 +114,9 @@ func drawChart(ms ManifestSurface, chunks io.Reader) (*image.NRGBA, Surface, err
 			v := uint16(px[2*i]) | uint16(px[2*i+1])<<8
 			r, g, b := rgb565(v)
 			x, y := ox+i%ChunkPixels, oy+i/ChunkPixels
-			if acc != nil {
-				acc.add(x/k, y/k, r, g, b)
-			} else {
-				img.SetNRGBA(x, y, color.NRGBA{r, g, b, 255})
+			o := img.PixOffset(x/k, y/k)
+			if img.Pix[o+3] == 0 {
+				img.Pix[o], img.Pix[o+1], img.Pix[o+2], img.Pix[o+3] = r, g, b, 255
 			}
 		}
 	}
@@ -129,20 +126,32 @@ func drawChart(ms ManifestSurface, chunks io.Reader) (*image.NRGBA, Surface, err
 	if read != ms.Chunks {
 		return nil, Surface{}, fmt.Errorf("factorymap: chart has %d chunks, the manifest declares %d", read, ms.Chunks)
 	}
-	if acc != nil {
-		img = acc.image()
-	}
 	return img, Surface{
 		Index: ms.Index, Name: ms.Name, Kind: ms.Kind,
 		Width: w, Height: h, TilesPerPixel: k,
 	}, nil
 }
 
-// parseChartLine reads one {"x","y","data"} line into the chunk's coordinates
-// and its 2048 bytes of pixels. Unknown or missing fields, text after the
-// object, and data of any other size are errors.
-func parseChartLine(line []byte) (x, y int, px []byte, err error) {
-	dec := json.NewDecoder(bytes.NewReader(line))
+// chunkDecoder reads chart lines and reuses its buffers between them, so a
+// chart of 65,536 chunks does not allocate 65,536 sets of buffers.
+type chunkDecoder struct {
+	rd  bytes.Reader
+	raw []byte // base64-decoded data
+	px  []byte // inflated data, one byte more than a chunk to catch excess
+	zr  io.ReadCloser
+}
+
+func newChunkDecoder() *chunkDecoder {
+	return &chunkDecoder{px: make([]byte, chunkDataBytes+1)}
+}
+
+// parse reads one {"x","y","data"} line into the chunk's coordinates and its
+// 2048 bytes of pixels, which stay valid until the next call. Unknown or
+// missing fields, text after the object, and data of any other size are
+// errors.
+func (d *chunkDecoder) parse(line []byte) (x, y int, px []byte, err error) {
+	d.rd.Reset(line)
+	dec := json.NewDecoder(&d.rd)
 	dec.DisallowUnknownFields()
 	var l chartLine
 	if err := dec.Decode(&l); err != nil {
@@ -158,67 +167,41 @@ func parseChartLine(line []byte) (x, y int, px []byte, err error) {
 	if *l.X < -maxChunkCoord || *l.X > maxChunkCoord || *l.Y < -maxChunkCoord || *l.Y > maxChunkCoord {
 		return 0, 0, nil, errors.New("chunk coordinate out of range")
 	}
-	raw, err := base64.StdEncoding.DecodeString(*l.Data)
+	if n := base64.StdEncoding.DecodedLen(len(*l.Data)); cap(d.raw) < n {
+		d.raw = make([]byte, n)
+	}
+	n, err := base64.StdEncoding.Decode(d.raw[:cap(d.raw)], []byte(*l.Data))
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("data is not base64: %w", err)
 	}
-	zr, err := zlib.NewReader(bytes.NewReader(raw))
+	d.rd.Reset(d.raw[:n])
+	if d.zr == nil {
+		d.zr, err = zlib.NewReader(&d.rd)
+	} else {
+		err = d.zr.(zlib.Resetter).Reset(&d.rd, nil)
+	}
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("data is not compressed: %w", err)
 	}
-	defer func() { _ = zr.Close() }()
-	px, err = io.ReadAll(io.LimitReader(zr, chunkDataBytes+1))
-	if err != nil {
+	sizeErr := fmt.Errorf("a chunk must be %d by %d pixels (%d bytes)", ChunkPixels, ChunkPixels, chunkDataBytes)
+	if _, err := io.ReadFull(d.zr, d.px[:chunkDataBytes]); err != nil {
+		if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
+			return 0, 0, nil, sizeErr
+		}
 		return 0, 0, nil, fmt.Errorf("data is not compressed: %w", err)
 	}
-	if len(px) != chunkDataBytes {
-		return 0, 0, nil, fmt.Errorf("a chunk must be %d by %d pixels (%d bytes)", ChunkPixels, ChunkPixels, chunkDataBytes)
+	// The stream must end here: one more byte means too much data, and a
+	// stream cut short or with a bad checksum is an error, not an end.
+	if n, err := d.zr.Read(d.px[chunkDataBytes:]); n != 0 {
+		return 0, 0, nil, sizeErr
+	} else if !errors.Is(err, io.EOF) {
+		return 0, 0, nil, fmt.Errorf("data is not compressed: %w", err)
 	}
-	return int(*l.X), int(*l.Y), px, nil
+	return int(*l.X), int(*l.Y), d.px[:chunkDataBytes], nil
 }
 
 // rgb565 expands a 16-bit 5-6-5 pixel to 8 bits a channel.
 func rgb565(v uint16) (r, g, b uint8) {
 	r5, g6, b5 := uint8(v>>11&31), uint8(v>>5&63), uint8(v&31)
 	return r5<<3 | r5>>2, g6<<2 | g6>>4, b5<<3 | b5>>2
-}
-
-// The sums are 64 bit: one picture pixel can take up to 67 million charted
-// pixels (65,536 chunks of 1,024), whose sum passes 32 bits.
-//
-// accumulator averages the charted pixels that fall into each pixel of a
-// scaled-down picture. An uncharted pixel adds nothing, so a picture pixel
-// with no charted pixel stays transparent, and one with any is opaque and the
-// mean of those.
-type accumulator struct {
-	w, h    int
-	r, g, b []uint64
-	n       []uint32
-}
-
-func newAccumulator(w, h int) *accumulator {
-	n := w * h
-	return &accumulator{w: w, h: h, r: make([]uint64, n), g: make([]uint64, n), b: make([]uint64, n), n: make([]uint32, n)}
-}
-
-func (a *accumulator) add(x, y int, r, g, b uint8) {
-	i := y*a.w + x
-	a.r[i] += uint64(r)
-	a.g[i] += uint64(g)
-	a.b[i] += uint64(b)
-	a.n[i]++
-}
-
-func (a *accumulator) image() *image.NRGBA {
-	img := image.NewNRGBA(image.Rect(0, 0, a.w, a.h))
-	for i, n := range a.n {
-		if n == 0 {
-			continue
-		}
-		img.Pix[4*i] = uint8(min(a.r[i]/uint64(n), 255))
-		img.Pix[4*i+1] = uint8(min(a.g[i]/uint64(n), 255))
-		img.Pix[4*i+2] = uint8(min(a.b[i]/uint64(n), 255))
-		img.Pix[4*i+3] = 255
-	}
-	return img
 }

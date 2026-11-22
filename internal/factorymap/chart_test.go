@@ -137,9 +137,10 @@ func TestDrawChartScalesDownPast4096(t *testing.T) {
 	}
 }
 
-func TestDrawChartScaleAveragesChartedPixels(t *testing.T) {
-	// Black and white pixels alternate along each row; at 2 tiles a pixel
-	// the average is mid grey. Chunk 128 forces the scale.
+func TestDrawChartScalePointSamples(t *testing.T) {
+	// At 2 tiles a pixel the first charted tile that lands in a pixel gives
+	// its colour. Chunk 128 forces the scale. Row 0 of chunk 0: tile 0 is
+	// black, tile 1 is white; a picture pixel takes tile 0.
 	raw := make([]byte, chunkDataBytes)
 	for i := 0; i < ChunkPixels*ChunkPixels; i++ {
 		if i%2 == 1 {
@@ -154,8 +155,23 @@ func TestDrawChartScaleAveragesChartedPixels(t *testing.T) {
 	if s.TilesPerPixel != 2 {
 		t.Fatalf("tiles per pixel = %d", s.TilesPerPixel)
 	}
-	if got := img.NRGBAAt(0, 0); got != (color.NRGBA{127, 127, 127, 255}) {
-		t.Errorf("average = %v, want 127 grey", got)
+	if got := img.NRGBAAt(0, 0); got != (color.NRGBA{0, 0, 0, 255}) {
+		t.Errorf("pixel = %v, want the first tile's black, opaque", got)
+	}
+}
+
+func TestDrawChartScaleKeepsSparseChunks(t *testing.T) {
+	// A chunk is never lost to the scale, however many tiles a pixel is.
+	in := chartLineText(t, 0, 0, solid(0xF800)) + chartLineText(t, 1000000, 0, solid(0x001F))
+	img, s, err := drawChart(ms(2, 0, 0, 1000000, 0), strings.NewReader(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.TilesPerPixel < 7000 {
+		t.Fatalf("tiles per pixel = %d", s.TilesPerPixel)
+	}
+	if img.NRGBAAt(0, 0).A != 255 || img.NRGBAAt(img.Bounds().Dx()-1, 0) != (color.NRGBA{0, 0, 255, 255}) {
+		t.Errorf("a charted chunk is missing from the scaled picture")
 	}
 }
 
@@ -279,9 +295,9 @@ func TestDrawChartRefusesAnInflateBomb(t *testing.T) {
 	}
 }
 
-// 65,536 white chunks packed at the origin of a huge surface land in one
-// picture pixel: 67 million pixels of 255 per channel, which passes 32 bits.
-func TestDrawChartScaleSumsDoNotWrap(t *testing.T) {
+// Many chunks landing in one picture pixel (65,536 white chunks at the
+// origin of a huge surface) give that pixel's colour, not a wrapped sum.
+func TestDrawChartManyChunksInOnePixel(t *testing.T) {
 	line := chartLineText(t, 0, 0, solid(0xFFFF))
 	data := line[strings.Index(line, `"data":`):]
 	var in strings.Builder
@@ -290,14 +306,23 @@ func TestDrawChartScaleSumsDoNotWrap(t *testing.T) {
 			fmt.Fprintf(&in, `{"x":%d,"y":%d,%s`, x, y, data)
 		}
 	}
-	img, s, err := drawChart(ms(65536, 0, 0, 1<<24, 255), strings.NewReader(in.String()))
+	img, _, err := drawChart(ms(65536, 0, 0, 1<<24, 255), strings.NewReader(in.String()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.TilesPerPixel < 4096 {
-		t.Fatalf("tiles per pixel = %d", s.TilesPerPixel)
-	}
 	if got := img.NRGBAAt(0, 0); got != (color.NRGBA{255, 255, 255, 255}) {
 		t.Fatalf("pixel (0,0) = %v, want white", got)
+	}
+}
+
+func TestDrawChartRefusesATruncatedStream(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zlib.NewWriter(&buf)
+	_, _ = zw.Write(solid(0xF800))
+	_ = zw.Close()
+	cut := buf.Bytes()[:buf.Len()-4] // checksum gone
+	in := fmt.Sprintf(`{"x":0,"y":0,"data":%q}`+"\n", base64.StdEncoding.EncodeToString(cut))
+	if _, _, err := drawChart(ms(1, 0, 0, 0, 0), strings.NewReader(in)); err == nil {
+		t.Fatal("accepted a cut-short stream")
 	}
 }
