@@ -6,8 +6,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"path"
-	"slices"
 	"sync"
 	"time"
 
@@ -36,8 +34,8 @@ const SavePlayersMemory = 12 << 30
 // ticksPerSecond is the game's fixed update rate.
 const ticksPerSecond = 60
 
-// savePlayersMod is the helper mod a players read runs with.
-var savePlayersMod = saveCopyMod{controlMod: controlMod{
+// savePlayersControl is the helper mod a players read runs with.
+var savePlayersControl = controlMod{
 	kind:      gameenv.KindSavePlayers,
 	what:      "save players",
 	name:      saveplayersmod.ModName,
@@ -47,7 +45,25 @@ var savePlayersMod = saveCopyMod{controlMod: controlMod{
 	output:    gameenv.SavePlayersFile,
 	maxOutput: saveplayers.MaxOutputBytes,
 	memory:    SavePlayersMemory,
-}, outputOnDisk: false} // the output is one small file, read from the tmpfs
+}
+
+// savePlayersMod is the players read: its one small output file is read from
+// the tmpfs, and lists the mods the game loaded for the check after the run.
+var savePlayersMod = saveCopyMod{controlMod: savePlayersControl, activeMods: savePlayersActiveMods}
+
+// savePlayersActiveMods reads the mods the game loaded from the helper's
+// output in the work folder dir.
+func savePlayersActiveMods(base *os.Root, dir string) ([]saveplayers.Mod, error) {
+	b, err := readControlModOutput(base, dir, savePlayersControl)
+	if err != nil {
+		return nil, err
+	}
+	seed, err := saveplayers.ParseSeed(b)
+	if err != nil {
+		return nil, err
+	}
+	return seed.Mods, nil
+}
 
 // seedState is the reads of players records in flight, by world id. A read
 // that failed is remembered in the record itself, so it is not tried again
@@ -284,19 +300,6 @@ func (c *Controller) seedRecord(ctx context.Context, id string) (saveplayers.Rec
 		return saveplayers.Record{}, false
 	}
 	basis := basisOf(target)
-	check, err := c.worlds.PreStartCheck(id)
-	if err != nil {
-		c.log.Warn("cannot check the save before the players read", "world", id, "err", err)
-		return saveplayers.Record{}, false
-	}
-	defaults, err := c.defaultModList(id)
-	if err != nil {
-		c.log.Warn("cannot read the world's mod list before the players read", "world", id, "err", err)
-		return saveplayers.Record{}, false
-	}
-	if result := checkResult(check, defaults != nil); result != "" {
-		return saveplayers.Failed(result, basis, c.now()), true
-	}
 	read := c.seeds.read
 	if read == nil {
 		read = c.readSavePlayers
@@ -319,14 +322,6 @@ func (c *Controller) seedRecord(ctx context.Context, id string) (saveplayers.Rec
 		c.log.Info("the players read made no usable output", "world", id, "err", err)
 		return saveplayers.Failed(saveplayers.ResultBadOutput, basis, c.now()), true
 	}
-	mods, err := c.worlds.Mods(id)
-	if err != nil {
-		c.log.Warn("cannot read the world's mods after the players read", "world", id, "err", err)
-		return saveplayers.Record{}, false
-	}
-	if !sameMods(seed.Mods, withDefaults(mods, defaults)) {
-		return saveplayers.Failed(saveplayers.ResultModsDiffer, basis, c.now()), true
-	}
 	return saveplayers.FromSeed(seed, basis, c.now()), true
 }
 
@@ -335,85 +330,11 @@ func (c *Controller) seedRecord(ctx context.Context, id string) (saveplayers.Rec
 func (c *Controller) readSavePlayers(ctx context.Context, id string) (saveplayers.Basis, []byte, error) {
 	var out []byte
 	basis, err := c.runSaveCopy(ctx, id, savePlayersMod, func(base *os.Root, dir string) error {
-		b, err := readControlModOutput(base, dir, savePlayersMod.controlMod)
+		b, err := readControlModOutput(base, dir, savePlayersControl)
 		out = b
 		return err
 	})
 	return basis, out, err
-}
-
-// defaultModList returns, by name, whether each mod is on in the
-// mod-list.json EnsureModList would write, when the world has none yet; nil
-// when it has one. Nothing is written: the run's work folder gets the same
-// default list (LinkModsInto), so the game loads the mods it names.
-func (c *Controller) defaultModList(id string) (map[string]bool, error) {
-	root, err := c.worlds.OpenWorld(id)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = root.Close() }()
-	if _, err := root.Lstat(path.Join(world.ModsDir, world.ModListFile)); !errors.Is(err, fs.ErrNotExist) {
-		return nil, err
-	}
-	meta, err := world.ReadMeta(root)
-	if err != nil {
-		return nil, err
-	}
-	var doc struct {
-		Mods []struct {
-			Name    string `json:"name"`
-			Enabled bool   `json:"enabled"`
-		} `json:"mods"`
-	}
-	if err := json.Unmarshal(world.DefaultModList(meta.GameVersion, meta.SpaceAge), &doc); err != nil {
-		return nil, err
-	}
-	on := map[string]bool{}
-	for _, m := range doc.Mods {
-		on[m.Name] = m.Enabled
-	}
-	return on, nil
-}
-
-// withDefaults turns each built-in mod on or off as the default list would,
-// for a world with no mod-list.json (defaults not nil). A mod the default
-// list does not name stays on, as the game turns it on.
-func withDefaults(mods []world.InstalledMod, defaults map[string]bool) []world.InstalledMod {
-	if defaults == nil {
-		return mods
-	}
-	out := slices.Clone(mods)
-	for i, m := range out {
-		if on, ok := defaults[m.Name]; ok {
-			out[i].Enabled = on
-		} else {
-			out[i].Enabled = true
-		}
-	}
-	return out
-}
-
-// checkResult is the failure id the pre-start check gives before any run
-// (SPEC 8.16): a save newer than the world's game, or mods that differ.
-// Other problems are left to the run. A world with no mod-list.json yet
-// (noList) gets the default list at its first start, so the check's
-// complaint about the missing list is not a difference.
-func checkResult(p world.PreCheck, noList bool) string {
-	result := ""
-	for _, pr := range p.Problems {
-		switch pr.Kind {
-		case world.ProblemSaveNewer:
-			return saveplayers.ResultSaveNewer
-		case world.ProblemModListSpaceAge:
-			if !noList {
-				result = saveplayers.ResultModsDiffer
-			}
-		case world.ProblemModMissing, world.ProblemModDisabled, world.ProblemSpaceAgeOff,
-			world.ProblemModGameVersion:
-			result = saveplayers.ResultModsDiffer
-		}
-	}
-	return result
 }
 
 // seedFailure maps a run's error to its failure id, or "" for an error that
@@ -434,37 +355,6 @@ func seedFailure(err error) string {
 		return saveplayers.ResultBadOutput
 	}
 	return ""
-}
-
-// sameMods reports whether the mods the game loaded, less the helper, are
-// exactly the world's enabled mods at their versions. The game drops a
-// missing mod silently, so any difference refuses the figures (SPEC 8.16).
-func sameMods(loaded []saveplayers.Mod, installed []world.InstalledMod) bool {
-	want := map[string]string{}
-	for _, m := range installed {
-		if m.Enabled {
-			want[m.Name] = m.Version
-		}
-	}
-	got := map[string]string{}
-	for _, m := range loaded {
-		if m.Name == saveplayersmod.ModName {
-			continue
-		}
-		if _, dup := got[m.Name]; dup {
-			return false
-		}
-		got[m.Name] = m.Version
-	}
-	if len(got) != len(want) {
-		return false
-	}
-	for name, v := range want {
-		if gv, ok := got[name]; !ok || gv != v {
-			return false
-		}
-	}
-	return true
 }
 
 // keepLastSeen copies the last seen dates of the old record into the new

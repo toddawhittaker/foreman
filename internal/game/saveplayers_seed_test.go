@@ -284,50 +284,15 @@ func TestSavePlayersNoReadByItselfWhileAGameRuns(t *testing.T) {
 	}
 }
 
-// The game drops a missing mod silently, so the mods it loaded must be the
-// world's; otherwise no figures are kept (SPEC 8.16).
-func TestSavePlayersModsDifferAfterTheRun(t *testing.T) {
-	for _, name := range []string{"an extra mod", "a missing mod", "another version"} {
-		t.Run(name, func(t *testing.T) {
-			r := newSeedRig(t)
-			r.out = func(id string) (saveplayers.Basis, []byte, error) {
-				var raw map[string]any
-				if err := json.Unmarshal(r.seedOutput(id, nil), &raw); err != nil {
-					t.Fatal(err)
-				}
-				mods := raw["active_mods"].([]any)
-				switch name {
-				case "an extra mod":
-					mods = append(mods, map[string]any{"name": "Krastorio2", "version": "1.0.0"})
-				case "a missing mod":
-					mods = mods[:len(mods)-1]
-				default:
-					mods[len(mods)-1].(map[string]any)["version"] = "0.0.1"
-				}
-				raw["active_mods"] = mods
-				b, _ := json.Marshal(raw)
-				return r.basis(id), b, nil
-			}
-			v := r.view()
-			if v.State != SavePlayersTrackedOnly || v.Failure != saveplayers.ResultModsDiffer || len(v.Players) != 0 {
-				t.Fatalf("view %+v, want tracked-only, mods-differ, no players", v)
-			}
-			r.view()
-			if r.count() != 1 {
-				t.Fatalf("%d reads, want 1: a failed read is not tried again for the same save", r.count())
-			}
-		})
-	}
-}
-
 // The pre-start check runs first: a save whose mods the world lacks gives
 // mods-differ and no run at all (SPEC 8.16).
 func TestSavePlayersModsDifferBeforeTheRun(t *testing.T) {
 	r := newSeedRig(t)
+	r.c.seeds.read = nil // the real read, whose pre-start check refuses
 	r.putSave(r.id, "2.1.24-space-age-testmod.zip", "modded.zip", time.Now())
 	v := r.view()
-	if r.count() != 0 {
-		t.Fatalf("%d runs, want none", r.count())
+	if n := len(r.rig.calls("POST /containers/create")); n != 0 {
+		t.Fatalf("%d containers made, want none", n)
 	}
 	if v.State != SavePlayersTrackedOnly || v.Failure != saveplayers.ResultModsDiffer {
 		t.Fatalf("view %+v, want tracked-only, mods-differ", v)
@@ -485,57 +450,6 @@ func TestSavePlayersReadLeavesTheWorldsFilesAlone(t *testing.T) {
 	}
 }
 
-func TestSameMods(t *testing.T) {
-	installed := []world.InstalledMod{
-		{Name: "base", Version: "2.1.24", Enabled: true},
-		{Name: "space-age", Version: "2.1.24", Enabled: false},
-		{Name: "Krastorio2", Version: "1.2.3", Enabled: true},
-	}
-	helper := saveplayers.Mod{Name: saveplayersmod.ModName, Version: saveplayersmod.ModVersion}
-	base := saveplayers.Mod{Name: "base", Version: "2.1.24"}
-	k2 := saveplayers.Mod{Name: "Krastorio2", Version: "1.2.3"}
-	for _, tc := range []struct {
-		name   string
-		loaded []saveplayers.Mod
-		want   bool
-	}{
-		{"same", []saveplayers.Mod{helper, base, k2}, true},
-		{"same without the helper", []saveplayers.Mod{base, k2}, true},
-		{"one missing", []saveplayers.Mod{helper, base}, false},
-		{"a disabled one loaded", []saveplayers.Mod{helper, base, k2, {Name: "space-age", Version: "2.1.24"}}, false},
-		{"another version", []saveplayers.Mod{helper, base, {Name: "Krastorio2", Version: "1.2.4"}}, false},
-		{"twice", []saveplayers.Mod{helper, base, k2, k2}, false},
-	} {
-		if got := sameMods(tc.loaded, installed); got != tc.want {
-			t.Errorf("%s: %v, want %v", tc.name, got, tc.want)
-		}
-	}
-}
-
-func TestCheckResult(t *testing.T) {
-	for _, tc := range []struct {
-		kinds []world.ProblemKind
-		want  string
-	}{
-		{nil, ""},
-		{[]world.ProblemKind{world.ProblemModMissing}, saveplayers.ResultModsDiffer},
-		{[]world.ProblemKind{world.ProblemModDisabled}, saveplayers.ResultModsDiffer},
-		{[]world.ProblemKind{world.ProblemSpaceAgeOff}, saveplayers.ResultModsDiffer},
-		{[]world.ProblemKind{world.ProblemModGameVersion}, saveplayers.ResultModsDiffer},
-		{[]world.ProblemKind{world.ProblemModMissing, world.ProblemSaveNewer}, saveplayers.ResultSaveNewer},
-		{[]world.ProblemKind{world.ProblemSaveUnreadable}, ""},
-		{[]world.ProblemKind{world.ProblemModListSpaceAge}, saveplayers.ResultModsDiffer},
-	} {
-		var p world.PreCheck
-		for _, k := range tc.kinds {
-			p.Problems = append(p.Problems, world.Problem{Kind: k})
-		}
-		if got := checkResult(p, false); got != tc.want {
-			t.Errorf("%v: %q, want %q", tc.kinds, got, tc.want)
-		}
-	}
-}
-
 // A record is valid only for the save that loads: same name, size and
 // modified time to the nanosecond. A record left for another save, as a read
 // that ends after an upload can leave, is read again, never shown.
@@ -590,40 +504,12 @@ func TestSavePlayersWorldWithNoModList(t *testing.T) {
 	if _, err := os.Lstat(list); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("the test world has a mod list: %v", err)
 	}
-	r.c.seeds.read = func(ctx context.Context, id string) (saveplayers.Basis, []byte, error) {
-		r.mu.Lock()
-		r.calls++
-		r.mu.Unlock()
-		// The game, given the default list, loads base and the always-on
-		// recycler and leaves the Space Age mods off.
-		b, _ := json.Marshal(map[string]any{
-			"format": 1, "game_version": "2.1.24", "tick": 60,
-			"active_mods": []map[string]string{{"name": "base", "version": "2.1.24"}, {"name": "recycler", "version": "2.1.24"}},
-			"players":     []map[string]any{{"name": "Fresh", "online_ticks": 60}},
-		})
-		return r.basis(id), b, nil
-	}
 	v := r.view()
-	if r.count() == 0 || v.Failure == saveplayers.ResultModsDiffer {
-		t.Fatalf("%d reads, view %+v; want a read and no mods-differ", r.count(), v)
+	if v.State != SavePlayersReady {
+		t.Fatalf("view %+v, want ready: the default list is the world's list", v)
 	}
 	if _, err := os.Lstat(list); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("the read wrote the world's mod list: %v", err)
-	}
-}
-
-func TestWithDefaults(t *testing.T) {
-	mods := []world.InstalledMod{
-		{Name: "base", Enabled: true, BuiltIn: true},
-		{Name: "space-age", Enabled: true, BuiltIn: true},
-		{Name: "flib", Enabled: true},
-	}
-	got := withDefaults(mods, map[string]bool{"base": true, "space-age": false})
-	if !got[0].Enabled || got[1].Enabled || !got[2].Enabled || !mods[1].Enabled {
-		t.Fatalf("%+v (input %+v)", got, mods)
-	}
-	if !withDefaults(mods, nil)[1].Enabled {
-		t.Fatal("a world with a list must keep its own")
 	}
 }
 
