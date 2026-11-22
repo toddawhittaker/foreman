@@ -4756,7 +4756,7 @@ Rulings (the plan, then Todd, 2026-11-21):
   asks at most once a minute and at each finished save, never through Lua.
   The Server page shows "Play time" in hours and minutes and an "N players in
   this save" link to the Overview's list; it says nothing until a record
-  exists and "Not read yet" while the first read runs. It follows
+  exists and "Being read" while the first read runs. It follows
   `UpdateSavePlayers` live.
 - **The factory map (#773, SPEC 5.16; #799, #800, #802, #818, #820, #821,
   #829).** One picture per surface from the game's own chart, at most 4096
@@ -4797,7 +4797,9 @@ Rulings (the plan, then Todd, 2026-11-21):
   the map (#811), world files (#815) and the players of a save (#803).
   Real-game tests cover the map on 2.0.77, 2.1.24 and 1.1.110 (#819), the
   world file round trip on 2.1.24 (#817), and the players read on 2.0.77 and
-  2.1.24 with a hostile write to the save that must fail (#808).
+  2.1.24 with a hostile write to the save that must fail (#808). #803 and
+  #808 were still open when this section was written; their lines come from
+  their pull request bodies.
 - **Translations.** New locale areas `saveplayers`, `factorymap`,
   `worldexport`, `worldimport` and `worldfile`, with additions to `server`,
   `audit` and `crash`, in all eight languages, reviewed a second time

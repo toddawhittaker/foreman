@@ -1512,7 +1512,7 @@ holds only the word. A template always writes the modifier, even for
   and a quiet link "N players in this save" to the players panel on the
   world's Overview (8.2). It is a live region of its own, because its link
   takes focus, and is sent only when its HTML changes. It says nothing
-  until a record exists, and "Not read yet" while the first read runs.
+  until a record exists, and "Being read" while the first read runs.
 - When the state changes live (SPEC 16.3), the server sends the new
   badge, and a short sentence goes to `#announcer` ("Server is now
   running"). Uptime, CPU and memory update silently; they must never be
