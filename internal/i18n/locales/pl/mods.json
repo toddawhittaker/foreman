@@ -485,5 +485,7 @@
   "mods.plan_panel.warn.space_age": "Wymaga Ery Kosmosu, która jest wyłączona w tym świecie",
   "mods.plan_panel.warn.other": "Nie można zaplanować; przegląd pokazuje przyczynę",
   "mods.plan_panel.bad_name": "To nie jest nazwa modyfikacji, którą Foreman może dodać. Należy wyszukać modyfikację i wybrać + obok niej.",
-  "mods.plan_panel.wait": "Przegląd będzie dostępny po zaktualizowaniu planu."
+  "mods.plan_panel.wait": "Przegląd będzie dostępny po zaktualizowaniu planu.",
+  "mods.flow.skip": "Przejdź do ustawień mapy",
+  "mods.flow.next": "Dalej: ustawienia mapy"
 }

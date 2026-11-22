@@ -10,6 +10,13 @@
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 </div>
 {{template "rail" $}}
+{{- if .InFlow}}
+{{template "genflow-steps" .Steps}}
+{{- if .ShowSkip}}
+{{- /* Step 2 is optional: the way on is a link, with picks kept for Continue (SPEC 5.6). */}}
+<div class="actions"><a href="{{.NextPath}}" id="mods-skip">{{t "mods.flow.skip"}}</a></div>
+{{- end}}
+{{- end}}
 {{template "summary" .Problems}}
 {{- if or .World.Newer .World.Unreadable}}
 <p>{{t "mods.error.unreadable"}}</p>
@@ -27,8 +34,11 @@
 {{- if not .Done.IsZero}}
 <div class="message message--success" id="world-result" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
-  {{- with .Undo}}
-  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a></div>
+  {{- if or .Undo .InFlow}}
+  <div class="actions">
+    {{- if .InFlow}}<a href="{{.NextPath}}" class="button button--primary" id="act-next-map">{{t "mods.flow.next"}}</a>{{end}}
+    {{- with .Undo}}<a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a>{{end}}
+  </div>
   {{- end}}
 </div>
 {{- end}}

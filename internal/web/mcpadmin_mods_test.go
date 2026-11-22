@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"strings"
 	"testing"
@@ -166,6 +167,36 @@ func TestMCPChangeModsInstall(t *testing.T) {
 		t.Errorf("audit: %+v", g.audit())
 	}
 	wantNoToken(t, g, preview, out)
+}
+
+// SPEC 9.14, 21.8: saved picks leave only once their install has installed
+// them, as on the review page; a failed MCP install keeps them.
+func TestMCPChangeModsPicksLeaveOnlyAfterASuccess(t *testing.T) {
+	g, cs := modsMCP(t, true)
+	g.portal.SetMode(g.portal.AddZip("alpha", "1.0.0"), modportaltest.WrongSHA1)
+	g.portal.AddZip("beta", "1.0.0")
+	id := g.world20("Base")
+	g.pick(id, "alpha", "beta")
+
+	args := map[string]any{"world_id": id, "kind": "install", "names": []string{"alpha"}}
+	_, preview := call(t, cs, "change_mods", args)
+	call(t, cs, "change_mods", withCode(args, preview["confirm_code"].(string)))
+	if err := g.waitResult(id, game.AuditMods); !errors.Is(err, modportal.ErrChecksum) {
+		t.Fatalf("result %v, want a checksum failure", err)
+	}
+	if got := g.picks(id); len(got) != 2 {
+		t.Errorf("a failed install left picks %v, want both kept", got)
+	}
+
+	args = map[string]any{"world_id": id, "kind": "install", "names": []string{"beta"}}
+	_, preview = call(t, cs, "change_mods", args)
+	call(t, cs, "change_mods", withCode(args, preview["confirm_code"].(string)))
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.picks(id); len(got) != 1 || got[0] != "alpha" {
+		t.Errorf("after beta installed picks are %v, want only alpha", got)
+	}
 }
 
 // SPEC 21.8, 17.8: a plan that moved between the calls, as with a new
