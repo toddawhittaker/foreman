@@ -29,3 +29,29 @@ func TestPreviewPageWithoutScriptIsStepThree(t *testing.T) {
 		t.Errorf("a preview of no world: status %d", r.Code)
 	}
 }
+
+// SPEC 5.6: a preview, resource count or territory request that
+// names no world is refused before any game runs, for htmx too.
+func TestAPreviewOfNoWorldRunsNoGame(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	hn.withActive("2.0.77")
+	for _, p := range []string{PathGeneratePreview, pathResources, pathTerritories} {
+		for _, htmx := range []bool{false, true} {
+			req := httptest.NewRequest(http.MethodPost, p, strings.NewReader(generateForm("planet", "nauvis", "auto", "1").Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			if htmx {
+				req.Header.Set("HX-Request", "true")
+			}
+			req.AddCookie(c)
+			rec := hn.serveLong(req)
+			if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "map preview") {
+				t.Errorf("%s htmx %t: status %d\n%s", p, htmx, rec.Code, rec.Body.String())
+			}
+		}
+	}
+	if len(prev.got) != 0 {
+		t.Errorf("%d previews ran", len(prev.got))
+	}
+}

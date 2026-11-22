@@ -369,7 +369,6 @@
   "worlds.generate.error.exchange_other_line": "Tento řetězec vytvořilo Factorio {version}, ale tento svět používá {game}. Řetězec funguje jen s verzí hry ze stejné řady (1.1, 2.0 nebo 2.1). Je třeba nahoře vybrat odpovídající verzi nebo vložit jiný řetězec.",
   "worlds.generate.error.exchange_newer": "Tento řetězec vytvořilo Factorio {version}, které je novější než verze hry {game} tohoto světa. Je třeba nahoře vybrat verzi {version} nebo novější nebo vložit starší řetězec.",
   "worlds.list.generate": "Vygenerovat svět",
-  "worlds.world.generated": "Svět {name} byl vygenerován. Jeho mapa se vytvoří při prvním spuštění.",
   "worlds.world.cloned": "Svět {from} byl naklonován jako {name}.",
   "worlds.world.clone": "Naklonovat svět",
   "worlds.world.settings": "Nastavení hry",

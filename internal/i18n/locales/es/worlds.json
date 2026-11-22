@@ -357,7 +357,6 @@
   "worlds.generate.error.exchange_other_line": "Esta cadena la creó Factorio {version}, pero este mundo usa {game}. Una cadena solo funciona con una versión del juego de la misma línea (1.1, 2.0 o 2.1). Elige arriba una versión que coincida o pega otra cadena.",
   "worlds.generate.error.exchange_newer": "Esta cadena la creó Factorio {version}, que es más reciente que la versión del juego {game} de este mundo. Elige arriba la versión {version} o posterior, o pega una cadena más antigua.",
   "worlds.list.generate": "Generar un mundo",
-  "worlds.world.generated": "Se generó {name}. Su mapa se crea la primera vez que se inicia.",
   "worlds.world.cloned": "Se clonó {from} como {name}.",
   "worlds.world.clone": "Clonar mundo",
   "worlds.world.settings": "Configuración del juego",

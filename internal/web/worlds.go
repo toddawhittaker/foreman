@@ -453,7 +453,6 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 		p.Done = archiveDone(r.URL.Query().Get("archived"), sum)
 	}
 	s.importFacts(&p, r)
-	s.generatedFacts(&p, r)
 	s.clonedFacts(&p, r)
 	s.favoriteFacts(&p, r)
 	s.page(w, r, http.StatusOK, u.Username, p)

@@ -31,8 +31,8 @@ const (
 // AuditGenerate is the audit action of a world made by Generate (SPEC 12.9).
 const AuditGenerate = "generate"
 
-// generatedQuery marks a world page that follows Generate, for its Done
-// message.
+// generatedQuery marks the Mods tab that follows step 1, for its "made"
+// message (SPEC 17.9).
 const generatedQuery = "generated"
 
 // generateFormLimit is the body limit of Generate's routes. A map exchange
@@ -62,9 +62,6 @@ var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map se
 // (SPEC 5.6, DESIGN 8.6, 8.8).
 type GeneratePage struct {
 	Form GenerateForm
-	// CanPreview is true when this Foreman can make map previews.
-	CanPreview bool
-	Preview    *PreviewView
 	// FavoritesOn shows "Start from a favorite"; Favorites are its choices
 	// (SPEC 5.12).
 	FavoritesOn bool
@@ -190,8 +187,7 @@ func (MapForm) Tabs() []string {
 }
 
 // Paths the form uses.
-func (GeneratePage) Path() string        { return PathGenerate }
-func (GeneratePage) PreviewPath() string { return PathGeneratePreview }
+func (GeneratePage) Path() string { return PathGenerate }
 func (GeneratePage) VersionsPath() string {
 	return versionsPath("", "")
 }
@@ -223,9 +219,9 @@ func (s *server) activeVersion(ctx context.Context) string {
 	return ""
 }
 
-func (s *server) generatePage(ctx context.Context, f GenerateForm, preview *PreviewView) GeneratePage {
+func (s *server) generatePage(ctx context.Context, f GenerateForm) GeneratePage {
 	f.CanDownload = s.game != nil
-	p := GeneratePage{Form: f, CanPreview: s.previewer != nil, Preview: preview, FavoritesOn: s.favorites != nil}
+	p := GeneratePage{Form: f, FavoritesOn: s.favorites != nil}
 	if s.favorites != nil {
 		// A list that cannot be read leaves only the chooser out.
 		p.Favorites, _ = s.favorites.List(ctx)
@@ -314,7 +310,7 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 	case !f.FavoriteError.IsZero():
 		status = http.StatusUnprocessableEntity
 	}
-	s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
+	s.page(w, r, status, u.Username, s.generatePage(r.Context(), f))
 }
 
 // startFrom fills the form's version, Space Age and preset from a favorite
@@ -421,7 +417,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 		if f.Reset || f.Refilled {
 			status = http.StatusOK
 		}
-		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f))
 		return
 	case err != nil:
 		status, msg, ok := s.refusal(w, r, u, "generate world", err)
@@ -429,7 +425,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 			return
 		}
 		f.place(err, msg)
-		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f, nil))
+		s.page(w, r, status, u.Username, s.generatePage(r.Context(), f))
 		return
 	}
 	// The favorite's mods go through the review page's checks and one
@@ -451,11 +447,16 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 // it too; favSeed, for the page, takes a favorite's seed when none is posted.
 func (s *server) readStepOne(ctx context.Context, form url.Values, favSeed bool) (f GenerateForm, nw world.NewWorld, ok bool) {
 	id := form.Get(favoriteQuery)
+	var fav world.Favorite
 	var files world.FavoriteFiles
 	if id != "" && s.favorites != nil {
-		_, files, _ = s.favorites.Get(id)
+		fav, files, _ = s.favorites.Get(id)
 	}
-	if favSeed && strings.TrimSpace(form.Get(mgSeed)) == "" && len(files.MapGenSettings) > 0 {
+	version := cmp.Or(chosenVersion(form.Get("game_version"), form.Get("game_version_typed")), s.activeVersion(ctx))
+	favLine, _ := mapgen.Line(fav.GameVersion)
+	line, _ := mapgen.Line(version)
+	// The seed is part of the favorite's map files, which are written only on its own game line (SPEC 5.12).
+	if favSeed && favLine != "" && favLine == line && strings.TrimSpace(form.Get(mgSeed)) == "" && len(files.MapGenSettings) > 0 {
 		var doc struct {
 			Seed *uint32 `json:"seed"`
 		}
@@ -463,7 +464,6 @@ func (s *server) readStepOne(ctx context.Context, form url.Values, favSeed bool)
 			form.Set(mgSeed, strconv.FormatUint(uint64(*doc.Seed), 10))
 		}
 	}
-	version := cmp.Or(chosenVersion(form.Get("game_version"), form.Get("game_version_typed")), s.activeVersion(ctx))
 	preset := cmp.Or(form.Get("preset"), defaultPreset)
 	// A favorite's map settings file stands in for the fields its values would fill.
 	if len(files.MapSettings) > 0 {
@@ -597,18 +597,7 @@ func (f MapForm) tabOf(id string) string {
 	return f.MapGen.TabOf(id)
 }
 
-// readGenerate reads and checks the form. It always returns the form to
-// show again. ok is true when the world, or the preview, can be made. When
-// the version or Space Age moved on from what the map settings were made
-// for, or a new preset was chosen without the page filling its values, the
-// settings are filled from the preset and ok is false with no error (Reset,
-// Refilled); the exchange string does not depend on them. The caller has
-// already parsed the post with readForm.
-func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, nw world.NewWorld, ok bool) {
-	return s.readGenerateValues(r.Context(), r.PostForm, kind)
-}
-
-// readGenerateValues is readGenerate on the posted values, so MCP can make
+// readGenerateValues reads and checks step 1's posted values, so MCP can make
 // a world through the same checks.
 func (s *server) readGenerateValues(ctx context.Context, form url.Values, kind readKind) (f GenerateForm, nw world.NewWorld, ok bool) {
 	f = GenerateForm{
@@ -696,7 +685,8 @@ type mapInput struct {
 // readMapForm reads and checks the map part of a posted form: the preset
 // and the settings, or the map exchange string. It always returns the form
 // to show again. ok is true when the map files can be made; files then
-// holds them, with the seed. Reset and Refilled are as readGenerate says.
+// holds them, with the seed. Reset and Refilled say the settings were
+// filled again from the preset.
 func readMapForm(form url.Values, kind readKind, in mapInput) (f MapForm, files world.NewMapFiles, ok bool) {
 	f = MapForm{
 		cat:        in.Cat,
@@ -951,13 +941,6 @@ func generateOtherLine(made, game string) i18n.Msg {
 // versionText is the first three numbers of a version; the fourth is the
 // build.
 func versionText(v [4]uint16) string { return fmt.Sprintf("%d.%d.%d", v[0], v[1], v[2]) }
-
-// generatedFacts adds the Done message after Generate to a world's page.
-func (s *server) generatedFacts(p *WorldPage, r *http.Request) {
-	if r.URL.Query().Get(generatedQuery) != "" {
-		p.Done = i18n.M("worlds.world.generated", "name", p.World.Name)
-	}
-}
 
 // lineHasSpaceAge reports whether a game line ("2.0") can have Space Age.
 func lineHasSpaceAge(line string) bool {

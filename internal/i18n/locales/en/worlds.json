@@ -357,7 +357,6 @@
   "worlds.generate.error.exchange_other_line": "This string was made by Factorio {version}, but this world uses {game}. A string works only with a game version of the same line (1.1, 2.0 or 2.1). Choose a matching version above, or paste another string.",
   "worlds.generate.error.exchange_newer": "This string was made by Factorio {version}, which is newer than this world's game version {game}. Choose version {version} or later above, or paste an older string.",
   "worlds.list.generate": "Generate a world",
-  "worlds.world.generated": "Generated {name}. Its map is made when it first starts.",
   "worlds.world.cloned": "Cloned {from} as {name}.",
   "worlds.world.clone": "Clone world",
   "worlds.world.settings": "Game settings",

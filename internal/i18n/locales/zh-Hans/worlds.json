@@ -345,7 +345,6 @@
   "worlds.generate.error.exchange_other_line": "此代码由 Factorio {version} 生成，而此世界使用 {game}。代码只能用于同一系列（1.1、2.0 或 2.1）的游戏版本。请在上方选择匹配的版本，或粘贴其他代码。",
   "worlds.generate.error.exchange_newer": "此代码由 Factorio {version} 生成，比此世界的游戏版本 {game} 更新。请在上方选择 {version} 或更高版本，或粘贴较旧的代码。",
   "worlds.list.generate": "生成世界",
-  "worlds.world.generated": "已生成 {name}。它的地图会在首次启动时生成。",
   "worlds.world.cloned": "已将 {from} 克隆为 {name}。",
   "worlds.world.clone": "克隆世界",
   "worlds.world.settings": "游戏设置",

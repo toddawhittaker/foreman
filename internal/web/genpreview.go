@@ -462,25 +462,12 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	f, ok := in.f, in.ok
 	if !ok {
-		if auto {
-			s.fragment(w, r, s.generatePage(r.Context(), f, nil), "generate-preview-invalid")
+		if auto || isHTMX(r) {
+			// Only the preview slot changes, with the problems linked to their fields.
+			s.fragment(w, r, previewCarrier(in, nil), "generate-preview-invalid")
 			return
 		}
-		// htmx swaps only a 2xx answer, and then the whole form, with its errors.
 		status := http.StatusBadRequest
-		if isHTMX(r) && in.world {
-			// Step 3's form is not Generate's, so only the preview slot
-			// changes, with the problems linked to their fields.
-			s.fragment(w, r, s.generatePage(r.Context(), f, nil), "generate-preview-invalid")
-			return
-		}
-		if isHTMX(r) {
-			status = http.StatusOK
-			h := w.Header()
-			h.Set("HX-Retarget", "#generate-form")
-			h.Set("HX-Reselect", "#generate-form")
-			h.Set("HX-Reswap", "outerHTML")
-		}
 		if f.Reset {
 			status = http.StatusOK
 		}
@@ -504,8 +491,8 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	req := in.req
 	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10), Size: f.PreviewSize, ShowsAll: len(planets) > 1,
-		OfWorld: in.world}
-	if _, drawer := s.chartDrawer(); drawer && in.world && in.ok {
+		OfWorld: true}
+	if _, drawer := s.chartDrawer(); drawer && in.ok {
 		view.ChartOffered = game.ChartSupported(req.GameVersion)
 	}
 	switch {
@@ -538,7 +525,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 			n := catPlanetName(f.cat, planet)
 			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: n.Name, Foreign: n.Foreign, Path: pictureURL(view.Token, planet)})
 			// Only a world's own mods can leave the start outside the map.
-			if b, ok := s.previews.get(view.Token, u.ID, planet); ok && in.world && oneColor(b) {
+			if b, ok := s.previews.get(view.Token, u.ID, planet); ok && oneColor(b) {
 				view.OneColor = append(view.OneColor, n)
 			}
 		}
@@ -555,34 +542,25 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	if auto {
 		// The page keeps the form as typed and swaps in the section alone.
-		s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-preview")
+		s.fragment(w, r, previewCarrier(in, view), "generate-preview")
 		return
 	}
 	s.previewPage(w, r, u, http.StatusOK, in, view)
 }
 
-// previewRequest is the preview of the settings Generate would write.
-func previewRequest(f GenerateForm, nw world.NewWorld) game.PreviewRequest {
-	return game.PreviewRequest{
-		GameVersion: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
-		MapGenSettings: nw.MapGenSettings, MapSettings: nw.MapSettings, Size: f.PreviewSize,
-	}
-}
-
 // previewWorldField names the world whose mods a preview loads (SPEC 5.6,
-// ADR 0033). Without it the preview is of the base game and Space Age alone.
+// ADR 0033); a preview without it is refused.
 const previewWorldField = "world"
 
 // previewInput is a posted preview form read: the form to show again, the
-// request it makes, and its key in the store. ok is as readGenerate says.
+// request it makes, and its key in the store. ok is true when the preview can be made.
 type previewInput struct {
 	f   GenerateForm
 	req game.PreviewRequest
 	key previewKey
 	ok  bool
-	// world is true for a world's own preview (step 3); catErr is why its
+	// sum is the world the preview is of (step 3); catErr is why its
 	// planet list could not be read.
-	world  bool
 	sum    world.Summary
 	catErr error
 	// mods is the world's mods key, as the store's keys hold it.
@@ -623,13 +601,9 @@ func (s *server) previewModsKey(id string) (string, error) {
 func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.User) (in previewInput, handled bool) {
 	id := r.PostFormValue(previewWorldField)
 	if id == "" {
-		f, nw, ok := s.readGenerate(r, kindPreview)
-		in = previewInput{f: f, ok: ok}
-		if ok {
-			in.req = previewRequest(f, nw)
-		}
-		in.key = settingsKey(in.req, f.cat, "")
-		return in, false
+		// Only step 3 has a map form, and it always names its world (SPEC 5.6).
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest, Detail: i18n.M("worlds.generate.preview.failed")})
+		return in, true
 	}
 	ctx := r.Context()
 	sum, err := s.worlds.Get(ctx, id)
@@ -679,7 +653,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		f.clearErrors()
 		ok = false
 	}
-	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil, world: true, sum: sum, catErr: catErr}
+	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil, sum: sum, catErr: catErr}
 	if in.ok {
 		in.req = game.PreviewRequest{
 			GameVersion: sum.GameVersion, SpaceAge: spaceAge, Preset: files.Preset, Seed: *files.Seed,

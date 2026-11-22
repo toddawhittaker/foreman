@@ -357,7 +357,6 @@
   "worlds.generate.error.exchange_other_line": "Cette chaîne a été créée par Factorio {version}, mais ce monde utilise {game}. Une chaîne ne fonctionne qu’avec une version du jeu de la même série (1.1, 2.0 ou 2.1). Choisissez une version correspondante ci-dessus, ou collez une autre chaîne.",
   "worlds.generate.error.exchange_newer": "Cette chaîne a été créée par Factorio {version}, plus récent que la version du jeu {game} de ce monde. Choisissez ci-dessus la version {version} ou une version ultérieure, ou collez une chaîne plus ancienne.",
   "worlds.list.generate": "Générer un monde",
-  "worlds.world.generated": "{name} a été généré. Sa carte est créée au premier démarrage.",
   "worlds.world.cloned": "{from} a été cloné sous le nom {name}.",
   "worlds.world.clone": "Cloner le monde",
   "worlds.world.settings": "Paramètres du jeu",

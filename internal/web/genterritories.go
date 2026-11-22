@@ -218,7 +218,7 @@ func (s *server) handleGenerateTerritories(w http.ResponseWriter, r *http.Reques
 	} else {
 		view.Territories.Result = &TerritoryView{Error: i18n.M("worlds.generate.territories.invalid")}
 	}
-	s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-territories")
+	s.fragment(w, r, previewCarrier(in, view), "generate-territories")
 }
 
 // drawPNG is territory.DrawPNG; a test swaps it to fill the render queue.

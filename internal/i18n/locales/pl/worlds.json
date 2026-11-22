@@ -369,7 +369,6 @@
   "worlds.generate.error.exchange_other_line": "Ten kod został utworzony w Factorio {version}, a ten świat używa {game}. Kod działa tylko z wersją gry z tej samej linii (1.1, 2.0 lub 2.1). Należy wybrać powyżej pasującą wersję albo wkleić inny kod.",
   "worlds.generate.error.exchange_newer": "Ten kod został utworzony w Factorio {version}, które jest nowsze niż wersja gry {game} tego świata. Należy wybrać powyżej wersję {version} lub nowszą albo wkleić starszy kod.",
   "worlds.list.generate": "Wygeneruj świat",
-  "worlds.world.generated": "Wygenerowano świat {name}. Jego mapa zostanie utworzona przy pierwszym uruchomieniu.",
   "worlds.world.cloned": "Sklonowano świat {from} jako {name}.",
   "worlds.world.clone": "Sklonuj świat",
   "worlds.world.settings": "Ustawienia gry",

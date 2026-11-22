@@ -83,6 +83,23 @@ test("step 1 offers no preview and no real-game picture", async ({ page, foreman
   await expect(page.locator("#preview-chart-button")).toHaveCount(0);
 });
 
+// DESIGN 8.8, SPEC 17.1: at 320 px the Download line wraps inside the page, with no sideways scroll.
+test("the picture's Download line fits a 320 px phone", async ({ page, foreman, fakeGame }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await openNewMap(page, { name: "Narrow" });
+  const draw = page.locator("#preview-chart-button");
+  await expect(draw).toBeVisible({ timeout: 60_000 });
+  await draw.scrollIntoViewIfNeeded();
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(wide, "no sideways scroll").toBeLessThanOrEqual(0);
+  const box = (await page.locator("#preview .pictures .picture-actions").boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(320);
+  await checkPage(page);
+});
+
 // DESIGN 8.8: on a wide pane the offer shares the picture's Download line, so the picture keeps its room.
 test("the real-game offer sits on the picture's Download line", async ({ page, foreman, fakeGame }, info) => {
   test.skip(info.project.name.startsWith("phone"), "a desktop layout");

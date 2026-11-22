@@ -414,7 +414,10 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 	if ended {
 		s.modsOutcome(&p, res)
 	}
-	p.Generated = r.URL.Query().Get(generatedQuery) != "" && p.InFlow() && p.Done.IsZero()
+	if r.URL.Query().Get(generatedQuery) != "" && p.InFlow() && p.Done.IsZero() {
+		picks, err := s.store.ModPlan(r.Context(), sum.ID)
+		p.Generated = err == nil && justMade(p.Mods, picks)
+	}
 	if !p.World.Newer && !p.World.Unreadable {
 		if p.Plan, err = s.planPanel(r.Context(), sum, p.Path()); err != nil {
 			s.fail(w, r, "read the mod plan", err)

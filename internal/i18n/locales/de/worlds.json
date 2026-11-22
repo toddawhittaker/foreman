@@ -357,7 +357,6 @@
   "worlds.generate.error.exchange_other_line": "Dieser Code wurde mit Factorio {version} erstellt, diese Welt nutzt aber {game}. Ein Code funktioniert nur mit einer Spielversion derselben Linie (1.1, 2.0 oder 2.1). Wähle oben eine passende Version oder füge einen anderen Code ein.",
   "worlds.generate.error.exchange_newer": "Dieser Code wurde mit Factorio {version} erstellt, das neuer ist als die Spielversion {game} dieser Welt. Wähle oben Version {version} oder neuer oder füge einen älteren Code ein.",
   "worlds.list.generate": "Welt generieren",
-  "worlds.world.generated": "{name} wurde generiert. Die Karte wird beim ersten Start erzeugt.",
   "worlds.world.cloned": "{from} wurde als {name} geklont.",
   "worlds.world.clone": "Welt klonen",
   "worlds.world.settings": "Spieleinstellungen",

@@ -369,7 +369,6 @@
   "worlds.generate.error.exchange_other_line": "Эта строка создана в Factorio {version}, а этот мир использует {game}. Строка работает только с версией игры той же линейки (1.1, 2.0 или 2.1). Выберите выше подходящую версию или вставьте другую строку.",
   "worlds.generate.error.exchange_newer": "Эта строка создана в Factorio {version}, которая новее версии игры {game} этого мира. Выберите выше версию {version} или новее либо вставьте более старую строку.",
   "worlds.list.generate": "Создать мир",
-  "worlds.world.generated": "Мир {name} создан. Его карта будет создана при первом запуске.",
   "worlds.world.cloned": "Мир {from} клонирован как {name}.",
   "worlds.world.clone": "Клонировать мир",
   "worlds.world.settings": "Настройки игры",

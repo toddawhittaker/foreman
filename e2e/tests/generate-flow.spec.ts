@@ -27,6 +27,7 @@ test("the whole flow: step 1, skip the mods, a preset on step 3, saved in five c
   await page.getByRole("link", { name: "Worlds", exact: true }).click();
   await page.getByRole("link", { name: "Generate a world" }).click();
   await page.getByLabel("World name").fill("Rich start");
+  await checkPage(page);
   await page.screenshot({ path: `../screenshots/d1-step1-${info.project.name}.png`, fullPage: true });
   await page.getByRole("button", { name: "Generate world" }).click();
 
