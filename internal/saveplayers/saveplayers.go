@@ -1,7 +1,12 @@
 // Package saveplayers is Foreman's record of the players of a save: who
 // joined it and for how long (SPEC 8.14). It holds no I/O: it parses the
-// helper mod's output, the record file's bytes, and does the arithmetic. The
-// record is the world's players.json (ADR 0030).
+// helper mod's output and the record file's bytes, and does the arithmetic.
+// The record is the world's players.json (ADR 0030).
+//
+// Both inputs are untrusted. The helper mod runs in a one-off container that
+// can write its work folder, and the game container can write the world
+// folder where players.json lives, so each parse is under the limits of
+// SPEC 14.6 and refuses what it does not know.
 package saveplayers
 
 import (
@@ -24,16 +29,34 @@ const (
 	ResultBadOutput    = "bad-output"
 )
 
-// Limits of the helper mod's output (SPEC 14.6).
+// Limits of the helper mod's output and of the record (SPEC 14.6).
 const (
 	MaxOutputBytes = 1 << 20
 	MaxPlayers     = 10000
 	MaxMods        = 1000
 	// MaxWhole is the biggest whole number the output may hold, 2^53.
 	MaxWhole = 1 << 53
+	// MaxRecordBytes is the biggest players.json that is parsed. It is the
+	// limit the world package reads under.
+	MaxRecordBytes = 4 << 20
 )
 
-var errNotBuilt = errors.New("not built")
+// TicksPerSecond is the game's tick rate at normal speed.
+const TicksPerSecond = 60
+
+var (
+	// ErrBadSeed means the helper mod's output is not a good read: it is
+	// too big, not format 1, or holds a value outside the limits. The
+	// caller records it as ResultBadOutput.
+	ErrBadSeed = errors.New("the save reader's output is not valid")
+	// ErrBadRecord means players.json is not a record this Foreman can use.
+	// The caller treats the record as missing.
+	ErrBadRecord = errors.New("the players record is not valid")
+	// ErrNewerFormat means players.json was written by a newer Foreman. It
+	// also is an ErrBadRecord; callers may tell the two apart to leave the
+	// file alone.
+	ErrNewerFormat = errors.New("the players record is from a newer Foreman")
+)
 
 // Basis is the save a record matches: its name, size and modification time.
 // The record is valid while the save the world would load is this one.
@@ -41,6 +64,12 @@ type Basis struct {
 	Save     string    `json:"save"`
 	Size     int64     `json:"size"`
 	Modified time.Time `json:"modified"`
+}
+
+// Same says whether two bases name the same save: the same file name and
+// size, and the same modification time to the nanosecond.
+func (b Basis) Same(o Basis) bool {
+	return b.Save == o.Save && b.Size == o.Size && b.Modified.Equal(o.Modified)
 }
 
 // Mod is a mod's name and version, as the helper reports its active mods.
@@ -71,12 +100,19 @@ type SeedInfo struct {
 	Result      string    `json:"result"`
 }
 
-// Player is one player in a record.
+// Player is one player in a record. Their play time is the ticks the read
+// found plus the seconds Foreman tracked since (PlayedSeconds).
 type Player struct {
 	Name           string     `json:"name"`
 	SeededTicks    int64      `json:"seeded_ticks"`
 	TrackedSeconds int64      `json:"tracked_seconds"`
 	LastSeen       *time.Time `json:"last_seen"`
+}
+
+// PlayedSeconds is the player's whole play time: the read's ticks, at the
+// game's 60 a second, plus the time Foreman tracked.
+func (p Player) PlayedSeconds() int64 {
+	return p.SeededTicks/TicksPerSecond + p.TrackedSeconds
 }
 
 // Record is players.json.
@@ -91,28 +127,9 @@ type Record struct {
 	Players       []Player  `json:"players"`
 }
 
-// ParseSeed reads the helper mod's output under the limits of SPEC 14.6.
-func ParseSeed(b []byte) (Seed, error) { return Seed{}, errNotBuilt }
+// Seeded says whether the record starts from a good read of a save. A record
+// that does not is tracked since TrackedSince and has no earlier totals.
+func (r Record) Seeded() bool { return r.Seed.Result == ResultOK }
 
-// FromSeed makes the record a good read gives.
-func FromSeed(s Seed, b Basis, at time.Time) Record { return Record{} }
-
-// Failed makes the record a failed read gives: tracked from at, with no
-// seeded totals. result is one of the failure ids.
-func Failed(result string, b Basis, at time.Time) Record { return Record{} }
-
-// Parse reads players.json bytes.
-func Parse(b []byte) (Record, error) { return Record{}, errNotBuilt }
-
-// Marshal writes the record as players.json.
-func (r Record) Marshal() ([]byte, error) { return nil, errNotBuilt }
-
-// AddSession folds one player's session. It counts only the part after AsOf,
-// then moves AsOf, so replaying a log line never counts a session twice.
-func (r *Record) AddSession(name string, from, to time.Time) {}
-
-// SetGameTicks sets the game's total play time, true at the moment at.
-func (r *Record) SetGameTicks(t int64, at time.Time) {}
-
-// Rebase points the record at a new save, keeping what was tracked.
-func (r *Record) Rebase(b Basis, at time.Time) {}
+// GameSeconds is the game's total play time, from GameTicks.
+func (r Record) GameSeconds() int64 { return r.GameTicks / TicksPerSecond }
