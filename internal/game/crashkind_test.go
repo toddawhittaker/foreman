@@ -171,8 +171,12 @@ func TestLoadReasonOutOfMemoryWords(t *testing.T) {
 }
 
 // startUntilKilled starts a world and kills its game while it loads, as
-// the kernel's out-of-memory killer would when oom is set. A poll other
-// than zero replaces the rig's quick one.
+// the kernel's out-of-memory killer would when oom is set. Docker events
+// are off, so Docker's restart, which clears the flag, is held back until
+// the start ends: without events a kill restarted before either look is
+// unknown (SPEC 8.7). A poll other than zero replaces the rig's quick one,
+// and Docker then restarts the game as soon as the look Foreman takes when
+// the log ends has seen the flag, long before the start's next look.
 func startUntilKilled(t *testing.T, oom bool, poll time.Duration) error {
 	t.Helper()
 	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 30 * time.Second}, noRun: true})
@@ -181,6 +185,7 @@ func startUntilKilled(t *testing.T, oom bool, poll time.Duration) error {
 	}
 	r.run(r.c)
 	id := r.newWorld("Killed")
+	r.game.HoldRestarts(ContainerName(id), true)
 	done := make(chan error, 1)
 	go func() { done <- r.c.Start(context.Background(), id, admin, StartOptions{}) }()
 	eventually(t, func() bool {
@@ -201,6 +206,10 @@ func startUntilKilled(t *testing.T, oom bool, poll time.Duration) error {
 	}
 	if err := r.game.Crash(ContainerName(id), code, oom); err != nil {
 		t.Fatal(err)
+	}
+	if poll != 0 {
+		eventually(t, func() bool { return oomOf(r.c.world(id)) }, "the look at the exit to see the flag")
+		r.game.HoldRestarts(ContainerName(id), false)
 	}
 	select {
 	case err := <-done:

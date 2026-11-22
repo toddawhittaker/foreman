@@ -80,6 +80,10 @@ type behaviour struct {
 	rconRefuse bool // RCON logins are refused
 	saveHangs  bool // /server-save never finishes
 	oom        bool // every start is killed by the out-of-memory killer while loading mods
+	// holdRestart keeps Docker's restart policy from starting the game
+	// again; held is the ID of a container whose restart waits for that.
+	holdRestart bool
+	held        string
 	// luaCommands counts Lua console commands sent to a game of this name:
 	// the save remembers them, so a restart does not forget.
 	luaCommands int
