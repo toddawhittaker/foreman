@@ -70,8 +70,14 @@ type SavePlayersPanel struct {
 	HaveMemory bool
 	// Refused says why a click on the read button was refused.
 	Refused i18n.Msg
-	// Focus puts focus on the status after a click, so it is read out.
-	Focus bool
+	// Started says the admin's click began the read this panel shows, so the
+	// poll that finds it ended says so once (see Announce). Nothing takes
+	// focus: a focus that every poll's swap restores would be read out each
+	// time.
+	Started bool
+	// Announce is said once in the page's live region, which no swap
+	// replaces: the read began, or how it ended.
+	Announce i18n.Msg
 }
 
 // SavePlayerRow is one player of the save, ready to show.
@@ -94,6 +100,27 @@ func (p SavePlayersPanel) Count() int { return len(p.Rows) }
 
 // Polls says the panel asks again, because a read runs.
 func (p SavePlayersPanel) Polls() bool { return p.Kind == playersReading }
+
+// PollPath is where the poll asks. A read the admin started carries that, so
+// the poll that sees it end can say so.
+func (p SavePlayersPanel) PollPath() string {
+	if p.Started {
+		return p.PlayersPath() + "?started=1"
+	}
+	return p.PlayersPath()
+}
+
+// endOfRead is the words for a read the admin started that has ended, or zero
+// while it runs or when it left nothing to say.
+func (p SavePlayersPanel) endOfRead() i18n.Msg {
+	switch p.Kind {
+	case playersReady:
+		return i18n.M("saveplayers.announce.done")
+	case playersTracked:
+		return p.Failure
+	}
+	return i18n.Msg{}
+}
 
 // ShowTable says the players are listed: a read worked, or only tracked time
 // counts.
@@ -237,7 +264,17 @@ func (s *server) handleSavePlayers(w http.ResponseWriter, r *http.Request, u sto
 		http.Redirect(w, r, worldPath(sum.ID)+"#"+savePlayersAnchor, http.StatusSeeOther)
 		return
 	}
-	s.fragment(w, r, s.savePlayersPanel(r.Context(), sum), "save-players-body")
+	p := s.savePlayersPanel(r.Context(), sum)
+	// A poll of a read the admin started: keep asking while it runs, and say
+	// once how it ended.
+	if r.URL.Query().Get("started") == "1" {
+		if p.Kind == playersReading {
+			p.Started = true
+		} else {
+			p.Announce = p.endOfRead()
+		}
+	}
+	s.fragment(w, r, p, "save-players-body")
 }
 
 // handleSavePlayersRead reads the newest save again, on an admin's click
@@ -281,6 +318,9 @@ func (s *server) handleSavePlayersRead(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	p := s.savePlayersPanel(r.Context(), sum)
-	p.Refused, p.Focus = refused, true
+	p.Refused = refused
+	if p.Kind == playersReading {
+		p.Started, p.Announce = true, i18n.M("saveplayers.announce.started")
+	}
 	s.fragment(w, r, p, "save-players-body")
 }

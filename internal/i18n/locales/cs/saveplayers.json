@@ -33,5 +33,7 @@
   "saveplayers.failure.mods_differ": "Uloženou hru se nepodařilo přečíst, protože načtené mody nejsou mody tohoto světa.",
   "saveplayers.failure.save_newer": "Uloženou hru se nepodařilo přečíst, protože ji vytvořila novější verze hry.",
   "saveplayers.failure.bad_output": "Uloženou hru se nepodařilo přečíst, protože hra nedala výsledek, který Foreman může použít.",
-  "saveplayers.failure.other": "Uloženou hru se nepodařilo přečíst."
+  "saveplayers.failure.other": "Uloženou hru se nepodařilo přečíst.",
+  "saveplayers.announce.started": "Čte se nejnovější uložená hra.",
+  "saveplayers.announce.done": "Hráči z této uložené hry byli přečteni."
 }

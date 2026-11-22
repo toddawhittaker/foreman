@@ -33,5 +33,7 @@
   "saveplayers.failure.mods_differ": "Не удалось прочитать сохранение: загруженные моды не совпадают с модами этого мира.",
   "saveplayers.failure.save_newer": "Не удалось прочитать сохранение: оно создано более новой версией игры.",
   "saveplayers.failure.bad_output": "Не удалось прочитать сохранение: игра не выдала результат, который может использовать Foreman.",
-  "saveplayers.failure.other": "Не удалось прочитать сохранение."
+  "saveplayers.failure.other": "Не удалось прочитать сохранение.",
+  "saveplayers.announce.started": "Читается самое новое сохранение.",
+  "saveplayers.announce.done": "Игроки этого сохранения прочитаны."
 }

@@ -69,7 +69,7 @@ func TestSavePlayersReadList(t *testing.T) {
 		game.SavePlayer{Name: "Here", PlayTime: 30 * time.Second, Online: true, LastSeen: seen})
 	v.GameTime, v.GameTimeKnown = 301*time.Hour+5*time.Minute, true
 	body := panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, false, 0))
-	mustHave(t, body, `id="save-players-table"`, "3 players in this save", "OrcScorpion", "276 h 40 min",
+	mustHave(t, body, `<th scope="row" role="rowheader"><span translate="no">OrcScorpion</span>`, `id="save-players-table"`, "3 players in this save", "OrcScorpion", "276 h 40 min",
 		"Played before Foreman tracked this world", "1 h 35 min", "0 min", "Online now", "Last seen", `datetime="2026-11-20T18:30:00Z"`,
 		"Total play time of this save: 301 h 5 min", `id="save-players-read"`, "Read again", `action="/worlds/base/players/read"`, `hx-target="#save-players"`)
 	mustNotHave(t, body, "of memory", "uses now", `id="save-players-inexact"`, `hx-trigger="every`)
@@ -100,15 +100,43 @@ func TestSavePlayersInexact(t *testing.T) {
 	}
 }
 
-// SPEC 8.14, 8.16: while a read runs there is no button, the status is read
-// out, and the panel asks again by itself.
+// SPEC 8.14, 8.16: while a read runs there is no button and the panel asks
+// again by itself. Nothing takes focus and nothing is a live region inside
+// the swapped part: a focus or a status that every poll's swap brings back
+// would be read out every 3 s.
 func TestSavePlayersReading(t *testing.T) {
 	p := panelFor(testWorld, viewOf(game.SavePlayersReading), false, true, false, 0)
 	body := panelHTML(t, i18n.English, p)
-	mustHave(t, body, `role="status"`, "Reading the newest save", `hx-get="/worlds/base/players"`, `hx-trigger="every 3s"`, `hx-target="#save-players"`)
-	mustNotHave(t, body, "<button", "<table", "autofocus")
-	p.Focus = true
-	mustHave(t, panelHTML(t, i18n.English, p), "autofocus")
+	mustHave(t, body, "Reading the newest save", `hx-get="/worlds/base/players"`, `hx-trigger="every 3s"`, `hx-target="#save-players"`)
+	mustNotHave(t, body, "<button", "<table", "autofocus", "tabindex", `role="status"`, "hx-swap-oob", "?started=1")
+}
+
+// A read the admin started is said once at its start and once at its end, in
+// the live region outside the swapped part; the poll of such a read says so in
+// its address.
+func TestSavePlayersStartAndEndAreSaidInTheLiveRegion(t *testing.T) {
+	p := panelFor(testWorld, viewOf(game.SavePlayersReading), false, true, false, 0)
+	p.Started, p.Announce = true, i18n.M("saveplayers.announce.started")
+	body := panelHTML(t, i18n.English, p)
+	mustHave(t, body, `id="save-players-live" hx-swap-oob="innerHTML">Reading the newest save.</div>`, `hx-get="/worlds/base/players?started=1"`)
+	mustNotHave(t, body, "autofocus", "tabindex")
+
+	ready := panelFor(testWorld, viewOf(game.SavePlayersReady, game.SavePlayer{Name: "A", PlayTime: time.Hour}), false, true, false, 0)
+	ready.Announce = ready.endOfRead()
+	mustHave(t, panelHTML(t, i18n.English, ready), `hx-swap-oob="innerHTML">The players of this save were read.</div>`)
+	mustNotHave(t, panelHTML(t, i18n.English, ready), "?started=1", "autofocus", "tabindex")
+
+	failed := viewOf(game.SavePlayersTrackedOnly)
+	failed.Failure = saveplayers.ResultTimeout
+	tp := panelFor(testWorld, failed, false, true, false, 0)
+	tp.Announce = tp.endOfRead()
+	mustHave(t, panelHTML(t, i18n.English, tp), `hx-swap-oob="innerHTML">The save could not be read, because the read took too long`)
+	if !panelFor(testWorld, viewOf(game.SavePlayersNone), false, true, false, 0).endOfRead().IsZero() {
+		t.Error("an end with nothing to say said something")
+	}
+	// The page holds the region itself, once, outside the section the swaps fill.
+	body = panelHTML(t, i18n.English, panelFor(testWorld, viewOf(game.SavePlayersReady), false, true, false, 0))
+	mustNotHave(t, body, `id="save-players-live"`)
 }
 
 // SPEC 8.14, 8.16: every failure id has its own words, the tracked-since
@@ -228,7 +256,7 @@ func TestWorldPageRendersThePlayersPanel(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	page := g.get(worldPath(id))
-	mustHave(t, page, `<section class="panel" id="save-players"`, `id="save-players-heading"`, "Players in this save")
+	mustHave(t, page, `<div id="save-players-live" class="visually-hidden" role="status"></div>`, `<section class="panel" id="save-players"`, `id="save-players-heading"`, "Players in this save")
 	mustNotHave(t, page, `hx-get="/worlds/`+id+`/players"`)
 
 	hn := newHarness(t, nil)

@@ -33,5 +33,7 @@
   "saveplayers.failure.mods_differ": "Nie udało się odczytać zapisu, ponieważ załadowane modyfikacje nie są modyfikacjami tego świata.",
   "saveplayers.failure.save_newer": "Nie udało się odczytać zapisu, ponieważ utworzyła go nowsza wersja gry.",
   "saveplayers.failure.bad_output": "Nie udało się odczytać zapisu, ponieważ gra nie zwróciła wyniku, którego Foreman może użyć.",
-  "saveplayers.failure.other": "Nie udało się odczytać zapisu."
+  "saveplayers.failure.other": "Nie udało się odczytać zapisu.",
+  "saveplayers.announce.started": "Trwa odczyt najnowszego zapisu.",
+  "saveplayers.announce.done": "Odczytano graczy z tego zapisu."
 }

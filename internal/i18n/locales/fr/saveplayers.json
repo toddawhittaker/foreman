@@ -32,5 +32,7 @@
   "saveplayers.failure.mods_differ": "La sauvegarde n'a pas pu être lue, car les mods chargés ne sont pas ceux de ce monde.",
   "saveplayers.failure.save_newer": "La sauvegarde n'a pas pu être lue, car une version plus récente du jeu l'a créée.",
   "saveplayers.failure.bad_output": "La sauvegarde n'a pas pu être lue, car le jeu n'a pas produit de résultat que Foreman peut utiliser.",
-  "saveplayers.failure.other": "La sauvegarde n'a pas pu être lue."
+  "saveplayers.failure.other": "La sauvegarde n'a pas pu être lue.",
+  "saveplayers.announce.started": "Lecture de la sauvegarde la plus récente.",
+  "saveplayers.announce.done": "Les joueurs de cette sauvegarde ont été lus."
 }

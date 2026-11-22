@@ -31,5 +31,7 @@
   "saveplayers.failure.mods_differ": "无法读取存档：加载的模组与此世界的模组不一致。",
   "saveplayers.failure.save_newer": "无法读取存档：它由更新的游戏版本创建。",
   "saveplayers.failure.bad_output": "无法读取存档：游戏没有给出 Foreman 可用的结果。",
-  "saveplayers.failure.other": "无法读取存档。"
+  "saveplayers.failure.other": "无法读取存档。",
+  "saveplayers.announce.started": "正在读取最新存档。",
+  "saveplayers.announce.done": "已读取此存档的玩家。"
 }

@@ -32,5 +32,7 @@
   "saveplayers.failure.mods_differ": "Der Speicherstand konnte nicht gelesen werden, weil die geladenen Mods nicht die Mods dieser Welt sind.",
   "saveplayers.failure.save_newer": "Der Speicherstand konnte nicht gelesen werden, weil eine neuere Spielversion ihn erstellt hat.",
   "saveplayers.failure.bad_output": "Der Speicherstand konnte nicht gelesen werden, weil das Spiel kein Ergebnis lieferte, das Foreman nutzen kann.",
-  "saveplayers.failure.other": "Der Speicherstand konnte nicht gelesen werden."
+  "saveplayers.failure.other": "Der Speicherstand konnte nicht gelesen werden.",
+  "saveplayers.announce.started": "Der neueste Speicherstand wird gelesen.",
+  "saveplayers.announce.done": "Die Spieler dieses Speicherstands wurden gelesen."
 }

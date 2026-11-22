@@ -32,5 +32,7 @@
   "saveplayers.failure.mods_differ": "No se pudo leer la partida guardada porque los mods cargados no son los de este mundo.",
   "saveplayers.failure.save_newer": "No se pudo leer la partida guardada porque la creó una versión más nueva del juego.",
   "saveplayers.failure.bad_output": "No se pudo leer la partida guardada porque el juego no dio un resultado que Foreman pueda usar.",
-  "saveplayers.failure.other": "No se pudo leer la partida guardada."
+  "saveplayers.failure.other": "No se pudo leer la partida guardada.",
+  "saveplayers.announce.started": "Leyendo la partida guardada más reciente.",
+  "saveplayers.announce.done": "Se leyeron los jugadores de esta partida guardada."
 }

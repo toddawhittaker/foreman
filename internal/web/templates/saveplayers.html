@@ -4,6 +4,8 @@
      WorldPage; nothing shows when it has no panel. */}}
 {{define "world-players"}}
 {{- with .Players}}
+{{- /* The live region no swap replaces: a read's start and end are said here, never by moving focus. */}}
+<div id="save-players-live" class="visually-hidden" role="status"></div>
 <section class="panel" id="save-players" aria-labelledby="save-players-heading">
 {{- template "save-players-body" .}}
 </section>
@@ -15,7 +17,10 @@
 {{define "save-players-body"}}
 <h2 id="save-players-heading">{{t "saveplayers.heading"}}</h2>
 {{- if .Polls}}
-<div hidden hx-get="{{.PlayersPath}}" hx-trigger="every 3s" hx-target="#save-players" hx-swap="innerHTML"></div>
+<div hidden hx-get="{{.PollPath}}" hx-trigger="every 3s" hx-target="#save-players" hx-swap="innerHTML"></div>
+{{- end}}
+{{- if not .Announce.IsZero}}
+<div id="save-players-live" hx-swap-oob="innerHTML">{{msg .Announce}}</div>
 {{- end}}
 {{- if not .Refused.IsZero}}
 <div class="message message--warning" id="save-players-refused" role="alert">
@@ -23,7 +28,7 @@
 </div>
 {{- end}}
 {{- if eq .Kind "reading"}}
-<div class="message message--note" id="save-players-status" role="status" tabindex="-1"{{if .Focus}} autofocus{{end}}>
+<div class="message message--note" id="save-players-status">
   <p><strong>{{t "common.label.note"}}</strong> {{t "saveplayers.reading"}}</p>
 </div>
 {{- else if eq .Kind "unavailable"}}
@@ -58,7 +63,7 @@
   <tbody role="rowgroup">
     {{- range .Rows}}
     <tr role="row">
-      <td role="cell"><span translate="no">{{.Name}}</span><br><span class="hint">{{if .Online}}{{t "saveplayers.now"}}{{else if .LastSeen.IsZero}}{{t "saveplayers.last_seen.unknown"}}{{else}}{{tHTML "saveplayers.last_seen" "when" (momentUTC .LastSeen)}}{{end}}</span></td>
+      <th scope="row" role="rowheader"><span translate="no">{{.Name}}</span><br><span class="hint">{{if .Online}}{{t "saveplayers.now"}}{{else if .LastSeen.IsZero}}{{t "saveplayers.last_seen.unknown"}}{{else}}{{tHTML "saveplayers.last_seen" "when" (momentUTC .LastSeen)}}{{end}}</span></th>
       <td role="cell" data-label="{{t "saveplayers.col.time"}}"><span class="nowrap">{{msg .PlayTime}}</span>{{if .BeforeForeman}}<br><span class="hint">{{t "saveplayers.before_foreman"}}</span>{{end}}</td>
     </tr>
     {{- end}}

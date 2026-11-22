@@ -32,5 +32,7 @@
   "saveplayers.failure.mods_differ": "The save could not be read, because the mods that loaded are not this world's mods.",
   "saveplayers.failure.save_newer": "The save could not be read, because a newer game version made it.",
   "saveplayers.failure.bad_output": "The save could not be read, because the game gave no result Foreman can use.",
-  "saveplayers.failure.other": "The save could not be read."
+  "saveplayers.failure.other": "The save could not be read.",
+  "saveplayers.announce.started": "Reading the newest save.",
+  "saveplayers.announce.done": "The players of this save were read."
 }
