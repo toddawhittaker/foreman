@@ -324,7 +324,7 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	if p.HaveResult && st.Operation != nil && !st.Operation.Done {
 		// A result is stored only after its operation ended, so a status read
-		// before that, which still shows it running, is stale (#781): read it
+		// before that, which still shows it running, is stale (SPEC 17.7): read it
 		// again, or the page would say Done with no way back.
 		st = s.game.Status(sum.ID)
 		p.Status = st

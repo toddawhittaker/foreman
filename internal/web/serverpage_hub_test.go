@@ -435,7 +435,7 @@ func TestServerPageSwitchesAndSwitchesBack(t *testing.T) {
 	g.wantContains("after the switch", body, `href="`+switchPath(a)+`" class="button" id="act-undo">Switch back to Alpha</a>`)
 }
 
-// SPEC 7.9, 17.7, 17.10, #781: a page built from a status read just before a
+// SPEC 7.9, 17.7, 17.10: a page built from a status read just before a
 // switch ended and a result stored just after still offers the way back. The
 // status here is a copy of the finished switch's with its operation not done,
 // as a request landing in that gap reads it; serverPage reads it again once it
