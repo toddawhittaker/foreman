@@ -533,7 +533,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
 
 - **A guided flow in three steps** (Todd's ruling, 2026-11-21, #775). Each
   step is its own page, and a step bar of three links above each one names
-  them and marks the current one.
+  them and marks the current one. On step 1 the bar is there too, with
+  step 1 current; steps 2 and 3 show as plain text, not links, until the
+  world exists.
   1. **Make the world**: name, game version, Space Age, optionally a
      favorite (5.12), and the image download. This writes the world folder
      and `world.json` with `new_map`, and the world counts as generated.
@@ -544,8 +546,12 @@ not) or a map exchange string, with Space Age on or off. (P0)
   3. **Map settings and preview**, at `/worlds/{id}/new-map`, with every
      planet the world's mods give it (below). "Save map settings" writes
      the settings files below. It takes no snapshot, because the world has
-     no save. It is refused once the world has a save, and while the world
-     is busy.
+     no save. It is refused once the world has a save, and while the
+     world's server is starting, running, stopping, crashed or crash-looping,
+     because the first start makes the map before any save exists. It is
+     also refused when the server's state is unknown because Docker cannot
+     be reached. That check runs under the world's lock, so a start cannot
+     slip in between.
 
   The first start then creates the map. Everything below about the map
   form, the leave dialog and the preview belongs to step 3, and "the
@@ -573,6 +579,27 @@ not) or a map exchange string, with Space Age on or off. (P0)
   that are gone are listed as "no longer in the mods" and dropped at the
   next save, and new planets and controls start at their defaults. The
   pre-start check refuses a start the game would fail (7.4).
+  - **One entry point.** Pages and tools get the planet list only through
+    the controller's `WorldCatalogue`. A world whose enabled mods are all
+    built in gets the embedded list with no game run. A run that failed or
+    was refused gives the embedded list and the reason.
+  - **Foreman's names win.** A planet or control Foreman already knows
+    keeps Foreman's own translated name; a mod's label is used only for a
+    name Foreman does not know.
+  - **A planet's own default.** A planet may set its own default for a
+    control, kept when it is a finite number from 0 to 1000 (Moshine's
+    steam_geyser richness is 150, shown as 15000%). The select starts there
+    and shows that value as its own entry when it falls between the steps.
+    It is written back unchanged unless the person moves that control. A
+    control two planets share is written once; a later planet's copy wins
+    only when the person moved it.
+  - **Saving needs the world's own list.** While the embedded list stands
+    in for a world that has mods of its own, step 3 and `set_new_map` refuse
+    to save, because
+    saving would drop every setting of the mods' planets. The page offers a
+    retry and a link to the Mods tab.
+  - **Modded resources** are named with their resolved names, but have no
+    map colour, because nothing draws them.
 - **Nothing is made until the first start.** Generate writes only the world
   folder, `world.json` with `new_map` (5.1) and the settings files below.
   The world has no save. The world's first start runs the game's own
@@ -808,7 +835,10 @@ not) or a map exchange string, with Space Age on or off. (P0)
     the fast preview", and a toggletip (17.14) gives the detail. It is
     kept in memory with the preview, keyed by the map settings, seed,
     mods, game version and planet, until the store's size limit evicts it
-    or the map is created; a restart loses it. 2.0 has no `--test-save`
+    or the map is created; a restart loses it. It is dropped when the next
+    request for the world finds its map made, not at that moment. One user
+    draws one at a time, and only that user can fetch it. The button needs
+    script; the fast preview does not. 2.0 has no `--test-save`
     and 1.1 has no planets, so their worlds get the fast preview only.
     The window is always centred on the origin. When a picture is about
     99% one colour, a note says everything near the start is outside the
@@ -961,7 +991,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
       as no files counts as the files the form writes for it.
 - Generate records the audit entry `generate` (12.9). Saving step 3, from the page or through
   `set_new_map`, records `new-map`, naming the preset and whether it was
-  modified. A refusal appears on
+  modified, and ending with the game version. A refusal appears on
   the form, in the page's language.
 
 5.7. **Clone** a world into a new world, then either start a fresh map or
@@ -1471,7 +1501,13 @@ compares it with the world. It refuses to start, and says why, when:
   list, for example after a planet mod was removed. The game's `--create`
   stops on an unknown control and writes no save (checked on 2.0.77 and
   2.1.24, #775). The fix is a link to step 3 of Generate, which drops the
-  stale settings at its next save; this refusal has no start anyway;
+  stale settings at its next save; this refusal has no start anyway. The
+  check reads the planet list from the cache only, and warms it before the
+  world's lock is taken. When the planet run failed, or the world has no
+  `mods/mod-list.json` yet, it does not refuse: the game's `--create` then
+  fails before it writes a save, so nothing is lost, and the start's error
+  says why. Names in `autoplace_settings` (ores, tiles, decoratives) from a
+  removed mod do not stop `--create`, and are not checked;
 - `mods/mod-list.json` disagrees with the world's Space Age flag, because
   that file is what the game loads until mod management (section 9) takes
   over;
@@ -2322,7 +2358,9 @@ only the names of the mods picked with "+", at most 500 (3.4, ADR 0021). Each
 time the panel is drawn the tree is worked out again, so removing a pick
 also drops every dependency nothing else needs, and a dependency has no
 remove button of its own. When "Install N mods" is accepted, the mods it
-installed leave the saved picks and the others stay; nothing is cleared by
+installed leave the saved picks and the others stay (an Unfinished world's
+Continue, 5.6, opens step 2 only while picks are left, and a pick installed
+another way, such as an upload, is not work that remains); nothing is cleared by
 a changed plan, a failed check, a refused request or any other kind of plan.
 The failure page's "Try again" still carries the names. Deleting a world
 clears its picks. The picks are a database table, not a file in the world,
@@ -2825,7 +2863,10 @@ restart schedule or to a webhook (7.12, 8.10), never with the webhook's
 address, a world file export and import as `world-export` and
 `world-import` (5.13, 5.14), the autosave tidy (11.6), and turning the public mods page on
 or off (9.16). A manual snapshot and a restore are recorded as `snapshot`
-and `restore`, with the token's name when they come through MCP. API
+and `restore`, with the token's name when they come through MCP. Saving a
+new world's map settings (5.6) records `new-map`, whose detail names the
+preset (or a map exchange string), whether it was modified, and ends with
+the world's game version. API
 tokens record `token-create`, `token-renew` and
 `token-revoke`, each naming the token, its owner and its scope. Turning
 MCP access on or off records `mcp-set` with the detail "on" or "off"
@@ -3102,8 +3143,13 @@ world's mods by hard link, falling back to copies, under the same caps as
 the mod settings run below, read-only where the game would otherwise write,
 and copies of the world's `mod-list.json` and `mod-settings.dat`. It never
 holds the world's own folder. A world mod with the name of the run's
-control-only mod refuses the run. The limits stay 1 GiB, and the time
-limit is 60 seconds for each planet drawn: with five planet mods, one
+control-only mod refuses the run. The planets a run may draw are checked
+against the planet list Foreman took from that world's stored run, never
+against anything the form posted. The check uses the Space Age the world's
+enabled mods give, the same answer the planet list uses, so a world whose
+flag disagrees with its mods is not refused. The limits stay 1 GiB, and the time
+limit is 60 seconds for each planet drawn, at most 10 minutes in all so
+a run cannot hold the one slot for long: with five planet mods, one
 planet took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB
 (#775).
 
@@ -3227,7 +3273,11 @@ planets file of the same run (9.6) is at most 1 MiB, 64 planets, 512
 controls, 128 controls per planet and 512 resources; over any of these
 the whole file is refused and step 3 uses the embedded planets (5.6).
 Planet, control and resource names must match `^[a-z0-9_-]{1,64}$`; one
-that does not is left out, and the page gives how many were. Localised
+that does not is left out, and the page gives how many were. A control
+with an unknown category or an over-long order is left out. A planet's
+own default for a control is kept only when it is a finite number from 0
+to 1000, else it is ignored. Invisible Unicode (zero-width and direction
+marks) is removed from every label. Localised
 names resolve under the 20-level and 1,000-character limits above, then
 lose their rich-text tags and are cut to 100 characters. A mod's
 `.cfg` locale file is at most 1 MiB, and 8 MiB per language across mods. A
@@ -3875,7 +3925,8 @@ three steps and Unfinished worlds (5.6, 5.7, 5.12, 17.10, 17.19); the
 planet list from the mod-settings run (9.6, 14.6); previews, territories
 and resource counts with the world's mods, and the real-game picture on
 2.1 (5.6, 14.3, ADR 0033); the pre-start refusal of stale controls (7.4);
-`get_new_map` and `set_new_map` (21.7). **Gate:** against real
+`get_new_map` and `set_new_map` (21.7). Built; see STATUS.md, Epic 12.
+**Gate:** against real
 `factoriotools/factorio` containers on 1.1.110, 2.0.77 and 2.1.24, with
 five planet mods on 2.x: the mod-settings run lists 11 planets; each
 planet's preview draws within 60 seconds and 1 GiB; map settings saved
@@ -4022,18 +4073,30 @@ The tool names are fixed, one tool per action:
   `change_webhook`, `delete_webhook`, `set_factorio_account`,
   `remove_factorio_account`, `set_public_mods`.
 
-`get_new_map` (#775) returns an Unfinished world's planets (5.6), each
-control with what it supports, and the values saved for its new map; it
-requires `world_id`, and is refused once the world has a save. Planet and
-control names come from mods and are marked untrusted (14.12).
+`get_new_map` (#775) is an admin tool, like `list_mod_settings`. It returns
+an Unfinished world's planets (5.6), each control with what it supports,
+and the values saved for its new map; it requires `world_id`, and is
+refused once the world has a save. Values are percentages as the form shows
+them, where 100 is the game's default. A control a planet defaults to
+something else is reported at that planet's own default (5.6), which may be
+up to 1000, so a percentage is a number, not a whole number: 0.125 reads as
+12.5. Planet and control names come from mods and are marked untrusted
+(14.12).
 
 `set_new_map` (#775) takes `world_id` and either a preset, a seed and
 values per planet and control, or a map exchange string, and saves them as
 step 3 of Generate does (5.6), with no snapshot. It is refused for a world
 with a save or a busy one. A planet or control not in the world's list,
 or a value the control does not support, refuses the whole call with an
-error that names it; nothing is dropped silently. It carries the
-annotations of `generate_world`.
+error that names it; nothing is dropped silently. A value may be a step
+the form offers or the planet's own default for that control; a planet
+default on a control shared with a planet that lacks it is refused, with
+a message about the shared value. Percentages are numbers, as above. Like
+the page, it is refused while the world's server is starting, running,
+stopping, crashed or crash-looping, or when its state is unknown (5.6),
+and while the built-in planets stand in for the world's own (5.6). It
+carries the annotations of
+`generate_world` and the audit entry `new-map` (12.9).
 
 `add_webhook` and `change_webhook` take `url`, or for the Pushover preset
 `app_token` and `user_key` (8.11); an omitted key keeps its stored value on a

@@ -1045,8 +1045,8 @@ the block padding is `--space-2` so a two-line label is not cramped.
   `flex-wrap: wrap`. In an ordinary row the primary button comes first.
 - **One completion footer.** Every form foot bar and confirmation ends
   with its choices together at the end edge: Cancel, a ghost button, just
-  before the primary (or danger) action, as on Generate (Cancel, Preview
-  map, Generate world) and the mod plan. A note about what is pending
+  before the primary (or danger) action, as on step 3 of Generate (Cancel,
+  Preview map, Save map settings) and the mod plan. A note about what is pending
   (unsaved changes, where a setting comes from) leads the bar at its start.
   A confirmation's row sits under a 1 px `line`. Cancel comes first in the
   markup too, so the screen order and the keyboard order agree.
@@ -2240,11 +2240,23 @@ Classes and their contract:
 
 ### 8.6 Generate (SPEC 5.6)
 
-The task is "make a new world". From the Server page it takes three
-clicks: Worlds, "Generate a world", then "Generate world" on the form.
-Everything but the name has a default.
+The task is "make a new world". It is three steps, and each is a plain
+page that works without script (SPEC 17.19). From the Server page the
+defaults take three clicks: Worlds, "Generate a world", then "Generate
+world" on step 1, which makes the world and lands on step 2. The Mods and
+map settings steps are optional.
 
-One page, `GET /generate`: one `h1` with a one-line hint, then one form,
+**The step bar** (`genflowsteps.html`) is a `nav.subnav` holding an `ol` of
+three links: "1. World", "2. Mods" and "3. Map settings". The current one
+carries `aria-current="step"`, and the links are the way between steps
+when there is no script. The `nav` sits in a `div`, because a subnav
+straight under `main` is the area tabs' phone copy, which is hidden on a
+wide screen. It shows on step 1 with "1. World" current, where steps 2 and 3
+are plain text (a `span`, styled like the other tabs) because the world does
+not exist yet. It shows as links on step 3, and on the Mods tab and the
+review while the world is Unfinished.
+
+**Step 1**, `GET /generate`: one `h1` with a one-line hint, then one form,
 in this order:
 
 1. The required note (7.2), then Name (required, a placeholder example).
@@ -2252,19 +2264,51 @@ in this order:
    not in the list sits in a closed `details`, "Use a version not in the
    list", opened when it holds a value or an error.
 3. Space Age, and the "download the game image" checkbox.
-4. "How to make the map": two radios, each with a one-line description
-   under its words: **Map settings** (checked) and **Map exchange
-   string**. CSS shows only the chosen way's fields
-   (`form:has(#mode-exchange:checked) .mode-panel--settings` and the
-   reverse); without `:has()` both show and the server reads the chosen
-   one.
-   - Map settings: the preset select with "[modified]" (the game's word)
-     and a quiet "Reset to defaults" button after it; the seed with
-     a "Random seed" button; then the tabs of 8.7.
-   - Map exchange string: a mono `textarea`, as before.
+4. "Start from a favorite" (one row on a card at least 64rem wide).
+5. The action bar: Cancel and "Generate world" (primary).
+
+There is no map form, preview or leave dialog on this page. The world is
+made at once and the browser lands on step 2,
+`/worlds/{id}/mods?generated=1`, where a Done box takes focus: "{name} is
+made. Next, pick its mods or skip to map settings." A favorite with mods
+lands on the review instead (SPEC 5.12).
+
+**Step 2** is the world's Mods tab, or the review (8.11). For an Unfinished
+world each shows the step bar with "2. Mods" current. The Mods tab has a
+"Skip to map settings" link under the bar. After a mod change its Done box
+shows "Next: map settings", a button (SPEC 17.9), in place of Skip. The
+review has "Skip to map settings" after the Install button in source
+order, or "Next: map settings" when the plan changes nothing. A world with a save shows none of this.
+
+**Unfinished worlds** carry a plain `badge` "Unfinished" beside the name
+on the Worlds list and on the world page. A list row's one action is
+Continue, a primary button, with "Continue setting up {name}" for screen
+readers. On the world page a note says setting up is not finished, with
+Continue as its one primary button, and Switch becomes a plain button.
+Continue opens step 2 while mod picks are not installed, otherwise step 3
+(SPEC 5.6, 9.14). Checked with a Continue click from the Worlds list: one
+click.
+
+**Step 3**, `/worlds/{id}/new-map`, is the rest of this section and 8.7
+and 8.8. Its form id is still `generate-form`. In this order:
+
+1. The step bar and a line of intro. With script the page shows at once
+   and the form part loads after it, with a progress bar and one
+   sentence in the live region; without script the page refreshes itself
+   to the same address with `?wait=1`, and the server waits for the
+   planet run.
+2. Notes: the built-in planets are used (with the reason, and a link to
+   the Mods tab when the planets could not be read), and the controls
+   that are saved but no longer in the mods, as a list.
+3. "Fill from a map exchange string", a closed `details` with a mono
+   `textarea` and a "Fill the settings" button. A string from another
+   game line is refused with a link to the world's page.
+4. The preset select with "[modified]" (the game's word) and a quiet
+   "Reset to defaults" button after it; the seed with a "Random seed"
+   button; then the tabs of 8.7.
 5. The preview slot (8.8), beside the settings on a wide screen (below).
-6. One achievements summary (below), then the action bar: Cancel,
-   "Preview map" and "Generate world" (primary).
+6. One achievements summary (below), then the action bar: Cancel (a link
+   to the world), "Preview map" and "Save map settings" (primary).
 
 **Layout.** Once the form is 56rem wide (a container query, so the rail's
 width counts) the page is two columns, `gen-grid`: the settings, never
@@ -2290,12 +2334,12 @@ and narrower) the preview comes straight after the preset and seed, so it
 is on the first screens, and the planets' rows in the settings start
 closed. **The action bar** is one bar at the foot of the card, `raised`
 with a 1 px `line` rule above it, running to the card's edges. It ends
-with Cancel (a ghost button), "Preview map" and "Generate world"
+with Cancel (a ghost button), "Preview map" and "Save map settings"
 (primary), set together at the bar's end edge (7.1, "One completion
 footer"). The code has them in the same order, so the screen order, the
 keyboard order and the code order agree (WCAG 1.3.2, 2.4.3). On a phone
 (30rem and narrower) they stack full width, top to bottom: Cancel,
-Preview map, Generate world. At 200% text a label wraps rather than push the page
+Preview map, Save map settings. At 200% text a label wraps rather than push the page
 wider.
 
 **Preset, "[modified]" and reset.** Choosing a preset fills every tab with
@@ -2360,9 +2404,12 @@ once through `#announcer`.
 when the form is two columns, and after the settings otherwise (Layout,
 above; 8.8).
 
-On success the browser lands on the new world's page with a Done message
-(7.3): "Generated Family base 2026. Its map is made when it first
-starts."
+On success step 3 shows again with a Done box that takes focus (7.3):
+"Saved the map settings of Family base 2026. The map is made from them
+when the world first starts." Its button is "Next: go to the world". When
+the world's own planets could not be read, saving is refused with "Try
+again" and a link to step 2, because saving the built-in planets would drop
+the settings of the mods' planets.
 
 ### 8.7 The map settings (SPEC 5.6, 11.5)
 
@@ -2532,6 +2579,30 @@ close the view, the tab, the setting, and the picture again).
   The heading's line also holds the seed used, "Seed
   123456", at its end while it fits, so the picture sits close to its
   controls.
+- **Two pictures, and what each cannot show** (SPEC 5.6). Under the
+  heading one `hint` line says "This fast preview cannot show terrain a mod
+  makes by script." with a toggletip (7.7) for the detail. It shows on step
+  3 only, because a picture of no world has no mods. When a world's planet
+  list could not be read, a note says the game's own planets are drawn and
+  planets the mods add are left out. When a picture is about 99% one
+  color, a note under the list of pictures (not inside a card, because the
+  pane sizes the cards to fit) says everything near the start is outside
+  the map and a larger preview size may show more; it names the planets
+  and is marked `translate="no"` for mod names.
+- **The real-game picture.** On a 2.1 world showing one planet, the
+  Download line ends with the quiet button "Draw from a real game (about 15
+  to 40 seconds)" and a toggletip. Pressed, the section is `aria-busy`, a
+  wait line and a progress bar show, and Preview map, Save map settings
+  and the button itself are `aria-disabled` and blocked until the picture
+  arrives, because the draw takes the one preview slot. The result is
+  announced once, "Real-game picture ready.", and the focus moves to "Back
+  to the fast preview". Its caption is "From a real game, 1024 tiles", and
+  its `img` is square like the others, so the pane's size does not change.
+  Busy, timeout and out of memory each have a sentence of their own; any
+  other failure says Foreman could not draw the planet. A change of the
+  settings redraws the fast preview, and a picture asked for again with
+  the same inputs is the kept one (SPEC 5.6). The button needs script, and the fast preview does not. 2.0 and 1.1
+  worlds do not offer it.
 - **A picture's own actions share its Download line.** On a 2.1 world's
   one picture, "Draw from a real game" and its toggletip follow the
   Download link on the same line, so the pane gives no row of its own to
@@ -2547,13 +2618,11 @@ close the view, the tab, the setting, and the picture again).
   form error.
 - **Drawn by itself** (with script). On page load, and 0.8 s after the
   last change to anything in the form that changes the map: the preset,
-  the seed, any setting, the way to make the map, the pasted exchange
-  string, and the settings a version or Space Age change redraws (asked
+  the seed, any setting, a map exchange string filled in, and the settings a version or Space Age change redraws (asked
   once that redraw has landed). The name, the tabs and the download box
   do not count. The newest request wins: a change aborts the request on
   its way (the server stops its run) and a late reply is ignored. A
-  pressed "Preview map" is aborted by a later change too. Exchange mode
-  with nothing pasted draws nothing and empties the section.
+  pressed "Preview map" is aborted by a later change too.
 - **One planet or all.** On a world with several planets, a choice under
   the heading line, drawn as tabs (radios, as 8.7's tabs, one tab stop;
   legend "Preview shows", for screen readers only): **One planet**

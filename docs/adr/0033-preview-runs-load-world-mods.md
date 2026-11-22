@@ -26,7 +26,14 @@ real game, through `--test-save` on 2.1.
   `planets.json`: one run, one cache.
 - On 2.1, an opt-in real-game picture runs `--create`, then `--test-save`
   with a control-only helper mod that charts 1024 by 1024 tiles (1 GiB,
-  90 seconds). The fast preview stays the default.
+  90 seconds). The fast preview stays the default. A user draws one at a
+  time, and the picture is kept in memory, keyed by the settings, seed,
+  mods, game version and planet, until the preview store's size limit
+  evicts it or the world's map is made. A restart loses it. There is no
+  disk store, because a picture is cheap to ask for again.
+- The planets a run may draw come from the stored output of the world's
+  mod-settings run, never from the form. A run with a world's mods takes
+  at most 10 minutes in all.
 
 ## Consequences
 
