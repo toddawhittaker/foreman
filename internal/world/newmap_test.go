@@ -286,3 +286,60 @@ func TestSetNewMapThenGenerateFilesMatchOneWriter(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 5.6: Idle is the caller's check that the world's server is down; it
+// runs under the world's lock, so no start can slip in after it, and its
+// error refuses the save unchanged with nothing written.
+func TestSetNewMapIdleRunsUnderTheLockAndRefuses(t *testing.T) {
+	m, _ := newTestManager(t)
+	id := newUnfinished(t, m, "Fresh")
+	before := readWorldMetaFile(t, m, id)
+	errUp := errors.New("the server is up")
+	var heldDuring error
+	err := m.SetNewMap(context.Background(), id, NewMapFiles{
+		Preset: "rich-resources", MapGenSettings: []byte(`{"width":1}`),
+		Idle: func() error {
+			_, heldDuring = m.Lock(id)
+			return errUp
+		},
+	})
+	if err == nil || err.Error() != errUp.Error() || !errors.Is(err, errUp) {
+		t.Errorf("error %v, want the Idle error unchanged", err)
+	}
+	if !errors.Is(heldDuring, ErrBusy) {
+		t.Errorf("Idle did not run under the world's lock: %v", heldDuring)
+	}
+	if b, _ := os.ReadFile(configFile(m, id, MapGenSettingsFile)); string(b) != `{"width":0}` {
+		t.Errorf("map-gen-settings.json changed: %q", b)
+	}
+	after := readWorldMetaFile(t, m, id)
+	if after.NewMap == nil || after.NewMap.Preset != before.NewMap.Preset {
+		t.Errorf("new_map %+v, was %+v", after.NewMap, before.NewMap)
+	}
+	// The lock is released after the refusal.
+	unlock, err := m.Lock(id)
+	if err != nil {
+		t.Fatalf("the lock stayed held: %v", err)
+	}
+	unlock()
+	// A passing Idle lets the save through.
+	if err := m.SetNewMap(context.Background(), id, NewMapFiles{Preset: "marathon", Idle: func() error { return nil }}); err != nil {
+		t.Fatal(err)
+	}
+	if got := readWorldMetaFile(t, m, id); got.NewMap == nil || got.NewMap.Preset != "marathon" {
+		t.Errorf("new_map %+v", got.NewMap)
+	}
+}
+
+// SPEC 5.6: a world with a save is refused before Idle runs, so the refusal
+// says the map is made, not that a server is up.
+func TestSetNewMapSaveRefusalComesBeforeIdle(t *testing.T) {
+	m, _ := newTestManager(t)
+	id := newUnfinished(t, m, "Fresh")
+	addSave(t, m, id)
+	called := false
+	err := m.SetNewMap(context.Background(), id, NewMapFiles{Preset: "marathon", Idle: func() error { called = true; return errors.New("up") }})
+	if !errors.Is(err, ErrMapMade) || called {
+		t.Errorf("error %v, Idle called %v", err, called)
+	}
+}

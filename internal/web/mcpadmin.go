@@ -8,6 +8,7 @@ import "github.com/modelcontextprotocol/go-sdk/mcp"
 // other admin tool sets oneStep, or readOnly when it changes nothing.
 func (s *server) addAdminTools(srv *mcp.Server) {
 	s.addWorldTools(srv)
+	s.addNewMapTools(srv)
 	s.addSnapshotTools(srv)
 	s.addLiveTools(srv)
 	s.addModTools(srv)
