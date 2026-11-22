@@ -141,6 +141,9 @@ export interface FakeGame {
   state: () => Promise<{
     containers: { name: string; image: string; status: string; ip: string; players: string[]; commands: string[]; restart_count: number }[];
     calls: string[];
+    // The name of every game server container Foreman asked to create, in order: the creates in
+    // calls less the one-off runs, such as a read of a save's players (SPEC 8.16).
+    game_creates: string[];
     // The seeded VPN sidecar, null without one (internal/fakegame/sidecar.go). Port is the host port
     // 34197/udp is published on, "" when it is not.
     sidecar: { name: string; id: string; status: string; ip: string; port: string } | null;
@@ -509,8 +512,9 @@ export const stateBadge = (page: Page) => page.locator("main h1 .state");
 export const doneBox = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
 
 // How many game containers the fake has been asked to create, so a test sees a game start again.
-export const creates = async (g: FakeGame) =>
-  (await g.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
+// One-off runs do not count: a view of a stopped world may start a read of its save's players
+// by itself (SPEC 8.14), and that is not a start.
+export const creates = async (g: FakeGame) => (await g.state()).game_creates.length;
 
 export const adminPassword = "correct horse battery";
 

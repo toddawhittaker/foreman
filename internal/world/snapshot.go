@@ -309,6 +309,16 @@ func (m *Manager) fillSnapshot(w, snaps *os.Root, dir string, man *Manifest) err
 			return fmt.Errorf("snapshot %s: %w", f.Path, err)
 		}
 		man.Copied = man.Copied || copied
+		// The manifest describes the file as placed: Foreman rewrites
+		// players.json without the world's lock (SPEC 8.14), so it can
+		// change between the listing and the copy, and a manifest with the
+		// listing's size would make the snapshot unrestorable.
+		placed, err := dst.Lstat(f.Path)
+		if err != nil {
+			return fmt.Errorf("snapshot %s: %w", f.Path, err)
+		}
+		f.Size, f.ModTime = placed.Size(), placed.ModTime().UTC()
+		man.Files[i].Size, man.Files[i].ModTime = f.Size, f.ModTime
 		if isZip(f.Path) {
 			if man.Files[i].SHA256, err = prev.hash(snaps, dst, f); err != nil {
 				return fmt.Errorf("snapshot %s: %w", f.Path, err)
