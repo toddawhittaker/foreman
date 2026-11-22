@@ -619,7 +619,7 @@ func TestExportLeavesOutThePlayersRecord(t *testing.T) {
 func TestExportLeavesOutHiddenFilesUnderMods(t *testing.T) {
 	m, _ := newTestManager(t)
 	id, dir := exportWorld(t, m)
-	for p, body := range map[string]string{
+	for p, body := range map[string]string{ //nolint:gosec // fake credentials the test looks for
 		"mods/my-mod/.git/config":    "[remote] url = https://user:token@example.com/x.git",
 		"mods/my-mod/.git/HEAD":      "ref: refs/heads/main",
 		"mods/.hidden-file":          "x",
