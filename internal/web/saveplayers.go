@@ -14,9 +14,9 @@ import (
 )
 
 // The players of a save on a world's Overview page (SPEC 8.14, 8.16). The
-// world page carries only a placeholder; this panel loads into it, because a
-// read of the save may start with a page view and must never hold the page
-// back. While a read runs, the panel asks again every few seconds.
+// world page renders the panel on the server, so it works without script; a
+// read it starts runs in the background and never holds the page back. With
+// script, the panel asks again every few seconds while a read runs.
 const (
 	PathWorldPlayers     = "/worlds/{id}/players"
 	PathWorldPlayersRead = "/worlds/{id}/players/read"
@@ -99,10 +99,6 @@ func (p SavePlayersPanel) Polls() bool { return p.Kind == playersReading }
 // counts.
 func (p SavePlayersPanel) ShowTable() bool { return len(p.Rows) > 0 }
 
-// The placeholder the world page holds, before the panel loads.
-func (p WorldPage) SavePlayersPath() string   { return playersPath(p.World.ID) }
-func (p WorldPage) SavePlayersAnchor() string { return savePlayersAnchor }
-
 // playTime says d as hours and minutes (SPEC 8.15).
 func playTime(d time.Duration) i18n.Msg {
 	d = max(d, 0)
@@ -153,9 +149,9 @@ func readError(err error) (i18n.Msg, bool) {
 }
 
 // panelOf makes the panel of a view. It is pure, so every state of the page
-// is tested without a game. inexact and hasSave come from the world's files
-// (the view carries neither); running and memory from the game.
-func panelOf(sum world.Summary, v game.SavePlayersView, inexact, hasSave, running bool, memory uint64) SavePlayersPanel {
+// is tested without a game. hasSave comes from the world's files
+// (the view does not say it); running and memory from the game.
+func panelOf(sum world.Summary, v game.SavePlayersView, hasSave, running bool, memory uint64) SavePlayersPanel {
 	p := SavePlayersPanel{World: sum, TrackedSince: v.TrackedSince, Running: running, Memory: memory, HaveMemory: running && memory > 0}
 	if v.GameTimeKnown {
 		p.Total, p.TotalKnown = playTime(v.GameTime), true
@@ -168,7 +164,7 @@ func panelOf(sum world.Summary, v game.SavePlayersView, inexact, hasSave, runnin
 	case game.SavePlayersReading:
 		p.Kind = playersReading
 	case game.SavePlayersReady:
-		p.Kind, p.CanRead, p.Inexact = playersReady, true, inexact
+		p.Kind, p.CanRead, p.Inexact = playersReady, true, v.Inexact
 	case game.SavePlayersTrackedOnly:
 		p.Kind, p.CanRead, p.Failure = playersTracked, true, failureWords(v.Failure)
 	case game.SavePlayersNotSupported:
@@ -187,6 +183,16 @@ func panelOf(sum world.Summary, v game.SavePlayersView, inexact, hasSave, runnin
 	return p
 }
 
+// fillSavePlayers puts the panel on a world's page: only a world this
+// Foreman can read, and only with server control (SPEC 8.14).
+func (s *server) fillSavePlayers(ctx context.Context, p *WorldPage) {
+	if s.game == nil || p.World.Newer || p.World.Unreadable {
+		return
+	}
+	panel := s.savePlayersPanel(ctx, p.World)
+	p.Players = &panel
+}
+
 // savePlayersPanel reads what the panel needs. A view that cannot be read
 // is an unavailable panel, never an error page: the Overview page works
 // without it.
@@ -203,20 +209,7 @@ func (s *server) savePlayersPanel(ctx context.Context, sum world.Summary) SavePl
 	}
 	_, hasSave, _ := s.worlds.LoadTarget(sum.ID)
 	running, memory := s.runningMemory(ctx)
-	return panelOf(sum, v, s.recordInexact(sum.ID, v), hasSave, running, memory)
-}
-
-// recordInexact reads the record's inexact flag when the list is a read's.
-func (s *server) recordInexact(id string, v game.SavePlayersView) bool {
-	if v.State != game.SavePlayersReady {
-		return false
-	}
-	b, err := s.worlds.ReadPlayersRecord(id)
-	if err != nil {
-		return false
-	}
-	rec, err := saveplayers.Parse(b, s.now())
-	return err == nil && rec.Inexact
+	return panelOf(sum, v, hasSave, running, memory)
 }
 
 // runningMemory says whether a game runs on this Foreman, and the memory it
@@ -274,7 +267,17 @@ func (s *server) handleSavePlayersRead(w http.ResponseWriter, r *http.Request, u
 		refused = msg
 	}
 	if !isHTMX(r) {
-		http.Redirect(w, r, worldPath(sum.ID)+"#"+savePlayersAnchor, http.StatusSeeOther)
+		if refused.IsZero() {
+			http.Redirect(w, r, worldPath(sum.ID)+"#"+savePlayersAnchor, http.StatusSeeOther)
+			return
+		}
+		// Without script the reason has no fragment to land in: show the page.
+		page := s.worldPage(r.Context(), sum, sum.Name, i18n.Msg{})
+		s.fillSavePlayers(r.Context(), &page)
+		if page.Players != nil {
+			page.Players.Refused = refused
+		}
+		s.page(w, r, http.StatusOK, u.Username, page)
 		return
 	}
 	p := s.savePlayersPanel(r.Context(), sum)

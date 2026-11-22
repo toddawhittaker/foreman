@@ -1,11 +1,13 @@
-{{/* The players of a save, on the world page (SPEC 8.14). The page holds the
-     panel with its heading; the panel's content loads from the world's players
-     path, and a hidden element asks again every few seconds while a read runs. */}}
+{{/* The players of a save, on the world page (SPEC 8.14). It is rendered with
+     the page, so it works without script. With script, the form and a hidden
+     poll element swap the panel's content from the players path. Dot is the
+     WorldPage; nothing shows when it has no panel. */}}
 {{define "world-players"}}
-<section class="panel" id="{{.SavePlayersAnchor}}" aria-labelledby="save-players-heading" hx-get="{{.SavePlayersPath}}" hx-trigger="load" hx-swap="innerHTML">
-  <h2 id="save-players-heading">{{t "saveplayers.heading"}}</h2>
-  <p class="hint">{{t "saveplayers.loading"}}</p>
+{{- with .Players}}
+<section class="panel" id="save-players" aria-labelledby="save-players-heading">
+{{- template "save-players-body" .}}
 </section>
+{{- end}}
 {{end}}
 
 {{/* The content of the panel, one answer for each state of the list. Dot is a

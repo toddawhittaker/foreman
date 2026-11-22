@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +34,12 @@ func viewOf(state string, players ...game.SavePlayer) game.SavePlayersView {
 
 var testWorld = world.Summary{ID: "base", Name: "Base"}
 
+// panelFor is panelOf with the view's Inexact set.
+func panelFor(sum world.Summary, v game.SavePlayersView, inexact, hasSave, running bool, memory uint64) SavePlayersPanel {
+	v.Inexact = inexact
+	return panelOf(sum, v, hasSave, running, memory)
+}
+
 func mustHave(t *testing.T, body string, want ...string) {
 	t.Helper()
 	for _, w := range want {
@@ -64,7 +68,7 @@ func TestSavePlayersReadList(t *testing.T) {
 		game.SavePlayer{Name: "Tracked", PlayTime: 95 * time.Minute, LastSeen: seen},
 		game.SavePlayer{Name: "Here", PlayTime: 30 * time.Second, Online: true, LastSeen: seen})
 	v.GameTime, v.GameTimeKnown = 301*time.Hour+5*time.Minute, true
-	body := panelHTML(t, i18n.English, panelOf(testWorld, v, false, true, false, 0))
+	body := panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, false, 0))
 	mustHave(t, body, `id="save-players-table"`, "3 players in this save", "OrcScorpion", "276 h 40 min",
 		"Played before Foreman tracked this world", "1 h 35 min", "0 min", "Online now", "Last seen", `datetime="2026-11-20T18:30:00Z"`,
 		"Total play time of this save: 301 h 5 min", `id="save-players-read"`, "Read again", `action="/worlds/base/players/read"`, `hx-target="#save-players"`)
@@ -76,20 +80,20 @@ func TestSavePlayersReadList(t *testing.T) {
 
 // SPEC 8.14: a save nobody joined says so, and a one-player list is singular.
 func TestSavePlayersNobodyAndOne(t *testing.T) {
-	body := panelHTML(t, i18n.English, panelOf(testWorld, viewOf(game.SavePlayersReady), false, true, false, 0))
+	body := panelHTML(t, i18n.English, panelFor(testWorld, viewOf(game.SavePlayersReady), false, true, false, 0))
 	mustHave(t, body, "No one has joined this save.", "Read again")
 	mustNotHave(t, body, "<table")
-	one := panelHTML(t, i18n.English, panelOf(testWorld, viewOf(game.SavePlayersReady, game.SavePlayer{Name: "Solo", PlayTime: time.Hour}), false, true, false, 0))
+	one := panelHTML(t, i18n.English, panelFor(testWorld, viewOf(game.SavePlayersReady, game.SavePlayer{Name: "Solo", PlayTime: time.Hour}), false, true, false, 0))
 	mustHave(t, one, "1 player in this save")
 }
 
 // SPEC 8.14 (drift): a record that may have missed time says so, only when
 // it is a read's list.
 func TestSavePlayersInexact(t *testing.T) {
-	body := panelHTML(t, i18n.English, panelOf(testWorld, viewOf(game.SavePlayersReady, game.SavePlayer{Name: "A", PlayTime: time.Hour}), true, true, false, 0))
+	body := panelHTML(t, i18n.English, panelFor(testWorld, viewOf(game.SavePlayersReady, game.SavePlayer{Name: "A", PlayTime: time.Hour}), true, true, false, 0))
 	mustHave(t, body, `id="save-players-inexact"`, "may be a little off", "Read again")
 	for _, st := range []string{game.SavePlayersReading, game.SavePlayersTrackedOnly, game.SavePlayersNone} {
-		p := panelOf(testWorld, viewOf(st), true, true, false, 0)
+		p := panelFor(testWorld, viewOf(st), true, true, false, 0)
 		if p.Inexact {
 			t.Errorf("state %q shows inexact", st)
 		}
@@ -99,7 +103,7 @@ func TestSavePlayersInexact(t *testing.T) {
 // SPEC 8.14, 8.16: while a read runs there is no button, the status is read
 // out, and the panel asks again by itself.
 func TestSavePlayersReading(t *testing.T) {
-	p := panelOf(testWorld, viewOf(game.SavePlayersReading), false, true, false, 0)
+	p := panelFor(testWorld, viewOf(game.SavePlayersReading), false, true, false, 0)
 	body := panelHTML(t, i18n.English, p)
 	mustHave(t, body, `role="status"`, "Reading the newest save", `hx-get="/worlds/base/players"`, `hx-trigger="every 3s"`, `hx-target="#save-players"`)
 	mustNotHave(t, body, "<button", "<table", "autofocus")
@@ -123,7 +127,7 @@ func TestSavePlayersTrackedOnly(t *testing.T) {
 	for id, want := range words {
 		v := viewOf(game.SavePlayersTrackedOnly, game.SavePlayer{Name: "Seen", PlayTime: 10 * time.Minute, LastSeen: since})
 		v.Failure, v.TrackedSince = id, since
-		body := panelHTML(t, i18n.English, panelOf(testWorld, v, false, true, false, 0))
+		body := panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, false, 0))
 		mustHave(t, body, want, `id="save-players-tracked"`, "Foreman has tracked this world since", `datetime="2026-11-21T10:05:00Z"`,
 			"Seen", "Read again")
 		mustNotHave(t, body, "Played before Foreman")
@@ -131,28 +135,28 @@ func TestSavePlayersTrackedOnly(t *testing.T) {
 	// Nobody joined since tracking began.
 	v := viewOf(game.SavePlayersTrackedOnly)
 	v.Failure, v.TrackedSince = saveplayers.ResultModsDiffer, since
-	mustHave(t, panelHTML(t, i18n.English, panelOf(testWorld, v, false, true, false, 0)), "No one has joined this save.")
+	mustHave(t, panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, false, 0)), "No one has joined this save.")
 }
 
 // SPEC 8.14, 8.16: a save nothing has read is offered a first read; a world
 // with no save says there is nothing to read and offers no button; a game
 // version that cannot be read says so and offers no button.
 func TestSavePlayersNeverNoSaveUnsupported(t *testing.T) {
-	never := panelHTML(t, i18n.English, panelOf(testWorld, viewOf(game.SavePlayersNone), false, true, false, 0))
+	never := panelHTML(t, i18n.English, panelFor(testWorld, viewOf(game.SavePlayersNone), false, true, false, 0))
 	mustHave(t, never, "has not read the players of the newest save", "Read players from the newest save")
 	mustNotHave(t, never, "Read again", "<table")
 
-	none := panelHTML(t, i18n.English, panelOf(testWorld, viewOf(game.SavePlayersNone), false, false, false, 0))
+	none := panelHTML(t, i18n.English, panelFor(testWorld, viewOf(game.SavePlayersNone), false, false, false, 0))
 	mustHave(t, none, "no save yet")
 	mustNotHave(t, none, "<button")
 
 	v := viewOf(game.SavePlayersNotSupported, game.SavePlayer{Name: "Seen", PlayTime: time.Hour})
 	v.TrackedSince = time.Date(2026, 11, 21, 10, 5, 0, 0, time.UTC)
-	un := panelHTML(t, i18n.English, panelOf(testWorld, v, false, true, false, 0))
+	un := panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, false, 0))
 	mustHave(t, un, "cannot be read from a save of this game version", "Foreman has tracked this world since", "Seen")
 	mustNotHave(t, un, "<button")
 
-	mustHave(t, panelHTML(t, i18n.English, panelOf(testWorld, viewOf(""), false, true, false, 0)), "cannot be shown right now")
+	mustHave(t, panelHTML(t, i18n.English, panelFor(testWorld, viewOf(""), false, true, false, 0)), "cannot be shown right now")
 }
 
 // SPEC 8.14: while a game runs, the button says a read needs about as much
@@ -160,22 +164,22 @@ func TestSavePlayersNeverNoSaveUnsupported(t *testing.T) {
 // nothing of memory.
 func TestSavePlayersMemoryNote(t *testing.T) {
 	v := viewOf(game.SavePlayersNone)
-	run := panelHTML(t, i18n.English, panelOf(testWorld, v, false, true, true, 6_900_000_000))
+	run := panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, true, 6_900_000_000))
 	mustHave(t, run, `aria-describedby="save-players-memory"`, `id="save-players-memory"`,
 		"as much memory as the game uses now: 6.9 GB", "Read players from the newest save")
-	noFigure := panelHTML(t, i18n.English, panelOf(testWorld, v, false, true, true, 0))
+	noFigure := panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, true, 0))
 	mustHave(t, noFigure, "as much memory as the game uses now.")
 	mustNotHave(t, noFigure, " GB", " MB")
-	stopped := panelHTML(t, i18n.English, panelOf(testWorld, v, false, true, false, 6_900_000_000))
+	stopped := panelHTML(t, i18n.English, panelFor(testWorld, v, false, true, false, 6_900_000_000))
 	mustNotHave(t, stopped, "memory", "aria-describedby")
 	// Read again carries the note too.
-	again := panelHTML(t, i18n.English, panelOf(testWorld, viewOf(game.SavePlayersReady), false, true, true, 2_000_000_000))
+	again := panelHTML(t, i18n.English, panelFor(testWorld, viewOf(game.SavePlayersReady), false, true, true, 2_000_000_000))
 	mustHave(t, again, "Read again", "2.0 GB")
 }
 
 // A refused click shows why, as an alert, above the list.
 func TestSavePlayersRefused(t *testing.T) {
-	p := panelOf(testWorld, viewOf(game.SavePlayersNone), false, true, false, 0)
+	p := panelFor(testWorld, viewOf(game.SavePlayersNone), false, true, false, 0)
 	msg, ok := readError(game.ErrSaveCopyOutOfMemory)
 	if !ok {
 		t.Fatal("ErrSaveCopyOutOfMemory is not worded")
@@ -189,7 +193,7 @@ func TestSavePlayersRefused(t *testing.T) {
 
 // SPEC 8.14: a player's name is the player's own text, never markup.
 func TestSavePlayersNameIsEscaped(t *testing.T) {
-	body := panelHTML(t, i18n.English, panelOf(testWorld, viewOf(game.SavePlayersReady,
+	body := panelHTML(t, i18n.English, panelFor(testWorld, viewOf(game.SavePlayersReady,
 		game.SavePlayer{Name: `<script>alert(1)</script>`, PlayTime: time.Hour}), false, true, false, 0))
 	mustNotHave(t, body, "<script>")
 	mustHave(t, body, "&lt;script&gt;")
@@ -207,7 +211,7 @@ func TestSavePlayersInEveryLanguage(t *testing.T) {
 	}
 	for _, loc := range i18n.Languages {
 		for _, v := range views {
-			p := panelOf(testWorld, v, true, true, true, 3_000_000_000)
+			p := panelFor(testWorld, v, true, true, true, 3_000_000_000)
 			p.Refused = failureWords(saveplayers.ResultBadOutput)
 			body := panelHTML(t, loc.Tag, p)
 			if strings.Contains(body, "saveplayers.") || strings.Contains(body, "common.") {
@@ -217,14 +221,20 @@ func TestSavePlayersInEveryLanguage(t *testing.T) {
 	}
 }
 
-// SPEC 8.14: the world page holds the panel's place and its anchor, for the
-// Server page's link; the body loads from the players path.
-func TestWorldPageHoldsThePlayersPanel(t *testing.T) {
+// SPEC 8.14: the world page renders the panel with the page, so it works
+// without script: the heading and the content, with no request for them. With no game
+// on this Foreman the page has no panel.
+func TestWorldPageRendersThePlayersPanel(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	page := g.get(worldPath(id))
+	mustHave(t, page, `<section class="panel" id="save-players"`, `id="save-players-heading"`, "Players in this save")
+	mustNotHave(t, page, `hx-get="/worlds/`+id+`/players"`)
+
 	hn := newHarness(t, nil)
 	c := hn.signIn()
-	id := hn.seedSnapshotWorld()
-	page := hn.get(worldPath(id), withCookie(c)).Body.String()
-	mustHave(t, page, `id="save-players"`, "Players in this save", `hx-get="/worlds/`+id+`/players"`, `hx-trigger="load"`, `hx-swap="innerHTML"`)
+	none := hn.seedSnapshotWorld()
+	mustNotHave(t, hn.get(worldPath(none), withCookie(c)).Body.String(), `id="save-players"`, "Players in this save")
 }
 
 // SPEC 8.14: the panel and its button are the signed-in admin's; without a
@@ -273,39 +283,5 @@ func TestPlayTime(t *testing.T) {
 		if got := i18n.English.Format(playTime(d)); got != want {
 			t.Errorf("playTime(%v) = %q, want %q", d, got, want)
 		}
-	}
-}
-
-// SPEC 8.14 (drift): the page learns that a record is inexact from the
-// record itself, and a record Foreman cannot read counts as missing.
-func TestRecordInexactFromTheFile(t *testing.T) {
-	hn := newHarness(t, nil)
-	id := hn.seedSnapshotWorld()
-	s := &server{worlds: hn.worlds, now: hn.clock.Now}
-	ready := game.SavePlayersView{State: game.SavePlayersReady}
-	if s.recordInexact(id, ready) {
-		t.Error("no record counted as inexact")
-	}
-	at := hn.clock.Now()
-	rec := saveplayers.Record{FormatVersion: saveplayers.FormatVersion, Basis: saveplayers.Basis{Save: "a.zip", Size: 1, Modified: at}, AsOf: at, TrackedSince: at, Inexact: true,
-		Seed: saveplayers.SeedInfo{At: at, Save: "a.zip", Result: saveplayers.ResultOK}}
-	b, err := rec.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := hn.worlds.WritePlayersRecord(id, b); err != nil {
-		t.Fatal(err)
-	}
-	if !s.recordInexact(id, ready) {
-		t.Error("an inexact record was not seen as inexact")
-	}
-	if s.recordInexact(id, game.SavePlayersView{State: game.SavePlayersReading}) {
-		t.Error("only a read's list can be inexact")
-	}
-	if err := os.WriteFile(filepath.Join(hn.worlds.Dirs().Worlds, id, world.PlayersFile), []byte("{not json"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if s.recordInexact(id, ready) {
-		t.Error("an unreadable record counted as inexact")
 	}
 }
