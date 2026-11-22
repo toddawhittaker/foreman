@@ -23,9 +23,6 @@ const (
 	// maxChartLine bounds one line of the chart file. A chunk's data is at most
 	// about 2.2 KB compressed, so a line is well under 4 KB.
 	maxChartLine = 16 << 10
-	// maxChunkCoord bounds a manifest bound in chunks; the game's maps end
-	// far inside it, and it keeps the pixel arithmetic inside an int.
-	maxChunkCoord = 1 << 24
 )
 
 // chartLine is one line of the chart file.

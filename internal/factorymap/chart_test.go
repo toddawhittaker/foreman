@@ -306,7 +306,7 @@ func TestDrawChartManyChunksInOnePixel(t *testing.T) {
 			fmt.Fprintf(&in, `{"x":%d,"y":%d,%s`, x, y, data)
 		}
 	}
-	img, _, err := drawChart(ms(65536, 0, 0, 1<<24, 255), strings.NewReader(in.String()))
+	img, _, err := drawChart(ms(65536, 0, 0, maxChunkCoord, 255), strings.NewReader(in.String()))
 	if err != nil {
 		t.Fatal(err)
 	}
