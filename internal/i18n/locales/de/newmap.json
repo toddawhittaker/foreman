@@ -1,0 +1,33 @@
+{
+  "newmap.title": "Karteneinstellungen",
+  "newmap.intro": "Wähle, wie die Karte von {name} entsteht. Sie entsteht beim ersten Start der Welt; bis dahin kannst du diese Einstellungen noch ändern.",
+  "newmap.steps.label": "Schritte zur neuen Welt",
+  "newmap.steps.world": "1. Welt",
+  "newmap.steps.mods": "2. Mods",
+  "newmap.steps.map": "3. Karteneinstellungen",
+  "newmap.loading": "Die Planeten aus den Mods dieser Welt werden gelesen. Beim ersten Mal kann das bis zu einer Minute dauern.",
+  "newmap.loading_label": "Planeten werden gelesen",
+  "newmap.loading_link": "Karteneinstellungen anzeigen, sobald sie bereit sind",
+  "newmap.to_world": "Zur Welt",
+  "newmap.why.unreadable": "Die world.json dieser Welt kann nicht gelesen werden, daher lassen sich ihre Karteneinstellungen hier nicht festlegen.",
+  "newmap.why.newer": "Eine neuere Foreman-Version hat diese Welt geschrieben, daher kann diese Version ihre Karteneinstellungen nicht ändern.",
+  "newmap.why.archived": "Diese Welt ist archiviert. Hole sie zuerst aus dem Archiv, um ihre Karteneinstellungen festzulegen.",
+  "newmap.why.made": "Die Karte dieser Welt ist bereits erstellt, daher können Karteneinstellungen sie nicht mehr ändern.",
+  "newmap.why.version": "Foreman kann für Spielversion {version} keine Karteneinstellungen anzeigen.",
+  "newmap.builtin.refused": "Die Planetenliste aus den Mods dieser Welt war nicht verwendbar, daher werden nur die Planeten des Spiels gezeigt. Deren Einstellungen funktionieren weiterhin.",
+  "newmap.builtin.missing": "Das Spiel hat die Planeten der Mods dieser Welt nicht gemeldet, daher werden nur die Planeten des Spiels gezeigt. Deren Einstellungen funktionieren weiterhin.",
+  "newmap.builtin.failed": "Die Planeten der Mods dieser Welt konnten nicht gelesen werden, daher werden nur die Planeten des Spiels gezeigt. Deren Einstellungen funktionieren weiterhin. Prüfe die Mods der Welt oder versuche es später erneut.",
+  "newmap.done": "Die Karteneinstellungen von {name} sind gespeichert. Die Karte entsteht daraus beim ersten Start der Welt.",
+  "newmap.next": "Weiter: zur Welt",
+  "newmap.save": "Karteneinstellungen speichern",
+  "newmap.error.running": "Der Server dieser Welt startet oder läuft, und der erste Start erstellt die Karte. Stoppe den Server, bevor du die Karteneinstellungen änderst.",
+  "newmap.error.busy": "Ein anderer Vorgang arbeitet an dieser Welt. Versuche es erneut, wenn er beendet ist.",
+  "newmap.error.exchange_other_line": "Dieser String stammt von Factorio {version}, diese Welt nutzt aber {game}. Ein String funktioniert nur mit einer Spielversion derselben Reihe (1.1, 2.0 oder 2.1). Ändere die Spielversion der Welt auf ihrer Seite oder füge einen anderen String ein.",
+  "newmap.exchange.summary": "Aus einem Kartenaustausch-String füllen",
+  "newmap.exchange.hint": "Exportiere ihn aus dem Kartengenerator von Factorio und füge ihn hier ein. Er beginnt mit >>> und endet mit <<<. Seine Einstellungen ersetzen die unten, die du danach noch ändern kannst.",
+  "newmap.exchange.button": "Einstellungen füllen",
+  "newmap.gone.text": {
+    "one": "Die gespeicherten Einstellungen nennen diese Steuerung, die die Mods der Welt nicht mehr hinzufügen. Beim Speichern fällt sie weg.",
+    "other": "Die gespeicherten Einstellungen nennen diese Steuerungen, die die Mods der Welt nicht mehr hinzufügen. Beim Speichern fallen sie weg."
+  }
+}
