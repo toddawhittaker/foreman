@@ -1,8 +1,8 @@
 package game
 
 import (
+	"github.com/toddawhittaker/foreman/internal/factorymap"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,9 +16,6 @@ const (
 	// FactoryMapStoppedFor is how long a world must have been stopped
 	// before it is drawn automatically.
 	FactoryMapStoppedFor = 2 * time.Minute
-	// factoryMapsDir is the folder of the data directory that holds the
-	// kept pictures.
-	factoryMapsDir = "factorymaps"
 )
 
 // factoryMapLoop draws the factory map of every world whose mode is
@@ -30,8 +27,11 @@ func (c *Controller) factoryMapLoop() {
 	if every <= 0 {
 		every = factoryMapEvery
 	}
-	// Pictures of worlds deleted while Foreman was down go first.
-	c.sweepFactoryMaps()
+	// Pictures of worlds deleted while Foreman was down go first; a delete
+	// while it runs removes its own (ForgetFactoryMap).
+	if err := factorymap.Sweep(c.dataDir(), c.worldExists); err != nil {
+		c.log.Warn("the factory maps of deleted worlds could not all be removed", "error", err)
+	}
 	tick := time.NewTicker(every)
 	defer tick.Stop()
 	for {
@@ -48,7 +48,6 @@ func (c *Controller) factoryMapLoop() {
 // is in flight: they share the one preview slot, and a later look starts the
 // next.
 func (c *Controller) factoryMapTick() {
-	c.sweepFactoryMaps()
 	ids, err := c.worldIDs()
 	if err != nil {
 		c.log.Warn("the factory map loop could not list the worlds", "error", err)
@@ -172,25 +171,4 @@ func (c *Controller) worldIDs() ([]string, error) {
 		}
 	}
 	return ids, nil
-}
-
-// sweepFactoryMaps removes the kept pictures of worlds that no longer exist
-// (SPEC 5.16).
-func (c *Controller) sweepFactoryMaps() {
-	entries, err := os.ReadDir(filepath.Join(c.dataDir(), factoryMapsDir))
-	if err != nil {
-		return
-	}
-	for _, e := range entries {
-		id := e.Name()
-		if !world.ValidID(id) {
-			continue
-		}
-		if c.worldExists(id) {
-			continue
-		}
-		if err := c.removeFactoryMap(id); err != nil {
-			c.log.Warn("the factory map of a deleted world could not be removed", "world", id, "error", err)
-		}
-	}
 }
