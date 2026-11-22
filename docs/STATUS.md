@@ -19,8 +19,8 @@ open (see its section). Epic 9c (public mods and autosave tidy), Epic
 was split on 2026-11-18: Epic 11a (sign-in, audit log, archive, settings and
 users) is built, with its gate on the trial deployment still to run, and
 Epic 11b (the release and Gate C) is next. Fixes batch 13 (three issues from
-checking Epic 11a on the trial deployment) is done, and so are fixes batches 14 and
-15.
+checking Epic 11a on the trial deployment) is done, and so are fixes batches 14,
+15 and 16. Epic 12 (modded planets and guided Generate) is built.
 Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
 now, at Todd's choice, when the Mod settings epic started; it is still owed
 before Gate C.
@@ -4872,3 +4872,167 @@ epic pull request.
   Import page. A staged file that fails a version check stays until the
   hourly cleanup.
 - **The fake game's players setting is per process**, not per world.
+
+## Epic 12: Modded planets and guided Generate
+
+Serves SPEC 5.6, 5.7, 5.12, 7.4, 9.6, 9.14, 11.5, 14.3, 14.6, 17.10, 17.19,
+18.12, 21.7 and 23.2, with DESIGN 8.6 and 8.8 and ADR 0033. Issue #775. The
+plan was #839. The task pull requests were #840 to #853 and #855 to #866.
+
+Rulings (Todd, 2026-11-22, then the plan's own):
+
+1. Generate is three steps: the world, its mods, then its map settings.
+   Step 1 always lands on step 2, with a way to skip to step 3, so the
+   3-click budget for generating with the defaults stays.
+2. A world with no save and a pending `new_map` is "Unfinished". That is
+   derived, never stored. Foreman never deletes one, and Continue opens
+   step 2 while mod picks are left, otherwise step 3.
+3. The planet list comes from the world's mod-settings run and replaces the
+   embedded list. It is one run and one cache, under the same key as the
+   settings.
+4. The fast preview, territories and resource counts load the world's mods
+   (ADR 0033). On 2.1 an opt-in real-game picture draws a planet from a
+   real game with `--test-save`. It is kept in memory, with no disk store.
+5. MCP and REST gain `get_new_map` and `set_new_map`.
+6. Saving step 3 takes no snapshot, because the world has no save.
+
+### Delivered
+
+- **Planet catalogue (SPEC 5.6, 14.6; #840, #844).** `mapgen.Catalogue`
+  holds a world's planets, controls and resources. `Builtin` wraps the
+  embedded data. `ParseWorldPlanets` checks a world's file under 14.6: at
+  most 1 MiB, 64 planets, 512 controls, 128 per planet and 512 resources;
+  names matching `^[a-z0-9_-]{1,64}$`; a planet default kept only when it
+  is finite and from 0 to 1000; invisible Unicode removed; rich-text tags
+  removed and names cut to 100 characters.
+- **The mod-settings run exports the planets (SPEC 9.6; #843).** The same
+  run writes `planets.json`, and both are cached under one key.
+  `Controller.WorldCatalogue(ctx, id, lang)` is the one entry point. A world
+  whose mods are all built in gets the embedded list with no run. A failed
+  or refused run gives the embedded list plus the reason.
+- **Previews with the world's mods (SPEC 14.3, ADR 0033; #842, #848, #850).**
+  Preview, territory and resource runs take a world. Its mods are
+  hard-linked into the work folder, with `mod-list.json` and
+  `mod-settings.dat` copied. The limits are 1 GiB and 60 seconds for each
+  planet drawn, at most 10 minutes in all. A world mod named like Foreman's
+  helper mod refuses the run. The server checks planets against the stored
+  catalogue, never against the form. The preview store holds 160 MiB. The
+  preview, mod-settings and picture runs share one work-folder fill and one
+  map-creation script.
+- **Step 3 save (SPEC 5.6, 12.9; #841, #849).** `world.SetNewMap` writes or
+  removes the map files and updates `new_map` for a world with no save,
+  under the world's lock and with no snapshot. It is refused while the
+  world's server is starting, running, stopping, crashed or crash-looping,
+  checked under the lock. Each save is audited as `new-map`.
+- **The map form from a catalogue (#847).** `MapForm` is built from a
+  catalogue, and the map exchange string moved with it.
+- **Step 3 page (SPEC 5.6, 11.5, 17.19; #852).** `/worlds/{id}/new-map`, for
+  an Unfinished world only. It has the step bar, "Fill from a map exchange
+  string" (a string from another game line is refused, with a link to the
+  world), a list of controls the mods no longer have, a wait on the server
+  without script, and a form loaded after the page with script. Saving is
+  refused while the embedded planets stand in for a world that has mods of
+  its own.
+- **Labels and notes (#855, #860).** A planet or control that Foreman knows
+  keeps Foreman's translated name; a mod's label is used only for names it
+  does not know. A shared control shows "Also changes *planet*" and is
+  written once. A planet's own default, such as 15000%, is where the select
+  starts, and is written back unchanged unless moved. The fast preview says
+  what it cannot show, notes a picture of almost one color, and says when it
+  fell back to the embedded planets. A mod named like the helper mod has its
+  own message.
+- **Step 2 (SPEC 5.6, 9.14; #853).** For an Unfinished world the Mods tab
+  and the review show the step bar, "Skip to map settings" and, after an
+  install, "Next: map settings".
+- **Step 1 and Unfinished worlds (SPEC 5.6, 5.7, 5.12, 17.10; #863).**
+  `/generate` asks only for the name, version, Space Age, favorite and image
+  download, and lands on step 2. An "Unfinished" badge and a Continue link
+  show on the Worlds list and the world page. `generate_world` keeps its
+  arguments and results. Generating with the defaults is still 3 clicks.
+- **The real-game picture (SPEC 5.6, 14.3, 14.6; #845, #859).**
+  `Controller.Chart` runs `--create` and then `--test-save` in one container
+  (1 GiB, 90 seconds, radius 16) with a control-only helper mod, and draws
+  the result as the factory map does. The output is checked: one planet, at
+  most 1,024 chunks of 32 by 32 pixels, at most 4 MiB. Step 3 of a 2.1 world
+  offers "Draw from a real game", with a caption, "Back to the fast preview"
+  and a toggletip. Busy, timeout and out of memory each have their own
+  sentence. The picture is kept in the preview store by the planet's
+  settings, the seed, the mods, the game version and the planet.
+- **Stale controls (SPEC 7.4; #851).** The pre-start check refuses an
+  Unfinished world whose saved map settings name a control its mods no longer
+  have, with a link to step 3. It reads the catalogue cache only.
+- **MCP and REST (SPEC 21.7, 23.2; #849, #860).** `get_new_map` (an admin
+  tool) reports a world's planets, their controls, what each supports and
+  the saved values, at each planet's own default. `set_new_map` takes a
+  preset, a seed, control values or an exchange string, refuses an unknown
+  planet or control by name, and writes through `SetNewMap`. Percentages are
+  numbers, so 12.5 works.
+- **Tests.** Hostile-input tests cover the planet file and the picture
+  output. The fake game answers a planet run with one extra planet and
+  control when the world holds `fake-planet`. About twenty existing e2e
+  specs moved onto step 3 (#856, #858). New specs cover the flow
+  (`generate-flow`, `generate-mods-step`), step 3 (`newmap`), modded planets
+  (`modded-planets`), the real-game picture (`real-game-picture`) and stale
+  controls (`newmap-stale`). Real-game tests cover the picture's real terrain
+  on 2.1.24 and its refusal on 2.0.77 (#846), and a pass on 1.1.110, 2.0.77
+  and 2.1.24 with five planet mods (#862): the catalogue (11 planets, 46
+  controls and 28 resources), fast previews of all 11 planets (2.4 to 3.1
+  seconds each, at most 657 MiB), resource counts and territories with the
+  world's mods, step 3's settings reaching the first map (including a shared
+  control and Moshine's default of 150), and the refusal after a planet mod
+  is removed. The same pass found that `--create` ignores `autoplace_settings`
+  names from a removed mod, so the stale-controls check needs no extension.
+- **Translations (SPEC 22.6; #865).** New and changed strings are in all
+  eight languages. A second review fixed 61 keys in `server`, `newmap`,
+  `mapgen` and `audit`. PLACEHOLDER: the second review of `worlds`, `mods`
+  and `js`, to be filled in when its pull request merges.
+- **Flaky tests fixed on the epic (#857, #861, #864, #866).** #857 added a missing
+  `{count}` to a plural string that CI refused. #861, #864 and #866 fixed races in tests. None was
+  a product bug.
+
+Verified: each task with `make verify` and the e2e specs for the files it
+touched; CI's full run on each push to the epic branch; the real-game pass
+on 1.1.110, 2.0.77 and 2.1.24 with five planet mods (#862); and the picture's
+real-game test on 2.1.24 (#846). The full checks on the fold head are in the
+epic pull request.
+
+### Gaps left
+
+- **A world with no `mods/mod-list.json` skips the stale-controls check.** The
+  first start writes that file under the lock, which changes the cache key.
+  This is rare, and `--create` then fails without writing a save, so nothing
+  is lost.
+- **The Server page's Done box has no "Next: map settings".** An Unfinished
+  world that is also the active world ends a mod change there, and
+  `server.html` has no link to step 3.
+- **The real-game picture needs script.** It is an extra; the fast preview
+  works without script.
+- **Real-game pictures are dropped lazily.** A world's pictures go on the
+  next picture request once its map is made, not at that moment. A restart
+  loses them all.
+- **On a pane 100rem or wider, a language whose Download and real-game labels
+  together are wider than the pane wraps that line without the reserved
+  room.** The pane then scrolls a little, as it does when the picture is at
+  its smallest.
+- **No real-game test covers a start after `set_new_map`, or a start from a
+  1.1 world's step 3.** The first has unit and fake-game tests only. For 1.1,
+  only the catalogue is checked for real.
+- **`set_new_map` covers the preset, the seed and the planet controls only.**
+  It does not set map size, starting area, enemy switches, terrain type or the
+  map-settings fields.
+- **Modded resources have no map colour,** because nothing in the planet
+  file carries one. They are listed and counted under their own names.
+- **The mod settings page (SPEC 9.6) still has no path without script
+  (#838).** Step 3 has one.
+- **Left out, as planned:** map presets that mods add; achievement warnings
+  for modded enemy controls; changing map settings after the first start
+  (#207); real-game pictures on 2.0; a radius of 32 for the picture; sharing
+  the viewer code with the factory map (#833); offset panning of the preview
+  window; and a disk store for real-game pictures.
+- **The planet-mod real-game tests need the folders of zips** named in
+  `FOREMAN_TEST_PLANET_MODS` (2.1) and `FOREMAN_TEST_PLANET_MODS_2_0` (2.0),
+  and skip without them.
+- **`main` has the same three flaky tests that are fixed here.** The two
+  timing tests for out-of-memory and refused stops (#861), the chat test's
+  background `/time` (#864) and the click counter's reload (#866) are fixed on
+  the epic branch only, and reach `main` with the epic.
