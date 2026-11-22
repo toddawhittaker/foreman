@@ -106,6 +106,7 @@
 <form method="post" action="{{.WorldFilePath}}" enctype="multipart/form-data" class="panel import-world-file" novalidate aria-labelledby="world-file-heading">
   <h2 id="world-file-heading">{{t "worldfile.import.heading"}}</h2>
   <p>{{t "worldfile.import.intro"}}</p>
+  {{template "required-note"}}
   {{template "dropzone" .WorldFileZone}}
   <div class="actions">
     <button type="submit" class="button" id="act-upload-world-file">{{t "worldfile.import.button"}}</button>

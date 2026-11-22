@@ -13,6 +13,5 @@
   "worldfile.export.button": "Welt exportieren",
   "worldfile.import.heading": "Weltdatei importieren",
   "worldfile.import.intro": "Lade eine Datei hoch, die mit „Welt exportieren“ in einem anderen Foreman erstellt wurde. Du siehst, was sie enthält, bevor etwas importiert wird.",
-  "worldfile.import.label": "Weltdatei",
   "worldfile.import.button": "Weltdatei hochladen"
 }

@@ -13,6 +13,5 @@
   "worldfile.export.button": "导出世界",
   "worldfile.import.heading": "导入世界文件",
   "worldfile.import.intro": "上传在另一个 Foreman 中用“导出世界”生成的文件。导入前会先显示文件中的内容。",
-  "worldfile.import.label": "世界文件",
   "worldfile.import.button": "上传世界文件"
 }

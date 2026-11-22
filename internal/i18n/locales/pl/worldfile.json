@@ -13,6 +13,5 @@
   "worldfile.export.button": "Eksportuj świat",
   "worldfile.import.heading": "Import pliku świata",
   "worldfile.import.intro": "Należy przesłać plik utworzony przez „Eksportuj świat” w innym Foremanie. Przed zaimportowaniem pokazane zostanie, co zawiera.",
-  "worldfile.import.label": "Plik świata",
   "worldfile.import.button": "Prześlij plik świata"
 }

@@ -7,7 +7,7 @@
     <p class="hint" id="export-hint">{{t "worldfile.export.text"}}{{if not .World.SizeUnknown}} {{t "worldfile.export.size" "size" (bytes .World.DiskBytes)}}{{end}}</p>
   </div>
   <div class="world-share__body">
-    <fieldset aria-describedby="export-running">
+    <fieldset>
       <legend>{{t "worldfile.export.saves.legend"}}</legend>
       <label class="check"><input type="radio" id="export-saves-all" name="saves" value="all" checked> {{t "worldfile.export.saves.all"}}</label>
       <label class="check"><input type="radio" id="export-saves-loaded" name="saves" value="loaded" aria-describedby="export-saves-loaded-hint"> {{t "worldfile.export.saves.loaded"}}</label>
