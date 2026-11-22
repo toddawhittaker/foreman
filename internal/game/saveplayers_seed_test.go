@@ -178,7 +178,7 @@ func TestSavePlayersReadsAStoppedWorldByItself(t *testing.T) {
 		t.Fatalf("players %+v", v.Players)
 	}
 	rec, ok := r.record()
-	if !ok || rec.Seed.Result != saveplayers.ResultOK || rec.Basis != r.basis(r.id) {
+	if !ok || rec.Seed.Result != saveplayers.ResultOK || !sameBasis(rec.Basis, r.basis(r.id)) {
 		t.Fatalf("record %+v (present %v)", rec, ok)
 	}
 }
@@ -524,12 +524,13 @@ func TestCheckResult(t *testing.T) {
 		{[]world.ProblemKind{world.ProblemModGameVersion}, saveplayers.ResultModsDiffer},
 		{[]world.ProblemKind{world.ProblemModMissing, world.ProblemSaveNewer}, saveplayers.ResultSaveNewer},
 		{[]world.ProblemKind{world.ProblemSaveUnreadable}, ""},
+		{[]world.ProblemKind{world.ProblemModListSpaceAge}, saveplayers.ResultModsDiffer},
 	} {
 		var p world.PreCheck
 		for _, k := range tc.kinds {
 			p.Problems = append(p.Problems, world.Problem{Kind: k})
 		}
-		if got := checkResult(p); got != tc.want {
+		if got := checkResult(p, false); got != tc.want {
 			t.Errorf("%v: %q, want %q", tc.kinds, got, tc.want)
 		}
 	}
@@ -578,4 +579,102 @@ func TestSavePlayersRecordForAnotherSaveIsReadAgain(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A world with no mod-list.json yet (never started, a fresh import) is read
+// against the list EnsureModList would write, and no file is written for it.
+func TestSavePlayersWorldWithNoModList(t *testing.T) {
+	r := &seedRig{rig: newRig(t, rigOptions{})}
+	r.id = r.newWorld("Fresh")
+	list := filepath.Join(r.worldDir(r.id), world.ModsDir, world.ModListFile)
+	if _, err := os.Lstat(list); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("the test world has a mod list: %v", err)
+	}
+	r.c.seeds.read = func(ctx context.Context, id string) (saveplayers.Basis, []byte, error) {
+		r.mu.Lock()
+		r.calls++
+		r.mu.Unlock()
+		// The game, given the default list, loads base and the always-on
+		// recycler and leaves the Space Age mods off.
+		b, _ := json.Marshal(map[string]any{
+			"format": 1, "game_version": "2.1.24", "tick": 60,
+			"active_mods": []map[string]string{{"name": "base", "version": "2.1.24"}, {"name": "recycler", "version": "2.1.24"}},
+			"players":     []map[string]any{{"name": "Fresh", "online_ticks": 60}},
+		})
+		return r.basis(id), b, nil
+	}
+	v := r.view()
+	if r.count() == 0 || v.Failure == saveplayers.ResultModsDiffer {
+		t.Fatalf("%d reads, view %+v; want a read and no mods-differ", r.count(), v)
+	}
+	if _, err := os.Lstat(list); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("the read wrote the world's mod list: %v", err)
+	}
+}
+
+func TestWithDefaults(t *testing.T) {
+	mods := []world.InstalledMod{
+		{Name: "base", Enabled: true, BuiltIn: true},
+		{Name: "space-age", Enabled: true, BuiltIn: true},
+		{Name: "flib", Enabled: true},
+	}
+	got := withDefaults(mods, map[string]bool{"base": true, "space-age": false})
+	if !got[0].Enabled || got[1].Enabled || !got[2].Enabled || !mods[1].Enabled {
+		t.Fatalf("%+v (input %+v)", got, mods)
+	}
+	if !withDefaults(mods, nil)[1].Enabled {
+		t.Fatal("a world with a list must keep its own")
+	}
+}
+
+// A refused record shows as none and a read by itself may replace it; a
+// record from a newer Foreman is replaced only on a click, so a downgrade
+// does not lose it.
+func TestSavePlayersRefusedAndNewerRecords(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		body     string
+		autoRead bool
+	}{
+		{"refused", `{"format_version": 1, "players": "nope"}`, true},
+		{"not JSON", `not json`, true},
+		{"newer", `{"format_version": 99, "something_new": true}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newSeedRig(t)
+			r.out = func(id string) (saveplayers.Basis, []byte, error) {
+				return saveplayers.Basis{}, nil, context.Canceled // keep the file as it is
+			}
+			if err := r.worlds.WritePlayersRecord(r.id, []byte(tc.body)); err != nil {
+				t.Fatal(err)
+			}
+			v, err := r.c.SavePlayers(context.Background(), r.id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r.waitIdle()
+			if len(v.Players) != 0 || v.Failure != "" {
+				t.Fatalf("view %+v, want nothing from the record", v)
+			}
+			if got := r.count() == 1; got != tc.autoRead {
+				t.Fatalf("%d reads by itself, want a read: %v", r.count(), tc.autoRead)
+			}
+			if !tc.autoRead && v.State != SavePlayersNone {
+				t.Fatalf("state %q, want none", v.State)
+			}
+			if err := r.c.ReadSavePlayersAgain(context.Background(), r.id, admin); err != nil {
+				t.Fatal(err)
+			}
+			r.waitIdle()
+			if want := map[bool]int{true: 2, false: 1}[tc.autoRead]; r.count() != want {
+				t.Fatalf("%d reads after the click, want %d", r.count(), want)
+			}
+		})
+	}
+}
+
+// sameBasis compares two bases with the time's instant, not its location: a
+// record read back is in UTC.
+func sameBasis(a, b saveplayers.Basis) bool {
+	return a.Save == b.Save && a.Size == b.Size && a.Modified.Equal(b.Modified)
 }

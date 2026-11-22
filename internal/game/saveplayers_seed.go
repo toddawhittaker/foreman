@@ -2,9 +2,12 @@ package game
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
+	"path"
+	"slices"
 	"sync"
 	"time"
 
@@ -100,11 +103,13 @@ func (c *Controller) SavePlayers(ctx context.Context, id string) (SavePlayersVie
 	if !found {
 		return SavePlayersView{State: SavePlayersNone}, nil
 	}
-	rec, have := c.readPlayersRecord(id)
+	rec, have, newer := c.readPlayersRecord(id)
 	matches := have && sameSave(rec.Basis, target)
 	due := !matches || rec.Inexact
 	reading := c.seedRunning(id)
-	if !reading && due && c.noGameRuns() {
+	// A record from a newer Foreman is replaced only on a click, so a
+	// downgrade does not lose it.
+	if !reading && due && !newer && c.noGameRuns() {
 		reading = c.startSeed(id)
 	}
 	v := SavePlayersView{State: SavePlayersNone, Save: target.Name}
@@ -139,21 +144,32 @@ func (c *Controller) ReadSavePlayersAgain(ctx context.Context, id string, by Act
 }
 
 // readPlayersRecord returns the world's record, and false when there is none
-// or it cannot be read; either way a read replaces it.
-func (c *Controller) readPlayersRecord(id string) (saveplayers.Record, bool) {
+// or it is refused; a read by itself may then replace it. newer is true when
+// the record is from a newer Foreman, which only a click replaces.
+func (c *Controller) readPlayersRecord(id string) (rec saveplayers.Record, ok, newer bool) {
 	b, err := c.worlds.ReadPlayersRecord(id)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			c.log.Warn("cannot read the players record", "world", id, "err", err)
 		}
-		return saveplayers.Record{}, false
+		return saveplayers.Record{}, false, false
 	}
-	rec, err := saveplayers.Parse(b)
+	rec, err = saveplayers.Parse(b)
 	if err != nil {
-		c.log.Warn("the players record is not valid", "world", id, "err", err)
-		return saveplayers.Record{}, false
+		newer = newerRecord(b)
+		c.log.Warn("the players record is refused", "world", id, "newer", newer, "err", err)
+		return saveplayers.Record{}, false, newer
 	}
-	return rec, true
+	return rec, true, false
+}
+
+// newerRecord reports whether b names a format_version newer than this
+// Foreman writes.
+func newerRecord(b []byte) bool {
+	var doc struct {
+		FormatVersion int `json:"format_version"`
+	}
+	return json.Unmarshal(b, &doc) == nil && doc.FormatVersion > saveplayers.FormatVersion
 }
 
 // savePlayersView turns a record that matches the save into the page's view.
@@ -273,7 +289,12 @@ func (c *Controller) seedRecord(ctx context.Context, id string) (saveplayers.Rec
 		c.log.Warn("cannot check the save before the players read", "world", id, "err", err)
 		return saveplayers.Record{}, false
 	}
-	if result := checkResult(check); result != "" {
+	defaults, err := c.defaultModList(id)
+	if err != nil {
+		c.log.Warn("cannot read the world's mod list before the players read", "world", id, "err", err)
+		return saveplayers.Record{}, false
+	}
+	if result := checkResult(check, defaults != nil); result != "" {
 		return saveplayers.Failed(result, basis, c.now()), true
 	}
 	read := c.seeds.read
@@ -303,7 +324,7 @@ func (c *Controller) seedRecord(ctx context.Context, id string) (saveplayers.Rec
 		c.log.Warn("cannot read the world's mods after the players read", "world", id, "err", err)
 		return saveplayers.Record{}, false
 	}
-	if !sameMods(seed.Mods, mods) {
+	if !sameMods(seed.Mods, withDefaults(mods, defaults)) {
 		return saveplayers.Failed(saveplayers.ResultModsDiffer, basis, c.now()), true
 	}
 	return saveplayers.FromSeed(seed, basis, c.now()), true
@@ -321,17 +342,74 @@ func (c *Controller) readSavePlayers(ctx context.Context, id string) (saveplayer
 	return basis, out, err
 }
 
+// defaultModList returns, by name, whether each mod is on in the
+// mod-list.json EnsureModList would write, when the world has none yet; nil
+// when it has one. Nothing is written: the run's work folder gets the same
+// default list (LinkModsInto), so the game loads the mods it names.
+func (c *Controller) defaultModList(id string) (map[string]bool, error) {
+	root, err := c.worlds.OpenWorld(id)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	if _, err := root.Lstat(path.Join(world.ModsDir, world.ModListFile)); !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	meta, err := world.ReadMeta(root)
+	if err != nil {
+		return nil, err
+	}
+	var doc struct {
+		Mods []struct {
+			Name    string `json:"name"`
+			Enabled bool   `json:"enabled"`
+		} `json:"mods"`
+	}
+	if err := json.Unmarshal(world.DefaultModList(meta.GameVersion, meta.SpaceAge), &doc); err != nil {
+		return nil, err
+	}
+	on := map[string]bool{}
+	for _, m := range doc.Mods {
+		on[m.Name] = m.Enabled
+	}
+	return on, nil
+}
+
+// withDefaults turns each built-in mod on or off as the default list would,
+// for a world with no mod-list.json (defaults not nil). A mod the default
+// list does not name stays on, as the game turns it on.
+func withDefaults(mods []world.InstalledMod, defaults map[string]bool) []world.InstalledMod {
+	if defaults == nil {
+		return mods
+	}
+	out := slices.Clone(mods)
+	for i, m := range out {
+		if on, ok := defaults[m.Name]; ok {
+			out[i].Enabled = on
+		} else {
+			out[i].Enabled = true
+		}
+	}
+	return out
+}
+
 // checkResult is the failure id the pre-start check gives before any run
 // (SPEC 8.16): a save newer than the world's game, or mods that differ.
-// Other problems are left to the run.
-func checkResult(p world.PreCheck) string {
+// Other problems are left to the run. A world with no mod-list.json yet
+// (noList) gets the default list at its first start, so the check's
+// complaint about the missing list is not a difference.
+func checkResult(p world.PreCheck, noList bool) string {
 	result := ""
 	for _, pr := range p.Problems {
 		switch pr.Kind {
 		case world.ProblemSaveNewer:
 			return saveplayers.ResultSaveNewer
+		case world.ProblemModListSpaceAge:
+			if !noList {
+				result = saveplayers.ResultModsDiffer
+			}
 		case world.ProblemModMissing, world.ProblemModDisabled, world.ProblemSpaceAgeOff,
-			world.ProblemModListSpaceAge, world.ProblemModGameVersion:
+			world.ProblemModGameVersion:
 			result = saveplayers.ResultModsDiffer
 		}
 	}
