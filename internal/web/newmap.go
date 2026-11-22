@@ -383,16 +383,15 @@ func (s *server) handleNewMapSave(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 	if s.game != nil {
-		switch s.game.Status(p.World.ID).State {
-		case game.StateRunning, game.StateStarting:
-			p.SaveError = i18n.M("newmap.error.running")
-			s.page(w, r, http.StatusConflict, u.Username, p)
-			return
-		}
+		// Checked under the world's lock, so a start cannot slip in between.
+		id := p.World.ID
+		files.Idle = func() error { return s.newMapIdle(id) }
 	}
 	err := s.worlds.SetNewMap(r.Context(), p.World.ID, files)
 	switch {
 	case err == nil:
+	case errors.Is(err, errNewMapServerUp):
+		p.SaveError = i18n.M("newmap.error.running")
 	case errors.Is(err, world.ErrBusy):
 		p.SaveError = i18n.M("newmap.error.busy")
 	case errors.Is(err, world.ErrMapMade), errors.Is(err, world.ErrNotNewMap):
