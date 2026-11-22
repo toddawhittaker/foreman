@@ -12,8 +12,10 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
 
 // Limits of a world file's small entries (SPEC 14.6).
@@ -27,6 +29,10 @@ const (
 	maxStagedWorldFiles = 2
 )
 
+// stagingWorldFile is held across pruning staged world files and creating a
+// new one, so two uploads at once never leave more than two.
+var stagingWorldFile sync.Mutex
+
 // CreateWorldFileTemp opens a staged file for an uploaded world file, in the
 // worlds folder with the PrefixWorldFile prefix, and returns it with its name
 // (SPEC 5.14). It removes staged files older than an hour and keeps at most
@@ -37,6 +43,8 @@ func (m *Manager) CreateWorldFileTemp() (*os.File, string, error) {
 		return nil, "", err
 	}
 	defer func() { _ = worlds.Close() }()
+	stagingWorldFile.Lock()
+	defer stagingWorldFile.Unlock()
 	m.pruneStagedWorldFiles(worlds)
 	return createTempNamed(worlds, PrefixWorldFile+randomSuffix(), FileMode)
 }
@@ -269,11 +277,20 @@ func (wf *worldFile) check(lim WorldFileLimits) error {
 			wf.files = append(wf.files, worldFileEntryLimit{e, limit})
 		}
 	}
-	// A file may not sit where another entry needs a folder.
+	// A file may not sit where another entry needs a folder, and the
+	// folders the entries imply count against the entry cap.
+	implied := map[string]bool{}
 	for name := range seen {
 		for dir := path.Dir(name); dir != "."; dir = path.Dir(dir) {
-			if isDir, found := seen[dir]; found && !isDir {
+			isDir, found := seen[dir]
+			if found && !isDir {
 				return ErrWorldFileBad
+			}
+			if !found && !implied[dir] {
+				implied[dir] = true
+				if len(seen)+len(implied) > maxWorldFileEntries {
+					return ErrWorldFileBad
+				}
 			}
 		}
 	}
@@ -355,6 +372,12 @@ func (wf *worldFile) checkContent(formatEntry, metaEntry, serverEntry *zip.File)
 		return f.e.Name == SavesDir+"/"+meta.LoadSave
 	}) {
 		meta.LoadSave = ""
+	}
+	if nm := meta.NewMap; nm != nil && nm.Preset != "" {
+		line, _ := mapgen.Line(meta.GameVersion)
+		if !slices.Contains(mapgen.Presets(line), nm.Preset) {
+			return ErrWorldFileBad
+		}
 	}
 	if wf.saves == 0 && meta.NewMap == nil {
 		return ErrWorldFileBad

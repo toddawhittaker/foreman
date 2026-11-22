@@ -26,6 +26,9 @@ const (
 	// maxWorldFileEntries is the most entries a world file may hold, counted
 	// before the ZIP's directory is built (SPEC 14.6).
 	maxWorldFileEntries = 100_000
+	// maxModDepth is the most path segments under mods/ an entry may have,
+	// so a file cannot make folders deep enough to slow every later walk.
+	maxModDepth = 16
 	// PrefixWorldFile begins the name of a staged upload of a world file;
 	// the .partial- prefix means Recover clears it at startup.
 	PrefixWorldFile = PrefixPartial + "worldfile-"
@@ -151,7 +154,7 @@ func worldFileEntry(name string) (entryKind, bool) {
 		}
 		return entryConfig, true
 	case ModsDir:
-		if !filepath.IsLocal(rest) || path.Clean(rest) != rest {
+		if len(segments)-1 > maxModDepth || !filepath.IsLocal(rest) || path.Clean(rest) != rest {
 			return 0, false
 		}
 		if dir {
