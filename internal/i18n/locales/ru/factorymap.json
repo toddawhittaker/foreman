@@ -34,7 +34,7 @@
   "factorymap.mode.skip_online": "Не рисовать запущенный мир, пока в нём есть игроки",
   "factorymap.mode.skip_online_hint": "Чтение сохранения запущенного мира требует дополнительной памяти на хосте.",
   "factorymap.refused.archived": "Этот мир в архиве, поэтому карта фабрики не рисуется.",
-  "factorymap.refused.confirm_memory": "Отметьте флажок, чтобы рисовать рядом с запущенной игрой.",
+  "factorymap.refused.confirm_memory": "Чтобы рисовать рядом с запущенной игрой, сначала подтвердите это.",
   "factorymap.refused.no_save": "У этого мира пока нет сохранения, которое можно нарисовать.",
   "factorymap.refused.not_supported": "Для карт фабрики нужен Factorio 2.0.61 или новее.",
   "factorymap.refused.off": "Карта фабрики для этого мира выключена.",
@@ -57,7 +57,6 @@
     "few": "Один пиксель — {count} клетки в ширину.",
     "many": "Один пиксель — {count} клеток в ширину."
   },
-  "factorymap.view.zoom": "Масштаб {level}",
   "factorymap.view.zoom_in": "Приблизить",
   "factorymap.view.zoom_out": "Отдалить"
 }

@@ -34,7 +34,7 @@
   "factorymap.mode.skip_online": "Eine laufende Welt nicht zeichnen, solange Spieler online sind",
   "factorymap.mode.skip_online_hint": "Das Lesen des Speicherstands einer laufenden Welt braucht zusätzlichen Speicher auf dem Host.",
   "factorymap.refused.archived": "Diese Welt ist archiviert, daher wird keine Fabrikkarte gezeichnet.",
-  "factorymap.refused.confirm_memory": "Setze das Häkchen, um neben dem laufenden Spiel zu zeichnen.",
+  "factorymap.refused.confirm_memory": "Das Zeichnen neben dem laufenden Spiel musst du zuerst bestätigen.",
   "factorymap.refused.no_save": "Diese Welt hat noch keinen Speicherstand zum Zeichnen.",
   "factorymap.refused.not_supported": "Fabrikkarten brauchen Factorio 2.0.61 oder neuer.",
   "factorymap.refused.off": "Die Fabrikkarte ist für diese Welt aus.",
@@ -56,7 +56,6 @@
     "one": "Ein Pixel ist {count} Feld breit.",
     "other": "Ein Pixel ist {count} Felder breit."
   },
-  "factorymap.view.zoom": "Zoom {level}",
   "factorymap.view.zoom_in": "Vergrößern",
   "factorymap.view.zoom_out": "Verkleinern"
 }

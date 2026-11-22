@@ -7,6 +7,13 @@
 (() => {
   const factor = 1.15;
   const pollMs = 3000;
+  // The layout's JSON strings block; "Zoom {level}" is shared with the Generate page.
+  let strings = {};
+  try {
+    strings = JSON.parse(document.getElementById("i18n").textContent);
+  } catch {
+    strings = {};
+  }
 
   function viewer(region) {
     const figure = region.querySelector(".factorymap__view");
@@ -54,7 +61,7 @@
     // A zoom from a key or a button is said; a wheel or a pinch is seen.
     function zoomSaid(next) {
       zoomTo(next);
-      status.textContent = figure.dataset.zoomText.replace("{level}", percent.format(zoom));
+      status.textContent = (strings["js.preview.zoom"] || "{level}").replace("{level}", percent.format(zoom));
     }
 
     zoomBar.addEventListener("click", (e) => {
