@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -386,5 +387,154 @@ func TestWorldFileStagedPrune(t *testing.T) {
 	d := stageImport(t, m, []byte("d"))
 	if staged(m, b) || !staged(m, c) || !staged(m, d) {
 		t.Errorf("b %v c %v d %v; want only the two newest", staged(m, b), staged(m, c), staged(m, d))
+	}
+}
+
+// worldsHoldOnly fails unless the worlds folder holds exactly the staged
+// files named, so nothing else was written.
+func worldsHoldOnly(t *testing.T, m *Manager, names ...string) {
+	t.Helper()
+	entries, err := os.ReadDir(m.dirs.Worlds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, e := range entries {
+		got = append(got, e.Name())
+	}
+	if strings.Join(got, ",") != strings.Join(names, ",") {
+		t.Errorf("worlds folder holds %v, want %v", got, names)
+	}
+}
+
+// A path under mods/ deeper than maxModDepth segments is refused by the
+// classifier.
+func TestWorldFileEntryDepth(t *testing.T) {
+	ok := "mods/" + strings.Repeat("a/", maxModDepth-1) + "x"
+	if _, good := worldFileEntry(ok); !good {
+		t.Errorf("%d segments refused", maxModDepth)
+	}
+	deep := "mods/" + strings.Repeat("a/", maxModDepth) + "x"
+	if _, good := worldFileEntry(deep); good {
+		t.Errorf("%d segments taken", maxModDepth+1)
+	}
+}
+
+// 100,000 entries 500 folders deep are refused before anything is written.
+func TestWorldFileDeepFolders(t *testing.T) {
+	m, _ := newTestManager(t)
+	f, temp, err := m.CreateWorldFileTemp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(f)
+	deep := strings.Repeat("d/", 500)
+	for i := 0; i < maxWorldFileEntries; i++ {
+		if _, err := zw.CreateHeader(&zip.FileHeader{Name: "mods/" + deep + strconv.Itoa(i), Method: zip.Store}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ImportWorldFile(context.Background(), temp, "Deep", importLimits); !errors.Is(err, ErrWorldFileBad) {
+		t.Fatalf("err %v", err)
+	}
+	worldsHoldOnly(t, m)
+}
+
+// The folders an import would create count against the entry cap, so a
+// file of few entries cannot make many folders.
+func TestWorldFileImpliedFolders(t *testing.T) {
+	entries := goodWorldFile()
+	for i := 0; i < maxWorldFileEntries/maxModDepth+1; i++ {
+		entries = append(entries, importEntry{name: "mods/" + strconv.Itoa(i) + strings.Repeat("/f", maxModDepth-2) + "/x"})
+	}
+	m, _ := newTestManager(t)
+	temp := stageImport(t, m, importZip(t, entries))
+	if _, err := m.ImportWorldFile(context.Background(), temp, "Folders", importLimits); !errors.Is(err, ErrWorldFileBad) {
+		t.Fatalf("err %v", err)
+	}
+	worldsHoldOnly(t, m)
+}
+
+// A new_map preset must be one the game knows on the world's line.
+func TestWorldFileNewMapPreset(t *testing.T) {
+	file := func(preset string) []importEntry {
+		return []importEntry{
+			{name: WorldFileFormatFile, body: []byte(importFormat)},
+			{name: MetaFile, body: []byte(`{"format_version":1,"name":"n","game_version":"2.0.77","created_at":"2025-01-01T00:00:00Z","new_map":{"preset":"` + preset + `"}}`)},
+		}
+	}
+	for preset, want := range map[string]error{"": nil, "rich-resources": nil, "no-such-preset": ErrWorldFileBad, "--seed": ErrWorldFileBad} {
+		m, _ := newTestManager(t)
+		if _, err := m.ReadWorldFile(stageImport(t, m, importZip(t, file(preset))), importLimits); !errors.Is(err, want) {
+			t.Errorf("preset %q: err %v, want %v", preset, err, want)
+		}
+	}
+}
+
+// Two uploads staged at once leave at most two staged files, and neither
+// removes the other's.
+func TestWorldFileConcurrentStaging(t *testing.T) {
+	for range 50 {
+		m, _ := newTestManager(t)
+		old := stageImport(t, m, []byte("old"))
+		at := t0.Add(-30 * time.Minute)
+		_ = os.Chtimes(filepath.Join(m.dirs.Worlds, old), at, at)
+		var wg sync.WaitGroup
+		names := make([]string, 2)
+		for i := range names {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				f, name, err := m.CreateWorldFileTemp()
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				_ = f.Close()
+				names[i] = name
+			}()
+		}
+		wg.Wait()
+		if !staged(m, names[0]) || !staged(m, names[1]) || staged(m, old) {
+			t.Fatalf("new %v %v, old %v; want both new kept and the old one gone",
+				staged(m, names[0]), staged(m, names[1]), staged(m, old))
+		}
+	}
+}
+
+// A file and a folder of the same path refuse the file, in either order.
+func TestWorldFileFileAndFolderSamePath(t *testing.T) {
+	a := importEntry{name: "mods/a", body: []byte("a")}
+	ab := importEntry{name: "mods/a/b", body: []byte("b")}
+	for _, extra := range [][]importEntry{{a, ab}, {ab, a}} {
+		m, _ := newTestManager(t)
+		temp := stageImport(t, m, importZip(t, append(goodWorldFile(), extra...)))
+		if _, err := m.ImportWorldFile(context.Background(), temp, "W", importLimits); !errors.Is(err, ErrWorldFileBad) {
+			t.Errorf("%s then %s: err %v", extra[0].name, extra[1].name, err)
+		}
+		worldsHoldOnly(t, m)
+	}
+}
+
+// A failure after some entries were written leaves no world and no
+// staging folder.
+func TestWorldFileFailsPartway(t *testing.T) {
+	m, _ := newTestManager(t)
+	entries := append(goodWorldFile(), importEntry{name: "mods/last_1.0.0.zip", body: []byte("last entry"), method: zip.Store})
+	data := importZip(t, entries)
+	data[bytes.Index(data, []byte("last entry"))] = 'X'
+	temp := stageImport(t, m, data)
+	if _, err := m.ImportWorldFile(context.Background(), temp, "W", importLimits); !errors.Is(err, ErrWorldFileBad) {
+		t.Fatalf("err %v", err)
+	}
+	worldsHoldOnly(t, m)
+	if list, _ := m.List(context.Background()); len(list) != 0 {
+		t.Errorf("worlds %v", list)
 	}
 }

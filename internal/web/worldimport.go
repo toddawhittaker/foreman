@@ -22,6 +22,8 @@ import (
 const (
 	// worldFileField is the file field of the upload form.
 	worldFileField = "world_file"
+	// worldFileZoneID is the file input's id.
+	worldFileZoneID = "world-file"
 	// worldFileStagedField is the hidden field that names the staged file.
 	worldFileStagedField = "staged"
 	// worldFileBodyRoom is what a request may hold beyond the file itself:
@@ -35,19 +37,21 @@ const (
 	// maxVersionText caps the Foreman version a file claims, which is shown
 	// and audited.
 	maxVersionText = 40
-	// auditWorldImport is the audit action of a world made from a world file
-	// (SPEC 12.9).
-	auditWorldImport = "world-import"
 )
 
 // WorldFilePath is where the Import page's world file form posts.
 func (ImportPage) WorldFilePath() string { return PathWorldFileImport }
 
-// WorldFileZone is the world file form's file field (DESIGN 7.10). A refused
-// upload shows its words on a page of its own, so the field carries no error.
-func (ImportPage) WorldFileZone() DropZone {
-	return DropZone{ID: "world-file", Name: worldFileField, Label: i18n.M("worldimport.zone.label"),
-		Accept: ".zip", MaxBytes: zoneLimit(world.MaxWorldFile)}
+// WorldFileZone is the world file form's file field (DESIGN 7.10), with the
+// refusal of the last upload when the form can fix it.
+func (p ImportPage) WorldFileZone() DropZone {
+	return DropZone{ID: worldFileZoneID, Name: worldFileField, Label: i18n.M("worldimport.zone.label"),
+		Accept: ".zip", MaxBytes: zoneLimit(world.MaxWorldFile), Error: p.WorldFileError}
+}
+
+// WorldFileProblems is the world file form's error summary.
+func (p ImportPage) WorldFileProblems() []Problem {
+	return problems(Problem{worldFileZoneID, p.WorldFileError})
 }
 
 // WorldFilePage previews a staged world file and asks for the world's name
@@ -139,6 +143,10 @@ func (s *server) handleWorldFileUpload(w http.ResponseWriter, r *http.Request, u
 	defer func() { _ = root.Close() }()
 	up, err := receiveInto(r, root, s.worlds.CreateWorldFileTemp, worldFileField, s.worlds.Dirs().Worlds, world.MaxWorldFile, map[string]string{})
 	if err != nil {
+		if msg := worldFileFormError(err); !msg.IsZero() {
+			s.importPageWith(w, r, u, http.StatusUnprocessableEntity, ImportForm{Download: true}, ImportForm{Download: true}, nil, msg)
+			return
+		}
 		s.worldFileRefused(w, r, u, "receive a world file", err)
 		return
 	}
@@ -151,6 +159,17 @@ func (s *server) handleWorldFileUpload(w http.ResponseWriter, r *http.Request, u
 	s.worldFilePreview(w, r, u, http.StatusOK, WorldFilePage{
 		Info: info, Staged: up.Temp, Name: clipName(info.Name), Download: true,
 	})
+}
+
+// worldFileFormError words the two upload refusals the person fixes on the
+// Import page itself: no file chosen, and a file over the limit. It is zero
+// for any other error.
+func worldFileFormError(err error) i18n.Msg {
+	ue, ok := errors.AsType[uploadError](err)
+	if ok && (ue.msg.Key == "worlds.upload.choose_file" || ue.msg.Key == "worlds.upload.too_large") {
+		return ue.msg
+	}
+	return i18n.Msg{}
 }
 
 // clipName cuts a world name from a file to the length the name field takes.
@@ -211,7 +230,7 @@ func (s *server) handleWorldFileConfirm(w http.ResponseWriter, r *http.Request, 
 	if v := cleanVersion(info.ForemanVersion); v != "" {
 		detail = "world file made by Foreman " + v
 	}
-	s.audit(r.Context(), actor(u), auditWorldImport, id, detail)
+	s.audit(r.Context(), actor(u), AuditWorldImport, id, detail)
 	if p.Download && s.game != nil {
 		s.downloadFor(r.Context(), map[string]string{info.GameVersion: id}, actor(u))
 	}

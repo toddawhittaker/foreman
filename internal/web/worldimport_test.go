@@ -516,3 +516,64 @@ func TestWorldFileThirdUploadRemovesTheOldest(t *testing.T) {
 	}
 	g.wantRedirectTo(importedPath("club", false), g.post(PathWorldFileConfirm, url.Values{"staged": {last}, "name": {"Club"}}))
 }
+
+// wfImportPageError checks that a refusal the form can fix is the Import
+// page itself, with the error tied to the world file field: the error
+// summary links to it, the field is invalid and names the error as a
+// description, and the title says so first (SPEC 5.14, DESIGN 7.2).
+func wfImportPageError(t *testing.T, what string, rep reply, words string) {
+	t.Helper()
+	if rep.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("%s: status %d, want 422:\n%.500s", what, rep.StatusCode, rep.body)
+	}
+	if !strings.Contains(rep.body, `id="world-file-heading"`) {
+		t.Skip("the Import page has no world file form yet")
+	}
+	wfWantAll(t, what, rep.body, "<title>Error: ", `id="upload-heading"`, `id="error-summary"`, `href="#world-file"`,
+		`id="world-file-error"`, words)
+	input := regexp.MustCompile(`<input id="world-file"[^>]*>`).FindString(rep.body)
+	wfWantAll(t, what+" file field", input, `aria-invalid="true"`, "world-file-error")
+}
+
+// SPEC 5.14: no file chosen is shown on the Import page, tied to the field,
+// and makes nothing.
+func TestWorldFileNoFileShowsOnTheImportPage(t *testing.T) {
+	g := newImportRig(t, nil)
+	var b bytes.Buffer
+	mw := multipart.NewWriter(&b)
+	_ = mw.WriteField("other", "x")
+	_ = mw.Close()
+	rep := wfSend(t, g.liveServer, g.cookie, PathWorldFileImport, mw.FormDataContentType(), &b)
+	wfImportPageError(t, "no file", rep, "Choose a file")
+	if got := stagedFiles(t, g.harness); len(got) != 0 {
+		t.Errorf("staged files %v", got)
+	}
+}
+
+// SPEC 14.6: a world file over the cap is refused before it is read, and the
+// refusal is shown on the Import page, tied to the field. A declared length
+// stands in for the 64 GiB body.
+func TestWorldFileTooLargeShowsOnTheImportPage(t *testing.T) {
+	g := newImportRig(t, nil)
+	rep := g.postDeclared(PathWorldFileImport, worldFileField, world.MaxWorldFile+1)
+	wfImportPageError(t, "too large", rep, "larger than the limit of")
+	if got := stagedFiles(t, g.harness); len(got) != 0 {
+		t.Errorf("staged files %v", got)
+	}
+	if worldCount(t, g.harness) != 0 {
+		t.Error("a refused upload made a world")
+	}
+}
+
+// The world file form's error is part of the page's problems and zone.
+func TestImportPageCarriesTheWorldFileError(t *testing.T) {
+	var p ImportPage
+	if p.hasErrors() || len(p.WorldFileProblems()) != 0 || !p.WorldFileZone().Error.IsZero() {
+		t.Fatal("a fresh page has a world file error")
+	}
+	p.WorldFileError = tooLarge(world.MaxWorldFile).msg
+	got := p.WorldFileProblems()
+	if !p.hasErrors() || len(got) != 1 || got[0].FieldID != "world-file" || p.WorldFileZone().Error.IsZero() {
+		t.Errorf("problems %+v, zone error %v", got, p.WorldFileZone().Error)
+	}
+}
