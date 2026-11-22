@@ -9,7 +9,7 @@
 {{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .World.Name)}}
 <div class="title-row">
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}</h1>
+<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}{{if .World.Unfinished}} <span class="badge">{{t "worlds.badge.unfinished"}}</span>{{end}}</h1>
 </div>
 {{template "rail" $}}
 {{- if .World.Unreadable}}
@@ -23,6 +23,13 @@
   {{- with .ImportSync}}
   <div class="actions"><a href="{{.}}" class="button" id="act-import-sync">{{t "mods.sync.import"}}</a></div>
   {{- end}}
+</div>
+{{- end}}
+{{- /* An Unfinished world has no map yet; its set-up goes on where work remains (SPEC 5.6). */}}
+{{- with .ContinuePath}}
+<div class="message message--note" id="world-unfinished">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.unfinished.text"}}</p>
+  <div class="actions"><a href="{{.}}" class="button button--primary" id="act-continue">{{t "worlds.unfinished.continue"}}</a></div>
 </div>
 {{- end}}
 {{- if not .ArchiveError.IsZero}}

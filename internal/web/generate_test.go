@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -190,6 +191,7 @@ func idFromLocation(t *testing.T, rec *httptest.ResponseRecorder) string {
 		t.Fatalf("redirect to %q", loc)
 	}
 	id, _, _ := strings.Cut(rest, "?")
+	id, _, _ = strings.Cut(id, "/")
 	return id
 }
 
@@ -198,12 +200,11 @@ func TestGenerateNeedsSignIn(t *testing.T) {
 	hn.wantRedirect(hn.get(PathGenerate), PathSetup)
 	hn.wantRedirect(hn.postLong(PathGenerate, generateForm(), nil), PathSetup)
 	hn.wantRedirect(hn.postLong(PathGeneratePreview, generateForm(), nil), PathSetup)
-	hn.wantRedirect(hn.postLong(PathGenerateRefresh, generateForm(), nil), PathSetup)
 	hn.wantRedirect(hn.get(PathGeneratePreview+"/tok/nauvis"), PathSetup)
 }
 
-// SPEC 5.6, 10.7: the form opens on the active world's version, with that
-// line's presets, and offers the world list a way in.
+// SPEC 5.6, 10.7: step 1 opens on the active world's version and asks only
+// what the world is; the map settings are step 3's. The world list links in.
 func TestGenerateFormOpensOnTheActiveWorldsVersion(t *testing.T) {
 	hn := newGenerateHarness(t, &fakePreviewer{})
 	c := hn.signIn()
@@ -214,11 +215,15 @@ func TestGenerateFormOpensOnTheActiveWorldsVersion(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"2.0.77, same as the active world", `name="map_key" value="2.0|1"`, `value="rich-resources"`, "Rich resources",
-		`value="settings" aria-describedby="mode-settings-hint" checked`, `id="preview-button"`, `id="generate-button"`,
+		"2.0.77, same as the active world", `id="generate-name"`, `id="generate-space-age"`, `id="generate-button"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
+		}
+	}
+	for _, not := range []string{`id="generate-preset"`, `id="exchange-string"`, `id="preview-button"`, `name="mode"`} {
+		if strings.Contains(body, not) {
+			t.Errorf("step 1 has %q", not)
 		}
 	}
 	if !strings.Contains(hn.get(PathWorlds, withCookie(c)).Body.String(), `href="`+PathGenerate+`"`) {
@@ -258,9 +263,9 @@ func TestGeneratePresetMakesAWorldWithoutFiles(t *testing.T) {
 	if got := hn.audits(AuditGenerate); len(got) != 1 || !strings.Contains(got[0], "alice "+id+" preset rich-resources, 2.0.77") {
 		t.Errorf("audit %q", got)
 	}
-	page := hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String()
-	if !strings.Contains(page, "Generated Fresh start. Its map is made when it first starts.") {
-		t.Errorf("no Done message:\n%s", page)
+	// Making the world goes on to step 2, its mods (SPEC 5.6, 17.9).
+	if got := rec.Header().Get("Location"); got != modsPath(id) {
+		t.Errorf("redirect %q, want %q", got, modsPath(id))
 	}
 }
 
@@ -466,17 +471,45 @@ func jsonOf(t *testing.T, b []byte) map[string]any {
 	return m
 }
 
-// pagePresetValues are the values the Generate form sends for a preset on a
-// version, read from the page as a browser would.
+// pagePresetValues are the values the map form sends for a preset on a
+// version, read from step 3's page as a browser would, with step 1's name.
 func pagePresetValues(t *testing.T, hn *harness, c *http.Cookie, version, preset string) url.Values {
 	t.Helper()
 	line, _ := mapgen.Line(version)
-	rec := hn.postLong(PathGenerateRefresh, generateForm("game_version_typed", version, "map_key", line+"|1", "preset", preset, "filled_from", "none"), c)
-	return pageValues(t, rec.Body.String())
+	rec := hn.postLong(refreshPath(t, hn, c, version), generateForm("game_version_typed", version, "map_key", line+"|1", "preset", preset, "filled_from", "none"), c)
+	v := pageValues(t, rec.Body.String())
+	v.Del("world")
+	v.Set("name", "Fresh start")
+	return v
+}
+
+// stepThree holds one Unfinished world per harness and version, whose step 3
+// redraws the map form (SPEC 5.6).
+var stepThree sync.Map
+
+// refreshPath is step 3's redraw of an Unfinished world on version.
+func refreshPath(t *testing.T, hn *harness, c *http.Cookie, version string) string {
+	t.Helper()
+	type key struct {
+		hn      *harness
+		version string
+	}
+	if p, ok := stepThree.Load(key{hn, version}); ok {
+		return p.(string)
+	}
+	line, _ := mapgen.Line(version)
+	sa := ""
+	if lineHasSpaceAge(line) {
+		sa = "on"
+	}
+	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("name", "Layout "+version, "game_version_typed", version, "space_age", sa, "map_key", ""), c))
+	p := newMapPath(id) + "/refresh"
+	stepThree.Store(key{hn, version}, p)
+	return p
 }
 
 var (
-	reGenForm  = regexp.MustCompile(`(?s)<form method="post" action="/generate"[^>]*>(.*?)</form>`)
+	reGenForm  = regexp.MustCompile(`(?s)<form [^>]*id="generate-form"[^>]*>(.*?)</form>`)
 	reGenInput = regexp.MustCompile(`<input ([^>]*)>`)
 	reAttr     = regexp.MustCompile(`([a-z-]+)(?:="([^"]*)")?`)
 	reTextArea = regexp.MustCompile(`(?s)<textarea [^>]*name="([^"]+)"[^>]*>(.*?)</textarea>`)
@@ -536,11 +569,12 @@ func TestGenerateFillsANewPresetBeforeMakingAnything(t *testing.T) {
 	form := pagePresetValues(t, hn, c, "2.0.77", "default")
 	form.Set("preset", "death-world")
 	form.Set("seed", "3")
-	form.Set("name", "Hard")
-	rec := hn.postLong(PathGenerate, form, c)
+	save := strings.TrimSuffix(refreshPath(t, hn, c, "2.0.77"), "/refresh")
+	id, _, _ := strings.Cut(strings.TrimPrefix(save, PathWorlds+"/"), "/")
+	rec := hn.postLong(save, form, c)
 	body := rec.Body.String()
-	if rec.Code != http.StatusOK || hn.worldCount() != 1 {
-		t.Fatalf("status %d, %d worlds", rec.Code, hn.worldCount())
+	if rec.Code != http.StatusOK || hn.config(id, world.MapGenSettingsFile).Found {
+		t.Fatalf("status %d, or files written", rec.Code)
 	}
 	for _, want := range []string{`id="map-refilled"`, "filled from the preset “Death world”", `name="filled_from" value="death-world"`, `type="text" value="3"`} {
 		if !strings.Contains(body, want) {
@@ -548,7 +582,9 @@ func TestGenerateFillsANewPresetBeforeMakingAnything(t *testing.T) {
 		}
 	}
 	// What the page now shows is the preset unchanged: --preset, no files.
-	id := idFromLocation(t, hn.postLong(PathGenerate, pageValues(t, body), c))
+	if rec := hn.postLong(save, pageValues(t, body), c); rec.Code != http.StatusSeeOther {
+		t.Fatalf("save status %d", rec.Code)
+	}
 	if m := hn.meta(id); m.NewMap == nil || m.NewMap.Preset != "death-world" || *m.NewMap.Seed != 3 {
 		t.Errorf("new_map %+v", m.NewMap)
 	}
@@ -561,11 +597,11 @@ func TestGenerateFillsANewPresetBeforeMakingAnything(t *testing.T) {
 	changed := pagePresetValues(t, hn, c, "2.0.77", "default")
 	changed.Set("mg.start", "300")
 	changed.Set("seed", "8")
-	if v := pageValues(t, hn.postLong(PathGenerateRefresh, changed, c).Body.String()); v.Get("mg.start") != "300" {
+	if v := pageValues(t, hn.postLong(refreshPath(t, hn, c, "2.0.77"), changed, c).Body.String()); v.Get("mg.start") != "300" {
 		t.Fatalf("a refresh lost the change: %q", v.Get("mg.start"))
 	}
 	changed.Set("reset", "1")
-	if v := pageValues(t, hn.postLong(PathGenerateRefresh, changed, c).Body.String()); v.Get("mg.start") != "100" || v.Get("seed") != "8" {
+	if v := pageValues(t, hn.postLong(refreshPath(t, hn, c, "2.0.77"), changed, c).Body.String()); v.Get("mg.start") != "100" || v.Get("seed") != "8" {
 		t.Errorf("reset: starting area %q, seed %q; want 100 and 8", v.Get("mg.start"), v.Get("seed"))
 	}
 	// SPEC 5.6: Reset to defaults is for the whole world: another
@@ -574,7 +610,7 @@ func TestGenerateFillsANewPresetBeforeMakingAnything(t *testing.T) {
 	other.Set("mg.start", "300")
 	other.Set("seed", "8")
 	other.Set("reset", "1")
-	body = hn.postLong(PathGenerateRefresh, other, c).Body.String()
+	body = hn.postLong(refreshPath(t, hn, c, "2.0.77"), other, c).Body.String()
 	v := pageValues(t, body)
 	if v.Get("filled_from") != "default" || v.Get("mg.start") != "100" || v.Get("seed") != "8" || v.Get("mg.nauvis.enemy-base.size") != "100" ||
 		!strings.Contains(body, `<option value="default" selected>`) {
@@ -591,19 +627,19 @@ func TestGenerateShowsModified(t *testing.T) {
 	hn.withActive("2.0.77")
 	form := pagePresetValues(t, hn, c, "2.0.77", "default")
 	form.Set("seed", "12")
-	body := hn.postLong(PathGenerateRefresh, form, c).Body.String()
+	body := hn.postLong(refreshPath(t, hn, c, "2.0.77"), form, c).Body.String()
 	if strings.Contains(body, `id="preset-modified" data-word="[modified]">[modified]`) || !strings.Contains(body, `id="preset-reset" name="reset" value="1"`) || !strings.Contains(body, "hidden>Reset to defaults") {
 		t.Error("the defaults show [modified] or the reset")
 	}
 	form = pagePresetValues(t, hn, c, "2.0.77", "rail-world")
-	body = hn.postLong(PathGenerateRefresh, form, c).Body.String()
+	body = hn.postLong(refreshPath(t, hn, c, "2.0.77"), form, c).Body.String()
 	if strings.Contains(body, `data-word="[modified]">[modified]</span>`) || strings.Contains(body, "hidden>Reset to defaults") {
 		t.Error("another preset, unchanged, shows [modified] or hides the reset")
 	}
 	for _, change := range [][2]string{{"mg.nauvis.iron-ore.size", "100"}, {"ms.pollution.ageing", "50"}, {"mg.width", "100"}, {"mg.raw", "{}"}} {
 		f := pagePresetValues(t, hn, c, "2.0.77", "rail-world")
 		f.Set(change[0], change[1])
-		body := hn.postLong(PathGenerateRefresh, f, c).Body.String()
+		body := hn.postLong(refreshPath(t, hn, c, "2.0.77"), f, c).Body.String()
 		if !strings.Contains(body, `data-word="[modified]">[modified]</span>`) || strings.Contains(body, "hidden>Reset to defaults") {
 			t.Errorf("%s changed: no [modified] with its reset", change[0])
 		}
@@ -618,7 +654,7 @@ func TestGenerateOnAnUntestedLayout(t *testing.T) {
 	c := hn.signIn()
 	hn.withActive("2.1.15")
 	vals := pagePresetValues(t, hn, c, "2.1.15", "default")
-	page := hn.postLong(PathGenerateRefresh, vals, c).Body.String()
+	page := hn.postLong(refreshPath(t, hn, c, "2.1.15"), vals, c).Body.String()
 	if strings.Contains(page, `name="ms.`) || !strings.Contains(page, "Factorio 2.1.15 lays out these settings") {
 		t.Errorf("the map settings are offered on 2.1.15")
 	}
@@ -649,14 +685,14 @@ func TestGenerateWarnsOfAchievementsAsTheGameDoes(t *testing.T) {
 	c := hn.signIn()
 	hn.withActive("2.1.24")
 	vals := pagePresetValues(t, hn, c, "2.1.24", "default")
-	plain := hn.postLong(PathGenerateRefresh, vals, c).Body.String()
+	plain := hn.postLong(refreshPath(t, hn, c, "2.1.24"), vals, c).Body.String()
 	if !strings.Contains(plain, `id="ach-summary" hidden`) || strings.Contains(plain, ">Turns off some achievements.<") {
 		t.Error("the default map warns of achievements")
 	}
 	vals.Set("mg.peaceful", "on")
 	vals.Set("ms.pollution.diffusion_ratio", "1")
 	vals.Set("name", "Easy")
-	body := hn.postLong(PathGenerateRefresh, vals, c).Body.String()
+	body := hn.postLong(refreshPath(t, hn, c, "2.1.24"), vals, c).Body.String()
 	for _, want := range []string{
 		`<li data-reason="mapgen.achievement.not_in_peaceful_mode">Cannot be unlocked in peaceful mode.</li>`,
 		`<li data-reason="mapgen.achievement.not_with_easier_pollution_settings">Cannot be unlocked with easier pollution settings.</li>`,
@@ -711,10 +747,9 @@ func TestGenerateMapSettingsProblems(t *testing.T) {
 	vals := pagePresetValues(t, hn, c, "2.1.24", "default")
 	vals.Set("ms.enemy_evolution.time_factor", "fast")
 	vals.Set("ms.difficulty_settings.technology_price_multiplier", "0")
-	vals.Set("name", "X")
-	rec := hn.postLong(PathGenerate, vals, c)
+	rec := hn.postLong(strings.TrimSuffix(refreshPath(t, hn, c, "2.1.24"), "/refresh"), vals, c)
 	body := rec.Body.String()
-	if rec.Code != http.StatusBadRequest || hn.worldCount() != 1 {
+	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status %d", rec.Code)
 	}
 	for _, want := range []string{`href="#ms-enemy-evolution-time-factor"`, "Enter a whole number from 0 to 1000 for Time factor.",
@@ -748,59 +783,6 @@ func TestGenerateCustomProblemsAreShownAndNothingIsMade(t *testing.T) {
 	rec = hn.postLong(PathGenerate, generateForm("mode", "exchange", "exchange", fixture(t, "2.0.77.txt"), "mg.width", "wide"), c)
 	if rec.Code != http.StatusSeeOther {
 		t.Errorf("an exchange string refused for a settings problem: %d", rec.Code)
-	}
-}
-
-// DESIGN 8.6: when the version or Space Age moved on, custom options made for
-// the old line are set back and nothing is made; the other ways to make a map
-// do not depend on them, so typing a version and pressing Generate just works.
-func TestGenerateResetsCustomOptionsWhenTheVersionChanged(t *testing.T) {
-	hn := newGenerateHarness(t, &fakePreviewer{})
-	c := hn.signIn()
-	hn.withActive("2.0.77")
-	form := generateForm("game_version_typed", "2.1.24", "seed", "7", settingsShown, "1") // the settings were made for 2.0|1
-	for _, p := range []string{PathGenerate, PathGeneratePreview, PathGenerateRefresh} {
-		before := hn.worldCount()
-		rec := hn.postLong(p, form, c)
-		body := rec.Body.String()
-		if rec.Code != http.StatusOK || !strings.Contains(body, "set back to that version") ||
-			!strings.Contains(body, `name="map_key" value="2.1|1"`) || !strings.Contains(body, `value="7"`) {
-			t.Errorf("%s: status %d\n%s", p, rec.Code, body)
-		}
-		if hn.worldCount() != before {
-			t.Errorf("%s made a world", p)
-		}
-	}
-	// A post that never showed the settings is the preset as it is, made on the new version at once.
-	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "preset", "lakes", "seed", "7"), c))
-	if m := hn.meta(id); m.GameVersion != "2.1.24" || m.NewMap == nil || m.NewMap.Preset != "lakes" {
-		t.Errorf("meta %+v new_map %+v", m, m.NewMap)
-	}
-	// A preset the new line lacks is refused, not swapped for another.
-	rec := hn.postLong(PathGenerate, generateForm("game_version_typed", "1.1.110", "space_age", "", "preset", "lakes"), c)
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Choose one of the presets in the list.") {
-		t.Errorf("1.1 lakes: %d", rec.Code)
-	}
-	// A refresh redraws the options for 1.1: no Space Age, and the presets of that line.
-	rec = hn.postLong(PathGenerateRefresh, generateForm("game_version_typed", "1.1.110", "space_age", "", "preset", "lakes"), c)
-	body := rec.Body.String()
-	if !strings.Contains(body, `name="map_key" value="1.1|0"`) || !strings.Contains(body, `value="ribbon-world"`) || strings.Contains(body, `value="lakes"`) {
-		t.Errorf("1.1 refresh:\n%s", body)
-	}
-}
-
-// A refresh with an unfinished version keeps the options as they were.
-func TestGenerateRefreshKeepsOptionsForAnUnfinishedVersion(t *testing.T) {
-	hn := newGenerateHarness(t, nil)
-	c := hn.signIn()
-	hn.withActive("2.0.77")
-	rec := hn.postLong(PathGenerateRefresh, generateForm("game_version_typed", "2.1.", "preset", "lakes"), c)
-	body := rec.Body.String()
-	if rec.Code != http.StatusOK || strings.Contains(body, "set back to that version") || !strings.Contains(body, `name="map_key" value="2.0|1"`) {
-		t.Errorf("status %d\n%s", rec.Code, body)
-	}
-	if strings.Contains(body, `id="error-summary"`) {
-		t.Error("a refresh shows the error summary")
 	}
 }
 

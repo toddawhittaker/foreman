@@ -123,29 +123,24 @@ func pageCases() []pageCase {
 		{"new map refused", "todd", 409, NewMapPage{World: world.Summary{ID: "w1", Name: "W"}, Why: i18n.M("newmap.why.made")}},
 		{"new map form", "todd", 200, NewMapPage{World: world.Summary{ID: "w1", Name: "W", Unfinished: true}, CanPreview: true, Gone: []string{"fake-ore"},
 			Builtin: i18n.M("newmap.builtin.failed"), Form: NewMapForm{MapForm: generateCase(nil).MapForm, ID: "w1", Name: "W", Version: "2.0.77"}}},
-		{"generate preview", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil), Preview: &PreviewView{Seed: "1234", Pictures: []PreviewPicture{
-			{Planet: "nauvis", Name: planetMsg("nauvis"), Path: "/generate/preview/tok/nauvis"},
-			{Planet: "vulcanus", Name: planetMsg("vulcanus"), Path: "/generate/preview/tok/vulcanus"}}}}},
-		{"generate preview failed", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil),
-			Preview: &PreviewView{Error: i18n.M("worlds.generate.preview.failed")}}},
 		{"generate errors", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
-			f.Name, f.Mode, f.Reset = longName, modeExchange, true
+			f.Name = longName
 			f.NameError, f.VersionError, f.SpaceAgeError = msgNameEmpty(), msgBadGameVersion(), msgSpaceAgeOld()
 			f.PresetError = i18n.M("worlds.generate.error.preset")
-			f.ExchangeError, f.FormError = i18n.M("worlds.generate.error.exchange_empty"), i18n.M("worlds.generate.error.settings")
+			f.FormError = i18n.M("worlds.generate.error.settings")
 		})}},
-		{"generate settings errors and warnings", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
+		{"new map settings errors and warnings", "todd", 400, NewMapPage{World: world.Summary{ID: "w1", Name: "W", Unfinished: true}, Form: NewMapForm{ID: "w1", Name: "W", Version: "2.0.77", MapForm: generateCase(func(f *GenerateForm) {
 			f.Preset, f.Modified, f.Tab = "death-world", true, tabEnemy
 			f.MapGen.Peaceful.Checked, f.MapGen.Peaceful.Blocked = true, true
 			f.MapGen.Seed.Error = i18n.M("mapgen.err.seed", "max", "4294967295")
 			f.SettingsProblems = []Problem{{FieldID: mgSeedID, Message: f.MapGen.Seed.Error}}
 			f.Reasons = []AchReason{{Key: "mapgen.achievement.not_in_peaceful_mode", Msg: achievementMsgs["mapgen.achievement.not_in_peaceful_mode"], Active: true}}
-		})}},
-		{"generate untested layout", "todd", 200, GeneratePage{Form: generateCase(func(f *GenerateForm) {
+		}).MapForm}}},
+		{"new map untested layout", "todd", 200, NewMapPage{World: world.Summary{ID: "w1", Name: "W", Unfinished: true}, Form: NewMapForm{ID: "w1", Name: "W", Version: "2.1.15", MapForm: generateCase(func(f *GenerateForm) {
 			f.Version, f.Line, f.MapKey, f.Presets = "2.1.15", "2.1", "2.1|1", mapgen.Presets("2.1")
 			f.cat = mapgen.Builtin("2.1", true)
 			f.fill("2.1.15", nil)
-		})}},
+		}).MapForm}}},
 		{"clone with save", "todd", 200, ClonePage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", SpaceAge: true},
 			Name: longName + " (copy)", Choice: cloneKeep, SaveName: "autosave_3.zip", SaveTime: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC), RunningNote: true}},
 		{"clone fresh only errors", "todd", 400, ClonePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "1.1.110"},

@@ -336,7 +336,7 @@ func TestLimitAttributesInTheForm(t *testing.T) {
 	hn.withActive("2.1.24")
 	tag := func(version, id string) string {
 		line, _ := mapgen.Line(version)
-		body := hn.postLong(PathGenerateRefresh, generateForm("game_version_typed", version, "map_key", line+"|1", "preset", "default", "filled_from", "none"), c).Body.String()
+		body := hn.postLong(refreshPath(t, hn, c, version), generateForm("game_version_typed", version, "map_key", line+"|1", "preset", "default", "filled_from", "none"), c).Body.String()
 		m := regexp.MustCompile(`<input id="` + id + `"[^>]*>`).FindString(body)
 		if m == "" {
 			t.Fatalf("%s: no input %s", version, id)

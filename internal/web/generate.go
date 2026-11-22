@@ -25,7 +25,6 @@ import (
 // them.
 const (
 	PathGenerate        = "/generate"
-	PathGenerateRefresh = "/generate/refresh"
 	PathGeneratePreview = "/generate/preview"
 )
 
@@ -192,14 +191,10 @@ func (MapForm) Tabs() []string {
 
 // Paths the form uses.
 func (GeneratePage) Path() string        { return PathGenerate }
-func (GeneratePage) RefreshPath() string { return PathGenerateRefresh }
 func (GeneratePage) PreviewPath() string { return PathGeneratePreview }
 func (GeneratePage) VersionsPath() string {
 	return versionsPath("", "")
 }
-
-// RefreshPath is where the settings are redrawn.
-func (GenerateForm) RefreshPath() string { return PathGenerateRefresh }
 
 // PresetMsg is a preset's name in the game's own words.
 func (MapForm) PresetMsg(name string) i18n.Msg { return PresetMsg(name) }
@@ -211,7 +206,6 @@ func (f MapForm) AtDefaults() bool { return f.Preset == defaultPreset && !f.Modi
 func (s *server) generateRoutes() {
 	s.mux.HandleFunc("GET "+PathGenerate, s.requireUser(s.handleGenerateForm))
 	s.handleUpload("POST "+PathGenerate, fixedLimit(generateFormLimit), s.requireUser(s.handleGenerate))
-	s.handleUpload("POST "+PathGenerateRefresh, fixedLimit(generateFormLimit), s.requireUser(s.handleGenerateRefresh))
 	s.previewRoutes()
 }
 
@@ -344,18 +338,6 @@ func (f *GenerateForm) startFrom(fav world.Favorite) {
 	f.MapKey = mapKey(line, f.SpaceAge)
 }
 
-// handleGenerateRefresh redraws the page for a changed game version, Space
-// Age or preset, or the preset's reset; the browser swaps in only the parts
-// that change.
-func (s *server) handleGenerateRefresh(w http.ResponseWriter, r *http.Request, u store.User) {
-	if !s.readForm(w, r) {
-		return
-	}
-	f, _, _ := s.readGenerate(r, kindRefresh)
-	f.clearErrors()
-	s.page(w, r, http.StatusOK, u.Username, s.generatePage(r.Context(), f, nil))
-}
-
 func (f *GenerateForm) clearErrors() {
 	f.NameError, f.VersionError, f.SpaceAgeError = i18n.Msg{}, i18n.Msg{}, i18n.Msg{}
 	f.MapForm.clearErrors()
@@ -431,7 +413,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 	if !s.readForm(w, r) {
 		return
 	}
-	f, nw, ok := s.readGenerate(r, kindGenerate)
+	f, nw, ok := s.readStepOne(r.Context(), r.PostForm, true)
 	id, err := s.generateWorld(r.Context(), actor(u), &f, nw, ok, r.PostForm)
 	switch {
 	case errors.Is(err, errGenerateForm):
@@ -459,7 +441,47 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 		http.Redirect(w, r, planPath(id, q), http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
 		return
 	}
-	http.Redirect(w, r, worldPath(id)+"?"+generatedQuery+"=1", http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
+	// Step 2, the world's mods, which can be skipped to the map (SPEC 5.6, 17.9).
+	http.Redirect(w, r, modsPath(id), http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
+}
+
+// readStepOne reads step 1's values, which name no map settings: the map is
+// the preset's, or a favorite's own files for a favorite on the world's
+// line (SPEC 5.6, 5.12). MCP's generate_world reads its arguments through
+// it too; favSeed, for the page, takes a favorite's seed when none is posted.
+func (s *server) readStepOne(ctx context.Context, form url.Values, favSeed bool) (f GenerateForm, nw world.NewWorld, ok bool) {
+	id := form.Get(favoriteQuery)
+	var files world.FavoriteFiles
+	if id != "" && s.favorites != nil {
+		_, files, _ = s.favorites.Get(id)
+	}
+	if favSeed && strings.TrimSpace(form.Get(mgSeed)) == "" && len(files.MapGenSettings) > 0 {
+		var doc struct {
+			Seed *uint32 `json:"seed"`
+		}
+		if json.Unmarshal(files.MapGenSettings, &doc) == nil && doc.Seed != nil {
+			form.Set(mgSeed, strconv.FormatUint(uint64(*doc.Seed), 10))
+		}
+	}
+	version := cmp.Or(chosenVersion(form.Get("game_version"), form.Get("game_version_typed")), s.activeVersion(ctx))
+	preset := cmp.Or(form.Get("preset"), defaultPreset)
+	// A favorite's map settings file stands in for the fields its values would fill.
+	if len(files.MapSettings) > 0 {
+		for k, v := range mapSettingsValues(version, preset, files.MapSettings) {
+			form[k] = v
+		}
+	}
+	f, nw, ok = s.readGenerateValues(ctx, form, kindGenerate)
+	if ok && id != "" {
+		s.readFavorite(&f, id)
+		if f.favoriteMap() {
+			f.fillFromFiles(files)
+			if nw.Seed != nil {
+				f.MapGen = f.MapGen.WithSeed(*nw.Seed)
+			}
+		}
+	}
+	return f, nw, ok
 }
 
 // place puts a refusal's words on the field it is about.

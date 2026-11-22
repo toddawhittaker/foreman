@@ -220,7 +220,7 @@ func TestGenerateFillsInFromAFavorite(t *testing.T) {
 	body := hn.get(generateFromPath(favID), withCookie(c)).Body.String()
 	for _, want := range []string{
 		`name="favorite" value="` + favID + `"`, `id="favorite-note"`,
-		`name="game_version_typed" type="text" value="2.0.77"`, `<option value="rich-resources" selected`,
+		`name="game_version_typed" type="text" value="2.0.77"`, `name="preset" value="rich-resources"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("filled form lacks %q", want)
@@ -293,7 +293,7 @@ func TestGenerateFromAFavoriteWritesSettingsAndOffersItsMods(t *testing.T) {
 	}
 }
 
-func TestGenerateFromAFavoriteWithoutModsGoesToTheWorld(t *testing.T) {
+func TestGenerateFromAFavoriteWithoutModsGoesToStepTwo(t *testing.T) {
 	hn, favs := newFavoritesHarness(t)
 	c := hn.signIn()
 	src := hn.withActive("2.0.77")
@@ -303,7 +303,7 @@ func TestGenerateFromAFavoriteWithoutModsGoesToTheWorld(t *testing.T) {
 	}
 	rec := hn.postLong(PathGenerate, generateForm("name", "From plain", "favorite", favID), c)
 	id := idFromLocation(t, rec)
-	if want := worldPath(id) + "?" + generatedQuery + "=1"; rec.Header().Get("Location") != want {
+	if want := modsPath(id); rec.Header().Get("Location") != want {
 		t.Errorf("redirect %q, want %q", rec.Header().Get("Location"), want)
 	}
 	// A favorite deleted meanwhile is a form error, and no world is made.

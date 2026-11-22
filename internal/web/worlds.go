@@ -46,6 +46,9 @@ type WorldsPage struct {
 	// HaveState (only with server control, DESIGN 8.2).
 	ActiveState game.State
 	HaveState   bool
+	// Continue is where each Unfinished world's set-up goes on, by world id
+	// (SPEC 5.6).
+	Continue map[string]string
 }
 
 // WorldFacts is one world's row of facts, with what its snapshots add (SPEC 6.6).
@@ -144,6 +147,8 @@ func (s *server) worldRoutes() {
 // WorldPage is one world's page (SPEC 5.4, 5.8; DESIGN 8.2).
 type WorldPage struct {
 	World world.Summary
+	// ContinuePath is where an Unfinished world's set-up goes on (SPEC 5.6).
+	ContinuePath string
 	// Name refills the rename field.
 	Name      string
 	NameError i18n.Msg
@@ -321,6 +326,14 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	s.markSwitching(&p)
 	s.markSnapshotAdds(&p)
+	for _, w := range p.Worlds {
+		if w.Unfinished {
+			if p.Continue == nil {
+				p.Continue = map[string]string{}
+			}
+			p.Continue[w.ID] = s.continuePath(r.Context(), w)
+		}
+	}
 	if id := r.URL.Query().Get("deleted"); world.ValidID(id) {
 		p.Deleted, p.DeletedKept, err = s.deletedWorld(id, list)
 		if err != nil {
@@ -474,6 +487,9 @@ func archiveDone(change string, sum world.Summary) i18n.Msg {
 // why above.
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, nameError i18n.Msg) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
+	if sum.Unfinished && !sum.Archived {
+		p.ContinuePath = s.continuePath(ctx, sum)
+	}
 	if s.game != nil {
 		op := s.game.Status(sum.ID).Operation
 		p.Busy = busyText(op, s.worldName)
