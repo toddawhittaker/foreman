@@ -17,9 +17,11 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/saveplayers"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -214,15 +216,24 @@ func readFacts(root *os.Root) (facts, error) {
 //
 // A d with Failure set and no PNGs records the failure beside the previous
 // drawing, which stays whole (its basis, time and pictures are kept and d's
-// other fields are ignored). With no previous drawing, the failure is kept
-// alone, with d's basis and time. A d with no Failure replaces everything and
-// so clears a failure.
+// other fields are ignored, though they must still be well formed). With no
+// previous drawing, the failure is kept alone, with d's basis and time and no
+// surfaces. A d with no Failure replaces everything and so clears a failure.
+// The failure text is cut to MaxFailureBytes.
+//
+// Replace first removes what a crash left behind: temporary files in the
+// world's folder and, at the end, generation folders no record points at.
 func (s *Store) Replace(d Drawing, pngs map[string][]byte) error {
+	d.Failure = cutText(d.Failure, MaxFailureBytes)
 	failureOnly := d.Failure != "" && len(pngs) == 0
-	if !failureOnly {
-		if err := checkDrawing(d, pngs); err != nil {
-			return err
-		}
+	var err error
+	if failureOnly {
+		err = checkShape(d)
+	} else {
+		err = checkDrawing(d, pngs)
+	}
+	if err != nil {
+		return err
 	}
 	mu.Lock()
 	defer mu.Unlock()
@@ -231,26 +242,68 @@ func (s *Store) Replace(d Drawing, pngs map[string][]byte) error {
 		return err
 	}
 	defer func() { _ = root.Close() }()
-
-	if failureOnly {
-		old, err := readFacts(root)
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			// A damaged record is replaced by the failure alone.
-			old = facts{}
-		}
-		if old.Dir == "" {
-			return s.commit(root, factsOf(d, newGen()), nil, "")
-		}
-		old.Failure = d.Failure
-		return world.WriteFileAtomic(root, factsFile, mustJSON(old))
-	}
+	clearPartials(root)
 
 	old, err := readFacts(root)
-	oldDir := ""
-	if err == nil {
-		oldDir = old.Dir
+	if err != nil {
+		// A missing or damaged record is replaced.
+		old = facts{}
 	}
-	return s.commit(root, factsOf(d, newGen()), pngs, oldDir)
+	if !failureOnly {
+		return s.commit(root, factsOf(d, newGen()), pngs, old.Dir)
+	}
+	if old.Dir == "" {
+		d.Surfaces = nil
+		return s.commit(root, factsOf(d, newGen()), nil, "")
+	}
+	old.Failure = d.Failure
+	b, err := marshalFacts(old)
+	if err != nil {
+		return err
+	}
+	if err := world.WriteFileAtomic(root, factsFile, b); err != nil {
+		return err
+	}
+	pruneGenerations(root, old.Dir)
+	return nil
+}
+
+// MaxFailureBytes is the most of a failure text the store keeps, so a failure
+// can never make the record too large to read.
+const MaxFailureBytes = 4 << 10
+
+// cutText cuts s to at most max bytes without splitting a character.
+func cutText(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	for max > 0 && !utf8.RuneStart(s[max]) {
+		max--
+	}
+	return s[:max]
+}
+
+// clearPartials removes the temporary files an interrupted write left in the
+// world's folder (world.PrefixPartial), such as a half-written
+// factorymap.json. It is best effort, and the caller holds mu, so no write of
+// this process is in flight.
+func clearPartials(root *os.Root) {
+	for _, name := range entryNames(root) {
+		if strings.HasPrefix(name, world.PrefixPartial) {
+			_ = root.RemoveAll(name)
+		}
+	}
+}
+
+// entryNames lists the entries of the folder root holds.
+func entryNames(root *os.Root) []string {
+	dir, err := root.Open(".")
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = dir.Close() }()
+	names, _ := dir.Readdirnames(-1)
+	return names
 }
 
 // commit writes a generation folder holding pngs, points factorymap.json at
@@ -271,7 +324,11 @@ func (s *Store) commit(root *os.Root, f facts, pngs map[string][]byte, oldDir st
 				return err
 			}
 		}
-		return world.WriteFileAtomic(root, factsFile, mustJSON(f))
+		b, err := marshalFacts(f)
+		if err != nil {
+			return err
+		}
+		return world.WriteFileAtomic(root, factsFile, b)
 	}()
 	if err != nil {
 		_ = root.RemoveAll(f.Dir)
@@ -284,16 +341,7 @@ func (s *Store) commit(root *os.Root, f facts, pngs map[string][]byte, oldDir st
 // pruneGenerations removes every folder that is not the current generation.
 // It is best effort: a leftover is harmless and the next Replace removes it.
 func pruneGenerations(root *os.Root, keep string) {
-	dir, err := root.Open(".")
-	if err != nil {
-		return
-	}
-	names, err := dir.Readdirnames(-1)
-	_ = dir.Close()
-	if err != nil {
-		return
-	}
-	for _, name := range names {
+	for _, name := range entryNames(root) {
 		if name != keep && genPattern.MatchString(name) {
 			_ = root.RemoveAll(name)
 		}
@@ -308,26 +356,71 @@ func newGen() string {
 	return genPrefix + hex.EncodeToString(b[:])
 }
 
-func mustJSON(v any) []byte {
-	b, err := json.MarshalIndent(v, "", "  ")
+// marshalFacts encodes the record. It fails, rather than writing a record
+// that cannot be read back, on a value json refuses (a year past 9999).
+func marshalFacts(f facts) ([]byte, error) {
+	b, err := json.MarshalIndent(f, "", "  ")
 	if err != nil {
-		panic(err) // facts hold only strings, numbers and times
+		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
-	return append(b, '\n')
+	if len(b) > maxFactsSize {
+		return nil, fmt.Errorf("%w: the drawing's facts are too large", ErrInvalid)
+	}
+	return append(b, '\n'), nil
 }
 
 var pngSignature = []byte("\x89PNG\r\n\x1a\n")
 
-// checkDrawing refuses a drawing and pictures the store could not serve.
-func checkDrawing(d Drawing, pngs map[string][]byte) error {
+// maxSavePathBytes is the longest save name a drawing's basis may hold.
+const maxSavePathBytes = 255
+
+// checkShape refuses a drawing whose facts the store could not write or read
+// back: too many or malformed surfaces, over-long text, impossible numbers or
+// times. It does not look at pictures.
+func checkShape(d Drawing) error {
+	bad := func(format string, a ...any) error {
+		return fmt.Errorf("%w: %s", ErrInvalid, fmt.Sprintf(format, a...))
+	}
 	if len(d.Surfaces) > MaxSurfaces {
-		return fmt.Errorf("%w: %d surfaces", ErrInvalid, len(d.Surfaces))
+		return bad("%d surfaces", len(d.Surfaces))
+	}
+	if len(d.Basis.Save) > maxSavePathBytes || len(d.GameVersion) > maxVersionLen || len(d.Failure) > MaxFailureBytes {
+		return bad("text too long")
+	}
+	if d.Basis.Size < 0 || d.Basis.Size > maxWholeNumber {
+		return bad("basis size")
+	}
+	for _, t := range []time.Time{d.Basis.Modified, d.DrawnAt} {
+		if y := t.Year(); y < 0 || y > 9999 {
+			return bad("time out of range")
+		}
 	}
 	indexes := make(map[int]bool, len(d.Surfaces))
 	for _, sf := range d.Surfaces {
-		if sf.Index < 0 || indexes[sf.Index] {
-			return fmt.Errorf("%w: surface %d", ErrInvalid, sf.Index)
+		if sf.Index < 0 || sf.Index > maxWholeNumber || indexes[sf.Index] {
+			return bad("surface %d", sf.Index)
 		}
+		indexes[sf.Index] = true
+		switch sf.Kind {
+		case "planet", "platform", "surface":
+		default:
+			return bad("surface %d has kind %q", sf.Index, sf.Kind)
+		}
+		if len(sf.Name) > maxNameBytes || sf.Width < 0 || sf.Height < 0 || sf.Width > MaxSidePixels || sf.Height > MaxSidePixels ||
+			sf.TilesPerPixel < 0 || sf.TilesPerPixel > 1<<24 {
+			return bad("surface %d has a bad name or size", sf.Index)
+		}
+	}
+	return nil
+}
+
+// checkDrawing refuses a drawing and pictures the store could not serve.
+func checkDrawing(d Drawing, pngs map[string][]byte) error {
+	if err := checkShape(d); err != nil {
+		return err
+	}
+	indexes := make(map[int]bool, len(d.Surfaces))
+	for _, sf := range d.Surfaces {
 		indexes[sf.Index] = true
 		if _, ok := pngs[PNGName(sf.Index, "")]; !ok {
 			return fmt.Errorf("%w: no base picture for surface %d", ErrInvalid, sf.Index)
@@ -576,4 +669,51 @@ func Remove(dataDir, id string) error {
 		return err
 	}
 	return nil
+}
+
+// Sweep removes every store folder under the data directory whose world id
+// keep rejects, so the pictures of a world that no longer exists go (SPEC
+// 5.16). Foreman calls it at startup. Entries whose names are not world ids
+// are not stores and stay. keep is called without the store lock, so it may
+// use the store. A link in a store's place is removed as a link, never
+// followed. Sweep goes on after a failure and returns all of them.
+func Sweep(dataDir string, keep func(id string) bool) error {
+	data, err := os.OpenRoot(dataDir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	defer func() { _ = data.Close() }()
+	info, err := data.Lstat(storeDir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a folder", storeDir)
+	}
+	top, err := data.OpenRoot(storeDir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = top.Close() }()
+	var gone []string
+	for _, name := range entryNames(top) {
+		if world.ValidID(name) && !keep(name) {
+			gone = append(gone, name)
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	var errs []error
+	for _, name := range gone {
+		if err := top.RemoveAll(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			errs = append(errs, fmt.Errorf("%s: %w", name, err))
+		}
+	}
+	return errors.Join(errs...)
 }
