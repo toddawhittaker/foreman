@@ -330,6 +330,7 @@ type hookRequest struct {
 //	POST /oom           name, on
 //	POST /port-in-use   name, port (the next start of that name fails)
 //	POST /preview-mode  mode ("ok", "fail", "hang", "slow" or "oom")
+//	POST /save-players  tick, players, drop_mod, raw; or reset (see SetSavePlayers)
 //	POST /sidecar-port  port (publish 34197/udp on it; "" stops publishing)
 //	POST /sidecar-restart  (the sidecar restarts; shared games' RCON stops)
 func (g *Game) HookHandler() http.Handler {
@@ -379,6 +380,7 @@ func (g *Game) HookHandler() http.Handler {
 	hook("/sidecar-port", func(q hookRequest) error { return g.SetSidecarPort(q.Port) })
 	hook("/sidecar-restart", func(hookRequest) error { return g.RestartSidecar() })
 	hook("/preview-mode", func(q hookRequest) error { return g.SetPreviewMode(PreviewMode(q.Mode)) })
+	mux.Handle("POST /save-players", savePlayersHook())
 	hook("/image", func(q hookRequest) error {
 		if q.Ref == "" {
 			return errors.New("an image needs a ref")
