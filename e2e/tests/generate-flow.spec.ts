@@ -66,6 +66,9 @@ test("an Unfinished world says so on the list and its page, and Continue opens s
   await expect(row.locator(".badge")).toHaveText("Unfinished");
   // The active world has a save, so only the new one is Unfinished.
   await expect(page.locator("ul.worlds .badge", { hasText: "Unfinished" })).toHaveCount(1);
+  // Its row offers one action, Continue, so the name keeps its room at 320 px in every language;
+  // Switch stays on the world page (DESIGN 7.1).
+  await expect(row.locator(".actions a")).toHaveCount(1);
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/d1-worlds-unfinished-${info.project.name}.png`, fullPage: true });
 
