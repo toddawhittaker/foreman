@@ -1,6 +1,6 @@
 {
   "worldexport.busy": "Deux exportations sont déjà en cours. Attendez la fin de l’une d’elles, puis réessayez.",
   "worldexport.error.file": "Ce monde contient un fichier qu’un fichier de monde ne peut pas conserver : {path}. Il s’agit d’un lien symbolique ou d’un fichier spécial, son nom n’est pas admis dans un fichier de monde, ou c’est un server-settings.json qui n’est pas un unique objet JSON. Corrigez-le ou supprimez-le, puis réessayez.",
-  "worldexport.error.saves": "Choisissez toutes les sauvegardes ou seulement la sauvegarde qui sera chargée ensuite.",
+  "worldexport.error.saves": "Choisissez toutes les sauvegardes ou seulement la sauvegarde chargée au prochain démarrage.",
   "worldexport.error.too_many": "Ce monde contient plus de fichiers qu’un fichier de monde ne peut en contenir ; il ne peut donc pas être exporté."
 }

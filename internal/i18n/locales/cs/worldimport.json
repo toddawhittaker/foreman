@@ -24,7 +24,7 @@
   "worldimport.name.label": "Název světa",
   "worldimport.image.here": "Obraz hry ve verzi {version} je na tomto hostiteli už k dispozici.",
   "worldimport.button": "Importovat svět",
-  "worldimport.error.bad": "Foreman tento soubor světa nedokáže přečíst. Může být poškozený, useknutý nebo nevyexportovaný Foremanem.",
+  "worldimport.error.bad": "Foreman tento soubor světa nedokáže přečíst. Může být poškozený nebo useknutý, případně nebyl exportován z Foremanu.",
   "worldimport.error.newer": "Tento soubor světa vytvořila novější verze Foremanu, takže ho tato verze nepřečte. Je potřeba Foreman aktualizovat a zkusit to znovu.",
   "worldimport.refused.title": "Foreman tento soubor nemůže importovat",
   "worldimport.retry": "Zpět na import",

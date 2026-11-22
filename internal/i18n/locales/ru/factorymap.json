@@ -24,7 +24,7 @@
   "factorymap.kind.surface": "поверхность",
   "factorymap.layers.legend": "Здания на карте",
   "factorymap.mode.automatic": "Автоматически",
-  "factorymap.mode.automatic_hint": "Рисуется, когда мир остановлен 2 минуты, никакая игра не запущена и сохранение изменилось.",
+  "factorymap.mode.automatic_hint": "Рисуется, когда мир остановлен уже 2 минуты, никакая игра не запущена и сохранение изменилось.",
   "factorymap.mode.heading": "Когда рисовать",
   "factorymap.mode.manual": "Вручную",
   "factorymap.mode.manual_hint": "Рисуется, только когда вы выбираете «Нарисовать карту фабрики».",

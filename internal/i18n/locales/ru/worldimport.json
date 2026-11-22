@@ -24,7 +24,7 @@
   "worldimport.name.label": "Название мира",
   "worldimport.image.here": "Образ игры версии {version} уже есть на этом хосте.",
   "worldimport.button": "Импортировать мир",
-  "worldimport.error.bad": "Foreman не может прочитать этот файл мира. Возможно, он повреждён, оборван или экспортирован не в Foreman.",
+  "worldimport.error.bad": "Foreman не может прочитать этот файл мира. Возможно, он повреждён, оборван или экспортирован не из Foreman.",
   "worldimport.error.newer": "Этот файл мира создан более новой версией Foreman, поэтому эта версия не может его прочитать. Обновите Foreman и повторите попытку.",
   "worldimport.refused.title": "Foreman не может импортировать этот файл",
   "worldimport.retry": "Назад к импорту",
