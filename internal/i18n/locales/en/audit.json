@@ -16,6 +16,7 @@
   "audit.action.mod-upload-limit-set": "Mod upload limit changed",
   "audit.action.mods": "Mods changed",
   "audit.action.mods-refused": "Mod change refused",
+  "audit.action.new-map": "Map settings saved",
   "audit.action.password-change": "Password changed",
   "audit.action.player": "Player action",
   "audit.action.public-mods-set": "Public mods page turned on or off",

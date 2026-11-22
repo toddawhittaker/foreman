@@ -16,6 +16,7 @@
   "audit.action.mod-upload-limit-set": "Limite d’envoi des mods modifiée",
   "audit.action.mods": "Mods modifiés",
   "audit.action.mods-refused": "Modification des mods refusée",
+  "audit.action.new-map": "Paramètres de la carte enregistrés",
   "audit.action.password-change": "Mot de passe modifié",
   "audit.action.player": "Action sur un joueur",
   "audit.action.public-mods-set": "Page publique des mods activée ou désactivée",

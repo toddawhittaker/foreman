@@ -16,6 +16,7 @@
   "audit.action.mod-upload-limit-set": "Límite de subida de mods cambiado",
   "audit.action.mods": "Mods cambiados",
   "audit.action.mods-refused": "Cambio de mods rechazado",
+  "audit.action.new-map": "Configuración del mapa guardada",
   "audit.action.password-change": "Contraseña cambiada",
   "audit.action.player": "Acción sobre un jugador",
   "audit.action.public-mods-set": "Página pública de mods activada o desactivada",
