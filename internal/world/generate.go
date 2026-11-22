@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"path"
 	"regexp"
@@ -48,13 +49,51 @@ type NewWorld struct {
 	ModSettings    []byte
 }
 
+// checkMapFiles is the check Generate and SetNewMap share on a preset name
+// and the two map settings files: size, then JSON.
+func checkMapFiles(preset string, mapGen, mapSettings []byte) error {
+	if !presetRE.MatchString(preset) {
+		return ErrBadPreset
+	}
+	for _, data := range [][]byte{mapGen, mapSettings} {
+		if len(data) > maxConfigFile {
+			return ErrConfigTooBig
+		}
+		if len(data) > 0 && !json.Valid(data) {
+			return ErrBadMapJSON
+		}
+	}
+	return nil
+}
+
+// writeMapFiles is the one writer of config/map-gen-settings.json and
+// config/map-settings.json (ADR 0010). A file with data is replaced
+// atomically; an empty one is removed, so an unchanged preset leaves no
+// file behind. root is a world's folder.
+func writeMapFiles(root *os.Root, mapGen, mapSettings []byte) error {
+	for _, f := range []struct {
+		name string
+		data []byte
+	}{{MapGenSettingsFile, mapGen}, {MapSettingsFile, mapSettings}} {
+		p := path.Join(ConfigDir, f.name)
+		if len(f.data) > 0 {
+			if err := writeFileAtomicMode(root, p, f.data); err != nil {
+				return err
+			}
+		} else if err := root.Remove(p); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
 // Generate makes a new world that has no save: its folders, any map
 // settings files and a world.json with new_map set, so the world's first
 // start makes the map (SPEC 5.6, 4.3). The first world made becomes active.
 // It returns the new world's id.
 func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
-	if !presetRE.MatchString(nw.Preset) {
-		return "", ErrBadPreset
+	if err := checkMapFiles(nw.Preset, nw.MapGenSettings, nw.MapSettings); err != nil {
+		return "", err
 	}
 	var server []byte
 	if len(nw.ServerSettings) > 0 {
@@ -71,17 +110,8 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 	} else {
 		server = gamesettings.WithAutosaveSlots(server)
 	}
-	files := []struct {
-		name string
-		data []byte
-	}{{MapGenSettingsFile, nw.MapGenSettings}, {MapSettingsFile, nw.MapSettings}, {ServerSettingsFile, server}}
-	for _, f := range files {
-		if len(f.data) > maxConfigFile {
-			return "", ErrConfigTooBig
-		}
-		if len(f.data) > 0 && !json.Valid(f.data) {
-			return "", ErrBadMapJSON
-		}
+	if len(server) > maxConfigFile {
+		return "", ErrConfigTooBig
 	}
 	if len(nw.ModSettings) > MaxModSettings {
 		return "", ErrModSettingsTooBig
@@ -96,13 +126,11 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 			return err
 		}
 		defer func() { _ = dst.Close() }()
-		for _, f := range files {
-			if len(f.data) == 0 {
-				continue
-			}
-			if err := writeFileAtomicMode(dst, path.Join(ConfigDir, f.name), f.data); err != nil {
-				return err
-			}
+		if err := writeMapFiles(dst, nw.MapGenSettings, nw.MapSettings); err != nil {
+			return err
+		}
+		if err := writeFileAtomicMode(dst, path.Join(ConfigDir, ServerSettingsFile), server); err != nil {
+			return err
 		}
 		if len(nw.ModSettings) > 0 {
 			return WriteFileAtomic(dst, path.Join(ModsDir, ModSettingsFile), nw.ModSettings)

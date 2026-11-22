@@ -41,6 +41,10 @@ type Summary struct {
 	// Archived is true for a world hidden from the main list that cannot
 	// start (SPEC 5.9).
 	Archived bool
+	// Unfinished is true when the world has new_map and no save: the guided
+	// Generate flow was left before the map was made (SPEC 5.6). It is
+	// derived, never stored, and false when the saves folder cannot be read.
+	Unfinished bool
 }
 
 // List returns every world in the worlds folder, the active one first, then
@@ -128,8 +132,12 @@ func summarize(worlds *os.Root, id string) (Summary, error) {
 	if s.DiskBytes, err = diskUse(w); err != nil {
 		s.DiskBytes, s.SizeUnknown = 0, true
 	}
-	if s.LastPlayed, err = lastPlayed(w); err != nil {
-		s.LastPlayed, s.LastPlayedUnknown = time.Time{}, true
+	save, found, err := newestSave(w)
+	if err != nil {
+		s.LastPlayedUnknown = true
+	} else {
+		s.LastPlayed = save.ModTime // zero when there is no save
+		s.Unfinished = unfinished(meta, found)
 	}
 	return s, nil
 }
@@ -153,16 +161,6 @@ func diskUse(root *os.Root) (uint64, error) {
 		return nil
 	})
 	return total, err
-}
-
-// lastPlayed returns the newest save's modification time, the game's own
-// record of when the world was last saved.
-func lastPlayed(root *os.Root) (time.Time, error) {
-	save, found, err := newestSave(root)
-	if err != nil || !found {
-		return time.Time{}, err
-	}
-	return save.ModTime, nil
 }
 
 // Name returns one world's display name from its metadata alone, without
