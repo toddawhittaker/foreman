@@ -205,7 +205,7 @@ func TestFactoryMapAutoOneRunPerTick(t *testing.T) {
 
 // SPEC 5.16: pictures are removed once their world no longer exists.
 func TestFactoryMapSweepRemovesDeletedWorlds(t *testing.T) {
-	r := newMapRig(t)
+	r := newRig(t, rigOptions{noRun: true})
 	id := r.newWorld("Kept")
 	gone := "0123456789abcdef0123456789abcdef"
 	if !world.ValidID(gone) {

@@ -1,14 +1,11 @@
 package game
 
 import (
-	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/toddawhittaker/foreman/internal/factorymap"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -33,6 +30,8 @@ func (c *Controller) factoryMapLoop() {
 	if every <= 0 {
 		every = factoryMapEvery
 	}
+	// Pictures of worlds deleted while Foreman was down go first.
+	c.sweepFactoryMaps()
 	tick := time.NewTicker(every)
 	defer tick.Stop()
 	for {
@@ -128,11 +127,9 @@ func (c *Controller) factoryMapDue(id string) bool {
 	if err != nil {
 		return false
 	}
+	// A damaged record is drawn again, which replaces it.
 	d, kept, err := store.Read()
-	if err != nil {
-		return false
-	}
-	return !kept || !sameBasis(d.Basis, basis)
+	return err != nil || !kept || !sameBasis(d.Basis, basis)
 }
 
 // anyFactoryMapDrawing is whether a factory map run is in flight.
@@ -189,15 +186,10 @@ func (c *Controller) sweepFactoryMaps() {
 		if !world.ValidID(id) {
 			continue
 		}
-		root, err := c.worlds.OpenWorld(id)
-		if err == nil {
-			_ = root.Close()
+		if c.worldExists(id) {
 			continue
 		}
-		if !errors.Is(err, fs.ErrNotExist) {
-			continue
-		}
-		if err := factorymap.Remove(c.dataDir(), id); err != nil {
+		if err := c.removeFactoryMap(id); err != nil {
 			c.log.Warn("the factory map of a deleted world could not be removed", "world", id, "error", err)
 		}
 	}

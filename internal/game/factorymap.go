@@ -71,20 +71,23 @@ var errFactoryMapTooLarge = errors.New("the factory map output is too large")
 // world id. The zero value is ready to use.
 type factoryMapState struct {
 	mu sync.Mutex
-	// drawing holds the worlds with a run in flight.
-	drawing map[string]bool
+	// drawing holds each world's run in flight, by the function that
+	// cancels it.
+	drawing map[string]context.CancelFunc
 	// failed is each world's last failed run: the save it tried and why.
-	// It is kept in memory only, so a failed save is tried again once after
-	// Foreman restarts.
+	// The store keeps the failure too, but beside the last picture's save,
+	// so only this says which save failed; a failed save is therefore tried
+	// again once after Foreman restarts.
 	failed map[string]factoryMapFailure
 	// stoppedSince is when the loop first saw each world stopped.
 	stoppedSince map[string]time.Time
 
 	// Tests replace these; nil means the real run, drawing and store.
-	runSave   func(ctx context.Context, id string, m saveCopyMod, read func(base *os.Root, dir string) error) (saveplayers.Basis, error)
-	drawFiles func(dir *os.Root) (drawnFactoryMap, error)
-	openStore func(id string) (factoryMapStore, error)
-	every     time.Duration
+	runSave     func(ctx context.Context, id string, m saveCopyMod, read func(base *os.Root, dir string) error) (saveplayers.Basis, error)
+	drawFiles   func(dir *os.Root) (drawnFactoryMap, error)
+	openStore   func(id string) (factoryMapStore, error)
+	removeStore func(id string) error
+	every       time.Duration
 }
 
 type factoryMapFailure struct {
@@ -162,31 +165,35 @@ func (c *Controller) FactoryMap(id string) (FactoryMapView, error) {
 	if err != nil {
 		return FactoryMapView{}, err
 	}
+	// A damaged record shows as no picture; the next drawing replaces it.
 	d, kept, err := store.Read()
 	if err != nil {
-		return FactoryMapView{}, err
+		c.log.Warn("the factory map record could not be read", "world", id, "error", err)
+		kept = false
 	}
-	if kept {
+	picture := kept && len(d.Surfaces) > 0
+	if picture {
 		v.Drawing = d
 	}
 	fm := &c.factoryMaps
 	fm.mu.Lock()
-	drawing := fm.drawing[id]
+	drawing := fm.drawing[id] != nil
 	failed, hasFailed := fm.failed[id]
 	fm.mu.Unlock()
+	if !hasFailed && kept && d.Failure != "" {
+		failed, hasFailed = factoryMapFailure{id: d.Failure}, true
+	}
 	switch {
 	case !factoryMapSupported(meta.GameVersion):
 		v.State = FactoryMapUnsupported
 	case drawing:
 		v.State = FactoryMapDrawing
+	case v.Mode.Mode == world.FactoryMapOff && !picture:
+		v.State = FactoryMapOff
 	case hasFailed:
 		v.State, v.Failure = FactoryMapFailed, failed.id
-	case kept && d.Failure != "":
-		v.State, v.Failure = FactoryMapFailed, d.Failure
-	case kept:
+	case picture:
 		v.State = FactoryMapDrawn
-	case v.Mode.Mode == world.FactoryMapOff:
-		v.State = FactoryMapOff
 	default:
 		v.State = FactoryMapNever
 	}
@@ -274,16 +281,18 @@ func (c *Controller) playersSeenOnline(id string) bool {
 func (c *Controller) startFactoryMap(id string) bool {
 	fm := &c.factoryMaps
 	fm.mu.Lock()
-	if fm.drawing[id] {
+	if fm.drawing[id] != nil {
 		fm.mu.Unlock()
 		return false
 	}
 	if fm.drawing == nil {
-		fm.drawing = map[string]bool{}
+		fm.drawing = map[string]context.CancelFunc{}
 	}
-	fm.drawing[id] = true
+	ctx, cancel := context.WithCancel(c.ctx)
+	fm.drawing[id] = cancel
 	fm.mu.Unlock()
-	if !c.spawn(func() { c.runFactoryMap(id) }) {
+	if !c.spawn(func() { c.runFactoryMap(ctx, id) }) {
+		cancel()
 		fm.mu.Lock()
 		delete(fm.drawing, id)
 		fm.mu.Unlock()
@@ -297,20 +306,26 @@ func (c *Controller) publishFactoryMap(id string) {
 	c.world(id).hub.Publish(Update{Kind: UpdateFactoryMap})
 }
 
-// runFactoryMap is one run, in the controller's own context. The drawing is
-// kept only if the save that loads next is still the save that was read
-// (SPEC 8.16). A run cancelled by a start, or by shutdown, records nothing.
-func (c *Controller) runFactoryMap(id string) {
+// runFactoryMap is one run, in ctx, which a delete of the world or shutdown
+// cancels. The drawing is kept only if the save that loads next is still the
+// save that was read (SPEC 8.16), and only while the world exists (SPEC
+// 5.16). A run cancelled by a start, a delete or shutdown records nothing.
+func (c *Controller) runFactoryMap(ctx context.Context, id string) {
 	fm := &c.factoryMaps
 	defer func() {
 		fm.mu.Lock()
+		if cancel := fm.drawing[id]; cancel != nil {
+			cancel()
+		}
 		delete(fm.drawing, id)
 		fm.mu.Unlock()
 		c.publishFactoryMap(id)
 	}()
 	before, _, err := c.worlds.LoadTarget(id)
 	if err != nil {
-		c.log.Warn("the factory map could not read the world", "world", id, "error", err)
+		if !errors.Is(err, fs.ErrNotExist) {
+			c.log.Warn("the factory map could not read the world", "world", id, "error", err)
+		}
 		return
 	}
 	tried := basisOf(before)
@@ -323,7 +338,7 @@ func (c *Controller) runFactoryMap(id string) {
 		draw = drawFactoryMapFiles
 	}
 	var drawn drawnFactoryMap
-	basis, err := run(c.ctx, id, factoryMapMod, func(base *os.Root, dir string) error {
+	basis, err := run(ctx, id, factoryMapMod, func(base *os.Root, dir string) error {
 		out, err := base.OpenRoot(path.Join(dir, gameenv.FactoryMapDir))
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrSaveCopyBadOutput, err)
@@ -340,8 +355,10 @@ func (c *Controller) runFactoryMap(id string) {
 		fm.mu.Lock()
 		delete(fm.failed, id)
 		fm.mu.Unlock()
-	case errors.Is(err, context.Canceled) || c.ctx.Err() != nil:
+	case errors.Is(err, context.Canceled) || ctx.Err() != nil:
 		c.log.Info("the factory map run was cancelled", "world", id)
+	case errors.Is(err, errFactoryMapWorldGone) || !c.worldExists(id):
+		c.log.Info("the world was deleted during the factory map run", "world", id)
 	case errors.Is(err, ErrPreviewBusy):
 		c.log.Info("the factory map run waited too long for the preview slot", "world", id)
 	case errors.Is(err, errFactoryMapSaveChanged):
@@ -352,28 +369,92 @@ func (c *Controller) runFactoryMap(id string) {
 		if fm.failed == nil {
 			fm.failed = map[string]factoryMapFailure{}
 		}
-		fm.failed[id] = factoryMapFailure{basis: tried, id: factoryMapFailureID(err)}
+		failure := factoryMapFailureID(err)
+		fm.failed[id] = factoryMapFailure{basis: tried, id: failure}
 		fm.mu.Unlock()
+		// The store keeps the failure beside the last picture, which stays.
+		err := c.replaceIfWorld(id, factorymap.Drawing{Basis: tried, DrawnAt: c.now().UTC(), Failure: failure}, nil)
+		if err != nil && !errors.Is(err, errFactoryMapWorldGone) {
+			c.log.Warn("the factory map failure could not be kept", "world", id, "error", err)
+		}
 	}
 }
 
-var errFactoryMapSaveChanged = errors.New("the save changed during the run")
+var (
+	errFactoryMapSaveChanged = errors.New("the save changed during the run")
+	errFactoryMapWorldGone   = errors.New("the world was deleted")
+)
+
+// ForgetFactoryMap cancels the run of a deleted world and removes its kept
+// pictures, so no drawing outlives its world (SPEC 5.16). A delete of a world
+// calls it once the world's folder is gone.
+func (c *Controller) ForgetFactoryMap(id string) error {
+	fm := &c.factoryMaps
+	fm.mu.Lock()
+	if cancel := fm.drawing[id]; cancel != nil {
+		cancel()
+	}
+	delete(fm.failed, id)
+	delete(fm.stoppedSince, id)
+	fm.mu.Unlock()
+	return c.removeFactoryMap(id)
+}
+
+func (c *Controller) removeFactoryMap(id string) error {
+	if remove := c.factoryMaps.removeStore; remove != nil {
+		return remove(id)
+	}
+	return factorymap.Remove(c.dataDir(), id)
+}
+
+// worldExists is whether the world's folder is there. Only a folder known to
+// be gone counts as no world, so a passing fault never removes a picture.
+func (c *Controller) worldExists(id string) bool {
+	root, err := c.worlds.OpenWorld(id)
+	if err != nil {
+		return !errors.Is(err, fs.ErrNotExist)
+	}
+	_ = root.Close()
+	return true
+}
+
+// replaceIfWorld keeps d while the world exists. It looks again after the
+// write: a delete that removed the pictures between the look and the write
+// would leave these behind, so they are removed then.
+func (c *Controller) replaceIfWorld(id string, d factorymap.Drawing, pngs map[string][]byte) error {
+	if !c.worldExists(id) {
+		return errFactoryMapWorldGone
+	}
+	store, err := c.factoryMapStore(id)
+	if err != nil {
+		return err
+	}
+	if err := store.Replace(d, pngs); err != nil {
+		return err
+	}
+	if !c.worldExists(id) {
+		if err := c.removeFactoryMap(id); err != nil {
+			c.log.Warn("the factory map of a deleted world could not be removed", "world", id, "error", err)
+		}
+		return errFactoryMapWorldGone
+	}
+	return nil
+}
 
 // keepFactoryMap replaces the kept drawing when the save that loads next is
 // still the one that was read.
 func (c *Controller) keepFactoryMap(id string, basis saveplayers.Basis, drawn drawnFactoryMap) error {
 	now, found, err := c.worlds.LoadTarget(id)
+	if errors.Is(err, fs.ErrNotExist) {
+		return errFactoryMapWorldGone
+	}
 	if err != nil {
 		return err
 	}
 	if !found || !sameBasis(basisOf(now), basis) {
 		return errFactoryMapSaveChanged
 	}
-	store, err := c.factoryMapStore(id)
-	if err != nil {
-		return err
-	}
-	return store.Replace(factorymap.Drawing{
+	return c.replaceIfWorld(id, factorymap.Drawing{
 		Basis: basis, DrawnAt: c.now().UTC(), GameVersion: drawn.gameVersion, Surfaces: drawn.surfaces,
 	}, drawn.pngs)
 }
@@ -459,7 +540,7 @@ func drawFactoryMapSurface(dir *os.Root, manifest []byte, ms factorymap.Manifest
 	if err = budget.wrap(err); err != nil {
 		return factorymap.Surface{}, err
 	}
-	if pngs[factoryMapPNGName(s.Index, "")], err = encodePNG(img); err != nil {
+	if pngs[factorymap.PNGName(s.Index, "")], err = encodePNG(img); err != nil {
 		return factorymap.Surface{}, err
 	}
 	if ms.Entities == "" {
@@ -479,7 +560,7 @@ func drawFactoryMapSurface(dir *os.Root, manifest []byte, ms factorymap.Manifest
 		if !ok {
 			continue
 		}
-		if pngs[factoryMapPNGName(s.Index, cat)], err = encodePNG(layer); err != nil {
+		if pngs[factorymap.PNGName(s.Index, cat)], err = encodePNG(layer); err != nil {
 			return factorymap.Surface{}, err
 		}
 	}
@@ -511,15 +592,6 @@ func checkOutputSizes(dir *os.Root, m factorymap.Manifest, left int64) error {
 		}
 	}
 	return nil
-}
-
-// factoryMapPNGName is a picture's file name in the store: the base picture
-// for layer "", else the layer's.
-func factoryMapPNGName(surface int, layer factorymap.Category) string {
-	if layer == "" {
-		return fmt.Sprintf("surface-%d.png", surface)
-	}
-	return fmt.Sprintf("surface-%d-%s.png", surface, layer)
 }
 
 func encodePNG(img image.Image) ([]byte, error) {

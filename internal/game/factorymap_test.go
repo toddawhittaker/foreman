@@ -73,16 +73,34 @@ func newMapRig(t *testing.T) *mapRig {
 	fm := &r.c.factoryMaps
 	fm.every = time.Hour // the tests call factoryMapTick themselves
 	fm.openStore = func(id string) (factoryMapStore, error) { return r.store(id), nil }
+	fm.removeStore = func(id string) error {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		delete(r.stores, id)
+		return nil
+	}
 	fm.runSave = r.runSave
 	fm.drawFiles = func(*os.Root) (drawnFactoryMap, error) {
 		return drawnFactoryMap{
 			gameVersion: "2.1.24",
 			surfaces:    []factorymap.Surface{{Index: 1, Name: "nauvis", Kind: "planet", Width: 32, Height: 32, TilesPerPixel: 1}},
-			pngs:        map[string][]byte{factoryMapPNGName(1, ""): []byte("base"), factoryMapPNGName(1, factorymap.CategoryBelts): []byte("belts")},
+			pngs:        map[string][]byte{factorymap.PNGName(1, ""): []byte("base"), factorymap.PNGName(1, factorymap.CategoryBelts): []byte("belts")},
 		}, nil
 	}
 	r.stop = r.run(r.c)
 	return r
+}
+
+// hasStore is whether the world has kept pictures or a failure.
+func (r *mapRig) hasStore(id string) bool {
+	r.mu.Lock()
+	s := r.stores[id]
+	r.mu.Unlock()
+	if s == nil {
+		return false
+	}
+	_, kept, _ := s.get()
+	return kept
 }
 
 func (r *mapRig) store(id string) *memMapStore {
@@ -168,7 +186,7 @@ func (r *mapRig) waitIdle(id string) {
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		r.c.factoryMaps.mu.Lock()
-		busy := r.c.factoryMaps.drawing[id]
+		busy := r.c.factoryMaps.drawing[id] != nil
 		r.c.factoryMaps.mu.Unlock()
 		if !busy {
 			return
@@ -463,15 +481,6 @@ func TestFactoryMapFailureIDs(t *testing.T) {
 		if got := factoryMapFailureID(fmt.Errorf("wrapped: %w", err)); got != want {
 			t.Errorf("%v gives %q, want %q", err, got, want)
 		}
-	}
-}
-
-func TestFactoryMapPNGNames(t *testing.T) {
-	if got := factoryMapPNGName(3, ""); got != "surface-3.png" {
-		t.Errorf("base %q", got)
-	}
-	if got := factoryMapPNGName(3, factorymap.CategoryRail); got != "surface-3-rail.png" {
-		t.Errorf("layer %q", got)
 	}
 }
 
