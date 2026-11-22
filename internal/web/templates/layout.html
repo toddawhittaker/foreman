@@ -305,6 +305,7 @@
     {{- /* The main nav has a Snapshots tab too, so this one's name says whose; it starts with the shown word (WCAG 2.5.3). */}}
     <li><a href="{{.Path}}/snapshots" aria-label="{{t "worlds.world.snapshots_name"}}"{{if eq .Current "snapshots"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
     {{- if .Settings}}
+    <li><a href="{{.Path}}/map"{{if eq .Current "map"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "factorymap.tab"}}</a></li>
     <li><a href="{{.Path}}/mods"{{if eq .Current "mods"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "mods.tab"}}</a></li>
     <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a>
       {{- if .Sub}}

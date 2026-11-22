@@ -41,22 +41,27 @@ type Meta struct {
 	// Archived hides the world from the main list and keeps it from
 	// starting, until it is unarchived (SPEC 5.9).
 	Archived bool
+	// FactoryMap is the world's factory map setting (SPEC 5.16); nil means
+	// the default, manual with skip-online on. It is Foreman's own setting,
+	// not audited and taken in no snapshot, like the display name.
+	FactoryMap *FactoryMapMode
 
 	unknown map[string]json.RawMessage
 }
 
 // metaKnown is the on-disk shape of the fields Foreman knows.
 type metaKnown struct {
-	FormatVersion int           `json:"format_version"`
-	Name          string        `json:"name"`
-	GameVersion   string        `json:"game_version"`
-	SpaceAge      bool          `json:"space_age"`
-	LoadSave      string        `json:"load_save,omitempty"`
-	CreatedAt     time.Time     `json:"created_at"`
-	ImportedFrom  *ImportedFrom `json:"imported_from,omitempty"`
-	NewMap        *NewMap       `json:"new_map,omitempty"`
-	UseWhitelist  bool          `json:"use_whitelist,omitempty"`
-	Archived      bool          `json:"archived,omitempty"`
+	FormatVersion int             `json:"format_version"`
+	Name          string          `json:"name"`
+	GameVersion   string          `json:"game_version"`
+	SpaceAge      bool            `json:"space_age"`
+	LoadSave      string          `json:"load_save,omitempty"`
+	CreatedAt     time.Time       `json:"created_at"`
+	ImportedFrom  *ImportedFrom   `json:"imported_from,omitempty"`
+	NewMap        *NewMap         `json:"new_map,omitempty"`
+	UseWhitelist  bool            `json:"use_whitelist,omitempty"`
+	Archived      bool            `json:"archived,omitempty"`
+	FactoryMap    *FactoryMapMode `json:"factory_map,omitempty"`
 }
 
 // NewMap says how the world's first start makes its map: the game's own
@@ -77,7 +82,7 @@ type ImportedFrom struct {
 	At        time.Time `json:"at"`
 }
 
-var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from", "new_map", "use_whitelist", "archived"}
+var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from", "new_map", "use_whitelist", "archived", "factory_map"}
 
 // Newer reports whether a newer Foreman wrote m, so this one must not change it.
 func (m Meta) Newer() bool { return m.FormatVersion > FormatVersion }
@@ -95,6 +100,7 @@ func (m Meta) MarshalJSON() ([]byte, error) {
 		NewMap:        m.NewMap,
 		UseWhitelist:  m.UseWhitelist,
 		Archived:      m.Archived,
+		FactoryMap:    m.FactoryMap,
 	})
 	if err != nil {
 		return nil, err
@@ -140,6 +146,7 @@ func (m *Meta) UnmarshalJSON(b []byte) error {
 		NewMap:        k.NewMap,
 		UseWhitelist:  k.UseWhitelist,
 		Archived:      k.Archived,
+		FactoryMap:    k.FactoryMap,
 		unknown:       all,
 	}
 	return nil

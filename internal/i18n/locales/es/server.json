@@ -601,5 +601,12 @@
   "server.lan.unpublished": "Los jugadores de la red local no pueden llegar al juego: {sidecar} no publica UDP 34197 en el host.",
   "server.force.group": "Acciones de emergencia",
   "server.crash.switch_archived": "{world} está archivado, así que Foreman no puede volver a cambiar a él.",
-  "server.crash.unarchive": "Abrir {world} para desarchivarlo"
+  "server.crash.unarchive": "Abrir {world} para desarchivarlo",
+  "server.playtime.label": "Tiempo de juego",
+  "server.playtime.value": "{hours} h {minutes} min",
+  "server.playtime.players": {
+    "one": "{count} jugador en esta partida guardada",
+    "other": "{count} jugadores en esta partida guardada"
+  },
+  "server.playtime.reading": "Leyendo"
 }

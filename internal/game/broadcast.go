@@ -74,3 +74,12 @@ func (h *Hub[T]) drop(s *subscriber[T]) {
 	delete(h.subs, s)
 	close(s.ch)
 }
+
+// More kinds of Update, after UpdateStatus and UpdateLine. They carry no
+// data: the page asks again (SPEC 8.16, 5.16).
+const (
+	// UpdateSavePlayers says a world's players record changed.
+	UpdateSavePlayers UpdateKind = UpdateLine + 1 + iota
+	// UpdateFactoryMap says a world's factory map changed.
+	UpdateFactoryMap
+)

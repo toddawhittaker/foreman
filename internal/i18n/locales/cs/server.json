@@ -621,5 +621,13 @@
   "server.lan.unpublished": "Hráči v místní síti se ke hře nemohou připojit: {sidecar} nepublikuje UDP 34197 na hostiteli.",
   "server.force.group": "Nouzové akce",
   "server.crash.switch_archived": "Svět {world} je archivovaný, a proto se na něj nelze přepnout zpět.",
-  "server.crash.unarchive": "Otevřít svět {world} a vyjmout ho z archivu"
+  "server.crash.unarchive": "Otevřít svět {world} a vyjmout ho z archivu",
+  "server.playtime.label": "Herní čas",
+  "server.playtime.value": "{hours} h {minutes} min",
+  "server.playtime.players": {
+    "one": "{count} hráč v této uložené hře",
+    "few": "{count} hráči v této uložené hře",
+    "other": "{count} hráčů v této uložené hře"
+  },
+  "server.playtime.reading": "Čte se"
 }

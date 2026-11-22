@@ -55,7 +55,7 @@ func TestCrashLoopNamesTheModThatCausedAnError(t *testing.T) {
 	}))
 	for _, want := range []string{
 		`so Foreman stopped it. Factorio said: <span lang="en">The mod Even Distribution (2.1.0) caused a non-recoverable error</span>.`,
-		`A mod failed to load.`,
+		`A mod stopped the game.`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("missing %q in\n%s", want, html)

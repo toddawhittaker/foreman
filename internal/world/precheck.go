@@ -3,6 +3,9 @@ package world
 import (
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path"
 	"slices"
 	"strings"
 
@@ -211,23 +214,19 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 		return out, nil
 	}
 
-	name := meta.LoadSave
-	if name == "" {
-		newest, found, err := newestSave(root)
-		if err != nil {
-			return PreCheck{}, err
-		}
-		if !found && meta.NewMap != nil {
-			// The first start makes the map; the start script only does so
-			// while saves/ holds no zip (SPEC 5.6, 7.4).
-			return finish()
-		}
-		if !found {
-			out.Problems = append(out.Problems, Problem{Kind: ProblemNoSave,
-				Text: "The world has no save. Upload a save first; without one the game would make a new map."})
-			return finish()
-		}
-		name = newest.Name
+	name, found, err := loadName(root, meta)
+	if err != nil {
+		return PreCheck{}, err
+	}
+	if !found && meta.NewMap != nil {
+		// The first start makes the map; the start script only does so
+		// while saves/ holds no zip (SPEC 5.6, 7.4).
+		return finish()
+	}
+	if !found {
+		out.Problems = append(out.Problems, Problem{Kind: ProblemNoSave,
+			Text: "The world has no save. Upload a save first; without one the game would make a new map."})
+		return finish()
 	}
 	save, err := m.readSave(id, name)
 	if errors.Is(err, ErrSaveNotFound) {
@@ -252,6 +251,47 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 	out.SaveVersion = save.Version
 	out.Problems = append(out.Problems, compareSave(meta, mods, present, name, save)...)
 	return finish()
+}
+
+// loadName is the single decision of which save the game will load: the one
+// world.json chooses, else the newest (SPEC 7.4, 7.11). found is false only
+// when none is chosen and the world has no save. A chosen save that is gone
+// from the folder is still returned, for the caller to report.
+func loadName(root *os.Root, meta Meta) (name string, found bool, err error) {
+	if meta.LoadSave != "" {
+		return meta.LoadSave, true, nil
+	}
+	newest, found, err := newestSave(root)
+	return newest.Name, found, err
+}
+
+// LoadTarget is the save the game would load now, with its size and
+// modification time: the one the pre-start check reads (SPEC 7.4, 7.11).
+// found is false when the world has no save, or the chosen save is gone.
+// It reads the folder only; a save read, a players record or a factory map
+// is valid while this is the save it was made from (SPEC 8.16).
+func (m *Manager) LoadTarget(id string) (Save, bool, error) {
+	root, err := m.OpenWorld(id)
+	if err != nil {
+		return Save{}, false, err
+	}
+	defer func() { _ = root.Close() }()
+	meta, err := ReadMeta(root)
+	if err != nil {
+		return Save{}, false, err
+	}
+	name, found, err := loadName(root, meta)
+	if err != nil || !found || !plainSaveName(name) {
+		return Save{}, false, err
+	}
+	info, err := root.Lstat(path.Join(SavesDir, name))
+	if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.Mode().IsRegular()) {
+		return Save{}, false, nil
+	}
+	if err != nil {
+		return Save{}, false, err
+	}
+	return Save{Name: name, Size: info.Size(), ModTime: info.ModTime()}, true, nil
 }
 
 // SaveMods reads the game version and mod list of one save of the world,

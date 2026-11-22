@@ -183,3 +183,34 @@ func TestPreviewModes(t *testing.T) {
 		t.Error("an unknown mode was accepted")
 	}
 }
+
+// State's game_creates names each create of a game server only, so a test can
+// tell a start from a one-off run beside it, such as a read of a save's
+// players (SPEC 8.16), which a page view may start by itself.
+func TestStateGameCreatesLeavesOutOneOffs(t *testing.T) {
+	r := newRig(t, fakegame.Config{})
+	ctx := context.Background()
+	oneOff := docker.ContainerSpec{
+		Image:      image21,
+		Labels:     map[string]string{gameenv.LabelPreview: "/data"},
+		Env:        []string{gameenv.PreviewKind + "=" + gameenv.KindSavePlayers},
+		HostConfig: docker.HostConfig{Binds: []string{r.world + ":" + gameenv.PreviewMount}, NetworkMode: "none"},
+	}
+	if _, err := r.docker.CreateContainer(ctx, "foreman-saveplayers-x", oneOff); err != nil {
+		t.Fatal(err)
+	}
+	r.start("foreman-base", image21, "no")
+	st := r.game.State()
+	if got := st.GameCreates; len(got) != 1 || got[0] != "foreman-base" {
+		t.Errorf("game_creates = %q, want only foreman-base", got)
+	}
+	creates := 0
+	for _, c := range st.Calls {
+		if c == "POST /containers/create" {
+			creates++
+		}
+	}
+	if creates != 2 {
+		t.Errorf("%d creates in calls, want both", creates)
+	}
+}

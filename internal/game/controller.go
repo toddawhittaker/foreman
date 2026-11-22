@@ -197,6 +197,11 @@ type Config struct {
 	Now func() time.Time
 	// Log takes Foreman's own messages; nil means slog.Default.
 	Log *slog.Logger
+	// NoAutoPlayersRead keeps a page view from starting a players read by
+	// itself (SPEC 8.14); only "Read again" starts one. Test rigs set it, so
+	// a read their fixture world never had does not hold the world's lock
+	// while the test acts on the world. Foreman never sets it.
+	NoAutoPlayersRead bool
 }
 
 // Controller runs each world's game container (SPEC 4.3 to 4.6, 7, 8.1,
@@ -240,6 +245,14 @@ type Controller struct {
 
 	// modSettings is the cache of mod setting definitions (SPEC 9.6).
 	modSettings modSettingsCache
+
+	// Save reads and the factory map (SPEC 8.14 to 8.16, 5.16). Each state
+	// type is defined in the file of the task that builds it, and works as
+	// its zero value.
+	saveCopies  saveCopyState //nolint:unused // built by A1 (savecopy.go)
+	seeds       seedState     //nolint:unused // built by A4 (saveplayers_seed.go)
+	records     recordState   //nolint:unused // built by A5 (saveplayers_track.go)
+	factoryMaps factoryMapState
 
 	// previewSlot holds a token while a map preview runs: one at a time
 	// (SPEC 14.3).
@@ -320,7 +333,7 @@ func New(cfg Config) (*Controller, error) {
 		log = slog.Default()
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Controller{
+	c := &Controller{
 		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit, switches: cfg.Switches,
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
@@ -340,7 +353,12 @@ func New(cfg Config) (*Controller, error) {
 		// is compared with.
 		events: make(chan notify.Message, eventBuffer), eventsFrom: time.Now(),
 		freeBytes: world.FreeBytes,
-	}, nil
+		seeds:     seedState{noAuto: cfg.NoAutoPlayersRead},
+	}
+	// Every operation that takes a world's lock first cancels that world's
+	// save reads, so it is never refused because of one (SPEC 8.16).
+	cfg.Worlds.SetLockYield(c.beginStartSaveCopies)
+	return c, nil
 }
 
 // tcpHost returns the host a tcp:// DOCKER_HOST names, else "".

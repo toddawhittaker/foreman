@@ -16,7 +16,7 @@ const required: Record<string, string[]> = {
   "/worlds/base/clone": ["clone-name"],
   "/worlds/second/delete": ["confirm-name"],
   "/worlds/base/saves": ["save-file"],
-  "/import": ["upload-name", "upload-source"],
+  "/import": ["upload-name", "upload-source", "world-file"],
   "/console": [],
   "/generate": ["generate-name"],
   "/worlds/base/settings": ["name"],

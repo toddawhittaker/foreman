@@ -525,7 +525,7 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 
 // partials are template files that no route renders on their own: every page
 // loads them, and each defines templates the pages include.
-var partials = []string{"mapgenform", "generatepreview", "failure", "modportal", "dropzone", "mapexchange"}
+var partials = []string{"mapgenform", "generatepreview", "failure", "modportal", "dropzone", "mapexchange", "saveplayers", "worldexportcard"}
 
 var partialFiles = func() []string {
 	out := make([]string, len(partials))

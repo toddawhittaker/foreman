@@ -1,0 +1,88 @@
+{{/* The players of a save, on the world page (SPEC 8.14). It is rendered with
+     the page, so it works without script. With script, the form and a hidden
+     poll element swap the panel's content from the players path. Dot is the
+     WorldPage; nothing shows when it has no panel. */}}
+{{define "world-players"}}
+{{- with .Players}}
+{{- /* The live region no swap replaces: a read's start and end are said here, never by moving focus. */}}
+<div id="save-players-live" class="visually-hidden" role="status"></div>
+<section class="panel" id="save-players" aria-labelledby="save-players-heading">
+{{- template "save-players-body" .}}
+</section>
+{{- end}}
+{{end}}
+
+{{/* The content of the panel, one answer for each state of the list. Dot is a
+     SavePlayersPanel. Every top-level element is a row of the panel's grid. */}}
+{{define "save-players-body"}}
+<h2 id="save-players-heading">{{t "saveplayers.heading"}}</h2>
+{{- if .Polls}}
+<div hidden hx-get="{{.PollPath}}" hx-trigger="every 3s" hx-target="#save-players" hx-swap="innerHTML"></div>
+{{- else if .Live}}
+<div hidden hx-get="{{.LivePollPath}}" hx-trigger="every 5s" hx-target="#save-players" hx-swap="innerHTML"></div>
+{{- end}}
+{{- if not .Announce.IsZero}}
+<div id="save-players-live" hx-swap-oob="innerHTML">{{msg .Announce}}</div>
+{{- end}}
+{{- if not .Refused.IsZero}}
+<div class="message message--warning" id="save-players-refused" role="alert">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "saveplayers.refused"}} {{msg .Refused}}</p>
+</div>
+{{- end}}
+{{- if eq .Kind "reading"}}
+<div class="message message--note" id="save-players-status">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "saveplayers.reading"}}</p>
+</div>
+{{- else if eq .Kind "unavailable"}}
+<p class="empty">{{t "saveplayers.unavailable"}}</p>
+{{- else if eq .Kind "no-save"}}
+<p class="empty">{{t "saveplayers.no_save"}}</p>
+{{- else}}
+{{- if eq .Kind "never"}}
+<p>{{t "saveplayers.never"}}</p>
+{{- else if eq .Kind "unsupported"}}
+<p>{{t "saveplayers.unsupported"}}</p>
+{{- else if eq .Kind "tracked"}}
+<div class="message message--note" id="save-players-tracked">
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .Failure}}</p>
+</div>
+{{- end}}
+{{- if and (or (eq .Kind "tracked") (eq .Kind "unsupported")) (not .TrackedSince.IsZero)}}
+<p>{{tHTML "saveplayers.tracked_since" "when" (momentUTC .TrackedSince)}}</p>
+{{- end}}
+{{- if and (eq .Kind "ready") .Inexact}}
+<div class="message message--note" id="save-players-inexact">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "saveplayers.inexact"}}</p>
+</div>
+{{- end}}
+{{- if .TotalKnown}}
+<p>{{t "saveplayers.total" "time" (msg .Total)}}</p>
+{{- end}}
+{{- if .ShowTable}}
+<table role="table" id="save-players-table">
+  <caption class="visually-hidden">{{t "saveplayers.caption" "count" .Count}}</caption>
+  <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "saveplayers.col.player"}}</th><th scope="col" role="columnheader">{{t "saveplayers.col.time"}}</th></tr></thead>
+  <tbody role="rowgroup">
+    {{- range .Rows}}
+    <tr role="row">
+      <th scope="row" role="rowheader"><span translate="no">{{.Name}}</span><br><span class="hint">{{if .Online}}{{t "saveplayers.now"}}{{else if .LastSeen.IsZero}}{{t "saveplayers.last_seen.unknown"}}{{else}}{{tHTML "saveplayers.last_seen" "when" (momentUTC .LastSeen)}}{{end}}</span></th>
+      <td role="cell" data-label="{{t "saveplayers.col.time"}}"><span class="nowrap">{{msg .PlayTime}}</span>{{if .BeforeForeman}}<br><span class="hint">{{t "saveplayers.before_foreman"}}</span>{{end}}</td>
+    </tr>
+    {{- end}}
+  </tbody>
+</table>
+{{- else if or (eq .Kind "ready") (eq .Kind "tracked") (eq .Kind "unsupported")}}
+<p class="empty">{{t "saveplayers.nobody"}}</p>
+{{- end}}
+{{- if .CanRead}}
+<div class="actions">
+  <form method="post" action="{{.PlayersReadPath}}" hx-post="{{.PlayersReadPath}}" hx-target="#save-players" hx-swap="innerHTML">
+    <button type="submit" class="button" id="save-players-read"{{if .Running}} aria-describedby="save-players-memory"{{end}}>{{if .First}}{{t "saveplayers.read.first"}}{{else}}{{t "saveplayers.read.again"}}{{end}}</button>
+  </form>
+</div>
+{{- if .Running}}
+<p class="hint" id="save-players-memory">{{if .HaveMemory}}{{t "saveplayers.read.memory" "memory" (bytes .Memory)}}{{else}}{{t "saveplayers.read.memory_unknown"}}{{end}}</p>
+{{- end}}
+{{- end}}
+{{- end}}
+{{end}}

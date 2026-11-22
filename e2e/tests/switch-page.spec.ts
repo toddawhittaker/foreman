@@ -29,8 +29,8 @@ async function openSwitch(page: Page, id: string, name: string) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(new RegExp(`^Switch from .+ to ${name}\\?$`));
 }
 
-const creates = async (g: FakeGame) =>
-  (await g.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
+// Game server creates only: a view of a stopped world may start a players read by itself (SPEC 8.14).
+const creates = async (g: FakeGame) => (await g.state()).game_creates.length;
 
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });

@@ -210,6 +210,7 @@ func (d *Daemon) create(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = fmt.Sprintf("fake_%d", d.serial+1)
 	}
+	d.creates = append(d.creates, Container{Name: name, Spec: spec})
 	if other := d.findName(name); other != nil {
 		reply(w, http.StatusConflict, fmt.Sprintf(
 			"Conflict. The container name \"/%s\" is already in use by container \"%s\". "+
@@ -226,6 +227,11 @@ func (d *Daemon) create(w http.ResponseWriter, r *http.Request) {
 		if len(parts) >= 2 {
 			c.Mounts = append(c.Mounts, docker.Mount{Source: parts[0], Destination: parts[1]})
 		}
+	}
+	// Binds given as fields count too, as on a real daemon. Whether one is
+	// read-only stays in Spec.HostConfig.Mounts.
+	for _, m := range spec.HostConfig.Mounts {
+		c.Mounts = append(c.Mounts, docker.Mount{Source: m.Source, Destination: m.Target})
 	}
 	d.containers = append(d.containers, c)
 	d.broadcast()

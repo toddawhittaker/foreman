@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/gameenv"
 )
 
 // The hooks act on a container by name, because Foreman makes a new
@@ -263,11 +265,15 @@ type State struct {
 	// Containers leaves it out, as it leaves out the self container.
 	Sidecar *SidecarState `json:"sidecar"`
 	Calls   []string      `json:"calls"` // every Docker call received, as "METHOD /path"
+	// GameCreates names every create asked for of a game server container,
+	// in order: Calls less the one-off containers (gameenv.LabelPreview),
+	// such as a read of a save's players.
+	GameCreates []string `json:"game_creates"`
 }
 
 // State returns a snapshot.
 func (g *Game) State() State {
-	out := State{Containers: []ContainerState{}, Calls: []string{}, Sidecar: g.sidecarState()}
+	out := State{Containers: []ContainerState{}, Calls: []string{}, GameCreates: []string{}, Sidecar: g.sidecarState()}
 	for _, c := range g.daemon.Containers() {
 		if c.ID == g.selfID || (out.Sidecar != nil && c.ID == out.Sidecar.ID) {
 			continue
@@ -297,6 +303,11 @@ func (g *Game) State() State {
 	}
 	for _, c := range g.daemon.Calls() {
 		out.Calls = append(out.Calls, c.Method+" "+c.Path)
+	}
+	for _, c := range g.daemon.Creates() {
+		if _, oneOff := c.Spec.Labels[gameenv.LabelPreview]; !oneOff {
+			out.GameCreates = append(out.GameCreates, c.Name)
+		}
 	}
 	return out
 }
@@ -330,6 +341,7 @@ type hookRequest struct {
 //	POST /oom           name, on
 //	POST /port-in-use   name, port (the next start of that name fails)
 //	POST /preview-mode  mode ("ok", "fail", "hang", "slow" or "oom")
+//	POST /save-players  tick, players, drop_mod, raw; or reset (see SetSavePlayers)
 //	POST /sidecar-port  port (publish 34197/udp on it; "" stops publishing)
 //	POST /sidecar-restart  (the sidecar restarts; shared games' RCON stops)
 func (g *Game) HookHandler() http.Handler {
@@ -379,6 +391,7 @@ func (g *Game) HookHandler() http.Handler {
 	hook("/sidecar-port", func(q hookRequest) error { return g.SetSidecarPort(q.Port) })
 	hook("/sidecar-restart", func(hookRequest) error { return g.RestartSidecar() })
 	hook("/preview-mode", func(q hookRequest) error { return g.SetPreviewMode(PreviewMode(q.Mode)) })
+	mux.Handle("POST /save-players", savePlayersHook())
 	hook("/image", func(q hookRequest) error {
 		if q.Ref == "" {
 			return errors.New("an image needs a ref")
