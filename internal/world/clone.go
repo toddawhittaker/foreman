@@ -90,6 +90,12 @@ func (m *Manager) Clone(ctx context.Context, srcID, name string, keepSave bool, 
 	}
 	files := slices.Concat(mods, config)
 	opts := createOptions{}
+	// The record of the players of the save is carried only with the save:
+	// the copy keeps the save's name, size and modification time, so the
+	// record still matches it. A fresh map has no save to match. A record
+	// that cannot be read as a small plain file is left behind; a read makes
+	// it again (SPEC 8.14).
+	var record []byte
 	if keepSave {
 		save, found, err := loadedSave(src, meta)
 		if err != nil {
@@ -100,6 +106,9 @@ func (m *Manager) Clone(ctx context.Context, srcID, name string, keepSave bool, 
 		}
 		opts.loadSave = save.Name
 		files = append(files, importFile{path: path.Join(SavesDir, save.Name), size: uint64(save.Size)}) //nolint:gosec // a file size is never negative
+		if b, err := ReadSmallFile(src, PlayersFile, maxPlayersRecord); err == nil {
+			record = b
+		}
 	} else {
 		opts.newMap = &NewMap{Seed: seed}
 		// A source that has not started yet still holds its preset; once it has
@@ -108,7 +117,7 @@ func (m *Manager) Clone(ctx context.Context, srcID, name string, keepSave bool, 
 			opts.newMap.Preset = meta.NewMap.Preset
 		}
 	}
-	var need uint64
+	need := uint64(len(record))
 	for _, f := range files {
 		need += f.size
 	}
@@ -128,6 +137,9 @@ func (m *Manager) Clone(ctx context.Context, srcID, name string, keepSave bool, 
 			if err := copyFile(src, f.path, dst, f.path); err != nil {
 				return err
 			}
+		}
+		if record != nil {
+			return WriteFileAtomic(dst, PlayersFile, record)
 		}
 		return nil
 	})
