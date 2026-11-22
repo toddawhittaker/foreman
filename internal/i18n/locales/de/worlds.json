@@ -471,7 +471,7 @@
   "worlds.list.col.world": "Welt",
   "worlds.badge.archived": "Archiviert",
   "worlds.badge.unfinished": "Unfertig",
-  "worlds.list.continue": "Weiter",
+  "worlds.list.continue": "Fortsetzen",
   "worlds.unfinished.continue": "Einrichtung fortsetzen",
   "worlds.unfinished.continue_named": "Einrichtung von {name} fortsetzen",
   "worlds.unfinished.text": "Die Einrichtung dieser Welt ist nicht abgeschlossen. Du kannst ihre Mods und Karteneinstellungen noch wählen.",
