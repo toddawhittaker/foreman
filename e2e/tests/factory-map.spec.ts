@@ -24,7 +24,7 @@ const maxSide = 4096;
 const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 // The categories in the page's order (SPEC 5.16, internal/factorymap/types.go).
-const categories = ["Belts and inserters", "Production", "Power", "Fluids", "Rail", "Defence", "Logistic network and storage", "Other"];
+const categories = ["Belts and inserters", "Production", "Power", "Fluids", "Rail", "Defense", "Logistic network and storage", "Other"];
 
 const ui = {
   // The scrolling frame holding the pictures; the one place focus lands to use keys.
@@ -35,20 +35,24 @@ const ui = {
   // The base picture is /worlds/{id}/map/{surface}.png with no layer; each ticked layer is the same with
   // ?layer=<category> (the plan's page contract). ASSUMED: they are img elements in the frame.
   base: (p: Page) => p.locator('#map-frame img[src^="/worlds/"]:not([src*="layer="])').first(),
-  layers: (p: Page) => p.locator('#map-frame img[src*="layer="]'),
+  // Every category has its img in the frame, hidden until ticked; a ticked one is shown.
+  layers: (p: Page) => p.locator("#map-frame img.factorymap__layer:not([hidden])"),
   // The zoom level is said here, as the large view says "Zoom 115%" (ASSUMED id).
   status: (p: Page) => p.locator("#map-status"),
   zoomIn: (p: Page) => p.getByRole("button", { name: "Zoom in" }),
   zoomOut: (p: Page) => p.getByRole("button", { name: "Zoom out" }),
   // The list of surfaces, one control each, naming the surface (ASSUMED id).
   surfaces: (p: Page) => p.locator("#map-surfaces"),
-  surface: (p: Page, name: string | RegExp) => p.locator("#map-surfaces").getByRole("link", { name }).or(p.locator("#map-surfaces").getByRole("button", { name })),
   // A checkbox per category, named for it.
   layer: (p: Page, name: string) => p.getByRole("checkbox", { name, exact: true }),
   draw: (p: Page) => p.getByRole("button", { name: /^Draw factory map/ }),
   // The download link is /worlds/{id}/map/{surface}/download, with ?layer=a&layer=b for the ticked layers
   // (the plan's page contract). ASSUMED: one link whose href the viewer rewrites as boxes are ticked.
-  download: (p: Page) => p.locator('a[href*="/map/"][href*="/download"]').first(),
+  download: (p: Page) => p.locator("#map-download"),
+  fit: (p: Page) => p.getByRole("button", { name: "Fit" }),
+  // With a game running, a click on the draw button brings the memory question, and its confirm button
+  // REPLACES the draw button (SPEC 5.16, rule 21).
+  confirm: (p: Page) => p.getByRole("button", { name: "Draw it beside the running game" }),
   // The mode form: three radios in a group named "Mode" (ASSUMED), a checkbox, and its save button.
   // The mode form posts to /worlds/{id}/map/mode with mode and skip_online.
   mode: (p: Page, name: "Automatic" | "Manual" | "Off") => p.getByRole("radio", { name: new RegExp(`^${name}`) }),
@@ -68,7 +72,8 @@ const snapshotCount = (f: Foreman) => {
 
 test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
-  seedWorld(foreman);
+  // A mod list is always written, as the game's pre-start check expects (the map run checks the mods first).
+  seedWorld(foreman, { mods: {} });
   await fakeGame!.call("/image", { ref: image21, on: true });
 });
 
@@ -80,12 +85,13 @@ async function draw(page: Page, opts: { running?: boolean } = {}) {
   await expect.poll(() => ui.base(page).evaluate((i) => (i as HTMLImageElement).naturalWidth), live).toBeGreaterThan(0);
 }
 
-// Beside a running game the page asks first, saying how much memory the run needs (SPEC 5.16, rule 21);
-// the answer posts confirm_memory=1. ASSUMED: a button or a checkbox then a button named like these.
+// Beside a running game the draw button's click brings the memory question, with its size, and a confirm
+// button that replaces the draw button (SPEC 5.16, rule 21). The answer posts confirm_memory=1.
 async function confirmMemory(page: Page) {
-  await expect(page.getByText(/memory/i).first()).toBeVisible();
-  const ask = page.getByRole("button", { name: /confirm|anyway|continue|^yes/i }).first();
-  if (await ask.waitFor({ timeout: 3_000 }).then(() => true, () => false)) await ask.click();
+  await expect(ui.confirm(page)).toBeVisible();
+  await expect(page.locator("#fm-memory-note")).toContainText(/memory/i);
+  await expect(ui.draw(page)).toHaveCount(0);
+  await ui.confirm(page).click();
 }
 
 // The surface index in a picture's address.
@@ -100,9 +106,13 @@ async function pngOf(page: Page, link: Locator) {
 
 const width = (page: Page) => ui.base(page).evaluate((i) => i.getBoundingClientRect().width);
 const scroll = (page: Page) => ui.frame(page).evaluate((f) => ({ x: f.scrollLeft, y: f.scrollTop }));
+// The middle of the part of the frame in the window: on a phone the frame can reach below the fold.
 async function middleOf(page: Page) {
+  await ui.frame(page).scrollIntoViewIfNeeded();
   const box = (await ui.frame(page).boundingBox())!;
-  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const top = Math.max(box.y, 0);
+  const bottom = Math.min(box.y + box.height, page.viewportSize()!.height);
+  return { x: box.x + box.width / 2, y: (top + bottom) / 2 };
 }
 
 async function startWorld(page: Page) {
@@ -115,7 +125,7 @@ async function startWorld(page: Page) {
 
 test("the Factory map tab follows Snapshots and opens the page, which is accessible", async ({ page }) => {
   await page.goto("/worlds/base");
-  const tabs = page.locator("nav.subnav").first();
+  const tabs = page.getByRole("navigation", { name: "World pages" });
   const labels = await tabs.getByRole("link").allTextContents();
   const at = labels.map((l) => l.trim());
   expect(at).toContain("Factory map");
@@ -148,7 +158,7 @@ test("a click draws the picture, which appears live and is within the size limit
   expect(size.w).toBeLessThanOrEqual(maxSide);
   expect(size.h).toBeLessThanOrEqual(maxSide);
   // The picture says what it is for people who cannot see it.
-  await expect(ui.base(page)).toHaveAttribute("alt", /Nauvis/);
+  await expect(ui.base(page)).toHaveAttribute("alt", /nauvis/i);
   await expect(page.getByText(/drawn/i).first()).toBeVisible();
   await checkPage(page);
   // It is kept: a fresh page view shows it with no run.
@@ -161,10 +171,11 @@ test("the surfaces are listed and choosing one shows its picture", async ({ page
   await page.goto(base);
   await draw(page);
   const first = await ui.base(page).getAttribute("src");
-  await expect(ui.surfaces(page)).toContainText("Nauvis");
+  await expect(ui.surfaces(page)).toContainText("nauvis");
   // The fake game charts more than one surface (task F9 gives a planet and a platform).
-  const others = ui.surfaces(page).getByRole("link").or(ui.surfaces(page).getByRole("button"));
+  const others = ui.surfaces(page).getByRole("link");
   expect(await others.count()).toBeGreaterThanOrEqual(2);
+  await expect(others.first()).toHaveAttribute("aria-current", "page");
   await others.nth(1).click();
   await expect.poll(() => ui.base(page).getAttribute("src")).not.toBe(first);
   await expect.poll(() => ui.base(page).evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
@@ -206,11 +217,17 @@ test("the keys and the buttons zoom by 1.15, 0 fits, and the level is said", asy
   await expect(ui.status(page)).toHaveText("Zoom 132%");
   await ui.zoomOut(page).press("Enter");
   await expect(ui.status(page)).toHaveText("Zoom 115%");
+  await ui.fit(page).press("Enter");
+  await expect(ui.status(page)).toHaveText("Zoom 100%");
+  await ui.frame(page).focus();
+  await page.keyboard.press("+");
+  await expect(ui.status(page)).toHaveText("Zoom 115%");
   await ui.frame(page).focus();
   await page.keyboard.press("0");
   await expect(ui.status(page)).toHaveText("Zoom 100%");
   expect(await width(page)).toBeCloseTo(fitted, 0);
   await expect(ui.zoomOut(page)).toHaveAttribute("aria-disabled", "true");
+  await expect(ui.fit(page)).toHaveAttribute("aria-disabled", "true");
   // One tile is a block of pixels, never smoothed.
   expect(await ui.base(page).evaluate((i) => getComputedStyle(i).imageRendering)).toMatch(/pixelated|crisp-edges/);
 });
@@ -295,7 +312,7 @@ test("each category has a checkbox in a fixed order, and ticking one stacks its 
   await checkPage(page);
 });
 
-test("a layer stays on when another surface is chosen and moves with a zoom", async ({ page }) => {
+test("a layer is laid over the base at the same size and follows a zoom", async ({ page }) => {
   await page.goto(base);
   await draw(page);
   await ui.layer(page, "Other").check();
@@ -307,10 +324,10 @@ test("a layer stays on when another surface is chosen and moves with a zoom", as
   const l = (await ui.layers(page).first().boundingBox())!;
   expect(l.width).toBeCloseTo(b.width, 0);
   expect(l.height).toBeCloseTo(b.height, 0);
-  const others = ui.surfaces(page).getByRole("link").or(ui.surfaces(page).getByRole("button"));
-  await others.nth(1).click();
-  await expect(ui.layer(page, "Other")).toBeChecked();
-  await expect(ui.layers(page)).toHaveCount(1);
+  expect(l.x).toBeCloseTo(b.x, 0);
+  expect(l.y).toBeCloseTo(b.y, 0);
+  // A layer's picture is fetched when first ticked, from the layer address.
+  await expect(ui.layers(page).first()).toHaveAttribute("src", /\/map\/\d+\.png\?layer=other$/);
 });
 
 test("the download link gives the base, and with layers ticked the base combined with them", async ({ page }) => {
@@ -456,10 +473,10 @@ test("Off with nothing drawn says so and offers no button", async ({ page, forem
 });
 
 test("a world on a game too old for the chart says so and offers no drawing", async ({ page, foreman }) => {
-  // A 1.1 world: the game has no chart to read (SPEC 5.16, "not supported").
+  // A 1.1 world: the game has no chart to read (SPEC 5.16: "Factory maps need Factorio 2.0.61 or newer").
   seedSecond(foreman, { version: "1.1.110" });
   await page.goto("/worlds/second/map");
-  await expect(page.locator("#factorymap-state")).toContainText(/not supported/i);
+  await expect(page.locator("#factorymap-state")).toContainText(/2\.0\.61 or newer/);
   await expect(page.getByRole("button", { name: /^Draw factory map/ })).toHaveCount(0);
   await checkPage(page);
 });
@@ -513,12 +530,9 @@ test("skip while players are online refuses the draw, and a leave lifts it", asy
   await page.waitForTimeout(1500);
   expect((await g.state()).calls.filter((c) => /factorymap/.test(c))).toEqual([]);
   // And by the page, which says why, whether it disables the button or answers the click.
-  const draws = ui.draw(page);
-  if (await draws.isEnabled()) {
-    await draws.click();
-    await confirmMemory(page);
-  }
-  await expect(page.getByText(/players?.*online|online.*players?/i).first()).toBeVisible(live);
+  await expect(ui.draw(page)).toHaveCount(0);
+  await expect(ui.confirm(page)).toHaveCount(0);
+  await expect(ui.state(page)).toContainText(/Players are online/, live);
   await expect(ui.base(page)).toHaveCount(0);
   expect((await g.state()).calls.filter((c) => /factorymap/.test(c))).toEqual([]);
   await checkPage(page);
@@ -590,7 +604,7 @@ test("everything works from the keyboard alone", async ({ page }) => {
   // The mode form is reachable and the radios move with the arrow keys.
   await tabTo(page, ui.mode(page, "Manual"));
   await page.keyboard.press("ArrowDown");
-  await expect(ui.mode(page, "Automatic").or(ui.mode(page, "Off"))).toBeChecked();
+  await expect(ui.mode(page, "Off")).toBeChecked();
 });
 
 test("at phone width the page has no sideways scroll and the controls are reachable", async ({ page }) => {
