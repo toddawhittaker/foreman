@@ -163,52 +163,37 @@ func (r Record) validate() error {
 	return nil
 }
 
-// Session is one stretch a player was on.
-type Session struct {
-	Name     string
-	From, To time.Time
-}
-
-// AddSession folds one player's session. It counts only the part after AsOf,
-// then moves AsOf to the session's end, so replaying a log line never counts
-// a session twice. A session that ends at or before AsOf, one that is empty
-// or backwards, and one with a name the game would not accept change nothing.
+// AddSession folds one player's session. It counts only the part of
+// [from, to] after AsOf (nothing when to is at or before AsOf), rounded to the
+// nearest second, sets the player's last seen to to (never to an earlier
+// date than they already have), and adds the player when they are missing,
+// even for a session of no length. A session that ends before it starts, and
+// a name the game would not accept, change nothing.
 //
-// Two players on together must be folded in one AddSessions call: folded one
-// after the other, the second would lose the time before the first one's end.
+// It does not move AsOf. The caller folds every open session up to one moment
+// from the same starting AsOf, then sets AsOf to that moment; folding one
+// session and moving AsOf before the next would drop the overlap of two
+// players who were on together. Setting AsOf after the fold is also what
+// makes a replayed log line count once.
 func (r *Record) AddSession(name string, from, to time.Time) {
-	r.AddSessions([]Session{{Name: name, From: from, To: to}})
-}
-
-// AddSessions folds several sessions against the same AsOf, then moves AsOf
-// to the latest end among them. A session counts from the later of its start
-// and the old AsOf, rounded to the nearest second; the player's last seen
-// moves to its end when that is later.
-func (r *Record) AddSessions(ss []Session) {
-	asOf := r.AsOf
-	next := asOf
-	for _, s := range ss {
-		if !s.To.After(s.From) || !s.To.After(asOf) {
-			continue
-		}
-		p := r.player(s.Name)
-		if p == nil {
-			continue
-		}
-		start := s.From
-		if start.Before(asOf) {
-			start = asOf
-		}
-		p.TrackedSeconds = min(p.TrackedSeconds+int64(s.To.Sub(start).Round(time.Second)/time.Second), MaxWhole)
-		if p.LastSeen == nil || s.To.After(*p.LastSeen) {
-			t := s.To.UTC()
-			p.LastSeen = &t
-		}
-		if s.To.After(next) {
-			next = s.To
-		}
+	if to.Before(from) {
+		return
 	}
-	r.AsOf = next.UTC()
+	p := r.player(name)
+	if p == nil {
+		return
+	}
+	if to.After(r.AsOf) {
+		start := from
+		if start.Before(r.AsOf) {
+			start = r.AsOf
+		}
+		p.TrackedSeconds = min(p.TrackedSeconds+int64(to.Sub(start).Round(time.Second)/time.Second), MaxWhole)
+	}
+	if p.LastSeen == nil || to.After(*p.LastSeen) {
+		t := to.UTC()
+		p.LastSeen = &t
+	}
 }
 
 // player finds a player without regard to case, as the game compares names,

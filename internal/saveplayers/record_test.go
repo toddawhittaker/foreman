@@ -286,44 +286,99 @@ func TestBasisSame(t *testing.T) {
 	}
 }
 
+// (a) only the part after AsOf counts.
 func TestAddSessionCountsOnlyAfterAsOf(t *testing.T) {
 	r := seeded(t)
-	// A session that began before the record's moment counts only the rest.
 	r.AddSession("OrcScorpion", t0.Add(-10*time.Minute), t0.Add(5*time.Minute))
-	p := player(t, r, "OrcScorpion")
-	if p.TrackedSeconds != 300 {
-		t.Fatalf("tracked %d, want 300", p.TrackedSeconds)
+	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 300 {
+		t.Fatalf("tracked %d, want 300", got)
 	}
-	if !r.AsOf.Equal(t0.Add(5 * time.Minute)) {
-		t.Fatalf("as_of %v", r.AsOf)
-	}
-	if p.LastSeen == nil || !p.LastSeen.Equal(t0.Add(5*time.Minute)) {
-		t.Fatalf("last seen %v", p.LastSeen)
+	r.AddSession("OrcScorpion", t0.Add(time.Hour), t0.Add(2*time.Hour))
+	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 300+3600 {
+		t.Fatalf("tracked %d", got)
 	}
 }
 
-// Replaying a log after a Foreman restart never counts a session twice.
-func TestAddSessionReplayIsIdempotent(t *testing.T) {
+// (a) a session that ends at or before AsOf adds no time.
+func TestAddSessionAtOrBeforeAsOfAddsNoTime(t *testing.T) {
 	r := seeded(t)
-	from, to := t0.Add(time.Minute), t0.Add(31*time.Minute)
-	r.AddSession("OrcScorpion", from, to)
-	once, _ := r.Marshal()
-	r.AddSession("OrcScorpion", from, to)
-	r.AddSession("OrcScorpion", t0, to)
-	twice, _ := r.Marshal()
-	if !bytes.Equal(once, twice) {
-		t.Fatalf("a replay changed the record:\n%s\n%s", once, twice)
+	r.AddSession("OrcScorpion", t0.Add(-time.Hour), t0)
+	r.AddSession("OrcScorpion", t0.Add(-2*time.Hour), t0.Add(-time.Hour))
+	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 0 {
+		t.Fatalf("tracked %d", got)
 	}
+}
+
+// AddSession never moves AsOf: the caller does, once every open session is
+// folded.
+func TestAddSessionDoesNotMoveAsOf(t *testing.T) {
+	r := seeded(t)
+	r.AddSession("OrcScorpion", t0, t0.Add(time.Hour))
+	if !r.AsOf.Equal(t0) {
+		t.Fatalf("as_of moved to %v", r.AsOf)
+	}
+}
+
+// Two players on together, folded at one moment from the same AsOf, each
+// count their whole time. The caller sets AsOf afterwards.
+func TestAddSessionOverlapFoldedAtOneMoment(t *testing.T) {
+	r := seeded(t)
+	now := t0.Add(40 * time.Minute)
+	r.AddSession("OrcScorpion", t0, t0.Add(30*time.Minute))
+	r.AddSession("toddawhittaker", t0.Add(10*time.Minute), now)
+	r.AsOf = now
 	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 1800 {
-		t.Fatalf("tracked %d, want 1800", got)
+		t.Fatalf("first %d", got)
+	}
+	if got := player(t, r, "toddawhittaker").TrackedSeconds; got != 1800 {
+		t.Fatalf("second %d, want 1800", got)
+	}
+	// Replaying the same lines after the caller moved AsOf adds nothing.
+	r.AddSession("OrcScorpion", t0, t0.Add(30*time.Minute))
+	r.AddSession("toddawhittaker", t0.Add(10*time.Minute), now)
+	if player(t, r, "OrcScorpion").TrackedSeconds != 1800 || player(t, r, "toddawhittaker").TrackedSeconds != 1800 {
+		t.Fatalf("a replay counted again: %+v", r.Players)
 	}
 }
 
-func TestAddSessionEntirelyBeforeAsOfChangesNothing(t *testing.T) {
+// (b) last seen is the session's end, whether or not time was counted.
+func TestAddSessionSetsLastSeen(t *testing.T) {
 	r := seeded(t)
-	r.AddSession("Nobody", t0.Add(-time.Hour), t0)
-	if len(r.Players) != 2 || !r.AsOf.Equal(t0) {
-		t.Fatalf("%+v", r)
+	r.AddSession("OrcScorpion", t0, t0.Add(time.Hour))
+	if got := player(t, r, "OrcScorpion").LastSeen; got == nil || !got.Equal(t0.Add(time.Hour)) {
+		t.Fatalf("%v", got)
+	}
+	r.AsOf = t0.Add(3 * time.Hour)
+	r.AddSession("toddawhittaker", t0, t0.Add(2*time.Hour)) // wholly before AsOf
+	if got := player(t, r, "toddawhittaker"); got.LastSeen == nil || !got.LastSeen.Equal(t0.Add(2*time.Hour)) || got.TrackedSeconds != 0 {
+		t.Fatalf("%+v", got)
+	}
+}
+
+// (c) a missing player is added, even for a session of no length.
+func TestAddSessionAddsMissingPlayerEvenAtZeroLength(t *testing.T) {
+	r := seeded(t)
+	at := t0.Add(time.Minute)
+	r.AddSession("Fresh", at, at)
+	p := player(t, r, "Fresh")
+	if p.TrackedSeconds != 0 || p.SeededTicks != 0 || p.LastSeen == nil || !p.LastSeen.Equal(at) {
+		t.Fatalf("%+v", p)
+	}
+	if _, err := r.Marshal(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAddSessionIgnoresNonsense(t *testing.T) {
+	r := seeded(t)
+	before, _ := r.Marshal()
+	r.AddSession("a b", t0, t0.Add(time.Hour))                              // not a name
+	r.AddSession("", t0, t0.Add(time.Hour))                                 // no name
+	r.AddSession("OrcScorpion", t0.Add(time.Hour), t0)                      // backwards
+	r.AddSession("Fresh", t0.Add(time.Hour), t0.Add(time.Hour-time.Second)) // backwards
+	after, _ := r.Marshal()
+	if !bytes.Equal(before, after) {
+		t.Fatalf("changed:\n%s\n%s", before, after)
 	}
 }
 
@@ -334,7 +389,7 @@ func TestAddSessionNewPlayerAndCaseInsensitive(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 	// The game compares names without regard to case: one player.
-	r.AddSession("orcscorpion", t0.Add(time.Hour), t0.Add(2*time.Hour))
+	r.AddSession("orcscorpion", t0, t0.Add(time.Hour))
 	if len(r.Players) != 3 {
 		t.Fatalf("a case difference made a new player: %+v", r.Players)
 	}
@@ -349,19 +404,6 @@ func TestAddSessionRoundsToSeconds(t *testing.T) {
 	r.AddSession("OrcScorpion", t0.Add(11*time.Second), t0.Add(20*time.Second+600*time.Millisecond))
 	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 10+10 {
 		t.Fatalf("tracked %d", got)
-	}
-}
-
-func TestAddSessionIgnoresNonsense(t *testing.T) {
-	r := seeded(t)
-	before, _ := r.Marshal()
-	r.AddSession("a b", t0, t0.Add(time.Hour))                        // not a name
-	r.AddSession("", t0, t0.Add(time.Hour))                           // no name
-	r.AddSession("OrcScorpion", t0.Add(time.Hour), t0)                // backwards
-	r.AddSession("OrcScorpion", t0.Add(time.Hour), t0.Add(time.Hour)) // empty
-	after, _ := r.Marshal()
-	if !bytes.Equal(before, after) {
-		t.Fatalf("changed:\n%s\n%s", before, after)
 	}
 }
 
@@ -384,29 +426,6 @@ func TestAddSessionCapsPlayers(t *testing.T) {
 	r.AddSession("OneTooMany", t0, t0.Add(time.Hour))
 	if len(r.Players) != MaxPlayers {
 		t.Fatalf("%d players", len(r.Players))
-	}
-}
-
-// Two players online together: folded one after the other, the second would
-// lose the overlap. AddSessions folds them against one as_of.
-func TestAddSessionsOverlap(t *testing.T) {
-	r := seeded(t)
-	r.AddSessions([]Session{
-		{Name: "OrcScorpion", From: t0, To: t0.Add(30 * time.Minute)},
-		{Name: "toddawhittaker", From: t0.Add(10 * time.Minute), To: t0.Add(40 * time.Minute)},
-	})
-	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 1800 {
-		t.Fatalf("first %d", got)
-	}
-	if got := player(t, r, "toddawhittaker").TrackedSeconds; got != 1800 {
-		t.Fatalf("second %d, want 1800", got)
-	}
-	if !r.AsOf.Equal(t0.Add(40 * time.Minute)) {
-		t.Fatalf("as_of %v", r.AsOf)
-	}
-	r.AddSessions([]Session{{Name: "OrcScorpion", From: t0, To: t0.Add(30 * time.Minute)}})
-	if got := player(t, r, "OrcScorpion").TrackedSeconds; got != 1800 {
-		t.Fatalf("replay changed it: %d", got)
 	}
 }
 
