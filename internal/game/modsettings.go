@@ -18,6 +18,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/modsettings"
+	"github.com/toddawhittaker/foreman/internal/saveplayers"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -328,6 +329,34 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 		c.log.Warn("using the built-in planets for the world", "world", id, "error", out.PlanetsErr)
 	}
 	return out, key, nil
+}
+
+// WorldCatalogue returns the world's planets, controls and resources
+// labelled in lang (SPEC 5.6). A world whose enabled mods are all built in
+// gets the built-in catalogue without a game run. It fails safe: when the
+// world's mods cannot be read, or the run fails or its planet file is
+// refused, it returns the built-in catalogue of the world's line, and the
+// error is only the reason to show.
+func (c *Controller) WorldCatalogue(ctx context.Context, id, lang string) (mapgen.Catalogue, error) {
+	meta, err := c.readMeta(id)
+	if err != nil {
+		return mapgen.Builtin(mapgen.Lines[len(mapgen.Lines)-1], false), err
+	}
+	line, _ := mapgen.Line(meta.GameVersion)
+	builtin := mapgen.Builtin(line, meta.SpaceAge)
+	mods, err := c.enabledMods(id)
+	if err != nil {
+		return builtin, err
+	}
+	shipped := world.BuiltinMods(meta.GameVersion)
+	if !slices.ContainsFunc(mods, func(m saveplayers.Mod) bool { return !slices.Contains(shipped, m.Name) }) {
+		return builtin, nil
+	}
+	defs, err := c.ModSettingDefs(ctx, id)
+	if err != nil {
+		return builtin, err
+	}
+	return defs.Catalogue(lang), defs.PlanetsErr
 }
 
 // worldCatalogues parses the run's planet file once for each of Foreman's

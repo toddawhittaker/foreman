@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -152,6 +153,83 @@ func TestModSettingDefsCatalogueFallsBack(t *testing.T) {
 				t.Errorf("the reason %q repeats the file", got.PlanetsErr)
 			}
 		})
+	}
+}
+
+// wcResult is what WorldCatalogue returned.
+type wcResult struct {
+	cat mapgen.Catalogue
+	err error
+}
+
+func (r *modSettingsRig) askCatalogue(lang string) <-chan wcResult {
+	ch := make(chan wcResult, 1)
+	go func() {
+		cat, err := r.c.WorldCatalogue(context.Background(), r.id, lang)
+		ch <- wcResult{cat, err}
+	}()
+	return ch
+}
+
+func (r *modSettingsRig) catalogueResult(ch <-chan wcResult) wcResult {
+	r.t.Helper()
+	select {
+	case res := <-ch:
+		return res
+	case <-time.After(10 * time.Second):
+		r.t.Fatal("WorldCatalogue did not return")
+		return wcResult{}
+	}
+}
+
+// SPEC 5.6: a world whose enabled mods are all built in gets the built-in
+// catalogue without running the game.
+func TestWorldCatalogueBuiltinModsOnly(t *testing.T) {
+	r := newModSettingsRig(t)
+	res := r.catalogueResult(r.askCatalogue("en"))
+	if res.err != nil {
+		t.Errorf("reason %v, want none", res.err)
+	}
+	if !reflect.DeepEqual(res.cat, mapgen.Builtin("2.1", false)) {
+		t.Error("not the built-in catalogue")
+	}
+	if n := r.creates(); n != 0 {
+		t.Errorf("%d containers made, want none", n)
+	}
+}
+
+// SPEC 5.6: a world with a mod gets the run's catalogue in the language.
+func TestWorldCatalogueFromTheRun(t *testing.T) {
+	r := newModSettingsRig(t)
+	r.writeFile(r.id, filepath.Join(world.ModsDir, "moon_1.0.0.zip"), []byte("zip"))
+	ch := r.askCatalogue("de")
+	c := r.waitRunning()
+	if err := os.WriteFile(filepath.Join(r.workDir(c), gameenv.PlanetsFile), []byte(planetsJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r.finish(c, defsJSON, defaultsDat(t))
+	res := r.catalogueResult(ch)
+	if res.err != nil {
+		t.Fatal(res.err)
+	}
+	if names := res.cat.PlanetNames(); !reflect.DeepEqual(names, []string{"nauvis", "moon"}) {
+		t.Errorf("planets %v", names)
+	}
+}
+
+// SPEC 5.6 (fail safe): a failed run gives the built-in catalogue and the
+// reason, never a failure.
+func TestWorldCatalogueFailedRun(t *testing.T) {
+	r := newModSettingsRig(t)
+	r.writeFile(r.id, filepath.Join(world.ModsDir, "moon_1.0.0.zip"), []byte("zip"))
+	ch := r.askCatalogue("en")
+	r.game.Daemon().Exit(r.waitRunning().ID, 1, false)
+	res := r.catalogueResult(ch)
+	if !errors.Is(res.err, ErrModSettingsBadOutput) {
+		t.Errorf("reason %v", res.err)
+	}
+	if !reflect.DeepEqual(res.cat, mapgen.Builtin("2.1", false)) {
+		t.Error("not the built-in catalogue")
 	}
 }
 
