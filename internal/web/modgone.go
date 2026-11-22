@@ -72,12 +72,16 @@ func goneTitle(g world.GoneMod) string { return cmp.Or(g.Title, g.Name) }
 
 // precheckFix is the main fix a refused start or switch offers first
 // (SPEC 17.9): matching the mods to the save, since otherwise the game
-// deletes content, or else updating the mods players cannot download.
+// deletes content, then step 3 of Generate for map settings the mods no
+// longer match (SPEC 7.4), or else updating the mods players cannot download.
 func precheckFix(check world.PreCheck, id string) *Offer {
 	if o := syncOffer(check, id); o != nil {
 		return o
 	}
 	for _, p := range check.Problems {
+		if p.Kind == world.ProblemStaleControls {
+			return &Offer{Path: newMapPath(id), Label: i18n.M("server.problem.stale_controls_fix")}
+		}
 		if p.Kind == world.ProblemModGone && len(p.Gone) > 0 {
 			o := goneFix(id, p.Gone)
 			return &o
