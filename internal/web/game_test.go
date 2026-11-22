@@ -691,6 +691,25 @@ func TestSnapshotCardFollowsAnInlineTakeAndDelete(t *testing.T) {
 			t.Errorf("the card still lists the deleted snapshot:\n%s", data)
 		}
 	})
+	// Saving settings takes the automatic "Before settings change" snapshot.
+	t.Run("a settings save", func(t *testing.T) {
+		g := newGameRig(t, image21)
+		id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+		g.writeConfig(id, world.ServerSettingsFile, `{"name": "Old"}`)
+		g.waitPage(stopped, "No snapshots yet")
+		resp, r := g.eventsAfterRegions(t, id)
+		defer func() { _ = resp.Body.Close() }()
+		path := settingsPath(id)
+		rep := g.post(path, url.Values{"name": {"New"}, "description": {""}, "max_players": {""}, "autosave_interval": {""}, "autosave_slots": {""}})
+		if rep.StatusCode != http.StatusOK {
+			t.Fatalf("preview %d:\n%s", rep.StatusCode, rep.body)
+		}
+		g.wantRedirectToPrefix(g.post(path+"/confirm", url.Values{"token": {tokenOf(t, rep.body)}}), path+"?saved=1")
+		data := snapsEventWhere(t, r, func(d string) bool { return strings.Contains(d, "Before settings change") })
+		if strings.Contains(data, "No snapshots yet") {
+			t.Errorf("the card still says there are none:\n%s", data)
+		}
+	})
 }
 
 func (g *gameRig) wantRedirectToPrefix(rep reply, prefix string) {
