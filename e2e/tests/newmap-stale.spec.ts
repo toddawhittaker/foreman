@@ -31,7 +31,8 @@ function removeFakePlanet(f: Foreman) {
 }
 
 test("a removed planet mod refuses the first start and links to the map settings", async ({ page, foreman, fakeGame }) => {
-  await setUpModsWorld(page, foreman, fakeGame!, { mods: { "fake-planet": "2.1" } });
+  // A second mod stays, so the start needs the planet run, not the built-in planets.
+  await setUpModsWorld(page, foreman, fakeGame!, { mods: { "fake-planet": "2.1", "other-mod": "2.1" } });
   makeUnfinished(foreman);
   saveMapSettings(foreman, ["iron-ore", "fake-ore"]);
   removeFakePlanet(foreman);

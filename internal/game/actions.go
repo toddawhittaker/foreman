@@ -120,6 +120,7 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	// A start cancels any save read of the world, and keeps new ones from
 	// beginning, before it takes the lock a read may be holding (SPEC 8.16).
 	defer c.beginStartSaveCopies(id)()
+	c.warmNewMapCatalogue(ctx, id)
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return err
@@ -852,6 +853,7 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if err != nil {
 		return err
 	}
+	c.warmNewMapCatalogue(ctx, id)
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return err

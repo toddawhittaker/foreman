@@ -343,6 +343,20 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 // error is only the reason to show. Space Age is whether the world's mods
 // enable it, which an imported world's flag may not say.
 func (c *Controller) WorldCatalogue(ctx context.Context, id, lang string) (mapgen.Catalogue, error) {
+	return c.worldCatalogue(ctx, id, lang, false)
+}
+
+// errCatalogueNotCached means the world's planet run has no cached result.
+var errCatalogueNotCached = errors.New("the planets of this world's mods are not known yet")
+
+// cachedWorldCatalogue is WorldCatalogue without starting a run, for a
+// caller holding the world's lock, which a run needs. A world whose planets
+// are not cached gets the built-in catalogue and errCatalogueNotCached.
+func (c *Controller) cachedWorldCatalogue(id, lang string) (mapgen.Catalogue, error) {
+	return c.worldCatalogue(context.Background(), id, lang, true)
+}
+
+func (c *Controller) worldCatalogue(ctx context.Context, id, lang string, cachedOnly bool) (mapgen.Catalogue, error) {
 	meta, err := c.readMeta(id)
 	if err != nil {
 		return mapgen.Builtin(mapgen.Lines[len(mapgen.Lines)-1], false), err
@@ -363,14 +377,30 @@ func (c *Controller) WorldCatalogue(ctx context.Context, id, lang string) (mapge
 	if onlyShipped {
 		return builtin, nil
 	}
-	defs, err := c.ModSettingDefs(ctx, id)
-	if err != nil {
+	var defs *ModSettingDefs
+	if cachedOnly {
+		var ok bool
+		if defs, ok = c.cachedModSettingDefs(id); !ok {
+			return builtin, errCatalogueNotCached
+		}
+	} else if defs, err = c.ModSettingDefs(ctx, id); err != nil {
 		return builtin, err
 	}
 	if defs.PlanetsErr != nil {
 		return builtin, defs.PlanetsErr
 	}
 	return defs.Catalogue(lang), nil
+}
+
+// cachedModSettingDefs is the world's cached mod settings, if any.
+func (c *Controller) cachedModSettingDefs(id string) (*ModSettingDefs, bool) {
+	key, err := c.worlds.ModSettingsKey(id)
+	if err != nil || key == "" {
+		return nil, false
+	}
+	c.modSettings.mu.Lock()
+	defer c.modSettings.mu.Unlock()
+	return c.modSettings.get(id, key)
 }
 
 // enabledModNames is the names of the mods the game loads for the world: each

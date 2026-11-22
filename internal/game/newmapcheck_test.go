@@ -32,6 +32,7 @@ func unfinishedRig(t *testing.T, mapGen string) *modSettingsRig {
 func (r *modSettingsRig) staleCheck() <-chan world.PreCheck {
 	ch := make(chan world.PreCheck, 1)
 	go func() {
+		r.c.warmNewMapCatalogue(context.Background(), r.id)
 		check, err := r.c.staleControlsCheck(context.Background(), r.id, world.PreCheck{})
 		if err != nil {
 			r.t.Error(err)
@@ -144,5 +145,47 @@ func TestStaleControlFailedRunDoesNotRefuse(t *testing.T) {
 	r.game.Daemon().Exit(r.waitRunning().ID, 1, false)
 	if got := r.staleResult(ch); len(got.Problems) != 0 {
 		t.Errorf("problems %+v", got.Problems)
+	}
+}
+
+// nauvisOnlyPlanets is a planet run's file for a world whose planet mod is
+// gone and another mod is left: nauvis and its one control.
+const nauvisOnlyPlanets = `{
+  "planets": [{"name": "nauvis", "localised_name": ["space-location-name.nauvis"],
+    "autoplace_controls": {"iron-ore": {"frequency": 1, "size": 1, "richness": 1}}, "resources": ["iron-ore"]}],
+  "autoplace_controls": [{"name": "iron-ore", "category": "resource", "richness": true, "can_be_disabled": true, "order": "b",
+    "localised_name": ["autoplace-control-names.iron-ore"]}],
+  "resources": {}
+}`
+
+// SPEC 7.4: with the planet mod removed and another mod still installed, a
+// start from a cold planet cache gets the planets before it takes the
+// world's lock, and is refused.
+func TestStaleControlRefusesStartWithOtherModColdCache(t *testing.T) {
+	r := unfinishedRig(t, moonMapGen)
+	r.writeFile(r.id, filepath.Join(world.ModsDir, "other_1.0.0.zip"), []byte("zip"))
+	r.writeFile(r.id, filepath.Join(world.ModsDir, world.ModListFile), []byte(`{"mods":[{"name":"base","enabled":true},{"name":"other","enabled":true}]}`))
+	if err := r.store.SetActiveWorld(context.Background(), r.id, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- r.c.Start(context.Background(), r.id, admin, StartOptions{}) }()
+	c := r.waitRunning()
+	if err := os.WriteFile(filepath.Join(r.workDir(c), gameenv.PlanetsFile), []byte(nauvisOnlyPlanets), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r.finish(c, defsJSON, defaultsDat(t))
+	var err error
+	select {
+	case err = <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the start did not return")
+	}
+	pe, ok := errors.AsType[*PrecheckError](err)
+	if !ok {
+		t.Fatalf("error %v, want a refusal", err)
+	}
+	if !slices.ContainsFunc(pe.Check.Problems, func(p world.Problem) bool { return p.Kind == world.ProblemStaleControls }) {
+		t.Errorf("problems %+v, want stale controls", pe.Check.Problems)
 	}
 }
