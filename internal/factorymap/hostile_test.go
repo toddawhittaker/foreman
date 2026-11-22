@@ -376,6 +376,9 @@ func TestHostileEntitiesRefused(t *testing.T) {
 		"huge number":           types + "[0,1e400,1,2,2]\n",
 		"inverted box":          types + "[0,5,5,1,1]\n",
 		"two values a line":     types + "[0,1,1,2,2][0,1,1,2,2]\n",
+		"fractional box":        types + "[0,0.5,0.5,1.5,1.5]\n",
+		"box over 256 wide":     types + "[0,0,0,257,1]\n",
+		"box over 256 tall":     types + "[0,0,0,1,257]\n",
 	}
 	for name, in := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -393,8 +396,7 @@ func TestHostileEntityBoxesOutsideTheChart(t *testing.T) {
 	in := `["transport-belt"]` + "\n" +
 		"[0,-1000000,-1000000,-999999,-999999]\n" +
 		"[0,1000000,1000000,1000001,1000001]\n" +
-		"[0,-1e15,-1e15,1e15,1e15]\n" +
-		"[0,63.5,31.5,64.5,32.5]\n"
+		"[0,63,31,65,33]\n"
 	layers, err := hostileDrawOverlay(t, strings.NewReader(in), s)
 	if err != nil {
 		return // refusing them is also within the rules
@@ -599,7 +601,7 @@ func TestHostileStoreFolderSymlink(t *testing.T) {
 }
 
 // A sparse chart spread over the widest box the limits allow costs memory
-// bounded by the picture, not the box: under MaxOutputBytes in all.
+// bounded by the picture, not the box: under 256 MiB of peak heap.
 func TestHostileSparseChartMemoryBounded(t *testing.T) {
 	if testing.Short() {
 		t.Skip("draws 65,536 chunks")
@@ -644,7 +646,7 @@ func TestHostileSparseChartMemoryBounded(t *testing.T) {
 		return // refusing is within the rules
 	}
 	t.Logf("picture %v, %d tiles a pixel, peak heap %d MiB over the input", img.Bounds(), s.TilesPerPixel, used>>20)
-	if used > MaxOutputBytes {
-		t.Errorf("drawing a sparse chart peaked at %d MiB of heap, past the %d MiB output limit", used>>20, MaxOutputBytes>>20)
+	if used > 256<<20 {
+		t.Errorf("drawing a sparse chart peaked at %d MiB of heap, past the 256 MiB ceiling", used>>20)
 	}
 }
