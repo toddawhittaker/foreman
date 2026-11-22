@@ -12,7 +12,22 @@
 // While a "Show resource amounts" box is ticked, the large view's or the One
 // planet picture's, the amounts of the planet shown in that place are asked
 // for once the picture is there, and its patches labelled.
-document.addEventListener("DOMContentLoaded", () => {
+// Step 3 of the guided Generate loads its form after the page (SPEC 5.6), so
+// the script starts once the form is in; every other page starts at once.
+function startPreviewWithForm(start) {
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!document.getElementById("newmap-load")) {
+      start();
+      return;
+    }
+    document.body.addEventListener("htmx:afterSettle", function loaded() {
+      if (document.getElementById("newmap-load") || !document.getElementById("generate-form")) return;
+      document.body.removeEventListener("htmx:afterSettle", loaded);
+      start();
+    });
+  });
+}
+startPreviewWithForm(() => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const formEl = () => document.getElementById("generate-form");
   const button = () => document.getElementById("preview-button");
@@ -589,7 +604,9 @@ document.addEventListener("DOMContentLoaded", () => {
     known = [];
   }
 
-  const isRefresh = (e) => (e.detail.pathInfo ? e.detail.pathInfo.requestPath : "").endsWith("/generate/refresh");
+  // Generate and step 3 each redraw their settings at their own refresh path.
+  const refreshPath = /\/(generate|new-map)\/refresh$/;
+  const isRefresh = (e) => refreshPath.test(e.detail.pathInfo ? e.detail.pathInfo.requestPath : "");
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (isRefresh(e)) {
       refreshing++;

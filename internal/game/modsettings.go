@@ -328,7 +328,12 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	defs = slices.DeleteFunc(defs, func(d modsettings.Definition) bool { return d.Mod == modsettingsmod.ModName })
 	sections := c.localeSections(id, localeCfgs)
 	out := &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: modSettingsLocale(sections, defs)}
-	out.Catalogues, out.PlanetsErr = worldCatalogues(planetsJSON, planetsErr, sections, line, meta.SpaceAge)
+	// Space Age is whether the world's mods enable it, as WorldCatalogue reads it.
+	spaceAge := meta.SpaceAge
+	if enabled, err := c.enabledModNames(id); err == nil {
+		spaceAge = enabled[world.ModSpaceAge]
+	}
+	out.Catalogues, out.PlanetsErr = worldCatalogues(planetsJSON, planetsErr, sections, line, spaceAge)
 	if out.PlanetsErr != nil {
 		c.log.Warn("using the built-in planets for the world", "world", id, "error", out.PlanetsErr)
 	}
@@ -450,7 +455,9 @@ func worldCatalogues(data []byte, readErr error, sections map[string]modsettings
 		if lang != "en" && sections["en"] != nil {
 			layers = append(layers, sections["en"])
 		}
-		out[lang] = f.Labelled(layers...)
+		cat := f.Labelled(layers...)
+		cat.SpaceAge = spaceAge && line != "1.1"
+		out[lang] = cat
 	}
 	return out, nil
 }

@@ -9,7 +9,37 @@
 // redraw leaves the form in place. While a preview runs the buttons are
 // marked aria-disabled rather than disabled, so the one the person pressed
 // keeps focus. Leaving with unsaved settings asks first.
-document.addEventListener("DOMContentLoaded", () => {
+// Step 3 of the guided Generate loads its form after the page (SPEC 5.6), so
+// the script starts once the form is in; every other page starts at once.
+function startGenerateWithForm(start) {
+  document.addEventListener("DOMContentLoaded", () => {
+    const load = document.getElementById("newmap-load");
+    if (!load) {
+      start();
+      return;
+    }
+    // The wait is said once: its text goes into the live region after the
+    // page has loaded, not with it (SPEC 17.19).
+    const status = document.getElementById("newmap-load-status");
+    if (status) setTimeout(() => { status.textContent = status.dataset.text; }, 100);
+    let focusWasIn = false;
+    document.body.addEventListener("htmx:beforeSwap", (e) => {
+      if (e.detail.target === load) focusWasIn = load.contains(document.activeElement);
+    });
+    document.body.addEventListener("htmx:afterSettle", function loaded() {
+      if (document.getElementById("newmap-load") || !document.getElementById("generate-form")) return;
+      document.body.removeEventListener("htmx:afterSettle", loaded);
+      start();
+      // Focus left inside the replaced box goes to the page's heading.
+      const heading = document.getElementById("newmap-heading");
+      if (focusWasIn && heading) heading.focus();
+      const body = document.getElementById("newmap-body");
+      const announcer = document.getElementById("announcer");
+      if (body && announcer) announcer.textContent = body.dataset.ready;
+    });
+  });
+}
+startGenerateWithForm(() => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   // The whole form is swapped when it comes back with errors, so it is looked up each time.
   const formEl = () => document.getElementById("generate-form");
@@ -492,7 +522,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // with, or a form the server sent back with errors. The tab, the preview
   // size, the territory box and the one-or-all choice are views, not settings.
   const views = new Set(["tab", "preview_size", "territories", "preview_view"]);
-  let unsaved = Boolean(document.getElementById("error-summary"));
+  let unsaved = Boolean(document.getElementById("error-summary")) || formEl().dataset.unsaved === "1";
   let submitting = false;
   let leaving = false;
   function differsFromLoaded(el) {
@@ -682,7 +712,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // A field typed in while a redraw was on its way keeps what was typed.
   const textFields = () => [...document.querySelectorAll("#line-box input[type=text][name], #line-box textarea[name]")];
-  const isRefresh = (e) => (e.detail.pathInfo ? e.detail.pathInfo.requestPath : "").endsWith("/generate/refresh");
+  // Generate and step 3 each redraw their settings at their own refresh path.
+  const refreshPath = /\/(generate|new-map)\/refresh$/;
+  const isRefresh = (e) => refreshPath.test(e.detail.pathInfo ? e.detail.pathInfo.requestPath : "");
   let sentValues = new Map();
   let typedValues = new Map();
   // htmx skips putting back a selection that starts at 0, so typing over a
@@ -713,7 +745,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isRefresh(e) && (e.target.id === "line-box" || e.target.id === "map-settings")) keepCaret();
     const path = e.detail.pathInfo ? e.detail.pathInfo.requestPath : "";
     // The version list's own load is also a swap; it must not touch the summary.
-    if (!path.endsWith("/generate/refresh") && !path.endsWith("/generate/preview")) return;
+    if (!refreshPath.test(path) && !path.endsWith("/generate/preview")) return;
     const xhr = e.detail.xhr;
     const summary = document.getElementById("error-summary");
     // The form came back whole, with its errors: they are what to read next.
@@ -732,7 +764,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // Otherwise only a part was redrawn, so a summary left in the form is out of date.
     if (summary) summary.remove();
-    if (path.endsWith("/generate/refresh")) {
+    if (refreshPath.test(path)) {
       // The browser shuts a row inserted while the old one of its group was
       // still in the page, so the open planet is opened again.
       if (openPlanet()) openRow(openPlanet().value);

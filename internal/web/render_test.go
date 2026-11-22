@@ -119,6 +119,10 @@ func pageCases() []pageCase {
 		{"import upload errors", "todd", 400, ImportPage{InboxDir: "/data/import", Folder: ImportForm{IDPrefix: "folder"},
 			Upload: ImportForm{IDPrefix: "upload", SourceError: i18n.M("worlds.upload.not_zip"), NameError: msgNameEmpty(), VersionError: msgBadGameVersion()}}},
 		{"generate empty", "todd", 200, GeneratePage{Form: generateCase(nil)}},
+		{"new map loading", "todd", 200, NewMapPage{World: world.Summary{ID: "w1", Name: "W", Unfinished: true}, Loading: true}},
+		{"new map refused", "todd", 409, NewMapPage{World: world.Summary{ID: "w1", Name: "W"}, Why: i18n.M("newmap.why.made")}},
+		{"new map form", "todd", 200, NewMapPage{World: world.Summary{ID: "w1", Name: "W", Unfinished: true}, CanPreview: true, Gone: []string{"fake-ore"},
+			Builtin: i18n.M("newmap.builtin.failed"), Form: NewMapForm{MapForm: generateCase(nil).MapForm, ID: "w1", Name: "W", Version: "2.0.77"}}},
 		{"generate preview", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil), Preview: &PreviewView{Seed: "1234", Pictures: []PreviewPicture{
 			{Planet: "nauvis", Name: planetMsg("nauvis"), Path: "/generate/preview/tok/nauvis"},
 			{Planet: "vulcanus", Name: planetMsg("vulcanus"), Path: "/generate/preview/tok/vulcanus"}}}}},

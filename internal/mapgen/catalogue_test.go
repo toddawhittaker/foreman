@@ -314,3 +314,17 @@ func TestValidName(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 5.6: a built-in catalogue says whether it is laid out with Space Age;
+// 1.1 never is.
+func TestBuiltinSpaceAge(t *testing.T) {
+	for _, c := range []struct {
+		line     string
+		spaceAge bool
+		want     bool
+	}{{"2.1", true, true}, {"2.1", false, false}, {"2.0", true, true}, {"1.1", true, false}} {
+		if got := Builtin(c.line, c.spaceAge).SpaceAge; got != c.want {
+			t.Errorf("Builtin(%s, %t).SpaceAge = %t", c.line, c.spaceAge, got)
+		}
+	}
+}

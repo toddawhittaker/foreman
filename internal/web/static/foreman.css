@@ -783,7 +783,7 @@ time {
   border-block-end: var(--border-width) solid var(--color-line);
 }
 
-.subnav ul {
+.subnav :is(ul, ol) {
   display: flex;
   flex-wrap: nowrap;
   gap: var(--space-1);
@@ -805,7 +805,7 @@ time {
 }
 
 @container (max-width: 30rem) {
-  .subnav ul {
+  .subnav :is(ul, ol) {
     gap: 0;
   }
 
@@ -1173,7 +1173,7 @@ main {
 
 /* A row of tabs wider than its box scrolls; subnav.js marks which edge has
    more, and that edge fades over 24 px so a cut tab reads as "more this way". */
-.subnav ul::after {
+.subnav :is(ul, ol)::after {
   content: "";
   flex: none;
   inline-size: var(--space-4);
@@ -9347,7 +9347,7 @@ main > .panel.danger-zone.danger-zone--blocked {
     border-block-end: 0;
   }
 
-  .subnav ul {
+  .subnav :is(ul, ol) {
     scroll-padding-inline: 1.5rem;
     flex-wrap: nowrap;
     gap: 0 var(--space-1);

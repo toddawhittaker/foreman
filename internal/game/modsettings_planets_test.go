@@ -329,3 +329,21 @@ func TestModSettingDefsPlanetFileLink(t *testing.T) {
 		t.Errorf("planets error %v, want the link refused", res.defs.PlanetsErr)
 	}
 }
+
+// SPEC 5.6: a world's catalogue, and the built-in fallback, carry Space Age
+// from the same source, the world's enabled mods.
+func TestWorldCataloguesCarrySpaceAge(t *testing.T) {
+	data := []byte(`{"planets":[{"name":"moon","localised_name":["space-location-name.moon"],"autoplace_controls":{"rock":{}}}],
+	  "autoplace_controls":[{"name":"rock","category":"resource","localised_name":["autoplace-control-names.rock"]}],
+	  "resources":[{"name":"rock","control":"rock","localised_name":["entity-name.rock"]}]}`)
+	for _, on := range []bool{true, false} {
+		cats, err := worldCatalogues(data, nil, nil, "2.1", on)
+		if err != nil || cats["en"].SpaceAge != on || cats["de"].SpaceAge != on {
+			t.Errorf("space age %t: %v %t", on, err, cats["en"].SpaceAge)
+		}
+		cats, err = worldCatalogues(nil, ErrPlanetsMissing, nil, "2.1", on)
+		if err == nil || cats["en"].SpaceAge != on {
+			t.Errorf("fallback, space age %t: %t", on, cats["en"].SpaceAge)
+		}
+	}
+}
