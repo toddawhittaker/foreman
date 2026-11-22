@@ -114,7 +114,7 @@ func TestSetFactoryMapModeRefusesNewerFormat(t *testing.T) {
 func writeFactoryMapJSON(t *testing.T, m *Manager, id, raw string) {
 	t.Helper()
 	p := filepath.Join(m.dirs.Worlds, id, MetaFile)
-	b, err := os.ReadFile(p)
+	b, err := os.ReadFile(filepath.Clean(p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestMissingFactoryMapDecodesManualSkipOnline(t *testing.T) {
 	}
 	// Drop the key entirely.
 	p := filepath.Join(m.dirs.Worlds, id, MetaFile)
-	b, _ := os.ReadFile(p)
+	b, _ := os.ReadFile(filepath.Clean(p))
 	var doc map[string]json.RawMessage
 	_ = json.Unmarshal(b, &doc)
 	delete(doc, "factory_map")
