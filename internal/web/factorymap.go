@@ -55,21 +55,13 @@ const (
 	factoryStateRegion = "factorymap-state"
 )
 
-// The states of a world's factory map, as game.FactoryMapView.State says them
-// (SPEC 5.16). F5's file defines the same strings.
-const (
-	factoryDrawing     = "drawing"
-	factoryUnsupported = "unsupported"
-)
-
 // The refusals of a click on the draw button, as the names of the
 // "factorymap.refused.<name>" words (SPEC 5.16).
 const (
 	refusedOff           = "off"
 	refusedNotSupported  = "not_supported"
 	refusedPlayersOnline = "players_online"
-	// refusedNoSave and refusedArchived are the controller's refusals, mapped
-	// once its errors exist.
+	// refusedNoSave and refusedArchived are the controller's other refusals.
 	refusedNoSave   = "no_save"
 	refusedArchived = "archived"
 	// refusedConfirmMemory is the page's own: the box is not ticked.
@@ -324,8 +316,8 @@ func (h *factoryMapHandlers) page(sum world.Summary, surface string) (FactoryMap
 	}
 	p := FactoryMapPage{
 		World: sum, View: v, Categories: factorymap.Categories,
-		CanDraw:    v.Mode.Mode != world.FactoryMapOff && v.State != factoryUnsupported && v.State != factoryDrawing,
-		CanSetMode: v.State != factoryUnsupported,
+		CanDraw:    v.Mode.Mode != world.FactoryMapOff && v.State != game.FactoryMapUnsupported && v.State != game.FactoryMapDrawing,
+		CanSetMode: v.State != game.FactoryMapUnsupported,
 	}
 	surfaces := v.Drawing.Surfaces
 	if len(surfaces) > 0 {
@@ -354,22 +346,6 @@ func (h *factoryMapHandlers) handlePage(w http.ResponseWriter, r *http.Request, 
 	h.s.page(w, r, http.StatusOK, u.Username, p)
 }
 
-// factoryRefusal says which of the spec's refusals a click on the draw button meets
-// in view v, or "" when none: off hides the button, an old game has no map,
-// and a click beside a running game is refused while players are online when
-// "skip while players are online" is on (SPEC 5.16).
-func factoryRefusal(v game.FactoryMapView) string {
-	switch {
-	case v.Mode.Mode == world.FactoryMapOff:
-		return refusedOff
-	case v.State == factoryUnsupported:
-		return refusedNotSupported
-	case v.Running && v.PlayersOnline && v.Mode.SkipOnline:
-		return refusedPlayersOnline
-	}
-	return ""
-}
-
 // drawOutcome is what a click on the draw button came to.
 type drawOutcome struct {
 	// Refused is the name of the refusal; "" when none.
@@ -381,24 +357,35 @@ type drawOutcome struct {
 	Started bool
 }
 
-// draw is the draw button's work. confirmed is the "confirm_memory" box.
+// factoryRefusals are the controller's refusals of a click on the draw button, each
+// with the name of its words (SPEC 5.16). The game's answer wins: whether
+// players are online is its to say, not the page's.
+var factoryRefusals = []struct {
+	err  error
+	name string
+}{
+	{game.ErrFactoryMapPlayersOnline, refusedPlayersOnline},
+	{game.ErrFactoryMapNotSupported, refusedNotSupported},
+	{game.ErrFactoryMapOff, refusedOff},
+	{game.ErrFactoryMapNoSave, refusedNoSave},
+	{game.ErrFactoryMapArchived, refusedArchived},
+}
+
+// draw is the draw button's work. confirmed is the "confirm_memory" box,
+// which a game running on this Foreman makes necessary: the run needs about
+// as much memory as that game uses.
 func (h *factoryMapHandlers) draw(ctx context.Context, id string, confirmed bool) (drawOutcome, error) {
 	v, err := h.b.FactoryMap(id)
 	if err != nil {
 		return drawOutcome{}, err
 	}
-	if n := factoryRefusal(v); n != "" {
-		return drawOutcome{Refused: n}, nil
-	}
 	if v.Running && !confirmed {
 		return drawOutcome{NeedMemory: true}, nil
 	}
 	if err := h.b.DrawFactoryMap(ctx, id); err != nil {
-		// A refusal the controller made after our look (a player joined
-		// meanwhile) reads the same as ours.
-		if v, verr := h.b.FactoryMap(id); verr == nil {
-			if n := factoryRefusal(v); n != "" {
-				return drawOutcome{Refused: n}, nil
+		for _, r := range factoryRefusals {
+			if errors.Is(err, r.err) {
+				return drawOutcome{Refused: r.name}, nil
 			}
 		}
 		return drawOutcome{}, err
@@ -541,7 +528,7 @@ func (h *factoryMapHandlers) handlePicture(w http.ResponseWriter, r *http.Reques
 	}
 	f, err := pics.OpenPNG(surface.Index, layer)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, factorymap.ErrInvalid) {
 			h.s.notFound(w, r, u)
 			return
 		}
@@ -584,7 +571,7 @@ func (h *factoryMapHandlers) handleDownload(w http.ResponseWriter, r *http.Reque
 	body, err := combined(pics, surface.Index, layers)
 	release()
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, factorymap.ErrInvalid) {
 			h.s.notFound(w, r, u)
 			return
 		}
