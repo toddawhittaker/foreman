@@ -1071,7 +1071,7 @@ func TestPlayerResultOnTheServerPage(t *testing.T) {
 func TestCrashReasonInPlainWords(t *testing.T) {
 	for kind, want := range map[string]string{
 		crashreasons.ModMissingDependency: "A mod needs another mod that is not installed.",
-		crashreasons.ModError:             "A mod failed to load.",
+		crashreasons.ModError:             "A mod stopped the game.",
 		crashreasons.SaveUnreadable:       "The save could not be read. It may be damaged or incomplete.",
 		crashreasons.PortInUse:            "Another program on this host already uses the game&#39;s port.",
 		crashreasons.OutOfMemory:          "The game ran out of memory, so the system stopped it.",
