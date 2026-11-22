@@ -601,5 +601,12 @@
   "server.lan.unpublished": "Spieler im lokalen Netzwerk können das Spiel nicht erreichen: {sidecar} veröffentlicht UDP 34197 nicht auf dem Host.",
   "server.force.group": "Notfallaktionen",
   "server.crash.switch_archived": "{world} ist archiviert, deshalb kann Foreman nicht dorthin zurückwechseln.",
-  "server.crash.unarchive": "{world} öffnen, um die Archivierung aufzuheben"
+  "server.crash.unarchive": "{world} öffnen, um die Archivierung aufzuheben",
+  "server.playtime.label": "Spielzeit",
+  "server.playtime.value": "{hours} h {minutes} Min.",
+  "server.playtime.unread": "Noch nicht gelesen",
+  "server.playtime.players": {
+    "one": "{count} Spieler in diesem Speicherstand",
+    "other": "{count} Spieler in diesem Speicherstand"
+  }
 }

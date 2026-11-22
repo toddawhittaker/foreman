@@ -601,5 +601,12 @@
   "server.lan.unpublished": "LAN players cannot reach the game: {sidecar} does not publish UDP 34197 on the host.",
   "server.force.group": "Emergency actions",
   "server.crash.switch_archived": "{world} is archived, so Foreman cannot switch back to it.",
-  "server.crash.unarchive": "Open {world} to unarchive it"
+  "server.crash.unarchive": "Open {world} to unarchive it",
+  "server.playtime.label": "Play time",
+  "server.playtime.value": "{hours} h {minutes} min",
+  "server.playtime.unread": "Not read yet",
+  "server.playtime.players": {
+    "one": "{count} player in this save",
+    "other": "{count} players in this save"
+  }
 }
