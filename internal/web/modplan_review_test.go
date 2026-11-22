@@ -112,14 +112,15 @@ func TestAcceptedInstallClearsSavedPicks(t *testing.T) {
 	}
 
 	g.wantRedirectHome(g.post(plan, v))
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	// The picks leave once the install has installed them, not when it starts.
 	if got := g.picks(id); len(got) != 0 {
 		t.Errorf("an accepted install left picks %v, want none", got)
 	}
 	if got := g.picks(other); len(got) != 1 {
 		t.Errorf("another world's picks are %v, want kept", got)
-	}
-	if err := g.waitResult(id, game.AuditMods); err != nil {
-		t.Fatal(err)
 	}
 }
 

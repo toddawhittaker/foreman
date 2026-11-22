@@ -2,10 +2,14 @@ package web
 
 import (
 	"context"
+	"errors"
+	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/modportal"
+	"github.com/toddawhittaker/foreman/internal/modportal/modportaltest"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -26,7 +30,7 @@ func TestModsTabOfAnUnfinishedWorldShowsTheStepBar(t *testing.T) {
 	g.world20("Active")
 	id := g.unfinished20("Fresh")
 	body := g.get(modsPath(id))
-	wantIn(t, "mods tab", body, `id="flow-steps"`, `href="`+modsPath(id)+`" aria-current="step"`, `href="`+newMapPath(id)+`"`,
+	wantIn(t, "mods tab", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`, `href="`+newMapPath(id)+`"`,
 		`id="mods-skip"`)
 	wantIn(t, "skip text", plain(body), "Skip to map settings")
 	if strings.Count(body, `aria-current="step"`) != 1 {
@@ -42,7 +46,7 @@ func TestModsTabOfAFinishedWorldHasNoStepBar(t *testing.T) {
 	g := newModsRig(t, true)
 	id := g.world20("Made")
 	body := g.get(modsPath(id))
-	for _, no := range []string{`id="flow-steps"`, `id="mods-skip"`, `id="act-next-map"`, newMapPath(id)} {
+	for _, no := range []string{`aria-label="Steps to make the world"`, `id="mods-skip"`, `id="act-next-map"`, newMapPath(id)} {
 		if strings.Contains(body, no) {
 			t.Errorf("a finished world's Mods tab has %s", no)
 		}
@@ -57,7 +61,7 @@ func TestReviewAndResultOfAnUnfinishedWorldOfferTheNextStep(t *testing.T) {
 	g.world20("Active")
 	id := g.unfinished20("Fresh")
 	_, body := g.getStatus(kindPlanPath(id, "install", "alpha"))
-	wantIn(t, "review", body, `id="flow-steps"`, `href="`+modsPath(id)+`" aria-current="step"`, `id="plan-skip"`, `href="`+newMapPath(id)+`"`)
+	wantIn(t, "review", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`, `id="plan-skip"`, `href="`+newMapPath(id)+`"`)
 	wantIn(t, "review text", plain(body), "Skip to map settings")
 
 	g.wantRedirectTo(modsPath(id)+ownResultQuery, g.post(modsPath(id)+"/plan", planValues(t, body)))
@@ -90,7 +94,7 @@ func TestReviewOfAFinishedWorldHasNoStepBar(t *testing.T) {
 	g.portal.AddZip("alpha", "1.0.0")
 	id := g.world20("Made")
 	_, body := g.getStatus(kindPlanPath(id, "install", "alpha"))
-	for _, no := range []string{`id="flow-steps"`, `id="plan-skip"`, `id="plan-next"`} {
+	for _, no := range []string{`aria-label="Steps to make the world"`, `id="plan-skip"`, `id="plan-next"`} {
 		if strings.Contains(body, no) {
 			t.Errorf("a finished world's review has %s", no)
 		}
@@ -112,5 +116,51 @@ func TestContinuePath(t *testing.T) {
 	g.pick(id, "alpha")
 	if got := g.h.(*Handler).srv.continuePath(context.Background(), sum); got != modsPath(id) {
 		t.Errorf("a pick: %s, want step 2", got)
+	}
+}
+
+// SPEC 5.6, 9.14: a failed install installs nothing, so its picks stay and
+// Continue still opens step 2; a successful one takes them out.
+func TestContinueAfterAFailedInstallOpensStepTwo(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.SetMode(g.portal.AddZip("alpha", "1.0.0"), modportaltest.WrongSHA1)
+	g.world20("Active")
+	id := g.unfinished20("Fresh")
+	g.pick(id, "alpha")
+	sum, err := g.worlds.Get(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}}))
+	g.wantRedirectTo(modsPath(id)+ownResultQuery, g.post(modsPath(id)+"/plan", planValues(t, body)))
+	if err := g.waitResult(id, game.AuditMods); !errors.Is(err, modportal.ErrChecksum) {
+		t.Fatalf("result %v, want a checksum failure", err)
+	}
+	if got := g.picks(id); len(got) != 1 || got[0] != "alpha" {
+		t.Errorf("picks %v after a failed install, want alpha kept", got)
+	}
+	if got := g.h.(*Handler).srv.continuePath(context.Background(), sum); got != modsPath(id) {
+		t.Errorf("after a failed install: %s, want step 2", got)
+	}
+}
+
+// SPEC 5.6, 9.14: a pick that is installed another way, such as an upload,
+// is not work that remains, so Continue opens step 3.
+func TestContinueIgnoresAPickThatIsInstalled(t *testing.T) {
+	g := newModsRig(t, true)
+	id := g.unfinished20("Fresh")
+	g.pick(id, "alpha", "beta")
+	g.writeMod(id, "alpha", "1.0.0")
+	sum, err := g.worlds.Get(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := g.h.(*Handler).srv
+	if got := s.continuePath(context.Background(), sum); got != modsPath(id) {
+		t.Errorf("beta still not installed: %s, want step 2", got)
+	}
+	g.writeMod(id, "beta", "1.0.0")
+	if got := s.continuePath(context.Background(), sum); got != newMapPath(id) {
+		t.Errorf("both installed: %s, want step 3", got)
 	}
 }

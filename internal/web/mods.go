@@ -1621,16 +1621,20 @@ func newInstallForm() planForm {
 }
 
 // continuePath is where an Unfinished world's Continue opens: step 2 while
-// it has mod picks not yet installed, otherwise step 3 (SPEC 5.6, 9.14). A
-// picks table that cannot be read opens step 2, which shows the picks.
+// it has saved mod picks that are not installed, otherwise step 3 (SPEC 5.6,
+// 9.14). A pick installed another way, such as an upload, is not work that
+// remains. A picks table that cannot be read opens step 2, which shows them.
 func (s *server) continuePath(ctx context.Context, sum world.Summary) string {
 	picks, err := s.store.ModPlan(ctx, sum.ID)
 	if err != nil {
 		s.log.Warn("read the mod plan", "world", sum.ID, "error", err)
 		return modsPath(sum.ID)
 	}
-	if len(picks) > 0 {
-		return modsPath(sum.ID)
+	installed := s.installedNames(sum.ID)
+	for _, m := range picks {
+		if !installed[m.Name] {
+			return modsPath(sum.ID)
+		}
 	}
 	return newMapPath(sum.ID)
 }
@@ -2036,9 +2040,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	}
 	// The installed picks leave the saved ones; a refused request keeps
 	// them, and so do picks this plan did not install (SPEC 9.14).
-	if s.applyMods(w, r, u, sum, op, stop, unused, p.shownResult()) {
-		s.dropInstalledPicks(r.Context(), sum.ID, f)
-	}
+	s.applyModsThen(w, r, u, sum, op, stop, unused, p.shownResult(), func(ctx context.Context) { s.dropInstalledPicks(ctx, sum.ID, f) })
 }
 
 // confirmProblems marks the boxes the plan needs that f leaves unticked:
@@ -2099,7 +2101,7 @@ func (p ModPlanPage) shownResult() modResult {
 }
 
 // dropInstalledPicks takes an install's mods out of the saved picks once
-// its change has started (SPEC 9.14).
+// its change has installed them (SPEC 9.14).
 func (s *server) dropInstalledPicks(ctx context.Context, id string, f planForm) {
 	if f.Kind != mods.KindInstall {
 		return
@@ -2144,20 +2146,35 @@ func clipSummary(s string) string {
 // The result names the "Before mod change" snapshot, for undo. It reports
 // whether the change was started.
 func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string, shown modResult) bool {
+	return s.applyModsThen(w, r, u, sum, op, stop, unused, shown, nil)
+}
+
+// applyModsThen is applyMods that runs done when the change ended without
+// an error, so a failed install keeps the picks it did not install (SPEC 9.14).
+func (s *server) applyModsThen(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string, shown modResult, done func(context.Context)) bool {
 	to := PathServer
 	if !sum.Active {
 		to = modsPath(sum.ID) + ownResultQuery
 	}
-	return s.beginTo(w, r, to, []string{sum.ID}, true, s.modAction(sum.ID, actor(u), op, stop, unused, shown))
+	return s.beginTo(w, r, to, []string{sum.ID}, true, s.modActionThen(sum.ID, actor(u), op, stop, unused, shown, done))
 }
 
 // modAction is a mod change's background work, for the Mods pages and the
 // MCP tools alike; its result names the snapshot that undoes it.
 func (s *server) modAction(id string, by game.Actor, op game.ModOp, stop game.StopOptions, unused string, shown modResult) func(ctx context.Context) actionResult {
+	return s.modActionThen(id, by, op, stop, unused, shown, nil)
+}
+
+// modActionThen is modAction that runs done after a change that ended
+// without an error.
+func (s *server) modActionThen(id string, by game.Actor, op game.ModOp, stop game.StopOptions, unused string, shown modResult, done func(context.Context)) func(ctx context.Context) actionResult {
 	newest := s.newestModSnapshot(id)
 	run, inRun := s.worlds.ModRunSnapshot(id)
 	return func(ctx context.Context) actionResult {
 		err := s.game.ApplyMods(ctx, id, by, op, stop)
+		if err == nil && done != nil {
+			done(ctx)
+		}
 		if unused != "" {
 			s.removeStaged(unused)
 		}

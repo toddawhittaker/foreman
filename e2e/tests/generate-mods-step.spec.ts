@@ -1,6 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, live } from "./foreman.js";
 import { newMapPath } from "./newmap.js";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 // SPEC 5.6, 9.14, 17.9, 17.10: step 2 of the guided Generate is the world's
 // Mods tab and its review, with the step bar and a way on to step 3.
@@ -21,6 +21,14 @@ async function generate(page: Page, name: string): Promise<string> {
   return new URL(page.url()).pathname.split("/")[2];
 }
 
+// The link is at least 24 by 24 CSS pixels at 320 px wide (WCAG 2.5.8).
+async function expectTarget(page: Page, link: Locator) {
+  await page.setViewportSize({ width: 320, height: 800 });
+  const box = await link.boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(24);
+  expect(box!.height).toBeGreaterThanOrEqual(24);
+}
+
 const steps = (page: Page) => page.getByRole("navigation", { name: "Steps to make the world" });
 
 test("the Mods tab of an Unfinished world has the step bar and skips to step 3", async ({ page, foreman, fakeGame }) => {
@@ -34,6 +42,7 @@ test("the Mods tab of an Unfinished world has the step bar and skips to step 3",
 
   const skip = page.getByRole("link", { name: "Skip to map settings" });
   await expect(skip).toHaveAttribute("href", newMapPath(id));
+  await expectTarget(page, skip);
   await skip.click();
   await expect(page).toHaveURL(newMapPath(id));
   await expect(steps(page).getByRole("link", { name: "3. Map settings" })).toHaveAttribute("aria-current", "step");
@@ -51,8 +60,10 @@ test("the review shows the step bar, and the result after an install offers Next
 
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-flow in Flow world?" })).toBeVisible();
   await expect(steps(page).getByRole("link", { name: "2. Mods" })).toHaveAttribute("aria-current", "step");
-  await expect(page.getByRole("link", { name: "Skip to map settings" })).toHaveAttribute("href", newMapPath(id));
+  const skipReview = page.getByRole("link", { name: "Skip to map settings" });
+  await expect(skipReview).toHaveAttribute("href", newMapPath(id));
   await checkPage(page);
+  await expectTarget(page, skipReview);
 
   await page.getByRole("button", { name: "Install 1 mod" }).click();
   await expect(page).toHaveURL(new RegExp(`/worlds/${id}/mods`));
@@ -62,7 +73,15 @@ test("the review shows the step bar, and the result after an install offers Next
   await expect(page.getByRole("link", { name: "Skip to map settings" })).toHaveCount(0);
   const next = page.getByRole("link", { name: "Next: map settings" });
   await expect(next).toHaveAttribute("href", newMapPath(id));
-  await next.click();
+
+  // With the mod installed, a review that changes nothing offers Next too.
+  await page.goto(`/worlds/${id}/mods/plan?kind=update`);
+  const nothing = page.getByRole("link", { name: "Next: map settings" });
+  await expect(page.getByText("Nothing needs to change")).toBeVisible();
+  await expect(nothing).toHaveAttribute("href", newMapPath(id));
+  await expect(page.getByRole("link", { name: "Skip to map settings" })).toHaveCount(0);
+  await checkPage(page);
+  await nothing.click();
   await expect(page).toHaveURL(newMapPath(id));
   await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
 });
@@ -72,10 +91,10 @@ test("a world with a save has no step bar on its Mods tab or review", async ({ p
   await setUp(page, foreman, fakeGame!);
   await page.goto("/worlds/base/mods");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.locator("#flow-steps")).toHaveCount(0);
+  await expect(steps(page)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Skip to map settings" })).toHaveCount(0);
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-made");
   await expect(page.getByRole("heading", { level: 1, name: /Install fp-made/ })).toBeVisible();
-  await expect(page.locator("#flow-steps")).toHaveCount(0);
+  await expect(steps(page)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Skip to map settings" })).toHaveCount(0);
 });
