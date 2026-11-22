@@ -62,12 +62,16 @@ end)
 //	  FOREMAN_TEST_PLAYERS_SPACE_AGE=1 make test-game ... -run TestRealGameSavePlayersRead
 //
 // FOREMAN_TEST_GAME_TAG is required with it, because a save is read only by
-// its own game line. The save may need only the base game, plus Space Age
-// when FOREMAN_TEST_PLAYERS_SPACE_AGE is set: the world made for it has no
-// third-party mods.
+// its own game line. The world made for it has the base game, plus Space Age
+// when FOREMAN_TEST_PLAYERS_SPACE_AGE is set. A save with other mods also
+// needs FOREMAN_TEST_PLAYERS_MODS=<folder with the mod zips, mod-list.json and
+// mod-settings.dat>, copied into the world.
 const (
 	spPlayersSaveEnv     = "FOREMAN_TEST_PLAYERS_SAVE"
 	spPlayersSpaceAgeEnv = "FOREMAN_TEST_PLAYERS_SPACE_AGE"
+	// spPlayersModsEnv is a folder with the save's mod zips, mod-list.json
+	// and mod-settings.dat, copied into the world's mods folder.
+	spPlayersModsEnv = "FOREMAN_TEST_PLAYERS_MODS"
 )
 
 func TestRealGameSavePlayersRead(t *testing.T) {
@@ -197,7 +201,7 @@ type oracleResult struct {
 // oracleRead runs the game plainly (not through Foreman) on a copy of the
 // save, with the oracle mod, in a network-less container, and returns what the
 // mod wrote. The container is named for this run and removed at the end.
-func (e *gameEnv) oracleRead(t *testing.T, version, saveFile string, modList []byte) oracleResult {
+func (e *gameEnv) oracleRead(t *testing.T, version, saveFile string, modList []byte, modsDir string) oracleResult {
 	t.Helper()
 	scratch := t.TempDir()
 	line := version[:3]
@@ -227,6 +231,18 @@ func (e *gameEnv) oracleRead(t *testing.T, version, saveFile string, modList []b
 		t.Fatal(err)
 	}
 	write(filepath.Join(scratch, "mods", world.ModListFile), ml)
+	// The world's mod zips and settings, when it has any.
+	if entries, err := os.ReadDir(modsDir); err == nil {
+		for _, en := range entries {
+			if en.Type().IsRegular() && (strings.HasSuffix(en.Name(), ".zip") || en.Name() == world.ModSettingsFile) {
+				b, err := os.ReadFile(filepath.Join(modsDir, en.Name())) //nolint:gosec // the test's own world folder
+				if err != nil {
+					t.Fatal(err)
+				}
+				write(filepath.Join(scratch, "mods", en.Name()), b)
+			}
+		}
+	}
 	write(filepath.Join(scratch, "config.ini"), []byte("[path]\nread-data=__PATH__executable__/../../data\nwrite-data=/work/wd\n"))
 	b, err := os.ReadFile(saveFile) //nolint:gosec // a save the test made
 	if err != nil {
@@ -343,6 +359,29 @@ func (e *gameEnv) spModList(t *testing.T, id, version string, spaceAge bool) {
 	}
 }
 
+// spCopyMods puts the files of dir (mod zips, mod-list.json, mod-settings.dat)
+// in the world's mods folder, replacing what is there.
+func (e *gameEnv) spCopyMods(t *testing.T, id, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, en := range entries {
+		if !en.Type().IsRegular() {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(dir, en.Name())) //nolint:gosec // a folder the person running the test gave
+		if err != nil {
+			t.Fatal(err)
+		}
+		dst := filepath.Join(e.worldDir(id), world.ModsDir, en.Name())
+		if err := os.WriteFile(dst, b, 0o600); err != nil { //nolint:gosec // the test's own world folder
+			t.Fatal(err)
+		}
+	}
+}
+
 // runSavePlayersRead checks one read. with a fixture, the world is made from it
 // and first played for a few seconds; with none, source is the path of a
 // ready save with players.
@@ -360,6 +399,9 @@ func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source
 		spaceAge := os.Getenv(spPlayersSpaceAgeEnv) != ""
 		id = e.spWorld(t, tag, version, spaceAge)
 		e.spModList(t, id, version, spaceAge)
+		if dir := os.Getenv(spPlayersModsEnv); dir != "" {
+			e.spCopyMods(t, id, dir)
+		}
 		e.putSave(t, id, "main.zip", b, time.Now().Add(-time.Hour))
 	}
 	saveName := "main.zip"
@@ -374,10 +416,12 @@ func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source
 	if err != nil {
 		modList = world.DefaultModList(version, os.Getenv(spPlayersSpaceAgeEnv) != "" && fixture == "")
 	}
-	want := e.oracleRead(t, version, savePath, modList)
+	modsDir := filepath.Join(e.worldDir(id), world.ModsDir)
+	want := e.oracleRead(t, version, savePath, modList, modsDir)
 	if fixture != "" && want.Tick <= 0 {
 		t.Fatalf("the game made a save at tick %d; the test needs a nonzero tick to prove anything", want.Tick)
 	}
+	t.Logf("the game says: tick %d, %d players", want.Tick, len(want.Players))
 	before := spWorldState(t, e.worldDir(id))
 	e.previewLeftovers(t, "before the read")
 
@@ -433,7 +477,7 @@ func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source
 	if err != nil {
 		t.Fatalf("no players.json after a good read: %v", err)
 	}
-	rec, err := saveplayers.Parse(raw)
+	rec, err := saveplayers.Parse(raw, time.Now())
 	if err != nil {
 		t.Fatalf("players.json: %v", err)
 	}
@@ -458,7 +502,7 @@ func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source
 	e.previewLeftovers(t, "after the read")
 	// The save, again on its own and by the plain game: still readable, same
 	// tick (the read did not move the game on).
-	if again := e.oracleRead(t, version, savePath, modList); again.Tick != want.Tick {
+	if again := e.oracleRead(t, version, savePath, modList, modsDir); again.Tick != want.Tick {
 		t.Errorf("the save reads as tick %d after the read, %d before", again.Tick, want.Tick)
 	}
 }
