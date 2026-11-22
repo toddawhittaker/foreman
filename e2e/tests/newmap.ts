@@ -20,3 +20,13 @@ export async function openNewMap(page: Page, opts: { name?: string; step1?: (pag
   await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
   return id;
 }
+
+// Step 1 fields of a 1.1 world: its typed version, no Space Age (SPEC 5.6) and no
+// image download. Pass it as openNewMap's step1.
+export async function oldGameStep1(page: Page) {
+  await page.locator(".version-fields > details.disclosure > summary").click();
+  await page.getByLabel("Type a version").fill("1.1.110");
+  await page.getByLabel("Type a version").press("Tab");
+  await page.getByLabel("Download the game image", { exact: false }).uncheck();
+  await page.getByLabel("Space Age is on").uncheck();
+}

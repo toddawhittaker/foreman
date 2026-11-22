@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect, checkPage, createAdmin, image21, openMenu, seedWorld, pickLanguage } from "./foreman.js";
+import { openNewMap, newMapPath } from "./newmap.js";
 
 // DESIGN 6 ("User menu"), SPEC 17.1, 17.2, 22. The
 // user menu's About item opens a modal dialog with the product, the build's
@@ -219,22 +220,22 @@ test.describe("without JavaScript", () => {
   });
 });
 
-// Generate asks before leaving a changed form; opening About leaves nothing, so it does not ask.
-test.describe("on Generate with a changed form", () => {
+// Step 3 of Generate asks before leaving a changed form (SPEC 5.6); opening About leaves nothing, so it does not ask.
+test.describe("on the map settings with a changed form", () => {
   test.use({ fakeGameOn: true });
 
   test("About opens its dialog and Foreman's leave question does not appear", async ({ page, foreman, fakeGame }) => {
     await createAdmin(page);
     seedWorld(foreman);
     await fakeGame!.call("/image", { ref: image21, on: true });
-    await page.goto("/generate");
-    await page.getByLabel("World name").fill("Half done");
+    const id = await openNewMap(page);
+    await page.locator("#generate-seed").fill("1234");
     await openMenu(page);
     await aboutItem(page).click();
     await expect(dialog(page)).toBeVisible();
     await expect(page.getByRole("dialog", { name: "Leave without saving these map settings?" })).toBeHidden();
     await page.keyboard.press("Escape");
-    await expect(page).toHaveURL(/\/generate$/);
-    await expect(page.getByLabel("World name")).toHaveValue("Half done");
+    await expect(page).toHaveURL(newMapPath(id));
+    await expect(page.locator("#generate-seed")).toHaveValue("1234");
   });
 });
