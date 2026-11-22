@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -271,5 +273,39 @@ func TestPlayTime(t *testing.T) {
 		if got := i18n.English.Format(playTime(d)); got != want {
 			t.Errorf("playTime(%v) = %q, want %q", d, got, want)
 		}
+	}
+}
+
+// SPEC 8.14 (drift): the page learns that a record is inexact from the
+// record itself, and a record Foreman cannot read counts as missing.
+func TestRecordInexactFromTheFile(t *testing.T) {
+	hn := newHarness(t, nil)
+	id := hn.seedSnapshotWorld()
+	s := &server{worlds: hn.worlds, now: hn.clock.Now}
+	ready := game.SavePlayersView{State: game.SavePlayersReady}
+	if s.recordInexact(id, ready) {
+		t.Error("no record counted as inexact")
+	}
+	at := hn.clock.Now()
+	rec := saveplayers.Record{FormatVersion: saveplayers.FormatVersion, Basis: saveplayers.Basis{Save: "a.zip", Size: 1, Modified: at}, AsOf: at, TrackedSince: at, Inexact: true,
+		Seed: saveplayers.SeedInfo{At: at, Save: "a.zip", Result: saveplayers.ResultOK}}
+	b, err := rec.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hn.worlds.WritePlayersRecord(id, b); err != nil {
+		t.Fatal(err)
+	}
+	if !s.recordInexact(id, ready) {
+		t.Error("an inexact record was not seen as inexact")
+	}
+	if s.recordInexact(id, game.SavePlayersView{State: game.SavePlayersReading}) {
+		t.Error("only a read's list can be inexact")
+	}
+	if err := os.WriteFile(filepath.Join(hn.worlds.Dirs().Worlds, id, world.PlayersFile), []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if s.recordInexact(id, ready) {
+		t.Error("an unreadable record counted as inexact")
 	}
 }

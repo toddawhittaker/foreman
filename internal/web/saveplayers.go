@@ -215,7 +215,7 @@ func (s *server) recordInexact(id string, v game.SavePlayersView) bool {
 	if err != nil {
 		return false
 	}
-	rec, err := saveplayers.Parse(b)
+	rec, err := saveplayers.Parse(b, s.now())
 	return err == nil && rec.Inexact
 }
 
