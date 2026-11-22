@@ -27,6 +27,7 @@ import (
 	"image"
 	"image/png"
 	"io/fs"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,6 +37,8 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/factorymap"
+	factorymapmod "github.com/toddawhittaker/foreman/internal/game/factorymap"
+	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -133,9 +136,28 @@ func (e *gameEnv) fmEnsureModList(t *testing.T, id string) {
 	}
 }
 
-// fmProbeLua lists the surfaces of the game that have a charted chunk, as the
-// game itself says it.
+// fmProbeLua is the probe mod. In a benchmark run of a copy of the save it
+// writes the surfaces that have a charted chunk, as the game itself says it,
+// and puts three known buildings on the first free spots of a charted chunk of
+// nauvis. It loads before the helper mod (which depends on it), so the helper
+// reads the buildings too.
 const fmProbeLua = `
+local function place(n, name, off)
+  for c in n.get_chunks() do
+    if game.forces["player"].is_chunk_charted(n, {c.x, c.y}) then
+      for dx = 6, 26, 5 do
+        for dy = 6, 26, 5 do
+          local p = {c.x * 32 + dx + off, c.y * 32 + dy + off}
+          if n.can_place_entity{name = name, position = p, force = "player"} then
+            local e = n.create_entity{name = name, position = p, force = "player"}
+            if e then return {name = name, type = e.type, x = p[1], y = p[2]} end
+          end
+        end
+      end
+    end
+  end
+end
+
 local function run()
   if storage.done then return end
   storage.done = true
@@ -146,22 +168,47 @@ local function run()
       if f.is_chunk_charted(s, {c.x, c.y}) then names[#names + 1] = s.name; break end
     end
   end
-  helpers.write_file("charted.json", helpers.table_to_json({names = names}), false)
+  local n = game.surfaces["nauvis"]
+  local placed = {}
+  for _, spec in ipairs({{"assembling-machine-1", 0.5}, {"pipe", 0.5}, {"gun-turret", 0}}) do
+    placed[#placed + 1] = place(n, spec[1], spec[2])
+  end
+  helpers.write_file("probe.json", helpers.table_to_json({names = names, placed = placed}), false)
 end
 script.on_init(run)
 script.on_event(defines.events.on_tick, run)
 `
 
-// chartedSurfaces asks the game, in a benchmark run of a copy of the save with
-// the world's mods and a probe mod, which surfaces have a charted chunk.
-func (e *gameEnv) chartedSurfaces(t *testing.T, id, tag, version string) []string {
+// fmPlaced is a building the probe put on nauvis: its prototype name and type
+// and its centre.
+type fmPlaced struct {
+	Name string  `json:"name"`
+	Type string  `json:"type"`
+	X    float64 `json:"x"`
+	Y    float64 `json:"y"`
+}
+
+// fmHelperRun is what a benchmark run with the probe and the helper mod found.
+type fmHelperRun struct {
+	// Charted is the surfaces with a charted chunk.
+	Charted []string
+	// Placed is the buildings the probe put on nauvis.
+	Placed []fmPlaced
+	// Output is the helper mod's folder, script-output/factorymap.
+	Output string
+}
+
+// runHelper runs a copy of the save in benchmark mode with the world's mods,
+// the probe mod and the helper mod, as the factory map run does, and returns
+// what the probe found and where the helper wrote.
+func (e *gameEnv) runHelper(t *testing.T, id, tag, version string) fmHelperRun {
 	t.Helper()
 	save, err := os.ReadFile(filepath.Join(e.worldDir(id), world.SavesDir, "played.zip")) //nolint:gosec // the test's own world folder
 	if err != nil {
 		t.Fatal(err)
 	}
 	work := t.TempDir()
-	for _, d := range []string{"mods/f11probe_1.0.0", "wd"} {
+	for _, d := range []string{"mods/f11probe_1.0.0", "mods/" + factorymapmod.ModDir, "wd"} {
 		if err := os.MkdirAll(filepath.Join(work, d), 0o755); err != nil { //nolint:gosec // the container's user reads and writes these
 			t.Fatal(err)
 		}
@@ -172,7 +219,7 @@ func (e *gameEnv) chartedSurfaces(t *testing.T, id, tag, version string) []strin
 	if err := os.Chmod(filepath.Join(work, "wd"), 0o777); err != nil { //nolint:gosec // the container's user writes here
 		t.Fatal(err)
 	}
-	// The world's mods, and a mod list that also has the probe.
+	// The world's mods, and a mod list that also has the probe and the helper.
 	entries, err := os.ReadDir(e.modsPath(id))
 	if err != nil {
 		t.Fatal(err)
@@ -196,7 +243,9 @@ func (e *gameEnv) chartedSurfaces(t *testing.T, id, tag, version string) []strin
 	if err := json.Unmarshal(raw, &list); err != nil {
 		t.Fatal(err)
 	}
-	list.Mods = append(list.Mods, map[string]any{"name": "f11probe", "enabled": true})
+	for _, name := range []string{"f11probe", factorymapmod.ModName} {
+		list.Mods = append(list.Mods, map[string]any{"name": name, "enabled": true})
+	}
 	if raw, err = json.Marshal(list); err != nil {
 		t.Fatal(err)
 	}
@@ -205,8 +254,13 @@ func (e *gameEnv) chartedSurfaces(t *testing.T, id, tag, version string) []strin
 		"f11probe_1.0.0/info.json": []byte(`{"name":"f11probe","version":"1.0.0","title":"probe","author":"foreman tests",` +
 			`"factorio_version":"` + tag + `","dependencies":["base"]}`),
 		"f11probe_1.0.0/control.lua": []byte(fmProbeLua),
-		"../config.ini":              []byte("[path]\nread-data=__PATH__executable__/../../data\nwrite-data=/work/wd\n"),
-		"../save.zip":                save,
+		// The helper depends on the probe so that the probe's buildings exist
+		// when the helper reads.
+		factorymapmod.ModDir + "/info.json": []byte(`{"name":"` + factorymapmod.ModName + `","version":"` + factorymapmod.ModVersion +
+			`","title":"helper","author":"foreman tests","factorio_version":"` + tag + `","dependencies":["base","f11probe"]}`),
+		factorymapmod.ModDir + "/control.lua": factorymapmod.Control,
+		"../config.ini":                       []byte("[path]\nread-data=__PATH__executable__/../../data\nwrite-data=/work/wd\n"),
+		"../save.zip":                         save,
 	} {
 		if err := os.WriteFile(filepath.Join(work, "mods", name), body, 0o644); err != nil { //nolint:gosec // the container's user reads this
 			t.Fatal(err)
@@ -221,17 +275,94 @@ func (e *gameEnv) chartedSurfaces(t *testing.T, id, tag, version string) []strin
 		"--config", "/work/config.ini", "--mod-directory", "/work/mods",
 		"--benchmark", "/work/save.zip", "--benchmark-ticks", "8", "--benchmark-runs", "1")
 	e.dockerCLI(t, "rm", "-f", cname)
-	out, err := os.ReadFile(filepath.Join(work, "wd", "script-output", "charted.json")) //nolint:gosec // the test's own folder
+	out, err := os.ReadFile(filepath.Join(work, "wd", "script-output", "probe.json")) //nolint:gosec // the test's own folder
 	if err != nil {
 		t.Fatal(err)
 	}
 	var got struct {
-		Names []string `json:"names"`
+		Names  []string   `json:"names"`
+		Placed []fmPlaced `json:"placed"`
 	}
 	if err := json.Unmarshal(out, &got); err != nil {
-		t.Fatalf("charted.json: %v\n%s", err, out)
+		t.Fatalf("probe.json: %v\n%s", err, out)
 	}
-	return got.Names
+	return fmHelperRun{Charted: got.Names, Placed: got.Placed, Output: filepath.Join(work, "wd", "script-output", gameenv.FactoryMapDir)}
+}
+
+// fmCheckBoxes checks the helper mod's box arithmetic (whole tiles counted
+// from the chart's top-left corner, the far corner excluded). The expected
+// boxes are worked out here from the buildings' centres and sizes, not from
+// the game's bounding boxes.
+func fmCheckBoxes(t *testing.T, r fmHelperRun) {
+	t.Helper()
+	var manifest struct {
+		Surfaces []struct {
+			Name   string `json:"name"`
+			Index  int    `json:"index"`
+			MinX   int    `json:"min_x"`
+			MinY   int    `json:"min_y"`
+			Entity string `json:"entities"`
+		} `json:"surfaces"`
+	}
+	raw, err := os.ReadFile(filepath.Join(r.Output, "manifest.json")) //nolint:gosec // the test's own folder
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	var originX, originY int
+	var file string
+	for _, s := range manifest.Surfaces {
+		if s.Name == "nauvis" {
+			originX, originY, file = s.MinX*factorymap.ChunkPixels, s.MinY*factorymap.ChunkPixels, s.Entity
+		}
+	}
+	if file == "" {
+		t.Fatalf("the helper's manifest has no nauvis: %s", raw)
+	}
+	lines, err := os.ReadFile(filepath.Join(r.Output, file)) //nolint:gosec // the test's own folder
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := strings.Split(strings.TrimSpace(string(lines)), "\n")
+	var types []string
+	if err := json.Unmarshal([]byte(rows[0]), &types); err != nil {
+		t.Fatalf("the first line of %s is not the type list: %v", file, err)
+	}
+	have := map[string]bool{}
+	for _, row := range rows[1:] {
+		have[strings.ReplaceAll(row, " ", "")] = true
+	}
+	// Half-size of each building's footprint, in tiles, from its centre.
+	for _, p := range r.Placed {
+		var x1, y1, x2, y2 int
+		fx, fy := int(math.Floor(p.X)), int(math.Floor(p.Y))
+		switch p.Name {
+		case "assembling-machine-1": // 3 by 3, centre in a tile's middle
+			x1, y1, x2, y2 = fx-1, fy-1, fx+2, fy+2
+		case "pipe": // 1 by 1, centre in a tile's middle
+			x1, y1, x2, y2 = fx, fy, fx+1, fy+1
+		case "gun-turret": // 2 by 2, centre on a tile corner
+			x1, y1, x2, y2 = fx-1, fy-1, fx+1, fy+1
+		default:
+			t.Fatalf("unexpected placed building %+v", p)
+		}
+		idx := -1
+		for i, ty := range types {
+			if ty == p.Type {
+				idx = i
+			}
+		}
+		if idx < 0 {
+			t.Errorf("%s: its type %q is not in the helper's type list %v", p.Name, p.Type, types)
+			continue
+		}
+		want := fmt.Sprintf("[%d,%d,%d,%d,%d]", idx, x1-originX, y1-originY, x2-originX, y2-originY)
+		if !have[want] {
+			t.Errorf("%s at (%v,%v): the helper has no line %s (chart corner %d,%d)", p.Name, p.X, p.Y, want, originX, originY)
+		}
+	}
 }
 
 // runFactoryMapPlayed draws a save that people played, which has charted
@@ -273,7 +404,9 @@ func (e *gameEnv) runFactoryMapPlayed(t *testing.T, tag, version string) {
 	}
 	at := time.Now().Add(-time.Hour)
 	e.putSave(t, id, "played.zip", save, at)
-	want := e.chartedSurfaces(t, id, tag, version)
+	helper := e.runHelper(t, id, tag, version)
+	fmCheckBoxes(t, helper)
+	want := helper.Charted
 	if len(want) == 0 {
 		t.Fatalf("the save %s has no charted chunk, so it cannot show a drawing", path)
 	}
