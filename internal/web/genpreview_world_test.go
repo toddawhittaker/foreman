@@ -164,10 +164,11 @@ func TestResourceNameOfAModdedResource(t *testing.T) {
 	}
 }
 
-// SPEC 5.6, ADR 0033: a world mod named like Foreman's helper, or a request
-// the world's game refuses, gives the failed message and is logged.
+// SPEC 5.6, ADR 0033: a world mod named like Foreman's helper has its own
+// message; a request the world's game refuses gives the failed message.
+// Both are logged.
 func TestWorldPreviewRefusalsAreWorded(t *testing.T) {
-	for _, e := range []error{game.ErrControlModTaken, game.ErrPreviewInvalid} {
+	for e, key := range map[error]string{game.ErrControlModTaken: "mapgen.preview.control_mod_taken", game.ErrPreviewInvalid: "worlds.generate.preview.failed"} {
 		prev := &fakePreviewer{err: fmt.Errorf("%w: x", e)}
 		hn := newGenerateHarness(t, prev)
 		c := hn.signIn()
@@ -177,8 +178,8 @@ func TestWorldPreviewRefusalsAreWorded(t *testing.T) {
 			t.Fatal(err)
 		}
 		rec := hn.postLong(PathGeneratePreview, worldPreviewForm(id, "planet", "cerys"), c)
-		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), html.EscapeString(i18n.English.T("worlds.generate.preview.failed"))) {
-			t.Errorf("%v: status %d, no failed message", e, rec.Code)
+		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), html.EscapeString(i18n.English.T(key))) {
+			t.Errorf("%v: status %d, no %s message", e, rec.Code, key)
 		}
 		if !strings.Contains(hn.logs.String(), "map preview refused") {
 			t.Errorf("%v: not logged", e)

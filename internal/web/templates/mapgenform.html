@@ -88,7 +88,7 @@
 {{- else}}
 {{- range .}}
 <details class="disclosure" id="{{.ID}}" name="planet-{{.Tab}}" data-planet="{{.Planet}}" data-said="{{t "mapgen.planet.preview_said" "planet" (msg .Summary)}}"{{if .Open}} open{{end}}>
-  <summary>{{msg .Summary}}</summary>
+  <summary>{{if .Foreign}}<span translate="no">{{msg .Summary}}</span>{{else}}{{msg .Summary}}{{end}}</summary>
   <div class="mapgen-body">
     {{- with .All}}{{template "mapgen-all" .}}{{end}}
     {{- range .Groups}}
@@ -132,12 +132,16 @@
      hidden "off" before it is what an unticked box sends. A resource the game
      needs warns while off (SPEC 5.6). Takes MapGenGroup. */}}
 {{define "mapgen-group" -}}
-<fieldset class="autoplace" id="{{.ID}}">
+<fieldset class="autoplace" id="{{.ID}}"{{if .Also}} aria-describedby="{{.ID}}-also"{{end}}>
   {{- with .Toggle}}
   <legend><input type="hidden" name="{{.Name}}" value="off"><label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" value="on" data-preset="{{if .Preset}}on{{end}}" data-disables="{{$.ID}}"
-    {{- if .NeedKey}} data-need="{{msg .Need}}" data-need-clear="{{t "mapgen.need.clear" "resource" (msg .Label)}}" data-need-key="{{.NeedKey}}" aria-describedby="{{.ID}}-need"{{end}}{{if .Checked}} checked{{end}}> {{msg .Label}}</label></legend>
+    {{- if .NeedKey}} data-need="{{msg .Need}}" data-need-clear="{{t "mapgen.need.clear" "resource" (msg .Label)}}" data-need-key="{{.NeedKey}}" aria-describedby="{{.ID}}-need"{{end}}{{if .Checked}} checked{{end}}> {{if $.Foreign}}<span translate="no">{{msg .Label}}</span>{{else}}{{msg .Label}}{{end}}</label></legend>
   {{- else}}
-  <legend>{{msg .Legend}}</legend>
+  <legend>{{if .Foreign}}<span translate="no">{{msg .Legend}}</span>{{else}}{{msg .Legend}}{{end}}</legend>
+  {{- end}}
+  {{- /* One value the game shares between planets, shown under each (SPEC 5.6). */}}
+  {{- with .Also}}
+  <p class="hint autoplace__also" id="{{$.ID}}-also">{{t "mapgen.also_changes"}} {{range $i, $p := .}}{{if $i}}{{t "mapgen.list_sep"}}{{end}}{{if .Foreign}}<span translate="no">{{msg .Name}}</span>{{else}}{{msg .Name}}{{end}}{{end}}</p>
   {{- end}}
   {{- range .Selects}}
   {{template "mapgen-select" .}}

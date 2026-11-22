@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"math"
 	"net/url"
@@ -232,8 +233,13 @@ type MapGenCheck struct {
 // A control the game lets you switch off has Toggle: its box sits in the
 // legend, so it stays usable while the script disables the rest.
 type MapGenGroup struct {
-	ID      string
-	Legend  i18n.Msg
+	ID     string
+	Legend i18n.Msg
+	// Foreign marks a legend that is a mod's own label (SPEC 14.6).
+	Foreign bool
+	// Also is the other planets the control changes: one value, shown
+	// under each planet with "Also changes" (SPEC 5.6).
+	Also    []MapGenName
 	Toggle  *MapGenCheck
 	Selects []MapGenSelect
 }
@@ -245,6 +251,8 @@ type MapGenPlanet struct {
 	Planet  string
 	Tab     string
 	Summary i18n.Msg
+	// Foreign marks a summary that is a mod's own label (SPEC 14.6).
+	Foreign bool
 	Open    bool
 	Groups  []MapGenGroup
 	// All is the row that sets every resource of the planet at once; nil
@@ -508,7 +516,7 @@ func (f *MapGenForm) markAchievements(rules []mapgen.AchievementRule) {
 		}
 		w.Limit = shown(limit, 100)
 		s.Ach = w
-		v, _ := stepValue(s.Value)
+		v, _ := codeValue(s.Value)
 		if s.invert && v != 0 {
 			v = 1 / v
 		}
@@ -581,6 +589,12 @@ type mgControl struct {
 	// toggle is a resource or cliffs the game lets you switch off; off is
 	// size 0, or on 1.1 cliff_settings.richness 0 (mapgen.CliffToggle).
 	toggle bool
+	// foreign marks a legend that is a mod's own label (SPEC 14.6).
+	foreign bool
+	// also is the other planets the control changes (SPEC 5.6).
+	also []string
+	// def is the planet's own default for the control, if the file gives one.
+	def mapgen.ControlDefault
 }
 
 type mgPlanet struct {
@@ -609,8 +623,13 @@ func mgPlanets(line string, cat mapgen.Catalogue) []mgPlanet {
 	out := make([]mgPlanet, 0, len(names))
 	for _, p := range names {
 		planet := mgPlanet{name: p}
+		defs := planetDefaults(cat, p)
 		for _, c := range cat.PlanetControls(p) {
 			mc := controlFor(c)
+			n := catControlName(cat, c.Name)
+			mc.legend, mc.foreign = n.Name, n.Foreign
+			mc.also = cat.AlsoChanges(c.Name, p)
+			mc.def = defs[c.Name]
 			if c.Category == mapgen.CategoryCliff && mapgen.CliffToggle(line, p) {
 				mc.toggle = true
 			}
@@ -625,6 +644,87 @@ func mgPlanets(line string, cat mapgen.Catalogue) []mgPlanet {
 		out = append(out, planet)
 	}
 	return out
+}
+
+// planetDefaults is a planet's own control defaults (SPEC 5.6).
+func planetDefaults(cat mapgen.Catalogue, planet string) map[string]mapgen.ControlDefault {
+	for _, p := range cat.Planets {
+		if p.Name == planet {
+			return p.Defaults
+		}
+	}
+	return nil
+}
+
+// mgPlanetDefaultMax is the largest planet default the form shows; Moshine
+// sets steam_geyser richness to 150 (SPEC 5.6).
+const mgPlanetDefaultMax = 1000
+
+// planetDefaultPrefix starts the code of a planet's own default that no
+// step stands for; the rest is the stored multiplier.
+const planetDefaultPrefix = "x"
+
+// defaultOf is the setting's stored default on the planet, or false for the
+// game's default of 1.
+func (c mgControl) defaultOf(s mgSetting) (float64, bool) {
+	var v *float64
+	switch s.key {
+	case "frequency":
+		v = c.def.Frequency
+	case "size":
+		v = c.def.Size
+	case "richness":
+		v = c.def.Richness
+	}
+	if v == nil || *v <= 0 || *v > mgPlanetDefaultMax || *v == 1 {
+		return 0, false
+	}
+	return *v, true
+}
+
+// planetDefaultStep is the code and options of a select that starts on a
+// planet's own default v (as stored; invert shows its inverse). A value no step
+// stands for gets its own entry, so it is shown and written back as it is.
+func planetDefaultStep(v float64, invert bool, options []MapGenOption) (string, []MapGenOption) {
+	shown := v
+	if invert {
+		shown = 1 / v
+	}
+	if code, ok := stepCode(shown); ok {
+		options = withExtra(options, code)
+		if validStep(code, options) {
+			return code, options
+		}
+		return "", options
+	}
+	code := planetDefaultPrefix + strconv.FormatFloat(shown, 'f', -1, 64)
+	pct := strconv.FormatFloat(math.Round(shown*10000)/100, 'f', -1, 64)
+	at := len(options)
+	for i, o := range options {
+		if ov, _ := codeValue(o.Value); ov > shown {
+			at = i
+			break
+		}
+	}
+	return code, slices.Insert(slices.Clone(options), at, MapGenOption{code, i18n.M("mapgen.step.planet_default", "percent", pct)})
+}
+
+// codeValue is the multiplier a select's code stands for, as the select
+// shows it: a step, or a planet's own default (the shown value after the
+// prefix).
+func codeValue(code string) (float64, bool) {
+	if v, ok := stepValue(code); ok {
+		return v, true
+	}
+	rest, ok := strings.CutPrefix(code, planetDefaultPrefix)
+	if !ok {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(rest, 64)
+	if err != nil || v <= 0 || v > mgPlanetDefaultMax {
+		return 0, false
+	}
+	return v, true
 }
 
 func waterSettings() []mgSetting {
@@ -744,14 +844,17 @@ func buildMapGenFormIn(line string, cat mapgen.Catalogue, posted func(name strin
 	}
 	needed := mapgen.NeededResources()
 	for _, p := range mgPlanets(line, cat) {
-		summary := planetMsg(p.name)
-		res := MapGenPlanet{ID: "mg-resources-" + p.name, Planet: p.name, Tab: tabResources, Summary: summary}
-		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Planet: p.name, Tab: tabTerrain, Summary: summary}
+		pn := catPlanetName(cat, p.name)
+		res := MapGenPlanet{ID: "mg-resources-" + p.name, Planet: p.name, Tab: tabResources, Summary: pn.Name, Foreign: pn.Foreign}
+		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Planet: p.name, Tab: tabTerrain, Summary: pn.Name, Foreign: pn.Foreign}
 		if p.name == "nauvis" {
 			ter.Groups = append(ter.Groups, mapTypeGroup(line, posted))
 		}
 		for _, c := range p.controls {
-			g := MapGenGroup{ID: "mg-" + p.name + "-" + c.name, Legend: c.legend}
+			g := MapGenGroup{ID: "mg-" + p.name + "-" + c.name, Legend: c.legend, Foreign: c.foreign}
+			for _, o := range c.also {
+				g.Also = append(g.Also, catPlanetName(cat, o))
+			}
 			if c.toggle {
 				g.Toggle = &MapGenCheck{ID: fieldID(p.name, c.name, mgOn), Name: fieldName(p.name, c.name, mgOn),
 					Label: c.legend, Checked: true, Preset: true}
@@ -773,6 +876,12 @@ func buildMapGenFormIn(line string, cat mapgen.Catalogue, posted func(name strin
 				// A resource's box stands in for its size's "None", as in the game.
 				if s.none && (!c.toggle || s.key != "size") {
 					sel.Options = optionsWithNone
+				}
+				if v, ok := c.defaultOf(s); ok {
+					// The planet's own default is where the select starts (SPEC 5.6).
+					if code, options := planetDefaultStep(v, s.invert, sel.Options); code != "" {
+						sel.Value, sel.def, sel.Options = code, code, options
+					}
 				}
 				if v, ok := posted(name); ok && c.toggle && s.key == "size" && v == mgNone {
 					// A size of none is the box off, as the game shows it.
@@ -1111,6 +1220,23 @@ func (f MapGenForm) resourceOn(planet, control string) bool {
 	return true
 }
 
+// moved reports whether a control's fields on a planet differ from where
+// the form starts them.
+func (f MapGenForm) moved(planet string, c mgControl) bool {
+	prefix := fieldName(planet, c.name, "")
+	for _, s := range f.selects() {
+		if strings.HasPrefix(s.Name, prefix) && s.Value != cmp.Or(s.def, mgDefaultStep) {
+			return true
+		}
+	}
+	for _, t := range f.toggles() {
+		if strings.HasPrefix(t.Name, prefix) && !t.Checked {
+			return true
+		}
+	}
+	return false
+}
+
 // num writes a multiplier without float noise.
 func num(v float64) json.RawMessage {
 	v = math.Round(v*1e9) / 1e9
@@ -1183,7 +1309,7 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 
 	// A setting's multiplier as the file stores it.
 	stored := func(planet string, c mgControl, s mgSetting) float64 {
-		v, _ := stepValue(chosen[fieldName(planet, c.name, s.key)])
+		v, _ := codeValue(chosen[fieldName(planet, c.name, s.key)])
 		if s.invert && v != 0 {
 			v = 1 / v
 		}
@@ -1231,8 +1357,18 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 					// The game's own off value; frequency 0 crashes 2.1.
 					entry["size"] = num(0)
 				}
+				m := jsonMember{c.name, writeMembers(withPreferred(entry, "frequency", "size", "richness"))}
+				if known[c.name] {
+					// A control shared between planets is one value: a later
+					// planet's copy counts only when it was moved (SPEC 5.6).
+					if f.moved(p.name, c) {
+						at := slices.IndexFunc(controlOrder, func(o jsonMember) bool { return o.key == c.name })
+						controlOrder[at] = m
+					}
+					continue
+				}
 				known[c.name] = true
-				controlOrder = append(controlOrder, jsonMember{c.name, writeMembers(withPreferred(entry, "frequency", "size", "richness"))})
+				controlOrder = append(controlOrder, m)
 			}
 		}
 	}

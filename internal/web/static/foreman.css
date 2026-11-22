@@ -3439,6 +3439,12 @@ td > .hint {
   font-weight: 600;
 }
 
+/* "Also changes ..." under a shared control's name spans its row (SPEC 5.6). */
+.autoplace__also {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .autoplace:disabled .field label,
 .autoplace:disabled .step__value {
   color: var(--color-text-muted);
