@@ -68,7 +68,30 @@ const (
 	refusedOff           = "off"
 	refusedNotSupported  = "not_supported"
 	refusedPlayersOnline = "players_online"
+	// refusedNoSave and refusedArchived are the controller's refusals, mapped
+	// once its errors exist.
+	refusedNoSave   = "no_save"
+	refusedArchived = "archived"
 )
+
+// refusedMsgs are the words of each refusal; the keys are written out so each
+// is seen where it is used.
+var refusedMsgs = map[string]string{
+	refusedOff:           "factorymap.refused.off",
+	refusedNotSupported:  "factorymap.refused.not_supported",
+	refusedPlayersOnline: "factorymap.refused.players_online",
+	refusedNoSave:        "factorymap.refused.no_save",
+	refusedArchived:      "factorymap.refused.archived",
+}
+
+// refusedMsg is the words for the refusal named name; the zero Msg for a name
+// that is not one.
+func refusedMsg(name string) i18n.Msg {
+	if key, ok := refusedMsgs[name]; ok {
+		return i18n.M(key)
+	}
+	return i18n.Msg{}
+}
 
 func factoryMapPath(id string) string { return worldPath(id) + "/map" }
 
@@ -408,7 +431,7 @@ func (h *factoryMapHandlers) handleDraw(w http.ResponseWriter, r *http.Request, 
 	if out.NeedMemory {
 		p.NeedMemory, p.MemoryBytes, status = true, h.b.RunningMemory(sum.ID), http.StatusOK
 	} else {
-		p.Refused = i18n.M("factorymap.refused." + out.Refused)
+		p.Refused = refusedMsg(out.Refused)
 	}
 	h.s.page(w, r, status, u.Username, p)
 }
