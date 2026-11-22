@@ -1,0 +1,18 @@
+{
+  "worldfile.export.heading": "Export world file",
+  "worldfile.export.text": "Downloads the world as one ZIP file to import into another Foreman: its saves, mods, mod settings and game settings.",
+  "worldfile.export.size": "Estimated size: {size}.",
+  "worldfile.export.saves.legend": "Saves in the file",
+  "worldfile.export.saves.all": "All saves",
+  "worldfile.export.saves.loaded": "Only the save that loads next",
+  "worldfile.export.saves.loaded_hint": "A smaller file. Older saves and autosaves stay behind.",
+  "worldfile.export.running": "If the game is running, the file holds its last save on disk, which may be a few minutes behind what players see. Stop the game first to include everything.",
+  "worldfile.export.left_out": "The file does not hold snapshots, the game password, or Foreman's records of this world, such as its audit log, restart schedule and notifications.",
+  "worldfile.export.audit": "Each export is recorded in the audit log.",
+  "worldfile.export.warning": "Saves and the mod settings file can hold what a mod stores, such as a token. Share the file only with people you trust.",
+  "worldfile.export.button": "Export world",
+  "worldfile.import.heading": "Import a world file",
+  "worldfile.import.intro": "Upload a file made by Export world on another Foreman. You see what it holds before anything is imported.",
+  "worldfile.import.label": "World file",
+  "worldfile.import.button": "Upload world file"
+}
