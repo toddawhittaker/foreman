@@ -1,0 +1,29 @@
+{
+  "worldimport.title": "导入世界文件",
+  "worldimport.intro": "请先查看文件中的内容。点击“导入世界”之前，不会导入任何内容。",
+  "worldimport.heading": "文件内容",
+  "worldimport.zone.label": "世界文件",
+  "worldimport.fact.made_by": "Foreman 版本",
+  "worldimport.fact.saves": "存档",
+  "worldimport.fact.mod_files": "模组文件",
+  "worldimport.saves.count": {
+    "other": "{count} 个存档"
+  },
+  "worldimport.mod_files.count": {
+    "other": "{count} 个模组文件"
+  },
+  "worldimport.fact.size": "解压后大小",
+  "worldimport.fact.loads": "将加载的存档",
+  "worldimport.loads.none": "无：世界会在首次启动时生成地图。",
+  "worldimport.password_warning": "文件中不含游戏密码。在“游戏设置”中设置密码之前，该世界将无密码启动。",
+  "worldimport.mods_warning": "Foreman 不会检查此文件中的存档和模组包含什么。请只导入可信的文件。模组可以保存其作者选择的任何内容，包括令牌。",
+  "worldimport.name.label": "世界名称",
+  "worldimport.image.here": "版本 {version} 的游戏镜像已在此主机上。",
+  "worldimport.button": "导入世界",
+  "worldimport.error.bad": "Foreman 无法读取此世界文件。文件可能已损坏、被截断，或并非由 Foreman 导出。",
+  "worldimport.error.newer": "此世界文件由更新版本的 Foreman 创建，因此当前版本无法读取。请更新 Foreman 后重试。",
+  "worldimport.refused.title": "Foreman 无法导入此文件",
+  "worldimport.retry": "返回导入页面",
+  "worldimport.gone.title": "上传的文件已不存在",
+  "worldimport.gone": "Foreman 只会保留已上传的世界文件一小时，此文件已不在。请重新上传。"
+}
