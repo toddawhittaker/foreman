@@ -262,6 +262,7 @@ test.describe("the list on the world's Overview page", () => {
 test.describe("accessibility of the players panel", () => {
   const readingNote = (section: Locator) => section.getByRole("status").filter({ hasText: /reading/i });
   const worldTab = (page: Page) => page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Saves" });
+  const liveRegion = (page: Page) => page.locator("#save-players-live");
   const focusedId = (page: Page) => page.evaluate(() => document.activeElement?.id ?? document.activeElement?.tagName ?? "");
 
   test("the reading state passes axe", async ({ page, foreman, fakeGame }) => {
@@ -309,9 +310,11 @@ test.describe("accessibility of the players panel", () => {
     await fakeGame!.call("/preview-mode", { mode: "hang" });
     const section = await overview(page);
 
-    // The click may take focus once, so the person hears that the read began.
+    // The click is announced in the live region that no swap replaces, and takes no focus.
     await readAgain(page).click();
     await expect(readingNote(section)).toBeVisible(live);
+    await expect(liveRegion(page)).toHaveText("Reading the newest save.");
+    await expect(page.locator("#save-players-status")).not.toBeFocused();
 
     // The person moves on to another link. Two polls later (every 3 s) they are still there.
     await worldTab(page).focus();
@@ -330,33 +333,31 @@ test.describe("accessibility of the players panel", () => {
     await start(page);
   });
 
-  // The button that was pressed is replaced when the read ends, so focus would fall to the page.
-  // It lands on the panel's heading, or the outcome is announced to a screen reader.
-  test("when a read ends, focus lands on the panel heading or the outcome is announced", async ({ page, foreman, fakeGame }) => {
+  // The button that was pressed is replaced when the read ends. The end is said once in the
+  // live region that stays (A9: nothing takes focus), and the page is not left saying "Reading".
+  test("when a read ends, its outcome is announced once", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { result: "out-of-memory", players: [{ name: "carol", trackedSeconds: 60 }] });
     await fakeGame!.call("/preview-mode", { mode: "slow" });
     const section = await overview(page);
+    // Record every text the live region takes, so a repeated announcement is seen.
+    await page.evaluate(() => {
+      const w = window as unknown as { said: string[] };
+      w.said = [];
+      const el = document.querySelector("#save-players-live")!;
+      new MutationObserver(() => w.said.push(el.textContent ?? "")).observe(el, { childList: true, characterData: true, subtree: true });
+    });
     await readAgain(page).click();
-    // The read ends by itself (the slow fake takes half a second) and the panel shows the result.
     await expect.poll(async () => (existsSync(recordPath(foreman)) ? readRecord(foreman).seed.result : ""), live).toBe("ok");
     await expect(section).not.toContainText(/tracked since/i, live);
     await expect(readingNote(section)).toHaveCount(0, live);
-
-    await expect
-      .poll(
-        () =>
-          page.evaluate(() => {
-            const panel = document.querySelector("#save-players") ?? document.body;
-            const heading = panel.querySelector("h2");
-            if (heading && document.activeElement === heading) return "heading";
-            const live = [...panel.querySelectorAll('[role="status"],[role="alert"],[aria-live]'), ...document.querySelectorAll("#announcer")];
-            if (live.some((el) => (el.textContent ?? "").trim() !== "")) return "announced";
-            return `lost: focus on ${document.activeElement?.tagName}`;
-          }),
-        live,
-      )
-      .toMatch(/^(heading|announced)$/);
+    await expect(liveRegion(page)).toHaveText("The players of this save were read.", live);
+    // Two more polls' time: the announcement is not made again, and focus has not been taken.
+    await page.waitForTimeout(7_000);
+    const said = await page.evaluate(() => (window as unknown as { said: string[] }).said.filter((t) => t !== ""));
+    expect(said.filter((t) => /were read/.test(t))).toHaveLength(1);
+    expect(["save-players-heading", "save-players-status"]).not.toContain(await focusedId(page));
+    await expect(section.locator("#save-players-status")).toHaveCount(0);
   });
 });
 
