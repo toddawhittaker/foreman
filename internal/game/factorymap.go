@@ -506,7 +506,7 @@ func drawFactoryMapFiles(dir *os.Root) (drawnFactoryMap, error) {
 
 func drawFactoryMapFilesUnder(dir *os.Root, limit int64) (drawnFactoryMap, error) {
 	budget := &outputBudget{left: limit}
-	mb, err := readOutputFile(dir, "manifest.json", budget)
+	mb, err := readManifest(dir, budget)
 	if err != nil {
 		return drawnFactoryMap{}, err
 	}
@@ -677,6 +677,36 @@ func openOutputFile(dir *os.Root, name string, budget *outputBudget) (*outputFil
 		return nil, fmt.Errorf("%w: %s is not a regular file", ErrSaveCopyBadOutput, name)
 	}
 	return &outputFile{budgetReader{f, budget}, f}, nil
+}
+
+// maxManifestBytes is the most manifest.json may hold (SPEC 14.6), the
+// limit factorymap.ParseManifest applies.
+const maxManifestBytes = 1 << 20
+
+// readManifest reads manifest.json under its own limit, so an oversized one
+// is refused without being read into memory, and then charges it to budget.
+// Any mod in the world can write the file, so past the limit it is bad
+// output.
+func readManifest(dir *os.Root, budget *outputBudget) ([]byte, error) {
+	f, err := openOutputFile(dir, "manifest.json", &outputBudget{left: maxManifestBytes})
+	if errors.Is(err, errFactoryMapTooLarge) {
+		return nil, fmt.Errorf("%w: manifest.json is over %d bytes", ErrSaveCopyBadOutput, maxManifestBytes)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	b, err := io.ReadAll(io.LimitReader(f.f, maxManifestBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrSaveCopyBadOutput, err)
+	}
+	if len(b) > maxManifestBytes {
+		return nil, fmt.Errorf("%w: manifest.json is over %d bytes", ErrSaveCopyBadOutput, maxManifestBytes)
+	}
+	if budget.left -= int64(len(b)); budget.left < 0 {
+		return nil, errFactoryMapTooLarge
+	}
+	return b, nil
 }
 
 // readOutputFile reads a whole output file under the budget.
