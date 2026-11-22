@@ -77,13 +77,13 @@ func (p NewMapPage) Problems() []Problem {
 }
 
 // Paths the page uses.
-func (p NewMapPage) Path() string        { return newMapPath(p.World.ID) }
-func (p NewMapPage) WaitPath() string    { return newMapPath(p.World.ID) + "?" + newMapWaitQuery + "=1" }
-func (p NewMapPage) WorldPath() string   { return worldPath(p.World.ID) }
-func (NewMapPage) PreviewPath() string   { return PathGeneratePreview }
-func (p NewMapPage) Steps() []FlowStep   { return flowSteps(p.World.ID, flowStepMap) }
-func (p NewMapPage) ShowForm() bool      { return p.Why.IsZero() && !p.Loading }
-func (p NewMapPage) DoneMsg() i18n.Msg   { return i18n.M("newmap.done", "name", p.World.Name) }
+func (p NewMapPage) Path() string      { return newMapPath(p.World.ID) }
+func (p NewMapPage) WaitPath() string  { return newMapPath(p.World.ID) + "?" + newMapWaitQuery + "=1" }
+func (p NewMapPage) WorldPath() string { return worldPath(p.World.ID) }
+func (NewMapPage) PreviewPath() string { return PathGeneratePreview }
+func (p NewMapPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMap) }
+func (p NewMapPage) ShowForm() bool    { return p.Why.IsZero() && !p.Loading }
+func (p NewMapPage) DoneMsg() i18n.Msg { return i18n.M("newmap.done", "name", p.World.Name) }
 
 // The steps of the guided Generate (SPEC 5.6).
 const (

@@ -1,5 +1,7 @@
 {{/* The guided Generate's step bar: a list of links, the current step marked (SPEC 5.6, 17.10). Without script it is the way between the steps. Takes []FlowStep. */}}
 {{define "genflow-steps" -}}
+{{- /* In a div: a subnav straight under main is the area tabs' phone copy, hidden on a wide screen. */}}
+<div>
 <nav class="subnav" aria-label="{{t "newmap.steps.label"}}" id="flow-steps">
   <ul role="list">
     {{- range .}}
@@ -7,4 +9,5 @@
     {{- end}}
   </ul>
 </nav>
+</div>
 {{- end}}

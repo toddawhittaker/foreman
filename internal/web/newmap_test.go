@@ -155,7 +155,7 @@ func TestNewMapFillFromExchangeString(t *testing.T) {
 	c := hn.signIn()
 	id := newMapWorld(t, hn, c)
 	read := func(name string) string {
-		b, err := os.ReadFile(filepath.Join("..", "mapexchange", "unittestdata", name))
+		b, err := os.ReadFile(filepath.Join("..", "mapexchange", "unittestdata", name)) //nolint:gosec // a fixed test data file
 		if err != nil {
 			t.Fatal(err)
 		}
