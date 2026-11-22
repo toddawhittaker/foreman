@@ -534,3 +534,48 @@ func TestCheckResult(t *testing.T) {
 		}
 	}
 }
+
+// A record is valid only for the save that loads: same name, size and
+// modified time to the nanosecond. A record left for another save, as a read
+// that ends after an upload can leave, is read again, never shown.
+func TestSavePlayersRecordForAnotherSaveIsReadAgain(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		change func(b *saveplayers.Basis)
+	}{
+		{"another name", func(b *saveplayers.Basis) { b.Save = "other.zip" }},
+		{"another size", func(b *saveplayers.Basis) { b.Size++ }},
+		{"a nanosecond off", func(b *saveplayers.Basis) { b.Modified = b.Modified.Add(time.Nanosecond) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newSeedRig(t)
+			r.hold = make(chan struct{})
+			b := r.basis(r.id)
+			tc.change(&b)
+			rec, err := json.Marshal(map[string]any{
+				"format_version": 1, "basis": b, "as_of": time.Now(),
+				"seed":          map[string]any{"at": time.Now(), "save": b.Save, "game_version": "2.1.24", "result": "ok"},
+				"tracked_since": time.Now(), "inexact": false, "game_ticks": 60,
+				"players": []map[string]any{{"name": "Stale", "seeded_ticks": 60, "tracked_seconds": 0, "last_seen": nil}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := r.worlds.WritePlayersRecord(r.id, rec); err != nil {
+				t.Fatal(err)
+			}
+			v, err := r.c.SavePlayers(context.Background(), r.id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			close(r.hold)
+			r.waitIdle()
+			if v.State != SavePlayersReading || len(v.Players) != 0 || v.GameTimeKnown {
+				t.Fatalf("view %+v, want reading with nothing from the stale record", v)
+			}
+			if r.count() != 1 {
+				t.Fatalf("%d reads, want 1", r.count())
+			}
+		})
+	}
+}
