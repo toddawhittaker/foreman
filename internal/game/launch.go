@@ -28,6 +28,9 @@ type launch struct {
 // lock. Every start goes through here, so an archived world is refused for
 // a mod change, an update or a restore too (SPEC 5.9).
 func (c *Controller) launchLocked(ctx context.Context, o *opRun) error {
+	// Every start cancels the world's save reads before its container is
+	// made, whichever operation it is part of (SPEC 8.16).
+	defer c.beginStartSaveCopies(o.w.id)()
 	if c.archived(o.w.id) {
 		return errArchived()
 	}
