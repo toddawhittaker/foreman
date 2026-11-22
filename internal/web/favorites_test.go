@@ -303,7 +303,7 @@ func TestGenerateFromAFavoriteWithoutModsGoesToStepTwo(t *testing.T) {
 	}
 	rec := hn.postLong(PathGenerate, generateForm("name", "From plain", "favorite", favID), c)
 	id := idFromLocation(t, rec)
-	if want := modsPath(id); rec.Header().Get("Location") != want {
+	if want := modsPath(id) + "?" + generatedQuery + "=1"; rec.Header().Get("Location") != want {
 		t.Errorf("redirect %q, want %q", rec.Header().Get("Location"), want)
 	}
 	// A favorite deleted meanwhile is a form error, and no world is made.

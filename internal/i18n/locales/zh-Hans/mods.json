@@ -410,6 +410,7 @@
   "mods.plan_panel.warn.other": "无法计划；审阅页面会说明原因",
   "mods.plan_panel.bad_name": "这不是 Foreman 可以添加的模组名称。请先搜索该模组，然后选择旁边的 +。",
   "mods.plan_panel.wait": "计划更新后即可审阅。",
+  "mods.flow.generated": "{name} 已创建。接下来可选择其模组，或跳到地图设置。",
   "mods.flow.skip": "跳到地图设置",
   "mods.flow.next": "下一步：地图设置"
 }

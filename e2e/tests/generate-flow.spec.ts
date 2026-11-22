@@ -31,7 +31,13 @@ test("the whole flow: step 1, skip the mods, a preset on step 3, saved in five c
   await page.getByRole("button", { name: "Generate world" }).click();
 
   // Step 2, the world's mods, can be skipped.
-  await expect(page).toHaveURL("/worlds/rich-start/mods");
+  await expect(page).toHaveURL("/worlds/rich-start/mods?generated=1");
+  // The Mods tab says the world is made and takes focus, as other Done boxes do (SPEC 17.9).
+  const made = page.locator("#mods-generated");
+  await expect(made).toHaveText("Done: Rich start is made. Next, pick its mods or skip to map settings.");
+  await expect(made).toBeFocused();
+  await checkPage(page);
+  await page.screenshot({ path: `../screenshots/d1-step2-made-${info.project.name}.png`, fullPage: true });
   await page.getByRole("link", { name: "Skip to map settings" }).click();
 
   // Step 3: a preset and a seed, then save.
@@ -52,7 +58,7 @@ test("an Unfinished world says so on the list and its page, and Continue opens s
   await page.goto("/generate");
   await page.getByLabel("World name").fill("Half made");
   await page.getByRole("button", { name: "Generate world" }).click();
-  await expect(page).toHaveURL("/worlds/half-made/mods");
+  await expect(page).toHaveURL("/worlds/half-made/mods?generated=1");
 
   await page.goto("/worlds");
   const row = page.locator("ul.worlds > li", { has: page.locator("#world-half-made") });
@@ -85,7 +91,7 @@ test.describe("step 3 without script", () => {
     await page.goto("/generate");
     await page.getByLabel("World name").fill("No script");
     await page.getByRole("button", { name: "Generate world" }).click();
-    await expect(page).toHaveURL("/worlds/no-script/mods");
+    await expect(page).toHaveURL("/worlds/no-script/mods?generated=1");
     await page.goto(newMapPath("no-script"));
     await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
     await page.getByRole("button", { name: "Preview map" }).click();

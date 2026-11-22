@@ -110,7 +110,7 @@ test.describe("click budgets, with the fake game", () => {
     await page.getByLabel("World name").fill("Fresh");
     await page.getByRole("button", { name: "Generate world" }).click();
     // Making the world lands on step 2, its mods (SPEC 5.6).
-    await expect(page).toHaveURL("/worlds/fresh/mods");
+    await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
     await expectWithin(clicks, 3, "generate");
   });
 

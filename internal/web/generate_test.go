@@ -272,8 +272,8 @@ func TestGeneratePresetMakesAWorldWithoutFiles(t *testing.T) {
 		t.Errorf("audit %q", got)
 	}
 	// Making the world goes on to step 2, its mods (SPEC 5.6, 17.9).
-	if got := rec.Header().Get("Location"); got != modsPath(id) {
-		t.Errorf("redirect %q, want %q", got, modsPath(id))
+	if got := rec.Header().Get("Location"); got != modsPath(id)+"?"+generatedQuery+"=1" {
+		t.Errorf("redirect %q, want %q", got, modsPath(id)+"?"+generatedQuery+"=1")
 	}
 }
 

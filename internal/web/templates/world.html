@@ -92,7 +92,8 @@
   </div>
   {{- end}}
   <div class="actions">
-    <a href="{{.SwitchPath}}" class="button button--primary" id="act-switch">{{t "worlds.world.switch.button"}}</a>
+    {{- /* Continue, when shown, is the one primary action (DESIGN 7.1). */}}
+    <a href="{{.SwitchPath}}" class="button{{if not .ContinuePath}} button--primary{{end}}" id="act-switch">{{t "worlds.world.switch.button"}}</a>
   </div>
 </section>
 {{- else if .SwitchBusy}}

@@ -442,7 +442,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	// Step 2, the world's mods, which can be skipped to the map (SPEC 5.6, 17.9).
-	http.Redirect(w, r, modsPath(id), http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
+	http.Redirect(w, r, modsPath(id)+"?"+generatedQuery+"=1", http.StatusSeeOther) //nolint:gosec // id is a world id Foreman made, a local path segment
 }
 
 // readStepOne reads step 1's values, which name no map settings: the map is

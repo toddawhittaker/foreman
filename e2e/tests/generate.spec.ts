@@ -70,7 +70,7 @@ test("a world with the defaults takes three clicks from the Server page and land
   await page.getByLabel("World name").fill("Fresh start");
   await page.getByRole("button", { name: "Generate world" }).click();
 
-  await expect(page).toHaveURL("/worlds/fresh-start/mods");
+  await expect(page).toHaveURL("/worlds/fresh-start/mods?generated=1");
   await expectWithin(clicks, 3, "generate a world with the defaults");
   await checkPage(page);
 
@@ -284,7 +284,7 @@ test("Space Age is refused for 1.1 on step 1, and the fixed form makes the world
   await expect(page.locator("#error-summary")).toContainText("Space Age needs Factorio 2.0 or later");
   await page.getByLabel("Space Age is on").uncheck();
   await page.getByRole("button", { name: "Generate world" }).click();
-  await expect(page).toHaveURL("/worlds/old-game/mods");
+  await expect(page).toHaveURL("/worlds/old-game/mods?generated=1");
   expect(worldJSON(foreman.dataDir, "old-game")).toMatchObject({ game_version: "1.1.110", space_age: false });
 });
 
