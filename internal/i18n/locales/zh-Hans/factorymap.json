@@ -11,6 +11,7 @@
   "factorymap.draw.button": "绘制工厂地图",
   "factorymap.draw.confirm_memory": "在运行中的游戏旁绘制",
   "factorymap.draw.memory_note": "游戏正在运行。绘制会在第二个容器中读取其最新存档的副本，所需内存约等于运行中的游戏当前使用的内存。",
+  "factorymap.draw.memory_size": "游戏正在运行。绘制会在第二个容器中读取其最新存档的副本，需要约 {size} 内存，与运行中的游戏当前使用的相同。",
   "factorymap.failure.bad-output": "无法读取游戏的输出。",
   "factorymap.failure.image-missing": "此世界版本的游戏镜像尚未下载。",
   "factorymap.failure.mods-differ": "游戏加载的模组与世界不同，因此未绘制任何内容。",

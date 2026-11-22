@@ -11,6 +11,7 @@
   "factorymap.draw.button": "Dessiner la carte de l’usine",
   "factorymap.draw.confirm_memory": "Dessiner à côté de la partie en cours",
   "factorymap.draw.memory_note": "Une partie est en cours. Le dessin lit une copie de sa sauvegarde la plus récente dans un second conteneur, qui a besoin d’environ autant de mémoire que la partie en cours en utilise maintenant.",
+  "factorymap.draw.memory_size": "Une partie est en cours. Le dessin lit une copie de sa sauvegarde la plus récente dans un second conteneur, qui a besoin d’environ {size} de mémoire, autant que la partie en cours en utilise maintenant.",
   "factorymap.failure.bad-output": "La sortie du jeu n’a pas pu être lue.",
   "factorymap.failure.image-missing": "L’image du jeu pour la version de ce monde n’est pas téléchargée.",
   "factorymap.failure.mods-differ": "Le jeu n’a pas chargé les mêmes mods que le monde, donc rien n’a été dessiné.",

@@ -11,6 +11,7 @@
   "factorymap.draw.button": "Draw factory map",
   "factorymap.draw.confirm_memory": "Draw it beside the running game",
   "factorymap.draw.memory_note": "A game is running. Drawing reads a copy of its newest save in a second container, which needs about as much memory as the running game uses now.",
+  "factorymap.draw.memory_size": "A game is running. Drawing reads a copy of its newest save in a second container, which needs about {size} of memory, as much as the running game uses now.",
   "factorymap.failure.bad-output": "The game's output could not be read.",
   "factorymap.failure.image-missing": "The game image for this world's version is not downloaded.",
   "factorymap.failure.mods-differ": "The game did not load the same mods as the world, so nothing was drawn.",

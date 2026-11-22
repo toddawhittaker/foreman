@@ -11,6 +11,7 @@
   "factorymap.draw.button": "Dibujar mapa de la fábrica",
   "factorymap.draw.confirm_memory": "Dibujarlo junto a la partida en curso",
   "factorymap.draw.memory_note": "Hay una partida en curso. Dibujar lee una copia de su partida guardada más reciente en un segundo contenedor, que necesita más o menos tanta memoria como la que usa ahora la partida en curso.",
+  "factorymap.draw.memory_size": "Hay una partida en curso. Dibujar lee una copia de su partida guardada más reciente en un segundo contenedor, que necesita unos {size} de memoria, tanto como usa ahora la partida en curso.",
   "factorymap.failure.bad-output": "No se pudo leer la salida del juego.",
   "factorymap.failure.image-missing": "La imagen del juego para la versión de este mundo no está descargada.",
   "factorymap.failure.mods-differ": "El juego no cargó los mismos mods que el mundo, así que no se dibujó nada.",

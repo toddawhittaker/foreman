@@ -11,6 +11,7 @@
   "factorymap.draw.button": "Narysuj mapę fabryki",
   "factorymap.draw.confirm_memory": "Rysuj obok działającej gry",
   "factorymap.draw.memory_note": "Gra działa. Rysowanie odczytuje kopię najnowszego zapisu w drugim kontenerze, który potrzebuje mniej więcej tyle pamięci, ile działająca gra zużywa teraz.",
+  "factorymap.draw.memory_size": "Gra działa. Rysowanie odczytuje kopię najnowszego zapisu w drugim kontenerze, który potrzebuje około {size} pamięci, tyle, ile działająca gra zużywa teraz.",
   "factorymap.failure.bad-output": "Nie można odczytać wyniku gry.",
   "factorymap.failure.image-missing": "Obraz gry dla wersji tego świata nie jest pobrany.",
   "factorymap.failure.mods-differ": "Gra nie wczytała tych samych modów co świat, więc nic nie narysowano.",

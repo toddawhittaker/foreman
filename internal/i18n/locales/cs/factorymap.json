@@ -11,6 +11,7 @@
   "factorymap.draw.button": "Nakreslit mapu továrny",
   "factorymap.draw.confirm_memory": "Kreslit vedle běžící hry",
   "factorymap.draw.memory_note": "Hra běží. Kreslení čte kopii její nejnovější uložené hry v druhém kontejneru, který potřebuje zhruba tolik paměti, kolik teď používá běžící hra.",
+  "factorymap.draw.memory_size": "Hra běží. Kreslení čte kopii její nejnovější uložené hry v druhém kontejneru, který potřebuje zhruba {size} paměti, tolik, kolik teď používá běžící hra.",
   "factorymap.failure.bad-output": "Výstup hry se nepodařilo přečíst.",
   "factorymap.failure.image-missing": "Obraz hry pro verzi tohoto světa není stažený.",
   "factorymap.failure.mods-differ": "Hra nenačetla stejné mody jako svět, proto se nic nenakreslilo.",

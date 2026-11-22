@@ -11,6 +11,7 @@
   "factorymap.draw.button": "Fabrikkarte zeichnen",
   "factorymap.draw.confirm_memory": "Neben dem laufenden Spiel zeichnen",
   "factorymap.draw.memory_note": "Ein Spiel läuft. Das Zeichnen liest eine Kopie seines neuesten Speicherstands in einem zweiten Container und braucht etwa so viel Speicher, wie das laufende Spiel jetzt nutzt.",
+  "factorymap.draw.memory_size": "Ein Spiel läuft. Das Zeichnen liest eine Kopie seines neuesten Speicherstands in einem zweiten Container und braucht etwa {size} Speicher, so viel, wie das laufende Spiel jetzt nutzt.",
   "factorymap.failure.bad-output": "Die Ausgabe des Spiels konnte nicht gelesen werden.",
   "factorymap.failure.image-missing": "Das Spiel-Image für die Version dieser Welt ist nicht heruntergeladen.",
   "factorymap.failure.mods-differ": "Das Spiel hat nicht dieselben Mods wie die Welt geladen, daher wurde nichts gezeichnet.",

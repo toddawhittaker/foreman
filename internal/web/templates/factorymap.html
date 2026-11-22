@@ -15,7 +15,7 @@
 <p class="visually-hidden" role="status" id="factorymap-news"></p>
 {{template "factorymap-state" .}}
 {{- if .CanSetMode}}
-<form method="post" action="{{.Tabs.Path}}/map/mode" class="panel factorymap-mode">
+<form method="post" action="{{.ModePath}}" class="panel factorymap-mode">
   <fieldset>
     <legend><h2>{{t "factorymap.mode.heading"}}</h2></legend>
     <label class="check"><input type="radio" name="mode" value="automatic"{{if eq .View.Mode.Mode "automatic"}} checked{{end}} aria-describedby="fm-mode-automatic"><span>{{t "factorymap.mode.automatic"}}</span></label>
@@ -35,8 +35,7 @@
 
 {{- /* The live region. The page's script fetches it alone (?fragment=1) every 3 seconds while the state is "drawing" and swaps it in; dot is the FactoryMapPage. */}}
 {{define "factorymap-state" -}}
-{{- $base := printf "%s/map" .Tabs.Path}}
-<section class="factorymap" id="factorymap-state" data-state="{{.View.State}}" data-fragment="{{$base}}?fragment=1&amp;surface={{.Surface}}" aria-labelledby="fm-heading">
+<section class="factorymap" id="factorymap-state" data-state="{{.View.State}}" data-fragment="{{.FragmentPath}}" aria-labelledby="fm-heading">
 <h2 id="fm-heading" class="visually-hidden">{{t "factorymap.tab"}}</h2>
 {{- $v := .View}}
 <div class="factorymap__summary" data-news>
@@ -58,18 +57,23 @@
   <p class="hint">{{tHTML "factorymap.state.drawn" "when" (momentUTCSeconds $v.Drawing.DrawnAt) "save" (code $v.Drawing.Basis.Save) "version" $v.Drawing.GameVersion}}</p>
 {{- end}}
 </div>
+{{- if not .Refused.IsZero}}
+<div class="message message--error" id="fm-refused" tabindex="-1" autofocus>
+  <p>{{msg .Refused}}</p>
+</div>
+{{- end}}
 {{- if and .CanDraw (ne $v.State "drawing")}}
-<form method="post" action="{{$base}}/draw" class="factorymap__draw">
-  {{- if and $v.PlayersOnline $v.Mode.SkipOnline}}
-  <p class="hint">{{t "factorymap.refused.players_online"}}</p>
-  {{- else}}
-  {{- if $v.Running}}
-  <p class="hint" id="fm-memory-note">{{t "factorymap.draw.memory_note"}}</p>
+<form method="post" action="{{.DrawPath}}" class="factorymap__draw">
+  {{- if .NeedMemory}}
+  <div class="message message--warning" id="fm-memory-note" tabindex="-1" autofocus>
+    <p>{{if .MemoryBytes}}{{tHTML "factorymap.draw.memory_size" "size" (nowrap (bytes .MemoryBytes))}}{{else}}{{t "factorymap.draw.memory_note"}}{{end}}</p>
+  </div>
   <input type="hidden" name="confirm_memory" value="1">
   <div class="actions"><button type="submit" aria-describedby="fm-memory-note">{{t "factorymap.draw.confirm_memory"}}</button></div>
+  {{- else if and $v.PlayersOnline $v.Mode.SkipOnline}}
+  <p class="hint">{{t "factorymap.refused.players_online"}}</p>
   {{- else}}
   <div class="actions"><button type="submit">{{t "factorymap.draw.button"}}</button></div>
-  {{- end}}
   {{- end}}
 </form>
 {{- end}}
@@ -79,7 +83,7 @@
 <nav class="factorymap__surfaces" id="map-surfaces" aria-label="{{t "factorymap.surfaces.label"}}">
   <ul role="list">
   {{- range .}}
-    <li><a href="{{$base}}?surface={{.Index}}"{{if eq .Index $page.Surface}} aria-current="page"{{end}}>{{.Name}} <span class="hint">{{template "factorymap-kind" .Kind}}</span></a></li>
+    <li><a href="{{$page.SurfacePath .Index}}"{{if eq .Index $page.Surface}} aria-current="page"{{end}}>{{.Name}} <span class="hint">{{template "factorymap-kind" .Kind}}</span></a></li>
   {{- end}}
   </ul>
 </nav>
@@ -95,9 +99,9 @@
   <div class="factorymap__stage">
     <div class="factorymap__frame" id="map-frame" tabindex="0" role="group" aria-labelledby="fm-surface-name" aria-describedby="fm-keys">
       <div class="factorymap__map">
-        <img src="{{$base}}/{{.Index}}.png" alt="{{t "factorymap.view.alt" "surface" .Name}}" width="{{.Width}}" height="{{.Height}}" draggable="false">
+        <img src="{{$page.PicturePath .Index ""}}" alt="{{t "factorymap.view.alt" "surface" .Name}}" width="{{.Width}}" height="{{.Height}}" draggable="false">
         {{- range $page.Categories}}
-        <img class="factorymap__layer" data-layer="{{.}}" data-src="{{$base}}/{{$s.Index}}.png?layer={{.}}" alt="" width="{{$s.Width}}" height="{{$s.Height}}" draggable="false" hidden>
+        <img class="factorymap__layer" data-layer="{{.}}" data-src="{{$page.PicturePath $s.Index .}}" alt="" width="{{$s.Width}}" height="{{$s.Height}}" draggable="false" hidden>
         {{- end}}
       </div>
     </div>
@@ -117,7 +121,7 @@
   {{- end}}
   </ul>
 </fieldset>
-<p class="factorymap__download"><a id="map-download" href="{{$base}}/{{.Index}}/download" download data-base="{{$base}}/{{.Index}}/download">{{t "factorymap.download.png" "surface" .Name}}</a></p>
+<p class="factorymap__download"><a id="map-download" href="{{$page.DownloadPath .Index}}" download data-base="{{$page.DownloadPath .Index}}">{{t "factorymap.download.png" "surface" .Name}}</a></p>
 {{- end}}{{end}}
 {{- end}}
 </section>
