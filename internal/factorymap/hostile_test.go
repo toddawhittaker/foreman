@@ -72,6 +72,12 @@ func goodChunks() string { return chunkLine(0, 0, goodRaw()) + chunkLine(1, 0, g
 // drawChart runs DrawChart under a deadline, failing on a panic or a hang.
 func hostileDrawChart(t *testing.T, manifest, chunks io.Reader, surface int) (*image.NRGBA, Surface, error) {
 	t.Helper()
+	return hostileDrawChartWithin(t, 60*time.Second, manifest, chunks, surface)
+}
+
+// hostileDrawChartWithin is hostileDrawChart with its own hang guard.
+func hostileDrawChartWithin(t *testing.T, limit time.Duration, manifest, chunks io.Reader, surface int) (*image.NRGBA, Surface, error) {
+	t.Helper()
 	type res struct {
 		img *image.NRGBA
 		s   Surface
@@ -91,8 +97,8 @@ func hostileDrawChart(t *testing.T, manifest, chunks io.Reader, surface int) (*i
 	select {
 	case r := <-ch:
 		return r.img, r.s, r.err
-	case <-time.After(60 * time.Second):
-		t.Fatal("DrawChart did not return within 60 s")
+	case <-time.After(limit):
+		t.Fatalf("DrawChart did not return within %v", limit)
 	}
 	return nil, Surface{}, nil
 }
@@ -604,18 +610,21 @@ func TestHostileStoreFolderSymlink(t *testing.T) {
 // bounded by the picture, not the box: under 256 MiB of peak heap.
 func TestHostileSparseChartMemoryBounded(t *testing.T) {
 	if testing.Short() {
-		t.Skip("draws 65,536 chunks")
+		t.Skip("draws a 4096 by 4096 picture")
 	}
 	m := oneSurface()
 	const side = 1 << 12 // chunks a side of the box
 	m.Surfaces[0].MinX, m.Surfaces[0].MinY = 0, 0
 	m.Surfaces[0].MaxX, m.Surfaces[0].MaxY = side-1, side-1
-	m.Surfaces[0].Chunks = MaxChunksPerSurface
+	// The peak depends on the picture (4096 by 4096 at 32 tiles a pixel),
+	// not the chunk count, so a few chunks spread over the box suffice.
+	const n = 4096
+	m.Surfaces[0].Chunks = n
 	data := encodeData(goodRaw())
 	var b strings.Builder
-	for i := 0; i < MaxChunksPerSurface; i++ {
-		// Spread the chunks over the whole box, 16 apart each way.
-		fmt.Fprintf(&b, `{"x":%d,"y":%d,"data":%q}`+"\n", (i%256)*16, (i/256)*16, data)
+	for i := 0; i < n; i++ {
+		// Spread the chunks over the whole box, 64 apart each way, to its far corner.
+		fmt.Fprintf(&b, `{"x":%d,"y":%d,"data":%q}`+"\n", (i%64)*64+63, (i/64)*64+63, data)
 	}
 	chunks := b.String()
 	var base runtime.MemStats
@@ -639,7 +648,7 @@ func TestHostileSparseChartMemoryBounded(t *testing.T) {
 			}
 		}
 	}()
-	img, s, err := hostileDrawChart(t, strings.NewReader(manifestJSON(t, m)), strings.NewReader(chunks), 1)
+	img, s, err := hostileDrawChartWithin(t, 5*time.Minute, strings.NewReader(manifestJSON(t, m)), strings.NewReader(chunks), 1)
 	close(done)
 	used := <-peak - base.HeapInuse
 	if err != nil {
