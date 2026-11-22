@@ -98,15 +98,23 @@ func modFile(dir, file string) string {
 }
 
 // runControlMod runs m for req in the preview slot (previewRun) and returns
-// the bytes of its output file. info is the mod's info.json, env the
-// container's own environment beside the kind, seed and preset.
+// the bytes of its output file. With req.World set the world's mods load
+// beside m, and a world mod with m's name is errControlModTaken. info is the
+// mod's info.json, env the container's own environment beside the kind,
+// seed and preset.
 func (c *Controller) runControlMod(ctx context.Context, req PreviewRequest, m controlMod, info []byte, env []string) ([]byte, error) {
 	var out []byte
-	err := c.previewRun(ctx, req, m.kind, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
+	err := c.previewRun(ctx, req, m.kind, 1, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
 		if err := addControlMod(base, name, m, info); err != nil {
 			return err
 		}
-		if err := container(c.controlModSpec(ref, name, req, m, env)); err != nil {
+		spec := c.controlModSpec(ref, name, req, m, env)
+		mounts, err := c.worldModMounts(base, name, req)
+		if err != nil {
+			return err
+		}
+		spec.HostConfig.Mounts = mounts
+		if err := container(spec); err != nil {
 			return err
 		}
 		b, err := readControlModOutput(base, name, m)
