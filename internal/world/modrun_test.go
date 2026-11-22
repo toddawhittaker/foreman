@@ -177,3 +177,52 @@ func TestARunningWorldSnapshotsEveryChange(t *testing.T) {
 		t.Fatal("a running change must end the run")
 	}
 }
+
+// The players record is Foreman's own file and a read of the save can write
+// it between two mod changes. It is not a mod change, so it must neither
+// break the run nor cost the next change a snapshot (SPEC 8.14, 9.4).
+func TestAPlayersRecordWrittenBetweenModChangesKeepsTheRun(t *testing.T) {
+	m, id, dir := modRunWorld(t)
+	first := stoppedChange(t, m, id, settingsChange("one"))
+
+	if err := m.WritePlayersRecord(id, []byte(`{"format_version":1}`)); err != nil {
+		t.Fatal(err)
+	}
+	run, ok := m.ModRunSnapshot(id)
+	if !ok || run.Name != first.Name {
+		t.Fatalf("a new players record ended the run: %q %v", run.Name, ok)
+	}
+	if s := stoppedChange(t, m, id, settingsChange("two")); s.Name != first.Name {
+		t.Fatalf("second change used %s, want %s", s.Name, first.Name)
+	}
+
+	// A later rewrite and a removal of the record are no different.
+	if err := m.WritePlayersRecord(id, []byte(`{"format_version":1,"inexact":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.RemovePlayersRecord(id); err != nil {
+		t.Fatal(err)
+	}
+	if s := stoppedChange(t, m, id, settingsChange("three")); s.Name != first.Name {
+		t.Fatalf("third change used %s, want %s", s.Name, first.Name)
+	}
+	if got := modSnapshots(t, m, id); len(got) != 1 {
+		t.Fatalf("%d mod snapshots, want 1", len(got))
+	}
+	if !exists(filepath.Join(dir, ModsDir, ModSettingsFile)) {
+		t.Fatal("the changes did not land")
+	}
+}
+
+// Leaving the record out must not blind the run to a real change.
+func TestAPlayersRecordDoesNotHideARealChangeFromTheRun(t *testing.T) {
+	m, id, dir := modRunWorld(t)
+	stoppedChange(t, m, id, settingsChange("one"))
+	if err := m.WritePlayersRecord(id, []byte(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	writeAt(t, filepath.Join(dir, SavesDir, "b.zip"), "newer save", t0.Add(time.Hour))
+	if _, ok := m.ModRunSnapshot(id); ok {
+		t.Fatal("a new save must still end the run")
+	}
+}
