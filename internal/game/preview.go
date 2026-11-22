@@ -31,6 +31,10 @@ const (
 	// PreviewLimit is how long a preview may take before its container is
 	// killed.
 	PreviewLimit = 60 * time.Second
+	// PreviewWorldLimitMax is the most a run with a world's mods may take in
+	// all, however many planets it draws, so it cannot hold the one slot for
+	// long.
+	PreviewWorldLimitMax = 10 * time.Minute
 	// PreviewWait is how long a preview waits for the one running before it
 	// to end, before it is ErrPreviewBusy.
 	PreviewWait = 20 * time.Second
@@ -206,19 +210,24 @@ func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, er
 // the one slot, the image check, the base folder with its stale sweep, and
 // a work folder removed afterwards. run is called with the work folder's
 // name; the container func it is given runs one container to its end within
-// previewLimit, as "foreman-<kind>-<folder>". A run with a world's mods gets
-// previewLimit for each of the drawn planets (SPEC 14.3). The slot and
-// folder are held until run returns, so run may read the folder.
+// previewRunLimit, as "foreman-<kind>-<folder>". The slot and folder are
+// held until run returns, so run may read the folder.
 func (c *Controller) previewRun(ctx context.Context, req PreviewRequest, kind string, drawn int,
 	run func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error) error {
-	limit := c.previewLimit
-	if req.World != "" {
-		limit *= time.Duration(drawn)
-	}
 	return c.previewRunIn(ctx, previewPlan{
-		gameVersion: req.GameVersion, kind: kind, limit: limit,
+		gameVersion: req.GameVersion, kind: kind, limit: previewRunLimit(c.previewLimit, req, drawn),
 		fill: func(base *os.Root) (string, error) { return c.makePreviewDirFor(base, req) },
 	}, run)
+}
+
+// previewRunLimit is how long a run of req that draws drawn planets may
+// take: limit, or with a world's mods limit for each planet, at most
+// PreviewWorldLimitMax (SPEC 14.3).
+func previewRunLimit(limit time.Duration, req PreviewRequest, drawn int) time.Duration {
+	if req.World == "" {
+		return limit
+	}
+	return min(limit*time.Duration(drawn), PreviewWorldLimitMax)
 }
 
 // previewPlan is what differs between the kinds of preview run.
