@@ -272,12 +272,13 @@ type MapGenAllSelect struct {
 }
 
 // MapGenForm is the map-gen part of Generate's form and what a post is read
-// back into. Build one with NewMapGenFormForPreset or parseMapGenValues. Its
+// back into. Build one with mapGenFormForPreset or parseMapGenIn. Its
 // fields fall into the tabs the game's map generator has: Resources and Terrain per
 // planet, Enemy, and Advanced (DESIGN 8.7).
 type MapGenForm struct {
-	line     string
-	spaceAge bool
+	line string
+	// cat is the planets and controls the form lays out (SPEC 5.6).
+	cat mapgen.Catalogue
 
 	Seed, Width, Height MapGenText
 	StartingArea        MapGenSelect
@@ -600,15 +601,15 @@ func (c mgControl) tab() string {
 	return tabResources
 }
 
-// mgPlanets lists the planets a new world has with their controls, from the
-// game's own data. On 1.1 water and cliffs are not autoplace controls, so
-// they are added to Nauvis.
-func mgPlanets(line string, spaceAge bool) []mgPlanet {
-	names := mapgen.Planets(line, spaceAge)
+// mgPlanets lists the planets a new world has with their controls, from a
+// catalogue of the line. On 1.1 water and cliffs are not autoplace controls,
+// so they are added to Nauvis.
+func mgPlanets(line string, cat mapgen.Catalogue) []mgPlanet {
+	names := cat.PlanetNames()
 	out := make([]mgPlanet, 0, len(names))
 	for _, p := range names {
 		planet := mgPlanet{name: p}
-		for _, c := range mapgen.Controls(line, p) {
+		for _, c := range cat.PlanetControls(p) {
 			mc := controlFor(c)
 			if c.Category == mapgen.CategoryCliff && mapgen.CliffToggle(line, p) {
 				mc.toggle = true
@@ -685,19 +686,33 @@ var knownFieldNames = func() map[string]bool {
 	known := map[string]bool{mgWidth: true, mgHeight: true, mgStart: true, mgPeaceful: true, mgNoEnemies: true, mgRaw: true,
 		mgMapType: true, mgMoistureScale: true, mgAuxScale: true, mgMoistureBias: true, mgAuxBias: true}
 	for _, line := range mapgen.Lines {
-		for _, p := range mgPlanets(line, true) {
-			for _, c := range p.controls {
-				if c.toggle {
-					known[fieldName(p.name, c.name, mgOn)] = true
-				}
-				for _, s := range c.settings {
-					known[fieldName(p.name, c.name, s.key)] = true
-				}
-			}
-		}
+		addControlFields(known, line, mapgen.Builtin(line, true))
 	}
 	return known
 }()
+
+// addControlFields adds the field names of every control a catalogue lays
+// out for the line.
+func addControlFields(known map[string]bool, line string, cat mapgen.Catalogue) {
+	for _, p := range mgPlanets(line, cat) {
+		for _, c := range p.controls {
+			if c.toggle {
+				known[fieldName(p.name, c.name, mgOn)] = true
+			}
+			for _, s := range c.settings {
+				known[fieldName(p.name, c.name, s.key)] = true
+			}
+		}
+	}
+}
+
+// knownFieldsIn is knownFieldNames with the fields of a catalogue's own
+// planets and controls, which a world's mods may add (SPEC 5.6).
+func knownFieldsIn(line string, cat mapgen.Catalogue) func(string) bool {
+	own := map[string]bool{}
+	addControlFields(own, line, cat)
+	return func(name string) bool { return knownFieldNames[name] || own[name] }
+}
 
 // enemyTips are the game's tips for an enemy control's settings, by key.
 var enemyTips = map[string]i18n.Msg{
@@ -705,11 +720,11 @@ var enemyTips = map[string]i18n.Msg{
 	"size":      i18n.M("mapgen.tip.enemy_size"),
 }
 
-// buildMapGenForm lays out the form; posted says what the request holds for
-// a select's name.
-func buildMapGenForm(line string, spaceAge bool, posted func(name string) (string, bool)) MapGenForm {
+// buildMapGenFormIn lays out the form for a catalogue; posted says what the
+// request holds for a select's name.
+func buildMapGenFormIn(line string, cat mapgen.Catalogue, posted func(name string) (string, bool)) MapGenForm {
 	f := MapGenForm{
-		line: line, spaceAge: spaceAge,
+		line: line, cat: cat,
 		Seed:   MapGenText{ID: mgSeedID, Name: mgSeed},
 		Width:  MapGenText{ID: mgWidthID, Name: mgWidth, Label: i18n.M("mapgen.width.label"), Value: "0"},
 		Height: MapGenText{ID: mgHeightID, Name: mgHeight, Label: i18n.M("mapgen.height.label"), Value: "0"},
@@ -728,7 +743,7 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 		f.StartingArea.Options = withExtra(f.StartingArea.Options, v)
 	}
 	needed := mapgen.NeededResources()
-	for _, p := range mgPlanets(line, spaceAge) {
+	for _, p := range mgPlanets(line, cat) {
 		summary := planetMsg(p.name)
 		res := MapGenPlanet{ID: "mg-resources-" + p.name, Planet: p.name, Tab: tabResources, Summary: summary}
 		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Planet: p.name, Tab: tabTerrain, Summary: summary}
@@ -843,6 +858,11 @@ func allResources(planet string, groups []MapGenGroup) *MapGenAll {
 // every key they cover (DESIGN 8.7). The result has passed
 // gamesettings.Validate for the line (SPEC 11.2).
 func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
+	return parseMapGenIn(vals, line, mapgen.Builtin(line, spaceAge))
+}
+
+// parseMapGenIn is parseMapGenValues for the form laid out from a catalogue.
+func parseMapGenIn(vals url.Values, line string, cat mapgen.Catalogue) (form MapGenForm, mapGen []byte, problems []Problem) {
 	posted := func(name string) (string, bool) {
 		vs, ok := vals[name]
 		if !ok || len(vs) == 0 {
@@ -850,7 +870,7 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 		}
 		return vs[0], true
 	}
-	form = buildMapGenForm(line, spaceAge, posted)
+	form = buildMapGenFormIn(line, cat, posted)
 	form.Peaceful.Checked = vals.Get(mgPeaceful) != ""
 	if form.NoEnemies.Name != "" {
 		form.NoEnemies.Checked = vals.Get(mgNoEnemies) != ""
@@ -882,8 +902,9 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 		fail(mgSeedID, i18n.M("mapgen.err.unknown"))
 		return form, nil, problems
 	}
+	known := knownFieldsIn(line, cat)
 	for name := range vals {
-		if strings.HasPrefix(name, mgPrefix) && !knownFieldNames[name] {
+		if strings.HasPrefix(name, mgPrefix) && !known(name) {
 			// Never echoed: it is not one of this form's fields.
 			fail(mgSeedID, i18n.M("mapgen.err.unknown"))
 			break
@@ -1181,7 +1202,7 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 	var controlOrder []jsonMember
 	water := map[string]json.RawMessage{} // 1.1 only: stored outside autoplace_controls
 	cliff := map[string]json.RawMessage{}
-	for _, p := range mgPlanets(f.line, f.spaceAge) {
+	for _, p := range mgPlanets(f.line, f.cat) {
 		for _, c := range p.controls {
 			switch {
 			case c.topLevel && c.isWater():

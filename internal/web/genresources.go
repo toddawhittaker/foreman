@@ -152,7 +152,7 @@ func wholePercent(y float64) int64 { return int64(math.Round(y)) }
 // the resource, as the settings show it; a resource with none shows its
 // game name.
 func resourceName(loc i18n.Locale, line, planet, entity string) string {
-	for _, c := range mapgen.Controls(line, planet) {
+	for _, c := range mapgen.Builtin(line, true).PlanetControls(planet) {
 		if c.Category == mapgen.CategoryResource && resource.EntityName(planet, c.Name) == entity {
 			return loc.Format(controlMsg(c.Name))
 		}
@@ -246,9 +246,8 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	// The planet is one of the world's own, never other text (SPEC 14.1).
-	line, _ := mapgen.Line(nw.GameVersion)
 	planet := r.PostFormValue(previewPlanetField)
-	if !slices.Contains(mapgen.Planets(line, nw.SpaceAge), planet) {
+	if !slices.Contains(f.cat.PlanetNames(), planet) {
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}

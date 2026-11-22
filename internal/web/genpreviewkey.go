@@ -57,7 +57,7 @@ func settingsKey(req game.PreviewRequest) previewKey {
 	}
 	common := shared(rest, mapSettings)
 	k.planets = map[string]string{}
-	for _, p := range mapgen.Planets(line, req.SpaceAge) {
+	for _, p := range mapgen.Builtin(line, req.SpaceAge).PlanetNames() {
 		k.planets[p] = hashJSON(struct {
 			Shared string
 			Own    map[string]json.RawMessage
@@ -80,8 +80,9 @@ func splitControls(line string, mapGen []byte) (rest []byte, own map[string]map[
 		return nil, nil, false
 	}
 	own = map[string]map[string]json.RawMessage{}
-	for _, p := range mapgen.Planets(line, true) {
-		for _, c := range mapgen.Controls(line, p) {
+	cat := mapgen.Builtin(line, true)
+	for _, p := range cat.PlanetNames() {
+		for _, c := range cat.PlanetControls(p) {
 			v, has := controls[c.Name]
 			if !has {
 				continue
@@ -113,7 +114,7 @@ func splitControls(line string, mapGen []byte) (rest []byte, own map[string]map[
 }
 
 // defaultFiles are the files Generate writes for the default preset once a
-// setting is changed (generate.go, settingsWorld): the form's map-gen file
+// setting is changed (generate.go, settingsFiles): the form's map-gen file
 // and, where the layout is tested, the preset's map settings.
 func defaultFiles(line, version string, spaceAge bool) (mapGen, mapSettings []byte) {
 	_, mapGen, _ = parseMapGenValues(url.Values{}, line, spaceAge)
