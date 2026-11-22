@@ -26,7 +26,7 @@ func surf(w, h, tpp int) Surface {
 	return Surface{Index: 1, Name: "nauvis", Kind: "planet", Width: w, Height: h, TilesPerPixel: tpp}
 }
 
-func draw(t *testing.T, file string, s Surface) map[Category]*image.Paletted {
+func drawTestOverlay(t *testing.T, file string, s Surface) map[Category]*image.Paletted {
 	t.Helper()
 	layers, err := DrawOverlay(strings.NewReader(file), s)
 	if err != nil {
@@ -49,7 +49,7 @@ func countSet(p *image.Paletted) int {
 // Every category has a layer on the same grid as the base picture, even
 // with no entities, so the viewer's grids always line up.
 func TestOverlayHasEveryLayerOnTheBaseGrid(t *testing.T) {
-	layers := draw(t, entityFile(typesLine), surf(40, 30, 1))
+	layers := drawTestOverlay(t, entityFile(typesLine), surf(40, 30, 1))
 	if len(layers) != len(Categories) {
 		t.Fatalf("%d layers, want %d", len(layers), len(Categories))
 	}
@@ -71,7 +71,7 @@ func TestOverlayHasEveryLayerOnTheBaseGrid(t *testing.T) {
 }
 
 func TestOverlayOneTileEntityFillsOnePixelInItsCategoryOnly(t *testing.T) {
-	layers := draw(t, entityFile(typesLine, "[0,2,3,3,4]"), surf(10, 10, 1))
+	layers := drawTestOverlay(t, entityFile(typesLine, "[0,2,3,3,4]"), surf(10, 10, 1))
 	for _, c := range Categories {
 		want := 0
 		if c == CategoryBelts {
@@ -88,7 +88,7 @@ func TestOverlayOneTileEntityFillsOnePixelInItsCategoryOnly(t *testing.T) {
 
 func TestOverlayLargeEntityIsAnOutline(t *testing.T) {
 	// A 5 by 5 machine at tiles 10..15.
-	layers := draw(t, entityFile(typesLine, "[1,10,10,15,15]"), surf(30, 30, 1))
+	layers := drawTestOverlay(t, entityFile(typesLine, "[1,10,10,15,15]"), surf(30, 30, 1))
 	p := layers[CategoryProduction]
 	for x := 10; x < 15; x++ {
 		for y := 10; y < 15; y++ {
@@ -113,7 +113,7 @@ func TestOverlayLargeEntityIsAnOutline(t *testing.T) {
 // An outline never hides what is under it: a later translucent interior
 // does not overwrite an earlier outline.
 func TestOverlayInteriorDoesNotCoverEarlierOutline(t *testing.T) {
-	layers := draw(t, entityFile(typesLine,
+	layers := drawTestOverlay(t, entityFile(typesLine,
 		"[1,10,10,15,15]", // outline
 		"[1,8,8,19,19]",   // bigger box over it
 	), surf(30, 30, 1))
@@ -124,7 +124,7 @@ func TestOverlayInteriorDoesNotCoverEarlierOutline(t *testing.T) {
 
 func TestOverlayScaledDownPictureRoundsOut(t *testing.T) {
 	// 4 tiles a pixel: tiles 8..12 are exactly pixel 2; tiles 9..10 touch pixel 2.
-	layers := draw(t, entityFile(typesLine, "[0,8,8,12,12]", "[0,17,17,18,18]"), surf(10, 10, 4))
+	layers := drawTestOverlay(t, entityFile(typesLine, "[0,8,8,12,12]", "[0,17,17,18,18]"), surf(10, 10, 4))
 	b := layers[CategoryBelts]
 	if b.ColorIndexAt(2, 2) != 1 || b.ColorIndexAt(4, 4) != 1 {
 		t.Error("expected pixels (2,2) and (4,4)")
@@ -135,7 +135,7 @@ func TestOverlayScaledDownPictureRoundsOut(t *testing.T) {
 }
 
 func TestOverlayClipsAndSkipsBoxesOutsideThePicture(t *testing.T) {
-	layers := draw(t, entityFile(typesLine,
+	layers := drawTestOverlay(t, entityFile(typesLine,
 		"[0,8,8,20,9]",    // one row, runs off the right edge
 		"[0,50,50,60,60]", // wholly outside
 		"[0,0,12,1,13]",   // below the picture
@@ -147,14 +147,14 @@ func TestOverlayClipsAndSkipsBoxesOutsideThePicture(t *testing.T) {
 }
 
 func TestOverlayUnknownTypeIsOther(t *testing.T) {
-	layers := draw(t, entityFile(typesLine, "[2,1,1,2,2]"), surf(5, 5, 1))
+	layers := drawTestOverlay(t, entityFile(typesLine, "[2,1,1,2,2]"), surf(5, 5, 1))
 	if countSet(layers[CategoryOther]) != 1 {
 		t.Error("unknown type did not land in other")
 	}
 }
 
 func TestOverlayEncodesToPNG(t *testing.T) {
-	layers := draw(t, entityFile(typesLine, "[0,1,1,2,2]"), surf(5, 5, 1))
+	layers := drawTestOverlay(t, entityFile(typesLine, "[0,1,1,2,2]"), surf(5, 5, 1))
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, layers[CategoryBelts]); err != nil {
 		t.Fatal(err)
@@ -232,7 +232,7 @@ func TestOverlayPassesOnAReadError(t *testing.T) {
 }
 
 func TestOverlayMaxSizedPicture(t *testing.T) {
-	layers := draw(t, entityFile(typesLine, "[1,4032,4032,4096,4096]"), surf(MaxSidePixels, MaxSidePixels, 1))
+	layers := drawTestOverlay(t, entityFile(typesLine, "[1,4032,4032,4096,4096]"), surf(MaxSidePixels, MaxSidePixels, 1))
 	if got := layers[CategoryProduction].ColorIndexAt(4095, 4095); got != 1 {
 		t.Errorf("corner = %d, want 1", got)
 	}
@@ -244,7 +244,7 @@ func TestOverlayManyEntitiesIsQuick(t *testing.T) {
 	for i := 0; i < 200000; i++ {
 		fmt.Fprintf(&b, "[0,%d,%d,%d,%d]\n", i%1000, i/1000, i%1000+1, i/1000+1)
 	}
-	layers := draw(t, b.String(), surf(1000, 200, 1))
+	layers := drawTestOverlay(t, b.String(), surf(1000, 200, 1))
 	if got := countSet(layers[CategoryBelts]); got != 200000 {
 		t.Errorf("%d pixels, want 200000", got)
 	}
@@ -259,7 +259,7 @@ func TestOverlayLargestBoxesAreQuick(t *testing.T) {
 		fmt.Fprintf(&b, "[1,%d,%d,%d,%d]\n", i%3000, i%3000, i%3000+64, i%3000+64)
 	}
 	start := time.Now()
-	draw(t, b.String(), surf(MaxSidePixels, MaxSidePixels, 1))
+	drawTestOverlay(t, b.String(), surf(MaxSidePixels, MaxSidePixels, 1))
 	if d := time.Since(start); d > 20*time.Second {
 		t.Errorf("200,000 boxes of 64 by 64 took %v", d)
 	}
