@@ -215,10 +215,10 @@ func TestOverlayRefusesBadOutput(t *testing.T) {
 
 func TestOverlayRefusesMoreEntitiesThanTheLimit(t *testing.T) {
 	file := entityFile(typesLine, "[0,0,0,1,1]", "[0,1,0,2,1]", "[0,2,0,3,1]")
-	if _, err := drawOverlay(strings.NewReader(file), surf(5, 5, 1), 3); err != nil {
+	if _, _, err := drawOverlay(strings.NewReader(file), surf(5, 5, 1), 3); err != nil {
 		t.Fatalf("at the limit: %v", err)
 	}
-	if _, err := drawOverlay(strings.NewReader(file), surf(5, 5, 1), 2); err == nil {
+	if _, _, err := drawOverlay(strings.NewReader(file), surf(5, 5, 1), 2); err == nil {
 		t.Fatal("over the limit was accepted")
 	}
 }
@@ -238,7 +238,7 @@ func TestOverlayMaxSizedPicture(t *testing.T) {
 	}
 }
 
-func TestOverlayManyEntitiesIsQuick(t *testing.T) {
+func TestOverlayManyEntitiesAllDrawn(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(typesLine + "\n")
 	for i := 0; i < 200000; i++ {
@@ -250,17 +250,40 @@ func TestOverlayManyEntitiesIsQuick(t *testing.T) {
 	}
 }
 
-// A file of the largest allowed boxes costs a bounded, small amount: the
-// side limit is what keeps two million boxes from being 10^13 pixel writes.
-func TestOverlayLargestBoxesAreQuick(t *testing.T) {
+// The cost of drawing is the pixels written, and the side limit bounds it per
+// box: two million boxes are at most 2e6 x 64 x 64 writes, not 10^13. The test
+// counts the writes, which does not depend on how busy the machine is. The
+// clock only catches a hang.
+func TestOverlayLargestBoxesCostABoundedNumberOfWrites(t *testing.T) {
+	const boxes = 2000
 	var b strings.Builder
 	b.WriteString(typesLine + "\n")
-	for i := 0; i < 200000; i++ {
-		fmt.Fprintf(&b, "[1,%d,%d,%d,%d]\n", i%3000, i%3000, i%3000+64, i%3000+64)
+	for i := 0; i < boxes; i++ {
+		fmt.Fprintf(&b, "[1,%d,%d,%d,%d]\n", i%3000, i%3000, i%3000+maxBoxTiles, i%3000+maxBoxTiles)
 	}
 	start := time.Now()
-	drawTestOverlay(t, b.String(), surf(MaxSidePixels, MaxSidePixels, 1))
-	if d := time.Since(start); d > 20*time.Second {
-		t.Errorf("200,000 boxes of 64 by 64 took %v", d)
+	_, writes, err := drawOverlay(strings.NewReader(b.String()), surf(MaxSidePixels, MaxSidePixels, 1), MaxEntities)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := int64(boxes) * maxBoxTiles * maxBoxTiles; writes != want {
+		t.Errorf("%d pixel writes, want %d (every box whole on the picture)", writes, want)
+	}
+	if maxWrites := int64(MaxEntities) * maxBoxTiles * maxBoxTiles; maxWrites > 1<<33 {
+		t.Errorf("a full file costs %d writes, over the bound", maxWrites)
+	}
+	if d := time.Since(start); d > 5*time.Minute {
+		t.Errorf("took %v: hung?", d)
+	}
+}
+
+// Clipped boxes cost only what lands on the picture.
+func TestOverlayWritesAreClipped(t *testing.T) {
+	_, writes, err := drawOverlay(strings.NewReader(entityFile(typesLine, "[0,8,8,40,40]", "[0,50,50,60,60]")), surf(10, 10, 1), MaxEntities)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if writes != 4 {
+		t.Errorf("%d writes, want 4 (a 2 by 2 corner; the outside box is skipped)", writes)
 	}
 }

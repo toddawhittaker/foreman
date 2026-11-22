@@ -51,27 +51,31 @@ const fillAlpha = 90
 // blank line in the middle (F1's mod never writes one) and a box over 64
 // tiles a side.
 func DrawOverlay(entities io.Reader, s Surface) (map[Category]*image.Paletted, error) {
-	return drawOverlay(entities, s, MaxEntities)
+	layers, _, err := drawOverlay(entities, s, MaxEntities)
+	return layers, err
 }
 
-func drawOverlay(entities io.Reader, s Surface, maxEntities int) (map[Category]*image.Paletted, error) {
+// drawOverlay is DrawOverlay with the entity limit as a parameter. It also
+// returns how many pixels it wrote, which is what drawing costs, so a test
+// can bound the work without a clock.
+func drawOverlay(entities io.Reader, s Surface, maxEntities int) (map[Category]*image.Paletted, int64, error) {
 	if s.Width < 1 || s.Height < 1 || s.Width > MaxSidePixels || s.Height > MaxSidePixels || s.TilesPerPixel < 1 {
-		return nil, fmt.Errorf("overlay: bad surface size %dx%d at %d tiles a pixel", s.Width, s.Height, s.TilesPerPixel)
+		return nil, 0, fmt.Errorf("overlay: bad surface size %dx%d at %d tiles a pixel", s.Width, s.Height, s.TilesPerPixel)
 	}
 	sc := bufio.NewScanner(entities)
 	sc.Buffer(make([]byte, 0, 64*1024), maxLineBytes)
 	if !sc.Scan() {
 		if err := sc.Err(); err != nil {
-			return nil, fmt.Errorf("overlay: read entity types: %w", err)
+			return nil, 0, fmt.Errorf("overlay: read entity types: %w", err)
 		}
-		return nil, errors.New("overlay: no entity type line")
+		return nil, 0, errors.New("overlay: no entity type line")
 	}
 	var types []string
 	if err := json.Unmarshal(sc.Bytes(), &types); err != nil {
-		return nil, fmt.Errorf("overlay: entity type line: %w", err)
+		return nil, 0, fmt.Errorf("overlay: entity type line: %w", err)
 	}
 	if len(types) > maxEntityTypes {
-		return nil, fmt.Errorf("overlay: %d entity types, at most %d", len(types), maxEntityTypes)
+		return nil, 0, fmt.Errorf("overlay: %d entity types, at most %d", len(types), maxEntityTypes)
 	}
 	cats := make([]Category, len(types))
 	for i, t := range types {
@@ -84,30 +88,31 @@ func drawOverlay(entities io.Reader, s Surface, maxEntities int) (map[Category]*
 	}
 
 	n := 0
+	var writes int64
 	for sc.Scan() {
 		n++
 		if n > maxEntities {
-			return nil, fmt.Errorf("overlay: more than %d entities", maxEntities)
+			return nil, 0, fmt.Errorf("overlay: more than %d entities", maxEntities)
 		}
 		ti, x1, y1, x2, y2, err := parseBox(sc.Bytes())
 		if err != nil {
-			return nil, fmt.Errorf("overlay: entity %d: %w", n, err)
+			return nil, 0, fmt.Errorf("overlay: entity %d: %w", n, err)
 		}
 		if ti >= int64(len(cats)) {
-			return nil, fmt.Errorf("overlay: entity %d: type index %d, only %d types", n, ti, len(cats))
+			return nil, 0, fmt.Errorf("overlay: entity %d: type index %d, only %d types", n, ti, len(cats))
 		}
 		if x2 <= x1 || y2 <= y1 {
-			return nil, fmt.Errorf("overlay: entity %d: empty box", n)
+			return nil, 0, fmt.Errorf("overlay: entity %d: empty box", n)
 		}
 		if x2-x1 > maxBoxTiles || y2-y1 > maxBoxTiles {
-			return nil, fmt.Errorf("overlay: entity %d: box over %d tiles a side", n, maxBoxTiles)
+			return nil, 0, fmt.Errorf("overlay: entity %d: box over %d tiles a side", n, maxBoxTiles)
 		}
-		drawBox(layers[cats[ti]], x1, y1, x2, y2, int64(s.TilesPerPixel))
+		writes += drawBox(layers[cats[ti]], x1, y1, x2, y2, int64(s.TilesPerPixel))
 	}
 	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("overlay: read entities: %w", err)
+		return nil, 0, fmt.Errorf("overlay: read entities: %w", err)
 	}
-	return layers, nil
+	return layers, writes, nil
 }
 
 // layerPalette is a category's palette: clear, solid, translucent.
@@ -120,8 +125,9 @@ func layerPalette(c Category) color.Palette {
 
 // drawBox draws a box given in tiles onto a layer. A box of one to two pixels
 // on a side is filled solid; a larger one is an outline with a translucent
-// fill that never covers an outline already drawn.
-func drawBox(p *image.Paletted, x1, y1, x2, y2, tpp int64) {
+// fill that never covers an outline already drawn. It returns the number of
+// pixels it wrote.
+func drawBox(p *image.Paletted, x1, y1, x2, y2, tpp int64) int64 {
 	w, h := int64(p.Rect.Dx()), int64(p.Rect.Dy())
 	// Round out to whole pixels, then clip.
 	px1, py1 := x1/tpp, y1/tpp
@@ -133,7 +139,7 @@ func drawBox(p *image.Paletted, x1, y1, x2, y2, tpp int64) {
 		py2 = h
 	}
 	if px1 >= px2 || py1 >= py2 {
-		return
+		return 0
 	}
 	small := px2-px1 < 3 || py2-py1 < 3
 	for y := py1; y < py2; y++ {
@@ -147,6 +153,7 @@ func drawBox(p *image.Paletted, x1, y1, x2, y2, tpp int64) {
 			}
 		}
 	}
+	return (px2 - px1) * (py2 - py1)
 }
 
 // parseBox reads one line, [a,b,c,d,e], of five whole numbers from 0 to 2^53
