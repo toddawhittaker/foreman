@@ -472,6 +472,7 @@
   "worlds.list.col.world": "World",
   "worlds.badge.archived": "Archived",
   "worlds.badge.unfinished": "Unfinished",
+  "worlds.list.continue": "Continue",
   "worlds.unfinished.continue": "Continue setting up",
   "worlds.unfinished.continue_named": "Continue setting up {name}",
   "worlds.unfinished.text": "Setting up this world is not finished. You can still choose its mods and map settings.",

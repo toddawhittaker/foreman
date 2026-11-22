@@ -455,6 +455,7 @@
   "worlds.list.col.world": "世界",
   "worlds.badge.archived": "已归档",
   "worlds.badge.unfinished": "未完成",
+  "worlds.list.continue": "继续",
   "worlds.unfinished.continue": "继续设置",
   "worlds.unfinished.continue_named": "继续设置 {name}",
   "worlds.unfinished.text": "此世界尚未设置完成，仍可选择其模组和地图设置。",

@@ -201,25 +201,6 @@ test("a typed seed still asks after Preview map rewrites the seed field", async 
   await expect(page).toHaveURL(newMapPath(world));
 });
 
-// Space Age is not a field of step 3, so this one stays on Generate.
-test("an edited setting still asks after Space Age is ticked and unticked", async ({ page }) => {
-  await page.goto("/generate");
-  await expect(pictures(page)).toHaveCount(1);
-  await page.locator("#mg-nauvis-iron-ore-size").evaluate((s) => {
-    (s as HTMLSelectElement).value = "200";
-    s.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  const spaceAge = page.getByLabel("Space Age is on");
-  await spaceAge.uncheck();
-  await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(0);
-  await spaceAge.check();
-  await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(1);
-  await cancel(page).click();
-  await expect(leaveDialog(page)).toBeVisible();
-  await stay(page).click();
-  await expect(page).toHaveURL("/generate");
-});
-
 test("the preview size and the territory box are views: changing them leaves without asking", async ({ page }) => {
   const asked = browserQuestions(page);
   const world = await openNewMap(page);

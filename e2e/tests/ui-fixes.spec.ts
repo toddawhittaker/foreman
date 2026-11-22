@@ -353,25 +353,6 @@ test.describe("Generate", () => {
     await expect(page.getByLabel("Maximum expansion distance")).toHaveValue("3");
   });
 
-  // Undo would send one game version's settings with another's line, so a version or Space Age change ends it at once.
-  test("a Space Age change ends the Undo before the settings are redrawn", async ({ page }) => {
-    await page.goto("/generate");
-    await tab(page, "Enemy").click();
-    await page.getByLabel("Maximum expansion distance").fill("3");
-    await page.getByRole("button", { name: "Reset to defaults" }).click();
-    const undo = page.getByRole("button", { name: "Undo reset" });
-    await expect(undo).toBeVisible();
-    let release!: () => void;
-    const held = new Promise<void>((r) => (release = r));
-    await page.route("**/generate/refresh", async (route) => {
-      await held;
-      await route.continue().catch(() => {});
-    });
-    await page.getByLabel("Space Age is on").uncheck();
-    await expect(undo).toBeHidden();
-    release();
-  });
-
   // The reset's reply replaces the fields anyway, so Undo is always offered after it and
   // brings back the settings as they were when Reset was pressed; focus stays where it was.
   test("a change made while Reset is on its way still gets Undo, which brings back the settings from before the reset", async ({ page }) => {

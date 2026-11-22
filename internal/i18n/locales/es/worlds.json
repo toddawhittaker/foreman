@@ -472,6 +472,7 @@
   "worlds.list.col.world": "Mundo",
   "worlds.badge.archived": "Archivado",
   "worlds.badge.unfinished": "Sin terminar",
+  "worlds.list.continue": "Continuar",
   "worlds.unfinished.continue": "Seguir configurando",
   "worlds.unfinished.continue_named": "Seguir configurando {name}",
   "worlds.unfinished.text": "La configuración de este mundo no está terminada. Aún puedes elegir sus mods y los ajustes del mapa.",

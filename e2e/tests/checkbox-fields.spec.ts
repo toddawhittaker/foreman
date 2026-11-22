@@ -46,7 +46,7 @@ test("checkboxes and radios are tick-sized on every page that has one", async ({
   writeFileSync(join(inbox, "note.txt"), "x");
 
   await expectSmallControls(page, "/import", 3); // folder, Space Age, download
-  await expectSmallControls(page, "/generate", 3); // mode radios, Space Age
+  await expectSmallControls(page, "/generate", 2); // Space Age, download
   // Step 3's map settings (SPEC 5.6), on a world made without the image download.
   await openNewMap(page, { step1: (p) => p.getByLabel("Download the game image", { exact: false }).uncheck() });
   await expect(page.locator('input[type="checkbox"]:visible, input[type="radio"]:visible')).not.toHaveCount(0);

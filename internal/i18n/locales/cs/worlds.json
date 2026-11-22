@@ -489,6 +489,7 @@
   "worlds.list.col.world": "Svět",
   "worlds.badge.archived": "Archivovaný",
   "worlds.badge.unfinished": "Nedokončený",
+  "worlds.list.continue": "Pokračovat",
   "worlds.unfinished.continue": "Pokračovat v nastavení",
   "worlds.unfinished.continue_named": "Pokračovat v nastavení světa {name}",
   "worlds.unfinished.text": "Nastavení tohoto světa není dokončené. Stále lze vybrat jeho mody a nastavení mapy.",

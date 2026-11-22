@@ -489,6 +489,7 @@
   "worlds.list.col.world": "Мир",
   "worlds.badge.archived": "В архиве",
   "worlds.badge.unfinished": "Не завершён",
+  "worlds.list.continue": "Продолжить",
   "worlds.unfinished.continue": "Продолжить настройку",
   "worlds.unfinished.continue_named": "Продолжить настройку мира {name}",
   "worlds.unfinished.text": "Настройка этого мира не завершена. Вы ещё можете выбрать его моды и настройки карты.",

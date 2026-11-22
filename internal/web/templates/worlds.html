@@ -50,7 +50,7 @@
       <div class="actions">
         {{- /* An Unfinished world's next step is the rest of its set-up (SPEC 5.6). */}}
         {{- if $continue}}
-        <a href="{{$continue}}" class="button button--primary" id="act-continue-{{.ID}}"><span aria-hidden="true">{{t "worlds.unfinished.continue"}}</span><span class="visually-hidden">{{t "worlds.unfinished.continue_named" "name" .Name}}</span></a>
+        <a href="{{$continue}}" class="button button--primary" id="act-continue-{{.ID}}"><span aria-hidden="true">{{t "worlds.list.continue"}}</span><span class="visually-hidden">{{t "worlds.unfinished.continue_named" "name" .Name}}</span></a>
         {{- end}}
         {{- if index $.Page.Switchable .ID}}
         <a href="{{$.Page.SwitchPath .ID}}" class="button"><span aria-hidden="true">{{t "worlds.list.switch"}}</span><span class="visually-hidden">{{t "worlds.list.switch_named" "name" .Name}}</span></a>

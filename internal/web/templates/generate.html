@@ -42,6 +42,7 @@
 {{- /* Step 1 asks only what the world is; its mods and its map come in steps 2 and 3 (SPEC 5.6, 17.9). */}}
 <form method="post" action="{{.Path}}" class="panel generate" id="generate-form" novalidate>
   {{template "summary" .Problems}}
+  <div class="gen-settings">
   {{template "required-note"}}
   {{- with .Form}}
   {{- with .Favorite}}
@@ -109,6 +110,7 @@
   <p class="error" id="mode-settings" tabindex="-1"><strong>{{t "common.error.label"}}</strong> {{msg .FormError}}</p>
   {{- end}}
   {{- end}}
+  </div>
   <div class="actions">
     <a href="{{worldsPath}}">{{t "worlds.cancel"}}</a>
     <button type="submit" class="button button--primary" id="generate-button">{{t "worlds.generate.button"}}</button>
