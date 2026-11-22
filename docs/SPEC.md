@@ -1066,7 +1066,8 @@ downloads one ZIP, `<name>-world.zip`. ADR 0031 records the format. (P1)
 - **Which saves.** The export card offers "All saves" (the default) or
   "Only the save that loads next" (7.11).
 - **The file.** Saves and zips are stored, not compressed again. Each entry
-  keeps its file's modification time, so "last played" survives the move.
+  keeps its file's modification time to the second (the ZIP's own time
+  field), so "last played" survives the move.
   Unpacked, a world file is a world folder in the 5.1 layout, so it also
   imports by hand as an inbox folder (5.5).
 - **The lowest version rule.** A writer uses the lowest format version that
@@ -1159,16 +1160,24 @@ a copy of a save (8.16). (P1)
   Foreman's own setting, like the display name).
 - **Automatic** draws when the world has been stopped for 2 minutes, no
   game is running on this Foreman, the world is not archived, and the save
-  that loads differs from the last picture's. A check every minute covers
-  this, and a restart of Foreman too.
+  that loads differs from both the last picture's and the last failed
+  run's. A check every minute covers this, and a restart of Foreman too.
+  Until Foreman has listed Docker's containers it assumes a game may be
+  running and draws nothing.
 - **Manual** is a "Draw factory map" button. Beside a running game it runs
   only on that click, which says the run needs about as much memory as the
   running game uses now and shows that figure.
 - **Skip while players are online** (on by default) refuses that click
-  while players are online. An automatic run never happens beside a
-  running game, so it does not apply there.
-- **Off** hides the button and stops automatic runs. The last picture stays
-  until the save changes.
+  while players are online, and also when Foreman cannot ask the game who
+  is online. An automatic run never happens beside a running game, so it
+  does not apply there.
+- **Off** hides the button and stops automatic runs. The last picture
+  stays, with the save it was drawn from, until the world is deleted.
+- **Failures** use the failure ids of 8.16 plus `too-large`, for output
+  over the limits of 14.6. A failure is kept beside the last picture, which
+  stays. A cancelled run is not a failure.
+- **Downloads** of the base with layers combined run at most 2 at once; a
+  third waits 3 seconds and is then refused as busy.
 - A start of the world cancels its run.
 - Not in MCP or the REST API (21.7).
 
@@ -1240,7 +1249,9 @@ figures can add up to less than the total. (P0)
 example `20261103T142501Z`, with `-2` added on a clash. The manifest
 holds the label, the reason (`manual`, `before-delete`, `before-restore`,
 `settings`, `mods`, `autosaves`, or the risky operation), the time, who took it, and for each file its
-path, size and modification time to the nanosecond. For each save and mod
+path, size and modification time to the nanosecond, read from the copy the
+snapshot holds once it is placed, so the manifest matches the snapshot even
+when a file such as `players.json` changed while it was taken. For each save and mod
 zip it also holds a SHA-256 hash, which Foreman reuses from the previous
 snapshot when the file's inode, size and modification time are unchanged.
 Restore checks every hash first and refuses a changed snapshot, naming the
@@ -1904,7 +1915,9 @@ they were last seen. (P1)
 as hours and minutes. It is `game.tick`, which the game's `/time` command
 reports. While the game runs it comes from plain `/time` over RCON, never
 from Lua, so achievements stay on; Foreman asks at most once a minute and
-at each finished save. Otherwise it comes from the record (8.14). (P1)
+at each finished save. `/time` reports hours, minutes and seconds, so the
+figure is true to the second; a reply in a form Foreman has not seen is
+refused, never guessed. Otherwise it comes from the record (8.14). (P1)
 
 8.16. **Reading a copy of a save.** Foreman reads a save's players (8.14)
 and its factory map (5.16) by running the save in a one-off container
@@ -1913,7 +1926,9 @@ and its factory map (5.16) by running the save in a one-off container
 - **The run.** The world's own game image runs
   `--benchmark <save> --benchmark-ticks 8 --benchmark-runs 1`, with no
   network, the world's mods, and a small control-only helper mod that
-  writes JSON into the work folder. The game exits by itself.
+  writes JSON. The game writes only to its in-memory write folder (14.3),
+  and only the helper's named output is moved into the work folder. The
+  game exits by itself.
 - **The save is never written.** It is hard-linked into the work folder
   and mounted read-only over the link, or copied when the link fails,
   after the disk check of 6.11. The work folder holds the world's mods as
@@ -1926,7 +1941,18 @@ and its factory map (5.16) by running the save in a one-off container
   versions. Either failure gives `mods-differ`, and no figures are kept.
 - **The result is kept** only if the save that loads next is still the
   save that was read.
-- **A start of the world cancels** any read of it.
+- **Every start cancels a read.** A start of the world, a switch, an
+  update, a rollback, a mod change or a restart cancels any read of it and
+  waits until its container is removed before the game's container is
+  made; a read asked for meanwhile is refused.
+- **A world's lock cancels a read.** Any operation that takes a world's
+  lock, a person's or Foreman's own (a snapshot, a restore, the mod
+  settings run), first cancels that world's players read or factory map
+  run and waits for it to release the world, so it is never refused as
+  busy because of one. A cancelled read keeps nothing, and the next view
+  reads again. The reads themselves take the lock without cancelling
+  anything (`world.Manager.Lock` and `LockBackground`,
+  `beginStartSaveCopies` in `internal/game/savecopy.go`).
 - **Limits:** 12 GiB of memory with no swap, 5 minutes, and the one preview
   slot (14.3). Measured: 6.9 GB and 44 seconds for a 187 MB save with 44
   mods.
@@ -3027,8 +3053,10 @@ world's own image in benchmark mode with a control-only helper mod. Its
 work folder holds the save as a hard link mounted read-only over the link
 (a copy when the link fails), the world's mods as for the fourth kind, and
 copies of `mod-list.json` and `mod-settings.dat`; never `config/`,
-`rconpw` or `server-settings.json`. The factory map run's game write folder
-is in the work folder, since the tmpfs cannot hold its output. A world mod
+`rconpw` or `server-settings.json`. The game's write folder is a 1 GiB
+in-memory folder, counted against the memory limit, so the game never
+writes to the host's disk; only the helper's named output is moved into the
+work folder. A world mod
 with the helper's name refuses the run. No new Docker endpoint is used.
 
 To share a network with the game (4.4), Foreman reads its own container
