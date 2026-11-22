@@ -361,7 +361,7 @@ func newGen() string {
 func marshalFacts(f facts) ([]byte, error) {
 	b, err := json.MarshalIndent(f, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if len(b) > maxFactsSize {
 		return nil, fmt.Errorf("%w: the drawing's facts are too large", ErrInvalid)
