@@ -85,8 +85,6 @@ type SavePlayersView struct {
 	Failure      string
 	Save         string
 	TrackedSince time.Time
-	// Inexact says a crash or a gap may have hidden play time (SPEC 8.14).
-	Inexact bool
 	// GameTime is the save's total play time, true when GameTimeKnown.
 	GameTime      time.Duration
 	GameTimeKnown bool
