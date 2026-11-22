@@ -52,8 +52,9 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	defer beat.Stop()
 	st, changed := view.Status, true
 	// The snapshot card is read when the stream opens and again when an
-	// operation ends or an action stores its result, as either may follow
-	// a snapshot (SPEC 6.1).
+	// operation ends, an action stores its result, or a snapshot is taken
+	// or deleted inline on the Snapshots page, as each may follow a
+	// snapshot (SPEC 6.1).
 	var snaps []world.Snapshot
 	snapsFailed, reread, snapsOp := false, true, uint64(0)
 	for {
@@ -108,6 +109,15 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 			changed = false
 		}
 	}
+}
+
+// snapshotsChanged wakes the live Server pages to read their snapshot card
+// again, after a snapshot was taken or deleted outside a task (SPEC 6.1,
+// 16.3).
+func (g *gameRuns) snapshotsChanged() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.changedLocked()
 }
 
 // trackStream counts a stream as in flight, so shutdown waits for it to

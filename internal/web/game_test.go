@@ -658,3 +658,106 @@ func snapshotCardFollows(t *testing.T, end func(g *gameRig, id string)) {
 		t.Fatal("the snapshot card never showed the new snapshot")
 	}
 }
+
+// The Snapshots page takes and deletes a snapshot inline, with no task, so
+// the open Server page's snapshot card has to follow on its own, with no
+// reload (SPEC 6.1, 6.3, 6.12, 16.3, 17.7).
+func TestSnapshotCardFollowsAnInlineTakeAndDelete(t *testing.T) {
+	t.Run("a take", func(t *testing.T) {
+		g := newGameRig(t, image21)
+		id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+		g.waitPage(stopped, "No snapshots yet")
+		resp, r := g.eventsAfterRegions(t, id)
+		defer func() { _ = resp.Body.Close() }()
+		g.wantRedirectToPrefix(g.post(snapshotsPath(id), url.Values{"label": {"Taken by hand"}}), snapshotsPath(id)+"?taken=")
+		data := snapsEventWhere(t, r, func(d string) bool { return strings.Contains(d, "Taken by hand") })
+		if strings.Contains(data, "No snapshots yet") {
+			t.Errorf("the card still says there are none:\n%s", data)
+		}
+	})
+	t.Run("a delete", func(t *testing.T) {
+		g := newGameRig(t, image21)
+		id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+		snap, err := g.worlds.TakeSnapshot(id, "Doomed", "alice")
+		if err != nil {
+			t.Fatal(err)
+		}
+		g.waitPage(stopped, "Doomed")
+		resp, r := g.eventsAfterRegions(t, id)
+		defer func() { _ = resp.Body.Close() }()
+		g.wantRedirectToPrefix(g.post(snapshotDeletePath(id, snap.Name), url.Values{}), snapshotsPath(id)+"?deleted=")
+		data := snapsEventWhere(t, r, func(d string) bool { return !strings.Contains(d, "Doomed") })
+		if !strings.Contains(data, "No snapshots yet") {
+			t.Errorf("the card still lists the deleted snapshot:\n%s", data)
+		}
+	})
+	// Saving settings takes the automatic "Before settings change" snapshot.
+	t.Run("a settings save", func(t *testing.T) {
+		g := newGameRig(t, image21)
+		id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+		g.writeConfig(id, world.ServerSettingsFile, `{"name": "Old"}`)
+		g.waitPage(stopped, "No snapshots yet")
+		resp, r := g.eventsAfterRegions(t, id)
+		defer func() { _ = resp.Body.Close() }()
+		path := settingsPath(id)
+		rep := g.post(path, url.Values{"name": {"New"}, "description": {""}, "max_players": {""}, "autosave_interval": {""}, "autosave_slots": {""}})
+		if rep.StatusCode != http.StatusOK {
+			t.Fatalf("preview %d:\n%s", rep.StatusCode, rep.body)
+		}
+		g.wantRedirectToPrefix(g.post(path+"/confirm", url.Values{"token": {tokenOf(t, rep.body)}}), path+"?saved=1")
+		data := snapsEventWhere(t, r, func(d string) bool { return strings.Contains(d, "Before settings change") })
+		if strings.Contains(data, "No snapshots yet") {
+			t.Errorf("the card still says there are none:\n%s", data)
+		}
+	})
+}
+
+func (g *gameRig) wantRedirectToPrefix(rep reply, prefix string) {
+	g.t.Helper()
+	if rep.StatusCode != http.StatusSeeOther || !strings.HasPrefix(rep.Header.Get("Location"), prefix) {
+		g.t.Fatalf("got %d to %q, want 303 to %s...\n%s", rep.StatusCode, rep.Header.Get("Location"), prefix, rep.body)
+	}
+}
+
+// eventsAfterRegions opens a world's live stream and reads until every
+// region has arrived once, so what follows is a change.
+func (g *gameRig) eventsAfterRegions(t *testing.T, id string) (*http.Response, *bufio.Reader) {
+	t.Helper()
+	resp := g.openEvents(id, true)
+	r := bufio.NewReader(resp.Body)
+	for seen := map[string]bool{}; len(seen) < len(liveRegions); {
+		name, _, err := readEvent(t, r)
+		if err != nil {
+			_ = resp.Body.Close()
+			t.Fatal(err)
+		}
+		seen[name] = true
+	}
+	return resp, r
+}
+
+// snapsEventWhere returns the first snaps event whose HTML satisfies ok,
+// failing the test when none comes within ten seconds.
+func snapsEventWhere(t *testing.T, r *bufio.Reader, ok func(data string) bool) string {
+	t.Helper()
+	got := make(chan string, 1)
+	go func() {
+		for {
+			name, data, err := readEvent(t, r)
+			if err != nil {
+				return
+			}
+			if name == "snaps" && ok(data) {
+				got <- data
+				return
+			}
+		}
+	}()
+	select {
+	case data := <-got:
+		return data
+	case <-time.After(10 * time.Second):
+		t.Fatal("the snapshot card never followed the change")
+		return ""
+	}
+}
