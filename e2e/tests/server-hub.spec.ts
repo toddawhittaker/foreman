@@ -283,4 +283,40 @@ test.describe("with the fake game, a snapshot meanwhile", () => {
     await checkPage(page);
     await other.close();
   });
+
+  // SPEC 6.3, 6.12, 16.3, 17.7: the Snapshots page takes and deletes inline,
+  // with no task, and an open Server page's card follows each with no reload.
+  test("the snapshot card follows a snapshot taken on the Snapshots page", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    const card = page.locator(".recent-snaps");
+    await expect(card).toContainText("No snapshots yet");
+    const other = await page.context().newPage();
+    await other.goto("/worlds/base/snapshots");
+    await other.getByLabel("Label (optional)").fill("By hand");
+    await other.getByRole("button", { name: "Take snapshot" }).click();
+    await expect(other.getByText('Done: Foreman took the snapshot "By hand".')).toBeVisible();
+    await expect(card.locator(".recent-snaps__list > li")).toHaveCount(1, live);
+    await expect(card).toContainText("By hand");
+    await expect(card).not.toContainText("No snapshots yet");
+    await checkPage(page);
+    await other.close();
+  });
+
+  test("the snapshot card follows a snapshot deleted on the Snapshots page", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    const card = page.locator(".recent-snaps");
+    const other = await page.context().newPage();
+    await other.goto("/worlds/base/snapshots");
+    await other.getByLabel("Label (optional)").fill("Short lived");
+    await other.getByRole("button", { name: "Take snapshot" }).click();
+    await expect(other.getByText('Done: Foreman took the snapshot "Short lived".')).toBeVisible();
+    await expect(card).toContainText("Short lived", live);
+    await other.getByRole("link", { name: /^Delete Short lived/ }).click();
+    await other.getByRole("button", { name: "Delete snapshot" }).click();
+    await expect(other.getByText(/Done: Foreman deleted the snapshot taken/)).toBeVisible();
+    await expect(card).toContainText("No snapshots yet", live);
+    await expect(card).not.toContainText("Short lived");
+    await checkPage(page);
+    await other.close();
+  });
 });
