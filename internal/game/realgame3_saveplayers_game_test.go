@@ -50,11 +50,22 @@ const spOracleControl = `script.on_init(function()
 end)
 `
 
-// spPlayersFixtures are optional saves with real players in them, one per game
-// version, made by a person with a real client (the game cannot create a
-// player without one). When a file is there the read is checked against it
-// too; see the test's skip message.
-const spPlayersFixtureDir = "testdata/saveplayers"
+// A save with players is made by a person with a real client (the game cannot
+// create a player without one), and real saves are large and hold real player
+// names, so none is committed. To run the "save with players" subtest by hand,
+// give it a copy of such a save:
+//
+//	FOREMAN_TEST_PLAYERS_SAVE=/path/to/copy.zip FOREMAN_TEST_GAME_TAG=2.1 \
+//	  FOREMAN_TEST_PLAYERS_SPACE_AGE=1 make test-game ... -run TestRealGameSavePlayersRead
+//
+// FOREMAN_TEST_GAME_TAG is required with it, because a save is read only by
+// its own game line. The save may need only the base game, plus Space Age
+// when FOREMAN_TEST_PLAYERS_SPACE_AGE is set: the world made for it has no
+// third-party mods.
+const (
+	spPlayersSaveEnv     = "FOREMAN_TEST_PLAYERS_SAVE"
+	spPlayersSpaceAgeEnv = "FOREMAN_TEST_PLAYERS_SPACE_AGE"
+)
 
 func TestRealGameSavePlayersRead(t *testing.T) {
 	only := os.Getenv("FOREMAN_TEST_GAME_TAG")
@@ -69,13 +80,13 @@ func TestRealGameSavePlayersRead(t *testing.T) {
 				e.runSavePlayersRead(t, g.tag, g.fixture, g.version, "fresh")
 			})
 			t.Run("save with players", func(t *testing.T) {
-				fx := filepath.Join(spPlayersFixtureDir, g.version+"-players.zip")
-				if _, err := os.Stat(fx); err != nil {
-					t.Skipf("no %s: the game cannot make a player without a client, so a save "+
-						"with players must be made by hand and committed there. Until then "+
-						"the player list is compared only on a save with none", fx)
+				save := os.Getenv(spPlayersSaveEnv)
+				if save == "" || only == "" {
+					t.Skipf("set %s (a copy of a save with players) and FOREMAN_TEST_GAME_TAG to run this: "+
+						"the game cannot make a player without a client, so the player list is otherwise "+
+						"compared only on a save with none", spPlayersSaveEnv)
 				}
-				e.runSavePlayersRead(t, g.tag, "", g.version, fx)
+				e.runSavePlayersRead(t, g.tag, "", g.version, save)
 			})
 		})
 	}
@@ -183,7 +194,7 @@ type oracleResult struct {
 // oracleRead runs the game plainly (not through Foreman) on a copy of the
 // save, with the oracle mod, in a network-less container, and returns what the
 // mod wrote. The container is named for this run and removed at the end.
-func (e *gameEnv) oracleRead(t *testing.T, version, saveFile string) oracleResult {
+func (e *gameEnv) oracleRead(t *testing.T, version, saveFile string, modList []byte) oracleResult {
 	t.Helper()
 	scratch := t.TempDir()
 	line := version[:3]
@@ -199,8 +210,20 @@ func (e *gameEnv) oracleRead(t *testing.T, version, saveFile string) oracleResul
 	}
 	write(filepath.Join(modDir, "info.json"), modInfo("a12oracle", "1.0.0", "A12 oracle", "test", line, "base"))
 	write(filepath.Join(modDir, "control.lua"), []byte(spOracleControl))
-	write(filepath.Join(scratch, "mods", world.ModListFile),
-		[]byte(`{"mods":[{"name":"base","enabled":true},{"name":"a12oracle","enabled":true}]}`))
+	// The world's own mod list (base, and the DLC the world has on), plus
+	// the oracle.
+	var list struct {
+		Mods []map[string]any `json:"mods"`
+	}
+	if err := json.Unmarshal(modList, &list); err != nil {
+		t.Fatalf("the world's mod list: %v", err)
+	}
+	list.Mods = append(list.Mods, map[string]any{"name": "a12oracle", "enabled": true})
+	ml, err := json.Marshal(list)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(filepath.Join(scratch, "mods", world.ModListFile), ml)
 	write(filepath.Join(scratch, "config.ini"), []byte("[path]\nread-data=__PATH__executable__/../../data\nwrite-data=/work/wd\n"))
 	b, err := os.ReadFile(saveFile) //nolint:gosec // a save the test made
 	if err != nil {
@@ -284,9 +307,26 @@ func (e *gameEnv) aSaveWithTicks(t *testing.T, c *Controller, id string) string 
 	return save
 }
 
-// runSavePlayersRead checks one read. source is "fresh" for a fixture-made
-// world that is first played for a few seconds, or the path of a ready save
-// with players (fixture is then empty).
+// spWorld makes a world with no save, with or without Space Age, and removes
+// its container at the end of the test.
+func (e *gameEnv) spWorld(t *testing.T, tag, version string, spaceAge bool) string {
+	t.Helper()
+	id, err := e.worlds.Create(context.Background(), fmt.Sprintf("e3test %s spgiven %s", tag, e.run), version, spaceAge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		err := e.docker.RemoveContainer(context.Background(), ContainerName(id), true)
+		if err != nil && !errors.Is(err, docker.ErrNotFound) {
+			t.Errorf("could not remove test container %s: %v", ContainerName(id), err)
+		}
+	})
+	return id
+}
+
+// runSavePlayersRead checks one read. with a fixture, the world is made from it
+// and first played for a few seconds; with none, source is the path of a
+// ready save with players.
 func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source string) {
 	ctx := context.Background()
 	c, _ := e.controller(t)
@@ -294,11 +334,11 @@ func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source
 	if fixture != "" {
 		id = e.newWorld(t, tag, version, "sp", fixture, map[string]time.Duration{"main.zip": time.Hour})
 	} else {
-		b, err := os.ReadFile(source) //nolint:gosec // a committed fixture
+		b, err := os.ReadFile(source) //nolint:gosec // a save the person running the test gave
 		if err != nil {
 			t.Fatal(err)
 		}
-		id = e.newWorld(t, tag, version, "sp", "", nil)
+		id = e.spWorld(t, tag, version, os.Getenv(spPlayersSpaceAgeEnv) != "")
 		e.putSave(t, id, "main.zip", b, time.Now().Add(-time.Hour))
 	}
 	saveName := "main.zip"
@@ -307,7 +347,13 @@ func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source
 	}
 	savePath := filepath.Join(e.worldDir(id), world.SavesDir, saveName)
 
-	want := e.oracleRead(t, version, savePath)
+	// The world's mods are base, and Space Age when it has it on; its own
+	// list exists once the game has started it, the default before.
+	modList, err := os.ReadFile(filepath.Join(e.worldDir(id), world.ModsDir, world.ModListFile)) //nolint:gosec // the test's own world folder
+	if err != nil {
+		modList = world.DefaultModList(version, os.Getenv(spPlayersSpaceAgeEnv) != "" && fixture == "")
+	}
+	want := e.oracleRead(t, version, savePath, modList)
 	if fixture != "" && want.Tick <= 0 {
 		t.Fatalf("the game made a save at tick %d; the test needs a nonzero tick to prove anything", want.Tick)
 	}
@@ -391,7 +437,7 @@ func (e *gameEnv) runSavePlayersRead(t *testing.T, tag, fixture, version, source
 	e.previewLeftovers(t, "after the read")
 	// The save, again on its own and by the plain game: still readable, same
 	// tick (the read did not move the game on).
-	if again := e.oracleRead(t, version, savePath); again.Tick != want.Tick {
+	if again := e.oracleRead(t, version, savePath, modList); again.Tick != want.Tick {
 		t.Errorf("the save reads as tick %d after the read, %d before", again.Tick, want.Tick)
 	}
 }
