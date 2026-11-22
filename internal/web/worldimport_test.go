@@ -526,9 +526,6 @@ func wfImportPageError(t *testing.T, what string, rep reply, words string) {
 	if rep.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("%s: status %d, want 422:\n%.500s", what, rep.StatusCode, rep.body)
 	}
-	if !strings.Contains(rep.body, `id="world-file-heading"`) {
-		t.Skip("the Import page has no world file form yet")
-	}
 	wfWantAll(t, what, rep.body, "<title>Error: ", `id="upload-heading"`, `id="error-summary"`, `href="#world-file"`,
 		`id="world-file-error"`, words)
 	input := regexp.MustCompile(`<input id="world-file"[^>]*>`).FindString(rep.body)
