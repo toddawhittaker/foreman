@@ -13,6 +13,5 @@
   "worldfile.export.button": "Exportovat svět",
   "worldfile.import.heading": "Import souboru světa",
   "worldfile.import.intro": "Nahrát lze soubor vytvořený funkcí „Exportovat svět“ v jiném Foremanu. Před importem se zobrazí, co obsahuje.",
-  "worldfile.import.label": "Soubor světa",
   "worldfile.import.button": "Nahrát soubor světa"
 }

@@ -13,6 +13,5 @@
   "worldfile.export.button": "Exporter le monde",
   "worldfile.import.heading": "Importer un fichier de monde",
   "worldfile.import.intro": "Envoyez un fichier créé par « Exporter le monde » dans un autre Foreman. Vous voyez ce qu’il contient avant que quoi que ce soit soit importé.",
-  "worldfile.import.label": "Fichier de monde",
   "worldfile.import.button": "Envoyer le fichier de monde"
 }

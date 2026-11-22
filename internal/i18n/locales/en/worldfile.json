@@ -13,6 +13,5 @@
   "worldfile.export.button": "Export world",
   "worldfile.import.heading": "Import a world file",
   "worldfile.import.intro": "Upload a file made by Export world on another Foreman. You see what it holds before anything is imported.",
-  "worldfile.import.label": "World file",
   "worldfile.import.button": "Upload world file"
 }

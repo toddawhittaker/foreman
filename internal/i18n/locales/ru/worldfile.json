@@ -13,6 +13,5 @@
   "worldfile.export.button": "Экспортировать мир",
   "worldfile.import.heading": "Импорт файла мира",
   "worldfile.import.intro": "Загрузите файл, созданный функцией «Экспортировать мир» в другом Foreman. Перед импортом вы увидите, что в нём есть.",
-  "worldfile.import.label": "Файл мира",
   "worldfile.import.button": "Загрузить файл мира"
 }
