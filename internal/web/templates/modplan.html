@@ -10,6 +10,9 @@
 {{- /* A redraw swaps in the heading too, as adding or taking out a mod changes it. */}}
 <h1 id="confirm-heading"{{if .Redraw}} hx-swap-oob="true"{{end}}>{{msgHTML .Heading}}</h1>
 {{template "rail" $}}
+{{- if .InFlow}}
+{{template "genflow-steps" .Steps}}
+{{- end}}
 {{- /* A redraw says the new plan through #announcer; focus stays where it was, except after a conflict fix, which moves it to the conflicts or changes and so gets a short sentence (WCAG 4.1.3). */}}
 {{- if .Redraw}}
 <div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
@@ -75,7 +78,10 @@
 {{- $versions := .Versions}}
 {{- if and .Nothing (not $versions)}}
 <p>{{t "mods.plan.nothing"}}</p>
-<div class="actions"><a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a></div>
+<div class="actions">
+  {{- if .InFlow}}<a href="{{.NextPath}}" class="button button--primary" id="plan-next">{{t "mods.flow.next"}}</a>{{end}}
+  <a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a>
+</div>
 {{- else}}
 <section class="confirm{{if not .Danger}} confirm--plain{{end}}">
   {{- /* A choice's control posts the answers for the plan again (hx-post), which keeps them in the page's draft; the form gives it what to send and where the new plan goes. */}}
@@ -221,6 +227,7 @@
     {{- end}}
     <div class="actions">
       <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
+      {{- if .InFlow}}<a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>{{end}}
       {{- if .CanApply}}
       <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}</button>
       {{- end}}

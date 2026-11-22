@@ -340,11 +340,12 @@ func (s *server) mcpChangeMods(ctx context.Context, req *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, mcpChangeModsOut{}, s.mcpFail("turn the plan into a change", err)
 	}
-	res, act, err := s.mcpRun(ctx, sum, game.AuditMods, []string{sum.ID}, true, s.modAction(sum.ID, mcpActor(req), op, stop, unused, p.shownResult()))
+	// The picks leave once the install has installed them, not when it starts (SPEC 9.14).
+	dropPicks := func(ctx context.Context) { s.dropInstalledPicks(ctx, sum.ID, p.Form) }
+	res, act, err := s.mcpRun(ctx, sum, game.AuditMods, []string{sum.ID}, true, s.modActionThen(sum.ID, mcpActor(req), op, stop, unused, p.shownResult(), dropPicks))
 	if err != nil {
 		return nil, mcpChangeModsOut{}, err
 	}
-	s.dropInstalledPicks(ctx, sum.ID, p.Form)
 	return res, mcpChangeModsOut{mcpPreview: mcpPreview{Done: true}, World: worldRef(sum), UntrustedChanges: out.UntrustedChanges, Result: &act}, nil
 }
 
