@@ -11,12 +11,15 @@ import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
-// playtimeHTML renders the Server page's play time region.
+// playtimeHTML renders the Server page's play time region and the region
+// with the link to the save's players, one after the other.
 func playtimeHTML(t *testing.T, p ServerPage) string {
 	t.Helper()
 	var b strings.Builder
-	if err := newTestRenderer(t).Fragment(&b, i18n.English, p, "server-playtime"); err != nil {
-		t.Fatal(err)
+	for _, region := range []string{"server-playtime", "server-saveplayers"} {
+		if err := newTestRenderer(t).Fragment(&b, i18n.English, p, region); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return b.String()
 }
@@ -72,17 +75,19 @@ func TestNoRecordShowsNoInventedFigures(t *testing.T) {
 					t.Errorf("shows %q with no record:\n%s", bad, html)
 				}
 			}
-			if !strings.Contains(html, `class="play-time"`) {
-				t.Errorf("the wrapper must always be there, so a change back to nothing still sends an event:\n%s", html)
+			for _, wrapper := range []string{`class="play-time"`, `class="play-time__players"`} {
+				if !strings.Contains(html, wrapper) {
+					t.Errorf("the %s wrapper must always be there, so a change back to nothing still sends an event:\n%s", wrapper, html)
+				}
 			}
 		})
 	}
 }
 
-// While a read runs there is no figure yet; the page says so quietly.
+// While a read runs there is no figure yet; the page says the save is being read.
 func TestPlayTimeSaysNotReadYetWhileReading(t *testing.T) {
 	html := playtimeHTML(t, serverCase(game.StateStopped, withSavePlayers(game.SavePlayersView{State: game.SavePlayersReading})))
-	if !strings.Contains(html, "Not read yet") || strings.Contains(html, "<a ") {
+	if !strings.Contains(html, "Being read") || strings.Contains(html, "<a ") {
 		t.Errorf("a read in progress shows %s", html)
 	}
 }
@@ -118,8 +123,8 @@ func TestPlayTimeRegionIsSentOnlyWhenItChanges(t *testing.T) {
 	if err := l.send(serverCase(game.StateRunning, withSavePlayers(view))); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(rec.Body.String(), "event: playtime\n") {
-		t.Fatalf("the first send lacks the region:\n%s", rec.Body.String())
+	if body := rec.Body.String(); !strings.Contains(body, "event: playtime\n") || !strings.Contains(body, "event: saveplayers\n") {
+		t.Fatalf("the first send lacks a region:\n%s", rec.Body.String())
 	}
 	rec.Body.Reset()
 	// Another region changes (CPU), the play time does not: no playtime event.
@@ -129,17 +134,26 @@ func TestPlayTimeRegionIsSentOnlyWhenItChanges(t *testing.T) {
 	})); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(rec.Body.String(), "event: playtime\n") {
-		t.Errorf("an unchanged play time was sent again:\n%s", rec.Body.String())
+	if strings.Contains(rec.Body.String(), "event: playtime\n") || strings.Contains(rec.Body.String(), "event: saveplayers\n") {
+		t.Errorf("an unchanged play time or count was sent again:\n%s", rec.Body.String())
 	}
-	// A new figure is sent.
+	// A new figure is sent, and the link, which takes focus, is not: it is
+	// redrawn only when the count changes.
 	rec.Body.Reset()
 	view.GameTime = 2 * time.Hour
 	if err := l.send(serverCase(game.StateRunning, withSavePlayers(view))); err != nil {
 		t.Fatal(err)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "event: playtime\n") || !strings.Contains(body, "2 h 0 min") {
-		t.Errorf("a changed play time was not sent:\n%s", body)
+	if body := rec.Body.String(); !strings.Contains(body, "event: playtime\n") || !strings.Contains(body, "2 h 0 min") || strings.Contains(body, "event: saveplayers\n") {
+		t.Errorf("a changed play time must be sent alone:\n%s", body)
+	}
+	rec.Body.Reset()
+	view.Players = append(view.Players, game.SavePlayer{Name: "bob"})
+	if err := l.send(serverCase(game.StateRunning, withSavePlayers(view))); err != nil {
+		t.Fatal(err)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "event: saveplayers\n") || !strings.Contains(body, "2 players in this save") || strings.Contains(body, "event: playtime\n") {
+		t.Errorf("a changed count must be sent alone:\n%s", body)
 	}
 }
 

@@ -604,9 +604,9 @@
   "server.crash.unarchive": "Abrir {world} para desarchivarlo",
   "server.playtime.label": "Tiempo de juego",
   "server.playtime.value": "{hours} h {minutes} min",
-  "server.playtime.unread": "Aún no leído",
   "server.playtime.players": {
     "one": "{count} jugador en esta partida guardada",
     "other": "{count} jugadores en esta partida guardada"
-  }
+  },
+  "server.playtime.reading": "Leyéndose"
 }

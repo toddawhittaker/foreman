@@ -624,10 +624,10 @@
   "server.crash.unarchive": "Открыть мир {world}, чтобы разархивировать его",
   "server.playtime.label": "Время игры",
   "server.playtime.value": "{hours} ч {minutes} мин",
-  "server.playtime.unread": "Ещё не прочитано",
   "server.playtime.players": {
     "one": "{count} игрок в этом сохранении",
     "few": "{count} игрока в этом сохранении",
     "many": "{count} игроков в этом сохранении"
-  }
+  },
+  "server.playtime.reading": "Читается"
 }

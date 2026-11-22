@@ -41,6 +41,7 @@
 <div class="facts-block">
 <div sse-swap="facts">{{template "server-facts" .}}</div>
 <div sse-swap="playtime">{{template "server-playtime" .}}</div>
+<div sse-swap="saveplayers">{{template "server-saveplayers" .}}</div>
 <div sse-swap="loads">{{template "server-loads" .}}</div>
 <div sse-swap="schedule">{{template "server-schedule" .}}</div>
 {{- /* The low-disk warning sits where the game-network warning does (DESIGN 8.17). Empty, it takes no room. */}}
@@ -157,11 +158,21 @@
   </dl>
   {{- else if .ShowPlayTime}}
   <dl class="facts facts--inline">
-    <div><dt>{{t "server.playtime.label"}}</dt><dd>{{t "server.playtime.unread"}}</dd></div>
+    <div><dt>{{t "server.playtime.label"}}</dt><dd>{{t "server.playtime.reading"}}</dd></div>
   </dl>
   {{- end}}
+</div>
+{{- end}}
+
+{{/* The count of the save's players, which links to their list on the world's
+     Overview page (SPEC 8.14). A region of its own, apart from the play time,
+     whose figure changes about once a minute: the link takes focus, so it is
+     redrawn only when the count changes (DESIGN 7.5). The wrapper is always
+     there, so a change back to nothing still sends a non-empty event. */}}
+{{define "server-saveplayers" -}}
+<div class="play-time__players">
   {{- if .ShowSavePlayers}}
-  <p class="play-time__players"><a class="button button--quiet" href="{{.SavePlayersLink}}" id="act-save-players">{{msg .SavePlayersText}}</a></p>
+  <p><a class="button button--quiet" href="{{.SavePlayersLink}}" id="act-save-players">{{msg .SavePlayersText}}</a></p>
   {{- end}}
 </div>
 {{- end}}

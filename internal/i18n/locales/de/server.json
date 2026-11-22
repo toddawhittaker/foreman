@@ -604,9 +604,9 @@
   "server.crash.unarchive": "{world} öffnen, um die Archivierung aufzuheben",
   "server.playtime.label": "Spielzeit",
   "server.playtime.value": "{hours} h {minutes} Min.",
-  "server.playtime.unread": "Noch nicht gelesen",
   "server.playtime.players": {
     "one": "{count} Spieler in diesem Speicherstand",
     "other": "{count} Spieler in diesem Speicherstand"
-  }
+  },
+  "server.playtime.reading": "Wird gelesen"
 }

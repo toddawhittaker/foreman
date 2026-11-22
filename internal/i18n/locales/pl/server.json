@@ -624,10 +624,10 @@
   "server.crash.unarchive": "Otwórz świat {world}, aby cofnąć archiwizację",
   "server.playtime.label": "Czas gry",
   "server.playtime.value": "{hours} h {minutes} min",
-  "server.playtime.unread": "Jeszcze nie odczytano",
   "server.playtime.players": {
     "one": "{count} gracz w tym zapisie",
     "few": "{count} graczy w tym zapisie",
     "many": "{count} graczy w tym zapisie"
-  }
+  },
+  "server.playtime.reading": "Trwa odczyt"
 }

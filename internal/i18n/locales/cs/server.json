@@ -624,10 +624,10 @@
   "server.crash.unarchive": "Otevřít svět {world} a vyjmout ho z archivu",
   "server.playtime.label": "Herní čas",
   "server.playtime.value": "{hours} h {minutes} min",
-  "server.playtime.unread": "Zatím nepřečteno",
   "server.playtime.players": {
     "one": "{count} hráč v této uložené hře",
     "few": "{count} hráči v této uložené hře",
     "other": "{count} hráčů v této uložené hře"
-  }
+  },
+  "server.playtime.reading": "Načítá se"
 }

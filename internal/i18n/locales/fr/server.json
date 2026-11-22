@@ -604,9 +604,9 @@
   "server.crash.unarchive": "Ouvrir {world} pour le désarchiver",
   "server.playtime.label": "Temps de jeu",
   "server.playtime.value": "{hours} h {minutes} min",
-  "server.playtime.unread": "Pas encore lu",
   "server.playtime.players": {
     "one": "{count} joueur dans cette sauvegarde",
     "other": "{count} joueurs dans cette sauvegarde"
-  }
+  },
+  "server.playtime.reading": "En cours de lecture"
 }
