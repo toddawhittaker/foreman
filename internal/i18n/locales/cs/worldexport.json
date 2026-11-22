@@ -1,0 +1,6 @@
+{
+  "worldexport.busy": "Již probíhají dva exporty. Je třeba počkat na dokončení jednoho a zkusit to znovu.",
+  "worldexport.error.file": "Tento svět obsahuje soubor, který soubor světa nemůže uchovat: {path}. Je to symbolický odkaz nebo speciální soubor, má název, který soubor světa nepřipouští, nebo je to server-settings.json, který není jedním objektem JSON. Je třeba ho opravit nebo odstranit a zkusit to znovu.",
+  "worldexport.error.saves": "Je třeba vybrat všechny uložené hry, nebo jen uloženou hru, která se načte jako další.",
+  "worldexport.error.too_many": "Tento svět má více souborů, než se do souboru světa vejde, proto ho nelze exportovat."
+}

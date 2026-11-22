@@ -1,0 +1,33 @@
+{
+  "worldimport.title": "Импорт файла мира",
+  "worldimport.intro": "Посмотрите, что находится в файле. Пока вы не нажмёте «Импортировать мир», ничего не импортируется.",
+  "worldimport.heading": "Что в файле",
+  "worldimport.zone.label": "Файл мира",
+  "worldimport.fact.made_by": "Версия Foreman",
+  "worldimport.fact.saves": "Сохранения",
+  "worldimport.fact.mod_files": "Файлы модов",
+  "worldimport.saves.count": {
+    "one": "{count} сохранение",
+    "few": "{count} сохранения",
+    "many": "{count} сохранений"
+  },
+  "worldimport.mod_files.count": {
+    "one": "{count} файл мода",
+    "few": "{count} файла мода",
+    "many": "{count} файлов мода"
+  },
+  "worldimport.fact.size": "Размер после распаковки",
+  "worldimport.fact.loads": "Загружаемое сохранение",
+  "worldimport.loads.none": "Нет: мир создаст карту при первом запуске.",
+  "worldimport.password_warning": "Пароля игры в файле не было. Этот мир запустится без пароля, пока вы не зададите его в разделе «Настройки игры».",
+  "worldimport.mods_warning": "Foreman не проверяет, что содержат сохранения и моды из этого файла. Импортируйте только файлы, которым доверяете. Мод может хранить всё, что выбрал его автор, в том числе токен.",
+  "worldimport.name.label": "Название мира",
+  "worldimport.image.here": "Образ игры версии {version} уже есть на этом хосте.",
+  "worldimport.button": "Импортировать мир",
+  "worldimport.error.bad": "Foreman не может прочитать этот файл мира. Возможно, он повреждён, оборван или экспортирован не в Foreman.",
+  "worldimport.error.newer": "Этот файл мира создан более новой версией Foreman, поэтому эта версия не может его прочитать. Обновите Foreman и повторите попытку.",
+  "worldimport.refused.title": "Foreman не может импортировать этот файл",
+  "worldimport.retry": "Назад к импорту",
+  "worldimport.gone.title": "Загруженного файла больше нет",
+  "worldimport.gone": "Foreman хранит загруженный файл мира один час, и этого файла уже нет. Загрузите его снова."
+}
