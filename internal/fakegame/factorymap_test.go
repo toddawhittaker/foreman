@@ -21,6 +21,16 @@ import (
 // folder it wrote.
 func runFactoryMap(t *testing.T, r *rig) string {
 	t.Helper()
+	id := startFactoryMap(t, r)
+	if c := r.inspect(id); c.State.Status != "exited" || c.State.ExitCode != 0 {
+		t.Fatalf("state %+v, want exited with 0", c.State)
+	}
+	return filepath.Join(r.world, gameenv.FactoryMapDir)
+}
+
+// startFactoryMap starts a factory map container and returns its id.
+func startFactoryMap(t *testing.T, r *rig) string {
+	t.Helper()
 	ctx := context.Background()
 	spec := docker.ContainerSpec{
 		Image:  image21,
@@ -37,10 +47,7 @@ func runFactoryMap(t *testing.T, r *rig) string {
 	if err := r.docker.StartContainer(ctx, id); err != nil {
 		t.Fatal(err)
 	}
-	if c := r.inspect(id); c.State.Status != "exited" || c.State.ExitCode != 0 {
-		t.Fatalf("state %+v, want exited with 0", c.State)
-	}
-	return filepath.Join(r.world, gameenv.FactoryMapDir)
+	return id
 }
 
 // A factory map run leaves what the helper mod's output format says (SPEC
@@ -224,5 +231,22 @@ func TestFactoryMapEntitiesAreFromTheChartCorner(t *testing.T) {
 	lines := bytes.Split(b, []byte("\n"))
 	if got, want := string(lines[1]), "[0,96,96,97,97]"; got != want {
 		t.Errorf("first entity %s, want %s", got, want)
+	}
+}
+
+// Under the preview-mode "oom" hook a factory map run ends as the
+// out-of-memory killer would end it, with exit 137 and OOMKilled, and
+// leaves nothing (SPEC 14.3).
+func TestFactoryMapRunKilledForMemory(t *testing.T) {
+	r := newRig(t, fakegame.Config{})
+	if err := r.game.SetPreviewMode(fakegame.PreviewOOM); err != nil {
+		t.Fatal(err)
+	}
+	c := r.inspect(startFactoryMap(t, r))
+	if c.State.ExitCode != 137 || !c.State.OOMKilled {
+		t.Errorf("state = %+v, want exit 137 and OOMKilled", c.State)
+	}
+	if _, err := os.Stat(filepath.Join(r.world, gameenv.FactoryMapDir)); !os.IsNotExist(err) {
+		t.Errorf("a killed run left output: %v", err)
 	}
 }
