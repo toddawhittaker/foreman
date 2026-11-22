@@ -127,6 +127,22 @@ func (g *gameRig) waitResult(id, action string) error {
 	}
 }
 
+// waitOperation waits until the world's operation running now is the
+// action named, so the world is held until it ends.
+func (g *gameRig) waitOperation(id, action string) {
+	g.t.Helper()
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		if op := g.ctrl.Status(id).Operation; op != nil && op.Action == action && !op.Done {
+			return
+		}
+		if time.Now().After(deadline) {
+			g.t.Fatalf("the %s never began", action)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func (g *gameRig) startGame(id string) {
 	g.t.Helper()
 	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
@@ -867,6 +883,9 @@ func TestRefusedStopKeepsTheRestartsResult(t *testing.T) {
 	// and is refused. The image goes away meanwhile, so the restart's start
 	// then fails.
 	g.wantRedirectHome(g.post(gamePath(id, "restart"), url.Values{"countdown": {"2"}}))
+	// The redirect comes before the restart's goroutine holds the world, so
+	// the stop waits until the controller shows the restart running.
+	g.waitOperation(id, game.AuditRestart)
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
 	g.fake.SetImage(image21, false)
 	if err := g.waitResult(id, game.AuditRestart); !errors.Is(err, game.ErrImageMissing) {

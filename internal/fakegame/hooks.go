@@ -146,6 +146,25 @@ func (g *Game) SetOOM(name string, on bool) {
 	}
 }
 
+// HoldRestarts keeps Docker's restart policy from starting the named
+// container again after its game exits, as a slow restart would, so a
+// test decides whether a look at the exit comes before the restart.
+// Turning it off makes a restart that was held back now.
+func (g *Game) HoldRestarts(name string, on bool) {
+	g.mu.Lock()
+	b := g.behave[name]
+	b.holdRestart = on
+	held := b.held
+	if !on {
+		b.held = ""
+	}
+	g.behave[name] = b
+	g.mu.Unlock()
+	if !on && held != "" {
+		g.restart(held)
+	}
+}
+
 // FailStartPortInUse makes the next start of the named container fail as
 // Docker does when the host port is taken (see dockertest.PortInUseMessage).
 func (g *Game) FailStartPortInUse(name, hostPort string) {

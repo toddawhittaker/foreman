@@ -246,18 +246,27 @@ func (g *Game) scheduleRestart(id string) {
 	g.mu.Unlock()
 	g.daemon.WillRestart(id)
 
-	g.after(delay, func() {
-		g.mu.Lock()
-		c, ok := g.daemon.Container(id)
-		again := ok && c.Status == "restarting" && !g.manual[id] && !g.closed
-		if again {
-			g.daemon.Restart(id)
-		}
-		g.mu.Unlock()
-		if again {
-			g.boot(id)
-		}
-	})
+	g.after(delay, func() { g.restart(id) })
+}
+
+// restart is Docker's restart policy starting an exited container again,
+// unless HoldRestarts holds it back until it is turned off.
+func (g *Game) restart(id string) {
+	g.mu.Lock()
+	c, ok := g.daemon.Container(id)
+	again := ok && c.Status == "restarting" && !g.manual[id] && !g.closed
+	if b := g.behave[c.Name]; again && b.holdRestart {
+		b.held = id
+		g.behave[c.Name] = b
+		again = false
+	}
+	if again {
+		g.daemon.Restart(id)
+	}
+	g.mu.Unlock()
+	if again {
+		g.boot(id)
+	}
 }
 
 // shutdown ends the instance: it stops RCON and waits for its goroutines.
