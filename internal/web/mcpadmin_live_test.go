@@ -22,7 +22,9 @@ const hunter = "hunter2-unlikely"
 func (g *gameRig) consoleCommands(id string) []string {
 	var out []string
 	for _, c := range g.commands(id) {
-		if c != "/players online" {
+		// Foreman sends these itself: the online list, and /time for the
+		// play time (SPEC 8.15). The tests' own commands are never these.
+		if c != "/players online" && c != "/time" {
 			out = append(out, c)
 		}
 	}
@@ -402,18 +404,18 @@ func TestMCPConsoleRefusals(t *testing.T) {
 	g, cs, id := liveRig(t)
 	for name, args := range map[string]map[string]any{
 		"empty":       {"world_id": id, "command": "  "},
-		"two lines":   {"world_id": id, "command": "/time\n/players"},
-		"nul":         {"world_id": id, "command": "/time\x00"},
+		"two lines":   {"world_id": id, "command": "/evolution\n/players"},
+		"nul":         {"world_id": id, "command": "/evolution\x00"},
 		"too long":    {"world_id": id, "command": "/c " + strings.Repeat("x", 1001)},
-		"no world":    {"world_id": "nosuchworld", "command": "/time"},
-		"no world id": {"command": "/time"},
+		"no world":    {"world_id": "nosuchworld", "command": "/evolution"},
+		"no world id": {"command": "/evolution"},
 	} {
 		if res, out := call(t, cs, "run_console_command", args); !res.IsError || out[confirmCodeKey] != nil {
 			t.Errorf("%s was accepted: %s", name, resultText(res))
 		}
 	}
 	other := g.newWorld("Second", "2.1.24-no-space-age.zip", false)
-	if res, _ := call(t, cs, "run_console_command", map[string]any{"world_id": other, "command": "/time"}); !res.IsError || !strings.Contains(resultText(res), "not running") {
+	if res, _ := call(t, cs, "run_console_command", map[string]any{"world_id": other, "command": "/evolution"}); !res.IsError || !strings.Contains(resultText(res), "not running") {
 		t.Errorf("a stopped game: %s", resultText(res))
 	}
 	if len(g.consoleCommands(id)) != 0 {
@@ -424,7 +426,7 @@ func TestMCPConsoleRefusals(t *testing.T) {
 // SPEC 21.8: a code made for one command does not send another.
 func TestMCPConsoleCodeIsForTheCommandAsked(t *testing.T) {
 	g, cs, id := liveRig(t)
-	code := askCode(t, cs, "run_console_command", map[string]any{"world_id": id, "command": "/time"})
+	code := askCode(t, cs, "run_console_command", map[string]any{"world_id": id, "command": "/evolution"})
 	res, _ := call(t, cs, "run_console_command", map[string]any{"world_id": id, "command": "/players", confirmCodeKey: code})
 	if !res.IsError || len(g.consoleCommands(id)) != 0 {
 		t.Errorf("a code for another command: %s, sent %q", resultText(res), g.consoleCommands(id))
@@ -447,11 +449,12 @@ func TestMCPTwoStepToolsSpendTheCodeBeforeTheirChecks(t *testing.T) {
 	}
 	t.Run("run_console_command", func(t *testing.T) {
 		g, cs, id := liveRig(t)
-		args := map[string]any{"world_id": id, "command": "/time"}
+		// Not /time: Foreman asks that itself at the stop's save (SPEC 8.15).
+		args := map[string]any{"world_id": id, "command": "/evolution"}
 		code := askCode(t, cs, "run_console_command", args)
 		call(t, cs, "stop_server", map[string]any{"world_id": id, "countdown_seconds": 0})
 		spent(t, cs, "run_console_command", args, code)
-		if slices.Contains(g.consoleCommands(id), "/time") {
+		if slices.Contains(g.consoleCommands(id), "/evolution") {
 			t.Errorf("sent %q", g.consoleCommands(id))
 		}
 	})
