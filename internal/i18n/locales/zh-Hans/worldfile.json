@@ -1,0 +1,17 @@
+{
+  "worldfile.export.heading": "导出世界文件",
+  "worldfile.export.text": "把世界下载为一个 ZIP 文件，可导入另一个 Foreman：包含存档、模组、模组设置和游戏设置。",
+  "worldfile.export.size": "预计大小：{size}。",
+  "worldfile.export.saves.legend": "文件中的存档",
+  "worldfile.export.saves.all": "全部存档",
+  "worldfile.export.saves.loaded": "仅下次加载的存档",
+  "worldfile.export.saves.loaded_hint": "文件更小。较旧的存档和自动存档不会包含在内。",
+  "worldfile.export.running": "如果游戏正在运行，文件包含的是磁盘上最新的存档，它可能比玩家看到的内容落后几分钟。要包含全部内容，请先停止游戏。",
+  "worldfile.export.left_out": "文件不包含快照、游戏密码，也不包含 Foreman 对此世界的记录，例如审计日志、重启计划和通知。",
+  "worldfile.export.audit": "每次导出都会记录在审计日志中。",
+  "worldfile.export.warning": "存档和模组设置文件可能包含模组保存的内容，例如令牌。仅应与可信任的人分享该文件。",
+  "worldfile.export.button": "导出世界",
+  "worldfile.import.heading": "导入世界文件",
+  "worldfile.import.intro": "上传在另一个 Foreman 中用“导出世界”生成的文件。导入前会先显示文件中的内容。",
+  "worldfile.import.button": "上传世界文件"
+}

@@ -1,0 +1,157 @@
+{{define "title"}}{{t "factorymap.title" "world" .Page.World.Name}}{{end}}
+
+{{define "scripts"}}<link rel="stylesheet" href="{{static "factorymap.css"}}"><script src="{{static "factorymap.js"}}" defer></script>{{end}}
+
+{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name "" (t "factorymap.tab"))}}
+<div class="title-row">
+<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+</div>
+{{template "rail" $}}
+{{- /* News of a drawing that ends while the page is open; outside the region the script replaces, so it is said once (SPEC 5.16). */}}
+<p class="visually-hidden" role="status" id="factorymap-news"></p>
+{{template "factorymap-state" .}}
+{{- if .CanSetMode}}
+<form method="post" action="{{.ModePath}}" class="panel factorymap-mode">
+  <fieldset>
+    <legend><h2>{{t "factorymap.mode.heading"}}</h2></legend>
+    <label class="check"><input type="radio" name="mode" value="automatic"{{if eq .View.Mode.Mode "automatic"}} checked{{end}} aria-describedby="fm-mode-automatic"><span>{{t "factorymap.mode.automatic"}}</span></label>
+    <p class="hint" id="fm-mode-automatic">{{t "factorymap.mode.automatic_hint"}}</p>
+    <label class="check"><input type="radio" name="mode" value="manual"{{if or (eq .View.Mode.Mode "manual") (eq .View.Mode.Mode "")}} checked{{end}} aria-describedby="fm-mode-manual"><span>{{t "factorymap.mode.manual"}}</span></label>
+    <p class="hint" id="fm-mode-manual">{{t "factorymap.mode.manual_hint"}}</p>
+    <label class="check"><input type="radio" name="mode" value="off"{{if eq .View.Mode.Mode "off"}} checked{{end}} aria-describedby="fm-mode-off"><span>{{t "factorymap.mode.off"}}</span></label>
+    <p class="hint" id="fm-mode-off">{{t "factorymap.mode.off_hint"}}</p>
+  </fieldset>
+  <label class="check"><input type="checkbox" name="skip_online" value="on"{{if .View.Mode.SkipOnline}} checked{{end}} aria-describedby="fm-skip-hint"><span>{{t "factorymap.mode.skip_online"}}</span></label>
+  <p class="hint" id="fm-skip-hint">{{t "factorymap.mode.skip_online_hint"}}</p>
+  <div class="actions"><button type="submit">{{t "factorymap.mode.save"}}</button></div>
+</form>
+{{- end}}
+{{end}}
+{{- end}}
+
+{{- /* The live region. The page's script fetches it alone (?fragment=1) every 3 seconds while the state is "drawing" and swaps it in; dot is the FactoryMapPage. */}}
+{{define "factorymap-state" -}}
+<section class="factorymap" id="factorymap-state" data-state="{{.View.State}}" data-fragment="{{.FragmentPath}}" aria-labelledby="fm-heading">
+<h2 id="fm-heading" class="visually-hidden">{{t "factorymap.tab"}}</h2>
+{{- $v := .View}}
+<div class="factorymap__summary" data-news>
+{{- if eq $v.State "drawing"}}
+  <p class="message message--note" aria-busy="true">{{t "factorymap.state.drawing"}}</p>
+{{- else if eq $v.State "failed"}}
+  <div class="message message--error">
+    <p><strong>{{t "factorymap.state.failed"}}</strong> {{template "factorymap-failure" $v.Failure}}</p>
+    {{- if $v.Drawing.Surfaces}}<p>{{t "factorymap.state.failed_kept"}}</p>{{end}}
+  </div>
+{{- else if eq $v.State "unsupported"}}
+  <p class="message message--note">{{t "factorymap.state.unsupported" "version" .World.GameVersion}}</p>
+{{- else if eq $v.State "off"}}
+  <p class="message message--note">{{t "factorymap.state.off"}}</p>
+{{- else if eq $v.State "never"}}
+  <p>{{t "factorymap.state.never"}}</p>
+{{- end}}
+{{- if and $v.Drawing.Surfaces (not $v.Drawing.DrawnAt.IsZero)}}
+  <p class="hint">{{tHTML "factorymap.state.drawn" "when" (momentUTCSeconds $v.Drawing.DrawnAt) "save" (code $v.Drawing.Basis.Save) "version" $v.Drawing.GameVersion}}</p>
+{{- end}}
+</div>
+{{- if not .Refused.IsZero}}
+<div class="message message--error" id="fm-refused" tabindex="-1" autofocus>
+  <p>{{msg .Refused}}</p>
+</div>
+{{- end}}
+{{- if and .CanDraw (ne $v.State "drawing")}}
+<form method="post" action="{{.DrawPath}}" class="factorymap__draw">
+  {{- if .NeedMemory}}
+  <div class="message message--warning" id="fm-memory-note" tabindex="-1"{{if .Refused.IsZero}} autofocus{{end}}>
+    <p>{{if .MemoryBytes}}{{tHTML "factorymap.draw.memory_size" "size" (nowrap (bytes .MemoryBytes))}}{{else}}{{t "factorymap.draw.memory_note"}}{{end}}</p>
+  </div>
+  <input type="hidden" name="confirm_memory" value="1">
+  <div class="actions"><button type="submit" aria-describedby="fm-memory-note">{{t "factorymap.draw.confirm_memory"}}</button></div>
+  {{- else if and $v.PlayersOnline $v.Mode.SkipOnline}}
+  <p class="hint">{{t "factorymap.refused.players_online"}}</p>
+  {{- else}}
+  <div class="actions"><button type="submit">{{t "factorymap.draw.button"}}</button></div>
+  {{- end}}
+</form>
+{{- end}}
+{{- with $v.Drawing.Surfaces}}
+{{- $page := $}}
+{{- if gt (len .) 1}}
+<nav class="factorymap__surfaces" id="map-surfaces" aria-label="{{t "factorymap.surfaces.label"}}">
+  <ul role="list">
+  {{- range .}}
+    <li><a href="{{$page.SurfacePath .Index}}"{{if eq .Index $page.Surface}} aria-current="page"{{end}}>{{.Name}} <span class="hint">{{template "factorymap-kind" .Kind}}</span></a></li>
+  {{- end}}
+  </ul>
+</nav>
+{{- end}}
+{{- range .}}{{if eq .Index $page.Surface}}
+{{- $s := .}}
+<figure class="factorymap__view" data-width="{{.Width}}" data-height="{{.Height}}">
+  <figcaption>
+    <h3 id="fm-surface-name">{{.Name}}</h3>
+    {{- if gt .TilesPerPixel 1}}<p class="hint">{{t "factorymap.view.scale" "count" .TilesPerPixel}}</p>{{end}}
+    <p class="hint" id="fm-keys">{{t "factorymap.view.keys"}}</p>
+  </figcaption>
+  <div class="factorymap__stage">
+    <div class="factorymap__frame" id="map-frame" tabindex="0" role="group" aria-labelledby="fm-surface-name" aria-describedby="fm-keys">
+      <div class="factorymap__map">
+        <img src="{{$page.PicturePath .Index ""}}" alt="{{t "factorymap.view.alt" "surface" .Name}}" width="{{.Width}}" height="{{.Height}}" draggable="false">
+        {{- range $page.Categories}}
+        <img class="factorymap__layer" data-layer="{{.}}" data-src="{{$page.PicturePath $s.Index .}}" alt="" width="{{$s.Width}}" height="{{$s.Height}}" draggable="false" hidden>
+        {{- end}}
+      </div>
+    </div>
+    <div class="factorymap__zoom" hidden>
+      <button type="button" class="icon-button" data-zoom="out" aria-label="{{t "factorymap.view.zoom_out"}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+      <button type="button" class="icon-button" data-zoom="fit" aria-label="{{t "factorymap.view.fit"}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button type="button" class="icon-button" data-zoom="in" aria-label="{{t "factorymap.view.zoom_in"}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+    </div>
+  </div>
+  <p class="factorymap__status" id="map-status" role="status"></p>
+</figure>
+<fieldset class="factorymap__layers">
+  <legend>{{t "factorymap.layers.legend"}}</legend>
+  <ul role="list" class="factorymap__checks">
+  {{- range $page.Categories}}
+    <li><label class="check"><input type="checkbox" name="layer" value="{{.}}"><span class="factorymap__swatch" data-layer="{{.}}" aria-hidden="true"></span><span>{{template "factorymap-category" .}}</span></label></li>
+  {{- end}}
+  </ul>
+</fieldset>
+<p class="factorymap__download"><a id="map-download" href="{{$page.DownloadPath .Index}}" download data-base="{{$page.DownloadPath .Index}}">{{t "factorymap.download.png" "surface" .Name}}</a></p>
+{{- end}}{{end}}
+{{- end}}
+</section>
+{{- end}}
+
+{{- /* Words for the ids the server sends; one literal key each, so the catalogue check sees them. */}}
+{{define "factorymap-failure" -}}
+{{if eq (print .) "image-missing"}}{{t "factorymap.failure.image-missing"}}
+{{else if eq (print .) "out-of-memory"}}{{t "factorymap.failure.out-of-memory"}}
+{{else if eq (print .) "timeout"}}{{t "factorymap.failure.timeout"}}
+{{else if eq (print .) "mods-differ"}}{{t "factorymap.failure.mods-differ"}}
+{{else if eq (print .) "save-newer"}}{{t "factorymap.failure.save-newer"}}
+{{else if eq (print .) "too-large"}}{{t "factorymap.failure.too-large"}}
+{{else}}{{t "factorymap.failure.bad-output"}}
+{{- end}}
+{{- end}}
+{{define "factorymap-kind" -}}
+{{if eq (print .) "planet"}}{{t "factorymap.kind.planet"}}
+{{else if eq (print .) "platform"}}{{t "factorymap.kind.platform"}}
+{{else}}{{t "factorymap.kind.surface"}}
+{{- end}}
+{{- end}}
+{{define "factorymap-category" -}}
+{{if eq (print .) "belts"}}{{t "factorymap.category.belts"}}
+{{else if eq (print .) "production"}}{{t "factorymap.category.production"}}
+{{else if eq (print .) "power"}}{{t "factorymap.category.power"}}
+{{else if eq (print .) "fluids"}}{{t "factorymap.category.fluids"}}
+{{else if eq (print .) "rail"}}{{t "factorymap.category.rail"}}
+{{else if eq (print .) "defence"}}{{t "factorymap.category.defence"}}
+{{else if eq (print .) "logistics"}}{{t "factorymap.category.logistics"}}
+{{else}}{{t "factorymap.category.other"}}
+{{- end}}
+{{- end}}

@@ -1,2 +1,28 @@
-{{/* The world file export card, on the world page (SPEC 5.13). Task T6 writes it. */}}
-{{define "world-export"}}{{end}}
+{{/* The world file export card, on the world page (SPEC 5.13). Dot is the WorldPage. It posts, because it does work and writes an audit entry; the response is the file. */}}
+{{define "world-export"}}
+<div class="world-share">
+<form method="post" action="{{.ExportPath}}" class="panel card world-share__item world-export" novalidate aria-labelledby="export-heading">
+  <div class="world-share__head">
+    <h2 id="export-heading">{{t "worldfile.export.heading"}}</h2>
+    <p class="hint" id="export-hint">{{t "worldfile.export.text"}}{{if not .World.SizeUnknown}} {{t "worldfile.export.size" "size" (bytes .World.DiskBytes)}}{{end}}</p>
+  </div>
+  <div class="world-share__body">
+    <fieldset>
+      <legend>{{t "worldfile.export.saves.legend"}}</legend>
+      <label class="check"><input type="radio" id="export-saves-all" name="saves" value="all" checked> {{t "worldfile.export.saves.all"}}</label>
+      <label class="check"><input type="radio" id="export-saves-loaded" name="saves" value="loaded" aria-describedby="export-saves-loaded-hint"> {{t "worldfile.export.saves.loaded"}}</label>
+      <p class="hint" id="export-saves-loaded-hint">{{t "worldfile.export.saves.loaded_hint"}}</p>
+    </fieldset>
+    <p class="hint" id="export-running"><strong>{{t "common.label.note"}}</strong> {{t "worldfile.export.running"}}</p>
+    <p class="hint" id="export-left-out">{{t "worldfile.export.left_out"}} {{t "worldfile.export.audit"}}</p>
+    {{- /* The warning sits with the one action it is about, as the favorites export's does (DESIGN 7.11). */}}
+    <div class="message message--warning" id="export-warning">
+      <p><strong>{{t "common.label.warning"}}</strong> {{t "worldfile.export.warning"}}</p>
+    </div>
+    <div class="actions">
+      <button type="submit" class="button" id="act-export-world" aria-describedby="export-warning export-running">{{t "worldfile.export.button"}}</button>
+    </div>
+  </div>
+</form>
+</div>
+{{end}}

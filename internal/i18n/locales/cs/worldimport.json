@@ -1,0 +1,33 @@
+{
+  "worldimport.title": "Import souboru světa",
+  "worldimport.intro": "Zde se zobrazí obsah souboru. Nic se neimportuje, dokud se nestiskne „Importovat svět“.",
+  "worldimport.heading": "Obsah souboru",
+  "worldimport.zone.label": "Soubor světa",
+  "worldimport.fact.made_by": "Verze Foremanu",
+  "worldimport.fact.saves": "Uložené hry",
+  "worldimport.fact.mod_files": "Soubory modů",
+  "worldimport.saves.count": {
+    "one": "{count} uložená hra",
+    "few": "{count} uložené hry",
+    "other": "{count} uložených her"
+  },
+  "worldimport.mod_files.count": {
+    "one": "{count} soubor modu",
+    "few": "{count} soubory modů",
+    "other": "{count} souborů modů"
+  },
+  "worldimport.fact.size": "Velikost po rozbalení",
+  "worldimport.fact.loads": "Uložená hra, která se načte",
+  "worldimport.loads.none": "Žádná: svět vytvoří mapu při prvním spuštění.",
+  "worldimport.password_warning": "Heslo ke hře v souboru nebylo. Tento svět se spustí bez hesla, dokud se nenastaví v části „Nastavení hry“.",
+  "worldimport.mods_warning": "Foreman nekontroluje, co obsahují uložené hry a mody v tomto souboru. Importovat by se měly jen soubory, kterým se dá věřit. Mod může uchovávat cokoli, co zvolil jeho autor, včetně tokenu.",
+  "worldimport.name.label": "Název světa",
+  "worldimport.image.here": "Obraz hry ve verzi {version} je na tomto hostiteli už k dispozici.",
+  "worldimport.button": "Importovat svět",
+  "worldimport.error.bad": "Foreman tento soubor světa nedokáže přečíst. Může být poškozený nebo useknutý, případně nebyl exportován z Foremanu.",
+  "worldimport.error.newer": "Tento soubor světa vytvořila novější verze Foremanu, takže ho tato verze nepřečte. Je potřeba Foreman aktualizovat a zkusit to znovu.",
+  "worldimport.refused.title": "Foreman tento soubor nemůže importovat",
+  "worldimport.retry": "Zpět na import",
+  "worldimport.gone.title": "Nahraný soubor už není k dispozici",
+  "worldimport.gone": "Foreman nahraný soubor světa uchovává jednu hodinu a tento už tu není. Je potřeba ho nahrát znovu."
+}
