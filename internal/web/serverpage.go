@@ -123,10 +123,6 @@ func (p ServerPage) PullPath() string      { return gamePath(p.World.ID, "pull-i
 func (p ServerPage) ConsolePath() string   { return consolePath(p.World.ID, "") }
 func (p ServerPage) SnapshotPath() string  { return gamePath(p.World.ID, "take-snapshot") }
 
-// savePlayersAnchor is the id of the players panel on the world page, which
-// the "N players in this save" link goes to (SPEC 8.14, task A9's panel).
-const savePlayersAnchor = "save-players"
-
 // ShowPlayTime is true when the page says something about the save's play
 // time: its figure, or that the save is being read (SPEC 8.15). With no
 // record, nothing is shown, so no figure is invented.
