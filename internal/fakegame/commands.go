@@ -103,8 +103,28 @@ func (in *instance) run(name, args string) (reply string, logs []string) {
 		return in.whitelistCommand(player, rest)
 	case "c", "command", "silent-command", "sc":
 		return in.lua(name == "c" || name == "command", args)
+	case "time":
+		return in.playTime(), nil
 	}
 	return "", nil
+}
+
+// playTime answers plain /time with the game's total play time, in the
+// English form SPEC 8.15 reads: "H hours and M minutes", or "M minutes"
+// under an hour. Resolution is one minute, as in the game.
+func (in *instance) playTime() string {
+	minutes := int(in.elapsedLocked() / 60)
+	hours, minutes := minutes/60, minutes%60
+	unit := func(n int, word string) string {
+		if n == 1 {
+			return fmt.Sprintf("%d %s", n, word)
+		}
+		return fmt.Sprintf("%d %ss", n, word)
+	}
+	if hours == 0 {
+		return unit(minutes, "minute") + "\n"
+	}
+	return unit(hours, "hour") + " and " + unit(minutes, "minute") + "\n"
 }
 
 // firstWord splits at the first space; the rest has its leading spaces
