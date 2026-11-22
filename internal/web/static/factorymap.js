@@ -186,18 +186,40 @@
         if (region.isConnected) poll(region);
         return;
       }
-      const hadFocus = region.contains(document.activeElement);
-      region.replaceWith(next);
-      if (next.dataset.state !== "drawing") {
-        const news = document.getElementById("factorymap-news");
-        const summary = next.querySelector("[data-news]");
-        if (news && summary) news.textContent = summary.textContent.replace(/\s+/g, " ").trim();
-        if (hadFocus) {
-          const focus = next.querySelector(".factorymap__frame, button, a");
-          if (focus) focus.focus();
+      // Still drawing: swap only the parts a drawing changes, and only when
+      // they changed, so focus, zoom, ticked layers and a screen reader's
+      // place in a kept picture survive each poll.
+      if (next.dataset.state === "drawing") {
+        for (const sel of [".factorymap__summary", ".factorymap__draw", "#fm-refused"]) {
+          const old = region.querySelector(sel);
+          const now = next.querySelector(sel);
+          if (old && now) {
+            if (old.innerHTML !== now.innerHTML) old.replaceWith(now);
+          } else if (old) {
+            old.remove();
+          } else if (now) {
+            region.querySelector(".factorymap__summary").after(now);
+          }
         }
+        poll(region);
+        return;
       }
+      // The drawing ended: the whole region is swapped once, and focus goes
+      // back to the control that had it, matched by id, or by name and value.
+      const at = region.contains(document.activeElement) ? document.activeElement : null;
+      region.replaceWith(next);
+      const news = document.getElementById("factorymap-news");
+      const summary = next.querySelector("[data-news]");
+      if (news && summary) news.textContent = summary.textContent.replace(/\s+/g, " ").trim();
+      // Focus moves after start, which unhides the zoom buttons.
       start(next);
+      if (at) {
+        const match = (at.id && next.querySelector(`#${CSS.escape(at.id)}`)) ||
+          (at.name && next.querySelector(`[name="${CSS.escape(at.name)}"][value="${CSS.escape(at.value || "")}"]`)) ||
+          (at.dataset.zoom && next.querySelector(`[data-zoom="${CSS.escape(at.dataset.zoom)}"]`)) ||
+          next.querySelector(".factorymap__frame,button,a");
+        if (match) match.focus();
+      }
     }, pollMs);
   }
 
