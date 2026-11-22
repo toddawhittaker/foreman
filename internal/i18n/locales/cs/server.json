@@ -352,7 +352,7 @@
   "server.problem.modlist_space_age_off": "Space Age je pro tento svět vypnuto, ale mod-list.json zapíná: {mods} (nebo soubor chybí, a hra je pak zapne). Před spuštěním je třeba opravit seznam modů.",
   "server.problem.save_newer": "Uložená hra {save} byla vytvořena ve Factorio {save_version}, novějším než Factorio {version} tohoto světa. Starší hra ji nemůže načíst.",
   "server.problem.space_age_off": "{save} používá Space Age ({mods}), ale Space Age je pro tento svět vypnuto.",
-  "server.problem.stale_controls": "Nastavení mapy světa uvádí ovladače, které jeho mody už nemají: {names}. Hra s nimi nemůže vytvořit mapu. Je třeba nastavení mapy uložit znovu, tím se odstraní.",
+  "server.problem.stale_controls": "Nastavení mapy světa uvádí parametry, které jeho mody už nemají: {names}. Hra s nimi nemůže vytvořit mapu. Pro jejich odstranění je třeba nastavení mapy uložit znovu.",
   "server.problem.stale_controls_fix": "Otevřít nastavení mapy",
   "server.problem.mod_missing_one": "{save} používá {mods}, ale tento svět pro něj nemá soubor.",
   "server.problem.mod_missing_many": "{save} používá {mods}, ale tento svět pro ně nemá soubory.",

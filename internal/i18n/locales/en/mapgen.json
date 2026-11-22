@@ -135,7 +135,7 @@
   "mapgen.preview.limit": "This fast preview cannot show terrain a mod makes by script.",
   "mapgen.preview.limit_about": "what the fast preview cannot show",
   "mapgen.preview.limit_tip": "The fast preview draws the map from the map generator's settings alone. Some mods place terrain, water or resources with a script while the game makes the map, so those appear only in the game itself.",
-  "mapgen.preview.one_color": "A picture that is almost all one color has everything near the start outside the map. A larger preview size may show more.",
+  "mapgen.preview.one_color": "If a picture is almost all one color, everything near the start is outside the map. A larger preview size may show more.",
   "mapgen.preview.one_color_planets": "Almost all one color:",
   "mapgen.raw.err.not_object": "The map-gen settings must be one JSON object: keys between braces.",
   "mapgen.raw.err.other": "Line {line}: {key} has a value the game does not accept. The line reads: {text}",
