@@ -546,17 +546,17 @@ func TestNewMapSharedControl(t *testing.T) {
 	if got := l.controls["iron-ore"].planets; len(got) != 2 {
 		t.Fatalf("iron-ore planets %v", got)
 	}
-	post, err := l.controlValues([]mcpSetNewControl{{Planet: "moshine", Control: "iron-ore", Size: new(300)}})
+	post, err := l.controlValues([]mcpSetNewControl{{Planet: "moshine", Control: "iron-ore", Size: new(300.0)}})
 	if err != nil || post.Get(fieldName("nauvis", "iron-ore", "size")) != "300" || post.Get(fieldName("moshine", "iron-ore", "size")) != "300" {
 		t.Errorf("post %v, err %v", post, err)
 	}
 	// The same value under both planets, as get_new_map lists it, is fine.
 	if _, err := l.controlValues([]mcpSetNewControl{
-		{Planet: "nauvis", Control: "iron-ore", Size: new(300)}, {Planet: "moshine", Control: "iron-ore", Size: new(300)}}); err != nil {
+		{Planet: "nauvis", Control: "iron-ore", Size: new(300.0)}, {Planet: "moshine", Control: "iron-ore", Size: new(300.0)}}); err != nil {
 		t.Errorf("the same value twice: %v", err)
 	}
 	_, err = l.controlValues([]mcpSetNewControl{
-		{Planet: "nauvis", Control: "iron-ore", Size: new(300)}, {Planet: "moshine", Control: "iron-ore", Size: new(200)}})
+		{Planet: "nauvis", Control: "iron-ore", Size: new(300.0)}, {Planet: "moshine", Control: "iron-ore", Size: new(200.0)}})
 	if err == nil || !strings.Contains(err.Error(), `"nauvis"`) || !strings.Contains(err.Error(), "share") {
 		t.Errorf("two values for a shared control: %v", err)
 	}
@@ -567,7 +567,7 @@ func TestNewMapSharedControl(t *testing.T) {
 func TestMCPNewMapPostMakesTheFormsFiles(t *testing.T) {
 	cat := mapgen.Builtin("2.1", true)
 	w := mcpNewMapWorld{meta: world.Meta{GameVersion: "2.1.24", SpaceAge: true}, line: "2.1", cat: cat, layout: layoutNewMap("2.1", cat)}
-	post, err := mcpNewMapPost(w, mcpSetNewMapIn{Preset: "default", Seed: "9", Controls: []mcpSetNewControl{{Planet: "nauvis", Control: "iron-ore", Richness: new(400)}}})
+	post, err := mcpNewMapPost(w, mcpSetNewMapIn{Preset: "default", Seed: "9", Controls: []mcpSetNewControl{{Planet: "nauvis", Control: "iron-ore", Richness: new(400.0)}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -578,5 +578,110 @@ func TestMCPNewMapPostMakesTheFormsFiles(t *testing.T) {
 	f, files, ok := readMapForm(by, kindGenerate, mapInput{Line: "2.1", Cat: cat, MapKey: "2.1|1", Version: "2.1.24"})
 	if !ok || !f.Modified || files.Preset != "" || files.Seed == nil || *files.Seed != 9 || !strings.Contains(string(files.MapGenSettings), `"richness": 4`) {
 		t.Errorf("ok %v modified %v files %+v problems %v", ok, f.Modified, files, f.Problems())
+	}
+}
+
+// own is the code a planet's own default of a control's setting stands for,
+// found as the form finds it.
+func planetOwn(l newMapLayout, planet, control, key string) string {
+	return l.controls[control].defaults[planet][key]
+}
+
+// SPEC 5.6, 21.7: get_new_map starts each control at its planet's own
+// default, as the form does, in percent: a default of 150 is 15000.
+func TestMCPGetNewMapReportsThePlanetsOwnDefault(t *testing.T) {
+	r := newNMRig(t)
+	id := r.newMapWorld("Modded", "2.1.24", true, fakegame.FakePlanetMod)
+	_, out := call(t, r.cs, "get_new_map", map[string]any{"world_id": id})
+	ore := planetControl(t, out, fakegame.FakePlanet, fakegame.FakeOre)
+	if ore["richness"] != float64(fakegame.FakeOreRichness*100) || ore["size"] != float64(100) || ore["frequency"] != float64(100) {
+		t.Errorf("%s: %s", fakegame.FakeOre, asJSON(ore))
+	}
+	if stone := planetControl(t, out, fakegame.FakePlanet, "stone"); stone["richness"] != float64(100) {
+		t.Errorf("stone: %s", asJSON(stone))
+	}
+}
+
+// SPEC 5.6, 21.7: what get_new_map reports, set_new_map takes back, so a
+// planet's own default is written back as it is.
+func TestMCPNewMapRoundTripsThePlanetsOwnDefault(t *testing.T) {
+	r := newNMRig(t)
+	id := r.newMapWorld("Modded", "2.1.24", true, fakegame.FakePlanetMod)
+	_, out := call(t, r.cs, "get_new_map", map[string]any{"world_id": id})
+	ore := planetControl(t, out, fakegame.FakePlanet, fakegame.FakeOre)
+	// Another control changes, so settings files are written at all.
+	res, _ := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "seed": "7", "controls": []any{
+		controlArgs("nauvis", "iron-ore", "richness", 200),
+		controlArgs(fakegame.FakePlanet, fakegame.FakeOre, "frequency", ore["frequency"], "size", ore["size"], "richness", ore["richness"], "enabled", ore["enabled"])}})
+	if res.IsError {
+		t.Fatalf("set_new_map: %s", resultText(res))
+	}
+	file := string(r.config(id, world.MapGenSettingsFile).Data)
+	if !strings.Contains(file, `"`+fakegame.FakeOre+`": {`) || !strings.Contains(file, `"richness": 150`) {
+		t.Errorf("the default was not written back: %s", file)
+	}
+	_, again := call(t, r.cs, "get_new_map", map[string]any{"world_id": id})
+	if got := planetControl(t, again, fakegame.FakePlanet, fakegame.FakeOre); got["richness"] != ore["richness"] {
+		t.Errorf("after the save: %s", asJSON(got))
+	}
+}
+
+// SPEC 5.6, 21.7: a value that is no step and not the planet's own default
+// stays refused, and so does another planet's default.
+func TestMCPSetNewMapRefusesAValueThatIsNotThePlanetsDefault(t *testing.T) {
+	r := newNMRig(t)
+	id := r.newMapWorld("Modded", "2.1.24", true, fakegame.FakePlanetMod)
+	for _, c := range []struct {
+		name string
+		ctl  map[string]any
+	}{
+		{"off the steps", controlArgs(fakegame.FakePlanet, fakegame.FakeOre, "richness", 12345)},
+		{"another control's default", controlArgs(fakegame.FakePlanet, fakegame.FakeOre, "size", fakegame.FakeOreRichness*100)},
+		{"a planet's default on a planet with none", controlArgs(fakegame.FakePlanet, "stone", "richness", fakegame.FakeOreRichness*100)},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			res, _ := call(t, r.cs, "set_new_map", map[string]any{"world_id": id, "controls": []any{c.ctl}})
+			if !res.IsError || !strings.Contains(resultText(res), "not a value the control supports") {
+				t.Errorf("%s", resultText(res))
+			}
+			if r.config(id, world.MapGenSettingsFile).Found {
+				t.Error("a refusal wrote the settings")
+			}
+		})
+	}
+}
+
+// SPEC 5.6: a default that is a fraction of a percent is told and taken as
+// the form shows it, and one the planets of a shared control do not all have
+// is refused for the control's one value.
+func TestNewMapPlanetDefaultsOfTheLayout(t *testing.T) {
+	cat := moddedCatalogue()
+	cat.Planets[len(cat.Planets)-1].Controls = []string{"moshine_ore", "iron-ore"}
+	cat.Planets[len(cat.Planets)-1].Defaults = map[string]mapgen.ControlDefault{
+		"moshine_ore": {Richness: new(0.125)}, "iron-ore": {Richness: new(1.2)}}
+	ctl := cat.Controls["iron-ore"]
+	ctl.Planets = append(slices.Clone(ctl.Planets), "moshine")
+	cat.Controls["iron-ore"] = ctl
+	l := layoutNewMap("2.1", cat)
+	if got := planetOwn(l, "moshine", "moshine_ore", "richness"); got != "x0.125" {
+		t.Fatalf("code %q", got)
+	}
+	post, err := l.controlValues([]mcpSetNewControl{{Planet: "moshine", Control: "moshine_ore", Richness: new(12.5)}})
+	if err != nil || post.Get(fieldName("moshine", "moshine_ore", "richness")) != "x0.125" {
+		t.Errorf("post %v, err %v", post, err)
+	}
+	if got := mcpPercent("x0.125"); got != 12.5 {
+		t.Errorf("percent %v", got)
+	}
+	if got := mcpPercent("71"); got != 71 {
+		t.Errorf("percent of the step 71: %v", got)
+	}
+	_, err = l.controlValues([]mcpSetNewControl{{Planet: "moshine", Control: "iron-ore", Richness: new(120.0)}})
+	if err == nil || !strings.Contains(err.Error(), "share") {
+		t.Errorf("a default only one sharing planet has: %v", err)
+	}
+	// The same, set to the other planet's own value, is as refused as any off the steps.
+	if _, err := l.controlValues([]mcpSetNewControl{{Planet: "moshine", Control: "moshine_ore", Richness: new(12.0)}}); err == nil {
+		t.Error("12 percent was taken")
 	}
 }
