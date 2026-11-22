@@ -9,8 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -149,7 +152,8 @@ func TestWorldExportRefusals(t *testing.T) {
 		{"unknown choice", "saves=everything", nil, http.StatusBadRequest, "all saves or only the save that loads next"},
 		{"busy world", "", world.ErrBusy, http.StatusConflict, "Another operation is running on this world"},
 		{"newer world", "", world.ErrNewerFormat, http.StatusConflict, "A newer version of Foreman wrote this world"},
-		{"special file", "", &world.UnsupportedFileError{Path: "saves/link.zip"}, http.StatusConflict, "saves/link.zip is a symlink or special file"},
+		{"special file", "", &world.ExportFileError{Path: "saves/link.zip", Reason: "is a symlink"}, http.StatusConflict, "saves/link.zip"},
+		{"too many files", "", world.ErrExportTooManyFiles, http.StatusConflict, "more files than a world file can hold"},
 		{"no space", "", &world.NoSpaceError{Need: 10 << 20, Free: 1 << 20}, http.StatusInsufficientStorage, "disk"},
 	}
 	for _, tc := range tests {
@@ -325,10 +329,7 @@ func TestWorldPageExportPath(t *testing.T) {
 func TestWorldExportOfARealWorld(t *testing.T) {
 	hn := newHarness(t, nil)
 	c := hn.signIn()
-	id, _ := savesWorld(t, hn)
-	if _, err := hn.worlds.PrepareExport(context.Background(), id, world.ExportAllSaves); err != nil && err.Error() == "not built" {
-		t.Skip("task T1's export core has not merged into this branch yet")
-	}
+	id, dir := savesWorld(t, hn)
 	rec := hn.postLong("/worlds/"+id+"/export", url.Values{"saves": {"all"}}, c)
 	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/zip" {
 		t.Fatalf("export: %d %v\n%s", rec.Code, rec.Header(), rec.Body.String())
@@ -352,5 +353,69 @@ func TestWorldExportOfARealWorld(t *testing.T) {
 	}
 	if got := hn.audits(AuditWorldExport); len(got) != 1 || got[0] != "alice "+id+" all saves" {
 		t.Errorf("audit %v", got)
+	}
+
+	// A symlink in the world refuses the export, and the refusal is in the
+	// page's main region; nothing is audited and no staging folder is left.
+	if err := os.Symlink("/etc/passwd", filepath.Join(dir, "saves", "link.zip")); err != nil {
+		t.Fatal(err)
+	}
+	rec = hn.postLong("/worlds/"+id+"/export", url.Values{"saves": {"loaded"}}, c)
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "saves/link.zip") || !strings.Contains(rec.Body.String(), "<main") ||
+		strings.Contains(rec.Header().Get("Content-Type"), "zip") {
+		t.Errorf("symlink: %d %v\n%s", rec.Code, rec.Header(), rec.Body.String())
+	}
+	if got := hn.audits(AuditWorldExport); len(got) != 1 {
+		t.Errorf("a refused export was audited: %v", got)
+	}
+	if left, _ := filepath.Glob(filepath.Join(hn.worlds.Dirs().Worlds, ".staging-*")); len(left) != 0 {
+		t.Errorf("staging folders left: %v", left)
+	}
+}
+
+// failingWriter is a browser that leaves after limit bytes.
+type failingWriter struct {
+	*httptest.ResponseRecorder
+	limit int
+}
+
+func (f *failingWriter) Write(p []byte) (int, error) {
+	if f.limit -= len(p); f.limit < 0 {
+		return 0, syscall.EPIPE
+	}
+	return f.ResponseRecorder.Write(p)
+}
+
+// SPEC 5.13: a client that disconnects mid-download breaks the response
+// (no complete-looking file), and the real core leaves no staging folder
+// and gives back its place.
+func TestWorldExportClientLeavingMidDownload(t *testing.T) {
+	hn := newHarness(t, nil)
+	id, dir := savesWorld(t, hn)
+	alice := hn.addUser("alice", testPassword)
+	if err := os.WriteFile(filepath.Join(dir, "saves", "big.zip"), bytes.Repeat([]byte("0123456789abcdef"), 1<<17), 0o600); err != nil { // 2 MiB
+		t.Fatal(err)
+	}
+	s := exportServer(t, hn)
+	slots := make(chan struct{}, maxExports)
+	h := s.exportHandler(s.prepareExport, slots)
+	fw := &failingWriter{ResponseRecorder: httptest.NewRecorder(), limit: 64 << 10}
+	func() {
+		defer func() {
+			if v, _ := recover().(error); !errors.Is(v, http.ErrAbortHandler) {
+				t.Errorf("recovered %v, want http.ErrAbortHandler", v)
+			}
+		}()
+		h(fw, exportRequest(id, ""), alice)
+		t.Error("a client that left did not abort the response")
+	}()
+	if left, _ := filepath.Glob(filepath.Join(hn.worlds.Dirs().Worlds, ".staging-*")); len(left) != 0 {
+		t.Errorf("staging folders left: %v", left)
+	}
+	if len(slots) != 0 {
+		t.Errorf("%d places still held", len(slots))
+	}
+	if strings.Contains(hn.logs.String(), `"level":"ERROR"`) {
+		t.Errorf("a client leaving was logged as an error:\n%s", hn.logs.String())
 	}
 }

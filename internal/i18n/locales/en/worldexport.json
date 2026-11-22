@@ -1,5 +1,6 @@
 {
   "worldexport.busy": "Two exports are already running. Wait for one to finish and try again.",
+  "worldexport.error.file": "This world holds a file that a world file cannot carry: {path}. It is a symlink or special file, has a name a world file cannot hold, or is a server-settings.json that is not one JSON object. Fix or remove it, then try again.",
   "worldexport.error.saves": "Choose all saves or only the save that loads next.",
-  "worldexport.error.special_file": "This world holds a file that a world file cannot keep: {path} is a symlink or special file. Remove it or replace it with a copy, then try again."
+  "worldexport.error.too_many": "This world has more files than a world file can hold, so it cannot be exported."
 }

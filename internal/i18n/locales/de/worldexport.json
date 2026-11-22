@@ -1,5 +1,6 @@
 {
   "worldexport.busy": "Es laufen bereits zwei Exporte. Warte, bis einer fertig ist, und versuche es erneut.",
+  "worldexport.error.file": "Diese Welt enthält eine Datei, die eine Weltdatei nicht aufnehmen kann: {path}. Sie ist ein Symlink oder eine Spezialdatei, hat einen Namen, den eine Weltdatei nicht enthalten kann, oder ist eine server-settings.json, die kein einzelnes JSON-Objekt ist. Korrigiere oder entferne sie und versuche es dann erneut.",
   "worldexport.error.saves": "Wähle alle Speicherstände oder nur den Speicherstand, der als Nächstes geladen wird.",
-  "worldexport.error.special_file": "Diese Welt enthält eine Datei, die eine Weltdatei nicht aufnehmen kann: {path} ist ein Symlink oder eine Spezialdatei. Entferne sie oder ersetze sie durch eine Kopie und versuche es dann erneut."
+  "worldexport.error.too_many": "Diese Welt hat mehr Dateien, als eine Weltdatei aufnehmen kann, daher lässt sie sich nicht exportieren."
 }

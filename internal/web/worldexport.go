@@ -115,9 +115,16 @@ func (s *server) exportHandler(prepare func(context.Context, string, world.Expor
 
 // exportRefused words a refusal of the export core.
 func (s *server) exportRefused(w http.ResponseWriter, r *http.Request, u store.User, err error) {
-	if ue, ok := errors.AsType[*world.UnsupportedFileError](err); ok {
+	// A file the world file cannot carry, or too many files (SPEC 5.13,
+	// 14.6). The words name the path and never the file's contents.
+	if fe, ok := errors.AsType[*world.ExportFileError](err); ok {
 		s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict,
-			Detail: i18n.M("worldexport.error.special_file", "path", ue.Path)})
+			Detail: i18n.M("worldexport.error.file", "path", fe.Path)})
+		return
+	}
+	if errors.Is(err, world.ErrExportTooManyFiles) {
+		s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict,
+			Detail: i18n.M("worldexport.error.too_many")})
 		return
 	}
 	status, msg, ok := s.refusal(w, r, u, "export world", err)
