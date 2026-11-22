@@ -123,6 +123,8 @@ test("the phone Console command bar never covers the focused control", async ({ 
 // behind it (WCAG 2.4.11, DESIGN 6, Shell).
 test("the status strip never covers a control reached with Shift+Tab", async ({ page, foreman, fakeGame }) => {
   test.skip((page.viewportSize()?.width ?? 0) < 1024, "the strip sticks from 64rem only");
+  // Step 1 of Generate is short, so a low window gives it room to scroll.
+  await page.setViewportSize({ width: page.viewportSize()!.width, height: 360 });
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
