@@ -533,7 +533,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
 
 - **A guided flow in three steps** (Todd's ruling, 2026-11-21, #775). Each
   step is its own page, and a step bar of three links above each one names
-  them and marks the current one.
+  them and marks the current one. On step 1 the bar is there too, with
+  step 1 current; steps 2 and 3 show as plain text, not links, until the
+  world exists.
   1. **Make the world**: name, game version, Space Age, optionally a
      favorite (5.12), and the image download. This writes the world folder
      and `world.json` with `new_map`, and the world counts as generated.
@@ -546,8 +548,10 @@ not) or a map exchange string, with Space Age on or off. (P0)
      the settings files below. It takes no snapshot, because the world has
      no save. It is refused once the world has a save, and while the
      world's server is starting, running, stopping, crashed or crash-looping,
-     because the first start makes the map before any save exists. That
-     check runs under the world's lock, so a start cannot slip in between.
+     because the first start makes the map before any save exists. It is
+     also refused when the server's state is unknown because Docker cannot
+     be reached. That check runs under the world's lock, so a start cannot
+     slip in between.
 
   The first start then creates the map. Everything below about the map
   form, the leave dialog and the preview belongs to step 3, and "the
@@ -590,7 +594,8 @@ not) or a map exchange string, with Space Age on or off. (P0)
     control two planets share is written once; a later planet's copy wins
     only when the person moved it.
   - **Saving needs the world's own list.** While the embedded list stands
-    in for a world that has mods of its own, step 3 refuses to save, because
+    in for a world that has mods of its own, step 3 and `set_new_map` refuse
+    to save, because
     saving would drop every setting of the mods' planets. The page offers a
     retry and a link to the Mods tab.
   - **Modded resources** are named with their resolved names, but have no
@@ -986,7 +991,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
       as no files counts as the files the form writes for it.
 - Generate records the audit entry `generate` (12.9). Saving step 3, from the page or through
   `set_new_map`, records `new-map`, naming the preset and whether it was
-  modified. A refusal appears on
+  modified, and ending with the game version. A refusal appears on
   the form, in the page's language.
 
 5.7. **Clone** a world into a new world, then either start a fresh map or
@@ -2858,7 +2863,10 @@ restart schedule or to a webhook (7.12, 8.10), never with the webhook's
 address, a world file export and import as `world-export` and
 `world-import` (5.13, 5.14), the autosave tidy (11.6), and turning the public mods page on
 or off (9.16). A manual snapshot and a restore are recorded as `snapshot`
-and `restore`, with the token's name when they come through MCP. API
+and `restore`, with the token's name when they come through MCP. Saving a
+new world's map settings (5.6) records `new-map`, whose detail names the
+preset (or a map exchange string), whether it was modified, and ends with
+the world's game version. API
 tokens record `token-create`, `token-renew` and
 `token-revoke`, each naming the token, its owner and its scope. Turning
 MCP access on or off records `mcp-set` with the detail "on" or "off"
@@ -3137,7 +3145,9 @@ and copies of the world's `mod-list.json` and `mod-settings.dat`. It never
 holds the world's own folder. A world mod with the name of the run's
 control-only mod refuses the run. The planets a run may draw are checked
 against the planet list Foreman took from that world's stored run, never
-against anything the form posted. The limits stay 1 GiB, and the time
+against anything the form posted. The check uses the Space Age the world's
+enabled mods give, the same answer the planet list uses, so a world whose
+flag disagrees with its mods is not refused. The limits stay 1 GiB, and the time
 limit is 60 seconds for each planet drawn, at most 10 minutes in all so
 a run cannot hold the one slot for long: with five planet mods, one
 planet took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB
@@ -4083,7 +4093,9 @@ the form offers or the planet's own default for that control; a planet
 default on a control shared with a planet that lacks it is refused, with
 a message about the shared value. Percentages are numbers, as above. Like
 the page, it is refused while the world's server is starting, running,
-stopping, crashed or crash-looping (5.6). It carries the annotations of
+stopping, crashed or crash-looping, or when its state is unknown (5.6),
+and while the built-in planets stand in for the world's own (5.6). It
+carries the annotations of
 `generate_world` and the audit entry `new-map` (12.9).
 
 `add_webhook` and `change_webhook` take `url`, or for the Pushover preset

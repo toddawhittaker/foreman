@@ -4984,8 +4984,20 @@ Rulings (Todd, 2026-11-22, then the plan's own):
   names from a removed mod, so the stale-controls check needs no extension.
 - **Translations (SPEC 22.6; #865).** New and changed strings are in all
   eight languages. A second review fixed 61 keys in `server`, `newmap`,
-  `mapgen` and `audit`. PLACEHOLDER: the second review of `worlds`, `mods`
-  and `js`, to be filled in when its pull request merges.
+  `mapgen` and `audit`. A second round (#868) read `worlds` and `mods`, 8
+  keys in each language, and changed 7: de 1, es 2, pl 3 and ru 1. Nothing
+  in `js` changed.
+- **Integration review fixes (#869).** Space Age has one definition, taken
+  from the world's enabled mods, for the planet list, previews and
+  real-game pictures, so a world whose flag disagrees with its mods is no
+  longer refused. `set_new_map` refuses while the built-in planets stand in
+  for a world's mods, as step 3 does. The step 3 save and `set_new_map` also
+  refuse when the server's state is unknown because Docker cannot be
+  reached. Step 1 shows the step bar, with steps 2 and 3 as plain text until
+  the world exists. On the review page, Skip comes after Install. Both
+  audit details end with the game version. Dead and duplicated code is
+  removed, and `mapgen.StaleControls` is shared by step 3 and the pre-start
+  check.
 - **Flaky tests fixed on the epic (#857, #861, #864, #866).** #857 added a missing
   `{count}` to a plural string that CI refused. #861, #864 and #866 fixed races in tests. None was
   a product bug.

@@ -2251,8 +2251,10 @@ three links: "1. World", "2. Mods" and "3. Map settings". The current one
 carries `aria-current="step"`, and the links are the way between steps
 when there is no script. The `nav` sits in a `div`, because a subnav
 straight under `main` is the area tabs' phone copy, which is hidden on a
-wide screen. It shows on step 3, and on the Mods tab and the review while
-the world is Unfinished.
+wide screen. It shows on step 1 with "1. World" current, where steps 2 and 3
+are plain text (a `span`, styled like the other tabs) because the world does
+not exist yet. It shows as links on step 3, and on the Mods tab and the
+review while the world is Unfinished.
 
 **Step 1**, `GET /generate`: one `h1` with a one-line hint, then one form,
 in this order:
@@ -2275,8 +2277,8 @@ lands on the review instead (SPEC 5.12).
 world each shows the step bar with "2. Mods" current. The Mods tab has a
 "Skip to map settings" link under the bar. After a mod change its Done box
 shows "Next: map settings", a button (SPEC 17.9), in place of Skip. The
-review has "Skip to map settings" beside Cancel, or "Next: map settings"
-when the plan changes nothing. A world with a save shows none of this.
+review has "Skip to map settings" after the Install button in source
+order, or "Next: map settings" when the plan changes nothing. A world with a save shows none of this.
 
 **Unfinished worlds** carry a plain `badge` "Unfinished" beside the name
 on the Worlds list and on the world page. A list row's one action is
