@@ -65,7 +65,7 @@
 {{- if and .CanDraw (ne $v.State "drawing")}}
 <form method="post" action="{{.DrawPath}}" class="factorymap__draw">
   {{- if .NeedMemory}}
-  <div class="message message--warning" id="fm-memory-note" tabindex="-1" autofocus>
+  <div class="message message--warning" id="fm-memory-note" tabindex="-1"{{if .Refused.IsZero}} autofocus{{end}}>
     <p>{{if .MemoryBytes}}{{tHTML "factorymap.draw.memory_size" "size" (nowrap (bytes .MemoryBytes))}}{{else}}{{t "factorymap.draw.memory_note"}}{{end}}</p>
   </div>
   <input type="hidden" name="confirm_memory" value="1">
@@ -90,7 +90,7 @@
 {{- end}}
 {{- range .}}{{if eq .Index $page.Surface}}
 {{- $s := .}}
-<figure class="factorymap__view" data-width="{{.Width}}" data-height="{{.Height}}" data-zoom-text="{{t "factorymap.view.zoom"}}">
+<figure class="factorymap__view" data-width="{{.Width}}" data-height="{{.Height}}">
   <figcaption>
     <h3 id="fm-surface-name">{{.Name}}</h3>
     {{- if gt .TilesPerPixel 1}}<p class="hint">{{t "factorymap.view.scale" "count" .TilesPerPixel}}</p>{{end}}

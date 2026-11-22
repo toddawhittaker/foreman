@@ -34,7 +34,7 @@
   "factorymap.mode.skip_online": "Ne pas dessiner un monde en cours tant que des joueurs sont en ligne",
   "factorymap.mode.skip_online_hint": "Lire la sauvegarde d’un monde en cours utilise de la mémoire en plus sur l’hôte.",
   "factorymap.refused.archived": "Ce monde est archivé, donc aucune carte de l’usine n’est dessinée.",
-  "factorymap.refused.confirm_memory": "Cochez la case pour dessiner à côté de la partie en cours.",
+  "factorymap.refused.confirm_memory": "Dessiner à côté de la partie en cours demande d’abord votre confirmation.",
   "factorymap.refused.no_save": "Ce monde n’a pas encore de sauvegarde à dessiner.",
   "factorymap.refused.not_supported": "Les cartes de l’usine demandent Factorio 2.0.61 ou plus récent.",
   "factorymap.refused.off": "La carte de l’usine est désactivée pour ce monde.",
@@ -56,7 +56,6 @@
     "one": "Un pixel fait {count} case de large.",
     "other": "Un pixel fait {count} cases de large."
   },
-  "factorymap.view.zoom": "Zoom {level}",
   "factorymap.view.zoom_in": "Zoom avant",
   "factorymap.view.zoom_out": "Zoom arrière"
 }

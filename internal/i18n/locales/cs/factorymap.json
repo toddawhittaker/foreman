@@ -34,7 +34,7 @@
   "factorymap.mode.skip_online": "Nekreslit běžící svět, dokud jsou hráči online",
   "factorymap.mode.skip_online_hint": "Čtení uložené hry běžícího světa spotřebuje na hostiteli paměť navíc.",
   "factorymap.refused.archived": "Tento svět je archivovaný, proto se mapa továrny nekreslí.",
-  "factorymap.refused.confirm_memory": "Pro kreslení vedle běžící hry je třeba zaškrtnout políčko.",
+  "factorymap.refused.confirm_memory": "Kreslení vedle běžící hry je nejprve třeba potvrdit.",
   "factorymap.refused.no_save": "Tento svět zatím nemá uloženou hru ke kreslení.",
   "factorymap.refused.not_supported": "Mapy továrny vyžadují Factorio 2.0.61 nebo novější.",
   "factorymap.refused.off": "Mapa továrny je pro tento svět vypnutá.",
@@ -57,7 +57,6 @@
     "few": "Jeden pixel jsou {count} pole na šířku.",
     "other": "Jeden pixel je {count} polí na šířku."
   },
-  "factorymap.view.zoom": "Přiblížení {level}",
   "factorymap.view.zoom_in": "Přiblížit",
   "factorymap.view.zoom_out": "Oddálit"
 }

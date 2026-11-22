@@ -34,7 +34,7 @@
   "factorymap.mode.skip_online": "有玩家在线时不绘制运行中的世界",
   "factorymap.mode.skip_online_hint": "读取运行中世界的存档会占用主机额外的内存。",
   "factorymap.refused.archived": "此世界已归档，因此不绘制工厂地图。",
-  "factorymap.refused.confirm_memory": "勾选此框即可在运行中的游戏旁绘制。",
+  "factorymap.refused.confirm_memory": "在运行中的游戏旁绘制需要先确认。",
   "factorymap.refused.no_save": "此世界还没有可绘制的存档。",
   "factorymap.refused.not_supported": "工厂地图需要 Factorio 2.0.61 或更新版本。",
   "factorymap.refused.off": "此世界的工厂地图已关闭。",
@@ -55,7 +55,6 @@
   "factorymap.view.scale": {
     "other": "一个像素宽 {count} 格。"
   },
-  "factorymap.view.zoom": "缩放 {level}",
   "factorymap.view.zoom_in": "放大",
   "factorymap.view.zoom_out": "缩小"
 }
