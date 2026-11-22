@@ -658,7 +658,7 @@ startGenerateWithForm(() => {
     if (e.target.closest("#line-box, #large-settings") || (type === "change" && e.target.closest(".version-fields"))) hideUndo();
   }));
 
-  const actions = "#preview-button, #generate-button, #generate-default";
+  const actions = "#preview-button, #generate-button, #newmap-save, #generate-default";
   const isPreview = (e) => e.detail.elt && e.detail.elt.id === "preview-button";
 
   function setBusy(on) {
