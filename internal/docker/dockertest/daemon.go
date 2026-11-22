@@ -83,6 +83,7 @@ type Daemon struct {
 	containers []*Container
 	serial     int
 	calls      []Call
+	creates    []Container // every create asked for, with its name and spec
 	failStatus int
 	failMsg    string
 	callFail   map[string]failure // by "METHOD action", for container calls
@@ -249,6 +250,14 @@ func (d *Daemon) Pulls() []string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return append([]string(nil), d.pulls...)
+}
+
+// Creates lists every container create asked for so far, in order, with the
+// name and spec it was asked with, whether or not the daemon made it.
+func (d *Daemon) Creates() []Container {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return append([]Container(nil), d.creates...)
 }
 
 // Calls lists every request received so far, in order.

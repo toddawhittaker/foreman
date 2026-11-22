@@ -320,7 +320,8 @@ func (c *Controller) makeSaveCopyDir(base *os.Root, id, gameVersion string, m sa
 	if err := dir.WriteFile("config.ini", []byte(saveCopyConfig), world.FileMode); err != nil {
 		return fail(err)
 	}
-	unlock, err := c.worlds.Lock(id)
+	// LockBackground, since Lock would cancel this read and wait for it.
+	unlock, err := c.worlds.LockBackground(id)
 	if err != nil {
 		return fail(err)
 	}
@@ -608,9 +609,10 @@ func saveCopyError(err error) error {
 
 // beginStartSaveCopies marks the world as starting, so no save read of it
 // begins, then kills every read of it that is running and waits until each
-// has removed its container and released the world (SPEC 8.16). Start calls
-// it first, so a read can never hold the world's lock it needs; it calls the
-// returned function when it ends.
+// has removed its container and released the world (SPEC 8.16). Start and
+// every launch call it first, and so does world.Manager.Lock (SetLockYield),
+// so a read never holds the world's lock a user's operation needs; each
+// calls the returned function when it ends.
 func (c *Controller) beginStartSaveCopies(id string) (end func()) {
 	end = c.saveCopies.beginStart(id)
 	c.cancelSaveCopies(id)

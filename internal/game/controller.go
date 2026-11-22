@@ -333,7 +333,7 @@ func New(cfg Config) (*Controller, error) {
 		log = slog.Default()
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Controller{
+	c := &Controller{
 		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit, switches: cfg.Switches,
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
@@ -354,7 +354,11 @@ func New(cfg Config) (*Controller, error) {
 		events: make(chan notify.Message, eventBuffer), eventsFrom: time.Now(),
 		freeBytes: world.FreeBytes,
 		seeds:     seedState{noAuto: cfg.NoAutoPlayersRead},
-	}, nil
+	}
+	// Every operation that takes a world's lock first cancels that world's
+	// save reads, so it is never refused because of one (SPEC 8.16).
+	cfg.Worlds.SetLockYield(c.beginStartSaveCopies)
+	return c, nil
 }
 
 // tcpHost returns the host a tcp:// DOCKER_HOST names, else "".
