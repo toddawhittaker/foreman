@@ -1,0 +1,1 @@
+-- Foreman's factory map mod. Written by task F1 (docs/EPIC-fixes-16.md).

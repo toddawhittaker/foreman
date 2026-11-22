@@ -628,7 +628,7 @@ test.describe("world pages", () => {
     test(`${path} shows the world's tabs with ${current} marked`, async ({ page }) => {
       await page.goto(path);
       const tabs = page.getByRole("navigation", { name: "World pages" });
-      await expect(tabs.getByRole("link")).toHaveText(["Overview", "Saves", "Snapshots", "Mods", "Game settings"]);
+      await expect(tabs.getByRole("link")).toHaveText(["Overview", "Saves", "Snapshots", "Factory map", "Mods", "Game settings"]);
       await expect(tabs.getByRole("link", { name: current })).toHaveAttribute("aria-current", "true");
       await expect(tabs.locator("[aria-current=page]")).toHaveCount(0);
       await checkPage(page);
