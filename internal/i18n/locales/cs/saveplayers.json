@@ -24,7 +24,7 @@
   "saveplayers.read.again": "Přečíst znovu",
   "saveplayers.read.memory": "Dokud hra běží, čtení potřebuje zhruba tolik paměti, kolik hra používá nyní: {memory}.",
   "saveplayers.read.memory_unknown": "Dokud hra běží, čtení potřebuje zhruba tolik paměti, kolik hra používá nyní.",
-  "saveplayers.refused": "Hráči se nepřečetli.",
+  "saveplayers.refused": "Hráči nebyli přečteni.",
   "saveplayers.time.hours": "{hours} h {minutes} min",
   "saveplayers.time.minutes": "{minutes} min",
   "saveplayers.failure.image_missing": "Uloženou hru se nepodařilo přečíst, protože obraz hry tohoto světa není stažen.",

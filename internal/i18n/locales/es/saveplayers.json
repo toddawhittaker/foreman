@@ -5,7 +5,7 @@
   "saveplayers.no_save": "Este mundo aún no tiene ninguna partida guardada, así que no hay jugadores que mostrar.",
   "saveplayers.never": "Foreman todavía no ha leído los jugadores de la partida guardada más reciente. Solo los lee por sí mismo cuando no hay ningún juego en marcha.",
   "saveplayers.unsupported": "No se pueden leer los jugadores de una partida guardada de esta versión del juego, así que solo cuenta el tiempo que Foreman ve por sí mismo.",
-  "saveplayers.tracked_since": "Foreman sigue este mundo desde {when}. El tiempo anterior no se conoce.",
+  "saveplayers.tracked_since": "Foreman sigue este mundo desde el {when}. El tiempo anterior no se conoce.",
   "saveplayers.inexact": "Estos tiempos de juego pueden ser algo inexactos. Un fallo, o un momento en que Foreman no vigilaba, puede haber ocultado tiempo de juego. Volver a leer la partida guardada los corrige.",
   "saveplayers.total": "Tiempo de juego total de esta partida guardada: {time}",
   "saveplayers.caption": {
@@ -16,7 +16,7 @@
   "saveplayers.col.time": "Tiempo de juego",
   "saveplayers.last_seen": "Visto por última vez: {when}",
   "saveplayers.now": "En línea ahora",
-  "saveplayers.last_seen.unknown": "Sin registro de Foreman",
+  "saveplayers.last_seen.unknown": "Foreman no lo ha visto",
   "saveplayers.before_foreman": "Jugado antes de que Foreman siguiera este mundo",
   "saveplayers.nobody": "Nadie se ha unido a esta partida guardada.",
   "saveplayers.read.first": "Leer los jugadores de la partida guardada más reciente",

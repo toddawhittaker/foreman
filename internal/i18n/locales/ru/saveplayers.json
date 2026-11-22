@@ -14,10 +14,10 @@
     "many": "{count} игроков в этом сохранении"
   },
   "saveplayers.col.player": "Игрок",
-  "saveplayers.col.time": "Игровое время",
+  "saveplayers.col.time": "Время игры",
   "saveplayers.last_seen": "Последний визит: {when}",
   "saveplayers.now": "Сейчас в сети",
-  "saveplayers.last_seen.unknown": "Foreman не видел",
+  "saveplayers.last_seen.unknown": "Foreman его не видел",
   "saveplayers.before_foreman": "Время набрано до того, как Foreman начал отслеживать этот мир",
   "saveplayers.nobody": "В этом сохранении ещё никто не играл.",
   "saveplayers.read.first": "Прочитать игроков из самого нового сохранения",
