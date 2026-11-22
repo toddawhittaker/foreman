@@ -14,8 +14,8 @@ import (
 
 // resourceMod is the resource count's control mod. Its params file returns
 // the picture's half width in chunks and the planet to count. The planet is
-// one of mapgen.Planets, checked before the run, so it cannot break out of
-// the Lua string.
+// one of the request's known planets, of the shape checkPreview holds names
+// to, so it cannot break out of the Lua string.
 var resourceMod = controlMod{
 	kind:    gameenv.KindResources,
 	what:    "resource",
@@ -70,7 +70,7 @@ func checkResources(req PreviewRequest, planet string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("%w: there are no resources for Factorio %q", ErrPreviewInvalid, req.GameVersion)
 	}
-	if !slices.Contains(mapgen.Planets(line, req.SpaceAge), planet) {
+	if !slices.Contains(req.knownPlanets(line), planet) {
 		return "", fmt.Errorf("%w: planet %q", ErrPreviewInvalid, planet)
 	}
 	req.Planets = []string{planet}

@@ -516,7 +516,7 @@ func modSettingsError(err error) error {
 		return ErrModSettingsImageMissing
 	case errors.Is(err, ErrPreviewTimeout):
 		return ErrModSettingsTimeout
-	case errors.Is(err, errControlModTaken):
+	case errors.Is(err, ErrControlModTaken):
 		return fmt.Errorf("%w: %w", ErrModSettingsBadOutput, err)
 	case errors.As(err, &pe) && pe.OOM:
 		return fmt.Errorf("%w: %w", ErrModSettingsOutOfMemory, err)
