@@ -472,6 +472,37 @@ test("the game image download is ticked when the image is missing, and is only s
   await expect.poll(images).toBe(1);
 });
 
+// A form fault, not a bad file: it is shown on the Import page, tied to the field (DESIGN 7.2).
+test("an upload with no file chosen is refused on the field, with focus on the error summary", async ({ page, foreman }) => {
+  await createAdmin(page);
+  await page.goto("/import");
+  await page.locator("#act-upload-world-file").click();
+  const summary = page.locator("#error-summary");
+  await expect(summary).toBeVisible();
+  await expect(summary).toBeFocused();
+  await expect(page).toHaveTitle(/^Error: /);
+  // The summary links to the field, and the field is marked.
+  await expect(summary.locator("a[href='#world-file']")).toBeVisible();
+  await expect(page.locator("#world-file")).toHaveAttribute("aria-invalid", "true");
+  // It is the Import page, not a separate error page.
+  await expect(page).toHaveURL(/\/import/);
+  await expect(page.locator("#act-upload-world-file")).toBeVisible();
+  expect(worldIds(foreman)).toEqual([]);
+  expect(staged(foreman)).toEqual([]);
+  await checkPage(page);
+});
+
+test("the world file form says once what the asterisk means, before its field", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/import");
+  const field = page.locator("#world-file");
+  const note = field.locator("xpath=ancestor::form[1]").locator(".required-note");
+  await expect(note).toHaveCount(1);
+  await expect(note).toHaveText("* Required");
+  expect((await note.boundingBox())!.y).toBeLessThan((await field.boundingBox())!.y);
+  await expect(page.locator('label[for="world-file"]')).toHaveClass(/\brequired\b/);
+});
+
 test("a world file made by a newer Foreman is refused, and says so", async ({ page, foreman }) => {
   await createAdmin(page);
   await upload(page, worldFile({ format: { format_version: 2 } }));
