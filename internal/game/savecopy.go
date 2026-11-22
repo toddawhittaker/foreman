@@ -3,6 +3,7 @@ package game
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -41,9 +43,11 @@ const (
 	// saveCopySave is the save's link in the work folder, seen in the
 	// container at gameenv.SaveCopyMount.
 	saveCopySave = "save.zip"
-	// saveCopyWrite is the game's write folder for a kind whose output is
-	// kept on disk, inside the work folder.
-	saveCopyWrite = gameenv.PreviewMount + "/write"
+	// saveCopyTmpfs is the size of the game's in-memory write folder. It
+	// holds the helper's output (the factory map's at most
+	// factorymap.MaxOutputBytes) and counts against the memory limit; the
+	// game never writes to the host's disk (SPEC 8.16, 14.3).
+	saveCopyTmpfs = "1g"
 	// saveCopyReadData is the game's data folder in the image.
 	saveCopyReadData = "/opt/factorio/data"
 )
@@ -59,11 +63,13 @@ var (
 	ErrSaveCopyBadOutput    = errors.New("the game made no usable output")
 )
 
-// saveCopyState is the save reads in flight, by world id, so a start can
-// cancel them (SPEC 8.16). The zero value is ready to use.
+// saveCopyState is the save reads in flight, by world id, and the worlds a
+// start is under way for, so a start can cancel the reads and no new one
+// begins until it ends (SPEC 8.16). The zero value is ready to use.
 type saveCopyState struct {
-	mu   sync.Mutex
-	runs map[string]map[*saveCopyRun]struct{}
+	mu       sync.Mutex
+	runs     map[string]map[*saveCopyRun]struct{}
+	starting map[string]int
 }
 
 // saveCopyRun is one save read in flight.
@@ -72,11 +78,18 @@ type saveCopyRun struct {
 	done   chan struct{}
 }
 
-// add records a run of the world; the returned function removes it and marks
-// it done.
-func (s *saveCopyState) add(id string, run *saveCopyRun) (remove func()) {
+// errSaveCopyStarting refuses a read of a world that is starting. Nothing is
+// kept; the next view reads again.
+var errSaveCopyStarting = fmt.Errorf("%w: the world is starting", world.ErrBusy)
+
+// add records a run of the world, or refuses it while the world is
+// starting. The returned function removes it and marks it done.
+func (s *saveCopyState) add(id string, run *saveCopyRun) (remove func(), err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.starting[id] > 0 {
+		return nil, errSaveCopyStarting
+	}
 	if s.runs == nil {
 		s.runs = map[string]map[*saveCopyRun]struct{}{}
 	}
@@ -92,46 +105,55 @@ func (s *saveCopyState) add(id string, run *saveCopyRun) (remove func()) {
 		}
 		s.mu.Unlock()
 		close(run.done)
+	}, nil
+}
+
+// beginStart marks the world as starting until the returned function is
+// called: a read asked for meanwhile is refused.
+func (s *saveCopyState) beginStart(id string) (end func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.starting == nil {
+		s.starting = map[string]int{}
+	}
+	s.starting[id]++
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if s.starting[id]--; s.starting[id] <= 0 {
+				delete(s.starting, id)
+			}
+		})
 	}
 }
 
 // saveCopyMod is a control mod that runs against a copy of the world's save.
-// Of controlMod it uses kind, what, name, dir, control, output, maxOutput and
-// memory (zero means SaveCopyMemory); the run makes no map, so params and
-// save are not used.
+// Of controlMod it uses kind, what, name, dir, control, output (a file or a
+// folder in script-output), maxOutput and memory (zero means
+// SaveCopyMemory); the run makes no map, so params and save are not used.
 type saveCopyMod struct {
 	controlMod
-	// outputOnDisk makes the game write its data in the work folder, not the
-	// 64 MB tmpfs (the factory map).
-	outputOnDisk bool
 	// activeMods reads the mods the game loaded from the run's output, for
 	// the check after the run (SPEC 8.16): the game drops a missing mod
 	// silently and exits 0. nil for a kind whose output lists none.
 	activeMods func(base *os.Root, dir string) ([]saveplayers.Mod, error)
 }
 
-// saveCopyConfig is the run's config.ini: the game's write folder in the
-// tmpfs, or in the work folder for a kind whose output is too big for it.
-func saveCopyConfig(m saveCopyMod) string {
-	write := previewWrite
-	if m.outputOnDisk {
-		write = saveCopyWrite
-	}
-	return "[path]\nread-data=" + saveCopyReadData + "\nwrite-data=" + write + "\n"
-}
+// saveCopyConfig is the run's config.ini: the game's write folder is the
+// in-memory folder, for every kind.
+const saveCopyConfig = "[path]\nread-data=" + saveCopyReadData + "\nwrite-data=" + previewWrite + "\n"
 
 // saveCopyCommand is the shell script that runs the work folder's save with
 // the control mod enabled, and leaves the mod's output files in the work
-// folder (SPEC 8.16). It is the only place the seeding method lives.
+// folder (SPEC 8.16). It is the only place the seeding method lives. Only
+// the named output leaves the in-memory write folder.
 func saveCopyCommand(m saveCopyMod) string {
-	write := previewWrite
-	if m.outputOnDisk {
-		write = saveCopyWrite
-	}
 	return strings.Join([]string{
 		gameBinary + ` --config ` + gameenv.PreviewMount + `/config.ini --mod-directory ` + gameenv.PreviewMount + `/` + world.ModsDir +
 			` --benchmark ` + gameenv.SaveCopyMount + ` --benchmark-ticks ` + fmt.Sprint(saveCopyTicks) + ` --benchmark-runs 1 || exit 1`,
-		`mv ` + write + `/script-output/` + m.output + ` ` + gameenv.PreviewMount + `/` + m.output,
+		`mv ` + previewWrite + `/script-output/` + m.output + ` ` + gameenv.PreviewMount + `/` + m.output,
 	}, "\n")
 }
 
@@ -159,12 +181,17 @@ func saveCopyInfo(m saveCopyMod, line string) []byte {
 //
 // Other errors: world.ErrBusy when the world's lock is held, ErrPreviewBusy
 // when the slot stays taken, ctx's error when ctx ends or a start cancels the
-// read, world.ErrSaveNotFound when there is no save to read.
+// read, world.ErrSaveNotFound when there is no save to read. A read asked
+// for while the world is starting is refused at once with world.ErrBusy.
 func (c *Controller) runSaveCopy(ctx context.Context, id string, m saveCopyMod,
 	read func(base *os.Root, dir string) error) (saveplayers.Basis, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	defer c.saveCopies.add(id, &saveCopyRun{cancel: cancel, done: make(chan struct{})})()
+	remove, err := c.saveCopies.add(id, &saveCopyRun{cancel: cancel, done: make(chan struct{})})
+	if err != nil {
+		return saveplayers.Basis{}, err
+	}
+	defer remove()
 
 	meta, err := c.readMeta(id)
 	if err != nil {
@@ -193,6 +220,10 @@ func (c *Controller) runSaveCopy(ctx context.Context, id string, m saveCopyMod,
 		}
 		spec, err := c.saveCopySpec(base, ref, name, m)
 		if err != nil {
+			return err
+		}
+		// A start that began while the folder was made wins: no container.
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if err := container(spec); err != nil {
@@ -263,6 +294,7 @@ func (c *Controller) saveCopySpec(base *os.Root, image, dir string, m saveCopyMo
 	spec.Env = []string{gameenv.PreviewKind + "=" + m.kind}
 	spec.Cmd = []string{"-c", saveCopyCommand(m)}
 	spec.HostConfig = c.oneOffHostConfigMem(dir, cmp.Or(m.memory, SaveCopyMemory))
+	spec.HostConfig.Tmpfs = map[string]string{previewWrite: "rw,noexec,nosuid,size=" + saveCopyTmpfs + ",mode=1777"}
 	spec.HostConfig.Mounts = mounts
 	return spec, nil
 }
@@ -285,7 +317,7 @@ func (c *Controller) makeSaveCopyDir(base *os.Root, id, gameVersion string, m sa
 		return fail(err)
 	}
 	defer func() { _ = dir.Close() }()
-	if err := dir.WriteFile("config.ini", []byte(saveCopyConfig(m)), world.FileMode); err != nil {
+	if err := dir.WriteFile("config.ini", []byte(saveCopyConfig), world.FileMode); err != nil {
 		return fail(err)
 	}
 	unlock, err := c.worlds.Lock(id)
@@ -331,10 +363,21 @@ func (c *Controller) makeSaveCopyDir(base *os.Root, id, gameVersion string, m sa
 // a newer save is ErrSaveCopySaveNewer, a game Foreman does not run is
 // ErrSaveCopyImageMissing, no save world.ErrSaveNotFound, and every other
 // problem ErrSaveCopyModsDiffer, since the mods cannot be shown to match.
+//
+// A world with no mod-list.json yet (never started, a fresh import) is not
+// held to the Space Age check of its list: the run gives the game the default
+// list, as the first start would.
 func (c *Controller) saveCopyPreCheck(id string) error {
 	pc, err := c.worlds.PreStartCheckAt(id, "")
 	if err != nil {
 		return err
+	}
+	defaults, err := c.defaultModList(id)
+	if err != nil {
+		return err
+	}
+	if defaults != nil {
+		pc.Problems = slices.DeleteFunc(pc.Problems, func(p world.Problem) bool { return p.Kind == world.ProblemModListSpaceAge })
 	}
 	for _, p := range pc.Problems {
 		switch p.Kind {
@@ -352,25 +395,40 @@ func (c *Controller) saveCopyPreCheck(id string) error {
 	return nil
 }
 
+// errSaveCopyLinkChanged refuses a read whose link is not the save the
+// world's folder holds.
+var errSaveCopyLinkChanged = errors.New("the save changed while it was being linked, so it is not read")
+
+// linkFile makes a hard link; tests make it fail to reach the copy.
+var linkFile = os.Link
+
 // linkSave puts the world's save name in the work folder dir (named name
 // under the preview folder) as saveCopySave: a hard link, or a copy when the
 // link fails and the disk has room for it (SPEC 6.11). It returns the basis
 // of what landed there.
 func (c *Controller) linkSave(id, save string, dir *os.Root, name string) (saveplayers.Basis, error) {
+	// The save as the world's root sees it: a link anywhere in the path that
+	// leads out of the world is refused here.
+	root, err := c.worlds.OpenWorld(id)
+	if err != nil {
+		return saveplayers.Basis{}, err
+	}
+	want, err := root.Lstat(path.Join(world.SavesDir, save))
+	_ = root.Close()
+	if err != nil || !want.Mode().IsRegular() {
+		return saveplayers.Basis{}, world.ErrSaveNotFound
+	}
 	src := filepath.Join(c.worlds.Dirs().Worlds, id, world.SavesDir, save)
 	dst := filepath.Join(c.previewPath(), name, saveCopySave)
-	// link(2) does not follow a symlink swapped in for the save; what landed
-	// must be a regular file.
-	if err := os.Link(src, dst); err == nil {
-		info, err := dir.Lstat(saveCopySave)
-		if err != nil {
-			return saveplayers.Basis{}, err
-		}
-		if !info.Mode().IsRegular() {
+	if err := linkFile(src, dst); err == nil {
+		// The path could have been swapped between the two calls: what landed
+		// must be the very file the root saw.
+		got, err := dir.Lstat(saveCopySave)
+		if err != nil || !os.SameFile(got, want) {
 			_ = dir.Remove(saveCopySave)
-			return saveplayers.Basis{}, world.ErrSaveNotFound
+			return saveplayers.Basis{}, errSaveCopyLinkChanged
 		}
-		return saveplayers.Basis{Save: save, Size: info.Size(), Modified: info.ModTime()}, nil
+		return saveplayers.Basis{Save: save, Size: got.Size(), Modified: got.ModTime()}, nil
 	}
 	f, info, err := c.worlds.OpenSave(id, save)
 	if err != nil {
@@ -420,12 +478,19 @@ func copyModSettings(worlds *world.Manager, id string, dir *os.Root) error {
 }
 
 // enabledMods is the mods the game loads for the world: each enabled mod at
-// its newest version, the built-in ones at the game's version.
+// its newest version, the built-in ones at the game's version. A world with
+// no mod-list.json has its mods on or off as the default list the run gives
+// the game says.
 func (c *Controller) enabledMods(id string) ([]saveplayers.Mod, error) {
 	mods, err := c.worlds.Mods(id)
 	if err != nil {
 		return nil, err
 	}
+	defaults, err := c.defaultModList(id)
+	if err != nil {
+		return nil, err
+	}
+	mods = withDefaults(mods, defaults)
 	newest := map[string]string{}
 	for _, m := range mods {
 		if !m.Enabled {
@@ -440,6 +505,54 @@ func (c *Controller) enabledMods(id string) ([]saveplayers.Mod, error) {
 		out = append(out, saveplayers.Mod{Name: name, Version: v})
 	}
 	return out, nil
+}
+
+// defaultModList returns, by name, whether each mod is on in the
+// mod-list.json EnsureModList would write, when the world has none yet; nil
+// when it has one. Nothing is written: the run's work folder gets the same
+// default list (LinkModsInto), so the game loads the mods it names.
+func (c *Controller) defaultModList(id string) (map[string]bool, error) {
+	root, err := c.worlds.OpenWorld(id)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	if _, err := root.Lstat(path.Join(world.ModsDir, world.ModListFile)); !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	meta, err := world.ReadMeta(root)
+	if err != nil {
+		return nil, err
+	}
+	var doc struct {
+		Mods []modEntry `json:"mods"`
+	}
+	if err := json.Unmarshal(world.DefaultModList(meta.GameVersion, meta.SpaceAge), &doc); err != nil {
+		return nil, err
+	}
+	on := map[string]bool{}
+	for _, m := range doc.Mods {
+		on[m.Name] = m.Enabled
+	}
+	return on, nil
+}
+
+// withDefaults turns each built-in mod on or off as the default list would,
+// for a world with no mod-list.json (defaults not nil). A mod the default
+// list does not name stays on, as the game turns it on.
+func withDefaults(mods []world.InstalledMod, defaults map[string]bool) []world.InstalledMod {
+	if defaults == nil {
+		return mods
+	}
+	out := slices.Clone(mods)
+	for i, m := range out {
+		if on, ok := defaults[m.Name]; ok {
+			out[i].Enabled = on
+		} else {
+			out[i].Enabled = true
+		}
+	}
+	return out
 }
 
 // sameMods refuses a run whose game loaded other mods than want, the helper
@@ -493,9 +606,19 @@ func saveCopyError(err error) error {
 	return err
 }
 
-// cancelSaveCopies kills every save read of the world that is running, so a
-// start never races one (SPEC 8.16). It is called at the top of Start, and
-// waits until each read has removed its container and released the world.
+// beginStartSaveCopies marks the world as starting, so no save read of it
+// begins, then kills every read of it that is running and waits until each
+// has removed its container and released the world (SPEC 8.16). Start calls
+// it first, so a read can never hold the world's lock it needs; it calls the
+// returned function when it ends.
+func (c *Controller) beginStartSaveCopies(id string) (end func()) {
+	end = c.saveCopies.beginStart(id)
+	c.cancelSaveCopies(id)
+	return end
+}
+
+// cancelSaveCopies kills every save read of the world that is running, and
+// waits until each has removed its container and released the world.
 func (c *Controller) cancelSaveCopies(id string) {
 	s := &c.saveCopies
 	s.mu.Lock()
