@@ -16,6 +16,7 @@
   "audit.action.mod-upload-limit-set": "a7ef364f",
   "audit.action.mods": "6f62713b",
   "audit.action.mods-refused": "47fe45f2",
+  "audit.action.new-map": "4868a140",
   "audit.action.password-change": "3575725c",
   "audit.action.player": "4f2b08c7",
   "audit.action.public-mods-set": "d0808137",

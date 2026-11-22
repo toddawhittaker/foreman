@@ -104,10 +104,10 @@ var (
 	// adminToolNames is the admin scope's own tools (SPEC 21.7), sorted.
 	adminToolNames = []string{"add_webhook", "archive_world", "ban_player", "change_game_settings", "change_mod_settings", "change_mods", "change_webhook",
 		"choose_save", "clone_world", "delete_favorite", "delete_snapshots", "delete_webhook", "delete_world", "download_game_image",
-		"force_stop", "foreman_settings", "generate_world", "get_game_settings", "kick_player", "list_deleted_worlds", "list_favorites",
+		"force_stop", "foreman_settings", "generate_world", "get_game_settings", "get_new_map", "kick_player", "list_deleted_worlds", "list_favorites",
 		"list_game_versions", "list_mod_settings", "list_saves", "make_favorite", "player_action", "remove_factorio_account",
 		"rename_favorite", "rename_world", "restore_snapshot", "rollback_game_version", "run_console_command", "search_mods",
-		"set_factorio_account", "set_foreman_settings", "set_public_mods", "set_restart_schedule", "set_whitelist_switch", "unarchive_world", "update_game_version"}
+		"set_factorio_account", "set_foreman_settings", "set_new_map", "set_public_mods", "set_restart_schedule", "set_whitelist_switch", "unarchive_world", "update_game_version"}
 )
 
 // SPEC 21.2: FOREMAN_MCP=off wins over the admin setting.

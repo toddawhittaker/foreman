@@ -16,6 +16,7 @@
   "audit.action.mod-upload-limit-set": "Лимит загрузки модов изменён",
   "audit.action.mods": "Моды изменены",
   "audit.action.mods-refused": "Изменение модов отклонено",
+  "audit.action.new-map": "Настройки карты сохранены",
   "audit.action.password-change": "Пароль изменён",
   "audit.action.player": "Действие с игроком",
   "audit.action.public-mods-set": "Публичная страница модов включена или выключена",
