@@ -231,7 +231,7 @@
   "mapgen.exchange.reason.unsupported": "Este mapa es de Factorio {version}, y Foreman no puede crear una cadena para esa versión.",
   "mapgen.exchange.reason.unreadable": "Foreman no pudo leer la partida guardada más reciente del mundo, así que no hay cadena.",
   "mapgen.exchange.reason.failed": "Foreman no pudo crear la cadena en este momento. Recarga la página para intentarlo de nuevo.",
-  "mapgen.chart.draw": "Dibujar desde una partida real (unos 15 a 40 s)",
+  "mapgen.chart.draw": "Dibujar desde una partida real (unos 15 a 40 segundos)",
   "mapgen.chart.caption": "Desde una partida real, 1024 casillas",
   "mapgen.chart.back": "Volver a la vista previa rápida",
   "mapgen.chart.drawing": "Dibujando desde una partida real. Tarda unos 15 a 40 segundos.",

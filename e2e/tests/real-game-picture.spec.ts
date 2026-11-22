@@ -15,7 +15,7 @@ test("a 2.1 world's planet drawn from a real game, and back", async ({ page, for
   await openNewMap(page, { name: "Charted" });
   await expect(page.locator("#preview a.picture").first()).toBeVisible({ timeout: 60_000 });
 
-  const draw = page.getByRole("button", { name: "Draw from a real game (about 15 to 40 s)" });
+  const draw = page.getByRole("button", { name: "Draw from a real game (about 15 to 40 seconds)" });
   await expect(draw).toBeVisible();
   await page.getByRole("button", { name: /what drawing from a real game does/ }).click();
   await expect(page.locator("#preview-chart-tip")).toBeVisible();
@@ -58,12 +58,14 @@ test("the form waits while the picture draws", async ({ page, foreman, fakeGame 
     await held;
     await route.continue();
   });
-  await page.getByRole("button", { name: "Draw from a real game (about 15 to 40 s)" }).click();
+  await page.getByRole("button", { name: "Draw from a real game (about 15 to 40 seconds)" }).click();
   await expect(page.locator("#preview-chart-wait")).toBeVisible();
   await expect(page.locator("#preview")).toHaveAttribute("aria-busy", "true");
   for (const id of ["#preview-button", "#newmap-save", "#preview-chart-button"]) {
     await expect(page.locator(id)).toHaveAttribute("aria-disabled", "true");
   }
+  await expect(page.locator("#announcer")).toContainText("Drawing from a real game.");
+  await checkPage(page);
   release();
   await expect(page.locator("#preview-chart figure")).toBeVisible({ timeout: 90_000 });
   await expect(page.locator("#preview-chart-wait")).toBeHidden();

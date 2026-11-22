@@ -442,7 +442,7 @@ startPreviewWithForm(() => {
   // as they do for Preview map, and the section is busy; a new draw or a change
   // of settings drops it. The result is said once. It takes the fast
   // picture's place until "Back to the fast preview".
-  const chartActions = "#preview-button, #generate-button, #generate-default, #newmap-save";
+  const chartActions = "#preview-button, #generate-button, #generate-default, #newmap-save, #preview-chart-button";
   let chartCtrl = null;
   function chartBusy(on) {
     const wait = el("preview-chart-wait");
@@ -453,15 +453,10 @@ startPreviewWithForm(() => {
     }
     const slot = el("preview");
     if (slot) slot.setAttribute("aria-busy", on ? "true" : "false");
-    const draw = el("preview-chart-button");
     document.querySelectorAll(chartActions).forEach((b) => {
       if (on) b.setAttribute("aria-disabled", "true");
       else b.removeAttribute("aria-disabled");
     });
-    if (draw) {
-      if (on) draw.setAttribute("aria-disabled", "true");
-      else draw.removeAttribute("aria-disabled");
-    }
   }
   function endChart() {
     if (!chartCtrl) return;
@@ -478,7 +473,7 @@ startPreviewWithForm(() => {
   }
   // A busy action does nothing while the picture draws.
   document.addEventListener("click", (e) => {
-    if (chartCtrl && e.target.closest && e.target.closest(chartActions + ", #preview-chart-button")) {
+    if (chartCtrl && e.target.closest && e.target.closest(chartActions)) {
       e.preventDefault();
       e.stopImmediatePropagation();
     }
@@ -501,6 +496,8 @@ startPreviewWithForm(() => {
     chartCtrl = ctrl;
     el("preview-chart").replaceChildren();
     chartBusy(true);
+    const wait = el("preview-chart-wait");
+    if (wait) announce(words(wait));
     let html = "";
     try {
       html = await inTurn(box.dataset.path, body, ctrl.signal);

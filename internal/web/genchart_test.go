@@ -26,11 +26,17 @@ type fakeCharter struct {
 	charts   []game.PreviewRequest
 	planets  []string
 	chartErr error
+	// hold, when set, keeps Chart running until it is closed; started says it began.
+	hold, started chan struct{}
 }
 
 func (f *fakeCharter) Chart(_ context.Context, req game.PreviewRequest, planet string) (game.PNG, error) {
 	f.charts = append(f.charts, req)
 	f.planets = append(f.planets, planet)
+	if f.hold != nil {
+		f.started <- struct{}{}
+		<-f.hold
+	}
 	if f.chartErr != nil {
 		return game.PNG{}, f.chartErr
 	}
@@ -200,7 +206,7 @@ func TestChartOfferedOnlyOn21Worlds(t *testing.T) {
 	withWorldCatalogue(t, cerysCatalogue(), nil)
 	id := unfinishedWorld(t, hn, "2.1.24")
 	body := hn.postLong(PathGeneratePreview, worldPreviewForm(id, "planet", "nauvis"), c).Body.String()
-	for _, want := range []string{`id="preview-chart-button"`, "Draw from a real game (about 15 to 40 s)", `data-planet="nauvis"`, `id="preview-chart-tip"`} {
+	for _, want := range []string{`id="preview-chart-button"`, "Draw from a real game (about 15 to 40 seconds)", `data-planet="nauvis"`, `id="preview-chart-tip"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("2.1 world: no %q", want)
 		}
@@ -244,5 +250,34 @@ func TestChartStoreKeepsWithinItsLimit(t *testing.T) {
 	}
 	if _, ok := p.chart(b, 2); !ok {
 		t.Error("another world's picture went")
+	}
+}
+
+// SPEC 14.3: a user's second real-game picture while the first still runs is
+// refused with the busy sentence, and nothing more runs.
+func TestChartRefusesASecondWhileOneRuns(t *testing.T) {
+	prev := &fakeCharter{hold: make(chan struct{}), started: make(chan struct{}, 1)}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	withWorldCatalogue(t, cerysCatalogue(), nil)
+	id := unfinishedWorld(t, hn, "2.1.24")
+	done := make(chan int)
+	go func() { done <- hn.postLong(pathChart, worldPreviewForm(id, "planet", "nauvis"), c).Code }()
+	<-prev.started
+	rec := hn.postLong(pathChart, worldPreviewForm(id, "planet", "cerys"), c)
+	if body := html.UnescapeString(rec.Body.String()); rec.Code != http.StatusOK || !strings.Contains(body, "Another map preview is running.") {
+		t.Errorf("second chart: status %d:\n%s", rec.Code, body)
+	}
+	close(prev.hold)
+	if code := <-done; code != http.StatusOK {
+		t.Errorf("first chart: status %d", code)
+	}
+	if len(prev.planets) != 1 {
+		t.Errorf("%d runs, want 1", len(prev.planets))
+	}
+	// Once it ends another may run.
+	prev.hold = nil
+	if hn.postLong(pathChart, worldPreviewForm(id, "planet", "cerys"), c); len(prev.planets) != 2 {
+		t.Error("a chart after the first ended did not run")
 	}
 }

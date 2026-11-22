@@ -130,20 +130,15 @@ func (s *server) handleGenerateChart(w http.ResponseWriter, r *http.Request, u s
 		s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-chart")
 		return
 	}
-	mods, err := s.previewModsKey(id)
-	if err != nil {
-		s.fail(w, r, "read the world's mods for a real-game picture", err)
-		return
-	}
-	if in.catErr != nil {
-		mods += " fallback"
-	}
-	key := chartKey(in.req, f.cat, mods, planet)
+	key := chartKey(in.req, f.cat, in.mods, planet)
 	seed := strconv.FormatUint(uint64(in.req.Seed), 10)
 	n := catPlanetName(f.cat, planet)
 	cv := &ChartView{Planet: planet, Name: n.Name, Foreign: n.Foreign, Seed: seed}
 	token, held := s.previews.chartOf(u.ID, key)
-	if !held {
+	if !held && !s.previews.startChart(u.ID) {
+		cv.Error = chartMsgs.busy
+	} else if !held {
+		defer s.previews.endChart(u.ID)
 		if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(chartDeadline)); err != nil {
 			s.log.Warn("set the real-game picture's write deadline", "error", err)
 		}
@@ -284,4 +279,26 @@ func (p *previewStore) fitLocked() {
 	for len(p.charts) > 1 && p.totalLocked() > maxPreviewBytes {
 		p.charts = p.charts[1:]
 	}
+}
+
+// startChart marks the user's real-game picture as running; false when one
+// already runs, so a second is refused with the busy sentence (SPEC 14.3).
+func (p *previewStore) startChart(user int64) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.charting[user] {
+		return false
+	}
+	if p.charting == nil {
+		p.charting = map[int64]bool{}
+	}
+	p.charting[user] = true
+	return true
+}
+
+// endChart marks the user's real-game picture as done.
+func (p *previewStore) endChart(user int64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.charting, user)
 }

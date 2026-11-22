@@ -231,7 +231,7 @@
   "mapgen.exchange.reason.unsupported": "Cette carte vient de Factorio {version}, pour lequel Foreman ne peut pas créer de chaîne.",
   "mapgen.exchange.reason.unreadable": "Foreman n’a pas pu lire la sauvegarde la plus récente du monde, donc il n’y a pas de chaîne.",
   "mapgen.exchange.reason.failed": "Foreman n’a pas pu créer la chaîne pour le moment. Rechargez la page pour réessayer.",
-  "mapgen.chart.draw": "Dessiner depuis une vraie partie (environ 15 à 40 s)",
+  "mapgen.chart.draw": "Dessiner depuis une vraie partie (environ 15 à 40 secondes)",
   "mapgen.chart.caption": "Depuis une vraie partie, 1024 cases",
   "mapgen.chart.back": "Revenir à l'aperçu rapide",
   "mapgen.chart.drawing": "Dessin depuis une vraie partie. Cela prend environ 15 à 40 secondes.",

@@ -108,6 +108,8 @@ type previewStore struct {
 	// charts are the real-game pictures, oldest first, kept apart from the
 	// previews: no time limit drops them (SPEC 5.6).
 	charts []*chartEntry
+	// charting are the users whose real-game picture is being drawn (SPEC 14.3).
+	charting map[int64]bool
 }
 
 func newPreviewStore(now func() time.Time) *previewStore {
@@ -582,6 +584,8 @@ type previewInput struct {
 	// planet list could not be read.
 	world  bool
 	catErr error
+	// mods is the world's mods key, as the store's keys hold it.
+	mods string
 }
 
 // worldCatalogue is a world's planets and controls, from its mod-settings
@@ -678,7 +682,7 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 			World: id, KnownPlanets: cat.PlanetNames(),
 		}
 	}
-	in.key = settingsKey(in.req, cat, mods)
+	in.key, in.mods = settingsKey(in.req, cat, mods), mods
 	return in, false
 }
 

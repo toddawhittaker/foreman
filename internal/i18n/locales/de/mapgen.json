@@ -231,7 +231,7 @@
   "mapgen.exchange.reason.unsupported": "Diese Karte stammt aus Factorio {version}. Dafür kann Foreman keinen Code erzeugen.",
   "mapgen.exchange.reason.unreadable": "Foreman konnte den neuesten Speicherstand der Welt nicht lesen. Deshalb gibt es keinen Code.",
   "mapgen.exchange.reason.failed": "Foreman konnte den Code gerade nicht erzeugen. Lade die Seite neu, um es noch einmal zu versuchen.",
-  "mapgen.chart.draw": "Aus einem echten Spiel zeichnen (etwa 15 bis 40 s)",
+  "mapgen.chart.draw": "Aus einem echten Spiel zeichnen (etwa 15 bis 40 Sekunden)",
   "mapgen.chart.caption": "Aus einem echten Spiel, 1024 Felder",
   "mapgen.chart.back": "Zurück zur schnellen Vorschau",
   "mapgen.chart.drawing": "Wird aus einem echten Spiel gezeichnet. Das dauert etwa 15 bis 40 Sekunden.",

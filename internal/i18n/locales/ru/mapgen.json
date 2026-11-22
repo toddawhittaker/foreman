@@ -231,7 +231,7 @@
   "mapgen.exchange.reason.unsupported": "Эта карта создана в Factorio {version}, и для неё Foreman не может создать строку.",
   "mapgen.exchange.reason.unreadable": "Foreman не смог прочитать самое новое сохранение мира, поэтому строки нет.",
   "mapgen.exchange.reason.failed": "Foreman не смог создать строку. Обновите страницу, чтобы повторить попытку.",
-  "mapgen.chart.draw": "Нарисовать в настоящей игре (около 15–40 с)",
+  "mapgen.chart.draw": "Нарисовать в настоящей игре (около 15–40 секунд)",
   "mapgen.chart.caption": "Из настоящей игры, 1024 клетки",
   "mapgen.chart.back": "Вернуться к быстрому предпросмотру",
   "mapgen.chart.drawing": "Рисуем в настоящей игре. Это займёт около 15–40 секунд.",
