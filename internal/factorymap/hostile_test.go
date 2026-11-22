@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -69,7 +70,7 @@ func manifestJSON(t *testing.T, m Manifest) string {
 func goodChunks() string { return chunkLine(0, 0, goodRaw()) + chunkLine(1, 0, goodRaw()) }
 
 // drawChart runs DrawChart under a deadline, failing on a panic or a hang.
-func drawChart(t *testing.T, manifest, chunks io.Reader, surface int) (*image.NRGBA, Surface, error) {
+func hostileDrawChart(t *testing.T, manifest, chunks io.Reader, surface int) (*image.NRGBA, Surface, error) {
 	t.Helper()
 	type res struct {
 		img *image.NRGBA
@@ -96,7 +97,7 @@ func drawChart(t *testing.T, manifest, chunks io.Reader, surface int) (*image.NR
 	return nil, Surface{}, nil
 }
 
-func drawOverlay(t *testing.T, entities io.Reader, s Surface) (map[Category]*image.Paletted, error) {
+func hostileDrawOverlay(t *testing.T, entities io.Reader, s Surface) (map[Category]*image.Paletted, error) {
 	t.Helper()
 	type res struct {
 		m   map[Category]*image.Paletted
@@ -168,7 +169,7 @@ func TestHostileBaselineValidOutputDraws(t *testing.T) {
 	if len(m.Surfaces) != 1 || m.Surfaces[0].Name != "nauvis" {
 		t.Fatalf("ParseManifest = %+v", m)
 	}
-	img, s, err := drawChart(t, strings.NewReader(manifestJSON(t, oneSurface())), strings.NewReader(goodChunks()), 1)
+	img, s, err := hostileDrawChart(t, strings.NewReader(manifestJSON(t, oneSurface())), strings.NewReader(goodChunks()), 1)
 	if err != nil {
 		t.Fatalf("DrawChart of valid output: %v", err)
 	}
@@ -178,7 +179,7 @@ func TestHostileBaselineValidOutputDraws(t *testing.T) {
 	if b := img.Bounds(); b.Dx() != s.Width || b.Dy() != s.Height {
 		t.Fatalf("image %v does not match surface %+v", b, s)
 	}
-	layers, err := drawOverlay(t, strings.NewReader("[\"transport-belt\"]\n[0,0.5,0.5,1.5,1.5]\n"), s)
+	layers, err := hostileDrawOverlay(t, strings.NewReader("[\"transport-belt\"]\n[0,0,0,1,1]\n"), s)
 	if err != nil {
 		t.Fatalf("DrawOverlay of valid output: %v", err)
 	}
@@ -251,7 +252,7 @@ func TestHostileManifestRefused(t *testing.T) {
 				t.Errorf("ParseManifest accepted %s", name)
 			}
 			// DrawChart reads the same manifest and must refuse it too.
-			if _, _, err := drawChart(t, strings.NewReader(in), strings.NewReader(goodChunks()), 1); err == nil {
+			if _, _, err := hostileDrawChart(t, strings.NewReader(in), strings.NewReader(goodChunks()), 1); err == nil {
 				t.Errorf("DrawChart accepted a manifest with %s", name)
 			}
 		})
@@ -304,7 +305,7 @@ func TestHostileChunksRefused(t *testing.T) {
 	}
 	for name, chunks := range cases {
 		t.Run(name, func(t *testing.T) {
-			img, _, err := drawChart(t, strings.NewReader(manifestJSON(t, oneSurface())), strings.NewReader(chunks), 1)
+			img, _, err := hostileDrawChart(t, strings.NewReader(manifestJSON(t, oneSurface())), strings.NewReader(chunks), 1)
 			if err == nil {
 				t.Errorf("DrawChart accepted %s (image %v)", name, img.Bounds())
 			}
@@ -314,7 +315,7 @@ func TestHostileChunksRefused(t *testing.T) {
 
 func TestHostileChartSurfaceNotInManifest(t *testing.T) {
 	for _, s := range []int{0, 2, -1, 1 << 30} {
-		if _, _, err := drawChart(t, strings.NewReader(manifestJSON(t, oneSurface())), strings.NewReader(goodChunks()), s); err == nil {
+		if _, _, err := hostileDrawChart(t, strings.NewReader(manifestJSON(t, oneSurface())), strings.NewReader(goodChunks()), s); err == nil {
 			t.Errorf("DrawChart drew surface %d, which the manifest does not list", s)
 		}
 	}
@@ -328,7 +329,7 @@ func TestHostileOversizedChunksStop(t *testing.T) {
 		"endless spaces": {prefix: []byte(chunkLine(0, 0, goodRaw())), filler: ' ', limit: MaxOutputBytes},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, _, err := drawChart(t, strings.NewReader(manifestJSON(t, oneSurface())), r, 1); err == nil {
+			if _, _, err := hostileDrawChart(t, strings.NewReader(manifestJSON(t, oneSurface())), r, 1); err == nil {
 				t.Errorf("DrawChart accepted %s", name)
 			}
 			if r.past {
@@ -344,7 +345,7 @@ func TestHostileHugeBoxStaysWithinSideLimit(t *testing.T) {
 	m := oneSurface()
 	m.Surfaces[0].MinX, m.Surfaces[0].MinY = -1<<20, -1<<20
 	m.Surfaces[0].MaxX, m.Surfaces[0].MaxY = 1<<20, 1<<20
-	img, s, err := drawChart(t, strings.NewReader(manifestJSON(t, m)), strings.NewReader(goodChunks()), 1)
+	img, s, err := hostileDrawChart(t, strings.NewReader(manifestJSON(t, m)), strings.NewReader(goodChunks()), 1)
 	if err != nil {
 		return // refusing such a box is also within the rules
 	}
@@ -378,7 +379,7 @@ func TestHostileEntitiesRefused(t *testing.T) {
 	}
 	for name, in := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := drawOverlay(t, strings.NewReader(in), s); err == nil {
+			if _, err := hostileDrawOverlay(t, strings.NewReader(in), s); err == nil {
 				t.Errorf("DrawOverlay accepted %s", name)
 			}
 		})
@@ -394,7 +395,7 @@ func TestHostileEntityBoxesOutsideTheChart(t *testing.T) {
 		"[0,1000000,1000000,1000001,1000001]\n" +
 		"[0,-1e15,-1e15,1e15,1e15]\n" +
 		"[0,63.5,31.5,64.5,32.5]\n"
-	layers, err := drawOverlay(t, strings.NewReader(in), s)
+	layers, err := hostileDrawOverlay(t, strings.NewReader(in), s)
 	if err != nil {
 		return // refusing them is also within the rules
 	}
@@ -421,20 +422,20 @@ func TestHostileTooManyEntitiesStops(t *testing.T) {
 		}
 		_ = pw.Close()
 	}()
-	_, err := drawOverlay(t, pr, s)
+	_, err := hostileDrawOverlay(t, pr, s)
 	_ = pr.Close()
 	if err == nil {
 		t.Fatalf("DrawOverlay accepted %d entities, past the %d limit", MaxEntities+1, MaxEntities)
 	}
 	r := &boundedReader{prefix: []byte(`["transport-belt"]` + "\n"), filler: ' ', limit: MaxOutputBytes}
-	if _, err := drawOverlay(t, r, s); err == nil {
+	if _, err := hostileDrawOverlay(t, r, s); err == nil {
 		t.Error("DrawOverlay accepted an endless entity file")
 	}
 	if r.past {
 		t.Errorf("DrawOverlay read %d bytes, past the %d-byte limit", r.read, MaxOutputBytes)
 	}
 	r = &boundedReader{prefix: []byte(`["`), filler: 'a', limit: MaxOutputBytes}
-	if _, err := drawOverlay(t, r, s); err == nil {
+	if _, err := hostileDrawOverlay(t, r, s); err == nil {
 		t.Error("DrawOverlay accepted an endless types line")
 	}
 	if r.past {
@@ -594,5 +595,56 @@ func TestHostileStoreFolderSymlink(t *testing.T) {
 	_ = Remove(dir, "w1")
 	if _, err := os.Stat(keep); err != nil {
 		t.Errorf("Remove deleted a file through a symlinked store folder: %v", err)
+	}
+}
+
+// A sparse chart spread over the widest box the limits allow costs memory
+// bounded by the picture, not the box: under MaxOutputBytes in all.
+func TestHostileSparseChartMemoryBounded(t *testing.T) {
+	if testing.Short() {
+		t.Skip("draws 65,536 chunks")
+	}
+	m := oneSurface()
+	const side = 1 << 12 // chunks a side of the box
+	m.Surfaces[0].MinX, m.Surfaces[0].MinY = 0, 0
+	m.Surfaces[0].MaxX, m.Surfaces[0].MaxY = side-1, side-1
+	m.Surfaces[0].Chunks = MaxChunksPerSurface
+	data := encodeData(goodRaw())
+	var b strings.Builder
+	for i := 0; i < MaxChunksPerSurface; i++ {
+		// Spread the chunks over the whole box, 16 apart each way.
+		fmt.Fprintf(&b, `{"x":%d,"y":%d,"data":%q}`+"\n", (i%256)*16, (i/256)*16, data)
+	}
+	chunks := b.String()
+	var base runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&base)
+	done := make(chan struct{})
+	peak := make(chan uint64, 1)
+	go func() {
+		var top uint64
+		var ms runtime.MemStats
+		for {
+			select {
+			case <-done:
+				peak <- top
+				return
+			case <-time.After(5 * time.Millisecond):
+				runtime.ReadMemStats(&ms)
+				if ms.HeapInuse > top {
+					top = ms.HeapInuse
+				}
+			}
+		}
+	}()
+	img, s, err := hostileDrawChart(t, strings.NewReader(manifestJSON(t, m)), strings.NewReader(chunks), 1)
+	close(done)
+	used := <-peak - base.HeapInuse
+	if err != nil {
+		return // refusing is within the rules
+	}
+	t.Logf("picture %v, %d tiles a pixel, peak heap %d MiB over the input", img.Bounds(), s.TilesPerPixel, used>>20)
+	if used > MaxOutputBytes {
+		t.Errorf("drawing a sparse chart peaked at %d MiB of heap, past the %d MiB output limit", used>>20, MaxOutputBytes>>20)
 	}
 }
