@@ -194,6 +194,7 @@ async function upload(page: Page, file: Buffer, name = "world.zip") {
   await page.locator("#act-upload-world-file").click();
 }
 
+const backToImport = (page: Page) => page.getByRole("link", { name: "Back to Import" });
 const nameField = (page: Page) => page.locator("#world-file-name");
 const confirm = (page: Page) => page.locator("#act-import-world-file");
 
@@ -213,8 +214,9 @@ test("the world page offers the export with its choice and a warning tied to the
   // The Warning (DESIGN 7.11): what a mod stores may be in the file, and the game password is not.
   const warning = page.locator("#export-warning");
   await expect(warning).toBeVisible();
-  await expect(warning).toContainText("mod-settings.dat");
-  await expect(warning).toContainText(/game password/i);
+  await expect(warning).toContainText(/mod settings file can hold what a mod stores, such as a token/i);
+  // What is left out is said on the card, above the warning.
+  await expect(page.locator("#export-left-out")).toContainText(/game password/i);
   expect(await button.getAttribute("aria-describedby")).toContain("export-warning");
   // The card says what stays behind in the database (SPEC 5.13).
   await expect(page.locator("main")).toContainText(/audit log/i);
@@ -410,7 +412,7 @@ test("a world file round trip: preview, confirm, and the new world holds the sam
   const settings = JSON.parse(readFileSync(join(dir, "config", "server-settings.json"), "utf8"));
   expect(settings.description).toBe("keep me");
   expect(Object.keys(settings)).not.toEqual(expect.arrayContaining(["game_password"]));
-  for (const f of ["server-settings.json", "world.json"]) expect(secretsAnywhere(readFileSync(join(dir, f)))).toEqual([]);
+  for (const f of ["config/server-settings.json", "world.json"]) expect(secretsAnywhere(readFileSync(join(dir, f)))).toEqual([]);
 
   const rows = auditRows(foreman, "world-import");
   expect(rows).toHaveLength(1);
@@ -473,7 +475,8 @@ test("the game image download is ticked when the image is missing, and is only s
 test("a world file made by a newer Foreman is refused, and says so", async ({ page, foreman }) => {
   await createAdmin(page);
   await upload(page, worldFile({ format: { format_version: 2 } }));
-  await expect(page.locator("#error-summary")).toContainText(/newer/i);
+  await expect(page.locator("main")).toContainText(/newer/i);
+  await expect(backToImport(page)).toBeVisible();
   expect(worldIds(foreman)).toEqual([]);
   expect(staged(foreman)).toEqual([]);
   await checkPage(page);
@@ -503,17 +506,18 @@ for (const [what, make] of refusals) {
   test(`a bad file is refused with a fixed message: ${what}`, async ({ page, foreman }) => {
     await createAdmin(page);
     await upload(page, make());
-    await expect(page.locator("#error-summary")).toBeVisible();
-    await expect(page).toHaveTitle(/^Error: /);
+    // An upload refusal is an error page with a way back, not a field error (T4).
+    await expect(backToImport(page)).toBeVisible();
     // The page never repeats a name, a value or a secret from the file.
     const body = await page.content();
     for (const never of [canary, ...secretValues]) expect(body, never).not.toContain(never);
     expect(worldIds(foreman)).toEqual([]);
     expect(staged(foreman)).toEqual([]);
     expect(auditRows(foreman, "world-import")).toEqual([]);
-    // The form is still there to try again.
-    await expect(page.locator("#world-file")).toBeVisible();
     await checkPage(page);
+    // The way back leads to the form, to try again.
+    await backToImport(page).click();
+    await expect(page.locator("#world-file")).toBeVisible();
   });
 }
 
