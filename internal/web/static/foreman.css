@@ -5676,6 +5676,24 @@ a[target="_blank"]::after {
   min-block-size: 8rem;
 }
 
+/* The loading words show only while the script's request runs (htmx adds
+   the class), so a browser without script is not told a load is under way
+   (SPEC 9.6). */
+.mod-settings:not(.htmx-request) .mod-settings-loading {
+  display: none;
+}
+
+/* Parent names in an origin line wrap on a phone: a line pitch of 26 px
+   with 25 px link boxes keeps each tap target apart from the next line's
+   (SPEC 17.2). */
+.hint.mod-origin {
+  line-height: 2;
+}
+
+.mod-origin a {
+  padding-block: 0.3em;
+}
+
 .field input.mod-settings-number {
   max-inline-size: calc(12ch + 2 * var(--space-3) + 2 * var(--border-width));
 }

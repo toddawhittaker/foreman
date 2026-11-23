@@ -55,6 +55,56 @@ test("a library mod says who requires it, linked to that mod's group; the parent
   await expect(link).toHaveAttribute("href", `#${await target.getAttribute("id")}`);
   await link.click();
   await expect(page).toHaveURL(new RegExp(`#${await target.getAttribute("id")}$`));
+  // The group takes focus, so a screen reader's reading position follows the jump.
+  await expect(target).toBeFocused();
+  await checkPage(page);
+});
+
+// DESIGN 8.11: the parent names look like links in both themes, and several of
+// them wrapped on a phone keep a target of 24 px each that do not overlap.
+test("the parent links are underlined and keep their tap targets at 320 px", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!, ["fmtest"]);
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/worlds/base/mods/settings");
+  await expect(page.getByLabel("Startup integer")).toBeVisible(live);
+  const origin = group(page, "FM test").locator(".mod-origin");
+  const link = origin.getByRole("link", { name: "Fake planet" });
+  await expect(link).toHaveCSS("text-decoration-line", "underline");
+  // Three linked names in one line, as an origin with three parents reads.
+  await origin.evaluate((el) => {
+    const a = el.querySelector("a")!;
+    for (const n of ["Second parent mod", "Third parent mod"]) {
+      const c = a.cloneNode(true) as HTMLAnchorElement;
+      c.textContent = n;
+      el.append(", ", c);
+    }
+  });
+  const boxes = await origin.locator("a").evaluateAll((as) => as.flatMap((a) => [...a.getClientRects()].map((r) => ({ top: r.top, bottom: r.bottom, left: r.left, right: r.right }))));
+  expect(boxes.length).toBeGreaterThanOrEqual(3);
+  for (const b of boxes) expect(b.bottom - b.top).toBeGreaterThanOrEqual(24);
+  for (const [i, a] of boxes.entries()) {
+    for (const b of boxes.slice(i + 1)) {
+      const overlap = a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      expect(overlap, `two link targets overlap: ${JSON.stringify(boxes)}`).toBe(false);
+    }
+  }
+  await checkPage(page);
+});
+
+// SPEC 9.6: the loading words show while the script's request runs, and are gone after.
+test("the loading words show while the form loads, and not after", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!, ["fmtest"]);
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/mods/settings/form", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/worlds/base/mods/settings");
+  await expect(page.getByRole("status")).toContainText("Reading the mods' settings");
+  release();
+  await expect(page.getByLabel("Startup integer")).toBeVisible(live);
+  await expect(page.getByText("Reading the mods' settings")).toHaveCount(0);
 });
 
 for (const [dep, text] of [["? fmtest", "Offered by Fake planet"], ["+ fmtest", "Recommended by Fake planet"], ["fmtest", "Required by Fake planet"]]) {
@@ -74,7 +124,9 @@ test.describe("without script", () => {
   test("a link reaches the form", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, ["fmtest"]);
     await page.goto("/worlds/base/mods/settings");
-    await expect(page.getByRole("status")).toContainText("Reading the mods' settings");
+    // No script, no request: the page does not say it is loading, and the link is there.
+    await expect(page.getByText("Reading the mods' settings")).toBeHidden();
+    await expect(page.getByRole("link", { name: "Show the settings when they are ready" })).toBeVisible();
     await page.getByRole("link", { name: "Show the settings when they are ready" }).click();
     await expect(page.getByLabel("Startup integer")).toBeVisible(live);
     await expect(group(page, "FM test").locator(".mod-origin")).toHaveText("Required by Fake planet");

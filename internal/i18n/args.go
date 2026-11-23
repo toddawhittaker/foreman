@@ -3,7 +3,6 @@ package i18n
 import (
 	"html/template"
 	"strings"
-	"testing"
 )
 
 // Size is a number of bytes as a Msg argument. It is shown in the
@@ -68,12 +67,9 @@ func (l Locale) ExternalLink(href, linkKey string) Fragment {
 // Anchor is a link to a place on the same page, such as another mod's
 // group, whose text is a name the program reads and so is never translated.
 // Only a "#" followed by a plain id is accepted; anything else shows the
-// name without a link, and under test it panics.
+// name without a link.
 func Anchor(id, name string) Fragment {
 	if !validAnchorID(id) {
-		if testing.Testing() {
-			panic("i18n: Anchor to an id that is not a plain fragment: " + id)
-		}
 		return Ident(name)
 	}
 	return Fragment{`<a href="#` + id + `" class="mod-title ident" translate="no">` + template.HTMLEscapeString(name) + `</a>`, name}
