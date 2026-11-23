@@ -1171,7 +1171,7 @@ bold word, so the kind never depends on colour.
   stop (SPEC 17.9). It carries Undo or Switch back, which can stay on the
   page for hours, so the person may close it once read. It has an icon-only
   close button ("×", named "Close this message", a 44 px target) at the
-  box's top end corner, and the text keeps clear of it. A failure's box never
+  box's top end corner, and the message's text keeps room for it (the button's width and a gap, on the end side), so no line runs under it. A failure's box never
   has one: it stays until the next action, so a problem is not hidden by
   accident.
 - `role="alert"` only on an error that appears after an action without a
