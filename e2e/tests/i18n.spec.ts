@@ -569,13 +569,16 @@ const matrixParts: MatrixPart[] = [
   },
   // Step 3 of Generate with its exchange string open, on its other tabs, and
   // with its errors (SPEC 5.6, 5.7, 11; DESIGN 8.6 to 8.10).
-  {
-    name: "Generate step 3 with its exchange string and Enemy tab",
-    run: async (page, lang, _foreman, m, failures) => {
-      for (const [label, control] of [
-        ["exchange string open", "#exchange-fill summary"],
-        ["Enemy tab", "label.tab:has(#tab-enemy)"],
-      ] as const) {
+  ...(
+    [
+      ["exchange string open", "#exchange-fill summary"],
+      ["Enemy tab", "label.tab:has(#tab-enemy)"],
+      ["Advanced tab", "label.tab:has(#tab-advanced)"],
+    ] as const
+  ).map(
+    ([label, control]): MatrixPart => ({
+      name: `Generate step 3 in ${label}`,
+      run: async (page, lang, _foreman, m, failures) => {
         await sweepSubmit(
           page,
           lang,
@@ -586,22 +589,12 @@ const matrixParts: MatrixPart[] = [
           },
           failures,
         );
-      }
-    },
-  },
+      },
+    }),
+  ),
   {
-    name: "Generate step 3 with its Advanced tab and errors",
+    name: "Generate step 3 with its errors",
     run: async (page, lang, _foreman, m, failures) => {
-      await sweepSubmit(
-        page,
-        lang,
-        "step 3 in Advanced tab",
-        async () => {
-          await openStep3(page, m);
-          await page.locator("label.tab:has(#tab-advanced)").click();
-        },
-        failures,
-      );
       await sweepSubmit(
         page,
         lang,
