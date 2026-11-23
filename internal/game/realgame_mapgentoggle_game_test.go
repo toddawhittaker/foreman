@@ -83,10 +83,10 @@ func TestRealGameModdedCliffAndEnemyOff(t *testing.T) {
 	}
 }
 
-// copyFolderMod copies a folder mod from the test data into a world's mods.
+// copyFolderMod copies a folder, with its subfolders, into dst: a mod from the test data or a mods folder.
 func copyFolderMod(t *testing.T, src, dst string) {
 	t.Helper()
-	err := filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
+	err := filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error { //nolint:gosec // the tester names the folder
 		if err != nil {
 			return err
 		}

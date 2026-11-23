@@ -614,7 +614,7 @@
   },
   "server.playtime.reading": "Wird gelesen",
   "server.players.online": "Online",
-  "server.players.time": "Zeit",
+  "server.players.time": "Zeit online oder gespielt",
   "server.players.inexact": "Die Spielzeiten können etwas abweichen. Ein erneutes Lesen des Spielstands auf der Seite der Welt korrigiert sie.",
   "server.players.tracked_since": "Erfasst seit {when}.",
   "server.players.all": {

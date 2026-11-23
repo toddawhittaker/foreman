@@ -1,8 +1,8 @@
 package web
 
 import (
-	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -107,21 +107,25 @@ func TestWikiIconsUnreadableCountsAsOff(t *testing.T) {
 	}
 }
 
-// SPEC 14.10: a fragment swapped in by htmx gets images only with the
-// switch on for the request.
-func TestShowWikiIconsFragment(t *testing.T) {
+// SPEC 14.10: a page or fragment reads the switch once: a request that
+// already carries the value is not read again.
+func TestFragmentReadsWikiIconsOnce(t *testing.T) {
 	hn := newHarness(t, nil)
-	s, ctx := hn.generalServer(), context.Background()
-	frag := []byte(`<p><span class="rt-obj" data-wiki="Iron_ore">Iron ore</span></p>`)
-	if got := s.showWikiIcons(ctx, frag); string(got) != string(frag) {
-		t.Errorf("changed with the switch off: %s", got)
-	}
+	s := hn.generalServer()
+	req := func() *http.Request { return httptest.NewRequest(http.MethodGet, "/", nil) }
 	by := actor(hn.addUser("bob", testPassword))
-	if err := s.saveGeneral(ctx, by, nil, map[string]bool{settingWikiIcons.Key: true}); err != nil {
+	if got := s.readWikiIcons(req()); wikiIconsOf(got) {
+		t.Error("the switch read as on while off")
+	}
+	if err := s.saveGeneral(t.Context(), by, nil, map[string]bool{settingWikiIcons.Key: true}); err != nil {
 		t.Fatal(err)
 	}
-	if got := string(s.showWikiIcons(ctx, frag)); !strings.Contains(got, `src="https://wiki.factorio.com/images/Iron_ore.png"`) {
-		t.Errorf("no image with the switch on: %s", got)
+	if got := s.readWikiIcons(req()); !wikiIconsOf(got) {
+		t.Error("the switch read as off while on")
+	}
+	// A request that carries "off" keeps it although the store now says on.
+	if got := s.readWikiIcons(withWikiIcons(req(), false)); wikiIconsOf(got) {
+		t.Error("the store was read again for a request that already carried the value")
 	}
 }
 

@@ -594,7 +594,7 @@
   },
   "server.playtime.reading": "正在读取",
   "server.players.online": "在线",
-  "server.players.time": "时间",
+  "server.players.time": "在线或游玩时间",
   "server.players.inexact": "游戏时长可能略有偏差。在世界页面上重新读取存档即可修正。",
   "server.players.tracked_since": "自 {when} 起记录。",
   "server.players.all": {

@@ -634,7 +634,7 @@
   },
   "server.playtime.reading": "Читается",
   "server.players.online": "В сети",
-  "server.players.time": "Время",
+  "server.players.time": "Время в сети или в игре",
   "server.players.inexact": "Время игры может быть немного неточным. Повторное чтение сохранения на странице мира исправит его.",
   "server.players.tracked_since": "Учитывается с {when}.",
   "server.players.all": {

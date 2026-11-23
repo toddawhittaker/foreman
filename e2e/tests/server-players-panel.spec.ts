@@ -82,6 +82,9 @@ test("online first with a chip, then by play time; a leave sorts again, live", a
   await expect(rows(page).nth(0)).toContainText(/2 h 0 min total/);
   await expect(rows(page).nth(0).locator("td.num")).toHaveText(/^(less than 1 min|\d+ min)$/);
   await expect(panel(page).locator("caption")).toHaveText("Players: 1 online, 2 in this save");
+  // The column heading covers both meanings, and an online name is never translated.
+  await expect(panel(page).getByRole("columnheader").nth(1)).toHaveText("Time online or played");
+  await expect(rows(page).nth(0).locator("summary [translate=no]")).toHaveText("carol");
   // The chip is beside the name, inside the actions button, before the actions open.
   await expect(rows(page).nth(0).locator("summary .badge--online")).toHaveText("Online");
   await expect(rows(page).nth(1)).toContainText("bob");

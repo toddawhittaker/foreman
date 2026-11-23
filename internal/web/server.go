@@ -344,7 +344,7 @@ func clientGone(r *http.Request, err error) bool {
 // page renders p. If rendering fails it logs the error and sends a plain 500,
 // unless the browser left: that is no server fault and nobody is left to answer.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user string, p Page) {
-	r = withWikiIcons(s.dropSpoofedRenewed(r, user), s.wikiIconsOn(r.Context()))
+	r = s.readWikiIcons(s.dropSpoofedRenewed(r, user))
 	err := s.render.Render(w, r, status, user, s.lamp(r, user), s.tokenBanner(r, user), s.newerRelease(r, user), p)
 	if err == nil {
 		return

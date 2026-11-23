@@ -269,7 +269,7 @@
 {{define "server-player" -}}
 {{if .Actions}}
 <details class="player-actions disclosure" name="player-actions" id="{{.DetailsID}}">
-  <summary id="{{.SummaryID}}"><span class="player-actions__name">{{.Name}}</span>{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}} <span class="badge badge--online">{{t "server.players.online"}}</span><span class="visually-hidden">{{t "server.players.actions_hidden"}}</span></summary>
+  <summary id="{{.SummaryID}}"><span class="player-actions__name" translate="no">{{.Name}}</span>{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}} <span class="badge badge--online">{{t "server.players.online"}}</span><span class="visually-hidden">{{t "server.players.actions_hidden"}}</span></summary>
   <div class="actions">
     {{- range .AtOnce}}
     <form method="post" action="{{.Path}}">
@@ -282,7 +282,7 @@
     <a href="{{.BanPath}}" class="button button--risky" id="{{.BanID}}">{{t "server.players.ban"}}<span class="visually-hidden"> {{.Name}}</span></a>
   </div>
 </details>
-{{- else}}{{.Name}}{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}} <span class="badge badge--online">{{t "server.players.online"}}</span>{{end}}
+{{- else}}<span translate="no">{{.Name}}</span>{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}} <span class="badge badge--online">{{t "server.players.online"}}</span>{{end}}
 {{- end}}
 
 {{/* Every player of the save, online players first (SPEC 8.1, 8.14): an

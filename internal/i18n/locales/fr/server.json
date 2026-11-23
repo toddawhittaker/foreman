@@ -614,7 +614,7 @@
   },
   "server.playtime.reading": "En cours de lecture",
   "server.players.online": "En ligne",
-  "server.players.time": "Temps",
+  "server.players.time": "Temps en ligne ou de jeu",
   "server.players.inexact": "Les temps de jeu peuvent être un peu inexacts. Relire la sauvegarde sur la page du monde les corrige.",
   "server.players.tracked_since": "Suivi depuis le {when}.",
   "server.players.all": {
