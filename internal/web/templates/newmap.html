@@ -2,12 +2,12 @@
 
 {{define "scripts"}}
 {{- if .Page.ShowForm}}<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
-{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}
+{{- if .Page.CanPreview}}<script src="{{static "viewer.js"}}" defer></script><script src="{{static "preview.js"}}" defer></script>{{end}}
 {{- else if .Page.Loading}}
 {{- /* With script the form part is loaded after the page; without it the page
      reloads itself and the server waits for the planet list (SPEC 5.6). */}}
 <script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
-{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}
+{{- if .Page.CanPreview}}<script src="{{static "viewer.js"}}" defer></script><script src="{{static "preview.js"}}" defer></script>{{end}}
 <noscript><meta http-equiv="refresh" content="0; url={{.Page.WaitPath}}"></noscript>
 {{- end}}{{end}}
 
