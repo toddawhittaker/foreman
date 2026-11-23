@@ -285,8 +285,9 @@ Cheap to change.
   verify` split into `vet`, `lint` and `test` so its slow parts do not
   wait on each other, since they grow with the code. The end-to-end tests
   run as twelve shards (`make e2e SHARD=1/12` and so on; an empty `SHARD`
-  runs them all). Go modules and build output, the lint and npm
-  caches, and the image's build layers are cached between runs. Each job
+  runs them all). Go modules and build output are saved from each push
+  to `main` and restored on branches and pull requests; the lint and npm
+  caches, and the image's build layers, are cached between runs. Each job
   gets a fresh runner, so nothing needs cleaning up afterwards.
 
 ## 10. Image

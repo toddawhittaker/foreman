@@ -168,7 +168,18 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ steps.go.outputs.version }}
-          cache-dependency-path: go.sum
+          cache: false
+
+      # The newest Go build cache the go-cache job saved from main.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ hashFiles('go.sum') }}-
+            go-
 
       # The lint container keeps its caches in .cache/.
       - if: matrix.check == 'lint'
@@ -242,7 +253,18 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ steps.go.outputs.version }}
-          cache-dependency-path: go.sum
+          cache: false
+
+      # The newest Go build cache the go-cache job saved from main.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ hashFiles('go.sum') }}-
+            go-
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -326,6 +348,48 @@ jobs:
           size=$(docker save foreman:ci | gzip | wc -c)
           echo "Compressed image: $size bytes (limit 30000000)"
           [ "$size" -le 30000000 ]
+
+  # Saves Go's build cache from main for the verify and e2e jobs to restore.
+  # It runs on every push to main, even when `changes` skips the tests, since
+  # most pushes to main are trees a pull request already tested. It compiles
+  # what `make test` and `make e2e` compile, with the same flags, and runs no tests.
+  go-cache:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.head_ref == 'ci/watch-ci'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the Go version from the Makefile
+        id: go
+        run: echo "version=$(sed -n 's/^GO_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ steps.go.outputs.version }}
+          cache: false
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ hashFiles('go.sum') }}-
+            go-
+
+      - name: Compile the tests and the e2e programs
+        run: |
+          go test -race -covermode=atomic -coverpkg=./internal/... -run "^$" ./...
+          make build build-fakegame build-fakeportal build-fakeidp
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}-${{ github.sha }}
 
   # Merges the e2e slices' reports into one HTML report and writes the run's
   # timing to the summary. It waits for every build and test job so their
