@@ -3235,6 +3235,12 @@ fine pointer and 44 px on touch. The sections, in order:
   is undone by its snapshot, so the form is not a red box. A refused file
   opens it.
 
+On the mod settings page each mod's group is a `fieldset` with an id. Under a
+mod that others name, a `p.hint.mod-origin` says "Required by", "Recommended
+by" or "Offered by" and the naming mods, each a link to its own group (SPEC
+9.6); those groups follow the ones nobody names. Without script the progress
+line is followed by a link that loads the page with the form already read.
+
 A change to a world that is not active reports on its own Mods tab: a
 steps list (7.6) while it runs, then a Done message with "Undo this mod
 change", which goes to the restore confirmation (7.4).
