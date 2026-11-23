@@ -85,7 +85,21 @@ startPreviewWithForm(() => {
   }
 
   function setStatus(on) {
-    if (status) status.textContent = on ? status.dataset.text : "";
+    const words = document.getElementById("preview-status-text");
+    if (status && words) words.textContent = on ? status.dataset.text : "";
+    // The counting's moving bar shows while any redraw runs, on the page and in the large view.
+    for (const id of ["preview-status-wait", "large-drawing-wait"]) {
+      const wait = document.getElementById(id);
+      if (wait) wait.classList.toggle("htmx-request", on);
+    }
+    // A redraw makes "Map preview ready." stale, so the large view's status line drops it, said or waiting.
+    const ready = strings["js.generate.preview_ready"];
+    const said = document.getElementById("large-status");
+    if (on && said && said.textContent.startsWith(ready)) said.textContent = "";
+    if (on && waitingSaid.startsWith(ready)) {
+      clearTimeout(saying);
+      waitingSaid = "";
+    }
     const slot = document.getElementById("preview");
     if (slot) slot.setAttribute("aria-busy", on ? "true" : "false");
     // The large view fades its picture the same way while the next one is drawn.

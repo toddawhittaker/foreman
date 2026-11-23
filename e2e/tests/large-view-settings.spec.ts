@@ -140,6 +140,40 @@ test.describe("on a wide screen", () => {
     await expect(page.locator(`#${id}`)).toHaveValue(after);
   });
 
+  // DESIGN 8.8: while a change redraws, the counting's moving bar shows beside the drawing line, and the
+  // status line no longer says the last picture was ready.
+  test("a second change hides the last \"ready\" and shows the moving bar until its picture lands", async ({ page }) => {
+    await openLarge(page);
+    // One resource's slider: unlike the All resources row, a change there says nothing of its own.
+    const range = page.locator("#large-resources #mg-nauvis-iron-ore-size-range");
+    const bar = page.locator("#large-drawing-wait progress");
+    const drawing = page.locator("#large-drawing");
+    let release = () => {};
+    await page.route("**/generate/preview", async (route) => {
+      await new Promise<void>((r) => (release = r));
+      await route.continue().catch(() => {});
+    });
+    await range.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
+    release();
+    await expect(status(page)).toHaveText("Map preview ready.");
+    await expect(bar).toBeHidden();
+
+    await page.keyboard.press("ArrowRight");
+    await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
+    await expect(status(page)).not.toHaveText(/ready/);
+    if (await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)) await expect(bar).toBeHidden();
+    else await expect(bar).toBeVisible();
+    // The bar is seen, not read out; the line is not a live region.
+    await expect(bar).toHaveAttribute("aria-hidden", "true");
+    await shot(page, "large-view-drawing-bar");
+    release();
+    await expect(status(page)).toHaveText("Map preview ready.");
+    await expect(drawing).toHaveText("");
+    await expect(bar).toBeHidden();
+  });
+
   test("a change in the view counts as unsaved, so leaving asks first", async ({ page }) => {
     const asked: string[] = [];
     page.on("dialog", async (d) => {

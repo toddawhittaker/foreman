@@ -190,6 +190,45 @@ test.describe("with script", () => {
     await expect(page.locator("#preview-status")).toHaveText("");
   });
 
+  // DESIGN 8.8: a redraw shows the counting's moving bar on the drawing line, and only while it runs; the line
+  // keeps its height, so nothing under it moves.
+  test("a redraw shows the moving bar beside its words until the picture lands", async ({ page, fakeGame }) => {
+    await openNewMap(page);
+    await expect(pictures(page)).toHaveCount(1);
+    const line = page.locator("#preview-status");
+    const bar = line.locator("progress");
+    await expect(bar).toBeHidden();
+    const held = (await line.boundingBox())!.height;
+    await fakeGame!.call("/preview-mode", { mode: "slow" });
+    await page.locator("#generate-seed").fill("333");
+    await expect(line).toHaveText("Drawing the map preview for the current settings…");
+    await expect(bar).toBeVisible();
+    await expect(bar).toHaveAttribute("aria-hidden", "true");
+    expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
+    await line.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `../screenshots/preview-drawing-bar-${test.info().project.name}.png` });
+    await expect(pictures(page)).toHaveAccessibleName(/seed 333\./);
+    await expect(line).toHaveText("");
+    await expect(bar).toBeHidden();
+    expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
+    // All planets draws by the same path, with the same bar.
+    await section(page).locator("label.tab", { hasText: "All planets" }).click();
+    await expect(bar).toBeVisible();
+    await expect(pictures(page).nth(1)).toBeVisible();
+    await expect(bar).toBeHidden();
+  });
+
+  test("with reduced motion a redraw shows its words but no moving bar", async ({ page, fakeGame }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openNewMap(page);
+    await expect(pictures(page)).toHaveCount(1);
+    await fakeGame!.call("/preview-mode", { mode: "slow" });
+    await page.locator("#generate-seed").fill("444");
+    await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
+    await expect(page.locator("#preview-status progress")).toBeHidden();
+    await expect(pictures(page)).toHaveAccessibleName(/seed 444\./);
+  });
+
   test("a setting change in any part of step 3's form redraws", async ({ page }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
