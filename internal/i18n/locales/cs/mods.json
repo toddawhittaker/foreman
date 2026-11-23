@@ -280,6 +280,11 @@
     "few": "Nainstalovat {count} mody",
     "other": "Nainstalovat {count} modů"
   },
+  "mods.plan.button.recommended": {
+    "one": "a {count} doporučený",
+    "few": "a {count} doporučené",
+    "other": "a {count} doporučených"
+  },
   "mods.plan.button.update": {
     "one": "Aktualizovat {count} mod",
     "few": "Aktualizovat {count} mody",

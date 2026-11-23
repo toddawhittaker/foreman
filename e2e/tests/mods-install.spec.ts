@@ -108,15 +108,16 @@ test("a recommended dependency starts ticked, and one the portal lacks is left o
   const box = page.getByRole("checkbox", { name: "fp-lane recommended by fp-k2" });
   await expect(box).toBeChecked();
   await expect(page.locator("#plan-unavailable")).toContainText("fp-gone, recommended by fp-k2, is left out");
-  await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Install 1 mod and 1 recommended" })).toBeVisible();
   await checkPage(page);
 
   await box.uncheck();
-  await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Install 1 mod", exact: true })).toBeVisible();
   await expect(box).not.toBeChecked();
   await expect(box).toBeFocused();
+  await checkPage(page);
   await box.check();
-  await page.getByRole("button", { name: "Install 2 mods" }).click();
+  await page.getByRole("button", { name: "Install 1 mod and 1 recommended" }).click();
   await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-k2_2.1.4.zip"))).toBe(true);
   expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-lane_1.3.1.zip"))).toBe(true);
