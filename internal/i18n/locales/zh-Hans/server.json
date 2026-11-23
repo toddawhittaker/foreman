@@ -61,9 +61,12 @@
   "server.players.caption": {
     "other": "在线 {count} 人"
   },
-  "server.players.caption_stop": {
-    "other": "开始停止时在线 {count} 人"
-  },
+  "server.players.table_caption": "玩家：在线 {online} 人，此存档共 {total} 人",
+  "server.players.table_caption_stop": "玩家：开始停止时在线 {online} 人，此存档共 {total} 人",
+  "server.players.table_caption_online": "玩家：在线 {online} 人",
+  "server.players.table_caption_online_stop": "玩家：开始停止时在线 {online} 人",
+  "server.players.table_caption_saved": "玩家：此存档共 {total} 人",
+  "server.players.total_time": "共 {total}",
   "server.players.player": "玩家",
   "server.players.online_for": "在线时长",
   "server.players.unknown": "未知",
@@ -590,8 +593,8 @@
     "other": "此存档中有 {count} 名玩家"
   },
   "server.playtime.reading": "正在读取",
-  "server.players.time": "时间",
   "server.players.online": "在线",
+  "server.players.time": "时间",
   "server.players.inexact": "游戏时长可能略有偏差。在世界页面上重新读取存档即可修正。",
   "server.players.tracked_since": "自 {when} 起记录。",
   "server.players.all": {

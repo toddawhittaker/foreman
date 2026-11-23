@@ -68,6 +68,7 @@ test("online first with a chip, then by play time; a leave sorts again, live", a
   await expect(rows(page).nth(0)).toContainText("5 h 0 min");
   await expect(rows(page).nth(0)).toContainText("Last seen");
   await expect(panel(page).locator(".badge--online")).toHaveCount(0);
+  await expect(panel(page).locator("caption")).toHaveText("Players: 2 in this save");
   await checkPage(page);
 
   await page.getByRole("button", { name: "Start server" }).click();
@@ -77,6 +78,12 @@ test("online first with a chip, then by play time; a leave sorts again, live", a
   await fakeGame!.call("/join", { name: container, player: "carol" });
   await expect(rows(page).nth(0)).toContainText("carol", live);
   await expect(rows(page).nth(0).locator(".badge--online")).toHaveText("Online");
+  // The session and the save's total play time, and a caption with both counts.
+  await expect(rows(page).nth(0)).toContainText(/2 h 0 min total/);
+  await expect(rows(page).nth(0).locator("td.num")).toHaveText(/^(less than 1 min|\d+ min)$/);
+  await expect(panel(page).locator("caption")).toHaveText("Players: 1 online, 2 in this save");
+  // The chip is beside the name, inside the actions button, before the actions open.
+  await expect(rows(page).nth(0).locator("summary .badge--online")).toHaveText("Online");
   await expect(rows(page).nth(1)).toContainText("bob");
   await expect(rows(page).nth(1).locator(".badge--online")).toHaveCount(0);
   await expect.poll(() => said(page), live).toContain("carol joined.");
@@ -113,5 +120,26 @@ test("more than ten players link to the full list", async ({ page, foreman, fake
   await expect(rows(page).nth(0)).toContainText("p11");
   const all = panel(page).getByRole("link", { name: "All 12 players" });
   await expect(all).toHaveAttribute("href", "/worlds/base#save-players");
+  await checkPage(page);
+});
+
+test("when a player leaves while focus is in their actions menu, focus goes to the panel heading and their row stays", async ({ page, foreman, fakeGame }) => {
+  await createAdmin(page);
+  seedWorld(foreman, {});
+  writeRecord(foreman, [{ name: "carol", hours: 2 }]);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start server" }).click();
+  await expect(page.locator("main h1 .state")).toHaveText("Running", live);
+  await fakeGame!.call("/join", { name: container, player: "carol" });
+  await expect(rows(page).nth(0).locator(".badge--online")).toHaveText("Online", live);
+  await page.locator("#ps-carol").click();
+  await page.getByRole("link", { name: "Kick carol" }).focus();
+
+  await fakeGame!.call("/leave", { name: container, player: "carol" });
+  await expect(panel(page).locator(".badge--online")).toHaveCount(0, live);
+  await expect(rows(page)).toHaveCount(1);
+  await expect(rows(page).nth(0)).toContainText("carol");
+  await expect(page.locator("#players-heading")).toBeFocused();
   await checkPage(page);
 });

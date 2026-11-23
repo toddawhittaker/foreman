@@ -860,10 +860,13 @@ order and the picture agree.
   and Switch world), then "Players", then "Snapshots", in that
   order in the code too. The Players card (SPEC 8.1) is one table: online
   rows first, the name then an "Online" badge (`ok` text on `ok-bg`, in
-  words) and the session in the time column; then the save's other
+  words, inside the name's actions button, before the actions open), the
+  total play time under the name as a hint ("40 h 0 min total"), and the
+  session in the time column (headed "Time"; an online row's label is
+  "Online for"); the caption gives both counts; then the save's other
   players, name with "Last seen" and "Played before Foreman" hints under
   it and play time in the time column. The time column stays one line.
-  At most ten rows, then an "All N players" link to the Overview list;
+  Every online row shows, then others fill ten rows, then an "All N players" link to the Overview list;
   short hint lines carry the inexact and "tracked since" notes. On a phone (to 40rem) the pages are a two-column
   grid of 48 px tiles with 8 px gaps (`surface` face, 1 px `border` edge,
   `--radius`, icon and name, no chevron), so the players start on the

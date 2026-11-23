@@ -7012,10 +7012,6 @@ tr:has(> td > .player-actions[open]) > td.num {
   border-color: currentColor;
 }
 
-td > .badge--online {
-  margin-block-start: var(--space-1);
-}
-
 .server-players__note {
   margin-block-start: var(--space-2);
 }

@@ -65,11 +65,12 @@
     "few": "Online: {count}",
     "many": "Online: {count}"
   },
-  "server.players.caption_stop": {
-    "one": "Online w chwili rozpoczęcia zatrzymywania: {count}",
-    "few": "Online w chwili rozpoczęcia zatrzymywania: {count}",
-    "many": "Online w chwili rozpoczęcia zatrzymywania: {count}"
-  },
+  "server.players.table_caption": "Gracze: {online} online, {total} w tym zapisie",
+  "server.players.table_caption_stop": "Gracze: {online} online w chwili rozpoczęcia zatrzymywania, {total} w tym zapisie",
+  "server.players.table_caption_online": "Gracze: {online} online",
+  "server.players.table_caption_online_stop": "Gracze: {online} online w chwili rozpoczęcia zatrzymywania",
+  "server.players.table_caption_saved": "Gracze: {total} w tym zapisie",
+  "server.players.total_time": "{total} łącznie",
   "server.players.player": "Gracz",
   "server.players.online_for": "Online od",
   "server.players.unknown": "nieznane",
@@ -632,8 +633,8 @@
     "many": "{count} graczy w tym zapisie"
   },
   "server.playtime.reading": "Trwa odczyt",
-  "server.players.time": "Czas",
   "server.players.online": "Online",
+  "server.players.time": "Czas",
   "server.players.inexact": "Czasy gry mogą być nieco niedokładne. Ponowne odczytanie zapisu na stronie świata je poprawi.",
   "server.players.tracked_since": "Śledzone od {when}.",
   "server.players.all": {
