@@ -1171,7 +1171,7 @@ bold word, so the kind never depends on colour.
   stop (SPEC 17.9). It carries Undo or Switch back, which can stay on the
   page for hours, so the person may close it once read. It has an icon-only
   close button ("×", named "Close this message", a 44 px target) at the
-  box's top end corner, and the text keeps clear of it. A failure's box never
+  box's top end corner, and the message's text keeps room for it (the button's width and a gap, on the end side), so no line runs under it. A failure's box never
   has one: it stays until the next action, so a problem is not hidden by
   accident.
 - `role="alert"` only on an error that appears after an action without a
@@ -2445,10 +2445,15 @@ the settings of the mods' planets.
   says "Preview: Fulgora" once (with One planet chosen, 8.8); a tab
   switch says nothing. A planet the large view moves to opens its row
   without moving focus.
-- **Cliffs off.** Cliffs that the game lets you switch off (Nauvis on
-  every line, Gleba and Fulgora on 2.x, never Vulcanus) have an on/off
-  box in their legend, as resources do, and their continuity select no
-  longer offers "None". There is no achievement warning.
+- **Cliffs off.** Cliffs that the game lets you switch off have an
+  on/off box in their legend, as resources do, and their continuity
+  select no longer offers "None". There is no achievement warning. The
+  box comes by rule, never by planet name: on 2.x a cliff or enemy
+  control gets one when the game says it can be disabled (Nauvis, Gleba
+  and Fulgora cliffs, and a mod's, such as Muluna's or Corrundum's;
+  not Carna's or Foliax's, which say they cannot), as does any resource
+  that can be. On 1.1 Nauvis's cliffs keep their box. A mod's terrain
+  control, such as Muluna's lunar rocks, has none.
 - **Needed resources.** While a Nauvis resource the game needs (iron
   ore, copper ore, stone, crude oil and coal) is off, a warning shows
   under its box ("…unless a mod provides it"), and a `message--warning`
@@ -3110,6 +3115,13 @@ active world. The pages follow 7.2 (fields), 7.4 (the plan page is a
 confirmation step) and 7.6 (the result), and use no new component but the
 small ones below. All counts use plural messages (SPEC 22).
 
+A mod's own text keeps its rich-text emphasis (SPEC 14.6): bold stays
+`<strong>` (a heading font never changes the size), red is the danger text
+colour, orange and yellow the warning colour, green the success colour,
+blue, cyan, purple and pink the info colour, and gray the muted text colour
+(`.rt-*` in `foreman.css`). A key-binding action shows in a bordered
+`kbd`, and the game's warning sprite as the warning icon messages use.
+
 **Mod names** are wrapped in `span.ident` (`translate="no"`,
 `hyphens: manual; overflow-wrap: anywhere`) in tables, plan text,
 conflicts, notices, headings and button labels, so a name such as
@@ -3234,6 +3246,12 @@ fine pointer and 44 px on touch. The sections, in order:
   while the game runs, the 7.4 "This will" list and the button. Replacing
   is undone by its snapshot, so the form is not a red box. A refused file
   opens it.
+
+On the mod settings page each mod's group is a `fieldset` with an id. Under a
+mod that others name, a `p.hint.mod-origin` says "Required by", "Recommended
+by" or "Offered by" and the naming mods, each a link to its own group (SPEC
+9.6); those groups follow the ones nobody names. Without script the progress
+line is followed by a link that loads the page with the form already read.
 
 A change to a world that is not active reports on its own Mods tab: a
 steps list (7.6) while it runs, then a Done message with "Undo this mod

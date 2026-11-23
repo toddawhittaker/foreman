@@ -2255,13 +2255,34 @@ the 64-bit range means no limit.
   RCON command for them.
 - **Per-player settings** are not shown. Each player sets them in the game,
   and their bytes in the file are kept exactly.
+- **Origin of a mod** (#879). Under a mod's group heading a line says why
+  the mod is installed when other enabled mods name it: "Required by X"
+  (a dependency with no prefix or `~`), "Recommended by X" (`+`) or
+  "Offered by X" (`?` or `(?)`), with "A and B" for several. Foreman works
+  it out when the page is drawn, from the enabled mods' own `info.json`
+  dependencies (`mods.ParseDep`); nothing is stored. Required wins over
+  recommended, which wins over offered, and only the winning kind's mods
+  are named. A mod nobody names, which is the player's own pick, has no
+  line. The base game and its expansions (`base`, `space-age`, `quality`,
+  `elevated-rails`) are neither named nor named by. Each name links to its
+  group on the page when that mod has settings. The groups of mods nobody
+  names come first, then the others; each part keeps its order.
+- **Without script** the page cannot load the form, so its progress line is
+  followed by a link to the same page with `?wait=1`, which reads the form
+  on the server before it answers.
 - **Planets** (#775). The same run also writes the world's planets and
   their autoplace controls as `planets.json`, for Generate's step 3 (5.6).
   On 2.x it lists every space location of type planet with the controls
   of its map-gen settings, and each control's category, richness, on/off
   box, order and localised name; on 1.1, which has no planets, it lists
   the controls of the one surface. Names resolve as setting names do
-  above. It is one run and one cache, kept under the same key as the
+  above, looked up in the mods' locale files first and then in the game's
+  own (`base`, `space-age`, `quality` and `elevated-rails` under the data
+  folder of the world's game image, read in the same run and never
+  downloaded), so a control named `{"entity-name.stone"}` reads "Stone".
+  When no loaded mod defines a setting the game writes no
+  `mod-settings.dat`; that is empty defaults, not a failed run, and a
+  missing file with settings listed still is. It is one run and one cache, kept under the same key as the
   definitions, so a change of mods or game version reads both again. No
   startup setting of the five planet mods tested changes the list, so
   saved startup settings do not reset it. Foreman checks the file under
@@ -2357,7 +2378,7 @@ changed when the file no longer matches. (P0)
 only the names of the mods picked with "+", at most 500 (3.4, ADR 0021). Each
 time the panel is drawn the tree is worked out again, so removing a pick
 also drops every dependency nothing else needs, and a dependency has no
-remove button of its own. When "Install N mods" is accepted, the mods it
+remove button of its own. The install button counts the recommended mods that are ticked apart from the others ("Install 3 mods and 10 recommended"), and its label follows each tick. When "Install N mods" is accepted, the mods it
 installed leave the saved picks and the others stay (an Unfinished world's
 Continue, 5.6, opens step 2 only while picks are left, and a pick installed
 another way, such as an upload, is not work that remains); nothing is cleared by
@@ -3053,7 +3074,7 @@ form and stores nothing. (Todd's rulings, 2026-11-18.)
 | Default stop countdown (7.6), seconds | 0 to 600 | 60 | `stop-countdown-set` |
 | Audit retention (12.9), days | 7 to 3650 | 365 | `audit-retention-set` |
 | Save upload limit (14.6), MB | 100 to 8192 | 1024 | `save-upload-limit-set` |
-| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 200 | `mod-upload-limit-set` |
+| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 1024 | `mod-upload-limit-set` |
 | Check GitHub for new Foreman versions (14.10) | on or off | on | `update-check-set` |
 
 A scheduled restart keeps its fixed countdown (7.12). The upload limits are
@@ -3241,7 +3262,7 @@ are not followed out of it. Uploaded zips are checked entry by entry and
 refused if any entry would land outside its target. (P0)
 
 14.6. **Uploads** have size limits (app settings on the General tab, 13.1:
-a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 200 MB;
+a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 1 GB;
 each a whole number of MB, meaning MiB) and are written to a temporary file and checked
 before they replace anything. Pasted text has limits too: a map exchange
 string is at most 64 KB and inflates to at most 1 MB (5.6), and a settings
@@ -3279,7 +3300,16 @@ own default for a control is kept only when it is a finite number from 0
 to 1000, else it is ignored. Invisible Unicode (zero-width and direction
 marks) is removed from every label. Localised
 names resolve under the 20-level and 1,000-character limits above, then
-lose their rich-text tags and are cut to 100 characters. A mod's
+lose their rich-text tags and are cut to 100 characters. Other text a mod
+supplies (setting names, descriptions, mod titles and summaries) keeps a
+safe subset of the game's rich text, parsed on the server and rebuilt from
+an allowed list: bold fonts as bold, the game's named colours as theme
+colours (hex and r,g,b colours as plain text), object tags as the object's
+name made readable, the game's warning and info sprites as Foreman's own
+icons with text for screen readers, a key-binding macro as the action's
+name (never a key), and an escaped line break as a break in descriptions.
+No text, attribute or class from the mod reaches the page unescaped;
+unknown or unmatched tags and a lone `[` stay as literal text. A mod's
 `.cfg` locale file is at most 1 MiB, and 8 MiB per language across mods. A
 string setting value is at most 10,000 bytes. A mod or `mod-settings.dat` upload waits in a
 staging file at the top of the worlds folder, and a staged mod nobody
@@ -3387,7 +3417,15 @@ and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
 starts with `/download/` on that base, and its `file_name` must equal
 `<name>_<version>.zip`. A download takes at most 5 minutes, reads at most
 the mod upload limit (14.6), so a mod that can be uploaded can also be
-downloaded again, and follows at most 2 redirects, each only to an `https` address
+downloaded again. A file over that limit is refused as its own failure,
+not as an unreachable portal: before any byte is read when the portal
+declares a `Content-Length` over the limit, and by cutting the stream off at
+the limit when it does not. The page names the mod, its size when known and
+the limit; an admin gets a link to the limit on the General tab, anyone else
+is told to ask an admin, and there is no "Try again", since the file is as
+large next time. Every failed mod download, for any reason, logs one line
+with the mod, version and reason, never the username or token. A download
+follows at most 2 redirects, each only to an `https` address
 whose host ends in `.factorio.com`. The real portal redirects to
 `dl-mod.factorio.com`. The redirect carries no `Referer` header, because Go
 would copy the token-bearing address into it. An error message never holds

@@ -1,7 +1,7 @@
 {{/* A mod shown to a person: its title (its name when it has none), linked to its portal page in a new tab unless it is built in, a folder mod or not on the portal. The title is untrusted and never translated (SPEC 9.15). Takes ModName, from (modName name title link). */}}
 {{define "mod-name" -}}
-{{- if .Link}}<a href="{{portalPath .Name}}" class="mod-title" target="_blank" rel="noopener noreferrer"><span{{if .IsName}} class="ident"{{end}} translate="no">{{.Title}}</span><span class="visually-hidden"> {{t "mods.installed.portal"}}</span></a>
-{{- else}}<span class="mod-title{{if .IsName}} ident{{end}}" translate="no">{{.Title}}</span>
+{{- if .Link}}<a href="{{portalPath .Name}}" class="mod-title" target="_blank" rel="noopener noreferrer"><span{{if .IsName}} class="ident"{{end}} translate="no">{{if .IsName}}{{.Title}}{{else}}{{richLine .Title}}{{end}}</span><span class="visually-hidden"> {{t "mods.installed.portal"}}</span></a>
+{{- else}}<span class="mod-title{{if .IsName}} ident{{end}}" translate="no">{{if .IsName}}{{.Title}}{{else}}{{richLine .Title}}{{end}}</span>
 {{- end}}
 {{- end}}
 
@@ -34,9 +34,9 @@
     <li class="hit" id="{{$p.ModID .Name "hit"}}">
       {{- /* The rows on the page, so a change to the plan redraws each one's state. */}}
       <input type="hidden" name="row" value="{{.Name}}" data-row>
-      <h3 class="hit__title"><a href="{{portalPath .Name}}" target="_blank" rel="noopener noreferrer">{{if and .Title (ne .Title .Name)}}{{.Title}}{{else}}<span class="ident" translate="no">{{.Name}}</span>{{end}}<span class="visually-hidden"> {{t "mods.installed.portal"}}</span></a>{{if and .Title (ne .Title .Name)}} <code translate="no">{{.Name}}</code>{{end}}</h3>
+      <h3 class="hit__title"><a href="{{portalPath .Name}}" target="_blank" rel="noopener noreferrer">{{if and .Title (ne .Title .Name)}}{{richLine .Title}}{{else}}<span class="ident" translate="no">{{.Name}}</span>{{end}}<span class="visually-hidden"> {{t "mods.installed.portal"}}</span></a>{{if and .Title (ne .Title .Name)}} <code translate="no">{{.Name}}</code>{{end}}</h3>
       {{- with .Summary}}
-      <p class="hit__summary">{{.}}</p>
+      <p class="hit__summary">{{richText .}}</p>
       {{- end}}
       <div class="hit__line">
         <dl class="hit__facts">

@@ -1,6 +1,8 @@
 package web
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -812,5 +814,63 @@ func TestModSettingsShowsTheModDefaultOnlyWhenItDiffers(t *testing.T) {
 		if !regexp.MustCompile(`aria-describedby="[^"]*\b` + fid + `-default\b[^"]*"`).MatchString(body) {
 			t.Errorf("%s: no control is described by its default note", name)
 		}
+	}
+}
+
+// SPEC 9.6: a mod that other mods name says why under its heading, the name
+// links to that mod's group, and such mods follow the ones nobody names.
+func TestModSettingsOriginLineAndGroupOrder(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	// aaa-lib sorts before fmtest, but fmtest needs it, so it comes after.
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.Create("fmtest_1.0.0/info.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = w.Write([]byte(`{"name":"fmtest","version":"1.0.0","title":"FM test","factorio_version":"2.0","dependencies":["base","aaa-lib >= 1.0"]}`))
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(g.modsDir(id), "fmtest_1.0.0.zip"), buf.Bytes(), 0o600); err != nil { //nolint:gosec // a test temp folder
+		t.Fatal(err)
+	}
+	g.writeMod(id, "aaa-lib", "1.0.0")
+	defs := fmtestSettingDefs(t)
+	defs.Defs = append(defs.Defs, modsettings.Definition{Name: "aaa-sta-flag", Mod: "aaa-lib", Setting: modsettings.Startup, Type: modsettings.TypeBool, Default: val(modsettings.TypeBool), Order: "a", Editable: true})
+	fakeDefs(t, defs, nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
+	body, _ := g.settingsForm(id)
+	libAt, testAt := strings.Index(body, `<legend>`), strings.LastIndex(body, `<legend>`)
+	if libAt < 0 || libAt == testAt {
+		t.Fatalf("want two groups:\n%s", body)
+	}
+	first, second := body[libAt:testAt], body[testAt:]
+	if !strings.Contains(first, "FM test") || !strings.Contains(second, "aaa-lib") {
+		t.Errorf("the mod nobody names is not first:\n%s", body)
+	}
+	if strings.Contains(first, "mod-origin") {
+		t.Errorf("a mod nobody names has an origin line:\n%s", first)
+	}
+	m := regexp.MustCompile(`<fieldset class="mod-settings-group setting-row" id="([^"]+)"`).FindAllStringSubmatch(body, -1)
+	if len(m) != 2 {
+		t.Fatalf("group ids: %v", m)
+	}
+	wantIn(t, "origin", second, `class="hint mod-origin">Required by <a href="#`+m[0][1]+`" class="mod-title ident" translate="no">FM test</a>`)
+}
+
+// SPEC 9.6: without script, the page with wait read the form first and holds it.
+func TestModSettingsPageWithWaitHoldsTheForm(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
+	_, page := g.getStatus(modSettingsEditPath(id))
+	wantIn(t, "page", page, `href="/worlds/`+id+`/mods/settings?wait=1" id="mod-settings-wait"`)
+	_, page = g.getStatus(modSettingsEditPath(id) + "?wait=1")
+	wantIn(t, "waited page", page, "Startup integer", "Save settings")
+	if strings.Contains(page, "hx-trigger=\"load\"") {
+		t.Error("the waited page still loads the form by script")
 	}
 }

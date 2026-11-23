@@ -49,3 +49,26 @@ func TestPlanHeadingAgreesWithButton(t *testing.T) {
 		t.Errorf("remove plan that also disables: heading %q", got)
 	}
 }
+
+// SPEC 9.14: the Install button counts the recommended mods apart from the
+// others, and says nothing of them when none is ticked.
+func TestPlanInstallButtonNamesTheRecommendedCount(t *testing.T) {
+	change := func(name string, why mods.ReasonCode) mods.Change {
+		return mods.Change{Name: name, To: "1.0.0", Action: mods.ActInstall, Why: mods.Reason{Code: why}}
+	}
+	p := ModPlanPage{World: world.Summary{ID: "base", Name: "Base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"a"}}}
+	p.Plan.Changes = []mods.Change{change("a", mods.WhyAsked), change("b", mods.WhyRequiredBy), change("c", mods.WhyRecommendedBy), change("d", mods.WhyRecommendedBy)}
+	if got := p.Button(); got.Key != "mods.plan.button.install" || got.Args["count"] != 2 {
+		t.Errorf("button = %+v, want the install label counting the 2 others", got)
+	}
+	if got := p.ButtonRecommended(); got.Key != "mods.plan.button.recommended" || got.Args["count"] != 2 {
+		t.Errorf("recommended = %+v, want the recommended label counting 2", got)
+	}
+	p.Plan.Changes = p.Plan.Changes[:2]
+	if got := p.ButtonRecommended(); !got.IsZero() {
+		t.Errorf("with none recommended the button says nothing of them, got %+v", got)
+	}
+	if got := p.Button(); got.Args["count"] != 2 {
+		t.Errorf("button count without recommended = %v, want 2", got.Args["count"])
+	}
+}

@@ -18,6 +18,8 @@
   <section class="panel" aria-labelledby="mod-settings-heading">
     <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
     <p role="status" class="empty">{{t "mods.settings.edit.loading"}}</p>
+    {{- /* Without script nothing loads the form, so this link asks the server to read it first; the script replaces the whole block (SPEC 9.6). */}}
+    <p><a href="{{.WaitPath}}" id="mod-settings-wait">{{t "mods.settings.edit.loading_link"}}</a></p>
   </section>
 </div>
 {{- end}}
@@ -150,7 +152,7 @@
   <dl class="mod-settings-values setting-row__body">
     {{- range .Fields}}
     <div>
-      <dt{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</dt>
+      <dt{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{if .RawName}}{{.Label}}{{else}}{{richLine .Label}}{{end}}</dt>
       <dd>{{template "modsettings-value" .}}</dd>
     </div>
     {{- end}}
@@ -179,10 +181,14 @@
      control (DESIGN 7.2). Takes []SettingGroup. */}}
 {{define "modsettings-groups" -}}
 {{- range .}}
-<fieldset class="mod-settings-group setting-row">
+<fieldset class="mod-settings-group setting-row"{{with .ID}} id="{{.}}"{{end}}>
   {{- /* The legend names every control in the group, so it is the title alone; the portal link sits beside it, in the body, outside the legend. */}}
   <legend>{{template "mod-name" (modName .Mod .Title false)}}</legend>
   <div class="setting-row__body">
+  {{- /* Why a mod nobody chose is installed, each parent linking to its group (SPEC 9.6). */}}
+  {{- if not .Origin.IsZero}}
+  <p class="hint mod-origin">{{msgHTML .Origin}}</p>
+  {{- end}}
   {{- if .Link}}
   <p class="hint"><a href="{{portalPath .Mod}}" class="portal-link" target="_blank" rel="noopener noreferrer">{{t "mods.portal.link"}}<span class="visually-hidden"> {{tHTML "mods.portal.for" "mod" (ident (or .Title .Mod))}}</span></a></p>
   {{- end}}
@@ -192,13 +198,13 @@
   {{- if eq .Kind "bool"}}
   <div class="field">
     <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.ID}}" value="true"{{if eq .Value "true"}} checked{{end}}
-      {{- with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}> <span{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</span></label>
+      {{- with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}> <span{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{if .RawName}}{{.Label}}{{else}}{{richLine .Label}}{{end}}</span></label>
     {{template "modsettings-hint" .}}
     {{template "modsettings-error" .}}
   </div>
   {{- else if eq .Kind "color"}}
   <fieldset class="field">
-    <legend{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</legend>
+    <legend{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{if .RawName}}{{.Label}}{{else}}{{richLine .Label}}{{end}}</legend>
     {{template "modsettings-hint" .}}
     <div class="inline-row">
       <label for="{{.ID}}" class="mod-settings-sub">{{t "mods.settings.edit.color"}}</label>
@@ -210,7 +216,7 @@
   </fieldset>
   {{- else if .Editable}}
   <div class="field">
-    <label for="{{.ID}}"{{with .LabelLang}} lang="{{.}}"{{end}}{{if or .RawName .Required}} class="{{if .RawName}}ident{{end}}{{if and .RawName .Required}} {{end}}{{if .Required}}required{{end}}"{{end}}{{if .RawName}} translate="no"{{end}}>{{.Label}}</label>
+    <label for="{{.ID}}"{{with .LabelLang}} lang="{{.}}"{{end}}{{if or .RawName .Required}} class="{{if .RawName}}ident{{end}}{{if and .RawName .Required}} {{end}}{{if .Required}}required{{end}}"{{end}}{{if .RawName}} translate="no"{{end}}>{{if .RawName}}{{.Label}}{{else}}{{richLine .Label}}{{end}}</label>
     {{template "modsettings-hint" .}}
     {{- if eq .Kind "select"}}
     {{- $v := .Value}}
@@ -232,7 +238,7 @@
   {{- else}}
   <dl class="mod-settings-values">
     <div>
-      <dt{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</dt>
+      <dt{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{if .RawName}}{{.Label}}{{else}}{{richLine .Label}}{{end}}</dt>
       <dd>{{template "modsettings-value" .}}{{if eq .Kind "locked"}} <span class="hint">{{t "mods.settings.edit.locked"}}</span>{{end}}</dd>
     </div>
   </dl>
@@ -245,7 +251,7 @@
 
 {{/* A control's description, between its label and the control. Takes SettingField. */}}
 {{define "modsettings-hint" -}}
-{{- if .Hint}}<p class="hint" id="{{.ID}}-hint"{{with .HintLang}} lang="{{.}}"{{end}}>{{.Hint}}</p>{{end}}
+{{- if .Hint}}<p class="hint" id="{{.ID}}-hint"{{with .HintLang}} lang="{{.}}"{{end}}>{{richText .Hint}}</p>{{end}}
 {{- if .HasDefault}}
 <p class="hint" id="{{.ID}}-default">
   {{- if eq .Kind "bool"}}{{if eq .Default "true"}}{{t "mods.settings.edit.default_on"}}{{else}}{{t "mods.settings.edit.default_off"}}{{end}}

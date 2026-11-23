@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"net/http"
 	"net/url"
@@ -57,9 +58,21 @@ type accountFetcher struct {
 	portal  ModPortal
 	// limit is the mod upload limit, which also caps a download (SPEC 14.10).
 	limit limitFunc
+	// log records each failed download; nil logs nothing.
+	log *slog.Logger
 }
 
 func (f accountFetcher) Download(ctx context.Context, r modportal.Release, dst *os.File) error {
+	err := f.download(ctx, r, dst)
+	if err != nil && f.log != nil {
+		// The release names the mod and version. No error here carries the
+		// account's username or token (SPEC 14.10).
+		f.log.Warn("download a mod", "mod", strings.TrimSuffix(r.FileName, "_"+r.Version+".zip"), "version", r.Version, "reason", err.Error())
+	}
+	return err
+}
+
+func (f accountFetcher) download(ctx context.Context, r modportal.Release, dst *os.File) error {
 	acct, src, _, err := f.account.Get(ctx)
 	if err != nil {
 		return err
@@ -412,7 +425,7 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 		w.Header().Set("HX-Refresh", "true")
 	}
 	if ended {
-		s.modsOutcome(&p, res)
+		s.modsOutcome(&p, res, isAdmin(u))
 	}
 	if r.URL.Query().Get(generatedQuery) != "" && p.InFlow() && p.Done.IsZero() {
 		picks, err := s.store.ModPlan(r.Context(), sum.ID)
@@ -471,7 +484,7 @@ func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, err
 
 // modsOutcome says how the last mod change of a world that is not active
 // ended; the Server page says it for the active world (SPEC 17.9).
-func (s *server) modsOutcome(p *ModsPage, res actionResult) {
+func (s *server) modsOutcome(p *ModsPage, res actionResult, admin bool) {
 	if p.World.Active || res.Action != game.AuditMods {
 		return
 	}
@@ -482,7 +495,7 @@ func (s *server) modsOutcome(p *ModsPage, res actionResult) {
 		return
 	}
 	p.Failure = &Failure{Refused: game.IsRefusal(res.Err)}
-	p.Failure.Message, p.Failure.Fix = modsFailure(res.Err, res.Mods, p.World.Name, s.game.Status(p.World.ID).State, p.Path())
+	p.Failure.Message, p.Failure.Fix = modsFailure(res.Err, res.Mods, p.World.Name, s.game.Status(p.World.ID).State, p.Path(), admin)
 	if errors.Is(res.Err, world.ErrModsChanged) {
 		p.Failure.Next = &Offer{Path: p.Path(), Label: i18n.M("mods.changed.next")}
 	}
@@ -1397,7 +1410,43 @@ func (p ModPlanPage) Button() i18n.Msg {
 	case mods.KindRemove:
 		return i18n.M("mods.plan.button.remove", "count", n)
 	}
-	return i18n.M("mods.plan.button.install", "count", n)
+	return i18n.M("mods.plan.button.install", "count", n-p.recommendedCount())
+}
+
+// ButtonRecommended is the words after the install button's label that
+// count the ticked recommended mods (SPEC 9.14); empty when none is ticked.
+func (p ModPlanPage) ButtonRecommended() i18n.Msg {
+	if n := p.recommendedCount(); n > 0 && p.installLabel() {
+		return i18n.M("mods.plan.button.recommended", "count", n)
+	}
+	return i18n.Msg{}
+}
+
+// installLabel says the button is the plain "Install" one.
+func (p ModPlanPage) installLabel() bool {
+	if p.extraKinds() || p.Form.Kind == mods.KindUpdate && len(p.Form.Versions) > 0 {
+		return false
+	}
+	switch p.Form.Kind {
+	case mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove:
+		return false
+	}
+	return true
+}
+
+// recommendedCount is how many recommended mods the plan changes: the
+// ones left ticked.
+func (p ModPlanPage) recommendedCount() int {
+	if !p.installLabel() {
+		return 0
+	}
+	n := 0
+	for _, c := range p.Plan.Changes {
+		if c.Action != mods.ActKeep && c.Why.Code == mods.WhyRecommendedBy {
+			n++
+		}
+	}
+	return n
 }
 
 // Nothing says the plan changes no mod and asks nothing.

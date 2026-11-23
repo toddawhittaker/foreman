@@ -145,7 +145,11 @@
   "mods.settings.edit.title": "Ajustes de los mods de {world}",
   "mods.settings.edit.heading": "Ajustes de los mods",
   "mods.settings.edit.loading": "Leyendo los ajustes de los mods. La primera vez después de un cambio de mods, Foreman inicia el juego para leerlos, lo que tarda unos segundos.",
+  "mods.settings.edit.loading_link": "Mostrar los ajustes cuando estén listos",
   "mods.settings.edit.loaded": "Ajustes de los mods cargados.",
+  "mods.settings.origin.required_by": "Requerido por {mods}",
+  "mods.settings.origin.recommended_by": "Recomendado por {mods}",
+  "mods.settings.origin.offered_by": "Ofrecido por {mods}",
   "mods.settings.edit.startup.heading": "Ajustes de inicio",
   "mods.settings.edit.startup.none": "Los mods activados no tienen ajustes de inicio.",
   "mods.settings.edit.map.heading": "Ajustes del mapa",
@@ -262,6 +266,10 @@
     "one": "Instalar {count} mod",
     "other": "Instalar {count} mods"
   },
+  "mods.plan.button.recommended": {
+    "one": "y {count} recomendado",
+    "other": "y {count} recomendados"
+  },
   "mods.plan.button.update": {
     "one": "Actualizar {count} mod",
     "other": "Actualizar {count} mods"
@@ -338,6 +346,10 @@
   "mods.error.unauthorized": "factorio.com rechazó el nombre de usuario o el token, así que no se descargó ningún mod. No se cambió nada. Revisa la cuenta de factorio.com.",
   "mods.error.download_gone": "El portal de mods ya no tiene un mod que el plan descarga. No se cambió nada. Vuelve a abrir los mods para ver el plan nuevo.",
   "mods.error.download_failed": "No se pudo descargar un mod del portal de mods. No se cambió nada. Inténtalo de nuevo en un momento.",
+  "mods.error.too_large": "{mod} {version} ocupa {size}, más que el tamaño máximo de un mod, que es {limit}.",
+  "mods.error.too_large_stream": "{mod} {version} supera el tamaño máximo de un mod, que es {limit}.",
+  "mods.error.too_large_ask": "Pide a un administrador que suba el tamaño máximo de un mod en Configuración.",
+  "mods.error.too_large_fix": "Cambiar el tamaño máximo de un mod",
   "mods.done": "Los mods de {world} se cambiaron. Foreman tomó primero la instantánea «{label}».",
   "mods.undo": "Deshacer este cambio de mods",
   "mods.changed.next": "Volver a abrir los mods",
@@ -450,5 +462,7 @@
   "mods.plan_panel.wait": "La revisión estará lista cuando se actualice el plan.",
   "mods.flow.generated": "{name} está creado. Ahora elige sus mods o salta a los ajustes del mapa.",
   "mods.flow.skip": "Saltar a los ajustes del mapa",
-  "mods.flow.next": "Siguiente: ajustes del mapa"
+  "mods.flow.next": "Siguiente: ajustes del mapa",
+  "mods.richtext.warning": "Advertencia",
+  "mods.richtext.info": "Nota"
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec // the portal publishes SHA-1 sums (SPEC 9.12)
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,24 @@ import (
 	"os"
 	"strings"
 )
+
+// ErrTooLarge is a download over the size limit (SPEC 14.10).
+var ErrTooLarge = errors.New("modportal: file over the size limit")
+
+// TooLargeError carries the sizes behind ErrTooLarge. Size is the length the
+// portal declared, or 0 when it sent none and the stream was cut off at
+// Limit. It is never ErrUnreachable: the portal answered, the file is big.
+type TooLargeError struct {
+	Size, Limit int64
+}
+
+func (e *TooLargeError) Error() string {
+	if e.Size > 0 {
+		return fmt.Sprintf("%v: %d bytes, limit %d", ErrTooLarge, e.Size, e.Limit)
+	}
+	return fmt.Sprintf("%v: more than %d bytes", ErrTooLarge, e.Limit)
+}
+func (e *TooLargeError) Unwrap() error { return ErrTooLarge }
 
 // Download writes one release's zip to dst and checks it against the SHA-1
 // the portal published (SPEC 9.12). On any failure dst is truncated; the
@@ -48,7 +67,7 @@ func (c *Client) Download(ctx context.Context, username, token string, r Release
 		return &statusError{resp.StatusCode}
 	}
 	if resp.ContentLength > maxBytes {
-		return fmt.Errorf("%w: the file is too large", ErrUnreachable)
+		return &TooLargeError{Size: resp.ContentLength, Limit: maxBytes}
 	}
 
 	h := sha1.New() //nolint:gosec // see import
@@ -63,7 +82,7 @@ func (c *Client) Download(ctx context.Context, username, token string, r Release
 		return requestError(err, secrets...)
 	case n > maxBytes:
 		_ = dst.Truncate(0)
-		return fmt.Errorf("%w: the file is too large", ErrUnreachable)
+		return &TooLargeError{Limit: maxBytes}
 	case r.SHA1 == "" || !strings.EqualFold(hex.EncodeToString(h.Sum(nil)), r.SHA1):
 		_ = dst.Truncate(0)
 		return ErrChecksum

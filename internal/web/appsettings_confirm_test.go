@@ -47,7 +47,7 @@ func TestGeneralLoweringThatTrimsAsksFirst(t *testing.T) {
 	for _, want := range []string{
 		`id="confirm-heading"`, `aria-current="true">General</a>`, "2 automatic snapshots will be removed", "Worlds affected: 1.",
 		"Removed snapshots cannot be restored. To keep them, raise the number again before the next automatic snapshot.",
-		"Automatic snapshots to keep per world: 10 to 2", "Largest mod upload (MB): 200 to 300", `id="act-general-confirm"`,
+		"Automatic snapshots to keep per world: 10 to 2", "Largest mod upload (MB): 1,024 to 300", `id="act-general-confirm"`,
 		`name="trim_snapshots" value="2"`, `name="trim_worlds" value="1"`, `name="snapshot_retention" value="2"`, `name="mod_upload_mb" value="300"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -58,7 +58,7 @@ func TestGeneralLoweringThatTrimsAsksFirst(t *testing.T) {
 		t.Error("the confirm page lists a value that did not change")
 	}
 	s, ctx := hn.generalServer(), context.Background()
-	if s.snapshotRetention(ctx) != 10 || s.modUploadLimit(ctx) != 200<<20 || len(hn.audits(AuditSnapshotRetentionSet)) != 0 {
+	if s.snapshotRetention(ctx) != 10 || s.modUploadLimit(ctx) != 1024<<20 || len(hn.audits(AuditSnapshotRetentionSet)) != 0 {
 		t.Error("asking changed a setting or wrote an audit row")
 	}
 	if list, _ := hn.worlds.Snapshots(hn.firstWorld()); len(list) != 4 {
@@ -88,7 +88,7 @@ func TestGeneralConfirmSavesAllValues(t *testing.T) {
 	if got := strings.Join(hn.audits(AuditSnapshotRetentionSet), "|"); got != "alice  from 10 to 2" {
 		t.Errorf("retention audit %q", got)
 	}
-	if got := strings.Join(hn.audits(AuditModUploadLimitSet), "|"); got != "alice  from 200 to 300" {
+	if got := strings.Join(hn.audits(AuditModUploadLimitSet), "|"); got != "alice  from 1024 to 300" {
 		t.Errorf("mod limit audit %q", got)
 	}
 	if list, _ := hn.worlds.Snapshots(hn.firstWorld()); len(list) != 4 {

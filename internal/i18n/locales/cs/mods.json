@@ -160,7 +160,11 @@
   "mods.settings.edit.title": "Nastavení modů světa {world}",
   "mods.settings.edit.heading": "Nastavení modů",
   "mods.settings.edit.loading": "Načítá se nastavení modů. Poprvé po změně modů k tomu Foreman spouští hru, což trvá několik sekund.",
+  "mods.settings.edit.loading_link": "Zobrazit nastavení, až budou připravena",
   "mods.settings.edit.loaded": "Nastavení modů bylo načteno.",
+  "mods.settings.origin.required_by": "Potřebný pro: {mods}",
+  "mods.settings.origin.recommended_by": "Doporučeno od: {mods}",
+  "mods.settings.origin.offered_by": "Nabídnuto od: {mods}",
   "mods.settings.edit.startup.heading": "Nastavení při spuštění",
   "mods.settings.edit.startup.none": "Zapnuté mody nemají žádné nastavení při spuštění.",
   "mods.settings.edit.map.heading": "Nastavení mapy",
@@ -280,6 +284,11 @@
     "few": "Nainstalovat {count} mody",
     "other": "Nainstalovat {count} modů"
   },
+  "mods.plan.button.recommended": {
+    "one": "a {count} doporučený",
+    "few": "a {count} doporučené",
+    "other": "a {count} doporučených"
+  },
   "mods.plan.button.update": {
     "one": "Aktualizovat {count} mod",
     "few": "Aktualizovat {count} mody",
@@ -363,6 +372,10 @@
   "mods.error.unauthorized": "factorio.com odmítl uživatelské jméno nebo token, proto nebyl stažen žádný mod. Nic se nezměnilo. Je třeba zkontrolovat účet factorio.com.",
   "mods.error.download_gone": "Portál modů už nemá mod, který plán stahuje. Nic se nezměnilo. Je třeba znovu otevřít mody, aby se zobrazil nový plán.",
   "mods.error.download_failed": "Mod se nepodařilo stáhnout z portálu modů. Nic se nezměnilo. Za chvíli je třeba zkusit to znovu.",
+  "mods.error.too_large": "Mod {mod} {version} má {size}, což je víc než limit velikosti modu {limit}.",
+  "mods.error.too_large_stream": "Mod {mod} {version} je větší než limit velikosti modu {limit}.",
+  "mods.error.too_large_ask": "Správce může limit velikosti modu zvýšit v Nastavení.",
+  "mods.error.too_large_fix": "Změnit limit velikosti modu",
   "mods.done": "Mody světa {world} byly změněny. Foreman nejprve pořídil snímek „{label}“.",
   "mods.undo": "Vrátit tuto změnu modů",
   "mods.changed.next": "Znovu otevřít mody",
@@ -488,5 +501,7 @@
   "mods.plan_panel.wait": "Kontrola bude k dispozici, jakmile se plán aktualizuje.",
   "mods.flow.generated": "Svět {name} je vytvořen. Nyní lze vybrat jeho mody nebo přejít na nastavení mapy.",
   "mods.flow.skip": "Přeskočit na nastavení mapy",
-  "mods.flow.next": "Další: nastavení mapy"
+  "mods.flow.next": "Další: nastavení mapy",
+  "mods.richtext.warning": "Upozornění",
+  "mods.richtext.info": "Poznámka"
 }

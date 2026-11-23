@@ -145,7 +145,11 @@
   "mods.settings.edit.title": "Mod settings of {world}",
   "mods.settings.edit.heading": "Mod settings",
   "mods.settings.edit.loading": "Reading the mods' settings. The first time after a mod change, Foreman runs the game to read them, which takes a few seconds.",
+  "mods.settings.edit.loading_link": "Show the settings when they are ready",
   "mods.settings.edit.loaded": "Mod settings loaded.",
+  "mods.settings.origin.required_by": "Required by {mods}",
+  "mods.settings.origin.recommended_by": "Recommended by {mods}",
+  "mods.settings.origin.offered_by": "Offered by {mods}",
   "mods.settings.edit.startup.heading": "Startup settings",
   "mods.settings.edit.startup.none": "The enabled mods have no startup settings.",
   "mods.settings.edit.map.heading": "Map settings",
@@ -262,6 +266,10 @@
     "one": "Install {count} mod",
     "other": "Install {count} mods"
   },
+  "mods.plan.button.recommended": {
+    "one": "and {count} recommended",
+    "other": "and {count} recommended"
+  },
   "mods.plan.button.update": {
     "one": "Update {count} mod",
     "other": "Update {count} mods"
@@ -338,6 +346,10 @@
   "mods.error.unauthorized": "factorio.com refused the username or token, so no mod was downloaded. Nothing was changed. Check the factorio.com account.",
   "mods.error.download_gone": "The mod portal no longer has a mod the plan downloads. Nothing was changed. Open the mods again to see the new plan.",
   "mods.error.download_failed": "A mod could not be downloaded from the mod portal. Nothing was changed. Try again in a moment.",
+  "mods.error.too_large": "{mod} {version} is {size}, which is over the mod size limit of {limit}.",
+  "mods.error.too_large_stream": "{mod} {version} is larger than the mod size limit of {limit}.",
+  "mods.error.too_large_ask": "Ask an admin to raise the mod size limit in Settings.",
+  "mods.error.too_large_fix": "Change the mod size limit",
   "mods.done": "The mods of {world} were changed. Foreman took the snapshot \"{label}\" first.",
   "mods.undo": "Undo this mod change",
   "mods.changed.next": "Open the mods again",
@@ -450,5 +462,7 @@
   "mods.plan_panel.wait": "Review is ready once the plan is updated.",
   "mods.flow.generated": "{name} is made. Next, pick its mods or skip to map settings.",
   "mods.flow.skip": "Skip to map settings",
-  "mods.flow.next": "Next: map settings"
+  "mods.flow.next": "Next: map settings",
+  "mods.richtext.warning": "Warning",
+  "mods.richtext.info": "Note"
 }

@@ -1385,7 +1385,7 @@ one says "Set here"; nothing in the environment sets or overrides them.
 | Default stop countdown (seconds) | 0 to 600 | 60 |
 | Keep audit entries for (days) | 7 to 3650 | 365 |
 | Largest save upload (MB) | 100 to 8192 | 1024 (1 GB) |
-| Largest mod upload (MB) | 10 to 2048 | 200 |
+| Largest mod upload (MB) | 10 to 2048 | 1024 |
 | Check GitHub for new Foreman versions | on or off | on |
 
 - **Check GitHub for new Foreman versions.** About a minute after it

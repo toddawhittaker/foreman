@@ -13,8 +13,8 @@ const modsDir = (dataDir: string) => join(dataDir, "worlds", "base", "mods");
 const fmtestDir = join(import.meta.dirname, "..", "..", "internal", "game", "testdata", "modsettings", "fmtest_1.0.0");
 
 // The fmtest mod as a zip, from the folder the real-game tests use.
-function fmtestZip(): Buffer {
-  const entries: Record<string, string> = {};
+function fmtestZip(extra: Record<string, string> = {}): Buffer {
+  const entries: Record<string, string> = { ...extra };
   const walk = (dir: string) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
       const p = join(dir, e.name);
@@ -26,9 +26,9 @@ function fmtestZip(): Buffer {
   return makeZip(entries);
 }
 
-async function setUp(page: Page, foreman: { dataDir: string }, fakeGame: Parameters<typeof setUpModsWorld>[2], start = false) {
+async function setUp(page: Page, foreman: { dataDir: string }, fakeGame: Parameters<typeof setUpModsWorld>[2], start = false, extra: Record<string, string> = {}) {
   await setUpModsWorld(page, foreman as Parameters<typeof setUpModsWorld>[1], fakeGame, { ...world, start });
-  writeFileSync(join(modsDir(foreman.dataDir), "fmtest_1.0.0.zip"), fmtestZip());
+  writeFileSync(join(modsDir(foreman.dataDir), "fmtest_1.0.0.zip"), fmtestZip(extra));
 }
 
 const form = (page: Page) => page.locator("#mod-settings-form form");
@@ -41,6 +41,37 @@ async function openEditor(page: Page) {
 }
 
 test.describe("edit mod settings", () => {
+  // SPEC 14.6: a mod's rich text keeps a safe subset (bold, named colours,
+  // object names, line breaks), written the way Muluna writes it.
+  test("a mod's rich text shows bold, colour, object names and line breaks, never its markup", async ({ page, foreman, fakeGame }) => {
+    const rich = [
+      "[mod-setting-name]",
+      "fm-sta-bool=[color=red][font=heading-2]Hard[/font][/color] Restrict Crusher recipe to Muluna",
+      "fm-sta-double=[color=red\" onmouseover=\"alert(1)]Odd[/color] <b>number</b>",
+      "[mod-setting-description]",
+      "fm-sta-bool=Logistic system requires [item=space-science-pack]",
+      "fm-sta-double=First line\\nSecond line",
+      "",
+    ].join("\n");
+    await setUp(page, foreman, fakeGame!, false, { "fmtest_1.0.0/locale/en/rich.cfg": rich });
+    await openEditor(page);
+    const box = page.getByLabel("Hard Restrict Crusher recipe to Muluna");
+    await expect(box).toBeVisible();
+    const hard = page.locator("#mod-settings-form label.check strong", { hasText: "Hard" });
+    await expect(hard).toHaveCount(1);
+    await expect(hard.locator("xpath=..")).toHaveClass("rt-danger");
+    await expect(box).toHaveAccessibleDescription(/Logistic system requires Space science pack/);
+    await expect(form(page)).not.toContainText("[color");
+    await expect(form(page)).not.toContainText("[item");
+    // A hostile colour and HTML are text, never markup.
+    await expect(page.getByText("Odd <b>number</b>")).toBeVisible();
+    await expect(page.locator("#mod-settings-form [onmouseover], #mod-settings-form b")).toHaveCount(0);
+    const hint = page.locator(`#${await page.getByLabel("Odd <b>number</b>").getAttribute("id")}-hint`);
+    await expect(hint.locator("br")).toHaveCount(1);
+    await expect(hint).toHaveText(/First line\s*Second line/);
+    await checkPage(page);
+  });
+
   test("a stopped world: change a startup value, saved with a snapshot and no start", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await openEditor(page);

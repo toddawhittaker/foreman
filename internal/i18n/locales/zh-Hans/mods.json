@@ -130,7 +130,11 @@
   "mods.settings.edit.title": "{world} 的模组设置",
   "mods.settings.edit.heading": "模组设置",
   "mods.settings.edit.loading": "正在读取模组设置。模组变更后的第一次读取需要 Foreman 运行游戏，耗时几秒钟。",
+  "mods.settings.edit.loading_link": "准备好后显示设置",
   "mods.settings.edit.loaded": "模组设置已加载。",
+  "mods.settings.origin.required_by": "{mods} 需要它",
+  "mods.settings.origin.recommended_by": "由 {mods} 推荐",
+  "mods.settings.origin.offered_by": "由 {mods} 提供",
   "mods.settings.edit.startup.heading": "启动设置",
   "mods.settings.edit.startup.none": "已启用的模组没有启动设置。",
   "mods.settings.edit.map.heading": "地图设置",
@@ -244,6 +248,9 @@
   "mods.plan.button.install": {
     "other": "安装 {count} 个模组"
   },
+  "mods.plan.button.recommended": {
+    "other": "和 {count} 个推荐模组"
+  },
   "mods.plan.button.update": {
     "other": "更新 {count} 个模组"
   },
@@ -313,6 +320,10 @@
   "mods.error.unauthorized": "factorio.com 拒绝了用户名或令牌，因此未下载任何模组。未做任何更改。请检查 factorio.com 账户。",
   "mods.error.download_gone": "模组门户已没有计划要下载的某个模组。未做任何更改。请重新打开模组页面查看新计划。",
   "mods.error.download_failed": "无法从模组门户下载某个模组。未做任何更改。请稍后重试。",
+  "mods.error.too_large": "模组 {mod} {version} 大小为 {size}，超过了模组大小上限 {limit}。",
+  "mods.error.too_large_stream": "模组 {mod} {version} 超过了模组大小上限 {limit}。",
+  "mods.error.too_large_ask": "请管理员在“设置”中调高模组大小上限。",
+  "mods.error.too_large_fix": "更改模组大小上限",
   "mods.done": "{world} 的模组已更改。Foreman 先创建了快照“{label}”。",
   "mods.undo": "撤销此次模组更改",
   "mods.changed.next": "重新打开模组页面",
@@ -412,5 +423,7 @@
   "mods.plan_panel.wait": "计划更新后即可审阅。",
   "mods.flow.generated": "{name} 已创建。接下来可选择其模组，或跳到地图设置。",
   "mods.flow.skip": "跳到地图设置",
-  "mods.flow.next": "下一步：地图设置"
+  "mods.flow.next": "下一步：地图设置",
+  "mods.richtext.warning": "警告",
+  "mods.richtext.info": "注意"
 }

@@ -1971,6 +1971,12 @@ fieldset > .check + a {
   position: relative;
 }
 
+/* The message's text keeps room for the button: its width and a gap, from the
+   box's edge, so no line runs under it (DESIGN 7.3). */
+.message--closable > p {
+  padding-inline-end: calc(var(--target-min) + var(--space-2) - var(--space-4));
+}
+
 .message__dismiss {
   position: absolute;
   inset-block-start: 0;
@@ -12232,4 +12238,54 @@ main:has(> .public-world) {
 
 .webhook-list .facts dd {
   font-weight: 400;
+}
+
+/* A mod's rich text (SPEC 14.6, DESIGN 8.11). The game's named colours map
+   to theme tokens that already pass contrast as text in both themes. */
+.rt-danger {
+  color: var(--color-danger-text);
+}
+
+.rt-warn {
+  color: var(--color-warn);
+}
+
+.rt-ok {
+  color: var(--color-ok);
+}
+
+.rt-info {
+  color: var(--color-info);
+}
+
+.rt-muted {
+  color: var(--color-text-muted);
+}
+
+.rt-key {
+  padding: 0 0.25em;
+  border: 1px solid var(--color-border);
+  border-radius: 0.2em;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.rt-icon {
+  display: inline-block;
+  inline-size: 1em;
+  block-size: 1em;
+  vertical-align: -0.125em;
+  mask: var(--i-info) center / contain no-repeat;
+  background: var(--color-info);
+}
+
+.rt-icon--warning {
+  mask-image: var(--i-alert);
+  background: var(--color-warn);
+}
+
+@media (forced-colors: active) {
+  .rt-icon {
+    background: CanvasText;
+  }
 }
