@@ -22,7 +22,7 @@
   "server.none.heading": "No active world",
   "server.none.text": "No world is active yet, so there is no server to run. Import a world or upload a save on the Worlds page; the first world becomes the active one.",
   "server.none.go": "Go to Worlds",
-  "server.players.heading": "Players online",
+  "server.players.heading": "Players",
   "server.facts.switching": "Switching",
   "server.facts.switching_value": "From {from} to {to}",
   "server.facts.uptime": "Uptime",
@@ -610,5 +610,16 @@
     "one": "{count} player in this save",
     "other": "{count} players in this save"
   },
-  "server.playtime.reading": "Being read"
+  "server.playtime.reading": "Being read",
+  "server.players.time": "Time",
+  "server.players.online": "Online",
+  "server.players.inexact": "Play times may be a little off. Reading the save again on the world's page fixes them.",
+  "server.players.tracked_since": "Tracked since {when}.",
+  "server.players.all": {
+    "one": "All {count} player",
+    "other": "All {count} players"
+  },
+  "server.players.none_yet": "No one has played this world yet.",
+  "server.players.announce_joined": "{names} joined.",
+  "server.players.announce_left": "{names} left."
 }

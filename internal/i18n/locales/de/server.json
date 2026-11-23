@@ -22,7 +22,7 @@
   "server.none.heading": "Keine aktive Welt",
   "server.none.text": "Es ist noch keine Welt aktiv, also gibt es keinen Server zum Ausführen. Importiere eine Welt oder lade einen Speicherstand auf der Seite „Welten“ hoch; die erste Welt wird zur aktiven.",
   "server.none.go": "Zu den Welten",
-  "server.players.heading": "Spieler online",
+  "server.players.heading": "Spieler",
   "server.facts.switching": "Wechsel",
   "server.facts.switching_value": "Von {from} zu {to}",
   "server.facts.uptime": "Laufzeit",
@@ -610,5 +610,16 @@
     "one": "{count} Spieler in diesem Speicherstand",
     "other": "{count} Spieler in diesem Speicherstand"
   },
-  "server.playtime.reading": "Wird gelesen"
+  "server.playtime.reading": "Wird gelesen",
+  "server.players.time": "Zeit",
+  "server.players.online": "Online",
+  "server.players.inexact": "Die Spielzeiten können etwas abweichen. Ein erneutes Lesen des Spielstands auf der Seite der Welt korrigiert sie.",
+  "server.players.tracked_since": "Erfasst seit {when}.",
+  "server.players.all": {
+    "one": "Alle {count} Spieler",
+    "other": "Alle {count} Spieler"
+  },
+  "server.players.none_yet": "Auf dieser Welt hat noch niemand gespielt.",
+  "server.players.announce_joined": "{names} ist beigetreten.",
+  "server.players.announce_left": "{names} hat das Spiel verlassen."
 }

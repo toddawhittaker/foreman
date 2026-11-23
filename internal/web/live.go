@@ -194,6 +194,8 @@ type liveStream struct {
 	// fix is the path of the main fix of the refusal the page last showed,
 	// or "".
 	fix string
+	// online is who the players panel last marked online.
+	online []string
 }
 
 // modsRecheckEvent tells the Server page to load its mods notice again.
@@ -226,6 +228,19 @@ func (l *liveStream) send(p ServerPage) error {
 	if !say.IsZero() && !p.StartBlocked().IsZero() {
 		say = join(say, blockedAnnouncement)
 	}
+	// Joins and leaves while the game runs are one sentence per update, not
+	// one per row the panel moves (SPEC 8.1, 16.3).
+	online := p.onlineNames()
+	if l.started && l.state == game.StateRunning && p.Status.State == game.StateRunning {
+		if m := playersChanged(l.online, online); !m.IsZero() {
+			if say.IsZero() {
+				say = m
+			} else {
+				say = join(say, m)
+			}
+		}
+	}
+	l.online = online
 	// An operation that has just ended may have fixed a mod players could
 	// not download, or brought one in, so the mods notice asks again
 	// (SPEC 9.3).

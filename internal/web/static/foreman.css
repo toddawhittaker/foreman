@@ -6952,6 +6952,23 @@ tr:has(> td > .player-actions[open]) > td.num {
   padding-block-start: calc(var(--space-2) + (var(--target-min) - 1lh) / 2);
 }
 
+/* The Server page's Players panel (SPEC 8.1): an online player's chip says
+   so in words, in the success tone, and a player who is away reads quieter
+   by their hint line, never by colour alone. */
+.badge--online {
+  color: var(--color-ok);
+  background: var(--color-ok-bg);
+  border-color: currentColor;
+}
+
+td > .badge--online {
+  margin-block-start: var(--space-1);
+}
+
+.server-players__note {
+  margin-block-start: var(--space-2);
+}
+
 /* 8.14 Chat: the log box in the body face, a little shorter than the game
    log so the message field is on a phone's first screen. A message wraps
    anywhere, and a line Foreman sent reads as one by its name's colour. */
