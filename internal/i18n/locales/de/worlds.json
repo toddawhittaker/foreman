@@ -459,7 +459,7 @@
   "worlds.generate.resources.patch": "{amount} bei ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent} % Ertrag bei ({x}, {y})",
   "worlds.generate.resources.none": "Dieses Bild enthält keine Ressourcenfelder.",
-  "worlds.generate.resources.not_patches": "Die Ressourcen dieses Planeten bilden keine Ressourcenfelder und können daher nicht gezählt werden.",
+  "worlds.generate.resources.not_patches": "In diesem Bild wurden keine Ressourcenfelder gefunden. Die Ressourcen dieses Planeten könnten Kacheln sein, die sich nicht zählen lassen.",
   "worlds.generate.resources.invalid": "Die Einstellungen haben Probleme, deshalb wurden die Ressourcen nicht gezählt. Behebe die Probleme, die die Kartenvorschau auflistet.",
   "worlds.generate.resources.busy": "Es wird gerade eine andere Kartenvorschau erstellt, deshalb wurden die Ressourcen nicht gezählt. Warte ein paar Sekunden und versuche es dann erneut.",
   "worlds.generate.resources.timeout": "Das Zählen der Ressourcen hat zu lange gedauert und wurde abgebrochen. Versuche es erneut oder wähle eine kleinere Vorschaugröße.",

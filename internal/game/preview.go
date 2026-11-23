@@ -103,14 +103,23 @@ type PreviewError struct {
 
 func (e *PreviewError) Error() string {
 	run := previewRunName(e.Kind)
+	// The map preview keeps the plainer "could not draw" wording.
+	failed := "the game failed in " + run
+	if run == previewRunNameDefault {
+		failed = "the game could not draw " + run
+	}
 	switch {
 	case e.OOM:
 		return run + " ran out of memory"
 	case e.Log != "":
-		return fmt.Sprintf("the game failed in %s (exit %d): %s", run, e.ExitCode, e.Log)
+		return fmt.Sprintf("%s (exit %d): %s", failed, e.ExitCode, e.Log)
 	}
-	return fmt.Sprintf("the game failed in %s (exit %d)", run, e.ExitCode)
+	return fmt.Sprintf("%s (exit %d)", failed, e.ExitCode)
 }
+
+// previewRunNameDefault names the map preview, also the name of a run whose
+// kind is not known.
+const previewRunNameDefault = "the map preview"
 
 // previewRunName is how an error names a run of kind.
 func previewRunName(kind string) string {
@@ -119,10 +128,16 @@ func previewRunName(kind string) string {
 		return "the resource count"
 	case gameenv.KindTerritories:
 		return "the territory run"
-	case "", "preview":
-		return "the map preview"
+	case gameenv.KindChart:
+		return "the real-game picture"
+	case gameenv.KindModSettings:
+		return "the mod settings read"
+	case gameenv.KindFactoryMap:
+		return "the factory map run"
+	case gameenv.KindSavePlayers:
+		return "the save players read"
 	}
-	return "the " + kind + " run"
+	return previewRunNameDefault
 }
 
 // PreviewRequest says what Preview draws, from the settings Generate would

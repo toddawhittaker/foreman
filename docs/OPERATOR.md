@@ -588,10 +588,12 @@ preview cannot. It takes 15 to 40 seconds.
 ### Memory for planet previews
 
 Each preview run, and each real-game picture, is a one-off container. Both
-run one at a time and are limited to 1 GiB of memory with no swap. A fast
-preview of one planet is limited to 60 seconds. With five planet mods I
+run one at a time, with no swap. A run of the base game is limited to 1 GiB
+of memory; a run that loads a world's mods, which includes every real-game
+picture, to 2 GiB. A fast preview of one planet is limited to 60 seconds, or
+120 seconds with a world's mods. With five planet mods I
 measured 2 to 4 seconds and under 750 MiB for each planet. A real-game
-picture is limited to 90 seconds, and I measured 13 to 39 seconds and at
+picture is limited to 120 seconds, and I measured 13 to 39 seconds and at
 most 692 MiB. Foreman keeps the pictures in memory, up to 160 MiB for all
 users, until you save the map settings or restart Foreman.
 

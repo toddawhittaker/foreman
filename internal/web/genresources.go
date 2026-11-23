@@ -208,8 +208,8 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 }
 
 // countedView is resourceView for a count of req. A planet whose modded
-// resource controls are on but whose count found no patches has resources the count
-// cannot see, such as tiles, and says so (SPEC 5.6).
+// resource controls are on but whose count found no patches may have
+// resources the count cannot see, such as tiles, and says so (SPEC 5.6).
 func countedView(loc i18n.Locale, cat mapgen.Catalogue, req game.PreviewRequest, planet string, res resource.Result) *ResourceView {
 	v := resourceView(loc, cat, planet, res, req.Size)
 	if len(res.Patches) == 0 && hasResourceControlOn(cat, req.MapGenSettings, planet) {
