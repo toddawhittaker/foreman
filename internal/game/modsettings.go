@@ -203,11 +203,17 @@ type modSettingsFlight struct {
 // ends gets ctx's error; the run goes on and its result is cached. Any other
 // error is a failure to read the world or to make the work folder.
 func (c *Controller) ModSettingDefs(ctx context.Context, id string) (*ModSettingDefs, error) {
+	return c.sharedModSettingsRun(ctx, id, c.definitionsRun())
+}
+
+// sharedModSettingsRun is ModSettingDefs for one kind of run: its cache,
+// key and whether it reads the world's settings file.
+func (c *Controller) sharedModSettingsRun(ctx context.Context, id string, k modSettingsRunKind) (*ModSettingDefs, error) {
 	// A key that cannot be read (the world is missing, or being changed) is
 	// a miss; the run reads the world again and reports the cause.
-	key, _ := c.worlds.ModSettingsKey(id)
+	key, _ := k.key(id)
 	fk := modSettingsFlightKey{id, key}
-	cache := &c.modSettings
+	cache := k.cache
 
 	cache.mu.Lock()
 	if key != "" {
@@ -223,7 +229,7 @@ func (c *Controller) ModSettingDefs(ctx context.Context, id string) (*ModSetting
 			cache.flights = map[modSettingsFlightKey]*modSettingsFlight{}
 		}
 		cache.flights[fk] = f
-		if !c.spawn(func() { c.runModSettingsFlight(id, fk, f) }) {
+		if !c.spawn(func() { c.runModSettingsFlight(id, fk, f, k) }) {
 			delete(cache.flights, fk)
 			cache.mu.Unlock()
 			return nil, context.Canceled
@@ -243,11 +249,11 @@ func (c *Controller) ModSettingDefs(ctx context.Context, id string) (*ModSetting
 // context. It caches the result when the world's key after the run is the one
 // the run read with the mods. Both reads are without the world's lock: a
 // key read in the middle of a change differs, and the result is not kept.
-func (c *Controller) runModSettingsFlight(id string, fk modSettingsFlightKey, f *modSettingsFlight) {
-	defs, before, err := c.runModSettings(c.ctx, id)
-	cache := &c.modSettings
+func (c *Controller) runModSettingsFlight(id string, fk modSettingsFlightKey, f *modSettingsFlight, k modSettingsRunKind) {
+	defs, before, err := c.runModSettings(c.ctx, id, k.settings)
+	cache := k.cache
 	if err == nil {
-		after, kerr := c.worlds.ModSettingsKey(id)
+		after, kerr := k.key(id)
 		cache.mu.Lock()
 		if kerr == nil && after == before {
 			cache.put(id, before, defs)
@@ -267,7 +273,7 @@ func (c *Controller) runModSettingsFlight(id string, fk modSettingsFlightKey, f 
 
 // runModSettings runs the world's own image once and reads what it wrote. It
 // also returns the cache key the world had when its mods were read.
-func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSettingDefs, string, error) {
+func (c *Controller) runModSettings(ctx context.Context, id string, settings bool) (*ModSettingDefs, string, error) {
 	meta, err := c.readMeta(id)
 	if err != nil {
 		return nil, "", err
@@ -286,7 +292,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 		fill: func(base *os.Root) (string, error) {
 			var name string
 			var err error
-			key, name, localeCfgs, err = c.makeModSettingsDir(base, id, meta.GameVersion)
+			key, name, localeCfgs, err = c.makeModSettingsDir(base, id, meta.GameVersion, settings)
 			return name, err
 		},
 	}
@@ -380,10 +386,10 @@ func (c *Controller) worldCatalogue(ctx context.Context, id, lang string, cached
 	var defs *ModSettingDefs
 	if cachedOnly {
 		var ok bool
-		if defs, ok = c.cachedModSettingDefs(id); !ok {
+		if defs, ok = c.cachedModPlanetDefs(id); !ok {
 			return builtin, errCatalogueNotCached
 		}
-	} else if defs, err = c.ModSettingDefs(ctx, id); err != nil {
+	} else if defs, err = c.modPlanetDefs(ctx, id); err != nil {
 		return builtin, err
 	}
 	if defs.PlanetsErr != nil {
@@ -402,17 +408,6 @@ func (c *Controller) worldSpaceAge(id string, meta world.Meta) bool {
 		return meta.SpaceAge
 	}
 	return enabled[world.ModSpaceAge]
-}
-
-// cachedModSettingDefs is the world's cached mod settings, if any.
-func (c *Controller) cachedModSettingDefs(id string) (*ModSettingDefs, bool) {
-	key, err := c.worlds.ModSettingsKey(id)
-	if err != nil || key == "" {
-		return nil, false
-	}
-	c.modSettings.mu.Lock()
-	defer c.modSettings.mu.Unlock()
-	return c.modSettings.get(id, key)
 }
 
 // enabledModNames is the names of the mods the game loads for the world: each
@@ -496,7 +491,7 @@ func readPlanetsOutput(base *os.Root, dir string) ([]byte, error) {
 // are read in the one hold, so they describe the same mods. The preview slot
 // is held, so one fill runs at a time. The game runs without the lock. A
 // world that server control holds is world.ErrBusy.
-func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string) (key, name string, locale map[string]map[string][][]byte, err error) {
+func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string, settings bool) (key, name string, locale map[string]map[string][][]byte, err error) {
 	check := func(meta world.Meta) error {
 		if meta.GameVersion != gameVersion {
 			// The image was chosen for another version.
@@ -504,9 +499,14 @@ func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string) (
 		}
 		return nil
 	}
-	name, err = c.fillWorldWorkDir(base, id, PreviewRequest{}, check, func(*os.Root) error {
+	name, err = c.fillWorldWorkDir(base, id, PreviewRequest{}, check, func(dir *os.Root) error {
 		var err error
-		if key, err = c.worlds.ModSettingsKey(id); err != nil {
+		if settings {
+			key, err = c.addWorldSettings(dir, id)
+		} else {
+			key, err = c.worlds.ModSettingsKey(id)
+		}
+		if err != nil {
 			return err
 		}
 		locale, err = c.worlds.ModLocaleFiles(id)
