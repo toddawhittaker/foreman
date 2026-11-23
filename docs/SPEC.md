@@ -2261,7 +2261,13 @@ the 64-bit range means no limit.
   of its map-gen settings, and each control's category, richness, on/off
   box, order and localised name; on 1.1, which has no planets, it lists
   the controls of the one surface. Names resolve as setting names do
-  above. It is one run and one cache, kept under the same key as the
+  above, looked up in the mods' locale files first and then in the game's
+  own (`base`, `space-age`, `quality` and `elevated-rails` under the data
+  folder of the world's game image, read in the same run and never
+  downloaded), so a control named `{"entity-name.stone"}` reads "Stone".
+  When no loaded mod defines a setting the game writes no
+  `mod-settings.dat`; that is empty defaults, not a failed run, and a
+  missing file with settings listed still is. It is one run and one cache, kept under the same key as the
   definitions, so a change of mods or game version reads both again. No
   startup setting of the five planet mods tested changes the list, so
   saved startup settings do not reset it. Foreman checks the file under

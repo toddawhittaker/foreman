@@ -337,11 +337,11 @@ func TestWorldCataloguesCarrySpaceAge(t *testing.T) {
 	  "autoplace_controls":[{"name":"rock","category":"resource","localised_name":["autoplace-control-names.rock"]}],
 	  "resources":[{"name":"rock","control":"rock","localised_name":["entity-name.rock"]}]}`)
 	for _, on := range []bool{true, false} {
-		cats, err := worldCatalogues(data, nil, nil, "2.1", on)
+		cats, err := worldCatalogues(data, nil, nil, nil, "2.1", on)
 		if err != nil || cats["en"].SpaceAge != on || cats["de"].SpaceAge != on {
 			t.Errorf("space age %t: %v %t", on, err, cats["en"].SpaceAge)
 		}
-		cats, err = worldCatalogues(nil, ErrPlanetsMissing, nil, "2.1", on)
+		cats, err = worldCatalogues(nil, ErrPlanetsMissing, nil, nil, "2.1", on)
 		if err == nil || cats["en"].SpaceAge != on {
 			t.Errorf("fallback, space age %t: %t", on, cats["en"].SpaceAge)
 		}
