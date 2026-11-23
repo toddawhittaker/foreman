@@ -266,6 +266,10 @@
     "one": "Installer {count} mod",
     "other": "Installer {count} mods"
   },
+  "mods.plan.button.recommended": {
+    "one": "et {count} recommandé",
+    "other": "et {count} recommandés"
+  },
   "mods.plan.button.update": {
     "one": "Mettre à jour {count} mod",
     "other": "Mettre à jour {count} mods"
@@ -342,6 +346,10 @@
   "mods.error.unauthorized": "factorio.com a refusé le nom d’utilisateur ou le jeton, aucun mod n’a donc été téléchargé. Rien n’a été modifié. Vérifiez le compte factorio.com.",
   "mods.error.download_gone": "Le portail de mods n’a plus un mod que le plan télécharge. Rien n’a été modifié. Rouvrez les mods pour voir le nouveau plan.",
   "mods.error.download_failed": "Un mod n’a pas pu être téléchargé depuis le portail de mods. Rien n’a été modifié. Réessayez dans un instant.",
+  "mods.error.too_large": "{mod} {version} pèse {size}, ce qui dépasse la taille maximale d’un mod, fixée à {limit}.",
+  "mods.error.too_large_stream": "{mod} {version} dépasse la taille maximale d’un mod, fixée à {limit}.",
+  "mods.error.too_large_ask": "Demandez à un admin de relever la taille maximale d’un mod dans les paramètres.",
+  "mods.error.too_large_fix": "Modifier la taille maximale d’un mod",
   "mods.done": "Les mods de {world} sont modifiés. Foreman a d’abord pris l’instantané « {label} ».",
   "mods.undo": "Annuler cette modification des mods",
   "mods.changed.next": "Rouvrir les mods",
@@ -454,5 +462,7 @@
   "mods.plan_panel.wait": "La vérification sera possible dès que le plan sera à jour.",
   "mods.flow.generated": "{name} est créé. Choisissez maintenant ses mods ou passez aux paramètres de la carte.",
   "mods.flow.skip": "Passer aux paramètres des mods",
-  "mods.flow.next": "Suivant : paramètres des mods"
+  "mods.flow.next": "Suivant : paramètres des mods",
+  "mods.richtext.warning": "Avertissement",
+  "mods.richtext.info": "Remarque"
 }

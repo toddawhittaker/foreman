@@ -22,7 +22,7 @@
   "server.none.heading": "Ningún mundo activo",
   "server.none.text": "Todavía no hay ningún mundo activo, así que no hay servidor que ejecutar. Importa un mundo o sube una partida guardada en la página Mundos; el primer mundo pasa a ser el activo.",
   "server.none.go": "Ir a Mundos",
-  "server.players.heading": "Jugadores en línea",
+  "server.players.heading": "Jugadores",
   "server.facts.switching": "Cambio",
   "server.facts.switching_value": "De {from} a {to}",
   "server.facts.uptime": "Tiempo en marcha",
@@ -610,5 +610,16 @@
     "one": "{count} jugador en esta partida guardada",
     "other": "{count} jugadores en esta partida guardada"
   },
-  "server.playtime.reading": "Leyendo"
+  "server.playtime.reading": "Leyendo",
+  "server.players.time": "Tiempo",
+  "server.players.online": "En línea",
+  "server.players.inexact": "Los tiempos de juego pueden no ser exactos. Volver a leer la partida en la página del mundo los corrige.",
+  "server.players.tracked_since": "Registrado desde {when}.",
+  "server.players.all": {
+    "one": "El {count} jugador",
+    "other": "Los {count} jugadores"
+  },
+  "server.players.none_yet": "Nadie ha jugado todavía en este mundo.",
+  "server.players.announce_joined": "{names} se ha unido.",
+  "server.players.announce_left": "{names} se ha ido."
 }

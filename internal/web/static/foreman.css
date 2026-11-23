@@ -5676,6 +5676,24 @@ a[target="_blank"]::after {
   min-block-size: 8rem;
 }
 
+/* The loading words show only while the script's request runs (htmx adds
+   the class), so a browser without script is not told a load is under way
+   (SPEC 9.6). */
+.mod-settings:not(.htmx-request) .mod-settings-loading {
+  display: none;
+}
+
+/* Parent names in an origin line wrap on a phone: a line pitch of 26 px
+   with 25 px link boxes keeps each tap target apart from the next line's
+   (SPEC 17.2). */
+.hint.mod-origin {
+  line-height: 2;
+}
+
+.mod-origin a {
+  padding-block: 0.3em;
+}
+
 .field input.mod-settings-number {
   max-inline-size: calc(12ch + 2 * var(--space-3) + 2 * var(--border-width));
 }
@@ -5770,6 +5788,33 @@ a[target="_blank"]::after {
   gap: var(--space-4);
 }
 
+/* Under One planet's picture: the download link and the real-game button with its info
+   icon share a line while they fit, and when they do not the button and its icon wrap
+   together, so the icon never drops off the button's row (DESIGN 8.8). The button gives
+   way before the icon does. */
+.picture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+}
+
+.picture-actions #preview-chart-offer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-inline-size: 100%;
+}
+
+.picture-actions #preview-chart-offer > .button {
+  min-inline-size: 0;
+}
+
+.picture-actions #preview-chart-offer > .tip {
+  flex: none;
+}
+
 @container generate (min-width: 56rem) {
   .gen-grid {
     grid-template-columns: minmax(34rem, 1fr) minmax(20rem, 26rem);
@@ -5860,14 +5905,14 @@ a[target="_blank"]::after {
     justify-self: center;
   }
 
-  /* The Download line also offers the real-game picture. Below 100rem the
-     pane is narrow and the line wraps to two control rows, so the picture
-     keeps room for both; on a wider pane it is one row (DESIGN 8.8). */
-  @media (max-width: 99.98rem) {
-    .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
-      --chart-row: calc(var(--target-min) + var(--space-1));
-      min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
-    }
+  /* The Download line also offers the real-game picture. It wraps to a second
+     row on a narrow pane, and on any pane once the amounts make the link
+     longer, so the picture keeps room for the second row at every width; the
+     button's text may itself wrap to two lines in a longer language
+     (DESIGN 8.8). */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
+    --chart-row: calc(2 * var(--target-min));
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
   }
 
   /* The download links and the kept note read as one tight group under the
@@ -6956,6 +7001,23 @@ td > .badge {
 tr:has(> td > .player-actions[open]) > td.num {
   vertical-align: top;
   padding-block-start: calc(var(--space-2) + (var(--target-min) - 1lh) / 2);
+}
+
+/* The Server page's Players panel (SPEC 8.1): an online player's chip says
+   so in words, in the success tone, and a player who is away reads quieter
+   by their hint line, never by colour alone. */
+.badge--online {
+  color: var(--color-ok);
+  background: var(--color-ok-bg);
+  border-color: currentColor;
+}
+
+td > .badge--online {
+  margin-block-start: var(--space-1);
+}
+
+.server-players__note {
+  margin-block-start: var(--space-2);
 }
 
 /* 8.14 Chat: the log box in the body face, a little shorter than the game
@@ -12221,4 +12283,63 @@ main:has(> .public-world) {
 
 .webhook-list .facts dd {
   font-weight: 400;
+}
+
+/* A mod's rich text (SPEC 14.6, DESIGN 8.11). The game's named colours map
+   to theme tokens that already pass contrast as text in both themes. */
+.rt-danger {
+  color: var(--color-danger-text);
+}
+
+.rt-warn {
+  color: var(--color-warn);
+}
+
+.rt-ok {
+  color: var(--color-ok);
+}
+
+.rt-info {
+  color: var(--color-info);
+}
+
+.rt-muted {
+  color: var(--color-text-muted);
+}
+
+.rt-key {
+  padding: 0 0.25em;
+  border: 1px solid var(--color-border);
+  border-radius: 0.2em;
+  font: inherit;
+  white-space: nowrap;
+}
+
+/* A wiki icon is the height of the text line, so a page does not move
+   while it loads; a failed load swaps in the name. */
+.rt-obj-icon {
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  object-fit: contain;
+  vertical-align: -0.25em;
+}
+
+.rt-icon {
+  display: inline-block;
+  inline-size: 1em;
+  block-size: 1em;
+  vertical-align: -0.125em;
+  mask: var(--i-info) center / contain no-repeat;
+  background: var(--color-info);
+}
+
+.rt-icon--warning {
+  mask-image: var(--i-alert);
+  background: var(--color-warn);
+}
+
+@media (forced-colors: active) {
+  .rt-icon {
+    background: CanvasText;
+  }
 }

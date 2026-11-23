@@ -71,7 +71,7 @@ func TestChartDrawsThePlanet(t *testing.T) {
 }
 
 // SPEC 14.3: the seventh kind of container, with the preview's host
-// settings and 1 GiB, the world's mods and the helper mod in its work
+// settings and the 2 GiB of a run that loads a world's mods, the world's mods and the helper mod in its work
 // folder, and a script that creates the map and then loads it with
 // --test-save.
 func TestChartContainer(t *testing.T) {
@@ -88,7 +88,7 @@ func TestChartContainer(t *testing.T) {
 		t.Errorf("name %q", got.Name)
 	}
 	h := got.Spec.HostConfig
-	if h.Memory != 1<<30 || h.MemorySwap != 1<<30 || h.NetworkMode != "none" || !h.ReadonlyRootfs ||
+	if h.Memory != 2<<30 || h.MemorySwap != 2<<30 || h.NetworkMode != "none" || !h.ReadonlyRootfs ||
 		!slices.Equal(h.CapDrop, []string{"ALL"}) || len(h.Binds) != 1 || h.Binds[0] != "DATA/previews/FOLDER:/out" {
 		t.Errorf("host config %+v", h)
 	}
@@ -179,6 +179,7 @@ func TestChartHasOneLimit(t *testing.T) {
 	id := newModdedWorld(t, r)
 	defer func(d time.Duration) { chartLimit = d }(chartLimit)
 	chartLimit = 300 * time.Millisecond
+	r.c.previewWorldLimit = 300 * time.Millisecond
 	r.c.previewLimit = time.Hour
 	if err := r.game.SetPreviewMode(fakegame.PreviewHangs); err != nil {
 		t.Fatal(err)
@@ -365,5 +366,19 @@ func TestReadChartErrors(t *testing.T) {
 	_, err := readChart(writeChartOutput(t, o), "w", "cerys")
 	if !errors.Is(err, ErrChartBadOutput) || strings.Contains(err.Error(), "elsewhere") {
 		t.Errorf("error %v", err)
+	}
+}
+
+// SPEC 14.3: a run that loads a world's mods has at least the limit of a
+// preview with mods, so the real-game picture is never held to less.
+func TestChartLimitIsAtLeastThePreviewWithModsLimit(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	if got := r.c.chartRunLimit(); got != PreviewWorldLimit {
+		t.Errorf("limit %v, want %v", got, PreviewWorldLimit)
+	}
+	defer func(d time.Duration) { chartLimit = d }(chartLimit)
+	chartLimit = 5 * time.Minute
+	if got := r.c.chartRunLimit(); got != 5*time.Minute {
+		t.Errorf("limit %v, want its own 5m0s when larger", got)
 	}
 }

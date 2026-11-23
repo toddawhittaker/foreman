@@ -260,7 +260,7 @@ test.describe("with Docker unreachable", () => {
     const status = page.locator("main [sse-swap=facts]");
     await expect(status).not.toContainText("Uptime");
     await expect(status).not.toContainText("Save loaded");
-    await expect(page.getByRole("region", { name: "Players online" })).toContainText("Foreman cannot see whether anyone is online.");
+    await expect(page.getByRole("region", { name: "Players", exact: true })).toContainText("Foreman cannot see whether anyone is online.");
     await expect(page.getByRole("button", { name: "Take snapshot" })).toHaveCount(0);
     await checkPage(page);
   });

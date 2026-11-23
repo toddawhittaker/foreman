@@ -459,6 +459,7 @@
   "worlds.generate.resources.patch": "{amount} en ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent} % de rendement en ({x}, {y})",
   "worlds.generate.resources.none": "Cette image ne contient aucun gisement de ressources.",
+  "worlds.generate.resources.not_patches": "Aucun gisement de ressources n’a été trouvé dans cette image. Les ressources de cette planète sont peut-être des cases, qui ne peuvent pas être comptées.",
   "worlds.generate.resources.invalid": "Les réglages comportent des problèmes, donc les ressources n’ont pas été comptées. Corrigez les problèmes indiqués par l’aperçu de la carte.",
   "worlds.generate.resources.busy": "Un autre aperçu de carte est en cours de création, donc les ressources n’ont pas été comptées. Attendez quelques secondes, puis réessayez.",
   "worlds.generate.resources.timeout": "Le comptage des ressources a pris trop de temps et a été arrêté. Réessayez ou choisissez une taille d’aperçu plus petite.",

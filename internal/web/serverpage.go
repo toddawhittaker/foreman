@@ -24,6 +24,9 @@ import (
 type ServerPage struct {
 	World    world.Summary
 	HasWorld bool
+	// Admin says the viewer may change Foreman's settings, so a failure can
+	// link to one.
+	Admin bool
 	// RecentSnapshots is the world's newest snapshots, newest first; only
 	// the page load fills it, so live updates never read the disk for it.
 	RecentSnapshots []world.Snapshot
@@ -782,7 +785,7 @@ func (p ServerPage) Failure() *Failure {
 		f.Message = i18n.M("server.error.image_missing")
 		f.Download = p.Result.Action != game.AuditSwitch || p.Result.Target == p.World.ID
 	case p.Result.Action == game.AuditMods:
-		f.Message, f.Fix = modsFailure(err, p.Result.Mods, p.World.Name, p.Status.State, PathServer)
+		f.Message, f.Fix = modsFailure(err, p.Result.Mods, p.World.Name, p.Status.State, PathServer, p.Admin)
 	default:
 		f.Message = failureText(err)
 	}

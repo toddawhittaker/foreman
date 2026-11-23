@@ -284,6 +284,11 @@
     "few": "Zainstaluj {count} modyfikacje",
     "many": "Zainstaluj {count} modyfikacji"
   },
+  "mods.plan.button.recommended": {
+    "one": "i {count} polecaną",
+    "few": "i {count} polecane",
+    "many": "i {count} polecanych"
+  },
   "mods.plan.button.update": {
     "one": "Zaktualizuj {count} modyfikację",
     "few": "Zaktualizuj {count} modyfikacje",
@@ -367,6 +372,10 @@
   "mods.error.unauthorized": "factorio.com odrzuciło nazwę użytkownika lub token, więc nie pobrano żadnej modyfikacji. Nic nie zmieniono. Należy sprawdzić konto factorio.com.",
   "mods.error.download_gone": "Portal modyfikacji nie ma już modyfikacji, którą pobiera plan. Nic nie zmieniono. Należy ponownie otworzyć modyfikacje, aby zobaczyć nowy plan.",
   "mods.error.download_failed": "Nie udało się pobrać modyfikacji z portalu modyfikacji. Nic nie zmieniono. Należy spróbować ponownie za chwilę.",
+  "mods.error.too_large": "Modyfikacja {mod} {version} ma {size}, czyli więcej niż limit rozmiaru modyfikacji wynoszący {limit}.",
+  "mods.error.too_large_stream": "Modyfikacja {mod} {version} jest większa niż limit rozmiaru modyfikacji wynoszący {limit}.",
+  "mods.error.too_large_ask": "Administrator może zwiększyć limit rozmiaru modyfikacji w Ustawieniach.",
+  "mods.error.too_large_fix": "Zmień limit rozmiaru modyfikacji",
   "mods.done": "Modyfikacje świata {world} zostały zmienione. Foreman najpierw wykonał migawkę „{label}”.",
   "mods.undo": "Cofnij tę zmianę modyfikacji",
   "mods.changed.next": "Otwórz modyfikacje ponownie",
@@ -492,5 +501,7 @@
   "mods.plan_panel.wait": "Przegląd będzie dostępny po zaktualizowaniu planu.",
   "mods.flow.generated": "Świat {name} został utworzony. Teraz można wybrać jego modyfikacje lub przejść do ustawień mapy.",
   "mods.flow.skip": "Pomiń i przejdź do ustawień modyfikacji",
-  "mods.flow.next": "Dalej: ustawienia modyfikacji"
+  "mods.flow.next": "Dalej: ustawienia modyfikacji",
+  "mods.richtext.warning": "Ostrzeżenie",
+  "mods.richtext.info": "Uwaga"
 }

@@ -285,20 +285,38 @@
 {{- else}}{{.Name}}{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}}{{end}}
 {{- end}}
 
-{{/* Who is online now and for how long (SPEC 8.1). While a stop warns
-     players, the list is who was online when it began (SPEC 7.6). */}}
+{{/* Every player of the save, online players first (SPEC 8.1, 8.14): an
+     online row has the "Online" chip, the session length and its actions;
+     the others have play time and last seen, and no actions (SPEC 8.2).
+     While a stop warns players, the online rows are who was online when it
+     began (SPEC 7.6). At most ten rows, then a link to the full list. */}}
 {{define "server-players" -}}
-{{- if .PlayerTable}}{{with .PlayerTable}}
-<table role="table">
-  <caption>{{msg .Caption}}</caption>
-  <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "server.players.player"}}</th><th scope="col" class="num" role="columnheader">{{t "server.players.online_for"}}</th></tr></thead>
+{{- $rows := .ShownPlayers}}
+{{- if $rows}}
+<table role="table" id="server-players-table" class="server-players">
+  <caption>{{msg .PlayersCaption}}</caption>
+  <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "server.players.player"}}</th><th scope="col" class="num" role="columnheader">{{t "server.players.time"}}</th></tr></thead>
   <tbody role="rowgroup">
-    {{- range $.PlayerRows}}
-    <tr role="row" id="{{.RowID}}"><td role="cell">{{template "server-player" .}}</td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
+    {{- range $rows}}
+    {{- if .Online}}
+    <tr role="row" id="{{.RowID}}"><td role="cell">{{template "server-player" .PlayerRow}} <span class="badge badge--online">{{t "server.players.online"}}</span></td><td class="num" role="cell" data-label="{{t "server.players.time"}}">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
+    {{- else}}
+    <tr role="row"><td role="cell"><span translate="no">{{.Name}}</span>{{if not .LastSeen.IsZero}}<br><span class="hint">{{tHTML "saveplayers.last_seen" "when" (momentUTC .LastSeen)}}</span>{{end}}{{if .BeforeForeman}}<br><span class="hint">{{t "saveplayers.before_foreman"}}</span>{{end}}</td><td class="num" role="cell" data-label="{{t "server.players.time"}}">{{msg .PlayTimeText}}</td></tr>
+    {{- end}}
     {{- end}}
   </tbody>
 </table>
+{{- if .PlayersInexact}}
+<p class="hint server-players__note">{{t "server.players.inexact"}}</p>
 {{- end}}
+{{- with .PlayersTrackedSince}}{{if not .IsZero}}
+<p class="hint server-players__note">{{tHTML "server.players.tracked_since" "when" (momentUTC .)}}</p>
+{{- end}}{{end}}
+{{- if .MorePlayers}}
+<p class="server-players__note"><a href="{{.SavePlayersLink}}" id="act-all-players">{{t "server.players.all" "count" .PlayersCount}}</a></p>
+{{- end}}
+{{- else if .NobodyYet}}
+<p class="empty empty--art empty--players">{{t "server.players.none_yet"}}</p>
 {{- else if .PlayersKnown}}
 <p class="empty empty--art empty--players">{{t "server.online.nobody"}}</p>
 {{- else if eq .Status.State "unknown"}}

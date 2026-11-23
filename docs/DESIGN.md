@@ -857,8 +857,14 @@ order and the picture agree.
   states the server's state large, then the controls (and while an
   operation runs, its step list and "Cancel stop"), then the facts. Below
   the plate come the live world's pages (World page, Mods, Game settings
-  and Switch world), then "Players online", then "Snapshots", in that
-  order in the code too. On a phone (to 40rem) the pages are a two-column
+  and Switch world), then "Players", then "Snapshots", in that
+  order in the code too. The Players card (SPEC 8.1) is one table: online
+  rows first, the name then an "Online" badge (`ok` text on `ok-bg`, in
+  words) and the session in the time column; then the save's other
+  players, name with "Last seen" and "Played before Foreman" hints under
+  it and play time in the time column. The time column stays one line.
+  At most ten rows, then an "All N players" link to the Overview list;
+  short hint lines carry the inexact and "tracked since" notes. On a phone (to 40rem) the pages are a two-column
   grid of 48 px tiles with 8 px gaps (`surface` face, 1 px `border` edge,
   `--radius`, icon and name, no chevron), so the players start on the
   first screen. The Snapshots card lists the world's three newest
@@ -2458,10 +2464,15 @@ the settings of the mods' planets.
   says "Preview: Fulgora" once (with One planet chosen, 8.8); a tab
   switch says nothing. A planet the large view moves to opens its row
   without moving focus.
-- **Cliffs off.** Cliffs that the game lets you switch off (Nauvis on
-  every line, Gleba and Fulgora on 2.x, never Vulcanus) have an on/off
-  box in their legend, as resources do, and their continuity select no
-  longer offers "None". There is no achievement warning.
+- **Cliffs off.** Cliffs that the game lets you switch off have an
+  on/off box in their legend, as resources do, and their continuity
+  select no longer offers "None". There is no achievement warning. The
+  box comes by rule, never by planet name: on 2.x a cliff or enemy
+  control gets one when the game says it can be disabled (Nauvis, Gleba
+  and Fulgora cliffs, and a mod's, such as Muluna's or Corrundum's;
+  not Carna's or Foliax's, which say they cannot), as does any resource
+  that can be. On 1.1 Nauvis's cliffs keep their box. A mod's terrain
+  control, such as Muluna's lunar rocks, has none.
 - **Needed resources.** While a Nauvis resource the game needs (iron
   ore, copper ore, stone, crude oil and coal) is off, a warning shows
   under its box ("…unless a mod provides it"), and a `message--warning`
@@ -2619,8 +2630,11 @@ close the view, the tab, the setting, and the picture again).
 - **A picture's own actions share its Download line.** On a 2.1 world's
   one picture, "Draw from a real game" and its toggletip follow the
   Download link on the same line, so the pane gives no row of its own to
-  an action the person seldom takes. On a narrow pane the line wraps,
-  and the picture leaves room for the second row.
+  an action the person seldom takes. The line wraps when the pane is
+  narrow and when "Show resource amounts" makes the link longer; the
+  button and its toggletip wrap together, so the icon stays beside the
+  button, and the picture always leaves room for the second row. The
+  "Download all drawn planets (zip)" link has its own line below both.
 - **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
   wide panel, a select of 17 sizes elsewhere) above the section, outside
   the part a reply replaces: 1024 to 3072 tiles square in steps of 128,
@@ -3122,6 +3136,13 @@ The Server page has a Mods link beside "World page" and "Game settings" for the
 active world. The pages follow 7.2 (fields), 7.4 (the plan page is a
 confirmation step) and 7.6 (the result), and use no new component but the
 small ones below. All counts use plural messages (SPEC 22).
+
+A mod's own text keeps its rich-text emphasis (SPEC 14.6): bold stays
+`<strong>` (a heading font never changes the size), red is the danger text
+colour, orange and yellow the warning colour, green the success colour,
+blue, cyan, purple and pink the info colour, and gray the muted text colour
+(`.rt-*` in `foreman.css`). A key-binding action shows in a bordered
+`kbd`, and the game's warning sprite as the warning icon messages use.
 
 **Mod names** are wrapped in `span.ident` (`translate="no"`,
 `hyphens: manual; overflow-wrap: anywhere`) in tables, plan text,

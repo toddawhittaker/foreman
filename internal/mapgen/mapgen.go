@@ -18,12 +18,12 @@ import (
 //go:embed data
 var files embed.FS
 
-// Control categories the form treats apart from the others, as the game
-// names them. The game's other category is enemy.
+// Control categories, as the game names them.
 const (
 	CategoryResource = "resource"
 	CategoryTerrain  = "terrain"
 	CategoryCliff    = "cliff"
+	CategoryEnemy    = "enemy"
 )
 
 // Control is one autoplace control: a setting with its own frequency and

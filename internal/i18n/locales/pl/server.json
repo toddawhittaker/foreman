@@ -23,7 +23,7 @@
   "server.none.heading": "Brak aktywnego świata",
   "server.none.text": "Nie ma jeszcze aktywnego świata, więc nie ma serwera do uruchomienia. Na stronie Światy można zaimportować świat lub przesłać zapis; pierwszy świat stanie się aktywny.",
   "server.none.go": "Przejdź do światów",
-  "server.players.heading": "Gracze online",
+  "server.players.heading": "Gracze",
   "server.facts.switching": "Przełączanie",
   "server.facts.switching_value": "Z {from} na {to}",
   "server.facts.uptime": "Czas działania",
@@ -631,5 +631,17 @@
     "few": "{count} graczy w tym zapisie",
     "many": "{count} graczy w tym zapisie"
   },
-  "server.playtime.reading": "Trwa odczyt"
+  "server.playtime.reading": "Trwa odczyt",
+  "server.players.time": "Czas",
+  "server.players.online": "Online",
+  "server.players.inexact": "Czasy gry mogą być nieco niedokładne. Ponowne odczytanie zapisu na stronie świata je poprawi.",
+  "server.players.tracked_since": "Śledzone od {when}.",
+  "server.players.all": {
+    "one": "Wszyscy gracze ({count})",
+    "few": "Wszyscy gracze ({count})",
+    "many": "Wszyscy gracze ({count})"
+  },
+  "server.players.none_yet": "Nikt jeszcze nie grał na tym świecie.",
+  "server.players.announce_joined": "Dołączył gracz {names}.",
+  "server.players.announce_left": "Wyszedł gracz {names}."
 }

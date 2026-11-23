@@ -227,3 +227,47 @@ test.describe("retrying a failed mod change", () => {
     await checkPage(page);
   });
 });
+
+// SPEC 14.6, 14.10: a mod over the size limit says so by name, size and limit
+// rather than "could not be downloaded", links an admin to the setting, and
+// offers no Try again, since the file is as large next time.
+test.describe("a download is over the mod size limit", () => {
+  test.use({ portalAccountOn: true });
+
+  test("the error names the mod and the limit, links to the setting, and offers no Try again", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const g: FakeGame = fakeGame!;
+    const portal = fakePortal!;
+    await portal.add("fp-big", "1.0.0", ["base >= 2.0"]);
+    await setUpModsWorld(page, foreman, g, { ...world, start: true });
+    await page.goto("/settings/general");
+    await page.getByLabel("Largest mod upload (MB)").fill("10");
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page).toHaveURL("/settings/general?done=saved");
+    const before = { creates: await creates(g), list: readFileSync(join(modsDir(foreman), "mod-list.json"), "utf8"), files: readdirSync(modsDir(foreman)).sort() };
+
+    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-big");
+    await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
+    await portal.setMode("fp-big", "1.0.0", "oversized");
+    await page.getByRole("button", { name: "Install 1 mod" }).click();
+
+    const box = page.locator(".steps .message--error");
+    await expect(box).toContainText("fp-big 1.0.0 is larger than the mod size limit of 10 MB. Nothing was changed, and Base kept running.", live);
+    await expect(box).not.toContainText("could not be downloaded");
+    await expect(box.locator("#act-fix")).toHaveText("Change the mod size limit");
+    await expect(page.getByRole("link", { name: "Try again" })).toHaveCount(0);
+    await checkPage(page);
+    expect(await creates(g)).toBe(before.creates);
+    expect(readFileSync(join(modsDir(foreman), "mod-list.json"), "utf8")).toBe(before.list);
+    expect(readdirSync(modsDir(foreman)).sort()).toEqual(before.files);
+    // Every failed download is logged with the mod and version, never the account.
+    expect(foreman.logs()).toContain('"msg":"download a mod","mod":"fp-big","version":"1.0.0"');
+    expect(foreman.logs()).not.toContain(portal.token);
+    expect(foreman.logs()).not.toContain(portal.username);
+
+    // The link opens the limit's own field.
+    await box.locator("#act-fix").click();
+    await expect(page).toHaveURL("/settings/general#general-mod-upload-mb");
+    await expect(page.getByLabel("Largest mod upload (MB)")).toBeVisible();
+    await checkPage(page);
+  });
+});

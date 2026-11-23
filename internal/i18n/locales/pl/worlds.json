@@ -476,6 +476,7 @@
   "worlds.generate.resources.patch": "{amount} w ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent}% uzysku w ({x}, {y})",
   "worlds.generate.resources.none": "Na tym obrazie nie ma złóż zasobów.",
+  "worlds.generate.resources.not_patches": "Na tym obrazie nie znaleziono żadnych złóż zasobów. Zasoby tej planety mogą być kafelkami, których nie da się policzyć.",
   "worlds.generate.resources.invalid": "Ustawienia zawierają błędy, dlatego nie policzono zasobów. Należy poprawić problemy wymienione w podglądzie mapy.",
   "worlds.generate.resources.busy": "Trwa tworzenie innego podglądu mapy, dlatego nie policzono zasobów. Należy odczekać kilka sekund i spróbować ponownie.",
   "worlds.generate.resources.timeout": "Liczenie zasobów trwało zbyt długo i zostało zatrzymane. Należy spróbować ponownie lub wybrać mniejszy rozmiar podglądu.",

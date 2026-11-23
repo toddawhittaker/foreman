@@ -110,7 +110,7 @@ func enemyRules(line string) []achievementRule {
 	var out []achievementRule
 	for _, p := range parsed[line].Planets {
 		for _, c := range p.Controls {
-			if c.Category != "enemy" || seen[c.Name] {
+			if c.Category != CategoryEnemy || seen[c.Name] {
 				continue
 			}
 			seen[c.Name] = true

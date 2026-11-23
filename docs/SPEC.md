@@ -713,6 +713,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - A resource the game lets you switch off has an on/off box. Off writes
     size 0, the game's own off value; frequency 0 is not off (2.1.24
     crashes on it). A post that lacks the box keeps the resource on.
+    A control has an on/off box when the game says it can be disabled and
+    it is a resource or, on 2.x, cliffs or enemies; the rule never names a
+    planet, and off writes size 0.
   - **Cliffs off.** Cliffs have the same on/off box where the game lets
     them be switched off: Nauvis on every line, and Gleba and Fulgora on
     2.x; Vulcanus has no cliff control. Off writes
@@ -978,6 +981,20 @@ not) or a map exchange string, with Space Age on or off. (P0)
       it runs out of memory at about 30 s (generating alone peaks at 822
       MiB) and fails safe with the out-of-memory message and "choose a
       smaller preview size"; 1.1 fits it, at 1,014 MiB and 37 s.
+      With a world's mods the count has the larger limits of 14.3 (2 GiB
+      and 120 s), set from a heavy set of 31 mods (Corrundum, Maraxsis,
+      Moshine, Muluna and their graphics) at 3072 tiles on 2.1.24: 790 to
+      930 MiB and 14 to 16 s at default settings, and at most 1,407 MiB and
+      28.5 s (Corrundum) with every resource control at its most. The time
+      is twice the slowest count seen in a survey of planet mods, 58 s. An
+      out-of-memory failure names the resource count, never the picture.
+    - **Known limit: resources that are not patches.** The count reads
+      resource entities only. When a planet has a resource control from a
+      mod that the settings leave on, and the count finds no patches, the
+      page says "No resource patches were found in this picture. This
+      planet's resources may be tiles, which can't be counted." instead of
+      "no resource patches". The words are true whether the resources are
+      tiles or real patches too small to count at the picture's size.
     - **While it runs and after.** A visible line and an indeterminate bar
       say that counting can take up to a minute. Busy, timeout, out of
       memory, missing image, failed and invalid settings each have their own
@@ -1726,6 +1743,14 @@ chosen time zone). It runs only when nobody is online. (P1)
 decides who is on. How long comes from the `[JOIN]` lines in the game
 container's log since it started, so a chat line cannot fake a join; a
 player whose join line Foreman did not see is listed without a time. (P0)
+The Server page's Players panel lists the save's players (8.14) with who
+is online first, each with an "Online" chip in words and their session,
+longest first; then everyone else by play time, most first, with play time
+and last seen. A stopped game shows the same list with no chips; "No one
+has played this world yet" shows only when the save has no players. Joins
+and leaves move rows without a reload, with one announcement per update
+(16.3). At most ten rows, then "All N players" links to the full list on
+the world's Overview page. Only online rows offer the actions of 8.2.
 
 8.2. Kick, ban, unban, promote to admin, demote, and add to or remove from
 the whitelist, sent over RCON to the running game. They start from a
@@ -2028,8 +2053,10 @@ they were last seen. (P1)
   inexact. It is read again at the next view while the world is stopped.
   A "Read again" button is always there.
 - **Where it shows.** The full list is on the world's Overview page. The
-  Server page shows total play time (8.15) and an "N players in this save"
-  link to that list.
+  Server page shows total play time (8.15), an "N players in this save"
+  link to that list, and the top of the list in its Players panel (8.1),
+  with the inexact and "tracked since" notes in short. The read button
+  stays on the Overview page.
 - A read changes no file the game uses, so it is not audited and takes no
   snapshot. Not in MCP or the REST API (21.7); `list_players` stays "online
   now" (21.4).
@@ -2396,7 +2423,7 @@ changed when the file no longer matches. (P0)
 only the names of the mods picked with "+", at most 500 (3.4, ADR 0021). Each
 time the panel is drawn the tree is worked out again, so removing a pick
 also drops every dependency nothing else needs, and a dependency has no
-remove button of its own. When "Install N mods" is accepted, the mods it
+remove button of its own. The install button counts the recommended mods that are ticked apart from the others ("Install 3 mods and 10 recommended"), and its label follows each tick. When "Install N mods" is accepted, the mods it
 installed leave the saved picks and the others stay (an Unfinished world's
 Continue, 5.6, opens step 2 only while picks are left, and a pick installed
 another way, such as an upload, is not work that remains); nothing is cleared by
@@ -3069,7 +3096,7 @@ they were created. (P1)
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
 default stop countdown, audit retention, the two upload limits and the
-update check (the General tab, below), scheduled restarts, notifications, the public
+update check and the wiki icons switch (the General tab, below), scheduled restarts, notifications, the public
 mods page (9.16), MCP access (21.2), and portal credentials when not set
 by environment. Each shows where its value comes from (environment or
 UI), and environment values cannot be changed in the UI. (P0 for those
@@ -3082,7 +3109,7 @@ the factorio.com account. The Settings link in the main navigation opens
 General.
 
 **The General tab** (`/settings/general`) holds five number settings and
-one switch. None has an
+two switches. None has an
 environment form, so each says "set here". A bad value refuses the whole
 form and stores nothing. (Todd's rulings, 2026-11-18.)
 
@@ -3092,15 +3119,18 @@ form and stores nothing. (Todd's rulings, 2026-11-18.)
 | Default stop countdown (7.6), seconds | 0 to 600 | 60 | `stop-countdown-set` |
 | Audit retention (12.9), days | 7 to 3650 | 365 | `audit-retention-set` |
 | Save upload limit (14.6), MB | 100 to 8192 | 1024 | `save-upload-limit-set` |
-| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 200 | `mod-upload-limit-set` |
+| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 1024 | `mod-upload-limit-set` |
 | Check GitHub for new Foreman versions (14.10) | on or off | on | `update-check-set` |
+| Show game icons from the Factorio wiki (14.10) | on or off | off | `wiki-icons-set` |
 
 A scheduled restart keeps its fixed countdown (7.12). The upload limits are
 in whole MB, meaning MiB, as the pages say them. A stored value that is
 missing, unreadable or out of range gives the default. The switch is a
 checkbox; its audit detail reads "from on to off" or "from off to on".
 Turning it off stops the check and hides any notice at once; turning it
-on checks at once, in the background. These settings are also read and
+on checks at once, in the background. The wiki icons switch is off by
+default and reads "Show game icons from the Factorio wiki (your browser
+contacts wiki.factorio.com)"; what it does is in 14.10. These settings are also read and
 changed through MCP (21.7, 21.8). (P1)
 
 ## 14. Security
@@ -3120,7 +3150,7 @@ reviews against.
 | VPN sidecar | An optional container the operator runs, whose network the game shares (4.13) | Nothing; Foreman did not create it (14.16) |
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
 | Identity provider | The OIDC provider an operator configured (12.7) | Only the ID tokens it signs for this client; nothing else it sends |
-| Internet | Mod portal, image registry and its tag list, release list, GitHub's latest Foreman release, webhook targets | Nothing |
+| Internet | Mod portal, image registry and its tag list, release list, GitHub's latest Foreman release, webhook targets; the Factorio wiki, which only a viewer's browser contacts, and only when an admin turns on its icons (14.10) | Nothing |
 | AI client | A program, usually an AI assistant, calling the MCP endpoint with an API token (section 21) | Only its token's scope; steerable by text it reads (14.12) |
 | Player | Anyone who can reach the public mods page (9.16) | Nothing; may be a script |
 
@@ -3186,11 +3216,14 @@ control-only mod refuses the run. The planets a run may draw are checked
 against the planet list Foreman took from that world's stored run, never
 against anything the form posted. The check uses the Space Age the world's
 enabled mods give, the same answer the planet list uses, so a world whose
-flag disagrees with its mods is not refused. The limits stay 1 GiB, and the time
-limit is 60 seconds for each planet drawn, at most 10 minutes in all so
-a run cannot hold the one slot for long: with five planet mods, one
-planet took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB
-(#775).
+flag disagrees with its mods is not refused. A run that loads a world's
+mods has larger limits than a base-game run (1 GiB and 60 s): 2 GiB of
+memory, and 120 seconds for each planet drawn, at most 10 minutes in all so
+a run cannot hold the one slot for long. With five planet mods, one planet
+took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB (#775).
+The 2 GiB is 1.5 times the highest resource count measured with a heavy
+mod set (5.6, Cost). The real-game picture (5.6) always loads a world's
+mods, so it has the same 2 GiB, and 120 seconds for its one planet.
 
 Demolisher territories (5.6) use a second kind of preview container,
 `foreman-territories-<folder>`, with the same label, endpoints, host
@@ -3242,8 +3275,8 @@ with the helper's name refuses the run. No new Docker endpoint is used.
 
 The real-game picture (5.6) uses a seventh kind, `foreman-chart-<folder>`,
 on 2.1 only, with the same label, endpoints, host settings, slot and
-cleanup, a memory limit of 1 GiB with no swap and a time limit of 90
-seconds in all. Its work folder holds the world's mods as for the preview
+cleanup, a memory limit of 2 GiB with no swap (as for a preview that loads
+a world's mods) and a time limit of 120 seconds in all. Its work folder holds the world's mods as for the preview
 above, the step's settings files and a control-only helper mod. The game
 runs `--create` to make a throwaway map, then `--test-save` on it, which
 loads it with a player; the helper creates the planet's surface, so the
@@ -3280,7 +3313,7 @@ are not followed out of it. Uploaded zips are checked entry by entry and
 refused if any entry would land outside its target. (P0)
 
 14.6. **Uploads** have size limits (app settings on the General tab, 13.1:
-a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 200 MB;
+a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 1 GB;
 each a whole number of MB, meaning MiB) and are written to a temporary file and checked
 before they replace anything. Pasted text has limits too: a map exchange
 string is at most 64 KB and inflates to at most 1 MB (5.6), and a settings
@@ -3318,7 +3351,17 @@ own default for a control is kept only when it is a finite number from 0
 to 1000, else it is ignored. Invisible Unicode (zero-width and direction
 marks) is removed from every label. Localised
 names resolve under the 20-level and 1,000-character limits above, then
-lose their rich-text tags and are cut to 100 characters. A mod's
+lose their rich-text tags and are cut to 100 characters. Other text a mod
+supplies (setting names, descriptions, mod titles and summaries) keeps a
+safe subset of the game's rich text, parsed on the server and rebuilt from
+an allowed list: bold fonts as bold, the game's named colours as theme
+colours (hex and r,g,b colours as plain text), object tags as the object's
+name made readable (or, when an admin has turned wiki icons on, its icon,
+14.10), the game's warning and info sprites as Foreman's own
+icons with text for screen readers, a key-binding macro as the action's
+name (never a key), any other macro as its name made readable, and an escaped line break as a break in descriptions.
+No text, attribute or class from the mod reaches the page unescaped;
+unknown or unmatched tags and a lone `[` stay as literal text. A mod's
 `.cfg` locale file is at most 1 MiB, and 8 MiB per language across mods. A
 string setting value is at most 10,000 bytes. A mod or `mod-settings.dat` upload waits in a
 staging file at the top of the worlds folder, and a staged mod nobody
@@ -3419,6 +3462,23 @@ About links to the release page built from that version, never to an
 address GitHub sent. The answer is kept in memory only. A failure logs one
 warning line and shows nothing. About names the release only when it is
 strictly newer than the running build's major.minor.patch (P1).
+Game icons from the wiki are the one request a viewer's browser makes
+that Foreman does not. They are off until an admin turns on the switch in
+13.1. Then an object tag in mod text (`[item=space-science-pack]`) is an
+`<img>` whose address is `https://wiki.factorio.com/images/<Name>.png`,
+where Name is the prototype name with its first letter capitalised and
+hyphens turned into underscores. The address is built only from a
+prototype name that matches `^[a-z0-9_-]+$`, cut at the first comma, so
+no other mod text reaches it; any other name shows as its readable name.
+The image carries `referrerpolicy="no-referrer"`, so the wiki is not told
+the page's address, and `loading="lazy"`. Its `alt` text is the object's
+name, and a failed load (offline, a renamed wiki file, a blocked request)
+swaps the image for that name, so a broken image never shows. Foreman never
+fetches, stores or proxies an icon, and sends no request to the wiki. The
+page's `Content-Security-Policy` is `frame-ancestors 'none'; img-src 'self'
+data:`, plus `https://wiki.factorio.com` after `data:` only while the switch
+is on, and never on a public page. A switch that cannot be read counts as
+off (P1).
 The mod portal's base is fixed at `https://mods.factorio.com`; there is no
 setting for it. Its API calls take at most 10 seconds, follow no redirects,
 and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
@@ -3426,7 +3486,15 @@ and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
 starts with `/download/` on that base, and its `file_name` must equal
 `<name>_<version>.zip`. A download takes at most 5 minutes, reads at most
 the mod upload limit (14.6), so a mod that can be uploaded can also be
-downloaded again, and follows at most 2 redirects, each only to an `https` address
+downloaded again. A file over that limit is refused as its own failure,
+not as an unreachable portal: before any byte is read when the portal
+declares a `Content-Length` over the limit, and by cutting the stream off at
+the limit when it does not. The page names the mod, its size when known and
+the limit; an admin gets a link to the limit on the General tab, anyone else
+is told to ask an admin, and there is no "Try again", since the file is as
+large next time. Every failed mod download, for any reason, logs one line
+with the mod, version and reason, never the username or token. A download
+follows at most 2 redirects, each only to an `https` address
 whose host ends in `.factorio.com`. The real portal redirects to
 `dl-mod.factorio.com`. The redirect carries no `Referer` header, because Go
 would copy the token-bearing address into it. An error message never holds
@@ -3972,7 +4040,7 @@ five planet mods on 2.x: the mod-settings run lists 11 planets; each
 planet's preview draws within 60 seconds and 1 GiB; map settings saved
 in step 4 for a modded planet reach the map the first start creates; a
 removed planet mod refuses the start until step 4 is saved again; and on
-2.1.24 Cerys's real-game picture shows its real terrain within 90
+2.1.24 Cerys's real-game picture shows its real terrain within 120
 seconds.
 
 ## 19. Milestone gates
@@ -4039,7 +4107,8 @@ shows them; list worlds (5.4); players online (8.1); the most recent log
 lines, with secrets removed (8.6); list snapshots (6.4); list a world's
 mods and available updates (9.3). The tools are `server_status`,
 `list_worlds` (which includes archived worlds, with `archived: true`, 5.9),
-`list_players`, `recent_log` (the newest 200 lines),
+`list_players` (who is online now, never the save's full list),
+`recent_log` (the newest 200 lines),
 `list_snapshots` and `list_mods`. `world_id` is optional on these and
 means the active world when left out. Player and portal text in any
 result is marked untrusted (14.12). (P1)

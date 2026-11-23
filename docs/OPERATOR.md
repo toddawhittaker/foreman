@@ -588,10 +588,12 @@ preview cannot. It takes 15 to 40 seconds.
 ### Memory for planet previews
 
 Each preview run, and each real-game picture, is a one-off container. Both
-run one at a time and are limited to 1 GiB of memory with no swap. A fast
-preview of one planet is limited to 60 seconds. With five planet mods I
+run one at a time, with no swap. A run of the base game is limited to 1 GiB
+of memory; a run that loads a world's mods, which includes every real-game
+picture, to 2 GiB. A fast preview of one planet is limited to 60 seconds, or
+120 seconds with a world's mods. With five planet mods I
 measured 2 to 4 seconds and under 750 MiB for each planet. A real-game
-picture is limited to 90 seconds, and I measured 13 to 39 seconds and at
+picture is limited to 120 seconds, and I measured 13 to 39 seconds and at
 most 692 MiB. Foreman keeps the pictures in memory, up to 160 MiB for all
 users, until you save the map settings or restart Foreman.
 
@@ -1385,8 +1387,9 @@ one says "Set here"; nothing in the environment sets or overrides them.
 | Default stop countdown (seconds) | 0 to 600 | 60 |
 | Keep audit entries for (days) | 7 to 3650 | 365 |
 | Largest save upload (MB) | 100 to 8192 | 1024 (1 GB) |
-| Largest mod upload (MB) | 10 to 2048 | 200 |
+| Largest mod upload (MB) | 10 to 2048 | 1024 |
 | Check GitHub for new Foreman versions | on or off | on |
+| Show game icons from the Factorio wiki | on or off | off |
 
 - **Check GitHub for new Foreman versions.** About a minute after it
   starts, and then every 6 hours, Foreman asks `api.github.com` for its
@@ -1397,6 +1400,19 @@ one says "Set here"; nothing in the environment sets or overrides them.
   **Save settings**: Foreman then makes no request to GitHub. If your
   network blocks GitHub, the check fails quietly with one warning line in
   the log.
+- **Show game icons from the Factorio wiki.** Mod text can name items,
+  fluids and other game objects, such as `[item=space-science-pack]`.
+  Foreman shows their names. Tick this box and each name becomes the
+  game's icon, loaded from `wiki.factorio.com`. Foreman does not make that
+  request: each viewer's browser does, so every person who opens a page
+  with such text contacts the wiki, which then sees their address. The
+  request sends no `Referer`, so the wiki is not told your Foreman address.
+  Foreman never downloads or stores the icons. While the box is ticked,
+  Foreman's pages also allow images from `https://wiki.factorio.com` in
+  their `Content-Security-Policy`; unticked, they allow only Foreman's
+  own. If a viewer's browser cannot reach the wiki, the name shows instead.
+  Leave this off on an offline install, or wherever you do not want your
+  people's browsers to contact an outside site.
 - **Automatic snapshots to keep.** Each world keeps this many of its newest
   automatic snapshots. Manual snapshots are not removed by it. Lowering it
   deletes nothing when you save. Each world drops its extra automatic

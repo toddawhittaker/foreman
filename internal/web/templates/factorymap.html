@@ -1,6 +1,6 @@
 {{define "title"}}{{t "factorymap.title" "world" .Page.World.Name}}{{end}}
 
-{{define "scripts"}}<link rel="stylesheet" href="{{static "factorymap.css"}}"><script src="{{static "factorymap.js"}}" defer></script>{{end}}
+{{define "scripts"}}<link rel="stylesheet" href="{{static "factorymap.css"}}"><script src="{{static "viewer.js"}}" defer></script><script src="{{static "factorymap.js"}}" defer></script>{{end}}
 
 {{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
