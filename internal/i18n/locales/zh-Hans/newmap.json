@@ -14,6 +14,10 @@
   "newmap.next.mods": "下一步：模组",
   "newmap.next.mod_settings": "下一步：模组设置",
   "newmap.next.map": "下一步：地图设置",
+  "newmap.next.review": {
+    "other": "下一步：审阅 {count} 个模组"
+  },
+  "newmap.next.review_plain": "下一步：审阅计划",
   "newmap.finish": "完成",
   "newmap.loading": "正在读取此世界的模组添加的星球。首次读取可能需要一分钟。",
   "newmap.loading_label": "正在读取星球",

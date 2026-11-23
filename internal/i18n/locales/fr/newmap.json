@@ -14,6 +14,11 @@
   "newmap.next.mods": "Suivant : Mods",
   "newmap.next.mod_settings": "Suivant : Paramètres des mods",
   "newmap.next.map": "Suivant : Paramètres de la carte",
+  "newmap.next.review": {
+    "one": "Suivant : Vérifier {count} mod",
+    "other": "Suivant : Vérifier {count} mods"
+  },
+  "newmap.next.review_plain": "Suivant : Vérifier le plan",
   "newmap.finish": "Terminer",
   "newmap.loading": "Lecture des planètes ajoutées par les mods de ce monde. La première fois, cela peut prendre jusqu’à une minute.",
   "newmap.loading_label": "Lecture des planètes",

@@ -14,6 +14,11 @@
   "newmap.next.mods": "Siguiente: Mods",
   "newmap.next.mod_settings": "Siguiente: Ajustes de los mods",
   "newmap.next.map": "Siguiente: Ajustes del mapa",
+  "newmap.next.review": {
+    "one": "Siguiente: Revisar {count} mod",
+    "other": "Siguiente: Revisar {count} mods"
+  },
+  "newmap.next.review_plain": "Siguiente: Revisar el plan",
   "newmap.finish": "Terminar",
   "newmap.loading": "Leyendo los planetas que añaden los mods de este mundo. La primera vez puede tardar hasta un minuto.",
   "newmap.loading_label": "Leyendo los planetas",

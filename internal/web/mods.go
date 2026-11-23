@@ -245,6 +245,15 @@ func (p ModsPage) Back() FlowLink { return flowBack(p.Steps()) }
 // settings when there is nothing to set.
 func (p ModsPage) NextPath() string { return flowModSettingsPath(p.World.ID) }
 
+// FlowNext is the footer's main button: the review of the plan while it
+// has mods in it, otherwise step 3 (SPEC 5.6).
+func (p ModsPage) FlowNext() FlowNext {
+	if p.Plan.Step != nil {
+		return *p.Plan.Step
+	}
+	return stepTwoNext(p.World.ID, 0, 0, false, p.NoModSettings)
+}
+
 // ShowSkip says the tab offers a way past the mods. After a mod change the
 // result offers Next instead (SPEC 17.9).
 func (p ModsPage) ShowSkip() bool { return p.InFlow() && p.Done.IsZero() }
@@ -428,7 +437,8 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 	// showed the result and then refreshed itself away from it.
 	var res actionResult
 	var ended bool
-	if followsOwnAction(r) {
+	flowNext := r.URL.RawQuery == strings.TrimPrefix(flowResultQuery, "?")
+	if followsOwnAction(r) || flowNext {
 		res, ended = s.runs.result(sum.ID)
 	}
 	p, err := s.modsPage(r.Context(), sum)
@@ -443,6 +453,12 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 	}
 	if ended {
 		s.modsOutcome(&p, res, isAdmin(u))
+	}
+	// Step 2's install has ended well: the guided Generate goes on to step
+	// 3, which passes on to step 4 when it has nothing (SPEC 5.6).
+	if flowNext && ended && !p.Working && res.Action == game.AuditMods && res.Err == nil && p.InFlow() {
+		http.Redirect(w, r, p.NextPath(), http.StatusSeeOther) //nolint:gosec // a world Foreman found, a local path segment
+		return
 	}
 	if r.URL.Query().Get(generatedQuery) != "" && p.InFlow() && p.Done.IsZero() {
 		picks, err := s.store.ModPlan(r.Context(), sum.ID)
@@ -1346,6 +1362,21 @@ func (p ModPlanPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepM
 // NextPath is step 3, the mod settings.
 func (p ModPlanPage) NextPath() string { return flowModSettingsPath(p.World.ID) }
 
+// StepFoot says the review is step 2's plan of mods to install, so it ends
+// with the step's footer, whose Next installs the plan (SPEC 5.6). A change
+// to one installed mod stays a change on the Mods tab.
+func (p ModPlanPage) StepFoot() bool { return p.InFlow() && p.Form.Kind == mods.KindInstall }
+
+// Back is the footer's way back to the Mods tab.
+func (p ModPlanPage) Back() FlowLink {
+	return FlowLink{Path: modsPath(p.World.ID), Label: flowBackLabel(flowStepMods)}
+}
+
+// NextLabel names step 3 always: whether it has anything to set depends on
+// the mods this install brings, so it is known only once they are in, and
+// step 3 passes itself on when it has nothing (SPEC 5.6).
+func (ModPlanPage) NextLabel() i18n.Msg { return i18n.M("newmap.next.mod_settings") }
+
 // Heading is the page's question, naming the world (DESIGN 7.4).
 func (p ModPlanPage) Heading() i18n.Msg {
 	w := p.World.Name
@@ -2139,7 +2170,14 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	}
 	// The installed picks leave the saved ones; a refused request keeps
 	// them, and so do picks this plan did not install (SPEC 9.14).
-	s.applyModsThen(w, r, u, sum, op, stop, unused, p.shownResult(), func(ctx context.Context) { s.dropInstalledPicks(ctx, sum.ID, f) })
+	dropPicks := func(ctx context.Context) { s.dropInstalledPicks(ctx, sum.ID, f) }
+	if p.StepFoot() && !sum.Active {
+		// Step 2's Next: the Mods tab shows the install's progress, then
+		// goes on to step 3 (SPEC 5.6).
+		s.beginTo(w, r, modsPath(sum.ID)+flowResultQuery, []string{sum.ID}, true, s.modActionThen(sum.ID, actor(u), op, stop, unused, p.shownResult(), dropPicks))
+		return
+	}
+	s.applyModsThen(w, r, u, sum, op, stop, unused, p.shownResult(), dropPicks)
 }
 
 // confirmProblems marks the boxes the plan needs that f leaves unticked:

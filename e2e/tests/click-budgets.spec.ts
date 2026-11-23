@@ -549,3 +549,26 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await expectWithin(clicks, 5, "change a mod's version");
   });
 });
+
+// SPEC 17.10, 5.6: Generate with one mod. Worlds, "Generate a world", "Next:
+// Mods", the mod's +, "Next: Review 1 mod", then the review's "Next: Mod
+// settings", which installs it and lands on step 3 (typing is not a click).
+test.describe("click budget for Generate with a mod", () => {
+  test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
+
+  test("generate a world with one mod: 6 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    await fakePortal!.add("fp-gen", "1.0.0", ["base >= 2.0"], "2.1");
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.getByRole("link", { name: "Worlds", exact: true }).click();
+    await page.getByRole("link", { name: "Generate a world" }).click();
+    await page.getByLabel("World name").fill("Fresh");
+    await page.getByRole("button", { name: "Next: Mods" }).click();
+    await page.getByLabel("Mod name").fill("fp-gen");
+    await page.getByRole("button", { name: "Add fp-gen to the plan", exact: true }).click();
+    await page.getByRole("link", { name: "Next: Review 1 mod" }).click();
+    await page.getByRole("button", { name: "Next: Mod settings" }).click();
+    await expect(page).toHaveURL("/worlds/fresh/new-map/mod-settings", live);
+    expect(existsSync(join(foreman.dataDir, "worlds", "fresh", "mods", "fp-gen_1.0.0.zip"))).toBe(true);
+    await expectWithin(clicks, 6, "generate with one mod");
+  });
+});

@@ -475,6 +475,10 @@ const (
 	PathServerResult = PathServer + ownResultQuery
 )
 
+// flowResultQuery marks the Mods tab after step 2's install in the guided
+// Generate, which goes on to step 3 once the install ends well (SPEC 5.6).
+const flowResultQuery = "?result=next"
+
 func followsOwnAction(r *http.Request) bool {
 	return r.URL.RawQuery == strings.TrimPrefix(ownResultQuery, "?")
 }

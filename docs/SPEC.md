@@ -549,15 +549,37 @@ not) or a map exchange string, with Space Age on or off. (P0)
   "Next: Map settings" (it saves the settings first), and step 4 "Finish",
   which saves the map settings and opens the world's page, where the Ready
   note (below) is the Done box. Skip links and Preview map stay as
-  secondary actions. The review page of step 2 keeps its own actions, with
-  its Next worded as step 2's.
+  secondary actions.
+  **Step 2 with a plan** (Todd's ruling, 2026-11-23). While the world's
+  plan (9.14) has mods in it, step 2's primary button is "Next: Review N
+  mods" ("Next: Review the plan" when the portal cannot be reached or the
+  picks are already installed), and the plan panel has no Review or
+  "Review and install N mods" button of its own; the world's Mods tab
+  outside Generate keeps that button. It opens the review page of the plan
+  (9.2), which is part of step 2: the same step bar with step 2 current and
+  the same footer, "Back to the mods" on the left, "Skip to mod settings"
+  as the secondary action, and "Next: Mod settings" as the primary button.
+  That button is the review's install, with the same checks, confirmations
+  (such as the drops box), snapshot and refusal while a conflict remains;
+  with a conflict there is no Next. Its words always name step 3, because
+  whether step 3 has anything to set depends on the mods the install
+  brings; when it has nothing, step 3 passes on by itself. The install's
+  progress shows on the Mods tab, and once the install ends well the
+  wizard goes on to step 3; a failure stays on the Mods tab with its
+  result. Because the wizard moves on, the review does not promise an
+  Undo beside the result. A review of another kind during step 2 (an
+  update, a removal) keeps its own actions and comes back to the Mods tab,
+  and so does an install on a world that is the active one, whose result
+  is on the Server page. A skip, Back or leaving the page keeps the plan
+  saved, so Continue opens step 2 again (below).
   1. **Make the world**: name, game version, Space Age, optionally a
      favorite (5.12), and the image download. This writes the world folder
      and `world.json` with `new_map`, and the world counts as generated.
      It always lands on step 2.
-  2. **Mods**: the world's Mods tab, or the review filled from the
-     favorite's mods when it has some (5.12, 9.14). "Skip to mod settings"
-     goes on without mods.
+  2. **Mods**: the world's Mods tab and the review of its plan, or the
+     review filled from the favorite's mods when it has some (5.12, 9.14).
+     "Skip to mod settings" goes on without installing the plan, which stays
+     saved.
   3. **Mod settings**, at `/worlds/{id}/new-map/mod-settings`: the startup
      settings of the world's mods, grouped by mod as on the mod settings
      page (9.6), which they share the form of. Runtime settings wait for
@@ -1177,8 +1199,8 @@ a game version, Space Age, a map, server settings, mods and mod settings.
   favorite's map settings, and the person can change any of them there. Generate passes the
   favorite's id, never its mod names, and the review reads the names and
   versions from the favorite by that id (17.17). One
-  "Install N mods" then goes through the checks, checksums and snapshot of
-  9.13; there is no second download path. A favorite with no mods leads to
+  install, step 2's "Next: Mod settings" (5.6), then goes through the
+  checks, checksums and snapshot of 9.13; there is no second download path. A favorite with no mods leads to
   step 2 on the world's Mods tab, as Generate does. A favorite deleted in the meantime is
   an error on the form and no world is made. Generate's audit entry (12.9)
   names the favorite.
@@ -2217,7 +2239,8 @@ indented under it and marked "Needed by *mod*", the required dependencies
 the plan would change. The newest pick is at the top. A dependency two picks
 share is listed once, under the topmost pick that needs it, and its "Needed
 by" names every mod that needs it, as does its reason on the review page;
-the "Review and install N mods" count counts each distinct mod once. Only changes
+the "Review and install N mods" count, and step 2's "Next: Review N mods"
+in Generate (5.6), counts each distinct mod once. Only changes
 show: built-in mods and a dependency already installed at a fitting version
 are hidden, and one that must be updated says "Will update to *version*". A
 dependency that cannot be had (gone from the portal, or without a release
@@ -2466,7 +2489,7 @@ changed when the file no longer matches. (P0)
 only the names of the mods picked with "+", at most 500 (3.4, ADR 0021). Each
 time the panel is drawn the tree is worked out again, so removing a pick
 also drops every dependency nothing else needs, and a dependency has no
-remove button of its own. The install button counts the recommended mods that are ticked apart from the others ("Install 3 mods and 10 recommended"), and its label follows each tick. When "Install N mods" is accepted, the mods it
+remove button of its own. The install button counts the recommended mods that are ticked apart from the others ("Install 3 mods and 10 recommended"), and its label follows each tick; in Generate's step 2 the same button reads "Next: Mod settings" (5.6). When the install is accepted, the mods it
 installed leave the saved picks and the others stay (an Unfinished world's
 Continue, 5.6, opens step 2 only while picks are left, and a pick installed
 another way, such as an upload, is not work that remains); nothing is cleared by
@@ -3826,6 +3849,7 @@ with the defaults accepted, these take at most:
 | Open Notifications (Settings, Notifications) | 2 |
 | Try a failed mod change again (Try again, Install N mods) | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Next: Mods; the world is made at step 1, and the Mods, mod settings and map settings steps are optional, 5.6) | 3 |
+| Generate a world with one mod (Worlds, Generate a world, Next: Mods, +, Next: Review 1 mod, Next: Mod settings, which installs it and lands on step 3; typing the name is not a click, 5.6) | 6 |
 | Change a startup mod setting of an Unfinished world (Worlds, Continue, the setting, Next: Map settings, which saves and lands on the map settings, 5.6) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
 | Change a game setting in Listing (Game settings, Preview changes, Save settings; a setting in another group first opens its sub-page, 11.1) | 3 (4 in another group) |

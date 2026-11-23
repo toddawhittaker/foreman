@@ -266,10 +266,10 @@
 </div>
 {{- end}}
 {{- if .InFlow}}
-{{- /* Step 2's footer: Back to the world, then the way on (SPEC 5.6). */}}
+{{- /* Step 2's footer: Back to the world, then the way on, which reviews the plan first while it has mods in it (SPEC 5.6). */}}
 <div class="actions flow-foot">
   {{template "genflow-back" .Back}}
-  <a href="{{.NextPath}}" class="button button--primary" id="flow-next">{{if .NoModSettings}}{{t "newmap.next.map"}}{{else}}{{t "newmap.next.mod_settings"}}{{end}}</a>
+  {{template "flow-next" .FlowNext}}
 </div>
 {{- end}}
 {{end}}
