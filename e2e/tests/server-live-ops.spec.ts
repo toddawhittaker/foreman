@@ -31,8 +31,9 @@ async function running(page: Page, f: Parameters<typeof seedWorld>[0], g: FakeGa
 }
 
 // The schedule's time, in UTC, at least `ahead` seconds from now, as the
-// form takes it (HH:MM).
-function minuteAhead(ahead = 8): string {
+// form takes it (HH:MM). The scheduler runs on Foreman's real clock, so the
+// test waits for that minute; a short margin keeps the wait short.
+function minuteAhead(ahead = 3): string {
   const at = new Date(Date.now() + ahead * 1000 + 60_000);
   return `${String(at.getUTCHours()).padStart(2, "0")}:${String(at.getUTCMinutes()).padStart(2, "0")}`;
 }
