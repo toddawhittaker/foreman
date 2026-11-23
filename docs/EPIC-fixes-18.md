@@ -27,7 +27,8 @@ map). The fold task (G) deletes this file.
    around the parent when the data names one (PlanetsLib).
 3. **Planet look:** every location is a theme-coloured circle sized by
    `magnitude`. A modded planet's own starmap icon goes on top; a base-game
-   planet gets the wiki's icon on top only while the wiki setting is on. A
+   planet, and the sun, get the wiki's pictures on top while the wiki setting
+   is on (D confirms which wiki files exist). A
    failed image leaves the circle. Pages carry `Referrer-Policy:
    no-referrer` while the wiki setting is on (SPEC 14.10).
 4. **Where it shows:** one more picture in Generate's map preview, beside
