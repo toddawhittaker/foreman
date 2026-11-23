@@ -18,7 +18,9 @@ export default defineConfig({
   // worker starts its own Foreman and browser. CI runs three on its 4-core
   // runners: the tests mostly wait, but four starved the axe scans of CPU. The Makefile passes CI into the container.
   workers: process.env.CI ? 3 : 8,
-  reporter: "list",
+  // CI also writes a blob report per slice; a later job merges them into one
+  // HTML report and reads test times from it (.github/workflows/ci.yml).
+  reporter: process.env.CI ? [["list"], ["blob"]] : "list",
   // SPEC 22.2: the browser's language picks Foreman's, so every project asks
   // for English and no test depends on the machine it runs on.
   use: {

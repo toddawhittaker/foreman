@@ -29,7 +29,14 @@ truly needs longer, for example one that waits for the real clock's next
 minute, is tagged `@slow` and calls `test.slow()` or sets its own time
 limit, with a comment beside the tag that says why. A test that raises
 its limit without the tag fails. Split a long test before reaching for
-the tag. A final `ci` job passes
+the tag.
+
+After the tests, a `report` job merges the slices' Playwright reports into
+one HTML report, the `e2e-report-<attempt>` artifact on the run's page,
+kept 14 days. Download it and open `index.html` to see every test, its
+time, and the trace of any failure. The `ci` job does not wait for it.
+
+A final `ci` job passes
 only when every other job passed or was skipped for a reason below. A ruleset on `main` blocks direct
 pushes, force pushes and deletion, and requires a pull request whose
 branch is up to date with `main` and whose `ci` job passed. Adding a job
