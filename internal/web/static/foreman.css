@@ -11195,6 +11195,7 @@ main:has(> .gate) > .gate + .gate {
 .plan-offer__detail {
   display: grid;
   gap: var(--space-1);
+  padding-block-end: var(--space-2);
   color: var(--color-text-muted);
 }
 

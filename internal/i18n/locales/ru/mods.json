@@ -448,6 +448,7 @@
   "mods.hit.latest": "Последняя",
   "mods.hit.updated": "Обновлён",
   "mods.offer.version": "Версия",
+  "mods.offer.details": "Подробности",
   "mods.offer.released": "Выпущена",
   "mods.hit.add": "Добавить {mod} в план",
   "mods.hit.adding": "Добавляется…",

@@ -212,3 +212,46 @@ func TestPlanPanelWarningsAndMessagesUseTitles(t *testing.T) {
 		t.Errorf("b's warnings %v", got)
 	}
 }
+
+// A ticked recommended mod is in the plan's changes as well as offered; its
+// row still shows its summary, version and date, behind a closed "Details"
+// foldout beside the tick box, never inside its label (SPEC 9.2).
+func TestPlanTickedRecommendedShowsItsDetails(t *testing.T) {
+	s := &server{portal: &countPortal{asked: map[string]int{}}}
+	p := ModPlanPage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"k2"}}, Hash: "h",
+		Plan: mods.Plan{
+			Changes: []mods.Change{
+				{Name: "k2", To: "1.0.0", Action: mods.ActInstall, Why: mods.Reason{Code: mods.WhyAsked}},
+				{Name: "rec", To: "1.0.0", Action: mods.ActInstall, Why: mods.Reason{Code: mods.WhyRecommendedBy, Of: "k2"}},
+			},
+			Optional: []mods.Offer{{Name: "rec", Of: "k2", Chosen: true, Recommended: true}},
+		}}
+	p.facts = s.planFacts(context.Background(), p)
+	if f := p.facts["rec"]; f.Summary != "Summary of rec" || f.Version != "1.0.0" || f.Released.IsZero() {
+		t.Fatalf("ticked recommended mod's facts %+v, want its summary, version and date", f)
+	}
+	_, body := renderIn(t, newTestRenderer(t), pageCase{"plan", "todd", 200, p}, "en")
+	start := strings.Index(body, `<fieldset id="plan-recommended">`)
+	if start < 0 {
+		t.Fatal("no recommended mods section")
+	}
+	rec := body[start:]
+	rec = rec[:strings.Index(rec, "</fieldset>")]
+	wantIn(t, "recommended row", rec,
+		` checked aria-describedby="mod-rec-optional-detail">`,
+		`<details class="disclosure plan-offer__more">`,
+		`<summary>Details</summary>`,
+		`<div id="mod-rec-optional-detail" class="plan-offer__detail">`,
+		"Summary of rec", `<dd translate="no">1.0.0</dd>`)
+	if strings.Contains(rec, "<details class=\"disclosure plan-offer__more\" open") {
+		t.Error("the details foldout starts open")
+	}
+	label := rec[strings.Index(rec, `<label class="check plan-offer__box"`):]
+	label = label[:strings.Index(label, "</label>")]
+	if strings.Contains(label, "<details") {
+		t.Error("the foldout is inside the tick box's label, so opening it would tick the box")
+	}
+	if d := strings.Index(rec, "<details"); d > strings.Index(rec, "Summary of rec") {
+		t.Error("the summary is outside the foldout")
+	}
+}
