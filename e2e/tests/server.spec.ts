@@ -40,11 +40,13 @@ test.describe("with the fake game", () => {
 
   test("start, see a player join, then stop with a countdown", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
-    await expect(page.locator("main").getByText("Nobody can be online while the game is not running.")).toBeVisible();
+    // A stopped world lists its save's players with nobody marked online (SPEC 8.1).
+    const players = page.getByRole("region", { name: "Players", exact: true });
+    await expect(players).toBeVisible();
     await checkPage(page);
 
     await start(page);
-    await expect(page.locator("main").getByText("Nobody is online.")).toBeVisible(live);
+    await expect(players.locator(".badge--online")).toHaveCount(0);
     await fakeGame!.call("/join", { name: container, player: "alice" });
     // The list follows the game without a reload (SPEC 8.1, 16.3).
     await expect(page.locator("#pr-alice")).toBeVisible(live);

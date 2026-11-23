@@ -23,7 +23,7 @@
   "server.none.heading": "Нет активного мира",
   "server.none.text": "Активного мира пока нет, поэтому нет и сервера для запуска. Импортируйте мир или загрузите сохранение на странице «Миры»; первый мир станет активным.",
   "server.none.go": "Перейти к мирам",
-  "server.players.heading": "Игроки в сети",
+  "server.players.heading": "Игроки",
   "server.facts.switching": "Переключение",
   "server.facts.switching_value": "С {from} на {to}",
   "server.facts.uptime": "Время работы",
@@ -631,5 +631,17 @@
     "few": "{count} игрока в этом сохранении",
     "many": "{count} игроков в этом сохранении"
   },
-  "server.playtime.reading": "Читается"
+  "server.playtime.reading": "Читается",
+  "server.players.time": "Время",
+  "server.players.online": "В сети",
+  "server.players.inexact": "Время игры может быть немного неточным. Повторное чтение сохранения на странице мира исправит его.",
+  "server.players.tracked_since": "Учитывается с {when}.",
+  "server.players.all": {
+    "one": "Все игроки ({count})",
+    "few": "Все игроки ({count})",
+    "many": "Все игроки ({count})"
+  },
+  "server.players.none_yet": "В этом мире ещё никто не играл.",
+  "server.players.announce_joined": "Игрок {names} вошёл.",
+  "server.players.announce_left": "Игрок {names} вышел."
 }

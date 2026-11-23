@@ -22,7 +22,7 @@
   "server.none.heading": "Aucun monde actif",
   "server.none.text": "Aucun monde n’est encore actif, donc il n’y a pas de serveur à exécuter. Importez un monde ou envoyez une sauvegarde depuis la page Mondes ; le premier monde devient le monde actif.",
   "server.none.go": "Aller aux mondes",
-  "server.players.heading": "Joueurs en ligne",
+  "server.players.heading": "Joueurs",
   "server.facts.switching": "Basculement",
   "server.facts.switching_value": "De {from} vers {to}",
   "server.facts.uptime": "Durée de fonctionnement",
@@ -610,5 +610,16 @@
     "one": "{count} joueur dans cette sauvegarde",
     "other": "{count} joueurs dans cette sauvegarde"
   },
-  "server.playtime.reading": "En cours de lecture"
+  "server.playtime.reading": "En cours de lecture",
+  "server.players.time": "Temps",
+  "server.players.online": "En ligne",
+  "server.players.inexact": "Les temps de jeu peuvent être un peu inexacts. Relire la sauvegarde sur la page du monde les corrige.",
+  "server.players.tracked_since": "Suivi depuis le {when}.",
+  "server.players.all": {
+    "one": "Le joueur ({count})",
+    "other": "Les {count} joueurs"
+  },
+  "server.players.none_yet": "Personne n’a encore joué sur ce monde.",
+  "server.players.announce_joined": "{names} a rejoint la partie.",
+  "server.players.announce_left": "{names} a quitté la partie."
 }

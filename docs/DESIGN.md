@@ -857,8 +857,14 @@ order and the picture agree.
   states the server's state large, then the controls (and while an
   operation runs, its step list and "Cancel stop"), then the facts. Below
   the plate come the live world's pages (World page, Mods, Game settings
-  and Switch world), then "Players online", then "Snapshots", in that
-  order in the code too. On a phone (to 40rem) the pages are a two-column
+  and Switch world), then "Players", then "Snapshots", in that
+  order in the code too. The Players card (SPEC 8.1) is one table: online
+  rows first, the name then an "Online" badge (`ok` text on `ok-bg`, in
+  words) and the session in the time column; then the save's other
+  players, name with "Last seen" and "Played before Foreman" hints under
+  it and play time in the time column. The time column stays one line.
+  At most ten rows, then an "All N players" link to the Overview list;
+  short hint lines carry the inexact and "tracked since" notes. On a phone (to 40rem) the pages are a two-column
   grid of 48 px tiles with 8 px gaps (`surface` face, 1 px `border` edge,
   `--radius`, icon and name, no chevron), so the players start on the
   first screen. The Snapshots card lists the world's three newest

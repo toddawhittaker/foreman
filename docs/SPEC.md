@@ -1729,6 +1729,14 @@ chosen time zone). It runs only when nobody is online. (P1)
 decides who is on. How long comes from the `[JOIN]` lines in the game
 container's log since it started, so a chat line cannot fake a join; a
 player whose join line Foreman did not see is listed without a time. (P0)
+The Server page's Players panel lists the save's players (8.14) with who
+is online first, each with an "Online" chip in words and their session,
+longest first; then everyone else by play time, most first, with play time
+and last seen. A stopped game shows the same list with no chips; "No one
+has played this world yet" shows only when the save has no players. Joins
+and leaves move rows without a reload, with one announcement per update
+(16.3). At most ten rows, then "All N players" links to the full list on
+the world's Overview page. Only online rows offer the actions of 8.2.
 
 8.2. Kick, ban, unban, promote to admin, demote, and add to or remove from
 the whitelist, sent over RCON to the running game. They start from a
@@ -2031,8 +2039,10 @@ they were last seen. (P1)
   inexact. It is read again at the next view while the world is stopped.
   A "Read again" button is always there.
 - **Where it shows.** The full list is on the world's Overview page. The
-  Server page shows total play time (8.15) and an "N players in this save"
-  link to that list.
+  Server page shows total play time (8.15), an "N players in this save"
+  link to that list, and the top of the list in its Players panel (8.1),
+  with the inexact and "tracked since" notes in short. The read button
+  stays on the Overview page.
 - A read changes no file the game uses, so it is not audited and takes no
   snapshot. Not in MCP or the REST API (21.7); `list_players` stays "online
   now" (21.4).
@@ -4055,7 +4065,8 @@ shows them; list worlds (5.4); players online (8.1); the most recent log
 lines, with secrets removed (8.6); list snapshots (6.4); list a world's
 mods and available updates (9.3). The tools are `server_status`,
 `list_worlds` (which includes archived worlds, with `archived: true`, 5.9),
-`list_players`, `recent_log` (the newest 200 lines),
+`list_players` (who is online now, never the save's full list),
+`recent_log` (the newest 200 lines),
 `list_snapshots` and `list_mods`. `world_id` is optional on these and
 means the active world when left out. Player and portal text in any
 result is marked untrusted (14.12). (P1)
