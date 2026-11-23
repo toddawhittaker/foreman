@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/hex"
 	"fmt"
+	"github.com/toddawhittaker/foreman/internal/modsettings"
 	"html/template"
 	"io"
 	"io/fs"
@@ -470,6 +471,11 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 	}
 }
 
+// richTextIcons is the screen-reader text of rich text's icons in loc.
+func richTextIcons(loc i18n.Locale) modsettings.RichTextIcons {
+	return modsettings.RichTextIcons{Warning: loc.T("mods.richtext.warning"), Info: loc.T("mods.richtext.info")}
+}
+
 // localeFuncs are the template functions that speak loc's language
 // (SPEC 22.3, 22.4).
 func localeFuncs(loc i18n.Locale) template.FuncMap {
@@ -495,6 +501,11 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"portalPath": portalPath,
 		// modName is the mod-name partial's input: {{template "mod-name" (modName .Name .Title true)}}.
 		"modName": modName,
+		// richText and richLine render a mod's own text with the safe
+		// subset of the game's rich text (SPEC 14.6); richLine keeps it to
+		// one line, for names and labels.
+		"richText": func(s string) template.HTML { return modsettings.RichTextHTML(s, true, richTextIcons(loc)) },
+		"richLine": func(s string) template.HTML { return modsettings.RichTextHTML(s, false, richTextIcons(loc)) },
 		// game marks Factorio's own words, for tHTML.
 		"game": i18n.Game,
 		// m makes a Msg to fill a placeholder, such as a snapshot label:

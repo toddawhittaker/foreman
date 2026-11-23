@@ -284,7 +284,7 @@
     {{- if $r.HasDetail}}
     <div id="{{$r.DetailID}}" class="plan-offer__detail">
       {{- with $r.Facts.Summary}}
-      <p>{{.}}</p>
+      <p>{{richText .}}</p>
       {{- end}}
       {{- if or $r.Facts.Version (not $r.Facts.Released.IsZero)}}
       <dl class="hit__facts">

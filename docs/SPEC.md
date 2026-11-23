@@ -3279,7 +3279,16 @@ own default for a control is kept only when it is a finite number from 0
 to 1000, else it is ignored. Invisible Unicode (zero-width and direction
 marks) is removed from every label. Localised
 names resolve under the 20-level and 1,000-character limits above, then
-lose their rich-text tags and are cut to 100 characters. A mod's
+lose their rich-text tags and are cut to 100 characters. Other text a mod
+supplies (setting names, descriptions, mod titles and summaries) keeps a
+safe subset of the game's rich text, parsed on the server and rebuilt from
+an allowed list: bold fonts as bold, the game's named colours as theme
+colours (hex and r,g,b colours as plain text), object tags as the object's
+name made readable, the game's warning and info sprites as Foreman's own
+icons with text for screen readers, a key-binding macro as the action's
+name (never a key), and an escaped line break as a break in descriptions.
+No text, attribute or class from the mod reaches the page unescaped;
+unknown or unmatched tags and a lone `[` stay as literal text. A mod's
 `.cfg` locale file is at most 1 MiB, and 8 MiB per language across mods. A
 string setting value is at most 10,000 bytes. A mod or `mod-settings.dat` upload waits in a
 staging file at the top of the worlds folder, and a staged mod nobody

@@ -3110,6 +3110,13 @@ active world. The pages follow 7.2 (fields), 7.4 (the plan page is a
 confirmation step) and 7.6 (the result), and use no new component but the
 small ones below. All counts use plural messages (SPEC 22).
 
+A mod's own text keeps its rich-text emphasis (SPEC 14.6): bold stays
+`<strong>` (a heading font never changes the size), red is the danger text
+colour, orange and yellow the warning colour, green the success colour,
+blue, cyan, purple and pink the info colour, and gray the muted text colour
+(`.rt-*` in `foreman.css`). A key-binding action shows in a bordered
+`kbd`, and the game's warning sprite as the warning icon messages use.
+
 **Mod names** are wrapped in `span.ident` (`translate="no"`,
 `hyphens: manual; overflow-wrap: anywhere`) in tables, plan text,
 conflicts, notices, headings and button labels, so a name such as
