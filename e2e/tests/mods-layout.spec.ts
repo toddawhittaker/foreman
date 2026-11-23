@@ -175,6 +175,24 @@ test.describe("a long plan on a wide screen", () => {
     await checkPage(page);
   });
 
+  // Hand-test bug: the card showed a second scrollbar of its own beside the
+  // list's, which did nothing. Only the list scrolls, with one pick and with many.
+  test("only the list scrolls, never the card itself", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/worlds/base/mods");
+    await page.getByLabel("Mod name").fill("fp-cap");
+    const cardScrolls = () => plan(page).evaluate((el) => el.scrollHeight > el.clientHeight);
+    await add(page, caps[0]);
+    expect(await cardScrolls()).toBe(false);
+    for (const n of caps.slice(1)) await add(page, n);
+    const list = plan(page).locator(".plan-tree");
+    expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight + 20)).toBe(true);
+    expect(await cardScrolls()).toBe(false);
+    // A page drawn whole, not by the "+" redraws, is the same.
+    await page.reload();
+    expect(await cardScrolls()).toBe(false);
+  });
+
   test("in a window too short for the card, it does not stick and Review is still reached", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 420 });
     await page.goto("/worlds/base/mods");

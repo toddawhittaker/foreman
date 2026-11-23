@@ -10289,6 +10289,13 @@ main > .panel.danger-zone.danger-zone--blocked {
   list-style: none;
 }
 
+/* The list scrolls inside the held card, so it holds its own visually
+   hidden text: placed in the card, that text stretched the card's scroll
+   area past the list's end and gave the card a second, dead scrollbar. */
+.plan-tree {
+  position: relative;
+}
+
 .plan-tree__pick {
   padding-block: var(--space-2);
   border-block-end: var(--border-width) solid var(--color-line);
