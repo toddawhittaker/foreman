@@ -190,7 +190,7 @@ func (MapForm) Tabs() []string {
 func (GeneratePage) Path() string { return PathGenerate }
 
 // Steps is the step bar on step 1, before the world exists (SPEC 5.6).
-func (GeneratePage) Steps() []FlowStep { return flowSteps("", flowStepWorld) }
+func (GeneratePage) Steps() []FlowStep { return flowSteps("", flowStepWorld, false) }
 func (GeneratePage) VersionsPath() string {
 	return versionsPath("", "")
 }

@@ -50,6 +50,8 @@ type NewMapPage struct {
 	// Unsaved says the form holds settings the world does not have yet,
 	// though the page loaded with them, as after a fill (SPEC 5.6).
 	Unsaved bool
+	// NoModSettings says step 3 has nothing to set (SPEC 5.6).
+	NoModSettings bool
 }
 
 // NewMapLink is a link a message offers, to do what it says (SPEC 17.9).
@@ -112,7 +114,7 @@ func (p NewMapPage) Path() string      { return newMapPath(p.World.ID) }
 func (p NewMapPage) WaitPath() string  { return newMapPath(p.World.ID) + "?" + newMapWaitQuery + "=1" }
 func (p NewMapPage) WorldPath() string { return worldPath(p.World.ID) }
 func (NewMapPage) PreviewPath() string { return PathGeneratePreview }
-func (p NewMapPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMap) }
+func (p NewMapPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMap, p.NoModSettings) }
 func (p NewMapPage) ShowForm() bool    { return p.Why.IsZero() && !p.Loading }
 func (p NewMapPage) DoneMsg() i18n.Msg { return i18n.M("newmap.done", "name", p.World.Name) }
 
@@ -120,11 +122,13 @@ func (p NewMapPage) DoneMsg() i18n.Msg { return i18n.M("newmap.done", "name", p.
 const (
 	flowStepWorld = iota + 1
 	flowStepMods
+	flowStepModSettings
 	flowStepMap
 )
 
 // FlowStep is one step of the guided Generate's step bar, a link to it, or
-// plain text when Path is empty because the step cannot be opened yet.
+// plain text when Path is empty because the step cannot be opened yet or
+// has nothing to do.
 type FlowStep struct {
 	Number  int
 	Path    string
@@ -133,15 +137,20 @@ type FlowStep struct {
 }
 
 // flowSteps is the step bar of world id, with current marked. With no world
-// yet (step 1), step 1 is Generate's page and steps 2 and 3 have no path.
-func flowSteps(id string, current int) []FlowStep {
+// yet (step 1), step 1 is Generate's page and the others have no path.
+// noModSettings marks step 3 as skipped: no mod has a startup setting.
+func flowSteps(id string, current int, noModSettings bool) []FlowStep {
 	steps := []FlowStep{
-		{flowStepWorld, PathGenerate, i18n.M("newmap.steps.world"), false},
-		{flowStepMods, "", i18n.M("newmap.steps.mods"), false},
-		{flowStepMap, "", i18n.M("newmap.steps.map"), false},
+		{Number: flowStepWorld, Path: PathGenerate, Label: i18n.M("newmap.steps.world")},
+		{Number: flowStepMods, Label: i18n.M("newmap.steps.mods")},
+		{Number: flowStepModSettings, Label: i18n.M("newmap.steps.mod_settings")},
+		{Number: flowStepMap, Label: i18n.M("newmap.steps.map")},
 	}
 	if id != "" {
-		steps[0].Path, steps[1].Path, steps[2].Path = worldPath(id), modsPath(id), newMapPath(id)
+		steps[0].Path, steps[1].Path, steps[2].Path, steps[3].Path = worldPath(id), modsPath(id), flowModSettingsPath(id), newMapPath(id)
+		if noModSettings {
+			steps[2].Path, steps[2].Label = "", i18n.M("newmap.steps.mod_settings_none")
+		}
 	}
 	for i := range steps {
 		steps[i].Current = steps[i].Number == current
@@ -151,6 +160,7 @@ func flowSteps(id string, current int) []FlowStep {
 
 // newMapRoutes registers step 3. The preview endpoints stay Generate's.
 func (s *server) newMapRoutes() {
+	s.flowModSettingsRoutes()
 	s.handleLong("GET "+PathNewMap, s.requireUser(s.handleNewMap))
 	s.handleUpload("POST "+PathNewMap, fixedLimit(generateFormLimit), s.requireUser(s.handleNewMapSave))
 	s.handleUpload("POST "+PathNewMap+"/refresh", fixedLimit(generateFormLimit), s.requireUser(s.handleNewMapRefresh))
@@ -164,7 +174,7 @@ func (s *server) newMapWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return NewMapPage{}, false
 	}
-	p := NewMapPage{World: sum}
+	p := NewMapPage{World: sum, NoModSettings: s.noModSettings(sum.ID)}
 	_, lineOK := mapgen.Line(sum.GameVersion)
 	switch {
 	case sum.Unreadable:

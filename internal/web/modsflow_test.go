@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -24,15 +26,19 @@ func (g *modsRig) unfinished20(name string) string {
 }
 
 // SPEC 5.6, 17.10: an Unfinished world's Mods tab has the step bar with step
-// 2 current, and a way to skip to step 3.
+// 2 current, and a way to skip to step 3. A world with only built-in mods
+// has no step 3, so the bar marks it (none) as plain text.
 func TestModsTabOfAnUnfinishedWorldShowsTheStepBar(t *testing.T) {
 	g := newModsRig(t, true)
 	g.world20("Active")
 	id := g.unfinished20("Fresh")
 	body := g.get(modsPath(id))
 	wantIn(t, "mods tab", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`, `href="`+newMapPath(id)+`"`,
-		`id="mods-skip"`)
-	wantIn(t, "skip text", plain(body), "Skip to map settings")
+		`id="mods-skip"`, `<a href="`+flowModSettingsPath(id)+`" id="mods-skip">`)
+	wantIn(t, "skip text", plain(body), "Skip to mod settings", "3. Mod settings (none)")
+	if strings.Contains(body, `<a href="`+flowModSettingsPath(id)+`">`) {
+		t.Error("the skipped step 3 is a link in the bar")
+	}
 	if strings.Count(body, `aria-current="step"`) != 1 {
 		t.Error("not exactly one current step")
 	}
@@ -106,7 +112,7 @@ func TestReviewOfAFinishedWorldHasNoStepBar(t *testing.T) {
 }
 
 // SPEC 5.6, 9.14: Continue opens step 2 while the world has mod picks not
-// yet installed, otherwise step 3.
+// yet installed; a world with only built-in mods has no step 3, so step 4.
 func TestContinuePath(t *testing.T) {
 	g := newModsRig(t, true)
 	id := g.unfinished20("Fresh")
@@ -115,7 +121,7 @@ func TestContinuePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := g.h.(*Handler).srv.continuePath(context.Background(), sum); got != newMapPath(id) {
-		t.Errorf("no picks: %s, want step 3", got)
+		t.Errorf("no picks: %s, want step 4", got)
 	}
 	g.pick(id, "alpha")
 	if got := g.h.(*Handler).srv.continuePath(context.Background(), sum); got != modsPath(id) {
@@ -149,7 +155,8 @@ func TestContinueAfterAFailedInstallOpensStepTwo(t *testing.T) {
 }
 
 // SPEC 5.6, 9.14: a pick that is installed another way, such as an upload,
-// is not work that remains, so Continue opens step 3.
+// is not work that remains, so Continue opens step 3, the mod settings, and
+// step 4 once the world has saved mod settings.
 func TestContinueIgnoresAPickThatIsInstalled(t *testing.T) {
 	g := newModsRig(t, true)
 	id := g.unfinished20("Fresh")
@@ -164,7 +171,13 @@ func TestContinueIgnoresAPickThatIsInstalled(t *testing.T) {
 		t.Errorf("beta still not installed: %s, want step 2", got)
 	}
 	g.writeMod(id, "beta", "1.0.0")
-	if got := s.continuePath(context.Background(), sum); got != newMapPath(id) {
+	if got := s.continuePath(context.Background(), sum); got != flowModSettingsPath(id) {
 		t.Errorf("both installed: %s, want step 3", got)
+	}
+	if err := os.WriteFile(filepath.Join(g.worlds.Dirs().Worlds, id, world.ModsDir, world.ModSettingsFile), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.continuePath(context.Background(), sum); got != newMapPath(id) {
+		t.Errorf("settings saved: %s, want step 4", got)
 	}
 }

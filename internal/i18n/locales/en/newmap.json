@@ -4,7 +4,9 @@
   "newmap.steps.label": "Steps to make the world",
   "newmap.steps.world": "1. World",
   "newmap.steps.mods": "2. Mods",
-  "newmap.steps.map": "3. Map settings",
+  "newmap.steps.mod_settings": "3. Mod settings",
+  "newmap.steps.mod_settings_none": "3. Mod settings (none)",
+  "newmap.steps.map": "4. Map settings",
   "newmap.loading": "Reading the planets this world's mods add. This can take up to a minute the first time.",
   "newmap.loading_label": "Reading the planets",
   "newmap.loading_link": "Show the map settings when they are ready",
@@ -34,5 +36,8 @@
   "newmap.error.builtin": "The planets of this world's mods could not be read, so saving now would drop the settings of their planets. Nothing was saved. Try again, or check the world's mods.",
   "newmap.link.retry": "Try again",
   "newmap.link.mods": "Go to step 2, Mods",
-  "newmap.link.server": "Go to the Server page to stop it"
+  "newmap.link.server": "Go to the Server page to stop it",
+  "newmap.modsettings.title": "Mod settings",
+  "newmap.modsettings.intro": "Set the startup settings of the mods of {name}. Some change the map, such as which planets there are, so they come before the map settings.",
+  "newmap.modsettings.skip": "Skip to map settings"
 }

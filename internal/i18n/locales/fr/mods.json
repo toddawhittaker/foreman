@@ -449,6 +449,6 @@
   "mods.plan_panel.bad_name": "Ce n’est pas un nom de mod que Foreman peut ajouter. Cherchez le mod, puis choisissez + à côté.",
   "mods.plan_panel.wait": "La vérification sera possible dès que le plan sera à jour.",
   "mods.flow.generated": "{name} est créé. Choisissez maintenant ses mods ou passez aux paramètres de la carte.",
-  "mods.flow.skip": "Passer aux paramètres de la carte",
-  "mods.flow.next": "Suivant : paramètres de la carte"
+  "mods.flow.skip": "Passer aux paramètres des mods",
+  "mods.flow.next": "Suivant : paramètres des mods"
 }

@@ -201,6 +201,9 @@ type ModsPage struct {
 	// world's unfinished plan beside it (SPEC 9.1, 9.2).
 	Search ModSearchPage
 	Plan   PlanPanel
+	// NoModSettings says step 3 of the guided Generate has nothing to set
+	// (SPEC 5.6).
+	NoModSettings bool
 	// Generated says step 1 has just made the world (SPEC 5.6, 17.9).
 	Generated bool
 }
@@ -210,10 +213,11 @@ type ModsPage struct {
 func (p ModsPage) InFlow() bool { return p.World.Unfinished }
 
 // Steps is the step bar with step 2 current.
-func (p ModsPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMods) }
+func (p ModsPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMods, p.NoModSettings) }
 
-// NextPath is step 3, the map settings.
-func (p ModsPage) NextPath() string { return newMapPath(p.World.ID) }
+// NextPath is step 3, the mod settings, which passes on to the map
+// settings when there is nothing to set.
+func (p ModsPage) NextPath() string { return flowModSettingsPath(p.World.ID) }
 
 // ShowSkip says the tab offers a way past the mods. After a mod change the
 // result offers Next instead (SPEC 17.9).
@@ -466,6 +470,7 @@ func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, err
 	p.Busy = busyText(op, s.worldName)
 	p.ServerLink = !p.Busy.IsZero() && (sum.Active || op.Switch != nil)
 	p.Working = !p.Busy.IsZero() || s.runs.inFlight(sum.ID)
+	p.NoModSettings = s.noModSettings(sum.ID)
 	return p, nil
 }
 
@@ -1308,11 +1313,12 @@ func (p ModPlanPage) Tabs() WorldTabs {
 // InFlow says the review is step 2 of the guided Generate (SPEC 5.6).
 func (p ModPlanPage) InFlow() bool { return p.World.Unfinished }
 
-// Steps is the step bar with step 2 current.
-func (p ModPlanPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMods) }
+// Steps is the step bar with step 2 current. The plan is about to change
+// the mods, so step 3 stays a link, which passes on when it has nothing.
+func (p ModPlanPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMods, false) }
 
-// NextPath is step 3, the map settings.
-func (p ModPlanPage) NextPath() string { return newMapPath(p.World.ID) }
+// NextPath is step 3, the mod settings.
+func (p ModPlanPage) NextPath() string { return flowModSettingsPath(p.World.ID) }
 
 // Heading is the page's question, naming the world (DESIGN 7.4).
 func (p ModPlanPage) Heading() i18n.Msg {
@@ -1627,8 +1633,9 @@ func newInstallForm() planForm {
 }
 
 // continuePath is where an Unfinished world's Continue opens: step 2 while
-// it has saved mod picks that are not installed, otherwise step 3 (SPEC 5.6,
-// 9.14). A pick installed another way, such as an upload, is not work that
+// it has saved mod picks that are not installed, then step 3 while the
+// world has no saved mod settings, which passes on to step 4 when no mod
+// has a startup setting, otherwise step 4 (SPEC 5.6, 9.14). A pick installed another way, such as an upload, is not work that
 // remains. A picks table that cannot be read opens step 2, which shows them.
 func (s *server) continuePath(ctx context.Context, sum world.Summary) string {
 	picks, err := s.store.ModPlan(ctx, sum.ID)
@@ -1642,7 +1649,11 @@ func (s *server) continuePath(ctx context.Context, sum world.Summary) string {
 			return modsPath(sum.ID)
 		}
 	}
-	return newMapPath(sum.ID)
+	// A saved settings file means step 3 is done.
+	if s.noModSettings(sum.ID) || s.hasModSettings(sum.ID) {
+		return newMapPath(sum.ID)
+	}
+	return flowModSettingsPath(sum.ID)
 }
 
 // picksForm installs the world's saved picks (SPEC 9.14).

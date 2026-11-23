@@ -68,3 +68,16 @@ func (c *Controller) cachedModPlanetDefs(id string) (*ModSettingDefs, bool) {
 	defer k.cache.mu.Unlock()
 	return k.cache.get(id, key)
 }
+
+// CachedModSettingDefs is the world's cached setting definitions, without
+// starting a run; false when they are not cached.
+func (c *Controller) CachedModSettingDefs(id string) (*ModSettingDefs, bool) {
+	k := c.definitionsRun()
+	key, err := k.key(id)
+	if err != nil || key == "" {
+		return nil, false
+	}
+	k.cache.mu.Lock()
+	defer k.cache.mu.Unlock()
+	return k.cache.get(id, key)
+}

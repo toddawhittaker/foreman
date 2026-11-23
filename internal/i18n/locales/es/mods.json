@@ -449,6 +449,6 @@
   "mods.plan_panel.bad_name": "Ese no es un nombre de mod que Foreman pueda añadir. Busca el mod y elige + junto a él.",
   "mods.plan_panel.wait": "La revisión estará lista cuando se actualice el plan.",
   "mods.flow.generated": "{name} está creado. Ahora elige sus mods o salta a los ajustes del mapa.",
-  "mods.flow.skip": "Saltar a los ajustes del mapa",
-  "mods.flow.next": "Siguiente: ajustes del mapa"
+  "mods.flow.skip": "Saltar a los ajustes de los mods",
+  "mods.flow.next": "Siguiente: ajustes de los mods"
 }
