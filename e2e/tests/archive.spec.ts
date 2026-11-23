@@ -6,7 +6,7 @@ import { join } from "node:path";
 // cannot be switched to or started, and comes back with Unarchive.
 test.use({ fakeGameOn: true });
 
-test("archive from the world page, find it in the foldout, then unarchive", async ({ page, foreman }) => {
+test("archive from the world page, find it in the foldout, then unarchive", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman);

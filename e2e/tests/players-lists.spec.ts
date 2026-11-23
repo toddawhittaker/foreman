@@ -100,7 +100,7 @@ test("the whitelist switch is saved per world, and the next start enforces the w
   await expect(page.locator("#act-whitelist-restart")).toBeVisible();
 });
 
-test("on a running world a ban confirms with a reason, and unban acts at once with Undo", async ({ page, foreman, fakeGame }) => {
+test("on a running world a ban confirms with a reason, and unban acts at once with Undo", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!, { running: true });
   await page.goto("/worlds/base/settings?section=bans");
   const card = page.locator("section#settings-bans");
@@ -137,7 +137,7 @@ test("on a running world a ban confirms with a reason, and unban acts at once wi
   expect((await commands(fakeGame!)).filter((c) => c.startsWith("/ban"))).toEqual(["/ban bob griefing", "/ban bob griefing"]);
 });
 
-test("a kick confirms, a reason that is too long is refused, and a player who left cannot be kicked", async ({ page, foreman, fakeGame }) => {
+test("a kick confirms, a reason that is too long is refused, and a player who left cannot be kicked", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!, { running: true });
   await fakeGame!.call("/join", { name: container, player: "alice" });
 

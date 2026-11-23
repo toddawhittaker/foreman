@@ -16,7 +16,7 @@ const modEnabled = (dataDir: string, name: string): boolean | undefined =>
   (JSON.parse(readFileSync(join(dataDir, "worlds", "base", "mods", "mod-list.json"), "utf8")).mods as { name: string; enabled: boolean }[]).find((m) => m.name === name)?.enabled;
 
 test.describe("turning off a mod the loading save uses", () => {
-  test("a warning and a required box; without the box nothing happens; with it the world ends running without the mod", async ({ page, foreman, fakeGame }) => {
+  test("a warning and a required box; without the box nothing happens; with it the world ends running without the mod", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUpModsWorld(page, foreman, g, { ...withMod, start: true });
     const before = await creates(g);
@@ -72,7 +72,7 @@ test.describe("turning off a mod the loading save uses", () => {
   });
 
   // SPEC 9.4: a running game saves every enabled mod when it stops, so a mod installed since the save on disk counts too.
-  test("on a running world, a mod the save on disk lacks still asks first", async ({ page, foreman, fakeGame }) => {
+  test("on a running world, a mod the save on disk lacks still asks first", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, { ...withMod, mods: { ...withMod.mods, "fp-extra": "2.1" }, start: true });
     await page.goto("/worlds/base/mods/plan?kind=disable&name=fp-extra");
     await expect(page.locator("#plan-drops")).toContainText("The save that loads uses fp-extra, which this change disables.");
@@ -98,7 +98,7 @@ test("a start the check refuses leads to the plan that matches the mods to the s
   await expect(page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" })).toBeVisible();
 });
 
-test("an import of a save that uses a mod links to the same plan", async ({ page, foreman, fakeGame }) => {
+test("an import of a save that uses a mod links to the same plan", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!);
   const src = join(foreman.dataDir, "import", "modded-saves");
   mkdirSync(src, { recursive: true });

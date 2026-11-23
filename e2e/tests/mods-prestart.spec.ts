@@ -71,7 +71,7 @@ test("a refusal for a gone mod names it by its title", async ({ page, foreman, f
 });
 
 // SPEC 9.3, 7.4: the refusal carries the fix, so the notice keeps its words and drops its own button.
-test("a refusal and the notice for one plan show one Update button", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a refusal and the notice for one plan show one Update button", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await goneWorld(page, foreman, fakeGame!, fakePortal!);
   await page.goto("/");
   await expect(notice(page).getByRole("link", { name: "Update visible-planets" })).toBeVisible(live);
@@ -85,7 +85,7 @@ test("a refusal and the notice for one plan show one Update button", async ({ pa
 
 // SPEC 9.3, 7.4: a refusal that comes from another admin's tab reaches this page by the live
 // stream; the notice drops its button then too, and focus on it goes to the refusal's.
-test("a refusal that arrives without a reload leaves one Update button and keeps focus", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a refusal that arrives without a reload leaves one Update button and keeps focus", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await goneWorld(page, foreman, fakeGame!, fakePortal!);
   await page.goto("/");
   const mine = notice(page).getByRole("link", { name: "Update visible-planets" });
@@ -123,7 +123,7 @@ for (const down of [
 }
 
 // Issue 362: the notice loads again when the fix ends, and takes no room once empty.
-test("the Server page notice goes once its fix is done, without a reload", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("the Server page notice goes once its fix is done, without a reload", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   // The game runs with the mod: it started while the portal could not be asked.
   await fakePortal!.setDown(true);
   await goneWorld(page, foreman, fakeGame!, fakePortal!);

@@ -19,7 +19,11 @@ push its merge makes does, and a failure there becomes a fix task at
 once. Its jobs run in parallel and
 together check the same things as `make ci`, plus the image size limit:
 `make verify` is split into `vet`, `lint` and `test` jobs, the type check
-runs with `e2e`, and `image` builds the container. A final `ci` job passes
+runs with `e2e`, and `image` builds the container. The `e2e` job runs the
+Playwright tests in twelve slices side by side, three workers each, so
+the whole run stays under the free plan's limit of 20 jobs at once. A test
+tagged `@looks` runs in all four projects (both themes, at desktop and at
+320 px); any other test runs once, in desktop-dark (DESIGN 10). A final `ci` job passes
 only when every other job passed or was skipped for a reason below. A ruleset on `main` blocks direct
 pushes, force pushes and deletion, and requires a pull request whose
 branch is up to date with `main` and whose `ci` job passed. Adding a job

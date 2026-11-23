@@ -27,7 +27,7 @@ test.beforeEach(async ({ page, foreman, fakeGame, fakePortal }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-lib": "2.0" } });
 });
 
-test("25 results: a list a page at a time, with Previous, a page box and Next above and below", async ({ page }) => {
+test("25 results: a list a page at a time, with Previous, a page box and Next above and below", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Base/);
   await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg"' })).toBeVisible();
@@ -90,7 +90,7 @@ test("25 results: a list a page at a time, with Previous, a page box and Next ab
 
 // SPEC 9.1, 9.2 (rulings 2, 3, 6, 9): "+" says it is working, then the row
 // says "In plan" with "−" and the panel shows the pick with what it needs.
-test("+ adds a mod in place: Adding…, In plan with −, and the panel's tree", async ({ page }) => {
+test("+ adds a mod in place: Adding…, In plan with −, and the panel's tree", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base/mods");
   const box = page.getByLabel("Mod name");
   await box.fill("fp-rails");
@@ -144,7 +144,7 @@ test("+ adds a mod in place: Adding…, In plan with −, and the panel's tree",
 // under the topmost, naming both; the newest pick is listed first; an
 // installed mod that must change shows its update; a dependency that cannot
 // be had shows a warning; Review counts each mod once.
-test("two picks share a dependency: it shows once naming both, counted once, with an update and a warning", async ({ page }) => {
+test("two picks share a dependency: it shows once naming both, counted once, with an update and a warning", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base/mods");
   const box = page.getByLabel("Mod name");
   for (const n of ["fp-rails", "fp-trains"]) {
@@ -205,7 +205,7 @@ test("two picks share a dependency: it shows once naming both, counted once, wit
 
 // Ruling 5: the cross takes a pick out with the dependencies nothing else
 // needs; Clear plan empties it.
-test("the cross removes a pick and its own dependencies, and Clear plan empties the plan", async ({ page }) => {
+test("the cross removes a pick and its own dependencies, and Clear plan empties the plan", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base/mods");
   const box = page.getByLabel("Mod name");
   for (const n of ["fp-rails", "fp-pg-01"]) {
@@ -229,7 +229,7 @@ test("the cross removes a pick and its own dependencies, and Clear plan empties 
 
 // While a change to the plan runs, Review is held back and says why, so it
 // never opens the plan without the last change; "Adding…" is read out.
-test("Review waits for a change that is still being worked out", async ({ page }) => {
+test("Review waits for a change that is still being worked out", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base/mods");
   const box = page.getByLabel("Mod name");
   await box.fill("fp-pg-01");
@@ -260,7 +260,7 @@ test("Review waits for a change that is still being worked out", async ({ page }
 
 // WCAG 2.4.11: at phone width, a row's button reached by keyboard is never
 // hidden behind the plan's bar.
-test("keyboard focus is never hidden behind the plan's bar", async ({ page }) => {
+test("keyboard focus is never hidden behind the plan's bar", { tag: "@looks" }, async ({ page }) => {
   test.skip(!phone(page), "the bar is a phone layout");
   await page.goto("/worlds/base/mods");
   const box = page.getByLabel("Mod name");
@@ -285,7 +285,7 @@ test("keyboard focus is never hidden behind the plan's bar", async ({ page }) =>
 
 // SPEC 9.2: with the portal out of reach the panel still lists the picks by
 // name, says their dependencies cannot be checked now, and offers to check again.
-test("with the portal down the panel lists the picks by name and says why", async ({ page, fakePortal }) => {
+test("with the portal down the panel lists the picks by name and says why", { tag: "@looks" }, async ({ page, fakePortal }) => {
   // A pick the portal client has not seen yet, so working out the plan needs the portal.
   const r = await page.request.post("/worlds/base/mods/plan/mods", { form: { name: "fp-unseen", op: "add" }, maxRedirects: 0 });
   expect(r.status()).toBe(303);
@@ -302,7 +302,7 @@ test("with the portal down the panel lists the picks by name and says why", asyn
 
 // SPEC 9.1: without script every control is a plain link or form, and each
 // change comes back to the same search, page and row.
-test("without script +, −, the page controls and Clear plan work and keep the place", async ({ page, foreman, browser }) => {
+test("without script +, −, the page controls and Clear plan work and keep the place", { tag: "@looks" }, async ({ page, foreman, browser }) => {
   const plain = await browser.newContext({ baseURL: foreman.url, javaScriptEnabled: false, storageState: await page.context().storageState() });
   const p = await plain.newPage();
   await p.goto("/worlds/base/mods");
@@ -355,7 +355,7 @@ test("a pasted portal link with a sub-page and query finds that exact mod", asyn
   await checkPage(page);
 });
 
-test("a pasted portal link to an unknown mod, to a mod without a release, and to another site", async ({ page, fakePortal }) => {
+test("a pasted portal link to an unknown mod, to a mod without a release, and to another site", { tag: "@looks" }, async ({ page, fakePortal }) => {
   await fakePortal!.add("fp-link-new", "1.0.0", ["base >= 2.1"], "2.1");
   const search = async (q: string) => {
     await page.goto("/worlds/base/mods/search");
@@ -375,7 +375,7 @@ test("a pasted portal link to an unknown mod, to a mod without a release, and to
 // SPEC 9.1: with script the results follow the typing after a pause; only the
 // results change, focus stays in the box, the address and tab title follow the
 // text without new history entries, and a screen reader hears the count.
-test("on the search page results follow the typing, keep focus, and the address follows", async ({ page }) => {
+test("on the search page results follow the typing, keep focus, and the address follows", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg-01");
   const box = page.getByLabel("Mod name");
   const history = await page.evaluate(() => window.history.length);
@@ -405,7 +405,7 @@ test("under 2 characters the panel says what to type and the portal is not asked
 
 // SPEC 9.1: a typed search the server refuses shows and announces why, ties
 // the error to the box, and a good search clears it.
-test("a refused typed search says why, and a good one clears it", async ({ page }) => {
+test("a refused typed search says why, and a good one clears it", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg");
   const box = page.getByLabel("Mod name");
   await box.fill("a".repeat(150));
@@ -461,7 +461,7 @@ for (const at of ["/worlds/base/mods", "/worlds/base/mods/search?q=fp-pg"]) {
 // SPEC 9.1: on the Mods tab the "Mods matching" panel is always there; typing
 // and paging replace only the list, and the address stays the tab's.
 test.describe("typing on the Mods tab", () => {
-  test("the panel is there before any typing, and results follow the typing in it", async ({ page }) => {
+  test("the panel is there before any typing, and results follow the typing in it", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/worlds/base/mods");
     const url = page.url();
     const history = await page.evaluate(() => window.history.length);
@@ -489,7 +489,7 @@ test.describe("typing on the Mods tab", () => {
     await shot(page, "mods-tab-typed");
   });
 
-  test("Enter searches in place, and the page controls keep the tab's address", async ({ page }) => {
+  test("Enter searches in place, and the page controls keep the tab's address", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/worlds/base/mods");
     const box = page.getByLabel("Mod name");
     await box.fill("fp-pg");
@@ -502,7 +502,7 @@ test.describe("typing on the Mods tab", () => {
     expect(new URL(page.url()).search).toBe("");
   });
 
-  test("a refused search says why in place", async ({ page }) => {
+  test("a refused search says why in place", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/worlds/base/mods");
     const box = page.getByLabel("Mod name");
     await box.fill("a".repeat(150));

@@ -103,7 +103,7 @@ test("off on load: nothing is counted until the box is ticked", async ({ page })
   await expect(section(page).locator(".resources")).toHaveCount(0);
 });
 
-test("ticked, the count comes after the picture: labels on the map and the amounts as text", async ({ page }) => {
+test("ticked, the count comes after the picture: labels on the map and the amounts as text", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   const hold = holdCounts(page);
   await hold.start();
@@ -157,7 +157,7 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   await expect(labels(page)).toHaveCount(4);
 });
 
-test("labels never overlap at the fitted size, and zooming in shows more", async ({ page }) => {
+test("labels never overlap at the fitted size, and zooming in shows more", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   await box(page).check();
   await expect(labels(page)).toHaveCount(4);
@@ -185,7 +185,7 @@ test("unticking clears the status line's news of the count", async ({ page }) =>
   await expect(labels(page)).toHaveCount(0);
 });
 
-test("a tick during the pause after a settings change waits for the new picture", async ({ page }) => {
+test("a tick during the pause after a settings change waits for the new picture", { tag: "@looks" }, async ({ page }) => {
   test.skip(!isWide(page), "the settings show beside the map only where both fit");
   await openLarge(page);
   const events: string[] = [];
@@ -217,7 +217,7 @@ test("Preview map clicked during a change's pause leaves the box working", async
   await expect(labels(page)).toHaveCount(4);
 });
 
-test("unticking or closing the view drops the count on its way", async ({ page }) => {
+test("unticking or closing the view drops the count on its way", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   const hold = holdCounts(page);
   await hold.start();
@@ -237,7 +237,7 @@ test("unticking or closing the view drops the count on its way", async ({ page }
   await expect(labels(page)).toHaveCount(0);
 });
 
-test("another planet drops the count and counts the planet shown, around its demolisher labels", async ({ page }) => {
+test("another planet drops the count and counts the planet shown, around its demolisher labels", { tag: "@looks" }, async ({ page }) => {
   // Vulcanus's territories are ticked on the page first, so its large view has demolisher labels.
   await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
@@ -288,7 +288,7 @@ test("another planet drops the count and counts the planet shown, around its dem
   await expect(list(page).getByRole("heading", { level: 4 }).first()).toHaveText(/^Coal: /);
 });
 
-test("a settings change drops the labels at once and counts again after the new picture", async ({ page }) => {
+test("a settings change drops the labels at once and counts again after the new picture", { tag: "@looks" }, async ({ page }) => {
   test.skip(!isWide(page), "the settings show beside the map only where both fit");
   await openLarge(page);
   await box(page).check();
@@ -314,7 +314,7 @@ test("a settings change drops the labels at once and counts again after the new 
   await expect(status(page)).toHaveText("Resource amounts ready.");
 });
 
-test("a failed request says so and offers to try again", async ({ page }) => {
+test("a failed request says so and offers to try again", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
   await box(page).check();
@@ -335,7 +335,7 @@ test("a failed request says so and offers to try again", async ({ page }) => {
   await expect(result(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
 });
 
-test("from the keyboard: tick the box, then read the amounts as text", async ({ page }) => {
+test("from the keyboard: tick the box, then read the amounts as text", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   await tabTo(page, box(page));
   await page.keyboard.press("Space");
@@ -357,7 +357,7 @@ test("from the keyboard: tick the box, then read the amounts as text", async ({ 
   await expect(dialog(page)).toBeHidden();
 });
 
-test("another planet's settings change keeps this planet's count, so going back is quick", async ({ page, fakeGame }) => {
+test("another planet's settings change keeps this planet's count, so going back is quick", { tag: "@looks" }, async ({ page, fakeGame }) => {
   test.skip(!isWide(page), "the settings show beside the map only where both fit");
   // Every preview picture and every count is a container the fake game is asked to create.
   const runs = async () => ((await fakeGame!.state()) as { calls: string[] }).calls.filter((c) => c.includes("/containers/create")).length;
@@ -450,7 +450,7 @@ test.describe("on the One planet picture", () => {
     await expect(pageLabels(page)).toHaveCount(4);
   });
 
-  test("the large view's box is its own; the page's labels, list and count stay while it is open", async ({ page }) => {
+  test("the large view's box is its own; the page's labels, list and count stay while it is open", { tag: "@looks" }, async ({ page }) => {
     const asked: string[] = [];
     page.on("request", (r) => { if (isResources(r.url())) asked.push(r.url()); });
     await onePlanet(page);
@@ -482,7 +482,7 @@ test.describe("on the One planet picture", () => {
     await expect(announcer(page)).toHaveText("Resource amounts ready.");
   });
 
-  test("a page count that lands while the view is open is shown, not said there", async ({ page }) => {
+  test("a page count that lands while the view is open is shown, not said there", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
     const hold = holdCounts(page);
     await hold.start();
@@ -513,7 +513,7 @@ test.describe("on the One planet picture", () => {
     expect(hold.held.length).toBe(0);
   });
 
-  test("a page failure while the view is open is shown, then said once the view closes", async ({ page }) => {
+  test("a page failure while the view is open is shown, then said once the view closes", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
     let fail!: () => void;
     const go = new Promise<void>((r) => (fail = r));
@@ -537,7 +537,7 @@ test.describe("on the One planet picture", () => {
 
   // At 320 px the counting line is under the picture, out of sight of the box, so the box
   // says beside itself that it is counting; the line under the picture says the rest.
-  test("ticking the box shows beside it that it is counting", async ({ page }) => {
+  test("ticking the box shows beside it that it is counting", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
     const busy = page.locator("#preview-amounts-busy");
     await expect(busy).toBeHidden();
@@ -563,7 +563,7 @@ test.describe("on the One planet picture", () => {
   });
 
   // DESIGN 8.8: the thumbnail's labels are the territory labels' small type, over the map only.
-  test("the thumbnail's labels are small and lie over the map inside its border", async ({ page }) => {
+  test("the thumbnail's labels are small and lie over the map inside its border", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
     await pageBox(page).check();
     await expect(pageLabels(page)).toHaveCount(4);
@@ -579,7 +579,7 @@ test.describe("on the One planet picture", () => {
     expect(await pageLabels(page).first().evaluate((l) => getComputedStyle(l).forcedColorAdjust)).toBe("none");
   });
 
-  test("the picture does not move as the count comes and goes", async ({ page }) => {
+  test("the picture does not move as the count comes and goes", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
     const img = section(page).getByRole("img");
     // In page coordinates, as ticking the box scrolls it into view.
@@ -597,7 +597,7 @@ test.describe("on the One planet picture", () => {
     expect(await top()).toBeCloseTo(before, 0);
   });
 
-  test("unticking drops the count on its way; a failure says so and offers to try again", async ({ page }) => {
+  test("unticking drops the count on its way; a failure says so and offers to try again", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
     const hold = holdCounts(page);
     await hold.start();
@@ -619,7 +619,7 @@ test.describe("on the One planet picture", () => {
     await expect(pageLabels(page)).toHaveCount(4);
     await expect(pageBox(page)).toBeFocused();
   });
-  test("downloads draw in the held amounts while the box is ticked, and never count", async ({ page }) => {
+  test("downloads draw in the held amounts while the box is ticked, and never count", { tag: "@looks" }, async ({ page }) => {
     const asked: string[] = [];
     page.on("request", (r) => { if (isResources(r.url())) asked.push(r.url()); });
     await onePlanet(page);

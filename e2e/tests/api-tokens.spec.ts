@@ -31,7 +31,7 @@ async function create(page: Page, name: string) {
   return page.locator("#token-secret").inputValue();
 }
 
-test("create a token, see the secret once, renew and revoke it", async ({ page, foreman }) => {
+test("create a token, see the secret once, renew and revoke it", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   await openTokens(page);
   await expect(page.locator("#my-tokens-empty")).toBeVisible();
@@ -165,7 +165,7 @@ test("the warning that a token will not work shows only while MCP and REST API a
   await checkPage(page);
 });
 
-test("the REST API switch has a visible name and a visible focus ring", async ({ page }) => {
+test("the REST API switch has a visible name and a visible focus ring", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await openTokens(page);
   const button = page.getByRole("button", { name: "Turn on REST API access" });
@@ -175,7 +175,7 @@ test("the REST API switch has a visible name and a visible focus ring", async ({
   expect(await button.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
 });
 
-test("a new token's page shows both addresses, each with its own copy button", async ({ page, context }) => {
+test("a new token's page shows both addresses, each with its own copy button", { tag: "@looks" }, async ({ page, context }) => {
   await createAdmin(page);
   await openTokens(page);
   await create(page, "Claude");
@@ -194,7 +194,7 @@ test("a new token's page shows both addresses, each with its own copy button", a
 
 // The language sweep of i18n.spec.ts does not visit this page, so its two screens
 // are checked here: the longest translations still fit at 320 px and pass axe.
-test("the page and the created page fit and pass axe in every language", async ({ page, foreman }) => {
+test("the page and the created page fit and pass axe in every language", { tag: "@looks" }, async ({ page, foreman }) => {
   test.setTimeout(170_000);
   await page.setViewportSize({ width: 320, height: 640 });
   await createAdmin(page);

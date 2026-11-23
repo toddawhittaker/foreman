@@ -10,7 +10,7 @@ test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
 // A favorite's row: its Details foldout, named by the favorite, and Generate beside it.
 const favRow = (page: Page, name: string) => page.locator("li.favorite", { has: page.locator(".favorite__name", { hasText: new RegExp(`^${name}$`) }) });
 
-test("make a favorite, start Generate from it, land on the review page, then delete it", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("make a favorite, start Generate from it, land on the review page, then delete it", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-signs", "1.0.0", ["base >= 2.0"]);
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-signs": "2.0" } });
   const base = join(foreman.dataDir, "worlds", "base");
@@ -120,7 +120,7 @@ async function exportAndDelete(page: Page, dataDir: string, name = "Shared pack"
   return file;
 }
 
-test("export a favorite, see the warning, then import it by dropping the file", async ({ page, foreman }) => {
+test("export a favorite, see the warning, then import it by dropping the file", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedFavorite(foreman.dataDir);
   await page.goto("/favorites");
@@ -188,7 +188,7 @@ async function rename(page: Page, from: string, to: string) {
   await row.getByRole("button", { name: "Rename" }).click();
 }
 
-test("a favorite is a closed row; Details holds the rest; Rename changes the list and the export", async ({ page, foreman }) => {
+test("a favorite is a closed row; Details holds the rest; Rename changes the list and the export", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedFavorite(foreman.dataDir);
   const other = join(foreman.dataDir, "favorites", "fedcba9876543210");
@@ -229,7 +229,7 @@ test("a favorite is a closed row; Details holds the rest; Rename changes the lis
 });
 
 for (const lang of ["de", "ru"] as const) {
-  test(`at 320 px and 200% text in ${lang}, a favorite's row and Details fit`, async ({ page, foreman }) => {
+  test(`at 320 px and 200% text in ${lang}, a favorite's row and Details fit`, { tag: "@looks" }, async ({ page, foreman }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await createAdmin(page);
     seedFavorite(foreman.dataDir);
@@ -246,7 +246,7 @@ for (const lang of ["de", "ru"] as const) {
 test.describe("on a touch screen", () => {
   test.use({ hasTouch: true, isMobile: true });
 
-  test("a favorite's row, Generate and Details controls are 44 px", async ({ page, foreman }) => {
+  test("a favorite's row, Generate and Details controls are 44 px", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedFavorite(foreman.dataDir);
     await page.goto("/favorites");

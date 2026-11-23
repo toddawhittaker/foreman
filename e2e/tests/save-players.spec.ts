@@ -229,7 +229,7 @@ test.describe("the list on the world's Overview page", () => {
 
   // SPEC 8.14, 8.16: the record matches only the save that loads next. A different newest save
   // makes the old record not match, and the view reads again.
-  test("a record for another save does not match, and the view reads the newer save", async ({ page, foreman, fakeGame }) => {
+  test("a record for another save does not match, and the view reads the newer save", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { players: [{ name: "old-save-player", hours: 3 }] });
     const record = readRecord(foreman);
@@ -244,7 +244,7 @@ test.describe("the list on the world's Overview page", () => {
 
   // The page is for a phone as much as a desk (SPEC 17.1): a long name and many players do not
   // scroll the page sideways.
-  test("a long name and a long list fit a phone", async ({ page, foreman, fakeGame }) => {
+  test("a long name and a long list fit a phone", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     const players: SeededPlayer[] = [{ name: "a-very-long-player-name-with-many-parts-0123456789", hours: 250 }];
     for (let i = 0; i < 25; i++) players.push({ name: `player${i}`, hours: i + 1 });
@@ -268,7 +268,7 @@ test.describe("accessibility of the players panel", () => {
   const liveRegion = (page: Page) => page.locator("#save-players-live");
   const focusedId = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName || "");
 
-  test("the reading state passes axe", async ({ page, foreman, fakeGame }) => {
+  test("the reading state passes axe", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await fakeGame!.call("/preview-mode", { mode: "hang" });
     const section = await overview(page);
@@ -276,7 +276,7 @@ test.describe("accessibility of the players panel", () => {
     await checkPage(page);
   });
 
-  test("the ready state with a note that it may be inexact passes axe", async ({ page, foreman, fakeGame }) => {
+  test("the ready state with a note that it may be inexact passes axe", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { inexact: true, gameTicks: 12 * hour, players: [{ name: "alice", hours: 5 }, { name: "bob", hours: 1, trackedSeconds: 600, lastSeen: "2026-11-20T18:30:00Z" }] });
     // The Server page's view before Start sees a stopped world with an inexact record, so it reads
@@ -294,7 +294,7 @@ test.describe("accessibility of the players panel", () => {
     await checkPage(page);
   });
 
-  test("the tracked-only state passes axe", async ({ page, foreman, fakeGame }) => {
+  test("the tracked-only state passes axe", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { result: "mods-differ", trackedSince: "2026-11-10T08:00:00Z", players: [{ name: "carol", trackedSeconds: 5400, lastSeen: "2026-11-20T18:30:00Z" }] });
     const section = await overview(page);
@@ -303,7 +303,7 @@ test.describe("accessibility of the players panel", () => {
     await checkPage(page);
   });
 
-  test("the Server page with the players link passes axe", async ({ page, foreman, fakeGame }) => {
+  test("the Server page with the players link passes axe", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { gameTicks: 59_760_005, players: [{ name: "alice", hours: 5 }, { name: "bob", hours: 2 }] });
     await page.goto("/");
@@ -313,7 +313,7 @@ test.describe("accessibility of the players panel", () => {
 
   // A read can take minutes, and the panel asks again every few seconds. Neither the poll nor
   // the swap may put focus back on the "Reading" note: a person who has moved on keeps their place.
-  test("during a read, focus is not put back on the Reading note", async ({ page, foreman, fakeGame }) => {
+  test("during a read, focus is not put back on the Reading note", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { result: "out-of-memory", players: [{ name: "carol", trackedSeconds: 60 }] });
     await fakeGame!.call("/preview-mode", { mode: "hang" });
@@ -344,7 +344,7 @@ test.describe("accessibility of the players panel", () => {
 
   // The button that was pressed is replaced when the read ends. The end is said once in the
   // live region that stays (A9: nothing takes focus), and the page is not left saying "Reading".
-  test("when a read ends, its outcome is announced once", async ({ page, foreman, fakeGame }) => {
+  test("when a read ends, its outcome is announced once", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     writeRecord(foreman, { result: "out-of-memory", players: [{ name: "carol", trackedSeconds: 60 }] });
     await fakeGame!.call("/preview-mode", { mode: "slow" });

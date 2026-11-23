@@ -19,7 +19,7 @@ async function setUp(page: Page, foreman: Parameters<typeof seedWorld>[0], fakeG
   await page.goto("/");
 }
 
-test("the whole flow: step 1, skip the mods, a preset on step 4, finished on the world page in five clicks", async ({ page, foreman, fakeGame }, info) => {
+test("the whole flow: step 1, skip the mods, a preset on step 4, finished on the world page in five clicks", { tag: "@looks" }, async ({ page, foreman, fakeGame }, info) => {
   await setUp(page, foreman, fakeGame!);
   const clicks = await countClicks(page);
   await clicks.reset();
@@ -70,7 +70,7 @@ test("step 1 shows the step bar with step 1 current, and the later steps are not
   await checkPage(page);
 });
 
-test("an Unfinished world says so on the list and its page, and Continue opens step 4 when step 3 has nothing", async ({ page, foreman, fakeGame }, info) => {
+test("an Unfinished world says so on the list and its page, and Continue opens step 4 when step 3 has nothing", { tag: "@looks" }, async ({ page, foreman, fakeGame }, info) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
   await page.getByLabel("World name").fill("Half made");
@@ -105,7 +105,7 @@ test("an Unfinished world says so on the list and its page, and Continue opens s
 // SPEC 5.6 (Todd's ruling, 2026-11-23): once step 4 is saved the set-up is
 // done, so the world is Ready, not Unfinished; Switch is its primary action
 // and Change setup reopens step 4.
-test("after step 4's save the world is Ready, with Switch as the primary button", async ({ page, foreman, fakeGame }, info) => {
+test("after step 4's save the world is Ready, with Switch as the primary button", { tag: "@looks" }, async ({ page, foreman, fakeGame }, info) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
   await page.getByLabel("World name").fill("All set");

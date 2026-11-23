@@ -57,7 +57,7 @@ test.describe("Generate", () => {
   });
 
   // DESIGN 8.8: the first picture's space is held, so it does not push the page down when it lands.
-  test("the preview's picture box is held before the first picture arrives", async ({ page }) => {
+  test("the preview's picture box is held before the first picture arrives", { tag: "@looks" }, async ({ page }) => {
     let release!: () => void;
     const held = new Promise<void>((r) => (release = r));
     // Step 3 is opened again once the route is set, so its own preview is the one held.
@@ -129,7 +129,7 @@ test.describe("Generate", () => {
   });
 
   // A failing preview with the large view open is said once and never asked for again.
-  test("a failing preview with the large view open makes one request and says why", async ({ page, fakeGame }) => {
+  test("a failing preview with the large view open makes one request and says why", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -146,7 +146,7 @@ test.describe("Generate", () => {
     expect(sent.length).toBe(1);
   });
 
-  test("Next onto a planet not drawn yet names it at once and says it when drawn", async ({ page }) => {
+  test("Next onto a planet not drawn yet names it at once and says it when drawn", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -158,7 +158,7 @@ test.describe("Generate", () => {
   });
 
   // Previous before a planet's picture arrives drops that draw: the earlier picture, its status and Close's focus stay right.
-  test("Previous before an undrawn planet arrives keeps the earlier planet and its focus", async ({ page }) => {
+  test("Previous before an undrawn planet arrives keeps the earlier planet and its focus", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -183,7 +183,7 @@ test.describe("Generate", () => {
   });
 
   // Close while a planet is still being drawn: focus stays on a picture that is there, and the late reply changes nothing.
-  test("closing the large view while a planet is drawing keeps focus on a picture", async ({ page }) => {
+  test("closing the large view while a planet is drawing keeps focus on a picture", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -204,7 +204,7 @@ test.describe("Generate", () => {
   });
 
   // After one failed draw, Previous and Next still move and try again, one request for each press.
-  test("after a failed draw in the large view, Previous and Next still move and retry", async ({ page, fakeGame }) => {
+  test("after a failed draw in the large view, Previous and Next still move and retry", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -224,7 +224,7 @@ test.describe("Generate", () => {
 
   // WCAG 1.4.10: at 400% zoom (320 by 200) or a phone on its side the picture keeps its room and the dialog scrolls.
   for (const [w, h] of [[320, 200], [568, 320]]) {
-    test(`the large view keeps the picture usable at ${w} by ${h}`, async ({ page }) => {
+    test(`the large view keeps the picture usable at ${w} by ${h}`, { tag: "@looks" }, async ({ page }) => {
       await page.setViewportSize({ width: w, height: h });
       await openNewMap(page);
       await expect(section(page).getByRole("img")).toHaveCount(1);
@@ -238,7 +238,7 @@ test.describe("Generate", () => {
   }
 
   // WCAG 4.1.3: problems with the automatic preview are said, without moving focus.
-  test("a seed that is not a number is said and marks the field", async ({ page }) => {
+  test("a seed that is not a number is said and marks the field", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     const seed = page.getByLabel("Seed");
@@ -259,7 +259,7 @@ test.describe("Generate", () => {
     await expect(page.locator("#announcer")).toContainText("The map preview request failed.");
   });
 
-  test("Preview map says at once that it started", async ({ page }) => {
+  test("Preview map says at once that it started", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     const seen = await recordAnnouncer(page);
@@ -268,7 +268,7 @@ test.describe("Generate", () => {
   });
 
   // A focused picture link keeps focus when a pending redraw lands (DESIGN 8.8: nothing automatic moves focus).
-  test("a focused picture link keeps focus across a redraw", async ({ page }) => {
+  test("a focused picture link keeps focus across a redraw", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     const sent: Request[] = [];
@@ -286,7 +286,7 @@ test.describe("Generate", () => {
 
   // SPEC 5.6, 17.9: Reset to defaults throws every change away, so
   // Undo takes its place with the focus, and one press brings them back.
-  test("Reset to defaults offers Undo in its place, which brings every change back", async ({ page }) => {
+  test("Reset to defaults offers Undo in its place, which brings every change back", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await page.locator("#generate-preset").selectOption("rich-resources");
     await expect(page.locator("#mg-nauvis-iron-ore-richness")).not.toHaveValue("100");
@@ -339,7 +339,7 @@ test.describe("Generate", () => {
   });
 
   // A tab is a view, not a setting (SPEC 5.6), so showing another one keeps the Undo.
-  test("showing another settings tab after Reset to defaults keeps the Undo, which still works", async ({ page }) => {
+  test("showing another settings tab after Reset to defaults keeps the Undo, which still works", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
@@ -355,7 +355,7 @@ test.describe("Generate", () => {
 
   // The reset's reply replaces the fields anyway, so Undo is always offered after it and
   // brings back the settings as they were when Reset was pressed; focus stays where it was.
-  test("a change made while Reset is on its way still gets Undo, which brings back the settings from before the reset", async ({ page }) => {
+  test("a change made while Reset is on its way still gets Undo, which brings back the settings from before the reset", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
@@ -379,7 +379,7 @@ test.describe("Generate", () => {
   });
 
   // Focus never falls to the page when the Undo it was on ends.
-  test("when the focused Undo ends, focus goes to Reset to defaults", async ({ page }) => {
+  test("when the focused Undo ends, focus goes to Reset to defaults", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
@@ -396,7 +396,7 @@ test.describe("Generate", () => {
   });
 
   // The way back to one planet stays after a failed draw of every planet (DESIGN 8.8).
-  test("after All planets fails to draw, One planet is still there and draws one", async ({ page, fakeGame }) => {
+  test("after All planets fails to draw, One planet is still there and draws one", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await tab(page, "All planets").click();
@@ -482,7 +482,7 @@ test.describe("Generate", () => {
   });
 
   // A change that moves a field and also turns the achievement warning on says both, in one announcement.
-  test("a live-fit move that also turns the achievement warning on says both", async ({ page }) => {
+  test("a live-fit move that also turns the achievement warning on says both", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await tab(page, "Enemy").click();
     const low = page.getByLabel("Minimum expansion distance");
@@ -498,7 +498,7 @@ test.describe("Generate", () => {
   });
 
   // A preset chosen on a 1.1 world fills that line's settings.
-  test("on a 1.1 world, choosing Marathon refills the settings", async ({ page }) => {
+  test("on a 1.1 world, choosing Marathon refills the settings", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page, { step1: oldGameStep1 });
     const price = page.locator("#ms-difficulty-settings-technology-price-multiplier");
     await expect(price).toHaveValue("1");
@@ -512,7 +512,7 @@ test.describe("Generate", () => {
   // in `text` and the knob in `heading`. WCAG 1.4.11: the fill and the knob
   // stand 3:1 or more against the page behind them, on both themes (DESIGN 3).
   // A turned-off slider takes `border` for its fill and knob.
-  test("the sliders are drawn in neutrals, and greyed while off", async ({ page }) => {
+  test("the sliders are drawn in neutrals, and greyed while off", { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openNewMap(page);
     await tab(page, "Resources").click();
@@ -598,7 +598,7 @@ test.describe("world pages", () => {
     ["/worlds/second/delete", "Overview"],
     ["/worlds/base/settings/raw/server-settings.json", "Game settings"],
   ]) {
-    test(`${path} shows the world's tabs with ${current} marked`, async ({ page }) => {
+    test(`${path} shows the world's tabs with ${current} marked`, { tag: "@looks" }, async ({ page }) => {
       await page.goto(path);
       const tabs = page.getByRole("navigation", { name: "World pages" });
       await expect(tabs.getByRole("link")).toHaveText(["Overview", "Saves", "Snapshots", "Factory map", "Mods", "Game settings"]);
@@ -619,7 +619,7 @@ test.describe("world pages", () => {
   }
 
   // A heading with a time in its sentence lays out as text: the time stays inside the line.
-  test("the restore question reads as one sentence with its time", async ({ page }) => {
+  test("the restore question reads as one sentence with its time", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/worlds/base/snapshots");
     await page.getByRole("button", { name: "Take snapshot" }).click();
     await page.locator("tbody tr").first().getByRole("link", { name: /Restore/ }).click();
@@ -643,7 +643,7 @@ test.describe("world pages", () => {
 test.describe("server page", () => {
   test.use({ fakeGameOn: true, foremanEnv: { FOREMAN_PUBLIC_ADDRESS: "factorio.example.com" } });
 
-  test("the operation heading is set as the step list's heading size", async ({ page, foreman, fakeGame }) => {
+  test("the operation heading is set as the step list's heading size", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await createAdmin(page);
     seedWorld(foreman);
     await fakeGame!.call("/image", { ref: image21, on: true });
@@ -665,7 +665,7 @@ test.describe("server page", () => {
 
   // At phone width Copy address wraps under the address; its words line up with the line above.
   for (const width of [320, 360, 400]) {
-    test(`Copy address lines up at ${width} px`, async ({ page, foreman, context, fakeGame }) => {
+    test(`Copy address lines up at ${width} px`, { tag: "@looks" }, async ({ page, foreman, context, fakeGame }) => {
       await context.grantPermissions(["clipboard-read", "clipboard-write"]);
       await createAdmin(page);
       seedWorld(foreman);

@@ -37,7 +37,7 @@ async function expectFullWidthItems(box: Locator) {
   expect(narrow, "list items squeezed into a narrow column").toEqual([]);
 }
 
-test("a refused start states the problem, offers the fix first, and keeps Start anyway behind one choice", async ({ page, foreman, fakeGame }) => {
+test("a refused start states the problem, offers the fix first, and keeps Start anyway behind one choice", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { fixture: save, spaceAge: true });
   await page.getByRole("button", { name: "Start server" }).click();
   const box = page.locator(".message--warning").filter({ hasText: "does not match the world" });
@@ -71,7 +71,7 @@ test("a refused start states the problem, offers the fix first, and keeps Start 
 
 // A refusal inside a step list, as after a start or a mod change: every list
 // in the box fills its width, at any screen size.
-test("a refusal in the step list keeps its lists at the box's full width", async ({ page, foreman, fakeGame }) => {
+test("a refusal in the step list keeps its lists at the box's full width", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { fixture: save, spaceAge: true });
   await page.getByRole("button", { name: "Start server" }).click();
   const box = page.locator(".steps .message--warning");

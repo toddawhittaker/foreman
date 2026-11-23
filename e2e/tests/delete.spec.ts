@@ -121,7 +121,7 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
 });
 
 // DESIGN 7.1: say why, instead of offering an action that will be refused.
-test("a world that cannot be deleted says why instead of offering the button", async ({ page, foreman }) => {
+test("a world that cannot be deleted says why instead of offering the button", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedPair(foreman);
   const future = seedWorld(foreman, "future", "Future");
@@ -166,7 +166,7 @@ test("delete without a final snapshot keeps no snapshot", async ({ page, foreman
   await checkPage(page);
 });
 
-test("a wrong name is refused and the world stays", async ({ page, foreman }) => {
+test("a wrong name is refused and the world stays", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedPair(foreman);
 
@@ -198,7 +198,7 @@ test("a delete request for the active world is refused and changes nothing", asy
   expect(existsSync(join(foreman.dataDir, "snapshots", "base"))).toBe(false);
 });
 
-test("a deleted world's name taken by another world blocks the restore", async ({ page, foreman }) => {
+test("a deleted world's name taken by another world blocks the restore", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedPair(foreman);
   await page.goto("/worlds/family-base/delete");

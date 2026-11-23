@@ -8,7 +8,7 @@ async function pickTheme(page: Page, name: string) {
 
 // SPEC 17.3: Dark overrides a light system, holds across pages, and Auto
 // follows the system again.
-test("Dark overrides a light system and Auto follows the system again", async ({ page }) => {
+test("Dark overrides a light system and Auto follows the system again", { tag: "@looks" }, async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await createAdmin(page);
   await expect(page.locator("body")).toHaveCSS("background-color", lightBg);
@@ -38,7 +38,7 @@ test("Dark overrides a light system and Auto follows the system again", async ({
   await expect(page.locator("body")).toHaveCSS("background-color", darkBg);
 });
 
-test("Light overrides a dark system", async ({ page }) => {
+test("Light overrides a dark system", { tag: "@looks" }, async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await createAdmin(page);
   await expect(page.locator("body")).toHaveCSS("background-color", darkBg);
@@ -49,7 +49,7 @@ test("Light overrides a dark system", async ({ page }) => {
 });
 
 // The choices are plain buttons in the details menu: reachable by keyboard alone.
-test("the theme choice works from the keyboard", async ({ page }) => {
+test("the theme choice works from the keyboard", { tag: "@looks" }, async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await createAdmin(page);
   await page.locator("details.menu > summary").focus();
@@ -65,7 +65,7 @@ test("the theme choice works from the keyboard", async ({ page }) => {
 });
 
 // SPEC 17.2: each choice is a 44 px target.
-test("the theme choices are 44 px targets", async ({ page }) => {
+test("the theme choices are 44 px targets", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);
   for (const name of ["Auto", "Light", "Dark"]) {
@@ -77,7 +77,7 @@ test("the theme choices are 44 px targets", async ({ page }) => {
 
 // WCAG 1.4.4: at 320 px and 200% text the open menu's theme choices stay
 // inside the window and can still be pressed.
-test("at 320 px and 200% text the theme choices fit", async ({ page }) => {
+test("at 320 px and 200% text the theme choices fit", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.emulateMedia({ colorScheme: "light" });
   await createAdmin(page);

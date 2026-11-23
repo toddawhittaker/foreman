@@ -9,7 +9,7 @@ test.describe("mods tab", () => {
   test.use({ fakeGameOn: true });
 
   // The projects run this in both themes, at desktop and phone width.
-  test("reads as a document and passes the checks", async ({ page, foreman }) => {
+  test("reads as a document and passes the checks", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman, { mods: { "a-mod-with-a-rather-long-name-for-a-phone": "2.1", other: "2.1" } });
     await page.goto("/worlds/base/mods");

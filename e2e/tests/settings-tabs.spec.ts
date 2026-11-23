@@ -10,7 +10,7 @@ const tabs = 8;
 
 for (const lang of ["en", "de"]) {
   for (const width of [320, 390, 639, 640, 800, 1280]) {
-    test(`${lang}: the settings tabs all show at ${width} px`, async ({ page, foreman }) => {
+    test(`${lang}: the settings tabs all show at ${width} px`, { tag: "@looks" }, async ({ page, foreman }) => {
       await createAdmin(page);
       await page.context().addCookies([{ name: "foreman_lang", value: lang, url: foreman.url }]);
       await page.setViewportSize({ width, height: 800 });

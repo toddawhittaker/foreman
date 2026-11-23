@@ -17,7 +17,7 @@ async function noSaveWorld(page: Page, foreman: Parameters<typeof setUpModsWorld
   await openModTools(page);
 }
 
-test("a link to another tab is not a button, ends in a chevron, and opens that tab", async ({ page, foreman, fakeGame }) => {
+test("a link to another tab is not a button, ends in a chevron, and opens that tab", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await noSaveWorld(page, foreman, fakeGame!);
   const link = page.getByRole("link", { name: "Upload a save", exact: true });
   await expect(link).toHaveClass("link-tab");
@@ -37,7 +37,7 @@ test("a link to another tab is not a button, ends in a chevron, and opens that t
   await expect(page.locator("#save-file")).toBeVisible();
 });
 
-test("a link out of Foreman ends in an arrow that is not in its name", async ({ page }) => {
+test("a link out of Foreman ends in an arrow that is not in its name", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/about");
   const link = page.locator("main").getByRole("link", { name: /GitHub/ });
@@ -58,7 +58,7 @@ test("a link out of Foreman ends in an arrow that is not in its name", async ({ 
 test.describe("at 320 px and 200% text", () => {
   test.use({ viewport: { width: 320, height: 700 } });
   for (const lang of ["de", "ru"]) {
-    test(`the chevron link fits in ${lang}`, async ({ page, foreman, fakeGame }) => {
+    test(`the chevron link fits in ${lang}`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
       await noSaveWorld(page, foreman, fakeGame!);
       await page.context().addCookies([{ name: "foreman_lang", value: lang, url: foreman.url }]);
       await page.reload();

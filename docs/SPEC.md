@@ -3765,8 +3765,10 @@ automated accessibility scan in its end-to-end tests. No two links on one
 page share a name unless they go to the same place. (P0)
 
 17.2. Every page works at 320 CSS pixels wide without horizontal
-scrolling, with touch targets at least 24 by 24 CSS pixels. The success
-scenarios in docs/VISION.md are tested at phone width. (P0)
+scrolling, with touch targets at least 24 by 24 CSS pixels. Every screen
+is checked for looks and accessibility in both themes at desktop width and
+at 320 px, and behavior is checked once. The success scenarios in
+docs/VISION.md are tested at phone width. (P0)
 
 17.3. Light and dark themes, following the system setting, with an Auto /
 Light / Dark choice in the user menu, remembered per browser. (P1)

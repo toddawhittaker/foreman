@@ -40,7 +40,7 @@ function worldJSON(f: Foreman, id: string) {
 
 const folderForm = (page: Page) => page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
 
-test("imports a folder from the inbox, leaves it unchanged, and says Done", async ({ page, foreman }) => {
+test("imports a folder from the inbox, leaves it unchanged, and says Done", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const src = join(foreman.dataDir, "import", "saves-2025");
   mkdirSync(join(src, "mods"), { recursive: true });
@@ -107,7 +107,7 @@ test("a single folder is chosen, named from its server settings, and uses the sa
   expect(worldJSON(foreman, "friday-factory")).toMatchObject({ game_version: "2.1.24", space_age: true });
 });
 
-test("choosing a folder suggests its name and Space Age, but not over typed text", async ({ page, foreman }) => {
+test("choosing a folder suggests its name and Space Age, but not over typed text", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   inboxFixture(foreman, "one", "2.1.24-space-age.zip");
   inboxFixture(foreman, "two", "2.0.77-no-space-age.zip");
@@ -158,7 +158,7 @@ test("an unreadable folder asks for the version", async ({ page, foreman }) => {
 
 // SPEC 5.5: Space Age that contradicts the save is warned of beside the box,
 // and Space Age on a 1.1 world is refused.
-test("Space Age that differs from the save is warned of, and refused for 1.1", async ({ page, foreman }) => {
+test("Space Age that differs from the save is warned of, and refused for 1.1", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   inboxFixture(foreman, "plain", "2.1.24-no-space-age.zip");
   inboxFixture(foreman, "old", "1.1.110-vanilla.zip");
@@ -185,7 +185,7 @@ test("Space Age that differs from the save is warned of, and refused for 1.1", a
 // SPEC 5.5: several folders import at once, each named after its folder
 // with its save's version; a folder that cannot be read is skipped with its
 // reason, and one download runs per missing version.
-test("several folders import at once, each reported", async ({ page, foreman, fakeGame }) => {
+test("several folders import at once, each reported", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   inboxFixture(foreman, "sa", "2.1.24-space-age.zip");
   inboxFixture(foreman, "plain", "2.0.77-no-space-age.zip");
@@ -323,7 +323,7 @@ test("an import with no folder chosen describes the error on every checkbox", as
   await checkPage(page);
 });
 
-test("import folder lists have no default fieldset border", async ({ page, foreman }) => {
+test("import folder lists have no default fieldset border", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   inboxJunk(foreman, "my-folder");
   await page.goto("/import");
@@ -333,7 +333,7 @@ test("import folder lists have no default fieldset border", async ({ page, forem
   await checkPage(page);
 });
 
-test("imports a world by uploading a save, and suggests its name", async ({ page, foreman }) => {
+test("imports a world by uploading a save, and suggests its name", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   await page.goto("/import");
   await expect(page.getByText("The import folder is empty")).toBeVisible();

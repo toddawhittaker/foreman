@@ -20,7 +20,7 @@ async function signIn(page: Page, user: string, pw: string) {
 }
 
 // SPEC 12.3, 12.4 and 12.8: the first-run journey, checked on every page it visits.
-test("first run: setup, sign out, sign in again", async ({ page }) => {
+test("first run: setup, sign out, sign in again", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL("/setup");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Create the first admin account");
@@ -85,7 +85,7 @@ test("setup after an admin exists goes to sign-in", async ({ page, context }) =>
 });
 
 // SPEC 12.4: repeated failures for one username reach the limit.
-test("repeated failures reach the rate-limit message", async ({ page }) => {
+test("repeated failures reach the rate-limit message", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await signOut(page);
   await page.goto("/signin");
@@ -102,7 +102,7 @@ test("repeated failures reach the rate-limit message", async ({ page }) => {
 });
 
 // SPEC 17.1 and DESIGN 10: the skip link is the first tab stop and moves focus to main.
-test("the skip link is the first tab stop", async ({ page }) => {
+test("the skip link is the first tab stop", { tag: "@looks" }, async ({ page }) => {
   for (const path of ["/setup", "/signed-out"]) {
     await page.goto(path);
     await page.keyboard.press("Tab");
@@ -117,7 +117,7 @@ test("the skip link is the first tab stop", async ({ page }) => {
 
 // SPEC 17.2 and DESIGN 7: the error summary's links stand alone in a list,
 // so they are full-size touch targets, not inline text.
-test("error summary links are 44 px tall", async ({ page }) => {
+test("error summary links are 44 px tall", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/setup");
   await page.getByRole("button", { name: "Create admin account" }).click();
   const links = await page.locator("#error-summary a").all();

@@ -50,7 +50,7 @@ test.describe("the review of picks from the Mods tab", () => {
   // SPEC 9.2, 9.14: Review opens the plan of the picks; adding more happens on
   // the Mods tab, so the page has no search; Cancel goes back to the tab where
   // the picks are still in the panel.
-  test("review of the picks has no add search, and Cancel returns to the Mods tab with the picks kept", async ({ page }) => {
+  test("review of the picks has no add search, and Cancel returns to the Mods tab with the picks kept", { tag: "@looks" }, async ({ page }) => {
     await pickTwo(page);
     await panel(page).getByRole("link", { name: "Review and install 3 mods" }).click();
 
@@ -68,7 +68,7 @@ test.describe("the review of picks from the Mods tab", () => {
     await expect(panel(page).getByRole("link", { name: "Review and install 3 mods" })).toBeVisible();
   });
 
-  test("the heading of a plan for one named mod is one run of text", async ({ page }) => {
+  test("the heading of a plan for one named mod is one run of text", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-lamp");
     await expect(page.getByRole("heading", { level: 1, name: "Install fp-lamp in Base?" })).toBeVisible();
     // Issue 364: the name has one space each side and breaks like a word.
@@ -79,7 +79,7 @@ test.describe("the review of picks from the Mods tab", () => {
 
   // SPEC 9.2, 17.9: taking a mod out of the review redraws it in place, says so,
   // and puts focus on the list it left.
-  test("taking a mod out of the review redraws the plan and says so", async ({ page }) => {
+  test("taking a mod out of the review redraws the plan and says so", { tag: "@looks" }, async ({ page }) => {
     await pickTwo(page);
     await panel(page).getByRole("link", { name: "Review and install 3 mods" }).click();
     const asked = page.locator("#mod-plan .plan-groups");
@@ -92,7 +92,7 @@ test.describe("the review of picks from the Mods tab", () => {
 
   // Issue 620: each change names its mod by title, as the portal link; the
   // version list and the remove cross sit in the same row.
-  test("each change's row holds its title link, version list and remove cross", async ({ page }) => {
+  test("each change's row holds its title link, version list and remove cross", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-lamp&name=fp-lamp-colours");
     const row = page.locator("#mod-plan .plan-row", { has: page.getByRole("link", { name: "fp-lamp-colours on the mod portal, opens in a new tab" }) });
     await expect(row.getByRole("link", { name: "fp-lamp-colours on the mod portal, opens in a new tab" })).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-lamp-colours");
@@ -107,7 +107,7 @@ test.describe("the review of picks from the Mods tab", () => {
 
   // SPEC 9.13, 9.14: one confirm installs every pick and what they need with one
   // snapshot, and the Mods tab's plan is empty afterwards.
-  test("two picks: one install with one snapshot, then the panel is empty", async ({ page, foreman }) => {
+  test("two picks: one install with one snapshot, then the panel is empty", { tag: "@looks" }, async ({ page, foreman }) => {
     await pickTwo(page);
     await panel(page).getByRole("link", { name: "Review and install 3 mods" }).click();
     await page.getByRole("button", { name: "Install 3 mods" }).click();
@@ -125,7 +125,7 @@ test.describe("the review of picks from the Mods tab", () => {
     // The accessibility scan needs script, so these pages are scanned in the tests with script.
     test.use({ javaScriptEnabled: false });
 
-    test("each remove link is the plan without its mod", async ({ page }) => {
+    test("each remove link is the plan without its mod", { tag: "@looks" }, async ({ page }) => {
       await page.goto("/worlds/base/mods/plan?kind=install&name=fp-lamp&name=fp-lamp-colours");
       await expect(page.getByRole("button", { name: "Install 3 mods" })).toBeVisible();
       await page.getByRole("link", { name: "Remove fp-lamp-colours from the plan" }).click();
@@ -137,7 +137,7 @@ test.describe("the review of picks from the Mods tab", () => {
 });
 
 // A conflict takes focus on load; its way back is the Mods tab, not a search.
-test("a conflict is focused and its way back is the Mods tab", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a conflict is focused and its way back is the Mods tab", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-conf", "1.0.0", ["base >= 2.0", "! fp-other"]);
   await fakePortal!.add("fp-main", "1.0.0", ["base >= 2.0", "? fp-conf"]);
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-other": "2.0" } });
@@ -147,7 +147,7 @@ test("a conflict is focused and its way back is the Mods tab", async ({ page, fo
   await checkPage(page);
 });
 
-test("the Mods tab: built-in mods in one line, portal links, and where mod-settings.dat lives", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("the Mods tab: built-in mods in one line, portal links, and where mod-settings.dat lives", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-here", "1.0.0");
   await setUpModsWorld(page, foreman, fakeGame!, {
     version: version20,
@@ -182,7 +182,7 @@ test("the Mods tab: built-in mods in one line, portal links, and where mod-setti
   await shot(page, "mods-tab-portal");
 });
 
-test("the Server page notice names the mod and its fix", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("the Server page notice names the mod and its fix", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
   await setUpModsWorld(page, foreman, fakeGame!, {
     version: version20,

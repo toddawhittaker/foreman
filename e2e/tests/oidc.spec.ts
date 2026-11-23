@@ -48,7 +48,7 @@ test.describe("single sign-on alone", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Server");
   });
 
-  test("a user outside the required group is refused, with a way back", async ({ page, fakeIdP }) => {
+  test("a user outside the required group is refused, with a way back", { tag: "@looks" }, async ({ page, fakeIdP }) => {
     await fakeIdP!.setNext({ groups: ["staff"] });
     await page.goto("/signin");
     const answer = page.waitForResponse((r) => r.url().includes("/signin/oidc/callback"));
@@ -84,7 +84,7 @@ test.describe("single sign-on alone", () => {
     await checkPage(page);
   });
 
-  test("too many starts from one address give a wait page", async ({ page }) => {
+  test("too many starts from one address give a wait page", { tag: "@looks" }, async ({ page }) => {
     // Each address may start 20 sign-ins a minute (SPEC 12.7).
     for (let i = 0; i < 20; i++) {
       const r = await page.request.get("/signin/oidc", { maxRedirects: 0 });

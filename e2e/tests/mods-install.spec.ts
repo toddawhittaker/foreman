@@ -12,7 +12,7 @@ const world = { version: version20, fixture: "2.0.77-no-space-age.zip" };
 
 const modsTable = (page: Page) => page.getByRole("table", { name: /Mods of Base/ });
 
-test("search, install and confirm: progress, then Done on the Server page, the game restarted", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("search, install and confirm: progress, then Done on the Server page, the game restarted", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const g = fakeGame!;
   const portal = fakePortal!;
   await portal.add("fp-signs", "1.0.0", ["base >= 2.0"]);
@@ -77,7 +77,7 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   expect((await portal.state()).refused).toEqual([]);
 });
 
-test("a chain three levels deep: the plan lists what is needed and why, and all three end installed", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a chain three levels deep: the plan lists what is needed and why, and all three end installed", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
   await portal.add("fp-c", "1.0.0");
   await portal.add("fp-b", "1.0.0", ["base >= 2.0", "fp-c >= 1.0.0"]);
@@ -100,7 +100,7 @@ test("a chain three levels deep: the plan lists what is needed and why, and all 
 });
 
 // SPEC 9.2: a "+" dependency starts ticked and can be unticked; one the portal lacks does not block the plan.
-test("a recommended dependency starts ticked, and one the portal lacks is left out", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a recommended dependency starts ticked, and one the portal lacks is left out", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-lane", "1.3.1");
   await fakePortal!.add("fp-k2", "2.1.4", ["base >= 2.0", "+ fp-lane >= 1.3.0", "+ fp-gone"]);
   await setUpModsWorld(page, foreman, fakeGame!, world);
@@ -136,7 +136,7 @@ test("a recommended dependency starts ticked, and one the portal lacks is left o
 });
 
 // A long install on a stopped world shows Generate's moving bar beside the note, so it does not look stuck.
-test("a running install shows a moving bar, and none for reduced motion", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a running install shows a moving bar, and none for reduced motion", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-big", "1.0.0", ["base >= 2.0"]);
   // The download hangs, which holds the install running while the page is looked at.
   await fakePortal!.setMode("fp-big", "1.0.0", "slow");
@@ -157,7 +157,7 @@ test.describe("an optional dependency", () => {
     await portal.add("fp-main", "1.0.0", ["base >= 2.0", "? fp-opt"]);
   }
 
-  test("ticked: the plan is drawn again at once, with script", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("ticked: the plan is drawn again at once, with script", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
     await addMods(fakePortal!);
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
@@ -204,7 +204,7 @@ test.describe("an optional dependency", () => {
 
   // SPEC 9.2: the admin includes optional dependencies one by one. A ticked offer stays in the redrawn plan,
   // ticked, so the post carries it and the server's plan is the one shown.
-  test("a ticked optional mod is installed when the plan is confirmed", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("a ticked optional mod is installed when the plan is confirmed", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
     await addMods(fakePortal!);
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
@@ -239,7 +239,7 @@ test.describe("an optional dependency", () => {
     });
 
     // The same, reached with Recalculate.
-    test("a ticked optional mod is installed when the plan is confirmed", async ({ page, foreman, fakeGame, fakePortal }) => {
+    test("a ticked optional mod is installed when the plan is confirmed", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
       await recalculate(page, foreman, fakeGame!, fakePortal!);
       await expect(page.getByRole("checkbox", { name: "fp-opt offered by fp-main" })).toBeChecked();
       await page.getByRole("button", { name: "Install 2 mods" }).click();
@@ -254,7 +254,7 @@ test.describe("an optional dependency", () => {
   });
 });
 
-test("an incompatibility is a conflict whose fix removes the other mod in the same plan", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("an incompatibility is a conflict whose fix removes the other mod in the same plan", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
   await portal.add("fp-clash", "1.0.0", ["base >= 2.0", "! fp-other"]);
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-other": "2.0" } });
@@ -295,7 +295,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
 });
 
 // Issue 344: removing a mod another enabled mod needs offers "Disable it too", which redraws the plan with both.
-test("removing a needed mod offers to disable the one that needs it, in one change", async ({ page, foreman, fakeGame }) => {
+test("removing a needed mod offers to disable the one that needs it, in one change", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-lib": "2.0", "fp-needer": { factorio: "2.0", deps: ["fp-lib"] } } });
   await page.goto("/worlds/base/mods");
   await modsTable(page).getByRole("row", { name: /fp-lib/ }).locator("details.row-menu > summary").click();

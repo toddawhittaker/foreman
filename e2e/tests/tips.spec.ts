@@ -32,7 +32,7 @@ async function expectOnScreen(page: Page, text: ReturnType<Page["locator"]>) {
   expect(box.x + box.width).toBeLessThanOrEqual(width);
 }
 
-test("every Enemy and Advanced setting has a tip, and the evolution factors have no power of ten", async ({ page }) => {
+test("every Enemy and Advanced setting has a tip, and the evolution factors have no power of ten", { tag: "@looks" }, async ({ page }) => {
   await onEnemyTab(page);
   const enemy = page.locator("#panel-enemy");
   // The enemy bases' two settings, starting area, No enemies, Peaceful, and the map-settings fields.
@@ -56,7 +56,7 @@ test("every Enemy and Advanced setting has a tip, and the evolution factors have
   await expect(page.locator('button.tip[aria-controls="ms-enemy-evolution-time-factor-tip"]')).toHaveCount(1);
 });
 
-test("a click opens a tip and a second click or Escape closes it", async ({ page }) => {
+test("a click opens a tip and a second click or Escape closes it", { tag: "@looks" }, async ({ page }) => {
   await onEnemyTab(page);
   await expect(timeText(page)).toBeHidden();
   await timeTip(page).click();
@@ -85,7 +85,7 @@ test("hover shows a tip, and leaving the button hides it", async ({ page }) => {
   await expect(timeText(page)).toBeHidden();
 });
 
-test("keyboard focus shows a tip, Escape hides it, and leaving it hides it", async ({ page }) => {
+test("keyboard focus shows a tip, Escape hides it, and leaving it hides it", { tag: "@looks" }, async ({ page }) => {
   await onEnemyTab(page);
   await page.locator("#ms-enemy-evolution-enabled").focus();
   await page.keyboard.press("Tab");
@@ -102,7 +102,7 @@ test("keyboard focus shows a tip, Escape hides it, and leaving it hides it", asy
 });
 
 // A tip opened by focus is shown, so Enter on it closes it, and Enter again opens it.
-test("Enter on a tip that focus opened closes it, and Enter again opens it", async ({ page }) => {
+test("Enter on a tip that focus opened closes it, and Enter again opens it", { tag: "@looks" }, async ({ page }) => {
   await onEnemyTab(page);
   await tabTo(page, timeTip(page));
   await expect(timeText(page)).toBeVisible();
@@ -115,7 +115,7 @@ test("Enter on a tip that focus opened closes it, and Enter again opens it", asy
   await expect(timeTip(page)).toHaveAttribute("aria-expanded", "true");
 });
 
-test("a tip in the Advanced tab opens and passes axe", async ({ page }) => {
+test("a tip in the Advanced tab opens and passes axe", { tag: "@looks" }, async ({ page }) => {
   await onEnemyTab(page);
   await tab(page, "Advanced").click();
   const price = page.getByRole("button", { name: "About Price multiplier" });
@@ -130,7 +130,7 @@ test("a tip in the Advanced tab opens and passes axe", async ({ page }) => {
 test.describe("on a touch screen", () => {
   test.use({ hasTouch: true });
 
-  test("a tap opens a tip, it stays on screen, and a tap elsewhere closes it", async ({ page }) => {
+  test("a tap opens a tip, it stays on screen, and a tap elsewhere closes it", { tag: "@looks" }, async ({ page }) => {
     await onEnemyTab(page);
     // The last tip on a row sits nearest the window's right edge.
     const tips = page.locator("#panel-enemy button.tip");
@@ -150,7 +150,7 @@ test.describe("on a touch screen", () => {
 
   // At 320 px an open tip lies over its own field; a tap on its text must not
   // leave it there.
-  test("a tap on the tip's text closes it", async ({ page }) => {
+  test("a tap on the tip's text closes it", { tag: "@looks" }, async ({ page }) => {
     await onEnemyTab(page);
     await timeTip(page).tap();
     await expect(timeText(page)).toBeVisible();
@@ -162,7 +162,7 @@ test.describe("on a touch screen", () => {
   // Chrome moves focus on a real tap, which closes the tip by itself; a bare
   // touch press, with no focus change, must close it too, and a mouse press on
   // the text (to select it) must not.
-  test("a touch press on the text closes it, a mouse press does not", async ({ page }) => {
+  test("a touch press on the text closes it, a mouse press does not", { tag: "@looks" }, async ({ page }) => {
     await onEnemyTab(page);
     const press = (pointerType: string) => timeText(page).evaluate((el, type) => {
       el.dispatchEvent(new PointerEvent("pointerdown", { pointerType: type, bubbles: true }));
@@ -179,7 +179,7 @@ test.describe("on a touch screen", () => {
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("each tip's text shows under its field and the button is hidden", async ({ page }) => {
+  test("each tip's text shows under its field and the button is hidden", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(timeText(page)).toBeVisible();
     await expect(timeText(page)).toContainText("Controls how fast evolution increases over time.");

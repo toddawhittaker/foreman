@@ -114,7 +114,7 @@ test("the zip counts each planet without amounts, one at a time, then downloads 
   expect(asked).toEqual(["gleba", "nauvis", "vulcanus"]);
 });
 
-test("Cancel stops the counting, says so, and puts focus back on the download", async ({ page }) => {
+test("Cancel stops the counting, says so, and puts focus back on the download", { tag: "@looks" }, async ({ page }) => {
   const asked: string[] = [];
   await threeDrawn(page, asked);
   const aborted: string[] = [];
@@ -141,7 +141,7 @@ test("Cancel stops the counting, says so, and puts focus back on the download", 
   expect(downloads).toBe(0);
 });
 
-test("a planet that fails is named, with Try again and the zip without it", async ({ page }) => {
+test("a planet that fails is named, with Try again and the zip without it", { tag: "@looks" }, async ({ page }) => {
   const asked: string[] = [];
   await threeDrawn(page, asked);
   await page.route(resourceURL, (r) => (planetOf(r.request()) === "nauvis" ? r.fulfill({ status: 500, body: "" }) : r.continue()));
@@ -205,7 +205,7 @@ test("the planet's own download waits for its count on the way, and counts after
   await expect(prep(page)).toHaveCount(0);
 });
 
-test("with territories ticked and none held, the zip reads them before it downloads", async ({ page }) => {
+test("with territories ticked and none held, the zip reads them before it downloads", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
@@ -340,7 +340,7 @@ test("another download while one is prepared says so; a settings change ends it 
   await hold.stop();
 });
 
-test("in the large view the preparation lies over the stage without moving it, and closing or another planet ends it, and the arrow keys wait", async ({ page }) => {
+test("in the large view the preparation lies over the stage without moving it, and closing or another planet ends it, and the arrow keys wait", { tag: "@looks" }, async ({ page }) => {
   const asked: string[] = [];
   await threeDrawn(page, asked);
   await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -389,7 +389,7 @@ test("in the large view the preparation lies over the stage without moving it, a
   await hold.stop();
 });
 
-test("in the large view the preparation leaves the edge buttons and zoom free, and the Next button ends it, saying so even for an undrawn planet", async ({ page }) => {
+test("in the large view the preparation leaves the edge buttons and zoom free, and the Next button ends it, saying so even for an undrawn planet", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
@@ -427,7 +427,7 @@ test("in the large view the preparation leaves the edge buttons and zoom free, a
   await hold.stop();
 });
 
-test("a count that fails at once withdraws its counting sentence but still says the news given with it", async ({ page }) => {
+test("a count that fails at once withdraws its counting sentence but still says the news given with it", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -490,7 +490,7 @@ test("a download clicked while a draw is on its way is refused and says why; the
   expect((await download).suggestedFilename()).toMatch(/-gleba-amounts\.png$/);
 });
 
-test("a download that stops on its only planet moves focus to Try again, named with it", async ({ page }) => {
+test("a download that stops on its only planet moves focus to Try again, named with it", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
@@ -531,7 +531,7 @@ test("a download clicked while a changed setting waits to be drawn is refused an
   expect(downloads).toBe(1);
 });
 
-test("closing the large view ends its download's preparation, and later downloads still work", async ({ page }) => {
+test("closing the large view ends its download's preparation, and later downloads still work", { tag: "@looks" }, async ({ page }) => {
   const asked: string[] = [];
   await drawThree(page, asked);
   await section(page).locator('a.picture[data-planet="gleba"]').click();

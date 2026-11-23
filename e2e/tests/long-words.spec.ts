@@ -32,7 +32,7 @@ test.describe("long words at 320 px", () => {
   test.use({ fakeGameOn: true });
 
   for (const lang of ["de", "fr", "es", "pl", "ru"]) {
-    test(`${lang}: Generate's buttons and the main tabs hold their words`, async ({ page, foreman, fakeGame }) => {
+    test(`${lang}: Generate's buttons and the main tabs hold their words`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
       await page.setViewportSize({ width: 320, height: 640 });
       await createAdmin(page);
       seedWorld(foreman);
@@ -67,7 +67,7 @@ test.describe("long words at 320 px", () => {
 // normal and large text.
 test.describe("the audit log at 320 px", () => {
   for (const lang of ["de", "fr", "es", "pl", "ru"]) {
-    test(`${lang}: the table's rows hold their words`, async ({ page, foreman }) => {
+    test(`${lang}: the table's rows hold their words`, { tag: "@looks" }, async ({ page, foreman }) => {
       await page.setViewportSize({ width: 320, height: 640 });
       await createAdmin(page);
       seedWorld(foreman);

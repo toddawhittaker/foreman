@@ -123,7 +123,7 @@ async function startWorld(page: Page) {
 
 // ---------------------------------------------------------------- the tab
 
-test("the Factory map tab follows Snapshots and opens the page, which is accessible", async ({ page }) => {
+test("the Factory map tab follows Snapshots and opens the page, which is accessible", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base");
   const tabs = page.getByRole("navigation", { name: "World pages" });
   const labels = await tabs.getByRole("link").allTextContents();
@@ -182,7 +182,7 @@ test("the surfaces are listed and choosing one shows its picture", async ({ page
   await expect(ui.base(page)).not.toHaveAttribute("alt", /^$/);
 });
 
-test("the wheel zooms by 1.15 a notch around the pointer and stops at the fitted size", async ({ page }) => {
+test("the wheel zooms by 1.15 a notch around the pointer and stops at the fitted size", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);
   const fitted = await width(page);
@@ -201,7 +201,7 @@ test("the wheel zooms by 1.15 a notch around the pointer and stops at the fitted
   await expect.poll(() => width(page)).toBeCloseTo(fitted, 0);
 });
 
-test("the keys and the buttons zoom by 1.15, 0 fits, and the level is said", async ({ page }) => {
+test("the keys and the buttons zoom by 1.15, 0 fits, and the level is said", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);
   const fitted = await width(page);
@@ -232,7 +232,7 @@ test("the keys and the buttons zoom by 1.15, 0 fits, and the level is said", asy
   expect(await ui.base(page).evaluate((i) => getComputedStyle(i).imageRendering)).toMatch(/pixelated|crisp-edges/);
 });
 
-test("a drag pans a zoomed picture, and the arrow keys pan it too", async ({ page }) => {
+test("a drag pans a zoomed picture, and the arrow keys pan it too", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);
   await ui.frame(page).focus();
@@ -258,7 +258,7 @@ test("a drag pans a zoomed picture, and the arrow keys pan it too", async ({ pag
 test.describe("on a touch screen", () => {
   test.use({ hasTouch: true, isMobile: true });
 
-  test("two fingers pinch and one finger drags", async ({ page }) => {
+  test("two fingers pinch and one finger drags", { tag: "@looks" }, async ({ page }) => {
     await page.goto(base);
     await draw(page);
     const fitted = await width(page);
@@ -284,7 +284,7 @@ test.describe("on a touch screen", () => {
 
 // ---------------------------------------------------------------- layers and downloads
 
-test("each category has a checkbox in a fixed order, and ticking one stacks its layer", async ({ page }) => {
+test("each category has a checkbox in a fixed order, and ticking one stacks its layer", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);
   for (const name of categories) await expect(ui.layer(page, name)).toBeVisible();
@@ -312,7 +312,7 @@ test("each category has a checkbox in a fixed order, and ticking one stacks its 
   await checkPage(page);
 });
 
-test("a layer is laid over the base at the same size and follows a zoom", async ({ page }) => {
+test("a layer is laid over the base at the same size and follows a zoom", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);
   await ui.layer(page, "Other").check();
@@ -357,7 +357,7 @@ test("the download link gives the base, and with layers ticked the base combined
 
 // The plan's page contract: GET /worlds/{id}/map/{surface}.png?layer=<category> (no layer: the base) and
 // GET /worlds/{id}/map/{surface}/download?layer=a&layer=b (an attachment, combined on the server).
-test("the picture and download addresses answer as the contract says, and refuse what is unknown", async ({ page }) => {
+test("the picture and download addresses answer as the contract says, and refuse what is unknown", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);
   const i = await surfaceOf(page);
@@ -476,7 +476,7 @@ test("Off with nothing drawn says so and offers no button", async ({ page, forem
   await checkPage(page);
 });
 
-test("a world on a game too old for the chart says so and offers no drawing", async ({ page, foreman }) => {
+test("a world on a game too old for the chart says so and offers no drawing", { tag: "@looks" }, async ({ page, foreman }) => {
   // A 1.1 world: the game has no chart to read (SPEC 5.16: "Factory maps need Factorio 2.0.61 or newer").
   seedSecond(foreman, { version: "1.1.110" });
   await page.goto("/worlds/second/map");
@@ -485,7 +485,7 @@ test("a world on a game too old for the chart says so and offers no drawing", as
   await checkPage(page);
 });
 
-test("the state region is also served alone, for the page's poll", async ({ page }) => {
+test("the state region is also served alone, for the page's poll", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   const r = await page.request.get(`${base}?fragment=1`);
   expect(r.status()).toBe(200);
@@ -560,7 +560,7 @@ test("with skip off, a click draws a running world even with players online", as
 
 // ---------------------------------------------------------------- failure
 
-test("a failed drawing says so, keeps no picture, and can be tried again", async ({ page, fakeGame }) => {
+test("a failed drawing says so, keeps no picture, and can be tried again", { tag: "@looks" }, async ({ page, fakeGame }) => {
   const g = fakeGame as FakeGame;
   await g.call("/preview-mode", { mode: "oom" });
   try {
@@ -582,7 +582,7 @@ test("a failed drawing says so, keeps no picture, and can be tried again", async
 // checkPage is axe with the WCAG 2.2 AA rules (foreman.ts, wcagTags); the four projects run it in both
 // themes. The drawn, failed and memory-note states are scanned in their own tests above; these cover
 // the states those leave: a run going, with and without a kept picture, and the drawn page worked on.
-test("a drawing in progress with no picture kept yet passes axe", async ({ page, fakeGame }) => {
+test("a drawing in progress with no picture kept yet passes axe", { tag: "@looks" }, async ({ page, fakeGame }) => {
   const g = fakeGame as FakeGame;
   await g.call("/preview-mode", { mode: "hang" });
   await page.goto(base);
@@ -592,7 +592,7 @@ test("a drawing in progress with no picture kept yet passes axe", async ({ page,
   await checkPage(page);
 });
 
-test("a drawing in progress over a kept picture passes axe and keeps the picture", async ({ page, fakeGame }) => {
+test("a drawing in progress over a kept picture passes axe and keeps the picture", { tag: "@looks" }, async ({ page, fakeGame }) => {
   const g = fakeGame as FakeGame;
   await page.goto(base);
   await draw(page);
@@ -603,7 +603,7 @@ test("a drawing in progress over a kept picture passes axe and keeps the picture
   await checkPage(page);
 });
 
-test("the drawn page passes axe with layers ticked and the picture zoomed", async ({ page }) => {
+test("the drawn page passes axe with layers ticked and the picture zoomed", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);
   await ui.layer(page, "Production").check();
@@ -614,7 +614,7 @@ test("the drawn page passes axe with layers ticked and the picture zoomed", asyn
   await checkPage(page);
 });
 
-test("a failure over a kept picture passes axe", async ({ page, fakeGame }) => {
+test("a failure over a kept picture passes axe", { tag: "@looks" }, async ({ page, fakeGame }) => {
   const g = fakeGame as FakeGame;
   await page.goto(base);
   await draw(page);
@@ -629,7 +629,7 @@ test("a failure over a kept picture passes axe", async ({ page, fakeGame }) => {
   }
 });
 
-test("the memory question, with a kept picture on the page, passes axe", async ({ page }) => {
+test("the memory question, with a kept picture on the page, passes axe", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);
   await startWorld(page);
@@ -642,7 +642,7 @@ test("the memory question, with a kept picture on the page, passes axe", async (
 // A poll swaps what the state region shows while a drawing runs (3 seconds, the plan's page contract). Someone using
 // the keys on the picture must not lose their place: focus stays on the frame through a poll that finds
 // the run still going, and comes back to the same control when the drawing ends.
-test("focus, zoom and ticked layers survive polls while drawing over a kept picture", async ({ page, fakeGame }) => {
+test("focus, zoom and ticked layers survive polls while drawing over a kept picture", { tag: "@looks" }, async ({ page, fakeGame }) => {
   const g = fakeGame as FakeGame;
   await page.goto(base);
   await draw(page);
@@ -674,7 +674,7 @@ test("focus, zoom and ticked layers survive polls while drawing over a kept pict
   await expect(ui.status(page)).toHaveText("Zoom 175%");
 });
 
-test("focus returns to the same control when the drawing ends", async ({ page, fakeGame }) => {
+test("focus returns to the same control when the drawing ends", { tag: "@looks" }, async ({ page, fakeGame }) => {
   const g = fakeGame as FakeGame;
   await page.goto(base);
   await draw(page);
@@ -698,7 +698,7 @@ test("focus returns to the same control when the drawing ends", async ({ page, f
 
 // ---------------------------------------------------------------- keyboard and phone
 
-test("everything works from the keyboard alone", async ({ page }) => {
+test("everything works from the keyboard alone", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   // The button first: Enter draws.
   await tabTo(page, ui.draw(page));
@@ -730,7 +730,7 @@ test("everything works from the keyboard alone", async ({ page }) => {
   await expect(ui.mode(page, "Off")).toBeChecked();
 });
 
-test("at phone width the page has no sideways scroll and the controls are reachable", async ({ page }) => {
+test("at phone width the page has no sideways scroll and the controls are reachable", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto(base);
   await checkPage(page);

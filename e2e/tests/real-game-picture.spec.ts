@@ -8,7 +8,7 @@ import { openNewMap } from "./newmap.js";
 // draws a canned chart.
 test.use({ fakeGameOn: true });
 
-test("a 2.1 world's planet drawn from a real game, and back", async ({ page, foreman, fakeGame }) => {
+test("a 2.1 world's planet drawn from a real game, and back", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -73,7 +73,7 @@ test("the form waits while the picture draws", async ({ page, foreman, fakeGame 
 });
 
 // Step 1 has no map and no preview, so nothing to draw from a real game (SPEC 5.6).
-test("step 1 offers no preview and no real-game picture", async ({ page, foreman, fakeGame }) => {
+test("step 1 offers no preview and no real-game picture", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -84,7 +84,7 @@ test("step 1 offers no preview and no real-game picture", async ({ page, foreman
 });
 
 // DESIGN 8.8, SPEC 17.1: at 320 px the Download line wraps inside the page, with no sideways scroll.
-test("the picture's Download line fits a 320 px phone", async ({ page, foreman, fakeGame }) => {
+test("the picture's Download line fits a 320 px phone", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await createAdmin(page);
   seedWorld(foreman);
@@ -101,7 +101,7 @@ test("the picture's Download line fits a 320 px phone", async ({ page, foreman, 
 });
 
 // DESIGN 8.8: on a wide pane the offer shares the picture's Download line, so the picture keeps its room.
-test("the real-game offer sits on the picture's Download line", async ({ page, foreman, fakeGame }, info) => {
+test("the real-game offer sits on the picture's Download line", { tag: "@looks" }, async ({ page, foreman, fakeGame }, info) => {
   test.skip(info.project.name.startsWith("phone"), "a desktop layout");
   await page.setViewportSize({ width: 1920, height: 950 });
   await createAdmin(page);

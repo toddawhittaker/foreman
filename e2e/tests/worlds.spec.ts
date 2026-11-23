@@ -56,7 +56,7 @@ test("/ is the Server page and the world list is at /worlds", async ({ page }) =
 // Generate and Import sit by the heading as buttons; Favorites is one of the
 // Worlds area's own pages, in the same column as every area's pages, and
 // works without script (SPEC 5.12, DESIGN 6).
-test("the Worlds page has a Favorites link that opens the favorites list", async ({ page }) => {
+test("the Worlds page has a Favorites link that opens the favorites list", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   const actions = page.locator("header .actions");
   const buttons = actions.locator("a.button");
@@ -73,7 +73,7 @@ test("the Worlds page has a Favorites link that opens the favorites list", async
 
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 320, height: 700 }, javaScriptEnabled: false });
-  test("the Favorites button is reachable without script and fits 320 px", async ({ page }) => {
+  test("the Favorites button is reachable without script and fits 320 px", { tag: "@looks" }, async ({ page }) => {
     await createAdmin(page);
     const favorites = page.getByRole("link", { name: "Favorites", exact: true });
     await expect(favorites).toBeVisible();
@@ -87,7 +87,7 @@ test.describe("on a phone", () => {
 // Favorites button stays whole, inside the page, with a full-size target.
 test.describe("in German at large text on a phone", () => {
   test.use({ viewport: { width: 320, height: 700 } });
-  test("the Favorites button fits", async ({ page }) => {
+  test("the Favorites button fits", { tag: "@looks" }, async ({ page }) => {
     await createAdmin(page);
     await pickLanguage(page, "de");
     await page.addStyleTag({ content: "html { font-size: 200% }" });
@@ -166,7 +166,7 @@ test("renames a world and refuses a duplicate name", async ({ page, foreman }) =
   await expect(page.locator(".message--success p")).toHaveText("Done: Renamed to Main base.");
 });
 
-test("a world a newer Foreman wrote cannot be renamed", async ({ page, foreman }) => {
+test("a world a newer Foreman wrote cannot be renamed", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "future", { name: "Future", game_version: "3.0.0", space_age: false, format_version: 9 });
   await page.goto("/worlds/future");
@@ -176,7 +176,7 @@ test("a world a newer Foreman wrote cannot be renamed", async ({ page, foreman }
 });
 
 // DESIGN 6, "The 320 px rules": a long name wraps; checkPage fails on sideways scroll at 320 px.
-test("a very long world name wraps on the list and the world page", async ({ page, foreman }) => {
+test("a very long world name wraps on the list and the world page", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const long = "Family-base-".repeat(8) + "x".repeat(40);
   seedWorld(foreman, "long", { name: long, game_version: "2.0.72", space_age: true });
@@ -193,7 +193,7 @@ test("a very long world name wraps on the list and the world page", async ({ pag
 // is underlined in the selected colour and a hovered tab only brightens its
 // text; from 64rem the rail row has the selected edge on its start side and
 // a hovered row takes the hover face.
-test("the Worlds tab marks the current page and the section", async ({ page, foreman }) => {
+test("the Worlds tab marks the current page and the section", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "alpha", { name: "Alpha", game_version: "2.0.72", space_age: false });
   const tab = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Worlds" });

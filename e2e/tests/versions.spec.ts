@@ -291,7 +291,7 @@ test.describe("with the fake game", () => {
 
   // SPEC 10.3, 10.4: a world that is not active updates and rolls back with no start or stop; its own
   // page follows the update and shows the result.
-  test("a world that is not the active one updates and rolls back", async ({ page, foreman, fakeGame }) => {
+  test("a world that is not the active one updates and rolls back", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     seedSecond(foreman);
@@ -359,7 +359,7 @@ test.describe("with the fake game", () => {
 
   // SPEC 10.3, 7.4, 17.9: a world that is not active, refused by the pre-start check, gets the same
   // "Update anyway" box on its own page, and the box goes ahead.
-  test("a world that is not active offers Update anyway on its page, and it goes ahead", async ({ page, foreman, fakeGame }) => {
+  test("a world that is not active offers Update anyway on its page, and it goes ahead", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     // The save uses Space Age, and the world has it off.
@@ -389,7 +389,7 @@ test.describe("with the fake game", () => {
   });
 
   // SPEC 17.7, DESIGN 7.5: the busy note reloads every 2 s without taking focus from its link.
-  test("the world page keeps focus on the busy note's link across reloads", async ({ page, foreman, fakeGame }) => {
+  test("the world page keeps focus on the busy note's link across reloads", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     await page.getByRole("button", { name: "Start server" }).click();

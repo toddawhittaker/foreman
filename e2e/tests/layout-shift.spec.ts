@@ -28,7 +28,7 @@ async function frame(page: Page, path: string) {
   };
 }
 
-test("the Server, Console and Worlds pages line up", async ({ page, foreman, fakeGame }) => {
+test("the Server, Console and Worlds pages line up", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });

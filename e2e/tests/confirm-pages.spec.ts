@@ -25,7 +25,7 @@ async function expectPlainConfirmation(page: Page, where: string, opts: { backLi
   await checkPage(page);
 }
 
-test("every confirmation page has one heading, no Back link and one main action", async ({ page, foreman, fakeGame }) => {
+test("every confirmation page has one heading, no Back link and one main action", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman);

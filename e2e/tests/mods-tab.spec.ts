@@ -12,7 +12,7 @@ test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
 const many = Array.from({ length: 40 }, (_, i) => `fp-mod-${String(i + 1).padStart(2, "0")}`);
 const updated = ["fp-mod-02", "fp-mod-05", "fp-mod-09"];
 
-test("a world of 45 mods reads as even rows with each mod's news in its own row", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a world of 45 mods reads as even rows with each mod's news in its own row", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
   const mods: Record<string, SeedMod> = {};
   for (const name of many) {
@@ -146,7 +146,7 @@ test("a world whose mods match the save says so", async ({ page, foreman, fakeGa
 
 // WCAG 2.5.3: the row's More button says its word and its name starts with
 // that word, in every language, so a person who says what they see reaches it.
-test("each language names a row's More button starting with its visible word", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("each language names a row's More button starting with its visible word", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-mod-01", "1.0.0", ["base >= 2.0"]);
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-mod-01": { factorio: "2.0" } } });
   for (const lang of languages) {
@@ -164,7 +164,7 @@ test("each language names a row's More button starting with its visible word", a
 // More menus show each mod's title from info.json, linked to the portal; a
 // mod without one shows its name; folder mods and mods the portal lacks are
 // not linked.
-test("installed mods show their titles, linked to the mod portal", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("installed mods show their titles, linked to the mod portal", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
   await portal.add("fp-titled", "1.0.0", ["base >= 2.0"]);
   await portal.add("fp-titled", "1.1.0", ["base >= 2.0"]);

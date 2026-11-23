@@ -303,7 +303,7 @@ run:
 		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data FOREMAN_HOST_DATA_DIR=$(CURDIR)/.dev-data \
 		go run ./cmd/foreman serve
 
-# SHARD=1/8 runs the first of eight slices of the tests (CI uses eight); empty
+# SHARD=1/12 runs the first of twelve slices of the tests (CI uses twelve); empty
 # runs them all.
 SHARD ?=
 # E2E_ARGS passes specs or flags to Playwright, e.g. E2E_ARGS="tests/tips.spec.ts".

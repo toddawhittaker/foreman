@@ -174,7 +174,7 @@ test("a preset that sets resources redraws the row to what they hold", async ({ 
 });
 
 // One sentence says the whole change, once, in the page's polite live region.
-test("a change on the row is said once, with the number of resources it reached", async ({ page }) => {
+test("a change on the row is said once, with the number of resources it reached", { tag: "@looks" }, async ({ page }) => {
   await page.locator("#mg-nauvis-stone-on").uncheck();
   await expect(page.locator("#announcer")).toContainText("Without stone");
   await chooseAllLast(page, "richness");
@@ -207,7 +207,7 @@ test("the row is disabled while every resource of the planet is off, and comes b
 
 // The automatic preview waits out its pause and starts over on each change, so a change of the row, which
 // sets many resources at once, asks for one picture.
-test("one change of the row asks for one preview", async ({ page }) => {
+test("one change of the row asks for one preview", { tag: "@looks" }, async ({ page }) => {
   await page.waitForTimeout(2500);
   const sent: string[] = [];
   page.on("request", (r) => {
@@ -219,7 +219,7 @@ test("one change of the row asks for one preview", async ({ page }) => {
 });
 
 // The row in its Mixed state passes the page's accessibility scan, wide and on a phone.
-test("the page passes the accessibility scan with the row Mixed", async ({ page }) => {
+test("the page passes the accessibility scan with the row Mixed", { tag: "@looks" }, async ({ page }) => {
   await setResource(page, "iron-ore", "richness", "200");
   expect(await shown(page, "richness")).toBe("Mixed");
   await checkPage(page);

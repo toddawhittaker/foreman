@@ -48,7 +48,7 @@ async function send(page: Page, command: string) {
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
-  test("the Console tab opens, and the log follows the game only while at the bottom", async ({ page, foreman, fakeGame }) => {
+  test("the Console tab opens, and the log follows the game only while at the bottom", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Base\s+Running$/);
     await expect(page.getByRole("link", { name: "Console" })).toHaveAttribute("aria-current", "page");
@@ -113,7 +113,7 @@ test.describe("with the fake game", () => {
     expect(await page.locator(".log pre > span").count()).toBeLessThanOrEqual(1000);
   });
 
-  test("a command gets its reply, is announced, and is audited", async ({ page, foreman, fakeGame }) => {
+  test("a command gets its reply, is announced, and is audited", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await page.evaluate(() => ((window as unknown as { marker: number }).marker = 1));
     await send(page, "/players online");
@@ -141,7 +141,7 @@ test.describe("with the fake game", () => {
     ]);
   });
 
-  test("opening Past commands shows the newest entry, not the oldest", async ({ page, foreman, fakeGame }) => {
+  test("opening Past commands shows the newest entry, not the oldest", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     for (let i = 0; i < 12; i++) {
       await send(page, i % 2 ? "/server-save" : "/players online");

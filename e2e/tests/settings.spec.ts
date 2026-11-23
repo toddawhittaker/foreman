@@ -128,7 +128,7 @@ test("a new password is set without being shown, and the diff only says so", asy
   await checkPage(page);
 });
 
-test("a refused form says to enter a typed password again, but Go back and edit does not", async ({ page, foreman }) => {
+test("a refused form says to enter a typed password again, but Go back and edit does not", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings?section=players");
   const note = "Enter the new password again; it is never kept in the page.";
@@ -158,7 +158,7 @@ test("a refused form says to enter a typed password again, but Go back and edit 
   await expectNoSecret(page);
 });
 
-test("the form shows every error at once and keeps what was typed", async ({ page, foreman }) => {
+test("the form shows every error at once and keeps what was typed", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings");
   await page.getByLabel("Server name").fill("");
@@ -217,7 +217,7 @@ test("admins are edited one per line, and the list is written while stopped", as
   expect(JSON.parse(readFileSync(join(foreman.dataDir, "worlds", "base", "config", "server-adminlist.json"), "utf8"))).toEqual(["Alice", "Bob"]);
 });
 
-test("the JSON editor refuses a bad edit with the line, then saves a good one and keeps the password", async ({ page, foreman }) => {
+test("the JSON editor refuses a bad edit with the line, then saves a good one and keeps the password", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings");
   await page.getByRole("link", { name: "Edit server-settings.json as JSON" }).click();
@@ -272,7 +272,7 @@ test("the JSON editor refuses a bad edit with the line, then saves a good one an
   });
 });
 
-test("a file changed after the preview shows the new changes with a warning", async ({ page, foreman }) => {
+test("a file changed after the preview shows the new changes with a warning", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("Maximum players").fill("5");
@@ -309,7 +309,7 @@ test("a preview already saved cannot be saved again, and says so", async ({ page
   expect(readdirSync(join(foreman.dataDir, "snapshots", "base")).length).toBe(1);
 });
 
-test("a world a newer Foreman wrote is read-only", async ({ page, foreman }) => {
+test("a world a newer Foreman wrote is read-only", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   const meta = join(foreman.dataDir, "worlds", "base", "world.json");
   writeFileSync(meta, readFileSync(meta, "utf8").replace('"format_version":1', '"format_version":99'));
@@ -334,7 +334,7 @@ test("a world a newer Foreman wrote is read-only", async ({ page, foreman }) => 
   await checkPage(page);
 });
 
-test("the form works with the keyboard alone", async ({ page, foreman }) => {
+test("the form works with the keyboard alone", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings?section=players");
   await page.getByLabel("Maximum players").focus();
@@ -355,7 +355,7 @@ test("the form works with the keyboard alone", async ({ page, foreman }) => {
 // The page has no section list of its own: one page with headed sections,
 // the world's pages the only navigation (DESIGN 6). A section's id still
 // reaches it from a link.
-test("a section id reaches its section, with no section list on the page", async ({ page, foreman }) => {
+test("a section id reaches its section, with no section list on the page", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings?section=bans#settings-bans");
   await expect(page.locator("#settings-bans")).toBeInViewport();
@@ -363,7 +363,7 @@ test("a section id reaches its section, with no section list on the page", async
   await checkPage(page);
 });
 
-test("a long name and a long description do not break the layout", async ({ page, foreman }) => {
+test("a long name and a long description do not break the layout", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman, { description: "word ".repeat(200) });
   const long = "N".repeat(60);
   await page.goto("/worlds/base/settings");
@@ -531,7 +531,7 @@ test.describe("a running world with players", () => {
   });
 });
 
-test("a raw editor error puts the caret on the line it names", async ({ page, foreman }) => {
+test("a raw editor error puts the caret on the line it names", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings/raw/server-settings.json");
   const editor = page.getByLabel("Contents of server-settings.json");

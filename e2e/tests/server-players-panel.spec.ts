@@ -126,7 +126,7 @@ test("more than ten players link to the full list", async ({ page, foreman, fake
   await checkPage(page);
 });
 
-test("when a player leaves while focus is in their actions menu, focus goes to the panel heading and their row stays", async ({ page, foreman, fakeGame }) => {
+test("when a player leaves while focus is in their actions menu, focus goes to the panel heading and their row stays", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman, {});
   writeRecord(foreman, [{ name: "carol", hours: 2 }]);

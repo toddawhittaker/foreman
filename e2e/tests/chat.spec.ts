@@ -64,7 +64,7 @@ async function send(page: Page, message: string) {
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
-  test("the tab shows the history, follows the game live and sends as the server", async ({ page, foreman, fakeGame }) => {
+  test("the tab shows the history, follows the game live and sends as the server", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { visit: false });
     await fakeGame!.call("/join", { name: container, player: "alice" });
     await fakeGame!.call("/chat", { name: container, player: "alice", text: "is anyone near the oil field?" });
@@ -111,7 +111,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
   });
 
-  test("the log follows new lines only while at the bottom, offers Jump to newest, and keeps 200 lines", async ({ page, foreman, fakeGame }) => {
+  test("the log follows new lines only while at the bottom, offers Jump to newest, and keeps 200 lines", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await fakeGame!.call("/join", { name: container, player: "alice" });
     const box = log(page);
@@ -143,7 +143,7 @@ test.describe("with the fake game", () => {
     await expect(box).not.toContainText("line 0");
   });
 
-  test("a message that starts with / is refused, however it is spaced, and never sent", async ({ page, foreman, fakeGame }) => {
+  test("a message that starts with / is refused, however it is spaced, and never sent", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     for (const message of ["/c game.print(1)", "  /c rcon.print('ran')", "\u00a0/silent-command x"]) {
       await send(page, message);

@@ -2,7 +2,7 @@ import { darkBg, lightBg, test, expect, checkPage, createAdmin } from "./foreman
 
 // The component page draws every group once in each theme, whatever the
 // system's, passes axe and fits 320 px (DESIGN 7, 10).
-test("the component page shows each group in both themes", async ({ page }) => {
+test("the component page shows each group in both themes", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/design");
   await expect(page.getByRole("heading", { level: 1, name: "Components" })).toBeVisible();

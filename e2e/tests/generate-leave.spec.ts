@@ -55,7 +55,7 @@ test("an unchanged form leaves without asking, even after the preview filled the
   expect(asked).toEqual([]);
 });
 
-test("a changed setting asks in Foreman's dialog before leaving, and staying keeps it and the focus", async ({ page }) => {
+test("a changed setting asks in Foreman's dialog before leaving, and staying keeps it and the focus", { tag: "@looks" }, async ({ page }) => {
   const asked = browserQuestions(page);
   const world = await edit(page);
   await cancel(page).click();
@@ -71,7 +71,7 @@ test("a changed setting asks in Foreman's dialog before leaving, and staying kee
   expect(asked).toEqual([]);
 });
 
-test("Escape closes the dialog like Stay, and focus goes back to the link", async ({ page }) => {
+test("Escape closes the dialog like Stay, and focus goes back to the link", { tag: "@looks" }, async ({ page }) => {
   const world = await edit(page);
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
@@ -91,7 +91,7 @@ test("leaving from the dialog goes on to the link, and the browser asks nothing 
   expect(asked).toEqual([]);
 });
 
-test("a header link asks too, and staying returns focus to it", async ({ page }) => {
+test("a header link asks too, and staying returns focus to it", { tag: "@looks" }, async ({ page }) => {
   const asked = browserQuestions(page);
   const world = await edit(page);
   const link = page.getByRole("banner").getByRole("link", { name: "Snapshots" });
@@ -106,7 +106,7 @@ test("a header link asks too, and staying returns focus to it", async ({ page })
   expect(asked).toEqual([]);
 });
 
-test("the language menu and Sign out ask, and leaving carries them out", async ({ page }) => {
+test("the language menu and Sign out ask, and leaving carries them out", { tag: "@looks" }, async ({ page }) => {
   const asked = browserQuestions(page);
   const world = await edit(page);
   await openLanguages(page);
@@ -136,7 +136,7 @@ test("Sign out asks, and leaving signs out", async ({ page }) => {
   expect(asked).toEqual([]);
 });
 
-test("a click that is not leaving asks nothing: in-page links, the picture, and a link opened beside the page", async ({ page, context }) => {
+test("a click that is not leaving asks nothing: in-page links, the picture, and a link opened beside the page", { tag: "@looks" }, async ({ page, context }) => {
   const asked = browserQuestions(page);
   const world = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
@@ -177,7 +177,7 @@ test("a preset change asks, even once it is changed back", async ({ page }) => {
   expect(asked).toEqual([]);
 });
 
-test("an edit thrown away by Reset to defaults still asks, as Undo can bring it back", async ({ page }) => {
+test("an edit thrown away by Reset to defaults still asks, as Undo can bring it back", { tag: "@looks" }, async ({ page }) => {
   const world = await openNewMap(page);
   await page.locator("#generate-preset").selectOption("rich-resources");
   await expect(page.locator("#mg-nauvis-iron-ore-richness")).not.toHaveValue("100");
@@ -190,7 +190,7 @@ test("an edit thrown away by Reset to defaults still asks, as Undo can bring it 
   await expect(page).toHaveURL(newMapPath(world));
 });
 
-test("a typed seed still asks after Preview map rewrites the seed field", async ({ page }) => {
+test("a typed seed still asks after Preview map rewrites the seed field", { tag: "@looks" }, async ({ page }) => {
   const world = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
   await page.locator("#generate-seed").fill("4242");
@@ -202,7 +202,7 @@ test("a typed seed still asks after Preview map rewrites the seed field", async 
   await expect(page).toHaveURL(newMapPath(world));
 });
 
-test("the preview size and the territory box are views: changing them leaves without asking", async ({ page }) => {
+test("the preview size and the territory box are views: changing them leaves without asking", { tag: "@looks" }, async ({ page }) => {
   const asked = browserQuestions(page);
   const world = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
@@ -257,7 +257,7 @@ test("a download link is not leaving, so it asks nothing", async ({ page }) => {
   expect(asked).toEqual([]);
 });
 
-test("the dialog opens from the keyboard and keeps Tab inside until it is closed", async ({ page }) => {
+test("the dialog opens from the keyboard and keeps Tab inside until it is closed", { tag: "@looks" }, async ({ page }) => {
   await edit(page);
   await tabTo(page, cancel(page));
   await page.keyboard.press("Enter");
@@ -298,7 +298,7 @@ test("after Leave, a navigation that does not happen is asked about again", asyn
 
 // Reload, closing the tab, the address bar and Back cannot be caught by a
 // click, so the browser's own question stays for them.
-test("a reload with unsaved settings still gets the browser's own question", async ({ page }) => {
+test("a reload with unsaved settings still gets the browser's own question", { tag: "@looks" }, async ({ page }) => {
   const asked = browserQuestions(page, "accept");
   await edit(page);
   await page.reload();
@@ -307,7 +307,7 @@ test("a reload with unsaved settings still gets the browser's own question", asy
 });
 
 for (const width of [1280, 320]) {
-  test(`the open dialog passes the accessibility scan at ${width} px`, async ({ page }) => {
+  test(`the open dialog passes the accessibility scan at ${width} px`, { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     await edit(page);
     await cancel(page).click();

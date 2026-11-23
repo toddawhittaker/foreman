@@ -117,7 +117,7 @@ test("off by default, turned on in settings, then players download without signi
   }
 });
 
-test("with no game running the page says so and lists nothing", async ({ page, foreman, fakeGame, browser, baseURL }) => {
+test("with no game running the page says so and lists nothing", { tag: "@looks" }, async ({ page, foreman, fakeGame, browser, baseURL }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods });
   await turnOn(page);
   const { ctx, page: player } = await stranger(browser, baseURL);

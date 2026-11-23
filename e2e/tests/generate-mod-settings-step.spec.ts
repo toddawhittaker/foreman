@@ -31,7 +31,7 @@ async function modded(page: Page, foreman: Parameters<typeof seedWorld>[0], fake
   return id;
 }
 
-test("step 3 shows the startup settings, and saving one adds the planet it turns on to step 4", async ({ page, foreman, fakeGame }) => {
+test("step 3 shows the startup settings, and saving one adds the planet it turns on to step 4", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   const id = await modded(page, foreman, fakeGame!);
 
   // The form's load is held until the moving bar Generate uses has been seen beside the loading words.
@@ -116,7 +116,7 @@ test("Skip to map settings goes on without saving", async ({ page, foreman, fake
   await expect(page).toHaveURL(new RegExp(`${newMapPath(id)}(\\?|$)`));
 });
 
-test("a world with only built-in mods skips step 3 and marks it (none)", async ({ page, foreman, fakeGame }) => {
+test("a world with only built-in mods skips step 3 and marks it (none)", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -136,7 +136,7 @@ test("a world with only built-in mods skips step 3 and marks it (none)", async (
 
 test.describe("step 3 without script", () => {
   test.use({ javaScriptEnabled: false });
-  test("the page claims no load and its link has the server read the form", async ({ page, foreman, fakeGame }) => {
+  test("the page claims no load and its link has the server read the form", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const id = await modded(page, foreman, fakeGame!);
     await page.goto(stepPath(id));
     // As on the mod settings page (SPEC 9.6): no loading words without script.
@@ -149,7 +149,7 @@ test.describe("step 3 without script", () => {
 // SPEC 17.2: at 320 px the four-step bar shows its marks and the current name in the longest languages,
 // with no sideways scroll.
 for (const lang of ["pl", "ru"]) {
-  test(`at 320 px in ${lang} the step bar fits without a sideways scroll`, async ({ page, foreman, fakeGame }) => {
+  test(`at 320 px in ${lang} the step bar fits without a sideways scroll`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const id = await modded(page, foreman, fakeGame!);
     await pickLanguage(page, lang);
     await page.setViewportSize({ width: 320, height: 640 });

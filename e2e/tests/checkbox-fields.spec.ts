@@ -34,7 +34,7 @@ async function expectSmallControls(page: Page, url: string, minimum: number) {
   await expectTickSized(page, url);
 }
 
-test("checkboxes and radios are tick-sized on every page that has one", async ({ page, foreman, fakeGame }) => {
+test("checkboxes and radios are tick-sized on every page that has one", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman);

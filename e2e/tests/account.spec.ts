@@ -91,7 +91,7 @@ test.describe("with a secret key", () => {
     await checkPage(page);
   });
 
-  test("works by keyboard alone, from the Settings tab to the saved line", async ({ page }) => {
+  test("works by keyboard alone, from the Settings tab to the saved line", { tag: "@looks" }, async ({ page }) => {
     await createAdmin(page);
     await mainNav(page).getByRole("link", { name: "Settings" }).focus();
     await page.keyboard.press("Enter");

@@ -4481,8 +4481,11 @@ the "When to draw" panel (radios Automatic, Manual and Off with hints, the
 
 ## 10. Checks every screen passes
 
-The end-to-end tests for each screen check, in both themes
-(`colorScheme: 'dark'` and `'light'` in Playwright):
+Every screen is checked for looks and accessibility in both themes
+(`colorScheme: 'dark'` and `'light'` in Playwright), at desktop width and
+at 320 px, and behavior is checked once. A test of how a page looks or
+reads carries the `@looks` tag and runs in all four; any other test runs
+only at desktop in the dark theme. On every screen the tests check:
 
 - an axe scan with no violations (SPEC 17.1);
 - at 320 px wide, no horizontal scroll (6, rule 1);

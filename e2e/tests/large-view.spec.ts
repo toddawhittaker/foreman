@@ -48,7 +48,7 @@ async function middleOf(page: Page) {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-test("the wheel zooms by 1.15 a notch around the pointer, from the fitted size", async ({ page }) => {
+test("the wheel zooms by 1.15 a notch around the pointer, from the fitted size", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   const fitted = await width(page);
   const pageAt = await page.evaluate(() => window.scrollY);
@@ -79,7 +79,7 @@ test("the wheel zooms by 1.15 a notch around the pointer, from the fitted size",
   expect(await page.evaluate(() => window.scrollY)).toBe(pageAt);
 });
 
-test("plus and minus zoom around the centre, 0 fits, and the level is said", async ({ page }) => {
+test("plus and minus zoom around the centre, 0 fits, and the level is said", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   await expect(frame(page)).toBeFocused();
   const fitted = await width(page);
@@ -114,7 +114,7 @@ test("plus and minus zoom around the centre, 0 fits, and the level is said", asy
 
 // The planet's name is said a moment after a step; a zoom made in that
 // moment is newer, so it is what the status keeps.
-test("a zoom right after a step is not overwritten by the planet's name", async ({ page }) => {
+test("a zoom right after a step is not overwritten by the planet's name", { tag: "@looks" }, async ({ page }) => {
   // Every planet drawn, so a step shows its picture at once and says its name.
   await openNewMap(page);
   await page.getByRole("button", { name: "Preview map" }).click();
@@ -132,7 +132,7 @@ test("a zoom right after a step is not overwritten by the planet's name", async 
   await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
 });
 
-test("dragging moves a zoomed picture, and the arrow keys on it pan instead of stepping", async ({ page }) => {
+test("dragging moves a zoomed picture, and the arrow keys on it pan instead of stepping", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   for (let i = 0; i < 8; i++) await page.keyboard.press("+");
   const start = await scroll(page);
@@ -152,7 +152,7 @@ test("dragging moves a zoomed picture, and the arrow keys on it pan instead of s
   await expect.poll(async () => (await scroll(page)).x).toBeGreaterThan(moved.x);
 });
 
-test("the arrows and the X show on hover and on keyboard focus, named after where they lead", async ({ page }) => {
+test("the arrows and the X show on hover and on keyboard focus, named after where they lead", { tag: "@looks" }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openLarge(page);
   const prev = dialog(page).getByRole("button", { name: "Previous planet: Aquilo" });
@@ -200,7 +200,7 @@ test("the arrows and the X show on hover and on keyboard focus, named after wher
 // The key help is one short line at the top, beside the planet's name on a
 // desktop, and the frame still names it as its description. At 320 px the
 // sentence about panning and tapping cannot fit one line, so it may take two.
-test("the key help is one line in the bar above the picture", async ({ page }) => {
+test("the key help is one line in the bar above the picture", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   const keys = page.locator("#large-keys");
   await expect(keys).toHaveText("Keys: ← → planet (pan when zoomed), + − zoom, 0 fit, Esc close. Tap to center.");
@@ -218,7 +218,7 @@ test("the key help is one line in the bar above the picture", async ({ page }) =
   await checkPage(page);
 });
 
-test("the download icon by the heading downloads the planet shown", async ({ page }) => {
+test("the download icon by the heading downloads the planet shown", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   const icon = dialog(page).getByRole("link", { name: "Download Nauvis map" });
   await expect(icon).toBeVisible();
@@ -237,7 +237,7 @@ test("the download icon by the heading downloads the planet shown", async ({ pag
 
 // SPEC 17.15: the most zoom is the larger of 8 times the fitted size and 8 CSS pixels per tile.
 for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072", null]] as const) {
-  test(`the most zoom of a ${size} picture is the larger of 8 times fit and 8 px a tile`, async ({ page }) => {
+  test(`the most zoom of a ${size} picture is the larger of 8 times fit and 8 px a tile`, { tag: "@looks" }, async ({ page }) => {
     if (viewport) await page.setViewportSize(viewport);
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
@@ -262,7 +262,7 @@ for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072"
 
 // DESIGN 8.8: Tab goes round the view's controls and never out of it,
 // on a phone too, and also when Zoom in is aria-disabled at the most zoom.
-test("Tab goes round the large view's controls and never leaves it, even at the most zoom", async ({ page }) => {
+test("Tab goes round the large view's controls and never leaves it, even at the most zoom", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   const zoomIn = dialog(page).getByRole("button", { name: "Zoom in" });
   for (let i = 0; i < 80 && (await zoomIn.getAttribute("aria-disabled")) !== "true"; i++) await page.keyboard.press("+");
@@ -296,7 +296,7 @@ test("Tab goes round the large view's controls and never leaves it, even at the 
 test.describe("on a touch screen", () => {
   test.use({ hasTouch: true, isMobile: true });
 
-  test("the controls stay shown, are finger-sized, and two fingers pinch while one drags", async ({ page }) => {
+  test("the controls stay shown, are finger-sized, and two fingers pinch while one drags", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     expect(await page.evaluate(() => matchMedia("(hover: none) and (pointer: coarse)").matches)).toBe(true);
     for (const id of ["large-prev", "large-next", "large-close", "large-in", "large-out"]) {
@@ -335,7 +335,7 @@ test.describe("on a touch screen, without dragging", () => {
   test.use({ hasTouch: true, isMobile: true });
 
   // WCAG 2.5.7: one tap on a zoomed picture centres the spot tapped.
-  test("a tap centres the spot tapped, and a drag still pans", async ({ page }) => {
+  test("a tap centres the spot tapped, and a drag still pans", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     const cdp = await page.context().newCDPSession(page);
     const touch = (type: "touchStart" | "touchMove" | "touchEnd", points: { x: number; y: number }[]) =>
@@ -380,7 +380,7 @@ test.describe("the planet viewed", () => {
     return () => page.evaluate(() => (window as unknown as { seen: string[] }).seen);
   }
 
-  test("moving in the large view tells the page; opening a row is not told back", async ({ page }) => {
+  test("moving in the large view tells the page; opening a row is not told back", { tag: "@looks" }, async ({ page }) => {
     const seen = await recordEvents(page);
     await openLarge(page);
     expect(await seen()).toEqual([]);
@@ -400,7 +400,7 @@ test.describe("the planet viewed", () => {
   // planet before stays open in it. A row opened to follow the planet viewed
   // says so a moment later, when the view may have moved on: it must not
   // pull the view back (DESIGN 8.7).
-  test("two quick steps leave the planet viewed where the steps ended", async ({ page }) => {
+  test("two quick steps leave the planet viewed where the steps ended", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
@@ -427,7 +427,7 @@ test.describe("the planet viewed", () => {
     await expect(page.locator("#open-planet")).toHaveValue("fulgora");
   });
 
-  test("the preview starts from the planet open in the settings", async ({ page }) => {
+  test("the preview starts from the planet open in the settings", { tag: "@looks" }, async ({ page }) => {
     const seen = await recordEvents(page);
     // Makes the page as the server draws it with Gleba open: the hidden field
     // says gleba and Gleba's rows are the open ones. Setting only the field
@@ -470,7 +470,7 @@ test.describe("the planet viewed", () => {
 // floor. The picture sits inside its frame, so it fills the column less the
 // frame's padding and border.
 for (const [w, h] of [[1280, 1600], [1920, 900], [1920, 400], [320, 640]]) {
-  test(`the preview picture fills its column at ${w} by ${h}`, async ({ page }) => {
+  test(`the preview picture fills its column at ${w} by ${h}`, { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await openNewMap(page);
     const img = section(page).getByRole("img");
@@ -522,7 +522,7 @@ test.describe("Enter in the large view's settings", () => {
   // The large view holds only sliders and selects today. A text field there
   // is the form's own decimal field moved in, as preview.js moves a planet's
   // settings, so the test moves one in the same way.
-  test("does not save the settings, and the value is kept", async ({ page, foreman }) => {
+  test("does not save the settings, and the value is kept", { tag: "@looks" }, async ({ page, foreman }) => {
     const world = await openNewMap(page, { name: "Not yet" });
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
@@ -580,14 +580,14 @@ test.describe("Enter in the large view's settings", () => {
     expect(saved(foreman, world)).toBe(false);
   });
 
-  test("still presses a button there", async ({ page }) => {
+  test("still presses a button there", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     await page.locator("#large-next").press("Enter");
     await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
   });
 });
 
-test("Enter in a field of the main form, outside the large view, still saves the map settings", async ({ page }) => {
+test("Enter in a field of the main form, outside the large view, still saves the map settings", { tag: "@looks" }, async ({ page }) => {
   const world = await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#generate-seed").fill("4242");

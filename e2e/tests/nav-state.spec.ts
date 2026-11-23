@@ -45,7 +45,7 @@ async function expectStateWord(page: Page, word: string) {
   expect(Math.abs(shown.y + shown.height / 2 - (logo.y + logo.height / 2)), "level with the logo").toBeLessThan(6);
 }
 
-test("the header says the server's state in words, and follows it live", async ({ page, foreman, fakeGame }) => {
+test("the header says the server's state in words, and follows it live", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -69,7 +69,7 @@ test("the header says the server's state in words, and follows it live", async (
 
 // SPEC 17.2, 22.7: in German the word fits between the logo and the menu or
 // tabs, and the four tabs keep one row.
-test("in German the state word fits the header", async ({ page, foreman, fakeGame }) => {
+test("in German the state word fits the header", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -102,7 +102,7 @@ for (const [lang, short, long] of [
   ["ru", "Работает", "Циклические сбои"],
   ["ru", "Работает", "Останавливается"],
 ] as const) {
-  test(`in ${lang} the header keeps its height from "${short}" to "${long}"`, async ({ page, foreman, fakeGame }) => {
+  test(`in ${lang} the header keeps its height from "${short}" to "${long}"`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     test.skip(isPhone(page), "the widths are set here");
     await createAdmin(page);
     seedWorld(foreman);

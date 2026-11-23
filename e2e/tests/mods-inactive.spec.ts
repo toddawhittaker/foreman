@@ -6,7 +6,7 @@ import { join } from "node:path";
 // own Mods tab, not on the Server page, with the undo beside the result.
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
 
-test("a change to the other world ends on its Mods tab, with an undo that restores its mods", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a change to the other world ends on its Mods tab, with an undo that restores its mods", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-other", "1.0.0", ["base >= 2.0"]);
   await setUpModsWorld(page, foreman, fakeGame!);
   seedSecond(foreman, { version: version20, fixture: "2.0.77-no-space-age.zip" });
@@ -38,7 +38,7 @@ test("a change to the other world ends on its Mods tab, with an undo that restor
   await expect(page.getByRole("table", { name: /Mods of Second/ }).getByRole("row", { name: /fp-other/ })).toHaveCount(0);
 });
 
-test("the active world's change still reports on the Server page", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("the active world's change still reports on the Server page", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-here", "1.0.0", ["base >= 2.0"]);
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip" });
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-here");

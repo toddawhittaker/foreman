@@ -58,7 +58,7 @@ test.describe("with the fake game", () => {
 
   // DESIGN 6: Overview and Console are tabs of the server view; Console
   // carries the same heading and live badge.
-  test("Overview and Console are tabs with the same heading", async ({ page, foreman, fakeGame }) => {
+  test("Overview and Console are tabs with the same heading", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!);
     const tabs = page.getByRole("navigation", { name: "Server pages" });
     await expect(tabs.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
@@ -78,7 +78,7 @@ test.describe("with the fake game", () => {
 
   // SPEC 8.6: the game's own Error lines are coloured, and the log can be
   // downloaded as the Console shows it.
-  test("the log colours Error lines and downloads", async ({ page, foreman, fakeGame }) => {
+  test("the log colours Error lines and downloads", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await createAdmin(page);
     seedWorld(foreman);
     await fakeGame!.call("/image", { ref: image21, on: true });
@@ -101,7 +101,7 @@ test.describe("with the fake game", () => {
 
   // SPEC 7.6: one tap sets the countdown to 0, which means no warning; there
   // is still no separate checkbox.
-  test("No warning sets the countdown to 0 and the stop needs no wait", async ({ page, foreman, fakeGame }) => {
+  test("No warning sets the countdown to 0 and the stop needs no wait", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!);
     await page.getByRole("link", { name: "Stop server" }).click();
     const field = page.getByLabel("Countdown in seconds");

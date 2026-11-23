@@ -96,7 +96,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("button", { name: "Start server" })).toBeVisible();
   });
 
-  test("restart", async ({ page, foreman, fakeGame }) => {
+  test("restart", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await start(page);
     const creates = async () => (await fakeGame!.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
@@ -138,7 +138,7 @@ test.describe("with the fake game", () => {
 
   // SPEC 8.7, 8.9: a crash loop names the game's reason, links to the full
   // log, and says why a start would not run instead of offering Start server.
-  test("a crash loop is stopped and shown with the game's reason", async ({ page, foreman, fakeGame }) => {
+  test("a crash loop is stopped and shown with the game's reason", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     test.setTimeout(60_000);
     await setUp(page, foreman, fakeGame!);
     await start(page);
@@ -179,7 +179,7 @@ test.describe("with the fake game", () => {
   });
 
   // SPEC 7.4, 17.5: the refusal box is the confirmation for start anyway.
-  test("a refused start lists the problems, and start anyway takes a snapshot first", async ({ page, foreman, fakeGame }) => {
+  test("a refused start lists the problems, and start anyway takes a snapshot first", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await page.getByRole("button", { name: "Start server" }).click();
     // A refusal that offers a choice is a warning, not an error (DESIGN 7.3).
@@ -224,7 +224,7 @@ test.describe("with the fake game", () => {
 
   // SPEC 7.4: mods made for another Factorio would stop the game from loading,
   // so the start is refused and cannot be started past.
-  test("mods made for another Factorio refuse the start, with no Start anyway", async ({ page, foreman, fakeGame }) => {
+  test("mods made for another Factorio refuse the start, with no Start anyway", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { mods: { "old-mod": "2.0", "older-mod": "1.1" } });
     await page.getByRole("button", { name: "Start server" }).click();
     const refusal = page.locator(".message--error").filter({ hasText: "cannot run in this game" });
@@ -245,7 +245,7 @@ test.describe("with the fake game", () => {
   });
 
   // DESIGN 5: a live update never drops keyboard focus to the top of the page.
-  test("focus stays on an action across a live update, or moves to the heading", async ({ page, foreman, fakeGame }) => {
+  test("focus stays on an action across a live update, or moves to the heading", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await start(page);
     const focused = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
@@ -291,7 +291,7 @@ test.describe("with the fake game", () => {
   });
 
   // SPEC 17.1: the step list passes the checks while an operation runs.
-  test("the step list of a stop in progress passes the page checks", async ({ page, foreman, fakeGame }) => {
+  test("the step list of a stop in progress passes the page checks", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await start(page);
     await fakeGame!.call("/join", { name: container, player: "alice" });
