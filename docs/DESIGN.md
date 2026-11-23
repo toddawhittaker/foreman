@@ -1171,7 +1171,7 @@ bold word, so the kind never depends on colour.
   stop (SPEC 17.9). It carries Undo or Switch back, which can stay on the
   page for hours, so the person may close it once read. It has an icon-only
   close button ("×", named "Close this message", a 44 px target) at the
-  box's top end corner, and the text keeps clear of it. A failure's box never
+  box's top end corner, and the message's text keeps room for it (the button's width and a gap, on the end side), so no line runs under it. A failure's box never
   has one: it stays until the next action, so a problem is not hidden by
   accident.
 - `role="alert"` only on an error that appears after an action without a
@@ -3234,6 +3234,12 @@ fine pointer and 44 px on touch. The sections, in order:
   while the game runs, the 7.4 "This will" list and the button. Replacing
   is undone by its snapshot, so the form is not a red box. A refused file
   opens it.
+
+On the mod settings page each mod's group is a `fieldset` with an id. Under a
+mod that others name, a `p.hint.mod-origin` says "Required by", "Recommended
+by" or "Offered by" and the naming mods, each a link to its own group (SPEC
+9.6); those groups follow the ones nobody names. Without script the progress
+line is followed by a link that loads the page with the form already read.
 
 A change to a world that is not active reports on its own Mods tab: a
 steps list (7.6) while it runs, then a Done message with "Undo this mod

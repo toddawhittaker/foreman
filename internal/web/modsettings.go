@@ -17,6 +17,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/modsettings"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -28,6 +29,10 @@ const (
 	PathModSettingsEdit = "/worlds/{id}/mods/settings"
 	PathModSettingsForm = "/worlds/{id}/mods/settings/form"
 )
+
+// modSettingsWaitQuery asks for the whole page with the form in it, so the
+// server waits for the settings run.
+const modSettingsWaitQuery = "wait"
 
 func modSettingsEditPath(id string) string { return modsPath(id) + "/settings" }
 
@@ -117,6 +122,11 @@ type SettingGroup struct {
 	Title  string
 	Link   bool
 	Fields []SettingField
+	// ID is the group's anchor on the page, which an origin line links to.
+	ID string
+	// Origin says why the mod is installed when other mods name it, such as
+	// "Required by X"; zero for a mod nobody names (SPEC 9.6).
+	Origin i18n.Msg
 }
 
 // ModSettingsPage edits a world's mod settings (SPEC 9.6).
@@ -163,6 +173,12 @@ func (p ModSettingsPage) Tabs() WorldTabs {
 
 func (p ModSettingsPage) Path() string     { return modSettingsEditPath(p.World.ID) }
 func (p ModSettingsPage) FormPath() string { return modSettingsEditPath(p.World.ID) + "/form" }
+
+// WaitPath is the page again with the form read before it answers, for a
+// browser without script (SPEC 9.6).
+func (p ModSettingsPage) WaitPath() string {
+	return modSettingsEditPath(p.World.ID) + "?" + modSettingsWaitQuery + "=1"
+}
 func (p ModSettingsPage) ModsPath() string { return modsPath(p.World.ID) }
 
 // UploadPath opens the Mods tab's upload of mod-settings.dat.
@@ -228,10 +244,25 @@ func (s *server) modSettingsWorld(w http.ResponseWriter, r *http.Request, u stor
 	return sum, ok
 }
 
+// handleModSettingsPage answers at once, and the page's script loads the
+// form. With wait the form is read first and comes in the page, which is
+// how a browser without script gets it (SPEC 9.6).
 func (s *server) handleModSettingsPage(w http.ResponseWriter, r *http.Request, u store.User) {
-	if sum, ok := s.modSettingsWorld(w, r, u); ok {
-		s.page(w, r, http.StatusOK, u.Username, ModSettingsPage{World: sum})
+	sum, ok := s.modSettingsWorld(w, r, u)
+	if !ok {
+		return
 	}
+	p := ModSettingsPage{World: sum}
+	if r.URL.Query().Get(modSettingsWaitQuery) != "" {
+		var err error
+		if p, _, err = s.modSettingsPage(r.Context(), localeOf(r).String(), sum); err != nil {
+			if r.Context().Err() == nil {
+				s.log.Error("read the mod settings", "world", sum.ID, "error", err)
+			}
+			p = ModSettingsPage{World: sum, Loaded: true, HasFile: p.HasFile, RunError: i18n.M("mods.settings.edit.run.failed")}
+		}
+	}
+	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
 // handleModSettingsForm is the form part, which can take a game run. A
@@ -315,15 +346,17 @@ func (s *server) modSettingsPage(ctx context.Context, lang string, sum world.Sum
 		return p, st, nil
 	}
 	p.Startup, p.Map, p.PerUser = settingGroups(defs, st.file, st.defaults, lang)
-	s.titleGroups(sum.ID, p.Startup, p.Map)
+	s.annotateGroups(sum.ID, &p.Startup, &p.Map)
 	return p, st, nil
 }
 
-// titleGroups gives each group its mod's title from the mod's info.json
+// annotateGroups gives each group its mod's title from the mod's info.json
 // and says whether it links to the portal: a folder mod, a built-in one and
-// a mod the portal is known to lack are not linked (SPEC 9.15). A mods
-// folder that cannot be read leaves the names as they are.
-func (s *server) titleGroups(id string, lists ...[]SettingGroup) {
+// a mod the portal is known to lack are not linked (SPEC 9.15). It also
+// says why a mod nobody chose is installed, puts those mods after the rest
+// and gives each group its anchor (SPEC 9.6). A mods folder that cannot be
+// read leaves the names as they are.
+func (s *server) annotateGroups(id string, lists ...*[]SettingGroup) {
 	installed, err := s.worlds.Mods(id)
 	if err != nil {
 		s.log.Warn("read the mod titles", "world", id, "error", err)
@@ -333,13 +366,58 @@ func (s *server) titleGroups(id string, lists ...[]SettingGroup) {
 	for _, m := range installed {
 		by[m.Name] = m
 	}
-	for _, groups := range lists {
-		for i, g := range groups {
+	origins := mods.Origins(installed)
+	for i, list := range lists {
+		groups := *list
+		for j, g := range groups {
 			if m, ok := by[g.Mod]; ok {
-				groups[i].Title, groups[i].Link = m.Title, !m.Local && !m.BuiltIn && (s.portal == nil || !s.portal.KnownMissing(m.Name))
+				groups[j].Title, groups[j].Link = m.Title, !m.Local && !m.BuiltIn && (s.portal == nil || !s.portal.KnownMissing(m.Name))
+			}
+		}
+		// Chosen mods first, then the ones others name; each keeps its order.
+		slices.SortStableFunc(groups, func(a, b SettingGroup) int {
+			_, ao := origins[a.Mod]
+			_, bo := origins[b.Mod]
+			return cmp.Compare(btoi(ao), btoi(bo))
+		})
+		anchors := make(map[string]string, len(groups))
+		for j := range groups {
+			groups[j].ID = fmt.Sprintf("mod-group-%d-%d", i, j)
+			anchors[groups[j].Mod] = groups[j].ID
+		}
+		for j, g := range groups {
+			if o, ok := origins[g.Mod]; ok {
+				groups[j].Origin = originMsg(o, anchors, by)
 			}
 		}
 	}
+}
+
+func btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// originMsg words an origin: "Required by A and B". A parent with a group
+// on the page is a link to it; any other shows by its title.
+func originMsg(o mods.Origin, anchors map[string]string, by map[string]world.InstalledMod) i18n.Msg {
+	names := make([]i18n.Msg, len(o.By))
+	for i, name := range o.By {
+		title := cmp.Or(by[name].Title, name)
+		frag := i18n.Ident(title)
+		if id, ok := anchors[name]; ok {
+			frag = i18n.Anchor(id, title)
+		}
+		names[i] = i18n.M("server.list.names", "names", frag)
+	}
+	key := map[mods.OriginKind]string{
+		mods.RequiredBy:    "mods.settings.origin.required_by",
+		mods.RecommendedBy: "mods.settings.origin.recommended_by",
+		mods.OfferedBy:     "mods.settings.origin.offered_by",
+	}[o.Kind]
+	return i18n.M(key, "mods", andNames(names))
 }
 
 // makesNewMap reports whether the world's next start makes its map: it has

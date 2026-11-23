@@ -18,6 +18,8 @@
   <section class="panel" aria-labelledby="mod-settings-heading">
     <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
     <p role="status" class="empty">{{t "mods.settings.edit.loading"}}</p>
+    {{- /* Without script nothing loads the form, so this link asks the server to read it first; the script replaces the whole block (SPEC 9.6). */}}
+    <p><a href="{{.WaitPath}}" id="mod-settings-wait">{{t "mods.settings.edit.loading_link"}}</a></p>
   </section>
 </div>
 {{- end}}
@@ -179,10 +181,14 @@
      control (DESIGN 7.2). Takes []SettingGroup. */}}
 {{define "modsettings-groups" -}}
 {{- range .}}
-<fieldset class="mod-settings-group setting-row">
+<fieldset class="mod-settings-group setting-row"{{with .ID}} id="{{.}}"{{end}}>
   {{- /* The legend names every control in the group, so it is the title alone; the portal link sits beside it, in the body, outside the legend. */}}
   <legend>{{template "mod-name" (modName .Mod .Title false)}}</legend>
   <div class="setting-row__body">
+  {{- /* Why a mod nobody chose is installed, each parent linking to its group (SPEC 9.6). */}}
+  {{- if not .Origin.IsZero}}
+  <p class="hint mod-origin">{{msgHTML .Origin}}</p>
+  {{- end}}
   {{- if .Link}}
   <p class="hint"><a href="{{portalPath .Mod}}" class="portal-link" target="_blank" rel="noopener noreferrer">{{t "mods.portal.link"}}<span class="visually-hidden"> {{tHTML "mods.portal.for" "mod" (ident (or .Title .Mod))}}</span></a></p>
   {{- end}}
