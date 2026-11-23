@@ -5917,14 +5917,13 @@ a[target="_blank"]::after {
   }
 
   /* The Download line also offers the real-game picture. Where the line
-     wraps to a second row (a narrow pane, or a long link once the amounts are
-     on) the picture keeps room for that row, and for the button's text
-     wrapping to two lines in a longer language; the script marks the wrap.
-     Kept on one row, the line needs no more room than the link alone, so a
-     wide pane still fits between the strips (DESIGN 8.6, 8.8). */
-  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions.is-wrapped) {
-    --chart-row: calc(2 * var(--target-min));
-    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
+     takes more than its link's row (it wraps, the button's text wraps in a
+     longer language, or a stopped download's message opens in it) the
+     script sets --chart-row to the extra height, and the picture keeps that
+     room; on one row it needs none, so a wide pane still fits between the
+     strips (DESIGN 8.6, 8.8). */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row, 0px));
   }
 
   /* The download links and the kept note read as one tight group under the

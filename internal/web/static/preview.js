@@ -608,24 +608,29 @@ startPreviewWithForm(() => {
   });
   document.addEventListener("htmx:afterSettle", () => placeSize(document.getElementById("preview")));
 
-  // Marks a Download line that has wrapped to a second row, so the picture
-  // keeps room for it (DESIGN 8.8); CSS cannot tell a wrapped line. The line's
-  // width follows the pane and its link's text, so both are watched.
-  function markWrapped() {
+  // The Download line grows past its link's row when it wraps, when the
+  // button's text wraps, and when a stopped download's message opens in it;
+  // CSS cannot measure that, so the picture is told how much more room the
+  // line takes (DESIGN 8.8). The line's content follows the pane's width and
+  // the script's own changes, so both are watched.
+  function reserveLine() {
     for (const row of document.querySelectorAll(".gen-preview .picture-actions")) {
       const boxes = [...row.children].map((c) => c.getBoundingClientRect()).filter((b) => b.width && b.height);
-      row.classList.toggle("is-wrapped", boxes.some((b) => b.top >= boxes[0].bottom));
+      const list = row.closest(".pictures");
+      if (!boxes.length || !list) continue;
+      const extra = Math.max(...boxes.map((b) => b.bottom)) - boxes[0].bottom;
+      list.style.setProperty("--chart-row", `${Math.max(0, Math.ceil(extra))}px`);
     }
   }
   const pane = document.querySelector(".gen-preview");
   if (pane) {
     let marking = 0;
     const mark = () => {
-      if (!marking) marking = requestAnimationFrame(() => { marking = 0; markWrapped(); });
+      if (!marking) marking = requestAnimationFrame(() => { marking = 0; reserveLine(); });
     };
     new ResizeObserver(mark).observe(pane);
-    new MutationObserver(mark).observe(pane, { childList: true, characterData: true, subtree: true, attributeFilter: ["hidden"] });
-    markWrapped();
+    new MutationObserver(mark).observe(pane, { childList: true, characterData: true, subtree: true, attributeFilter: ["hidden", "class"] });
+    reserveLine();
   }
 
   // Puts the new section in place; a control that had focus there keeps it.
