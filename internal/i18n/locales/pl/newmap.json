@@ -40,5 +40,7 @@
   "newmap.link.server": "Przejdź do strony serwera, aby go zatrzymać",
   "newmap.modsettings.title": "Ustawienia modyfikacji",
   "newmap.modsettings.intro": "Tu ustawia się startowe ustawienia modyfikacji świata {name}. Niektóre zmieniają mapę, na przykład to, jakie są planety, dlatego są przed ustawieniami mapy.",
-  "newmap.modsettings.skip": "Pomiń i przejdź do ustawień mapy"
+  "newmap.modsettings.skip": "Pomiń i przejdź do ustawień mapy",
+  "newmap.modsettings.skipped": "Żadna modyfikacja nie ma ustawień startowych, więc krok 3 został pominięty.",
+  "newmap.modsettings.saving": "Zapisywanie ustawień modyfikacji…"
 }

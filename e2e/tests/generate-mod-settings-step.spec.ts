@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, live } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, live, pickLanguage } from "./foreman.js";
 import { openNewMap, newMapPath } from "./newmap.js";
 import type { Page } from "@playwright/test";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -54,8 +54,19 @@ test("step 3 shows the startup settings, and saving one adds the planet it turns
 
   await page.goto(stepPath(id));
   await field.fill("9");
-  await page.getByRole("button", { name: "Save settings" }).click();
+  // Saving shows its busy state (SPEC 17.19). The first press is stopped at
+  // the window, after the page's own handler has seen it, so the busy state
+  // can be read; the second press saves.
+  await page.evaluate(() => window.addEventListener("submit", (e) => e.preventDefault(), { once: true }));
+  const save = page.getByRole("button", { name: "Save settings" });
+  await save.click();
+  await expect(save).toBeDisabled();
+  await expect(page.locator("#flow-modsettings-saving")).toHaveText("Saving the mod settings…");
+  await checkPage(page);
+  await save.evaluate((b) => { (b as HTMLButtonElement).disabled = false; });
+  await save.click();
   await expect(page).toHaveURL(newMapPath(id), live);
+  await expect(page.locator("#newmap-skipped")).toHaveCount(0);
   await expect(page.locator('#generate-form details[data-planet="fake-moon"]').first()).toBeAttached({ timeout: 60_000 });
   await checkPage(page);
 
@@ -74,6 +85,15 @@ test("Skip to map settings goes on without saving", async ({ page, foreman, fake
   await skip.click();
   await expect(page).toHaveURL(newMapPath(id));
   expect(existsSync(join(foreman.dataDir, "worlds", id, "mods", "mod-settings.dat"))).toBe(false);
+  // A Skip chosen by hand is not the automatic one: no note.
+  await expect(page.locator("#newmap-skipped")).toHaveCount(0);
+
+  // Once step 4 is saved, Continue opens step 4, not the skipped step 3.
+  await page.locator("#newmap-save").click();
+  await expect(page.locator("#newmap-done")).toBeVisible(live);
+  await page.goto(`/worlds/${id}`);
+  await page.getByRole("link", { name: "Continue setting up" }).click();
+  await expect(page).toHaveURL(new RegExp(`${newMapPath(id)}(\\?|$)`));
 });
 
 test("a world with only built-in mods skips step 3 and marks it (none)", async ({ page, foreman, fakeGame }) => {
@@ -82,9 +102,13 @@ test("a world with only built-in mods skips step 3 and marks it (none)", async (
   await fakeGame!.call("/image", { ref: image21, on: true });
   const id = await openNewMap(page, { name: "Plain" });
   await page.goto(stepPath(id));
-  await expect(page).toHaveURL(newMapPath(id));
+  await expect(page).toHaveURL(`${newMapPath(id)}?skipped=1`);
+  await expect(page.locator("#newmap-skipped")).toHaveText("No mod has startup settings, so step 3 was skipped.");
   const bar = steps(page);
   await expect(bar.getByRole("listitem").nth(2)).toHaveText("3. Mod settings (none)");
+  // Skipped looks apart from a step that cannot be opened yet.
+  await expect(bar.locator(".subnav-skipped")).toHaveText("3. Mod settings (none)");
+  await expect(bar.locator(".subnav-skipped")).toHaveCSS("font-style", "italic");
   await expect(bar.getByRole("link", { name: /Mod settings/ })).toHaveCount(0);
   await expect(bar.getByRole("link")).toHaveCount(3);
   await checkPage(page);
@@ -92,9 +116,32 @@ test("a world with only built-in mods skips step 3 and marks it (none)", async (
 
 test.describe("step 3 without script", () => {
   test.use({ javaScriptEnabled: false });
-  test("the page waits for the settings and shows the form", async ({ page, foreman, fakeGame }) => {
+  test("the page claims no load and its link has the server read the form", async ({ page, foreman, fakeGame }) => {
     const id = await modded(page, foreman, fakeGame!);
     await page.goto(stepPath(id));
+    // As on the mod settings page (SPEC 9.6): no loading words without script.
+    await expect(page.locator(".mod-settings-loading")).toBeHidden();
+    await page.locator("#mod-settings-wait").click();
     await expect(page.getByLabel("fm-sta-int")).toBeVisible(live);
   });
 });
+
+// SPEC 17.2: at 320 px the four-step bar wraps in the longest languages,
+// with no sideways scroll.
+for (const lang of ["pl", "ru"]) {
+  test(`at 320 px in ${lang} the step bar wraps without a sideways scroll`, async ({ page, foreman, fakeGame }) => {
+    const id = await modded(page, foreman, fakeGame!);
+    await pickLanguage(page, lang);
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto(stepPath(id));
+    const bar = page.locator("#flow-steps");
+    await expect(bar.getByRole("listitem")).toHaveCount(4);
+    const b = (await bar.boundingBox())!;
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width).toBeLessThanOrEqual(320);
+    const scroll = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, bar: document.querySelector("#flow-steps")!.scrollWidth, barClient: document.querySelector("#flow-steps")!.clientWidth }));
+    expect(scroll.doc).toBeLessThanOrEqual(320);
+    expect(scroll.bar).toBeLessThanOrEqual(scroll.barClient);
+    await checkPage(page);
+  });
+}

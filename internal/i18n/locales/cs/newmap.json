@@ -40,5 +40,7 @@
   "newmap.link.server": "Přejít na stránku serveru a zastavit ho",
   "newmap.modsettings.title": "Nastavení modů",
   "newmap.modsettings.intro": "Zde se určují nastavení modů světa {name} pro spuštění. Některá mění mapu, například které planety existují, proto jsou před nastavením mapy.",
-  "newmap.modsettings.skip": "Přeskočit na nastavení mapy"
+  "newmap.modsettings.skip": "Přeskočit na nastavení mapy",
+  "newmap.modsettings.skipped": "Žádný mod nemá nastavení při spuštění, proto byl krok 3 přeskočen.",
+  "newmap.modsettings.saving": "Ukládají se nastavení modů…"
 }

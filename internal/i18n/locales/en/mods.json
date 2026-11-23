@@ -460,8 +460,9 @@
   "mods.plan_panel.warn.other": "Cannot be planned; Review shows why",
   "mods.plan_panel.bad_name": "That is not a mod name Foreman can add. Search for the mod, then choose + beside it.",
   "mods.plan_panel.wait": "Review is ready once the plan is updated.",
-  "mods.flow.generated": "{name} is made. Next, pick its mods or skip to map settings.",
+  "mods.flow.generated": "{name} is made. Next, pick its mods or skip this step.",
   "mods.flow.skip": "Skip to mod settings",
+  "mods.flow.skip_map": "Skip to map settings",
   "mods.flow.next": "Next: mod settings",
   "mods.richtext.warning": "Warning",
   "mods.richtext.info": "Note"

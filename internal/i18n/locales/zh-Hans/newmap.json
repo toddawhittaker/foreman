@@ -38,5 +38,7 @@
   "newmap.link.server": "前往服务器页面停止服务器",
   "newmap.modsettings.title": "模组设置",
   "newmap.modsettings.intro": "设置 {name} 的模组启动设置。有些设置会改变地图，例如有哪些星球，所以它们在地图设置之前。",
-  "newmap.modsettings.skip": "跳到地图设置"
+  "newmap.modsettings.skip": "跳到地图设置",
+  "newmap.modsettings.skipped": "没有模组有启动设置，因此已跳过第 3 步。",
+  "newmap.modsettings.saving": "正在保存模组设置…"
 }

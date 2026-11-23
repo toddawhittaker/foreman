@@ -22,6 +22,10 @@ const newMapWaitQuery = "wait"
 // newMapSavedQuery marks the page after a save, for its Done message.
 const newMapSavedQuery = "saved"
 
+// newMapSkippedQuery marks step 4 reached by step 3 passing itself on, for
+// the note that says why (SPEC 5.6).
+const newMapSkippedQuery = "skipped"
+
 // NewMapPage is step 3 of the guided Generate: the map settings and preview
 // of a world whose map is not made yet, laid out from the planets its mods
 // add (SPEC 5.6).
@@ -52,6 +56,8 @@ type NewMapPage struct {
 	Unsaved bool
 	// NoModSettings says step 3 has nothing to set (SPEC 5.6).
 	NoModSettings bool
+	// Skipped says step 3 passed itself on to this page, for its note.
+	Skipped bool
 }
 
 // NewMapLink is a link a message offers, to do what it says (SPEC 17.9).
@@ -110,8 +116,17 @@ func (p NewMapPage) Problems() []Problem {
 }
 
 // Paths the page uses.
-func (p NewMapPage) Path() string      { return newMapPath(p.World.ID) }
-func (p NewMapPage) WaitPath() string  { return newMapPath(p.World.ID) + "?" + newMapWaitQuery + "=1" }
+func (p NewMapPage) Path() string { return newMapPath(p.World.ID) }
+func (p NewMapPage) WaitPath() string {
+	if p.Skipped {
+		return skippedPath(p.World.ID) + "&" + newMapWaitQuery + "=1"
+	}
+	return newMapPath(p.World.ID) + "?" + newMapWaitQuery + "=1"
+}
+
+// skippedPath is step 4 after step 3 passed itself on.
+func skippedPath(id string) string { return newMapPath(id) + "?" + newMapSkippedQuery + "=1" }
+
 func (p NewMapPage) WorldPath() string { return worldPath(p.World.ID) }
 func (NewMapPage) PreviewPath() string { return PathGeneratePreview }
 func (p NewMapPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMap, p.NoModSettings) }
@@ -134,6 +149,9 @@ type FlowStep struct {
 	Path    string
 	Label   i18n.Msg
 	Current bool
+	// Skipped is a step with nothing to do, drawn apart from one that
+	// cannot be opened yet (SPEC 17.10).
+	Skipped bool
 }
 
 // flowSteps is the step bar of world id, with current marked. With no world
@@ -149,7 +167,7 @@ func flowSteps(id string, current int, noModSettings bool) []FlowStep {
 	if id != "" {
 		steps[0].Path, steps[1].Path, steps[2].Path, steps[3].Path = worldPath(id), modsPath(id), flowModSettingsPath(id), newMapPath(id)
 		if noModSettings {
-			steps[2].Path, steps[2].Label = "", i18n.M("newmap.steps.mod_settings_none")
+			steps[2].Path, steps[2].Label, steps[2].Skipped = "", i18n.M("newmap.steps.mod_settings_none"), true
 		}
 	}
 	for i := range steps {
@@ -234,6 +252,7 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	q := r.URL.Query()
 	p.Done = q.Get(newMapSavedQuery) != ""
+	p.Skipped = q.Get(newMapSkippedQuery) != ""
 	if q.Get(newMapWaitQuery) == "" && !p.Done {
 		p.Loading = true
 		p.CanPreview = s.previewer != nil

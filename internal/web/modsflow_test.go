@@ -35,7 +35,8 @@ func TestModsTabOfAnUnfinishedWorldShowsTheStepBar(t *testing.T) {
 	body := g.get(modsPath(id))
 	wantIn(t, "mods tab", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`, `href="`+newMapPath(id)+`"`,
 		`id="mods-skip"`, `<a href="`+flowModSettingsPath(id)+`" id="mods-skip">`)
-	wantIn(t, "skip text", plain(body), "Skip to mod settings", "3. Mod settings (none)")
+	// Step 3 would pass on, so the link names where it lands.
+	wantIn(t, "skip text", plain(body), "Skip to map settings", "3. Mod settings (none)")
 	if strings.Contains(body, `<a href="`+flowModSettingsPath(id)+`">`) {
 		t.Error("the skipped step 3 is a link in the bar")
 	}
@@ -179,5 +180,25 @@ func TestContinueIgnoresAPickThatIsInstalled(t *testing.T) {
 	}
 	if got := s.continuePath(context.Background(), sum); got != newMapPath(id) {
 		t.Errorf("settings saved: %s, want step 4", got)
+	}
+}
+
+// SPEC 5.6: once step 4 has been saved, Continue opens step 4 even when
+// step 3 was skipped and the world has no mod-settings.dat.
+func TestContinueAfterSkippingStepThreeOpensStepFour(t *testing.T) {
+	g := newModsRig(t, true)
+	id := g.unfinished20("Fresh")
+	g.writeMod(id, "alpha", "1.0.0")
+	sum, err := g.worlds.Get(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := g.h.(*Handler).srv
+	if got := s.continuePath(context.Background(), sum); got != flowModSettingsPath(id) {
+		t.Fatalf("nothing saved yet: %s, want step 3", got)
+	}
+	s.audit(context.Background(), game.Actor{Username: "admin"}, AuditNewMap, id, "")
+	if got := s.continuePath(context.Background(), sum); got != newMapPath(id) {
+		t.Errorf("map settings saved: %s, want step 4", got)
 	}
 }

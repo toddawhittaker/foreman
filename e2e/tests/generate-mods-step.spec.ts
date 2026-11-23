@@ -42,11 +42,12 @@ test("the Mods tab of an Unfinished world has the step bar and skips to step 3",
   await expect(steps(page).getByRole("listitem").nth(2)).toHaveText("3. Mod settings (none)");
   await checkPage(page);
 
-  const skip = page.getByRole("link", { name: "Skip to mod settings" });
+  const skip = page.getByRole("link", { name: "Skip to map settings" });
   await expect(skip).toHaveAttribute("href", `${newMapPath(id)}/mod-settings`);
   await expectTarget(page, skip);
   await skip.click();
-  await expect(page).toHaveURL(newMapPath(id));
+  await expect(page).toHaveURL(`${newMapPath(id)}?skipped=1`);
+  await expect(page.locator("#newmap-skipped")).toBeVisible();
   await expect(steps(page).getByRole("link", { name: "4. Map settings" })).toHaveAttribute("aria-current", "step");
   await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
 });
@@ -72,7 +73,7 @@ test("the review shows the step bar, and the result after an install offers Next
   await expect(page.locator("#world-result")).toContainText("Installed fp-flow in Flow world.", live);
   await checkPage(page);
   // The result's next step is a control, and Skip is not offered beside it (SPEC 17.9).
-  await expect(page.getByRole("link", { name: "Skip to mod settings" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Skip to (mod|map) settings/ })).toHaveCount(0);
   const next = page.getByRole("link", { name: "Next: mod settings" });
   await expect(next).toHaveAttribute("href", `${newMapPath(id)}/mod-settings`);
 
@@ -81,7 +82,7 @@ test("the review shows the step bar, and the result after an install offers Next
   const nothing = page.getByRole("link", { name: "Next: mod settings" });
   await expect(page.getByText("Nothing needs to change")).toBeVisible();
   await expect(nothing).toHaveAttribute("href", `${newMapPath(id)}/mod-settings`);
-  await expect(page.getByRole("link", { name: "Skip to mod settings" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Skip to (mod|map) settings/ })).toHaveCount(0);
   await checkPage(page);
   // The fake game gives every modded world startup settings, so step 3 shows them.
   await nothing.click();
@@ -95,9 +96,9 @@ test("a world with a save has no step bar on its Mods tab or review", async ({ p
   await page.goto("/worlds/base/mods");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(steps(page)).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Skip to mod settings" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Skip to (mod|map) settings/ })).toHaveCount(0);
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-made");
   await expect(page.getByRole("heading", { level: 1, name: /Install fp-made/ })).toBeVisible();
   await expect(steps(page)).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Skip to mod settings" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Skip to (mod|map) settings/ })).toHaveCount(0);
 });
