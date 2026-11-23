@@ -611,7 +611,7 @@ func TestReadModSettingsOutput(t *testing.T) {
 		base, p := newDir(t)
 		put(t, defsAt(p), []byte(defsJSON))
 		put(t, datAt(p), dat)
-		d, b, err := readModSettingsOutput(base, "p")
+		d, b, err := readModSettingsOutput(base, "p", "2.1.24")
 		if err != nil || string(d) != defsJSON || string(b) != string(dat) {
 			t.Errorf("%v", err)
 		}
@@ -620,7 +620,7 @@ func TestReadModSettingsOutput(t *testing.T) {
 		base, p := newDir(t)
 		put(t, defsAt(p), []byte(strings.Repeat("a", modsettings.MaxDefinitionsBytes)))
 		put(t, datAt(p), []byte(strings.Repeat("a", world.MaxModSettings)))
-		if _, _, err := readModSettingsOutput(base, "p"); err != nil {
+		if _, _, err := readModSettingsOutput(base, "p", "2.1.24"); err != nil {
 			t.Error(err)
 		}
 	})
@@ -685,7 +685,7 @@ func TestReadModSettingsOutput(t *testing.T) {
 			base, p := newDir(t)
 			f(t, p)
 			err := failsPromptly(t, func() error {
-				_, _, err := readModSettingsOutput(base, "p")
+				_, _, err := readModSettingsOutput(base, "p", "2.1.24")
 				return err
 			})
 			if !errors.Is(err, ErrModSettingsBadOutput) {

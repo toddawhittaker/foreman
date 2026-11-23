@@ -2255,13 +2255,34 @@ the 64-bit range means no limit.
   RCON command for them.
 - **Per-player settings** are not shown. Each player sets them in the game,
   and their bytes in the file are kept exactly.
+- **Origin of a mod** (#879). Under a mod's group heading a line says why
+  the mod is installed when other enabled mods name it: "Required by X"
+  (a dependency with no prefix or `~`), "Recommended by X" (`+`) or
+  "Offered by X" (`?` or `(?)`), with "A and B" for several. Foreman works
+  it out when the page is drawn, from the enabled mods' own `info.json`
+  dependencies (`mods.ParseDep`); nothing is stored. Required wins over
+  recommended, which wins over offered, and only the winning kind's mods
+  are named. A mod nobody names, which is the player's own pick, has no
+  line. The base game and its expansions (`base`, `space-age`, `quality`,
+  `elevated-rails`) are neither named nor named by. Each name links to its
+  group on the page when that mod has settings. The groups of mods nobody
+  names come first, then the others; each part keeps its order.
+- **Without script** the page cannot load the form, so its progress line is
+  followed by a link to the same page with `?wait=1`, which reads the form
+  on the server before it answers.
 - **Planets** (#775). The same run also writes the world's planets and
   their autoplace controls as `planets.json`, for Generate's step 3 (5.6).
   On 2.x it lists every space location of type planet with the controls
   of its map-gen settings, and each control's category, richness, on/off
   box, order and localised name; on 1.1, which has no planets, it lists
   the controls of the one surface. Names resolve as setting names do
-  above. It is one run and one cache, kept under the same key as the
+  above, looked up in the mods' locale files first and then in the game's
+  own (`base`, `space-age`, `quality` and `elevated-rails` under the data
+  folder of the world's game image, read in the same run and never
+  downloaded), so a control named `{"entity-name.stone"}` reads "Stone".
+  When no loaded mod defines a setting the game writes no
+  `mod-settings.dat`; that is empty defaults, not a failed run, and a
+  missing file with settings listed still is. It is one run and one cache, kept under the same key as the
   definitions, so a change of mods or game version reads both again. No
   startup setting of the five planet mods tested changes the list, so
   saved startup settings do not reset it. Foreman checks the file under
