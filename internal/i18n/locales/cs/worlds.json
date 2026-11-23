@@ -476,6 +476,7 @@
   "worlds.generate.resources.patch": "{amount} na ({x}, {y})",
   "worlds.generate.resources.patch_yield": "výtěžnost {percent} % na ({x}, {y})",
   "worlds.generate.resources.none": "Tento obrázek neobsahuje žádná ložiska surovin.",
+  "worlds.generate.resources.not_patches": "Suroviny této planety netvoří ložiska, a proto je nelze spočítat.",
   "worlds.generate.resources.invalid": "Nastavení obsahuje chyby, proto se suroviny nespočítaly. Je třeba opravit chyby uvedené v náhledu mapy.",
   "worlds.generate.resources.busy": "Právě se vytváří jiný náhled mapy, proto se suroviny nespočítaly. Je třeba několik sekund počkat a zkusit to znovu.",
   "worlds.generate.resources.timeout": "Počítání surovin trvalo příliš dlouho a bylo zastaveno. Je třeba zkusit to znovu nebo zvolit menší velikost náhledu.",

@@ -700,6 +700,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - A resource the game lets you switch off has an on/off box. Off writes
     size 0, the game's own off value; frequency 0 is not off (2.1.24
     crashes on it). A post that lacks the box keeps the resource on.
+    A control has an on/off box when the game says it can be disabled and
+    it is a resource or, on 2.x, cliffs or enemies; the rule never names a
+    planet, and off writes size 0.
   - **Cliffs off.** Cliffs have the same on/off box where the game lets
     them be switched off: Nauvis on every line, and Gleba and Fulgora on
     2.x; Vulcanus has no cliff control. Off writes
@@ -965,6 +968,19 @@ not) or a map exchange string, with Space Age on or off. (P0)
       it runs out of memory at about 30 s (generating alone peaks at 822
       MiB) and fails safe with the out-of-memory message and "choose a
       smaller preview size"; 1.1 fits it, at 1,014 MiB and 37 s.
+      With a world's mods the count has the larger limits of 14.3 (2 GiB
+      and 120 s), set from a heavy set of 31 mods (Corrundum, Maraxsis,
+      Moshine, Muluna and their graphics) at 3072 tiles on 2.1.24: 790 to
+      930 MiB and 14 to 16 s at default settings, and at most 1,407 MiB and
+      28.5 s (Corrundum) with every resource control at its most. The time
+      is twice the slowest count seen in a survey of planet mods, 58 s. An
+      out-of-memory failure names the resource count, never the picture.
+    - **Known limit: resources that are not patches.** The count reads
+      resource entities only. When a planet has a resource control from a
+      mod that the settings leave on, and the count finds no patches, its
+      resources are something else, such as tiles, and the page says
+      "This planet's resources are not patches, so they can't be counted"
+      instead of "no resource patches".
     - **While it runs and after.** A visible line and an indeterminate bar
       say that counting can take up to a minute. Busy, timeout, out of
       memory, missing image, failed and invalid settings each have their own
@@ -3168,11 +3184,13 @@ control-only mod refuses the run. The planets a run may draw are checked
 against the planet list Foreman took from that world's stored run, never
 against anything the form posted. The check uses the Space Age the world's
 enabled mods give, the same answer the planet list uses, so a world whose
-flag disagrees with its mods is not refused. The limits stay 1 GiB, and the time
-limit is 60 seconds for each planet drawn, at most 10 minutes in all so
-a run cannot hold the one slot for long: with five planet mods, one
-planet took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB
-(#775).
+flag disagrees with its mods is not refused. A run that loads a world's
+mods has larger limits than a base-game run (1 GiB and 60 s): 2 GiB of
+memory, and 120 seconds for each planet drawn, at most 10 minutes in all so
+a run cannot hold the one slot for long. With five planet mods, one planet
+took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB (#775).
+The 2 GiB is 1.5 times the highest resource count measured with a heavy
+mod set (5.6, Cost); the real-game picture (5.6) keeps its own 1 GiB.
 
 Demolisher territories (5.6) use a second kind of preview container,
 `foreman-territories-<folder>`, with the same label, endpoints, host

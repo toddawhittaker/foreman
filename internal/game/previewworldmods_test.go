@@ -97,8 +97,8 @@ func TestPreviewRunsLoadTheWorldsMods(t *testing.T) {
 			if !reflect.DeepEqual(h.Mounts, want) {
 				t.Errorf("mounts %+v, want %+v", h.Mounts, want)
 			}
-			if h.Memory != previewMemory {
-				t.Errorf("memory %d, want %d", h.Memory, previewMemory)
+			if h.Memory != previewWorldMemory || h.MemorySwap != previewWorldMemory {
+				t.Errorf("memory %d, swap %d, want %d for a run with mods", h.Memory, h.MemorySwap, int64(previewWorldMemory))
 			}
 			if _, err := os.Stat(dir); err == nil {
 				t.Error("the work folder is left behind")
@@ -173,12 +173,12 @@ func TestPreviewRunsCheckPlanetsAgainstTheKnownList(t *testing.T) {
 	}
 }
 
-// SPEC 14.3: with a world's mods the time limit is the preview's for each
-// planet drawn.
+// SPEC 5.6, 14.3: with a world's mods the time limit is the world limit
+// for each planet drawn.
 func TestPreviewWithAWorldHasALimitPerPlanet(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	id := newModdedWorld(t, r)
-	r.c.previewLimit = 200 * time.Millisecond
+	r.c.previewWorldLimit = 200 * time.Millisecond
 	if err := r.game.SetPreviewMode(fakegame.PreviewHangs); err != nil {
 		t.Fatal(err)
 	}
@@ -189,14 +189,14 @@ func TestPreviewWithAWorldHasALimitPerPlanet(t *testing.T) {
 	if !errors.Is(err, ErrPreviewTimeout) {
 		t.Fatalf("error %v, want ErrPreviewTimeout", err)
 	}
-	if took := time.Since(began); took < 3*r.c.previewLimit {
-		t.Errorf("stopped after %v, want at least %v for three planets", took, 3*r.c.previewLimit)
+	if took := time.Since(began); took < 3*r.c.previewWorldLimit {
+		t.Errorf("stopped after %v, want at least %v for three planets", took, 3*r.c.previewWorldLimit)
 	}
 }
 
-// SPEC 14.3: the limit per planet has a ceiling, so a world with many
-// planets cannot hold the one preview slot for long; without a world the
-// limit is the preview's alone.
+// SPEC 5.6, 14.3: a run with a world's mods has the larger limit for each
+// planet, with a ceiling so a world with many planets cannot hold the one
+// preview slot for long; without a world the limit is the preview's alone.
 func TestPreviewRunLimit(t *testing.T) {
 	withWorld := PreviewRequest{World: "w"}
 	for _, tc := range []struct {
@@ -205,14 +205,17 @@ func TestPreviewRunLimit(t *testing.T) {
 		want  time.Duration
 	}{
 		{PreviewRequest{}, 5, PreviewLimit},
-		{withWorld, 1, PreviewLimit},
-		{withWorld, 3, 3 * PreviewLimit},
+		{withWorld, 1, PreviewWorldLimit},
+		{withWorld, 3, 3 * PreviewWorldLimit},
 		{withWorld, 10, PreviewWorldLimitMax},
 		{withWorld, 64, PreviewWorldLimitMax},
 	} {
-		if got := previewRunLimit(PreviewLimit, tc.req, tc.drawn); got != tc.want {
+		if got := previewRunLimit(PreviewLimit, PreviewWorldLimit, tc.req, tc.drawn); got != tc.want {
 			t.Errorf("world %q, %d planets: limit %v, want %v", tc.req.World, tc.drawn, got, tc.want)
 		}
+	}
+	if PreviewLimit != 60*time.Second || PreviewWorldLimit != 120*time.Second {
+		t.Errorf("limits %v and %v, want 60 s for the base game and 120 s with mods", PreviewLimit, PreviewWorldLimit)
 	}
 	if PreviewWorldLimitMax != 10*time.Minute {
 		t.Errorf("ceiling %v, want 10 minutes", PreviewWorldLimitMax)

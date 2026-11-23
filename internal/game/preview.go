@@ -34,6 +34,10 @@ const (
 	// all, however many planets it draws, so it cannot hold the one slot for
 	// long.
 	PreviewWorldLimitMax = 10 * time.Minute
+	// PreviewWorldLimit is how long a run that loads a world's mods may take
+	// for each planet it draws: a heavy mod set takes longer to load and to
+	// count than the base game (SPEC 5.6).
+	PreviewWorldLimit = 120 * time.Second
 	// PreviewWait is how long a preview waits for the one running before it
 	// to end, before it is ErrPreviewBusy.
 	PreviewWait = 20 * time.Second
@@ -52,6 +56,9 @@ const (
 	// The peak measured at 4096 pixels, above today's most, was about 553
 	// MiB; this leaves room for a patch that needs more.
 	previewMemory = 1 << 30
+	// previewWorldMemory is the limit of a run that loads a world's mods,
+	// whose prototypes and graphics count against it (SPEC 5.6).
+	previewWorldMemory = 2 << 30
 	// MaxPreviewPNG is the largest picture Foreman reads back (SPEC 5.6). The
 	// largest measured at 4096 pixels, above today's most, was Gleba, 8.91
 	// MB; this leaves room for a busier seed. At 1280 pixels they are under 1 MB.
@@ -85,20 +92,37 @@ var (
 
 // PreviewError is a preview whose game exited with an error. Log is the end
 // of the game's own output, for the log; a page words the failure itself.
+// Kind is the run's kind (gameenv.Kind* or "preview"), so the error names
+// the run that failed.
 type PreviewError struct {
+	Kind     string
 	ExitCode int
 	OOM      bool
 	Log      string
 }
 
 func (e *PreviewError) Error() string {
+	run := previewRunName(e.Kind)
 	switch {
 	case e.OOM:
-		return "the map preview ran out of memory"
+		return run + " ran out of memory"
 	case e.Log != "":
-		return fmt.Sprintf("the game could not draw the map preview (exit %d): %s", e.ExitCode, e.Log)
+		return fmt.Sprintf("the game failed in %s (exit %d): %s", run, e.ExitCode, e.Log)
 	}
-	return fmt.Sprintf("the game could not draw the map preview (exit %d)", e.ExitCode)
+	return fmt.Sprintf("the game failed in %s (exit %d)", run, e.ExitCode)
+}
+
+// previewRunName is how an error names a run of kind.
+func previewRunName(kind string) string {
+	switch kind {
+	case gameenv.KindResources:
+		return "the resource count"
+	case gameenv.KindTerritories:
+		return "the territory run"
+	case "", "preview":
+		return "the map preview"
+	}
+	return "the " + kind + " run"
 }
 
 // PreviewRequest says what Preview draws, from the settings Generate would
@@ -212,19 +236,28 @@ func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, er
 func (c *Controller) previewRun(ctx context.Context, req PreviewRequest, kind string, drawn int,
 	run func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error) error {
 	return c.previewRunIn(ctx, previewPlan{
-		gameVersion: req.GameVersion, kind: kind, limit: previewRunLimit(c.previewLimit, req, drawn),
+		gameVersion: req.GameVersion, kind: kind, limit: previewRunLimit(c.previewLimit, c.previewWorldLimit, req, drawn),
 		fill: func(base *os.Root) (string, error) { return c.makePreviewDirFor(base, req) },
 	}, run)
 }
 
 // previewRunLimit is how long a run of req that draws drawn planets may
-// take: limit, or with a world's mods limit for each planet, at most
-// PreviewWorldLimitMax (SPEC 14.3).
-func previewRunLimit(limit time.Duration, req PreviewRequest, drawn int) time.Duration {
+// take: limit, or with a world's mods worldLimit for each planet, at most
+// PreviewWorldLimitMax (SPEC 5.6, 14.3).
+func previewRunLimit(limit, worldLimit time.Duration, req PreviewRequest, drawn int) time.Duration {
 	if req.World == "" {
 		return limit
 	}
-	return min(limit*time.Duration(drawn), PreviewWorldLimitMax)
+	return min(worldLimit*time.Duration(drawn), PreviewWorldLimitMax)
+}
+
+// previewMemoryFor is the memory limit of a run of req: larger when it
+// loads a world's mods (SPEC 5.6).
+func (c *Controller) previewMemoryFor(req PreviewRequest) int64 {
+	if req.World == "" {
+		return previewMemory
+	}
+	return c.previewWorldMemory
 }
 
 // previewPlan is what differs between the kinds of preview run.
@@ -277,7 +310,11 @@ func (c *Controller) previewRunIn(ctx context.Context, plan previewPlan,
 	return run(base, ref, name, func(spec docker.ContainerSpec) error {
 		runCtx, cancel := context.WithTimeout(ctx, plan.limit)
 		defer cancel()
-		return c.runOneOff(runCtx, "foreman-"+kind+"-"+name, spec)
+		err := c.runOneOff(runCtx, "foreman-"+kind+"-"+name, spec)
+		if pe, ok := errors.AsType[*PreviewError](err); ok {
+			pe.Kind = kind
+		}
+		return err
 	})
 }
 
@@ -563,7 +600,7 @@ func (c *Controller) previewSpec(image, dir, line string, req PreviewRequest) do
 		Entrypoint: []string{"/bin/sh"},
 		Cmd:        []string{"-c", previewScript},
 		User:       c.user,
-		HostConfig: c.oneOffHostConfig(dir),
+		HostConfig: c.oneOffHostConfigMem(dir, c.previewMemoryFor(req)),
 	}
 }
 

@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -296,5 +297,36 @@ func TestWorldTerritoriesAreKeyedByTheWorld(t *testing.T) {
 	}
 	if len(prev.runs) != 2 || prev.runs[0].World != ids[0] || prev.runs[1].World != ids[1] {
 		t.Errorf("runs %+v", prev.runs)
+	}
+}
+
+// SPEC 5.6: a planet whose resource controls are on but whose count found
+// no patches, as when a mod's resources are tiles, says they can't be
+// counted; with every resource control at size zero, or with patches, the
+// page words it as before.
+func TestResourceViewWithNoPatches(t *testing.T) {
+	cat := cerysCatalogue()
+	req := game.PreviewRequest{Size: 1280}
+	if v := countedView(i18n.English, cat, req, "cerys", resource.Result{}); v.None.Key != "worlds.generate.resources.not_patches" {
+		t.Errorf("no patches on cerys: %q", v.None.Key)
+	}
+	if got := i18n.English.Format(i18n.M("worlds.generate.resources.not_patches")); got != "This planet's resources are not patches, so they can't be counted." {
+		t.Errorf("message %q", got)
+	}
+	off := map[string]any{}
+	for _, c := range cat.PlanetControls("cerys") {
+		if c.Category == mapgen.CategoryResource {
+			off[c.Name] = map[string]any{"size": 0}
+		}
+	}
+	req.MapGenSettings, _ = json.Marshal(map[string]any{"autoplace_controls": off})
+	if v := countedView(i18n.English, cat, req, "cerys", resource.Result{}); v.None.Key != "worlds.generate.resources.none" {
+		t.Errorf("resources switched off: %q", v.None.Key)
+	}
+	if v := countedView(i18n.English, cat, game.PreviewRequest{Size: 1280}, "cerys", resource.Result{
+		Patches:   []resource.Patch{{Name: "cerys-ore-entity", Amount: 5}},
+		Resources: map[string]resource.Resource{"cerys-ore-entity": {Total: 5}},
+	}); v.None.Key != "worlds.generate.resources.none" || v.Patches != 1 {
+		t.Errorf("with a patch: %q, %d", v.None.Key, v.Patches)
 	}
 }
