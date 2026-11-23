@@ -32,8 +32,11 @@ test("step 3 shows the step bar, saves a preset and lands on a next step", async
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "Step three" });
   const steps = page.getByRole("navigation", { name: "Steps to make the world" });
+  // Four steps; only built-in mods, so step 3 has nothing to set and is plain text (SPEC 5.6).
+  await expect(steps.getByRole("listitem")).toHaveCount(4);
   await expect(steps.getByRole("link")).toHaveCount(3);
-  await expect(steps.getByRole("link", { name: "3. Map settings" })).toHaveAttribute("aria-current", "step");
+  await expect(steps.getByRole("listitem").nth(2)).toHaveText("3. Mod settings (none)");
+  await expect(steps.getByRole("link", { name: "4. Map settings" })).toHaveAttribute("aria-current", "step");
   await checkPage(page);
 
   await page.locator("#generate-preset").selectOption("rich-resources");

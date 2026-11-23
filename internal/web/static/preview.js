@@ -608,6 +608,26 @@ startPreviewWithForm(() => {
   });
   document.addEventListener("htmx:afterSettle", () => placeSize(document.getElementById("preview")));
 
+  // Marks a Download line that has wrapped to a second row, so the picture
+  // keeps room for it (DESIGN 8.8); CSS cannot tell a wrapped line. The line's
+  // width follows the pane and its link's text, so both are watched.
+  function markWrapped() {
+    for (const row of document.querySelectorAll(".gen-preview .picture-actions")) {
+      const boxes = [...row.children].map((c) => c.getBoundingClientRect()).filter((b) => b.width && b.height);
+      row.classList.toggle("is-wrapped", boxes.some((b) => b.top >= boxes[0].bottom));
+    }
+  }
+  const pane = document.querySelector(".gen-preview");
+  if (pane) {
+    let marking = 0;
+    const mark = () => {
+      if (!marking) marking = requestAnimationFrame(() => { marking = 0; markWrapped(); });
+    };
+    new ResizeObserver(mark).observe(pane);
+    new MutationObserver(mark).observe(pane, { childList: true, characterData: true, subtree: true, attributeFilter: ["hidden"] });
+    markWrapped();
+  }
+
   // Puts the new section in place; a control that had focus there keeps it.
   function swap(fresh) {
     const slot = document.getElementById("preview");
