@@ -185,7 +185,7 @@ test.describe("on a wide screen", () => {
     await page.keyboard.press("ArrowLeft");
     await page.keyboard.press("Escape");
     await expect(dialog(page)).toBeHidden();
-    await page.getByRole("link", { name: "Cancel" }).click();
+    await page.getByRole("link", { name: "Back to the mods" }).click();
     await expect(page.getByRole("dialog", { name: "Leave without saving these map settings?" })).toBeVisible();
     await page.getByRole("button", { name: "Stay on this page" }).click();
     expect(asked).toEqual([]);
