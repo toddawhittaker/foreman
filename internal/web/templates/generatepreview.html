@@ -94,6 +94,17 @@
         {{- end}}
       </li>
       {{- end}}
+      {{- if .All}}{{with .StarMap}}
+      {{/* The world's star map after its planets, drawn as the game draws it; it opens in the
+           large view like a planet picture, or as its file without script (SPEC 5.6, DESIGN 8.8). */}}
+      <li class="starmap-card">
+        <figure>
+          <a href="{{.Path}}" class="picture" data-starmap><span class="map">{{.SVG}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
+          <figcaption>{{t "worlds.generate.starmap.caption"}}</figcaption>
+        </figure>
+        <a href="{{.DownloadPath}}" class="download" download data-starmap>{{t "worlds.generate.starmap.download"}}</a>
+      </li>
+      {{- end}}{{end}}
     </ul>
     {{- with .ChartPlanet}}
     {{/* A 2.1 world's one picture can be drawn again from a real game, which shows terrain mods
@@ -193,7 +204,8 @@
     <div class="large-view__head">
       <h2 id="large-title"></h2>
       <a href="" class="icon-button" id="large-download" download><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13.5h10"/></svg><span class="visually-hidden" id="large-download-name"></span></a>
-      <p class="hint large-view__keys" id="large-keys">{{t "worlds.generate.large.keys"}}</p>
+      {{- /* The star map has no planets to step to, so it has its own key line, which the script swaps in. */}}
+      <p class="hint large-view__keys" id="large-keys" data-starmap="{{t "worlds.generate.large.keys_starmap"}}">{{t "worlds.generate.large.keys"}}</p>
     </div>
     {{/* Content outside the open dialog is inert, so the dialog says its own news. */}}
     <div class="large-view__news">
@@ -415,4 +427,35 @@
      the picture's room (DESIGN 8.8); the script hides it while that picture shows. Takes PreviewView. */}}
 {{define "chart-offer" -}}
 <span class="js-only"><span id="preview-chart-offer"><button type="button" class="button" id="preview-chart-button">{{t "mapgen.chart.draw"}}</button>{{template "tip-button" .ChartTip}}</span></span>
+{{- end}}
+
+{{/* A world's star map as one SVG (SPEC 5.6, DESIGN 8.8): drawn inline in the map preview and
+     the large view, and saved as a file. It has no ids, so a copy in the large view repeats none.
+     Its colours are its own, as the game's map is dark in either theme; the style sheet themes
+     the circles on the page. The file has its namespace and no images, so it opens offline.
+     Takes starMapFile; the page gets it drawn, not by a call from here. */}}
+{{define "starmap-svg" -}}
+<svg{{if .File}} xmlns="http://www.w3.org/2000/svg"{{end}} class="starmap" viewBox="{{.ViewBox}}" width="1000" height="1000" role="img" aria-label="{{t "worlds.generate.starmap.alt"}}" font-family="system-ui, sans-serif" font-size="20">
+{{- if .File}}<title>{{t "worlds.generate.starmap.alt"}}</title>{{end}}
+<rect class="starmap__bg" x="-100000" y="-100000" width="200000" height="200000" fill="#0d0c0b"/>
+<g class="starmap__rings" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.5">
+{{- range .Rings}}<circle r="{{.}}"/>{{end}}
+{{- range .Orbits}}<circle cx="{{.X}}" cy="{{.Y}}" r="{{.R}}"/>{{end -}}
+</g>
+<circle class="starmap__sun" r="{{.Sun}}" fill="#f5a524" stroke="#c2410c" stroke-width="3"/>
+<g class="starmap__routes" fill="none" stroke="#c9c4bc" stroke-opacity="0.75" stroke-width="2" stroke-linejoin="round">
+{{- range .Routes}}<path d="{{.}}"/>{{end -}}
+</g>
+{{- $file := .File}}
+{{- range .Locations}}
+<g class="starmap__location">
+<title{{if .Label.Foreign}} translate="no"{{end}}>{{msg .Label.Name}}</title>
+<circle class="starmap__planet" cx="{{.X}}" cy="{{.Y}}" r="{{.R}}" fill="#2a2622" stroke="#f39a2a" stroke-width="2.5"/>
+{{- if and .Icon (not $file)}}
+<image href="{{.Icon}}" x="{{.IconX}}" y="{{.IconY}}" width="{{.IconSize}}" height="{{.IconSize}}" onerror="this.remove()"/>
+{{- end}}
+<text x="{{.LabelX}}" y="{{.LabelY}}" text-anchor="{{.Anchor}}" dominant-baseline="{{.Baseline}}" fill="#ece7df" stroke="#0d0c0b" stroke-width="4" stroke-linejoin="round" paint-order="stroke"{{if .Label.Foreign}} translate="no"{{end}}>{{msg .Label.Name}}</text>
+</g>
+{{- end}}
+</svg>
 {{- end}}

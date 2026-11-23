@@ -135,6 +135,8 @@
   "mapgen.no_enemies.label": "101a1b7d",
   "mapgen.peaceful.hint": "94f31d5e",
   "mapgen.peaceful.label": "25ce4ed9",
+  "mapgen.place.shattered_planet": "bd78844f",
+  "mapgen.place.solar_system_edge": "57aa32d6",
   "mapgen.planet.aquilo": "996d4aa6",
   "mapgen.planet.fulgora": "030fe079",
   "mapgen.planet.gleba": "23b00330",

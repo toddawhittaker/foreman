@@ -196,7 +196,8 @@ startPreviewWithForm(() => {
   function amountDownloads() {
     const on = Boolean(el("preview-amounts") && pageAmounts);
     const zip = zipLink();
-    document.querySelectorAll("#preview li a.download").forEach((a) => {
+    // The star map has no amounts to ask for.
+    document.querySelectorAll("#preview li a.download:not([data-starmap])").forEach((a) => {
       a.setAttribute("href", askFor(a.href, "amounts", on));
       nameDownload(a);
     });
@@ -594,6 +595,7 @@ startPreviewWithForm(() => {
     if (!node.matches("a")) return "";
     const pic = node.closest("li") && node.closest("li").querySelector("a.picture");
     if (!pic) return node.matches("a.download") ? "#preview p a.download" : "";
+    if (pic.hasAttribute("data-starmap")) return node.matches("a.picture") ? "#preview a.picture[data-starmap]" : "#preview a.download[data-starmap]";
     const planet = `a.picture[data-planet="${CSS.escape(pic.dataset.planet)}"]`;
     return node.matches("a.picture") ? "#preview " + planet : `#preview li:has(${planet}) a.download`;
   }
@@ -788,6 +790,7 @@ startPreviewWithForm(() => {
   let viewer = null;
   const zoomTo = (next, x, y) => viewer.zoomTo(next, x, y);
   let tiles = 0; // the shown picture's width in tiles
+  let starShown = false; // the large view shows the star map
   const lang = document.documentElement.lang || undefined;
   const el = (id) => document.getElementById(id);
   const frame = () => el("large-frame");
@@ -815,7 +818,8 @@ startPreviewWithForm(() => {
       box: "large-amounts", bar: "large-amounts-bar", counting: "large-counting", text: "large-counting-text",
       slot: "large-amounts-result", news: "large-amounts-news", status: "large-status", overlays: "#large-view .resources",
       shown: viewOpen,
-      planet: () => viewing || firstPlanet(),
+      // The star map has no planet to count.
+      planet: () => (starShown ? "" : viewing || firstPlanet()),
       map: () => largeMap(),
       ...newCount(),
     },
@@ -824,7 +828,7 @@ startPreviewWithForm(() => {
       slot: "preview-amounts-result", news: "preview-amounts-news", status: "announcer", overlays: "#preview .resources",
       shown: () => !viewOpen(),
       // The box is there only while one planet is shown.
-      planet: () => { const one = document.querySelector("#preview a.picture"); return one ? one.dataset.planet : ""; },
+      planet: () => { const one = document.querySelector("#preview a.picture[data-planet]"); return one ? one.dataset.planet : ""; },
       map: (planet) => { const link = pictureLink(planet); return link && link.querySelector(".map"); },
       ...newCount(),
     },
@@ -1243,7 +1247,7 @@ startPreviewWithForm(() => {
   let known = [];
   function planets() {
     const pick = el("preview-planets");
-    const found = pick ? [...pick.options].map((o) => o.value) : [...document.querySelectorAll("#preview a.picture")].map((a) => a.dataset.planet);
+    const found = pick ? [...pick.options].map((o) => o.value) : [...document.querySelectorAll("#preview a.picture[data-planet]")].map((a) => a.dataset.planet);
     if (found.length) known = found;
     return known;
   }
@@ -1334,8 +1338,44 @@ startPreviewWithForm(() => {
     el("large-next-name").textContent = strings["js.preview.next"].replace("{planet}", near(1));
   }
 
+  // The star map (SPEC 5.6) opens in the same view, zoomed and panned the
+  // same way, but alone: it has no planet to step to, count or set, so the
+  // style sheet hides those controls while the dialog is marked. Its picture
+  // is a copy of the page's, which has no ids to repeat.
+  function showStarMap(link) {
+    if (prep && prep.inView) endPrep(strings["js.preview.prepare_canceled"]);
+    clearAmounts(places.large);
+    largeOverlay(null);
+    putBack();
+    starShown = true;
+    dialog.setAttribute("data-starmap", "");
+    const keys = el("large-keys");
+    keys.dataset.planets = keys.textContent;
+    keys.textContent = keys.dataset.starmap;
+    tiles = 0;
+    const map = largeMap();
+    map.querySelectorAll(".starmap").forEach((s) => s.remove());
+    map.prepend(link.querySelector(".starmap").cloneNode(true));
+    el("large-frame").removeAttribute("data-missing");
+    el("large-title").textContent = words(link.closest("figure").querySelector("figcaption"));
+    const download = link.closest("li").querySelector("a.download");
+    el("large-download").setAttribute("href", download.getAttribute("href"));
+    el("large-download-name").textContent = words(download);
+    el("large-download").hidden = false;
+  }
+  function endStarMap() {
+    if (!starShown) return;
+    starShown = false;
+    dialog.removeAttribute("data-starmap");
+    const keys = el("large-keys");
+    keys.textContent = keys.dataset.planets;
+    largeMap().querySelectorAll(".starmap").forEach((s) => s.remove());
+  }
+
   // Shows a planet's picture, or draws it first when it has not been drawn.
+  // While the star map is shown, a redraw of the page leaves it there.
   function show(planet) {
+    if (starShown) return false;
     const link = pictureLink(planet);
     // The view's download being prepared is of the planet shown; another planet ends it.
     if (prep && prep.inView && prep.planet !== planet) endPrep(strings["js.preview.prepare_canceled"]);
@@ -1389,7 +1429,7 @@ startPreviewWithForm(() => {
 
   function step(by) {
     const list = planets();
-    if (list.length < 2) return;
+    if (list.length < 2 || starShown) return;
     const at = Math.max(0, list.indexOf(viewing || list[0]));
     if (show(list[(at + by + list.length) % list.length])) announce(el("large-title").textContent);
   }
@@ -1411,6 +1451,13 @@ startPreviewWithForm(() => {
       if (!link || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
       redrawn = false;
+      if (link.hasAttribute("data-starmap")) {
+        showStarMap(link);
+        largeStatus("");
+        dialog.showModal();
+        zoomTo(1);
+        return;
+      }
       show(link.dataset.planet);
       largeStatus("");
       dialog.showModal();
@@ -1468,7 +1515,8 @@ startPreviewWithForm(() => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       // The settings keep their keys; the amounts list at their foot is not a setting, so the map keeps its keys there.
       if (e.target.closest && e.target.closest("#large-settings") && !e.target.closest("#large-amounts-text")) return;
-      const panning = e.target === frame() && viewer.zoom() > 1;
+      // The star map has no planets to step to, so the arrows only pan it.
+      const panning = e.target === frame() && (viewer.zoom() > 1 || starShown);
       // Stepping would end a download being prepared here, so the arrows wait (SPEC 17.1).
       if (arrows[e.key] && !panning && prep && prep.inView) {
         e.preventDefault();
@@ -1494,13 +1542,21 @@ startPreviewWithForm(() => {
       clearAmounts(places.large);
       if (prep && prep.inView) endPrep(strings["js.preview.prepare_canceled"]);
       putBack();
+      if (starShown) {
+        endStarMap();
+        const star = document.querySelector("#preview a.picture[data-starmap]");
+        if (star) star.focus();
+        amounts(places.page);
+        if (places.page.unsaid) sayAmounts(places.page, el(places.page.slot));
+        return;
+      }
       let link = pictureLink(viewing);
       if (!link) {
         // The close event comes a moment after the dialog shuts, so a planet
         // picked on the page meanwhile is already being drawn; it is kept.
         if (pending && !pendingInView) return;
         if (pending) drop();
-        link = document.querySelector("#preview a.picture");
+        link = document.querySelector("#preview a.picture[data-planet]");
         if (link) show(link.dataset.planet);
       }
       if (link) link.focus();
