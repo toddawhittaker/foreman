@@ -110,7 +110,7 @@ func (s *server) mcpForceStop(ctx context.Context, req *mcp.CallToolRequest, in 
 		return mcpRetryPreview(preview, "The game on %s changed state since the preview, so nothing was stopped. Here is a fresh preview and code.", sum.Name)
 	}
 	by := mcpActor(req)
-	res, act, err := s.mcpRun(ctx, sum, game.AuditForceStop, []string{sum.ID}, true, func(ctx context.Context) actionResult {
+	res, act, err := s.mcpRun(ctx, req, sum, game.AuditForceStop, []string{sum.ID}, true, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditForceStop, s.game.ForceStop(ctx, sum.ID, by))
 	})
 	if err != nil {
@@ -128,7 +128,7 @@ func (s *server) mcpDownloadImage(ctx context.Context, req *mcp.CallToolRequest,
 		return nil, mcpActionOut{}, err
 	}
 	by := mcpActor(req)
-	return s.mcpRun(ctx, sum, game.AuditImageDownload, []string{sum.ID}, false, func(ctx context.Context) actionResult {
+	return s.mcpRun(ctx, req, sum, game.AuditImageDownload, []string{sum.ID}, false, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditImageDownload, s.game.PullImage(ctx, sum.ID, by))
 	})
 }

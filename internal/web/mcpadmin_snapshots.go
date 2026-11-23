@@ -152,7 +152,7 @@ func (s *server) mcpRestoreSnapshot(ctx context.Context, req *mcp.CallToolReques
 		stop = game.StopOptions{Countdown: s.stopCountdown(ctx)}
 	}
 	id, snap, by := p.WorldID, p.Snapshot.Name, mcpActor(req)
-	res, act, err := s.mcpRun(ctx, sum, game.ActionRestore, []string{id}, true, func(ctx context.Context) actionResult {
+	res, act, err := s.mcpRun(ctx, req, sum, game.ActionRestore, []string{id}, true, func(ctx context.Context) actionResult {
 		before, err := s.game.Restore(ctx, id, by, snap, stop)
 		res := s.finish(id, game.ActionRestore, err)
 		res.Restored, res.Undo = snap, before.Name

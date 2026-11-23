@@ -23,7 +23,7 @@
   "server.none.heading": "Brak aktywnego świata",
   "server.none.text": "Nie ma jeszcze aktywnego świata, więc nie ma serwera do uruchomienia. Na stronie Światy można zaimportować świat lub przesłać zapis; pierwszy świat stanie się aktywny.",
   "server.none.go": "Przejdź do światów",
-  "server.players.heading": "Gracze online",
+  "server.players.heading": "Gracze",
   "server.facts.switching": "Przełączanie",
   "server.facts.switching_value": "Z {from} na {to}",
   "server.facts.uptime": "Czas działania",
@@ -65,11 +65,12 @@
     "few": "Online: {count}",
     "many": "Online: {count}"
   },
-  "server.players.caption_stop": {
-    "one": "Online w chwili rozpoczęcia zatrzymywania: {count}",
-    "few": "Online w chwili rozpoczęcia zatrzymywania: {count}",
-    "many": "Online w chwili rozpoczęcia zatrzymywania: {count}"
-  },
+  "server.players.table_caption": "Gracze: {online} online, {total} w tym zapisie",
+  "server.players.table_caption_stop": "Gracze: {online} online w chwili rozpoczęcia zatrzymywania, {total} w tym zapisie",
+  "server.players.table_caption_online": "Gracze: {online} online",
+  "server.players.table_caption_online_stop": "Gracze: {online} online w chwili rozpoczęcia zatrzymywania",
+  "server.players.table_caption_saved": "Gracze: {total} w tym zapisie",
+  "server.players.total_time": "{total} łącznie",
   "server.players.player": "Gracz",
   "server.players.online_for": "Online od",
   "server.players.unknown": "nieznane",
@@ -631,5 +632,17 @@
     "few": "{count} graczy w tym zapisie",
     "many": "{count} graczy w tym zapisie"
   },
-  "server.playtime.reading": "Trwa odczyt"
+  "server.playtime.reading": "Trwa odczyt",
+  "server.players.online": "Online",
+  "server.players.time": "Czas online lub gry",
+  "server.players.inexact": "Czasy gry mogą być nieco niedokładne. Ponowne odczytanie zapisu na stronie świata je poprawi.",
+  "server.players.tracked_since": "Śledzone od {when}.",
+  "server.players.all": {
+    "one": "Wszyscy gracze ({count})",
+    "few": "Wszyscy gracze ({count})",
+    "many": "Wszyscy gracze ({count})"
+  },
+  "server.players.none_yet": "Nikt jeszcze nie grał na tym świecie.",
+  "server.players.announce_joined": "Dołączenie do gry: {names}.",
+  "server.players.announce_left": "Wyjście z gry: {names}."
 }

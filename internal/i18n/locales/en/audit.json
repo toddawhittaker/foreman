@@ -47,6 +47,7 @@
   "audit.action.webhook-change": "Webhook changed",
   "audit.action.webhook-delete": "Webhook deleted",
   "audit.action.whitelist-switch": "Whitelist turned on or off",
+  "audit.action.wiki-icons-set": "Game icons from the wiki turned on or off",
   "audit.action.world-archive": "World archived",
   "audit.action.world-delete": "World deleted",
   "audit.action.world-export": "World exported",

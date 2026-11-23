@@ -710,7 +710,7 @@ export async function expectFollowed(page: Page, sentence: string) {
 // small, the control's own box is at least 24 by 24 px, and it lies under one
 // of those bars while the bar is sticky. Every other finding still fails.
 // Todd approved this exception on 2026-11-13.
-const stickyBars = ".select-bar, .generate > .gen-actions, .form-foot, .site-strip, .site > .product, .site > .menu";
+const stickyBars = ".select-bar, .generate > .gen-actions, .form-foot, .flow-foot, .site-strip, .site > .product, .site > .menu";
 type AxeCheck = { id: string; data?: unknown };
 type AxeNode = { target: unknown[]; any?: AxeCheck[]; all?: AxeCheck[]; none?: AxeCheck[] };
 type AxeViolation = { id: string; nodes: AxeNode[] };

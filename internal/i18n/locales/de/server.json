@@ -22,7 +22,7 @@
   "server.none.heading": "Keine aktive Welt",
   "server.none.text": "Es ist noch keine Welt aktiv, also gibt es keinen Server zum Ausführen. Importiere eine Welt oder lade einen Speicherstand auf der Seite „Welten“ hoch; die erste Welt wird zur aktiven.",
   "server.none.go": "Zu den Welten",
-  "server.players.heading": "Spieler online",
+  "server.players.heading": "Spieler",
   "server.facts.switching": "Wechsel",
   "server.facts.switching_value": "Von {from} zu {to}",
   "server.facts.uptime": "Laufzeit",
@@ -63,10 +63,12 @@
     "one": "{count} online",
     "other": "{count} online"
   },
-  "server.players.caption_stop": {
-    "one": "{count} online, als das Stoppen begann",
-    "other": "{count} online, als das Stoppen begann"
-  },
+  "server.players.table_caption": "Spieler: {online} online, {total} in diesem Speicherstand",
+  "server.players.table_caption_stop": "Spieler: {online} online, als das Stoppen begann, {total} in diesem Speicherstand",
+  "server.players.table_caption_online": "Spieler: {online} online",
+  "server.players.table_caption_online_stop": "Spieler: {online} online, als das Stoppen begann",
+  "server.players.table_caption_saved": "Spieler: {total} in diesem Speicherstand",
+  "server.players.total_time": "{total} insgesamt",
   "server.players.player": "Spieler",
   "server.players.online_for": "Online seit",
   "server.players.unknown": "unbekannt",
@@ -610,5 +612,16 @@
     "one": "{count} Spieler in diesem Speicherstand",
     "other": "{count} Spieler in diesem Speicherstand"
   },
-  "server.playtime.reading": "Wird gelesen"
+  "server.playtime.reading": "Wird gelesen",
+  "server.players.online": "Online",
+  "server.players.time": "Zeit online oder gespielt",
+  "server.players.inexact": "Die Spielzeiten können etwas abweichen. Ein erneutes Lesen des Spielstands auf der Seite der Welt korrigiert sie.",
+  "server.players.tracked_since": "Erfasst seit {when}.",
+  "server.players.all": {
+    "one": "Alle Spieler ({count})",
+    "other": "Alle Spieler ({count})"
+  },
+  "server.players.none_yet": "Auf dieser Welt hat noch niemand gespielt.",
+  "server.players.announce_joined": "{names} ist beigetreten.",
+  "server.players.announce_left": "{names} hat das Spiel verlassen."
 }

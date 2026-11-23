@@ -68,7 +68,7 @@ test("make an online player admin in two clicks, then undo it in one more", asyn
   await expectWithin(clicks, 2, "Make an online player admin");
   expect(await commands(fakeGame!)).toContain("/promote alice");
   // The row reads the admin list the game wrote: the mark, and the opposite change.
-  await expect(page.locator("#ps-alice .badge")).toHaveText("Admin");
+  await expect(page.locator("#ps-alice .badge:not(.badge--online)")).toHaveText("Admin");
   await expect(page.locator("#pa-demote-alice")).toHaveCount(1);
   await checkPage(page);
 

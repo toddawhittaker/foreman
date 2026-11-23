@@ -34,7 +34,7 @@
   <ul class="worlds" role="list">
     {{- range .}}
     <li>
-      <h2 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Unfinished}} <span class="badge">{{t "worlds.badge.unfinished"}}</span>{{end}}{{if .Active}} <span class="live-chip"><span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{if $.Page.HaveState}} <span class="state state--{{$.Page.ActiveState}}">{{msg $.Page.StateWord}}</span>{{end}}</span>{{end}}</h2>
+      <h2 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if index $.Page.Ready .ID}} <span class="badge">{{t "worlds.badge.ready"}}</span>{{else if .Unfinished}} <span class="badge">{{t "worlds.badge.unfinished"}}</span>{{end}}{{if .Active}} <span class="live-chip"><span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{if $.Page.HaveState}} <span class="state state--{{$.Page.ActiveState}}">{{msg $.Page.StateWord}}</span>{{end}}</span>{{end}}</h2>
       {{- if .Unreadable}}
       <p>{{tHTML "worlds.unreadable" "folder" (code .ID)}}</p>
       {{- else if .Newer}}

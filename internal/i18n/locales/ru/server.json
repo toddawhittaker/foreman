@@ -23,7 +23,7 @@
   "server.none.heading": "Нет активного мира",
   "server.none.text": "Активного мира пока нет, поэтому нет и сервера для запуска. Импортируйте мир или загрузите сохранение на странице «Миры»; первый мир станет активным.",
   "server.none.go": "Перейти к мирам",
-  "server.players.heading": "Игроки в сети",
+  "server.players.heading": "Игроки",
   "server.facts.switching": "Переключение",
   "server.facts.switching_value": "С {from} на {to}",
   "server.facts.uptime": "Время работы",
@@ -65,11 +65,12 @@
     "few": "{count} в сети",
     "many": "{count} в сети"
   },
-  "server.players.caption_stop": {
-    "one": "{count} в сети на начало остановки",
-    "few": "{count} в сети на начало остановки",
-    "many": "{count} в сети на начало остановки"
-  },
+  "server.players.table_caption": "Игроки: {online} в сети, {total} в этом сохранении",
+  "server.players.table_caption_stop": "Игроки: {online} в сети на начало остановки, {total} в этом сохранении",
+  "server.players.table_caption_online": "Игроки: {online} в сети",
+  "server.players.table_caption_online_stop": "Игроки: {online} в сети на начало остановки",
+  "server.players.table_caption_saved": "Игроки: {total} в этом сохранении",
+  "server.players.total_time": "{total} всего",
   "server.players.player": "Игрок",
   "server.players.online_for": "В сети уже",
   "server.players.unknown": "неизвестно",
@@ -631,5 +632,17 @@
     "few": "{count} игрока в этом сохранении",
     "many": "{count} игроков в этом сохранении"
   },
-  "server.playtime.reading": "Читается"
+  "server.playtime.reading": "Читается",
+  "server.players.online": "В сети",
+  "server.players.time": "Время в сети или в игре",
+  "server.players.inexact": "Время игры может быть немного неточным. Повторное чтение сохранения на странице мира исправит его.",
+  "server.players.tracked_since": "Учитывается с {when}.",
+  "server.players.all": {
+    "one": "Все игроки ({count})",
+    "few": "Все игроки ({count})",
+    "many": "Все игроки ({count})"
+  },
+  "server.players.none_yet": "В этом мире ещё никто не играл.",
+  "server.players.announce_joined": "В игру вошли: {names}.",
+  "server.players.announce_left": "Из игры вышли: {names}."
 }

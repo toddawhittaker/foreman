@@ -85,7 +85,21 @@ startPreviewWithForm(() => {
   }
 
   function setStatus(on) {
-    if (status) status.textContent = on ? status.dataset.text : "";
+    const words = document.getElementById("preview-status-text");
+    if (status && words) words.textContent = on ? status.dataset.text : "";
+    // The counting's moving bar shows while any redraw runs, on the page and in the large view.
+    for (const id of ["preview-status-wait", "large-drawing-wait"]) {
+      const wait = document.getElementById(id);
+      if (wait) wait.classList.toggle("htmx-request", on);
+    }
+    // A redraw makes "Map preview ready." stale, so the large view's status line drops it, said or waiting.
+    const ready = strings["js.generate.preview_ready"];
+    const said = document.getElementById("large-status");
+    if (on && said && said.textContent.startsWith(ready)) said.textContent = "";
+    if (on && waitingSaid.startsWith(ready)) {
+      clearTimeout(saying);
+      waitingSaid = "";
+    }
     const slot = document.getElementById("preview");
     if (slot) slot.setAttribute("aria-busy", on ? "true" : "false");
     // The large view fades its picture the same way while the next one is drawn.
@@ -608,6 +622,31 @@ startPreviewWithForm(() => {
   });
   document.addEventListener("htmx:afterSettle", () => placeSize(document.getElementById("preview")));
 
+  // The Download line grows past its link's row when it wraps, when the
+  // button's text wraps, and when a stopped download's message opens in it;
+  // CSS cannot measure that, so the picture is told how much more room the
+  // line takes (DESIGN 8.8). The line's content follows the pane's width and
+  // the script's own changes, so both are watched.
+  function reserveLine() {
+    for (const row of document.querySelectorAll(".gen-preview .picture-actions")) {
+      const boxes = [...row.children].map((c) => c.getBoundingClientRect()).filter((b) => b.width && b.height);
+      const list = row.closest(".pictures");
+      if (!boxes.length || !list) continue;
+      const extra = Math.max(...boxes.map((b) => b.bottom)) - boxes[0].bottom;
+      list.style.setProperty("--chart-row", `${Math.max(0, Math.ceil(extra))}px`);
+    }
+  }
+  const pane = document.querySelector(".gen-preview");
+  if (pane) {
+    let marking = 0;
+    const mark = () => {
+      if (!marking) marking = requestAnimationFrame(() => { marking = 0; reserveLine(); });
+    };
+    new ResizeObserver(mark).observe(pane);
+    new MutationObserver(mark).observe(pane, { childList: true, characterData: true, subtree: true, attributeFilter: ["hidden", "class"] });
+    reserveLine();
+  }
+
   // Puts the new section in place; a control that had focus there keeps it.
   function swap(fresh) {
     const slot = document.getElementById("preview");
@@ -745,8 +784,9 @@ startPreviewWithForm(() => {
   // The large view: a picture viewer over a scrolling frame (DESIGN 8.8).
   // Zoom is a factor of the fitted size, from 1 up to the larger of 8 and
   // 8 CSS pixels per tile; scrolling keeps the pin inside the picture.
-  const factor = 1.15;
-  let zoom = 1;
+  // Zoom and pan come from viewer.js; it is attached with the dialog below.
+  let viewer = null;
+  const zoomTo = (next, x, y) => viewer.zoomTo(next, x, y);
   let tiles = 0; // the shown picture's width in tiles
   const lang = document.documentElement.lang || undefined;
   const el = (id) => document.getElementById(id);
@@ -1276,42 +1316,9 @@ startPreviewWithForm(() => {
   }
 
   // Measured from the picture itself, as the frame's own size is rounded.
-  function maxZoom() {
+  function maxZoom(zoom) {
     const fit = frame().querySelector(".map").getBoundingClientRect().width / zoom || 1;
     return Math.max(8, (8 * (tiles || fit)) / fit);
-  }
-
-  // Sets the zoom, keeping the spot of the picture under a point of the
-  // window (the frame's centre when none is given) under that point.
-  function zoomTo(next, x, y) {
-    const f = frame();
-    const map = f.querySelector(".map");
-    if (x === undefined) {
-      const box = f.getBoundingClientRect();
-      x = box.left + f.clientWidth / 2;
-      y = box.top + f.clientHeight / 2;
-    }
-    const before = map.getBoundingClientRect();
-    const u = (x - before.left) / (before.width || 1);
-    const v = (y - before.top) / (before.height || 1);
-    const most = maxZoom();
-    zoom = Math.min(most, Math.max(1, next));
-    f.style.setProperty("--zoom", String(zoom));
-    const after = map.getBoundingClientRect();
-    f.scrollLeft += after.left + u * after.width - x;
-    f.scrollTop += after.top + v * after.height - y;
-    f.toggleAttribute("data-zoomed", zoom > 1);
-    el("large-out").setAttribute("aria-disabled", String(zoom <= 1));
-    el("large-in").setAttribute("aria-disabled", String(zoom >= most * 0.9999));
-    // The labels are placed for the new size now, not a frame later, so no
-    // label is ever seen where it meets another at the size shown.
-    placeAll();
-  }
-
-  // A zoom from a key or a button is said as text; a wheel or a pinch is seen.
-  function zoomSaid(next) {
-    zoomTo(next);
-    largeStatus(strings["js.preview.zoom"].replace("{level}", new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 0 }).format(zoom)));
   }
 
   // The arrows are named after the planets they lead to.
@@ -1362,7 +1369,7 @@ startPreviewWithForm(() => {
     largeOverlay(link);
     el("large-download").hidden = false;
     // A bigger picture may allow more zoom, or a smaller one less.
-    if (dialog.open) zoomTo(zoom);
+    if (dialog.open) zoomTo(viewer.zoom());
     amounts();
     return true;
   }
@@ -1388,6 +1395,16 @@ startPreviewWithForm(() => {
   }
 
   if (dialog) {
+    viewer = window.ForemanViewer.attach(frame(), {
+      map: () => frame().querySelector(".map"),
+      most: maxZoom,
+      buttons: { in: el("large-in"), out: el("large-out") },
+      strings,
+      say: largeStatus,
+      // The labels are placed for the new size now, not a frame later, so no
+      // label is ever seen where it meets another at the size shown.
+      zoomed: placeAll,
+    });
     document.addEventListener("click", (e) => {
       const link = e.target.closest("#preview a.picture");
       // A click with a modifier still opens the picture as the browser would.
@@ -1404,8 +1421,6 @@ startPreviewWithForm(() => {
     });
     el("large-prev").addEventListener("click", () => step(-1));
     el("large-next").addEventListener("click", () => step(1));
-    el("large-in").addEventListener("click", () => zoomSaid(zoom * factor));
-    el("large-out").addEventListener("click", () => zoomSaid(zoom / factor));
     el("large-close").addEventListener("click", () => dialog.close());
     // A settings field the view hides as it narrows gives the focus to the map,
     // whether the browser has already dropped it or not.
@@ -1433,67 +1448,6 @@ startPreviewWithForm(() => {
       draw(true);
     });
 
-    // One wheel notch is one step; a touchpad's small moves are part steps.
-    frame().addEventListener("wheel", (e) => {
-      e.preventDefault();
-      const steps = e.deltaMode === 0 ? Math.max(-1, Math.min(1, e.deltaY / 100)) : Math.sign(e.deltaY);
-      zoomTo(zoom * Math.pow(factor, -steps), e.clientX, e.clientY);
-    }, { passive: false });
-
-    // One pointer drags the picture; two pinch, zooming around their middle.
-    const pointers = new Map();
-    // Where a lone pointer went down, so a tap can centre the spot (WCAG 2.5.7).
-    let tap = null;
-    let spread = 0;
-    let middle = null;
-    frame().addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      frame().setPointerCapture(e.pointerId);
-      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      tap = pointers.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
-      spread = 0;
-      if (pointers.size !== 2) return;
-      const [a, b] = [...pointers.values()];
-      spread = Math.hypot(a.x - b.x, a.y - b.y);
-      middle = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    });
-    frame().addEventListener("pointermove", (e) => {
-      const last = pointers.get(e.pointerId);
-      if (!last) return;
-      const f = frame();
-      if (pointers.size === 1) {
-        f.scrollLeft -= e.clientX - last.x;
-        f.scrollTop -= e.clientY - last.y;
-      }
-      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pointers.size !== 2) return;
-      const [a, b] = [...pointers.values()];
-      const apart = Math.hypot(a.x - b.x, a.y - b.y);
-      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-      if (spread) {
-        f.scrollLeft -= mid.x - middle.x;
-        f.scrollTop -= mid.y - middle.y;
-        zoomTo((zoom * apart) / spread, mid.x, mid.y);
-      }
-      spread = apart;
-      middle = mid;
-    });
-    const lift = (e) => {
-      pointers.delete(e.pointerId);
-      spread = 0;
-      if (!tap || tap.id !== e.pointerId) return;
-      const moved = Math.hypot(e.clientX - tap.x, e.clientY - tap.y);
-      tap = null;
-      if (e.type !== "pointerup" || moved >= 6 || zoom <= 1) return;
-      const f = frame();
-      const box = f.getBoundingClientRect();
-      f.scrollLeft += e.clientX - (box.left + box.width / 2);
-      f.scrollTop += e.clientY - (box.top + box.height / 2);
-    };
-    frame().addEventListener("pointerup", lift);
-    frame().addEventListener("pointercancel", lift);
-    frame().addEventListener("lostpointercapture", lift);
-
     // The arrows step between planets; a zoomed picture with focus scrolls
     // with them instead. The browser's own zoom keys are left alone, and a
     // settings field keeps every key of its own (Escape still closes).
@@ -1514,7 +1468,7 @@ startPreviewWithForm(() => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       // The settings keep their keys; the amounts list at their foot is not a setting, so the map keeps its keys there.
       if (e.target.closest && e.target.closest("#large-settings") && !e.target.closest("#large-amounts-text")) return;
-      const panning = e.target === frame() && zoom > 1;
+      const panning = e.target === frame() && viewer.zoom() > 1;
       // Stepping would end a download being prepared here, so the arrows wait (SPEC 17.1).
       if (arrows[e.key] && !panning && prep && prep.inView) {
         e.preventDefault();
@@ -1523,10 +1477,7 @@ startPreviewWithForm(() => {
         prep.waitSaid = true;
       }
       else if (arrows[e.key] && !panning) step(arrows[e.key]);
-      else if (e.key === "+" || e.key === "=") zoomSaid(zoom * factor);
-      else if (e.key === "-") zoomSaid(zoom / factor);
-      else if (e.key === "0") zoomSaid(1);
-      else return;
+      else if (!viewer.zoomKey(e)) return;
       e.preventDefault();
     });
     // Focus goes back to the picture shown, which is the one that opened it

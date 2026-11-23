@@ -94,6 +94,11 @@ test("plus and minus zoom around the centre, 0 fits, and the level is said", asy
   expect(Math.abs(after.u - spot.u) * (await width(page))).toBeLessThan(1.5);
   await page.keyboard.press("-");
   await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
+  // Shifted minus is the same key as on the factory map.
+  await page.keyboard.press("+");
+  await expect(page.locator("#large-status")).toHaveText("Zoom 132%");
+  await page.keyboard.press("_");
+  await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
   // The buttons do the same, and say it too.
   await dialog(page).getByRole("button", { name: "Zoom in" }).press("Enter");
   await expect(page.locator("#large-status")).toHaveText("Zoom 132%");
@@ -587,5 +592,5 @@ test("Enter in a field of the main form, outside the large view, still saves the
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#generate-seed").fill("4242");
   await page.locator("#generate-seed").press("Enter");
-  await expect(page).toHaveURL(`${newMapPath(world)}?saved=1`);
+  await expect(page).toHaveURL(`/worlds/${world}?setup=done`);
 });

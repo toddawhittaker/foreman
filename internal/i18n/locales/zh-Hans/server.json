@@ -21,7 +21,7 @@
   "server.none.heading": "没有活动世界",
   "server.none.text": "目前还没有活动世界，所以没有可运行的服务器。请在“世界”页面导入世界或上传存档；第一个世界将成为活动世界。",
   "server.none.go": "前往世界",
-  "server.players.heading": "在线玩家",
+  "server.players.heading": "玩家",
   "server.facts.switching": "正在切换",
   "server.facts.switching_value": "从 {from} 到 {to}",
   "server.facts.uptime": "运行时间",
@@ -61,9 +61,12 @@
   "server.players.caption": {
     "other": "在线 {count} 人"
   },
-  "server.players.caption_stop": {
-    "other": "开始停止时在线 {count} 人"
-  },
+  "server.players.table_caption": "玩家：在线 {online} 人，此存档共 {total} 人",
+  "server.players.table_caption_stop": "玩家：开始停止时在线 {online} 人，此存档共 {total} 人",
+  "server.players.table_caption_online": "玩家：在线 {online} 人",
+  "server.players.table_caption_online_stop": "玩家：开始停止时在线 {online} 人",
+  "server.players.table_caption_saved": "玩家：此存档共 {total} 人",
+  "server.players.total_time": "共 {total}",
   "server.players.player": "玩家",
   "server.players.online_for": "在线时长",
   "server.players.unknown": "未知",
@@ -589,5 +592,15 @@
   "server.playtime.players": {
     "other": "此存档中有 {count} 名玩家"
   },
-  "server.playtime.reading": "正在读取"
+  "server.playtime.reading": "正在读取",
+  "server.players.online": "在线",
+  "server.players.time": "在线或游玩时间",
+  "server.players.inexact": "游戏时长可能略有偏差。在世界页面上重新读取存档即可修正。",
+  "server.players.tracked_since": "自 {when} 起记录。",
+  "server.players.all": {
+    "other": "全部 {count} 名玩家"
+  },
+  "server.players.none_yet": "还没有人玩过这个世界。",
+  "server.players.announce_joined": "{names} 已加入。",
+  "server.players.announce_left": "{names} 已离开。"
 }

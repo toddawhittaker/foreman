@@ -378,8 +378,10 @@ func modItems(res modResult, act mods.Action, cs []mods.Change) i18n.Msg {
 // whether world kept running, and offers the next step as a control: the
 // account page for a refused login, else trying the same plan again. Back
 // is where the account page returns when there is no plan to return to.
-// Any other failure keeps its usual words and no fix.
-func modsFailure(err error, res modResult, world string, state game.State, back string) (i18n.Msg, *Offer) {
+// A file over the size limit gets a link to the limit for an admin and a
+// sentence for anyone else, and no Try again, since the file is as large
+// next time (SPEC 14.10). Any other failure keeps its usual words and no fix.
+func modsFailure(err error, res modResult, world string, state game.State, back string, admin bool) (i18n.Msg, *Offer) {
 	account := &Offer{Path: accountLink(cmp.Or(res.Retry, back)), Label: i18n.M("server.mods_failed.account")}
 	if errors.Is(err, game.ErrNoModFetcher) {
 		return failureText(err), account
@@ -389,6 +391,7 @@ func modsFailure(err error, res modResult, world string, state game.State, back 
 		return failureText(err), nil
 	}
 	mod, version := res.mod(de.Mod), de.Version
+	tooLarge, _ := errors.AsType[*modportal.TooLargeError](err)
 	var what i18n.Msg
 	switch {
 	case errors.Is(err, modportal.ErrChecksum):
@@ -397,6 +400,8 @@ func modsFailure(err error, res modResult, world string, state game.State, back 
 		what = i18n.M("server.mods_failed.unauthorized", "mod", mod, "version", version)
 	case errors.Is(err, modportal.ErrNotOnPortal):
 		what = i18n.M("server.mods_failed.gone", "mod", mod, "version", version)
+	case tooLarge != nil:
+		what = tooLargeMsg(mod, version, tooLarge)
 	default:
 		what = i18n.M("server.mods_failed.download", "mod", mod, "version", version)
 	}
@@ -412,6 +417,10 @@ func modsFailure(err error, res modResult, world string, state game.State, back 
 	switch {
 	case errors.Is(err, modportal.ErrUnauthorized):
 		return what, account
+	case tooLarge != nil && admin:
+		return what, &Offer{Path: generalPath() + "#" + modUploadFieldID, Label: i18n.M("mods.error.too_large_fix")}
+	case tooLarge != nil:
+		return join(what, i18n.M("mods.error.too_large_ask")), nil
 	case res.Retry != "":
 		return what, &Offer{Path: res.Retry, Label: i18n.M("server.mods_failed.try_again")}
 	}

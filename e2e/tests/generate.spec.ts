@@ -46,10 +46,10 @@ async function setStep(page: Page, id: string, code: string) {
   }, code);
 }
 
-// Saves step 3 and waits for its notice that the settings are saved (SPEC 5.6).
+// Finishes step 4 and waits for the world page's Ready Done box (SPEC 5.6).
 async function save(page: Page) {
-  await page.getByRole("button", { name: "Save map settings" }).click();
-  await expect(page.locator("#newmap-done")).toBeVisible();
+  await page.getByRole("button", { name: "Finish" }).click();
+  await expect(page.locator("#world-ready")).toBeVisible();
 }
 
 test("a world with the defaults takes three clicks from the Server page and lands on its mods", async ({ page, foreman, fakeGame }) => {
@@ -68,7 +68,7 @@ test("a world with the defaults takes three clicks from the Server page and land
   await checkPage(page);
 
   await page.getByLabel("World name").fill("Fresh start");
-  await page.getByRole("button", { name: "Generate world" }).click();
+  await page.getByRole("button", { name: "Next: Mods" }).click();
 
   await expect(page).toHaveURL("/worlds/fresh-start/mods?generated=1");
   await expectWithin(clicks, 3, "generate a world with the defaults");
@@ -150,7 +150,7 @@ test("errors name the field, keep what was typed and make nothing", async ({ pag
   await page.goto("/generate");
   await page.getByLabel("World name").fill("base"); // the name of the active world
   await (await typedVersion(page)).fill("2.1.24");
-  await page.getByRole("button", { name: "Generate world" }).click();
+  await page.getByRole("button", { name: "Next: Mods" }).click();
 
   const summary = page.locator("#error-summary");
   await expect(summary).toContainText("Another world already has this name");
@@ -167,14 +167,14 @@ test("a seed error names the field, keeps what was typed and saves nothing", asy
   const id = await openNewMap(page);
   const before = worldJSON(foreman.dataDir, id).new_map;
   await page.locator("#generate-seed").fill("not a number");
-  await page.getByRole("button", { name: "Save map settings" }).click();
+  await page.getByRole("button", { name: "Finish" }).click();
 
   await expect(page.locator("#error-summary")).toContainText("Enter the seed as a whole number");
   await expect(page.locator("#generate-seed")).toHaveValue("not a number");
   // A seed error is in no tab, so the page keeps the tab it was on.
   await expect(page.locator("#panel-resources")).toBeVisible();
   await checkPage(page);
-  await expect(page.locator("#newmap-done")).toHaveCount(0);
+  await expect(page.locator("#world-ready")).toHaveCount(0);
   expect(worldJSON(foreman.dataDir, id).new_map).toEqual(before);
 });
 
@@ -183,7 +183,7 @@ test("a long world name fits at any width", async ({ page, foreman, fakeGame }) 
   await page.goto("/generate");
   const name = "A very long world name ".repeat(3).trim().slice(0, 60);
   await page.getByLabel("World name").fill(name);
-  await page.getByRole("button", { name: "Generate world" }).click();
+  await page.getByRole("button", { name: "Next: Mods" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(name);
   await checkPage(page);
 });
@@ -280,10 +280,10 @@ test("Space Age is refused for 1.1 on step 1, and the fixed form makes the world
   await (await typedVersion(page)).fill("1.1.110");
   await page.getByLabel("World name").fill("Old game");
   await page.getByLabel("Download the game image", { exact: false }).uncheck();
-  await page.getByRole("button", { name: "Generate world" }).click();
+  await page.getByRole("button", { name: "Next: Mods" }).click();
   await expect(page.locator("#error-summary")).toContainText("Space Age needs Factorio 2.0 or later");
   await page.getByLabel("Space Age is on").uncheck();
-  await page.getByRole("button", { name: "Generate world" }).click();
+  await page.getByRole("button", { name: "Next: Mods" }).click();
   await expect(page).toHaveURL("/worlds/old-game/mods?generated=1");
   expect(worldJSON(foreman.dataDir, "old-game")).toMatchObject({ game_version: "1.1.110", space_age: false });
 });
@@ -381,7 +381,7 @@ test.describe("map preview", () => {
     await fakeGame!.call("/preview-mode", { mode: "fail" });
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(page.locator("#preview .message--error")).toContainText("The game could not make the map preview. You can still generate the world.");
-    await expect(page.getByRole("button", { name: "Save map settings" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Finish" })).toBeEnabled();
     await checkPage(page);
     await save(page);
   });
@@ -491,16 +491,16 @@ test.describe("the preview keeps focus and says what happened", () => {
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(page.getByRole("button", { name: "Preview map" })).toHaveAttribute("aria-disabled", "true");
     await page.locator("#generate-seed").press("Enter");
-    await page.getByRole("button", { name: "Save map settings" }).click({ force: true });
+    await page.getByRole("button", { name: "Finish" }).click({ force: true });
     await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
     // Neither attempt saved: the page is still the form.
     await expect(page).toHaveURL(newMapPath(id));
-    await expect(page.locator("#newmap-done")).toHaveCount(0);
+    await expect(page.locator("#world-ready")).toHaveCount(0);
   });
 
   test("an old error summary is dropped, and the preview is still announced", async ({ page }) => {
     await page.locator("#generate-seed").fill("not a number");
-    await page.getByRole("button", { name: "Save map settings" }).click();
+    await page.getByRole("button", { name: "Finish" }).click();
     await expect(page.locator("#error-summary")).toBeFocused();
     await page.locator("#generate-seed").fill("55");
     const button = page.getByRole("button", { name: "Preview map" });
@@ -558,9 +558,9 @@ test("a preset with a seed is saved with the keyboard alone, previewing first", 
   await expect(page.locator("#generate-seed")).toHaveValue("777");
   // The primary button ends the action row, after Preview map (DESIGN 7.1).
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Save map settings" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Finish" })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page.locator("#newmap-done")).toBeVisible();
+  await expect(page.locator("#world-ready")).toBeVisible();
   expect(worldJSON(foreman.dataDir, id)).toMatchObject({ new_map: { preset: "rich-resources", seed: 777 } });
 });
 
@@ -662,7 +662,7 @@ test.describe("the map settings tabs", () => {
     await tab(page, "Enemy").click();
     await page.getByLabel("Time factor").fill("fast");
     await tab(page, "Resources").click();
-    await page.getByRole("button", { name: "Save map settings" }).click();
+    await page.getByRole("button", { name: "Finish" }).click();
     await expect(page.locator("#error-summary")).toContainText("Enter a whole number from 0 to 1000 for Time factor.");
     // The page comes back on the tab that holds the error.
     await expect(page.locator("#panel-enemy")).toBeVisible();
@@ -841,7 +841,7 @@ test("settings that turn achievements off are warned of at once", async ({ page,
   await checkPage(page);
   // The server says the same of the page it sends back; a bad seed makes it send the form back.
   await page.locator("#generate-seed").fill("not a number");
-  await page.getByRole("button", { name: "Save map settings" }).click();
+  await page.getByRole("button", { name: "Finish" }).click();
   await expect(page.locator("#error-summary")).toBeVisible();
   await expect(page.locator("#mg-peaceful-ach")).toHaveText("Turns off some achievements.");
   await expect(summary.getByRole("listitem")).toHaveText(["Cannot be unlocked in peaceful mode.", "Cannot be unlocked with easier enemy evolution settings."]);
@@ -880,7 +880,7 @@ test.describe("without script", () => {
     await expect(page.locator("#mg-nauvis-iron-ore-size")).toBeVisible();
 
     await page.locator("#generate-preset").selectOption({ label: "Death world" });
-    await page.getByRole("button", { name: "Save map settings" }).click();
+    await page.getByRole("button", { name: "Finish" }).click();
     await expect(page.locator("#map-refilled")).toContainText("The settings below were filled from the preset “Death world”.");
     await expect(page.locator("#mg-nauvis-enemy-base-size")).toHaveValue("200");
     await save(page);
@@ -890,14 +890,14 @@ test.describe("without script", () => {
     await page.goto(newMapPath(id));
     await page.getByLabel("Width").fill("64");
     await page.locator("#generate-seed").fill("not a number");
-    await page.getByRole("button", { name: "Save map settings" }).click(); // a bad seed: shown again, changed
+    await page.getByRole("button", { name: "Finish" }).click(); // a bad seed: shown again, changed
     await expect(page.locator("#preset-modified")).toHaveText("[modified]");
     await page.getByRole("button", { name: "Reset to defaults" }).click();
     await expect(page.getByLabel("Width")).toHaveValue("0");
   });
 });
 
-// DESIGN 7.1, WCAG 1.3.2 and 2.4.3: the action bar shows Cancel, Preview map
+// DESIGN 7.1, WCAG 1.3.2 and 2.4.3: the action bar shows Back, Preview map
 // and Save map settings in code order at every width, so the eye and Tab agree.
 for (const [name, size, axis] of [
   ["a wide screen", { width: 1280, height: 800 }, "x"],
@@ -909,7 +909,7 @@ for (const [name, size, axis] of [
     await openNewMap(page);
     const bar = page.locator(".generate > .gen-actions");
     await expect(page.locator("#preview-button")).toBeVisible();
-    await bar.getByRole("link", { name: "Cancel" }).focus();
+    await bar.locator("#flow-back").focus();
     const seen: { id: string; pos: number }[] = [];
     for (let i = 0; i < 3; i++) {
       if (i > 0) await page.keyboard.press("Tab");
@@ -919,7 +919,7 @@ for (const [name, size, axis] of [
         return { id: el.contains(f) ? (f.id || f.tagName) : "outside", pos: axis === "x" ? r.left : r.top };
       }, axis));
     }
-    expect(seen.map((s) => s.id)).toEqual(["A", "preview-button", "newmap-save"]);
+    expect(seen.map((s) => s.id)).toEqual(["flow-back", "preview-button", "newmap-save"]);
     expect(seen[1].pos).toBeGreaterThan(seen[0].pos);
     expect(seen[2].pos).toBeGreaterThan(seen[1].pos);
   });

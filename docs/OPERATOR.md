@@ -548,37 +548,46 @@ account**. The page closes for good once the account exists.
 5. Leave **Also download the game image if this host does not have it**
    ticked. Foreman then pulls the game image for that version from Docker
    Hub after the world is made.
-6. Choose **Generate world**. This makes the world and opens step 2, its
+6. Choose **Next: Mods**. This makes the world and opens step 2, its
    Mods tab.
 7. Pick the world's mods there (see the next section), or choose **Skip to
-   map settings**.
-8. On step 3, **Map settings**, leave the default preset or change it.
+   mod settings**. While you set up a world, the plan's button is at the
+   foot of the page: choose **Next: Review 3 mods** (the count is your
+   plan's), read the plan, then choose **Next: Mod settings**, which
+   installs the mods and goes on to step 3.
+8. On step 3, **Mod settings**, change any startup setting a mod has, or
+   choose **Skip to map settings**. When no mod has a startup setting,
+   Foreman skips this step and the step bar shows "Mod settings (none)".
+9. On step 4, **Map settings**, leave the default preset or change it.
    **Preview map** draws the map first, once the game image is on the
-   host. Choose **Save map settings**.
+   host. Choose **Finish**. Foreman saves the map settings and opens the
+   world's page, which shows the world as **Ready**: its map is made the
+   first time it starts.
 
-Generating is three steps, each its own page: the world, its mods, then its
-map settings. Only the first is needed. The world exists after step 1, so
+Generating is four steps, each its own page: the world, its mods, their
+startup settings, then the map settings. Only the first is needed. The world exists after step 1, so
 if you stop there, it shows as **Unfinished** on the Worlds list. Choose
 **Continue** to pick up where you left off. Foreman never deletes an
 unfinished world for you.
 
 The first world you make becomes the active one: the world the Server page
 starts. Its map is made when it first starts, from the settings you saved
-in step 3. You can change them until then. Once the world has a save, or
+in step 4. You can change them until then. Once the world has a save, or
 while its server is running or starting, they are locked.
 
 ### Planet mods
 
-If the world's mods add planets, step 3 lists them with the controls of
+If the world's mods add planets, step 4 lists them with the controls of
 their resources, and the preview draws them. Foreman reads the planet list
-from a one-off run of the world's own game, the same run that reads the mod
-settings. It can take up to a minute the first time. If the list cannot be
-read, step 3 says so, shows the game's own planets and refuses to save, so
+from a one-off run of the world's own game that loads the world's saved mod
+settings, so a startup setting that adds a planet in step 3 adds it to step
+4. It can take up to a minute the first time. If the list cannot be
+read, step 4 says so, shows the game's own planets and refuses to save, so
 a save never drops a modded planet's settings.
 
-If you remove a planet mod after saving step 3, the world will not start
-until you save step 3 again. The game would fail to make the map, so
-Foreman refuses the start and links you to step 3.
+If you remove a planet mod after saving step 4, the world will not start
+until you save step 4 again. The game would fail to make the map, so
+Foreman refuses the start and links you to step 4.
 
 On a 2.1 world, **Draw from a real game** next to a planet's picture makes a
 throwaway map with the world's mods and charts 1024 by 1024 tiles around
@@ -588,10 +597,12 @@ preview cannot. It takes 15 to 40 seconds.
 ### Memory for planet previews
 
 Each preview run, and each real-game picture, is a one-off container. Both
-run one at a time and are limited to 1 GiB of memory with no swap. A fast
-preview of one planet is limited to 60 seconds. With five planet mods I
+run one at a time, with no swap. A run of the base game is limited to 1 GiB
+of memory; a run that loads a world's mods, which includes every real-game
+picture, to 2 GiB. A fast preview of one planet is limited to 60 seconds, or
+120 seconds with a world's mods. With five planet mods I
 measured 2 to 4 seconds and under 750 MiB for each planet. A real-game
-picture is limited to 90 seconds, and I measured 13 to 39 seconds and at
+picture is limited to 120 seconds, and I measured 13 to 39 seconds and at
 most 692 MiB. Foreman keeps the pictures in memory, up to 160 MiB for all
 users, until you save the map settings or restart Foreman.
 
@@ -1385,8 +1396,9 @@ one says "Set here"; nothing in the environment sets or overrides them.
 | Default stop countdown (seconds) | 0 to 600 | 60 |
 | Keep audit entries for (days) | 7 to 3650 | 365 |
 | Largest save upload (MB) | 100 to 8192 | 1024 (1 GB) |
-| Largest mod upload (MB) | 10 to 2048 | 200 |
+| Largest mod upload (MB) | 10 to 2048 | 1024 |
 | Check GitHub for new Foreman versions | on or off | on |
+| Show game icons from the Factorio wiki | on or off | off |
 
 - **Check GitHub for new Foreman versions.** About a minute after it
   starts, and then every 6 hours, Foreman asks `api.github.com` for its
@@ -1397,6 +1409,21 @@ one says "Set here"; nothing in the environment sets or overrides them.
   **Save settings**: Foreman then makes no request to GitHub. If your
   network blocks GitHub, the check fails quietly with one warning line in
   the log.
+- **Show game icons from the Factorio wiki.** Mod text can name items,
+  fluids and other game objects, such as `[item=space-science-pack]`.
+  Foreman shows their names. Tick this box and each name becomes the
+  game's icon, loaded from `wiki.factorio.com`. Foreman does not make that
+  request: each viewer's browser does, so every person who opens a page
+  with such text contacts the wiki, which then sees their address. The
+  request asks for each image by its prototype name, modded names
+  included, which tells the wiki which mods your worlds use. The
+  request sends no `Referer`, so the wiki is not told your Foreman address.
+  Foreman never downloads or stores the icons. While the box is ticked,
+  Foreman's pages also allow images from `https://wiki.factorio.com` in
+  their `Content-Security-Policy`; unticked, they allow only Foreman's
+  own. If a viewer's browser cannot reach the wiki, the name shows instead.
+  Leave this off on an offline install, or wherever you do not want your
+  people's browsers to contact an outside site.
 - **Automatic snapshots to keep.** Each world keeps this many of its newest
   automatic snapshots. Manual snapshots are not removed by it. Lowering it
   deletes nothing when you save. Each world drops its extra automatic
@@ -1543,6 +1570,12 @@ when a newer release is out (section 18).
 - **World files.** If a new version changes how the data directory is
   laid out, it takes a snapshot of every world it affects before it
   changes any file (SPEC 3.8).
+- **Which mods you chose.** Each world now remembers which mods you
+  installed yourself, so the mod settings page only says "Required by"
+  or "Offered by" for mods that came in for another mod. A world from an
+  older Foreman has no such record yet. Until its next mod change, Foreman
+  takes every mod that no other mod requires or recommends as one you
+  chose; that change saves the record, and nothing else is migrated.
 - **Downgrading is not supported once the database has changed.** An
   older Foreman refuses to start with a database a newer one has migrated,
   and its log says the database is at a newer version. To go back, stop

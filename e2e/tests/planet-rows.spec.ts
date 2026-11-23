@@ -61,7 +61,7 @@ test("the open planet carries across tabs and over an error round trip", async (
   await expect.poll(() => openRows(page, "terrain")).toEqual(["fulgora"]);
   // The seed is no number, so the form comes back with its error.
   await typeBadSeed(page);
-  await page.getByRole("button", { name: "Save map settings" }).click();
+  await page.getByRole("button", { name: "Finish" }).click();
   await expect(page.locator("#error-summary")).toContainText("seed");
   expect(await openRows(page, "resources")).toEqual(["fulgora"]);
   expect(await openRows(page, "terrain")).toEqual(["fulgora"]);
@@ -189,7 +189,7 @@ test("the server shows the same warning after a round trip", async ({ page }) =>
   await openPlanetRow(page);
   await page.locator("#mg-nauvis-stone-on").uncheck();
   await typeBadSeed(page);
-  await page.getByRole("button", { name: "Save map settings" }).click();
+  await page.getByRole("button", { name: "Finish" }).click();
   await expect(page.locator("#error-summary")).toBeVisible();
   await expect(page.locator("#mg-nauvis-stone-on-need")).toHaveText(/^Without stone on Nauvis/);
   await expect(page.locator("#need-summary")).toBeVisible();

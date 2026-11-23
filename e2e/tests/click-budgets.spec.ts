@@ -1,7 +1,7 @@
 import { test, expect, planRow, createAdmin, mainNav, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame, openModTools } from "./foreman.js";
 import { countClicks, expectWithin, type Clicks } from "./clicks.js";
 import type { Page } from "@playwright/test";
-import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // SPEC 17.10: the common tasks, started on the Server page with the
@@ -102,16 +102,37 @@ test.describe("click budgets, with the fake game", () => {
   });
 
   // SPEC 17.10 (Generate row): from the Server page, Worlds, "Generate a
-  // world", then "Generate world" with every default kept but the name.
+  // world", then "Next: Mods" with every default kept but the name.
   test("generate a world with the defaults: 3 clicks", async ({ page, foreman, fakeGame }) => {
     const clicks = await setUp(page, foreman, fakeGame!);
     await page.getByRole("link", { name: "Worlds", exact: true }).click();
     await page.getByRole("link", { name: "Generate a world" }).click();
     await page.getByLabel("World name").fill("Fresh");
-    await page.getByRole("button", { name: "Generate world" }).click();
+    await page.getByRole("button", { name: "Next: Mods" }).click();
     // Making the world lands on step 2, its mods (SPEC 5.6).
     await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
     await expectWithin(clicks, 3, "generate");
+  });
+
+  // SPEC 17.10, 5.6: an Unfinished world with a planet mod: Worlds, Continue
+  // (step 3), the setting, then "Next: Map settings", which saves and lands on step 4.
+  test("change a startup mod setting of an Unfinished world: 3 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+    await page.getByLabel("World name").fill("Fresh");
+    await page.getByRole("button", { name: "Next: Mods" }).click();
+    await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
+    const mods = join(foreman.dataDir, "worlds", "fresh", "mods");
+    copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), join(mods, "fake-planet_1.0.0.zip"));
+    writeFileSync(join(mods, "mod-list.json"), JSON.stringify({ mods: [{ name: "base", enabled: true }, { name: "fake-planet", enabled: true }] }));
+    await page.goto("/");
+    await clicks.reset();
+    await page.getByRole("link", { name: "Worlds", exact: true }).click();
+    await page.getByRole("link", { name: "Continue setting up Fresh" }).click();
+    await page.getByLabel("fm-sta-int").fill("9");
+    await page.getByRole("button", { name: "Next: Map settings" }).click();
+    await expect(page).toHaveURL("/worlds/fresh/new-map", live);
+    await expectWithin(clicks, 3, "change a startup mod setting while setting up");
   });
 
   // DESIGN 8.9: the active world's link, "Clone world", then "Clone world" on the form.
@@ -526,5 +547,28 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await expect(badge(page)).toHaveText("Running", live);
     expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-back_1.0.0.zip"))).toBe(true);
     await expectWithin(clicks, 5, "change a mod's version");
+  });
+});
+
+// SPEC 17.10, 5.6: Generate with one mod. Worlds, "Generate a world", "Next:
+// Mods", the mod's +, "Next: Review 1 mod", then the review's "Next: Mod
+// settings", which installs it and lands on step 3 (typing is not a click).
+test.describe("click budget for Generate with a mod", () => {
+  test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
+
+  test("generate a world with one mod: 6 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    await fakePortal!.add("fp-gen", "1.0.0", ["base >= 2.0"], "2.1");
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.getByRole("link", { name: "Worlds", exact: true }).click();
+    await page.getByRole("link", { name: "Generate a world" }).click();
+    await page.getByLabel("World name").fill("Fresh");
+    await page.getByRole("button", { name: "Next: Mods" }).click();
+    await page.getByLabel("Mod name").fill("fp-gen");
+    await page.getByRole("button", { name: "Add fp-gen to the plan", exact: true }).click();
+    await page.getByRole("link", { name: "Next: Review 1 mod" }).click();
+    await page.getByRole("button", { name: "Next: Mod settings" }).click();
+    await expect(page).toHaveURL("/worlds/fresh/new-map/mod-settings", live);
+    expect(existsSync(join(foreman.dataDir, "worlds", "fresh", "mods", "fp-gen_1.0.0.zip"))).toBe(true);
+    await expectWithin(clicks, 6, "generate with one mod");
   });
 });

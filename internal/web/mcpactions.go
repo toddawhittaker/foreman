@@ -9,6 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -28,6 +29,11 @@ var mcpWait = 50 * time.Second
 func mcpActor(req *mcp.CallToolRequest) game.Actor {
 	tok := mcpToken(req)
 	return game.Actor{UserID: tok.UserID, Username: tok.Owner, Token: tok.Name}
+}
+
+// mcpAdmin says the call's token has the admin scope.
+func mcpAdmin(req *mcp.CallToolRequest) bool {
+	return auth.ScopeIncludes(mcpToken(req).Scope, auth.ScopeAdmin)
 }
 
 // mcpFailureNote ends the description of a tool whose result may quote the
@@ -144,7 +150,7 @@ func (s *server) mcpNamed(ctx context.Context, id string) (world.Summary, error)
 // result. holdsLock is as for runOn: false only for an image download. The
 // action keeps running if the call stops waiting or the client leaves
 // (SPEC 21.5).
-func (s *server) mcpRun(ctx context.Context, sum world.Summary, action string, ids []string, holdsLock bool,
+func (s *server) mcpRun(ctx context.Context, req *mcp.CallToolRequest, sum world.Summary, action string, ids []string, holdsLock bool,
 	do func(ctx context.Context) actionResult) (*mcp.CallToolResult, mcpActionOut, error) {
 	before := map[string][]string{}
 	for _, id := range ids {
@@ -164,7 +170,7 @@ func (s *server) mcpRun(ctx context.Context, sum world.Summary, action string, i
 	select {
 	case res := <-done:
 		res.At = s.now()
-		o := s.outcome(sum, res)
+		o := s.outcome(sum, res, mcpAdmin(req))
 		out.Finished, out.Outcome = true, &o
 	case <-timer.C:
 	case <-ctx.Done():
@@ -232,7 +238,7 @@ func (s *server) mcpStart(ctx context.Context, req *mcp.CallToolRequest, in mcpA
 	by := mcpActor(req)
 	// Starting past the pre-start check's problems is offered only in the
 	// web UI, so no "anyway" option is passed.
-	return s.mcpRun(ctx, sum, game.AuditStart, []string{sum.ID}, true, func(ctx context.Context) actionResult {
+	return s.mcpRun(ctx, req, sum, game.AuditStart, []string{sum.ID}, true, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditStart, s.game.Start(ctx, sum.ID, by, game.StartOptions{}))
 	})
 }
@@ -247,7 +253,7 @@ func (s *server) mcpStop(ctx context.Context, req *mcp.CallToolRequest, in mcpSt
 		return nil, mcpActionOut{}, err
 	}
 	by := mcpActor(req)
-	return s.mcpRun(ctx, sum, game.AuditStop, []string{sum.ID}, true, func(ctx context.Context) actionResult {
+	return s.mcpRun(ctx, req, sum, game.AuditStop, []string{sum.ID}, true, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditStop, s.game.Stop(ctx, sum.ID, by, stop))
 	})
 }
@@ -262,7 +268,7 @@ func (s *server) mcpRestart(ctx context.Context, req *mcp.CallToolRequest, in mc
 		return nil, mcpActionOut{}, err
 	}
 	by := mcpActor(req)
-	return s.mcpRun(ctx, sum, game.AuditRestart, []string{sum.ID}, true, func(ctx context.Context) actionResult {
+	return s.mcpRun(ctx, req, sum, game.AuditRestart, []string{sum.ID}, true, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditRestart, s.game.Restart(ctx, sum.ID, by, stop, game.StartOptions{}))
 	})
 }
@@ -299,7 +305,7 @@ func (s *server) mcpSwitch(ctx context.Context, req *mcp.CallToolRequest, in mcp
 		return res, out, nil
 	}
 	from, by := p.From.ID, mcpActor(req)
-	return s.mcpRun(ctx, to, game.AuditSwitch, []string{from, to.ID}, true, func(ctx context.Context) actionResult {
+	return s.mcpRun(ctx, req, to, game.AuditSwitch, []string{from, to.ID}, true, func(ctx context.Context) actionResult {
 		res := s.finish(from, game.AuditSwitch, s.game.Switch(ctx, from, to.ID, by, stop, game.StartOptions{}, start))
 		res.Target, res.From = to.ID, from
 		return res
@@ -324,7 +330,7 @@ func (s *server) mcpSnapshot(ctx context.Context, req *mcp.CallToolRequest, in m
 			"delete some, in Foreman's web UI or, with an admin token, with delete_snapshots, before another can be taken", sum.Name, world.MaxTokenSnapshots)
 	}
 	by := mcpActor(req)
-	return s.mcpRun(ctx, sum, actionSnapshot, []string{sum.ID}, true, func(ctx context.Context) actionResult {
+	return s.mcpRun(ctx, req, sum, actionSnapshot, []string{sum.ID}, true, func(ctx context.Context) actionResult {
 		snap, err := s.game.Snapshot(ctx, sum.ID, by, label)
 		res := s.finish(sum.ID, actionSnapshot, err)
 		res.Taken = snapshotLabelArg(snap)

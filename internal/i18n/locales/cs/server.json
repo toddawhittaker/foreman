@@ -23,7 +23,7 @@
   "server.none.heading": "Žádný aktivní svět",
   "server.none.text": "Zatím není aktivní žádný svět, takže není co spustit. Je třeba naimportovat svět nebo nahrát uloženou hru na stránce Světy; první svět se stane aktivním.",
   "server.none.go": "Přejít na Světy",
-  "server.players.heading": "Hráči online",
+  "server.players.heading": "Hráči",
   "server.facts.switching": "Přepínání",
   "server.facts.switching_value": "Z {from} na {to}",
   "server.facts.uptime": "Doba běhu",
@@ -65,11 +65,12 @@
     "few": "Online: {count}",
     "other": "Online: {count}"
   },
-  "server.players.caption_stop": {
-    "one": "Online při zahájení zastavení: {count}",
-    "few": "Online při zahájení zastavení: {count}",
-    "other": "Online při zahájení zastavení: {count}"
-  },
+  "server.players.table_caption": "Hráči: {online} online, {total} v této uložené hře",
+  "server.players.table_caption_stop": "Hráči: {online} online při zahájení zastavení, {total} v této uložené hře",
+  "server.players.table_caption_online": "Hráči: {online} online",
+  "server.players.table_caption_online_stop": "Hráči: {online} online při zahájení zastavení",
+  "server.players.table_caption_saved": "Hráči: {total} v této uložené hře",
+  "server.players.total_time": "{total} celkem",
   "server.players.player": "Hráč",
   "server.players.online_for": "Online už",
   "server.players.unknown": "neznámé",
@@ -631,5 +632,17 @@
     "few": "{count} hráči v této uložené hře",
     "other": "{count} hráčů v této uložené hře"
   },
-  "server.playtime.reading": "Čte se"
+  "server.playtime.reading": "Čte se",
+  "server.players.online": "Online",
+  "server.players.time": "Čas online nebo odehraný",
+  "server.players.inexact": "Herní časy nemusí být přesné. Opraví je nové načtení uložené hry na stránce světa.",
+  "server.players.tracked_since": "Sledováno od {when}.",
+  "server.players.all": {
+    "one": "Všichni hráči ({count})",
+    "few": "Všichni hráči ({count})",
+    "other": "Všichni hráči ({count})"
+  },
+  "server.players.none_yet": "Na tomto světě zatím nikdo nehrál.",
+  "server.players.announce_joined": "Připojení: {names}.",
+  "server.players.announce_left": "Odchod: {names}."
 }

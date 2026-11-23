@@ -220,7 +220,7 @@ test.describe("without JavaScript", () => {
   });
 });
 
-// Step 3 of Generate asks before leaving a changed form (SPEC 5.6); opening About leaves nothing, so it does not ask.
+// Step 4 of Generate asks before leaving a changed form (SPEC 5.6); opening About leaves nothing, so it does not ask.
 test.describe("on the map settings with a changed form", () => {
   test.use({ fakeGameOn: true });
 

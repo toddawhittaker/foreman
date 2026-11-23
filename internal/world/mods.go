@@ -230,6 +230,8 @@ func (m *Manager) Mods(id string) ([]InstalledMod, error) {
 	}
 	for i := range found {
 		found[i].Enabled = on(found[i].Name)
+		found[i].Chosen = slices.Contains(meta.ChosenMods, found[i].Name)
+		found[i].Recorded = meta.ChosenMods != nil
 	}
 	slices.SortFunc(found, func(a, b InstalledMod) int {
 		if c := strings.Compare(a.Name, b.Name); c != 0 {

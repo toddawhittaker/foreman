@@ -78,10 +78,18 @@
 {{- $versions := .Versions}}
 {{- if and .Nothing (not $versions)}}
 <p>{{t "mods.plan.nothing"}}</p>
+{{- if .StepFoot}}
+{{- /* Step 2's footer: nothing to install, so Next goes straight on (SPEC 5.6). */}}
+<div class="actions flow-foot">
+  {{template "genflow-back" .Back}}
+  <a href="{{.NextPath}}" class="button button--primary" id="plan-next">{{msg .NextLabel}}</a>
+</div>
+{{- else}}
 <div class="actions">
-  {{- if .InFlow}}<a href="{{.NextPath}}" class="button button--primary" id="plan-next">{{t "mods.flow.next"}}</a>{{end}}
+  {{- if .InFlow}}<a href="{{.NextPath}}" class="button button--primary" id="plan-next">{{t "newmap.next.mod_settings"}}</a>{{end}}
   <a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a>
 </div>
+{{- end}}
 {{- else}}
 <section class="confirm{{if not .Danger}} confirm--plain{{end}}">
   {{- /* A choice's control posts the answers for the plan again (hx-post), which keeps them in the page's draft; the form gives it what to send and where the new plan goes. */}}
@@ -142,14 +150,22 @@
     {{- if .Nothing}}
     <p id="plan-same">{{t "mods.version.same"}}</p>
     {{- end}}
-    {{- with .Plan.Optional}}
+    {{- with $.Page.RecommendedRows}}
+    {{- /* Each box also sends its name as offered, so an unticked one reads as declined (SPEC 9.2). */}}
+    <fieldset id="plan-recommended">
+      <legend>{{t "mods.recommended.legend"}}</legend>
+      <p class="hint">{{t "mods.recommended.hint"}}</p>
+      {{- range .}}
+      <input type="hidden" name="offered" value="{{.Offer.Name}}">
+      {{template "plan-offer" .}}
+      {{- end}}
+    </fieldset>
+    {{- end}}
+    {{- with $.Page.OptionalRows}}
     <fieldset>
       <legend>{{t "mods.optional.legend"}}</legend>
-      <p class="hint">{{t "mods.optional.hint"}}{{if $.Page.HasRecommended}} {{t "mods.recommended.hint"}}{{end}}</p>
-      {{- range $.Page.OptionalRows}}
-      {{- if .Offer.Recommended}}
-      <input type="hidden" name="offered" value="{{.Offer.Name}}">
-      {{- end}}
+      <p class="hint">{{t "mods.optional.hint"}}</p>
+      {{- range .}}
       {{template "plan-offer" .}}
       {{- end}}
     </fieldset>
@@ -220,20 +236,33 @@
       {{- end}}
       <li>{{if .Running}}{{t "mods.plan.step.change_start" "world" .World.Name}}{{else}}{{t "mods.plan.step.change_stopped" "world" .World.Name}}{{end}}</li>
     </ol>
-    <p>{{t "mods.plan.step.fails"}} {{t "mods.plan.undo"}}</p>
+    {{- /* In step 2 the install goes on to step 3, so no Undo is offered with a result. */}}
+    <p>{{t "mods.plan.step.fails"}}{{if not .StepFoot}} {{t "mods.plan.undo"}}{{end}}</p>
     {{- end}}
     {{- if and .Running .CanApply}}
     {{template "countdown" .CountdownForm}}
     {{- end}}
+    {{- if not .StepFoot}}
     <div class="actions">
       <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
       {{- if .CanApply}}
-      <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}</button>
+      <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}{{if not .ButtonRecommended.IsZero}} {{msg .ButtonRecommended}}{{end}}</button>
       {{- end}}
       {{- /* The step's own action comes first; skipping it is the secondary way on (SPEC 5.6). */}}
       {{- if .InFlow}}<a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>{{end}}
     </div>
+    {{- end}}
     </div>
+    {{- if .StepFoot}}
+    {{- /* Step 2's footer: Next installs the plan as Install would, with the same checks and snapshot, then goes on to step 3 (SPEC 5.6). While a conflict stands there is no Next. */}}
+    <div class="actions flow-foot">
+      {{template "genflow-back" .Back}}
+      <a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>
+      {{- if .CanApply}}
+      <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .NextLabel}}</button>
+      {{- end}}
+    </div>
+    {{- end}}
   </form>
   {{- /* The unresolved mods' zip forms, empty: each one's field and button sit in the mod's group above. */}}
   {{- if not .Form.Staged}}
@@ -274,7 +303,7 @@
 {{- end}}
 {{- end}}
 
-{{/* One offered mod: the tick box, named for a screen reader by the mod's title, then the title link and details beside it, outside the labels, so following the link never ticks the box; the "offered by" words are a second label, so a click on them does (SPEC 9.2, 9.4). Takes an OfferRow. */}}
+{{/* One offered mod: the tick box, named for a screen reader by the mod's title, then the title link and a details foldout beside it, outside the labels, so following the link or opening the foldout never ticks the box; the "offered by" words are a second label, so a click on them does (SPEC 9.2, 9.4). Takes an OfferRow. */}}
 {{define "plan-offer" -}}
 {{- $r := .}}
 <div class="plan-offer">
@@ -282,9 +311,12 @@
   <div class="plan-offer__body">
     <p class="plan-offer__name">{{template "mod-name" $r.Name}} <label class="plan-offer__of" for="{{$r.ID}}">{{msgHTML $r.Of}}</label></p>
     {{- if $r.HasDetail}}
+    {{- /* Folded so a long list stays short; the box keeps it as its description (DESIGN 7.8). */}}
+    <details class="disclosure plan-offer__more">
+    <summary>{{t "mods.offer.details"}}</summary>
     <div id="{{$r.DetailID}}" class="plan-offer__detail">
       {{- with $r.Facts.Summary}}
-      <p>{{.}}</p>
+      <p>{{richText .}}</p>
       {{- end}}
       {{- if or $r.Facts.Version (not $r.Facts.Released.IsZero)}}
       <dl class="hit__facts">
@@ -297,6 +329,7 @@
       </dl>
       {{- end}}
     </div>
+    </details>
     {{- end}}
   </div>
 </div>

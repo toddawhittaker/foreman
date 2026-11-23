@@ -39,7 +39,7 @@ func TestGeneralSettingDefaults(t *testing.T) {
 	hn := newHarness(t, nil)
 	s, ctx := hn.generalServer(), context.Background()
 	if s.snapshotRetention(ctx) != 10 || s.stopCountdown(ctx) != 60*time.Second || s.auditRetentionDays(ctx) != 365 ||
-		s.saveUploadLimit(ctx) != 1<<30 || s.modUploadLimit(ctx) != 200<<20 {
+		s.saveUploadLimit(ctx) != 1<<30 || s.modUploadLimit(ctx) != 1024<<20 {
 		t.Fatalf("defaults %d %v %d %d %d", s.snapshotRetention(ctx), s.stopCountdown(ctx), s.auditRetentionDays(ctx), s.saveUploadLimit(ctx), s.modUploadLimit(ctx))
 	}
 	for _, c := range []struct{ name, value string }{
@@ -50,7 +50,7 @@ func TestGeneralSettingDefaults(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if s.snapshotRetention(ctx) != 10 || s.auditRetentionDays(ctx) != 365 || s.modUploadLimit(ctx) != 200<<20 || s.saveUploadLimit(ctx) != 1<<30 {
+	if s.snapshotRetention(ctx) != 10 || s.auditRetentionDays(ctx) != 365 || s.modUploadLimit(ctx) != 1024<<20 || s.saveUploadLimit(ctx) != 1<<30 {
 		t.Error("an out-of-range stored value was used")
 	}
 	for name, want := range map[string]int{"snapshot_retention": 100, "stop_countdown": 0, "audit_retention_days": 3650, "mod_upload_mb": 2048, "save_upload_mb": 8192} {
@@ -74,10 +74,7 @@ func TestSettingChangeFromUnreadableValue(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if changed, err := s.setBoolSetting(ctx, by, settingUpdateCheck, true); err != nil || !changed {
-		t.Fatalf("set the switch: changed %t, %v", changed, err)
-	}
-	if err := s.setIntSetting(ctx, by, settingSnapshotRetention, 5); err != nil {
+	if err := s.saveGeneral(ctx, by, map[string]int{settingSnapshotRetention.Key: 5}, map[string]bool{settingUpdateCheck.Key: true}); err != nil {
 		t.Fatal(err)
 	}
 	for action, want := range map[string]string{AuditUpdateCheckSet: "alice  from unknown to on", AuditSnapshotRetentionSet: "alice  from unknown to 5"} {
@@ -99,7 +96,7 @@ func TestGeneralPageShowsSettings(t *testing.T) {
 	for _, want := range []string{
 		`id="general-snapshot-retention"`, `value="10"`, `id="general-stop-countdown-seconds"`, `value="60"`,
 		`id="general-audit-retention-days"`, `value="365"`, `id="general-save-upload-mb"`, `value="1024"`,
-		`id="general-mod-upload-mb"`, `value="200"`, `aria-current="page">General</a>`,
+		`id="general-mod-upload-mb"`, `value="1024"`, `aria-current="page">General</a>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page lacks %q", want)
@@ -129,7 +126,7 @@ func TestGeneralSaveStoresAuditsAndApplies(t *testing.T) {
 		t.Errorf("the world manager keeps %d, want 3", hn.worlds.KeepAutomatic())
 	}
 	for action, want := range map[string]string{
-		AuditSnapshotRetentionSet: "alice  from 10 to 3", AuditStopCountdownSet: "alice  from 60 to 0", AuditModUploadLimitSet: "alice  from 200 to 300",
+		AuditSnapshotRetentionSet: "alice  from 10 to 3", AuditStopCountdownSet: "alice  from 60 to 0", AuditModUploadLimitSet: "alice  from 1024 to 300",
 	} {
 		if got := strings.Join(hn.audits(action), "|"); got != want {
 			t.Errorf("%s audit %q, want %q", action, got, want)
@@ -236,7 +233,7 @@ func TestMCPForemanSettingsReportsGeneral(t *testing.T) {
 	r := newForemanRig(t, keyed)
 	_, out := r.run(t, "foreman_settings", map[string]any{})
 	got, _ := out["general"].(map[string]any)
-	want := map[string]float64{"snapshot_retention": 10, "stop_countdown_seconds": 60, "audit_retention_days": 365, "save_upload_mb": 1024, "mod_upload_mb": 200}
+	want := map[string]float64{"snapshot_retention": 10, "stop_countdown_seconds": 60, "audit_retention_days": 365, "save_upload_mb": 1024, "mod_upload_mb": 1024}
 	for k, v := range want {
 		if got[k] != v {
 			t.Errorf("general.%s = %v, want %v", k, got[k], v)
@@ -326,7 +323,7 @@ func TestMCPSetForemanSettingsRefusesBadValues(t *testing.T) {
 	if res, _ := r.run(t, "set_foreman_settings", withCode(map[string]any{"mod_upload_mb": 300}, code)); !res.IsError {
 		t.Error("a code was used twice")
 	}
-	if got := r.generalServer().modUploadLimit(context.Background()); got != 200<<20 {
+	if got := r.generalServer().modUploadLimit(context.Background()); got != 1024<<20 {
 		t.Errorf("mod limit %d after refusals", got)
 	}
 }

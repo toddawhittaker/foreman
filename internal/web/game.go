@@ -407,6 +407,7 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	p := s.serverPage(r.Context(), sum, s.game.Status(sum.ID))
+	p.Admin = isAdmin(u)
 	p.FocusResult = followsOwnAction(r)
 	p.PlayerResult = s.playerResults.take(u.ID, sum.ID, PathServer)
 	p.RecentSnapshots, p.RecentFailed = s.recentSnapshots(sum.ID)
@@ -473,6 +474,10 @@ const (
 	// PathServerResult is the Server page after the admin's own action.
 	PathServerResult = PathServer + ownResultQuery
 )
+
+// flowResultQuery marks the Mods tab after step 2's install in the guided
+// Generate, which goes on to step 3 once the install ends well (SPEC 5.6).
+const flowResultQuery = "?result=next"
 
 func followsOwnAction(r *http.Request) bool {
 	return r.URL.RawQuery == strings.TrimPrefix(ownResultQuery, "?")

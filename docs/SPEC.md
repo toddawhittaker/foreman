@@ -446,7 +446,7 @@ this accepts.
   either part may be missing. It lets the next start create the map (4.3,
   5.6); Foreman clears it once that start reaches the in-game state.
   It also holds the factory map mode, `factory_map` (5.16), when one was
-  set;
+  set, and `chosen_mods`, the names of the mods the admin chose (9.6);
 - `players.json`, when present: Foreman's record of the players of the
   save the world loads (8.14). Foreman writes it without a snapshot, as it
   does `world.json`.
@@ -531,21 +531,69 @@ Import also does the following.
 5.6. **Generate** a new world from map settings (a preset, changed or
 not) or a map exchange string, with Space Age on or off. (P0)
 
-- **A guided flow in three steps** (Todd's ruling, 2026-11-21, #775). Each
-  step is its own page, and a step bar of three links above each one names
-  them and marks the current one. On step 1 the bar is there too, with
-  step 1 current; steps 2 and 3 show as plain text, not links, until the
-  world exists.
+- **A guided flow in four steps** (Todd's rulings, 2026-11-21, #775, and
+  2026-11-22, #878). Each step is its own page, and a step bar of four
+  links above each one names them and marks the current one. On step 1 the
+  bar is there too, with step 1 current; the later steps show as plain
+  text, not links, until the world exists. The flow reads as a wizard
+  (Todd's ruling, 2026-11-23): the step bar is a numbered stepper whose
+  steps are joined by a line, with the steps before the current one ticked
+  (not a skipped step 3) and the current one highlighted; on a narrow
+  screen it shows the numbers only, with the current step's name under
+  them. Each step ends with the same footer, a bar held to the window's
+  foot: Back on the left, to the nearest earlier step that is a link (none
+  on step 1, which keeps Cancel), and the primary button on the right. The
+  primary button reads the same way on every step, "Next: " and the next
+  step's name: step 1 "Next: Mods" (it makes the world), step 2 "Next: Mod
+  settings", or "Next: Map settings" when step 3 has nothing to set, step 3
+  "Next: Map settings" (it saves the settings first), and step 4 "Finish",
+  which saves the map settings and opens the world's page, where the Ready
+  note (below) is the Done box. Skip links and Preview map stay as
+  secondary actions.
+  **Step 2 with a plan** (Todd's ruling, 2026-11-23). While the world's
+  plan (9.14) has mods in it, step 2's primary button is "Next: Review N
+  mods" ("Next: Review the plan" when the portal cannot be reached or the
+  picks are already installed), and the plan panel has no Review or
+  "Review and install N mods" button of its own; the world's Mods tab
+  outside Generate keeps that button. It opens the review page of the plan
+  (9.2), which is part of step 2: the same step bar with step 2 current and
+  the same footer, "Back to the mods" on the left, "Skip to mod settings"
+  as the secondary action, and "Next: Mod settings" as the primary button.
+  That button is the review's install, with the same checks, confirmations
+  (such as the drops box), snapshot and refusal while a conflict remains;
+  with a conflict there is no Next. Its words always name step 3, because
+  whether step 3 has anything to set depends on the mods the install
+  brings; when it has nothing, step 3 passes on by itself. The install's
+  progress shows on the Mods tab, and once the install ends well the
+  wizard goes on to step 3; a failure stays on the Mods tab with its
+  result. Because the wizard moves on, the review does not promise an
+  Undo beside the result. A review of another kind during step 2 (an
+  update, a removal) keeps its own actions and comes back to the Mods tab,
+  and so does an install on a world that is the active one, whose result
+  is on the Server page. A skip, Back or leaving the page keeps the plan
+  saved, so Continue opens step 2 again (below).
   1. **Make the world**: name, game version, Space Age, optionally a
      favorite (5.12), and the image download. This writes the world folder
      and `world.json` with `new_map`, and the world counts as generated.
      It always lands on step 2.
-  2. **Mods**: the world's Mods tab, or the review filled from the
-     favorite's mods when it has some (5.12, 9.14). "Skip to map settings"
-     goes on without mods.
-  3. **Map settings and preview**, at `/worlds/{id}/new-map`, with every
-     planet the world's mods give it (below). "Save map settings" writes
-     the settings files below. It takes no snapshot, because the world has
+  2. **Mods**: the world's Mods tab and the review of its plan, or the
+     review filled from the favorite's mods when it has some (5.12, 9.14).
+     "Skip to mod settings" goes on without installing the plan, which stays
+     saved.
+  3. **Mod settings**, at `/worlds/{id}/new-map/mod-settings`: the startup
+     settings of the world's mods, grouped by mod as on the mod settings
+     page (9.6), which they share the form of. Runtime settings wait for
+     that page. Saving is the mod settings page's save (a snapshot, then the
+     write) and then goes on to step 4, whose planets follow the new values
+     (9.6). "Skip to map settings" goes on without saving. When no mod has a
+     startup setting the step passes on to step 4 by itself, and the step
+     bar shows "3. Mod settings (none)" as plain text. Foreman knows that
+     without a game run when the world has only built-in mods, or when the
+     setting definitions are already read; otherwise step 3 decides when it
+     loads.
+  4. **Map settings and preview**, at `/worlds/{id}/new-map`, with every
+     planet the world's mods give it (below). "Finish" writes the settings
+     files below. It takes no snapshot, because the world has
      no save. It is refused once the world has a save, and while the
      world's server is starting, running, stopping, crashed or crash-looping,
      because the first start makes the map before any save exists. It is
@@ -554,28 +602,41 @@ not) or a map exchange string, with Space Age on or off. (P0)
      slip in between.
 
   The first start then creates the map. Everything below about the map
-  form, the leave dialog and the preview belongs to step 3, and "the
+  form, the leave dialog and the preview belongs to step 4, and "the
   Generate button" means its save button.
 - **Unfinished worlds.** A world with `new_map` and no save is shown as
   "Unfinished" on the Worlds list and on its page, with a Continue link
   that opens where work remains: step 2 while the world has mod picks not
-  yet installed (9.14), otherwise step 3. It is derived, not stored. Foreman never deletes
+  yet installed (9.14), then step 3 while the world has no `mod-settings.dat`
+  and its map settings were never saved, otherwise step 4. "Saved" is read
+  from the audit log's `new-map` entry, since nothing else records a step 4
+  save; if audit pruning removes that entry, Continue shows step 3 again,
+  which can be skipped. It is derived, not stored. Foreman never deletes
   one by itself; Delete works as for any world (5.10).
-- **Planets come from the world's mods** (#775). Step 3 offers the planets
+- **Ready worlds** (Todd's ruling, 2026-11-23). Once step 4 has been saved
+  (the same audit log test), the world's set-up is done: it is shown as
+  "Ready", not Unfinished, on the Worlds list and on its page, and its page
+  says the map is made the first time the world starts. Switch is then its
+  primary action, as for any world, and a secondary "Change setup" link on
+  its page opens step 4. Ready is derived, not stored, and a world with a
+  save is neither. It is a label only: everything 5.6 allows or refuses for
+  a world with `new_map` and no save still applies. The REST API, MCP and
+  webhooks do not report either state.
+- **Planets come from the world's mods** (#775). Step 4 offers the planets
   and autoplace controls that the world's own game image and mods define,
-  read by the mod-settings run (9.6). That list replaces the embedded one,
+  read by the mod-settings run (9.6) with the world's own startup values (ADR 0034). That list replaces the embedded one,
   because mods change the built-in planets too. Each control offers only
   what the game gives it (richness, an on/off box). A control that two
   planets share is one value, shown under each planet with "Also changes
   *planet*". Names are the game's localised names in the page language,
   with rich-text tags removed, cut to 100 characters and marked
   `translate="no"`. The planet file is untrusted and checked under 14.6.
-  When it is refused or the run fails, step 3 uses the embedded planets
-  and says why. Without script, step 3 waits on the server for the run,
+  When it is refused or the run fails, step 4 uses the embedded planets
+  and says why. Without script, step 4 waits on the server for the run,
   within its limit (14.3); with script the page shows at once and the form
   follows. On 1.1 there are no planets, and modded resource controls sit
   on the one surface. When the mods change after map settings were saved,
-  step 3 works from the current mods: settings for planets or controls
+  step 4 works from the current mods: settings for planets or controls
   that are gone are listed as "no longer in the mods" and dropped at the
   next save, and new planets and controls start at their defaults. The
   pre-start check refuses a start the game would fail (7.4).
@@ -594,7 +655,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
     control two planets share is written once; a later planet's copy wins
     only when the person moved it.
   - **Saving needs the world's own list.** While the embedded list stands
-    in for a world that has mods of its own, step 3 and `set_new_map` refuse
+    in for a world that has mods of its own, step 4 and `set_new_map` refuse
     to save, because
     saving would drop every setting of the mods' planets. The page offers a
     retry and a link to the Mods tab.
@@ -608,7 +669,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
   `mods/mod-list.json`; the start step already makes it. The game version
   and Space Age choices work as in Import (5.5): Space Age is refused
   before 2.0, and the image can be downloaded with the world.
-- **Two ways to make the map**, both in step 3: the map settings form, or
+- **Two ways to make the map**, both in step 4: the map settings form, or
   "Fill from a map exchange string", which decodes the string and fills
   the form from it. Saving then writes both files
   (`map-gen-settings.json`, `map-settings.json`). A string from another
@@ -700,6 +761,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - A resource the game lets you switch off has an on/off box. Off writes
     size 0, the game's own off value; frequency 0 is not off (2.1.24
     crashes on it). A post that lacks the box keeps the resource on.
+    A control has an on/off box when the game says it can be disabled and
+    it is a resource or, on 2.x, cliffs or enemies; the rule never names a
+    planet, and off writes size 0.
   - **Cliffs off.** Cliffs have the same on/off box where the game lets
     them be switched off: Nauvis on every line, and Gleba and Fulgora on
     2.x; Vulcanus has no cliff control. Off writes
@@ -792,7 +856,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
     take it;
   - a refusal names the string's version and the reason, and never quotes
     the string.
-- **Map preview (P1).** Step 3 shows a picture of the map, one for each
+- **Map preview (P1).** Step 4 shows a picture of the map, one for each
   planet in the world's list: without mods, Nauvis only on 1.1 and on 2.x
   without Space Age, and Nauvis, Vulcanus, Gleba, Fulgora and Aquilo with
   Space Age. The picture comes from the game's own
@@ -965,6 +1029,20 @@ not) or a map exchange string, with Space Age on or off. (P0)
       it runs out of memory at about 30 s (generating alone peaks at 822
       MiB) and fails safe with the out-of-memory message and "choose a
       smaller preview size"; 1.1 fits it, at 1,014 MiB and 37 s.
+      With a world's mods the count has the larger limits of 14.3 (2 GiB
+      and 120 s), set from a heavy set of 31 mods (Corrundum, Maraxsis,
+      Moshine, Muluna and their graphics) at 3072 tiles on 2.1.24: 790 to
+      930 MiB and 14 to 16 s at default settings, and at most 1,407 MiB and
+      28.5 s (Corrundum) with every resource control at its most. The time
+      is twice the slowest count seen in a survey of planet mods, 58 s. An
+      out-of-memory failure names the resource count, never the picture.
+    - **Known limit: resources that are not patches.** The count reads
+      resource entities only. When a planet has a resource control from a
+      mod that the settings leave on, and the count finds no patches, the
+      page says "No resource patches were found in this picture. This
+      planet's resources may be tiles, which can't be counted." instead of
+      "no resource patches". The words are true whether the resources are
+      tiles or real patches too small to count at the picture's size.
     - **While it runs and after.** A visible line and an indeterminate bar
       say that counting can take up to a minute. Busy, timeout, out of
       memory, missing image, failed and invalid settings each have their own
@@ -989,7 +1067,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
       all. A control two planets share counts as part of each planet's
       share. The default preset sent
       as no files counts as the files the form writes for it.
-- Generate records the audit entry `generate` (12.9). Saving step 3, from the page or through
+- Generate records the audit entry `generate` (12.9). Saving step 4, from the page or through
   `set_new_map`, records `new-map`, naming the preset and whether it was
   modified, and ending with the game version. A refusal appears on
   the form, in the page's language.
@@ -1008,7 +1086,7 @@ keep the save. (P1)
   `map-gen-settings.json` carries over, so a fresh map of a started world
   uses the game's defaults when that file is missing. A fresh-map clone
   has no save, so it is an Unfinished world (5.6) whose map settings can
-  be set in step 3 before its first start.
+  be set in step 4 before its first start.
 - When the source's game is running, the page says the copy is the last
   save on disk, not the live game.
 - Clone records the audit entry `clone` (12.9).
@@ -1117,12 +1195,12 @@ a game version, Space Age, a map, server settings, mods and mod settings.
   `mod-settings.dat` are written, the favorite's mod names become the
   world's saved picks (9.14, up to 500), and the person lands on step 2,
   the world's review page, with a note that the world was made, the
-  favorite's mods, and their pinned versions. Step 3 then starts from the
+  favorite's mods, and their pinned versions. Step 4 then starts from the
   favorite's map settings, and the person can change any of them there. Generate passes the
   favorite's id, never its mod names, and the review reads the names and
   versions from the favorite by that id (17.17). One
-  "Install N mods" then goes through the checks, checksums and snapshot of
-  9.13; there is no second download path. A favorite with no mods leads to
+  install, step 2's "Next: Mod settings" (5.6), then goes through the
+  checks, checksums and snapshot of 9.13; there is no second download path. A favorite with no mods leads to
   step 2 on the world's Mods tab, as Generate does. A favorite deleted in the meantime is
   an error on the form and no world is made. Generate's audit entry (12.9)
   names the favorite.
@@ -1247,8 +1325,8 @@ a copy of a save (8.16). (P1)
   removed when the world no longer exists.
 - **The viewer** is its own page, `/worlds/{id}/map`, a world tab after
   Snapshots. It works like the Generate page's large view (5.6): zoom by
-  wheel, keys, buttons or pinch in steps of 1.15; pan by drag, keys or a
-  tap; a list of surfaces; and a checkbox per category that adds its
+  wheel, keys, buttons or pinch in steps of 1.15 (one script, `viewer.js`,
+  serves both pages); pan by drag, keys or a tap; a list of surfaces; and a checkbox per category that adds its
   layer. Downloads: the base PNG, or the base with the ticked layers
   combined on the server.
 - **Modes.** Each world has a mode, stored in `world.json` as
@@ -1500,7 +1578,7 @@ compares it with the world. It refuses to start, and says why, when:
   names an autoplace control that is not in the world's current planet
   list, for example after a planet mod was removed. The game's `--create`
   stops on an unknown control and writes no save (checked on 2.0.77 and
-  2.1.24, #775). The fix is a link to step 3 of Generate, which drops the
+  2.1.24, #775). The fix is a link to step 4 of Generate, which drops the
   stale settings at its next save; this refusal has no start anyway. The
   check reads the planet list from the cache only, and warms it before the
   world's lock is taken. When the planet run failed, or the world has no
@@ -1713,6 +1791,20 @@ chosen time zone). It runs only when nobody is online. (P1)
 decides who is on. How long comes from the `[JOIN]` lines in the game
 container's log since it started, so a chat line cannot fake a join; a
 player whose join line Foreman did not see is listed without a time. (P0)
+The Server page's Players panel lists the save's players (8.14) with who
+is online first, each with an "Online" chip in words beside the name and
+their session in the time column and total play time beneath the name,
+longest session first; then everyone
+else by play time, most first, with play time and last seen. Its caption
+gives both counts, for example "Players: 2 online, 7 in this save". A
+stopped game shows the same list with no chips; "No one has played this
+world yet" shows only when the save has no players. Joins and leaves move
+rows without a reload, with one announcement per update (16.3). Every
+online player is shown, then others fill the list to ten rows; "All N
+players" links to the full list on the world's Overview page when any are
+hidden. N counts the save's record plus anyone online it does not list yet,
+and the Server page's "N players in this save" says the same number. Only
+online rows offer the actions of 8.2.
 
 8.2. Kick, ban, unban, promote to admin, demote, and add to or remove from
 the whitelist, sent over RCON to the running game. They start from a
@@ -2015,8 +2107,10 @@ they were last seen. (P1)
   inexact. It is read again at the next view while the world is stopped.
   A "Read again" button is always there.
 - **Where it shows.** The full list is on the world's Overview page. The
-  Server page shows total play time (8.15) and an "N players in this save"
-  link to that list.
+  Server page shows total play time (8.15), an "N players in this save"
+  link to that list, and the top of the list in its Players panel (8.1),
+  with the inexact and "tracked since" notes in short. The read button
+  stays on the Overview page.
 - A read changes no file the game uses, so it is not audited and takes no
   snapshot. Not in MCP or the REST API (21.7); `list_players` stays "online
   now" (21.4).
@@ -2115,7 +2209,10 @@ takes the newest release on the world's game line that does. Built-in mods
 count as present at the game version. An optional dependency's version
 limit holds even while its mod is off, so turning it on in the same plan is
 held to it. A recommended dependency (the "+" prefix of Factorio 2.1) is
-an optional one that starts ticked; one the portal lacks or that would
+an optional one that starts ticked. The review page lists recommended mods
+under their own "Recommended mods" heading, apart from "Optional mods", each
+with a tick box the admin may clear, and never in the list of mods to
+install. One the portal lacks or that would
 conflict is left out with a note and never blocks the plan. A sync adds
 none. Dependencies of installed mods are read from their own
 `info.json`, so turning mods off or on and removing them need no portal.
@@ -2142,7 +2239,8 @@ indented under it and marked "Needed by *mod*", the required dependencies
 the plan would change. The newest pick is at the top. A dependency two picks
 share is listed once, under the topmost pick that needs it, and its "Needed
 by" names every mod that needs it, as does its reason on the review page;
-the "Review and install N mods" count counts each distinct mod once. Only changes
+the "Review and install N mods" count, and step 2's "Next: Review N mods"
+in Generate (5.6), counts each distinct mod once. Only changes
 show: built-in mods and a dependency already installed at a fitting version
 are hidden, and one that must be updated says "Will update to *version*". A
 dependency that cannot be had (gone from the portal, or without a release
@@ -2230,7 +2328,12 @@ its own linked from the Mods tab. For a world with no save yet, its map
 settings are edited there too. (P1) Foreman learns each setting's type,
 default, limits, allowed values, owner and visibility from a one-off run of
 the world's own game image (14.3), and keeps them in memory per world until
-the mods or the game version change. A setting's name comes from its
+the mods or the game version change. That run uses the mods' default
+values, so the defaults it reports are the mods' own. A world's planets
+(5.6) can depend on startup values, so when the world has a
+`mod-settings.dat` they come from a second run that reads it, cached by
+the mods and the file; a world with no file has its planets from the first
+run, and the game runs once. A setting's name comes from its
 `localised_name`, resolved against every section of the mods' locale files
 as the game does: `__1__` parameters, nested keys, `""` joining its
 parameters, and `?` taking the first part that resolves. Without one it is
@@ -2255,13 +2358,42 @@ the 64-bit range means no limit.
   RCON command for them.
 - **Per-player settings** are not shown. Each player sets them in the game,
   and their bytes in the file are kept exactly.
+- **Origin of a mod** (#879). Under a mod's group heading a line says why
+  the mod is installed when other enabled mods name it: "Required by X"
+  (a dependency with no prefix or `~`), "Recommended by X" (`+`) or
+  "Offered by X" (`?`), with "A and B" for several. A hidden optional
+  dependency (`(?)`) names nothing. Foreman works it out when the page is
+  drawn, from the enabled mods' own `info.json` dependencies
+  (`mods.ParseDep`). Required wins over recommended, which wins over
+  offered, and only the winning kind's mods are named. A mod the admin
+  chose has no line, whoever else names it, and neither has a mod nobody
+  names. Each mod change records the chosen mods in `world.json` as
+  `chosen_mods`: a mod asked for, ticked as an optional dependency, or
+  taken from a save becomes chosen when it is installed or turned on; a
+  required or recommended dependency does not; a removed mod leaves the
+  record; a copy of the world keeps it. A world with no record yet, as
+  every world made before the record existed, counts as chosen each mod
+  no other enabled mod requires or recommends, and its next mod change
+  saves that as its record. The base game and its expansions (`base`, `space-age`, `quality`,
+  `elevated-rails`) are neither named nor named by. Each name links to its
+  group on the page when that mod has settings. The groups of mods nobody
+  names come first, then the others; each part keeps its order.
+- **Without script** the page cannot load the form, so its progress line is
+  followed by a link to the same page with `?wait=1`, which reads the form
+  on the server before it answers.
 - **Planets** (#775). The same run also writes the world's planets and
-  their autoplace controls as `planets.json`, for Generate's step 3 (5.6).
+  their autoplace controls as `planets.json`, for Generate's step 4 (5.6).
   On 2.x it lists every space location of type planet with the controls
   of its map-gen settings, and each control's category, richness, on/off
   box, order and localised name; on 1.1, which has no planets, it lists
   the controls of the one surface. Names resolve as setting names do
-  above. It is one run and one cache, kept under the same key as the
+  above, looked up in the mods' locale files first and then in the game's
+  own (`base`, `space-age`, `quality` and `elevated-rails` under the data
+  folder of the world's game image, read in the same run and never
+  downloaded), so a control named `{"entity-name.stone"}` reads "Stone".
+  When no loaded mod defines a setting the game writes no
+  `mod-settings.dat`; that is empty defaults, not a failed run, and a
+  missing file with settings listed still is. It is one run and one cache, kept under the same key as the
   definitions, so a change of mods or game version reads both again. No
   startup setting of the five planet mods tested changes the list, so
   saved startup settings do not reset it. Foreman checks the file under
@@ -2357,7 +2489,7 @@ changed when the file no longer matches. (P0)
 only the names of the mods picked with "+", at most 500 (3.4, ADR 0021). Each
 time the panel is drawn the tree is worked out again, so removing a pick
 also drops every dependency nothing else needs, and a dependency has no
-remove button of its own. When "Install N mods" is accepted, the mods it
+remove button of its own. The install button counts the recommended mods that are ticked apart from the others ("Install 3 mods and 10 recommended"), and its label follows each tick; in Generate's step 2 the same button reads "Next: Mod settings" (5.6). When the install is accepted, the mods it
 installed leave the saved picks and the others stay (an Unfinished world's
 Continue, 5.6, opens step 2 only while picks are left, and a pick installed
 another way, such as an upload, is not work that remains); nothing is cleared by
@@ -2654,7 +2786,7 @@ and the factorio.com `username`, `password` and `token`. (P0)
 
 11.5. `map-gen-settings.json` and `map-settings.json` get the same
 form-and-raw editor. Map-gen settings are edited only for a world that has
-no save yet, in Generate's step 3 (section 5.6). (P1 for map-gen as part of
+no save yet, in Generate's step 4 (section 5.6). (P1 for map-gen as part of
 generate; P2 for editing map-settings afterwards, issue #207)
 
 The game reads both files only at `--create`, when it makes the map.
@@ -3030,7 +3162,7 @@ they were created. (P1)
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
 default stop countdown, audit retention, the two upload limits and the
-update check (the General tab, below), scheduled restarts, notifications, the public
+update check and the wiki icons switch (the General tab, below), scheduled restarts, notifications, the public
 mods page (9.16), MCP access (21.2), and portal credentials when not set
 by environment. Each shows where its value comes from (environment or
 UI), and environment values cannot be changed in the UI. (P0 for those
@@ -3043,7 +3175,7 @@ the factorio.com account. The Settings link in the main navigation opens
 General.
 
 **The General tab** (`/settings/general`) holds five number settings and
-one switch. None has an
+two switches. None has an
 environment form, so each says "set here". A bad value refuses the whole
 form and stores nothing. (Todd's rulings, 2026-11-18.)
 
@@ -3053,15 +3185,18 @@ form and stores nothing. (Todd's rulings, 2026-11-18.)
 | Default stop countdown (7.6), seconds | 0 to 600 | 60 | `stop-countdown-set` |
 | Audit retention (12.9), days | 7 to 3650 | 365 | `audit-retention-set` |
 | Save upload limit (14.6), MB | 100 to 8192 | 1024 | `save-upload-limit-set` |
-| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 200 | `mod-upload-limit-set` |
+| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 1024 | `mod-upload-limit-set` |
 | Check GitHub for new Foreman versions (14.10) | on or off | on | `update-check-set` |
+| Show game icons from the Factorio wiki (14.10) | on or off | off | `wiki-icons-set` |
 
 A scheduled restart keeps its fixed countdown (7.12). The upload limits are
 in whole MB, meaning MiB, as the pages say them. A stored value that is
 missing, unreadable or out of range gives the default. The switch is a
 checkbox; its audit detail reads "from on to off" or "from off to on".
 Turning it off stops the check and hides any notice at once; turning it
-on checks at once, in the background. These settings are also read and
+on checks at once, in the background. The wiki icons switch is off by
+default and reads "Show game icons from the Factorio wiki (your browser
+contacts wiki.factorio.com)"; what it does is in 14.10. These settings are also read and
 changed through MCP (21.7, 21.8). (P1)
 
 ## 14. Security
@@ -3081,7 +3216,7 @@ reviews against.
 | VPN sidecar | An optional container the operator runs, whose network the game shares (4.13) | Nothing; Foreman did not create it (14.16) |
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
 | Identity provider | The OIDC provider an operator configured (12.7) | Only the ID tokens it signs for this client; nothing else it sends |
-| Internet | Mod portal, image registry and its tag list, release list, GitHub's latest Foreman release, webhook targets | Nothing |
+| Internet | Mod portal, image registry and its tag list, release list, GitHub's latest Foreman release, webhook targets; the Factorio wiki, which only a viewer's browser contacts, and only when an admin turns on its icons (14.10) | Nothing |
 | AI client | A program, usually an AI assistant, calling the MCP endpoint with an API token (section 21) | Only its token's scope; steerable by text it reads (14.12) |
 | Player | Anyone who can reach the public mods page (9.16) | Nothing; may be a script |
 
@@ -3137,7 +3272,7 @@ up to 4096 tiles (the measured peak was about 553 MiB and the slowest run
 under 6 seconds), which leaves headroom over the 3072 tiles the previews
 now stop at.
 
-For a world's step 3 (5.6), the preview, territory and resource containers
+For a world's step 4 (5.6), the preview, territory and resource containers
 load that world's mods (ADR 0033). The work folder then also holds the
 world's mods by hard link, falling back to copies, under the same caps as
 the mod settings run below, read-only where the game would otherwise write,
@@ -3147,11 +3282,14 @@ control-only mod refuses the run. The planets a run may draw are checked
 against the planet list Foreman took from that world's stored run, never
 against anything the form posted. The check uses the Space Age the world's
 enabled mods give, the same answer the planet list uses, so a world whose
-flag disagrees with its mods is not refused. The limits stay 1 GiB, and the time
-limit is 60 seconds for each planet drawn, at most 10 minutes in all so
-a run cannot hold the one slot for long: with five planet mods, one
-planet took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB
-(#775).
+flag disagrees with its mods is not refused. A run that loads a world's
+mods has larger limits than a base-game run (1 GiB and 60 s): 2 GiB of
+memory, and 120 seconds for each planet drawn, at most 10 minutes in all so
+a run cannot hold the one slot for long. With five planet mods, one planet
+took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB (#775).
+The 2 GiB is 1.5 times the highest resource count measured with a heavy
+mod set (5.6, Cost). The real-game picture (5.6) always loads a world's
+mods, so it has the same 2 GiB, and 120 seconds for its one planet.
 
 Demolisher territories (5.6) use a second kind of preview container,
 `foreman-territories-<folder>`, with the same label, endpoints, host
@@ -3203,8 +3341,8 @@ with the helper's name refuses the run. No new Docker endpoint is used.
 
 The real-game picture (5.6) uses a seventh kind, `foreman-chart-<folder>`,
 on 2.1 only, with the same label, endpoints, host settings, slot and
-cleanup, a memory limit of 1 GiB with no swap and a time limit of 90
-seconds in all. Its work folder holds the world's mods as for the preview
+cleanup, a memory limit of 2 GiB with no swap (as for a preview that loads
+a world's mods) and a time limit of 120 seconds in all. Its work folder holds the world's mods as for the preview
 above, the step's settings files and a control-only helper mod. The game
 runs `--create` to make a throwaway map, then `--test-save` on it, which
 loads it with a player; the helper creates the planet's surface, so the
@@ -3241,7 +3379,7 @@ are not followed out of it. Uploaded zips are checked entry by entry and
 refused if any entry would land outside its target. (P0)
 
 14.6. **Uploads** have size limits (app settings on the General tab, 13.1:
-a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 200 MB;
+a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 1 GB;
 each a whole number of MB, meaning MiB) and are written to a temporary file and checked
 before they replace anything. Pasted text has limits too: a map exchange
 string is at most 64 KB and inflates to at most 1 MB (5.6), and a settings
@@ -3271,7 +3409,7 @@ most 2 MiB, 10,000 settings and 1,000 allowed values each; unknown fields
 are ignored and an unknown setting type is shown as not editable. The
 planets file of the same run (9.6) is at most 1 MiB, 64 planets, 512
 controls, 128 controls per planet and 512 resources; over any of these
-the whole file is refused and step 3 uses the embedded planets (5.6).
+the whole file is refused and step 4 uses the embedded planets (5.6).
 Planet, control and resource names must match `^[a-z0-9_-]{1,64}$`; one
 that does not is left out, and the page gives how many were. A control
 with an unknown category or an over-long order is left out. A planet's
@@ -3279,7 +3417,17 @@ own default for a control is kept only when it is a finite number from 0
 to 1000, else it is ignored. Invisible Unicode (zero-width and direction
 marks) is removed from every label. Localised
 names resolve under the 20-level and 1,000-character limits above, then
-lose their rich-text tags and are cut to 100 characters. A mod's
+lose their rich-text tags and are cut to 100 characters. Other text a mod
+supplies (setting names, descriptions, mod titles and summaries) keeps a
+safe subset of the game's rich text, parsed on the server and rebuilt from
+an allowed list: bold fonts as bold, the game's named colours as theme
+colours (hex and r,g,b colours as plain text), object tags as the object's
+name made readable (or, when an admin has turned wiki icons on, its icon,
+14.10), the game's warning and info sprites as Foreman's own
+icons with text for screen readers, a key-binding macro as the action's
+name (never a key), any other macro as its name made readable, and an escaped line break as a break in descriptions.
+No text, attribute or class from the mod reaches the page unescaped;
+unknown or unmatched tags and a lone `[` stay as literal text. A mod's
 `.cfg` locale file is at most 1 MiB, and 8 MiB per language across mods. A
 string setting value is at most 10,000 bytes. A mod or `mod-settings.dat` upload waits in a
 staging file at the top of the worlds folder, and a staged mod nobody
@@ -3380,6 +3528,25 @@ About links to the release page built from that version, never to an
 address GitHub sent. The answer is kept in memory only. A failure logs one
 warning line and shows nothing. About names the release only when it is
 strictly newer than the running build's major.minor.patch (P1).
+Game icons from the wiki are the one request a viewer's browser makes
+that Foreman does not. They are off until an admin turns on the switch in
+13.1. Then an object tag in mod text (`[item=space-science-pack]`) is an
+`<img>` whose address is `https://wiki.factorio.com/images/<Name>.png`,
+where Name is the prototype name with its first letter capitalised and
+hyphens turned into underscores. The address is built only from a
+prototype name that matches `^[a-z0-9_-]+$`, cut at the first comma, so
+no other mod text reaches it; any other name shows as its readable name.
+The request names the prototype, modded names included, so the wiki can
+tell which mods a world uses (unknown names fail to load and show the name).
+The image carries `referrerpolicy="no-referrer"`, so the wiki is not told
+the page's address, and `loading="lazy"`. Its `alt` text is the object's
+name, and a failed load (offline, a renamed wiki file, a blocked request)
+swaps the image for that name, so a broken image never shows. Foreman never
+fetches, stores or proxies an icon, and sends no request to the wiki. The
+page's `Content-Security-Policy` is `frame-ancestors 'none'; img-src 'self'
+data:`, plus `https://wiki.factorio.com` after `data:` only while the switch
+is on, and never on a public page (ADR 0035). A switch that cannot be read counts as
+off (P1).
 The mod portal's base is fixed at `https://mods.factorio.com`; there is no
 setting for it. Its API calls take at most 10 seconds, follow no redirects,
 and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
@@ -3387,7 +3554,15 @@ and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
 starts with `/download/` on that base, and its `file_name` must equal
 `<name>_<version>.zip`. A download takes at most 5 minutes, reads at most
 the mod upload limit (14.6), so a mod that can be uploaded can also be
-downloaded again, and follows at most 2 redirects, each only to an `https` address
+downloaded again. A file over that limit is refused as its own failure,
+not as an unreachable portal: before any byte is read when the portal
+declares a `Content-Length` over the limit, and by cutting the stream off at
+the limit when it does not. The page names the mod, its size when known and
+the limit; an admin gets a link to the limit on the General tab, anyone else
+is told to ask an admin, and there is no "Try again", since the file is as
+large next time. Every failed mod download, for any reason, logs one line
+with the mod, version and reason, never the username or token. A download
+follows at most 2 redirects, each only to an `https` address
 whose host ends in `.factorio.com`. The real portal redirects to
 `dl-mod.factorio.com`. The redirect carries no `Referer` header, because Go
 would copy the token-bearing address into it. An error message never holds
@@ -3673,7 +3848,9 @@ with the defaults accepted, these take at most:
 | Set the first restart schedule (Settings, Restart schedule, Save schedule; Settings opens General) | 3 |
 | Open Notifications (Settings, Notifications) | 2 |
 | Try a failed mod change again (Try again, Install N mods) | 2 |
-| Generate a world with the defaults (Worlds, Generate a world, Generate world; the world is made at step 1, and the Mods and map settings steps are optional, 5.6) | 3 |
+| Generate a world with the defaults (Worlds, Generate a world, Next: Mods; the world is made at step 1, and the Mods, mod settings and map settings steps are optional, 5.6) | 3 |
+| Generate a world with one mod (Worlds, Generate a world, Next: Mods, +, Next: Review 1 mod, Next: Mod settings, which installs it and lands on step 3; typing the name is not a click, 5.6) | 6 |
+| Change a startup mod setting of an Unfinished world (Worlds, Continue, the setting, Next: Map settings, which saves and lands on the map settings, 5.6) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
 | Change a game setting in Listing (Game settings, Preview changes, Save settings; a setting in another group first opens its sub-page, 11.1) | 3 (4 in another group) |
 
@@ -3807,7 +3984,7 @@ are a header bar with the areas as a row of tabs. (P1)
 17.19. **Generate's steps work without script.** Each step of Generate
 (5.6) is a plain page with a form that posts. The step bar is a list of
 three links in an `ol`, the current step marked `aria-current="step"` and
-named in words, never by colour or number alone. Without script, step 3
+named in words, never by colour or number alone. Without script, step 4
 is drawn by the server once the world's planet run has finished, within
 its time limit (14.3); with script the page shows at once and the form
 part loads after it, with its progress said once. Skip, Continue and every
@@ -3921,7 +4098,8 @@ commit is on `main`, build amd64 and arm64, push
 `1.0.0-rc.1`, then `1.0.0` on the same image digest. Not built yet.
 
 18.12. **Epic 12: Modded planets and guided Generate** (#775). Generate's
-three steps and Unfinished worlds (5.6, 5.7, 5.12, 17.10, 17.19); the
+three steps (four since fixes batch 17, which put Mod settings between Mods
+and Map settings) and Unfinished worlds (5.6, 5.7, 5.12, 17.10, 17.19); the
 planet list from the mod-settings run (9.6, 14.6); previews, territories
 and resource counts with the world's mods, and the real-game picture on
 2.1 (5.6, 14.3, ADR 0033); the pre-start refusal of stale controls (7.4);
@@ -3930,9 +4108,9 @@ and resource counts with the world's mods, and the real-game picture on
 `factoriotools/factorio` containers on 1.1.110, 2.0.77 and 2.1.24, with
 five planet mods on 2.x: the mod-settings run lists 11 planets; each
 planet's preview draws within 60 seconds and 1 GiB; map settings saved
-in step 3 for a modded planet reach the map the first start creates; a
-removed planet mod refuses the start until step 3 is saved again; and on
-2.1.24 Cerys's real-game picture shows its real terrain within 90
+in step 4 for a modded planet reach the map the first start creates; a
+removed planet mod refuses the start until step 4 is saved again; and on
+2.1.24 Cerys's real-game picture shows its real terrain within 120
 seconds.
 
 ## 19. Milestone gates
@@ -3999,7 +4177,8 @@ shows them; list worlds (5.4); players online (8.1); the most recent log
 lines, with secrets removed (8.6); list snapshots (6.4); list a world's
 mods and available updates (9.3). The tools are `server_status`,
 `list_worlds` (which includes archived worlds, with `archived: true`, 5.9),
-`list_players`, `recent_log` (the newest 200 lines),
+`list_players` (who is online now, never the save's full list),
+`recent_log` (the newest 200 lines),
 `list_snapshots` and `list_mods`. `world_id` is optional on these and
 means the active world when left out. Player and portal text in any
 result is marked untrusted (14.12). (P1)
@@ -4081,11 +4260,13 @@ them, where 100 is the game's default. A control a planet defaults to
 something else is reported at that planet's own default (5.6), which may be
 up to 1000, so a percentage is a number, not a whole number: 0.125 reads as
 12.5. Planet and control names come from mods and are marked untrusted
-(14.12).
+(14.12). The planets follow the world's saved mod settings, as step 4's do,
+so a call after `change_mod_settings` reflects the new values; nothing
+refuses it while step 3 is unfinished, since step 3 is optional.
 
 `set_new_map` (#775) takes `world_id` and either a preset, a seed and
 values per planet and control, or a map exchange string, and saves them as
-step 3 of Generate does (5.6), with no snapshot. It is refused for a world
+step 4 of Generate does (5.6), with no snapshot. It is refused for a world
 with a save or a busy one. A planet or control not in the world's list,
 or a value the control does not support, refuses the whole call with an
 error that names it; nothing is dropped silently. A value may be a step

@@ -82,6 +82,18 @@ test("Generate's action bar never covers the focused control", async ({ page, fo
   await tabsClearOf(page, await markBar(page.locator(".generate > .gen-actions")));
 });
 
+test("step 2's footer on the Mods tab never covers the focused control", async ({ page, foreman, fakeGame }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await page.goto("/generate");
+  await page.locator("#generate-name").fill("Footer");
+  await page.locator("#generate-button").click();
+  await expect(page).toHaveURL(/\/worlds\/footer\/mods/);
+  await page.setViewportSize({ width: 320, height: 480 });
+  await tabsClearOf(page, await markBar(page.locator(".flow-foot")));
+});
+
 test("a settings save bar never covers the focused control", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);

@@ -24,6 +24,9 @@ import (
 type ServerPage struct {
 	World    world.Summary
 	HasWorld bool
+	// Admin says the viewer may change Foreman's settings, so a failure can
+	// link to one.
+	Admin bool
 	// RecentSnapshots is the world's newest snapshots, newest first; only
 	// the page load fills it, so live updates never read the disk for it.
 	RecentSnapshots []world.Snapshot
@@ -154,9 +157,10 @@ func (p ServerPage) ShowSavePlayers() bool {
 	return len(p.SavePlayers.Players) > 0
 }
 
-// SavePlayersText says how many players the save has.
+// SavePlayersText says how many players the save has, counted as the Players
+// panel counts them so the two agree (SPEC 8.1).
 func (p ServerPage) SavePlayersText() i18n.Msg {
-	return i18n.M("server.playtime.players", "count", len(p.SavePlayers.Players))
+	return i18n.M("server.playtime.players", "count", len(p.mergedPlayers()))
 }
 
 // SavePlayersLink is the list on the world's Overview page.
@@ -417,6 +421,7 @@ func (p ServerPage) CancelStopPath() string {
 // PlayerTable is the player list the page shows. Live is true when it is
 // who is online now, so its rows may offer actions (DESIGN 8.12).
 type PlayerTable struct {
+	// Caption is the live count the heading band shows.
 	Caption i18n.Msg
 	Players []game.Player
 	Live    bool
@@ -436,7 +441,7 @@ func (p ServerPage) PlayerTable() *PlayerTable {
 	if o == nil || o.Done || len(o.Players) == 0 || p.Status.State == game.StateUnknown {
 		return nil
 	}
-	return &PlayerTable{Caption: i18n.M("server.players.caption_stop", "count", len(o.Players)), Players: o.Players}
+	return &PlayerTable{Players: o.Players}
 }
 
 // Crashed reports whether the page shows the crash message.
@@ -782,7 +787,7 @@ func (p ServerPage) Failure() *Failure {
 		f.Message = i18n.M("server.error.image_missing")
 		f.Download = p.Result.Action != game.AuditSwitch || p.Result.Target == p.World.ID
 	case p.Result.Action == game.AuditMods:
-		f.Message, f.Fix = modsFailure(err, p.Result.Mods, p.World.Name, p.Status.State, PathServer)
+		f.Message, f.Fix = modsFailure(err, p.Result.Mods, p.World.Name, p.Status.State, PathServer, p.Admin)
 	default:
 		f.Message = failureText(err)
 	}

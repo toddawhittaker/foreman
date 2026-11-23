@@ -63,3 +63,21 @@ func (l Locale) ExternalLink(href, linkKey string) Fragment {
 	return Fragment{`<a href="` + esc(href) + `" target="_blank" rel="noopener noreferrer">` + esc(text) +
 		`<span class="visually-hidden"> ` + esc(l.T("common.link.new_tab")) + `</span></a>`, text}
 }
+
+// Anchor is a link to a place on the same page, such as another mod's
+// group, whose text is a name the program reads and so is never translated.
+// Only a "#" followed by a plain id is accepted; anything else shows the
+// name without a link.
+func Anchor(id, name string) Fragment {
+	if !validAnchorID(id) {
+		return Ident(name)
+	}
+	return Fragment{`<a href="#` + id + `" class="mod-title ident" translate="no">` + template.HTMLEscapeString(name) + `</a>`, name}
+}
+
+func validAnchorID(id string) bool {
+	return id != "" && !strings.ContainsFunc(id, func(r rune) bool {
+		isPlain := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_'
+		return !isPlain
+	})
+}

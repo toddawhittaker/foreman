@@ -18,8 +18,8 @@
 </div>
 {{- end}}
 {{- if .ShowSkip}}
-{{- /* Step 2 is optional: the way on is a link, with picks kept for Continue (SPEC 5.6). */}}
-<div class="actions"><a href="{{.NextPath}}" id="mods-skip">{{t "mods.flow.skip"}}</a></div>
+{{- /* Step 2 is optional: the way on is a link, with picks kept for Continue. It names step 4 when step 3 has nothing and passes on (SPEC 5.6). */}}
+<div class="actions"><a href="{{.NextPath}}" id="mods-skip">{{if .NoModSettings}}{{t "mods.flow.skip_map"}}{{else}}{{t "mods.flow.skip"}}{{end}}</a></div>
 {{- end}}
 {{- end}}
 {{template "summary" .Problems}}
@@ -31,6 +31,10 @@
 {{- if not .Busy.IsZero}}
 <div class="message message--note">
   <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
+  {{- if .Working}}
+  {{- /* The bar Generate shows while it waits, so a long install does not look stuck; the words above carry the meaning. */}}
+  <progress aria-hidden="true"></progress>
+  {{- end}}
   {{- if .ServerLink}}
   <div class="actions"><a href="{{serverPath}}" id="world-server-link">{{t "worlds.world.server_link"}}</a></div>
   {{- end}}
@@ -41,7 +45,8 @@
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
   {{- if or .Undo .InFlow}}
   <div class="actions">
-    {{- if .InFlow}}<a href="{{.NextPath}}" class="button button--primary" id="act-next-map">{{t "mods.flow.next"}}</a>{{end}}
+    {{- /* The footer's Next is the page's one primary action. */}}
+    {{- if .InFlow}}<a href="{{.NextPath}}" class="button" id="act-next-map">{{if .NoModSettings}}{{t "newmap.next.map"}}{{else}}{{t "newmap.next.mod_settings"}}{{end}}</a>{{end}}
     {{- with .Undo}}<a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a>{{end}}
   </div>
   {{- end}}
@@ -258,6 +263,13 @@
 {{- end}}
 </div>
 </details>
+</div>
+{{- end}}
+{{- if .InFlow}}
+{{- /* Step 2's footer: Back to the world, then the way on, which reviews the plan first while it has mods in it (SPEC 5.6). */}}
+<div class="actions flow-foot">
+  {{template "genflow-back" .Back}}
+  {{template "flow-next" .FlowNext}}
 </div>
 {{- end}}
 {{end}}

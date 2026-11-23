@@ -3,6 +3,8 @@ package web
 import (
 	"net/http"
 	"strings"
+
+	"github.com/toddawhittaker/foreman/internal/modsettings"
 )
 
 // isHTMX reports whether htmx sent r, which then swaps part of the page in
@@ -23,8 +25,13 @@ func (s *server) fragmentStatus(w http.ResponseWriter, r *http.Request, status i
 		s.fail(w, r, "render "+name, err)
 		return
 	}
+	// Object markers become wiki images when the setting is on, as in a whole page.
+	body := []byte(b.String())
+	if wikiIconsOf(s.readWikiIcons(r)) {
+		body = modsettings.ShowWikiIcons(body)
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	_, _ = w.Write([]byte(b.String()))
+	_, _ = w.Write(body)
 }
