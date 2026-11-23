@@ -169,7 +169,7 @@ func TestFlowModSettingsLoadsWithoutScriptAsTheSettingsPage(t *testing.T) {
 	id := g.flowWorld()
 	fakeDefs(t, fmtestSettingDefs(t), nil)
 	body := g.get(flowModSettingsPath(id))
-	wantIn(t, "step 3", body, `class="empty mod-settings-loading"`, `<a href="`+flowModSettingsPath(id)+`?wait=1" id="mod-settings-wait">`)
+	wantIn(t, "step 3", body, `<div class="wait mod-settings-loading" role="status">`, `<a href="`+flowModSettingsPath(id)+`?wait=1" id="mod-settings-wait">`)
 	if strings.Contains(body, `http-equiv="refresh"`) {
 		t.Error("step 3 refreshes itself")
 	}

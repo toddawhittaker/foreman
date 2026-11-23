@@ -4641,18 +4641,21 @@ html:has(.large-view[open]) {
   gap: var(--space-2);
 }
 
-.wait.htmx-request {
+.wait.htmx-request,
+.mod-settings.htmx-request .wait {
   display: grid;
 }
 
-.wait progress {
+.wait progress,
+.message progress {
   inline-size: 100%;
   max-inline-size: 20rem;
   accent-color: var(--color-selected);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wait progress {
+  .wait progress,
+  .message progress {
     display: none;
   }
 }

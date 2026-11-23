@@ -126,6 +126,22 @@ test("a recommended dependency starts ticked, and one the portal lacks is left o
   expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-lane_1.3.1.zip"))).toBe(true);
 });
 
+// A long install on a stopped world shows Generate's moving bar beside the note, so it does not look stuck.
+test("a running install shows a moving bar, and none for reduced motion", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-big", "1.0.0", ["base >= 2.0"]);
+  // The download hangs, which holds the install running while the page is looked at.
+  await fakePortal!.setMode("fp-big", "1.0.0", "slow");
+  await setUpModsWorld(page, foreman, fakeGame!, world);
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-big");
+  await page.getByRole("button", { name: "Install 1 mod" }).click();
+  await page.goto("/worlds/base/mods");
+  const bar = page.locator("#world-activity .message progress");
+  await expect(bar).toBeVisible(live);
+  await expect(bar).toHaveAttribute("aria-hidden", "true");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(bar).toBeHidden();
+});
+
 test.describe("an optional dependency", () => {
   async function addMods(portal: FakePortal) {
     await portal.add("fp-opt", "1.0.0");
