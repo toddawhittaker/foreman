@@ -494,6 +494,9 @@ func TestMCPSetNewMapRefusedAfterACrashAndWhileBusy(t *testing.T) {
 	r := newNMRig(t)
 	id := r.newMapWorld("Fresh", "2.1.24", false)
 	r.startStillWaiting(id)
+	// Hold the restart: its boot would make the map in the emptied saves
+	// folder, as the real start script does, and the world would have a save.
+	r.fake.HoldRestarts(game.ContainerName(id), true)
 	if err := r.fake.Crash(game.ContainerName(id), 1, false); err != nil {
 		t.Fatal(err)
 	}
