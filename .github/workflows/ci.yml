@@ -354,7 +354,7 @@ jobs:
   # most pushes to main are trees a pull request already tested. It compiles
   # what `make test` and `make e2e` compile, with the same flags, and runs no tests.
   go-cache:
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.head_ref == 'ci/watch-ci'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
