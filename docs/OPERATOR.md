@@ -551,7 +551,10 @@ account**. The page closes for good once the account exists.
 6. Choose **Next: Mods**. This makes the world and opens step 2, its
    Mods tab.
 7. Pick the world's mods there (see the next section), or choose **Skip to
-   mod settings**.
+   mod settings**. While you set up a world, the plan's button is at the
+   foot of the page: choose **Next: Review 3 mods** (the count is your
+   plan's), read the plan, then choose **Next: Mod settings**, which
+   installs the mods and goes on to step 3.
 8. On step 3, **Mod settings**, change any startup setting a mod has, or
    choose **Skip to map settings**. When no mod has a startup setting,
    Foreman skips this step and the step bar shows "Mod settings (none)".

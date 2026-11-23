@@ -9936,6 +9936,12 @@ main > .panel.danger-zone.danger-zone--blocked {
     overflow-y: auto;
   }
 
+  /* In the guided Generate the step's footer holds the way on, named with
+     the plan's count, at the same foot; a held plan bar would cover it. */
+  .plan-panel--step:not(.plan-panel--empty) {
+    position: static;
+  }
+
   /* Keyboard focus scrolled into view stays clear of the folded bar: its
      44 px line, the 44 px Review button, the gap and padding (WCAG 2.4.11).
      The bar's own rule beside the other foot bars would reach wide screens,
@@ -10287,6 +10293,13 @@ main > .panel.danger-zone.danger-zone--blocked {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* The list scrolls inside the held card, so it holds its own visually
+   hidden text: placed in the card, that text stretched the card's scroll
+   area past the list's end and gave the card a second, dead scrollbar. */
+.plan-tree {
+  position: relative;
 }
 
 .plan-tree__pick {
@@ -12546,6 +12559,15 @@ main:has(> .public-world) {
   background: var(--color-raised);
   border-block-start: var(--border-width) solid var(--color-line);
   box-shadow: 0 -6px 16px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 35%));
+}
+
+/* On step 2's review the bar ends the plan's box: across both its columns
+   and out to its edges, as a form's foot bar meets its card's. */
+.confirm form > .flow-foot {
+  grid-column: 1 / -1;
+  margin: 0 calc(-1 * max(var(--space-4), var(--card-pad))) calc(-1 * max(var(--space-4), var(--card-pad)));
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
 }
 
 /* Focus is never left behind the bar (WCAG 2.4.11), as for the other bars. */

@@ -14,6 +14,12 @@
   "newmap.next.mods": "Dalej: Modyfikacje",
   "newmap.next.mod_settings": "Dalej: Ustawienia modyfikacji",
   "newmap.next.map": "Dalej: Ustawienia mapy",
+  "newmap.next.review": {
+    "one": "Dalej: Przejrzyj {count} modyfikację",
+    "few": "Dalej: Przejrzyj {count} modyfikacje",
+    "many": "Dalej: Przejrzyj {count} modyfikacji"
+  },
+  "newmap.next.review_plain": "Dalej: Przejrzyj plan",
   "newmap.finish": "Zakończ",
   "newmap.loading": "Odczytywanie planet dodawanych przez modyfikacje tego świata. Za pierwszym razem może to potrwać do minuty.",
   "newmap.loading_label": "Odczytywanie planet",

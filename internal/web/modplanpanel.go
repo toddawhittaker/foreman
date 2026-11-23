@@ -54,10 +54,41 @@ type PlanPanel struct {
 	// id that takes focus then (WCAG 4.1.3, 2.4.3).
 	Said  i18n.Msg
 	Focus string
+	// Step is step 2's main button when the panel is on the Mods tab of an
+	// Unfinished world; the panel then has no Review of its own (SPEC 5.6).
+	Step *FlowNext
 	// neededBy maps a dependency in the tree to the title of the first mod
 	// it shows under.
 	neededBy map[string]string
 }
+
+// FlowNext is step 2's main button in its footer (SPEC 5.6). Review says it
+// opens the plan's review; OOB swaps it in after a change to the plan.
+type FlowNext struct {
+	Path   string
+	Label  i18n.Msg
+	Review bool
+	OOB    bool
+}
+
+// stepTwoNext is step 2's main button: a plan with mods in it is reviewed
+// and installed before step 3; without one it goes straight on, naming step
+// 4 when step 3 has nothing to set (SPEC 5.6).
+func stepTwoNext(id string, picks, count int, unreachable, noModSettings bool) FlowNext {
+	switch {
+	case picks > 0 && (unreachable || count == 0):
+		return FlowNext{Path: kindPlanPath(id, mods.KindInstall, ""), Label: i18n.M("newmap.next.review_plain"), Review: true}
+	case picks > 0:
+		return FlowNext{Path: kindPlanPath(id, mods.KindInstall, ""), Label: i18n.M("newmap.next.review", "count", count), Review: true}
+	case noModSettings:
+		return FlowNext{Path: flowModSettingsPath(id), Label: i18n.M("newmap.next.map")}
+	}
+	return FlowNext{Path: flowModSettingsPath(id), Label: i18n.M("newmap.next.mod_settings")}
+}
+
+// onModsTab says a panel that returns to ret sits on the Mods tab, not the
+// search page.
+func onModsTab(id, ret string) bool { return !strings.HasPrefix(ret, modsPath(id)+"/search") }
 
 // PlanNode is one mod in the panel's tree.
 type PlanNode struct {
@@ -105,6 +136,16 @@ func (p PlanPanel) NeededBy(name string) string { return p.neededBy[name] }
 
 // planPanel reads a world's picks and works out what they need now.
 func (s *server) planPanel(ctx context.Context, sum world.Summary, ret string) (PlanPanel, error) {
+	p, err := s.planPanelTree(ctx, sum, ret)
+	if err == nil && sum.Unfinished && onModsTab(sum.ID, ret) {
+		next := stepTwoNext(sum.ID, len(p.Picks), p.Count, p.Unreachable, s.noModSettings(sum.ID))
+		p.Step = &next
+	}
+	return p, err
+}
+
+// planPanelTree is the panel's picks and their tree.
+func (s *server) planPanelTree(ctx context.Context, sum world.Summary, ret string) (PlanPanel, error) {
 	p := PlanPanel{World: sum, Return: ret}
 	picked, err := s.store.ModPlan(ctx, sum.ID)
 	if err != nil {
@@ -348,6 +389,17 @@ func (u PlanUpdate) Acts() []HitAct {
 		out[i].OOB = true
 	}
 	return out
+}
+
+// StepNext is step 2's main button, swapped in beside the panel, as a
+// change to the plan changes where it goes (SPEC 5.6).
+func (u PlanUpdate) StepNext() *FlowNext {
+	if u.Search.Plan.Step == nil {
+		return nil
+	}
+	n := *u.Search.Plan.Step
+	n.OOB = true
+	return &n
 }
 
 func (s *server) handlePlanMods(w http.ResponseWriter, r *http.Request, u store.User) {

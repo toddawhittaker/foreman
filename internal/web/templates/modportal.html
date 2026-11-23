@@ -123,7 +123,7 @@
 
 {{/* The world's unfinished plan beside the results: each picked mod with what it needs under it (SPEC 9.2). On a phone it follows the results and holds to the bottom of the screen once it has a mod. Takes PlanPanel. */}}
 {{define "plan-panel" -}}
-<section class="panel plan-panel{{if not .Picks}} plan-panel--empty{{end}}" id="plan-panel" aria-labelledby="plan-heading">
+<section class="panel plan-panel{{if not .Picks}} plan-panel--empty{{end}}{{if .Step}} plan-panel--step{{end}}" id="plan-panel" aria-labelledby="plan-heading">
   <div class="group__head plan-panel__head">
     <h2 id="plan-heading" tabindex="-1">{{t "mods.plan_panel.heading"}}</h2>
     {{- with .Picks}}<span class="count" aria-hidden="true">{{if and $.Count (not $.Unreachable)}}{{$.Count}}{{else}}{{len .}}{{end}}</span>{{end}}
@@ -173,7 +173,10 @@
     </form>
   </details>
   <div class="actions plan-panel__go">
+    {{- /* In the guided Generate the step's footer reviews the plan (SPEC 5.6). */}}
+    {{- if not .Step}}
     <a href="{{.ReviewPath}}" class="button button--primary" id="act-review-plan">{{if or .Unreachable (not .Count)}}{{t "mods.plan_panel.review_plain"}}{{else}}{{t "mods.plan_panel.review" "count" .Count}}{{end}}</a>
+    {{- end}}
     {{- /* While a change to the plan is still being worked out, modsearch.js holds Review back and shows this, so Review never opens without the last change. */}}
     <p class="hint plan-panel__wait" id="plan-wait" hidden>{{t "mods.plan_panel.wait"}}</p>
   </div>
@@ -213,6 +216,9 @@
 {{/* The reply to a change made with script: the panel, then each result row's new state out of band. Takes PlanUpdate. */}}
 {{define "plan-update" -}}
 {{template "plan-panel" .Search.Plan}}
+{{- with .StepNext}}
+{{template "flow-next" .}}
+{{- end}}
 {{- range .Acts}}
 {{template "hit-act" .}}
 {{- end}}

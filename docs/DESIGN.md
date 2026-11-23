@@ -2290,7 +2290,9 @@ bar (`gen-actions`), step 3 the mod settings form's foot bar (`form-foot`),
 and step 2's Mods tab a bar of the same look as its last block
 (`flow-foot`). On a
 phone Generate's bar stacks in source order. Skip links stay where they
-were, as secondary actions. The review keeps its own actions.
+were, as secondary actions. Step 2's review of the plan ends with the same
+`flow-foot` bar, across both of the review's columns and out to its box's
+edges.
 
 **Step 1**, `GET /generate`: one `h1` with a one-line hint, then one form,
 in this order:
@@ -2315,10 +2317,19 @@ world each shows the step bar with "Mods" current. The Mods tab has a
 shows "Next: Mod settings", a plain button (SPEC 17.9), in place of Skip.
 The tab ends with the footer: "Back to the world" and "Next: Mod settings"
 (primary); both Next labels read "Next: Map settings" when step 3 has
-nothing to set. The
-review has "Skip to mod settings" after the Install button in source
-order, or "Next: Mod settings" when the plan changes nothing. Each leads
-to step 3, which passes on to step 4 when there is nothing to set. A world with a save shows none of this.
+nothing to set. While the plan has mods in it the footer's primary reads
+"Next: Review N mods" and opens the review (SPEC 5.6); the plan panel then
+has no Review button, and on a phone it does not hold to the screen's foot,
+where it would cover the footer. A change to the plan swaps the footer's
+button out of band, and it is held back while a change is worked out, as
+the panel's Review is. The review of the plan keeps step 2 current and
+ends with the footer: "Back to the mods", "Skip to mod settings", then
+"Next: Mod settings" (primary), which installs the plan as Install does and,
+once the install ends well, goes on to step 3. With nothing to change it
+is "Back to the mods" and "Next: Mod settings". A review of another kind
+(an update, a removal) keeps its own actions, with "Skip to mod settings"
+after its button. Each way on leads to step 3, which passes on to step 4
+when there is nothing to set. A world with a save shows none of this.
 
 **Unfinished worlds** carry a plain `badge` "Unfinished" beside the name
 on the Worlds list and on the world page. A list row's one action is
@@ -3393,7 +3404,8 @@ bar keeps its frame while the other cards lie flat.
   quiet "Clear plan" in `danger-text` (no underline; `danger-bg` under the
   pointer), since clearing throws work away. Last, the primary "Review and install N mods"
   (each distinct mod counted once) opens the plan page with the picks
-  (`kind=install&name=…`). An empty plan says "No mods in the plan yet.
+  (`kind=install&name=…`); in Generate's step 2 the step's footer carries
+  it instead, as "Next: Review N mods". An empty plan says "No mods in the plan yet.
   Choose + beside a mod to add it, then search again for the next." If
   the portal cannot be reached the picks are listed by name with a
   Warning and "Check again", and the button reads "Review the plan".
