@@ -40,9 +40,11 @@ const (
 	starMapSunMax = 60.0
 	// starMapLabelGap is the space between a circle and its label.
 	starMapLabelGap = 6.0
-	// starMapArcStep is the largest turn, in radians, one segment of a curved
-	// route takes: 5 degrees, smooth at the largest view.
-	starMapArcStep = math.Pi / 36
+	// starMapArcStep is the largest turn, in radians, from one piece of a
+	// curved route to the next: 2 degrees, smooth at the large view's closest
+	// zoom. starMapArcMax caps the pieces of one route.
+	starMapArcStep = math.Pi / 90
+	starMapArcMax  = 1024
 )
 
 // wikiStarMapFiles are the space locations whose pictures the Factorio wiki
@@ -279,13 +281,31 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 			v.Rings = append(v.Rings, d)
 		}
 	}
+	var pieces [][2]point // every route's pieces, in the picture's units
 	for _, r := range routes {
 		v.Routes = append(v.Routes, pathData(r, scale))
+		for i := 1; i < len(r); i++ {
+			pieces = append(pieces, [2]point{{r[i-1].X * scale, r[i-1].Y * scale}, {r[i].X * scale, r[i].Y * scale}})
+		}
 	}
+	var labels []rect
 	for _, l := range m.Locations {
 		label := starMapLabel(cat, l)
-		sl := placeLocation(l, scale, label, ic.icon(l))
-		sl.LabelCells = labelCells(loc.Format(label.Name))
+		cells := labelCells(loc.Format(label.Name))
+		place := func(turns float64) StarMapLocation {
+			sl := placeLocation(l, turns, scale, label, ic.icon(l))
+			sl.LabelCells = cells
+			return sl
+		}
+		// The label sits on the game's side unless it would cover a route or
+		// a label already placed and the opposite side covers neither.
+		sl := place(l.LabelOrientation)
+		if labelClashes(labelBox(sl), pieces, labels) {
+			if other := place(l.LabelOrientation + 0.5); !labelClashes(labelBox(other), pieces, labels) {
+				sl = other
+			}
+		}
+		labels = append(labels, labelBox(sl))
 		v.Locations = append(v.Locations, sl)
 	}
 	v.ViewBox = fitStarMap(v, routes, scale)
@@ -306,26 +326,78 @@ func fitStarMap(v StarMapView, routes [][]point, scale float64) string {
 	for _, l := range v.Locations {
 		b.add(point{l.X - l.R, l.Y - l.R})
 		b.add(point{l.X + l.R, l.Y + l.R})
-		w := starMapCharWidth * float64(l.LabelCells)
-		x0, y0 := l.LabelX-w/2, l.LabelY-starMapLineHeight/2
-		switch l.Anchor {
-		case "start":
-			x0 = l.LabelX
-		case "end":
-			x0 = l.LabelX - w
-		}
-		switch l.Baseline {
-		case "text-after-edge":
-			y0 = l.LabelY - starMapLineHeight
-		case "text-before-edge":
-			y0 = l.LabelY
-		}
-		b.add(point{x0, y0})
-		b.add(point{x0 + w, y0 + starMapLineHeight})
+		box := labelBox(l)
+		b.add(box.min)
+		b.add(box.max)
 	}
 	side := max(b.maxX-b.minX, b.maxY-b.minY) + 2*starMapMargin
 	cx, cy := (b.minX+b.maxX)/2, (b.minY+b.maxY)/2
 	return svgNum(cx-side/2) + " " + svgNum(cy-side/2) + " " + svgNum(side) + " " + svgNum(side)
+}
+
+// rect is a box in the picture's units, min its top left corner.
+type rect struct{ min, max point }
+
+// labelBox is the box a location's label covers. Its width is guessed from
+// the name the page shows, as the font is the reader's.
+func labelBox(l StarMapLocation) rect {
+	w := starMapCharWidth * float64(l.LabelCells)
+	x0, y0 := l.LabelX-w/2, l.LabelY-starMapLineHeight/2
+	switch l.Anchor {
+	case "start":
+		x0 = l.LabelX
+	case "end":
+		x0 = l.LabelX - w
+	}
+	switch l.Baseline {
+	case "text-after-edge":
+		y0 = l.LabelY - starMapLineHeight
+	case "text-before-edge":
+		y0 = l.LabelY
+	}
+	return rect{point{x0, y0}, point{x0 + w, y0 + starMapLineHeight}}
+}
+
+// labelClashes is true when a label's box covers part of a route's piece or
+// of another label's box.
+func labelClashes(box rect, pieces [][2]point, labels []rect) bool {
+	for _, o := range labels {
+		if box.min.X < o.max.X && o.min.X < box.max.X && box.min.Y < o.max.Y && o.min.Y < box.max.Y {
+			return true
+		}
+	}
+	for _, p := range pieces {
+		if segmentInRect(p[0], p[1], box) {
+			return true
+		}
+	}
+	return false
+}
+
+// segmentInRect is true when the segment a to b passes through the box: it
+// clips the segment to each of the box's four sides in turn (Liang-Barsky).
+func segmentInRect(a, b point, r rect) bool {
+	t0, t1 := 0.0, 1.0
+	dx, dy := b.X-a.X, b.Y-a.Y
+	for _, e := range [4][2]float64{{-dx, a.X - r.min.X}, {dx, r.max.X - a.X}, {-dy, a.Y - r.min.Y}, {dy, r.max.Y - a.Y}} {
+		p, q := e[0], e[1]
+		if p == 0 {
+			if q < 0 {
+				return false
+			}
+			continue
+		}
+		t := q / p
+		if p < 0 {
+			t0 = max(t0, t)
+		} else {
+			t1 = min(t1, t)
+		}
+		if t0 > t1 {
+			return false
+		}
+	}
+	return true
 }
 
 // labelCells is the width of text in character cells: a wide or fullwidth
@@ -362,12 +434,12 @@ func starMapLabel(cat mapgen.Catalogue, l mapgen.Location) MapGenName {
 }
 
 // placeLocation is a location's circle and its label, which sits beside the
-// circle in the direction of its label orientation: turns from straight up,
-// clockwise, as the game has them.
-func placeLocation(l mapgen.Location, scale float64, label MapGenName, icon string) StarMapLocation {
+// circle in the direction turns names: turns from straight up, clockwise, as
+// the game has a label orientation.
+func placeLocation(l mapgen.Location, turns, scale float64, label MapGenName, icon string) StarMapLocation {
 	r := min(starMapRadiusMax, max(starMapRadiusMin, starMapRadius*l.Magnitude))
 	x, y := l.X*scale, l.Y*scale
-	a := 2 * math.Pi * l.LabelOrientation
+	a := 2 * math.Pi * turns
 	dx, dy := math.Sin(a), -math.Cos(a)
 	out := StarMapLocation{
 		Name: l.Name, Label: label, Icon: icon,
@@ -420,15 +492,38 @@ func routePoints(byName map[string]mapgen.Location, a, b mapgen.Location) []poin
 	}
 	ta := math.Atan2(ay, ax)
 	turn := math.Remainder(math.Atan2(by, bx)-ta, 2*math.Pi)
-	n := max(2, int(math.Ceil(math.Abs(turn)/starMapArcStep)))
-	out := make([]point, 0, n+1)
-	out = append(out, point{a.X, a.Y})
-	for i := 1; i < n; i++ {
-		t := float64(i) / float64(n)
-		r, th := ra+(rb-ra)*t, ta+turn*t
-		out = append(out, point{centre.X + r*math.Cos(th), centre.Y + r*math.Sin(th)})
+	spiral := func(n int) []point {
+		out := make([]point, 0, n+1)
+		out = append(out, point{a.X, a.Y})
+		for i := 1; i < n; i++ {
+			t := float64(i) / float64(n)
+			r, th := ra+(rb-ra)*t, ta+turn*t
+			out = append(out, point{centre.X + r*math.Cos(th), centre.Y + r*math.Sin(th)})
+		}
+		return append(out, point{b.X, b.Y})
 	}
-	return append(out, point{b.X, b.Y})
+	// A circle turns as much from piece to piece as it does about its centre;
+	// a spiral whose distance changes fast turns more where it bends, so the
+	// pieces halve until no corner is sharper than the step.
+	n := max(2, int(math.Ceil(math.Abs(turn)/starMapArcStep)))
+	out := spiral(n)
+	for maxBend(out) > starMapArcStep && 2*n <= starMapArcMax {
+		n *= 2
+		out = spiral(n)
+	}
+	return out
+}
+
+// maxBend is the sharpest turn, in radians, from one piece of a line to the
+// next.
+func maxBend(ps []point) float64 {
+	m := 0.0
+	for i := 2; i < len(ps); i++ {
+		a := math.Atan2(ps[i-1].Y-ps[i-2].Y, ps[i-1].X-ps[i-2].X)
+		b := math.Atan2(ps[i].Y-ps[i-1].Y, ps[i].X-ps[i-1].X)
+		m = max(m, math.Abs(math.Remainder(b-a, 2*math.Pi)))
+	}
+	return m
 }
 
 // commonParent is the centre a route between a and b arcs about: their

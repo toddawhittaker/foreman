@@ -121,6 +121,15 @@ test("routes arc about the sun, a moon's route to its planet is straight, and th
   const [a, b] = [curved[0], curved.at(-1)!];
   const away = curved.map((p) => Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / Math.hypot(b[0] - a[0], b[1] - a[1]));
   expect(Math.max(...away)).toBeGreaterThan(1);
+  // Every curve is smooth: the spiral out from Aquilo turns at most a few degrees from piece to piece.
+  const spiral = await routeBetween(page, "Aquilo", "Solar system edge");
+  const heading = (i: number) => Math.atan2(spiral[i][1] - spiral[i - 1][1], spiral[i][0] - spiral[i - 1][0]);
+  for (let i = 2; i < spiral.length; i++) {
+    const bend = Math.abs(Math.atan2(Math.sin(heading(i) - heading(i - 1)), Math.cos(heading(i) - heading(i - 1))));
+    expect(bend * 180 / Math.PI).toBeLessThan(3);
+  }
+  // Vulcanus's label leaves the game's side (right), where its routes leave, for the clear left.
+  await expect(starmap(page).locator("g.starmap__location", { has: page.locator("title", { hasText: /^Vulcanus$/ }) }).locator("text")).toHaveAttribute("text-anchor", "end");
 
   // A moon's route to its own planet is straight: two points, one segment.
   expect(await routeBetween(page, "Fake planet", "fake-moon")).toHaveLength(2);
@@ -202,6 +211,16 @@ test("the star map opens in the large view, alone, with zoom and pan", async ({ 
 
   const width = () => big.evaluate((s) => s.getBoundingClientRect().width);
   const fitted = await width();
+  // The sun's rings carry on past the square picture to the frame's edge, which clips them;
+  // what is drawn past the picture never makes the frame scroll.
+  expect(await big.evaluate((s) => getComputedStyle(s).overflow)).toBe("visible");
+  const past = await big.evaluate((s) => {
+    const box = s.getBoundingClientRect();
+    return Math.max(...[...s.querySelectorAll("g.starmap__rings circle:not([cx])")].map((c) => box.left - c.getBoundingClientRect().left));
+  });
+  expect(past).toBeGreaterThan(0);
+  const frameEl = page.locator("#large-frame");
+  expect(await frameEl.evaluate((f) => f.scrollWidth <= f.clientWidth + 1 && f.scrollHeight <= f.clientHeight + 1)).toBe(true);
   await page.keyboard.press("+");
   await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
   expect(await width()).toBeCloseTo(fitted * 1.15, 0);
