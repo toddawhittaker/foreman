@@ -424,12 +424,15 @@ func originMsg(o mods.Origin, anchors map[string]string, by map[string]world.Ins
 		}
 		names[i] = i18n.M("server.list.names", "names", frag)
 	}
-	key := map[mods.OriginKind]string{
-		mods.RequiredBy:    "mods.settings.origin.required_by",
-		mods.RecommendedBy: "mods.settings.origin.recommended_by",
-		mods.OfferedBy:     "mods.settings.origin.offered_by",
-	}[o.Kind]
-	return i18n.M(key, "mods", andNames(names))
+	// Each key is written out so the catalogue check sees it used (SPEC 22.5).
+	switch o.Kind {
+	case mods.RecommendedBy:
+		return i18n.M("mods.settings.origin.recommended_by", "mods", andNames(names))
+	case mods.OfferedBy:
+		return i18n.M("mods.settings.origin.offered_by", "mods", andNames(names))
+	default:
+		return i18n.M("mods.settings.origin.required_by", "mods", andNames(names))
+	}
 }
 
 // makesNewMap reports whether the world's next start makes its map: it has
