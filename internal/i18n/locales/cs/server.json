@@ -65,11 +65,12 @@
     "few": "Online: {count}",
     "other": "Online: {count}"
   },
-  "server.players.caption_stop": {
-    "one": "Online při zahájení zastavení: {count}",
-    "few": "Online při zahájení zastavení: {count}",
-    "other": "Online při zahájení zastavení: {count}"
-  },
+  "server.players.table_caption": "Hráči: {online} online, {total} v této uložené hře",
+  "server.players.table_caption_stop": "Hráči: {online} online při zahájení zastavení, {total} v této uložené hře",
+  "server.players.table_caption_online": "Hráči: {online} online",
+  "server.players.table_caption_online_stop": "Hráči: {online} online při zahájení zastavení",
+  "server.players.table_caption_saved": "Hráči: {total} v této uložené hře",
+  "server.players.total_time": "{total} celkem",
   "server.players.player": "Hráč",
   "server.players.online_for": "Online už",
   "server.players.unknown": "neznámé",
@@ -632,8 +633,8 @@
     "other": "{count} hráčů v této uložené hře"
   },
   "server.playtime.reading": "Čte se",
-  "server.players.time": "Čas",
   "server.players.online": "Online",
+  "server.players.time": "Čas online nebo odehraný",
   "server.players.inexact": "Herní časy nemusí být přesné. Opraví je nové načtení uložené hry na stránce světa.",
   "server.players.tracked_since": "Sledováno od {when}.",
   "server.players.all": {
@@ -642,6 +643,6 @@
     "other": "Všichni hráči ({count})"
   },
   "server.players.none_yet": "Na tomto světě zatím nikdo nehrál.",
-  "server.players.announce_joined": "Připojil se hráč {names}.",
-  "server.players.announce_left": "Odešel hráč {names}."
+  "server.players.announce_joined": "Připojení: {names}.",
+  "server.players.announce_left": "Odchod: {names}."
 }

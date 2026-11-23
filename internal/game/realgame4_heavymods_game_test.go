@@ -16,8 +16,6 @@ package game
 import (
 	"cmp"
 	"context"
-	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -49,7 +47,7 @@ func TestRealGameResourcesWithHeavyMods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	copyFolder(t, src, filepath.Join(e.worlds.Dirs().Worlds, id, world.ModsDir))
+	copyFolderMod(t, src, filepath.Join(e.worlds.Dirs().Worlds, id, world.ModsDir))
 
 	known := append([]string{"nauvis", "vulcanus", "gleba", "fulgora", "aquilo"}, planets...)
 	req := PreviewRequest{
@@ -77,36 +75,6 @@ func TestRealGameResourcesWithHeavyMods(t *testing.T) {
 			}
 			e.previewLeftovers(t, "after the resource count")
 		})
-	}
-}
-
-// copyFolder copies the regular files of src into dst, made if missing.
-func copyFolder(t *testing.T, src, dst string) {
-	t.Helper()
-	if err := os.MkdirAll(dst, 0o750); err != nil {
-		t.Fatal(err)
-	}
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, en := range entries {
-		if !en.Type().IsRegular() {
-			continue
-		}
-		in, err := os.Open(filepath.Join(src, en.Name())) //nolint:gosec // the tester names the folder
-		if err != nil {
-			t.Fatal(err)
-		}
-		out, err := os.Create(filepath.Join(dst, en.Name())) //nolint:gosec // the test's own world
-		if err == nil {
-			_, err = io.Copy(out, in)
-			err = errors.Join(err, out.Close())
-		}
-		_ = in.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
 	}
 }
 

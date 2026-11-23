@@ -1744,13 +1744,19 @@ decides who is on. How long comes from the `[JOIN]` lines in the game
 container's log since it started, so a chat line cannot fake a join; a
 player whose join line Foreman did not see is listed without a time. (P0)
 The Server page's Players panel lists the save's players (8.14) with who
-is online first, each with an "Online" chip in words and their session,
-longest first; then everyone else by play time, most first, with play time
-and last seen. A stopped game shows the same list with no chips; "No one
-has played this world yet" shows only when the save has no players. Joins
-and leaves move rows without a reload, with one announcement per update
-(16.3). At most ten rows, then "All N players" links to the full list on
-the world's Overview page. Only online rows offer the actions of 8.2.
+is online first, each with an "Online" chip in words beside the name and
+their session in the time column and total play time beneath the name,
+longest session first; then everyone
+else by play time, most first, with play time and last seen. Its caption
+gives both counts, for example "Players: 2 online, 7 in this save". A
+stopped game shows the same list with no chips; "No one has played this
+world yet" shows only when the save has no players. Joins and leaves move
+rows without a reload, with one announcement per update (16.3). Every
+online player is shown, then others fill the list to ten rows; "All N
+players" links to the full list on the world's Overview page when any are
+hidden. N counts the save's record plus anyone online it does not list yet,
+and the Server page's "N players in this save" says the same number. Only
+online rows offer the actions of 8.2.
 
 8.2. Kick, ban, unban, promote to admin, demote, and add to or remove from
 the whitelist, sent over RCON to the running game. They start from a
@@ -3470,6 +3476,8 @@ where Name is the prototype name with its first letter capitalised and
 hyphens turned into underscores. The address is built only from a
 prototype name that matches `^[a-z0-9_-]+$`, cut at the first comma, so
 no other mod text reaches it; any other name shows as its readable name.
+The request names the prototype, modded names included, so the wiki can
+tell which mods a world uses (unknown names fail to load and show the name).
 The image carries `referrerpolicy="no-referrer"`, so the wiki is not told
 the page's address, and `loading="lazy"`. Its `alt` text is the object's
 name, and a failed load (offline, a renamed wiki file, a blocked request)

@@ -62,11 +62,12 @@ func TestServerPlayersCapAtTenWithLink(t *testing.T) {
 		save = append(save, game.SavePlayer{Name: fmt.Sprintf("p%02d", i), PlayTime: time.Duration(i) * time.Hour})
 	}
 	p := serverCase(game.StateStopped, withSavePlayers(game.SavePlayersView{State: game.SavePlayersReady, Players: save}))
-	if n := len(p.ShownPlayers()); n != 10 {
-		t.Fatalf("shown %d, want 10", n)
+	v := p.PlayersPanel()
+	if len(v.Rows) != 10 {
+		t.Fatalf("shown %d, want 10", len(v.Rows))
 	}
-	if p.PlayersCount() != 12 || !p.MorePlayers() {
-		t.Fatalf("count %d more %v", p.PlayersCount(), p.MorePlayers())
+	if v.Total != 12 || !v.More() {
+		t.Fatalf("total %d more %v", v.Total, v.More())
 	}
 	html := playersHTML(t, p)
 	if !strings.Contains(html, "All 12 players") || strings.Contains(html, "p00") || strings.Contains(html, "p01<") {
@@ -103,5 +104,137 @@ func TestPlayersChangedIsOneSentence(t *testing.T) {
 	got := i18n.English.Format(playersChanged([]string{"a", "b"}, []string{"b", "c"}))
 	if got != "c joined. a left." {
 		t.Errorf("got %q", got)
+	}
+}
+
+func onlineRows(n int) []game.Player {
+	var out []game.Player
+	for i := range n {
+		out = append(out, game.Player{Name: fmt.Sprintf("on%02d", i), Joined: time.Now(), Duration: time.Duration(i) * time.Minute})
+	}
+	return out
+}
+
+// SPEC 8.1, 8.2: the cap never drops an online player, whose actions live only
+// in their row; offline players fill the rows up to ten.
+func TestServerPlayersCapKeepsEveryOnlinePlayer(t *testing.T) {
+	var save []game.SavePlayer
+	for i := range 12 {
+		save = append(save, game.SavePlayer{Name: fmt.Sprintf("off%02d", i), PlayTime: time.Hour})
+	}
+	for _, c := range []struct{ online, rows, total int }{{3, 10, 15}, {10, 10, 22}, {12, 12, 24}, {0, 10, 12}} {
+		p := serverCase(game.StateRunning, func(p *ServerPage) {
+			p.PlayersKnown, p.Players = true, onlineRows(c.online)
+			withSavePlayers(game.SavePlayersView{State: game.SavePlayersReady, Players: save})(p)
+		})
+		v := p.PlayersPanel()
+		if len(v.Rows) != c.rows || v.Total != c.total || v.Online != c.online || !v.More() {
+			t.Errorf("%d online: %d rows, total %d, online %d, more %v; want %d rows, total %d", c.online, len(v.Rows), v.Total, v.Online, v.More(), c.rows, c.total)
+		}
+		for i, r := range v.Rows[:c.online] {
+			if !r.Online {
+				t.Errorf("%d online: row %d is offline", c.online, i)
+			}
+		}
+	}
+}
+
+// SPEC 8.1: the caption names who is online and how many the save has; while a
+// stop warns, the online part says when they were counted.
+func TestServerPlayersCaption(t *testing.T) {
+	save := game.SavePlayersView{State: game.SavePlayersReady, Players: []game.SavePlayer{{Name: "a"}, {Name: "b"}, {Name: "c"}, {Name: "d"}, {Name: "e"}, {Name: "f"}, {Name: "g"}}}
+	two := []game.Player{{Name: "a"}, {Name: "b"}}
+	for name, c := range map[string]struct {
+		edit func(*ServerPage)
+		want string
+	}{
+		"online":  {func(p *ServerPage) { p.PlayersKnown, p.Players = true, two; withSavePlayers(save)(p) }, "Players: 2 online, 7 in this save"},
+		"stopped": {withSavePlayers(save), "Players: 7 in this save"},
+		"not in save": {func(p *ServerPage) {
+			p.PlayersKnown, p.Players = true, append(two, game.Player{Name: "new"})
+			withSavePlayers(save)(p)
+		}, "Players: 3 online, 8 in this save"},
+		"no record": {func(p *ServerPage) { p.PlayersKnown, p.Players = true, two }, "Players: 2 online"},
+		"stop warning": {func(p *ServerPage) {
+			p.Status.Operation = &game.Operation{Players: two}
+			withSavePlayers(save)(p)
+		}, "Players: 2 online when the stop began, 7 in this save"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			state := game.StateRunning
+			if name == "stopped" {
+				state = game.StateStopped
+			}
+			p := serverCase(state, c.edit)
+			if got := english(p.PlayersPanel().Caption); got != c.want {
+				t.Errorf("caption %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// SPEC 8.1: an online row says the session and, with the save's record, the
+// total as a hint under the name (the time column stays one line, DESIGN 8.3);
+// the others say the total in the column.
+func TestServerPlayersTimeColumn(t *testing.T) {
+	p := serverCase(game.StateRunning, func(p *ServerPage) {
+		p.PlayersKnown = true
+		p.Players = []game.Player{{Name: "both", Joined: time.Now(), Duration: 2 * time.Minute}, {Name: "fresh", Joined: time.Now(), Duration: 3 * time.Minute}, {Name: "nojoin"}}
+		withSavePlayers(game.SavePlayersView{State: game.SavePlayersReady, Players: []game.SavePlayer{{Name: "both", PlayTime: 40 * time.Hour}, {Name: "away", PlayTime: 5 * time.Hour}}})(p)
+	})
+	html := playersHTML(t, p)
+	for _, want := range []string{
+		`<br><span class="hint">40 h 0 min total</span></td><td class="num" role="cell" data-label="Online for">2 min</td>`,
+		`data-label="Online for">3 min</td>`,
+		`data-label="Online for">unknown</td>`,
+		`data-label="Play time">5 h 0 min</td>`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("missing %q:\n%s", want, html)
+		}
+	}
+}
+
+// SPEC 8.1, 8.14: "All N players" and the facts' "N players in this save"
+// are one count: the save's record plus anyone online it does not list yet.
+func TestServerPlayersOneTotal(t *testing.T) {
+	var save []game.SavePlayer
+	for i := range 11 {
+		save = append(save, game.SavePlayer{Name: fmt.Sprintf("p%02d", i), PlayTime: time.Hour})
+	}
+	p := serverCase(game.StateRunning, func(p *ServerPage) {
+		p.PlayersKnown, p.Players = true, []game.Player{{Name: "P00"}, {Name: "newcomer"}}
+		withSavePlayers(game.SavePlayersView{State: game.SavePlayersReady, Players: save})(p)
+	})
+	if v := p.PlayersPanel(); v.Total != 12 {
+		t.Fatalf("panel total %d, want 12", v.Total)
+	}
+	if got := english(p.SavePlayersText()); got != "12 players in this save" {
+		t.Errorf("facts say %q", got)
+	}
+	if html := playersHTML(t, p); !strings.Contains(html, "All 12 players") {
+		t.Errorf("panel: %s", html)
+	}
+}
+
+// Factorio names ignore case, so a name that changes only its case is the same
+// player and nobody joined or left.
+func TestPlayersChangedIgnoresCase(t *testing.T) {
+	if m := playersChanged([]string{"Alice"}, []string{"alice"}); !m.IsZero() {
+		t.Errorf("a case change said %q", english(m))
+	}
+	if got := english(playersChanged([]string{"Alice", "Bob"}, []string{"alice"})); got != "Bob left." {
+		t.Errorf("got %q", got)
+	}
+}
+
+// DESIGN 8.12: the Online chip sits in reading order beside the name, before
+// the actions menu opens, not after its buttons.
+func TestOnlineChipComesBeforeTheActions(t *testing.T) {
+	p := liveOpsCase(func(p *ServerPage) {})
+	html := playersHTML(t, p)
+	chip, menu := strings.Index(html, "badge--online"), strings.Index(html, `class="actions"`)
+	if chip < 0 || menu < 0 || chip > menu {
+		t.Errorf("chip at %d, actions at %d:\n%s", chip, menu, html)
 	}
 }

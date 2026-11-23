@@ -46,3 +46,23 @@ func TestAppSettingsAreIndependent(t *testing.T) {
 		t.Error("setting b found though only a was set")
 	}
 }
+
+func TestSetAppSettingsStoresAllOrNone(t *testing.T) {
+	s, _ := openTemp(t)
+	ctx := context.Background()
+	if err := s.SetAppSettings(ctx, []AppSettingWrite{{"a", "1"}, {"b", "2"}}, "alice", t0); err != nil {
+		t.Fatal(err)
+	}
+	if v, _, _ := s.AppSetting(ctx, "b"); v != "2" {
+		t.Errorf("b = %q, want 2", v)
+	}
+	if _, err := s.db.Exec(`CREATE TRIGGER refuse_c BEFORE INSERT ON app_settings WHEN NEW.name = 'c' BEGIN SELECT RAISE(ABORT, 'refused'); END`); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetAppSettings(ctx, []AppSettingWrite{{"a", "9"}, {"c", "3"}}, "alice", t0); err == nil {
+		t.Fatal("a refused write did not fail the save")
+	}
+	if v, _, _ := s.AppSetting(ctx, "a"); v != "1" {
+		t.Errorf("a = %q after a failed save, want 1 (nothing stored)", v)
+	}
+}
