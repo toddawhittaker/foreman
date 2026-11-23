@@ -27,12 +27,15 @@ never needs a ruleset change. Read a failing run's log with
 `gh run view --log-failed`.
 
 A first `changes` job decides whether the build and test jobs (`verify`,
-`e2e` and `image`) run. It skips them in two cases. First, when a pull
+`e2e` and `image`) run. It skips them in three cases. First, when a pull
 request or a push to an epic branch changes only files that nothing in the build, the tests or CI
 reads: anything under `docs/`, `.claude/` or `.githooks/`, and Markdown
 files anywhere outside `.github/`. Second, when an earlier green run
 already tested the same git tree, on a pull request or a push. So the
 epic pull request into `main` reuses the run on the epic branch's head.
+Third, once an epic branch has an open pull request into `main`, a push to it
+skips them too: the same push starts the pull request's run, which tests
+the branch merged onto `main` and is the run the ruleset reads.
 Every full green run records its tree as an artifact named
 `tested-tree-<tree hash>`, kept 30 days, so a tree is re-tested on a fresh
 runner now and then. Markers from forks' pull requests are ignored. A push
