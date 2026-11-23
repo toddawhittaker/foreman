@@ -89,7 +89,7 @@ func TestUploadLimitsAreOneFigure(t *testing.T) {
 		bytes uint64
 		want  string
 	}{
-		{"mod zip", uint64(modUploadMB) << 20, "200 MB"},
+		{"mod zip", uint64(modUploadMB) << 20, "1 GB"},
 		{"mod-settings.dat", MaxSettingsUpload, "4 MB"},
 		{"save", MaxSaveUpload, "1 GB"},
 		{"favorite", world.MaxFavoriteUpload, "8 MB"},
@@ -111,6 +111,6 @@ func TestModsTabUploadHintsAndLabel(t *testing.T) {
 	g := newModsRig(t, true)
 	id := g.world20("Base", "alpha_1.0.0")
 	_, tab := g.getStatus(modsPath(id))
-	wantIn(t, "mods tab", tab, `data-limit="200 MB"`, `data-limit="4 MB"`,
+	wantIn(t, "mods tab", tab, `data-limit="1 GB"`, `data-limit="4 MB"`,
 		`New <code>mod-settings.dat</code></label>`)
 }

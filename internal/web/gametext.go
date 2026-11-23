@@ -76,12 +76,31 @@ func refusalMsg(err error) (i18n.Msg, bool) {
 	if e, ok := errors.AsType[game.NotActiveError](err); ok {
 		return i18n.M("server.error.not_active_named", "world", e.Name), true
 	}
+	if tl, ok := errors.AsType[*modportal.TooLargeError](err); ok {
+		mod, version := "", ""
+		if de, ok := errors.AsType[*game.ModDownloadError](err); ok {
+			mod, version = de.Mod, de.Version
+		}
+		return tooLargeMsg(i18n.Ident(mod), version, tl), true
+	}
 	for _, r := range refusals {
 		if errors.Is(err, r.err) {
 			return r.msg, true
 		}
 	}
 	return i18n.Msg{}, false
+}
+
+// tooLargeMsg words a mod download over the size limit: the mod, its size
+// when the portal declared one, and the limit (SPEC 14.6, 14.10).
+func tooLargeMsg(mod i18n.Fragment, version string, tl *modportal.TooLargeError) i18n.Msg {
+	limit := sizeLimit(uint64(max(tl.Limit, 0)))
+	if tl.Size <= 0 {
+		return i18n.M("mods.error.too_large_stream", "mod", mod, "version", version, "limit", limit)
+	}
+	// Whole megabytes, rounded up, so the size never reads as under the limit.
+	size := i18n.M("common.bytes.mb", "n", (tl.Size+1<<20-1)>>20)
+	return i18n.M("mods.error.too_large", "mod", mod, "version", version, "size", size, "limit", limit)
 }
 
 // refusals are the plain refusals, each with its words.

@@ -27,7 +27,7 @@ const (
 // same as a download's (SPEC 14.6, 14.10); mod-settings.dat holds only
 // setting values.
 const (
-	modUploadMB      = 200
+	modUploadMB      = 1024
 	settingsUploadMB = world.MaxModSettings >> 20
 )
 
@@ -46,6 +46,10 @@ func sizeLimit(n uint64) i18n.Msg {
 	}
 	return i18n.M("common.bytes.mb", "n", n>>20)
 }
+
+// modUploadFieldID is the id of the mod upload limit's input on the General
+// tab, which a mod over the limit links to.
+const modUploadFieldID = "general-mod-upload-mb"
 
 // The upload forms' fields.
 const (

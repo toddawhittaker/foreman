@@ -67,6 +67,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 				reread = false
 			}
 			p := s.serverPage(r.Context(), sum, st)
+			p.Admin = isAdmin(u)
 			p.RecentSnapshots, p.RecentFailed = snaps, snapsFailed
 			if err := out.send(p); err != nil {
 				return
