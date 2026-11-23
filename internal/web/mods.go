@@ -63,16 +63,6 @@ type accountFetcher struct {
 }
 
 func (f accountFetcher) Download(ctx context.Context, r modportal.Release, dst *os.File) error {
-	err := f.download(ctx, r, dst)
-	if err != nil && f.log != nil {
-		// The release names the mod and version. No error here carries the
-		// account's username or token (SPEC 14.10).
-		f.log.Warn("download a mod", "mod", strings.TrimSuffix(r.FileName, "_"+r.Version+".zip"), "version", r.Version, "reason", err.Error())
-	}
-	return err
-}
-
-func (f accountFetcher) download(ctx context.Context, r modportal.Release, dst *os.File) error {
 	acct, src, _, err := f.account.Get(ctx)
 	if err != nil {
 		return err
@@ -80,7 +70,27 @@ func (f accountFetcher) download(ctx context.Context, r modportal.Release, dst *
 	if !canDownload(src) {
 		return game.ErrNoModFetcher
 	}
-	return f.portal.Download(ctx, acct.Username.Reveal(), acct.Token.Reveal(), r, dst, f.limit(ctx))
+	err = f.portal.Download(ctx, acct.Username.Reveal(), acct.Token.Reveal(), r, dst, f.limit(ctx))
+	if err != nil && f.log != nil {
+		// Only a failure of the portal download is logged here. The release
+		// text comes from the portal, so each part is cut short; no error
+		// from the download carries the account's username or token (SPEC 14.10).
+		f.log.Warn("download a mod", "mod", clipLogged(strings.TrimSuffix(r.FileName, "_"+r.Version+".zip")),
+			"version", clipLogged(r.Version), "reason", clipLogged(err.Error()))
+	}
+	return err
+}
+
+// maxLoggedPortalText is the most bytes of portal-supplied text one log
+// field holds.
+const maxLoggedPortalText = 200
+
+// clipLogged cuts s for the log, never inside a character, and marks the cut.
+func clipLogged(s string) string {
+	if cut, ok := cutUTF8(s, maxLoggedPortalText); ok {
+		return cut + "…"
+	}
+	return s
 }
 
 func modsPath(id string) string { return worldPath(id) + "/mods" }

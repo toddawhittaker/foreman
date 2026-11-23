@@ -3,12 +3,14 @@ package web
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/modportal/modportaltest"
 	"github.com/toddawhittaker/foreman/internal/secret"
@@ -66,5 +68,70 @@ func TestFailedModDownloadsAreLoggedWithoutTheAccount(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// SPEC 14.10: text the portal supplied, here a file name, never reaches the
+// log at more than a fixed length.
+func TestFailedModDownloadLogCutsPortalText(t *testing.T) {
+	hn := newHarness(t, nil)
+	acct, err := factorioaccount.New(factorioaccount.Account{
+		Username: secret.New(modportaltest.Username), Token: secret.New(modportaltest.Token),
+	}, secret.Secret{}, hn.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs bytes.Buffer
+	f := accountFetcher{
+		account: acct, portal: modportal.NewForTest("http://127.0.0.1:1"),
+		limit: func(context.Context) int64 { return 1 << 20 },
+		log:   slog.New(slog.NewTextHandler(&logs, nil)),
+	}
+	dst, err := os.CreateTemp(t.TempDir(), "mod-*.zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = dst.Close() }()
+	long := strings.Repeat("A", 100000)
+	// The file name does not match the version, so the portal client refuses
+	// it and its message quotes the name.
+	r := modportal.Release{Version: "1.0.0", FileName: long + "_9.9.9.zip", DownloadURL: "/download/x"}
+	if err := f.Download(context.Background(), r, dst); err == nil {
+		t.Fatal("the download worked")
+	}
+	out := logs.String()
+	if strings.Count(out, "A") == 0 {
+		t.Fatalf("the log names nothing of the mod:\n%.300s", out)
+	}
+	if len(out) > 1500 {
+		t.Errorf("the log line is %d bytes, want it cut:\n%.300s", len(out), out)
+	}
+}
+
+// SPEC 14.10: an account problem is not a failed download, so this wrapper
+// does not log it.
+func TestAccountErrorsAreNotLoggedAsFailedDownloads(t *testing.T) {
+	hn := newHarness(t, nil)
+	acct, err := factorioaccount.New(factorioaccount.Account{}, secret.Secret{}, hn.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs bytes.Buffer
+	f := accountFetcher{
+		account: acct, portal: modportal.NewForTest("http://127.0.0.1:1"),
+		limit: func(context.Context) int64 { return 1 << 20 },
+		log:   slog.New(slog.NewTextHandler(&logs, nil)),
+	}
+	dst, err := os.CreateTemp(t.TempDir(), "mod-*.zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = dst.Close() }()
+	r := modportal.Release{Version: "1.0.0", FileName: "fp-x_1.0.0.zip", DownloadURL: "/download/x"}
+	if err := f.Download(context.Background(), r, dst); !errors.Is(err, game.ErrNoModFetcher) {
+		t.Fatalf("error %v, want ErrNoModFetcher", err)
+	}
+	if logs.Len() != 0 {
+		t.Errorf("the wrapper logged an account problem:\n%s", logs.String())
 	}
 }
