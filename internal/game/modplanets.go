@@ -69,6 +69,13 @@ func (c *Controller) cachedModPlanetDefs(id string) (*ModSettingDefs, bool) {
 	return c.modPlanets.lookup(id, key)
 }
 
+// CachedModPlanetDefs is the cached result of the run the world's planets come
+// from (the planets run, or the definitions run for a world on its defaults),
+// without starting one; false when it is not cached.
+func (c *Controller) CachedModPlanetDefs(id string) (*ModSettingDefs, bool) {
+	return c.cachedModPlanetDefs(id)
+}
+
 // CachedModSettingDefs is the world's cached setting definitions, without
 // starting a run; false when they are not cached.
 func (c *Controller) CachedModSettingDefs(id string) (*ModSettingDefs, bool) {

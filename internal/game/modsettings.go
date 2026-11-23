@@ -73,6 +73,11 @@ type ModSettingDefs struct {
 	// PlanetsErr says why (SPEC 5.6).
 	Catalogues map[string]mapgen.Catalogue
 	PlanetsErr error
+	// Icons finds an object's icon in the world's mod zips, and StarMap holds
+	// the space locations and routes the game draws. Each is empty when the
+	// run did not write its file or the file was refused.
+	Icons   modsettings.IconIndex
+	StarMap mapgen.StarMap
 }
 
 // Catalogue returns the world's catalogue labelled in lang, or in English
