@@ -2611,8 +2611,11 @@ close the view, the tab, the setting, and the picture again).
 - **A picture's own actions share its Download line.** On a 2.1 world's
   one picture, "Draw from a real game" and its toggletip follow the
   Download link on the same line, so the pane gives no row of its own to
-  an action the person seldom takes. On a narrow pane the line wraps,
-  and the picture leaves room for the second row.
+  an action the person seldom takes. The line wraps when the pane is
+  narrow and when "Show resource amounts" makes the link longer; the
+  button and its toggletip wrap together, so the icon stays beside the
+  button, and the picture always leaves room for the second row. The
+  "Download all drawn planets (zip)" link has its own line below both.
 - **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
   wide panel, a select of 17 sizes elsewhere) above the section, outside
   the part a reply replaces: 1024 to 3072 tiles square in steps of 128,
