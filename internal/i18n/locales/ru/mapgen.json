@@ -117,6 +117,8 @@
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "Предпросмотр: {planet}",
   "mapgen.planet.vulcanus": "Вулкан",
+  "mapgen.place.shattered_planet": "Разрушенная планета",
+  "mapgen.place.solar_system_edge": "Край Солнечной системы",
   "mapgen.preset.death_world": "Мир смерти",
   "mapgen.preset.death_world_marathon": "Марафон мира смерти",
   "mapgen.preset.default": "По умолчанию",

@@ -117,6 +117,8 @@
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "预览：{planet}",
   "mapgen.planet.vulcanus": "祝融星",
+  "mapgen.place.shattered_planet": "破碎星球",
+  "mapgen.place.solar_system_edge": "太阳系边缘",
   "mapgen.preset.death_world": "末日领域",
   "mapgen.preset.death_world_marathon": "绝地求生",
   "mapgen.preset.default": "默认预设",
