@@ -37,13 +37,14 @@ func pageCSP(wiki bool) string {
 	return csp
 }
 
-// showWikiIcons turns the object markers in a fragment into wiki images when
-// the setting is on, as a whole page does.
-func (s *server) showWikiIcons(ctx context.Context, fragment []byte) []byte {
-	if !s.wikiIconsOn(ctx) {
-		return fragment
+// readWikiIcons returns r carrying the setting, reading the store only when
+// r does not carry it yet, so a page or fragment answer reads it once and
+// every use of it agrees.
+func (s *server) readWikiIcons(r *http.Request) *http.Request {
+	if _, ok := r.Context().Value(wikiIconsKey{}).(bool); ok {
+		return r
 	}
-	return modsettings.ShowWikiIcons(fragment)
+	return withWikiIcons(r, s.wikiIconsOn(r.Context()))
 }
 
 // wikiIconsOn reads the setting for a request. A store that cannot be read

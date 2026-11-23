@@ -634,7 +634,7 @@
   },
   "server.playtime.reading": "Čte se",
   "server.players.online": "Online",
-  "server.players.time": "Čas",
+  "server.players.time": "Čas online nebo odehraný",
   "server.players.inexact": "Herní časy nemusí být přesné. Opraví je nové načtení uložené hry na stránce světa.",
   "server.players.tracked_since": "Sledováno od {when}.",
   "server.players.all": {

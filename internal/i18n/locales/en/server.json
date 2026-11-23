@@ -614,7 +614,7 @@
   },
   "server.playtime.reading": "Being read",
   "server.players.online": "Online",
-  "server.players.time": "Time",
+  "server.players.time": "Time online or played",
   "server.players.inexact": "Play times may be a little off. Reading the save again on the world's page fixes them.",
   "server.players.tracked_since": "Tracked since {when}.",
   "server.players.all": {
