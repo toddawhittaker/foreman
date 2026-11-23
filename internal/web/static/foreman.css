@@ -3858,6 +3858,15 @@ td > .hint {
   display: block;
 }
 
+/* Open in the top layer: fixed to the window where the script places it,
+   not the browser's centred popover (DESIGN 7.7). */
+.js-on .tip__text:popover-open {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: visible;
+}
+
 .mode-panel input.mono {
   font-family: var(--font-mono);
 }

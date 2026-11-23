@@ -635,6 +635,50 @@ test.describe("with script", () => {
     });
   }
 
+  // DESIGN 7.7: each (i) tip in the preview opens wholly inside the window, is not clipped by the pane or
+  // its card, and opening it adds no scroll bar to any box around it nor moves its button.
+  for (const [name, size] of [["a wide window", { width: 1920, height: 950 }], ["the project's window", null]] as const) {
+    test(`the preview's info tips stay on screen and add no scroll bar in ${name}`, async ({ page }) => {
+      if (size) await page.setViewportSize(size);
+      await openNewMap(page, { name: "Mega base" });
+      await expect(pictures(page)).toHaveCount(1);
+      await expect(page.locator("#preview-chart-button")).toBeVisible();
+      const tips = page.locator("#preview button.tip");
+      expect(await tips.count()).toBeGreaterThanOrEqual(1);
+      for (const button of await tips.all()) {
+        await button.scrollIntoViewIfNeeded();
+        const before = (await button.boundingBox())!;
+        await button.click();
+        const text = page.locator(`#${await button.getAttribute("aria-controls")}`);
+        await expect(text).toBeVisible();
+        await page.screenshot({ path: `../screenshots/preview-tip-${await button.getAttribute("aria-controls")}-${size ? size.width : "project"}-${test.info().project.name}.png` });
+        const box = (await text.boundingBox())!;
+        const width = await page.evaluate(() => document.documentElement.clientWidth);
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+        // Nothing around the tip scrolls sideways because of it, and none of it is cut off or covered.
+        const clipped = await text.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const found: string[] = [];
+          for (let a = el.parentElement; a; a = a.parentElement) {
+            const s = getComputedStyle(a);
+            if (a.scrollWidth > a.clientWidth + 1 && s.overflowX !== "visible") found.push(`${a.tagName}#${a.id}.${a.className} scrolls`);
+          }
+          // Each corner of the tip is the tip itself, not a box that cut it off or lies over it.
+          for (const [x, y] of [[r.left + 2, r.top + 2], [r.right - 2, r.top + 2], [r.left + 2, r.bottom - 2], [r.right - 2, r.bottom - 2]]) {
+            if (!el.contains(document.elementFromPoint(x, y))) found.push(`corner ${x},${y} is hidden`);
+          }
+          return found;
+        });
+        expect(clipped).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+        expect((await button.boundingBox())!).toEqual(before);
+        await page.keyboard.press("Escape");
+        await expect(text).toBeHidden();
+      }
+    });
+  }
+
   // The same in every language (the language cookie, as the menu sets it): the longest texts wrap, they never
   // run into each other. Layout does not follow the theme, so one theme at each width keeps the run short.
   for (const lang of ["en", "de", "es", "fr", "pl", "ru", "cs", "zh-Hans"]) {
