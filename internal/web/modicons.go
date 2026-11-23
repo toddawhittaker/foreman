@@ -44,20 +44,10 @@ const modIconQueue = 8
 // is cached. A new mod set or settings file gives a new key, so a picture
 // of an earlier run is never served. Tests replace it.
 var modIconRun = func(s *server, id string) (*game.ModSettingDefs, string, bool) {
-	if s.game == nil || s.worlds == nil {
+	if s.game == nil {
 		return nil, "", false
 	}
-	if key, _, err := s.worlds.ModPlanetsFile(id); err == nil && key != "" {
-		if defs, ok := s.game.CachedModPlanetDefs(id); ok {
-			return defs, "planets:" + key, true
-		}
-	}
-	key, err := s.worlds.ModSettingsKey(id)
-	if err != nil || key == "" {
-		return nil, "", false
-	}
-	defs, ok := s.game.CachedModSettingDefs(id)
-	return defs, "defs:" + key, ok
+	return s.game.CachedModPlanetDefsKeyed(id)
 }
 
 // readModIcon reads one icon from a world's mod zip; tests replace it.

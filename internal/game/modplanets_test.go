@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/gameenv"
@@ -84,5 +85,46 @@ func TestWorldCatalogueWithoutSettingsSharesTheDefinitionsRun(t *testing.T) {
 	}
 	if _, ok := r.c.cachedModPlanetDefs(r.id); !ok {
 		t.Error("the cached planets were not found")
+	}
+}
+
+// SPEC 14.6: the icons come from the planets run when it is cached, else from
+// the definitions run, and the key changes with the settings file, so a picture
+// of an earlier run is never served.
+func TestCachedModPlanetDefsKeyedPicksTheRunAndKeysIt(t *testing.T) {
+	r := newModSettingsRig(t)
+	r.writeFile(r.id, filepath.Join(world.ModsDir, "moon_1.0.0.zip"), []byte("zip"))
+	if _, _, ok := r.c.CachedModPlanetDefsKeyed(r.id); ok {
+		t.Fatal("a run was found before any ran")
+	}
+	ch := r.ask(context.Background())
+	c := r.waitRunning()
+	r.finish(c, defsJSON, defaultsDat(t))
+	if res := r.result(ch); res.err != nil {
+		t.Fatal(res.err)
+	}
+	eventually(t, func() bool { return len(r.previewContainers()) == 0 }, "the container to be removed")
+	defs, defsKey, ok := r.c.CachedModPlanetDefsKeyed(r.id)
+	if !ok || defs == nil || !strings.HasPrefix(defsKey, "defs:") {
+		t.Fatalf("got ok=%v key %q, want the definitions run", ok, defsKey)
+	}
+
+	r.writeFile(r.id, filepath.Join(world.ModsDir, world.ModSettingsFile), []byte("first"))
+	if _, key, _ := r.c.CachedModPlanetDefsKeyed(r.id); !strings.HasPrefix(key, "defs:") {
+		t.Errorf("key %q: a settings file with no planets run cached must use the definitions run", key)
+	}
+	r.catalogueRun()
+	_, first, ok := r.c.CachedModPlanetDefsKeyed(r.id)
+	if !ok || !strings.HasPrefix(first, "planets:") {
+		t.Fatalf("got ok=%v key %q, want the planets run", ok, first)
+	}
+
+	r.writeFile(r.id, filepath.Join(world.ModsDir, world.ModSettingsFile), []byte("second"))
+	if _, key, _ := r.c.CachedModPlanetDefsKeyed(r.id); key == first {
+		t.Errorf("key %q did not change with the settings file", key)
+	}
+	r.catalogueRun()
+	if _, second, ok := r.c.CachedModPlanetDefsKeyed(r.id); !ok || second == first || !strings.HasPrefix(second, "planets:") {
+		t.Errorf("after a save got ok=%v key %q, want a new planets key", ok, second)
 	}
 }
