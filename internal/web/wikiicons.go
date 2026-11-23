@@ -26,7 +26,9 @@ func wikiIconsOf(r *http.Request) bool {
 
 // pageCSP is a signed-in page's Content-Security-Policy: no other site may
 // frame it, and it loads images from itself and data: URLs, plus the wiki
-// while its icons are on.
+// while its icons are on. The wiki images carry an inline onerror handler
+// (modsettings.ShowWikiIcons); if a script-src is ever added, it must allow
+// that handler with 'unsafe-hashes' and its hash, or the fallback breaks.
 func pageCSP(wiki bool) string {
 	csp := "frame-ancestors 'none'; img-src 'self' data:"
 	if wiki {
@@ -36,9 +38,9 @@ func pageCSP(wiki bool) string {
 }
 
 // showWikiIcons turns the object markers in a fragment into wiki images when
-// the setting is on for r, as a whole page does.
-func showWikiIcons(r *http.Request, fragment []byte) []byte {
-	if !wikiIconsOf(r) {
+// the setting is on, as a whole page does.
+func (s *server) showWikiIcons(ctx context.Context, fragment []byte) []byte {
+	if !s.wikiIconsOn(ctx) {
 		return fragment
 	}
 	return modsettings.ShowWikiIcons(fragment)

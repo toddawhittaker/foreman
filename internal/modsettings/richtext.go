@@ -81,6 +81,34 @@ func isControl(kind string) bool {
 	return kind == "CONTROL" || strings.HasPrefix(kind, "CONTROL_") || strings.HasSuffix(kind, "_CONTROL")
 }
 
+// fixedMacros are the macros the game writes with no action argument, in the
+// order they are tried. A word is a key shown in a key span; an empty word is
+// a styling marker that is dropped, leaving the text it wraps. The ALT forms
+// carry a number, __ALT_CONTROL_LEFT_CLICK__1__, which is part of the macro.
+var fixedMacros = []struct{ macro, word string }{
+	{"__ALT_CONTROL_LEFT_CLICK__1__", "Left click"},
+	{"__ALT_CONTROL_RIGHT_CLICK__1__", "Right click"},
+	{"__CONTROL_LEFT_CLICK__", "Left click"},
+	{"__CONTROL_RIGHT_CLICK__", "Right click"},
+	{"__CONTROL_KEY_SHIFT__", "Shift"},
+	{"__CONTROL_KEY_CTRL__", "Ctrl"},
+	{"__CONTROL_STYLE_BEGIN__", ""},
+	{"__CONTROL_STYLE_END__", ""},
+	{"__REMARK_COLOR_BEGIN__", ""},
+	{"__REMARK_COLOR_END__", ""},
+}
+
+// fixedMacro reads one of fixedMacros at the start of s, returning its text
+// length and the key word to show.
+func fixedMacro(s string) (n int, word string, ok bool) {
+	for _, f := range fixedMacros {
+		if strings.HasPrefix(s, f.macro) {
+			return len(f.macro), f.word, true
+		}
+	}
+	return 0, "", false
+}
+
 // objectTags are the tags that name a game object by its prototype name.
 var objectTags = map[string]bool{
 	"item": true, "fluid": true, "entity": true, "technology": true, "recipe": true,
@@ -115,7 +143,7 @@ func Readable(name string) string {
 func objectHTML(name string) string {
 	// [item=iron-plate,quality=rare] names iron-plate; the rest is for the game.
 	name, _, _ = strings.Cut(name, ",")
-	text := escapedReadable(name)
+	text := html.EscapeString(Readable(name))
 	if file, ok := WikiIconFile(name); ok {
 		return objectMarker(file, text)
 	}
@@ -178,6 +206,13 @@ func RichTextHTML(s string, multiline bool, icons RichTextIcons) template.HTML {
 			}
 			continue
 		case strings.HasPrefix(s, "__"):
+			if n, word, ok := fixedMacro(s); ok {
+				if word != "" {
+					b.WriteString(`<span class="rt-key">` + word + "</span>")
+				}
+				s = s[n:]
+				continue
+			}
 			if n, kind, name, ok := parseMacro(s); ok {
 				switch {
 				case isControl(kind):

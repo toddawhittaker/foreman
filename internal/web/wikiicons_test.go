@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"sync"
@@ -109,13 +110,17 @@ func TestWikiIconsUnreadableCountsAsOff(t *testing.T) {
 // SPEC 14.10: a fragment swapped in by htmx gets images only with the
 // switch on for the request.
 func TestShowWikiIconsFragment(t *testing.T) {
+	hn := newHarness(t, nil)
+	s, ctx := hn.generalServer(), context.Background()
 	frag := []byte(`<p><span class="rt-obj" data-wiki="Iron_ore">Iron ore</span></p>`)
-	r, _ := http.NewRequest(http.MethodGet, "/", nil)
-	if got := showWikiIcons(r, frag); string(got) != string(frag) {
+	if got := s.showWikiIcons(ctx, frag); string(got) != string(frag) {
 		t.Errorf("changed with the switch off: %s", got)
 	}
-	on := withWikiIcons(r, true)
-	if got := string(showWikiIcons(on, frag)); !strings.Contains(got, `src="https://wiki.factorio.com/images/Iron_ore.png"`) {
+	by := actor(hn.addUser("bob", testPassword))
+	if err := s.saveGeneral(ctx, by, nil, map[string]bool{settingWikiIcons.Key: true}); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(s.showWikiIcons(ctx, frag)); !strings.Contains(got, `src="https://wiki.factorio.com/images/Iron_ore.png"`) {
 		t.Errorf("no image with the switch on: %s", got)
 	}
 }

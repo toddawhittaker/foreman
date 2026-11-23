@@ -56,7 +56,7 @@ func TestSaveGeneralAppliesWrittenRetention(t *testing.T) {
 	hn := newHarness(t, nil)
 	hn.worlds.SetKeepAutomatic(50)
 	s := hn.generalServer()
-	if err := s.saveGeneral(context.Background(), actor(hn.addUser("bob", testPassword)), map[string]int{settingSnapshotRetention.Key: 7}); err != nil {
+	if err := s.saveGeneral(context.Background(), actor(hn.addUser("bob", testPassword)), map[string]int{settingSnapshotRetention.Key: 7}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got := hn.worlds.KeepAutomatic(); got != 7 {
@@ -71,4 +71,27 @@ func TestGeneralFieldPanicsOnUnknownKey(t *testing.T) {
 		}
 	}()
 	(&GeneralPage{}).field("nope")
+}
+
+// SPEC 13.1: the switches are saved with the numbers, each audited once.
+func TestSaveGeneralStoresSwitchesWithNumbers(t *testing.T) {
+	hn := newHarness(t, nil)
+	s, ctx := hn.generalServer(), context.Background()
+	by := actor(hn.addUser("bob", testPassword))
+	if err := s.saveGeneral(ctx, by, map[string]int{settingStopCountdown.Key: 5},
+		map[string]bool{settingUpdateCheck.Key: false, settingWikiIcons.Key: true}); err != nil {
+		t.Fatal(err)
+	}
+	if s.stopCountdown(ctx) != 5*time.Second || s.readBool(ctx, settingUpdateCheck) || !s.readBool(ctx, settingWikiIcons) {
+		t.Error("a number or switch was not stored")
+	}
+	if len(hn.audits(AuditWikiIconsSet)) != 1 || len(hn.audits(AuditUpdateCheckSet)) != 1 {
+		t.Error("each changed switch is audited once")
+	}
+	if err := s.saveGeneral(ctx, by, map[string]int{settingStopCountdown.Key: 99999}, map[string]bool{settingWikiIcons.Key: false}); err == nil {
+		t.Fatal("an out of range value was accepted")
+	}
+	if !s.readBool(ctx, settingWikiIcons) {
+		t.Error("a refused save still changed a switch")
+	}
 }

@@ -1,7 +1,6 @@
 package modsettings
 
 import (
-	"html"
 	"regexp"
 	"strings"
 	"unicode"
@@ -10,7 +9,7 @@ import (
 // WikiImageBase is where the Factorio wiki serves the game's icons. A
 // browser loads them directly, and only while an admin has turned the
 // setting on; Foreman never fetches, stores or proxies one (SPEC 14.10).
-const WikiImageBase = "https://wiki.factorio.com/images/"
+const WikiImageBase = WikiHost + "/images/"
 
 // WikiHost is the one host a page may load images from besides itself.
 const WikiHost = "https://wiki.factorio.com"
@@ -49,6 +48,3 @@ var markerRE = regexp.MustCompile(`<span class="rt-obj" data-wiki="([A-Za-z0-9_]
 func ShowWikiIcons(page []byte) []byte {
 	return markerRE.ReplaceAll(page, []byte(`<img class="rt-obj-icon" src="`+WikiImageBase+`$1.png" alt="$2" referrerpolicy="no-referrer" loading="lazy" onerror="this.replaceWith(this.alt)">`))
 }
-
-// escapedReadable is an object's readable name as escaped text.
-func escapedReadable(name string) string { return html.EscapeString(Readable(name)) }

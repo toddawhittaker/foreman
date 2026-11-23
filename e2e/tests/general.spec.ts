@@ -40,7 +40,7 @@ test("the General tab shows each setting with its default and says where it is s
   await expect(countdown(page)).toHaveValue("60");
   await expect(auditDays(page)).toHaveValue("365");
   await expect(saveLimit(page)).toHaveValue("1024");
-  await expect(modLimit(page)).toHaveValue("200");
+  await expect(modLimit(page)).toHaveValue("1024");
   await expect(page.getByText("Set here. No environment variable sets it.")).toHaveCount(1);
   await expect(page.locator("#general-trim")).toHaveCount(0);
   await checkPage(page);
@@ -85,7 +85,7 @@ test("a value outside its range is refused with its error, and nothing is saved"
 
   await page.goto("/settings/general");
   await expect(retention(page)).toHaveValue("10");
-  await expect(modLimit(page)).toHaveValue("200");
+  await expect(modLimit(page)).toHaveValue("1024");
 });
 
 const snapshotFolders = (f: Foreman) => readdirSync(join(f.dataDir, "snapshots", "base")).filter((n) => /^\d{8}T/.test(n));
@@ -110,13 +110,13 @@ test("lowering retention that trims asks first, and Cancel saves nothing", async
   await expect(box.locator("#general-trim")).toContainText("3 automatic snapshots will be removed, each at its world's next automatic snapshot.");
   await expect(box.locator("#general-trim")).toContainText("Worlds affected: 1.");
   await expect(box).toContainText("Automatic snapshots to keep per world: 10 to 1");
-  await expect(box).toContainText("Largest mod upload (MB): 200 to 300");
+  await expect(box).toContainText("Largest mod upload (MB): 1,024 to 300");
   await checkPage(page);
 
   await box.getByRole("link", { name: "Cancel, keep the current settings" }).click();
   await expect(page).toHaveURL("/settings/general");
   await expect(retention(page)).toHaveValue("10");
-  await expect(modLimit(page)).toHaveValue("200");
+  await expect(modLimit(page)).toHaveValue("1024");
   expect(snapshotFolders(foreman)).toHaveLength(4);
 });
 

@@ -74,10 +74,7 @@ func TestSettingChangeFromUnreadableValue(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if changed, err := s.setBoolSetting(ctx, by, settingUpdateCheck, true); err != nil || !changed {
-		t.Fatalf("set the switch: changed %t, %v", changed, err)
-	}
-	if err := s.setIntSetting(ctx, by, settingSnapshotRetention, 5); err != nil {
+	if err := s.saveGeneral(ctx, by, map[string]int{settingSnapshotRetention.Key: 5}, map[string]bool{settingUpdateCheck.Key: true}); err != nil {
 		t.Fatal(err)
 	}
 	for action, want := range map[string]string{AuditUpdateCheckSet: "alice  from unknown to on", AuditSnapshotRetentionSet: "alice  from unknown to 5"} {

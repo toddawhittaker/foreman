@@ -130,35 +130,6 @@ func (s *server) readBool(ctx context.Context, d boolSetting) bool {
 // read, so the entry does not claim the default was stored.
 const unknownValue = "unknown"
 
-// setBoolSetting stores on and audits the change as "from on to off" under
-// by. Nothing is stored or audited when the stored value already is on;
-// changed reports whether it was stored.
-func (s *server) setBoolSetting(ctx context.Context, by game.Actor, d boolSetting, on bool) (changed bool, err error) {
-	s.generalMu.Lock()
-	defer s.generalMu.Unlock()
-	old, ok := readBoolSetting(ctx, s.store, d)
-	if ok && old == on {
-		return false, nil
-	}
-	if err := s.store.SetAppSetting(ctx, d.Name, onOff(on), by.Username, s.now()); err != nil {
-		return false, err
-	}
-	from := unknownValue
-	if ok {
-		from = onOff(old)
-	}
-	s.audit(ctx, by, d.Action, "", fmt.Sprintf("from %s to %s", from, onOff(on)))
-	return true, nil
-}
-
-// updateCheckSaved asks GitHub at once when the switch was just turned on
-// (SPEC 13.1).
-func (s *server) updateCheckSaved(changed, on bool) {
-	if changed && on && s.updates != nil {
-		s.updates.CheckSoon()
-	}
-}
-
 // generalSettings lists the settings in the order the page shows them.
 var generalSettings = []intSetting{
 	settingSnapshotRetention, settingStopCountdown, settingAuditRetention, settingSaveUpload, settingModUpload,
@@ -214,25 +185,6 @@ func (s *server) intSetting(ctx context.Context, d intSetting) int {
 	return n
 }
 
-// setIntSetting stores n and audits the change as from old to n under by.
-// The caller has checked the range and holds generalMu. Nothing is stored or
-// audited when the value does not change.
-func (s *server) setIntSetting(ctx context.Context, by game.Actor, d intSetting, n int) error {
-	old, ok := s.readInt(ctx, d)
-	if ok && old == n {
-		return nil
-	}
-	if err := s.store.SetAppSetting(ctx, d.Name, strconv.Itoa(n), by.Username, s.now()); err != nil {
-		return err
-	}
-	from := unknownValue
-	if ok {
-		from = strconv.Itoa(old)
-	}
-	s.audit(ctx, by, d.Action, "", fmt.Sprintf("from %s to %d", from, n))
-	return nil
-}
-
 // snapshotRetention is how many automatic snapshots each world keeps.
 func (s *server) snapshotRetention(ctx context.Context) int {
 	return s.intSetting(ctx, settingSnapshotRetention)
@@ -284,9 +236,15 @@ func (s *server) generalValues(ctx context.Context) map[string]int {
 	return out
 }
 
-// saveGeneral stores the settings in want, by Key. Every value is checked
-// first, and nothing is stored when one is out of range.
-func (s *server) saveGeneral(ctx context.Context, by game.Actor, want map[string]int) error {
+// generalSwitches lists the on-or-off settings the page and the MCP tool save
+// with the numbers.
+var generalSwitches = []boolSetting{settingUpdateCheck, settingWikiIcons}
+
+// saveGeneral stores the numbers in want and the switches in switches, each
+// by Key, in one transaction. Every number is checked first, and nothing is
+// stored when one is out of range or the write fails. A setting that
+// already holds its value is neither stored nor audited.
+func (s *server) saveGeneral(ctx context.Context, by game.Actor, want map[string]int, switches map[string]bool) error {
 	// One save at a time, so each audit entry's old value is the real one.
 	s.generalMu.Lock()
 	defer s.generalMu.Unlock()
@@ -295,19 +253,59 @@ func (s *server) saveGeneral(ctx context.Context, by game.Actor, want map[string
 			return fmt.Errorf("%s is outside %d to %d", d.Key, d.Min, d.Max)
 		}
 	}
+	type change struct{ action, from, to string }
+	var writes []store.AppSettingWrite
+	var audits []change
 	for _, d := range generalSettings {
 		n, ok := want[d.Key]
 		if !ok {
 			continue
 		}
-		if err := s.setIntSetting(ctx, by, d, n); err != nil {
+		old, known := s.readInt(ctx, d)
+		if known && old == n {
+			continue
+		}
+		from := unknownValue
+		if known {
+			from = strconv.Itoa(old)
+		}
+		writes = append(writes, store.AppSettingWrite{Name: d.Name, Value: strconv.Itoa(n)})
+		audits = append(audits, change{d.Action, from, strconv.Itoa(n)})
+	}
+	var checkOn bool
+	for _, d := range generalSwitches {
+		on, ok := switches[d.Key]
+		if !ok {
+			continue
+		}
+		old, known := readBoolSetting(ctx, s.store, d)
+		if known && old == on {
+			continue
+		}
+		from := unknownValue
+		if known {
+			from = onOff(old)
+		}
+		writes = append(writes, store.AppSettingWrite{Name: d.Name, Value: onOff(on)})
+		audits = append(audits, change{d.Action, from, onOff(on)})
+		checkOn = checkOn || (d.Name == settingUpdateCheck.Name && on)
+	}
+	if len(writes) > 0 {
+		if err := s.store.SetAppSettings(ctx, writes, by.Username, s.now()); err != nil {
 			return err
 		}
-		// Applied with the value just written, so a failure on a later
-		// setting still leaves the manager on what was saved.
-		if d.Key == settingSnapshotRetention.Key && s.worlds != nil {
-			s.worlds.SetKeepAutomatic(n)
-		}
+	}
+	for _, c := range audits {
+		s.audit(ctx, by, c.action, "", fmt.Sprintf("from %s to %s", c.from, c.to))
+	}
+	// Applied with the value just written, not a read, so a failing read
+	// afterwards leaves the manager on what was saved.
+	if n, ok := want[settingSnapshotRetention.Key]; ok && s.worlds != nil {
+		s.worlds.SetKeepAutomatic(n)
+	}
+	// Asks GitHub at once when the update check was just turned on (SPEC 13.1).
+	if checkOn && s.updates != nil {
+		s.updates.CheckSoon()
 	}
 	return nil
 }
@@ -470,17 +468,8 @@ func (s *server) handleGeneralSave(w http.ResponseWriter, r *http.Request, u sto
 		s.page(w, r, http.StatusOK, u.Username, confirm)
 		return
 	}
-	if err := s.saveGeneral(ctx, actor(u), want); err != nil {
-		s.fail(w, r, "save the general settings", err)
-		return
-	}
-	changed, err := s.setBoolSetting(ctx, actor(u), settingUpdateCheck, p.UpdateCheck)
-	if err != nil {
-		s.fail(w, r, "save the general settings", err)
-		return
-	}
-	s.updateCheckSaved(changed, p.UpdateCheck)
-	if _, err := s.setBoolSetting(ctx, actor(u), settingWikiIcons, p.WikiIcons); err != nil {
+	switches := map[string]bool{settingUpdateCheck.Key: p.UpdateCheck, settingWikiIcons.Key: p.WikiIcons}
+	if err := s.saveGeneral(ctx, actor(u), want, switches); err != nil {
 		s.fail(w, r, "save the general settings", err)
 		return
 	}

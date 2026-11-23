@@ -1406,6 +1406,8 @@ one says "Set here"; nothing in the environment sets or overrides them.
   game's icon, loaded from `wiki.factorio.com`. Foreman does not make that
   request: each viewer's browser does, so every person who opens a page
   with such text contacts the wiki, which then sees their address. The
+  request asks for each image by its prototype name, modded names
+  included, which tells the wiki which mods your worlds use. The
   request sends no `Referer`, so the wiki is not told your Foreman address.
   Foreman never downloads or stores the icons. While the box is ticked,
   Foreman's pages also allow images from `https://wiki.factorio.com` in
