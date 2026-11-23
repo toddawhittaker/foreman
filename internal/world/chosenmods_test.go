@@ -69,3 +69,27 @@ func TestCloneCopiesTheChosenRecord(t *testing.T) {
 		t.Fatalf("clone chosen %v, want [cool]", got)
 	}
 }
+
+// A snapshot holds world.json, so a restore brings back the record that
+// matches the restored mods (SPEC 6.2).
+func TestRestoreBringsBackTheChosenRecord(t *testing.T) {
+	m, id, _ := checkWorld(t, "2.0.77", false)
+	a := stage(t, m, "alpha", "1.0.0")
+	if err := m.ApplyModsHeld(id, ModChange{Add: []string{a}, Chosen: []string{"alpha"}}, fingerprint(t, m, id)); err != nil {
+		t.Fatal(err)
+	}
+	snap, err := m.TakeSnapshot(id, "with alpha", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := stage(t, m, "beta", "1.0.0")
+	if err := m.ApplyModsHeld(id, ModChange{Add: []string{b}, Chosen: []string{"alpha", "beta"}}, fingerprint(t, m, id)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Restore(t.Context(), id, snap.Name, "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if got := readWorldMetaFile(t, m, id).ChosenMods; !slices.Equal(got, []string{"alpha"}) {
+		t.Fatalf("restored chosen %v, want [alpha]", got)
+	}
+}
