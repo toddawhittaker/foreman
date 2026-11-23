@@ -161,7 +161,7 @@ func TestDecodeIconIndexDropsBadEntries(t *testing.T) {
 		{"mod version empty", entry("item", "a", "__fake-planet__/a.png", 64), `"fake-planet":""`},
 		{"mod version one number", entry("item", "a", "__fake-planet__/a.png", 64), `"fake-planet":"1"`},
 	}
-	for _, b := range []string{"base", "core", "space-age", "quality", "elevated-rails"} {
+	for _, b := range []string{"base", "core", "space-age", "quality", "elevated-rails", "recycler"} {
 		tests = append(tests, struct{ name, entry, mods string }{
 			"built-in " + b, entry("item", "a", "__"+b+"__/graphics/a.png", 64), `"` + b + `":"2.0.0"`,
 		})
