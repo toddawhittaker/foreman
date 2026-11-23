@@ -1648,7 +1648,7 @@ on its background instead of one long list.
 
 ```html
 <section class="panel" aria-labelledby="players-heading">
-  <h2 id="players-heading">Players online</h2>
+  <h2 id="players-heading">Players</h2>
   …
 </section>
 ```
@@ -2281,7 +2281,7 @@ in this order:
 There is no map form, preview or leave dialog on this page. The world is
 made at once and the browser lands on step 2,
 `/worlds/{id}/mods?generated=1`, where a Done box takes focus: "{name} is
-made. Next, pick its mods or skip to map settings." A favorite with mods
+made. Next, pick its mods or skip this step." A favorite with mods
 lands on the review instead (SPEC 5.12).
 
 **Step 2** is the world's Mods tab, or the review (8.11). For an Unfinished
@@ -2298,18 +2298,23 @@ Continue, a primary button, with "Continue setting up {name}" for screen
 readers. On the world page a note says setting up is not finished, with
 Continue as its one primary button, and Switch becomes a plain button.
 Continue opens step 2 while mod picks are not installed, then step 3 while
-there are startup settings and none are saved, otherwise step 4 (SPEC 5.6,
-9.14). Checked with a Continue click from the Worlds list: one
+the world has no saved mod settings file and its map settings were never
+saved, otherwise step 4 (SPEC 5.6, 9.14). Checked with a Continue click from the Worlds list: one
 click.
 
 **Step 3**, `/worlds/{id}/new-map/mod-settings`, is the step bar, a line
 of intro, a "Skip to map settings" link, then the mod settings page's form
 part (7.2, SPEC 9.6) with the startup settings only, one fieldset per mod.
 The form loads after the page, as on the mod settings page; without script
-the page reloads with `?wait=1`. Its Cancel goes back to step 2. Saving
-lands on step 4; a save that takes longer than 30 seconds shows its
-progress on the Mods tab instead. With nothing to set the step sends the
-browser on to step 4.
+the loading text is hidden and a link has the server read the form first
+(`?wait=1`), and the page does not refresh itself. Its Cancel goes back to
+step 2. Saving disables the button and fills in a status line; it lands on
+step 4, and a save that takes longer than 30 seconds shows its progress on
+the Mods tab instead. With nothing to set the step sends the browser on to
+step 4, which says "No mod has startup settings, so step 3 was skipped."
+(`?skipped=1`); the step bar marks a skipped step in italics
+(`subnav-skipped`). On the Mods tab the skip link reads "Skip to map
+settings" when step 3 has nothing to set.
 
 **Step 4**, `/worlds/{id}/new-map`, is the rest of this section and 8.7
 and 8.8. Its form id is still `generate-form`. In this order:
@@ -2731,6 +2736,11 @@ close the view, the tab, the setting, and the picture again).
     icon button (8.8 icons below), 24 px, 44 px under
     `(pointer: coarse)`. Previous and Next step through the world's
     planets and wrap; a planet not drawn yet is drawn and shown in place.
+  - Zoom, pan, the zoom keys and the three zoom buttons are one plain
+    script, `static/viewer.js` (`window.ForemanViewer`), shared with the
+    factory map (SPEC 5.16) and loaded with `defer` before each page's own
+    script; no ES modules. Each page keeps its own extras. The factory map's
+    layer colours stay duplicated in Go and in CSS.
   - Zoom is a factor of the fitted size, from 1 up to the larger of 8
     and 8 CSS pixels per tile (so a 3072 picture still reaches real
     tiles). Each wheel notch, plus or minus key, or zoom button
@@ -3145,7 +3155,7 @@ A mod's own text keeps its rich-text emphasis (SPEC 14.6): bold stays
 colour, orange and yellow the warning colour, green the success colour,
 blue, cyan, purple and pink the info colour, and gray the muted text colour
 (`.rt-*` in `foreman.css`). A key-binding action shows in a bordered
-`kbd`, and the game's warning sprite as the warning icon messages use.
+`span.rt-key`, and the game's warning sprite as the warning icon messages use.
 
 **Mod names** are wrapped in `span.ident` (`translate="no"`,
 `hyphens: manual; overflow-wrap: anywhere`) in tables, plan text,
@@ -3503,7 +3513,7 @@ too.
 ### 8.12 Player actions (SPEC 8.2, Epic 9)
 
 The task is "do something to a player who is in the game", and it starts
-where the player is listed: the "Players online" card on the Server page.
+where the player is listed: the "Players" card on the Server page.
 Kick and ban go through a confirmation step (7.4); promote, demote, unban
 and the whitelist act at once and offer Undo (17.9). A change sent to a
 running game takes no snapshot, because the game writes its own list

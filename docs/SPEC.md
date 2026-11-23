@@ -570,13 +570,15 @@ not) or a map exchange string, with Space Age on or off. (P0)
 - **Unfinished worlds.** A world with `new_map` and no save is shown as
   "Unfinished" on the Worlds list and on its page, with a Continue link
   that opens where work remains: step 2 while the world has mod picks not
-  yet installed (9.14), then step 3 while some mod has a startup setting
-  and the world has no `mod-settings.dat` saved, otherwise step 4. It is
-  derived, not stored. Foreman never deletes
+  yet installed (9.14), then step 3 while the world has no `mod-settings.dat`
+  and its map settings were never saved, otherwise step 4. "Saved" is read
+  from the audit log's `new-map` entry, since nothing else records a step 4
+  save; if audit pruning removes that entry, Continue shows step 3 again,
+  which can be skipped. It is derived, not stored. Foreman never deletes
   one by itself; Delete works as for any world (5.10).
 - **Planets come from the world's mods** (#775). Step 4 offers the planets
   and autoplace controls that the world's own game image and mods define,
-  read by the mod-settings run (9.6) with the world's own startup values. That list replaces the embedded one,
+  read by the mod-settings run (9.6) with the world's own startup values (ADR 0034). That list replaces the embedded one,
   because mods change the built-in planets too. Each control offers only
   what the game gives it (richness, an on/off box). A control that two
   planets share is one value, shown under each planet with "Also changes
@@ -1277,8 +1279,8 @@ a copy of a save (8.16). (P1)
   removed when the world no longer exists.
 - **The viewer** is its own page, `/worlds/{id}/map`, a world tab after
   Snapshots. It works like the Generate page's large view (5.6): zoom by
-  wheel, keys, buttons or pinch in steps of 1.15; pan by drag, keys or a
-  tap; a list of surfaces; and a checkbox per category that adds its
+  wheel, keys, buttons or pinch in steps of 1.15 (one script, `viewer.js`,
+  serves both pages); pan by drag, keys or a tap; a list of surfaces; and a checkbox per category that adds its
   layer. Downloads: the base PNG, or the base with the ticked layers
   combined on the server.
 - **Modes.** Each world has a mode, stored in `world.json` as
@@ -3485,7 +3487,7 @@ swaps the image for that name, so a broken image never shows. Foreman never
 fetches, stores or proxies an icon, and sends no request to the wiki. The
 page's `Content-Security-Policy` is `frame-ancestors 'none'; img-src 'self'
 data:`, plus `https://wiki.factorio.com` after `data:` only while the switch
-is on, and never on a public page. A switch that cannot be read counts as
+is on, and never on a public page (ADR 0035). A switch that cannot be read counts as
 off (P1).
 The mod portal's base is fixed at `https://mods.factorio.com`; there is no
 setting for it. Its API calls take at most 10 seconds, follow no redirects,
@@ -4037,7 +4039,8 @@ commit is on `main`, build amd64 and arm64, push
 `1.0.0-rc.1`, then `1.0.0` on the same image digest. Not built yet.
 
 18.12. **Epic 12: Modded planets and guided Generate** (#775). Generate's
-three steps and Unfinished worlds (5.6, 5.7, 5.12, 17.10, 17.19); the
+three steps (four since fixes batch 17, which put Mod settings between Mods
+and Map settings) and Unfinished worlds (5.6, 5.7, 5.12, 17.10, 17.19); the
 planet list from the mod-settings run (9.6, 14.6); previews, territories
 and resource counts with the world's mods, and the real-game picture on
 2.1 (5.6, 14.3, ADR 0033); the pre-start refusal of stale controls (7.4);

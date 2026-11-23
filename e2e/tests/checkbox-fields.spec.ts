@@ -47,13 +47,13 @@ test("checkboxes and radios are tick-sized on every page that has one", async ({
 
   await expectSmallControls(page, "/import", 3); // folder, Space Age, download
   await expectSmallControls(page, "/generate", 2); // Space Age, download
-  // Step 3's map settings (SPEC 5.6), on a world made without the image download.
+  // Step 4's map settings (SPEC 5.6), on a world made without the image download.
   await openNewMap(page, { step1: (p) => p.getByLabel("Download the game image", { exact: false }).uncheck() });
   await expect(page.locator('input[type="checkbox"]:visible, input[type="radio"]:visible')).not.toHaveCount(0);
-  await expectTickSized(page, "step 3");
+  await expectTickSized(page, "step 4");
   await page.locator("label.tab:has(#tab-enemy)").click();
   await expect(page.getByRole("checkbox", { name: /Peaceful mode/ })).toBeVisible();
-  await expectTickSized(page, "step 3 (Enemy tab)");
+  await expectTickSized(page, "step 4 (Enemy tab)");
   await expectSmallControls(page, "/worlds/second/switch", 1);
   await expectSmallControls(page, "/worlds/base/clone", 2);
   await expectSmallControls(page, "/worlds/base/settings", 2); // listing: visibility radios
