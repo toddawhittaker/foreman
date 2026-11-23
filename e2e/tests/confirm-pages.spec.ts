@@ -5,7 +5,6 @@ import type { Page } from "@playwright/test";
 // the thing, has at most one primary or danger button, and leaves by Cancel or
 // the header tabs. The projects run it at 1280 and at 320 px, in both themes.
 test.use({ fakeGameOn: true });
-test.setTimeout(120_000);
 
 const live = { timeout: 20_000 };
 
@@ -25,7 +24,9 @@ async function expectPlainConfirmation(page: Page, where: string, opts: { backLi
   await checkPage(page);
 }
 
-test("every confirmation page has one heading, no Back link and one main action", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+// @slow: it walks about twenty confirmation pages with an axe scan each, 14 to 23 s in CI, too near the cap.
+test("every confirmation page has one heading, no Back link and one main action", { tag: ["@looks", "@slow"] }, async ({ page, foreman, fakeGame }) => {
+  test.slow();
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman);

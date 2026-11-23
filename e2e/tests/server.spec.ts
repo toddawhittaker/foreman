@@ -139,7 +139,6 @@ test.describe("with the fake game", () => {
   // SPEC 8.7, 8.9: a crash loop names the game's reason, links to the full
   // log, and says why a start would not run instead of offering Start server.
   test("a crash loop is stopped and shown with the game's reason", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
-    test.setTimeout(60_000);
     await setUp(page, foreman, fakeGame!);
     await start(page);
     await fakeGame!.call("/crash-loop", { name: container, on: true });
@@ -165,7 +164,6 @@ test.describe("with the fake game", () => {
 
   // SPEC 8.9: a blocked start can still be started by hand once fixed.
   test("Try to start again starts the world by hand", async ({ page, foreman, fakeGame }) => {
-    test.setTimeout(60_000);
     await setUp(page, foreman, fakeGame!);
     await start(page);
     await fakeGame!.call("/crash-loop", { name: container, on: true });

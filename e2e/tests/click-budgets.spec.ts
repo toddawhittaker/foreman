@@ -293,7 +293,6 @@ test.describe("click budgets, with the fake game", () => {
 
   // A save that uses a mod the world lacks makes the game crash on every start, so a start anyway loops.
   async function crashLoopAfterStartAnyway(page: Page, g: FakeGame) {
-    test.setTimeout(120_000);
     await page.getByRole("button", { name: "Start server" }).click();
     await page.locator("summary", { hasText: "Or start anyway" }).click();
     await page.getByRole("button", { name: "Start anyway" }).click();
@@ -315,7 +314,6 @@ test.describe("click budgets, with the fake game", () => {
   });
 
   test("recover after a crash loop by switching back: 2 clicks", async ({ page, foreman, fakeGame }) => {
-    test.setTimeout(120_000);
     const g = fakeGame!;
     // Base is fine; Second's save needs a mod it lacks, so starting it anyway loops.
     const clicks = await setUp(page, foreman, g, { second: { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true } });

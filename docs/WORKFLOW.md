@@ -23,7 +23,13 @@ runs with `e2e`, and `image` builds the container. The `e2e` job runs the
 Playwright tests in twelve slices side by side, three workers each, so
 the whole run stays under the free plan's limit of 20 jobs at once. A test
 tagged `@looks` runs in all four projects (both themes, at desktop and at
-320 px); any other test runs once, in desktop-dark (DESIGN 10). A final `ci` job passes
+320 px); any other test runs once, in desktop-dark (DESIGN 10).
+Each end-to-end test has 30 seconds (`e2e/tests/cap.ts`). A test that
+truly needs longer, for example one that waits for the real clock's next
+minute, is tagged `@slow` and calls `test.slow()` or sets its own time
+limit, with a comment beside the tag that says why. A test that raises
+its limit without the tag fails. Split a long test before reaching for
+the tag. A final `ci` job passes
 only when every other job passed or was skipped for a reason below. A ruleset on `main` blocks direct
 pushes, force pushes and deletion, and requires a pull request whose
 branch is up to date with `main` and whose `ci` job passed. Adding a job
