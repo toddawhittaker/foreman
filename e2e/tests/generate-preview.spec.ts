@@ -190,6 +190,45 @@ test.describe("with script", () => {
     await expect(page.locator("#preview-status")).toHaveText("");
   });
 
+  // DESIGN 8.8: a redraw shows the counting's moving bar on the drawing line, and only while it runs; the line
+  // keeps its height, so nothing under it moves.
+  test("a redraw shows the moving bar beside its words until the picture lands", async ({ page, fakeGame }) => {
+    await openNewMap(page);
+    await expect(pictures(page)).toHaveCount(1);
+    const line = page.locator("#preview-status");
+    const bar = line.locator("progress");
+    await expect(bar).toBeHidden();
+    const held = (await line.boundingBox())!.height;
+    await fakeGame!.call("/preview-mode", { mode: "slow" });
+    await page.locator("#generate-seed").fill("333");
+    await expect(line).toHaveText("Drawing the map preview for the current settings…");
+    await expect(bar).toBeVisible();
+    await expect(bar).toHaveAttribute("aria-hidden", "true");
+    expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
+    await line.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `../screenshots/preview-drawing-bar-${test.info().project.name}.png` });
+    await expect(pictures(page)).toHaveAccessibleName(/seed 333\./);
+    await expect(line).toHaveText("");
+    await expect(bar).toBeHidden();
+    expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
+    // All planets draws by the same path, with the same bar.
+    await section(page).locator("label.tab", { hasText: "All planets" }).click();
+    await expect(bar).toBeVisible();
+    await expect(pictures(page).nth(1)).toBeVisible();
+    await expect(bar).toBeHidden();
+  });
+
+  test("with reduced motion a redraw shows its words but no moving bar", async ({ page, fakeGame }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openNewMap(page);
+    await expect(pictures(page)).toHaveCount(1);
+    await fakeGame!.call("/preview-mode", { mode: "slow" });
+    await page.locator("#generate-seed").fill("444");
+    await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
+    await expect(page.locator("#preview-status progress")).toBeHidden();
+    await expect(pictures(page)).toHaveAccessibleName(/seed 444\./);
+  });
+
   test("a setting change in any part of step 3's form redraws", async ({ page }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
@@ -632,6 +671,50 @@ test.describe("with script", () => {
       await page.locator("#preview-amounts").check();
       await expect(page.locator("#preview li a.download")).toHaveAttribute("href", /amounts=1$/);
       await expectApart(page);
+    });
+  }
+
+  // DESIGN 7.7: each (i) tip in the preview opens wholly inside the window, is not clipped by the pane or
+  // its card, and opening it adds no scroll bar to any box around it nor moves its button.
+  for (const [name, size] of [["a wide window", { width: 1920, height: 950 }], ["the project's window", null]] as const) {
+    test(`the preview's info tips stay on screen and add no scroll bar in ${name}`, async ({ page }) => {
+      if (size) await page.setViewportSize(size);
+      await openNewMap(page, { name: "Mega base" });
+      await expect(pictures(page)).toHaveCount(1);
+      await expect(page.locator("#preview-chart-button")).toBeVisible();
+      const tips = page.locator("#preview button.tip");
+      expect(await tips.count()).toBeGreaterThanOrEqual(1);
+      for (const button of await tips.all()) {
+        await button.scrollIntoViewIfNeeded();
+        const before = (await button.boundingBox())!;
+        await button.click();
+        const text = page.locator(`#${await button.getAttribute("aria-controls")}`);
+        await expect(text).toBeVisible();
+        await page.screenshot({ path: `../screenshots/preview-tip-${await button.getAttribute("aria-controls")}-${size ? size.width : "project"}-${test.info().project.name}.png` });
+        const box = (await text.boundingBox())!;
+        const width = await page.evaluate(() => document.documentElement.clientWidth);
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+        // Nothing around the tip scrolls sideways because of it, and none of it is cut off or covered.
+        const clipped = await text.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const found: string[] = [];
+          for (let a = el.parentElement; a; a = a.parentElement) {
+            const s = getComputedStyle(a);
+            if (a.scrollWidth > a.clientWidth + 1 && s.overflowX !== "visible") found.push(`${a.tagName}#${a.id}.${a.className} scrolls`);
+          }
+          // Each corner of the tip is the tip itself, not a box that cut it off or lies over it.
+          for (const [x, y] of [[r.left + 2, r.top + 2], [r.right - 2, r.top + 2], [r.left + 2, r.bottom - 2], [r.right - 2, r.bottom - 2]]) {
+            if (!el.contains(document.elementFromPoint(x, y))) found.push(`corner ${x},${y} is hidden`);
+          }
+          return found;
+        });
+        expect(clipped).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+        expect((await button.boundingBox())!).toEqual(before);
+        await page.keyboard.press("Escape");
+        await expect(text).toBeHidden();
+      }
     });
   }
 

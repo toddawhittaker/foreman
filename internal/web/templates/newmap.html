@@ -127,7 +127,8 @@
       </section>
     </template>
     {{- if .CanPreview}}
-    <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
+    {{- /* While a redraw runs: its words and the counting's moving bar, on one held line (DESIGN 8.8). */}}
+    <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"><span id="preview-status-text"></span><span class="wait" id="preview-status-wait"><progress aria-hidden="true"></progress></span></p>
     {{- with .Form}}
     <div class="field step" id="preview-size-field">
       <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>

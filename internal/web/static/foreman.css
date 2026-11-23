@@ -3858,6 +3858,15 @@ td > .hint {
   display: block;
 }
 
+/* Open in the top layer: fixed to the window where the script places it,
+   not the browser's centred popover (DESIGN 7.7). */
+.js-on .tip__text:popover-open {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: visible;
+}
+
 .mode-panel input.mono {
   font-family: var(--font-mono);
 }
@@ -4285,21 +4294,38 @@ form:has(#mode-exchange:checked) .achievements {
 }
 
 /* One line is held for the drawing note once a preview shows, so nothing moves. */
-.preview-status:empty {
+.preview-status:has(> #preview-status-text:empty) {
   display: none;
 }
 
-.gen-preview:has(#preview > *) .preview-status:empty {
-  display: block;
+.gen-preview:has(#preview > *) .preview-status:has(> #preview-status-text:empty) {
+  display: flex;
   min-block-size: 1lh;
 }
 
 /* The note stays one line in a narrow column too, so a redraw never moves
-   what sits under the preview; the faded picture says the rest (DESIGN 8.8). */
+   what sits under the preview; the faded picture says the rest, and the
+   moving bar takes what room the words leave (DESIGN 8.8). */
 .preview-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 1lh;
   overflow: hidden;
   white-space: nowrap;
+}
+
+#preview-status-text {
+  min-inline-size: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.preview-status > .wait,
+.large-view__wait {
+  flex: 1 1 0;
+  min-inline-size: 3rem;
+  max-inline-size: 12rem;
 }
 
 /* 8.8 The large view: the whole screen, the picture fitted, zoomed and
