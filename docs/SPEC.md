@@ -535,7 +535,22 @@ not) or a map exchange string, with Space Age on or off. (P0)
   2026-11-22, #878). Each step is its own page, and a step bar of four
   links above each one names them and marks the current one. On step 1 the
   bar is there too, with step 1 current; the later steps show as plain
-  text, not links, until the world exists.
+  text, not links, until the world exists. The flow reads as a wizard
+  (Todd's ruling, 2026-11-23): the step bar is a numbered stepper whose
+  steps are joined by a line, with the steps before the current one ticked
+  (not a skipped step 3) and the current one highlighted; on a narrow
+  screen it shows the numbers only, with the current step's name under
+  them. Each step ends with the same footer, a bar held to the window's
+  foot: Back on the left, to the nearest earlier step that is a link (none
+  on step 1, which keeps Cancel), and the primary button on the right. The
+  primary button reads the same way on every step, "Next: " and the next
+  step's name: step 1 "Next: Mods" (it makes the world), step 2 "Next: Mod
+  settings", or "Next: Map settings" when step 3 has nothing to set, step 3
+  "Next: Map settings" (it saves the settings first), and step 4 "Finish",
+  which saves the map settings and opens the world's page, where the Ready
+  note (below) is the Done box. Skip links and Preview map stay as
+  secondary actions. The review page of step 2 keeps its own actions, with
+  its Next worded as step 2's.
   1. **Make the world**: name, game version, Space Age, optionally a
      favorite (5.12), and the image download. This writes the world folder
      and `world.json` with `new_map`, and the world counts as generated.
@@ -555,8 +570,8 @@ not) or a map exchange string, with Space Age on or off. (P0)
      setting definitions are already read; otherwise step 3 decides when it
      loads.
   4. **Map settings and preview**, at `/worlds/{id}/new-map`, with every
-     planet the world's mods give it (below). "Save map settings" writes
-     the settings files below. It takes no snapshot, because the world has
+     planet the world's mods give it (below). "Finish" writes the settings
+     files below. It takes no snapshot, because the world has
      no save. It is refused once the world has a save, and while the
      world's server is starting, running, stopping, crashed or crash-looping,
      because the first start makes the map before any save exists. It is
@@ -576,6 +591,15 @@ not) or a map exchange string, with Space Age on or off. (P0)
   save; if audit pruning removes that entry, Continue shows step 3 again,
   which can be skipped. It is derived, not stored. Foreman never deletes
   one by itself; Delete works as for any world (5.10).
+- **Ready worlds** (Todd's ruling, 2026-11-23). Once step 4 has been saved
+  (the same audit log test), the world's set-up is done: it is shown as
+  "Ready", not Unfinished, on the Worlds list and on its page, and its page
+  says the map is made the first time the world starts. Switch is then its
+  primary action, as for any world, and a secondary "Change setup" link on
+  its page opens step 4. Ready is derived, not stored, and a world with a
+  save is neither. It is a label only: everything 5.6 allows or refuses for
+  a world with `new_map` and no save still applies. The REST API, MCP and
+  webhooks do not report either state.
 - **Planets come from the world's mods** (#775). Step 4 offers the planets
   and autoplace controls that the world's own game image and mods define,
   read by the mod-settings run (9.6) with the world's own startup values (ADR 0034). That list replaces the embedded one,
@@ -3801,8 +3825,8 @@ with the defaults accepted, these take at most:
 | Set the first restart schedule (Settings, Restart schedule, Save schedule; Settings opens General) | 3 |
 | Open Notifications (Settings, Notifications) | 2 |
 | Try a failed mod change again (Try again, Install N mods) | 2 |
-| Generate a world with the defaults (Worlds, Generate a world, Generate world; the world is made at step 1, and the Mods, mod settings and map settings steps are optional, 5.6) | 3 |
-| Change a startup mod setting of an Unfinished world (Worlds, Continue, the setting, Save settings, which lands on the map settings, 5.6) | 3 |
+| Generate a world with the defaults (Worlds, Generate a world, Next: Mods; the world is made at step 1, and the Mods, mod settings and map settings steps are optional, 5.6) | 3 |
+| Change a startup mod setting of an Unfinished world (Worlds, Continue, the setting, Next: Map settings, which saves and lands on the map settings, 5.6) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
 | Change a game setting in Listing (Game settings, Preview changes, Save settings; a setting in another group first opens its sub-page, 11.1) | 3 (4 in another group) |
 

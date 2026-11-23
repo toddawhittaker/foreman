@@ -9,7 +9,7 @@
 {{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .World.Name)}}
 <div class="title-row">
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}{{if .World.Unfinished}} <span class="badge">{{t "worlds.badge.unfinished"}}</span>{{end}}</h1>
+<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}{{if .Ready}} <span class="badge">{{t "worlds.badge.ready"}}</span>{{else if .World.Unfinished}} <span class="badge">{{t "worlds.badge.unfinished"}}</span>{{end}}</h1>
 </div>
 {{template "rail" $}}
 {{- if .World.Unreadable}}
@@ -30,6 +30,19 @@
 <div class="message message--note" id="world-unfinished">
   <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.unfinished.text"}}</p>
   <div class="actions"><a href="{{.}}" class="button button--primary" id="act-continue">{{t "worlds.unfinished.continue"}}</a></div>
+</div>
+{{- end}}
+{{- /* A Ready world's set-up is done: Switch is the primary action and set-up stays a link away (SPEC 5.6). */}}
+{{- /* Arriving from step 4's Finish it is the Done box and takes focus (SPEC 17.9). */}}
+{{- with .SetupPath}}
+{{- if $.Page.SetupDone}}
+<div class="message message--success" id="world-ready" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{t "worlds.ready.text"}}</p>
+{{- else}}
+<div class="message message--note" id="world-ready">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.ready.text"}}</p>
+{{- end}}
+  <div class="actions"><a href="{{.}}" id="act-change-setup">{{t "worlds.ready.change"}}</a></div>
 </div>
 {{- end}}
 {{- if not .ArchiveError.IsZero}}

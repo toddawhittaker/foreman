@@ -19,8 +19,9 @@ import (
 // with script the form part is loaded from it (SPEC 5.6, 17.19).
 const newMapWaitQuery = "wait"
 
-// newMapSavedQuery marks the page after a save, for its Done message.
-const newMapSavedQuery = "saved"
+// setupDoneQuery marks the world's page reached by step 4's Finish, whose
+// Ready note is then its Done box (SPEC 5.6).
+const setupDoneQuery = "setup"
 
 // newMapSkippedQuery marks step 4 reached by step 3 passing itself on, for
 // the note that says why (SPEC 5.6).
@@ -46,9 +47,8 @@ type NewMapPage struct {
 	// Gone lists the controls the saved settings name that the world's mods
 	// no longer add; the next save leaves them out (SPEC 5.6).
 	Gone []string
-	// SaveError says why the save was refused; Done follows a save.
+	// SaveError says why the save was refused.
 	SaveError i18n.Msg
-	Done      bool
 	// SaveLinks are the links that do what SaveError says to (SPEC 17.9).
 	SaveLinks []NewMapLink
 	// Unsaved says the form holds settings the world does not have yet,
@@ -130,8 +130,8 @@ func skippedPath(id string) string { return newMapPath(id) + "?" + newMapSkipped
 func (p NewMapPage) WorldPath() string { return worldPath(p.World.ID) }
 func (NewMapPage) PreviewPath() string { return PathGeneratePreview }
 func (p NewMapPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMap, p.NoModSettings) }
+func (p NewMapPage) Back() FlowLink    { return flowBack(p.Steps()) }
 func (p NewMapPage) ShowForm() bool    { return p.Why.IsZero() && !p.Loading }
-func (p NewMapPage) DoneMsg() i18n.Msg { return i18n.M("newmap.done", "name", p.World.Name) }
 
 // The steps of the guided Generate (SPEC 5.6).
 const (
@@ -152,6 +152,41 @@ type FlowStep struct {
 	// Skipped is a step with nothing to do, drawn apart from one that
 	// cannot be opened yet (SPEC 17.10).
 	Skipped bool
+	// Done is a step before the current one that was not skipped; the
+	// step bar ticks it (SPEC 5.6).
+	Done bool
+}
+
+// FlowLink is a link in a step's footer, such as its Back.
+type FlowLink struct {
+	Path  string
+	Label i18n.Msg
+}
+
+// flowBackLabel names where a Back to step n goes.
+func flowBackLabel(n int) i18n.Msg {
+	switch n {
+	case flowStepWorld:
+		return i18n.M("newmap.back.world")
+	case flowStepMods:
+		return i18n.M("newmap.back.mods")
+	}
+	return i18n.M("newmap.back.mod_settings")
+}
+
+// flowBack is the footer's Back: the nearest earlier step that is a link,
+// so a skipped step 3 sends step 4 back to step 2. None on step 1 (SPEC 5.6).
+func flowBack(steps []FlowStep) FlowLink {
+	back := FlowLink{}
+	for _, st := range steps {
+		if st.Current {
+			return back
+		}
+		if st.Path != "" {
+			back = FlowLink{Path: st.Path, Label: flowBackLabel(st.Number)}
+		}
+	}
+	return FlowLink{}
 }
 
 // flowSteps is the step bar of world id, with current marked. With no world
@@ -172,6 +207,7 @@ func flowSteps(id string, current int, noModSettings bool) []FlowStep {
 	}
 	for i := range steps {
 		steps[i].Current = steps[i].Number == current
+		steps[i].Done = steps[i].Number < current && !steps[i].Skipped
 	}
 	return steps
 }
@@ -251,9 +287,8 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	q := r.URL.Query()
-	p.Done = q.Get(newMapSavedQuery) != ""
 	p.Skipped = q.Get(newMapSkippedQuery) != ""
-	if q.Get(newMapWaitQuery) == "" && !p.Done {
+	if q.Get(newMapWaitQuery) == "" {
 		p.Loading = true
 		p.CanPreview = s.previewer != nil
 		s.page(w, r, http.StatusOK, u.Username, p)
@@ -462,5 +497,6 @@ func (s *server) handleNewMapSave(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 	s.audit(r.Context(), actor(u), AuditNewMap, p.World.ID, newMapDetail(p.Form.MapForm, p.World.GameVersion))
-	http.Redirect(w, r, newMapPath(p.World.ID)+"?"+newMapSavedQuery+"=1", http.StatusSeeOther) //nolint:gosec // the id is a world Foreman found, a local path segment
+	// Finish ends the flow on the world's page, which says the world is Ready.
+	http.Redirect(w, r, worldPath(p.World.ID)+"?"+setupDoneQuery+"=done", http.StatusSeeOther) //nolint:gosec // the id is a world Foreman found, a local path segment
 }

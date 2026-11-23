@@ -732,8 +732,7 @@ time {
 /* A tab is a link with an underline when current. The underline is a border,
    so it is still drawn in forced colours. */
 .tabs a,
-.subnav a,
-.subnav .subnav-later {
+.subnav a {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -801,15 +800,8 @@ time {
   max-inline-size: none;
 }
 
-.subnav a,
-.subnav .subnav-later {
+.subnav a {
   margin-block-end: -1px;
-}
-
-/* A guided Generate step with nothing to do (SPEC 5.6): muted like a step
-   that cannot be opened yet, and told apart from it by italics. */
-.subnav .subnav-skipped {
-  font-style: italic;
 }
 
 /* Step 3's save status takes no room until the script fills it. */
@@ -822,8 +814,7 @@ time {
     gap: 0;
   }
 
-  .subnav a,
-  .subnav .subnav-later {
+  .subnav a {
     padding-inline: 0.625rem;
     font-size: var(--text-sm);
   }
@@ -9506,8 +9497,7 @@ main > .panel.danger-zone.danger-zone--blocked {
     box-shadow: inset 0 -1px 0 var(--color-line);
   }
 
-  .subnav a,
-  .subnav .subnav-later {
+  .subnav a {
     min-block-size: var(--target-min);
     margin-block-end: 0;
   }
@@ -9523,8 +9513,7 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav a,
   .subnav a[aria-current],
   .subnav li:first-child a,
-  .subnav li:last-child a,
-  .subnav .subnav-later {
+  .subnav li:last-child a {
     padding-inline: var(--space-1);
     white-space: normal;
     text-align: center;
@@ -9538,8 +9527,7 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav a,
   .subnav a[aria-current],
   .subnav li:first-child a,
-  .subnav li:last-child a,
-  .subnav .subnav-later {
+  .subnav li:last-child a {
     font-size: var(--text-xs);
   }
 }
@@ -12378,5 +12366,218 @@ main:has(> .public-world) {
 @media (forced-colors: active) {
   .rt-icon {
     background: CanvasText;
+  }
+}
+
+/* The guided Generate's step bar (SPEC 5.6, DESIGN 8.6): four numbered
+   marks joined by a line, finished steps ticked, the current one filled.
+   On a narrow bar only the marks show, with the current step's name under
+   them. */
+.flow-steps {
+  --flow-mark: 1.75rem;
+  container-type: inline-size;
+}
+
+.flow-steps ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-inline-size: 44rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flow-step {
+  position: relative;
+  min-inline-size: 0;
+  max-inline-size: none;
+}
+
+/* The line from the step before runs between the two marks' edges. */
+.flow-step + .flow-step::before {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(var(--target-min) / 2 - 1px);
+  inset-inline-end: calc(50% + var(--flow-mark) / 2 + var(--space-1));
+  inline-size: calc(100% - var(--flow-mark) - 2 * var(--space-1));
+  block-size: 2px;
+  background: var(--color-line);
+}
+
+.flow-step + .flow-step:is(.flow-step--done, .flow-step--current, .flow-step--skipped:has(~ .flow-step--current))::before {
+  background: var(--color-selected);
+}
+
+.flow-step > :is(a, span) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--target-min);
+  padding: calc((var(--target-min) - var(--flow-mark)) / 2) var(--space-1) var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+
+.flow-step > a:hover {
+  color: var(--color-heading);
+}
+
+.flow-step > a:hover .flow-step__name {
+  text-decoration: underline;
+}
+
+.flow-step__mark {
+  display: grid;
+  place-items: center;
+  inline-size: var(--flow-mark);
+  block-size: var(--flow-mark);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.flow-step__mark::before {
+  content: attr(data-n);
+}
+
+.flow-step__name {
+  max-inline-size: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.flow-step--done > :is(a, span) {
+  color: var(--color-text);
+}
+
+.flow-step--done .flow-step__mark {
+  border-color: var(--color-selected);
+  color: var(--color-selected);
+}
+
+.flow-step--done .flow-step__mark::before {
+  content: "";
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-check) center / contain no-repeat;
+}
+
+.flow-step--current > :is(a, span) {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.flow-step--current .flow-step__mark {
+  background: var(--color-primary);
+  border-color: var(--color-primary-edge);
+  color: var(--color-on-primary);
+}
+
+/* A step with nothing to do: a dashed mark and italics, told apart from one
+   that cannot be opened yet. */
+.flow-step--skipped .flow-step__mark {
+  border-style: dashed;
+}
+
+.flow-step--skipped .flow-step__name {
+  font-style: italic;
+}
+
+.flow-steps__now {
+  display: none;
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: 600;
+  text-align: center;
+}
+
+@container (max-width: 30rem) {
+  .flow-step__name {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .flow-step > :is(a, span) {
+    padding-block-end: 0;
+  }
+
+  .flow-steps__now {
+    display: block;
+  }
+}
+
+/* The tick is painted through a mask and the current mark is filled, so in
+   forced colours the tick takes the text colour and the current mark a
+   highlight border. */
+@media (forced-colors: active) {
+  .flow-step--done .flow-step__mark::before {
+    background: CanvasText;
+  }
+
+  .flow-step--current .flow-step__mark {
+    border-color: Highlight;
+  }
+}
+
+/* Each step's footer: Back leads it, the step's action ends it (SPEC 5.6). */
+:is(.gen-actions, .form-foot, .flow-foot) > .flow-back {
+  margin-inline-end: auto;
+}
+
+/* Step 2's footer is the Mods tab's last block, held to the window's foot
+   like the other steps' bars. */
+.flow-foot {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  justify-content: flex-end;
+  padding: var(--space-3) var(--card-pad);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  box-shadow: 0 -6px 16px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 35%));
+}
+
+/* Focus is never left behind the bar (WCAG 2.4.11), as for the other bars. */
+html:has(.flow-foot) {
+  scroll-padding-block-end: 5.5rem;
+}
+
+/* On a phone its two actions stack, so the room grows with them. */
+@media (max-width: 30rem) {
+  html:has(.flow-foot) {
+    scroll-padding-block-end: min(9rem, 50dvh);
+  }
+}
+
+.flow-foot > .flow-back {
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.flow-foot > .flow-back:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+/* On a phone Generate's bar is one column, where an auto margin would
+   shrink Back rather than push it. */
+@media (max-width: 30rem) {
+  .generate > .gen-actions > .flow-back {
+    margin-inline-end: 0;
   }
 }

@@ -1,13 +1,27 @@
-{{/* The guided Generate's step bar: a list of links, the current step marked (SPEC 5.6, 17.10). Without script it is the way between the steps. A step with no path cannot be opened yet, or was skipped, and is plain text. Takes []FlowStep. */}}
+{{/* The guided Generate's step bar: a numbered stepper, finished steps ticked and the current one marked (SPEC 5.6, 17.10). Without script it is the way between the steps. A step with no path cannot be opened yet, or was skipped, and is plain text. Takes []FlowStep. */}}
 {{define "genflow-steps" -}}
-{{- /* In a div: a subnav straight under main is the area tabs' phone copy, hidden on a wide screen. */}}
-<div>
-<nav class="subnav" aria-label="{{t "newmap.steps.label"}}" id="flow-steps">
+<nav class="flow-steps" aria-label="{{t "newmap.steps.label"}}" id="flow-steps">
   <ol role="list">
     {{- range .}}
-    <li>{{if .Path}}<a href="{{.Path}}"{{if .Current}} aria-current="step"{{end}}>{{msg .Label}}</a>{{else}}<span class="subnav-later{{if .Skipped}} subnav-skipped{{end}}">{{msg .Label}}</span>{{end}}</li>
+    <li class="flow-step{{if .Done}} flow-step--done{{end}}{{if .Current}} flow-step--current{{end}}{{if .Skipped}} flow-step--skipped{{end}}">
+      {{- if .Path}}<a href="{{.Path}}"{{if .Current}} aria-current="step"{{end}}>{{template "genflow-step" .}}</a>
+      {{- else}}<span>{{template "genflow-step" .}}</span>{{end -}}
+    </li>
     {{- end}}
   </ol>
+  {{- /* On a narrow bar only the marks show; the current step's name is written under them. The marks' names carry it for screen readers. */}}
+  {{- range .}}{{if .Current}}
+  <p class="flow-steps__now" aria-hidden="true">{{msg .Label}}</p>
+  {{- end}}{{end}}
 </nav>
-</div>
+{{- end}}
+
+{{/* One step's mark and name. The number is drawn from data-n, and is in the name for screen readers. Takes FlowStep. */}}
+{{define "genflow-step" -}}
+<span class="flow-step__mark" data-n="{{.Number}}" aria-hidden="true"></span><span class="flow-step__name"><span class="visually-hidden">{{.Number}}. </span>{{msg .Label}}{{if .Done}}<span class="visually-hidden"> {{t "newmap.steps.done"}}</span>{{end}}</span>
+{{- end}}
+
+{{/* A step's footer Back link, at the start of its action bar (SPEC 5.6). Takes FlowLink. */}}
+{{define "genflow-back" -}}
+{{- if .Path}}<a href="{{.Path}}" class="flow-back" id="flow-back">{{msg .Label}}</a>{{end}}
 {{- end}}

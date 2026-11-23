@@ -58,7 +58,14 @@ test("step 3 shows the startup settings, and saving one adds the planet it turns
   await expect(field).toBeVisible(live);
   // Startup settings only: the map settings of the mods wait for the world page.
   await expect(page.locator("#mod-settings-map-heading")).toHaveCount(0);
+  // Steps 1 and 2 are ticked, and the footer has Back first, then the save (SPEC 5.6).
+  await expect(steps(page).locator(".flow-step--done")).toHaveCount(2);
+  const foot = page.locator(".form-foot");
+  await expect(foot.getByRole("link", { name: "Back to the mods" })).toHaveAttribute("href", `/worlds/${id}/mods`);
+  await expect(foot.getByRole("link", { name: "Cancel" })).toHaveCount(0);
+  await expect(foot.locator("> *").last()).toHaveClass(/button--primary/);
   await checkPage(page);
+  await page.screenshot({ path: `../screenshots/step3-${test.info().project.name}.png`, fullPage: true });
 
   // Before the save step 4 has no fake-moon.
   await page.goto(newMapPath(id));
@@ -71,7 +78,7 @@ test("step 3 shows the startup settings, and saving one adds the planet it turns
   // the window, after the page's own handler has seen it, so the busy state
   // can be read; the second press saves.
   await page.evaluate(() => window.addEventListener("submit", (e) => e.preventDefault(), { once: true }));
-  const save = page.getByRole("button", { name: "Save settings" });
+  const save = page.getByRole("button", { name: "Next: Map settings" });
   await save.click();
   await expect(save).toBeDisabled();
   await expect(page.locator("#flow-modsettings-saving")).toHaveText("Saving the mod settings…");
@@ -101,11 +108,11 @@ test("Skip to map settings goes on without saving", async ({ page, foreman, fake
   // A Skip chosen by hand is not the automatic one: no note.
   await expect(page.locator("#newmap-skipped")).toHaveCount(0);
 
-  // Once step 4 is saved, Continue opens step 4, not the skipped step 3.
+  // Once step 4 is saved the world is Ready, and Change setup opens step 4, not the skipped step 3.
   await page.locator("#newmap-save").click();
-  await expect(page.locator("#newmap-done")).toBeVisible(live);
+  await expect(page.locator("#world-ready")).toBeVisible(live);
   await page.goto(`/worlds/${id}`);
-  await page.getByRole("link", { name: "Continue setting up" }).click();
+  await page.getByRole("link", { name: "Change setup" }).click();
   await expect(page).toHaveURL(new RegExp(`${newMapPath(id)}(\\?|$)`));
 });
 
@@ -120,8 +127,8 @@ test("a world with only built-in mods skips step 3 and marks it (none)", async (
   const bar = steps(page);
   await expect(bar.getByRole("listitem").nth(2)).toHaveText("3. Mod settings (none)");
   // Skipped looks apart from a step that cannot be opened yet.
-  await expect(bar.locator(".subnav-skipped")).toHaveText("3. Mod settings (none)");
-  await expect(bar.locator(".subnav-skipped")).toHaveCSS("font-style", "italic");
+  await expect(bar.locator(".flow-step--skipped")).toHaveText("3. Mod settings (none)");
+  await expect(bar.locator(".flow-step--skipped .flow-step__name")).toHaveCSS("font-style", "italic");
   await expect(bar.getByRole("link", { name: /Mod settings/ })).toHaveCount(0);
   await expect(bar.getByRole("link")).toHaveCount(3);
   await checkPage(page);
@@ -139,16 +146,19 @@ test.describe("step 3 without script", () => {
   });
 });
 
-// SPEC 17.2: at 320 px the four-step bar wraps in the longest languages,
+// SPEC 17.2: at 320 px the four-step bar shows its marks and the current name in the longest languages,
 // with no sideways scroll.
 for (const lang of ["pl", "ru"]) {
-  test(`at 320 px in ${lang} the step bar wraps without a sideways scroll`, async ({ page, foreman, fakeGame }) => {
+  test(`at 320 px in ${lang} the step bar fits without a sideways scroll`, async ({ page, foreman, fakeGame }) => {
     const id = await modded(page, foreman, fakeGame!);
     await pickLanguage(page, lang);
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto(stepPath(id));
     const bar = page.locator("#flow-steps");
     await expect(bar.getByRole("listitem")).toHaveCount(4);
+    // Narrow, only the marks show, with the current step's name under them.
+    await expect(bar.locator(".flow-steps__now")).toBeVisible();
+    await expect(bar.locator(".flow-step__name").first()).toHaveCSS("clip-path", "inset(50%)");
     const b = (await bar.boundingBox())!;
     expect(b.x).toBeGreaterThanOrEqual(0);
     expect(b.x + b.width).toBeLessThanOrEqual(320);

@@ -154,7 +154,7 @@ func TestFlowModSettingsSkipSaysWhy(t *testing.T) {
 	get := func(path string) string {
 		return g.do(http.MethodGet, path, nil, http.Header{"Cookie": {g.cookie.String()}}).body
 	}
-	wantIn(t, "skipped step 4", get(skipped), `id="newmap-skipped"`, `class="subnav-later subnav-skipped"`)
+	wantIn(t, "skipped step 4", get(skipped), `id="newmap-skipped"`, `class="flow-step flow-step--skipped"`)
 	wantIn(t, "skipped step 4 without script", get(skipped+"&"+newMapWaitQuery+"=1"), `id="newmap-skipped"`)
 	if strings.Contains(get(newMapPath(bare)), `id="newmap-skipped"`) {
 		t.Error("step 4 opened directly shows the skip note")

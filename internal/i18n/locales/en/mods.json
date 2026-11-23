@@ -465,7 +465,6 @@
   "mods.flow.generated": "{name} is made. Next, pick its mods or skip this step.",
   "mods.flow.skip": "Skip to mod settings",
   "mods.flow.skip_map": "Skip to map settings",
-  "mods.flow.next": "Next: mod settings",
   "mods.richtext.warning": "Warning",
   "mods.richtext.info": "Note"
 }

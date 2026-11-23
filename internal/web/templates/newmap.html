@@ -38,12 +38,6 @@
 </div>
 {{- else}}
 <div id="newmap-body" data-ready="{{t "newmap.ready"}}">
-{{- if .Done}}
-<div class="message message--success" id="newmap-done" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{msg .DoneMsg}}</p>
-  <div class="actions"><a href="{{.WorldPath}}" class="button button--primary" id="newmap-next">{{t "newmap.next"}}</a></div>
-</div>
-{{- end}}
 {{- if not .Builtin.IsZero}}
 <div class="message message--warning" id="newmap-builtin">
   <p><strong>{{t "common.label.warning"}}</strong> {{msg .Builtin}}</p>
@@ -158,13 +152,14 @@
   </div>
   {{- end}}
   {{- end}}
+  {{- /* Each step's footer: Back first, the step's save last (SPEC 5.6). */}}
   <div class="actions gen-actions">
-    <a href="{{.WorldPath}}">{{t "worlds.cancel"}}</a>
+    {{template "genflow-back" .Back}}
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
       hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
     {{- end}}
-    <button type="submit" class="button button--primary" id="newmap-save"{{if not .SaveError.IsZero}} aria-describedby="newmap-save-error"{{end}}>{{t "newmap.save"}}</button>
+    <button type="submit" class="button button--primary" id="newmap-save"{{if not .SaveError.IsZero}} aria-describedby="newmap-save-error"{{end}}>{{t "newmap.finish"}}</button>
   </div>
 </form>
 <dialog id="leave-dialog" class="leave-dialog" aria-labelledby="leave-title" aria-describedby="leave-text">

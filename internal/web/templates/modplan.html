@@ -79,7 +79,7 @@
 {{- if and .Nothing (not $versions)}}
 <p>{{t "mods.plan.nothing"}}</p>
 <div class="actions">
-  {{- if .InFlow}}<a href="{{.NextPath}}" class="button button--primary" id="plan-next">{{t "mods.flow.next"}}</a>{{end}}
+  {{- if .InFlow}}<a href="{{.NextPath}}" class="button button--primary" id="plan-next">{{t "newmap.next.mod_settings"}}</a>{{end}}
   <a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a>
 </div>
 {{- else}}

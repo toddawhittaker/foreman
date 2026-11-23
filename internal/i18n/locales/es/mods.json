@@ -465,7 +465,6 @@
   "mods.flow.generated": "{name} está creado. Ahora elige sus mods o salta este paso.",
   "mods.flow.skip": "Saltar a los ajustes de los mods",
   "mods.flow.skip_map": "Saltar a los ajustes del mapa",
-  "mods.flow.next": "Siguiente: ajustes de los mods",
   "mods.richtext.warning": "Advertencia",
   "mods.richtext.info": "Nota"
 }

@@ -45,7 +45,8 @@
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
   {{- if or .Undo .InFlow}}
   <div class="actions">
-    {{- if .InFlow}}<a href="{{.NextPath}}" class="button button--primary" id="act-next-map">{{t "mods.flow.next"}}</a>{{end}}
+    {{- /* The footer's Next is the page's one primary action. */}}
+    {{- if .InFlow}}<a href="{{.NextPath}}" class="button" id="act-next-map">{{if .NoModSettings}}{{t "newmap.next.map"}}{{else}}{{t "newmap.next.mod_settings"}}{{end}}</a>{{end}}
     {{- with .Undo}}<a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a>{{end}}
   </div>
   {{- end}}
@@ -262,6 +263,13 @@
 {{- end}}
 </div>
 </details>
+</div>
+{{- end}}
+{{- if .InFlow}}
+{{- /* Step 2's footer: Back to the world, then the way on (SPEC 5.6). */}}
+<div class="actions flow-foot">
+  {{template "genflow-back" .Back}}
+  <a href="{{.NextPath}}" class="button button--primary" id="flow-next">{{if .NoModSettings}}{{t "newmap.next.map"}}{{else}}{{t "newmap.next.mod_settings"}}{{end}}</a>
 </div>
 {{- end}}
 {{end}}

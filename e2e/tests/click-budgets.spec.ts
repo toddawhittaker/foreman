@@ -102,25 +102,25 @@ test.describe("click budgets, with the fake game", () => {
   });
 
   // SPEC 17.10 (Generate row): from the Server page, Worlds, "Generate a
-  // world", then "Generate world" with every default kept but the name.
+  // world", then "Next: Mods" with every default kept but the name.
   test("generate a world with the defaults: 3 clicks", async ({ page, foreman, fakeGame }) => {
     const clicks = await setUp(page, foreman, fakeGame!);
     await page.getByRole("link", { name: "Worlds", exact: true }).click();
     await page.getByRole("link", { name: "Generate a world" }).click();
     await page.getByLabel("World name").fill("Fresh");
-    await page.getByRole("button", { name: "Generate world" }).click();
+    await page.getByRole("button", { name: "Next: Mods" }).click();
     // Making the world lands on step 2, its mods (SPEC 5.6).
     await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
     await expectWithin(clicks, 3, "generate");
   });
 
   // SPEC 17.10, 5.6: an Unfinished world with a planet mod: Worlds, Continue
-  // (step 3), the setting, then Save settings, which lands on step 4.
+  // (step 3), the setting, then "Next: Map settings", which saves and lands on step 4.
   test("change a startup mod setting of an Unfinished world: 3 clicks", async ({ page, foreman, fakeGame }) => {
     const clicks = await setUp(page, foreman, fakeGame!);
     await page.goto("/generate");
     await page.getByLabel("World name").fill("Fresh");
-    await page.getByRole("button", { name: "Generate world" }).click();
+    await page.getByRole("button", { name: "Next: Mods" }).click();
     await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
     const mods = join(foreman.dataDir, "worlds", "fresh", "mods");
     copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), join(mods, "fake-planet_1.0.0.zip"));
@@ -130,7 +130,7 @@ test.describe("click budgets, with the fake game", () => {
     await page.getByRole("link", { name: "Worlds", exact: true }).click();
     await page.getByRole("link", { name: "Continue setting up Fresh" }).click();
     await page.getByLabel("fm-sta-int").fill("9");
-    await page.getByRole("button", { name: "Save settings" }).click();
+    await page.getByRole("button", { name: "Next: Map settings" }).click();
     await expect(page).toHaveURL("/worlds/fresh/new-map", live);
     await expectWithin(clicks, 3, "change a startup mod setting while setting up");
   });

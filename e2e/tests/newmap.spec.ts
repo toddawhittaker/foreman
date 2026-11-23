@@ -37,20 +37,26 @@ test("step 3 shows the step bar, saves a preset and lands on a next step", async
   await expect(steps.getByRole("link")).toHaveCount(3);
   await expect(steps.getByRole("listitem").nth(2)).toHaveText("3. Mod settings (none)");
   await expect(steps.getByRole("link", { name: "4. Map settings" })).toHaveAttribute("aria-current", "step");
+  await expect(steps.getByRole("link", { name: "1. World (done)" })).toBeVisible();
+  // The footer: Back to step 2, since step 3 has nothing, then the save as the primary button (SPEC 5.6).
+  const bar = page.locator(".gen-actions");
+  await expect(bar.locator("> *").first()).toHaveText("Back to the mods");
+  await expect(bar.locator("> *").first()).toHaveAttribute("href", `/worlds/${id}/mods`);
+  await expect(bar.locator("> *").last()).toHaveAttribute("id", "newmap-save");
   await checkPage(page);
+  await page.screenshot({ path: `../screenshots/step4-${test.info().project.name}.png`, fullPage: true });
 
   await page.locator("#generate-preset").selectOption("rich-resources");
   await page.locator("#generate-seed").fill("4242");
-  await page.getByRole("button", { name: "Save map settings" }).click();
-  await expect(page.locator("#newmap-done")).toContainText("Saved the map settings of Step three");
+  // Finish saves and lands on the world's page, with no step between (SPEC 5.6).
+  await page.getByRole("button", { name: "Finish" }).click();
+  await expect(page).toHaveURL(`/worlds/${id}?setup=done`);
+  await expect(page.locator("#world-ready")).toContainText("Done: This world is set up.");
   await checkPage(page);
-  const next = page.getByRole("link", { name: "Next: go to the world" });
-  await expect(next).toBeVisible();
   const meta = worldJSON(foreman.dataDir, id);
   expect(meta.new_map).toEqual({ preset: "rich-resources", seed: 4242 });
+  await page.goto(newMapPath(id));
   await expect(page.locator("#generate-preset")).toHaveValue("rich-resources");
-  await next.click();
-  await expect(page).toHaveURL(`/worlds/${id}`);
 });
 
 test("a world whose map is made says why and offers no form", async ({ page, foreman, fakeGame }) => {
@@ -104,7 +110,7 @@ test("leaving step 3 with a changed setting asks first", async ({ page, foreman,
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
   await page.locator("#generate-seed").fill("99");
-  await page.getByRole("link", { name: "Cancel" }).click();
+  await page.locator("#flow-back").click();
   await expect(page.locator("#leave-dialog")).toBeVisible();
   await checkPage(page);
   await page.getByRole("button", { name: "Stay on this page" }).click();
@@ -140,7 +146,7 @@ test("when the world's planets cannot be read, the page says so and the save is 
   await expect(page.locator("#newmap-builtin")).toContainText("could not be read", { timeout: 60_000 });
   await expect(page.locator("#newmap-builtin-mods")).toHaveAttribute("href", `/worlds/${id}/mods`);
   await checkPage(page);
-  await page.getByRole("button", { name: "Save map settings" }).click();
+  await page.getByRole("button", { name: "Finish" }).click();
   await expect(page.locator("#newmap-save-error")).toContainText("Nothing was saved");
   await expect(page.locator("#newmap-retry")).toHaveAttribute("href", newMapPath(id));
   await expect(page.locator("#newmap-to-mods")).toHaveAttribute("href", `/worlds/${id}/mods`);
@@ -160,8 +166,8 @@ test.describe("without script", () => {
     await page.goto(newMapPath(id));
     await expect(page).toHaveURL(/new-map\?wait=1/);
     await page.locator("#generate-seed").fill("12");
-    await page.getByRole("button", { name: "Save map settings" }).click();
-    await expect(page.locator("#newmap-done")).toBeVisible();
+    await page.getByRole("button", { name: "Finish" }).click();
+    await expect(page.locator("#world-ready")).toBeVisible();
     expect(worldJSON(foreman.dataDir, id).new_map.seed).toBe(12);
   });
 });
