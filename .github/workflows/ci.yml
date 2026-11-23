@@ -32,6 +32,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     outputs:
       code: ${{ steps.decide.outputs.code }}
       tree: ${{ steps.decide.outputs.tree }}
@@ -62,6 +63,22 @@ jobs:
             fi
           else
             echo "::warning::Could not look up earlier runs of tree $tree; running everything."
+          fi
+
+          # A push to an epic branch that has an open pull request into main
+          # is tested by that pull request's run, which starts for the same
+          # push; running both doubles the wait for nothing.
+          if [ "$EVENT" = push ] && [[ "$GITHUB_REF" == refs/heads/epic/* ]]; then
+            branch=${GITHUB_REF#refs/heads/}
+            if open=$(gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&head=${GITHUB_REPOSITORY_OWNER}:$branch" --jq length); then
+              if [ "$open" -gt 0 ]; then
+                echo "$branch has an open pull request into main; its run tests this push. Skipping the build and tests."
+                echo "code=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            else
+              echo "::warning::Could not look up pull requests for $branch; running everything."
+            fi
           fi
 
           # A push to main runs in full unless its tree was already tested.
