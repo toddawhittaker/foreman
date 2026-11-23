@@ -42,13 +42,27 @@ export interface Clicks {
   list: () => Promise<string[]>;
 }
 
+// The page can load again on its own at any moment: after a switch, the
+// live stream's "moved" event reloads it (live.js). An evaluate that lands
+// in that reload loses its context, so it waits for the new page and runs
+// there. The count is in session storage, so the new page has the same one.
+async function inPage<R>(page: Page, fn: (k: string) => R): Promise<R> {
+  for (let tries = 0; ; tries++) {
+    try {
+      return await page.evaluate(fn, key);
+    } catch (e) {
+      if (tries >= 4 || !/Execution context was destroyed|navigat/i.test(String(e))) throw e;
+      await page.waitForLoadState("domcontentloaded");
+    }
+  }
+}
+
 export async function countClicks(page: Page): Promise<Clicks> {
   await page.addInitScript(listen, key);
-  await page.evaluate(listen, key);
-  const list = async () => page.evaluate((k) => JSON.parse(sessionStorage.getItem(k) ?? "[]") as string[], key);
+  await inPage(page, listen);
   return {
-    list,
-    reset: () => page.evaluate((k) => sessionStorage.removeItem(k), key),
+    list: () => inPage(page, (k) => JSON.parse(sessionStorage.getItem(k) ?? "[]") as string[]),
+    reset: () => inPage(page, (k) => sessionStorage.removeItem(k)),
   };
 }
 

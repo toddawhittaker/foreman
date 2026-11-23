@@ -597,7 +597,7 @@ func saveCopyError(err error) error {
 		return ErrSaveCopyImageMissing
 	case errors.Is(err, ErrPreviewTimeout):
 		return ErrSaveCopyTimeout
-	case errors.Is(err, errControlModTaken):
+	case errors.Is(err, ErrControlModTaken):
 		return fmt.Errorf("%w: %w", ErrSaveCopyBadOutput, err)
 	case errors.As(err, &pe) && pe.OOM:
 		return fmt.Errorf("%w: %w", ErrSaveCopyOutOfMemory, err)

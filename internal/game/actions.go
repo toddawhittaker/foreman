@@ -120,6 +120,7 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	// A start cancels any save read of the world, and keeps new ones from
 	// beginning, before it takes the lock a read may be holding (SPEC 8.16).
 	defer c.beginStartSaveCopies(id)()
+	c.warmNewMapCatalogue(ctx, id)
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return err
@@ -297,6 +298,9 @@ func (c *Controller) precheck(ctx context.Context, id string, opts StartOptions)
 	if err != nil {
 		return world.PreCheck{}, err
 	}
+	if check, err = c.staleControlsCheck(ctx, id, check); err != nil {
+		return world.PreCheck{}, err
+	}
 	check = c.portalCheck(ctx, id, check, opts)
 	return check, c.allowStart(check, opts)
 }
@@ -320,6 +324,9 @@ func (c *Controller) precheckReadOnly(ctx context.Context, id, version string, o
 		check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool {
 			return p.Kind == world.ProblemModListSpaceAge
 		})
+	}
+	if check, err = c.staleControlsCheck(ctx, id, check); err != nil {
+		return world.PreCheck{}, err
 	}
 	check = c.portalCheck(ctx, id, check, opts)
 	return check, c.allowStart(check, opts)
@@ -846,6 +853,7 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if err != nil {
 		return err
 	}
+	c.warmNewMapCatalogue(ctx, id)
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return err

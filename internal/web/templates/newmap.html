@@ -1,0 +1,253 @@
+{{define "title"}}{{t "newmap.title"}}{{end}}
+
+{{define "scripts"}}
+{{- if .Page.ShowForm}}<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
+{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}
+{{- else if .Page.Loading}}
+{{- /* With script the form part is loaded after the page; without it the page
+     reloads itself and the server waits for the planet list (SPEC 5.6). */}}
+<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
+{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}
+<noscript><meta http-equiv="refresh" content="0; url={{.Page.WaitPath}}"></noscript>
+{{- end}}{{end}}
+
+{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .World.Name "" (t "newmap.title"))}}
+<h1 id="newmap-heading" tabindex="-1">{{t "newmap.title"}}</h1>
+{{template "rail" $}}
+{{- if not .Why.IsZero}}
+<div class="message message--note" id="newmap-why">
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .Why}}</p>
+</div>
+<div class="actions"><a href="{{.WorldPath}}" class="button button--primary" id="newmap-to-world">{{t "newmap.to_world"}}</a></div>
+{{- else}}
+{{template "genflow-steps" .Steps}}
+<p class="page-intro">{{t "newmap.intro" "name" .World.Name}}</p>
+{{- if .Loading}}
+{{- /* The script writes the text into the live region once the page has loaded, so it is said once (SPEC 17.19). */}}
+<div id="newmap-load" class="wait" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">
+  <p role="status" id="newmap-load-status" data-text="{{t "newmap.loading"}}"></p>
+  <progress aria-label="{{t "newmap.loading_label"}}"></progress>
+  <p><a href="{{.WaitPath}}">{{t "newmap.loading_link"}}</a></p>
+</div>
+{{- else}}
+<div id="newmap-body" data-ready="{{t "newmap.ready"}}">
+{{- if .Done}}
+<div class="message message--success" id="newmap-done" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .DoneMsg}}</p>
+  <div class="actions"><a href="{{.WorldPath}}" class="button button--primary" id="newmap-next">{{t "newmap.next"}}</a></div>
+</div>
+{{- end}}
+{{- if not .Builtin.IsZero}}
+<div class="message message--warning" id="newmap-builtin">
+  <p><strong>{{t "common.label.warning"}}</strong> {{msg .Builtin}}</p>
+  {{- if .BuiltinFailed}}
+  <div class="actions"><a href="{{.ModsPath}}" id="newmap-builtin-mods">{{t "newmap.link.mods"}}</a></div>
+  {{- end}}
+</div>
+{{- end}}
+{{- if .Gone}}
+<div class="message message--note" id="newmap-gone">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "newmap.gone.text" "count" (len .Gone)}}</p>
+  <ul>
+    {{- range .Gone}}
+    <li><code translate="no">{{.}}</code></li>
+    {{- end}}
+  </ul>
+</div>
+{{- end}}
+{{- /* autocomplete="off", as on Generate: Back would refill some fields and not the hidden ones (SPEC 5.6). */}}
+<form method="post" action="{{.Path}}" class="panel generate" id="generate-form" novalidate autocomplete="off" data-tab="{{.Form.Tab}}" data-ach-word="{{t "mapgen.achievement.warning"}}"{{if .Unsaved}} data-unsaved="1"{{end}}>
+  <button type="submit" id="generate-default" hidden></button>
+  {{template "summary" .Problems}}
+  <div class="gen-grid">
+  <div class="gen-settings">
+  {{- with .Form}}
+  {{- /* The preview still reads the world's line from these until it reads the world itself. */}}
+  <input type="hidden" name="world" value="{{.ID}}">
+  <input type="hidden" name="name" value="{{.Name}}">
+  <input type="hidden" name="game_version" value="{{.Version}}">
+  {{- if .SpaceAge}}<input type="hidden" name="space_age" value="on">{{end}}
+  <input type="hidden" name="mode" value="settings">
+  <div id="map-section" class="map-section">
+    <input type="hidden" id="filled-seed" name="filled_seed" value="{{.FilledSeed}}">
+    {{- if not .FormError.IsZero}}
+    <p class="error" id="mode-settings" tabindex="-1"><strong>{{t "common.error.label"}}</strong> {{msg .FormError}}</p>
+    {{- end}}
+    <details class="disclosure mode-panel" id="exchange-fill"{{if not .ExchangeError.IsZero}} open{{end}}>
+      <summary>{{t "newmap.exchange.summary"}}</summary>
+      <div class="field">
+        <label for="exchange-string">{{t "worlds.generate.exchange.label"}}</label>
+        <p class="hint" id="exchange-hint">{{t "newmap.exchange.hint"}}</p>
+        <textarea id="exchange-string" name="exchange" rows="4" class="mono" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="soft"
+          {{- if not .ExchangeError.IsZero}} aria-invalid="true" aria-describedby="exchange-hint exchange-string-error"{{else}} aria-describedby="exchange-hint"{{end}}>{{.Exchange}}</textarea>
+        {{- if not .ExchangeError.IsZero}}
+        <p class="error" id="exchange-string-error"><strong>{{t "common.error.label"}}</strong> {{msg .ExchangeError}}</p>
+        {{- if $.Page.ExchangeOtherLine}}
+        <p><a href="{{$.Page.WorldPath}}" id="exchange-to-world">{{t "newmap.to_world"}}</a></p>
+        {{- end}}
+        {{- end}}
+      </div>
+      <div class="actions"><button type="submit" class="button" id="exchange-fill-button" name="fill" value="1" formaction="{{.RefreshPath}}">{{t "newmap.exchange.button"}}</button></div>
+    </details>
+    <div class="gen-main" id="line-box">
+      <div id="map-key-box">
+        <input type="hidden" name="map_key" value="{{.MapKey}}">
+        {{- if .Reset}}
+        <div class="message message--note" id="map-reset" tabindex="-1">
+          <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.reset_note"}}</p>
+        </div>
+        {{- end}}
+      </div>
+      {{template "newmap-settings" .}}
+    </div>
+  </div>
+  {{template "newmap-achievements" .}}
+  {{template "newmap-needs" .}}
+  {{- end}}
+  </div>
+  <div class="gen-preview">
+    {{template "generate-preview" .}}
+    <div id="preview-wait" class="wait" role="status">
+      <p>{{t "worlds.generate.preview.wait"}}</p>
+      <progress aria-label="{{t "worlds.generate.preview.wait_label"}}"></progress>
+    </div>
+    <template id="preview-failed">
+      <section aria-labelledby="preview-failed-heading">
+        <h2 id="preview-failed-heading">{{t "worlds.generate.preview.heading"}}</h2>
+        <div class="message message--error">
+          <p><strong>{{t "common.error.label"}}</strong> {{t "worlds.generate.preview.request_failed"}}</p>
+        </div>
+      </section>
+    </template>
+    {{- if .CanPreview}}
+    <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
+    {{- with .Form}}
+    <div class="field step" id="preview-size-field">
+      <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
+      <select id="generate-preview-size" name="preview_size"
+        {{- if not .PreviewSizeError.IsZero}} aria-invalid="true" aria-describedby="generate-preview-size-hint generate-preview-size-error"{{else}} aria-describedby="generate-preview-size-hint"{{end}}>
+        {{- range .PreviewSizes}}
+        <option value="{{.Size}}"{{if .Chosen}} selected{{end}}>{{if .Default}}{{t "worlds.generate.preview.size_default" "size" (print .Size)}}{{else}}{{t "worlds.generate.preview.size_option" "size" (print .Size)}}{{end}}</option>
+        {{- end}}
+      </select>
+      <p class="hint" id="generate-preview-size-hint">{{t "worlds.generate.preview.size_hint"}}</p>
+      {{- if not .PreviewSizeError.IsZero}}
+      <p class="error" id="generate-preview-size-error"><strong>{{t "common.error.label"}}</strong> {{msg .PreviewSizeError}}</p>
+      {{- end}}
+    </div>
+    {{- end}}
+    {{template "generate-large-view"}}
+    {{- end}}
+  </div>
+  </div>
+  {{- if not .SaveError.IsZero}}
+  <p class="error" id="newmap-save-error"><strong>{{t "common.error.label"}}</strong> {{msg .SaveError}}</p>
+  {{- with .SaveLinks}}
+  <div class="actions">
+    {{- range .}}
+    <a href="{{.Path}}" id="{{.ID}}">{{msg .Label}}</a>
+    {{- end}}
+  </div>
+  {{- end}}
+  {{- end}}
+  <div class="actions gen-actions">
+    <a href="{{.WorldPath}}">{{t "worlds.cancel"}}</a>
+    {{- if .CanPreview}}
+    <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
+      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
+    {{- end}}
+    <button type="submit" class="button button--primary" id="newmap-save"{{if not .SaveError.IsZero}} aria-describedby="newmap-save-error"{{end}}>{{t "newmap.save"}}</button>
+  </div>
+</form>
+<dialog id="leave-dialog" class="leave-dialog" aria-labelledby="leave-title" aria-describedby="leave-text">
+  <h2 id="leave-title">{{t "worlds.generate.leave.title"}}</h2>
+  <p id="leave-text">{{t "worlds.generate.leave.text"}}</p>
+  <div class="actions">
+    <button type="button" class="button button--primary" id="leave-stay">{{t "worlds.generate.leave.stay"}}</button>
+    <button type="button" class="button" id="leave-go">{{t "worlds.generate.leave.leave"}}</button>
+  </div>
+</dialog>
+</div>
+{{- end}}
+{{- end}}
+{{end}}
+{{- end}}
+
+{{/* Step 3's preset, seed and tabs, as Generate's "map-settings" with step 3's refresh path. Takes NewMapForm. */}}
+{{define "newmap-settings" -}}
+<div class="mode-panel mode-panel--settings">
+<div id="preset-box" class="mode-panel">
+  {{- if .Refilled}}
+  <div class="message message--note" id="map-refilled" tabindex="-1" autofocus>
+    <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.refilled" "preset" (.PresetMsg .Preset)}}</p>
+  </div>
+  {{- end}}
+  <div class="field">
+    <label for="generate-preset">{{t "worlds.generate.preset.label"}}</label>
+    <div class="inline-row preset-row">
+      <select id="generate-preset" name="preset" hx-post="{{.RefreshPath}}" hx-trigger="change" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary" hx-swap="outerHTML" hx-sync="this:replace"
+        aria-describedby="preset-modified{{if not .PresetError.IsZero}} generate-preset-error{{end}}"{{if not .PresetError.IsZero}} aria-invalid="true"{{end}}>
+        {{- range .Presets}}
+        <option value="{{.}}"{{if eq . $.Preset}} selected{{end}}>{{msg ($.PresetMsg .)}}</option>
+        {{- end}}
+      </select>
+      <span class="modified" id="preset-modified" data-word="{{t "mapgen.preset.modified"}}">{{if .Modified}}{{t "mapgen.preset.modified"}}{{end}}</span>
+      <button type="submit" class="button button--quiet" id="preset-reset" name="reset" value="1" formaction="{{.RefreshPath}}"
+        hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary,#generate-preset" hx-swap="outerHTML"{{if .AtDefaults}} hidden{{end}}>{{t "mapgen.preset.reset"}}</button>
+      <button type="button" class="button button--quiet" id="preset-undo" hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary,#generate-preset" hx-swap="outerHTML" hidden>{{t "mapgen.preset.undo"}}</button>
+    </div>
+    {{- if not .PresetError.IsZero}}
+    <p class="error" id="generate-preset-error"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>
+    {{- end}}
+  </div>
+</div>
+  {{- with .MapGen.Seed}}
+  <div class="field">
+    <label for="{{.ID}}">{{t "mapgen.seed.label"}}</label>
+    <p class="hint" id="{{.ID}}-hint">{{t "mapgen.seed.hint"}}</p>
+    <div class="inline-row">
+      <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono" inputmode="numeric" autocomplete="off" spellcheck="false"
+        {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
+      <button type="button" class="button seed-random" id="seed-random">{{t "mapgen.seed.random"}}</button>
+    </div>
+    {{- if not .Error.IsZero}}
+    <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+    {{- end}}
+  </div>
+  {{- end}}
+</div>
+<div id="map-settings" class="mode-panel mode-panel--settings">
+  <input type="hidden" name="filled_from" value="{{.FilledFrom}}">
+  <input type="hidden" name="settings_shown" value="1">
+  <input type="hidden" name="open_planet" id="open-planet" value="{{.MapGen.OpenPlanet}}">
+  {{template "mapgen-panels" .}}
+</div>
+{{- end}}
+
+{{/* As Generate's "achievements". Takes NewMapForm. */}}
+{{define "newmap-achievements" -}}
+<div class="message message--warning achievements" id="ach-summary"{{if not .Blocked}} hidden{{end}}>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "mapgen.achievement.summary"}}</p>
+  <ul>
+    {{- range .Reasons}}
+    <li data-reason="{{.Key}}"{{if not .Active}} hidden{{end}}>{{msg .Msg}}</li>
+    {{- end}}
+  </ul>
+</div>
+{{- end}}
+
+{{/* As Generate's "needs". Takes NewMapForm. */}}
+{{define "newmap-needs" -}}
+<div class="message message--warning achievements" id="need-summary"{{if not .MapGen.NeedsOff}} hidden{{end}}>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "mapgen.need.summary"}}</p>
+  <ul>
+    {{- range .MapGen.Needs}}
+    <li data-need-key="{{.NeedKey}}"{{if .Checked}} hidden{{end}}>{{msg .Need}}</li>
+    {{- end}}
+  </ul>
+</div>
+{{- end}}

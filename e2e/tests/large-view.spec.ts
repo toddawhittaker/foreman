@@ -1,9 +1,10 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { readdirSync } from "node:fs";
+import { openNewMap, newMapPath } from "./newmap.js";
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-// SPEC 5.6, 17; DESIGN 8.8: the large view is a picture viewer. The wheel,
+// SPEC 5.6, 17; DESIGN 8.8: the large view, on step 3 of the guided Generate, is a picture viewer. The wheel,
 // plus and minus zoom by 1.15 around the pointer or the centre, up to the
 // larger of 8 times the fitted size and 8 CSS pixels per tile; a drag or one
 // finger pans and two fingers pinch; the arrows, the X and the zoom buttons
@@ -26,11 +27,12 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 });
 
 async function openLarge(page: Page) {
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await section(page).getByRole("link", { name: /opens the large view/ }).click();
   await expect(dialog(page)).toBeVisible();
   await expect.poll(() => largeImg(page).evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  return world;
 }
 
 // The spot of the picture under a point of the window, as fractions of the picture.
@@ -109,7 +111,7 @@ test("plus and minus zoom around the centre, 0 fits, and the level is said", asy
 // moment is newer, so it is what the status keeps.
 test("a zoom right after a step is not overwritten by the planet's name", async ({ page }) => {
   // Every planet drawn, so a step shows its picture at once and says its name.
-  await page.goto("/generate");
+  await openNewMap(page);
   await page.getByRole("button", { name: "Preview map" }).click();
   await expect(section(page).getByRole("img")).toHaveCount(5);
   await section(page).getByRole("link", { name: /Vulcanus.*opens the large view/ }).click();
@@ -232,7 +234,7 @@ test("the download icon by the heading downloads the planet shown", async ({ pag
 for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072", null]] as const) {
   test(`the most zoom of a ${size} picture is the larger of 8 times fit and 8 px a tile`, async ({ page }) => {
     if (viewport) await page.setViewportSize(viewport);
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     if (size !== "1280") {
       await page.locator("#generate-preview-size").selectOption(size, { force: true });
@@ -427,62 +429,33 @@ test.describe("the planet viewed", () => {
     // left Nauvis's rows open, and their late toggle event, under load, read
     // as the person choosing Nauvis (#550).
     await page.addInitScript(() => {
-      document.addEventListener("DOMContentLoaded", () => {
+      // Only step 3 is drawn with Gleba open, and its form comes into the page after the load; the page that makes the world is left as it is.
+      let done = false;
+      const apply = () => {
+        const form = document.getElementById("generate-form");
+        if (done || !form || !location.pathname.endsWith("/new-map")) return;
+        done = true;
         let open = document.getElementById("open-planet") as HTMLInputElement | null;
         if (!open) {
           open = document.createElement("input");
           open.type = "hidden";
           open.id = "open-planet";
-          document.getElementById("generate-form")!.append(open);
+          form.append(open);
         }
         open.value = "gleba";
         for (const d of document.querySelectorAll<HTMLDetailsElement>("#generate-form details[data-planet]")) {
           d.open = d.dataset.planet === "gleba";
         }
-      });
+      };
+      document.addEventListener("DOMContentLoaded", apply);
+      // In the capture phase, so it runs before the page's own script starts on the loaded form.
+      document.addEventListener("htmx:afterSettle", apply, true);
     });
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page).getByRole("img", { name: /^Map preview of Gleba/ })).toBeVisible();
     expect(await seen()).toEqual([]);
   });
 
-  // A planet the new settings do not have is never asked for: the preview goes back to one they have.
-  for (const change of ["Space Age off", "version 1.1"] as const) {
-    test(`after picking Vulcanus, ${change} draws a planet the line has`, async ({ page, fakeGame }) => {
-      // The 1.1 game image is here too, so its preview can be drawn.
-      await fakeGame!.call("/image", { ref: image21.replace(/:[^:]+$/, ":1.1.110"), on: true });
-      await page.goto("/generate");
-      await expect(section(page).getByRole("img")).toHaveCount(1);
-      await page.locator("#mg-resources-vulcanus summary").click();
-      await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
-      const replies: { planet: string | null; status: number }[] = [];
-      page.on("response", (r) => {
-        const q = r.request();
-        if (q.method() !== "POST" || !q.url().endsWith("/generate/preview")) return;
-        const form = new URLSearchParams(q.postData() ?? "");
-        if (form.get("auto") === "1") replies.push({ planet: form.get("planet"), status: r.status() });
-      });
-      if (change === "Space Age off") {
-        await page.getByLabel("Space Age is on").uncheck();
-      } else {
-        const d = page.locator(".version-fields > details.disclosure");
-        if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator("summary").click();
-        await page.getByLabel("Or type a version").fill("1.1.110");
-        await page.getByLabel("Or type a version").press("Tab");
-        // 1.1 has no Space Age, and the preview says so until it is off.
-        await expect(page.locator("#preview").getByText("Space Age needs Factorio 2.0 or later")).toBeVisible();
-        await page.getByLabel("Space Age is on").uncheck();
-      }
-      await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
-      await page.waitForTimeout(1200);
-      expect(replies.length).toBeGreaterThan(0);
-      for (const r of replies) {
-        expect(r.status).toBe(200);
-        expect([null, "nauvis"]).toContain(r.planet);
-      }
-      await expect(section(page).getByRole("alert")).toHaveCount(0);
-    });
-  }
 });
 
 // The preview picture fills its column, capped by the window's height and centred.
@@ -494,7 +467,7 @@ test.describe("the planet viewed", () => {
 for (const [w, h] of [[1280, 1600], [1920, 900], [1920, 400], [320, 640]]) {
   test(`the preview picture fills its column at ${w} by ${h}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
-    await page.goto("/generate");
+    await openNewMap(page);
     const img = section(page).getByRole("img");
     await expect(img).toHaveCount(1);
     const column = (await section(page).locator("ul.pictures").boundingBox())!;
@@ -531,6 +504,8 @@ for (const [w, h] of [[1280, 1600], [1920, 900], [1920, 400], [320, 640]]) {
 test.describe("Enter in the large view's settings", () => {
   test.beforeEach(({ page }) => test.skip((page.viewportSize()?.width ?? 0) < 1240, "the settings show beside the map only where both fit"));
 
+  // Saving a changed setting writes the world's map settings file; an untouched world has none.
+  const saved = (foreman: { dataDir: string }, id: string) => existsSync(join(foreman.dataDir, "worlds", id, "config", "map-gen-settings.json"));
   const worlds = (foreman: { dataDir: string }) => {
     try {
       return readdirSync(join(foreman.dataDir, "worlds")).sort();
@@ -542,9 +517,8 @@ test.describe("Enter in the large view's settings", () => {
   // The large view holds only sliders and selects today. A text field there
   // is the form's own decimal field moved in, as preview.js moves a planet's
   // settings, so the test moves one in the same way.
-  test("does not create the world, and the value is kept", async ({ page, foreman }) => {
-    await page.goto("/generate");
-    await page.getByLabel("World name").fill("Not yet");
+  test("does not save the settings, and the value is kept", async ({ page, foreman }) => {
+    const world = await openNewMap(page, { name: "Not yet" });
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
     await expect(dialog(page)).toBeVisible();
@@ -559,7 +533,7 @@ test.describe("Enter in the large view's settings", () => {
     await expect(decimal).toBeVisible();
     const before = worlds(foreman);
     const posts: string[] = [];
-    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/generate")) posts.push(r.url()); });
+    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/new-map")) posts.push(r.url()); });
     const changes = await decimal.evaluate((i) => {
       const seen: string[] = [];
       (window as unknown as { changes: string[] }).changes = seen;
@@ -570,7 +544,7 @@ test.describe("Enter in the large view's settings", () => {
     await decimal.fill("1.5");
     await decimal.press("Enter");
     await page.waitForTimeout(800);
-    await expect(page).toHaveURL("/generate");
+    await expect(page).toHaveURL(newMapPath(world));
     await expect(dialog(page)).toBeVisible();
     await expect(decimal).toBeFocused();
     await expect(decimal).toHaveValue("1.5");
@@ -579,13 +553,14 @@ test.describe("Enter in the large view's settings", () => {
     expect(await page.evaluate(() => (window as unknown as { changes: string[] }).changes)).toEqual(["1.5"]);
     expect(posts).toEqual([]);
     expect(worlds(foreman)).toEqual(before);
+    expect(saved(foreman, world)).toBe(false);
   });
 
-  test("does not create the world from a slider, a box or a list there", async ({ page, foreman }) => {
-    await openLarge(page);
+  test("does not save the settings from a slider, a box or a list there", async ({ page, foreman }) => {
+    const world = await openLarge(page);
     const before = worlds(foreman);
     const posts: string[] = [];
-    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/generate")) posts.push(r.url()); });
+    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/new-map")) posts.push(r.url()); });
     // Each kind of control shown there: the sliders stand in for most lists.
     for (const kind of ['input[type="range"]', 'input[type="checkbox"]', "select"]) {
       const control = page.locator(`#large-settings ${kind}`).filter({ visible: true }).first();
@@ -593,10 +568,11 @@ test.describe("Enter in the large view's settings", () => {
       if (await control.count()) await control.press("Enter");
     }
     await page.waitForTimeout(800);
-    await expect(page).toHaveURL("/generate");
+    await expect(page).toHaveURL(newMapPath(world));
     await expect(dialog(page)).toBeVisible();
     expect(posts).toEqual([]);
     expect(worlds(foreman)).toEqual(before);
+    expect(saved(foreman, world)).toBe(false);
   });
 
   test("still presses a button there", async ({ page }) => {
@@ -606,10 +582,10 @@ test.describe("Enter in the large view's settings", () => {
   });
 });
 
-test("Enter in a field of the main form, outside the large view, still generates the world", async ({ page }) => {
-  await page.goto("/generate");
+test("Enter in a field of the main form, outside the large view, still saves the map settings", async ({ page }) => {
+  const world = await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
-  await page.getByLabel("World name").fill("Plain enter");
-  await page.getByLabel("World name").press("Enter");
-  await expect(page).toHaveURL("/worlds/plain-enter?generated=1");
+  await page.locator("#generate-seed").fill("4242");
+  await page.locator("#generate-seed").press("Enter");
+  await expect(page).toHaveURL(`${newMapPath(world)}?saved=1`);
 });

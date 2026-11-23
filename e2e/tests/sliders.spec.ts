@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, pickLanguage } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { newMapPath, openNewMap } from "./newmap.js";
 
 // DESIGN 8.7, SPEC 5.6 and 17: on a wide panel each setting of steps is a
 // slider. Its row has a fixed shape, so the slider never moves while it is
@@ -100,9 +101,9 @@ for (const lang of ["en", "de", "ru"]) {
   for (const width of [700, 1280, 1920]) {
     test(`no slider moves while it is stepped, in ${lang} at ${width} px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto("/generate");
+      const world = await openNewMap(page);
       if (lang !== "en") await pickLanguage(page, lang);
-      await page.goto("/generate");
+      await page.goto(newMapPath(world));
       for (const name of tabNames[lang]) {
         await tab(page, name).click();
         const shown = page.locator("#map-settings input.step__range:visible");
@@ -121,9 +122,9 @@ for (const lang of ["de", "ru"]) {
   for (let width = 560; width <= 1400; width += 40) {
     test(`no slider moves while it is stepped, in ${lang} with the map settings ${width} px wide`, async ({ page }) => {
       await page.setViewportSize({ width: 1920, height: 900 });
-      await page.goto("/generate");
+      const world = await openNewMap(page);
       await pickLanguage(page, lang);
-      await page.goto("/generate");
+      await page.goto(newMapPath(world));
       await page.locator("#map-section").evaluate((el, w) => { el.style.inlineSize = `${w}px`; }, width);
       for (const name of tabNames[lang]) {
         await tab(page, name).click();
@@ -138,11 +139,12 @@ for (const lang of ["de", "ru"]) {
 // preset, the setting being moved included, shifts when they come or go.
 for (const lang of ["en", "de"]) {
   test(`"[modified]" coming and going moves nothing below the preset, in ${lang}`, async ({ page }) => {
-    await page.goto("/generate");
+    const world = await openNewMap(page);
     if (lang !== "en") await pickLanguage(page, lang);
     for (const width of [320, 480, 700, 1280]) {
       await page.setViewportSize({ width, height: 800 });
-      await page.goto("/generate");
+      await page.goto(newMapPath(world));
+      await expect(page.locator("#generate-form")).toBeVisible();
       // The setting as shown: a slider on a wide panel, else its select.
       const where = () => page.evaluate(() => {
         const range = document.getElementById("mg-nauvis-iron-ore-frequency-range")!;
@@ -174,9 +176,9 @@ for (const lang of ["en", "de"]) {
 // with the keyboard from its default to each end and back.
 test("a slider stepped with the keyboard keeps its place", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/generate");
+  const world = await openNewMap(page);
   await pickLanguage(page, "de");
-  await page.goto("/generate");
+  await page.goto(newMapPath(world));
   await tab(page, tabNames.de[1]).click();
   await page.locator("#mg-terrain-gleba > summary").click();
   const range = page.locator("#mg-gleba-gleba_cliff-frequency-range");
@@ -197,7 +199,7 @@ test("a slider stepped with the keyboard keeps its place", async ({ page }) => {
 // aria-valuetext carries the words.
 test("a slider's value is not announced, and the slider names its step", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/generate");
+  await openNewMap(page);
   const range = page.locator("#mg-nauvis-iron-ore-frequency-range");
   const value = page.locator("#mg-nauvis-iron-ore-frequency-value");
   await expect(range).toBeVisible();
@@ -214,7 +216,7 @@ test("a slider's value is not announced, and the slider names its step", async (
 // A resource's on/off box is a control: its name keeps full strength while
 // off, and only the settings it turns off grey.
 test("an off box keeps its name at full strength and greys its settings", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   const colour = (sel: string) => page.locator(sel).evaluate((el) => getComputedStyle(el).color);
   const text = await page.locator("#map-settings").evaluate((el) => getComputedStyle(el).color);
   // Full strength is the text colour or the stronger heading colour.
@@ -267,7 +269,7 @@ const kinds: [number, string][] = [
 ];
 
 async function expectEnds(page: Page) {
-  await page.goto("/generate");
+  await openNewMap(page);
   for (const [t, id] of kinds) {
     await tab(page, tabNames.en[t]).click();
     const range = page.locator(`#${id}-range`);
@@ -340,7 +342,7 @@ async function rowAbove(page: Page, png: Buffer, up: number) {
 // leaves the page's colour is the knob. Its centre at the default must be
 // halfway between its centres at the first and last steps.
 async function expectCentred(page: Page) {
-  await page.goto("/generate");
+  await openNewMap(page);
   for (const [t, id] of kinds) {
     await tab(page, tabNames.en[t]).click();
     const range = page.locator(`#${id}-range`);
@@ -408,7 +410,7 @@ async function stepPlaces(page: Page, id: string, count: number) {
 for (const [t, id] of kinds) {
   test(`${id} takes one step per key press, and the nearest step to a click`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/generate");
+    await openNewMap(page);
     await tab(page, tabNames.en[t]).click();
     const range = page.locator(`#${id}-range`);
     const index = () => page.locator(`#${id}`).evaluate((s: HTMLSelectElement) => s.selectedIndex);
@@ -467,7 +469,7 @@ for (const [t, id] of kinds) {
 
 // The click-off-a-step check above only runs where steps are far apart, so some kind must have them.
 test("some kind of slider has steps far apart on its track", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   let farApart = 0;
   for (const [, id] of kinds) {
     const places = await stepPlaces(page, id, await page.locator(`#${id} option`).count());
@@ -481,7 +483,7 @@ test("some kind of slider has steps far apart on its track", async ({ page }) =>
 // or a press never released, must not make the next key jump to the nearest.
 test("a key moves one step after a right press or a press that was never released", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/generate");
+  await openNewMap(page);
   await tab(page, tabNames.en[1]).click();
   const id = "mg-nauvis-trees-size";
   const range = page.locator(`#${id}-range`);
@@ -500,7 +502,7 @@ test("a key moves one step after a right press or a press that was never release
 // still land on a step, going the way of the key.
 test("each kind of slider moves with PageUp and PageDown", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/generate");
+  await openNewMap(page);
   for (const [t, id] of kinds) {
     await tab(page, tabNames.en[t]).click();
     const range = page.locator(`#${id}-range`);

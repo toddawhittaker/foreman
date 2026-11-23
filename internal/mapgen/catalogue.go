@@ -1,0 +1,441 @@
+package mapgen
+
+import (
+	"bytes"
+	"cmp"
+	"encoding/json"
+	"errors"
+	"math"
+	"regexp"
+	"slices"
+	"unicode/utf8"
+
+	"github.com/toddawhittaker/foreman/internal/modsettings"
+)
+
+// Limits on a world's planet file (SPEC 14.6). A file
+// past any of them is refused whole and the built-in catalogue is used.
+const (
+	MaxPlanetFileBytes = 1 << 20
+	MaxPlanets         = 64
+	MaxControls        = 512
+	MaxPlanetControls  = 128
+	MaxResources       = 512
+	// MaxOrderChars bounds a control's sort key.
+	MaxOrderChars = 64
+	// MaxPlanetDefault is the largest frequency, size or richness a planet
+	// may default to (SPEC 14.6). Mods set real values far above the form's
+	// steps, such as Moshine's steam_geyser richness of 150.
+	MaxPlanetDefault = 1000
+)
+
+var (
+	errPlanetsSize  = errors.New("mapgen: the planet file is too large")
+	errPlanetsJSON  = errors.New("mapgen: the planet file is not valid")
+	errPlanetsCount = errors.New("mapgen: the planet file lists too many entries")
+	errPlanetsNone  = errors.New("mapgen: the planet file has no usable planet")
+)
+
+// nameRE is the shape Foreman accepts for a planet, control or resource name
+// from a world's mods; others are left out and counted.
+var nameRE = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
+
+// ValidName reports whether s is a planet, control or resource name Foreman
+// accepts from a world's mods: ^[a-z0-9_-]{1,64}$ (SPEC 14.6).
+func ValidName(s string) bool { return nameRE.MatchString(s) }
+
+// validCategory holds the control categories the game has (SPEC 14.6); a
+// control of any other category is left out.
+var validCategory = map[string]bool{CategoryResource: true, CategoryTerrain: true, CategoryCliff: true, "enemy": true}
+
+// inRange returns v when it is finite and from 0 to MaxPlanetDefault, else
+// nil, which means the game's default (SPEC 14.6).
+func inRange(v *float64) *float64 {
+	if v == nil || math.IsNaN(*v) || *v < 0 || *v > MaxPlanetDefault {
+		return nil
+	}
+	return v
+}
+
+// Catalogue is what a world's map generator offers: its planets, each with
+// its autoplace controls, and the resources the mods define. Builtin gives
+// the game's own; DecodeWorldPlanets reads one exported from a world's mods.
+type Catalogue struct {
+	// NoPlanets is true on 1.1: Planets then holds one entry, the world's
+	// single surface, named "nauvis".
+	NoPlanets bool
+	Planets   []Planet
+	// Controls holds every control any planet names, keyed by name.
+	Controls map[string]CatalogueControl
+	// Resources are the resource entities, in the file's order.
+	Resources []Resource
+	// SpaceAge is true when the catalogue is laid out with Space Age on:
+	// Builtin's argument, or whether the world's mods enable Space Age.
+	SpaceAge bool
+	// Dropped counts planets, controls and resources left out for a bad or
+	// repeated name, or for naming a control the file does not define.
+	Dropped int
+}
+
+// Planet is one planet and the controls its map generator uses, in the
+// game's order.
+type Planet struct {
+	Name  string
+	Label string
+	// Controls names the planet's controls; look each up in
+	// Catalogue.Controls.
+	Controls []string
+	// Defaults holds the planet's own default for a control, when the file
+	// gives one (Moshine sets steam_geyser richness to 150, not 1).
+	Defaults map[string]ControlDefault
+	// Resources names the resource entities the planet places, when known.
+	Resources []string
+}
+
+// ControlDefault is a planet's default frequency, size and richness for one
+// control. A nil field is the game's default of 1.
+type ControlDefault struct {
+	Frequency *float64 `json:"frequency"`
+	Size      *float64 `json:"size"`
+	Richness  *float64 `json:"richness"`
+}
+
+// CatalogueControl is a Control with what the form shows for it.
+type CatalogueControl struct {
+	Control
+	Order string
+	Label string
+	// Planets lists every planet that uses the control, in planet order. A
+	// control on two or more planets is one value, shown under each with
+	// "Also changes ..." (SPEC 5.6).
+	Planets []string
+}
+
+// Resource is one resource entity and the control that places it, when the
+// game names one (on 2.x most name none; the planet's list links them).
+type Resource struct {
+	Name    string
+	Control string
+	Label   string
+}
+
+// PlanetControls returns a planet's controls in its order, as Controls(line,
+// planet) does for the built-in data. It returns nil for an unknown planet.
+func (c Catalogue) PlanetControls(planet string) []Control {
+	for _, p := range c.Planets {
+		if p.Name != planet {
+			continue
+		}
+		out := make([]Control, 0, len(p.Controls))
+		for _, n := range p.Controls {
+			out = append(out, c.Controls[n].Control)
+		}
+		return out
+	}
+	return nil
+}
+
+// PlanetNames returns the planets' names in order.
+func (c Catalogue) PlanetNames() []string {
+	out := make([]string, len(c.Planets))
+	for i, p := range c.Planets {
+		out[i] = p.Name
+	}
+	return out
+}
+
+// AlsoChanges returns the other planets a control on planet also changes
+// (SPEC 5.6), or nil when it is the planet's alone.
+func (c Catalogue) AlsoChanges(control, planet string) []string {
+	var out []string
+	for _, p := range c.Controls[control].Planets {
+		if p != planet {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// StaleControls lists, sorted, the autoplace controls a map-gen-settings.json
+// names that cat does not have (SPEC 5.6, 7.4). A file that is not JSON
+// names none: the game refuses it on its own.
+func StaleControls(mapGen []byte, cat Catalogue) []string {
+	var doc struct {
+		Controls map[string]json.RawMessage `json:"autoplace_controls"`
+	}
+	if json.Unmarshal(mapGen, &doc) != nil {
+		return nil
+	}
+	var stale []string
+	for name := range doc.Controls {
+		if _, ok := cat.Controls[name]; !ok {
+			stale = append(stale, name)
+		}
+	}
+	slices.Sort(stale)
+	return stale
+}
+
+// Builtin returns the game's own catalogue for a line, from the embedded
+// data: the planets Planets(line, spaceAge) lists, with Controls(line, p)
+// for each. Labels are the control names; it returns an empty catalogue
+// for an unknown line.
+func Builtin(line string, spaceAge bool) Catalogue {
+	c := Catalogue{NoPlanets: line == "1.1", Controls: map[string]CatalogueControl{}, SpaceAge: spaceAge && line != "1.1"}
+	for _, name := range Planets(line, spaceAge) {
+		p := Planet{Name: name, Label: name}
+		for _, ctl := range Controls(line, name) {
+			p.Controls = append(p.Controls, ctl.Name)
+			cc, ok := c.Controls[ctl.Name]
+			if !ok {
+				cc = CatalogueControl{Control: ctl, Label: ctl.Name}
+			}
+			cc.Planets = append(cc.Planets, name)
+			c.Controls[ctl.Name] = cc
+		}
+		c.Planets = append(c.Planets, p)
+	}
+	return c
+}
+
+// The planet file a world's mod-settings run writes (planets.json). Its
+// shape, which internal/game/modsettings/control.lua writes:
+//
+//	{
+//	  "planets": [                       // absent or {} on 1.1
+//	    {
+//	      "name": "vulcanus",
+//	      "localised_name": ["space-location-name.vulcanus"],
+//	      "autoplace_controls": {        // map_gen_settings.autoplace_controls
+//	        "calcite": {"frequency": 1, "size": 1, "richness": 1}
+//	      },
+//	      "resources": ["calcite"]       // optional: autoplace_settings entities
+//	    }
+//	  ],
+//	  "autoplace_controls": [            // prototypes.autoplace_control
+//	    {
+//	      "name": "calcite",
+//	      "category": "resource",        // resource, terrain, cliff or enemy
+//	      "richness": true,
+//	      "can_be_disabled": true,
+//	      "order": "b",
+//	      "localised_name": ["autoplace-control-names.calcite"]
+//	    }
+//	  ],
+//	  "resources": [                     // resource entity prototypes
+//	    {"name": "calcite", "control": "", "localised_name": ["entity-name.calcite"]}
+//	  ]
+//	}
+//
+// An empty list may be written as {} (Lua's empty table). Unknown fields are
+// ignored. On 1.1 the file has no planets: every control belongs to the one
+// surface, and each resource names its control.
+type rawPlanetFile struct {
+	Planets   luaList[rawPlanet]   `json:"planets"`
+	Controls  luaList[rawControl]  `json:"autoplace_controls"`
+	Resources luaList[rawResource] `json:"resources"`
+}
+
+type rawPlanet struct {
+	Name      string                    `json:"name"`
+	LocName   json.RawMessage           `json:"localised_name"`
+	Controls  map[string]ControlDefault `json:"autoplace_controls"`
+	Resources luaList[string]           `json:"resources"`
+}
+
+type rawControl struct {
+	Name          string          `json:"name"`
+	Category      string          `json:"category"`
+	Richness      bool            `json:"richness"`
+	CanBeDisabled bool            `json:"can_be_disabled"`
+	Order         string          `json:"order"`
+	LocName       json.RawMessage `json:"localised_name"`
+}
+
+type rawResource struct {
+	Name    string          `json:"name"`
+	Control string          `json:"control"`
+	LocName json.RawMessage `json:"localised_name"`
+}
+
+// luaList reads a JSON array, or {} or null for an empty one.
+type luaList[T any] []T
+
+func (l *luaList[T]) UnmarshalJSON(b []byte) error {
+	b = bytes.TrimSpace(b)
+	if string(b) == "null" || string(b) == "{}" {
+		*l = nil
+		return nil
+	}
+	if len(b) > 0 && b[0] == '{' {
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(b, &m); err != nil || len(m) != 0 {
+			return errPlanetsJSON
+		}
+		*l = nil
+		return nil
+	}
+	var v []T
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*l = v
+	return nil
+}
+
+// PlanetFile is a checked planet file whose labels are not yet resolved, so
+// one decode serves every language.
+type PlanetFile struct {
+	cat Catalogue
+	// The localised names of the kept planets, controls and resources, by
+	// name.
+	planetLoc, controlLoc, resourceLoc map[string]json.RawMessage
+}
+
+// DecodeWorldPlanets reads a world's planet file under the SPEC 14.6 limits,
+// with every label left as its name until Labelled: a file over
+// MaxPlanetFileBytes or any count limit, or not of the shape above, is
+// refused whole. line is the world's game line, as Builtin takes it: on 1.1
+// the file's controls make the one surface "nauvis"; on any other line a
+// file with no usable planet is refused, so the caller falls back to the
+// built-in planets. A planet, control or resource whose name is not
+// ^[a-z0-9_-]{1,64}$, or repeats one before it, is left out and counted
+// in Dropped, as is a planet's control the file does not define and a
+// control whose category is not resource, terrain, cliff or enemy or whose
+// order is over MaxOrderChars. A planet default outside 0 to
+// MaxPlanetDefault is ignored, so the game's default is used. A
+// resource names its control only when some planet uses it. A planet's
+// controls are in the game's order (order, then name).
+func DecodeWorldPlanets(line string, data []byte) (PlanetFile, error) {
+	if len(data) > MaxPlanetFileBytes {
+		return PlanetFile{}, errPlanetsSize
+	}
+	var raw rawPlanetFile
+	// Errors are replaced, so no text from the file reaches a log.
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return PlanetFile{}, errPlanetsJSON
+	}
+	if len(raw.Planets) > MaxPlanets || len(raw.Controls) > MaxControls || len(raw.Resources) > MaxResources {
+		return PlanetFile{}, errPlanetsCount
+	}
+	for _, p := range raw.Planets {
+		if len(p.Controls) > MaxPlanetControls || len(p.Resources) > MaxResources {
+			return PlanetFile{}, errPlanetsCount
+		}
+	}
+	c := Catalogue{NoPlanets: line == "1.1", Controls: map[string]CatalogueControl{}}
+	f := PlanetFile{planetLoc: map[string]json.RawMessage{}, controlLoc: map[string]json.RawMessage{}, resourceLoc: map[string]json.RawMessage{}}
+	defined := map[string]CatalogueControl{}
+	var order []string
+	for _, r := range raw.Controls {
+		if _, dup := defined[r.Name]; dup || !ValidName(r.Name) ||
+			!validCategory[r.Category] || utf8.RuneCountInString(r.Order) > MaxOrderChars {
+			c.Dropped++
+			continue
+		}
+		defined[r.Name] = CatalogueControl{
+			Control: Control{Name: r.Name, Category: r.Category, Richness: r.Richness, CanBeDisabled: r.CanBeDisabled},
+			Order:   r.Order,
+			Label:   r.Name,
+		}
+		f.controlLoc[r.Name] = r.LocName
+		order = append(order, r.Name)
+	}
+	byOrder := func(a, b string) int {
+		return cmp.Or(cmp.Compare(defined[a].Order, defined[b].Order), cmp.Compare(a, b))
+	}
+	if c.NoPlanets {
+		p := Planet{Name: "nauvis", Label: "nauvis", Controls: slices.SortedFunc(slices.Values(order), byOrder)}
+		c.Planets = []Planet{p}
+	}
+	seen := map[string]bool{}
+	for _, r := range raw.Planets {
+		if c.NoPlanets {
+			break
+		}
+		if seen[r.Name] || !ValidName(r.Name) {
+			c.Dropped++
+			continue
+		}
+		seen[r.Name] = true
+		f.planetLoc[r.Name] = r.LocName
+		p := Planet{Name: r.Name, Label: r.Name, Defaults: map[string]ControlDefault{}}
+		for n, d := range r.Controls {
+			if _, ok := defined[n]; !ok {
+				c.Dropped++
+				continue
+			}
+			p.Controls = append(p.Controls, n)
+			p.Defaults[n] = ControlDefault{Frequency: inRange(d.Frequency), Size: inRange(d.Size), Richness: inRange(d.Richness)}
+		}
+		slices.SortFunc(p.Controls, byOrder)
+		have := map[string]bool{}
+		for _, n := range r.Resources {
+			if ValidName(n) && !have[n] {
+				have[n] = true
+				p.Resources = append(p.Resources, n)
+			} else {
+				c.Dropped++
+			}
+		}
+		c.Planets = append(c.Planets, p)
+	}
+	if !c.NoPlanets && len(c.Planets) == 0 {
+		return PlanetFile{}, errPlanetsNone
+	}
+	for _, p := range c.Planets {
+		for _, n := range p.Controls {
+			cc := defined[n]
+			cc.Planets = append(cc.Planets, p.Name)
+			defined[n] = cc
+			c.Controls[n] = cc
+		}
+	}
+	seenRes := map[string]bool{}
+	for _, r := range raw.Resources {
+		if seenRes[r.Name] || !ValidName(r.Name) {
+			c.Dropped++
+			continue
+		}
+		seenRes[r.Name] = true
+		ctl := r.Control
+		if _, ok := c.Controls[ctl]; !ok {
+			ctl = ""
+		}
+		f.resourceLoc[r.Name] = r.LocName
+		c.Resources = append(c.Resources, Resource{Name: r.Name, Control: ctl, Label: r.Name})
+	}
+	f.cat = c
+	return f, nil
+}
+
+// Labelled returns the catalogue with labels resolved from the locale
+// sections, stripped of rich text and cut to 100 characters; a name that does
+// not resolve is its own label. Results share no slice or map they change.
+func (f PlanetFile) Labelled(sections ...modsettings.LocaleSections) Catalogue {
+	label := func(loc json.RawMessage, name string) string {
+		if s, ok := modsettings.ResolveLocalised(loc, sections...); ok {
+			if s = modsettings.StripRichText(s); s != "" {
+				return s
+			}
+		}
+		return name
+	}
+	c := f.cat
+	c.Planets = slices.Clone(c.Planets)
+	for i, p := range c.Planets {
+		if loc, ok := f.planetLoc[p.Name]; ok {
+			c.Planets[i].Label = label(loc, p.Name)
+		}
+	}
+	c.Controls = make(map[string]CatalogueControl, len(f.cat.Controls))
+	for n, cc := range f.cat.Controls {
+		cc.Label = label(f.controlLoc[n], n)
+		c.Controls[n] = cc
+	}
+	c.Resources = slices.Clone(c.Resources)
+	for i, r := range c.Resources {
+		c.Resources[i].Label = label(f.resourceLoc[r.Name], r.Name)
+	}
+	return c
+}

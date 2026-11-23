@@ -10,4 +10,7 @@ const (
 	// ModSettingsDefsFile is the JSON of definitions the run leaves in the
 	// work folder.
 	ModSettingsDefsFile = "mod-settings-defs.json"
+	// PlanetsFile is the JSON of planets, autoplace controls and resources
+	// the same run leaves in the work folder (SPEC 5.6). It may be missing.
+	PlanetsFile = "planets.json"
 )

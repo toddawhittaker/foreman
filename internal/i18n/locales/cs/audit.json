@@ -16,6 +16,7 @@
   "audit.action.mod-upload-limit-set": "Limit nahrávání modů změněn",
   "audit.action.mods": "Mody změněny",
   "audit.action.mods-refused": "Změna modů odmítnuta",
+  "audit.action.new-map": "Nastavení mapy uloženo",
   "audit.action.password-change": "Heslo změněno",
   "audit.action.player": "Akce s hráčem",
   "audit.action.public-mods-set": "Veřejná stránka modů zapnuta nebo vypnuta",

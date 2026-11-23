@@ -27,6 +27,8 @@ func makePreview(c dockertest.Container) error {
 		return fakeSavePlayers(c)
 	case gameenv.KindFactoryMap:
 		return fakeFactoryMap(c)
+	case gameenv.KindChart:
+		return fakeChart(c)
 	}
 	return drawPreview(c)
 }

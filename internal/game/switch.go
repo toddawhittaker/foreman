@@ -218,6 +218,7 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 	if err != nil {
 		return err
 	}
+	c.warmNewMapCatalogue(ctx, to)
 	unlock, err := c.lockWorlds(from, to)
 	if err != nil {
 		return err

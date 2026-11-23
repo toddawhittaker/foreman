@@ -32,7 +32,10 @@ func (k previewKey) planet(p string) string {
 // settingsKey hashes everything that changes the map, so the same settings
 // find the pictures and counts already made. The size is part of it, as it
 // changes every picture; the planet asked for and the world name are not.
-func settingsKey(req game.PreviewRequest) previewKey {
+// cat is the world's planets and controls, which the settings are laid out
+// from and split by. mods is the world's mods key: the same settings with
+// other mods make another map (SPEC 5.6, ADR 0033).
+func settingsKey(req game.PreviewRequest, cat mapgen.Catalogue, mods string) previewKey {
 	shared := func(mapGen, mapSettings []byte) string {
 		return hashJSON(struct {
 			Version, Preset     string
@@ -40,7 +43,8 @@ func settingsKey(req game.PreviewRequest) previewKey {
 			Seed                uint32
 			Size                int
 			MapGen, MapSettings []byte
-		}{req.GameVersion, req.Preset, req.SpaceAge, req.Seed, cmp.Or(req.Size, game.PreviewSizeDefault), mapGen, mapSettings})
+			World, Mods         string `json:",omitempty"`
+		}{req.GameVersion, req.Preset, req.SpaceAge, req.Seed, cmp.Or(req.Size, game.PreviewSizeDefault), mapGen, mapSettings, req.World, mods})
 	}
 	k := previewKey{all: shared(req.MapGenSettings, req.MapSettings)}
 	line, _ := mapgen.Line(req.GameVersion)
@@ -49,15 +53,15 @@ func settingsKey(req game.PreviewRequest) previewKey {
 		// The default preset passes no files until a setting changes; the files
 		// the form then writes for the planets left alone make the same map
 		// (checked on the real 2.1.24 game), so they share a key.
-		mapGen, mapSettings = defaultFiles(line, req.GameVersion, req.SpaceAge)
+		mapGen, mapSettings = defaultFiles(line, req.GameVersion, cat)
 	}
-	rest, own, ok := splitControls(line, mapGen)
+	rest, own, ok := splitControls(cat, mapGen)
 	if !ok {
 		return k
 	}
 	common := shared(rest, mapSettings)
 	k.planets = map[string]string{}
-	for _, p := range mapgen.Planets(line, req.SpaceAge) {
+	for _, p := range cat.PlanetNames() {
 		k.planets[p] = hashJSON(struct {
 			Shared string
 			Own    map[string]json.RawMessage
@@ -69,8 +73,8 @@ func settingsKey(req game.PreviewRequest) previewKey {
 // splitControls takes each planet's own autoplace controls out of the
 // map-gen settings. Anything that is not a known planet's control stays in
 // rest, so it is in every planet's key. ok is false when the settings are
-// not a JSON object.
-func splitControls(line string, mapGen []byte) (rest []byte, own map[string]map[string]json.RawMessage, ok bool) {
+// not a JSON object. cat is the request's planets and controls.
+func splitControls(cat mapgen.Catalogue, mapGen []byte) (rest []byte, own map[string]map[string]json.RawMessage, ok bool) {
 	var top map[string]json.RawMessage
 	if len(mapGen) > 0 && json.Unmarshal(mapGen, &top) != nil {
 		return nil, nil, false
@@ -80,8 +84,8 @@ func splitControls(line string, mapGen []byte) (rest []byte, own map[string]map[
 		return nil, nil, false
 	}
 	own = map[string]map[string]json.RawMessage{}
-	for _, p := range mapgen.Planets(line, true) {
-		for _, c := range mapgen.Controls(line, p) {
+	for _, p := range cat.PlanetNames() {
+		for _, c := range cat.PlanetControls(p) {
 			v, has := controls[c.Name]
 			if !has {
 				continue
@@ -113,10 +117,11 @@ func splitControls(line string, mapGen []byte) (rest []byte, own map[string]map[
 }
 
 // defaultFiles are the files Generate writes for the default preset once a
-// setting is changed (generate.go, settingsWorld): the form's map-gen file
-// and, where the layout is tested, the preset's map settings.
-func defaultFiles(line, version string, spaceAge bool) (mapGen, mapSettings []byte) {
-	_, mapGen, _ = parseMapGenValues(url.Values{}, line, spaceAge)
+// setting is changed (generate.go, settingsFiles): the form's map-gen file
+// and, where the layout is tested, the preset's map settings. cat is the
+// planets and controls the form lays out.
+func defaultFiles(line, version string, cat mapgen.Catalogue) (mapGen, mapSettings []byte) {
+	_, mapGen, _ = parseMapGenIn(url.Values{}, line, cat)
 	mapSettings, err := mapgen.MapSettings(version, defaultPreset, nil)
 	if err != nil {
 		mapSettings = nil

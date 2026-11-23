@@ -140,7 +140,7 @@ func countMsg(c territory.Count) i18n.Msg {
 // before anything runs, or is zero when they can be.
 func territoryRefusal(req game.PreviewRequest) i18n.Msg {
 	line, _ := mapgen.Line(req.GameVersion)
-	if !req.SpaceAge || !slices.Contains(mapgen.Planets(line, true), territoryPlanet) {
+	if !req.SpaceAge || !slices.Contains(mapgen.Builtin(line, true).PlanetNames(), territoryPlanet) {
 		return i18n.M("worlds.generate.territories.no_vulcanus")
 	}
 	return i18n.Msg{}
@@ -148,11 +148,11 @@ func territoryRefusal(req game.PreviewRequest) i18n.Msg {
 
 // territories returns the territories of req: from the user's preview when
 // they were read already, otherwise read now when run is true, else nil.
-func (s *server) territories(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, name string, run bool) *TerritoryView {
+// key is req's key in the store.
+func (s *server) territories(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, key previewKey, name string, run bool) *TerritoryView {
 	if no := territoryRefusal(req); !no.IsZero() {
 		return &TerritoryView{Error: no}
 	}
-	key := settingsKey(req)
 	if res, ok := s.previews.territoriesOf(u.ID, key); ok {
 		return territoryView(localeOf(r), res, req.Size)
 	}
@@ -184,13 +184,13 @@ var territoryMsgs = failureMsgs{
 
 // territoryBox is the box under the pictures of view, with the territories
 // from the store, or read now when run is true.
-func (s *server) territoryBox(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, name string, view *PreviewView, run bool) TerritoryBox {
+func (s *server) territoryBox(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, key previewKey, name string, view *PreviewView, run bool) TerritoryBox {
 	b := TerritoryBox{
 		On:   r.PostFormValue(territoriesField) != "",
 		Show: view.Error.IsZero() && slices.ContainsFunc(view.Pictures, func(p PreviewPicture) bool { return p.Planet == territoryPlanet }),
 	}
 	if b.Checked() {
-		b.Result = s.territories(w, r, u, req, name, run)
+		b.Result = s.territories(w, r, u, req, key, name, run)
 	}
 	return b
 }
@@ -207,14 +207,18 @@ func (s *server) handleGenerateTerritories(w http.ResponseWriter, r *http.Reques
 	if !s.readForm(w, r) {
 		return
 	}
-	f, nw, ok := s.readGenerate(r, kindPreview)
+	in, handled := s.readPreview(w, r, u)
+	if handled {
+		return
+	}
+	f := in.f
 	view := &PreviewView{Size: f.PreviewSize, Territories: TerritoryBox{On: true, Show: true}}
-	if ok {
-		view.Territories.Result = s.territories(w, r, u, previewRequest(f, nw), f.Name, true)
+	if in.ok {
+		view.Territories.Result = s.territories(w, r, u, in.req, in.key, f.Name, true)
 	} else {
 		view.Territories.Result = &TerritoryView{Error: i18n.M("worlds.generate.territories.invalid")}
 	}
-	s.fragment(w, r, s.generatePage(r.Context(), f, view), "generate-territories")
+	s.fragment(w, r, previewCarrier(in, view), "generate-territories")
 }
 
 // drawPNG is territory.DrawPNG; a test swaps it to fill the render queue.

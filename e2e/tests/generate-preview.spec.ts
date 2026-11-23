@@ -1,9 +1,11 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
+import { openNewMap, newMapPath } from "./newmap.js";
+import { typeBadSeed } from "./newmaperror.js";
 import type { Page, Request } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-// SPEC 5.6, DESIGN 8.8: the map preview draws by itself, for the planet
+// SPEC 5.6, DESIGN 8.8: the map preview, on step 3 of the guided Generate, draws by itself, for the planet
 // being viewed, from the current unsaved settings; the newest request wins;
 // the large view opens in the page.
 test.use({ fakeGameOn: true });
@@ -55,7 +57,7 @@ test.describe("with script", () => {
   });
 
   test("draws Nauvis on load, keeps the seed it used, and names that seed beside the heading", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
     const seed = await page.locator("#generate-seed").inputValue();
@@ -77,13 +79,13 @@ test.describe("with script", () => {
     await expect(section(page).getByRole("group", { name: "Preview shows" })).toBeVisible();
     const link = section(page).getByRole("link", { name: /Map preview of Nauvis, seed \d+\. The pin is where players start\. \(opens the large view\)/ });
     await expect(link).toBeVisible();
-    // The page load does not announce anything or move focus.
-    await expect(page.locator("#announcer")).toHaveText("");
+    // The preview's draw on load says nothing and moves no focus; step 3 itself may say its form is ready (SPEC 17.19).
+    await expect(page.locator("#announcer")).toHaveText(/^(Map settings ready\.)?$/);
     await checkPage(page);
   });
 
   test("typing a seed sends one request after the pause, and older replies are dropped", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
     const seed = page.locator("#generate-seed");
@@ -99,15 +101,15 @@ test.describe("with script", () => {
     await expect(seed).toBeFocused();
   });
 
-  // Holds the page's first automatic preview until release is called.
-  async function holdFirstPreview(page: Page) {
+  // Holds the next automatic preview sent with a blank seed until release is called.
+  async function holdBlankSeedPreview(page: Page) {
     let release = () => {};
     const gate = new Promise<void>((r) => { release = r; });
     let held = () => {};
     const arrived = new Promise<void>((r) => { held = r; });
     let first = true;
     await page.route("**/generate/preview", async (route) => {
-      if (!first) return route.continue();
+      if (!first || field(route.request(), "seed") !== "") return route.continue();
       first = false;
       held();
       await gate;
@@ -116,37 +118,41 @@ test.describe("with script", () => {
     return { arrived, release };
   }
 
-  test("a seed box with focus is not written when the preview returns, so typing is not appended to", async ({ page }) => {
-    const hold = await holdFirstPreview(page);
-    await page.goto("/generate");
-    await hold.arrived;
+  // Step 3 shows the seed the world was made with, so a blank box is made by the test, as a person clears it.
+  async function clearSeedHoldingPreview(page: Page) {
+    await openNewMap(page);
+    await expect(pictures(page)).toHaveCount(1);
+    const hold = await holdBlankSeedPreview(page);
     const seed = page.locator("#generate-seed");
+    await seed.fill("");
+    await hold.arrived;
     await seed.focus();
     hold.release();
+    await expect(page.locator("#announcer")).toHaveText("Map preview ready.");
+    return seed;
+  }
+
+  test("a seed box with focus is not written when the preview returns, so typing is not appended to", async ({ page }) => {
+    const seed = await clearSeedHoldingPreview(page);
     await expect(pictures(page)).toHaveCount(1);
     await page.keyboard.type("777");
     await expect(seed).toHaveValue("777");
     // Leaving a box the person filled never writes the previewed seed over it.
-    await page.getByLabel("World name").focus();
+    await page.locator("#generate-preset").focus();
     await expect(seed).toHaveValue("777");
   });
 
   test("an empty seed box that had focus gets the previewed seed when it loses focus", async ({ page }) => {
-    const hold = await holdFirstPreview(page);
-    await page.goto("/generate");
-    await hold.arrived;
-    const seed = page.locator("#generate-seed");
-    await seed.focus();
-    hold.release();
+    const seed = await clearSeedHoldingPreview(page);
     await expect(pictures(page)).toHaveCount(1);
     await expect(seed).toHaveValue("");
-    await page.getByLabel("World name").focus();
+    await page.locator("#generate-preset").focus();
     await expect(seed).toHaveValue(/^\d+$/);
     await expect(pictures(page)).toHaveAccessibleName(new RegExp(`seed ${await seed.inputValue()}\\.`));
   });
 
   test("a change mid-run drops the running request; the newest one wins", async ({ page, fakeGame }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     await fakeGame!.call("/preview-mode", { mode: "slow" });
     const failed: string[] = [];
@@ -166,13 +172,10 @@ test.describe("with script", () => {
     await expect(page.locator("#preview-status")).toHaveText("");
   });
 
-  test("a setting change in any part of the form redraws, but the name does not", async ({ page }) => {
-    await page.goto("/generate");
+  test("a setting change in any part of step 3's form redraws", async ({ page }) => {
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
-    await page.getByLabel("World name").fill("Only a name");
-    await page.waitForTimeout(1200);
-    expect(sent).toHaveLength(0);
     await page.locator("#mg-nauvis-iron-ore-size").evaluate((s) => {
       (s as HTMLSelectElement).value = "200";
       s.dispatchEvent(new Event("change", { bubbles: true }));
@@ -181,7 +184,7 @@ test.describe("with script", () => {
   });
 
   test("opening a planet's settings draws only that planet, and going back reuses the stored picture", async ({ page, fakeGame }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
     const before = await runs(fakeGame!);
@@ -203,7 +206,7 @@ test.describe("with script", () => {
   // SPEC 5.6, DESIGN 8.8: one large map of the planet being edited, or every
   // planet as thumbnails, one click each way; the choice holds as settings change.
   test("All planets draws every planet small, and One planet goes back to the open planet", async ({ page, fakeGame }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
     const one = section(page).getByRole("radio", { name: "One planet" });
@@ -242,7 +245,7 @@ test.describe("with script", () => {
 
   // SPEC 5.6: after Preview map draws every planet there is a way back to one.
   test("after Preview map, One planet goes back to the planet being edited", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(pictures(page)).toHaveCount(5);
@@ -256,7 +259,7 @@ test.describe("with script", () => {
   // way when a newer draw is asked for changes nothing once it arrives: not the
   // pictures, nor the seed the amount labels and territories are counted for.
   test("a Preview map reply that arrives after a newer draw's is dropped", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const seed = await page.locator("#generate-seed").inputValue();
     let release = () => {};
@@ -294,7 +297,7 @@ test.describe("with script", () => {
   // DESIGN 8.8: a Preview map that lands while the large view is open shows
   // its own picture and download there, not the older section's.
   test("a Preview map reply that lands under the open large view shows there", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     let release = () => {};
     const gate = new Promise<void>((r) => { release = r; });
@@ -327,8 +330,7 @@ test.describe("with script", () => {
   });
 
   test("a world with one planet offers no choice", async ({ page }) => {
-    await page.goto("/generate");
-    await page.getByLabel("Space Age is on").uncheck();
+    await openNewMap(page, { step1: (p) => p.getByLabel("Space Age is on").uncheck() });
     await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(0);
     await expect(pictures(page)).toHaveCount(1);
     await expect(section(page).getByRole("radio")).toHaveCount(0);
@@ -343,7 +345,7 @@ test.describe("with script", () => {
     // a narrow column has the select (DESIGN 8.6, 8.7); below it the preview
     // spans the panel, which is the wide panel this test means.
     if ((page.viewportSize()?.width ?? 1280) > 600) await page.setViewportSize({ width: 1024, height: 768 });
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const select = page.locator("#generate-preview-size");
     const img = pictures(page);
@@ -389,8 +391,9 @@ test.describe("with script", () => {
     await img.scrollIntoViewIfNeeded(); // a picture below the fold is not loaded yet
     await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(3072);
 
-    // With no name the form comes back with its error, the size kept.
-    await page.getByLabel("World name").press("Enter");
+    // With a seed that is no number the form comes back with its error, the size kept.
+    await typeBadSeed(page);
+    await page.locator("#generate-seed").press("Enter");
     await expect(page.locator("#error-summary")).toBeFocused();
     await expect(page.locator("#generate-preview-size")).toHaveValue("3072");
   });
@@ -400,7 +403,7 @@ test.describe("with script", () => {
   test("All planets cards in a row line up, with territories off and on", async ({ page }, info) => {
     test.skip(info.project.name.startsWith("phone"), "one card to a row on a phone");
     await page.setViewportSize({ width: 1920, height: 950 });
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     await page.locator("label.tab", { hasText: "All planets" }).click();
     await expect(pictures(page)).toHaveCount(5);
@@ -439,7 +442,7 @@ test.describe("with script", () => {
       // too close to the 30 s default for a loaded one.
       test.slow();
       await page.setViewportSize({ width, height: width > 600 ? 950 : 800 });
-      await page.goto("/generate");
+      await openNewMap(page);
       await expect(pictures(page)).toHaveCount(1);
       await section(page).getByRole("link", { name: /opens the large view/ }).click();
       const dialog = page.locator("#large-view");
@@ -495,7 +498,7 @@ test.describe("with script", () => {
     test(`the large view's map column has no scroll bar at ${width}x${height}`, async ({ page }, info) => {
       test.skip(info.project.name.startsWith("phone"), "a desktop layout");
       await page.setViewportSize({ width, height });
-      await page.goto("/generate");
+      await openNewMap(page);
       await expect(pictures(page)).toHaveCount(1);
       await section(page).getByRole("link", { name: /opens the large view/ }).click();
       const dialog = page.locator("#large-view");
@@ -522,7 +525,7 @@ test.describe("with script", () => {
 
   test("the large view works by keyboard alone at 320 px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const link = section(page).getByRole("link", { name: /opens the large view/ });
     await tabTo(page, link);
@@ -578,8 +581,7 @@ test.describe("with script", () => {
   });
 
   test("downloads one planet as a PNG and every drawn planet as a zip", async ({ page }) => {
-    await page.goto("/generate");
-    await page.getByLabel("World name").fill("Mega base");
+    await openNewMap(page, { name: "Mega base" });
     await expect(pictures(page)).toHaveCount(1);
     const seed = await page.locator("#generate-seed").inputValue();
     await page.locator("#mg-resources-gleba summary").click();
@@ -600,7 +602,7 @@ test.describe("with script", () => {
   });
 
   test("a box with data-disables turns its element off and redraws the preview", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     // A minimal stand-in for a resource's on and off box and its settings.
     await page.locator("#map-settings").evaluate((el) => {
@@ -615,27 +617,28 @@ test.describe("with script", () => {
   });
 });
 
-// Enter in a text field presses Generate world, never the hidden preset reset.
-test("Enter in the World name field generates the world with the changed settings", async ({ page, foreman, fakeGame }) => {
+// Enter in a text field presses Save map settings, never the hidden preset reset.
+test("Enter in a text field saves the map settings with the changed settings", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
-  await page.goto("/generate");
+  const id = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
   const refreshes: string[] = [];
-  page.on("request", (r) => { if (r.url().endsWith("/generate/refresh")) refreshes.push(r.url()); });
+  page.on("request", (r) => { if (r.url().endsWith("/new-map/refresh")) refreshes.push(r.url()); });
   await page.locator("#mg-nauvis-iron-ore-size").evaluate((s) => {
     (s as HTMLSelectElement).value = "200";
     s.dispatchEvent(new Event("change", { bubbles: true }));
   });
   await expect(page.locator("#preset-modified")).toHaveText("[modified]");
-  // With no name the form comes back with its error, the change kept.
-  await page.getByLabel("World name").press("Enter");
+  // With a seed that is no number the form comes back with its error, the change kept.
+  await typeBadSeed(page);
+  await page.locator("#generate-seed").press("Enter");
   await expect(page.locator("#error-summary")).toBeFocused();
   await expect(page.locator("#mg-nauvis-iron-ore-size")).toHaveValue("200");
-  await page.getByLabel("World name").fill("Enter key");
-  await page.getByLabel("World name").press("Enter");
-  await expect(page).toHaveURL("/worlds/enter-key?generated=1");
+  await page.locator("#generate-seed").fill("5150");
+  await page.locator("#generate-seed").press("Enter");
+  await expect(page).toHaveURL(`${newMapPath(id)}?saved=1`);
   expect(refreshes).toEqual([]);
-  const mapGen = JSON.parse(readFileSync(join(foreman.dataDir, "worlds", "enter-key", "config", "map-gen-settings.json"), "utf8"));
+  const mapGen = JSON.parse(readFileSync(join(foreman.dataDir, "worlds", id, "config", "map-gen-settings.json"), "utf8"));
   expect(mapGen.autoplace_controls["iron-ore"].size).toBe(2);
 });
 
@@ -646,7 +649,7 @@ test.describe("without script", () => {
 
   test("Preview map shows every planet and a link opens the picture", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(section(page)).toHaveCount(0);
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(pictures(page)).toHaveCount(5);
@@ -663,7 +666,7 @@ test.describe("without script", () => {
 // hint wraps at DESIGN's 60ch hint width, so its line count is not checked.
 test("the preview's words are spelled the American way", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
   const hint = page.locator("#generate-preview-size-hint");
   await expect(hint).toHaveText("How much of the map, around its center, the preview shows. The pin is where players start.");

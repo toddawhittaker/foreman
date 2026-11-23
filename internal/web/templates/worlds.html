@@ -34,7 +34,7 @@
   <ul class="worlds" role="list">
     {{- range .}}
     <li>
-      <h2 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="live-chip"><span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{if $.Page.HaveState}} <span class="state state--{{$.Page.ActiveState}}">{{msg $.Page.StateWord}}</span>{{end}}</span>{{end}}</h2>
+      <h2 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Unfinished}} <span class="badge">{{t "worlds.badge.unfinished"}}</span>{{end}}{{if .Active}} <span class="live-chip"><span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{if $.Page.HaveState}} <span class="state state--{{$.Page.ActiveState}}">{{msg $.Page.StateWord}}</span>{{end}}</span>{{end}}</h2>
       {{- if .Unreadable}}
       <p>{{tHTML "worlds.unreadable" "folder" (code .ID)}}</p>
       {{- else if .Newer}}
@@ -45,9 +45,16 @@
       {{- if not $busy.IsZero}}
       <p><strong>{{t "common.label.busy"}}</strong> {{msg $busy}}</p>
       {{- end}}
-      {{- if index $.Page.Switchable .ID}}
+      {{- $continue := index $.Page.Continue .ID}}
+      {{- if or $continue (index $.Page.Switchable .ID)}}
       <div class="actions">
+        {{- /* An Unfinished world's next step is the rest of its set-up, its row's one action so the
+             name keeps its room at 320 px; Switch stays on its page (SPEC 5.6, DESIGN 7.1). */}}
+        {{- if $continue}}
+        <a href="{{$continue}}" class="button button--primary" id="act-continue-{{.ID}}"><span aria-hidden="true">{{t "worlds.list.continue"}}</span><span class="visually-hidden">{{t "worlds.unfinished.continue_named" "name" .Name}}</span></a>
+        {{- else if index $.Page.Switchable .ID}}
         <a href="{{$.Page.SwitchPath .ID}}" class="button"><span aria-hidden="true">{{t "worlds.list.switch"}}</span><span class="visually-hidden">{{t "worlds.list.switch_named" "name" .Name}}</span></a>
+        {{- end}}
       </div>
       {{- end}}
     </li>

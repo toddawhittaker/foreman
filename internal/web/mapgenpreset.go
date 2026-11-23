@@ -36,27 +36,27 @@ type presetSettings struct {
 	PropertyNames map[string]json.RawMessage `json:"property_expression_names"`
 }
 
-// NewMapGenFormForPreset is the form filled with a preset's values for the
-// line. Keys the fields do not cover, such as an island's terrain type, fill
-// the raw box.
-func NewMapGenFormForPreset(line string, spaceAge bool, preset string) MapGenForm {
-	form, _, _ := parseMapGenValues(presetValues(line, spaceAge, preset, ""), line, spaceAge)
+// mapGenFormForPreset is the form filled with a preset's values for the
+// line, laid out from a catalogue. Keys the fields do not cover, such as an
+// island's terrain type, fill the raw box.
+func mapGenFormForPreset(line string, cat mapgen.Catalogue, preset string) MapGenForm {
+	form, _, _ := parseMapGenIn(presetValuesIn(line, cat, preset, ""), line, cat)
 	return form
 }
 
-// presetValues are the post of the form opened on a preset: what the preset
-// sets, and the game's defaults elsewhere. Nauvis holds every control a preset
-// names. A value that is on no step is left at the default.
-func presetValues(line string, spaceAge bool, preset, seed string) url.Values {
-	return fileValues(line, spaceAge, mapgen.PresetMapGen(line, preset), seed, rawPrefillFor(line, preset), false)
+// presetValuesIn are the post of the form opened on a preset: what the
+// preset sets, and the game's defaults elsewhere. Nauvis holds every control
+// a preset names. A value that is on no step is left at the default.
+func presetValuesIn(line string, cat mapgen.Catalogue, preset, seed string) url.Values {
+	return fileValuesIn(line, cat, mapgen.PresetMapGen(line, preset), seed, rawPrefillFor(line, preset), false)
 }
 
-// fileValues are the post of the form opened on a map-gen-settings.json:
+// fileValuesIn are the post of the form opened on a map-gen-settings.json:
 // what the file sets, the game's defaults elsewhere, and raw in the raw box.
 // A value that is on no step is left at the default. wholeFile reads every
 // planet and "no enemies", as a saved file holds them; a preset is read as
 // Nauvis only.
-func fileValues(line string, spaceAge bool, file []byte, seed, raw string, wholeFile bool) url.Values {
+func fileValuesIn(line string, cat mapgen.Catalogue, file []byte, seed, raw string, wholeFile bool) url.Values {
 	vals := url.Values{mgSeed: {seed}, mgRaw: {raw}}
 	var p presetSettings
 	if json.Unmarshal(file, &p) != nil {
@@ -116,7 +116,7 @@ func fileValues(line string, spaceAge bool, file []byte, seed, raw string, whole
 			}
 		}
 	}
-	for _, pl := range mgPlanets(line, spaceAge) {
+	for _, pl := range mgPlanets(line, cat) {
 		// A preset names Nauvis's controls only; a whole file names every planet's.
 		if !wholeFile && pl.name != "nauvis" {
 			continue
@@ -197,10 +197,11 @@ func rawPrefillFor(line, preset string) string {
 	return string(indent(writeMembers(ms))) + "\n"
 }
 
-// NewMapGenFormFromFile is the form filled from a saved map-gen-settings.json,
-// as a favorite holds (SPEC 5.12). Every key the fields do not cover stays
-// in the raw box, so building the file again keeps it.
-func NewMapGenFormFromFile(line string, spaceAge bool, file []byte) MapGenForm {
+// mapGenFormFromFile is the form filled from a saved map-gen-settings.json,
+// as a favorite holds (SPEC 5.12), laid out from a catalogue. Every key the
+// fields do not cover stays in the raw box, so building the file again keeps
+// it.
+func mapGenFormFromFile(line string, cat mapgen.Catalogue, file []byte) MapGenForm {
 	var doc struct {
 		Seed *uint64 `json:"seed"`
 	}
@@ -208,7 +209,7 @@ func NewMapGenFormFromFile(line string, spaceAge bool, file []byte) MapGenForm {
 	if json.Unmarshal(file, &doc) == nil && doc.Seed != nil {
 		seed = strconv.FormatUint(*doc.Seed, 10)
 	}
-	form, _, _ := parseMapGenValues(fileValues(line, spaceAge, file, seed, fileRaw(line, file), true), line, spaceAge)
+	form, _, _ := parseMapGenIn(fileValuesIn(line, cat, file, seed, fileRaw(line, file), true), line, cat)
 	return form
 }
 

@@ -2,6 +2,7 @@ import { test, expect, createAdmin, seedWorld, seedSecond, image21 } from "./for
 import { mkdirSync, writeFileSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
 
 // DESIGN 7.2: a checkbox or radio is native, 1.25rem square, in a label that is
 // the 44 px target. The text-box styling must not reach it, even inside a .field.
@@ -45,10 +46,14 @@ test("checkboxes and radios are tick-sized on every page that has one", async ({
   writeFileSync(join(inbox, "note.txt"), "x");
 
   await expectSmallControls(page, "/import", 3); // folder, Space Age, download
-  await expectSmallControls(page, "/generate", 3); // mode radios, Space Age
+  await expectSmallControls(page, "/generate", 2); // Space Age, download
+  // Step 3's map settings (SPEC 5.6), on a world made without the image download.
+  await openNewMap(page, { step1: (p) => p.getByLabel("Download the game image", { exact: false }).uncheck() });
+  await expect(page.locator('input[type="checkbox"]:visible, input[type="radio"]:visible')).not.toHaveCount(0);
+  await expectTickSized(page, "step 3");
   await page.locator("label.tab:has(#tab-enemy)").click();
   await expect(page.getByRole("checkbox", { name: /Peaceful mode/ })).toBeVisible();
-  await expectTickSized(page, "/generate (Enemy tab)");
+  await expectTickSized(page, "step 3 (Enemy tab)");
   await expectSmallControls(page, "/worlds/second/switch", 1);
   await expectSmallControls(page, "/worlds/base/clone", 2);
   await expectSmallControls(page, "/worlds/base/settings", 2); // listing: visibility radios

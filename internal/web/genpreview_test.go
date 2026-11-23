@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -78,9 +79,9 @@ func TestPreviewStoreKeepsTheLimits(t *testing.T) {
 	if _, err := st.add(1, testKey("k"), "", "1", []game.PNG{{Planet: "nauvis", Data: make([]byte, game.MaxPreviewPNG+1)}}, nil); err == nil {
 		t.Error("a picture over the cap was kept")
 	}
-	// Six pictures at the cap fill the 96 MiB; the users before go to make room.
+	// Ten pictures at the cap fill the 160 MiB; the users before go to make room.
 	pic := make([]byte, game.MaxPreviewPNG)
-	for user := range int64(6) {
+	for user := range int64(10) {
 		if _, err := st.add(100+user, testKey("k"), "", "1", []game.PNG{{Planet: "nauvis", Data: pic}}, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -88,8 +89,12 @@ func TestPreviewStoreKeepsTheLimits(t *testing.T) {
 	if total := st.totalLocked(); total > maxPreviewBytes {
 		t.Errorf("%d bytes held, over %d", total, maxPreviewBytes)
 	}
-	if _, err := st.add(100, testKey("k"), "", "1", []game.PNG{{Planet: "gleba", Data: pic}, {Planet: "fulgora", Data: pic}, {Planet: "aquilo", Data: pic}, {Planet: "vulcanus", Data: pic}, {Planet: "x", Data: pic}, {Planet: "y", Data: pic}}, nil); err == nil {
-		t.Error("one user's preview over 96 MiB was kept")
+	var over []game.PNG
+	for i := range 11 {
+		over = append(over, game.PNG{Planet: "p" + strconv.Itoa(i), Data: pic})
+	}
+	if _, err := st.add(100, testKey("k"), "", "1", over, nil); err == nil {
+		t.Error("one user's preview over 160 MiB was kept")
 	}
 
 	tok, _ := st.add(200, testKey("k"), "", "1", onePNG("nauvis"), nil)
@@ -266,7 +271,9 @@ func TestASlowPreviewOutlastsTheWriteTimeout(t *testing.T) {
 	srv.Start()
 	defer srv.Close()
 
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+PathGeneratePreview, strings.NewReader(generateForm().Encode()))
+	form := generateForm()
+	form.Set(previewWorldField, hn.previewWorld(form, c))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+PathGeneratePreview, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(c)
 	resp, err := srv.Client().Do(req)
@@ -399,17 +406,17 @@ func TestSettingsKeyIncludesTheSize(t *testing.T) {
 	base := game.PreviewRequest{GameVersion: "2.1.24", Seed: 7, Size: 1280}
 	bigger := base
 	bigger.Size = 2048
-	if settingsKey(base).all == settingsKey(bigger).all || settingsKey(base).planet("nauvis") == settingsKey(bigger).planet("nauvis") {
+	if builtinKey(base).all == builtinKey(bigger).all || builtinKey(base).planet("nauvis") == builtinKey(bigger).planet("nauvis") {
 		t.Error("two sizes share a key")
 	}
 	same := base
 	same.Planets = []string{"gleba"}
-	if !reflect.DeepEqual(settingsKey(base), settingsKey(same)) {
+	if !reflect.DeepEqual(builtinKey(base), builtinKey(same)) {
 		t.Error("the planet changed the key")
 	}
 	unset := base
 	unset.Size = 0
-	if !reflect.DeepEqual(settingsKey(base), settingsKey(unset)) {
+	if !reflect.DeepEqual(builtinKey(base), builtinKey(unset)) {
 		t.Error("no size and the default size have different keys")
 	}
 }
@@ -477,7 +484,9 @@ func TestPreviewSizeSurvivesAnErrorRoundTrip(t *testing.T) {
 	hn := newGenerateHarness(t, &fakePreviewer{})
 	c := hn.signIn()
 	hn.withActive("2.1.24")
-	rec := hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "name", " ", "preview_size", "2816"), c)
+	// Step 3 holds the size; a seed error sends its form back.
+	save := strings.TrimSuffix(refreshPath(t, hn, c, "2.1.24"), "/refresh")
+	rec := hn.postLong(save, newMapPost("map_key", "2.1|1", "seed", "x", "preview_size", "2816"), c)
 	body := rec.Body.String()
 	if rec.Code != http.StatusBadRequest || !strings.Contains(body, `<option value="2816" selected>`) {
 		t.Errorf("status %d; the size was not kept:\n%s", rec.Code, body)

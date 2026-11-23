@@ -1,6 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, wcagTags } from "./foreman.js";
 import AxeBuilder from "@axe-core/playwright";
 import type { Download, Page, Request, Route } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
 import { readFileSync } from "node:fs";
 
 // SPEC 5.6, "Downloads"; 17.15: while a box is ticked, every download
@@ -44,7 +45,7 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 // planets; Gleba is shown.
 async function drawThree(page: Page, asked: string[]) {
   page.on("request", (r) => { if (isResources(r.url())) asked.push(planetOf(r) ?? ""); });
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   for (const planet of ["vulcanus", "gleba"]) {
     await page.locator(`#mg-resources-${planet} summary`).click();
@@ -177,7 +178,7 @@ test("a planet that fails is named, with Try again and the zip without it", asyn
 test("the planet's own download waits for its count on the way, and counts after a failure", async ({ page }) => {
   const asked: string[] = [];
   page.on("request", (r) => { if (isResources(r.url())) asked.push(planetOf(r) ?? ""); });
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   const one = section(page).locator("li a.download");
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
@@ -205,7 +206,7 @@ test("the planet's own download waits for its count on the way, and counts after
 });
 
 test("with territories ticked and none held, the zip reads them before it downloads", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).locator('a.picture[data-planet="vulcanus"]')).toBeVisible();
@@ -258,7 +259,7 @@ function holdAll(page: Page) {
 test("ticked then Download all at once: the zip waits for the count on its way, so nothing is busy", async ({ page }) => {
   const asked: string[] = [];
   page.on("request", (r) => { if (isResources(r.url())) asked.push(planetOf(r) ?? ""); });
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).locator('a.picture[data-planet="vulcanus"]')).toBeVisible();
@@ -285,7 +286,7 @@ test("ticked then Download all at once: the zip waits for the count on its way, 
 test("the planet's own download waits for the count already on its way", async ({ page }) => {
   const asked: string[] = [];
   page.on("request", (r) => { if (isResources(r.url())) asked.push(planetOf(r) ?? ""); });
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   const hold = holdAll(page);
   await hold.start();
@@ -389,7 +390,7 @@ test("in the large view the preparation lies over the stage without moving it, a
 });
 
 test("in the large view the preparation leaves the edge buttons and zoom free, and the Next button ends it, saying so even for an undrawn planet", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).locator('a.picture[data-planet="vulcanus"]')).toBeVisible();
@@ -427,7 +428,7 @@ test("in the large view the preparation leaves the edge buttons and zoom free, a
 });
 
 test("a count that fails at once withdraws its counting sentence but still says the news given with it", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await section(page).getByRole("link", { name: /opens the large view/ }).click();
   const view = page.locator("#large-view");
@@ -460,7 +461,7 @@ test("a count that fails at once withdraws its counting sentence but still says 
 });
 
 test("a download clicked while a draw is on its way is refused and says why; the next download works", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).locator('a.picture[data-planet="vulcanus"]')).toBeVisible();
@@ -490,7 +491,7 @@ test("a download clicked while a draw is on its way is refused and says why; the
 });
 
 test("a download that stops on its only planet moves focus to Try again, named with it", async ({ page }) => {
-  await page.goto("/generate");
+  await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
   await pageBox(page).check();

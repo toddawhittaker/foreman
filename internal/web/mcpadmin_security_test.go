@@ -413,6 +413,10 @@ func TestMCPAdminGateNoSecretFromAnyTool(t *testing.T) {
 	stopped := g.world20("Stopped", "fmtest_1.0.0")
 	fakeDefs(t, fmtestSettingDefs(t), nil)
 	g.writeSettingsFile(stopped, gameFile(t, "2.0.77"))
+	waiting, err := g.worlds.Generate(context.Background(), world.NewWorld{Name: "Waiting", GameVersion: v20, SpaceAge: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	snap, err := g.worlds.TakeSnapshot(stopped, "Keep", "alice")
 	if err != nil {
 		t.Fatal(err)
@@ -425,6 +429,9 @@ func TestMCPAdminGateNoSecretFromAnyTool(t *testing.T) {
 		{"list_saves", arg(map[string]any{"world_id": stopped})},
 		{"get_game_settings", arg(map[string]any{"world_id": live})},
 		{"list_mod_settings", arg(map[string]any{"world_id": stopped})},
+		{"get_new_map", arg(map[string]any{"world_id": waiting})},
+		{"set_new_map", arg(map[string]any{"world_id": waiting, "preset": "rich-resources", "seed": "7",
+			"controls": []any{map[string]any{"planet": "nauvis", "control": "iron-ore", "richness": 200}}})},
 		{"search_mods", arg(map[string]any{"world_id": stopped, "query": "alpha"})},
 		{"force_stop", arg(map[string]any{"world_id": live})},
 		{"kick_player", arg(map[string]any{"world_id": live, "name": "bob", "reason": "AFK"})},

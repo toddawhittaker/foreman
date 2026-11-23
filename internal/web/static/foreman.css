@@ -732,7 +732,8 @@ time {
 /* A tab is a link with an underline when current. The underline is a border,
    so it is still drawn in forced colours. */
 .tabs a,
-.subnav a {
+.subnav a,
+.subnav .subnav-later {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -783,7 +784,7 @@ time {
   border-block-end: var(--border-width) solid var(--color-line);
 }
 
-.subnav ul {
+.subnav :is(ul, ol) {
   display: flex;
   flex-wrap: nowrap;
   gap: var(--space-1);
@@ -800,16 +801,18 @@ time {
   max-inline-size: none;
 }
 
-.subnav a {
+.subnav a,
+.subnav .subnav-later {
   margin-block-end: -1px;
 }
 
 @container (max-width: 30rem) {
-  .subnav ul {
+  .subnav :is(ul, ol) {
     gap: 0;
   }
 
-  .subnav a {
+  .subnav a,
+  .subnav .subnav-later {
     padding-inline: 0.625rem;
     font-size: var(--text-sm);
   }
@@ -1173,7 +1176,7 @@ main {
 
 /* A row of tabs wider than its box scrolls; subnav.js marks which edge has
    more, and that edge fades over 24 px so a cut tab reads as "more this way". */
-.subnav ul::after {
+.subnav :is(ul, ol)::after {
   content: "";
   flex: none;
   inline-size: var(--space-4);
@@ -3437,6 +3440,12 @@ td > .hint {
 .autoplace > legend .check {
   color: var(--color-heading);
   font-weight: 600;
+}
+
+/* "Also changes ..." under a shared control's name spans its row (SPEC 5.6). */
+.autoplace__also {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .autoplace:disabled .field label,
@@ -5841,8 +5850,18 @@ a[target="_blank"]::after {
   /* The frame shrinks, not the row, so its download link keeps the column's width;
      a frame narrower than the column sits in its middle. */
   .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li > figure {
-    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min) - var(--chart-row, 0px)));
     justify-self: center;
+  }
+
+  /* The Download line also offers the real-game picture. Below 100rem the
+     pane is narrow and the line wraps to two control rows, so the picture
+     keeps room for both; on a wider pane it is one row (DESIGN 8.8). */
+  @media (max-width: 99.98rem) {
+    .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
+      --chart-row: calc(var(--target-min) + var(--space-1));
+      min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
+    }
   }
 
   /* The download links and the kept note read as one tight group under the
@@ -9347,7 +9366,7 @@ main > .panel.danger-zone.danger-zone--blocked {
     border-block-end: 0;
   }
 
-  .subnav ul {
+  .subnav :is(ul, ol) {
     scroll-padding-inline: 1.5rem;
     flex-wrap: nowrap;
     gap: 0 var(--space-1);
@@ -9383,7 +9402,8 @@ main > .panel.danger-zone.danger-zone--blocked {
     box-shadow: inset 0 -1px 0 var(--color-line);
   }
 
-  .subnav a {
+  .subnav a,
+  .subnav .subnav-later {
     min-block-size: var(--target-min);
     margin-block-end: 0;
   }
@@ -9399,7 +9419,8 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav a,
   .subnav a[aria-current],
   .subnav li:first-child a,
-  .subnav li:last-child a {
+  .subnav li:last-child a,
+  .subnav .subnav-later {
     padding-inline: var(--space-1);
     white-space: normal;
     text-align: center;
@@ -9413,7 +9434,8 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav a,
   .subnav a[aria-current],
   .subnav li:first-child a,
-  .subnav li:last-child a {
+  .subnav li:last-child a,
+  .subnav .subnav-later {
     font-size: var(--text-xs);
   }
 }

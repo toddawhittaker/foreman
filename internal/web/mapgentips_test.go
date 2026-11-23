@@ -18,8 +18,8 @@ func tipsPage(t *testing.T, loc i18n.Locale, version, line string, spaceAge bool
 	}
 	r := newTestRenderer(t)
 	var b bytes.Buffer
-	f := GenerateForm{MapGen: NewMapGenFormForPreset(line, spaceAge, "default"), MapSettings: ms, Preset: "default", Presets: []string{"default"}}
-	if err := r.pages[loc]["generate"].ExecuteTemplate(&b, "map-settings", f); err != nil {
+	f := NewMapForm{MapForm: MapForm{MapGen: NewMapGenFormForPreset(line, spaceAge, "default"), MapSettings: ms, Preset: "default", Presets: []string{"default"}}}
+	if err := r.pages[loc]["newmap"].ExecuteTemplate(&b, "newmap-settings", f); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	return b.String()

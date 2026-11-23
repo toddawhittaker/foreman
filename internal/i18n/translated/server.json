@@ -377,6 +377,8 @@
   "server.problem.save_unreadable": "f4833351",
   "server.problem.save_unsupported": "a1ab12e1",
   "server.problem.space_age_off": "ecf73348",
+  "server.problem.stale_controls": "1cfbbc7a",
+  "server.problem.stale_controls_fix": "e6f30ee8",
   "server.recover.restore": "6f3ad69b",
   "server.restore.button": "4f9edcd9",
   "server.restore.cancel": "c7c4b653",

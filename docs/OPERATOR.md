@@ -548,13 +548,52 @@ account**. The page closes for good once the account exists.
 5. Leave **Also download the game image if this host does not have it**
    ticked. Foreman then pulls the game image for that version from Docker
    Hub after the world is made.
-6. Leave the map settings at the default preset, or change them.
+6. Choose **Generate world**. This makes the world and opens step 2, its
+   Mods tab.
+7. Pick the world's mods there (see the next section), or choose **Skip to
+   map settings**.
+8. On step 3, **Map settings**, leave the default preset or change it.
    **Preview map** draws the map first, once the game image is on the
-   host.
-7. Choose **Generate world**.
+   host. Choose **Save map settings**.
+
+Generating is three steps, each its own page: the world, its mods, then its
+map settings. Only the first is needed. The world exists after step 1, so
+if you stop there, it shows as **Unfinished** on the Worlds list. Choose
+**Continue** to pick up where you left off. Foreman never deletes an
+unfinished world for you.
 
 The first world you make becomes the active one: the world the Server page
-starts. Its map is made when it first starts.
+starts. Its map is made when it first starts, from the settings you saved
+in step 3. You can change them until then. Once the world has a save, or
+while its server is running or starting, they are locked.
+
+### Planet mods
+
+If the world's mods add planets, step 3 lists them with the controls of
+their resources, and the preview draws them. Foreman reads the planet list
+from a one-off run of the world's own game, the same run that reads the mod
+settings. It can take up to a minute the first time. If the list cannot be
+read, step 3 says so, shows the game's own planets and refuses to save, so
+a save never drops a modded planet's settings.
+
+If you remove a planet mod after saving step 3, the world will not start
+until you save step 3 again. The game would fail to make the map, so
+Foreman refuses the start and links you to step 3.
+
+On a 2.1 world, **Draw from a real game** next to a planet's picture makes a
+throwaway map with the world's mods and charts 1024 by 1024 tiles around
+the start. It shows terrain that a mod makes by script, which the fast
+preview cannot. It takes 15 to 40 seconds.
+
+### Memory for planet previews
+
+Each preview run, and each real-game picture, is a one-off container. Both
+run one at a time and are limited to 1 GiB of memory with no swap. A fast
+preview of one planet is limited to 60 seconds. With five planet mods I
+measured 2 to 4 seconds and under 750 MiB for each planet. A real-game
+picture is limited to 90 seconds, and I measured 13 to 39 seconds and at
+most 692 MiB. Foreman keeps the pictures in memory, up to 160 MiB for all
+users, until you save the map settings or restart Foreman.
 
 ## 9. Install three mods from the mod portal
 

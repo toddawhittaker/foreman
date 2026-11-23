@@ -338,6 +338,8 @@
   "server.problem.modlist_space_age_off": "Space Age ist für diese Welt ausgeschaltet, aber mod-list.json aktiviert {mods} (oder die Datei fehlt, dann aktiviert das Spiel sie). Korrigiere die Mod-Liste vor dem Start.",
   "server.problem.save_newer": "Der Speicherstand {save} wurde mit Factorio {save_version} erstellt, das neuer ist als Factorio {version} dieser Welt. Ein älteres Spiel kann ihn nicht laden.",
   "server.problem.space_age_off": "{save} nutzt Space Age ({mods}), aber Space Age ist für diese Welt ausgeschaltet.",
+  "server.problem.stale_controls": "Die Karteneinstellungen der Welt nennen Steuerungen, die ihre Mods nicht mehr haben: {names}. Damit kann das Spiel die Karte nicht erzeugen. Speichere die Karteneinstellungen erneut, um sie zu entfernen.",
+  "server.problem.stale_controls_fix": "Karteneinstellungen öffnen",
   "server.problem.mod_missing_one": "{save} nutzt {mods}, aber diese Welt hat dafür keine Datei.",
   "server.problem.mod_missing_many": "{save} nutzt {mods}, aber diese Welt hat dafür keine Dateien.",
   "server.problem.mod_disabled_one": "{save} nutzt {mods}, aber diese Mod ist in dieser Welt deaktiviert.",

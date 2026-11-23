@@ -424,7 +424,11 @@ test("the mode is set on the page, kept in world.json, and neither audited nor s
   await page.goto(base);
   await ui.mode(page, "Automatic").check();
   await ui.skipOnline(page).uncheck();
+  // The save posts the form and redirects back here; reloading before that
+  // page has loaded races the redirect ("Not attached to an active page").
+  const landed = page.waitForEvent("load");
   await ui.saveMode(page).click();
+  await landed;
   await expect.poll(() => factoryMap(foreman)).toEqual({ mode: "automatic", skip_online: false });
   await page.reload();
   await expect(ui.mode(page, "Automatic")).toBeChecked();

@@ -16,6 +16,7 @@
   "audit.action.mod-upload-limit-set": "已更改模组上传上限",
   "audit.action.mods": "模组已更改",
   "audit.action.mods-refused": "模组更改被拒绝",
+  "audit.action.new-map": "已保存地图设置",
   "audit.action.password-change": "已更改密码",
   "audit.action.player": "玩家操作",
   "audit.action.public-mods-set": "已开启或关闭公开模组页面",

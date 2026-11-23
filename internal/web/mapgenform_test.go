@@ -18,6 +18,11 @@ import (
 // 11.5). The tests state what the file must hold for the choices made, from
 // the game's own example files, not from what the code writes.
 
+// parseMapGenValues is parseMapGenIn with the line's built-in planets.
+func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
+	return parseMapGenIn(vals, line, mapgen.Builtin(line, spaceAge))
+}
+
 var testLines = []struct {
 	line     string
 	spaceAge bool
@@ -412,7 +417,7 @@ func renderPartial(t *testing.T, loc i18n.Locale, f MapGenForm) string {
 	t.Helper()
 	r := newTestRenderer(t)
 	var b bytes.Buffer
-	if err := r.pages[loc]["generate"].ExecuteTemplate(&b, "map-settings", GenerateForm{MapGen: f, Preset: "default", Presets: []string{"default"}}); err != nil {
+	if err := r.pages[loc]["newmap"].ExecuteTemplate(&b, "newmap-settings", NewMapForm{MapForm: MapForm{MapGen: f, Preset: "default", Presets: []string{"default"}}}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	return b.String()

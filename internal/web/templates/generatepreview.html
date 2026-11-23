@@ -12,6 +12,18 @@
       <p class="hint">{{t "worlds.generate.preview.seed" "seed" .Seed}}</p>
       {{- end}}
     </div>
+    {{- if .OfWorld}}
+    {{/* What the fast preview cannot draw, said once under the heading (SPEC 5.6). */}}
+    <div class="preview-limit">
+      <p class="hint" id="preview-limit-line">{{t "mapgen.preview.limit"}}{{template "tip-button" .LimitTip}}</p>
+      {{- template "tip-text" .LimitTip}}
+    </div>
+    {{- end}}
+    {{- if not .Fallback.IsZero}}
+    <div class="message message--note" id="preview-fallback">
+      <p><strong>{{t "common.label.note"}}</strong> {{msg .Fallback}}</p>
+    </div>
+    {{- end}}
     {{- if .Territories.Carry}}
     {{/* The box is not here to send the choice, so it is kept for when it is (DESIGN 8.8). */}}
     <input type="hidden" name="territories" value="1">
@@ -29,7 +41,7 @@
     </fieldset>
     {{/* The world's planets and their names, for the large view's Previous and Next. */}}
     <datalist id="preview-planets">
-      {{- range .Planets}}<option value="{{.Planet}}">{{msg .Name}}</option>{{end -}}
+      {{- range .Planets}}<option value="{{.Planet}}"{{if .Foreign}} translate="no"{{end}}>{{msg .Name}}</option>{{end -}}
     </datalist>
     {{- end}}
     {{- if .Error.IsZero}}
@@ -59,7 +71,7 @@
         <figure>
           <a href="{{.Path}}" class="picture" data-planet="{{.Planet}}"><span class="map"><img src="{{.Path}}" width="{{$.Preview.Size}}" height="{{$.Preview.Size}}" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy">
             {{- if and $terr $.Preview.Territories.Drawn}}{{template "territory-overlay" $.Preview.Territories.Result}}{{end}}{{template "map-pin"}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
-          <figcaption>{{msg .Name}}</figcaption>
+          <figcaption>{{if .Foreign}}<span translate="no">{{msg .Name}}</span>{{else}}{{msg .Name}}{{end}}</figcaption>
         </figure>
         {{- if $terr}}
         {{/* The territories in words, under their picture; the script fills it when they arrive. */}}
@@ -68,15 +80,37 @@
         </div>
         {{/* Shown by the script when its request for the territories fails. */}}
         <template id="territory-failed">{{template "territory-result" $.Preview.Territories.RequestFailed}}</template>
+        {{- $chart := eq .Planet $.Preview.ChartPlanet}}
+        {{- if $chart}}<div class="picture-actions">{{end}}
         <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}" data-both="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}">
           {{- if $.Preview.Territories.Drawn}}{{t "worlds.generate.territories.download" "planet" (msg .Name)}}{{else}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{end}}</a>
+        {{- if $chart}} {{template "chart-offer" $.Preview}}</div>{{template "tip-text" $.Preview.ChartTip}}{{end}}
         {{- else}}
         {{/* The script adds the amounts, and says so, while the box above is ticked and they are counted (SPEC 5.6). */}}
+        {{- $chart := eq .Planet $.Preview.ChartPlanet}}
+        {{- if $chart}}<div class="picture-actions">{{end}}
         <a href="{{.DownloadPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}">{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
+        {{- if $chart}} {{template "chart-offer" $.Preview}}</div>{{template "tip-text" $.Preview.ChartTip}}{{end}}
         {{- end}}
       </li>
       {{- end}}
     </ul>
+    {{- with .ChartPlanet}}
+    {{/* A 2.1 world's one picture can be drawn again from a real game, which shows terrain mods
+         make by script; it takes seconds, so only on request, and it needs script (SPEC 5.6, 14.3).
+         The script puts the reply in the slot and hides the fast picture until Back. */}}
+    <div class="js-only" id="preview-chart-box" data-planet="{{.}}" data-path="{{$.Preview.ChartPath}}" data-ready="{{t "mapgen.chart.ready"}}" data-failed="{{t "mapgen.chart.failed"}}">
+      <div class="wait" id="preview-chart-wait" hidden>
+        <p class="hint">{{t "mapgen.chart.drawing"}}</p>
+        <progress aria-hidden="true"></progress>
+      </div>
+      <div id="preview-chart"></div>
+    </div>
+    {{- end}}
+    {{- /* Under the list, not in a card, so the cards keep the height the pane gives them (DESIGN 8.8). */}}
+    {{- with .OneColor}}
+    <p class="hint preview-one-color" id="preview-one-color">{{t "mapgen.preview.one_color"}}{{if gt (len $.Preview.Pictures) 1}} {{t "mapgen.preview.one_color_planets"}} {{range $i, $p := .}}{{if $i}}{{t "mapgen.list_sep"}}{{end}}{{if .Foreign}}<span translate="no">{{msg .Name}}</span>{{else}}{{msg .Name}}{{end}}{{end}}{{end}}</p>
+    {{- end}}
     {{- if gt (len .Planets) 1}}
     <p><a href="{{.ZipPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download_all"}}" data-amounts="{{t "worlds.generate.preview.download_all_amounts"}}" data-planets="{{.ZipPlanets}}"{{if .TerritoriesHeld}} data-territories-held{{end}}>{{t "worlds.generate.preview.download_all"}}</a></p>
     {{- end}}
@@ -252,6 +286,28 @@
 {{/* The answer to the large view's request for one planet's resource amounts:
      the labels, which the script puts over the large view's map, and the same
      amounts as text, or why there are none. Takes GeneratePage. */}}
+{{/* The answer to the page's request for a real-game picture of one planet (SPEC 5.6): the
+     picture with its caption and the way back, or why there is none. Takes GeneratePage. */}}
+{{define "generate-chart" -}}
+<div id="chart-reply">
+  {{- with .Preview.Chart}}{{if .Error.IsZero}}
+  <ul class="pictures" role="list">
+    <li>
+      <figure>
+        <span class="map"><img src="{{.Path}}" width="{{.Tiles}}" height="{{.Tiles}}" alt="{{t "mapgen.chart.alt" "planet" (msg .Name) "seed" .Seed}}"></span>
+        <figcaption>{{if .Foreign}}<span translate="no">{{msg .Name}}</span>{{else}}{{msg .Name}}{{end}} <span class="hint">{{t "mapgen.chart.caption"}}</span></figcaption>
+      </figure>
+    </li>
+  </ul>
+  <p><button type="button" class="button" id="preview-chart-back">{{t "mapgen.chart.back"}}</button></p>
+  {{- else}}
+  <div class="message message--error">
+    <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  </div>
+  {{- end}}{{end}}
+</div>
+{{- end}}
+
 {{define "generate-resources" -}}
 <div id="resource-reply">
   {{- with .Preview.Resources}}{{if .Error.IsZero}}{{template "resource-overlay" .}}{{end}}
@@ -352,4 +408,10 @@
     </ul>
   </div>
 </div>
+{{- end}}
+
+{{/* The real-game picture's offer, on its picture's Download line so the pane keeps
+     the picture's room (DESIGN 8.8); the script hides it while that picture shows. Takes PreviewView. */}}
+{{define "chart-offer" -}}
+<span class="js-only"><span id="preview-chart-offer"><button type="button" class="button" id="preview-chart-button">{{t "mapgen.chart.draw"}}</button>{{template "tip-button" .ChartTip}}</span></span>
 {{- end}}

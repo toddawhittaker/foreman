@@ -3,7 +3,7 @@
 // more tabs past it, so the style sheet can fade that edge.
 (() => {
   "use strict";
-  const rows = document.querySelectorAll(".subnav ul, .tablist");
+  const rows = document.querySelectorAll(".subnav :is(ul, ol), .tablist");
   for (const row of rows) {
     const mark = () => {
       const max = row.scrollWidth - row.clientWidth;

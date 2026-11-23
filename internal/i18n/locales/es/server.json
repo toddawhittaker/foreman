@@ -338,6 +338,8 @@
   "server.problem.modlist_space_age_off": "Space Age está desactivado para este mundo, pero mod-list.json activa {mods} (o falta el archivo, y entonces el juego los activa). Arregla la lista de mods antes de iniciar.",
   "server.problem.save_newer": "La partida guardada {save} se creó con Factorio {save_version}, más reciente que el Factorio {version} de este mundo. Un juego más antiguo no puede cargarla.",
   "server.problem.space_age_off": "{save} usa Space Age ({mods}), pero Space Age está desactivado para este mundo.",
+  "server.problem.stale_controls": "Los ajustes del mapa del mundo nombran controles que sus mods ya no tienen: {names}. El juego no puede crear el mapa con ellos. Guarda de nuevo los ajustes del mapa para quitarlos.",
+  "server.problem.stale_controls_fix": "Abrir los ajustes del mapa",
   "server.problem.mod_missing_one": "{save} usa {mods}, pero este mundo no tiene archivo para él.",
   "server.problem.mod_missing_many": "{save} usa {mods}, pero este mundo no tiene archivos para ellos.",
   "server.problem.mod_disabled_one": "{save} usa {mods}, pero está desactivado en este mundo.",

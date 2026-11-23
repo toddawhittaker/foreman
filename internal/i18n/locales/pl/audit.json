@@ -16,6 +16,7 @@
   "audit.action.mod-upload-limit-set": "Limit przesyłania modyfikacji zmieniony",
   "audit.action.mods": "Modyfikacje zmienione",
   "audit.action.mods-refused": "Zmiana modyfikacji odrzucona",
+  "audit.action.new-map": "Ustawienia mapy zapisane",
   "audit.action.password-change": "Hasło zmienione",
   "audit.action.player": "Działanie wobec gracza",
   "audit.action.public-mods-set": "Publiczna strona modyfikacji włączona lub wyłączona",

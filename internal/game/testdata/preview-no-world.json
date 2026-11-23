@@ -1,0 +1,161 @@
+{
+  "preview": {
+    "Name": "foreman-preview-FOLDER",
+    "Spec": {
+      "Image": "factoriotools/factorio:2.1.24",
+      "Labels": {
+        "io.github.toddawhittaker.foreman.preview": "DATA"
+      },
+      "Env": [
+        "FOREMAN_PREVIEW_PLANETS=nauvis vulcanus gleba",
+        "FOREMAN_SEED=7",
+        "FOREMAN_PREVIEW_SIZE=1280",
+        "FOREMAN_PRESET=island",
+        "FOREMAN_PREVIEW_PLANET_FLAG=1"
+      ],
+      "Cmd": [
+        "-c",
+        "for p in $FOREMAN_PREVIEW_PLANETS; do\nset -- --config /out/config.ini --mod-directory /out/mods --generate-map-preview /out/\"$p\".png --map-preview-size \"$FOREMAN_PREVIEW_SIZE\" --map-gen-seed \"$FOREMAN_SEED\"\nif [ -n \"$FOREMAN_PRESET\" ]; then set -- \"$@\" --preset \"$FOREMAN_PRESET\"; fi\nif [ -f /out/map-gen-settings.json ]; then set -- \"$@\" --map-gen-settings /out/map-gen-settings.json; fi\nif [ -f /out/map-settings.json ]; then set -- \"$@\" --map-settings /out/map-settings.json; fi\nif [ -n \"$FOREMAN_PREVIEW_PLANET_FLAG\" ]; then set -- \"$@\" --map-preview-planet \"$p\"; fi\n/opt/factorio/bin/x64/factorio \"$@\" || exit 1\ndone"
+      ],
+      "Entrypoint": [
+        "/bin/sh"
+      ],
+      "User": "845:845",
+      "HostConfig": {
+        "Binds": [
+          "DATA/previews/FOLDER:/out"
+        ],
+        "CapDrop": [
+          "ALL"
+        ],
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "RestartPolicy": {
+          "Name": "no"
+        },
+        "LogConfig": {},
+        "NetworkMode": "none",
+        "ReadonlyRootfs": true,
+        "Memory": 1073741824,
+        "MemorySwap": 1073741824,
+        "Tmpfs": {
+          "/tmp/factorio": "rw,noexec,nosuid,size=64m,mode=1777"
+        }
+      }
+    },
+    "Files": {
+      "config.ini": "[path]\nread-data=__PATH__executable__/../../data\nwrite-data=/tmp/factorio\n",
+      "map-gen-settings.json": "{\"width\": 500}",
+      "map-settings.json": "{\"pollution\": {}}",
+      "mods/mod-list.json": "{\n  \"mods\": [\n    {\n      \"name\": \"base\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"elevated-rails\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"quality\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"recycler\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"space-age\",\n      \"enabled\": true\n    }\n  ]\n}\n"
+    }
+  },
+  "resources": {
+    "Name": "foreman-resources-FOLDER",
+    "Spec": {
+      "Image": "factoriotools/factorio:2.1.24",
+      "Labels": {
+        "io.github.toddawhittaker.foreman.preview": "DATA"
+      },
+      "Env": [
+        "FOREMAN_PREVIEW_KIND=resources",
+        "FOREMAN_RESOURCE_RADIUS=20",
+        "FOREMAN_RESOURCE_PLANET=gleba",
+        "FOREMAN_SEED=7",
+        "FOREMAN_PRESET=island"
+      ],
+      "Cmd": [
+        "-c",
+        "printf 'return { radius = %d, planet = \"%s\" }\\n' \"$FOREMAN_RESOURCE_RADIUS\" \"$FOREMAN_RESOURCE_PLANET\" \u003e /out/mods/foreman-resources_1.0.0/params.lua || exit 1\nset -- --config /out/config.ini --mod-directory /out/mods --create /out/resources.zip --map-gen-seed \"$FOREMAN_SEED\"\nif [ -n \"$FOREMAN_PRESET\" ]; then set -- \"$@\" --preset \"$FOREMAN_PRESET\"; fi\nif [ -f /out/map-gen-settings.json ]; then set -- \"$@\" --map-gen-settings /out/map-gen-settings.json; fi\nif [ -f /out/map-settings.json ]; then set -- \"$@\" --map-settings /out/map-settings.json; fi\n/opt/factorio/bin/x64/factorio \"$@\" || exit 1\ncp /tmp/factorio/script-output/resources.json /out/resources.json"
+      ],
+      "Entrypoint": [
+        "/bin/sh"
+      ],
+      "User": "845:845",
+      "HostConfig": {
+        "Binds": [
+          "DATA/previews/FOLDER:/out"
+        ],
+        "CapDrop": [
+          "ALL"
+        ],
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "RestartPolicy": {
+          "Name": "no"
+        },
+        "LogConfig": {},
+        "NetworkMode": "none",
+        "ReadonlyRootfs": true,
+        "Memory": 1073741824,
+        "MemorySwap": 1073741824,
+        "Tmpfs": {
+          "/tmp/factorio": "rw,noexec,nosuid,size=64m,mode=1777"
+        }
+      }
+    },
+    "Files": {
+      "config.ini": "[path]\nread-data=__PATH__executable__/../../data\nwrite-data=/tmp/factorio\n",
+      "map-gen-settings.json": "{\"width\": 500}",
+      "map-settings.json": "{\"pollution\": {}}",
+      "mods/foreman-resources_1.0.0/control.lua": "-- Foreman's resource counter (SPEC 5.6). When the map is made, it generates\n-- one planet's chunks for the picture's area, finds every resource entity in\n-- it, one resource at a time, groups them into patches and writes them as\n-- JSON to script-output/resources.json. It adds no prototypes, so the map is the one\n-- the preview draws. params.lua, written beside it for each run, returns\n-- {radius = N, planet = \"\u003cname\u003e\"}: the picture's half width in chunks, and\n-- the planet to count.\n--\n-- Ores join a patch when their distance on both axes is at most ore_gap (6)\n-- tiles: below that, sparse ores break one island or field into many\n-- crumbs, and on Nauvis no two separate fields join at any gap up to 16\n-- (ADR 0015). A count with more than dense_ore_tiles ore tiles, far more\n-- than any default map has, joins ores within dense_ore_gap (2) instead, so\n-- its patches are finer: at 6 the richest maps ran into the time limit\n-- before they ran out of memory, and the page said to try again where only\n-- a smaller size helps (ADR 0015). Wells, the entities of a resource whose\n-- product is a fluid, join when their distance on both axes is at most\n-- well_gap (24) tiles; the real game's fields stop merging between 18 and\n-- 40. The gaps and the threshold can be set in params.lua, which only the\n-- real-game test does; a set ore_gap is used as it is. Fulgora's scrap joins\n-- within 16 tiles (ADR 0015): at 2, high-frequency scrap gave each island\n-- dozens of labels; a few labels can join islands across thin channels.\nlocal params = require(\"params\")\nlocal radius, planet = params.radius, params.planet\nlocal ore_gap = params.ore_gap or 6\nlocal dense_ore_tiles = params.dense_ore_tiles or 400000\nlocal dense_ore_gap = 2\nlocal well_gap = params.well_gap or 24\nlocal resource_gaps = { fulgora = { scrap = 16 } }\nlocal planet_gaps = resource_gaps[planet] or {}\n\n-- Gaps up to this are joined by per-tile offsets, larger ones by cells\n-- (ADR 0015). Offsets look up every position in reach whether or not a tile\n-- is there: 84 a tile at gap 6, 544 at 16. Cells compare only the tiles\n-- present in the 3 x 3 cells around, about 160 a tile in a dense field at\n-- 6, so they win only for sparse resources, which are the ones with large\n-- gaps: scrap (16) and wells (24).\nlocal offset_limit = 6\n\n-- surface_of returns the planet's surface, making it on 2.x when the planet\n-- has none yet. 1.1 has only Nauvis, which always has one.\nlocal function surface_of(name)\n  local s = game.surfaces[name]\n  if s then\n    return s\n  end\n  local p = game.planets[name]\n  return p.surface or p.create_surface()\nend\n\n-- color_of turns a prototype's map colour into whole 0-255 values. On 1.1,\n-- 2.0 and 2.1 alike the game reads a map colour back as r, g and b already\n-- scaled to 0-255 (iron ore is 105, 133, 147), so it is only rounded.\nlocal function color_of(c)\n  if not c then\n    return { 255, 255, 255 }\n  end\n  return { math.floor(c.r + 0.5), math.floor(c.g + 0.5), math.floor(c.b + 0.5) }\nend\n\n-- resource_prototypes returns every resource prototype: prototypes on 2.x,\n-- the game's filtered list on 1.1.\nlocal function resource_prototypes()\n  local filter = { { filter = \"type\", type = \"resource\" } }\n  if prototypes then\n    return prototypes.get_entity_filtered(filter)\n  end\n  return game.get_filtered_entity_prototypes(filter)\nend\n\n-- is_well reports whether a resource's product is a fluid. Lithium brine is\n-- a well that is not infinite.\nlocal function is_well(proto)\n  for _, product in pairs(proto.mineable_properties.products or {}) do\n    if product.type == \"fluid\" then\n      return true\n    end\n  end\n  return false\nend\n\nscript.on_init(function()\n  -- 1.1 has no helpers; its game, which exists only once events run, has\n  -- write_file and table_to_json.\n  local h = helpers or game\n  local surface = surface_of(planet)\n  surface.request_to_generate_chunks({ 0, 0 }, radius)\n  surface.force_generate_chunk_requests()\n\n  -- The ore tiles that would join at ore_gap, counted without keeping\n  -- entity handles, decide whether this is a dense count.\n  local half = radius * 32\n  if not params.ore_gap then\n    local names = {}\n    for name, proto in pairs(resource_prototypes()) do\n      if not is_well(proto) and not planet_gaps[name] then\n        names[#names + 1] = name\n      end\n    end\n    -- An empty name list would not filter at all.\n    if #names \u003e 0 then\n      local ores = surface.count_entities_filtered({ area = { { -half, -half }, { half, half } }, name = names })\n      if ores \u003e dense_ore_tiles then\n        ore_gap = dense_ore_gap\n      end\n    end\n  end\n\n  -- The picture covers tiles [-half, half) on each axis. A tile's key leaves\n  -- room for neighbours up to the largest gap beyond each edge, and gives\n  -- the tile back, so no coordinates are stored.\n  local largest = math.max(ore_gap, well_gap)\n  for _, g in pairs(planet_gaps) do\n    largest = math.max(largest, g)\n  end\n  local pad = largest + 1\n  local width = 2 * (half + pad)\n  local function key(x, y)\n    return (x + half + pad) * width + (y + half + pad)\n  end\n  local function tile(k)\n    return math.floor(k / width) - half - pad, k % width - half - pad\n  end\n\n  -- Small gaps: each pair of tiles within the gap is looked at once, from\n  -- the tile with the smaller (x, y).\n  local function offsets_of(gap)\n    local offsets = {}\n    for dx = 0, gap do\n      for dy = -gap, gap do\n        if dx \u003e 0 or dy \u003e 0 then\n          offsets[#offsets + 1] = { dx, dy }\n        end\n      end\n    end\n    return offsets\n  end\n\n  local resources, patches = {}, {}\n  -- One resource at a time keeps only its own tiles in memory: a key, an\n  -- amount and a parent each.\n  for name, proto in pairs(resource_prototypes()) do\n    local at, keys, amounts = {}, {}, {}\n    local n = 0\n    -- One chunk at a time keeps the number of entity handles small. A well\n    -- near a chunk's edge is found from both chunks; its key keeps it once.\n    for cx = -radius, radius - 1 do\n      for cy = -radius, radius - 1 do\n        local area = { { cx * 32, cy * 32 }, { cx * 32 + 32, cy * 32 + 32 } }\n        for _, e in pairs(surface.find_entities_filtered({ area = area, name = name })) do\n          local pos = e.position\n          local x, y = math.floor(pos.x), math.floor(pos.y)\n          if x \u003e= -half and x \u003c half and y \u003e= -half and y \u003c half then\n            local k = key(x, y)\n            if not at[k] then\n              n = n + 1\n              keys[n], amounts[n] = k, e.amount\n              at[k] = n\n            end\n          end\n        end\n      end\n    end\n\n    if n \u003e 0 then\n      -- Union-find over tile indices, with path halving.\n      local parent = {}\n      for i = 1, n do\n        parent[i] = i\n      end\n      local function find(i)\n        while parent[i] ~= i do\n          parent[i] = parent[parent[i]]\n          i = parent[i]\n        end\n        return i\n      end\n      local function union(a, b)\n        a, b = find(a), find(b)\n        if a \u003c b then\n          parent[b] = a\n        elseif b \u003c a then\n          parent[a] = b\n        end\n      end\n\n      local gap = well_gap\n      if not is_well(proto) then\n        gap = planet_gaps[name] or ore_gap\n      end\n      if gap \u003e offset_limit then\n        -- Bucketed by gap-wide cells, so only the 3 x 3 cells around a tile\n        -- can hold one within the gap.\n        local cells = {}\n        for i = 1, n do\n          local x, y = tile(keys[i])\n          local gx, gy = math.floor(x / gap), math.floor(y / gap)\n          for ox = -1, 1 do\n            for oy = -1, 1 do\n              local list = cells[(gx + ox + 2048) * 4096 + gy + oy + 2048]\n              if list then\n                for _, j in ipairs(list) do\n                  local jx, jy = tile(keys[j])\n                  if math.abs(jx - x) \u003c= gap and math.abs(jy - y) \u003c= gap then\n                    union(i, j)\n                  end\n                end\n              end\n            end\n          end\n          local c = (gx + 2048) * 4096 + gy + 2048\n          cells[c] = cells[c] or {}\n          table.insert(cells[c], i)\n        end\n      else\n        local offsets = offsets_of(gap)\n        for i = 1, n do\n          local x, y = tile(keys[i])\n          for _, o in ipairs(offsets) do\n            local j = at[key(x + o[1], y + o[2])]\n            if j then\n              union(i, j)\n            end\n          end\n        end\n      end\n      at = nil\n\n      -- Each patch's sums, box and centroid, in the order of its first tile.\n      local patch_of, sums = {}, {}\n      for i = 1, n do\n        local r = find(i)\n        local x, y = tile(keys[i])\n        local s = patch_of[r]\n        if not s then\n          s = { amount = 0, n = 0, sx = 0, sy = 0, x0 = x, y0 = y, x1 = x, y1 = y }\n          patch_of[r] = s\n          sums[#sums + 1] = s\n        end\n        s.amount = s.amount + amounts[i]\n        s.n = s.n + 1\n        s.sx, s.sy = s.sx + x, s.sy + y\n        if x \u003c s.x0 then s.x0 = x end\n        if y \u003c s.y0 then s.y0 = y end\n        if x \u003e s.x1 then s.x1 = x end\n        if y \u003e s.y1 then s.y1 = y end\n      end\n      -- The label tile is the patch's tile nearest its centroid; a centroid\n      -- alone can fall outside a C-shaped patch.\n      for i = 1, n do\n        local s = patch_of[find(i)]\n        local x, y = tile(keys[i])\n        local dx, dy = x - s.sx / s.n, y - s.sy / s.n\n        local d = dx * dx + dy * dy\n        if not s.d or d \u003c s.d then\n          s.d, s.lx, s.ly = d, x, y\n        end\n      end\n\n      local total = 0\n      for _, s in ipairs(sums) do\n        total = total + s.amount\n        patches[#patches + 1] = {\n          name = name, x = s.lx, y = s.ly, amount = s.amount, n = s.n,\n          box = { s.x0, s.y0, s.x1, s.y1 },\n        }\n      end\n      local infinite = proto.infinite_resource and true or false\n      resources[name] = {\n        total = total, infinite = infinite,\n        normal = infinite and proto.normal_resource_amount or 0,\n        color = color_of(proto.map_color),\n      }\n    end\n  end\n  -- table_to_json writes an empty table as [] or {}; the parser takes both.\n  h.write_file(\"resources.json\", h.table_to_json({ planet = planet, resources = resources, patches = patches }), false)\nend)\n",
+      "mods/foreman-resources_1.0.0/info.json": "{\n  \"name\": \"foreman-resources\",\n  \"version\": \"1.0.0\",\n  \"title\": \"Foreman resources\",\n  \"author\": \"Foreman\",\n  \"factorio_version\": \"2.1\",\n  \"description\": \"Counts one planet's resource patches for Foreman's map preview. Adds no prototypes.\",\n  \"dependencies\": [\n    \"base\",\n    \"space-age\"\n  ]\n}\n",
+      "mods/mod-list.json": "{\n  \"mods\": [\n    {\n      \"name\": \"base\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"elevated-rails\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"quality\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"recycler\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"space-age\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"foreman-resources\",\n      \"enabled\": true\n    }\n  ]\n}\n"
+    }
+  },
+  "territories": {
+    "Name": "foreman-territories-FOLDER",
+    "Spec": {
+      "Image": "factoriotools/factorio:2.1.24",
+      "Labels": {
+        "io.github.toddawhittaker.foreman.preview": "DATA"
+      },
+      "Env": [
+        "FOREMAN_PREVIEW_KIND=territories",
+        "FOREMAN_TERRITORY_RADIUS=20",
+        "FOREMAN_SEED=7",
+        "FOREMAN_PRESET=island"
+      ],
+      "Cmd": [
+        "-c",
+        "printf 'return %d\\n' \"$FOREMAN_TERRITORY_RADIUS\" \u003e /out/mods/foreman-territories_1.0.0/radius.lua || exit 1\nset -- --config /out/config.ini --mod-directory /out/mods --create /out/territories.zip --map-gen-seed \"$FOREMAN_SEED\"\nif [ -n \"$FOREMAN_PRESET\" ]; then set -- \"$@\" --preset \"$FOREMAN_PRESET\"; fi\nif [ -f /out/map-gen-settings.json ]; then set -- \"$@\" --map-gen-settings /out/map-gen-settings.json; fi\nif [ -f /out/map-settings.json ]; then set -- \"$@\" --map-settings /out/map-settings.json; fi\n/opt/factorio/bin/x64/factorio \"$@\" || exit 1\ncp /tmp/factorio/script-output/territories.json /out/territories.json"
+      ],
+      "Entrypoint": [
+        "/bin/sh"
+      ],
+      "User": "845:845",
+      "HostConfig": {
+        "Binds": [
+          "DATA/previews/FOLDER:/out"
+        ],
+        "CapDrop": [
+          "ALL"
+        ],
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "RestartPolicy": {
+          "Name": "no"
+        },
+        "LogConfig": {},
+        "NetworkMode": "none",
+        "ReadonlyRootfs": true,
+        "Memory": 1073741824,
+        "MemorySwap": 1073741824,
+        "Tmpfs": {
+          "/tmp/factorio": "rw,noexec,nosuid,size=64m,mode=1777"
+        }
+      }
+    },
+    "Files": {
+      "config.ini": "[path]\nread-data=__PATH__executable__/../../data\nwrite-data=/tmp/factorio\n",
+      "map-gen-settings.json": "{\"width\": 500}",
+      "map-settings.json": "{\"pollution\": {}}",
+      "mods/foreman-territories_1.0.0/control.lua": "-- Foreman's territory reader (SPEC 5.6). When the map is made, it generates\n-- Vulcanus's chunks for the picture's area, reads the demolisher\n-- territories that reach into it, and writes them as JSON to\n-- script-output/territories.json. It adds no prototypes, so the map is the\n-- one the preview draws. radius.lua, written beside it for each run, returns\n-- the picture's half width in chunks.\nlocal radius = require(\"radius\")\n\nscript.on_init(function()\n  local planet = game.planets[\"vulcanus\"]\n  local surface = planet.surface or planet.create_surface()\n  surface.request_to_generate_chunks({ 0, 0 }, radius)\n  surface.force_generate_chunk_requests()\n\n  local territories = {}\n  for _, t in pairs(surface.get_territories()) do\n    -- The picture shows chunks -radius to radius-1 on each axis.\n    local chunks = {}\n    for _, c in pairs(t.get_chunks()) do\n      if c.x \u003e= -radius and c.x \u003c radius and c.y \u003e= -radius and c.y \u003c radius then\n        chunks[#chunks + 1] = { c.x, c.y }\n      end\n    end\n    if #chunks \u003e 0 then\n      -- A territory has no size of its own; its demolisher's name gives it.\n      local unit = \"\"\n      local units = t.get_segmented_units()\n      if units[1] then\n        unit = units[1].prototype.name\n      end\n      territories[#territories + 1] = { unit = unit, chunks = chunks }\n    end\n  end\n\n  -- table_to_json writes an empty table as an object, so none is written by hand.\n  local json = '{\"territories\":[]}'\n  if #territories \u003e 0 then\n    json = helpers.table_to_json({ territories = territories })\n  end\n  helpers.write_file(\"territories.json\", json, false)\nend)\n",
+      "mods/foreman-territories_1.0.0/info.json": "{\n  \"name\": \"foreman-territories\",\n  \"version\": \"1.0.0\",\n  \"title\": \"Foreman territories\",\n  \"author\": \"Foreman\",\n  \"factorio_version\": \"2.1\",\n  \"description\": \"Writes Vulcanus's demolisher territories for Foreman's map preview. Adds no prototypes.\",\n  \"dependencies\": [\n    \"base\",\n    \"space-age\"\n  ]\n}\n",
+      "mods/mod-list.json": "{\n  \"mods\": [\n    {\n      \"name\": \"base\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"elevated-rails\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"quality\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"recycler\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"space-age\",\n      \"enabled\": true\n    },\n    {\n      \"name\": \"foreman-territories\",\n      \"enabled\": true\n    }\n  ]\n}\n"
+    }
+  }
+}

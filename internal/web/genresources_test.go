@@ -305,7 +305,7 @@ func TestPreviewStoreKeepsResourcesPerPlanet(t *testing.T) {
 // form never sends it, and the counting line hidden until it counts.
 func TestLargeViewHasTheResourceBox(t *testing.T) {
 	hn, _, c := newResourceHarness(t)
-	body := hn.get(PathGenerate, withCookie(c)).Body.String()
+	body := getLong(hn, strings.TrimSuffix(refreshPath(t, hn, c, "2.1.24"), "/refresh")+"?wait=1", c).Body.String()
 	for _, want := range []string{
 		`<input type="checkbox" id="large-amounts"> Show resource amounts</label>`,
 		`<div class="wait resource-amounts__counting" id="large-counting" hidden>`,
@@ -384,12 +384,12 @@ func TestResourceNameFindsTheControl(t *testing.T) {
 		{"2.1", "aquilo", "crude-oil"},
 		{"2.1", "aquilo", "lithium-brine"},
 	} {
-		got := resourceName(i18n.English, c.line, c.planet, c.entity)
+		got := resourceName(i18n.English, mapgen.Builtin(c.line, true), c.planet, c.entity)
 		if got == c.entity || strings.Contains(got, "_") {
 			t.Errorf("%s %s: %q is not the control's name (%q)", c.planet, c.entity, c.entity, got)
 		}
 	}
-	if got := resourceName(i18n.English, "2.1", "vulcanus", "no-such-ore"); got != "no-such-ore" {
+	if got := resourceName(i18n.English, mapgen.Builtin("2.1", true), "vulcanus", "no-such-ore"); got != "no-such-ore" {
 		t.Errorf("a resource with no control is shown as %q", got)
 	}
 }
@@ -634,7 +634,7 @@ func TestHiddenLabelsStayListed(t *testing.T) {
 			{Name: "iron-ore", X: 20, Y: 0, Amount: 1000, Box: [4]int{20, 0, 22, 2}},
 		},
 	}
-	v := resourceView(i18n.English, "2.0", "nauvis", res, 256)
+	v := resourceView(i18n.English, mapgen.Builtin("2.0", true), "nauvis", res, 256)
 	if len(v.Labels) != 1 || v.Labels[0].Value != "4000" {
 		t.Errorf("labels %+v, want only the 4000 patch", v.Labels)
 	}

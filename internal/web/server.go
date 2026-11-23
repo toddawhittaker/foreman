@@ -259,6 +259,7 @@ func (s *server) routes() {
 	s.snapshotRoutes()
 	s.updateRoutes()
 	s.generateRoutes()
+	s.newMapRoutes()
 	s.cloneRoutes()
 	s.favoriteRoutes()
 	s.worldExportRoutes()

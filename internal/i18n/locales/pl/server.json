@@ -352,6 +352,8 @@
   "server.problem.modlist_space_age_off": "Era Kosmosu jest wyłączona dla tego świata, ale mod-list.json włącza: {mods} (albo brakuje pliku, więc gra je włącza). Przed uruchomieniem należy naprawić listę modyfikacji.",
   "server.problem.save_newer": "Zapis {save} utworzono w Factorio {save_version}, nowszym niż Factorio {version} tego świata. Starsza gra nie może go wczytać.",
   "server.problem.space_age_off": "{save} używa Ery Kosmosu ({mods}), ale Era Kosmosu jest wyłączona dla tego świata.",
+  "server.problem.stale_controls": "Ustawienia mapy świata wymieniają parametry, których jego modyfikacje już nie mają: {names}. Gra nie może z nimi utworzyć mapy. Należy ponownie zapisać ustawienia mapy, aby je usunąć.",
+  "server.problem.stale_controls_fix": "Otwórz ustawienia mapy",
   "server.problem.mod_missing_one": "{save} używa modyfikacji {mods}, ale ten świat nie ma jej pliku.",
   "server.problem.mod_missing_many": "{save} używa modyfikacji: {mods}, ale ten świat nie ma odpowiednich plików.",
   "server.problem.mod_disabled_one": "{save} używa modyfikacji {mods}, ale w tym świecie jest ona wyłączona.",

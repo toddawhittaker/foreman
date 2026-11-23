@@ -427,6 +427,8 @@ func problemMsg(p world.Problem) i18n.Msg {
 		return i18n.M("server.problem.save_newer", "save", p.Save, "save_version", p.SaveVersion, "version", p.GameVersion)
 	case world.ProblemSpaceAgeOff:
 		return i18n.M("server.problem.space_age_off", "save", p.Save, "mods", names)
+	case world.ProblemStaleControls:
+		return i18n.M("server.problem.stale_controls", "names", names)
 	// One mod is "it" and several "them"; the count itself is not shown.
 	case world.ProblemModMissing:
 		if len(p.Mods) == 1 {

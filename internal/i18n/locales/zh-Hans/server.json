@@ -324,6 +324,8 @@
   "server.problem.modlist_space_age_off": "此世界已关闭太空时代，但 mod-list.json 已启用：{mods}（或文件不存在，游戏会将其启用）。请在启动前修复模组列表。",
   "server.problem.save_newer": "存档 {save} 由 Factorio {save_version} 创建，比此世界的 Factorio {version} 更新。较旧的游戏无法加载它。",
   "server.problem.space_age_off": "{save} 使用了太空时代（{mods}），但此世界已关闭太空时代。",
+  "server.problem.stale_controls": "该世界的地图设置中有其模组已不再提供的控制项：{names}。游戏无法用它们创建地图。请重新保存地图设置以移除它们。",
+  "server.problem.stale_controls_fix": "打开地图设置",
   "server.problem.mod_missing_one": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
   "server.problem.mod_missing_many": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
   "server.problem.mod_disabled_one": "{save} 使用了 {mods}，但在此世界中已禁用。",

@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
 
 // DESIGN 7.7, 8.7; SPEC 5.6 and 17: every setting of the Enemy and Advanced
 // tabs has an (i) toggletip. It opens on a click or tap, on keyboard focus
@@ -18,7 +19,7 @@ const timeTip = (page: Page) => page.getByRole("button", { name: "About Time fac
 const timeText = (page: Page) => page.locator("#ms-enemy-evolution-time-factor-tip");
 
 async function onEnemyTab(page: Page) {
-  await page.goto("/generate");
+  await openNewMap(page);
   await tab(page, "Enemy").click();
   await expect(timeTip(page)).toBeVisible();
 }
@@ -179,7 +180,7 @@ test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 
   test("each tip's text shows under its field and the button is hidden", async ({ page }) => {
-    await page.goto("/generate");
+    await openNewMap(page);
     await expect(timeText(page)).toBeVisible();
     await expect(timeText(page)).toContainText("Controls how fast evolution increases over time.");
     await expect(page.locator("#mg-start-tip")).toBeVisible();

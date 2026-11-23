@@ -34,6 +34,7 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 	if err != nil {
 		return err
 	}
+	c.warmNewMapCatalogue(ctx, id)
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return err

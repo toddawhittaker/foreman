@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"math"
 	"net/url"
@@ -181,6 +182,11 @@ type MapGenSelect struct {
 	Blocked bool
 	// Plain is a select of names, not steps, so it never becomes a slider.
 	Plain bool
+	// Shared is a control on several planets; Start is the value the form
+	// showed it with, posted back so a copy the user moved is told from one
+	// left as it was (SPEC 5.6). "" means the value was not posted.
+	Shared bool
+	Start  string
 	// def is the value a bad post falls back to; "" means mgDefaultStep.
 	def string
 	// stored is the value's path in map-gen-settings.json and whether the
@@ -226,14 +232,46 @@ type MapGenCheck struct {
 	// cannot be finished without; NeedKey names it in the summary.
 	Need    i18n.Msg
 	NeedKey string
+	// Shared and Start are as MapGenSelect's; Start is "on" or "off".
+	Shared bool
+	Start  string
+}
+
+// mgStartPrefix starts the name of a shared field's start value. It is not
+// mgPrefix, so the field is no map setting.
+const mgStartPrefix = "mgstart."
+
+// StartName is the name the select's start value is posted under.
+func (s MapGenSelect) StartName() string { return mgStartPrefix + s.Name }
+
+// StartName is the name the box's start value is posted under.
+func (c MapGenCheck) StartName() string { return mgStartPrefix + c.Name }
+
+// StartValue is the start value to post: the one posted, else the value shown.
+func (s MapGenSelect) StartValue() string { return cmp.Or(s.Start, s.Value) }
+
+// StartValue is the start value to post: the one posted, else the box shown.
+func (c MapGenCheck) StartValue() string {
+	if c.Start != "" {
+		return c.Start
+	}
+	if c.Checked {
+		return "on"
+	}
+	return "off"
 }
 
 // MapGenGroup is the settings of one autoplace control, under its name.
 // A control the game lets you switch off has Toggle: its box sits in the
 // legend, so it stays usable while the script disables the rest.
 type MapGenGroup struct {
-	ID      string
-	Legend  i18n.Msg
+	ID     string
+	Legend i18n.Msg
+	// Foreign marks a legend that is a mod's own label (SPEC 14.6).
+	Foreign bool
+	// Also is the other planets the control changes: one value, shown
+	// under each planet with "Also changes" (SPEC 5.6).
+	Also    []MapGenName
 	Toggle  *MapGenCheck
 	Selects []MapGenSelect
 }
@@ -245,6 +283,8 @@ type MapGenPlanet struct {
 	Planet  string
 	Tab     string
 	Summary i18n.Msg
+	// Foreign marks a summary that is a mod's own label (SPEC 14.6).
+	Foreign bool
 	Open    bool
 	Groups  []MapGenGroup
 	// All is the row that sets every resource of the planet at once; nil
@@ -272,12 +312,13 @@ type MapGenAllSelect struct {
 }
 
 // MapGenForm is the map-gen part of Generate's form and what a post is read
-// back into. Build one with NewMapGenFormForPreset or parseMapGenValues. Its
+// back into. Build one with mapGenFormForPreset or parseMapGenIn. Its
 // fields fall into the tabs the game's map generator has: Resources and Terrain per
 // planet, Enemy, and Advanced (DESIGN 8.7).
 type MapGenForm struct {
-	line     string
-	spaceAge bool
+	line string
+	// cat is the planets and controls the form lays out (SPEC 5.6).
+	cat mapgen.Catalogue
 
 	Seed, Width, Height MapGenText
 	StartingArea        MapGenSelect
@@ -296,6 +337,10 @@ type MapGenForm struct {
 	RawOpen, RawInvalid bool
 	// RawModified says the raw box differs from the preset's.
 	RawModified bool
+
+	// source is, per shared control and setting ("stone.size", "stone.on"),
+	// the planet whose copy is written (SPEC 5.6).
+	source map[string]string
 }
 
 // selects lists every select of the form, in page order.
@@ -507,7 +552,7 @@ func (f *MapGenForm) markAchievements(rules []mapgen.AchievementRule) {
 		}
 		w.Limit = shown(limit, 100)
 		s.Ach = w
-		v, _ := stepValue(s.Value)
+		v, _ := codeValue(s.Value)
 		if s.invert && v != 0 {
 			v = 1 / v
 		}
@@ -580,6 +625,12 @@ type mgControl struct {
 	// toggle is a resource or cliffs the game lets you switch off; off is
 	// size 0, or on 1.1 cliff_settings.richness 0 (mapgen.CliffToggle).
 	toggle bool
+	// foreign marks a legend that is a mod's own label (SPEC 14.6).
+	foreign bool
+	// also is the other planets the control changes (SPEC 5.6).
+	also []string
+	// def is the planet's own default for the control, if the file gives one.
+	def mapgen.ControlDefault
 }
 
 type mgPlanet struct {
@@ -600,16 +651,21 @@ func (c mgControl) tab() string {
 	return tabResources
 }
 
-// mgPlanets lists the planets a new world has with their controls, from the
-// game's own data. On 1.1 water and cliffs are not autoplace controls, so
-// they are added to Nauvis.
-func mgPlanets(line string, spaceAge bool) []mgPlanet {
-	names := mapgen.Planets(line, spaceAge)
+// mgPlanets lists the planets a new world has with their controls, from a
+// catalogue of the line. On 1.1 water and cliffs are not autoplace controls,
+// so they are added to Nauvis.
+func mgPlanets(line string, cat mapgen.Catalogue) []mgPlanet {
+	names := cat.PlanetNames()
 	out := make([]mgPlanet, 0, len(names))
 	for _, p := range names {
 		planet := mgPlanet{name: p}
-		for _, c := range mapgen.Controls(line, p) {
+		defs := planetDefaults(cat, p)
+		for _, c := range cat.PlanetControls(p) {
 			mc := controlFor(c)
+			n := catControlName(cat, c.Name)
+			mc.legend, mc.foreign = n.Name, n.Foreign
+			mc.also = cat.AlsoChanges(c.Name, p)
+			mc.def = defs[c.Name]
 			if c.Category == mapgen.CategoryCliff && mapgen.CliffToggle(line, p) {
 				mc.toggle = true
 			}
@@ -624,6 +680,91 @@ func mgPlanets(line string, spaceAge bool) []mgPlanet {
 		out = append(out, planet)
 	}
 	return out
+}
+
+// planetDefaults is a planet's own control defaults (SPEC 5.6).
+func planetDefaults(cat mapgen.Catalogue, planet string) map[string]mapgen.ControlDefault {
+	for _, p := range cat.Planets {
+		if p.Name == planet {
+			return p.Defaults
+		}
+	}
+	return nil
+}
+
+// mgPlanetDefaultMax is the largest planet default the form shows; Moshine
+// sets steam_geyser richness to 150 (SPEC 5.6).
+const mgPlanetDefaultMax = 1000
+
+// planetDefaultPrefix starts the code of a planet's own default that no
+// step stands for; the rest is the stored multiplier.
+const planetDefaultPrefix = "x"
+
+// defaultOf is the setting's stored default on the planet, or false for the
+// game's default of 1. Both the stored value and the one shown (its inverse
+// for a scale) are bounded as codeValue bounds a code.
+func (c mgControl) defaultOf(s mgSetting) (float64, bool) {
+	var v *float64
+	switch s.key {
+	case "frequency":
+		v = c.def.Frequency
+	case "size":
+		v = c.def.Size
+	case "richness":
+		v = c.def.Richness
+	}
+	if v == nil || *v <= 0 || *v > mgPlanetDefaultMax || *v == 1 {
+		return 0, false
+	}
+	if s.invert && 1 / *v > mgPlanetDefaultMax {
+		return 0, false
+	}
+	return *v, true
+}
+
+// planetDefaultStep is the code and options of a select that starts on a
+// planet's own default v (as stored; invert shows its inverse). A value no step
+// stands for gets its own entry, so it is shown and written back as it is.
+func planetDefaultStep(v float64, invert bool, options []MapGenOption) (string, []MapGenOption) {
+	shown := v
+	if invert {
+		shown = 1 / v
+	}
+	if code, ok := stepCode(shown); ok {
+		options = withExtra(options, code)
+		if validStep(code, options) {
+			return code, options
+		}
+		return "", options
+	}
+	code := planetDefaultPrefix + strconv.FormatFloat(shown, 'f', -1, 64)
+	pct := strconv.FormatFloat(math.Round(shown*10000)/100, 'f', -1, 64)
+	at := len(options)
+	for i, o := range options {
+		if ov, _ := codeValue(o.Value); ov > shown {
+			at = i
+			break
+		}
+	}
+	return code, slices.Insert(slices.Clone(options), at, MapGenOption{code, i18n.M("mapgen.step.planet_default", "percent", pct)})
+}
+
+// codeValue is the multiplier a select's code stands for, as the select
+// shows it: a step, or a planet's own default (the shown value after the
+// prefix).
+func codeValue(code string) (float64, bool) {
+	if v, ok := stepValue(code); ok {
+		return v, true
+	}
+	rest, ok := strings.CutPrefix(code, planetDefaultPrefix)
+	if !ok {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(rest, 64)
+	if err != nil || v <= 0 || v > mgPlanetDefaultMax {
+		return 0, false
+	}
+	return v, true
 }
 
 func waterSettings() []mgSetting {
@@ -685,19 +826,33 @@ var knownFieldNames = func() map[string]bool {
 	known := map[string]bool{mgWidth: true, mgHeight: true, mgStart: true, mgPeaceful: true, mgNoEnemies: true, mgRaw: true,
 		mgMapType: true, mgMoistureScale: true, mgAuxScale: true, mgMoistureBias: true, mgAuxBias: true}
 	for _, line := range mapgen.Lines {
-		for _, p := range mgPlanets(line, true) {
-			for _, c := range p.controls {
-				if c.toggle {
-					known[fieldName(p.name, c.name, mgOn)] = true
-				}
-				for _, s := range c.settings {
-					known[fieldName(p.name, c.name, s.key)] = true
-				}
-			}
-		}
+		addControlFields(known, line, mapgen.Builtin(line, true))
 	}
 	return known
 }()
+
+// addControlFields adds the field names of every control a catalogue lays
+// out for the line.
+func addControlFields(known map[string]bool, line string, cat mapgen.Catalogue) {
+	for _, p := range mgPlanets(line, cat) {
+		for _, c := range p.controls {
+			if c.toggle {
+				known[fieldName(p.name, c.name, mgOn)] = true
+			}
+			for _, s := range c.settings {
+				known[fieldName(p.name, c.name, s.key)] = true
+			}
+		}
+	}
+}
+
+// knownFieldsIn is knownFieldNames with the fields of a catalogue's own
+// planets and controls, which a world's mods may add (SPEC 5.6).
+func knownFieldsIn(line string, cat mapgen.Catalogue) func(string) bool {
+	own := map[string]bool{}
+	addControlFields(own, line, cat)
+	return func(name string) bool { return knownFieldNames[name] || own[name] }
+}
 
 // enemyTips are the game's tips for an enemy control's settings, by key.
 var enemyTips = map[string]i18n.Msg{
@@ -705,11 +860,11 @@ var enemyTips = map[string]i18n.Msg{
 	"size":      i18n.M("mapgen.tip.enemy_size"),
 }
 
-// buildMapGenForm lays out the form; posted says what the request holds for
-// a select's name.
-func buildMapGenForm(line string, spaceAge bool, posted func(name string) (string, bool)) MapGenForm {
+// buildMapGenFormIn lays out the form for a catalogue; posted says what the
+// request holds for a select's name.
+func buildMapGenFormIn(line string, cat mapgen.Catalogue, posted func(name string) (string, bool)) MapGenForm {
 	f := MapGenForm{
-		line: line, spaceAge: spaceAge,
+		line: line, cat: cat,
 		Seed:   MapGenText{ID: mgSeedID, Name: mgSeed},
 		Width:  MapGenText{ID: mgWidthID, Name: mgWidth, Label: i18n.M("mapgen.width.label"), Value: "0"},
 		Height: MapGenText{ID: mgHeightID, Name: mgHeight, Label: i18n.M("mapgen.height.label"), Value: "0"},
@@ -728,18 +883,24 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 		f.StartingArea.Options = withExtra(f.StartingArea.Options, v)
 	}
 	needed := mapgen.NeededResources()
-	for _, p := range mgPlanets(line, spaceAge) {
-		summary := planetMsg(p.name)
-		res := MapGenPlanet{ID: "mg-resources-" + p.name, Planet: p.name, Tab: tabResources, Summary: summary}
-		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Planet: p.name, Tab: tabTerrain, Summary: summary}
+	for _, p := range mgPlanets(line, cat) {
+		pn := catPlanetName(cat, p.name)
+		res := MapGenPlanet{ID: "mg-resources-" + p.name, Planet: p.name, Tab: tabResources, Summary: pn.Name, Foreign: pn.Foreign}
+		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Planet: p.name, Tab: tabTerrain, Summary: pn.Name, Foreign: pn.Foreign}
 		if p.name == "nauvis" {
 			ter.Groups = append(ter.Groups, mapTypeGroup(line, posted))
 		}
 		for _, c := range p.controls {
-			g := MapGenGroup{ID: "mg-" + p.name + "-" + c.name, Legend: c.legend}
+			g := MapGenGroup{ID: "mg-" + p.name + "-" + c.name, Legend: c.legend, Foreign: c.foreign}
+			for _, o := range c.also {
+				g.Also = append(g.Also, catPlanetName(cat, o))
+			}
 			if c.toggle {
 				g.Toggle = &MapGenCheck{ID: fieldID(p.name, c.name, mgOn), Name: fieldName(p.name, c.name, mgOn),
-					Label: c.legend, Checked: true, Preset: true}
+					Label: c.legend, Checked: true, Preset: true, Shared: len(c.also) > 0}
+				if v, ok := posted(g.Toggle.StartName()); ok && g.Toggle.Shared && (v == "on" || v == "off") {
+					g.Toggle.Start = v
+				}
 				if p.name == "nauvis" && slices.Contains(needed, c.name) {
 					g.Toggle.NeedKey = c.name
 					g.Toggle.Need = needMsgs[c.name]
@@ -748,7 +909,7 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 			for _, s := range c.settings {
 				name := fieldName(p.name, c.name, s.key)
 				sel := MapGenSelect{ID: fieldID(p.name, c.name, s.key), Name: name, Label: s.label,
-					Value: mgDefaultStep, Options: optionsFrequency, invert: s.invert}
+					Value: mgDefaultStep, Options: optionsFrequency, invert: s.invert, Shared: len(c.also) > 0}
 				if !c.topLevel {
 					sel.path = "autoplace_controls." + c.name + "." + s.key
 				}
@@ -758,6 +919,15 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 				// A resource's box stands in for its size's "None", as in the game.
 				if s.none && (!c.toggle || s.key != "size") {
 					sel.Options = optionsWithNone
+				}
+				if v, ok := c.defaultOf(s); ok {
+					// The planet's own default is where the select starts (SPEC 5.6).
+					if code, options := planetDefaultStep(v, s.invert, sel.Options); code != "" {
+						sel.Value, sel.def, sel.Options = code, code, options
+					}
+				}
+				if v, ok := posted(sel.StartName()); ok && sel.Shared && validStep(v, sel.Options) {
+					sel.Start = v
 				}
 				if v, ok := posted(name); ok && c.toggle && s.key == "size" && v == mgNone {
 					// A size of none is the box off, as the game shows it.
@@ -836,13 +1006,13 @@ func allResources(planet string, groups []MapGenGroup) *MapGenAll {
 	return all
 }
 
-// parseMapGenValues reads the posted values into the form and the text of
-// map-gen-settings.json. The form always comes back holding what was posted
-// (except a value the form never offers), with errors on its fields; mapGen
-// is nil when problems is not empty. Form fields win over the raw box for
-// every key they cover (DESIGN 8.7). The result has passed
+// parseMapGenIn reads the posted values into the form laid out from cat and
+// the text of map-gen-settings.json. The form always comes back holding what
+// was posted (except a value the form never offers), with errors on its
+// fields; mapGen is nil when problems is not empty. Form fields win over the
+// raw box for every key they cover (DESIGN 8.7). The result has passed
 // gamesettings.Validate for the line (SPEC 11.2).
-func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
+func parseMapGenIn(vals url.Values, line string, cat mapgen.Catalogue) (form MapGenForm, mapGen []byte, problems []Problem) {
 	posted := func(name string) (string, bool) {
 		vs, ok := vals[name]
 		if !ok || len(vs) == 0 {
@@ -850,7 +1020,7 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 		}
 		return vs[0], true
 	}
-	form = buildMapGenForm(line, spaceAge, posted)
+	form = buildMapGenFormIn(line, cat, posted)
 	form.Peaceful.Checked = vals.Get(mgPeaceful) != ""
 	if form.NoEnemies.Name != "" {
 		form.NoEnemies.Checked = vals.Get(mgNoEnemies) != ""
@@ -882,8 +1052,9 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 		fail(mgSeedID, i18n.M("mapgen.err.unknown"))
 		return form, nil, problems
 	}
+	known := knownFieldsIn(line, cat)
 	for name := range vals {
-		if strings.HasPrefix(name, mgPrefix) && !knownFieldNames[name] {
+		if strings.HasPrefix(name, mgPrefix) && !known(name) {
 			// Never echoed: it is not one of this form's fields.
 			fail(mgSeedID, i18n.M("mapgen.err.unknown"))
 			break
@@ -940,6 +1111,9 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 		for _, fe := range fes {
 			fail(mgRawID, rawErrorMsg(fe, form.Raw.Value))
 		}
+	}
+	for _, p := range form.resolveShared() {
+		fail(p.FieldID, p.Message)
 	}
 	form.setOpen("")
 	if len(problems) > 0 {
@@ -1090,6 +1264,87 @@ func (f MapGenForm) resourceOn(planet, control string) bool {
 	return true
 }
 
+// sourceOf is the planet whose copy of a control's setting is written.
+func (f MapGenForm) sourceOf(planet, control, key string) string {
+	if p, ok := f.source[control+"."+key]; ok {
+		return p
+	}
+	return planet
+}
+
+// sharedCopy is one planet's field of a shared control's setting.
+type sharedCopy struct {
+	planet, value, start string
+	id                   string
+}
+
+// resolveShared chooses, for each setting of a control on several planets,
+// the copy that is written: the one the user moved from where the form
+// started it, else the first planet's. Copies moved to different values are
+// an error that names their planets, as no copy can be guessed (SPEC 5.6).
+func (f *MapGenForm) resolveShared() []Problem {
+	f.source = map[string]string{}
+	copies := map[string][]sharedCopy{}
+	var order []string
+	legends := map[string]i18n.Msg{}
+	add := func(key string, c sharedCopy, legend i18n.Msg) {
+		if _, ok := copies[key]; !ok {
+			order = append(order, key)
+			legends[key] = legend
+		}
+		copies[key] = append(copies[key], c)
+	}
+	for _, p := range f.Resources {
+		f.sharedOf(p, add)
+	}
+	for _, p := range f.Terrain {
+		f.sharedOf(p, add)
+	}
+	var problems []Problem
+	for _, key := range order {
+		var moved []sharedCopy
+		for _, c := range copies[key] {
+			if c.value != c.start {
+				moved = append(moved, c)
+			}
+		}
+		if len(moved) == 0 {
+			continue
+		}
+		if slices.ContainsFunc(moved, func(c sharedCopy) bool { return c.value != moved[0].value }) {
+			msg := i18n.M("mapgen.err.shared", "control", legends[key],
+				"first", catPlanetName(f.cat, moved[0].planet).Name, "second", catPlanetName(f.cat, moved[1].planet).Name)
+			for _, c := range moved {
+				problems = append(problems, Problem{FieldID: c.id, Message: msg})
+			}
+			continue
+		}
+		f.source[key] = moved[0].planet
+	}
+	return problems
+}
+
+// sharedOf hands add the shared fields of one planet's groups.
+func (f *MapGenForm) sharedOf(p MapGenPlanet, add func(string, sharedCopy, i18n.Msg)) {
+	for gi := range p.Groups {
+		g := &p.Groups[gi]
+		control := strings.TrimPrefix(g.ID, "mg-"+p.Planet+"-")
+		if t := g.Toggle; t != nil && t.Shared {
+			value := "off"
+			if t.Checked {
+				value = "on"
+			}
+			add(control+"."+mgOn, sharedCopy{p.Planet, value, cmp.Or(t.Start, "on"), t.ID}, g.Legend)
+		}
+		for _, s := range g.Selects {
+			if s.Shared {
+				key := s.Name[strings.LastIndex(s.Name, ".")+1:]
+				add(control+"."+key, sharedCopy{p.Planet, s.Value, cmp.Or(s.Start, s.def, mgDefaultStep), s.ID}, g.Legend)
+			}
+		}
+	}
+}
+
 // num writes a multiplier without float noise.
 func num(v float64) json.RawMessage {
 	v = math.Round(v*1e9) / 1e9
@@ -1162,7 +1417,7 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 
 	// A setting's multiplier as the file stores it.
 	stored := func(planet string, c mgControl, s mgSetting) float64 {
-		v, _ := stepValue(chosen[fieldName(planet, c.name, s.key)])
+		v, _ := codeValue(chosen[fieldName(planet, c.name, s.key)])
 		if s.invert && v != 0 {
 			v = 1 / v
 		}
@@ -1181,7 +1436,7 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 	var controlOrder []jsonMember
 	water := map[string]json.RawMessage{} // 1.1 only: stored outside autoplace_controls
 	cliff := map[string]json.RawMessage{}
-	for _, p := range mgPlanets(f.line, f.spaceAge) {
+	for _, p := range mgPlanets(f.line, f.cat) {
 		for _, c := range p.controls {
 			switch {
 			case c.topLevel && c.isWater():
@@ -1203,10 +1458,15 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 					}
 					entry = asMap(ms)
 				}
-				for _, s := range c.settings {
-					entry[s.key] = num(stored(p.name, c, s))
+				if known[c.name] {
+					// A control shared between planets is one value, written
+					// once from the copy resolveShared chose (SPEC 5.6).
+					continue
 				}
-				if c.toggle && !f.resourceOn(p.name, c.name) {
+				for _, s := range c.settings {
+					entry[s.key] = num(stored(f.sourceOf(p.name, c.name, s.key), c, s))
+				}
+				if c.toggle && !f.resourceOn(f.sourceOf(p.name, c.name, mgOn), c.name) {
 					// The game's own off value; frequency 0 crashes 2.1.
 					entry["size"] = num(0)
 				}

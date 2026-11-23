@@ -1,5 +1,6 @@
 import { test, expect, createAdmin, seedWorld, seedSecond, image21 } from "./foreman.js";
 import type { Locator, Page } from "@playwright/test";
+import { openNewMap } from "./newmap.js";
 
 // A bar stuck to the window's foot never hides the keyboard focus: the page's
 // scroll-padding scrolls a focused control clear of it (WCAG 2.4.11, DESIGN 6
@@ -77,7 +78,7 @@ test("Generate's action bar never covers the focused control", async ({ page, fo
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
-  await page.goto("/generate");
+  await openNewMap(page);
   await tabsClearOf(page, await markBar(page.locator(".generate > .gen-actions")));
 });
 
@@ -122,6 +123,8 @@ test("the phone Console command bar never covers the focused control", async ({ 
 // behind it (WCAG 2.4.11, DESIGN 6, Shell).
 test("the status strip never covers a control reached with Shift+Tab", async ({ page, foreman, fakeGame }) => {
   test.skip((page.viewportSize()?.width ?? 0) < 1024, "the strip sticks from 64rem only");
+  // Step 1 of Generate is short, so a low window gives it room to scroll.
+  await page.setViewportSize({ width: page.viewportSize()!.width, height: 360 });
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });

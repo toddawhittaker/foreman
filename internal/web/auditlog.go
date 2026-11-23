@@ -71,6 +71,7 @@ var auditActionWords = map[string]i18n.Msg{
 	AuditClone:                i18n.M("audit.action.clone"),
 	AuditWhitelistSwitch:      i18n.M("audit.action.whitelist-switch"),
 	AuditGenerate:             i18n.M("audit.action.generate"),
+	AuditNewMap:               i18n.M("audit.action.new-map"),
 	AuditTokenCreate:          i18n.M("audit.action.token-create"),
 	AuditTokenRenew:           i18n.M("audit.action.token-renew"),
 	AuditTokenRevoke:          i18n.M("audit.action.token-revoke"),

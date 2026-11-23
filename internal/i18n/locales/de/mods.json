@@ -447,5 +447,8 @@
   "mods.plan_panel.warn.space_age": "Braucht Space Age, das in dieser Welt aus ist",
   "mods.plan_panel.warn.other": "Nicht planbar; die Prüfung zeigt den Grund",
   "mods.plan_panel.bad_name": "Das ist kein Mod-Name, den Foreman hinzufügen kann. Suche die Mod und wähle dann + daneben.",
-  "mods.plan_panel.wait": "Die Prüfung ist bereit, sobald der Plan aktualisiert ist."
+  "mods.plan_panel.wait": "Die Prüfung ist bereit, sobald der Plan aktualisiert ist.",
+  "mods.flow.generated": "{name} ist erstellt. Wähle als Nächstes ihre Mods oder springe zu den Karteneinstellungen.",
+  "mods.flow.skip": "Zu den Karteneinstellungen springen",
+  "mods.flow.next": "Weiter: Karteneinstellungen"
 }
