@@ -12253,6 +12253,15 @@ main:has(> .public-world) {
   white-space: nowrap;
 }
 
+/* A wiki icon is the height of the text line, so a page does not move
+   while it loads; a failed load swaps in the name. */
+.rt-obj-icon {
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  object-fit: contain;
+  vertical-align: -0.25em;
+}
+
 .rt-icon {
   display: inline-block;
   inline-size: 1em;

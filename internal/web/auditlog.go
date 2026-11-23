@@ -93,6 +93,7 @@ var auditActionWords = map[string]i18n.Msg{
 	AuditSaveUploadLimitSet:   i18n.M("audit.action.save-upload-limit-set"),
 	AuditModUploadLimitSet:    i18n.M("audit.action.mod-upload-limit-set"),
 	AuditUpdateCheckSet:       i18n.M("audit.action.update-check-set"),
+	AuditWikiIconsSet:         i18n.M("audit.action.wiki-icons-set"),
 	AuditWorldExport:          i18n.M("audit.action.world-export"),
 	AuditWorldImport:          i18n.M("audit.action.world-import"),
 }

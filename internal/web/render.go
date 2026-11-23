@@ -6,7 +6,6 @@ import (
 	"embed"
 	"encoding/hex"
 	"fmt"
-	"github.com/toddawhittaker/foreman/internal/modsettings"
 	"html/template"
 	"io"
 	"io/fs"
@@ -22,6 +21,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/modsettings"
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -699,6 +699,10 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	if err := t.ExecuteTemplate(&buf, layout, v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)
 	}
+	page := buf.Bytes()
+	if wikiIconsOf(req) && !public {
+		page = modsettings.ShowWikiIcons(page)
+	}
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	// Pages can show who is signed in; the back button after sign-out must
@@ -706,12 +710,16 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	if !public {
 		h.Set("Cache-Control", "no-store")
 	}
-	// Pages carry sign-in forms, so no other site may frame them.
+	// Pages carry sign-in forms, so no other site may frame them. Images
+	// load from Foreman and data: URLs only, and from the wiki while the
+	// admin's setting is on (SPEC 14.10); a public page never uses it.
 	setFrameRefusal(h)
+	wiki := wikiIconsOf(req) && !public
+	h.Set("Content-Security-Policy", pageCSP(wiki))
 	// The language follows a cookie and the request's Accept-Language.
 	h.Set("Vary", "Cookie, Accept-Language")
 	w.WriteHeader(status)
-	_, err = buf.WriteTo(w)
+	_, err = w.Write(page)
 	return err
 }
 

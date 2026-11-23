@@ -3051,7 +3051,7 @@ they were created. (P1)
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
 default stop countdown, audit retention, the two upload limits and the
-update check (the General tab, below), scheduled restarts, notifications, the public
+update check and the wiki icons switch (the General tab, below), scheduled restarts, notifications, the public
 mods page (9.16), MCP access (21.2), and portal credentials when not set
 by environment. Each shows where its value comes from (environment or
 UI), and environment values cannot be changed in the UI. (P0 for those
@@ -3064,7 +3064,7 @@ the factorio.com account. The Settings link in the main navigation opens
 General.
 
 **The General tab** (`/settings/general`) holds five number settings and
-one switch. None has an
+two switches. None has an
 environment form, so each says "set here". A bad value refuses the whole
 form and stores nothing. (Todd's rulings, 2026-11-18.)
 
@@ -3076,13 +3076,16 @@ form and stores nothing. (Todd's rulings, 2026-11-18.)
 | Save upload limit (14.6), MB | 100 to 8192 | 1024 | `save-upload-limit-set` |
 | Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 200 | `mod-upload-limit-set` |
 | Check GitHub for new Foreman versions (14.10) | on or off | on | `update-check-set` |
+| Show game icons from the Factorio wiki (14.10) | on or off | off | `wiki-icons-set` |
 
 A scheduled restart keeps its fixed countdown (7.12). The upload limits are
 in whole MB, meaning MiB, as the pages say them. A stored value that is
 missing, unreadable or out of range gives the default. The switch is a
 checkbox; its audit detail reads "from on to off" or "from off to on".
 Turning it off stops the check and hides any notice at once; turning it
-on checks at once, in the background. These settings are also read and
+on checks at once, in the background. The wiki icons switch is off by
+default and reads "Show game icons from the Factorio wiki (your browser
+contacts wiki.factorio.com)"; what it does is in 14.10. These settings are also read and
 changed through MCP (21.7, 21.8). (P1)
 
 ## 14. Security
@@ -3102,7 +3105,7 @@ reviews against.
 | VPN sidecar | An optional container the operator runs, whose network the game shares (4.13) | Nothing; Foreman did not create it (14.16) |
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
 | Identity provider | The OIDC provider an operator configured (12.7) | Only the ID tokens it signs for this client; nothing else it sends |
-| Internet | Mod portal, image registry and its tag list, release list, GitHub's latest Foreman release, webhook targets | Nothing |
+| Internet | Mod portal, image registry and its tag list, release list, GitHub's latest Foreman release, webhook targets; the Factorio wiki, which only a viewer's browser contacts, and only when an admin turns on its icons (14.10) | Nothing |
 | AI client | A program, usually an AI assistant, calling the MCP endpoint with an API token (section 21) | Only its token's scope; steerable by text it reads (14.12) |
 | Player | Anyone who can reach the public mods page (9.16) | Nothing; may be a script |
 
@@ -3305,9 +3308,10 @@ supplies (setting names, descriptions, mod titles and summaries) keeps a
 safe subset of the game's rich text, parsed on the server and rebuilt from
 an allowed list: bold fonts as bold, the game's named colours as theme
 colours (hex and r,g,b colours as plain text), object tags as the object's
-name made readable, the game's warning and info sprites as Foreman's own
+name made readable (or, when an admin has turned wiki icons on, its icon,
+14.10), the game's warning and info sprites as Foreman's own
 icons with text for screen readers, a key-binding macro as the action's
-name (never a key), and an escaped line break as a break in descriptions.
+name (never a key), any other macro as its name made readable, and an escaped line break as a break in descriptions.
 No text, attribute or class from the mod reaches the page unescaped;
 unknown or unmatched tags and a lone `[` stay as literal text. A mod's
 `.cfg` locale file is at most 1 MiB, and 8 MiB per language across mods. A
@@ -3410,6 +3414,23 @@ About links to the release page built from that version, never to an
 address GitHub sent. The answer is kept in memory only. A failure logs one
 warning line and shows nothing. About names the release only when it is
 strictly newer than the running build's major.minor.patch (P1).
+Game icons from the wiki are the one request a viewer's browser makes
+that Foreman does not. They are off until an admin turns on the switch in
+13.1. Then an object tag in mod text (`[item=space-science-pack]`) is an
+`<img>` whose address is `https://wiki.factorio.com/images/<Name>.png`,
+where Name is the prototype name with its first letter capitalised and
+hyphens turned into underscores. The address is built only from a
+prototype name that matches `^[a-z0-9_-]+$`, cut at the first comma, so
+no other mod text reaches it; any other name shows as its readable name.
+The image carries `referrerpolicy="no-referrer"`, so the wiki is not told
+the page's address, and `loading="lazy"`. Its `alt` text is the object's
+name, and a failed load (offline, a renamed wiki file, a blocked request)
+swaps the image for that name, so a broken image never shows. Foreman never
+fetches, stores or proxies an icon, and sends no request to the wiki. The
+page's `Content-Security-Policy` is `frame-ancestors 'none'; img-src 'self'
+data:`, plus `https://wiki.factorio.com` after `data:` only while the switch
+is on, and never on a public page. A switch that cannot be read counts as
+off (P1).
 The mod portal's base is fixed at `https://mods.factorio.com`; there is no
 setting for it. Its API calls take at most 10 seconds, follow no redirects,
 and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
