@@ -15,3 +15,9 @@ const (
 //
 //go:embed control.lua
 var Control []byte
+
+// DataFinalFixes is the mod's data-final-fixes.lua, which exports icon paths
+// for control.lua to write (ADR 0036).
+//
+//go:embed data-final-fixes.lua
+var DataFinalFixes []byte
