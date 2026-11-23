@@ -44,6 +44,12 @@ func TestStripRichTextCutsToLimit(t *testing.T) {
 	}
 }
 
+// obj is how an object tag with a valid prototype name renders: its readable
+// name in a span that carries the wiki image file (SPEC 14.10).
+func obj(file, text string) string {
+	return `<span class="rt-obj" data-wiki="` + file + `">` + text + `</span>`
+}
+
 // TestRichTextHTML pins the safe subset of the game's rich text that mod
 // text keeps (SPEC 14.6).
 func TestRichTextHTML(t *testing.T) {
@@ -71,27 +77,35 @@ func TestRichTextHTML(t *testing.T) {
 		{"rgb", "[color=1,0.5,0]X[/color]", false, "X"},
 		{"muluna", "[color=red][font=heading-2]Hard[/font][/color] Restrict", false,
 			`<span class="rt-danger"><strong>Hard</strong></span> Restrict`},
-		{"item", "requires [item=space-science-pack]", false, "requires Space science pack"},
-		{"technology", "[technology=interstellar-science-pack]", false, "Interstellar science pack"},
-		{"planet", "[planet=muluna]", false, "Muluna"},
-		{"fluid", "[fluid=heavy-oil]", false, "Heavy oil"},
-		{"entity", "[entity=iron-ore]", false, "Iron ore"},
-		{"recipe", "[recipe=a_b]", false, "A b"},
-		{"space location", "[space-location=solar-system-edge]", false, "Solar system edge"},
+		{"item", "requires [item=space-science-pack]", false, "requires " + obj("Space_science_pack", "Space science pack")},
+		{"technology", "[technology=interstellar-science-pack]", false, obj("Interstellar_science_pack", "Interstellar science pack")},
+		{"planet", "[planet=muluna]", false, obj("Muluna", "Muluna")},
+		{"fluid", "[fluid=heavy-oil]", false, obj("Heavy_oil", "Heavy oil")},
+		{"entity", "[entity=iron-ore]", false, obj("Iron_ore", "Iron ore")},
+		{"recipe", "[recipe=a_b]", false, obj("A_b", "A b")},
+		{"space location", "[space-location=solar-system-edge]", false, obj("Solar_system_edge", "Solar system edge")},
 		{"virtual signal", "[virtual-signal=signal-A]", false, "Signal A"},
-		{"tile", "[tile=landfill]", false, "Landfill"},
+		{"tile", "[tile=landfill]", false, obj("Landfill", "Landfill")},
 		{"warning img", "[img=utility/warning_icon] Hot", false,
 			`<span class="rt-icon rt-icon--warning" role="img" aria-label="Warning"></span> Hot`},
 		{"info img", "[img=utility/info]", false, `<span class="rt-icon rt-icon--info" role="img" aria-label="Note"></span>`},
 		{"other utility img", "[img=utility/side_menu]x", false, "x"},
-		{"object img", "[img=item/iron-plate]", false, "Iron plate"},
+		{"object img", "[img=item/iron-plate]", false, obj("Iron_plate", "Iron plate")},
 		{"bare img", "[img=thing]x", false, "x"},
 		{"space age", "[space-age] only", false, "Space Age only"},
 		{"escaped newline, multiline", `a\nb`, true, "a<br>b"},
 		{"real newline, multiline", "a\nb", true, "a<br>b"},
 		{"escaped newline, one line", `a\nb`, false, "a b"},
-		{"control", "Press __CONTROL__toggle-driving__", false, `Press <kbd class="rt-key">Toggle driving</kbd>`},
-		{"other macro", "on __PLANET__nauvis__ x __1__", false, "on  x "},
+		{"control", "Press __CONTROL__toggle-driving__", false, `Press <span class="rt-key">Toggle driving</span>`},
+		{"alt control", "Press __ALT_CONTROL__1__toggle-driving__ now", false, `Press <span class="rt-key">Toggle driving</span> now`},
+		{"control click", "__CONTROL_LEFT_CLICK__build__", false, `<span class="rt-key">Build</span>`},
+		{"other macro", "on __PLANET__nauvis__ x __1__", false, "on Nauvis x "},
+		{"macro with text after", "Mined on __PLANET__nauvis__ only", false, "Mined on Nauvis only"},
+		{"object with quality", "[item=iron-plate,quality=rare]", false, obj("Iron_plate", "Iron plate")},
+		{"object with only parameters", "[item=,quality=rare]", false, "[item=,quality=rare]"},
+		{"dot img", "[img=item.iron-plate]", false, obj("Iron_plate", "Iron plate")},
+		{"dot img with extra dot", "[img=item.iron.plate]x", false, "x"},
+		{"dot utility img", "[img=utility.warning_icon]", false, `<span class="rt-icon rt-icon--warning" role="img" aria-label="Warning"></span>`},
 		{"nested", "[color=red]a[font=default-bold]b[/font]c[/color]", false,
 			`<span class="rt-danger">a<strong>b</strong>c</span>`},
 		{"unclosed closes at the end", "[color=red][font=default-bold]x", false,

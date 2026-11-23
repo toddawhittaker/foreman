@@ -75,6 +75,13 @@ func (s *server) generalConfirmPage(ctx context.Context, r *http.Request, want m
 	if was := s.readBool(ctx, settingUpdateCheck); was != wantCheck {
 		p.Changes = append(p.Changes, GeneralChange{Label: i18n.M(settingUpdateCheck.Label), From: switchWord(was), To: switchWord(wantCheck)})
 	}
+	wantIcons := r.PostFormValue(settingWikiIcons.Key) == "on"
+	if wantIcons {
+		p.Hidden = append(p.Hidden, GeneralHidden{Name: settingWikiIcons.Key, Value: "on"})
+	}
+	if was := s.readBool(ctx, settingWikiIcons); was != wantIcons {
+		p.Changes = append(p.Changes, GeneralChange{Label: i18n.M(settingWikiIcons.Label), From: switchWord(was), To: switchWord(wantIcons)})
+	}
 	p.Hidden = append(p.Hidden,
 		GeneralHidden{Name: trimSnapshotsField, Value: strconv.Itoa(snapshots)},
 		GeneralHidden{Name: trimWorldsField, Value: strconv.Itoa(worlds)})

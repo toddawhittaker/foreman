@@ -49,8 +49,37 @@ type RichTextIcons struct {
 // richTagRE matches one rich-text tag at the start of the input.
 var richTagRE = regexp.MustCompile(`^\[(/?)([a-zA-Z][a-zA-Z0-9_-]*)(?:=([^\[\]]*))?\]`)
 
-// macroRE matches a locale macro: __CONTROL__toggle-driving__, __1__.
-var macroRE = regexp.MustCompile(`^__(?:([A-Z][A-Z_]*?)__([a-zA-Z0-9_-]+)|[0-9]+)__`)
+// macroRE matches a locale macro: __CONTROL__toggle-driving__, __1__. The
+// argument stops at the first "__", so a modifier form such as
+// __ALT_CONTROL__1__toggle-driving__ is read in two steps (see parseMacro).
+var macroRE = regexp.MustCompile(`^__(?:([A-Z][A-Z_]*?)__([a-zA-Z0-9_-]+?)|[0-9]+)__`)
+
+// macroNameRE matches the action name that follows a modifier's number.
+var macroNameRE = regexp.MustCompile(`^([a-zA-Z0-9_-]+?)__`)
+
+// parseMacro reads a locale macro at the start of s. It returns the
+// macro's text length, its kind (CONTROL, PLANET, ...) and its name; both
+// are empty for a numbered placeholder such as __1__.
+func parseMacro(s string) (n int, kind, name string, ok bool) {
+	m := macroRE.FindStringSubmatch(s)
+	if m == nil {
+		return 0, "", "", false
+	}
+	n, kind, name = len(m[0]), m[1], m[2]
+	// __ALT_CONTROL__1__toggle-driving__: a number, then the action.
+	if name != "" && strings.Trim(name, "0123456789") == "" {
+		if rest := macroNameRE.FindStringSubmatch(s[n:]); rest != nil {
+			n, name = n+len(rest[0]), rest[1]
+		}
+	}
+	return n, kind, name, true
+}
+
+// isControl reports whether a macro kind names a key binding's action:
+// CONTROL, CONTROL_LEFT_CLICK, ALT_CONTROL and the like.
+func isControl(kind string) bool {
+	return kind == "CONTROL" || strings.HasPrefix(kind, "CONTROL_") || strings.HasSuffix(kind, "_CONTROL")
+}
 
 // objectTags are the tags that name a game object by its prototype name.
 var objectTags = map[string]bool{
@@ -80,17 +109,30 @@ func Readable(name string) string {
 }
 
 // objectHTML is how an object tag ([item=space-science-pack]) shows: its
-// name made readable, escaped. Every object tag goes through here.
-func objectHTML(kind, name string) string {
-	return html.EscapeString(Readable(name))
+// name made readable, escaped. A valid prototype name also carries its wiki
+// image file, which the page turns into an image when an admin has turned
+// that on (SPEC 14.10). Every object tag goes through here.
+func objectHTML(name string) string {
+	// [item=iron-plate,quality=rare] names iron-plate; the rest is for the game.
+	name, _, _ = strings.Cut(name, ",")
+	text := escapedReadable(name)
+	if file, ok := WikiIconFile(name); ok {
+		return objectMarker(file, text)
+	}
+	return text
 }
 
 // iconHTML is how an [img=type/name] tag shows: Foreman's own icon for the
 // game's warning and info sprites, the object's name for type/name, else
 // nothing.
 func iconHTML(path string, icons RichTextIcons) string {
-	kind, name, ok := strings.Cut(path, "/")
-	if !ok || name == "" || strings.Contains(name, "/") {
+	// The game writes [img=item/iron-plate] and [img=item.iron-plate].
+	i := strings.IndexAny(path, "/.")
+	if i < 0 {
+		return ""
+	}
+	kind, name := path[:i], path[i+1:]
+	if name == "" || strings.ContainsAny(name, "/.") {
 		return ""
 	}
 	if kind == "utility" {
@@ -102,7 +144,7 @@ func iconHTML(path string, icons RichTextIcons) string {
 		}
 		return ""
 	}
-	return objectHTML(kind, name)
+	return objectHTML(name)
 }
 
 // RichTextHTML renders a resolved localised string from a mod as HTML,
@@ -136,11 +178,15 @@ func RichTextHTML(s string, multiline bool, icons RichTextIcons) template.HTML {
 			}
 			continue
 		case strings.HasPrefix(s, "__"):
-			if m := macroRE.FindStringSubmatch(s); m != nil {
-				if m[1] == "CONTROL" {
-					b.WriteString(`<kbd class="rt-key">` + html.EscapeString(Readable(m[2])) + "</kbd>")
+			if n, kind, name, ok := parseMacro(s); ok {
+				switch {
+				case isControl(kind):
+					// An action's name, not a key: the player may have rebound it.
+					b.WriteString(`<span class="rt-key">` + html.EscapeString(Readable(name)) + "</span>")
+				case name != "":
+					b.WriteString(html.EscapeString(Readable(name)))
 				}
-				s = s[len(m[0]):]
+				s = s[n:]
 				continue
 			}
 		}
@@ -182,8 +228,8 @@ func richTag(b *strings.Builder, m []string, open, tags *[]string, icons RichTex
 			end = "</strong>"
 		}
 		*open, *tags = append(*open, end), append(*tags, name)
-	case objectTags[name] && hasValue && value != "":
-		b.WriteString(objectHTML(name, value))
+	case objectTags[name] && hasValue && value != "" && !strings.HasPrefix(value, ","):
+		b.WriteString(objectHTML(value))
 	case name == "img" && hasValue:
 		b.WriteString(iconHTML(value, icons))
 	case name == "space-age" && !hasValue:

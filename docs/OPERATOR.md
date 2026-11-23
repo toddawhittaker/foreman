@@ -1387,6 +1387,7 @@ one says "Set here"; nothing in the environment sets or overrides them.
 | Largest save upload (MB) | 100 to 8192 | 1024 (1 GB) |
 | Largest mod upload (MB) | 10 to 2048 | 1024 |
 | Check GitHub for new Foreman versions | on or off | on |
+| Show game icons from the Factorio wiki | on or off | off |
 
 - **Check GitHub for new Foreman versions.** About a minute after it
   starts, and then every 6 hours, Foreman asks `api.github.com` for its
@@ -1397,6 +1398,19 @@ one says "Set here"; nothing in the environment sets or overrides them.
   **Save settings**: Foreman then makes no request to GitHub. If your
   network blocks GitHub, the check fails quietly with one warning line in
   the log.
+- **Show game icons from the Factorio wiki.** Mod text can name items,
+  fluids and other game objects, such as `[item=space-science-pack]`.
+  Foreman shows their names. Tick this box and each name becomes the
+  game's icon, loaded from `wiki.factorio.com`. Foreman does not make that
+  request: each viewer's browser does, so every person who opens a page
+  with such text contacts the wiki, which then sees their address. The
+  request sends no `Referer`, so the wiki is not told your Foreman address.
+  Foreman never downloads or stores the icons. While the box is ticked,
+  Foreman's pages also allow images from `https://wiki.factorio.com` in
+  their `Content-Security-Policy`; unticked, they allow only Foreman's
+  own. If a viewer's browser cannot reach the wiki, the name shows instead.
+  Leave this off on an offline install, or wherever you do not want your
+  people's browsers to contact an outside site.
 - **Automatic snapshots to keep.** Each world keeps this many of its newest
   automatic snapshots. Manual snapshots are not removed by it. Lowering it
   deletes nothing when you save. Each world drops its extra automatic

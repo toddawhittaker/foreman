@@ -20,7 +20,7 @@ import (
 // generalDoneSaved is the result the page reports after a save.
 const generalDoneSaved = "saved"
 
-// The audit actions of the five settings, with the detail "from A to B".
+// The audit actions of the settings, with the detail "from A to B".
 const (
 	AuditSnapshotRetentionSet = "snapshot-retention-set"
 	AuditStopCountdownSet     = "stop-countdown-set"
@@ -28,6 +28,7 @@ const (
 	AuditSaveUploadLimitSet   = "save-upload-limit-set"
 	AuditModUploadLimitSet    = "mod-upload-limit-set"
 	AuditUpdateCheckSet       = "update-check-set"
+	AuditWikiIconsSet         = "wiki-icons-set"
 )
 
 // intSetting describes one whole-number app setting. Key is the name the
@@ -75,6 +76,12 @@ type boolSetting struct {
 // on or off (SPEC 13.1, 14.10).
 var settingUpdateCheck = boolSetting{Name: "update_check", Key: "update_check", Default: true, Action: AuditUpdateCheckSet,
 	Label: "general.updates.label"}
+
+// settingWikiIcons shows the game's icons from the Factorio wiki in mod
+// text. Off by default: turned on, a page makes the viewer's browser contact
+// wiki.factorio.com (SPEC 13.1, 14.10).
+var settingWikiIcons = boolSetting{Name: "wiki_icons", Key: "wiki_icons", Default: false, Action: AuditWikiIconsSet,
+	Label: "general.icons.label"}
 
 // readBoolSetting reads a switch from the store. A missing row gives the
 // default; a failed read or an unknown value gives the default too.
@@ -352,7 +359,9 @@ type GeneralPage struct {
 	SnapshotRetention, StopCountdown, AuditRetention, SaveUpload, ModUpload GeneralField
 	// UpdateCheck is the switch for the check for a newer Foreman release.
 	UpdateCheck bool
-	Saved       bool
+	// WikiIcons is the switch for game icons from the Factorio wiki.
+	WikiIcons bool
+	Saved     bool
 	// Trim is what the saved retention will remove at the next automatic
 	// snapshots; Trims is false when nothing will go or it could not be read.
 	Trim  trimCount
@@ -414,6 +423,7 @@ func (s *server) generalPage(ctx context.Context) GeneralPage {
 	}
 	p.Trim, p.Trims = t, err == nil && t.Snapshots > 0
 	p.UpdateCheck = s.readBool(ctx, settingUpdateCheck)
+	p.WikiIcons = s.readBool(ctx, settingWikiIcons)
 	return p
 }
 
@@ -436,6 +446,7 @@ func (s *server) handleGeneralSave(w http.ResponseWriter, r *http.Request, u sto
 	p := s.generalPage(ctx)
 	want := map[string]int{}
 	p.UpdateCheck = r.PostFormValue(settingUpdateCheck.Key) == "on"
+	p.WikiIcons = r.PostFormValue(settingWikiIcons.Key) == "on"
 	for _, d := range generalSettings {
 		f := p.field(d.Key)
 		f.Value = r.PostFormValue(d.Key)
@@ -469,5 +480,9 @@ func (s *server) handleGeneralSave(w http.ResponseWriter, r *http.Request, u sto
 		return
 	}
 	s.updateCheckSaved(changed, p.UpdateCheck)
+	if _, err := s.setBoolSetting(ctx, actor(u), settingWikiIcons, p.WikiIcons); err != nil {
+		s.fail(w, r, "save the general settings", err)
+		return
+	}
 	http.Redirect(w, r, generalPath()+"?done="+generalDoneSaved, http.StatusSeeOther)
 }

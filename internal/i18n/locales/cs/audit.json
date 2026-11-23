@@ -47,6 +47,7 @@
   "audit.action.webhook-change": "Webhook změněn",
   "audit.action.webhook-delete": "Webhook smazán",
   "audit.action.whitelist-switch": "Seznam povolených zapnut nebo vypnut",
+  "audit.action.wiki-icons-set": "Ikony hry z wiki zapnuty nebo vypnuty",
   "audit.action.world-archive": "Svět archivován",
   "audit.action.world-delete": "Svět smazán",
   "audit.action.world-export": "Svět exportován",
