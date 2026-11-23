@@ -25,8 +25,12 @@ func (s *server) fragmentStatus(w http.ResponseWriter, r *http.Request, status i
 		s.fail(w, r, "render "+name, err)
 		return
 	}
-	// Object markers become wiki images when the setting is on, as in a whole page.
+	// Object markers become the mod's own icon, or wiki images when the
+	// setting is on, as in a whole page.
 	body := []byte(b.String())
+	if id, idx, ok := modIconsOf(r); ok {
+		body = modsettings.ShowModIcons(body, id, idx)
+	}
 	if wikiIconsOf(s.readWikiIcons(r)) {
 		body = modsettings.ShowWikiIcons(body)
 	}

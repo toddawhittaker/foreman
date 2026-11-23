@@ -264,6 +264,7 @@ func (s *server) handleModSettingsPage(w http.ResponseWriter, r *http.Request, u
 			}
 			p = ModSettingsPage{World: sum, Loaded: true, HasFile: p.HasFile, RunError: i18n.M("mods.settings.edit.run.failed")}
 		}
+		r = s.withWorldIcons(r, sum.ID)
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
@@ -284,7 +285,7 @@ func (s *server) handleModSettingsForm(w http.ResponseWriter, r *http.Request, u
 		p = ModSettingsPage{World: sum, Loaded: true, HasFile: p.HasFile, RunError: i18n.M("mods.settings.edit.run.failed")}
 	}
 	p.Fragment = true
-	s.fragment(w, r, p, "modsettings-form")
+	s.fragment(w, s.withWorldIcons(r, sum.ID), p, "modsettings-form")
 }
 
 // settingsState is what a post needs beyond the page: the world's file
@@ -718,6 +719,7 @@ func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u
 		s.fail(w, r, "read the mod settings", err)
 		return
 	}
+	r = s.withWorldIcons(r, sum.ID)
 	if !p.RunError.IsZero() {
 		s.page(w, r, http.StatusBadGateway, u.Username, p)
 		return

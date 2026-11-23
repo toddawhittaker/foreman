@@ -139,13 +139,15 @@ func Readable(name string) string {
 // objectHTML is how an object tag ([item=space-science-pack]) shows: its
 // name made readable, escaped. A valid prototype name also carries its wiki
 // image file, which the page turns into an image when an admin has turned
-// that on (SPEC 14.10). Every object tag goes through here.
-func objectHTML(name string) string {
+// that on (SPEC 14.10). kind is the tag's name, or the kind of an [img] path;
+// it also lets the page show the mod's own icon. Every object tag goes through
+// here.
+func objectHTML(kind, name string) string {
 	// [item=iron-plate,quality=rare] names iron-plate; the rest is for the game.
 	name, _, _ = strings.Cut(name, ",")
 	text := html.EscapeString(Readable(name))
 	if file, ok := WikiIconFile(name); ok {
-		return objectMarker(file, text)
+		return objectMarker(file, kind, name, text)
 	}
 	return text
 }
@@ -172,7 +174,7 @@ func iconHTML(path string, icons RichTextIcons) string {
 		}
 		return ""
 	}
-	return objectHTML(name)
+	return objectHTML(kind, name)
 }
 
 // RichTextHTML renders a resolved localised string from a mod as HTML,
@@ -264,7 +266,7 @@ func richTag(b *strings.Builder, m []string, open, tags *[]string, icons RichTex
 		}
 		*open, *tags = append(*open, end), append(*tags, name)
 	case objectTags[name] && hasValue && value != "" && !strings.HasPrefix(value, ","):
-		b.WriteString(objectHTML(value))
+		b.WriteString(objectHTML(name, value))
 	case name == "img" && hasValue:
 		b.WriteString(iconHTML(value, icons))
 	case name == "space-age" && !hasValue:

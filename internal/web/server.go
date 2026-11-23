@@ -270,6 +270,7 @@ func (s *server) routes() {
 	s.accountRoutes()
 	s.aboutRoutes()
 	s.modRoutes()
+	s.modIconRoutes()
 	s.designRoutes()
 	s.publicModsRoutes()
 	s.publicModsPageRoutes()

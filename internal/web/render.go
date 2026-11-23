@@ -702,6 +702,10 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	page := buf.Bytes()
 	// A public page never uses wiki icons (SPEC 14.10).
 	wiki := wikiIconsOf(req) && !public
+	// A mod's own icon comes first; the wiki's picks up the rest (SPEC 14.10).
+	if id, idx, ok := modIconsOf(req); ok && !public {
+		page = modsettings.ShowModIcons(page, id, idx)
+	}
 	if wiki {
 		page = modsettings.ShowWikiIcons(page)
 	}
@@ -717,6 +721,12 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	// admin's setting is on (SPEC 14.10); a public page never uses it.
 	setFrameRefusal(h)
 	h.Set("Content-Security-Policy", pageCSP(wiki))
+	// The star map's wiki pictures are SVG images, which cannot carry a
+	// referrer policy of their own, so while the wiki setting is on the whole
+	// page sends none (SPEC 14.10).
+	if wiki {
+		h.Set("Referrer-Policy", "no-referrer")
+	}
 	// The language follows a cookie and the request's Accept-Language.
 	h.Set("Vary", "Cookie, Accept-Language")
 	w.WriteHeader(status)
