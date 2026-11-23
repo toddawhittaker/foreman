@@ -233,8 +233,11 @@ func TestStarMapAndIconsWithTheFakePlanetMod(t *testing.T) {
 	if p, _ := m.Location(fakegame.FakePlanet); !p.HasIcon {
 		t.Errorf("fake planet %+v has no icon", p)
 	}
-	if len(m.Routes) != 10 || m.Routes[0] != (mapgen.Route{From: "nauvis", To: "vulcanus", Length: 15000}) {
+	if len(m.Routes) != 11 || m.Routes[0] != (mapgen.Route{From: "nauvis", To: "vulcanus", Length: 15000}) {
 		t.Errorf("routes %+v", m.Routes)
+	}
+	if last := m.Routes[len(m.Routes)-1]; last.From != fakegame.FakePlanet || last.To != fakegame.FakeMoon {
+		t.Errorf("last route %+v, want the fake planet to its moon", last)
 	}
 	for kind, path := range map[string]string{"item": fakegame.FakeWidgetIcon, "starmap": fakegame.FakePlanetStarmap} {
 		name := fakegame.FakeWidget

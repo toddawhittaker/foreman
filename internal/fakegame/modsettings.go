@@ -344,7 +344,8 @@ var (
 // game's hidden placeholder location, which every 2.x game has; Nauvis, or
 // Space Age's locations and routes when it is on; and FakePlanet with a
 // route from Nauvis when FakePlanetMod is on; and FakeMoon, orbiting
-// FakePlanet, when the moon setting is on.
+// FakePlanet, when the moon setting is on, with a route from FakePlanet
+// when FakePlanetMod is on too.
 func cannedStarMap(enabled []string, moon bool) fakeStarMap {
 	locName := func(n string) []string { return []string{"space-location-name." + n} }
 	m := fakeStarMap{Routes: []fakeRoute{}}
@@ -366,6 +367,9 @@ func cannedStarMap(enabled []string, moon bool) fakeStarMap {
 		// parent the map does not list is cleared when it is read.
 		m.Locations = append(m.Locations, fakeLocation{Name: FakeMoon, Distance: 31.5, Orientation: 0.41,
 			Magnitude: 0.4, LabelOrientation: 0.25, Parent: FakePlanet})
+		if slices.Contains(enabled, FakePlanetMod) {
+			m.Routes = append(m.Routes, fakeRoute{FakePlanet, FakeMoon, 500})
+		}
 	}
 	for i := range m.Locations {
 		m.Locations[i].LocName = locName(m.Locations[i].Name)

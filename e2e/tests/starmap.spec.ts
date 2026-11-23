@@ -112,7 +112,7 @@ test("the map preview has a star map picture that names every visible location a
   await checkPage(page);
 });
 
-test("routes arc about the sun, and the fake moon has its orbit ring about its planet", async ({ page, foreman, fakeGame }) => {
+test("routes arc about the sun, a moon's route to its planet is straight, and the fake moon has its orbit ring about its planet", async ({ page, foreman, fakeGame }) => {
   await modded({ page, foreman, fakeGame: fakeGame! }, { moon: true });
   // Nauvis and Vulcanus share only the sun, so the route between them curves:
   // more than one straight segment, and not all on the one line.
@@ -121,6 +121,9 @@ test("routes arc about the sun, and the fake moon has its orbit ring about its p
   const [a, b] = [curved[0], curved.at(-1)!];
   const away = curved.map((p) => Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / Math.hypot(b[0] - a[0], b[1] - a[1]));
   expect(Math.max(...away)).toBeGreaterThan(1);
+
+  // A moon's route to its own planet is straight: two points, one segment.
+  expect(await routeBetween(page, "Fake planet", "fake-moon")).toHaveLength(2);
 
   // The moon (the mod names it no better than its prototype name) is drawn, and a faint ring is centred on its planet, passing through the moon.
   expect(await titles(page).allTextContents()).toContain("fake-moon");
@@ -155,18 +158,33 @@ test("wiki setting on: base places get the wiki's pictures, the page sends no re
     return route.request().url().endsWith("/Vulcanus.png") ? route.abort() : route.fulfill({ status: 200, contentType: "image/png", body: pixel });
   });
   const id = await modded({ page, foreman, fakeGame: fakeGame! }, { wiki: true });
-  // Base places have wiki pictures: the seven of Space Age, none for the sun; the failed one is dropped by the browser's error.
+  // Base places have wiki pictures: the seven of Space Age, none for the sun; the failed one draws nothing.
   await expect.poll(() => asked.filter((u) => /\/(Nauvis|Gleba|Fulgora|Aquilo|Solar_system_edge|Shattered_planet)\.png$/.test(u)).length, live).toBe(6);
   await expect(starmap(page).locator('image[href$="/Nauvis.png"]')).toHaveAttribute("href", `${wikiBase}Nauvis.png`);
   expect(asked.some((u) => /Sun|Star/i.test(u))).toBe(false);
-  // The failed picture is gone and its circle stays, with its name.
-  await expect(starmap(page).locator('image[href$="/Vulcanus.png"]')).toHaveCount(0);
+  // The failed picture draws nothing, and its circle stays, with its name.
+  await expect(starmap(page).locator('image[href$="/Vulcanus.png"]')).toHaveCount(1);
   await expect(starmap(page).locator("circle.starmap__planet")).toHaveCount(visible.length);
   expect(await titles(page).allTextContents()).toContain("Vulcanus");
   // The mod's own picture is still Foreman's.
   await expect(starmap(page).locator('image[href$="/icons/starmap/fake-planet.png"]')).toHaveCount(1);
   const res = await page.request.get(newMapPath(id));
   expect(res.headers()["referrer-policy"]).toBe("no-referrer");
+  await checkPage(page);
+});
+
+test("a plain Space Age world with no other mods shows the star map with Space Age's seven places", async ({ page, foreman, fakeGame }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await openNewMap(page, { name: "Plain" });
+  await section(page).locator("label.tab", { hasText: "All planets" }).click();
+  await expect(starmap(page)).toBeVisible({ timeout: 60_000 });
+  const names = await titles(page).allTextContents();
+  expect([...names].sort()).toEqual(visible.filter((n) => n !== "Fake planet").sort());
+  await expect(starmap(page).locator("circle.starmap__planet")).toHaveCount(7);
+  // The game's own routes are drawn, the Nauvis to Vulcanus one curved about the sun.
+  expect((await routeBetween(page, "Nauvis", "Vulcanus")).length).toBeGreaterThan(2);
   await checkPage(page);
 });
 

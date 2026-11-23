@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
 
@@ -83,7 +84,7 @@ func viewBoxOf(t *testing.T, v StarMapView) (x, y, w, h float64) {
 // SPEC 5.6: hidden locations and every route touching one are left out; the
 // rest are all drawn, and the picture is square.
 func TestStarMapLeavesHiddenOut(t *testing.T) {
-	v, ok := layoutStarMap(starMapOf(t, spaceAgeStarMap), mapgen.Builtin("2.1", true), starMapIcons{})
+	v, ok := layoutStarMap(starMapOf(t, spaceAgeStarMap), mapgen.Builtin("2.1", true), i18n.English, starMapIcons{})
 	if !ok {
 		t.Fatal("no star map")
 	}
@@ -106,7 +107,7 @@ func TestStarMapLeavesHiddenOut(t *testing.T) {
 func TestStarMapNeedsTwoLocations(t *testing.T) {
 	for _, js := range []string{`{}`, `{"locations":[{"name":"nauvis","distance":15}]}`,
 		`{"locations":[{"name":"nauvis","distance":15},{"name":"x","distance":3,"hidden":true}]}`} {
-		if _, ok := layoutStarMap(starMapOf(t, js), mapgen.Catalogue{}, starMapIcons{}); ok {
+		if _, ok := layoutStarMap(starMapOf(t, js), mapgen.Catalogue{}, i18n.English, starMapIcons{}); ok {
 			t.Errorf("%s: a map", js)
 		}
 	}
@@ -119,7 +120,7 @@ func TestStarMapScaleFitsTheFurthest(t *testing.T) {
 		js := `{"locations":[{"name":"a","distance":` + strconv.FormatFloat(far/5, 'f', -1, 64) + `,"orientation":0.9},` +
 			`{"name":"b","distance":` + strconv.FormatFloat(far, 'f', -1, 64) + `,"orientation":0.4,"magnitude":3}],` +
 			`"routes":[{"from":"a","to":"b","length":1}]}`
-		v, ok := layoutStarMap(starMapOf(t, js), mapgen.Catalogue{}, starMapIcons{})
+		v, ok := layoutStarMap(starMapOf(t, js), mapgen.Catalogue{}, i18n.English, starMapIcons{})
 		if !ok {
 			t.Fatal("no star map")
 		}
@@ -132,7 +133,7 @@ func TestStarMapScaleFitsTheFurthest(t *testing.T) {
 				t.Errorf("far %v: %s at %v,%v r %v is outside %q", far, l.Name, l.X, l.Y, l.R, v.ViewBox)
 			}
 			// The label's far end, at the guessed width, is inside too.
-			if end := l.LabelX + starMapCharWidth*float64(len(l.Name)); l.Anchor == "start" && end > x+w {
+			if end := l.LabelX + starMapCharWidth*float64(l.LabelCells); l.Anchor == "start" && end > x+w {
 				t.Errorf("far %v: %s's label ends at %v, outside %q", far, l.Name, end, v.ViewBox)
 			}
 		}
@@ -215,7 +216,7 @@ func TestStarMapRoutes(t *testing.T) {
 // SPEC 5.6: a moon has a faint orbit about its planet, and each other
 // location a ring about the sun at its distance.
 func TestStarMapRingsAndOrbits(t *testing.T) {
-	v, _ := layoutStarMap(starMapOf(t, spaceAgeStarMap), mapgen.Builtin("2.1", true), starMapIcons{})
+	v, _ := layoutStarMap(starMapOf(t, spaceAgeStarMap), mapgen.Builtin("2.1", true), i18n.English, starMapIcons{})
 	if len(v.Rings) != 6 {
 		t.Errorf("%d rings, want one for each of the 6 places about the sun", len(v.Rings))
 	}
@@ -470,5 +471,39 @@ func TestStarMapFallbackRule(t *testing.T) {
 	withWorldStarMap(t, starMapOf(t, `{"locations":[{"name":"a","distance":1},{"name":"b","distance":2}],"routes":[]}`))
 	if m, ok := s.starMapFor("w1", "2.1.24", spaceAge, nil); !ok || len(m.Locations) != 2 {
 		t.Errorf("a cached run's map = %d locations (ok %t), want its own 2", len(m.Locations), ok)
+	}
+}
+
+// SPEC 5.6: the picture is sized for the name the page shows, translated, not
+// the raw label: a place whose map holds no label, with a long name in
+// Russian, at the right edge, has its whole label inside the view box.
+func TestStarMapFitsTheTranslatedLabel(t *testing.T) {
+	m := starMapOf(t, `{"locations":[
+	 {"name":"nauvis","distance":10,"orientation":0.75,"label_orientation":0.75},
+	 {"name":"solar-system-edge","distance":50,"orientation":0.25,"label_orientation":0.25}
+	],"routes":[]}`)
+	for _, loc := range []i18n.Locale{i18n.English, "ru", "zh-Hans"} {
+		v, ok := layoutStarMap(m, mapgen.Builtin("2.1", true), loc, starMapIcons{})
+		if !ok {
+			t.Fatal("no star map")
+		}
+		x, _, w, _ := viewBoxOf(t, v)
+		edge := v.Locations[1]
+		shown := loc.Format(starMapLabel(mapgen.Builtin("2.1", true), mapgen.Location{Name: "solar-system-edge"}).Name)
+		if want := labelCells(shown); edge.LabelCells != want || want == 0 {
+			t.Fatalf("%s: %d cells for %q, want %d", loc, edge.LabelCells, shown, want)
+		}
+		if end := edge.LabelX + starMapCharWidth*float64(edge.LabelCells); edge.Anchor != "start" || end > x+w {
+			t.Errorf("%s: the label %q (%s) ends at %v, outside %q", loc, shown, edge.Anchor, end, v.ViewBox)
+		}
+	}
+}
+
+// SPEC 5.6: a wide (CJK) character is about two letters wide.
+func TestLabelCells(t *testing.T) {
+	for text, want := range map[string]int{"": 0, "Nauvis": 6, "太阳系": 6, "Nauvis 星": 9, "Край": 4} {
+		if got := labelCells(text); got != want {
+			t.Errorf("labelCells(%q) = %d, want %d", text, got, want)
+		}
 	}
 }
