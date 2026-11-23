@@ -413,6 +413,7 @@
   "mods.hit.latest": "Latest",
   "mods.hit.updated": "Updated",
   "mods.offer.version": "Version",
+  "mods.offer.details": "Details",
   "mods.offer.released": "Released",
   "mods.hit.add": "Add {mod} to the plan",
   "mods.hit.adding": "Adding…",

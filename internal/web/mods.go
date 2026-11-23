@@ -1921,15 +1921,22 @@ func (s *server) planFacts(ctx context.Context, p ModPlanPage) map[string]ModFac
 	plan := pick(-1, slices.Concat(p.Form.Names, mine)...)
 	asked := pick(store.MaxModPlanNames, offered...)
 	why := pick(store.MaxModPlanNames, of...)
-	for name, r := range s.portal.Mods(ctx, slices.Concat(plan, why)) {
-		if r.Err == nil {
-			out[name] = modFacts(out[name], r.Mod)
-		}
+	// A ticked offer is also one of the plan's changes, so it is looked up
+	// with the plan's mods; it still gets an offer's details.
+	isOffer := map[string]bool{}
+	for _, n := range offered {
+		isOffer[n] = true
 	}
-	for name, r := range s.portal.Mods(ctx, asked) {
-		if r.Err == nil {
-			_, have := installed[name]
-			out[name] = offerFacts(modFacts(out[name], r.Mod), r.Mod, p, have)
+	for _, names := range [][]string{slices.Concat(plan, why), asked} {
+		for name, r := range s.portal.Mods(ctx, names) {
+			if r.Err != nil {
+				continue
+			}
+			out[name] = modFacts(out[name], r.Mod)
+			if isOffer[name] {
+				_, have := installed[name]
+				out[name] = offerFacts(out[name], r.Mod, p, have)
+			}
 		}
 	}
 	return out

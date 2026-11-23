@@ -120,6 +120,15 @@ test("a recommended dependency starts ticked, and one the portal lacks is left o
   await expect(box).toBeFocused();
   await checkPage(page);
   await box.check();
+  await expect(page.getByRole("button", { name: "Install 1 mod and 1 recommended" })).toBeVisible();
+  // Ticked or not, its details sit behind a closed foldout that opens without touching the box.
+  const more = page.locator("#plan-recommended .plan-offer", { has: box }).locator("details.disclosure");
+  await expect(more).not.toHaveAttribute("open", "");
+  await more.getByText("Details", { exact: true }).click();
+  await expect(more.locator(".plan-offer__detail")).toBeVisible();
+  await expect(more.locator(".plan-offer__detail")).toContainText("generated");
+  await expect(box).toBeChecked();
+  await checkPage(page);
   await page.getByRole("button", { name: "Install 1 mod and 1 recommended" }).click();
   await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-k2_2.1.4.zip"))).toBe(true);
@@ -178,9 +187,16 @@ test.describe("an optional dependency", () => {
     const link = offer.getByRole("link", { name: "fp-opt on the mod portal, opens in a new tab" });
     await expect(link).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-opt");
     await expect(link).toHaveAttribute("target", "_blank");
-    // The fake portal's summary; its added mods carry no release date, which the Go tests cover.
-    await expect(offer).toContainText("generated");
+    // The details start folded; opening them never ticks the box. The fake portal's summary;
+    // its added mods carry no release date, which the Go tests cover.
+    const more = offer.locator("details.disclosure");
+    await expect(more).not.toHaveAttribute("open", "");
+    await expect(offer.locator("dd").first()).toBeHidden();
+    await more.locator("summary").click();
+    await expect(offer.locator(".plan-offer__detail")).toContainText("generated");
     await expect(offer.locator("dd").first()).toHaveText("1.0.0");
+    await expect(offer.locator("dd").first()).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: "fp-opt offered by fp-main" })).not.toBeChecked();
     await link.click({ modifiers: ["ControlOrMeta"] });
     await expect(page.getByRole("checkbox", { name: "fp-opt offered by fp-main" })).not.toBeChecked();
     await checkPage(page);
