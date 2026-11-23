@@ -181,10 +181,11 @@ func TestNewMapFillFromExchangeString(t *testing.T) {
 	}
 }
 
-// SPEC 17.10: the step bar is three links, the current one marked.
+// SPEC 5.6, 17.10: the step bar is four links, the current one marked.
 func TestFlowSteps(t *testing.T) {
-	steps := flowSteps("w1", flowStepMods)
-	if len(steps) != 3 || steps[0].Path != worldPath("w1") || steps[1].Path != modsPath("w1") || steps[2].Path != newMapPath("w1") {
+	steps := flowSteps("w1", flowStepMods, false)
+	if len(steps) != 4 || steps[0].Path != worldPath("w1") || steps[1].Path != modsPath("w1") ||
+		steps[2].Path != flowModSettingsPath("w1") || steps[3].Path != newMapPath("w1") {
 		t.Fatalf("steps %+v", steps)
 	}
 	for i, s := range steps {
@@ -194,12 +195,25 @@ func TestFlowSteps(t *testing.T) {
 	}
 }
 
+// SPEC 5.6: with no startup setting, step 3 is plain text marked (none).
+func TestFlowStepsWithoutModSettings(t *testing.T) {
+	steps := flowSteps("w1", flowStepMap, true)
+	if steps[2].Path != "" || steps[2].Label.Key != "newmap.steps.mod_settings_none" || steps[3].Path != newMapPath("w1") || !steps[3].Current {
+		t.Fatalf("steps %+v", steps)
+	}
+}
+
 // SPEC 5.6: on step 1 there is no world yet, so the step bar marks step 1
-// and steps 2 and 3 are not links.
+// and the later steps are not links.
 func TestFlowStepsBeforeTheWorldExists(t *testing.T) {
 	steps := GeneratePage{}.Steps()
-	if len(steps) != 3 || steps[0].Path != PathGenerate || !steps[0].Current || steps[1].Path != "" || steps[2].Path != "" || steps[1].Current || steps[2].Current {
+	if len(steps) != 4 || steps[0].Path != PathGenerate || !steps[0].Current {
 		t.Fatalf("steps %+v", steps)
+	}
+	for _, s := range steps[1:] {
+		if s.Path != "" || s.Current {
+			t.Fatalf("steps %+v", steps)
+		}
 	}
 	hn := newGenerateHarness(t, nil)
 	page := hn.get(PathGenerate, withCookie(hn.signIn())).Body.String()

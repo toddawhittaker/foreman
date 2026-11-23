@@ -500,8 +500,8 @@
   "mods.plan_panel.bad_name": "Toto není název modu, který může Foreman přidat. Je třeba mod vyhledat a zvolit + vedle něj.",
   "mods.plan_panel.wait": "Kontrola bude k dispozici, jakmile se plán aktualizuje.",
   "mods.flow.generated": "Svět {name} je vytvořen. Nyní lze vybrat jeho mody nebo přejít na nastavení mapy.",
-  "mods.flow.skip": "Přeskočit na nastavení mapy",
-  "mods.flow.next": "Další: nastavení mapy",
+  "mods.flow.skip": "Přeskočit na nastavení modů",
+  "mods.flow.next": "Další: nastavení modů",
   "mods.richtext.warning": "Upozornění",
   "mods.richtext.info": "Poznámka"
 }

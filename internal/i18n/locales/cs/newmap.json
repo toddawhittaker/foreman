@@ -4,7 +4,9 @@
   "newmap.steps.label": "Kroky vytvoření světa",
   "newmap.steps.world": "1. Svět",
   "newmap.steps.mods": "2. Mody",
-  "newmap.steps.map": "3. Nastavení mapy",
+  "newmap.steps.mod_settings": "3. Nastavení modů",
+  "newmap.steps.mod_settings_none": "3. Nastavení modů (žádná)",
+  "newmap.steps.map": "4. Nastavení mapy",
   "newmap.loading": "Načítají se planety, které přidávají mody tohoto světa. Poprvé to může trvat až minutu.",
   "newmap.loading_label": "Načítání planet",
   "newmap.loading_link": "Zobrazit nastavení mapy, až budou připravena",
@@ -35,5 +37,8 @@
   "newmap.error.builtin": "Planety modů tohoto světa se nepodařilo načíst, takže uložení teď by zahodilo nastavení jejich planet. Nic nebylo uloženo. Lze to zkusit znovu nebo zkontrolovat mody světa.",
   "newmap.link.retry": "Zkusit znovu",
   "newmap.link.mods": "Přejít na krok 2, mody",
-  "newmap.link.server": "Přejít na stránku serveru a zastavit ho"
+  "newmap.link.server": "Přejít na stránku serveru a zastavit ho",
+  "newmap.modsettings.title": "Nastavení modů",
+  "newmap.modsettings.intro": "Zde se určují nastavení modů světa {name} pro spuštění. Některá mění mapu, například které planety existují, proto jsou před nastavením mapy.",
+  "newmap.modsettings.skip": "Přeskočit na nastavení mapy"
 }

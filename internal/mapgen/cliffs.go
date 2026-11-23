@@ -10,23 +10,3 @@ package mapgen
 // cliff_settings.richness must never be written on 2.x: there it reaches every
 // planet, including Vulcanus, which has no cliff control of its own. Cliffs
 // off disables no achievement on any line.
-
-// On 2.x the new-map form gives a cliff control its box by rule, from the
-// control's category and can_be_disabled (SPEC 5.6), so modded planets get one
-// too; CliffToggle only names the built-in planets the rule was proved on.
-
-// CliffToggle reports whether cliffs can be switched off on a built-in planet
-// of a line.
-// It is true for Nauvis on every line, and for Gleba and Fulgora on 2.x; the
-// caller only asks about planets the world has. Unknown lines and planets,
-// Vulcanus and Aquilo give false.
-func CliffToggle(line, planet string) bool {
-	switch planet {
-	case "nauvis":
-		_, ok := parsed[line]
-		return ok
-	case "gleba", "fulgora":
-		return line == "2.0" || line == "2.1"
-	}
-	return false
-}

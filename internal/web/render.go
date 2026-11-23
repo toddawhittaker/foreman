@@ -538,6 +538,10 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 // loads them, and each defines templates the pages include.
 var partials = []string{"mapgenform", "generatepreview", "failure", "modportal", "dropzone", "mapexchange", "saveplayers", "worldexportcard", "genflowsteps"}
 
+// pageExtras are other pages' files a page also loads, before its own, for
+// the defines it shares with them; its own title and content win.
+var pageExtras = map[string][]string{"flowmodsettings": {"templates/modsettings.html"}}
+
 var partialFiles = func() []string {
 	out := make([]string, len(partials))
 	for i, p := range partials {
@@ -578,7 +582,7 @@ func NewRenderer() (*Renderer, error) {
 			continue
 		}
 		base, err := template.New(name).Funcs(funcs).ParseFS(templateFS,
-			append([]string{"templates/layout.html", "templates/" + name + ".html"}, partialFiles...)...)
+			slices.Concat([]string{"templates/layout.html"}, pageExtras[name], []string{"templates/" + name + ".html"}, partialFiles)...)
 		if err != nil {
 			return nil, fmt.Errorf("parse template %s: %w", name, err)
 		}

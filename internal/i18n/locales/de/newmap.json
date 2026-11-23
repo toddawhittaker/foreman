@@ -4,7 +4,9 @@
   "newmap.steps.label": "Schritte zur neuen Welt",
   "newmap.steps.world": "1. Welt",
   "newmap.steps.mods": "2. Mods",
-  "newmap.steps.map": "3. Karteneinstellungen",
+  "newmap.steps.mod_settings": "3. Mod-Einstellungen",
+  "newmap.steps.mod_settings_none": "3. Mod-Einstellungen (keine)",
+  "newmap.steps.map": "4. Karteneinstellungen",
   "newmap.loading": "Die Planeten aus den Mods dieser Welt werden gelesen. Beim ersten Mal kann das bis zu einer Minute dauern.",
   "newmap.loading_label": "Planeten werden gelesen",
   "newmap.loading_link": "Karteneinstellungen anzeigen, sobald sie bereit sind",
@@ -34,5 +36,8 @@
   "newmap.error.builtin": "Die Planeten der Mods dieser Welt konnten nicht gelesen werden; ein Speichern jetzt würde die Einstellungen ihrer Planeten verwerfen. Es wurde nichts gespeichert. Versuche es erneut oder prüfe die Mods der Welt.",
   "newmap.link.retry": "Erneut versuchen",
   "newmap.link.mods": "Zu Schritt 2, Mods",
-  "newmap.link.server": "Zur Serverseite, um ihn zu stoppen"
+  "newmap.link.server": "Zur Serverseite, um ihn zu stoppen",
+  "newmap.modsettings.title": "Mod-Einstellungen",
+  "newmap.modsettings.intro": "Lege die Start-Einstellungen der Mods von {name} fest. Manche ändern die Karte, etwa welche Planeten es gibt, darum kommen sie vor den Karteneinstellungen.",
+  "newmap.modsettings.skip": "Zu den Karteneinstellungen springen"
 }

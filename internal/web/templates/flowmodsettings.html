@@ -1,0 +1,32 @@
+{{define "title"}}{{t "newmap.modsettings.title"}}{{end}}
+
+{{define "scripts"}}
+{{- if not .Page.Loaded}}
+{{- /* With script the form part loads after the page; without it the page reloads itself and the server waits for the settings (SPEC 5.6). */}}
+<noscript><meta http-equiv="refresh" content="0; url={{.Page.Path}}?wait=1"></noscript>
+{{- end}}{{end}}
+
+{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .World.Name "" (t "newmap.modsettings.title"))}}
+<h1 id="flow-modsettings-heading" tabindex="-1">{{t "newmap.modsettings.title"}}</h1>
+{{template "rail" $}}
+{{template "genflow-steps" .Steps}}
+<p class="page-intro">{{t "newmap.modsettings.intro" "name" .World.Name}}</p>
+{{- /* Step 3 is optional: the way on is a link, as step 2's is (SPEC 5.6). */}}
+<div class="actions"><a href="{{.SkipPath}}" id="flow-modsettings-skip">{{t "newmap.modsettings.skip"}}</a></div>
+{{template "summary" .Problems}}
+{{- if .Loaded}}
+{{template "modsettings-form" .}}
+{{- else}}
+<div id="mod-settings-form" class="mod-settings" hx-get="{{.FormPath}}" hx-trigger="load" hx-swap="outerHTML">
+  <section class="panel" aria-labelledby="mod-settings-heading">
+    <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
+    <p role="status" class="empty">{{t "mods.settings.edit.loading"}}</p>
+  </section>
+</div>
+{{- end}}
+{{- end}}
+{{end}}

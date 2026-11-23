@@ -4,7 +4,9 @@
   "newmap.steps.label": "创建世界的步骤",
   "newmap.steps.world": "1. 世界",
   "newmap.steps.mods": "2. 模组",
-  "newmap.steps.map": "3. 地图设置",
+  "newmap.steps.mod_settings": "3. 模组设置",
+  "newmap.steps.mod_settings_none": "3. 模组设置（无）",
+  "newmap.steps.map": "4. 地图设置",
   "newmap.loading": "正在读取此世界的模组添加的星球。首次读取可能需要一分钟。",
   "newmap.loading_label": "正在读取星球",
   "newmap.loading_link": "准备好后显示地图设置",
@@ -33,5 +35,8 @@
   "newmap.error.builtin": "无法读取此世界的模组的星球，现在保存会丢弃这些星球的设置。未保存任何内容。请重试，或检查世界的模组。",
   "newmap.link.retry": "重试",
   "newmap.link.mods": "前往第 2 步：模组",
-  "newmap.link.server": "前往服务器页面停止服务器"
+  "newmap.link.server": "前往服务器页面停止服务器",
+  "newmap.modsettings.title": "模组设置",
+  "newmap.modsettings.intro": "设置 {name} 的模组启动设置。有些设置会改变地图，例如有哪些星球，所以它们在地图设置之前。",
+  "newmap.modsettings.skip": "跳到地图设置"
 }
