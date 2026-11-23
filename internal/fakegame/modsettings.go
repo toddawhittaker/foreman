@@ -184,10 +184,18 @@ func writeModSettings(c dockertest.Container) error {
 	if dir == "" {
 		return fmt.Errorf("the fake game's mod settings container has no folder bound at %s", gameenv.PreviewMount)
 	}
+	enabled := enabledMods(dir)
+	defs := cannedModSettingDefs()
+	if slices.Contains(enabled, FakePlanetMod) {
+		// A second mod with settings, so a page can show groups of two mods.
+		planet := modSettingDef{Name: "fp-sta-bool", Mod: FakePlanetMod, SettingType: "startup", Type: "bool-setting", Order: "a"}
+		planet.DefaultValue = true
+		defs = append(defs, planet)
+	}
 	// The definitions are plain strings and numbers: marshalling cannot fail.
 	b, _ := json.Marshal(struct {
 		Settings []modSettingDef `json:"settings"`
-	}{cannedModSettingDefs()})
+	}{defs})
 	mods := filepath.Join(dir, world.ModsDir)
 	if err := os.MkdirAll(mods, world.DirMode); err != nil {
 		return err
@@ -200,6 +208,6 @@ func writeModSettings(c dockertest.Container) error {
 	}
 	v := imageVersion(c.Spec.Image)
 	// Plain strings, numbers and maps: marshalling cannot fail.
-	planets, _ := json.Marshal(cannedPlanets(fmt.Sprintf("%d.%d", v[0], v[1]), enabledMods(dir)))
+	planets, _ := json.Marshal(cannedPlanets(fmt.Sprintf("%d.%d", v[0], v[1]), enabled))
 	return os.WriteFile(filepath.Join(dir, gameenv.PlanetsFile), planets, world.FileMode) //nolint:gosec // the fake's own test folder
 }

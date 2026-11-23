@@ -88,11 +88,12 @@ func (d *ModSettingDefs) Catalogue(lang string) mapgen.Catalogue {
 // not a failed run: the Go side falls back to the built-in catalogue.
 const planetsCopy = `cp ` + previewWrite + `/script-output/` + gameenv.PlanetsFile + ` ` + gameenv.PreviewMount + `/` + gameenv.PlanetsFile + ` 2>/dev/null || :`
 
-// withPlanetsCopy puts planetsCopy before the script's last line, the
-// definitions copy, so the container still exits non-zero when that fails.
+// withPlanetsCopy puts planetsCopy and the game's locale copy before the
+// script's last line, the definitions copy, so the container still exits
+// non-zero when that fails.
 func withPlanetsCopy(script string) string {
 	i := strings.LastIndex(script, "\n")
-	return script[:i+1] + planetsCopy + "\n" + script[i+1:]
+	return script[:i+1] + baseLocaleCopy() + "\n" + planetsCopy + "\n" + script[i+1:]
 }
 
 // modSettingsMod is the definitions run's control mod. It needs no params
@@ -292,6 +293,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	}
 	var defsJSON, defaults, planetsJSON []byte
 	var planetsErr error
+	var gameLocale map[string]modsettings.LocaleSections
 	err = c.previewRunIn(ctx, plan, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
 		if err := addControlMod(base, name, modSettingsMod, modSettingsInfo(line)); err != nil {
 			return err
@@ -306,11 +308,12 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 		if err := container(spec); err != nil {
 			return err
 		}
-		defsJSON, defaults, err = readModSettingsOutput(base, name)
+		defsJSON, defaults, err = readModSettingsOutput(base, name, meta.GameVersion)
 		if err != nil {
 			return err
 		}
 		planetsJSON, planetsErr = readPlanetsOutput(base, name)
+		gameLocale = readBaseLocale(base, name)
 		return nil
 	})
 	if err != nil {
@@ -328,7 +331,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	defs = slices.DeleteFunc(defs, func(d modsettings.Definition) bool { return d.Mod == modsettingsmod.ModName })
 	sections := c.localeSections(id, localeCfgs)
 	out := &ModSettingDefs{Defs: defs, Defaults: defaults, Locale: modSettingsLocale(sections, defs)}
-	out.Catalogues, out.PlanetsErr = worldCatalogues(planetsJSON, planetsErr, sections, line, c.worldSpaceAge(id, meta))
+	out.Catalogues, out.PlanetsErr = worldCatalogues(planetsJSON, planetsErr, sections, gameLocale, line, c.worldSpaceAge(id, meta))
 	if out.PlanetsErr != nil {
 		c.log.Warn("using the built-in planets for the world", "world", id, "error", out.PlanetsErr)
 	}
@@ -445,9 +448,11 @@ func (c *Controller) enabledModNames(id string) (map[string]bool, error) {
 }
 
 // worldCatalogues decodes the run's planet file once and labels it in each of
-// Foreman's languages, each with English behind it. A file that is missing
-// or refused gives the built-in catalogue and the reason (SPEC 5.6, 14.6).
-func worldCatalogues(data []byte, readErr error, sections map[string]modsettings.LocaleSections, line string, spaceAge bool) (map[string]mapgen.Catalogue, error) {
+// Foreman's languages, each with English behind it: the mods' text first,
+// then the game's own (gameLocale), so a label that points at a base-game key
+// resolves. A file that is missing or refused gives the built-in catalogue
+// and the reason (SPEC 5.6, 9.6, 14.6).
+func worldCatalogues(data []byte, readErr error, sections, gameLocale map[string]modsettings.LocaleSections, line string, spaceAge bool) (map[string]mapgen.Catalogue, error) {
 	builtin := map[string]mapgen.Catalogue{"en": mapgen.Builtin(line, spaceAge)}
 	if readErr != nil {
 		return builtin, readErr
@@ -458,11 +463,7 @@ func worldCatalogues(data []byte, readErr error, sections map[string]modsettings
 	}
 	out := map[string]mapgen.Catalogue{}
 	for lang := range modsettings.FactorioLocales {
-		layers := []modsettings.LocaleSections{sections[lang]}
-		if lang != "en" && sections["en"] != nil {
-			layers = append(layers, sections["en"])
-		}
-		cat := f.Labelled(layers...)
+		cat := f.Labelled(labelLayers(lang, sections, gameLocale)...)
 		cat.SpaceAge = spaceAge && line != "1.1"
 		out[lang] = cat
 	}
@@ -558,8 +559,10 @@ func (c *Controller) readOnlyMount(rel, target string) docker.BindMount {
 // readModSettingsOutput reads the definitions JSON and the defaults file the
 // run left in the work folder. The game's script is untrusted (SPEC 14.1,
 // 14.6): each must be a regular file within its limit, so a link or a named
-// pipe cannot send the read elsewhere or hold it.
-func readModSettingsOutput(base *os.Root, dir string) (defs, defaults []byte, err error) {
+// pipe cannot send the read elsewhere or hold it. A defaults file that does
+// not exist is empty defaults for gameVersion when the definitions list no
+// settings, since the game then writes none (SPEC 9.6).
+func readModSettingsOutput(base *os.Root, dir, gameVersion string) (defs, defaults []byte, err error) {
 	root, err := base.OpenRoot(dir)
 	if err != nil {
 		return nil, nil, err
@@ -574,10 +577,20 @@ func readModSettingsOutput(base *os.Root, dir string) (defs, defaults []byte, er
 		return nil, nil, fmt.Errorf("%w: the game left no mods folder", ErrModSettingsBadOutput)
 	}
 	defaults, err = world.ReadSmallFile(root, mods+"/"+world.ModSettingsFile, world.MaxModSettings)
+	if errors.Is(err, fs.ErrNotExist) && noSettings(defs) {
+		// The game writes the file only when a mod defines a setting.
+		return defs, emptyModSettings(gameVersion), nil
+	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("%w: no usable defaults file: %w", ErrModSettingsBadOutput, err)
 	}
 	return defs, defaults, nil
+}
+
+// noSettings is whether the definitions file parses and lists no settings.
+func noSettings(defsJSON []byte) bool {
+	defs, err := modsettings.ParseDefinitions(defsJSON)
+	return err == nil && len(defs) == 0
 }
 
 // modSettingsError words a failed run as the page knows it. Errors the page

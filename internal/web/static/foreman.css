@@ -1971,6 +1971,12 @@ fieldset > .check + a {
   position: relative;
 }
 
+/* The message's text keeps room for the button: its width and a gap, from the
+   box's edge, so no line runs under it (DESIGN 7.3). */
+.message--closable > p {
+  padding-inline-end: calc(var(--target-min) + var(--space-2) - var(--space-4));
+}
+
 .message__dismiss {
   position: absolute;
   inset-block-start: 0;
