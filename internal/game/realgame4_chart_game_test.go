@@ -6,7 +6,7 @@ package game
 // image and one planet mod set, Cerys with its three dependencies: the
 // picture shows Cerys's own terrain, not the flat colour the fast preview
 // gives a planet it has only a prototype of, and it comes within the run's
-// 90 seconds and 1 GiB. A world of 2.0.77, which has no --test-save, is
+// 120 seconds and 2 GiB, the limits of a run that loads a world's mods. A world of 2.0.77, which has no --test-save, is
 // refused before any container starts, and no container or work folder is
 // left. The zips are read from the folder FOREMAN_TEST_PLANET_MODS names;
 // the test skips when it is unset, and nothing is downloaded. Run by
@@ -243,7 +243,7 @@ func TestRealGameChartOfAModdedPlanet(t *testing.T) {
 	})
 
 	var chart pixelStats
-	t.Run("cerys shows its own terrain within 90 s and 1 GiB", func(t *testing.T) {
+	t.Run("cerys shows its own terrain within 120 s and 2 GiB", func(t *testing.T) {
 		stop := e.peakMemory()
 		begin := time.Now()
 		pic, err := c.Chart(context.Background(), req, "cerys")
@@ -256,12 +256,12 @@ func TestRealGameChartOfAModdedPlanet(t *testing.T) {
 		if pic.Planet != "cerys" || len(pic.Data) == 0 {
 			t.Fatalf("picture of %q, %d bytes", pic.Planet, len(pic.Data))
 		}
-		if took > ChartLimit {
-			t.Errorf("took %s, more than %s", took, ChartLimit)
+		if took > PreviewWorldLimit {
+			t.Errorf("took %s, more than %s", took, PreviewWorldLimit)
 		}
 		// A zero peak would mean the cgroup was not read, and the limit unproved.
-		if peak == 0 || peak > previewMemory {
-			t.Errorf("peak memory %d bytes, want over 0 and at most %d", peak, int64(previewMemory))
+		if peak == 0 || peak > previewWorldMemory {
+			t.Errorf("peak memory %d bytes, want over 0 and at most %d", peak, int64(previewWorldMemory))
 		}
 		chart = chartPixels(t, pic.Data)
 		t.Logf("chart: %d lit pixels, %d colours, dominant %v", chart.lit, chart.colours, chart.dominant)
@@ -294,7 +294,7 @@ func TestRealGameChartOfAModdedPlanet(t *testing.T) {
 		e.previewLeftovers(t, "after the preview")
 	})
 
-	t.Run("a planet that never finishes charting fails within 90 s and leaves nothing", func(t *testing.T) {
+	t.Run("a planet that never finishes charting fails within 120 s and leaves nothing", func(t *testing.T) {
 		stall := req
 		stall.World = e.stallWorld(t, version)
 		begin := time.Now()
@@ -312,8 +312,8 @@ func TestRealGameChartOfAModdedPlanet(t *testing.T) {
 		if !strings.Contains(perr.Log, "did not finish") {
 			t.Errorf("the game's log does not say charting did not finish: %q", perr.Log)
 		}
-		if took > ChartLimit {
-			t.Errorf("took %s, more than %s", took, ChartLimit)
+		if took > PreviewWorldLimit {
+			t.Errorf("took %s, more than %s", took, PreviewWorldLimit)
 		}
 		e.previewLeftovers(t, "after the chart that never finished")
 	})

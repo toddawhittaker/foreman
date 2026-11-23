@@ -301,8 +301,9 @@ func TestWorldTerritoriesAreKeyedByTheWorld(t *testing.T) {
 }
 
 // SPEC 5.6: a planet whose resource controls are on but whose count found
-// no patches, as when a mod's resources are tiles, says they can't be
-// counted; with every resource control at size zero, or with patches, the
+// no patches, as when a mod's resources are tiles, says none were found
+// and that tiles can't be counted, which is also true when real patches are
+// drawn too small to count; with every resource control at size zero, or with patches, the
 // page words it as before.
 func TestResourceViewWithNoPatches(t *testing.T) {
 	cat := cerysCatalogue()
@@ -310,7 +311,7 @@ func TestResourceViewWithNoPatches(t *testing.T) {
 	if v := countedView(i18n.English, cat, req, "cerys", resource.Result{}); v.None.Key != "worlds.generate.resources.not_patches" {
 		t.Errorf("no patches on cerys: %q", v.None.Key)
 	}
-	if got := i18n.English.Format(i18n.M("worlds.generate.resources.not_patches")); got != "This planet's resources are not patches, so they can't be counted." {
+	if got := i18n.English.Format(i18n.M("worlds.generate.resources.not_patches")); got != "No resource patches were found in this picture. This planet's resources may be tiles, which can't be counted." {
 		t.Errorf("message %q", got)
 	}
 	off := map[string]any{}

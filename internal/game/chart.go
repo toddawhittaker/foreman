@@ -46,9 +46,6 @@ var chartMod = controlMod{
 	control: chart.Control,
 	params: `printf 'return { radius = %d, planet = "%s" }\n' "$` + gameenv.ChartRadius + `" "$` + gameenv.ChartPlanet + `" > ` +
 		modFile(chart.ModDir, chart.ParamsFile),
-	// Its limit was measured with a world's mods (realgame4_chart), so it
-	// keeps the base one rather than that of a preview with mods.
-	memory: previewMemory,
 }
 
 // chartScript makes the params file, creates a map from the request's seed,
@@ -69,6 +66,12 @@ var chartScript = strings.Join(slices.Concat(
 	},
 ), "\n")
 
+// chartRunLimit is how long the run may take: the limit of a preview that
+// loads a world's mods, or ChartLimit when that is larger (SPEC 14.3).
+func (c *Controller) chartRunLimit() time.Duration {
+	return max(chartLimit, c.previewWorldLimit)
+}
+
 // testSaveLine is the one game line with --test-save among the supported lines.
 const testSaveLine = "2.1"
 
@@ -82,10 +85,10 @@ func ChartSupported(gameVersion string) bool {
 
 // Chart draws planet of the world req names from a real game (SPEC 5.6,
 // 14.3): a seventh kind of one-off container, "foreman-chart-<folder>", in
-// the preview slot with the preview's host settings and 1 GiB, that loads
-// the world's mods, creates a throwaway map from req's settings, loads it
-// with --test-save and charts the chart.Radius chunks around the origin, all
-// within ChartLimit. The chart is checked under SPEC 14.6 and drawn as the
+// the preview slot with the preview's host settings and the memory of a
+// run that loads a world's mods, that loads the world's mods, creates a
+// throwaway map from req's settings, loads it with --test-save and charts
+// the chart.Radius chunks around the origin, all within chartRunLimit. The chart is checked under SPEC 14.6 and drawn as the
 // factory map is (SPEC 5.16). req must name a world on a line ChartSupported
 // accepts, and planet must be in req.KnownPlanets; req.Planets and req.Size
 // are not used. Errors are ErrPreviewInvalid, ErrPreviewBusy,
@@ -104,7 +107,7 @@ func (c *Controller) Chart(ctx context.Context, req PreviewRequest, planet strin
 	}
 	var out PNG
 	plan := previewPlan{
-		gameVersion: req.GameVersion, kind: chartMod.kind, limit: chartLimit,
+		gameVersion: req.GameVersion, kind: chartMod.kind, limit: c.chartRunLimit(),
 		fill: func(base *os.Root) (string, error) { return c.makeWorldPreviewDir(base, req) },
 	}
 	err = c.previewRunIn(ctx, plan, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {

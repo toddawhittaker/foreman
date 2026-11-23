@@ -977,10 +977,11 @@ not) or a map exchange string, with Space Age on or off. (P0)
       out-of-memory failure names the resource count, never the picture.
     - **Known limit: resources that are not patches.** The count reads
       resource entities only. When a planet has a resource control from a
-      mod that the settings leave on, and the count finds no patches, its
-      resources are something else, such as tiles, and the page says
-      "This planet's resources are not patches, so they can't be counted"
-      instead of "no resource patches".
+      mod that the settings leave on, and the count finds no patches, the
+      page says "No resource patches were found in this picture. This
+      planet's resources may be tiles, which can't be counted." instead of
+      "no resource patches". The words are true whether the resources are
+      tiles or real patches too small to count at the picture's size.
     - **While it runs and after.** A visible line and an indeterminate bar
       say that counting can take up to a minute. Busy, timeout, out of
       memory, missing image, failed and invalid settings each have their own
@@ -3203,7 +3204,8 @@ memory, and 120 seconds for each planet drawn, at most 10 minutes in all so
 a run cannot hold the one slot for long. With five planet mods, one planet
 took 2 to 4 seconds and all eleven 24 to 35 seconds, under 750 MiB (#775).
 The 2 GiB is 1.5 times the highest resource count measured with a heavy
-mod set (5.6, Cost); the real-game picture (5.6) keeps its own 1 GiB.
+mod set (5.6, Cost). The real-game picture (5.6) always loads a world's
+mods, so it has the same 2 GiB, and 120 seconds for its one planet.
 
 Demolisher territories (5.6) use a second kind of preview container,
 `foreman-territories-<folder>`, with the same label, endpoints, host
@@ -3255,8 +3257,8 @@ with the helper's name refuses the run. No new Docker endpoint is used.
 
 The real-game picture (5.6) uses a seventh kind, `foreman-chart-<folder>`,
 on 2.1 only, with the same label, endpoints, host settings, slot and
-cleanup, a memory limit of 1 GiB with no swap and a time limit of 90
-seconds in all. Its work folder holds the world's mods as for the preview
+cleanup, a memory limit of 2 GiB with no swap (as for a preview that loads
+a world's mods) and a time limit of 120 seconds in all. Its work folder holds the world's mods as for the preview
 above, the step's settings files and a control-only helper mod. The game
 runs `--create` to make a throwaway map, then `--test-save` on it, which
 loads it with a player; the helper creates the planet's surface, so the
@@ -4019,7 +4021,7 @@ five planet mods on 2.x: the mod-settings run lists 11 planets; each
 planet's preview draws within 60 seconds and 1 GiB; map settings saved
 in step 3 for a modded planet reach the map the first start creates; a
 removed planet mod refuses the start until step 3 is saved again; and on
-2.1.24 Cerys's real-game picture shows its real terrain within 90
+2.1.24 Cerys's real-game picture shows its real terrain within 120
 seconds.
 
 ## 19. Milestone gates

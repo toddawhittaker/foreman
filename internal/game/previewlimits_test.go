@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/fakegame"
@@ -68,7 +69,30 @@ func TestPreviewOutOfMemoryNamesTheRun(t *testing.T) {
 			t.Errorf("%s: error %v, want %q", tc.kind, err, tc.want)
 		}
 	}
-	if got := (&PreviewError{Kind: gameenv.KindResources, ExitCode: 1}).Error(); got != "the game failed in the resource count (exit 1)" {
-		t.Errorf("a failed count says %q", got)
+}
+
+// SPEC 5.6: a failed run says what it was, in words a reader knows: the map
+// preview keeps "could not draw", and no run is named after its internal kind.
+func TestPreviewErrorNamesEveryKind(t *testing.T) {
+	for _, tc := range []struct{ kind, want string }{
+		{"preview", "the game could not draw the map preview (exit 1)"},
+		{"", "the game could not draw the map preview (exit 1)"},
+		{gameenv.KindResources, "the game failed in the resource count (exit 1)"},
+		{gameenv.KindTerritories, "the game failed in the territory run (exit 1)"},
+		{gameenv.KindChart, "the game failed in the real-game picture (exit 1)"},
+		{gameenv.KindModSettings, "the game failed in the mod settings read (exit 1)"},
+		{gameenv.KindFactoryMap, "the game failed in the factory map run (exit 1)"},
+		{gameenv.KindSavePlayers, "the game failed in the save players read (exit 1)"},
+	} {
+		if got := (&PreviewError{Kind: tc.kind, ExitCode: 1}).Error(); got != tc.want {
+			t.Errorf("kind %q says %q, want %q", tc.kind, got, tc.want)
+		}
+	}
+	got := (&PreviewError{Kind: "preview", ExitCode: 2, Log: "boom"}).Error()
+	if got != "the game could not draw the map preview (exit 2): boom" {
+		t.Errorf("with a log: %q", got)
+	}
+	if got := (&PreviewError{Kind: "unknown", ExitCode: 1}).Error(); strings.Contains(got, "unknown") {
+		t.Errorf("an unknown kind leaks its name: %q", got)
 	}
 }
