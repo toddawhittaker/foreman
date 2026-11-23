@@ -194,11 +194,10 @@ test("a new token's page shows both addresses, each with its own copy button", {
 
 // The language sweep of i18n.spec.ts does not visit this page, so its two screens
 // are checked here: the longest translations still fit at 320 px and pass axe.
-test("the page and the created page fit and pass axe in every language", { tag: "@looks" }, async ({ page, foreman }) => {
-  test.setTimeout(170_000);
-  await page.setViewportSize({ width: 320, height: 640 });
-  await createAdmin(page);
-  for (const lang of languages) {
+for (const lang of languages) {
+  test(`${lang}: the page and the created page fit and pass axe`, { tag: "@looks" }, async ({ page, foreman }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await createAdmin(page);
     await page.context().addCookies([{ name: "foreman_lang", value: lang, url: foreman.url }]);
     await page.goto("/settings/api-tokens");
     await checkPage(page);
@@ -206,8 +205,8 @@ test("the page and the created page fit and pass axe in every language", { tag: 
     await page.locator("#act-token-create").click();
     await expect(page.locator("#token-api-base")).toBeVisible();
     await checkPage(page);
-  }
-});
+  });
+}
 
 test.describe("with FOREMAN_API=off", () => {
   test.use({ foremanEnv: { FOREMAN_API: "off" } });

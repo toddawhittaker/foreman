@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { test as base, expect, type Locator, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { capMs } from "./cap.js";
 import { spawn, type ChildProcess } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
@@ -400,7 +401,19 @@ export const test = base.extend<{
   // URL of its own port (SPEC 12.7).
   fakeIdPOn: boolean;
   fakeIdP: FakeIdP | undefined;
+  slowNeedsTag: void;
 }>({
+  // A test may take longer than the 30 s cap (playwright.config.ts) only when
+  // tagged @slow, with its reason in a comment by the tag (docs/WORKFLOW.md, "Checks").
+  slowNeedsTag: [
+    async ({}, use, testInfo) => {
+      await use();
+      if (testInfo.timeout > capMs && !testInfo.tags.includes("@slow")) {
+        throw new Error(`"${testInfo.title}" raised its time limit past ${capMs / 1000} s; tag it @slow with the reason, or make it faster.`);
+      }
+    },
+    { auto: true },
+  ],
   foremanEnv: [{}, { option: true }],
   fakeGameOn: [false, { option: true }],
   sidecar: [undefined, { option: true }],

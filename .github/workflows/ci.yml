@@ -168,7 +168,18 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ steps.go.outputs.version }}
-          cache-dependency-path: go.sum
+          cache: false
+
+      # The newest Go build cache the go-cache job saved from main.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ hashFiles('go.sum') }}-
+            go-
 
       # The lint container keeps its caches in .cache/.
       - if: matrix.check == 'lint'
@@ -242,7 +253,18 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ steps.go.outputs.version }}
-          cache-dependency-path: go.sum
+          cache: false
+
+      # The newest Go build cache the go-cache job saved from main.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ hashFiles('go.sum') }}-
+            go-
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -257,6 +279,16 @@ jobs:
         run: make typecheck
 
       - run: make e2e SHARD=${{ matrix.shard }}
+
+      # The report job merges these into one HTML report, passed or failed.
+      - name: Keep the blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-blob-${{ github.run_attempt }}-shard-${{ strategy.job-index }}
+          path: e2e/blob-report
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Keep failed browser diagnostics
         if: failure()
@@ -316,6 +348,94 @@ jobs:
           size=$(docker save foreman:ci | gzip | wc -c)
           echo "Compressed image: $size bytes (limit 30000000)"
           [ "$size" -le 30000000 ]
+
+  # Saves Go's build cache from main for the verify and e2e jobs to restore.
+  # It runs on every push to main, even when `changes` skips the tests, since
+  # most pushes to main are trees a pull request already tested. It compiles
+  # what `make test` and `make e2e` compile, with the same flags, and runs no tests.
+  go-cache:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the Go version from the Makefile
+        id: go
+        run: echo "version=$(sed -n 's/^GO_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ steps.go.outputs.version }}
+          cache: false
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ hashFiles('go.sum') }}-
+            go-
+
+      - name: Compile the tests and the e2e programs
+        run: |
+          go test -race -covermode=atomic -coverpkg=./internal/... -run "^$" ./...
+          make build build-fakegame build-fakeportal build-fakeidp
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}-${{ github.sha }}
+
+  # Merges the e2e slices' reports into one HTML report and writes the run's
+  # timing to the summary. It waits for every build and test job so their
+  # times are known, but `ci` does not wait for it: a slow or failed report
+  # never holds up a merge. It warns, never fails, when the run is slow.
+  report:
+    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
+    needs: [changes, verify, coverage, e2e, image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/npm
+            e2e/node_modules
+          key: e2e-${{ hashFiles('Makefile', 'e2e/package-lock.json') }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: e2e-blob-${{ github.run_attempt }}-*
+          path: e2e/blob-reports
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Merge the e2e reports
+        id: merge
+        continue-on-error: true
+        run: make e2e-report
+
+      - if: steps.merge.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-report-${{ github.run_attempt }}
+          path: e2e/playwright-report
+          retention-days: 14
+
+      - name: Timing summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/ci-timing e2e/report.json
 
   # The single required check. The build and test jobs may be skipped only
   # when `changes` passed and said code=false. After a full green run it

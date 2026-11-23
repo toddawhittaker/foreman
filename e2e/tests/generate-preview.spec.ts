@@ -494,8 +494,8 @@ test.describe("with script", () => {
   // DESIGN 8.8: the large view's header keeps one height on every planet of the map,
   // so paging with the arrow keys never moves the planet controls.
   for (const width of [1920, 390]) {
-    test(`paging planets in the large view keeps the controls still at ${width} px`, { tag: "@looks" }, async ({ page }, info) => {
-      // About seventeen 1.5 s samples of stillness take 28 s on a quiet machine,
+    test(`paging planets in the large view keeps the controls still at ${width} px`, { tag: ["@looks", "@slow"] }, async ({ page }, info) => {
+      // @slow: about seventeen 1.5 s samples of stillness take 28 s on a quiet machine,
       // too close to the 30 s default for a loaded one.
       test.slow();
       await page.setViewportSize({ width, height: width > 600 ? 950 : 800 });

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { capMs } from "./tests/cap.js";
 
 // The binary is built by `make e2e` before this runs; each test starts its own
 // copy through the fixture in tests/foreman.ts, and nothing builds or downloads.
@@ -11,11 +12,15 @@ export default defineConfig({
   // and CI's slices split by test rather than by whole file.
   fullyParallel: true,
   retries: 0,
+  // A test over 30 s fails unless tagged @slow (tests/cap.ts, docs/WORKFLOW.md "Checks").
+  timeout: capMs,
   // Eight workers locally, so two runs at once fit a 32-core machine; each
   // worker starts its own Foreman and browser. CI runs three on its 4-core
   // runners: the tests mostly wait, but four starved the axe scans of CPU. The Makefile passes CI into the container.
   workers: process.env.CI ? 3 : 8,
-  reporter: "list",
+  // CI also writes a blob report per slice; a later job merges them into one
+  // HTML report and reads test times from it (.github/workflows/ci.yml).
+  reporter: process.env.CI ? [["list"], ["blob"]] : "list",
   // SPEC 22.2: the browser's language picks Foreman's, so every project asks
   // for English and no test depends on the machine it runs on.
   use: {

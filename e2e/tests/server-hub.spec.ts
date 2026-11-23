@@ -173,7 +173,6 @@ test.describe("with the fake game", () => {
   // SPEC 17.9: after a start anyway whose game then crash-loops, one box
   // says so and offers the restore of "Before start anyway".
   test("a crash loop after start anyway offers the restore", async ({ page, foreman, fakeGame }) => {
-    test.setTimeout(90_000);
     const g = fakeGame!;
     await setUp(page, foreman, g, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await page.getByRole("button", { name: "Start server" }).click();

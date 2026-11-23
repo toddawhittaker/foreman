@@ -101,7 +101,6 @@ test.describe("with the fake game", () => {
   });
 
   test("the page keeps at most 1,000 log lines", async ({ page, foreman, fakeGame }) => {
-    test.setTimeout(90_000);
     await setUp(page, foreman, fakeGame!);
     for (let chunk = 0; chunk < 12; chunk++) {
       await Promise.all(Array.from({ length: 100 }, (_, i) => fakeGame!.call("/join", { name: container, player: `q${chunk * 100 + i}` })));

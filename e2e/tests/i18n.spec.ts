@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, postFrom, adminPassword, seedWorld, seedSecond, image21, openMenu, pickLanguage, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, postFrom, adminPassword, seedWorld, seedSecond, image21, openMenu, pickLanguage, type Foreman, type FakeGame } from "./foreman.js";
 import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -403,146 +403,143 @@ function seedAutomaticSnapshots(f: Foreman, n: number) {
   }
 }
 
-test.describe("layout at 320 px in every language", () => {
-  test.use({ fakeGameOn: true });
-  oneProjectPerLanguage();
+// What every part of the 320 px matrix starts from: an admin, four worlds, a
+// rollback, a deleted world, a running game with a player, and two snapshots.
+// It is set up in English with the real controls, before the page language changes.
+interface Matrix {
+  mapWorld: string;
+  restoreBase: string;
+  deleteBase: string;
+  restoreDeleted: string;
+  ticked: string[];
+}
 
-  for (const lang of languages) {
-    test(`${lang}: every page fits and passes axe at 100% and 200% text`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
-      test.setTimeout(180_000);
-      const live = { timeout: 20_000 };
-      const failures: string[] = [];
-      await page.setViewportSize({ width: 320, height: 640 });
+async function setUpMatrix(page: Page, foreman: Foreman, fakeGame: FakeGame): Promise<Matrix> {
+  const live = { timeout: 20_000 };
+  await page.setViewportSize({ width: 320, height: 640 });
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedSecond(foreman);
+  seedThird(foreman);
+  seedArchived(foreman);
+  seedAuditEntries(foreman);
+  await fakeGame.call("/image", { ref: image21, on: true });
+  // A world whose map is not made yet has a step 3 to look at.
+  const mapWorld = await openNewMap(page, { name: "Map world" });
 
-      // Set up in English with the real controls, then read the pages in lang.
-      await createAdmin(page);
-      seedWorld(foreman);
-      seedSecond(foreman);
-      seedThird(foreman);
-      seedArchived(foreman);
-      seedAuditEntries(foreman);
-      await fakeGame!.call("/image", { ref: image21, on: true });
-      // A world whose map is not made yet has a step 3 to look at.
-      const mapWorld = await openNewMap(page, { name: "Map world" });
+  // An update leaves the "Before update" snapshot, which makes a rollback page.
+  await page.goto("/worlds/base/update");
+  await page.getByLabel("Or type a version").fill("2.1.25");
+  await page.getByRole("button", { name: "Update game version" }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.locator("main h1 .state")).toHaveText("Stopped", live);
+  await expect.poll(() => page.request.get("/worlds/base/rollback").then((r) => r.status()), live).toBe(200);
 
-      // An update leaves the "Before update" snapshot, which makes a rollback page.
-      await page.goto("/worlds/base/update");
-      await page.getByLabel("Or type a version").fill("2.1.25");
-      await page.getByRole("button", { name: "Update game version" }).click();
-      await expect(page).toHaveURL("/");
-      await expect(page.locator("main h1 .state")).toHaveText("Stopped", live);
-      await expect.poll(() => page.request.get("/worlds/base/rollback").then((r) => r.status()), live).toBe(200);
+  // Delete the third world with its final snapshot, so Deleted worlds lists it.
+  await page.goto("/worlds/third/delete");
+  await page.getByLabel("Type the world's name to confirm").fill("Third world with a rather long name for a table caption");
+  await page.getByRole("button", { name: "Delete world" }).click();
+  await expect(page).toHaveURL("/worlds?deleted=third");
 
-      // Delete the third world with its final snapshot, so Deleted worlds lists it.
-      await page.goto("/worlds/third/delete");
-      await page.getByLabel("Type the world's name to confirm").fill("Third world with a rather long name for a table caption");
-      await page.getByRole("button", { name: "Delete world" }).click();
-      await expect(page).toHaveURL("/worlds?deleted=third");
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start server" }).click();
+  await expect(page.locator("main h1 .state")).toHaveText("Running", live);
+  await fakeGame.call("/join", { name: "foreman-base", player: "alice" });
+  await expect(page.locator("#pr-alice")).toBeVisible(live);
+  await page.goto("/worlds/base/snapshots");
+  await page.getByLabel("Label (optional)").fill("Before the big rocket launch rebuild");
+  await page.getByRole("button", { name: "Take snapshot" }).click();
+  await expect(page.getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
 
-      await page.goto("/");
-      await page.getByRole("button", { name: "Start server" }).click();
-      await expect(page.locator("main h1 .state")).toHaveText("Running", live);
-      await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
-      await expect(page.locator("#pr-alice")).toBeVisible(live);
-      await page.goto("/worlds/base/snapshots");
-      await page.getByLabel("Label (optional)").fill("Before the big rocket launch rebuild");
-      await page.getByRole("button", { name: "Take snapshot" }).click();
-      await expect(page.getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
+  // The confirmation pages for one snapshot, and for ticking several, by their
+  // links, read here in English while the controls have English names.
+  const longRow = page.locator("tbody tr", { hasText: "Before the big rocket launch rebuild" });
+  const restoreBase = await longRow.getByRole("link", { name: /^Restore/ }).getAttribute("href");
+  const deleteBase = await longRow.getByRole("link", { name: /^Delete/ }).getAttribute("href");
+  const ticked = await page.locator("input[name=snap]").evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  expect(ticked.length, "snapshots of the base world").toBeGreaterThanOrEqual(2);
+  await page.goto("/deleted");
+  const restoreDeleted = await page.getByRole("link", { name: /^Restore/ }).first().getAttribute("href");
+  expect(restoreBase && deleteBase && restoreDeleted, "snapshot links").toBeTruthy();
+  return { mapWorld, restoreBase: restoreBase!, deleteBase: deleteBase!, restoreDeleted: restoreDeleted!, ticked };
+}
 
-      // The confirmation pages for one snapshot, and for ticking several, by their
-      // links, read here in English while the controls have English names.
-      const longRow = page.locator("tbody tr", { hasText: "Before the big rocket launch rebuild" });
-      const restoreBase = await longRow.getByRole("link", { name: /^Restore/ }).getAttribute("href");
-      const deleteBase = await longRow.getByRole("link", { name: /^Delete/ }).getAttribute("href");
-      const ticked = await page.locator("input[name=snap]").evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
-      expect(ticked.length, "snapshots of the base world").toBeGreaterThanOrEqual(2);
-      await page.goto("/deleted");
-      const restoreDeleted = await page.getByRole("link", { name: /^Restore/ }).first().getAttribute("href");
-      expect(restoreBase && deleteBase && restoreDeleted, "snapshot links").toBeTruthy();
+// The pages the matrix reads, given the links the setup found.
+function matrixPages(m: Matrix): string[] {
+  return [
+    "/",
+    "/worlds",
+    "/worlds/base",
+    "/worlds/base/saves",
+    "/snapshots",
+    "/worlds/base/snapshots",
+    "/import",
+    "/console",
+    "/worlds/second/switch",
+    "/worlds/base/stop",
+    "/worlds/base/force-stop",
+    "/worlds/base/update",
+    "/worlds/second/delete",
+    "/deleted",
+    m.restoreBase,
+    m.restoreDeleted,
+    m.deleteBase,
+    "/worlds/base/rollback",
+    "/generate",
+    "/worlds/base/clone",
+    "/worlds/base/settings",
+    "/worlds/base/settings?section=players",
+    "/worlds/base/settings?section=gameplay",
+    "/worlds/base/settings?section=saving",
+    "/worlds/base/settings?section=network",
+    "/worlds/base/settings?section=admins",
+    "/worlds/base/settings?section=bans",
+    "/worlds/base/settings?section=whitelist",
+    "/worlds/base/settings/raw/server-settings.json",
+    // The settings tabs, and a world page with the archived badge.
+    "/settings/general",
+    "/settings/users",
+    "/settings/audit-log",
+    "/worlds/fourth",
+  ];
+}
 
-      await chooseLanguage(page.context(), lang, foreman.url);
-      await sweep(
-        page,
-        lang,
-        [
-          "/",
-          "/worlds",
-          "/worlds/base",
-          "/worlds/base/saves",
-          "/snapshots",
-          "/worlds/base/snapshots",
-          "/import",
-          "/console",
-          "/worlds/second/switch",
-          "/worlds/base/stop",
-          "/worlds/base/force-stop",
-          "/worlds/base/update",
-          "/worlds/second/delete",
-          "/deleted",
-          restoreBase!,
-          restoreDeleted!,
-          deleteBase!,
-          "/worlds/base/rollback",
-          "/generate",
-          "/worlds/base/clone",
-          "/worlds/base/settings",
-          "/worlds/base/settings?section=players",
-          "/worlds/base/settings?section=gameplay",
-          "/worlds/base/settings?section=saving",
-          "/worlds/base/settings?section=network",
-          "/worlds/base/settings?section=admins",
-          "/worlds/base/settings?section=bans",
-          "/worlds/base/settings?section=whitelist",
-          "/worlds/base/settings/raw/server-settings.json",
-          // Epic 11a: the settings tabs, and a world page with the archived badge.
-          "/settings/general",
-          "/settings/users",
-          "/settings/audit-log",
-          "/worlds/fourth",
-        ],
-        failures,
-      );
+async function openStep3(page: Page, m: Matrix) {
+  await page.goto(newMapPath(m.mapWorld));
+  await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
+}
+
+// The matrix is split into parts so each test stays under the 30-second cap
+// (docs/WORKFLOW.md, "Checks"); each part sets up its own Foreman the same way.
+interface MatrixPart {
+  name: string;
+  run: (page: Page, lang: Lang, foreman: Foreman, m: Matrix, failures: string[]) => Promise<void>;
+}
+
+// Each part repeats the setup (about 8 s in CI), and six pages take about 8 s more.
+const pagesPerPart = 6;
+// Only the list's length is read here; the links come from each test's setup.
+const pageCount = matrixPages({} as Matrix).length;
+
+const matrixParts: MatrixPart[] = [
+  ...Array.from(
+    { length: Math.ceil(pageCount / pagesPerPart) },
+    (_, i): MatrixPart => ({
+      name: `pages ${i * pagesPerPart + 1} to ${Math.min((i + 1) * pagesPerPart, pageCount)}`,
+      run: async (page, lang, _foreman, m, failures) => {
+        await sweep(page, lang, matrixPages(m).slice(i * pagesPerPart, (i + 1) * pagesPerPart), failures);
+      },
+    }),
+  ),
+  {
+    name: "ticked snapshots and settings change previews",
+    run: async (page, lang, _foreman, m, failures) => {
       // The confirmation for ticking several is the answer to a post.
       await sweepSubmit(
         page,
         lang,
         "/snapshots/review",
-        () => postFrom(page, "/snapshots", "/snapshots/review", ticked.map((v) => ["snap", v])),
-        failures,
-      );
-
-      // Step 3 of Generate with its exchange string open, on its other tabs, with its errors,
-      // and the settings change preview (SPEC 5.6, 5.7, 11; DESIGN 8.6 to 8.10).
-      const openStep3 = async () => {
-        await page.goto(newMapPath(mapWorld));
-        await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
-      };
-      for (const [label, control] of [
-        ["exchange string open", "#exchange-fill summary"],
-        ["Enemy tab", "label.tab:has(#tab-enemy)"],
-        ["Advanced tab", "label.tab:has(#tab-advanced)"],
-      ] as const) {
-        await sweepSubmit(
-          page,
-          lang,
-          `step 3 in ${label}`,
-          async () => {
-            await openStep3();
-            await page.locator(control).click();
-          },
-          failures,
-        );
-      }
-      await sweepSubmit(
-        page,
-        lang,
-        "step 3 with its errors",
-        async () => {
-          await openStep3();
-          await page.locator("#exchange-fill summary").click();
-          await page.locator("#exchange-fill-button").click();
-          await expect(page.locator("#error-summary")).toBeVisible();
-        },
+        () => postFrom(page, "/snapshots", "/snapshots/review", m.ticked.map((v) => ["snap", v])),
         failures,
       );
       await sweepSubmit(
@@ -569,7 +566,53 @@ test.describe("layout at 320 px in every language", () => {
         },
         failures,
       );
-
+    },
+  },
+  // Step 3 of Generate with its exchange string open, on its other tabs, and
+  // with its errors (SPEC 5.6, 5.7, 11; DESIGN 8.6 to 8.10).
+  ...(
+    [
+      ["exchange string open", "#exchange-fill summary"],
+      ["Enemy tab", "label.tab:has(#tab-enemy)"],
+      ["Advanced tab", "label.tab:has(#tab-advanced)"],
+    ] as const
+  ).map(
+    ([label, control]): MatrixPart => ({
+      name: `Generate step 3 in ${label}`,
+      run: async (page, lang, _foreman, m, failures) => {
+        await sweepSubmit(
+          page,
+          lang,
+          `step 3 in ${label}`,
+          async () => {
+            await openStep3(page, m);
+            await page.locator(control).click();
+          },
+          failures,
+        );
+      },
+    }),
+  ),
+  {
+    name: "Generate step 3 with its errors",
+    run: async (page, lang, _foreman, m, failures) => {
+      await sweepSubmit(
+        page,
+        lang,
+        "step 3 with its errors",
+        async () => {
+          await openStep3(page, m);
+          await page.locator("#exchange-fill summary").click();
+          await page.locator("#exchange-fill-button").click();
+          await expect(page.locator("#error-summary")).toBeVisible();
+        },
+        failures,
+      );
+    },
+  },
+  {
+    name: "save and rename errors",
+    run: async (page, lang, foreman, _m, failures) => {
       // The 422 error pages of the load-save and rename forms. Each Load next
       // button always sends a choice, so its name is removed here.
       await sweepSubmit(
@@ -611,7 +654,11 @@ test.describe("layout at 320 px in every language", () => {
         },
         failures,
       );
-
+    },
+  },
+  {
+    name: "retention confirm and sign-in",
+    run: async (page, lang, foreman, _m, failures) => {
       // Lowering retention below what exists asks first (SPEC 6.6, 17.5).
       seedAutomaticSnapshots(foreman, 4);
       await sweepSubmit(
@@ -642,9 +689,24 @@ test.describe("layout at 320 px in every language", () => {
         await setTextSize(page, size);
         await checkCase(page, `${lang} /signin rate-limited at ${size}%`, failures);
       }
+    },
+  },
+];
 
-      expect(failures, "pages that break at 320 px").toEqual([]);
-    });
+test.describe("layout at 320 px in every language", () => {
+  test.use({ fakeGameOn: true });
+  oneProjectPerLanguage();
+
+  for (const lang of languages) {
+    for (const part of matrixParts) {
+      test(`${lang}: ${part.name} fit and pass axe at 100% and 200% text`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+        const failures: string[] = [];
+        const m = await setUpMatrix(page, foreman, fakeGame!);
+        await chooseLanguage(page.context(), lang, foreman.url);
+        await part.run(page, lang, foreman, m, failures);
+        expect(failures, "pages that break at 320 px").toEqual([]);
+      });
+    }
   }
 });
 
@@ -707,7 +769,6 @@ test.describe("game text carries lang=en", () => {
   test.use({ fakeGameOn: true });
 
   test("the log pane and the console history are English in every language", async ({ page, foreman, fakeGame }) => {
-    test.setTimeout(120_000);
     const live = { timeout: 20_000 };
     await createAdmin(page);
     seedWorld(foreman);
