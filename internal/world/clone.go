@@ -89,7 +89,7 @@ func (m *Manager) Clone(ctx context.Context, srcID, name string, keepSave bool, 
 		return "", err
 	}
 	files := slices.Concat(mods, config)
-	opts := createOptions{}
+	opts := createOptions{chosenMods: meta.ChosenMods}
 	// The record of the players of the save is carried only with the save:
 	// the copy keeps the save's name, size and modification time, so the
 	// record still matches it. A fresh map has no save to match. A record

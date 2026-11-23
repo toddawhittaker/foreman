@@ -45,6 +45,10 @@ type Meta struct {
 	// the default, manual with skip-online on. It is Foreman's own setting,
 	// not audited and taken in no snapshot, like the display name.
 	FactoryMap *FactoryMapMode
+	// ChosenMods names the mods the admin chose, as against those that came
+	// in as another mod's dependency; nil until the first mod change writes
+	// it (SPEC 9.6).
+	ChosenMods []string
 
 	unknown map[string]json.RawMessage
 }
@@ -62,6 +66,7 @@ type metaKnown struct {
 	UseWhitelist  bool            `json:"use_whitelist,omitempty"`
 	Archived      bool            `json:"archived,omitempty"`
 	FactoryMap    *FactoryMapMode `json:"factory_map,omitempty"`
+	ChosenMods    *[]string       `json:"chosen_mods,omitempty"`
 }
 
 // NewMap says how the world's first start makes its map: the game's own
@@ -82,10 +87,25 @@ type ImportedFrom struct {
 	At        time.Time `json:"at"`
 }
 
-var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from", "new_map", "use_whitelist", "archived", "factory_map"}
+var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from", "new_map", "use_whitelist", "archived", "factory_map", "chosen_mods"}
 
 // Newer reports whether a newer Foreman wrote m, so this one must not change it.
 func (m Meta) Newer() bool { return m.FormatVersion > FormatVersion }
+
+// chosenOut and chosenIn keep an empty record apart from no record.
+func chosenOut(c []string) *[]string {
+	if c == nil {
+		return nil
+	}
+	return &c
+}
+
+func chosenIn(c *[]string) []string {
+	if c == nil {
+		return nil
+	}
+	return append([]string{}, *c...)
+}
 
 // MarshalJSON writes the known fields over any unknown ones.
 func (m Meta) MarshalJSON() ([]byte, error) {
@@ -101,6 +121,7 @@ func (m Meta) MarshalJSON() ([]byte, error) {
 		UseWhitelist:  m.UseWhitelist,
 		Archived:      m.Archived,
 		FactoryMap:    m.FactoryMap,
+		ChosenMods:    chosenOut(m.ChosenMods),
 	})
 	if err != nil {
 		return nil, err
@@ -147,6 +168,7 @@ func (m *Meta) UnmarshalJSON(b []byte) error {
 		UseWhitelist:  k.UseWhitelist,
 		Archived:      k.Archived,
 		FactoryMap:    k.FactoryMap,
+		ChosenMods:    chosenIn(k.ChosenMods),
 		unknown:       all,
 	}
 	return nil
