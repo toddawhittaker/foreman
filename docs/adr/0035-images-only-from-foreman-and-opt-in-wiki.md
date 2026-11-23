@@ -1,6 +1,6 @@
 # 0035. Images come from Foreman only, with an opt-in for the Factorio wiki
 
-- **Status**: Accepted
+- **Status**: Accepted; mod icons from zips were added by ADR 0037
 - **Date**: 2026-11-23
 - **References**: SPEC.md sections 13.1, 14.6 and 14.10; issue #882
 

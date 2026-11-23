@@ -926,7 +926,65 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - **Downloads**: one planet's PNG, or every drawn planet as a zip,
     named after the world, the seed and the planet, with `-territories`,
     `-amounts` or `-territories-amounts` when those are drawn in, and the
-    link says what is drawn.
+    link says what is drawn. When the preview has a star map (below), the
+    zip also holds it as `<world>-<seed>-starmap.svg`.
+  - **The star map** (#920; Todd's rulings, 2026-11-23). With All planets
+    chosen, the preview ends with one more picture after the planets, "Star
+    map", drawn from the game's own space locations and routes. With One
+    planet it is not shown, and it is shown only when at least two
+    locations are visible. It is a picture in the page: no table and no map
+    on the world's page.
+    - **Where it comes from.** A world with a cached planets run (9.6) has
+      that run's map, which holds Space Age and every mod. The map takes only
+      a run that is already cached and starts none, so a modded world whose
+      run is not cached shows none. A world whose mods are all built in has no run; when Space Age is
+      on and its planets were read, it shows Space Age's own map, shipped
+      as extracted data: `internal/mapgen/data/<line>/starmap.json`, made
+      from each game image with Space Age when the project is built (the
+      same way as the embedded planets above), holding positions, routes and
+      names but no art. Nothing is read or downloaded at startup (4.2). A
+      world with Space Age off, 1.1 (no space locations) and a world with
+      other mods whose planets could not be read show none, since a plain
+      Space Age map never stands for a modded system.
+    - **What it draws.** The game's positions, as the game places them:
+      each location is a circle sized by its `magnitude`, with its label
+      beside it in the direction of its label orientation, and moons are
+      drawn where the game puts them. A plain sun circle sits at the centre,
+      and a faint ring marks each distance a location lies at, so the map
+      reads like the game's. When the data names a parent (PlanetsLib), a
+      faint orbit ring is drawn about it through the moon. The picture is
+      square, dark in both themes as the game's map is, and its view fits
+      everything drawn, each label measured as it is shown. A location the
+      game hides is left out, and so is every route that touches one.
+    - **Routes** are drawn as the game draws them, by the rule community
+      reports give (the 2.1 route `shape` overrides are not read). A route
+      arcs about the nearest parent the two ends share, the sun for two
+      planets: a spiral whose distance from that parent and angle about it
+      each change evenly from one end to the other, the shorter way round.
+      A route is straight when that nearest parent is one of its two ends,
+      such as a moon and its planet, or when the two ends share nothing but
+      the universe's origin and one of them has a parent of its own.
+    - **Pictures on the circles.** Each location is a circle first. A
+      modded location's own star map icon goes on top, from
+      `/worlds/{id}/icons/starmap/{name}.png` (14.10). A base-game place
+      shows the wiki's picture on top only while the wiki setting is on
+      (14.10); the sun has none. A picture that fails to load leaves the
+      circle.
+    - **Names.** A base-game place has the game's own name in the page
+      language. Another location has the mod's label from the planets list,
+      else the mod's label as the star map file gave it (English), else its
+      raw name; moons and modded places that are not planets are therefore
+      not translated. A mod's name is marked `translate="no"`.
+    - **The large view and the file.** The star map opens in the large view
+      like a planet picture, with the same zoom, pan and keys. It shows
+      alone: the planet steps, resource amounts, territories and the
+      planet's settings are hidden, and the download is the star map's file.
+      The file is the same SVG as the page draws, `starmap.svg`, but with
+      its own namespace and without the pictures on the circles, so it opens
+      anywhere and loads nothing. It is served only to the preview's owner,
+      with `Content-Security-Policy: default-src 'none'` and `nosniff`.
+      Without script the picture's link opens the file. Its text alternative
+      is in 17.20.
   - **Demolisher territories** (Vulcanus, Space Age, 2.x). A "Show
     demolisher territories" box, shown only while Vulcanus is viewed and
     kept while another planet is, draws each territory over the picture
@@ -2398,6 +2456,39 @@ the 64-bit range means no limit.
   startup setting of the five planet mods tested changes the list, so
   saved startup settings do not reset it. Foreman checks the file under
   14.6.
+- **Icons and the star map** (#914, #920; ADR 0036). Both runs above also
+  leave two more files, each read under 14.6 and cached with the run
+  (neither starts a run of its own): `icons.json` and `starmap.json`.
+  - `icons.json` lists the icon of each object a mod setting's text can
+    name (item, fluid, recipe, technology, entity, tile, virtual signal,
+    space location, quality, achievement, item group, equipment and
+    asteroid chunk), and each space location's star map icon, with the
+    path inside its mod and the active mods' versions. The game's runtime
+    API has no icon paths, so Foreman's control mod now has a data stage:
+    a `data-final-fixes.lua` copies the paths from the prototypes into one
+    invisible `mod-data` prototype, and `control.lua` writes it out. The
+    control mod's `info.json` names every mod the run loads as an optional
+    dependency, so the control mod loads after them and sees their final
+    icons. A mod name outside letters, digits, `_` and `-` (up to 100) is
+    left out of that list, which can only loosen the order for that mod. It keeps a plain `icon`, or `icons` with one layer that has no
+    tint, shift, scale or floating (Todd's ruling, 2026-11-23): any other
+    icon is left out, and the page shows the object's name. An icon under
+    a game mod (`base`, `core`, `space-age`, `quality`, `elevated-rails`,
+    `recycler`) is left out too, because the art is Wube's.
+  - `starmap.json` lists the space locations the game has (name, name for
+    the page, distance, orientation, size (`magnitude`), label direction,
+    the parent a PlanetsLib moon names, whether it is hidden, whether it
+    has a star map icon) and the routes between them with their length in
+    kilometres. It comes from the runtime API, so it holds the positions
+    the game uses. A location is drawn at distance and orientation, as the
+    game places it.
+  - Each file is written under its own error guard, after the settings and
+    the planets, so a failure in either leaves the settings and the planets
+    as they were; a missing file is not a failed run, and the page that
+    wanted it simply has none. The control mod adds one invisible
+    prototype, so its old promise to add none no longer holds. 1.1 has no
+    `mod-data` and no planets, so it writes neither file; a 2.0 image
+    without the `mod-data` type writes no icons.
 
 9.7. **Built-in mods** (`base` and the DLC mods for the world's game
 version, section 2) are never offered for download or removal. Their
@@ -3316,9 +3407,10 @@ No new Docker endpoint is used.
 Mod settings (9.6) use a fourth kind, `foreman-modsettings-<folder>`, in
 the same way: the same label, endpoints, host settings, slot and cleanup,
 with a memory limit of 4 GiB and a time limit of 5 minutes. It runs the
-world's own image with a small control-only mod that writes every setting's
-definition as JSON, and the game writes its defaults `mod-settings.dat`
-beside it. Its work folder holds the world's mods by hard link, falling back
+world's own image with a small helper mod that writes every setting's
+definition as JSON, with the planets, the icon paths and the star map (9.6;
+its data stage adds one invisible prototype, ADR 0036), and the game writes
+its defaults `mod-settings.dat` beside it. Its work folder holds the world's mods by hard link, falling back
 to copies (at most 100,000 files and 4 GiB), and never the world's own
 folder or its `mod-settings.dat`. A world mod named `foreman-modsettings`
 refuses the run. Foreman reads the output through the work folder and checks
@@ -3376,7 +3468,11 @@ save names, snapshot folder names, uploaded zip entries, world file
 entries, mod file names) is resolved and checked
 to stay inside the intended directory before use. Symlinks inside a world
 are not followed out of it. Uploaded zips are checked entry by entry and
-refused if any entry would land outside its target. (P0)
+refused if any entry would land outside its target. A mod icon's path comes
+from the mod settings run (9.6), not from a user, and is checked all the
+same: when the run's file is read (14.6) and again when the zip is opened.
+The icon address carries only an object's kind and name, never a path, and
+the zip is read in place, not unpacked. (P0)
 
 14.6. **Uploads** have size limits (app settings on the General tab, 13.1:
 a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 1 GB;
@@ -3410,7 +3506,38 @@ are ignored and an unknown setting type is shown as not editable. The
 planets file of the same run (9.6) is at most 1 MiB, 64 planets, 512
 controls, 128 controls per planet and 512 resources; over any of these
 the whole file is refused and step 4 uses the embedded planets (5.6).
-Planet, control and resource names must match `^[a-z0-9_-]{1,64}$`; one
+The icon file of the same run (`icons.json`, 9.6) is at most 4 MiB, 20,000
+icons and 2,048 mods, and the star map file (`starmap.json`) at most 256
+KiB, 256 locations and 1,024 routes; over any of these the whole file is
+refused, and the page has no icons or no star map. An icon is left out, and
+counted, when its kind is not on the fixed list, its name does not match
+`^[a-z0-9_-]{1,100}$`, its size is not a whole number from 1 to 4096, it
+repeats an earlier kind and name, or its path breaks the path rule: it must
+be `__<mod>__/<file>.png`, at most 512 characters, for a mod the file lists
+as active with a version of dotted numbers, and that mod must not be one of
+the game's own (`base`, `core`, `space-age`, `quality`, `elevated-rails`,
+`recycler`). The file part may have no empty, `.` or `..` part, no backslash,
+no control character and no absolute path. A location or route is left out,
+and counted, when its name does not match `^[a-z0-9_-]{1,64}$` or repeats,
+it is hidden, its distance or size is negative or past 1e12, a
+route's length is, or a route end is not a
+kept location; a route listed twice, in either direction, is drawn once. A
+parent that is not a kept location, or that would make a loop, is cleared,
+so following parents always ends. A number that is not finite refuses the
+whole file. An error names counts, never text from the file. One icon is
+read from a mod's installed zip under these limits: the zip is at most 2 GiB
+and 10,000 entries, checked before its directory is built;
+the icon's entry is at most 2 MiB packed and as declared, and the read stops
+one byte past the declared size, so a lying header is refused; the
+picture's header is read first, and one over 4096 by 4096 pixels, or
+smaller than its listed size, is refused before anything is decoded. Only
+one decode runs at a time, at most 8 more requests wait, and one past that
+is answered 503. The top-left square of the listed size (the first mipmap)
+is scaled to 64 pixels, or 128 for a star map icon, and written as a new
+PNG, so no byte of the zip's file reaches the browser; the new pictures are
+kept in memory, at most 8 MiB in all. A folder (unzipped) mod is not read.
+A refused or missing icon is a plain 404 and the page shows the object's
+name. Planet, control and resource names must match `^[a-z0-9_-]{1,64}$`; one
 that does not is left out, and the page gives how many were. A control
 with an unknown category or an over-long order is left out. A planet's
 own default for a control is kept only when it is a finite number from 0
@@ -3422,8 +3549,8 @@ supplies (setting names, descriptions, mod titles and summaries) keeps a
 safe subset of the game's rich text, parsed on the server and rebuilt from
 an allowed list: bold fonts as bold, the game's named colours as theme
 colours (hex and r,g,b colours as plain text), object tags as the object's
-name made readable (or, when an admin has turned wiki icons on, its icon,
-14.10), the game's warning and info sprites as Foreman's own
+name made readable (or the mod's own icon when the world's mods have one
+for it, or, when an admin has turned wiki icons on, the wiki's icon, 14.10), the game's warning and info sprites as Foreman's own
 icons with text for screen readers, a key-binding macro as the action's
 name (never a key), any other macro as its name made readable, and an escaped line break as a break in descriptions.
 No text, attribute or class from the mod reaches the page unescaped;
@@ -3542,11 +3669,38 @@ The image carries `referrerpolicy="no-referrer"`, so the wiki is not told
 the page's address, and `loading="lazy"`. Its `alt` text is the object's
 name, and a failed load (offline, a renamed wiki file, a blocked request)
 swaps the image for that name, so a broken image never shows. Foreman never
-fetches, stores or proxies an icon, and sends no request to the wiki. The
+fetches, stores or proxies a wiki icon, and sends no request to the wiki.
+The star map (5.6) shows the wiki's picture of a base-game place the same
+way while the switch is on: `https://wiki.factorio.com/images/<File>.png`
+for Nauvis, Vulcanus, Gleba, Fulgora, Aquilo, the solar system edge and the
+shattered planet, and none for the sun. An SVG image cannot carry a
+referrer policy of its own, so while the switch is on every page that may load
+the wiki's pictures sends `Referrer-Policy: no-referrer`, and the wiki is told no page address. The
 page's `Content-Security-Policy` is `frame-ancestors 'none'; img-src 'self'
 data:`, plus `https://wiki.factorio.com` after `data:` only while the switch
 is on, and never on a public page (ADR 0035). A switch that cannot be read counts as
 off (P1).
+**Mod icons are not an outbound request** (#914, ADR 0037). A mod's own icon
+for an object tag, and a modded location's star map picture, are served by
+Foreman from the world's installed mod zips (14.6), at
+`/worlds/{id}/icons/{kind}/{name}.png`, to a signed-in user only. The
+address names an object, never a path; the kind must be on the fixed list
+and the name must match `^[a-z0-9_-]{1,100}$`. The server finds the icon in
+the world's cached mod settings run, never starts a run, and answers
+`image/png` with `X-Content-Type-Options: nosniff` and `Cache-Control:
+private, max-age=300`; a miss, a refusal or an unreadable file is a plain
+404. A new mod set or settings file is a new run, so an icon of an older one
+is not served; a browser may still show it for up to 5 minutes. The
+page's `img-src` does not change, because the address is Foreman's own, and
+a public page never shows a mod icon. For an object tag the order is the
+mod's icon, then the wiki's icon while the switch is on, then the object's
+name, and the icon's `alt` is that name. Only the world's own mod settings
+page and Generate's Mod settings step show mod icons for object tags, and
+only once the world's run is cached; the star map (5.6) shows a modded
+location's icon on Generate's last step. A base-game object, such as Nauvis or
+`space-science-pack`, never has a mod icon: its art is Wube's, which
+Foreman does not ship, and it is shown from the wiki when the switch is on
+and by name otherwise.
 The mod portal's base is fixed at `https://mods.factorio.com`; there is no
 setting for it. Its API calls take at most 10 seconds, follow no redirects,
 and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
@@ -3991,6 +4145,20 @@ is drawn by the server once the world's planet run has finished, within
 its time limit (14.3); with script the page shows at once and the form
 part loads after it, with its progress said once. Skip, Continue and every
 "next step" are links or buttons (17.9). (P1)
+
+17.20. **The star map's text alternative** (5.6; Todd's ruling, 2026-11-23,
+and the smallest alternative this section allows). The star map is an SVG
+with `role="img"` and an accessible name that names it as the star map:
+"Star map: the planets around the sun and the routes between them." Each
+location has a `<title>` holding its name, so a screen reader can reach
+every place by name, and a mod's name is marked `translate="no"`. The
+picture adds no table or list of routes, by ruling, because it is for
+looking at and nothing is done in it. The card's link says that it opens
+the large view (or the file, without script), and its download link names
+the file. The picture passes the accessibility scan in both themes at
+desktop width and at 320 px with no sideways scroll (17.2). A picture on a
+location's circle is decoration: the location's title names it, and one
+that fails to load changes nothing the reader hears. (P1)
 
 ## 18. Epics, in order
 
