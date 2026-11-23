@@ -13,4 +13,10 @@ const (
 	// PlanetsFile is the JSON of planets, autoplace controls and resources
 	// the same run leaves in the work folder (SPEC 5.6). It may be missing.
 	PlanetsFile = "planets.json"
+	// IconsFile is the JSON of icon paths the same run leaves in the work
+	// folder (SPEC 14.6). It may be missing.
+	IconsFile = "icons.json"
+	// StarMapFile is the JSON of space locations and routes the same run
+	// leaves in the work folder (SPEC 14.6). It may be missing.
+	StarMapFile = "starmap.json"
 )

@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -78,6 +79,11 @@ type ModSettingDefs struct {
 	// run did not write its file or the file was refused.
 	Icons   modsettings.IconIndex
 	StarMap mapgen.StarMap
+	// IconsErr and StarMapErr say why Icons or StarMap is empty, as
+	// PlanetsErr does for the planets; nil when the file was read. Neither
+	// fails the run.
+	IconsErr   error
+	StarMapErr error
 }
 
 // Catalogue returns the world's catalogue labelled in lang, or in English
@@ -89,40 +95,112 @@ func (d *ModSettingDefs) Catalogue(lang string) mapgen.Catalogue {
 	return d.Catalogues["en"]
 }
 
-// planetsCopy copies the planet file out of the container. A missing file is
-// not a failed run: the Go side falls back to the built-in catalogue.
-const planetsCopy = `cp ` + previewWrite + `/script-output/` + gameenv.PlanetsFile + ` ` + gameenv.PreviewMount + `/` + gameenv.PlanetsFile + ` 2>/dev/null || :`
+// optionalCopy is the shell line that copies a file the run may leave out of
+// the container. A missing file is not a failed run: the Go side falls back
+// (the built-in catalogue, no icons, no star map).
+func optionalCopy(file string) string {
+	return `cp ` + previewWrite + `/script-output/` + file + ` ` + gameenv.PreviewMount + `/` + file + ` 2>/dev/null || :`
+}
 
-// withPlanetsCopy puts planetsCopy and the game's locale copy before the
-// script's last line, the definitions copy, so the container still exits
-// non-zero when that fails.
+// withPlanetsCopy puts the copies of the planet, icon and star map files and
+// the game's locale copy before the script's last line, the definitions
+// copy, so the container still exits non-zero when that fails.
 func withPlanetsCopy(script string) string {
 	i := strings.LastIndex(script, "\n")
-	return script[:i+1] + baseLocaleCopy() + "\n" + planetsCopy + "\n" + script[i+1:]
+	return script[:i+1] + baseLocaleCopy() + "\n" +
+		optionalCopy(gameenv.PlanetsFile) + "\n" +
+		optionalCopy(gameenv.IconsFile) + "\n" +
+		optionalCopy(gameenv.StarMapFile) + "\n" + script[i+1:]
 }
 
 // modSettingsMod is the definitions run's control mod. It needs no params
 // file; the container's script runs a no-op where the others write theirs.
 var modSettingsMod = controlMod{
-	kind:      gameenv.KindModSettings,
-	what:      "mod settings",
-	name:      modsettingsmod.ModName,
-	dir:       modsettingsmod.ModDir,
-	control:   modsettingsmod.Control,
-	params:    ":",
-	save:      "modsettings.zip",
-	output:    gameenv.ModSettingsDefsFile,
-	maxOutput: modsettings.MaxDefinitionsBytes,
-	memory:    ModSettingsMemory,
+	kind:    gameenv.KindModSettings,
+	what:    "mod settings",
+	name:    modsettingsmod.ModName,
+	dir:     modsettingsmod.ModDir,
+	control: modsettingsmod.Control,
+	// The data stage exports icon paths for control.lua (ADR 0036).
+	dataFinalFixes: modsettingsmod.DataFinalFixes,
+	params:         ":",
+	save:           "modsettings.zip",
+	output:         gameenv.ModSettingsDefsFile,
+	maxOutput:      modsettings.MaxDefinitionsBytes,
+	memory:         ModSettingsMemory,
 }
 
-// modSettingsInfo is the control mod's info.json. It needs the base game
-// only, whose line it is for.
-func modSettingsInfo(line string) []byte {
+// modSettingsInfo is the control mod's info.json. It needs the base game,
+// whose line it is for, and takes an optional dependency on each of mods, the
+// world's enabled mods, so it loads after all of them and its
+// data-final-fixes sees their final icons (ADR 0036).
+func modSettingsInfo(line string, mods []string) []byte {
+	deps := []string{"base"}
+	for _, m := range mods {
+		deps = append(deps, "? "+m)
+	}
 	return modInfo(modsettingsmod.ModName, modsettingsmod.ModVersion, "Foreman mod settings",
-		"Lists the mod settings the world's mods define for Foreman's mod settings page. Adds no prototypes.",
-		line, "base")
+		"Lists the mod settings, planets, star map and icon paths of the world's mods for Foreman. Adds one invisible mod-data prototype.",
+		line, deps...)
 }
+
+// depNameRE is the mod names written as optional dependencies: the mod
+// portal's own rule. A name the game might parse another way is left out,
+// which only loosens the load order for that mod.
+var depNameRE = regexp.MustCompile(`^[A-Za-z0-9_-]{1,100}$`)
+
+// workFolderMods is the names of the mods the game loads in the run's work
+// folder dir: each mod mod-list.json enables, and each zip or folder in the
+// mods folder that the list does not turn off. "base" and the control mod
+// itself are left out, as is a name outside depNameRE. The names are sorted.
+func workFolderMods(base *os.Root, dir string) ([]string, error) {
+	root, err := base.OpenRoot(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	states, err := world.ModListStates(root)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := fs.ReadDir(root.FS(), world.ModsDir)
+	if err != nil {
+		return nil, err
+	}
+	names := map[string]bool{}
+	for name, on := range states {
+		if on {
+			names[name] = true
+		}
+	}
+	for _, e := range entries {
+		name := e.Name()
+		switch {
+		case e.Type().IsRegular() && strings.HasSuffix(name, ".zip"):
+			name = strings.TrimSuffix(name, ".zip")
+		case e.IsDir():
+		default:
+			continue
+		}
+		if i := strings.LastIndexByte(name, '_'); i > 0 && modFileVersionRE.MatchString(name[i+1:]) {
+			name = name[:i]
+		}
+		if on, listed := states[name]; on || !listed {
+			names[name] = true
+		}
+	}
+	out := make([]string, 0, len(names))
+	for name := range names {
+		if name != "base" && name != modsettingsmod.ModName && depNameRE.MatchString(name) {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// modFileVersionRE is the version part of a mod's file name.
+var modFileVersionRE = regexp.MustCompile(`^\d+(\.\d+)*$`)
 
 // maxModSettingsEntries is how many worlds' definitions are kept. A result
 // is small but a deployment has few worlds that anyone edits; the least
@@ -305,11 +383,15 @@ func (c *Controller) runModSettings(ctx context.Context, id string, settings boo
 			return name, err
 		},
 	}
-	var defsJSON, defaults, planetsJSON []byte
-	var planetsErr error
+	var defsJSON, defaults, planetsJSON, iconsJSON, starMapJSON []byte
+	var planetsErr, iconsErr, starMapErr error
 	var gameLocale map[string]modsettings.LocaleSections
 	err = c.previewRunIn(ctx, plan, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
-		if err := addControlMod(base, name, modSettingsMod, modSettingsInfo(line)); err != nil {
+		mods, err := workFolderMods(base, name)
+		if err != nil {
+			return err
+		}
+		if err := addControlMod(base, name, modSettingsMod, modSettingsInfo(line, mods)); err != nil {
 			return err
 		}
 		mounts, err := c.readOnlyZipMounts(base, name)
@@ -327,6 +409,8 @@ func (c *Controller) runModSettings(ctx context.Context, id string, settings boo
 			return err
 		}
 		planetsJSON, planetsErr = readPlanetsOutput(base, name)
+		iconsJSON, iconsErr = readOptionalOutput(base, name, gameenv.IconsFile, modsettings.MaxIconIndexBytes)
+		starMapJSON, starMapErr = readOptionalOutput(base, name, gameenv.StarMapFile, mapgen.MaxStarMapFileBytes)
 		gameLocale = readBaseLocale(base, name)
 		return nil
 	})
@@ -348,6 +432,18 @@ func (c *Controller) runModSettings(ctx context.Context, id string, settings boo
 	out.Catalogues, out.PlanetsErr = worldCatalogues(planetsJSON, planetsErr, sections, gameLocale, line, c.worldSpaceAge(id, meta))
 	if out.PlanetsErr != nil {
 		c.log.Warn("using the built-in planets for the world", "world", id, "error", out.PlanetsErr)
+	}
+	out.Icons, out.IconsErr = decodeOptional(iconsJSON, iconsErr, modsettings.DecodeIconIndex)
+	out.StarMap, out.StarMapErr = decodeOptional(starMapJSON, starMapErr, mapgen.DecodeStarMap)
+	if out.StarMapErr == nil {
+		// Labels in English: a page in another language takes a planet's
+		// label from Catalogue.
+		out.StarMap = out.StarMap.Labelled(labelLayers("en", sections, gameLocale)...)
+	}
+	for what, err := range map[string]error{"icons": out.IconsErr, "star map": out.StarMapErr} {
+		if errors.Is(err, ErrRunFileRefused) {
+			c.log.Warn("the run's "+what+" file was refused", "world", id, "error", err)
+		}
 	}
 	return out, key, nil
 }
@@ -491,6 +587,52 @@ func readPlanetsOutput(base *os.Root, dir string) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %w", ErrPlanetsMissing, err)
 	}
 	return b, nil
+}
+
+// Why ModSettingDefs.Icons or StarMap is empty. Neither fails the run (SPEC
+// 9.6, 14.6).
+var (
+	// ErrRunFileMissing means the run left no usable file: a game line
+	// without it (1.1, or a 2.0 image without mod-data for the icons) or a
+	// failure in the script.
+	ErrRunFileMissing = errors.New("the game did not write the file")
+	// ErrRunFileRefused means the file was past a limit or not of the
+	// expected shape.
+	ErrRunFileRefused = errors.New("the file the game wrote could not be used")
+)
+
+// readOptionalOutput reads a file the run may leave in the work folder, under
+// the same rules as the definitions: a regular file within limit bytes (SPEC
+// 14.6). A file over the limit is ErrRunFileRefused; any other failure is
+// ErrRunFileMissing.
+func readOptionalOutput(base *os.Root, dir, file string, limit int64) ([]byte, error) {
+	root, err := base.OpenRoot(dir)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrRunFileMissing, err)
+	}
+	defer func() { _ = root.Close() }()
+	if info, err := root.Lstat(file); err == nil && info.Mode().IsRegular() && info.Size() > limit {
+		return nil, fmt.Errorf("%w: the file is over %d bytes", ErrRunFileRefused, limit)
+	}
+	b, err := world.ReadSmallFile(root, file, limit)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrRunFileMissing, err)
+	}
+	return b, nil
+}
+
+// decodeOptional decodes a file readOptionalOutput read. A read error passes
+// through; a decode error is ErrRunFileRefused. Either gives the zero value.
+func decodeOptional[T any](data []byte, readErr error, decode func([]byte) (T, error)) (T, error) {
+	var zero T
+	if readErr != nil {
+		return zero, readErr
+	}
+	v, err := decode(data)
+	if err != nil {
+		return zero, fmt.Errorf("%w: %w", ErrRunFileRefused, err)
+	}
+	return v, nil
 }
 
 // makeModSettingsDir makes the run's work folder: the game's config and the

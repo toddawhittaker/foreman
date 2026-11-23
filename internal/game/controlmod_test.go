@@ -1,6 +1,12 @@
 package game
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/toddawhittaker/foreman/internal/world"
+)
 
 // The game loads a control mod only when factorio_version is its own line,
 // and the territory mod needs Space Age, which has Vulcanus. The count mod
@@ -50,5 +56,38 @@ func TestModInfoJSON(t *testing.T) {
 		if tc.got != tc.want {
 			t.Errorf("%s: info.json is\n%s\nwant\n%s", name, tc.got, tc.want)
 		}
+	}
+}
+
+// A control mod writes a data-final-fixes.lua only when it has one: the mod
+// settings reader does (ADR 0036), the resource counter does not.
+func TestAddControlModDataFinalFixes(t *testing.T) {
+	for _, m := range []controlMod{modSettingsMod, resourceMod} {
+		dir := t.TempDir()
+		base, err := os.OpenRoot(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mods := filepath.Join(dir, "p", world.ModsDir)
+		if err := os.MkdirAll(mods, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(mods, world.ModListFile), []byte(`{"mods":[]}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := addControlMod(base, "p", m, []byte("{}")); err != nil {
+			t.Fatal(err)
+		}
+		_ = base.Close()
+		b, err := os.ReadFile(filepath.Join(mods, m.dir, "data-final-fixes.lua")) //nolint:gosec // the test's own folder
+		switch {
+		case m.dataFinalFixes == nil && err == nil:
+			t.Errorf("%s: a data-final-fixes.lua was written", m.name)
+		case m.dataFinalFixes != nil && (err != nil || string(b) != string(m.dataFinalFixes)):
+			t.Errorf("%s: data-final-fixes.lua is not the mod's own: %v", m.name, err)
+		}
+	}
+	if modSettingsMod.dataFinalFixes == nil {
+		t.Error("the mod settings reader has no data stage")
 	}
 }
