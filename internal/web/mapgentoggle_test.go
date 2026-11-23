@@ -1,6 +1,10 @@
 package web
 
 import (
+	"encoding/json"
+	"maps"
+	"net/url"
+	"slices"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -93,5 +97,34 @@ func TestModdedCliffAndEnemyBoxesOnTheForm(t *testing.T) {
 	}
 	if len(f.toggles()) == 0 {
 		t.Error("toggles lists no box")
+	}
+}
+
+// A modded enemy control with its box unticked saves at size 0, and the form
+// read back shows the box off (SPEC 5.6).
+func TestModdedEnemyBoxOffSavesSizeZero(t *testing.T) {
+	cat := mapgen.Builtin("2.1", true)
+	cat.Controls = maps.Clone(cat.Controls)
+	c := mapgen.Control{Name: "testplanet_enemy", Category: mapgen.CategoryEnemy, CanBeDisabled: true}
+	cat.Controls[c.Name] = mapgen.CatalogueControl{Control: c, Planets: []string{"testplanet"}}
+	cat.Planets = append(slices.Clone(cat.Planets), mapgen.Planet{Name: "testplanet", Controls: []string{c.Name}})
+
+	f, out, problems := parseMapGenIn(url.Values{fieldName("testplanet", c.Name, mgOn): {"off"}}, "2.1", cat)
+	if len(problems) > 0 {
+		t.Fatalf("problems %v", problems)
+	}
+	var saved struct {
+		Controls map[string]struct {
+			Size *float64 `json:"size"`
+		} `json:"autoplace_controls"`
+	}
+	if err := json.Unmarshal(out, &saved); err != nil {
+		t.Fatalf("saved settings are not JSON: %v\n%s", err, out)
+	}
+	if got := saved.Controls[c.Name].Size; got == nil || *got != 0 {
+		t.Errorf("%s size = %v, want 0\n%s", c.Name, got, out)
+	}
+	if f.resourceOn("testplanet", c.Name) {
+		t.Error("the form read back shows the enemy box ticked")
 	}
 }

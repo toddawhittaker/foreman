@@ -44,7 +44,7 @@ const (
 	mgAuxScale      = "mg.aux.scale"
 	mgMoistureBias  = "mg.moisture.bias"
 	mgAuxBias       = "mg.aux.bias"
-	// mgOn ends the name of a resource's on/off box.
+	// mgOn ends the name of a control's on/off box (resource, cliff or enemy).
 	mgOn = "on"
 )
 
@@ -678,7 +678,7 @@ func mgPlanets(line string, cat mapgen.Catalogue) []mgPlanet {
 			planet.controls = append(planet.controls,
 				mgControl{name: "water", legend: controlMsg("water"), category: mapgen.CategoryTerrain, topLevel: true, settings: waterSettings()},
 				mgControl{name: "nauvis_cliff", legend: controlMsg("nauvis_cliff"), category: mapgen.CategoryCliff, topLevel: true,
-					settings: cliffSettings(), toggle: mapgen.CliffToggle(line, p)})
+					settings: cliffSettings(), toggle: true})
 		}
 		out = append(out, planet)
 	}
