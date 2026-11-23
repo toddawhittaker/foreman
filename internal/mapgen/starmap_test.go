@@ -3,6 +3,7 @@ package mapgen
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 
@@ -246,5 +247,53 @@ func TestDecodeStarMapDropsRepeatedRoutes(t *testing.T) {
 	m, err := DecodeStarMap([]byte(in))
 	if err != nil || len(m.Routes) != 1 || m.Dropped != 2 {
 		t.Fatalf("%d routes, %d dropped, %v", len(m.Routes), m.Dropped, err)
+	}
+}
+
+// TestSpaceAgeStarMap pins the embedded maps (SPEC 5.6): each Space Age line
+// ships the game's own places and routes, and 1.1 has none.
+func TestSpaceAgeStarMap(t *testing.T) {
+	if _, ok := SpaceAgeStarMap("1.1"); ok {
+		t.Error("1.1 has no Space Age star map")
+	}
+	if _, ok := SpaceAgeStarMap("9.9"); ok {
+		t.Error("an unknown line has no star map")
+	}
+	for _, line := range []string{"2.0", "2.1"} {
+		t.Run(line, func(t *testing.T) {
+			m, ok := SpaceAgeStarMap(line)
+			if !ok {
+				t.Fatal("no star map")
+			}
+			var names []string
+			for _, l := range m.Locations {
+				names = append(names, l.Name)
+			}
+			want := []string{"nauvis", "vulcanus", "gleba", "fulgora", "aquilo", "solar-system-edge", "shattered-planet"}
+			if !slices.Equal(names, want) {
+				t.Errorf("locations = %v, want %v", names, want)
+			}
+			if len(m.Routes) != 9 {
+				t.Errorf("%d routes, want 9", len(m.Routes))
+			}
+			v, _ := m.Location("vulcanus")
+			if v.Distance != 10 || math.Abs(v.Orientation-0.1) > 1e-6 {
+				t.Errorf("vulcanus at distance %v, orientation %v; want 10, 0.1", v.Distance, v.Orientation)
+			}
+			var nv *Route
+			for i, r := range m.Routes {
+				if r.From == "nauvis" && r.To == "vulcanus" {
+					nv = &m.Routes[i]
+				}
+			}
+			if nv == nil || nv.Length != 15000 {
+				t.Errorf("nauvis-vulcanus route = %+v, want 15000 km", nv)
+			}
+			for _, l := range m.Locations {
+				if l.HasIcon {
+					t.Errorf("%s has an icon: no art is shipped", l.Name)
+				}
+			}
+		})
 	}
 }

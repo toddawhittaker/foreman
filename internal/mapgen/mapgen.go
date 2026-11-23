@@ -186,3 +186,21 @@ func read(line, name string) []byte {
 	}
 	return b
 }
+
+// SpaceAgeStarMap returns the star map of Space Age's own places on a line:
+// the five planets, the solar system edge and the shattered planet, with their
+// routes, as the game places them. It was read from the real game with the
+// rest of the line's data. It returns false for a line without Space Age.
+func SpaceAgeStarMap(line string) (StarMap, bool) {
+	b := read(line, "starmap.json")
+	if b == nil {
+		return StarMap{}, false
+	}
+	m, err := DecodeStarMap(b)
+	if err != nil {
+		// The embedded data is part of the binary, so this is a build
+		// mistake, as with parsed above.
+		panic(fmt.Sprintf("mapgen: data/%s/starmap.json: %v", line, err))
+	}
+	return m, true
+}

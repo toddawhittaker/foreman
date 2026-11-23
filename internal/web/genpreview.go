@@ -551,7 +551,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		}
 		// The star map comes from the world's mods, not the settings, so it is
 		// drawn again on each reply; the zip holds it too (SPEC 5.6).
-		page, file, ok := s.drawStarMap(r, in.sum.ID, f.cat)
+		page, file, ok := s.drawStarMap(r, in.sum.ID, in.sum.GameVersion, f.cat, in.catErr)
 		s.previews.setStarMap(u.ID, view.Token, file)
 		if ok {
 			view.StarMap = &StarMapPicture{SVG: page, Path: PathGeneratePreview + "/" + view.Token + "/" + starMapName}

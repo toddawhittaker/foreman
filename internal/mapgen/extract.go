@@ -8,7 +8,12 @@
 //	go run extract.go [version ...]   (default: the versions in defaultVersions)
 //
 // It also copies each tested image's map-settings.example.json to
-// data/<line>/map-settings-<version>.json, one per map-settings layout.
+// data/<line>/map-settings-<version>.json, one per map-settings layout, and
+// for a line with Space Age writes data/<line>/starmap.json: Space Age's
+// space locations and routes (positions, routes and names, no art), written by
+// the same control script a world's mod-settings run uses
+// (internal/game/modsettings/control.lua) in a map the game creates with
+// Space Age on and no other mod.
 package main
 
 import (
@@ -130,6 +135,7 @@ func extract(version string) error {
 		return fmt.Errorf("not a patch release of a supported line")
 	}
 	image := "factoriotools/factorio:" + version
+	gl, _ := mapgen.LineOf(line)
 
 	base, err := dump(image, line, false)
 	if err != nil {
@@ -195,7 +201,86 @@ func extract(version string) error {
 	if err := extractMapSettings(version); err != nil {
 		return err
 	}
+	if len(gl.SpaceAgeMods) > 0 {
+		if err := extractStarMap(image, version, gl); err != nil {
+			return fmt.Errorf("star map: %w", err)
+		}
+	}
 	fmt.Printf("%s: %d presets, %d planets\n", version, len(out.Presets), len(out.Planets))
+	return nil
+}
+
+// starMapMod is the name and folder of the control mod that writes the star
+// map; its script is Foreman's own, read from its source.
+const starMapMod = "foreman-modsettings"
+
+// extractStarMap creates a map in a throwaway container with Space Age on and
+// Foreman's mod-settings control script loaded, and keeps the starmap.json
+// that script writes. The file must decode as a star map with at least two
+// locations.
+func extractStarMap(image, version string, gl mapgen.GameLine) error {
+	script, err := os.ReadFile(filepath.Join("..", "game", "modsettings", "control.lua"))
+	if err != nil {
+		return err
+	}
+	work, err := os.MkdirTemp("", "mapgen-starmap-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(work)
+	if err := os.Chmod(work, 0o777); err != nil {
+		return err
+	}
+	mods := `{"name":"base","enabled":true}`
+	for _, m := range gl.SpaceAgeMods {
+		mods += fmt.Sprintf(`,{"name":%q,"enabled":true}`, m)
+	}
+	for _, m := range gl.AlwaysOnMods {
+		mods += fmt.Sprintf(`,{"name":%q,"enabled":true}`, m)
+	}
+	mods += fmt.Sprintf(`,{"name":%q,"enabled":true}`, starMapMod)
+	info := fmt.Sprintf(`{"name":%q,"version":"1.0.0","title":"star map","author":"Foreman","factorio_version":%q,"dependencies":["base"]}`, starMapMod, gl.Name)
+	modDir := filepath.Join(work, "mods", starMapMod)
+	if err := os.MkdirAll(modDir, 0o777); err != nil {
+		return err
+	}
+	for path, c := range map[string][]byte{
+		filepath.Join(work, "config.ini"):         []byte("[path]\nread-data=/opt/factorio/data\nwrite-data=/work\n"),
+		filepath.Join(work, "mods/mod-list.json"): []byte(`{"mods":[` + mods + `]}`),
+		filepath.Join(modDir, "info.json"):        []byte(info),
+		filepath.Join(modDir, "control.lua"):      script,
+	} {
+		if err := os.WriteFile(path, c, 0o644); err != nil {
+			return err
+		}
+	}
+	for _, d := range []string{filepath.Join(work, "mods"), modDir} {
+		if err := os.Chmod(d, 0o777); err != nil {
+			return err
+		}
+	}
+	cmd := exec.Command("docker", "run", "--rm", "-u", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+		"-v", work+":/work", "--entrypoint", "/opt/factorio/bin/x64/factorio", image,
+		"--config", "/work/config.ini", "--mod-directory", "/work/mods",
+		"--create", "/work/starmap-save.zip", "--map-gen-seed", "1")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("create map: %v\n%s", err, out)
+	}
+	b, err := os.ReadFile(filepath.Join(work, "script-output", "starmap.json"))
+	if err != nil {
+		return err
+	}
+	m, err := mapgen.DecodeStarMap(b)
+	if err != nil {
+		return err
+	}
+	if len(m.Locations) < 2 || len(m.Routes) == 0 {
+		return fmt.Errorf("the star map has %d locations and %d routes", len(m.Locations), len(m.Routes))
+	}
+	if err := os.WriteFile(filepath.Join("data", gl.Name, "starmap.json"), b, 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("%s: star map, %d locations, %d routes\n", version, len(m.Locations), len(m.Routes))
 	return nil
 }
 

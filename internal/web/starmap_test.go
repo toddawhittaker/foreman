@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"io"
 	"math"
 	"net/http"
@@ -390,5 +391,84 @@ func TestPreviewStarMapOnlyWithAllPlanets(t *testing.T) {
 		if strings.HasSuffix(f.Name, ".svg") {
 			t.Errorf("the zip holds %s", f.Name)
 		}
+	}
+}
+
+// withNoWorldStarMap makes every world's planets run uncached.
+func withNoWorldStarMap(t *testing.T) {
+	t.Helper()
+	old := worldStarMap
+	worldStarMap = func(*server, string) (mapgen.StarMap, bool) { return mapgen.StarMap{}, false }
+	t.Cleanup(func() { worldStarMap = old })
+}
+
+// SPEC 5.6: a world with Space Age and no other mod has no planets run, and
+// its preview shows Space Age's own embedded map: the five planets, the solar
+// system edge and the shattered planet, with pictures from the wiki only
+// while the wiki setting is on.
+func TestPreviewStarMapOfPlainSpaceAge(t *testing.T) {
+	hn := newGenerateHarness(t, &fakePreviewer{})
+	c := hn.signIn()
+	withWorldCatalogue(t, mapgen.Builtin("2.1", true), nil)
+	withNoWorldStarMap(t)
+	id, err := hn.worlds.Create(t.Context(), "Stars", "2.1.24", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := hn.postLong(PathGeneratePreview, worldPreviewForm(id), c).Body.String()
+	for _, want := range []string{`<svg class="starmap"`, "<title>Nauvis</title>", "<title>Vulcanus</title>", "<title>Gleba</title>",
+		"<title>Fulgora</title>", "<title>Aquilo</title>", "<title>Solar system edge</title>", "<title>Shattered planet</title>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the preview lacks %s", want)
+		}
+	}
+	svg := body[strings.Index(body, `<svg class="starmap"`):]
+	svg = svg[:strings.Index(svg, "</svg>")]
+	if got := strings.Count(svg, `<path d="`); got != 9 {
+		t.Errorf("%d routes drawn, want 9", got)
+	}
+	if strings.Contains(body, "wiki.factorio.com/images/Vulcanus.png") {
+		t.Error("wiki pictures while the setting is off")
+	}
+	if rec := hn.post(generalPath(), generalForm(map[string]string{"wiki_icons": "on"}), withCookie(c)); rec.Code != http.StatusSeeOther {
+		t.Fatalf("save: %d", rec.Code)
+	}
+	body = hn.postLong(PathGeneratePreview, worldPreviewForm(id), c).Body.String()
+	if !strings.Contains(body, "wiki.factorio.com/images/Vulcanus.png") {
+		t.Error("no wiki picture while the setting is on")
+	}
+}
+
+// SPEC 5.6: the embedded Space Age map is only for a world whose planets were
+// read and that has Space Age on. A world whose planets could not be read (a
+// modded world without its run), a world with Space Age off, and a 1.1 world
+// show none; a cached run's map always wins.
+func TestStarMapFallbackRule(t *testing.T) {
+	s := &server{}
+	spaceAge := mapgen.Builtin("2.1", true)
+	cases := []struct {
+		name    string
+		cat     mapgen.Catalogue
+		catErr  error
+		version string
+		want    bool
+	}{
+		{"plain Space Age", spaceAge, nil, "2.1.24", true},
+		{"plain Space Age on 2.0", mapgen.Builtin("2.0", true), nil, "2.0.77", true},
+		{"mods whose run is not read", spaceAge, errors.New("run failed"), "2.1.24", false},
+		{"Space Age off", mapgen.Builtin("2.1", false), nil, "2.1.24", false},
+		{"1.1", mapgen.Builtin("1.1", false), nil, "1.1.110", false},
+	}
+	withNoWorldStarMap(t)
+	for _, tc := range cases {
+		m, ok := s.starMapFor("w1", tc.version, tc.cat, tc.catErr)
+		if ok != tc.want || (ok && len(m.Locations) != 7) {
+			t.Errorf("%s: ok %t with %d locations, want ok %t", tc.name, ok, len(m.Locations), tc.want)
+		}
+	}
+	// A cached run's map wins, even over a world with Space Age on.
+	withWorldStarMap(t, starMapOf(t, `{"locations":[{"name":"a","distance":1},{"name":"b","distance":2}],"routes":[]}`))
+	if m, ok := s.starMapFor("w1", "2.1.24", spaceAge, nil); !ok || len(m.Locations) != 2 {
+		t.Errorf("a cached run's map = %d locations (ok %t), want its own 2", len(m.Locations), ok)
 	}
 }
