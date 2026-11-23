@@ -102,7 +102,8 @@ test("the zip counts each planet without amounts, one at a time, then downloads 
   await held.shift()!.continue();
   await page.unroute(resourceURL);
   const files = await names(await download);
-  expect(files.map((f) => f.replace(/^.*-(\w+-amounts\.png)$/, "$1")).sort()).toEqual(["gleba-amounts.png", "nauvis-amounts.png", "vulcanus-amounts.png"]);
+  // The zip holds the world's star map beside the drawn planets' pictures.
+  expect(files.map((f) => f.replace(/^.*-(\w+-amounts\.png|starmap\.svg)$/, "$1")).sort()).toEqual(["gleba-amounts.png", "nauvis-amounts.png", "starmap.svg", "vulcanus-amounts.png"]);
   await expect(prep(page)).toHaveCount(0);
   await expect.poll(heard).toContain("Download started.");
   // One count a planet: a second zip reuses them.
@@ -170,8 +171,12 @@ test("a planet that fails is named, with Try again and the zip without it", { ta
   const d = await download;
   expect(d.url()).toMatch(/without=nauvis/);
   const files = await names(d);
-  expect(files.length).toBe(2);
-  expect(files.every((f) => f.endsWith("-amounts.png") && !f.includes("nauvis"))).toBe(true);
+  // The two other planets' amounts pictures, and the world's star map, which has no planet to leave out.
+  expect(files.length).toBe(3);
+  const amounts = files.filter((f) => f.endsWith("-amounts.png"));
+  expect(amounts.length).toBe(2);
+  expect(amounts.some((f) => f.includes("nauvis"))).toBe(false);
+  expect(files.filter((f) => f.endsWith("-starmap.svg")).length).toBe(1);
   await page.unroute(resourceURL);
 });
 
@@ -278,7 +283,9 @@ test("ticked then Download all at once: the zip waits for the count on its way, 
   await hold.next();
   await hold.stop();
   const files = await names(await download);
-  expect(files.length).toBe(2);
+  // Two planets' pictures and the world's star map.
+  expect(files.length).toBe(3);
+  expect(files.filter((f) => f.endsWith("-starmap.svg")).length).toBe(1);
   await expect(prep(page).locator(".message")).toHaveCount(0);
   expect(asked).toEqual(["vulcanus", "nauvis"]);
 });

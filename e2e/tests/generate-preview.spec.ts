@@ -19,7 +19,8 @@ async function setUp(page: Page, foreman: Parameters<typeof seedWorld>[0], fakeG
 }
 
 const section = (page: Page) => page.getByRole("region", { name: "Map preview" });
-const pictures = (page: Page) => section(page).getByRole("img");
+// The planets' pictures; a plain Space Age world's star map, an image too, follows them.
+const pictures = (page: Page) => section(page).getByRole("img", { name: /^Map preview of / });
 
 // The automatic requests the page sends, as they go out.
 function autoRequests(page: Page) {
@@ -466,7 +467,8 @@ test.describe("with script", () => {
     await expect(pictures(page)).toHaveCount(5);
     const rows = () => page.evaluate(() => {
       const byRow = new Map<number, number[][]>();
-      for (const li of document.querySelectorAll("#preview .pictures > li")) {
+      // The star map's card holds an SVG, not a planet's picture; it has its own spec.
+      for (const li of document.querySelectorAll("#preview .pictures > li:not(.starmap-card)")) {
         const f = li.querySelector("figure")!.getBoundingClientRect();
         const i = li.querySelector("img")!.getBoundingClientRect();
         const c = li.querySelector("figcaption")!.getBoundingClientRect();
@@ -785,6 +787,8 @@ test.describe("without script", () => {
     await expect(section(page)).toHaveCount(0);
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(pictures(page)).toHaveCount(5);
+    // The seeded world is plain Space Age: it has no planets run, and shows the game's own star map.
+    await expect(section(page).getByRole("img", { name: /^Star map/ })).toHaveCount(1);
     // The one-or-all choice needs script, so it is not offered.
     await expect(section(page).getByRole("radio")).toHaveCount(0);
     const link = section(page).getByRole("link", { name: /^Map preview of Nauvis, seed \d+\. The pin is where players start\. \(opens the full-size picture\)$/ });

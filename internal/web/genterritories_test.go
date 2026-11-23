@@ -280,6 +280,9 @@ func TestTerritoryDownloadsDrawThem(t *testing.T) {
 		rc, _ := f.Open()
 		b, _ := io.ReadAll(rc)
 		_ = rc.Close()
+		if strings.HasSuffix(f.Name, "-starmap.svg") {
+			continue
+		}
 		isVulcanus := strings.Contains(f.Name, "vulcanus")
 		if isVulcanus != !bytes.Equal(b, prev.png) {
 			t.Errorf("%s: drawn on is %v", f.Name, !bytes.Equal(b, prev.png))
@@ -288,7 +291,8 @@ func TestTerritoryDownloadsDrawThem(t *testing.T) {
 			t.Errorf("Vulcanus is named %s", f.Name)
 		}
 	}
-	if len(zr.File) != 5 {
+	// Five planets and the star map.
+	if len(zr.File) != 6 {
 		t.Errorf("%d files in the zip", len(zr.File))
 	}
 }

@@ -132,11 +132,33 @@ var worldStarMap = func(s *server, id string) (mapgen.StarMap, bool) {
 	return defs.StarMap, true
 }
 
+// starMapFor is the star map of a world on a game version (SPEC 5.6). A
+// world with a cached planets run has that run's map, which holds Space Age
+// and every mod. Without one, a world whose planets were read (catErr nil;
+// a world with other mods than the game's own has its run read by then) and
+// that has Space Age on has Space Age's own embedded map. Any other world
+// has none: the plain Space Age map never stands for a modded system, and
+// 1.1 has no star map.
+func (s *server) starMapFor(id, version string, cat mapgen.Catalogue, catErr error) (mapgen.StarMap, bool) {
+	if m, ok := worldStarMap(s, id); ok {
+		return m, true
+	}
+	if catErr != nil || !cat.SpaceAge {
+		return mapgen.StarMap{}, false
+	}
+	line, ok := mapgen.Line(version)
+	if !ok {
+		return mapgen.StarMap{}, false
+	}
+	return mapgen.SpaceAgeStarMap(line)
+}
+
 // drawStarMap draws a world's star map twice: for the page, with the
 // location pictures, and as the file a download gives, without them. ok is
-// false when the world has no map of two locations or more.
-func (s *server) drawStarMap(r *http.Request, id string, cat mapgen.Catalogue) (page template.HTML, file []byte, ok bool) {
-	m, ok := worldStarMap(s, id)
+// false when the world has no map of two locations or more. version is the
+// world's game version and catErr why its planets could not be read.
+func (s *server) drawStarMap(r *http.Request, id, version string, cat mapgen.Catalogue, catErr error) (page template.HTML, file []byte, ok bool) {
+	m, ok := s.starMapFor(id, version, cat, catErr)
 	if !ok {
 		return "", nil, false
 	}

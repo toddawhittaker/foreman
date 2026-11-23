@@ -227,11 +227,18 @@ func TestPreviewDownloads(t *testing.T) {
 		rc, _ := f.Open()
 		b, _ := io.ReadAll(rc)
 		_ = rc.Close()
+		// A plain Space Age world's zip ends with its star map file.
+		if strings.HasSuffix(f.Name, "-starmap.svg") {
+			if !bytes.Contains(b, []byte("<svg ")) {
+				t.Errorf("%s is not a picture: %q", f.Name, b)
+			}
+			continue
+		}
 		if !bytes.Equal(b, pngBytes) {
 			t.Errorf("%s holds %q", f.Name, b)
 		}
 	}
-	want := []string{"Fresh_start-9-nauvis.png", "Fresh_start-9-vulcanus.png", "Fresh_start-9-gleba.png", "Fresh_start-9-fulgora.png", "Fresh_start-9-aquilo.png"}
+	want := []string{"Fresh_start-9-nauvis.png", "Fresh_start-9-vulcanus.png", "Fresh_start-9-gleba.png", "Fresh_start-9-fulgora.png", "Fresh_start-9-aquilo.png", "Fresh_start-9-starmap.svg"}
 	if !slices.Equal(names, want) {
 		t.Errorf("zip holds %v", names)
 	}

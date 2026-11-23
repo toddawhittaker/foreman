@@ -462,7 +462,8 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(zr.File) != 1 || zr.File[0].Name != "Fresh_start-123456-nauvis-amounts.png" {
+	// Nauvis's picture, then the world's star map, which has no amounts to count.
+	if len(zr.File) != 2 || zr.File[0].Name != "Fresh_start-123456-nauvis-amounts.png" || zr.File[1].Name != "Fresh_start-123456-starmap.svg" {
 		t.Errorf("zip without the others holds %d files", len(zr.File))
 	}
 	if len(prev.runs) != 1 {
@@ -479,11 +480,12 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, f := range zr.File {
-		if !strings.HasSuffix(f.Name, "-amounts.png") {
+		if !strings.HasSuffix(f.Name, "-amounts.png") && !strings.HasSuffix(f.Name, "-starmap.svg") {
 			t.Errorf("%s is not drawn on", f.Name)
 		}
 	}
-	if len(zr.File) != 5 {
+	// Five planets and the star map.
+	if len(zr.File) != 6 {
 		t.Errorf("%d files", len(zr.File))
 	}
 }
@@ -509,7 +511,8 @@ func TestZipKeepsThePlanetOrder(t *testing.T) {
 	for _, f := range zr.File {
 		got = append(got, strings.TrimSuffix(f.Name[strings.LastIndex(f.Name, "-")+1:], ".png"))
 	}
-	if want := mapgen.Planets("2.1", true); !slices.Equal(got, want) {
+	// The planets in the world's order, then the star map.
+	if want := append(mapgen.Planets("2.1", true), "starmap.svg"); !slices.Equal(got, want) {
 		t.Errorf("zip order %v, want %v", got, want)
 	}
 }
@@ -539,7 +542,8 @@ func TestZipWithoutChecksItsPlanets(t *testing.T) {
 			t.Errorf("Gleba is in the zip: %s", f.Name)
 		}
 	}
-	if len(zr.File) != 4 {
+	// Four planets and the star map.
+	if len(zr.File) != 5 {
 		t.Errorf("%d files", len(zr.File))
 	}
 }
