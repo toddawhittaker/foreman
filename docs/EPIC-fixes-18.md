@@ -31,8 +31,10 @@ map). The fold task (G) deletes this file.
    failed image leaves the circle. Pages carry `Referrer-Policy:
    no-referrer` while the wiki setting is on (SPEC 14.10).
 4. **Where it shows:** one more picture in Generate's map preview, beside
-   the planet pictures ("Star map"), and one more file in the "Download all
-   drawn planets" zip. No table, no separate page, no world-page map.
+   the planet pictures ("Star map"); it opens in the large map view like a
+   planet picture, with the same zoom and pan; and it is one more file in
+   the "Download all drawn planets" zip. No table, no separate page, no
+   world-page map.
 5. **Labels:** drawn on the map at `label_orientation`. The picture's
    accessible name names it as the star map; each planet has a `<title>`
    (orchestrator: the smallest text alternative SPEC 17 allows).
@@ -51,9 +53,9 @@ map). The fold task (G) deletes this file.
 | A | 1 | builder, Sonnet high | new `internal/mapgen/starmap.go` (+test), new `internal/modsettings/iconindex.go` (+test), `internal/game/modsettings.go` (two new `ModSettingDefs` fields only), `internal/game/modplanets.go` (exported cache wrapper only) | both |
 | B | 1 | builder, Sonnet high | new `internal/world/modicon.go` (+test) | #914 |
 | C | 2 (after A) | builder, Opus | `internal/game/modsettings/control.lua`, new `internal/game/modsettings/data-final-fixes.lua`, `internal/game/modsettings/modsettings.go`, `internal/game/controlmod.go` (+test), `internal/game/modsettings.go`, `internal/gameenv/modsettings.go`, `internal/fakegame/modsettings.go` (+tests), `e2e/testdata/fake-planet_1.0.0.zip`, new `internal/game/realgame2_starmap_icons_game_test.go` | both |
-| D | 2 (after A) | ui-designer, Opus | new `internal/web/starmap.go` (+test), new `internal/web/templates/starmap.html`, `internal/web/genpreview.go` (+tests), `internal/web/templates/generatepreview.html`, `internal/web/static/preview.js`, `internal/web/static/foreman.css`, `internal/i18n/locales/*`, `internal/i18n/translated/*`, `docs/DESIGN.md` | #920 |
+| D | 2 (after A) | ui-designer, Opus | new `internal/web/starmap.go` (+test), new `internal/web/templates/starmap.html`, `internal/web/genpreview.go` (+tests), `internal/web/templates/generatepreview.html`, `internal/web/static/preview.js`, `internal/web/static/viewer.js` (large view), `internal/web/static/foreman.css`, `internal/i18n/locales/*`, `internal/i18n/translated/*`, `docs/DESIGN.md` | #920 |
 | E | 2 (after A, B) | builder, Sonnet high | `internal/modsettings/richtext.go`, `internal/modsettings/wikiicon.go` (+tests), new `internal/web/modicons.go` (+test), `internal/web/server.go` (one routes line), `internal/web/render.go`, `internal/web/htmx.go`, `internal/web/modsettings.go`, `internal/web/flowmodsettings.go`, `e2e/tests/wiki-icons.spec.ts` (only if the marker change breaks it) | #914 |
-| F | 3 (after C, D, E) | tester, Sonnet high | new `e2e/tests/mod-icons.spec.ts`, new `e2e/tests/starmap.spec.ts`, `e2e/tests/download-all.spec.ts` (star map file in the zip) | both |
+| F | 3 (after C, D, E) | tester, Sonnet high | new `e2e/tests/mod-icons.spec.ts`, new `e2e/tests/starmap.spec.ts`, `e2e/tests/download-all.spec.ts` (star map file in the zip), `e2e/tests/large-view.spec.ts` (star map in the large view) | both |
 | G | 4 | builder, Sonnet high | `docs/SPEC.md` (5.6, 9.6, 14.5, 14.6, 14.10, 17), `docs/STATUS.md`, new ADRs 0036 and 0037, delete this file | both |
 
 Reviews: security-reviewer on A, B, C, E; a11y-reviewer on D, E; code-reviewer
@@ -66,8 +68,8 @@ with a real planet mod, its mod settings page, the star map and one icon.
   the mod's own icon, with the object's name as `alt`, whether the wiki
   setting is on or off. Built-in game paths are never served.
 - #920: Generate's map preview has a Star map picture with the game's
-  planet positions, routes and moon orbits, hidden locations left out; the
-  zip holds `starmap.svg`.
+  planet positions, routes and moon orbits, hidden locations left out; it
+  opens in the large view with zoom and pan; the zip holds `starmap.svg`.
 - Unit tests for every path check, limit and crop; e2e tests with the fake
   game and fake mod zip; real-game tests on the oldest and newest 2.x images.
 
