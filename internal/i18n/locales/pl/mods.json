@@ -492,5 +492,7 @@
   "mods.plan_panel.wait": "Przegląd będzie dostępny po zaktualizowaniu planu.",
   "mods.flow.generated": "Świat {name} został utworzony. Teraz można wybrać jego modyfikacje lub przejść do ustawień mapy.",
   "mods.flow.skip": "Pomiń i przejdź do ustawień mapy",
-  "mods.flow.next": "Dalej: ustawienia mapy"
+  "mods.flow.next": "Dalej: ustawienia mapy",
+  "mods.richtext.warning": "Ostrzeżenie",
+  "mods.richtext.info": "Uwaga"
 }

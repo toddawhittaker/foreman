@@ -416,5 +416,7 @@
   "mods.plan_panel.wait": "计划更新后即可审阅。",
   "mods.flow.generated": "{name} 已创建。接下来可选择其模组，或跳到地图设置。",
   "mods.flow.skip": "跳到地图设置",
-  "mods.flow.next": "下一步：地图设置"
+  "mods.flow.next": "下一步：地图设置",
+  "mods.richtext.warning": "警告",
+  "mods.richtext.info": "注意"
 }

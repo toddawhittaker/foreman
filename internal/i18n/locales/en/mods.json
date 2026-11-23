@@ -454,5 +454,7 @@
   "mods.plan_panel.wait": "Review is ready once the plan is updated.",
   "mods.flow.generated": "{name} is made. Next, pick its mods or skip to map settings.",
   "mods.flow.skip": "Skip to map settings",
-  "mods.flow.next": "Next: map settings"
+  "mods.flow.next": "Next: map settings",
+  "mods.richtext.warning": "Warning",
+  "mods.richtext.info": "Note"
 }

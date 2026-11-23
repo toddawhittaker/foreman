@@ -454,5 +454,7 @@
   "mods.plan_panel.wait": "Die Prüfung ist bereit, sobald der Plan aktualisiert ist.",
   "mods.flow.generated": "{name} ist erstellt. Wähle als Nächstes ihre Mods oder springe zu den Karteneinstellungen.",
   "mods.flow.skip": "Zu den Karteneinstellungen springen",
-  "mods.flow.next": "Weiter: Karteneinstellungen"
+  "mods.flow.next": "Weiter: Karteneinstellungen",
+  "mods.richtext.warning": "Warnung",
+  "mods.richtext.info": "Hinweis"
 }

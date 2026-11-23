@@ -492,5 +492,7 @@
   "mods.plan_panel.wait": "Kontrola bude k dispozici, jakmile se plán aktualizuje.",
   "mods.flow.generated": "Svět {name} je vytvořen. Nyní lze vybrat jeho mody nebo přejít na nastavení mapy.",
   "mods.flow.skip": "Přeskočit na nastavení mapy",
-  "mods.flow.next": "Další: nastavení mapy"
+  "mods.flow.next": "Další: nastavení mapy",
+  "mods.richtext.warning": "Upozornění",
+  "mods.richtext.info": "Poznámka"
 }
