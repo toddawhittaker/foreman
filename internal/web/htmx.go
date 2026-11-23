@@ -23,7 +23,7 @@ func (s *server) fragmentStatus(w http.ResponseWriter, r *http.Request, status i
 		s.fail(w, r, "render "+name, err)
 		return
 	}
-	body := showWikiIcons(withWikiIcons(r, s.wikiIconsOn(r.Context())), []byte(b.String()))
+	body := s.showWikiIcons(r.Context(), []byte(b.String()))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)

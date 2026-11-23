@@ -704,7 +704,9 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 		return fmt.Errorf("render %s: %w", p.templateName(), err)
 	}
 	page := buf.Bytes()
-	if wikiIconsOf(req) && !public {
+	// A public page never uses wiki icons (SPEC 14.10).
+	wiki := wikiIconsOf(req) && !public
+	if wiki {
 		page = modsettings.ShowWikiIcons(page)
 	}
 	h := w.Header()
@@ -718,7 +720,6 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	// load from Foreman and data: URLs only, and from the wiki while the
 	// admin's setting is on (SPEC 14.10); a public page never uses it.
 	setFrameRefusal(h)
-	wiki := wikiIconsOf(req) && !public
 	h.Set("Content-Security-Policy", pageCSP(wiki))
 	// The language follows a cookie and the request's Accept-Language.
 	h.Set("Vary", "Cookie, Accept-Language")

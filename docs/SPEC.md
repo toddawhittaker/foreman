@@ -3470,6 +3470,8 @@ where Name is the prototype name with its first letter capitalised and
 hyphens turned into underscores. The address is built only from a
 prototype name that matches `^[a-z0-9_-]+$`, cut at the first comma, so
 no other mod text reaches it; any other name shows as its readable name.
+The request names the prototype, modded names included, so the wiki can
+tell which mods a world uses (unknown names fail to load and show the name).
 The image carries `referrerpolicy="no-referrer"`, so the wiki is not told
 the page's address, and `loading="lazy"`. Its `alt` text is the object's
 name, and a failed load (offline, a renamed wiki file, a blocked request)

@@ -598,15 +598,8 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 	if was.moved(seen) {
 		return mcpRetryPreview(preview, "A setting changed since the preview, so nothing was saved. Here is a fresh preview and code.")
 	}
-	if err := s.saveGeneral(ctx, mcpActor(req), want); err != nil {
-		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
-	}
-	checkChanged, err := s.setBoolSetting(ctx, mcpActor(req), settingUpdateCheck, wantCheck)
-	if err != nil {
-		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
-	}
-	s.updateCheckSaved(checkChanged, wantCheck)
-	if _, err := s.setBoolSetting(ctx, mcpActor(req), settingWikiIcons, wantIcons); err != nil {
+	switches := map[string]bool{settingUpdateCheck.Key: wantCheck, settingWikiIcons.Key: wantIcons}
+	if err := s.saveGeneral(ctx, mcpActor(req), want, switches); err != nil {
 		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
 	}
 	out.Done = true
