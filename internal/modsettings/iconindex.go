@@ -52,7 +52,7 @@ func ValidIconKind(kind string) bool { return iconKinds[kind] }
 // under one is never served (SPEC 14.5, 14.10).
 var builtInMods = map[string]bool{
 	"base": true, "core": true, "space-age": true,
-	"quality": true, "elevated-rails": true,
+	"quality": true, "elevated-rails": true, "recycler": true, // 2.1 adds recycler
 }
 
 var iconVersionRE = regexp.MustCompile(`^\d+(\.\d+){1,3}$`)
