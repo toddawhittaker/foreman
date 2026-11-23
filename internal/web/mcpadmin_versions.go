@@ -159,7 +159,7 @@ func (s *server) mcpUpdateGameVersion(ctx context.Context, req *mcp.CallToolRequ
 	id, by := sum.ID, mcpActor(req)
 	// Updating past the pre-start check's problems is offered only in the
 	// web UI, so no "anyway" option is passed.
-	res, act, err := s.mcpRun(ctx, sum, game.AuditUpdate, []string{id}, true, func(ctx context.Context) actionResult {
+	res, act, err := s.mcpRun(ctx, req, sum, game.AuditUpdate, []string{id}, true, func(ctx context.Context) actionResult {
 		r := s.finish(id, game.AuditUpdate, s.game.Update(ctx, id, target, by, stop, game.StartOptions{}))
 		r.Version = target
 		return r
@@ -238,7 +238,7 @@ func (s *server) mcpRollbackGameVersion(ctx context.Context, req *mcp.CallToolRe
 		return mcpRetryPreview(preview, "World %s changed since the preview, so nothing was rolled back. Here is a fresh preview and code.", sum.Name)
 	}
 	id, by, snap := sum.ID, mcpActor(req), p.Snapshot.Name
-	res, act, err := s.mcpRun(ctx, sum, game.AuditRollback, []string{id}, true, func(ctx context.Context) actionResult {
+	res, act, err := s.mcpRun(ctx, req, sum, game.AuditRollback, []string{id}, true, func(ctx context.Context) actionResult {
 		before, err := s.game.Rollback(ctx, id, by, stop)
 		r := s.finish(id, game.AuditRollback, err)
 		r.Restored, r.Undo = snap, before.Name
