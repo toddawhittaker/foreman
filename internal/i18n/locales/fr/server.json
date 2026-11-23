@@ -22,7 +22,7 @@
   "server.none.heading": "Aucun monde actif",
   "server.none.text": "Aucun monde n’est encore actif, donc il n’y a pas de serveur à exécuter. Importez un monde ou envoyez une sauvegarde depuis la page Mondes ; le premier monde devient le monde actif.",
   "server.none.go": "Aller aux mondes",
-  "server.players.heading": "Joueurs en ligne",
+  "server.players.heading": "Joueurs",
   "server.facts.switching": "Basculement",
   "server.facts.switching_value": "De {from} vers {to}",
   "server.facts.uptime": "Durée de fonctionnement",
@@ -63,10 +63,12 @@
     "one": "{count} en ligne",
     "other": "{count} en ligne"
   },
-  "server.players.caption_stop": {
-    "one": "{count} en ligne au début de l’arrêt",
-    "other": "{count} en ligne au début de l’arrêt"
-  },
+  "server.players.table_caption": "Joueurs : {online} en ligne, {total} dans cette sauvegarde",
+  "server.players.table_caption_stop": "Joueurs : {online} en ligne au début de l’arrêt, {total} dans cette sauvegarde",
+  "server.players.table_caption_online": "Joueurs : {online} en ligne",
+  "server.players.table_caption_online_stop": "Joueurs : {online} en ligne au début de l’arrêt",
+  "server.players.table_caption_saved": "Joueurs : {total} dans cette sauvegarde",
+  "server.players.total_time": "{total} au total",
   "server.players.player": "Joueur",
   "server.players.online_for": "En ligne depuis",
   "server.players.unknown": "inconnu",
@@ -610,5 +612,16 @@
     "one": "{count} joueur dans cette sauvegarde",
     "other": "{count} joueurs dans cette sauvegarde"
   },
-  "server.playtime.reading": "En cours de lecture"
+  "server.playtime.reading": "En cours de lecture",
+  "server.players.online": "En ligne",
+  "server.players.time": "Temps en ligne ou de jeu",
+  "server.players.inexact": "Les temps de jeu peuvent être un peu inexacts. Relire la sauvegarde sur la page du monde les corrige.",
+  "server.players.tracked_since": "Suivi depuis le {when}.",
+  "server.players.all": {
+    "one": "Tous les joueurs ({count})",
+    "other": "Tous les joueurs ({count})"
+  },
+  "server.players.none_yet": "Personne n’a encore joué sur ce monde.",
+  "server.players.announce_joined": "{names} a rejoint la partie.",
+  "server.players.announce_left": "{names} a quitté la partie."
 }

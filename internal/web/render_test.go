@@ -404,7 +404,7 @@ func pageCases() []pageCase {
 		{"settings whitelist removed", "todd", 200, settingsPlayerCase(game.PlayerWhitelistRemove, false)},
 		{"settings kicked", "todd", 200, settingsPlayerCase(game.PlayerKick, false)},
 		{"settings unban refused", "todd", 200, settingsPlayerCase(game.PlayerUnban, true)},
-	}, append(modPageCases(), modSettingsPageCases()...)...)
+	}, append(append(modPageCases(), modSettingsPageCases()...), flowModSettingsPageCases()...)...)
 }
 
 // The version fragments render each of their states (SPEC 10.2, 10.7).
@@ -696,7 +696,8 @@ func TestPagesRefuseFraming(t *testing.T) {
 	r := newTestRenderer(t)
 	for _, c := range pageCases() {
 		rec, _ := render(t, r, c)
-		if got := rec.Header().Get("Content-Security-Policy"); got != "frame-ancestors 'none'" {
+		// The policy also limits images (SPEC 14.10); framing must stay refused.
+		if got := rec.Header().Get("Content-Security-Policy"); !slices.Contains(strings.Split(got, "; "), "frame-ancestors 'none'") {
 			t.Errorf("%s: Content-Security-Policy %q", c.name, got)
 		}
 		if got := rec.Header().Get("X-Frame-Options"); got != "DENY" {
@@ -1016,7 +1017,7 @@ func TestPlayerRowsOfferTheirActions(t *testing.T) {
 	html := fragmentHTML(t, liveOpsCase(func(*ServerPage) {}), "server-players")
 	wantAll(t, "alice's row", html,
 		`<details class="player-actions disclosure" name="player-actions" id="pd-alice">`,
-		`<summary id="ps-alice"><span class="player-actions__name">alice</span><span class="visually-hidden">, actions</span></summary>`,
+		`<summary id="ps-alice"><span class="player-actions__name" translate="no">alice</span> <span class="badge badge--online">Online</span><span class="visually-hidden">, actions</span></summary>`,
 		`<form method="post" action="/worlds/base/players/promote">`,
 		`id="pa-promote-alice">Make admin<span class="visually-hidden"> alice</span>`,
 		`<form method="post" action="/worlds/base/players/whitelist-remove">`,
@@ -1032,7 +1033,7 @@ func TestPlayerRowsOfferTheirActions(t *testing.T) {
 		t.Errorf("buttons out of order: promote %d, whitelist %d, kick %d, ban %d", a, w, k, b)
 	}
 	// A name with a space is shown as it is, with nothing to act on it.
-	wantAll(t, "the unusable name", html, `<td role="cell">two words</td>`)
+	wantAll(t, "the unusable name", html, `<td role="cell"><span translate="no">two words</span> <span class="badge badge--online">`)
 	wantNone(t, "the unusable name", html, `player-two words`, `name=two`)
 
 	// Without the whitelist kept, and with the admin list unreadable, only Kick and Ban.
@@ -1045,7 +1046,7 @@ func TestPlayerRowsOfferTheirActions(t *testing.T) {
 		p.Status.Operation = &game.Operation{Action: game.AuditStop, Players: []game.Player{{Name: "alice"}}}
 	})
 	html = fragmentHTML(t, stopping, "server-players")
-	wantAll(t, "the stop's list", html, `<td role="cell">alice</td>`)
+	wantAll(t, "the stop's list", html, `<td role="cell"><span translate="no">alice</span> <span class="badge badge--online">`)
 	wantNone(t, "the stop's list", html, "<details", "act-kick")
 }
 

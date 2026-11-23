@@ -52,7 +52,7 @@ const marker = (d: Locator) =>
     await checkPage(page);
   });
 
-  // The planet rows are the map settings of step 3 (SPEC 5.6).
+  // The planet rows are the map settings of step 4 (SPEC 5.6).
   test("the first planet row has no line above and the next one does", async ({ page }) => {
     await openNewMap(page);
     // Nauvis is the first planet row, so no line; Gleba follows another row.

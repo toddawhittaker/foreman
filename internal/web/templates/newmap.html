@@ -2,12 +2,12 @@
 
 {{define "scripts"}}
 {{- if .Page.ShowForm}}<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
-{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}
+{{- if .Page.CanPreview}}<script src="{{static "viewer.js"}}" defer></script><script src="{{static "preview.js"}}" defer></script>{{end}}
 {{- else if .Page.Loading}}
 {{- /* With script the form part is loaded after the page; without it the page
      reloads itself and the server waits for the planet list (SPEC 5.6). */}}
 <script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
-{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}
+{{- if .Page.CanPreview}}<script src="{{static "viewer.js"}}" defer></script><script src="{{static "preview.js"}}" defer></script>{{end}}
 <noscript><meta http-equiv="refresh" content="0; url={{.Page.WaitPath}}"></noscript>
 {{- end}}{{end}}
 
@@ -26,6 +26,9 @@
 {{- else}}
 {{template "genflow-steps" .Steps}}
 <p class="page-intro">{{t "newmap.intro" "name" .World.Name}}</p>
+{{- if .Skipped}}
+<p class="hint" id="newmap-skipped">{{t "newmap.modsettings.skipped"}}</p>
+{{- end}}
 {{- if .Loading}}
 {{- /* The script writes the text into the live region once the page has loaded, so it is said once (SPEC 17.19). */}}
 <div id="newmap-load" class="wait" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">
@@ -35,12 +38,6 @@
 </div>
 {{- else}}
 <div id="newmap-body" data-ready="{{t "newmap.ready"}}">
-{{- if .Done}}
-<div class="message message--success" id="newmap-done" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{msg .DoneMsg}}</p>
-  <div class="actions"><a href="{{.WorldPath}}" class="button button--primary" id="newmap-next">{{t "newmap.next"}}</a></div>
-</div>
-{{- end}}
 {{- if not .Builtin.IsZero}}
 <div class="message message--warning" id="newmap-builtin">
   <p><strong>{{t "common.label.warning"}}</strong> {{msg .Builtin}}</p>
@@ -124,7 +121,8 @@
       </section>
     </template>
     {{- if .CanPreview}}
-    <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
+    {{- /* While a redraw runs: its words and the counting's moving bar, on one held line (DESIGN 8.8). */}}
+    <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"><span id="preview-status-text"></span><span class="wait" id="preview-status-wait"><progress aria-hidden="true"></progress></span></p>
     {{- with .Form}}
     <div class="field step" id="preview-size-field">
       <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
@@ -154,13 +152,14 @@
   </div>
   {{- end}}
   {{- end}}
+  {{- /* Each step's footer: Back first, the step's save last (SPEC 5.6). */}}
   <div class="actions gen-actions">
-    <a href="{{.WorldPath}}">{{t "worlds.cancel"}}</a>
+    {{template "genflow-back" .Back}}
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
       hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
     {{- end}}
-    <button type="submit" class="button button--primary" id="newmap-save"{{if not .SaveError.IsZero}} aria-describedby="newmap-save-error"{{end}}>{{t "newmap.save"}}</button>
+    <button type="submit" class="button button--primary" id="newmap-save"{{if not .SaveError.IsZero}} aria-describedby="newmap-save-error"{{end}}>{{t "newmap.finish"}}</button>
   </div>
 </form>
 <dialog id="leave-dialog" class="leave-dialog" aria-labelledby="leave-title" aria-describedby="leave-text">

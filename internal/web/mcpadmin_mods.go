@@ -342,7 +342,7 @@ func (s *server) mcpChangeMods(ctx context.Context, req *mcp.CallToolRequest, in
 	}
 	// The picks leave once the install has installed them, not when it starts (SPEC 9.14).
 	dropPicks := func(ctx context.Context) { s.dropInstalledPicks(ctx, sum.ID, p.Form) }
-	res, act, err := s.mcpRun(ctx, sum, game.AuditMods, []string{sum.ID}, true, s.modActionThen(sum.ID, mcpActor(req), op, stop, unused, p.shownResult(), dropPicks))
+	res, act, err := s.mcpRun(ctx, req, sum, game.AuditMods, []string{sum.ID}, true, s.modActionThen(sum.ID, mcpActor(req), op, stop, unused, p.shownResult(), dropPicks))
 	if err != nil {
 		return nil, mcpChangeModsOut{}, err
 	}
@@ -362,7 +362,7 @@ func (s *server) mcpModSettings(ctx context.Context, id string) (world.Summary, 
 	}
 	wctx, cancel := context.WithTimeout(ctx, mcpWait)
 	defer cancel()
-	p, st, err := s.modSettingsPage(wctx, "en", sum)
+	p, st, err := s.modSettingsPage(wctx, "en", sum, false)
 	switch {
 	case ctx.Err() != nil:
 		return sum, p, st, ctx.Err()
@@ -581,7 +581,7 @@ func (s *server) mcpChangeModSettings(ctx context.Context, req *mcp.CallToolRequ
 	if err != nil {
 		return nil, mcpChangeModSettingsOut{}, s.mcpFail("write the changed mod settings", err)
 	}
-	res, act, err := s.mcpRun(ctx, sum, game.AuditMods, []string{sum.ID}, true, s.modAction(sum.ID, mcpActor(req), op, stop, "", modResult{Retry: p.Path()}))
+	res, act, err := s.mcpRun(ctx, req, sum, game.AuditMods, []string{sum.ID}, true, s.modAction(sum.ID, mcpActor(req), op, stop, "", modResult{Retry: p.Path()}))
 	if err != nil {
 		return nil, mcpChangeModSettingsOut{}, err
 	}

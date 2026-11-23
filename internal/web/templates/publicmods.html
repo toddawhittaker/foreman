@@ -72,9 +72,9 @@
     {{- range .Mods}}
     <li>
       {{- if .DownloadPath}}
-      <a href="{{.DownloadPath}}" download class="public-mods__name"><span translate="no">{{or .Title .Name}}</span> <span class="public-mods__version">{{.Version}}</span></a>
+      <a href="{{.DownloadPath}}" download class="public-mods__name"><span translate="no">{{if .Title}}{{richLine .Title}}{{else}}{{.Name}}{{end}}</span> <span class="public-mods__version">{{.Version}}</span></a>
       {{- else}}
-      <span class="public-mods__name"><span translate="no">{{or .Title .Name}}</span> <span class="public-mods__version">{{.Version}}</span></span>
+      <span class="public-mods__name"><span translate="no">{{if .Title}}{{richLine .Title}}{{else}}{{.Name}}{{end}}</span> <span class="public-mods__version">{{.Version}}</span></span>
       {{- end}}
       {{- if or .Folder .NotOnPortal .Hidden}}
       <ul class="public-mods__marks" role="list">

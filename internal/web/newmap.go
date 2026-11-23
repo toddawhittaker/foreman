@@ -19,8 +19,13 @@ import (
 // with script the form part is loaded from it (SPEC 5.6, 17.19).
 const newMapWaitQuery = "wait"
 
-// newMapSavedQuery marks the page after a save, for its Done message.
-const newMapSavedQuery = "saved"
+// setupDoneQuery marks the world's page reached by step 4's Finish, whose
+// Ready note is then its Done box (SPEC 5.6).
+const setupDoneQuery = "setup"
+
+// newMapSkippedQuery marks step 4 reached by step 3 passing itself on, for
+// the note that says why (SPEC 5.6).
+const newMapSkippedQuery = "skipped"
 
 // NewMapPage is step 3 of the guided Generate: the map settings and preview
 // of a world whose map is not made yet, laid out from the planets its mods
@@ -42,14 +47,17 @@ type NewMapPage struct {
 	// Gone lists the controls the saved settings name that the world's mods
 	// no longer add; the next save leaves them out (SPEC 5.6).
 	Gone []string
-	// SaveError says why the save was refused; Done follows a save.
+	// SaveError says why the save was refused.
 	SaveError i18n.Msg
-	Done      bool
 	// SaveLinks are the links that do what SaveError says to (SPEC 17.9).
 	SaveLinks []NewMapLink
 	// Unsaved says the form holds settings the world does not have yet,
 	// though the page loaded with them, as after a fill (SPEC 5.6).
 	Unsaved bool
+	// NoModSettings says step 3 has nothing to set (SPEC 5.6).
+	NoModSettings bool
+	// Skipped says step 3 passed itself on to this page, for its note.
+	Skipped bool
 }
 
 // NewMapLink is a link a message offers, to do what it says (SPEC 17.9).
@@ -108,49 +116,105 @@ func (p NewMapPage) Problems() []Problem {
 }
 
 // Paths the page uses.
-func (p NewMapPage) Path() string      { return newMapPath(p.World.ID) }
-func (p NewMapPage) WaitPath() string  { return newMapPath(p.World.ID) + "?" + newMapWaitQuery + "=1" }
+func (p NewMapPage) Path() string { return newMapPath(p.World.ID) }
+func (p NewMapPage) WaitPath() string {
+	if p.Skipped {
+		return skippedPath(p.World.ID) + "&" + newMapWaitQuery + "=1"
+	}
+	return newMapPath(p.World.ID) + "?" + newMapWaitQuery + "=1"
+}
+
+// skippedPath is step 4 after step 3 passed itself on.
+func skippedPath(id string) string { return newMapPath(id) + "?" + newMapSkippedQuery + "=1" }
+
 func (p NewMapPage) WorldPath() string { return worldPath(p.World.ID) }
 func (NewMapPage) PreviewPath() string { return PathGeneratePreview }
-func (p NewMapPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMap) }
+func (p NewMapPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMap, p.NoModSettings) }
+func (p NewMapPage) Back() FlowLink    { return flowBack(p.Steps()) }
 func (p NewMapPage) ShowForm() bool    { return p.Why.IsZero() && !p.Loading }
-func (p NewMapPage) DoneMsg() i18n.Msg { return i18n.M("newmap.done", "name", p.World.Name) }
 
 // The steps of the guided Generate (SPEC 5.6).
 const (
 	flowStepWorld = iota + 1
 	flowStepMods
+	flowStepModSettings
 	flowStepMap
 )
 
 // FlowStep is one step of the guided Generate's step bar, a link to it, or
-// plain text when Path is empty because the step cannot be opened yet.
+// plain text when Path is empty because the step cannot be opened yet or
+// has nothing to do.
 type FlowStep struct {
 	Number  int
 	Path    string
 	Label   i18n.Msg
 	Current bool
+	// Skipped is a step with nothing to do, drawn apart from one that
+	// cannot be opened yet (SPEC 17.10).
+	Skipped bool
+	// Done is a step before the current one that was not skipped; the
+	// step bar ticks it (SPEC 5.6).
+	Done bool
+}
+
+// FlowLink is a link in a step's footer, such as its Back.
+type FlowLink struct {
+	Path  string
+	Label i18n.Msg
+}
+
+// flowBackLabel names where a Back to step n goes.
+func flowBackLabel(n int) i18n.Msg {
+	switch n {
+	case flowStepWorld:
+		return i18n.M("newmap.back.world")
+	case flowStepMods:
+		return i18n.M("newmap.back.mods")
+	}
+	return i18n.M("newmap.back.mod_settings")
+}
+
+// flowBack is the footer's Back: the nearest earlier step that is a link,
+// so a skipped step 3 sends step 4 back to step 2. None on step 1 (SPEC 5.6).
+func flowBack(steps []FlowStep) FlowLink {
+	back := FlowLink{}
+	for _, st := range steps {
+		if st.Current {
+			return back
+		}
+		if st.Path != "" {
+			back = FlowLink{Path: st.Path, Label: flowBackLabel(st.Number)}
+		}
+	}
+	return FlowLink{}
 }
 
 // flowSteps is the step bar of world id, with current marked. With no world
-// yet (step 1), step 1 is Generate's page and steps 2 and 3 have no path.
-func flowSteps(id string, current int) []FlowStep {
+// yet (step 1), step 1 is Generate's page and the others have no path.
+// noModSettings marks step 3 as skipped: no mod has a startup setting.
+func flowSteps(id string, current int, noModSettings bool) []FlowStep {
 	steps := []FlowStep{
-		{flowStepWorld, PathGenerate, i18n.M("newmap.steps.world"), false},
-		{flowStepMods, "", i18n.M("newmap.steps.mods"), false},
-		{flowStepMap, "", i18n.M("newmap.steps.map"), false},
+		{Number: flowStepWorld, Path: PathGenerate, Label: i18n.M("newmap.steps.world")},
+		{Number: flowStepMods, Label: i18n.M("newmap.steps.mods")},
+		{Number: flowStepModSettings, Label: i18n.M("newmap.steps.mod_settings")},
+		{Number: flowStepMap, Label: i18n.M("newmap.steps.map")},
 	}
 	if id != "" {
-		steps[0].Path, steps[1].Path, steps[2].Path = worldPath(id), modsPath(id), newMapPath(id)
+		steps[0].Path, steps[1].Path, steps[2].Path, steps[3].Path = worldPath(id), modsPath(id), flowModSettingsPath(id), newMapPath(id)
+		if noModSettings {
+			steps[2].Path, steps[2].Label, steps[2].Skipped = "", i18n.M("newmap.steps.mod_settings_none"), true
+		}
 	}
 	for i := range steps {
 		steps[i].Current = steps[i].Number == current
+		steps[i].Done = steps[i].Number < current && !steps[i].Skipped
 	}
 	return steps
 }
 
 // newMapRoutes registers step 3. The preview endpoints stay Generate's.
 func (s *server) newMapRoutes() {
+	s.flowModSettingsRoutes()
 	s.handleLong("GET "+PathNewMap, s.requireUser(s.handleNewMap))
 	s.handleUpload("POST "+PathNewMap, fixedLimit(generateFormLimit), s.requireUser(s.handleNewMapSave))
 	s.handleUpload("POST "+PathNewMap+"/refresh", fixedLimit(generateFormLimit), s.requireUser(s.handleNewMapRefresh))
@@ -164,7 +228,7 @@ func (s *server) newMapWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return NewMapPage{}, false
 	}
-	p := NewMapPage{World: sum}
+	p := NewMapPage{World: sum, NoModSettings: s.noModSettings(sum.ID)}
 	_, lineOK := mapgen.Line(sum.GameVersion)
 	switch {
 	case sum.Unreadable:
@@ -223,8 +287,8 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	q := r.URL.Query()
-	p.Done = q.Get(newMapSavedQuery) != ""
-	if q.Get(newMapWaitQuery) == "" && !p.Done {
+	p.Skipped = q.Get(newMapSkippedQuery) != ""
+	if q.Get(newMapWaitQuery) == "" {
 		p.Loading = true
 		p.CanPreview = s.previewer != nil
 		s.page(w, r, http.StatusOK, u.Username, p)
@@ -433,5 +497,6 @@ func (s *server) handleNewMapSave(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 	s.audit(r.Context(), actor(u), AuditNewMap, p.World.ID, newMapDetail(p.Form.MapForm, p.World.GameVersion))
-	http.Redirect(w, r, newMapPath(p.World.ID)+"?"+newMapSavedQuery+"=1", http.StatusSeeOther) //nolint:gosec // the id is a world Foreman found, a local path segment
+	// Finish ends the flow on the world's page, which says the world is Ready.
+	http.Redirect(w, r, worldPath(p.World.ID)+"?"+setupDoneQuery+"=done", http.StatusSeeOther) //nolint:gosec // the id is a world Foreman found, a local path segment
 }

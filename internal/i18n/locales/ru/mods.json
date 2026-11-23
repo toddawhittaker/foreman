@@ -160,7 +160,11 @@
   "mods.settings.edit.title": "Настройки модов мира {world}",
   "mods.settings.edit.heading": "Настройки модов",
   "mods.settings.edit.loading": "Чтение настроек модов. В первый раз после изменения модов Foreman запускает для этого игру, это занимает несколько секунд.",
+  "mods.settings.edit.loading_link": "Показать настройки, когда они будут готовы",
   "mods.settings.edit.loaded": "Настройки модов прочитаны.",
+  "mods.settings.origin.required_by": "Требуют: {mods}",
+  "mods.settings.origin.recommended_by": "Рекомендуют: {mods}",
+  "mods.settings.origin.offered_by": "Предлагают: {mods}",
   "mods.settings.edit.startup.heading": "Настройки запуска",
   "mods.settings.edit.startup.none": "У включённых модов нет настроек запуска.",
   "mods.settings.edit.map.heading": "Настройки карты",
@@ -280,6 +284,11 @@
     "few": "Установить {count} мода",
     "many": "Установить {count} модов"
   },
+  "mods.plan.button.recommended": {
+    "one": "и {count} рекомендуемый",
+    "few": "и {count} рекомендуемых",
+    "many": "и {count} рекомендуемых"
+  },
   "mods.plan.button.update": {
     "one": "Обновить {count} мод",
     "few": "Обновить {count} мода",
@@ -311,6 +320,7 @@
   "mods.orphans.legend": "Моды, которые больше не нужны",
   "mods.orphans.hint": "Они нужны только удаляемым модам. Они тоже будут удалены, если не снять отметку.",
   "mods.plan.why.only_needed_by": "был нужен только для {mod}",
+  "mods.recommended.legend": "Рекомендуемые моды",
   "mods.recommended.hint": "Рекомендуемые моды уже отмечены. Снимите отметку, чтобы не добавлять мод.",
   "mods.recommended.unavailable": "{mod} (рекомендует {of}) не будет добавлен: на портале модов нет подходящей версии.",
   "mods.unresolved.legend": "На портале модов нет {mod} {version}",
@@ -363,6 +373,10 @@
   "mods.error.unauthorized": "factorio.com отклонил имя пользователя или токен, поэтому ни один мод не скачан. Ничего не изменено. Проверьте учётную запись factorio.com.",
   "mods.error.download_gone": "На портале модов больше нет мода, который скачивает план. Ничего не изменено. Снова откройте моды, чтобы увидеть новый план.",
   "mods.error.download_failed": "Не удалось скачать мод с портала модов. Ничего не изменено. Повторите попытку через минуту.",
+  "mods.error.too_large": "Мод {mod} {version} занимает {size}, что больше ограничения на размер мода: {limit}.",
+  "mods.error.too_large_stream": "Мод {mod} {version} больше ограничения на размер мода: {limit}.",
+  "mods.error.too_large_ask": "Попросите администратора увеличить ограничение на размер мода в разделе «Настройки».",
+  "mods.error.too_large_fix": "Изменить ограничение на размер мода",
   "mods.done": "Моды мира {world} изменены. Сначала Foreman сделал снимок «{label}».",
   "mods.undo": "Отменить это изменение модов",
   "mods.changed.next": "Снова открыть моды",
@@ -434,6 +448,7 @@
   "mods.hit.latest": "Последняя",
   "mods.hit.updated": "Обновлён",
   "mods.offer.version": "Версия",
+  "mods.offer.details": "Подробности",
   "mods.offer.released": "Выпущена",
   "mods.hit.add": "Добавить {mod} в план",
   "mods.hit.adding": "Добавляется…",
@@ -486,7 +501,9 @@
   "mods.plan_panel.warn.other": "Невозможно запланировать; причина видна при проверке",
   "mods.plan_panel.bad_name": "Это не название мода, которое Foreman может добавить. Найдите мод и нажмите + рядом с ним.",
   "mods.plan_panel.wait": "Проверка станет доступна, когда план обновится.",
-  "mods.flow.generated": "Мир {name} создан. Теперь выберите его моды или перейдите к настройкам карты.",
-  "mods.flow.skip": "Пропустить и перейти к настройкам карты",
-  "mods.flow.next": "Далее: настройки карты"
+  "mods.flow.generated": "Мир {name} создан. Теперь выберите его моды или пропустите этот шаг.",
+  "mods.flow.skip": "Пропустить и перейти к настройкам модов",
+  "mods.flow.skip_map": "Пропустить и перейти к настройкам карты",
+  "mods.richtext.warning": "Предупреждение",
+  "mods.richtext.info": "Примечание"
 }

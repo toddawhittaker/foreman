@@ -86,3 +86,17 @@ func TestExternalLink(t *testing.T) {
 		t.Errorf("text: %q", f.text)
 	}
 }
+
+// An anchor links only inside the page, and escapes the name it shows.
+func TestAnchor(t *testing.T) {
+	if got := Anchor("mod-group-3", `a<b>`).html; got != `<a href="#mod-group-3" class="mod-title ident" translate="no">a&lt;b&gt;</a>` {
+		t.Errorf("anchor: %s", got)
+	}
+	// Anything but a plain id shows the name as plain text, never a link.
+	for _, id := range []string{"", "a b", `a"b`, "/x", "//evil.example", "a#b"} {
+		got := Anchor(id, "x").html
+		if strings.Contains(got, "<a") || strings.Contains(got, "href") || !strings.Contains(got, ">x<") {
+			t.Errorf("Anchor(%q) = %s, want the name without a link", id, got)
+		}
+	}
+}

@@ -151,7 +151,7 @@ test.describe("a mod players cannot get", () => {
     await expect(notice).toContainText("cannot join", live);
     await expect(notice).toHaveAttribute("role", "status");
     // It sits with the status facts, before the players (DESIGN 7.3).
-    const players = page.getByRole("heading", { level: 2, name: "Players online" });
+    const players = page.getByRole("heading", { level: 2, name: "Players", exact: true });
     expect((await notice.boundingBox())!.y).toBeLessThan((await players.boundingBox())!.y);
     // The fix link has a button face, so it is a full target at any width and in any language (DESIGN 6, rule 3).
     const fix = (await notice.getByRole("link", { name: "Update visible-planets" }).boundingBox())!;

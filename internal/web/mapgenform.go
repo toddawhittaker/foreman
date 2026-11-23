@@ -44,7 +44,7 @@ const (
 	mgAuxScale      = "mg.aux.scale"
 	mgMoistureBias  = "mg.moisture.bias"
 	mgAuxBias       = "mg.aux.bias"
-	// mgOn ends the name of a resource's on/off box.
+	// mgOn ends the name of a control's on/off box (resource, cliff or enemy).
 	mgOn = "on"
 )
 
@@ -363,7 +363,8 @@ func (f *MapGenForm) selects() []*MapGenSelect {
 	return append(out, &f.StartingArea)
 }
 
-// toggles lists every on/off box of a resource or cliffs, in page order.
+// toggles lists every on/off box of a resource, cliffs or enemies, in page
+// order.
 func (f *MapGenForm) toggles() []*MapGenCheck {
 	var out []*MapGenCheck
 	for _, tab := range [][]MapGenPlanet{f.Resources, f.Terrain} {
@@ -373,6 +374,11 @@ func (f *MapGenForm) toggles() []*MapGenCheck {
 					out = append(out, t)
 				}
 			}
+		}
+	}
+	for gi := range f.Enemy {
+		if t := f.Enemy[gi].Toggle; t != nil {
+			out = append(out, t)
 		}
 	}
 	return out
@@ -622,8 +628,8 @@ type mgControl struct {
 	// topLevel is a 1.1 setting that the game stores outside
 	// autoplace_controls: water and cliffs.
 	topLevel bool
-	// toggle is a resource or cliffs the game lets you switch off; off is
-	// size 0, or on 1.1 cliff_settings.richness 0 (mapgen.CliffToggle).
+	// toggle is a resource, cliffs or enemies the game lets you switch off; off is
+	// size 0, or on 1.1 cliff_settings.richness 0 (controlFor).
 	toggle bool
 	// foreign marks a legend that is a mod's own label (SPEC 14.6).
 	foreign bool
@@ -645,7 +651,7 @@ func (c mgControl) tab() string {
 	switch c.category {
 	case mapgen.CategoryTerrain, mapgen.CategoryCliff:
 		return tabTerrain
-	case "enemy":
+	case mapgen.CategoryEnemy:
 		return tabEnemy
 	}
 	return tabResources
@@ -661,21 +667,18 @@ func mgPlanets(line string, cat mapgen.Catalogue) []mgPlanet {
 		planet := mgPlanet{name: p}
 		defs := planetDefaults(cat, p)
 		for _, c := range cat.PlanetControls(p) {
-			mc := controlFor(c)
+			mc := controlFor(line, c)
 			n := catControlName(cat, c.Name)
 			mc.legend, mc.foreign = n.Name, n.Foreign
 			mc.also = cat.AlsoChanges(c.Name, p)
 			mc.def = defs[c.Name]
-			if c.Category == mapgen.CategoryCliff && mapgen.CliffToggle(line, p) {
-				mc.toggle = true
-			}
 			planet.controls = append(planet.controls, mc)
 		}
 		if line == gamesettings.Line11 && p == "nauvis" {
 			planet.controls = append(planet.controls,
 				mgControl{name: "water", legend: controlMsg("water"), category: mapgen.CategoryTerrain, topLevel: true, settings: waterSettings()},
 				mgControl{name: "nauvis_cliff", legend: controlMsg("nauvis_cliff"), category: mapgen.CategoryCliff, topLevel: true,
-					settings: cliffSettings(), toggle: mapgen.CliffToggle(line, p)})
+					settings: cliffSettings(), toggle: true})
 		}
 		out = append(out, planet)
 	}
@@ -791,9 +794,13 @@ func terrainSettings(richness bool) []mgSetting {
 	return out
 }
 
-func controlFor(c mapgen.Control) mgControl {
+// controlFor lays out one autoplace control. It gets an on/off box by rule,
+// never by planet name (SPEC 5.6, DESIGN "Cliffs off"): the game must say it
+// can be disabled, and it must be a resource or, on 2.x, cliffs or enemies.
+// 1.1's cliffs are not an autoplace control (mgPlanets adds them).
+func controlFor(line string, c mapgen.Control) mgControl {
 	mc := mgControl{name: c.Name, legend: controlMsg(c.Name), category: c.Category,
-		toggle: c.Category == mapgen.CategoryResource && c.CanBeDisabled}
+		toggle: controlToggles(line, c)}
 	switch c.Category {
 	case mapgen.CategoryTerrain:
 		mc.settings = terrainSettings(c.Richness)
@@ -809,6 +816,20 @@ func controlFor(c mapgen.Control) mgControl {
 		}
 	}
 	return mc
+}
+
+// controlToggles reports whether a control gets an on/off box (controlFor).
+func controlToggles(line string, c mapgen.Control) bool {
+	if !c.CanBeDisabled {
+		return false
+	}
+	switch c.Category {
+	case mapgen.CategoryResource:
+		return true
+	case mapgen.CategoryCliff, mapgen.CategoryEnemy:
+		return line != gamesettings.Line11
+	}
+	return false
 }
 
 func fieldName(planet, control, setting string) string {

@@ -22,7 +22,7 @@
   "server.none.heading": "No active world",
   "server.none.text": "No world is active yet, so there is no server to run. Import a world or upload a save on the Worlds page; the first world becomes the active one.",
   "server.none.go": "Go to Worlds",
-  "server.players.heading": "Players online",
+  "server.players.heading": "Players",
   "server.facts.switching": "Switching",
   "server.facts.switching_value": "From {from} to {to}",
   "server.facts.uptime": "Uptime",
@@ -63,10 +63,12 @@
     "one": "{count} online",
     "other": "{count} online"
   },
-  "server.players.caption_stop": {
-    "one": "{count} online when the stop began",
-    "other": "{count} online when the stop began"
-  },
+  "server.players.table_caption": "Players: {online} online, {total} in this save",
+  "server.players.table_caption_stop": "Players: {online} online when the stop began, {total} in this save",
+  "server.players.table_caption_online": "Players: {online} online",
+  "server.players.table_caption_online_stop": "Players: {online} online when the stop began",
+  "server.players.table_caption_saved": "Players: {total} in this save",
+  "server.players.total_time": "{total} total",
   "server.players.player": "Player",
   "server.players.online_for": "Online for",
   "server.players.unknown": "unknown",
@@ -610,5 +612,16 @@
     "one": "{count} player in this save",
     "other": "{count} players in this save"
   },
-  "server.playtime.reading": "Being read"
+  "server.playtime.reading": "Being read",
+  "server.players.online": "Online",
+  "server.players.time": "Time online or played",
+  "server.players.inexact": "Play times may be a little off. Reading the save again on the world's page fixes them.",
+  "server.players.tracked_since": "Tracked since {when}.",
+  "server.players.all": {
+    "one": "All {count} player",
+    "other": "All {count} players"
+  },
+  "server.players.none_yet": "No one has played this world yet.",
+  "server.players.announce_joined": "{names} joined.",
+  "server.players.announce_left": "{names} left."
 }

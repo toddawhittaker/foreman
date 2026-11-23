@@ -54,8 +54,8 @@ type controlMod struct {
 	output string
 	// maxOutput is the most bytes of output that are read.
 	maxOutput int64
-	// memory is the container's memory limit in bytes; zero means
-	// previewMemory.
+	// memory is the container's memory limit in bytes; zero means the
+	// preview's for the request (previewMemoryFor).
 	memory int64
 }
 
@@ -254,7 +254,7 @@ func (c *Controller) controlModSpec(image, dir string, req PreviewRequest, m con
 		Entrypoint: []string{"/bin/sh"},
 		Cmd:        []string{"-c", m.script()},
 		User:       c.user,
-		HostConfig: c.oneOffHostConfigMem(dir, cmp.Or(m.memory, previewMemory)),
+		HostConfig: c.oneOffHostConfigMem(dir, cmp.Or(m.memory, c.previewMemoryFor(req))),
 	}
 }
 

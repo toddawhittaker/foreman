@@ -102,6 +102,18 @@
       </div>
     </div>
   </section>
+  <section class="setting-row" aria-labelledby="general-icons-heading">
+    <div class="setting-row__head">
+      <h2 id="general-icons-heading">{{t "general.icons.heading"}}</h2>
+      <p class="hint">{{t "general.icons.text"}}</p>
+    </div>
+    <div class="setting-row__body">
+      <div class="field">
+        <label class="check"><input type="checkbox" id="general-wiki-icons" name="wiki_icons"{{if .WikiIcons}} checked{{end}} aria-describedby="general-wiki-icons-hint"> {{t "general.icons.label"}}</label>
+        <p class="hint" id="general-wiki-icons-hint">{{t "general.icons.hint"}}</p>
+      </div>
+    </div>
+  </section>
   {{- /* The save bar sticks to the window's foot, as Game settings' does; where the values come from leads it. */}}
   <div class="actions form-foot">
     <p class="hint form-foot__note" id="general-source">{{t "general.source"}}</p>

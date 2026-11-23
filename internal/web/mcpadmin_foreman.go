@@ -468,13 +468,14 @@ type mcpGeneralOut struct {
 	SaveUploadMB         int  `json:"save_upload_mb"`
 	ModUploadMB          int  `json:"mod_upload_mb"`
 	UpdateCheck          bool `json:"update_check"`
+	WikiIcons            bool `json:"wiki_icons"`
 }
 
 func (s *server) mcpGeneral(ctx context.Context) mcpGeneralOut {
-	return mcpGeneralOf(s.generalValues(ctx), s.readBool(ctx, settingUpdateCheck))
+	return mcpGeneralOf(s.generalValues(ctx), s.readBool(ctx, settingUpdateCheck), s.readBool(ctx, settingWikiIcons))
 }
 
-func mcpGeneralOf(v map[string]int, updateCheck bool) mcpGeneralOut {
+func mcpGeneralOf(v map[string]int, updateCheck, wikiIcons bool) mcpGeneralOut {
 	return mcpGeneralOut{
 		SnapshotRetention:    v[settingSnapshotRetention.Key],
 		StopCountdownSeconds: v[settingStopCountdown.Key],
@@ -482,6 +483,7 @@ func mcpGeneralOf(v map[string]int, updateCheck bool) mcpGeneralOut {
 		SaveUploadMB:         v[settingSaveUpload.Key],
 		ModUploadMB:          v[settingModUpload.Key],
 		UpdateCheck:          updateCheck,
+		WikiIcons:            wikiIcons,
 	}
 }
 
@@ -493,6 +495,7 @@ type mcpSetSettingsIn struct {
 	SaveUploadMB         *int  `json:"save_upload_mb,omitempty" jsonschema:"the largest save upload in MB, 100 to 8192"`
 	ModUploadMB          *int  `json:"mod_upload_mb,omitempty" jsonschema:"the largest mod upload in MB, 10 to 2048"`
 	UpdateCheck          *bool `json:"update_check,omitempty" jsonschema:"whether Foreman checks GitHub every 6 hours for a newer Foreman release"`
+	WikiIcons            *bool `json:"wiki_icons,omitempty" jsonschema:"whether pages show the game's icons in mod text, loaded by each viewer's browser from wiki.factorio.com"`
 }
 
 // mcpGeneralChange is one setting a call changes. From and To are numbers,
@@ -518,12 +521,12 @@ type mcpSetSettingsOut struct {
 }
 
 // generalSeen is the state a preview shows: every current value.
-func generalSeen(v map[string]int, updateCheck bool) string {
+func generalSeen(v map[string]int, updateCheck, wikiIcons bool) string {
 	var b strings.Builder
 	for _, d := range generalSettings {
 		fmt.Fprintf(&b, "%s=%d ", d.Key, v[d.Key])
 	}
-	fmt.Fprintf(&b, "%s=%t", settingUpdateCheck.Key, updateCheck)
+	fmt.Fprintf(&b, "%s=%t %s=%t", settingUpdateCheck.Key, updateCheck, settingWikiIcons.Key, wikiIcons)
 	return b.String()
 }
 
@@ -559,7 +562,13 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 		wantCheck = *in.UpdateCheck
 		changes = append(changes, mcpGeneralChange{Setting: settingUpdateCheck.Key, From: currentCheck, To: wantCheck})
 	}
-	out := mcpSetSettingsOut{Changes: changes, Settings: mcpGeneralOf(want, wantCheck)}
+	currentIcons := s.readBool(ctx, settingWikiIcons)
+	wantIcons := currentIcons
+	if in.WikiIcons != nil && *in.WikiIcons != currentIcons {
+		wantIcons = *in.WikiIcons
+		changes = append(changes, mcpGeneralChange{Setting: settingWikiIcons.Key, From: currentIcons, To: wantIcons})
+	}
+	out := mcpSetSettingsOut{Changes: changes, Settings: mcpGeneralOf(want, wantCheck, wantIcons)}
 	if len(changes) == 0 {
 		out.Changes = []mcpGeneralChange{}
 		return mcpText("Nothing to change: every setting already has the value asked for, or none was named. Nothing was saved."), out, nil
@@ -569,7 +578,7 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, mcpSetSettingsOut{}, s.mcpFail("count what the new settings remove", err)
 	}
 	out.SnapshotsToRemove, out.WorldsAffected, out.AuditEntriesToDelete = trim.Snapshots, trim.Worlds, trim.AuditEntries
-	seen := generalSeen(current, currentCheck)
+	seen := generalSeen(current, currentCheck, currentIcons)
 	preview := func() (*mcp.CallToolResult, mcpSetSettingsOut, error) {
 		p, err := s.mcpAsk(req, in, seen)
 		if err != nil {
@@ -589,14 +598,10 @@ func (s *server) mcpSetSettings(ctx context.Context, req *mcp.CallToolRequest, i
 	if was.moved(seen) {
 		return mcpRetryPreview(preview, "A setting changed since the preview, so nothing was saved. Here is a fresh preview and code.")
 	}
-	if err := s.saveGeneral(ctx, mcpActor(req), want); err != nil {
+	switches := map[string]bool{settingUpdateCheck.Key: wantCheck, settingWikiIcons.Key: wantIcons}
+	if err := s.saveGeneral(ctx, mcpActor(req), want, switches); err != nil {
 		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
 	}
-	checkChanged, err := s.setBoolSetting(ctx, mcpActor(req), settingUpdateCheck, wantCheck)
-	if err != nil {
-		return nil, mcpSetSettingsOut{}, s.mcpFail("save the settings", err)
-	}
-	s.updateCheckSaved(checkChanged, wantCheck)
 	out.Done = true
 	return mcpText("Saved %d setting(s).", len(changes)), out, nil
 }

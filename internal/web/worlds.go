@@ -47,8 +47,10 @@ type WorldsPage struct {
 	ActiveState game.State
 	HaveState   bool
 	// Continue is where each Unfinished world's set-up goes on, by world id
-	// (SPEC 5.6).
+	// (SPEC 5.6). Ready marks the worlds whose map settings are saved: their
+	// set-up is done and the first start makes the map.
 	Continue map[string]string
+	Ready    map[string]bool
 }
 
 // WorldFacts is one world's row of facts, with what its snapshots add (SPEC 6.6).
@@ -149,6 +151,13 @@ type WorldPage struct {
 	World world.Summary
 	// ContinuePath is where an Unfinished world's set-up goes on (SPEC 5.6).
 	ContinuePath string
+	// Ready says the world's map settings are saved, so its set-up is done
+	// and the first start makes the map; SetupPath reopens step 4 (SPEC 5.6).
+	Ready     bool
+	SetupPath string
+	// SetupDone says the page follows step 4's Finish, so the Ready note is
+	// its Done box.
+	SetupDone bool
 	// Name refills the rename field.
 	Name      string
 	NameError i18n.Msg
@@ -327,12 +336,20 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 	s.markSwitching(&p)
 	s.markSnapshotAdds(&p)
 	for _, w := range p.Worlds {
-		if w.Unfinished {
-			if p.Continue == nil {
-				p.Continue = map[string]string{}
-			}
-			p.Continue[w.ID] = s.continuePath(r.Context(), w)
+		if !w.Unfinished {
+			continue
 		}
+		if setupReady(w, s.mapSettingsSaved(r.Context(), w.ID)) {
+			if p.Ready == nil {
+				p.Ready = map[string]bool{}
+			}
+			p.Ready[w.ID] = true
+			continue
+		}
+		if p.Continue == nil {
+			p.Continue = map[string]string{}
+		}
+		p.Continue[w.ID] = s.continuePath(r.Context(), w)
 	}
 	if id := r.URL.Query().Get("deleted"); world.ValidID(id) {
 		p.Deleted, p.DeletedKept, err = s.deletedWorld(id, list)
@@ -448,6 +465,7 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if isHTMX(r) && !p.Working {
 		w.Header().Set("HX-Refresh", "true")
 	}
+	p.SetupDone = p.Ready && r.URL.Query().Get(setupDoneQuery) != ""
 	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)
 	if p.Done.IsZero() {
 		p.Done = archiveDone(r.URL.Query().Get("archived"), sum)
@@ -486,8 +504,15 @@ func archiveDone(change string, sum world.Summary) i18n.Msg {
 // why above.
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, nameError i18n.Msg) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
-	if sum.Unfinished && !sum.Archived {
-		p.ContinuePath = s.continuePath(ctx, sum)
+	if sum.Unfinished {
+		p.Ready = setupReady(sum, s.mapSettingsSaved(ctx, sum.ID))
+		switch {
+		case sum.Archived:
+		case p.Ready:
+			p.SetupPath = newMapPath(sum.ID)
+		default:
+			p.ContinuePath = s.continuePath(ctx, sum)
+		}
 	}
 	if s.game != nil {
 		op := s.game.Status(sum.ID).Operation

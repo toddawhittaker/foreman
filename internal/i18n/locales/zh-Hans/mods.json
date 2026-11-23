@@ -130,7 +130,11 @@
   "mods.settings.edit.title": "{world} 的模组设置",
   "mods.settings.edit.heading": "模组设置",
   "mods.settings.edit.loading": "正在读取模组设置。模组变更后的第一次读取需要 Foreman 运行游戏，耗时几秒钟。",
+  "mods.settings.edit.loading_link": "准备好后显示设置",
   "mods.settings.edit.loaded": "模组设置已加载。",
+  "mods.settings.origin.required_by": "{mods} 需要它",
+  "mods.settings.origin.recommended_by": "由 {mods} 推荐",
+  "mods.settings.origin.offered_by": "由 {mods} 提供",
   "mods.settings.edit.startup.heading": "启动设置",
   "mods.settings.edit.startup.none": "已启用的模组没有启动设置。",
   "mods.settings.edit.map.heading": "地图设置",
@@ -244,6 +248,9 @@
   "mods.plan.button.install": {
     "other": "安装 {count} 个模组"
   },
+  "mods.plan.button.recommended": {
+    "other": "和 {count} 个推荐模组"
+  },
   "mods.plan.button.update": {
     "other": "更新 {count} 个模组"
   },
@@ -265,6 +272,7 @@
   "mods.orphans.legend": "不再需要的模组",
   "mods.orphans.hint": "只有要移除的模组需要它们。除非取消勾选，否则它们也会被移除。",
   "mods.plan.why.only_needed_by": "仅 {mod} 需要它",
+  "mods.recommended.legend": "推荐模组",
   "mods.recommended.hint": "推荐的模组已默认勾选。取消勾选即可不添加。",
   "mods.recommended.unavailable": "{mod}（由 {of} 推荐）未被添加：模组门户没有合适的版本。",
   "mods.unresolved.legend": "模组门户没有 {mod} {version}",
@@ -313,6 +321,10 @@
   "mods.error.unauthorized": "factorio.com 拒绝了用户名或令牌，因此未下载任何模组。未做任何更改。请检查 factorio.com 账户。",
   "mods.error.download_gone": "模组门户已没有计划要下载的某个模组。未做任何更改。请重新打开模组页面查看新计划。",
   "mods.error.download_failed": "无法从模组门户下载某个模组。未做任何更改。请稍后重试。",
+  "mods.error.too_large": "模组 {mod} {version} 大小为 {size}，超过了模组大小上限 {limit}。",
+  "mods.error.too_large_stream": "模组 {mod} {version} 超过了模组大小上限 {limit}。",
+  "mods.error.too_large_ask": "请管理员在“设置”中调高模组大小上限。",
+  "mods.error.too_large_fix": "更改模组大小上限",
   "mods.done": "{world} 的模组已更改。Foreman 先创建了快照“{label}”。",
   "mods.undo": "撤销此次模组更改",
   "mods.changed.next": "重新打开模组页面",
@@ -366,6 +378,7 @@
   "mods.hit.latest": "最新版本",
   "mods.hit.updated": "更新于",
   "mods.offer.version": "版本",
+  "mods.offer.details": "详情",
   "mods.offer.released": "发布日期",
   "mods.hit.add": "将 {mod} 加入计划",
   "mods.hit.adding": "正在加入…",
@@ -410,7 +423,9 @@
   "mods.plan_panel.warn.other": "无法计划；审阅页面会说明原因",
   "mods.plan_panel.bad_name": "这不是 Foreman 可以添加的模组名称。请先搜索该模组，然后选择旁边的 +。",
   "mods.plan_panel.wait": "计划更新后即可审阅。",
-  "mods.flow.generated": "{name} 已创建。接下来可选择其模组，或跳到地图设置。",
-  "mods.flow.skip": "跳到地图设置",
-  "mods.flow.next": "下一步：地图设置"
+  "mods.flow.generated": "{name} 已创建。接下来可选择其模组，或跳过此步骤。",
+  "mods.flow.skip": "跳到模组设置",
+  "mods.flow.skip_map": "跳到地图设置",
+  "mods.richtext.warning": "警告",
+  "mods.richtext.info": "注意"
 }

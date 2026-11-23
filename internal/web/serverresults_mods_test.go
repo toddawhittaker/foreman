@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/modportal/modportaltest"
 	"github.com/toddawhittaker/foreman/internal/mods"
@@ -95,7 +96,7 @@ func TestModsFailureNamesTheModAndOffersTheNextStep(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			msg, fix := modsFailure(c.err, c.res, "Base", c.state, PathServer)
+			msg, fix := modsFailure(c.err, c.res, "Base", c.state, PathServer, true)
 			if got := english(msg); got != c.want {
 				t.Errorf("message %q\nwant    %q", got, c.want)
 			}
@@ -194,4 +195,59 @@ func TestFailedInstallOffersTryAgain(t *testing.T) {
 	if code, again := g.getStatus(strings.ReplaceAll(fix, "&amp;", "&")); code != 200 || !strings.Contains(again, `id="act-apply"`) {
 		t.Errorf("Try again at %q: %d, want the plan with its button", fix, code)
 	}
+}
+
+// SPEC 14.6, 14.10: a mod over the size limit names the mod, its size and
+// the limit; an admin gets a link to the setting, anyone else is told to
+// ask one, and nobody is offered Try again.
+func TestModsFailureTooLargeByRole(t *testing.T) {
+	retry := "/worlds/base/mods/plan?kind=install&name=fp-big"
+	res := modResult{Retry: retry, Titles: map[string]string{"fp-big": "Big Graphics"}}
+	known := &game.ModDownloadError{Mod: "fp-big", Version: "1.2.3",
+		Err: &modportal.TooLargeError{Size: 238<<20 + 1, Limit: 200 << 20}}
+	streamed := &game.ModDownloadError{Mod: "fp-big", Version: "1.2.3",
+		Err: &modportal.TooLargeError{Limit: 200 << 20}}
+	const kept = " Nothing was changed, and Base kept running."
+	cases := []struct {
+		name  string
+		err   error
+		admin bool
+		want  string
+		fix   string
+	}{
+		{"admin, size known", known, true,
+			"Big Graphics 1.2.3 is 239 MB, which is over the mod size limit of 200 MB." + kept, "Change the mod size limit"},
+		{"admin, stream cut off", streamed, true,
+			"Big Graphics 1.2.3 is larger than the mod size limit of 200 MB." + kept, "Change the mod size limit"},
+		{"not an admin", known, false,
+			"Big Graphics 1.2.3 is 239 MB, which is over the mod size limit of 200 MB." + kept +
+				" Ask an admin to raise the mod size limit in Settings.", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			msg, fix := modsFailure(c.err, res, "Base", game.StateRunning, PathServer, c.admin)
+			if got := english(msg); got != c.want {
+				t.Errorf("message %q\nwant    %q", got, c.want)
+			}
+			switch {
+			case c.fix == "" && fix != nil:
+				t.Errorf("fix %+v, want none", fix)
+			case c.fix != "" && (fix == nil || english(fix.Label) != c.fix || fix.Path != generalPath()+"#"+modUploadFieldID):
+				t.Errorf("fix %+v, want %q at %q", fix, c.fix, generalPath()+"#"+modUploadFieldID)
+			}
+			if fix != nil && english(fix.Label) == "Try again" {
+				t.Error("Try again is offered for a file that will be over the limit again")
+			}
+		})
+	}
+	if got := english(mustMsg(refusalMsg(known))); !strings.Contains(got, "239 MB") || !strings.Contains(got, "200 MB") {
+		t.Errorf("the plain refusal text %q lacks the sizes", got)
+	}
+}
+
+func mustMsg(m i18n.Msg, ok bool) i18n.Msg {
+	if !ok {
+		panic("no refusal text")
+	}
+	return m
 }

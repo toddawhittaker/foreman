@@ -237,7 +237,11 @@ type Controller struct {
 	crashWindow   time.Duration
 	rconCallLimit time.Duration
 	previewLimit  time.Duration
-	modCheckLimit time.Duration
+	// previewWorldLimit and previewWorldMemory are a preview run's limits
+	// when it loads a world's mods (SPEC 5.6).
+	previewWorldLimit  time.Duration
+	previewWorldMemory int64
+	modCheckLimit      time.Duration
 
 	previewWait time.Duration
 	// modSettingsLimit is how long a mod settings definitions run may take.
@@ -245,6 +249,9 @@ type Controller struct {
 
 	// modSettings is the cache of mod setting definitions (SPEC 9.6).
 	modSettings modSettingsCache
+	// modPlanets is the cache of planets runs that read the world's
+	// mod-settings.dat (SPEC 5.6, 9.6).
+	modPlanets modSettingsCache
 
 	// Save reads and the factory map (SPEC 8.14 to 8.16, 5.16). Each state
 	// type is defined in the file of the task that builds it, and works as
@@ -344,6 +351,7 @@ func New(cfg Config) (*Controller, error) {
 		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
 		rconRetry: rconRetry, crashWindow: CrashLoopWindow,
 		rconCallLimit: rcon.DefaultTimeout, previewLimit: PreviewLimit, previewWait: PreviewWait,
+		previewWorldLimit: PreviewWorldLimit, previewWorldMemory: previewWorldMemory,
 		modCheckLimit: ModCheckTimeout, modSettingsLimit: ModSettingsLimit,
 		previewSlot: make(chan struct{}, 1), previewWaiting: make(chan struct{}, maxPreviewWaiters),
 		ctx: ctx, cancel: cancel,

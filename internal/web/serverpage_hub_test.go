@@ -145,7 +145,7 @@ func TestCountdownShowsTimeLeftPlayersAndCancel(t *testing.T) {
 		`<form method="post" action="/worlds/base/cancel-stop" class="actions"><button type="submit" class="button button--primary" id="act-cancel-stop">Cancel stop</button></form>`)
 	wantIDs(t, html)
 	players := fragmentHTML(t, p, "server-players")
-	wantAll(t, "players", players, "<caption>1 online when the stop began</caption>", `<td role="cell">alice</td>`)
+	wantAll(t, "players", players, "<caption>Players: 1 online when the stop began</caption>", `badge badge--online">Online</span>`)
 
 	// In a switch the page follows the old world, which is the one stopping.
 	sw := countdown(&game.SwitchInfo{From: "alpha", To: "bravo"})
@@ -308,7 +308,7 @@ func TestCancelStopOverHTTP(t *testing.T) {
 	g.wantContains("force stop form", g.get(gamePath(id, "force-stop")), "These players are disconnected: alice.")
 
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"120"}}))
-	g.waitPage("Cancel stop", "seconds left", "1 online when the stop began", `<td role="cell">alice</td>`)
+	g.waitPage("Cancel stop", "seconds left", "Players: 1 online when the stop began", `badge badge--online">Online</span>`)
 
 	// Time passing alone sends nothing: the browser counts down from
 	// data-until, so Cancel stop is never swapped out under a tap (DESIGN

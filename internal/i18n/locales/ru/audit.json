@@ -47,6 +47,7 @@
   "audit.action.webhook-change": "Вебхук изменён",
   "audit.action.webhook-delete": "Вебхук удалён",
   "audit.action.whitelist-switch": "Белый список включён или выключен",
+  "audit.action.wiki-icons-set": "Значки игры из вики включены или выключены",
   "audit.action.world-archive": "Мир архивирован",
   "audit.action.world-delete": "Мир удалён",
   "audit.action.world-export": "Мир экспортирован",

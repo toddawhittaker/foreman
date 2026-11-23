@@ -857,8 +857,17 @@ order and the picture agree.
   states the server's state large, then the controls (and while an
   operation runs, its step list and "Cancel stop"), then the facts. Below
   the plate come the live world's pages (World page, Mods, Game settings
-  and Switch world), then "Players online", then "Snapshots", in that
-  order in the code too. On a phone (to 40rem) the pages are a two-column
+  and Switch world), then "Players", then "Snapshots", in that
+  order in the code too. The Players card (SPEC 8.1) is one table: online
+  rows first, the name then an "Online" badge (`ok` text on `ok-bg`, in
+  words, inside the name's actions button, before the actions open), the
+  total play time under the name as a hint ("40 h 0 min total"), and the
+  session in the time column (headed "Time"; an online row's label is
+  "Online for"); the caption gives both counts; then the save's other
+  players, name with "Last seen" and "Played before Foreman" hints under
+  it and play time in the time column. The time column stays one line.
+  Every online row shows, then others fill ten rows, then an "All N players" link to the Overview list;
+  short hint lines carry the inexact and "tracked since" notes. On a phone (to 40rem) the pages are a two-column
   grid of 48 px tiles with 8 px gaps (`surface` face, 1 px `border` edge,
   `--radius`, icon and name, no chevron), so the players start on the
   first screen. The Snapshots card lists the world's three newest
@@ -1045,8 +1054,8 @@ the block padding is `--space-2` so a two-line label is not cramped.
   `flex-wrap: wrap`. In an ordinary row the primary button comes first.
 - **One completion footer.** Every form foot bar and confirmation ends
   with its choices together at the end edge: Cancel, a ghost button, just
-  before the primary (or danger) action, as on step 3 of Generate (Cancel,
-  Preview map, Save map settings) and the mod plan. A note about what is pending
+  before the primary (or danger) action, as on the mod plan. The guided
+  Generate's footers lead with Back instead (8.6). A note about what is pending
   (unsaved changes, where a setting comes from) leads the bar at its start.
   A confirmation's row sits under a 1 px `line`. Cancel comes first in the
   markup too, so the screen order and the keyboard order agree.
@@ -1171,7 +1180,7 @@ bold word, so the kind never depends on colour.
   stop (SPEC 17.9). It carries Undo or Switch back, which can stay on the
   page for hours, so the person may close it once read. It has an icon-only
   close button ("×", named "Close this message", a 44 px target) at the
-  box's top end corner, and the text keeps clear of it. A failure's box never
+  box's top end corner, and the message's text keeps room for it (the button's width and a gap, on the end side), so no line runs under it. A failure's box never
   has one: it stays until the next action, so a problem is not hidden by
   accident.
 - `role="alert"` only on an error that appears after an action without a
@@ -1639,7 +1648,7 @@ on its background instead of one long list.
 
 ```html
 <section class="panel" aria-labelledby="players-heading">
-  <h2 id="players-heading">Players online</h2>
+  <h2 id="players-heading">Players</h2>
   …
 </section>
 ```
@@ -2240,21 +2249,50 @@ Classes and their contract:
 
 ### 8.6 Generate (SPEC 5.6)
 
-The task is "make a new world". It is three steps, and each is a plain
+The task is "make a new world". It is four steps, and each is a plain
 page that works without script (SPEC 17.19). From the Server page the
-defaults take three clicks: Worlds, "Generate a world", then "Generate
-world" on step 1, which makes the world and lands on step 2. The Mods and
-map settings steps are optional.
+defaults take three clicks: Worlds, "Generate a world", then "Next:
+Mods" on step 1, which makes the world and lands on step 2. The Mods, mod
+settings and map settings steps are optional.
 
-**The step bar** (`genflowsteps.html`) is a `nav.subnav` holding an `ol` of
-three links: "1. World", "2. Mods" and "3. Map settings". The current one
-carries `aria-current="step"`, and the links are the way between steps
-when there is no script. The `nav` sits in a `div`, because a subnav
-straight under `main` is the area tabs' phone copy, which is hidden on a
-wide screen. It shows on step 1 with "1. World" current, where steps 2 and 3
-are plain text (a `span`, styled like the other tabs) because the world does
-not exist yet. It shows as links on step 3, and on the Mods tab and the
-review while the world is Unfinished.
+**The step bar** (`genflowsteps.html`) is a numbered stepper (SPEC 5.6,
+Todd's ruling of 2026-11-23): a `nav.flow-steps` holding an `ol` of four
+steps, "World", "Mods", "Mod settings" and "Map settings", in four equal
+columns, each a round mark over its name, with a 2 px line between the
+marks. The number is drawn from the mark's `data-n` and is also in the
+name for screen readers ("2. Mods"). A step before the current one has a
+tick in place of its number, in the accent colour, and a hidden "(done)";
+the current one has a filled primary mark, a bold name and
+`aria-current="step"`; a later one has a plain ringed number. The line
+into a finished or current step takes the accent colour. The links are the
+way between steps when there is no script. When no mod has a startup
+setting, step 3 is plain text "Mod settings (none)", never a link, with a
+dashed mark and its name in italics (`flow-step--skipped`), and it is not
+ticked. It shows on step 1 with "World" current, where the later steps are
+plain text (a `span`) because the world does not exist yet. It shows as
+links on steps 3 and 4, and on the Mods tab and the review while the world
+is Unfinished.
+
+Below a 30rem bar (a container query), so on a phone, only the marks show
+and the current step's name is written under them (`flow-steps__now`,
+hidden from screen readers, which read the marks' names). Each mark stays a
+44 px target. The bar is at most 44rem wide.
+
+**The footer.** Each step ends with the same action bar, held to the
+window's foot: Back first, at the start, and the step's primary button
+last, worded "Next: " and the next step's name ("Next: Mods", "Next: Mod
+settings", "Next: Map settings"), or "Finish" on step 4 (SPEC 5.6).
+Back is a quiet button (`flow-back`) to the nearest earlier step that is a
+link: step 2 goes "Back to the world", step 3 "Back to the mods", step 4
+"Back to mod settings", or "Back to the mods" when step 3 has nothing. Step
+1 has no Back, so its Cancel leads the bar. Steps 1 and 4 use Generate's
+bar (`gen-actions`), step 3 the mod settings form's foot bar (`form-foot`),
+and step 2's Mods tab a bar of the same look as its last block
+(`flow-foot`). On a
+phone Generate's bar stacks in source order. Skip links stay where they
+were, as secondary actions. Step 2's review of the plan ends with the same
+`flow-foot` bar, across both of the review's columns and out to its box's
+edges.
 
 **Step 1**, `GET /generate`: one `h1` with a one-line hint, then one form,
 in this order:
@@ -2265,31 +2303,67 @@ in this order:
    list", opened when it holds a value or an error.
 3. Space Age, and the "download the game image" checkbox.
 4. "Start from a favorite" (one row on a card at least 64rem wide).
-5. The action bar: Cancel and "Generate world" (primary).
+5. The footer: Cancel and "Next: Mods" (primary), which makes the world.
 
 There is no map form, preview or leave dialog on this page. The world is
 made at once and the browser lands on step 2,
 `/worlds/{id}/mods?generated=1`, where a Done box takes focus: "{name} is
-made. Next, pick its mods or skip to map settings." A favorite with mods
+made. Next, pick its mods or skip this step." A favorite with mods
 lands on the review instead (SPEC 5.12).
 
 **Step 2** is the world's Mods tab, or the review (8.11). For an Unfinished
-world each shows the step bar with "2. Mods" current. The Mods tab has a
-"Skip to map settings" link under the bar. After a mod change its Done box
-shows "Next: map settings", a button (SPEC 17.9), in place of Skip. The
-review has "Skip to map settings" after the Install button in source
-order, or "Next: map settings" when the plan changes nothing. A world with a save shows none of this.
+world each shows the step bar with "Mods" current. The Mods tab has a
+"Skip to mod settings" link under the bar. After a mod change its Done box
+shows "Next: Mod settings", a plain button (SPEC 17.9), in place of Skip.
+The tab ends with the footer: "Back to the world" and "Next: Mod settings"
+(primary); both Next labels read "Next: Map settings" when step 3 has
+nothing to set. While the plan has mods in it the footer's primary reads
+"Next: Review N mods" and opens the review (SPEC 5.6); the plan panel then
+has no Review button, and on a phone it does not hold to the screen's foot,
+where it would cover the footer. A change to the plan swaps the footer's
+button out of band, and it is held back while a change is worked out, as
+the panel's Review is. The review of the plan keeps step 2 current and
+ends with the footer: "Back to the mods", "Skip to mod settings", then
+"Next: Mod settings" (primary), which installs the plan as Install does and,
+once the install ends well, goes on to step 3. With nothing to change it
+is "Back to the mods" and "Next: Mod settings". A review of another kind
+(an update, a removal) keeps its own actions, with "Skip to mod settings"
+after its button. Each way on leads to step 3, which passes on to step 4
+when there is nothing to set. A world with a save shows none of this.
 
 **Unfinished worlds** carry a plain `badge` "Unfinished" beside the name
 on the Worlds list and on the world page. A list row's one action is
 Continue, a primary button, with "Continue setting up {name}" for screen
 readers. On the world page a note says setting up is not finished, with
 Continue as its one primary button, and Switch becomes a plain button.
-Continue opens step 2 while mod picks are not installed, otherwise step 3
-(SPEC 5.6, 9.14). Checked with a Continue click from the Worlds list: one
+Continue opens step 2 while mod picks are not installed, then step 3 while
+the world has no saved mod settings file and its map settings were never
+saved, otherwise step 4 (SPEC 5.6, 9.14). Checked with a Continue click from the Worlds list: one
 click.
 
-**Step 3**, `/worlds/{id}/new-map`, is the rest of this section and 8.7
+**Ready worlds** are Unfinished worlds whose map settings were saved at
+step 4 (SPEC 5.6). They carry a plain `badge` "Ready" in place of
+"Unfinished". A list row has no Continue; its action is Switch, as on any
+other row. On the world page a note says the world is set up and its map is
+made the first time it starts, with a plain "Change setup" link to step 4,
+and Switch is the page's one primary button.
+
+**Step 3**, `/worlds/{id}/new-map/mod-settings`, is the step bar, a line
+of intro, a "Skip to map settings" link, then the mod settings page's form
+part (7.2, SPEC 9.6) with the startup settings only, one fieldset per mod.
+The form loads after the page, as on the mod settings page; without script
+the loading text is hidden and a link has the server read the form first
+(`?wait=1`), and the page does not refresh itself. Its foot bar is the
+footer: "Back to the mods", then "Next: Map settings" (primary), which
+saves the settings and goes on to step 4. Saving disables the button and fills in a status line; it lands on
+step 4, and a save that takes longer than 30 seconds shows its progress on
+the Mods tab instead. With nothing to set the step sends the browser on to
+step 4, which says "No mod has startup settings, so step 3 was skipped."
+(`?skipped=1`); the step bar marks a skipped step with a dashed mark and
+italics (`flow-step--skipped`). On the Mods tab the skip link reads "Skip to map
+settings" when step 3 has nothing to set.
+
+**Step 4**, `/worlds/{id}/new-map`, is the rest of this section and 8.7
 and 8.8. Its form id is still `generate-form`. In this order:
 
 1. The step bar and a line of intro. With script the page shows at once
@@ -2307,8 +2381,9 @@ and 8.8. Its form id is still `generate-form`. In this order:
    "Reset to defaults" button after it; the seed with a "Random seed"
    button; then the tabs of 8.7.
 5. The preview slot (8.8), beside the settings on a wide screen (below).
-6. One achievements summary (below), then the action bar: Cancel (a link
-   to the world), "Preview map" and "Save map settings" (primary).
+6. One achievements summary (below), then the footer: Back (to step 3,
+   or step 2 when step 3 has nothing), "Preview map" and "Save map
+   settings" (primary).
 
 **Layout.** Once the form is 56rem wide (a container query, so the rail's
 width counts) the page is two columns, `gen-grid`: the settings, never
@@ -2334,12 +2409,12 @@ and narrower) the preview comes straight after the preset and seed, so it
 is on the first screens, and the planets' rows in the settings start
 closed. **The action bar** is one bar at the foot of the card, `raised`
 with a 1 px `line` rule above it, running to the card's edges. It ends
-with Cancel (a ghost button), "Preview map" and "Save map settings"
-(primary), set together at the bar's end edge (7.1, "One completion
+with Back (a ghost button, at the start edge, 8.6), "Preview map" and
+"Finish" (primary), the last two set together at the bar's end edge (7.1, "One completion
 footer"). The code has them in the same order, so the screen order, the
 keyboard order and the code order agree (WCAG 1.3.2, 2.4.3). On a phone
-(30rem and narrower) they stack full width, top to bottom: Cancel,
-Preview map, Save map settings. At 200% text a label wraps rather than push the page
+(30rem and narrower) they stack full width, top to bottom: Back,
+Preview map, Finish. At 200% text a label wraps rather than push the page
 wider.
 
 **Preset, "[modified]" and reset.** Choosing a preset fills every tab with
@@ -2404,9 +2479,9 @@ once through `#announcer`.
 when the form is two columns, and after the settings otherwise (Layout,
 above; 8.8).
 
-On success step 3 shows again with a Done box that takes focus (7.3):
-"Saved the map settings of Family base 2026. The map is made from them
-when the world first starts." Its button is "Next: go to the world". When
+On success Finish opens the world's page with `?setup=done`, where the
+Ready note is a Done box that takes focus (7.3): "Done: This world is set
+up. Its map is made the first time it starts.", with Change setup. When
 the world's own planets could not be read, saving is refused with "Try
 again" and a link to step 2, because saving the built-in planets would drop
 the settings of the mods' planets.
@@ -2445,10 +2520,15 @@ the settings of the mods' planets.
   says "Preview: Fulgora" once (with One planet chosen, 8.8); a tab
   switch says nothing. A planet the large view moves to opens its row
   without moving focus.
-- **Cliffs off.** Cliffs that the game lets you switch off (Nauvis on
-  every line, Gleba and Fulgora on 2.x, never Vulcanus) have an on/off
-  box in their legend, as resources do, and their continuity select no
-  longer offers "None". There is no achievement warning.
+- **Cliffs off.** Cliffs that the game lets you switch off have an
+  on/off box in their legend, as resources do, and their continuity
+  select no longer offers "None". There is no achievement warning. The
+  box comes by rule, never by planet name: on 2.x a cliff or enemy
+  control gets one when the game says it can be disabled (Nauvis, Gleba
+  and Fulgora cliffs, and a mod's, such as Muluna's or Corrundum's;
+  not Carna's or Foliax's, which say they cannot), as does any resource
+  that can be. On 1.1 Nauvis's cliffs keep their box. A mod's terrain
+  control, such as Muluna's lunar rocks, has none.
 - **Needed resources.** While a Nauvis resource the game needs (iron
   ore, copper ore, stone, crude oil and coal) is off, a warning shows
   under its box ("…unless a mod provides it"), and a `message--warning`
@@ -2592,7 +2672,7 @@ close the view, the tab, the setting, and the picture again).
 - **The real-game picture.** On a 2.1 world showing one planet, the
   Download line ends with the quiet button "Draw from a real game (about 15
   to 40 seconds)" and a toggletip. Pressed, the section is `aria-busy`, a
-  wait line and a progress bar show, and Preview map, Save map settings
+  wait line and a progress bar show, and Preview map, Finish
   and the button itself are `aria-disabled` and blocked until the picture
   arrives, because the draw takes the one preview slot. The result is
   announced once, "Real-game picture ready.", and the focus moves to "Back
@@ -2606,8 +2686,11 @@ close the view, the tab, the setting, and the picture again).
 - **A picture's own actions share its Download line.** On a 2.1 world's
   one picture, "Draw from a real game" and its toggletip follow the
   Download link on the same line, so the pane gives no row of its own to
-  an action the person seldom takes. On a narrow pane the line wraps,
-  and the picture leaves room for the second row.
+  an action the person seldom takes. The line wraps when the pane is
+  narrow and when "Show resource amounts" makes the link longer; the
+  button and its toggletip wrap together, so the icon stays beside the
+  button, and the picture always leaves room for the second row. The
+  "Download all drawn planets (zip)" link has its own line below both.
 - **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
   wide panel, a select of 17 sizes elsewhere) above the section, outside
   the part a reply replaces: 1024 to 3072 tiles square in steps of 128,
@@ -2701,6 +2784,11 @@ close the view, the tab, the setting, and the picture again).
     icon button (8.8 icons below), 24 px, 44 px under
     `(pointer: coarse)`. Previous and Next step through the world's
     planets and wrap; a planet not drawn yet is drawn and shown in place.
+  - Zoom, pan, the zoom keys and the three zoom buttons are one plain
+    script, `static/viewer.js` (`window.ForemanViewer`), shared with the
+    factory map (SPEC 5.16) and loaded with `defer` before each page's own
+    script; no ES modules. Each page keeps its own extras. The factory map's
+    layer colours stay duplicated in Go and in CSS.
   - Zoom is a factor of the fitted size, from 1 up to the larger of 8
     and 8 CSS pixels per tile (so a 3072 picture still reaches real
     tiles). Each wheel notch, plus or minus key, or zoom button
@@ -3110,6 +3198,13 @@ active world. The pages follow 7.2 (fields), 7.4 (the plan page is a
 confirmation step) and 7.6 (the result), and use no new component but the
 small ones below. All counts use plural messages (SPEC 22).
 
+A mod's own text keeps its rich-text emphasis (SPEC 14.6): bold stays
+`<strong>` (a heading font never changes the size), red is the danger text
+colour, orange and yellow the warning colour, green the success colour,
+blue, cyan, purple and pink the info colour, and gray the muted text colour
+(`.rt-*` in `foreman.css`). A key-binding action shows in a bordered
+`span.rt-key`, and the game's warning sprite as the warning icon messages use.
+
 **Mod names** are wrapped in `span.ident` (`translate="no"`,
 `hyphens: manual; overflow-wrap: anywhere`) in tables, plan text,
 conflicts, notices, headings and button labels, so a name such as
@@ -3235,6 +3330,12 @@ fine pointer and 44 px on touch. The sections, in order:
   is undone by its snapshot, so the form is not a red box. A refused file
   opens it.
 
+On the mod settings page each mod's group is a `fieldset` with an id. Under a
+mod that others name, a `p.hint.mod-origin` says "Required by", "Recommended
+by" or "Offered by" and the naming mods, each a link to its own group (SPEC
+9.6); those groups follow the ones nobody names. Without script the progress
+line is followed by a link that loads the page with the form already read.
+
 A change to a world that is not active reports on its own Mods tab: a
 steps list (7.6) while it runs, then a Done message with "Undo this mod
 change", which goes to the restore confirmation (7.4).
@@ -3303,7 +3404,8 @@ bar keeps its frame while the other cards lie flat.
   quiet "Clear plan" in `danger-text` (no underline; `danger-bg` under the
   pointer), since clearing throws work away. Last, the primary "Review and install N mods"
   (each distinct mod counted once) opens the plan page with the picks
-  (`kind=install&name=…`). An empty plan says "No mods in the plan yet.
+  (`kind=install&name=…`); in Generate's step 2 the step's footer carries
+  it instead, as "Next: Review N mods". An empty plan says "No mods in the plan yet.
   Choose + beside a mod to add it, then search again for the next." If
   the portal cannot be reached the picks are listed by name with a
   Warning and "Check again", and the button reads "Review the plan".
@@ -3460,7 +3562,7 @@ too.
 ### 8.12 Player actions (SPEC 8.2, Epic 9)
 
 The task is "do something to a player who is in the game", and it starts
-where the player is listed: the "Players online" card on the Server page.
+where the player is listed: the "Players" card on the Server page.
 Kick and ban go through a confirmation step (7.4); promote, demote, unban
 and the whitelist act at once and offer Undo (17.9). A change sent to a
 running game takes no snapshot, because the game writes its own list

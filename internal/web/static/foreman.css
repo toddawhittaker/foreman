@@ -732,8 +732,7 @@ time {
 /* A tab is a link with an underline when current. The underline is a border,
    so it is still drawn in forced colours. */
 .tabs a,
-.subnav a,
-.subnav .subnav-later {
+.subnav a {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -801,9 +800,13 @@ time {
   max-inline-size: none;
 }
 
-.subnav a,
-.subnav .subnav-later {
+.subnav a {
   margin-block-end: -1px;
+}
+
+/* Step 3's save status takes no room until the script fills it. */
+#flow-modsettings-saving:empty {
+  margin: 0;
 }
 
 @container (max-width: 30rem) {
@@ -811,8 +814,7 @@ time {
     gap: 0;
   }
 
-  .subnav a,
-  .subnav .subnav-later {
+  .subnav a {
     padding-inline: 0.625rem;
     font-size: var(--text-sm);
   }
@@ -1969,6 +1971,12 @@ fieldset > .check + a {
    target (DESIGN 7.3). */
 .message--closable {
   position: relative;
+}
+
+/* The message's text keeps room for the button: its width and a gap, from the
+   box's edge, so no line runs under it (DESIGN 7.3). */
+.message--closable > p {
+  padding-inline-end: calc(var(--target-min) + var(--space-2) - var(--space-4));
 }
 
 .message__dismiss {
@@ -3841,6 +3849,15 @@ td > .hint {
   display: block;
 }
 
+/* Open in the top layer: fixed to the window where the script places it,
+   not the browser's centred popover (DESIGN 7.7). */
+.js-on .tip__text:popover-open {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: visible;
+}
+
 .mode-panel input.mono {
   font-family: var(--font-mono);
 }
@@ -4268,21 +4285,38 @@ form:has(#mode-exchange:checked) .achievements {
 }
 
 /* One line is held for the drawing note once a preview shows, so nothing moves. */
-.preview-status:empty {
+.preview-status:has(> #preview-status-text:empty) {
   display: none;
 }
 
-.gen-preview:has(#preview > *) .preview-status:empty {
-  display: block;
+.gen-preview:has(#preview > *) .preview-status:has(> #preview-status-text:empty) {
+  display: flex;
   min-block-size: 1lh;
 }
 
 /* The note stays one line in a narrow column too, so a redraw never moves
-   what sits under the preview; the faded picture says the rest (DESIGN 8.8). */
+   what sits under the preview; the faded picture says the rest, and the
+   moving bar takes what room the words leave (DESIGN 8.8). */
 .preview-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 1lh;
   overflow: hidden;
   white-space: nowrap;
+}
+
+#preview-status-text {
+  min-inline-size: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.preview-status > .wait,
+.large-view__wait {
+  flex: 1 1 0;
+  min-inline-size: 3rem;
+  max-inline-size: 12rem;
 }
 
 /* 8.8 The large view: the whole screen, the picture fitted, zoomed and
@@ -4624,18 +4658,21 @@ html:has(.large-view[open]) {
   gap: var(--space-2);
 }
 
-.wait.htmx-request {
+.wait.htmx-request,
+.mod-settings.htmx-request .wait {
   display: grid;
 }
 
-.wait progress {
+.wait progress,
+.message progress {
   inline-size: 100%;
   max-inline-size: 20rem;
   accent-color: var(--color-selected);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wait progress {
+  .wait progress,
+  .message progress {
     display: none;
   }
 }
@@ -5670,6 +5707,24 @@ a[target="_blank"]::after {
   min-block-size: 8rem;
 }
 
+/* The loading words show only while the script's request runs (htmx adds
+   the class), so a browser without script is not told a load is under way
+   (SPEC 9.6). */
+.mod-settings:not(.htmx-request) .mod-settings-loading {
+  display: none;
+}
+
+/* Parent names in an origin line wrap on a phone: a line pitch of 26 px
+   with 25 px link boxes keeps each tap target apart from the next line's
+   (SPEC 17.2). */
+.hint.mod-origin {
+  line-height: 2;
+}
+
+.mod-origin a {
+  padding-block: 0.3em;
+}
+
 .field input.mod-settings-number {
   max-inline-size: calc(12ch + 2 * var(--space-3) + 2 * var(--border-width));
 }
@@ -5764,6 +5819,33 @@ a[target="_blank"]::after {
   gap: var(--space-4);
 }
 
+/* Under One planet's picture: the download link and the real-game button with its info
+   icon share a line while they fit, and when they do not the button and its icon wrap
+   together, so the icon never drops off the button's row (DESIGN 8.8). The button gives
+   way before the icon does. */
+.picture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+}
+
+.picture-actions #preview-chart-offer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-inline-size: 100%;
+}
+
+.picture-actions #preview-chart-offer > .button {
+  min-inline-size: 0;
+}
+
+.picture-actions #preview-chart-offer > .tip {
+  flex: none;
+}
+
 @container generate (min-width: 56rem) {
   .gen-grid {
     grid-template-columns: minmax(34rem, 1fr) minmax(20rem, 26rem);
@@ -5854,14 +5936,14 @@ a[target="_blank"]::after {
     justify-self: center;
   }
 
-  /* The Download line also offers the real-game picture. Below 100rem the
-     pane is narrow and the line wraps to two control rows, so the picture
-     keeps room for both; on a wider pane it is one row (DESIGN 8.8). */
-  @media (max-width: 99.98rem) {
-    .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
-      --chart-row: calc(var(--target-min) + var(--space-1));
-      min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
-    }
+  /* The Download line also offers the real-game picture. Where the line
+     takes more than its link's row (it wraps, the button's text wraps in a
+     longer language, or a stopped download's message opens in it) the
+     script sets --chart-row to the extra height, and the picture keeps that
+     room; on one row it needs none, so a wide pane still fits between the
+     strips (DESIGN 8.6, 8.8). */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row, 0px));
   }
 
   /* The download links and the kept note read as one tight group under the
@@ -6950,6 +7032,19 @@ td > .badge {
 tr:has(> td > .player-actions[open]) > td.num {
   vertical-align: top;
   padding-block-start: calc(var(--space-2) + (var(--target-min) - 1lh) / 2);
+}
+
+/* The Server page's Players panel (SPEC 8.1): an online player's chip says
+   so in words, in the success tone, and a player who is away reads quieter
+   by their hint line, never by colour alone. */
+.badge--online {
+  color: var(--color-ok);
+  background: var(--color-ok-bg);
+  border-color: currentColor;
+}
+
+.server-players__note {
+  margin-block-start: var(--space-2);
 }
 
 /* 8.14 Chat: the log box in the body face, a little shorter than the game
@@ -9402,8 +9497,7 @@ main > .panel.danger-zone.danger-zone--blocked {
     box-shadow: inset 0 -1px 0 var(--color-line);
   }
 
-  .subnav a,
-  .subnav .subnav-later {
+  .subnav a {
     min-block-size: var(--target-min);
     margin-block-end: 0;
   }
@@ -9419,8 +9513,7 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav a,
   .subnav a[aria-current],
   .subnav li:first-child a,
-  .subnav li:last-child a,
-  .subnav .subnav-later {
+  .subnav li:last-child a {
     padding-inline: var(--space-1);
     white-space: normal;
     text-align: center;
@@ -9434,8 +9527,7 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav a,
   .subnav a[aria-current],
   .subnav li:first-child a,
-  .subnav li:last-child a,
-  .subnav .subnav-later {
+  .subnav li:last-child a {
     font-size: var(--text-xs);
   }
 }
@@ -9844,6 +9936,12 @@ main > .panel.danger-zone.danger-zone--blocked {
     overflow-y: auto;
   }
 
+  /* In the guided Generate the step's footer holds the way on, named with
+     the plan's count, at the same foot; a held plan bar would cover it. */
+  .plan-panel--step:not(.plan-panel--empty) {
+    position: static;
+  }
+
   /* Keyboard focus scrolled into view stays clear of the folded bar: its
      44 px line, the 44 px Review button, the gap and padding (WCAG 2.4.11).
      The bar's own rule beside the other foot bars would reach wide screens,
@@ -10195,6 +10293,13 @@ main > .panel.danger-zone.danger-zone--blocked {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* The list scrolls inside the held card, so it holds its own visually
+   hidden text: placed in the card, that text stretched the card's scroll
+   area past the list's end and gave the card a second, dead scrollbar. */
+.plan-tree {
+  position: relative;
 }
 
 .plan-tree__pick {
@@ -11091,6 +11196,7 @@ main:has(> .gate) > .gate + .gate {
 .plan-offer__detail {
   display: grid;
   gap: var(--space-1);
+  padding-block-end: var(--space-2);
   color: var(--color-text-muted);
 }
 
@@ -12215,4 +12321,285 @@ main:has(> .public-world) {
 
 .webhook-list .facts dd {
   font-weight: 400;
+}
+
+/* A mod's rich text (SPEC 14.6, DESIGN 8.11). The game's named colours map
+   to theme tokens that already pass contrast as text in both themes. */
+.rt-danger {
+  color: var(--color-danger-text);
+}
+
+.rt-warn {
+  color: var(--color-warn);
+}
+
+.rt-ok {
+  color: var(--color-ok);
+}
+
+.rt-info {
+  color: var(--color-info);
+}
+
+.rt-muted {
+  color: var(--color-text-muted);
+}
+
+.rt-key {
+  padding: 0 0.25em;
+  border: 1px solid var(--color-border);
+  border-radius: 0.2em;
+  font: inherit;
+  white-space: nowrap;
+}
+
+/* A wiki icon is the height of the text line, so a page does not move
+   while it loads; a failed load swaps in the name. */
+.rt-obj-icon {
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  object-fit: contain;
+  vertical-align: -0.25em;
+}
+
+.rt-icon {
+  display: inline-block;
+  inline-size: 1em;
+  block-size: 1em;
+  vertical-align: -0.125em;
+  mask: var(--i-info) center / contain no-repeat;
+  background: var(--color-info);
+}
+
+.rt-icon--warning {
+  mask-image: var(--i-alert);
+  background: var(--color-warn);
+}
+
+@media (forced-colors: active) {
+  .rt-icon {
+    background: CanvasText;
+  }
+}
+
+/* The guided Generate's step bar (SPEC 5.6, DESIGN 8.6): four numbered
+   marks joined by a line, finished steps ticked, the current one filled.
+   On a narrow bar only the marks show, with the current step's name under
+   them. */
+.flow-steps {
+  --flow-mark: 1.75rem;
+  container-type: inline-size;
+}
+
+.flow-steps ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-inline-size: 44rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flow-step {
+  position: relative;
+  min-inline-size: 0;
+  max-inline-size: none;
+}
+
+/* The line from the step before runs between the two marks' edges. */
+.flow-step + .flow-step::before {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(var(--target-min) / 2 - 1px);
+  inset-inline-end: calc(50% + var(--flow-mark) / 2 + var(--space-1));
+  inline-size: calc(100% - var(--flow-mark) - 2 * var(--space-1));
+  block-size: 2px;
+  background: var(--color-line);
+}
+
+.flow-step + .flow-step:is(.flow-step--done, .flow-step--current, .flow-step--skipped:has(~ .flow-step--current))::before {
+  background: var(--color-selected);
+}
+
+.flow-step > :is(a, span) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--target-min);
+  padding: calc((var(--target-min) - var(--flow-mark)) / 2) var(--space-1) var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+
+.flow-step > a:hover {
+  color: var(--color-heading);
+}
+
+.flow-step > a:hover .flow-step__name {
+  text-decoration: underline;
+}
+
+.flow-step__mark {
+  display: grid;
+  place-items: center;
+  inline-size: var(--flow-mark);
+  block-size: var(--flow-mark);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.flow-step__mark::before {
+  content: attr(data-n);
+}
+
+.flow-step__name {
+  max-inline-size: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.flow-step--done > :is(a, span) {
+  color: var(--color-text);
+}
+
+.flow-step--done .flow-step__mark {
+  border-color: var(--color-selected);
+  color: var(--color-selected);
+}
+
+.flow-step--done .flow-step__mark::before {
+  content: "";
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-check) center / contain no-repeat;
+}
+
+.flow-step--current > :is(a, span) {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.flow-step--current .flow-step__mark {
+  background: var(--color-primary);
+  border-color: var(--color-primary-edge);
+  color: var(--color-on-primary);
+}
+
+/* A step with nothing to do: a dashed mark and italics, told apart from one
+   that cannot be opened yet. */
+.flow-step--skipped .flow-step__mark {
+  border-style: dashed;
+}
+
+.flow-step--skipped .flow-step__name {
+  font-style: italic;
+}
+
+.flow-steps__now {
+  display: none;
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: 600;
+  text-align: center;
+}
+
+@container (max-width: 30rem) {
+  .flow-step__name {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .flow-step > :is(a, span) {
+    padding-block-end: 0;
+  }
+
+  .flow-steps__now {
+    display: block;
+  }
+}
+
+/* The tick is painted through a mask and the current mark is filled, so in
+   forced colours the tick takes the text colour and the current mark a
+   highlight border. */
+@media (forced-colors: active) {
+  .flow-step--done .flow-step__mark::before {
+    background: CanvasText;
+  }
+
+  .flow-step--current .flow-step__mark {
+    border-color: Highlight;
+  }
+}
+
+/* Each step's footer: Back leads it, the step's action ends it (SPEC 5.6). */
+:is(.gen-actions, .form-foot, .flow-foot) > .flow-back {
+  margin-inline-end: auto;
+}
+
+/* Step 2's footer is the Mods tab's last block, held to the window's foot
+   like the other steps' bars. */
+.flow-foot {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  justify-content: flex-end;
+  padding: var(--space-3) var(--card-pad);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  box-shadow: 0 -6px 16px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 35%));
+}
+
+/* On step 2's review the bar ends the plan's box: across both its columns
+   and out to its edges, as a form's foot bar meets its card's. */
+.confirm form > .flow-foot {
+  grid-column: 1 / -1;
+  margin: 0 calc(-1 * max(var(--space-4), var(--card-pad))) calc(-1 * max(var(--space-4), var(--card-pad)));
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+}
+
+/* Focus is never left behind the bar (WCAG 2.4.11), as for the other bars. */
+html:has(.flow-foot) {
+  scroll-padding-block-end: 5.5rem;
+}
+
+/* On a phone its two actions stack, so the room grows with them. */
+@media (max-width: 30rem) {
+  html:has(.flow-foot) {
+    scroll-padding-block-end: min(9rem, 50dvh);
+  }
+}
+
+.flow-foot > .flow-back {
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.flow-foot > .flow-back:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+/* On a phone Generate's bar is one column, where an auto margin would
+   shrink Back rather than push it. */
+@media (max-width: 30rem) {
+  .generate > .gen-actions > .flow-back {
+    margin-inline-end: 0;
+  }
 }

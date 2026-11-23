@@ -31,7 +31,7 @@
   // While a change runs, Review would open the plan without it, so it is held
   // back and says why (aria-disabled keeps it in the tab order).
   const holdReview = (on) => {
-    const review = document.getElementById("act-review-plan");
+    const review = document.getElementById("act-review-plan") || document.querySelector("#flow-next[data-review]");
     const wait = document.getElementById("plan-wait");
     if (!review || !wait) return;
     wait.hidden = !on;
@@ -44,7 +44,7 @@
     }
   };
   document.addEventListener("click", (e) => {
-    if (e.target.closest?.('#act-review-plan[aria-disabled="true"]')) e.preventDefault();
+    if (e.target.closest?.('#act-review-plan[aria-disabled="true"], #flow-next[aria-disabled="true"]')) e.preventDefault();
   });
   const planDone = () => {
     planBusy = false;

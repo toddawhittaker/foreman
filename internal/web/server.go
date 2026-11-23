@@ -210,7 +210,7 @@ func NewHandler(d Deps) (*Handler, error) {
 	if d.Portal != nil {
 		s.portal, s.planner = d.Portal, &mods.Planner{Worlds: d.Worlds, Portal: d.Portal}
 		if d.Game != nil {
-			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal, limit: s.modUploadLimit})
+			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal, limit: s.modUploadLimit, log: s.log})
 			d.Game.SetModCheck(s.planner)
 		}
 		s.marks = newPortalMarks(now, s.runs, s.checkPortalForPublic)
@@ -344,7 +344,7 @@ func clientGone(r *http.Request, err error) bool {
 // page renders p. If rendering fails it logs the error and sends a plain 500,
 // unless the browser left: that is no server fault and nobody is left to answer.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user string, p Page) {
-	r = s.dropSpoofedRenewed(r, user)
+	r = s.readWikiIcons(s.dropSpoofedRenewed(r, user))
 	err := s.render.Render(w, r, status, user, s.lamp(r, user), s.tokenBanner(r, user), s.newerRelease(r, user), p)
 	if err == nil {
 		return

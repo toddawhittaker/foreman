@@ -11,6 +11,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
+	"github.com/toddawhittaker/foreman/internal/modsettings"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -98,6 +99,11 @@ const (
 	FakeOre       = "fake-ore"
 	// FakeOreRichness is FakePlanet's own default richness for FakeOre.
 	FakeOreRichness = 150
+	// FakeMoon is the planet a run adds when the world's mod-settings.dat
+	// sets the startup setting FakeMoonSetting above its default of 7, as a
+	// planet mod's startup setting can (SPEC 5.6, 9.6).
+	FakeMoon        = "fake-moon"
+	FakeMoonSetting = "fm-sta-int"
 )
 
 // The planet file's shape, as internal/mapgen/catalogue.go documents it.
@@ -184,14 +190,23 @@ func writeModSettings(c dockertest.Container) error {
 	if dir == "" {
 		return fmt.Errorf("the fake game's mod settings container has no folder bound at %s", gameenv.PreviewMount)
 	}
+	enabled := enabledMods(dir)
+	defs := cannedModSettingDefs()
+	if slices.Contains(enabled, FakePlanetMod) {
+		// A second mod with settings, so a page can show groups of two mods.
+		planet := modSettingDef{Name: "fp-sta-bool", Mod: FakePlanetMod, SettingType: "startup", Type: "bool-setting", Order: "a"}
+		planet.DefaultValue = true
+		defs = append(defs, planet)
+	}
 	// The definitions are plain strings and numbers: marshalling cannot fail.
 	b, _ := json.Marshal(struct {
 		Settings []modSettingDef `json:"settings"`
-	}{cannedModSettingDefs()})
+	}{defs})
 	mods := filepath.Join(dir, world.ModsDir)
 	if err := os.MkdirAll(mods, world.DirMode); err != nil {
 		return err
 	}
+	moon := settingAddsMoon(filepath.Join(mods, world.ModSettingsFile))
 	if err := os.WriteFile(filepath.Join(mods, world.ModSettingsFile), modSettingsDefaults, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
 		return err
 	}
@@ -200,6 +215,26 @@ func writeModSettings(c dockertest.Container) error {
 	}
 	v := imageVersion(c.Spec.Image)
 	// Plain strings, numbers and maps: marshalling cannot fail.
-	planets, _ := json.Marshal(cannedPlanets(fmt.Sprintf("%d.%d", v[0], v[1]), enabledMods(dir)))
+	f := cannedPlanets(fmt.Sprintf("%d.%d", v[0], v[1]), enabled)
+	if moon && len(f.Planets) > 0 {
+		f.Planets = append(f.Planets, fakePlanetEntry{Name: FakeMoon, LocName: []string{"space-location-name." + FakeMoon},
+			Controls: map[string]map[string]float64{"stone": {"frequency": 1, "size": 1, "richness": 1}}, Resources: []string{}})
+	}
+	planets, _ := json.Marshal(f)
 	return os.WriteFile(filepath.Join(dir, gameenv.PlanetsFile), planets, world.FileMode) //nolint:gosec // the fake's own test folder
+}
+
+// settingAddsMoon says the run's mod-settings.dat, the world's own when the
+// run reads it, sets FakeMoonSetting above its default.
+func settingAddsMoon(name string) bool {
+	b, err := os.ReadFile(name) //nolint:gosec // the fake's own test folder
+	if err != nil {
+		return false
+	}
+	f, err := modsettings.Decode(b)
+	if err != nil {
+		return false
+	}
+	v, ok, err := f.Get(modsettings.Startup, FakeMoonSetting)
+	return err == nil && ok && v.Int > 7
 }

@@ -58,8 +58,8 @@ test("a modded planet's names, shared control and own default", async ({ page, f
     el.value = "200";
     el.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await page.getByRole("button", { name: "Save map settings" }).click();
-  await expect(page.locator("#newmap-done")).toBeVisible();
+  await page.getByRole("button", { name: "Finish" }).click();
+  await expect(page.locator("#world-ready")).toBeVisible();
   const file = readFileSync(join(foreman.dataDir, "worlds", id, "config", "map-gen-settings.json"), "utf8");
   expect(JSON.parse(file).autoplace_controls["fake-ore"].richness).toBe(150);
   expect(file.match(/"stone"/g)).toHaveLength(1);

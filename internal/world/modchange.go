@@ -208,7 +208,29 @@ func (m *Manager) ApplyModsHeld(id string, change ModChange, fingerprint string)
 			return fmt.Errorf("the mods were changed, but %s was not written: %w", ModSettingsFile, err)
 		}
 	}
+	if change.Chosen != nil {
+		if err := m.writeChosen(root, id, meta, change.Chosen); err != nil {
+			return fmt.Errorf("the mods were changed, but the record of chosen mods was not saved: %w", err)
+		}
+	}
 	return nil
+}
+
+// writeChosen saves the record of chosen mods, keeping only names still
+// installed, so a removed mod leaves the record (SPEC 9.6).
+func (m *Manager) writeChosen(root *os.Root, id string, meta Meta, chosen []string) error {
+	installed, err := m.Mods(id)
+	if err != nil {
+		return err
+	}
+	keep := []string{}
+	for _, mod := range installed {
+		if slices.Contains(chosen, mod.Name) && !slices.Contains(keep, mod.Name) {
+			keep = append(keep, mod.Name)
+		}
+	}
+	meta.ChosenMods = keep
+	return WriteMeta(root, meta)
 }
 
 // CheckModChange refuses, as ApplyModsHeld would, a change that adds a

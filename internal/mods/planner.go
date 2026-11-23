@@ -207,7 +207,32 @@ func ToChange(p Plan, installed []world.InstalledMod, staged string) ([]Download
 			}
 		}
 	}
+	change.Chosen = chosenAfter(p, installed)
 	return downloads, change, nil
+}
+
+// chosenAfter is the world's record of chosen mods once the plan is
+// applied (SPEC 9.6). A mod the admin asked for, ticked as an optional
+// dependency, or took from a save becomes chosen when installed or turned
+// on; a mod that came in as a required or recommended dependency does not.
+// A removed mod leaves the record.
+func chosenAfter(p Plan, installed []world.InstalledMod) []string {
+	set := Chosen(installed)
+	for _, c := range p.Changes {
+		switch {
+		case c.Action == ActRemove:
+			delete(set, c.Name)
+		case c.Action != ActInstall && c.Action != ActEnable:
+		case c.Why.Code == WhyAsked || c.Why.Code == WhyOptionalOf || c.Why.Code == WhyFromSave:
+			set[c.Name] = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for n := range set {
+		out = append(out, n)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // Update is a newer release of an installed mod on the world's game line.

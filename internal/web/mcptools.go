@@ -281,9 +281,10 @@ type mcpOutcome struct {
 	UntrustedFailure string `json:"untrusted_failure,omitempty"`
 }
 
-// outcome words res as the Server page of sum's world does.
-func (s *server) outcome(sum world.Summary, res actionResult) mcpOutcome {
-	p := ServerPage{World: sum, HasWorld: true, Status: s.game.Status(sum.ID), Now: s.now(), Result: res, HaveResult: true}
+// outcome words res as the Server page of sum's world does; admin says the
+// token may change Foreman's settings, as a signed-in admin may.
+func (s *server) outcome(sum world.Summary, res actionResult, admin bool) mcpOutcome {
+	p := ServerPage{World: sum, HasWorld: true, Status: s.game.Status(sum.ID), Now: s.now(), Result: res, HaveResult: true, Admin: admin}
 	s.switchNames(&p)
 	o := mcpOutcome{Action: res.Action, OK: res.Err == nil, EndedAt: mcpTime(res.At)}
 	if f := p.Failure(); f != nil {
@@ -330,7 +331,7 @@ func (s *server) stateSentence(sum world.Summary) string {
 	return fmt.Sprintf("World %s is %s.", sum.Name, strings.ToLower(inEnglish(stateWord(s.game.Status(sum.ID).State))))
 }
 
-func (s *server) mcpStatus(ctx context.Context, _ *mcp.CallToolRequest, in mcpWorldIn) (*mcp.CallToolResult, mcpStatusOut, error) {
+func (s *server) mcpStatus(ctx context.Context, req *mcp.CallToolRequest, in mcpWorldIn) (*mcp.CallToolResult, mcpStatusOut, error) {
 	sum, err := s.mcpWorld(ctx, in.WorldID)
 	if err != nil {
 		return nil, mcpStatusOut{}, err
@@ -356,7 +357,7 @@ func (s *server) mcpStatus(ctx context.Context, _ *mcp.CallToolRequest, in mcpWo
 		lines = append(lines, "An action is running.")
 	}
 	if ended {
-		o := s.outcome(sum, res)
+		o := s.outcome(sum, res, mcpAdmin(req))
 		out.Last = &o
 		if o.OK {
 			lines = append(lines, "Last action: "+o.Result)

@@ -3,7 +3,9 @@
 // and Escape, a tap elsewhere or leaving the button closes it. One is open at
 // a time, and it is placed under its button inside the window. Without this
 // script the text shows under its field. Listeners sit on the document, so
-// tips in a part the page redraws need nothing more.
+// tips in a part the page redraws need nothing more. An open tip sits in the
+// top layer as a popover, so no scrolling or clipping box around it (the
+// Generate preview pane) cuts it off or grows a scroll bar (DESIGN 7.7).
 document.addEventListener("DOMContentLoaded", () => {
   const edge = 8; // px kept between a tip and the window's edge
   let open = null; // { button, text, pinned }
@@ -12,15 +14,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const textOf = (button) => document.getElementById(button.getAttribute("aria-controls"));
 
   function place(button, text) {
-    const field = text.offsetParent;
-    if (!field) return;
+    // The top layer places from the window; elsewhere from the positioned parent.
+    const layered = text.matches(":popover-open");
+    const field = layered ? null : text.offsetParent;
+    if (!layered && !field) return;
     // The window less its scroll bar.
     const width = document.documentElement.clientWidth;
     const height = document.documentElement.clientHeight;
     text.style.left = "0px";
     text.style.top = "0px";
     text.style.setProperty("--tip-room", `${width - 2 * edge}px`);
-    const f = field.getBoundingClientRect();
+    const f = field ? field.getBoundingClientRect() : { left: 0, top: 0 };
     const b = button.getBoundingClientRect();
     const t = text.getBoundingClientRect();
     let left = Math.min(b.left, width - edge - t.width);
@@ -43,6 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
     open = { button, text, pinned };
     button.setAttribute("aria-expanded", "true");
     text.classList.add("is-open");
+    if (typeof text.showPopover === "function") {
+      text.setAttribute("popover", "manual");
+      text.showPopover();
+    }
     place(button, text);
   }
 
@@ -50,6 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!open) return;
     open.button.setAttribute("aria-expanded", "false");
     open.text.classList.remove("is-open");
+    if (open.text.matches(":popover-open")) open.text.hidePopover();
     open = null;
   }
 
@@ -110,4 +119,8 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", () => {
     if (open) place(open.button, open.text);
   });
+  // A tip in the top layer is fixed to the window, so it follows its button when any box scrolls.
+  document.addEventListener("scroll", () => {
+    if (open) place(open.button, open.text);
+  }, { capture: true, passive: true });
 });

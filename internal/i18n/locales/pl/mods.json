@@ -160,7 +160,11 @@
   "mods.settings.edit.title": "Ustawienia modyfikacji świata {world}",
   "mods.settings.edit.heading": "Ustawienia modyfikacji",
   "mods.settings.edit.loading": "Odczytywanie ustawień modyfikacji. Za pierwszym razem po zmianie modyfikacji Foreman uruchamia w tym celu grę, co trwa kilka sekund.",
+  "mods.settings.edit.loading_link": "Pokaż ustawienia, gdy będą gotowe",
   "mods.settings.edit.loaded": "Wczytano ustawienia modyfikacji.",
+  "mods.settings.origin.required_by": "Wymagana przez {mods}",
+  "mods.settings.origin.recommended_by": "Polecana przez {mods}",
+  "mods.settings.origin.offered_by": "Oferowana przez {mods}",
   "mods.settings.edit.startup.heading": "Ustawienia startowe",
   "mods.settings.edit.startup.none": "Włączone modyfikacje nie mają ustawień startowych.",
   "mods.settings.edit.map.heading": "Ustawienia mapy",
@@ -280,6 +284,11 @@
     "few": "Zainstaluj {count} modyfikacje",
     "many": "Zainstaluj {count} modyfikacji"
   },
+  "mods.plan.button.recommended": {
+    "one": "i {count} polecaną",
+    "few": "i {count} polecane",
+    "many": "i {count} polecanych"
+  },
   "mods.plan.button.update": {
     "one": "Zaktualizuj {count} modyfikację",
     "few": "Zaktualizuj {count} modyfikacje",
@@ -311,6 +320,7 @@
   "mods.orphans.legend": "Modyfikacje już niepotrzebne",
   "mods.orphans.hint": "Potrzebują ich tylko usuwane modyfikacje. Zostaną usunięte razem z nimi, chyba że je odznaczysz.",
   "mods.plan.why.only_needed_by": "potrzebowała jej tylko {mod}",
+  "mods.recommended.legend": "Polecane modyfikacje",
   "mods.recommended.hint": "Polecane modyfikacje są już zaznaczone. Odznaczenie modyfikacji spowoduje jej pominięcie.",
   "mods.recommended.unavailable": "{mod}, polecana przez {of}, zostaje pominięta: portal modyfikacji nie ma pasującej wersji.",
   "mods.unresolved.legend": "Portal modyfikacji nie ma {mod} {version}",
@@ -363,6 +373,10 @@
   "mods.error.unauthorized": "factorio.com odrzuciło nazwę użytkownika lub token, więc nie pobrano żadnej modyfikacji. Nic nie zmieniono. Należy sprawdzić konto factorio.com.",
   "mods.error.download_gone": "Portal modyfikacji nie ma już modyfikacji, którą pobiera plan. Nic nie zmieniono. Należy ponownie otworzyć modyfikacje, aby zobaczyć nowy plan.",
   "mods.error.download_failed": "Nie udało się pobrać modyfikacji z portalu modyfikacji. Nic nie zmieniono. Należy spróbować ponownie za chwilę.",
+  "mods.error.too_large": "Modyfikacja {mod} {version} ma {size}, czyli więcej niż limit rozmiaru modyfikacji wynoszący {limit}.",
+  "mods.error.too_large_stream": "Modyfikacja {mod} {version} jest większa niż limit rozmiaru modyfikacji wynoszący {limit}.",
+  "mods.error.too_large_ask": "Administrator może zwiększyć limit rozmiaru modyfikacji w Ustawieniach.",
+  "mods.error.too_large_fix": "Zmień limit rozmiaru modyfikacji",
   "mods.done": "Modyfikacje świata {world} zostały zmienione. Foreman najpierw wykonał migawkę „{label}”.",
   "mods.undo": "Cofnij tę zmianę modyfikacji",
   "mods.changed.next": "Otwórz modyfikacje ponownie",
@@ -434,6 +448,7 @@
   "mods.hit.latest": "Najnowsza",
   "mods.hit.updated": "Zaktualizowano",
   "mods.offer.version": "Wersja",
+  "mods.offer.details": "Szczegóły",
   "mods.offer.released": "Wydana",
   "mods.hit.add": "Dodaj {mod} do planu",
   "mods.hit.adding": "Dodawanie…",
@@ -486,7 +501,9 @@
   "mods.plan_panel.warn.other": "Nie można zaplanować; przegląd pokazuje przyczynę",
   "mods.plan_panel.bad_name": "To nie jest nazwa modyfikacji, którą Foreman może dodać. Należy wyszukać modyfikację i wybrać + obok niej.",
   "mods.plan_panel.wait": "Przegląd będzie dostępny po zaktualizowaniu planu.",
-  "mods.flow.generated": "Świat {name} został utworzony. Teraz można wybrać jego modyfikacje lub przejść do ustawień mapy.",
-  "mods.flow.skip": "Pomiń i przejdź do ustawień mapy",
-  "mods.flow.next": "Dalej: ustawienia mapy"
+  "mods.flow.generated": "Świat {name} został utworzony. Teraz można wybrać jego modyfikacje lub pominąć ten krok.",
+  "mods.flow.skip": "Pomiń i przejdź do ustawień modyfikacji",
+  "mods.flow.skip_map": "Pomiń i przejdź do ustawień mapy",
+  "mods.richtext.warning": "Ostrzeżenie",
+  "mods.richtext.info": "Uwaga"
 }

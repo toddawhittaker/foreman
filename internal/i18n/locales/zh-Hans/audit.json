@@ -47,6 +47,7 @@
   "audit.action.webhook-change": "已更改 Webhook",
   "audit.action.webhook-delete": "已删除 Webhook",
   "audit.action.whitelist-switch": "已开启或关闭白名单",
+  "audit.action.wiki-icons-set": "已开启或关闭维基游戏图标",
   "audit.action.world-archive": "已归档世界",
   "audit.action.world-delete": "已删除世界",
   "audit.action.world-export": "已导出世界",

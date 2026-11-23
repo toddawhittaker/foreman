@@ -20,7 +20,8 @@ was split on 2026-11-18: Epic 11a (sign-in, audit log, archive, settings and
 users) is built, with its gate on the trial deployment still to run, and
 Epic 11b (the release and Gate C) is next. Fixes batch 13 (three issues from
 checking Epic 11a on the trial deployment) is done, and so are fixes batches 14,
-15 and 16. Epic 12 (modded planets and guided Generate) is built.
+15 and 16. Epic 12 (modded planets and guided Generate) is built, and fixes
+batch 17 (the Epic 12 test-drive findings) is done.
 Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
 now, at Todd's choice, when the Mod settings epic started; it is still owed
 before Gate C.
@@ -5035,11 +5036,11 @@ epic pull request.
 - **Modded resources have no map colour,** because nothing in the planet
   file carries one. They are listed and counted under their own names.
 - **The mod settings page (SPEC 9.6) still has no path without script
-  (#838).** Step 3 has one.
+  (#838).** Step 3 has one. (Fixed in fixes batch 17.)
 - **Left out, as planned:** map presets that mods add; achievement warnings
   for modded enemy controls; changing map settings after the first start
   (#207); real-game pictures on 2.0; a radius of 32 for the picture; sharing
-  the viewer code with the factory map (#833); offset panning of the preview
+  the viewer code with the factory map (#833, done in fixes batch 17); offset panning of the preview
   window; and a disk store for real-game pictures.
 - **The planet-mod real-game tests need the folders of zips** named in
   `FOREMAN_TEST_PLANET_MODS` (2.1) and `FOREMAN_TEST_PLANET_MODS_2_0` (2.0),
@@ -5048,3 +5049,194 @@ epic pull request.
   timing tests for out-of-memory and refused stops (#861), the chat test's
   background `/time` (#864) and the click counter's reload (#866) are fixed on
   the epic branch only, and reach `main` with the epic.
+
+## Fixes batch 17
+
+Serves SPEC 5.6, 5.16, 8.1, 8.14, 9.6, 9.12, 9.14, 13.1, 14.3, 14.6, 14.10,
+17.9, 17.10 and 21.4, with DESIGN 7.3, 8.6, 8.8, 8.11 and the Server page,
+and ADRs 0034 and 0035. Issues: the test-drive findings from Epic 12 (#873
+to #886) and three older ones (#833, #838, #854). The plan was #887. The
+task pull requests were #888 to #913.
+
+Rulings (Todd, 2026-11-22, then the plan's own):
+
+1. Recommended ("+") dependencies stay ticked (SPEC 9.14); the Install
+   button names their count.
+2. The default mod size limit is 1,024 MB (the maximum stays 2,048 MB). A
+   download over the limit is its own error, and every failed mod download
+   is logged without the account.
+3. Runs that load a world's mods get 2 GiB and 120 seconds per planet,
+   measured with a heavy set of 31 mods. Base-game runs keep 1 GiB and 60
+   seconds.
+4. A control gets the on/off box by rule (the game says it can be disabled
+   and it is a resource, or on 2.x cliffs or enemies), never by planet name.
+5. Generate gets a new step 3, Mod settings, between Mods and Map settings.
+6. The Server page panel lists every player of the save, online first.
+7. Wiki icons only, as an opt-in admin setting; mod icons from zips are a
+   new issue.
+8. #854 was already met: every spec runs in the four Playwright projects.
+9. The layer colours of the factory map stay duplicated in Go and CSS.
+
+### Delivered
+
+- **Planet mods with no settings keep their planets (#883, SPEC 9.6; #888).**
+  When the definitions file lists no settings, a missing
+  `mods/mod-settings.dat` is empty defaults, not a failure. A missing file
+  with settings listed, an unreadable definitions file and an unusable file
+  (link, pipe, too big) still fail.
+- **Game labels for controls (#881, SPEC 9.6, 14.6; #888).** The
+  definitions run also copies the game's own `.cfg` files (`base`,
+  `elevated-rails`, `quality`, `space-age`, in the eight languages) from the
+  world's image. They are read under the 14.6 rules, only the `*-name` and
+  `*-names` sections are kept, and a label is looked up in mod text in the
+  language, mod English, game text in the language, then game English.
+  Nothing is downloaded.
+- **The real-game button and the zip link no longer overlap (#873, DESIGN
+  8.8; #899).** The picture's Download line is a wrapping flex line, the
+  button and its info icon wrap together, and the second row is reserved at
+  every width. Tests cover four window sizes and all eight languages.
+- **Larger limits for runs with mods (#874, #884, SPEC 5.6, 14.3; #897,
+  #902).** A preview, territory, resource count or real-game picture that
+  loads a world's mods gets 2 GiB and 120 seconds per planet, at most 10
+  minutes in all. The limit is 1.5 times the worst resource count (1407 MiB,
+  Corrundum with every control at its most). An error now names the run that
+  failed ("the resource count ran out of memory"). A planet with mod
+  resource controls and no patches says "No resource patches were found in
+  this picture. This planet's resources may be tiles, which can't be
+  counted." A heavy-mods real-game test skips unless
+  `FOREMAN_TEST_HEAVY_MODS` is set.
+- **On/off boxes by rule (#876, #884 item 1, SPEC 5.6; #891, #906).**
+  `controlToggles` gives a box when the game says a control can be disabled
+  and it is a resource, or on 2.x a cliff or enemy control. Off writes size
+  0. `mapgen.CategoryEnemy` is new and `CliffToggle` is gone. A real-game
+  test with a tiny planet mod shows size 0 removes the cliffs and
+  spawners.
+- **Mod size limit (#875, SPEC 9.12, 14.6, 14.10, 17.9; #894, #895).** The
+  default is 1,024 MB. A download over the limit is `modportal.ErrTooLarge`,
+  refused from `Content-Length` before the body is read, and the message
+  names the mod, its size and the limit. An admin gets a link to the limit,
+  anyone else "ask an admin", and nobody gets Try again. Every failed
+  download is logged with mod, version and reason, each cut to 200 bytes,
+  never the username or token. MCP wording follows the token's scope.
+- **Rich text in mod text (#877, SPEC 14.6, DESIGN 8.11; #892, #901, #907).**
+  Setting names, descriptions, mod titles and summaries keep a safe subset
+  of the game's rich text, rebuilt from an allowed list on the server: bold,
+  the named colours as theme colours, object tags as a readable name, the
+  warning and info sprites, `[space-age]`, key-binding macros as the action's
+  name, and line breaks. The no-argument macros are read from a fixed list
+  checked against the game's English text. Planet and control labels keep
+  `StripRichText`.
+- **Wiki icons, opt in (#882 wiki part, SPEC 13.1, 14.1, 14.10, ADR 0035;
+  #901, #907, #908, #911).** An admin switch on the General tab, off by
+  default and audited as `wiki-icons-set`, in MCP and REST as `wiki_icons`.
+  On, an object tag is an `<img>` for `wiki.factorio.com` with
+  `referrerpolicy="no-referrer"`, built only from a prototype name matching
+  `^[a-z0-9_-]+$`, and a failed load shows the name. Every page sends
+  `Content-Security-Policy: frame-ancestors 'none'; img-src 'self' data:`,
+  with the wiki added only while the switch is on and never on a public
+  page. The General page saves its numbers, the update check and the switch
+  in one database transaction. The setting is read once per request.
+- **Mod settings origin line and a no-script link (#838, #879, SPEC 9.6,
+  DESIGN 8.11; #890, #898, #903).** Under a mod's group heading, "Required
+  by", "Recommended by" or "Offered by" names the enabled mods that list it
+  in `info.json`, each name a link to its group (links across the startup
+  and map lists). Mods nobody names come first. The page has a link with
+  `?wait=1` that reads the form on the server. Each group takes focus on a
+  jump.
+- **The Install button names the recommended mods (#880, SPEC 9.14; #893).**
+  "Install 3 mods and 10 recommended", following each tick, and the same
+  label without script.
+- **The Done message keeps room for its close button (#885, DESIGN 7.3;
+  #889).** The paragraph reserves the button's width on the end side, tested
+  in English, German and Russian and at phone width.
+- **The Players panel (#886, SPEC 8.1, 8.14, 8.15; #900, #909, #911).** The
+  Server page lists every player of the save: online first with an "Online"
+  chip and the session, longest first, then the others by play time, at most
+  ten rows with every online player shown, then "All N players" linking to
+  the Overview list. The caption reads "Players: 2 online, 7 in this save".
+  Offline rows have no actions. Joins and leaves re-sort the rows live, with
+  one announcement per change. `list_players` stays online-now.
+- **One picture viewer (#833, SPEC 5.6, 5.16, DESIGN 8.8; #896, #905).**
+  `viewer.js` (`window.ForemanViewer`) holds zoom, pan, pinch, the zoom keys
+  and the three buttons for both the factory map and the Generate large
+  view. No visible change. The large view now accepts `_` for zoom out.
+- **Generate step 3, Mod settings (#878, SPEC 5.6, 9.6, 9.14, 17.10, 17.19,
+  21.7, DESIGN 8.6, ADR 0034; #904, #912, #913).** Generate is now World,
+  Mods, Mod settings, Map settings. Step 3 shows the startup settings with
+  the mod settings page's own form, saves like it (a snapshot, then the
+  write) and lands on step 4. With no startup settings it sends the browser
+  on and the step bar shows "3. Mod settings (none)" as plain text; step 4
+  then says why. Step 4's planets follow the saved settings through a second
+  "planets" run keyed by the definitions key and the hash of
+  `mod-settings.dat` (ADR 0034). `get_new_map` reflects saved settings.
+  Continue opens step 3 only while the world has no `mod-settings.dat` and
+  its map settings were never saved. A real-game test covers the planets run
+  following a saved setting. Saving shows a busy state, and without script the
+  step loads as the mod settings page does.
+- **Review fixes (#895, #898, #905, #906, #907, #909, #910, #911, #913).**
+  Each task was reviewed as it landed; the fixes are in its entry above. The
+  translation review (#910) corrected 16 strings in 9 locale files.
+- **Test fixes (#903, #908).** The key-use check saw the origin-line keys as
+  unused because they were picked from a map, and the framing test expected
+  the old exact policy. Neither was a product bug.
+- **#854 needed no code.** `e2e/playwright.config.ts` runs every spec in
+  desktop-dark, desktop-light, phone-dark and phone-light, so every
+  `checkPage` already scans dark.
+
+Verified: each task with its unit tests and the e2e specs for the pages it
+touched; CI's full run on each push to the epic branch; real-game tests on
+2.1.24 for the no-settings fix and the base game labels (#888), the cliff
+and enemy boxes (#891), the planets run (#912) and a heavy-mods resource
+count at the product limits (#897). The full checks on the fold head are in
+the epic pull request.
+
+### Gaps left
+
+- **Mod icons from the world's zips are not built.** Wiki icons are the only
+  object icons. This is the second half of #882, filed as #914.
+- **Continue after Skip decides step 4 from the audit log.** Nothing else
+  records that map settings were saved, so if audit pruning removes the
+  `new-map` entry, Continue shows step 3 again. It can still be skipped.
+- **The modded-planet real-game test was not run against the 2 GiB limit.**
+  `FOREMAN_TEST_PLANET_MODS` is not set on the runner. The limit rests on
+  the 31-mod heavy set and its measured peak of 1407 MiB.
+- **The mod settings run's 4 GiB memory was not measured with a heavy mod
+  set.** The earlier measurement covered resource counts only.
+- **The time limit of 120 seconds rests on a survey, not a run here.** The
+  survey saw 58 seconds on foliax; the longest run here was 28.5 seconds.
+  The janus and nix planets were not measured, since they are not in the
+  trial set.
+- **A 1 GB download can fill a nearly full disk between space checks.** The
+  Foreman checks the space before it starts, not as the file arrives.
+- **The over-limit check on `Content-Length` has unit tests only.** The fake
+  portal's e2e zips are small.
+- **Two mods that require each other both sort as dependencies** on the mod
+  settings page, and a mod the player chose that another mod also lists says
+  "Required by". Only enabled mods count, and origin names are bare mod
+  names, not titles.
+- **The no-script `?wait=1` link is a GET that can start a run,** as the
+  `/form` address already can.
+- **The step bar shows step 3 as a link on the Mods pages** until the setting
+  definitions of a modded world are cached. Step 3 then sends the browser on
+  to step 4.
+- **No test checks that `get_new_map` changes after a step 3 save.** The
+  game-level test covers the catalogue it reads.
+- **Tile resources such as Vesta's are not counted.** The page says so, and
+  the fake game has no Vesta case in e2e; a unit test covers it.
+- **Object names in rich text are prototype names made readable,** not
+  localised. String-setting choices show their raw values, and mod titles in
+  screen-reader-only text and in translated messages stay escaped plain
+  text with the raw markup.
+- **A rich-text icon's name joins its label's accessible name.**
+- **Wiki icons follow the prototype name only,** so objects the wiki names
+  differently show their name. Only the listed no-argument macros are
+  handled; others still show as text.
+- **The fake game supplies no game locale,** so web and e2e labels from game
+  text are not exercised there.
+- **Offline rows of the Players panel offer no ban or admin action.**
+- **The layer colours stay duplicated in Go and CSS (#833).**
+- **The German install label joins two messages** ("(dazu {count}
+  empfohlene)"), because a message holds one count.
+- **Left out, as planned:** mod icons from zips (above); resource-like
+  terrain controls under Resources, so Muluna's lunar rocks keep the mod's
+  category; starting recommended mods unticked; sharing the layer colours.

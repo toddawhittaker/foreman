@@ -145,7 +145,11 @@
   "mods.settings.edit.title": "Mod-Einstellungen von {world}",
   "mods.settings.edit.heading": "Mod-Einstellungen",
   "mods.settings.edit.loading": "Die Mod-Einstellungen werden gelesen. Beim ersten Mal nach einer Mod-Änderung startet Foreman dafür das Spiel, das dauert ein paar Sekunden.",
+  "mods.settings.edit.loading_link": "Einstellungen anzeigen, sobald sie bereit sind",
   "mods.settings.edit.loaded": "Mod-Einstellungen geladen.",
+  "mods.settings.origin.required_by": "Benötigt von {mods}",
+  "mods.settings.origin.recommended_by": "Empfohlen von {mods}",
+  "mods.settings.origin.offered_by": "Angeboten von {mods}",
   "mods.settings.edit.startup.heading": "Starteinstellungen",
   "mods.settings.edit.startup.none": "Die aktivierten Mods haben keine Starteinstellungen.",
   "mods.settings.edit.map.heading": "Karteneinstellungen",
@@ -262,6 +266,10 @@
     "one": "{count} Mod installieren",
     "other": "{count} Mods installieren"
   },
+  "mods.plan.button.recommended": {
+    "one": "(dazu {count} empfohlene)",
+    "other": "(dazu {count} empfohlene)"
+  },
   "mods.plan.button.update": {
     "one": "{count} Mod aktualisieren",
     "other": "{count} Mods aktualisieren"
@@ -288,6 +296,7 @@
   "mods.orphans.legend": "Nicht mehr benötigte Mods",
   "mods.orphans.hint": "Nur die Mods, die entfernt werden, brauchen diese. Sie werden mit entfernt, außer du entfernst das Häkchen.",
   "mods.plan.why.only_needed_by": "nur {mod} brauchte sie",
+  "mods.recommended.legend": "Empfohlene Mods",
   "mods.recommended.hint": "Als empfohlen markierte Mods sind schon angehakt. Entferne den Haken, um eine wegzulassen.",
   "mods.recommended.unavailable": "{mod}, empfohlen von {of}, wird weggelassen: Das Mod-Portal hat keine passende Version.",
   "mods.unresolved.legend": "Das Mod-Portal hat {mod} {version} nicht",
@@ -338,6 +347,10 @@
   "mods.error.unauthorized": "factorio.com hat den Benutzernamen oder das Token abgelehnt, deshalb wurde keine Mod heruntergeladen. Es wurde nichts geändert. Prüfe das factorio.com-Konto.",
   "mods.error.download_gone": "Das Mod-Portal hat eine Mod, die der Plan herunterlädt, nicht mehr. Es wurde nichts geändert. Öffne die Mods erneut, um den neuen Plan zu sehen.",
   "mods.error.download_failed": "Eine Mod konnte nicht vom Mod-Portal heruntergeladen werden. Es wurde nichts geändert. Versuche es gleich noch einmal.",
+  "mods.error.too_large": "{mod} {version} ist {size} groß und liegt damit über dem Größenlimit für Mods von {limit}.",
+  "mods.error.too_large_stream": "{mod} {version} ist größer als das Größenlimit für Mods von {limit}.",
+  "mods.error.too_large_ask": "Bitte einen Admin, das Größenlimit für Mods in den Einstellungen zu erhöhen.",
+  "mods.error.too_large_fix": "Größenlimit für Mods ändern",
   "mods.done": "Die Mods von {world} wurden geändert. Foreman hat zuvor den Snapshot „{label}“ erstellt.",
   "mods.undo": "Diese Mod-Änderung rückgängig machen",
   "mods.changed.next": "Die Mods erneut öffnen",
@@ -400,6 +413,7 @@
   "mods.hit.latest": "Neueste",
   "mods.hit.updated": "Aktualisiert",
   "mods.offer.version": "Version",
+  "mods.offer.details": "Details",
   "mods.offer.released": "Veröffentlicht",
   "mods.hit.add": "{mod} zum Plan hinzufügen",
   "mods.hit.adding": "Wird hinzugefügt…",
@@ -448,7 +462,9 @@
   "mods.plan_panel.warn.other": "Nicht planbar; die Prüfung zeigt den Grund",
   "mods.plan_panel.bad_name": "Das ist kein Mod-Name, den Foreman hinzufügen kann. Suche die Mod und wähle dann + daneben.",
   "mods.plan_panel.wait": "Die Prüfung ist bereit, sobald der Plan aktualisiert ist.",
-  "mods.flow.generated": "{name} ist erstellt. Wähle als Nächstes ihre Mods oder springe zu den Karteneinstellungen.",
-  "mods.flow.skip": "Zu den Karteneinstellungen springen",
-  "mods.flow.next": "Weiter: Karteneinstellungen"
+  "mods.flow.generated": "{name} ist erstellt. Wähle als Nächstes ihre Mods oder überspringe diesen Schritt.",
+  "mods.flow.skip": "Zu den Mod-Einstellungen springen",
+  "mods.flow.skip_map": "Zu den Karteneinstellungen springen",
+  "mods.richtext.warning": "Warnung",
+  "mods.richtext.info": "Hinweis"
 }

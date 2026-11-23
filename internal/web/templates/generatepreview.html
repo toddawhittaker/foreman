@@ -200,6 +200,7 @@
       <p id="large-status" class="large-view__status" role="status"></p>
       {{- /* Seen, not read out, as on the page: the picture fades and "Map preview ready." follows. */}}
       <p id="large-drawing" class="hint large-view__drawing"></p>
+      <span class="wait large-view__wait" id="large-drawing-wait"><progress aria-hidden="true"></progress></span>
     </div>
     {{- /* The preparation's news, said unseen, as its block over the stage shows it. */}}
     <p class="visually-hidden" id="large-prep-news" role="status"></p>
@@ -345,7 +346,7 @@
   </ul>
   {{- end}}
   {{- else}}
-  <p>{{t "worlds.generate.resources.none"}}</p>
+  <p>{{msg .None}}</p>
   {{- end}}
 </details>
 {{- else}}

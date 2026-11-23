@@ -2,7 +2,7 @@ import { test, expect, checkPage, createAdmin, seedWorld, image21, openLanguages
 import type { Page } from "@playwright/test";
 import { newMapPath, openNewMap } from "./newmap.js";
 
-// SPEC 5.6: leaving step 3 of the guided Generate with settings that differ from what was loaded
+// SPEC 5.6: leaving step 4 of the guided Generate with settings that differ from what was loaded
 // asks first. A link or form of the page asks in Foreman's own dialog, which
 // says what is lost; reload, closing the tab, the address bar and Back keep
 // the browser's own "leave this page?" question (beforeunload). Nothing
@@ -33,9 +33,10 @@ function browserQuestions(page: Page, answer: "accept" | "dismiss" = "dismiss") 
 const leaveDialog = (page: Page) => page.getByRole("dialog", { name: "Leave without saving these map settings?" });
 const stay = (page: Page) => leaveDialog(page).getByRole("button", { name: "Stay on this page" });
 const leave = (page: Page) => leaveDialog(page).getByRole("button", { name: "Leave without saving" });
-const cancel = (page: Page) => page.getByRole("link", { name: "Cancel" });
+// The footer's Back: step 3 has nothing for built-in mods, so it goes to step 2, the Mods tab (SPEC 5.6).
+const cancel = (page: Page) => page.getByRole("link", { name: "Back to the mods" });
 
-// Opens step 3 of a new world and types a seed, so the form differs from what was loaded; returns the world's id.
+// Opens step 4 of a new world and types a seed, so the form differs from what was loaded; returns the world's id.
 async function edit(page: Page) {
   const world = await openNewMap(page);
   await page.locator("#generate-seed").fill("424242");
@@ -50,7 +51,7 @@ test("an unchanged form leaves without asking, even after the preview filled the
   // A tab and a planet row are views, not settings.
   await page.locator("label.tab", { hasText: /^\s*Terrain\s*$/ }).click();
   await cancel(page).click();
-  await expect(page).toHaveURL(`/worlds/${world}`);
+  await expect(page).toHaveURL(`/worlds/${world}/mods`);
   expect(asked).toEqual([]);
 });
 
@@ -86,7 +87,7 @@ test("leaving from the dialog goes on to the link, and the browser asks nothing 
   const world = await edit(page);
   await cancel(page).click();
   await leave(page).click();
-  await expect(page).toHaveURL(`/worlds/${world}`);
+  await expect(page).toHaveURL(`/worlds/${world}/mods`);
   expect(asked).toEqual([]);
 });
 
@@ -172,7 +173,7 @@ test("a preset change asks, even once it is changed back", async ({ page }) => {
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
   await leave(page).click();
-  await expect(page).toHaveURL(`/worlds/${world}`);
+  await expect(page).toHaveURL(`/worlds/${world}/mods`);
   expect(asked).toEqual([]);
 });
 
@@ -211,15 +212,15 @@ test("the preview size and the territory box are views: changing them leaves wit
   await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus/);
   await page.locator("#preview").getByLabel("Show demolisher territories").check();
   await cancel(page).click();
-  await expect(page).toHaveURL(`/worlds/${world}`);
+  await expect(page).toHaveURL(`/worlds/${world}/mods`);
   expect(asked).toEqual([]);
 });
 
 test("map settings saved successfully leave without asking", async ({ page }) => {
   const asked = browserQuestions(page);
   const world = await edit(page);
-  await page.getByRole("button", { name: "Save map settings" }).click();
-  await expect(page).toHaveURL(`${newMapPath(world)}?saved=1`);
+  await page.getByRole("button", { name: "Finish" }).click();
+  await expect(page).toHaveURL(`/worlds/${world}?setup=done`);
   await expect(leaveDialog(page)).toBeHidden();
   expect(asked).toEqual([]);
 });
@@ -229,7 +230,7 @@ test("a form sent back with errors asks before leaving", async ({ page }) => {
   await page.locator("#generate-seed").fill("777");
   // A decimal field that is no number, so the form comes back with its error.
   await page.locator('#generate-form input[type="text"][inputmode="decimal"][name]').first().evaluate((i: HTMLInputElement) => { i.value = "x"; });
-  await page.getByRole("button", { name: "Save map settings" }).click();
+  await page.getByRole("button", { name: "Finish" }).click();
   await expect(page.locator("#error-summary")).toBeVisible();
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();

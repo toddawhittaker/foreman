@@ -73,7 +73,7 @@ func TestRealGameCliffsOff(t *testing.T) {
 			// Every planet with a cliffs box has it off.
 			var off []string
 			for _, p := range l.planets {
-				if mapgen.CliffToggle(l.tag, p) {
+				if cliffsHaveBox(l.tag, p) {
 					off = append(off, p)
 				}
 			}
@@ -243,4 +243,18 @@ func runCliffs(t *testing.T, dc *docker.Client, line, version string, spaceAge b
 			}
 		}
 	})
+}
+
+// cliffsHaveBox reports whether the form gives a planet a cliffs box: Nauvis on
+// 1.1, and on 2.x every planet whose data has a "<planet>_cliff" control.
+func cliffsHaveBox(line, planet string) bool {
+	if line == "1.1" {
+		return planet == "nauvis"
+	}
+	for _, c := range mapgen.Controls(line, planet) {
+		if c.Category == mapgen.CategoryCliff && c.Name == planet+"_cliff" {
+			return true
+		}
+	}
+	return false
 }

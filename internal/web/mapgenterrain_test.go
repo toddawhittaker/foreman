@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
-	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
 
 // An unticked resource is written with size 0, the value that removes it on
@@ -70,8 +69,8 @@ func TestOnlyResourcesHaveABox(t *testing.T) {
 	}
 	for _, p := range f.Terrain {
 		for _, g := range p.Groups {
-			// Only cliffs the game lets you switch off have a box on Terrain.
-			if want := strings.HasSuffix(g.ID, "_cliff") && mapgen.CliffToggle("2.1", p.Planet); (g.Toggle != nil) != want {
+			// Every cliff control on 2.x can be switched off, so it has a box.
+			if want := strings.HasSuffix(g.ID, "_cliff"); (g.Toggle != nil) != want {
 				t.Errorf("%s: %s has a box %v, want %v", p.ID, g.ID, g.Toggle != nil, want)
 			}
 		}

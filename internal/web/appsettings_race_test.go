@@ -18,7 +18,7 @@ func TestSaveGeneralSavesOneAtATime(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := s.saveGeneral(context.Background(), by, map[string]int{settingSnapshotRetention.Key: n}); err != nil {
+			if err := s.saveGeneral(context.Background(), by, map[string]int{settingSnapshotRetention.Key: n}, nil); err != nil {
 				t.Error(err)
 			}
 		}()

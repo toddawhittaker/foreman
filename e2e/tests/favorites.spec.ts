@@ -58,7 +58,7 @@ test("make a favorite, start Generate from it, land on the review page, then del
   await page.screenshot({ path: `../screenshots/f2-generate-favorite-${test.info().project.name}.png`, fullPage: true });
 
   await page.getByLabel("World name").fill("From club");
-  await page.getByRole("button", { name: "Generate world" }).click();
+  await page.getByRole("button", { name: "Next: Mods" }).click();
   await expect(page).toHaveURL(/\/worlds\/[^/]+\/mods\/plan\?/);
   const url = new URL(page.url());
   // The address names the favorite alone; the review reads its mods and pinned versions (SPEC 17).

@@ -21,6 +21,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/modsettings"
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -470,6 +471,11 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 	}
 }
 
+// richTextIcons is the screen-reader text of rich text's icons in loc.
+func richTextIcons(loc i18n.Locale) modsettings.RichTextIcons {
+	return modsettings.RichTextIcons{Warning: loc.T("mods.richtext.warning"), Info: loc.T("mods.richtext.info")}
+}
+
 // localeFuncs are the template functions that speak loc's language
 // (SPEC 22.3, 22.4).
 func localeFuncs(loc i18n.Locale) template.FuncMap {
@@ -495,6 +501,11 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"portalPath": portalPath,
 		// modName is the mod-name partial's input: {{template "mod-name" (modName .Name .Title true)}}.
 		"modName": modName,
+		// richText and richLine render a mod's own text with the safe
+		// subset of the game's rich text (SPEC 14.6); richLine keeps it to
+		// one line, for names and labels.
+		"richText": func(s string) template.HTML { return modsettings.RichTextHTML(s, true, richTextIcons(loc)) },
+		"richLine": func(s string) template.HTML { return modsettings.RichTextHTML(s, false, richTextIcons(loc)) },
 		// game marks Factorio's own words, for tHTML.
 		"game": i18n.Game,
 		// m makes a Msg to fill a placeholder, such as a snapshot label:
@@ -525,7 +536,7 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 
 // partials are template files that no route renders on their own: every page
 // loads them, and each defines templates the pages include.
-var partials = []string{"mapgenform", "generatepreview", "failure", "modportal", "dropzone", "mapexchange", "saveplayers", "worldexportcard", "genflowsteps"}
+var partials = []string{"mapgenform", "generatepreview", "failure", "modportal", "dropzone", "mapexchange", "saveplayers", "worldexportcard", "genflowsteps", "modsettingsform"}
 
 var partialFiles = func() []string {
 	out := make([]string, len(partials))
@@ -567,7 +578,7 @@ func NewRenderer() (*Renderer, error) {
 			continue
 		}
 		base, err := template.New(name).Funcs(funcs).ParseFS(templateFS,
-			append([]string{"templates/layout.html", "templates/" + name + ".html"}, partialFiles...)...)
+			slices.Concat([]string{"templates/layout.html", "templates/" + name + ".html"}, partialFiles)...)
 		if err != nil {
 			return nil, fmt.Errorf("parse template %s: %w", name, err)
 		}
@@ -688,6 +699,12 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	if err := t.ExecuteTemplate(&buf, layout, v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)
 	}
+	page := buf.Bytes()
+	// A public page never uses wiki icons (SPEC 14.10).
+	wiki := wikiIconsOf(req) && !public
+	if wiki {
+		page = modsettings.ShowWikiIcons(page)
+	}
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	// Pages can show who is signed in; the back button after sign-out must
@@ -695,12 +712,15 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	if !public {
 		h.Set("Cache-Control", "no-store")
 	}
-	// Pages carry sign-in forms, so no other site may frame them.
+	// Pages carry sign-in forms, so no other site may frame them. Images
+	// load from Foreman and data: URLs only, and from the wiki while the
+	// admin's setting is on (SPEC 14.10); a public page never uses it.
 	setFrameRefusal(h)
+	h.Set("Content-Security-Policy", pageCSP(wiki))
 	// The language follows a cookie and the request's Accept-Language.
 	h.Set("Vary", "Cookie, Accept-Language")
 	w.WriteHeader(status)
-	_, err = buf.WriteTo(w)
+	_, err = w.Write(page)
 	return err
 }
 

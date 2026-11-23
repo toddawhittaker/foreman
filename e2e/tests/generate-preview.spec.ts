@@ -51,6 +51,24 @@ function still(page: Page, ids: string[]) {
   }), ids);
 }
 
+// The real-game button, its info icon and the one-planet and zip download links are four separate boxes, none
+// across another; the zip link is below the rest, the icon level with the button, and the rows end inside the
+// pictures' box (DESIGN 8.8).
+async function expectApart(page: Page) {
+  await checkPage(page);
+  const at = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
+  const [one, draw, info, zip] = await Promise.all([at("#preview li a.download"), at("#preview-chart-button"), at("#preview-chart-offer button.tip"), at("#preview a.download[data-planets]")]);
+  const boxes = [one, draw, info, zip];
+  boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b, j) => {
+    const overlaps = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    expect(overlaps, `boxes ${i} ${JSON.stringify(a)} and ${i + j + 1} ${JSON.stringify(b)} overlap`).toBe(false);
+  }));
+  expect(zip.y).toBeGreaterThanOrEqual(Math.max(one.y + one.height, draw.y + draw.height, info.y + info.height));
+  expect(Math.abs(info.y + info.height / 2 - (draw.y + draw.height / 2))).toBeLessThan(draw.height / 2 + 1);
+  const pic = (await page.locator("#preview .pictures").boundingBox())!;
+  expect(draw.y + draw.height, "the rows end inside the pictures' box").toBeLessThanOrEqual(pic.y + pic.height + 1);
+}
+
 test.describe("with script", () => {
   test.beforeEach(async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
@@ -170,6 +188,45 @@ test.describe("with script", () => {
     await page.waitForTimeout(800);
     await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
     await expect(page.locator("#preview-status")).toHaveText("");
+  });
+
+  // DESIGN 8.8: a redraw shows the counting's moving bar on the drawing line, and only while it runs; the line
+  // keeps its height, so nothing under it moves.
+  test("a redraw shows the moving bar beside its words until the picture lands", async ({ page, fakeGame }) => {
+    await openNewMap(page);
+    await expect(pictures(page)).toHaveCount(1);
+    const line = page.locator("#preview-status");
+    const bar = line.locator("progress");
+    await expect(bar).toBeHidden();
+    const held = (await line.boundingBox())!.height;
+    await fakeGame!.call("/preview-mode", { mode: "slow" });
+    await page.locator("#generate-seed").fill("333");
+    await expect(line).toHaveText("Drawing the map preview for the current settings…");
+    await expect(bar).toBeVisible();
+    await expect(bar).toHaveAttribute("aria-hidden", "true");
+    expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
+    await line.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `../screenshots/preview-drawing-bar-${test.info().project.name}.png` });
+    await expect(pictures(page)).toHaveAccessibleName(/seed 333\./);
+    await expect(line).toHaveText("");
+    await expect(bar).toBeHidden();
+    expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
+    // All planets draws by the same path, with the same bar.
+    await section(page).locator("label.tab", { hasText: "All planets" }).click();
+    await expect(bar).toBeVisible();
+    await expect(pictures(page).nth(1)).toBeVisible();
+    await expect(bar).toBeHidden();
+  });
+
+  test("with reduced motion a redraw shows its words but no moving bar", async ({ page, fakeGame }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openNewMap(page);
+    await expect(pictures(page)).toHaveCount(1);
+    await fakeGame!.call("/preview-mode", { mode: "slow" });
+    await page.locator("#generate-seed").fill("444");
+    await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
+    await expect(page.locator("#preview-status progress")).toBeHidden();
+    await expect(pictures(page)).toHaveAccessibleName(/seed 444\./);
   });
 
   test("a setting change in any part of step 3's form redraws", async ({ page }) => {
@@ -601,6 +658,81 @@ test.describe("with script", () => {
     expect(body).toContain(`Mega_base-${seed}-gleba.png`);
   });
 
+  // DESIGN 8.8: under One planet's picture the download link, the real-game button and its info icon share a
+  // line or wrap onto a second, and the zip link has its own below; none of them overlap, and the rows stay
+  // inside the picture's box so the zip link is never laid over them, with the resource amounts on or off.
+  for (const [name, size] of [["a wide window", { width: 1920, height: 1000 }], ["a short wide window", { width: 1800, height: 720 }], ["a narrow desktop", { width: 1100, height: 800 }], ["the project's window", null]] as const) {
+    test(`the real-game button, its info and the download links never overlap in ${name}`, async ({ page }) => {
+      if (size) await page.setViewportSize(size);
+      await openNewMap(page, { name: "Mega base" });
+      await expect(pictures(page)).toHaveCount(1);
+      await expect(page.locator("#preview-chart-button")).toBeVisible();
+      await expectApart(page);
+      await page.locator("#preview-amounts").check();
+      await expect(page.locator("#preview li a.download")).toHaveAttribute("href", /amounts=1$/);
+      await expectApart(page);
+    });
+  }
+
+  // DESIGN 7.7: each (i) tip in the preview opens wholly inside the window, is not clipped by the pane or
+  // its card, and opening it adds no scroll bar to any box around it nor moves its button.
+  for (const [name, size] of [["a wide window", { width: 1920, height: 950 }], ["the project's window", null]] as const) {
+    test(`the preview's info tips stay on screen and add no scroll bar in ${name}`, async ({ page }) => {
+      if (size) await page.setViewportSize(size);
+      await openNewMap(page, { name: "Mega base" });
+      await expect(pictures(page)).toHaveCount(1);
+      await expect(page.locator("#preview-chart-button")).toBeVisible();
+      const tips = page.locator("#preview button.tip");
+      expect(await tips.count()).toBeGreaterThanOrEqual(1);
+      for (const button of await tips.all()) {
+        await button.scrollIntoViewIfNeeded();
+        const before = (await button.boundingBox())!;
+        await button.click();
+        const text = page.locator(`#${await button.getAttribute("aria-controls")}`);
+        await expect(text).toBeVisible();
+        await page.screenshot({ path: `../screenshots/preview-tip-${await button.getAttribute("aria-controls")}-${size ? size.width : "project"}-${test.info().project.name}.png` });
+        const box = (await text.boundingBox())!;
+        const width = await page.evaluate(() => document.documentElement.clientWidth);
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+        // Nothing around the tip scrolls sideways because of it, and none of it is cut off or covered.
+        const clipped = await text.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const found: string[] = [];
+          for (let a = el.parentElement; a; a = a.parentElement) {
+            const s = getComputedStyle(a);
+            if (a.scrollWidth > a.clientWidth + 1 && s.overflowX !== "visible") found.push(`${a.tagName}#${a.id}.${a.className} scrolls`);
+          }
+          // Each corner of the tip is the tip itself, not a box that cut it off or lies over it.
+          for (const [x, y] of [[r.left + 2, r.top + 2], [r.right - 2, r.top + 2], [r.left + 2, r.bottom - 2], [r.right - 2, r.bottom - 2]]) {
+            if (!el.contains(document.elementFromPoint(x, y))) found.push(`corner ${x},${y} is hidden`);
+          }
+          return found;
+        });
+        expect(clipped).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+        expect((await button.boundingBox())!).toEqual(before);
+        await page.keyboard.press("Escape");
+        await expect(text).toBeHidden();
+      }
+    });
+  }
+
+  // The same in every language (the language cookie, as the menu sets it): the longest texts wrap, they never
+  // run into each other. Layout does not follow the theme, so one theme at each width keeps the run short.
+  for (const lang of ["en", "de", "es", "fr", "pl", "ru", "cs", "zh-Hans"]) {
+    test(`the real-game button, its info and the download links never overlap in ${lang}`, async ({ page }, info) => {
+      test.skip(!["phone-dark", "desktop-light"].includes(info.project.name), "one theme at each width");
+      await page.context().addCookies([{ name: "foreman_lang", value: lang, url: page.url() }]);
+      await openNewMap(page);
+      await expect(page.locator("#preview a.picture")).toHaveCount(1);
+      await expect(page.locator("#preview-chart-button")).toBeVisible();
+      await page.locator("#preview-amounts").check();
+      await expect(page.locator("#preview li a.download")).toHaveAttribute("href", /amounts=1$/);
+      await expectApart(page);
+    });
+  }
+
   test("a box with data-disables turns its element off and redraws the preview", async ({ page }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
@@ -636,7 +768,7 @@ test("Enter in a text field saves the map settings with the changed settings", a
   await expect(page.locator("#mg-nauvis-iron-ore-size")).toHaveValue("200");
   await page.locator("#generate-seed").fill("5150");
   await page.locator("#generate-seed").press("Enter");
-  await expect(page).toHaveURL(`${newMapPath(id)}?saved=1`);
+  await expect(page).toHaveURL(`/worlds/${id}?setup=done`);
   expect(refreshes).toEqual([]);
   const mapGen = JSON.parse(readFileSync(join(foreman.dataDir, "worlds", id, "config", "map-gen-settings.json"), "utf8"));
   expect(mapGen.autoplace_controls["iron-ore"].size).toBe(2);

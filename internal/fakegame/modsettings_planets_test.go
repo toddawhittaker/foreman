@@ -12,16 +12,22 @@ import (
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
+	"github.com/toddawhittaker/foreman/internal/modsettings"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // planetsRun runs a definitions container of image in the rig's work folder
 // with the given mod list and parses the planet file it leaves.
-func planetsRun(t *testing.T, image, modList string) mapgen.Catalogue {
+func planetsRun(t *testing.T, image, modList string, settings ...[]byte) mapgen.Catalogue {
 	t.Helper()
 	r := newRig(t, fakegame.Config{})
 	if err := os.MkdirAll(filepath.Join(r.world, world.ModsDir), 0o750); err != nil {
 		t.Fatal(err)
+	}
+	for _, b := range settings {
+		if err := os.WriteFile(filepath.Join(r.world, world.ModsDir, world.ModSettingsFile), b, 0o600); err != nil { //nolint:gosec // a test's own temp folder
+			t.Fatal(err)
+		}
 	}
 	if err := os.WriteFile(filepath.Join(r.world, world.ModsDir, world.ModListFile), []byte(modList), 0o600); err != nil {
 		t.Fatal(err)
@@ -108,5 +114,31 @@ func TestPlanetFileWithTheFakePlanetMod(t *testing.T) {
 	old := planetsRun(t, image11, `{"mods":[{"name":"base","enabled":true},{"name":"fake-planet","enabled":true}]}`)
 	if !old.NoPlanets || !slices.Contains(old.Planets[0].Controls, fakegame.FakeOre) {
 		t.Errorf("1.1 catalogue %+v", old)
+	}
+}
+
+// A startup setting above its default adds FakeMoon, so e2e tests can see
+// the planets follow the world's mod settings (SPEC 5.6, 9.6).
+func TestPlanetFileFollowsAStartupSetting(t *testing.T) {
+	b, err := os.ReadFile("modsettings_defaults.dat")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := modsettings.Decode(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := planetsRun(t, image21, spaceAgeList, b).PlanetNames(); slices.Contains(got, fakegame.FakeMoon) {
+		t.Errorf("the defaults added %s: %v", fakegame.FakeMoon, got)
+	}
+	if err := f.Set(modsettings.Startup, fakegame.FakeMoonSetting, modsettings.Value{Type: modsettings.TypeInt, Int: 8}, nil); err != nil {
+		t.Fatal(err)
+	}
+	set, err := f.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := planetsRun(t, image21, spaceAgeList, set).PlanetNames(); got[len(got)-1] != fakegame.FakeMoon {
+		t.Errorf("planets %v, want %s last", got, fakegame.FakeMoon)
 	}
 }
