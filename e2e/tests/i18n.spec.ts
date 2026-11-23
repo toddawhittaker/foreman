@@ -516,7 +516,8 @@ interface MatrixPart {
   run: (page: Page, lang: Lang, foreman: Foreman, m: Matrix, failures: string[]) => Promise<void>;
 }
 
-const pagesPerPart = 3;
+// Each part repeats the setup (about 8 s in CI), and six pages take about 8 s more.
+const pagesPerPart = 6;
 // Only the list's length is read here; the links come from each test's setup.
 const pageCount = matrixPages({} as Matrix).length;
 
