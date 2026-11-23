@@ -3712,7 +3712,8 @@ with the defaults accepted, these take at most:
 | Set the first restart schedule (Settings, Restart schedule, Save schedule; Settings opens General) | 3 |
 | Open Notifications (Settings, Notifications) | 2 |
 | Try a failed mod change again (Try again, Install N mods) | 2 |
-| Generate a world with the defaults (Worlds, Generate a world, Generate world; the world is made at step 1, and the Mods and map settings steps are optional, 5.6) | 3 |
+| Generate a world with the defaults (Worlds, Generate a world, Generate world; the world is made at step 1, and the Mods, mod settings and map settings steps are optional, 5.6) | 3 |
+| Change a startup mod setting of an Unfinished world (Worlds, Continue, the setting, Save settings, which lands on the map settings, 5.6) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
 | Change a game setting in Listing (Game settings, Preview changes, Save settings; a setting in another group first opens its sub-page, 11.1) | 3 (4 in another group) |
 
