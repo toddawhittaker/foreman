@@ -700,6 +700,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - A resource the game lets you switch off has an on/off box. Off writes
     size 0, the game's own off value; frequency 0 is not off (2.1.24
     crashes on it). A post that lacks the box keeps the resource on.
+    A control has an on/off box when the game says it can be disabled and
+    it is a resource or, on 2.x, cliffs or enemies; the rule never names a
+    planet, and off writes size 0.
   - **Cliffs off.** Cliffs have the same on/off box where the game lets
     them be switched off: Nauvis on every line, and Gleba and Fulgora on
     2.x; Vulcanus has no cliff control. Off writes
