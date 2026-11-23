@@ -210,7 +210,7 @@ func NewHandler(d Deps) (*Handler, error) {
 	if d.Portal != nil {
 		s.portal, s.planner = d.Portal, &mods.Planner{Worlds: d.Worlds, Portal: d.Portal}
 		if d.Game != nil {
-			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal, limit: s.modUploadLimit})
+			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal, limit: s.modUploadLimit, log: s.log})
 			d.Game.SetModCheck(s.planner)
 		}
 		s.marks = newPortalMarks(now, s.runs, s.checkPortalForPublic)

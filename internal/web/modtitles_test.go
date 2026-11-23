@@ -98,7 +98,7 @@ func TestModResultSentencesUseTitles(t *testing.T) {
 		t.Errorf("done: %q", got)
 	}
 	err := &game.ModDownloadError{Mod: "fp-lamp", Version: "1.0.0", Err: modportal.ErrChecksum}
-	msg, _ := modsFailure(err, res, "Base", game.StateRunning, PathServer)
+	msg, _ := modsFailure(err, res, "Base", game.StateRunning, PathServer, true)
 	if got := english(msg); !strings.HasPrefix(got, "Lamp Pack 1.0.0 did not match") {
 		t.Errorf("failure: %q", got)
 	}

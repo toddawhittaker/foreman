@@ -82,7 +82,7 @@ test("the Mods tab's mod zip and mod-settings.dat uploads are drop zones", async
   await page.locator("#mod-settings-replace > summary").click();
   const settingsZone = page.locator(".dropzone", { has: page.locator("#settings-file") });
   // One figure everywhere: the hint says what the server says, in whole binary units.
-  await expect(modZone.getByText("A .zip file of up to 200 MB.")).toBeVisible();
+  await expect(modZone.getByText("A .zip file of up to 1 GB.")).toBeVisible();
   await expect(settingsZone.getByText("A .dat file of up to 4 MB.")).toBeVisible();
   await expect(settingsZone.locator("label code")).toHaveText("mod-settings.dat");
   // The help paragraph above the field still describes it, after the limits hint.

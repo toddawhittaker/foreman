@@ -283,7 +283,7 @@ type mcpOutcome struct {
 
 // outcome words res as the Server page of sum's world does.
 func (s *server) outcome(sum world.Summary, res actionResult) mcpOutcome {
-	p := ServerPage{World: sum, HasWorld: true, Status: s.game.Status(sum.ID), Now: s.now(), Result: res, HaveResult: true}
+	p := ServerPage{World: sum, HasWorld: true, Status: s.game.Status(sum.ID), Now: s.now(), Result: res, HaveResult: true, Admin: true} // a token acts with an admin's authority
 	s.switchNames(&p)
 	o := mcpOutcome{Action: res.Action, OK: res.Err == nil, EndedAt: mcpTime(res.At)}
 	if f := p.Failure(); f != nil {

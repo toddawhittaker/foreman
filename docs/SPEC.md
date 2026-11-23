@@ -3053,7 +3053,7 @@ form and stores nothing. (Todd's rulings, 2026-11-18.)
 | Default stop countdown (7.6), seconds | 0 to 600 | 60 | `stop-countdown-set` |
 | Audit retention (12.9), days | 7 to 3650 | 365 | `audit-retention-set` |
 | Save upload limit (14.6), MB | 100 to 8192 | 1024 | `save-upload-limit-set` |
-| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 200 | `mod-upload-limit-set` |
+| Mod upload limit (14.6, 14.10), MB | 10 to 2048 | 1024 | `mod-upload-limit-set` |
 | Check GitHub for new Foreman versions (14.10) | on or off | on | `update-check-set` |
 
 A scheduled restart keeps its fixed countdown (7.12). The upload limits are
@@ -3241,7 +3241,7 @@ are not followed out of it. Uploaded zips are checked entry by entry and
 refused if any entry would land outside its target. (P0)
 
 14.6. **Uploads** have size limits (app settings on the General tab, 13.1:
-a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 200 MB;
+a save 100 MB to 8 GB, default 1 GB; a mod 10 MB to 2 GB, default 1 GB;
 each a whole number of MB, meaning MiB) and are written to a temporary file and checked
 before they replace anything. Pasted text has limits too: a map exchange
 string is at most 64 KB and inflates to at most 1 MB (5.6), and a settings
@@ -3387,7 +3387,15 @@ and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
 starts with `/download/` on that base, and its `file_name` must equal
 `<name>_<version>.zip`. A download takes at most 5 minutes, reads at most
 the mod upload limit (14.6), so a mod that can be uploaded can also be
-downloaded again, and follows at most 2 redirects, each only to an `https` address
+downloaded again. A file over that limit is refused as its own failure,
+not as an unreachable portal: before any byte is read when the portal
+declares a `Content-Length` over the limit, and by cutting the stream off at
+the limit when it does not. The page names the mod, its size when known and
+the limit; an admin gets a link to the limit on the General tab, anyone else
+is told to ask an admin, and there is no "Try again", since the file is as
+large next time. Every failed mod download, for any reason, logs one line
+with the mod, version and reason, never the username or token. A download
+follows at most 2 redirects, each only to an `https` address
 whose host ends in `.factorio.com`. The real portal redirects to
 `dl-mod.factorio.com`. The redirect carries no `Referer` header, because Go
 would copy the token-bearing address into it. An error message never holds

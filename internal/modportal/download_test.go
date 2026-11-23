@@ -87,13 +87,13 @@ func TestDownloadFailures(t *testing.T) {
 	}
 	cases := []failCase{
 		{name: "wrong sha1", mode: modportaltest.WrongSHA1, want: ErrChecksum},
-		{name: "oversized stream", mode: modportaltest.Oversized, want: ErrUnreachable, limit: 4096},
+		{name: "oversized stream", mode: modportaltest.Oversized, want: ErrTooLarge, limit: 4096},
 		{name: "foreign redirect", mode: modportaltest.RedirectForeign, want: ErrUnreachable},
 		{name: "login redirect", mode: modportaltest.RedirectLogin, want: ErrUnauthorized},
 		{name: "401", mode: modportaltest.Unauthorized, want: ErrUnauthorized},
 		{name: "server error", mode: modportaltest.ServerError, want: ErrUnreachable},
 		{name: "slow reply", mode: modportaltest.Slow, want: ErrUnreachable, setup: func(c *Client) { c.downloadTimeout = 150 * time.Millisecond }},
-		{name: "declared too large", mode: modportaltest.Normal, want: ErrUnreachable, limit: 10},
+		{name: "declared too large", mode: modportaltest.Normal, want: ErrTooLarge, limit: 10},
 		{name: "wrong credentials", mode: modportaltest.Normal, want: ErrUnauthorized, manual: func(c *Client, r Release) error {
 			return c.Download(context.Background(), modportaltest.Username, "wrong-"+modportaltest.Token, r, tempFile(t), testLimit)
 		}},
@@ -344,10 +344,38 @@ func TestDownloadLimitIsPerCall(t *testing.T) {
 	for _, tc := range []struct {
 		limit int64
 		want  error
-	}{{size - 1, ErrUnreachable}, {size, nil}} {
+	}{{size - 1, ErrTooLarge}, {size, nil}} {
 		err := c.Download(context.Background(), modportaltest.Username, modportaltest.Token, releaseOf(s), tempFile(t), tc.limit)
 		if !errors.Is(err, tc.want) {
 			t.Errorf("limit %d: got %v, want %v", tc.limit, err, tc.want)
 		}
+	}
+}
+
+// SPEC 14.10: a file over the limit is its own failure, not an unreachable
+// portal. A Content-Length over the limit is refused before any byte is read
+// and carries the size; a stream with no length is cut off at the limit.
+func TestDownloadTooLargeCarriesSizeAndLimit(t *testing.T) {
+	p, c, _ := fakePortal(t)
+	s := p.AddZip("m", "1.0.0")
+	size := int64(len(s.Body))
+
+	err := c.Download(context.Background(), modportaltest.Username, modportaltest.Token, releaseOf(s), tempFile(t), size-1)
+	tl, ok := errors.AsType[*TooLargeError](err)
+	if !ok || !errors.Is(err, ErrTooLarge) || errors.Is(err, ErrUnreachable) {
+		t.Fatalf("declared size: got %v, want a too-large error that is not unreachable", err)
+	}
+	if tl.Size != size || tl.Limit != size-1 {
+		t.Errorf("declared size: size %d limit %d, want %d and %d", tl.Size, tl.Limit, size, size-1)
+	}
+
+	p.SetMode(s, modportaltest.Oversized)
+	err = c.Download(context.Background(), modportaltest.Username, modportaltest.Token, releaseOf(s), tempFile(t), 4096)
+	tl, ok = errors.AsType[*TooLargeError](err)
+	if !ok || errors.Is(err, ErrUnreachable) {
+		t.Fatalf("stream: got %v, want a too-large error that is not unreachable", err)
+	}
+	if tl.Size != 0 || tl.Limit != 4096 {
+		t.Errorf("stream: size %d limit %d, want unknown size (0) and 4096", tl.Size, tl.Limit)
 	}
 }
