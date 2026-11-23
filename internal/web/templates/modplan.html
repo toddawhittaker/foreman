@@ -142,14 +142,22 @@
     {{- if .Nothing}}
     <p id="plan-same">{{t "mods.version.same"}}</p>
     {{- end}}
-    {{- with .Plan.Optional}}
+    {{- with $.Page.RecommendedRows}}
+    {{- /* Each box also sends its name as offered, so an unticked one reads as declined (SPEC 9.2). */}}
+    <fieldset id="plan-recommended">
+      <legend>{{t "mods.recommended.legend"}}</legend>
+      <p class="hint">{{t "mods.recommended.hint"}}</p>
+      {{- range .}}
+      <input type="hidden" name="offered" value="{{.Offer.Name}}">
+      {{template "plan-offer" .}}
+      {{- end}}
+    </fieldset>
+    {{- end}}
+    {{- with $.Page.OptionalRows}}
     <fieldset>
       <legend>{{t "mods.optional.legend"}}</legend>
-      <p class="hint">{{t "mods.optional.hint"}}{{if $.Page.HasRecommended}} {{t "mods.recommended.hint"}}{{end}}</p>
-      {{- range $.Page.OptionalRows}}
-      {{- if .Offer.Recommended}}
-      <input type="hidden" name="offered" value="{{.Offer.Name}}">
-      {{- end}}
+      <p class="hint">{{t "mods.optional.hint"}}</p>
+      {{- range .}}
       {{template "plan-offer" .}}
       {{- end}}
     </fieldset>

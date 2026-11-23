@@ -12,6 +12,37 @@ import (
 
 func recOf(m string) Reason { return Reason{Code: WhyRecommendedBy, Of: m} }
 
+// Two mods installed together each keep a box for every mod they
+// recommend, so the admin can untick any of them (SPEC 9.2).
+func TestRecommendedOfTwoModsOffered(t *testing.T) {
+	p := portal{
+		"moshine":  {rel("1.2.14", "2.0", "assets >= 1.0.2", "+ sun >= 1.3.0", "+ solar", "? maraxsis")},
+		"muluna":   {rel("2.9.16", "2.0", "+ tup >= 1.0.8", "! tile-upgrade-planner", "+ rigor", "? moshine >= 1.1.1")},
+		"assets":   {rel("1.0.3", "2.0")},
+		"sun":      {rel("1.3.11", "2.0")},
+		"solar":    {rel("1.1.1", "2.0")},
+		"tup":      {rel("1.0.11", "2.0")},
+		"rigor":    {rel("1.2.0", "2.0")},
+		"maraxsis": {rel("1.0.0", "2.0")},
+	}
+	plan := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"moshine", "muluna"}})
+	got := map[string]bool{}
+	for _, o := range plan.Optional {
+		got[o.Name] = o.Chosen
+	}
+	for _, n := range []string{"sun", "solar", "tup", "rigor"} {
+		if chosen, ok := got[n]; !ok || !chosen {
+			t.Errorf("%s: offered %v, chosen %v; offers %+v", n, ok, chosen, plan.Optional)
+		}
+	}
+	plan = resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"moshine", "muluna"}, Declined: []string{"sun", "tup"}})
+	for _, n := range []string{"sun", "tup"} {
+		if _, ok := change(plan, n); ok {
+			t.Errorf("declined %s is in the plan", n)
+		}
+	}
+}
+
 // A "+" dependency is on by default and offered ticked (SPEC 9.2).
 func TestRecommendedChosenByDefault(t *testing.T) {
 	p := portal{"k2": {rel("2.1.4", "2.0", "+ lane >= 1.3.0")}, "lane": {rel("1.3.1", "2.0")}}

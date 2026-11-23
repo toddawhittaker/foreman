@@ -320,6 +320,7 @@
   "mods.orphans.legend": "Mody, které už nejsou potřeba",
   "mods.orphans.hint": "Potřebují je jen odebírané mody. Odeberou se také, pokud je neodškrtnete.",
   "mods.plan.why.only_needed_by": "potřeboval ho jen {mod}",
+  "mods.recommended.legend": "Doporučené mody",
   "mods.recommended.hint": "Doporučené mody jsou už zaškrtnuté. Zrušením zaškrtnutí se mod vynechá.",
   "mods.recommended.unavailable": "{mod}, který doporučuje {of}, se vynechá: portál modů nemá žádnou vhodnou verzi.",
   "mods.unresolved.legend": "Portál modů nemá {mod} {version}",

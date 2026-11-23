@@ -272,6 +272,7 @@
   "mods.orphans.legend": "不再需要的模组",
   "mods.orphans.hint": "只有要移除的模组需要它们。除非取消勾选，否则它们也会被移除。",
   "mods.plan.why.only_needed_by": "仅 {mod} 需要它",
+  "mods.recommended.legend": "推荐模组",
   "mods.recommended.hint": "推荐的模组已默认勾选。取消勾选即可不添加。",
   "mods.recommended.unavailable": "{mod}（由 {of} 推荐）未被添加：模组门户没有合适的版本。",
   "mods.unresolved.legend": "模组门户没有 {mod} {version}",

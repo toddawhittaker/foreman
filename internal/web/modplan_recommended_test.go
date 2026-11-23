@@ -35,3 +35,40 @@ func TestRecommendedDependencyPlan(t *testing.T) {
 	}
 	wantIn(t, "unticked", body, `<input type="hidden" name="offered" value="fp-lane">`)
 }
+
+// Two mods installed together, as Moshine and Muluna are: every mod
+// they recommend has a ticked box in its own section and none sits in the
+// install list, so each can be unticked (SPEC 9.2).
+func TestRecommendedOfTwoModsHaveOwnSection(t *testing.T) {
+	g := newModsRig(t, true)
+	for _, n := range []string{"fp-sun", "fp-solar", "fp-tup", "fp-rigor", "fp-assets"} {
+		g.portal.AddZip(n, "1.3.11")
+	}
+	g.portal.AddZip("fp-moshine", "1.2.14", "base >= 2.0", "fp-assets >= 1.0.2", "+ fp-sun >= 1.3.0", "+ fp-solar")
+	g.portal.AddZip("fp-muluna", "2.9.16", "base >= 2.0", "+ fp-tup >= 1.0.8", "+ fp-rigor", "? fp-moshine >= 1.1.1")
+	id := g.world20("Base")
+	path := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-moshine", "fp-muluna"}})
+	code, body := g.getStatus(path)
+	if code != http.StatusOK || !strings.Contains(body, `id="act-apply"`) {
+		t.Fatalf("plan %d, not applicable:\n%s", code, body)
+	}
+	wantIn(t, "plan", body, `<fieldset id="plan-recommended">`)
+	rows := planRows(body)
+	for _, n := range []string{"fp-sun", "fp-solar", "fp-tup", "fp-rigor"} {
+		wantIn(t, n, body, `value="`+n+`" id="mod-`+n+`-optional" hx-post="/worlds/`+id+`/mods/plan/redraw" checked`)
+		if strings.Contains(rows, n) {
+			t.Errorf("%s is in the install list:\n%s", n, rows)
+		}
+	}
+	if !strings.Contains(rows, "fp-assets") {
+		t.Errorf("required fp-assets missing from the install list:\n%s", rows)
+	}
+	wantIn(t, "button", plain(body), "Install 3 mods and 4 recommended")
+
+	// Unticking one leaves it out and keeps its box.
+	off := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-moshine", "fp-muluna"},
+		"optional": {"fp-solar", "fp-tup", "fp-rigor"}, "offered": {"fp-sun", "fp-solar", "fp-tup", "fp-rigor"}})
+	_, body = g.getStatus(off)
+	wantIn(t, "unticked", body, `value="fp-sun" id="mod-fp-sun-optional" hx-post="/worlds/`+id+`/mods/plan/redraw" aria-describedby`)
+	wantIn(t, "unticked button", plain(body), "Install 3 mods and 3 recommended")
+}

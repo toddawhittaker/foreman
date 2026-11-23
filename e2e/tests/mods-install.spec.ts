@@ -107,6 +107,9 @@ test("a recommended dependency starts ticked, and one the portal lacks is left o
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-k2");
   const box = page.getByRole("checkbox", { name: "fp-lane recommended by fp-k2" });
   await expect(box).toBeChecked();
+  // Its own section, never a row of the install list, so the box is what the admin sees (issue 880).
+  await expect(page.getByRole("group", { name: "Recommended mods" })).toContainText("fp-lane");
+  await expect(page.locator(".plan-groups")).not.toContainText("fp-lane");
   await expect(page.locator("#plan-unavailable")).toContainText("fp-gone, recommended by fp-k2, is left out");
   await expect(page.getByRole("button", { name: "Install 1 mod and 1 recommended" })).toBeVisible();
   await checkPage(page);

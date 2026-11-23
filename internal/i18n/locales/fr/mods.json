@@ -296,6 +296,7 @@
   "mods.orphans.legend": "Mods devenus inutiles",
   "mods.orphans.hint": "Seuls les mods retirés en ont besoin. Ils sont retirés aussi, sauf si vous les décochez.",
   "mods.plan.why.only_needed_by": "seul {mod} en avait besoin",
+  "mods.recommended.legend": "Mods recommandés",
   "mods.recommended.hint": "Les mods recommandés sont déjà cochés. Décochez-en un pour ne pas l’ajouter.",
   "mods.recommended.unavailable": "{mod}, recommandé par {of}, est laissé de côté : le portail des mods n’a aucune version qui convient.",
   "mods.unresolved.legend": "Le portail de mods n’a pas {mod} {version}",

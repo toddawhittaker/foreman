@@ -58,7 +58,8 @@ func (p ModPlanPage) Groups() []PlanGroup {
 			}
 		}
 		for _, c := range p.Plan.Changes {
-			if c.Action == g.act {
+			// A recommended mod shows only by its box (SPEC 9.2).
+			if c.Action == g.act && c.Why.Code != mods.WhyRecommendedBy {
 				items = append(items, p.item(c, vs))
 			}
 		}
@@ -318,10 +319,19 @@ func (o OfferRow) HasDetail() bool {
 	return o.Facts.Summary != "" || o.Facts.Version != "" || !o.Facts.Released.IsZero()
 }
 
-// OptionalRows are the optional and recommended mods' boxes.
-func (p ModPlanPage) OptionalRows() []OfferRow {
-	out := make([]OfferRow, 0, len(p.Plan.Optional))
+// OptionalRows are the optional mods' boxes.
+func (p ModPlanPage) OptionalRows() []OfferRow { return p.offerRows(false) }
+
+// RecommendedRows are the recommended mods' boxes, in a section of their
+// own so each one can be unticked (SPEC 9.2).
+func (p ModPlanPage) RecommendedRows() []OfferRow { return p.offerRows(true) }
+
+func (p ModPlanPage) offerRows(recommended bool) []OfferRow {
+	var out []OfferRow
 	for _, o := range p.Plan.Optional {
+		if o.Recommended != recommended {
+			continue
+		}
 		of := p.ident(o.Of)
 		r := OfferRow{Offer: o, ID: p.ModID(o.Name, "optional"), Name: p.Mod(o.Name), Facts: p.facts[o.Name],
 			Of:    i18n.M("mods.plan.why.optional_of", "mod", of),

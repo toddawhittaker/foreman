@@ -296,6 +296,7 @@
   "mods.orphans.legend": "Nicht mehr benötigte Mods",
   "mods.orphans.hint": "Nur die Mods, die entfernt werden, brauchen diese. Sie werden mit entfernt, außer du entfernst das Häkchen.",
   "mods.plan.why.only_needed_by": "nur {mod} brauchte sie",
+  "mods.recommended.legend": "Empfohlene Mods",
   "mods.recommended.hint": "Als empfohlen markierte Mods sind schon angehakt. Entferne den Haken, um eine wegzulassen.",
   "mods.recommended.unavailable": "{mod}, empfohlen von {of}, wird weggelassen: Das Mod-Portal hat keine passende Version.",
   "mods.unresolved.legend": "Das Mod-Portal hat {mod} {version} nicht",
