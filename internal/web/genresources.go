@@ -2,6 +2,7 @@ package web
 
 import (
 	"cmp"
+	"encoding/json"
 	"errors"
 	"math"
 	"net/http"
@@ -48,6 +49,8 @@ type ResourceView struct {
 	// Kept is true when the preview holds the count, so a download can draw
 	// it; a count of settings the person has moved on from is shown, not kept.
 	Kept bool
+	// None is what the page says when there are no patches.
+	None i18n.Msg
 }
 
 // ResourceLabel is one patch's label, centred on Left and Top percent of the
@@ -69,7 +72,7 @@ type ResourceList struct {
 // resourceView turns the amounts counted on planet for a picture of size
 // tiles into what the large view shows, worded in loc.
 func resourceView(loc i18n.Locale, cat mapgen.Catalogue, planet string, res resource.Result, size int) *ResourceView {
-	v := &ResourceView{Patches: len(res.Patches), Labels: resourceLabels(res, size)}
+	v := &ResourceView{Patches: len(res.Patches), Labels: resourceLabels(res, size), None: i18n.M("worlds.generate.resources.none")}
 	byName := map[string][]resource.Patch{}
 	for _, p := range res.Patches {
 		byName[p.Name] = append(byName[p.Name], p)
@@ -181,7 +184,7 @@ func resourceName(loc i18n.Locale, cat mapgen.Catalogue, planet, entity string) 
 // cat is req's planets and controls and key its key in the store.
 func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, cat mapgen.Catalogue, key previewKey, name, planet string) *ResourceView {
 	if res, ok := s.previews.resourcesOf(u.ID, key, planet); ok {
-		v := resourceView(localeOf(r), cat, planet, res, req.Size)
+		v := countedView(localeOf(r), cat, req, planet, res)
 		v.Kept = true
 		return v
 	}
@@ -199,9 +202,42 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 		s.log.Error("keep resource amounts", "error", err)
 		return &ResourceView{Error: i18n.M("worlds.generate.resources.failed"), Retry: true}
 	}
-	v := resourceView(localeOf(r), cat, planet, res, req.Size)
+	v := countedView(localeOf(r), cat, req, planet, res)
 	v.Kept = token != ""
 	return v
+}
+
+// countedView is resourceView for a count of req. A planet whose modded
+// resource controls are on but whose count found no patches has resources the count
+// cannot see, such as tiles, and says so (SPEC 5.6).
+func countedView(loc i18n.Locale, cat mapgen.Catalogue, req game.PreviewRequest, planet string, res resource.Result) *ResourceView {
+	v := resourceView(loc, cat, planet, res, req.Size)
+	if len(res.Patches) == 0 && hasResourceControlOn(cat, req.MapGenSettings, planet) {
+		v.None = i18n.M("worlds.generate.resources.not_patches")
+	}
+	return v
+}
+
+// hasResourceControlOn is whether planet has a resource control from a mod
+// that the map generator settings do not switch off with a size of zero.
+// The game's own resources are all patches.
+func hasResourceControlOn(cat mapgen.Catalogue, mapGen []byte, planet string) bool {
+	var settings struct {
+		Controls map[string]struct {
+			Size *float64 `json:"size"`
+		} `json:"autoplace_controls"`
+	}
+	// Settings that are not JSON switch nothing off.
+	_ = json.Unmarshal(mapGen, &settings)
+	for _, c := range cat.PlanetControls(planet) {
+		if _, builtin := controlNames[c.Name]; builtin || c.Category != mapgen.CategoryResource {
+			continue
+		}
+		if size := settings.Controls[c.Name].Size; size == nil || *size != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // resourceMsgs is how a failed resource count is worded.

@@ -237,7 +237,11 @@ type Controller struct {
 	crashWindow   time.Duration
 	rconCallLimit time.Duration
 	previewLimit  time.Duration
-	modCheckLimit time.Duration
+	// previewWorldLimit and previewWorldMemory are a preview run's limits
+	// when it loads a world's mods (SPEC 5.6).
+	previewWorldLimit  time.Duration
+	previewWorldMemory int64
+	modCheckLimit      time.Duration
 
 	previewWait time.Duration
 	// modSettingsLimit is how long a mod settings definitions run may take.
@@ -344,6 +348,7 @@ func New(cfg Config) (*Controller, error) {
 		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
 		rconRetry: rconRetry, crashWindow: CrashLoopWindow,
 		rconCallLimit: rcon.DefaultTimeout, previewLimit: PreviewLimit, previewWait: PreviewWait,
+		previewWorldLimit: PreviewWorldLimit, previewWorldMemory: previewWorldMemory,
 		modCheckLimit: ModCheckTimeout, modSettingsLimit: ModSettingsLimit,
 		previewSlot: make(chan struct{}, 1), previewWaiting: make(chan struct{}, maxPreviewWaiters),
 		ctx: ctx, cancel: cancel,

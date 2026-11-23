@@ -46,6 +46,9 @@ var chartMod = controlMod{
 	control: chart.Control,
 	params: `printf 'return { radius = %d, planet = "%s" }\n' "$` + gameenv.ChartRadius + `" "$` + gameenv.ChartPlanet + `" > ` +
 		modFile(chart.ModDir, chart.ParamsFile),
+	// Its limit was measured with a world's mods (realgame4_chart), so it
+	// keeps the base one rather than that of a preview with mods.
+	memory: previewMemory,
 }
 
 // chartScript makes the params file, creates a map from the request's seed,
