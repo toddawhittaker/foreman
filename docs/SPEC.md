@@ -2163,7 +2163,10 @@ takes the newest release on the world's game line that does. Built-in mods
 count as present at the game version. An optional dependency's version
 limit holds even while its mod is off, so turning it on in the same plan is
 held to it. A recommended dependency (the "+" prefix of Factorio 2.1) is
-an optional one that starts ticked; one the portal lacks or that would
+an optional one that starts ticked. The review page lists recommended mods
+under their own "Recommended mods" heading, apart from "Optional mods", each
+with a tick box the admin may clear, and never in the list of mods to
+install. One the portal lacks or that would
 conflict is left out with a note and never blocks the plan. A sync adds
 none. Dependencies of installed mods are read from their own
 `info.json`, so turning mods off or on and removing them need no portal.

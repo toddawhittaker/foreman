@@ -296,6 +296,7 @@
   "mods.orphans.legend": "Mods que ya no hacen falta",
   "mods.orphans.hint": "Solo los mods que se quitan los necesitan. También se quitan, salvo que los desmarques.",
   "mods.plan.why.only_needed_by": "solo lo necesitaba {mod}",
+  "mods.recommended.legend": "Mods recomendados",
   "mods.recommended.hint": "Los mods recomendados ya están marcados. Desmarca uno para no añadirlo.",
   "mods.recommended.unavailable": "{mod}, recomendado por {of}, se deja fuera: el portal de mods no tiene ninguna versión que encaje.",
   "mods.unresolved.legend": "El portal de mods no tiene {mod} {version}",

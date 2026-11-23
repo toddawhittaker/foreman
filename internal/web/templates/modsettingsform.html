@@ -6,7 +6,11 @@
 <div id="mod-settings-form" class="mod-settings" hx-get="{{.FormPath}}" hx-trigger="load" hx-swap="outerHTML">
   <section class="panel" aria-labelledby="mod-settings-heading">
     <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
-    <p role="status" class="empty mod-settings-loading">{{t "mods.settings.edit.loading"}}</p>
+    {{- /* The moving bar is the one Generate shows while it waits; the words carry the meaning (DESIGN 6, Motion). */}}
+    <div class="wait mod-settings-loading" role="status">
+      <p>{{t "mods.settings.edit.loading"}}</p>
+      <progress aria-hidden="true"></progress>
+    </div>
     {{- /* The words above show only while the script's request runs, so without script they do not claim a load that never comes; the link asks the server to read the form first. The script replaces the whole block (SPEC 9.6). */}}
     <p><a href="{{.WaitPath}}" id="mod-settings-wait">{{t "mods.settings.edit.loading_link"}}</a></p>
   </section>

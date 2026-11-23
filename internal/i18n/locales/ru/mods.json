@@ -320,6 +320,7 @@
   "mods.orphans.legend": "Моды, которые больше не нужны",
   "mods.orphans.hint": "Они нужны только удаляемым модам. Они тоже будут удалены, если не снять отметку.",
   "mods.plan.why.only_needed_by": "был нужен только для {mod}",
+  "mods.recommended.legend": "Рекомендуемые моды",
   "mods.recommended.hint": "Рекомендуемые моды уже отмечены. Снимите отметку, чтобы не добавлять мод.",
   "mods.recommended.unavailable": "{mod} (рекомендует {of}) не будет добавлен: на портале модов нет подходящей версии.",
   "mods.unresolved.legend": "На портале модов нет {mod} {version}",

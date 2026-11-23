@@ -34,10 +34,23 @@ async function modded(page: Page, foreman: Parameters<typeof seedWorld>[0], fake
 test("step 3 shows the startup settings, and saving one adds the planet it turns on to step 4", async ({ page, foreman, fakeGame }) => {
   const id = await modded(page, foreman, fakeGame!);
 
+  // The form's load is held until the moving bar Generate uses has been seen beside the loading words.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(`**${stepPath(id)}/form`, async (route) => {
+    await held;
+    await route.continue();
+  });
+
   // Continue opens step 3: a mod has startup settings and none are saved.
   await page.goto(`/worlds/${id}`);
   await page.getByRole("link", { name: "Continue setting up" }).click();
   await expect(page).toHaveURL(stepPath(id));
+  const wait = page.locator("#mod-settings-form .wait");
+  await expect(wait).toBeVisible();
+  await expect(wait).toHaveAttribute("role", "status");
+  await expect(wait.locator("progress")).toBeVisible();
+  release();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mod settings");
   await expect(steps(page).getByRole("link", { name: "3. Mod settings" })).toHaveAttribute("aria-current", "step");
   await expect(steps(page).getByRole("link")).toHaveCount(4);

@@ -31,6 +31,10 @@
 {{- if not .Busy.IsZero}}
 <div class="message message--note">
   <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
+  {{- if .Working}}
+  {{- /* The bar Generate shows while it waits, so a long install does not look stuck; the words above carry the meaning. */}}
+  <progress aria-hidden="true"></progress>
+  {{- end}}
   {{- if .ServerLink}}
   <div class="actions"><a href="{{serverPath}}" id="world-server-link">{{t "worlds.world.server_link"}}</a></div>
   {{- end}}

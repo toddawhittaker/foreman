@@ -1600,12 +1600,6 @@ func (p ModPlanPage) UploadedFor(name string) bool {
 	return p.Form.Staged != "" && p.Uploaded.Name == name
 }
 
-// HasRecommended reports whether any offered mod is recommended, for the
-// hint that says those start ticked.
-func (p ModPlanPage) HasRecommended() bool {
-	return slices.ContainsFunc(p.Plan.Optional, func(o mods.Offer) bool { return o.Recommended })
-}
-
 func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
