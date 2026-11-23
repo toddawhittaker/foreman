@@ -438,7 +438,7 @@
 <svg{{if .File}} xmlns="http://www.w3.org/2000/svg"{{end}} class="starmap" viewBox="{{.ViewBox}}" width="1000" height="1000" role="img" aria-label="{{t "worlds.generate.starmap.alt"}}" font-family="system-ui, sans-serif" font-size="20">
 {{- if .File}}<title>{{t "worlds.generate.starmap.alt"}}</title>{{end}}
 <rect class="starmap__bg" x="-100000" y="-100000" width="200000" height="200000" fill="#0d0c0b"/>
-<g class="starmap__rings" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.5">
+<g class="starmap__rings" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5">
 {{- range .Rings}}<circle r="{{.}}"/>{{end}}
 {{- range .Orbits}}<circle cx="{{.X}}" cy="{{.Y}}" r="{{.R}}"/>{{end -}}
 </g>
@@ -452,7 +452,7 @@
 <title{{if .Label.Foreign}} translate="no"{{end}}>{{msg .Label.Name}}</title>
 <circle class="starmap__planet" cx="{{.X}}" cy="{{.Y}}" r="{{.R}}" fill="#2a2622" stroke="#f39a2a" stroke-width="2.5"/>
 {{- if and .Icon (not $file)}}
-<image href="{{.Icon}}" x="{{.IconX}}" y="{{.IconY}}" width="{{.IconSize}}" height="{{.IconSize}}" onerror="this.remove()"/>
+<image href="{{.Icon}}" x="{{.IconX}}" y="{{.IconY}}" width="{{.IconSize}}" height="{{.IconSize}}"/>
 {{- end}}
 <text x="{{.LabelX}}" y="{{.LabelY}}" text-anchor="{{.Anchor}}" dominant-baseline="{{.Baseline}}" fill="#ece7df" stroke="#0d0c0b" stroke-width="4" stroke-linejoin="round" paint-order="stroke"{{if .Label.Foreign}} translate="no"{{end}}>{{msg .Label.Name}}</text>
 </g>

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/text/width"
+
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/modsettings"
@@ -85,9 +87,12 @@ type StarMapOrbit struct{ X, Y, R float64 }
 
 // StarMapLocation is one location's circle, picture and label.
 type StarMapLocation struct {
-	Name    string
-	Label   MapGenName
-	X, Y, R float64
+	Name  string
+	Label MapGenName
+	// LabelCells is the label's width as the page shows it, in character
+	// cells: a wide (CJK) character counts two.
+	LabelCells int
+	X, Y, R    float64
 	// Icon is the picture drawn over the circle, or empty for none, in the
 	// circle's square: IconX and IconY its corner, IconSize its side.
 	Icon                   string
@@ -162,7 +167,7 @@ func (s *server) drawStarMap(r *http.Request, id, version string, cat mapgen.Cat
 	if !ok {
 		return "", nil, false
 	}
-	v, ok := layoutStarMap(m, cat, starMapIcons{world: id, wiki: wikiIconsOf(s.readWikiIcons(r))})
+	v, ok := layoutStarMap(m, cat, localeOf(r), starMapIcons{world: id, wiki: wikiIconsOf(s.readWikiIcons(r))})
 	if !ok {
 		return "", nil, false
 	}
@@ -230,8 +235,9 @@ func (ic starMapIcons) icon(l mapgen.Location) string {
 
 // layoutStarMap lays out a world's star map (SPEC 5.6), or returns false when
 // it has fewer than two locations, which make no map. cat gives the planets'
-// labels; a location it does not name keeps the map's own label.
-func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, ic starMapIcons) (StarMapView, bool) {
+// labels; a location it does not name keeps the map's own label. loc is the
+// language the labels are shown in, so their width is measured as shown.
+func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic starMapIcons) (StarMapView, bool) {
 	if len(m.Locations) < 2 {
 		return StarMapView{}, false
 	}
@@ -277,27 +283,30 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, ic starMapIcons) (Sta
 		v.Routes = append(v.Routes, pathData(r, scale))
 	}
 	for _, l := range m.Locations {
-		v.Locations = append(v.Locations, placeLocation(l, scale, starMapLabel(cat, l), ic.icon(l)))
+		label := starMapLabel(cat, l)
+		sl := placeLocation(l, scale, label, ic.icon(l))
+		sl.LabelCells = labelCells(loc.Format(label.Name))
+		v.Locations = append(v.Locations, sl)
 	}
-	v.ViewBox = fitStarMap(v, routes, scale, m.Locations)
+	v.ViewBox = fitStarMap(v, routes, scale)
 	return v, true
 }
 
 // fitStarMap is the square view box about everything drawn: the sun, each
 // circle, each route and each label, so a long label at the edge is not cut
-// off. A label's width is guessed from its length, as the font is the
-// reader's.
-func fitStarMap(v StarMapView, routes [][]point, scale float64, locs []mapgen.Location) string {
+// off. A label's width is guessed from the name the page shows, as the font
+// is the reader's.
+func fitStarMap(v StarMapView, routes [][]point, scale float64) string {
 	b := bounds{minX: -v.Sun, maxX: v.Sun, minY: -v.Sun, maxY: v.Sun}
 	for _, r := range routes {
 		for _, p := range r {
 			b.add(point{p.X * scale, p.Y * scale})
 		}
 	}
-	for i, l := range v.Locations {
+	for _, l := range v.Locations {
 		b.add(point{l.X - l.R, l.Y - l.R})
 		b.add(point{l.X + l.R, l.Y + l.R})
-		w := starMapCharWidth * float64(len([]rune(locs[i].Label)))
+		w := starMapCharWidth * float64(l.LabelCells)
 		x0, y0 := l.LabelX-w/2, l.LabelY-starMapLineHeight/2
 		switch l.Anchor {
 		case "start":
@@ -317,6 +326,21 @@ func fitStarMap(v StarMapView, routes [][]point, scale float64, locs []mapgen.Lo
 	side := max(b.maxX-b.minX, b.maxY-b.minY) + 2*starMapMargin
 	cx, cy := (b.minX+b.maxX)/2, (b.minY+b.maxY)/2
 	return svgNum(cx-side/2) + " " + svgNum(cy-side/2) + " " + svgNum(side) + " " + svgNum(side)
+}
+
+// labelCells is the width of text in character cells: a wide or fullwidth
+// (CJK) character is two, any other one.
+func labelCells(text string) int {
+	n := 0
+	for _, r := range text {
+		switch width.LookupRune(r).Kind() {
+		case width.EastAsianWide, width.EastAsianFullwidth:
+			n += 2
+		default:
+			n++
+		}
+	}
+	return n
 }
 
 // starMapLabel is a location's name as the page shows it: the game's own
