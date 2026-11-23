@@ -38,11 +38,20 @@ map). The fold task (G) deletes this file.
 5. **Labels:** drawn on the map at `label_orientation`. The picture's
    accessible name names it as the star map; each planet has a `<title>`
    (orchestrator: the smallest text alternative SPEC 17 allows).
-6. **Layered mod icons:** an icon shows only for a plain `icon`, or `icons`
+6. **Curved routes:** routes are drawn as the game draws them. Community
+   reports give the rule: a route arcs around the two locations' nearest
+   common parent (the sun for planets), and is straight when that parent is
+   one of the two ends or there is no parent but the universe origin. The
+   arc is taken as a spiral around the parent, the radius and angle each
+   changing evenly from one end to the other (orchestrator; D checks it
+   against Todd's in-game screenshot and the real-game test). To match that
+   screenshot, the map also draws a plain sun circle and a faint ring at
+   each planet's distance (orchestrator).
+7. **Layered mod icons:** an icon shows only for a plain `icon`, or `icons`
    with one untinted layer. Everything else shows its name.
-7. **Zip file format** (orchestrator): the star map goes into the zip as
+8. **Zip file format** (orchestrator): the star map goes into the zip as
    `starmap.svg`, the same SVG the page draws, so no rasteriser is added.
-8. **Mod icons show** only on per-world pages whose run is cached: the mod
+9. **Mod icons show** only on per-world pages whose run is cached: the mod
    settings page and Generate's Mod settings step. Order: mod icon, then
    wiki icon, then the name (orchestrator).
 
@@ -68,7 +77,7 @@ with a real planet mod, its mod settings page, the star map and one icon.
   the mod's own icon, with the object's name as `alt`, whether the wiki
   setting is on or off. Built-in game paths are never served.
 - #920: Generate's map preview has a Star map picture with the game's
-  planet positions, routes and moon orbits, hidden locations left out; it
+  planet positions, curved routes as in the game, moon orbits, hidden locations left out; it
   opens in the large view with zoom and pan; the zip holds `starmap.svg`.
 - Unit tests for every path check, limit and crop; e2e tests with the fake
   game and fake mod zip; real-game tests on the oldest and newest 2.x images.
@@ -76,6 +85,6 @@ with a real planet mod, its mod settings page, the star map and one icon.
 ## Left out
 
 Folder (unzipped) mods' icons; 1.1 worlds (no planets, no `mod-data`); which
-planets a save has discovered; curved routes (2.1 `shape`); icons on the
+planets a save has discovered; icons on the
 portal search, mod plan and public mods page; star map in the REST API and
-MCP; layered icons (ruling 6).
+MCP; 2.1 route `shape` overrides, if any; layered icons (ruling 7).
