@@ -2255,6 +2255,21 @@ the 64-bit range means no limit.
   RCON command for them.
 - **Per-player settings** are not shown. Each player sets them in the game,
   and their bytes in the file are kept exactly.
+- **Origin of a mod** (#879). Under a mod's group heading a line says why
+  the mod is installed when other enabled mods name it: "Required by X"
+  (a dependency with no prefix or `~`), "Recommended by X" (`+`) or
+  "Offered by X" (`?` or `(?)`), with "A and B" for several. Foreman works
+  it out when the page is drawn, from the enabled mods' own `info.json`
+  dependencies (`mods.ParseDep`); nothing is stored. Required wins over
+  recommended, which wins over offered, and only the winning kind's mods
+  are named. A mod nobody names, which is the player's own pick, has no
+  line. The base game and its expansions (`base`, `space-age`, `quality`,
+  `elevated-rails`) are neither named nor named by. Each name links to its
+  group on the page when that mod has settings. The groups of mods nobody
+  names come first, then the others; each part keeps its order.
+- **Without script** the page cannot load the form, so its progress line is
+  followed by a link to the same page with `?wait=1`, which reads the form
+  on the server before it answers.
 - **Planets** (#775). The same run also writes the world's planets and
   their autoplace controls as `planets.json`, for Generate's step 3 (5.6).
   On 2.x it lists every space location of type planet with the controls
