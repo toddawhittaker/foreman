@@ -28,7 +28,7 @@ function addFakePlanet(dataDir: string, id: string, on = true) {
   writeFileSync(listFile, JSON.stringify(list));
 }
 
-test("step 3 shows the step bar, saves a preset and lands on a next step", async ({ page, foreman, fakeGame }) => {
+test("step 3 shows the step bar, saves a preset and lands on a next step", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "Step three" });
   const steps = page.getByRole("navigation", { name: "Steps to make the world" });
@@ -59,7 +59,7 @@ test("step 3 shows the step bar, saves a preset and lands on a next step", async
   await expect(page.locator("#generate-preset")).toHaveValue("rich-resources");
 });
 
-test("a world whose map is made says why and offers no form", async ({ page, foreman, fakeGame }) => {
+test("a world whose map is made says why and offers no form", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto(newMapPath("base"));
   await expect(page.locator("#newmap-why")).toContainText("map is already made");
@@ -84,7 +84,7 @@ test("a planet a mod adds is laid out, and one no longer in the mods is listed",
   await expect(page.locator('#generate-form details[data-planet="fake-planet"]')).toHaveCount(0);
 });
 
-test("a map exchange string fills the form; one of another line is refused", async ({ page, foreman, fakeGame }) => {
+test("a map exchange string fills the form; one of another line is refused", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
   await page.getByText("Fill from a map exchange string").click();
@@ -117,7 +117,7 @@ test("leaving step 3 with a changed setting asks first", async ({ page, foreman,
   await expect(page.locator("#leave-dialog")).toBeHidden();
 });
 
-test("the wait is said once, then the form's arrival, and focus moves to the heading", async ({ page, foreman, fakeGame }) => {
+test("the wait is said once, then the form's arrival, and focus moves to the heading", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "Waiting" });
   // Hold the form back, so the loading box can be looked at.
@@ -136,7 +136,7 @@ test("the wait is said once, then the form's arrival, and focus moves to the hea
   await expect(page.locator("#newmap-heading")).toBeFocused();
 });
 
-test("when the world's planets cannot be read, the page says so and the save is refused", async ({ page, foreman, fakeGame }) => {
+test("when the world's planets cannot be read, the page says so and the save is refused", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "Unread" });
   addFakePlanet(foreman.dataDir, id);

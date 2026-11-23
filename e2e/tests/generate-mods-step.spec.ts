@@ -31,7 +31,7 @@ async function expectTarget(page: Page, link: Locator) {
 
 const steps = (page: Page) => page.getByRole("navigation", { name: "Steps to make the world" });
 
-test("the Mods tab of an Unfinished world has the step bar and skips to step 3", async ({ page, foreman, fakeGame }) => {
+test("the Mods tab of an Unfinished world has the step bar and skips to step 3", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await generate(page, "Flow world");
   await page.goto(`/worlds/${id}/mods`);
@@ -62,7 +62,7 @@ test("the Mods tab of an Unfinished world has the step bar and skips to step 3",
 // review keeps step 2 current and ends with the step's footer; its Next
 // installs the plan with the same checks and snapshot as Install, shows the
 // install's progress, then goes on to step 3 with the mod installed.
-test("step 2's Next reviews the plan, and the review's Next installs it and goes on to step 3", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("step 2's Next reviews the plan, and the review's Next installs it and goes on to step 3", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-flow", "1.0.0", ["base >= 2.0"], "2.1");
   await setUp(page, foreman, fakeGame!);
   const id = await generate(page, "Flow world");

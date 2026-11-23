@@ -29,7 +29,7 @@ async function facts(page: Page, root: ReturnType<Page["locator"]>) {
   return Object.fromEntries(rows) as Record<string, string>;
 }
 
-test("About opens by keyboard, shows the build, and Escape closes it with focus returned", async ({ page }) => {
+test("About opens by keyboard, shows the build, and Escape closes it with focus returned", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await menuButton(page).focus();
   await page.keyboard.press("Enter");
@@ -81,7 +81,7 @@ test("About opens by keyboard, shows the build, and Escape closes it with focus 
   await expect(menuButton(page)).toBeFocused();
 });
 
-test("Close shuts the dialog by keyboard, and it opens again", async ({ page }) => {
+test("Close shuts the dialog by keyboard, and it opens again", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);
   await aboutItem(page).click();
@@ -108,7 +108,7 @@ test("the dim area outside the box closes it", async ({ page }) => {
   await expect(dialog(page)).toBeHidden();
 });
 
-test("the About page has the same content, and the dialog is not repeated on it", async ({ page }) => {
+test("the About page has the same content, and the dialog is not repeated on it", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);
   await aboutItem(page).click();
@@ -125,7 +125,7 @@ test("the About page has the same content, and the dialog is not repeated on it"
 // DESIGN 6, "User menu": the rusty wordmark stands above the heading's words
 // in the dialog and on the page, decorative, sharp on a 2x screen, and inside
 // the box at phone width. Both themes come from the test projects.
-test("the dialog and the page show the wordmark above the heading", async ({ page }) => {
+test("the dialog and the page show the wordmark above the heading", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   const expectWordmark = async (heading: ReturnType<Page["locator"]>) => {
     await expect(heading).toHaveAccessibleName("About Foreman");
@@ -168,7 +168,7 @@ test("a signed-out visitor is sent to sign in, not shown the build", async ({ pa
   await expect(page.getByText(/^go1\./)).toHaveCount(0);
 });
 
-test("the words follow the language, the names do not", async ({ page }) => {
+test("the words follow the language, the names do not", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await pickLanguage(page, "de");
   await page.goto("/about");
@@ -179,7 +179,7 @@ test("the words follow the language, the names do not", async ({ page }) => {
 
 // SPEC 17.2: at 320 px and 200% text the dialog and the page stay inside the window.
 for (const lang of ["en", "de", "ru"]) {
-  test(`at 320 px and 200% text in ${lang}, the dialog and the page fit`, async ({ page }) => {
+  test(`at 320 px and 200% text in ${lang}, the dialog and the page fit`, { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await createAdmin(page);
     if (lang !== "en") await pickLanguage(page, lang);
@@ -224,7 +224,7 @@ test.describe("without JavaScript", () => {
 test.describe("on the map settings with a changed form", () => {
   test.use({ fakeGameOn: true });
 
-  test("About opens its dialog and Foreman's leave question does not appear", async ({ page, foreman, fakeGame }) => {
+  test("About opens its dialog and Foreman's leave question does not appear", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await createAdmin(page);
     seedWorld(foreman);
     await fakeGame!.call("/image", { ref: image21, on: true });

@@ -253,7 +253,7 @@ test.describe("plural forms", () => {
 // SPEC 22.4: a size uses the language's decimal mark and its own unit text.
 test.describe("sizes", () => {
   for (const lang of ["de", "fr"] as const) {
-    test(`${lang}: a save's size has a decimal comma`, async ({ page, foreman }) => {
+    test(`${lang}: a save's size has a decimal comma`, { tag: "@looks" }, async ({ page, foreman }) => {
       await createAdmin(page);
       seedWorld(foreman);
       const bytes = statSync(join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata", "2.1.24-no-space-age.zip")).size;
@@ -408,7 +408,7 @@ test.describe("layout at 320 px in every language", () => {
   oneProjectPerLanguage();
 
   for (const lang of languages) {
-    test(`${lang}: every page fits and passes axe at 100% and 200% text`, async ({ page, foreman, fakeGame }) => {
+    test(`${lang}: every page fits and passes axe at 100% and 200% text`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
       test.setTimeout(180_000);
       const live = { timeout: 20_000 };
       const failures: string[] = [];
@@ -655,7 +655,7 @@ test.describe("a wide time zone at 320 px and 200% text", () => {
   oneProjectPerLanguage();
 
   for (const lang of languages) {
-    test(`${lang}: the saves and snapshot tables fit`, async ({ page, foreman }) => {
+    test(`${lang}: the saves and snapshot tables fit`, { tag: "@looks" }, async ({ page, foreman }) => {
       const failures: string[] = [];
       await page.setViewportSize({ width: 320, height: 640 });
       await createAdmin(page);
@@ -680,7 +680,7 @@ test.describe("a wide time zone at 320 px and 200% text", () => {
 test.describe("first-run setup at 320 px in every language", () => {
   oneProjectPerLanguage();
   for (const lang of languages) {
-    test(`${lang}: the setup page fits at 100% and 200% text, also with its error summary`, async ({ page, foreman }) => {
+    test(`${lang}: the setup page fits at 100% and 200% text, also with its error summary`, { tag: "@looks" }, async ({ page, foreman }) => {
       const failures: string[] = [];
       await page.setViewportSize({ width: 320, height: 640 });
       await chooseLanguage(page.context(), lang, foreman.url);

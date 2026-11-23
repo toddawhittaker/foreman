@@ -8,7 +8,7 @@ async function signIn(page: Page) {
 }
 
 // SPEC 14.17: signing in returns to the page that was asked for.
-test("sign-in returns to the requested page", async ({ page }) => {
+test("sign-in returns to the requested page", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await signOut(page);
 
@@ -41,7 +41,7 @@ test("sign-in ignores a return path that leaves the site", async ({ page, forema
 });
 
 // SPEC 12.3: setup reports every problem at once.
-test("setup reports every field problem together", async ({ page }) => {
+test("setup reports every field problem together", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/setup");
   await page.getByLabel("Password", { exact: true }).fill("short");
   await page.getByLabel("Confirm password").fill("other");

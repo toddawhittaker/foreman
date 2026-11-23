@@ -20,7 +20,7 @@ test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
   for (const lang of ["en", "de", "ru"]) {
-    test(`in ${lang}, no line of the Done message runs under the close button`, async ({ page, foreman, fakeGame }) => {
+    test(`in ${lang}, no line of the Done message runs under the close button`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
       await createAdmin(page);
       if (lang !== "en") await pickLanguage(page, lang);
       seedWorld(foreman);

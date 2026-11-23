@@ -74,7 +74,7 @@ async function markBar(bar: Locator) {
   return bar;
 }
 
-test("Generate's action bar never covers the focused control", async ({ page, foreman, fakeGame }) => {
+test("Generate's action bar never covers the focused control", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -82,7 +82,7 @@ test("Generate's action bar never covers the focused control", async ({ page, fo
   await tabsClearOf(page, await markBar(page.locator(".generate > .gen-actions")));
 });
 
-test("step 2's footer on the Mods tab never covers the focused control", async ({ page, foreman, fakeGame }) => {
+test("step 2's footer on the Mods tab never covers the focused control", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -94,7 +94,7 @@ test("step 2's footer on the Mods tab never covers the focused control", async (
   await tabsClearOf(page, await markBar(page.locator(".flow-foot")));
 });
 
-test("a settings save bar never covers the focused control", async ({ page, foreman }) => {
+test("a settings save bar never covers the focused control", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   // Players and access is the longest section, so its save bar is stuck over
@@ -103,7 +103,7 @@ test("a settings save bar never covers the focused control", async ({ page, fore
   await tabsClearOf(page, await markBar(page.locator(".form-foot")));
 });
 
-test("the Snapshots selection bar never covers the focused control", async ({ page, foreman }) => {
+test("the Snapshots selection bar never covers the focused control", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman);
@@ -118,7 +118,7 @@ test("the Snapshots selection bar never covers the focused control", async ({ pa
   await tabsClearOf(page, await markBar(page.locator(".select-bar")));
 });
 
-test("the phone Console command bar never covers the focused control", async ({ page, foreman, fakeGame }) => {
+test("the phone Console command bar never covers the focused control", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   test.skip((page.viewportSize()?.width ?? 1000) > 320, "the command bar sticks only on a phone (DESIGN 8.5)");
   await createAdmin(page);
   seedWorld(foreman);
@@ -133,7 +133,7 @@ test("the phone Console command bar never covers the focused control", async ({ 
 // From 64rem the status strip sticks to the window's top, so a control
 // reached backwards with Shift+Tab is scrolled clear of it, never left
 // behind it (WCAG 2.4.11, DESIGN 6, Shell).
-test("the status strip never covers a control reached with Shift+Tab", async ({ page, foreman, fakeGame }) => {
+test("the status strip never covers a control reached with Shift+Tab", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   test.skip((page.viewportSize()?.width ?? 0) < 1024, "the strip sticks from 64rem only");
   // Step 1 of Generate is short, so a low window gives it room to scroll.
   await page.setViewportSize({ width: page.viewportSize()!.width, height: 360 });

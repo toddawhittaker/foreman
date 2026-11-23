@@ -22,7 +22,7 @@ async function drop(page: Page, files: { name: string; body: string }[]) {
   });
 }
 
-test("a dropped save fills the field, names the file, and imports", async ({ page, foreman }) => {
+test("a dropped save fills the field, names the file, and imports", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   await page.goto("/import");
   const form = uploadForm(page);
@@ -55,7 +55,7 @@ test("the chosen file's size is in the same 1024-based units as the limit", asyn
   await expect(form.locator(".dropzone__file")).toHaveText("Chosen: big.zip, 1.5 MB");
 });
 
-test("a click anywhere on the zone, or Space on it, opens the picker", async ({ page }) => {
+test("a click anywhere on the zone, or Space on it, opens the picker", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/import");
   const form = uploadForm(page);
@@ -156,7 +156,7 @@ test("a new good choice clears the server's error", async ({ page }) => {
   await expect(input).toHaveAttribute("aria-describedby", "upload-source-hint");
 });
 
-test("Clear empties the field and returns focus to it", async ({ page }) => {
+test("Clear empties the field and returns focus to it", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/import");
   const form = uploadForm(page);
@@ -181,7 +181,7 @@ test("Clear empties the field and returns focus to it", async ({ page }) => {
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("the zone is a plain labelled file field that still uploads", async ({ page, foreman }) => {
+  test("the zone is a plain labelled file field that still uploads", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     await page.goto("/import");
     const form = uploadForm(page);
@@ -207,7 +207,7 @@ for (const lang of ["de", "ru"]) {
   test.describe(`${lang} at 320 px and 200% text`, () => {
     test.use({ viewport: { width: 320, height: 640 } });
 
-    test("the zone and a chosen file fit and pass axe", async ({ page }) => {
+    test("the zone and a chosen file fit and pass axe", { tag: "@looks" }, async ({ page }) => {
       await createAdmin(page);
       await pickLanguage(page, lang);
       await page.goto("/import");

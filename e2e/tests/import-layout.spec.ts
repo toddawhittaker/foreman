@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 // SPEC 5.1 and 5.5: a folder in the Factorio server's own layout (saves/,
 // mods/, config/) imports as it is.
-test("imports a folder in the server layout: its save, mods and settings", async ({ page, foreman }) => {
+test("imports a folder in the server layout: its save, mods and settings", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const src = join(foreman.dataDir, "import", "server");
   for (const sub of ["saves", "mods", "config"]) mkdirSync(join(src, sub), { recursive: true });

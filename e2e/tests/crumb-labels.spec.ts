@@ -7,7 +7,7 @@ import type { Locator } from "@playwright/test";
 const style = (l: Locator, prop: "textDecorationLine" | "textDecorationColor" | "textTransform" | "fontSize") =>
   l.evaluate((el, p) => getComputedStyle(el)[p], prop);
 
-test("the breadcrumb is a navigation landmark holding an ordered list", async ({ page, foreman }) => {
+test("the breadcrumb is a navigation landmark holding an ordered list", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/worlds/base/saves");
@@ -34,7 +34,7 @@ test("the breadcrumb is a navigation landmark holding an ordered list", async ({
   await page.emulateMedia({ forcedColors: "none" });
 });
 
-test("column heads and fact names are 13 px sentence case; the overline keeps capitals", async ({ page, foreman }) => {
+test("column heads and fact names are 13 px sentence case; the overline keeps capitals", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
 

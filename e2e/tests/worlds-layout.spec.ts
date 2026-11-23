@@ -56,7 +56,7 @@ const cases = [
 
 // All eight languages: German, Russian and Polish are the long ones.
 for (const { lang, spaced, widths } of cases) {
-  test(`Last played stays clear of Disk use at every width (${lang}${spaced ? ", text spacing" : ""})`, async ({ page, foreman }, info) => {
+  test(`Last played stays clear of Disk use at every width (${lang}${spaced ? ", text spacing" : ""})`, { tag: "@looks" }, async ({ page, foreman }, info) => {
     test.skip(info.project.name.startsWith("phone"), "sets its own widths");
     await createAdmin(page);
     if (lang !== "en") await pickLanguage(page, lang);

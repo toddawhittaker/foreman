@@ -39,7 +39,7 @@ test("the Saves tab upload is a drop zone that uploads the dropped save", async 
   expect(readdirSync(join(foreman.dataDir, "worlds", "base", "saves")).sort()).toEqual(["base.zip", "dropped.zip"]);
 });
 
-test("a world with no save offers the Saves tab as a link from the Mods tab", async ({ page, foreman, fakeGame }) => {
+test("a world with no save offers the Saves tab as a link from the Mods tab", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!);
   rmSync(join(foreman.dataDir, "worlds", "base", "saves", "base.zip"));
   await page.goto("/worlds/base/mods");
@@ -57,7 +57,7 @@ test("a world with no save offers the Saves tab as a link from the Mods tab", as
   await expect(page.locator("#save-file")).toBeVisible();
 });
 
-test("the empty Worlds list offers the upload as a link to the Import page", async ({ page }) => {
+test("the empty Worlds list offers the upload as a link to the Import page", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/worlds");
   const button = page.locator("#act-upload-save");
@@ -109,7 +109,7 @@ test("the Mods tab's mod zip and mod-settings.dat uploads are drop zones", async
 test.describe("an unresolved mod's zip on the review page", () => {
   const syncPlan = "/worlds/base/mods/plan?kind=sync";
 
-  test("is a drop zone, and still one after the plan is redrawn", async ({ page, foreman, fakeGame }) => {
+  test("is a drop zone, and still one after the plan is redrawn", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, { fixture: save, spaceAge: true });
     await page.goto(syncPlan);
     const zone = page.locator(".dropzone", { has: page.locator("#mod-foreman-test-zip") });

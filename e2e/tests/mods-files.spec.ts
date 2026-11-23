@@ -15,7 +15,7 @@ const modsTable = (page: Page) => page.getByRole("table", { name: /Mods of Base/
 const upZip = makeZip({ "up-mod_2.3.4/info.json": JSON.stringify({ name: "up-mod", version: "2.3.4", factorio_version: "2.0", dependencies: ["base >= 2.0"] }) });
 
 test.describe("upload a mod zip", () => {
-  test("the zip, then its plan, then installed, on a running game", async ({ page, foreman, fakeGame }) => {
+  test("the zip, then its plan, then installed, on a running game", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUpModsWorld(page, foreman, g, { ...world, start: true });
     const before = await creates(g);
@@ -46,7 +46,7 @@ test.describe("upload a mod zip", () => {
     await expect(row).not.toContainText("Disabled");
   });
 
-  test("a file that is not a mod zip is refused on the Mods tab, with the error summary", async ({ page, foreman, fakeGame }) => {
+  test("a file that is not a mod zip is refused on the Mods tab, with the error summary", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods");
     await openModTools(page);
@@ -122,7 +122,7 @@ test.describe("mod-settings.dat", () => {
     await expect(page.getByRole("link", { name: "Undo this mod change" })).toBeVisible();
   });
 
-  test("an empty file is refused with a field error and changes nothing", async ({ page, foreman, fakeGame }) => {
+  test("an empty file is refused with a field error and changes nothing", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
     writeFileSync(modsFile(foreman.dataDir, "mod-settings.dat"), old);
     await page.goto("/worlds/base/mods");

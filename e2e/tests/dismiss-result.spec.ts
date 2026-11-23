@@ -7,7 +7,7 @@ import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, d
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
-  test("closing the Done box after a switch removes it and its Switch back", async ({ page, foreman, fakeGame }) => {
+  test("closing the Done box after a switch removes it and its Switch back", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await createAdmin(page);
     seedWorld(foreman);
     seedSecond(foreman);
@@ -39,7 +39,7 @@ test.describe("with the fake game", () => {
   // The live update can reach the page before the close's own answer does. It
   // redraws the panel, so the form that sent the close is gone when the answer
   // comes; focus must still land on the first control, not on the heading.
-  test("focus goes to the first control when the live update comes before the answer", async ({ page, foreman, fakeGame }) => {
+  test("focus goes to the first control when the live update comes before the answer", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await createAdmin(page);
     seedWorld(foreman);
     seedSecond(foreman);

@@ -12,7 +12,7 @@ async function takeSnapshot(page: import("@playwright/test").Page, foreman: impo
 }
 
 // DESIGN 9: times show in the browser's zone, with how long ago they were.
-test("times show in the browser's time zone with a relative time", async ({ page, foreman }) => {
+test("times show in the browser's time zone with a relative time", { tag: "@looks" }, async ({ page, foreman }) => {
   await takeSnapshot(page, foreman);
   const time = page.locator("tbody tr").first().locator("td").nth(1).locator("time");
   const iso = await time.getAttribute("datetime");
@@ -55,7 +55,7 @@ test("without JavaScript times stay in UTC", async ({ page, foreman, browser }) 
 
 // DESIGN 9: a time inside a control's spoken name has the local time only, so
 // the name does not go stale or grow.
-test("a time in an accessible name has no relative text", async ({ page, foreman }) => {
+test("a time in an accessible name has no relative text", { tag: "@looks" }, async ({ page, foreman }) => {
   await takeSnapshot(page, foreman);
   const name = page.getByRole("checkbox");
   await expect(name).toHaveAccessibleName(/^Manual snapshot \(taken .*\b(EST|EDT)\)$/);
@@ -113,7 +113,7 @@ test.describe("the Undo button", () => {
 
 // SPEC 17.11: the crash-loop box's Restore offer names the snapshot's time
 // in the browser's zone, with no relative text in a button.
-test("the crash-loop Restore offer names the local time", async ({ page, foreman, fakeGame }) => {
+test("the crash-loop Restore offer names the local time", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   test.setTimeout(90_000);
   await createAdmin(page);
   seedWorld(foreman, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
@@ -134,7 +134,7 @@ test("the crash-loop Restore offer names the local time", async ({ page, foreman
 
 // SPEC 17.11: when a finished operation's Done box takes focus, its time is
 // already in the browser's zone; a screen reader reads the box once, on focus.
-test("the Done box shows local time at the moment it takes focus", async ({ page, foreman }) => {
+test("the Done box shows local time at the moment it takes focus", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/?result=1");

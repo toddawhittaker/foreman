@@ -142,7 +142,7 @@ test("a page-size choice sets the page, and Newer and Older walk it both ways", 
   await expect(page.getByLabel("Entries per page")).toHaveValue("50");
 });
 
-test("on a wide screen the filters share one row and the table keeps six fixed columns", async ({ page, foreman }) => {
+test("on a wide screen the filters share one row and the table keeps six fixed columns", { tag: "@looks" }, async ({ page, foreman }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await createAdmin(page);
   seedWorld(foreman);
@@ -201,7 +201,7 @@ test("on a wide screen the filters share one row and the table keeps six fixed c
 });
 
 // Time, user and action stay whole on one line, and the detail takes what is left and wraps.
-test("on a wide screen one long detail does not squeeze the other columns", async ({ page, foreman }) => {
+test("on a wide screen one long detail does not squeeze the other columns", { tag: "@looks" }, async ({ page, foreman }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await createAdmin(page);
   seedWorld(foreman);
@@ -257,7 +257,7 @@ test("on a wide screen one long detail does not squeeze the other columns", asyn
 
 // The table layout holds down to the narrowest container that still gets it, even
 // with the longest user and token names the app allows.
-test("just above the stacking width, long names and a long detail do not scroll the page sideways", async ({ page, foreman }) => {
+test("just above the stacking width, long names and a long detail do not scroll the page sideways", { tag: "@looks" }, async ({ page, foreman }) => {
   await page.setViewportSize({ width: 1000, height: 900 });
   await createAdmin(page);
   seedWorld(foreman);
@@ -277,7 +277,7 @@ test("just above the stacking width, long names and a long detail do not scroll 
 
 // Action labels run long in other languages (German's longest is 52 characters);
 // they wrap between words instead of pushing the table past its container.
-test("just above the stacking width, a long German action label does not scroll the page sideways", async ({ page, foreman, context }) => {
+test("just above the stacking width, a long German action label does not scroll the page sideways", { tag: "@looks" }, async ({ page, foreman, context }) => {
   await page.setViewportSize({ width: 1000, height: 900 });
   await createAdmin(page);
   seedWorld(foreman);
@@ -296,7 +296,7 @@ test("just above the stacking width, a long German action label does not scroll 
   expect(table.right).toBeLessThanOrEqual(table.parent + 1);
 });
 
-test("at 320 px the table stacks each row, with no sideways scroll", async ({ page, foreman }) => {
+test("at 320 px the table stacks each row, with no sideways scroll", { tag: "@looks" }, async ({ page, foreman }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await createAdmin(page);
   seedWorld(foreman);
@@ -418,7 +418,7 @@ test("an action done in the app shows in the log at once", async ({ page }) => {
   await checkPage(page);
 });
 
-test("an empty log says so", async ({ page, foreman }) => {
+test("an empty log says so", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const db = new DatabaseSync(join(foreman.dataDir, "foreman.db"));
   db.exec("DELETE FROM audit_log");

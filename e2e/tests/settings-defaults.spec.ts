@@ -21,7 +21,7 @@ async function setUp(page: Page, f: Foreman, version = "2.1.24") {
   await page.goto("/worlds/base/settings");
 }
 
-test("every unset field shows the game's default, and an untouched form changes nothing", async ({ page, foreman }) => {
+test("every unset field shows the game's default, and an untouched form changes nothing", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman);
   const unset = async (label: string, value: string) => {
     const field = page.getByLabel(label);
@@ -136,7 +136,7 @@ test("clearing a field the file sets removes its key and brings back the default
   await checkPage(page);
 });
 
-test("fork saving carries its note, and the pause-while-joining setting is hidden on 1.1", async ({ page, foreman }) => {
+test("fork saving carries its note, and the pause-while-joining setting is hidden on 1.1", { tag: "@looks" }, async ({ page, foreman }) => {
   await setUp(page, foreman, "1.1.110");
   await page.goto("/worlds/base/settings?section=gameplay");
   await expect(page.getByLabel("Pause the game while a player is joining")).toHaveCount(0);
@@ -153,7 +153,7 @@ test("fork saving carries its note, and the pause-while-joining setting is hidde
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false, viewport: { width: 320, height: 640 } });
 
-  test("the new sections are headed and reachable by their ids", async ({ page, foreman }) => {
+  test("the new sections are headed and reachable by their ids", { tag: "@looks" }, async ({ page, foreman }) => {
     await setUp(page, foreman);
     const sections: [string, string, string][] = [
       ["listing", "listing", "Listing"],
@@ -180,7 +180,7 @@ for (const lang of ["de", "ru"]) {
   test.describe(`${lang} at 320 px and 200% text`, () => {
     test.use({ viewport: { width: 320, height: 640 } });
 
-    test("the form fits and passes axe", async ({ page, foreman }) => {
+    test("the form fits and passes axe", { tag: "@looks" }, async ({ page, foreman }) => {
       await setUp(page, foreman);
       await pickLanguage(page, lang);
       for (const section of ["listing", "players", "gameplay", "saving", "network", "admins", "bans", "whitelist"]) {

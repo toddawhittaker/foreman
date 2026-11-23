@@ -14,7 +14,7 @@ test("the Chat tab sits beside Overview and Console and opens the Chat page", as
   await checkPage(page);
 });
 
-test("the Settings tab leads to General, and from there to the Notifications page", async ({ page }) => {
+test("the Settings tab leads to General, and from there to the Notifications page", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await mainNav(page).getByRole("link", { name: "Settings" }).click();
   await expect(page).toHaveURL("/settings/general");

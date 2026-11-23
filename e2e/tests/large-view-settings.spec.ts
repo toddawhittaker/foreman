@@ -47,7 +47,7 @@ const firstSelect = (page: Page, tab: string, planet: string) =>
 test.describe("on a wide screen", () => {
   test.beforeEach(({ page }) => test.skip(!isWide(page), "the settings show beside the map only where both fit"));
 
-  test("the planet's Resources and Terrain settings sit left of the map, and are the form's own fields", async ({ page }) => {
+  test("the planet's Resources and Terrain settings sit left of the map, and are the form's own fields", { tag: "@looks" }, async ({ page }) => {
     const world = await openNewMap(page);
     const iron = (await firstSelect(page, "resources", "nauvis"))!;
     await openLarge(page, world);
@@ -77,7 +77,7 @@ test.describe("on a wide screen", () => {
     await expect(page.locator(`[id="${iron}"]`)).toHaveCount(1);
   });
 
-  test("a change there redraws the map after the pause, says so, and stays once the view closes", async ({ page }) => {
+  test("a change there redraws the map after the pause, says so, and stays once the view closes", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     const sent: Request[] = [];
     page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
@@ -142,7 +142,7 @@ test.describe("on a wide screen", () => {
 
   // DESIGN 8.8: while a change redraws, the counting's moving bar shows beside the drawing line, and the
   // status line no longer says the last picture was ready.
-  test("a second change hides the last \"ready\" and shows the moving bar until its picture lands", async ({ page }) => {
+  test("a second change hides the last \"ready\" and shows the moving bar until its picture lands", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     // One resource's slider: unlike the All resources row, a change there says nothing of its own.
     const range = page.locator("#large-resources #mg-nauvis-iron-ore-size-range");
@@ -174,7 +174,7 @@ test.describe("on a wide screen", () => {
     await expect(bar).toBeHidden();
   });
 
-  test("a change in the view counts as unsaved, so leaving asks first", async ({ page }) => {
+  test("a change in the view counts as unsaved, so leaving asks first", { tag: "@looks" }, async ({ page }) => {
     const asked: string[] = [];
     page.on("dialog", async (d) => {
       asked.push(d.type());
@@ -192,7 +192,7 @@ test.describe("on a wide screen", () => {
     await expect(page).toHaveURL(newMapPath(world));
   });
 
-  test("another planet viewed brings its own settings", async ({ page }) => {
+  test("another planet viewed brings its own settings", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     const nauvis = (await firstSelect(page, "resources", "nauvis"))!;
     const vulcanus = (await firstSelect(page, "resources", "vulcanus"))!;
@@ -217,7 +217,7 @@ test.describe("on a wide screen", () => {
   });
 
   // A settings redraw on its way when the view opens: the view takes the redrawn fields once it lands, so there is one copy of each.
-  test("opening the view while the settings are redrawn shows the new fields, one copy of each", async ({ page }) => {
+  test("opening the view while the settings are redrawn shows the new fields, one copy of each", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     const sent: Request[] = [];
@@ -261,7 +261,7 @@ test.describe("on a wide screen", () => {
   });
 
   // The page around the dialog is inert, so a warning is said in the view's own status line.
-  test("a warning a change in the view brings is still said", async ({ page }) => {
+  test("a warning a change in the view brings is still said", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     await page.evaluate(() => {
       const seen: string[] = [];
@@ -279,7 +279,7 @@ test.describe("on a wide screen", () => {
   });
 
   // A field that the view hides as it narrows does not keep the focus.
-  test("narrowing the view with a settings field focused moves focus to the map", async ({ page }) => {
+  test("narrowing the view with a settings field focused moves focus to the map", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     const range = panel(page).locator(".step__range").first();
     await range.focus();
@@ -289,7 +289,7 @@ test.describe("on a wide screen", () => {
   });
 
   // SPEC 17.10: looking at a planet in the large view, change its setting and see the new map.
-  test("changing the setting of the planet in the large view takes one click", async ({ page }) => {
+  test("changing the setting of the planet in the large view takes one click", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     const clicks = await countClicks(page);
     await clicks.reset();
@@ -305,7 +305,7 @@ test.describe("on a wide screen", () => {
 
   // DESIGN 8.8: the column's headings read as headings, a step above the fields' names,
   // and the column says that a setting keeps its own keys.
-  test("the settings' headings are set as headings, and the column says a setting keeps its keys", async ({ page }) => {
+  test("the settings' headings are set as headings, and the column says a setting keeps its keys", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     const heading = panel(page).getByRole("heading", { level: 3, name: "Resources" });
     const look = await heading.evaluate((h) => { const s = getComputedStyle(h); return { size: s.fontSize, weight: s.fontWeight }; });
@@ -322,7 +322,7 @@ test.describe("on a wide screen", () => {
 
   // The view is a modal dialog: Tab goes through its controls in the order they are
   // seen, the settings, then the map and the controls over it, and never leaves it.
-  test("Tab moves through the view in order and stays inside it", async ({ page }) => {
+  test("Tab moves through the view in order and stays inside it", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     await expect(frame(page)).toBeFocused();
     // Each stop's place in the document, or -1 when focus is outside the dialog.
@@ -367,7 +367,7 @@ test.describe("on a wide screen", () => {
   });
 
   // DESIGN 7.7, 8.8: Escape closes the open info tip first; the next one closes the view.
-  test("Escape on an info tip in the settings closes the tip, then the view", async ({ page }) => {
+  test("Escape on an info tip in the settings closes the tip, then the view", { tag: "@looks" }, async ({ page }) => {
     await openLarge(page);
     // No Resources or Terrain setting has a tip yet, so Enemy's starting area lends its field.
     await page.evaluate(() => {
@@ -389,7 +389,7 @@ test.describe("on a wide screen", () => {
   });
 });
 
-test("where the settings and the map do not both fit, the view is map only", async ({ page }) => {
+test("where the settings and the map do not both fit, the view is map only", { tag: "@looks" }, async ({ page }) => {
   if (isWide(page)) await page.setViewportSize({ width: 1100, height: 760 });
   await openLarge(page);
   await expect(panel(page)).toBeHidden();

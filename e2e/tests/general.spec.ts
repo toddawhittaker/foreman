@@ -66,7 +66,7 @@ test("a save stores every value and the page shows them again", async ({ page })
   await expect(modLimit(page)).toHaveValue("300");
 });
 
-test("a value outside its range is refused with its error, and nothing is saved", async ({ page }) => {
+test("a value outside its range is refused with its error, and nothing is saved", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/settings/general");
   await retention(page).fill("0");
@@ -120,7 +120,7 @@ test("lowering retention that trims asks first, and Cancel saves nothing", async
   expect(snapshotFolders(foreman)).toHaveLength(4);
 });
 
-test("confirming saves every value and deletes nothing yet", async ({ page, foreman }) => {
+test("confirming saves every value and deletes nothing yet", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedAutomaticSnapshots(foreman, 4);

@@ -99,7 +99,7 @@ async function movedWhileStepping(page: Page) {
 // slider fit beside its name.
 for (const lang of ["en", "de", "ru"]) {
   for (const width of [700, 1280, 1920]) {
-    test(`no slider moves while it is stepped, in ${lang} at ${width} px`, async ({ page }) => {
+    test(`no slider moves while it is stepped, in ${lang} at ${width} px`, { tag: "@looks" }, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       const world = await openNewMap(page);
       if (lang !== "en") await pickLanguage(page, lang);
@@ -120,7 +120,7 @@ for (const lang of ["en", "de", "ru"]) {
 // tabs takes seconds, and all the widths together outran one test's limit.
 for (const lang of ["de", "ru"]) {
   for (let width = 560; width <= 1400; width += 40) {
-    test(`no slider moves while it is stepped, in ${lang} with the map settings ${width} px wide`, async ({ page }) => {
+    test(`no slider moves while it is stepped, in ${lang} with the map settings ${width} px wide`, { tag: "@looks" }, async ({ page }) => {
       await page.setViewportSize({ width: 1920, height: 900 });
       const world = await openNewMap(page);
       await pickLanguage(page, lang);
@@ -138,7 +138,7 @@ for (const lang of ["de", "ru"]) {
 // as a setting leaves it. Their line is kept for them, so nothing under the
 // preset, the setting being moved included, shifts when they come or go.
 for (const lang of ["en", "de"]) {
-  test(`"[modified]" coming and going moves nothing below the preset, in ${lang}`, async ({ page }) => {
+  test(`"[modified]" coming and going moves nothing below the preset, in ${lang}`, { tag: "@looks" }, async ({ page }) => {
     const world = await openNewMap(page);
     if (lang !== "en") await pickLanguage(page, lang);
     for (const width of [320, 480, 700, 1280]) {
@@ -174,7 +174,7 @@ for (const lang of ["en", "de"]) {
 
 // The slider where the row once jumped (Gleba cliffs, Frequency), stepped
 // with the keyboard from its default to each end and back.
-test("a slider stepped with the keyboard keeps its place", async ({ page }) => {
+test("a slider stepped with the keyboard keeps its place", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const world = await openNewMap(page);
   await pickLanguage(page, "de");
@@ -197,7 +197,7 @@ test("a slider stepped with the keyboard keeps its place", async ({ page }) => {
 // The value beside a slider is for the eye: Chrome would read an output as a
 // polite live region, so each step would be spoken twice. The slider's own
 // aria-valuetext carries the words.
-test("a slider's value is not announced, and the slider names its step", async ({ page }) => {
+test("a slider's value is not announced, and the slider names its step", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openNewMap(page);
   const range = page.locator("#mg-nauvis-iron-ore-frequency-range");
@@ -215,7 +215,7 @@ test("a slider's value is not announced, and the slider names its step", async (
 
 // A resource's on/off box is a control: its name keeps full strength while
 // off, and only the settings it turns off grey.
-test("an off box keeps its name at full strength and greys its settings", async ({ page }) => {
+test("an off box keeps its name at full strength and greys its settings", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   const colour = (sel: string) => page.locator(sel).evaluate((el) => getComputedStyle(el).color);
   const text = await page.locator("#map-settings").evaluate((el) => getComputedStyle(el).color);
@@ -311,7 +311,7 @@ async function expectEnds(page: Page) {
   await checkPage(page);
 }
 
-test("each kind of slider reaches the track's ends at its first and last step", async ({ page }) => {
+test("each kind of slider reaches the track's ends at its first and last step", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await expectEnds(page);
 });
@@ -383,7 +383,7 @@ async function expectCentred(page: Page) {
   }
 }
 
-test("each kind of slider has its knob at the track's middle at its default", async ({ page }) => {
+test("each kind of slider has its knob at the track's middle at its default", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await expectCentred(page);
 });
@@ -408,7 +408,7 @@ async function stepPlaces(page: Page, id: string, count: number) {
 
 // One test per kind: walking every step of every kind in one test ran past the timeout under load.
 for (const [t, id] of kinds) {
-  test(`${id} takes one step per key press, and the nearest step to a click`, async ({ page }) => {
+  test(`${id} takes one step per key press, and the nearest step to a click`, { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await openNewMap(page);
     await tab(page, tabNames.en[t]).click();
@@ -468,7 +468,7 @@ for (const [t, id] of kinds) {
 }
 
 // The click-off-a-step check above only runs where steps are far apart, so some kind must have them.
-test("some kind of slider has steps far apart on its track", async ({ page }) => {
+test("some kind of slider has steps far apart on its track", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   let farApart = 0;
   for (const [, id] of kinds) {
@@ -481,7 +481,7 @@ test("some kind of slider has steps far apart on its track", async ({ page }) =>
 // A pointer's turn ends with its release, which a menu or a drag out of the
 // window can lose, and only the main button drags a slider: so a right press,
 // or a press never released, must not make the next key jump to the nearest.
-test("a key moves one step after a right press or a press that was never released", async ({ page }) => {
+test("a key moves one step after a right press or a press that was never released", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openNewMap(page);
   await tab(page, tabNames.en[1]).click();
@@ -500,7 +500,7 @@ test("a key moves one step after a right press or a press that was never release
 
 // PageUp and PageDown move a larger part of the track than an arrow, and
 // still land on a step, going the way of the key.
-test("each kind of slider moves with PageUp and PageDown", async ({ page }) => {
+test("each kind of slider moves with PageUp and PageDown", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openNewMap(page);
   for (const [t, id] of kinds) {
@@ -527,11 +527,11 @@ test.describe("at 200% zoom", () => {
   // Half the CSS pixels across, each drawn as two device pixels.
   test.use({ viewport: { width: 640, height: 450 }, deviceScaleFactor: 2 });
 
-  test("each kind of slider reaches the track's ends at its first and last step", async ({ page }) => {
+  test("each kind of slider reaches the track's ends at its first and last step", { tag: "@looks" }, async ({ page }) => {
     await expectEnds(page);
   });
 
-  test("each kind of slider has its knob at the track's middle at its default", async ({ page }) => {
+  test("each kind of slider has its knob at the track's middle at its default", { tag: "@looks" }, async ({ page }) => {
     await expectCentred(page);
   });
 });

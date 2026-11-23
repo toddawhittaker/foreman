@@ -57,7 +57,7 @@ const ticked = (page: Page) => page.locator('input[name="snap"]:checked');
 
 // SPEC 6.12, 17.2: the tab, a world's page and the confirmation fit at any
 // width, including 320 px.
-test("snapshot pages keep their tables inside the panel", async ({ page, foreman }) => {
+test("snapshot pages keep their tables inside the panel", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await takeSnapshot(page, "A label that is long enough to wrap onto several lines on a phone screen");
@@ -200,7 +200,7 @@ test("the confirmation says which snapshots are already deleted", async ({ page,
 test.describe("in a wide time zone", () => {
   test.use({ timezoneId: "Asia/Kolkata" });
 
-  test("the tables still fit their panel", async ({ page, foreman }) => {
+  test("the tables still fit their panel", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman);
     await takeSnapshot(page, "Wide clock");
@@ -217,7 +217,7 @@ for (const lang of ["de", "ru"]) {
   test.describe(`${lang} at 320 px and 200% text`, () => {
     test.use({ viewport: { width: 320, height: 640 } });
 
-    test("the lists, the selection bar and the confirmation fit and pass axe", async ({ page, foreman }) => {
+    test("the lists, the selection bar and the confirmation fit and pass axe", { tag: "@looks" }, async ({ page, foreman }) => {
       await createAdmin(page);
       seedWorld(foreman);
       await takeSnapshot(page, "A label that is long enough to wrap onto several lines on a phone screen");

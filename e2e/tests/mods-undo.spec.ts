@@ -87,7 +87,7 @@ test("three changes on a stopped world share one snapshot, and undo lists and pu
   expect(modOn(foreman, "fp-b")).toBe(true);
 });
 
-test("after a start and a stop the next change takes a new snapshot, and the undo moves to it", async ({ page, foreman, fakeGame }) => {
+test("after a start and a stop the next change takes a new snapshot, and the undo moves to it", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { mods });
   await change(page, "disable", "fp-a", "Disable 1 mod");
   const [first] = modSnapshots(foreman);

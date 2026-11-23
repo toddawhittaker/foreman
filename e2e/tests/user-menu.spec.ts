@@ -19,7 +19,7 @@ async function tabUntil(page: Page, target: ReturnType<Page["locator"]>, limit =
   await expect(target).toBeFocused();
 }
 
-test("the menu holds the language row, the theme row, About and Sign out, and no settings links", async ({ page }) => {
+test("the menu holds the language row, the theme row, About and Sign out, and no settings links", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);
   await expect(langRow(page)).toHaveAccessibleName("Language English");
@@ -66,7 +66,7 @@ test("flags are present and decorative; screen readers hear the language names",
   await checkPage(page);
 });
 
-test("a language chosen by keyboard returns to the same page", async ({ page, foreman }) => {
+test("a language chosen by keyboard returns to the same page", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/worlds/base?x=1");
@@ -83,7 +83,7 @@ test("a language chosen by keyboard returns to the same page", async ({ page, fo
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
 });
 
-test("Escape folds the language list, then closes the menu, and the menu reopens folded", async ({ page }) => {
+test("Escape folds the language list, then closes the menu, and the menu reopens folded", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   const menu = page.locator("details.menu");
   await openLanguages(page);
@@ -103,7 +103,7 @@ test("Escape folds the language list, then closes the menu, and the menu reopens
   await expect(page.locator("details.menu__langs")).not.toHaveAttribute("open", "");
 });
 
-test("a theme chosen by keyboard returns to the same page; each choice has a name and hover text", async ({ page }) => {
+test("a theme chosen by keyboard returns to the same page; each choice has a name and hover text", { tag: "@looks" }, async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await createAdmin(page);
   await page.goto("/snapshots");
@@ -153,7 +153,7 @@ test("the Settings tab is current on every Foreman settings page, and opens Gene
 
 // No page shows two navigation links with the same name to different places
 // (SPEC 17.1). A link's name is its aria-label when it has one.
-test("no page has two navigation links with one name", async ({ page, foreman }) => {
+test("no page has two navigation links with one name", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   for (const path of ["/", "/worlds/base", "/worlds/base/snapshots", "/worlds/base/settings", "/settings/restart-schedule"]) {
@@ -180,7 +180,7 @@ test("no page has two navigation links with one name", async ({ page, foreman })
 // keeps its four tabs and the menu without widening the page, and the open
 // menu with its language list expanded stays inside the window.
 for (const lang of ["de", "ru"]) {
-  test(`at 320 px and 200% text in ${lang}, the header and the open menu fit`, async ({ page }) => {
+  test(`at 320 px and 200% text in ${lang}, the header and the open menu fit`, { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await createAdmin(page);
     await pickLanguage(page, lang);
@@ -224,7 +224,7 @@ test.describe("without JavaScript", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "ru");
   });
 
-  test("the theme row changes the theme, back on the same page", async ({ page }) => {
+  test("the theme row changes the theme, back on the same page", { tag: "@looks" }, async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await createAdmin(page);
     await page.goto("/worlds");

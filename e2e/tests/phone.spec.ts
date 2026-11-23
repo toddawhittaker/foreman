@@ -28,7 +28,7 @@ async function running(page: Page, f: Foreman, g: FakeGame) {
 // Below 64rem the four tabs share one row of the header and the menu sits
 // level with the logo; from 64rem the tabs are a column in the rail, and the
 // logo and the menu share the status strip's row (DESIGN 6, Shell).
-test("the header keeps every tab on one row and the menu beside the logo", async ({ page }) => {
+test("the header keeps every tab on one row and the menu beside the logo", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   const tabs = page.getByRole("navigation", { name: "Main" }).getByRole("link");
   await expect(tabs).toHaveCount(4);
@@ -60,7 +60,7 @@ test("the header keeps every tab on one row and the menu beside the logo", async
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
-  test("the Server page puts its controls first, and Force stop weighs less than Stop", async ({ page, foreman, fakeGame }) => {
+  test("the Server page puts its controls first, and Force stop weighs less than Stop", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!);
 
     // The heading with the state, then the controls, the facts and the players (DESIGN 6).
@@ -93,7 +93,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
   });
 
-  test("a running operation shows each step on one row, under the controls heading", async ({ page, foreman, fakeGame }) => {
+  test("a running operation shows each step on one row, under the controls heading", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!);
     await page.getByRole("link", { name: "Stop server" }).click();
     await page.getByLabel("Countdown in seconds").fill("60");
@@ -116,7 +116,7 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running", live);
   });
 
-  test("the console's command field sits under the game log, with the reply under it", async ({ page, foreman, fakeGame }) => {
+  test("the console's command field sits under the game log, with the reply under it", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!);
     await page.getByRole("navigation", { name: "Server pages" }).getByRole("link", { name: "Console" }).click();
 
@@ -156,7 +156,7 @@ test.describe("with the fake game", () => {
 test.describe("a world in the list", () => {
   test.use({ timezoneId: "UTC" });
 
-  test("is compact at 320 px, with Switch beside its name", async ({ page, foreman }) => {
+  test("is compact at 320 px, with Switch beside its name", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman);
     seedSecond(foreman, { playedAt: new Date("2016-12-29T22:59:00Z") });
@@ -191,7 +191,7 @@ test.describe("a world in the list", () => {
   });
 });
 
-test("a long world name wraps beside Switch without widening the page", async ({ page, foreman }) => {
+test("a long world name wraps beside Switch without widening the page", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman);

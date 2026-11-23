@@ -32,7 +32,7 @@ test.describe("with the fake game", () => {
 
   // Headings go h1, then h2, never h3 straight after the h1, even while an
   // operation shows its step list.
-  test("the headings during an operation do not skip a level", async ({ page, foreman, fakeGame }) => {
+  test("the headings during an operation do not skip a level", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await started(page, foreman, fakeGame!);
     await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
     await expect(page.locator("#pr-alice")).toBeVisible(live);
@@ -50,7 +50,7 @@ test.describe("with the fake game", () => {
 
 // Tab from the last item of the open menu moves on and closes the menu, so
 // the control that takes focus is not behind the panel (WCAG 2.4.11).
-test("tabbing out of the user menu closes it and leaves the focus visible", async ({ page, foreman }) => {
+test("tabbing out of the user menu closes it and leaves the focus visible", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/");
@@ -71,7 +71,7 @@ test("tabbing out of the user menu closes it and leaves the focus visible", asyn
 });
 
 // The other ways to close still work after the focus rule is added.
-test("Escape returns focus to the menu button and a click outside closes the menu", async ({ page, foreman }) => {
+test("Escape returns focus to the menu button and a click outside closes the menu", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/");

@@ -27,7 +27,7 @@ async function expectNoAddress(page: import("@playwright/test").Page) {
 test.describe("with a secret key", () => {
   test.use({ foremanEnv: { FOREMAN_SECRET_KEY: key } });
 
-  test("add, edit and delete a Discord webhook", async ({ page, foreman }) => {
+  test("add, edit and delete a Discord webhook", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     await openNotifications(page);
     await expect(page.locator("#notify-empty")).toContainText("No webhooks yet.");
@@ -123,7 +123,7 @@ test.describe("with a secret key", () => {
     expect(foreman.logs()).not.toContain(token);
   });
 
-  test("a refused address is not shown back and must be typed again", async ({ page, foreman }) => {
+  test("a refused address is not shown back and must be typed again", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     await page.goto("/settings/notifications/new");
     await page.getByLabel("Webhook address").fill(`ftp://discord.com/api/webhooks/42/${token}`);
@@ -196,7 +196,7 @@ test.describe("with a secret key", () => {
     }
   });
 
-  test("an http:// address is accepted with a note that it is unencrypted", async ({ page, foreman }) => {
+  test("an http:// address is accepted with a note that it is unencrypted", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     await page.goto("/settings/notifications/new");
     const field = page.getByLabel("Webhook address");

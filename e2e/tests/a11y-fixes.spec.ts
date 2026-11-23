@@ -29,7 +29,7 @@ async function stopWithAlice(page: Page, f: Foreman, g: FakeGame) {
 test.describe("stop countdown", () => {
   test.use({ fakeGameOn: true });
 
-  test("the time left counts down in place, and the buttons stay put", async ({ page, foreman, fakeGame }) => {
+  test("the time left counts down in place, and the buttons stay put", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await stopWithAlice(page, foreman, fakeGame!);
 
     // The text changes each second without the step or its list being replaced.
@@ -57,7 +57,7 @@ test.describe("stop countdown", () => {
     await expect(badge(page)).toHaveText("Running");
   });
 
-  test("at 320 px and 200% text, each step's name stays readable", async ({ page, foreman, fakeGame }) => {
+  test("at 320 px and 200% text, each step's name stays readable", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await stopWithAlice(page, foreman, fakeGame!);
     await page.evaluate(() => {

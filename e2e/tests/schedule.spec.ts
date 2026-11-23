@@ -60,7 +60,7 @@ test("change the time, zone and limit, then turn it off", async ({ page }) => {
   await checkPage(page);
 });
 
-test("a wrong limit is refused with its error, and nothing is saved", async ({ page }) => {
+test("a wrong limit is refused with its error, and nothing is saved", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/settings/restart-schedule");
   await page.getByLabel("Wait for players to leave for up to").fill("13");

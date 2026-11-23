@@ -15,7 +15,7 @@ async function takeSnapshot(page: Page, label: string) {
 
 // SPEC 17.4: Select all automatic reloads the page, so it says what it ticked
 // and puts focus on that line.
-test("Select all automatic says what it ticked and moves focus to it", async ({ page, foreman }) => {
+test("Select all automatic says what it ticked and moves focus to it", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman); // not active, so a restore ends on its Snapshots page
@@ -48,7 +48,7 @@ test("Select all automatic says what it ticked and moves focus to it", async ({ 
 
 // DESIGN 8.3, WCAG 2.4.3: Delete selected is one Shift+Tab from the first box,
 // however long the list, and is still drawn at the list's foot, after its rows.
-test("Delete selected is one Shift+Tab from the first box", async ({ page, foreman }) => {
+test("Delete selected is one Shift+Tab from the first box", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman);
@@ -87,7 +87,7 @@ test("Delete selected is one Shift+Tab from the first box", async ({ page, forem
 
 // DESIGN 8.3, 8.4: past 50 snapshots the list ends with "Show older"; the
 // selection bar is drawn between the last row and that link.
-test("the selection bar sits between the rows and Show older", async ({ page, foreman }) => {
+test("the selection bar sits between the rows and Show older", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   seedSecond(foreman);
@@ -154,7 +154,7 @@ test.describe("at 320 px and 200% text", () => {
     await expect(page.getByRole("cell")).not.toHaveCount(0);
   }
 
-  test("the Snapshots tab and a world's snapshots page fit", async ({ page, foreman }) => {
+  test("the Snapshots tab and a world's snapshots page fit", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman);
     seedSecond(foreman);

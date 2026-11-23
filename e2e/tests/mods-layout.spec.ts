@@ -8,7 +8,7 @@ import type { Page } from "@playwright/test";
 // this in both themes; a phone holds the plan as a bar at the foot instead.
 test.use({ fakeGameOn: true });
 
-test("the sticking Plan card stays on top of the cards under it", async ({ page, foreman }, info) => {
+test("the sticking Plan card stays on top of the cards under it", { tag: "@looks" }, async ({ page, foreman }, info) => {
   test.skip(info.project.name.startsWith("phone"), "the plan is a bar at the foot on a phone");
   await createAdmin(page);
   seedWorld(foreman, { mods: { other: "2.1", b: "2.1", c: "2.1" } });
@@ -50,7 +50,7 @@ test("the sticking Plan card stays on top of the cards under it", async ({ page,
 // DESIGN 8.11, WCAG 1.3.2 and 2.4.3: the cards' markup order is the order
 // they are seen in, on a phone and on a wide screen, so focus follows it.
 for (const width of [390, 1280]) {
-  test(`at ${width} px the Mods cards are seen in their markup order`, async ({ page, foreman }) => {
+  test(`at ${width} px the Mods cards are seen in their markup order`, { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman, { mods: { other: "2.1", b: "2.1", c: "2.1" } });
     await page.setViewportSize({ width, height: 800 });
@@ -107,7 +107,7 @@ test.describe("a long plan on a wide screen", () => {
     await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { other: "2.0" } });
   });
 
-  test("the card holds to the window, its list scrolls by keyboard, newest first, and no focused control is behind it", async ({ page }) => {
+  test("the card holds to the window, its list scrolls by keyboard, newest first, and no focused control is behind it", { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 600 });
     await page.goto("/worlds/base/mods");
     await page.getByLabel("Mod name").fill("fp-cap");
@@ -177,7 +177,7 @@ test.describe("a long plan on a wide screen", () => {
 
   // Hand-test bug: the card showed a second scrollbar of its own beside the
   // list's, which did nothing. Only the list scrolls, with one pick and with many.
-  test("only the list scrolls, never the card itself", async ({ page }) => {
+  test("only the list scrolls, never the card itself", { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/worlds/base/mods");
     await page.getByLabel("Mod name").fill("fp-cap");
@@ -193,7 +193,7 @@ test.describe("a long plan on a wide screen", () => {
     expect(await cardScrolls()).toBe(false);
   });
 
-  test("in a window too short for the card, it does not stick and Review is still reached", async ({ page }) => {
+  test("in a window too short for the card, it does not stick and Review is still reached", { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 420 });
     await page.goto("/worlds/base/mods");
     await page.getByLabel("Mod name").fill("fp-cap");

@@ -7,7 +7,7 @@ import type { Page } from "@playwright/test";
 
 const phone = (page: Page) => (page.viewportSize()?.width ?? 1000) <= 320;
 
-test("the logo links home, is decorative, and is sharp on a 2x screen", async ({ page, foreman }) => {
+test("the logo links home, is decorative, and is sharp on a 2x screen", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/worlds");
@@ -29,7 +29,7 @@ test("the logo links home, is decorative, and is sharp on a 2x screen", async ({
   await checkPage(page);
 });
 
-test("at 200% text the header still fits without sideways scroll", async ({ page, foreman }) => {
+test("at 200% text the header still fits without sideways scroll", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/");
@@ -46,7 +46,7 @@ test("at 200% text the header still fits without sideways scroll", async ({ page
 
 // SPEC 22.2, DESIGN 6: the menu holds the language row, the theme row and
 // Sign out, and opens and closes from the keyboard.
-test("the user menu shows who is signed in, the languages and Sign out", async ({ page }) => {
+test("the user menu shows who is signed in, the languages and Sign out", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   const menu = page.locator("details.menu");
   await expect(menu.locator(":scope > summary")).toHaveText(/admin\s+English/);
@@ -86,7 +86,7 @@ test("the user menu shows who is signed in, the languages and Sign out", async (
 test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("the menu opens and changes the language", async ({ page }) => {
+  test("the menu opens and changes the language", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/setup");
     await page.locator("details.menu > summary").click();
     await page.locator("details.menu__langs > summary").click();
@@ -99,7 +99,7 @@ test.describe("without JavaScript", () => {
 // DESIGN 6, User menu: the panel is sized for its rows, not its button, so
 // every language's name keeps one line and the theme buttons sit inside it,
 // on a wide screen and at 390 px.
-test("the user menu panel holds its rows on one line at 1920 and 390 px", async ({ page }) => {
+test("the user menu panel holds its rows on one line at 1920 and 390 px", { tag: "@looks" }, async ({ page }) => {
   test.skip(test.info().project.name.startsWith("phone"), "the widths are set here on desktop");
   await createAdmin(page);
   for (const width of [1920, 390]) {

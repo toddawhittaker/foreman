@@ -42,7 +42,7 @@ test.describe("a save's mod the portal does not have", () => {
     await setUpModsWorld(page, foreman, fakeGame!, world21);
   });
 
-  test("the plan offers upload first, with its zip field, and continue without", async ({ page }) => {
+  test("the plan offers upload first, with its zip field, and continue without", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/worlds/base/mods");
     await openModTools(page);
     await page.getByRole("link", { name: "Match mods to the save" }).click();
@@ -61,7 +61,7 @@ test.describe("a save's mod the portal does not have", () => {
     await page.screenshot({ path: `../screenshots/mods-plan-unresolved-${test.info().project.name}.png`, fullPage: true });
   });
 
-  test("continue without: the box is required, and a post without it is a field error", async ({ page, foreman }) => {
+  test("continue without: the box is required, and a post without it is a field error", { tag: "@looks" }, async ({ page, foreman }) => {
     await page.goto(syncPlan);
     await page.getByLabel("Continue without foreman-test").check();
     const apply = page.locator("#act-apply");
@@ -95,7 +95,7 @@ test.describe("a save's mod the portal does not have", () => {
     await expect(modsTable(page).getByRole("row", { name: /foreman-test/ })).toHaveCount(0);
   });
 
-  test("an uploaded zip answers the choice in the plan, and is installed", async ({ page, foreman }) => {
+  test("an uploaded zip answers the choice in the plan, and is installed", { tag: "@looks" }, async ({ page, foreman }) => {
     await page.goto(syncPlan);
     const form = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });
     await form.getByLabel("Zip of foreman-test 0.1.0", { exact: true }).setInputFiles({ name: "foreman-test_0.1.0.zip", mimeType: "application/zip", buffer: testModZip() });
@@ -111,7 +111,7 @@ test.describe("a save's mod the portal does not have", () => {
     await expect(modsTable(page).getByRole("row", { name: /foreman-test/ })).not.toContainText("Disabled");
   });
 
-  test("a zip of another mod is refused where it was sent, and the choice is kept", async ({ page }) => {
+  test("a zip of another mod is refused where it was sent, and the choice is kept", { tag: "@looks" }, async ({ page }) => {
     await page.goto(syncPlan);
     const other = makeZip({ "other_1.0.0/info.json": JSON.stringify({ name: "other", version: "1.0.0", factorio_version: "2.1" }) });
     const form = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });
@@ -125,7 +125,7 @@ test.describe("a save's mod the portal does not have", () => {
 
   // DESIGN 7.2: a refused zip is in the error summary, which takes focus, and
   // its link leads to the zip field inside the mod's own group.
-  test("a refused zip gets an error summary with focus on it", async ({ page }) => {
+  test("a refused zip gets an error summary with focus on it", { tag: "@looks" }, async ({ page }) => {
     await page.goto(syncPlan);
     const form = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });
     await form.getByLabel("Zip of foreman-test 0.1.0", { exact: true }).setInputFiles({ name: "junk.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
@@ -140,7 +140,7 @@ test.describe("a save's mod the portal does not have", () => {
 
   // WCAG 4.1.3: a choice redraws the plan in place; the new plan is announced
   // and focus stays on the choice, whose id follows the mod.
-  test("a choice redraws the plan, says so, and keeps focus on the choice", async ({ page }) => {
+  test("a choice redraws the plan, says so, and keeps focus on the choice", { tag: "@looks" }, async ({ page }) => {
     await page.goto(syncPlan);
     // The confirmation box is there only once "continue without" is chosen.
     await expect(page.locator("#mod-foreman-test-confirm")).toHaveCount(0);
@@ -160,7 +160,7 @@ test.describe("a save's mod the portal does not have", () => {
 });
 
 // A refused zip comes back with every other answer on the plan still given.
-test("a refused zip keeps the other mods' answers", async ({ page, foreman, fakeGame }) => {
+test("a refused zip keeps the other mods' answers", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   // This 2.0 world lacks the save's built-in recycler as well as foreman-test.
   await setUpModsWorld(page, foreman, fakeGame!, world20);
   await page.goto(syncPlan);
@@ -177,7 +177,7 @@ test("a refused zip keeps the other mods' answers", async ({ page, foreman, fake
   await expect(group.getByLabel("Upload the zip of foreman-test 0.1.0")).toBeChecked();
 });
 
-test("the nearest release is one of three choices, and it is downloaded and installed", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("the nearest release is one of three choices, and it is downloaded and installed", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   // The portal has no foreman-test 0.1.0; 0.9.0 is the lowest release above it for Factorio 2.0.
   await fakePortal!.add("foreman-test", "0.9.0", ["base >= 2.0"]);
   await fakePortal!.add("foreman-test", "1.1.0", ["base >= 2.0"]);
@@ -224,7 +224,7 @@ test("in a 2.1 world the nearest release is the next one up on the 2.1 line", as
 
 // A redraw that finds a conflict answers 200 so htmx swaps it in, and the
 // conflict is announced.
-test("ticking an optional mod that conflicts shows the conflict", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("ticking an optional mod that conflicts shows the conflict", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
   await portal.add("fp-conf", "1.0.0", ["base >= 2.0", "! fp-other"]);
   await portal.add("fp-main", "1.0.0", ["base >= 2.0", "? fp-conf"]);

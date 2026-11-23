@@ -74,7 +74,7 @@ test.describe("with script", () => {
     await setUp(page, foreman, fakeGame!);
   });
 
-  test("draws Nauvis on load, keeps the seed it used, and names that seed beside the heading", async ({ page }) => {
+  test("draws Nauvis on load, keeps the seed it used, and names that seed beside the heading", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
@@ -102,7 +102,7 @@ test.describe("with script", () => {
     await checkPage(page);
   });
 
-  test("typing a seed sends one request after the pause, and older replies are dropped", async ({ page }) => {
+  test("typing a seed sends one request after the pause, and older replies are dropped", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
@@ -150,7 +150,7 @@ test.describe("with script", () => {
     return seed;
   }
 
-  test("a seed box with focus is not written when the preview returns, so typing is not appended to", async ({ page }) => {
+  test("a seed box with focus is not written when the preview returns, so typing is not appended to", { tag: "@looks" }, async ({ page }) => {
     const seed = await clearSeedHoldingPreview(page);
     await expect(pictures(page)).toHaveCount(1);
     await page.keyboard.type("777");
@@ -160,7 +160,7 @@ test.describe("with script", () => {
     await expect(seed).toHaveValue("777");
   });
 
-  test("an empty seed box that had focus gets the previewed seed when it loses focus", async ({ page }) => {
+  test("an empty seed box that had focus gets the previewed seed when it loses focus", { tag: "@looks" }, async ({ page }) => {
     const seed = await clearSeedHoldingPreview(page);
     await expect(pictures(page)).toHaveCount(1);
     await expect(seed).toHaveValue("");
@@ -169,7 +169,7 @@ test.describe("with script", () => {
     await expect(pictures(page)).toHaveAccessibleName(new RegExp(`seed ${await seed.inputValue()}\\.`));
   });
 
-  test("a change mid-run drops the running request; the newest one wins", async ({ page, fakeGame }) => {
+  test("a change mid-run drops the running request; the newest one wins", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     await fakeGame!.call("/preview-mode", { mode: "slow" });
@@ -192,7 +192,7 @@ test.describe("with script", () => {
 
   // DESIGN 8.8: a redraw shows the counting's moving bar on the drawing line, and only while it runs; the line
   // keeps its height, so nothing under it moves.
-  test("a redraw shows the moving bar beside its words until the picture lands", async ({ page, fakeGame }) => {
+  test("a redraw shows the moving bar beside its words until the picture lands", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const line = page.locator("#preview-status");
@@ -218,7 +218,7 @@ test.describe("with script", () => {
     await expect(bar).toBeHidden();
   });
 
-  test("with reduced motion a redraw shows its words but no moving bar", async ({ page, fakeGame }) => {
+  test("with reduced motion a redraw shows its words but no moving bar", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
@@ -240,7 +240,7 @@ test.describe("with script", () => {
     await expect.poll(() => sent.length).toBe(1);
   });
 
-  test("opening a planet's settings draws only that planet, and going back reuses the stored picture", async ({ page, fakeGame }) => {
+  test("opening a planet's settings draws only that planet, and going back reuses the stored picture", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
@@ -262,7 +262,7 @@ test.describe("with script", () => {
 
   // SPEC 5.6, DESIGN 8.8: one large map of the planet being edited, or every
   // planet as thumbnails, one click each way; the choice holds as settings change.
-  test("All planets draws every planet small, and One planet goes back to the open planet", async ({ page, fakeGame }) => {
+  test("All planets draws every planet small, and One planet goes back to the open planet", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
@@ -353,7 +353,7 @@ test.describe("with script", () => {
 
   // DESIGN 8.8: a Preview map that lands while the large view is open shows
   // its own picture and download there, not the older section's.
-  test("a Preview map reply that lands under the open large view shows there", async ({ page }) => {
+  test("a Preview map reply that lands under the open large view shows there", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
     let release = () => {};
@@ -386,7 +386,7 @@ test.describe("with script", () => {
     await expect(dialog).toBeVisible();
   });
 
-  test("a world with one planet offers no choice", async ({ page }) => {
+  test("a world with one planet offers no choice", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page, { step1: (p) => p.getByLabel("Space Age is on").uncheck() });
     await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(0);
     await expect(pictures(page)).toHaveCount(1);
@@ -397,7 +397,7 @@ test.describe("with script", () => {
   // and a select on a phone; steps of one change send one request after the
   // pause; the picture is drawn at the size; and the size survives a form
   // that comes back with an error.
-  test("the preview size redraws once after the pause and is kept over an error", async ({ page }) => {
+  test("the preview size redraws once after the pause and is kept over an error", { tag: "@looks" }, async ({ page }) => {
     // From 68.75rem the preview is a narrow column beside the settings, and
     // a narrow column has the select (DESIGN 8.6, 8.7); below it the preview
     // spans the panel, which is the wide panel this test means.
@@ -457,7 +457,7 @@ test.describe("with script", () => {
 
   // DESIGN 8.8: in All planets, cards side by side share their heights, so
   // pictures, captions and download links line up, with territories off or on.
-  test("All planets cards in a row line up, with territories off and on", async ({ page }, info) => {
+  test("All planets cards in a row line up, with territories off and on", { tag: "@looks" }, async ({ page }, info) => {
     test.skip(info.project.name.startsWith("phone"), "one card to a row on a phone");
     await page.setViewportSize({ width: 1920, height: 950 });
     await openNewMap(page);
@@ -494,7 +494,7 @@ test.describe("with script", () => {
   // DESIGN 8.8: the large view's header keeps one height on every planet of the map,
   // so paging with the arrow keys never moves the planet controls.
   for (const width of [1920, 390]) {
-    test(`paging planets in the large view keeps the controls still at ${width} px`, async ({ page }, info) => {
+    test(`paging planets in the large view keeps the controls still at ${width} px`, { tag: "@looks" }, async ({ page }, info) => {
       // About seventeen 1.5 s samples of stillness take 28 s on a quiet machine,
       // too close to the 30 s default for a loaded one.
       test.slow();
@@ -552,7 +552,7 @@ test.describe("with script", () => {
   // DESIGN 8.8: nothing in the map's column scrolls while the map fits, and the
   // amounts list sits last in the settings column, out of the header.
   for (const [width, height] of [[2000, 1005], [1920, 950], [1440, 780]] as const) {
-    test(`the large view's map column has no scroll bar at ${width}x${height}`, async ({ page }, info) => {
+    test(`the large view's map column has no scroll bar at ${width}x${height}`, { tag: "@looks" }, async ({ page }, info) => {
       test.skip(info.project.name.startsWith("phone"), "a desktop layout");
       await page.setViewportSize({ width, height });
       await openNewMap(page);
@@ -580,7 +580,7 @@ test.describe("with script", () => {
     });
   }
 
-  test("the large view works by keyboard alone at 320 px", async ({ page }) => {
+  test("the large view works by keyboard alone at 320 px", { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await openNewMap(page);
     await expect(pictures(page)).toHaveCount(1);
@@ -637,7 +637,7 @@ test.describe("with script", () => {
     await expect(section(page).getByRole("link", { name: /Map preview of Vulcanus/ })).toBeFocused();
   });
 
-  test("downloads one planet as a PNG and every drawn planet as a zip", async ({ page }) => {
+  test("downloads one planet as a PNG and every drawn planet as a zip", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page, { name: "Mega base" });
     await expect(pictures(page)).toHaveCount(1);
     const seed = await page.locator("#generate-seed").inputValue();
@@ -662,7 +662,7 @@ test.describe("with script", () => {
   // line or wrap onto a second, and the zip link has its own below; none of them overlap, and the rows stay
   // inside the picture's box so the zip link is never laid over them, with the resource amounts on or off.
   for (const [name, size] of [["a wide window", { width: 1920, height: 1000 }], ["a short wide window", { width: 1800, height: 720 }], ["a narrow desktop", { width: 1100, height: 800 }], ["the project's window", null]] as const) {
-    test(`the real-game button, its info and the download links never overlap in ${name}`, async ({ page }) => {
+    test(`the real-game button, its info and the download links never overlap in ${name}`, { tag: "@looks" }, async ({ page }) => {
       if (size) await page.setViewportSize(size);
       await openNewMap(page, { name: "Mega base" });
       await expect(pictures(page)).toHaveCount(1);
@@ -677,7 +677,7 @@ test.describe("with script", () => {
   // DESIGN 7.7: each (i) tip in the preview opens wholly inside the window, is not clipped by the pane or
   // its card, and opening it adds no scroll bar to any box around it nor moves its button.
   for (const [name, size] of [["a wide window", { width: 1920, height: 950 }], ["the project's window", null]] as const) {
-    test(`the preview's info tips stay on screen and add no scroll bar in ${name}`, async ({ page }) => {
+    test(`the preview's info tips stay on screen and add no scroll bar in ${name}`, { tag: "@looks" }, async ({ page }) => {
       if (size) await page.setViewportSize(size);
       await openNewMap(page, { name: "Mega base" });
       await expect(pictures(page)).toHaveCount(1);
@@ -721,7 +721,7 @@ test.describe("with script", () => {
   // The same in every language (the language cookie, as the menu sets it): the longest texts wrap, they never
   // run into each other. Layout does not follow the theme, so one theme at each width keeps the run short.
   for (const lang of ["en", "de", "es", "fr", "pl", "ru", "cs", "zh-Hans"]) {
-    test(`the real-game button, its info and the download links never overlap in ${lang}`, async ({ page }, info) => {
+    test(`the real-game button, its info and the download links never overlap in ${lang}`, { tag: "@looks" }, async ({ page }, info) => {
       test.skip(!["phone-dark", "desktop-light"].includes(info.project.name), "one theme at each width");
       await page.context().addCookies([{ name: "foreman_lang", value: lang, url: page.url() }]);
       await openNewMap(page);
@@ -750,7 +750,7 @@ test.describe("with script", () => {
 });
 
 // Enter in a text field presses Save map settings, never the hidden preset reset.
-test("Enter in a text field saves the map settings with the changed settings", async ({ page, foreman, fakeGame }) => {
+test("Enter in a text field saves the map settings with the changed settings", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
@@ -779,7 +779,7 @@ test("Enter in a text field saves the map settings with the changed settings", a
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("Preview map shows every planet and a link opens the picture", async ({ page, foreman, fakeGame }) => {
+  test("Preview map shows every planet and a link opens the picture", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await openNewMap(page);
     await expect(section(page)).toHaveCount(0);
@@ -796,7 +796,7 @@ test.describe("without script", () => {
 
 // The preview's text is in American English: nothing says "centre". The size
 // hint wraps at DESIGN's 60ch hint width, so its line count is not checked.
-test("the preview's words are spelled the American way", async ({ page, foreman, fakeGame }) => {
+test("the preview's words are spelled the American way", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);

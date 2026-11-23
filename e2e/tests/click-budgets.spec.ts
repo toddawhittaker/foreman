@@ -359,7 +359,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
 
   const world = { version: version20, fixture: "2.0.77-no-space-age.zip" };
 
-  test("search for a mod and install it: 4 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("search for a mod and install it: 4 clicks", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
     const g = fakeGame!;
     await fakePortal!.add("fp-signs", "1.0.0", ["base >= 2.0"]);
     await setUpModsWorld(page, foreman, g, world);
@@ -380,7 +380,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
   });
 
   // A second mod from the same search joins the plan with its own +: one more click, still one snapshot and one restart.
-  test("search for two mods and install both: 5 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("search for two mods and install both: 5 clicks", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
     const g = fakeGame!;
     await fakePortal!.add("fp-signs", "1.0.0", ["base >= 2.0"]);
     await fakePortal!.add("fp-signs-extra", "1.0.0", ["base >= 2.0"]);
@@ -426,7 +426,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
   });
 
   // SPEC 9.6: Mods, Edit mod settings, the setting, then Save and restart.
-  test("change a startup mod setting: 4 clicks", async ({ page, foreman, fakeGame }) => {
+  test("change a startup mod setting: 4 clicks", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUpModsWorld(page, foreman, g, { ...world, mods: { fmtest: "2.0" } });
     const clicks = await countClicks(page);

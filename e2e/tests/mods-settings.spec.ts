@@ -43,7 +43,7 @@ async function openEditor(page: Page) {
 test.describe("edit mod settings", () => {
   // SPEC 14.6: a mod's rich text keeps a safe subset (bold, named colours,
   // object names, line breaks), written the way Muluna writes it.
-  test("a mod's rich text shows bold, colour, object names and line breaks, never its markup", async ({ page, foreman, fakeGame }) => {
+  test("a mod's rich text shows bold, colour, object names and line breaks, never its markup", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const rich = [
       "[mod-setting-name]",
       "fm-sta-bool=[color=red][font=heading-2]Hard[/font][/color] Restrict Crusher recipe to Muluna",
@@ -170,7 +170,7 @@ test.describe("edit mod settings", () => {
     await expect(page.getByRole("link", { name: "Undo this mod change" })).toBeVisible();
   });
 
-  test("a value out of range is refused next to its field, and nothing is written", async ({ page, foreman, fakeGame }) => {
+  test("a value out of range is refused next to its field, and nothing is written", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await openEditor(page);
     await page.getByLabel("Startup integer").fill("42");
@@ -188,7 +188,7 @@ test.describe("edit mod settings", () => {
     await expect(field).toBeFocused();
   });
 
-  test("in German the summary marks the English setting name as English", async ({ page, foreman, fakeGame }) => {
+  test("in German the summary marks the English setting name as English", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await page.context().addCookies([{ name: "foreman_lang", value: "de", url: foreman.url }]);
     await page.goto("/worlds/base/mods/settings");
@@ -217,7 +217,7 @@ test.describe("edit mod settings", () => {
     }
   });
 
-  test("at phone width the form is one column with no sideways scroll", async ({ page, foreman, fakeGame }) => {
+  test("at phone width the form is one column with no sideways scroll", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await setUp(page, foreman, fakeGame!);
     await page.goto("/worlds/base/mods/settings");

@@ -86,7 +86,7 @@ test.describe("with the fake game", () => {
     expect(foreman.logs()).not.toMatch(/"level":"ERROR"/);
   });
 
-  test("a stopped world switches and, unticked, stays stopped", async ({ page, foreman, fakeGame }) => {
+  test("a stopped world switches and, unticked, stays stopped", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     const before = await creates(g);
@@ -181,7 +181,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("table")).toContainText("Before start anyway");
   });
 
-  test("a failure after the new world is active offers a switch back", async ({ page, foreman, fakeGame }) => {
+  test("a failure after the new world is active offers a switch back", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     await startBase(page);
@@ -206,7 +206,7 @@ test.describe("with the fake game", () => {
 
   // DESIGN 5: when a live update takes away the control that had focus,
   // focus goes to the section's heading, not the top of the page.
-  test("focus moves to the heading when a switch takes the buttons away", async ({ page, foreman, fakeGame }) => {
+  test("focus moves to the heading when a switch takes the buttons away", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     await startBase(page);

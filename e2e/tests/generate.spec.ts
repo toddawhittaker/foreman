@@ -52,7 +52,7 @@ async function save(page: Page) {
   await expect(page.locator("#world-ready")).toBeVisible();
 }
 
-test("a world with the defaults takes three clicks from the Server page and lands on its mods", async ({ page, foreman, fakeGame }) => {
+test("a world with the defaults takes three clicks from the Server page and lands on its mods", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const clicks = await countClicks(page);
   await clicks.reset();
@@ -92,7 +92,7 @@ test("a blank seed is filled with a random one", async ({ page, foreman, fakeGam
   expect(Number.isInteger(seed) && seed >= 0 && seed <= 4294967295).toBe(true);
 });
 
-test("a map exchange string fills the settings, and a bad one is refused on the form", async ({ page, foreman, fakeGame }) => {
+test("a map exchange string fills the settings, and a bad one is refused on the form", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "From a string" });
   await page.getByText("Fill from a map exchange string").click();
@@ -131,7 +131,7 @@ test("a map exchange string fills the settings, and a bad one is refused on the 
 });
 
 // SPEC 5.6: any change writes both files in full and passes no preset.
-test("a changed setting writes both files and no preset", async ({ page, foreman, fakeGame }) => {
+test("a changed setting writes both files and no preset", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "Custom one" });
   await tab(page, "Advanced").click();
@@ -145,7 +145,7 @@ test("a changed setting writes both files and no preset", async ({ page, foreman
   expect(worldJSON(foreman.dataDir, id).new_map.preset ?? "").toBe("");
 });
 
-test("errors name the field, keep what was typed and make nothing", async ({ page, foreman, fakeGame }) => {
+test("errors name the field, keep what was typed and make nothing", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
   await page.getByLabel("World name").fill("base"); // the name of the active world
@@ -178,7 +178,7 @@ test("a seed error names the field, keeps what was typed and saves nothing", asy
   expect(worldJSON(foreman.dataDir, id).new_map).toEqual(before);
 });
 
-test("a long world name fits at any width", async ({ page, foreman, fakeGame }) => {
+test("a long world name fits at any width", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
   const name = "A very long world name ".repeat(3).trim().slice(0, 60);
@@ -192,7 +192,7 @@ test("a long world name fits at any width", async ({ page, foreman, fakeGame }) 
 // without scrolling, and where the window is tall enough the whole pane fits
 // between the top strip and the action bar, the picture shrinking to the room left.
 for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
-  test(`the preview pane keeps Preview size in reach at ${width}x${height}`, async ({ page, foreman, fakeGame }, info) => {
+  test(`the preview pane keeps Preview size in reach at ${width}x${height}`, { tag: "@looks" }, async ({ page, foreman, fakeGame }, info) => {
     test.skip(info.project.name.startsWith("phone"), "a desktop layout");
     await page.setViewportSize({ width, height });
     await setUp(page, foreman, fakeGame!);
@@ -241,7 +241,7 @@ for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
 
 // DESIGN 8.6: side-by-side fields share label, hint and control rows, so a
 // control lines up with its neighbour's even when only one has a hint.
-test("paired fields line up their controls on a wide screen", async ({ page, foreman, fakeGame }) => {
+test("paired fields line up their controls on a wide screen", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   test.skip(test.info().project.name.startsWith("phone"), "a phone project emulates a phone; the widths are set here on desktop");
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
@@ -257,7 +257,7 @@ test("paired fields line up their controls on a wide screen", async ({ page, for
   }
 });
 
-test("the preset and seed line up their controls on a wide screen", async ({ page, foreman, fakeGame }) => {
+test("the preset and seed line up their controls on a wide screen", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   test.skip(test.info().project.name.startsWith("phone"), "a phone project emulates a phone; the widths are set here on desktop");
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
@@ -274,7 +274,7 @@ test("the preset and seed line up their controls on a wide screen", async ({ pag
 });
 
 // SPEC 5.6: step 1 refuses Space Age on a game line without it, on the field.
-test("Space Age is refused for 1.1 on step 1, and the fixed form makes the world", async ({ page, foreman, fakeGame }) => {
+test("Space Age is refused for 1.1 on step 1, and the fixed form makes the world", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
   await (await typedVersion(page)).fill("1.1.110");
@@ -303,7 +303,7 @@ test("a world's presets and map key follow its game line", async ({ page, forema
 });
 
 // SPEC 5.6, DESIGN 8.7: 1.1's file holds three choices the later lines lack.
-test("1.1 offers recipe, technology and research queue choices; 2.1 does not", async ({ page, foreman, fakeGame }) => {
+test("1.1 offers recipe, technology and research queue choices; 2.1 does not", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page, { name: "Two one" });
   await tab(page, "Advanced").click();
@@ -369,7 +369,7 @@ test.describe("map preview", () => {
     await save(page);
   });
 
-  test("a world without Space Age lays out Nauvis alone, and its preview has one picture", async ({ page }) => {
+  test("a world without Space Age lays out Nauvis alone, and its preview has one picture", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page, { name: "Plain preview", step1: (p) => p.getByLabel("Space Age is on").uncheck() });
     await expect(page.locator("#panel-resources details")).toHaveCount(0);
     await page.getByRole("button", { name: "Preview map" }).click();
@@ -377,7 +377,7 @@ test.describe("map preview", () => {
     await save(page);
   });
 
-  test("a game that fails says so, and the save still works", async ({ page, fakeGame }) => {
+  test("a game that fails says so, and the save still works", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await fakeGame!.call("/preview-mode", { mode: "fail" });
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(page.locator("#preview .message--error")).toContainText("The game could not make the map preview. You can still generate the world.");
@@ -387,7 +387,7 @@ test.describe("map preview", () => {
   });
 
   // Step 3 keeps its form as typed; the preview slot lists the problems, each linked to its field (SPEC 5.6).
-  test("a bad form keeps the form and lists its errors in the preview", async ({ page }) => {
+  test("a bad form keeps the form and lists its errors in the preview", { tag: "@looks" }, async ({ page }) => {
     await page.locator("#generate-seed").fill("not a number");
     await page.getByRole("button", { name: "Preview map" }).click();
     const preview = page.locator("#preview");
@@ -441,7 +441,7 @@ test.describe("coming back to the map settings", () => {
     expect(new URLSearchParams((await drawn).postData() ?? "").has("ms.pollution.enabled")).toBe(false);
   });
 
-  test("a preset chosen on the earlier visit is not put back, so the first save makes the map shown", async ({ page, foreman }) => {
+  test("a preset chosen on the earlier visit is not put back, so the first save makes the map shown", { tag: "@looks" }, async ({ page, foreman }) => {
     await page.locator("#generate-preset").selectOption({ label: "Ribbon world" });
     await expect(page.locator("#mg-nauvis-iron-ore-size")).not.toHaveValue("100");
     await page.goto("/");
@@ -462,7 +462,7 @@ test.describe("the preview keeps focus and says what happened", () => {
     id = await openNewMap(page, { name: "Focus" });
   });
 
-  test("focus stays on Preview map while it runs and after the pictures arrive", async ({ page }) => {
+  test("focus stays on Preview map while it runs and after the pictures arrive", { tag: "@looks" }, async ({ page }) => {
     const button = page.getByRole("button", { name: "Preview map" });
     // The answer is held back for a moment, so the busy state can be seen.
     await page.route("**/generate/preview", async (route) => {
@@ -498,7 +498,7 @@ test.describe("the preview keeps focus and says what happened", () => {
     await expect(page.locator("#world-ready")).toHaveCount(0);
   });
 
-  test("an old error summary is dropped, and the preview is still announced", async ({ page }) => {
+  test("an old error summary is dropped, and the preview is still announced", { tag: "@looks" }, async ({ page }) => {
     await page.locator("#generate-seed").fill("not a number");
     await page.getByRole("button", { name: "Finish" }).click();
     await expect(page.locator("#error-summary")).toBeFocused();
@@ -519,7 +519,7 @@ test.describe("the preview keeps focus and says what happened", () => {
     await expect(page.locator("#announcer")).not.toContainText("Map preview ready.");
   });
 
-  test("a failed request writes a sentence in the preview and the announcer", async ({ page }) => {
+  test("a failed request writes a sentence in the preview and the announcer", { tag: "@looks" }, async ({ page }) => {
     const button = page.getByRole("button", { name: "Preview map" });
     await page.route("**/generate/preview", (route) => route.fulfill({ status: 500, body: "boom" }));
     await button.focus();
@@ -543,7 +543,7 @@ test.describe("the preview keeps focus and says what happened", () => {
 });
 
 // SPEC 17.3: the map settings can be saved with the keyboard alone.
-test("a preset with a seed is saved with the keyboard alone, previewing first", async ({ page, foreman, fakeGame }) => {
+test("a preset with a seed is saved with the keyboard alone, previewing first", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "Keys only" });
   await tabTo(page, page.locator("#generate-preset"));
@@ -566,7 +566,7 @@ test("a preset with a seed is saved with the keyboard alone, previewing first", 
 
 // DESIGN 8.7: choosing a preset fills the tabs with its values, in the game's
 // own words for terrain controls; left unchanged it is passed as the preset.
-test("a preset fills the tabs and words terrain as the game does", async ({ page, foreman, fakeGame }) => {
+test("a preset fills the tabs and words terrain as the game does", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "Rail" });
   await page.locator("#generate-preset").selectOption({ label: "Rail world" });
@@ -595,7 +595,7 @@ test("a preset fills the tabs and words terrain as the game does", async ({ page
 
 // SPEC 17.3: a preset change refills the settings in place, so nothing is
 // read out over the select that is reading its new option.
-test("choosing a preset announces nothing", async ({ page, foreman, fakeGame }) => {
+test("choosing a preset announces nothing", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
   // Step 3 announces its own arrival and its first picture (SPEC 17.19); only what the preset says is looked at.
@@ -610,7 +610,7 @@ test("choosing a preset announces nothing", async ({ page, foreman, fakeGame }) 
 
 // The version choice is the first thing on the form; its text must show the
 // version at 320 px, in every language (SPEC 22.7).
-test("the version choice is not cut off at 320 px", async ({ page, foreman, fakeGame }) => {
+test("the version choice is not cut off at 320 px", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
@@ -637,7 +637,7 @@ test.describe("the map settings tabs", () => {
     await openNewMap(page, { name: "Bad" });
   });
 
-  test("show one panel at a time, and the arrow keys move between them", async ({ page }) => {
+  test("show one panel at a time, and the arrow keys move between them", { tag: "@looks" }, async ({ page }) => {
     const panels = ["resources", "terrain", "enemy", "advanced"];
     const shown = async () => {
       const out: string[] = [];
@@ -658,7 +658,7 @@ test.describe("the map settings tabs", () => {
     await checkPage(page);
   });
 
-  test("an error in a hidden tab is reached from the summary", async ({ page }) => {
+  test("an error in a hidden tab is reached from the summary", { tag: "@looks" }, async ({ page }) => {
     await tab(page, "Enemy").click();
     await page.getByLabel("Time factor").fill("fast");
     await tab(page, "Resources").click();
@@ -675,7 +675,7 @@ test.describe("the map settings tabs", () => {
 
 // DESIGN 8.7: sliders over the game's steps on a wide panel, selects of the
 // same steps on a narrow one; each shows its value in words.
-test("steps are sliders on a wide panel and selects on a phone", async ({ page, foreman, fakeGame }) => {
+test("steps are sliders on a wide panel and selects on a phone", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
   await openPlanetRow(page);
@@ -709,7 +709,7 @@ test("steps are sliders on a wide panel and selects on a phone", async ({ page, 
 // SPEC 5.6: the Terrain tab's map type and scales, and a resource's on/off
 // box, as the game's map generator has them. Off writes size 0, the game's
 // own off value; map type and scales go into property_expression_names.
-test("a resource switched off, a map type, a scale and a bias reach the file", async ({ page, foreman, fakeGame }) => {
+test("a resource switched off, a map type, a scale and a bias reach the file", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page, { name: "Dry island" });
   await openPlanetRow(page);
@@ -823,7 +823,7 @@ test("Random seed fills a seed the game takes", async ({ page, foreman, fakeGame
 
 // SPEC 5.6: a warning beside a setting as soon as it turns
 // achievements off, and one summary by the save button.
-test("settings that turn achievements off are warned of at once", async ({ page, foreman, fakeGame }) => {
+test("settings that turn achievements off are warned of at once", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
   const summary = page.locator("#ach-summary");
@@ -851,7 +851,7 @@ test("settings that turn achievements off are warned of at once", async ({ page,
 });
 
 // At 320 px and 200% text, the settings still fit and keep their selects.
-test("at 320 px and 200% text the settings fit", async ({ page, foreman, fakeGame }) => {
+test("at 320 px and 200% text the settings fit", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
@@ -871,7 +871,7 @@ test("at 320 px and 200% text the settings fit", async ({ page, foreman, fakeGam
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("the tabs stack, and a new preset is filled before the settings are saved", async ({ page, foreman, fakeGame }) => {
+  test("the tabs stack, and a new preset is filled before the settings are saved", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     const id = await openNewMap(page, { name: "Hard" });
     for (const p of ["resources", "terrain", "enemy", "advanced"]) await expect(page.locator(`#panel-${p}`)).toBeVisible();
@@ -903,7 +903,7 @@ for (const [name, size, axis] of [
   ["a wide screen", { width: 1280, height: 800 }, "x"],
   ["a phone", { width: 360, height: 740 }, "y"],
 ] as const) {
-  test(`the action bar's buttons follow their Tab order on ${name}`, async ({ page, foreman, fakeGame }) => {
+  test(`the action bar's buttons follow their Tab order on ${name}`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await page.setViewportSize(size);
     await setUp(page, foreman, fakeGame!);
     await openNewMap(page);
@@ -929,7 +929,7 @@ for (const [name, size, axis] of [
 // in the dark scheme too (STATUS recorded 1.11:1 by axe).
 test.describe("the Generate world button in forced colours", () => {
   test.use({ colorScheme: "dark" });
-  test("keeps its contrast", async ({ page, foreman, fakeGame }) => {
+  test("keeps its contrast", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await page.goto("/generate");
     await page.emulateMedia({ forcedColors: "active", colorScheme: "dark" });

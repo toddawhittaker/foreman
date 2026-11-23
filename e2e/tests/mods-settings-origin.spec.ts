@@ -44,7 +44,7 @@ async function setUp(page: Page, foreman: { dataDir: string }, fakeGame: Paramet
 
 const group = (page: Page, title: string) => page.locator("fieldset.mod-settings-group").filter({ has: page.locator("legend", { hasText: title }) });
 
-test("a library mod says who requires it, linked to that mod's group; the parent says nothing", async ({ page, foreman, fakeGame }) => {
+test("a library mod says who requires it, linked to that mod's group; the parent says nothing", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!, ["fmtest"]);
   await page.goto("/worlds/base/mods/settings");
   await expect(page.getByLabel("Startup integer")).toBeVisible(live);
@@ -68,7 +68,7 @@ test("a library mod says who requires it, linked to that mod's group; the parent
 
 // DESIGN 8.11: the parent names look like links in both themes, and several of
 // them wrapped on a phone keep a target of 24 px each that do not overlap.
-test("the parent links are underlined and keep their tap targets at 320 px", async ({ page, foreman, fakeGame }) => {
+test("the parent links are underlined and keep their tap targets at 320 px", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!, ["fmtest"]);
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto("/worlds/base/mods/settings");

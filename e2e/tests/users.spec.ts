@@ -35,7 +35,7 @@ async function signIn(page: Page, name: string, password: string) {
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-test("the tab lists users and deletes another one, signing them out", async ({ page, foreman, browser }) => {
+test("the tab lists users and deletes another one, signing them out", { tag: "@looks" }, async ({ page, foreman, browser }) => {
   await createAdmin(page);
   addPasswordUser(foreman, "bob");
   sql(foreman, "INSERT INTO users (username, password_hash, role, created_at) SELECT 'carol', '', 'admin', created_at + 1 FROM users WHERE username = 'admin'");
@@ -79,7 +79,7 @@ test("the tab lists users and deletes another one, signing them out", async ({ p
   await checkPage(page);
 });
 
-test("change your own password: refusals, then success signs out other browsers", async ({ page, foreman, browser }) => {
+test("change your own password: refusals, then success signs out other browsers", { tag: "@looks" }, async ({ page, foreman, browser }) => {
   await createAdmin(page);
   const other = await browser.newContext({ baseURL: foreman.url });
   const otherPage = await other.newPage();

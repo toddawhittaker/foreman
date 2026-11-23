@@ -42,7 +42,7 @@ async function copyAndRead(page: Page, scope: Locator, field: Locator) {
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(await field.inputValue());
 }
 
-test("a generated world offers its string and copies it", async ({ page, foreman, context }) => {
+test("a generated world offers its string and copies it", { tag: "@looks" }, async ({ page, foreman, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await createAdmin(page);
   seedWorld(foreman, { version: version20, fixture: "2.0.77-no-space-age.zip" });
@@ -71,7 +71,7 @@ test("an imported world gives the game's own string from its save", async ({ pag
   await checkPage(page);
 });
 
-test("a random seed uses the save, and with no save there is no button and the page says why", async ({ page, foreman }) => {
+test("a random seed uses the save, and with no save there is no button and the page says why", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, { version: version20, fixture: "2.0.77-no-space-age.zip" });
   const base = join(foreman.dataDir, "worlds", "base");
@@ -95,7 +95,7 @@ test("a random seed uses the save, and with no save there is no button and the p
   await page.screenshot({ path: `../screenshots/x2-world-off-${test.info().project.name}.png`, fullPage: true });
 });
 
-test("a favorite offers its string, and one without map settings says why", async ({ page, foreman, context }) => {
+test("a favorite offers its string, and one without map settings says why", { tag: "@looks" }, async ({ page, foreman, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await createAdmin(page);
   seedFavorite(foreman.dataDir, favID, "With map", true);
@@ -122,7 +122,7 @@ test("a favorite offers its string, and one without map settings says why", asyn
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("the string is a read-only field to select, on the world and the favorite", async ({ page, foreman }) => {
+  test("the string is a read-only field to select, on the world and the favorite", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman, { version: version20, fixture: "2.0.77-no-space-age.zip" });
     seedFavorite(foreman.dataDir, favID, "With map", true);
@@ -144,7 +144,7 @@ test.describe("without script", () => {
 // SPEC 17.2, 22.7: German and Russian run long; the string breaks in its field and the buttons keep their words.
 const exchangeWords = { de: ["Code zum Kartenaustausch", "Code zum Kartenaustausch kopieren"], ru: ["Строка обмена карты", "Скопировать строку обмена карты"] } as const;
 for (const lang of ["de", "ru"] as const) {
-  test(`at 320 px and 200% text in ${lang}, the world and favorites pages fit`, async ({ page, foreman }) => {
+  test(`at 320 px and 200% text in ${lang}, the world and favorites pages fit`, { tag: "@looks" }, async ({ page, foreman }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await createAdmin(page);
     seedWorld(foreman, { version: version20, fixture: "2.0.77-no-space-age.zip" });

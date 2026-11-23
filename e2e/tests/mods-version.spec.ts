@@ -12,7 +12,7 @@ const world = { version: version20, fixture: "2.0.77-no-space-age.zip" };
 const modsFile = (dataDir: string, file: string) => join(dataDir, "worlds", "base", "mods", file);
 const shot = (page: Page, name: string) => page.screenshot({ path: `../screenshots/${name}-${test.info().project.name}.png`, fullPage: true });
 
-test("the plan lists the line's releases, newest that fits first, and an older one redraws the plan", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("the plan lists the line's releases, newest that fits first, and an older one redraws the plan", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
   await portal.add("fp-ver-lib", "1.0.0");
   await portal.add("fp-ver-lib", "2.0.0");
@@ -84,7 +84,7 @@ test("a late redraw does not undo a newer version choice", async ({ page, forema
 });
 
 // Clicks from the Mods tab: Change version, the version, Change 1 mod (SPEC 17.10).
-test("Change version goes back after a bad update, with a snapshot first", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("Change version goes back after a bad update, with a snapshot first", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
   await portal.add("fp-back", "1.0.0", ["base >= 2.0"]);
   await portal.add("fp-back", "1.1.0", ["base >= 2.0"]);
@@ -152,7 +152,7 @@ test("a version the portal has not got is a conflict with no apply button", asyn
 // different release exists, so nothing appears and then slides away under a
 // thumb. A mod with one release on the line, or one the portal lacks, never
 // gets it; a mod with another release gets it when the status arrives.
-test("Change version appears with the status, only for a mod with another release", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("Change version appears with the status, only for a mod with another release", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-two", "1.0.0", ["base >= 2.0"]);
   await fakePortal!.add("fp-two", "1.1.0", ["base >= 2.0"]);
   await fakePortal!.add("fp-solo", "1.0.0", ["base >= 2.0"]);
@@ -187,7 +187,7 @@ test("Change version appears with the status, only for a mod with another releas
 
 // SPEC 17: at 320 px and 200% text a row with every action keeps each one
 // inside its panel, and the page does not scroll sideways.
-test("a row with every action fits at large text", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("a row with every action fits at large text", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const long = "fp-a-rather-long-mod-name-for-the-row";
   await fakePortal!.add(long, "1.0.0", ["base >= 2.0"]);
   await fakePortal!.add(long, "1.10.0", ["base >= 2.0"]);

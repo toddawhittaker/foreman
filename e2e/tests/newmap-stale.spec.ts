@@ -53,7 +53,7 @@ test("a removed planet mod refuses the first start and links to the map settings
   await expect(stateBadge(page)).toHaveText("Running", live);
 });
 
-test("a planet mod still installed starts", async ({ page, foreman, fakeGame }) => {
+test("a planet mod still installed starts", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { mods: { "fake-planet": "2.1" } });
   makeUnfinished(foreman);
   saveMapSettings(foreman, ["iron-ore", "fake-ore"]);

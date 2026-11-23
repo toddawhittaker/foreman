@@ -32,7 +32,7 @@ const marker = (d: Locator) =>
 
 // The projects run each test in both themes.
 {
-  test("a lone foldout has no line above, stacked planets do, and the marker is muted and turns", async ({ page }) => {
+  test("a lone foldout has no line above, stacked planets do, and the marker is muted and turns", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/generate");
     expect(await topLine(lone(page))).toBe("0px");
 
@@ -63,7 +63,7 @@ const marker = (d: Locator) =>
 
 // DESIGN 7.8: Emergency actions is as quiet as any foldout, a step smaller;
 // only its opened area is red.
-test("Emergency actions is a quiet foldout whose opened area is red", async ({ page }) => {
+test("Emergency actions is a quiet foldout whose opened area is red", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto("/design");
   const e = page.locator("details.emergency").first();
@@ -78,7 +78,7 @@ test("Emergency actions is a quiet foldout whose opened area is red", async ({ p
 });
 
 for (const lang of ["de", "ru"]) {
-  test(`at 320 px and 200% text in ${lang}, Generate's foldouts fit`, async ({ page }) => {
+  test(`at 320 px and 200% text in ${lang}, Generate's foldouts fit`, { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await pickLanguage(page, lang);
     await page.goto("/generate");
@@ -90,7 +90,7 @@ for (const lang of ["de", "ru"]) {
     await checkPage(page);
   });
 
-  test(`at 320 px and 200% text in ${lang}, the map settings' foldouts fit`, async ({ page }) => {
+  test(`at 320 px and 200% text in ${lang}, the map settings' foldouts fit`, { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await pickLanguage(page, lang);
     await openNewMap(page);
@@ -106,13 +106,13 @@ for (const lang of ["de", "ru"]) {
 test.describe("on a touch screen", () => {
   test.use({ hasTouch: true, isMobile: true });
 
-  test("foldout rows are 44 px tall", async ({ page }) => {
+  test("foldout rows are 44 px tall", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/generate");
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
     expect((await lone(page).locator("> summary").boundingBox())!.height).toBeGreaterThanOrEqual(44);
   });
 
-  test("planet foldout rows are 44 px tall", async ({ page }) => {
+  test("planet foldout rows are 44 px tall", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
     for (const d of [planet(page, "nauvis"), planet(page, "gleba")]) {

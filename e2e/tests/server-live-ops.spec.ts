@@ -45,7 +45,7 @@ async function schedule(page: Page, time: string, limitHours: number) {
   expect(resp.status()).toBe(303);
 }
 
-test("make an online player admin in two clicks, then undo it in one more", async ({ page, foreman, fakeGame }) => {
+test("make an online player admin in two clicks, then undo it in one more", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await running(page, foreman, fakeGame!, ["alice"]);
   await checkPage(page);
   const clicks = await countClicks(page);
@@ -114,7 +114,7 @@ test("kick and ban confirm and come back to the Server page, three clicks each",
   expect((await commands(fakeGame!)).some((c) => c.startsWith("/ban bob"))).toBe(true);
 });
 
-test("an open player row stays open and keeps focus while the list updates, and focus goes to the heading when the player leaves", async ({
+test("an open player row stays open and keeps focus while the list updates, and focus goes to the heading when the player leaves", { tag: "@looks" }, async ({
   page,
   foreman,
   fakeGame,
@@ -139,7 +139,7 @@ test("an open player row stays open and keeps focus while the list updates, and 
 // The longest words are Russian and German (docs/I18N.md): an open row, its
 // admin mark and its buttons still fit 320 px at 200% text.
 for (const lang of ["ru", "de"]) {
-  test(`${lang}: an open player row and the next restart fit 320 px at 200% text`, async ({ page, foreman, fakeGame }) => {
+  test(`${lang}: an open player row and the next restart fit 320 px at 200% text`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!, ["alice"]);
     // The schedule's fact holds a time with its age inside a button face.
     await schedule(page, "04:00", 1);
@@ -215,7 +215,7 @@ test("a start refused because the port is in use says so", async ({ page, forema
   await checkPage(page);
 });
 
-test("the next scheduled restart shows while the game runs, as a time still to come", async ({ page, foreman, fakeGame }) => {
+test("the next scheduled restart shows while the game runs, as a time still to come", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await running(page, foreman, fakeGame!);
   await schedule(page, "04:00", 1);
   await page.goto("/");

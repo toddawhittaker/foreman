@@ -53,7 +53,7 @@ function holdTerritories(page: Page) {
   };
 }
 
-test("the box shows only beside Vulcanus on a Space Age world, and is off", async ({ page }) => {
+test("the box shows only beside Vulcanus on a Space Age world, and is off", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await expect(box(page)).toHaveCount(0);
@@ -77,7 +77,7 @@ test("the box shows only beside Vulcanus on a Space Age world, and is off", asyn
   await expect(box(page)).toHaveCount(0);
 });
 
-test("ticked, the territories come after the picture, over it and in words under it", async ({ page }) => {
+test("ticked, the territories come after the picture, over it and in words under it", { tag: "@looks" }, async ({ page }) => {
   await vulcanus(page);
   const hold = holdTerritories(page);
   await hold.start();
@@ -127,7 +127,7 @@ test("ticked, the territories come after the picture, over it and in words under
   await expect(list(page)).toHaveCount(0);
 });
 
-test("the labels' white text and dark ring meet the contrast needed", async ({ page }) => {
+test("the labels' white text and dark ring meet the contrast needed", { tag: "@looks" }, async ({ page }) => {
   await vulcanus(page);
   await box(page).check();
   await expect(list(page)).toHaveText(counts);
@@ -158,7 +158,7 @@ test("the download link draws the territories in while the box is ticked", async
   await expect(link).toHaveAttribute("href", /\/vulcanus\/download$/);
 });
 
-test("the large view shows the same overlay, aligned under zoom", async ({ page }) => {
+test("the large view shows the same overlay, aligned under zoom", { tag: "@looks" }, async ({ page }) => {
   await vulcanus(page);
   await box(page).check();
   await expect(list(page)).toHaveText(counts);
@@ -237,7 +237,7 @@ test("looking at another planet drops the territory request", async ({ page }) =
   await expect(list(page)).toHaveText(counts);
 });
 
-test("a failed request says so and offers to try again", async ({ page }) => {
+test("a failed request says so and offers to try again", { tag: "@looks" }, async ({ page }) => {
   await vulcanus(page);
   await page.route(territoryURL, (r) => r.fulfill({ status: 500, body: "" }));
   await box(page).check();
@@ -285,7 +285,7 @@ async function openLarge(page: Page) {
   await expect(page.locator("#large-view")).toBeVisible();
 }
 
-test("the large view's box unticks and ticks the overlay, and the page's box matches", async ({ page }) => {
+test("the large view's box unticks and ticks the overlay, and the page's box matches", { tag: "@looks" }, async ({ page }) => {
   await vulcanus(page);
   await box(page).check();
   await expect(list(page)).toHaveText(counts);
@@ -383,7 +383,7 @@ test("with every planet shown, the large view's box follows the planet viewed", 
   await expect(overlay(page)).toHaveCount(0);
 });
 
-test("the large view's box is reached and worked by keyboard, with focus shown", async ({ page }) => {
+test("the large view's box is reached and worked by keyboard, with focus shown", { tag: "@looks" }, async ({ page }) => {
   await vulcanus(page);
   await section(page).getByRole("link", { name: /opens the large view/ }).focus();
   await page.keyboard.press("Enter");
@@ -424,7 +424,7 @@ test("the large view's box is disabled while Vulcanus is drawn, then works", asy
   await expect(largeBox(page)).toBeEnabled();
 });
 
-test("a failed request in the large view is said there", async ({ page }) => {
+test("a failed request in the large view is said there", { tag: "@looks" }, async ({ page }) => {
   await vulcanus(page);
   await openLarge(page);
   await page.route(territoryURL, (r) => r.fulfill({ status: 500, body: "" }));
@@ -449,7 +449,7 @@ test("a failed request in the large view is said there", async ({ page }) => {
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 320, height: 640 }, hasTouch: true });
 
-  test("the large view's box is a 44 px target and fits at 320 px, at 200% text too", async ({ page }) => {
+  test("the large view's box is a 44 px target and fits at 320 px, at 200% text too", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await page.locator("#mg-resources-vulcanus").evaluate((d) => ((d as HTMLDetailsElement).open = true));

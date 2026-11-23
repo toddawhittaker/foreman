@@ -10,7 +10,7 @@ test.use({ fakeGameOn: true });
 const worldJSON = (dataDir: string, id: string) => JSON.parse(readFileSync(join(dataDir, "worlds", id, "world.json"), "utf8"));
 const savesOf = (dataDir: string, id: string) => readdirSync(join(dataDir, "worlds", id, "saves"));
 
-test("clones the active world and keeps its save, in three clicks from the Server page", async ({ page, foreman, fakeGame }) => {
+test("clones the active world and keeps its save, in three clicks from the Server page", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman, { spaceAge: true });
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -43,7 +43,7 @@ test("clones the active world and keeps its save, in three clicks from the Serve
   expect(existsSync(join(foreman.dataDir, "worlds", "base-copy", "config", "rconpw"))).toBe(false);
 });
 
-test("a fresh map has no save and a random seed", async ({ page, foreman, fakeGame }) => {
+test("a fresh map has no save and a random seed", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -61,7 +61,7 @@ test("a fresh map has no save and a random seed", async ({ page, foreman, fakeGa
 });
 
 // SPEC 17.3: Clone can be done with the keyboard alone, choosing the map by arrow keys.
-test("a fresh-map clone is made with the keyboard alone", async ({ page, foreman, fakeGame }) => {
+test("a fresh-map clone is made with the keyboard alone", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -110,7 +110,7 @@ test("a world without a save offers only a fresh map, as text", async ({ page, f
   expect(worldJSON(foreman.dataDir, "base-copy").new_map.seed).toBeGreaterThanOrEqual(0);
 });
 
-test("a long world name is cut to fit the copy's name and the page fits at any width", async ({ page, foreman }) => {
+test("a long world name is cut to fit the copy's name and the page fits at any width", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   const long = "Family base with a very long name ".repeat(3).trim().slice(0, 98);

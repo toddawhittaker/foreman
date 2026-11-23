@@ -41,7 +41,7 @@ test.describe("the plan changes between the page and the post", () => {
     expect(existsSync(join(modsDir(foreman), "fp-late_1.0.0.zip"))).toBe(true);
   });
 
-  test("another install lands in between: the plan changed, nothing is applied", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("another install lands in between: the plan changed, nothing is applied", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
     const portal = fakePortal!;
     await portal.add("fp-late", "1.0.0", ["base >= 2.0"]);
     await portal.add("fp-first", "1.0.0", ["base >= 2.0"]);
@@ -185,7 +185,7 @@ test.describe("a download fails", () => {
 test.describe("retrying a failed mod change", () => {
   test.use({ portalAccountOn: true });
 
-  test("Try again opens the same plan, and installing it works: 2 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("Try again opens the same plan, and installing it works: 2 clicks", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
     const portal = fakePortal!;
     await portal.add("fp-bad", "1.0.0", ["base >= 2.0"]);
     await setUpModsWorld(page, foreman, fakeGame!, { ...world, start: true });

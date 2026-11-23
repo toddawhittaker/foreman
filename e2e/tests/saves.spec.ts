@@ -74,7 +74,7 @@ test("saves page lists a world's saves, newest first", async ({ page, foreman })
   await checkPage(page);
 });
 
-test("a world with no saves says so and still offers the upload", async ({ page, foreman }) => {
+test("a world with no saves says so and still offers the upload", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "empty", { name: "Empty" }, []);
   await page.goto("/worlds/empty/saves");
@@ -99,7 +99,7 @@ test("a save downloads with the same bytes", async ({ page, foreman }) => {
   expect(readFileSync(await download.path()).equals(oldSave)).toBe(true);
 });
 
-test("an uploaded save appears, is kept byte for byte, and loads as the newest", async ({ page, foreman }) => {
+test("an uploaded save appears, is kept byte for byte, and loads as the newest", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedTwoSaves(foreman);
   await page.goto("/worlds/family-base/saves");
@@ -119,7 +119,7 @@ test("an uploaded save appears, is kept byte for byte, and loads as the newest",
   await checkPage(page);
 });
 
-test("a duplicate name is refused and the save is untouched", async ({ page, foreman }) => {
+test("a duplicate name is refused and the save is untouched", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedTwoSaves(foreman);
   await page.goto("/worlds/family-base/saves");
@@ -185,7 +185,7 @@ test.describe("the server's checks on a posted save", () => {
 // SPEC 7.11: one list of saves; each row that does not load next has a
 // "Load next" button, so an older save is one click away, and the newest
 // row's button goes back to the newest save.
-test("choosing which save loads is kept, and going back to the newest clears it", async ({ page, foreman }) => {
+test("choosing which save loads is kept, and going back to the newest clears it", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedTwoSaves(foreman);
   await page.goto("/worlds/family-base/saves");
@@ -219,7 +219,7 @@ test("choosing which save loads is kept, and going back to the newest clears it"
 // Without JavaScript the row buttons are plain form posts.
 test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
-  test("a row's Load next still chooses the save", async ({ page, foreman }) => {
+  test("a row's Load next still chooses the save", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     const dir = seedTwoSaves(foreman);
     await page.goto("/worlds/family-base/saves");
@@ -256,7 +256,7 @@ test("a world a newer Foreman wrote can be downloaded from but not changed", asy
   await checkPage(page);
 });
 
-test("a long list ends in Show older", async ({ page, foreman }) => {
+test("a long list ends in Show older", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const saves: SeedSave[] = [];
   for (let i = 0; i < 52; i++) {
@@ -277,7 +277,7 @@ test("a long list ends in Show older", async ({ page, foreman }) => {
 });
 
 // DESIGN 6, "The 320 px rules": a long save name wraps instead of widening the page.
-test("a very long save name wraps in the table", async ({ page, foreman }) => {
+test("a very long save name wraps in the table", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const name = "autosave-with-a-very-long-name-".repeat(4) + ".zip";
   const older = "older-" + name;
@@ -293,7 +293,7 @@ test("a very long save name wraps in the table", async ({ page, foreman }) => {
 
 // SPEC 17.12: at 200% text on a phone the rows stack, keep their table
 // roles, and the Load next button stays inside its panel.
-test("at large text the rows stack and keep their roles", async ({ page, foreman }) => {
+test("at large text the rows stack and keep their roles", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedTwoSaves(foreman);
   await page.goto("/worlds/family-base/saves");
@@ -309,7 +309,7 @@ test("at large text the rows stack and keep their roles", async ({ page, foreman
 });
 
 // DESIGN 7.3: the success and note kinds are drawn, not left as plain text.
-test("success and note messages have their own colours", async ({ page, foreman }) => {
+test("success and note messages have their own colours", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedTwoSaves(foreman, { load_save: "gone.zip" });
   await page.goto("/worlds/family-base/saves");
@@ -329,7 +329,7 @@ test("success and note messages have their own colours", async ({ page, foreman 
 
 // DESIGN 7.2: a save that vanished between showing the page and choosing it
 // is refused in words above the list, and the summary leads to that error.
-test("choosing a save that has since gone is refused in words", async ({ page, foreman }) => {
+test("choosing a save that has since gone is refused in words", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedTwoSaves(foreman);
   await page.goto("/worlds/family-base/saves");
@@ -349,7 +349,7 @@ test("choosing a save that has since gone is refused in words", async ({ page, f
 
 // DESIGN 8.3: the Load next buttons share one column, so they line up
 // whatever the lengths of the names.
-test("the Load next buttons line up when names differ in length", async ({ page, foreman }) => {
+test("the Load next buttons line up when names differ in length", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "aligned", { name: "Aligned" }, [
     { name: "a.zip", content: oldSave, at: "2026-11-01T09:00:00Z" },
@@ -366,7 +366,7 @@ test("the Load next buttons line up when names differ in length", async ({ page,
 // the whole row without a sideways scroll.
 test.describe("at phone width", () => {
   test.use({ viewport: { width: 320, height: 700 } });
-  test("the table with its button column fits", async ({ page, foreman }) => {
+  test("the table with its button column fits", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedTwoSaves(foreman);
     await page.goto("/worlds/family-base/saves");
@@ -379,7 +379,7 @@ test.describe("at phone width", () => {
 
   // A world a newer Foreman wrote has no button column, so the time stays
   // beside the name under its own header.
-  test("a newer world's rows keep their time beside the name", async ({ page, foreman }) => {
+  test("a newer world's rows keep their time beside the name", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedTwoSaves(foreman, { format_version: 9 });
     await page.goto("/worlds/family-base/saves");
@@ -427,7 +427,7 @@ test("autosaves show the world's name and time, newest first, and keep the file 
   await checkPage(page);
 });
 
-test("an autosave downloads under the world's name and its save time", async ({ page, foreman }) => {
+test("an autosave downloads under the world's name and its save time", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedAutosaves(foreman);
   await page.goto("/worlds/family-base/saves");
@@ -440,7 +440,7 @@ test("an autosave downloads under the world's name and its save time", async ({ 
 // #659, DESIGN 8.3: the file name is on its own line under the label, so every
 // file name starts at the label's left edge however long the label is. The
 // project's viewport sets desktop or 320 px.
-test("every autosave's file name starts at the left edge of its label, on a line of its own", async ({ page, foreman }) => {
+test("every autosave's file name starts at the left edge of its label, on a line of its own", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   // Times with one and two digits in the hour, so the labels differ in width.
   seedWorld(foreman, "family-base", { name: "Family base" }, [
@@ -483,7 +483,7 @@ test("every autosave's file name starts at the left edge of its label, on a line
 
 test.describe("autosave rows at phone width", () => {
   test.use({ viewport: { width: 320, height: 700 } });
-  test("a long world name and 200% text still fit", async ({ page, foreman }) => {
+  test("a long world name and 200% text still fit", { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman, "long-world", { name: "Long " + "w".repeat(60) }, [
       { name: "_autosave1.zip", content: oldSave, at: "2026-11-03T14:00:05Z" },

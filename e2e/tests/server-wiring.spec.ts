@@ -23,7 +23,7 @@ async function setUp(page: Page, f: Foreman, g: FakeGame, second = false) {
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
-  test("after Cancel stop the Done message has focus", async ({ page, foreman, fakeGame }) => {
+  test("after Cancel stop the Done message has focus", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     await page.getByRole("button", { name: "Start server" }).click();
@@ -48,7 +48,7 @@ test.describe("with the fake game", () => {
     expect(await focusedId(page)).not.toBe("done-message");
   });
 
-  test("after Take snapshot the Done message gets focus when it appears, once", async ({ page, foreman, fakeGame }) => {
+  test("after Take snapshot the Done message gets focus when it appears, once", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await page.getByRole("button", { name: "Take snapshot" }).click();
     await expect(done(page)).toContainText('Foreman took the snapshot "Manual snapshot" of Base.', live);
@@ -58,7 +58,7 @@ test.describe("with the fake game", () => {
     await expect(page.locator("[data-focus-result]")).toHaveCount(0);
   });
 
-  test("a Done message that arrives by a live update takes focus too", async ({ page, foreman, fakeGame }) => {
+  test("a Done message that arrives by a live update takes focus too", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     // Loaded as after the admin's own action, with nothing done yet.
     await page.goto("/?result=1");
@@ -71,7 +71,7 @@ test.describe("with the fake game", () => {
 
   // The switch starts from the Worlds list (SPEC 17.10); the Server page's
   // link to it is there while Start runs and after, with no reload.
-  test("a page loaded during Start keeps its Switch world link once the game runs, without a reload", async ({ page, foreman, fakeGame }) => {
+  test("a page loaded during Start keeps its Switch world link once the game runs, without a reload", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, true);
     await page.getByRole("button", { name: "Start server" }).click();
     await expect(page).toHaveURL("/");
@@ -87,7 +87,7 @@ test.describe("with the fake game", () => {
 
 // WCAG 1.4.4: at 200% text on a phone, the menu's words each stay whole, the
 // menu opens inside the page, and nothing scrolls sideways.
-test("at 320 px and 200% text the header keeps the menu's words whole", async ({ page, foreman }) => {
+test("at 320 px and 200% text the header keeps the menu's words whole", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.setViewportSize({ width: 320, height: 640 });

@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 // The binary is built by `make e2e` before this runs; each test starts its own
 // copy through the fixture in tests/foreman.ts, and nothing builds or downloads.
+const looks = /@looks/;
+
 export default defineConfig({
   testDir: "tests",
   forbidOnly: true,
@@ -24,12 +26,13 @@ export default defineConfig({
     // artifact is kept briefly. Sources are left out so a trace carries no test code.
     trace: { mode: "retain-on-failure", screenshots: true, snapshots: true, sources: false },
   },
-  // DESIGN 10: every screen is checked in both themes, at desktop and at
-  // 320 CSS pixels (SPEC 17.2).
+  // DESIGN 10 and SPEC 17.2: how a page looks and reads is checked in both
+  // themes at desktop and 320 px; behavior is checked once, in desktop-dark.
+  // A test tagged @looks runs in all four projects, any other only in the first.
   projects: [
     { name: "desktop-dark", use: { ...devices["Desktop Chrome"], colorScheme: "dark" } },
-    { name: "desktop-light", use: { ...devices["Desktop Chrome"], colorScheme: "light" } },
-    { name: "phone-dark", use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 }, colorScheme: "dark" } },
-    { name: "phone-light", use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 }, colorScheme: "light" } },
+    { name: "desktop-light", grep: looks, use: { ...devices["Desktop Chrome"], colorScheme: "light" } },
+    { name: "phone-dark", grep: looks, use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 }, colorScheme: "dark" } },
+    { name: "phone-light", grep: looks, use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 }, colorScheme: "light" } },
   ],
 });

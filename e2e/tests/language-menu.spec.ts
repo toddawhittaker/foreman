@@ -2,7 +2,7 @@ import { test, expect, checkPage, createAdmin, openLanguages, pickLanguage, sign
 
 // SPEC 22.2: the menu on the sign-in page switches the language, the html
 // lang follows, and the choice holds on the next pages.
-test("the language menu switches to German and the choice persists", async ({ page }) => {
+test("the language menu switches to German and the choice persists", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await signOut(page);
   await page.goto("/signin");
@@ -32,7 +32,7 @@ test("the language menu switches to German and the choice persists", async ({ pa
 
 // The menu and its language row are details elements and the languages
 // plain buttons: it works by keyboard alone.
-test("the language menu works from the keyboard", async ({ page }) => {
+test("the language menu works from the keyboard", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await signOut(page);
   await page.goto("/signin");

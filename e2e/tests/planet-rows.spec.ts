@@ -41,7 +41,7 @@ test("one click opens a planet row and it stays open", async ({ page }) => {
   expect(await isOpen(page, "resources", "fulgora")).toBe(true);
 });
 
-test("opening a row closes the other and keeps focus on it", async ({ page }) => {
+test("opening a row closes the other and keeps focus on it", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   // On a phone the rows start closed, so the preview sits near the top.
   const phone = (page.viewportSize()?.width ?? 1280) <= 480;
@@ -99,7 +99,7 @@ test("opening a row switches the preview to that planet, and says so once", asyn
   expect(await said()).toEqual(["Preview: Gleba"]);
 });
 
-test("a planet the large view moves to opens its row without moving focus", async ({ page }) => {
+test("a planet the large view moves to opens its row without moving focus", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   await expect(pictures(page)).toHaveCount(1);
   await page.getByRole("region", { name: "Map preview" }).getByRole("link", { name: /opens the large view/ }).click();
@@ -159,7 +159,7 @@ test("a needed resource warns while off, under its box and in the summary", asyn
 
 // The warning takes a line of its own under the resource's settings, so they
 // keep the columns every other resource's row has.
-test("a needed resource's warning leaves its settings in line with the other rows", async ({ page }) => {
+test("a needed resource's warning leaves its settings in line with the other rows", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
   await openPlanetRow(page);
   const columns = (id: string) =>
@@ -195,7 +195,7 @@ test("the server shows the same warning after a round trip", async ({ page }) =>
   await expect(page.locator("#need-summary")).toBeVisible();
 });
 
-test("the rows work by keyboard alone at 320 px", async ({ page }) => {
+test("the rows work by keyboard alone at 320 px", { tag: "@looks" }, async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await openNewMap(page);
   const summary = row(page, "resources", "gleba").locator("summary");

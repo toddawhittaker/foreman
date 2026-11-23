@@ -65,7 +65,7 @@ test("a modded planet's names, shared control and own default", async ({ page, f
   expect(file.match(/"stone"/g)).toHaveLength(1);
 });
 
-test("the preview says what it cannot show, and a one-color picture says why", async ({ page, foreman, fakeGame }) => {
+test("the preview says what it cannot show, and a one-color picture says why", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await openModded(page, foreman, fakeGame!);
   await page.locator("#preview-button").click();
   const line = page.locator("#preview-limit-line");

@@ -315,7 +315,7 @@ test("a world with no game password says so in the file, and Export is two click
   await expectWithin(clicks, 2, "export a world");
 });
 
-test("a world with a symlink in it is refused, naming the path, and nothing is downloaded", async ({ page, foreman }) => {
+test("a world with a symlink in it is refused, naming the path, and nothing is downloaded", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedFull(foreman);
   symlinkSync("/etc/hostname", join(worldDir(foreman), "mods", "sneaky-link"));
@@ -366,7 +366,7 @@ test("the Import page has a third form with its own drop zone", async ({ page })
   await checkPage(page);
 });
 
-test("a world file round trip: preview, confirm, and the new world holds the same files", async ({ page, foreman, fakeGame }) => {
+test("a world file round trip: preview, confirm, and the new world holds the same files", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedFull(foreman, { extraSave: true });
   await page.goto("/worlds/base");
@@ -420,7 +420,7 @@ test("a world file round trip: preview, confirm, and the new world holds the sam
   expect(JSON.stringify(rows)).not.toContain(secrets.game);
 });
 
-test("a name in use is refused on the name field and the staged file is kept", async ({ page, foreman }) => {
+test("a name in use is refused on the name field and the staged file is kept", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedFull(foreman, { gamePassword: false });
   await page.goto("/worlds/base");
@@ -473,7 +473,7 @@ test("the game image download is ticked when the image is missing, and is only s
 });
 
 // A form fault, not a bad file: it is shown on the Import page, tied to the field (DESIGN 7.2).
-test("an upload with no file chosen is refused on the field, with focus on the error summary", async ({ page, foreman }) => {
+test("an upload with no file chosen is refused on the field, with focus on the error summary", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   await page.goto("/import");
   await page.locator("#act-upload-world-file").click();
@@ -492,7 +492,7 @@ test("an upload with no file chosen is refused on the field, with focus on the e
   await checkPage(page);
 });
 
-test("the world file form says once what the asterisk means, before its field", async ({ page }) => {
+test("the world file form says once what the asterisk means, before its field", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/import");
   const field = page.locator("#world-file");
@@ -503,7 +503,7 @@ test("the world file form says once what the asterisk means, before its field", 
   await expect(page.locator('label[for="world-file"]')).toHaveClass(/\brequired\b/);
 });
 
-test("a world file made by a newer Foreman is refused, and says so", async ({ page, foreman }) => {
+test("a world file made by a newer Foreman is refused, and says so", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   await upload(page, worldFile({ format: { format_version: 2 } }));
   await expect(page.locator("main")).toContainText(/newer/i);
@@ -576,7 +576,7 @@ test("secrets in a file are stripped again on import, and the password warning f
   expect(JSON.parse(text.toString("utf8")).description).toBe("keep");
 });
 
-test("a staged file the form cannot confirm stays out of the address and goes when the world is made", async ({ page, foreman }) => {
+test("a staged file the form cannot confirm stays out of the address and goes when the world is made", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   await upload(page, worldFile());
   const [one] = staged(foreman);

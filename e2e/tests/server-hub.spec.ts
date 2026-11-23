@@ -47,7 +47,7 @@ test.describe("with the fake game", () => {
   // players on a phone, and the code has them in that order, so Tab meets
   // them in the order they are drawn. On a wide screen the players sit on
   // the left and the pages on the right (SPEC 17.1, WCAG 2.4.3).
-  test("the world's pages come before the players, in the code and on a phone", async ({ page, foreman, fakeGame }) => {
+  test("the world's pages come before the players, in the code and on a phone", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     const pages = page.locator(".server-grid > .shortcuts");
     const players = page.locator(".server-grid > section:has(#players-heading)");

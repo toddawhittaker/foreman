@@ -48,7 +48,7 @@ test.describe("updates", () => {
     expect((await fakePortal!.state()).refused).toEqual([]);
   });
 
-  test("one row's Update appears when the portal status loads, not before", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("one row's Update appears when the portal status loads, not before", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
     await seed(page, foreman, fakeGame!, fakePortal!);
     // Hold the status reply, so the page is seen as it first loads.
     let release!: () => void;
@@ -144,7 +144,7 @@ test.describe("a mod players cannot get", () => {
   });
 
   // SPEC 17.2: targets are at least 24 px, so the fix is a button under the sentence; the notice is a live region beside the facts.
-  test("the Server page notice passes the page checks", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("the Server page notice passes the page checks", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
     await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
     await setUpModsWorld(page, foreman, fakeGame!, { ...spaceAge, mods });
     const notice = page.locator("#mods-notice");
