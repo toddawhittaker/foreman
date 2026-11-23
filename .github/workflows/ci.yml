@@ -327,8 +327,10 @@ jobs:
           echo "Compressed image: $size bytes (limit 30000000)"
           [ "$size" -le 30000000 ]
 
-  # Merges the e2e slices' reports into one HTML report. `ci` does not wait
-  # for it: a slow or failed report never holds up a merge.
+  # Merges the e2e slices' reports into one HTML report and writes the run's
+  # timing to the summary. It waits for every build and test job so their
+  # times are known, but `ci` does not wait for it: a slow or failed report
+  # never holds up a merge. It warns, never fails, when the run is slow.
   report:
     if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
     needs: [changes, verify, coverage, e2e, image]
@@ -365,6 +367,11 @@ jobs:
           name: e2e-report-${{ github.run_attempt }}
           path: e2e/playwright-report
           retention-days: 14
+
+      - name: Timing summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/ci-timing e2e/report.json
 
   # The single required check. The build and test jobs may be skipped only
   # when `changes` passed and said code=false. After a full green run it

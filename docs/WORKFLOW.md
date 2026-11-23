@@ -34,7 +34,11 @@ the tag.
 After the tests, a `report` job merges the slices' Playwright reports into
 one HTML report, the `e2e-report-<attempt>` artifact on the run's page,
 kept 14 days. Download it and open `index.html` to see every test, its
-time, and the trace of any failure. The `ci` job does not wait for it.
+time, and the trace of any failure. The same job writes a timing report
+to the run's summary page (`.github/ci-timing`): each job's time, the
+fastest and slowest e2e slice, and the 20 slowest tests. When the run
+takes longer than its 15-minute budget, it adds a warning to the run; it
+never fails it. The `ci` job does not wait for it.
 
 A final `ci` job passes
 only when every other job passed or was skipped for a reason below. A ruleset on `main` blocks direct

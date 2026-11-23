@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Writes this CI run's timing to the job summary: each job's time, the spread
+# of the e2e slices, and the slowest end-to-end tests. Past the budget it
+# warns, never fails. Usage: ci-timing <Playwright JSON report, may be missing>
+# Needs GH_TOKEN, GITHUB_REPOSITORY, GITHUB_RUN_ID and GITHUB_STEP_SUMMARY.
+set -euo pipefail
+
+report=${1:-}
+budget_min=15
+out=$GITHUB_STEP_SUMMARY
+
+jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/${GITHUB_RUN_ATTEMPT:-1}/jobs?per_page=100" --jq '.jobs[]' | jq -s '[.[] | select(.completed_at != null and .started_at != null)]')
+started=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/${GITHUB_RUN_ATTEMPT:-1}" --jq .run_started_at)
+
+# Wall time: from the run's start to the last job that finished before this one.
+wall=$(jq -r --arg s "$started" '(map(.completed_at | fromdateiso8601) | max) - ($s | fromdateiso8601)' <<< "$jobs")
+
+mmss() { printf '%dm%02ds' $(($1 / 60)) $(($1 % 60)); }
+
+{
+  echo "## CI timing"
+  echo
+  echo "Wall time: $(mmss "$wall") (budget ${budget_min}m)."
+  echo
+  echo "| Job | Time |"
+  echo "| --- | --- |"
+  jq -r '.[] | [.name, ((.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601))] | @tsv' <<< "$jobs" |
+    sort -t$'\t' -k2,2nr | while IFS=$'\t' read -r name secs; do echo "| $name | $(mmss "$secs") |"; done
+  echo
+  spread=$(jq -r '[.[] | select(.name | startswith("e2e (")) | (.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601)] | if length > 0 then "\(min) \(max)" else "" end' <<< "$jobs")
+  if [ -n "$spread" ]; then
+    read -r fast slow <<< "$spread"
+    echo "E2E slices: fastest $(mmss "$fast"), slowest $(mmss "$slow")."
+    echo
+  fi
+  if [ -n "$report" ] && [ -s "$report" ]; then
+    echo "### The 20 slowest end-to-end tests"
+    echo
+    echo "| Seconds | Project | Test |"
+    echo "| ---: | --- | --- |"
+    jq -r '[.. | objects | select(has("specs")) | .specs[] | . as $s | .tests[]
+            | {d: ([.results[].duration] | max // 0), p: .projectName, t: "\($s.file):\($s.line) \($s.title)"}]
+           | sort_by(-.d) | .[:20][] | "| \(.d / 1000 * 10 | round / 10) | \(.p) | \(.t | gsub("\\|"; "\\|")) |"' "$report"
+  else
+    echo "No Playwright report this run, so no test times."
+  fi
+} >> "$out"
+
+if [ "$wall" -gt $((budget_min * 60)) ]; then
+  echo "::warning::This CI run took $(mmss "$wall"), over the ${budget_min}-minute budget. See the CI timing summary for the slow jobs and tests."
+fi
