@@ -216,11 +216,15 @@ func DecodeStarMap(data []byte) (StarMap, error) {
 		})
 	}
 	clearBadParents(m.Locations, kept)
+	// A route is drawn once: a repeat, in either direction, is dropped.
+	seen := map[[2]string]bool{}
 	for _, r := range raw.Routes {
-		if !kept[r.From] || !kept[r.To] || r.From == r.To || r.Length < 0 || r.Length > maxStarMapValue {
+		pair := [2]string{min(r.From, r.To), max(r.From, r.To)}
+		if !kept[r.From] || !kept[r.To] || r.From == r.To || r.Length < 0 || r.Length > maxStarMapValue || seen[pair] {
 			m.Dropped++
 			continue
 		}
+		seen[pair] = true
 		m.Routes = append(m.Routes, Route(r))
 	}
 	return m, nil
