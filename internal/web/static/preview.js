@@ -608,6 +608,31 @@ startPreviewWithForm(() => {
   });
   document.addEventListener("htmx:afterSettle", () => placeSize(document.getElementById("preview")));
 
+  // The Download line grows past its link's row when it wraps, when the
+  // button's text wraps, and when a stopped download's message opens in it;
+  // CSS cannot measure that, so the picture is told how much more room the
+  // line takes (DESIGN 8.8). The line's content follows the pane's width and
+  // the script's own changes, so both are watched.
+  function reserveLine() {
+    for (const row of document.querySelectorAll(".gen-preview .picture-actions")) {
+      const boxes = [...row.children].map((c) => c.getBoundingClientRect()).filter((b) => b.width && b.height);
+      const list = row.closest(".pictures");
+      if (!boxes.length || !list) continue;
+      const extra = Math.max(...boxes.map((b) => b.bottom)) - boxes[0].bottom;
+      list.style.setProperty("--chart-row", `${Math.max(0, Math.ceil(extra))}px`);
+    }
+  }
+  const pane = document.querySelector(".gen-preview");
+  if (pane) {
+    let marking = 0;
+    const mark = () => {
+      if (!marking) marking = requestAnimationFrame(() => { marking = 0; reserveLine(); });
+    };
+    new ResizeObserver(mark).observe(pane);
+    new MutationObserver(mark).observe(pane, { childList: true, characterData: true, subtree: true, attributeFilter: ["hidden", "class"] });
+    reserveLine();
+  }
+
   // Puts the new section in place; a control that had focus there keeps it.
   function swap(fresh) {
     const slot = document.getElementById("preview");

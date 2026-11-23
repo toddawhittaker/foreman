@@ -5916,14 +5916,14 @@ a[target="_blank"]::after {
     justify-self: center;
   }
 
-  /* The Download line also offers the real-game picture. It wraps to a second
-     row on a narrow pane, and on any pane once the amounts make the link
-     longer, so the picture keeps room for the second row at every width; the
-     button's text may itself wrap to two lines in a longer language
-     (DESIGN 8.8). */
+  /* The Download line also offers the real-game picture. Where the line
+     takes more than its link's row (it wraps, the button's text wraps in a
+     longer language, or a stopped download's message opens in it) the
+     script sets --chart-row to the extra height, and the picture keeps that
+     room; on one row it needs none, so a wide pane still fits between the
+     strips (DESIGN 8.6, 8.8). */
   .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
-    --chart-row: calc(2 * var(--target-min));
-    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row, 0px));
   }
 
   /* The download links and the kept note read as one tight group under the
