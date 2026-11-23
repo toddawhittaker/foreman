@@ -4480,7 +4480,7 @@ one click downloads it.
   (Nauvis, Vulcanus, Gleba, Fulgora, Aquilo, the solar system edge, the
   shattered planet) shows the wiki's picture only while the wiki setting is
   on; the wiki has no sun picture, so the sun stays a circle. A picture
-  that fails to load is removed, and the circle stays.
+  that fails to load draws nothing, and the circle stays.
 - **Text alternative.** The SVG has `role="img"` and the name "Star map:
   the planets around the sun and the routes between them." Each location
   has a `<title>` with its name, and a mod's name is `translate="no"`.
