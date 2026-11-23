@@ -94,6 +94,11 @@ test("plus and minus zoom around the centre, 0 fits, and the level is said", asy
   expect(Math.abs(after.u - spot.u) * (await width(page))).toBeLessThan(1.5);
   await page.keyboard.press("-");
   await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
+  // Shifted minus is the same key as on the factory map.
+  await page.keyboard.press("+");
+  await expect(page.locator("#large-status")).toHaveText("Zoom 132%");
+  await page.keyboard.press("_");
+  await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
   // The buttons do the same, and say it too.
   await dialog(page).getByRole("button", { name: "Zoom in" }).press("Enter");
   await expect(page.locator("#large-status")).toHaveText("Zoom 132%");
