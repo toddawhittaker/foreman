@@ -465,7 +465,6 @@
   "mods.flow.generated": "{name} est créé. Choisissez maintenant ses mods ou passez cette étape.",
   "mods.flow.skip": "Passer aux paramètres des mods",
   "mods.flow.skip_map": "Passer aux paramètres de la carte",
-  "mods.flow.next": "Suivant : paramètres des mods",
   "mods.richtext.warning": "Avertissement",
   "mods.richtext.info": "Remarque"
 }

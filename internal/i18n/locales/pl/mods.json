@@ -504,7 +504,6 @@
   "mods.flow.generated": "Świat {name} został utworzony. Teraz można wybrać jego modyfikacje lub pominąć ten krok.",
   "mods.flow.skip": "Pomiń i przejdź do ustawień modyfikacji",
   "mods.flow.skip_map": "Pomiń i przejdź do ustawień mapy",
-  "mods.flow.next": "Dalej: ustawienia modyfikacji",
   "mods.richtext.warning": "Ostrzeżenie",
   "mods.richtext.info": "Uwaga"
 }

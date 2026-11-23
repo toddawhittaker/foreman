@@ -238,6 +238,9 @@ func (p ModsPage) InFlow() bool { return p.World.Unfinished }
 // Steps is the step bar with step 2 current.
 func (p ModsPage) Steps() []FlowStep { return flowSteps(p.World.ID, flowStepMods, p.NoModSettings) }
 
+// Back is the footer's way to step 1, the world's page.
+func (p ModsPage) Back() FlowLink { return flowBack(p.Steps()) }
+
 // NextPath is step 3, the mod settings, which passes on to the map
 // settings when there is nothing to set.
 func (p ModsPage) NextPath() string { return flowModSettingsPath(p.World.ID) }
@@ -1710,6 +1713,11 @@ func (s *server) continuePath(ctx context.Context, sum world.Summary) string {
 	}
 	return flowModSettingsPath(sum.ID)
 }
+
+// setupReady says a world shows as Ready rather than Unfinished: it waits
+// for its first map and its map settings were saved at step 4, so the first
+// start makes the map. A world with a save is neither (SPEC 5.6).
+func setupReady(sum world.Summary, mapSaved bool) bool { return sum.Unfinished && mapSaved }
 
 // mapSettingsSaved says step 4 has been saved for the world: its save is
 // in the audit log (SPEC 12.9). A log that cannot be read says no, so

@@ -592,5 +592,5 @@ test("Enter in a field of the main form, outside the large view, still saves the
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#generate-seed").fill("4242");
   await page.locator("#generate-seed").press("Enter");
-  await expect(page).toHaveURL(`${newMapPath(world)}?saved=1`);
+  await expect(page).toHaveURL(`/worlds/${world}?setup=done`);
 });

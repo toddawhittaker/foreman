@@ -41,6 +41,12 @@ test("the Mods tab of an Unfinished world has the step bar and skips to step 3",
   // Only built-in mods, so step 3 has nothing to set and is plain text (SPEC 5.6).
   await expect(steps(page).getByRole("listitem").nth(2)).toHaveText("3. Mod settings (none)");
   await checkPage(page);
+  // The step ends with the wizard's footer: Back to step 1 first, the way on as the primary button (SPEC 5.6).
+  const foot = page.locator(".flow-foot");
+  await expect(foot.getByRole("link")).toHaveText(["Back to the world", "Next: Map settings"]);
+  await expect(foot.getByRole("link", { name: "Back to the world" })).toHaveAttribute("href", `/worlds/${id}`);
+  await expect(foot.getByRole("link", { name: "Next: Map settings" })).toHaveClass(/button--primary/);
+  await page.screenshot({ path: `../screenshots/step2-footer-${test.info().project.name}.png`, fullPage: true });
 
   const skip = page.getByRole("link", { name: "Skip to map settings" });
   await expect(skip).toHaveAttribute("href", `${newMapPath(id)}/mod-settings`);
@@ -52,7 +58,7 @@ test("the Mods tab of an Unfinished world has the step bar and skips to step 3",
   await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
 });
 
-test("the review shows the step bar, and the result after an install offers Next: mod settings", async ({ page, foreman, fakeGame, fakePortal }) => {
+test("the review shows the step bar, and the result after an install offers Next: Mod settings", async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-flow", "1.0.0", ["base >= 2.0"], "2.1");
   await setUp(page, foreman, fakeGame!);
   const id = await generate(page, "Flow world");
@@ -74,12 +80,12 @@ test("the review shows the step bar, and the result after an install offers Next
   await checkPage(page);
   // The result's next step is a control, and Skip is not offered beside it (SPEC 17.9).
   await expect(page.getByRole("link", { name: /Skip to (mod|map) settings/ })).toHaveCount(0);
-  const next = page.getByRole("link", { name: "Next: mod settings" });
+  const next = page.locator("#world-result").getByRole("link", { name: "Next: Mod settings" });
   await expect(next).toHaveAttribute("href", `${newMapPath(id)}/mod-settings`);
 
   // With the mod installed, a review that changes nothing offers Next too.
   await page.goto(`/worlds/${id}/mods/plan?kind=update`);
-  const nothing = page.getByRole("link", { name: "Next: mod settings" });
+  const nothing = page.getByRole("link", { name: "Next: Mod settings" });
   await expect(page.getByText("Nothing needs to change")).toBeVisible();
   await expect(nothing).toHaveAttribute("href", `${newMapPath(id)}/mod-settings`);
   await expect(page.getByRole("link", { name: /Skip to (mod|map) settings/ })).toHaveCount(0);

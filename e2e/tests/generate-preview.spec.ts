@@ -768,7 +768,7 @@ test("Enter in a text field saves the map settings with the changed settings", a
   await expect(page.locator("#mg-nauvis-iron-ore-size")).toHaveValue("200");
   await page.locator("#generate-seed").fill("5150");
   await page.locator("#generate-seed").press("Enter");
-  await expect(page).toHaveURL(`${newMapPath(id)}?saved=1`);
+  await expect(page).toHaveURL(`/worlds/${id}?setup=done`);
   expect(refreshes).toEqual([]);
   const mapGen = JSON.parse(readFileSync(join(foreman.dataDir, "worlds", id, "config", "map-gen-settings.json"), "utf8"));
   expect(mapGen.autoplace_controls["iron-ore"].size).toBe(2);

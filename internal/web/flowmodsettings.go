@@ -55,6 +55,12 @@ func (p FlowModSettingsPage) Steps() []FlowStep {
 	return flowSteps(p.World.ID, flowStepModSettings, false)
 }
 
+// Back is step 2, the Mods tab, in the form's footer.
+func (p FlowModSettingsPage) Back() FlowLink { return flowBack(p.Steps()) }
+
+// InFlow says the form's footer is the guided Generate's: Back, then Save.
+func (FlowModSettingsPage) InFlow() bool { return true }
+
 func (s *server) flowModSettingsRoutes() {
 	s.mux.HandleFunc("GET "+PathFlowModSettings, s.requireUser(s.handleFlowModSettings))
 	// A definitions cache miss runs the game, as on the mod settings page.

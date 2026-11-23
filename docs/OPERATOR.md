@@ -548,7 +548,7 @@ account**. The page closes for good once the account exists.
 5. Leave **Also download the game image if this host does not have it**
    ticked. Foreman then pulls the game image for that version from Docker
    Hub after the world is made.
-6. Choose **Generate world**. This makes the world and opens step 2, its
+6. Choose **Next: Mods**. This makes the world and opens step 2, its
    Mods tab.
 7. Pick the world's mods there (see the next section), or choose **Skip to
    mod settings**.
@@ -557,7 +557,9 @@ account**. The page closes for good once the account exists.
    Foreman skips this step and the step bar shows "Mod settings (none)".
 9. On step 4, **Map settings**, leave the default preset or change it.
    **Preview map** draws the map first, once the game image is on the
-   host. Choose **Save map settings**.
+   host. Choose **Finish**. Foreman saves the map settings and opens the
+   world's page, which shows the world as **Ready**: its map is made the
+   first time it starts.
 
 Generating is four steps, each its own page: the world, its mods, their
 startup settings, then the map settings. Only the first is needed. The world exists after step 1, so

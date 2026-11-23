@@ -109,8 +109,8 @@ test("moving Richness sets every ticked resource, leaves an unticked one and the
   // What is saved reflects the values, and stone's box that was ticked again sends its own.
   await page.locator("#mg-nauvis-stone-on").uncheck();
   const world = new URL(page.url()).pathname.split("/")[2];
-  await page.getByRole("button", { name: "Save map settings" }).click();
-  await expect(page).toHaveURL(`${newMapPath(world)}?saved=1`);
+  await page.getByRole("button", { name: "Finish" }).click();
+  await expect(page).toHaveURL(`/worlds/${world}?setup=done`);
   const mg = JSON.parse(readFileSync(configFile(foreman.dataDir, world, "map-gen-settings.json"), "utf8"));
   expect(mg.autoplace_controls["iron-ore"].richness).toBe(6);
   expect(mg.autoplace_controls["copper-ore"].richness).toBe(6);

@@ -36,7 +36,7 @@ func TestModsTabOfAnUnfinishedWorldShowsTheStepBar(t *testing.T) {
 	wantIn(t, "mods tab", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`, `href="`+newMapPath(id)+`"`,
 		`id="mods-skip"`, `<a href="`+flowModSettingsPath(id)+`" id="mods-skip">`)
 	// Step 3 would pass on, so the link names where it lands.
-	wantIn(t, "skip text", plain(body), "Skip to map settings", "3. Mod settings (none)")
+	wantIn(t, "skip text", plain(body), "Skip to map settings", `3. </span>Mod settings (none)`)
 	if strings.Contains(body, `<a href="`+flowModSettingsPath(id)+`">`) {
 		t.Error("the skipped step 3 is a link in the bar")
 	}
@@ -61,7 +61,7 @@ func TestModsTabOfAFinishedWorldHasNoStepBar(t *testing.T) {
 }
 
 // SPEC 5.6, 17.9: the review shows the step bar and a link to step 3; the
-// result after the install has "Next: mod settings" as a control.
+// result after the install has "Next: Mod settings" as a control.
 func TestReviewAndResultOfAnUnfinishedWorldOfferTheNextStep(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("alpha", "1.0.0")
@@ -81,7 +81,7 @@ func TestReviewAndResultOfAnUnfinishedWorldOfferTheNextStep(t *testing.T) {
 	}
 	tab := g.get(modsPath(id) + ownResultQuery)
 	wantIn(t, "result", tab, `id="world-result"`, `id="act-next-map"`, `href="`+flowModSettingsPath(id)+`"`)
-	wantIn(t, "result text", plain(tab), "Next: mod settings")
+	wantIn(t, "result text", plain(tab), "Next: Mod settings")
 	if strings.Contains(tab, `id="mods-skip"`) {
 		t.Error("the result offers Skip as well as Next")
 	}
@@ -96,7 +96,7 @@ func TestReviewWithNothingToChangeOffersNext(t *testing.T) {
 	g.writeMod(id, "alpha", "1.0.0")
 	_, body := g.getStatus(kindPlanPath(id, "update", ""))
 	wantIn(t, "review", body, `id="plan-next"`, `href="`+flowModSettingsPath(id)+`"`)
-	wantIn(t, "text", plain(body), "Next: mod settings")
+	wantIn(t, "text", plain(body), "Next: Mod settings")
 }
 
 // SPEC 5.6: a world with a save has no step bar on its review.

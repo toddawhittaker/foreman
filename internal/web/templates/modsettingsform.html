@@ -127,8 +127,10 @@
 </section>
 {{- /* The save bar stays at the window's foot while the form is in view, so the action is always in reach. */}}
 <div class="actions form-foot">
-  <a href="{{.ModsPath}}">{{t "settings.cancel"}}</a>
-  <button type="submit" class="button button--primary">{{if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
+  {{- /* In the guided Generate it is the step's footer, Back first (SPEC 5.6). */}}
+  {{- if .InFlow}}{{template "genflow-back" .Back}}{{else}}
+  <a href="{{.ModsPath}}">{{t "settings.cancel"}}</a>{{end}}
+  <button type="submit" class="button button--primary">{{if .InFlow}}{{t "newmap.next.map"}}{{else if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
 </div>
 </form>
 {{- end}}

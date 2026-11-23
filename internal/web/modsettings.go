@@ -181,6 +181,9 @@ func (p ModSettingsPage) WaitPath() string {
 }
 func (p ModSettingsPage) ModsPath() string { return modsPath(p.World.ID) }
 
+// InFlow is false: the mod settings page's footer has Cancel, not Back.
+func (ModSettingsPage) InFlow() bool { return false }
+
 // UploadPath opens the Mods tab's upload of mod-settings.dat.
 func (p ModSettingsPage) UploadPath() string { return modsPath(p.World.ID) + "#mod-settings-replace" }
 func (p ModSettingsPage) FilePath() string   { return modsPath(p.World.ID) + "/" + world.ModSettingsFile }

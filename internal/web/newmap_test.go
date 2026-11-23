@@ -99,16 +99,16 @@ func TestNewMapRefusesAWorldWhoseMapIsMade(t *testing.T) {
 	}
 }
 
-// SPEC 5.6, 12.9: the form starts from the world's new_map; a save writes
-// through SetNewMap, is audited naming the preset, and lands on a page
-// whose next step is a link.
+// SPEC 5.6, 12.9: the form starts from the world's new_map; Finish writes
+// through SetNewMap, is audited naming the preset, and lands on the world's
+// page, whose Ready note is its Done box; step 4 reads the values back.
 func TestNewMapSaveWritesTheSettingsAndAudits(t *testing.T) {
 	hn := newGenerateHarness(t, nil)
 	c := hn.signIn()
 	id := newMapWorld(t, hn, c)
 
 	rec := hn.postLong(newMapPath(id), newMapPost("preset", "rich-resources", "seed", "77"), c)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != newMapPath(id)+"?saved=1" {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != worldPath(id)+"?setup=done" {
 		t.Fatalf("status %d location %q:\n%s", rec.Code, rec.Header().Get("Location"), rec.Body.String())
 	}
 	m := hn.meta(id)
@@ -118,8 +118,17 @@ func TestNewMapSaveWritesTheSettingsAndAudits(t *testing.T) {
 	if got := hn.audits(AuditNewMap); len(got) != 1 || !strings.Contains(got[0], "preset rich-resources, 2.0.77") {
 		t.Errorf("audit %q", got)
 	}
-	body := getLong(hn, rec.Header().Get("Location"), c).Body.String()
-	for _, want := range []string{`id="newmap-done"`, `id="newmap-next"`, `<option value="rich-resources" selected>`, `value="77"`} {
+	world := hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String()
+	for _, want := range []string{`<div class="message message--success" id="world-ready" tabindex="-1" autofocus>`, `<strong>Done:</strong> This world is set up.`, `id="act-change-setup"`} {
+		if !strings.Contains(world, want) {
+			t.Errorf("the world page after Finish lacks %s", want)
+		}
+	}
+	if plainPage := hn.get(worldPath(id), withCookie(c)).Body.String(); !strings.Contains(plainPage, `<div class="message message--note" id="world-ready">`) {
+		t.Error("the Ready note is a Done box without the Finish mark")
+	}
+	body := getLong(hn, newMapPath(id)+"?wait=1", c).Body.String()
+	for _, want := range []string{`<option value="rich-resources" selected>`, `value="77"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no %s after the save", want)
 		}
@@ -217,13 +226,83 @@ func TestFlowStepsBeforeTheWorldExists(t *testing.T) {
 	}
 	hn := newGenerateHarness(t, nil)
 	page := hn.get(PathGenerate, withCookie(hn.signIn())).Body.String()
-	bar := regexp.MustCompile(`(?s)<nav class="subnav"[^>]*id="flow-steps">.*?</nav>`).FindString(page)
+	bar := regexp.MustCompile(`(?s)<nav class="flow-steps"[^>]*id="flow-steps">.*?</nav>`).FindString(page)
 	if bar == "" {
 		t.Fatalf("no step bar on step 1:\n%s", page)
+	}
+	if !strings.Contains(page, `id="generate-button">Next: Mods</button>`) {
+		t.Error("step 1's primary button is not Next: Mods")
 	}
 	if n := strings.Count(bar, "<a "); n != 1 || !strings.Contains(bar, `<a href="`+PathGenerate+`" aria-current="step">`) {
 		t.Errorf("step 1's bar has %d links:\n%s", n, bar)
 	}
+}
+
+// SPEC 5.6 (Todd's ruling, 2026-11-23): the step bar ticks the steps before
+// the current one, but not a skipped step 3, and each step's Back goes to
+// the nearest earlier step that is a link; step 1 has none.
+func TestFlowStepStatesAndBack(t *testing.T) {
+	states := func(steps []FlowStep) string {
+		var b strings.Builder
+		for _, s := range steps {
+			switch {
+			case s.Current:
+				b.WriteString("C")
+			case s.Done:
+				b.WriteString("D")
+			case s.Skipped:
+				b.WriteString("S")
+			default:
+				b.WriteString("-")
+			}
+		}
+		return b.String()
+	}
+	for _, c := range []struct {
+		name     string
+		id       string
+		current  int
+		none     bool
+		want     string
+		backPath string
+		backKey  string
+	}{
+		{"step 1", "", flowStepWorld, false, "C---", "", ""},
+		{"step 2", "w", flowStepMods, false, "DC--", worldPath("w"), "newmap.back.world"},
+		{"step 2, step 3 has nothing", "w", flowStepMods, true, "DCS-", worldPath("w"), "newmap.back.world"},
+		{"step 3", "w", flowStepModSettings, false, "DDC-", modsPath("w"), "newmap.back.mods"},
+		{"step 4", "w", flowStepMap, false, "DDDC", flowModSettingsPath("w"), "newmap.back.mod_settings"},
+		{"step 4, step 3 skipped", "w", flowStepMap, true, "DDSC", modsPath("w"), "newmap.back.mods"},
+	} {
+		steps := flowSteps(c.id, c.current, c.none)
+		if got := states(steps); got != c.want {
+			t.Errorf("%s: states %s, want %s", c.name, got, c.want)
+		}
+		back := flowBack(steps)
+		if back.Path != c.backPath || back.Label.Key != c.backKey {
+			t.Errorf("%s: back %+v, want %s %s", c.name, back, c.backPath, c.backKey)
+		}
+	}
+}
+
+// The step bar draws each state: a tick for a finished step, said as
+// "(done)", the current one marked, and a skipped step as plain text.
+func TestFlowStepBarRendering(t *testing.T) {
+	g := newModsRig(t, false)
+	bare := g.world20("Bare")
+	g.makeNewMap(bare)
+	page := g.do(http.MethodGet, newMapPath(bare), nil, http.Header{"Cookie": {g.cookie.String()}}).body
+	bar := regexp.MustCompile(`(?s)<nav class="flow-steps"[^>]*id="flow-steps">.*?</nav>`).FindString(page)
+	wantIn(t, "step 4's bar", bar,
+		`<li class="flow-step flow-step--done"><a href="`+worldPath(bare)+`"><span class="flow-step__mark" data-n="1" aria-hidden="true"></span><span class="flow-step__name"><span class="visually-hidden">1. </span>World<span class="visually-hidden"> (done)</span></span></a>`,
+		`<li class="flow-step flow-step--skipped"><span><span class="flow-step__mark" data-n="3" aria-hidden="true"></span><span class="flow-step__name"><span class="visually-hidden">3. </span>Mod settings (none)</span></span>`,
+		`<li class="flow-step flow-step--current"><a href="`+newMapPath(bare)+`" aria-current="step">`,
+		`<p class="flow-steps__now" aria-hidden="true">Map settings</p>`)
+	if strings.Count(bar, "(done)") != 2 {
+		t.Errorf("want steps 1 and 2 done:\n%s", bar)
+	}
+	form := g.do(http.MethodGet, newMapPath(bare)+"?"+newMapWaitQuery+"=1", nil, http.Header{"Cookie": {g.cookie.String()}}).body
+	wantIn(t, "step 4's footer", form, `<a href="`+modsPath(bare)+`" class="flow-back" id="flow-back">Back to the mods</a>`, `id="newmap-save">Finish</button>`)
 }
 
 // newMapPageValues are the values step 3's form on the waited page sends.

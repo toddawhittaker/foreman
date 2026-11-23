@@ -50,7 +50,7 @@ test.describe("Generate", () => {
     // The form shown again with an error keeps the unticked resource's fields off.
     await iron.uncheck();
     await page.locator("#generate-seed").fill("not a number");
-    await page.getByRole("button", { name: "Save map settings" }).click();
+    await page.getByRole("button", { name: "Finish" }).click();
     await expect(page.locator("#error-summary")).toBeVisible();
     await expect(page.getByRole("checkbox", { name: "Iron ore", exact: true })).not.toBeChecked();
     for (const f of await page.locator("#mg-nauvis-iron-ore").locator("select, input[type=range]").all()) await expect(f).toBeDisabled();

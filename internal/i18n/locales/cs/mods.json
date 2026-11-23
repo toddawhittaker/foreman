@@ -504,7 +504,6 @@
   "mods.flow.generated": "Svět {name} je vytvořen. Nyní lze vybrat jeho mody nebo tento krok přeskočit.",
   "mods.flow.skip": "Přeskočit na nastavení modů",
   "mods.flow.skip_map": "Přeskočit na nastavení mapy",
-  "mods.flow.next": "Další: nastavení modů",
   "mods.richtext.warning": "Upozornění",
   "mods.richtext.info": "Poznámka"
 }
