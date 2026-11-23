@@ -1032,7 +1032,7 @@ func TestPlayerRowsOfferTheirActions(t *testing.T) {
 		t.Errorf("buttons out of order: promote %d, whitelist %d, kick %d, ban %d", a, w, k, b)
 	}
 	// A name with a space is shown as it is, with nothing to act on it.
-	wantAll(t, "the unusable name", html, `<td role="cell">two words</td>`)
+	wantAll(t, "the unusable name", html, `<td role="cell">two words <span class="badge badge--online">`)
 	wantNone(t, "the unusable name", html, `player-two words`, `name=two`)
 
 	// Without the whitelist kept, and with the admin list unreadable, only Kick and Ban.
@@ -1045,7 +1045,7 @@ func TestPlayerRowsOfferTheirActions(t *testing.T) {
 		p.Status.Operation = &game.Operation{Action: game.AuditStop, Players: []game.Player{{Name: "alice"}}}
 	})
 	html = fragmentHTML(t, stopping, "server-players")
-	wantAll(t, "the stop's list", html, `<td role="cell">alice</td>`)
+	wantAll(t, "the stop's list", html, `<td role="cell">alice <span class="badge badge--online">`)
 	wantNone(t, "the stop's list", html, "<details", "act-kick")
 }
 
