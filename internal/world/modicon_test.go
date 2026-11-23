@@ -149,6 +149,8 @@ func TestModIconNotFound(t *testing.T) {
 		id, mod, version, path string
 	}{
 		"path not in the zip": {id, "fakemod", "1.0.0", "__fakemod__/graphics/nothing.png"},
+		// Two dots inside a name are allowed; only a ".." part is refused.
+		"dots inside a name": {id, "fakemod", "1.0.0", "__fakemod__/graphics/a..b.png"},
 		"wrong version":       {id, "fakemod", "1.0.1", iconPath},
 		"mod not installed":   {id, "nomod", "1.0.0", "__nomod__/a.png"},
 		"built-in mod":        {id, "base", "2.0.77", "__base__/graphics/icons/a.png"},

@@ -22,7 +22,9 @@ const (
 	// and declared and actually read.
 	maxModIconBytes = 2 << 20
 	// maxModIconSide is the largest width or height of a PNG that is decoded:
-	// at 4096 by 4096 the decoded image is 64 MiB at worst.
+	// at 4096 by 4096 a 16-bit picture decodes to 128 MiB at worst. Planet
+	// starmap art can be 2048 wide, so the side stays; the icon endpoint
+	// decodes one picture at a time to bound the total.
 	maxModIconSide = 4096
 	// maxModIconOut is the largest picture ModIcon makes.
 	maxModIconOut = 1024
@@ -99,7 +101,7 @@ func modIconPath(mod, p string) (string, bool) {
 	if !ok || rest == "" || !strings.HasSuffix(rest, ".png") {
 		return "", false
 	}
-	if strings.Contains(rest, `\`) || strings.Contains(rest, "..") || strings.HasPrefix(rest, "/") {
+	if strings.Contains(rest, `\`) || strings.HasPrefix(rest, "/") {
 		return "", false
 	}
 	for _, r := range rest {
@@ -108,7 +110,7 @@ func modIconPath(mod, p string) (string, bool) {
 		}
 	}
 	for part := range strings.SplitSeq(rest, "/") {
-		if part == "" || part == "." {
+		if part == "" || part == "." || part == ".." {
 			return "", false
 		}
 	}
