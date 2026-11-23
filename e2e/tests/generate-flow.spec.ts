@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // SPEC 5.6, 17.9, 17.10: the guided Generate. Step 1 is what the world is,
-// step 2 its mods, step 3 its map settings; a world left part way is
+// step 2 its mods, step 3 its mod settings, step 4 its map settings; a world left part way is
 // Unfinished, with a Continue link to where work remains.
 test.use({ fakeGameOn: true });
 
@@ -19,7 +19,7 @@ async function setUp(page: Page, foreman: Parameters<typeof seedWorld>[0], fakeG
   await page.goto("/");
 }
 
-test("the whole flow: step 1, skip the mods, a preset on step 3, saved in five clicks", async ({ page, foreman, fakeGame }, info) => {
+test("the whole flow: step 1, skip the mods, a preset on step 4, saved in five clicks", async ({ page, foreman, fakeGame }, info) => {
   await setUp(page, foreman, fakeGame!);
   const clicks = await countClicks(page);
   await clicks.reset();
@@ -100,11 +100,11 @@ test("an Unfinished world says so on the list and its page, and Continue opens s
   await expect(page).toHaveURL(new RegExp(`${newMapPath("half-made")}`));
 });
 
-// SPEC 5.6: without script, Preview map on step 3 answers with step 3, the
+// SPEC 5.6: without script, Preview map on step 4 answers with step 4, the
 // pictures under its form.
-test.describe("step 3 without script", () => {
+test.describe("step 4 without script", () => {
   test.use({ javaScriptEnabled: false });
-  test("Preview map shows the pictures on step 3", async ({ page, foreman, fakeGame }) => {
+  test("Preview map shows the pictures on step 4", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await page.goto("/generate");
     await page.getByLabel("World name").fill("No script");

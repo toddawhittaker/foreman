@@ -551,34 +551,38 @@ account**. The page closes for good once the account exists.
 6. Choose **Generate world**. This makes the world and opens step 2, its
    Mods tab.
 7. Pick the world's mods there (see the next section), or choose **Skip to
-   map settings**.
-8. On step 3, **Map settings**, leave the default preset or change it.
+   mod settings**.
+8. On step 3, **Mod settings**, change any startup setting a mod has, or
+   choose **Skip to map settings**. When no mod has a startup setting,
+   Foreman skips this step and the step bar shows "Mod settings (none)".
+9. On step 4, **Map settings**, leave the default preset or change it.
    **Preview map** draws the map first, once the game image is on the
    host. Choose **Save map settings**.
 
-Generating is three steps, each its own page: the world, its mods, then its
-map settings. Only the first is needed. The world exists after step 1, so
+Generating is four steps, each its own page: the world, its mods, their
+startup settings, then the map settings. Only the first is needed. The world exists after step 1, so
 if you stop there, it shows as **Unfinished** on the Worlds list. Choose
 **Continue** to pick up where you left off. Foreman never deletes an
 unfinished world for you.
 
 The first world you make becomes the active one: the world the Server page
 starts. Its map is made when it first starts, from the settings you saved
-in step 3. You can change them until then. Once the world has a save, or
+in step 4. You can change them until then. Once the world has a save, or
 while its server is running or starting, they are locked.
 
 ### Planet mods
 
-If the world's mods add planets, step 3 lists them with the controls of
+If the world's mods add planets, step 4 lists them with the controls of
 their resources, and the preview draws them. Foreman reads the planet list
-from a one-off run of the world's own game, the same run that reads the mod
-settings. It can take up to a minute the first time. If the list cannot be
-read, step 3 says so, shows the game's own planets and refuses to save, so
+from a one-off run of the world's own game that loads the world's saved mod
+settings, so a startup setting that adds a planet in step 3 adds it to step
+4. It can take up to a minute the first time. If the list cannot be
+read, step 4 says so, shows the game's own planets and refuses to save, so
 a save never drops a modded planet's settings.
 
-If you remove a planet mod after saving step 3, the world will not start
-until you save step 3 again. The game would fail to make the map, so
-Foreman refuses the start and links you to step 3.
+If you remove a planet mod after saving step 4, the world will not start
+until you save step 4 again. The game would fail to make the map, so
+Foreman refuses the start and links you to step 4.
 
 On a 2.1 world, **Draw from a real game** next to a planet's picture makes a
 throwaway map with the world's mods and charts 1024 by 1024 tiles around

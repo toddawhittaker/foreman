@@ -2,7 +2,7 @@ import { test, expect, checkPage, createAdmin, seedWorld, image21, openLanguages
 import type { Page } from "@playwright/test";
 import { newMapPath, openNewMap } from "./newmap.js";
 
-// SPEC 5.6: leaving step 3 of the guided Generate with settings that differ from what was loaded
+// SPEC 5.6: leaving step 4 of the guided Generate with settings that differ from what was loaded
 // asks first. A link or form of the page asks in Foreman's own dialog, which
 // says what is lost; reload, closing the tab, the address bar and Back keep
 // the browser's own "leave this page?" question (beforeunload). Nothing
@@ -35,7 +35,7 @@ const stay = (page: Page) => leaveDialog(page).getByRole("button", { name: "Stay
 const leave = (page: Page) => leaveDialog(page).getByRole("button", { name: "Leave without saving" });
 const cancel = (page: Page) => page.getByRole("link", { name: "Cancel" });
 
-// Opens step 3 of a new world and types a seed, so the form differs from what was loaded; returns the world's id.
+// Opens step 4 of a new world and types a seed, so the form differs from what was loaded; returns the world's id.
 async function edit(page: Page) {
   const world = await openNewMap(page);
   await page.locator("#generate-seed").fill("424242");
