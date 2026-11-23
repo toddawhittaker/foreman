@@ -643,6 +643,6 @@
     "many": "Wszyscy gracze ({count})"
   },
   "server.players.none_yet": "Nikt jeszcze nie grał na tym świecie.",
-  "server.players.announce_joined": "Dołączył gracz {names}.",
-  "server.players.announce_left": "Wyszedł gracz {names}."
+  "server.players.announce_joined": "Dołączenie do gry: {names}.",
+  "server.players.announce_left": "Wyjście z gry: {names}."
 }

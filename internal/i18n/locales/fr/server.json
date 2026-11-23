@@ -618,8 +618,8 @@
   "server.players.inexact": "Les temps de jeu peuvent être un peu inexacts. Relire la sauvegarde sur la page du monde les corrige.",
   "server.players.tracked_since": "Suivi depuis le {when}.",
   "server.players.all": {
-    "one": "Le joueur ({count})",
-    "other": "Les {count} joueurs"
+    "one": "Tous les joueurs ({count})",
+    "other": "Tous les joueurs ({count})"
   },
   "server.players.none_yet": "Personne n’a encore joué sur ce monde.",
   "server.players.announce_joined": "{names} a rejoint la partie.",

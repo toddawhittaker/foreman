@@ -643,6 +643,6 @@
     "many": "Все игроки ({count})"
   },
   "server.players.none_yet": "В этом мире ещё никто не играл.",
-  "server.players.announce_joined": "Игрок {names} вошёл.",
-  "server.players.announce_left": "Игрок {names} вышел."
+  "server.players.announce_joined": "В игру вошли: {names}.",
+  "server.players.announce_left": "Из игры вышли: {names}."
 }

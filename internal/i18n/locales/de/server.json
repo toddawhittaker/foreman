@@ -618,8 +618,8 @@
   "server.players.inexact": "Die Spielzeiten können etwas abweichen. Ein erneutes Lesen des Spielstands auf der Seite der Welt korrigiert sie.",
   "server.players.tracked_since": "Erfasst seit {when}.",
   "server.players.all": {
-    "one": "Alle {count} Spieler",
-    "other": "Alle {count} Spieler"
+    "one": "Alle Spieler ({count})",
+    "other": "Alle Spieler ({count})"
   },
   "server.players.none_yet": "Auf dieser Welt hat noch niemand gespielt.",
   "server.players.announce_joined": "{names} ist beigetreten.",

@@ -643,6 +643,6 @@
     "other": "Všichni hráči ({count})"
   },
   "server.players.none_yet": "Na tomto světě zatím nikdo nehrál.",
-  "server.players.announce_joined": "Připojil se hráč {names}.",
-  "server.players.announce_left": "Odešel hráč {names}."
+  "server.players.announce_joined": "Připojení: {names}.",
+  "server.players.announce_left": "Odchod: {names}."
 }
