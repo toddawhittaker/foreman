@@ -33,11 +33,47 @@ func ignoredForOrigin(m world.InstalledMod) bool {
 	return m.BuiltIn || slices.Contains(originIgnored, m.Name)
 }
 
+// Chosen returns the names of the mods the admin chose (SPEC 9.6): the
+// world's record when it has one, or else every mod no other enabled mod
+// requires or recommends, which errs towards calling a mod chosen.
+func Chosen(installed []world.InstalledMod) map[string]bool {
+	out := map[string]bool{}
+	for _, m := range installed {
+		if m.Recorded {
+			for _, m := range installed {
+				if m.Chosen {
+					out[m.Name] = true
+				}
+			}
+			return out
+		}
+	}
+	named := map[string]bool{}
+	for _, p := range installed {
+		if !p.Enabled || ignoredForOrigin(p) {
+			continue
+		}
+		for _, raw := range p.Dependencies {
+			if d, err := ParseDep(raw); err == nil && d.Name != p.Name && (d.required() || d.Kind == Recommended) {
+				named[d.Name] = true
+			}
+		}
+	}
+	for _, m := range installed {
+		if !ignoredForOrigin(m) && !named[m.Name] {
+			out[m.Name] = true
+		}
+	}
+	return out
+}
+
 // Origins works out, from the enabled installed mods' info.json
 // dependencies, which mods are there because others name them (SPEC 9.6).
-// A mod nobody names has no entry. Required beats recommended beats offered,
-// and only the parents of the winning kind are listed. It stores nothing.
+// A chosen mod and a mod nobody names have no entry, and a hidden optional
+// dependency names nothing. Required beats recommended beats offered, and
+// only the parents of the winning kind are listed.
 func Origins(installed []world.InstalledMod) map[string]Origin {
+	chosen := Chosen(installed)
 	present := make(map[string]bool, len(installed))
 	for _, m := range installed {
 		if m.Enabled && !ignoredForOrigin(m) {
@@ -52,7 +88,7 @@ func Origins(installed []world.InstalledMod) map[string]Origin {
 		}
 		for _, raw := range p.Dependencies {
 			d, err := ParseDep(raw)
-			if err != nil || d.Name == p.Name || !present[d.Name] {
+			if err != nil || d.Name == p.Name || !present[d.Name] || chosen[d.Name] {
 				continue
 			}
 			var kind OriginKind
@@ -61,7 +97,7 @@ func Origins(installed []world.InstalledMod) map[string]Origin {
 				kind = RequiredBy
 			case Recommended:
 				kind = RecommendedBy
-			case Optional, HiddenOptional:
+			case Optional:
 				kind = OfferedBy
 			default:
 				continue

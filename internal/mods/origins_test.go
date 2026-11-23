@@ -2,6 +2,7 @@ package mods
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -11,17 +12,27 @@ func inst(name string, deps ...string) world.InstalledMod {
 	return world.InstalledMod{Name: name, Enabled: true, Dependencies: deps}
 }
 
+// recorded marks the mods as a world with a record of chosen mods, the
+// chosen ones being those named.
+func recorded(ms []world.InstalledMod, chosen ...string) []world.InstalledMod {
+	for i := range ms {
+		ms[i].Recorded = true
+		ms[i].Chosen = slices.Contains(chosen, ms[i].Name)
+	}
+	return ms
+}
+
 func TestOriginsKinds(t *testing.T) {
-	got := Origins([]world.InstalledMod{
+	// A hidden optional dependency is not offered to the player, so it names nothing.
+	got := Origins(recorded([]world.InstalledMod{
 		inst("planet", "base >= 2.0", "planetslib", "~ ordered", "+ nice", "? extra", "(?) hidden", "! clash"),
 		inst("planetslib"), inst("ordered"), inst("nice"), inst("extra"), inst("hidden"), inst("clash"),
-	})
+	}, "planet"))
 	want := map[string]Origin{
 		"planetslib": {RequiredBy, []string{"planet"}},
 		"ordered":    {RequiredBy, []string{"planet"}},
 		"nice":       {RecommendedBy, []string{"planet"}},
 		"extra":      {OfferedBy, []string{"planet"}},
-		"hidden":     {OfferedBy, []string{"planet"}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Origins = %+v, want %+v", got, want)
@@ -82,7 +93,7 @@ func TestOriginsIgnoresBaseAndExpansions(t *testing.T) {
 func TestOriginsSkipsDisabledMissingAndMalformed(t *testing.T) {
 	off := inst("off", "lib")
 	off.Enabled = false
-	got := Origins([]world.InstalledMod{off, inst("lib"), inst("a", "absent", "bad/name", "? lib2"), inst("lib2")})
+	got := Origins(recorded([]world.InstalledMod{off, inst("lib"), inst("a", "absent", "bad/name", "? lib2"), inst("lib2")}, "a"))
 	if o := got["lib2"]; o.Kind != OfferedBy {
 		t.Errorf("lib2 = %+v", o)
 	}
@@ -91,5 +102,44 @@ func TestOriginsSkipsDisabledMissingAndMalformed(t *testing.T) {
 	}
 	if _, ok := got["absent"]; ok {
 		t.Errorf("a mod that is not installed has no origin")
+	}
+}
+
+func TestOriginsChosenModHasNone(t *testing.T) {
+	// Moshine was chosen; Muluna offers it. Maraxsis was chosen; three mods
+	// name it, two as hidden optional. Lib was chosen and is also required,
+	// and Nice was chosen and is also recommended.
+	got := Origins(recorded([]world.InstalledMod{
+		inst("muluna", "? moshine", "(?) maraxsis", "lib", "+ nice"),
+		inst("cerys", "? maraxsis"),
+		inst("moshine", "(?) maraxsis"),
+		inst("maraxsis"), inst("lib"), inst("nice"), inst("dep"),
+		inst("other", "dep"),
+	}, "muluna", "cerys", "moshine", "maraxsis", "lib", "nice", "other"))
+	want := map[string]Origin{"dep": {RequiredBy, []string{"other"}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Origins = %+v, want %+v", got, want)
+	}
+}
+
+func TestChosenDerivedWithoutRecord(t *testing.T) {
+	// No record: a mod nobody requires or recommends counts as chosen, an
+	// offered one included; built-in mods are never in the set.
+	base := inst("base")
+	base.BuiltIn = true
+	got := Chosen([]world.InstalledMod{base, inst("muluna", "lib", "+ nice", "? moshine"), inst("lib"), inst("nice"), inst("moshine")})
+	want := map[string]bool{"muluna": true, "moshine": true}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Chosen = %v, want %v", got, want)
+	}
+	if o := Origins([]world.InstalledMod{inst("muluna", "? moshine"), inst("moshine")}); len(o) != 0 {
+		t.Errorf("an offered mod with no record is taken as chosen: %+v", o)
+	}
+}
+
+func TestChosenEmptyRecordIsNotDerived(t *testing.T) {
+	ms := recorded([]world.InstalledMod{inst("kept")})
+	if got := Chosen(ms); len(got) != 0 {
+		t.Errorf("Chosen = %v, want none", got)
 	}
 }

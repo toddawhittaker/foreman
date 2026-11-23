@@ -446,7 +446,7 @@ this accepts.
   either part may be missing. It lets the next start create the map (4.3,
   5.6); Foreman clears it once that start reaches the in-game state.
   It also holds the factory map mode, `factory_map` (5.16), when one was
-  set;
+  set, and `chosen_mods`, the names of the mods the admin chose (9.6);
 - `players.json`, when present: Foreman's record of the players of the
   save the world loads (8.14). Foreman writes it without a snapshot, as it
   does `world.json`.
@@ -2314,12 +2314,20 @@ the 64-bit range means no limit.
 - **Origin of a mod** (#879). Under a mod's group heading a line says why
   the mod is installed when other enabled mods name it: "Required by X"
   (a dependency with no prefix or `~`), "Recommended by X" (`+`) or
-  "Offered by X" (`?` or `(?)`), with "A and B" for several. Foreman works
-  it out when the page is drawn, from the enabled mods' own `info.json`
-  dependencies (`mods.ParseDep`); nothing is stored. Required wins over
-  recommended, which wins over offered, and only the winning kind's mods
-  are named. A mod nobody names, which is the player's own pick, has no
-  line. The base game and its expansions (`base`, `space-age`, `quality`,
+  "Offered by X" (`?`), with "A and B" for several. A hidden optional
+  dependency (`(?)`) names nothing. Foreman works it out when the page is
+  drawn, from the enabled mods' own `info.json` dependencies
+  (`mods.ParseDep`). Required wins over recommended, which wins over
+  offered, and only the winning kind's mods are named. A mod the admin
+  chose has no line, whoever else names it, and neither has a mod nobody
+  names. Each mod change records the chosen mods in `world.json` as
+  `chosen_mods`: a mod asked for, ticked as an optional dependency, or
+  taken from a save becomes chosen when it is installed or turned on; a
+  required or recommended dependency does not; a removed mod leaves the
+  record; a copy of the world keeps it. A world with no record yet, as
+  every world made before the record existed, counts as chosen each mod
+  no other enabled mod requires or recommends, and its next mod change
+  saves that as its record. The base game and its expansions (`base`, `space-age`, `quality`,
   `elevated-rails`) are neither named nor named by. Each name links to its
   group on the page when that mod has settings. The groups of mods nobody
   names come first, then the others; each part keeps its order.

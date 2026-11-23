@@ -24,8 +24,9 @@ function fmtestZip(): Buffer {
 }
 
 // A world whose planet-like mod needs the library mod fmtest. The fake game
-// reports a setting for each of the two.
-async function setUp(page: Page, foreman: { dataDir: string }, fakeGame: Parameters<typeof setUpModsWorld>[2], planetDeps: string[]) {
+// reports a setting for each of the two. chosen, when given, is the world's
+// record of the mods the admin chose.
+async function setUp(page: Page, foreman: { dataDir: string }, fakeGame: Parameters<typeof setUpModsWorld>[2], planetDeps: string[], chosen?: string[]) {
   await setUpModsWorld(page, foreman as Parameters<typeof setUpModsWorld>[1], fakeGame, {
     version: version20,
     fixture: "2.0.77-no-space-age.zip",
@@ -34,6 +35,11 @@ async function setUp(page: Page, foreman: { dataDir: string }, fakeGame: Paramet
   writeFileSync(join(modsDir(foreman.dataDir), "fmtest_1.0.0.zip"), fmtestZip());
   const info = JSON.stringify({ name: "fake-planet", version: "1.0.0", title: "Fake planet", factorio_version: "2.0", dependencies: ["base", ...planetDeps] });
   writeFileSync(join(modsDir(foreman.dataDir), "fake-planet_1.0.0.zip"), makeZip({ "fake-planet_1.0.0/info.json": info }));
+  if (chosen) {
+    const metaPath = join(foreman.dataDir, "worlds", "base", "world.json");
+    const meta = JSON.parse(readFileSync(metaPath, "utf8"));
+    writeFileSync(metaPath, JSON.stringify({ ...meta, chosen_mods: chosen }));
+  }
 }
 
 const group = (page: Page, title: string) => page.locator("fieldset.mod-settings-group").filter({ has: page.locator("legend", { hasText: title }) });
@@ -109,11 +115,22 @@ test("the loading words show while the form loads, and not after", async ({ page
 
 for (const [dep, text] of [["? fmtest", "Offered by Fake planet"], ["+ fmtest", "Recommended by Fake planet"], ["fmtest", "Required by Fake planet"]]) {
   test(`a dependency "${dep}" reads "${text}"`, async ({ page, foreman, fakeGame }) => {
-    await setUp(page, foreman, fakeGame!, [dep]);
+    await setUp(page, foreman, fakeGame!, [dep], ["fake-planet"]);
     await page.goto("/worlds/base/mods/settings");
     await expect(page.getByLabel("Startup integer")).toBeVisible(live);
     await expect(group(page, "FM test").locator(".mod-origin")).toHaveText(text);
     await checkPage(page);
+  });
+}
+
+// A mod the admin chose never says another mod brought it, and a hidden
+// optional dependency names nothing.
+for (const [dep, chosen] of [["fmtest", ["fake-planet", "fmtest"]], ["? fmtest", ["fake-planet", "fmtest"]], ["(?) fmtest", ["fake-planet"]]] as const) {
+  test(`fmtest with "${dep}" and chosen ${chosen.join(", ")} has no origin line`, async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!, [dep], [...chosen]);
+    await page.goto("/worlds/base/mods/settings");
+    await expect(page.getByLabel("Startup integer")).toBeVisible(live);
+    await expect(page.locator(".mod-origin")).toHaveCount(0);
   });
 }
 

@@ -483,3 +483,34 @@ func TestStatusReturnsTheInstalledMods(t *testing.T) {
 		}
 	}
 }
+
+func TestToChangeRecordsChosenMods(t *testing.T) {
+	f := newFixture(t)
+	f.portal.AddZip("alpha", "1.0.0", "beta >= 1.0.0", "+ nice", "? extra")
+	f.portal.AddZip("beta", "1.0.0")
+	f.portal.AddZip("nice", "1.0.0")
+	f.portal.AddZip("extra", "1.0.0")
+	_, c := f.toChange(f.plan(Request{Kind: KindInstall, Names: []string{"alpha"}}), "")
+	if !slices.Equal(c.Chosen, []string{"alpha"}) {
+		t.Errorf("chosen %v, want only alpha: a required or recommended dependency is not a choice", c.Chosen)
+	}
+}
+
+func TestChosenAfter(t *testing.T) {
+	installed := []world.InstalledMod{
+		{Name: "kept", Enabled: true, Recorded: true, Chosen: true},
+		{Name: "gone", Enabled: true, Recorded: true, Chosen: true},
+		{Name: "lib", Enabled: true, Recorded: true},
+	}
+	p := Plan{Changes: []Change{
+		{Name: "gone", Action: ActRemove, Why: Reason{Code: WhyAsked}},
+		{Name: "ticked", Action: ActInstall, Why: Reason{Code: WhyOptionalOf, Of: "kept"}},
+		{Name: "needed", Action: ActInstall, Why: Reason{Code: WhyRequiredBy, Of: "kept"}},
+		{Name: "nice", Action: ActInstall, Why: Reason{Code: WhyRecommendedBy, Of: "kept"}},
+		{Name: "lib", Action: ActUpgrade, Why: Reason{Code: WhyAsked}},
+		{Name: "saved", Action: ActInstall, Why: Reason{Code: WhyFromSave}},
+	}}
+	if got, want := chosenAfter(p, installed), []string{"kept", "saved", "ticked"}; !slices.Equal(got, want) {
+		t.Errorf("chosenAfter = %v, want %v", got, want)
+	}
+}

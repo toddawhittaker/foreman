@@ -1565,6 +1565,12 @@ when a newer release is out (section 18).
 - **World files.** If a new version changes how the data directory is
   laid out, it takes a snapshot of every world it affects before it
   changes any file (SPEC 3.8).
+- **Which mods you chose.** Each world now remembers which mods you
+  installed yourself, so the mod settings page only says "Required by"
+  or "Offered by" for mods that came in for another mod. A world from an
+  older Foreman has no such record yet. Until its next mod change, Foreman
+  takes every mod that no other mod requires or recommends as one you
+  chose; that change saves the record, and nothing else is migrated.
 - **Downgrading is not supported once the database has changed.** An
   older Foreman refuses to start with a database a newer one has migrated,
   and its log says the database is at a newer version. To go back, stop

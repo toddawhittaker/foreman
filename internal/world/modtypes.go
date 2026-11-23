@@ -14,6 +14,10 @@ type InstalledMod struct {
 	// plan can read them without the portal; empty when it has none, nil
 	// when info.json cannot be read.
 	Dependencies []string
+	// Chosen is true for a mod in the world's record of the admin's picks
+	// (SPEC 9.6). Recorded is true on every mod of a world that has a
+	// record, so an empty record is told apart from none.
+	Chosen, Recorded bool
 }
 
 // ModChange is one mod change, applied to a world under its lock after a
@@ -28,4 +32,7 @@ type ModChange struct {
 	// change is refused when the file no longer matches. Empty skips the
 	// check, as an upload does.
 	SettingsSeen string
+	// Chosen is the world's new record of the mods the admin chose; nil
+	// leaves the record as it is (SPEC 9.6).
+	Chosen []string
 }

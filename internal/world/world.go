@@ -231,6 +231,7 @@ type createOptions struct {
 	loadSave     string
 	useWhitelist bool
 	factoryMap   *FactoryMapMode
+	chosenMods   []string
 	// unknown are fields a newer Foreman wrote at the same format version,
 	// kept as SPEC 5.1 says.
 	unknown map[string]json.RawMessage
@@ -289,6 +290,7 @@ func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge
 		NewMap:        opts.newMap,
 		UseWhitelist:  opts.useWhitelist,
 		FactoryMap:    opts.factoryMap,
+		ChosenMods:    opts.chosenMods,
 		unknown:       opts.unknown,
 	}); err != nil {
 		return "", err
