@@ -203,12 +203,8 @@ func splitIconPath(p string) (mod, rest string, ok bool) {
 	if len(p) > MaxIconPathLen || !strings.HasPrefix(p, "__") || !strings.HasSuffix(p, ".png") {
 		return "", "", false
 	}
-	end := strings.Index(p[2:], "__")
-	if end < 0 {
-		return "", "", false
-	}
-	mod = p[2 : 2+end]
-	rest, found := strings.CutPrefix(p[2+end:], "__/")
+	// The prefix ends at the first "__/", so a mod name may end in "_".
+	mod, rest, found := strings.Cut(p[2:], "__/")
 	if !found || !validIconModName(mod) || builtInMods[mod] {
 		return "", "", false
 	}

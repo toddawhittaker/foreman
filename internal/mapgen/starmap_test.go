@@ -109,8 +109,8 @@ func TestDecodeStarMapAtTheLimitIsAccepted(t *testing.T) {
 	for i := range MaxStarMapLocations {
 		locs = append(locs, fmt.Sprintf(`{"name":"p%d"}`, i))
 	}
-	for range MaxStarMapRoutes {
-		routes = append(routes, `{"from":"p0","to":"p1","length":1}`)
+	for i := range MaxStarMapRoutes {
+		routes = append(routes, fmt.Sprintf(`{"from":"p%d","to":"p%d","length":1}`, i%64, 64+i/64))
 	}
 	in := `{"locations":[` + strings.Join(locs, ",") + `],"routes":[` + strings.Join(routes, ",") + `]}`
 	if len(in) > MaxStarMapFileBytes {
@@ -238,5 +238,13 @@ func TestStarMapLabelled(t *testing.T) {
 	}
 	if m.Locations[0].Label != "nauvis" {
 		t.Error("Labelled changed the original")
+	}
+}
+
+func TestDecodeStarMapDropsRepeatedRoutes(t *testing.T) {
+	in := `{"locations":[{"name":"a"},{"name":"b"}],"routes":[{"from":"a","to":"b","length":1},{"from":"b","to":"a","length":1},{"from":"a","to":"b","length":2}]}`
+	m, err := DecodeStarMap([]byte(in))
+	if err != nil || len(m.Routes) != 1 || m.Dropped != 2 {
+		t.Fatalf("%d routes, %d dropped, %v", len(m.Routes), m.Dropped, err)
 	}
 }

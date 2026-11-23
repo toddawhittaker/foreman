@@ -204,3 +204,14 @@ func TestValidIconKind(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeIconIndexModNameEndingInUnderscore(t *testing.T) {
+	in := iconDoc(`"mod_":"1.0.0"`, entry("item", "w", "__mod___/graphics/w.png", 64))
+	x, err := DecodeIconIndex(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r, ok := x.Lookup("item", "w"); !ok || r.Mod != "mod_" || r.Path != "graphics/w.png" {
+		t.Errorf("Lookup = %+v, %v", r, ok)
+	}
+}
