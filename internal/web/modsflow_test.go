@@ -60,18 +60,18 @@ func TestModsTabOfAFinishedWorldHasNoStepBar(t *testing.T) {
 }
 
 // SPEC 5.6, 17.9: the review shows the step bar and a link to step 3; the
-// result after the install has "Next: map settings" as a control.
+// result after the install has "Next: mod settings" as a control.
 func TestReviewAndResultOfAnUnfinishedWorldOfferTheNextStep(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("alpha", "1.0.0")
 	g.world20("Active")
 	id := g.unfinished20("Fresh")
 	_, body := g.getStatus(kindPlanPath(id, "install", "alpha"))
-	wantIn(t, "review", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`, `id="plan-skip"`, `href="`+newMapPath(id)+`"`)
-	wantIn(t, "review text", plain(body), "Skip to map settings")
+	wantIn(t, "review", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`, `id="plan-skip"`, `href="`+flowModSettingsPath(id)+`" id="plan-skip"`)
+	wantIn(t, "review text", plain(body), "Skip to mod settings")
 	// Install is the step's own action, so the skip is a secondary link after it.
 	if apply, skip := strings.Index(body, `id="act-apply"`), strings.Index(body, `id="plan-skip"`); apply < 0 || skip < apply {
-		t.Errorf("Skip to map settings at %d comes before Install at %d", skip, apply)
+		t.Errorf("Skip to mod settings at %d comes before Install at %d", skip, apply)
 	}
 
 	g.wantRedirectTo(modsPath(id)+ownResultQuery, g.post(modsPath(id)+"/plan", planValues(t, body)))
@@ -79,8 +79,8 @@ func TestReviewAndResultOfAnUnfinishedWorldOfferTheNextStep(t *testing.T) {
 		t.Fatal(err)
 	}
 	tab := g.get(modsPath(id) + ownResultQuery)
-	wantIn(t, "result", tab, `id="world-result"`, `id="act-next-map"`, `href="`+newMapPath(id)+`"`)
-	wantIn(t, "result text", plain(tab), "Next: map settings")
+	wantIn(t, "result", tab, `id="world-result"`, `id="act-next-map"`, `href="`+flowModSettingsPath(id)+`"`)
+	wantIn(t, "result text", plain(tab), "Next: mod settings")
 	if strings.Contains(tab, `id="mods-skip"`) {
 		t.Error("the result offers Skip as well as Next")
 	}
@@ -94,8 +94,8 @@ func TestReviewWithNothingToChangeOffersNext(t *testing.T) {
 	id := g.unfinished20("Fresh")
 	g.writeMod(id, "alpha", "1.0.0")
 	_, body := g.getStatus(kindPlanPath(id, "update", ""))
-	wantIn(t, "review", body, `id="plan-next"`, `href="`+newMapPath(id)+`"`)
-	wantIn(t, "text", plain(body), "Next: map settings")
+	wantIn(t, "review", body, `id="plan-next"`, `href="`+flowModSettingsPath(id)+`"`)
+	wantIn(t, "text", plain(body), "Next: mod settings")
 }
 
 // SPEC 5.6: a world with a save has no step bar on its review.

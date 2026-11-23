@@ -86,4 +86,3 @@ func TestWorldCatalogueWithoutSettingsSharesTheDefinitionsRun(t *testing.T) {
 		t.Error("the cached planets were not found")
 	}
 }
-

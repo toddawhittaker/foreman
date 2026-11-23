@@ -404,7 +404,7 @@ func pageCases() []pageCase {
 		{"settings whitelist removed", "todd", 200, settingsPlayerCase(game.PlayerWhitelistRemove, false)},
 		{"settings kicked", "todd", 200, settingsPlayerCase(game.PlayerKick, false)},
 		{"settings unban refused", "todd", 200, settingsPlayerCase(game.PlayerUnban, true)},
-	}, append(modPageCases(), modSettingsPageCases()...)...)
+	}, append(append(modPageCases(), modSettingsPageCases()...), flowModSettingsPageCases()...)...)
 }
 
 // The version fragments render each of their states (SPEC 10.2, 10.7).

@@ -1045,7 +1045,7 @@ the block padding is `--space-2` so a two-line label is not cramped.
   `flex-wrap: wrap`. In an ordinary row the primary button comes first.
 - **One completion footer.** Every form foot bar and confirmation ends
   with its choices together at the end edge: Cancel, a ghost button, just
-  before the primary (or danger) action, as on step 3 of Generate (Cancel,
+  before the primary (or danger) action, as on step 4 of Generate (Cancel,
   Preview map, Save map settings) and the mod plan. A note about what is pending
   (unsaved changes, where a setting comes from) leads the bar at its start.
   A confirmation's row sits under a 1 px `line`. Cancel comes first in the
@@ -2240,21 +2240,23 @@ Classes and their contract:
 
 ### 8.6 Generate (SPEC 5.6)
 
-The task is "make a new world". It is three steps, and each is a plain
+The task is "make a new world". It is four steps, and each is a plain
 page that works without script (SPEC 17.19). From the Server page the
 defaults take three clicks: Worlds, "Generate a world", then "Generate
-world" on step 1, which makes the world and lands on step 2. The Mods and
-map settings steps are optional.
+world" on step 1, which makes the world and lands on step 2. The Mods, mod
+settings and map settings steps are optional.
 
 **The step bar** (`genflowsteps.html`) is a `nav.subnav` holding an `ol` of
-three links: "1. World", "2. Mods" and "3. Map settings". The current one
+four links: "1. World", "2. Mods", "3. Mod settings" and "4. Map
+settings". The current one
 carries `aria-current="step"`, and the links are the way between steps
 when there is no script. The `nav` sits in a `div`, because a subnav
 straight under `main` is the area tabs' phone copy, which is hidden on a
-wide screen. It shows on step 1 with "1. World" current, where steps 2 and 3
-are plain text (a `span`, styled like the other tabs) because the world does
-not exist yet. It shows as links on step 3, and on the Mods tab and the
-review while the world is Unfinished.
+wide screen. When no mod has a startup setting, step 3 is plain text
+"3. Mod settings (none)", never a link (SPEC 5.6). It shows on step 1 with
+"1. World" current, where the later steps are plain text (a `span`, styled like the other tabs) because the world does
+not exist yet. It shows as links on steps 3 and 4, and on the Mods tab and
+the review while the world is Unfinished.
 
 **Step 1**, `GET /generate`: one `h1` with a one-line hint, then one form,
 in this order:
@@ -2275,21 +2277,32 @@ lands on the review instead (SPEC 5.12).
 
 **Step 2** is the world's Mods tab, or the review (8.11). For an Unfinished
 world each shows the step bar with "2. Mods" current. The Mods tab has a
-"Skip to map settings" link under the bar. After a mod change its Done box
-shows "Next: map settings", a button (SPEC 17.9), in place of Skip. The
-review has "Skip to map settings" after the Install button in source
-order, or "Next: map settings" when the plan changes nothing. A world with a save shows none of this.
+"Skip to mod settings" link under the bar. After a mod change its Done box
+shows "Next: mod settings", a button (SPEC 17.9), in place of Skip. The
+review has "Skip to mod settings" after the Install button in source
+order, or "Next: mod settings" when the plan changes nothing. Each leads
+to step 3, which passes on to step 4 when there is nothing to set. A world with a save shows none of this.
 
 **Unfinished worlds** carry a plain `badge` "Unfinished" beside the name
 on the Worlds list and on the world page. A list row's one action is
 Continue, a primary button, with "Continue setting up {name}" for screen
 readers. On the world page a note says setting up is not finished, with
 Continue as its one primary button, and Switch becomes a plain button.
-Continue opens step 2 while mod picks are not installed, otherwise step 3
-(SPEC 5.6, 9.14). Checked with a Continue click from the Worlds list: one
+Continue opens step 2 while mod picks are not installed, then step 3 while
+there are startup settings and none are saved, otherwise step 4 (SPEC 5.6,
+9.14). Checked with a Continue click from the Worlds list: one
 click.
 
-**Step 3**, `/worlds/{id}/new-map`, is the rest of this section and 8.7
+**Step 3**, `/worlds/{id}/new-map/mod-settings`, is the step bar, a line
+of intro, a "Skip to map settings" link, then the mod settings page's form
+part (7.2, SPEC 9.6) with the startup settings only, one fieldset per mod.
+The form loads after the page, as on the mod settings page; without script
+the page reloads with `?wait=1`. Its Cancel goes back to step 2. Saving
+lands on step 4; a save that takes longer than 30 seconds shows its
+progress on the Mods tab instead. With nothing to set the step sends the
+browser on to step 4.
+
+**Step 4**, `/worlds/{id}/new-map`, is the rest of this section and 8.7
 and 8.8. Its form id is still `generate-form`. In this order:
 
 1. The step bar and a line of intro. With script the page shows at once
@@ -2404,7 +2417,7 @@ once through `#announcer`.
 when the form is two columns, and after the settings otherwise (Layout,
 above; 8.8).
 
-On success step 3 shows again with a Done box that takes focus (7.3):
+On success step 4 shows again with a Done box that takes focus (7.3):
 "Saved the map settings of Family base 2026. The map is made from them
 when the world first starts." Its button is "Next: go to the world". When
 the world's own planets could not be read, saving is refused with "Try

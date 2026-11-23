@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/modsettings"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // flowWorld is an Unfinished world with the test mod fmtest.
@@ -99,5 +101,18 @@ func TestFlowModSettingsRefusesAMadeWorld(t *testing.T) {
 	id := g.world20("Made", "fmtest_1.0.0")
 	if rep := g.do(http.MethodGet, flowModSettingsPath(id), nil, http.Header{"Cookie": {g.cookie.String()}}); rep.StatusCode != http.StatusConflict {
 		t.Errorf("status %d, want 409", rep.StatusCode)
+	}
+}
+
+// flowModSettingsPageCases are step 3 while it loads, with its form, and
+// with a run error.
+func flowModSettingsPageCases() []pageCase {
+	w := world.Summary{ID: "fresh", Name: longName, GameVersion: "2.0.77", Unfinished: true}
+	defs := &game.ModSettingDefs{Defs: fmtestDefs()}
+	startup, _, _ := settingGroups(defs, nil, nil, "en")
+	return []pageCase{
+		{"flow mod settings loading", "todd", 200, FlowModSettingsPage{ModSettingsPage{World: w}}},
+		{"flow mod settings", "todd", 200, FlowModSettingsPage{ModSettingsPage{World: w, Loaded: true, Startup: startup, Fingerprint: "f", Seen: "s"}}},
+		{"flow mod settings run error", "todd", 200, FlowModSettingsPage{ModSettingsPage{World: w, Loaded: true, RunError: i18n.M("mods.settings.edit.run.failed")}}},
 	}
 }

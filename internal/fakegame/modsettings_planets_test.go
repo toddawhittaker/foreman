@@ -25,7 +25,7 @@ func planetsRun(t *testing.T, image, modList string, settings ...[]byte) mapgen.
 		t.Fatal(err)
 	}
 	for _, b := range settings {
-		if err := os.WriteFile(filepath.Join(r.world, world.ModsDir, world.ModSettingsFile), b, 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(r.world, world.ModsDir, world.ModSettingsFile), b, 0o600); err != nil { //nolint:gosec // a test's own temp folder
 			t.Fatal(err)
 		}
 	}
