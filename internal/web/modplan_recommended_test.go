@@ -72,3 +72,20 @@ func TestRecommendedOfTwoModsHaveOwnSection(t *testing.T) {
 	wantIn(t, "unticked", body, `value="fp-sun" id="mod-fp-sun-optional" hx-post="/worlds/`+id+`/mods/plan/redraw" aria-describedby`)
 	wantIn(t, "unticked button", plain(body), "Install 3 mods and 3 recommended")
 }
+
+// An installed mod that a "+" dependency must upgrade has no box, so it
+// stays in the plan's list rather than vanishing from the page (SPEC 9.2).
+func TestRecommendedUpgradeOfInstalledModStaysListed(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("fp-sun", "1.3.11")
+	g.portal.AddZip("fp-moshine", "1.2.14", "base >= 2.0", "+ fp-sun >= 1.3.11")
+	id := g.world20("Base", "fp-sun_1.3.0")
+	path := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-moshine"}})
+	code, body := g.getStatus(path)
+	if code != http.StatusOK {
+		t.Fatalf("plan %d:\n%s", code, body)
+	}
+	if rows := planRows(body); !strings.Contains(rows, "fp-sun") {
+		t.Errorf("the upgrade of installed fp-sun is missing from the plan:\n%s", rows)
+	}
+}

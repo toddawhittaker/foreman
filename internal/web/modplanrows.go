@@ -58,8 +58,10 @@ func (p ModPlanPage) Groups() []PlanGroup {
 			}
 		}
 		for _, c := range p.Plan.Changes {
-			// A recommended mod shows only by its box (SPEC 9.2).
-			if c.Action == g.act && c.Why.Code != mods.WhyRecommendedBy {
+			// A recommended mod with a box shows only by its box (SPEC 9.2).
+			// One without a box, such as an installed one the plan upgrades,
+			// stays listed.
+			if c.Action == g.act && !p.hasRecommendedBox(c.Name) {
 				items = append(items, p.item(c, vs))
 			}
 		}
@@ -317,6 +319,12 @@ func (o OfferRow) DetailID() string { return o.ID + "-detail" }
 // HasDetail says there is a summary, version or date to show.
 func (o OfferRow) HasDetail() bool {
 	return o.Facts.Summary != "" || o.Facts.Version != "" || !o.Facts.Released.IsZero()
+}
+
+// hasRecommendedBox reports whether the mod has a box in the Recommended
+// mods section.
+func (p ModPlanPage) hasRecommendedBox(name string) bool {
+	return slices.ContainsFunc(p.Plan.Optional, func(o mods.Offer) bool { return o.Recommended && o.Name == name })
 }
 
 // OptionalRows are the optional mods' boxes.
