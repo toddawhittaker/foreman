@@ -29,8 +29,21 @@ type ServerPlayer struct {
 	BeforeForeman bool
 }
 
-// PlayTimeText says the row's play time in hours and minutes.
+// PlayTimeText says the save's play time in hours and minutes.
 func (r ServerPlayer) PlayTimeText() i18n.Msg { return playTime(r.PlayTime) }
+
+// SessionText says how long an online player has been on (SPEC 8.1).
+func (r ServerPlayer) SessionText() i18n.Msg {
+	if r.Joined.IsZero() {
+		return i18n.M("server.players.unknown")
+	}
+	return durationText(r.Duration)
+}
+
+// TotalText says the save's play time for an online player the record lists.
+func (r ServerPlayer) TotalText() i18n.Msg {
+	return i18n.M("server.players.total_time", "total", playTime(r.PlayTime))
+}
 
 // mergePlayers lists who is online first, longest session first, then the
 // rest of the save by play time, most first (SPEC 8.1). A name in both lists
@@ -81,39 +94,64 @@ func (r ServerPlayer) sessionKey() time.Duration {
 
 // savePlayersListed is the save's players when the view has a list of them.
 func (p ServerPage) savePlayersListed() []game.SavePlayer {
-	if !p.HaveSavePlayers {
+	if !p.HaveSavePlayers || !p.savePlayersKnown() {
 		return nil
 	}
-	switch p.SavePlayers.State {
-	case game.SavePlayersReady, game.SavePlayersTrackedOnly, game.SavePlayersNotSupported:
-		return p.SavePlayers.Players
-	}
-	return nil
+	return p.SavePlayers.Players
 }
 
-// AllPlayers is every row the panel could show, in its order.
-func (p ServerPage) AllPlayers() []ServerPlayer {
+// mergedPlayers is every player the panel could show: the save's, and anyone
+// online who is not in its record yet, in the panel's order.
+func (p ServerPage) mergedPlayers() []ServerPlayer {
 	return mergePlayers(p.PlayerRows(), p.savePlayersListed())
 }
 
-// ShownPlayers is the panel's rows, at most serverPlayersShown.
-func (p ServerPage) ShownPlayers() []ServerPlayer {
-	all := p.AllPlayers()
-	return all[:min(len(all), serverPlayersShown)]
+// PlayersPanel is the Players panel's rows and counts, worked out once per
+// render (SPEC 8.1).
+type PlayersPanel struct {
+	// Rows are the rows shown: everyone online, then the others until there
+	// are serverPlayersShown rows.
+	Rows []ServerPlayer
+	// Total is every player of the save and everyone online, shown or not.
+	Total, Online int
+	Caption       i18n.Msg
 }
 
-// PlayersCount is how many rows there are in all, for the "All N players"
-// link; MorePlayers says some are not shown.
-func (p ServerPage) PlayersCount() int { return len(p.AllPlayers()) }
-func (p ServerPage) MorePlayers() bool { return p.PlayersCount() > serverPlayersShown }
+// More says some players are not shown, so the panel links to the full list.
+func (v PlayersPanel) More() bool { return v.Total > len(v.Rows) }
 
-// PlayersCaption names the table: who is online when anyone is, or else how
-// many players the save has.
-func (p ServerPage) PlayersCaption() i18n.Msg {
-	if t := p.PlayerTable(); t != nil {
-		return t.Caption
+// PlayersPanel builds the panel. An online player's actions live only in
+// their row (SPEC 8.2), so the cap never drops one.
+func (p ServerPage) PlayersPanel() PlayersPanel {
+	all := p.mergedPlayers()
+	v := PlayersPanel{Total: len(all)}
+	for _, r := range all {
+		if r.Online {
+			v.Online++
+		}
 	}
-	return i18n.M("server.playtime.players", "count", p.PlayersCount())
+	v.Rows = all[:min(len(all), max(serverPlayersShown, v.Online))]
+	v.Caption = p.playersCaption(v)
+	return v
+}
+
+// playersCaption names the table by how many are online and how many the
+// save has. While a stop warns players, the online ones are who was online
+// when it began (SPEC 7.6). With no record to count, only who is online.
+func (p ServerPage) playersCaption(v PlayersPanel) i18n.Msg {
+	listed := p.HaveSavePlayers && p.savePlayersKnown()
+	stop := !p.PlayersKnown
+	switch {
+	case v.Online == 0:
+		return i18n.M("server.players.table_caption_saved", "total", v.Total)
+	case !listed && stop:
+		return i18n.M("server.players.table_caption_online_stop", "online", v.Online)
+	case !listed:
+		return i18n.M("server.players.table_caption_online", "online", v.Online)
+	case stop:
+		return i18n.M("server.players.table_caption_stop", "online", v.Online, "total", v.Total)
+	}
+	return i18n.M("server.players.table_caption", "online", v.Online, "total", v.Total)
 }
 
 // NobodyYet says the save is known to have no players at all, so the panel
@@ -160,20 +198,21 @@ func (p ServerPage) onlineNames() []string {
 // playersChanged words who joined and who left between two lists of who is
 // online, or zero when nobody did.
 func playersChanged(before, after []string) i18n.Msg {
+	// Factorio names ignore case, as mergePlayers does.
 	was := map[string]bool{}
 	for _, n := range before {
-		was[n] = true
+		was[strings.ToLower(n)] = true
 	}
 	is := map[string]bool{}
 	var joined, left []string
 	for _, n := range after {
-		is[n] = true
-		if !was[n] {
+		is[strings.ToLower(n)] = true
+		if !was[strings.ToLower(n)] {
 			joined = append(joined, n)
 		}
 	}
 	for _, n := range before {
-		if !is[n] {
+		if !is[strings.ToLower(n)] {
 			left = append(left, n)
 		}
 	}

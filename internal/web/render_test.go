@@ -1017,7 +1017,7 @@ func TestPlayerRowsOfferTheirActions(t *testing.T) {
 	html := fragmentHTML(t, liveOpsCase(func(*ServerPage) {}), "server-players")
 	wantAll(t, "alice's row", html,
 		`<details class="player-actions disclosure" name="player-actions" id="pd-alice">`,
-		`<summary id="ps-alice"><span class="player-actions__name">alice</span><span class="visually-hidden">, actions</span></summary>`,
+		`<summary id="ps-alice"><span class="player-actions__name">alice</span> <span class="badge badge--online">Online</span><span class="visually-hidden">, actions</span></summary>`,
 		`<form method="post" action="/worlds/base/players/promote">`,
 		`id="pa-promote-alice">Make admin<span class="visually-hidden"> alice</span>`,
 		`<form method="post" action="/worlds/base/players/whitelist-remove">`,

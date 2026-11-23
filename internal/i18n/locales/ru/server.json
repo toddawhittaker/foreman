@@ -65,11 +65,12 @@
     "few": "{count} в сети",
     "many": "{count} в сети"
   },
-  "server.players.caption_stop": {
-    "one": "{count} в сети на начало остановки",
-    "few": "{count} в сети на начало остановки",
-    "many": "{count} в сети на начало остановки"
-  },
+  "server.players.table_caption": "Игроки: {online} в сети, {total} в этом сохранении",
+  "server.players.table_caption_stop": "Игроки: {online} в сети на начало остановки, {total} в этом сохранении",
+  "server.players.table_caption_online": "Игроки: {online} в сети",
+  "server.players.table_caption_online_stop": "Игроки: {online} в сети на начало остановки",
+  "server.players.table_caption_saved": "Игроки: {total} в этом сохранении",
+  "server.players.total_time": "{total} всего",
   "server.players.player": "Игрок",
   "server.players.online_for": "В сети уже",
   "server.players.unknown": "неизвестно",
@@ -632,8 +633,8 @@
     "many": "{count} игроков в этом сохранении"
   },
   "server.playtime.reading": "Читается",
-  "server.players.time": "Время",
   "server.players.online": "В сети",
+  "server.players.time": "Время",
   "server.players.inexact": "Время игры может быть немного неточным. Повторное чтение сохранения на странице мира исправит его.",
   "server.players.tracked_since": "Учитывается с {when}.",
   "server.players.all": {
