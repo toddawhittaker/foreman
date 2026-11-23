@@ -380,11 +380,23 @@ func (s *server) annotateGroups(id string, lists ...*[]SettingGroup) {
 			_, bo := origins[b.Mod]
 			return cmp.Compare(btoi(ao), btoi(bo))
 		})
-		anchors := make(map[string]string, len(groups))
 		for j := range groups {
 			groups[j].ID = fmt.Sprintf("mod-group-%d-%d", i, j)
-			anchors[groups[j].Mod] = groups[j].ID
 		}
+	}
+	// One map over both lists, so a parent whose group is in the other list
+	// (a startup setting against a map setting) is still a link. A mod in
+	// both lists links to the first.
+	anchors := map[string]string{}
+	for _, list := range lists {
+		for _, g := range *list {
+			if _, ok := anchors[g.Mod]; !ok {
+				anchors[g.Mod] = g.ID
+			}
+		}
+	}
+	for _, list := range lists {
+		groups := *list
 		for j, g := range groups {
 			if o, ok := origins[g.Mod]; ok {
 				groups[j].Origin = originMsg(o, anchors, by)

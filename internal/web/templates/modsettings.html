@@ -17,8 +17,8 @@
 <div id="mod-settings-form" class="mod-settings" hx-get="{{.FormPath}}" hx-trigger="load" hx-swap="outerHTML">
   <section class="panel" aria-labelledby="mod-settings-heading">
     <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
-    <p role="status" class="empty">{{t "mods.settings.edit.loading"}}</p>
-    {{- /* Without script nothing loads the form, so this link asks the server to read it first; the script replaces the whole block (SPEC 9.6). */}}
+    <p role="status" class="empty mod-settings-loading">{{t "mods.settings.edit.loading"}}</p>
+    {{- /* The words above show only while the script's request runs, so without script they do not claim a load that never comes; the link asks the server to read the form first. The script replaces the whole block (SPEC 9.6). */}}
     <p><a href="{{.WaitPath}}" id="mod-settings-wait">{{t "mods.settings.edit.loading_link"}}</a></p>
   </section>
 </div>
@@ -147,7 +147,7 @@
   <h2 id="mod-settings-map-heading">{{t "mods.settings.edit.map.heading"}}</h2>
   <p>{{t "mods.settings.edit.map.saved"}}</p>
   {{- range .Map}}
-  <div class="mod-settings-group setting-row">
+  <div class="mod-settings-group setting-row"{{with .ID}} id="{{.}}" tabindex="-1"{{end}}>
   <h3><span class="mod-name">{{template "mod-name" (modName .Mod .Title .Link)}}</span></h3>
   <dl class="mod-settings-values setting-row__body">
     {{- range .Fields}}
@@ -181,7 +181,7 @@
      control (DESIGN 7.2). Takes []SettingGroup. */}}
 {{define "modsettings-groups" -}}
 {{- range .}}
-<fieldset class="mod-settings-group setting-row"{{with .ID}} id="{{.}}"{{end}}>
+<fieldset class="mod-settings-group setting-row"{{with .ID}} id="{{.}}" tabindex="-1"{{end}}>
   {{- /* The legend names every control in the group, so it is the title alone; the portal link sits beside it, in the body, outside the legend. */}}
   <legend>{{template "mod-name" (modName .Mod .Title false)}}</legend>
   <div class="setting-row__body">
