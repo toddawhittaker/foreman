@@ -4,7 +4,9 @@
   "newmap.steps.label": "Pasos para crear el mundo",
   "newmap.steps.world": "1. Mundo",
   "newmap.steps.mods": "2. Mods",
-  "newmap.steps.map": "3. Ajustes del mapa",
+  "newmap.steps.mod_settings": "3. Ajustes de los mods",
+  "newmap.steps.mod_settings_none": "3. Ajustes de los mods (ninguno)",
+  "newmap.steps.map": "4. Ajustes del mapa",
   "newmap.loading": "Leyendo los planetas que añaden los mods de este mundo. La primera vez puede tardar hasta un minuto.",
   "newmap.loading_label": "Leyendo los planetas",
   "newmap.loading_link": "Mostrar los ajustes del mapa cuando estén listos",
@@ -34,5 +36,8 @@
   "newmap.error.builtin": "No se pudieron leer los planetas de los mods de este mundo, así que guardar ahora descartaría los ajustes de sus planetas. No se guardó nada. Inténtalo de nuevo o revisa los mods del mundo.",
   "newmap.link.retry": "Reintentar",
   "newmap.link.mods": "Ir al paso 2, mods",
-  "newmap.link.server": "Ir a la página del servidor para detenerlo"
+  "newmap.link.server": "Ir a la página del servidor para detenerlo",
+  "newmap.modsettings.title": "Ajustes de los mods",
+  "newmap.modsettings.intro": "Elige los ajustes de inicio de los mods de {name}. Algunos cambian el mapa, como qué planetas hay, así que van antes de los ajustes del mapa.",
+  "newmap.modsettings.skip": "Saltar a los ajustes del mapa"
 }

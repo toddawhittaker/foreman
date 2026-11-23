@@ -4,7 +4,9 @@
   "newmap.steps.label": "Kroki tworzenia świata",
   "newmap.steps.world": "1. Świat",
   "newmap.steps.mods": "2. Modyfikacje",
-  "newmap.steps.map": "3. Ustawienia mapy",
+  "newmap.steps.mod_settings": "3. Ustawienia modyfikacji",
+  "newmap.steps.mod_settings_none": "3. Ustawienia modyfikacji (brak)",
+  "newmap.steps.map": "4. Ustawienia mapy",
   "newmap.loading": "Odczytywanie planet dodawanych przez modyfikacje tego świata. Za pierwszym razem może to potrwać do minuty.",
   "newmap.loading_label": "Odczytywanie planet",
   "newmap.loading_link": "Pokaż ustawienia mapy, gdy będą gotowe",
@@ -35,5 +37,8 @@
   "newmap.error.builtin": "Nie udało się odczytać planet z modyfikacji tego świata, więc zapisanie teraz usunęłoby ustawienia ich planet. Nic nie zapisano. Można spróbować ponownie lub sprawdzić modyfikacje świata.",
   "newmap.link.retry": "Spróbuj ponownie",
   "newmap.link.mods": "Przejdź do kroku 2, modyfikacje",
-  "newmap.link.server": "Przejdź do strony serwera, aby go zatrzymać"
+  "newmap.link.server": "Przejdź do strony serwera, aby go zatrzymać",
+  "newmap.modsettings.title": "Ustawienia modyfikacji",
+  "newmap.modsettings.intro": "Tu ustawia się startowe ustawienia modyfikacji świata {name}. Niektóre zmieniają mapę, na przykład to, jakie są planety, dlatego są przed ustawieniami mapy.",
+  "newmap.modsettings.skip": "Pomiń i przejdź do ustawień mapy"
 }

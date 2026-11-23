@@ -1,7 +1,7 @@
 import { test, expect, planRow, createAdmin, mainNav, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame, openModTools } from "./foreman.js";
 import { countClicks, expectWithin, type Clicks } from "./clicks.js";
 import type { Page } from "@playwright/test";
-import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // SPEC 17.10: the common tasks, started on the Server page with the
@@ -112,6 +112,27 @@ test.describe("click budgets, with the fake game", () => {
     // Making the world lands on step 2, its mods (SPEC 5.6).
     await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
     await expectWithin(clicks, 3, "generate");
+  });
+
+  // SPEC 17.10, 5.6: an Unfinished world with a planet mod: Worlds, Continue
+  // (step 3), the setting, then Save settings, which lands on step 4.
+  test("change a startup mod setting of an Unfinished world: 3 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+    await page.getByLabel("World name").fill("Fresh");
+    await page.getByRole("button", { name: "Generate world" }).click();
+    await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
+    const mods = join(foreman.dataDir, "worlds", "fresh", "mods");
+    copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), join(mods, "fake-planet_1.0.0.zip"));
+    writeFileSync(join(mods, "mod-list.json"), JSON.stringify({ mods: [{ name: "base", enabled: true }, { name: "fake-planet", enabled: true }] }));
+    await page.goto("/");
+    await clicks.reset();
+    await page.getByRole("link", { name: "Worlds", exact: true }).click();
+    await page.getByRole("link", { name: "Continue setting up Fresh" }).click();
+    await page.getByLabel("fm-sta-int").fill("9");
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page).toHaveURL("/worlds/fresh/new-map", live);
+    await expectWithin(clicks, 3, "change a startup mod setting while setting up");
   });
 
   // DESIGN 8.9: the active world's link, "Clone world", then "Clone world" on the form.

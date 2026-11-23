@@ -249,6 +249,9 @@ type Controller struct {
 
 	// modSettings is the cache of mod setting definitions (SPEC 9.6).
 	modSettings modSettingsCache
+	// modPlanets is the cache of planets runs that read the world's
+	// mod-settings.dat (SPEC 5.6, 9.6).
+	modPlanets modSettingsCache
 
 	// Save reads and the factory map (SPEC 8.14 to 8.16, 5.16). Each state
 	// type is defined in the file of the task that builds it, and works as
