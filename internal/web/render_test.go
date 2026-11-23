@@ -696,7 +696,8 @@ func TestPagesRefuseFraming(t *testing.T) {
 	r := newTestRenderer(t)
 	for _, c := range pageCases() {
 		rec, _ := render(t, r, c)
-		if got := rec.Header().Get("Content-Security-Policy"); got != "frame-ancestors 'none'" {
+		// The policy also limits images (SPEC 14.10); framing must stay refused.
+		if got := rec.Header().Get("Content-Security-Policy"); !slices.Contains(strings.Split(got, "; "), "frame-ancestors 'none'") {
 			t.Errorf("%s: Content-Security-Policy %q", c.name, got)
 		}
 		if got := rec.Header().Get("X-Frame-Options"); got != "DENY" {
