@@ -806,6 +806,17 @@ time {
   margin-block-end: -1px;
 }
 
+/* A guided Generate step with nothing to do (SPEC 5.6): muted like a step
+   that cannot be opened yet, and told apart from it by italics. */
+.subnav .subnav-skipped {
+  font-style: italic;
+}
+
+/* Step 3's save status takes no room until the script fills it. */
+#flow-modsettings-saving:empty {
+  margin: 0;
+}
+
 @container (max-width: 30rem) {
   .subnav :is(ul, ol) {
     gap: 0;

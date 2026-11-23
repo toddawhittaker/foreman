@@ -39,5 +39,7 @@
   "newmap.link.server": "Go to the Server page to stop it",
   "newmap.modsettings.title": "Mod settings",
   "newmap.modsettings.intro": "Set the startup settings of the mods of {name}. Some change the map, such as which planets there are, so they come before the map settings.",
-  "newmap.modsettings.skip": "Skip to map settings"
+  "newmap.modsettings.skip": "Skip to map settings",
+  "newmap.modsettings.skipped": "No mod has startup settings, so step 3 was skipped.",
+  "newmap.modsettings.saving": "Saving the mod settings…"
 }

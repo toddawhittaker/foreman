@@ -18,8 +18,8 @@
 </div>
 {{- end}}
 {{- if .ShowSkip}}
-{{- /* Step 2 is optional: the way on is a link, with picks kept for Continue (SPEC 5.6). */}}
-<div class="actions"><a href="{{.NextPath}}" id="mods-skip">{{t "mods.flow.skip"}}</a></div>
+{{- /* Step 2 is optional: the way on is a link, with picks kept for Continue. It names step 4 when step 3 has nothing and passes on (SPEC 5.6). */}}
+<div class="actions"><a href="{{.NextPath}}" id="mods-skip">{{if .NoModSettings}}{{t "mods.flow.skip_map"}}{{else}}{{t "mods.flow.skip"}}{{end}}</a></div>
 {{- end}}
 {{- end}}
 {{template "summary" .Problems}}

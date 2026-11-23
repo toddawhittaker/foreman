@@ -35,12 +35,12 @@ test("the whole flow: step 1, skip the mods, a preset on step 3, saved in five c
   await expect(page).toHaveURL("/worlds/rich-start/mods?generated=1");
   // The Mods tab says the world is made and takes focus, as other Done boxes do (SPEC 17.9).
   const made = page.locator("#mods-generated");
-  await expect(made).toHaveText("Done: Rich start is made. Next, pick its mods or skip to map settings.");
+  await expect(made).toHaveText("Done: Rich start is made. Next, pick its mods or skip this step.");
   await expect(made).toBeFocused();
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/d1-step2-made-${info.project.name}.png`, fullPage: true });
   // Step 3 has nothing to set without mods, so Skip lands on step 4.
-  await page.getByRole("link", { name: "Skip to mod settings" }).click();
+  await page.getByRole("link", { name: "Skip to map settings" }).click();
 
   // Step 4: a preset and a seed, then save.
   await expect(page).toHaveURL(new RegExp(`${newMapPath("rich-start")}`));

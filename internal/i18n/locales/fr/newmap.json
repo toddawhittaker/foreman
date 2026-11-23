@@ -39,5 +39,7 @@
   "newmap.link.server": "Aller à la page Serveur pour l’arrêter",
   "newmap.modsettings.title": "Paramètres des mods",
   "newmap.modsettings.intro": "Choisissez les paramètres de démarrage des mods de {name}. Certains changent la carte, comme les planètes présentes ; ils viennent donc avant les paramètres de la carte.",
-  "newmap.modsettings.skip": "Passer aux paramètres de la carte"
+  "newmap.modsettings.skip": "Passer aux paramètres de la carte",
+  "newmap.modsettings.skipped": "Aucun mod n’a de paramètres de démarrage, l’étape 3 a donc été passée.",
+  "newmap.modsettings.saving": "Enregistrement des paramètres des mods…"
 }

@@ -1693,8 +1693,9 @@ func newInstallForm() planForm {
 
 // continuePath is where an Unfinished world's Continue opens: step 2 while
 // it has saved mod picks that are not installed, then step 3 while the
-// world has no saved mod settings, which passes on to step 4 when no mod
-// has a startup setting, otherwise step 4 (SPEC 5.6, 9.14). A pick installed another way, such as an upload, is not work that
+// world has neither saved mod settings nor saved map settings, which passes
+// on to step 4 when no mod has a startup setting, otherwise step 4 (SPEC
+// 5.6, 9.14). A pick installed another way, such as an upload, is not work that
 // remains. A picks table that cannot be read opens step 2, which shows them.
 func (s *server) continuePath(ctx context.Context, sum world.Summary) string {
 	picks, err := s.store.ModPlan(ctx, sum.ID)
@@ -1708,11 +1709,24 @@ func (s *server) continuePath(ctx context.Context, sum world.Summary) string {
 			return modsPath(sum.ID)
 		}
 	}
-	// A saved settings file means step 3 is done.
-	if s.noModSettings(sum.ID) || s.hasModSettings(sum.ID) {
+	// A saved settings file means step 3 is done; saved map settings mean
+	// step 3 was passed, done or skipped.
+	if s.noModSettings(sum.ID) || s.hasModSettings(sum.ID) || s.mapSettingsSaved(ctx, sum.ID) {
 		return newMapPath(sum.ID)
 	}
 	return flowModSettingsPath(sum.ID)
+}
+
+// mapSettingsSaved says step 4 has been saved for the world: its save is
+// in the audit log (SPEC 12.9). A log that cannot be read says no, so
+// Continue shows step 3, which can be skipped.
+func (s *server) mapSettingsSaved(ctx context.Context, id string) bool {
+	list, err := s.store.ListAudit(ctx, store.AuditFilter{Action: AuditNewMap, WorldID: id, Limit: 1})
+	if err != nil {
+		s.log.Warn("read the audit log", "world", id, "error", err)
+		return false
+	}
+	return len(list) > 0
 }
 
 // picksForm installs the world's saved picks (SPEC 9.14).

@@ -37,11 +37,15 @@ func (p FlowModSettingsPage) Path() string { return flowModSettingsPath(p.World.
 // FormPath is the form part, which can take a game run.
 func (p FlowModSettingsPage) FormPath() string { return p.Path() + "/form" }
 
-// ModsPath is where the form's Cancel goes: step 2.
-func (p FlowModSettingsPage) ModsPath() string { return modsPath(p.World.ID) }
+// WaitPath is step 3 with the form read before it answers, for a browser
+// without script (SPEC 5.6, 9.6).
+func (p FlowModSettingsPage) WaitPath() string { return p.Path() + "?" + newMapWaitQuery + "=1" }
 
 // SkipPath is step 4, the map settings.
 func (p FlowModSettingsPage) SkipPath() string { return newMapPath(p.World.ID) }
+
+// SkippedPath is step 4 when step 3 passes itself on, which says why.
+func (p FlowModSettingsPage) SkippedPath() string { return skippedPath(p.World.ID) }
 
 // WorldPath is the world's page, for the crumb.
 func (p FlowModSettingsPage) WorldPath() string { return worldPath(p.World.ID) }
@@ -95,8 +99,8 @@ func hasStartupSettings(defs *game.ModSettingDefs) bool {
 // flowModSettingsPage is the step's form, startup settings only: the map
 // settings of the mods wait for the world page (SPEC 5.6).
 func (s *server) flowModSettingsPage(ctx context.Context, lang string, p NewMapPage) (FlowModSettingsPage, settingsState, error) {
-	mp, st, err := s.modSettingsPage(ctx, lang, p.World)
-	mp.Map, mp.NewMap = nil, false
+	mp, st, err := s.modSettingsPage(ctx, lang, p.World, true)
+	mp.NewMap = false
 	return FlowModSettingsPage{mp}, st, err
 }
 
@@ -109,7 +113,7 @@ func (s *server) handleFlowModSettings(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	if np.NoModSettings {
-		http.Redirect(w, r, newMapPath(np.World.ID), http.StatusSeeOther) //nolint:gosec // a world Foreman found, a local path segment
+		http.Redirect(w, r, skippedPath(np.World.ID), http.StatusSeeOther) //nolint:gosec // a world Foreman found, a local path segment
 		return
 	}
 	if r.URL.Query().Get(newMapWaitQuery) == "" {
@@ -121,7 +125,7 @@ func (s *server) handleFlowModSettings(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	if p.Empty() && p.RunError.IsZero() {
-		http.Redirect(w, r, p.SkipPath(), http.StatusSeeOther) //nolint:gosec // a world Foreman found, a local path segment
+		http.Redirect(w, r, p.SkippedPath(), http.StatusSeeOther) //nolint:gosec // a world Foreman found, a local path segment
 		return
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
@@ -139,7 +143,7 @@ func (s *server) handleFlowModSettingsForm(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if p.Empty() && p.RunError.IsZero() {
-		w.Header().Set("HX-Redirect", p.SkipPath())
+		w.Header().Set("HX-Redirect", p.SkippedPath())
 		w.WriteHeader(http.StatusOK)
 		return
 	}

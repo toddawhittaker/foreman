@@ -255,7 +255,7 @@ func (s *server) handleModSettingsPage(w http.ResponseWriter, r *http.Request, u
 	p := ModSettingsPage{World: sum}
 	if r.URL.Query().Get(modSettingsWaitQuery) != "" {
 		var err error
-		if p, _, err = s.modSettingsPage(r.Context(), localeOf(r).String(), sum); err != nil {
+		if p, _, err = s.modSettingsPage(r.Context(), localeOf(r).String(), sum, false); err != nil {
 			if r.Context().Err() == nil {
 				s.log.Error("read the mod settings", "world", sum.ID, "error", err)
 			}
@@ -273,7 +273,7 @@ func (s *server) handleModSettingsForm(w http.ResponseWriter, r *http.Request, u
 	if !ok {
 		return
 	}
-	p, _, err := s.modSettingsPage(r.Context(), localeOf(r).String(), sum)
+	p, _, err := s.modSettingsPage(r.Context(), localeOf(r).String(), sum, false)
 	if err != nil {
 		if r.Context().Err() == nil {
 			s.log.Error("read the mod settings", "world", sum.ID, "error", err)
@@ -294,7 +294,10 @@ type settingsState struct {
 // modSettingsPage reads the definitions and the world's file and fills
 // the form, with setting names in lang. A failure the page can word is in
 // RunError; err is Foreman's own fault.
-func (s *server) modSettingsPage(ctx context.Context, lang string, sum world.Summary) (ModSettingsPage, settingsState, error) {
+// startupOnly leaves out the map and per-user settings before the groups
+// get their anchors, so an origin links only to a group on the page, as
+// step 3 of the guided Generate needs (SPEC 5.6).
+func (s *server) modSettingsPage(ctx context.Context, lang string, sum world.Summary, startupOnly bool) (ModSettingsPage, settingsState, error) {
 	p := ModSettingsPage{World: sum, Loaded: true, CountdownForm: s.countdownForm(ctx)}
 	p.Running = game.IsRunning(s.game.Status(sum.ID).State)
 	p.HasFile = s.hasModSettings(sum.ID)
@@ -346,6 +349,9 @@ func (s *server) modSettingsPage(ctx context.Context, lang string, sum world.Sum
 		return p, st, nil
 	}
 	p.Startup, p.Map, p.PerUser = settingGroups(defs, st.file, st.defaults, lang)
+	if startupOnly {
+		p.Map, p.PerUser = nil, false
+	}
 	s.annotateGroups(sum.ID, &p.Startup, &p.Map)
 	return p, st, nil
 }
@@ -704,7 +710,7 @@ func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	countdown, stop := s.readCountdown(r)
-	p, st, err := s.modSettingsPage(r.Context(), localeOf(r).String(), sum)
+	p, st, err := s.modSettingsPage(r.Context(), localeOf(r).String(), sum, false)
 	if err != nil {
 		s.fail(w, r, "read the mod settings", err)
 		return

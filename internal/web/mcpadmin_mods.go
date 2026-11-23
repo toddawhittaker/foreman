@@ -362,7 +362,7 @@ func (s *server) mcpModSettings(ctx context.Context, id string) (world.Summary, 
 	}
 	wctx, cancel := context.WithTimeout(ctx, mcpWait)
 	defer cancel()
-	p, st, err := s.modSettingsPage(wctx, "en", sum)
+	p, st, err := s.modSettingsPage(wctx, "en", sum, false)
 	switch {
 	case ctx.Err() != nil:
 		return sum, p, st, ctx.Err()

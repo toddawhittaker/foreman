@@ -204,15 +204,18 @@ type modSettingsFlight struct {
 // ends gets ctx's error; the run goes on and its result is cached. Any other
 // error is a failure to read the world or to make the work folder.
 func (c *Controller) ModSettingDefs(ctx context.Context, id string) (*ModSettingDefs, error) {
-	return c.sharedModSettingsRun(ctx, id, c.definitionsRun())
+	k := c.definitionsRun()
+	// A key that cannot be read (the world is missing, or being changed) is
+	// a miss; the run reads the world again and reports the cause.
+	key, _ := k.key(id)
+	return c.sharedModSettingsRun(ctx, id, k, key)
 }
 
 // sharedModSettingsRun is ModSettingDefs for one kind of run: its cache,
 // key and whether it reads the world's settings file.
-func (c *Controller) sharedModSettingsRun(ctx context.Context, id string, k modSettingsRunKind) (*ModSettingDefs, error) {
-	// A key that cannot be read (the world is missing, or being changed) is
-	// a miss; the run reads the world again and reports the cause.
-	key, _ := k.key(id)
+// key is the caller's read of k.key, so each request reads it once; empty
+// is a miss.
+func (c *Controller) sharedModSettingsRun(ctx context.Context, id string, k modSettingsRunKind, key string) (*ModSettingDefs, error) {
 	fk := modSettingsFlightKey{id, key}
 	cache := k.cache
 

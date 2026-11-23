@@ -46,38 +46,45 @@ func (c *Controller) addWorldSettings(dir *os.Root, id string) (string, error) {
 // modPlanetDefs is the run the world's planets come from: the planets run
 // when the world has a mod-settings.dat, otherwise the definitions run, so a
 // world on its defaults runs the game once (SPEC 5.6, 9.6). A file that
-// cannot be read is a miss, and the run reports the cause.
+// cannot be read is a miss, and the run reports the cause. The planets key
+// is read once and passed on.
 func (c *Controller) modPlanetDefs(ctx context.Context, id string) (*ModSettingDefs, error) {
-	if key, _, err := c.worlds.ModPlanetsFile(id); err == nil && key == "" {
+	key, _, err := c.worlds.ModPlanetsFile(id)
+	if err == nil && key == "" {
 		return c.ModSettingDefs(ctx, id)
 	}
-	return c.sharedModSettingsRun(ctx, id, c.planetsRun())
+	return c.sharedModSettingsRun(ctx, id, c.planetsRun(), key)
 }
 
-// cachedModPlanetDefs is modPlanetDefs without starting a run.
+// cachedModPlanetDefs is modPlanetDefs without starting a run: one cache
+// lookup, with one read of each key it needs.
 func (c *Controller) cachedModPlanetDefs(id string) (*ModSettingDefs, bool) {
-	k := c.definitionsRun()
-	if key, _, err := c.worlds.ModPlanetsFile(id); err != nil || key != "" {
-		k = c.planetsRun()
-	}
-	key, err := k.key(id)
-	if err != nil || key == "" {
+	key, _, err := c.worlds.ModPlanetsFile(id)
+	if err != nil {
 		return nil, false
 	}
-	k.cache.mu.Lock()
-	defer k.cache.mu.Unlock()
-	return k.cache.get(id, key)
+	if key == "" {
+		return c.CachedModSettingDefs(id)
+	}
+	return c.modPlanets.lookup(id, key)
 }
 
 // CachedModSettingDefs is the world's cached setting definitions, without
 // starting a run; false when they are not cached.
 func (c *Controller) CachedModSettingDefs(id string) (*ModSettingDefs, bool) {
-	k := c.definitionsRun()
-	key, err := k.key(id)
-	if err != nil || key == "" {
+	key, err := c.worlds.ModSettingsKey(id)
+	if err != nil {
 		return nil, false
 	}
-	k.cache.mu.Lock()
-	defer k.cache.mu.Unlock()
-	return k.cache.get(id, key)
+	return c.modSettings.lookup(id, key)
+}
+
+// lookup is get under the cache's lock; an empty key is a miss.
+func (m *modSettingsCache) lookup(id, key string) (*ModSettingDefs, bool) {
+	if key == "" {
+		return nil, false
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.get(id, key)
 }

@@ -39,5 +39,7 @@
   "newmap.link.server": "Ir a la página del servidor para detenerlo",
   "newmap.modsettings.title": "Ajustes de los mods",
   "newmap.modsettings.intro": "Elige los ajustes de inicio de los mods de {name}. Algunos cambian el mapa, como qué planetas hay, así que van antes de los ajustes del mapa.",
-  "newmap.modsettings.skip": "Saltar a los ajustes del mapa"
+  "newmap.modsettings.skip": "Saltar a los ajustes del mapa",
+  "newmap.modsettings.skipped": "Ningún mod tiene ajustes de inicio, así que se ha saltado el paso 3.",
+  "newmap.modsettings.saving": "Guardando los ajustes de los mods…"
 }

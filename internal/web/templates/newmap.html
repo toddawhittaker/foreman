@@ -26,6 +26,9 @@
 {{- else}}
 {{template "genflow-steps" .Steps}}
 <p class="page-intro">{{t "newmap.intro" "name" .World.Name}}</p>
+{{- if .Skipped}}
+<p class="hint" id="newmap-skipped">{{t "newmap.modsettings.skipped"}}</p>
+{{- end}}
 {{- if .Loading}}
 {{- /* The script writes the text into the live region once the page has loaded, so it is said once (SPEC 17.19). */}}
 <div id="newmap-load" class="wait" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">

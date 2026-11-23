@@ -39,5 +39,7 @@
   "newmap.link.server": "Zur Serverseite, um ihn zu stoppen",
   "newmap.modsettings.title": "Mod-Einstellungen",
   "newmap.modsettings.intro": "Lege die Start-Einstellungen der Mods von {name} fest. Manche ändern die Karte, etwa welche Planeten es gibt, darum kommen sie vor den Karteneinstellungen.",
-  "newmap.modsettings.skip": "Zu den Karteneinstellungen springen"
+  "newmap.modsettings.skip": "Zu den Karteneinstellungen springen",
+  "newmap.modsettings.skipped": "Kein Mod hat Starteinstellungen, daher wurde Schritt 3 übersprungen.",
+  "newmap.modsettings.saving": "Mod-Einstellungen werden gespeichert …"
 }
