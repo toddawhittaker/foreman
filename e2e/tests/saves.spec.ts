@@ -164,7 +164,6 @@ test.describe("the server's checks on a posted save", () => {
   });
 
   test("an upload over the limit is refused before it is stored", async ({ page, foreman }) => {
-    test.setTimeout(120_000);
     await createAdmin(page);
     const dir = seedTwoSaves(foreman);
     // A sparse file one byte over 1 GiB takes no disk space.

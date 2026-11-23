@@ -114,7 +114,6 @@ test.describe("the Undo button", () => {
 // SPEC 17.11: the crash-loop box's Restore offer names the snapshot's time
 // in the browser's zone, with no relative text in a button.
 test("the crash-loop Restore offer names the local time", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
-  test.setTimeout(90_000);
   await createAdmin(page);
   seedWorld(foreman, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
   await fakeGame!.call("/image", { ref: image21, on: true });

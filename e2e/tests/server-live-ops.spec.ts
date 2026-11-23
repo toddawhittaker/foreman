@@ -244,7 +244,8 @@ test("the next scheduled restart shows while the game runs, as a time still to c
   await expect(page.locator("#act-schedule")).toHaveCount(0);
 });
 
-test("a scheduled restart waits while players are online, and the page shows it live", async ({ page, foreman, fakeGame }) => {
+// @slow: the schedule fires on the next whole minute of the real clock, so this waits up to a minute.
+test("a scheduled restart waits while players are online, and the page shows it live", { tag: "@slow" }, async ({ page, foreman, fakeGame }) => {
   test.setTimeout(120_000);
   await running(page, foreman, fakeGame!, ["alice"]);
   await schedule(page, minuteAhead(), 1);
@@ -257,7 +258,8 @@ test("a scheduled restart waits while players are online, and the page shows it 
   await checkPage(page);
 });
 
-test("a scheduled restart with no wait is skipped while players are online, and says why", async ({ page, foreman, fakeGame }) => {
+// @slow: the schedule fires on the next whole minute of the real clock, so this waits up to a minute.
+test("a scheduled restart with no wait is skipped while players are online, and says why", { tag: "@slow" }, async ({ page, foreman, fakeGame }) => {
   test.setTimeout(120_000);
   await running(page, foreman, fakeGame!, ["alice"]);
   await schedule(page, minuteAhead(), 0);

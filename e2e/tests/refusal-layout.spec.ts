@@ -83,7 +83,6 @@ test("a refusal in the step list keeps its lists at the box's full width", { tag
 
 // A refused restart is the same box, with the warning to players first.
 test("a refused restart offers Restart anyway the same way", async ({ page, foreman, fakeGame }) => {
-  test.setTimeout(90_000);
   await setUpModsWorld(page, foreman, fakeGame!, { fixture: save, spaceAge: true });
   await page.getByRole("button", { name: "Start server" }).click();
   const first = page.locator(".message--warning").filter({ hasText: "does not match the world" });

@@ -41,7 +41,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test test-shards coverage-floor typecheck build build-fakegame build-fakeportal build-fakeidp image run e2e e2e-deps \
+.PHONY: verify check-go fmt-check fmt vet lint test test-shards coverage-floor typecheck build build-fakegame build-fakeportal build-fakeidp image run e2e e2e-deps e2e-report \
 	test-game test-game-resources test-catalogue game-images e2e-game vuln ci tidy i18n-hash deploy design-export
 
 verify: check-go fmt-check vet lint test typecheck
@@ -313,6 +313,11 @@ E2E_ARGS ?=
 e2e: LDFLAGS := -X $(VERSION_PKG).Version=v0.0.0-e2e -X $(VERSION_PKG).Commit=$(FOREMAN_COMMIT)
 e2e: build build-fakegame build-fakeportal build-fakeidp e2e-deps
 	$(DOCKER_RUN) --ipc=host -e CI -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD)) $(E2E_ARGS)
+
+# CI's report job merges the slices' blob reports from e2e/blob-reports into one
+# HTML report (e2e/playwright-report) and e2e/report.json, which .github/ci-timing reads.
+e2e-report: e2e-deps
+	$(DOCKER_RUN) -e PLAYWRIGHT_HTML_OPEN=never -e PLAYWRIGHT_JSON_OUTPUT_FILE=report.json -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright merge-reports --reporter=html,json blob-reports
 
 # Foreman runs a world on the plain tag factoriotools/factorio:<version>, so
 # the tests do too. A tag can move or be re-pushed, so before a real-game run
