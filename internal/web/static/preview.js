@@ -748,7 +748,6 @@ startPreviewWithForm(() => {
   // Zoom and pan come from viewer.js; it is attached with the dialog below.
   let viewer = null;
   const zoomTo = (next, x, y) => viewer.zoomTo(next, x, y);
-  const zoomSaid = (next) => viewer.zoomSaid(next);
   let tiles = 0; // the shown picture's width in tiles
   const lang = document.documentElement.lang || undefined;
   const el = (id) => document.getElementById(id);
@@ -1439,10 +1438,7 @@ startPreviewWithForm(() => {
         prep.waitSaid = true;
       }
       else if (arrows[e.key] && !panning) step(arrows[e.key]);
-      else if (e.key === "+" || e.key === "=") zoomSaid(viewer.zoom() * viewer.factor);
-      else if (e.key === "-") zoomSaid(viewer.zoom() / viewer.factor);
-      else if (e.key === "0") zoomSaid(1);
-      else return;
+      else if (!viewer.zoomKey(e)) return;
       e.preventDefault();
     });
     // Focus goes back to the picture shown, which is the one that opened it

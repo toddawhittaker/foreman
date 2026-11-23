@@ -3,13 +3,17 @@
 // inside a scrolling frame. Each page keeps its own extras.
 //
 // ForemanViewer.attach(frame, opts) returns { zoom(), zoomTo(next, x, y),
-// zoomSaid(next), factor }. opts:
+// zoomSaid(next), zoomKey(event), factor }. opts:
 //   map()     the picture element inside the frame, measured on each zoom
-//   most()    the largest zoom allowed now
+//   most(zoom) the largest zoom allowed; called with the zoom before the
+//             change being made
 //   buttons   { in, out, fit } elements; each is optional
 //   say(text) speaks a zoom from a key or a button
+//   strings   the page's translated strings; "js.preview.zoom" has {level}
 //   zoomed()  runs after every zoom
 //   keys      true to handle arrows, + - and 0 on the frame itself
+// zoomKey(event) handles the zoom keys (+ = - _ 0) for a page that listens
+// for keys itself, and returns true when it used the key.
 "use strict";
 
 (() => {
@@ -51,6 +55,15 @@
       zoomTo(next);
       const strings = opts.strings || {};
       if (opts.say) opts.say((strings["js.preview.zoom"] || "{level}").replace("{level}", percent.format(zoom)));
+    }
+
+    // Plus and minus zoom in steps and 0 fits; true when the key was one.
+    function zoomKey(e) {
+      if (e.key === "+" || e.key === "=") zoomSaid(zoom * factor);
+      else if (e.key === "-" || e.key === "_") zoomSaid(zoom / factor);
+      else if (e.key === "0") zoomSaid(1);
+      else return false;
+      return true;
     }
 
     if (buttons.in) buttons.in.addEventListener("click", () => zoomSaid(zoom * factor));
@@ -125,15 +138,12 @@
         const pan = Math.max(32, frame.clientWidth / 8);
         const moves = { ArrowLeft: [-pan, 0], ArrowRight: [pan, 0], ArrowUp: [0, -pan], ArrowDown: [0, pan] };
         if (moves[e.key]) frame.scrollBy(moves[e.key][0], moves[e.key][1]);
-        else if (e.key === "+" || e.key === "=") zoomSaid(zoom * factor);
-        else if (e.key === "-" || e.key === "_") zoomSaid(zoom / factor);
-        else if (e.key === "0") zoomSaid(1);
-        else return;
+        else if (!zoomKey(e)) return;
         e.preventDefault();
       });
     }
 
-    return { factor, zoom: () => zoom, zoomTo, zoomSaid };
+    return { factor, zoom: () => zoom, zoomTo, zoomSaid, zoomKey };
   }
 
   window.ForemanViewer = { attach };

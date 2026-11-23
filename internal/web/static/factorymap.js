@@ -13,7 +13,12 @@
     strings = {};
   }
 
+  // One picture is watched at a time; a replaced region's observer is dropped.
+  let observer = null;
+
   function viewer(region) {
+    if (observer) observer.disconnect();
+    observer = null;
     const figure = region.querySelector(".factorymap__view");
     if (!figure) return;
     region.setAttribute("data-viewer", "");
@@ -59,7 +64,8 @@
     form.addEventListener("change", sync);
     sync();
 
-    new ResizeObserver(() => view.zoomTo(view.zoom())).observe(frame);
+    observer = new ResizeObserver(() => view.zoomTo(view.zoom()));
+    observer.observe(frame);
     view.zoomTo(1);
   }
 
