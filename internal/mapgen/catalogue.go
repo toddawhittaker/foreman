@@ -46,7 +46,7 @@ func ValidName(s string) bool { return nameRE.MatchString(s) }
 
 // validCategory holds the control categories the game has (SPEC 14.6); a
 // control of any other category is left out.
-var validCategory = map[string]bool{CategoryResource: true, CategoryTerrain: true, CategoryCliff: true, "enemy": true}
+var validCategory = map[string]bool{CategoryResource: true, CategoryTerrain: true, CategoryCliff: true, CategoryEnemy: true}
 
 // inRange returns v when it is finite and from 0 to MaxPlanetDefault, else
 // nil, which means the game's default (SPEC 14.6).

@@ -2445,10 +2445,15 @@ the settings of the mods' planets.
   says "Preview: Fulgora" once (with One planet chosen, 8.8); a tab
   switch says nothing. A planet the large view moves to opens its row
   without moving focus.
-- **Cliffs off.** Cliffs that the game lets you switch off (Nauvis on
-  every line, Gleba and Fulgora on 2.x, never Vulcanus) have an on/off
-  box in their legend, as resources do, and their continuity select no
-  longer offers "None". There is no achievement warning.
+- **Cliffs off.** Cliffs that the game lets you switch off have an
+  on/off box in their legend, as resources do, and their continuity
+  select no longer offers "None". There is no achievement warning. The
+  box comes by rule, never by planet name: on 2.x a cliff or enemy
+  control gets one when the game says it can be disabled (Nauvis, Gleba
+  and Fulgora cliffs, and a mod's, such as Muluna's or Corrundum's;
+  not Carna's or Foliax's, which say they cannot), as does any resource
+  that can be. On 1.1 Nauvis's cliffs keep their box. A mod's terrain
+  control, such as Muluna's lunar rocks, has none.
 - **Needed resources.** While a Nauvis resource the game needs (iron
   ore, copper ore, stone, crude oil and coal) is off, a warning shows
   under its box ("…unless a mod provides it"), and a `message--warning`
