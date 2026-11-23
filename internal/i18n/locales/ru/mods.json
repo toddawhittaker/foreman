@@ -284,6 +284,11 @@
     "few": "Установить {count} мода",
     "many": "Установить {count} модов"
   },
+  "mods.plan.button.recommended": {
+    "one": "и {count} рекомендуемый",
+    "few": "и {count} рекомендуемых",
+    "many": "и {count} рекомендуемых"
+  },
   "mods.plan.button.update": {
     "one": "Обновить {count} мод",
     "few": "Обновить {count} мода",

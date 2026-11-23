@@ -248,6 +248,9 @@
   "mods.plan.button.install": {
     "other": "安装 {count} 个模组"
   },
+  "mods.plan.button.recommended": {
+    "other": "和 {count} 个推荐模组"
+  },
   "mods.plan.button.update": {
     "other": "更新 {count} 个模组"
   },

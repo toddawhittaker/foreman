@@ -284,6 +284,11 @@
     "few": "Zainstaluj {count} modyfikacje",
     "many": "Zainstaluj {count} modyfikacji"
   },
+  "mods.plan.button.recommended": {
+    "one": "i {count} polecaną",
+    "few": "i {count} polecane",
+    "many": "i {count} polecanych"
+  },
   "mods.plan.button.update": {
     "one": "Zaktualizuj {count} modyfikację",
     "few": "Zaktualizuj {count} modyfikacje",

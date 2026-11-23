@@ -1397,7 +1397,43 @@ func (p ModPlanPage) Button() i18n.Msg {
 	case mods.KindRemove:
 		return i18n.M("mods.plan.button.remove", "count", n)
 	}
-	return i18n.M("mods.plan.button.install", "count", n)
+	return i18n.M("mods.plan.button.install", "count", n-p.recommendedCount())
+}
+
+// ButtonRecommended is the words after the install button's label that
+// count the ticked recommended mods (SPEC 9.14); empty when none is ticked.
+func (p ModPlanPage) ButtonRecommended() i18n.Msg {
+	if n := p.recommendedCount(); n > 0 && p.installLabel() {
+		return i18n.M("mods.plan.button.recommended", "count", n)
+	}
+	return i18n.Msg{}
+}
+
+// installLabel says the button is the plain "Install" one.
+func (p ModPlanPage) installLabel() bool {
+	if p.extraKinds() || p.Form.Kind == mods.KindUpdate && len(p.Form.Versions) > 0 {
+		return false
+	}
+	switch p.Form.Kind {
+	case mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove:
+		return false
+	}
+	return true
+}
+
+// recommendedCount is how many recommended mods the plan changes: the
+// ones left ticked.
+func (p ModPlanPage) recommendedCount() int {
+	if !p.installLabel() {
+		return 0
+	}
+	n := 0
+	for _, c := range p.Plan.Changes {
+		if c.Action != mods.ActKeep && c.Why.Code == mods.WhyRecommendedBy {
+			n++
+		}
+	}
+	return n
 }
 
 // Nothing says the plan changes no mod and asks nothing.

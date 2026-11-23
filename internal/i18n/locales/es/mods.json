@@ -266,6 +266,10 @@
     "one": "Instalar {count} mod",
     "other": "Instalar {count} mods"
   },
+  "mods.plan.button.recommended": {
+    "one": "y {count} recomendado",
+    "other": "y {count} recomendados"
+  },
   "mods.plan.button.update": {
     "one": "Actualizar {count} mod",
     "other": "Actualizar {count} mods"

@@ -2378,7 +2378,7 @@ changed when the file no longer matches. (P0)
 only the names of the mods picked with "+", at most 500 (3.4, ADR 0021). Each
 time the panel is drawn the tree is worked out again, so removing a pick
 also drops every dependency nothing else needs, and a dependency has no
-remove button of its own. When "Install N mods" is accepted, the mods it
+remove button of its own. The install button counts the recommended mods that are ticked apart from the others ("Install 3 mods and 10 recommended"), and its label follows each tick. When "Install N mods" is accepted, the mods it
 installed leave the saved picks and the others stay (an Unfinished world's
 Continue, 5.6, opens step 2 only while picks are left, and a pick installed
 another way, such as an upload, is not work that remains); nothing is cleared by
