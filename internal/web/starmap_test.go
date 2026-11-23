@@ -246,7 +246,7 @@ func TestStarMapLabelSide(t *testing.T) {
 		{0.5, "middle", "text-before-edge"},
 	}
 	for _, tc := range cases {
-		l := placeLocation(mapgen.Location{Magnitude: 1, LabelOrientation: tc.turns}, 1, MapGenName{}, "")
+		l := placeLocation(mapgen.Location{Magnitude: 1}, tc.turns, 1, MapGenName{}, "")
 		if l.Anchor != tc.anchor || l.Baseline != tc.baseline {
 			t.Errorf("%v turns: %s %s, want %s %s", tc.turns, l.Anchor, l.Baseline, tc.anchor, tc.baseline)
 		}
@@ -504,6 +504,118 @@ func TestLabelCells(t *testing.T) {
 	for text, want := range map[string]int{"": 0, "Nauvis": 6, "太阳系": 6, "Nauvis 星": 9, "Край": 4} {
 		if got := labelCells(text); got != want {
 			t.Errorf("labelCells(%q) = %d, want %d", text, got, want)
+		}
+	}
+}
+
+// SPEC 5.6: a curved route is smooth at the large view's closest zoom: no
+// piece turns more than two degrees from the one before, the spiral out from
+// Aquilo to the edge of the system included; a straight route stays two
+// points.
+func TestStarMapRoutesAreSmooth(t *testing.T) {
+	m := starMapOf(t, spaceAgeStarMap)
+	byName := map[string]mapgen.Location{}
+	for _, l := range m.Locations {
+		byName[l.Name] = l
+	}
+	for _, r := range m.Routes {
+		ps := routePoints(byName, byName[r.From], byName[r.To])
+		if r.To == "muluna" {
+			if len(ps) != 2 {
+				t.Errorf("%s to %s is %d points, want straight", r.From, r.To, len(ps))
+			}
+			continue
+		}
+		if len(ps) < 3 {
+			t.Errorf("%s to %s is %d points, want a curve", r.From, r.To, len(ps))
+		}
+		if b := maxBend(ps) * 180 / math.Pi; b > 2.0001 {
+			t.Errorf("%s to %s turns %.2f degrees at a corner, want 2 at most", r.From, r.To, b)
+		}
+		if len(ps) > 200 {
+			t.Errorf("%s to %s is %d points, too many for a small file", r.From, r.To, len(ps))
+		}
+	}
+}
+
+// labelOf is the laid-out location named n.
+func labelOf(t *testing.T, v StarMapView, n string) StarMapLocation {
+	t.Helper()
+	for _, l := range v.Locations {
+		if l.Name == n {
+			return l
+		}
+	}
+	t.Fatalf("no %s", n)
+	return StarMapLocation{}
+}
+
+// SPEC 5.6: a label sits on the game's side unless it would cover a route or
+// another label there and the opposite side is clear; when both sides are
+// covered it keeps the game's side.
+func TestStarMapLabelAvoidsRoutesAndLabels(t *testing.T) {
+	// a's label is on its right, where its route out to b leaves: it moves
+	// left. b's is clear and stays. c's label is on its right, clear: it
+	// stays. d sits just below c with its label on the right, over c's: it
+	// moves left.
+	v, _ := layoutStarMap(starMapOf(t, `{"locations":[
+	 {"name":"a","distance":10,"orientation":0.25,"label_orientation":0.25},
+	 {"name":"b","distance":20,"orientation":0.25,"label_orientation":0.25},
+	 {"name":"c","distance":10,"orientation":0.5,"label_orientation":0.25},
+	 {"name":"d","distance":10.3,"orientation":0.5,"label_orientation":0.25}
+	],"routes":[{"from":"a","to":"b","length":1}]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	for n, want := range map[string]string{"a": "end", "b": "start", "c": "start", "d": "end"} {
+		if got := labelOf(t, v, n).Anchor; got != want {
+			t.Errorf("%s's label is anchored %s, want %s", n, got, want)
+		}
+	}
+	// No label covers a route or another label in the Space Age map.
+	v, _ = layoutStarMap(starMapOf(t, spaceAgeStarMap), mapgen.Builtin("2.1", true), i18n.English, starMapIcons{})
+	var pieces [][2]point
+	for _, d := range v.Routes {
+		ps := pathPoints(t, d)
+		for i := 1; i < len(ps); i++ {
+			pieces = append(pieces, [2]point{ps[i-1], ps[i]})
+		}
+	}
+	for i, l := range v.Locations {
+		var others []rect
+		for j, o := range v.Locations {
+			if j != i {
+				others = append(others, labelBox(o))
+			}
+		}
+		if labelClashes(labelBox(l), pieces, others) {
+			t.Errorf("%s's label covers a route or a label", l.Name)
+		}
+	}
+	// Covered on both sides, by routes in and out: the game's side stays.
+	v, _ = layoutStarMap(starMapOf(t, `{"locations":[
+	 {"name":"a","distance":10,"orientation":0.25,"label_orientation":0.25},
+	 {"name":"b","distance":2,"orientation":0.25,"label_orientation":0.25},
+	 {"name":"c","distance":20,"orientation":0.25,"label_orientation":0.25}
+	],"routes":[{"from":"a","to":"b","length":1},{"from":"a","to":"c","length":1}]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	if got := labelOf(t, v, "a").Anchor; got != "start" {
+		t.Errorf("a's label is anchored %s, want the game's side (start)", got)
+	}
+}
+
+// segmentInRect finds a segment through, inside, beside and across a box.
+func TestSegmentInRect(t *testing.T) {
+	box := rect{point{0, 0}, point{10, 10}}
+	cases := []struct {
+		a, b point
+		want bool
+	}{
+		{point{-5, 5}, point{15, 5}, true},    // through
+		{point{2, 2}, point{3, 3}, true},      // inside
+		{point{-5, -5}, point{-1, 20}, false}, // beside
+		{point{-5, 6}, point{6, -5}, true},    // across a corner
+		{point{-5, 4}, point{4, -5}, false},   // past a corner
+	}
+	for _, c := range cases {
+		if got := segmentInRect(c.a, c.b, box); got != c.want {
+			t.Errorf("%v to %v: %v, want %v", c.a, c.b, got, c.want)
 		}
 	}
 }

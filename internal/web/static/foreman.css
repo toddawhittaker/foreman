@@ -4444,6 +4444,13 @@ html:has(.large-view[open]) {
   border: var(--border-width) solid var(--color-border);
 }
 
+/* In the large view the square picture sits in a wider or taller frame: what is drawn past the
+   picture's own box (the sun's rings, the dark ground) carries on to the frame's edge, which clips
+   it, so no ring stops at a straight line inside the view (SPEC 5.6). */
+.large-view .starmap {
+  overflow: visible;
+}
+
 .starmap__planet {
   stroke: var(--color-primary);
 }

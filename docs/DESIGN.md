@@ -4467,14 +4467,19 @@ one click downloads it.
   each location's distance, a faint orbit ring about the parent for a moon,
   and each location a dark circle edged in the primary colour and sized by
   its magnitude. The label sits beside the circle in the direction of its
-  label orientation, with a dark halo so it reads across routes. The
-  picture is square and fits everything drawn, long labels included.
+  label orientation, with a dark halo so it reads across routes. Where the
+  label there would cover a route or a label already placed, and the
+  opposite side covers neither, it sits on the opposite side; when both
+  sides are covered it keeps the game's. The picture is square and fits
+  everything drawn, long labels included.
 - **Routes** are drawn as the game draws them: an arc about the two ends'
   nearest common parent (the sun for two planets), whose distance and angle
   each change evenly from one end to the other, the shorter way round. A
   route is straight when that parent is one of its ends, or when the ends
-  share nothing but the origin. Hidden locations, and every route that
-  touches one, are left out.
+  share nothing but the origin. A curve is drawn in pieces that turn at
+  most 2 degrees from one to the next, so it stays smooth at the large
+  view's closest zoom. Hidden locations, and every route that touches one,
+  are left out.
 - **Pictures on the circles.** A modded location with its own starmap icon
   shows it from `/worlds/{id}/icons/starmap/{name}.png`. A base-game place
   (Nauvis, Vulcanus, Gleba, Fulgora, Aquilo, the solar system edge, the
@@ -4487,7 +4492,10 @@ one click downloads it.
 - **Large view.** The star map opens in the large view (8.8) with the same
   zoom, pan and keys. It shows alone: the planet steps, the resource
   amounts, the territories and the planet's settings are hidden, as none
-  applies. The download in its bar is the star map's file.
+  applies. The download in its bar is the star map's file. The square
+  picture sits in a wider or taller frame; what is drawn past its box (the
+  outer rings and the dark ground) carries on to the frame's edge, which
+  clips it, so no ring stops at a straight line inside the view.
 - **The file.** The download, the large view's download and the
   `starmap.svg` in the "Download all drawn planets" zip are the same SVG:
   the page's picture with its own namespace and without the pictures on
