@@ -5764,6 +5764,33 @@ a[target="_blank"]::after {
   gap: var(--space-4);
 }
 
+/* Under One planet's picture: the download link and the real-game button with its info
+   icon share a line while they fit, and when they do not the button and its icon wrap
+   together, so the icon never drops off the button's row (DESIGN 8.8). The button gives
+   way before the icon does. */
+.picture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+}
+
+.picture-actions #preview-chart-offer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-inline-size: 100%;
+}
+
+.picture-actions #preview-chart-offer > .button {
+  min-inline-size: 0;
+}
+
+.picture-actions #preview-chart-offer > .tip {
+  flex: none;
+}
+
 @container generate (min-width: 56rem) {
   .gen-grid {
     grid-template-columns: minmax(34rem, 1fr) minmax(20rem, 26rem);
@@ -5854,14 +5881,14 @@ a[target="_blank"]::after {
     justify-self: center;
   }
 
-  /* The Download line also offers the real-game picture. Below 100rem the
-     pane is narrow and the line wraps to two control rows, so the picture
-     keeps room for both; on a wider pane it is one row (DESIGN 8.8). */
-  @media (max-width: 99.98rem) {
-    .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
-      --chart-row: calc(var(--target-min) + var(--space-1));
-      min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
-    }
+  /* The Download line also offers the real-game picture. It wraps to a second
+     row on a narrow pane, and on any pane once the amounts make the link
+     longer, so the picture keeps room for the second row at every width; the
+     button's text may itself wrap to two lines in a longer language
+     (DESIGN 8.8). */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
+    --chart-row: calc(2 * var(--target-min));
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row));
   }
 
   /* The download links and the kept note read as one tight group under the

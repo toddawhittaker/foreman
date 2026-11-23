@@ -51,6 +51,24 @@ function still(page: Page, ids: string[]) {
   }), ids);
 }
 
+// The real-game button, its info icon and the one-planet and zip download links are four separate boxes, none
+// across another; the zip link is below the rest, the icon level with the button, and the rows end inside the
+// pictures' box (DESIGN 8.8).
+async function expectApart(page: Page) {
+  await checkPage(page);
+  const at = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
+  const [one, draw, info, zip] = await Promise.all([at("#preview li a.download"), at("#preview-chart-button"), at("#preview-chart-offer button.tip"), at("#preview a.download[data-planets]")]);
+  const boxes = [one, draw, info, zip];
+  boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b, j) => {
+    const overlaps = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    expect(overlaps, `boxes ${i} ${JSON.stringify(a)} and ${i + j + 1} ${JSON.stringify(b)} overlap`).toBe(false);
+  }));
+  expect(zip.y).toBeGreaterThanOrEqual(Math.max(one.y + one.height, draw.y + draw.height, info.y + info.height));
+  expect(Math.abs(info.y + info.height / 2 - (draw.y + draw.height / 2))).toBeLessThan(draw.height / 2 + 1);
+  const pic = (await page.locator("#preview .pictures").boundingBox())!;
+  expect(draw.y + draw.height, "the rows end inside the pictures' box").toBeLessThanOrEqual(pic.y + pic.height + 1);
+}
+
 test.describe("with script", () => {
   test.beforeEach(async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
@@ -600,6 +618,37 @@ test.describe("with script", () => {
     expect(body).toContain(`Mega_base-${seed}-nauvis.png`);
     expect(body).toContain(`Mega_base-${seed}-gleba.png`);
   });
+
+  // DESIGN 8.8: under One planet's picture the download link, the real-game button and its info icon share a
+  // line or wrap onto a second, and the zip link has its own below; none of them overlap, and the rows stay
+  // inside the picture's box so the zip link is never laid over them, with the resource amounts on or off.
+  for (const [name, size] of [["a wide window", { width: 1920, height: 1000 }], ["a short wide window", { width: 1800, height: 720 }], ["a narrow desktop", { width: 1100, height: 800 }], ["the project's window", null]] as const) {
+    test(`the real-game button, its info and the download links never overlap in ${name}`, async ({ page }) => {
+      if (size) await page.setViewportSize(size);
+      await openNewMap(page, { name: "Mega base" });
+      await expect(pictures(page)).toHaveCount(1);
+      await expect(page.locator("#preview-chart-button")).toBeVisible();
+      await expectApart(page);
+      await page.locator("#preview-amounts").check();
+      await expect(page.locator("#preview li a.download")).toHaveAttribute("href", /amounts=1$/);
+      await expectApart(page);
+    });
+  }
+
+  // The same in every language (the language cookie, as the menu sets it): the longest texts wrap, they never
+  // run into each other. Layout does not follow the theme, so one theme at each width keeps the run short.
+  for (const lang of ["en", "de", "es", "fr", "pl", "ru", "cs", "zh-Hans"]) {
+    test(`the real-game button, its info and the download links never overlap in ${lang}`, async ({ page }, info) => {
+      test.skip(!["phone-dark", "desktop-light"].includes(info.project.name), "one theme at each width");
+      await page.context().addCookies([{ name: "foreman_lang", value: lang, url: page.url() }]);
+      await openNewMap(page);
+      await expect(page.locator("#preview a.picture")).toHaveCount(1);
+      await expect(page.locator("#preview-chart-button")).toBeVisible();
+      await page.locator("#preview-amounts").check();
+      await expect(page.locator("#preview li a.download")).toHaveAttribute("href", /amounts=1$/);
+      await expectApart(page);
+    });
+  }
 
   test("a box with data-disables turns its element off and redraws the preview", async ({ page }) => {
     await openNewMap(page);
