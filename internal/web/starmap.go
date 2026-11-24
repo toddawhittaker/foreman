@@ -17,29 +17,44 @@ import (
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
-// The star map's drawing (SPEC 5.6): a square picture starMapSide units on a
-// side. Sizes are in those units, so circles and labels read the same on a
-// small map and a large one; only the positions scale.
+// The star map's drawing (SPEC 5.6): a square picture about starMapSide
+// units on a side. Positions scale to fit it; every size keeps the game's own
+// ratio to the distances, measured from the game's star map, where a
+// distance unit is about 15.85 pixels (DESIGN 8.23). Labels and small
+// circles have a floor, so they still read on a map that spans far.
 const (
 	starMapSide = 1000.0
 	// starMapPad is the room the scale leaves for circles and labels; the
 	// view box then fits what is drawn, starMapMargin beyond it.
-	starMapPad    = 110.0
+	starMapPad    = 40.0
 	starMapMargin = 16.0
-	// A label's guessed size: the font is 20 units, a letter about 0.6 of it.
-	starMapCharWidth  = 12.0
-	starMapLineHeight = 24.0
-	// A location's circle is starMapRadius times its magnitude, within limits.
-	starMapRadius    = 14.0
-	starMapRadiusMin = 4.0
+	// The sun's radius in game units (60 px in the game). It never reaches
+	// past starMapSunReach of the nearest place about it, so a modded system
+	// with places very near the sun still shows them; starMapSunMin is its
+	// floor in picture units.
+	starMapSun      = 3.8
+	starMapSunReach = 0.75
+	starMapSunMin   = 10.0
+	// A location's circle, to its outer ring, is starMapRadius game units
+	// times its magnitude (Nauvis 11 px, Vulcanus 16 px at 1.5), within
+	// limits in picture units. Its picture fills starMapIcon of that radius,
+	// with a dark gap to the ring, as the game draws it.
+	starMapRadius    = 0.68
+	starMapRadiusMin = 3.0
 	starMapRadiusMax = 56.0
-	// The sun is starMapSun game units across its radius, as the game draws it
-	// beside planets about 10 to 30 units out, within limits.
-	starMapSun    = 4.0
-	starMapSunMin = 10.0
-	starMapSunMax = 60.0
-	// starMapLabelGap is the space between a circle and its label.
-	starMapLabelGap = 6.0
+	starMapIcon      = 0.69
+	// The label's font in game units (11.5 px, caps 8 px), with a floor of
+	// starMapFontMin picture units: an eightieth of the picture, 12.5 px in
+	// the large view at its first zoom on a 1000 px screen. starMapFontMax
+	// keeps a system that spans only a few units from drawing huge labels.
+	starMapFont    = 0.73
+	starMapFontMin = starMapSide / 80
+	starMapFontMax = starMapSide / 30
+	// A label's guessed size, in fonts: a letter about 0.6 of it, a line 1.2.
+	// starMapLabelGap is the space between a circle and its label (5 px).
+	starMapCharWidth  = 0.6
+	starMapLineHeight = 1.2
+	starMapLabelGap   = 0.4
 	// starMapArcStep is the largest turn, in radians, from one piece of a
 	// curved route to the next: 2 degrees, smooth at the large view's closest
 	// zoom. starMapArcMax caps the pieces of one route.
@@ -72,6 +87,8 @@ var starMapPlaceNames = map[string]i18n.Msg{
 type StarMapView struct {
 	ViewBox string
 	Sun     float64 // the sun's radius; it sits at 0,0
+	// Font is the labels' size; Halo the width of the dark edge about each.
+	Font, Halo float64
 	// Rings are the faint circles about the sun through each location
 	// without a parent; Orbits the faint circles about a parent through its
 	// moon.
@@ -104,6 +121,7 @@ type StarMapLocation struct {
 	// Baseline are its SVG text-anchor and dominant-baseline.
 	LabelX, LabelY   float64
 	Anchor, Baseline string
+	font             float64 // the label's size, for its box
 }
 
 // starMapFile is what the "starmap-svg" template draws: one star map, on
@@ -268,7 +286,13 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 	if span > 0 {
 		scale = (starMapSide - 2*starMapPad) / span
 	}
-	v := StarMapView{Sun: round1(min(starMapSunMax, max(starMapSunMin, starMapSun*scale)))}
+	font := min(starMapFontMax, max(starMapFontMin, starMapFont*scale))
+	v := StarMapView{Sun: round1(max(starMapSunMin, starMapSun*scale)), Font: round1(font), Halo: round1(font / 5)}
+	for _, l := range m.Locations {
+		if d := math.Hypot(l.X, l.Y) * scale; l.Parent == "" && d > 0 {
+			v.Sun = min(v.Sun, round1(starMapSunReach*d))
+		}
+	}
 	seen := map[float64]bool{}
 	for _, l := range m.Locations {
 		if p, ok := byName[l.Parent]; ok && l.Parent != "" {
@@ -296,7 +320,7 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 		label := starMapLabel(cat, l)
 		cells := labelCells(loc.Format(label.Name))
 		place := func(turns float64) StarMapLocation {
-			sl := placeLocation(l, turns, scale, label, ic.icon(l))
+			sl := placeLocation(l, turns, scale, font, label, ic.icon(l))
 			sl.LabelCells = cells
 			return sl
 		}
@@ -344,8 +368,8 @@ type rect struct{ min, max point }
 // labelBox is the box a location's label covers. Its width is guessed from
 // the name the page shows, as the font is the reader's.
 func labelBox(l StarMapLocation) rect {
-	w := starMapCharWidth * float64(l.LabelCells)
-	x0, y0 := l.LabelX-w/2, l.LabelY-starMapLineHeight/2
+	w, h := starMapCharWidth*l.font*float64(l.LabelCells), starMapLineHeight*l.font
+	x0, y0 := l.LabelX-w/2, l.LabelY-h/2
 	switch l.Anchor {
 	case "start":
 		x0 = l.LabelX
@@ -354,11 +378,11 @@ func labelBox(l StarMapLocation) rect {
 	}
 	switch l.Baseline {
 	case "text-after-edge":
-		y0 = l.LabelY - starMapLineHeight
+		y0 = l.LabelY - h
 	case "text-before-edge":
 		y0 = l.LabelY
 	}
-	return rect{point{x0, y0}, point{x0 + w, y0 + starMapLineHeight}}
+	return rect{point{x0, y0}, point{x0 + w, y0 + h}}
 }
 
 // labelClashes is true when a label's box covers part of a route's piece or
@@ -438,18 +462,19 @@ func starMapLabel(cat mapgen.Catalogue, l mapgen.Location) MapGenName {
 
 // placeLocation is a location's circle and its label, which sits beside the
 // circle in the direction turns names: turns from straight up, clockwise, as
-// the game has a label orientation.
-func placeLocation(l mapgen.Location, turns, scale float64, label MapGenName, icon string) StarMapLocation {
-	r := min(starMapRadiusMax, max(starMapRadiusMin, starMapRadius*l.Magnitude))
+// the game has a label orientation. font is the label's size.
+func placeLocation(l mapgen.Location, turns, scale, font float64, label MapGenName, icon string) StarMapLocation {
+	r := min(starMapRadiusMax, max(starMapRadiusMin, starMapRadius*l.Magnitude*scale))
 	x, y := l.X*scale, l.Y*scale
 	a := 2 * math.Pi * turns
 	dx, dy := math.Sin(a), -math.Cos(a)
+	gap := r + starMapLabelGap*font
 	out := StarMapLocation{
 		Name: l.Name, Label: label, Icon: icon,
 		X: round1(x), Y: round1(y), R: round1(r),
-		IconX: round1(x - r), IconY: round1(y - r), IconSize: round1(2 * r),
-		LabelX: round1(x + dx*(r+starMapLabelGap)), LabelY: round1(y + dy*(r+starMapLabelGap)),
-		Anchor: "middle", Baseline: "central",
+		IconX: round1(x - starMapIcon*r), IconY: round1(y - starMapIcon*r), IconSize: round1(2 * starMapIcon * r),
+		LabelX: round1(x + dx*gap), LabelY: round1(y + dy*gap),
+		Anchor: "middle", Baseline: "central", font: font,
 	}
 	switch {
 	case dx > 0.3:
