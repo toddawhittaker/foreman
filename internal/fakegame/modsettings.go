@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -277,8 +278,13 @@ type (
 		Magnitude        float64  `json:"magnitude"`
 		LabelOrientation float64  `json:"label_orientation"`
 		Parent           string   `json:"parent,omitempty"`
+		Position         *fakePos `json:"position,omitempty"`
 		Hidden           bool     `json:"hidden"`
 		StarmapIcon      bool     `json:"starmap_icon"`
+	}
+	fakePos struct {
+		X float64 `json:"x"`
+		Y float64 `json:"y"`
 	}
 	fakeRoute struct {
 		From   string  `json:"from"`
@@ -340,12 +346,17 @@ var (
 	}
 )
 
+// FakePlanet's place on the star map.
+const fakePlanetDistance, fakePlanetOrientation = 30, 0.4
+
 // cannedStarMap is the star map file for the enabled mods on 2.x: the
 // game's hidden placeholder location, which every 2.x game has; Nauvis, or
 // Space Age's locations and routes when it is on; and FakePlanet with a
 // route from Nauvis when FakePlanetMod is on; and FakeMoon, orbiting
 // FakePlanet, when the moon setting is on, with a route from FakePlanet
-// when FakePlanetMod is on too.
+// when FakePlanetMod is on too. As 2.1 gives them, the moon's distance and
+// orientation are about its planet, and every location has the game's own
+// position on the map.
 func cannedStarMap(enabled []string, moon bool) fakeStarMap {
 	locName := func(n string) []string { return []string{"space-location-name." + n} }
 	m := fakeStarMap{Routes: []fakeRoute{}}
@@ -358,21 +369,30 @@ func cannedStarMap(enabled []string, moon bool) fakeStarMap {
 		m.Locations = append(m.Locations, spaceAgeLocations[0])
 	}
 	if slices.Contains(enabled, FakePlanetMod) {
-		m.Locations = append(m.Locations, fakeLocation{Name: FakePlanet, Distance: 30, Orientation: 0.4,
+		m.Locations = append(m.Locations, fakeLocation{Name: FakePlanet, Distance: fakePlanetDistance, Orientation: fakePlanetOrientation,
 			Magnitude: 0.8, LabelOrientation: 0.25, StarmapIcon: true})
 		m.Routes = append(m.Routes, fakeRoute{"nauvis", FakePlanet, 20000})
 	}
 	if moon {
 		// As the planet file adds it, with or without FakePlanetMod; a
 		// parent the map does not list is cleared when it is read.
-		m.Locations = append(m.Locations, fakeLocation{Name: FakeMoon, Distance: 31.5, Orientation: 0.41,
+		m.Locations = append(m.Locations, fakeLocation{Name: FakeMoon, Distance: 1.5, Orientation: 0.75,
 			Magnitude: 0.4, LabelOrientation: 0.25, Parent: FakePlanet})
 		if slices.Contains(enabled, FakePlanetMod) {
 			m.Routes = append(m.Routes, fakeRoute{FakePlanet, FakeMoon, 500})
 		}
 	}
-	for i := range m.Locations {
-		m.Locations[i].LocName = locName(m.Locations[i].Name)
+	for i, l := range m.Locations {
+		m.Locations[i].LocName = locName(l.Name)
+		a := 2 * math.Pi * l.Orientation
+		pos := fakePos{l.Distance * math.Sin(a), -l.Distance * math.Cos(a)}
+		if l.Name == FakeMoon {
+			// The moon orbits the planet's place, listed or not.
+			p := 2 * math.Pi * fakePlanetOrientation
+			pos.X += fakePlanetDistance * math.Sin(p)
+			pos.Y -= fakePlanetDistance * math.Cos(p)
+		}
+		m.Locations[i].Position = &pos
 	}
 	return m
 }

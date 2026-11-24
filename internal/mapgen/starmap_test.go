@@ -73,6 +73,37 @@ func TestDecodeStarMapOrientationZeroIsUp(t *testing.T) {
 	}
 }
 
+// From 2.1 a location's distance and orientation are about its origin, a
+// moon's planet (Muluna: 1.5 at 0.75 about Nauvis); the game's own position
+// is where it is drawn. Without one, X and Y come from distance and
+// orientation, as a 2.0 file and an older file give them (SPEC 5.6).
+func TestDecodeStarMapPositionIsTheGames(t *testing.T) {
+	m, err := DecodeStarMap([]byte(`{"locations":[
+	 {"name":"nauvis","distance":15,"orientation":0.25,"position":{"x":15,"y":0}},
+	 {"name":"muluna","distance":1.5,"orientation":0.75,"parent":"nauvis","position":{"x":13.5,"y":0}},
+	 {"name":"vulcanus","distance":10,"orientation":0}
+	]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l, _ := m.Location("muluna"); !near(l.X, 13.5) || !near(l.Y, 0) || !near(l.Distance, 1.5) || !near(l.Orientation, 0.75) {
+		t.Errorf("muluna = %+v, want drawn at 13.5, 0 beside Nauvis", l)
+	}
+	if l, _ := m.Location("vulcanus"); !near(l.X, 0) || !near(l.Y, -10) {
+		t.Errorf("vulcanus without a position = %v, %v", l.X, l.Y)
+	}
+	if _, err := DecodeStarMap([]byte(`{"locations":[{"name":"a","position":{"x":1e999,"y":0}}]}`)); err == nil {
+		t.Error("a position past a float was accepted")
+	}
+	if _, err := DecodeStarMap([]byte(`{"locations":[{"name":"a","position":{"x":"1","y":0}}]}`)); err == nil {
+		t.Error("a string position was accepted")
+	}
+	m, err = DecodeStarMap([]byte(`{"locations":[{"name":"a","position":{"x":2e12,"y":0}},{"name":"b","position":{"x":0,"y":-2e12}}]}`))
+	if err != nil || len(m.Locations) != 0 || m.Dropped != 2 {
+		t.Errorf("positions past 1e12: %+v, %v; want both dropped", m, err)
+	}
+}
+
 func TestDecodeStarMapEmptyListsAreFine(t *testing.T) {
 	for _, in := range []string{`{}`, `{"locations":{},"routes":{}}`, `{"locations":null}`, `{"locations":[]}`} {
 		m, err := DecodeStarMap([]byte(in))

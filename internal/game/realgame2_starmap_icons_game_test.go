@@ -8,8 +8,8 @@ package game
 // export holds no path under the game's own mods. With the planet mods in
 // the folder FOREMAN_TEST_PLANET_MODS names (FOREMAN_TEST_PLANET_MODS_2_0
 // for 2.0), a modded planet's starmap icon opens from its zip and a
-// PlanetsLib moon names its parent; the run's time and peak memory are
-// logged against its limits. Run by `make test-game`, never by `make verify`.
+// PlanetsLib moon names its parent and is drawn beside it; the run's time
+// and peak memory are logged against its limits. Run by `make test-game`, never by `make verify`.
 
 import (
 	"context"
@@ -57,6 +57,11 @@ func TestRealGameStarMapAndIcons(t *testing.T) {
 				if !ok || v.Distance != 10 || math.Abs(v.Orientation-0.1) > 1e-6 {
 					t.Errorf("vulcanus %+v, %t; want distance 10, orientation 0.1", v, ok)
 				}
+				// The game's own position is 10 out at 0.1 of a turn, to the
+				// 1/256 of a unit the game keeps a map position in.
+				if math.Abs(v.X-10*math.Sin(0.2*math.Pi)) > 0.01 || math.Abs(v.Y+10*math.Cos(0.2*math.Pi)) > 0.01 {
+					t.Errorf("vulcanus drawn at %v,%v; want 10 out at 0.1 of a turn", v.X, v.Y)
+				}
 				found := false
 				for _, r := range m.Routes {
 					if (r.From == "nauvis" && r.To == "vulcanus") || (r.From == "vulcanus" && r.To == "nauvis") {
@@ -94,9 +99,18 @@ func TestRealGameStarMapAndIcons(t *testing.T) {
 					len(defs.StarMap.Locations), len(defs.StarMap.Routes))
 				opened, moons := 0, 0
 				for _, l := range defs.StarMap.Locations {
+					t.Logf("%s at %.2f,%.2f (distance %.2f, orientation %.3f)", l.Name, l.X, l.Y, l.Distance, l.Orientation)
 					if l.Parent != "" {
 						moons++
-						t.Logf("%s orbits %s", l.Name, l.Parent)
+						// A moon is drawn beside its planet, as the game
+						// draws it, not out by the sun (SPEC 5.6).
+						p, _ := defs.StarMap.Location(l.Parent)
+						gap := math.Hypot(l.X-p.X, l.Y-p.Y)
+						t.Logf("%s orbits %s, %.2f from it", l.Name, l.Parent, gap)
+						if gap > 5 || gap >= math.Hypot(p.X, p.Y)/2 {
+							t.Errorf("%s at %.2f,%.2f is %.2f from its planet %s at %.2f,%.2f; want beside it",
+								l.Name, l.X, l.Y, gap, p.Name, p.X, p.Y)
+						}
 					}
 					if !l.HasIcon {
 						continue

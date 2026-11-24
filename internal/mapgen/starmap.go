@@ -51,14 +51,14 @@ type Location struct {
 	Label string
 	// LocName is the localised name exactly as the file gave it.
 	LocName json.RawMessage
-	// Distance and Orientation are the location's polar position about the
-	// universe origin. Orientation is turns, 0 to 1: 0 is straight up and it
-	// grows clockwise.
+	// Distance and Orientation are the location's polar position about
+	// what it orbits: the sun, or from 2.1 a moon's planet. Orientation is
+	// turns, 0 to 1: 0 is straight up and it grows clockwise.
 	Distance    float64
 	Orientation float64
-	// X and Y are the position the game derives from them: X to the right
-	// and Y downward, in the game's own units (Y is -Distance at
-	// orientation 0).
+	// X and Y are where the game draws the location on its star map, about
+	// the sun: X to the right and Y downward, in the game's own units (Y is
+	// -Distance at orientation 0 for a location about the sun).
 	X, Y float64
 	// Magnitude scales how big the game draws the location; 1 is a planet.
 	Magnitude float64
@@ -119,6 +119,7 @@ func (m StarMap) Labelled(sections ...modsettings.LocaleSections) StarMap {
 //	      "orientation": 0.1,             // prototype orientation, 0 to 1
 //	      "magnitude": 1,                 // optional, default 1
 //	      "label_orientation": 0.25,      // optional, default 0.25
+//	      "position": {"x": 5.9, "y": -8.1}, // optional: the game's own
 //	      "parent": "fake-planet",        // optional: the location it orbits
 //	      "hidden": false,                // optional: true leaves it out
 //	      "starmap_icon": true            // optional: it has a starmap icon
@@ -130,9 +131,11 @@ func (m StarMap) Labelled(sections ...modsettings.LocaleSections) StarMap {
 //	}
 //
 // An empty list may be written as {} (Lua's empty table). Unknown fields are
-// ignored. X and Y are not in the file: they are worked out as the game does,
-// X = Distance * sin(2π * Orientation) and Y = -Distance * cos(2π *
-// Orientation).
+// ignored. X and Y are the position. A file without one (written before
+// Foreman read it) has them worked out as the game does about the sun, X =
+// Distance * sin(2π * Orientation) and Y = -Distance * cos(2π *
+// Orientation): right on 2.0, where every location's distance is about the
+// sun, but not for a 2.1 moon, whose distance is about its planet.
 type rawStarMap struct {
 	Locations luaList[rawLocation] `json:"locations"`
 	Routes    luaList[rawRoute]    `json:"routes"`
@@ -146,8 +149,14 @@ type rawLocation struct {
 	Magnitude        *float64        `json:"magnitude"`
 	LabelOrientation *float64        `json:"label_orientation"`
 	Parent           string          `json:"parent"`
+	Position         *rawPosition    `json:"position"`
 	Hidden           bool            `json:"hidden"`
 	StarmapIcon      bool            `json:"starmap_icon"`
+}
+
+type rawPosition struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 type rawRoute struct {
@@ -161,8 +170,9 @@ type rawRoute struct {
 // locations or MaxStarMapRoutes routes, with a number that is not finite, or
 // not of the shape above is refused whole, with an error that holds no text
 // from the file. A location whose name is not ^[a-z0-9_-]{1,64}$ or repeats
-// one before it, that is hidden, or whose distance, magnitude or label
-// orientation is negative or past 1e12, is left out and counted in Dropped. A
+// one before it, that is hidden, whose distance, magnitude or label
+// orientation is negative or past 1e12, or whose position is past 1e12 either
+// way, is left out and counted in Dropped. A
 // route to or from a location not kept, or with a negative or oversized
 // length, is left out the same way. A parent that is not a kept location, or
 // that would make a loop, is cleared, so Location.Parent is always safe to
@@ -181,7 +191,8 @@ func DecodeStarMap(data []byte) (StarMap, error) {
 		return StarMap{}, errStarMapCount
 	}
 	for _, l := range raw.Locations {
-		if !finite(l.Distance, l.Orientation) || !finitePtr(l.Magnitude) || !finitePtr(l.LabelOrientation) {
+		if !finite(l.Distance, l.Orientation) || !finitePtr(l.Magnitude) || !finitePtr(l.LabelOrientation) ||
+			(l.Position != nil && !finite(l.Position.X, l.Position.Y)) {
 			return StarMap{}, errStarMapNumber
 		}
 	}
@@ -200,17 +211,21 @@ func DecodeStarMap(data []byte) (StarMap, error) {
 		if l.LabelOrientation != nil {
 			lab = *l.LabelOrientation
 		}
+		angle := 2 * math.Pi * l.Orientation
+		x, y := l.Distance*math.Sin(angle), -l.Distance*math.Cos(angle)
+		if l.Position != nil {
+			x, y = l.Position.X, l.Position.Y
+		}
 		if kept[l.Name] || !ValidName(l.Name) || l.Hidden ||
-			!inStarMapRange(l.Distance, mag, lab) {
+			!inStarMapRange(l.Distance, mag, lab) || math.Abs(x) > maxStarMapValue || math.Abs(y) > maxStarMapValue {
 			m.Dropped++
 			continue
 		}
 		kept[l.Name] = true
-		angle := 2 * math.Pi * l.Orientation
 		m.Locations = append(m.Locations, Location{
 			Name: l.Name, Label: l.Name, LocName: l.LocName,
 			Distance: l.Distance, Orientation: l.Orientation,
-			X: l.Distance * math.Sin(angle), Y: -l.Distance * math.Cos(angle),
+			X: x, Y: y,
 			Magnitude: mag, LabelOrientation: lab,
 			Parent: l.Parent, HasIcon: l.StarmapIcon,
 		})

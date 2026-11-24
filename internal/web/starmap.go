@@ -72,8 +72,9 @@ var starMapPlaceNames = map[string]i18n.Msg{
 type StarMapView struct {
 	ViewBox string
 	Sun     float64 // the sun's radius; it sits at 0,0
-	// Rings are the faint circles about the sun at each distance a location
-	// without a parent lies at; Orbits the faint circles about a parent.
+	// Rings are the faint circles about the sun through each location
+	// without a parent; Orbits the faint circles about a parent through its
+	// moon.
 	Rings  []float64
 	Orbits []StarMapOrbit
 	// Routes are SVG path data, one a route.
@@ -275,7 +276,9 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 			v.Orbits = append(v.Orbits, StarMapOrbit{X: round1(p.X * scale), Y: round1(p.Y * scale), R: round1(r)})
 			continue
 		}
-		d := round1(l.Distance * scale)
+		// The ring passes through the location as drawn: from 2.1 its
+		// distance is about its origin, which need not be the sun.
+		d := round1(math.Hypot(l.X, l.Y) * scale)
 		if d > 0 && !seen[d] {
 			seen[d] = true
 			v.Rings = append(v.Rings, d)

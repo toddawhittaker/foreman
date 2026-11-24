@@ -29,6 +29,8 @@ func starMapOf(t *testing.T, js string) mapgen.StarMap {
 
 // spaceAgeStarMap is Space Age's planets about where the game puts them, a
 // moon of Nauvis, a hidden place and routes, one of them to the hidden place.
+// Muluna is as 2.1 and PlanetsLib give it: 1.5 at 0.75 about Nauvis, with the
+// game's own position just left of Nauvis.
 const spaceAgeStarMap = `{"locations":[
  {"name":"nauvis","distance":15,"orientation":0.275},
  {"name":"vulcanus","distance":10,"orientation":0.1,"magnitude":1.5},
@@ -36,7 +38,7 @@ const spaceAgeStarMap = `{"locations":[
  {"name":"fulgora","distance":25,"orientation":0.325,"magnitude":0.9},
  {"name":"aquilo","distance":35,"orientation":0.225},
  {"name":"solar-system-edge","distance":50,"orientation":0.25,"label_orientation":0.15},
- {"name":"muluna","distance":15.3,"orientation":0.27,"magnitude":0.4,"parent":"nauvis","label_orientation":0.75,"starmap_icon":true},
+ {"name":"muluna","distance":1.5,"orientation":0.75,"position":{"x":13.3153,"y":2.3465},"magnitude":0.4,"parent":"nauvis","label_orientation":0.75,"starmap_icon":true},
  {"name":"secret","distance":40,"orientation":0.5,"hidden":true}
 ],"routes":[
  {"from":"nauvis","to":"vulcanus","length":15000},
@@ -231,6 +233,58 @@ func TestStarMapRingsAndOrbits(t *testing.T) {
 	}
 	if o := v.Orbits[0]; o.X != nauvis.X || o.Y != nauvis.Y || o.R <= 0 {
 		t.Errorf("orbit %+v, want about Nauvis at %v,%v", o, nauvis.X, nauvis.Y)
+	}
+}
+
+// SPEC 5.6: a moon whose distance and orientation are about its planet, as
+// 2.1 gives them, is drawn where the game draws it, beside its planet; its
+// orbit is a small circle about the planet, the sun's rings pass through the
+// planets and not the moon, and its routes start at the moon.
+func TestStarMapMoonBesideItsPlanet(t *testing.T) {
+	m := starMapOf(t, `{"locations":[
+	 {"name":"nauvis","distance":15,"orientation":0.275},
+	 {"name":"vulcanus","distance":10,"orientation":0.1},
+	 {"name":"fulgora","distance":25,"orientation":0.325},
+	 {"name":"cerys","distance":1.39,"orientation":0.45,"position":{"x":22.7047,"y":12.6717},"parent":"fulgora","magnitude":0.5}
+	],"routes":[
+	 {"from":"fulgora","to":"cerys","length":5000},
+	 {"from":"cerys","to":"nauvis","length":15000}
+	]}`)
+	v, ok := layoutStarMap(m, mapgen.Builtin("2.1", true), i18n.English, starMapIcons{})
+	if !ok {
+		t.Fatal("no map")
+	}
+	at := map[string]StarMapLocation{}
+	for _, l := range v.Locations {
+		at[l.Name] = l
+	}
+	cerys, fulgora := at["cerys"], at["fulgora"]
+	sunToFulgora := math.Hypot(fulgora.X, fulgora.Y)
+	gap := math.Hypot(cerys.X-fulgora.X, cerys.Y-fulgora.Y)
+	if gap > sunToFulgora/10 {
+		t.Errorf("Cerys at %v,%v is %.1f from Fulgora at %v,%v; want beside it (the sun is %.1f away)",
+			cerys.X, cerys.Y, gap, fulgora.X, fulgora.Y, sunToFulgora)
+	}
+	if len(v.Orbits) != 1 {
+		t.Fatalf("orbits %+v, want Cerys's", v.Orbits)
+	}
+	if o := v.Orbits[0]; o.X != fulgora.X || o.Y != fulgora.Y || math.Abs(o.R-gap) > 0.2 {
+		t.Errorf("orbit %+v, want about Fulgora at %v,%v with radius %.1f", o, fulgora.X, fulgora.Y, gap)
+	}
+	if len(v.Rings) != 3 {
+		t.Errorf("rings %v, want one for each of the 3 planets", v.Rings)
+	}
+	for _, r := range v.Rings {
+		if math.Abs(r-math.Hypot(cerys.X, cerys.Y)) < 1 && math.Abs(r-sunToFulgora) > 1 {
+			t.Errorf("ring %v passes through Cerys, not a planet", r)
+		}
+	}
+	for i, d := range v.Routes {
+		ps := pathPoints(t, d)
+		from, to := at[m.Routes[i].From], at[m.Routes[i].To]
+		if first, last := ps[0], ps[len(ps)-1]; math.Hypot(first.X-from.X, first.Y-from.Y) > 0.2 || math.Hypot(last.X-to.X, last.Y-to.Y) > 0.2 {
+			t.Errorf("%s to %s runs %v to %v, want %v,%v to %v,%v", from.Name, to.Name, first, last, from.X, from.Y, to.X, to.Y)
+		}
 	}
 }
 

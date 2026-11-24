@@ -6,6 +6,7 @@ import (
 	"context"
 	"image/png"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -227,8 +228,13 @@ func TestStarMapAndIconsWithTheFakePlanetMod(t *testing.T) {
 	if a, _ := m.Location("aquilo"); a.Distance != 35 || a.Orientation != 0.225 {
 		t.Errorf("aquilo %+v", a)
 	}
-	if moon, _ := m.Location(fakegame.FakeMoon); moon.Parent != fakegame.FakePlanet {
-		t.Errorf("moon %+v", moon)
+	// As 2.1 gives a moon: its distance about its planet, and the game's
+	// position beside the planet.
+	moon, _ := m.Location(fakegame.FakeMoon)
+	planet, _ := m.Location(fakegame.FakePlanet)
+	if moon.Parent != fakegame.FakePlanet || moon.Distance > 3 ||
+		math.Abs(math.Hypot(moon.X-planet.X, moon.Y-planet.Y)-moon.Distance) > 1e-9 {
+		t.Errorf("moon %+v, planet %+v; want the moon %g from its planet", moon, planet, moon.Distance)
 	}
 	if p, _ := m.Location(fakegame.FakePlanet); !p.HasIcon {
 		t.Errorf("fake planet %+v has no icon", p)
