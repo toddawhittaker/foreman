@@ -4455,6 +4455,18 @@ html:has(.large-view[open]) {
   stroke: var(--color-primary);
 }
 
+/* A planet in the large view's star map leads to its own step; its whole box, label included,
+   takes the click, which gives a finger more than the circle (SPEC 5.6, 17.2). */
+.large-view .starmap [data-step] {
+  cursor: pointer;
+  pointer-events: bounding-box;
+}
+
+.large-view .starmap [data-step]:is(:hover, :focus-visible) .starmap__planet {
+  stroke: var(--color-primary-hover);
+  stroke-width: 3;
+}
+
 /* The star map in the large view: no planet picture, pin or planet settings (SPEC 5.6). */
 .large-view[data-starmap] :is(#large-img, .pin, #large-territories-box, #large-amounts-bar, #large-settings) {
   display: none;

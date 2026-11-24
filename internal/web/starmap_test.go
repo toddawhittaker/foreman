@@ -433,7 +433,7 @@ func TestPreviewStarMap(t *testing.T) {
 	body := hn.postLong(PathGeneratePreview, worldPreviewForm(id), c).Body.String()
 	for _, want := range []string{`<svg class="starmap"`, `role="img"`, `aria-label="Star map: the planets around the sun and the routes between them."`,
 		"<title>Nauvis</title>", `<title translate="no">muluna</title>`, `href="/worlds/` + id + `/icons/starmap/muluna.png"`,
-		"Download the star map (SVG)"} {
+		"Download the star map (SVG)", `<g class="starmap__location" data-location="nauvis">`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the preview lacks %s", want)
 		}
@@ -454,7 +454,8 @@ func TestPreviewStarMap(t *testing.T) {
 		t.Fatalf("download: status %d, headers %v", rec.Code, rec.Header())
 	}
 	file := rec.Body.Bytes()
-	if !bytes.Contains(file, []byte(`xmlns="http://www.w3.org/2000/svg"`)) || bytes.Contains(file, []byte("<image")) {
+	// The page's picture names each place for the large view's planet steps; the file needs no such mark.
+	if !bytes.Contains(file, []byte(`xmlns="http://www.w3.org/2000/svg"`)) || bytes.Contains(file, []byte("<image")) || bytes.Contains(file, []byte("data-location")) {
 		t.Errorf("the file lacks its namespace or holds images:\n%s", file)
 	}
 	if err := xml.Unmarshal(file, new(struct{})); err != nil {

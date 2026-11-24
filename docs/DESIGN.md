@@ -4506,7 +4506,10 @@ one click downloads it.
   is shown, as none applies. The download in its bar is the star map's file. The square
   picture sits in a wider or taller frame; what is drawn past its box (the
   outer rings and the dark ground) carries on to the frame's edge, which
-  clips it, so no ring stops at a straight line inside the view.
+  clips it, so no ring stops at a straight line inside the view. Each
+  planet with a step is a button there: a pointer cursor, and a brighter,
+  thicker ring on hover and focus beside the focus outline; its label
+  counts as part of its target.
 - **The file.** The download, the large view's download and the
   `starmap.svg` in the "Download all drawn planets" zip are the same SVG:
   the page's picture with its own namespace and without the pictures on
