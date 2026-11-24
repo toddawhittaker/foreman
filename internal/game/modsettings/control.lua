@@ -160,11 +160,28 @@ end
 local max_locations = 256
 local max_routes = 1024
 
+-- map_position is the game's position of a space location as {x, y} with
+-- names, or nil when the game gives none.
+local function map_position(p)
+  local pos = read(p, "position")
+  if type(pos) ~= "table" then
+    return nil
+  end
+  local x, y = pos.x or pos[1], pos.y or pos[2]
+  if type(x) ~= "number" or type(y) ~= "number" then
+    return nil
+  end
+  return { x = x, y = y }
+end
+
 -- starmap_file lists the space locations as the game places them, in the
 -- game's order, and the routes between them. A hidden location, or a
 -- parameter prototype, is marked hidden; Foreman leaves it out with its
--- routes. A location is marked as having a starmap icon only when the icon
--- export holds one Foreman may serve.
+-- routes. distance and orientation are the prototype's, which from 2.1 are
+-- about the location's origin (a moon's planet), so the game's own position
+-- is written too: that is where the star map draws it. A location is marked
+-- as having a starmap icon only when the icon export holds one Foreman may
+-- serve.
 local function starmap_file(export)
   local parents = export and export.parents or {}
   local has_icon = {}
@@ -183,6 +200,7 @@ local function starmap_file(export)
       orientation = read(p, "orientation") or 0,
       magnitude = read(p, "magnitude"),
       label_orientation = read(p, "label_orientation"),
+      position = map_position(p),
       parent = parents[name],
       hidden = (read(p, "hidden") or read(p, "parameter")) and true or false,
       starmap_icon = has_icon[name] or false,
