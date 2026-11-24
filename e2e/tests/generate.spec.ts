@@ -1,7 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo, openPlanetRow, wcagTags } from "./foreman.js";
 import AxeBuilder from "@axe-core/playwright";
 import { countClicks, expectWithin } from "./clicks.js";
-import { openNewMap, newMapPath, oldGameStep1 } from "./newmap.js";
+import { openNewMap, newMapPath, oldGameStep1, planetPictures } from "./newmap.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -345,14 +345,14 @@ test.describe("map preview", () => {
   test("shows one picture per planet, keeps the seed it used, and the save keeps that map", async ({ page, foreman }) => {
     await page.getByRole("button", { name: "Preview map" }).click();
     const section = page.getByRole("region", { name: "Map preview" });
-    await expect(section.getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await expect(section.getByRole("img", { name: /^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/ })).toBeVisible();
     await expect(page.locator("#announcer")).toContainText("Map preview ready.");
     // The blank seed now holds the one the pictures used.
     const seed = await page.locator("#generate-seed").inputValue();
     expect(seed).toMatch(/^\d+$/);
     await expect(section).toContainText(`Seed ${seed}`);
-    const sizes = await section.getByRole("img").evaluateAll((imgs) => (imgs as HTMLImageElement[]).map((i) => i.naturalWidth));
+    const sizes = await planetPictures(page).evaluateAll((imgs) => (imgs as HTMLImageElement[]).map((i) => i.naturalWidth));
     expect(sizes.every((w) => w > 0)).toBe(true);
     await checkPage(page);
 
@@ -364,7 +364,7 @@ test.describe("map preview", () => {
     await setStep(page, "mg-nauvis-iron-ore-size", "200");
     await page.getByRole("button", { name: "Preview map" }).click();
     const section = page.getByRole("region", { name: "Map preview" });
-    await expect(section.getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     expect(await page.locator("#generate-seed").inputValue()).toMatch(/^\d+$/);
     await save(page);
   });
@@ -419,7 +419,7 @@ test.describe("coming back to the map settings", () => {
     await page.goBack();
     await expect(page.locator("#generate-preset")).toHaveValue("default");
     await page.getByRole("button", { name: "Preview map" }).click();
-    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await expect(page.locator("#ms-pollution-enabled")).toBeChecked();
     await expect(page.locator("#ms-enemy-expansion-enabled")).toBeChecked();
     await expect(page.locator("#preset-modified")).toHaveText("");
@@ -477,7 +477,7 @@ test.describe("the preview keeps focus and says what happened", () => {
     await expect(button).toBeFocused();
     await expect(page.locator("#preview-wait")).toBeVisible();
 
-    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await expect(button).toBeFocused();
     await expect(button).not.toHaveAttribute("aria-disabled", "true");
     await expect(page.locator("#announcer")).toContainText("Map preview ready.");
@@ -492,7 +492,7 @@ test.describe("the preview keeps focus and says what happened", () => {
     await expect(page.getByRole("button", { name: "Preview map" })).toHaveAttribute("aria-disabled", "true");
     await page.locator("#generate-seed").press("Enter");
     await page.getByRole("button", { name: "Finish" }).click({ force: true });
-    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     // Neither attempt saved: the page is still the form.
     await expect(page).toHaveURL(newMapPath(id));
     await expect(page.locator("#world-ready")).toHaveCount(0);
@@ -506,7 +506,7 @@ test.describe("the preview keeps focus and says what happened", () => {
     const button = page.getByRole("button", { name: "Preview map" });
     await button.focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await expect(page.locator("#error-summary")).toHaveCount(0);
     await expect(page.locator("#announcer")).toContainText("Map preview ready.");
     await expect(button).toBeFocused();
@@ -553,7 +553,7 @@ test("a preset with a seed is saved with the keyboard alone, previewing first", 
   await page.keyboard.type("777");
   await tabTo(page, page.getByRole("button", { name: "Preview map" }));
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+  await expect(planetPictures(page)).toHaveCount(5);
   await expect(page.getByRole("button", { name: "Preview map" })).toBeFocused();
   await expect(page.locator("#generate-seed")).toHaveValue("777");
   // The primary button ends the action row, after Preview map (DESIGN 7.1).

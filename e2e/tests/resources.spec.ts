@@ -1,6 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page, Request, Route } from "@playwright/test";
-import { openNewMap } from "./newmap.js";
+import { openNewMap, planetPictures } from "./newmap.js";
 
 // SPEC 5.6, 17: "Show resource amounts" in the large view. Off on load and
 // kept while the page lives; ticked, the planet shown is counted once its
@@ -208,7 +208,7 @@ test("Preview map clicked during a change's pause leaves the box working", async
   // The change starts the pause; Preview map, at once, drops its draw and draws every planet.
   await page.locator("#generate-seed").fill("4242");
   await page.getByRole("button", { name: "Preview map" }).click();
-  await expect(section(page).getByRole("img")).toHaveCount(5);
+  await expect(planetPictures(page)).toHaveCount(5);
   await expect(section(page).getByRole("img").first()).toHaveAccessibleName(/seed 4242/);
   await section(page).getByRole("link", { name: /opens the large view/ }).first().click();
   await expect(dialog(page)).toBeVisible();
@@ -413,7 +413,7 @@ test.describe("on the One planet picture", () => {
     await page.waitForTimeout(300);
     expect(asked).toEqual([]);
     await section(page).locator("label.tab", { hasText: "All planets" }).click();
-    await expect(section(page).getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await expect(pageBox(page)).toHaveCount(0);
   });
 

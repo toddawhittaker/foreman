@@ -1,5 +1,5 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
-import { openNewMap, newMapPath } from "./newmap.js";
+import { openNewMap, newMapPath, planetPictures } from "./newmap.js";
 import { typeBadSeed } from "./newmaperror.js";
 import type { Page, Request } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -19,8 +19,6 @@ async function setUp(page: Page, foreman: Parameters<typeof seedWorld>[0], fakeG
 }
 
 const section = (page: Page) => page.getByRole("region", { name: "Map preview" });
-// The planets' pictures; a plain Space Age world's star map, an image too, follows them.
-const pictures = (page: Page) => section(page).getByRole("img", { name: /^Map preview of / });
 
 // The automatic requests the page sends, as they go out.
 function autoRequests(page: Page) {
@@ -77,8 +75,8 @@ test.describe("with script", () => {
 
   test("draws Nauvis on load, keeps the seed it used, and names that seed beside the heading", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
-    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
+    await expect(planetPictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
     const seed = await page.locator("#generate-seed").inputValue();
     expect(seed).toMatch(/^\d+$/);
     // The seed shares the heading's line, so the picture sits close to the controls.
@@ -105,12 +103,12 @@ test.describe("with script", () => {
 
   test("typing a seed sends one request after the pause, and older replies are dropped", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
     const seed = page.locator("#generate-seed");
     await seed.fill("");
     await seed.pressSequentially("424242", { delay: 60 });
-    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 424242. The pin is where players start.");
+    await expect(planetPictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 424242. The pin is where players start.");
     await expect(page.locator("#announcer")).toHaveText("Map preview ready.");
     // The first request goes out after the pause, and only once.
     await page.waitForTimeout(1200);
@@ -140,7 +138,7 @@ test.describe("with script", () => {
   // Step 3 shows the seed the world was made with, so a blank box is made by the test, as a person clears it.
   async function clearSeedHoldingPreview(page: Page) {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const hold = await holdBlankSeedPreview(page);
     const seed = page.locator("#generate-seed");
     await seed.fill("");
@@ -153,7 +151,7 @@ test.describe("with script", () => {
 
   test("a seed box with focus is not written when the preview returns, so typing is not appended to", { tag: "@looks" }, async ({ page }) => {
     const seed = await clearSeedHoldingPreview(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     await page.keyboard.type("777");
     await expect(seed).toHaveValue("777");
     // Leaving a box the person filled never writes the previewed seed over it.
@@ -163,16 +161,16 @@ test.describe("with script", () => {
 
   test("an empty seed box that had focus gets the previewed seed when it loses focus", { tag: "@looks" }, async ({ page }) => {
     const seed = await clearSeedHoldingPreview(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     await expect(seed).toHaveValue("");
     await page.locator("#generate-preset").focus();
     await expect(seed).toHaveValue(/^\d+$/);
-    await expect(pictures(page)).toHaveAccessibleName(new RegExp(`seed ${await seed.inputValue()}\\.`));
+    await expect(planetPictures(page)).toHaveAccessibleName(new RegExp(`seed ${await seed.inputValue()}\\.`));
   });
 
   test("a change mid-run drops the running request; the newest one wins", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     await fakeGame!.call("/preview-mode", { mode: "slow" });
     const failed: string[] = [];
     page.on("requestfailed", (r) => { if (r.url().endsWith("/generate/preview")) failed.push(field(r, "seed") ?? ""); });
@@ -183,11 +181,11 @@ test.describe("with script", () => {
     // The first run is under way (the slow game takes half a second); change again.
     await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
     await seed.fill("222");
-    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
+    await expect(planetPictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
     expect(failed).toEqual(["111"]);
     // The dropped run never shows, even if it ends later.
     await page.waitForTimeout(800);
-    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
+    await expect(planetPictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
     await expect(page.locator("#preview-status")).toHaveText("");
   });
 
@@ -195,7 +193,7 @@ test.describe("with script", () => {
   // keeps its height, so nothing under it moves.
   test("a redraw shows the moving bar beside its words until the picture lands", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const line = page.locator("#preview-status");
     const bar = line.locator("progress");
     await expect(bar).toBeHidden();
@@ -208,31 +206,31 @@ test.describe("with script", () => {
     expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
     await line.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `../screenshots/preview-drawing-bar-${test.info().project.name}.png` });
-    await expect(pictures(page)).toHaveAccessibleName(/seed 333\./);
+    await expect(planetPictures(page)).toHaveAccessibleName(/seed 333\./);
     await expect(line).toHaveText("");
     await expect(bar).toBeHidden();
     expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
     // All planets draws by the same path, with the same bar.
     await section(page).locator("label.tab", { hasText: "All planets" }).click();
     await expect(bar).toBeVisible();
-    await expect(pictures(page).nth(1)).toBeVisible();
+    await expect(planetPictures(page).nth(1)).toBeVisible();
     await expect(bar).toBeHidden();
   });
 
   test("with reduced motion a redraw shows its words but no moving bar", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     await fakeGame!.call("/preview-mode", { mode: "slow" });
     await page.locator("#generate-seed").fill("444");
     await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
     await expect(page.locator("#preview-status progress")).toBeHidden();
-    await expect(pictures(page)).toHaveAccessibleName(/seed 444\./);
+    await expect(planetPictures(page)).toHaveAccessibleName(/seed 444\./);
   });
 
   test("a setting change in any part of step 3's form redraws", async ({ page }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
     await page.locator("#mg-nauvis-iron-ore-size").evaluate((s) => {
       (s as HTMLSelectElement).value = "200";
@@ -243,13 +241,13 @@ test.describe("with script", () => {
 
   test("opening a planet's settings draws only that planet, and going back reuses the stored picture", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
     const before = await runs(fakeGame!);
     const summary = page.locator("#mg-resources-vulcanus summary");
     await summary.click();
-    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus, seed \d+\. The pin is where players start\.$/);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus, seed \d+\. The pin is where players start\.$/);
+    await expect(planetPictures(page)).toHaveCount(1);
     expect(sent.map((r) => field(r, "planet"))).toEqual(["vulcanus"]);
     // An automatic request never moves focus.
     await expect(summary).toBeFocused();
@@ -257,7 +255,7 @@ test.describe("with script", () => {
     expect(await runs(fakeGame!)).toBe(before + 1);
 
     await page.locator("#mg-resources-nauvis summary").click();
-    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
+    await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
     expect(await runs(fakeGame!)).toBe(before + 1);
   });
 
@@ -265,18 +263,18 @@ test.describe("with script", () => {
   // planet as thumbnails, one click each way; the choice holds as settings change.
   test("All planets draws every planet small, and One planet goes back to the open planet", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
     const one = section(page).getByRole("radio", { name: "One planet" });
     const all = section(page).getByRole("radio", { name: "All planets" });
     const tab = (name: string) => section(page).locator("label.tab", { hasText: name });
     // One click: every planet, only the four not drawn yet are run.
     await tab("All planets").click();
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await expect(all).toBeChecked();
     await expect(all).toBeFocused();
     expect(sent.map((r) => [field(r, "preview_view"), field(r, "planet")])).toEqual([["all", undefined]]);
-    const thumb = (await pictures(page).first().boundingBox())!;
+    const thumb = (await planetPictures(page).first().boundingBox())!;
     // Opening another planet's settings draws nothing more while all are shown.
     const runsAll = await runs(fakeGame!);
     await page.locator("#mg-resources-gleba summary").click();
@@ -284,33 +282,33 @@ test.describe("with script", () => {
     expect(sent).toHaveLength(1);
     // One click back: that planet, large, from the stored pictures.
     await tab("One planet").click();
-    await expect(pictures(page)).toHaveCount(1);
-    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Gleba/);
+    await expect(planetPictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Gleba/);
     await expect(one).toBeChecked();
     expect(await runs(fakeGame!)).toBe(runsAll);
-    const large = (await pictures(page).boundingBox())!;
+    const large = (await planetPictures(page).boundingBox())!;
     if ((page.viewportSize()?.width ?? 1280) > 600) expect(large.width).toBeGreaterThan(thumb.width * 1.5);
     await checkPage(page);
 
     // A change of settings with all shown redraws all of them.
     await tab("All planets").click();
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await page.locator("#generate-seed").fill("31337");
-    await expect(pictures(page).first()).toHaveAccessibleName(/seed 31337/);
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page).first()).toHaveAccessibleName(/seed 31337/);
+    await expect(planetPictures(page)).toHaveCount(5);
     expect(field(sent[sent.length - 1], "preview_view")).toBe("all");
   });
 
   // SPEC 5.6: after Preview map draws every planet there is a way back to one.
   test("after Preview map, One planet goes back to the planet being edited", async ({ page }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     await page.getByRole("button", { name: "Preview map" }).click();
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await expect(section(page).getByRole("radio", { name: "All planets" })).toBeChecked();
     await section(page).locator("label.tab", { hasText: "One planet" }).click();
-    await expect(pictures(page)).toHaveCount(1);
-    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis/);
+    await expect(planetPictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Nauvis/);
   });
 
   // SPEC 5.6, DESIGN 8.8: the newest request wins. A Preview map still on its
@@ -318,7 +316,7 @@ test.describe("with script", () => {
   // pictures, nor the seed the amount labels and territories are counted for.
   test("a Preview map reply that arrives after a newer draw's is dropped", async ({ page }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const seed = await page.locator("#generate-seed").inputValue();
     let release = () => {};
     const gate = new Promise<void>((r) => { release = r; });
@@ -342,21 +340,21 @@ test.describe("with script", () => {
     await arrived;
     // A newer, automatic draw: every planet, as the view now asks.
     await section(page).locator("label.tab", { hasText: "All planets" }).click();
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     release();
     await answered;
     await expect(page.getByRole("button", { name: "Preview map" })).not.toHaveAttribute("aria-disabled", "true");
     await expect(page.locator("#preview")).not.toHaveAttribute("data-older", "yes");
     await expect(page.locator("#generate-seed")).toHaveValue(seed);
     await expect(section(page)).toContainText(`Seed ${seed}`);
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
   });
 
   // DESIGN 8.8: a Preview map that lands while the large view is open shows
   // its own picture and download there, not the older section's.
   test("a Preview map reply that lands under the open large view shows there", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     let release = () => {};
     const gate = new Promise<void>((r) => { release = r; });
     let held = () => {};
@@ -375,7 +373,7 @@ test.describe("with script", () => {
     const dialog = page.locator("#large-view");
     await expect(dialog).toBeVisible();
     release();
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await expect(page.getByRole("button", { name: "Preview map" })).not.toHaveAttribute("aria-disabled", "true");
     const fresh = await page.evaluate(() => {
       const link = document.querySelector<HTMLAnchorElement>('#preview a.picture[data-planet="nauvis"]')!;
@@ -390,7 +388,7 @@ test.describe("with script", () => {
   test("a world with one planet offers no choice", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page, { step1: (p) => p.getByLabel("Space Age is on").uncheck() });
     await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(0);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     await expect(section(page).getByRole("radio")).toHaveCount(0);
   });
 
@@ -404,9 +402,9 @@ test.describe("with script", () => {
     // spans the panel, which is the wide panel this test means.
     if ((page.viewportSize()?.width ?? 1280) > 600) await page.setViewportSize({ width: 1024, height: 768 });
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const select = page.locator("#generate-preview-size");
-    const img = pictures(page);
+    const img = planetPictures(page);
     await expect(select).toHaveValue("1280");
     await expect(select.locator("option")).toHaveCount(17);
     await expect(select.locator("option").first()).toHaveText("1024 × 1024 tiles");
@@ -462,9 +460,9 @@ test.describe("with script", () => {
     test.skip(info.project.name.startsWith("phone"), "one card to a row on a phone");
     await page.setViewportSize({ width: 1920, height: 950 });
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     await page.locator("label.tab", { hasText: "All planets" }).click();
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     const rows = () => page.evaluate(() => {
       const byRow = new Map<number, number[][]>();
       // The star map's card holds an SVG, not a planet's picture; it has its own spec.
@@ -502,7 +500,7 @@ test.describe("with script", () => {
       test.slow();
       await page.setViewportSize({ width, height: width > 600 ? 950 : 800 });
       await openNewMap(page);
-      await expect(pictures(page)).toHaveCount(1);
+      await expect(planetPictures(page)).toHaveCount(1);
       await section(page).getByRole("link", { name: /opens the large view/ }).click();
       const dialog = page.locator("#large-view");
       await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
@@ -558,7 +556,7 @@ test.describe("with script", () => {
       test.skip(info.project.name.startsWith("phone"), "a desktop layout");
       await page.setViewportSize({ width, height });
       await openNewMap(page);
-      await expect(pictures(page)).toHaveCount(1);
+      await expect(planetPictures(page)).toHaveCount(1);
       await section(page).getByRole("link", { name: /opens the large view/ }).click();
       const dialog = page.locator("#large-view");
       await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
@@ -585,7 +583,7 @@ test.describe("with script", () => {
   test("the large view works by keyboard alone at 320 px", { tag: "@looks" }, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const link = section(page).getByRole("link", { name: /opens the large view/ });
     await tabTo(page, link);
     await page.keyboard.press("Enter");
@@ -641,10 +639,10 @@ test.describe("with script", () => {
 
   test("downloads one planet as a PNG and every drawn planet as a zip", { tag: "@looks" }, async ({ page }) => {
     await openNewMap(page, { name: "Mega base" });
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     const seed = await page.locator("#generate-seed").inputValue();
     await page.locator("#mg-resources-gleba summary").click();
-    await expect(pictures(page)).toHaveAccessibleName(/Gleba/);
+    await expect(planetPictures(page)).toHaveAccessibleName(/Gleba/);
 
     const png = section(page).getByRole("link", { name: "Download Gleba (PNG)" });
     await expect(png).toHaveAttribute("download", "");
@@ -667,7 +665,7 @@ test.describe("with script", () => {
     test(`the real-game button, its info and the download links never overlap in ${name}`, { tag: "@looks" }, async ({ page }) => {
       if (size) await page.setViewportSize(size);
       await openNewMap(page, { name: "Mega base" });
-      await expect(pictures(page)).toHaveCount(1);
+      await expect(planetPictures(page)).toHaveCount(1);
       await expect(page.locator("#preview-chart-button")).toBeVisible();
       await expectApart(page);
       await page.locator("#preview-amounts").check();
@@ -682,7 +680,7 @@ test.describe("with script", () => {
     test(`the preview's info tips stay on screen and add no scroll bar in ${name}`, { tag: "@looks" }, async ({ page }) => {
       if (size) await page.setViewportSize(size);
       await openNewMap(page, { name: "Mega base" });
-      await expect(pictures(page)).toHaveCount(1);
+      await expect(planetPictures(page)).toHaveCount(1);
       await expect(page.locator("#preview-chart-button")).toBeVisible();
       const tips = page.locator("#preview button.tip");
       expect(await tips.count()).toBeGreaterThanOrEqual(1);
@@ -737,7 +735,7 @@ test.describe("with script", () => {
 
   test("a box with data-disables turns its element off and redraws the preview", async ({ page }) => {
     await openNewMap(page);
-    await expect(pictures(page)).toHaveCount(1);
+    await expect(planetPictures(page)).toHaveCount(1);
     // A minimal stand-in for a resource's on and off box and its settings.
     await page.locator("#map-settings").evaluate((el) => {
       el.insertAdjacentHTML("beforeend", '<label class="check"><input type="checkbox" id="t-on" data-disables="t-group" checked> On</label><fieldset id="t-group"><legend>Group</legend><input id="t-inner" aria-label="Inner"></fieldset>');
@@ -755,7 +753,7 @@ test.describe("with script", () => {
 test("Enter in a text field saves the map settings with the changed settings", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   const id = await openNewMap(page);
-  await expect(pictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveCount(1);
   const refreshes: string[] = [];
   page.on("request", (r) => { if (r.url().endsWith("/new-map/refresh")) refreshes.push(r.url()); });
   await page.locator("#mg-nauvis-iron-ore-size").evaluate((s) => {
@@ -786,7 +784,7 @@ test.describe("without script", () => {
     await openNewMap(page);
     await expect(section(page)).toHaveCount(0);
     await page.getByRole("button", { name: "Preview map" }).click();
-    await expect(pictures(page)).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     // The seeded world is plain Space Age: it has no planets run, and shows the game's own star map.
     await expect(section(page).getByRole("img", { name: /^Star map/ })).toHaveCount(1);
     // The one-or-all choice needs script, so it is not offered.
@@ -803,7 +801,7 @@ test.describe("without script", () => {
 test("the preview's words are spelled the American way", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await openNewMap(page);
-  await expect(pictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveCount(1);
   const hint = page.locator("#generate-preview-size-hint");
   await expect(hint).toHaveText("How much of the map, around its center, the preview shows. The pin is where players start.");
   // The large view's words are in the page too, so this covers them.

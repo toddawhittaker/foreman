@@ -1,6 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, openLanguages, openMenu, tabTo } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { newMapPath, openNewMap } from "./newmap.js";
+import { newMapPath, openNewMap, planetPictures } from "./newmap.js";
 
 // SPEC 5.6: leaving step 4 of the guided Generate with settings that differ from what was loaded
 // asks first. A link or form of the page asks in Foreman's own dialog, which
@@ -17,7 +17,6 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await fakeGame!.call("/image", { ref: image21, on: true });
 });
 
-const pictures = (page: Page) => page.getByRole("region", { name: "Map preview" }).getByRole("img");
 
 // The browser's own questions: Foreman's dialog replaces them for every
 // link and form of the page, so a test that expects none still collects them.
@@ -46,7 +45,7 @@ async function edit(page: Page) {
 test("an unchanged form leaves without asking, even after the preview filled the seed", async ({ page }) => {
   const asked = browserQuestions(page);
   const world = await openNewMap(page);
-  await expect(pictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveCount(1);
   await expect(page.locator("#generate-seed")).toHaveValue(/^\d+$/);
   // A tab and a planet row are views, not settings.
   await page.locator("label.tab", { hasText: /^\s*Terrain\s*$/ }).click();
@@ -139,7 +138,7 @@ test("Sign out asks, and leaving signs out", async ({ page }) => {
 test("a click that is not leaving asks nothing: in-page links, the picture, and a link opened beside the page", { tag: "@looks" }, async ({ page, context }) => {
   const asked = browserQuestions(page);
   const world = await openNewMap(page);
-  await expect(pictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveCount(1);
   await page.locator("#generate-seed").fill("424242");
   // The skip link stays on the page.
   await page.keyboard.press("Tab");
@@ -147,7 +146,7 @@ test("a click that is not leaving asks nothing: in-page links, the picture, and 
   await expect(leaveDialog(page)).toBeHidden();
   await expect(page).toHaveURL(/#main$/);
   // A picture opens the large view, which is not leaving.
-  await pictures(page).click();
+  await planetPictures(page).click();
   await expect(page.locator("#large-view")).toBeVisible();
   await expect(leaveDialog(page)).toBeHidden();
   await page.keyboard.press("Escape");
@@ -192,10 +191,10 @@ test("an edit thrown away by Reset to defaults still asks, as Undo can bring it 
 
 test("a typed seed still asks after Preview map rewrites the seed field", { tag: "@looks" }, async ({ page }) => {
   const world = await openNewMap(page);
-  await expect(pictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveCount(1);
   await page.locator("#generate-seed").fill("4242");
   await page.getByRole("button", { name: "Preview map" }).click();
-  await expect(pictures(page)).toHaveCount(5);
+  await expect(planetPictures(page)).toHaveCount(5);
   await cancel(page).click();
   await expect(leaveDialog(page)).toBeVisible();
   await stay(page).click();
@@ -205,11 +204,11 @@ test("a typed seed still asks after Preview map rewrites the seed field", { tag:
 test("the preview size and the territory box are views: changing them leaves without asking", { tag: "@looks" }, async ({ page }) => {
   const asked = browserQuestions(page);
   const world = await openNewMap(page);
-  await expect(pictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveCount(1);
   await page.locator("#generate-preview-size").selectOption("2048", { force: true });
-  await expect(pictures(page)).toHaveAttribute("width", "2048");
+  await expect(planetPictures(page)).toHaveAttribute("width", "2048");
   await page.locator("#mg-resources-vulcanus summary").click();
-  await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus/);
+  await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus/);
   await page.locator("#preview").getByLabel("Show demolisher territories").check();
   await cancel(page).click();
   await expect(page).toHaveURL(`/worlds/${world}/mods`);
