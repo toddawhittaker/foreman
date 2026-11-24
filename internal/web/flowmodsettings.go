@@ -134,7 +134,7 @@ func (s *server) handleFlowModSettings(w http.ResponseWriter, r *http.Request, u
 		http.Redirect(w, r, p.SkippedPath(), http.StatusSeeOther) //nolint:gosec // a world Foreman found, a local path segment
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, p)
+	s.page(w, s.withWorldIcons(r, np.World.ID), http.StatusOK, u.Username, p)
 }
 
 // handleFlowModSettingsForm is the form part. With no startup setting it
@@ -154,7 +154,7 @@ func (s *server) handleFlowModSettingsForm(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	p.Fragment = true
-	s.fragment(w, r, p, "modsettings-form")
+	s.fragment(w, s.withWorldIcons(r, np.World.ID), p, "modsettings-form")
 }
 
 // loadFlowModSettings reads the form, as the mod settings page's form part
@@ -189,6 +189,7 @@ func (s *server) handleFlowModSettingsSave(w http.ResponseWriter, r *http.Reques
 		s.fail(w, r, "read the mod settings", err)
 		return
 	}
+	r = s.withWorldIcons(r, np.World.ID)
 	if !p.RunError.IsZero() {
 		s.page(w, r, http.StatusBadGateway, u.Username, p)
 		return

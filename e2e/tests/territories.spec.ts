@@ -1,6 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page, Route } from "@playwright/test";
-import { openNewMap } from "./newmap.js";
+import { openNewMap, planetPictures } from "./newmap.js";
 
 // SPEC 5.6, DESIGN 8.8: Vulcanus's demolisher territories on the map preview.
 // One box, beside the planet choice, off by default and shown only for
@@ -365,7 +365,7 @@ test("a choice made in the large view holds after Previous and Next, and the box
 test("with every planet shown, the large view's box follows the planet viewed", async ({ page }) => {
   await vulcanus(page);
   await section(page).locator("label.tab", { hasText: "All planets" }).click();
-  await expect(section(page).getByRole("img")).toHaveCount(5);
+  await expect(planetPictures(page)).toHaveCount(5);
   await box(page).check();
   await expect(list(page)).toHaveText(counts);
   await section(page).locator('a.picture[data-planet="nauvis"]').click();
@@ -485,7 +485,7 @@ test.describe("without script", () => {
   test("Preview map with the box ticked draws the territories after the pictures", async ({ page }) => {
     await openNewMap(page);
     await page.getByRole("button", { name: "Preview map" }).click();
-    await expect(section(page).getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await box(page).check();
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(list(page)).toHaveText(counts);

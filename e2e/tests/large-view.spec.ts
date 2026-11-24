@@ -118,7 +118,7 @@ test("a zoom right after a step is not overwritten by the planet's name", { tag:
   // Every planet drawn, so a step shows its picture at once and says its name.
   await openNewMap(page);
   await page.getByRole("button", { name: "Preview map" }).click();
-  await expect(section(page).getByRole("img")).toHaveCount(5);
+  await expect(section(page).getByRole("img", { name: /^Map preview of / })).toHaveCount(5);
   await section(page).getByRole("link", { name: /Vulcanus.*opens the large view/ }).click();
   await expect(largeImg(page)).toHaveAttribute("alt", /^Map preview of Vulcanus/);
   await page.evaluate(() => {

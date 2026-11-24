@@ -4431,6 +4431,35 @@ html:has(.large-view[open]) {
   image-rendering: pixelated;
 }
 
+/* The star map is square like a planet picture and framed the same; its own colours are the
+   game's dark map, and its circles take the theme's primary colour (DESIGN 8.8). */
+.starmap {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+}
+
+.pictures .starmap {
+  border: var(--border-width) solid var(--color-border);
+}
+
+/* In the large view the square picture sits in a wider or taller frame: what is drawn past the
+   picture's own box (the sun's rings, the dark ground) carries on to the frame's edge, which clips
+   it, so no ring stops at a straight line inside the view (SPEC 5.6). */
+.large-view .starmap {
+  overflow: visible;
+}
+
+.starmap__planet {
+  stroke: var(--color-primary);
+}
+
+/* The star map alone in the large view: no planet picture, pin, planet steps or planet settings. */
+.large-view[data-starmap] :is(#large-img, .pin, .large-view__edge, #large-territories-box, #large-amounts-bar, #large-settings) {
+  display: none;
+}
+
 /* A round icon control with a hidden name; 24 px, and 44 px for a finger (SPEC 17.2). */
 .icon-button {
   display: inline-grid;

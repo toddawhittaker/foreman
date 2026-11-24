@@ -34,6 +34,7 @@ const (
 	pathPicture         = PathGeneratePreview + "/{token}/{planet}"
 	pathPictureDownload = pathPicture + "/download"
 	pathPicturesZip     = PathGeneratePreview + "/{token}/all.zip"
+	pathStarMap         = PathGeneratePreview + "/{token}/" + starMapName
 	zipName             = "all.zip"
 )
 
@@ -95,7 +96,9 @@ type previewEntry struct {
 	territories *territory.Result
 	size        int                         // the side, in pixels, of the pictures the territories are read for
 	resources   map[string]*resource.Result // by planet
-	bytes       int
+	// starmap is the world's star map as its SVG file, or nil for none.
+	starmap []byte
+	bytes   int
 }
 
 // previewStore holds each user's current preview (SPEC 5.6). Nothing else
@@ -214,6 +217,19 @@ func (p *previewStore) territoriesOf(user int64, key previewKey) (territory.Resu
 	}
 	e.expires = p.now().Add(previewTTL)
 	return *e.territories, true
+}
+
+// setStarMap keeps the world's star map file with the user's preview under
+// token, in place of the one it had; nil removes it.
+func (p *previewStore) setStarMap(user int64, token string, svg []byte) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	e, ok := p.byUser[user]
+	if !ok || e.token != token {
+		return
+	}
+	e.bytes += len(svg) - len(e.starmap)
+	e.starmap = svg
 }
 
 // territoryBytes is about what a territory result holds in memory: two
@@ -385,6 +401,8 @@ type PreviewView struct {
 	// answer to its own request.
 	ChartOffered bool
 	Chart        *ChartView
+	// StarMap is the world's star map, or nil when it has none (SPEC 5.6).
+	StarMap *StarMapPicture
 }
 
 // LimitTip is the toggletip on what the fast preview cannot show.
@@ -441,6 +459,8 @@ func (s *server) previewRoutes() {
 	// A zip of five planets is several MB; a slow link needs the idle deadline.
 	s.handleLong("GET "+pathPictureDownload, s.requireUser(s.handlePictureDownload))
 	s.handleLong("GET "+pathPicturesZip, s.requireUser(s.handlePicturesZip))
+	s.mux.HandleFunc("GET "+pathStarMap, s.requireUser(s.handleStarMap(false)))
+	s.mux.HandleFunc("GET "+pathStarMap+"/download", s.requireUser(s.handleStarMap(true)))
 }
 
 // handleGeneratePreview makes the map pictures from the settings Generate
@@ -528,6 +548,13 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 			if b, ok := s.previews.get(view.Token, u.ID, planet); ok && oneColor(b) {
 				view.OneColor = append(view.OneColor, n)
 			}
+		}
+		// The star map comes from the world's mods, not the settings, so it is
+		// drawn again on each reply; the zip holds it too (SPEC 5.6).
+		page, file, ok := s.drawStarMap(r, in.sum.ID, in.sum.GameVersion, f.cat, in.catErr)
+		s.previews.setStarMap(u.ID, view.Token, file)
+		if ok {
+			view.StarMap = &StarMapPicture{SVG: page, Path: PathGeneratePreview + "/" + view.Token + "/" + starMapName}
 		}
 	} else {
 		view.Token = ""
@@ -755,7 +782,7 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 }
 
 // handlePicturesZip serves every planet drawn so far as one zip, each
-// picture named as its own download would be. withoutQuery leaves planets
+// picture named as its own download would be, and the world's star map. withoutQuery leaves planets
 // out, so a zip with amounts can be had without a planet whose count failed
 // (SPEC 5.6).
 func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -804,6 +831,15 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 			return
 		}
 		if _, err := fw.Write(images[planet]); err != nil {
+			return
+		}
+	}
+	if e.starmap != nil {
+		fw, err := zw.Create(downloadStem(e.name, e.seed, "starmap") + ".svg")
+		if err != nil {
+			return
+		}
+		if _, err := fw.Write(e.starmap); err != nil {
 			return
 		}
 	}

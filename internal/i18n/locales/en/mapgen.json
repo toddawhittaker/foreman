@@ -117,6 +117,8 @@
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "Preview: {planet}",
   "mapgen.planet.vulcanus": "Vulcanus",
+  "mapgen.place.shattered_planet": "Shattered planet",
+  "mapgen.place.solar_system_edge": "Solar system edge",
   "mapgen.preset.death_world": "Death world",
   "mapgen.preset.death_world_marathon": "Death world marathon",
   "mapgen.preset.default": "Default",

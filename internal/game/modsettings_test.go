@@ -286,9 +286,11 @@ func TestModSettingDefsWorkFolder(t *testing.T) {
 		got[modsettingsmod.ModName]["enabled"] != true || got["base"]["enabled"] != true {
 		t.Errorf("mod list %v", list.Mods)
 	}
-	if string(read("mods/"+modsettingsmod.ModDir+"/info.json")) != string(modSettingsInfo("2.1")) ||
-		string(read("mods/"+modsettingsmod.ModDir+"/control.lua")) != string(modsettingsmod.Control) {
-		t.Error("the mod folder is not info.json for 2.1 and control.lua")
+	// The reader loads after fmtest, the one other mod the game loads.
+	if string(read("mods/"+modsettingsmod.ModDir+"/info.json")) != string(modSettingsInfo("2.1", []string{"fmtest"})) ||
+		string(read("mods/"+modsettingsmod.ModDir+"/control.lua")) != string(modsettingsmod.Control) ||
+		string(read("mods/"+modsettingsmod.ModDir+"/data-final-fixes.lua")) != string(modsettingsmod.DataFinalFixes) {
+		t.Error("the mod folder is not info.json for 2.1, control.lua and data-final-fixes.lua")
 	}
 	if string(read("config.ini")) != previewConfig {
 		t.Error("config.ini differs from the preview's")
@@ -800,13 +802,15 @@ func writeTestFile(t *testing.T, p, text string) {
 func TestModSettingsModFiles(t *testing.T) {
 	for _, line := range []string{"1.1", "2.0", "2.1"} {
 		var info map[string]any
-		if err := json.Unmarshal(modSettingsInfo(line), &info); err != nil {
+		if err := json.Unmarshal(modSettingsInfo(line, []string{"fake-planet", "space-age"}), &info); err != nil {
 			t.Fatal(err)
 		}
 		if info["factorio_version"] != line || info["name"] != modsettingsmod.ModName {
 			t.Errorf("info for %s: %v", line, info)
 		}
-		if !reflect.DeepEqual(info["dependencies"], []any{"base"}) {
+		// An optional dependency on each world mod, so the reader loads last
+		// (ADR 0036).
+		if !reflect.DeepEqual(info["dependencies"], []any{"base", "? fake-planet", "? space-age"}) {
 			t.Errorf("dependencies %v", info["dependencies"])
 		}
 	}

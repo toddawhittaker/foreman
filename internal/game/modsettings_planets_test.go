@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	modsettingsmod "github.com/toddawhittaker/foreman/internal/game/modsettings"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/modsettings"
@@ -64,15 +65,17 @@ func TestModSettingDefsScriptCopiesThePlanetFile(t *testing.T) {
 		t.Fatal(res.err)
 	}
 	lines := strings.Split(script, "\n")
-	if len(lines) < 2 || lines[len(lines)-2] != planetsCopy || !strings.HasPrefix(lines[len(lines)-1], "cp ") ||
-		!strings.Contains(lines[len(lines)-1], gameenv.ModSettingsDefsFile) {
-		t.Fatalf("the script does not copy the planet file just before the definitions:\n%s", script)
+	n := len(lines)
+	if n < 4 || lines[n-4] != optionalCopy(gameenv.PlanetsFile) || lines[n-3] != optionalCopy(gameenv.IconsFile) ||
+		lines[n-2] != optionalCopy(gameenv.StarMapFile) || !strings.HasPrefix(lines[n-1], "cp ") ||
+		!strings.Contains(lines[n-1], gameenv.ModSettingsDefsFile) {
+		t.Fatalf("the script does not copy the planet, icon and star map files just before the definitions:\n%s", script)
 	}
 
-	// The last two lines in a real shell, with the container's folders
+	// The last four lines in a real shell, with the container's folders
 	// replaced: the definitions copy decides the exit status, and a missing
-	// planet file does not.
-	tail := strings.Join(lines[len(lines)-2:], "\n")
+	// planet, icon or star map file does not.
+	tail := strings.Join(lines[n-4:], "\n")
 	shell := func(t *testing.T, files ...string) error {
 		t.Helper()
 		write, out := t.TempDir(), t.TempDir()
@@ -90,7 +93,7 @@ func TestModSettingDefsScriptCopiesThePlanetFile(t *testing.T) {
 	if err := shell(t, gameenv.ModSettingsDefsFile); err != nil {
 		t.Errorf("no planet file failed the run: %v", err)
 	}
-	if err := shell(t, gameenv.PlanetsFile); err == nil {
+	if err := shell(t, gameenv.PlanetsFile, gameenv.IconsFile, gameenv.StarMapFile); err == nil {
 		t.Error("a missing definitions file did not fail the run")
 	}
 }
@@ -345,5 +348,147 @@ func TestWorldCataloguesCarrySpaceAge(t *testing.T) {
 		if err == nil || cats["en"].SpaceAge != on {
 			t.Errorf("fallback, space age %t: %t", on, cats["en"].SpaceAge)
 		}
+	}
+}
+
+// runWithFiles asks once and ends the container with the given files in its
+// work folder, a name with no content making a symbolic link instead.
+func (r *modSettingsRig) runWithFiles(files map[string]string) *ModSettingDefs {
+	r.t.Helper()
+	ch := r.ask(context.Background())
+	c := r.waitRunning()
+	for name, text := range files {
+		p := filepath.Join(r.workDir(c), name)
+		var err error
+		if text == "" {
+			err = os.Symlink(filepath.Join(r.workDir(c), gameenv.ModSettingsDefsFile), p)
+		} else {
+			err = os.WriteFile(p, []byte(text), 0o600)
+		}
+		if err != nil {
+			r.t.Fatal(err)
+		}
+	}
+	r.finish(c, defsJSON, defaultsDat(r.t))
+	res := r.result(ch)
+	if res.err != nil {
+		r.t.Fatal(res.err)
+	}
+	return res.defs
+}
+
+// Icon and star map files as the control mod writes them on 2.x.
+const (
+	iconsJSON = `{"mods":{"base":"2.1.24","fake-planet":"1.0.0"},"icons":[
+  {"kind":"item","name":"fake-widget","path":"__fake-planet__/graphics/icons/fake-widget.png","size":64},
+  {"kind":"starmap","name":"fake-planet","path":"__fake-planet__/graphics/starmap-fake-planet.png","size":64}]}`
+	starMapJSON = `{"locations":[
+  {"name":"nauvis","localised_name":["space-location-name.nauvis"],"distance":15,"orientation":0.275,"magnitude":1},
+  {"name":"vulcanus","localised_name":["space-location-name.vulcanus"],"distance":10,"orientation":0.1,"magnitude":1.5},
+  {"name":"space-location-unknown","distance":0,"orientation":0,"hidden":true}],
+ "routes":[{"from":"nauvis","to":"vulcanus","length":15000}]}`
+)
+
+// SPEC 9.6, 14.6: the run's icon and star map files reach the result,
+// decoded, beside the settings and planets.
+func TestModSettingDefsIconsAndStarMap(t *testing.T) {
+	r := newModSettingsRig(t)
+	defs := r.runWithFiles(map[string]string{
+		gameenv.PlanetsFile: planetsJSON, gameenv.IconsFile: iconsJSON, gameenv.StarMapFile: starMapJSON,
+	})
+	if defs.IconsErr != nil || defs.StarMapErr != nil || defs.PlanetsErr != nil {
+		t.Fatalf("errors: icons %v, star map %v, planets %v", defs.IconsErr, defs.StarMapErr, defs.PlanetsErr)
+	}
+	if ref, ok := defs.Icons.Lookup("item", "fake-widget"); !ok || ref.Mod != "fake-planet" || ref.Version != "1.0.0" ||
+		ref.Path != "graphics/icons/fake-widget.png" || ref.Size != 64 {
+		t.Errorf("fake-widget's icon %+v, %t", ref, ok)
+	}
+	if defs.Icons.Len() != 2 {
+		t.Errorf("%d icons, want 2", defs.Icons.Len())
+	}
+	if len(defs.StarMap.Locations) != 2 || len(defs.StarMap.Routes) != 1 || defs.StarMap.Routes[0].Length != 15000 {
+		t.Errorf("star map %+v", defs.StarMap)
+	}
+	if v, ok := defs.StarMap.Location("vulcanus"); !ok || v.Distance != 10 || v.Orientation != 0.1 {
+		t.Errorf("vulcanus %+v", v)
+	}
+	if len(defs.Defs) == 0 {
+		t.Error("no settings")
+	}
+}
+
+// SPEC 9.6, 14.6: a missing, refused, oversized or linked icon or star map
+// file leaves that field empty with its reason, and never touches the
+// settings or the planets.
+func TestModSettingDefsIconAndStarMapFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name                 string
+		files                map[string]string
+		iconsErr, starMapErr error
+	}{
+		{"missing", map[string]string{}, ErrRunFileMissing, ErrRunFileMissing},
+		{"not JSON", map[string]string{gameenv.IconsFile: "{", gameenv.StarMapFile: "nope"}, ErrRunFileRefused, ErrRunFileRefused},
+		{"over the limits", map[string]string{
+			gameenv.IconsFile:   strings.Repeat(" ", modsettings.MaxIconIndexBytes+1),
+			gameenv.StarMapFile: strings.Repeat(" ", mapgen.MaxStarMapFileBytes+1),
+		}, ErrRunFileRefused, ErrRunFileRefused},
+		{"links", map[string]string{gameenv.IconsFile: "", gameenv.StarMapFile: ""}, ErrRunFileMissing, ErrRunFileMissing},
+		{"one bad one good", map[string]string{gameenv.IconsFile: "[1]", gameenv.StarMapFile: starMapJSON}, ErrRunFileRefused, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newModSettingsRig(t)
+			tc.files[gameenv.PlanetsFile] = planetsJSON
+			defs := r.runWithFiles(tc.files)
+			if !errors.Is(defs.IconsErr, tc.iconsErr) || (tc.iconsErr == nil) != (defs.IconsErr == nil) {
+				t.Errorf("icons error %v, want %v", defs.IconsErr, tc.iconsErr)
+			}
+			if !errors.Is(defs.StarMapErr, tc.starMapErr) || (tc.starMapErr == nil) != (defs.StarMapErr == nil) {
+				t.Errorf("star map error %v, want %v", defs.StarMapErr, tc.starMapErr)
+			}
+			if defs.IconsErr != nil && defs.Icons.Len() != 0 {
+				t.Error("icons kept beside an error")
+			}
+			if defs.StarMapErr != nil && len(defs.StarMap.Locations) != 0 {
+				t.Error("star map kept beside an error")
+			}
+			if defs.PlanetsErr != nil || len(defs.Catalogue("en").Planets) != 2 || len(defs.Defs) == 0 {
+				t.Errorf("the settings or planets were touched: planets error %v, %d planets, %d settings",
+					defs.PlanetsErr, len(defs.Catalogue("en").Planets), len(defs.Defs))
+			}
+		})
+	}
+}
+
+// ADR 0036: the reader takes an optional dependency on every mod the game
+// loads from the work folder: each the list enables and each zip or folder
+// it does not turn off. Base, the reader itself and names the game might
+// parse another way are left out.
+func TestWorkFolderMods(t *testing.T) {
+	dir := t.TempDir()
+	mods := filepath.Join(dir, "w", world.ModsDir)
+	if err := os.MkdirAll(filepath.Join(mods, "folder-mod_2.0.1"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(mods, "bare_folder"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"fake-planet_1.0.0.zip", "off_1.0.0.zip", "bad name_1.0.0.zip", "notes.txt", "listed_1.0.zip"} {
+		writeTestFile(t, filepath.Join(mods, f), "x")
+	}
+	writeTestFile(t, filepath.Join(mods, world.ModListFile), `{"mods":[{"name":"base","enabled":true},`+
+		`{"name":"space-age","enabled":true},{"name":"off","enabled":false},{"name":"listed","enabled":true},`+
+		`{"name":"`+modsettingsmod.ModName+`","enabled":true}]}`)
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	got, err := workFolderMods(root, "w")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"bare_folder", "fake-planet", "folder-mod", "listed", "space-age"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("mods %v, want %v", got, want)
 	}
 }

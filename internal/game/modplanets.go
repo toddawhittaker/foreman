@@ -69,6 +69,32 @@ func (c *Controller) cachedModPlanetDefs(id string) (*ModSettingDefs, bool) {
 	return c.modPlanets.lookup(id, key)
 }
 
+// CachedModPlanetDefs is the cached result of the run the world's planets come
+// from (the planets run, or the definitions run for a world on its defaults),
+// without starting one; false when it is not cached.
+func (c *Controller) CachedModPlanetDefs(id string) (*ModSettingDefs, bool) {
+	return c.cachedModPlanetDefs(id)
+}
+
+// CachedModPlanetDefsKeyed is the cached run a world's mod icons come from,
+// with a key for that run: the planets run when it is cached, else the
+// definitions run. It never starts a run; false when neither is cached. The
+// key changes with the mod set and the settings file, so a picture made from
+// an earlier run is never served. It is the one place that picks this run.
+func (c *Controller) CachedModPlanetDefsKeyed(id string) (*ModSettingDefs, string, bool) {
+	if key, _, err := c.worlds.ModPlanetsFile(id); err == nil && key != "" {
+		if defs, ok := c.modPlanets.lookup(id, key); ok {
+			return defs, "planets:" + key, true
+		}
+	}
+	key, err := c.worlds.ModSettingsKey(id)
+	if err != nil || key == "" {
+		return nil, "", false
+	}
+	defs, ok := c.modSettings.lookup(id, key)
+	return defs, "defs:" + key, ok
+}
+
 // CachedModSettingDefs is the world's cached setting definitions, without
 // starting a run; false when they are not cached.
 func (c *Controller) CachedModSettingDefs(id string) (*ModSettingDefs, bool) {

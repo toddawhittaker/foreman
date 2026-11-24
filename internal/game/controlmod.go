@@ -42,6 +42,8 @@ type controlMod struct {
 	name, dir string
 	// control is the mod's control.lua.
 	control []byte
+	// dataFinalFixes is the mod's data-final-fixes.lua; nil for none.
+	dataFinalFixes []byte
 	// params is the shell line that writes the mod's per-run Lua file from
 	// the environment, since a mod can read neither files nor the
 	// environment.
@@ -179,10 +181,14 @@ func addControlMod(base *os.Root, name string, m controlMod, info []byte) error 
 	if err := world.Mkdir(dir, modDir); err != nil {
 		return err
 	}
-	for file, data := range map[string][]byte{
+	files := map[string][]byte{
 		path.Join(modDir, "info.json"):   info,
 		path.Join(modDir, "control.lua"): m.control,
-	} {
+	}
+	if m.dataFinalFixes != nil {
+		files[path.Join(modDir, "data-final-fixes.lua")] = m.dataFinalFixes
+	}
+	for file, data := range files {
 		if err := dir.WriteFile(file, data, world.FileMode); err != nil {
 			return err
 		}

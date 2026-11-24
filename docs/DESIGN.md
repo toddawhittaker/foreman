@@ -4449,6 +4449,70 @@ the "When to draw" panel (radios Automatic, Manual and Off with hints, the
 - The page's own styles are in `static/factorymap.css`, linked from its
   scripts block, and use the tokens.
 
+### 8.23 Star map (SPEC 5.6)
+
+The task is "see where the planets lie and how they connect". It costs no
+click: with All planets chosen, the map preview's list ends with a "Star
+map" picture after the planets. One click opens it in the large view, and
+one click downloads it.
+
+- **Where.** One more `li` in the preview's `.pictures` list, shown only
+  with All planets (One planet stays one picture) and only when the world's
+  mods give two visible locations or more. It comes from the cached
+  planets run, so it costs no game run, and a world with no cached run
+  shows none. Its caption is "Star map", and its download line is
+  "Download the star map (SVG)".
+- **The look** follows the game's map, dark in either theme, like a planet
+  picture: a plain sun circle at the centre, a faint ring about the sun at
+  each location's distance, a faint orbit ring about the parent for a moon,
+  and each location a dark circle edged in the primary colour and sized by
+  its magnitude. The label sits beside the circle in the direction of its
+  label orientation, with a dark halo so it reads across routes. Where the
+  label there would cover a route or a label already placed, and the
+  opposite side covers neither, it sits on the opposite side; when both
+  sides are covered it keeps the game's. The picture is square and fits
+  everything drawn, long labels included.
+- **Proportions** are the game's own, measured from its star map, where
+  one distance unit is about 15.85 pixels: the sun's radius is 3.8 units;
+  a circle's radius is 0.68 units times the magnitude, its picture 0.69 of
+  that with a dark gap to the edge; the label is 0.73 units high with a gap
+  of 0.4 of its size to the circle. Labels never go below an eightieth of
+  the picture (about 12 px in the large view at its first zoom on a desktop),
+  so a system that spans far still reads; zooming in brings them closer
+  to the game's ratio. Small circles have a floor too, and the sun never
+  reaches past three quarters of the nearest planet's distance. The lines
+  keep the game's widths on screen at every zoom (non-scaling strokes):
+  1 px rings, 1.3 px routes and 1.5 px circle edges.
+- **Routes** are drawn as the game draws them: an arc about the two ends'
+  nearest common parent (the sun for two planets), whose distance and angle
+  each change evenly from one end to the other, the shorter way round. A
+  route is straight when that parent is one of its ends, or when the ends
+  share nothing but the origin. A curve is drawn in pieces that turn at
+  most 2 degrees from one to the next, so it stays smooth at the large
+  view's closest zoom. Hidden locations, and every route that touches one,
+  are left out.
+- **Pictures on the circles.** A modded location with its own starmap icon
+  shows it from `/worlds/{id}/icons/starmap/{name}.png`. A base-game place
+  (Nauvis, Vulcanus, Gleba, Fulgora, Aquilo, the solar system edge, the
+  shattered planet) shows the wiki's picture only while the wiki setting is
+  on; the wiki has no sun picture, so the sun stays a circle. A picture
+  that fails to load draws nothing, and the circle stays.
+- **Text alternative.** The SVG has `role="img"` and the name "Star map:
+  the planets around the sun and the routes between them." Each location
+  has a `<title>` with its name, and a mod's name is `translate="no"`.
+- **Large view.** The star map opens in the large view (8.8) with the same
+  zoom, pan and keys. It shows alone: the planet steps, the resource
+  amounts, the territories and the planet's settings are hidden, as none
+  applies. The download in its bar is the star map's file. The square
+  picture sits in a wider or taller frame; what is drawn past its box (the
+  outer rings and the dark ground) carries on to the frame's edge, which
+  clips it, so no ring stops at a straight line inside the view.
+- **The file.** The download, the large view's download and the
+  `starmap.svg` in the "Download all drawn planets" zip are the same SVG:
+  the page's picture with its own namespace and without the pictures on
+  the circles, so it opens offline. Without script the picture link opens
+  that file.
+
 ## 9. Writing
 
 - Plain words, sentence case, no exclamation marks, no "Oops".

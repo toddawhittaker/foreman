@@ -1,12 +1,15 @@
 package fakegame
 
 import (
+	"cmp"
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
@@ -182,7 +185,8 @@ func cannedPlanets(line string, mods []string) fakePlanetFile {
 }
 
 // writeModSettings is a mod settings definitions run: it leaves
-// gameenv.ModSettingsDefsFile and gameenv.PlanetsFile in the work folder and
+// gameenv.ModSettingsDefsFile and gameenv.PlanetsFile in the work folder, on
+// 2.x gameenv.IconsFile and gameenv.StarMapFile too, and
 // the game's defaults in the work folder's mods folder as
 // world.ModSettingsFile, where the game writes it.
 func writeModSettings(c dockertest.Container) error {
@@ -221,7 +225,176 @@ func writeModSettings(c dockertest.Container) error {
 			Controls: map[string]map[string]float64{"stone": {"frequency": 1, "size": 1, "richness": 1}}, Resources: []string{}})
 	}
 	planets, _ := json.Marshal(f)
-	return os.WriteFile(filepath.Join(dir, gameenv.PlanetsFile), planets, world.FileMode) //nolint:gosec // the fake's own test folder
+	if err := os.WriteFile(filepath.Join(dir, gameenv.PlanetsFile), planets, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
+		return err
+	}
+	if v[0] < 2 {
+		// 1.1 has no space locations and no mod-data, so the real run
+		// writes neither file.
+		return nil
+	}
+	// Plain strings, numbers and maps: marshalling cannot fail.
+	icons, _ := json.Marshal(cannedIcons(v, enabled, modVersions(mods)))
+	if err := os.WriteFile(filepath.Join(dir, gameenv.IconsFile), icons, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
+		return err
+	}
+	starmap, _ := json.Marshal(cannedStarMap(enabled, moon))
+	return os.WriteFile(filepath.Join(dir, gameenv.StarMapFile), starmap, world.FileMode) //nolint:gosec // the fake's own test folder
+}
+
+// The fake planet mod's icons, as e2e/testdata/fake-planet_1.0.0.zip holds
+// them: FakeWidget's item icon, 64 px with mipmaps beside it, and
+// FakePlanet's starmap icon.
+const (
+	FakeWidget         = "fake-widget"
+	FakeWidgetIcon     = "graphics/icons/fake-widget.png"
+	FakePlanetStarmap  = "graphics/starmap-fake-planet.png"
+	fakeIconSize       = 64
+	fakeHiddenLocation = "space-location-unknown"
+)
+
+// The icon and star map files' shapes, as internal/modsettings/iconindex.go
+// and internal/mapgen/starmap.go document them.
+type (
+	fakeIconFile struct {
+		Mods  map[string]string `json:"mods"`
+		Icons []fakeIcon        `json:"icons"`
+	}
+	fakeIcon struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+		Path string `json:"path"`
+		Size int    `json:"size"`
+	}
+	fakeStarMap struct {
+		Locations []fakeLocation `json:"locations"`
+		Routes    []fakeRoute    `json:"routes"`
+	}
+	fakeLocation struct {
+		Name             string   `json:"name"`
+		LocName          []string `json:"localised_name"`
+		Distance         float64  `json:"distance"`
+		Orientation      float64  `json:"orientation"`
+		Magnitude        float64  `json:"magnitude"`
+		LabelOrientation float64  `json:"label_orientation"`
+		Parent           string   `json:"parent,omitempty"`
+		Position         *fakePos `json:"position,omitempty"`
+		Hidden           bool     `json:"hidden"`
+		StarmapIcon      bool     `json:"starmap_icon"`
+	}
+	fakePos struct {
+		X float64 `json:"x"`
+		Y float64 `json:"y"`
+	}
+	fakeRoute struct {
+		From   string  `json:"from"`
+		To     string  `json:"to"`
+		Length float64 `json:"length"`
+	}
+)
+
+// modVersions is the version of each mod zip in the mods folder, by name.
+func modVersions(mods string) map[string]string {
+	out := map[string]string{}
+	entries, _ := os.ReadDir(mods)
+	for _, e := range entries {
+		base, ok := strings.CutSuffix(e.Name(), ".zip")
+		if i := strings.LastIndexByte(base, '_'); ok && i > 0 {
+			out[base[:i]] = base[i+1:]
+		}
+	}
+	return out
+}
+
+// cannedIcons is the icon file for the enabled mods: the active mods with
+// their versions (built-in ones at the game's), and, when FakePlanetMod is
+// on, its item and starmap icons. Base-game icons are never in it, as the
+// real export drops them.
+func cannedIcons(v [3]uint16, enabled []string, versions map[string]string) fakeIconFile {
+	f := fakeIconFile{Mods: map[string]string{}, Icons: []fakeIcon{}}
+	game := fmt.Sprintf("%d.%d.%d", v[0], v[1], v[2])
+	for _, m := range enabled {
+		f.Mods[m] = cmp.Or(versions[m], game)
+	}
+	if !slices.Contains(enabled, FakePlanetMod) {
+		return f
+	}
+	f.Icons = append(f.Icons,
+		fakeIcon{Kind: "item", Name: FakeWidget, Path: "__" + FakePlanetMod + "__/" + FakeWidgetIcon, Size: fakeIconSize},
+		fakeIcon{Kind: "starmap", Name: FakePlanet, Path: "__" + FakePlanetMod + "__/" + FakePlanetStarmap, Size: fakeIconSize},
+	)
+	return f
+}
+
+// spaceAgeLocations are Space Age's space locations and routes as the game
+// defines them (2.1.24's data), in the game's order.
+var (
+	spaceAgeLocations = []fakeLocation{
+		{Name: "nauvis", Distance: 15, Orientation: 0.275, Magnitude: 1, LabelOrientation: 0.25},
+		{Name: "vulcanus", Distance: 10, Orientation: 0.1, Magnitude: 1.5, LabelOrientation: 0.25},
+		{Name: "gleba", Distance: 20, Orientation: 0.175, Magnitude: 1.1, LabelOrientation: 0.15},
+		{Name: "fulgora", Distance: 25, Orientation: 0.325, Magnitude: 0.9, LabelOrientation: 0.35},
+		{Name: "aquilo", Distance: 35, Orientation: 0.225, Magnitude: 1, LabelOrientation: 0.15},
+		{Name: "solar-system-edge", Distance: 50, Orientation: 0.25, Magnitude: 1, LabelOrientation: 0.15},
+		{Name: "shattered-planet", Distance: 80, Orientation: 0.25, Magnitude: 1, LabelOrientation: 0.25},
+	}
+	spaceAgeRoutes = []fakeRoute{
+		{"nauvis", "vulcanus", 15000}, {"nauvis", "gleba", 15000}, {"nauvis", "fulgora", 15000},
+		{"vulcanus", "gleba", 15000}, {"gleba", "fulgora", 15000}, {"gleba", "aquilo", 30000},
+		{"fulgora", "aquilo", 30000}, {"aquilo", "solar-system-edge", 100000},
+		{"solar-system-edge", "shattered-planet", 4000000},
+	}
+)
+
+// FakePlanet's place on the star map.
+const fakePlanetDistance, fakePlanetOrientation = 30, 0.4
+
+// cannedStarMap is the star map file for the enabled mods on 2.x: the
+// game's hidden placeholder location, which every 2.x game has; Nauvis, or
+// Space Age's locations and routes when it is on; and FakePlanet with a
+// route from Nauvis when FakePlanetMod is on; and FakeMoon, orbiting
+// FakePlanet, when the moon setting is on, with a route from FakePlanet
+// when FakePlanetMod is on too. As 2.1 gives them, the moon's distance and
+// orientation are about its planet, and every location has the game's own
+// position on the map.
+func cannedStarMap(enabled []string, moon bool) fakeStarMap {
+	locName := func(n string) []string { return []string{"space-location-name." + n} }
+	m := fakeStarMap{Routes: []fakeRoute{}}
+	m.Locations = append(m.Locations, fakeLocation{Name: fakeHiddenLocation, LocName: locName(fakeHiddenLocation),
+		Magnitude: 1, LabelOrientation: 0.25, Hidden: true})
+	if slices.Contains(enabled, world.ModSpaceAge) {
+		m.Locations = append(m.Locations, spaceAgeLocations...)
+		m.Routes = append(m.Routes, spaceAgeRoutes...)
+	} else {
+		m.Locations = append(m.Locations, spaceAgeLocations[0])
+	}
+	if slices.Contains(enabled, FakePlanetMod) {
+		m.Locations = append(m.Locations, fakeLocation{Name: FakePlanet, Distance: fakePlanetDistance, Orientation: fakePlanetOrientation,
+			Magnitude: 0.8, LabelOrientation: 0.25, StarmapIcon: true})
+		m.Routes = append(m.Routes, fakeRoute{"nauvis", FakePlanet, 20000})
+	}
+	if moon {
+		// As the planet file adds it, with or without FakePlanetMod; a
+		// parent the map does not list is cleared when it is read.
+		m.Locations = append(m.Locations, fakeLocation{Name: FakeMoon, Distance: 1.5, Orientation: 0.75,
+			Magnitude: 0.4, LabelOrientation: 0.25, Parent: FakePlanet})
+		if slices.Contains(enabled, FakePlanetMod) {
+			m.Routes = append(m.Routes, fakeRoute{FakePlanet, FakeMoon, 500})
+		}
+	}
+	for i, l := range m.Locations {
+		m.Locations[i].LocName = locName(l.Name)
+		a := 2 * math.Pi * l.Orientation
+		pos := fakePos{l.Distance * math.Sin(a), -l.Distance * math.Cos(a)}
+		if l.Name == FakeMoon {
+			// The moon orbits the planet's place, listed or not.
+			p := 2 * math.Pi * fakePlanetOrientation
+			pos.X += fakePlanetDistance * math.Sin(p)
+			pos.Y -= fakePlanetDistance * math.Cos(p)
+		}
+		m.Locations[i].Position = &pos
+	}
+	return m
 }
 
 // settingAddsMoon says the run's mod-settings.dat, the world's own when the

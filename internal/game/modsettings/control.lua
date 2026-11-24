@@ -1,9 +1,15 @@
 -- Foreman's mod setting reader (SPEC 9.6). When the map is made, it lists
 -- every mod setting prototype the world's mods define, in the game's order,
--- and writes them as JSON to script-output/mod-settings-defs.json. It adds no
--- prototypes and has no settings of its own. It also writes the world's
--- planets, autoplace controls and resources to script-output/planets.json,
--- in the shape internal/mapgen/catalogue.go reads (SPEC 5.6). Each setting carries its
+-- and writes them as JSON to script-output/mod-settings-defs.json. It has no
+-- settings of its own. It also writes the world's planets, autoplace controls
+-- and resources to script-output/planets.json, in the shape
+-- internal/mapgen/catalogue.go reads (SPEC 5.6); the star map's space
+-- locations and routes to starmap.json, in the shape internal/mapgen/starmap.go
+-- reads; and the icon paths its data-final-fixes.lua found to icons.json, in
+-- the shape internal/modsettings/iconindex.go reads (ADR 0036). That data
+-- stage adds one invisible prototype, a mod-data named foreman-icon-export;
+-- the mod adds no other. Each extra file is written under its own pcall, so a
+-- failure loses that file only, never the settings. Each setting carries its
 -- localised name and description as the game holds them. The same script
 -- runs on 1.1, 2.0 and 2.1. A prototype lacks the fields that do not apply to its type
 -- (a bool has no minimum), and reading one raises, so each field is read
@@ -131,6 +137,105 @@ local function planet_file()
   return { planets = planets, autoplace_controls = controls, resources = resources }
 end
 
+-- The mod-data prototype data-final-fixes.lua fills; nil when the game has
+-- no mod-data (1.1, or a 2.0 image without the type).
+local function icon_export()
+  local all = prototypes and read(prototypes, "mod_data")
+  local export = all and all["foreman-icon-export"]
+  local d = export and read(export, "data")
+  if type(d) ~= "table" then
+    return nil
+  end
+  return d
+end
+
+-- icon_file lists the exported icons with the active mods and their
+-- versions, which the icon paths name.
+local function icon_file(export)
+  return { mods = script.active_mods, icons = export.icons or {} }
+end
+
+-- The star map's limits match internal/mapgen/starmap.go, so the file is
+-- never refused whole for its counts: past them the rest is left out.
+local max_locations = 256
+local max_routes = 1024
+
+-- map_position is the game's position of a space location as {x, y} with
+-- names, or nil when the game gives none.
+local function map_position(p)
+  local pos = read(p, "position")
+  if type(pos) ~= "table" then
+    return nil
+  end
+  local x, y = pos.x or pos[1], pos.y or pos[2]
+  if type(x) ~= "number" or type(y) ~= "number" then
+    return nil
+  end
+  return { x = x, y = y }
+end
+
+-- starmap_file lists the space locations as the game places them, in the
+-- game's order, and the routes between them. A hidden location, or a
+-- parameter prototype, is marked hidden; Foreman leaves it out with its
+-- routes. distance and orientation are the prototype's, which from 2.1 are
+-- about the location's origin (a moon's planet), so the game's own position
+-- is written too: that is where the star map draws it. A location is marked
+-- as having a starmap icon only when the icon export holds one Foreman may
+-- serve.
+local function starmap_file(export)
+  local parents = export and export.parents or {}
+  local has_icon = {}
+  for _, icon in ipairs(export and export.icons or {}) do
+    if icon.kind == "starmap" then
+      has_icon[icon.name] = true
+    end
+  end
+  local locations = {}
+  for name, p in pairs(read(prototypes, "space_location") or {}) do
+    locations[#locations + 1] = {
+      name = name,
+      localised_name = read(p, "localised_name"),
+      order = read(p, "order") or "",
+      distance = read(p, "distance") or 0,
+      orientation = read(p, "orientation") or 0,
+      magnitude = read(p, "magnitude"),
+      label_orientation = read(p, "label_orientation"),
+      position = map_position(p),
+      parent = parents[name],
+      hidden = (read(p, "hidden") or read(p, "parameter")) and true or false,
+      starmap_icon = has_icon[name] or false,
+    }
+  end
+  table.sort(locations, by_order)
+  for i = #locations, max_locations + 1, -1 do
+    locations[i] = nil
+  end
+  local kept = {}
+  for _, l in ipairs(locations) do
+    l.order = nil
+    kept[l.name] = true
+  end
+
+  local connections = {}
+  for name, c in pairs(read(prototypes, "space_connection") or {}) do
+    local from, to = read(c, "from"), read(c, "to")
+    from, to = from and read(from, "name"), to and read(to, "name")
+    if kept[from] and kept[to] then
+      connections[#connections + 1] = {
+        name = name, order = read(c, "order") or "",
+        from = from, to = to, length = read(c, "length") or 0,
+      }
+    end
+  end
+  table.sort(connections, by_order)
+  local routes = {}
+  for i = 1, math.min(#connections, max_routes) do
+    local c = connections[i]
+    routes[i] = { from = c.from, to = c.to, length = c.length }
+  end
+  return { locations = locations, routes = routes }
+end
+
 script.on_init(function()
   -- 1.1 has no helpers; its game, which exists only once events run, has
   -- write_file and table_to_json. It has game.mod_setting_prototypes, where
@@ -179,4 +284,20 @@ script.on_init(function()
   pcall(function()
     h.write_file("planets.json", h.table_to_json(planet_file()), false)
   end)
+  -- The icons and the star map are extra too, each on its own. Neither
+  -- exists on 1.1, which has no prototypes table.
+  if prototypes then
+    local ok, export = pcall(icon_export)
+    if not ok then
+      export = nil
+    end
+    if export then
+      pcall(function()
+        h.write_file("icons.json", h.table_to_json(icon_file(export)), false)
+      end)
+    end
+    pcall(function()
+      h.write_file("starmap.json", h.table_to_json(starmap_file(export)), false)
+    end)
+  end
 end)

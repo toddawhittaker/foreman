@@ -117,6 +117,8 @@
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "Náhled: {planet}",
   "mapgen.planet.vulcanus": "Vulcanus",
+  "mapgen.place.shattered_planet": "Rozbitá planeta",
+  "mapgen.place.solar_system_edge": "Okraj sluneční soustavy",
   "mapgen.preset.death_world": "Svět smrti",
   "mapgen.preset.death_world_marathon": "Maraton světa smrti",
   "mapgen.preset.default": "Výchozí",
