@@ -314,6 +314,68 @@ test("in the One planet view, with nothing else drawn, Previous from the planet 
   await expect(section(page).locator("a.picture[data-planet]").first()).toBeFocused();
 });
 
+// One planet's view of a plain Space Age world, its large view open on the star map.
+async function starMapStep(page: Page, foreman: Env["foreman"], fakeGame: Env["fakeGame"]) {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame.call("/image", { ref: image21, on: true });
+  await openNewMap(page, { name: "One" });
+  const picture = section(page).locator("a.picture[data-planet]");
+  await expect(picture).toHaveCount(1, { timeout: 60_000 });
+  await picture.click();
+  await dialog(page).getByRole("button", { name: "Previous planet: Star map" }).click();
+  await expect(page.locator("#large-title")).toHaveText("Star map");
+}
+
+const bigMap = (page: Page) => dialog(page).locator("svg.starmap");
+const place = (page: Page, title: string) => bigMap(page).locator("g.starmap__location", { has: page.locator(`title:text-is("${title}")`) });
+
+test("a planet on the large view's star map steps to that planet, drawing it first; other places and a pan do not step", async ({ page, foreman, fakeGame }) => {
+  await starMapStep(page, foreman, fakeGame!);
+  // The picture is a group here, keeping its text alternative, so its planets can be found.
+  await expect(bigMap(page)).toHaveAttribute("role", "group");
+  await expect(bigMap(page)).toHaveAccessibleName(/^Star map:/);
+  const vulcanus = bigMap(page).getByRole("button", { name: "Vulcanus" });
+  await expect(vulcanus).toBeVisible();
+  // The edge and the shattered planet are drawn but are no controls, and a click on them does nothing.
+  for (const name of ["Solar system edge", "Shattered planet"]) {
+    await expect(place(page, name)).toHaveCount(1);
+    await expect(place(page, name)).not.toHaveAttribute("role", "button");
+    await expect(place(page, name)).not.toHaveAttribute("tabindex", /./);
+    await place(page, name).locator("circle").click({ force: true });
+    await expect(page.locator("#large-title")).toHaveText("Star map");
+  }
+  // A drag that starts on Vulcanus pans and does not step.
+  const box = (await vulcanus.locator("circle").boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2 + 30, { steps: 5 });
+  await page.mouse.up();
+  await expect(page.locator("#large-title")).toHaveText("Star map");
+  // A click on Vulcanus, not drawn yet in this view, draws it and shows its controls.
+  await vulcanus.locator("circle").click();
+  await expect(page.locator("#large-title")).toHaveText("Vulcanus");
+  await expect(dialog(page)).not.toHaveAttribute("data-starmap", "");
+  await expect(page.locator("#large-img")).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator("#large-frame")).not.toHaveAttribute("data-missing", "true", { timeout: 20_000 });
+  await expect(page.locator("#large-amounts-bar")).toBeVisible();
+  await expect(page.locator("#large-territories-box")).toBeVisible();
+  await expect(page.locator("#large-frame")).toBeFocused();
+});
+
+test("a planet on the large view's star map is reached with Tab and stepped to with Enter", async ({ page, foreman, fakeGame }) => {
+  await starMapStep(page, foreman, fakeGame!);
+  const gleba = bigMap(page).getByRole("button", { name: "Gleba" });
+  await page.locator("#large-frame").focus();
+  for (let i = 0; i < 12 && !(await gleba.evaluate((g) => g === document.activeElement)); i++) await page.keyboard.press("Tab");
+  await expect(gleba).toBeFocused();
+  // The focused planet has a visible ring.
+  expect(await gleba.evaluate((g) => getComputedStyle(g).outlineStyle)).not.toBe("none");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#large-title")).toHaveText("Gleba");
+  await expect(page.locator("#large-amounts-bar")).toBeVisible();
+});
+
 // The stored entries of a zip, read through its central directory, as the
 // writer streams entries whose sizes are not in their local headers.
 function readZip(buf: Buffer): Map<string, Buffer> {

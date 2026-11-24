@@ -981,7 +981,11 @@ not) or a map exchange string, with Space Age on or off. (P0)
       Next from it shows the first planet, in either view and before any
       other planet is drawn, as it needs no drawing. While it is shown the resource
       amounts, territories and the planet's settings are hidden, and the
-      download is the star map's file.
+      download is the star map's file. In the large view each planet the
+      view has a step for is a control: a click, a tap, or Enter on it
+      shows that planet's step as Next would, drawing it first if needed. A
+      drag to pan is not a click. Other places (the edge, the shattered
+      planet, the sun) are not controls. The file has no controls.
       The file is the same SVG as the page draws, `starmap.svg`, but with
       its own namespace and without the pictures on the circles, so it opens
       anywhere and loads nothing. It is served only to the preview's owner,
@@ -4159,7 +4163,10 @@ picture adds no table or list of routes, by ruling, because it is for
 looking at and nothing is done in it. The card's link says that it opens
 the large view (or the file, without script), and its download link names
 the file. The picture passes the accessibility scan in both themes at
-desktop width and at 320 px with no sideways scroll (17.2). A picture on a
+desktop width and at 320 px with no sideways scroll (17.2). In the large
+view the copy is a `role="group"` with the same name, so its planet
+controls (5.6) can be reached; each is a focusable `role="button"` named
+by the planet. A picture on a
 location's circle is decoration: the location's title names it, and one
 that fails to load changes nothing the reader hears. (P1)
 

@@ -455,7 +455,7 @@
 </g>
 {{- $file := .File}}{{$halo := .Halo}}
 {{- range .Locations}}
-<g class="starmap__location">
+<g class="starmap__location"{{if not $file}} data-location="{{.Name}}"{{end}}>
 <title{{if .Label.Foreign}} translate="no"{{end}}>{{msg .Label.Name}}</title>
 <circle class="starmap__planet" cx="{{.X}}" cy="{{.Y}}" r="{{.R}}" fill="#2a2622" stroke="#f39a2a" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
 {{- if and .Icon (not $file)}}

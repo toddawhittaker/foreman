@@ -1359,7 +1359,19 @@ startPreviewWithForm(() => {
     tiles = 0;
     const map = largeMap();
     map.querySelectorAll(".starmap").forEach((s) => s.remove());
-    map.prepend(link.querySelector(".starmap").cloneNode(true));
+    const svg = link.querySelector(".starmap").cloneNode(true);
+    // Its planets are controls here, which a picture's role would hide (SPEC 17.20).
+    svg.setAttribute("role", "group");
+    const list = planets();
+    svg.querySelectorAll("g[data-location]").forEach((g) => {
+      const planet = g.dataset.location;
+      if (!list.includes(planet)) return;
+      g.dataset.step = planet;
+      g.setAttribute("role", "button");
+      g.setAttribute("tabindex", "0");
+      g.setAttribute("aria-label", nameOf(planet));
+    });
+    map.prepend(svg);
     el("large-frame").removeAttribute("data-missing");
     el("large-title").textContent = words(link.closest("figure").querySelector("figcaption"));
     const download = link.closest("li").querySelector("a.download");
@@ -1434,7 +1446,10 @@ startPreviewWithForm(() => {
     const list = steps();
     if (list.length < 2) return;
     const at = Math.max(0, list.indexOf(starShown ? STAR : viewing || firstPlanet()));
-    const to = list[(at + by + list.length) % list.length];
+    goTo(list[(at + by + list.length) % list.length]);
+  }
+
+  function goTo(to) {
     if (to === STAR) {
       showStarMap(starLink());
       zoomTo(1);
@@ -1484,6 +1499,32 @@ startPreviewWithForm(() => {
     el("large-prev").addEventListener("click", () => step(-1));
     el("large-next").addEventListener("click", () => step(1));
     el("large-close").addEventListener("click", () => dialog.close());
+    // A planet on the star map steps to it (SPEC 5.6). A pan is no click: the
+    // same 6 px the viewer allows a tap. The frame captures the pointer, so
+    // the click is aimed by where it lands, not by its target.
+    let down = null;
+    frame().addEventListener("pointerdown", (e) => { down = { x: e.clientX, y: e.clientY }; }, true);
+    const planetAt = (e) => {
+      if (!starShown) return null;
+      const at = e.detail && down ? document.elementFromPoint(e.clientX, e.clientY) : e.target;
+      const g = at && at.closest && at.closest(".starmap [data-step]");
+      return g && frame().contains(g) ? g.dataset.step : null;
+    };
+    frame().addEventListener("click", (e) => {
+      if (e.detail && down && Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 6) return;
+      const planet = planetAt(e);
+      if (!planet) return;
+      goTo(planet);
+      frame().focus();
+    });
+    frame().addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const planet = planetAt(e);
+      if (!planet) return;
+      e.preventDefault();
+      goTo(planet);
+      frame().focus();
+    });
     // A settings field the view hides as it narrows gives the focus to the map,
     // whether the browser has already dropped it or not.
     new ResizeObserver(() => {
