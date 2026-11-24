@@ -415,7 +415,6 @@
   "worlds.generate.large.zoom_in": "Powiększ",
   "worlds.generate.large.close": "Zamknij",
   "worlds.generate.large.keys": "Klawisze: ← → planeta (przesuwanie po powiększeniu), + − powiększenie, 0 dopasuj, Esc zamknij. Dotknięcie wyśrodkowuje.",
-  "worlds.generate.large.keys_starmap": "Klawisze: strzałki przesuwają po powiększeniu, + − powiększenie, 0 dopasuj, Esc zamknij. Dotknięcie wyśrodkowuje.",
   "worlds.generate.large.keys_settings": "W ustawieniu klawisze obsługują to ustawienie: strzałka przesuwa suwak, nie mapę.",
   "worlds.generate.large.settings": "Ustawienia planety",
   "worlds.generate.leave.title": "Opuścić stronę bez zapisania tych ustawień mapy?",

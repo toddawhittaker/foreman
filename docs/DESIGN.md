@@ -4501,9 +4501,9 @@ one click downloads it.
   the planets around the sun and the routes between them." Each location
   has a `<title>` with its name, and a mod's name is `translate="no"`.
 - **Large view.** The star map opens in the large view (8.8) with the same
-  zoom, pan and keys. It shows alone: the planet steps, the resource
-  amounts, the territories and the planet's settings are hidden, as none
-  applies. The download in its bar is the star map's file. The square
+  zoom, pan and keys, as the first step before the planets. The resource
+  amounts, the territories and the planet's settings are hidden while it
+  is shown, as none applies. The download in its bar is the star map's file. The square
   picture sits in a wider or taller frame; what is drawn past its box (the
   outer rings and the dark ground) carries on to the frame's edge, which
   clips it, so no ring stops at a straight line inside the view.

@@ -976,9 +976,11 @@ not) or a map exchange string, with Space Age on or off. (P0)
       raw name; moons and modded places that are not planets are therefore
       not translated. A mod's name is marked `translate="no"`.
     - **The large view and the file.** The star map opens in the large view
-      like a planet picture, with the same zoom, pan and keys. It shows
-      alone: the planet steps, resource amounts, territories and the
-      planet's settings are hidden, and the download is the star map's file.
+      like a planet picture, with the same zoom, pan and keys, and is the
+      view's first step: Previous, Next and the arrow keys reach it, and
+      Next from it shows the first planet. While it is shown the resource
+      amounts, territories and the planet's settings are hidden, and the
+      download is the star map's file.
       The file is the same SVG as the page draws, `starmap.svg`, but with
       its own namespace and without the pictures on the circles, so it opens
       anywhere and loads nothing. It is served only to the preview's owner,

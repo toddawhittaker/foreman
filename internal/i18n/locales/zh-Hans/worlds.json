@@ -391,7 +391,6 @@
   "worlds.generate.large.zoom_in": "放大",
   "worlds.generate.large.close": "关闭",
   "worlds.generate.large.keys": "按键：← → 切换星球（放大时平移），+ − 缩放，0 适应窗口，Esc 关闭。轻触可居中。",
-  "worlds.generate.large.keys_starmap": "按键：放大时方向键平移，+ − 缩放，0 适应窗口，Esc 关闭。轻触可居中。",
   "worlds.generate.large.keys_settings": "在设置中，按键作用于该设置：方向键移动滑块，而不是地图。",
   "worlds.generate.large.settings": "星球设置",
   "worlds.generate.leave.title": "不保存这些地图设置就离开吗？",

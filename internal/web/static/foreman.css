@@ -4455,8 +4455,8 @@ html:has(.large-view[open]) {
   stroke: var(--color-primary);
 }
 
-/* The star map alone in the large view: no planet picture, pin, planet steps or planet settings. */
-.large-view[data-starmap] :is(#large-img, .pin, .large-view__edge, #large-territories-box, #large-amounts-bar, #large-settings) {
+/* The star map in the large view: no planet picture, pin or planet settings (SPEC 5.6). */
+.large-view[data-starmap] :is(#large-img, .pin, #large-territories-box, #large-amounts-bar, #large-settings) {
   display: none;
 }
 

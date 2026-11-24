@@ -197,7 +197,7 @@ test("a plain Space Age world with no other mods shows the star map with Space A
   await checkPage(page);
 });
 
-test("the star map opens in the large view, alone, with zoom and pan", async ({ page, foreman, fakeGame }) => {
+test("the star map opens in the large view with zoom and pan", async ({ page, foreman, fakeGame }) => {
   await modded({ page, foreman, fakeGame: fakeGame! });
   await section(page).getByRole("link", { name: /Star map.*opens the large view/ }).click();
   await expect(dialog(page)).toBeVisible();
@@ -205,9 +205,8 @@ test("the star map opens in the large view, alone, with zoom and pan", async ({ 
   await expect(page.locator("#large-title")).toHaveText("Star map");
   const big = dialog(page).locator("svg.starmap");
   await expect(big).toBeVisible();
-  // The large view has no planet picture, nor planet steps.
+  // The large view has no planet picture.
   await expect(page.locator("#large-img")).toBeHidden();
-  await expect(dialog(page).getByRole("button", { name: /next planet|previous planet/i })).toHaveCount(0);
 
   const width = () => big.evaluate((s) => s.getBoundingClientRect().width);
   const fitted = await width();
@@ -244,6 +243,40 @@ test("the star map opens in the large view, alone, with zoom and pan", async ({ 
   await section(page).getByRole("link", { name: /Nauvis.*opens the large view/ }).click();
   await expect(dialog(page)).not.toHaveAttribute("data-starmap", "");
   await expect(dialog(page).locator("svg.starmap")).toHaveCount(0);
+});
+
+test("the star map is the large view's first step: Next goes to the first planet, Previous comes back", async ({ page, foreman, fakeGame }) => {
+  await modded({ page, foreman, fakeGame: fakeGame! });
+  const first = await page.locator("#preview-planets option").first().evaluate((o) => (o as HTMLOptionElement).text);
+  const last = await page.locator("#preview-planets option").last().evaluate((o) => (o as HTMLOptionElement).text);
+  await section(page).getByRole("link", { name: /Star map.*opens the large view/ }).click();
+  await expect(dialog(page)).toHaveAttribute("data-starmap", "");
+  // The steps lead round: the first planet after the star map, the last planet before it.
+  await expect(dialog(page).getByRole("button", { name: `Next planet: ${first}` })).toBeVisible();
+  await expect(dialog(page).getByRole("button", { name: `Previous planet: ${last}` })).toBeVisible();
+  // On the star map the planet-only controls are hidden, the download is its file, and the arrows step.
+  for (const id of ["large-amounts-bar", "large-territories-box", "large-settings"]) await expect(page.locator(`#${id}`)).toBeHidden();
+  await expect(page.locator("#large-download")).toHaveAttribute("href", /starmap\.svg/);
+  await expect(page.locator("#large-keys")).toContainText("planet");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#large-title")).toHaveText(first);
+  await expect(dialog(page)).not.toHaveAttribute("data-starmap", "");
+  await expect(dialog(page).locator("svg.starmap")).toHaveCount(0);
+  await expect(page.locator("#large-img")).toBeVisible();
+  await expect(page.locator("#large-amounts-bar")).toBeVisible();
+  await expect(page.locator("#large-download")).not.toHaveAttribute("href", /starmap\.svg/);
+  await expect(dialog(page).getByRole("button", { name: "Previous planet: Star map" })).toBeVisible();
+  // Previous from the first planet is the star map again.
+  await dialog(page).getByRole("button", { name: "Previous planet: Star map" }).click();
+  await expect(page.locator("#large-title")).toHaveText("Star map");
+  await expect(dialog(page).locator("svg.starmap")).toBeVisible();
+  await expect(page.locator("#large-download")).toHaveAttribute("href", /starmap\.svg/);
+  // Previous from the star map is the last planet; closing then returns focus to that planet's picture.
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#large-title")).toHaveText(last);
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toBeHidden();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.closest("#preview figure")?.querySelector("figcaption")?.textContent?.trim())).toBe(last);
 });
 
 // The stored entries of a zip, read through its central directory, as the

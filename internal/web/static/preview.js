@@ -1253,6 +1253,12 @@ startPreviewWithForm(() => {
   }
   const firstPlanet = () => planets()[0] || "";
 
+  // The large view's steps: the star map first when the page has one (SPEC 5.6), then the planets.
+  const STAR = ":starmap";
+  const starLink = () => document.querySelector("#preview a.picture[data-starmap]");
+  const steps = () => (starLink() ? [STAR, ...planets()] : planets());
+  const stepName = (at) => (at === STAR ? words(starLink().closest("figure").querySelector("figcaption")) : nameOf(at));
+
   function nameOf(planet) {
     const pick = el("preview-planets");
     const option = pick && [...pick.options].find((o) => o.value === planet);
@@ -1327,21 +1333,21 @@ startPreviewWithForm(() => {
 
   // The arrows are named after the planets they lead to.
   function nameArrows() {
-    const list = planets();
+    const list = steps();
     const many = list.length > 1;
     el("large-prev").hidden = !many;
     el("large-next").hidden = !many;
     if (!many) return;
-    const at = Math.max(0, list.indexOf(viewing || list[0]));
-    const near = (by) => nameOf(list[(at + by + list.length) % list.length]);
+    const at = Math.max(0, list.indexOf(starShown ? STAR : viewing || firstPlanet()));
+    const near = (by) => stepName(list[(at + by + list.length) % list.length]);
     el("large-prev-name").textContent = strings["js.preview.previous"].replace("{planet}", near(-1));
     el("large-next-name").textContent = strings["js.preview.next"].replace("{planet}", near(1));
   }
 
-  // The star map (SPEC 5.6) opens in the same view, zoomed and panned the
-  // same way, but alone: it has no planet to step to, count or set, so the
-  // style sheet hides those controls while the dialog is marked. Its picture
-  // is a copy of the page's, which has no ids to repeat.
+  // The star map (SPEC 5.6) is the view's first step, zoomed and panned the
+  // same way; it has no planet to count or set, so the style sheet hides
+  // those controls while the dialog is marked. Its picture is a copy of the
+  // page's, which has no ids to repeat.
   function showStarMap(link) {
     if (prep && prep.inView) endPrep(strings["js.preview.prepare_canceled"]);
     clearAmounts(places.large);
@@ -1349,9 +1355,6 @@ startPreviewWithForm(() => {
     putBack();
     starShown = true;
     dialog.setAttribute("data-starmap", "");
-    const keys = el("large-keys");
-    keys.dataset.planets = keys.textContent;
-    keys.textContent = keys.dataset.starmap;
     tiles = 0;
     const map = largeMap();
     map.querySelectorAll(".starmap").forEach((s) => s.remove());
@@ -1362,13 +1365,12 @@ startPreviewWithForm(() => {
     el("large-download").setAttribute("href", download.getAttribute("href"));
     el("large-download-name").textContent = words(download);
     el("large-download").hidden = false;
+    nameArrows();
   }
   function endStarMap() {
     if (!starShown) return;
     starShown = false;
     dialog.removeAttribute("data-starmap");
-    const keys = el("large-keys");
-    keys.textContent = keys.dataset.planets;
     largeMap().querySelectorAll(".starmap").forEach((s) => s.remove());
   }
 
@@ -1428,10 +1430,22 @@ startPreviewWithForm(() => {
   }
 
   function step(by) {
-    const list = planets();
-    if (list.length < 2 || starShown) return;
-    const at = Math.max(0, list.indexOf(viewing || list[0]));
-    if (show(list[(at + by + list.length) % list.length])) announce(el("large-title").textContent);
+    const list = steps();
+    if (list.length < 2) return;
+    const at = Math.max(0, list.indexOf(starShown ? STAR : viewing || firstPlanet()));
+    const to = list[(at + by + list.length) % list.length];
+    if (to === STAR) {
+      showStarMap(starLink());
+      zoomTo(1);
+      announce(el("large-title").textContent);
+      return;
+    }
+    // The star map's own zoom does not carry over to a planet's picture.
+    const fromStar = starShown;
+    endStarMap();
+    if (!show(to)) return;
+    if (fromStar) zoomTo(1);
+    announce(el("large-title").textContent);
   }
 
   if (dialog) {
@@ -1515,8 +1529,7 @@ startPreviewWithForm(() => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       // The settings keep their keys; the amounts list at their foot is not a setting, so the map keeps its keys there.
       if (e.target.closest && e.target.closest("#large-settings") && !e.target.closest("#large-amounts-text")) return;
-      // The star map has no planets to step to, so the arrows only pan it.
-      const panning = e.target === frame() && (viewer.zoom() > 1 || starShown);
+      const panning = e.target === frame() && viewer.zoom() > 1;
       // Stepping would end a download being prepared here, so the arrows wait (SPEC 17.1).
       if (arrows[e.key] && !panning && prep && prep.inView) {
         e.preventDefault();
