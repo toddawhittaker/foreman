@@ -1,6 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo, openPlanetRow } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { openNewMap } from "./newmap.js";
+import { openNewMap, planetPictures } from "./newmap.js";
 import { typeBadSeed } from "./newmaperror.js";
 
 // DESIGN 8.7, SPEC 5.6 and 17: with Space Age each tab shows one row per
@@ -20,7 +20,6 @@ const row = (page: Page, panel: string, planet: string) => page.locator(`#mg-${p
 const isOpen = (page: Page, panel: string, planet: string) => row(page, panel, planet).evaluate((d) => (d as HTMLDetailsElement).open);
 const openRows = (page: Page, panel: string) =>
   page.locator(`#panel-${panel} details[data-planet]`).evaluateAll((ds) => ds.filter((d) => (d as HTMLDetailsElement).open).map((d) => (d as HTMLElement).dataset.planet));
-const pictures = (page: Page) => page.getByRole("region", { name: "Map preview" }).getByRole("img");
 
 test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
@@ -35,7 +34,7 @@ test("one click opens a planet row and it stays open", async ({ page }) => {
   await page.waitForTimeout(2000);
   expect(await isOpen(page, "resources", "gleba")).toBe(true);
 
-  await expect(pictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveCount(1);
   await row(page, "resources", "fulgora").locator("summary").click();
   await page.waitForTimeout(2000);
   expect(await isOpen(page, "resources", "fulgora")).toBe(true);
@@ -80,7 +79,7 @@ test("the open row stays open when a preset redraws the settings", async ({ page
 
 test("opening a row switches the preview to that planet, and says so once", async ({ page }) => {
   await openNewMap(page);
-  await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis/);
+  await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Nauvis/);
   // Every text the live region is given, in order.
   await page.evaluate(() => {
     const w = window as unknown as { said: string[] };
@@ -90,7 +89,7 @@ test("opening a row switches the preview to that planet, and says so once", asyn
   });
   const said = () => page.evaluate(() => (window as unknown as { said: string[] }).said.filter((t) => t.startsWith("Preview:")));
   await row(page, "resources", "gleba").locator("summary").click();
-  await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Gleba/);
+  await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Gleba/);
   await expect.poll(said).toEqual(["Preview: Gleba"]);
   // A tab switch shows the same planet and says nothing new.
   await tab(page, "Terrain").click();
@@ -101,7 +100,7 @@ test("opening a row switches the preview to that planet, and says so once", asyn
 
 test("a planet the large view moves to opens its row without moving focus", { tag: "@looks" }, async ({ page }) => {
   await openNewMap(page);
-  await expect(pictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveCount(1);
   await page.getByRole("region", { name: "Map preview" }).getByRole("link", { name: /opens the large view/ }).click();
   await page.keyboard.press("ArrowRight");
   await expect.poll(() => openRows(page, "resources")).toEqual(["vulcanus"]);
@@ -111,11 +110,11 @@ test("a planet the large view moves to opens its row without moving focus", { ta
   await page.keyboard.press("Escape");
   // With every planet shown, opening a row redraws nothing, and One planet then shows it.
   await page.locator("label.tab", { hasText: "All planets" }).click();
-  await expect(pictures(page)).toHaveCount(5);
+  await expect(planetPictures(page)).toHaveCount(5);
   await row(page, "resources", "fulgora").locator("summary").click();
   await page.locator("label.tab", { hasText: "One planet" }).click();
-  await expect(pictures(page)).toHaveCount(1);
-  await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Fulgora/);
+  await expect(planetPictures(page)).toHaveCount(1);
+  await expect(planetPictures(page)).toHaveAccessibleName(/^Map preview of Fulgora/);
 });
 
 test("cliffs can be switched off, which disables their settings and marks the preset modified", async ({ page }) => {

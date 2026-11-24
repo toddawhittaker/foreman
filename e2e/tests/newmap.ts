@@ -5,6 +5,10 @@ import type { Page } from "@playwright/test";
 // whose map is not made yet.
 export const newMapPath = (id: string) => `/worlds/${id}/new-map`;
 
+// The planets' pictures in the Map preview; with every planet shown, a plain
+// Space Age world's star map (an image too, named "Star map: ...") follows them.
+export const planetPictures = (page: Page) => page.getByRole("region", { name: "Map preview" }).getByRole("img", { name: /^Map preview of / });
+
 // Makes a world on /generate and opens its step 3, returning the world id.
 // Generate lands on the world page, or on its Mods tab once step 1 is
 // split off; the id is read from either address. step1 fills step 1's own

@@ -1,6 +1,6 @@
 import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, openMenu, openPlanetRow } from "./foreman.js";
 import type { Page, Request } from "@playwright/test";
-import { openNewMap, newMapPath, oldGameStep1 } from "./newmap.js";
+import { openNewMap, newMapPath, oldGameStep1, planetPictures } from "./newmap.js";
 
 // Fixes from the UI batch's reviews: the map preview's large view and its
 // announcements (SPEC 5.6, 17; DESIGN 8.8), the world tabs (DESIGN 6), and
@@ -400,7 +400,7 @@ test.describe("Generate", () => {
     await openNewMap(page);
     await expect(section(page).getByRole("img")).toHaveCount(1);
     await tab(page, "All planets").click();
-    await expect(section(page).getByRole("img")).toHaveCount(5);
+    await expect(planetPictures(page)).toHaveCount(5);
     await fakeGame!.call("/preview-mode", { mode: "fail" });
     await page.getByLabel("Seed").fill("4242");
     await expect(section(page).getByText("The game could not make the map preview.")).toBeVisible();
