@@ -4472,6 +4472,17 @@ one click downloads it.
   opposite side covers neither, it sits on the opposite side; when both
   sides are covered it keeps the game's. The picture is square and fits
   everything drawn, long labels included.
+- **Proportions** are the game's own, measured from its star map, where
+  one distance unit is about 15.85 pixels: the sun's radius is 3.8 units;
+  a circle's radius is 0.68 units times the magnitude, its picture 0.69 of
+  that with a dark gap to the edge; the label is 0.73 units high with a gap
+  of 0.4 of its size to the circle. Labels never go below an eightieth of
+  the picture (about 12 px in the large view at its first zoom on a desktop),
+  so a system that spans far still reads; zooming in brings them closer
+  to the game's ratio. Small circles have a floor too, and the sun never
+  reaches past three quarters of the nearest planet's distance. The lines
+  keep the game's widths on screen at every zoom (non-scaling strokes):
+  1 px rings, 1.3 px routes and 1.5 px circle edges.
 - **Routes** are drawn as the game draws them: an arc about the two ends'
   nearest common parent (the sun for two planets), whose distance and angle
   each change evenly from one end to the other, the shorter way round. A

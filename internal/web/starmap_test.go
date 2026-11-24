@@ -135,7 +135,7 @@ func TestStarMapScaleFitsTheFurthest(t *testing.T) {
 				t.Errorf("far %v: %s at %v,%v r %v is outside %q", far, l.Name, l.X, l.Y, l.R, v.ViewBox)
 			}
 			// The label's far end, at the guessed width, is inside too.
-			if end := l.LabelX + starMapCharWidth*float64(l.LabelCells); l.Anchor == "start" && end > x+w {
+			if end := l.LabelX + starMapCharWidth*v.Font*float64(l.LabelCells); l.Anchor == "start" && end > x+w {
 				t.Errorf("far %v: %s's label ends at %v, outside %q", far, l.Name, end, v.ViewBox)
 			}
 		}
@@ -288,6 +288,84 @@ func TestStarMapMoonBesideItsPlanet(t *testing.T) {
 	}
 }
 
+// SPEC 5.6, DESIGN 8.23: sizes keep the game's own ratio to the distances,
+// as measured from its star map: the sun 3.8 units across its radius, a
+// circle 0.68 units a magnitude with its picture 0.69 of it, the label 0.73
+// units with a gap of 0.4 of it. A map spanning very far keeps a readable
+// floor, and one spanning very little a ceiling.
+func TestStarMapKeepsTheGameRatios(t *testing.T) {
+	v, _ := layoutStarMap(starMapOf(t, spaceAgeStarMap), mapgen.Builtin("2.1", true), i18n.English, starMapIcons{})
+	at := map[string]StarMapLocation{}
+	for _, l := range v.Locations {
+		at[l.Name] = l
+	}
+	scale := math.Hypot(at["vulcanus"].X, at["vulcanus"].Y) / 10
+	close := func(what string, got, want float64) {
+		t.Helper()
+		if math.Abs(got-want) > 0.15 {
+			t.Errorf("%s is %v, want %.1f (scale %.2f)", what, got, want, scale)
+		}
+	}
+	close("the sun", v.Sun, 3.8*scale)
+	close("Nauvis", at["nauvis"].R, 0.68*scale)
+	close("Vulcanus", at["vulcanus"].R, 0.68*1.5*scale)
+	close("Muluna", at["muluna"].R, 0.68*0.4*scale)
+	close("Vulcanus's picture", at["vulcanus"].IconSize, 2*0.69*at["vulcanus"].R)
+	close("the font", v.Font, 0.73*scale)
+	close("the halo", v.Halo, v.Font/5)
+	for _, l := range v.Locations {
+		close(l.Name+"'s label gap", math.Hypot(l.LabelX-l.X, l.LabelY-l.Y), l.R+0.4*v.Font)
+	}
+
+	// Very far: every size has its floor.
+	v, _ = layoutStarMap(starMapOf(t, `{"locations":[
+	 {"name":"a","distance":4000,"orientation":0.25,"magnitude":0.1},
+	 {"name":"b","distance":5000,"orientation":0.5}],"routes":[]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	if v.Sun != starMapSunMin || v.Font != starMapFontMin || v.Locations[0].R != starMapRadiusMin {
+		t.Errorf("far: sun %v, font %v, radius %v; want the floors %v, %v, %v", v.Sun, v.Font, v.Locations[0].R, starMapSunMin, starMapFontMin, starMapRadiusMin)
+	}
+	// Very near: the font and circles have their ceilings.
+	v, _ = layoutStarMap(starMapOf(t, `{"locations":[
+	 {"name":"a","distance":1,"orientation":0.25,"magnitude":5},
+	 {"name":"b","distance":2,"orientation":0.5}],"routes":[]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	if v.Font != round1(starMapFontMax) || v.Locations[0].R != starMapRadiusMax {
+		t.Errorf("near: font %v, radius %v; want the ceilings %v, %v", v.Font, v.Locations[0].R, round1(starMapFontMax), starMapRadiusMax)
+	}
+}
+
+// SPEC 5.6: the sun never reaches a place drawn about it, even one a mod
+// puts nearer than the game's own sun is wide.
+func TestStarMapSunLeavesNearPlacesClear(t *testing.T) {
+	v, _ := layoutStarMap(starMapOf(t, `{"locations":[
+	 {"name":"hot","distance":2,"orientation":0.25},
+	 {"name":"b","distance":30,"orientation":0.5}],"routes":[]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	hot := v.Locations[0]
+	if d := math.Hypot(hot.X, hot.Y); v.Sun > 0.75*d+0.1 {
+		t.Errorf("the sun's radius %v reaches past 0.75 of hot's %v", v.Sun, d)
+	}
+}
+
+// SPEC 5.6, DESIGN 8.23: the drawing carries the layout's font and halo, and
+// its lines keep the game's widths on screen at any zoom.
+func TestStarMapSVGSizes(t *testing.T) {
+	v, _ := layoutStarMap(starMapOf(t, spaceAgeStarMap), mapgen.Builtin("2.1", true), i18n.English, starMapIcons{})
+	var b bytes.Buffer
+	if err := newTestRenderer(t).Fragment(&b, i18n.English, starMapFile{v}, "starmap-svg"); err != nil {
+		t.Fatal(err)
+	}
+	svg := b.String()
+	for _, want := range []string{`font-size="` + svgNum(v.Font) + `"`, `stroke-width="` + svgNum(v.Halo) + `"`,
+		`<path d="M`, `stroke-width="1.3"`, `class="starmap__planet"`} {
+		if !strings.Contains(svg, want) {
+			t.Errorf("the SVG lacks %s", want)
+		}
+	}
+	shapes := strings.Count(svg, "<circle") + strings.Count(svg, "<path")
+	if n := strings.Count(svg, `vector-effect="non-scaling-stroke"`); n != shapes {
+		t.Errorf("%d of %d circles and routes keep their on-screen stroke", n, shapes)
+	}
+}
+
 // SPEC 5.6: the label sits on the side its orientation names.
 func TestStarMapLabelSide(t *testing.T) {
 	cases := []struct {
@@ -300,7 +378,7 @@ func TestStarMapLabelSide(t *testing.T) {
 		{0.5, "middle", "text-before-edge"},
 	}
 	for _, tc := range cases {
-		l := placeLocation(mapgen.Location{Magnitude: 1}, tc.turns, 1, MapGenName{}, "")
+		l := placeLocation(mapgen.Location{Magnitude: 1}, tc.turns, 1, starMapFontMin, MapGenName{}, "")
 		if l.Anchor != tc.anchor || l.Baseline != tc.baseline {
 			t.Errorf("%v turns: %s %s, want %s %s", tc.turns, l.Anchor, l.Baseline, tc.anchor, tc.baseline)
 		}
@@ -547,7 +625,7 @@ func TestStarMapFitsTheTranslatedLabel(t *testing.T) {
 		if want := labelCells(shown); edge.LabelCells != want || want == 0 {
 			t.Fatalf("%s: %d cells for %q, want %d", loc, edge.LabelCells, shown, want)
 		}
-		if end := edge.LabelX + starMapCharWidth*float64(edge.LabelCells); edge.Anchor != "start" || end > x+w {
+		if end := edge.LabelX + starMapCharWidth*v.Font*float64(edge.LabelCells); edge.Anchor != "start" || end > x+w {
 			t.Errorf("%s: the label %q (%s) ends at %v, outside %q", loc, shown, edge.Anchor, end, v.ViewBox)
 		}
 	}
