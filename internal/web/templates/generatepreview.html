@@ -94,17 +94,12 @@
         {{- end}}
       </li>
       {{- end}}
-      {{- if .All}}{{with .StarMap}}
+      {{- with .StarMap}}
       {{/* The world's star map after its planets, drawn as the game draws it; it opens in the
-           large view like a planet picture, or as its file without script (SPEC 5.6, DESIGN 8.8). */}}
-      <li class="starmap-card">
-        <figure>
-          <a href="{{.Path}}" class="picture" data-starmap><span class="map">{{.SVG}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
-          <figcaption>{{t "worlds.generate.starmap.caption"}}</figcaption>
-        </figure>
-        <a href="{{.DownloadPath}}" class="download" download data-starmap>{{t "worlds.generate.starmap.download"}}</a>
-      </li>
-      {{- end}}{{end}}
+           large view like a planet picture, or as its file without script (SPEC 5.6, DESIGN 8.8).
+           One planet's view keeps it out of sight in a template, as the large view's first step. */}}
+      {{- if $.Preview.All}}{{template "starmap-card" .}}{{else}}<template id="starmap-step">{{template "starmap-card" .}}</template>{{end}}
+      {{- end}}
     </ul>
     {{- with .ChartPlanet}}
     {{/* A 2.1 world's one picture can be drawn again from a real game, which shows terrain mods
@@ -193,6 +188,17 @@
   {{- end}}
   {{- end}}
 </div>
+{{- end}}
+
+{{/* The star map's card, in the pictures list or in the template the large view reads (SPEC 5.6). */}}
+{{define "starmap-card" -}}
+<li class="starmap-card">
+  <figure>
+    <a href="{{.Path}}" class="picture" data-starmap><span class="map">{{.SVG}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
+    <figcaption>{{t "worlds.generate.starmap.caption"}}</figcaption>
+  </figure>
+  <a href="{{.DownloadPath}}" class="download" download data-starmap>{{t "worlds.generate.starmap.download"}}</a>
+</li>
 {{- end}}
 
 {{/* The large view of one picture, opened in the page by the script (DESIGN 8.8).

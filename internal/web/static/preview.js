@@ -1255,7 +1255,8 @@ startPreviewWithForm(() => {
 
   // The large view's steps: the star map first when the page has one (SPEC 5.6), then the planets.
   const STAR = ":starmap";
-  const starLink = () => document.querySelector("#preview a.picture[data-starmap]");
+  // One planet's view keeps the star map in a template, out of the page.
+  const starLink = () => document.querySelector("#preview a.picture[data-starmap]") || (el("starmap-step") && el("starmap-step").content.querySelector("a.picture"));
   const steps = () => (starLink() ? [STAR, ...planets()] : planets());
   const stepName = (at) => (at === STAR ? words(starLink().closest("figure").querySelector("figcaption")) : nameOf(at));
 
@@ -1557,8 +1558,10 @@ startPreviewWithForm(() => {
       putBack();
       if (starShown) {
         endStarMap();
-        const star = document.querySelector("#preview a.picture[data-starmap]");
-        if (star) star.focus();
+        // From a template the star map has no picture on the page, so focus goes to the planet's.
+        const star = starLink();
+        const seen = star && star.isConnected ? star : document.querySelector("#preview a.picture[data-planet]");
+        if (seen) seen.focus();
         amounts(places.page);
         if (places.page.unsaid) sayAmounts(places.page, el(places.page.slot));
         return;

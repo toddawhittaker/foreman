@@ -978,7 +978,8 @@ not) or a map exchange string, with Space Age on or off. (P0)
     - **The large view and the file.** The star map opens in the large view
       like a planet picture, with the same zoom, pan and keys, and is the
       view's first step: Previous, Next and the arrow keys reach it, and
-      Next from it shows the first planet. While it is shown the resource
+      Next from it shows the first planet, in either view and before any
+      other planet is drawn, as it needs no drawing. While it is shown the resource
       amounts, territories and the planet's settings are hidden, and the
       download is the star map's file.
       The file is the same SVG as the page draws, `starmap.svg`, but with

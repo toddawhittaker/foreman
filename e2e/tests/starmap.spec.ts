@@ -279,6 +279,41 @@ test("the star map is the large view's first step: Next goes to the first planet
   await expect.poll(() => page.evaluate(() => document.activeElement?.closest("#preview figure")?.querySelector("figcaption")?.textContent?.trim())).toBe(last);
 });
 
+test("in the One planet view, with nothing else drawn, Previous from the planet shows the star map", async ({ page, foreman, fakeGame }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await openNewMap(page, { name: "One" });
+  const picture = section(page).locator("a.picture[data-planet]");
+  await expect(picture).toHaveCount(1, { timeout: 60_000 });
+  // The star map is not seen on the page in this view, yet the large view reaches it.
+  await expect(starmap(page)).toHaveCount(0);
+  const planet = (await picture.locator("xpath=..").locator("figcaption").textContent())!.trim();
+  await picture.click();
+  await expect(page.locator("#large-title")).toHaveText(planet);
+  await dialog(page).getByRole("button", { name: "Previous planet: Star map" }).click();
+  await expect(page.locator("#large-title")).toHaveText("Star map");
+  await expect(dialog(page)).toHaveAttribute("data-starmap", "");
+  await expect(dialog(page).locator("svg.starmap")).toBeVisible();
+  await expect(page.locator("#large-download")).toHaveAttribute("href", /starmap\.svg/);
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#large-title")).toHaveText(planet);
+  await expect(page.locator("#large-img")).toBeVisible();
+  // Back to the star map, then on past the first planet to one not drawn yet, which is drawn.
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#large-title")).toHaveText("Star map");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#large-title")).not.toHaveText("Star map");
+  await expect(page.locator("#large-img")).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator("#large-frame")).not.toHaveAttribute("data-missing", "true", { timeout: 20_000 });
+  // Closing from the star map, unseen on the page, puts focus on the planet's picture.
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#large-title")).toHaveText("Star map");
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toBeHidden();
+  await expect(section(page).locator("a.picture[data-planet]").first()).toBeFocused();
+});
+
 // The stored entries of a zip, read through its central directory, as the
 // writer streams entries whose sizes are not in their local headers.
 function readZip(buf: Buffer): Map<string, Buffer> {

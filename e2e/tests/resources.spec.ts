@@ -370,7 +370,10 @@ test("another planet's settings change keeps this planet's count, so going back 
   await openLarge(page);
   await box(page).check();
   await expect(labels(page)).toHaveCount(4);
-  // Nauvis, Vulcanus, Gleba, Fulgora, Aquilo: two back is Fulgora.
+  // The star map, Nauvis, Vulcanus, Gleba, Fulgora, Aquilo: three back is Fulgora.
+  await dialog(page).locator("#large-frame").focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("dialog", { name: "Star map" })).toBeVisible();
   await go("ArrowLeft", "Aquilo");
   await go("ArrowLeft", "Fulgora");
   // A Fulgora slider: its picture and count are made again.
@@ -384,6 +387,9 @@ test("another planet's settings change keeps this planet's count, so going back 
   expect(changed).toBeGreaterThanOrEqual(before + 2);
   // Back to Nauvis: the pictures and counts already made are used.
   await go("ArrowRight", "Aquilo");
+  await dialog(page).locator("#large-frame").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("dialog", { name: "Star map" })).toBeVisible();
   await go("ArrowRight", "Nauvis");
   await expect(counting(page)).toBeHidden();
   expect(await runs()).toBe(changed);

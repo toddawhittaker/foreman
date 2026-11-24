@@ -155,7 +155,8 @@ test("dragging moves a zoomed picture, and the arrow keys on it pan instead of s
 test("the arrows and the X show on hover and on keyboard focus, named after where they lead", { tag: "@looks" }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openLarge(page);
-  const prev = dialog(page).getByRole("button", { name: "Previous planet: Aquilo" });
+  // Before the first planet is the star map (SPEC 5.6).
+  const prev = dialog(page).getByRole("button", { name: "Previous planet: Star map" });
   const next = dialog(page).getByRole("button", { name: "Next planet: Vulcanus" });
   const close = dialog(page).getByRole("button", { name: "Close" });
   await expect(prev).toBeAttached();
@@ -407,11 +408,12 @@ test.describe("the planet viewed", () => {
     await page.evaluate(() => {
       document.getElementById("large-prev")!.click();
       document.getElementById("large-prev")!.click();
+      document.getElementById("large-prev")!.click();
     });
     await expect(page.getByRole("dialog", { name: "Aquilo" })).toBeVisible();
     await page.waitForTimeout(300);
     await expect(page.getByRole("dialog", { name: "Aquilo" })).toBeVisible();
-    await expect(page.locator("#large-next-name")).toHaveText("Next planet: Nauvis");
+    await expect(page.locator("#large-next-name")).toHaveText("Next planet: Star map");
     await expect(page.locator("#open-planet")).toHaveValue("aquilo");
   });
 

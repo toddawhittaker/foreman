@@ -492,7 +492,9 @@ func TestPreviewStarMap(t *testing.T) {
 
 // SPEC 5.6: One planet shows that planet alone, with no star map; a world
 // with no star map shows none, and its zip holds only the planets.
-func TestPreviewStarMapOnlyWithAllPlanets(t *testing.T) {
+// One planet's view carries the star map only in a template, for the large
+// view's first step, never as a picture on the page (SPEC 5.6).
+func TestPreviewStarMapSeenOnlyWithAllPlanets(t *testing.T) {
 	hn := newGenerateHarness(t, &fakePreviewer{})
 	c := hn.signIn()
 	withWorldCatalogue(t, mapgen.Builtin("2.1", true), nil)
@@ -502,8 +504,9 @@ func TestPreviewStarMapOnlyWithAllPlanets(t *testing.T) {
 		t.Fatal(err)
 	}
 	one := hn.postLong(PathGeneratePreview, worldPreviewForm(id, "auto", "1", "preview_view", "one"), c).Body.String()
-	if strings.Contains(one, `class="starmap"`) {
-		t.Error("One planet shows the star map")
+	tmpl := strings.Index(one, `<template id="starmap-step">`)
+	if tmpl < 0 || strings.Index(one, `class="starmap"`) < tmpl {
+		t.Error("One planet shows the star map, or has none for the large view")
 	}
 
 	withWorldStarMap(t, mapgen.StarMap{})

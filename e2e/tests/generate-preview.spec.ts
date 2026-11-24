@@ -524,9 +524,17 @@ test.describe("with script", () => {
       const boxes = () => page.evaluate((ids) => ids.map((id) => { const r = document.querySelector(id)!.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; }), watched);
       const first = await boxes();
       for (const planet of ["Vulcanus", "Gleba", "Fulgora", "Aquilo", "Nauvis"]) {
+        // The star map comes between Aquilo and Nauvis. Its view hides the planet's controls, so
+        // the controls come back when Nauvis follows; there only where they settle is checked, below.
+        const fromStar = planet === "Nauvis";
+        if (fromStar) {
+          await page.keyboard.press("ArrowRight");
+          await expect(page.getByRole("dialog", { name: "Star map" })).toBeVisible();
+        }
         const sampling = still(page, watched);
         await page.keyboard.press("ArrowRight");
-        expect(await sampling, planet).toBeLessThanOrEqual(0.5);
+        const moved = await sampling;
+        if (!fromStar) expect(moved, planet).toBeLessThanOrEqual(0.5);
         if (planet === "Vulcanus" || planet === "Nauvis") {
           // Ticking and unticking either box moves nothing either, as counting or finding starts and ends.
           const boxesHere = planet === "Vulcanus" ? ["#large-amounts", "#large-territories"] : ["#large-amounts"];
@@ -601,9 +609,13 @@ test.describe("with script", () => {
     await expect(dialog.getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
     await page.keyboard.press("ArrowLeft");
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
-    // Previous from Nauvis wraps to the last planet.
+    // Previous from Nauvis is the star map, the first step, and before it the last planet.
+    await dialog.getByRole("button", { name: "Previous planet: Star map" }).press("Enter");
+    await expect(page.getByRole("dialog", { name: "Star map" })).toBeVisible();
     await dialog.getByRole("button", { name: "Previous planet: Aquilo" }).press("Enter");
     await expect(page.getByRole("dialog", { name: "Aquilo" })).toBeVisible();
+    await dialog.getByRole("button", { name: "Next planet: Star map" }).press("Enter");
+    await expect(page.getByRole("dialog", { name: "Star map" })).toBeVisible();
     await dialog.getByRole("button", { name: "Next planet: Nauvis" }).press("Enter");
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
     // Its news is said before the zoom is, so the two do not cross.
