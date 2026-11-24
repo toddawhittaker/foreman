@@ -30,6 +30,7 @@ test("the status strip follows the server's state on pages that are not Server",
   // Worlds follows a crash.
   await page.goto("/worlds");
   await expect(strip).toContainText("Running");
+  await fakeGame!.call("/hold-restarts", { name: "foreman-base", on: true });
   await fakeGame!.call("/crash", { name: "foreman-base" });
   await expect(strip).toContainText("Crashed", live);
   await expect(tab).toContainText("Crashed", live);

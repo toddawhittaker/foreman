@@ -64,6 +64,9 @@ func TestHookProtocol(t *testing.T) {
 	if rec := hook(t, h, "POST", "/crash-loop", `{"name":"foreman-w1","on":true}`); rec.Code != http.StatusNoContent {
 		t.Errorf("crash-loop = %d", rec.Code)
 	}
+	if rec := hook(t, h, "POST", "/hold-restarts", `{"name":"foreman-w1","on":true}`); rec.Code != http.StatusNoContent {
+		t.Errorf("hold-restarts = %d", rec.Code)
+	}
 	if rec := hook(t, h, "POST", "/leave", `{"name":"foreman-w1","player":"alice"}`); rec.Code != http.StatusBadRequest {
 		t.Errorf("leave on a dead game = %d", rec.Code)
 	}

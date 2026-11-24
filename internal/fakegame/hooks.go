@@ -351,6 +351,7 @@ type hookRequest struct {
 //
 //	POST /crash         name, code, oom
 //	POST /crash-loop    name, on
+//	POST /hold-restarts name, on (a crashed game stays down until turned off)
 //	POST /join          name, player
 //	POST /leave         name, player
 //	POST /rcon-refuse   name, on
@@ -394,6 +395,7 @@ func (g *Game) HookHandler() http.Handler {
 		return g.Crash(q.Name, q.Code, q.OOM)
 	})
 	hook("/crash-loop", func(q hookRequest) error { g.SetCrashLoop(q.Name, q.On); return nil })
+	hook("/hold-restarts", func(q hookRequest) error { g.HoldRestarts(q.Name, q.On); return nil })
 	hook("/join", func(q hookRequest) error { return g.Join(q.Name, q.Player) })
 	hook("/leave", func(q hookRequest) error { return g.Leave(q.Name, q.Player) })
 	hook("/chat", func(q hookRequest) error { return g.Chat(q.Name, q.Player, q.Text) })
