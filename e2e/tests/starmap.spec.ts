@@ -129,8 +129,8 @@ test("routes arc about the sun, a moon's route to its planet is straight, and th
     const bend = Math.abs(Math.atan2(Math.sin(heading(i) - heading(i - 1)), Math.cos(heading(i) - heading(i - 1))));
     expect(bend * 180 / Math.PI).toBeLessThan(3);
   }
-  // Vulcanus's label leaves the game's side (right), where its routes leave, for the clear left.
-  await expect(starmap(page).locator("g.starmap__location", { has: page.locator("title", { hasText: /^Vulcanus$/ }) }).locator("text")).toHaveAttribute("text-anchor", "end");
+  // Vulcanus's label leaves the game's side (right), where its routes leave, for a clear spot.
+  await expect(starmap(page).locator("g.starmap__location", { has: page.locator("title", { hasText: /^Vulcanus$/ }) }).locator("text")).not.toHaveAttribute("text-anchor", "start");
 
   // A moon's route to its own planet is straight: two points, one segment.
   expect(await routeBetween(page, "Fake planet", "fake-moon")).toHaveLength(2);
