@@ -54,6 +54,32 @@ startPreviewWithForm(() => {
   const dialog = document.getElementById("large-view");
   const status = document.getElementById("preview-status");
 
+  // A star map planet's picture is shown only once it has loaded, so a slow or
+  // failed one leaves the plain circle, never the browser's broken picture; a
+  // failure is asked again 1, 2 and 4 s later, then left (DESIGN 8.23). Each
+  // copy loads on its own: the large view's clone, a fresh preview.
+  const pictureTries = new WeakSet();
+  function loadPictures(root) {
+    root.querySelectorAll(".starmap image[data-href]:not([data-loaded])").forEach((img) => {
+      if (pictureTries.has(img)) return;
+      pictureTries.add(img);
+      const url = img.dataset.href;
+      let failures = 0;
+      img.addEventListener("load", () => img.setAttribute("data-loaded", ""));
+      img.addEventListener("error", () => {
+        failures += 1;
+        if (failures > 3) return;
+        setTimeout(() => {
+          img.removeAttribute("href");
+          img.setAttribute("href", url);
+        }, 1000 * 2 ** (failures - 1));
+      });
+      img.setAttribute("href", url);
+    });
+  }
+  loadPictures(document);
+  document.body.addEventListener("htmx:afterSettle", () => loadPictures(document));
+
   // Only the newest words are said: a later announcement or status text
   // cancels one still waiting, so older news never overwrites newer.
   let saying = 0;
@@ -658,6 +684,7 @@ startPreviewWithForm(() => {
     const node = document.importNode(fresh, true);
     // In beside the old one first, so Preview size moves between two live places and keeps its focus.
     slot.after(node);
+    loadPictures(node);
     placeSize(node);
     slot.remove();
     if (key) {
@@ -1382,6 +1409,7 @@ startPreviewWithForm(() => {
       g.setAttribute("aria-label", nameOf(planet));
     });
     map.prepend(svg);
+    loadPictures(svg);
     el("large-frame").removeAttribute("data-missing");
     el("large-title").textContent = words(link.closest("figure").querySelector("figcaption"));
     const download = link.closest("li").querySelector("a.download");

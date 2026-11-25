@@ -2792,11 +2792,16 @@ close the view, the tab, the setting, and the picture again).
     `(pointer: coarse)`. Previous and Next step through the star map,
     the view's first step (SPEC 5.6), then the world's planets, and wrap; a planet not drawn yet is drawn and shown in place.
     They sit in the same place for every picture, so clicks in one spot
-    keep stepping: on the stage's left and right edges, at the window's
-    middle measured from the stage's foot, which never moves, so a bar
-    that grows (a count's message, Vulcanus's box) does not move them.
-    Where the stage is shorter than half the window (a phone), they sit
-    a gap below Close instead. The arrows show on the star map too, in
+    keep stepping: on the stage's left and right edges, measured from
+    the stage's foot, which never moves, by a length only the window
+    sets, so a bar that grows (a count's note or error, Vulcanus's box)
+    does not move them. On a window at least 48rem wide and 42rem high,
+    where the bar never reaches its middle, they sit at the window's
+    middle; on a smaller one (a phone), a gap below Close on the
+    smallest stage (16rem), so they are clear of Close on every stage.
+    There, a bar taller than the window leaves beside that stage (a
+    count's error with "Try again", the opened list) scrolls on its own,
+    so the stage's foot never moves. The arrows show on the star map too, in
     the same place. The settings column below keeps its place for every
     planet, and on the star map the planet's boxes and the column are
     hidden but keep their places.
@@ -4525,7 +4530,12 @@ one click downloads it.
   to the game's ratio. Small circles have a floor too, and the sun never
   reaches past three quarters of the nearest planet's distance. The lines
   keep the game's widths on screen at every zoom (non-scaling strokes):
-  1 px rings, 1.3 px routes and 1.5 px circle edges.
+  1 px rings, 1.3 px routes and 1.5 px circle edges. Rings are white at
+  14% opacity, quiet behind the routes, which are `#c9c4bc` at 75%.
+  A planet's picture shows only once it has loaded: until then, and if
+  it never does, its circle shows plain, never the browser's broken
+  picture. A failed one is asked for again 1, 2 and 4 seconds later,
+  then left.
 - **Routes** are drawn as the game draws them: an arc about the two ends'
   nearest common parent (the sun for two planets), whose distance and angle
   each change evenly from one end to the other, the shorter way round. A

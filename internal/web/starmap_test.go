@@ -432,7 +432,7 @@ func TestPreviewStarMap(t *testing.T) {
 	}
 	body := hn.postLong(PathGeneratePreview, worldPreviewForm(id), c).Body.String()
 	for _, want := range []string{`<svg class="starmap"`, `role="img"`, `aria-label="Star map: the planets around the sun and the routes between them."`,
-		"<title>Nauvis</title>", `<title translate="no">muluna</title>`, `href="/worlds/` + id + `/icons/starmap/muluna.png"`,
+		"<title>Nauvis</title>", `<title translate="no">muluna</title>`, `<image data-href="/worlds/` + id + `/icons/starmap/muluna.png"`,
 		"Download the star map (SVG)", `<g class="starmap__location" data-location="nauvis">`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the preview lacks %s", want)

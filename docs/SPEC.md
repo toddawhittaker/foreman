@@ -3542,8 +3542,9 @@ the icon's entry is at most 2 MiB packed and as declared, and the read stops
 one byte past the declared size, so a lying header is refused; the
 picture's header is read first, and one over 4096 by 4096 pixels, or
 smaller than its listed size, is refused before anything is decoded. Only
-one decode runs at a time, at most 8 more requests wait, and one past that
-is answered 503. The top-left square of the listed size (the first mipmap)
+one decode runs at a time, at most 64 more requests wait (a star map asks
+for every modded planet's picture at once), and one past that is answered
+503 with `Retry-After`. The top-left square of the listed size (the first mipmap)
 is scaled to 64 pixels, or 128 for a star map icon, and written as a new
 PNG, so no byte of the zip's file reaches the browser; the new pictures are
 kept in memory, at most 8 MiB in all. A folder (unzipped) mod is not read.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -70,11 +71,15 @@ func writeResources(c dockertest.Container, patches bool) error {
 		return fmt.Errorf("the fake game's resource container has a bad %s", gameenv.ResourceRadius)
 	}
 	planet := envValue(c.Spec.Env, gameenv.ResourcePlanet)
+	// A count that finds nothing needs no canned names, so a modded planet can be counted too.
 	names, ok := planetResources[planet]
-	if !ok {
+	if !ok && (patches || !mapgen.ValidName(planet)) {
 		return fmt.Errorf("the fake game's resource container has a bad %s", gameenv.ResourcePlanet)
 	}
-	nameOf := map[string]string{"large": names.large, "small": names.small, "infinite": names.infinite}
+	nameOf := map[string]string{}
+	if ok {
+		nameOf = map[string]string{"large": names.large, "small": names.small, "infinite": names.infinite}
+	}
 
 	type resource struct {
 		Total    int64  `json:"total"`

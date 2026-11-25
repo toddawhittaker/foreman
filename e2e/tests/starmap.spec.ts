@@ -161,6 +161,53 @@ test("wiki setting off: the star map asks the wiki for nothing, and the fake pla
   expect(asked).toEqual([]);
 });
 
+// DESIGN 8.23: a planet's picture shows only once it has loaded. Slow, or failed and asked
+// again, its circle shows plain meanwhile, never the browser's broken picture; the large view's
+// copy shows it too.
+test("a slow or failed planet picture leaves the plain circle until a later try loads it", async ({ page, foreman, fakeGame }) => {
+  const icon = "**/icons/starmap/fake-planet.png";
+  let asked = 0;
+  let release!: () => void;
+  const held = new Promise<void>((r) => { release = r; });
+  await page.route(icon, async (route) => {
+    asked += 1;
+    // The first try is refused as busy; the next waits until the test lets it go.
+    if (asked === 1) return route.fulfill({ status: 503, headers: { "Retry-After": "2" }, body: "" });
+    await held;
+    return route.continue();
+  });
+  await modded({ page, foreman, fakeGame: fakeGame! });
+  const own = starmap(page).locator("g.starmap__location", { has: page.locator("title", { hasText: /^Fake planet$/ }) });
+  await expect.poll(() => asked, live).toBe(2);
+  await expect(own.locator("image")).toBeHidden();
+  await expect(own.locator("image")).not.toHaveAttribute("data-loaded");
+  await expect(own.locator("circle.starmap__planet")).toBeVisible();
+  release();
+  await expect(own.locator("image")).toHaveAttribute("data-loaded", "", live);
+  await expect(own.locator("image")).toBeVisible();
+  // The large view's copy shows the picture too.
+  await section(page).getByRole("link", { name: /Star map.*opens the large view/ }).click();
+  await expect(dialog(page).locator('g[data-location="fake-planet"] image')).toBeVisible();
+});
+
+// @slow: the tries are 1, 2 and 4 s apart, and showing that no fifth follows waits past the next 8 s.
+test("a planet picture that keeps failing is asked for four times in all, then the plain circle stays", { tag: "@slow" }, async ({ page, foreman, fakeGame }) => {
+  test.slow();
+  let asked = 0;
+  await page.route("**/icons/starmap/fake-planet.png", (route) => {
+    asked += 1;
+    return route.fulfill({ status: 500, body: "" });
+  });
+  await modded({ page, foreman, fakeGame: fakeGame! });
+  const own = starmap(page).locator('g[data-location="fake-planet"]');
+  // The first try, then 1, 2 and 4 seconds later.
+  await expect.poll(() => asked, { timeout: 15_000 }).toBe(4);
+  await page.waitForTimeout(9_000);
+  expect(asked).toBe(4);
+  await expect(own.locator("image")).toBeHidden();
+  await expect(own.locator("circle.starmap__planet")).toBeVisible();
+});
+
 test("wiki setting on: base places get the wiki's pictures, the page sends no referrer, and a failed picture leaves the circle", async ({ page, foreman, fakeGame }) => {
   const asked: string[] = [];
   await page.route(`${wikiBase}**`, (route) => {
@@ -407,6 +454,34 @@ test("the planet arrows stay in one place for every planet and the star map", { 
   await dialog(page).getByRole("button", { name: "Star map", exact: true }).click();
   await expect(dialog(page)).toHaveAttribute("data-starmap", "");
   await expect(page.locator("#large-prev")).toBeVisible();
+  expect(await boxes()).toEqual(first);
+  await page.screenshot({ path: `../screenshots/starmap-large-${test.info().project.name}.png` });
+
+  // A count's note or error can take several lines beside the box and grow the bar; the arrows stay.
+  await fakeGame!.call("/preview-mode", { mode: "no-patches" });
+  for (const name of names.slice(0, names.indexOf("Fake planet") + 1)) {
+    await page.mouse.click(at(first.next).x, at(first.next).y);
+    await expect(page.locator("#large-title")).toHaveText(name);
+  }
+  const amounts = dialog(page).getByRole("checkbox", { name: "Show resource amounts" });
+  const result = page.locator("#large-amounts-result");
+  await amounts.check();
+  await expect(result.locator(".message--note")).toContainText("This planet's resources may be tiles, which can't be counted.");
+  await expect(page.locator("#large-prev")).toBeVisible();
+  expect(await boxes()).toEqual(first);
+  await page.screenshot({ path: `../screenshots/large-view-note-${test.info().project.name}.png` });
+  await amounts.uncheck();
+  await expect(result).toBeEmpty();
+  expect(await boxes()).toEqual(first);
+  await page.route((u) => u.pathname.endsWith("/generate/preview/resources"), (r) => r.fulfill({ status: 500, body: "" }));
+  await amounts.check();
+  await expect(result.locator(".message--error")).toContainText("The request for the resource amounts failed.");
+  await expect(result.getByRole("button", { name: "Try again" })).toBeVisible();
+  expect(await boxes()).toEqual(first);
+  await page.screenshot({ path: `../screenshots/large-view-error-${test.info().project.name}.png` });
+  // Stepping on with the error shown keeps them too.
+  await page.mouse.click(at(first.next).x, at(first.next).y);
+  await expect(page.locator("#large-title")).not.toHaveText("Fake planet");
   expect(await boxes()).toEqual(first);
 });
 

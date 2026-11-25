@@ -4460,6 +4460,12 @@ html:has(.large-view[open]) {
   stroke: var(--color-primary);
 }
 
+/* A planet's picture shows once it has loaded; until then, or if it never does, the plain
+   circle (DESIGN 8.23). */
+.starmap image:not([data-loaded]) {
+  visibility: hidden;
+}
+
 /* A planet in the large view's star map leads to its own step; its whole box, label included,
    takes the click, which gives a finger more than the circle (SPEC 5.6, 17.2). */
 .large-view .starmap [data-step] {
@@ -4567,13 +4573,20 @@ html:has(.large-view[open]) {
   }
 }
 
-/* Clear of the frame's scroll bars at the end edges. Held at the screen's middle, measured
-   from the stage's foot, which never moves, so a bar that grows (a count's message, Vulcanus's
-   box) does not move them and clicks in one spot keep stepping (DESIGN 8.8). Where the stage
-   is shorter than half the screen (a phone), they stay a gap below Close instead. */
+/* Clear of the frame's scroll bars at the end edges. Measured from the stage's foot, which never
+   moves, by a length that only the window sets, so a bar that grows (a count's note or error,
+   Vulcanus's box) never moves them and clicks in one spot keep stepping (DESIGN 8.8). On a small
+   window they sit a gap below Close on the smallest stage (16rem), so always clear of it; on a window
+   wide and tall enough that the bar can never reach its middle, at the window's middle. */
 .large-view__edge {
-  inset-block-end: min(calc(50dvh - var(--space-3)), calc(100% - 2 * var(--space-2) - 1.5 * var(--target-min)));
+  inset-block-end: calc(16rem - 2 * var(--space-2) - 1.5 * var(--target-min));
   transform: translateY(50%);
+}
+
+@media (min-width: 48rem) and (min-height: 42rem) {
+  .large-view__edge {
+    inset-block-end: calc(50dvh - var(--space-3));
+  }
 }
 
 .large-view__edge--prev {
@@ -4893,6 +4906,16 @@ html:has(.large-view[open]) {
 /* Narrower they cannot share a line, so on a map with Vulcanus its row is
    held, unseen, on every planet, and paging never moves the controls. */
 @container large-view (max-width: 47.99rem) {
+  /* A count's note or error, or the opened list, can make the bar taller than a phone leaves it;
+     past that the bar scrolls on its own, so the stage keeps its 16rem and its foot, and the
+     arrows measured from it, never move (DESIGN 8.8). The padding keeps focus rings unclipped. */
+  .large-view__bar {
+    max-block-size: max(6rem, calc(100dvh - 3 * var(--space-3) - 16rem));
+    overflow-y: auto;
+    padding: calc(var(--focus-width) + 2px);
+    margin: calc(-1 * (var(--focus-width) + 2px));
+  }
+
   body:has(#preview-planets > option[value="vulcanus"]) .large-view__territories[hidden] {
     display: flex;
     visibility: hidden;
