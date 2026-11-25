@@ -2794,13 +2794,13 @@ close the view, the tab, the setting, and the picture again).
     They sit in the same place for every picture, so clicks in one spot
     keep stepping: on the stage's left and right edges, measured from
     the stage's foot, which never moves, by a length only the window
-    sets, so a bar that grows (a count's note or error, Vulcanus's box)
-    does not move them. On a window at least 48rem wide and 42rem high,
+    sets, so a bar that grows (Vulcanus's box, the opened list) does not
+    move them. On a window at least 48rem wide and 42rem high,
     where the bar never reaches its middle, they sit at the window's
     middle; on a smaller one (a phone), a gap below Close on the
     smallest stage (16rem), so they are clear of Close on every stage.
-    There, a bar taller than the window leaves beside that stage (a
-    count's error with "Try again", the opened list) scrolls on its own,
+    There, a bar taller than the window leaves beside that stage (the
+    opened list) scrolls on its own,
     so the stage's foot never moves. The arrows show on the star map too, in
     the same place. The settings column below keeps its place for every
     planet, and on the star map the planet's boxes and the column are
@@ -3007,9 +3007,19 @@ close the view, the tab, the setting, and the picture again).
     height, and the arrow keys still page planets from it, as it is not a
     setting. A count that finds no patches has no list: its sentence
     ("This picture has no resource patches.", or the not-patches one of
-    SPEC 5.6) is a note (7.3) where a failed count's error shows, beside
-    the box in the large view and under the One planet picture, said
-    once as the error is, and the status line drops "Counting…". It is readable inside the dialog. A hidden `h3` heads it; each resource is an
+    SPEC 5.6) is a note (7.3) where a failed count's error shows, said
+    once as the error is, and the status line drops "Counting…". Under
+    the One planet picture it sits under the picture and its downloads.
+    In the large view the note, and a failed count's error with its "Try
+    again", lie over the top of the picture like a toast, where the
+    download's preparation lies: between Previous and Next, clear of
+    Close and zoom, at most 30rem wide. The header keeps one line, so
+    neither the picture nor the arrows move as a message comes or goes.
+    A round close button ("Close message", an icon button the size of
+    the view's others) sits in the message's top corner; it hides the
+    message for that picture until the next count result, and focus
+    goes back to the box. Unticking the box, another planet, the star map
+    or closing the view takes the message away. It is readable inside the dialog. A hidden `h3` heads it; each resource is an
     `h4` giving its total (or its total yield) and a list of its patches
     sorted by amount, each as "12,345,678 at (-50, -30)" or "300% yield at
     (50, -50)". One sentence says positions are tiles from where players
@@ -4510,15 +4520,19 @@ one click downloads it.
   from its bodies' orbits and drawn like the sun, with their rings about it
   and kept clear by labels like any circle, and each location a dark circle edged in the primary colour and sized by
   its magnitude. The label sits beside the circle in the direction of its
-  label orientation, with a dark halo so it reads across routes. Where the
-  label there would cover a route, a label already placed or another
-  location's circle (kept a label's height clear, so it is not read as that
-  body's label), it tries seven more spots round the circle, an eighth of a
-  turn at a time, and takes the first that covers none of them. When every
-  spot covers something, it takes the one that covers least: a label or
-  circle covered counts ten and each route crossed counts one, since a
-  label still reads over a route; a tie goes to the spot nearest the game's
-  side. The picture is square and fits everything drawn, long labels
+  label orientation, with a dark halo so it reads across routes. Labels
+  are drawn in a layer after every circle and picture, so no body drawn
+  later hides one; each still takes a click for its planet in the large
+  view. A label tries sixteen directions round its circle, the game's
+  side first, each at 1, 1.5, 2 and 3 times the normal gap, and takes the
+  spot that costs least, judged in this order: first the other circles
+  and labels it overlaps, so a clear spot always wins; then whether it is
+  unclear whose label it is (as near or nearer another body than its own,
+  nearer another body than that body's label, or with another label
+  nearer its body); then other bodies within a label's height; then how
+  far out it is; then the routes it crosses, which still read through the
+  halo; then how far round from the game's side. A label overlaps another
+  body only when no spot in the whole search is clear. The picture is square and fits everything drawn, long labels
   included.
 - **Proportions** are the game's own, measured from its star map, where
   one distance unit is about 15.85 pixels: the sun's radius is 3.8 units;

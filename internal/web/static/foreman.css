@@ -5783,6 +5783,50 @@ a[target="_blank"]::after {
   background: var(--color-bg);
 }
 
+/* A count's note or error in the large view lies where the preparation's block does: over the
+   stage's top, between the arrows and clear of Close and zoom, so the header keeps one line and
+   the picture never moves (DESIGN 8.8). Its own close sits in the message's top corner. */
+.large-view__toast {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: var(--space-2);
+  inset-inline: calc(var(--space-2) + 3rem) calc(var(--space-5) + 3rem);
+  max-inline-size: 30rem;
+  max-block-size: calc(100% - var(--space-5) - 3rem - var(--space-4));
+  overflow: auto;
+}
+
+.large-view__toast[hidden] {
+  display: none;
+}
+
+.large-view__toast > .icon-button {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+}
+
+/* The words flow round the close button rather than give it a whole column. */
+.large-view__toast .message > :first-child::before {
+  content: "";
+  float: inline-end;
+  inline-size: var(--target-min);
+  block-size: var(--target-min);
+  margin-inline-start: var(--space-2);
+}
+
+/* On a phone the message has only the room between the arrows, so it drops its icon; the
+   tone's edge still marks it, and an error keeps its label. */
+@container large-view (max-width: 47.99rem) {
+  .large-view__toast .message {
+    padding-inline-start: var(--space-3);
+  }
+
+  .large-view__toast .message::before {
+    display: none;
+  }
+}
+
 /* The mod settings editor (SPEC 9.6): one column, a fieldset per mod,
    each setting's label, then its description, then its control. */
 .mod-settings {

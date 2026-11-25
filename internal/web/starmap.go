@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -344,34 +345,26 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 	// clear of bodies not yet drawn.
 	circles := make([]StarMapLocation, len(m.Locations), len(m.Locations)+len(v.Stars))
 	for i, l := range m.Locations {
-		circles[i] = placeLocation(l, 0, scale, font, MapGenName{}, "")
+		circles[i] = placeLocation(l, scale, font, MapGenName{}, "")
 	}
 	// Rebuilt stars are obstacles too; they come after the locations, so no
 	// label takes one for its own.
 	for _, s := range v.Stars {
 		circles = append(circles, StarMapLocation{X: s.X, Y: s.Y, R: v.Sun, font: font})
 	}
-	var labels []rect
 	for i, l := range m.Locations {
 		label := starMapLabel(cat, l)
-		cells := labelCells(loc.Format(label.Name))
-		// The label takes the first of eight spots around the circle that
-		// covers nothing, the game's side first; when every spot covers
-		// something it takes the one that covers least.
-		var sl StarMapLocation
-		best := -1
-		for _, turn := range labelSpots {
-			c := placeLocation(l, l.LabelOrientation+turn, scale, font, label, ic.icon(l))
-			c.LabelCells = cells
-			if score := labelScore(labelBox(c), pieces, labels, circles, i); best < 0 || score < best {
-				sl, best = c, score
-			}
-			if best == 0 {
-				break
+		c := placeLocation(l, scale, font, label, ic.icon(l))
+		c.LabelCells = labelCells(loc.Format(label.Name))
+		// The label takes the spot of least cost among every direction and
+		// distance tried (DESIGN 8.23).
+		var best labelCost
+		for k, s := range labelCandidates(c, l.LabelOrientation) {
+			if cost := labelCostOf(s, k, pieces, v.Locations, circles, i); k == 0 || cost.less(best) {
+				c, best = s, cost
 			}
 		}
-		labels = append(labels, labelBox(sl))
-		v.Locations = append(v.Locations, sl)
+		v.Locations = append(v.Locations, c)
 	}
 	v.ViewBox = fitStarMap(v, routes, scale)
 	return v, true
@@ -427,46 +420,112 @@ func labelBox(l StarMapLocation) rect {
 	return rect{point{x0, y0}, point{x0 + w, y0 + h}}
 }
 
-// labelSpots are the turns from the game's label orientation a label tries,
-// in order: the game's side, then each side further round, to the opposite.
-var labelSpots = [...]float64{0, 1.0 / 8, -1.0 / 8, 2.0 / 8, -2.0 / 8, 3.0 / 8, -3.0 / 8, 4.0 / 8}
+// labelTurns are the sixteen turns from the game's label orientation a label
+// tries, in order: the game's side, then each side further round, to the
+// opposite.
+var labelTurns = [...]float64{0, 1.0 / 16, -1.0 / 16, 2.0 / 16, -2.0 / 16, 3.0 / 16, -3.0 / 16, 4.0 / 16, -4.0 / 16,
+	5.0 / 16, -5.0 / 16, 6.0 / 16, -6.0 / 16, 7.0 / 16, -7.0 / 16, 8.0 / 16}
 
-// Penalties for a label's box: text over text or over a circle is unreadable,
-// while text over a route still reads, thanks to the halo.
-const (
-	labelOverlapScore = 10
-	labelRouteScore   = 1
-)
+// labelSteps are how far out from its circle a label tries, in label gaps,
+// nearest first: further out a label clears a crowd of moons.
+var labelSteps = [...]float64{1, 1.5, 2, 3}
 
-// labelScore is how much a label's box covers: 10 for each label already
-// placed and each circle it overlaps, 1 for each route piece it crosses. A
-// circle other than the label's own (index own) counts from a margin of one
-// font height out, so a label never sits against a body that is not its own.
-func labelScore(box rect, pieces [][2]point, labels []rect, circles []StarMapLocation, own int) int {
-	score := 0
+// labelCandidates are every spot a location's label tries, each direction at
+// each distance, nearest first and the game's side first at each distance.
+// c is the location's circle; orientation is the game's label orientation.
+func labelCandidates(c StarMapLocation, orientation float64) []StarMapLocation {
+	out := make([]StarMapLocation, 0, len(labelSteps)*len(labelTurns))
+	for _, step := range labelSteps {
+		for _, turn := range labelTurns {
+			out = append(out, moveLabel(c, orientation+turn, step))
+		}
+	}
+	return out
+}
+
+// labelCost ranks a spot for a label, compared in order, so any overlap
+// outweighs every preference after it:
+//  0. circles of other bodies and labels the text overlaps;
+//  1. ways the text is unclear: nearer, or as near, to another body than to
+//     its own, nearer another body than that body's own label is, or with
+//     another label nearer its own body than it is;
+//  2. other bodies within a line height, so the text does not sit against
+//     a body that is not its own;
+//  3. how far out it is (labelSteps);
+//  4. route pieces it crosses, which read through the halo;
+//  5. how far round from the game's side it is (labelTurns).
+//
+// Routes come before the turn, as every turn has its own rank: after it they
+// would never count.
+type labelCost [6]int
+
+func (a labelCost) less(b labelCost) bool { return slices.Compare(a[:], b[:]) < 0 }
+
+// labelCostOf is the cost of the spot s, the k-th of labelCandidates, for the
+// label of circles[own]. placed are the labels placed so far, each at its own
+// index in circles; pieces are the routes' pieces.
+func labelCostOf(s StarMapLocation, k int, pieces [][2]point, placed, circles []StarMapLocation, own int) labelCost {
+	box := labelBox(s)
+	labels := make([]rect, len(placed))
+	for j, p := range placed {
+		labels[j] = labelBox(p)
+	}
+	var cost labelCost
+	cost[0] = labelOverlaps(box, labels, circles, own)
+	d := boxGap(box, circles[own])
+	for j, c := range circles {
+		if j == own {
+			continue
+		}
+		g := boxGap(box, c)
+		if g <= d {
+			cost[1]++
+		}
+		if g < starMapLineHeight*c.font {
+			cost[2]++
+		}
+	}
+	for j, p := range labels {
+		if boxGap(p, circles[own]) < d {
+			cost[1]++
+		}
+		if boxGap(box, circles[j]) < boxGap(p, circles[j]) {
+			cost[1]++
+		}
+	}
+	cost[3] = k / len(labelTurns)
+	for _, p := range pieces {
+		if segmentInRect(p[0], p[1], box) {
+			cost[4]++
+		}
+	}
+	cost[5] = k % len(labelTurns)
+	return cost
+}
+
+// labelOverlaps counts the labels and the circles, other than circles[own],
+// that the box overlaps.
+func labelOverlaps(box rect, labels []rect, circles []StarMapLocation, own int) int {
+	n := 0
 	for _, o := range labels {
 		if box.min.X < o.max.X && o.min.X < box.max.X && box.min.Y < o.max.Y && o.min.Y < box.max.Y {
-			score += labelOverlapScore
+			n++
 		}
 	}
 	for i, c := range circles {
-		r := c.R
-		if i != own {
-			r += starMapLineHeight * c.font
-		}
-		// The box's nearest point to the circle's centre is inside the circle.
-		nx := min(max(c.X, box.min.X), box.max.X)
-		ny := min(max(c.Y, box.min.Y), box.max.Y)
-		if math.Hypot(nx-c.X, ny-c.Y) < r {
-			score += labelOverlapScore
+		if i != own && boxGap(box, c) < 0 {
+			n++
 		}
 	}
-	for _, p := range pieces {
-		if segmentInRect(p[0], p[1], box) {
-			score += labelRouteScore
-		}
-	}
-	return score
+	return n
+}
+
+// boxGap is the distance from the box to the circle's edge, below 0 when
+// they overlap: from the box's nearest point to the circle's centre.
+func boxGap(box rect, c StarMapLocation) float64 {
+	nx := min(max(c.X, box.min.X), box.max.X)
+	ny := min(max(c.Y, box.min.Y), box.max.Y)
+	return math.Hypot(nx-c.X, ny-c.Y) - c.R
 }
 
 // segmentInRect is true when the segment a to b passes through the box: it
@@ -528,35 +587,41 @@ func starMapLabel(cat mapgen.Catalogue, l mapgen.Location) MapGenName {
 	return MapGenName{Name: i18n.M("mapgen.mod_name", "name", modLabel(label, l.Name)), Foreign: true}
 }
 
-// placeLocation is a location's circle and its label, which sits beside the
-// circle in the direction turns names: turns from straight up, clockwise, as
-// the game has a label orientation. font is the label's size.
-func placeLocation(l mapgen.Location, turns, scale, font float64, label MapGenName, icon string) StarMapLocation {
+// placeLocation is a location's circle, with its label's name and size but
+// no spot for the label yet (moveLabel gives one). font is the label's size.
+func placeLocation(l mapgen.Location, scale, font float64, label MapGenName, icon string) StarMapLocation {
 	r := min(starMapRadiusMax, max(starMapRadiusMin, starMapRadius*l.Magnitude*scale))
 	x, y := l.X*scale, l.Y*scale
-	a := 2 * math.Pi * turns
-	dx, dy := math.Sin(a), -math.Cos(a)
-	gap := r + starMapLabelGap*font
-	out := StarMapLocation{
+	return StarMapLocation{
 		Name: l.Name, Label: label, Icon: icon,
 		X: round1(x), Y: round1(y), R: round1(r),
 		IconX: round1(x - starMapIcon*r), IconY: round1(y - starMapIcon*r), IconSize: round1(2 * starMapIcon * r),
-		LabelX: round1(x + dx*gap), LabelY: round1(y + dy*gap),
-		Anchor: "middle", Baseline: "central", font: font,
+		font: font,
 	}
+}
+
+// moveLabel puts c's label beside its circle in the direction turns names:
+// turns from straight up, clockwise, as the game has a label orientation,
+// steps label gaps out from the circle's edge.
+func moveLabel(c StarMapLocation, turns, steps float64) StarMapLocation {
+	a := 2 * math.Pi * turns
+	dx, dy := math.Sin(a), -math.Cos(a)
+	gap := c.R + steps*starMapLabelGap*c.font
+	c.LabelX, c.LabelY = round1(c.X+dx*gap), round1(c.Y+dy*gap)
+	c.Anchor, c.Baseline = "middle", "central"
 	switch {
 	case dx > 0.3:
-		out.Anchor = "start"
+		c.Anchor = "start"
 	case dx < -0.3:
-		out.Anchor = "end"
+		c.Anchor = "end"
 	}
 	switch {
 	case dy < -0.3:
-		out.Baseline = "text-after-edge"
+		c.Baseline = "text-after-edge"
 	case dy > 0.3:
-		out.Baseline = "text-before-edge"
+		c.Baseline = "text-before-edge"
 	}
-	return out
+	return c
 }
 
 type point struct{ X, Y float64 }

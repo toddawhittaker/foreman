@@ -869,6 +869,25 @@ startPreviewWithForm(() => {
     if (line) line.hidden = !on;
   }
 
+  // In the large view a count's note or error lies over the picture's top with a close button,
+  // so the header keeps one line and nothing moves (DESIGN 8.8). Returns where the message is.
+  function toastMessage(at, slot) {
+    const toast = el("large-amounts-toast");
+    const message = slot.querySelector(".message");
+    if (at !== places.large || !toast || !message) return slot;
+    el("large-amounts-toast-body").replaceChildren(message);
+    toast.hidden = false;
+    return toast;
+  }
+
+  function hideToast() {
+    const toast = el("large-amounts-toast");
+    if (!toast) return;
+    if (toast.contains(document.activeElement)) el(places.large.box).focus();
+    toast.hidden = true;
+    el("large-amounts-toast-body").replaceChildren();
+  }
+
   // Clears one place; the other keeps its own count, labels and list.
   function clearAmounts(at) {
     const slot = el(at.slot);
@@ -876,6 +895,7 @@ startPreviewWithForm(() => {
     if (slot && slot.contains(document.activeElement)) el(at.box).focus();
     if (slot) slot.replaceChildren();
     if (at === places.large) {
+      hideToast();
       const text = el("large-amounts-text");
       if (text && text.contains(document.activeElement)) el(at.box).focus();
       if (text) text.replaceChildren();
@@ -947,7 +967,7 @@ startPreviewWithForm(() => {
       unsayStart();
       const failed = el("resource-failed");
       if (failed) slot.replaceChildren(failed.content.cloneNode(true));
-      sayAmounts(at, slot);
+      sayAmounts(at, toastMessage(at, slot));
       return;
     }
     if (n !== at.sent) return;
@@ -972,7 +992,7 @@ startPreviewWithForm(() => {
     if (overlay && map) writeLabels(at, map, map.insertBefore(document.importNode(overlay, true), map.querySelector(".pin")));
     // An error or a count of no patches is said by its message, not "ready".
     if (slot.querySelector(".message")) unsayStart();
-    sayAmounts(at, slot);
+    sayAmounts(at, toastMessage(at, slot));
   }
 
   // A download that asks for amounts or territories never comes out plain or
@@ -1408,6 +1428,11 @@ startPreviewWithForm(() => {
       g.setAttribute("tabindex", "0");
       g.setAttribute("aria-label", nameOf(planet));
     });
+    // Each label sits in a layer above every body, apart from its group; a click on it steps
+    // the same way, while the group stays the one control a keyboard reaches (DESIGN 8.23).
+    svg.querySelectorAll("text[data-label]").forEach((t) => {
+      if (list.includes(t.dataset.label)) t.dataset.step = t.dataset.label;
+    });
     map.prepend(svg);
     loadPictures(svg);
     el("large-frame").removeAttribute("data-missing");
@@ -1690,6 +1715,8 @@ startPreviewWithForm(() => {
       else clearAmounts(places.large);
       largeDownload(viewing || firstPlanet());
     });
+    // Closed, the message stays gone for this picture's count; the next count brings its own.
+    el("large-amounts-toast-close").addEventListener("click", hideToast);
     dialog.addEventListener("close", () => {
       // The view's amounts go with it; the page's stay as they are.
       clearAmounts(places.large);

@@ -287,6 +287,12 @@
         <button type="button" class="icon-button" id="large-out"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_out"}}</span></button>
         <button type="button" class="icon-button" id="large-in"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10M8 3v10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_in"}}</span></button>
       </div>
+      {{- /* A count's note or error lies over the picture's top, so the header keeps one line and
+           nothing moves; the bar's status line says it (DESIGN 8.8). The script moves it in. */}}
+      <div class="large-view__toast" id="large-amounts-toast" hidden>
+        <div class="large-view__toast-body" id="large-amounts-toast-body"></div>
+        <button type="button" class="icon-button" id="large-amounts-toast-close"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m3.5 3.5 9 9m0-9-9 9"/></svg><span class="visually-hidden">{{t "worlds.generate.large.dismiss"}}</span></button>
+      </div>
     </div>
   </div>
 </dialog>
@@ -467,8 +473,12 @@
 {{- if and .Icon (not $file)}}
 <image data-href="{{.Icon}}" x="{{.IconX}}" y="{{.IconY}}" width="{{.IconSize}}" height="{{.IconSize}}"/>
 {{- end}}
-<text x="{{.LabelX}}" y="{{.LabelY}}" text-anchor="{{.Anchor}}" dominant-baseline="{{.Baseline}}" fill="#ece7df" stroke="#0d0c0b" stroke-width="{{$halo}}" stroke-linejoin="round" paint-order="stroke"{{if .Label.Foreign}} translate="no"{{end}}>{{msg .Label.Name}}</text>
 </g>
 {{- end}}
+{{- /* Labels paint over every body, so no circle drawn later hides one (DESIGN 8.23). Each
+       location's group above carries its name and control; these are seen only. */}}
+<g class="starmap__labels" aria-hidden="true" fill="#ece7df" stroke="#0d0c0b" stroke-width="{{$halo}}" stroke-linejoin="round" paint-order="stroke">
+{{- range .Locations}}<text{{if not $file}} data-label="{{.Name}}"{{end}} x="{{.LabelX}}" y="{{.LabelY}}" text-anchor="{{.Anchor}}" dominant-baseline="{{.Baseline}}"{{if .Label.Foreign}} translate="no"{{end}}>{{msg .Label.Name}}</text>{{end -}}
+</g>
 </svg>
 {{- end}}

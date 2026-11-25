@@ -378,7 +378,7 @@ func TestStarMapLabelSide(t *testing.T) {
 		{0.5, "middle", "text-before-edge"},
 	}
 	for _, tc := range cases {
-		l := placeLocation(mapgen.Location{Magnitude: 1}, tc.turns, 1, starMapFontMin, MapGenName{}, "")
+		l := moveLabel(placeLocation(mapgen.Location{Magnitude: 1}, 1, starMapFontMin, MapGenName{}, ""), tc.turns, 1)
 		if l.Anchor != tc.anchor || l.Baseline != tc.baseline {
 			t.Errorf("%v turns: %s %s, want %s %s", tc.turns, l.Anchor, l.Baseline, tc.anchor, tc.baseline)
 		}
@@ -686,8 +686,9 @@ func labelOf(t *testing.T, v StarMapView, n string) StarMapLocation {
 	return StarMapLocation{}
 }
 
-// scoreOf is the score of one label against every
-// other label, every circle and every route piece in a laid-out view.
+// scoreOf scores one label in a laid-out view: 10 for each other label and
+// each of circles (other than its own) it overlaps, 1 for each route piece it
+// crosses.
 func scoreOf(v StarMapView, i int, circles []StarMapLocation) int {
 	var pieces [][2]point
 	for _, d := range v.Routes {
@@ -702,7 +703,14 @@ func scoreOf(v StarMapView, i int, circles []StarMapLocation) int {
 			others = append(others, labelBox(o))
 		}
 	}
-	return labelScore(labelBox(v.Locations[i]), pieces, others, circles, i)
+	box := labelBox(v.Locations[i])
+	n := 10 * labelOverlaps(box, others, circles, i)
+	for _, p := range pieces {
+		if segmentInRect(p[0], p[1], box) {
+			n++
+		}
+	}
+	return n
 }
 
 // pathPointsOf is pathPoints without a test, for a path the layout made.
@@ -725,30 +733,30 @@ func boxToCircle(box rect, c StarMapLocation) float64 {
 	return max(0, math.Hypot(nx-c.X, ny-c.Y)-c.R)
 }
 
-// SPEC 5.6, DESIGN 8.23: a label takes the first of eight spots about its
-// circle that covers no label and no circle, the game's side first.
+// SPEC 5.6, DESIGN 8.23: a label takes a spot about its circle that covers
+// no label and no circle, the game's side first.
 func TestStarMapLabelAvoidsRoutesAndLabels(t *testing.T) {
 	// a's label is on its right, where its route out to b leaves: it moves
-	// round to a spot the route does not cross. b's and c's are clear on the
-	// game's side and stay. d sits just below c with its label on the right,
-	// over c's: it moves.
+	// round to a spot the route does not cross. b's is clear on the game's
+	// side and stays. d sits just below c, their circles overlapping: c's
+	// label leaves the side where it would sit against d, and d's moves off
+	// c's label.
 	v, _ := layoutStarMap(starMapOf(t, `{"locations":[
 	 {"name":"a","distance":10,"orientation":0.25,"label_orientation":0.25},
 	 {"name":"b","distance":20,"orientation":0.25,"label_orientation":0.25},
 	 {"name":"c","distance":10,"orientation":0.5,"label_orientation":0.25},
 	 {"name":"d","distance":10.3,"orientation":0.5,"label_orientation":0.25}
 	],"routes":[{"from":"a","to":"b","length":1}]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
-	// c and d are closer than a font height, so no spot is clear of the
-	// other's circle: only labels and routes are checked here.
 	for i, l := range v.Locations {
 		if got := scoreOf(v, i, nil); got != 0 {
 			t.Errorf("%s's label scores %d, want no label or route covered", l.Name, got)
 		}
 	}
-	for _, n := range []string{"b", "c"} {
-		if got := labelOf(t, v, n).Anchor; got != "start" {
-			t.Errorf("%s's label is anchored %s, want the game's side (start)", n, got)
-		}
+	if got := labelOf(t, v, "b").Anchor; got != "start" {
+		t.Errorf("b's label is anchored %s, want the game's side (start)", got)
+	}
+	if c, d := labelOf(t, v, "c"), labelOf(t, v, "d"); boxGap(labelBox(c), d) < starMapLineHeight*c.font {
+		t.Errorf("c's label is %.1f from d's circle, want a line height or more", boxGap(labelBox(c), d))
 	}
 	if a, d := labelOf(t, v, "a"), labelOf(t, v, "d"); a.Anchor == "start" && a.Baseline == "central" {
 		t.Errorf("a's label stayed on the game's side over its route")
@@ -764,27 +772,32 @@ func TestStarMapLabelAvoidsRoutesAndLabels(t *testing.T) {
 	}
 }
 
-// SPEC 5.6, DESIGN 8.23: when every spot covers something, a label takes the
-// one that covers least, and a route crossed costs less than a label or a
-// circle overlapped.
+// SPEC 5.6, DESIGN 8.23: an overlap with another circle or label costs more
+// than any preference: a spot clear of both wins over a nearer one on the
+// game's side that overlaps, even one crossing many routes.
 func TestStarMapLabelTakesTheLeastCovered(t *testing.T) {
 	box := rect{point{0, 0}, point{10, 10}}
-	pieces := [][2]point{{{-5, 5}, {15, 5}}, {{-5, 6}, {15, 6}}}
 	over := []rect{{point{5, 5}, point{20, 20}}}
-	if r, l := labelScore(box, pieces, nil, nil, 0), labelScore(box, nil, over, nil, 0); r != 2 || l != 10 {
-		t.Errorf("two routes score %d and one label %d, want 2 and 10", r, l)
+	if n := labelOverlaps(box, over, nil, 0); n != 1 {
+		t.Errorf("a label overlapped counts %d, want 1", n)
 	}
-	// The circle is the label's own (index 0) and plain, or another's and
-	// grown by a font height (6 here) on every side.
-	c := []StarMapLocation{{X: 20, Y: 5, R: 5, font: 5}}
-	if own, other := labelScore(box, nil, nil, c, 0), labelScore(box, nil, nil, c, 1); own != 0 || other != 10 {
-		t.Errorf("a circle 5 off scores %d as its own and %d as another's, want 0 and 10", own, other)
+	// The circle counts only as another's, and only where it truly overlaps.
+	c := []StarMapLocation{{X: 14, Y: 5, R: 5, font: 5}}
+	if own, other := labelOverlaps(box, nil, c, 0), labelOverlaps(box, nil, c, 1); own != 0 || other != 1 {
+		t.Errorf("a circle 4 into the box counts %d as its own and %d as another's, want 0 and 1", own, other)
+	}
+	if far := labelOverlaps(box, nil, []StarMapLocation{{X: 16, Y: 5, R: 5}}, 1); far != 0 {
+		t.Errorf("a circle 1 clear of the box counts %d, want 0", far)
+	}
+	clear := labelCost{0, 3, 3, len(labelSteps) - 1, 50, len(labelTurns) - 1}
+	if overlapping := (labelCost{1, 0, 0, 0, 0, 0}); !clear.less(overlapping) {
+		t.Errorf("a clear spot does not win over an overlapping one")
 	}
 
-	// hub has a route out in each of eight directions, so every spot for its
-	// label is crossed. twin sits on the same place, listed first, with its
-	// label on the game's side: hub's game side is covered by a label as well
-	// as a route, so hub's label takes a spot with a route crossing only.
+	// hub has a route out in each of eight directions, so most spots for its
+	// label are crossed. twin sits on the same place, listed first, with its
+	// label on the game's side: hub's label leaves that side and overlaps no
+	// label or circle.
 	moons := [][2]string{{"22", "0"}, {"18.5", "8.5"}, {"10", "12"}, {"1.5", "8.5"}, {"-2", "0"}, {"1.5", "-8.5"}, {"10", "-12"}, {"18.5", "-8.5"}}
 	js := `{"locations":[
 	 {"name":"twin","distance":10,"orientation":0.25,"label_orientation":0.25},
@@ -805,8 +818,8 @@ func TestStarMapLabelTakesTheLeastCovered(t *testing.T) {
 	}
 	for i, l := range v.Locations {
 		if l.Name == "hub" {
-			if got := scoreOf(v, i, v.Locations); got%10 != 1 {
-				t.Errorf("hub's label scores %d, want a route crossing and no label overlap (circle overlaps count 10 each)", got)
+			if got := scoreOf(v, i, v.Locations); got >= 10 {
+				t.Errorf("hub's label scores %d, want no label or circle overlapped (10 each)", got)
 			}
 		}
 	}

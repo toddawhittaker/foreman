@@ -414,6 +414,7 @@
   "worlds.generate.large.zoom_out": "Уменьшить",
   "worlds.generate.large.zoom_in": "Увеличить",
   "worlds.generate.large.close": "Закрыть",
+  "worlds.generate.large.dismiss": "Закрыть сообщение",
   "worlds.generate.large.keys": "Клавиши: ← → планета (сдвиг при увеличении), + − масштаб, 0 вписать, Esc закрыть. Касание центрирует.",
   "worlds.generate.large.keys_settings": "В настройке клавиши управляют самой настройкой: стрелка двигает ползунок, а не карту.",
   "worlds.generate.large.settings": "Настройки планеты",

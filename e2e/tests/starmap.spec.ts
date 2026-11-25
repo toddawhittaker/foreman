@@ -106,6 +106,12 @@ test("the map preview has a star map picture that names every visible location a
   // The game's hidden placeholder is nowhere in the picture, neither as a name nor a circle.
   expect(names.join(" ")).not.toMatch(/unknown/i);
   await expect(starmap(page).locator("circle.starmap__planet")).toHaveCount(visible.length);
+  // The layout's guess of each label's width (0.6 of the font a letter) is never narrower than
+  // the text the browser draws, so a spot it thinks clear is clear (DESIGN 8.23).
+  const widths = await starmap(page).evaluate((svg) => [...svg.querySelectorAll("text")].map((t) =>
+    [t.textContent, (t as SVGTextElement).getBBox().width, 0.6 * Number(svg.getAttribute("font-size")) * [...(t.textContent ?? "")].length] as const));
+  expect(widths).toHaveLength(visible.length);
+  for (const [name, drawn, guessed] of widths) expect(drawn, `${name}'s drawn width`).toBeLessThanOrEqual(guessed);
   // No moon while the setting is off.
   expect((await titles(page).allTextContents()).join(" ")).not.toMatch(/moon/i);
   // Nothing makes the page scroll sideways (SPEC 17.2).
@@ -130,7 +136,12 @@ test("routes arc about the sun, a moon's route to its planet is straight, and th
     expect(bend * 180 / Math.PI).toBeLessThan(3);
   }
   // Vulcanus's label leaves the game's side (right), where its routes leave, for a clear spot.
-  await expect(starmap(page).locator("g.starmap__location", { has: page.locator("title", { hasText: /^Vulcanus$/ }) }).locator("text")).not.toHaveAttribute("text-anchor", "start");
+  await expect(starmap(page).locator('text[data-label="vulcanus"]')).not.toHaveAttribute("text-anchor", "start");
+  // Labels paint over every body: the label layer comes after the last circle (DESIGN 8.23).
+  expect(await starmap(page).evaluate((svg) => {
+    const circles = svg.querySelectorAll("circle");
+    return !!(circles[circles.length - 1].compareDocumentPosition(svg.querySelector("text")!) & Node.DOCUMENT_POSITION_FOLLOWING);
+  })).toBe(true);
 
   // A moon's route to its own planet is straight: two points, one segment.
   expect(await routeBetween(page, "Fake planet", "fake-moon")).toHaveLength(2);
@@ -424,6 +435,16 @@ test("a planet on the large view's star map is reached with Tab and stepped to w
   await expect(page.locator("#large-amounts-bar")).toBeVisible();
 });
 
+// DESIGN 8.23: a label sits in a layer above every body, apart from its planet's group, and a
+// click on it steps to the planet as the circle does; the edge's label is no control.
+test("a click on a planet's label on the large view's star map steps to that planet", async ({ page, foreman, fakeGame }) => {
+  await starMapStep(page, foreman, fakeGame!);
+  await bigMap(page).locator('text[data-label="solar-system-edge"]').click({ force: true });
+  await expect(page.locator("#large-title")).toHaveText("Star map");
+  await bigMap(page).locator('text[data-label="fulgora"]').click();
+  await expect(page.locator("#large-title")).toHaveText("Fulgora");
+});
+
 // DESIGN 8.8: Previous and Next sit in one place for every picture, with or without settings,
 // Vulcanus's box or the star map, so clicks in one spot keep stepping. fake-bare has no settings.
 test("the planet arrows stay in one place for every planet and the star map", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
@@ -457,29 +478,78 @@ test("the planet arrows stay in one place for every planet and the star map", { 
   expect(await boxes()).toEqual(first);
   await page.screenshot({ path: `../screenshots/starmap-large-${test.info().project.name}.png` });
 
-  // A count's note or error can take several lines beside the box and grow the bar; the arrows stay.
+  // A count's note or error lies over the picture's top, so the header keeps one line: the
+  // picture's frame, the picture and the arrows stay exactly where they were with amounts off.
   await fakeGame!.call("/preview-mode", { mode: "no-patches" });
   for (const name of names.slice(0, names.indexOf("Fake planet") + 1)) {
     await page.mouse.click(at(first.next).x, at(first.next).y);
     await expect(page.locator("#large-title")).toHaveText(name);
   }
+  await expect(page.locator("#large-frame")).not.toHaveAttribute("data-missing", "true", { timeout: 20_000 });
+  const still = async () => ({ ...(await boxes()), frame: await page.locator("#large-frame").boundingBox(), picture: await page.locator("#large-img").boundingBox() });
+  const off = await still();
+  expect(off.prev).toEqual(first.prev);
   const amounts = dialog(page).getByRole("checkbox", { name: "Show resource amounts" });
   const result = page.locator("#large-amounts-result");
+  const toast = page.locator("#large-amounts-toast");
+  const close = toast.getByRole("button", { name: "Close message" });
   await amounts.check();
-  await expect(result.locator(".message--note")).toContainText("This planet's resources may be tiles, which can't be counted.");
-  await expect(page.locator("#large-prev")).toBeVisible();
-  expect(await boxes()).toEqual(first);
-  await page.screenshot({ path: `../screenshots/large-view-note-${test.info().project.name}.png` });
-  await amounts.uncheck();
+  await expect(toast.locator(".message--note")).toContainText("This planet's resources may be tiles, which can't be counted.");
   await expect(result).toBeEmpty();
-  expect(await boxes()).toEqual(first);
+  // Still said once, by the bar's status line.
+  await expect(page.locator("#large-amounts-news")).toContainText("This planet's resources may be tiles");
+  await expect(page.locator("#large-prev")).toBeVisible();
+  expect(await still()).toEqual(off);
+  // It covers no arrow, zoom button or Close, and its close is as large as the view's other buttons.
+  const over = (a: { x: number; y: number; width: number; height: number } | null, b: typeof a) =>
+    !!a && !!b && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  const toastBox = await toast.boundingBox();
+  for (const id of ["#large-prev", "#large-next", "#large-in", "#large-out", "#large-close"]) {
+    expect(over(toastBox, await page.locator(id).boundingBox()), `the message covers ${id}`).toBe(false);
+  }
+  const closeBox = (await close.boundingBox())!;
+  const otherBox = (await page.locator("#large-close").boundingBox())!;
+  expect([closeBox.width, closeBox.height]).toEqual([otherBox.width, otherBox.height]);
+  await page.screenshot({ path: `../screenshots/large-view-note-${test.info().project.name}.png` });
+  await checkPage(page);
+
+  // Its close is reached from the keyboard, shows its focus, and hides the message for this
+  // picture's count; focus goes back to the box.
+  await amounts.focus();
+  for (let i = 0; i < 40 && !(await close.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
+  await expect(close).toBeFocused();
+  expect(await close.evaluate((b) => getComputedStyle(b).outlineStyle)).not.toBe("none");
+  await page.keyboard.press("Enter");
+  await expect(toast).toBeHidden();
+  await expect(amounts).toBeFocused();
+  expect(await still()).toEqual(off);
+  // Zooming and panning bring no count, so it stays gone.
+  await page.locator("#large-in").click();
+  await page.locator("#large-out").click();
+  await expect(toast).toBeHidden();
+  // Unticked, it is gone; ticked again, the next count's result shows it again.
+  await amounts.uncheck();
+  await expect(toast).toBeHidden();
+  await expect(result).toBeEmpty();
+  expect(await still()).toEqual(off);
+  await amounts.check();
+  await expect(toast.locator(".message--note")).toBeVisible();
+  await amounts.uncheck();
+  await expect(toast).toBeHidden();
+
+  // A failed count's error, with Try again, lies there too.
   await page.route((u) => u.pathname.endsWith("/generate/preview/resources"), (r) => r.fulfill({ status: 500, body: "" }));
   await amounts.check();
-  await expect(result.locator(".message--error")).toContainText("The request for the resource amounts failed.");
-  await expect(result.getByRole("button", { name: "Try again" })).toBeVisible();
-  expect(await boxes()).toEqual(first);
+  await expect(toast.locator(".message--error")).toContainText("The request for the resource amounts failed.");
+  await expect(toast.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expect(result).toBeEmpty();
+  expect(await still()).toEqual(off);
   await page.screenshot({ path: `../screenshots/large-view-error-${test.info().project.name}.png` });
-  // Stepping on with the error shown keeps them too.
+  // Try again is a new count; its failure is a new result, so the error shows again.
+  await toast.getByRole("button", { name: "Try again" }).click();
+  await expect(toast.locator(".message--error")).toBeVisible();
+  expect(await still()).toEqual(off);
+  // Stepping on with the error shown keeps the arrows too.
   await page.mouse.click(at(first.next).x, at(first.next).y);
   await expect(page.locator("#large-title")).not.toHaveText("Fake planet");
   expect(await boxes()).toEqual(first);

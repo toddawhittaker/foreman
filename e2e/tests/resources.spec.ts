@@ -21,6 +21,8 @@ const labels = (page: Page) => dialog(page).locator(".resources__label");
 const counting = (page: Page) => page.locator("#large-counting");
 const status = (page: Page) => page.locator("#large-status");
 const result = (page: Page) => page.locator("#large-amounts-result");
+// A count's note or error lies over the picture's top, not in the bar (DESIGN 8.8).
+const toast = (page: Page) => page.locator("#large-amounts-toast");
 // The amounts as text: under the box, or last in the settings column when that shows (DESIGN 8.8).
 const list = (page: Page) => page.locator("#large-amounts-result .resource-text, #large-amounts-text .resource-text");
 const summary = (page: Page) => list(page).locator("summary");
@@ -318,7 +320,7 @@ test("a failed request says so and offers to try again", { tag: "@looks" }, asyn
   await openLarge(page);
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
   await box(page).check();
-  await expect(result(page)).toContainText("The request for the resource amounts failed.");
+  await expect(toast(page)).toContainText("The request for the resource amounts failed.");
   // Said once, unseen, as the message shows it: the sentence alone, without the button's label.
   const news = page.locator("#large-amounts-news");
   await expect(news).toHaveText("Error: The request for the resource amounts failed. Check that Foreman is reachable and that you are still signed in, then try again.");
@@ -329,22 +331,22 @@ test("a failed request says so and offers to try again", { tag: "@looks" }, asyn
   await shot(page, "resources-failed");
   await checkPage(page);
   await page.unroute(resourceURL);
-  await result(page).getByRole("button", { name: "Try again" }).click();
+  await toast(page).getByRole("button", { name: "Try again" }).click();
   await expect(labels(page)).toHaveCount(4);
   await expect(box(page)).toBeFocused();
-  await expect(result(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
+  await expect(toast(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
 });
 
 // SPEC 5.6, "Known limit": a count of no patches says so where a failed count's error shows:
-// beside the box in the large view, seen without opening or scrolling anything, and under the
+// over the picture's top in the large view, seen without opening or scrolling anything, and under the
 // One planet picture on the page (DESIGN 8.8), never inside an empty list.
 test("a count of no patches says so where an error shows, not in an empty list", { tag: "@looks" }, async ({ page, fakeGame }) => {
   await fakeGame!.call("/preview-mode", { mode: "no-patches" });
   await openLarge(page);
   await box(page).check();
   const none = "This picture has no resource patches.";
-  await expect(result(page).locator(".message")).toHaveText(none);
-  await expect(result(page).locator(".message")).toBeInViewport();
+  await expect(toast(page).locator(".message")).toHaveText(none);
+  await expect(toast(page).locator(".message")).toBeInViewport();
   await expect(page.locator("#large-amounts-news")).toHaveText(none);
   // The count is over, so the status line no longer says it is counting.
   await expect(status(page)).not.toContainText("Counting resources");

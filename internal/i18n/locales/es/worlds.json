@@ -402,6 +402,7 @@
   "worlds.generate.large.zoom_out": "Alejar",
   "worlds.generate.large.zoom_in": "Acercar",
   "worlds.generate.large.close": "Cerrar",
+  "worlds.generate.large.dismiss": "Cerrar mensaje",
   "worlds.generate.large.keys": "Teclas: ← → planeta (con zoom, desplazar), + − zoom, 0 ajustar, Esc cerrar. Toca para centrar.",
   "worlds.generate.large.keys_settings": "En un ajuste, las teclas controlan ese ajuste: una flecha mueve un control deslizante, no el mapa.",
   "worlds.generate.large.settings": "Ajustes del planeta",

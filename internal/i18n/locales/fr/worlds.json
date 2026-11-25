@@ -402,6 +402,7 @@
   "worlds.generate.large.zoom_out": "Dézoomer",
   "worlds.generate.large.zoom_in": "Zoomer",
   "worlds.generate.large.close": "Fermer",
+  "worlds.generate.large.dismiss": "Fermer le message",
   "worlds.generate.large.keys": "Touches : ← → planète (déplacer si zoomé), + − zoom, 0 ajuster, Échap fermer. Touchez pour centrer.",
   "worlds.generate.large.keys_settings": "Dans un paramètre, les touches agissent sur ce paramètre : une flèche déplace un curseur, pas la carte.",
   "worlds.generate.large.settings": "Paramètres de la planète",
