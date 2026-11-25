@@ -450,6 +450,7 @@
 {{- range .Orbits}}<circle cx="{{.X}}" cy="{{.Y}}" r="{{.R}}" vector-effect="non-scaling-stroke"/>{{end -}}
 </g>
 <circle class="starmap__sun" r="{{.Sun}}" fill="#f5a524" stroke="#c2410c" stroke-width="2" vector-effect="non-scaling-stroke"/>
+{{- $sun := .Sun}}{{range .Stars}}<circle class="starmap__sun" cx="{{.X}}" cy="{{.Y}}" r="{{$sun}}" fill="#f5a524" stroke="#c2410c" stroke-width="2" vector-effect="non-scaling-stroke"/>{{end}}
 <g class="starmap__routes" fill="none" stroke="#c9c4bc" stroke-opacity="0.75" stroke-width="1.3" stroke-linejoin="round">
 {{- range .Routes}}<path d="{{.}}" vector-effect="non-scaling-stroke"/>{{end -}}
 </g>

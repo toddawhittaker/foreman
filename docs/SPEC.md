@@ -952,7 +952,10 @@ not) or a map exchange string, with Space Age on or off. (P0)
       drawn where the game puts them. A plain sun circle sits at the centre,
       and a faint ring marks each distance a location lies at, so the map
       reads like the game's. When the data names a parent (PlanetsLib), a
-      faint orbit ring is drawn about it through the moon. The picture is
+      faint orbit ring is drawn about it through the moon. A star a mod
+      draws only as a picture (PlanetsLib `sprite_only`), which the game's
+      data leaves out, is rebuilt from its bodies' orbit offsets and drawn
+      like the sun, with their rings about it. The picture is
       square, dark in both themes as the game's map is, and its view fits
       everything drawn, each label measured as it is shown. A location the
       game hides is left out, and so is every route that touches one.

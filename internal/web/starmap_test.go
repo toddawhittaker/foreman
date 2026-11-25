@@ -177,7 +177,7 @@ func TestStarMapRoutes(t *testing.T) {
 	}
 	at := func(n string) mapgen.Location { return byName[n] }
 
-	arc := routePoints(byName, at("a"), at("b"))
+	arc := routePoints(byName, nil, at("a"), at("b"))
 	if len(arc) < 4 {
 		t.Fatalf("a to b is %d points, want an arc", len(arc))
 	}
@@ -194,14 +194,14 @@ func TestStarMapRoutes(t *testing.T) {
 		t.Errorf("the arc runs %v to %v, not end to end", first, last)
 	}
 
-	if got := routePoints(byName, at("p"), at("m1")); len(got) != 2 {
+	if got := routePoints(byName, nil, at("p"), at("m1")); len(got) != 2 {
 		t.Errorf("planet to its moon is %d points, want straight", len(got))
 	}
-	if got := routePoints(byName, at("p"), at("far")); len(got) != 2 {
+	if got := routePoints(byName, nil, at("p"), at("far")); len(got) != 2 {
 		t.Errorf("places of two stars are %d points, want straight", len(got))
 	}
 	// Two moons of one planet arc about the planet.
-	moons := routePoints(byName, at("m1"), at("m2"))
+	moons := routePoints(byName, nil, at("m1"), at("m2"))
 	if len(moons) < 3 {
 		t.Fatalf("moon to moon is %d points, want an arc about the planet", len(moons))
 	}
@@ -655,7 +655,7 @@ func TestStarMapRoutesAreSmooth(t *testing.T) {
 		byName[l.Name] = l
 	}
 	for _, r := range m.Routes {
-		ps := routePoints(byName, byName[r.From], byName[r.To])
+		ps := routePoints(byName, nil, byName[r.From], byName[r.To])
 		if r.To == "muluna" {
 			if len(ps) != 2 {
 				t.Errorf("%s to %s is %d points, want straight", r.From, r.To, len(ps))
@@ -878,5 +878,69 @@ func TestSegmentInRect(t *testing.T) {
 		if got := segmentInRect(c.a, c.b, box); got != c.want {
 			t.Errorf("%v to %v: %v, want %v", c.a, c.b, got, c.want)
 		}
+	}
+}
+
+// SPEC 5.6: a star a mod draws only as a picture is rebuilt from its bodies'
+// orbits and drawn like the sun, with their rings about it, not about the sun.
+func TestStarMapDrawsRebuiltStar(t *testing.T) {
+	m := starMapOf(t, `{"locations":[
+	 {"name":"nauvis","distance":15,"orientation":0},
+	 {"name":"nix","position":{"x":100,"y":-50},"parent":"redstar","orbit":{"distance":10,"orientation":0.25}},
+	 {"name":"mirandus","position":{"x":90,"y":-30},"parent":"redstar","orbit":{"distance":20,"orientation":0.5}}
+	],"routes":[{"from":"nix","to":"mirandus","length":1},{"from":"nauvis","to":"nix","length":1}]}`)
+	if len(m.Stars) != 1 {
+		t.Fatalf("stars %+v", m.Stars)
+	}
+	v, ok := layoutStarMap(m, mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	if !ok || len(v.Stars) != 1 {
+		t.Fatalf("view stars %+v", v.Stars)
+	}
+	var nix StarMapLocation
+	for _, l := range v.Locations {
+		if l.Name == "nix" {
+			nix = l
+		}
+	}
+	// nix is due right of its star, and its ring passes through it.
+	s := v.Stars[0]
+	if nix.X <= s.X || math.Abs(nix.Y-s.Y) > 0.2 {
+		t.Errorf("star at %v,%v, nix at %v,%v", s.X, s.Y, nix.X, nix.Y)
+	}
+	if len(v.Orbits) != 2 {
+		t.Fatalf("orbits %+v, want one ring about the star for each body", v.Orbits)
+	}
+	for _, o := range v.Orbits {
+		if o.X != s.X || o.Y != s.Y {
+			t.Errorf("ring %+v is not about the star %+v", o, s)
+		}
+	}
+	if r := v.Orbits[0].R; math.Abs(r-(nix.X-s.X)) > 0.2 {
+		t.Errorf("nix's ring r %v, want %v", r, nix.X-s.X)
+	}
+	if len(v.Rings) != 1 {
+		t.Errorf("sun rings %v, want only Nauvis's", v.Rings)
+	}
+	x, y, w, h := viewBoxOf(t, v)
+	if s.X-v.Sun < x || s.X+v.Sun > x+w || s.Y-v.Sun < y || s.Y+v.Sun > y+h {
+		t.Errorf("star %+v r %v is outside %q", s, v.Sun, v.ViewBox)
+	}
+	byName := map[string]mapgen.Location{}
+	for _, l := range m.Locations {
+		byName[l.Name] = l
+	}
+	stars := starPoints(m)
+	// Two bodies of one star arc about it; a body of the sun and one of
+	// another star are joined straight.
+	arc := routePoints(byName, stars, byName["nix"], byName["mirandus"])
+	if len(arc) < 3 {
+		t.Fatalf("nix to mirandus is %d points, want an arc", len(arc))
+	}
+	mid := arc[len(arc)/2]
+	if r := math.Hypot(mid.X-90, mid.Y+50); r < 10 || r > 20 {
+		t.Errorf("mid point %v is %v from the star, want between 10 and 20", mid, r)
+	}
+	if got := routePoints(byName, stars, byName["nauvis"], byName["nix"]); len(got) != 2 {
+		t.Errorf("places of two stars are %d points, want straight", len(got))
 	}
 }

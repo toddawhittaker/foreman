@@ -94,6 +94,9 @@ type StarMapView struct {
 	// moon.
 	Rings  []float64
 	Orbits []StarMapOrbit
+	// Stars are the stars rebuilt from their bodies' orbits, each drawn
+	// like the sun, Sun in radius; their bodies' rings are in Orbits.
+	Stars []StarMapStar
 	// Routes are SVG path data, one a route.
 	Routes    []string
 	Locations []StarMapLocation
@@ -104,6 +107,9 @@ type StarMapView struct {
 
 // StarMapOrbit is a moon's orbit: a circle about its parent.
 type StarMapOrbit struct{ X, Y, R float64 }
+
+// StarMapStar is a rebuilt star's centre.
+type StarMapStar struct{ X, Y float64 }
 
 // StarMapLocation is one location's circle, picture and label.
 type StarMapLocation struct {
@@ -266,15 +272,19 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 	for _, l := range m.Locations {
 		byName[l.Name] = l
 	}
+	stars := starPoints(m)
 	// Routes first, in game units, as an arc can reach past its two ends.
 	routes := make([][]point, 0, len(m.Routes))
 	for _, r := range m.Routes {
-		routes = append(routes, routePoints(byName, byName[r.From], byName[r.To]))
+		routes = append(routes, routePoints(byName, stars, byName[r.From], byName[r.To]))
 	}
 	// The bounds of everything drawn, the sun included, in game units.
 	b := bounds{minX: 0, maxX: 0, minY: 0, maxY: 0}
 	for _, l := range m.Locations {
 		b.add(point{l.X, l.Y})
+	}
+	for _, s := range m.Stars {
+		b.add(point{s.X, s.Y})
 	}
 	for _, r := range routes {
 		for _, p := range r {
@@ -289,15 +299,30 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 	font := min(starMapFontMax, max(starMapFontMin, starMapFont*scale))
 	v := StarMapView{Sun: round1(max(starMapSunMin, starMapSun*scale)), Font: round1(font), Halo: round1(font / 5)}
 	for _, l := range m.Locations {
-		if d := math.Hypot(l.X, l.Y) * scale; l.Parent == "" && d > 0 {
+		c := stars[l.Star] // 0,0, the sun, when Star is ""
+		if d := math.Hypot(l.X-c.X, l.Y-c.Y) * scale; l.Parent == "" && d > 0 {
 			v.Sun = min(v.Sun, round1(starMapSunReach*d))
 		}
 	}
+	for _, s := range m.Stars {
+		v.Stars = append(v.Stars, StarMapStar{X: round1(s.X * scale), Y: round1(s.Y * scale)})
+	}
 	seen := map[float64]bool{}
+	seenOrbit := map[StarMapOrbit]bool{}
 	for _, l := range m.Locations {
 		if p, ok := byName[l.Parent]; ok && l.Parent != "" {
 			r := math.Hypot(l.X-p.X, l.Y-p.Y) * scale
 			v.Orbits = append(v.Orbits, StarMapOrbit{X: round1(p.X * scale), Y: round1(p.Y * scale), R: round1(r)})
+			continue
+		}
+		// A body of a rebuilt star has its ring about that star, drawn in
+		// Orbits as it has a centre of its own; it looks like a sun ring.
+		if c, ok := stars[l.Star]; ok && l.Star != "" {
+			o := StarMapOrbit{X: round1(c.X * scale), Y: round1(c.Y * scale), R: round1(math.Hypot(l.X-c.X, l.Y-c.Y) * scale)}
+			if o.R > 0 && !seenOrbit[o] {
+				seenOrbit[o] = true
+				v.Orbits = append(v.Orbits, o)
+			}
 			continue
 		}
 		// The ring passes through the location as drawn: from 2.1 its
@@ -317,9 +342,14 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 	}
 	// Every circle is known before any label is placed, so a label can keep
 	// clear of bodies not yet drawn.
-	circles := make([]StarMapLocation, len(m.Locations))
+	circles := make([]StarMapLocation, len(m.Locations), len(m.Locations)+len(v.Stars))
 	for i, l := range m.Locations {
 		circles[i] = placeLocation(l, 0, scale, font, MapGenName{}, "")
+	}
+	// Rebuilt stars are obstacles too; they come after the locations, so no
+	// label takes one for its own.
+	for _, s := range v.Stars {
+		circles = append(circles, StarMapLocation{X: s.X, Y: s.Y, R: v.Sun, font: font})
 	}
 	var labels []rect
 	for i, l := range m.Locations {
@@ -353,6 +383,10 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 // is the reader's.
 func fitStarMap(v StarMapView, routes [][]point, scale float64) string {
 	b := bounds{minX: -v.Sun, maxX: v.Sun, minY: -v.Sun, maxY: v.Sun}
+	for _, s := range v.Stars {
+		b.add(point{s.X - v.Sun, s.Y - v.Sun})
+		b.add(point{s.X + v.Sun, s.Y + v.Sun})
+	}
 	for _, r := range routes {
 		for _, p := range r {
 			b.add(point{p.X * scale, p.Y * scale})
@@ -539,10 +573,11 @@ func (b *bounds) add(p point) {
 // whose distance from that centre and angle about it each change evenly from
 // one end to the other, the shorter way round. It is straight when the
 // common parent is one of the ends, or when the ends share nothing but the
-// universe's origin (planets of two different stars).
-func routePoints(byName map[string]mapgen.Location, a, b mapgen.Location) []point {
+// universe's origin (planets of two different stars). stars holds the
+// rebuilt stars' centres by name.
+func routePoints(byName map[string]mapgen.Location, stars map[string]point, a, b mapgen.Location) []point {
 	straight := []point{{a.X, a.Y}, {b.X, b.Y}}
-	centre, ok := commonParent(byName, a, b)
+	centre, ok := commonParent(byName, stars, a, b)
 	if !ok {
 		return straight
 	}
@@ -589,10 +624,12 @@ func maxBend(ps []point) float64 {
 }
 
 // commonParent is the centre a route between a and b arcs about: their
-// nearest common parent, or the sun at the origin for two locations that have
-// none. It is false when the route is straight: the common parent is one of
-// the ends, or only the origin is shared and one end has a parent of its own.
-func commonParent(byName map[string]mapgen.Location, a, b mapgen.Location) (point, bool) {
+// nearest common parent, or the star two locations without one both orbit:
+// the sun at the origin or a rebuilt star. It is false when the route is
+// straight: the common parent is one of the ends, or the ends' chains top out
+// at different stars, or only the origin is shared and one end has a parent
+// of its own.
+func commonParent(byName map[string]mapgen.Location, stars map[string]point, a, b mapgen.Location) (point, bool) {
 	// Each chain starts at the location itself, so a moon and its own planet
 	// find the planet: one of the ends. The decoder keeps chains finite.
 	above := map[string]bool{}
@@ -608,10 +645,19 @@ func commonParent(byName map[string]mapgen.Location, a, b mapgen.Location) (poin
 			return point{p.X, p.Y}, true
 		}
 	}
-	if a.Parent == "" && b.Parent == "" {
-		return point{}, true
+	if a.Parent == "" && b.Parent == "" && a.Star == b.Star {
+		return stars[a.Star], true
 	}
 	return point{}, false
+}
+
+// starPoints is each rebuilt star's centre by name, in game units.
+func starPoints(m mapgen.StarMap) map[string]point {
+	out := make(map[string]point, len(m.Stars))
+	for _, s := range m.Stars {
+		out[s.Name] = point{s.X, s.Y}
+	}
+	return out
 }
 
 // pathData is SVG path data for points in game units, scaled.

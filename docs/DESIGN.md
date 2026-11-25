@@ -4465,7 +4465,9 @@ one click downloads it.
 - **The look** follows the game's map, dark in either theme, like a planet
   picture: a plain sun circle at the centre, a faint ring about the sun at
   each location's distance, a faint orbit ring about the parent for a moon,
-  and each location a dark circle edged in the primary colour and sized by
+  a star a mod draws only as a picture (PlanetsLib `sprite_only`) rebuilt
+  from its bodies' orbits and drawn like the sun, with their rings about it
+  and kept clear by labels like any circle, and each location a dark circle edged in the primary colour and sized by
   its magnitude. The label sits beside the circle in the direction of its
   label orientation, with a dark halo so it reads across routes. Where the
   label there would cover a route, a label already placed or another
