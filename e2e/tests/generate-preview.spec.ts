@@ -642,6 +642,9 @@ test.describe("with script", () => {
     // Close by its button too, from Vulcanus: focus lands on the picture shown.
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    // Nauvis reopens at the zoom it was left at (DESIGN 8.8), where the arrows pan; 0 fits it so they step.
+    await expect(dialog.locator("#large-frame")).toHaveAttribute("data-zoomed", "");
+    await page.keyboard.press("0");
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
     await expect(dialog.getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
