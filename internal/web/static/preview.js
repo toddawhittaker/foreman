@@ -1616,15 +1616,20 @@ startPreviewWithForm(() => {
     el("large-next").addEventListener("click", () => step(1));
     el("large-close").addEventListener("click", () => dialog.close());
     // A planet on the star map steps to it (SPEC 5.6). A pan is no click: the
-    // same 6 px the viewer allows a tap. The frame captures the pointer, so
-    // the click is aimed by where it lands, not by its target.
+    // same 6 px the viewer allows a tap. The frame captures the pointer, and a
+    // tap on a zoomed map centres its spot before the click comes, so the
+    // planet is the one under the pointer when it went down.
     let down = null;
-    frame().addEventListener("pointerdown", (e) => { down = { x: e.clientX, y: e.clientY }; }, true);
-    const planetAt = (e) => {
-      if (!starShown) return null;
-      const at = e.detail && down ? document.elementFromPoint(e.clientX, e.clientY) : e.target;
+    const stepAt = (at) => {
       const g = at && at.closest && at.closest(".starmap [data-step]");
       return g && frame().contains(g) ? g.dataset.step : null;
+    };
+    frame().addEventListener("pointerdown", (e) => {
+      down = { x: e.clientX, y: e.clientY, planet: stepAt(document.elementFromPoint(e.clientX, e.clientY)) };
+    }, true);
+    const planetAt = (e) => {
+      if (!starShown) return null;
+      return e.detail && down ? down.planet : stepAt(e.target);
     };
     frame().addEventListener("click", (e) => {
       if (e.detail && down && Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 6) return;

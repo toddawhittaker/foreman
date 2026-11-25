@@ -435,6 +435,28 @@ test("a planet on the large view's star map is reached with Tab and stepped to w
   await expect(page.locator("#large-amounts-bar")).toBeVisible();
 });
 
+// SPEC 5.6: on a zoomed star map a tap also centres its spot (DESIGN 8.8), and the click still
+// goes to the planet it landed on, not to whatever the centring brought under the pointer.
+test("a click on a planet away from the middle of a zoomed star map steps to that planet", async ({ page, foreman, fakeGame }) => {
+  await starMapStep(page, foreman, fakeGame!);
+  await page.locator("#large-in").click();
+  await page.locator("#large-in").click();
+  await expect(page.locator("#large-frame")).toHaveAttribute("data-zoomed", "");
+  const frame = (await page.locator("#large-frame").boundingBox())!;
+  // The visible planet furthest from the frame's middle, so the centring moves the map most.
+  const names = ["Vulcanus", "Gleba", "Fulgora", "Aquilo", "Nauvis"];
+  let best = { name: "", d: -1 };
+  for (const name of names) {
+    const b = await bigMap(page).getByRole("button", { name }).locator("circle").boundingBox();
+    if (!b || b.x < frame.x || b.y < frame.y || b.x + b.width > frame.x + frame.width || b.y + b.height > frame.y + frame.height) continue;
+    const d = Math.hypot(b.x + b.width / 2 - (frame.x + frame.width / 2), b.y + b.height / 2 - (frame.y + frame.height / 2));
+    if (d > best.d) best = { name, d };
+  }
+  expect(best.d).toBeGreaterThan(60);
+  await bigMap(page).getByRole("button", { name: best.name }).locator("circle").click();
+  await expect(page.locator("#large-title")).toHaveText(best.name);
+});
+
 // DESIGN 8.23: a label sits in a layer above every body, apart from its planet's group, and a
 // click on it steps to the planet as the circle does; the edge's label is no control.
 test("a click on a planet's label on the large view's star map steps to that planet", async ({ page, foreman, fakeGame }) => {
