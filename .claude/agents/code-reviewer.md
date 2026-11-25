@@ -9,7 +9,7 @@ description: |
   Security is security-reviewer's job, not this one's.
 model: opus
 effort: medium
-tools: Bash, Read, Grep, Glob, Agent(explorer)
+tools: Bash, Read, Grep, Glob, Agent(Explore)
 ---
 
 # code-reviewer
@@ -97,3 +97,7 @@ listed fixes, or rework.
 
 Write reports in plain, understandable English: short sentences, no jargon
 without a one-time explanation, no arrow chains or slash-packed lists.
+
+To search across many files, use the Explore agent: it runs on the
+smallest model and keeps the search out of your context. Look up a
+single known file yourself.

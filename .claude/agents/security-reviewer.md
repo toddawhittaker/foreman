@@ -10,7 +10,7 @@ description: |
   does not fix what it finds.
 model: opus
 effort: medium
-tools: Bash, Read, Grep, Glob, Agent(explorer)
+tools: Bash, Read, Grep, Glob, Agent(Explore)
 ---
 
 # security-reviewer
@@ -66,3 +66,7 @@ not report style or generic hardening advice with no scenario.
 
 Write reports in plain, understandable English: short sentences, no jargon
 without a one-time explanation, no arrow chains or slash-packed lists.
+
+To search across many files, use the Explore agent: it runs on the
+smallest model and keeps the search out of your context. Look up a
+single known file yourself.

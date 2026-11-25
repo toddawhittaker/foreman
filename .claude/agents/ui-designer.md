@@ -13,7 +13,7 @@ description: |
   code-reviewer.
 model: opus
 effort: medium
-tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(explorer)
+tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(Explore)
 hooks:
   Stop:
     - hooks:
@@ -160,3 +160,7 @@ anything you left out and why.
 Keep code comments brief: one line saying why. Comments never cite issues,
 epics, tasks or plans; cite a SPEC.md section or an ADR instead. Write
 reports in plain, understandable English.
+
+To search across many files, use the Explore agent: it runs on the
+smallest model and keeps the search out of your context. Look up a
+single known file yourself.

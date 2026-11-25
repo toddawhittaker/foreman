@@ -11,7 +11,7 @@ description: |
   does not edit.
 model: opus
 effort: high
-tools: Bash, Read, Grep, Glob, WebFetch, WebSearch, Agent(explorer)
+tools: Bash, Read, Grep, Glob, WebFetch, WebSearch, Agent(Explore)
 ---
 
 # architect
@@ -102,3 +102,7 @@ a simpler shape, do not report it.
 
 Write in plain, understandable English: short sentences, no jargon
 without a one-time explanation, no arrow chains or slash-packed lists.
+
+To search across many files, use the Explore agent: it runs on the
+smallest model and keeps the search out of your context. Look up a
+single known file yourself.

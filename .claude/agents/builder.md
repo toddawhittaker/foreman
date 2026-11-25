@@ -7,7 +7,7 @@ description: |
   clear target.
 model: opus
 effort: low
-tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(explorer)
+tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(Explore)
 hooks:
   Stop:
     - hooks:
@@ -76,3 +76,7 @@ Keep code comments brief: one line saying why, only where the code cannot
 say it itself. Write reports, commit messages, and PR descriptions in
 plain, understandable English: short sentences, no jargon without a
 one-time explanation, no arrow chains or slash-packed lists.
+
+To search across many files, use the Explore agent: it runs on the
+smallest model and keeps the search out of your context. Look up a
+single known file yourself.
