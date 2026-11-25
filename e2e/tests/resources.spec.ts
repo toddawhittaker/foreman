@@ -335,6 +335,39 @@ test("a failed request says so and offers to try again", { tag: "@looks" }, asyn
   await expect(result(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
 });
 
+// SPEC 5.6, "Known limit": a count of no patches says so where a failed count's error shows:
+// beside the box in the large view, seen without opening or scrolling anything, and under the
+// One planet picture on the page (DESIGN 8.8), never inside an empty list.
+test("a count of no patches says so where an error shows, not in an empty list", { tag: "@looks" }, async ({ page, fakeGame }) => {
+  await fakeGame!.call("/preview-mode", { mode: "no-patches" });
+  await openLarge(page);
+  await box(page).check();
+  const none = "This picture has no resource patches.";
+  await expect(result(page).locator(".message")).toHaveText(none);
+  await expect(result(page).locator(".message")).toBeInViewport();
+  await expect(page.locator("#large-amounts-news")).toHaveText(none);
+  // The count is over, so the status line no longer says it is counting.
+  await expect(status(page)).not.toContainText("Counting resources");
+  await expect(dialog(page).locator(".resource-text")).toHaveCount(0);
+  await expect(page.locator("#large-amounts-text")).toBeEmpty();
+  await expect(labels(page)).toHaveCount(0);
+  await expect(counting(page)).toBeHidden();
+  await shot(page, "resources-none");
+  await checkPage(page);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toBeHidden();
+  const pageBox = section(page).getByRole("checkbox", { name: "Show resource amounts" });
+  await pageBox.check();
+  const pageResult = page.locator("#preview-amounts-result");
+  await expect(pageResult.locator(".message")).toHaveText(none);
+  await expect(page.locator("#preview-amounts-news")).toHaveText(none);
+  await expect(pageResult.locator(".message")).toBeVisible();
+  await expect(section(page).locator("details.resource-text")).toHaveCount(0);
+  await pageResult.scrollIntoViewIfNeeded();
+  await shot(page, "resources-none-page");
+});
+
 test("from the keyboard: tick the box, then read the amounts as text", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   await tabTo(page, box(page));

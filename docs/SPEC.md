@@ -980,7 +980,8 @@ not) or a map exchange string, with Space Age on or off. (P0)
       not translated. A mod's name is marked `translate="no"`.
     - **The large view and the file.** The star map opens in the large view
       like a planet picture, with the same zoom, pan and keys, and is the
-      view's first step: Previous, Next and the arrow keys reach it, and
+      view's first step: Previous, Next, the arrow keys and the header's
+      "Star map" button reach it, the arrows in the same place as for a planet, and
       Next from it shows the first planet, in either view and before any
       other planet is drawn, as it needs no drawing. While it is shown the resource
       amounts, territories and the planet's settings are hidden, and the

@@ -37,17 +37,18 @@ type Env = { page: Page; foreman: Parameters<typeof seedWorld>[0]; fakeGame: { c
 
 // A Space Age world with the fake planet mod, its step 4 open, and the
 // pictures of every planet drawn, which brings the star map. moon turns the
-// fake moon on through the mod's startup setting.
-async function modded({ page, foreman, fakeGame }: Env, opts: { moon?: boolean; wiki?: boolean } = {}): Promise<string> {
+// fake moon on through the mod's startup setting; bare sets it to its largest value, which
+// also adds fake-bare, a planet with no map controls at all.
+async function modded({ page, foreman, fakeGame }: Env, opts: { moon?: boolean; bare?: boolean; wiki?: boolean } = {}): Promise<string> {
   await createAdmin(page);
   if (opts.wiki) await wikiOn(page);
   seedWorld(foreman);
   await fakeGame.call("/image", { ref: image21, on: true });
   const id = await openNewMap(page, { name: "Modded" });
   addFakePlanet(foreman.dataDir, id);
-  if (opts.moon) {
+  if (opts.moon || opts.bare) {
     await page.goto(`${newMapPath(id)}/mod-settings`);
-    await page.getByLabel("fm-sta-int").fill("9");
+    await page.getByLabel("fm-sta-int").fill(opts.bare ? "10" : "9");
     await page.getByRole("button", { name: "Next: Map settings" }).click();
     await expect(page).toHaveURL(newMapPath(id), live);
   } else {
@@ -374,6 +375,169 @@ test("a planet on the large view's star map is reached with Tab and stepped to w
   await page.keyboard.press("Enter");
   await expect(page.locator("#large-title")).toHaveText("Gleba");
   await expect(page.locator("#large-amounts-bar")).toBeVisible();
+});
+
+// DESIGN 8.8: Previous and Next sit in one place for every picture, with or without settings,
+// Vulcanus's box or the star map, so clicks in one spot keep stepping. fake-bare has no settings.
+test("the planet arrows stay in one place for every planet and the star map", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+  await modded({ page, foreman, fakeGame: fakeGame! }, { bare: true });
+  await section(page).getByRole("link", { name: /Nauvis.*opens the large view/ }).click();
+  await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+  const boxes = async () => ({ prev: await page.locator("#large-prev").boundingBox(), next: await page.locator("#large-next").boundingBox() });
+  const first = await boxes();
+  const names = await page.locator("#preview-planets option").allTextContents();
+  expect(names.length).toBeGreaterThan(2);
+  // Clicks on Next in the same spot go round every planet, through the star map, and back to
+  // Nauvis; the star map shows the arrows too, in the same places (SPEC 5.6: it is the first step).
+  const at = (b: typeof first.next) => ({ x: b!.x + b!.width / 2, y: b!.y + b!.height / 2 });
+  const round = [...names.slice(1), "Star map", names[0]];
+  for (const name of round) {
+    await page.mouse.click(at(first.next).x, at(first.next).y);
+    await expect(page.locator("#large-title")).toHaveText(name);
+    await expect(page.locator("#large-next")).toBeVisible();
+    expect(await boxes()).toEqual(first);
+  }
+  // And back again with Previous, clicked in its one spot.
+  for (const name of ["Star map", ...[...names].reverse()]) {
+    await page.mouse.click(at(first.prev).x, at(first.prev).y);
+    await expect(page.locator("#large-title")).toHaveText(name);
+    expect(await boxes()).toEqual(first);
+  }
+  // The header's Star map button reaches the same step, arrows unmoved.
+  await dialog(page).getByRole("button", { name: "Star map", exact: true }).click();
+  await expect(dialog(page)).toHaveAttribute("data-starmap", "");
+  await expect(page.locator("#large-prev")).toBeVisible();
+  expect(await boxes()).toEqual(first);
+});
+
+// SPEC 5.6: a planet whose mod gives it no resource or terrain controls says so where its
+// settings would be, on the page in both tabs and once in the large view's settings column.
+test("a planet with no map controls says so in its settings row and in the large view", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+  await modded({ page, foreman, fakeGame: fakeGame! }, { bare: true });
+  const sentence = /^fake-bare has no resource or terrain settings\. Its mod places them without controls, so the game offers none either\.$/;
+  const row = page.locator('#panel-resources > details[data-planet="fake-bare"]');
+  await row.locator("summary").click();
+  await expect(row.locator(".mapgen-none")).toHaveText(sentence);
+  await expect(row.locator("select, input")).toHaveCount(0);
+  await expect(page.locator('#panel-terrain > details[data-planet="fake-bare"] .mapgen-none')).toHaveText(sentence);
+  // Fake planet has a resource control and no terrain one: no sentence for it.
+  await expect(page.locator('details[data-planet="fake-planet"] .mapgen-none')).toHaveCount(0);
+  await checkPage(page);
+
+  await section(page).getByRole("link", { name: /fake-bare.*opens the large view/ }).click();
+  await expect(dialog(page)).toBeVisible();
+  const wide = (page.viewportSize()?.width ?? 0) >= 1240;
+  // The settings column shows only on a wide view (DESIGN 8.8); there it says it once.
+  if (wide) {
+    await expect(dialog(page).locator(".mapgen-none:visible")).toHaveCount(1);
+    await expect(dialog(page).locator(".mapgen-none:visible")).toHaveText(sentence);
+    await page.screenshot({ path: `../screenshots/no-controls-large-${test.info().project.name}.png` });
+  }
+  await page.keyboard.press("Escape");
+  // The rows go back to the form, each tab's with its sentence.
+  await expect(page.locator('#panel-resources > details[data-planet="fake-bare"] .mapgen-none')).toHaveText(sentence);
+  await expect(page.locator('#panel-terrain > details[data-planet="fake-bare"] .mapgen-none')).toHaveText(sentence);
+});
+
+// A plain Space Age world with every planet shown, so the preview ends with the star map.
+async function plainAll({ page, foreman, fakeGame }: Env) {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame.call("/image", { ref: image21, on: true });
+  await openNewMap(page, { name: "Plain" });
+  await section(page).locator("label.tab", { hasText: "All planets" }).click();
+  await expect(starmap(page)).toBeVisible({ timeout: 60_000 });
+}
+
+// DESIGN 8.8: from a planet, the large view's header goes to the star map in one click.
+test("the large view's Star map button shows the star map in one click from a planet, in every preview view", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+  await plainAll({ page, foreman, fakeGame: fakeGame! });
+  await section(page).getByRole("link", { name: /Nauvis.*opens the large view/ }).click();
+  await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+  const button = dialog(page).getByRole("button", { name: "Star map", exact: true });
+  await expect(button).toBeVisible();
+  // Its touch target is at least the download icon's beside it.
+  const [b, d] = [(await button.boundingBox())!, (await page.locator("#large-download").boundingBox())!];
+  expect(b.height).toBeGreaterThanOrEqual(d.height - 0.5);
+  await page.screenshot({ path: `../screenshots/starmap-button-${test.info().project.name}.png` });
+  await page.keyboard.press("+");
+  await button.click();
+  await expect(page.getByRole("dialog", { name: "Star map" })).toBeVisible();
+  await expect(dialog(page)).toHaveAttribute("data-starmap", "");
+  await expect(dialog(page).locator("svg.starmap")).toBeVisible();
+  await expect(page.locator("#large-img")).toBeHidden();
+  // As opening it from the page: fitted, the map focused, the download the star map's, and its name said.
+  await expect(page.locator("#large-frame")).toBeFocused();
+  await expect(page.locator("#large-frame")).not.toHaveAttribute("data-zoomed", "");
+  await expect(page.locator("#large-download")).toHaveAttribute("href", /starmap/);
+  await expect(page.locator("#large-status")).toHaveText("Star map");
+  // Hidden while the star map is shown.
+  await expect(button).toBeHidden();
+  await checkPage(page);
+  // Closing goes back to the page's star map picture.
+  await page.keyboard.press("Escape");
+  await expect(section(page).getByRole("link", { name: /Star map.*opens the large view/ })).toBeFocused();
+
+  // With One planet the page shows no star map, yet it is still the view's first step (SPEC 5.6),
+  // so the button offers it, and Next from it is the first planet.
+  await section(page).locator("label.tab", { hasText: "One planet" }).click();
+  await expect(starmap(page)).toHaveCount(0, { timeout: 60_000 });
+  await section(page).getByRole("link", { name: /opens the large view/ }).click();
+  await expect(dialog(page)).toBeVisible();
+  const planet = await page.locator("#large-title").textContent();
+  await button.click();
+  await expect(page.locator("#large-title")).toHaveText("Star map");
+  await expect(button).toBeHidden();
+  await dialog(page).getByRole("button", { name: /^Next planet: / }).click();
+  await expect(page.locator("#large-title")).toHaveText(await page.locator("#preview-planets option").first().textContent() ?? planet!);
+});
+
+// DESIGN 8.8: zoomed in, any edge of the picture can pan to the frame's middle; fitted, nothing scrolls.
+test("zoomed in, the star map pans until any edge reaches the frame's middle, and Zoom in keeps the middle in place", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+  await plainAll({ page, foreman, fakeGame: fakeGame! });
+  await section(page).getByRole("link", { name: /Star map.*opens the large view/ }).click();
+  await expect(dialog(page)).toHaveAttribute("data-starmap", "");
+  const frame = page.locator("#large-frame");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("+");
+  await expect(page.locator("#large-status")).toHaveText("Zoom 152%");
+  // Where the picture's edges are, against the middle of the frame's visible area.
+  const edges = () => frame.evaluate((f) => {
+    const box = f.getBoundingClientRect();
+    const mid = { x: box.left + f.clientLeft + f.clientWidth / 2, y: box.top + f.clientTop + f.clientHeight / 2 };
+    const pic = f.querySelector("svg.starmap")!.getBoundingClientRect();
+    return { left: pic.left - mid.x, right: pic.right - mid.x, top: pic.top - mid.y, bottom: pic.bottom - mid.y };
+  });
+  const scrollTo = (end: boolean) => frame.evaluate((f, e) => {
+    f.scrollLeft = e ? f.scrollWidth : 0;
+    f.scrollTop = e ? f.scrollHeight : 0;
+  }, end);
+  await scrollTo(false);
+  let e = await edges();
+  expect(Math.abs(e.left)).toBeLessThan(1.5);
+  expect(Math.abs(e.top)).toBeLessThan(1.5);
+  await scrollTo(true);
+  e = await edges();
+  expect(Math.abs(e.right)).toBeLessThan(1.5);
+  expect(Math.abs(e.bottom)).toBeLessThan(1.5);
+
+  // From near an edge, Zoom in keeps the spot at the middle where it was.
+  await scrollTo(false);
+  await frame.evaluate((f) => f.scrollBy(40, 30));
+  const spot = async () => {
+    const at = await edges();
+    return { u: -at.left / (at.right - at.left), v: -at.top / (at.bottom - at.top), w: at.right - at.left };
+  };
+  const before = await spot();
+  await dialog(page).getByRole("button", { name: "Zoom in" }).click();
+  await expect(page.locator("#large-status")).toHaveText("Zoom 175%");
+  const after = await spot();
+  expect(after.w).toBeCloseTo(before.w * 1.15, 0);
+  expect(Math.abs(after.u - before.u) * after.w).toBeLessThan(1.5);
+  expect(Math.abs(after.v - before.v) * after.w).toBeLessThan(1.5);
+
+  // Fitted again, the picture is centred and nothing scrolls.
+  await page.keyboard.press("0");
+  expect(await frame.evaluate((f) => f.scrollWidth <= f.clientWidth + 1 && f.scrollHeight <= f.clientHeight + 1)).toBe(true);
 });
 
 // The stored entries of a zip, read through its central directory, as the

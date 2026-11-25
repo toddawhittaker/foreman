@@ -2768,7 +2768,14 @@ close the view, the tab, the setting, and the picture again).
   the browser keeps focus inside it and Escape closes it. It works as a
   picture viewer and fills the screen (`bg` face, no shadow). A bar holds
   the planet's name (h2, the dialog's name) with a download icon link beside it ("Download Nauvis
-  map"), and under them a `role="status"` line whose height is held
+  map"). While a planet is shown and the world has a star map (8.23,
+  in either preview view), a "Star map" button follows the download icon: the same
+  round control stretched to its word, 24 px high and 44 px under
+  `(pointer: coarse)`. One click shows the star map in the same view, as
+  opening it from the page does: fitted, the frame focused, its name said.
+  It is the same step Previous takes from the first planet, so Next from
+  the star map then shows the first planet. It is hidden while the star
+  map is shown. Under the name's line is a `role="status"` line whose height is held
   (content outside a modal dialog is inert, so the dialog says its own
   news). The key help sits in the bar too, at the end of the name's line
   while it fits: "Keys: ← → planet (pan when zoomed), + − zoom, 0 fit,
@@ -2782,8 +2789,17 @@ close the view, the tab, the setting, and the picture again).
     while the pointer is over the picture or a control in it has
     keyboard focus, and always under `(hover: none)`. Each is an
     icon button (8.8 icons below), 24 px, 44 px under
-    `(pointer: coarse)`. Previous and Next step through the world's
-    planets and wrap; a planet not drawn yet is drawn and shown in place.
+    `(pointer: coarse)`. Previous and Next step through the star map,
+    the view's first step (SPEC 5.6), then the world's planets, and wrap; a planet not drawn yet is drawn and shown in place.
+    They sit in the same place for every picture, so clicks in one spot
+    keep stepping: on the stage's left and right edges, at the window's
+    middle measured from the stage's foot, which never moves, so a bar
+    that grows (a count's message, Vulcanus's box) does not move them.
+    Where the stage is shorter than half the window (a phone), they sit
+    a gap below Close instead. The arrows show on the star map too, in
+    the same place. The settings column below keeps its place for every
+    planet, and on the star map the planet's boxes and the column are
+    hidden but keep their places.
   - Zoom, pan, the zoom keys and the three zoom buttons are one plain
     script, `static/viewer.js` (`window.ForemanViewer`), shared with the
     factory map (SPEC 5.16) and loaded with `defer` before each page's own
@@ -2798,12 +2814,23 @@ close the view, the tab, the setting, and the picture again).
     or button is said in the status line ("Zoom 132%", from
     `Intl.NumberFormat`). The picture scales with `image-rendering:
     pixelated` (one tile is one pixel on 2.x).
+  - Zoom is per picture. Each planet and the star map keeps its own
+    zoom and the spot at the frame's middle, in memory only, for as long
+    as the page lives; stepping back to a picture, or closing the view
+    and opening it again, finds it as it was left. A picture not seen
+    yet opens fitted. A picture of another size than its kept view (a
+    new preview size) drops every kept view. A redraw of the picture
+    shown keeps its zoom.
   - Panning: drag the zoomed picture (pointer capture), or use the
     frame's scroll bars, or the arrow keys while the frame has focus. On
     touch screens one finger drags and two pinch around their middle
     (`touch-action: none` on the frame). A tap (one pointer, under 6 px
     of movement) on a zoomed picture centres the spot tapped, so panning
-    never needs a drag (WCAG 2.5.7).
+    never needs a drag (WCAG 2.5.7). Zoomed, the picture pans until any
+    of its edges reaches the middle of the frame (half the frame's width
+    and height of room on each side), for a planet and the star map
+    alike, so a spot near the edge can be brought to the centre. Fitted,
+    the picture is centred and does not pan.
   - Keys: left and right arrows step (inside the zoomed frame they scroll
     it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
     Alt or Meta held the browser keeps its own zoom keys. Focus decides:
@@ -2836,7 +2863,12 @@ close the view, the tab, the setting, and the picture again).
     Space Age, preset or reset redraw; a redraw already on its way when
     the view opens is let land first, so there is never a second copy.
     A tab that has no planet rows lends its fields only on a world of one
-    planet. So the form sends, checks, marks "[modified]", resets,
+    planet. A planet with no resource or terrain controls (its mod places
+    them from its map generator alone, as Igrys does) has a row in both
+    tabs that says so: "Igrys has no resource or terrain settings. Its mod
+    places them without controls, so the game offers none either." The
+    column shows it once, under Resources. A planet with controls in only
+    one tab gets nothing new. So the form sends, checks, marks "[modified]", resets,
     undoes and warns on leaving as for any change on the page. Moving to
     another planet moves its settings in. A change there redraws as one
     on the page does, 0.8 s after the last change, the newest request
@@ -2968,7 +3000,11 @@ close the view, the tab, the setting, and the picture again).
     text (N patches)", under the box; in the large view with the settings
     column it goes last in that column instead, so the header keeps one
     height, and the arrow keys still page planets from it, as it is not a
-    setting. It is readable inside the dialog. A hidden `h3` heads it; each resource is an
+    setting. A count that finds no patches has no list: its sentence
+    ("This picture has no resource patches.", or the not-patches one of
+    SPEC 5.6) is a note (7.3) where a failed count's error shows, beside
+    the box in the large view and under the One planet picture, said
+    once as the error is, and the status line drops "Counting…". It is readable inside the dialog. A hidden `h3` heads it; each resource is an
     `h4` giving its total (or its total yield) and a list of its patches
     sorted by amount, each as "12,345,678 at (-50, -30)" or "300% yield at
     (50, -50)". One sentence says positions are tiles from where players

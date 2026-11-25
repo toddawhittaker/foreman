@@ -4397,7 +4397,7 @@ html:has(.large-view[open]) {
 /* The page's own gestures are off inside it: one finger drags, two pinch. */
 .large-view__frame {
   container-type: size;
-  display: flex;
+  display: grid;
   min-block-size: 0;
   overflow: auto;
   /* Panned by drag, keys and wheel; no scroll bars, so zooming never narrows the map. */
@@ -4417,11 +4417,16 @@ html:has(.large-view[open]) {
   cursor: grabbing;
 }
 
-/* Auto margins centre a fitted picture and never push a zoomed one out of reach. */
+/* Auto margins centre a fitted picture. Zoomed, half the frame's room on each side lets
+   any edge of the picture pan to the frame's middle (DESIGN 8.8); the frame is a grid, as
+   a flex row does not count the bottom margin as room to scroll. */
 .large-view__map {
-  flex: none;
   margin: auto;
   inline-size: calc(min(100cqi, 100cqb) * var(--zoom));
+}
+
+.large-view__frame[data-zoomed] .large-view__map {
+  margin: 50cqb 50cqi;
 }
 
 .large-view__map img {
@@ -4467,9 +4472,14 @@ html:has(.large-view[open]) {
   stroke-width: 3;
 }
 
-/* The star map in the large view: no planet picture, pin or planet settings (SPEC 5.6). */
-.large-view[data-starmap] :is(#large-img, .pin, #large-territories-box, #large-amounts-bar, #large-settings) {
+/* The star map in the large view: no planet picture or pin. The planet's boxes and its settings
+   keep their places unseen, so the stage and its arrows stay where they are for every picture (DESIGN 8.8). */
+.large-view[data-starmap] :is(#large-img, .pin) {
   display: none;
+}
+
+.large-view[data-starmap] :is(#large-territories-box, #large-amounts-bar, #large-settings) {
+  visibility: hidden;
 }
 
 /* A round icon control with a hidden name; 24 px, and 44 px for a finger (SPEC 17.2). */
@@ -4494,6 +4504,15 @@ html:has(.large-view[open]) {
 
 .icon-button[hidden] {
   display: none;
+}
+
+/* The large view's "Star map": the header's round control, stretched to its word. */
+.icon-button.large-view__to-starmap {
+  inline-size: auto;
+  padding-inline: var(--space-2);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  white-space: nowrap;
 }
 
 .icon-button[aria-disabled="true"] {
@@ -4548,10 +4567,13 @@ html:has(.large-view[open]) {
   }
 }
 
-/* Clear of the frame's scroll bars at the end edges. */
+/* Clear of the frame's scroll bars at the end edges. Held at the screen's middle, measured
+   from the stage's foot, which never moves, so a bar that grows (a count's message, Vulcanus's
+   box) does not move them and clicks in one spot keep stepping (DESIGN 8.8). Where the stage
+   is shorter than half the screen (a phone), they stay a gap below Close instead. */
 .large-view__edge {
-  inset-block-start: 50%;
-  transform: translateY(-50%);
+  inset-block-end: min(calc(50dvh - var(--space-3)), calc(100% - 2 * var(--space-2) - 1.5 * var(--target-min)));
+  transform: translateY(50%);
 }
 
 .large-view__edge--prev {
@@ -12643,4 +12665,9 @@ html:has(.flow-foot) {
   .generate > .gen-actions > .flow-back {
     margin-inline-end: 0;
   }
+}
+
+/* A planet without controls says so once in the large view: under Resources, not again under Terrain (SPEC 5.6). */
+#large-terrain:has(.mapgen-none) {
+  display: none;
 }

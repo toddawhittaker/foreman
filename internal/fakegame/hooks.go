@@ -226,16 +226,19 @@ const (
 	// PreviewOOM is the out-of-memory killer ending the container: exit 137
 	// with OOMKilled, without drawing.
 	PreviewOOM PreviewMode = "oom"
+	// PreviewNoPatches is PreviewOK, but a resource count finds no patches,
+	// as on a planet whose resources are tiles.
+	PreviewNoPatches PreviewMode = "no-patches"
 )
 
 // SetPreviewMode sets how later preview containers end (SPEC 5.6). The
 // default is PreviewOK.
 func (g *Game) SetPreviewMode(mode PreviewMode) error {
 	switch mode {
-	case PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM:
+	case PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches:
 	default:
-		return fmt.Errorf("a preview mode is %q, %q, %q, %q or %q",
-			PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM)
+		return fmt.Errorf("a preview mode is %q, %q, %q, %q, %q or %q",
+			PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches)
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -360,7 +363,7 @@ type hookRequest struct {
 //	POST /chat          name, player, text
 //	POST /oom           name, on
 //	POST /port-in-use   name, port (the next start of that name fails)
-//	POST /preview-mode  mode ("ok", "fail", "hang", "slow" or "oom")
+//	POST /preview-mode  mode ("ok", "fail", "hang", "slow", "oom" or "no-patches")
 //	POST /save-players  tick, players, drop_mod, raw; or reset (see SetSavePlayers)
 //	POST /sidecar-port  port (publish 34197/udp on it; "" stops publishing)
 //	POST /sidecar-restart  (the sidecar restarts; shared games' RCON stops)

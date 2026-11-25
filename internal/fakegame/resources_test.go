@@ -94,6 +94,22 @@ func TestResourceRunWritesPatches(t *testing.T) {
 	}
 }
 
+// In the no-patches preview mode a resource run finds nothing, as on a
+// planet whose resources are tiles, and the result still parses (SPEC 5.6).
+func TestResourceRunNoPatchesMode(t *testing.T) {
+	r := newRig(t, fakegame.Config{})
+	if err := r.game.SetPreviewMode(fakegame.PreviewNoPatches); err != nil {
+		t.Fatal(err)
+	}
+	res, err := resourceRun(t, r, 3, "nauvis")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Patches) != 0 {
+		t.Errorf("%d patches, want none", len(res.Patches))
+	}
+}
+
 func area(p resource.Patch) int {
 	return (p.Box[2] - p.Box[0] + 1) * (p.Box[3] - p.Box[1] + 1)
 }

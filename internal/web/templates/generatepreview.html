@@ -210,6 +210,8 @@
     <div class="large-view__head">
       <h2 id="large-title"></h2>
       <a href="" class="icon-button" id="large-download" download><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13.5h10"/></svg><span class="visually-hidden" id="large-download-name"></span></a>
+      {{- /* One click from a planet to the star map, the view's first step; the script shows it while a planet is shown (DESIGN 8.8). */}}
+      <button type="button" class="icon-button large-view__to-starmap" id="large-starmap" hidden>{{t "worlds.generate.starmap.caption"}}</button>
       <p class="hint large-view__keys" id="large-keys">{{t "worlds.generate.large.keys"}}</p>
     </div>
     {{/* Content outside the open dialog is inert, so the dialog says its own news. */}}
@@ -347,14 +349,21 @@
 
 {{/* The amounts as text, collapsed: one list a resource with its total, then
      each patch and where it is from the start, largest first; or why there
-     are none, with Try again where it can work. Takes ResourceView. */}}
+     are none, with Try again where it can work. A count of no patches says so
+     beside the box, where an error shows, not in an empty list (SPEC 5.6). Takes ResourceView. */}}
 {{define "resource-result" -}}
-{{- if .Error.IsZero}}
+{{- if not .Error.IsZero}}
+<div class="message message--error">
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  {{- if .Retry}}
+  <p><button type="button" class="button" data-resource-retry>{{t "worlds.generate.resources.retry"}}</button></p>
+  {{- end}}
+</div>
+{{- else if .Lists}}
 <details class="disclosure resource-text">
   <summary>{{t "worlds.generate.resources.summary" "count" .Patches}}</summary>
   {{- /* The totals are a level below the settings' sections, under one heading for the list. */}}
   <h3 class="visually-hidden">{{t "worlds.generate.resources.summary" "count" .Patches}}</h3>
-  {{- if .Lists}}
   <p class="hint">{{t "worlds.generate.resources.edge"}}</p>
   {{- range .Lists}}
   <h4>{{.Total}}</h4>
@@ -362,16 +371,10 @@
     {{- range .Patches}}<li>{{.}}</li>{{end}}
   </ul>
   {{- end}}
-  {{- else}}
-  <p>{{msg .None}}</p>
-  {{- end}}
 </details>
 {{- else}}
-<div class="message message--error">
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-  {{- if .Retry}}
-  <p><button type="button" class="button" data-resource-retry>{{t "worlds.generate.resources.retry"}}</button></p>
-  {{- end}}
+<div class="message message--note">
+  <p>{{msg .None}}</p>
 </div>
 {{- end}}
 {{- end}}
