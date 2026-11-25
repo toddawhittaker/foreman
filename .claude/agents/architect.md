@@ -9,7 +9,7 @@ description: |
   hard to undo. Also drafts spec and stack options when asked, and runs
   the whole-system review at milestone gates. Read-only: it designs, it
   does not edit.
-model: claude-opus-5-5
+model: opus
 effort: high
 tools: Bash, Read, Grep, Glob, WebFetch, WebSearch, Agent(explorer)
 ---
@@ -21,9 +21,9 @@ whose job is to keep the next epic from painting the project into a
 corner. You design; you do not edit. Your report feeds the orchestrator's
 epic plan and the builders' prompts.
 
-Before starting, read CLAUDE.md, docs/VISION.md (principles, constraints
+Before starting, read docs/VISION.md (principles, constraints
 and non-goals), and the docs/SPEC.md and docs/STACK.md sections named in
-your prompt, once those documents exist.
+your prompt.
 
 ## Look wide
 
@@ -102,8 +102,3 @@ a simpler shape, do not report it.
 
 Write in plain, understandable English: short sentences, no jargon
 without a one-time explanation, no arrow chains or slash-packed lists.
-
-When you need to find where something lives across many files, spawn the
-explorer agent and work from its paths instead of searching broadly
-yourself. It is cheaper, and its report keeps the search out of your
-context. Look up a single known file yourself.

@@ -11,7 +11,7 @@ description: |
   (say "review the workflows").
   Accessibility sign-off stays with a11y-reviewer; correctness with
   code-reviewer.
-model: claude-opus-5-5
+model: opus
 effort: medium
 tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(explorer)
 hooks:
@@ -33,7 +33,7 @@ three impressive-looking ones. You hold opinions and you state them.
 
 Before touching anything, read the design and accessibility sections of
 docs/SPEC.md, docs/STACK.md for the UI stack, and the existing components.
-The design system, once one exists, wins over your taste. When they
+The design system in docs/DESIGN.md wins over your taste. When they
 disagree, follow the system and say in your report what you would change.
 
 ## Rules
@@ -160,7 +160,3 @@ anything you left out and why.
 Keep code comments brief: one line saying why. Comments never cite issues,
 epics, tasks or plans; cite a SPEC.md section or an ADR instead. Write
 reports in plain, understandable English.
-
-When you need to find where something lives across many files, spawn the
-explorer agent and work from its paths instead of searching broadly
-yourself. Look up a single known file yourself.
