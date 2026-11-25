@@ -4468,10 +4468,15 @@ one click downloads it.
   and each location a dark circle edged in the primary colour and sized by
   its magnitude. The label sits beside the circle in the direction of its
   label orientation, with a dark halo so it reads across routes. Where the
-  label there would cover a route or a label already placed, and the
-  opposite side covers neither, it sits on the opposite side; when both
-  sides are covered it keeps the game's. The picture is square and fits
-  everything drawn, long labels included.
+  label there would cover a route, a label already placed or another
+  location's circle (kept a label's height clear, so it is not read as that
+  body's label), it tries seven more spots round the circle, an eighth of a
+  turn at a time, and takes the first that covers none of them. When every
+  spot covers something, it takes the one that covers least: a label or
+  circle covered counts ten and each route crossed counts one, since a
+  label still reads over a route; a tie goes to the spot nearest the game's
+  side. The picture is square and fits everything drawn, long labels
+  included.
 - **Proportions** are the game's own, measured from its star map, where
   one distance unit is about 15.85 pixels: the sun's radius is 3.8 units;
   a circle's radius is 0.68 units times the magnitude, its picture 0.69 of

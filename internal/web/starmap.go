@@ -315,21 +315,29 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 			pieces = append(pieces, [2]point{{r[i-1].X * scale, r[i-1].Y * scale}, {r[i].X * scale, r[i].Y * scale}})
 		}
 	}
+	// Every circle is known before any label is placed, so a label can keep
+	// clear of bodies not yet drawn.
+	circles := make([]StarMapLocation, len(m.Locations))
+	for i, l := range m.Locations {
+		circles[i] = placeLocation(l, 0, scale, font, MapGenName{}, "")
+	}
 	var labels []rect
-	for _, l := range m.Locations {
+	for i, l := range m.Locations {
 		label := starMapLabel(cat, l)
 		cells := labelCells(loc.Format(label.Name))
-		place := func(turns float64) StarMapLocation {
-			sl := placeLocation(l, turns, scale, font, label, ic.icon(l))
-			sl.LabelCells = cells
-			return sl
-		}
-		// The label sits on the game's side unless it would cover a route or
-		// a label already placed and the opposite side covers neither.
-		sl := place(l.LabelOrientation)
-		if labelClashes(labelBox(sl), pieces, labels) {
-			if other := place(l.LabelOrientation + 0.5); !labelClashes(labelBox(other), pieces, labels) {
-				sl = other
+		// The label takes the first of eight spots around the circle that
+		// covers nothing, the game's side first; when every spot covers
+		// something it takes the one that covers least.
+		var sl StarMapLocation
+		best := -1
+		for _, turn := range labelSpots {
+			c := placeLocation(l, l.LabelOrientation+turn, scale, font, label, ic.icon(l))
+			c.LabelCells = cells
+			if score := labelScore(labelBox(c), pieces, labels, circles, i); best < 0 || score < best {
+				sl, best = c, score
+			}
+			if best == 0 {
+				break
 			}
 		}
 		labels = append(labels, labelBox(sl))
@@ -385,20 +393,46 @@ func labelBox(l StarMapLocation) rect {
 	return rect{point{x0, y0}, point{x0 + w, y0 + h}}
 }
 
-// labelClashes is true when a label's box covers part of a route's piece or
-// of another label's box.
-func labelClashes(box rect, pieces [][2]point, labels []rect) bool {
+// labelSpots are the turns from the game's label orientation a label tries,
+// in order: the game's side, then each side further round, to the opposite.
+var labelSpots = [...]float64{0, 1.0 / 8, -1.0 / 8, 2.0 / 8, -2.0 / 8, 3.0 / 8, -3.0 / 8, 4.0 / 8}
+
+// Penalties for a label's box: text over text or over a circle is unreadable,
+// while text over a route still reads, thanks to the halo.
+const (
+	labelOverlapScore = 10
+	labelRouteScore   = 1
+)
+
+// labelScore is how much a label's box covers: 10 for each label already
+// placed and each circle it overlaps, 1 for each route piece it crosses. A
+// circle other than the label's own (index own) counts from a margin of one
+// font height out, so a label never sits against a body that is not its own.
+func labelScore(box rect, pieces [][2]point, labels []rect, circles []StarMapLocation, own int) int {
+	score := 0
 	for _, o := range labels {
 		if box.min.X < o.max.X && o.min.X < box.max.X && box.min.Y < o.max.Y && o.min.Y < box.max.Y {
-			return true
+			score += labelOverlapScore
+		}
+	}
+	for i, c := range circles {
+		r := c.R
+		if i != own {
+			r += starMapLineHeight * c.font
+		}
+		// The box's nearest point to the circle's centre is inside the circle.
+		nx := min(max(c.X, box.min.X), box.max.X)
+		ny := min(max(c.Y, box.min.Y), box.max.Y)
+		if math.Hypot(nx-c.X, ny-c.Y) < r {
+			score += labelOverlapScore
 		}
 	}
 	for _, p := range pieces {
 		if segmentInRect(p[0], p[1], box) {
-			return true
+			score += labelRouteScore
 		}
 	}
-	return false
+	return score
 }
 
 // segmentInRect is true when the segment a to b passes through the box: it
