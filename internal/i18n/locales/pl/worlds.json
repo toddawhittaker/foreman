@@ -478,6 +478,22 @@
   "worlds.generate.resources.total_yield": "{resource}: łącznie {percent}% uzysku",
   "worlds.generate.resources.patch": "{amount} w ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent}% uzysku w ({x}, {y})",
+  "worlds.generate.resources.spot_label": {
+    "one": "{count} kafelek",
+    "few": "{count} kafelki",
+    "many": "{count} kafelków"
+  },
+  "worlds.generate.resources.spots": {
+    "one": "{resource}: {count} obszar",
+    "few": "{resource}: {count} obszary",
+    "many": "{resource}: {count} obszarów"
+  },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
+  "worlds.generate.resources.spot": {
+    "one": "{count} kafelek w ({x}, {y})",
+    "few": "{count} kafelki w ({x}, {y})",
+    "many": "{count} kafelków w ({x}, {y})"
+  },
   "worlds.generate.resources.none": "Na tym obrazie nie ma złóż zasobów.",
   "worlds.generate.resources.not_patches": "Na tym obrazie nie znaleziono żadnych złóż zasobów. Zasoby tej planety mogą być kafelkami, których nie da się policzyć.",
   "worlds.generate.resources.invalid": "Ustawienia zawierają błędy, dlatego nie policzono zasobów. Należy poprawić problemy wymienione w podglądzie mapy.",

@@ -17,16 +17,24 @@ import (
 // one of the request's known planets, of the shape checkPreview holds names
 // to, so it cannot break out of the Lua string.
 var resourceMod = controlMod{
-	kind:    gameenv.KindResources,
-	what:    "resource",
-	name:    resources.ModName,
-	dir:     resources.ModDir,
-	control: resources.Control,
-	params: `printf 'return { radius = %d, planet = "%s" }\n' "$` + gameenv.ResourceRadius + `" "$` + gameenv.ResourcePlanet + `" > ` +
-		modFile(resources.ModDir, resources.ParamsFile),
+	kind:      gameenv.KindResources,
+	what:      "resource",
+	name:      resources.ModName,
+	dir:       resources.ModDir,
+	control:   resources.Control,
+	params:    resourceParams(""),
 	save:      "resources.zip",
 	output:    gameenv.ResourceFile,
 	maxOutput: resource.MaxJSON,
+}
+
+// resourceParams is the count mod's params line, with extra Lua fields when
+// a test sets a gap. It carries Parse's limits, so the script keeps its
+// spots inside them (SPEC 5.6).
+func resourceParams(extra string) string {
+	return `printf 'return { radius = %d, planet = "%s", max_patches = ` + strconv.Itoa(resource.MaxPatches) +
+		`, max_bytes = ` + strconv.Itoa(resource.MaxJSON) + extra + ` }\n' "$` + gameenv.ResourceRadius + `" "$` + gameenv.ResourcePlanet + `" > ` +
+		modFile(resources.ModDir, resources.ParamsFile)
 }
 
 // resourceInfo is the count mod's info.json. It depends on Space Age only

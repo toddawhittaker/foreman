@@ -1223,13 +1223,16 @@ startPreviewWithForm(() => {
     at.saying = setTimeout(() => { news.textContent = words(why); }, 50);
   }
 
-  // Each label is the amount, short in the page's language ("1.2M"), or a
-  // well field's yield as a percentage; measured once, as its size is fixed.
+  // Each label is the amount, short in the page's language ("1.2M"), a
+  // well field's yield as a percentage, or a fluid spot's tiles as the server
+  // words them; measured once, as its size is fixed.
   function writeLabels(at, map, overlay) {
     const amount = new Intl.NumberFormat(lang, { notation: "compact", maximumFractionDigits: 1 });
     const yieldOf = new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 0 });
     const labels = [...overlay.querySelectorAll(".resources__label")];
-    labels.forEach((l) => { l.textContent = (l.dataset.kind === "yield" ? yieldOf : amount).format(Number(l.dataset.amount)); });
+    labels.forEach((l) => {
+      l.textContent = l.dataset.kind === "tiles" ? l.dataset.text : (l.dataset.kind === "yield" ? yieldOf : amount).format(Number(l.dataset.amount));
+    });
     at.sizes = new Map(labels.map((l) => [l, [l.offsetWidth, l.offsetHeight]]));
     at.labelled = map;
     resized.observe(map);

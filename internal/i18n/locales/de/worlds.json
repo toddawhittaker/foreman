@@ -461,6 +461,19 @@
   "worlds.generate.resources.total_yield": "{resource}: insgesamt {percent} % Ertrag",
   "worlds.generate.resources.patch": "{amount} bei ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent} % Ertrag bei ({x}, {y})",
+  "worlds.generate.resources.spot_label": {
+    "one": "{count} Kachel",
+    "other": "{count} Kacheln"
+  },
+  "worlds.generate.resources.spots": {
+    "one": "{resource}: {count} Vorkommen",
+    "other": "{resource}: {count} Vorkommen"
+  },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
+  "worlds.generate.resources.spot": {
+    "one": "{count} Kachel bei ({x}, {y})",
+    "other": "{count} Kacheln bei ({x}, {y})"
+  },
   "worlds.generate.resources.none": "Dieses Bild enthält keine Ressourcenfelder.",
   "worlds.generate.resources.not_patches": "In diesem Bild wurden keine Ressourcenfelder gefunden. Die Ressourcen dieses Planeten könnten Kacheln sein, die sich nicht zählen lassen.",
   "worlds.generate.resources.invalid": "Die Einstellungen haben Probleme, deshalb wurden die Ressourcen nicht gezählt. Behebe die Probleme, die die Kartenvorschau auflistet.",
