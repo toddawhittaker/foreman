@@ -174,9 +174,11 @@
   --color-territory-stripe: rgb(200 20 20 / 33.3%);
   --color-territory-border: rgb(255 30 30);
   --color-territory-outline: #101010;
+  /* The hazard stripe on what destroys: the game's own yellow and black. */
+  --color-hazard: #f2c14e;
+  --color-hazard-ink: #1a1004;
   --measure: 68ch;
   --page-max: 100rem;
-  --rail: 15rem;
   /* The icon set, each a mask image (see "Line icons" below). */
   --i-server: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='20' height='8' x='2' y='2' rx='2' ry='2'/%3E %3Crect width='20' height='8' x='2' y='14' rx='2' ry='2'/%3E %3Cline x1='6' x2='6.01' y1='6' y2='6'/%3E %3Cline x1='6' x2='6.01' y1='18' y2='18'/%3E%3C/svg%3E");
   --i-worlds: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E %3Cpath d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/%3E %3Cpath d='M2 12h20'/%3E%3C/svg%3E");
@@ -12609,7 +12611,9 @@ h1 {
   box-shadow: none;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head):first-child {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):first-child,
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(h2:not(.visually-hidden), .section-head, .group__head),
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(input[type="hidden"], [hidden]) + :is(h2:not(.visually-hidden), .section-head, .group__head) {
   min-block-size: 3rem;
   margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-1);
   padding: var(--space-3) var(--card-pad);
@@ -12620,7 +12624,7 @@ h1 {
   line-height: 1.333;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(.section-head, .group__head):first-child {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(.section-head, .group__head):is(:first-child, :is(input[type="hidden"], [hidden]) + *) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12935,4 +12939,55 @@ tbody tr:hover {
   .subnav ul:has(> li:nth-child(6):last-child) > li:has(> .subnav__sub) > a {
     grid-column: span 2;
   }
+}
+
+/* A setting row names itself in its own start column, so its heading is
+   not a band. */
+#main .setting-row > :is(h2, .section-head, .group__head) {
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+/* The hazard stripe is the game's yellow and black in both themes, 8 px
+   tall, so a destructive step reads as one at a glance. */
+.confirm:not(.confirm--plain)::before,
+.danger-zone::before {
+  block-size: 8px;
+  background: repeating-linear-gradient(-45deg, var(--color-hazard) 0 8px, var(--color-hazard-ink) 8px 16px);
+}
+
+main > .panel.danger-zone {
+  padding-block-start: calc(var(--card-pad) + 8px);
+  box-shadow: none;
+}
+
+/* An archived world's Saves and Unarchive sit side by side at the row's end,
+   as one row action pair, rather than stacked. */
+@media (min-width: 64rem) {
+  #main :is(.worlds-head, .worlds > li) {
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) 16rem;
+  }
+
+  .worlds-head > * {
+    white-space: nowrap;
+  }
+
+  #archived-worlds .worlds > li > .facts ~ .actions {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+}
+
+/* The plan is a blueprint: planned, not yet built. A dashed blue edge over
+   a faint drafting grid, as a ghost is drawn in the game (DESIGN 8.11). */
+.plan-panel:not(.plan-panel--empty) {
+  border: var(--border-width) dashed var(--color-info);
+  background:
+    linear-gradient(to right, color-mix(in srgb, var(--color-info) 7%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-info) 7%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
+    var(--color-surface);
 }

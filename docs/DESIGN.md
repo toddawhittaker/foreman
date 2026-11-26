@@ -247,6 +247,8 @@ they sit on the map's picture, which does not follow the theme (8.8):
 | `--color-territory-stripe` | `rgb(200 20 20 / 33.3%)` | A demolisher territory's stripes |
 | `--color-territory-border` | `rgb(255 30 30)` | The border between territories |
 | `--color-territory-outline` | `#101010` | The ring around a territory's size label |
+| `--color-hazard` | `#f2c14e` | The hazard stripe's yellow, on confirmations of destructive steps and the Danger zone |
+| `--color-hazard-ink` | `#1a1004` | The hazard stripe's black |
 
 How the colours divide the work:
 
@@ -427,7 +429,6 @@ Other fixed values, also tokens:
 | `--target-inline` | 1.5rem (24 px) | Minimum block size of a link inside an error or an empty state's sentence (WCAG 2.5.8) |
 | `--measure` | 68ch | Maximum line length of prose |
 | `--page-max` | 100rem | Maximum width of `main`'s content; from 64rem `main` starts after the rail, left-aligned, and adds `--space-6` each side |
-| `--rail` | 15rem | Width of the start-side rail from 64rem |
 | `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |
 | `--dur-1` | 120ms | Hover and pressed fills easing in |
 | `--dur-2` | 200ms | A chevron turning, a meter moving |
