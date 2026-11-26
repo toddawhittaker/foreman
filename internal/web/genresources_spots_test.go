@@ -127,3 +127,26 @@ func TestResourceBytesCountsFluids(t *testing.T) {
 		t.Error("fluids are not counted in a count's size")
 	}
 }
+
+// Two fluids whose lists would have the same heading, as their tiles are
+// tied to the same control, each add their own name in brackets, so the
+// lists can be told apart; a fluid with a heading of its own keeps it.
+func TestSpotListsWithTheSameHeading(t *testing.T) {
+	res := spotsCount
+	res.Patches = append(slices.Clone(spotsCount.Patches),
+		resource.Patch{Name: "another-fluid", Fluid: true, X: 10, Y: 10, Entities: 3, Box: [4]int{9, 9, 11, 11}})
+	v := resourceView(i18n.English, cerysCatalogue(), "cerys", res, 1280)
+	var totals []string
+	for _, l := range v.Lists {
+		totals = append(totals, l.Total)
+	}
+	want := []string{
+		"Cerys ore: 5,000 in total",
+		"Cerys ore (methane): 2 spots",
+		"mystery-gas: 1 spot",
+		"Cerys ore (another-fluid): 1 spot",
+	}
+	if !slices.Equal(totals, want) {
+		t.Errorf("lists\n%v\nwant\n%v", strings.Join(totals, "\n"), strings.Join(want, "\n"))
+	}
+}

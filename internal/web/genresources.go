@@ -131,11 +131,22 @@ func spotLists(loc i18n.Locale, cat mapgen.Catalogue, res resource.Result, spots
 		}
 	}
 	slices.SortFunc(fluids, func(a, b string) int { return cmp.Or(cmp.Compare(tiles[b], tiles[a]), cmp.Compare(a, b)) })
+	// Fluids tied to the same control would share a heading, so those add
+	// their own name.
+	names, uses := map[string]string{}, map[string]int{}
+	for _, n := range fluids {
+		names[n] = fluidName(loc, cat, n, res.Fluids[n])
+		uses[names[n]]++
+	}
 	var lists []ResourceList
 	for _, n := range fluids {
 		ps := spots[n]
 		slices.SortStableFunc(ps, func(a, b resource.Patch) int { return cmp.Compare(b.Entities, a.Entities) })
-		list := ResourceList{Total: loc.T("worlds.generate.resources.spots", "resource", fluidName(loc, cat, n, res.Fluids[n]), "count", len(ps))}
+		name := names[n]
+		if uses[name] > 1 {
+			name = loc.T("worlds.generate.resources.fluid_named", "resource", name, "fluid", n)
+		}
+		list := ResourceList{Total: loc.T("worlds.generate.resources.spots", "resource", name, "count", len(ps))}
 		for _, p := range ps {
 			list.Patches = append(list.Patches, loc.T("worlds.generate.resources.spot", "count", p.Entities, "x", strconv.Itoa(p.X), "y", strconv.Itoa(p.Y)))
 		}

@@ -469,6 +469,7 @@
     "one": "{resource}: {count} Vorkommen",
     "other": "{resource}: {count} Vorkommen"
   },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
   "worlds.generate.resources.spot": {
     "one": "{count} Kachel bei ({x}, {y})",
     "other": "{count} Kacheln bei ({x}, {y})"

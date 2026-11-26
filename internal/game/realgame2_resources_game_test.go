@@ -37,7 +37,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toddawhittaker/foreman/internal/game/resources"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/resource"
@@ -223,8 +222,7 @@ func (r countRun) summary() string {
 // countParams is the count mod's params line with extra Lua fields, so a
 // gap can be changed for the spike.
 func countParams(extra string) string {
-	return `printf 'return { radius = %d, planet = "%s"` + extra + ` }\n' "$` + gameenv.ResourceRadius + `" "$` + gameenv.ResourcePlanet + `" > ` +
-		modFile(resources.ModDir, resources.ParamsFile)
+	return resourceParams(extra)
 }
 
 // measure runs m for req and planet, and returns the file, the wall time

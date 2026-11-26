@@ -488,6 +488,7 @@
     "few": "{resource}: {count} obszary",
     "many": "{resource}: {count} obszarów"
   },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
   "worlds.generate.resources.spot": {
     "one": "{count} kafelek w ({x}, {y})",
     "few": "{count} kafelki w ({x}, {y})",

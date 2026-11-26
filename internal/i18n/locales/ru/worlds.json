@@ -488,6 +488,7 @@
     "few": "{resource}: {count} участка",
     "many": "{resource}: {count} участков"
   },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
   "worlds.generate.resources.spot": {
     "one": "{count} клетка в ({x}, {y})",
     "few": "{count} клетки в ({x}, {y})",

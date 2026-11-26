@@ -469,6 +469,7 @@
     "one": "{resource} : {count} nappe",
     "other": "{resource} : {count} nappes"
   },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
   "worlds.generate.resources.spot": {
     "one": "{count} case en ({x}, {y})",
     "other": "{count} cases en ({x}, {y})"

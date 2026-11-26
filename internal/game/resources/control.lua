@@ -5,8 +5,9 @@
 -- writes them as JSON to script-output/resources.json. It adds no
 -- prototypes, so the map is the one
 -- the preview draws. params.lua, written beside it for each run, returns
--- {radius = N, planet = "<name>"}: the picture's half width in chunks, and
--- the planet to count.
+-- {radius = N, planet = "<name>", max_patches = N, max_bytes = N}: the
+-- picture's half width in chunks, the planet to count, and the most patches
+-- and bytes Foreman reads back.
 --
 -- Ores join a patch when their distance on both axes is at most ore_gap (6)
 -- tiles: below that, sparse ores break one island or field into many
@@ -108,6 +109,9 @@ local function controls_of(spec, renames)
         local named = prototypes.named_noise_expression[n] or prototypes.named_noise_function[n]
         if named then
           walk(named.expression)
+        elseif n ~= id then
+          -- A planet may give an expression's text in place of a name.
+          walk(n)
         end
       end
     end
@@ -128,10 +132,18 @@ local function fluid_tiles(surface)
   if not prototypes then
     return out
   end
-  local renames = surface.map_gen_settings.property_expression_names or {}
+  local mgs = surface.map_gen_settings
+  local renames = mgs.property_expression_names or {}
+  -- Only tiles this surface can place: those its tile settings list, and,
+  -- when it treats a missing tile as default, those enabled by default.
+  local tile_settings = (mgs.autoplace_settings or {}).tile or {}
+  local listed = tile_settings.settings or {}
   local names = {}
-  for name in pairs(prototypes.tile) do
-    names[#names + 1] = name
+  for name, t in pairs(prototypes.tile) do
+    local spec = t.autoplace_specification
+    if listed[name] or (tile_settings.treat_missing_as_default and spec and spec.default_enabled) then
+      names[#names + 1] = name
+    end
   end
   -- In name order, so a fluid's colour does not change from run to run.
   table.sort(names)
@@ -398,7 +410,7 @@ script.on_init(function()
   -- Then the spots of each fluid's tiles, one fluid at a time as above,
   -- joined by the ore gap (SPEC 5.6). A spot has a tile count and no amount,
   -- since pumping never runs it out.
-  local fluids = {}
+  local spots, fluids = {}, {}
   for fluid, f in pairs(fluid_tiles(surface)) do
     local t = new_tiles()
     for cx = -radius, radius - 1 do
@@ -412,7 +424,7 @@ script.on_init(function()
     end
     if t.n > 0 then
       for _, s in ipairs(group(t, nil, ore_gap)) do
-        patches[#patches + 1] = {
+        spots[#spots + 1] = {
           name = fluid, fluid = true, x = s.lx, y = s.ly, n = s.n,
           box = { s.x0, s.y0, s.x1, s.y1 },
         }
@@ -420,6 +432,31 @@ script.on_init(function()
     end
     fluids[fluid] = { controls = f.controls, color = f.color }
   end
+  -- Spots share the file's limits with the ore patches (SPEC 5.6, 14.6), so
+  -- a planet of many small pools keeps its ores and its largest spots
+  -- instead of writing a file Foreman refuses. spots_cut says how many were
+  -- left out.
+  local out = { planet = planet, resources = resources, fluids = fluids, patches = patches, spots_cut = 0 }
+  -- 16 bytes of room for spots_cut's digits.
+  local bytes = #h.table_to_json(out) + 16
+  table.sort(spots, function(a, b)
+    if a.n ~= b.n then
+      return a.n > b.n
+    end
+    return a.x < b.x or (a.x == b.x and a.y < b.y)
+  end)
+  local kept = 0
+  for _, s in ipairs(spots) do
+    -- A spot adds its JSON and a comma.
+    local size = #h.table_to_json(s) + 1
+    if #patches >= params.max_patches or bytes + size > params.max_bytes then
+      break
+    end
+    patches[#patches + 1] = s
+    bytes = bytes + size
+    kept = kept + 1
+  end
+  out.spots_cut = #spots - kept
   -- table_to_json writes an empty table as [] or {}; the parser takes both.
-  h.write_file("resources.json", h.table_to_json({ planet = planet, resources = resources, fluids = fluids, patches = patches }), false)
+  h.write_file("resources.json", h.table_to_json(out), false)
 end)

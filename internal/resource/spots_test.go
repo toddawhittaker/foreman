@@ -148,3 +148,39 @@ func TestHiddenLabelsSpots(t *testing.T) {
 		t.Errorf("hidden %v, want %v", got, want)
 	}
 }
+
+// SPEC 5.6: the count keeps the largest spots that fit Parse's limits beside
+// the ores and says how many it left out. A file at MaxPatches with spots
+// and spots_cut decodes, and spots_cut is read back; a negative one is
+// refused, and a file without it has none cut.
+func TestParseSpotsAtTheCap(t *testing.T) {
+	build := func(cut string) string {
+		ps := make([]string, MaxPatches)
+		ps[0] = `{"name":"a","x":0,"y":0,"amount":1,"n":1,"box":[0,0,0,0]}`
+		for i := 1; i < MaxPatches; i++ {
+			ps[i] = fmt.Sprintf(`{"name":"methane","fluid":true,"x":%d,"y":%d,"n":%d,"box":[%d,%d,%d,%d]}`,
+				i%64, i/64%64, 1+i%9, i%64, i/64%64, i%64, i/64%64)
+		}
+		return `{"planet":"nauvis","resources":{"a":{"total":1,"infinite":false,"normal":0,"color":[0,0,0]}},` +
+			`"fluids":{"methane":{"controls":["tritium"],"color":[1,2,3]}},"spots_cut":` + cut +
+			`,"patches":[` + strings.Join(ps, ",") + `]}`
+	}
+	in := build("1234")
+	if len(in) > MaxJSON {
+		t.Fatalf("the file is %d bytes, over MaxJSON", len(in))
+	}
+	r, err := Parse([]byte(in), 128, "nauvis")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Patches) != MaxPatches || r.SpotsCut != 1234 {
+		t.Errorf("%d patches, %d spots cut", len(r.Patches), r.SpotsCut)
+	}
+	if _, err := Parse([]byte(build("-1")), 128, "nauvis"); !errors.Is(err, ErrInvalid) {
+		t.Errorf("a negative spots_cut: %v", err)
+	}
+	r, err = Parse([]byte(withSpots), 128, "nauvis")
+	if err != nil || r.SpotsCut != 0 {
+		t.Errorf("no spots_cut: %d, %v", r.SpotsCut, err)
+	}
+}

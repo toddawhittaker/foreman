@@ -1085,7 +1085,14 @@ not) or a map exchange string, with Space Age on or off. (P0)
       spot of the same fluid. The text list gives each fluid's spots after
       the ores, most tiles first, named as the control its tiles are tied
       to is ("Methane gas: 14 spots"), then each spot's tiles and place.
-      The list's count of patches counts spots too.
+      When two fluids would share that name, each adds its own in
+      brackets ("Methane gas (methane): 3 spots"). The list's count of
+      patches counts spots too. Only tiles the counted planet's map
+      settings can place are looked at, so one planet's fluids are never
+      listed on another. Spots share the file's limits on patches and
+      bytes (14.6) with the ore patches: when they would pass them, the
+      count keeps the ores and the largest spots and records how many it
+      left out, and the page does not yet say so.
     - **Bounds.** Amounts cover the picture only, so a patch cut by its
       edge counts the part inside, and the page says so. The count loads
       the world's mods (ADR 0033), so modded resources appear, on modded
@@ -1129,7 +1136,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
       resource entities and the spots above only. Fluid tiles that a mod
       places with no resource control (no slider sets them) are not
       counted, nor are rocks or other entities that give items when mined,
-      since rocks are not resources. When a planet has a resource control
+      since rocks are not resources. A control named only in a noise
+      expression's local expressions is not seen, since the game does not
+      show local expressions to a mod. When a planet has a resource control
       from a mod that the settings leave on, other than one whose fluid
       tiles the count looked for, and the count finds no patches, the page
       says "No resource patches were found in this picture. This planet's

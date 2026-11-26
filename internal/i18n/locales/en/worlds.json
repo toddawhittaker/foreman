@@ -469,6 +469,7 @@
     "one": "{resource}: {count} spot",
     "other": "{resource}: {count} spots"
   },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
   "worlds.generate.resources.spot": {
     "one": "{count} tile at ({x}, {y})",
     "other": "{count} tiles at ({x}, {y})"

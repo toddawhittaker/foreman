@@ -101,6 +101,9 @@ type Result struct {
 	// picture holds one. A file from before spots were counted has none.
 	Fluids  map[string]Fluid
 	Patches []Patch
+	// SpotsCut is how many of the smallest spots the count left out to keep
+	// the file inside MaxPatches and MaxJSON.
+	SpotsCut int
 }
 
 // Yield is an infinite resource patch's yield as a percentage of the
@@ -147,6 +150,7 @@ type gameJSON struct {
 	Resources resourceTable `json:"resources"`
 	Fluids    fluidTable    `json:"fluids"`
 	Patches   patchTable    `json:"patches"`
+	SpotsCut  num           `json:"spots_cut"`
 }
 
 type resourceJSON struct {
@@ -290,6 +294,14 @@ func Parse(b []byte, size int, planet string) (Result, error) {
 		return Result{}, invalid("more than %d patches", MaxPatches)
 	}
 	out := Result{Planet: g.Planet, Resources: make(map[string]Resource, len(g.Resources))}
+	// A file from before spots were cut has no spots_cut.
+	if g.SpotsCut != "" {
+		cut, ok := whole(g.SpotsCut, 0, maxNumber)
+		if !ok {
+			return Result{}, invalid("spots_cut is not a whole number in range")
+		}
+		out.SpotsCut = int(cut)
+	}
 	for name, r := range g.Resources {
 		res, err := checkResource(name, r)
 		if err != nil {

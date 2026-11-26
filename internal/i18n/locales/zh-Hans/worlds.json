@@ -450,6 +450,7 @@
   "worlds.generate.resources.spots": {
     "other": "{resource}：{count} 处"
   },
+  "worlds.generate.resources.fluid_named": "{resource}（{fluid}）",
   "worlds.generate.resources.spot": {
     "other": "{count} 格，位于 ({x}, {y})"
   },

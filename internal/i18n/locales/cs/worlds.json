@@ -488,6 +488,7 @@
     "few": "{resource}: {count} místa",
     "other": "{resource}: {count} míst"
   },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
   "worlds.generate.resources.spot": {
     "one": "{count} dlaždice na ({x}, {y})",
     "few": "{count} dlaždice na ({x}, {y})",
