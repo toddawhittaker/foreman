@@ -34,9 +34,12 @@ const (
 // modIconCacheBytes caps the PNG bytes the cache holds, in all.
 const modIconCacheBytes = 8 << 20
 
-// Limits on decoding: one picture at a time, and a few more may wait; past
-// that the answer is 503 and the page shows the name (SPEC 14.6).
-const modIconQueue = 8
+// Limits on decoding: one picture at a time, and the rest wait their turn;
+// past the queue the answer is 503 (SPEC 14.6). A star map asks for every
+// modded planet's picture at once and a browser does not ask again for a
+// failed one, so the queue holds a large pack's burst: a waiter costs no
+// decoding memory.
+const modIconQueue = 64
 
 // modIconRun finds the cached run a world's icons come from, and a key for
 // that run: the planets run when the world has a mod-settings.dat that is

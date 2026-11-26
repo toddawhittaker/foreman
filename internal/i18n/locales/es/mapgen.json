@@ -114,6 +114,7 @@
   "mapgen.planet.fulgora": "Fulgora",
   "mapgen.planet.gleba": "Gleba",
   "mapgen.planet.nauvis": "Nauvis",
+  "mapgen.planet.no_controls": "{planet} no tiene ajustes de recursos ni de terreno. Su mod los coloca sin controles, así que el juego tampoco ofrece ninguno.",
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "Vista previa: {planet}",
   "mapgen.planet.vulcanus": "Vulcano",

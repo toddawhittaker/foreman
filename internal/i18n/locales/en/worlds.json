@@ -402,8 +402,8 @@
   "worlds.generate.large.zoom_out": "Zoom out",
   "worlds.generate.large.zoom_in": "Zoom in",
   "worlds.generate.large.close": "Close",
+  "worlds.generate.large.dismiss": "Close message",
   "worlds.generate.large.keys": "Keys: ← → planet (pan when zoomed), + − zoom, 0 fit, Esc close. Tap to center.",
-  "worlds.generate.large.keys_starmap": "Keys: arrows pan when zoomed, + − zoom, 0 fit, Esc close. Tap to center.",
   "worlds.generate.large.keys_settings": "In a setting, the keys change the setting: an arrow moves a slider, not the map.",
   "worlds.generate.large.settings": "Planet settings",
   "worlds.generate.leave.title": "Leave without saving these map settings?",
@@ -461,6 +461,19 @@
   "worlds.generate.resources.total_yield": "{resource}: {percent}% yield in total",
   "worlds.generate.resources.patch": "{amount} at ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent}% yield at ({x}, {y})",
+  "worlds.generate.resources.spot_label": {
+    "one": "{count} tile",
+    "other": "{count} tiles"
+  },
+  "worlds.generate.resources.spots": {
+    "one": "{resource}: {count} spot",
+    "other": "{resource}: {count} spots"
+  },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
+  "worlds.generate.resources.spot": {
+    "one": "{count} tile at ({x}, {y})",
+    "other": "{count} tiles at ({x}, {y})"
+  },
   "worlds.generate.resources.none": "This picture has no resource patches.",
   "worlds.generate.resources.not_patches": "No resource patches were found in this picture. This planet's resources may be tiles, which can't be counted.",
   "worlds.generate.resources.invalid": "The settings have problems, so the resources were not counted. Fix the problems the map preview lists.",

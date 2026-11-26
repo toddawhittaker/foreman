@@ -4397,7 +4397,7 @@ html:has(.large-view[open]) {
 /* The page's own gestures are off inside it: one finger drags, two pinch. */
 .large-view__frame {
   container-type: size;
-  display: flex;
+  display: grid;
   min-block-size: 0;
   overflow: auto;
   /* Panned by drag, keys and wheel; no scroll bars, so zooming never narrows the map. */
@@ -4417,11 +4417,16 @@ html:has(.large-view[open]) {
   cursor: grabbing;
 }
 
-/* Auto margins centre a fitted picture and never push a zoomed one out of reach. */
+/* Auto margins centre a fitted picture. Zoomed, half the frame's room on each side lets
+   any edge of the picture pan to the frame's middle (DESIGN 8.8); the frame is a grid, as
+   a flex row does not count the bottom margin as room to scroll. */
 .large-view__map {
-  flex: none;
   margin: auto;
   inline-size: calc(min(100cqi, 100cqb) * var(--zoom));
+}
+
+.large-view__frame[data-zoomed] .large-view__map {
+  margin: 50cqb 50cqi;
 }
 
 .large-view__map img {
@@ -4455,9 +4460,32 @@ html:has(.large-view[open]) {
   stroke: var(--color-primary);
 }
 
-/* The star map alone in the large view: no planet picture, pin, planet steps or planet settings. */
-.large-view[data-starmap] :is(#large-img, .pin, .large-view__edge, #large-territories-box, #large-amounts-bar, #large-settings) {
+/* A planet's picture shows once it has loaded; until then, or if it never does, the plain
+   circle (DESIGN 8.23). */
+.starmap image:not([data-loaded]) {
+  visibility: hidden;
+}
+
+/* A planet in the large view's star map leads to its own step; its whole box, label included,
+   takes the click, which gives a finger more than the circle (SPEC 5.6, 17.2). */
+.large-view .starmap [data-step] {
+  cursor: pointer;
+  pointer-events: bounding-box;
+}
+
+.large-view .starmap [data-step]:is(:hover, :focus-visible) .starmap__planet {
+  stroke: var(--color-primary-hover);
+  stroke-width: 3;
+}
+
+/* The star map in the large view: no planet picture or pin. The planet's boxes and its settings
+   keep their places unseen, so the stage and its arrows stay where they are for every picture (DESIGN 8.8). */
+.large-view[data-starmap] :is(#large-img, .pin) {
   display: none;
+}
+
+.large-view[data-starmap] :is(#large-territories-box, #large-amounts-bar, #large-settings) {
+  visibility: hidden;
 }
 
 /* A round icon control with a hidden name; 24 px, and 44 px for a finger (SPEC 17.2). */
@@ -4482,6 +4510,15 @@ html:has(.large-view[open]) {
 
 .icon-button[hidden] {
   display: none;
+}
+
+/* The large view's "Star map": the header's round control, stretched to its word. */
+.icon-button.large-view__to-starmap {
+  inline-size: auto;
+  padding-inline: var(--space-2);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  white-space: nowrap;
 }
 
 .icon-button[aria-disabled="true"] {
@@ -4536,10 +4573,20 @@ html:has(.large-view[open]) {
   }
 }
 
-/* Clear of the frame's scroll bars at the end edges. */
+/* Clear of the frame's scroll bars at the end edges. Measured from the stage's foot, which never
+   moves, by a length that only the window sets, so a bar that grows (a count's note or error,
+   Vulcanus's box) never moves them and clicks in one spot keep stepping (DESIGN 8.8). On a small
+   window they sit a gap below Close on the smallest stage (16rem), so always clear of it; on a window
+   wide and tall enough that the bar can never reach its middle, at the window's middle. */
 .large-view__edge {
-  inset-block-start: 50%;
-  transform: translateY(-50%);
+  inset-block-end: calc(16rem - 2 * var(--space-2) - 1.5 * var(--target-min));
+  transform: translateY(50%);
+}
+
+@media (min-width: 48rem) and (min-height: 42rem) {
+  .large-view__edge {
+    inset-block-end: calc(50dvh - var(--space-3));
+  }
 }
 
 .large-view__edge--prev {
@@ -4859,6 +4906,16 @@ html:has(.large-view[open]) {
 /* Narrower they cannot share a line, so on a map with Vulcanus its row is
    held, unseen, on every planet, and paging never moves the controls. */
 @container large-view (max-width: 47.99rem) {
+  /* A count's note or error, or the opened list, can make the bar taller than a phone leaves it;
+     past that the bar scrolls on its own, so the stage keeps its 16rem and its foot, and the
+     arrows measured from it, never move (DESIGN 8.8). The padding keeps focus rings unclipped. */
+  .large-view__bar {
+    max-block-size: max(6rem, calc(100dvh - 3 * var(--space-3) - 16rem));
+    overflow-y: auto;
+    padding: calc(var(--focus-width) + 2px);
+    margin: calc(-1 * (var(--focus-width) + 2px));
+  }
+
   body:has(#preview-planets > option[value="vulcanus"]) .large-view__territories[hidden] {
     display: flex;
     visibility: hidden;
@@ -5724,6 +5781,50 @@ a[target="_blank"]::after {
   border: var(--border-width) solid var(--color-line);
   border-radius: var(--radius);
   background: var(--color-bg);
+}
+
+/* A count's note or error in the large view lies where the preparation's block does: over the
+   stage's top, between the arrows and clear of Close and zoom, so the header keeps one line and
+   the picture never moves (DESIGN 8.8). Its own close sits in the message's top corner. */
+.large-view__toast {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: var(--space-2);
+  inset-inline: calc(var(--space-2) + 3rem) calc(var(--space-5) + 3rem);
+  max-inline-size: 30rem;
+  max-block-size: calc(100% - var(--space-5) - 3rem - var(--space-4));
+  overflow: auto;
+}
+
+.large-view__toast[hidden] {
+  display: none;
+}
+
+.large-view__toast > .icon-button {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+}
+
+/* The words flow round the close button rather than give it a whole column. */
+.large-view__toast .message > :first-child::before {
+  content: "";
+  float: inline-end;
+  inline-size: var(--target-min);
+  block-size: var(--target-min);
+  margin-inline-start: var(--space-2);
+}
+
+/* On a phone the message has only the room between the arrows, so it drops its icon; the
+   tone's edge still marks it, and an error keeps its label. */
+@container large-view (max-width: 47.99rem) {
+  .large-view__toast .message {
+    padding-inline-start: var(--space-3);
+  }
+
+  .large-view__toast .message::before {
+    display: none;
+  }
 }
 
 /* The mod settings editor (SPEC 9.6): one column, a fieldset per mod,
@@ -12631,4 +12732,9 @@ html:has(.flow-foot) {
   .generate > .gen-actions > .flow-back {
     margin-inline-end: 0;
   }
+}
+
+/* A planet without controls says so once in the large view: under Resources, not again under Terrain (SPEC 5.6). */
+#large-terrain:has(.mapgen-none) {
+  display: none;
 }

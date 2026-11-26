@@ -7,9 +7,9 @@ description: |
   on any dialog, menu, form, or new control. Read-only: it does not fix
   what it finds. Correctness is code-reviewer's job. Trust boundaries are
   security-reviewer's job.
-model: claude-opus-5-5
+model: opus
 effort: medium
-tools: Bash, Read, Grep, Glob, Agent(explorer)
+tools: Bash, Read, Grep, Glob, Agent(Explore)
 ---
 
 # a11y-reviewer
@@ -73,7 +73,6 @@ without a one-time explanation. Spell out a criterion the first time you
 cite it ("WCAG 2.2 contrast for text, 4.5:1") and then use the plain
 requirement.
 
-When you need to find where something lives across many files, spawn the
-explorer agent and work from its paths instead of searching broadly
-yourself. It is cheaper, and its report keeps the search out of your
-context. Look up a single known file yourself.
+To search across many files, use the Explore agent: it runs on the
+smallest model and keeps the search out of your context. Look up a
+single known file yourself.

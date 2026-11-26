@@ -132,6 +132,44 @@ test("a zoom right after a step is not overwritten by the planet's name", { tag:
   await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
 });
 
+// DESIGN 8.8: zoom is per picture. Each keeps its zoom and the spot at the frame's middle while
+// the page lives; a picture not seen yet opens fitted, and closing does not forget.
+test("each picture keeps its own zoom and place: back to a planet finds it as it was left", { tag: "@looks" }, async ({ page }) => {
+  await openNewMap(page);
+  await page.getByRole("button", { name: "Preview map" }).click();
+  await expect(section(page).getByRole("img", { name: /^Map preview of / })).toHaveCount(5);
+  await section(page).getByRole("link", { name: /Nauvis.*opens the large view/ }).click();
+  await expect(largeImg(page)).toHaveAttribute("alt", /^Map preview of Nauvis/);
+  await expect(frame(page)).toBeFocused();
+  const fitted = await width(page);
+  for (let i = 0; i < 6; i++) await page.keyboard.press("+");
+  await frame(page).evaluate((f) => f.scrollBy(70, -40));
+  const mid = await middleOf(page);
+  const zoomed = await width(page);
+  const spot = await spotAt(page, mid.x, mid.y);
+  // Vulcanus has not been seen, so it opens fitted.
+  await dialog(page).getByRole("button", { name: "Next planet: Vulcanus" }).click();
+  await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  await expect(frame(page)).not.toHaveAttribute("data-zoomed", "");
+  expect(await width(page)).toBeCloseTo(fitted, 0);
+  // Back to Nauvis: the same zoom, and the same spot at the middle.
+  const expectNauvisAsLeft = async () => {
+    expect(await width(page)).toBeCloseTo(zoomed, 0);
+    const now = await spotAt(page, mid.x, mid.y);
+    expect(Math.abs(now.u - spot.u) * zoomed).toBeLessThan(1.5);
+    expect(Math.abs(now.v - spot.v) * zoomed).toBeLessThan(1.5);
+  };
+  await dialog(page).getByRole("button", { name: "Previous planet: Nauvis" }).click();
+  await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+  await expectNauvisAsLeft();
+  // Closed and opened again, it is still as it was left.
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toBeHidden();
+  await section(page).getByRole("link", { name: /Nauvis.*opens the large view/ }).click();
+  await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+  await expectNauvisAsLeft();
+});
+
 test("dragging moves a zoomed picture, and the arrow keys on it pan instead of stepping", { tag: "@looks" }, async ({ page }) => {
   await openLarge(page);
   for (let i = 0; i < 8; i++) await page.keyboard.press("+");
@@ -155,7 +193,8 @@ test("dragging moves a zoomed picture, and the arrow keys on it pan instead of s
 test("the arrows and the X show on hover and on keyboard focus, named after where they lead", { tag: "@looks" }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openLarge(page);
-  const prev = dialog(page).getByRole("button", { name: "Previous planet: Aquilo" });
+  // Before the first planet is the star map (SPEC 5.6).
+  const prev = dialog(page).getByRole("button", { name: "Previous planet: Star map" });
   const next = dialog(page).getByRole("button", { name: "Next planet: Vulcanus" });
   const close = dialog(page).getByRole("button", { name: "Close" });
   await expect(prev).toBeAttached();
@@ -174,7 +213,12 @@ test("the arrows and the X show on hover and on keyboard focus, named after wher
   const c = (await close.boundingBox())!;
   expect(p.x - box.x).toBeLessThan(box.width / 4);
   expect(box.x + box.width - (n.x + n.width)).toBeLessThan(box.width / 4);
-  expect(Math.abs(p.y + p.height / 2 - (box.y + box.height / 2))).toBeLessThan(2);
+  // At the window's middle, which no bar above the picture moves, or where the picture starts
+  // below it (a phone), clear below the X; over the picture either way.
+  const windowMiddle = page.viewportSize()!.height / 2;
+  const centred = Math.abs(p.y + p.height / 2 - windowMiddle) < 2;
+  expect(centred || n.y >= c.y + c.height).toBe(true);
+  expect(p.y).toBeGreaterThan(box.y);
   expect(c.y - box.y).toBeLessThan(box.height / 4);
   expect(c.x).toBeGreaterThan(box.x + (box.width * 3) / 4);
   await checkPage(page);
@@ -407,11 +451,12 @@ test.describe("the planet viewed", () => {
     await page.evaluate(() => {
       document.getElementById("large-prev")!.click();
       document.getElementById("large-prev")!.click();
+      document.getElementById("large-prev")!.click();
     });
     await expect(page.getByRole("dialog", { name: "Aquilo" })).toBeVisible();
     await page.waitForTimeout(300);
     await expect(page.getByRole("dialog", { name: "Aquilo" })).toBeVisible();
-    await expect(page.locator("#large-next-name")).toHaveText("Next planet: Nauvis");
+    await expect(page.locator("#large-next-name")).toHaveText("Next planet: Star map");
     await expect(page.locator("#open-planet")).toHaveValue("aquilo");
   });
 

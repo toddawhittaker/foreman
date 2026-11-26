@@ -6,9 +6,9 @@ description: |
   Use after a builder change or when a spec section needs coverage. For
   pure "run the suite and summarize" with no test design, a cheaper agent
   will do.
-model: claude-opus-5-5
+model: opus
 effort: low
-tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(explorer)
+tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(Explore)
 hooks:
   Stop:
     - hooks:
@@ -77,7 +77,6 @@ say it itself. Write reports, commit messages, and PR descriptions in
 plain, understandable English: short sentences, no jargon without a
 one-time explanation, no arrow chains or slash-packed lists.
 
-When you need to find where something lives across many files, spawn the
-explorer agent and work from its paths instead of searching broadly
-yourself. It is cheaper, and its report keeps the search out of your
-context. Look up a single known file yourself.
+To search across many files, use the Explore agent: it runs on the
+smallest model and keeps the search out of your context. Look up a
+single known file yourself.

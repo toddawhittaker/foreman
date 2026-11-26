@@ -952,7 +952,10 @@ not) or a map exchange string, with Space Age on or off. (P0)
       drawn where the game puts them. A plain sun circle sits at the centre,
       and a faint ring marks each distance a location lies at, so the map
       reads like the game's. When the data names a parent (PlanetsLib), a
-      faint orbit ring is drawn about it through the moon. The picture is
+      faint orbit ring is drawn about it through the moon. A star a mod
+      draws only as a picture (PlanetsLib `sprite_only`), which the game's
+      data leaves out, is rebuilt from its bodies' orbit offsets and drawn
+      like the sun, with their rings about it. The picture is
       square, dark in both themes as the game's map is, and its view fits
       everything drawn, each label measured as it is shown. A location the
       game hides is left out, and so is every route that touches one.
@@ -976,9 +979,17 @@ not) or a map exchange string, with Space Age on or off. (P0)
       raw name; moons and modded places that are not planets are therefore
       not translated. A mod's name is marked `translate="no"`.
     - **The large view and the file.** The star map opens in the large view
-      like a planet picture, with the same zoom, pan and keys. It shows
-      alone: the planet steps, resource amounts, territories and the
-      planet's settings are hidden, and the download is the star map's file.
+      like a planet picture, with the same zoom, pan and keys, and is the
+      view's first step: Previous, Next, the arrow keys and the header's
+      "Star map" button reach it, the arrows in the same place as for a planet, and
+      Next from it shows the first planet, in either view and before any
+      other planet is drawn, as it needs no drawing. While it is shown the resource
+      amounts, territories and the planet's settings are hidden, and the
+      download is the star map's file. In the large view each planet the
+      view has a step for is a control: a click, a tap, or Enter on it
+      shows that planet's step as Next would, drawing it first if needed. A
+      drag to pan is not a click. Other places (the edge, the shattered
+      planet, the sun) are not controls. The file has no controls.
       The file is the same SVG as the page draws, `starmap.svg`, but with
       its own namespace and without the pictures on the circles, so it opens
       anywhere and loads nothing. It is served only to the preview's owner,
@@ -1055,6 +1066,33 @@ not) or a map exchange string, with Space Age on or off. (P0)
       brine is finite and shows an amount. The label tile is a tile of the
       patch, and the position in the list is in tiles from where players
       start, as (x, y).
+    - **Spots.** The count also finds the tiles that carry a fluid, such as
+      Vesta's methane and hydrogen sulfide (`skewer_planet_vesta`), when
+      every map generator control their autoplace reaches is a resource
+      control, with at least one. The controls reached are the tile's own
+      and those its noise expression uses, followed through the named
+      expressions and functions it calls with the planet's own names for
+      them: Vesta's tiles name no control of their own, and their
+      expression uses `control:tritium:size`. The game's own oceans reach a
+      terrain control or none, and its lava reaches Vulcanus's volcanism
+      as well as tungsten, so no planet of the game has spots (Todd's
+      decisions, 2026-11-25 and 2026-11-26; checked on 2.1.24 with Space
+      Age and 70 planet and other mods, where only Vesta's two tiles
+      count). A spot is a group of one fluid's tiles joined by the ore
+      gap. Pumping never runs it out, so its label gives its size in tiles
+      ("312 tiles") instead of an amount, and a spot's label is left off
+      by the patch rule above, with tiles for amounts and only beside a
+      spot of the same fluid. The text list gives each fluid's spots after
+      the ores, most tiles first, named as the control its tiles are tied
+      to is ("Methane gas: 14 spots"), then each spot's tiles and place.
+      When two fluids would share that name, each adds its own in
+      brackets ("Methane gas (methane): 3 spots"). The list's count of
+      patches counts spots too. Only tiles the counted planet's map
+      settings can place are looked at, so one planet's fluids are never
+      listed on another. Spots share the file's limits on patches and
+      bytes (14.6) with the ore patches: when they would pass them, the
+      count keeps the ores and the largest spots and records how many it
+      left out, and the page does not yet say so.
     - **Bounds.** Amounts cover the picture only, so a patch cut by its
       edge counts the part inside, and the page says so. The count loads
       the world's mods (ADR 0033), so modded resources appear, on modded
@@ -1094,13 +1132,21 @@ not) or a map exchange string, with Space Age on or off. (P0)
       28.5 s (Corrundum) with every resource control at its most. The time
       is twice the slowest count seen in a survey of planet mods, 58 s. An
       out-of-memory failure names the resource count, never the picture.
-    - **Known limit: resources that are not patches.** The count reads
-      resource entities only. When a planet has a resource control from a
-      mod that the settings leave on, and the count finds no patches, the
-      page says "No resource patches were found in this picture. This
-      planet's resources may be tiles, which can't be counted." instead of
-      "no resource patches". The words are true whether the resources are
-      tiles or real patches too small to count at the picture's size.
+    - **Known limit: resources that are not counted.** The count reads
+      resource entities and the spots above only. Fluid tiles that a mod
+      places with no resource control (no slider sets them) are not
+      counted, nor are rocks or other entities that give items when mined,
+      since rocks are not resources. A control named only in a noise
+      expression's local expressions is not seen, since the game does not
+      show local expressions to a mod. When a planet has a resource control
+      from a mod that the settings leave on, other than one whose fluid
+      tiles the count looked for, and the count finds no patches, the page
+      says "No resource patches were found in this picture. This planet's
+      resources may be tiles, which can't be counted." instead of "no
+      resource patches". A planet whose only such controls are ones the
+      count looked for spots of says there are no patches. The words are
+      true whether the resources are tiles or real patches too small to
+      count at the picture's size.
     - **While it runs and after.** A visible line and an indeterminate bar
       say that counting can take up to a minute. Busy, timeout, out of
       memory, missing image, failed and invalid settings each have their own
@@ -3531,8 +3577,9 @@ the icon's entry is at most 2 MiB packed and as declared, and the read stops
 one byte past the declared size, so a lying header is refused; the
 picture's header is read first, and one over 4096 by 4096 pixels, or
 smaller than its listed size, is refused before anything is decoded. Only
-one decode runs at a time, at most 8 more requests wait, and one past that
-is answered 503. The top-left square of the listed size (the first mipmap)
+one decode runs at a time, at most 64 more requests wait (a star map asks
+for every modded planet's picture at once), and one past that is answered
+503 with `Retry-After`. The top-left square of the listed size (the first mipmap)
 is scaled to 64 pixels, or 128 for a star map icon, and written as a new
 PNG, so no byte of the zip's file reaches the browser; the new pictures are
 kept in memory, at most 8 MiB in all. A folder (unzipped) mod is not read.
@@ -4156,7 +4203,10 @@ picture adds no table or list of routes, by ruling, because it is for
 looking at and nothing is done in it. The card's link says that it opens
 the large view (or the file, without script), and its download link names
 the file. The picture passes the accessibility scan in both themes at
-desktop width and at 320 px with no sideways scroll (17.2). A picture on a
+desktop width and at 320 px with no sideways scroll (17.2). In the large
+view the copy is a `role="group"` with the same name, so its planet
+controls (5.6) can be reached; each is a focusable `role="button"` named
+by the planet. A picture on a
 location's circle is decoration: the location's title names it, and one
 that fails to load changes nothing the reader hears. (P1)
 

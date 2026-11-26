@@ -81,7 +81,7 @@ local function one_picture(icon, icons, size, default_size)
 end
 
 local function export()
-  local icons, parents = {}, {}
+  local icons, parents, orbits = {}, {}, {}
   local bytes = 0
   local function add(kind, name, path, size)
     path = servable(path)
@@ -112,13 +112,18 @@ local function export()
             local parent = type(orbit) == "table" and orbit.parent
             if type(parent) == "table" and type(parent.name) == "string" then
               parents[name] = parent.name
+              -- The offset from the parent lets Foreman rebuild a parent
+              -- PlanetsLib deletes because it is only a picture (sprite_only).
+              if type(orbit.distance) == "number" and type(orbit.orientation) == "number" then
+                orbits[name] = { distance = orbit.distance, orientation = orbit.orientation }
+              end
             end
           end
         end
       end
     end
   end
-  return { icons = icons, parents = parents }
+  return { icons = icons, parents = parents, orbits = orbits }
 end
 
 -- The mod-data type exists from 2.0 on; without it the run writes no icons.

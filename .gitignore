@@ -35,3 +35,6 @@ e2e/report.json
 
 # Claude Design upload layout (built by .design-sync/build-bundle.py)
 /ds-bundle/
+
+# The resume point of unfinished work; local to one machine
+/HANDOFF.md

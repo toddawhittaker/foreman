@@ -161,6 +161,34 @@ func TestPlanetFileFollowsAStartupSetting(t *testing.T) {
 	}
 }
 
+// The moon setting at its largest value adds FakeBare too, a planet with no
+// map controls at all (SPEC 5.6).
+func TestPlanetFileAddsAPlanetWithoutControls(t *testing.T) {
+	b, err := os.ReadFile("modsettings_defaults.dat")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := modsettings.Decode(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Set(modsettings.Startup, fakegame.FakeMoonSetting, modsettings.Value{Type: modsettings.TypeInt, Int: fakegame.FakeBareAt}, nil); err != nil {
+		t.Fatal(err)
+	}
+	set, err := f.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := planetsRun(t, image21, spaceAgeList, set)
+	got := cat.PlanetNames()
+	if !slices.Contains(got, fakegame.FakeMoon) || got[len(got)-1] != fakegame.FakeBare {
+		t.Fatalf("planets %v, want %s and %s last", got, fakegame.FakeMoon, fakegame.FakeBare)
+	}
+	if c := cat.PlanetControls(fakegame.FakeBare); len(c) != 0 {
+		t.Errorf("%s has controls %v, want none", fakegame.FakeBare, c)
+	}
+}
+
 // fakePlanetZip is the fake planet mod's zip, as e2e tests install it.
 const fakePlanetZip = "fake-planet_1.0.0.zip"
 

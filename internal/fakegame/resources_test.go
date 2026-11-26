@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -91,6 +92,77 @@ func TestResourceRunWritesPatches(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// In the no-patches preview mode a resource run finds nothing, as on a
+// planet whose resources are tiles, and the result still parses (SPEC 5.6).
+func TestResourceRunNoPatchesMode(t *testing.T) {
+	r := newRig(t, fakegame.Config{})
+	if err := r.game.SetPreviewMode(fakegame.PreviewNoPatches); err != nil {
+		t.Fatal(err)
+	}
+	res, err := resourceRun(t, r, 3, "nauvis")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Patches) != 0 {
+		t.Errorf("%d patches, want none", len(res.Patches))
+	}
+}
+
+// In that mode a modded planet the canned count does not know finds nothing
+// too, so its note can be shown (SPEC 5.6).
+func TestResourceRunNoPatchesModdedPlanet(t *testing.T) {
+	r := newRig(t, fakegame.Config{})
+	if err := r.game.SetPreviewMode(fakegame.PreviewNoPatches); err != nil {
+		t.Fatal(err)
+	}
+	res, err := resourceRun(t, r, 3, "fake-planet")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Patches) != 0 {
+		t.Errorf("%d patches, want none", len(res.Patches))
+	}
+}
+
+// The fake planet's count finds spots of a fluid tied to its resource
+// control and no ore, and the base planets find no spots (SPEC 5.6).
+func TestResourceRunFakePlanetSpots(t *testing.T) {
+	res, err := resourceRun(t, newRig(t, fakegame.Config{}), 3, fakegame.FakePlanet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, ok := res.Fluids[fakegame.FakeGas]
+	if len(res.Fluids) != 1 || !ok || len(f.Controls) != 1 || f.Controls[0] != fakegame.FakeOre {
+		t.Fatalf("fluids %+v", res.Fluids)
+	}
+	var tiles []int
+	for _, p := range res.Patches {
+		if !p.Fluid || p.Name != fakegame.FakeGas || p.Amount != 0 {
+			t.Errorf("patch %+v is not a spot of the fake gas", p)
+		}
+		tiles = append(tiles, p.Entities)
+	}
+	// A large spot, a spot beside it whose label is left off, and a spot of one tile.
+	if !slices.Equal(tiles, []int{312, 48, 20, 1}) {
+		t.Errorf("spot tiles %v", tiles)
+	}
+	if got := resource.HiddenLabels(res.Patches); !slices.Equal(got, []bool{false, false, true, false}) {
+		t.Errorf("hidden labels %v", got)
+	}
+	base, err := resourceRun(t, newRig(t, fakegame.Config{}), 3, "nauvis")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range base.Patches {
+		if p.Fluid {
+			t.Errorf("nauvis has a spot: %+v", p)
+		}
+	}
+	if len(base.Fluids) != 0 {
+		t.Errorf("nauvis has fluids %+v", base.Fluids)
 	}
 }
 

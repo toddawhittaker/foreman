@@ -81,6 +81,7 @@
      the preview on it (DESIGN 8.7). Takes []MapGenPlanet. */}}
 {{define "mapgen-planets" -}}
 {{- if eq (len .) 1}}
+{{- with (index . 0)}}{{if .NoControls}}{{template "mapgen-no-controls" .}}{{end}}{{end}}
 {{- with (index . 0).All}}{{template "mapgen-all" .}}{{end}}
 {{- range (index . 0).Groups}}
 {{template "mapgen-group" .}}
@@ -90,6 +91,7 @@
 <details class="disclosure" id="{{.ID}}" name="planet-{{.Tab}}" data-planet="{{.Planet}}" data-said="{{t "mapgen.planet.preview_said" "planet" (msg .Summary)}}"{{if .Open}} open{{end}}>
   <summary>{{if .Foreign}}<span translate="no">{{msg .Summary}}</span>{{else}}{{msg .Summary}}{{end}}</summary>
   <div class="mapgen-body">
+    {{- if .NoControls}}{{template "mapgen-no-controls" .}}{{end}}
     {{- with .All}}{{template "mapgen-all" .}}{{end}}
     {{- range .Groups}}
     {{template "mapgen-group" .}}
@@ -98,6 +100,11 @@
 </details>
 {{- end}}
 {{- end}}
+{{- end}}
+
+{{/* What a planet with no resource or terrain controls has in place of its fields (SPEC 5.6). Takes MapGenPlanet. */}}
+{{define "mapgen-no-controls" -}}
+<p class="mapgen-none">{{t "mapgen.planet.no_controls" "planet" (msg .Summary)}}</p>
 {{- end}}
 
 {{/* The row that sets one setting on every resource of a planet that is on.

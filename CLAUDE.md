@@ -78,7 +78,7 @@ Orchestration rules:
   instead of waiting for its merge. End a turn only when the work is
   done, the user must decide something, or every next step waits on a
   running agent.
-- Delegate to the cheapest agent that can do the job. Run explorer first
+- Delegate to the cheapest agent that can do the job. Run Explore first
   when a location is unknown and pass its paths on. When a builder or
   tester prompt settles every choice, spawn it on Sonnet at high effort
   and tell it to stop and report any choice the prompt leaves open.

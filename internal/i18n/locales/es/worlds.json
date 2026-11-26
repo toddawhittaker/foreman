@@ -402,8 +402,8 @@
   "worlds.generate.large.zoom_out": "Alejar",
   "worlds.generate.large.zoom_in": "Acercar",
   "worlds.generate.large.close": "Cerrar",
+  "worlds.generate.large.dismiss": "Cerrar mensaje",
   "worlds.generate.large.keys": "Teclas: ← → planeta (con zoom, desplazar), + − zoom, 0 ajustar, Esc cerrar. Toca para centrar.",
-  "worlds.generate.large.keys_starmap": "Teclas: flechas para desplazar con zoom, + − zoom, 0 ajustar, Esc cerrar. Toca para centrar.",
   "worlds.generate.large.keys_settings": "En un ajuste, las teclas controlan ese ajuste: una flecha mueve un control deslizante, no el mapa.",
   "worlds.generate.large.settings": "Ajustes del planeta",
   "worlds.generate.leave.title": "¿Salir sin guardar esta configuración del mapa?",
@@ -461,6 +461,19 @@
   "worlds.generate.resources.total_yield": "{resource}: {percent} % de rendimiento en total",
   "worlds.generate.resources.patch": "{amount} en ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent} % de rendimiento en ({x}, {y})",
+  "worlds.generate.resources.spot_label": {
+    "one": "{count} casilla",
+    "other": "{count} casillas"
+  },
+  "worlds.generate.resources.spots": {
+    "one": "{resource}: {count} zona",
+    "other": "{resource}: {count} zonas"
+  },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
+  "worlds.generate.resources.spot": {
+    "one": "{count} casilla en ({x}, {y})",
+    "other": "{count} casillas en ({x}, {y})"
+  },
   "worlds.generate.resources.none": "Esta imagen no tiene yacimientos de recursos.",
   "worlds.generate.resources.not_patches": "No se encontraron yacimientos de recursos en esta imagen. Los recursos de este planeta pueden ser casillas, que no se pueden contar.",
   "worlds.generate.resources.invalid": "Los ajustes tienen problemas, por lo que no se contaron los recursos. Corrige los problemas que indica la vista previa del mapa.",
