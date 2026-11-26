@@ -414,8 +414,8 @@
   "worlds.generate.large.zoom_out": "Oddálit",
   "worlds.generate.large.zoom_in": "Přiblížit",
   "worlds.generate.large.close": "Zavřít",
+  "worlds.generate.large.dismiss": "Zavřít zprávu",
   "worlds.generate.large.keys": "Klávesy: ← → planeta (při přiblížení posun), + − přiblížení, 0 přizpůsobit, Esc zavřít. Klepnutí vycentruje místo.",
-  "worlds.generate.large.keys_starmap": "Klávesy: šipky při přiblížení posun, + − přiblížení, 0 přizpůsobit, Esc zavřít. Klepnutí vycentruje místo.",
   "worlds.generate.large.keys_settings": "V nastavení ovládají klávesy toto nastavení: šipka posouvá posuvník, ne mapu.",
   "worlds.generate.large.settings": "Nastavení planety",
   "worlds.generate.leave.title": "Opustit stránku bez uložení tohoto nastavení mapy?",
@@ -478,6 +478,22 @@
   "worlds.generate.resources.total_yield": "{resource}: celková výtěžnost {percent} %",
   "worlds.generate.resources.patch": "{amount} na ({x}, {y})",
   "worlds.generate.resources.patch_yield": "výtěžnost {percent} % na ({x}, {y})",
+  "worlds.generate.resources.spot_label": {
+    "one": "{count} dlaždice",
+    "few": "{count} dlaždice",
+    "other": "{count} dlaždic"
+  },
+  "worlds.generate.resources.spots": {
+    "one": "{resource}: {count} místo",
+    "few": "{resource}: {count} místa",
+    "other": "{resource}: {count} míst"
+  },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
+  "worlds.generate.resources.spot": {
+    "one": "{count} dlaždice na ({x}, {y})",
+    "few": "{count} dlaždice na ({x}, {y})",
+    "other": "{count} dlaždic na ({x}, {y})"
+  },
   "worlds.generate.resources.none": "Tento obrázek neobsahuje žádná ložiska surovin.",
   "worlds.generate.resources.not_patches": "V tomto obrázku nebyla nalezena žádná ložiska surovin. Suroviny této planety mohou být dlaždice, které nelze spočítat.",
   "worlds.generate.resources.invalid": "Nastavení obsahuje chyby, proto se suroviny nespočítaly. Je třeba opravit chyby uvedené v náhledu mapy.",

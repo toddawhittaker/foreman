@@ -114,6 +114,7 @@
   "mapgen.planet.fulgora": "雷神星",
   "mapgen.planet.gleba": "句芒星",
   "mapgen.planet.nauvis": "新地星",
+  "mapgen.planet.no_controls": "{planet} 没有资源或地貌设定。它的模组在放置资源和地貌时不提供调节项，所以游戏里也没有。",
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "预览：{planet}",
   "mapgen.planet.vulcanus": "祝融星",

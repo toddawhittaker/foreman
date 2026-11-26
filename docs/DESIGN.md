@@ -2768,7 +2768,14 @@ close the view, the tab, the setting, and the picture again).
   the browser keeps focus inside it and Escape closes it. It works as a
   picture viewer and fills the screen (`bg` face, no shadow). A bar holds
   the planet's name (h2, the dialog's name) with a download icon link beside it ("Download Nauvis
-  map"), and under them a `role="status"` line whose height is held
+  map"). While a planet is shown and the world has a star map (8.23,
+  in either preview view), a "Star map" button follows the download icon: the same
+  round control stretched to its word, 24 px high and 44 px under
+  `(pointer: coarse)`. One click shows the star map in the same view, as
+  opening it from the page does: fitted, the frame focused, its name said.
+  It is the same step Previous takes from the first planet, so Next from
+  the star map then shows the first planet. It is hidden while the star
+  map is shown. Under the name's line is a `role="status"` line whose height is held
   (content outside a modal dialog is inert, so the dialog says its own
   news). The key help sits in the bar too, at the end of the name's line
   while it fits: "Keys: ← → planet (pan when zoomed), + − zoom, 0 fit,
@@ -2782,8 +2789,22 @@ close the view, the tab, the setting, and the picture again).
     while the pointer is over the picture or a control in it has
     keyboard focus, and always under `(hover: none)`. Each is an
     icon button (8.8 icons below), 24 px, 44 px under
-    `(pointer: coarse)`. Previous and Next step through the world's
-    planets and wrap; a planet not drawn yet is drawn and shown in place.
+    `(pointer: coarse)`. Previous and Next step through the star map,
+    the view's first step (SPEC 5.6), then the world's planets, and wrap; a planet not drawn yet is drawn and shown in place.
+    They sit in the same place for every picture, so clicks in one spot
+    keep stepping: on the stage's left and right edges, measured from
+    the stage's foot, which never moves, by a length only the window
+    sets, so a bar that grows (Vulcanus's box, the opened list) does not
+    move them. On a window at least 48rem wide and 42rem high,
+    where the bar never reaches its middle, they sit at the window's
+    middle; on a smaller one (a phone), a gap below Close on the
+    smallest stage (16rem), so they are clear of Close on every stage.
+    There, a bar taller than the window leaves beside that stage (the
+    opened list) scrolls on its own,
+    so the stage's foot never moves. The arrows show on the star map too, in
+    the same place. The settings column below keeps its place for every
+    planet, and on the star map the planet's boxes and the column are
+    hidden but keep their places.
   - Zoom, pan, the zoom keys and the three zoom buttons are one plain
     script, `static/viewer.js` (`window.ForemanViewer`), shared with the
     factory map (SPEC 5.16) and loaded with `defer` before each page's own
@@ -2798,12 +2819,23 @@ close the view, the tab, the setting, and the picture again).
     or button is said in the status line ("Zoom 132%", from
     `Intl.NumberFormat`). The picture scales with `image-rendering:
     pixelated` (one tile is one pixel on 2.x).
+  - Zoom is per picture. Each planet and the star map keeps its own
+    zoom and the spot at the frame's middle, in memory only, for as long
+    as the page lives; stepping back to a picture, or closing the view
+    and opening it again, finds it as it was left. A picture not seen
+    yet opens fitted. A picture of another size than its kept view (a
+    new preview size) drops every kept view. A redraw of the picture
+    shown keeps its zoom.
   - Panning: drag the zoomed picture (pointer capture), or use the
     frame's scroll bars, or the arrow keys while the frame has focus. On
     touch screens one finger drags and two pinch around their middle
     (`touch-action: none` on the frame). A tap (one pointer, under 6 px
     of movement) on a zoomed picture centres the spot tapped, so panning
-    never needs a drag (WCAG 2.5.7).
+    never needs a drag (WCAG 2.5.7). Zoomed, the picture pans until any
+    of its edges reaches the middle of the frame (half the frame's width
+    and height of room on each side), for a planet and the star map
+    alike, so a spot near the edge can be brought to the centre. Fitted,
+    the picture is centred and does not pan.
   - Keys: left and right arrows step (inside the zoomed frame they scroll
     it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
     Alt or Meta held the browser keeps its own zoom keys. Focus decides:
@@ -2836,7 +2868,12 @@ close the view, the tab, the setting, and the picture again).
     Space Age, preset or reset redraw; a redraw already on its way when
     the view opens is let land first, so there is never a second copy.
     A tab that has no planet rows lends its fields only on a world of one
-    planet. So the form sends, checks, marks "[modified]", resets,
+    planet. A planet with no resource or terrain controls (its mod places
+    them from its map generator alone, as Igrys does) has a row in both
+    tabs that says so: "Igrys has no resource or terrain settings. Its mod
+    places them without controls, so the game offers none either." The
+    column shows it once, under Resources. A planet with controls in only
+    one tab gets nothing new. So the form sends, checks, marks "[modified]", resets,
     undoes and warns on leaving as for any change on the page. Moving to
     another planet moves its settings in. A change there redraws as one
     on the page does, 0.8 s after the last change, the newest request
@@ -2968,7 +3005,21 @@ close the view, the tab, the setting, and the picture again).
     text (N patches)", under the box; in the large view with the settings
     column it goes last in that column instead, so the header keeps one
     height, and the arrow keys still page planets from it, as it is not a
-    setting. It is readable inside the dialog. A hidden `h3` heads it; each resource is an
+    setting. A count that finds no patches has no list: its sentence
+    ("This picture has no resource patches.", or the not-patches one of
+    SPEC 5.6) is a note (7.3) where a failed count's error shows, said
+    once as the error is, and the status line drops "Counting…". Under
+    the One planet picture it sits under the picture and its downloads.
+    In the large view the note, and a failed count's error with its "Try
+    again", lie over the top of the picture like a toast, where the
+    download's preparation lies: between Previous and Next, clear of
+    Close and zoom, at most 30rem wide. The header keeps one line, so
+    neither the picture nor the arrows move as a message comes or goes.
+    A round close button ("Close message", an icon button the size of
+    the view's others) sits in the message's top corner; it hides the
+    message for that picture until the next count result, and focus
+    goes back to the box. Unticking the box, another planet, the star map
+    or closing the view takes the message away. It is readable inside the dialog. A hidden `h3` heads it; each resource is an
     `h4` giving its total (or its total yield) and a list of its patches
     sorted by amount, each as "12,345,678 at (-50, -30)" or "300% yield at
     (50, -50)". One sentence says positions are tiles from where players
@@ -4465,13 +4516,24 @@ one click downloads it.
 - **The look** follows the game's map, dark in either theme, like a planet
   picture: a plain sun circle at the centre, a faint ring about the sun at
   each location's distance, a faint orbit ring about the parent for a moon,
-  and each location a dark circle edged in the primary colour and sized by
+  a star a mod draws only as a picture (PlanetsLib `sprite_only`) rebuilt
+  from its bodies' orbits and drawn like the sun, with their rings about it
+  and kept clear by labels like any circle, and each location a dark circle edged in the primary colour and sized by
   its magnitude. The label sits beside the circle in the direction of its
-  label orientation, with a dark halo so it reads across routes. Where the
-  label there would cover a route or a label already placed, and the
-  opposite side covers neither, it sits on the opposite side; when both
-  sides are covered it keeps the game's. The picture is square and fits
-  everything drawn, long labels included.
+  label orientation, with a dark halo so it reads across routes. Labels
+  are drawn in a layer after every circle and picture, so no body drawn
+  later hides one; each still takes a click for its planet in the large
+  view. A label tries sixteen directions round its circle, the game's
+  side first, each at 1, 1.5, 2 and 3 times the normal gap, and takes the
+  spot that costs least, judged in this order: first the other circles
+  and labels it overlaps, so a clear spot always wins; then whether it is
+  unclear whose label it is (as near or nearer another body than its own,
+  nearer another body than that body's label, or with another label
+  nearer its body); then other bodies within a label's height; then how
+  far out it is; then the routes it crosses, which still read through the
+  halo; then how far round from the game's side. A label overlaps another
+  body only when no spot in the whole search is clear. The picture is square and fits everything drawn, long labels
+  included.
 - **Proportions** are the game's own, measured from its star map, where
   one distance unit is about 15.85 pixels: the sun's radius is 3.8 units;
   a circle's radius is 0.68 units times the magnitude, its picture 0.69 of
@@ -4482,7 +4544,12 @@ one click downloads it.
   to the game's ratio. Small circles have a floor too, and the sun never
   reaches past three quarters of the nearest planet's distance. The lines
   keep the game's widths on screen at every zoom (non-scaling strokes):
-  1 px rings, 1.3 px routes and 1.5 px circle edges.
+  1 px rings, 1.3 px routes and 1.5 px circle edges. Rings are white at
+  14% opacity, quiet behind the routes, which are `#c9c4bc` at 75%.
+  A planet's picture shows only once it has loaded: until then, and if
+  it never does, its circle shows plain, never the browser's broken
+  picture. A failed one is asked for again 1, 2 and 4 seconds later,
+  then left.
 - **Routes** are drawn as the game draws them: an arc about the two ends'
   nearest common parent (the sun for two planets), whose distance and angle
   each change evenly from one end to the other, the shorter way round. A
@@ -4501,12 +4568,15 @@ one click downloads it.
   the planets around the sun and the routes between them." Each location
   has a `<title>` with its name, and a mod's name is `translate="no"`.
 - **Large view.** The star map opens in the large view (8.8) with the same
-  zoom, pan and keys. It shows alone: the planet steps, the resource
-  amounts, the territories and the planet's settings are hidden, as none
-  applies. The download in its bar is the star map's file. The square
+  zoom, pan and keys, as the first step before the planets. The resource
+  amounts, the territories and the planet's settings are hidden while it
+  is shown, as none applies. The download in its bar is the star map's file. The square
   picture sits in a wider or taller frame; what is drawn past its box (the
   outer rings and the dark ground) carries on to the frame's edge, which
-  clips it, so no ring stops at a straight line inside the view.
+  clips it, so no ring stops at a straight line inside the view. Each
+  planet with a step is a button there: a pointer cursor, and a brighter,
+  thicker ring on hover and focus beside the focus outline; its label
+  counts as part of its target.
 - **The file.** The download, the large view's download and the
   `starmap.svg` in the "Download all drawn planets" zip are the same SVG:
   the page's picture with its own namespace and without the pictures on

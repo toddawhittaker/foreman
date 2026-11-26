@@ -40,10 +40,11 @@
       const top = opts.most(zoom);
       zoom = Math.min(top, Math.max(1, next));
       frame.style.setProperty("--zoom", String(zoom));
+      // Marked before measuring, as a page may lay a zoomed picture out differently.
+      frame.toggleAttribute("data-zoomed", zoom > 1);
       const after = map.getBoundingClientRect();
       frame.scrollLeft += after.left + u * after.width - x;
       frame.scrollTop += after.top + v * after.height - y;
-      frame.toggleAttribute("data-zoomed", zoom > 1);
       if (buttons.out) buttons.out.setAttribute("aria-disabled", String(zoom <= 1));
       if (buttons.fit) buttons.fit.setAttribute("aria-disabled", String(zoom <= 1));
       if (buttons.in) buttons.in.setAttribute("aria-disabled", String(zoom >= top * 0.9999));

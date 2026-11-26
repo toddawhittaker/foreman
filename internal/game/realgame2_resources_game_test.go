@@ -37,7 +37,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toddawhittaker/foreman/internal/game/resources"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/resource"
@@ -89,7 +88,9 @@ func parseCount(t *testing.T, b []byte, size int, planet string) countFile {
 	var raw struct {
 		Planet    string          `json:"planet"`
 		Resources json.RawMessage `json:"resources"`
+		Fluids    json.RawMessage `json:"fluids"`
 		Patches   json.RawMessage `json:"patches"`
+		SpotsCut  int             `json:"spots_cut"`
 	}
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
@@ -98,6 +99,14 @@ func parseCount(t *testing.T, b []byte, size int, planet string) countFile {
 	}
 	f := countFile{Planet: raw.Planet, Resources: map[string]countResource{}}
 	empty := func(m json.RawMessage) bool { s := string(bytes.TrimSpace(m)); return s == "[]" || s == "{}" }
+	// These counts load no mods, and no tile of the base game or Space Age
+	// is tied to resource controls alone, so none has spots (SPEC 5.6).
+	if !empty(raw.Fluids) {
+		t.Errorf("fluids %s, want none without mods", raw.Fluids)
+	}
+	if raw.SpotsCut != 0 {
+		t.Errorf("spots_cut %d, want 0 without mods", raw.SpotsCut)
+	}
 	if !empty(raw.Resources) {
 		if err := json.Unmarshal(raw.Resources, &f.Resources); err != nil {
 			t.Fatalf("resources: %v", err)
@@ -217,8 +226,7 @@ func (r countRun) summary() string {
 // countParams is the count mod's params line with extra Lua fields, so a
 // gap can be changed for the spike.
 func countParams(extra string) string {
-	return `printf 'return { radius = %d, planet = "%s"` + extra + ` }\n' "$` + gameenv.ResourceRadius + `" "$` + gameenv.ResourcePlanet + `" > ` +
-		modFile(resources.ModDir, resources.ParamsFile)
+	return resourceParams(extra)
 }
 
 // measure runs m for req and planet, and returns the file, the wall time

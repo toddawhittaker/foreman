@@ -130,6 +130,7 @@ test.describe("with the fake game", () => {
   test("a crash is shown", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await start(page);
+    await fakeGame!.call("/hold-restarts", { name: container, on: true });
     await fakeGame!.call("/crash", { name: container });
     await expect(badge(page)).toHaveText("Crashed", live);
     await expect(page.locator("main").getByText(/The game crashed/)).toBeVisible();

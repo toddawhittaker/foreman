@@ -114,6 +114,7 @@
   "mapgen.planet.fulgora": "Fulgora",
   "mapgen.planet.gleba": "Gleba",
   "mapgen.planet.nauvis": "Nauvis",
+  "mapgen.planet.no_controls": "{planet} nemá žádná nastavení zdrojů ani terénu. Mod této planety je rozmisťuje bez ovládacích prvků, takže ani hra žádná nenabízí.",
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "Náhled: {planet}",
   "mapgen.planet.vulcanus": "Vulcanus",

@@ -22,6 +22,11 @@ const (
 	// defaultLabelOrientation is the game's default for a location that
 	// gives none: the label to the right of the location.
 	defaultLabelOrientation = 0.25
+	// maxStarMapStars bounds the stars rebuilt from their bodies' orbits.
+	maxStarMapStars = 16
+	// sunReach is how near 0,0 a rebuilt star may land and still be taken
+	// for the sun itself.
+	sunReach = 1.0
 )
 
 var (
@@ -38,10 +43,21 @@ type StarMap struct {
 	// Locations are in the file's order.
 	Locations []Location
 	Routes    []Route
+	// Stars are stars other than the sun that the file does not list, as a
+	// mod draws them only as a picture (PlanetsLib sprite_only); each is
+	// rebuilt from where its bodies are and their orbit about it.
+	Stars []Star
 	// Dropped counts locations and routes left out for a bad or repeated
 	// name, an out-of-range number, a hidden end, or an end the file does
-	// not list.
+	// not list, and orbit offsets left out for an out-of-range number.
 	Dropped int
+}
+
+// Star is a rebuilt star: its name and where the game draws it, in the same
+// units as Location.X and Y.
+type Star struct {
+	Name string
+	X, Y float64
 }
 
 // Location is one space location: a planet, a moon, the solar system edge.
@@ -71,6 +87,9 @@ type Location struct {
 	// a caller can walk the chain to find two locations' nearest common
 	// parent.
 	Parent string
+	// Star names the entry in StarMap.Stars this location orbits, or is ""
+	// when it orbits the sun or a Parent. A location never has both.
+	Star string
 	// HasIcon is true when the location's prototype has a starmap icon.
 	HasIcon bool
 }
@@ -121,6 +140,8 @@ func (m StarMap) Labelled(sections ...modsettings.LocaleSections) StarMap {
 //	      "label_orientation": 0.25,      // optional, default 0.25
 //	      "position": {"x": 5.9, "y": -8.1}, // optional: the game's own
 //	      "parent": "fake-planet",        // optional: the location it orbits
+//	      "orbit": {"distance": 10, "orientation": 0.8}, // optional: PlanetsLib's
+//	                                      // offset from the parent
 //	      "hidden": false,                // optional: true leaves it out
 //	      "starmap_icon": true            // optional: it has a starmap icon
 //	    }
@@ -149,6 +170,7 @@ type rawLocation struct {
 	Magnitude        *float64        `json:"magnitude"`
 	LabelOrientation *float64        `json:"label_orientation"`
 	Parent           string          `json:"parent"`
+	Orbit            *rawOrbit       `json:"orbit"`
 	Position         *rawPosition    `json:"position"`
 	Hidden           bool            `json:"hidden"`
 	StarmapIcon      bool            `json:"starmap_icon"`
@@ -157,6 +179,11 @@ type rawLocation struct {
 type rawPosition struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
+}
+
+type rawOrbit struct {
+	Distance    float64 `json:"distance"`
+	Orientation float64 `json:"orientation"`
 }
 
 type rawRoute struct {
@@ -176,7 +203,10 @@ type rawRoute struct {
 // route to or from a location not kept, or with a negative or oversized
 // length, is left out the same way. A parent that is not a kept location, or
 // that would make a loop, is cleared, so Location.Parent is always safe to
-// follow. An empty map is not an error.
+// follow. A parent that is not a kept location but that the location gives
+// an orbit offset about is rebuilt as a star (see StarMap.Stars), unless it
+// lands on the sun; an offset with a negative or oversized number is left
+// out and counted in Dropped. An empty map is not an error.
 func DecodeStarMap(data []byte) (StarMap, error) {
 	if len(data) > MaxStarMapFileBytes {
 		return StarMap{}, errStarMapSize
@@ -192,7 +222,8 @@ func DecodeStarMap(data []byte) (StarMap, error) {
 	}
 	for _, l := range raw.Locations {
 		if !finite(l.Distance, l.Orientation) || !finitePtr(l.Magnitude) || !finitePtr(l.LabelOrientation) ||
-			(l.Position != nil && !finite(l.Position.X, l.Position.Y)) {
+			(l.Position != nil && !finite(l.Position.X, l.Position.Y)) ||
+			(l.Orbit != nil && !finite(l.Orbit.Distance, l.Orbit.Orientation)) {
 			return StarMap{}, errStarMapNumber
 		}
 	}
@@ -203,6 +234,7 @@ func DecodeStarMap(data []byte) (StarMap, error) {
 	}
 	var m StarMap
 	kept := map[string]bool{}
+	orbits := map[string]rawOrbit{} // by kept location
 	for _, l := range raw.Locations {
 		mag, lab := 1.0, defaultLabelOrientation
 		if l.Magnitude != nil {
@@ -222,6 +254,13 @@ func DecodeStarMap(data []byte) (StarMap, error) {
 			continue
 		}
 		kept[l.Name] = true
+		if o := l.Orbit; o != nil && l.Parent != "" {
+			if o.Distance < 0 || o.Distance > maxStarMapValue || math.Abs(o.Orientation) > maxStarMapValue {
+				m.Dropped++
+			} else {
+				orbits[l.Name] = *o
+			}
+		}
 		m.Locations = append(m.Locations, Location{
 			Name: l.Name, Label: l.Name, LocName: l.LocName,
 			Distance: l.Distance, Orientation: l.Orientation,
@@ -230,6 +269,7 @@ func DecodeStarMap(data []byte) (StarMap, error) {
 			Parent: l.Parent, HasIcon: l.StarmapIcon,
 		})
 	}
+	m.Stars = rebuildStars(m.Locations, kept, orbits)
 	clearBadParents(m.Locations, kept)
 	// A route is drawn once: a repeat, in either direction, is dropped.
 	seen := map[[2]string]bool{}
@@ -243,6 +283,39 @@ func DecodeStarMap(data []byte) (StarMap, error) {
 		m.Routes = append(m.Routes, Route(r))
 	}
 	return m, nil
+}
+
+// rebuildStars sets Star on each location whose parent is not kept but which
+// gives an orbit offset about it, and returns those stars. A star sits at the
+// first such location's position less its offset; one on the sun, past the
+// limit, or with a bad name is not rebuilt, and its bodies orbit the sun.
+func rebuildStars(locs []Location, kept map[string]bool, orbits map[string]rawOrbit) []Star {
+	var stars []Star
+	// found is true for a star rebuilt, false for one refused, so every body
+	// of one star is judged by the first.
+	found := map[string]bool{}
+	for i, l := range locs {
+		o, ok := orbits[l.Name]
+		if !ok || kept[l.Parent] || !ValidName(l.Parent) {
+			continue
+		}
+		rebuilt, seen := found[l.Parent]
+		if !seen {
+			angle := 2 * math.Pi * o.Orientation
+			x, y := l.X-o.Distance*math.Sin(angle), l.Y+o.Distance*math.Cos(angle)
+			if math.Hypot(x, y) <= sunReach || math.Abs(x) > maxStarMapValue || math.Abs(y) > maxStarMapValue ||
+				len(stars) >= maxStarMapStars {
+				found[l.Parent] = false
+				continue
+			}
+			found[l.Parent], rebuilt = true, true
+			stars = append(stars, Star{Name: l.Parent, X: x, Y: y})
+		}
+		if rebuilt {
+			locs[i].Star = l.Parent
+		}
+	}
+	return stars
 }
 
 // finite reports whether every value is neither NaN nor infinite.
