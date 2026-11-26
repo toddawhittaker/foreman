@@ -594,6 +594,12 @@ throwaway map with the world's mods and charts 1024 by 1024 tiles around
 the start. It shows terrain that a mod makes by script, which the fast
 preview cannot. It takes 15 to 40 seconds.
 
+With **All planets** chosen, the preview ends with a **Star map**: the
+planets, moons and routes as the game places them. A world with planet
+mods shows it once the planet list has been read. A Space Age world with
+no other mods shows Space Age's own map, which ships with Foreman. Any
+picture opens in a large view to zoom, pan and download it.
+
 ### Memory for planet previews
 
 Each preview run, and each real-game picture, is a one-off container. Both
@@ -651,6 +657,32 @@ port in the host's firewall, and forward it on your router for players
 outside your network. Foreman's web port (8080) does not need to be open
 to players. With a VPN sidecar the sidecar publishes the port instead
 (section 16).
+
+### Players and play time
+
+A world's **Overview** lists every player who has joined its save, with
+each one's play time and, once Foreman has seen them play, when they were
+last seen. The Server page shows the map's total play time and a link to
+that list. Foreman starts the list by reading a copy of the save (see
+"Memory for reading a large save" in section 11). It does that by itself
+while the world is stopped. While the world runs, choose **Read players
+from the newest save**. After that, Foreman adds each session as players
+join and leave.
+
+### The factory map
+
+A world's **Factory map** tab draws each surface of the newest save, such
+as each planet and space platform, from the game's own map. Tick a layer
+to outline one kind of building, such as belts and inserters, production
+or power. You can zoom, pan and download the picture. It needs Factorio
+2.0.61 or newer.
+
+The tab also sets when Foreman draws it. **Manual**, the default, draws
+only when you choose **Draw factory map**. **Automatic** also draws once
+the world has been stopped for 2 minutes and its save has changed, while
+no game runs on this Foreman. **Off** draws nothing and keeps the last
+picture. A click beside a running game needs memory (section 11), and by
+default it is refused while players are online.
 
 ## 11. Import a world you already have
 
@@ -1400,6 +1432,9 @@ one says "Set here"; nothing in the environment sets or overrides them.
 | Check GitHub for new Foreman versions | on or off | on |
 | Show game icons from the Factorio wiki | on or off | off |
 
+- **Largest mod upload.** This limit also caps a mod downloaded from the
+  mod portal, so a mod that can be uploaded can always be downloaded again.
+  A larger mod fails with a message that names it, its size and the limit.
 - **Check GitHub for new Foreman versions.** About a minute after it
   starts, and then every 6 hours, Foreman asks `api.github.com` for its
   latest release. When that is newer than the running version, About says
