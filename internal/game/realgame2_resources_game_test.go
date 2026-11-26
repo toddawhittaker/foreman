@@ -90,6 +90,7 @@ func parseCount(t *testing.T, b []byte, size int, planet string) countFile {
 		Resources json.RawMessage `json:"resources"`
 		Fluids    json.RawMessage `json:"fluids"`
 		Patches   json.RawMessage `json:"patches"`
+		SpotsCut  int             `json:"spots_cut"`
 	}
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
@@ -102,6 +103,9 @@ func parseCount(t *testing.T, b []byte, size int, planet string) countFile {
 	// is tied to resource controls alone, so none has spots (SPEC 5.6).
 	if !empty(raw.Fluids) {
 		t.Errorf("fluids %s, want none without mods", raw.Fluids)
+	}
+	if raw.SpotsCut != 0 {
+		t.Errorf("spots_cut %d, want 0 without mods", raw.SpotsCut)
 	}
 	if !empty(raw.Resources) {
 		if err := json.Unmarshal(raw.Resources, &f.Resources); err != nil {
