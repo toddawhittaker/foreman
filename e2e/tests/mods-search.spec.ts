@@ -478,11 +478,11 @@ test.describe("typing on the Mods tab", () => {
     await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
     expect(page.url()).toBe(url);
     expect(await page.evaluate(() => window.history.length)).toBe(history);
-    // Search, results, the plan, then the installed list.
+    // The installed list, then search, results and the plan.
     const order = await page.evaluate(() => {
       const at = (s: string) => document.querySelector(s)!;
       const after = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-      return after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#plan-heading")) && after(at("#plan-heading"), at("#installed-heading"));
+      return after(at("#installed-heading"), at("#search-heading")) && after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#plan-heading"));
     });
     expect(order).toBe(true);
     await checkPage(page);

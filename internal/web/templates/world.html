@@ -126,8 +126,6 @@
   </dl>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
-{{- /* The players of the save the world loads (SPEC 8.14); A9's partial. */}}
-{{template "world-players" .}}
 {{- /* Sharing the world comes first: its map string and a favorite made from it, side by side on a wide screen. */}}
 {{- if or .Exchange .CanFavorite}}
 <div class="world-share">
@@ -236,6 +234,8 @@
   </div>
 </section>
 </div>
+{{- /* The players of the save the world loads (SPEC 8.14), after the tasks the page is opened for. */}}
+{{template "world-players" .}}
 {{- end}}
 {{- /* What takes the world out of use or destroys it sits last, apart from everything safe above (DESIGN 7.4). */}}
 <div class="panel danger-zone setting-rows{{if not .DeleteRefusal.IsZero}} danger-zone--blocked{{end}}">

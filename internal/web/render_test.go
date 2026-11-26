@@ -946,8 +946,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 22 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, subnav.js, about.js, live.js, the logo at two sizes, the logo again in the About dialog and eight flags, found %v", found)
+	if len(found) != 21 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, subnav.js, about.js, live.js, the wordmark in the bar, the wordmark again in the About dialog and eight flags, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")
@@ -998,6 +998,7 @@ func TestFaviconLinksAndFiles(t *testing.T) {
 		{PathStatic + "icons/icon-32.png", "image/png"},
 		{PathStatic + "icons/apple-touch-icon.png", "image/png"},
 		{PathStatic + "icons/wordmark-480.webp", "image/webp"},
+		{PathStatic + "icons/wordmark-260.webp", "image/webp"},
 	} {
 		rec := hn.get(c.path)
 		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != c.contentType {

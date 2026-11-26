@@ -55,7 +55,7 @@ for (const width of [390, 1280]) {
     seedWorld(foreman, { mods: { other: "2.1", b: "2.1", c: "2.1" } });
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/worlds/base/mods");
-    const cards = ["search-heading", "results-heading", "sync-heading", "installed-heading", "mod-tools"];
+    const cards = ["sync-heading", "installed-heading", "search-heading", "results-heading", "mod-tools"];
     const order = await page.evaluate((cards) => {
       const els = cards.map((id) => {
         const el = document.getElementById(id)!;
@@ -151,12 +151,13 @@ test.describe("a long plan on a wide screen", () => {
     expect(await list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
     expect(await seen(page, `#mod-${caps[0]}-unpick`)).toBe(true);
 
-    // On out of the plan, through Match, Installed mods and the tools below
-    // it: every control focused is seen, never behind the sticking plan.
+    // Through Match, Installed mods, the search and the tools beside the
+    // plan: every control focused is seen, never behind the sticking plan.
     await openModTools(page);
     const visited: string[] = [];
+    await page.locator("#act-sync").focus();
     for (let i = 0; i < 80; i++) {
-      await page.keyboard.press("Tab");
+      if (i > 0) await page.keyboard.press("Tab");
       const at = await page.evaluate(() => {
         const el = document.activeElement as HTMLElement | null;
         if (!el || !el.closest(".split--mods")) return null;

@@ -203,17 +203,17 @@ dialog (black at 50%) and the shadows' own values (4).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#0e0d0b` | `#ece8df` | The page |
-| `--color-surface` | `#1c1a17` | `#fdfbf7` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#282521` | `#f4f0e8` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-bg` | `#0f0e0c` | `#e5e0d5` | The page |
+| `--color-surface` | `#1a1815` | `#fdfbf7` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#25221e` | `#f2ede4` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
 | `--color-deep` | `#0a0908` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#36322d` | `#ddd6c8` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
-| `--color-line-strong` | `#4f4943` | `#c4bbab` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
+| `--color-line` | `#3a3631` | `#d4cbbb` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-line-strong` | `#524b44` | `#b3a893` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
 | `--color-text-muted` | `#b9b0a3` | `#4a443b` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
 | `--color-text-faint` | `#a0978b` | `#655d52` | Hints, metadata and second lines in rows: the third ink, quieter than muted |
-| `--color-desk` | `#090807` | `#211f1b` | The control desk bar across the top; dark in both themes, and its contents use the dark theme's tokens |
+| `--color-desk` | `#090807` | `#2a2622` | The control desk bar across the top; dark in both themes, and its contents use the dark theme's tokens |
 | `--color-desk-line` | `#2e2a25` | `#3a352f` | The control desk's bottom edge |
 | `--color-border` | `#857c70` | `#80766a` | Edge of fields, secondary buttons and the menu |
 | `--color-link` | `#ffb357` | `#9a4800` | Links (always underlined), quiet buttons, the "Active" badge |
@@ -428,7 +428,7 @@ Other fixed values, also tokens:
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
 | `--target-inline` | 1.5rem (24 px) | Minimum block size of a link inside an error or an empty state's sentence (WCAG 2.5.8) |
 | `--measure` | 68ch | Maximum line length of prose |
-| `--page-max` | 100rem | Maximum width of `main`'s content; from 64rem `main` starts after the rail, left-aligned, and adds `--space-6` each side |
+| `--page-max` | 114rem | Maximum width of `main`'s content; from 64rem `main` starts after the rail, left-aligned, and adds `--space-6` each side |
 | `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |
 | `--dur-1` | 120ms | Hover and pressed fills easing in |
 | `--dur-2` | 200ms | A chevron turning, a meter moving |

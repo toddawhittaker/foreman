@@ -123,6 +123,10 @@
 {{- /* Creating a token follows the list it adds to; its button is the page's one primary action. */}}
 <section class="panel" id="create-token" aria-labelledby="create-heading">
   <h2 id="create-heading">{{t "apitokens.create.heading"}}</h2>
+  {{- /* Whether a token will work comes first, before anything is typed (SPEC 12.10). */}}
+  {{- if not (or .MCPOn .APIOn)}}
+  <p class="token-access-off" id="token-access-off">{{t "apitokens.both_off"}}</p>
+  {{- end}}
   <form method="post" action="{{.Path}}" class="token-create" novalidate>
     {{template "required-note"}}
     <div class="field">
@@ -146,10 +150,7 @@
     <div class="message message--warning" id="scope-admin-warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
     </div>
-    {{- if not (or .MCPOn .APIOn)}}
-    <p class="hint" id="token-access-off">{{t "apitokens.both_off"}}</p>
-    {{- end}}
-    <div class="actions">
+    <div class="actions form-end">
       <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>
     </div>
   </form>

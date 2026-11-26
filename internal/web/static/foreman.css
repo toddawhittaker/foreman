@@ -107,18 +107,18 @@
   --text-2xl: 1.5rem;
   --text-3xl: 1.75rem;
 
-  --color-bg: light-dark(#ece8df, #0e0d0b);
-  --color-surface: light-dark(#fdfbf7, #1c1a17);
-  --color-raised: light-dark(#f4f0e8, #282521);
+  --color-bg: light-dark(#e5e0d5, #0f0e0c);
+  --color-surface: light-dark(#fdfbf7, #1a1815);
+  --color-raised: light-dark(#f2ede4, #25221e);
   --color-deep: light-dark(#ffffff, #0a0908);
-  --color-line: light-dark(#ddd6c8, #36322d);
-  --color-line-strong: light-dark(#c4bbab, #4f4943);
+  --color-line: light-dark(#d4cbbb, #3a3631);
+  --color-line-strong: light-dark(#b3a893, #524b44);
   --color-border: light-dark(#80766a, #857c70);
   --color-text: light-dark(#1c1915, #ece7df);
   --color-heading: light-dark(#13110e, #f8f5ef);
   --color-text-muted: light-dark(#4a443b, #b9b0a3);
   --color-text-faint: light-dark(#655d52, #a0978b);
-  --color-desk: light-dark(#211f1b, #090807);
+  --color-desk: light-dark(#2a2622, #090807);
   --color-desk-line: light-dark(#3a352f, #2e2a25);
   --color-link: light-dark(#9a4800, #ffb357);
   --color-selected: light-dark(#bd6500, #f39a2a);
@@ -178,7 +178,7 @@
   --color-hazard: #f2c14e;
   --color-hazard-ink: #1a1004;
   --measure: 68ch;
-  --page-max: 100rem;
+  --page-max: 114rem;
   /* The icon set, each a mask image (see "Line icons" below). */
   --i-server: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='20' height='8' x='2' y='2' rx='2' ry='2'/%3E %3Crect width='20' height='8' x='2' y='14' rx='2' ry='2'/%3E %3Cline x1='6' x2='6.01' y1='6' y2='6'/%3E %3Cline x1='6' x2='6.01' y1='18' y2='18'/%3E%3C/svg%3E");
   --i-worlds: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E %3Cpath d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/%3E %3Cpath d='M2 12h20'/%3E%3C/svg%3E");
@@ -6586,12 +6586,14 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   mask: var(--i-chevron) center / contain no-repeat;
 }
 
-/* The sign-in page carries the full-size mark above its heading. */
+/* Sign-in and signed-out carry the rusty wordmark above their heading,
+   large enough that the riveted plate and its word read. */
 .gate-logo {
   display: block;
   justify-self: center;
-  inline-size: 6rem;
-  block-size: 6rem;
+  inline-size: 18rem;
+  max-inline-size: 100%;
+  block-size: auto;
 }
 
 main:has(> .gate) > h1 {
@@ -12841,7 +12843,8 @@ tbody tr:hover {
 }
 
 .split--mods > section > #sync-heading {
-  flex: none;
+  flex: 0 1 auto;
+  min-inline-size: 0;
   min-block-size: 0;
   margin: 0;
   padding: 0;
@@ -12996,4 +12999,335 @@ main > .panel.danger-zone {
    do; its words keep their own reading measure. */
 #main > .message {
   max-inline-size: none;
+}
+
+/* ---- The wordmark in the desk. The rusty plate is the home link, 40 px
+   tall so its word reads; 32 px on a phone, where the live world shares
+   the row. */
+.site > .product {
+  flex: none;
+  padding-block: var(--space-1);
+}
+
+.site > .product img {
+  inline-size: auto;
+  block-size: 40px;
+}
+
+/* A picture, not text: it keeps its size when only the text grows. */
+@media (max-width: 39.99rem) {
+  .site > .product img {
+    block-size: 32px;
+  }
+
+  /* The language shows beside the user on a phone too, so the menu says
+     what it holds; the menu wraps to its own row when the words need it. */
+  .site > .menu .menu__lang {
+    display: inline;
+  }
+
+  .site > .menu {
+    margin-inline-start: auto;
+  }
+}
+
+/* Below 22rem the plate steps down again, and the live world and its
+   state share one line beside it, the name giving way first. */
+@media (max-width: 22rem) {
+  .site > .product img {
+    block-size: 26px;
+  }
+
+  .site-strip:has(.site-state:not(:empty)) {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .site-strip .site-world {
+    flex: 0 1 auto;
+    min-inline-size: 0;
+  }
+
+  .site-strip .site-state:not(:empty) {
+    flex: 0 1 auto;
+    min-inline-size: 0;
+    overflow: hidden;
+  }
+
+  .site-strip:has(.site-state:not(:empty)) {
+    overflow: hidden;
+  }
+}
+
+/* ---- Type roles. Page title 30/700; a plate's title 18/650; body 15;
+   a field's label 13/600 in the muted ink; help 13/400 in the faint ink.
+   Each role is one step apart in size, weight or ink. */
+h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+@media (max-width: 39.99rem) {
+  h1 {
+    font-size: 1.625rem;
+  }
+}
+
+:where(label:not(.check), legend) {
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+}
+
+.field > label,
+fieldset > legend {
+  color: var(--color-text-muted);
+}
+
+.hint,
+main > h1 + p.hint,
+.panel > :is(h2, .section-head) + .hint {
+  font-size: var(--text-xs);
+  line-height: 1.54;
+  max-inline-size: 64ch;
+}
+
+/* ---- Tags are stamped tints, never outlined boxes, so no tag reads as a
+   button: no border, a 14 percent wash of the tag's own ink, one line. */
+.badge,
+.state {
+  border-color: transparent;
+  background-color: color-mix(in srgb, currentColor 14%, var(--color-surface));
+  min-block-size: 1.375rem;
+  white-space: nowrap;
+}
+
+.badge--active {
+  border-color: transparent;
+  background: var(--color-accent-bg);
+}
+
+/* ---- The Server plate: while the game runs Take snapshot is the one
+   filled action; Stop server stands apart, 32 px off, in its danger
+   outline (DESIGN 7.1). */
+@media (min-width: 64rem) {
+  .server-actions > :has(> #act-stop),
+  .server-actions > #act-stop {
+    margin-inline-start: var(--space-6);
+    padding-inline-start: var(--space-4);
+    border-inline-start: var(--border-width) solid var(--color-danger);
+  }
+}
+
+/* ---- A heading that is a row's label, not a plate's title, takes no
+   raised band: the favourite chooser on Generate and the results line
+   before a search. */
+#main #favorite-chooser > h2,
+#main #results:not(:has(.hits, .error, .message)) > h2 {
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* Before a search the results are one quiet line under Find a mod, not a
+   plate of their own. */
+#main #results:not(:has(.hits, .error, .message)) {
+  margin-block-start: calc(-1 * var(--space-3));
+  padding: 0 var(--card-pad);
+  background: none;
+  border: 0;
+}
+
+#main #results:not(:has(.hits, .error, .message)) > h2 {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---- The plan is a normal plate marked as pending work: a 3 px blue
+   leading edge and a blue-tinted title band, no texture (DESIGN 8.11). */
+.plan-panel:not(.plan-panel--empty) {
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 3px solid var(--color-info);
+}
+
+#main .plan-panel:not(.plan-panel--empty) > .plan-panel__head {
+  background: var(--color-info-bg);
+  border-block-end-color: color-mix(in srgb, var(--color-info) 40%, var(--color-line));
+  border-start-start-radius: 0;
+}
+
+#main .plan-panel:not(.plan-panel--empty) > .plan-panel__head > h2 {
+  color: var(--color-heading);
+}
+
+/* ---- Light theme: the page sits a clear step under its plates, whose
+   edges are drawn, and the desk is a warm dark bar with its own rule. */
+.site {
+  border-block-end-color: var(--color-desk-line);
+}
+
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) {
+  box-shadow: 0 1px 0 light-dark(rgb(60 45 25 / 10%), transparent);
+}
+
+/* ---- Mod settings on a wide screen: the mod's name in the start column,
+   its fields in two columns of at most 26rem, so a short list of fields
+   does not run down one narrow line beside a wide empty plate. */
+@media (min-width: 80rem) {
+  .mod-settings-group > .setting-row__body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 26rem));
+    align-items: start;
+    gap: var(--space-5) var(--space-6);
+  }
+
+  .mod-settings-group > .setting-row__body > * {
+    margin-block: 0;
+  }
+
+  .mod-settings-values.setting-row__body {
+    grid-template-columns: repeat(3, minmax(0, 18rem));
+  }
+}
+
+/* ---- Server on a very wide screen: the players take the wide start
+   column; the world's pages, two to a row, and the newest snapshots stack
+   in the end column, so no column ends early beside a tall one. */
+@media (min-width: 100rem) {
+  .server-grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+
+  .server-grid > .panel:has(#players-heading) {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+  }
+
+  .server-grid > .shortcuts.card {
+    grid-row: 1;
+    grid-column: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .server-grid > .shortcuts.card > :nth-child(odd) {
+    border-inline-end: var(--border-width) solid var(--color-line);
+  }
+
+  .server-grid > .shortcuts.card > :nth-last-child(-n + 2):nth-child(odd),
+  .server-grid > .shortcuts.card > :last-child {
+    border-block-end: 0;
+  }
+
+  .server-grid > .recent-snaps {
+    grid-row: 2;
+    grid-column: 2;
+  }
+}
+
+/* ---- A form's last row: a rule, then Cancel just before the primary
+   action at the end, as the General settings foot bar orders them. */
+.actions.form-end {
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.actions.form-end > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  font-weight: 600;
+}
+
+@container (min-width: 52rem) {
+  .token-create > .actions.form-end {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Both ways in are off: said first, on the warning edge, so a token is
+   not made without knowing it will not work yet. */
+.token-access-off {
+  max-inline-size: none;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-warn-bg);
+  border-inline-start: 3px solid var(--color-warn);
+  border-radius: var(--radius);
+  color: var(--color-text);
+}
+
+/* ---- The desk reflows rather than scroll sideways (WCAG 1.4.10): when
+   large text leaves the row too narrow, the account menu and then the
+   areas take a second row. The live strip takes only the room that is
+   left, so it never forces a wrap by itself. Each area tab is 48 px,
+   standing on the bar's foot so its underline meets the bar's edge. */
+@media (min-width: 40rem) {
+  .site {
+    flex-wrap: wrap;
+  }
+
+  /* The bar scrolls with the page: held at the top it lay over the
+     controls scrolled up under it, and the page's own title row already
+     names where you are. */
+  .site {
+    position: relative;
+  }
+
+  html {
+    scroll-padding-block: var(--space-3);
+  }
+
+  .site-strip {
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+  .site .tabs {
+    align-items: flex-end;
+  }
+
+  .site .tabs a {
+    block-size: 3rem;
+    min-block-size: 3rem;
+  }
+}
+
+/* A closed menu takes no room at all, so its panel can never widen the
+   page at large text sizes (WCAG 1.4.10). */
+.menu:not([open]) > .menu__panel,
+.menu__langs:not([open]) > form {
+  display: none;
+}
+
+/* Below 22rem the account button sets the person over the language, so
+   the live state keeps its room on the bar's one row. */
+@media (max-width: 22rem) {
+  .site > .menu > summary {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-content: center;
+    column-gap: var(--space-2);
+    padding-inline: var(--space-2);
+    line-height: 1.2;
+  }
+
+  .site > .menu > summary > span {
+    grid-column: 1;
+  }
+
+  .site > .menu > summary::after {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
 }
