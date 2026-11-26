@@ -20,7 +20,7 @@ func makePreview(c dockertest.Container) error {
 	case gameenv.KindTerritories:
 		return writeTerritories(c)
 	case gameenv.KindResources:
-		return writeResources(c)
+		return writeResources(c, true)
 	case gameenv.KindModSettings:
 		return writeModSettings(c)
 	case gameenv.KindSavePlayers:

@@ -15,8 +15,9 @@ const (
 // Files the mod folder holds besides info.json and control.lua.
 const (
 	// ParamsFile is written for each run; it returns {radius = N, planet =
-	// "<name>"}, the picture's half width in chunks and the planet to
-	// count, since a mod can read neither files nor the environment.
+	// "<name>", max_patches = N, max_bytes = N}, the picture's half width
+	// in chunks, the planet to count and Parse's limits on what it reads
+	// back, since a mod can read neither files nor the environment.
 	ParamsFile = "params.lua"
 )
 

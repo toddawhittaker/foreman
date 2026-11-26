@@ -290,6 +290,9 @@ type MapGenPlanet struct {
 	// All is the row that sets every resource of the planet at once; nil
 	// unless the planet has two or more (DESIGN 8.7).
 	All *MapGenAll
+	// NoControls marks a planet with neither resource nor terrain controls,
+	// whose row in each tab says so instead of holding fields (SPEC 5.6).
+	NoControls bool
 }
 
 // MapGenAll is the "All resources" row of a planet's Resources tab. Its
@@ -974,10 +977,14 @@ func buildMapGenFormIn(line string, cat mapgen.Catalogue, posted func(name strin
 				terrainGroup("aux", i18n.M("mapgen.aux.legend"), posted))
 		}
 		res.All = allResources(p.name, res.Groups)
-		if len(res.Groups) > 0 {
+		// A planet whose mod places everything without controls still has its
+		// row in both tabs, saying why it has no fields (SPEC 5.6).
+		none := len(res.Groups) == 0 && len(ter.Groups) == 0
+		res.NoControls, ter.NoControls = none, none
+		if len(res.Groups) > 0 || none {
 			f.Resources = append(f.Resources, res)
 		}
-		if len(ter.Groups) > 0 {
+		if len(ter.Groups) > 0 || none {
 			f.Terrain = append(f.Terrain, ter)
 		}
 	}

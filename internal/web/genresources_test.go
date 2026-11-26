@@ -162,8 +162,9 @@ func TestResourceNamesAndAnEmptyCount(t *testing.T) {
 	}
 	prev.res = resource.Result{Planet: "nauvis"}
 	body = hn.postLong(pathResources, planetForm("nauvis"), c, withHeader("HX-Request", "true")).Body.String()
-	if !strings.Contains(body, "Resource amounts as text (0 patches)") || !strings.Contains(body, "This picture has no resource patches.") ||
-		strings.Contains(body, "resources__label") {
+	// No patches is said as a note beside the box, not inside an empty list (SPEC 5.6).
+	if !strings.Contains(body, `<div class="message message--note">`) || !strings.Contains(body, "This picture has no resource patches.") ||
+		strings.Contains(body, "0 patches") || strings.Contains(body, "<details") || strings.Contains(body, "resources__label") {
 		t.Errorf("an empty count:\n%s", body)
 	}
 }

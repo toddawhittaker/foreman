@@ -157,6 +157,11 @@ func (g *Game) bootPreview(c dockertest.Container) {
 		g.daemon.EmitLog(c.ID, docker.Stderr, "Killed")
 		g.daemon.Exit(c.ID, 137, true)
 		return
+	case PreviewNoPatches:
+		if envValue(c.Spec.Env, gameenv.PreviewKind) == gameenv.KindResources {
+			g.endPreview(c, writeResources(c, false))
+			return
+		}
 	}
 	g.finishPreview(c)
 }

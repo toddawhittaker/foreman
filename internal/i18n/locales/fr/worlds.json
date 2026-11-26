@@ -402,8 +402,8 @@
   "worlds.generate.large.zoom_out": "Dézoomer",
   "worlds.generate.large.zoom_in": "Zoomer",
   "worlds.generate.large.close": "Fermer",
+  "worlds.generate.large.dismiss": "Fermer le message",
   "worlds.generate.large.keys": "Touches : ← → planète (déplacer si zoomé), + − zoom, 0 ajuster, Échap fermer. Touchez pour centrer.",
-  "worlds.generate.large.keys_starmap": "Touches : flèches pour déplacer si zoomé, + − zoom, 0 ajuster, Échap fermer. Touchez pour centrer.",
   "worlds.generate.large.keys_settings": "Dans un paramètre, les touches agissent sur ce paramètre : une flèche déplace un curseur, pas la carte.",
   "worlds.generate.large.settings": "Paramètres de la planète",
   "worlds.generate.leave.title": "Quitter la page sans enregistrer ces paramètres de la carte ?",
@@ -461,6 +461,19 @@
   "worlds.generate.resources.total_yield": "{resource} : {percent} % de rendement au total",
   "worlds.generate.resources.patch": "{amount} en ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent} % de rendement en ({x}, {y})",
+  "worlds.generate.resources.spot_label": {
+    "one": "{count} case",
+    "other": "{count} cases"
+  },
+  "worlds.generate.resources.spots": {
+    "one": "{resource} : {count} nappe",
+    "other": "{resource} : {count} nappes"
+  },
+  "worlds.generate.resources.fluid_named": "{resource} ({fluid})",
+  "worlds.generate.resources.spot": {
+    "one": "{count} case en ({x}, {y})",
+    "other": "{count} cases en ({x}, {y})"
+  },
   "worlds.generate.resources.none": "Cette image ne contient aucun gisement de ressources.",
   "worlds.generate.resources.not_patches": "Aucun gisement de ressources n’a été trouvé dans cette image. Les ressources de cette planète sont peut-être des cases, qui ne peuvent pas être comptées.",
   "worlds.generate.resources.invalid": "Les réglages comportent des problèmes, donc les ressources n’ont pas été comptées. Corrigez les problèmes indiqués par l’aperçu de la carte.",

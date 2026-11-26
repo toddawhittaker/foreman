@@ -176,7 +176,7 @@ func TestResourcesSpecHasThePreviewsLimits(t *testing.T) {
 		`--create /out/resources.zip`, `--map-gen-seed "$` + gameenv.Seed + `"`,
 		`--preset "$` + gameenv.Preset + `"`, `--map-gen-settings`, `--map-settings`,
 		`cp /tmp/factorio/script-output/resources.json /out/resources.json`,
-		`"$` + gameenv.ResourceRadius + `" "$` + gameenv.ResourcePlanet + `" > /out/mods/foreman-resources_1.0.0/params.lua`,
+		`, max_patches = 5000, max_bytes = 524288 }\n' "$` + gameenv.ResourceRadius + `" "$` + gameenv.ResourcePlanet + `" > /out/mods/foreman-resources_1.0.0/params.lua`,
 	} {
 		if !strings.Contains(script, need) {
 			t.Errorf("the script lacks %s:\n%s", need, script)

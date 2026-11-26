@@ -328,3 +328,60 @@ func TestSpaceAgeStarMap(t *testing.T) {
 		})
 	}
 }
+
+// A far star a mod draws only as a picture (PlanetsLib sprite_only) is not in
+// the file; its bodies' orbit offsets rebuild it (SPEC 5.6).
+const farStarMap = `{"locations":[
+ {"name":"nauvis","distance":15,"orientation":0},
+ {"name":"nix","position":{"x":100,"y":-50},"parent":"redstar","orbit":{"distance":10,"orientation":0.25}},
+ {"name":"mirandus","position":{"x":90,"y":-40},"parent":"redstar","orbit":{"distance":10,"orientation":0.5}}
+]}`
+
+func TestDecodeStarMapRebuildsMissingStar(t *testing.T) {
+	m, err := DecodeStarMap([]byte(farStarMap))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Dropped != 0 || len(m.Locations) != 3 {
+		t.Fatalf("Dropped = %d, %d locations", m.Dropped, len(m.Locations))
+	}
+	// nix is 10 to the right of its star: the star is at 90,-50.
+	if len(m.Stars) != 1 || m.Stars[0].Name != "redstar" || !near(m.Stars[0].X, 90) || !near(m.Stars[0].Y, -50) {
+		t.Fatalf("Stars = %+v", m.Stars)
+	}
+	for _, n := range []string{"nix", "mirandus"} {
+		if l, _ := m.Location(n); l.Star != "redstar" || l.Parent != "" {
+			t.Errorf("%s = %+v", n, l)
+		}
+	}
+	if l, _ := m.Location("nauvis"); l.Star != "" {
+		t.Errorf("nauvis star = %q", l.Star)
+	}
+}
+
+func TestDecodeStarMapStarAtTheSunIsNotRebuilt(t *testing.T) {
+	m, err := DecodeStarMap([]byte(`{"locations":[
+	 {"name":"a","position":{"x":0,"y":-10},"parent":"star","orbit":{"distance":10,"orientation":0}}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Stars) != 0 || m.Locations[0].Star != "" || m.Locations[0].Parent != "" || m.Dropped != 0 {
+		t.Errorf("map = %+v", m)
+	}
+}
+
+func TestDecodeStarMapDropsBadOrbit(t *testing.T) {
+	for _, orbit := range []string{`{"distance":-1,"orientation":0}`, `{"distance":2e12,"orientation":0}`, `{"distance":1,"orientation":2e12}`} {
+		m, err := DecodeStarMap([]byte(`{"locations":[
+		 {"name":"a","position":{"x":50,"y":0},"parent":"far","orbit":` + orbit + `}]}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(m.Stars) != 0 || len(m.Locations) != 1 || m.Locations[0].Star != "" || m.Dropped != 1 {
+			t.Errorf("%s: map = %+v", orbit, m)
+		}
+	}
+	if _, err := DecodeStarMap([]byte(`{"locations":[{"name":"a","orbit":{"distance":1e999,"orientation":0}}]}`)); err == nil {
+		t.Error("an orbit number past float64 was accepted")
+	}
+}
