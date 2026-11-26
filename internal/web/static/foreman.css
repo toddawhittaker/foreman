@@ -12991,3 +12991,9 @@ main > .panel.danger-zone {
     linear-gradient(to bottom, color-mix(in srgb, var(--color-info) 7%, transparent) 1px, transparent 1px) 0 0 / 0.75rem 0.75rem,
     var(--color-surface);
 }
+
+/* A notice at the top of a page spans the column, as the plates under it
+   do; its words keep their own reading measure. */
+#main > .message {
+  max-inline-size: none;
+}
