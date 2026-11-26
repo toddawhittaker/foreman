@@ -1,6 +1,8 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page, Request, Route } from "@playwright/test";
-import { openNewMap, planetPictures } from "./newmap.js";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { openNewMap, newMapPath, planetPictures } from "./newmap.js";
 
 // SPEC 5.6, 17: "Show resource amounts" in the large view. Off on load and
 // kept while the page lives; ticked, the planet shown is counted once its
@@ -710,5 +712,74 @@ test.describe("on the One planet picture", () => {
     expect(res.headers()["content-disposition"]).toContain("-vulcanus-territories-amounts.png");
     await section(page).getByLabel("Show demolisher territories").uncheck();
     await expect(one).toHaveText("Download Vulcanus with resource amounts (PNG)");
+  });
+});
+
+// SPEC 5.6, "Spots": a planet whose resources are tiles that carry a fluid
+// tied to a resource control, as Vesta's methane is, has each spot labelled
+// with its size in tiles, and the text list gives the fluid's spots. The fake
+// game's fake planet has four spots of one fluid, tied to its one resource
+// control, Fake ore: 312, 20, 48 and 1 tiles, the 20-tile spot beside the
+// largest so its label is left off. The base planets have none.
+test.describe("spots of fluid tiles", () => {
+  // Adds the fake planet mod to the world and enables it, as a Mods install would.
+  function addFakePlanet(dataDir: string, id: string) {
+    const mods = join(dataDir, "worlds", id, "mods");
+    copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), join(mods, "fake-planet_1.0.0.zip"));
+    const listFile = join(mods, "mod-list.json");
+    const list = (existsSync(listFile) ? JSON.parse(readFileSync(listFile, "utf8")) : { mods: ["base", "elevated-rails", "quality", "space-age"].map((name) => ({ name, enabled: true })) }) as { mods: { name: string; enabled: boolean }[] };
+    list.mods = list.mods.filter((m) => m.name !== "fake-planet").concat([{ name: "fake-planet", enabled: true }]);
+    writeFileSync(listFile, JSON.stringify(list));
+  }
+
+  async function fakePlanet(page: Page, dataDir: string) {
+    const id = await openNewMap(page, { name: "Modded" });
+    addFakePlanet(dataDir, id);
+    await page.goto(newMapPath(id));
+    await expect(page.locator('#generate-form details[data-planet="fake-planet"]').first()).toBeAttached({ timeout: 60_000 });
+    await page.locator("#mg-resources-fake-planet summary").click();
+    await expect(section(page).getByRole("img", { name: /^Map preview of Fake planet/ })).toBeVisible({ timeout: 60_000 });
+  }
+
+  test("each spot is labelled in tiles, and the list gives the fluid's spots", { tag: "@looks" }, async ({ page, foreman }) => {
+    await fakePlanet(page, foreman.dataDir);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(page.getByRole("dialog", { name: "Fake planet" })).toBeVisible();
+    await box(page).check();
+    await expect(status(page)).toHaveText("Resource amounts ready.");
+    await expect(labels(page)).toHaveCount(3);
+    expect((await labels(page).allTextContents()).sort()).toEqual(["1 tile", "312 tiles", "48 tiles"]);
+    await expectNoOverlap(page);
+    await shot(page, "resources-spots");
+    await summary(page).click();
+    await expect(summary(page)).toHaveText("Resource amounts as text (4 patches)");
+    await expect(list(page).getByRole("heading", { level: 4 })).toHaveText(["Fake ore: 4 spots"]);
+    await expect(list(page).getByRole("listitem")).toHaveText([
+      "312 tiles at (0, 60)", "48 tiles at (-60, -70)", "20 tiles at (20, 75)", "1 tile at (70, 10)",
+    ]);
+    await checkPage(page);
+  });
+
+  test("the One planet picture labels the spots, and its download carries them", async ({ page, foreman }) => {
+    await fakePlanet(page, foreman.dataDir);
+    await section(page).getByRole("checkbox", { name: "Show resource amounts" }).check();
+    const pageLabels = section(page).locator(".resources__label");
+    await expect(pageLabels).toHaveCount(3);
+    await expect(pageLabels.filter({ hasText: "312 tiles" })).toHaveCount(1);
+    const one = section(page).locator("li a.download");
+    await expect(one).toHaveText("Download Fake planet with resource amounts (PNG)");
+    const res = await page.request.get(await one.getAttribute("href") ?? "");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-disposition"]).toContain("-fake-planet-amounts.png");
+  });
+
+  test("a planet of the game has no spots: its labels are amounts and its lists totals", async ({ page }) => {
+    await openLarge(page);
+    await box(page).check();
+    await expect(labels(page)).toHaveCount(4);
+    for (const text of await labels(page).allTextContents()) expect(text).not.toMatch(/tiles?$/);
+    await summary(page).click();
+    await expect(list(page).getByRole("heading", { level: 4 })).toHaveText([/in total$/, /in total$/, /yield in total$/]);
+    await expect(list(page)).not.toContainText("spot");
   });
 });

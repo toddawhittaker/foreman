@@ -38,6 +38,25 @@ func TestControl(t *testing.T) {
 	}
 }
 
+// SPEC 5.6: the script also writes the spots of fluid tiles tied to a
+// resource control, as patches with a tile count and no amount, joined by
+// the ore gap, and skips that on 1.1, which has no prototypes global.
+func TestControlCountsFluidTiles(t *testing.T) {
+	for _, want := range []string{
+		`if not prototypes then`,
+		`prototypes.named_noise_expression[n] or prototypes.named_noise_function[n]`,
+		`control.category ~= "resource"`,
+		`surface.find_tiles_filtered({ area = area, name = f.tiles })`,
+		`group(t, nil, ore_gap)`,
+		`name = fluid, fluid = true, x = s.lx, y = s.ly, n = s.n,`,
+		`fluids = fluids`,
+	} {
+		if !bytes.Contains(Control, []byte(want)) {
+			t.Errorf("control.lua lacks %s", want)
+		}
+	}
+}
+
 // The dense-count threshold sits between the most ore tiles a default map
 // has and the ore tiles of Nauvis with every resource at 600%, with a factor
 // of at least 2.5 on both sides (ADR 0015). Measured at 3072 tiles, seed
@@ -56,5 +75,25 @@ func TestDenseOreTiles(t *testing.T) {
 	}
 	if n*2 < largestDefault*5 || n*5 > rich*2 {
 		t.Errorf("dense_ore_tiles %d is not 2.5 times above %d and below %d", n, largestDefault, rich)
+	}
+}
+
+// SPEC 5.6: spots share Parse's limits with the ore patches, so the script
+// keeps the largest spots that fit, from params, and writes how many it cut;
+// it looks only at tiles the counted surface can place; and a planet's
+// rename whose value is an expression's text is walked as text.
+func TestControlFluidTileLimits(t *testing.T) {
+	for _, want := range []string{
+		`params.max_patches`,
+		`params.max_bytes`,
+		`spots_cut = #spots - kept`,
+		`if a.n ~= b.n then`,
+		`local tile_settings = (mgs.autoplace_settings or {}).tile or {}`,
+		`tile_settings.treat_missing_as_default and spec and spec.default_enabled`,
+		`elseif n ~= id then`,
+	} {
+		if !bytes.Contains(Control, []byte(want)) {
+			t.Errorf("control.lua lacks %s", want)
+		}
 	}
 }

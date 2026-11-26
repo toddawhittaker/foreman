@@ -102,6 +102,9 @@ const (
 	FakeOre       = "fake-ore"
 	// FakeOreRichness is FakePlanet's own default richness for FakeOre.
 	FakeOreRichness = 150
+	// FakeGas is the fluid of FakePlanet's tiles tied to FakeOre, whose
+	// spots its resource count finds, as Vesta's methane (SPEC 5.6).
+	FakeGas = "fake-gas"
 	// FakeMoon is the planet a run adds when the world's mod-settings.dat
 	// sets the startup setting FakeMoonSetting above its default of 7, as a
 	// planet mod's startup setting can (SPEC 5.6, 9.6).
