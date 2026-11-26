@@ -7,8 +7,11 @@ description: Use when the orchestrator starts or continues a Foreman epic (a fea
 
 The main session orchestrates; agents do the work (CLAUDE.md, "How work
 gets done here"). Plans and folding follow docs/WORKFLOW.md, "Epic plans".
-Keep a memory file for the epic with every ruling and a dated progress
-line per step, so the run survives a context reset.
+Keep the run's place in `HANDOFF.md` at the repository root (local,
+ignored by Git), so the run survives a context reset: every ruling, and a
+dated progress line as each step finishes. Append that line in the same
+batch of tool calls as the next real action, never as a step by itself.
+Do not put epic status in memory.
 
 ## Steps
 
@@ -25,7 +28,7 @@ line per step, so the run survives a context reset.
    link: each task with its owner agent, model, files and issues, the
    waves, and the rulings made. Spawn no task agent until Todd approves,
    unless the request already said to run the epic through without
-   stopping. Record the approval in the epic's memory file.
+   stopping. Record the approval in `HANDOFF.md`.
 4. **Split tasks** so no two agents edit the same files. When files must
    overlap, chain them: the later task starts from the earlier task's
    head as soon as that head passes step 7, without waiting for its
@@ -110,7 +113,8 @@ line per step, so the run survives a context reset.
 14. **Check it yourself.** After merging `main` in, run `make verify` on
     the epic head and read CI's full run on the epic PR yourself, not
     just the merger's word.
-15. **Stop.** Report the PR and wait. Todd merges main.
+15. **Stop.** Report the PR and wait. Todd merges main. After the merge,
+    delete `HANDOFF.md`.
 
 ## Gotchas
 
