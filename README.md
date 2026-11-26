@@ -20,6 +20,8 @@ a wrong click is undone in one click, and a save is never lost.
 
 <img src="docs/screenshots/server.webp" width="900" alt="The Server page in dark mode with Space Age main running on Factorio 2.1.24: the join address, uptime, snapshot, restart and stop buttons, CPU, memory and play time.">
 
+*The Server page: the running world, the address players join, and one-click snapshot, restart and stop.*
+
 ## Features
 
 ### Worlds, versions and snapshots
@@ -47,9 +49,15 @@ a wrong click is undone in one click, and a save is never lost.
 
 <img src="docs/screenshots/worlds.webp" width="900" alt="The Worlds page in dark mode: six worlds on game versions 1.1.110 to 2.1.25, with Space Age on or off, when each was last played, disk use, a Switch button on each, and an unfinished world with a Continue button.">
 
+*The Worlds page: each world keeps its own game version, and Switch moves the server to it, with a snapshot of both worlds first.*
+
 <img src="docs/screenshots/snapshots.webp" width="900" alt="A world's snapshots: two taken by hand, before rebuilding the main bus and before the Gleba expedition, and three that Foreman took automatically before world switches and a mod change.">
 
+*A world's snapshots. Foreman took the automatic ones before risky changes; the named ones were taken by hand. Any of them restores in one click.*
+
 <img src="docs/screenshots/version-update.webp" width="900" alt="Updating Friends co-op from game version 2.1.23 to 2.1.25: the confirmation says Foreman downloads the game image and takes a Before update snapshot first.">
+
+*Updating a world's game version. Foreman says what it will download and takes a snapshot first, so the update can be rolled back.*
 
 ### Generating worlds, with a real map preview
 
@@ -78,26 +86,34 @@ what you see is the map you get.
 
 <img src="docs/screenshots/generate-nauvis.webp" width="900" alt="The large map preview of Nauvis, drawn by the real game, with each resource patch labelled with its amount, such as 5.2M or 685.1K, beside the planet's resource settings.">
 
+*Generating a world: the real game draws the map, and Foreman labels each resource patch with its amount.*
+
 <img src="docs/screenshots/generate-vulcanus.webp" width="900" alt="The map preview of Vulcanus with demolisher territories outlined and marked Small or Medium, ten small and eleven medium, beside the resource amounts.">
+
+*On Vulcanus, the preview outlines the demolisher territories and marks each one's size.*
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/generate-gleba.webp" width="440" alt="The map preview of Gleba with resource amounts, beside its stone, cliff, water and plant settings."></td>
-    <td><img src="docs/screenshots/generate-fulgora.webp" width="440" alt="The map preview of Fulgora: scrap patches on its islands labelled with amounts from 1.6K to 38.5M, beside the scrap and island settings."></td>
+    <td><img src="docs/screenshots/generate-gleba.webp" width="440" alt="The map preview of Gleba with resource amounts, beside its stone, cliff, water and plant settings."><br><em>Gleba, with its own resource and terrain settings.</em></td>
+    <td><img src="docs/screenshots/generate-fulgora.webp" width="440" alt="The map preview of Fulgora: scrap patches on its islands labelled with amounts from 1.6K to 38.5M, beside the scrap and island settings."><br><em>Fulgora's scrap patches on its islands.</em></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/generate-aquilo.webp" width="440" alt="The map preview of Aquilo, with crude oil and lithium brine yields shown as percentages and other patches as amounts."></td>
-    <td><img src="docs/screenshots/generate-maraxsis.webp" width="440" alt="The map preview of Maraxsis, a planet from a mod, with its coral reef patches labelled with amounts."></td>
+    <td><img src="docs/screenshots/generate-aquilo.webp" width="440" alt="The map preview of Aquilo, with crude oil and lithium brine yields shown as percentages and other patches as amounts."><br><em>Aquilo: fluid wells show their yield as a percentage.</em></td>
+    <td><img src="docs/screenshots/generate-maraxsis.webp" width="440" alt="The map preview of Maraxsis, a planet from a mod, with its coral reef patches labelled with amounts."><br><em>Maraxsis, a planet added by a mod, drawn with the world's mods loaded.</em></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/generate-moshine.webp" width="440" alt="The map preview of Moshine, a planet from a mod, crowded with labelled patches, with its own default richness of 15000% shown in the settings."></td>
-    <td><img src="docs/screenshots/generate-vesta.webp" width="440" alt="The map preview of Vesta, a gas planet from a mod, where each spot of gas tiles is labelled with its size in tiles, such as 146 tiles."></td>
+    <td><img src="docs/screenshots/generate-moshine.webp" width="440" alt="The map preview of Moshine, a planet from a mod, crowded with labelled patches, with its own default richness of 15000% shown in the settings."><br><em>Moshine, another mod planet, with the mod's own default richness.</em></td>
+    <td><img src="docs/screenshots/generate-vesta.webp" width="440" alt="The map preview of Vesta, a gas planet from a mod, where each spot of gas tiles is labelled with its size in tiles, such as 146 tiles."><br><em>Vesta, a gas planet from a mod: gas spots are sized in tiles.</em></td>
   </tr>
 </table>
 
 <img src="docs/screenshots/starmap.webp" width="600" alt="The star map of a world with planet mods: the sun, the five Space Age planets, and Maraxsis, Moshine, Muluna, Cerys, Corrundum and Vesta, with the routes between them.">
 
+*The star map at the end of the preview: the Space Age planets plus the ones the world's mods add, with the routes between them.*
+
 <img src="docs/screenshots/large-view.webp" width="900" alt="The large view zoomed in on Cerys, a moon from a mod, with every resource patch labelled with its amount beside the moon's resource settings.">
+
+*The large view zooms and pans any picture, here a moon added by a mod.*
 
 ### Mods
 
@@ -121,13 +137,23 @@ what you see is the map you get.
 
 <img src="docs/screenshots/mods.webp" width="900" alt="A world's Mods page: eight mods from the mod portal installed, including Rate Calculator, Factory Planner, Bottleneck Lite and Todo List, all up to date.">
 
+*A world's Mods tab: what is installed, and whether each mod is up to date.*
+
 <img src="docs/screenshots/mod-search.webp" width="900" alt="Searching the mod portal for train from a world's Mods page, with Project Cybersyn picked into the plan beside the results.">
+
+*Searching the mod portal. Picks go into one plan that Foreman reviews, with every dependency, before it installs anything.*
 
 <img src="docs/screenshots/favorites.webp" width="900" alt="The Favorites page with two saved setups, Planet pack and Space Age QoL pack, the second opened to show its eight mods.">
 
+*Favorites save a world's mods and settings so that a new world can start from the same bundle.*
+
 <img src="docs/screenshots/favorites-apply.webp" width="900" alt="Generating a new world from a favorite: the review lists the eight mods Foreman will download from the portal and the snapshot it takes first.">
 
+*Generating a world from a favorite: the review lists the mods Foreman will download and the snapshot it takes first.*
+
 <img src="docs/screenshots/mod-settings.webp" width="900" alt="Editing a world's mod settings: Maraxsis's checkboxes and water opacity, then Muluna's settings, with the mods' coloured text and an inline planet icon.">
+
+*Mod settings, edited in Foreman, with the mods' coloured text and icons as the game shows them.*
 
 ### Factory map
 
@@ -155,6 +181,8 @@ stopped for a while, if you set it to. It needs Factorio 2.0.61 or newer.
 
 <img src="docs/screenshots/console.webp" width="900" alt="The Console page: the game's live log with a chat message from the server, the command box, and a history of the /version, /time, /evolution and /players commands with the game's replies.">
 
+*The Console tab: the game's live log, a command box, and a history of commands with the game's replies.*
+
 ### AI assistants through MCP
 
 Foreman has an MCP (Model Context Protocol) endpoint, so an AI assistant
@@ -167,6 +195,8 @@ does is in the audit log under its name. The same tokens also work on a
 REST API, so a script can call the same tools with `curl`.
 
 <img src="docs/screenshots/mcp.webp" width="900" alt="The API tokens settings page: MCP and REST API access switched on, and three tokens, Claude Code, Discord bot and Home Assistant, with their scopes and expiry dates.">
+
+*API tokens for AI assistants and scripts, each with its own scope and expiry date.*
 
 ### Sign-in, languages and the interface
 
@@ -184,16 +214,24 @@ REST API, so a script can call the same tools with `curl`.
 
 <img src="docs/screenshots/signin.webp" width="600" alt="The sign-in page in light mode, offering single sign-on above the username and password form.">
 
+*The sign-in page, with single sign-on and a local username and password both turned on.*
+
 <img src="docs/screenshots/i18n.webp" width="900" alt="The Server page in German.">
+
+*The Server page in German, one of eight languages.*
 
 <img src="docs/screenshots/audit-log.webp" width="900" alt="The audit log filtered to one world: a snapshot taken by the Claude Code API token, console commands, a chat message, a manual snapshot, a world switch and server starts and stops, each with who did it and when.">
 
+*The audit log: who did what and when, including actions an AI assistant took under its token's name.*
+
 <img src="docs/screenshots/worlds-light.webp" width="900" alt="The Worlds page in light mode.">
+
+*The Worlds page in light mode.*
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/phone.webp" width="260" alt="The Server page on a phone, in light mode."></td>
-    <td><img src="docs/screenshots/phone-dark.webp" width="260" alt="The Server page on a phone, in dark mode."></td>
+    <td><img src="docs/screenshots/phone.webp" width="260" alt="The Server page on a phone, in light mode."><br><em>The Server page on a phone, light mode.</em></td>
+    <td><img src="docs/screenshots/phone-dark.webp" width="260" alt="The Server page on a phone, in dark mode."><br><em>The Server page on a phone, dark mode.</em></td>
   </tr>
 </table>
 
