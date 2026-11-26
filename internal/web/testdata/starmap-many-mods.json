@@ -1,0 +1,933 @@
+{
+ "locations": [
+  {
+   "name": "space-location-unknown",
+   "localised_name": [
+    "space-location-name.space-location-unknown"
+   ],
+   "distance": 0,
+   "orientation": 0.5,
+   "magnitude": 1,
+   "label_orientation": 0.25,
+   "position": {
+    "x": 0,
+    "y": 0
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 0,
+    "orientation": 0
+   },
+   "hidden": true
+  },
+  {
+   "name": "star",
+   "localised_name": [
+    "space-location-name.star"
+   ],
+   "distance": 0,
+   "orientation": 0,
+   "magnitude": 8,
+   "label_orientation": 0.25,
+   "position": {
+    "x": 0,
+    "y": 0
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 0,
+    "orientation": 0
+   },
+   "hidden": true
+  },
+  {
+   "name": "nauvis",
+   "localised_name": [
+    "space-location-name.nauvis"
+   ],
+   "distance": 15.000000017083131,
+   "orientation": 0.2749999996740371,
+   "magnitude": 1,
+   "label_orientation": 0.25,
+   "position": {
+    "x": 14.8125,
+    "y": 2.34375
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 15,
+    "orientation": 0.275
+   },
+   "hidden": false
+  },
+  {
+   "name": "lignumis",
+   "localised_name": "Lignumis",
+   "distance": 1.9999999050163384,
+   "orientation": 0.15999999456107616,
+   "magnitude": 0.35,
+   "label_orientation": 0.25,
+   "position": {
+    "x": 16.5,
+    "y": 1.2734375
+   },
+   "parent": "nauvis",
+   "orbit": {
+    "distance": 2,
+    "orientation": 0.16
+   },
+   "hidden": false
+  },
+  {
+   "name": "muluna",
+   "localised_name": "Muluna",
+   "distance": 1.4999999838811338,
+   "orientation": 0.7499999997671694,
+   "magnitude": 0.6,
+   "label_orientation": 0.550000011920929,
+   "position": {
+    "x": 13.31640625,
+    "y": 2.34375
+   },
+   "parent": "nauvis",
+   "orbit": {
+    "distance": 1.5,
+    "orientation": 0.75
+   },
+   "hidden": false
+  },
+  {
+   "name": "vulcanus",
+   "localised_name": [
+    "space-location-name.vulcanus"
+   ],
+   "distance": 9.999999976129752,
+   "orientation": 0.10000000055879354,
+   "magnitude": 1.5,
+   "label_orientation": 0.25,
+   "position": {
+    "x": 5.875,
+    "y": -8.08984375
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 10,
+    "orientation": 0.1
+   },
+   "hidden": false
+  },
+  {
+   "name": "gleba",
+   "localised_name": [
+    "space-location-name.gleba"
+   ],
+   "distance": 19.99999998414601,
+   "orientation": 0.1749999993480742,
+   "magnitude": 1.1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 17.81640625,
+    "y": -9.078125
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 20,
+    "orientation": 0.175
+   },
+   "hidden": false
+  },
+  {
+   "name": "maraxsis-trench",
+   "localised_name": "Trench",
+   "distance": 15.6,
+   "orientation": 0.5,
+   "magnitude": 0.65,
+   "label_orientation": 0.30000001192092896,
+   "position": {
+    "x": 0,
+    "y": 15.59765625
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 20,
+    "orientation": 0.175
+   },
+   "hidden": true
+  },
+  {
+   "name": "fulgora",
+   "localised_name": [
+    "space-location-name.fulgora"
+   ],
+   "distance": 24.99999998018252,
+   "orientation": 0.32500000041909516,
+   "magnitude": 0.9,
+   "label_orientation": 0.3499999940395355,
+   "position": {
+    "x": 22.2734375,
+    "y": 11.34765625
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 25,
+    "orientation": 0.325
+   },
+   "hidden": false
+  },
+  {
+   "name": "cerys",
+   "localised_name": "Cerys",
+   "distance": 1.3900000048131542,
+   "orientation": 0.4500000043772161,
+   "magnitude": 0.5,
+   "label_orientation": 0.5099999904632568,
+   "position": {
+    "x": 22.69921875,
+    "y": 12.66796875
+   },
+   "parent": "fulgora",
+   "orbit": {
+    "distance": 1.39,
+    "orientation": 0.45
+   },
+   "hidden": false
+  },
+  {
+   "name": "maraxsis",
+   "localised_name": "Maraxsis",
+   "distance": 17.499999958227065,
+   "orientation": 0.6000000005587935,
+   "magnitude": 1,
+   "label_orientation": 0.25,
+   "position": {
+    "x": -10.28515625,
+    "y": 14.15625
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 17.5,
+    "orientation": 0.515
+   },
+   "hidden": false
+  },
+  {
+   "name": "aquilo",
+   "localised_name": [
+    "space-location-name.aquilo"
+   ],
+   "distance": 35.000000039860645,
+   "orientation": 0.22500000009313226,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 34.56640625,
+    "y": -5.47265625
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 35,
+    "orientation": 0.225
+   },
+   "hidden": false
+  },
+  {
+   "name": "igrys",
+   "localised_name": "Igrys",
+   "distance": 14,
+   "orientation": 0,
+   "magnitude": 1,
+   "label_orientation": 0.550000011920929,
+   "position": {
+    "x": 0,
+    "y": -14
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 14,
+    "orientation": 0
+   },
+   "hidden": false
+  },
+  {
+   "name": "nix",
+   "localised_name": "Nix",
+   "distance": 37.999999902118304,
+   "orientation": 0.8000000016763806,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 85.21484375,
+    "y": 76.421875
+   },
+   "parent": "redstar",
+   "orbit": {
+    "distance": 38,
+    "orientation": 0.8
+   },
+   "hidden": false
+  },
+  {
+   "name": "ringworld",
+   "localised_name": "Circa",
+   "distance": 10.999999943580146,
+   "orientation": 0.8400000017136335,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 112.06640625,
+    "y": 82.2734375
+   },
+   "parent": "redstar",
+   "orbit": {
+    "distance": 11,
+    "orientation": 0.8400000000000001
+   },
+   "hidden": false
+  },
+  {
+   "name": "shipyard",
+   "localised_name": "Neumann V",
+   "distance": 30.999999874124562,
+   "orientation": 0.8800000003539026,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 100.1328125,
+    "y": 65.56640625
+   },
+   "parent": "redstar",
+   "orbit": {
+    "distance": 31,
+    "orientation": 0.8800000000000001
+   },
+   "hidden": false
+  },
+  {
+   "name": "moshine",
+   "localised_name": "Moshine",
+   "distance": 6.000000029296435,
+   "orientation": 0.049999999813735485,
+   "magnitude": 0.9,
+   "label_orientation": 0.25,
+   "position": {
+    "x": 1.8515625,
+    "y": -5.703125
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 6,
+    "orientation": 0.05
+   },
+   "hidden": false
+  },
+  {
+   "name": "tenebris",
+   "localised_name": "Tenebris",
+   "distance": 35.000000170895866,
+   "orientation": 0.44999999995343387,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 10.8125,
+    "y": 33.28515625
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 35,
+    "orientation": 0.45
+   },
+   "hidden": false
+  },
+  {
+   "name": "paracelsin",
+   "localised_name": "Paracelsin",
+   "distance": 42.00000011229073,
+   "orientation": 0.31000000005587935,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 39.046875,
+    "y": 15.4609375
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 42,
+    "orientation": 0.31
+   },
+   "hidden": false
+  },
+  {
+   "name": "arig",
+   "localised_name": "Arig",
+   "distance": 12.49999997016219,
+   "orientation": 0.3999999992083758,
+   "magnitude": 1.6,
+   "label_orientation": 0.550000011920929,
+   "position": {
+    "x": 7.34375,
+    "y": 10.109375
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 12.5,
+    "orientation": 0.4
+   },
+   "hidden": false
+  },
+  {
+   "name": "hyarion",
+   "localised_name": "Hyarion",
+   "distance": 22.49999996516031,
+   "orientation": 0.47999999998137355,
+   "magnitude": 1.3,
+   "label_orientation": 0.550000011920929,
+   "position": {
+    "x": 2.81640625,
+    "y": 22.3203125
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 22.5,
+    "orientation": 0.48
+   },
+   "hidden": false
+  },
+  {
+   "name": "tellus",
+   "localised_name": "Tellus",
+   "distance": 17.499999972902458,
+   "orientation": 0.5199999997857958,
+   "magnitude": 0.8,
+   "label_orientation": 0.550000011920929,
+   "position": {
+    "x": -2.19140625,
+    "y": 17.359375
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 17.5,
+    "orientation": 0.42000000000000004
+   },
+   "hidden": false
+  },
+  {
+   "name": "frozeta",
+   "localised_name": "Frozeta",
+   "distance": 44.00000021484051,
+   "orientation": 0.19999999995343387,
+   "magnitude": 0.8,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 41.84375,
+    "y": -13.59375
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 44,
+    "orientation": 0.2
+   },
+   "hidden": false
+  },
+  {
+   "name": "calidus-senestella-gate-calidus",
+   "localised_name": "Senestella Stargate",
+   "distance": 20.000000066928756,
+   "orientation": 0.27999999979510903,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 19.64453125,
+    "y": 3.74609375
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 20,
+    "orientation": 0.28
+   },
+   "hidden": false
+  },
+  {
+   "name": "calidus-senestella-gate-senestella",
+   "localised_name": "Calidus Stargate",
+   "distance": 39.999999803250276,
+   "orientation": 0.8900000001303852,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 95.85546875,
+    "y": 57.34375
+   },
+   "parent": "redstar",
+   "orbit": {
+    "distance": 40,
+    "orientation": 0.89
+   },
+   "hidden": false
+  },
+  {
+   "name": "mirandus-a",
+   "localised_name": "Mirandus-A",
+   "distance": 24.99999960185903,
+   "orientation": 0.7500000020954758,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 96.35546875,
+    "y": 88.1640625
+   },
+   "parent": "redstar",
+   "orbit": {
+    "distance": 25,
+    "orientation": 0.75
+   },
+   "hidden": false
+  },
+  {
+   "name": "solar-system-edge",
+   "localised_name": [
+    "space-location-name.solar-system-edge"
+   ],
+   "distance": 50,
+   "orientation": 0.25,
+   "magnitude": 1,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 50,
+    "y": 0
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 50,
+    "orientation": 0.25
+   },
+   "hidden": false
+  },
+  {
+   "name": "vesta",
+   "localised_name": "Vesta",
+   "distance": 29.999999928389254,
+   "orientation": 0.3999999992083758,
+   "magnitude": 4,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 17.6328125,
+    "y": 24.26953125
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 30,
+    "orientation": 0.4
+   },
+   "hidden": false
+  },
+  {
+   "name": "shattered-planet",
+   "localised_name": [
+    "space-location-name.shattered-planet"
+   ],
+   "distance": 80,
+   "orientation": 0.25,
+   "magnitude": 1,
+   "label_orientation": 0.25,
+   "position": {
+    "x": 80,
+    "y": 0
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 80,
+    "orientation": 0.25
+   },
+   "hidden": false
+  },
+  {
+   "name": "secretas",
+   "localised_name": "Secretas",
+   "distance": 45.00000000991717,
+   "orientation": 0.17999999946914613,
+   "magnitude": 3,
+   "label_orientation": 0,
+   "position": {
+    "x": 40.71484375,
+    "y": -19.15625
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 45,
+    "orientation": 0.18
+   },
+   "hidden": false
+  },
+  {
+   "name": "corrundum",
+   "localised_name": "Corrundum",
+   "distance": 20,
+   "orientation": 0,
+   "magnitude": 1.4,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 0,
+    "y": -20
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 20,
+    "orientation": 0
+   },
+   "hidden": false
+  },
+  {
+   "name": "cubium",
+   "localised_name": "Cubium",
+   "distance": 14.999999964194627,
+   "orientation": 0.10000000055879354,
+   "magnitude": 1.2,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 8.81640625,
+    "y": -12.1328125
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 15,
+    "orientation": 0.1
+   },
+   "hidden": false
+  },
+  {
+   "name": "rubia",
+   "localised_name": "Rubia",
+   "distance": 15.000000073241084,
+   "orientation": 0.049999999813735485,
+   "magnitude": 1.4,
+   "label_orientation": 0.15000000596046448,
+   "position": {
+    "x": 4.6328125,
+    "y": -14.265625
+   },
+   "parent": "star",
+   "orbit": {
+    "distance": 15,
+    "orientation": 0.05
+   },
+   "hidden": false
+  }
+ ],
+ "routes": [
+  {
+   "from": "nauvis",
+   "to": "muluna",
+   "length": 1000
+  },
+  {
+   "from": "nauvis",
+   "to": "lignumis",
+   "length": 2000
+  },
+  {
+   "from": "nauvis",
+   "to": "calidus-senestella-gate-calidus",
+   "length": 7000
+  },
+  {
+   "from": "nauvis",
+   "to": "arig",
+   "length": 14000
+  },
+  {
+   "from": "nauvis",
+   "to": "fulgora",
+   "length": 15000
+  },
+  {
+   "from": "nauvis",
+   "to": "gleba",
+   "length": 16000
+  },
+  {
+   "from": "nauvis",
+   "to": "vulcanus",
+   "length": 19000
+  },
+  {
+   "from": "nauvis",
+   "to": "moshine",
+   "length": 22000
+  },
+  {
+   "from": "calidus-senestella-gate-calidus",
+   "to": "fulgora",
+   "length": 11000
+  },
+  {
+   "from": "calidus-senestella-gate-calidus",
+   "to": "gleba",
+   "length": 17000
+  },
+  {
+   "from": "calidus-senestella-gate-calidus",
+   "to": "aquilo",
+   "length": 23000
+  },
+  {
+   "from": "calidus-senestella-gate-senestella",
+   "to": "calidus-senestella-gate-calidus",
+   "length": 500
+  },
+  {
+   "from": "arig",
+   "to": "fulgora",
+   "length": 20000
+  },
+  {
+   "from": "arig",
+   "to": "moshine",
+   "length": 27000
+  },
+  {
+   "from": "arig",
+   "to": "vesta",
+   "length": 22000
+  },
+  {
+   "from": "arig",
+   "to": "tellus",
+   "length": 16000
+  },
+  {
+   "from": "arig",
+   "to": "hyarion",
+   "length": 17000
+  },
+  {
+   "from": "arig",
+   "to": "maraxsis",
+   "length": 25000
+  },
+  {
+   "from": "fulgora",
+   "to": "cerys",
+   "length": 800
+  },
+  {
+   "from": "fulgora",
+   "to": "aquilo",
+   "length": 27000
+  },
+  {
+   "from": "fulgora",
+   "to": "vesta",
+   "length": 18000
+  },
+  {
+   "from": "fulgora",
+   "to": "paracelsin",
+   "length": 22000
+  },
+  {
+   "from": "gleba",
+   "to": "vulcanus",
+   "length": 16000
+  },
+  {
+   "from": "gleba",
+   "to": "cubium",
+   "length": 13000
+  },
+  {
+   "from": "gleba",
+   "to": "aquilo",
+   "length": 22000
+  },
+  {
+   "from": "gleba",
+   "to": "secretas",
+   "length": 32000
+  },
+  {
+   "from": "vulcanus",
+   "to": "moshine",
+   "length": 6000
+  },
+  {
+   "from": "vulcanus",
+   "to": "cubium",
+   "length": 7000
+  },
+  {
+   "from": "vulcanus",
+   "to": "rubia",
+   "length": 8000
+  },
+  {
+   "from": "vulcanus",
+   "to": "igrys",
+   "length": 11000
+  },
+  {
+   "from": "moshine",
+   "to": "igrys",
+   "length": 11000
+  },
+  {
+   "from": "moshine",
+   "to": "maraxsis",
+   "length": 45000
+  },
+  {
+   "from": "cubium",
+   "to": "rubia",
+   "length": 6000
+  },
+  {
+   "from": "cubium",
+   "to": "corrundum",
+   "length": 16000
+  },
+  {
+   "from": "cubium",
+   "to": "secretas",
+   "length": 43000
+  },
+  {
+   "from": "rubia",
+   "to": "igrys",
+   "length": 6000
+  },
+  {
+   "from": "rubia",
+   "to": "corrundum",
+   "length": 10000
+  },
+  {
+   "from": "aquilo",
+   "to": "paracelsin",
+   "length": 28000
+  },
+  {
+   "from": "aquilo",
+   "to": "frozeta",
+   "length": 14000
+  },
+  {
+   "from": "aquilo",
+   "to": "secretas",
+   "length": 19000
+  },
+  {
+   "from": "aquilo",
+   "to": "solar-system-edge",
+   "length": 99000
+  },
+  {
+   "from": "igrys",
+   "to": "corrundum",
+   "length": 8000
+  },
+  {
+   "from": "igrys",
+   "to": "maraxsis",
+   "length": 50000
+  },
+  {
+   "from": "vesta",
+   "to": "hyarion",
+   "length": 19000
+  },
+  {
+   "from": "vesta",
+   "to": "paracelsin",
+   "length": 30000
+  },
+  {
+   "from": "vesta",
+   "to": "tenebris",
+   "length": 15000
+  },
+  {
+   "from": "tellus",
+   "to": "hyarion",
+   "length": 9000
+  },
+  {
+   "from": "tellus",
+   "to": "maraxsis",
+   "length": 11000
+  },
+  {
+   "from": "hyarion",
+   "to": "maraxsis",
+   "length": 20000
+  },
+  {
+   "from": "hyarion",
+   "to": "tenebris",
+   "length": 18000
+  },
+  {
+   "from": "corrundum",
+   "to": "secretas",
+   "length": 56000
+  },
+  {
+   "from": "paracelsin",
+   "to": "tenebris",
+   "length": 44000
+  },
+  {
+   "from": "paracelsin",
+   "to": "solar-system-edge",
+   "length": 115000
+  },
+  {
+   "from": "frozeta",
+   "to": "secretas",
+   "length": 8000
+  },
+  {
+   "from": "frozeta",
+   "to": "solar-system-edge",
+   "length": 96000
+  },
+  {
+   "from": "secretas",
+   "to": "solar-system-edge",
+   "length": 129000
+  },
+  {
+   "from": "solar-system-edge",
+   "to": "shattered-planet",
+   "length": 4000000
+  },
+  {
+   "from": "calidus-senestella-gate-senestella",
+   "to": "shipyard",
+   "length": 15000
+  },
+  {
+   "from": "nix",
+   "to": "shipyard",
+   "length": 24000
+  },
+  {
+   "from": "nix",
+   "to": "mirandus-a",
+   "length": 21000
+  },
+  {
+   "from": "shipyard",
+   "to": "mirandus-a",
+   "length": 29000
+  },
+  {
+   "from": "shipyard",
+   "to": "ringworld",
+   "length": 26000
+  },
+  {
+   "from": "mirandus-a",
+   "to": "ringworld",
+   "length": 21000
+  }
+ ]
+}

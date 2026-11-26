@@ -54,6 +54,32 @@ startPreviewWithForm(() => {
   const dialog = document.getElementById("large-view");
   const status = document.getElementById("preview-status");
 
+  // A star map planet's picture is shown only once it has loaded, so a slow or
+  // failed one leaves the plain circle, never the browser's broken picture; a
+  // failure is asked again 1, 2 and 4 s later, then left (DESIGN 8.23). Each
+  // copy loads on its own: the large view's clone, a fresh preview.
+  const pictureTries = new WeakSet();
+  function loadPictures(root) {
+    root.querySelectorAll(".starmap image[data-href]:not([data-loaded])").forEach((img) => {
+      if (pictureTries.has(img)) return;
+      pictureTries.add(img);
+      const url = img.dataset.href;
+      let failures = 0;
+      img.addEventListener("load", () => img.setAttribute("data-loaded", ""));
+      img.addEventListener("error", () => {
+        failures += 1;
+        if (failures > 3) return;
+        setTimeout(() => {
+          img.removeAttribute("href");
+          img.setAttribute("href", url);
+        }, 1000 * 2 ** (failures - 1));
+      });
+      img.setAttribute("href", url);
+    });
+  }
+  loadPictures(document);
+  document.body.addEventListener("htmx:afterSettle", () => loadPictures(document));
+
   // Only the newest words are said: a later announcement or status text
   // cancels one still waiting, so older news never overwrites newer.
   let saying = 0;
@@ -416,6 +442,7 @@ startPreviewWithForm(() => {
     endPrep(strings["js.preview.prepare_canceled"]);
     swap(fresh);
     keepPageAmounts();
+    offerStarMap();
     const after = terrBox();
     if (ticked !== null && after && after.checked !== ticked) {
       after.checked = ticked;
@@ -657,6 +684,7 @@ startPreviewWithForm(() => {
     const node = document.importNode(fresh, true);
     // In beside the old one first, so Preview size moves between two live places and keeps its focus.
     slot.after(node);
+    loadPictures(node);
     placeSize(node);
     slot.remove();
     if (key) {
@@ -841,6 +869,25 @@ startPreviewWithForm(() => {
     if (line) line.hidden = !on;
   }
 
+  // In the large view a count's note or error lies over the picture's top with a close button,
+  // so the header keeps one line and nothing moves (DESIGN 8.8). Returns where the message is.
+  function toastMessage(at, slot) {
+    const toast = el("large-amounts-toast");
+    const message = slot.querySelector(".message");
+    if (at !== places.large || !toast || !message) return slot;
+    el("large-amounts-toast-body").replaceChildren(message);
+    toast.hidden = false;
+    return toast;
+  }
+
+  function hideToast() {
+    const toast = el("large-amounts-toast");
+    if (!toast) return;
+    if (toast.contains(document.activeElement)) el(places.large.box).focus();
+    toast.hidden = true;
+    el("large-amounts-toast-body").replaceChildren();
+  }
+
   // Clears one place; the other keeps its own count, labels and list.
   function clearAmounts(at) {
     const slot = el(at.slot);
@@ -848,6 +895,7 @@ startPreviewWithForm(() => {
     if (slot && slot.contains(document.activeElement)) el(at.box).focus();
     if (slot) slot.replaceChildren();
     if (at === places.large) {
+      hideToast();
       const text = el("large-amounts-text");
       if (text && text.contains(document.activeElement)) el(at.box).focus();
       if (text) text.replaceChildren();
@@ -896,16 +944,10 @@ startPreviewWithForm(() => {
     queueMicrotask(() => { alsoSaid = ""; });
     const body = new URLSearchParams(new FormData(formEl()));
     body.set("planet", planet);
-    let html;
-    try {
-      html = await inTurn(amountsPath, body, ctrl.signal);
-    } catch {
-      if (n !== at.sent || ctrl.signal.aborted) return;
-      at.pending = null;
-      counting(at, false);
-      // It counts no longer, so its start sentence, shown or on its way, goes;
-      // said late, it would grow the status line and move the stage (SPEC 5.6).
-      // News said with it stays, and is said now, before the failure.
+    // It counts no longer and its message says why, so its start sentence, shown
+    // or on its way, goes; said late, it would grow the status line and move the
+    // stage (SPEC 5.6). News said with it stays, and is said now, before the message.
+    const unsayStart = () => {
       const said = el(at.status);
       const without = (text) => text.replace(startSaid, "").replace(/\s+/g, " ").trim();
       if (said && at.shown() && waitingSaid.includes(startSaid)) {
@@ -914,9 +956,18 @@ startPreviewWithForm(() => {
         waitingSaid = "";
         owed = "";
       } else if (said && said.textContent.includes(startSaid)) said.textContent = without(said.textContent);
+    };
+    let html;
+    try {
+      html = await inTurn(amountsPath, body, ctrl.signal);
+    } catch {
+      if (n !== at.sent || ctrl.signal.aborted) return;
+      at.pending = null;
+      counting(at, false);
+      unsayStart();
       const failed = el("resource-failed");
       if (failed) slot.replaceChildren(failed.content.cloneNode(true));
-      sayAmounts(at, slot);
+      sayAmounts(at, toastMessage(at, slot));
       return;
     }
     if (n !== at.sent) return;
@@ -939,7 +990,9 @@ startPreviewWithForm(() => {
     const overlay = reply.querySelector(".resources");
     const map = at.map(planet);
     if (overlay && map) writeLabels(at, map, map.insertBefore(document.importNode(overlay, true), map.querySelector(".pin")));
-    sayAmounts(at, slot);
+    // An error or a count of no patches is said by its message, not "ready".
+    if (slot.querySelector(".message")) unsayStart();
+    sayAmounts(at, toastMessage(at, slot));
   }
 
   // A download that asks for amounts or territories never comes out plain or
@@ -1126,7 +1179,7 @@ startPreviewWithForm(() => {
   }
 
   // Asks the server for one result, in turn; a reply with its error message
-  // gives that sentence, a failed request the block's own sentence for it.
+  // (not a note, such as a count of no patches) gives that sentence, a failed request the block's own sentence for it.
   // With notKept set, a result the server did not keep is a failure too.
   async function prepAsk(to, planet, reply, found, failed, notKept, signal) {
     const body = new URLSearchParams(new FormData(formEl()));
@@ -1134,7 +1187,7 @@ startPreviewWithForm(() => {
     try {
       const html = await inTurn(to, body, signal);
       const doc = new DOMParser().parseFromString(html, "text/html").getElementById(reply);
-      const message = doc && doc.querySelector(".message p");
+      const message = doc && doc.querySelector(".message--error p");
       if (message) return sentence(message);
       const result = doc && doc.querySelector(found);
       if (!result) return failed;
@@ -1253,6 +1306,13 @@ startPreviewWithForm(() => {
   }
   const firstPlanet = () => planets()[0] || "";
 
+  // The large view's steps: the star map first when the page has one (SPEC 5.6), then the planets.
+  const STAR = ":starmap";
+  // One planet's view keeps the star map in a template, out of the page.
+  const starLink = () => document.querySelector("#preview a.picture[data-starmap]") || (el("starmap-step") && el("starmap-step").content.querySelector("a.picture"));
+  const steps = () => (starLink() ? [STAR, ...planets()] : planets());
+  const stepName = (at) => (at === STAR ? words(starLink().closest("figure").querySelector("figcaption")) : nameOf(at));
+
   function nameOf(planet) {
     const pick = el("preview-planets");
     const option = pick && [...pick.options].find((o) => o.value === planet);
@@ -1308,7 +1368,8 @@ startPreviewWithForm(() => {
         moved.push({ node, mark });
       });
     }
-    panel.hidden = moved.length === 0;
+    // Shown for a planet without settings too, so the map and its arrows keep their place.
+    panel.hidden = false;
     panelPlanet = planet;
   }
 
@@ -1327,48 +1388,113 @@ startPreviewWithForm(() => {
 
   // The arrows are named after the planets they lead to.
   function nameArrows() {
-    const list = planets();
+    const list = steps();
     const many = list.length > 1;
     el("large-prev").hidden = !many;
     el("large-next").hidden = !many;
     if (!many) return;
-    const at = Math.max(0, list.indexOf(viewing || list[0]));
-    const near = (by) => nameOf(list[(at + by + list.length) % list.length]);
+    const at = Math.max(0, list.indexOf(starShown ? STAR : viewing || firstPlanet()));
+    const near = (by) => stepName(list[(at + by + list.length) % list.length]);
     el("large-prev-name").textContent = strings["js.preview.previous"].replace("{planet}", near(-1));
     el("large-next-name").textContent = strings["js.preview.next"].replace("{planet}", near(1));
   }
 
-  // The star map (SPEC 5.6) opens in the same view, zoomed and panned the
-  // same way, but alone: it has no planet to step to, count or set, so the
-  // style sheet hides those controls while the dialog is marked. Its picture
-  // is a copy of the page's, which has no ids to repeat.
+  // The star map (SPEC 5.6) is the view's first step, zoomed and panned the
+  // same way; it has no planet to count or set, so the style sheet hides
+  // those controls while the dialog is marked. Its picture is a copy of the
+  // page's, which has no ids to repeat.
   function showStarMap(link) {
     if (prep && prep.inView) endPrep(strings["js.preview.prepare_canceled"]);
     clearAmounts(places.large);
     largeOverlay(null);
     putBack();
+    pictured = "";
+    // The settings column keeps its place, unseen, so the map and its controls do not move (DESIGN 8.8).
+    if (el("large-settings")) el("large-settings").hidden = !settingsMode();
     starShown = true;
     dialog.setAttribute("data-starmap", "");
-    const keys = el("large-keys");
-    keys.dataset.planets = keys.textContent;
-    keys.textContent = keys.dataset.starmap;
     tiles = 0;
     const map = largeMap();
     map.querySelectorAll(".starmap").forEach((s) => s.remove());
-    map.prepend(link.querySelector(".starmap").cloneNode(true));
+    const svg = link.querySelector(".starmap").cloneNode(true);
+    // Its planets are controls here, which a picture's role would hide (SPEC 17.20).
+    svg.setAttribute("role", "group");
+    const list = planets();
+    svg.querySelectorAll("g[data-location]").forEach((g) => {
+      const planet = g.dataset.location;
+      if (!list.includes(planet)) return;
+      g.dataset.step = planet;
+      g.setAttribute("role", "button");
+      g.setAttribute("tabindex", "0");
+      g.setAttribute("aria-label", nameOf(planet));
+    });
+    // Each label sits in a layer above every body, apart from its group; a click on it steps
+    // the same way, while the group stays the one control a keyboard reaches (DESIGN 8.23).
+    svg.querySelectorAll("text[data-label]").forEach((t) => {
+      if (list.includes(t.dataset.label)) t.dataset.step = t.dataset.label;
+    });
+    map.prepend(svg);
+    loadPictures(svg);
     el("large-frame").removeAttribute("data-missing");
     el("large-title").textContent = words(link.closest("figure").querySelector("figcaption"));
     const download = link.closest("li").querySelector("a.download");
     el("large-download").setAttribute("href", download.getAttribute("href"));
     el("large-download-name").textContent = words(download);
     el("large-download").hidden = false;
+    nameArrows();
+  }
+  // The header's "Star map" goes there in one click from a planet; it shows
+  // only while the preview has a star map (DESIGN 8.8).
+  function offerStarMap() {
+    const button = el("large-starmap");
+    if (button) button.hidden = starShown || !starLink();
+  }
+  // Each picture's zoom and the spot at the frame's middle, kept in memory while
+  // the page lives, so going back to a picture finds it as it was left; one not
+  // seen yet opens fitted (DESIGN 8.8). A picture of another size (a new
+  // preview size) finds every kept view dropped.
+  const starKey = "#starmap";
+  const views = new Map();
+  let pictured = ""; // the planet whose picture the view shows
+  const shownKey = () => (starShown ? starKey : viewing || firstPlanet());
+  function middle() {
+    const f = frame();
+    const box = f.getBoundingClientRect();
+    return { x: box.left + f.clientLeft + f.clientWidth / 2, y: box.top + f.clientTop + f.clientHeight / 2 };
+  }
+  function keepView() {
+    if (!dialog.open || frame().hasAttribute("data-missing")) return;
+    const r = frame().querySelector(".map").getBoundingClientRect();
+    const m = middle();
+    views.set(shownKey(), { zoom: viewer.zoom(), tiles, u: (m.x - r.left) / (r.width || 1), v: (m.y - r.top) / (r.height || 1) });
+  }
+  function restoreView(key) {
+    let kept = views.get(key);
+    if (kept && kept.tiles !== tiles) {
+      views.clear();
+      kept = null;
+    }
+    zoomTo(kept ? kept.zoom : 1);
+    if (!kept) return;
+    const r = frame().querySelector(".map").getBoundingClientRect();
+    const m = middle();
+    frame().scrollLeft += r.left + kept.u * r.width - m.x;
+    frame().scrollTop += r.top + kept.v * r.height - m.y;
+    keepView();
+  }
+
+  // The dialog's way to the star map, open or opening; the page's picture
+  // opens it and the header's button moves to it, both as one.
+  function toStarMap(link) {
+    showStarMap(link);
+    offerStarMap();
+    largeStatus("");
+    restoreView(starKey);
   }
   function endStarMap() {
     if (!starShown) return;
     starShown = false;
     dialog.removeAttribute("data-starmap");
-    const keys = el("large-keys");
-    keys.textContent = keys.dataset.planets;
     largeMap().querySelectorAll(".starmap").forEach((s) => s.remove());
   }
 
@@ -1379,8 +1505,11 @@ startPreviewWithForm(() => {
     const link = pictureLink(planet);
     // The view's download being prepared is of the planet shown; another planet ends it.
     if (prep && prep.inView && prep.planet !== planet) endPrep(strings["js.preview.prepare_canceled"]);
+    // A redraw of the picture shown keeps its view; another picture has its own.
+    const same = pictured === planet;
     view(planet);
     nameArrows();
+    offerStarMap();
     fillPanel(planet);
     syncTerritoryBox(planet);
     if (!link) {
@@ -1391,6 +1520,7 @@ startPreviewWithForm(() => {
       el("large-download").hidden = true;
       largeOverlay(null);
       largeStatus(strings["js.preview.drawing"].replace("{planet}", name));
+      pictured = "";
       draw(true);
       return false;
     }
@@ -1408,8 +1538,10 @@ startPreviewWithForm(() => {
     largeDownload(planet);
     largeOverlay(link);
     el("large-download").hidden = false;
+    pictured = planet;
     // A bigger picture may allow more zoom, or a smaller one less.
-    if (dialog.open) zoomTo(viewer.zoom());
+    if (dialog.open && same) zoomTo(viewer.zoom());
+    else if (dialog.open) restoreView(planet);
     amounts();
     return true;
   }
@@ -1428,10 +1560,22 @@ startPreviewWithForm(() => {
   }
 
   function step(by) {
-    const list = planets();
-    if (list.length < 2 || starShown) return;
-    const at = Math.max(0, list.indexOf(viewing || list[0]));
-    if (show(list[(at + by + list.length) % list.length])) announce(el("large-title").textContent);
+    const list = steps();
+    if (list.length < 2) return;
+    const at = Math.max(0, list.indexOf(starShown ? STAR : viewing || firstPlanet()));
+    goTo(list[(at + by + list.length) % list.length]);
+  }
+
+  function goTo(to) {
+    if (to === STAR) {
+      toStarMap(starLink());
+      announce(el("large-title").textContent);
+      return;
+    }
+    // Each picture keeps its own zoom; show restores the planet's.
+    endStarMap();
+    if (!show(to)) return;
+    announce(el("large-title").textContent);
   }
 
   if (dialog) {
@@ -1443,8 +1587,12 @@ startPreviewWithForm(() => {
       say: largeStatus,
       // The labels are placed for the new size now, not a frame later, so no
       // label is ever seen where it meets another at the size shown.
-      zoomed: placeAll,
+      zoomed: () => {
+        placeAll();
+        keepView();
+      },
     });
+    frame().addEventListener("scroll", keepView, { passive: true });
     document.addEventListener("click", (e) => {
       const link = e.target.closest("#preview a.picture");
       // A click with a modifier still opens the picture as the browser would.
@@ -1452,10 +1600,8 @@ startPreviewWithForm(() => {
       e.preventDefault();
       redrawn = false;
       if (link.hasAttribute("data-starmap")) {
-        showStarMap(link);
-        largeStatus("");
         dialog.showModal();
-        zoomTo(1);
+        toStarMap(link);
         return;
       }
       show(link.dataset.planet);
@@ -1463,12 +1609,50 @@ startPreviewWithForm(() => {
       dialog.showModal();
       // Before the zoom is set, as the settings narrow the picture's frame.
       fillPanel(link.dataset.planet);
-      zoomTo(1);
+      restoreView(link.dataset.planet);
       amounts();
     });
     el("large-prev").addEventListener("click", () => step(-1));
     el("large-next").addEventListener("click", () => step(1));
     el("large-close").addEventListener("click", () => dialog.close());
+    // A planet on the star map steps to it (SPEC 5.6). A pan is no click: the
+    // same 6 px the viewer allows a tap. The frame captures the pointer, and a
+    // tap on a zoomed map centres its spot before the click comes, so the
+    // planet is the one under the pointer when it went down.
+    let down = null;
+    const stepAt = (at) => {
+      const g = at && at.closest && at.closest(".starmap [data-step]");
+      return g && frame().contains(g) ? g.dataset.step : null;
+    };
+    frame().addEventListener("pointerdown", (e) => {
+      down = { x: e.clientX, y: e.clientY, planet: stepAt(document.elementFromPoint(e.clientX, e.clientY)) };
+    }, true);
+    const planetAt = (e) => {
+      if (!starShown) return null;
+      return e.detail && down ? down.planet : stepAt(e.target);
+    };
+    frame().addEventListener("click", (e) => {
+      if (e.detail && down && Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 6) return;
+      const planet = planetAt(e);
+      if (!planet) return;
+      goTo(planet);
+      frame().focus();
+    });
+    frame().addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const planet = planetAt(e);
+      if (!planet) return;
+      e.preventDefault();
+      goTo(planet);
+      frame().focus();
+    });
+    // The header's button is the star map's step, as Previous from the first
+    // planet; it goes as the star map comes, so focus goes to the map.
+    el("large-starmap").addEventListener("click", () => {
+      if (!starLink()) return;
+      goTo(STAR);
+      frame().focus();
+    });
     // A settings field the view hides as it narrows gives the focus to the map,
     // whether the browser has already dropped it or not.
     new ResizeObserver(() => {
@@ -1515,8 +1699,7 @@ startPreviewWithForm(() => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       // The settings keep their keys; the amounts list at their foot is not a setting, so the map keeps its keys there.
       if (e.target.closest && e.target.closest("#large-settings") && !e.target.closest("#large-amounts-text")) return;
-      // The star map has no planets to step to, so the arrows only pan it.
-      const panning = e.target === frame() && (viewer.zoom() > 1 || starShown);
+      const panning = e.target === frame() && viewer.zoom() > 1;
       // Stepping would end a download being prepared here, so the arrows wait (SPEC 17.1).
       if (arrows[e.key] && !panning && prep && prep.inView) {
         e.preventDefault();
@@ -1537,6 +1720,8 @@ startPreviewWithForm(() => {
       else clearAmounts(places.large);
       largeDownload(viewing || firstPlanet());
     });
+    // Closed, the message stays gone for this picture's count; the next count brings its own.
+    el("large-amounts-toast-close").addEventListener("click", hideToast);
     dialog.addEventListener("close", () => {
       // The view's amounts go with it; the page's stay as they are.
       clearAmounts(places.large);
@@ -1544,8 +1729,10 @@ startPreviewWithForm(() => {
       putBack();
       if (starShown) {
         endStarMap();
-        const star = document.querySelector("#preview a.picture[data-starmap]");
-        if (star) star.focus();
+        // From a template the star map has no picture on the page, so focus goes to the planet's.
+        const star = starLink();
+        const seen = star && star.isConnected ? star : document.querySelector("#preview a.picture[data-planet]");
+        if (seen) seen.focus();
         amounts(places.page);
         if (places.page.unsaid) sayAmounts(places.page, el(places.page.slot));
         return;

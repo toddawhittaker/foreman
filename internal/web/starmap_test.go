@@ -177,7 +177,7 @@ func TestStarMapRoutes(t *testing.T) {
 	}
 	at := func(n string) mapgen.Location { return byName[n] }
 
-	arc := routePoints(byName, at("a"), at("b"))
+	arc := routePoints(byName, nil, at("a"), at("b"))
 	if len(arc) < 4 {
 		t.Fatalf("a to b is %d points, want an arc", len(arc))
 	}
@@ -194,14 +194,14 @@ func TestStarMapRoutes(t *testing.T) {
 		t.Errorf("the arc runs %v to %v, not end to end", first, last)
 	}
 
-	if got := routePoints(byName, at("p"), at("m1")); len(got) != 2 {
+	if got := routePoints(byName, nil, at("p"), at("m1")); len(got) != 2 {
 		t.Errorf("planet to its moon is %d points, want straight", len(got))
 	}
-	if got := routePoints(byName, at("p"), at("far")); len(got) != 2 {
+	if got := routePoints(byName, nil, at("p"), at("far")); len(got) != 2 {
 		t.Errorf("places of two stars are %d points, want straight", len(got))
 	}
 	// Two moons of one planet arc about the planet.
-	moons := routePoints(byName, at("m1"), at("m2"))
+	moons := routePoints(byName, nil, at("m1"), at("m2"))
 	if len(moons) < 3 {
 		t.Fatalf("moon to moon is %d points, want an arc about the planet", len(moons))
 	}
@@ -378,7 +378,7 @@ func TestStarMapLabelSide(t *testing.T) {
 		{0.5, "middle", "text-before-edge"},
 	}
 	for _, tc := range cases {
-		l := placeLocation(mapgen.Location{Magnitude: 1}, tc.turns, 1, starMapFontMin, MapGenName{}, "")
+		l := moveLabel(placeLocation(mapgen.Location{Magnitude: 1}, 1, starMapFontMin, MapGenName{}, ""), tc.turns, 1)
 		if l.Anchor != tc.anchor || l.Baseline != tc.baseline {
 			t.Errorf("%v turns: %s %s, want %s %s", tc.turns, l.Anchor, l.Baseline, tc.anchor, tc.baseline)
 		}
@@ -432,8 +432,8 @@ func TestPreviewStarMap(t *testing.T) {
 	}
 	body := hn.postLong(PathGeneratePreview, worldPreviewForm(id), c).Body.String()
 	for _, want := range []string{`<svg class="starmap"`, `role="img"`, `aria-label="Star map: the planets around the sun and the routes between them."`,
-		"<title>Nauvis</title>", `<title translate="no">muluna</title>`, `href="/worlds/` + id + `/icons/starmap/muluna.png"`,
-		"Download the star map (SVG)"} {
+		"<title>Nauvis</title>", `<title translate="no">muluna</title>`, `<image data-href="/worlds/` + id + `/icons/starmap/muluna.png"`,
+		"Download the star map (SVG)", `<g class="starmap__location" data-location="nauvis">`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the preview lacks %s", want)
 		}
@@ -454,7 +454,8 @@ func TestPreviewStarMap(t *testing.T) {
 		t.Fatalf("download: status %d, headers %v", rec.Code, rec.Header())
 	}
 	file := rec.Body.Bytes()
-	if !bytes.Contains(file, []byte(`xmlns="http://www.w3.org/2000/svg"`)) || bytes.Contains(file, []byte("<image")) {
+	// The page's picture names each place for the large view's planet steps; the file needs no such mark.
+	if !bytes.Contains(file, []byte(`xmlns="http://www.w3.org/2000/svg"`)) || bytes.Contains(file, []byte("<image")) || bytes.Contains(file, []byte("data-location")) {
 		t.Errorf("the file lacks its namespace or holds images:\n%s", file)
 	}
 	if err := xml.Unmarshal(file, new(struct{})); err != nil {
@@ -492,7 +493,9 @@ func TestPreviewStarMap(t *testing.T) {
 
 // SPEC 5.6: One planet shows that planet alone, with no star map; a world
 // with no star map shows none, and its zip holds only the planets.
-func TestPreviewStarMapOnlyWithAllPlanets(t *testing.T) {
+// One planet's view carries the star map only in a template, for the large
+// view's first step, never as a picture on the page (SPEC 5.6).
+func TestPreviewStarMapSeenOnlyWithAllPlanets(t *testing.T) {
 	hn := newGenerateHarness(t, &fakePreviewer{})
 	c := hn.signIn()
 	withWorldCatalogue(t, mapgen.Builtin("2.1", true), nil)
@@ -502,8 +505,9 @@ func TestPreviewStarMapOnlyWithAllPlanets(t *testing.T) {
 		t.Fatal(err)
 	}
 	one := hn.postLong(PathGeneratePreview, worldPreviewForm(id, "auto", "1", "preview_view", "one"), c).Body.String()
-	if strings.Contains(one, `class="starmap"`) {
-		t.Error("One planet shows the star map")
+	tmpl := strings.Index(one, `<template id="starmap-step">`)
+	if tmpl < 0 || strings.Index(one, `class="starmap"`) < tmpl {
+		t.Error("One planet shows the star map, or has none for the large view")
 	}
 
 	withWorldStarMap(t, mapgen.StarMap{})
@@ -651,7 +655,7 @@ func TestStarMapRoutesAreSmooth(t *testing.T) {
 		byName[l.Name] = l
 	}
 	for _, r := range m.Routes {
-		ps := routePoints(byName, byName[r.From], byName[r.To])
+		ps := routePoints(byName, nil, byName[r.From], byName[r.To])
 		if r.To == "muluna" {
 			if len(ps) != 2 {
 				t.Errorf("%s to %s is %d points, want straight", r.From, r.To, len(ps))
@@ -682,53 +686,191 @@ func labelOf(t *testing.T, v StarMapView, n string) StarMapLocation {
 	return StarMapLocation{}
 }
 
-// SPEC 5.6: a label sits on the game's side unless it would cover a route or
-// another label there and the opposite side is clear; when both sides are
-// covered it keeps the game's side.
+// scoreOf scores one label in a laid-out view: 10 for each other label and
+// each of circles (other than its own) it overlaps, 1 for each route piece it
+// crosses.
+func scoreOf(v StarMapView, i int, circles []StarMapLocation) int {
+	var pieces [][2]point
+	for _, d := range v.Routes {
+		ps := pathPointsOf(d)
+		for j := 1; j < len(ps); j++ {
+			pieces = append(pieces, [2]point{ps[j-1], ps[j]})
+		}
+	}
+	var others []rect
+	for j, o := range v.Locations {
+		if j != i {
+			others = append(others, labelBox(o))
+		}
+	}
+	box := labelBox(v.Locations[i])
+	n := 10 * labelOverlaps(box, others, circles, i)
+	for _, p := range pieces {
+		if segmentInRect(p[0], p[1], box) {
+			n++
+		}
+	}
+	return n
+}
+
+// pathPointsOf is pathPoints without a test, for a path the layout made.
+func pathPointsOf(d string) []point {
+	f := strings.Fields(strings.NewReplacer("M", "", "L", "").Replace(d))
+	var out []point
+	for i := 0; i+1 < len(f); i += 2 {
+		x, _ := strconv.ParseFloat(f[i], 64)
+		y, _ := strconv.ParseFloat(f[i+1], 64)
+		out = append(out, point{x, y})
+	}
+	return out
+}
+
+// boxToCircle is how far a label's box is from a circle's edge, 0 when they
+// overlap.
+func boxToCircle(box rect, c StarMapLocation) float64 {
+	nx := min(max(c.X, box.min.X), box.max.X)
+	ny := min(max(c.Y, box.min.Y), box.max.Y)
+	return max(0, math.Hypot(nx-c.X, ny-c.Y)-c.R)
+}
+
+// SPEC 5.6, DESIGN 8.23: a label takes a spot about its circle that covers
+// no label and no circle, the game's side first.
 func TestStarMapLabelAvoidsRoutesAndLabels(t *testing.T) {
 	// a's label is on its right, where its route out to b leaves: it moves
-	// left. b's is clear and stays. c's label is on its right, clear: it
-	// stays. d sits just below c with its label on the right, over c's: it
-	// moves left.
+	// round to a spot the route does not cross. b's is clear on the game's
+	// side and stays. d sits just below c, their circles overlapping: c's
+	// label leaves the side where it would sit against d, and d's moves off
+	// c's label.
 	v, _ := layoutStarMap(starMapOf(t, `{"locations":[
 	 {"name":"a","distance":10,"orientation":0.25,"label_orientation":0.25},
 	 {"name":"b","distance":20,"orientation":0.25,"label_orientation":0.25},
 	 {"name":"c","distance":10,"orientation":0.5,"label_orientation":0.25},
 	 {"name":"d","distance":10.3,"orientation":0.5,"label_orientation":0.25}
 	],"routes":[{"from":"a","to":"b","length":1}]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
-	for n, want := range map[string]string{"a": "end", "b": "start", "c": "start", "d": "end"} {
-		if got := labelOf(t, v, n).Anchor; got != want {
-			t.Errorf("%s's label is anchored %s, want %s", n, got, want)
+	for i, l := range v.Locations {
+		if got := scoreOf(v, i, nil); got != 0 {
+			t.Errorf("%s's label scores %d, want no label or route covered", l.Name, got)
 		}
 	}
-	// No label covers a route or another label in the Space Age map.
+	if got := labelOf(t, v, "b").Anchor; got != "start" {
+		t.Errorf("b's label is anchored %s, want the game's side (start)", got)
+	}
+	if c, d := labelOf(t, v, "c"), labelOf(t, v, "d"); boxGap(labelBox(c), d) < starMapLineHeight*c.font {
+		t.Errorf("c's label is %.1f from d's circle, want a line height or more", boxGap(labelBox(c), d))
+	}
+	if a, d := labelOf(t, v, "a"), labelOf(t, v, "d"); a.Anchor == "start" && a.Baseline == "central" {
+		t.Errorf("a's label stayed on the game's side over its route")
+	} else if d.Anchor == "start" && d.Baseline == "central" {
+		t.Errorf("d's label stayed on the game's side over c's label")
+	}
+	// No label covers a route, a label or a circle in the Space Age map.
 	v, _ = layoutStarMap(starMapOf(t, spaceAgeStarMap), mapgen.Builtin("2.1", true), i18n.English, starMapIcons{})
-	var pieces [][2]point
-	for _, d := range v.Routes {
-		ps := pathPoints(t, d)
-		for i := 1; i < len(ps); i++ {
-			pieces = append(pieces, [2]point{ps[i-1], ps[i]})
+	for i, l := range v.Locations {
+		if got := scoreOf(v, i, v.Locations); got != 0 {
+			t.Errorf("%s's label scores %d, want 0", l.Name, got)
 		}
+	}
+}
+
+// SPEC 5.6, DESIGN 8.23: an overlap with another circle or label costs more
+// than any preference: a spot clear of both wins over a nearer one on the
+// game's side that overlaps, even one crossing many routes.
+func TestStarMapLabelTakesTheLeastCovered(t *testing.T) {
+	box := rect{point{0, 0}, point{10, 10}}
+	over := []rect{{point{5, 5}, point{20, 20}}}
+	if n := labelOverlaps(box, over, nil, 0); n != 1 {
+		t.Errorf("a label overlapped counts %d, want 1", n)
+	}
+	// The circle counts only as another's, and only where it truly overlaps.
+	c := []StarMapLocation{{X: 14, Y: 5, R: 5, font: 5}}
+	if own, other := labelOverlaps(box, nil, c, 0), labelOverlaps(box, nil, c, 1); own != 0 || other != 1 {
+		t.Errorf("a circle 4 into the box counts %d as its own and %d as another's, want 0 and 1", own, other)
+	}
+	if far := labelOverlaps(box, nil, []StarMapLocation{{X: 16, Y: 5, R: 5}}, 1); far != 0 {
+		t.Errorf("a circle 1 clear of the box counts %d, want 0", far)
+	}
+	clear := labelCost{0, 3, 3, len(labelSteps) - 1, 50, len(labelTurns) - 1}
+	if overlapping := (labelCost{1, 0, 0, 0, 0, 0}); !clear.less(overlapping) {
+		t.Errorf("a clear spot does not win over an overlapping one")
+	}
+
+	// hub has a route out in each of eight directions, so most spots for its
+	// label are crossed. twin sits on the same place, listed first, with its
+	// label on the game's side: hub's label leaves that side and overlaps no
+	// label or circle.
+	moons := [][2]string{{"22", "0"}, {"18.5", "8.5"}, {"10", "12"}, {"1.5", "8.5"}, {"-2", "0"}, {"1.5", "-8.5"}, {"10", "-12"}, {"18.5", "-8.5"}}
+	js := `{"locations":[
+	 {"name":"twin","distance":10,"orientation":0.25,"label_orientation":0.25},
+	 {"name":"hub","distance":10,"orientation":0.25,"label_orientation":0.25}`
+	routes := ""
+	for i, m := range moons {
+		n := "m" + strconv.Itoa(i)
+		js += `,{"name":"` + n + `","distance":1,"orientation":0,"position":{"x":` + m[0] + `,"y":` + m[1] + `},"parent":"hub"}`
+		if i > 0 {
+			routes += ","
+		}
+		routes += `{"from":"hub","to":"` + n + `","length":1}`
+	}
+	v, _ := layoutStarMap(starMapOf(t, js+`],"routes":[`+routes+`]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	hub := labelOf(t, v, "hub")
+	if hub.Anchor == "start" && hub.Baseline == "central" {
+		t.Errorf("hub's label stayed on the game's side over twin's label")
 	}
 	for i, l := range v.Locations {
-		var others []rect
-		for j, o := range v.Locations {
-			if j != i {
-				others = append(others, labelBox(o))
+		if l.Name == "hub" {
+			if got := scoreOf(v, i, v.Locations); got >= 10 {
+				t.Errorf("hub's label scores %d, want no label or circle overlapped (10 each)", got)
 			}
 		}
-		if labelClashes(labelBox(l), pieces, others) {
-			t.Errorf("%s's label covers a route or a label", l.Name)
+	}
+}
+
+// SPEC 5.6, DESIGN 8.23: a planet with two moons and a stargate close by,
+// all labels on the same side, is laid out with no label over another label
+// or over any circle.
+func TestStarMapLabelsOfACluster(t *testing.T) {
+	m := starMapOf(t, `{"locations":[
+	 {"name":"nauvis","distance":15,"orientation":0.275,"label_orientation":0.25},
+	 {"name":"muluna","distance":1.5,"orientation":0.75,"position":{"x":13.3153,"y":2.3465},"magnitude":0.4,"parent":"nauvis","label_orientation":0.25},
+	 {"name":"lignumis","distance":1.5,"orientation":0.4,"position":{"x":15.9,"y":3.6},"magnitude":0.4,"parent":"nauvis","label_orientation":0.25},
+	 {"name":"senestella-stargate","distance":17,"orientation":0.28,"position":{"x":16.9,"y":2.6},"magnitude":0.5,"label_orientation":0.25},
+	 {"name":"aquilo","distance":35,"orientation":0.225}
+	],"routes":[]}`)
+	v, ok := layoutStarMap(m, mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	if !ok {
+		t.Fatal("no map")
+	}
+	for i, l := range v.Locations {
+		box := labelBox(l)
+		for j, o := range v.Locations {
+			if j == i {
+				if d := boxToCircle(box, o); d <= 0 {
+					t.Errorf("%s's label covers its own circle", l.Name)
+				}
+				continue
+			}
+			if p := labelBox(o); box.min.X < p.max.X && p.min.X < box.max.X && box.min.Y < p.max.Y && p.min.Y < box.max.Y {
+				t.Errorf("%s's label covers %s's label", l.Name, o.Name)
+			}
+			if boxToCircle(box, o) <= 0 {
+				t.Errorf("%s's label covers %s's circle", l.Name, o.Name)
+			}
 		}
 	}
-	// Covered on both sides, by routes in and out: the game's side stays.
-	v, _ = layoutStarMap(starMapOf(t, `{"locations":[
-	 {"name":"a","distance":10,"orientation":0.25,"label_orientation":0.25},
-	 {"name":"b","distance":2,"orientation":0.25,"label_orientation":0.25},
-	 {"name":"c","distance":20,"orientation":0.25,"label_orientation":0.25}
-	],"routes":[{"from":"a","to":"b","length":1},{"from":"a","to":"c","length":1}]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
-	if got := labelOf(t, v, "a").Anchor; got != "start" {
-		t.Errorf("a's label is anchored %s, want the game's side (start)", got)
+}
+
+// SPEC 5.6, DESIGN 8.23: a label keeps a font height clear of another
+// location's circle, so it is not read as that body's label: a planet whose
+// game label side points at its moon, just below to the right, moves.
+func TestStarMapLabelKeepsClearOfAnotherBody(t *testing.T) {
+	v, _ := layoutStarMap(starMapOf(t, `{"locations":[
+	 {"name":"nauvis","distance":15,"orientation":0.275},
+	 {"name":"fulgora","distance":25,"orientation":0.325,"label_orientation":0.4},
+	 {"name":"cerys","distance":1.39,"orientation":0.45,"position":{"x":23.5,"y":12.7},"parent":"fulgora","magnitude":0.5,"label_orientation":0.7}
+	],"routes":[]}`), mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	f, c := labelOf(t, v, "fulgora"), labelOf(t, v, "cerys")
+	if d, want := boxToCircle(labelBox(f), c), starMapLineHeight*f.font; d < want {
+		t.Errorf("Fulgora's label is %.1f from Cerys's circle, want %.1f or more", d, want)
 	}
 }
 
@@ -749,5 +891,69 @@ func TestSegmentInRect(t *testing.T) {
 		if got := segmentInRect(c.a, c.b, box); got != c.want {
 			t.Errorf("%v to %v: %v, want %v", c.a, c.b, got, c.want)
 		}
+	}
+}
+
+// SPEC 5.6: a star a mod draws only as a picture is rebuilt from its bodies'
+// orbits and drawn like the sun, with their rings about it, not about the sun.
+func TestStarMapDrawsRebuiltStar(t *testing.T) {
+	m := starMapOf(t, `{"locations":[
+	 {"name":"nauvis","distance":15,"orientation":0},
+	 {"name":"nix","position":{"x":100,"y":-50},"parent":"redstar","orbit":{"distance":10,"orientation":0.25}},
+	 {"name":"mirandus","position":{"x":90,"y":-30},"parent":"redstar","orbit":{"distance":20,"orientation":0.5}}
+	],"routes":[{"from":"nix","to":"mirandus","length":1},{"from":"nauvis","to":"nix","length":1}]}`)
+	if len(m.Stars) != 1 {
+		t.Fatalf("stars %+v", m.Stars)
+	}
+	v, ok := layoutStarMap(m, mapgen.Catalogue{}, i18n.English, starMapIcons{})
+	if !ok || len(v.Stars) != 1 {
+		t.Fatalf("view stars %+v", v.Stars)
+	}
+	var nix StarMapLocation
+	for _, l := range v.Locations {
+		if l.Name == "nix" {
+			nix = l
+		}
+	}
+	// nix is due right of its star, and its ring passes through it.
+	s := v.Stars[0]
+	if nix.X <= s.X || math.Abs(nix.Y-s.Y) > 0.2 {
+		t.Errorf("star at %v,%v, nix at %v,%v", s.X, s.Y, nix.X, nix.Y)
+	}
+	if len(v.Orbits) != 2 {
+		t.Fatalf("orbits %+v, want one ring about the star for each body", v.Orbits)
+	}
+	for _, o := range v.Orbits {
+		if o.X != s.X || o.Y != s.Y {
+			t.Errorf("ring %+v is not about the star %+v", o, s)
+		}
+	}
+	if r := v.Orbits[0].R; math.Abs(r-(nix.X-s.X)) > 0.2 {
+		t.Errorf("nix's ring r %v, want %v", r, nix.X-s.X)
+	}
+	if len(v.Rings) != 1 {
+		t.Errorf("sun rings %v, want only Nauvis's", v.Rings)
+	}
+	x, y, w, h := viewBoxOf(t, v)
+	if s.X-v.Sun < x || s.X+v.Sun > x+w || s.Y-v.Sun < y || s.Y+v.Sun > y+h {
+		t.Errorf("star %+v r %v is outside %q", s, v.Sun, v.ViewBox)
+	}
+	byName := map[string]mapgen.Location{}
+	for _, l := range m.Locations {
+		byName[l.Name] = l
+	}
+	stars := starPoints(m)
+	// Two bodies of one star arc about it; a body of the sun and one of
+	// another star are joined straight.
+	arc := routePoints(byName, stars, byName["nix"], byName["mirandus"])
+	if len(arc) < 3 {
+		t.Fatalf("nix to mirandus is %d points, want an arc", len(arc))
+	}
+	mid := arc[len(arc)/2]
+	if r := math.Hypot(mid.X-90, mid.Y+50); r < 10 || r > 20 {
+		t.Errorf("mid point %v is %v from the star, want between 10 and 20", mid, r)
+	}
+	if got := routePoints(byName, stars, byName["nauvis"], byName["nix"]); len(got) != 2 {
+		t.Errorf("places of two stars are %d points, want straight", len(got))
 	}
 }

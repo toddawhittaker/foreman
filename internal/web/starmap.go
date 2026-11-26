@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -94,6 +95,9 @@ type StarMapView struct {
 	// moon.
 	Rings  []float64
 	Orbits []StarMapOrbit
+	// Stars are the stars rebuilt from their bodies' orbits, each drawn
+	// like the sun, Sun in radius; their bodies' rings are in Orbits.
+	Stars []StarMapStar
 	// Routes are SVG path data, one a route.
 	Routes    []string
 	Locations []StarMapLocation
@@ -104,6 +108,9 @@ type StarMapView struct {
 
 // StarMapOrbit is a moon's orbit: a circle about its parent.
 type StarMapOrbit struct{ X, Y, R float64 }
+
+// StarMapStar is a rebuilt star's centre.
+type StarMapStar struct{ X, Y float64 }
 
 // StarMapLocation is one location's circle, picture and label.
 type StarMapLocation struct {
@@ -266,15 +273,19 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 	for _, l := range m.Locations {
 		byName[l.Name] = l
 	}
+	stars := starPoints(m)
 	// Routes first, in game units, as an arc can reach past its two ends.
 	routes := make([][]point, 0, len(m.Routes))
 	for _, r := range m.Routes {
-		routes = append(routes, routePoints(byName, byName[r.From], byName[r.To]))
+		routes = append(routes, routePoints(byName, stars, byName[r.From], byName[r.To]))
 	}
 	// The bounds of everything drawn, the sun included, in game units.
 	b := bounds{minX: 0, maxX: 0, minY: 0, maxY: 0}
 	for _, l := range m.Locations {
 		b.add(point{l.X, l.Y})
+	}
+	for _, s := range m.Stars {
+		b.add(point{s.X, s.Y})
 	}
 	for _, r := range routes {
 		for _, p := range r {
@@ -289,15 +300,30 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 	font := min(starMapFontMax, max(starMapFontMin, starMapFont*scale))
 	v := StarMapView{Sun: round1(max(starMapSunMin, starMapSun*scale)), Font: round1(font), Halo: round1(font / 5)}
 	for _, l := range m.Locations {
-		if d := math.Hypot(l.X, l.Y) * scale; l.Parent == "" && d > 0 {
+		c := stars[l.Star] // 0,0, the sun, when Star is ""
+		if d := math.Hypot(l.X-c.X, l.Y-c.Y) * scale; l.Parent == "" && d > 0 {
 			v.Sun = min(v.Sun, round1(starMapSunReach*d))
 		}
 	}
+	for _, s := range m.Stars {
+		v.Stars = append(v.Stars, StarMapStar{X: round1(s.X * scale), Y: round1(s.Y * scale)})
+	}
 	seen := map[float64]bool{}
+	seenOrbit := map[StarMapOrbit]bool{}
 	for _, l := range m.Locations {
 		if p, ok := byName[l.Parent]; ok && l.Parent != "" {
 			r := math.Hypot(l.X-p.X, l.Y-p.Y) * scale
 			v.Orbits = append(v.Orbits, StarMapOrbit{X: round1(p.X * scale), Y: round1(p.Y * scale), R: round1(r)})
+			continue
+		}
+		// A body of a rebuilt star has its ring about that star, drawn in
+		// Orbits as it has a centre of its own; it looks like a sun ring.
+		if c, ok := stars[l.Star]; ok && l.Star != "" {
+			o := StarMapOrbit{X: round1(c.X * scale), Y: round1(c.Y * scale), R: round1(math.Hypot(l.X-c.X, l.Y-c.Y) * scale)}
+			if o.R > 0 && !seenOrbit[o] {
+				seenOrbit[o] = true
+				v.Orbits = append(v.Orbits, o)
+			}
 			continue
 		}
 		// The ring passes through the location as drawn: from 2.1 its
@@ -315,25 +341,30 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 			pieces = append(pieces, [2]point{{r[i-1].X * scale, r[i-1].Y * scale}, {r[i].X * scale, r[i].Y * scale}})
 		}
 	}
-	var labels []rect
-	for _, l := range m.Locations {
+	// Every circle is known before any label is placed, so a label can keep
+	// clear of bodies not yet drawn.
+	circles := make([]StarMapLocation, len(m.Locations), len(m.Locations)+len(v.Stars))
+	for i, l := range m.Locations {
+		circles[i] = placeLocation(l, scale, font, MapGenName{}, "")
+	}
+	// Rebuilt stars are obstacles too; they come after the locations, so no
+	// label takes one for its own.
+	for _, s := range v.Stars {
+		circles = append(circles, StarMapLocation{X: s.X, Y: s.Y, R: v.Sun, font: font})
+	}
+	for i, l := range m.Locations {
 		label := starMapLabel(cat, l)
-		cells := labelCells(loc.Format(label.Name))
-		place := func(turns float64) StarMapLocation {
-			sl := placeLocation(l, turns, scale, font, label, ic.icon(l))
-			sl.LabelCells = cells
-			return sl
-		}
-		// The label sits on the game's side unless it would cover a route or
-		// a label already placed and the opposite side covers neither.
-		sl := place(l.LabelOrientation)
-		if labelClashes(labelBox(sl), pieces, labels) {
-			if other := place(l.LabelOrientation + 0.5); !labelClashes(labelBox(other), pieces, labels) {
-				sl = other
+		c := placeLocation(l, scale, font, label, ic.icon(l))
+		c.LabelCells = labelCells(loc.Format(label.Name))
+		// The label takes the spot of least cost among every direction and
+		// distance tried (DESIGN 8.23).
+		var best labelCost
+		for k, s := range labelCandidates(c, l.LabelOrientation) {
+			if cost := labelCostOf(s, k, pieces, v.Locations, circles, i); k == 0 || cost.less(best) {
+				c, best = s, cost
 			}
 		}
-		labels = append(labels, labelBox(sl))
-		v.Locations = append(v.Locations, sl)
+		v.Locations = append(v.Locations, c)
 	}
 	v.ViewBox = fitStarMap(v, routes, scale)
 	return v, true
@@ -345,6 +376,10 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 // is the reader's.
 func fitStarMap(v StarMapView, routes [][]point, scale float64) string {
 	b := bounds{minX: -v.Sun, maxX: v.Sun, minY: -v.Sun, maxY: v.Sun}
+	for _, s := range v.Stars {
+		b.add(point{s.X - v.Sun, s.Y - v.Sun})
+		b.add(point{s.X + v.Sun, s.Y + v.Sun})
+	}
 	for _, r := range routes {
 		for _, p := range r {
 			b.add(point{p.X * scale, p.Y * scale})
@@ -385,20 +420,112 @@ func labelBox(l StarMapLocation) rect {
 	return rect{point{x0, y0}, point{x0 + w, y0 + h}}
 }
 
-// labelClashes is true when a label's box covers part of a route's piece or
-// of another label's box.
-func labelClashes(box rect, pieces [][2]point, labels []rect) bool {
-	for _, o := range labels {
-		if box.min.X < o.max.X && o.min.X < box.max.X && box.min.Y < o.max.Y && o.min.Y < box.max.Y {
-			return true
+// labelTurns are the sixteen turns from the game's label orientation a label
+// tries, in order: the game's side, then each side further round, to the
+// opposite.
+var labelTurns = [...]float64{0, 1.0 / 16, -1.0 / 16, 2.0 / 16, -2.0 / 16, 3.0 / 16, -3.0 / 16, 4.0 / 16, -4.0 / 16,
+	5.0 / 16, -5.0 / 16, 6.0 / 16, -6.0 / 16, 7.0 / 16, -7.0 / 16, 8.0 / 16}
+
+// labelSteps are how far out from its circle a label tries, in label gaps,
+// nearest first: further out a label clears a crowd of moons.
+var labelSteps = [...]float64{1, 1.5, 2, 3}
+
+// labelCandidates are every spot a location's label tries, each direction at
+// each distance, nearest first and the game's side first at each distance.
+// c is the location's circle; orientation is the game's label orientation.
+func labelCandidates(c StarMapLocation, orientation float64) []StarMapLocation {
+	out := make([]StarMapLocation, 0, len(labelSteps)*len(labelTurns))
+	for _, step := range labelSteps {
+		for _, turn := range labelTurns {
+			out = append(out, moveLabel(c, orientation+turn, step))
 		}
 	}
+	return out
+}
+
+// labelCost ranks a spot for a label, compared in order, so any overlap
+// outweighs every preference after it:
+//  0. circles of other bodies and labels the text overlaps;
+//  1. ways the text is unclear: nearer, or as near, to another body than to
+//     its own, nearer another body than that body's own label is, or with
+//     another label nearer its own body than it is;
+//  2. other bodies within a line height, so the text does not sit against
+//     a body that is not its own;
+//  3. how far out it is (labelSteps);
+//  4. route pieces it crosses, which read through the halo;
+//  5. how far round from the game's side it is (labelTurns).
+//
+// Routes come before the turn, as every turn has its own rank: after it they
+// would never count.
+type labelCost [6]int
+
+func (a labelCost) less(b labelCost) bool { return slices.Compare(a[:], b[:]) < 0 }
+
+// labelCostOf is the cost of the spot s, the k-th of labelCandidates, for the
+// label of circles[own]. placed are the labels placed so far, each at its own
+// index in circles; pieces are the routes' pieces.
+func labelCostOf(s StarMapLocation, k int, pieces [][2]point, placed, circles []StarMapLocation, own int) labelCost {
+	box := labelBox(s)
+	labels := make([]rect, len(placed))
+	for j, p := range placed {
+		labels[j] = labelBox(p)
+	}
+	var cost labelCost
+	cost[0] = labelOverlaps(box, labels, circles, own)
+	d := boxGap(box, circles[own])
+	for j, c := range circles {
+		if j == own {
+			continue
+		}
+		g := boxGap(box, c)
+		if g <= d {
+			cost[1]++
+		}
+		if g < starMapLineHeight*c.font {
+			cost[2]++
+		}
+	}
+	for j, p := range labels {
+		if boxGap(p, circles[own]) < d {
+			cost[1]++
+		}
+		if boxGap(box, circles[j]) < boxGap(p, circles[j]) {
+			cost[1]++
+		}
+	}
+	cost[3] = k / len(labelTurns)
 	for _, p := range pieces {
 		if segmentInRect(p[0], p[1], box) {
-			return true
+			cost[4]++
 		}
 	}
-	return false
+	cost[5] = k % len(labelTurns)
+	return cost
+}
+
+// labelOverlaps counts the labels and the circles, other than circles[own],
+// that the box overlaps.
+func labelOverlaps(box rect, labels []rect, circles []StarMapLocation, own int) int {
+	n := 0
+	for _, o := range labels {
+		if box.min.X < o.max.X && o.min.X < box.max.X && box.min.Y < o.max.Y && o.min.Y < box.max.Y {
+			n++
+		}
+	}
+	for i, c := range circles {
+		if i != own && boxGap(box, c) < 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// boxGap is the distance from the box to the circle's edge, below 0 when
+// they overlap: from the box's nearest point to the circle's centre.
+func boxGap(box rect, c StarMapLocation) float64 {
+	nx := min(max(c.X, box.min.X), box.max.X)
+	ny := min(max(c.Y, box.min.Y), box.max.Y)
+	return math.Hypot(nx-c.X, ny-c.Y) - c.R
 }
 
 // segmentInRect is true when the segment a to b passes through the box: it
@@ -460,35 +587,41 @@ func starMapLabel(cat mapgen.Catalogue, l mapgen.Location) MapGenName {
 	return MapGenName{Name: i18n.M("mapgen.mod_name", "name", modLabel(label, l.Name)), Foreign: true}
 }
 
-// placeLocation is a location's circle and its label, which sits beside the
-// circle in the direction turns names: turns from straight up, clockwise, as
-// the game has a label orientation. font is the label's size.
-func placeLocation(l mapgen.Location, turns, scale, font float64, label MapGenName, icon string) StarMapLocation {
+// placeLocation is a location's circle, with its label's name and size but
+// no spot for the label yet (moveLabel gives one). font is the label's size.
+func placeLocation(l mapgen.Location, scale, font float64, label MapGenName, icon string) StarMapLocation {
 	r := min(starMapRadiusMax, max(starMapRadiusMin, starMapRadius*l.Magnitude*scale))
 	x, y := l.X*scale, l.Y*scale
-	a := 2 * math.Pi * turns
-	dx, dy := math.Sin(a), -math.Cos(a)
-	gap := r + starMapLabelGap*font
-	out := StarMapLocation{
+	return StarMapLocation{
 		Name: l.Name, Label: label, Icon: icon,
 		X: round1(x), Y: round1(y), R: round1(r),
 		IconX: round1(x - starMapIcon*r), IconY: round1(y - starMapIcon*r), IconSize: round1(2 * starMapIcon * r),
-		LabelX: round1(x + dx*gap), LabelY: round1(y + dy*gap),
-		Anchor: "middle", Baseline: "central", font: font,
+		font: font,
 	}
+}
+
+// moveLabel puts c's label beside its circle in the direction turns names:
+// turns from straight up, clockwise, as the game has a label orientation,
+// steps label gaps out from the circle's edge.
+func moveLabel(c StarMapLocation, turns, steps float64) StarMapLocation {
+	a := 2 * math.Pi * turns
+	dx, dy := math.Sin(a), -math.Cos(a)
+	gap := c.R + steps*starMapLabelGap*c.font
+	c.LabelX, c.LabelY = round1(c.X+dx*gap), round1(c.Y+dy*gap)
+	c.Anchor, c.Baseline = "middle", "central"
 	switch {
 	case dx > 0.3:
-		out.Anchor = "start"
+		c.Anchor = "start"
 	case dx < -0.3:
-		out.Anchor = "end"
+		c.Anchor = "end"
 	}
 	switch {
 	case dy < -0.3:
-		out.Baseline = "text-after-edge"
+		c.Baseline = "text-after-edge"
 	case dy > 0.3:
-		out.Baseline = "text-before-edge"
+		c.Baseline = "text-before-edge"
 	}
-	return out
+	return c
 }
 
 type point struct{ X, Y float64 }
@@ -505,10 +638,11 @@ func (b *bounds) add(p point) {
 // whose distance from that centre and angle about it each change evenly from
 // one end to the other, the shorter way round. It is straight when the
 // common parent is one of the ends, or when the ends share nothing but the
-// universe's origin (planets of two different stars).
-func routePoints(byName map[string]mapgen.Location, a, b mapgen.Location) []point {
+// universe's origin (planets of two different stars). stars holds the
+// rebuilt stars' centres by name.
+func routePoints(byName map[string]mapgen.Location, stars map[string]point, a, b mapgen.Location) []point {
 	straight := []point{{a.X, a.Y}, {b.X, b.Y}}
-	centre, ok := commonParent(byName, a, b)
+	centre, ok := commonParent(byName, stars, a, b)
 	if !ok {
 		return straight
 	}
@@ -555,10 +689,12 @@ func maxBend(ps []point) float64 {
 }
 
 // commonParent is the centre a route between a and b arcs about: their
-// nearest common parent, or the sun at the origin for two locations that have
-// none. It is false when the route is straight: the common parent is one of
-// the ends, or only the origin is shared and one end has a parent of its own.
-func commonParent(byName map[string]mapgen.Location, a, b mapgen.Location) (point, bool) {
+// nearest common parent, or the star two locations without one both orbit:
+// the sun at the origin or a rebuilt star. It is false when the route is
+// straight: the common parent is one of the ends, or the ends' chains top out
+// at different stars, or only the origin is shared and one end has a parent
+// of its own.
+func commonParent(byName map[string]mapgen.Location, stars map[string]point, a, b mapgen.Location) (point, bool) {
 	// Each chain starts at the location itself, so a moon and its own planet
 	// find the planet: one of the ends. The decoder keeps chains finite.
 	above := map[string]bool{}
@@ -574,10 +710,19 @@ func commonParent(byName map[string]mapgen.Location, a, b mapgen.Location) (poin
 			return point{p.X, p.Y}, true
 		}
 	}
-	if a.Parent == "" && b.Parent == "" {
-		return point{}, true
+	if a.Parent == "" && b.Parent == "" && a.Star == b.Star {
+		return stars[a.Star], true
 	}
 	return point{}, false
+}
+
+// starPoints is each rebuilt star's centre by name, in game units.
+func starPoints(m mapgen.StarMap) map[string]point {
+	out := make(map[string]point, len(m.Stars))
+	for _, s := range m.Stars {
+		out[s.Name] = point{s.X, s.Y}
+	}
+	return out
 }
 
 // pathData is SVG path data for points in game units, scaled.

@@ -21,6 +21,8 @@ const labels = (page: Page) => dialog(page).locator(".resources__label");
 const counting = (page: Page) => page.locator("#large-counting");
 const status = (page: Page) => page.locator("#large-status");
 const result = (page: Page) => page.locator("#large-amounts-result");
+// A count's note or error lies over the picture's top, not in the bar (DESIGN 8.8).
+const toast = (page: Page) => page.locator("#large-amounts-toast");
 // The amounts as text: under the box, or last in the settings column when that shows (DESIGN 8.8).
 const list = (page: Page) => page.locator("#large-amounts-result .resource-text, #large-amounts-text .resource-text");
 const summary = (page: Page) => list(page).locator("summary");
@@ -318,7 +320,7 @@ test("a failed request says so and offers to try again", { tag: "@looks" }, asyn
   await openLarge(page);
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
   await box(page).check();
-  await expect(result(page)).toContainText("The request for the resource amounts failed.");
+  await expect(toast(page)).toContainText("The request for the resource amounts failed.");
   // Said once, unseen, as the message shows it: the sentence alone, without the button's label.
   const news = page.locator("#large-amounts-news");
   await expect(news).toHaveText("Error: The request for the resource amounts failed. Check that Foreman is reachable and that you are still signed in, then try again.");
@@ -329,10 +331,43 @@ test("a failed request says so and offers to try again", { tag: "@looks" }, asyn
   await shot(page, "resources-failed");
   await checkPage(page);
   await page.unroute(resourceURL);
-  await result(page).getByRole("button", { name: "Try again" }).click();
+  await toast(page).getByRole("button", { name: "Try again" }).click();
   await expect(labels(page)).toHaveCount(4);
   await expect(box(page)).toBeFocused();
-  await expect(result(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
+  await expect(toast(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
+});
+
+// SPEC 5.6, "Known limit": a count of no patches says so where a failed count's error shows:
+// over the picture's top in the large view, seen without opening or scrolling anything, and under the
+// One planet picture on the page (DESIGN 8.8), never inside an empty list.
+test("a count of no patches says so where an error shows, not in an empty list", { tag: "@looks" }, async ({ page, fakeGame }) => {
+  await fakeGame!.call("/preview-mode", { mode: "no-patches" });
+  await openLarge(page);
+  await box(page).check();
+  const none = "This picture has no resource patches.";
+  await expect(toast(page).locator(".message")).toHaveText(none);
+  await expect(toast(page).locator(".message")).toBeInViewport();
+  await expect(page.locator("#large-amounts-news")).toHaveText(none);
+  // The count is over, so the status line no longer says it is counting.
+  await expect(status(page)).not.toContainText("Counting resources");
+  await expect(dialog(page).locator(".resource-text")).toHaveCount(0);
+  await expect(page.locator("#large-amounts-text")).toBeEmpty();
+  await expect(labels(page)).toHaveCount(0);
+  await expect(counting(page)).toBeHidden();
+  await shot(page, "resources-none");
+  await checkPage(page);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toBeHidden();
+  const pageBox = section(page).getByRole("checkbox", { name: "Show resource amounts" });
+  await pageBox.check();
+  const pageResult = page.locator("#preview-amounts-result");
+  await expect(pageResult.locator(".message")).toHaveText(none);
+  await expect(page.locator("#preview-amounts-news")).toHaveText(none);
+  await expect(pageResult.locator(".message")).toBeVisible();
+  await expect(section(page).locator("details.resource-text")).toHaveCount(0);
+  await pageResult.scrollIntoViewIfNeeded();
+  await shot(page, "resources-none-page");
 });
 
 test("from the keyboard: tick the box, then read the amounts as text", { tag: "@looks" }, async ({ page }) => {
@@ -370,7 +405,10 @@ test("another planet's settings change keeps this planet's count, so going back 
   await openLarge(page);
   await box(page).check();
   await expect(labels(page)).toHaveCount(4);
-  // Nauvis, Vulcanus, Gleba, Fulgora, Aquilo: two back is Fulgora.
+  // The star map, Nauvis, Vulcanus, Gleba, Fulgora, Aquilo: three back is Fulgora.
+  await dialog(page).locator("#large-frame").focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("dialog", { name: "Star map" })).toBeVisible();
   await go("ArrowLeft", "Aquilo");
   await go("ArrowLeft", "Fulgora");
   // A Fulgora slider: its picture and count are made again.
@@ -384,6 +422,9 @@ test("another planet's settings change keeps this planet's count, so going back 
   expect(changed).toBeGreaterThanOrEqual(before + 2);
   // Back to Nauvis: the pictures and counts already made are used.
   await go("ArrowRight", "Aquilo");
+  await dialog(page).locator("#large-frame").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("dialog", { name: "Star map" })).toBeVisible();
   await go("ArrowRight", "Nauvis");
   await expect(counting(page)).toBeHidden();
   expect(await runs()).toBe(changed);

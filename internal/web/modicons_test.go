@@ -262,6 +262,56 @@ func TestModIconDecodeSlot(t *testing.T) {
 	}
 }
 
+// SPEC 14.6: a star map asks for every modded planet's picture at once, and a
+// browser never asks again for an <image> that failed, so a burst the size of a
+// large mod pack's star map waits its turn and every picture is served, with
+// one decode at a time. With the old queue of 8, most of these were 503.
+func TestModIconStarMapBurstIsServed(t *testing.T) {
+	g := newIconRig(t)
+	var running, most int
+	var mu sync.Mutex
+	readModIcon = func(*world.Manager, string, string, string, string, int, int) ([]byte, error) {
+		mu.Lock()
+		running++
+		most = max(most, running)
+		mu.Unlock()
+		time.Sleep(20 * time.Millisecond)
+		mu.Lock()
+		running--
+		mu.Unlock()
+		return g.pic, nil
+	}
+	svc := newModIconService()
+	srv := &server{store: g.store, worlds: g.worlds, log: g.slog, now: g.clock.Now}
+	const burst = 40
+	codes := make(chan int, burst)
+	var wg sync.WaitGroup
+	for i := range burst {
+		wg.Go(func() {
+			// Two pictures, so later requests find one cached and the other still to make.
+			name := []string{"fake-planet.png", "fake-widget.png"}[i%2]
+			kind := []string{"starmap", "item"}[i%2]
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/worlds/"+g.id+"/icons/"+kind+"/"+name, nil)
+			r.SetPathValue("id", g.id)
+			r.SetPathValue("kind", kind)
+			r.SetPathValue("name", name)
+			srv.handleModIcon(svc, w, r)
+			codes <- w.Code
+		})
+	}
+	wg.Wait()
+	close(codes)
+	for c := range codes {
+		if c != http.StatusOK {
+			t.Errorf("a request in the burst got %d, want 200", c)
+		}
+	}
+	if most != 1 {
+		t.Errorf("%d decodes ran at once, want 1", most)
+	}
+}
+
 // A request past the queue gets 503 with a hint to retry, not a 404 that
 // would be cached as "no icon".
 func TestModIconBusyAnswers503(t *testing.T) {

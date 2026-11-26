@@ -114,6 +114,7 @@
   "mapgen.planet.fulgora": "Фульгора",
   "mapgen.planet.gleba": "Глеба",
   "mapgen.planet.nauvis": "Наувис",
+  "mapgen.planet.no_controls": "У планеты {planet} нет настроек ресурсов и ландшафта. Её мод размещает их без регуляторов, поэтому игра их тоже не предлагает.",
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "Предпросмотр: {planet}",
   "mapgen.planet.vulcanus": "Вулкан",

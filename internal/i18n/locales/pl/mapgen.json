@@ -114,6 +114,7 @@
   "mapgen.planet.fulgora": "Fulgora",
   "mapgen.planet.gleba": "Gleba",
   "mapgen.planet.nauvis": "Nauvis",
+  "mapgen.planet.no_controls": "{planet} nie ma ustawień zasobów ani terenu. Modyfikacja tej planety rozmieszcza je bez regulatorów, więc gra również ich nie oferuje.",
   "mapgen.planet.other": "{name}",
   "mapgen.planet.preview_said": "Podgląd: {planet}",
   "mapgen.planet.vulcanus": "Wulkanus",

@@ -9,6 +9,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -58,8 +59,9 @@ var cannedColors = map[string][3]int{
 
 // writeResources is a resource count run: it writes gameenv.ResourceFile to
 // the work folder, shaped as the game's script writes it, with the same
-// canned patches at any radius from 3 and for any planet Foreman knows.
-func writeResources(c dockertest.Container) error {
+// canned patches at any radius from 3 and for any planet Foreman knows, or
+// with no patches at all.
+func writeResources(c dockertest.Container, patches bool) error {
 	dir := mountSource(c, gameenv.PreviewMount)
 	if dir == "" {
 		return fmt.Errorf("the fake game's resource container has no folder bound at %s", gameenv.PreviewMount)
@@ -69,11 +71,15 @@ func writeResources(c dockertest.Container) error {
 		return fmt.Errorf("the fake game's resource container has a bad %s", gameenv.ResourceRadius)
 	}
 	planet := envValue(c.Spec.Env, gameenv.ResourcePlanet)
+	// A count that finds nothing needs no canned names, so a modded planet can be counted too.
 	names, ok := planetResources[planet]
-	if !ok {
+	if !ok && (patches || !mapgen.ValidName(planet)) {
 		return fmt.Errorf("the fake game's resource container has a bad %s", gameenv.ResourcePlanet)
 	}
-	nameOf := map[string]string{"large": names.large, "small": names.small, "infinite": names.infinite}
+	nameOf := map[string]string{}
+	if ok {
+		nameOf = map[string]string{"large": names.large, "small": names.small, "infinite": names.infinite}
+	}
 
 	type resource struct {
 		Total    int64  `json:"total"`
@@ -93,7 +99,7 @@ func writeResources(c dockertest.Container) error {
 		Planet    string              `json:"planet"`
 		Resources map[string]resource `json:"resources"`
 		Patches   []patch             `json:"patches"`
-	}{Planet: planet, Resources: map[string]resource{}}
+	}{Planet: planet, Resources: map[string]resource{}, Patches: []patch{}}
 	for kind, name := range nameOf {
 		res := resource{Infinite: kind == "infinite", Color: cannedColors[kind]}
 		if res.Infinite {
@@ -101,7 +107,11 @@ func writeResources(c dockertest.Container) error {
 		}
 		out.Resources[name] = res
 	}
-	for _, p := range cannedPatches {
+	found := cannedPatches
+	if !patches {
+		found = nil
+	}
+	for _, p := range found {
 		name := nameOf[p.resource]
 		res := out.Resources[name]
 		res.Total += p.amount

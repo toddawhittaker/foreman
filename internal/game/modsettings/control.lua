@@ -182,8 +182,11 @@ end
 -- is written too: that is where the star map draws it. A location is marked
 -- as having a starmap icon only when the icon export holds one Foreman may
 -- serve.
+-- orbit is PlanetsLib's offset from the parent, so Foreman can rebuild a
+-- parent the game no longer lists (SPEC 5.6).
 local function starmap_file(export)
   local parents = export and export.parents or {}
+  local orbits = export and export.orbits or {}
   local has_icon = {}
   for _, icon in ipairs(export and export.icons or {}) do
     if icon.kind == "starmap" then
@@ -202,6 +205,7 @@ local function starmap_file(export)
       label_orientation = read(p, "label_orientation"),
       position = map_position(p),
       parent = parents[name],
+      orbit = orbits[name],
       hidden = (read(p, "hidden") or read(p, "parameter")) and true or false,
       starmap_icon = has_icon[name] or false,
     }

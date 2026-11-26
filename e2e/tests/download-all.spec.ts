@@ -359,7 +359,7 @@ test("in the large view the preparation lies over the stage without moving it, a
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator("#large-title")).toHaveText("Nauvis");
   await view.getByRole("checkbox", { name: "Show resource amounts" }).check();
-  await expect(page.locator("#large-amounts-result")).toContainText("The request for the resource amounts failed.");
+  await expect(page.locator("#large-amounts-toast")).toContainText("The request for the resource amounts failed.");
   await page.unroute(resourceURL);
   const hold = holdAll(page);
   await hold.start();
@@ -406,7 +406,7 @@ test("in the large view the preparation leaves the edge buttons and zoom free, a
   await expect(page.locator("#large-title")).toHaveText("Vulcanus");
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
   await view.getByRole("checkbox", { name: "Show resource amounts" }).check();
-  await expect(page.locator("#large-amounts-result")).toContainText("The request for the resource amounts failed.");
+  await expect(page.locator("#large-amounts-toast")).toContainText("The request for the resource amounts failed.");
   await page.unroute(resourceURL);
   const hold = holdAll(page);
   await hold.start();
@@ -443,7 +443,7 @@ test("a count that fails at once withdraws its counting sentence but still says 
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
   const box = view.getByRole("checkbox", { name: "Show resource amounts" });
   await box.check();
-  await expect(page.locator("#large-amounts-result")).toContainText("The request for the resource amounts failed.");
+  await expect(page.locator("#large-amounts-toast")).toContainText("The request for the resource amounts failed.");
   await page.unroute(resourceURL);
   const hold = holdAll(page);
   await hold.start();
@@ -459,7 +459,7 @@ test("a count that fails at once withdraws its counting sentence but still says 
     tick.click();
     tick.click();
   });
-  await expect(page.locator("#large-amounts-result")).toContainText("The request for the resource amounts failed.");
+  await expect(page.locator("#large-amounts-toast")).toContainText("The request for the resource amounts failed.");
   await page.waitForTimeout(300);
   await expect(page.locator("#large-status")).toHaveText("Download canceled.");
   expect(await heard()).toMatch(/Download canceled\./);

@@ -107,6 +107,11 @@ const (
 	// planet mod's startup setting can (SPEC 5.6, 9.6).
 	FakeMoon        = "fake-moon"
 	FakeMoonSetting = "fm-sta-int"
+	// FakeBare is a planet with no map controls at all, as Igrys places its
+	// resources from its map generator alone; a run adds it, with FakeMoon,
+	// when FakeMoonSetting is FakeBareAt, its largest value (SPEC 5.6).
+	FakeBare   = "fake-bare"
+	FakeBareAt = 10
 )
 
 // The planet file's shape, as internal/mapgen/catalogue.go documents it.
@@ -210,7 +215,8 @@ func writeModSettings(c dockertest.Container) error {
 	if err := os.MkdirAll(mods, world.DirMode); err != nil {
 		return err
 	}
-	moon := settingAddsMoon(filepath.Join(mods, world.ModSettingsFile))
+	moonSet := startupMoonSetting(filepath.Join(mods, world.ModSettingsFile))
+	moon := moonSet > 7
 	if err := os.WriteFile(filepath.Join(mods, world.ModSettingsFile), modSettingsDefaults, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
 		return err
 	}
@@ -223,6 +229,10 @@ func writeModSettings(c dockertest.Container) error {
 	if moon && len(f.Planets) > 0 {
 		f.Planets = append(f.Planets, fakePlanetEntry{Name: FakeMoon, LocName: []string{"space-location-name." + FakeMoon},
 			Controls: map[string]map[string]float64{"stone": {"frequency": 1, "size": 1, "richness": 1}}, Resources: []string{}})
+	}
+	if moonSet >= FakeBareAt && len(f.Planets) > 0 {
+		f.Planets = append(f.Planets, fakePlanetEntry{Name: FakeBare, LocName: []string{"space-location-name." + FakeBare},
+			Controls: map[string]map[string]float64{}, Resources: []string{}})
 	}
 	planets, _ := json.Marshal(f)
 	if err := os.WriteFile(filepath.Join(dir, gameenv.PlanetsFile), planets, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
@@ -397,17 +407,21 @@ func cannedStarMap(enabled []string, moon bool) fakeStarMap {
 	return m
 }
 
-// settingAddsMoon says the run's mod-settings.dat, the world's own when the
-// run reads it, sets FakeMoonSetting above its default.
-func settingAddsMoon(name string) bool {
+// startupMoonSetting is FakeMoonSetting in the run's mod-settings.dat, the
+// world's own when the run reads it; above its default of 7 it adds FakeMoon.
+// An unreadable file gives 0.
+func startupMoonSetting(name string) int64 {
 	b, err := os.ReadFile(name) //nolint:gosec // the fake's own test folder
 	if err != nil {
-		return false
+		return 0
 	}
 	f, err := modsettings.Decode(b)
 	if err != nil {
-		return false
+		return 0
 	}
 	v, ok, err := f.Get(modsettings.Startup, FakeMoonSetting)
-	return err == nil && ok && v.Int > 7
+	if err != nil || !ok {
+		return 0
+	}
+	return v.Int
 }

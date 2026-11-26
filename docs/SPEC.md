@@ -952,7 +952,10 @@ not) or a map exchange string, with Space Age on or off. (P0)
       drawn where the game puts them. A plain sun circle sits at the centre,
       and a faint ring marks each distance a location lies at, so the map
       reads like the game's. When the data names a parent (PlanetsLib), a
-      faint orbit ring is drawn about it through the moon. The picture is
+      faint orbit ring is drawn about it through the moon. A star a mod
+      draws only as a picture (PlanetsLib `sprite_only`), which the game's
+      data leaves out, is rebuilt from its bodies' orbit offsets and drawn
+      like the sun, with their rings about it. The picture is
       square, dark in both themes as the game's map is, and its view fits
       everything drawn, each label measured as it is shown. A location the
       game hides is left out, and so is every route that touches one.
@@ -976,9 +979,17 @@ not) or a map exchange string, with Space Age on or off. (P0)
       raw name; moons and modded places that are not planets are therefore
       not translated. A mod's name is marked `translate="no"`.
     - **The large view and the file.** The star map opens in the large view
-      like a planet picture, with the same zoom, pan and keys. It shows
-      alone: the planet steps, resource amounts, territories and the
-      planet's settings are hidden, and the download is the star map's file.
+      like a planet picture, with the same zoom, pan and keys, and is the
+      view's first step: Previous, Next, the arrow keys and the header's
+      "Star map" button reach it, the arrows in the same place as for a planet, and
+      Next from it shows the first planet, in either view and before any
+      other planet is drawn, as it needs no drawing. While it is shown the resource
+      amounts, territories and the planet's settings are hidden, and the
+      download is the star map's file. In the large view each planet the
+      view has a step for is a control: a click, a tap, or Enter on it
+      shows that planet's step as Next would, drawing it first if needed. A
+      drag to pan is not a click. Other places (the edge, the shattered
+      planet, the sun) are not controls. The file has no controls.
       The file is the same SVG as the page draws, `starmap.svg`, but with
       its own namespace and without the pictures on the circles, so it opens
       anywhere and loads nothing. It is served only to the preview's owner,
@@ -3531,8 +3542,9 @@ the icon's entry is at most 2 MiB packed and as declared, and the read stops
 one byte past the declared size, so a lying header is refused; the
 picture's header is read first, and one over 4096 by 4096 pixels, or
 smaller than its listed size, is refused before anything is decoded. Only
-one decode runs at a time, at most 8 more requests wait, and one past that
-is answered 503. The top-left square of the listed size (the first mipmap)
+one decode runs at a time, at most 64 more requests wait (a star map asks
+for every modded planet's picture at once), and one past that is answered
+503 with `Retry-After`. The top-left square of the listed size (the first mipmap)
 is scaled to 64 pixels, or 128 for a star map icon, and written as a new
 PNG, so no byte of the zip's file reaches the browser; the new pictures are
 kept in memory, at most 8 MiB in all. A folder (unzipped) mod is not read.
@@ -4156,7 +4168,10 @@ picture adds no table or list of routes, by ruling, because it is for
 looking at and nothing is done in it. The card's link says that it opens
 the large view (or the file, without script), and its download link names
 the file. The picture passes the accessibility scan in both themes at
-desktop width and at 320 px with no sideways scroll (17.2). A picture on a
+desktop width and at 320 px with no sideways scroll (17.2). In the large
+view the copy is a `role="group"` with the same name, so its planet
+controls (5.6) can be reached; each is a focusable `role="button"` named
+by the planet. A picture on a
 location's circle is decoration: the location's title names it, and one
 that fails to load changes nothing the reader hears. (P1)
 

@@ -59,6 +59,7 @@ test("the header says the server's state in words, and follows it live", { tag: 
   // The Server page's live facts carry the header's state too, without a reload.
   await expectStateWord(page, "Running");
 
+  await fakeGame!.call("/hold-restarts", { name: "foreman-base", on: true });
   await fakeGame!.call("/crash", { name: "foreman-base" });
   await expect(stateBadge(page)).toHaveText("Crashed", live);
   await expectStateWord(page, "Crashed");
