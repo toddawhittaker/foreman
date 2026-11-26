@@ -23,7 +23,8 @@ checking Epic 11a on the trial deployment) is done, and so are fixes batches 14,
 15 and 16. Epic 12 (modded planets and guided Generate) is built, and fixes
 batch 17 (the Epic 12 test-drive findings) is done. Fixes batch 18 (mod icons
 from the world's zips, and the star map) is done too and closes the gap
-that Fixes batch 17 left for mod icons.
+that Fixes batch 17 left for mod icons. Fixes batch 19 (spots of fluid tiles
+in the resource count) is done.
 Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
 now, at Todd's choice, when the Mod settings epic started; it is still owed
 before Gate C.
@@ -144,3 +145,49 @@ The full checks on the fold head are in the epic pull request.
   mod set (`FOREMAN_TEST_PLANET_MODS_2_0` is not set).
 - **Left out, as planned:** icons on the portal search, mod plan and public
   mods page; the star map in the REST API and MCP.
+
+## Fixes batch 19
+
+Serves SPEC 5.6, "Resource amounts". One issue, #955.
+
+### Delivered
+
+- **Spots of fluid tiles in the resource count (#955).** The count also
+  finds spots of tiles that carry a fluid and are tied to a resource
+  control: Vesta's methane and hydrogen sulfide. A spot is a group of one
+  fluid's tiles joined by the ore gap. Its label gives its size in tiles,
+  since pumping never runs out. The text list adds one list per fluid after
+  the ores, most tiles first ("Methane gas: 14 spots"). Result files written
+  before this change still decode. Strings are in all eight languages.
+- **The rule used.** A tile counts when it carries a fluid and every
+  autoplace control its noise expression reaches is a resource control, with
+  at least one. No tile in the game sets `autoplace.control`, so the count
+  follows the expression through the named expressions and functions it
+  calls, with the planet's own names for them. The game's oceans reach a
+  terrain control or none, and lava also reaches Vulcanus's volcanism, so no
+  planet of the game has spots.
+- **The zero-patch sentence.** "May be tiles, which can't be counted" is no
+  longer said for a planet whose resource controls the count looked for
+  spots of.
+- **Limits.** Spots share the result file's limits with the ore patches, and
+  only the counted planet's own tiles are looked at.
+
+Verified: unit tests for the script, decoder, labels and page; the browser
+specs for resources, the large view, Generate's preview and the star map,
+including a fake planet with four spots; real-game check on 2.1.24 with
+Space Age and Vesta, where Vesta at 1280 px found 13 methane spots and 7
+hydrogen sulfide spots (`TestRealGameResourcesFluidTiles`, which runs only
+when `FOREMAN_FLUID_TILE_MODS` names a folder of mod zips), and with the
+other planets counting as before.
+
+### Gaps left
+
+- **Fluid pools a mod places with no resource control are not counted,** and
+  neither are rocks that give items when mined.
+- **A control named only in a noise expression's local expressions is not
+  seen,** because the game does not show local expressions to a mod.
+- **Spots past the result file's limits are cut, smallest first,** and the
+  page does not say so.
+- **A fluid is named by its control's label,** since the catalogue holds no
+  fluid names. Two fluids with the same name each add their own in brackets.
+- **The summary's patch count includes spots.**
