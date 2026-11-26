@@ -1066,6 +1066,26 @@ not) or a map exchange string, with Space Age on or off. (P0)
       brine is finite and shows an amount. The label tile is a tile of the
       patch, and the position in the list is in tiles from where players
       start, as (x, y).
+    - **Spots.** The count also finds the tiles that carry a fluid, such as
+      Vesta's methane and hydrogen sulfide (`skewer_planet_vesta`), when
+      every map generator control their autoplace reaches is a resource
+      control, with at least one. The controls reached are the tile's own
+      and those its noise expression uses, followed through the named
+      expressions and functions it calls with the planet's own names for
+      them: Vesta's tiles name no control of their own, and their
+      expression uses `control:tritium:size`. The game's own oceans reach a
+      terrain control or none, and its lava reaches Vulcanus's volcanism
+      as well as tungsten, so no planet of the game has spots (Todd's
+      decisions, 2026-11-25 and 2026-11-26; checked on 2.1.24 with Space
+      Age and 70 planet and other mods, where only Vesta's two tiles
+      count). A spot is a group of one fluid's tiles joined by the ore
+      gap. Pumping never runs it out, so its label gives its size in tiles
+      ("312 tiles") instead of an amount, and a spot's label is left off
+      by the patch rule above, with tiles for amounts and only beside a
+      spot of the same fluid. The text list gives each fluid's spots after
+      the ores, most tiles first, named as the control its tiles are tied
+      to is ("Methane gas: 14 spots"), then each spot's tiles and place.
+      The list's count of patches counts spots too.
     - **Bounds.** Amounts cover the picture only, so a patch cut by its
       edge counts the part inside, and the page says so. The count loads
       the world's mods (ADR 0033), so modded resources appear, on modded
@@ -1105,13 +1125,19 @@ not) or a map exchange string, with Space Age on or off. (P0)
       28.5 s (Corrundum) with every resource control at its most. The time
       is twice the slowest count seen in a survey of planet mods, 58 s. An
       out-of-memory failure names the resource count, never the picture.
-    - **Known limit: resources that are not patches.** The count reads
-      resource entities only. When a planet has a resource control from a
-      mod that the settings leave on, and the count finds no patches, the
-      page says "No resource patches were found in this picture. This
-      planet's resources may be tiles, which can't be counted." instead of
-      "no resource patches". The words are true whether the resources are
-      tiles or real patches too small to count at the picture's size.
+    - **Known limit: resources that are not counted.** The count reads
+      resource entities and the spots above only. Fluid tiles that a mod
+      places with no resource control (no slider sets them) are not
+      counted, nor are rocks or other entities that give items when mined,
+      since rocks are not resources. When a planet has a resource control
+      from a mod that the settings leave on, other than one whose fluid
+      tiles the count looked for, and the count finds no patches, the page
+      says "No resource patches were found in this picture. This planet's
+      resources may be tiles, which can't be counted." instead of "no
+      resource patches". A planet whose only such controls are ones the
+      count looked for spots of says there are no patches. The words are
+      true whether the resources are tiles or real patches too small to
+      count at the picture's size.
     - **While it runs and after.** A visible line and an indeterminate bar
       say that counting can take up to a minute. Busy, timeout, out of
       memory, missing image, failed and invalid settings each have their own

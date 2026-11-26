@@ -478,6 +478,21 @@
   "worlds.generate.resources.total_yield": "{resource}: всего {percent} % добычи",
   "worlds.generate.resources.patch": "{amount} в ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent} % добычи в ({x}, {y})",
+  "worlds.generate.resources.spot_label": {
+    "one": "{count} клетка",
+    "few": "{count} клетки",
+    "many": "{count} клеток"
+  },
+  "worlds.generate.resources.spots": {
+    "one": "{resource}: {count} участок",
+    "few": "{resource}: {count} участка",
+    "many": "{resource}: {count} участков"
+  },
+  "worlds.generate.resources.spot": {
+    "one": "{count} клетка в ({x}, {y})",
+    "few": "{count} клетки в ({x}, {y})",
+    "many": "{count} клеток в ({x}, {y})"
+  },
   "worlds.generate.resources.none": "На этом изображении нет месторождений ресурсов.",
   "worlds.generate.resources.not_patches": "На этом изображении не найдено месторождений ресурсов. Ресурсы этой планеты могут быть клетками, которые нельзя посчитать.",
   "worlds.generate.resources.invalid": "В настройках есть проблемы, поэтому ресурсы не подсчитаны. Исправьте проблемы, перечисленные в предпросмотре карты.",

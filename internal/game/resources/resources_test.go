@@ -38,6 +38,25 @@ func TestControl(t *testing.T) {
 	}
 }
 
+// SPEC 5.6: the script also writes the spots of fluid tiles tied to a
+// resource control, as patches with a tile count and no amount, joined by
+// the ore gap, and skips that on 1.1, which has no prototypes global.
+func TestControlCountsFluidTiles(t *testing.T) {
+	for _, want := range []string{
+		`if not prototypes then`,
+		`prototypes.named_noise_expression[n] or prototypes.named_noise_function[n]`,
+		`control.category ~= "resource"`,
+		`surface.find_tiles_filtered({ area = area, name = f.tiles })`,
+		`group(t, nil, ore_gap)`,
+		`name = fluid, fluid = true, x = s.lx, y = s.ly, n = s.n,`,
+		`fluids = fluids`,
+	} {
+		if !bytes.Contains(Control, []byte(want)) {
+			t.Errorf("control.lua lacks %s", want)
+		}
+	}
+}
+
 // The dense-count threshold sits between the most ore tiles a default map
 // has and the ore tiles of Nauvis with every resource at 600%, with a factor
 // of at least 2.5 on both sides (ADR 0015). Measured at 3072 tiles, seed

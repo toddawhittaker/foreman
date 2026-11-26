@@ -346,15 +346,17 @@
      held at one type size like the territory labels. The script writes each
      value short in the page's language and hides the ones that would overlap.
      The text list says the same, so this is hidden from screen readers (SPEC 17).
-     data-amount is an ore's amount, or a well field's yield as a fraction. Takes ResourceView. */}}
+     data-amount is an ore's amount, a well field's yield as a fraction, or a fluid spot's
+     tiles, whose words are data-text. Takes ResourceView. */}}
 {{define "resource-overlay" -}}
 <span class="resources" aria-hidden="true">
-  {{- range .Labels}}<span class="resources__label" style="left: {{.Left}}%; top: {{.Top}}%; --x: {{.Left}}; --y: {{.Top}}" data-amount="{{.Value}}" data-kind="{{.Kind}}"></span>{{end -}}
+  {{- range .Labels}}<span class="resources__label" style="left: {{.Left}}%; top: {{.Top}}%; --x: {{.Left}}; --y: {{.Top}}" data-amount="{{.Value}}" data-kind="{{.Kind}}"{{if .Text}} data-text="{{.Text}}"{{end}}></span>{{end -}}
 </span>
 {{- end}}
 
 {{/* The amounts as text, collapsed: one list a resource with its total, then
-     each patch and where it is from the start, largest first; or why there
+     each patch and where it is from the start, largest first, then one list a
+     fluid with its spots, each spot's tiles and place; or why there
      are none, with Try again where it can work. A count of no patches says so
      beside the box, where an error shows, not in an empty list (SPEC 5.6). Takes ResourceView. */}}
 {{define "resource-result" -}}

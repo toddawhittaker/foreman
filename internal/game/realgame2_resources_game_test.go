@@ -89,6 +89,7 @@ func parseCount(t *testing.T, b []byte, size int, planet string) countFile {
 	var raw struct {
 		Planet    string          `json:"planet"`
 		Resources json.RawMessage `json:"resources"`
+		Fluids    json.RawMessage `json:"fluids"`
 		Patches   json.RawMessage `json:"patches"`
 	}
 	dec := json.NewDecoder(bytes.NewReader(b))
@@ -98,6 +99,11 @@ func parseCount(t *testing.T, b []byte, size int, planet string) countFile {
 	}
 	f := countFile{Planet: raw.Planet, Resources: map[string]countResource{}}
 	empty := func(m json.RawMessage) bool { s := string(bytes.TrimSpace(m)); return s == "[]" || s == "{}" }
+	// These counts load no mods, and no tile of the base game or Space Age
+	// is tied to resource controls alone, so none has spots (SPEC 5.6).
+	if !empty(raw.Fluids) {
+		t.Errorf("fluids %s, want none without mods", raw.Fluids)
+	}
 	if !empty(raw.Resources) {
 		if err := json.Unmarshal(raw.Resources, &f.Resources); err != nil {
 			t.Fatalf("resources: %v", err)

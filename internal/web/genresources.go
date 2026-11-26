@@ -30,10 +30,12 @@ const pathResources = PathGeneratePreview + "/resources"
 // amountsQuery on a download draws in the amounts held for each planet.
 const amountsQuery = "amounts"
 
-// Label kinds: an ore's amount, or an infinite resource's yield.
+// Label kinds: an ore's amount, an infinite resource's yield, or a fluid
+// spot's tiles.
 const (
 	resourceKindAmount = "amount"
 	resourceKindYield  = "yield"
+	resourceKindTiles  = "tiles"
 )
 
 // ResourceView is the amounts of one planet's picture, or why there are
@@ -55,15 +57,19 @@ type ResourceView struct {
 
 // ResourceLabel is one patch's label, centred on Left and Top percent of the
 // picture. Value is what the page formats: the amount for an ore, the yield
-// as a fraction (3 is 300%) for an infinite resource.
+// as a fraction (3 is 300%) for an infinite resource, the tile count for a
+// spot. Text is a spot's label already worded, since its plural is the
+// catalogue's.
 type ResourceLabel struct {
 	Left, Top float64
 	Value     string
 	Kind      string
+	Text      string
 }
 
 // ResourceList is one resource's patches in words: its name and total, then
-// each patch's amount and place.
+// each patch's amount and place; or one fluid's spots, its name and how many,
+// then each spot's tiles and place.
 type ResourceList struct {
 	Total   string
 	Patches []string
@@ -72,9 +78,13 @@ type ResourceList struct {
 // resourceView turns the amounts counted on planet for a picture of size
 // tiles into what the large view shows, worded in loc.
 func resourceView(loc i18n.Locale, cat mapgen.Catalogue, planet string, res resource.Result, size int) *ResourceView {
-	v := &ResourceView{Patches: len(res.Patches), Labels: resourceLabels(res, size), None: i18n.M("worlds.generate.resources.none")}
-	byName := map[string][]resource.Patch{}
+	v := &ResourceView{Patches: len(res.Patches), Labels: resourceLabels(loc, res, size), None: i18n.M("worlds.generate.resources.none")}
+	byName, spots := map[string][]resource.Patch{}, map[string][]resource.Patch{}
 	for _, p := range res.Patches {
+		if p.Fluid {
+			spots[p.Name] = append(spots[p.Name], p)
+			continue
+		}
 		byName[p.Name] = append(byName[p.Name], p)
 	}
 	names := make([]string, 0, len(byName))
@@ -105,12 +115,38 @@ func resourceView(loc i18n.Locale, cat mapgen.Catalogue, planet string, res reso
 		}
 		v.Lists = append(v.Lists, list)
 	}
+	v.Lists = append(v.Lists, spotLists(loc, cat, res, spots)...)
 	return v
 }
 
+// spotLists are the lists of each fluid's spots, after the ores: most tiles
+// first, then by name, and each fluid's spots largest first.
+func spotLists(loc i18n.Locale, cat mapgen.Catalogue, res resource.Result, spots map[string][]resource.Patch) []ResourceList {
+	tiles := map[string]int{}
+	fluids := make([]string, 0, len(spots))
+	for n, ps := range spots {
+		fluids = append(fluids, n)
+		for _, p := range ps {
+			tiles[n] += p.Entities
+		}
+	}
+	slices.SortFunc(fluids, func(a, b string) int { return cmp.Or(cmp.Compare(tiles[b], tiles[a]), cmp.Compare(a, b)) })
+	var lists []ResourceList
+	for _, n := range fluids {
+		ps := spots[n]
+		slices.SortStableFunc(ps, func(a, b resource.Patch) int { return cmp.Compare(b.Entities, a.Entities) })
+		list := ResourceList{Total: loc.T("worlds.generate.resources.spots", "resource", fluidName(loc, cat, n, res.Fluids[n]), "count", len(ps))}
+		for _, p := range ps {
+			list.Patches = append(list.Patches, loc.T("worlds.generate.resources.spot", "count", p.Entities, "x", strconv.Itoa(p.X), "y", strconv.Itoa(p.Y)))
+		}
+		lists = append(lists, list)
+	}
+	return lists
+}
+
 // resourceLabels are the labels of the amounts counted for a picture of size
-// tiles, in the server's order.
-func resourceLabels(res resource.Result, size int) []ResourceLabel {
+// tiles, in the server's order, a spot's worded in loc.
+func resourceLabels(loc i18n.Locale, res resource.Result, size int) []ResourceLabel {
 	half := float64(size / 2)
 	// The middle of a tile, as a percent of the picture, which spans [-size/2, size/2).
 	pct := func(t int) float64 { return math.Round((float64(t)+half+0.5)/float64(size)*1e5) / 1e3 }
@@ -121,7 +157,10 @@ func resourceLabels(res resource.Result, size int) []ResourceLabel {
 			continue
 		}
 		l := ResourceLabel{Left: pct(p.X), Top: pct(p.Y), Kind: resourceKindAmount, Value: strconv.FormatInt(p.Amount, 10)}
-		if y, ok := resource.Yield(p); ok {
+		if p.Fluid {
+			l.Kind, l.Value = resourceKindTiles, strconv.Itoa(p.Entities)
+			l.Text = loc.T("worlds.generate.resources.spot_label", "count", p.Entities)
+		} else if y, ok := resource.Yield(p); ok {
 			l.Kind, l.Value = resourceKindYield, strconv.FormatFloat(y/100, 'f', -1, 64)
 		}
 		out = append(out, l)
@@ -133,8 +172,12 @@ func resourceLabels(res resource.Result, size int) []ResourceLabel {
 // counted, for a picture of size pixels, worded in loc as the page words them.
 func amountCaptions(loc i18n.Locale, res resource.Result, size int) []territory.Caption {
 	var caps []territory.Caption
-	for _, l := range resourceLabels(res, size) {
-		caps = append(caps, territory.Caption{Text: labelText(loc, l), U: l.Left / 100, V: l.Top / 100})
+	for _, l := range resourceLabels(loc, res, size) {
+		text := l.Text
+		if l.Kind != resourceKindTiles {
+			text = labelText(loc, l)
+		}
+		caps = append(caps, territory.Caption{Text: text, U: l.Left / 100, V: l.Top / 100})
 	}
 	return caps
 }
@@ -163,12 +206,7 @@ func resourceName(loc i18n.Locale, cat mapgen.Catalogue, planet, entity string) 
 		if resource.EntityName(planet, c.Name) == entity || slices.ContainsFunc(cat.Resources, func(r mapgen.Resource) bool {
 			return r.Name == entity && r.Control == c.Name
 		}) {
-			if _, builtin := controlNames[c.Name]; !builtin {
-				if l := cat.Controls[c.Name].Label; l != "" {
-					return l
-				}
-			}
-			return loc.Format(controlMsg(c.Name))
+			return controlLabel(loc, cat, c.Name)
 		}
 	}
 	for _, r := range cat.Resources {
@@ -177,6 +215,29 @@ func resourceName(loc i18n.Locale, cat mapgen.Catalogue, planet, entity string) 
 		}
 	}
 	return entity
+}
+
+// controlLabel is a map generator control's name as the settings show it.
+func controlLabel(loc i18n.Locale, cat mapgen.Catalogue, control string) string {
+	if _, builtin := controlNames[control]; !builtin {
+		if l := cat.Controls[control].Label; l != "" {
+			return l
+		}
+	}
+	return loc.Format(controlMsg(control))
+}
+
+// fluidName is a fluid's name in the list: the name of the first control
+// its tiles are tied to that the catalogue knows, as the settings show it
+// (Vesta's methane is "Methane gas"), else the fluid's game name. The
+// catalogue holds no fluid names.
+func fluidName(loc i18n.Locale, cat mapgen.Catalogue, name string, f resource.Fluid) string {
+	for _, c := range f.Controls {
+		if _, ok := cat.Controls[c]; ok {
+			return controlLabel(loc, cat, c)
+		}
+	}
+	return name
 }
 
 // resources returns the amounts of planet in req: from the user's preview
@@ -209,19 +270,26 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 
 // countedView is resourceView for a count of req. A planet whose modded
 // resource controls are on but whose count found no patches may have
-// resources the count cannot see, such as tiles, and says so (SPEC 5.6).
+// resources the count cannot see, such as tiles, and says so (SPEC 5.6);
+// a control whose fluid tiles the count looked for is not one of them.
 func countedView(loc i18n.Locale, cat mapgen.Catalogue, req game.PreviewRequest, planet string, res resource.Result) *ResourceView {
 	v := resourceView(loc, cat, planet, res, req.Size)
-	if len(res.Patches) == 0 && hasResourceControlOn(cat, req.MapGenSettings, planet) {
+	counted := map[string]bool{}
+	for _, f := range res.Fluids {
+		for _, c := range f.Controls {
+			counted[c] = true
+		}
+	}
+	if len(res.Patches) == 0 && hasResourceControlOn(cat, req.MapGenSettings, planet, counted) {
 		v.None = i18n.M("worlds.generate.resources.not_patches")
 	}
 	return v
 }
 
-// hasResourceControlOn is whether planet has a resource control from a mod
-// that the map generator settings do not switch off with a size of zero.
-// The game's own resources are all patches.
-func hasResourceControlOn(cat mapgen.Catalogue, mapGen []byte, planet string) bool {
+// hasResourceControlOn is whether planet has a resource control from a mod,
+// other than the counted ones, that the map generator settings do not switch
+// off with a size of zero. The game's own resources are all patches.
+func hasResourceControlOn(cat mapgen.Catalogue, mapGen []byte, planet string, counted map[string]bool) bool {
 	var settings struct {
 		Controls map[string]struct {
 			Size *float64 `json:"size"`
@@ -230,7 +298,7 @@ func hasResourceControlOn(cat mapgen.Catalogue, mapGen []byte, planet string) bo
 	// Settings that are not JSON switch nothing off.
 	_ = json.Unmarshal(mapGen, &settings)
 	for _, c := range cat.PlanetControls(planet) {
-		if _, builtin := controlNames[c.Name]; builtin || c.Category != mapgen.CategoryResource {
+		if _, builtin := controlNames[c.Name]; builtin || c.Category != mapgen.CategoryResource || counted[c.Name] {
 			continue
 		}
 		if size := settings.Controls[c.Name].Size; size == nil || *size != 0 {
@@ -383,6 +451,12 @@ func resourceBytes(r *resource.Result) int {
 	}
 	for name := range r.Resources {
 		n += 64 + len(name)
+	}
+	for name, f := range r.Fluids {
+		n += 64 + len(name)
+		for _, c := range f.Controls {
+			n += 16 + len(c)
+		}
 	}
 	return n
 }

@@ -1,6 +1,8 @@
 // Package resource reads the resource patches of one planet from the JSON
-// a game container writes for a resource count run (SPEC 5.6). The JSON
-// comes from the game, so it is checked as untrusted input (SPEC 14.1).
+// a game container writes for a resource count run (SPEC 5.6): patches of
+// resource entities, and spots of fluid tiles tied to a resource control.
+// The JSON comes from the game, so it is checked as untrusted input (SPEC
+// 14.1).
 package resource
 
 import (
@@ -32,6 +34,11 @@ const (
 	// MaxResources is the most resources a file may list. A planet has at
 	// most 6 in the base game and Space Age.
 	MaxResources = 64
+	// MaxFluids is the most fluids a file may list, and MaxFluidControls the
+	// most controls one fluid's tiles may be tied to. Vesta, the one planet
+	// seen with such tiles, has 2 fluids of one control each.
+	MaxFluids        = 64
+	MaxFluidControls = 16
 	// maxNumber is the largest whole number the file may hold: the largest
 	// that a JSON number carries exactly in the game's floating point.
 	maxNumber = 1 << 53
@@ -57,13 +64,28 @@ type Resource struct {
 	Color  [3]uint8
 }
 
-// Patch is one patch of a resource inside the picture. X and Y are the
-// label tile, a tile of the patch. Box is the patch's bounding box as
-// min x, min y, max x, max y, in tiles and inclusive.
+// Fluid is a fluid whose tiles the count can find tied to a resource
+// control, on any planet: the controls of those tiles and a tile's map
+// colour.
+type Fluid struct {
+	Controls []string
+	Color    [3]uint8
+}
+
+// Patch is one patch of a resource inside the picture, or with Fluid set a
+// spot of a fluid's tiles. X and Y are the label tile, a tile of the patch.
+// Box is the patch's bounding box as min x, min y, max x, max y, in tiles
+// and inclusive.
 type Patch struct {
-	Name     string
-	X, Y     int
-	Amount   int64
+	// Name is a resource's name, or a spot's fluid, which may share a
+	// resource's name.
+	Name string
+	// Fluid marks a spot, which has no amount: pumping never runs it out.
+	Fluid  bool
+	X, Y   int
+	Amount int64
+	// Entities is the patch's number of resource entities, or a spot's
+	// number of tiles.
 	Entities int
 	Box      [4]int
 	// Normal is the resource's Normal, copied here so Yield needs only the
@@ -75,7 +97,10 @@ type Patch struct {
 type Result struct {
 	Planet    string
 	Resources map[string]Resource
-	Patches   []Patch
+	// Fluids is every fluid the count can find spots of, whether or not the
+	// picture holds one. A file from before spots were counted has none.
+	Fluids  map[string]Fluid
+	Patches []Patch
 }
 
 // Yield is an infinite resource patch's yield as a percentage of the
@@ -120,6 +145,7 @@ func (n *num) UnmarshalJSON(b []byte) error {
 type gameJSON struct {
 	Planet    string        `json:"planet"`
 	Resources resourceTable `json:"resources"`
+	Fluids    fluidTable    `json:"fluids"`
 	Patches   patchTable    `json:"patches"`
 }
 
@@ -130,8 +156,14 @@ type resourceJSON struct {
 	Color    []num `json:"color"`
 }
 
+type fluidJSON struct {
+	Controls []string `json:"controls"`
+	Color    []num    `json:"color"`
+}
+
 type patchJSON struct {
 	Name   string `json:"name"`
+	Fluid  bool   `json:"fluid"`
 	X      num    `json:"x"`
 	Y      num    `json:"y"`
 	Amount num    `json:"amount"`
@@ -145,6 +177,17 @@ type resourceTable map[string]resourceJSON
 
 func (t *resourceTable) UnmarshalJSON(b []byte) error {
 	var m map[string]resourceJSON
+	if err := decodeTable(b, '{', &m); err != nil {
+		return err
+	}
+	*t = m
+	return nil
+}
+
+type fluidTable map[string]fluidJSON
+
+func (t *fluidTable) UnmarshalJSON(b []byte) error {
+	var m map[string]fluidJSON
 	if err := decodeTable(b, '{', &m); err != nil {
 		return err
 	}
@@ -218,8 +261,9 @@ func invalid(format string, args ...any) error {
 // planet and returns its patches, largest bounding box first. It refuses
 // JSON over MaxJSON, more than MaxPatches patches, a file for another
 // planet, a number that is not a whole number from 0 to 2^53, a patch
-// outside the picture or of an unlisted resource, and patch amounts that do
-// not add up to their resource's total.
+// outside the picture or of an unlisted resource, a spot of an unlisted
+// fluid or with an amount, and patch amounts that do not add up to their
+// resource's total.
 func Parse(b []byte, size int, planet string) (Result, error) {
 	if size <= 0 || size > territory.MaxPicture || size%(2*territory.ChunkTiles) != 0 {
 		return Result{}, invalid("picture size %d", size)
@@ -239,6 +283,9 @@ func Parse(b []byte, size int, planet string) (Result, error) {
 	if len(g.Resources) > MaxResources {
 		return Result{}, invalid("more than %d resources", MaxResources)
 	}
+	if len(g.Fluids) > MaxFluids {
+		return Result{}, invalid("more than %d fluids", MaxFluids)
+	}
 	if len(g.Patches) > MaxPatches {
 		return Result{}, invalid("more than %d patches", MaxPatches)
 	}
@@ -250,6 +297,16 @@ func Parse(b []byte, size int, planet string) (Result, error) {
 		}
 		out.Resources[name] = res
 	}
+	if len(g.Fluids) > 0 {
+		out.Fluids = make(map[string]Fluid, len(g.Fluids))
+	}
+	for name, f := range g.Fluids {
+		fluid, err := checkFluid(name, f)
+		if err != nil {
+			return Result{}, err
+		}
+		out.Fluids[name] = fluid
+	}
 	half := size / 2
 	sums := make(map[string]int64, len(out.Resources))
 	out.Patches = make([]Patch, 0, len(g.Patches))
@@ -257,6 +314,13 @@ func Parse(b []byte, size int, planet string) (Result, error) {
 		patch, err := checkPatch(i, p, half)
 		if err != nil {
 			return Result{}, err
+		}
+		if patch.Fluid {
+			if _, ok := out.Fluids[patch.Name]; !ok {
+				return Result{}, invalid("spot %d is of a fluid not in the table", i)
+			}
+			out.Patches = append(out.Patches, patch)
+			continue
 		}
 		res, ok := out.Resources[patch.Name]
 		if !ok {
@@ -292,18 +356,46 @@ func checkResource(name string, r resourceJSON) (Resource, error) {
 	if r.Infinite != (normal > 0) {
 		return Resource{}, invalid("a resource's normal amount is not above 0 exactly when it is infinite")
 	}
-	if len(r.Color) != 3 {
-		return Resource{}, invalid("a resource's color has %d values", len(r.Color))
+	color, err := checkColor(r.Color)
+	if err != nil {
+		return Resource{}, err
 	}
-	res := Resource{Total: total, Infinite: r.Infinite, Normal: normal}
-	for i, c := range r.Color {
-		v, ok := whole(c, 0, 255)
-		if !ok {
-			return Resource{}, invalid("a resource's color is not whole numbers from 0 to 255")
+	return Resource{Total: total, Infinite: r.Infinite, Normal: normal, Color: color}, nil
+}
+
+func checkFluid(name string, f fluidJSON) (Fluid, error) {
+	if !namePattern.MatchString(name) {
+		return Fluid{}, invalid("a fluid has a bad name")
+	}
+	if len(f.Controls) == 0 || len(f.Controls) > MaxFluidControls {
+		return Fluid{}, invalid("a fluid has %d controls", len(f.Controls))
+	}
+	for _, c := range f.Controls {
+		if !namePattern.MatchString(c) {
+			return Fluid{}, invalid("a fluid has a control with a bad name")
 		}
-		res.Color[i] = uint8(v) //nolint:gosec // whole() kept it in 0..255
 	}
-	return res, nil
+	color, err := checkColor(f.Color)
+	if err != nil {
+		return Fluid{}, err
+	}
+	return Fluid{Controls: f.Controls, Color: color}, nil
+}
+
+// checkColor reads a map colour as three whole numbers from 0 to 255.
+func checkColor(c []num) ([3]uint8, error) {
+	var out [3]uint8
+	if len(c) != 3 {
+		return out, invalid("a color has %d values", len(c))
+	}
+	for i, v := range c {
+		n, ok := whole(v, 0, 255)
+		if !ok {
+			return out, invalid("a color is not whole numbers from 0 to 255")
+		}
+		out[i] = uint8(n) //nolint:gosec // whole() kept it in 0..255
+	}
+	return out, nil
 }
 
 func checkPatch(i int, p patchJSON, half int) (Patch, error) {
@@ -316,7 +408,12 @@ func checkPatch(i int, p patchJSON, half int) (Patch, error) {
 	if !okx || !oky {
 		return Patch{}, invalid("patch %d has a label tile that is not a whole number", i)
 	}
-	amount, oka := whole(p.Amount, 0, maxNumber)
+	// A spot has no amount, and an ore patch must have one.
+	var amount int64
+	oka := p.Amount == ""
+	if !p.Fluid {
+		amount, oka = whole(p.Amount, 0, maxNumber)
+	}
 	n, okn := whole(p.N, 1, maxNumber)
 	if !oka || !okn {
 		return Patch{}, invalid("patch %d has an amount or count that is not a whole number in range", i)
@@ -338,7 +435,7 @@ func checkPatch(i int, p patchJSON, half int) (Patch, error) {
 	if int(x) < box[0] || int(x) > box[2] || int(y) < box[1] || int(y) > box[3] {
 		return Patch{}, invalid("patch %d has a label tile outside its box", i)
 	}
-	return Patch{Name: p.Name, X: int(x), Y: int(y), Amount: amount, Entities: int(n), Box: box}, nil
+	return Patch{Name: p.Name, Fluid: p.Fluid, X: int(x), Y: int(y), Amount: amount, Entities: int(n), Box: box}, nil
 }
 
 // whole reads n as a whole number from lo to hi. A number written as 3e2 or
@@ -384,7 +481,16 @@ func comparePatches(a, b Patch) int {
 	return cmp.Or(
 		cmp.Compare(area(b), area(a)),
 		cmp.Compare(a.Name, b.Name),
+		cmp.Compare(boolOrder(a.Fluid), boolOrder(b.Fluid)),
 		cmp.Compare(a.X, b.X),
 		cmp.Compare(a.Y, b.Y),
 	)
+}
+
+// boolOrder puts false before true.
+func boolOrder(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
