@@ -122,7 +122,7 @@ a phone can find where a page and a section start.
 | `--text-lg` | 1.125rem (18 px) | 1.333 | 650 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
 | `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings; the Server plate's figures on a phone |
 | `--text-2xl` | 1.5rem (24 px) | 1.167 | 600 | Stat figures: the Server plate's gauges, tabular |
-| `--text-3xl` | 2rem (32 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
+| `--text-3xl` | 1.75rem (28 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
 
 Column names (table heads and the heads of the world, token and user
 lists) and fact names (`dt`) are labels set apart from content by colour
@@ -203,15 +203,19 @@ dialog (black at 50%) and the shadows' own values (4).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#131210` | `#e9e3d6` | The page |
-| `--color-surface` | `#1e1c19` | `#fffdf9` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#292622` | `#f5f0e6` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
-| `--color-deep` | `#0d0c0b` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#3b3732` | `#d8d0bf` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-bg` | `#0e0d0b` | `#ece8df` | The page |
+| `--color-surface` | `#1c1a17` | `#fdfbf7` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#282521` | `#f4f0e8` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-deep` | `#0a0908` | `#ffffff` | Form fields, the log and console |
+| `--color-line` | `#36322d` | `#ddd6c8` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-line-strong` | `#4f4943` | `#c4bbab` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
-| `--color-text-muted` | `#c2baae` | `#4f493f` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
-| `--color-border` | `#958b7e` | `#8a8073` | Edge of fields, secondary buttons and the menu |
+| `--color-text-muted` | `#b9b0a3` | `#4a443b` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
+| `--color-text-faint` | `#a0978b` | `#655d52` | Hints, metadata and second lines in rows: the third ink, quieter than muted |
+| `--color-desk` | `#090807` | `#211f1b` | The control desk bar across the top; dark in both themes, and its contents use the dark theme's tokens |
+| `--color-desk-line` | `#2e2a25` | `#3a352f` | The control desk's bottom edge |
+| `--color-border` | `#857c70` | `#80766a` | Edge of fields, secondary buttons and the menu |
 | `--color-link` | `#ffb357` | `#9a4800` | Links (always underlined), quiet buttons, the "Active" badge |
 | `--color-selected` | `#f39a2a` | `#bd6500` | The current tab's underline, the current item's edge in the rail, the current item in the menu, the live world's edge, checked boxes, progress bars |
 | `--color-accent-bg` | `#352610` | `#fdecd5` | A pale orange tint: the current item in the menu, the "Active" badge |
@@ -227,11 +231,11 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-danger-bg` | `#3a1913` | `#fbe6e1` | Error message and "crashed" badge background, risky and remove buttons under the pointer |
 | `--color-ok` | `#86d672` | `#1f6a2a` | "Done" word, "running" badge, the Server plate's state word and rule while the game runs |
 | `--color-ok-bg` | `#172a12` | `#e3f1de` | Success message and "running" badge background |
-| `--color-warn` | `#f2c14e` | `#665400` | "Warning" word, "starting" and "stopping" badges, the Server plate's state word and rule while stopping |
-| `--color-warn-bg` | `#33280c` | `#f5f0c2` | Warning message and "starting"/"stopping" badge background |
+| `--color-warn` | `#f2c14e` | `#6b5200` | "Warning" word, "starting" and "stopping" badges, the Server plate's state word and rule while stopping |
+| `--color-warn-bg` | `#33280c` | `#faefc8` | Warning message and "starting"/"stopping" badge background |
 | `--color-info` | `#8ec1ea` | `#1d5a8a` | "Note" word and a note's edge; the Server plate's state word and rule while starting; a planned mod's edge, a harmless plan's top edge, an empty state's drawing |
 | `--color-info-bg` | `#13222f` | `#e2eef7` | Notice background |
-| `--color-focus` | `#f7ae4f` | `#b35c00` | Focus outline |
+| `--color-focus` | `#f7ae4f` | `#a85400` | Focus outline |
 
 The map's own colours are tokens too, the same in both themes, because
 they sit on the map's picture, which does not follow the theme (8.8):
@@ -415,8 +419,8 @@ Other fixed values, also tokens:
 
 | Token | Value | Use |
 |---|---|---|
-| `--radius` | 6px | Buttons, fields, the menu button, messages, the log |
-| `--radius-lg` | 8px | Cards, the confirmation box, the menu panel, the Generate preview column |
+| `--radius` | 3px | Buttons, fields, the menu button, messages, the log |
+| `--radius-lg` | 4px | Cards, the confirmation box, the menu panel, the Generate preview column |
 | `--border-width` | 1px | Every border except the ones below |
 | `--focus-width` | 3px | Focus outline |
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |

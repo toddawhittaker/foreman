@@ -233,7 +233,7 @@ func TestAuditLogRows(t *testing.T) {
 
 	start := row("Server started")
 	for _, want := range []string{
-		`<span class="badge ident" translate="no">Claude</span>`,
+		`<span class="badge ident" translate="no" title="Claude">Claude</span>`,
 		`<a href="` + worldPath(id) + `">Nauvis Prime</a>`,
 		`<time datetime=`,
 	} {

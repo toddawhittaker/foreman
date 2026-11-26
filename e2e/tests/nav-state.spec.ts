@@ -3,13 +3,14 @@ import type { Page } from "@playwright/test";
 
 // SPEC 17.4, DESIGN 7.5: the server's state beside Server in the main
 // navigation is said in words on every page, not by the lamp's shape alone.
-// At every width the word sits beside the logo, after the product name; the
-// Server tab shows only "Server" and says the state to screen readers.
+// At every width the word sits in the top bar, after the logo and before the
+// account menu; the Server tab shows only "Server" and says the state to
+// screen readers.
 
 test.use({ fakeGameOn: true });
 
 const isPhone = (page: Page) => (page.viewportSize()?.width ?? 1000) <= 320;
-// From 64rem the header is the start-side rail and the state sits in the status strip over the content (DESIGN 6, Shell).
+// From 64rem the header is one bar: logo, the four areas, the live world and its state, then the menu (DESIGN 6, Shell).
 const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) >= 1024;
 
 // How wide the state's word is drawn inside el: 0 when it is hidden or clipped.
@@ -36,11 +37,15 @@ async function expectStateWord(page: Page, word: string) {
   // The tab itself reads as plain "Server".
   const box = (await tab.boundingBox())!;
   expect(box.height, "the tab is one line").toBeLessThanOrEqual(48);
-  // After the logo's name, and before the tabs, or before the menu on a phone and in the wide status strip.
+  // After the logo (and after the tabs in the wide bar), before the menu, at every width.
   const logo = (await page.locator("header.site .product").boundingBox())!;
   const shown = (await beside.boundingBox())!;
-  const next = (await (isPhone(page) || isWide(page) ? page.locator("details.menu > summary") : mainNav(page)).boundingBox())!;
+  const next = (await page.locator("details.menu > summary").boundingBox())!;
   expect(shown.x).toBeGreaterThanOrEqual(logo.x + logo.width);
+  if (isWide(page)) {
+    const nav = (await mainNav(page).boundingBox())!;
+    expect(shown.x).toBeGreaterThanOrEqual(nav.x + nav.width - 1);
+  }
   expect(shown.x + shown.width).toBeLessThanOrEqual(next.x + 1);
   expect(Math.abs(shown.y + shown.height / 2 - (logo.y + logo.height / 2)), "level with the logo").toBeLessThan(6);
 }
@@ -84,14 +89,12 @@ test("in German the state word fits the header", { tag: "@looks" }, async ({ pag
   // Logo and menu share the first row, and the tabs keep one row under it.
   expect(Math.abs(menu.y + menu.height / 2 - (logo.y + logo.height / 2))).toBeLessThan(4);
   expect(menu.x + menu.width).toBeLessThanOrEqual(width);
-  // The tabs keep one row; in the wide rail they keep one column.
-  const isWideNow = isWide(page);
-  const lines = await page.locator("header.site > nav:not(.subnav) a").evaluateAll((els, wide) => new Set(els.map((a) => Math.round(wide ? a.getBoundingClientRect().left : a.getBoundingClientRect().top))).size, isWideNow);
+  // The tabs keep one row at every width.
+  const lines = await page.locator("header.site > nav:not(.subnav) a").evaluateAll((els) => new Set(els.map((a) => Math.round(a.getBoundingClientRect().top))).size);
   expect(lines).toBe(1);
   const state = await box("header.site #site-state");
-  const nav = await box("header.site > nav:not(.subnav)");
   expect(state.x).toBeGreaterThanOrEqual(logo.x + logo.width);
-  expect(state.x + state.width).toBeLessThanOrEqual((isPhone(page) || isWideNow ? menu.x : nav.x) + 1);
+  expect(state.x + state.width).toBeLessThanOrEqual(menu.x + 1);
   await checkPage(page);
 });
 
@@ -114,17 +117,16 @@ for (const [lang, short, long] of [
     const show = (state: string, word: string) =>
       page.evaluate(([s, w]) => {
         for (const el of document.querySelectorAll("#nav-lamp, #site-state")) el.innerHTML = `<span class="lamp lamp--${s}"></span>&nbsp;${w}`;
-        // In the wide shell the header's parts sit in the rail and the strip; the strip's row is the one that could grow.
-        return document.querySelector("header.site")!.getBoundingClientRect().height || document.querySelector(".site-strip")!.getBoundingClientRect().height;
+        return document.querySelector("header.site")!.getBoundingClientRect().height;
       }, [state, word]);
     for (const width of [320, 660, 900, 1280]) {
       await page.setViewportSize({ width, height: 800 });
       const before = await show("running", short);
       const after = await show("crash-looping", long);
       expect(after, `${width} px`).toBe(before);
-      // On the logo's row, the longest word stays clear of the tabs.
+      // On the logo's row, the longest word stays clear of the tabs before it.
       const [state, nav, logo] = await Promise.all(["#site-state", "header.site > nav:not(.subnav)", "header.site .product"].map((q) => page.locator(q).boundingBox()));
-      if (nav!.y < logo!.y + logo!.height) expect(state!.x + state!.width, `${width} px`).toBeLessThanOrEqual(nav!.x + 1);
+      if (nav!.y < logo!.y + logo!.height) expect(state!.x, `${width} px`).toBeGreaterThanOrEqual(nav!.x + nav!.width - 1);
     }
   });
 }

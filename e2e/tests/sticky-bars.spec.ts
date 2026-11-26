@@ -130,18 +130,18 @@ test("the phone Console command bar never covers the focused control", { tag: "@
   await tabsClearOf(page, await markBar(page.locator(".terminal .console-form")), true);
 });
 
-// From 64rem the status strip sticks to the window's top, so a control
+// From 40rem the top bar sticks to the window's top, so a control
 // reached backwards with Shift+Tab is scrolled clear of it, never left
 // behind it (WCAG 2.4.11, DESIGN 6, Shell).
-test("the status strip never covers a control reached with Shift+Tab", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
-  test.skip((page.viewportSize()?.width ?? 0) < 1024, "the strip sticks from 64rem only");
+test("the top bar never covers a control reached with Shift+Tab", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+  test.skip((page.viewportSize()?.width ?? 0) < 640, "the bar sticks from 40rem only");
   // Step 1 of Generate is short, so a low window gives it room to scroll.
   await page.setViewportSize({ width: page.viewportSize()!.width, height: 360 });
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
   await page.goto("/generate");
-  const strip = page.locator(".site-strip");
+  const strip = page.locator("header.site");
   const field = page.getByLabel("World name");
   await field.focus();
   await page.keyboard.press("Tab");
