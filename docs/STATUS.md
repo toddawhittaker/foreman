@@ -5268,11 +5268,11 @@ pull requests were #931 to #949.
   `data-final-fixes.lua` that copies icon paths from `data.raw` into one
   invisible `mod-data` prototype, and `control.lua` writes them to
   `icons.json`, and the star map's places and routes to `starmap.json`. The
-  control mod takes an
-  optional dependency on each world mod so that it loads last. Both files
-  come from the mod settings runs that already exist and are cached with
-  their results, so there is no new game run. The fake game writes both
-  files too. The `recycler` built-in mod is now refused (#937).
+  control mod takes an optional dependency on each world mod so that it
+  loads last. Both files come from the mod settings runs that already exist
+  and are cached with their results, so there is no new game run. The fake
+  game writes both files too. The icon index refuses the `recycler` built-in
+  mod (#937).
 - **The star map (#920, SPEC 5.6, 17.20; DESIGN 8.23).** Generate's map
   preview has a Star map picture beside the planet pictures. It draws the
   sun, a faint ring at each planet's distance, each location sized by its
