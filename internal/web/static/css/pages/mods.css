@@ -777,7 +777,7 @@ ol.plan-steps > li:not(:last-child)::after {
      The bar's own rule beside the other foot bars would reach wide screens,
      where the plan is not at the foot. */
   html:has(.plan-panel:not(.plan-panel--empty)) {
-    scroll-padding-block-end: 9rem;
+    --foot-bar-room: 9rem;
   }
 }
 
@@ -1441,13 +1441,13 @@ ol.plan-steps > li:not(:last-child)::after {
 
 /* Focus is never left behind the bar (WCAG 2.4.11), as for the other bars. */
 html:has(.flow-foot) {
-  scroll-padding-block-end: 5.5rem;
+  --foot-bar-room: 5.5rem;
 }
 
 /* On a phone its two actions stack, so the room grows with them. */
 @media (max-width: 30rem) {
   html:has(.flow-foot) {
-    scroll-padding-block-end: min(9rem, 50dvh);
+    --foot-bar-room: min(9rem, 50dvh);
   }
 }
 

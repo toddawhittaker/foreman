@@ -1,4 +1,4 @@
-import { test, expect, createAdmin, openMenu, seedWorld, signOut, image21 } from "./foreman.js";
+import { test, expect, createAdmin, openMenu, seedWorld, signOut, image21, checkPage } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // The shell (DESIGN 6): the top bar and account menu follow the theme, the
@@ -53,12 +53,14 @@ test("the top bar and the account menu follow the theme", async ({ page }) => {
     // The bar's words take the theme's text colour, dark on the light bar.
     const words = await luminance(page, "header.site .menu > summary", "color");
     expect(light ? words < 0.05 : words > 0.6, `${label}: menu words ${words}`).toBe(true);
+    await checkPage(page);
     await openMenu(page);
     const panel = await luminance(page, ".menu__panel");
     expect(light ? panel > 0.8 : panel < 0.05, `${label}: menu panel ${panel}`).toBe(true);
     await page.locator("details.menu__langs > summary").click();
     const item = await luminance(page, ".menu__langs > form .menu__item", "color");
     expect(light ? item < 0.05 : item > 0.6, `${label}: language words ${item}`).toBe(true);
+    await checkPage(page);
   });
 });
 
@@ -127,7 +129,7 @@ test("every page is one width, its frame lined up with the top bar", async ({ pa
       const tabs = await box(page, "main .subnav, main h1");
       // The content starts under the wordmark and ends under the menu.
       expect(tabs.x, `${label} ${path} start`).toBe(start);
-      const last = await page.locator("main > :not(.toasts):last-child").boundingBox();
+      const last = await page.locator("main > :not(.toasts)").last().boundingBox();
       expect(last!.x + last!.width, `${label} ${path} end`).toBe(end.x + end.width);
       seen[path] = [start, end.x + end.width];
     }
@@ -146,6 +148,7 @@ test("a signed-in unknown page keeps the shell, its header where the other error
       return { bar: await box(page, "header.site"), head: await box(page, "main .pagehead"), h1: await box(page, "main h1"), panel: await box(page, "main .panel") };
     };
     const unknown = await parts("/no-such-page");
+    await checkPage(page);
     expect(await parts("/worlds/no-such-world"), label).toEqual(unknown);
   });
 });

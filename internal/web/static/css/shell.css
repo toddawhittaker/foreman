@@ -839,7 +839,19 @@ main:has(> .gate) {
    stack at large text, so its room grows with them, to half the window. */
 html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   --foot-bar-room: 5.5rem;
-  scroll-padding-block-end: var(--foot-bar-room);
+}
+
+/* Each page's own bar sets only its room, here and in its page file, so the
+   toasts lift above the same bar and the room adds up with theirs. A page
+   without one keeps the desk's small gap from 40rem (base.css). */
+html {
+  scroll-padding-block-end: var(--foot-bar-room, 0rem);
+}
+
+@media (min-width: 40rem) {
+  html {
+    scroll-padding-block-end: var(--foot-bar-room, var(--space-3));
+  }
 }
 
 /* Sign-in and signed-out carry the rusty wordmark above their heading,
@@ -1912,6 +1924,8 @@ main > .crumb {
 /* ==== Toasts (DESIGN 6, "Toasts"): result messages over the page. With
    script they float at the window's foot, above any bar stuck there, and take
    no room; without it they stay first in the page and keep their room. */
+/* Newest first: a toast comes in on top of the stack, so the ones already
+   shown keep their place (the stack grows up from its foot). */
 .toasts {
   display: grid;
   gap: var(--space-2);
@@ -1928,7 +1942,24 @@ main > .crumb {
     inset-inline-end: var(--space-4);
     z-index: 20;
     inline-size: min(28rem, calc(100% - 2 * var(--space-4)));
+    /* A tall stack scrolls inside the window instead of running off it
+       (WCAG 1.4.10). */
+    max-block-size: calc(100dvh - 2 * var(--space-4) - var(--foot-bar-room, 0rem));
+    overflow-y: auto;
     pointer-events: none;
+  }
+
+  /* A control scrolled into view clears the stack too (WCAG 2.4.11), and
+     the page gets as much room at its end, so its last control can scroll
+     clear. toast.js measures the stack into --toast-room. */
+  html:has(.toasts > .toast) {
+    --toast-clear: calc(var(--foot-bar-room, 0rem) + var(--toast-room, 0rem) + var(--space-4) + var(--space-2));
+    scroll-padding-block-end: var(--toast-clear);
+  }
+
+  html:has(.toasts > .toast) body::after {
+    content: "";
+    block-size: var(--toast-clear);
   }
 
   .toast {
@@ -1973,8 +2004,10 @@ main > .crumb {
   padding-block: var(--space-2);
 }
 
+/* Hidden unless script runs, so a browser that cannot tell never shows a
+   button that does nothing. */
 .toast__close {
-  display: grid;
+  display: none;
   place-items: center;
   inline-size: var(--target-min);
   block-size: var(--target-min);
@@ -1999,10 +2032,9 @@ main > .crumb {
   border-color: var(--color-border);
 }
 
-/* Without script the button would do nothing, so there is none. */
-@media not (scripting: enabled) {
+@media (scripting: enabled) {
   .toast__close {
-    display: none;
+    display: grid;
   }
 }
 

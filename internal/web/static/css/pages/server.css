@@ -436,7 +436,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 /* The phone's command bar: its label, a 44 px row, 12 px padding each side. */
 @media (max-width: 39.99rem) {
   html:has(.terminal .console-form) {
-    scroll-padding-block-end: 6.5rem;
+    --foot-bar-room: 6.5rem;
   }
 }
 

@@ -859,25 +859,48 @@ frame (7.4).
 - **Toasts** are the result messages of an action: "Done:" for a success,
   and "Error:" for a failure that sums up what went wrong. Field errors stay
   at their field (7.2); a toast only sums up.
-  - **Where.** `templates/toast.html` draws `#toasts` first in `main`; a
+  - **Where.** `templates/toast.html` draws `#toasts` last in `main`, so the page's
+    `h1` stays first; a
     page lists its messages with a `toasts() []Toast` method on its view
-    model. A toast that comes after the page is the same partial in an htmx
-    answer, swapped in with `hx-swap-oob="beforeend:#toasts"`;
-    `static/toast.js` picks up every toast that lands there. With script the region floats at the window's
-    end corner, 16 px in from the foot, and lifts above a bar stuck to the
-    window's foot (`--foot-bar-room`), so it takes no room and nothing on the
-    page moves; several stack, the newest last. Without script it is the
-    first thing in `main`, in the page's flow, so it keeps its room.
+    model. A toast that comes after the page is the `toast-oob` partial in
+    an htmx answer: the toast inside `<div hx-swap-oob="afterbegin:#toasts">`.
+    htmx inserts that wrapper's children, so the whole toast lands; never put
+    `hx-swap-oob` on the toast itself, which would land only its insides.
+    htmx swaps nothing from a 4xx or 5xx answer, out of band included, and
+    its global `responseHandling` stays as it is; instead `static/toast.js`
+    takes each `toast-oob` toast out of an error answer htmx did not swap and
+    adds it to `#toasts`, leaving the rest of the answer unswapped. So an
+    error answer carries its message as a `toast-oob`. `toast.js` watches the
+    whole page for toasts that land in `#toasts`, so a swap that replaces the
+    region does not stop later ones; even so, nothing should replace it.
+  - **Place.** With script the region floats at the window's end corner,
+    16 px in from the foot, and lifts above a bar stuck to the window's foot,
+    so it takes no room and nothing on the page moves. Every such bar sets
+    only `--foot-bar-room` on `html` (in `shell.css` or its page file), never
+    `scroll-padding` itself; one rule turns the room into the page's
+    `scroll-padding-block-end`. Toasts stack newest on top: a new toast goes
+    first and the stack grows up from its foot, so the ones already shown
+    keep their exact place. Closing one lets those above it drop down. A
+    stack taller than the window scrolls inside itself (WCAG 1.4.10). While a
+    toast shows, `toast.js` measures the stack into `--toast-room`, and the
+    page's scroll padding and the room at its end grow by the stack, so a
+    focused control is never left under it (WCAG 2.4.11). Without script it
+    is the last thing in `main`, in the page's flow, so it keeps its room.
   - **Look.** A message's look (7.3): the kind's tint, a 4 px start edge and
     the leading word in its tone, the words in `text`, a 1 px `line` edge,
     `--shadow-pop` while it floats, at most 28rem wide. A 44 px icon-only
-    close button ("Close this message") sits at its end; without script
-    there is none.
+    close button ("Close this message") sits at its end, shown only under
+    `(scripting: enabled)`, so a browser that cannot tell never shows a
+    button that does nothing.
   - **Behaviour.** A success is read out through `#announcer`, stays at
     least 6 s (8 s, counted again when the pointer or focus leaves it) and
-    waits while hovered or focused. An error is `role="alert"` and stays
-    until closed. A toast never takes focus; closing the one that holds
-    focus returns it to where it was before, else to `main`.
+    waits while hovered or focused. An error is read out through `#alerts`,
+    the layout's one empty `role="alert"` region beside `#announcer`, and
+    stays until closed; the toast itself is not an alert, so it is read
+    once. A toast never takes focus; closing the one that holds focus
+    returns it to where it was before, else to `main`. Escape closes the
+    newest toast, unless focus is in a text field, a menu or a dialog, or a
+    menu or dialog is open.
 
 - Viewport media queries are used for the shell (the bar's rows, the
   page's padding and width, plate padding, the tab icons) and where a
