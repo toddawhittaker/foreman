@@ -478,7 +478,18 @@ func TestModSettingDefsErrors(t *testing.T) {
 				tc.more(t, res.err)
 			}
 			eventually(t, func() bool { return len(r.previewContainers()) == 0 && len(r.previewFolders()) == 0 }, "the container and folder to go")
-			// A failure is not kept.
+			if errors.Is(tc.want, ErrModSettingsBadOutput) {
+				// A run that would fail again with the same mods is kept: the
+				// next call does not run the game (issue 965).
+				if !errors.Is(res.err, ErrModSettingsKept) {
+					t.Errorf("%v is not kept", res.err)
+				}
+				if _, err := r.c.ModSettingDefs(context.Background(), r.id); !errors.Is(err, tc.want) || r.creates() != 1 {
+					t.Fatalf("the next call: %v after %d runs, want the kept failure and 1 run", err, r.creates())
+				}
+				return
+			}
+			// Any other failure may pass on its own, so it is not kept.
 			ch = r.ask(context.Background())
 			r.finish(r.waitRunning(), defsJSON, good)
 			if res := r.result(ch); res.err != nil {

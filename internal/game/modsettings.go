@@ -216,6 +216,48 @@ type modSettingsCache struct {
 	// recently used.
 	clock   uint64
 	flights map[modSettingsFlightKey]*modSettingsFlight
+	// failed is each world's last failed run that would fail again with the
+	// same mods, by key: a page load does not run the game again until the
+	// world's mods change (SPEC 5.6, issue 965).
+	failed map[string]modSettingsFailure
+}
+
+// modSettingsFailure is a kept failed run: its key and error, which wraps
+// ErrModSettingsKept.
+type modSettingsFailure struct {
+	key string
+	err error
+}
+
+// ErrModSettingsKept marks a failed run whose result is kept until the
+// world's mods change: asking again does not run the game again.
+var ErrModSettingsKept = errors.New("the failed run is kept until the world's mods change")
+
+// keepsFailure is whether a failed run would fail again with the same mods:
+// the game ran and failed or wrote nothing usable. A missing image, a
+// timeout, memory, a busy world or slot may pass on their own.
+func keepsFailure(err error) bool {
+	return errors.Is(err, ErrModSettingsBadOutput)
+}
+
+// failure is the world's kept failure for key. mu is held.
+func (m *modSettingsCache) failure(id, key string) (error, bool) {
+	f, ok := m.failed[id]
+	if !ok || key == "" || f.key != key {
+		return nil, false
+	}
+	return f.err, true
+}
+
+// fail keeps err as the world's failure for key, and returns the kept
+// error. mu is held.
+func (m *modSettingsCache) fail(id, key string, err error) error {
+	if m.failed == nil {
+		m.failed = map[string]modSettingsFailure{}
+	}
+	kept := fmt.Errorf("%w: %w", ErrModSettingsKept, err)
+	m.failed[id] = modSettingsFailure{key, kept}
+	return kept
 }
 
 type modSettingsEntry struct {
@@ -243,6 +285,7 @@ func (m *modSettingsCache) put(id, key string, defs *ModSettingDefs) {
 		m.entries = map[string]*modSettingsEntry{}
 	}
 	m.clock++
+	delete(m.failed, id)
 	m.entries[id] = &modSettingsEntry{key, defs, m.clock}
 	for len(m.entries) > maxModSettingsEntries {
 		oldest := ""
@@ -308,6 +351,10 @@ func (c *Controller) sharedModSettingsRun(ctx context.Context, id string, k modS
 			cache.mu.Unlock()
 			return defs, nil
 		}
+		if err, ok := cache.failure(id, key); ok {
+			cache.mu.Unlock()
+			return nil, err
+		}
 	}
 	f := cache.flights[fk]
 	if f == nil {
@@ -346,6 +393,13 @@ func (c *Controller) runModSettingsFlight(id string, fk modSettingsFlightKey, f 
 			cache.put(id, before, defs)
 		} else {
 			c.log.Info("the mods changed during the mod settings run, so the result is not kept", "world", id)
+		}
+		cache.mu.Unlock()
+	} else if keepsFailure(err) && before != "" {
+		after, kerr := k.key(id)
+		cache.mu.Lock()
+		if kerr == nil && after == before {
+			err = cache.fail(id, before, err)
 		}
 		cache.mu.Unlock()
 	}
@@ -415,14 +469,15 @@ func (c *Controller) runModSettings(ctx context.Context, id string, settings boo
 		return nil
 	})
 	if err != nil {
-		return nil, "", modSettingsError(err)
+		// The key goes with the error, so a failure can be kept for it.
+		return nil, key, modSettingsError(err)
 	}
 	defs, err := modsettings.ParseDefinitions(defsJSON)
 	if err != nil {
-		return nil, "", fmt.Errorf("%w: %w", ErrModSettingsBadOutput, err)
+		return nil, key, fmt.Errorf("%w: %w", ErrModSettingsBadOutput, err)
 	}
 	if _, err := modsettings.Decode(defaults); err != nil {
-		return nil, "", fmt.Errorf("%w: the defaults file: %w", ErrModSettingsBadOutput, err)
+		return nil, key, fmt.Errorf("%w: the defaults file: %w", ErrModSettingsBadOutput, err)
 	}
 	// The control mod has no settings, but a file that lists one is not
 	// shown.

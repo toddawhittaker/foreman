@@ -32,6 +32,8 @@
   "newmap.builtin.refused": "La liste des planètes fournie par les mods de ce monde est inutilisable ; seules les planètes du jeu sont affichées. Leurs paramètres fonctionnent toujours.",
   "newmap.builtin.missing": "Le jeu n’a pas indiqué les planètes des mods de ce monde ; seules les planètes du jeu sont affichées. Leurs paramètres fonctionnent toujours.",
   "newmap.builtin.failed": "Les planètes des mods de ce monde n’ont pas pu être lues ; seules les planètes du jeu sont affichées. Leurs paramètres fonctionnent toujours. Vérifiez les mods du monde ou réessayez plus tard.",
+  "newmap.builtin.failed_kept": "Les planètes des mods de ce monde n’ont pas pu être lues ; seules les planètes du jeu sont affichées. Leurs paramètres fonctionnent toujours. Modifiez les mods du monde pour réessayer.",
+  "newmap.builtin.mod_failed": "{mod} a échoué pendant que le jeu lisait les planètes des mods de ce monde ; seules les planètes du jeu sont affichées. Leurs paramètres fonctionnent toujours. Retirez {mod} ou changez sa version pour relire les planètes.",
   "newmap.error.running": "Le serveur de ce monde démarre ou tourne, et son premier démarrage crée la carte. Arrêtez le serveur avant de modifier les paramètres de la carte.",
   "newmap.error.busy": "Une autre opération est en cours sur ce monde. Réessayez quand elle sera terminée.",
   "newmap.error.exchange_other_line": "Cette chaîne a été créée par Factorio {version}, mais ce monde utilise {game}. Une chaîne ne fonctionne qu’avec une version du jeu de la même série (1.1, 2.0 ou 2.1). Changez la version du jeu du monde sur sa page, ou collez une autre chaîne.",

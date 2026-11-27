@@ -33,6 +33,8 @@
   "newmap.builtin.refused": "Listy planet z modyfikacji tego świata nie można użyć, więc widoczne są tylko planety samej gry. Ich ustawienia nadal działają.",
   "newmap.builtin.missing": "Gra nie podała planet z modyfikacji tego świata, więc widoczne są tylko planety samej gry. Ich ustawienia nadal działają.",
   "newmap.builtin.failed": "Nie udało się odczytać planet z modyfikacji tego świata, więc widoczne są tylko planety samej gry. Ich ustawienia nadal działają. Warto sprawdzić modyfikacje świata lub spróbować później.",
+  "newmap.builtin.failed_kept": "Nie udało się odczytać planet z modyfikacji tego świata, więc widoczne są tylko planety samej gry. Ich ustawienia nadal działają. Ponowna próba nastąpi po zmianie modyfikacji świata.",
+  "newmap.builtin.mod_failed": "Modyfikacja {mod} zawiodła, gdy gra odczytywała planety z modyfikacji tego świata, więc widoczne są tylko planety samej gry. Ich ustawienia nadal działają. Po usunięciu {mod} lub zmianie jej wersji planety zostaną odczytane ponownie.",
   "newmap.error.running": "Serwer tego świata uruchamia się lub działa, a pierwsze uruchomienie tworzy mapę. Przed zmianą ustawień mapy należy zatrzymać serwer.",
   "newmap.error.busy": "Na tym świecie trwa inna operacja. Można spróbować ponownie po jej zakończeniu.",
   "newmap.error.exchange_other_line": "Ten kod pochodzi z Factorio {version}, a ten świat używa wersji {game}. Kod działa tylko z wersją gry z tej samej serii (1.1, 2.0 lub 2.1). Można zmienić wersję gry świata na jego stronie lub wkleić inny kod.",

@@ -239,16 +239,20 @@ const (
 	// PreviewNoPatches is PreviewOK, but a resource count finds no patches,
 	// as on a planet whose resources are tiles.
 	PreviewNoPatches PreviewMode = "no-patches"
+	// PreviewModCrash is PreviewOK, but a mod settings run fails in the
+	// script of the world's first enabled mod that is not the game's own,
+	// as a mod that crashes in its data stage does (issue 965).
+	PreviewModCrash PreviewMode = "mod-crash"
 )
 
 // SetPreviewMode sets how later preview containers end (SPEC 5.6). The
 // default is PreviewOK.
 func (g *Game) SetPreviewMode(mode PreviewMode) error {
 	switch mode {
-	case PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches:
+	case PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches, PreviewModCrash:
 	default:
-		return fmt.Errorf("a preview mode is %q, %q, %q, %q, %q or %q",
-			PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches)
+		return fmt.Errorf("a preview mode is %q, %q, %q, %q, %q, %q or %q",
+			PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches, PreviewModCrash)
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()

@@ -142,6 +142,7 @@ func TestModSettingsRunFailureModes(t *testing.T) {
 		{fakegame.PreviewOOM, "exited", 137, true},
 		{fakegame.PreviewHangs, "running", 0, false}, // the run's time limit stops it
 		{fakegame.PreviewFails, "exited", 1, false},
+		{fakegame.PreviewModCrash, "exited", 1, false}, // its log names the mod (issue 965)
 	} {
 		t.Run(string(tc.mode), func(t *testing.T) {
 			r := newRig(t, fakegame.Config{})
