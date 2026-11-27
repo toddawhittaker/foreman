@@ -563,7 +563,7 @@
   "server.console.filter_warnings": "Warnungen",
   "server.console.filter_errors": "Fehler",
   "server.console.follow": "Neueste verfolgen",
-  "server.console.no_match": "Keine Zeile passt.",
+  "server.console.no_match": "Keine passenden Zeilen.",
   "server.console.go_server": "Zur Seite „Server“",
   "server.console.command": "Befehl",
   "server.console.command_hint": "Wird so an das Spiel gesendet, wie du es eingibst, und im Audit-Protokoll festgehalten. Ein gesetztes Passwort wird verborgen.",
