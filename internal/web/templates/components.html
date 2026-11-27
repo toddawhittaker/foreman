@@ -1,0 +1,24 @@
+{{- /* Shared components (DESIGN 7): each is defined here once, and every page uses it through these templates. */ -}}
+
+{{- /* The working bar (DESIGN 7.6): a CSS bar for slow work, with the words that say what is happening. The bar is decorative; the words and the page's announcer carry the news. Its input is the words, or "" for the bar alone. */ -}}
+{{define "working" -}}
+<span class="working"><span class="working__bar" aria-hidden="true"></span>{{with .}}<span class="working__text">{{.}}</span>{{end}}</span>
+{{- end}}
+
+{{- /* An empty state (DESIGN 7.3): the missing thing drawn as a plan, over the sentence that names the next step, centred in its plate. Its input comes from the empty function. */ -}}
+{{define "empty" -}}
+<p class="empty empty--art empty--{{.Thing}}"{{with .ID}} id="{{.}}"{{end}}><span class="empty__text">{{.Text}}</span></p>
+{{- end}}
+
+{{- /* A form's foot bar (DESIGN 7.1): what is pending leads it, then Cancel and the primary action at its end. Its input comes from the formFoot function. */ -}}
+{{define "form-foot" -}}
+<div class="actions form-foot">
+  {{- if or .Note .NoteID}}
+  <p class="hint form-foot__note"{{with .NoteID}} id="{{.}}"{{end}}{{if .Status}} role="status"{{end}}>{{.Note}}</p>
+  {{- end}}
+  {{- with .Cancel}}
+  <a href="{{.}}" class="button button--ghost">{{$.CancelText}}</a>
+  {{- end}}
+  <button type="submit" class="button button--primary"{{with .SubmitID}} id="{{.}}"{{end}}>{{.Submit}}</button>
+</div>
+{{- end}}

@@ -270,7 +270,8 @@ test("just above the stacking width, long names and a long detail do not scroll 
   await expect(page.locator("#audit-list")).toHaveCSS("display", "table");
   const root = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   expect(root.scroll).toBeLessThanOrEqual(root.client);
-  const table = await page.locator("#audit-list").evaluate((el) => ({ right: el.getBoundingClientRect().right, parent: el.parentElement!.getBoundingClientRect().right }));
+  // A table is pulled out past its parent by its end cells' padding, so a highlighted row keeps them clear of its edge (DESIGN 8.3).
+  const table = await page.locator("#audit-list").evaluate((el) => ({ right: el.getBoundingClientRect().right, parent: el.parentElement!.getBoundingClientRect().right - parseFloat(getComputedStyle(el).marginRight) }));
   expect(table.right).toBeLessThanOrEqual(table.parent + 1);
   await checkPage(page);
 });
@@ -292,7 +293,8 @@ test("just above the stacking width, a long German action label does not scroll 
   await expect(page.locator("#audit-list")).toContainText("Limit für das Hochladen");
   const root = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   expect(root.scroll).toBeLessThanOrEqual(root.client);
-  const table = await page.locator("#audit-list").evaluate((el) => ({ right: el.getBoundingClientRect().right, parent: el.parentElement!.getBoundingClientRect().right }));
+  // A table is pulled out past its parent by its end cells' padding, so a highlighted row keeps them clear of its edge (DESIGN 8.3).
+  const table = await page.locator("#audit-list").evaluate((el) => ({ right: el.getBoundingClientRect().right, parent: el.parentElement!.getBoundingClientRect().right - parseFloat(getComputedStyle(el).marginRight) }));
   expect(table.right).toBeLessThanOrEqual(table.parent + 1);
 });
 

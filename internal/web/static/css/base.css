@@ -373,9 +373,14 @@ main h1:has(> time) {
   }
 }
 
-/* 8.3 Tables */
+/* 8.3 Tables. Every cell has the same side padding, the first and last
+   too, so a highlighted row keeps its content clear of the highlight's
+   edges; the table is pulled out by that padding, so at rest its text
+   lines up with the plate's title (DESIGN 8.3). */
 table {
-  inline-size: 100%;
+  --cell-pad: var(--space-3);
+  inline-size: calc(100% + 2 * var(--cell-pad));
+  margin-inline: calc(-1 * var(--cell-pad));
   border-collapse: collapse;
 }
 
@@ -388,7 +393,7 @@ caption {
 
 th,
 td {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--cell-pad);
   border-block-end: var(--border-width) solid var(--color-line);
   text-align: start;
   vertical-align: middle;
@@ -464,11 +469,19 @@ main td time {
   }
 }
 
+/* Below 360 px plates lie flat, with no padding to pull a table into, so a
+   table keeps to its plate (DESIGN 4). */
+@media (max-width: 22.4rem) {
+  table {
+    inline-size: 100%;
+    margin-inline: 0;
+  }
+}
+
 /* Four columns at phone width need tighter gutters (DESIGN 8.3). */
 @container (max-width: 24rem) {
-  th,
-  td {
-    padding-inline: var(--space-2);
+  table {
+    --cell-pad: var(--space-2);
   }
 }
 

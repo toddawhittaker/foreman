@@ -1101,16 +1101,20 @@ tokens. Classes are short, flat and named for what the thing is (`button`,
 | Ghost | transparent | `heading` | transparent | face `secondary-hover` | The way out of a form or confirmation: Cancel in every foot bar and confirmation. A link drawn this way needs no class there. |
 | Danger (red) | `danger` | `on-danger` | 1px `danger` | face `danger-hover` | Only the final, confirming button of a destructive action (7.4). |
 | Risky (outlined red) | transparent | `danger-text` | 1px `currentColor` | face `danger-bg` | The button that opens a destructive step: "Delete world" on a world's page, "Delete selected" on the Snapshots pages. Force stop is a bordered link drawn the same way. |
-| Remove (red ghost) | transparent | `danger-text`, a trash icon (a cross for Revoke) before the word | transparent; `currentColor` under the pointer | face `danger-bg` | Every destructive action in a row: Delete on a snapshot, a favorite, a webhook or a user, and Revoke on a token. The word shows; the row's name is hidden text. |
+| Remove (red ghost) | transparent | `danger-text`, a trash icon before the word, Revoke too | transparent; `currentColor` under the pointer | face `danger-bg` | Every destructive action in a row: Delete on a snapshot, a favorite, a webhook or a user, and Revoke on a token. The word shows; the row's name is hidden text. |
 | Icon only | transparent | `danger-text` or `text`; a plan row's remove is a cross in `text-muted` | transparent | face `danger-bg` | Only where a word does not fit: a plan row's remove (a cross) and a message's close button. A 44 px target; its name is hidden text. A plan row's cross is drawn as a framed 28 px button (`surface` face, 1 px `line-strong`) inside that target, so it never weighs as much as Review. |
 
 All buttons: `min-block-size: var(--target-min)`, `min-inline-size:
 var(--target-min)`, `padding-inline: var(--space-4)` (`--space-2` for
 quiet, `--space-3` in a mod's row and for ghost and remove), `--text-md`,
-weight 600, `--radius`, `cursor: pointer`. Buttons in a row of a list or
-table are sized to their words; from 64rem they are 40 px tall, and with
-a fine pointer (`pointer: fine`) 36 px, while a touch screen keeps
-44 px. While
+weight 600, `--radius`, `cursor: pointer`. **There are two sizes.** A
+page button is 44 px tall. A button in a row of a list or table (a table
+cell, `.row-actions`, a world, favorite, token or webhook row) is the
+row size: sized to its words and, with a fine pointer (`pointer: fine`),
+36 px tall at any width, every kind alike, with `--space-1` block
+padding so its words fit; an icon-only button there is 36 px square. A
+touch screen keeps 44 px for both. Both are defined once, in
+`buttons.css`; a page never sets a button's height. While
 pressed (`:active`) a button moves down 1 px with `transform`; under
 `prefers-reduced-motion: reduce` nothing moves. A label wraps between
 words inside the button (it never runs past the edge) when large text or a
@@ -1179,7 +1183,15 @@ the block padding is `--space-2` so a two-line label is not cramped.
   `flex-wrap: wrap`. In an ordinary row the primary button comes first.
 - **One completion footer.** Every form foot bar and confirmation ends
   with its choices together at the end edge: Cancel, a ghost button, just
-  before the primary (or danger) action, as on the mod plan. The guided
+  before the primary (or danger) action, as on the mod plan. A plain link
+  there is drawn as the ghost button, so it needs no class. A form's foot
+  bar is the `form-foot` partial, `{{template "form-foot" (formFoot
+  "submit" (t "…") "cancel" .BackPath "cancelText" (t "worlds.cancel"))}}`,
+  with an optional `note`, `noteID` and `status` (a live note a script
+  fills). It is a `raised` bar with a 1 px `line` rule, the form's last
+  part on every page: as a plate's last part it runs to the plate's edges
+  and takes its bottom corners; on its own it is a framed bar with
+  `--radius-lg`, never wider than its column. The guided
   Generate's footers lead with Back instead (8.6). A note about what is pending
   (unsaved changes, where a setting comes from) leads the bar at its start.
   A confirmation's row sits under a 1 px `line`. Cancel comes first in the
@@ -1198,12 +1210,12 @@ the block padding is `--space-2` so a two-line label is not cramped.
 </div>
 ```
 
-- The `div.field` is a grid with `gap: var(--space-2)`. In the markup the
-  order is label, hint, field, error, so the hint stays the field's
-  description. For a plain field (a label, its help, one control and
-  perhaps its error) CSS draws the help under the control (`order`), so
-  the value sits next to its name and the help reads as a quiet note. A
-  field with more than one control keeps its help under the label.
+- The `div.field` is a grid with `gap: var(--space-2)`. The order is
+  label, hint, field, error, in the markup and on screen, in every state:
+  the hint sits under the label and over the control, before and after a
+  failed submit, so it never moves. Stacked fields have one gap between
+  them, `--space-4` (16 px), the gap of a form's own grid, in a plain form
+  and in a settings row's fields column alike.
 - The label is always visible, 14 px (0.875rem), weight 600, in the body
   ink (`text`). A placeholder is never the label. It may give an example of what to enter where one
   helps ("Family base"), in `text-muted`, which meets text contrast on
@@ -1214,19 +1226,23 @@ the block padding is `--space-2` so a two-line label is not cramped.
   asterisk out of the label's accessible name, so "required" is not said
   twice and the name is still the label's words. The asterisk is not colour
   alone: it is a shape. A required group puts the class on its `legend`. Each form with a required field shows the note
-  once, before its first field (`{{template "required-note"}}`): an
-  asterisk and the word "Required", translated. A field the server
+  once (`{{template "required-note"}}`): an asterisk and the word
+  "Required", translated, as one hint line at the start, right under the
+  form's intro and before its first field; never on a title row or in a
+  row of its own at the end edge. A field the server
   refuses when empty is marked; an end-to-end check fails when one is not.
   The one exception is the Console's command field (8.5): it is the only
   field of a form that exists only to send it, so it has no asterisk and
   no note, and keeps only the `required` attribute.
 - Text inputs, `select` and `textarea` are sunk wells: background `deep`,
   a faint inset shadow along the top, text `text`, 1px `border`, `--radius`, `min-block-size: var(--target-min)`,
-  `padding-inline: var(--space-3)`, `--text-md`, `inline-size: 100%` up to
-  a `max-inline-size` that suits the content: `40ch` for names and text.
-- **Number fields** (`inputmode="numeric"`, and `.field--short`) are 10
-  characters wide plus their padding, whatever the class: a countdown,
-  a port, an interval, a seed. The style sheet sets this from the
+  `padding-inline: var(--space-3)`, `--text-md`, and fill their column
+  (`inline-size: 100%`, no cap), so a form's fields share one width.
+- **Short fixed-format fields** are sized to their content: a number
+  (`inputmode="numeric"`, `type="number"`, and `.field--short`) is 10
+  characters wide plus its padding, whatever the class: a countdown,
+  a port, an interval, a seed; a time (`type="time"`) is the browser's
+  own width for hours and minutes. The style sheet sets this from the
   attribute, so a template needs no class.
 - A field and the one button that acts on it may share a row
   (`div.inline-row`): the countdown and "No warning", a snapshot label and
@@ -1234,7 +1250,9 @@ the block padding is `--space-2` so a two-line label is not cramped.
 - Fields that hold game text (a world id, a seed, a map exchange string, a
   console command) use `--font-mono`.
 - Hint: `--text-xs` (13 px) at a 1.5 line height, `text-faint`, held to
-  64ch (100ch in a wide column), so it reads as help and not as content.
+  64ch in every column, so it reads as help and not as content. The one
+  quiet-text style: a plate's description, the foot bar's note and the
+  Required note share it.
   Only present when it says something the label cannot. A hint that
   carries a consequence stays visible under its field. It is visually
   hidden and still linked in the Console's sticky command bar on a phone
@@ -1250,9 +1268,11 @@ the block padding is `--space-2` so a two-line label is not cramped.
   (`autocomplete="username"`, `"current-password"`, `"new-password"`;
   `inputmode="numeric"` for a port) so phones show the right keyboard
   and password managers work.
-- **Checkboxes and radios** are native, with `accent-color:
-  var(--color-selected)`, so a checked box is orange like any other
-  selected thing, and `inline-size` and `block-size` of 1.25rem. The
+- **Checkboxes and radios** are drawn, every one of them: a sunk 20 px
+  box (a circle for a radio) on `deep` with a 1 px `border`; chosen, the
+  `heading` colour fills it under a tick (a dot for a radio). Forced
+  colours gets the native control back. A segment's or a tab's radio is
+  hidden by its own rule. The
   input sits inside its `label`, and the label is a flex row with
   `min-block-size: var(--target-min)`, so the whole row is the target. The
   box styling above never applies to them, even inside a
@@ -1292,7 +1312,7 @@ bold word, so the kind never depends on colour.
 | Error | "Error:", a circled cross | `danger-text` | `danger-bg` | Something failed. Says what, and what to do next. |
 | Warning | "Warning:", a triangle | `warn` | `warn-bg` | Something will go wrong unless acted on ("Snapshots use 41 GB and the disk has 3 GB free"). |
 | Success | "Done:", a tick | `ok` | `ok-bg` | An action finished and the result is not otherwise visible. |
-| Note | "Note:", a circled "i" | `text-muted` icon, word in `heading`, a 3 px `line-strong` edge | `surface`, a neutral plate | Context that changes how a person reads the page ("Snapshots are using full copies, not hardlinks", SPEC 6.8). Amber and blue were spent on resting states, so a note is neutral and they keep their meaning. |
+| Note | "Note:", a circled "i" | `text-muted` icon, word in `heading`, a 4 px `line-strong` edge | `surface`, a neutral plate | Context that changes how a person reads the page ("Snapshots are using full copies, not hardlinks", SPEC 6.8). Amber and blue were spent on resting states, so a note is neutral and they keep their meaning. |
 
 - Body text inside a message is `text`, not the kind colour; only the
   leading word is coloured. Links inside are `link` and underlined.
@@ -1301,9 +1321,9 @@ bold word, so the kind never depends on colour.
   survives forced colours. A 20 px line icon in the tone sits at the start
   of the first line (repainted `CanvasText` in forced colours), and the
   text keeps clear of it. Padding `var(--space-3) var(--space-4)`,
-  `--radius`. A message as a direct child of `main` or of a plate fills the
+  `--radius`. Every message, of every kind and wherever it sits, fills the
   column it sits in, so its edges line up with the plate's other blocks;
-  its words keep their reading measure. A message has no
+  its words keep their reading measure. The edge is 4 px for every kind. A message has no
   shadow, so it never looks like a control. No close button: a message
   stays until the page changes. The one
   exception is the Server page's Done box after a success or a cancelled
@@ -1331,8 +1351,14 @@ bold word, so the kind never depends on colour.
   chat (8.14), a bell for notifications (8.16). Never a picture:
   "No worlds yet. Import a folder of saves or upload a save file to make
   your first world." followed by the action buttons. The empty state always
-  names the next step. It is the `empty empty--art empty--<thing>` classes
-  on the paragraph.
+  names the next step. It is one component, the `empty` partial:
+  `{{template "empty" (empty "worlds" (t "…"))}}`, with an optional id
+  last; the thing is one of the drawings above. It renders
+  `p.empty.empty--art.empty--<thing>` with the sentence in
+  `span.empty__text`. It spans its plate and is centred across it,
+  whatever width rule a page sets for its fields; the sentence keeps the
+  reading measure under the drawing. A plate shows at most one empty
+  state.
 - **A state plate** says once whether a feature is on or off, with its
   one control at the end (`state-plate`; MCP access on the API tokens
   page, 8.21; the public mods page's state sentence, 8.20, is drawn the
@@ -1698,8 +1724,7 @@ coloured `ok`, `warn`, `text-muted`, `danger-text` and `text-muted`. A step
 the pre-start check refused reads "Refused", coloured like its message:
 `warn` (`step-state--warning`) when the message offers going ahead anyway,
 `danger-text` otherwise. The
-in-progress step may carry a native `<progress>` with no value
-(indeterminate). A failed step is followed by an error message (7.3)
+in-progress step may carry the working bar (below). A failed step is followed by an error message (7.3)
 that says what to do next, as SPEC 7.9 requires for switching.
 
 Classes: `steps` (the `ol`; no numbers, one row per step), `step-state`
@@ -1735,6 +1760,35 @@ steps were not run." Opening it shows them as a second `ol.steps`, each
 buttons on a phone, instead of a screen of grey rows. While an operation
 runs nothing folds: the waiting steps are its progress. A refusal by the
 pre-start check already leaves out the steps that never ran.
+
+**The working bar** shows that slow work is under way wherever Foreman
+waits on it: the steps, the map preview, counting, loading mod settings,
+preparing a download. It is one partial, drawn in CSS, so it is the same
+in Chromium, Firefox and WebKit:
+
+```html
+{{template "working" (t "worlds.generate.preview.updating")}}
+<span class="working"><span class="working__bar" aria-hidden="true"></span><span class="working__text">Counting resources…</span></span>
+```
+
+- A track 20 rem wide (never wider than its column) and 8 px tall, on
+  `deep` with a 1 px `line-strong` edge and `--radius`, and an orange
+  (`selected`) segment 30% of the track that slides from end to end and
+  back, 1.2 s each way, eased. The words sit beside it in `text-muted`,
+  `--text-sm`, and wrap under it when the column is narrow. The partial
+  takes "" for the bar alone, beside words that are already on the page.
+- Its box is fixed: it takes the same room whether it shows or not.
+  `working--idle` hides it and keeps its room, so showing or hiding it
+  moves nothing.
+- Under `prefers-reduced-motion: reduce` the segment stands still in the
+  middle of the track; the bar stays in view, and the words still say what
+  is happening.
+- In forced colours the track is `Canvas` with a `CanvasText` edge and
+  the segment `Highlight`.
+- The bar is `aria-hidden`; the words beside it, and `#announcer`, say
+  "working" and "done" once each. It has no `role="progressbar"`, since
+  there is no value to report. A busy button keeps its turning ring
+  (7.1); that is a separate rule for the button just pressed.
 
 When an operation changes the active world (a switch), the
 old world's open page reloads onto the Server page after the operation
@@ -1811,10 +1865,14 @@ it a card or a plate alike; the class is `card` or `panel`.
 </section>
 ```
 
-- **What is a card.** A `section.panel` that is a direct child of `main`
-  (or of a `.panels` wrapper, a column of a `.split`, or the mod settings
-  editor), a settings `form.panel`, and anything given the class `card`. A `.panel` anywhere
-  else is only a grid, with no frame.
+- **What is a card.** A `.panel` that is a direct child of `main` (or of
+  a `.panels` wrapper, a column of a `.split`, or a page's layout column:
+  the Mods tab's main column and side, the mod settings editor, the
+  settings and Generate start columns, a world's main column), and
+  anything given the class `card`. One selector list in `plates.css`
+  names them, and the frame, the radius, the title band and the flat
+  phone look all use it. A `.panel` anywhere else is only a grid, with no
+  frame.
 - **The look.** `surface` face, a 1 px `line` border, `--radius-lg`
   (4 px) and `padding: var(--card-pad)`. It has no shadow in dark and a
   1 px hairline of shadow under it in light (4, "Depth"). The padding is
@@ -1822,8 +1880,9 @@ it a card or a plate alike; the class is `card` or `panel`.
   window, not the text size, so at 200% text the content keeps its width
   (WCAG 1.4.4). Below 22.4rem (a 320 px phone) the frame and padding go: the
   plate becomes a flat section under a 1 px `line` rule (4, "Depth").
-- **The title band.** The plate's title (its `h2`, or a section head that
-  holds the title and its actions) sits in a raised band: a `raised` face
+- **The title band.** Every plate's title (its first shown part, after
+  any hidden inputs, when that is its `h2` or a section head that holds
+  the title and its actions) sits in a raised band: a `raised` face
   at least 3rem tall, running edge to edge of the plate across its padding,
   with a 1 px `line-strong` rule under it, the plate's corners at its top,
   and the title at `--text-xl`, weight 650. A section head with actions

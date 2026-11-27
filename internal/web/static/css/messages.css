@@ -16,7 +16,9 @@
    a planned outline on a drafting grid, then a sentence (DESIGN 7.6). */
 .empty--art {
   display: grid;
+  justify-self: stretch;
   justify-items: center;
+  max-inline-size: none;
   gap: var(--space-2);
   padding-block: var(--space-5);
   text-align: center;
@@ -39,6 +41,10 @@
   max-inline-size: 100%;
   border: var(--border-width) dashed color-mix(in srgb, var(--color-info) 70%, transparent);
   border-radius: var(--radius);
+}
+
+.empty__text {
+  max-inline-size: var(--measure);
 }
 
 .empty--snapshots {
@@ -97,7 +103,6 @@
   position: relative;
   display: grid;
   gap: var(--space-2);
-  max-inline-size: var(--measure);
   padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-4) + 1.25rem + var(--space-3));
   color: var(--color-text);
   background: var(--notice-face);
@@ -121,9 +126,10 @@
   color: var(--notice-tone);
 }
 
-/* The box sets one reading width; its paragraphs and nested items fill it. */
+/* A message fills the column it sits in, so its edges line up with the
+   plate's other blocks; its words keep their reading measure (DESIGN 7.3). */
 .message :is(p, li) {
-  max-inline-size: none;
+  max-inline-size: var(--measure);
 }
 
 .message ul {
@@ -187,7 +193,7 @@
   --notice-icon: var(--i-info);
   background: var(--notice-face);
   border-color: var(--color-line);
-  border-inline-start: 3px solid var(--color-line-strong);
+  border-inline-start: 4px solid var(--color-line-strong);
 }
 
 .message--warning {
@@ -454,6 +460,78 @@
   overflow-wrap: anywhere;
 }
 
+/* The working bar (DESIGN 7.6): a track and an orange segment that slides
+   back and forth, drawn here so every browser shows the same bar. Its box is
+   fixed; working--idle hides it and keeps its room, so nothing moves. */
+.working {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-block-size: 1.5rem;
+}
+
+.working--idle {
+  visibility: hidden;
+}
+
+.working__bar {
+  position: relative;
+  flex: 0 1 auto;
+  inline-size: 20rem;
+  max-inline-size: 100%;
+  block-size: 0.5rem;
+  overflow: hidden;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius);
+}
+
+/* The segment is 30% of the track, so moving it by 7/3 of its own width
+   takes it from one end to the other. Physical left keeps that the same in
+   both directions of text. */
+.working__bar::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  inline-size: 30%;
+  background: var(--color-selected);
+  animation: working-slide 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes working-slide {
+  to {
+    transform: translateX(233.333%);
+  }
+}
+
+.working__text {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Under reduced motion the bar stands still in the middle of its track;
+   the words still say what is happening. */
+@media (prefers-reduced-motion: reduce) {
+  .working__bar::before {
+    animation: none;
+    transform: translateX(116.667%);
+  }
+}
+
+@media (forced-colors: active) {
+  .working__bar {
+    forced-color-adjust: none;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+
+  .working__bar::before {
+    background: Highlight;
+  }
+}
+
 /* Shown only while the preview request runs (htmx adds the class). */
 .wait {
   display: none;
@@ -528,23 +606,6 @@ td > .badge {
 .empty a {
   display: inline-block;
   min-block-size: var(--target-inline);
-}
-
-/* A notice fits its text up to a comfortable measure rather than
-   stretching across a wide card (DESIGN 7.3); its words keep the reading
-   width. */
-main > .message {
-  max-inline-size: none;
-  inline-size: fit-content;
-}
-
-main > .message > :is(p, ul) {
-  max-inline-size: var(--measure);
-}
-
-.panel > .message {
-  inline-size: fit-content;
-  max-inline-size: min(100%, 52rem);
 }
 
 .empty--art::after {
@@ -636,12 +697,6 @@ main > .message > :is(p, ul) {
   color: var(--color-heading);
 }
 
-/* A notice at the top of a page spans the column, as the plates under it
-   do; its words keep their own reading measure. */
-#main > .message {
-  max-inline-size: none;
-}
-
 /* A crash loop is the one solid tag: on-danger ink on the danger fill, so
    the wash above must not reach it. */
 .state.state--crash-looping {
@@ -658,11 +713,5 @@ main > .message > :is(p, ul) {
   font-size: var(--text-xs);
   font-weight: 400;
   line-height: 1.5;
-}
-
-/* ==== A notice fills the column it sits in, so its edges line up with the
-   plate's other blocks. */
-.panel .message {
-  max-inline-size: none;
 }
 }
