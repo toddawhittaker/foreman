@@ -1,5 +1,5 @@
 import { test, expect, checkPage, createAdmin, type Foreman } from "./foreman.js";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -12,6 +12,13 @@ test.use({ fakeGameOn: true });
 const emptyZip = Buffer.concat([Buffer.from("PK\x05\x06"), Buffer.alloc(18)]);
 
 const fixtures = join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata");
+
+// A version not in the list is typed in a disclosure under the select, opened first.
+async function typedVersion(form: Locator) {
+  const d = form.locator("details.disclosure:has(input[name=game_version_typed])");
+  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator("summary").click();
+  return form.getByLabel("Or type a version");
+}
 
 function inboxFixture(f: Foreman, folder: string, fixture: string) {
   mkdirSync(join(f.dataDir, "import", folder), { recursive: true });
@@ -62,14 +69,13 @@ test("imports a folder from the inbox, leaves it unchanged, and says Done", { ta
   const form = folderForm(page);
   await expect(form.getByLabel(/saves-2025: 2 saves and mods/)).toBeChecked();
   await form.getByLabel("World name").fill("Old game");
-  await form.getByText("Use a version not in the list").click();
-  await form.getByLabel("Or type a version").fill("2.0");
+  await (await typedVersion(form)).fill("2.0");
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page.locator("#error-summary")).toContainText("Enter the game version as three numbers");
   await expect(page).toHaveTitle(/^Error: /);
   await checkPage(page);
 
-  await form.getByLabel("Or type a version").fill("2.0.72");
+  await (await typedVersion(form)).fill("2.0.72");
   await form.getByLabel("Download the game image", { exact: false }).uncheck();
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/old-game?imported=1&unchecked=1");
@@ -196,7 +202,7 @@ test("several folders import at once, each reported", { tag: "@looks" }, async (
   await form.getByLabel(/sa: /).check();
   // A typed version and a chosen one are put away with several ticked, and
   // come back when one folder is ticked again.
-  await form.getByLabel("Or type a version").fill("2.0.72");
+  await (await typedVersion(form)).fill("2.0.72");
   await form.locator("#folder-version-select").evaluate((el: HTMLSelectElement) => {
     el.add(new Option("9.9.9", "9.9.9"));
     el.value = "9.9.9";
@@ -246,7 +252,7 @@ test("several folders import at once, each reported", { tag: "@looks" }, async (
   await expect(alone.getByLabel("Or type a version")).toHaveAccessibleDescription(/Type the version this save was made with\./);
   await expect(alone.getByText("Type the version this save was made with.")).toBeVisible();
   await checkPage(page);
-  await alone.getByLabel("Or type a version").fill("2.0.72");
+  await (await typedVersion(alone)).fill("2.0.72");
   await alone.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/junk?imported=1&unchecked=1");
 
@@ -312,7 +318,7 @@ test("an import with no folder chosen describes the error on every checkbox", as
   await page.goto("/import");
   const form = folderForm(page);
   await form.getByLabel("World name").fill("Imported");
-  await form.getByLabel("Or type a version").fill("2.0.72");
+  await (await typedVersion(form)).fill("2.0.72");
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page.locator("#folder-source-error")).toBeVisible();
   const boxes = form.getByRole("checkbox", { name: /: 1 save/ });
@@ -347,7 +353,7 @@ test("imports a world by uploading a save, and suggests its name", { tag: "@look
   await expect(form.getByLabel("World name")).toHaveValue("my save");
   await expect(page.locator("#announcer")).toHaveText("World name suggested: my save.");
   await form.getByLabel("World name").fill("Uploaded");
-  await form.getByLabel("Or type a version").fill("1.1.110");
+  await (await typedVersion(form)).fill("1.1.110");
   await form.getByRole("button", { name: "Upload and import" }).click();
   await expect(page).toHaveURL("/worlds/uploaded?imported=1&unchecked=1");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Uploaded Active");
@@ -357,7 +363,7 @@ test("imports a world by uploading a save, and suggests its name", { tag: "@look
   // A file that is not a zip is refused and no world is made.
   await page.goto("/import");
   await form.getByLabel("World name").fill("Second");
-  await form.getByLabel("Or type a version").fill("1.1.110");
+  await (await typedVersion(form)).fill("1.1.110");
   await form.getByLabel("Save file").setInputFiles({ name: "fake.zip", mimeType: "application/zip", buffer: Buffer.from("nope") });
   await form.getByRole("button", { name: "Upload and import" }).click();
   await expect(page.locator("#error-summary")).toContainText("This file is not a zip file.");
@@ -374,7 +380,7 @@ test("accepts a typed game version while Docker Hub is unreachable", async ({ pa
   await page.waitForLoadState("networkidle");
   await expect(form.locator("#folder-version-select option")).toHaveText(["Same as the save (2.0.77)", "Docker Hub cannot be reached; type a version below"]);
   await form.getByLabel("World name").fill("Typed");
-  await form.getByLabel("Or type a version").fill("2.0.78");
+  await (await typedVersion(form)).fill("2.0.78");
   await checkPage(page);
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/typed?imported=1&unchecked=1");
