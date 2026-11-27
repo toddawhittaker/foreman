@@ -79,7 +79,11 @@ type behaviour struct {
 	crashLoop  bool // every start fails to load its save
 	rconRefuse bool // RCON logins are refused
 	saveHangs  bool // /server-save never finishes
-	oom        bool // every start is killed by the out-of-memory killer while loading mods
+	// blankTime makes /time answer with an empty line, as a real game does
+	// on a map that has not yet run a second (internal/game's real-game
+	// test, step 4).
+	blankTime bool
+	oom       bool // every start is killed by the out-of-memory killer while loading mods
 	// holdRestart keeps Docker's restart policy from starting the game
 	// again; held is the ID of a container whose restart waits for that.
 	holdRestart bool

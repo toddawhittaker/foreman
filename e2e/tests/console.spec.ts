@@ -140,6 +140,25 @@ test.describe("with the fake game", () => {
     ]);
   });
 
+  // #964: a fresh map answers /time with an empty line. The history says no
+  // reply came, rather than an empty box, and the next command still gets its own.
+  test("a blank reply is shown as no reply", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await fakeGame!.call("/blank-time", { name: container, on: true });
+    await send(page, "/time");
+    const first = history(page).locator("li").first();
+    await expect(first).toContainText("You sent /time");
+    await expect(first).toContainText("The game sent no reply.");
+    await expect(first.locator("pre")).toHaveCount(0);
+    await expect(page.locator("#announcer")).toContainText("The game sent no reply to /time");
+
+    await fakeGame!.call("/blank-time", { name: container, on: false });
+    await send(page, "/time");
+    const second = history(page).locator("li").nth(1);
+    await expect(second.locator("pre")).toContainText(/\d+ (hour|minute|second)/);
+    await expect(history(page).locator("li")).toHaveCount(2);
+  });
+
   test("opening Past commands shows the newest entry, not the oldest", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     for (let i = 0; i < 12; i++) {
