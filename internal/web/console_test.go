@@ -433,3 +433,30 @@ func TestCutUTF8(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 8.4, #964: on a map that has not yet run a second the game answers
+// /time with an empty line. The history says no reply came rather than
+// showing a blank entry, and the announcer says the same.
+func TestConsoleBlankReplySaysNoReply(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	g.fake.SetBlankTime(game.ContainerName(id), true)
+
+	g.post(consoleSendPath(id), url.Values{"command": {"/time"}})
+	body := g.get(PathConsole)
+	if !strings.Contains(body, "You sent </span>/time</p>\n        <p>The game sent no reply.</p>") {
+		t.Errorf("the blank reply is not said as no reply:\n%s", body)
+	}
+	if _, list, _ := strings.Cut(body, `class="console-history"`); strings.Contains(list, "<pre") {
+		t.Errorf("the history shows a blank reply box:\n%s", body)
+	}
+
+	hx := http.Header{"Cookie": {g.cookie.String()}, "HX-Request": {"true"}}
+	rep := g.do(http.MethodPost, consoleSendPath(id), url.Values{"command": {"/time"}}, hx)
+	if !strings.Contains(rep.body, `<div hx-swap-oob="innerHTML:#announcer">The game sent no reply to /time`) {
+		t.Errorf("the announcer does not say no reply came:\n%s", rep.body)
+	}
+	if _, list, _ := strings.Cut(rep.body, `class="console-history"`); strings.Contains(list, "<pre") {
+		t.Errorf("the fragment shows a blank reply box:\n%s", rep.body)
+	}
+}
