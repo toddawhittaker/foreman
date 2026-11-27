@@ -223,16 +223,30 @@ test("in a 2.1 world the nearest release is the next one up on the 2.1 line", as
 });
 
 // A redraw that finds a conflict answers 200 so htmx swaps it in, and the
-// conflict is announced.
+// conflict is announced. Two offers that each fit on their own conflict
+// once both are ticked; an offer that conflicts with a mod already on is
+// left out with a note instead of a box (#970).
 test("ticking an optional mod that conflicts shows the conflict", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
   await portal.add("fp-conf", "1.0.0", ["base >= 2.0", "! fp-other"]);
-  await portal.add("fp-main", "1.0.0", ["base >= 2.0", "? fp-conf"]);
+  await portal.add("fp-main", "1.0.0", ["base >= 2.0", "? fp-conf", "? fp-a", "? fp-b", "? fp-c"]);
+  await portal.add("fp-a", "1.0.0", ["base >= 2.0"]);
+  await portal.add("fp-c", "1.0.0", ["base >= 2.0"]);
+  await portal.add("fp-b", "1.0.0", ["base >= 2.0", "! fp-a"]);
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-other": "2.0" } });
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
   await expectWholeChoiceLabels(page);
-  await page.getByRole("checkbox", { name: "fp-conf offered by fp-main" }).check();
-  await expect(page.locator("#plan-conflicts")).toContainText("fp-conf cannot run together with fp-other.", { timeout: 3_000 });
+  await expect(page.getByRole("checkbox", { name: "fp-conf offered by fp-main" })).toHaveCount(0);
+  await expect(page.locator("#plan-unavailable")).toContainText("fp-conf, offered by fp-main, is left out");
+  // Once fp-a is ticked, fp-b would conflict, so it is left out unticked;
+  // the conflict is reached by a plan with both ticked, redrawn by a third.
+  await page.getByRole("checkbox", { name: "fp-a offered by fp-main" }).check();
+  await expect(page.getByRole("checkbox", { name: "fp-b offered by fp-main" })).toHaveCount(0);
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main&optional=fp-a&optional=fp-b");
+  await page.locator("#plan-conflicts").evaluate((e) => (e as HTMLElement).blur());
+  await page.locator("#announcer").evaluate((e) => (e.textContent = ""));
+  await page.getByRole("checkbox", { name: "fp-c offered by fp-main" }).check();
+  await expect(page.locator("#plan-conflicts")).toContainText("fp-b cannot run together with fp-a.", { timeout: 3_000 });
   await expect(page.locator("#announcer")).toHaveText("Plan updated: it has a conflict, so it cannot be applied.");
   // A redraw never moves focus to the conflict box.
   await expect(page.locator("#plan-conflicts")).not.toBeFocused();
