@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// The design tokens as foreman.css defines them, read from the stylesheet
+// The design tokens as the stylesheet defines them, read from the stylesheet
 // itself so the token check and the component page have one source
 // (DESIGN 3, 4).
 
@@ -33,29 +33,39 @@ type cssProperty struct {
 var cssComment = regexp.MustCompile(`(?s)/\*.*?\*/`)
 
 // rootProperties reads the custom properties declared in the top-level
-// :root rules, the ones outside any @media, in file order. Per-component
-// locals (--icon, --zoom) are set on other selectors, and the rules inside
-// @media only adjust a token for the window, so neither is read.
+// :root rules, the ones outside any @media, in file order. A cascade layer
+// does not count as a level. Per-component locals (--icon, --zoom) are set
+// on other selectors, and the rules inside @media only adjust a token for
+// the window, so neither is read.
 func rootProperties(css string) []cssProperty {
 	css = cssComment.ReplaceAllString(css, "")
 	var out []cssProperty
+	// layered marks each open block that is an @layer.
+	var layered []bool
 	depth, start := 0, 0
 	for i := 0; i < len(css); i++ {
 		switch css[i] {
 		case '{':
-			if depth == 0 && strings.TrimSpace(css[start:i]) == ":root" {
+			prelude := strings.TrimSpace(css[start:i])
+			if depth == 0 && prelude == ":root" {
 				out = append(out, declarations(css[i+1:matchingBrace(css, i)])...)
 			}
-			depth++
+			isLayer := strings.HasPrefix(prelude, "@layer")
+			layered = append(layered, isLayer)
+			if !isLayer {
+				depth++
+			}
+			start = i + 1
 		case '}':
-			depth--
-			if depth == 0 {
-				start = i + 1
+			if n := len(layered); n > 0 {
+				if !layered[n-1] {
+					depth--
+				}
+				layered = layered[:n-1]
 			}
+			start = i + 1
 		case ';':
-			if depth == 0 {
-				start = i + 1
-			}
+			start = i + 1
 		}
 	}
 	return out

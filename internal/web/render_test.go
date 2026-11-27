@@ -961,7 +961,7 @@ func TestPageAssetsResolve(t *testing.T) {
 
 // The stylesheet uses colour only through tokens (DESIGN 3).
 func TestCSSHasNoRawColoursOutsideTokens(t *testing.T) {
-	css, err := staticFS.ReadFile("static/foreman.css")
+	css, err := stylesheet()
 	if err != nil {
 		t.Fatal(err)
 	}

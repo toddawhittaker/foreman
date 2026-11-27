@@ -107,7 +107,7 @@ func TestChatTabEmptyAndStopped(t *testing.T) {
 	if !strings.Contains(body, `id="chat-not-running"`) || !strings.Contains(body, `<span id="server-title">`) || !strings.Contains(body, "state--running") {
 		t.Errorf("a running server's page lacks the note or its running badge:\n%s", body)
 	}
-	if css, err := staticFS.ReadFile("static/foreman.css"); err != nil || !strings.Contains(string(css), notRunning) {
+	if css, err := stylesheet(); err != nil || !strings.Contains(string(css), notRunning) {
 		t.Errorf("the style sheet does not hide the note while running (%v)", err)
 	}
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))

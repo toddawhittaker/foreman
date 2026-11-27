@@ -1,0 +1,502 @@
+/* Controls: the segmented control, step bar, tabs, checkboxes and radios,
+   disclosures, row menus, and the focus ring's gap. */
+@layer components {
+/* Single-column grids use minmax(0, 1fr), so a long word or a wide child
+   cannot push the track past its box (DESIGN 7, 320 px rules). */
+.steps {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A link standing alone in a list, or beside an imported folder's
+   checkbox, is a full-size target (DESIGN 6, "The 320 px rules", rule 3). */
+fieldset > .check + a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+fieldset > .check + a {
+  justify-self: start;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--target-min);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.check input {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-selected);
+}
+
+/* 7.6 Long-running operations */
+.steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The word and the step side by side, so each step is one row even on a phone. */
+.steps > li {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  max-inline-size: none;
+}
+
+.steps > li[aria-current="step"] {
+  font-weight: 600;
+}
+
+.steps progress {
+  grid-column: 2;
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  accent-color: var(--color-selected);
+}
+
+/* The indeterminate bar always moves; the "In progress" word says the same (DESIGN 6, Motion). */
+@media (prefers-reduced-motion: reduce) {
+  .steps progress {
+    display: none;
+  }
+}
+
+/* A narrow panel, such as a phone at large text, puts the word above the
+   step, so the step's name keeps the full width (DESIGN 3). */
+@container (max-width: 14rem) {
+  .steps > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .steps progress {
+    grid-column: 1;
+  }
+}
+
+.js-on .tablist {
+  display: inline-flex;
+  flex-wrap: wrap;
+  scroll-padding-inline: var(--space-4);
+  gap: 2px;
+  inline-size: auto;
+  max-inline-size: 100%;
+  margin: 0;
+  padding: 3px;
+  min-inline-size: 0;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius-lg);
+}
+
+/* A tab is a radio drawn as the sub-navigation's tab (DESIGN 6): the arrow
+   keys move between them, and the group is one tab stop. */
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  margin-block-end: -1px;
+  padding-inline: var(--space-3);
+  color: var(--color-text-muted);
+  border-block: 3px solid transparent;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+/* The radio is hidden but stays focusable; the whole label is its target. */
+.tab input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.tab:has(input:checked) {
+  color: var(--color-text);
+  font-weight: 650;
+  border-block-end-color: var(--color-selected);
+}
+
+.tab:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: -3px;
+}
+
+/* A foldout (DESIGN 7.8): the browser's own triangle in orange, a bold
+   label, no face at rest. Hover fills the row; the side padding and its
+   negative margin keep the words still. 44 px on touch, compact with a
+   fine pointer. Only a foldout directly after another gets a line above
+   it, so stacked rows (Generate's planets) read as a list. The player
+   name in the players table keeps its own look (8.12). */
+.disclosure:not(.player-actions) > summary {
+  display: list-item;
+  list-style-position: inside;
+  min-block-size: var(--target-min);
+  padding: var(--space-3) var(--space-1);
+  margin-inline: calc(-1 * var(--space-1));
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+/* Disclosure triangles are quiet too. */
+:is(details, .disclosure:not(.player-actions)) > summary::marker,
+summary::-webkit-details-marker {
+  color: var(--color-text-muted);
+}
+
+@media (hover: hover) {
+  .disclosure:not(.player-actions) > summary:hover {
+    background: var(--color-secondary-hover);
+  }
+}
+
+.disclosure + .disclosure {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+@media (pointer: fine) {
+  .disclosure:not(.player-actions) > summary {
+    min-block-size: 1.75rem;
+    padding-block: var(--space-1);
+  }
+}
+
+.disclosure > .field {
+  padding-block: var(--space-3);
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* On a phone the tabs scroll as one strip rather than wrap a tab onto a
+   second line. */
+@media (max-width: 40rem) {
+  .js-on .tablist {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tab {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+/* Checkboxes and radios are drawn, so an empty one never reads as disabled
+   in dark: a sunk 20 px box; chosen, the heading colour fills it under a
+   tick. The fill is neutral, so orange stays the primary action's. */
+.check > input:is([type="checkbox"], [type="radio"]),
+label > input[type="checkbox"]:only-child,
+td > input[type="checkbox"] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+
+.check > input[type="radio"] {
+  border-radius: 50%;
+}
+
+.check > input:is([type="checkbox"], [type="radio"])::before,
+label > input[type="checkbox"]:only-child::before,
+td > input[type="checkbox"]::before {
+  content: "";
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  background: var(--color-surface);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform: scale(0);
+  transition: transform var(--dur-1) var(--ease);
+}
+
+.check > input[type="radio"]::before {
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+  mask: none;
+}
+
+.check > input:is([type="checkbox"], [type="radio"]):hover,
+label > input[type="checkbox"]:only-child:hover,
+td > input[type="checkbox"]:hover {
+  border-color: var(--color-text-muted);
+}
+
+.check > input:is([type="checkbox"], [type="radio"]):checked,
+label > input[type="checkbox"]:only-child:checked,
+td > input[type="checkbox"]:checked {
+  background: var(--color-heading);
+  border-color: var(--color-heading);
+}
+
+.check > input:is([type="checkbox"], [type="radio"]):checked::before,
+label > input[type="checkbox"]:only-child:checked::before,
+td > input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.check > input:is([type="checkbox"], [type="radio"]):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (forced-colors: active) {
+  .check > input:is([type="checkbox"], [type="radio"]),
+  label > input[type="checkbox"]:only-child,
+  td > input[type="checkbox"] {
+    appearance: auto;
+  }
+
+  .check > input:is([type="checkbox"], [type="radio"])::before,
+  label > input[type="checkbox"]:only-child::before,
+  td > input[type="checkbox"]::before {
+    content: none;
+  }
+}
+
+/* Motion: hover fills and chevrons ease; nothing moves under reduced motion. */
+.disclosure > summary::after {
+  transition: transform var(--dur-2) var(--ease);
+}
+
+/* A ticked row takes the raised face, so a selection reads at a glance. */
+tbody tr:has(> td > .check > input:checked) {
+  background: var(--color-raised);
+}
+
+/* A mod row's More actions menu: a 44 px button with three dots, opening a
+   small panel of the row's rarer actions under it, at the row's end. */
+.row-menu {
+  position: relative;
+  flex: none;
+}
+
+.row-menu > summary {
+  --i-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='5' cy='12' r='1.75'/%3E%3Ccircle cx='12' cy='12' r='1.75'/%3E%3Ccircle cx='19' cy='12' r='1.75'/%3E%3C/svg%3E");
+  inline-size: var(--target-min);
+  padding: 0;
+  list-style: none;
+  color: var(--color-heading);
+}
+
+.row-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.row-menu > summary::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--i-more) center / contain no-repeat;
+}
+
+.row-menu > summary:hover,
+.row-menu[open] > summary {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-border);
+}
+
+.row-menu__panel {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: calc(100% + var(--space-1));
+  z-index: 5;
+  display: grid;
+  inline-size: max-content;
+  min-inline-size: min(13rem, calc(100vw - 2 * var(--space-3)));
+  max-inline-size: calc(100vw - 2 * var(--space-3));
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+.row-menu__panel > span {
+  display: contents;
+}
+
+.row-menu__panel > span[hidden] {
+  display: none;
+}
+
+.row-menu__item {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: var(--color-heading);
+  border: 0;
+  border-radius: var(--radius);
+  font-size: var(--text-md);
+  font-weight: 500;
+  text-align: start;
+  text-decoration: none;
+}
+
+/* A mod row's menu button says "More" beside its dots, so the way to
+   Change version, Disable and Remove reads at a glance. It is a bordered
+   secondary button, the height, radius and border of the row's Update
+   button beside it. */
+.row-menu > summary.row-menu__toggle {
+  inline-size: auto;
+  min-inline-size: var(--target-min);
+  gap: var(--space-1);
+  padding: 0 var(--space-3) 0 var(--space-2);
+  text-decoration: none;
+}
+
+.row-menu__word {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.segmented {
+  display: inline-flex;
+  margin: 0;
+  padding: 3px;
+  min-inline-size: 0;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+  gap: 2px;
+  inline-size: auto;
+  max-inline-size: 100%;
+}
+
+.segmented > label {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-4);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  gap: var(--space-2);
+  margin: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.segmented > label:hover {
+  color: var(--color-heading);
+  background: var(--color-secondary-hover);
+}
+
+.segmented > label:has(:checked) {
+  background: var(--color-accent-bg);
+  color: var(--color-heading);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+.segmented > label:has(:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  inline-size: 1px;
+  block-size: 1px;
+  pointer-events: none;
+}
+
+/* Focus: a dark gap, then the ring, so it reads on orange as on grey. */
+:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+.js-on .tablist > .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline: var(--space-4);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: none;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.js-on .tablist > .tab:hover {
+  color: var(--color-heading);
+  background: var(--color-secondary-hover);
+}
+
+.js-on .tablist > .tab:has(input:checked) {
+  color: var(--color-heading);
+  background: var(--color-accent-bg);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+.js-on .tablist > .tab:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.segmented > label .count {
+  margin: 0;
+}
+
+@media (max-width: 39.99rem) {
+  .segmented > label,
+  .js-on .tablist > .tab {
+    padding-inline: var(--space-3);
+  }
+}
+
+/* A segment that holds a radio is a full 44 px target, as every other
+   label of a radio is. */
+.js-on .tablist > .tab {
+  min-block-size: var(--target-min);
+}
+}

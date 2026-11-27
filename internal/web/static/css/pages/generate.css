@@ -1,0 +1,2797 @@
+/* Generate, the map settings and preview, the large view, and a world's
+   game settings and mod settings. */
+@layer pages {
+/* Settings: the connected-players heading is an h2 for the outline but sits inside the admins fieldset, so it is set as an h3. */
+#connected-heading {
+  font-size: var(--text-lg);
+  line-height: 1.333;
+  font-weight: 650;
+}
+
+#settings-heading,
+#mod-settings-heading,
+#mod-settings-map-heading {
+  --icon: var(--i-settings);
+}
+
+#version-heading {
+  --icon: var(--i-version);
+}
+
+/* Step 3's save status takes no room until the script fills it. */
+#flow-modsettings-saving:empty {
+  margin: 0;
+}
+
+.mod-settings > .panel,
+.mod-settings > .panels > .panel,
+.settings-main > .panel,
+.gen-start > .panel {
+  position: relative;
+  padding: var(--card-pad);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+}
+
+/* Below 360 px a card's frame would cost the content its room, so sections
+   lie flat on the page, a rule above each (DESIGN 4). */
+@media (max-width: 22.4rem) {
+  .mod-settings > .panel,
+  .mod-settings > .panels > .panel,
+  .settings-main > .panel,
+  .gen-start > .panel {
+    padding: var(--space-4) 0 0;
+    background: none;
+    border: 0;
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* Going ahead anyway opens below its choice, spaced like the box (DESIGN 7.4). */
+.anyway-body {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-end: var(--space-1);
+}
+
+/* 8.7 The map settings: tabs, then groups that size themselves from the room they have. */
+.map-section {
+  container: map-section / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.mode-panel,
+.gen-main,
+.tab-panel,
+.mapgen-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+/* The tab radios mean something only once the script shows one panel at a
+   time; without it the panels stack, each under its own heading. */
+.tabset {
+  display: none;
+}
+
+.tab-panel > legend {
+  margin-block-end: var(--space-2);
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+}
+
+.tab-panel + .tab-panel {
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.js-on .tabset {
+  display: block;
+}
+
+/* The script names the shown tab on the form, so this needs no :has(). */
+.js-on .tab-panel {
+  display: none;
+}
+
+.js-on[data-tab="resources"] #panel-resources,
+.js-on[data-tab="terrain"] #panel-terrain,
+.js-on[data-tab="enemy"] #panel-enemy,
+.js-on[data-tab="advanced"] #panel-advanced {
+  display: grid;
+}
+
+/* The tab names the panel, so its own heading is for screen readers only. */
+.js-on .tab-panel > legend {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.js-on .tab-panel + .tab-panel {
+  padding-block-start: 0;
+  border-block-start: 0;
+}
+
+/* One control: its name, then its settings side by side while they fit. */
+.autoplace {
+  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: var(--space-3) var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+  row-gap: var(--space-4);
+  padding-block: var(--space-4) 0;
+}
+
+/* A heading's own rule is the line above its first row, so that row drops
+   its divider; the rows after it keep theirs (DESIGN 8.7). */
+:is(h2, h3) + .mapgen-body > .autoplace:first-child {
+  border-block-start: 0;
+}
+
+/* The All resources row's rule under it is the next row's divider too. */
+.js-on .autoplace--all + .autoplace {
+  border-block-start: 0;
+}
+
+/* A control's name is quieter than the tab's, so the groups read as one list
+   (DESIGN 8.7). Each resource is a clean group, its box and name on a header
+   row above its sliders; the name is content, so no rule runs through it. */
+.autoplace > legend {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  float: inline-start;
+  grid-column: 1 / -1;
+  inline-size: 100%;
+  min-block-size: 1.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+/* A resource's or cliffs' on/off box is a control, so its name keeps full
+   strength, on or off; while off, only the settings it turns off grey. */
+.autoplace > legend .check {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+/* "Also changes ..." under a shared control's name spans its row (SPEC 5.6). */
+.autoplace__also {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.autoplace:disabled .field label,
+.autoplace:disabled .step__value {
+  color: var(--color-text-muted);
+}
+
+.mapgen-checks {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* A checkbox row with its tip under it, not a labelled field. */
+.mapgen-check {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* A setting of steps: its name, then the select or, with script on a wide
+   panel, a slider with the step in words at the end of the name's row (DESIGN 7.2). */
+.step__value {
+  display: none;
+}
+
+/* A setting's name never breaks inside a word; a long one wraps between words. */
+.step label {
+  overflow-wrap: normal;
+  hyphens: manual;
+}
+
+@container map-section (min-width: 34rem) {
+  /* As many to a row as fit at 13rem each. */
+  .js-on .autoplace {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  }
+
+  /* Fixed rows: the name and the step in words, then the slider, then the
+     warning and the tip. Nothing in them depends on the words' length, so
+     the slider never moves while it is dragged. */
+  .js-on .step {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    align-content: start;
+    gap: 0 var(--space-2);
+  }
+
+  .js-on .step > * {
+    grid-column: 1 / -1;
+  }
+
+  /* A name with no tip button holds the first column, the words the second. */
+  .js-on .step > label {
+    grid-column: 1;
+  }
+
+  .js-on .step > .step__value {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .js-on .step select {
+    display: none;
+  }
+
+  /* The words keep room for the longest step in every language, "100 %
+     (по умолчанию)", so the name's line never reflows as they change. Beside
+     a tip button they end the line, or take a line of their own when the
+     name leaves no room, and keep it. */
+  .js-on .step__value {
+    display: block;
+    flex: none;
+    min-inline-size: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+    white-space: nowrap;
+  }
+
+  .js-on .field__head > .step__value {
+    order: 1;
+    margin-inline-start: auto;
+  }
+
+  .js-on .step__range {
+    display: block;
+    inline-size: 100%;
+    min-block-size: 2rem;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .js-on .autoplace > legend {
+    margin-block-end: var(--space-1);
+  }
+
+  .js-on .mode-panel details > .field {
+    padding-block: var(--space-2);
+  }
+
+  .js-on .mapgen-body {
+    row-gap: var(--space-2);
+    padding-block: var(--space-2);
+  }
+
+  @media (pointer: fine) {
+    .js-on .step > input.step__range {
+      min-block-size: 1.5rem;
+      block-size: 1.5rem;
+    }
+  }
+}
+
+/* Generate on a wide screen: the basics pair up, name beside version and
+   preset beside seed, so the map's settings start a screen sooner. */
+@container map-section (min-width: 40rem) {
+  :has(> #preset-box + .field) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    column-gap: var(--space-5);
+    align-items: start;
+  }
+
+  :has(> #preset-box + .field) > * {
+    grid-column: 1 / -1;
+  }
+
+  /* Preset and seed share message, label, hint, control and error rows,
+     so the select and the input line up (DESIGN 8.6). */
+  :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field) {
+    grid-column: auto;
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    row-gap: var(--space-2);
+  }
+
+  #preset-box > .message {
+    grid-row: 1;
+  }
+
+  #preset-box > .field {
+    grid-row: 2 / span 4;
+    grid-template-rows: subgrid;
+  }
+
+  #preset-box > .field > label {
+    grid-row: 1;
+  }
+
+  #preset-box + .field > label {
+    grid-row: 2;
+  }
+
+  #preset-box + .field > .hint {
+    grid-row: 3;
+  }
+
+  #preset-box + .field > .inline-row {
+    grid-row: 4;
+  }
+
+  #preset-box + .field > .error {
+    grid-row: 5;
+  }
+
+  #preset-box > .field > .inline-row {
+    grid-row: 3;
+  }
+
+  /* A shared row is as tall as the taller control; each starts at its top. */
+  :is(#preset-box > .field, #preset-box + .field) > * {
+    align-self: start;
+  }
+
+  #preset-box > .field > .error {
+    grid-row: 4;
+  }
+
+  .map-section .modes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+  }
+
+  .map-section .modes > legend {
+    grid-column: 1 / -1;
+  }
+}
+
+.step__range:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* A slider is drawn in neutrals, so orange stays the primary action's and
+   the focus ring's: a 4 px track in the control-border tone, filled to the
+   value (--fill, set by generate.js) in the text colour, and an 18 px knob
+   in the heading colour ringed with the surface. Turned off, the fill and
+   knob take the border tone. */
+.step__range {
+  --track: var(--color-border);
+  --done: var(--color-text);
+  --knob: var(--color-heading);
+  display: none;
+  appearance: none;
+  background: transparent;
+}
+
+.step__range::-webkit-slider-runnable-track {
+  block-size: 4px;
+  background: linear-gradient(to right, var(--done) var(--fill, 0%), var(--track) var(--fill, 0%));
+  border-radius: 2px;
+}
+
+.step__range:dir(rtl)::-webkit-slider-runnable-track {
+  background: linear-gradient(to left, var(--done) var(--fill, 0%), var(--track) var(--fill, 0%));
+}
+
+.step__range::-webkit-slider-thumb {
+  appearance: none;
+  inline-size: 18px;
+  block-size: 18px;
+  margin-block-start: -7px;
+  background: var(--knob);
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--knob);
+}
+
+.step__range::-moz-range-track {
+  block-size: 4px;
+  background: var(--track);
+  border-radius: 2px;
+}
+
+.step__range::-moz-range-progress {
+  block-size: 4px;
+  background: var(--done);
+  border-radius: 2px;
+}
+
+.step__range::-moz-range-thumb {
+  inline-size: 14px;
+  block-size: 14px;
+  background: var(--knob);
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--knob);
+}
+
+.step__range:disabled {
+  --done: var(--color-border);
+  --knob: var(--color-border);
+  cursor: not-allowed;
+}
+
+/* A short warning beside a setting that turns achievements off; the words carry it. */
+.ach {
+  color: var(--color-warn);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.ach:empty {
+  display: none;
+}
+
+/* A group's on and off switch heads it, on a row of its own. */
+.ms-group > .mapgen-check {
+  grid-column: 1 / -1;
+}
+
+/* The unit stays beside its number. */
+.ms-group .inline-row {
+  flex-wrap: nowrap;
+}
+
+.ms-group .inline-row > input {
+  flex: 0 1 auto;
+}
+
+.ms-group .field input {
+  max-inline-size: calc(12ch + 2 * var(--space-3) + 2 * var(--border-width));
+}
+
+.mode-panel input.mono {
+  font-family: var(--font-mono);
+}
+
+.mode-panel textarea.mono {
+  font-family: var(--font-mono);
+}
+
+#mg-raw textarea,
+#mg-raw {
+  inline-size: 100%;
+  max-inline-size: none;
+  font-family: var(--font-mono);
+  white-space: pre;
+  overflow: auto;
+}
+
+.mode-panel select[aria-invalid="true"],
+.mode-panel textarea[aria-invalid="true"] {
+  border: 2px solid var(--color-danger-text);
+}
+
+.mapgen-body,
+.mode-panel details > .field {
+  padding-block: var(--space-3);
+}
+
+/* The preset, "[modified]" and its reset share a row while they fit: the
+   select gives up width before the reset is pushed to a line of its own. */
+.preset-row > select {
+  flex: 1 1 11rem;
+  inline-size: auto;
+  min-inline-size: 0;
+}
+
+.modified {
+  color: var(--color-text-muted);
+}
+
+/* "[modified]" and the reset keep their room while unseen, so the row wraps
+   the same either way and nothing below moves when they appear (DESIGN 8.6). */
+.modified:empty::before {
+  content: attr(data-word);
+  visibility: hidden;
+}
+
+.preset-row > #preset-reset[hidden] {
+  display: inline-flex;
+  visibility: hidden;
+}
+
+/* Random seed needs script, so it shows only once the script has run. */
+.seed-random {
+  display: none;
+}
+
+.js-on .seed-random {
+  display: inline-flex;
+}
+
+.preview > section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+/* A picture is as wide as its column, but no taller than the window less its
+   caption and download line, so it is seen whole; never under 16rem. */
+.preview {
+  --picture-most: max(16rem, calc(100dvh - 2 * var(--target-min) - var(--space-4)));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.version-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.modes {
+  gap: var(--space-2);
+}
+
+/* A way to make the map: its radio, then its one-line description under the words. */
+.mode > .hint {
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+/* Only the chosen way shows its fields; hidden fields leave the tab order.
+   Without :has() both show and the server reads the chosen one. */
+form:has(#mode-settings:checked) .mode-panel--exchange,
+form:has(#mode-exchange:checked) .mode-panel--settings,
+form:has(#mode-exchange:checked) .achievements {
+  display: none;
+}
+
+.pictures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.pictures figure {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 6px;
+}
+
+.pictures img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  border-color: var(--color-line);
+  border-radius: var(--radius);
+}
+
+/* Centred when the window's height caps it; the caption and download line up with its edge.
+   A picture is not text, so the reading measure on list items does not apply. */
+.pictures li,
+.preview-placeholder__picture {
+  inline-size: min(100%, var(--picture-most));
+  max-inline-size: none;
+  justify-self: center;
+}
+
+.pictures li {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.pictures .download {
+  justify-self: start;
+}
+
+.pictures .picture {
+  display: block;
+  inline-size: 100%;
+}
+
+/* All planets: each card is three rows of the list's grid (the framed
+   picture, the territories in words, the download), so cards side by side
+   share their heights and their links line up (DESIGN 8.8). */
+.pictures:has(> li + li) {
+  row-gap: var(--space-2);
+}
+
+.pictures:has(> li + li) > li {
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-2);
+  padding-block-end: var(--space-3);
+}
+
+.pictures:has(> li + li) > li > figure {
+  grid-row: 1;
+}
+
+.pictures:has(> li + li) > li > .territory-result {
+  grid-row: 2;
+}
+
+.pictures:has(> li + li) > li > .download {
+  grid-row: 3;
+  align-self: start;
+}
+
+/* A download link is a full-height target of its own. */
+.preview .download {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* An older picture stays in place, faded, while the next one is drawn. */
+.preview[aria-busy="true"] .pictures img {
+  opacity: 0.6;
+}
+
+/* Preview size's place above the picture takes no row until the script moves it in. */
+.preview-size-slot:empty {
+  display: none;
+}
+
+/* Before the first picture, its box is held (script only: without it nothing draws by itself). */
+.preview > .preview-placeholder {
+  display: none;
+}
+
+.js-on .preview > .preview-placeholder {
+  display: grid;
+}
+
+/* The unseen lines take the room the preview's own text will. */
+.preview-placeholder__hold {
+  visibility: hidden;
+}
+
+.preview-placeholder__picture {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.preview-placeholder__control {
+  display: block;
+  min-block-size: var(--target-min);
+}
+
+/* A faint line in the box says what will fill it, so the held space does not read as empty. */
+.preview-placeholder__map {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  aspect-ratio: 1;
+  align-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+  border-color: var(--color-line);
+  border-radius: var(--radius);
+}
+
+/* A picture the server no longer has shows an empty frame while it is drawn again. */
+.large-view__frame[data-missing] .map {
+  visibility: hidden;
+}
+
+/* One line is held for the drawing note once a preview shows, so nothing moves. */
+.preview-status:has(> #preview-status-text:empty) {
+  display: none;
+}
+
+.gen-preview:has(#preview > *) .preview-status:has(> #preview-status-text:empty) {
+  display: flex;
+  min-block-size: 1lh;
+}
+
+/* The note stays one line in a narrow column too, so a redraw never moves
+   what sits under the preview; the faded picture says the rest, and the
+   moving bar takes what room the words leave (DESIGN 8.8). */
+.preview-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 1lh;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#preview-status-text {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-status > .wait,
+.large-view__wait {
+  flex: 1 1 0;
+  min-inline-size: 3rem;
+  max-inline-size: 12rem;
+}
+
+/* 8.8 The large view: the whole screen, the picture fitted, zoomed and
+   panned in a scrolling frame with sharp pixels (one tile is one pixel on
+   2.x). The controls sit over the picture. */
+.large-view {
+  container: large-view / inline-size;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  block-size: 100%;
+  max-block-size: 100%;
+  margin: 0;
+  padding: var(--space-3);
+  border: 0;
+  overflow: auto;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* The picture keeps a usable height on a short screen (400% zoom, a phone on its side); the dialog scrolls instead. */
+.large-view[open] {
+  display: grid;
+  grid-template-rows: auto minmax(16rem, 1fr);
+  gap: var(--space-3);
+}
+
+.large-view::backdrop {
+  background: var(--color-bg);
+}
+
+/* The page behind the open large view does not scroll, so its scroll bar does
+   not show at the window's edge beside the view (DESIGN 8.8). */
+html:has(.large-view[open]) {
+  overflow: hidden;
+}
+
+.large-view__bar {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  padding-block-end: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+/* The key help shares the planet's line, at its end, while it fits. */
+.large-view__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+/* The title holds its line while paging empties and refills it, and the
+   download button keeps its place, unseen, while its picture is drawn. */
+.large-view__head h2 {
+  min-inline-size: 0;
+  min-block-size: 1lh;
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+
+#large-download[hidden] {
+  display: inline-grid;
+  visibility: hidden;
+}
+
+/* Its line is held, so news does not shrink the picture. */
+.large-view__status {
+  min-block-size: 1lh;
+  margin: 0;
+}
+
+.large-view__stage {
+  position: relative;
+  display: grid;
+  min-block-size: 0;
+}
+
+/* The page's own gestures are off inside it: one finger drags, two pinch. */
+.large-view__frame {
+  container-type: size;
+  display: grid;
+  min-block-size: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  touch-action: none;
+  user-select: none;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  --zoom: 1;
+  border-radius: var(--radius-lg);
+}
+
+.large-view__frame[data-zoomed] {
+  cursor: grab;
+}
+
+.large-view__frame[data-zoomed]:active {
+  cursor: grabbing;
+}
+
+/* Auto margins centre a fitted picture. Zoomed, half the frame's room on each side lets
+   any edge of the picture pan to the frame's middle (DESIGN 8.8); the frame is a grid, as
+   a flex row does not count the bottom margin as room to scroll. */
+.large-view__map {
+  margin: auto;
+  inline-size: calc(min(100cqi, 100cqb) * var(--zoom));
+}
+
+.large-view__frame[data-zoomed] .large-view__map {
+  margin: 50cqb 50cqi;
+}
+
+.large-view__map img {
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+}
+
+/* The star map is square like a planet picture and framed the same; its own colours are the
+   game's dark map, and its circles take the theme's primary colour (DESIGN 8.8). */
+.starmap {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+}
+
+.pictures .starmap {
+  border: var(--border-width) solid var(--color-border);
+}
+
+/* In the large view the square picture sits in a wider or taller frame: what is drawn past the
+   picture's own box (the sun's rings, the dark ground) carries on to the frame's edge, which clips
+   it, so no ring stops at a straight line inside the view (SPEC 5.6). */
+.large-view .starmap {
+  overflow: visible;
+}
+
+.starmap__planet {
+  stroke: var(--color-primary);
+}
+
+/* A planet's picture shows once it has loaded; until then, or if it never does, the plain
+   circle (DESIGN 8.23). */
+.starmap image:not([data-loaded]) {
+  visibility: hidden;
+}
+
+/* A planet in the large view's star map leads to its own step; its whole box, label included,
+   takes the click, which gives a finger more than the circle (SPEC 5.6, 17.2). */
+.large-view .starmap [data-step] {
+  cursor: pointer;
+  pointer-events: bounding-box;
+}
+
+.large-view .starmap [data-step]:is(:hover, :focus-visible) .starmap__planet {
+  stroke: var(--color-primary-hover);
+  stroke-width: 3;
+}
+
+/* The star map in the large view: no planet picture or pin. The planet's boxes and its settings
+   keep their places unseen, so the stage and its arrows stay where they are for every picture (DESIGN 8.8). */
+.large-view[data-starmap] :is(#large-img, .pin) {
+  display: none;
+}
+
+.large-view[data-starmap] :is(#large-territories-box, #large-amounts-bar, #large-settings) {
+  visibility: hidden;
+}
+
+/* The large view's "Star map": the header's round control, stretched to its word. */
+.icon-button.large-view__to-starmap {
+  inline-size: auto;
+  padding-inline: var(--space-2);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+/* Shown while the pointer is over the picture or focus is on a control; always where there is no hover. */
+.large-view__edge,
+.large-view__close,
+.large-view__zoom {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.large-view__stage:hover :is(.large-view__edge, .large-view__zoom),
+.large-view__stage:has(:focus-visible) :is(.large-view__edge, .large-view__zoom),
+.large-view__body:has(> .large-view__stage:hover, > .large-view__close:hover, > .large-view__stage :focus-visible, > .large-view__close:focus-visible) .large-view__close {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .large-view__edge,
+  .large-view__close,
+  .large-view__zoom {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .large-view__edge,
+  .large-view__close,
+  .large-view__zoom {
+    transition: none;
+  }
+}
+
+/* Clear of the frame's scroll bars at the end edges. Measured from the stage's foot, which never
+   moves, by a length that only the window sets, so a bar that grows (a count's note or error,
+   Vulcanus's box) never moves them and clicks in one spot keep stepping (DESIGN 8.8). On a small
+   window they sit a gap below Close on the smallest stage (16rem), so always clear of it; on a window
+   wide and tall enough that the bar can never reach its middle, at the window's middle. */
+.large-view__edge {
+  inset-block-end: calc(16rem - 2 * var(--space-2) - 1.5 * var(--target-min));
+  transform: translateY(50%);
+}
+
+@media (min-width: 48rem) and (min-height: 42rem) {
+  .large-view__edge {
+    inset-block-end: calc(50dvh - var(--space-3));
+  }
+}
+
+.large-view__edge--prev {
+  inset-inline-start: var(--space-2);
+}
+
+.large-view__edge--next {
+  inset-inline-end: var(--space-5);
+}
+
+/* Above the stage, which comes after it in the document. */
+.large-view__close {
+  z-index: 1;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-5);
+}
+
+.large-view__zoom {
+  display: flex;
+  gap: 0;
+  inset-block-end: var(--space-5);
+  inset-inline-end: var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+
+/* A picture with the start marked: the pin's tip on the centre. */
+.map {
+  position: relative;
+  display: block;
+}
+
+.map > img {
+  display: block;
+}
+
+.pin {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 1.5rem;
+  block-size: 2rem;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+.pin path {
+  fill: var(--color-pin-face);
+  stroke: var(--color-pin-edge);
+  stroke-width: 2;
+}
+
+.pin circle {
+  fill: var(--color-pin-edge);
+}
+
+/* Vulcanus's demolisher territories over its picture (DESIGN 8.8): in picture
+   pixels, so they scale and pan with it; the labels keep one size, like the pin. */
+.territories,
+.resources {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: clip;
+}
+
+/* The thumbnail's picture has a border; the overlays cover only the map. */
+.pictures .territories,
+.pictures .resources {
+  inset: var(--border-width);
+}
+
+.territories svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+#territory-stripes path {
+  fill: var(--color-territory-stripe);
+}
+
+.territories__border {
+  fill: none;
+  stroke: var(--color-territory-border);
+  stroke-width: 2;
+}
+
+/* White on a dark ring reads on every part of the map, as the pin does. A
+   label is pulled in by as much of its width as its spot is across the
+   picture, so one at an edge stays inside it. */
+.territories__label,
+.resources__label {
+  position: absolute;
+  transform: translate(calc(var(--x) * -1%), calc(var(--y) * -1%));
+  color: var(--color-pin-face);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: -1px -1px 0 var(--color-territory-outline), 1px -1px 0 var(--color-territory-outline),
+    -1px 1px 0 var(--color-territory-outline), 1px 1px 0 var(--color-territory-outline),
+    -2px 0 0 var(--color-territory-outline), 2px 0 0 var(--color-territory-outline),
+    0 -2px 0 var(--color-territory-outline), 0 2px 0 var(--color-territory-outline);
+}
+
+.preview[aria-busy="true"] .territories {
+  opacity: 0.6;
+}
+
+/* While the box is ticked, a line is held for the list, so nothing moves when it arrives. */
+.preview:has(#preview-territories:checked) .territory-result {
+  min-block-size: 1lh;
+}
+
+.territory-result:empty {
+  display: none;
+}
+
+.preview:has(#preview-territories:checked) .territory-result:empty {
+  display: block;
+}
+
+/* Once found, the counts are for screen readers only, so the held line
+   goes and no empty band sits under the picture (DESIGN 8.8). */
+.preview:has(#preview-territories:checked) .territory-result:has(> .territory-counts:only-child) {
+  min-block-size: 0;
+}
+
+.mod-settings.htmx-request .wait {
+  display: grid;
+}
+
+/* A planet's resource amounts, in the large view and under the One planet
+   picture (SPEC 5.6, 17): the box, then the counting line or, in its place,
+   the amounts as text or the error, on the same line while they fit, so the
+   map keeps its size as the count lands. */
+.resource-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-1) var(--space-4);
+  min-inline-size: 0;
+}
+
+.resource-amounts__counting:not([hidden]) {
+  display: grid;
+  flex: 1 1 16rem;
+}
+
+.resource-amounts__counting > p {
+  margin: 0;
+}
+
+.resource-amounts__result {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+}
+
+.resource-amounts__result:empty {
+  display: none;
+}
+
+/* The amounts list's place in the settings column takes no row while empty. */
+.large-view__amounts-text:empty {
+  display: none;
+}
+
+/* The counting line is one text line: the words, cut if need be, and a
+   bar no taller than the text beside them. */
+#large-amounts-bar {
+  flex-wrap: nowrap;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+#large-counting:not([hidden]) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+#large-counting > p {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#large-counting > progress {
+  flex: 0 0 4rem;
+  block-size: 0.5rem;
+}
+
+#large-amounts-result {
+  flex: 1 1 0;
+}
+
+.resource-text[open] {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-end: var(--space-2);
+}
+
+.resource-text :is(p, h3, ul) {
+  margin: 0;
+}
+
+.resource-text h3 {
+  font-size: var(--text-md);
+}
+
+.resource-text ul {
+  padding-inline-start: var(--space-5);
+}
+
+/* Generate's Undo reset takes Reset to defaults' place once it has run (DESIGN 8.6). */
+.preset-row:has(> #preset-undo:not([hidden])) > #preset-reset {
+  display: none;
+}
+
+/* Generate's tighter preview (DESIGN 8.8): the thumbnail's territory
+   labels, the territory counts and the large view's key line. */
+/* The thumbnail shows short labels in small plain type; the large view keeps the words. */
+.pictures .territories__long,
+.large-view .territories__short {
+  display: none;
+}
+
+/* 0.75rem: the type scale has nothing smaller than --text-sm, which crowds a small picture. */
+.pictures .territories__label,
+.pictures .resources__label {
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.large-view__head > .large-view__keys {
+  margin-inline-start: auto;
+}
+
+/* The key help is one line on a desktop (DESIGN 8.8), so the hint's 60ch
+   measure does not apply; it still wraps rather than widen a phone. */
+.large-view__head > .hint.large-view__keys {
+  max-inline-size: 100%;
+}
+
+/* The large view's "Show demolisher territories" box and its hint, on one line while they fit
+   and the hint under the box when they do not (DESIGN 8.8). */
+.large-view__territories {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+  min-inline-size: 0;
+}
+
+.large-view__territories[hidden] {
+  display: none;
+}
+
+/* Wide, Show resource amounts and Vulcanus's Show demolisher territories
+   share one line, amounts first, so on another planet the territories'
+   place is only empty space at the line's end and no row comes or goes. */
+@container large-view (min-width: 48rem) {
+  .large-view__bar {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "head head" "news news" "amounts territories";
+    column-gap: var(--space-6);
+  }
+
+  .large-view__head {
+    grid-area: head;
+  }
+
+  .large-view__news {
+    grid-area: news;
+  }
+
+  .large-view__bar > .resource-amounts {
+    grid-area: amounts;
+  }
+
+  /* One target tall, as the amounts box is, so the shared line keeps its height. */
+  .large-view__bar > .large-view__territories {
+    grid-area: territories;
+    block-size: var(--target-min);
+  }
+}
+
+/* Narrower they cannot share a line, so on a map with Vulcanus its row is
+   held, unseen, on every planet, and paging never moves the controls. */
+@container large-view (max-width: 47.99rem) {
+  /* A count's note or error, or the opened list, can make the bar taller than a phone leaves it;
+     past that the bar scrolls on its own, so the stage keeps its 16rem and its foot, and the
+     arrows measured from it, never move (DESIGN 8.8). The padding keeps focus rings unclipped. */
+  .large-view__bar {
+    max-block-size: max(6rem, calc(100dvh - 3 * var(--space-3) - 16rem));
+    overflow-y: auto;
+    padding-block-start: calc(var(--focus-width) + 2px);
+    padding-inline: calc(var(--focus-width) + 2px);
+    margin: calc(-1 * (var(--focus-width) + 2px));
+  }
+
+  body:has(#preview-planets > option[value="vulcanus"]) .large-view__territories[hidden] {
+    display: flex;
+    visibility: hidden;
+  }
+
+  /* The box and what it shows cannot share a line either, so a second line
+     is always held for the count, the list or nothing, and ticking moves
+     nothing. */
+  #large-amounts-bar {
+    flex-wrap: wrap;
+    align-content: start;
+    min-block-size: calc(var(--target-min) + var(--space-1) + var(--target-min));
+  }
+
+  #large-amounts-bar > #large-counting:not([hidden]),
+  #large-amounts-bar > #large-amounts-result {
+    flex-basis: 100%;
+  }
+}
+
+.large-view__territories > .hint {
+  margin: 0;
+}
+
+/* The One planet box, and beside it, while it counts, a short word that it does. */
+.resource-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+}
+
+/* The short word stays beside the box at 320 px. */
+.resource-box__busy {
+  display: none;
+  font-size: var(--text-xs);
+}
+
+.preview:has(#preview-counting:not([hidden])) .resource-box__busy {
+  display: inline;
+}
+
+/* Close sits in the body, before the settings in Tab order, at the stage's top corner. */
+.large-view__body {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-block-size: 0;
+}
+
+/* Generate's large view with the planet's settings beside the map (DESIGN
+   8.8). The settings column is 38rem, so its fields stay sliders (a
+   map-section of 34rem) after its padding and scroll bar; it shows once the
+   map beside it can be as wide again, 77rem in all. Narrower, map only. */
+.large-view__settings {
+  display: none;
+}
+
+@container large-view (min-width: 77rem) {
+  .large-view__body:has(> .large-view__settings:not([hidden])) {
+    grid-template-columns: 38rem minmax(0, 1fr);
+  }
+
+  /* It scrolls on its own; the padding keeps focus rings inside it. Positioned,
+     so its visually hidden headings scroll with it rather than stretch the view. */
+  .large-view__settings:not([hidden]) {
+    position: relative;
+    container: map-section / inline-size;
+    display: grid;
+    align-content: start;
+    gap: var(--space-4);
+    min-block-size: 0;
+    padding: var(--space-2);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
+.large-view__settings > section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.large-view__settings > section[hidden] {
+  display: none;
+}
+
+/* "Resources" and "Terrain" are set as the map settings' panel names are
+   without script (8.7), a step above the groups' names, over a rule. */
+.large-view__settings > section > h3 {
+  padding-block-end: var(--space-1);
+  border-block-end: var(--border-width) solid var(--color-line);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* The status line and the drawing line share the held line. Paging the
+   large view changes only what its lines say, never their height (DESIGN
+   8.8), so the line is cut rather than wrapped. */
+.large-view__news {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0 var(--space-3);
+  min-inline-size: 0;
+  block-size: 1lh;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.large-view__drawing {
+  margin: 0;
+}
+
+/* While the next picture is drawn the shown one fades, as on the page. */
+.large-view__frame[aria-busy="true"] .large-view__map > img,
+.large-view__frame[aria-busy="true"] .territories {
+  opacity: 0.6;
+}
+
+/* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
+@media (forced-colors: active) {
+  /* A label's ring is a shadow, which forced colours drop; it sits on the map, not the page. */
+  .territories__label,
+  .resources__label {
+    forced-color-adjust: none;
+  }
+}
+
+/* Game settings' rows lay out by the width of the settings column. */
+.settings-wrap {
+  container: settings / inline-size;
+}
+
+.settings-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+/* Players connected now: one aligned row each, the name, then Make admin. */
+#settings-admins ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  max-inline-size: 28rem;
+  list-style: none;
+}
+
+#settings-admins li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+#settings-admins li:last-child {
+  border-block-end: 0;
+}
+
+/* Settings form, defaults (SPEC 11.1): a checkbox with its hints below it,
+   the hints lined up under the label text (a 1.25rem box and the gap). */
+.setting-check {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.setting-check > .hint {
+  margin-block: 0;
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+/* The collapsed Network group keeps its fields clear of the summary. */
+#settings-network details > .field + .field {
+  margin-block-start: var(--space-3);
+}
+
+#settings-gameplay select {
+  max-inline-size: 24rem;
+}
+
+.changes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changes li {
+  display: grid;
+  gap: var(--space-1);
+  max-inline-size: none;
+  padding-block-end: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.changes li:last-child {
+  padding-block-end: 0;
+  border-block-end: 0;
+}
+
+.changes del,
+.changes ins {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.changes del {
+  color: var(--color-text-muted);
+}
+
+.mod-settings-will ul {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-5);
+}
+
+.mod-settings-will {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* Quiet links that are still full-size targets, in a row or in a sentence. */
+.portal-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* Foreman's own question when leaving Generate with settings that are not
+   saved (DESIGN 7.4, 12): the confirmation box look, over a dimmed page. */
+.leave-dialog {
+  container-type: inline-size;
+  inline-size: min(32rem, calc(100% - 2 * var(--space-3)));
+  max-inline-size: none;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.leave-dialog[open] {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.leave-dialog::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+/* A download's preparation: which planet of how many, and the choices on a failure (SPEC 5.6). */
+.download-prep {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}
+
+.download-prep__wait:not([hidden]) {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.download-prep__wait > p,
+.download-prep__actions {
+  margin: 0;
+}
+
+.download-prep__wait progress {
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  accent-color: var(--color-selected);
+}
+
+.download-prep .message[hidden] {
+  display: none;
+}
+
+.download-prep__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* In the large view it lies over the top of the stage, so the picture keeps its place (DESIGN 8.8),
+   between the Previous and Next arrows and above zoom, so no control or its focus ring is hidden. */
+.large-view__stage > .download-prep {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: var(--space-2);
+  inset-inline: calc(var(--space-2) + 3rem) calc(var(--space-5) + 3rem);
+  max-inline-size: 30rem;
+  max-block-size: calc(100% - var(--space-5) - 3rem - var(--space-4));
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}
+
+/* A count's note or error in the large view lies where the preparation's block does: over the
+   stage's top, between the arrows and clear of Close and zoom, so the header keeps one line and
+   the picture never moves (DESIGN 8.8). Its own close sits in the message's top corner. */
+.large-view__toast {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: var(--space-2);
+  inset-inline: calc(var(--space-2) + 3rem) calc(var(--space-5) + 3rem);
+  max-inline-size: 30rem;
+  max-block-size: calc(100% - var(--space-5) - 3rem - var(--space-4));
+  overflow: auto;
+}
+
+.large-view__toast[hidden] {
+  display: none;
+}
+
+.large-view__toast > .icon-button {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+}
+
+/* The words flow round the close button rather than give it a whole column. */
+.large-view__toast .message > :first-child::before {
+  content: "";
+  float: inline-end;
+  inline-size: var(--target-min);
+  block-size: var(--target-min);
+  margin-inline-start: var(--space-2);
+}
+
+/* On a phone the message has only the room between the arrows, so it drops its icon; the
+   tone's edge still marks it, and an error keeps its label. */
+@container large-view (max-width: 47.99rem) {
+  .large-view__toast .message {
+    padding-inline-start: var(--space-3);
+  }
+
+  .large-view__toast .message::before {
+    display: none;
+  }
+}
+
+/* The mod settings editor (SPEC 9.6): one column, a fieldset per mod,
+   each setting's label, then its description, then its control. */
+.mod-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  min-block-size: 8rem;
+}
+
+/* The loading words show only while the script's request runs (htmx adds
+   the class), so a browser without script is not told a load is under way
+   (SPEC 9.6). */
+.mod-settings:not(.htmx-request) .mod-settings-loading {
+  display: none;
+}
+
+/* Parent names in an origin line wrap on a phone: a line pitch of 26 px
+   with 25 px link boxes keeps each tap target apart from the next line's
+   (SPEC 17.2). */
+.hint.mod-origin {
+  line-height: 2;
+}
+
+.mod-origin a {
+  padding-block: 0.3em;
+}
+
+.field input.mod-settings-number {
+  max-inline-size: calc(12ch + 2 * var(--space-3) + 2 * var(--border-width));
+}
+
+.mod-settings-sub {
+  font-weight: 400;
+}
+
+.mod-settings .field select[aria-invalid="true"] {
+  border: 2px solid var(--color-danger-text);
+}
+
+.mod-settings-values {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mod-settings-values dt {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.mod-settings-values dd {
+  overflow-wrap: anywhere;
+}
+
+/* Generate: the settings beside a preview that stays in view while they
+   change (DESIGN 8.6). Two columns only where the form leaves the settings
+   34rem, so their steps stay sliders (8.7) beside the shell's rail; one
+   column otherwise. The preview sizes its controls from its own column. */
+.generate {
+  container-name: generate;
+}
+
+.gen-preview {
+  container: map-section / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.gen-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-inline-size: 0;
+}
+
+.gen-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  min-inline-size: 0;
+}
+
+.gen-settings {
+  gap: var(--space-4);
+}
+
+/* Under One planet's picture: the download link and the real-game button with its info
+   icon share a line while they fit, and when they do not the button and its icon wrap
+   together, so the icon never drops off the button's row (DESIGN 8.8). The button gives
+   way before the icon does. */
+.picture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+}
+
+.picture-actions #preview-chart-offer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-inline-size: 100%;
+}
+
+.picture-actions #preview-chart-offer > .button {
+  min-inline-size: 0;
+}
+
+.picture-actions #preview-chart-offer > .tip {
+  flex: none;
+}
+
+@container generate (min-width: 62rem) {
+  .gen-grid {
+    grid-template-columns: minmax(34rem, 1fr) minmax(20rem, 26rem);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  /* The pane fills the window between the top strip and the action bar, and
+     one picture shrinks to the height its controls leave, so the whole pane
+     is seen without a scrollbar of its own (DESIGN 8.6). */
+  .gen-preview {
+    --gen-top: var(--space-4);
+    --gen-foot: calc(var(--target-min) + 2 * var(--space-3) + var(--border-width) + var(--space-4));
+    position: sticky;
+    inset-block-start: var(--gen-top);
+    block-size: calc(100dvh - var(--gen-top) - var(--gen-foot));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    overflow-y: auto;
+    padding: var(--space-4);
+    background: var(--color-raised);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Once a picture is drawn, the section's parts are the pane's own rows,
+     so the picture can take the height left over (DESIGN 8.6). */
+  .gen-preview > .preview:has(> section > .pictures),
+  .gen-preview > .preview > section:has(> .pictures),
+  .js-on .gen-preview > .preview:has(> .preview-placeholder),
+  .js-on .gen-preview > .preview > .preview-placeholder {
+    display: contents;
+  }
+
+  /* The held box before the first picture is sized the same way, so the
+     picture lands in it (DESIGN 8.8). */
+  .gen-preview .preview-placeholder__picture {
+    flex: 1 1 0;
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    container-type: size;
+    align-content: start;
+  }
+
+  .gen-preview .preview-placeholder__frame {
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min)));
+    justify-self: center;
+  }
+
+  .gen-preview .preview-placeholder__picture > .preview-placeholder__control,
+  .gen-preview .preview-placeholder__picture ~ .preview-placeholder__control {
+    min-block-size: calc(1lh + 2 * var(--space-1));
+  }
+
+  .gen-preview .preview-placeholder__picture ~ * {
+    margin-block-start: calc(var(--space-1) - var(--space-3));
+  }
+
+  .gen-preview > *,
+  .gen-preview > .preview > section > * {
+    flex: none;
+  }
+
+  /* A square no wider than the column and no taller than the room left,
+     less its frame, caption and download link; never under 16rem, so its
+     amounts stay readable, and the pane scrolls below that. While the
+     territories are written under it the list keeps its own height. */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) {
+    flex: 1 1 0;
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min));
+    container-type: size;
+  }
+
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li {
+    inline-size: 100%;
+  }
+
+  /* The frame shrinks, not the row, so its download link keeps the column's width;
+     a frame narrower than the column sits in its middle. */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)) > li > figure {
+    inline-size: min(100%, max(16rem, 100cqb - 2 * var(--space-2) - 1.5rem - var(--target-min) - var(--chart-row, 0px)));
+    justify-self: center;
+  }
+
+  /* The Download line also offers the real-game picture. Where the line
+     takes more than its link's row (it wraps, the button's text wraps in a
+     longer language, or a stopped download's message opens in it) the
+     script sets --chart-row to the extra height, and the picture keeps that
+     room; on one row it needs none, so a wide pane still fits between the
+     strips (DESIGN 8.6, 8.8). */
+  .gen-preview .pictures:not(:has(> li + li, .territory-result > *)):has(.picture-actions) {
+    min-block-size: calc(16rem + 2 * var(--space-2) + 1.5rem + var(--target-min) + var(--chart-row, 0px));
+  }
+
+  /* The download links and the kept note read as one tight group under the
+     picture: text links of 24px or more (WCAG 2.5.8), not 44px boxes. */
+  .gen-preview .preview .download {
+    min-block-size: calc(1lh + 2 * var(--space-1));
+  }
+
+  .gen-preview .pictures ~ *,
+  .gen-preview > .preview-status {
+    margin-block-start: calc(var(--space-1) - var(--space-3));
+  }
+
+  .gen-preview .pictures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* All planets are thumbnails, three to a row, so they read as small beside One planet's picture (DESIGN 8.8). */
+  .gen-preview .pictures:has(> li + li) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* On a very wide screen Generate's basics pair up too: name beside
+   version, so the input and the select line up (DESIGN 8.6). */
+@media (min-width: 90rem) {
+  .gen-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+  }
+
+  .gen-settings > * {
+    grid-column: 1 / -1;
+  }
+
+  /* Name and version share label, control and help rows, so the input and
+     the select line up; the name's help sits under its input, as on any
+     plain field, and what follows the control flows below (DESIGN 8.6). */
+  .gen-settings > .field:has(#generate-name),
+  .gen-settings > .version-fields {
+    grid-column: auto;
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    row-gap: var(--space-2);
+  }
+
+  #generate-name {
+    grid-row: 2;
+  }
+
+  #generate-name-hint {
+    grid-row: 3;
+  }
+
+  .gen-settings > .field:has(#generate-name) > .error {
+    grid-row: 4;
+  }
+
+  .version-fields > .field:has(#generate-version-select) {
+    grid-row: 1 / span 3;
+    grid-template-rows: subgrid;
+  }
+
+  #generate-version-select {
+    grid-row: 2;
+  }
+
+  .version-fields > .disclosure {
+    grid-row: 4;
+  }
+
+  .version-fields > .field:has(#generate-space-age) {
+    grid-row: 5;
+  }
+}
+
+/* On a very wide screen the map preview gets about two fifths of the page,
+   so the picture that decides the world is large (DESIGN 8.6). */
+@media (min-width: 100rem) {
+  .gen-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(26rem, 1fr);
+  }
+}
+
+.preview-placeholder__map::before {
+  content: "";
+  inline-size: 2rem;
+  block-size: 2rem;
+  background: var(--color-text-muted);
+  mask: var(--i-map) center / contain no-repeat;
+}
+
+/* The actions are one bar at the form's foot, gathered at its end, in code
+   order at every width: Cancel, Preview map, then Generate world, so the
+   keyboard meets them as the eye does (DESIGN 7.1). */
+.generate > .gen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
+  padding: var(--space-3) var(--card-pad);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  box-shadow: 0 -6px 16px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 35%));
+}
+
+@media (max-width: 30rem) {
+  html:has(.generate > .gen-actions) {
+    scroll-padding-block-end: min(11rem, 50dvh);
+  }
+}
+
+.generate > .gen-actions > a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-1);
+}
+
+/* Every foot bar's Cancel is a quiet button beside the primary. */
+:is(.gen-actions, .form-foot) > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+:is(.gen-actions, .form-foot) > a:not(.button):hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+.form-foot > #settings-unsaved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+/* On a narrow form the unsaved count takes its own line over the actions,
+   so Cancel and Preview changes keep their words whole. */
+@container settings (max-width: 36rem) {
+  .form-foot:has(> #settings-unsaved:not(:empty)) {
+    flex-wrap: wrap;
+  }
+
+  .form-foot > #settings-unsaved:not(:empty) {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 30rem) {
+  /* On a phone the three stack full width in source order, so no
+     language's long label is squeezed into a third of the bar (DESIGN 8.6). */
+  .generate > .gen-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .generate > .gen-actions > a {
+    justify-content: center;
+  }
+
+  @media (max-height: 30rem) {
+    .generate > .gen-actions {
+      position: static;
+    }
+  }
+
+  /* On a phone the preview comes straight after the preset and seed. */
+  .gen-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .gen-settings,
+  .gen-settings > .map-section,
+  .gen-settings #line-box {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .gen-grid > .gen-settings,
+  .gen-settings > .map-section,
+  .gen-settings #line-box {
+    display: contents;
+  }
+
+  .gen-grid > * {
+    min-inline-size: 0;
+  }
+
+  .gen-grid > .gen-preview {
+    order: 1;
+  }
+
+  .gen-settings #map-settings,
+  .gen-settings > .field:has(#generate-download),
+  .gen-settings .achievements {
+    order: 2;
+  }
+}
+
+/* World settings: on a wide panel a text field is as wide as what it holds.
+   A narrow panel has no rail; the raw editor's link follows the form (DESIGN 8.10). */
+@container settings (min-width: 44rem) {
+  .settings .field input:is([type="text"], [type="password"]):not([inputmode="numeric"]) {
+    max-inline-size: 35rem;
+  }
+}
+
+/* The raw editor's link follows the form at every width. */
+.settings-raw-link {
+  display: flex;
+}
+
+/* Every slider's first row is the same: its name at the start, the step in
+   words at the end, on one line; the slider takes the row under it. */
+@container map-section (min-width: 34rem) {
+  /* Unseen, the longest step's words hold the box's width, so the name
+     beside it never changes width while the slider moves (DESIGN 8.7). */
+  .js-on .step__value::after {
+    content: attr(data-longest);
+    display: block;
+    block-size: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+
+  .js-on .step > .field__head {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  /* The name wraps between words rather than lose letters; a single word
+     such as "Reichhaltigkeit" is never cut. */
+  .js-on .step > .field__head > label {
+    min-inline-size: min-content;
+    overflow-wrap: normal;
+    hyphens: manual;
+  }
+}
+
+/* A map picture sits in a framed slot, its name under it inside the frame,
+   so even a one-colour picture reads as a map. The held box before the first
+   picture wears the same frame, so the picture lands in its place (DESIGN 8.8). */
+.preview-placeholder__frame {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  padding: var(--space-2);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 6px;
+}
+
+.pictures figcaption {
+  padding-inline: var(--space-1);
+  font-weight: 600;
+}
+
+.js-on .autoplace {
+  row-gap: var(--space-4);
+  padding-block: var(--space-4) 0;
+}
+
+.js-on .step__value {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+/* A planet's "All resources" row sets the rows under it, so it needs script
+   and a rule under it sets it apart (DESIGN 8.7). */
+.autoplace--all {
+  display: none;
+}
+
+.js-on .autoplace--all {
+  display: grid;
+  padding-block-end: var(--space-4);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.autoplace--all > .hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.settings > fieldset + fieldset,
+.mod-settings-group.setting-row {
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-5);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+/* A fieldset's floated legend is laid out as its first item, so it takes
+   the title's column. */
+.settings > fieldset > legend {
+  float: inline-start;
+  inline-size: auto;
+  margin: 0;
+}
+
+/* A group's name in a world's settings is a section heading: 20/26. */
+.settings > fieldset > legend {
+  color: var(--color-heading);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.mod-settings-group.setting-row > :is(legend, h3) {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.33;
+}
+
+/* Mod settings: a card's heading and description, then one row per mod. */
+.mod-settings-values.setting-row__body {
+  gap: var(--space-4);
+}
+
+.settings-main > .message {
+  inline-size: fit-content;
+  max-inline-size: min(100%, 52rem);
+}
+
+/* A control that saves on its own inside a larger form sits in a box with
+   its own button, so what each button saves is plain. */
+.own-save {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+}
+
+/* The connected players' heading, its hint and the list read as one block. */
+#connected-heading + .hint,
+#connected-hint + ul {
+  margin-block-start: calc(var(--space-2) - var(--space-5));
+}
+
+.settings > .required-note {
+  padding-inline-start: 0;
+}
+
+/* Generate: the other-version opener is as wide as the select above it. */
+.version-fields > .disclosure {
+  max-inline-size: 25rem;
+}
+
+#settings-listing,
+#settings-joining,
+#settings-saving,
+#settings-admins,
+#settings-whitelist,
+#settings-bans {
+  scroll-margin-block-start: var(--space-4);
+}
+
+/* Game settings on a wide card: a section's fields flow two to a row, so
+   the long form uses the width beside its titles instead of one narrow
+   column. Lists, notes and anything that is not a field run across both. */
+@container (min-width: 72rem) {
+  .settings > fieldset > .setting-row__body {
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .settings > fieldset > .setting-row__body:not(:has(> .field--short + .field--short)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings > fieldset > .setting-row__body > :not(.field, .setting-check, fieldset) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Game settings' sub-pages: one fieldset each, the others kept in the form
+   but out of sight, so a save leaves them as they are (DESIGN 6). */
+.settings > fieldset[hidden],
+.settings-main > section.panel[hidden],
+form.settings[hidden] {
+  display: none !important;
+}
+
+/* In its own card the whitelist switch needs no inner box of its own. */
+#settings-whitelist-enforce .own-save {
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+/* The unsaved mark: a small orange dot before the foot bar's count of
+   changes and after each sub-page that holds some. */
+#settings-unsaved::before {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-selected);
+}
+
+/* The note stays in the page while empty, so its status region is heard when it fills. */
+#settings-unsaved:empty::before {
+  content: none;
+}
+
+/* Generate and Mod settings on a phone: 24 px between field groups, 8 px
+   between a label, its hint and its control, 16 px inside the card. */
+@media (max-width: 39.99rem) {
+  .gen-settings,
+  .version-fields,
+  .mod-settings-group > .setting-row__body {
+    display: grid;
+    row-gap: var(--space-5);
+  }
+
+  :is(.gen-settings, .version-fields, .mod-settings-group > .setting-row__body) > * {
+    margin-block: 0;
+  }
+
+  :is(.generate, .mod-settings-group) .field {
+    gap: var(--space-2);
+  }
+
+  :is(.generate, .mod-settings-group) .field > :is(.hint, label, legend) {
+    margin-block: 0;
+  }
+
+  /* A box's label is a 44 px row; its hint sits 8 px under the words. */
+  :is(.generate, .mod-settings-group) .field > label.check + .hint {
+    margin-block-start: calc(-1 * var(--space-2));
+  }
+
+  /* From 360 px only: below it the card lies flat with no side padding
+     (DESIGN 4), and the action bar's bleed must match that 0. */
+  @media (min-width: 22.4rem) {
+    .generate.panel,
+    .mod-settings > .panels > .panel,
+    .mod-settings > .panel {
+      --card-pad: var(--space-4);
+    }
+  }
+}
+
+/* The guided Generate's step bar (SPEC 5.6, DESIGN 8.6): four numbered
+   marks joined by a line, finished steps ticked, the current one filled.
+   On a narrow bar only the marks show, with the current step's name under
+   them. */
+.flow-steps {
+  --flow-mark: 1.75rem;
+  container-type: inline-size;
+}
+
+.flow-steps ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-inline-size: 44rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flow-step {
+  position: relative;
+  min-inline-size: 0;
+  max-inline-size: none;
+}
+
+/* The line from the step before runs between the two marks' edges. */
+.flow-step + .flow-step::before {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(var(--target-min) / 2 - 1px);
+  inset-inline-end: calc(50% + var(--flow-mark) / 2 + var(--space-1));
+  inline-size: calc(100% - var(--flow-mark) - 2 * var(--space-1));
+  block-size: 2px;
+  background: var(--color-line);
+}
+
+.flow-step + .flow-step:is(.flow-step--done, .flow-step--current, .flow-step--skipped:has(~ .flow-step--current))::before {
+  background: var(--color-selected);
+}
+
+.flow-step > :is(a, span) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--target-min);
+  padding: calc((var(--target-min) - var(--flow-mark)) / 2) var(--space-1) var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+
+.flow-step > a:hover {
+  color: var(--color-heading);
+}
+
+.flow-step > a:hover .flow-step__name {
+  text-decoration: underline;
+}
+
+.flow-step__mark {
+  display: grid;
+  place-items: center;
+  inline-size: var(--flow-mark);
+  block-size: var(--flow-mark);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.flow-step__mark::before {
+  content: attr(data-n);
+}
+
+.flow-step__name {
+  max-inline-size: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.flow-step--done > :is(a, span) {
+  color: var(--color-text);
+}
+
+.flow-step--done .flow-step__mark {
+  border-color: var(--color-selected);
+  color: var(--color-selected);
+}
+
+.flow-step--done .flow-step__mark::before {
+  content: "";
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-check) center / contain no-repeat;
+}
+
+.flow-step--current > :is(a, span) {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.flow-step--current .flow-step__mark {
+  background: var(--color-primary);
+  border-color: var(--color-primary-edge);
+  color: var(--color-on-primary);
+}
+
+/* A step with nothing to do: a dashed mark and italics, told apart from one
+   that cannot be opened yet. */
+.flow-step--skipped .flow-step__mark {
+  border-style: dashed;
+}
+
+.flow-step--skipped .flow-step__name {
+  font-style: italic;
+}
+
+.flow-steps__now {
+  display: none;
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: 600;
+  text-align: center;
+}
+
+@container (max-width: 30rem) {
+  .flow-step__name {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .flow-step > :is(a, span) {
+    padding-block-end: 0;
+  }
+
+  .flow-steps__now {
+    display: block;
+  }
+}
+
+/* The tick is painted through a mask and the current mark is filled, so in
+   forced colours the tick takes the text colour and the current mark a
+   highlight border. */
+@media (forced-colors: active) {
+  .flow-step--done .flow-step__mark::before {
+    background: CanvasText;
+  }
+
+  .flow-step--current .flow-step__mark {
+    border-color: Highlight;
+  }
+}
+
+/* Each step's footer: Back leads it, the step's action ends it (SPEC 5.6). */
+:is(.gen-actions, .form-foot, .flow-foot) > .flow-back {
+  margin-inline-end: auto;
+}
+
+/* On a phone Generate's bar is one column, where an auto margin would
+   shrink Back rather than push it. */
+@media (max-width: 30rem) {
+  .generate > .gen-actions > .flow-back {
+    margin-inline-end: 0;
+  }
+}
+
+/* A planet without controls says so once in the large view: under Resources, not again under Terrain (SPEC 5.6). */
+#large-terrain:has(.mapgen-none) {
+  display: none;
+}
+
+/* ---- Mod settings on a wide screen: the mod's name in the start column,
+   its fields in two columns of at most 26rem, so a short list of fields
+   does not run down one narrow line beside a wide empty plate. */
+@media (min-width: 80rem) {
+  .mod-settings-group > .setting-row__body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 26rem));
+    align-items: start;
+    gap: var(--space-5) var(--space-6);
+  }
+
+  .mod-settings-group > .setting-row__body > * {
+    margin-block: 0;
+  }
+
+  .mod-settings-values.setting-row__body {
+    grid-template-columns: repeat(3, minmax(0, 18rem));
+  }
+}
+
+/* ---- The large view holds the window. While it is open the page behind
+   takes no height, so nothing of it shows past the view's foot. */
+html:has(.large-view[open]) > body {
+  block-size: 100dvh;
+  overflow: clip;
+}
+
+@media (min-width: 48rem) {
+  .large-view[open] {
+    padding-block: var(--space-4);
+    row-gap: var(--space-4);
+  }
+}
+
+@media (min-width: 90rem) {
+  .large-view[open] {
+    padding-inline: var(--space-6);
+  }
+}
+
+/* The star map has no settings, so it takes the whole width and sits in
+   the middle of the window rather than beside an empty column. */
+.large-view[data-starmap] #large-settings {
+  display: none;
+}
+
+@container large-view (min-width: 77rem) {
+  .large-view[data-starmap] .large-view__body:has(> .large-view__settings) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Previous keeps the spot it has beside a planet's settings, so clicks in
+     one place still step through every picture (DESIGN 8.8). */
+  .large-view[data-starmap] .large-view__body:has(> .large-view__settings:not([hidden])) .large-view__edge--prev {
+    inset-inline-start: calc(38rem + var(--space-4) + var(--space-2));
+  }
+}
+
+/* ==== The guided Generate's header: the title and the step bar share one
+   row on a wide screen, the description one line under them. */
+.flow-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.flow-head > h1 {
+  margin: 0;
+}
+
+.flow-head > .flow-steps {
+  flex: 0 1 40rem;
+  min-inline-size: min(100%, 20rem);
+}
+
+.flow-head > .flow-steps ol {
+  max-inline-size: none;
+}
+
+/* ==== Map settings: Preset, Seed and Fill from a map exchange string on
+   one row; each resource one row, its name in a start column and its three
+   sliders beside it, so a planet's controls fit a screen. */
+@container generate (min-width: 62rem) {
+  #map-section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0 var(--space-5);
+  }
+
+  #map-section > #line-box {
+    display: contents;
+  }
+
+  #map-section > *,
+  #map-section > #line-box > * {
+    grid-column: 1 / -1;
+  }
+
+  #map-section > #line-box > .mode-panel--settings:not(#map-settings) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* The summary stands on the controls' line: the preset and seed grid
+     keeps one row gap under its controls for an error. */
+  #map-section > #exchange-fill {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    margin: 0 0 var(--space-4);
+  }
+
+  #map-section > #exchange-fill > summary {
+    display: flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+    white-space: nowrap;
+  }
+
+  #map-section > #exchange-fill[open] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-block: var(--space-4) 0;
+  }
+
+  #map-section > #line-box > #map-key-box:not(:has(> :not(input))) {
+    display: none;
+  }
+
+  #map-section > #line-box > #map-settings {
+    margin-block-start: var(--space-4);
+  }
+}
+
+@container map-section (min-width: 46rem) {
+  .js-on #map-settings .autoplace {
+    grid-template-columns: 11rem repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: var(--space-1) var(--space-5);
+    padding-block: var(--space-3);
+  }
+
+  .js-on #map-settings .autoplace > legend {
+    float: inline-start;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: center;
+    inline-size: auto;
+    margin: 0;
+  }
+
+  .js-on #map-settings .autoplace > :is(.autoplace__also, .hint) {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+
+  .js-on #map-settings .autoplace--all {
+    padding-block-end: var(--space-3);
+  }
+
+  .js-on #map-settings .autoplace .step {
+    row-gap: 0;
+  }
+}
+
+/* ==== Game settings: the form at a working width, and beside it what
+   applies to all of it (the restart note) and the file behind it. */
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.settings-aside {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-inline-size: 0;
+}
+
+.settings-layout > .settings-note,
+.settings-aside > .actions {
+  margin: 0;
+}
+
+@container settings (min-width: 72rem) {
+  .settings-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+    grid-template-rows: auto 1fr;
+    gap: var(--space-4) var(--space-5);
+    align-items: start;
+  }
+
+  .settings-main {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .settings-layout > .settings-note {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .settings-aside {
+    grid-column: 2;
+    grid-row: 2;
+    position: sticky;
+    inset-block-start: var(--space-4);
+  }
+
+  .settings-layout:not(:has(> .settings-note)) > .settings-aside {
+    grid-row: 1 / -1;
+  }
+}
+
+/* A section's fields keep a working width rather than the plate's. */
+@container settings (min-width: 52rem) {
+  .settings-main .setting-row__body {
+    max-inline-size: 60rem;
+  }
+}
+
+/* ==== Generate a world: the world's form leads at a working width; starting
+   from a favorite is a side plate beside it. */
+@media (min-width: 80rem) {
+  .gen-start {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  .gen-start > #favorite-chooser {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .gen-start > #generate-form {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .gen-start > form#favorite-chooser {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .gen-start > form#favorite-chooser > * {
+    grid-column: 1;
+  }
+
+  .gen-start > #favorite-chooser > .actions {
+    justify-content: flex-start;
+  }
+
+  #main .gen-start > #favorite-chooser > h2 {
+    min-block-size: 3rem;
+    margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-1);
+    padding: var(--space-3) var(--card-pad);
+    background: var(--color-raised);
+    border-block-end: var(--border-width) solid var(--color-line-strong);
+    border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+    font-size: var(--text-xl);
+    font-weight: 650;
+    line-height: 1.3;
+  }
+
+  .gen-start > #favorite-chooser .inline-row {
+    flex-wrap: wrap;
+  }
+
+  /* Name beside version, as the form has the room. */
+  .gen-start .gen-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.large-view__zoom > .icon-button {
+  border: 0;
+  border-radius: 0;
+}
+
+.large-view__zoom > .icon-button + .icon-button {
+  border-inline-start: var(--border-width) solid var(--color-line);
+}
+
+/* On the one-row map header the preset, its "modified" word and Reset or
+   Undo keep one line: the select gives up width, so Undo takes Reset's
+   place rather than dropping a line. */
+@container generate (min-width: 62rem) {
+  #preset-box .preset-row {
+    flex-wrap: nowrap;
+  }
+
+  #preset-box .preset-row > :is(.modified, .button) {
+    flex: none;
+  }
+}
+
+/* ==== Map settings: a step off its preset shows its words in the accent
+   ink with a dot in the selected colour before them, so edits stand out in
+   a long list. */
+.js-on .step[data-changed] .step__value {
+  color: var(--color-link);
+  font-weight: 600;
+}
+
+.js-on .step[data-changed] .step__value::before {
+  content: "";
+  display: inline-block;
+  inline-size: 0.4375rem;
+  block-size: 0.4375rem;
+  margin-inline-end: 0.375rem;
+  vertical-align: 0.1em;
+  border-radius: 50%;
+  background: var(--color-selected);
+}
+}

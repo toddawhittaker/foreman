@@ -1,0 +1,1636 @@
+/* Worlds, saves, snapshots, import, favorites and a world's own page. */
+@layer pages {
+#list-heading,
+#saves-heading {
+  --icon: var(--i-history);
+}
+
+#folder-heading {
+  --icon: var(--i-upload);
+}
+
+#rename-heading {
+  --icon: var(--i-rename);
+}
+
+#delete-heading,
+#clone-heading {
+  --icon: var(--i-copy);
+}
+
+.world-layout__main > .panel {
+  position: relative;
+  padding: var(--card-pad);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+}
+
+/* Below 360 px a card's frame would cost the content its room, so sections
+   lie flat on the page, a rule above each (DESIGN 4). */
+@media (max-width: 22.4rem) {
+  .world-layout__main > .panel {
+    padding: var(--space-4) 0 0;
+    background: none;
+    border: 0;
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* Single-column grids use minmax(0, 1fr), so a long word or a wide child
+   cannot push the track past its box (DESIGN 7, 320 px rules). */
+.worlds {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* 8.2 The world list: rows divided by a rule, not boxed. */
+.worlds {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A world's Switch sits beside its name, saving a row on a phone (DESIGN 6). */
+.worlds > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-3);
+  max-inline-size: none;
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.worlds > li > * {
+  grid-column: 1 / -1;
+}
+
+.worlds > li > :is(h2, h3) {
+  grid-column: 1;
+}
+
+.worlds > li > .facts ~ .actions {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: start;
+}
+
+.worlds > li:first-child {
+  padding-block-start: 0;
+}
+
+.worlds > li:last-child {
+  padding-block-end: 0;
+  border-block-end: 0;
+}
+
+/* A world's name is a full-size target, level with its Switch button. */
+.worlds :is(h2, h3) a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.worlds :is(h2, h3) {
+  font-size: var(--text-md);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* A time that carries data-age-only shows its date, clock and age on a wide
+   panel and only the age on a narrow one, so a fact fits its half of the
+   row in every language (SPEC 22.7). time.js writes the two spans. */
+time[data-age-only] .time-short {
+  display: none;
+}
+
+@container (max-width: 24rem) {
+  time[data-age-only] .time-full {
+    display: none;
+  }
+
+  time[data-age-only] .time-short {
+    display: inline;
+  }
+}
+
+/* The second figure under a fact's value is metadata: 13 px, regular,
+   muted, on its own line and small enough to stay on it at 320 px. */
+.facts .fact-note {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+/* The live world leads the list with an accent edge (DESIGN 8.2). */
+.worlds > li:has(.badge--active) {
+  margin-inline: calc(-1 * var(--card-pad));
+  padding-inline: calc(var(--card-pad) - 3px) var(--card-pad);
+  border-inline-start: 3px solid var(--color-selected);
+}
+
+/* Figures in table cells take the mono face with tabular digits. */
+.worlds > li .facts dd {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Local times with a zone and "(now)" are wider than the old UTC text, and
+   the date and clock never split (DESIGN 8.3). On a narrow panel the
+   snapshot tables take smaller dates and sizes and a tighter checkbox gap,
+   so three columns still fit inside it at 320 px. */
+@container (max-width: 24rem) {
+  .snapshot-list td:not(:first-child) {
+    font-size: var(--text-sm);
+  }
+
+  .snapshot-list .check {
+    gap: var(--space-2);
+  }
+
+  .snapshot-list th,
+  .snapshot-list td {
+    padding-inline: var(--space-1);
+  }
+}
+
+@container (max-width: 14rem) {
+  .snapshot-list :is(td.num, th[scope="row"]) {
+    padding-inline: 0;
+  }
+}
+
+@container (max-width: 24rem) {
+  .snapshot-list th:first-child,
+  .snapshot-list td:first-child {
+    padding-inline-start: 0;
+  }
+
+  .snapshot-list .row-actions .button,
+  .snapshot-list td > .button {
+    padding-inline: var(--space-3);
+  }
+}
+
+/* The phone's own lines for a snapshot; a wide table has columns for them. */
+.snap-meta,
+.snap-details {
+  display: none;
+}
+
+/* On a phone a snapshot is a stacked row rather than three squeezed
+   columns: its name at 16/600, one muted 14 px line with its age and size,
+   a 44 px Details disclosure with the exact time, who took it and what
+   deleting it frees, then Restore and Delete together. The table's other
+   cells give way to those lines. Lists without row actions, such as
+   deleted worlds, keep their columns. */
+@container (max-width: 30rem) {
+  .snapshot-list:has(.row-actions) thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .snapshot-list:has(.row-actions),
+  .snapshot-list:has(.row-actions) caption,
+  .snapshot-list:has(.row-actions) tbody {
+    display: block;
+  }
+
+  .snapshot-list:has(.row-actions) tr {
+    display: block;
+    padding-block: var(--space-4);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .snapshot-list:has(.row-actions) tbody tr:last-child {
+    border-block-end: 0;
+  }
+
+  .snapshot-list:has(.row-actions) td:not(:first-child),
+  .snapshot-list:has(.row-actions) td:first-child > .hint {
+    display: none;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child {
+    display: grid;
+    gap: var(--space-1);
+    padding: 0;
+    border: 0;
+    font-size: var(--text-md);
+    text-align: start;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .check {
+    gap: var(--space-3);
+  }
+
+  .snapshot-list:has(.row-actions) .snap-name {
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-2);
+    margin: 0;
+    padding-inline-start: calc(1.25rem + var(--space-3));
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-meta > span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .snapshot-list:has(.row-actions) .snap-meta > span::before {
+    content: "";
+    inline-size: 3px;
+    block-size: 3px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-meta time .time-full {
+    display: none;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-meta time .time-short {
+    display: inline;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-details {
+    display: block;
+    margin: 0;
+    margin-inline-start: calc(1.25rem + var(--space-3));
+    font-size: var(--text-sm);
+  }
+
+  .snapshot-list:has(.row-actions) .snap-details > p {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .row-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-block-start: var(--space-2);
+  }
+
+  .snapshot-list:has(.row-actions) .row-actions .button {
+    flex: 1 1 auto;
+  }
+
+  .snapshot-list:has(.row-actions) .row-actions .button--icon {
+    flex: none;
+  }
+}
+
+/* Saves tab (SPEC 7.11, DESIGN 8.3): a save's name, its "Loads next" badge
+   and its Load next button share a line when they fit, and wrap when not. */
+.save-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+/* A long "Loads next" in a narrow row wraps inside its pill rather than widen the page. */
+.save-name > .badge {
+  max-inline-size: 100%;
+  white-space: normal;
+}
+
+.save-name > a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  min-inline-size: 0;
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-decoration-color: transparent;
+}
+
+/* On a phone the Load next button takes a line under its row, because four
+   columns do not fit 320 px in the longer languages. Every row, the header
+   included, shares fixed column widths so the size and time still line up; a
+   long time wraps in its column. Below 14rem the general rule that stacks
+   every cell takes over. */
+@container (min-width: 14rem) and (max-width: 24rem) {
+  .save-list tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 4.5rem 6rem;
+    align-items: center;
+  }
+
+  .save-list .save-load {
+    grid-column: 1 / -1;
+  }
+
+  /* A row with no button takes no line. */
+  .save-list .save-load:empty {
+    display: none;
+  }
+}
+
+/* On a phone the size and time take smaller text, as in the snapshot tables,
+   so the name column keeps room. */
+@container (max-width: 24rem) {
+  .save-list td:not(:first-child) {
+    font-size: var(--text-sm);
+  }
+
+  .save-list .button {
+    padding-inline: var(--space-3);
+  }
+}
+
+/* At large text a panel is too narrow for a button label or a header word
+   to stay whole, so they may wrap rather than push the page sideways (SPEC 17.2). */
+@container (max-width: 14rem) {
+  /* A world's actions drop under its name instead of sharing its row. */
+  .worlds > li > .facts ~ .actions {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+}
+
+/* Links (DESIGN 7.1). A link to another tab ends in a chevron (class
+   link-tab); a link that leaves Foreman ends in a diagonal arrow. Both marks
+   are drawn here, not written in the text, so a screen reader does not read
+   them as part of the link's name. */
+.link-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--target-min);
+}
+
+.link-tab::after {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+@media (forced-colors: active) {
+  .link-tab::after {
+    background: LinkText;
+  }
+}
+
+/* Generate: starting from a favorite is one row on a wide card, the heading,
+   the choice and the link to the list side by side. */
+@container (min-width: 64rem) {
+  form#favorite-chooser {
+    grid-template-columns: auto minmax(0, 34rem) 1fr;
+    column-gap: var(--space-6);
+    align-items: end;
+  }
+
+  #favorite-chooser > h2 {
+    align-self: center;
+  }
+
+  #favorite-chooser > :not(h2, .field, .actions) {
+    grid-column: 1 / -1;
+  }
+
+  #favorite-chooser > .actions {
+    justify-content: flex-end;
+    align-self: center;
+  }
+}
+
+/* A snapshot on a wide panel is one row: its box and label, when it was
+   taken, its size, then Restore and Delete at the row's end. Every row shares
+   the table's columns through a subgrid, so the times and sizes line up. */
+@container (min-width: 30.0625rem) {
+  .snapshot-list:has(.row-actions) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    column-gap: var(--space-5);
+  }
+
+  .snapshot-list:has(.row-actions) caption {
+    grid-column: 1 / -1;
+    text-align: start;
+  }
+
+  .snapshot-list:has(.row-actions) :is(thead, tbody) {
+    display: contents;
+  }
+
+  .snapshot-list:has(.row-actions) tr {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+    row-gap: var(--space-1);
+    padding-block: var(--space-3);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .snapshot-list:has(.row-actions) thead tr {
+    padding-block: 0 var(--space-2);
+  }
+
+  .snapshot-list:has(.row-actions) tbody tr:last-child {
+    border-block-end: 0;
+  }
+
+  .snapshot-list:has(.row-actions) :is(th, td) {
+    padding: 0;
+    border: 0;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child {
+    display: contents;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .check {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .hint {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0;
+    padding-inline-start: calc(1.25rem + var(--space-3));
+  }
+
+  .snapshot-list:has(.row-actions) td:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .snapshot-list:has(.row-actions) td:nth-child(3) {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .row-actions {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    margin: 0;
+  }
+}
+
+/* On a wide panel every world's snapshot table shares one set of columns,
+   so times, sizes and actions line up from one world to the next. */
+@container (min-width: 48rem) {
+  .snapshot-list:has(.row-actions) {
+    grid-template-columns: minmax(0, 1fr) 15rem 6rem minmax(9.5rem, auto);
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .row-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* The live world's edge takes the server's state colour, as the Server
+   page's state card does, so both read the same way. */
+.worlds > li:has(.state--running) {
+  border-inline-start-color: var(--color-ok);
+}
+
+.worlds > li:has(:is(.state--starting, .state--stopping)) {
+  border-inline-start-color: var(--color-warn);
+}
+
+.worlds > li:has(:is(.state--crashed, .state--crash-looping)) {
+  border-inline-start-color: var(--color-danger);
+}
+
+/* A world's name is the row's title: text colour, underlined under the pointer. */
+.worlds > li > h2 > a {
+  color: var(--color-heading);
+  text-decoration: none;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.worlds > li > h2 > a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* The world list on a wide screen: name, the four facts in aligned columns,
+   then Switch, centred on the row. */
+@media (min-width: 64rem) {
+  .worlds > li {
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
+    align-items: center;
+    column-gap: var(--space-5);
+    min-block-size: 3.5rem;
+    align-content: center;
+    row-gap: 0;
+    padding-block: var(--space-2);
+  }
+
+  .worlds > li > * {
+    grid-column: 2 / -1;
+  }
+
+  .worlds > li > :is(h2, h3) {
+    grid-row: 1 / span 3;
+    grid-column: 1;
+  }
+
+  /* Last played takes the widest share and wraps between its date, clock
+     and age when the page beside the rail is narrow, 24 px clear of Disk use.
+     Each column keeps a floor, so a value never spills into the next. */
+  .worlds > li > .facts {
+    grid-row: 1;
+    grid-column: 2;
+    grid-template-columns: 5rem 5rem minmax(4.5rem, 2fr) minmax(4.5rem, 1.2fr);
+    column-gap: var(--space-5);
+  }
+
+  /* Its cell is a container, so a narrow column shows the age alone, as a
+     narrow panel does (DESIGN 8.2); from 9rem the full text fits in every
+     language. The age stays on one line, as the date and the clock do. */
+  .worlds > li > .facts > div:nth-child(3) {
+    container: last-played / inline-size;
+  }
+
+  /* Each piece is a box as wide as its words: it stays whole while it
+     fits and wraps inside only when it cannot, as with wide text spacing
+     (WCAG 1.4.12), so it never spills into Disk use. */
+  .worlds time[data-age-only] .time-full > * {
+    display: inline-block;
+    max-inline-size: 100%;
+    white-space: normal;
+  }
+
+  @container last-played (min-width: 9rem) {
+    .worlds time[data-age-only] .time-full {
+      display: inline;
+    }
+
+    .worlds time[data-age-only] .time-short {
+      display: none;
+    }
+  }
+
+  .worlds > li > .facts ~ .actions {
+    grid-row: 1;
+    grid-column: 3;
+    align-self: center;
+    justify-content: flex-end;
+  }
+
+  /* Row buttons on a desktop are 40 px tall and as wide as their words, at
+     least 88 px, ending the row; a phone keeps the 44 px target. */
+  .worlds > li > .facts ~ .actions .button {
+    inline-size: auto;
+    min-inline-size: 5.5rem;
+    white-space: nowrap;
+  }
+
+  /* An archived world's row holds two actions on one line, Saves then
+     Unarchive world, at the end of the row as Switch is above. */
+  #archived-worlds .worlds > li > .facts ~ .actions {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
+  #archived-worlds .worlds > li > .facts ~ .actions .button {
+    inline-size: auto;
+    min-inline-size: 5.5rem;
+    white-space: nowrap;
+  }
+}
+
+/* Below 64rem an archived world's two actions take a line under its facts,
+   so its name keeps the row's width (DESIGN 8.2). */
+@media (max-width: 63.99rem) {
+  #archived-worlds .worlds > li > .facts ~ .actions {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+}
+
+/* The activity region holds nothing until an action runs; empty, it takes
+   no gap of the page. */
+#world-activity:not(:has(*)) {
+  display: none;
+}
+
+/* A snapshot's label is the row's title; its kind is a quiet tag under it. */
+.snap-name {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.snap-name > br {
+  display: none;
+}
+
+.snap-kind {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.23;
+}
+
+.snap-kind::before {
+  content: "";
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+/* The title's column is a third of the card and at least 240 px; the
+   fields' column is the rest, its fields capped at 480 px. */
+@container (min-width: 46rem) {
+  /* A bar is not a field: it runs the column's width. */
+  .setting-row__body > .disk-bar {
+    max-inline-size: none;
+  }
+}
+
+.disk-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: calc(var(--space-3) - var(--space-5)) 0 0;
+}
+
+.disk-key > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.disk-key dt {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.disk-key dt::before {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  background: var(--color-text-muted);
+  border-radius: 2px;
+}
+
+.disk-key > div:last-child dt::before {
+  background: var(--color-line);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-border);
+}
+
+.disk-key dd {
+  color: var(--color-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The selection bar: the number ticked and Delete selected float over the
+   list's foot, at its end, once a box is ticked, so the next step is always
+   in view. It comes before the list in the code, so the keyboard reaches it
+   from the first box; `order` draws it last in its form, where it sticks. */
+.select-bar {
+  order: 1;
+  position: sticky;
+  inset-block-end: var(--space-4);
+  z-index: 2;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  margin: 0;
+  margin-inline-start: auto;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+.select-bar[hidden] {
+  display: none;
+}
+
+/* The link to older snapshots after the list stays after the bar too. */
+.select-bar ~ .actions {
+  order: 2;
+}
+
+/* The number ticked is a round tag before the button it counts for. */
+.select-bar__count {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-inline-size: 1.75rem;
+  block-size: 1.75rem;
+  padding-inline: var(--space-2);
+  background: var(--color-heading);
+  color: var(--color-surface);
+  border-radius: 2px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.select-bar__count:empty {
+  display: none;
+}
+
+/* The world list on a wide screen is one table: the first row's fact names
+   head the columns, so later rows keep theirs for screen readers only. */
+@media (min-width: 64rem) {
+  .worlds > li + li > .facts > div {
+    align-self: center;
+  }
+
+  .worlds > li + li > .facts dt {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* The live world's mark and the server's state as one chip: the pin and
+   Active, a hairline, then the state's shape and word in its colour. */
+.live-chip {
+  display: inline-flex;
+  align-items: stretch;
+  vertical-align: middle;
+  overflow: hidden;
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 2px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.live-chip > .badge,
+.title-row > .live-chip > .badge {
+  padding: 0.125rem 0.625rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: inherit;
+  letter-spacing: 0;
+}
+
+.live-chip > .state,
+.title-row > .live-chip > .state {
+  padding: 0.125rem var(--space-3) 0.125rem var(--space-2);
+  border: 0;
+  border-inline-start: var(--border-width) solid var(--color-border);
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Where the chip stands by a world's heading, the heading's own Active badge
+   is kept for screen readers only. */
+.title-row:has(> .live-chip) > h1 > .badge--active {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.world-share__item {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.world-share__head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.world-share__body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.world-share__item .inline-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.world-share__item .inline-row > input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.danger-zone:not(.danger-zone--blocked) #delete-heading {
+  color: var(--color-danger-text);
+}
+
+/* The world list on a wide screen is a table: one row of column names over
+   rows of equal height, every value centred on its row with the name. The
+   column names are set as a table's are. */
+.worlds-head {
+  display: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+@media (min-width: 64rem) {
+  .worlds-head {
+    display: grid;
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
+    column-gap: var(--space-5);
+    padding-block-end: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .worlds-head__facts {
+    display: grid;
+    grid-template-columns: 5rem 5rem minmax(4.5rem, 2fr) minmax(4.5rem, 1.2fr);
+    gap: var(--space-4);
+    column-gap: var(--space-5);
+  }
+
+  .worlds > li > .facts > div {
+    align-self: center;
+  }
+
+  .worlds > li > .facts dt {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  #archived-worlds :is(.worlds-head, .worlds > li) {
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
+  }
+
+  .worlds > li:first-child {
+    padding-block-start: var(--space-2);
+  }
+}
+
+/* The favorites list (SPEC 5.12, DESIGN 7.11): one row per favorite, a
+   foldout named by the favorite with Generate beside it, outside the
+   summary. Rows are split by the line stacked foldouts get. */
+.favorite-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.favorite {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  align-items: start;
+}
+
+/* Details shares the row's grid, so its summary takes the first column
+   beside Generate and its body spans the whole row once open. */
+.favorite__details {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+}
+
+.favorite__details > summary {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.favorite__details::details-content {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* Without ::details-content (Firefox before 143, older Safari) the body is
+   a grid item of Details itself, so it is placed on the second row, across
+   the whole row, below the summary and Generate. */
+@supports not selector(::details-content) {
+  .favorite__details > :not(summary) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+.favorite__generate {
+  grid-column: 2;
+  grid-row: 1;
+  margin-block-start: var(--space-1);
+  gap: var(--space-2);
+}
+
+.favorite + .favorite {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+/* Favorites: each row gets the 12 px rhythm of the other lists, so the
+   rows read apart and Generate sits centred in its own band. */
+.favorite-list > .favorite {
+  padding-block: var(--space-3);
+}
+
+.favorite-list > .favorite:first-child {
+  padding-block-start: 0;
+}
+
+.favorite__name {
+  overflow-wrap: anywhere;
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.favorite__facts {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+/* The Worlds tab's globe with a small plus at its lower right. */
+.favorite__generate::before {
+  content: "";
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--i-plus) right bottom / 0.85rem 0.85rem no-repeat, var(--i-worlds) left top / 1rem 1rem no-repeat;
+}
+
+.favorite__body {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--space-4);
+  padding-block: var(--space-2) var(--space-4);
+}
+
+.favorite__part {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.favorite__part > h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.favorite__rename,
+.favorite__body > .actions {
+  margin: 0;
+}
+
+/* Export and the red bin stay on one line, even on a narrow panel. */
+.favorite__body > .actions {
+  flex-wrap: nowrap;
+}
+
+.favorite__body > .actions > .button {
+  flex: none;
+}
+
+/* Each mod's title may wrap; two columns once the row has room. */
+.favorite-mods {
+  display: grid;
+  gap: 0 var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@container (min-width: 36rem) {
+  .favorite-mods {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.favorite-mods li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+/* U1 drop zone (DESIGN 7.10). Without script .dropzone is a plain .field.
+   With script the native input is stretched, transparent, over a dashed
+   area, so a click, Enter or Space anywhere on it opens the picker. A drag
+   is shown by a solid, thicker border and new words, not colour alone.
+   The area is 160 px tall; the limits are in the hint above it. */
+.dropzone--on .dropzone__area {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-block-size: 10rem;
+  padding: var(--space-4);
+  background: var(--color-deep);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.dropzone--on .dropzone__area input[type="file"] {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  max-inline-size: none;
+  block-size: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dropzone--on .dropzone__area:hover {
+  background: var(--color-secondary-hover);
+}
+
+.dropzone--on .dropzone__area:focus-within {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.dropzone__prompt {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.dropzone__drop,
+.dropzone--page .dropzone__idle {
+  display: none;
+}
+
+.dropzone--page .dropzone__drop {
+  display: inline;
+}
+
+.dropzone--page .dropzone__area {
+  border-style: solid;
+  border-color: var(--color-selected);
+}
+
+.dropzone--over .dropzone__area {
+  border-width: 4px;
+  background: var(--color-accent-bg);
+}
+
+.dropzone--on:has(input[aria-invalid="true"]) .dropzone__area {
+  border-color: var(--color-danger-text);
+}
+
+.dropzone__chosen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.dropzone__chosen[hidden] {
+  display: none;
+}
+
+/* Clear keeps a 44 px target on a phone (SPEC 17.2). */
+.dropzone__clear {
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+}
+
+.dropzone__file {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  .dropzone--over .dropzone__area {
+    border-color: Highlight;
+  }
+}
+
+/* Import: the save upload's fields on the start side and the drop zone
+   beside them at its own height; the order stays the form's. */
+@container (min-width: 56rem) {
+  form.import-upload {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-auto-flow: row dense;
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .import-upload > :not(.field, .actions) {
+    grid-column: 1 / -1;
+  }
+
+  .import-upload > .field {
+    grid-column: 1;
+  }
+
+  .import-upload > .field.dropzone {
+    grid-column: 2;
+    grid-row: span 4;
+    align-self: start;
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .import-upload > .field.dropzone .dropzone__area {
+    block-size: auto;
+  }
+
+  .import-upload > .actions {
+    grid-column: 1 / -1;
+  }
+
+  .import-upload .field input:not([type="checkbox"], [type="radio"], [type="file"]),
+  .import-upload .field select {
+    max-inline-size: none;
+  }
+}
+
+/* The drop zone's words: an upload mark over one line. */
+.dropzone__prompt:not([hidden]) {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.dropzone__prompt::before {
+  content: "";
+  inline-size: 2rem;
+  block-size: 2rem;
+  background: var(--color-text-muted);
+  mask: var(--i-upload) center / contain no-repeat;
+}
+
+/* Saves tab: an autosave reads as the world's name and time, and its file
+   name sits on its own line under them as smaller, quieter text, so every
+   file name starts at the same left edge. The label's digits are tabular, as
+   in the other time cells. */
+.save-label {
+  font-variant-numeric: tabular-nums;
+}
+
+.save-file {
+  flex: 0 0 100%;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Rows are as wide as their list, not the reading measure. */
+.favorite-list > li {
+  max-inline-size: none;
+}
+
+/* Times and durations read as words in the interface face with tabular
+   figures; mono stays for what a machine wrote (versions, files, logs). */
+.worlds > li .facts dd {
+  font-family: var(--font-sans);
+}
+
+/* A player's row is one line: name and chip, then the time level with
+   them; the total sits quietly under the name. */
+#save-players-table td.num {
+  vertical-align: top;
+  padding-block-start: calc(var(--space-2) + (var(--target-min) - 1lh) / 2);
+}
+
+/* An archived world's Saves and Unarchive sit side by side at the row's end,
+   as one row action pair, rather than stacked. */
+@media (min-width: 64rem) {
+  #main :is(.worlds-head, .worlds > li) {
+    grid-template-columns: minmax(5rem, 1fr) minmax(23.5rem, 2.6fr) 16rem;
+  }
+
+  .worlds-head > * {
+    white-space: nowrap;
+  }
+}
+
+/* ---- A heading that is a row's label, not a plate's title, takes no
+   raised band: the favourite chooser on Generate and the results line
+   before a search. */
+#main #favorite-chooser > h2 {
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* ==== A world's Overview: the facts across the top; the save's players
+   and the rows that manage the world in the main column; sharing it (map
+   string, favorite, world file) stacked in a side column (DESIGN 8). */
+.world-layout,
+.world-layout__main,
+.world-layout__side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-5);
+  min-inline-size: 0;
+}
+
+@container (min-width: 72rem) {
+  .world-layout {
+    grid-template-columns: minmax(0, 1fr) 30rem;
+    align-items: start;
+  }
+
+  /* The side column is first in the markup for a phone's reading order. */
+  .world-layout__main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .world-layout__side {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@container (min-width: 100rem) {
+  .world-layout {
+    grid-template-columns: minmax(0, 1fr) 34rem;
+  }
+}
+
+.world-layout__side > .world-share__item {
+  grid-template-rows: none;
+}
+
+.world-share__head:has(> .tip__text),
+.world-share__head:has(.tip) {
+  position: relative;
+}
+
+/* The map string is a three-line preview; clicking into it opens the
+   whole string to select, and the corner handle drags it taller. Its height
+   is three whole lines plus its top padding and its bottom edge. */
+.world-layout__side .exchange .copy-field--block > textarea.exchange__value {
+  block-size: calc(3lh + 2 * var(--space-2));
+  resize: vertical;
+}
+
+.world-layout__side .exchange .copy-field--block > textarea.exchange__value:focus {
+  field-sizing: content;
+  block-size: auto;
+  max-block-size: 22rem;
+}
+
+.world-export > .world-share__body > fieldset {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.world-export .tip__text > p {
+  margin: 0;
+}
+
+.world-export .tip__text > p + p {
+  margin-block-start: var(--space-2);
+}
+
+/* ==== The world list on a wide screen: facts in columns sized to their
+   values, the name taking the rest, actions at the row's end, so a short
+   list does not spread a few words across the whole width (DESIGN 8.2). */
+@media (min-width: 90rem) {
+  .worlds > li,
+  .worlds-head {
+    grid-template-columns: minmax(16rem, 1fr) 46rem 14rem;
+  }
+
+  .worlds > li > .facts,
+  .worlds-head__facts {
+    grid-template-columns: 6rem 6rem 18rem 11rem;
+  }
+
+  .worlds > li {
+    min-block-size: 4rem;
+  }
+
+  .worlds > li > :is(h2, h3) {
+    font-size: var(--text-lg);
+  }
+}
+
+#main .world-layout__side .inline-row {
+  flex-wrap: nowrap;
+}
+
+#main .world-layout__side .inline-row > input {
+  flex: 1 1 auto;
+  inline-size: auto;
+  max-inline-size: none;
+}
+
+/* ==== Saves on a phone: each save is one record, its name (an autosave's
+   world and time) then one line of size and time, then Load next. An
+   autosave's time is in its name, so the line gives only its size. */
+@media (max-width: 39.99rem) {
+  #main .save-list,
+  #main .save-list > tbody {
+    display: block;
+  }
+
+  #main .save-list > thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  #main .save-list > tbody > tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
+    padding-block: var(--space-4);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  #main .save-list > tbody > tr > td {
+    display: block;
+    padding: 0;
+    border: 0;
+    text-align: start;
+  }
+
+  #main .save-list > tbody > tr > td::before {
+    content: none;
+  }
+
+  #main .save-list > tbody > tr > td:first-child {
+    flex: 1 1 100%;
+    font-weight: 600;
+  }
+
+  #main .save-list > tbody > tr > td:is(.num, :nth-child(3)) {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+  }
+
+  #main .save-list > tbody > tr.save-row--auto > td:nth-child(3) {
+    display: none;
+  }
+
+  #main .save-list > tbody > tr > td.save-load {
+    flex: 1 1 100%;
+  }
+
+  #main .save-list > tbody > tr > td.save-load:empty {
+    display: none;
+  }
+}
+
+/* A row's title is the row's name: 16/600 in the heading ink, a link only
+   by its place, underlined under the pointer. */
+.worlds > li h2 {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.worlds > li h2 > a {
+  text-decoration-color: transparent;
+}
+
+.save-name > a:hover,
+.worlds > li h2 > a:hover {
+  color: var(--color-link);
+  text-decoration-color: currentColor;
+}
+
+.save-name .save-file {
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+}
+
+/* The Load next column's name is for screen readers, but its cell is
+   drawn, so the header's rule runs under every column. */
+@media (min-width: 40rem) {
+  .save-list th.visually-hidden {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    clip-path: none;
+    color: transparent;
+    white-space: nowrap;
+  }
+}
+
+/* An autosave's time is part of its title, so it takes the title's type. */
+.save-name .save-label time {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+/* ==== Import: three ways in as choice cards, then only the chosen way's
+   form. Each card names the way and what it brings. */
+.import-pick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+@media (min-width: 48rem) {
+  .import-pick {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+}
+
+.pick-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-1) var(--space-3);
+  min-block-size: var(--target-min);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: 400;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
+}
+
+.pick-card:hover {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-raised) 50%, var(--color-surface));
+}
+
+.pick-card > input {
+  grid-row: 1 / span 2;
+  margin-block-start: 0.125rem;
+  align-self: start;
+}
+
+.pick-card__title {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.pick-card__text {
+  grid-column: 2;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.pick-card:has(:checked) {
+  background: var(--color-accent-bg);
+  border-color: var(--color-selected);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+.pick-card:has(:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+main:has(#import-pick-upload:not(:checked)) form.import-upload,
+main:has(#import-pick-folder:not(:checked)) form.import-folder,
+main:has(#import-pick-file:not(:checked)) form.import-world-file {
+  display: none;
+}
+
+/* The chosen card already says what its form does. */
+main:has(.import-pick) form:is(.import-upload, .import-world-file) > p:not([class]):first-of-type {
+  display: none;
+}
+
+/* Every cell of the players table closes on the same rule, the last row too. */
+#save-players-table :is(thead, tbody) :is(th, td) {
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+/* A world's facts in its row are values: body size, regular weight. */
+.worlds > li .facts dd {
+  font-size: var(--text-md);
+  font-weight: 400;
+}
+
+/* A world a newer Foreman wrote has no Load next, so on a phone a save's
+   time keeps its place beside the name, its size under the name. */
+@media (max-width: 39.99rem) {
+  #main .save-list > tbody > tr:not(:has(> td.save-load)) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+  }
+
+  #main .save-list > tbody > tr:not(:has(> td.save-load)) > td:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  #main .save-list > tbody > tr:not(:has(> td.save-load)) > td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: end;
+  }
+
+  #main .save-list > tbody > tr:not(:has(> td.save-load)) > td.num {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  #main .world-layout__side .inline-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* The world list inside the page measure: the name column keeps room for
+   the name and its live chip on one line. */
+@media (min-width: 90rem) {
+  #main :is(.worlds-head, .worlds > li) {
+    grid-template-columns: minmax(19rem, 1fr) auto 16rem;
+  }
+
+  #main :is(.worlds > li > .facts, .worlds-head__facts) {
+    grid-template-columns: 6rem 5rem minmax(12rem, 15rem) 8rem;
+  }
+}
+
+/* Import: the other-version opener stays in the fields' column, beside the
+   drop zone. */
+@container (min-width: 56rem) {
+  :is(.import-upload, .import-folder) > details.disclosure {
+    grid-column: 1;
+  }
+}
+}

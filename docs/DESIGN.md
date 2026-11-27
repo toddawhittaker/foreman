@@ -1886,7 +1886,7 @@ Words stay first (1).
   lists it with the fonts.
 - **How they are drawn.** Each icon is an SVG on a 24 by 24 grid, stroked
   1.75 with round caps and joins, held as a data URI in a custom property
-  at the top of `foreman.css` (`--i-server`, `--i-trash`, and so on). An
+  in `css/tokens.css` (`--i-server`, `--i-trash`, and so on). An
   element takes one by setting `--icon` and by being named in the rule that
   draws the icon on its `::before`: a `currentColor` background cut to the
   icon's shape with `mask`. So an icon takes its text's colour in both
@@ -3504,7 +3504,7 @@ A mod's own text keeps its rich-text emphasis (SPEC 14.6): bold stays
 `<strong>` (a heading font never changes the size), red is the danger text
 colour, orange and yellow the warning colour, green the success colour,
 blue, cyan, purple and pink the info colour, and gray the muted text colour
-(`.rt-*` in `foreman.css`). A key-binding action shows in a bordered
+(`.rt-*` in `css/pages/server.css`). A key-binding action shows in a bordered
 `span.rt-key`, and the game's warning sprite as the warning icon messages use.
 
 **Mod names** are wrapped in `span.ident` (`translate="no"`,
@@ -4656,7 +4656,7 @@ its clicks.
 
 ### 8.19 New CSS for Epic 9
 
-The rules the Epic 9 pages add to `foreman.css`.
+The rules the Epic 9 pages add to the stylesheet.
 
 - `.player-actions`: the `details` in a player cell. Summary is a full-cell
   target (`--target-min`), with the disclosure chevron (7.8) but no
@@ -4720,7 +4720,7 @@ page" or "Turn off the public mods page"). While on, "Open the public mods
 page" sits beside it. A Done message confirms each change.
 
 New CSS: `.public-world`, `.public-mods` and its `__name`, `__version`
-and `__marks`, at the end of `foreman.css`.
+and `__marks`, in `css/pages/settings.css`.
 
 ### 8.21 API tokens (SPEC 12.10, 21.2, Epic 10a)
 
@@ -4950,17 +4950,66 @@ only at desktop in the dark theme. On every screen the tests check:
 
 ## 11. CSS file layout
 
-One stylesheet, `internal/web/static/foreman.css`, in this order: tokens
-(both themes on `:root`, then the forced themes), a small reset, base elements
-(`body`, headings, links, `code`, `table`), the shell (the top bar), then one block per component in the order of section 7 and section 8.
-A component's narrow, wide-screen, forced-colours and reduced-motion rules sit
-with the component. A rule that restyles another is folded into that rule,
-never added as a later override, and nothing at the end of the file restyles
-what came before. The shared groups that remain on purpose (the reset and base
-type, the line icons, the single-column grids, and pairs of selectors that
-share a look) may list a member that also has a rule of its own, where
-splitting the group would copy its values or change which rule wins. No
-preprocessor, no `@import`.
+The stylesheet is one file per component or page area under
+`internal/web/static/css/`. At startup Foreman joins them, in the order
+`stylesheetParts` lists in `internal/web/stylesheet.go`, and serves the
+result as one `foreman.css` at the usual address; its cache-busting hash
+changes when any part does. There is no preprocessor, no `@import` and no
+build step. The component page and the design export read the same joined
+stylesheet.
+
+| File | Layer | Holds |
+| --- | --- | --- |
+| `tokens.css` | tokens | The layer order, the tokens on `:root` (both themes, then the forced themes) and the window-size token adjustments |
+| `base.css` | base | The fonts, the reset, rules for plain elements (any selector with no class, id or attribute), and small utilities such as `.visually-hidden`, `.js-only` and `.nowrap` |
+| `buttons.css` | components | Buttons and rows of buttons (`.actions`, `.row-actions`) |
+| `tables.css` | components | Tables and their stacked form on a narrow card |
+| `plates.css` | components | Panels, cards, plates and their title band, section heads, groups, facts, the Danger zone and the split layout |
+| `forms.css` | components | Fields, labels, hints, the required mark, setting rows, copy fields, confirmations and the form footer |
+| `messages.css` | components | Messages, notes, empty states, the working bar, toggletips, badges and the server-state badge |
+| `controls.css` | components | The segmented control, step bar, tabs, checkboxes and radios, disclosures, row menus, and the focus ring's gap |
+| `shell.css` | components | The top bar, account menu, page header, breadcrumb, sub-navigation, the page frame and the sign-in gate, and the link hover |
+| `pages/server.css` | pages | The Server page, Console and Chat |
+| `pages/settings.css` | pages | Foreman's own settings: general, users, API tokens, the audit log, notifications, public mods, the Factorio account and About |
+| `pages/worlds.css` | pages | Worlds, saves, snapshots, import, favorites and a world's own page |
+| `pages/generate.css` | pages | Generate, the map settings and preview, the large view, and a world's game settings and mod settings |
+| `pages/mods.css` | pages | Mods, the mod plan and the portal search |
+| `pages/design.css` | pages | The component page's own frame |
+
+Each file is one `@layer` block, and `tokens.css` opens with
+`@layer tokens, base, components, pages;`. A later layer wins over an
+earlier one whatever the selectors, so a page rule restyles a component only
+on purpose, from `pages`. Inside a layer the usual order holds: the heavier
+selector wins, then the later rule, so the order of the component files
+matters. The shell comes last among them; the focus ring's gap closes
+`controls.css` so it shows over a control's own shadow, and the link hover
+sits in `shell.css` rather than in base so it still wins over a component
+link's resting colour.
+
+A rule sits in the file of what it styles. A rule that names a page's own
+class or id belongs to that page; a rule that lists containers from several
+pages belongs to the component it styles. A page rule that would beat a
+component in a state the component must keep says so in its selector (for
+example `.terminal .log-frame > .button:not(:active)`).
+
+Each component is defined once. A rule that restyles another is folded into
+that rule, never added as a later override; a component's narrow,
+wide-screen, forced-colours and reduced-motion rules sit with it. A group of
+selectors that share a look may list a member that also has a rule of its
+own, as long as the two set different properties.
+
+A guard in `internal/web/stylesheet_test.go`, run by `make verify`, keeps it
+so:
+
+- Two rules for one selector, in the same `@media`, `@container` and
+  `@supports` context, must not give one property two values. Two values in
+  one rule (a fallback, such as `100vh` then `100dvh`) are allowed.
+- A spacing (margin, padding, gap), font size or border radius must use the
+  token when a token names its length, in the same unit or as its pixel
+  equivalent. `rawValueExceptions` in the test names each deliberate
+  exception with its reason. Lengths no token names are not caught here.
+- Every file under `static/css/` is listed in `stylesheetParts`, and each is
+  one block in its layer.
 
 ## 12. Deliberately deferred
 

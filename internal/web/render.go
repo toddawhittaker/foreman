@@ -616,10 +616,22 @@ func (r *Renderer) template(loc i18n.Locale, p Page) (*template.Template, error)
 	return t, nil
 }
 
+// loadStatic reads every file under static. The stylesheet's parts under
+// static/css are served only joined, as foreman.css.
 func (r *Renderer) loadStatic() error {
-	return fs.WalkDir(staticFS, "static", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+	add := func(name string, body []byte, ct string) {
+		sum := sha256.Sum256(body)
+		r.static[name] = staticFile{body: body, contentType: ct, hash: hex.EncodeToString(sum[:])[:16]}
+	}
+	err := fs.WalkDir(staticFS, "static", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
 			return err
+		}
+		if d.IsDir() {
+			if p == "static/css" {
+				return fs.SkipDir
+			}
+			return nil
 		}
 		ct, ok := staticTypes[path.Ext(p)]
 		if !ok {
@@ -629,14 +641,18 @@ func (r *Renderer) loadStatic() error {
 		if err != nil {
 			return err
 		}
-		sum := sha256.Sum256(body)
-		r.static[strings.TrimPrefix(p, "static/")] = staticFile{
-			body:        body,
-			contentType: ct,
-			hash:        hex.EncodeToString(sum[:])[:16],
-		}
+		add(strings.TrimPrefix(p, "static/"), body, ct)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	css, err := stylesheet()
+	if err != nil {
+		return err
+	}
+	add(stylesheetName, css, staticTypes[".css"])
+	return nil
 }
 
 // staticURL adds the file's content hash, so a new binary with a changed

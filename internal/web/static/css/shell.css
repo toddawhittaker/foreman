@@ -1,0 +1,1840 @@
+/* The shell (DESIGN 6): the top bar, account menu, page header,
+   breadcrumb, sub-navigation, the page frame and the sign-in gate. The link
+   hover is here, not in base, so it still wins over a component link's
+   resting colour. */
+@layer components {
+/* The overline above a page's title names its place in quiet 13 px words
+   (DESIGN 5), so it reads apart from the title. */
+.eyebrow {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.23;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.eyebrow a {
+  color: var(--color-text-muted);
+  text-decoration-color: transparent;
+}
+
+.eyebrow a:hover {
+  color: var(--color-heading);
+  text-decoration-color: currentColor;
+}
+
+/* The breadcrumb names where you are (DESIGN 6): ancestors as quiet links,
+   the current page in the heading colour, chevrons between. It keeps a
+   paragraph's measure, wrapping and hyphens. */
+.crumb {
+  max-inline-size: var(--measure);
+  margin: 0;
+  hyphens: auto;
+  text-wrap: pretty;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.crumb > ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crumb li {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* A link keeps a faint underline at rest, so it reads apart from the
+   current page by more than colour. Against the page and a panel it is
+   3.33:1 and 3.72:1 in light, 5.05:1 and 4.79:1 in dark (WCAG 1.4.11). */
+.crumb a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 1.5rem;
+  padding-block: 0.2em;
+  color: var(--color-text-muted);
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 68%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  position: relative;
+}
+
+/* Each breadcrumb link is a full 44 px target: an invisible hit area
+   reaches 10 px above and below the 24 px link. */
+.crumb a::before {
+  content: "";
+  position: absolute;
+  inset: -0.625rem -0.5rem;
+}
+
+.crumb a:hover {
+  color: var(--color-heading);
+  text-decoration-color: currentColor;
+}
+
+/* An ancestor shown as plain text, where its link would lead to the page
+   shown, keeps a link's box and colour, without the underline. */
+.crumb li:not(:last-child) > span {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 1.5rem;
+  padding-block: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+/* The chevron follows each ancestor inside its box, as it always has,
+   drawn by CSS so it is not read out. */
+.crumb li:not(:last-child) > :is(a, span)::after {
+  content: "";
+  display: inline-block;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  margin-inline-start: var(--space-2);
+  background: var(--color-text-muted);
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+.crumb [aria-current] {
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}
+
+[dir="rtl"] .crumb li:not(:last-child) > :is(a, span)::after {
+  transform: scaleX(-1);
+}
+
+/* The chevron is painted through a mask, so forced colours would drop its
+   background; it takes the system text colour instead. */
+@media (forced-colors: active) {
+  .crumb li:not(:last-child) > :is(a, span)::after {
+    background: CanvasText;
+  }
+}
+
+/* The Server overview's plate states the server's state large, so the
+   heading's badge is there for screen readers only. */
+.page-head--plate h1 .state {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Line icons: one set (Lucide, ISC licence, vendor/LUCIDE-LICENSE.txt), one
+   1.75 stroke on a 24 grid, drawn as a mask so each takes its text's colour
+   and stays out of the accessible name. An element opts in by setting --icon. */
+.tabs a::before,
+.page-head--row .button::before {
+  flex: none;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+main h2[id]::before {
+  flex: none;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.tabs a::before,
+.page-head--row .button:is([href$="/generate"], [href$="/import"])::before,
+main h2:is(#players-heading, #disk-heading, #list-heading, #search-heading, #installed-heading, #sync-heading, #upload-heading, #settings-heading, #version-heading, #rename-heading, #take-heading, #delete-heading, #console-heading, #log-heading, #saves-heading, #folder-heading, #account-env-heading, #account-form-heading, #account-remove-heading, #mod-settings-heading, #mod-settings-map-heading, #clone-heading, #results-heading, #plan-heading, #changes-heading, #admins-heading, #none-heading)::before {
+  content: "";
+}
+
+/* Section headings stand on type alone, so a heading's icon is not drawn;
+   icons stay where they name a control or a place: navigation, buttons, row
+   kinds and empty states. */
+main h2[id]::before {
+  display: inline-block;
+  margin-inline-end: var(--space-2);
+  vertical-align: -0.125em;
+  background: var(--color-text-muted);
+  content: none !important;
+}
+
+.tabs li:nth-child(1) a {
+  --icon: var(--i-server);
+}
+
+.tabs li:nth-child(2) a {
+  --icon: var(--i-worlds);
+}
+
+.tabs li:nth-child(3) a {
+  --icon: var(--i-snapshot);
+}
+
+.tabs li:nth-child(4) a {
+  --icon: var(--i-settings);
+}
+
+.page-head--row .button[href$="/generate"] {
+  --icon: var(--i-plus);
+}
+
+.page-head--row .button[href$="/import"] {
+  --icon: var(--i-upload);
+}
+
+/* Under the pointer the underline thickens and the words take the link
+   orange, which keeps 4.5:1 on every surface and tint in both themes
+   (the focus orange does not on the light tints). */
+a:hover {
+  color: var(--color-link);
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 2px;
+}
+
+.skip:not(:focus) {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Shell (DESIGN 6) */
+.skip {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  inset-inline-start: var(--space-1);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+/* The header is a flat bar the width of the window; its content lines up
+   with the page column (DESIGN 6, Shell). */
+/* The header is its own layer above the page, so its open menus (account,
+   language, theme) are drawn over every card, which are positioned too. */
+.site {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+  padding: var(--space-1) max(var(--space-3), calc((100% - var(--page-max)) / 2 + var(--space-3)));
+  background: var(--color-desk);
+  border-block-end: var(--border-width) solid var(--color-desk-line);
+  box-shadow: inset 0 2px 0 var(--color-primary);
+  border-block-end-color: var(--color-desk-line);
+}
+
+.product {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.product img {
+  flex: none;
+  inline-size: 2rem;
+  block-size: 2rem;
+}
+
+/* On a phone the tabs take a row of their own under the logo and menu. */
+.site > nav {
+  order: 2;
+  flex-basis: 100%;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tabs li {
+  flex: 1 1 auto;
+  max-inline-size: none;
+}
+
+/* A tab is a link with an underline when current. The underline is a border,
+   so it is still drawn in forced colours. */
+.tabs a,
+.subnav a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  color: var(--color-text-muted);
+  border-block: 3px solid transparent;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.tabs a:hover,
+.subnav a:hover {
+  color: var(--color-heading);
+}
+
+.tabs a[aria-current],
+.subnav a[aria-current] {
+  color: var(--color-heading);
+  border-block-end-color: var(--color-selected);
+}
+
+/* The current sub-tab is also set bolder; a main tab is not, so the header's
+   tabs keep their widths from page to page. */
+.subnav a[aria-current] {
+  font-weight: 600;
+}
+
+/* The current section's icon takes the accent, so the eye finds it first. */
+.tabs a[aria-current] .icon {
+  color: var(--color-selected);
+}
+
+/* Sub-navigation under a page's heading: one row of tabs that scrolls
+   sideways on a phone rather than wrapping a tab onto a line of its own. */
+.subnav {
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.subnav :is(ul, ol) {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  scroll-padding-inline: var(--space-4);
+  scrollbar-width: none;
+  list-style: none;
+}
+
+.subnav li {
+  flex: none;
+  max-inline-size: none;
+}
+
+.subnav a {
+  margin-block-end: -1px;
+}
+
+@container (max-width: 30rem) {
+  .subnav :is(ul, ol) {
+    gap: 0;
+  }
+
+  .subnav a {
+    padding-inline: 0.625rem;
+    font-size: var(--text-sm);
+  }
+}
+
+/* The user menu (DESIGN 6, "User menu"): a native details element. Its panel
+   opens under the header, at the end edge. */
+.menu {
+  order: 1;
+  margin-inline-start: auto;
+}
+
+.menu > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  list-style: none;
+  cursor: pointer;
+}
+
+.menu > summary:hover {
+  background: var(--color-secondary-hover);
+}
+
+.menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The two words wrap between them, never inside one. */
+.menu > summary > span {
+  white-space: nowrap;
+}
+
+.menu > summary::after {
+  content: "";
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.menu[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.menu__user {
+  font-weight: 600;
+}
+
+.menu__lang {
+  color: var(--color-text-muted);
+}
+
+/* The account menu's button on a wide screen: the person, then the language
+   in quiet text, one button with no rule between, so the language does not
+   read as a control of its own (DESIGN 6, User menu). */
+@media (min-width: 64rem) {
+  .menu > summary > .menu__user {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* A round badge with the person cut out of it. */
+  .menu > summary > .menu__user::before {
+    content: "";
+    flex: none;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+    mask: var(--i-account) center / 0.875rem no-repeat, linear-gradient(black 0 0);
+    mask-composite: exclude;
+  }
+}
+
+.menu__panel {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-end: max(var(--space-3), calc((100% - var(--page-max)) / 2 + var(--space-3)));
+  z-index: 2;
+  display: grid;
+  gap: var(--space-2);
+  inline-size: min(18rem, calc(100% - 2 * var(--space-3)));
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+.menu__panel form {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* Each row after the first (language, theme, Sign out) has a divider line above it. */
+.menu__panel > :is(details, form, a) + :is(form, a) {
+  padding-block-start: var(--space-2);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.menu__panel ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  background: none;
+  color: var(--color-text);
+  border: 0;
+  border-inline-start: 3px solid transparent;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menu__item:hover {
+  background: var(--color-secondary-hover);
+}
+
+/* A language row: its flag, 4 by 3, then its own name. */
+.menu__item > img {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 0.9375rem;
+  margin-inline-end: var(--space-2);
+  outline: var(--border-width) solid var(--color-line);
+}
+
+.menu__name {
+  min-inline-size: 0;
+}
+
+/* The language row opens the other seven under it. Its arrow sits at the
+   end and turns over when open, as the menu's own chevron does. */
+.menu__langs > summary {
+  list-style: none;
+}
+
+.menu__langs > summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu__langs > summary::after {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  margin-inline-start: auto;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.menu__langs[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+@media (min-width: 22rem) {
+  .menu__langs > form {
+    padding-inline-start: var(--space-3);
+  }
+}
+
+/* The theme row: its word at the start, three icon buttons at the end. The
+   legend floats, so it lays out as an ordinary item of the row. */
+/* "Signed in as" and Theme start where the rows' words do: the row's
+   padding plus its 3 px start edge. */
+.menu__themes,
+.menu__panel > .hint {
+  padding-inline-start: calc(var(--space-3) + 3px);
+}
+
+.menu__themes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.menu__themes legend {
+  float: inline-start;
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* Three equal buttons that give up width, never below 44 px, before they
+   leave the panel at large text sizes. */
+.menu__themes ul {
+  display: grid;
+  flex: 0 1 auto;
+  grid-template-columns: repeat(3, minmax(44px, var(--target-min)));
+  gap: var(--space-1);
+  min-inline-size: 0;
+  margin-inline-start: auto;
+}
+
+.menu__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  min-block-size: var(--target-min);
+  padding: 0;
+  background: none;
+  color: var(--color-text);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.menu__icon::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.menu__icon[value="auto"] {
+  --icon: var(--i-theme-auto);
+}
+
+.menu__icon[value="light"] {
+  --icon: var(--i-theme-light);
+}
+
+.menu__icon[value="dark"] {
+  --icon: var(--i-theme-dark);
+}
+
+.menu__icon:hover {
+  background: var(--color-secondary-hover);
+}
+
+/* The theme in use: the accent face and a drawn edge, so forced colours keep it. */
+.menu__icon[aria-current] {
+  background: var(--color-accent-bg);
+  border-color: var(--color-selected);
+}
+
+@media (min-width: 40rem) {
+  .site > nav {
+    order: 0;
+    flex: none;
+    flex-basis: auto;
+    align-self: stretch;
+    margin: 0;
+    border: 0;
+  }
+
+  .tabs li {
+    flex: none;
+  }
+
+  .menu {
+    order: 1;
+    margin-inline-start: 0;
+  }
+}
+
+/* On a narrow phone the open panel takes nearly the window's width so a
+   language's name keeps its line at large text sizes (DESIGN 6). */
+@media (max-width: 22rem) {
+  .menu__panel {
+    inset-inline-end: var(--space-2);
+    inline-size: calc(100% - 2 * var(--space-2));
+    padding: var(--space-2);
+  }
+
+  .menu__panel .menu__item {
+    padding-inline: var(--space-2);
+  }
+
+  .menu__themes,
+  .menu__panel > .hint {
+    padding-inline-start: calc(var(--space-2) + 3px);
+  }
+}
+
+/* On a phone the header is two rows within 100 px: the logo and the user
+   menu on a 52 px bar, then the four sections as 46 px targets edge to edge. */
+@media (max-width: 39.99rem) {
+  .site {
+    padding-block: 0;
+  }
+
+  .site > .product,
+  .site > .menu {
+    min-block-size: 3.25rem;
+  }
+
+  .site > .menu {
+    display: flex;
+    align-items: center;
+    margin-inline-start: auto;
+  }
+
+  .site > nav {
+    margin-inline: calc(-1 * var(--space-3));
+    border-block-start: var(--border-width) solid var(--color-line);
+    border-block-start-color: var(--color-line);
+  }
+
+  /* Each tab is as wide as its word and the four share what is left, so
+     "Einstellungen" keeps its letters together; at 200% text a tab wraps
+     onto a second row rather than break a word (DESIGN 6). */
+  .tabs li {
+    flex: 1 1 auto;
+  }
+
+  .tabs a {
+    min-block-size: 2.875rem;
+    padding-inline: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: center;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    hyphens: manual;
+  }
+}
+
+/* Below 400 px the words alone fill the four targets. */
+@media (max-width: 25rem) {
+  .tabs a::before {
+    content: none;
+  }
+}
+
+/* A row of tabs wider than its box scrolls; subnav.js marks which edge has
+   more, and that edge fades over 24 px so a cut tab reads as "more this way". */
+.subnav :is(ul, ol)::after {
+  content: "";
+  flex: none;
+  inline-size: var(--space-4);
+}
+
+[data-more="end"] {
+  mask-image: linear-gradient(to left, transparent, currentColor 1.5rem);
+}
+
+[data-more="start"] {
+  mask-image: linear-gradient(to right, transparent, currentColor 1.5rem);
+}
+
+[data-more="both"] {
+  mask-image: linear-gradient(to right, transparent, currentColor 1.5rem, currentColor calc(100% - 1.5rem), transparent);
+}
+
+/* A page's description under its title: one quiet line at the measure. */
+.page-intro {
+  max-inline-size: 110ch;
+  color: var(--color-text-muted);
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+/* A Chinese overline keeps the interface face, untracked. */
+:lang(zh-Hans) .eyebrow {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+/* A page's heading, with its state badge, and the lines under it. */
+.page-head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* A heading with the page's own buttons at its end, wrapping under it when narrow. */
+.page-head--row {
+  display: grid;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* A heading with a time or a mod's name in its sentence reads as one run of
+   text, not a row of parts with gaps around the name (DESIGN 8.11). */
+main h1:has(> .ident) {
+  display: block;
+}
+
+/* Sign-in and first set-up: one short form, so a narrow column in the
+   upper middle of the window, its fields and button the column's width. */
+main:has(> .gate) {
+  max-inline-size: 28rem;
+  padding-block-start: clamp(var(--space-5), 10vh, 6rem);
+  position: relative;
+  isolation: isolate;
+  row-gap: 0;
+}
+
+.gate .field input {
+  max-inline-size: none;
+}
+
+.gate .actions > .button {
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+}
+
+/* From 48rem the page column, and the header lined up with it, has the
+   full side margin. */
+@media (min-width: 48rem) {
+  .site {
+    padding-inline: max(var(--space-5), calc((100% - var(--page-max)) / 2 + var(--space-5)));
+  }
+
+  .menu__panel {
+    inset-inline-end: max(var(--space-5), calc((100% - var(--page-max)) / 2 + var(--space-5)));
+  }
+}
+
+/* From 64rem the side margin is 32 px. */
+@media (min-width: 64rem) {
+  .site {
+    padding-inline: max(var(--space-6), calc((100% - var(--page-max)) / 2 + var(--space-6)));
+  }
+
+  .menu__panel {
+    inset-inline-end: max(var(--space-6), calc((100% - var(--page-max)) / 2 + var(--space-6)));
+  }
+}
+
+/* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
+@media (forced-colors: active) {
+  :is(.tabs a, .shortcuts > a)::before {
+    forced-color-adjust: none;
+    background: LinkText;
+  }
+
+  main h2[id]::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .tabs a[aria-current],
+  .subnav a[aria-current] {
+    border-block-end-color: Highlight;
+  }
+
+  .menu__icon[aria-current] {
+    border-color: Highlight;
+  }
+
+  .menu__icon::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+}
+
+/* A page with a bar stuck to the window's foot keeps that much room clear
+   when it scrolls a focused control into view, so focus never sits behind
+   the bar (WCAG 2.4.11): a 44 px button, its 12 px padding and the
+   selection bar's 16 px lift. On a phone Generate's three actions may
+   stack at large text, so its room grows with them, to half the window. */
+html:has(.generate > .gen-actions, .form-foot, .select-bar) {
+  scroll-padding-block-end: 5.5rem;
+}
+
+/* Sign-in and signed-out carry the rusty wordmark above their heading,
+   large enough that the riveted plate and its word read. */
+.gate-logo {
+  display: block;
+  justify-self: center;
+  inline-size: 18rem;
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+main:has(> .gate) > h1 {
+  text-align: center;
+  justify-self: center;
+}
+
+/* A world's heading with the live server state beside it. */
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.title-row > .state {
+  font-size: var(--text-md);
+}
+
+/* The sign-in page has no sections, so the language menu still ends the bar. */
+.site:not(:has(> nav)) > .menu {
+  margin-inline-start: auto;
+}
+
+/* The status lamp (DESIGN 7.5): the state badge's shape, small, before the
+   state's word in the header and at the start of the Server plate's band. A
+   filled square runs, a half-filled one starts or stops, a diamond has
+   crashed, a hollow square is stopped, a hollow circle is unknown. */
+.lamp {
+  display: inline-block;
+  flex: none;
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  color: var(--color-text-muted);
+  border: 2px solid currentColor;
+  border-radius: 2px;
+}
+
+.lamp--running {
+  color: var(--color-ok);
+  background-image: linear-gradient(currentColor, currentColor);
+}
+
+.lamp--starting {
+  color: var(--color-info);
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-size: 50% 100%;
+  animation: lamp-fill 1.2s var(--ease) infinite alternate;
+}
+
+.lamp--stopping {
+  color: var(--color-warn);
+  background-image: linear-gradient(to left, currentColor 50%, transparent 50%);
+}
+
+.lamp--crashed,
+.lamp--crash-looping {
+  color: var(--color-danger-text);
+  background-image: linear-gradient(currentColor, currentColor);
+  transform: rotate(45deg) scale(0.9);
+}
+
+.lamp--unknown {
+  border-radius: 50%;
+}
+
+.site > * {
+  color-scheme: dark;
+  color: var(--color-text);
+}
+
+.site > .product {
+  color: var(--color-heading);
+  font-size: 1.0625rem;
+  font-weight: 650;
+  flex: none;
+  padding-block: var(--space-2);
+  padding-inline-end: var(--space-3);
+}
+
+.site > .product img {
+  inline-size: auto;
+  block-size: 46px;
+}
+
+.site .tabs a {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.site .tabs a:hover {
+  color: var(--color-heading);
+}
+
+.site .tabs a::after {
+  inset: auto 0 0;
+  block-size: 3px;
+  border: 0;
+  border-radius: 0;
+}
+
+.site .tabs a:hover::after {
+  background: var(--color-line-strong);
+}
+
+.site .tabs a[aria-current] {
+  color: var(--color-heading);
+}
+
+.site .tabs a[aria-current]::after {
+  background: var(--color-selected);
+  border: 0;
+  box-shadow: none;
+}
+
+.site .tabs a[aria-current]::before {
+  background: var(--color-selected);
+}
+
+/* Forced colours drop backgrounds, so the current area's underline is drawn
+   as a border in the system's highlight colour. */
+@media (forced-colors: active) {
+  .site .tabs a[aria-current]::after {
+    box-sizing: border-box;
+    border-block-end: 3px solid Highlight;
+  }
+}
+
+/* The live world: its name, then the lamp and the state's word in the
+   state's colour, behind a hairline. Said once, read from anywhere. */
+.site-strip {
+  display: contents;
+}
+
+.site-world {
+  display: none;
+}
+
+.site-state {
+  display: none;
+}
+
+.site-state:not(:empty) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.site-state .lamp {
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+}
+
+.site-state:has(.lamp--running) {
+  color: var(--color-ok);
+}
+
+.site-state:has(.lamp--starting) {
+  color: var(--color-info);
+}
+
+.site-state:has(.lamp--stopping) {
+  color: var(--color-warn);
+}
+
+.site-state:has(:is(.lamp--crashed, .lamp--crash-looping)) {
+  color: var(--color-danger-text);
+}
+
+.site > .menu > summary {
+  background: transparent;
+  border-color: var(--color-border);
+}
+
+.site > .menu > summary:hover {
+  background: var(--color-raised);
+}
+
+/* Phone: one 52 px row with the logo, the live world and its state, and the
+   menu; the four areas take the row under it. */
+@media (max-width: 39.99rem) {
+  .site-strip:has(.site-state:not(:empty)) {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-inline-size: 0;
+  }
+
+  .site-strip .site-world {
+    display: block;
+    overflow: visible;
+    color: var(--color-heading);
+    font-size: var(--text-sm);
+    font-weight: 650;
+    line-height: 1.2;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .site-strip .site-state:not(:empty) {
+    font-size: var(--text-xs);
+  }
+
+  .site > .menu .menu__lang {
+    display: inline;
+  }
+}
+
+/* From 40rem the desk is one 56 px row at the top of the page, and it
+   scrolls away with the page. */
+@media (min-width: 40rem) {
+  .site {
+    position: relative;
+    inset-block-start: 0;
+    flex-wrap: wrap;
+    gap: 0 var(--space-5);
+    min-block-size: 3.5rem;
+    padding-block: 0;
+  }
+
+  .site .tabs {
+    flex-wrap: nowrap;
+    gap: var(--space-1);
+    block-size: 100%;
+    align-items: flex-end;
+  }
+
+  .site .tabs li {
+    flex: none;
+  }
+
+  .site .tabs a {
+    block-size: 3.5rem;
+    min-block-size: 3.5rem;
+    padding-inline: var(--space-4);
+    border: 0;
+    font-size: var(--text-md);
+  }
+
+  .site-strip {
+    display: flex;
+    flex: 1 1 0;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-3);
+    min-inline-size: 0;
+    order: 1;
+    overflow: hidden;
+  }
+
+  .site-strip:has(.site-state:not(:empty)) .site-world {
+    display: block;
+    overflow: hidden;
+    color: var(--color-heading);
+    font-size: var(--text-md);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The live cluster sits behind a hairline, apart from the areas. */
+  .site-strip:has(.site-state:not(:empty))::before {
+    content: "";
+    flex: none;
+    inline-size: var(--border-width);
+    block-size: 1.5rem;
+    margin-inline-end: var(--space-2);
+    background: var(--color-line-strong);
+    order: -1;
+  }
+
+  .site-state:not(:empty) {
+    min-block-size: 1.75rem;
+    padding-inline: var(--space-2) var(--space-3);
+    background: var(--color-raised);
+    border-inline-start: 3px solid currentColor;
+  }
+
+  .site > .menu {
+    order: 2;
+    flex: none;
+    margin-inline-start: 0;
+  }
+
+  .site > .menu > summary {
+    min-block-size: 2.5rem;
+  }
+}
+
+/* Below 64rem the four areas take their own row under the desk. */
+@media (min-width: 40rem) and (max-width: 63.99rem) {
+  .site > nav {
+    order: 3;
+    flex-basis: 100%;
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+.tabs :is(#nav-lamp, .nav-lamp) {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tabs :is(#nav-lamp, .nav-lamp):empty {
+  display: none;
+}
+
+/* While starting, the lamp's fill sweeps; it rests under reduced motion. */
+@keyframes lamp-fill {
+  from {
+    background-size: 0% 100%;
+  }
+
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp--starting {
+    animation: none;
+  }
+}
+
+/* Three levels of tabs, each drawn its own way: the header's current section
+   is a pill, a page's tabs keep the underline, and a switch inside a card is
+   a segmented control. The pill is a layer under the link, so the 44 px
+   target keeps its height. */
+.tabs a {
+  position: relative;
+  isolation: isolate;
+  border-block-width: 0;
+  transition: color var(--dur-1) var(--ease);
+}
+
+.tabs a::after {
+  content: "";
+  position: absolute;
+  inset: var(--space-1) 0;
+  z-index: -1;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+
+.tabs a:hover::after {
+  background: var(--color-secondary-hover);
+}
+
+.tabs a[aria-current]::after {
+  background: var(--color-raised);
+  border-color: var(--color-line);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+/* The current tab is not bolder, so the tabs keep their widths from page
+   to page (DESIGN 6, "Nav links are tabs"). */
+.tabs a[aria-current]::before {
+  background: var(--color-selected);
+}
+
+@media (min-width: 40rem) {
+  .tabs {
+    gap: var(--space-1);
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .tabs a::after {
+    inset: var(--space-1) 2px;
+  }
+}
+
+/* One page head on every page (DESIGN 6): the section as an overline, the
+   title with its state, then the tabs 16 px under it and the first card
+   24 px under those. */
+main > .eyebrow {
+  margin-block-end: calc(var(--space-1) - var(--space-4));
+}
+
+.page-head > .eyebrow {
+  margin-block-end: 0;
+}
+
+@media (min-width: 40rem) {
+  main > .eyebrow {
+    margin-block-end: calc(var(--space-1) - var(--space-5));
+  }
+
+  main > :is(h1, .title-row, .page-head, .page-head--row) + .subnav {
+    margin-block-start: calc(var(--space-4) - var(--space-5));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site {
+    view-transition-name: site-header;
+  }
+}
+
+/* Sign-in introduces the product: the header's logo and name step aside for
+   a large mark and the name over the form, on a faint blueprint grid. */
+body:has(main > .gate) .site > .product {
+  visibility: hidden;
+}
+
+/* Sign-in: the blueprint grid covers the whole window and fades out at
+   every edge, so it has no hard side. */
+main:has(> .gate)::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(var(--color-line) 1px, transparent 1px) 0 0 / 2rem 2rem,
+    linear-gradient(90deg, var(--color-line) 1px, transparent 1px) 0 0 / 2rem 2rem;
+  mask-image: radial-gradient(circle at 50% 40%, currentColor 0, transparent 70vmax);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+main:has(> .gate) > .gate {
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+@media (forced-colors: active) {
+  main:has(> .gate)::before {
+    display: none;
+  }
+}
+
+/* A page head with its own buttons keeps the overline on a line of its own. */
+.page-head--row > .eyebrow {
+  flex: 1 1 100%;
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+}
+
+/* One page head on every page: the section's name as the overline and the
+   title under it, both at the start edge; the page's own buttons sit at the
+   end of the title's line, and on a phone stack full width under it. */
+.page-head--row > h1 {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.page-head--row > .actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: end;
+  flex-wrap: nowrap;
+  margin: 0;
+}
+
+@media (max-width: 39.99rem) {
+  .page-head--row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page-head--row > .actions {
+    grid-column: 1;
+    grid-row: 3;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    margin-block-start: var(--space-3);
+  }
+
+  .page-head--row > .actions > .button {
+    inline-size: 100%;
+  }
+
+  .subnav {
+    border-block-end: 0;
+  }
+
+  .subnav :is(ul, ol) {
+    scroll-padding-inline: 1.5rem;
+    flex-wrap: nowrap;
+    gap: 0 var(--space-1);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    mask-image: none;
+  }
+
+  .subnav ul::after {
+    content: none;
+    flex: none;
+    inline-size: var(--space-3);
+  }
+
+  .subnav ul:has(> li:nth-child(4):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subnav ul:has(> li:nth-child(5)) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .subnav ul:has(> li:nth-child(5)) > li {
+    grid-column: span 2;
+  }
+
+  .subnav ul:has(> li:nth-child(5)) > li:nth-child(n + 4) {
+    grid-column: span 3;
+  }
+
+  .subnav ul > li {
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .subnav a {
+    min-block-size: var(--target-min);
+    margin-block-end: 0;
+    padding-inline: var(--space-1);
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .subnav a[aria-current] {
+    min-block-size: var(--target-min);
+    padding-inline: var(--space-1);
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .subnav li {
+    min-inline-size: 0;
+  }
+
+  .subnav li:first-child a,
+  .subnav li:last-child a {
+    padding-inline: var(--space-1);
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 23rem) {
+  .subnav a,
+  .subnav a[aria-current],
+  .subnav li:first-child a,
+  .subnav li:last-child a {
+    font-size: var(--text-xs);
+  }
+}
+
+/* Foreman's settings have eight tabs: on a phone they wrap onto as many
+   rows as their words need, each row filled edge to edge, so every section
+   shows whole as a 44 px target and none hides past the edge. A tab's words
+   stay on one line unless they are wider than the row on their own, as at
+   large text. From 40 rem the row wraps the same way. */
+@media (max-width: 39.99rem) {
+  .subnav--settings ul,
+  .subnav--settings ul:has(> li:nth-child(5)) {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .subnav--settings ul > li,
+  .subnav--settings ul:has(> li:nth-child(5)) > li,
+  .subnav--settings ul:has(> li:nth-child(5)) > li:nth-child(n + 4) {
+    flex: 1 1 auto;
+  }
+
+  .subnav--settings a,
+  .subnav--settings a[aria-current],
+  .subnav--settings li:first-child a,
+  .subnav--settings li:last-child a {
+    padding-inline: var(--space-3);
+    white-space: normal;
+  }
+}
+
+@media (min-width: 40rem) {
+  .subnav--settings ul {
+    flex-wrap: wrap;
+    overflow: visible;
+    mask-image: none;
+  }
+
+  .subnav--settings ul::after {
+    content: none;
+  }
+}
+
+/* Game settings' sub-pages are a second, quieter row inside the world's
+   tab navigation, directly under the tabs, chips that keep their words whole. */
+@media all {
+  .subnav li:has(> .subnav__sub) {
+    display: contents;
+  }
+
+  .subnav .subnav__sub {
+    grid-column: 1 / -1;
+    flex-basis: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    list-style: none;
+  }
+
+  .subnav .subnav__sub li {
+    flex: none;
+    box-shadow: none;
+  }
+
+  .subnav .subnav__sub a,
+  .subnav .subnav__sub a[aria-current] {
+    white-space: nowrap;
+  }
+
+  .subnav .subnav__sub a::after {
+    content: none;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .subnav ul:has(> li:nth-child(5)) > li:has(> .subnav__sub) > a {
+    grid-column: span 3;
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .subnav ul:has(> li:nth-child(5)) > li:has(> .subnav__sub) > a[aria-current] {
+    box-shadow: inset 0 -2px 0 var(--color-selected);
+  }
+}
+
+@media (min-width: 40rem) {
+  .subnav ul:has(.subnav__sub) {
+    flex-wrap: wrap;
+    overflow: visible;
+    mask-image: none;
+  }
+}
+
+/* The unsaved mark: a small orange dot before the foot bar's count of
+   changes and after each sub-page that holds some. */
+.subnav__sub a[data-unsaved]::after {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-selected);
+}
+
+/* Sign-in: the riveted mark drawn from a 96 px source, 16 px over the
+   heading and the form 24 px under it. */
+main:has(> .gate) > .gate-logo + h1 {
+  margin-block-start: var(--space-4);
+}
+
+main:has(> .gate) > h1 + .gate {
+  margin-block-start: var(--space-5);
+}
+
+main:has(> .gate) > * + :not(h1, .gate) {
+  margin-block-start: var(--space-4);
+}
+
+/* Sign-in with both ways is one composed panel: single sign-on above, the
+   Foreman account below a hairline, so it reads as one entry point. */
+main:has(> .gate) > .gate:has(+ .gate) {
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+}
+
+main:has(> .gate) > .gate + .gate {
+  margin-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+/* Tab rows: the page's own pages, under its title, over a strong rule that
+   runs the column's full width (DESIGN 6, Sub-navigation). */
+@media (min-width: 40rem) {
+  main > .subnav {
+    border-block-end-color: var(--color-line-strong);
+  }
+
+  main > .subnav a {
+    min-block-size: var(--target-min);
+    padding-inline: var(--space-4);
+  }
+
+  main > .subnav > ul > li:first-child > a {
+    padding-inline-start: 0;
+  }
+}
+
+/* Game settings' own pages: a segmented row inside the same navigation,
+   under the tabs, square and quiet, the current one on the accent face. */
+.subnav .subnav__sub {
+  gap: 2px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  inline-size: auto;
+  max-inline-size: 100%;
+  margin: 0;
+  padding: 3px;
+  min-inline-size: 0;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius-lg);
+}
+
+.subnav .subnav__sub li + li a {
+  margin-inline-start: 0;
+}
+
+.subnav .subnav__sub li:first-child a {
+  border-start-start-radius: var(--radius);
+  border-end-start-radius: var(--radius);
+}
+
+.subnav .subnav__sub li:last-child a {
+  border-start-end-radius: var(--radius);
+  border-end-end-radius: var(--radius);
+}
+
+/* Signed out there is no desk to show: the language menu floats at the
+   top end over the page, and the sign-in plate carries the product. */
+.site:not(:has(> nav)) {
+  position: static;
+  background: none;
+  border-block-end: 0;
+  box-shadow: none;
+}
+
+.site:not(:has(> nav)) > * {
+  color-scheme: inherit;
+}
+
+/* Six tabs on a phone sit three over three, so none is left alone on a row. */
+@media (max-width: 39.99rem) {
+  .subnav ul:has(> li:nth-child(6):last-child) > li,
+  .subnav ul:has(> li:nth-child(6):last-child) > li:nth-child(n + 4),
+  .subnav ul:has(> li:nth-child(6):last-child) > li:has(> .subnav__sub) > a {
+    grid-column: span 2;
+  }
+
+  .site > .product img {
+    block-size: 30px;
+  }
+}
+
+/* Below 22rem the plate steps down again, and the live world and its
+   state share one line beside it, the name giving way first. */
+@media (max-width: 22rem) {
+  .site > .product img {
+    block-size: 28px;
+  }
+
+  .site-strip:has(.site-state:not(:empty)) {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    overflow: hidden;
+  }
+
+  .site-strip .site-world {
+    flex: 0 1 auto;
+    min-inline-size: 0;
+  }
+
+  .site-strip .site-state:not(:empty) {
+    flex: 0 1 auto;
+    min-inline-size: 0;
+    overflow: hidden;
+  }
+}
+
+/* A closed menu takes no room at all, so its panel can never widen the
+   page at large text sizes (WCAG 1.4.10). */
+.menu:not([open]) > .menu__panel,
+.menu__langs:not([open]) > form {
+  display: none;
+}
+
+/* Below 22rem the account button sets the person over the language, so
+   the live state keeps its room on the bar's one row. */
+@media (max-width: 22rem) {
+  .site > .menu > summary {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-content: center;
+    column-gap: var(--space-2);
+    padding-inline: var(--space-2);
+    line-height: 1.2;
+  }
+
+  .site > .menu > summary > span {
+    grid-column: 1;
+  }
+
+  .site > .menu > summary::after {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+}
+
+/* ---- On a phone the settings tabs scroll sideways; their end fades, so
+   the strip shows it holds more. */
+@media (max-width: 39.99rem) {
+  nav.subnav.subnav--settings > ul {
+    mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+  }
+}
+
+.subnav .subnav__sub a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 2.25rem;
+  margin: 0;
+  padding-inline: var(--space-4);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: none;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.subnav .subnav__sub a:hover {
+  color: var(--color-heading);
+  background: var(--color-secondary-hover);
+}
+
+.subnav .subnav__sub a[aria-current] {
+  min-block-size: 2.25rem;
+  border-radius: var(--radius);
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline: var(--space-4);
+  border: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+  color: var(--color-heading);
+  background: var(--color-accent-bg);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+@media (max-width: 39.99rem) {
+  .subnav .subnav__sub a,
+  .subnav .subnav__sub a[aria-current] {
+    min-block-size: var(--target-min);
+    padding-inline: var(--space-3);
+  }
+}
+
+/* ==== A segmented control is as wide as its segments; a button as wide as
+   its words. Only a phone stretches either across the column. */
+@media (min-width: 40rem) {
+  .subnav .subnav__sub {
+    display: inline-flex;
+    flex: 0 0 auto;
+    order: 2;
+    inline-size: max-content;
+    max-inline-size: 100%;
+    gap: 2px;
+    padding: 3px;
+    margin-block: var(--space-3);
+    background: var(--color-deep);
+    border: var(--border-width) solid var(--color-line-strong);
+    border-radius: var(--radius-lg);
+  }
+
+  .subnav ul:has(.subnav__sub)::after {
+    content: "";
+    flex: 0 0 100%;
+    order: 1;
+  }
+
+  .subnav .subnav__sub a {
+    min-block-size: 2.25rem;
+    margin: 0;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+  }
+
+  .subnav .subnav__sub a[aria-current] {
+    min-block-size: 2.25rem;
+    margin: 0;
+    border: 0;
+    border-radius: var(--radius);
+  }
+
+  .subnav .subnav__sub li + li a {
+    margin-inline-start: 0;
+  }
+
+  .subnav .subnav__sub a[aria-current] {
+    background: var(--color-accent-bg);
+    box-shadow: inset 0 -2px 0 var(--color-selected);
+  }
+}
+
+/* ==== Phone: the live world's name is never cut. The account button shows
+   the person only (the language is in the menu and in its name). */
+@media (max-width: 39.99rem) {
+  .site > .menu summary:has(.menu__user) .menu__lang {
+    display: none;
+  }
+
+  .site-strip:has(.site-state:not(:empty)) .site-world {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+/* One page header everywhere: the breadcrumb sits as close over the title
+   as the area's name does on Server and Worlds. */
+main > .crumb {
+  margin-block-end: calc(var(--space-1) - var(--space-4));
+}
+
+@media (min-width: 40rem) {
+  main > .crumb {
+    margin-block-end: calc(var(--space-1) - var(--space-5));
+  }
+
+  .site > .product {
+    padding-block: 5px;
+  }
+
+  main > .subnav + * {
+    margin-block-start: calc(var(--space-4) - var(--space-5));
+  }
+}
+
+/* ==== Page width. A form-only or short-list page keeps all of its own
+   content to an 80rem working width, start-aligned: its title, the area's
+   tab row, a flow's step bar and the content share one right edge. Wide
+   data and tools (the audit log, the factory map, mods) take the whole page. */
+main[data-width="measure"] {
+  grid-template-columns: minmax(0, 80rem) minmax(0, 1fr);
+  column-gap: 0;
+}
+
+main[data-width="measure"] > * {
+  grid-column: 1;
+}
+}

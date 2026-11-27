@@ -1,0 +1,1884 @@
+/* Mods, the mod plan and the portal search. */
+@layer pages {
+#search-heading,
+#results-heading {
+  --icon: var(--i-search);
+}
+
+#installed-heading {
+  --icon: var(--i-mods);
+}
+
+#plan-heading {
+  --icon: var(--i-list);
+}
+
+#sync-heading {
+  --icon: var(--i-sync);
+}
+
+#upload-heading {
+  --icon: var(--i-upload);
+}
+
+/* Machine-written figures in mono with tabular digits. */
+.mod-ver {
+  font-family: var(--font-mono);
+  font-size: 0.9375em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mods-main > .panel,
+.mod-side > .panel {
+  position: relative;
+  padding: var(--card-pad);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+}
+
+/* Below 360 px a card's frame would cost the content its room, so sections
+   lie flat on the page, a rule above each (DESIGN 4). */
+@media (max-width: 22.4rem) {
+  .mods-main > .panel,
+  .mod-side > .panel {
+    padding: var(--space-4) 0 0;
+    background: none;
+    border: 0;
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* A label that is a bare word keeps its name for screen readers but takes no room. */
+.mod-actions .button--icon.mod-remove {
+  gap: 0;
+  padding: 0;
+  font-size: 0;
+}
+
+/* What an action will do, as an assembly line: each step a numbered
+   square station joined to the next by a rail (DESIGN 7.1). */
+ol.plan-steps {
+  counter-reset: station;
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+ol.plan-steps > li {
+  position: relative;
+  counter-increment: station;
+  min-block-size: 2.75rem;
+  margin: 0;
+  padding-block: var(--space-1) var(--space-3);
+  padding-inline-start: 2.75rem;
+}
+
+ol.plan-steps > li::before {
+  content: counter(station);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-heading);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+ol.plan-steps > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-block: 1.75rem 0;
+  inset-inline-start: calc(0.875rem - 1px);
+  inline-size: 2px;
+  background: var(--color-line);
+}
+
+/* Mods (SPEC 9). The portal's status keeps one line's room while it loads,
+   so the table below moves only when there is something to say. */
+.mod-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  min-block-size: var(--target-min);
+}
+
+/* The summary's sentences, with Update all beside them while they fit, at
+   the table's width so the tab is one column. */
+.mod-status__line {
+  max-inline-size: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+/* The portal's summary: one quiet line of counts, each led by its shape,
+   that wraps to a second line on a phone; Update all sits beside the
+   Installed mods heading. The line is not held to the reading measure, so
+   Update all ends the summary's row. */
+.mod-status__line > p {
+  flex: 1 1 20rem;
+  min-inline-size: 0;
+  display: block;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  max-inline-size: none;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.mod-list code {
+  color: var(--color-text-muted);
+}
+
+/* Two columns (DESIGN 8.11): a mod, and its actions in one fixed order,
+   lined up on the end so Disable and Remove sit in the same place in every
+   row whether or not Update or Change version come before them. */
+.mod-list {
+  max-inline-size: none;
+}
+
+.mod-list td {
+  vertical-align: top;
+}
+
+.mod-list th:last-child,
+.mod-list td:last-child {
+  text-align: end;
+}
+
+.mod-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  min-block-size: var(--target-min);
+  min-inline-size: 0;
+}
+
+/* The name is the portal link, a full-size target (DESIGN 8.3). A name
+   shown as plain text keeps the same box, so every row's name lines up with
+   its Disable button. */
+.mod-name {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+  min-block-size: var(--target-min);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* A mod's actions keep one order (DESIGN 8.11): what the portal offers,
+   Update as the one bordered button and the version as a quiet chip, then
+   Disable and the Remove icon, which sit in the same place in every row. */
+.mod-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-block-start: 0;
+}
+
+.mod-actions .button:not(.row-menu__toggle) {
+  padding-inline: var(--space-3);
+}
+
+/* On a wide panel a mod's actions keep one line; narrower, a label may wrap
+   at large text rather than run past the panel (SPEC 17.2). */
+@container (min-width: 44rem) {
+  .mod-actions {
+    flex-wrap: nowrap;
+  }
+
+  .mod-actions .button {
+    white-space: nowrap;
+  }
+}
+
+/* Update, Change version and Disable are the one secondary button; Change
+   version ends in a chevron, as a control that opens a choice does. */
+.mod-list :is(.mod-toggle, .mod-version) {
+  padding-inline: var(--space-3);
+  background: var(--color-raised);
+  color: var(--color-heading);
+  border-color: var(--color-border);
+  text-decoration: none;
+}
+
+.mod-list :is(.mod-toggle, .mod-version):hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-text-muted);
+}
+
+.mod-list .mod-version {
+  gap: var(--space-1);
+  padding-inline-end: var(--space-2);
+}
+
+.mod-list .mod-version::after {
+  content: "";
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+  transform: rotate(90deg);
+}
+
+/* Remove is the one red control: it is the change that destroys something. */
+.mod-list .mod-remove,
+.mod-list .mod-remove:hover {
+  color: var(--color-danger-text);
+  text-decoration: none;
+}
+
+/* What the portal says about one mod, under its name; the leading word
+   says the kind, so colour is never the only sign (SPEC 17.4). */
+.mod-flags {
+  display: grid;
+  gap: var(--space-1);
+  padding-block-end: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.mod-flag--error > strong {
+  color: var(--color-danger-text);
+}
+
+.mod-flag--warning > strong {
+  color: var(--color-warn);
+}
+
+.mod-flag--note > strong {
+  color: var(--color-info);
+}
+
+/* A mod's portal news is one quiet 13 px line with an icon for its kind;
+   the leading word stays for screen readers (SPEC 17.4). */
+.mod-flags > p {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  max-inline-size: 72ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.mod-flags > p > strong {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mod-flags > p::before {
+  content: "";
+  flex: none;
+  align-self: center;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  background: var(--color-info);
+  mask: var(--i-info) center / contain no-repeat;
+}
+
+.mod-flags > .mod-flag--warning::before {
+  background: var(--color-warn);
+  mask-image: var(--i-alert);
+}
+
+.mod-flags > .mod-flag--error {
+  color: var(--color-danger-text);
+}
+
+.mod-flags > .mod-flag--error::before {
+  background: var(--color-danger-text);
+  mask-image: var(--i-error);
+}
+
+@media (forced-colors: active) {
+  .mod-flags > p::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
+/* On a phone the actions drop under the name in the same row, so the name
+   keeps the panel's width (SPEC 17.12: the table roles stay). Above this
+   the actions sit beside the name, their groups one above the other when
+   the column is too narrow for both. */
+@container (max-width: 36rem) {
+  .mod-list td {
+    display: block;
+    padding: 0;
+    border: 0;
+    text-align: start;
+  }
+
+  .mod-list thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .mod-list tr {
+    display: block;
+    padding-block: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .mod-list td:last-child {
+    padding: 0;
+    border: 0;
+    text-align: start;
+  }
+
+  /* Name and version, then Update and Change version, then Disable and
+     Remove: three lines on one start edge, so each action has one place
+     and a long name keeps the panel's width. */
+  .mod-actions {
+    display: grid;
+    justify-content: start;
+    justify-items: start;
+    gap: var(--space-2);
+    padding-block-start: var(--space-1);
+  }
+}
+
+/* On a phone with room for it, a mod is two lines: the name and version
+   with Disable and Remove at the line's end, then what the portal offers,
+   Update and Change version, side by side. The cells lend their boxes to
+   the row, which lays the parts out. */
+@container (min-width: 18rem) and (max-width: 36rem) {
+  .mod-list tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--space-2);
+  }
+
+  .mod-list .mod-line {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .mod-list td > div:not(.mod-line, .mod-actions) {
+    grid-column: 1 / -1;
+  }
+}
+
+.sync-diff {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-5);
+}
+
+/* Quiet links that are still full-size targets, in a row or in a sentence. */
+.mods-built-in a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.plan-label {
+  font-weight: 600;
+}
+
+/* The plan's changes, one mod a line. */
+.confirm .plan-items {
+  padding-inline-start: 0;
+  list-style: none;
+  gap: 0;
+}
+
+.plan-items > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-4);
+  min-inline-size: 0;
+  padding-block: var(--space-1);
+  border-block-end: var(--border-width) solid var(--color-line);
+  max-inline-size: none;
+}
+
+/* A mod's short badge stays whole. Badges elsewhere, such as a save's
+   "loads next", are long in some languages and must wrap at 320 px. */
+.mod-list .badge {
+  white-space: nowrap;
+}
+
+.mod-plan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.mods-notice:has(.message) {
+  padding-block-start: var(--space-3);
+}
+
+.plan-groups {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plan-groups dt {
+  font-weight: 600;
+}
+
+.plan-groups dd {
+  overflow-wrap: anywhere;
+}
+
+/* A long confirmation sentence starts beside the top of its box. */
+.confirm-without {
+  align-items: start;
+}
+
+/* A mod's version sits after its name as a quiet mono tag. */
+.mod-line > code {
+  padding: 0 var(--space-2);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  font-size: var(--text-xs);
+  line-height: 1.54;
+}
+
+.mod-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  background: none;
+  color: var(--color-text);
+  border: 0;
+  border-radius: 0;
+  line-height: 1.43;
+  margin-inline-end: var(--space-3);
+  white-space: nowrap;
+}
+
+.mod-count::before {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  background: var(--color-text-muted);
+  border-radius: 2px;
+}
+
+.mod-count--warning::before {
+  background: var(--color-warn);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  border-radius: 0;
+}
+
+.mod-count--note::before {
+  background: var(--color-info);
+  border-radius: 50%;
+}
+
+.mod-count--ok::before {
+  background: var(--color-ok);
+}
+
+/* The built-in mods close the list as one quiet line. */
+.mods-built-in {
+  max-inline-size: none;
+  padding-block-start: var(--space-3);
+  color: var(--color-text-muted);
+  border-block-start: var(--border-width) solid var(--color-line);
+  font-size: var(--text-sm);
+  line-height: 1.43;
+}
+
+/* Mods on a wide panel: each mod is two lines, its name and actions on the
+   first and what the portal says about it under them at the full width. */
+@container (min-width: 36.01rem) {
+  .mod-list tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-4);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .mod-list thead tr {
+    align-items: end;
+  }
+
+  .mod-list :is(td, th) {
+    border-block-end: 0;
+  }
+
+  .mod-list tbody td:first-child {
+    display: contents;
+  }
+
+  .mod-list .mod-line {
+    grid-column: 1;
+    grid-row: 1;
+    padding-block: 0;
+  }
+
+  .mod-list tbody td:last-child {
+    grid-column: 2;
+    grid-row: 1;
+    padding-block: 0;
+  }
+
+  .mod-list tbody td:first-child > div:not(.mod-line) {
+    grid-column: 1;
+    grid-row: 2;
+    padding-block-end: 0;
+    color: var(--color-text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .mod-list .mod-flags {
+    max-inline-size: var(--measure);
+  }
+
+  .mod-list tbody tr:last-child {
+    border-block-end: 0;
+  }
+}
+
+.mod-list .row-menu .row-menu__item {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: var(--color-heading);
+  border: 0;
+  border-radius: var(--radius);
+  font-size: var(--text-md);
+  font-weight: 500;
+  text-align: start;
+  text-decoration: none;
+}
+
+.mod-list .row-menu .row-menu__item:hover {
+  background: var(--color-secondary-hover);
+}
+
+.mod-list .row-menu .mod-version::after {
+  content: none;
+}
+
+.mod-list .row-menu .row-menu__item--danger {
+  color: var(--color-danger-text);
+}
+
+.mod-list .row-menu .row-menu__item--danger:hover {
+  background: var(--color-danger-bg);
+}
+
+/* A row's actions: its one visible button, then the menu, on one line at
+   the row's end at every width. */
+.mod-list .mod-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  justify-items: end;
+  gap: var(--space-2);
+  padding: 0;
+}
+
+.mod-list .mod-actions > span[hidden] {
+  display: none;
+}
+
+.mod-list .mod-actions .button {
+  white-space: nowrap;
+}
+
+/* On a phone the menu keeps the name's line, at its end, and the one
+   visible button takes a line of its own under the name and notes. */
+@container (min-width: 18rem) and (max-width: 36rem) {
+  .mod-list td,
+  .mod-list .mod-actions {
+    display: contents;
+  }
+
+  .mod-list .mod-actions > .row-menu {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mod-list .mod-actions > :not(.row-menu) {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .mod-list .mod-actions .button:not(.row-menu__toggle) {
+    font-size: var(--text-sm);
+  }
+}
+
+/* Narrower still (320 px at 200% text), the actions are a line of their own
+   under the name: they start at its edge and wrap, so a long Update to x.y.z
+   never runs off the page's start. */
+@container (max-width: 36rem) {
+  .mod-list td .mod-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .mod-list td .mod-actions .button {
+    white-space: normal;
+  }
+}
+
+/* There More may wrap to the start of the line, so its menu hangs from the
+   whole actions block instead, as wide as the row, and never leaves it. */
+@container (max-width: 17.99rem) {
+  .mod-list td .mod-actions {
+    position: relative;
+  }
+
+  .mod-list td .mod-actions > .row-menu {
+    position: static;
+  }
+
+  .mod-list td .mod-actions .row-menu__panel {
+    inset-inline: 0;
+    min-inline-size: 0;
+    max-inline-size: none;
+    inline-size: auto;
+  }
+}
+
+/* Mods: search, the results, the plan, Match mods to the save, the list,
+   then the tools, in that order at every width. On a wide screen the plan
+   is alone in a rail beside the rest, so nothing passes under it while it
+   sticks; on a phone it follows the results and the tools fold under one
+   44 px Mod tools disclosure (DESIGN 8.11). */
+.split.split--mods {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: none;
+  grid-template-rows: none;
+}
+
+.mod-side {
+  display: contents;
+}
+
+@media (min-width: 64rem) {
+  .split.split--mods {
+    align-items: start;
+  }
+
+  .split--mods > .mod-side {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+
+  .split--mods > .panel,
+  .split--mods > .mod-rail {
+    grid-column: 1;
+  }
+
+  .split--mods:has(> .mod-rail) > .mod-side {
+    grid-row: 1 / span 5;
+  }
+}
+
+/* The plan stays in view while the results scroll past it; the top bar
+   scrolls away, so it sticks near the window's top. It is never taller than the window: the
+   heading and Review stay put and only the list of mods scrolls, newest at
+   its top. In a window too short for even its fixed parts the whole card
+   scrolls; below 30rem it does not stick at all (DESIGN 8.11). */
+@media (min-width: 64rem) and (min-height: 30rem) {
+  .mod-side > .plan-panel {
+    --plan-top: var(--space-4);
+    position: sticky;
+    inset-block-start: var(--plan-top);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    max-block-size: calc(100dvh - var(--plan-top) - var(--space-4));
+    overflow-y: auto;
+  }
+
+  .mod-side > .plan-panel > *,
+  .mod-side > .plan-panel .plan-panel__list::details-content > * {
+    flex: none;
+  }
+
+  .mod-side > .plan-panel > .plan-panel__list,
+  .mod-side > .plan-panel .plan-panel__list::details-content {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-block-size: 0;
+  }
+
+  .mod-side > .plan-panel .plan-panel__list > .plan-tree {
+    flex: 0 1 auto;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: var(--space-2);
+  }
+}
+
+/* Phone: once the plan has a mod it holds to the bottom of the screen as a
+   bar with the count, the names and Review; it opens to the full list. */
+@media (max-width: 63.99rem) {
+  .plan-panel:not(.plan-panel--empty) {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 5;
+  }
+
+  /* The bar's own line names it; the heading stays for screen readers and focus. */
+  .plan-panel:not(.plan-panel--empty) > .plan-panel__head {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .plan-panel .plan-tree {
+    max-block-size: 40vh;
+    overflow-y: auto;
+  }
+
+  /* In the guided Generate the step's footer holds the way on, named with
+     the plan's count, at the same foot; a held plan bar would cover it. */
+  .plan-panel--step:not(.plan-panel--empty) {
+    position: static;
+  }
+
+  /* Keyboard focus scrolled into view stays clear of the folded bar: its
+     44 px line, the 44 px Review button, the gap and padding (WCAG 2.4.11).
+     The bar's own rule beside the other foot bars would reach wide screens,
+     where the plan is not at the foot. */
+  html:has(.plan-panel:not(.plan-panel--empty)) {
+    scroll-padding-block-end: 9rem;
+  }
+}
+
+/* Below 360 px cards lie flat; the held bar keeps its frame so it reads as one. */
+@media (max-width: 22.4rem) {
+  .mod-side > .plan-panel:not(.plan-panel--empty) {
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-border);
+  }
+}
+
+/* Results: a list of rows divided by rules, not cards (DESIGN 1). */
+.mod-found {
+  container-type: inline-size;
+}
+
+.mod-found__count {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Before a search the results panel is one quiet line, so the installed
+   list starts higher (DESIGN 8.11). */
+#results:not(:has(.hits, .error, .message)) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-3);
+  background: none;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+#results:not(:has(.hits, .error, .message)) > h2 {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+#results:not(:has(.hits, .error, .message)) > .empty {
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  text-align: start;
+}
+
+#results:not(:has(.hits, .error, .message)) > .empty::before {
+  content: none;
+}
+
+.hits {
+  max-inline-size: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hit {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  max-inline-size: none;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-3) 0;
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid transparent;
+}
+
+.hit:last-child {
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+/* A mod in the plan is drawn in blueprint blue, planned but not yet built,
+   as the game draws a ghost before it is placed (DESIGN 3): a 3 px blue
+   edge and the In plan pill say it, and the row keeps the card's face, so
+   the plan's button stays the one orange area. */
+.hit:has(.badge--chosen) {
+  background: none;
+  border-inline-start: 3px solid var(--color-info);
+}
+
+.hit__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* The title is a link of its own, so it gets a 24 px tall target (WCAG
+   2.5.8). It is the row's title: semibold, underlined only when pointed at;
+   links inside sentences keep their underline. */
+.hit__title a {
+  display: inline-block;
+  padding-block: 0.125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hit__title a:hover {
+  text-decoration: underline;
+}
+
+.hit__title code {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.hit__summary {
+  display: -webkit-box;
+  max-inline-size: var(--measure);
+  overflow: hidden;
+  font-size: var(--text-sm);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.hit__line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.hit__facts {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  min-inline-size: 0;
+  margin: 0;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.hit__facts > div {
+  display: flex;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.hit__facts dt {
+  color: var(--color-text-muted);
+}
+
+.hit__facts dd {
+  margin: 0;
+}
+
+.hit__act,
+.hit__form {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hit__act .badge {
+  white-space: nowrap;
+}
+
+.hit__act .badge--needed {
+  max-inline-size: 12rem;
+  white-space: normal;
+}
+
+@media (min-width: 48rem) {
+  .hit__act .badge--needed {
+    max-inline-size: none;
+    white-space: nowrap;
+  }
+}
+
+/* While the plan is worked out the row says so beside its button. */
+.hit__busy {
+  display: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.hit__form.htmx-request .hit__busy {
+  display: inline;
+}
+
+/* The row's + (or −): 44 px on touch screens, 32 px with a mouse (WCAG 2.5.8 asks 24). */
+.plan-toggle {
+  inline-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  block-size: var(--target-min);
+  padding: 0;
+}
+
+.plan-toggle::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--i-plus) center / contain no-repeat;
+}
+
+.plan-toggle--remove::before {
+  mask-image: var(--i-minus);
+}
+
+@media (pointer: fine) {
+  .plan-toggle {
+    inline-size: 2rem;
+    min-inline-size: 2rem;
+    block-size: 2rem;
+    min-block-size: 2rem;
+  }
+}
+
+/* Paging: the same bar above and below the list, in three columns so
+   Previous and Next keep their places on every page. */
+.result-pager {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  max-inline-size: none;
+}
+
+.result-pager__jump {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.result-pager__jump input {
+  inline-size: 3.25rem;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-2);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* At 320 px the word "Page" stays for screen readers only; the box and "of N" still read as a page number. */
+@container (max-width: 22rem) {
+  .result-pager__jump > label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .result-pager .button {
+    padding-inline: var(--space-2);
+  }
+}
+
+/* The plan panel: the picks, each with what it needs indented under it. */
+.plan-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plan-panel__list > * + * {
+  margin-block-start: var(--space-3);
+}
+
+.plan-panel__list > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  cursor: pointer;
+  list-style: none;
+}
+
+.plan-panel__list > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The foldout's orange triangle (DESIGN 7.8), drawn so the bar keeps its
+   flex layout. */
+.plan-panel__list > summary::before {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.6rem;
+  margin-inline: var(--space-1);
+  background: var(--color-primary);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  transition: rotate var(--dur-1) var(--ease);
+}
+
+.plan-panel__list[open] > summary::before {
+  rotate: 90deg;
+}
+
+.plan-panel__list[data-wide] > summary {
+  display: none;
+}
+
+.plan-panel__sum {
+  flex: none;
+  font-weight: 600;
+}
+
+.plan-panel__names {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-panel__list[open] .plan-panel__names {
+  display: none;
+}
+
+.plan-tree,
+.plan-tree__deps {
+  max-inline-size: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The list scrolls inside the held card, so it holds its own visually
+   hidden text: placed in the card, that text stretched the card's scroll
+   area past the list's end and gave the card a second, dead scrollbar. */
+.plan-tree {
+  position: relative;
+}
+
+.plan-tree__pick {
+  padding-block: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.plan-tree__pick:first-child {
+  padding-block-start: 0;
+}
+
+.plan-tree__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.plan-tree__name {
+  flex: 1;
+  min-inline-size: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.plan-tree__deps .plan-tree__name {
+  font-weight: 400;
+}
+
+.plan-tree .mod-ver {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A dependency hangs off its parent by a rule, one step in per level. */
+.plan-tree__deps {
+  margin-block-start: var(--space-1);
+  margin-inline-start: var(--space-1);
+  padding-inline-start: var(--space-3);
+  border-inline-start: var(--border-width) solid var(--color-line);
+}
+
+.plan-tree__dep {
+  padding-block: var(--space-1);
+}
+
+.plan-tree__why,
+.plan-tree__note,
+.plan-tree__warn {
+  max-inline-size: none;
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.plan-tree__why {
+  color: var(--color-text-muted);
+}
+
+/* A problem is a triangle and words, never colour alone. */
+.plan-tree__warn {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  color: var(--color-warn);
+  font-weight: 600;
+}
+
+.plan-tree__warn::before {
+  content: "";
+  flex: none;
+  inline-size: 0.75rem;
+  block-size: 0.6875rem;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* Taking a mod out of the plan destroys nothing, so the cross is quiet, not red. */
+.button--icon.plan-panel__remove,
+.button--icon.plan-panel__remove:hover {
+  --icon: var(--i-close);
+}
+
+.button--icon.plan-panel__remove:hover {
+  color: var(--color-heading);
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Clearing the plan throws work away, so it reads as a quiet danger
+   action, not a plain link (DESIGN 7.1). It lines up with the card's text
+   edge: the negative margin takes back its padding. */
+.plan-panel__clear .button--quiet {
+  padding-inline: var(--space-3);
+  margin-inline-start: calc(-1 * var(--space-3));
+  border: var(--border-width) solid transparent;
+  color: var(--color-danger-text);
+  text-decoration: none;
+}
+
+.plan-panel__clear .button--quiet:hover {
+  background: var(--color-danger-bg);
+  border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+}
+
+.plan-panel__go {
+  margin: 0;
+}
+
+.plan-panel__go .button {
+  inline-size: 100%;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-panel__list > summary::before {
+    transition: none;
+  }
+}
+
+.mod-rail > summary::before {
+  content: "";
+  display: inline-block;
+  vertical-align: -0.2em;
+  margin-inline-end: var(--space-2);
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  background: currentColor;
+  mask: var(--i-settings) center / contain no-repeat;
+}
+
+.mod-rail[open]:not([data-wide]) > .split__rail {
+  margin-block-start: var(--space-3);
+}
+
+.mod-rail[data-wide] > summary {
+  display: none;
+}
+
+/* On a phone the count is a sentence that wraps, never wider than the page. */
+@media (max-width: 39.99rem) {
+  .mod-count {
+    max-inline-size: 100%;
+    white-space: normal;
+  }
+}
+
+/* A mod's version: 13 px muted figures after its name, not a chip. */
+.mod-line > .mod-ver {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A row's one action (Update to x.y.z, or Enable for a mod that is off) is
+   a framed secondary button. More is framed too on phones and touch
+   screens, where no pointer reveals a frame; on a wide screen with a fine
+   pointer it rests quiet and takes its frame under the pointer. Every target stays 44 px. */
+.mod-list .row-menu > summary.row-menu__toggle {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: none;
+  color: var(--color-text);
+}
+
+.mod-list .row-menu[open] > summary.row-menu__toggle {
+  border-color: var(--color-border);
+}
+
+@media (min-width: 64rem) {
+  .mod-rail .split__rail .actions > .button {
+    flex: none;
+    inline-size: auto;
+  }
+}
+
+@media (min-width: 64rem) and (pointer: fine) {
+  .mod-rail .split__rail .actions > .button {
+    min-block-size: 2.5rem;
+    padding-block: var(--space-1);
+  }
+}
+
+/* Mods on a phone: Update all keeps its place on the Installed mods
+   heading's row, drawn tighter (12 px sides, 14 px words, 8 px gaps) so the
+   heading, its count and the button share one line at 390 px. */
+@media (max-width: 39.99rem) {
+  .group__head:has(> #mod-update-all) {
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+
+  .group__head:has(> #mod-update-all) > h2 {
+    min-inline-size: 0;
+  }
+}
+
+/* With large text (a panel under 17rem, as 320 px at 200%) the three no
+   longer fit one line, so Update all wraps under the heading. */
+@container (max-width: 17rem) {
+  .group__head:has(> #mod-update-all) {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---- Mod titles (SPEC 9.15): the mod-name partial, a title that links to
+   the mod portal. ---- */
+/* On the Installed list the title fills the row's full-size target. */
+.mod-name > .mod-title {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/* In the plan panel the title is its own target, apart from the cross. */
+.plan-tree__name > a.mod-title {
+  display: inline-block;
+  padding-block: 0.125rem;
+}
+
+@media (pointer: coarse) {
+  .plan-tree__name > a.mod-title {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+  }
+}
+
+/* ---- Mods review page rows and offers (M2, SPEC 9.2, 9.15): a change's
+   title link, its version list and its remove cross share one row, which
+   wraps on a phone with the version kept beside its mod. ---- */
+.plan-row__text {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-row__name > a.mod-title,
+.plan-offer__name > a.mod-title {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.plan-row__version {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.plan-row__version select {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .plan-row__version select {
+    min-block-size: 2.5rem;
+  }
+}
+
+/* An offered mod: the tick box is its own target, apart from the title
+   link, so following the link never ticks it. */
+.plan-offer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.plan-offer__box {
+  flex: none;
+  min-inline-size: var(--target-min);
+  min-block-size: var(--target-min);
+  justify-content: center;
+}
+
+.plan-offer__body {
+  display: grid;
+  flex: 1 1 0;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-offer__name,
+.plan-offer__detail p {
+  margin: 0;
+}
+
+.plan-offer__of {
+  color: var(--color-text-muted);
+}
+
+.plan-offer__detail {
+  display: grid;
+  gap: var(--space-1);
+  padding-block-end: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+/* Step 2's footer is the Mods tab's last block, held to the window's foot
+   like the other steps' bars. */
+.flow-foot {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  justify-content: flex-end;
+  padding: var(--space-3) var(--card-pad);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  box-shadow: 0 -6px 16px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 35%));
+}
+
+/* In a confirmation, a footer that opens with a link before its main
+   button keeps the confirmation's extra room above it. */
+.confirm .flow-foot:has(> a:not(.button):first-child ~ :is(.button--primary, .button--danger)) {
+  padding-block-start: var(--space-4);
+}
+
+/* On step 2's review the bar ends the plan's box: across both its columns
+   and out to its edges, as a form's foot bar meets its card's. */
+.confirm form > .flow-foot {
+  grid-column: 1 / -1;
+  margin: 0 calc(-1 * max(var(--space-4), var(--card-pad))) calc(-1 * max(var(--space-4), var(--card-pad)));
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+}
+
+/* Focus is never left behind the bar (WCAG 2.4.11), as for the other bars. */
+html:has(.flow-foot) {
+  scroll-padding-block-end: 5.5rem;
+}
+
+/* On a phone its two actions stack, so the room grows with them. */
+@media (max-width: 30rem) {
+  html:has(.flow-foot) {
+    scroll-padding-block-end: min(9rem, 50dvh);
+  }
+}
+
+.flow-foot > .flow-back {
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.flow-foot > .flow-back:hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+/* Mods: Match mods to the save is a one-line notice above the installed
+   list, its words then its button, amber-edged only while the mods differ,
+   so the list people come for starts higher (DESIGN 8.11). */
+.mods-main > section:has(> #sync-heading) {
+  display: grid;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-5);
+  padding-block: var(--space-4);
+  border-inline-start: 3px solid var(--color-line-strong);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.mods-main > section:has(> .sync-diff) {
+  border-inline-start-color: var(--color-warn);
+}
+
+.mods-main > section > #sync-heading {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: var(--text-lg);
+  grid-column: 1;
+  grid-row: auto;
+  font-weight: 600;
+}
+
+.mods-main > section:has(> #sync-heading) > :is(p, ul) {
+  flex: 0 1 auto;
+  margin: 0;
+}
+
+.mods-main > section:has(> #sync-heading) > .sync-diff {
+  padding-inline-start: 0;
+  list-style: none;
+  font-weight: 600;
+}
+
+.mods-main > section:has(> #sync-heading) > p:not(#sync-state):not(:has(a)) {
+  flex-basis: 100%;
+  order: 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+  margin-block-start: var(--space-1);
+}
+
+/* A plan with picks in it is a plain plate marked by a 3 px edge in the
+   selected colour at its start (DESIGN 8.11). */
+.plan-panel:not(.plan-panel--empty) {
+  border: var(--border-width) solid var(--color-line);
+  background: var(--color-surface);
+  border-inline-start: 3px solid var(--color-selected);
+}
+
+/* ---- A heading that is a row's label, not a plate's title, takes no
+   raised band: the favourite chooser on Generate and the results line
+   before a search. */
+#main #results:not(:has(.hits, .error, .message)) > h2 {
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-weight: 600;
+}
+
+/* Before a search the results are one quiet line under Find a mod, not a
+   plate of their own. */
+#main #results:not(:has(.hits, .error, .message)) {
+  margin-block-start: calc(-1 * var(--space-3));
+  padding: 0 var(--card-pad);
+  background: none;
+  border: 0;
+}
+
+#main #results:not(:has(.hits, .error, .message)) > h2 {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+#main .plan-panel:not(.plan-panel--empty) > .plan-panel__head {
+  border-start-start-radius: 0;
+}
+
+#main .plan-panel:not(.plan-panel--empty) > .plan-panel__head > h2 {
+  color: var(--color-heading);
+}
+
+/* ---- A mod row's More is a framed button at rest, the twin of the
+   Update button beside it, so the row's actions read as one set. */
+.mod-list .row-menu > summary.row-menu__toggle:hover {
+  border-color: var(--color-border);
+}
+
+.mod-list .row-menu > summary.row-menu__toggle:hover,
+.mod-list .row-menu[open] > summary.row-menu__toggle {
+  background: var(--color-secondary-hover);
+}
+
+/* The plan's remove crosses are drawn as 28 px icon buttons in the text ink,
+   so they never weigh as much as Review, inside a full 44 px target. */
+.button--icon.plan-panel__remove {
+  position: relative;
+  isolation: isolate;
+  inline-size: var(--target-min);
+  min-block-size: var(--target-min);
+  block-size: var(--target-min);
+  margin-block: calc(-1 * var(--space-2));
+  color: var(--color-text);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.button--icon.plan-panel__remove::after {
+  content: "";
+  position: absolute;
+  inset: var(--space-2);
+  z-index: -1;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+  background: var(--color-surface);
+  border-color: var(--color-line-strong);
+}
+
+.button--icon.plan-panel__remove:hover::after {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line-strong);
+}
+
+.button--icon.plan-panel__remove::before {
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+}
+
+.mods-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.mods-main > * {
+  grid-column: 1;
+  grid-row: auto;
+}
+
+.split--mods > .mod-side {
+  display: grid;
+  align-content: start;
+  min-inline-size: 0;
+  align-self: stretch;
+}
+
+/* Without script both views show and the switch hides, so searching and
+   the plan work as plain links and forms (SPEC 9.1). */
+@media (scripting: enabled) {
+  .split--mods:has(#mods-view-installed:checked) .mods-main > :is([data-view="find"], #results),
+  .split--mods:has(#mods-view-find:checked) .mods-main > [data-view="installed"] {
+    display: none;
+  }
+}
+
+@media (scripting: none) {
+  .mods-bar > .mods-view {
+    display: none;
+  }
+}
+
+.mods-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  padding-block-end: var(--space-4);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.mods-bar .mods-find {
+  flex: 1 1 26rem;
+  max-inline-size: 44rem;
+}
+
+.mods-bar .mods-find form .field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.mods-bar .mods-find form .field > label {
+  flex: none;
+  margin: 0;
+  font-weight: 600;
+}
+
+#main .mods-bar .mods-find .inline-row {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  display: flex;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+#main .mods-bar .mods-find .inline-row > input[type="search"] {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  max-inline-size: none;
+  inline-size: 100%;
+}
+
+.mods-find__notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  margin-block-start: calc(-1 * var(--space-2));
+}
+
+.mods-find__notes > .hint {
+  margin: 0;
+}
+
+@container (min-width: 60rem) {
+  .split.split--mods {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    align-items: stretch;
+  }
+
+  .split--mods > .mod-side {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mods-bar {
+    flex-wrap: nowrap;
+  }
+}
+
+@container (min-width: 90rem) {
+  .split.split--mods {
+    grid-template-columns: minmax(0, 1fr) 28rem;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .mods-bar .mods-view {
+    display: flex;
+    inline-size: 100%;
+  }
+
+  .mods-bar .mods-view > label {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .mods-bar .mods-find form .field {
+    flex-wrap: wrap;
+  }
+}
+
+/* A row's title is the row's name: 16/600 in the heading ink, a link only
+   by its place, underlined under the pointer. */
+.mod-name .mod-title {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+a.mod-title {
+  text-decoration-color: transparent;
+}
+
+a.mod-title:hover {
+  color: var(--color-link);
+  text-decoration-color: currentColor;
+}
+
+/* ==== Mods: the switch already names the installed list and its count, so
+   the plate drops its own title (kept for screen readers) and opens with
+   the portal's summary, Update all at that line's end. */
+#main section[data-view="installed"].panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 0;
+}
+
+#main section[data-view="installed"].panel > * {
+  grid-column: 1 / -1;
+}
+
+#main section[data-view="installed"].panel > .group__head {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+#main section[data-view="installed"].panel > #mod-status {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+#main section[data-view="installed"].panel > .group__head > .group__action:not(:empty) {
+  margin-inline-start: var(--space-4);
+}
+
+/* At large text the summary and Update all cannot share a line, so each
+   takes the panel's width on its own row, Update all without its gap. */
+@container (max-width: 17rem) {
+  #main section[data-view="installed"].panel > :is(.group__head, #mod-status) {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  #main section[data-view="installed"].panel > .group__head > .group__action:not(:empty) {
+    margin-inline-start: 0;
+  }
+}
+
+@container (min-width: 60rem) {
+  .split--mods:has(> .panel + .panel) > .mod-side {
+    grid-row: 1 / span 2;
+  }
+}
+
+.mods-main > section:has(> #sync-heading) > * {
+  grid-column: 1;
+}
+
+.mods-main > section:has(> .sync-reason) {
+  border-inline-start-color: var(--color-warn);
+}
+
+.sync-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+}
+
+.sync-reason > * {
+  margin: 0;
+}
+
+.sync-reason > .sync-diff {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+  font-weight: 600;
+}
+
+/* Installed mods on a wide panel: one compact row each, the name, version
+   and actions on one line, one short note line under them. */
+@container (min-width: 36.01rem) {
+  .mod-list tbody tr {
+    padding-block: var(--space-2);
+    row-gap: 0.125rem;
+  }
+
+  .mod-list .mod-actions :is(.button, .row-menu__toggle) {
+    min-block-size: 2.25rem;
+    padding-block: 0;
+  }
+}
+
+/* Match mods to the save: each line has its own row, so nothing the
+   plate's title band rules add can push the heading under the button. */
+.mods-main > section:has(> #sync-heading) > #sync-heading {
+  grid-row: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.mods-main > section:has(> #sync-heading) > :is(.sync-reason, #sync-state, .empty) {
+  grid-row: 2;
+}
+
+.mods-main > section:has(> #sync-heading) > p:not(#sync-state, .empty) {
+  grid-row: 3;
+}
+
+.mods-main > section:has(> #sync-heading) > .actions {
+  grid-column: 2;
+  margin: 0;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+/* On a phone the button takes its own row under the text, so it never
+   covers the reason. */
+@media (max-width: 39.99rem) {
+  .mods-main > section:has(> #sync-heading) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mods-main > section:has(> #sync-heading) > .actions {
+    grid-column: 1;
+    grid-row: 4;
+  }
+}
+}

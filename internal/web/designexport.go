@@ -22,7 +22,7 @@ so they change when the templates or the stylesheet change.
 - One HTML file per component group. Its first line is a
   ` + "`<!-- @dsCard group=\"...\" -->`" + ` marker naming the card group. Each
   file shows its group twice, once in the light theme and once in the dark.
-- ` + "`foreman.css`" + ` is Foreman's stylesheet, unchanged. ` + "`vendor/`" + ` holds the
+- ` + "`foreman.css`" + ` is Foreman's stylesheet as the app serves it, joined from its parts. ` + "`vendor/`" + ` holds the
   IBM Plex fonts it loads and their licences (SIL Open Font License 1.1).
   The line icons are data URIs inside the stylesheet, from Lucide
   (` + "`vendor/LUCIDE-LICENSE.txt`" + `, ISC licence). Every link is
@@ -70,10 +70,16 @@ func ExportDesign(dir string) error {
 	if err != nil {
 		return err
 	}
-	files = append(files, "static/foreman.css")
+	css, err := stylesheet()
+	if err != nil {
+		return err
+	}
+	if err := writeExportFile(dir, stylesheetName, css); err != nil {
+		return err
+	}
 	for _, f := range files {
-		// The fonts, the stylesheet and the licences; not the scripts or SHA256SUMS.
-		if ext := path.Ext(f); ext != ".woff2" && ext != ".txt" && ext != ".css" {
+		// The fonts and the licences; not the scripts or SHA256SUMS.
+		if ext := path.Ext(f); ext != ".woff2" && ext != ".txt" {
 			continue
 		}
 		body, err := staticFS.ReadFile(f)
