@@ -99,6 +99,14 @@ type PreviewError struct {
 	ExitCode int
 	OOM      bool
 	Log      string
+	// ErrorLine is the game's first error line in the whole output, which
+	// the end in Log can miss behind a long traceback; empty when none.
+	ErrorLine string
+	// EventLine is the "Error while running event <mod>::<event>" line of
+	// the same message as ErrorLine, when ErrorLine is a mod's
+	// non-recoverable error and the event line sits next to it; empty
+	// otherwise. It names the mod a control-stage error is in.
+	EventLine string
 }
 
 func (e *PreviewError) Error() string {
@@ -574,7 +582,8 @@ func (c *Controller) runOneOff(ctx context.Context, name string, spec docker.Con
 			if cont.State.ExitCode == 0 && !cont.State.OOMKilled {
 				return nil
 			}
-			return &PreviewError{ExitCode: cont.State.ExitCode, OOM: cont.State.OOMKilled, Log: c.previewLog(id)}
+			tail, errLine, eventLine := c.previewLog(id)
+			return &PreviewError{ExitCode: cont.State.ExitCode, OOM: cont.State.OOMKilled, Log: tail, ErrorLine: errLine, EventLine: eventLine}
 		}
 		select {
 		case <-tick.C:
@@ -642,25 +651,53 @@ func (c *Controller) oneOffHostConfigMem(dir string, memory int64) docker.HostCo
 	}
 }
 
-// previewLog returns the end of a failed preview's output, as one line.
-func (c *Controller) previewLog(id string) string {
+// eventLineReach is how many lines below a mod's non-recoverable error line
+// its event line may be: the game puts it third, after "Please report this
+// error to the mod author." and a blank line.
+const eventLineReach = 3
+
+// previewLog returns the end of a failed preview's output, as one line, the
+// game's first error line in all of it, and the event line next to that
+// error line when it is a mod's non-recoverable error (PreviewError).
+func (c *Controller) previewLog(id string) (tail, errLine, eventLine string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s, err := c.docker.Logs(ctx, id, docker.LogOptions{})
 	if err != nil {
-		return ""
+		return "", "", ""
 	}
 	defer func() { _ = s.Close() }()
 	var lines []string
+	// reach is how many more lines may hold the event line.
+	reach := 0
 	for {
 		l, err := s.Next()
 		if err != nil {
 			break
 		}
-		lines = append(lines, strings.TrimSpace(l.Text))
+		line := strings.TrimSpace(l.Text)
+		switch {
+		case errLine == "":
+			if bare := strings.TrimSpace(secondsPrefix.ReplaceAllString(line, "")); errorLine.MatchString(bare) {
+				errLine = cut(bare, maxKeptText)
+				if nonRecoverableRE.MatchString(errLine) {
+					reach = eventLineReach
+				}
+			}
+		case reach > 0:
+			// The message's own lines carry no time; a timed line is the
+			// next message.
+			reach--
+			if secondsPrefix.MatchString(line) {
+				reach = 0
+			} else if eventLineRE.MatchString(line) {
+				eventLine, reach = cut(line, maxKeptText), 0
+			}
+		}
+		lines = append(lines, line)
 		lines = lines[max(0, len(lines)-5):]
 	}
-	return strings.Join(lines, " | ")
+	return strings.Join(lines, " | "), errLine, eventLine
 }
 
 // removePreview kills a preview container if it still runs, then deletes it.

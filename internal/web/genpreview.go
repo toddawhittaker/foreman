@@ -590,6 +590,9 @@ type previewInput struct {
 	// planet list could not be read.
 	sum    world.Summary
 	catErr error
+	// installed is the world's mods when catErr is set, so a failure names
+	// its mod as step 3 does (SPEC 5.6).
+	installed []world.InstalledMod
 	// mods is the world's mods key, as the store's keys hold it.
 	mods string
 }
@@ -676,6 +679,9 @@ func (s *server) readPreview(w http.ResponseWriter, r *http.Request, u store.Use
 		ok = false
 	}
 	in = previewInput{f: f, ok: ok && !f.failed() && files.Seed != nil, sum: sum, catErr: catErr}
+	if catErr != nil {
+		in.installed = s.installedMods(id)
+	}
 	if in.ok {
 		in.req = game.PreviewRequest{
 			GameVersion: sum.GameVersion, SpaceAge: spaceAge, Preset: files.Preset, Seed: *files.Seed,

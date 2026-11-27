@@ -234,10 +234,19 @@ type modSettingsFailure struct {
 var ErrModSettingsKept = errors.New("the failed run is kept until the world's mods change")
 
 // keepsFailure is whether a failed run would fail again with the same mods:
-// the game ran and failed or wrote nothing usable. A missing image, a
-// timeout, memory, a busy world or slot may pass on their own.
+// the game exited with its own error line, or wrote files that do not parse.
+// A signal exit (128 and up: a kill from outside, or memory Docker did not
+// flag), an exit without the game's error line (the script's own failure), a
+// missing output file, a missing image, a timeout, memory, a busy world or
+// slot may pass on their own.
 func keepsFailure(err error) bool {
-	return errors.Is(err, ErrModSettingsBadOutput)
+	if !errors.Is(err, ErrModSettingsBadOutput) {
+		return false
+	}
+	if pe, ok := errors.AsType[*PreviewError](err); ok {
+		return !pe.OOM && pe.ExitCode > 0 && pe.ExitCode < 128 && pe.ErrorLine != ""
+	}
+	return !errors.Is(err, fs.ErrNotExist)
 }
 
 // failure is the world's kept failure for key. mu is held.
