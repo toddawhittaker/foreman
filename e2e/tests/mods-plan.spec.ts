@@ -213,3 +213,25 @@ test("the plan's fold of mods that stay as they are opens and passes the checks"
   await expect(kept.getByText("fp-base-lib")).toBeVisible();
   await checkPage(page);
 });
+
+// SPEC 9.2, #970 and #972: an offered mod with no release for the world's
+// game line is left out with a note, never a box, and a mod already in the
+// plan is never offered back.
+test("offers fit the world and never repeat a mod in the plan", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-old-belts", "2.4.0", ["base >= 1.1"], "1.1");
+  await fakePortal!.add("fp-belts", "1.0.0", ["base >= 2.0", "+ fp-rubber"]);
+  await fakePortal!.add("fp-rubber", "2.4.6", ["base >= 2.0", "? fp-belts", "? fp-old-belts"]);
+  await setUpModsWorld(page, foreman, fakeGame!, world);
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-rubber&optional=fp-belts");
+  await expect(page.locator(`input[type=checkbox][name="optional"][value="fp-belts"]`)).toBeChecked();
+  await expect(page.locator(`input[type=checkbox][name="optional"][value="fp-old-belts"]`)).toHaveCount(0);
+  await expect(page.locator(`input[type=checkbox][name="optional"][value="fp-rubber"]`)).toHaveCount(0);
+  await expect(page.locator("#plan-unavailable")).toContainText("fp-old-belts");
+  await expect(page.locator("#plan-unavailable")).toContainText("no version for this game");
+  const dupes = await page.evaluate(() => {
+    const ids = [...document.querySelectorAll("[id]")].map((e) => e.id);
+    return ids.filter((id, i) => ids.indexOf(id) !== i);
+  });
+  expect(dupes).toEqual([]);
+  await checkPage(page);
+});

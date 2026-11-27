@@ -298,6 +298,7 @@
   "mods.plan.why.only_needed_by": "seul {mod} en avait besoin",
   "mods.recommended.legend": "Mods recommandés",
   "mods.recommended.hint": "Les mods recommandés sont déjà cochés. Décochez-en un pour ne pas l’ajouter.",
+  "mods.optional.unavailable": "{mod}, proposé par {of}, est laissé de côté : il n’a aucune version pour ce jeu, ou il créerait un conflit.",
   "mods.recommended.unavailable": "{mod}, recommandé par {of}, est laissé de côté : le portail des mods n’a aucune version qui convient.",
   "mods.unresolved.legend": "Le portail de mods n’a pas {mod} {version}",
   "mods.unresolved.hint": "La sauvegarde a été créée avec cette version. Choisissez quoi faire ; le plan ne peut pas être appliqué tant que vous n’avez pas choisi.",

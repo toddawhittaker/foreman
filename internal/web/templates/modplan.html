@@ -184,7 +184,7 @@
     {{- with .Plan.Unavailable}}
     <ul class="hint" id="plan-unavailable">
       {{- range .}}
-      <li>{{tHTML "mods.recommended.unavailable" "mod" (ident .Name) "of" (ident .Of)}}</li>
+      <li>{{if .Recommended}}{{tHTML "mods.recommended.unavailable" "mod" (ident .Name) "of" (ident .Of)}}{{else}}{{tHTML "mods.optional.unavailable" "mod" (ident .Name) "of" (ident .Of)}}{{end}}</li>
       {{- end}}
     </ul>
     {{- end}}

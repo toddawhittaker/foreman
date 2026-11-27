@@ -808,7 +808,8 @@ func TestPlanRedrawShowsAConflict(t *testing.T) {
 	id := g.world20("Base", "beta_1.0.0")
 	path := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}})
 	_, body := g.getStatus(path)
-	wantIn(t, "plan", body, `id="mod-fp-conf-optional"`, `hx-post="/worlds/`+id+`/mods/plan/redraw"`)
+	// Unticked, fp-conf would conflict, so it is left out with a note (#970).
+	wantIn(t, "plan", body, `id="plan-unavailable"`, `hx-post="/worlds/`+id+`/mods/plan/redraw"`)
 	if strings.Contains(body, `hx-swap-oob="innerHTML:#announcer"`) {
 		t.Error("a full page load announces a redraw")
 	}
@@ -822,7 +823,7 @@ func TestPlanRedrawShowsAConflict(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("redraw %d", rec.Code)
 	}
-	wantIn(t, "redraw", plain(body), "fp-conf cannot run together with beta", `id="plan-conflicts"`,
+	wantIn(t, "redraw", plain(body), "fp-conf cannot run together with beta", `id="plan-conflicts"`, `id="mod-fp-conf-optional"`,
 		`<div hx-swap-oob="innerHTML:#announcer">Plan updated: it has a conflict, so it cannot be applied.</div>`)
 	if strings.Contains(between(body, `id="mod-plan"`, `</main>`), "autofocus") {
 		t.Error("a redraw moves focus")

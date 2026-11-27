@@ -274,6 +274,7 @@
   "mods.plan.why.only_needed_by": "仅 {mod} 需要它",
   "mods.recommended.legend": "推荐模组",
   "mods.recommended.hint": "推荐的模组已默认勾选。取消勾选即可不添加。",
+  "mods.optional.unavailable": "{mod}（由 {of} 提供）未被添加：它没有适用于此游戏的版本，或会引起冲突。",
   "mods.recommended.unavailable": "{mod}（由 {of} 推荐）未被添加：模组门户没有合适的版本。",
   "mods.unresolved.legend": "模组门户没有 {mod} {version}",
   "mods.unresolved.hint": "存档是用此版本制作的。请选择处理方式；选择之前无法应用此计划。",
