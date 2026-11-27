@@ -4984,7 +4984,10 @@ selector wins, then the later rule, so the order of the component files
 matters. The shell comes last among them; the focus ring's gap closes
 `controls.css` so it shows over a control's own shadow, and the link hover
 sits in `shell.css` rather than in base so it still wins over a component
-link's resting colour.
+link's resting colour. The factory map page's own `factorymap.css`, linked
+only from that page, is unlayered, so its rules beat any layered rule
+whatever the selectors; a new rule that must beat one of its rules belongs
+in it.
 
 A rule sits in the file of what it styles. A rule that names a page's own
 class or id belongs to that page; a rule that lists containers from several
@@ -5003,7 +5006,12 @@ so:
 
 - Two rules for one selector, in the same `@media`, `@container` and
   `@supports` context, must not give one property two values. Two values in
-  one rule (a fallback, such as `100vh` then `100dvh`) are allowed.
+  one rule (a fallback, such as `100vh` then `100dvh`) are allowed. A
+  shorthand counts as the longhands it sets (`padding` meets a later
+  `padding-inline`, `background` a later `background-color`), and spacing
+  in a selector or condition is ignored (`.a>.b` is `.a > .b`).
+- The layer order `tokens.css` opens with is the distinct layers of
+  `stylesheetParts`, in order, so a part in an undeclared layer fails.
 - A spacing (margin, padding, gap), font size or border radius must use the
   token when a token names its length, in the same unit or as its pixel
   equivalent. `rawValueExceptions` in the test names each deliberate
