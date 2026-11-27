@@ -33,8 +33,8 @@
   --color-heading: light-dark(#13110e, #f8f5ef);
   --color-text-muted: light-dark(#4a443b, #b9b0a3);
   --color-text-faint: light-dark(#655d52, #a0978b);
-  --color-desk: light-dark(#2a2622, #090807);
-  --color-desk-line: light-dark(#4a443c, #2e2a25);
+  --color-desk: light-dark(#ffffff, #090807);
+  --color-desk-line: light-dark(#c9bfad, #2e2a25);
   --color-link: light-dark(#9a4800, #ffb357);
   --color-selected: light-dark(#b05a00, #f39a2a);
   --color-accent-bg: light-dark(#fdecd5, #352610);

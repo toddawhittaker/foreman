@@ -1,8 +1,10 @@
 {{define "title"}}{{t "accounts.signedout.title"}}{{end}}
 
+{{define "head-title"}}{{t "accounts.signedout.heading"}}{{end}}
+
 {{define "content" -}}
-<img class="gate-logo" src="{{static "icons/wordmark-480.webp"}}" alt="Foreman" width="288" height="89">
-<h1>{{t "accounts.signedout.heading"}}</h1>
+{{template "gate-logo"}}
+{{template "pagehead" .}}
 <div class="panel gate">
   <p>{{t "accounts.signedout.text"}}</p>
   <div class="actions">

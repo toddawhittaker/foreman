@@ -302,7 +302,6 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   line-height: 1.55;
-  color-scheme: dark;
 }
 
 /* A log line's time is quieter than its words; players joining or leaving

@@ -733,7 +733,7 @@ func TestSignInRateLimit(t *testing.T) {
 }
 
 // A busy server is a form-level message: no field is marked invalid, and
-// the message takes focus like the rate-limit one.
+// the message is a toast over the page, as the rate-limit one is.
 func TestSignInBusyIsFormLevel(t *testing.T) {
 	r := newTestRenderer(t)
 	_, body := render(t, r, pageCase{status: 503, page: SignInPage{Busy: true}})
@@ -743,8 +743,8 @@ func TestSignInBusyIsFormLevel(t *testing.T) {
 	if strings.Contains(body, "aria-invalid") {
 		t.Error("a busy page marks a field invalid")
 	}
-	if !strings.Contains(body, `id="error-summary" tabindex="-1" autofocus`) {
-		t.Error("busy message does not take focus")
+	if !strings.Contains(body, `<div class="toast toast--error" data-toast>`) {
+		t.Error("busy message is not a toast")
 	}
 }
 
@@ -946,8 +946,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 22 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, text.js, time.js, menu.js, subnav.js, about.js, live.js, the wordmark in the bar, the wordmark again in the About dialog and eight flags, found %v", found)
+	if len(found) != 23 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, text.js, time.js, menu.js, subnav.js, toast.js, about.js, live.js, the wordmark in the bar, the wordmark again in the About dialog and eight flags, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

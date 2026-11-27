@@ -1,7 +1,9 @@
 {{define "title"}}{{msg .Page.Heading}}{{end}}
 
+{{define "head-title"}}{{msg .Page.Heading}}{{end}}
+
 {{define "content" -}}
-<h1>{{msg .Page.Heading}}</h1>
+{{template "pagehead" .}}
 <div class="panel">
   <p>{{msg .Page.Explanation}}</p>
   <p class="hint">{{t "common.error.code" "code" (print .Page.Status)}}</p>

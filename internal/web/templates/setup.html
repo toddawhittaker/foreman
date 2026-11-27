@@ -1,7 +1,10 @@
 {{define "title"}}{{t "accounts.setup.title"}}{{end}}
 
+{{define "head-title"}}{{t "accounts.setup.title"}}{{end}}
+
 {{define "content" -}}
-<h1>{{t "accounts.setup.title"}}</h1>
+{{template "gate-logo"}}
+{{template "pagehead" .}}
 {{with .Page}}
 <form method="post" action="{{setupPath}}" class="panel gate" novalidate>
   {{template "summary" .Problems}}

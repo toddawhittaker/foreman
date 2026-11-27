@@ -240,7 +240,8 @@ test.describe("plural forms", () => {
       };
       for (let i = 0; i < 5; i++) await attempt(`wrong password ${i}`);
       await attempt(adminPassword);
-      const shown = await page.locator("#error-summary").innerText();
+      // The refusal is summed up in a toast over the form (DESIGN 6, "Toasts").
+      const shown = (await page.locator("#toasts .toast__text").innerText()).replace(/\s+/g, " ").trim();
       const count = Number(/\d+/.exec(shown)?.[0]);
       expect(count).toBeGreaterThan(0);
       expect(count).toBeLessThanOrEqual(15);
@@ -684,7 +685,7 @@ const matrixParts: MatrixPart[] = [
         await page.locator("#password").fill(i < 5 ? `wrong password ${i}` : adminPassword);
         await page.locator("form.panel button[type=submit]").click();
       }
-      await expect(page.locator("#error-summary")).toContainText(t("common.error.label", {}, lang));
+      await expect(page.locator("#toasts .toast")).toContainText(t("common.error.label", {}, lang));
       for (const size of textSizes) {
         await setTextSize(page, size);
         await checkCase(page, `${lang} /signin rate-limited at ${size}%`, failures);

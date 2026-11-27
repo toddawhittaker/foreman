@@ -1,8 +1,10 @@
 {{define "title"}}{{t "accounts.signin.title"}}{{end}}
 
+{{define "head-title"}}{{t "accounts.signin.title"}}{{end}}
+
 {{define "content" -}}
-<img class="gate-logo" src="{{static "icons/wordmark-480.webp"}}" alt="Foreman" width="288" height="89">
-<h1>{{t "accounts.signin.title"}}</h1>
+{{template "gate-logo"}}
+{{template "pagehead" .}}
 {{with .Page}}
 {{- if .OIDC}}
 <form method="get" action="{{.OIDCPath}}" class="panel gate">
@@ -23,15 +25,7 @@
   {{- if .OIDC}}
   <h2>{{t "accounts.signin.local.heading"}}</h2>
   {{- end}}
-  {{- if .RateLimited}}
-  <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
-    <p><strong>{{t "common.error.label"}}</strong> {{msg .RateLimitMessage}}</p>
-  </div>
-  {{- else if .Busy}}
-  <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
-    <p><strong>{{t "common.error.label"}}</strong> {{t "accounts.signin.busy"}}</p>
-  </div>
-  {{- end}}
+  {{- /* A refused attempt (too many, or too busy) is summed up in a toast over the page (DESIGN 6, "Toasts"). */}}
   {{template "summary" .Problems}}
   {{template "required-note"}}
   <div class="field">

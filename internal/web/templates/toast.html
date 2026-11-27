@@ -1,0 +1,16 @@
+{{/* The result messages that float over the page (DESIGN 6, "Toasts"), first
+     in main so the keyboard meets them before the page. Without script they
+     stay in the page's flow and keep their room. Takes the view. */}}
+{{define "toasts" -}}
+<div id="toasts" class="toasts">{{range .Toasts}}{{template "toast" .}}{{end}}</div>
+{{- end}}
+
+{{/* One message: its kind's word, its text, and a close button that needs
+     script. A message that comes after the page is this partial too, swapped
+     into #toasts. Takes Toast. */}}
+{{define "toast" -}}
+<div class="toast toast--{{if .Error}}error{{else}}success{{end}}" data-toast>
+<p class="toast__text"><strong>{{if .Error}}{{t "common.error.label"}}{{else}}{{t "common.label.done"}}{{end}}</strong> <span data-toast-text>{{msg .Text}}</span></p>
+<button type="button" class="toast__close" aria-label="{{t "server.done.close"}}" data-toast-close></button>
+</div>
+{{- end}}
