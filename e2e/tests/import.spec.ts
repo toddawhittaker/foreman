@@ -336,7 +336,11 @@ test("import folder lists have no default fieldset border", { tag: "@looks" }, a
 test("imports a world by uploading a save, and suggests its name", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   await page.goto("/import");
+  // With no folders waiting, the page opens on uploading a save.
+  await expect(page.locator("#import-pick-upload")).toBeChecked();
+  await page.locator("#import-pick-folder").check();
   await expect(page.getByText("The import folder is empty")).toBeVisible();
+  await page.locator("#import-pick-upload").check();
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Upload a save" }) });
   await form.getByLabel("Save file").setInputFiles({ name: "my save.zip", mimeType: "application/zip", buffer: emptyZip });
   await expect(form.getByLabel("World name")).toHaveValue("my save");

@@ -5,6 +5,19 @@
 // ticked is left alone. With several folders ticked the per-world fields do
 // not apply, so they are emptied and turned off (SPEC 5.5).
 document.addEventListener("DOMContentLoaded", () => {
+  // The way in last chosen comes back, as after a refused world file's
+  // "Back to Import", unless the page answers a form; a link to a form's
+  // heading chooses that form.
+  const pick = document.querySelector(".import-pick");
+  if (pick) {
+    const byHash = { "#upload-heading": "upload", "#folder-heading": "folder", "#world-file-heading": "file" };
+    const kept = sessionStorage.getItem("foreman-import-pick");
+    const want = byHash[location.hash] || (!("answer" in pick.dataset) && kept);
+    const radio = want && document.getElementById(`import-pick-${want}`);
+    if (radio) radio.checked = true;
+    pick.addEventListener("change", (e) => sessionStorage.setItem("foreman-import-pick", e.target.value));
+  }
+
   // Text from the page's #i18n block, with {name} placeholders filled in.
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const t = (key, args = {}) => strings[key].replace(/\{(\w+)\}/g, (_, name) => args[name]);

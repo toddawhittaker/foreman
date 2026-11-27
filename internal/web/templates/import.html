@@ -37,7 +37,21 @@
 {{- end}}
 {{- end}}
 
-{{- /* Uploading a save is the common way in, so it comes first (SPEC 5.1). */}}
+{{- /* Three ways in, one chosen at a time; only the chosen way's form shows.
+     Folders waiting in the import folder, or an answer about them, choose
+     that way; a world file's problem chooses that one; otherwise uploading a
+     save, the common way in (SPEC 5.1). The switch is CSS only; import.js
+     brings back the way last chosen when the page is not an answer. */}}
+{{- $pick := "upload"}}
+{{- if or .Inbox .Result .Folder.Problems}}{{$pick = "folder"}}{{end}}
+{{- if .Upload.Problems}}{{$pick = "upload"}}{{end}}
+{{- if .WorldFileProblems}}{{$pick = "file"}}{{end}}
+<fieldset class="import-pick"{{if or .Upload.Problems .WorldFileProblems .Result .Folder.Problems}} data-answer{{end}}>
+  <legend class="visually-hidden">{{t "worlds.import.title"}}</legend>
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-upload" value="upload"{{if eq $pick "upload"}} checked{{end}}><span class="pick-card__title">{{t "worlds.saves.upload.heading"}}</span><span class="pick-card__text">{{t "worlds.import.upload.intro"}}</span></label>
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-folder" value="folder"{{if eq $pick "folder"}} checked{{end}}><span class="pick-card__title">{{t "worlds.import.folder.heading"}}</span><span class="pick-card__text"><code translate="no">{{.InboxDir}}</code></span></label>
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-file" value="file"{{if eq $pick "file"}} checked{{end}}><span class="pick-card__title">{{t "worldfile.import.heading"}}</span><span class="pick-card__text">{{t "worldfile.import.intro"}}</span></label>
+</fieldset>
 <form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel import-upload" novalidate aria-labelledby="upload-heading">
   <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>
   {{template "summary" .Upload.Problems}}
@@ -53,7 +67,7 @@
   </div>
 </form>
 
-<form method="post" action="{{.FolderPath}}" class="panel" novalidate aria-labelledby="folder-heading">
+<form method="post" action="{{.FolderPath}}" class="panel import-folder" novalidate aria-labelledby="folder-heading">
   <h2 id="folder-heading">{{t "worlds.import.folder.heading"}}</h2>
   {{template "summary" .Folder.Problems}}
   <p>{{tHTML "worlds.import.folder.intro" "dir" (code .InboxDir) "zip" (code ".zip") "saves" (code "saves") "mods" (code "mods") "config" (code "config") "rconpw" (code "rconpw")}}</p>

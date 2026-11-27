@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -130,9 +131,11 @@ func TestSkippedFolderLinksToImportingItAlone(t *testing.T) {
 		t.Error("another folder is ticked")
 	}
 
+	// The page's way-in choice is a checked radio too, so only the folder boxes count.
+	folderTicked := regexp.MustCompile(`name="folder"[^>]* checked`)
 	for _, bad := range []string{"../x", ".hidden", "missing"} {
 		rec := hn.get(PathImport+"?folder="+url.QueryEscape(bad), withCookie(c))
-		if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), " checked") {
+		if rec.Code != http.StatusOK || folderTicked.MatchString(rec.Body.String()) {
 			t.Errorf("folder=%q: status %d, or a folder is ticked", bad, rec.Code)
 		}
 	}

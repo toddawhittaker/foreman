@@ -71,11 +71,6 @@
   <p><strong>{{t "common.error.label"}}</strong> {{t "settings.broken" "file" .File}}</p>
 </div>
 {{- else}}
-{{- if .Running}}
-<div class="message message--note">
-  <p><strong>{{t "common.label.note"}}</strong> {{t "settings.note.running"}}</p>
-</div>
-{{- end}}
 {{- /* Each section is a sub-page listed under Game settings in the world's page column (DESIGN 6); the others stay in the form, hidden, so a save keeps them as they are. */}}
 <div class="settings-wrap">
 <div class="settings-layout">
@@ -453,8 +448,16 @@
 </section>
 {{- end}}
 {{- end}}
-<div class="actions settings-raw-link"><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></div>
 </div>
+{{- /* What holds for the whole form sits beside it: the restart note and the file behind it. */}}
+<aside class="settings-aside">
+{{- if .Running}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "settings.note.running"}}</p>
+</div>
+{{- end}}
+<div class="actions settings-raw-link"><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></div>
+</aside>
 </div>
 </div>
 {{- end}}

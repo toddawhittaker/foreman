@@ -33,6 +33,19 @@
     <a href="{{.LogPath}}" download id="log-download" class="button">{{t "server.console.log_download"}}</a>
   </div>
   <p class="hint">{{t "server.console.log_hint" "count" .MaxLines}}</p>
+  {{- /* Finding and filtering are the script's; without it the bar stays hidden (DESIGN 8.5). */}}
+  <div class="log-tools" hidden>
+    <label for="log-find">{{t "server.console.find"}}</label>
+    <input id="log-find" class="log-tools__find" type="text" autocomplete="off" spellcheck="false">
+    <fieldset class="segmented log-tools__filter">
+      <legend class="visually-hidden">{{t "server.console.filter"}}</legend>
+      <label><input type="radio" name="log-filter" value="" checked> {{t "server.console.filter_all"}}</label>
+      <label><input type="radio" name="log-filter" value="warning"> {{t "server.console.filter_warnings"}}</label>
+      <label><input type="radio" name="log-filter" value="error"> {{t "server.console.filter_errors"}}</label>
+      <label><input type="radio" name="log-filter" value="chat"> {{t "common.nav.chat"}}</label>
+    </fieldset>
+    <label class="check log-tools__follow"><input type="checkbox" id="log-follow" checked> {{t "server.console.follow"}}</label>
+  </div>
   {{- if not .Lines}}
   <p class="empty" id="log-empty">{{t "server.console.log_empty"}}</p>
   {{- end}}

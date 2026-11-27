@@ -17,16 +17,29 @@
     // off and only reaching the end turns it back on, so a rewrap or a late
     // scroll event from our own jump can never stop the follow (DESIGN 8.5).
     let following = true;
+    // Set while the reader has turned Follow off; reaching the end then
+    // does not turn it back on.
+    let held = false;
     let lastTop = box.scrollTop;
     const readScroll = () => {
-      if (atEnd(box)) following = true;
-      else if (box.scrollTop < lastTop - 1) following = false;
+      if (atEnd(box)) {
+        if (!held) setFollowing(true);
+      }
+      else if (box.scrollTop < lastTop - 1) setFollowing(false);
       lastTop = box.scrollTop;
+    };
+    // The console's bar: find, a filter by kind of line, and Follow, which
+    // says whether the view follows and can stop or restart it.
+    const tools = pre.tagName === "PRE" ? frame.parentElement.querySelector(".log-tools") : null;
+    const follow = tools?.querySelector("#log-follow");
+    const setFollowing = (on) => {
+      following = on;
+      if (follow) follow.checked = on;
     };
     const toEnd = () => {
       box.scrollTop = box.scrollHeight;
       lastTop = box.scrollTop;
-      following = true;
+      setFollowing(true);
       jump.hidden = true;
     };
     const keepEnd = () => {
@@ -115,6 +128,35 @@
       return el;
     };
     const row = "logHtml" in frame.dataset ? parsed : span;
+
+    // A line shows when it is of the chosen kind and holds the words looked for.
+    const kindOf = (line) => {
+      if (line.classList.contains("log-error")) return "error";
+      if (line.classList.contains("log-warning")) return "warning";
+      return / \[CHAT\] /.test(line.textContent) ? "chat" : "";
+    };
+    const sift = (line) => {
+      if (!tools) return line;
+      const kind = tools.querySelector("input[name=log-filter]:checked")?.value || "";
+      const words = tools.querySelector("#log-find").value.trim().toLowerCase();
+      line.hidden = (kind !== "" && kindOf(line) !== kind) || (words !== "" && !line.textContent.toLowerCase().includes(words));
+      return line;
+    };
+    if (tools) {
+      tools.hidden = false;
+      const siftAll = () => {
+        for (const line of pre.children) sift(line);
+        keepEnd();
+      };
+      tools.addEventListener("input", (e) => {
+        if (e.target !== follow) siftAll();
+      });
+      follow.addEventListener("change", () => {
+        held = !follow.checked;
+        if (follow.checked) toEnd();
+        else setFollowing(false);
+      });
+    }
     const noEmptyNote = (lines) => {
       if (lines.length > 0) document.getElementById("log-empty")?.remove();
     };
@@ -123,7 +165,7 @@
     // bottom follows them. Focus is never touched.
     const add = (lines) => {
       readScroll();
-      pre.append(...lines.map(row));
+      pre.append(...lines.map((l) => sift(row(l))));
       while (pre.childElementCount > max) pre.firstElementChild.remove();
       if (row === span) markDays();
       noEmptyNote(lines);
@@ -135,7 +177,7 @@
     const reset = (lines) => {
       readScroll();
       const top = box.scrollTop;
-      pre.replaceChildren(...lines.slice(-max).map(row));
+      pre.replaceChildren(...lines.slice(-max).map((l) => sift(row(l))));
       if (row === span) markDays();
       noEmptyNote(lines);
       if (following) toEnd();
@@ -157,6 +199,7 @@
     document.fonts?.addEventListener("loadingdone", keepEnd);
     document.fonts?.ready.then(keepEnd);
     jump.addEventListener("click", () => {
+      held = false;
       toEnd();
       // The button is about to disappear; keep the keyboard on the log.
       box.focus();

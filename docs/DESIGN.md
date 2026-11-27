@@ -117,12 +117,12 @@ a phone can find where a page and a section start.
 | Token | Size | Line height | Weight | Use |
 |---|---|---|---|---|
 | `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | Column names and fact names (Plex Sans, sentence case, `text-muted`), hints (weight 400, a 1.5 line height, 66ch), badges, a mod's portal news line, figures in table cells (Plex Mono); the game log below 40rem |
-| `--text-sm` | 0.875rem (14 px) | 1.43 | 400 | A card's one-line description under its heading (a 1.5 line height, 60ch), table captions, timestamps, the log and console, labels (600), state badges (600), units beside a figure, breadcrumbs (500) |
+| `--text-sm` | 0.8125rem (13 px) | 1.43 | 400 | A card's one-line description under its heading (a 1.5 line height, 60ch), table captions, timestamps, the log and console, labels (600), state badges (600), units beside a figure, breadcrumbs (500) |
 | `--text-md` | 0.9375rem (15 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells, row titles (600) |
-| `--text-lg` | 1.125rem (18 px) | 1.333 | 650 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
+| `--text-lg` | 1rem (16 px) | 1.375 | 600 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
 | `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings; the Server plate's figures on a phone |
 | `--text-2xl` | 1.5rem (24 px) | 1.167 | 600 | Stat figures: the Server plate's gauges, tabular |
-| `--text-3xl` | 1.75rem (28 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
+| `--text-3xl` | 1.875rem (30 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
 
 Column names (table heads and the heads of the world, token and user
 lists) and fact names (`dt`) are labels set apart from content by colour
@@ -203,11 +203,11 @@ dialog (black at 50%) and the shadows' own values (4).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#121110` | `#e3ddd1` | The page |
-| `--color-surface` | `#1c1a17` | `#fffdf9` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#282521` | `#f0eadf` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-bg` | `#0e0d0c` | `#ebe6dd` | The page |
+| `--color-surface` | `#1b1916` | `#ffffff` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#2a2722` | `#f4f0e9` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
 | `--color-deep` | `#0b0a09` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#3d3934` | `#d2c8b6` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-line` | `#403b35` | `#d9d1c3` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
 | `--color-line-strong` | `#5a534b` | `#aa9f8a` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |

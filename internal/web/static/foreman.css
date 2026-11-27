@@ -97,21 +97,22 @@
     "Segoe UI Mono", "DejaVu Sans Mono", "Liberation Mono", Menlo, Consolas,
     monospace;
 
-  /* Seven steps, one job each: overline, hint, body, group heading,
-     section heading, figure, page title. */
+  /* Six sizes, each a role apart: 13 for labels (600) and help or
+     metadata (400), 15 body, 16 row titles, 20 plate titles, 24 figures,
+     30 the page title. */
   --text-xs: 0.8125rem;
-  --text-sm: 0.875rem;
+  --text-sm: 0.8125rem;
   --text-md: 0.9375rem;
-  --text-lg: 1.125rem;
+  --text-lg: 1rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
-  --text-3xl: 1.75rem;
+  --text-3xl: 1.875rem;
 
-  --color-bg: light-dark(#e3ddd1, #121110);
-  --color-surface: light-dark(#fffdf9, #1c1a17);
-  --color-raised: light-dark(#f0eadf, #282521);
+  --color-bg: light-dark(#ebe6dd, #0e0d0c);
+  --color-surface: light-dark(#ffffff, #1b1916);
+  --color-raised: light-dark(#f4f0e9, #2a2722);
   --color-deep: light-dark(#ffffff, #0b0a09);
-  --color-line: light-dark(#d2c8b6, #3d3934);
+  --color-line: light-dark(#d9d1c3, #403b35);
   --color-line-strong: light-dark(#aa9f8a, #5a534b);
   --color-border: light-dark(#80766a, #857c70);
   --color-text: light-dark(#1c1915, #ece7df);
@@ -1218,7 +1219,7 @@ main > .panels > .panels > .panel,
 .mod-side > .panel,
 .mod-settings > .panel,
 .mod-settings > .panels > .panel,
-.settings-main > .panel,
+.settings-main > .panel, .gen-start > .panel,
 .card {
   position: relative;
   padding: var(--card-pad);
@@ -1243,7 +1244,7 @@ main > .panels > .panels > .panel,
   .mod-side > .panel,
   .mod-settings > .panel,
   .mod-settings > .panels > .panel,
-  .settings-main > .panel,
+  .settings-main > .panel, .gen-start > .panel,
   .card {
     padding: var(--space-4) 0 0;
     background: none;
@@ -12601,14 +12602,14 @@ h1 {
   letter-spacing: -0.01em;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) {
   border-radius: var(--radius-lg);
   box-shadow: none;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):first-child,
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(h2:not(.visually-hidden), .section-head, .group__head),
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(input[type="hidden"], [hidden]) + :is(h2:not(.visually-hidden), .section-head, .group__head) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):first-child,
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(h2:not(.visually-hidden), .section-head, .group__head),
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(input[type="hidden"], [hidden]) + :is(h2:not(.visually-hidden), .section-head, .group__head) {
   min-block-size: 3rem;
   margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-1);
   padding: var(--space-3) var(--card-pad);
@@ -12620,7 +12621,7 @@ h1 {
   line-height: 1.3;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(.section-head, .group__head):is(:first-child, :is(input[type="hidden"], [hidden]) + *) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(.section-head, .group__head):is(:first-child, :is(input[type="hidden"], [hidden]) + *) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12635,7 +12636,7 @@ h1 {
 
 /* Below 360 px plates lie flat, so the band does too. */
 @media (max-width: 22.4rem) {
-  :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(h2:not(.visually-hidden), .section-head):first-child {
+  :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(h2:not(.visually-hidden), .section-head):first-child {
     margin: 0;
     padding-inline: 0;
     background: none;
@@ -13165,7 +13166,7 @@ main > h1 + p.hint,
   border-block-end-color: var(--color-desk-line);
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) {
   box-shadow: 0 1px 0 light-dark(rgb(60 45 25 / 10%), transparent);
 }
 
@@ -13408,6 +13409,7 @@ html:has(.large-view[open]) > body {
   .large-view[data-starmap] .large-view__body:has(> .large-view__settings:not([hidden])) .large-view__edge--prev {
     inset-inline-start: calc(38rem + var(--space-4) + var(--space-2));
   }
+
 }
 
 .large-view__frame {
@@ -13944,5 +13946,755 @@ form.general-grid.setting-rows > .required-note {
 
   #main .save-list > tbody > tr > td.save-load:empty {
     display: none;
+  }
+}
+
+/* ==== Type roles, one step apart each: labels 13/600 in the muted ink,
+   help and metadata 13/400 in the faint ink, body and controls 15/400,
+   row titles 16/600, plate titles 20/650, the page title 30/700 (DESIGN 2). */
+:where(main) :is(td, th, time, dd, .num, .count, .badge, .state, .step__value, .mod-ver, .stat) {
+  font-variant-numeric: tabular-nums;
+}
+
+.hint,
+main > h1 + p.hint,
+.panel > :is(h2, .section-head) + .hint,
+.panel > :is(h2, .section-head) + :is(p.hint, p:not([class])),
+:not(.js-on) .tip__text {
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* A page's description is body text, one line at a wide measure. */
+.page-intro {
+  max-inline-size: 110ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+}
+
+main thead th {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+/* A row's title is the row's name: 16/600 in the heading ink, a link only
+   by its place, underlined under the pointer. */
+.save-name > a,
+.mod-name .mod-title,
+.token-card__title,
+.favorite__name,
+.worlds > li > h2 > a,
+.worlds > li h2 {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.save-name > a,
+a.mod-title,
+.worlds > li h2 > a {
+  text-decoration-color: transparent;
+}
+
+.save-name > a:hover,
+a.mod-title:hover,
+.worlds > li h2 > a:hover {
+  color: var(--color-link);
+  text-decoration-color: currentColor;
+}
+
+.save-name .save-file {
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+}
+
+/* A column name with its (i): the word, then the button, on one line. */
+.th-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ==== General settings: the groups as rows of one plate, two columns on a
+   wide screen, each group as tall as its own content; a rule over each
+   group, never a box inside the plate. */
+form.general-grid.setting-rows {
+  gap: 0 var(--space-6);
+  align-items: start;
+}
+
+form.general-grid.setting-rows > .setting-row {
+  align-self: start;
+  padding: var(--space-5) 0;
+  background: none;
+  border: 0;
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-radius: 0;
+}
+
+form.general-grid.setting-rows > .setting-row .setting-row__body {
+  gap: var(--space-3);
+}
+
+form.general-grid.setting-rows .setting-row__head .hint {
+  margin: 0;
+}
+
+form.general-grid.setting-rows > .required-note,
+form.general-grid.setting-rows > p:first-child {
+  margin-block-end: var(--space-3);
+}
+
+form.general-grid.setting-rows > .form-foot {
+  margin-block-start: 0;
+}
+
+@container (min-width: 52rem) {
+  form.general-grid.setting-rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 84rem) {
+  form.general-grid.setting-rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--space-6);
+  }
+
+  /* Inside a wide column a group's name and help sit beside its fields. */
+  form.general-grid.setting-rows > .setting-row {
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+/* ==== A segmented control is as wide as its segments; a button as wide as
+   its words. Only a phone stretches either across the column. */
+@media (min-width: 40rem) {
+  .subnav .subnav__sub {
+    display: inline-flex;
+    flex: 0 0 auto;
+    order: 2;
+    inline-size: max-content;
+    max-inline-size: 100%;
+    gap: 2px;
+    padding: 3px;
+    margin-block: var(--space-3);
+    background: var(--color-deep);
+    border: var(--border-width) solid var(--color-line-strong);
+    border-radius: var(--radius-lg);
+  }
+
+  .subnav ul:has(.subnav__sub)::after {
+    content: "";
+    flex: 0 0 100%;
+    order: 1;
+  }
+
+  .subnav .subnav__sub a,
+  .subnav .subnav__sub a[aria-current] {
+    min-block-size: 2.25rem;
+    margin: 0;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+  }
+
+  .subnav .subnav__sub li + li a {
+    margin-inline-start: 0;
+  }
+
+  .subnav .subnav__sub a[aria-current] {
+    background: var(--color-accent-bg);
+    box-shadow: inset 0 -2px 0 var(--color-selected);
+  }
+
+  .actions > .button,
+  .actions > form > .button {
+    flex: 0 0 auto;
+  }
+
+  .split__rail .actions,
+  .card .actions {
+    justify-content: flex-start;
+  }
+}
+
+/* ==== The guided Generate's header: the title and the step bar share one
+   row on a wide screen, the description one line under them. */
+.flow-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.flow-head > h1 {
+  margin: 0;
+}
+
+.flow-head > .flow-steps {
+  flex: 0 1 40rem;
+  min-inline-size: min(100%, 20rem);
+}
+
+.flow-head > .flow-steps ol {
+  max-inline-size: none;
+}
+
+/* ==== Map settings: Preset, Seed and Fill from a map exchange string on
+   one row; each resource one row, its name in a start column and its three
+   sliders beside it, so a planet's controls fit a screen. */
+@container generate (min-width: 62rem) {
+  #map-section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0 var(--space-5);
+  }
+
+  #map-section > #line-box {
+    display: contents;
+  }
+
+  #map-section > *,
+  #map-section > #line-box > * {
+    grid-column: 1 / -1;
+  }
+
+  #map-section > #line-box > .mode-panel--settings:not(#map-settings) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* The summary stands on the controls' line: the preset and seed grid
+     keeps one row gap under its controls for an error. */
+  #map-section > #exchange-fill {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    margin: 0 0 var(--space-4);
+  }
+
+  #map-section > #exchange-fill > summary {
+    display: flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+    white-space: nowrap;
+  }
+
+  #map-section > #exchange-fill[open] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-block: var(--space-4) 0;
+  }
+
+  #map-section > #line-box > #map-key-box:not(:has(> :not(input))) {
+    display: none;
+  }
+
+  #map-section > #line-box > #map-settings {
+    margin-block-start: var(--space-4);
+  }
+}
+
+@container map-section (min-width: 46rem) {
+  .js-on #map-settings .autoplace {
+    grid-template-columns: 11rem repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: var(--space-1) var(--space-5);
+    padding-block: var(--space-3);
+  }
+
+  .js-on #map-settings .autoplace > legend {
+    float: inline-start;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: center;
+    inline-size: auto;
+    margin: 0;
+  }
+
+  .js-on #map-settings .autoplace > :is(.autoplace__also, .hint) {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+
+  .js-on #map-settings .autoplace--all {
+    padding-block-end: var(--space-3);
+  }
+
+  .js-on #map-settings .autoplace .step {
+    row-gap: 0;
+  }
+}
+
+/* The preview starts level with the first row of settings and stays in view. */
+@container generate (min-width: 62rem) {
+  .gen-grid {
+    align-items: start;
+  }
+}
+
+/* ==== Game settings: the form at a working width, and beside it what
+   applies to all of it (the restart note) and the file behind it. */
+.settings-aside {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-inline-size: 0;
+}
+
+.settings-aside > .message,
+.settings-aside > .actions {
+  margin: 0;
+}
+
+@container settings (min-width: 72rem) {
+  .settings-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  .settings-aside {
+    position: sticky;
+    inset-block-start: var(--space-4);
+  }
+}
+
+/* A section's fields keep a working width rather than the plate's. */
+@container settings (min-width: 52rem) {
+  .settings-main .setting-row__body {
+    max-inline-size: 60rem;
+  }
+}
+
+/* ==== Generate a world: the world's form leads at a working width; starting
+   from a favorite is a side plate beside it. */
+@media (min-width: 80rem) {
+  .gen-start {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  .gen-start > #favorite-chooser {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .gen-start > #generate-form {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .gen-start > form#favorite-chooser {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .gen-start > form#favorite-chooser > * {
+    grid-column: 1;
+  }
+
+  .gen-start > #favorite-chooser > .actions {
+    justify-content: flex-start;
+  }
+
+  #main .gen-start > #favorite-chooser > h2 {
+    min-block-size: 3rem;
+    margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-1);
+    padding: var(--space-3) var(--card-pad);
+    background: var(--color-raised);
+    border-block-end: var(--border-width) solid var(--color-line-strong);
+    border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+    font-size: var(--text-xl);
+    font-weight: 650;
+    line-height: 1.3;
+  }
+
+  .gen-start > #favorite-chooser .inline-row {
+    flex-wrap: wrap;
+  }
+
+  /* Name beside version, as the form has the room. */
+  .gen-start .gen-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ==== Restart schedule: the settings at a working width, how a restart
+   works beside them as a side plate that runs to the plate's edge. */
+@media (min-width: 72rem) {
+  form.panel.setting-row:has(#schedule-how-heading) {
+    grid-template-columns: minmax(0, 36rem) minmax(0, 1fr);
+    column-gap: var(--space-6);
+  }
+
+  form.panel.setting-row:has(#schedule-how-heading) > .setting-row__head {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+    margin-block-start: calc(-1 * var(--card-pad));
+    margin-inline-end: calc(-1 * var(--card-pad));
+    padding: var(--space-5);
+    background: var(--color-raised);
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+
+  form.panel.setting-row:has(#schedule-how-heading) > .setting-row__head ol {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: 72ch;
+    color: var(--color-text-muted);
+    font-size: var(--text-md);
+    line-height: 1.5;
+  }
+
+  form.panel.setting-row:has(#schedule-how-heading) > .setting-row__body {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  form.panel.setting-row:has(#schedule-how-heading) > .form-foot {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ==== Plates that hold only a short text keep a reading width. */
+@media (min-width: 72rem) {
+  main > .panel.setting-rows:not(form) {
+    max-inline-size: 72rem;
+  }
+}
+
+/* ==== Mods: the switch already names the installed list and its count, so
+   the plate drops its own title (kept for screen readers) and opens with
+   the portal's summary, Update all at that line's end. */
+#main section[data-view="installed"].panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-4);
+}
+
+#main section[data-view="installed"].panel > * {
+  grid-column: 1 / -1;
+}
+
+#main section[data-view="installed"].panel > .group__head {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+#main section[data-view="installed"].panel > #mod-status {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+section[data-view="installed"] > .group__head > :is(h2#installed-heading, .count) {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The plan's remove control is a framed 28 px button at rest, inside a
+   44 px target. */
+.button--icon.plan-panel__remove::after {
+  background: var(--color-surface);
+  border-color: var(--color-line-strong);
+}
+
+.button--icon.plan-panel__remove {
+  color: var(--color-text);
+}
+
+/* ==== Server: every stat value on one size and one baseline. */
+.status-card .play-time dd,
+.status-card .facts.stat-grid dd {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 1.167;
+}
+
+/* ==== Phone: the live world's name is never cut. The account button shows
+   the person only (the language is in the menu and in its name), and the
+   wordmark steps down so the name has the room. Sharing a world (its map
+   string first) comes straight after the facts. */
+@media (max-width: 39.99rem) {
+  .site > .product img {
+    block-size: 30px;
+  }
+
+  .site > .menu summary:has(.menu__user) .menu__lang {
+    display: none;
+  }
+
+  .site-strip .site-world,
+  .site-strip:has(.site-state:not(:empty)) .site-world {
+    overflow: visible;
+    overflow-wrap: normal;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .world-layout__side {
+    order: -1;
+  }
+}
+
+/* The Load next column's name is for screen readers, but its cell is
+   drawn, so the header's rule runs under every column. */
+@media (min-width: 40rem) {
+  .save-list th.visually-hidden {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    clip-path: none;
+    color: transparent;
+    white-space: nowrap;
+  }
+}
+
+/* An autosave's time is part of its title, so it takes the title's type. */
+.save-name .save-label time {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+/* ==== Import: three ways in as choice cards, then only the chosen way's
+   form. Each card names the way and what it brings. */
+.import-pick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+@media (min-width: 48rem) {
+  .import-pick {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+}
+
+.pick-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-1) var(--space-3);
+  min-block-size: var(--target-min);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: 400;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
+}
+
+.pick-card:hover {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-raised) 50%, var(--color-surface));
+}
+
+.pick-card > input {
+  grid-row: 1 / span 2;
+  margin-block-start: 0.125rem;
+}
+
+.pick-card__title {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.pick-card__text {
+  grid-column: 2;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.pick-card:has(:checked) {
+  background: var(--color-accent-bg);
+  border-color: var(--color-selected);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+.pick-card:has(:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+main:has(#import-pick-upload:not(:checked)) form.import-upload,
+main:has(#import-pick-folder:not(:checked)) form.import-folder,
+main:has(#import-pick-file:not(:checked)) form.import-world-file {
+  display: none;
+}
+
+/* The chosen card already says what its form does. */
+main:has(.import-pick) form:is(.import-upload, .import-world-file) > p:not([class]):first-of-type {
+  display: none;
+}
+
+/* ==== The console's bar over the game log: find, the kinds of line, and
+   Follow, on one 40 px row; the log itself 14/22 Plex Mono. */
+.log-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.log-tools[hidden] {
+  display: none;
+}
+
+.log-tools > label[for="log-find"] {
+  margin-inline-end: calc(-1 * var(--space-2));
+  color: var(--color-text-muted);
+}
+
+.log-tools__find {
+  flex: 1 1 14rem;
+  max-inline-size: 24rem;
+  min-block-size: 2.5rem;
+}
+
+.log-tools > .log-tools__filter {
+  flex: none;
+}
+
+.log-tools > .log-tools__follow {
+  margin-inline-start: auto;
+}
+
+@media (max-width: 39.99rem) {
+  .log-tools__find {
+    flex-basis: 100%;
+    max-inline-size: none;
+  }
+
+  .log-tools > .log-tools__follow {
+    margin-inline-start: 0;
+  }
+}
+
+.terminal .log-frame > .log {
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+
+.terminal .log-frame > .log pre > span[hidden][hidden] {
+  display: none;
+}
+
+/* Warnings and errors carry a 3 px leading edge in their own colour. */
+.terminal .log-frame > .log pre > :is(.log-warning, .log-error) {
+  margin-inline: calc(-1 * var(--card-pad)) 0;
+  padding-inline-start: calc(var(--card-pad) - 3px);
+  box-shadow: inset 3px 0 0 currentColor;
+}
+
+/* A table's row header is that row's title. */
+main tbody th[scope="row"] {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+main tbody th[scope="row"] .hint {
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+/* Every cell of the players table closes on the same rule, the last row too. */
+#save-players-table :is(thead, tbody) :is(th, td) {
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+/* Emergency actions is a quiet framed button with a chevron, red once open. */
+.disclosure.emergency > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 2.25rem;
+  margin: 0;
+  padding: 0 var(--space-3);
+  list-style: none;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.disclosure.emergency > summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure.emergency > summary::marker {
+  content: "";
+}
+
+.disclosure.emergency > summary::before {
+  content: none;
+}
+
+.disclosure.emergency > summary::after {
+  content: "";
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+  transform: rotate(90deg);
+  transition: transform var(--dur-1) var(--ease);
+}
+
+.disclosure.emergency[open] > summary {
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+
+.disclosure.emergency[open] > summary::after {
+  transform: rotate(-90deg);
+}
+
+@media (pointer: coarse) {
+  .disclosure.emergency > summary {
+    min-block-size: var(--target-min);
+  }
+}
+
+/* A hint under a field in a wide column runs to a longer line, so most
+   take one. */
+@media (min-width: 64rem) {
+  .field > .hint,
+  .setting-row__body .hint {
+    max-inline-size: 100ch;
   }
 }
