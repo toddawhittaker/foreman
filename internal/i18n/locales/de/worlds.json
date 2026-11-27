@@ -127,6 +127,7 @@
   "worlds.import.space_age_off_warning": "Der Speicherstand wurde mit Space Age erstellt. Ohne Space Age lädt Factorio ihn möglicherweise nicht oder entfernt dessen Space-Age-Inhalte.",
   "worlds.import.space_age_on_warning": "Der Speicherstand wurde ohne Space Age erstellt. Factorio wandelt ihn beim ersten Start in Space Age um, und das lässt sich nicht rückgängig machen.",
   "worlds.import.title": "Welt importieren",
+  "worlds.import.pick.legend": "Art des Imports",
   "worlds.import.unimportable.clash": "der Speicherstand {name} liegt sowohl im Ordner als auch in dessen Ordner „saves“, daher ist unklar, welcher importiert werden soll. Entferne oder benenne einen von beiden um",
   "worlds.import.unimportable.heading": "Kann nicht importiert werden",
   "worlds.import.unimportable.no_save": "kein Speicherstand auf der obersten Ebene oder in einem Ordner „saves“, daher kann er nicht importiert werden",

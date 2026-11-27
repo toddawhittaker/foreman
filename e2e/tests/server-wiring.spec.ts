@@ -102,8 +102,9 @@ test("at 320 px and 200% text the header keeps the menu's words whole", { tag: "
       return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size;
     });
   expect(await lines("details.menu .menu__user")).toBe(1);
-  expect(await lines("details.menu .menu__lang")).toBe(1);
+  // On a phone the button shows the user only; the language is the open menu's first row.
   await openMenu(page);
+  expect(await lines("details.menu .menu__langs > summary .menu__name")).toBe(1);
   const out = page.getByRole("button", { name: "Sign out" });
   expect((await out.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   const size = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));

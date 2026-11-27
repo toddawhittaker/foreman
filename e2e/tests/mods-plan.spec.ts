@@ -64,7 +64,7 @@ test.describe("the review of picks from the Mods tab", () => {
 
     await page.getByRole("link", { name: "Cancel, change nothing" }).click();
     await expect(page).toHaveURL(/\/worlds\/base\/mods$/);
-    await expect(panel(page).locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
+    await expect(panel(page).locator(".plan-panel__sum")).toHaveText("3 mods in the plan");
     await expect(panel(page).getByRole("link", { name: "Review and install 3 mods" })).toBeVisible();
   });
 

@@ -213,6 +213,37 @@ test("a slider's value is not announced, and the slider names its step", { tag: 
   await expect(range).toHaveAttribute("aria-valuetext", words);
 });
 
+// WCAG 1.4.1, 1.4.11: a step off its preset is marked by a dot in the
+// selected colour, and says so in the slider's description, which goes again
+// once the step is back at the preset.
+test("a step off its preset says so in its description, and the mark goes when it is back", { tag: "@looks" }, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openNewMap(page);
+  const range = page.locator("#mg-nauvis-iron-ore-frequency-range");
+  const step = page.locator(".step", { has: range });
+  await expect(range).toBeVisible();
+  await expect(range).not.toHaveAccessibleDescription(/Changed from the preset/);
+  await expect(step).not.toHaveAttribute("data-changed");
+  await range.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(step).toHaveAttribute("data-changed", "");
+  await expect(range).toHaveAccessibleDescription(/Changed from the preset/);
+  await expect(page.locator("#mg-nauvis-iron-ore-frequency")).toHaveAccessibleDescription(/Changed from the preset/);
+  const dot = await page.locator("#mg-nauvis-iron-ore-frequency-value").evaluate((el) => getComputedStyle(el, "::before").backgroundColor);
+  const selected = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--color-selected)";
+    document.body.append(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    return c;
+  });
+  expect(dot).toBe(selected);
+  await page.keyboard.press("ArrowLeft");
+  await expect(step).not.toHaveAttribute("data-changed");
+  await expect(range).not.toHaveAccessibleDescription(/Changed from the preset/);
+});
+
 // A resource's on/off box is a control: its name keeps full strength while
 // off, and only the settings it turns off grey.
 test("an off box keeps its name at full strength and greys its settings", { tag: "@looks" }, async ({ page }) => {

@@ -20,8 +20,8 @@ const fakeIdPBinary = join(import.meta.dirname, "..", "..", "bin", "fakeidp");
 
 // SPEC 17.1 names WCAG 2.2 AA.
 // The page background, --color-bg, in each theme (DESIGN 3, "Tokens").
-export const darkBg = "rgb(19, 18, 16)";
-export const lightBg = "rgb(233, 227, 214)";
+export const darkBg = "rgb(14, 13, 12)";
+export const lightBg = "rgb(229, 223, 212)";
 
 export const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
@@ -712,10 +712,8 @@ export async function expectFollowed(page: Page, sentence: string) {
 
 // The Snapshots selection bar, Generate's action bar and the save bars of
 // long forms stick to the window's foot (DESIGN 6, "The 320 px rules", rule
-// 7), and from 64rem the status strip, the rail's logo cell and the user menu
-// stick to its top (DESIGN 6, Shell). So at some scroll positions one lies
-// over a control (a row's, or a rail link scrolled up under the logo) and
-// axe's target-size rule counts that control as partly covered.
+// 7). So at some scroll positions one lies over a control and axe's
+// target-size rule counts that control as partly covered.
 // That is not a barrier: a pointer user scrolls the control out from under the
 // bar, and the page's scroll-padding keeps a focused control clear of it
 // (WCAG 2.4.11, tested per bar in sticky-bars.spec.ts). So a target-size
@@ -723,7 +721,7 @@ export async function expectFollowed(page: Page, sentence: string) {
 // small, the control's own box is at least 24 by 24 px, and it lies under one
 // of those bars while the bar is sticky. Every other finding still fails.
 // Todd approved this exception on 2026-11-13.
-const stickyBars = ".select-bar, .generate > .gen-actions, .form-foot, .flow-foot, .site-strip, .site > .product, .site > .menu";
+const stickyBars = ".select-bar, .generate > .gen-actions, .form-foot, .flow-foot";
 type AxeCheck = { id: string; data?: unknown };
 type AxeNode = { target: unknown[]; any?: AxeCheck[]; all?: AxeCheck[]; none?: AxeCheck[] };
 type AxeViolation = { id: string; nodes: AxeNode[] };
@@ -896,7 +894,18 @@ export async function openPlanetRow(page: Page, planet = "nauvis") {
 
 // The rarer Mods tools (match to the save, upload, mod settings) sit in a
 // disclosure that is closed on a phone and always open on a wide window.
+// The Mods tab shows one of two views, picked by its segmented control
+// (DESIGN 8.11): Installed mods (Match, the list and the tools) or Find a
+// mod (the results). Typing a search shows Find a mod by itself.
+export async function showModsView(page: Page, view: "installed" | "find") {
+  const radio = page.locator(`#mods-view-${view}`);
+  if (await radio.isChecked()) return;
+  await page.locator(`label:has(#mods-view-${view})`).click();
+  await expect(radio).toBeChecked();
+}
+
 export async function openModTools(page: Page) {
+  await showModsView(page, "installed");
   const tools = page.locator("#mod-tools");
   // A wide window opens it by script, so wait for that instead of clicking.
   if ((page.viewportSize()?.width ?? 1280) >= 1024) return expect(tools).toHaveJSProperty("open", true);

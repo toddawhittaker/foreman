@@ -11,20 +11,22 @@
 <noscript><meta http-equiv="refresh" content="0; url={{.Page.WaitPath}}"></noscript>
 {{- end}}{{end}}
 
-{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .World.Name "" (t "newmap.title"))}}
+<div class="flow-head">
 <h1 id="newmap-heading" tabindex="-1">{{t "newmap.title"}}</h1>
-{{template "rail" $}}
+{{- if .Why.IsZero}}
+{{template "genflow-steps" .Steps}}
+{{- end}}
+</div>
 {{- if not .Why.IsZero}}
 <div class="message message--note" id="newmap-why">
   <p><strong>{{t "common.label.note"}}</strong> {{msg .Why}}</p>
 </div>
 <div class="actions"><a href="{{.WorldPath}}" class="button button--primary" id="newmap-to-world">{{t "newmap.to_world"}}</a></div>
 {{- else}}
-{{template "genflow-steps" .Steps}}
 <p class="page-intro">{{t "newmap.intro" "name" .World.Name}}</p>
 {{- if .Skipped}}
 <p class="hint" id="newmap-skipped">{{t "newmap.modsettings.skipped"}}</p>

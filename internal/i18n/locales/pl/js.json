@@ -19,6 +19,7 @@
   "js.generate.ach_setting": "{setting} wyłącza niektóre osiągnięcia.",
   "js.generate.ach_clear": "Teraz żadne ustawienie nie wyłącza osiągnięć.",
   "js.generate.moved": "{field}: ustawiono {value}, aby zakres pozostał prawidłowy.",
+  "js.generate.changed": "Zmienione względem zestawu ustawień",
   "js.generate.all_set": {
     "one": "{setting}: ustawiono {value} dla {count} zasobu.",
     "few": "{setting}: ustawiono {value} dla {count} zasobów.",
@@ -41,5 +42,10 @@
     "one": "{count} niezapisana zmiana, zachowana przy przechodzeniu między sekcjami.",
     "few": "{count} niezapisane zmiany, zachowane przy przechodzeniu między sekcjami.",
     "many": "{count} niezapisanych zmian, zachowanych przy przechodzeniu między sekcjami."
+  },
+  "js.console.shown": {
+    "one": "Pokazano {shown} z {count} wiersza",
+    "few": "Pokazano {shown} z {count} wierszy",
+    "many": "Pokazano {shown} z {count} wierszy"
   }
 }

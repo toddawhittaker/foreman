@@ -13,6 +13,7 @@
 {{template "rail" $}}
 {{- /* News of a drawing that ends while the page is open; outside the region the script replaces, so it is said once (SPEC 5.16). */}}
 <p class="visually-hidden" role="status" id="factorymap-news"></p>
+<div class="factorymap-page">
 {{template "factorymap-state" .}}
 {{- if .CanSetMode}}
 <form method="post" action="{{.ModePath}}" class="panel factorymap-mode">
@@ -27,9 +28,10 @@
   </fieldset>
   <label class="check"><input type="checkbox" name="skip_online" value="on"{{if .View.Mode.SkipOnline}} checked{{end}} aria-describedby="fm-skip-hint"><span>{{t "factorymap.mode.skip_online"}}</span></label>
   <p class="hint" id="fm-skip-hint">{{t "factorymap.mode.skip_online_hint"}}</p>
-  <div class="actions"><button type="submit">{{t "factorymap.mode.save"}}</button></div>
+  <div class="actions"><button type="submit" class="button">{{t "factorymap.mode.save"}}</button></div>
 </form>
 {{- end}}
+</div>
 {{end}}
 {{- end}}
 
@@ -69,11 +71,11 @@
     <p>{{if .MemoryBytes}}{{tHTML "factorymap.draw.memory_size" "size" (nowrap (bytes .MemoryBytes))}}{{else}}{{t "factorymap.draw.memory_note"}}{{end}}</p>
   </div>
   <input type="hidden" name="confirm_memory" value="1">
-  <div class="actions"><button type="submit" aria-describedby="fm-memory-note">{{t "factorymap.draw.confirm_memory"}}</button></div>
+  <div class="actions"><button type="submit" class="button button--primary" aria-describedby="fm-memory-note">{{t "factorymap.draw.confirm_memory"}}</button></div>
   {{- else if and $v.PlayersOnline $v.Mode.SkipOnline}}
   <p class="hint">{{t "factorymap.refused.players_online"}}</p>
   {{- else}}
-  <div class="actions"><button type="submit">{{t "factorymap.draw.button"}}</button></div>
+  <div class="actions"><button type="submit" class="button button--primary">{{t "factorymap.draw.button"}}</button></div>
   {{- end}}
 </form>
 {{- end}}

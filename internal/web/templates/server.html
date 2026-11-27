@@ -25,8 +25,8 @@
 {{/* The world's name and its state lead the page; focus comes here after an operation (DESIGN 6, 7.5). */}}
 {{- /* The plate's band below states the server's state large, so here the
      heading's badge is kept for screen readers only. */}}
+{{template "crumb" (crumbs "" (t "common.nav.server") "" .World.Name)}}
 <header class="page-head page-head--plate">
-  <p class="eyebrow">{{t "common.nav.server"}}</p>
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
   {{template "server-join" .JoinAddress}}
 </header>
@@ -41,7 +41,6 @@
 <div class="facts-block">
 <div sse-swap="facts">{{template "server-facts" .}}</div>
 <div sse-swap="playtime">{{template "server-playtime" .}}</div>
-<div sse-swap="saveplayers">{{template "server-saveplayers" .}}</div>
 <div sse-swap="loads">{{template "server-loads" .}}</div>
 <div sse-swap="schedule">{{template "server-schedule" .}}</div>
 {{- /* The low-disk warning sits where the game-network warning does (DESIGN 8.17). Empty, it takes no room. */}}
@@ -57,7 +56,11 @@
 <div class="links card shortcuts" sse-swap="active">{{template "server-active" .}}</div>
 <section class="panel card" aria-labelledby="players-heading">
   {{- /* Focus comes here when the player whose row had it leaves (DESIGN 8.12). */}}
-  <h2 id="players-heading" tabindex="-1">{{t "server.players.heading"}}</h2>
+  {{- /* The count of the save's players leads to the whole list from the plate's title band (SPEC 8.14). */}}
+  <div class="section-head">
+    <h2 id="players-heading" tabindex="-1">{{t "server.players.heading"}}</h2>
+    <div sse-swap="saveplayers">{{template "server-saveplayers" .}}</div>
+  </div>
   {{- /* The result of a player action sits beside the list it changed, outside the live region, so the next update keeps it (DESIGN 8.12). */}}
   {{template "server-player-result" .}}
   <div sse-swap="players">{{template "server-players" .}}</div>
@@ -114,6 +117,13 @@
 {{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
      focus, because it is replaced whenever a figure changes. Figures that
      cannot be known now are left out rather than shown stale (SPEC 7.1). */}}
+{{/* The word for a load over its warn or danger level (serverpage.go, loadLevel). */}}
+{{define "load-word" -}}
+{{- if eq . "danger"}} <span class="gauge__level">{{t "server.facts.load_very_high"}}</span>
+{{- else if eq . "warn"}} <span class="gauge__level">{{t "server.facts.load_high"}}</span>
+{{- end}}
+{{- end}}
+
 {{define "server-facts" -}}
 {{- if .Live}}
 {{- /* The heading's badge changes with the facts, so it travels with them (DESIGN 7.5). */}}
@@ -133,9 +143,9 @@
   <div class="stat"><dt>{{t "server.facts.save"}}</dt><dd><code>{{.}}</code></dd></div>
   {{- end}}
   {{- if .Status.HaveUsage}}
-  {{- /* The meters are decorative: the figures say the same. */}}
-  <div class="stat gauge gauge--{{or .CPULevel "ok"}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
-  <div class="stat{{if .HaveMemoryMeter}} gauge gauge--{{or .MemoryLevel "ok"}}{{end}}"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}{{if .HaveMemoryMeter}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.MemoryMeter}}%"></span></span>{{end}}</dd></div>
+  {{- /* The meters are decorative: the figures say the same, memory's share of its limit is written out, and a high level is a word, not only a colour. */}}
+  <div class="stat gauge gauge--{{or .CPULevel "ok"}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}{{template "load-word" .CPULevel}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
+  <div class="stat{{if .HaveMemoryMeter}} gauge gauge--{{or .MemoryLevel "ok"}}{{end}}"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}{{if .HaveMemoryMeter}}{{template "load-word" .MemoryLevel}}<span class="gauge__share">{{t "server.facts.memory_share" "percent" (num .MemoryShare)}}</span><span class="meter" aria-hidden="true"><span style="inline-size: {{.MemoryMeter}}%"></span></span>{{end}}</dd></div>
   {{- end}}
   {{- end}}
 </dl>
@@ -170,9 +180,9 @@
      redrawn only when the count changes (DESIGN 7.5). The wrapper is always
      there, so a change back to nothing still sends a non-empty event. */}}
 {{define "server-saveplayers" -}}
-<div class="play-time__players">
+<div class="save-players-count">
   {{- if .ShowSavePlayers}}
-  <p><a class="button button--quiet" href="{{.SavePlayersLink}}" id="act-save-players">{{msg .SavePlayersText}}</a></p>
+  <a class="more-link" href="{{.SavePlayersLink}}" id="act-save-players">{{msg .SavePlayersText}}</a>
   {{- end}}
 </div>
 {{- end}}

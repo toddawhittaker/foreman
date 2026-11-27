@@ -1,4 +1,5 @@
 import { test, expect, checkPage, createAdmin, makeZip } from "./foreman.js";
+import { typedVersion } from "./typedversion.js";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -19,7 +20,7 @@ test("imports a folder in the server layout: its save, mods and settings", { tag
   await expect(form.getByLabel(/server: 1 save and mods/)).toBeChecked();
   await checkPage(page);
   await form.getByLabel("World name").fill("Server layout");
-  await form.getByLabel("Or type a version").fill("2.0.72");
+  await (await typedVersion(form)).fill("2.0.72");
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/server-layout?imported=1&unchecked=1");
 

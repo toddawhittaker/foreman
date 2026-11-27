@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, version20 } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, showModsView, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // SPEC 9.1, 9.2, 9.14, 17.10: the search results are a list shown ten at a
@@ -60,11 +60,12 @@ test("25 results: a list a page at a time, with Previous, a page box and Next ab
   if (phone(page)) expect(planBox.y).toBeGreaterThan(searchBox.y + searchBox.height);
   else {
     expect(Math.abs(planBox.y - searchBox.y)).toBeLessThan(2);
-    // It stays in view while the list scrolls past, clear of the 56 px top strip (issue 761).
+    // It stays in view at its sticky offset while the list scrolls past, and nothing covers it (DESIGN 8.11).
     await page.getByRole("navigation", { name: "Result pages, below the list" }).scrollIntoViewIfNeeded();
+    const stickyTop = await panel(page).evaluate((p) => parseFloat(getComputedStyle(p).top));
     const held = (await panel(page).boundingBox())!;
-    expect(held.y).toBeGreaterThanOrEqual(56);
-    expect(held.y).toBeLessThan(96);
+    expect(Math.abs(held.y - stickyTop)).toBeLessThan(1);
+    expect(await panel(page).evaluate((p, [x, y]) => p.contains(document.elementFromPoint(x, y)), [held.x + held.width / 2, held.y + 2])).toBe(true);
   }
   await checkPage(page);
   await shot(page, "mods-search-25");
@@ -157,7 +158,7 @@ test("two picks share a dependency: it shows once naming both, counted once, wit
     // The bar holds to the bottom of the screen with the count, the names and Review.
     const bar = (await plan.boundingBox())!;
     expect(Math.round(bar.y + bar.height)).toBeLessThanOrEqual(page.viewportSize()!.height + 1);
-    await expect(plan.locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
+    await expect(plan.locator(".plan-panel__sum")).toHaveText("4 mods in the plan");
     await expect(plan.locator(".plan-panel__names")).toHaveText("fp-trains, fp-rails");
     await expect(plan.getByRole("link", { name: "Review and install 4 mods" })).toBeVisible();
     await checkPage(page);
@@ -191,7 +192,7 @@ test("two picks share a dependency: it shows once naming both, counted once, wit
 
   // The plan is kept on the server: a reload still has it.
   await page.reload();
-  await expect(panel(page).locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
+  await expect(panel(page).locator(".plan-panel__sum")).toHaveText("4 mods in the plan");
 
   // Review opens today's plan page with the picks.
   await panel(page).getByRole("link", { name: "Review and install 4 mods" }).click();
@@ -451,6 +452,8 @@ test("a slow reply does not replace the results for newer text", async ({ page }
 for (const at of ["/worlds/base/mods", "/worlds/base/mods/search?q=fp-pg"]) {
   test(`the Browse the mod portal link on ${at}`, async ({ page }) => {
     await page.goto(at);
+    // On the tab the link is in the Find a mod view (DESIGN 8.11).
+    if (!at.includes("/search")) await showModsView(page, "find");
     const link = page.getByRole("link", { name: "Browse the mod portal (opens in a new tab)" });
     await expect(link).toHaveAttribute("href", "https://mods.factorio.com/browse/downloaded?factorio_version=2.0");
     await expect(link).toHaveAttribute("target", "_blank");
@@ -465,6 +468,8 @@ test.describe("typing on the Mods tab", () => {
     await page.goto("/worlds/base/mods");
     const url = page.url();
     const history = await page.evaluate(() => window.history.length);
+    // The panel is in the tab's Find a mod view (DESIGN 8.11).
+    await showModsView(page, "find");
     await expect(page.getByRole("heading", { level: 2, name: "Mods matching" })).toBeVisible();
     await expect(page.locator("#results .empty")).toHaveText("Type at least 2 characters of a mod's name in Find a mod. Matching mods show here.");
     const box = page.getByLabel("Mod name");
@@ -478,11 +483,11 @@ test.describe("typing on the Mods tab", () => {
     await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
     expect(page.url()).toBe(url);
     expect(await page.evaluate(() => window.history.length)).toBe(history);
-    // Search, results, the plan, then the installed list.
+    // The search, then the installed list's view, its results and the plan.
     const order = await page.evaluate(() => {
       const at = (s: string) => document.querySelector(s)!;
       const after = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-      return after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#plan-heading")) && after(at("#plan-heading"), at("#installed-heading"));
+      return after(at("#search-heading"), at("#installed-heading")) && after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#plan-heading"));
     });
     expect(order).toBe(true);
     await checkPage(page);

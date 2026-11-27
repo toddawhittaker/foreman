@@ -19,6 +19,7 @@
   "js.generate.ach_setting": "{setting} vypne některé úspěchy.",
   "js.generate.ach_clear": "Teď už žádné nastavení úspěchy nevypíná.",
   "js.generate.moved": "{field}: nastaveno na {value}, aby rozsah zůstal platný.",
+  "js.generate.changed": "Změněno oproti předvolbě",
   "js.generate.all_set": {
     "one": "{setting}: nastaveno {value} pro {count} zdroj.",
     "few": "{setting}: nastaveno {value} pro {count} zdroje.",
@@ -41,5 +42,10 @@
     "one": "{count} neuložená změna, zůstává zachována při přechodu mezi sekcemi.",
     "few": "{count} neuložené změny, zůstávají zachovány při přechodu mezi sekcemi.",
     "other": "{count} neuložených změn, zůstává zachováno při přechodu mezi sekcemi."
+  },
+  "js.console.shown": {
+    "one": "Zobrazeno {shown} z {count} řádku",
+    "few": "Zobrazeno {shown} z {count} řádků",
+    "other": "Zobrazeno {shown} z {count} řádků"
   }
 }

@@ -70,11 +70,14 @@
     <p class="error" id="schedule-limit-error"><strong>{{t "common.error.label"}}</strong> {{msg .LimitError}}</p>
     {{- end}}
   </div>
-  <div class="actions">
-    <button type="submit" class="button button--primary" id="act-schedule-save">{{t "schedule.save"}}</button>
-    <a href="{{serverPath}}">{{t "worlds.cancel"}}</a>
   </div>
+  {{- /* The same foot bar as every settings form: Cancel, then the save at the end. */}}
+  <div class="actions form-foot">
+    <a href="{{serverPath}}">{{t "worlds.cancel"}}</a>
+    <button type="submit" class="button button--primary" id="act-schedule-save">{{t "schedule.save"}}</button>
   </div>
 </form>
 {{- end}}
 {{- end}}
+
+{{define "page-width"}}{{"measure"}}{{end}}

@@ -7,6 +7,8 @@
 // top layer as a popover, so no scrolling or clipping box around it (the
 // Generate preview pane) cuts it off or grows a scroll bar (DESIGN 7.7).
 document.addEventListener("DOMContentLoaded", () => {
+  // A part marked data-tips shows its tips as buttons once this script runs.
+  for (const part of document.querySelectorAll("[data-tips]")) part.classList.add("js-on");
   const edge = 8; // px kept between a tip and the window's edge
   let open = null; // { button, text, pinned }
   let hoverTimer = 0;

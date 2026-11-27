@@ -19,6 +19,7 @@
   "js.generate.ach_setting": "{setting} desactiva algunos logros.",
   "js.generate.ach_clear": "Ahora ningún ajuste desactiva logros.",
   "js.generate.moved": "{field} cambiado a {value} para que el rango siga siendo válido.",
+  "js.generate.changed": "Cambiado respecto al ajuste predefinido",
   "js.generate.all_set": {
     "one": "{setting} cambiado a {value} en {count} recurso.",
     "other": "{setting} cambiado a {value} en {count} recursos."
@@ -39,5 +40,9 @@
   "js.settings.unsaved": {
     "one": "{count} cambio sin guardar, se conserva al pasar de una sección a otra.",
     "other": "{count} cambios sin guardar, se conservan al pasar de una sección a otra."
+  },
+  "js.console.shown": {
+    "one": "{shown} de {count} línea mostrada",
+    "other": "{shown} de {count} líneas mostradas"
   }
 }

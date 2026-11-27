@@ -19,6 +19,7 @@
   "js.generate.ach_setting": "{setting}将禁用部分成就。",
   "js.generate.ach_clear": "现在没有设置会禁用成就。",
   "js.generate.moved": "{field}已设为 {value}，以保持范围有效。",
+  "js.generate.changed": "已偏离预设",
   "js.generate.all_set": {
     "other": "{setting}已设为 {value}，共 {count} 项资源。"
   },
@@ -37,5 +38,8 @@
   "js.preview.prepare_redrawing": "正在按新设置绘制地图预览。就绪后再下载。",
   "js.settings.unsaved": {
     "other": "{count} 项更改尚未保存，在各部分之间切换时会保留。"
+  },
+  "js.console.shown": {
+    "other": "显示 {count} 行中的 {shown} 行"
   }
 }

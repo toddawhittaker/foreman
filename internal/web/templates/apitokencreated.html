@@ -11,7 +11,8 @@
   <h1>{{t "apitokens.created.title" "name" .Token.Name}}</h1>
 </header>
 {{template "rail" $}}
-{{- /* One panel, read top to bottom: what was made, the secret with its warning right above it, then where to use it and until when. */}}
+{{- /* Two plates on a wide screen: what was made and its secret, with its warning right above it, then beside them where to use it. One column on a phone. */}}
+<div class="split token-created-layout">
 <section class="panel token-created" aria-labelledby="done-message">
   <p class="token-created__done" id="done-message" tabindex="-1" autofocus><strong>{{t "common.label.done"}}</strong> {{t "apitokens.created.done" "name" .Token.Name "scope" (msg .Token.ScopeWord)}}</p>
   {{- /* The secret is shown here once and never again; the page is sent with no-store (SPEC 14.19). */}}
@@ -27,6 +28,17 @@
     </div>
     <p class="copy-done" id="token-secret-done" hidden>{{t "apitokens.created.copied_secret"}}</p>
   </div>
+  </div>
+  <dl class="facts facts--inline">
+    <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .Token.ScopeWord}}</dd></div>
+    <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Token.Expires}}</dd></div>
+  </dl>
+  <div class="actions token-created__foot">
+    <a href="{{.BackPath}}" class="button" id="act-token-back">{{t "apitokens.created.back"}}</a>
+  </div>
+</section>
+<div class="panel token-use">
+  <div class="exchange">
   <div class="field">
     <label for="token-endpoint">{{t "apitokens.created.endpoint"}}</label>
     <div class="copy-field">
@@ -44,10 +56,6 @@
     <p class="copy-done" id="token-api-base-done" hidden>{{t "apitokens.created.copied_api_base"}}</p>
   </div>
   </div>
-  <dl class="facts facts--inline">
-    <div><dt>{{t "apitokens.fact.scope"}}</dt><dd>{{msg .Token.ScopeWord}}</dd></div>
-    <div><dt>{{t "apitokens.fact.expires"}}</dt><dd>{{template "when" .Token.Expires}}</dd></div>
-  </dl>
   {{- if not .AccessOn}}
   <div class="message message--note" id="access-off-note">
     <p><strong>{{t "common.label.note"}}</strong> {{t "apitokens.both_off"}}</p>
@@ -59,9 +67,9 @@
     {{- end}}
   </div>
   {{- end}}
-  <div class="actions token-created__foot">
-    <a href="{{.BackPath}}" class="button" id="act-token-back">{{t "apitokens.created.back"}}</a>
-  </div>
-</section>
+</div>
+</div>
 {{- end}}
 {{- end}}
+
+{{define "page-width"}}{{"measure"}}{{end}}

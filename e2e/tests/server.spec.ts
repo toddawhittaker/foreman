@@ -38,6 +38,26 @@ async function commands(g: FakeGame): Promise<string[]> {
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
+  // WCAG 2.1.2, 2.4.11: Emergency actions floats over the facts once open,
+  // so like a menu it closes on Escape, giving focus back to its button, and
+  // on a click outside it.
+  test("Emergency actions closes on Escape and on a click outside", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await start(page);
+    const emergency = page.locator("details.emergency");
+    const summary = emergency.locator("> summary");
+    await summary.click();
+    await expect(emergency).toHaveJSProperty("open", true);
+    await page.getByRole("link", { name: "Force stop" }).focus();
+    await page.keyboard.press("Escape");
+    await expect(emergency).toHaveJSProperty("open", false);
+    await expect(summary).toBeFocused();
+    await summary.click();
+    await expect(emergency).toHaveJSProperty("open", true);
+    await page.locator("main h1").click();
+    await expect(emergency).toHaveJSProperty("open", false);
+  });
+
   test("start, see a player join, then stop with a countdown", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     // A stopped world lists its save's players with nobody marked online (SPEC 8.1).

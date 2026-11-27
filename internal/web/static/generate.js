@@ -219,8 +219,17 @@ startGenerateWithForm(() => {
       range.step = "1";
       range.dataset.for = select.id;
       range.setAttribute("aria-labelledby", select.id + "-label");
-      range.setAttribute("aria-describedby", select.getAttribute("aria-describedby") || "");
+      // A step off its preset says so to a screen reader too, through
+      // visually hidden words in its description, filled while it differs.
+      // A referenced element is read even when hidden, so it is emptied.
+      const changed = document.createElement("span");
+      changed.className = "visually-hidden";
+      changed.id = select.id + "-changed";
+      const described = [select.getAttribute("aria-describedby"), changed.id].filter(Boolean).join(" ");
+      select.setAttribute("aria-describedby", described);
+      range.setAttribute("aria-describedby", described);
       select.after(range);
+      range.after(changed);
       syncSlider(select);
     });
   }
@@ -345,7 +354,16 @@ startGenerateWithForm(() => {
     let modified = false;
     const active = new Set();
     document.querySelectorAll(`:is(${settingsIn}) [data-preset]`).forEach((el) => {
-      if (differs(el)) modified = true;
+      const changed = differs(el);
+      if (changed) modified = true;
+      // A step setting off its preset is marked beside its value, so edits stand out in a long list.
+      const step = el.tagName === "SELECT" ? el.closest(".step") : null;
+      if (step) {
+        step.toggleAttribute("data-changed", changed);
+        const said = document.getElementById(el.id + "-changed");
+        const words = changed ? strings["js.generate.changed"] : "";
+        if (said && said.textContent !== words) said.textContent = words;
+      }
       if (!el.dataset.ach) return;
       const blocked = crosses(el);
       if (blocked) active.add(el.dataset.achReason);
@@ -430,6 +448,15 @@ startGenerateWithForm(() => {
       }
     }
     if (t.closest(settingsIn)) changed(t);
+  });
+
+  // A version list that could not be fetched says to type a version, so the
+  // typed field beside it is opened rather than left folded away.
+  document.body.addEventListener("htmx:afterSettle", (e) => {
+    const list = e.detail.target;
+    if (!list?.matches?.("select") || !list.querySelector("option[data-unreachable]")) return;
+    const other = list.closest("form")?.querySelector("details.disclosure:has(input[name=game_version_typed])");
+    if (other) other.open = true;
   });
 
   document.addEventListener("change", (e) => {

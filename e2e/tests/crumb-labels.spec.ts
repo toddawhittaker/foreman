@@ -34,7 +34,7 @@ test("the breadcrumb is a navigation landmark holding an ordered list", { tag: "
   await page.emulateMedia({ forcedColors: "none" });
 });
 
-test("column heads and fact names are 13 px sentence case; the overline keeps capitals", { tag: "@looks" }, async ({ page, foreman }) => {
+test("column heads, fact names and the context row over a title are sentence case", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
 
@@ -49,7 +49,7 @@ test("column heads and fact names are 13 px sentence case; the overline keeps ca
   expect(await style(fact, "fontSize")).toBe("13px");
 
   await page.goto("/worlds");
-  expect(await style(page.locator("main .eyebrow").first(), "textTransform")).toBe("uppercase");
+  expect(await style(page.locator("main .eyebrow").first(), "textTransform")).toBe("none");
   await checkPage(page);
 });
 

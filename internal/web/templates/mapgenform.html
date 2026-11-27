@@ -163,7 +163,12 @@
 {{/* The (i) button of a toggletip, after a setting's name. Without script it
      is hidden and the text shows under the field (DESIGN 7.7). Takes Toggletip. */}}
 {{define "tip-button" -}}
-{{- if not .Text.IsZero}}<button type="button" class="tip" aria-expanded="false" aria-controls="{{.ID}}-tip" aria-describedby="{{.ID}}-tip"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (msg .About)}}</span></button>{{end}}
+{{- if not .Text.IsZero}}{{template "tip-icon" (tip (print .ID "-tip") (msg .About))}}{{end}}
+{{- end}}
+
+{{/* The (i) button itself, opening the text whose id it is given. Takes tipIcon. */}}
+{{define "tip-icon" -}}
+<button type="button" class="tip" aria-expanded="false" aria-controls="{{.Controls}}" aria-describedby="{{.Controls}}"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" .About}}</span></button>
 {{- end}}
 
 {{/* The text of a toggletip, which the field's aria-describedby names. Takes Toggletip. */}}

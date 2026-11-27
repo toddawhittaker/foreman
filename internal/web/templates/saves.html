@@ -1,6 +1,6 @@
 {{define "title"}}{{t "worlds.saves.title" "world" .Page.WorldName}}{{end}}
 
-{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>{{end}}
 
 {{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
@@ -28,8 +28,16 @@
 
 {{- /* The list leads; uploading one, the rarer task, sits in the rail beside it on a wide screen. */}}
 <div class="split split--saves">
-<section class="panel" aria-labelledby="saves-heading">
+<section class="panel" aria-labelledby="saves-heading" data-tips>
+  {{- /* The (i) for the Saved times sits by the heading, not in the column's header, so the header's name stays the one word. */}}
+  {{- if .Rows}}
+  <div class="section-head section-head--tip">
+    <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
+    {{template "tip-icon" (tip "saves-time-hint" (t "worlds.saves.col.saved"))}}
+  </div>
+  {{- else}}
   <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
+  {{- end}}
   {{- if .LoadMissing}}
   <div class="message message--note">
     <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.saves.load.missing" "file" (code .LoadSave)}}</p>
@@ -50,7 +58,7 @@
     </thead>
     <tbody role="rowgroup">
       {{- range .Rows}}
-      <tr role="row">
+      <tr role="row"{{if .WorldName}} class="save-row--auto"{{end}}>
         <td role="cell"><div class="save-name">
           {{- if .WorldName}}{{/* The link is a flex box (a 44 px target), which drops the space between its children; the span keeps the name and the time as one run of text. */}}<a href="{{.Href}}"><span class="save-label">{{.WorldName}}, {{template "when" .Saved}}</span></a>{{else}}<a href="{{.Href}}">{{.Name}}</a>{{end}}{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}{{if .WorldName}}{{/* On its own line under the label, so every file name starts at the same left edge (DESIGN 8.3). */}}<span class="save-file">{{.Name}}</span>{{end}}</div></td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
@@ -68,7 +76,7 @@
   {{- if not .Newer}}
   </form>
   {{- end}}
-  <p class="hint" id="saves-time-hint">{{t "worlds.saves.time_hint"}}</p>
+  <p class="hint tip__text" id="saves-time-hint">{{t "worlds.saves.time_hint"}}</p>
   {{- if .OlderHref}}
   <div class="actions"><a href="{{.OlderHref}}">{{t "worlds.saves.older"}}</a></div>
   {{- end}}
@@ -95,3 +103,5 @@
 </div>
 {{end}}
 {{- end}}
+
+{{define "page-width"}}{{"measure"}}{{end}}

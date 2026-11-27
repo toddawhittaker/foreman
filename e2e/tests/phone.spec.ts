@@ -25,35 +25,26 @@ async function running(page: Page, f: Foreman, g: FakeGame) {
   await expect(page.locator("#pr-alice")).toBeVisible(live);
 }
 
-// Below 64rem the four tabs share one row of the header and the menu sits
-// level with the logo; from 64rem the tabs are a column in the rail, and the
-// logo and the menu share the status strip's row (DESIGN 6, Shell).
+// The four tabs share one row of the header and the menu sits level with the
+// logo; from 64rem the logo, the tabs, the live world and the menu are one
+// 56 px bar (DESIGN 6, Shell).
 test("the header keeps every tab on one row and the menu beside the logo", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   const tabs = page.getByRole("navigation", { name: "Main" }).getByRole("link");
   await expect(tabs).toHaveCount(4);
   const tops = new Set<number>();
-  const starts = new Set<number>();
-  for (const tab of await tabs.all()) {
-    const b = await box(tab);
-    tops.add(Math.round(b.y));
-    starts.add(Math.round(b.x));
-  }
+  for (const tab of await tabs.all()) tops.add(Math.round((await box(tab)).y));
   const wide = (page.viewportSize()?.width ?? 0) >= 1024;
-  if (wide) {
-    expect(starts.size, "tabs in one column").toBe(1);
-    expect(tops.size, "one tab to a row").toBe(4);
-  } else {
-    expect(tops.size, "tabs on one row").toBe(1);
-  }
+  expect(tops.size, "tabs on one row").toBe(1);
 
   const product = await box(page.getByRole("link", { name: "Foreman" }));
   const menu = await box(page.locator("details.menu > summary"));
   // The menu is on the first row, level with the logo, never on a row of its own.
   expect(Math.abs(menu.y + menu.height / 2 - (product.y + product.height / 2))).toBeLessThan(4);
-  // Two rows of 44 px targets at most on a phone; the 56 px strip on a wide screen.
-  const top = wide ? await box(page.locator(".site-strip")) : await box(page.locator("header.site"));
-  expect(top.height).toBeLessThanOrEqual(phone(page) ? 100 : 56);
+  // Two rows of 44 px targets at most on a phone; on a wide screen the 56 px
+  // bar and the 1 px rule under it.
+  const top = await box(page.locator("header.site"));
+  expect(top.height).toBeLessThanOrEqual(phone(page) ? 100 : 57);
   await checkPage(page);
 });
 

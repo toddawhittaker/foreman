@@ -127,6 +127,7 @@
   "worlds.import.space_age_off_warning": "The save was made with Space Age. Without it, Factorio may not load the save, or may remove its Space Age content.",
   "worlds.import.space_age_on_warning": "The save was made without Space Age. Factorio converts it to Space Age when it first starts, and that cannot be undone.",
   "worlds.import.title": "Import a world",
+  "worlds.import.pick.legend": "How to import",
   "worlds.import.unimportable.clash": "the save {name} is in both the folder and its saves folder, so it is not clear which to import. Remove or rename one of them",
   "worlds.import.unimportable.heading": "Cannot be imported",
   "worlds.import.unimportable.no_save": "no save at its top level or in a saves folder, so it cannot be imported",

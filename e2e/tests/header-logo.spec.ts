@@ -1,29 +1,28 @@
 import { test, expect, checkPage, createAdmin, openMenu, seedWorld, signOut } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
-// The header (DESIGN 6, Shell): the logo beside the name, linking home; the
+// The header (DESIGN 6, Shell): the rusty wordmark, linking home; the
 // nav; the user menu with the languages and Sign out. Every project runs
 // these, so they hold at 1280 and 320 px in both themes.
 
 const phone = (page: Page) => (page.viewportSize()?.width ?? 1000) <= 320;
 
-test("the logo links home, is decorative, and is sharp on a 2x screen", { tag: "@looks" }, async ({ page, foreman }) => {
+test("the wordmark links home, is named Foreman, and is sharp on a 2x screen", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/worlds");
   const home = page.getByRole("link", { name: "Foreman", exact: true });
   await expect(home).toHaveAttribute("href", "/");
   const logo = home.locator("img");
-  // Empty alt: the link's name is the word "Foreman", not a picture's description.
-  await expect(logo).toHaveAttribute("alt", "");
-  await expect(logo).toHaveAttribute("srcset", /logo-64\.png\?v=\w+ 2x/);
-  const size = await logo.boundingBox();
-  expect(size!.width).toBe(32);
-  expect(size!.height).toBe(32);
-  // At 320 px only the icon shows; the name is still the link's name.
-  const word = await home.locator(".product__name").boundingBox();
-  if (phone(page)) expect(word!.width).toBeLessThanOrEqual(1);
-  else expect(word!.width).toBeGreaterThan(20);
+  // The wordmark's alt text is the link's name.
+  await expect(logo).toHaveAttribute("alt", "Foreman");
+  // The 296 px file drawn at 148 px, so a 2x screen gets every pixel.
+  await expect(logo).toHaveAttribute("src", /wordmark-296\.webp\?v=\w+/);
+  const size = (await logo.boundingBox())!;
+  // 46 px tall in the bar, 28 px at 320 px, so the live world's name has the room.
+  if (phone(page)) expect(size.height).toBe(28);
+  else expect(size.height).toBe(46);
+  expect(size.width).toBeGreaterThan(size.height * 3);
   await home.click();
   await expect(page).toHaveURL("/");
   await checkPage(page);

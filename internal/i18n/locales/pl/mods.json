@@ -61,7 +61,7 @@
   "mods.row.gone": "Gracze nie mogą dołączyć: portal modyfikacji nie ma już wersji {version}, więc ich gra nie może jej pobrać.",
   "mods.row.gone_none": "Gracze nie mogą dołączyć: portal modyfikacji nie ma już wersji {version} ani żadnej dla tej wersji gry. Należy usunąć lub wyłączyć modyfikację.",
   "mods.row.deprecated": "Oznaczona w portalu modyfikacji jako przestarzała, więc gracze nie znajdą jej w przeglądarce modyfikacji w grze.",
-  "mods.row.not_on_portal": "Nie ma jej w portalu modyfikacji, więc gry graczy nie mogą jej pobrać. Gracze muszą dostać plik w inny sposób.",
+  "mods.row.not_on_portal": "Nie ma jej w portalu modyfikacji, więc gracze muszą dostać plik w inny sposób.",
   "mods.status.loading": "Sprawdzanie aktualizacji w portalu modyfikacji…",
   "mods.status.unreachable": "Foreman nie mógł połączyć się z portalem modyfikacji, więc nie sprawdził aktualizacji ani modyfikacji, których gracze nie mogą pobrać.",
   "mods.status.retry": "Sprawdź ponownie",

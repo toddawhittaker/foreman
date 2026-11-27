@@ -132,6 +132,7 @@
   "worlds.import.space_age_off_warning": "Uložená hra byla vytvořena se Space Age. Bez něj ji Factorio nemusí načíst nebo z ní může odstranit obsah Space Age.",
   "worlds.import.space_age_on_warning": "Uložená hra byla vytvořena bez Space Age. Factorio ji při prvním spuštění převede na Space Age a to nelze vrátit zpět.",
   "worlds.import.title": "Import světa",
+  "worlds.import.pick.legend": "Způsob importu",
   "worlds.import.unimportable.clash": "uložená hra {name} je jak ve složce, tak v její složce saves, takže není jasné, kterou importovat. Je třeba jednu z nich odstranit nebo přejmenovat",
   "worlds.import.unimportable.heading": "Nelze importovat",
   "worlds.import.unimportable.no_save": "žádná uložená hra na nejvyšší úrovni ani ve složce saves, proto ji nelze importovat",

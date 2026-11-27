@@ -418,7 +418,7 @@ func TestVersionFragments(t *testing.T) {
 	}{
 		{"list", VersionPicker{Versions: []string{"2.1.24", "2.0.77", "2.0.76"}, Stable: "2.0.77", Experimental: "2.1.24"},
 			"version-list", []string{`<option value="2.1.24">2.1.24 (experimental)</option>`, `<option value="2.0.77">2.0.77 (stable)</option>`, `<option value="2.0.76">2.0.76</option>`}},
-		{"list unreachable", VersionPicker{Unreachable: true}, "version-list", []string{`<option value="" disabled>Docker Hub cannot be reached; type a version below</option>`}},
+		{"list unreachable", VersionPicker{Unreachable: true}, "version-list", []string{`<option value="" disabled data-unreachable>Docker Hub cannot be reached; type a version below</option>`}},
 		{"notice newer", ReleaseNotice{Current: "2.0.76", Stable: "2.0.77", Experimental: "2.1.24", UpdatePath: "/worlds/base/update",
 			ChangelogURL: "https://wiki.factorio.com/Version_history/2.1.0"}, "release-notice",
 			[]string{"stable <code>2.0.77</code>", "experimental <code>2.1.24</code>", `href="https://wiki.factorio.com/Version_history/2.1.0"`, `href="/worlds/base/update"`}},
@@ -947,7 +947,7 @@ func TestPageAssetsResolve(t *testing.T) {
 	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
 	if len(found) != 22 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, subnav.js, about.js, live.js, the logo at two sizes, the logo again in the About dialog and eight flags, found %v", found)
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, text.js, time.js, menu.js, subnav.js, about.js, live.js, the wordmark in the bar, the wordmark again in the About dialog and eight flags, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")
@@ -998,6 +998,7 @@ func TestFaviconLinksAndFiles(t *testing.T) {
 		{PathStatic + "icons/icon-32.png", "image/png"},
 		{PathStatic + "icons/apple-touch-icon.png", "image/png"},
 		{PathStatic + "icons/wordmark-480.webp", "image/webp"},
+		{PathStatic + "icons/wordmark-296.webp", "image/webp"},
 	} {
 		rec := hn.get(c.path)
 		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != c.contentType {

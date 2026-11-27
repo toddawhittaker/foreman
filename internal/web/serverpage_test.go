@@ -398,3 +398,42 @@ func TestRefusalOrdersFixRestoreAnyway(t *testing.T) {
 		}
 	}
 }
+
+// A gauge warns over 75 percent and is in danger over 90; the levels are
+// fixed here so a change to them is a deliberate one.
+func TestLoadLevel(t *testing.T) {
+	for _, c := range []struct {
+		v    float64
+		want string
+	}{
+		{0, ""}, {50, ""}, {75, ""}, {75.1, "warn"}, {90, "warn"}, {90.1, "danger"}, {100, "danger"},
+	} {
+		if got := loadLevel(c.v); got != c.want {
+			t.Errorf("loadLevel(%v) = %q, want %q", c.v, got, c.want)
+		}
+	}
+}
+
+// WCAG 1.4.1: a high load is said in words, not by the meter's colour
+// alone, and memory's share of its limit is written out.
+func TestHighLoadIsWorded(t *testing.T) {
+	for _, c := range []struct {
+		name     string
+		cpu      float64
+		memory   uint64
+		want     []string
+		wantNone []string
+	}{
+		{"calm", 20, 1 << 29, []string{"gauge--ok", "13% of the limit"}, []string{"gauge__level"}},
+		{"high", 80, 7 << 29, []string{"gauge--warn", "<span class=\"gauge__level\">High</span>", "88% of the limit"}, []string{"Very high"}},
+		{"very high", 95, 4 << 30, []string{"gauge--danger", "<span class=\"gauge__level\">Very high</span>", "100% of the limit"}, nil},
+	} {
+		p := serverCase(game.StateRunning, func(p *ServerPage) {
+			p.Status.HaveUsage, p.Status.CPUPercent = true, c.cpu
+			p.Status.MemoryBytes, p.Status.MemoryLimit = c.memory, 4<<30
+		})
+		facts := fragmentHTML(t, p, "server-facts")
+		wantAll(t, c.name, facts, c.want...)
+		wantNone(t, c.name, facts, c.wantNone...)
+	}
+}

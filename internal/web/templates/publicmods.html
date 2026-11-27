@@ -20,7 +20,7 @@
 <body>
 <a class="skip" href="#main">{{t "common.skip"}}</a>
 <header class="site">
-  <a href="{{serverPath}}" class="product"><img src="{{publicStatic "icons/logo-32.png"}}" srcset="{{publicStatic "icons/logo-64.png"}} 2x" alt="" width="32" height="32"><span class="product__name">Foreman</span></a>
+  <a href="{{serverPath}}" class="product"><img src="{{publicStatic "icons/wordmark-296.webp"}}" alt="Foreman" width="148" height="46"></a>
   {{- $langName := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$langName = .Name}}{{end}}{{end}}
   <details class="menu">
     <summary aria-label="{{t "common.menu.language" "language" $langName}}"><span class="menu__lang">{{$langName}}</span></summary>

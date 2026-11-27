@@ -35,12 +35,14 @@
   });
 })();
 
-// A row's More actions menu (details.row-menu) works without this script
+// A row's More actions menu (details.row-menu) and the Server page's
+// Emergency actions, which floats over the facts, work without this script
 // too; the script closes an open one on Escape, returning focus to its
 // button, on a click outside it, and when focus leaves it.
 (() => {
   "use strict";
-  const open = () => document.querySelectorAll("details.row-menu[open]");
+  const floats = "details:is(.row-menu, .emergency)[open]";
+  const open = () => document.querySelectorAll(floats);
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     for (const m of open()) {
@@ -52,7 +54,7 @@
     for (const m of open()) if (!m.contains(e.target)) m.open = false;
   });
   document.addEventListener("focusout", (e) => {
-    const m = e.target.closest && e.target.closest("details.row-menu[open]");
+    const m = e.target.closest && e.target.closest(floats);
     if (m && e.relatedTarget && !m.contains(e.relatedTarget)) m.open = false;
   });
 })();

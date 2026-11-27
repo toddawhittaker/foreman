@@ -1,8 +1,8 @@
-import { test, expect, checkPage, createAdmin, seedWorld, openModTools, setUpModsWorld, version20 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, openModTools, setUpModsWorld, showModsView, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
-// Issue 761: on a wide screen the Plan card sticks in view while the page
-// scrolls, clear of the top strip, alone in its rail: "Match mods to the
+// On a wide screen the Plan card sticks in view while the page scrolls,
+// alone in its rail: "Match mods to the
 // save" sits above Installed mods and the other tools below it, in the main
 // column, so nothing passes under the plan (DESIGN 8.11). The projects run
 // this in both themes; a phone holds the plan as a bar at the foot instead.
@@ -48,35 +48,63 @@ test("the sticking Plan card stays on top of the cards under it", { tag: "@looks
 });
 
 // DESIGN 8.11, WCAG 1.3.2 and 2.4.3: the cards' markup order is the order
-// they are seen in, on a phone and on a wide screen, so focus follows it.
+// they are seen in, on a phone and on a wide screen, so focus follows it, in
+// each of the tab's two views: the search, then Match, Installed mods and
+// the tools; or the search, then its results.
 for (const width of [390, 1280]) {
   test(`at ${width} px the Mods cards are seen in their markup order`, { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman, { mods: { other: "2.1", b: "2.1", c: "2.1" } });
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/worlds/base/mods");
-    const cards = ["search-heading", "results-heading", "sync-heading", "installed-heading", "mod-tools"];
-    const order = await page.evaluate((cards) => {
-      const els = cards.map((id) => {
-        const el = document.getElementById(id)!;
-        return el.tagName === "H2" ? el.closest("section")! : el;
-      });
-      const inDom = els.every((el, i) => i === 0 || els[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
-      const tops = els.map((el) => el.getBoundingClientRect().top + scrollY);
-      return { inDom, tops };
-    }, cards);
-    expect(order.inDom).toBe(true);
-    for (let i = 1; i < order.tops.length; i++) expect(order.tops[i], cards[i]).toBeGreaterThan(order.tops[i - 1]);
+    const seenInOrder = async (cards: string[]) => {
+      const order = await page.evaluate((cards) => {
+        const els = cards.map((id) => {
+          const el = document.getElementById(id)!;
+          return el.tagName === "H2" ? el.closest("section")! : el;
+        });
+        const inDom = els.every((el, i) => i === 0 || els[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+        const tops = els.map((el) => el.getBoundingClientRect().top + scrollY);
+        return { inDom, tops };
+      }, cards);
+      expect(order.inDom).toBe(true);
+      for (let i = 1; i < order.tops.length; i++) expect(order.tops[i], cards[i]).toBeGreaterThan(order.tops[i - 1]);
+    };
+    await seenInOrder(["search-heading", "sync-heading", "installed-heading", "mod-tools"]);
     if (width < 1024) await expect(page.locator("#mod-tools")).toHaveJSProperty("open", false);
+    await checkPage(page);
+    await showModsView(page, "find");
+    await seenInOrder(["search-heading", "results-heading"]);
+    await expect(page.locator("#installed-heading")).toBeHidden();
     await checkPage(page);
   });
 }
 
-// Todd's ruling on #761: on a wide screen the Plan card is never taller than
-// the window below the top strip. Its heading and Review stay in view, only
-// the list of mods scrolls, the newest pick is at its top, and no control
-// reached by keyboard is ever behind it (WCAG 2.1.1, 2.4.11). In a window
-// too short to hold it, it does not stick and Review is still reached.
+// WCAG 1.4.10: on a phone, Match mods to the save is one column, and its
+// button has a row of its own under the reason, so it never covers the text.
+for (const width of [320, 390]) {
+  test(`at ${width} px the Match button sits under the reason, clear of it`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+    await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { other: "2.0" } });
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/worlds/base/mods");
+    await showModsView(page, "installed");
+    const button = page.locator("#act-sync");
+    await expect(button).toBeVisible();
+    const buttonBox = (await button.boundingBox())!;
+    for (const part of ["#sync-heading", ".sync-reason", "#sync-heading ~ p:not(#sync-state)"]) {
+      const box = (await page.locator(part).first().boundingBox())!;
+      expect(buttonBox.y, `${part} ends above the button`).toBeGreaterThanOrEqual(box.y + box.height);
+    }
+    await checkPage(page);
+  });
+}
+
+// On a wide screen a long Plan card is never taller than the window: its
+// heading and Review stay in view, only its list of mods scrolls, by mouse
+// and by keyboard, the newest pick is at the list's top, and no control
+// reached by keyboard is ever behind the card (WCAG 2.1.1, 2.4.11). The card
+// never scrolls on its own, and in a window too short to hold it, it does
+// not stick and Review is still reached.
 test.describe("a long plan on a wide screen", () => {
   test.use({ fakePortalOn: true, portalAccountOn: true });
   const caps = Array.from({ length: 8 }, (_, i) => `fp-cap-${i}`);
@@ -151,12 +179,13 @@ test.describe("a long plan on a wide screen", () => {
     expect(await list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
     expect(await seen(page, `#mod-${caps[0]}-unpick`)).toBe(true);
 
-    // On out of the plan, through Match, Installed mods and the tools below
-    // it: every control focused is seen, never behind the sticking plan.
+    // Through Match, Installed mods, the search and the tools beside the
+    // plan: every control focused is seen, never behind the sticking plan.
     await openModTools(page);
     const visited: string[] = [];
+    await page.locator("#act-sync").focus();
     for (let i = 0; i < 80; i++) {
-      await page.keyboard.press("Tab");
+      if (i > 0) await page.keyboard.press("Tab");
       const at = await page.evaluate(() => {
         const el = document.activeElement as HTMLElement | null;
         if (!el || !el.closest(".split--mods")) return null;

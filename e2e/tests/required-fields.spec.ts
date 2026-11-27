@@ -25,9 +25,15 @@ const required: Record<string, string[]> = {
 const unmarkedByDesign: Record<string, string[]> = {
   "/console": ["command"],
 };
+// Import shows only the chosen way's form, so a field of another way is
+// checked after choosing its card.
+const pickFirst: Record<string, string> = {
+  "world-file": "#import-pick-file",
+};
 
 async function expectMarked(page: Page, ids: string[], bare: string[] = []) {
   for (const id of ids) {
+    if (pickFirst[id]) await page.locator(pickFirst[id]).check();
     const field = page.locator(`#${id}`);
     await expect(field, `#${id} on ${page.url()}`).toHaveAttribute("required", "");
     const label = page.locator(`label[for="${id}"]`);

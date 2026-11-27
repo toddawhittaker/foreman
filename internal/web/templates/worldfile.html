@@ -1,12 +1,9 @@
 {{define "title"}}{{t "worldimport.title"}}{{end}}
 
-{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
-
 {{define "content" -}}
 {{with .Page}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .ImportPath (t "worlds.import.title") "" (t "worldimport.title"))}}
 <h1>{{t "worldimport.title"}}</h1>
-{{template "rail" $}}
 <p class="page-intro">{{t "worldimport.intro"}}</p>
 <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="world-file-heading">
   <h2 id="world-file-heading">{{t "worldimport.heading"}}</h2>

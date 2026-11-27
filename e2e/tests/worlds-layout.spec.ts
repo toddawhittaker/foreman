@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, pickLanguage } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, pickLanguage, seedWorld } from "./foreman.js";
 import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -95,6 +95,30 @@ for (const { lang, spaced, widths } of cases) {
         if (sideBySide && wide) expect(row.diskLeft - row.timeRight, where).toBeGreaterThanOrEqual(24);
       }
     }
+    await checkPage(page);
+  });
+}
+
+// WCAG 1.3.2, 2.4.3: on a world's Overview, sharing the world comes first in
+// the markup, so on a phone it is seen and focused straight after the facts;
+// a wide screen sets it beside the main column, which starts level with it.
+for (const width of [390, 1440]) {
+  test(`at ${width} px a world's Overview is seen in its markup order`, { tag: "@looks" }, async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/worlds/base");
+    const side = page.locator(".world-layout__side");
+    const main = page.locator(".world-layout__main");
+    expect(await side.evaluate((s) => !!(s.compareDocumentPosition(s.parentElement!.querySelector(".world-layout__main")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    const sideBox = (await side.boundingBox())!;
+    const mainBox = (await main.boundingBox())!;
+    if (width < 1024) expect(sideBox.y + sideBox.height).toBeLessThanOrEqual(mainBox.y);
+    else {
+      expect(sideBox.x).toBeGreaterThan(mainBox.x + mainBox.width);
+      expect(sideBox.y).toBe(mainBox.y);
+    }
+    expect(await side.evaluate((s) => getComputedStyle(s).order)).toBe("0");
     await checkPage(page);
   });
 }

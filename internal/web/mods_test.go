@@ -1076,7 +1076,8 @@ func TestModsTabSearchFollowsTyping(t *testing.T) {
 	}
 	search := "/worlds/" + id + "/mods/search"
 	wantIn(t, "mods tab", plain(body),
-		`<form method="get" action="`+search+`" role="search" class="setting-row__body"`,
+		`<form method="get" action="`+search+`" role="search"`,
+		`id="mods-view-installed" value="installed" checked`, `id="mods-view-find" value="find"`,
 		`hx-target="#results" hx-select="#results" hx-swap="outerHTML"`,
 		`hx-trigger="input changed delay:300ms"`,
 		`<section class="panel mod-found" id="results" aria-labelledby="results-heading">`,
@@ -1089,9 +1090,9 @@ func TestModsTabSearchFollowsTyping(t *testing.T) {
 	if strings.Contains(body, "hx-replace-url") || strings.Contains(body, "hx-push-url=\"true\"") {
 		t.Error("typing on the Mods tab must not change the address")
 	}
-	// The results come before the plan, and the plan before the tools, so a phone reads them in that order.
-	if i, j, k := strings.Index(body, `id="results"`), strings.Index(body, `id="plan-panel"`), strings.Index(body, `id="mod-tools"`); i > j || j > k {
-		t.Error("the results, plan and tools are out of order")
+	// The search comes before its results, and the plan, alone in its rail on a wide screen, after the tab's two views (DESIGN 8.11).
+	if s, i, k, j := strings.Index(body, `id="mod-search"`), strings.Index(body, `id="results"`), strings.Index(body, `id="mod-tools"`), strings.Index(body, `id="plan-panel"`); s > i || i > k || k > j {
+		t.Error("the search, results, tools and plan are out of order")
 	}
 }
 

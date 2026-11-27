@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="{{static "foreman.css"}}">
 <script src="{{static "vendor/htmx.min.js"}}" defer></script>
 <script src="{{static "vendor/htmx-ext-sse.min.js"}}" defer></script>
+<script src="{{static "text.js"}}" defer></script>
 <script src="{{static "time.js"}}" defer></script>
 <script src="{{static "menu.js"}}" defer></script>
 <script src="{{static "subnav.js"}}" defer></script>
@@ -25,11 +26,10 @@
 <body>
 <a class="skip" href="#main">{{t "common.skip"}}</a>
 <header class="site">
-  {{- /* The logo is decorative beside the name, so the link's name is "Foreman". */}}
-  <a href="{{serverPath}}" class="product"><img src="{{static "icons/logo-32.png"}}" srcset="{{static "icons/logo-64.png"}} 2x" alt="" width="32" height="32"><span class="product__name">Foreman</span></a>
+  {{- /* The rusty wordmark is the home link; its alt text is the link's name. */}}
+  <a href="{{serverPath}}" class="product"><img src="{{static "icons/wordmark-296.webp"}}" alt="Foreman" width="148" height="46"></a>
   {{- if .User}}
-  {{- /* The state shows here on every width; Server's tab says it to screen readers (DESIGN 7.5).
-       From 64rem it is the status strip over the content, after the live world's name (DESIGN 6, Shell). */}}
+  {{- /* The live world and its state show in the bar on every width; Server's tab says the state to screen readers (DESIGN 7.5). */}}
   <div class="site-strip">{{with .Lamp.Name}}<span class="site-world" aria-hidden="true">{{.}}</span>{{end}}<span id="site-state" class="site-state" aria-hidden="true">{{template "nav-lamp" .Lamp}}</span></div>
   <nav aria-label="{{t "common.nav.label"}}">
     <ul class="tabs" role="list">
@@ -41,10 +41,6 @@
       <li><a href="{{generalPath}}"{{if .Current (print generalPath "#page")}} aria-current="page"{{else if .Current generalPath}} aria-current="true"{{end}}>{{t "common.nav.settings"}}</a></li>
     </ul>
   </nav>
-  {{- /* The area's own pages follow the four areas in the rail from 64rem, so
-       the keyboard meets them where the eye does; below that the page shows
-       the same list under its heading (DESIGN 6, Shell). */}}
-  {{- block "rail" .}}{{end}}
   {{- end}}
   {{- /* A native details element, so the menu opens by keyboard and without script (DESIGN 6, "User menu"). */}}
   {{- $langName := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$langName = .Name}}{{end}}{{end}}
@@ -112,7 +108,8 @@
 {{- with .StripURL}}
 <div hidden hx-ext="sse" sse-connect="{{.}}" sse-swap="strip" hx-swap="none"></div>
 {{- end}}
-<main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
+{{- /* A form-only or short-list page sets its width to "measure", so its content keeps a working width on a wide screen while the tab row runs full width. */}}
+<main id="main" tabindex="-1" data-width="{{block "page-width" .}}{{"full"}}{{end}}"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
 {{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here (SPEC 12.10). */}}
 {{- with .Renewed}}
 <div class="message message--success" id="renewed-message" tabindex="-1" autofocus>

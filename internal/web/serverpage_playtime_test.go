@@ -75,7 +75,7 @@ func TestNoRecordShowsNoInventedFigures(t *testing.T) {
 					t.Errorf("shows %q with no record:\n%s", bad, html)
 				}
 			}
-			for _, wrapper := range []string{`class="play-time"`, `class="play-time__players"`} {
+			for _, wrapper := range []string{`class="play-time"`, `class="save-players-count"`} {
 				if !strings.Contains(html, wrapper) {
 					t.Errorf("the %s wrapper must always be there, so a change back to nothing still sends an event:\n%s", wrapper, html)
 				}

@@ -30,6 +30,7 @@ func init() {
 		"js.generate.ach_setting",
 		"js.generate.ach_clear",
 		"js.generate.moved",
+		"js.generate.changed",
 		"js.generate.all_set",
 		"common.dropzone.wrong_type",
 		"common.dropzone.too_big",
@@ -48,5 +49,6 @@ func init() {
 		"common.label.note",
 		"js.live.stopped",
 		"js.settings.unsaved",
+		"js.console.shown",
 	}
 }

@@ -19,6 +19,7 @@
   "js.generate.ach_setting": "{setting} deaktiviert einige Errungenschaften.",
   "js.generate.ach_clear": "Jetzt deaktiviert keine Einstellung mehr Errungenschaften.",
   "js.generate.moved": "{field} auf {value} gesetzt, damit der Bereich gültig bleibt.",
+  "js.generate.changed": "Gegenüber der Vorlage geändert",
   "js.generate.all_set": {
     "one": "{setting} auf {value} gesetzt für {count} Ressource.",
     "other": "{setting} auf {value} gesetzt für {count} Ressourcen."
@@ -39,5 +40,9 @@
   "js.settings.unsaved": {
     "one": "{count} ungespeicherte Änderung, bleibt beim Wechsel zwischen Abschnitten erhalten.",
     "other": "{count} ungespeicherte Änderungen, bleiben beim Wechsel zwischen Abschnitten erhalten."
+  },
+  "js.console.shown": {
+    "one": "{shown} von {count} Zeile angezeigt",
+    "other": "{shown} von {count} Zeilen angezeigt"
   }
 }

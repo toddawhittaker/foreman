@@ -1,6 +1,7 @@
 {{define "title"}}{{.Page.World.Name}}{{end}}
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
-<script src="{{static "copy.js"}}" defer></script>{{end}}
+<script src="{{static "copy.js"}}" defer></script>
+<script src="{{static "toggletip.js"}}" defer></script>{{end}}
 
 {{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
@@ -126,11 +127,10 @@
   </dl>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
-{{- /* The players of the save the world loads (SPEC 8.14); A9's partial. */}}
-{{template "world-players" .}}
-{{- /* Sharing the world comes first: its map string and a favorite made from it, side by side on a wide screen. */}}
-{{- if or .Exchange .CanFavorite}}
-<div class="world-share">
+{{- /* Facts, then sharing the world (map string, favorite, world file), then the save's players and the rows that manage it. The sharing column comes first in the markup so a phone shows and focuses it straight after the facts; a wide screen places it beside the main column. */}}
+<div class="world-layout">
+<div class="world-layout__side">
+{{- /* Sharing the world: its map string, a favorite made from it and the world file, stacked in the side column. */}}
 {{- with .Exchange}}
 <section class="panel card world-share__item" aria-labelledby="exchange-heading">
   <div class="world-share__head">
@@ -142,10 +142,13 @@
 </section>
 {{- end}}
 {{- if .CanFavorite}}
-<form method="post" action="{{.FavoritePath}}" class="panel card world-share__item" novalidate aria-labelledby="favorite-heading">
+<form method="post" action="{{.FavoritePath}}" class="panel card world-share__item" novalidate aria-labelledby="favorite-heading" data-tips>
   <div class="world-share__head">
-    <h2 id="favorite-heading">{{t "favorites.make.heading"}}</h2>
-    <p class="hint" id="favorite-hint">{{t "favorites.make.text"}}{{if .FavDefaultMap}} {{t "favorites.make.default_map"}}{{end}}</p>
+    <div class="setting-row__title">
+      <h2 id="favorite-heading">{{t "favorites.make.heading"}}</h2>
+      {{template "tip-icon" (tip "favorite-hint" (t "favorites.make.heading"))}}
+    </div>
+    <p class="tip__text" id="favorite-hint">{{t "favorites.make.text"}}{{if .FavDefaultMap}} {{t "favorites.make.default_map"}}{{end}}</p>
   </div>
   <div class="world-share__body">
     {{- with .FavMade}}
@@ -177,12 +180,14 @@
   </div>
 </form>
 {{- end}}
-</div>
-{{- end}}
-{{- /* Export the world as one file (SPEC 5.13); T6's partial. */}}
+{{- /* Export the world as one file (SPEC 5.13). */}}
 {{template "world-export" .}}
+</div>
+<div class="world-layout__main">
+{{- /* The players of the save the world loads (SPEC 8.14), right after the facts. */}}
+{{template "world-players" .}}
 {{- /* Managing the world: version, name and copy share one card of rows, a row's title in the first column, its control in the second (DESIGN 4). */}}
-<div class="panel setting-rows">
+<div class="panel card setting-rows world-manage">
 <section class="setting-row" aria-labelledby="version-heading">
   <div class="setting-row__head">
     <h2 id="version-heading">{{t "worlds.fact.game_version"}}</h2>
@@ -235,6 +240,8 @@
     </div>
   </div>
 </section>
+</div>
+</div>
 </div>
 {{- end}}
 {{- /* What takes the world out of use or destroys it sits last, apart from everything safe above (DESIGN 7.4). */}}

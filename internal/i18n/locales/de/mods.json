@@ -57,7 +57,7 @@
   "mods.row.gone": "Spieler können nicht beitreten: Das Mod-Portal hat Version {version} nicht mehr, deshalb kann ihr Spiel sie nicht herunterladen.",
   "mods.row.gone_none": "Spieler können nicht beitreten: Das Mod-Portal hat Version {version} nicht mehr und keine für diese Spielversion. Entferne die Mod oder deaktiviere sie.",
   "mods.row.deprecated": "Auf dem Mod-Portal als veraltet markiert, deshalb finden Spieler diese Mod nicht im Mod-Browser des Spiels.",
-  "mods.row.not_on_portal": "Nicht auf dem Mod-Portal, deshalb können die Spiele der Spieler sie nicht herunterladen. Die Spieler brauchen die Datei von dir.",
+  "mods.row.not_on_portal": "Nicht auf dem Mod-Portal, deshalb brauchen die Spieler die Datei von dir.",
   "mods.status.loading": "Das Mod-Portal wird auf Aktualisierungen geprüft …",
   "mods.status.unreachable": "Foreman konnte das Mod-Portal nicht erreichen und deshalb weder Aktualisierungen noch Mods prüfen, die Spieler nicht herunterladen können.",
   "mods.status.retry": "Erneut prüfen",

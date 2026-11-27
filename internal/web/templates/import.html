@@ -3,13 +3,10 @@
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
 <script src="{{static "import.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
-
 {{define "content" -}}
 {{with .Page}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.import.title"))}}
 <h1>{{t "worlds.import.title"}}</h1>
-{{template "rail" $}}
 <p class="page-intro">{{t "worlds.import.intro"}}</p>
 {{- with .Result}}
 {{- if .Imported}}
@@ -37,7 +34,23 @@
 {{- end}}
 {{- end}}
 
-{{- /* Uploading a save is the common way in, so it comes first (SPEC 5.1). */}}
+{{- /* Three ways in, one chosen at a time; only the chosen way's form shows.
+     Folders waiting in the import folder, or an answer about them, choose
+     that way; a world file's problem chooses that one; otherwise uploading a
+     save, the common way in (SPEC 5.1). The switch is CSS only; import.js
+     brings back the way last chosen when the page is not an answer. */}}
+{{- $pick := "upload"}}
+{{- if or .Inbox .Result .Folder.Problems}}{{$pick = "folder"}}{{end}}
+{{- if .Upload.Problems}}{{$pick = "upload"}}{{end}}
+{{- if .WorldFileProblems}}{{$pick = "file"}}{{end}}
+{{- /* A ticked folder came from a link such as "import it on its own", so the page answers it as it answers a form. */}}
+<fieldset class="import-pick"{{if or .Upload.Problems .WorldFileProblems .Result .Folder.Problems .Folder.Folders}} data-answer{{end}}>
+  <legend class="visually-hidden">{{t "worlds.import.pick.legend"}}</legend>
+  {{- /* Each card is named by its title alone; the line under it is its description. */}}
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-upload" value="upload" aria-labelledby="import-pick-upload-title" aria-describedby="import-pick-upload-text"{{if eq $pick "upload"}} checked{{end}}><span class="pick-card__title" id="import-pick-upload-title">{{t "worlds.saves.upload.heading"}}</span><span class="pick-card__text" id="import-pick-upload-text">{{t "worlds.import.upload.intro"}}</span></label>
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-folder" value="folder" aria-labelledby="import-pick-folder-title" aria-describedby="import-pick-folder-text"{{if eq $pick "folder"}} checked{{end}}><span class="pick-card__title" id="import-pick-folder-title">{{t "worlds.import.folder.heading"}}</span><span class="pick-card__text" id="import-pick-folder-text"><code translate="no">{{.InboxDir}}</code></span></label>
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-file" value="file" aria-labelledby="import-pick-file-title" aria-describedby="import-pick-file-text"{{if eq $pick "file"}} checked{{end}}><span class="pick-card__title" id="import-pick-file-title">{{t "worldfile.import.heading"}}</span><span class="pick-card__text" id="import-pick-file-text">{{t "worldfile.import.intro"}}</span></label>
+</fieldset>
 <form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel import-upload" novalidate aria-labelledby="upload-heading">
   <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>
   {{template "summary" .Upload.Problems}}
@@ -48,12 +61,12 @@
   {{/* The file comes last: the server reads the text fields before it. */}}
   {{template "dropzone" .SourceZone}}
   {{- end}}
-  <div class="actions">
+  <div class="actions form-foot">
     <button type="submit" class="button{{if not .Importable}} button--primary{{end}}">{{t "worlds.import.upload.button"}}</button>
   </div>
 </form>
 
-<form method="post" action="{{.FolderPath}}" class="panel" novalidate aria-labelledby="folder-heading">
+<form method="post" action="{{.FolderPath}}" class="panel import-folder" novalidate aria-labelledby="folder-heading">
   <h2 id="folder-heading">{{t "worlds.import.folder.heading"}}</h2>
   {{template "summary" .Folder.Problems}}
   <p>{{tHTML "worlds.import.folder.intro" "dir" (code .InboxDir) "zip" (code ".zip") "saves" (code "saves") "mods" (code "mods") "config" (code "config") "rconpw" (code "rconpw")}}</p>
@@ -96,7 +109,7 @@
   {{- end}}
   {{- end}}
   {{- if .Importable}}
-  <div class="actions">
+  <div class="actions form-foot">
     <button type="submit" class="button button--primary">{{t "worlds.import.folder.button"}}</button>
   </div>
   {{- end}}
@@ -109,7 +122,7 @@
   <p>{{t "worldfile.import.intro"}}</p>
   {{template "required-note"}}
   {{template "dropzone" .WorldFileZone}}
-  <div class="actions">
+  <div class="actions form-foot">
     <button type="submit" class="button" id="act-upload-world-file">{{t "worldfile.import.button"}}</button>
   </div>
 </form>
@@ -143,19 +156,23 @@
     <option value="" id="{{.IDPrefix}}-version-same">{{if .SaveRead}}{{t "worlds.import.version.same_with" "version" .SaveVersion}}{{else}}{{t "worlds.import.version.same"}}{{end}}</option>
   </select>
 </div>
-<div class="field">
-  <label for="{{.IDPrefix}}-version">{{t "worlds.import.version.typed"}}</label>
-  <p class="hint" id="{{.IDPrefix}}-version-hint">{{t "worlds.import.version.hint"}}</p>
-  {{- if .AskVersion}}
-  <p class="hint" id="{{.IDPrefix}}-version-ask">{{t "worlds.import.version.ask"}}</p>
-  {{- end}}
-  <input id="{{.IDPrefix}}-version" name="game_version_typed" type="text" value="{{.GameVersion}}"
-    inputmode="decimal" autocomplete="off" spellcheck="false"{{if .AskVersion}} autofocus{{end}}
-    {{- if not .VersionError.IsZero}} aria-invalid="true"{{end}} aria-describedby="{{.IDPrefix}}-version-hint{{if .AskVersion}} {{.IDPrefix}}-version-ask{{end}}{{if not .VersionError.IsZero}} {{.IDPrefix}}-version-error{{end}}">
-  {{- if not .VersionError.IsZero}}
-  <p class="error" id="{{$.IDPrefix}}-version-error"><strong>{{t "common.error.label"}}</strong> {{msg .VersionError}}</p>
-  {{- end}}
-</div>
+{{- /* One version control: the list, and a version not in it behind a disclosure, as on Generate. */}}
+<details class="disclosure"{{if or .GameVersion .AskVersion (not .VersionError.IsZero)}} open{{end}}>
+  <summary>{{t "worlds.generate.version.other"}}</summary>
+  <div class="field">
+    <label for="{{.IDPrefix}}-version">{{t "worlds.import.version.typed"}}</label>
+    <p class="hint" id="{{.IDPrefix}}-version-hint">{{t "worlds.import.version.hint"}}</p>
+    {{- if .AskVersion}}
+    <p class="hint" id="{{.IDPrefix}}-version-ask">{{t "worlds.import.version.ask"}}</p>
+    {{- end}}
+    <input id="{{.IDPrefix}}-version" name="game_version_typed" type="text" value="{{.GameVersion}}"
+      inputmode="decimal" autocomplete="off" spellcheck="false"{{if .AskVersion}} autofocus{{end}}
+      {{- if not .VersionError.IsZero}} aria-invalid="true"{{end}} aria-describedby="{{.IDPrefix}}-version-hint{{if .AskVersion}} {{.IDPrefix}}-version-ask{{end}}{{if not .VersionError.IsZero}} {{.IDPrefix}}-version-error{{end}}">
+    {{- if not .VersionError.IsZero}}
+    <p class="error" id="{{$.IDPrefix}}-version-error"><strong>{{t "common.error.label"}}</strong> {{msg .VersionError}}</p>
+    {{- end}}
+  </div>
+</details>
 <div class="field">
   <label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age"
     aria-describedby="{{.IDPrefix}}-space-age-hint {{.IDPrefix}}-space-age-warning{{if not .SpaceAgeError.IsZero}} {{.IDPrefix}}-space-age-error{{end}}"
@@ -173,3 +190,5 @@
 </div>
 {{- end}}
 {{- end}}
+
+{{define "page-width"}}{{"measure"}}{{end}}

@@ -162,7 +162,7 @@ function seedFull(f: Foreman, opts: { gamePassword?: boolean; extraSave?: boolea
 
 async function exportFrom(page: Page): Promise<Download> {
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export world" }).click();
+  await page.getByRole("button", { name: "Export world", exact: true }).click();
   return download;
 }
 
@@ -190,10 +190,13 @@ const auditRows = (f: Foreman, action: string) => {
 // The Import page's third form: one drop zone and its upload button.
 async function upload(page: Page, file: Buffer, name = "world.zip") {
   await page.goto("/import");
+  await pickWorldFile(page);
   await page.locator("#world-file").setInputFiles({ name, mimeType: "application/zip", buffer: file });
   await page.locator("#act-upload-world-file").click();
 }
 
+// The Import page shows one way in at a time; the world file is the third choice.
+const pickWorldFile = (page: Page) => page.locator("#import-pick-file").check();
 const backToImport = (page: Page) => page.getByRole("link", { name: "Back to Import" });
 const nameField = (page: Page) => page.locator("#world-file-name");
 const confirm = (page: Page) => page.locator("#act-import-world-file");
@@ -323,7 +326,7 @@ test("a world with a symlink in it is refused, naming the path, and nothing is d
   let downloaded = false;
   page.on("download", () => (downloaded = true));
   const reply = page.waitForResponse((r) => r.url().endsWith("/worlds/base/export"));
-  await page.getByRole("button", { name: "Export world" }).click();
+  await page.getByRole("button", { name: "Export world", exact: true }).click();
   expect((await reply).status()).toBeGreaterThanOrEqual(400);
   await expect(page.locator("main")).toContainText("sneaky-link");
   expect(downloaded).toBe(false);
@@ -358,6 +361,7 @@ test("a running world exports the last save on disk, and the card says so", asyn
 test("the Import page has a third form with its own drop zone", async ({ page }) => {
   await createAdmin(page);
   await page.goto("/import");
+  await pickWorldFile(page);
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a world file" }) });
   await expect(form).toBeVisible();
   await expect(form.locator("#world-file")).toHaveAttribute("type", "file");
@@ -476,6 +480,7 @@ test("the game image download is ticked when the image is missing, and is only s
 test("an upload with no file chosen is refused on the field, with focus on the error summary", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   await page.goto("/import");
+  await pickWorldFile(page);
   await page.locator("#act-upload-world-file").click();
   const summary = page.locator("#error-summary");
   await expect(summary).toBeVisible();
@@ -495,6 +500,7 @@ test("an upload with no file chosen is refused on the field, with focus on the e
 test("the world file form says once what the asterisk means, before its field", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   await page.goto("/import");
+  await pickWorldFile(page);
   const field = page.locator("#world-file");
   const note = field.locator("xpath=ancestor::form[1]").locator(".required-note");
   await expect(note).toHaveCount(1);

@@ -3,6 +3,8 @@
 (() => {
   "use strict";
 
+  const t = window.foremanText;
+
   // A pixel or two of slack, since scroll positions are fractional.
   const atEnd = (box) => box.scrollHeight - box.scrollTop - box.clientHeight <= 4;
 
@@ -17,16 +19,29 @@
     // off and only reaching the end turns it back on, so a rewrap or a late
     // scroll event from our own jump can never stop the follow (DESIGN 8.5).
     let following = true;
+    // Set while the reader has turned Follow off; reaching the end then
+    // does not turn it back on.
+    let held = false;
     let lastTop = box.scrollTop;
     const readScroll = () => {
-      if (atEnd(box)) following = true;
-      else if (box.scrollTop < lastTop - 1) following = false;
+      if (atEnd(box)) {
+        if (!held) setFollowing(true);
+      }
+      else if (box.scrollTop < lastTop - 1) setFollowing(false);
       lastTop = box.scrollTop;
+    };
+    // The console's bar: find, a filter by kind of line, and Follow, which
+    // says whether the view follows and can stop or restart it.
+    const tools = pre.tagName === "PRE" ? frame.parentElement.querySelector(".log-tools") : null;
+    const follow = tools?.querySelector("#log-follow");
+    const setFollowing = (on) => {
+      following = on;
+      if (follow) follow.checked = on;
     };
     const toEnd = () => {
       box.scrollTop = box.scrollHeight;
       lastTop = box.scrollTop;
-      following = true;
+      setFollowing(true);
       jump.hidden = true;
     };
     const keepEnd = () => {
@@ -65,11 +80,12 @@
       el.replaceChildren(...(time ? [time] : []), msg);
       return el;
     };
-    // The first line of each day carries data-day, which shows its date.
+    // The first shown line of each day carries data-day, which shows its
+    // date, so a filter that hides a day's first line keeps the date.
     const markDays = () => {
       let day = "";
       for (const line of pre.children) {
-        const date = line.querySelector(":scope > .log-time > .log-date")?.textContent.trim();
+        const date = line.hidden ? "" : line.querySelector(":scope > .log-time > .log-date")?.textContent.trim();
         if (date && date !== day) {
           line.dataset.day = "";
           day = date;
@@ -115,6 +131,62 @@
       return el;
     };
     const row = "logHtml" in frame.dataset ? parsed : span;
+
+    // A line shows when it is of the chosen kind and holds the words looked for.
+    const kindOf = (line) => {
+      if (line.classList.contains("log-error")) return "error";
+      if (line.classList.contains("log-warning")) return "warning";
+      return / \[CHAT\] /.test(line.textContent) ? "chat" : "";
+    };
+    const sift = (line) => {
+      if (!tools) return line;
+      const kind = tools.querySelector("input[name=log-filter]:checked")?.value || "";
+      const words = tools.querySelector("#log-find").value.trim().toLowerCase();
+      line.hidden = (kind !== "" && kindOf(line) !== kind) || (words !== "" && !line.textContent.toLowerCase().includes(words));
+      return line;
+    };
+    // With a filter or words to find, the log says how many lines show, in
+    // a polite status line, and in the log itself when none do.
+    const status = document.getElementById("log-count");
+    const noMatch = document.getElementById("log-no-match");
+    const filtering = () => tools.querySelector("input[name=log-filter]:checked")?.value !== "" || tools.querySelector("#log-find").value.trim() !== "";
+    const shownCount = () => [...pre.children].filter((line) => !line.hidden).length;
+    const showNoMatch = () => {
+      if (noMatch) noMatch.hidden = !(filtering() && pre.childElementCount > 0 && shownCount() === 0);
+    };
+    const sayCount = () => {
+      if (!status) return;
+      const shown = shownCount();
+      if (!filtering()) status.textContent = "";
+      else if (shown === 0) status.textContent = noMatch?.textContent ?? "";
+      else status.textContent = t("js.console.shown", { shown, count: pre.childElementCount });
+    };
+    let sayLater = 0;
+    if (tools) {
+      tools.hidden = false;
+      const siftAll = () => {
+        for (const line of pre.children) sift(line);
+        if (pre.tagName === "PRE") markDays();
+        showNoMatch();
+        keepEnd();
+      };
+      tools.addEventListener("input", (e) => {
+        if (e.target === follow) return;
+        siftAll();
+        // While words are typed the count is said once the typing pauses.
+        clearTimeout(sayLater);
+        if (e.target.id === "log-find") sayLater = setTimeout(sayCount, 500);
+        else sayCount();
+      });
+      // A filter the browser kept over a reload applies to the lines already drawn.
+      siftAll();
+      if (filtering()) sayCount();
+      follow.addEventListener("change", () => {
+        held = !follow.checked;
+        if (follow.checked) toEnd();
+        else setFollowing(false);
+      });
+    }
     const noEmptyNote = (lines) => {
       if (lines.length > 0) document.getElementById("log-empty")?.remove();
     };
@@ -123,10 +195,11 @@
     // bottom follows them. Focus is never touched.
     const add = (lines) => {
       readScroll();
-      pre.append(...lines.map(row));
+      pre.append(...lines.map((l) => sift(row(l))));
       while (pre.childElementCount > max) pre.firstElementChild.remove();
       if (row === span) markDays();
       noEmptyNote(lines);
+      if (tools) showNoMatch();
       if (following) toEnd();
       else jump.hidden = false;
     };
@@ -135,9 +208,10 @@
     const reset = (lines) => {
       readScroll();
       const top = box.scrollTop;
-      pre.replaceChildren(...lines.slice(-max).map(row));
+      pre.replaceChildren(...lines.slice(-max).map((l) => sift(row(l))));
       if (row === span) markDays();
       noEmptyNote(lines);
+      if (tools) showNoMatch();
       if (following) toEnd();
       else {
         box.scrollTop = top;
@@ -157,6 +231,7 @@
     document.fonts?.addEventListener("loadingdone", keepEnd);
     document.fonts?.ready.then(keepEnd);
     jump.addEventListener("click", () => {
+      held = false;
       toEnd();
       // The button is about to disappear; keep the keyboard on the log.
       box.focus();

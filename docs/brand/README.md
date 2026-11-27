@@ -5,6 +5,13 @@
   them.
 - `foreman-wordmark-800.webp` is the 800 px wordmark that the top-level
   README shows.
+- The app's home link is the rusty wordmark (a gear and FOREMAN on a
+  riveted plate), not the icon. It is drawn 46 px tall in the 56 px top bar
+  (30 px on a phone) and 288 px wide over the sign-in and signed-out
+  headings. `internal/web/static/icons/wordmark-296.webp` is the export for
+  the bar, twice its drawn size so the rivets and letters stay sharp, made
+  from the 2000 px master. `wordmark-480.webp` is the export for the About
+  box. Make new sizes from the master, never from these.
 - The app's favicon is the flat design at 16 px and the rusty logo at 32 px
-  and up (I prefer the rusty logo wherever it reads). The files
-  are in `internal/web/static/icons/`.
+  and up (I prefer the rusty logo wherever it reads). The flat icon is
+  used only there. The files are in `internal/web/static/icons/`.

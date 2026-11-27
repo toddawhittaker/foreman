@@ -57,7 +57,7 @@
   "mods.row.gone": "Los jugadores no pueden unirse: el portal de mods ya no tiene la versión {version}, así que su juego no puede descargarla.",
   "mods.row.gone_none": "Los jugadores no pueden unirse: el portal de mods ya no tiene la versión {version} ni ninguna para esta versión del juego. Quita el mod o desactívalo.",
   "mods.row.deprecated": "Marcado como obsoleto en el portal de mods, así que los jugadores no lo encuentran en el explorador de mods del juego.",
-  "mods.row.not_on_portal": "No está en el portal de mods, así que los juegos de los jugadores no pueden descargarlo. Los jugadores necesitan que les pases el archivo.",
+  "mods.row.not_on_portal": "No está en el portal de mods, así que los jugadores necesitan que les pases el archivo.",
   "mods.status.loading": "Buscando actualizaciones en el portal de mods…",
   "mods.status.unreachable": "Foreman no pudo conectar con el portal de mods, así que no pudo buscar actualizaciones ni mods que los jugadores no puedan descargar.",
   "mods.status.retry": "Comprobar de nuevo",

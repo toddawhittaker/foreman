@@ -244,7 +244,7 @@ func (p ServerPage) UptimeISO() string { return durationISO(p.Status.Uptime) }
 func (p ServerPage) Lamp() LiveState { return LiveState{State: p.Status.State, Have: true} }
 
 // CPUMeter is the CPU figure as a meter's fill, 0 to 100, and CPULevel
-// names the band it is in: "warn" above 80, "danger" above 95, else "".
+// names the band it is in: "warn" above 75, "danger" above 90, else "".
 func (p ServerPage) CPUMeter() string {
 	return strconv.FormatFloat(min(max(p.Status.CPUPercent, 0), 100), 'f', 1, 64)
 }
@@ -267,11 +267,21 @@ func (p ServerPage) MemoryMeter() string { return strconv.FormatFloat(p.memorySh
 
 func (p ServerPage) MemoryLevel() string { return loadLevel(p.memoryShare()) }
 
+// MemoryShare is the memory figure's share of the limit, as a whole percent.
+func (p ServerPage) MemoryShare() int { return int(math.Round(p.memoryShare())) }
+
+// The load levels a gauge warns at: over 75 percent it is high, over 90 very
+// high, so a game has room to spare before it slows.
+const (
+	loadWarnOver   = 75
+	loadDangerOver = 90
+)
+
 func loadLevel(v float64) string {
 	switch {
-	case v > 95:
+	case v > loadDangerOver:
 		return "danger"
-	case v > 80:
+	case v > loadWarnOver:
 		return "warn"
 	}
 	return ""

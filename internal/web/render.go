@@ -395,6 +395,16 @@ type crumbStep struct {
 	Current     bool
 }
 
+// tipIcon is an (i) toggletip button: the id of the text it opens, and the
+// name of what that text explains, for the tip-icon partial.
+type tipIcon struct {
+	Controls string
+	About    string
+}
+
+// tip makes a tipIcon: {{template "tip-icon" (tip "favorite-hint" (t "favorites.make.heading"))}}.
+func tip(controls, about string) tipIcon { return tipIcon{controls, about} }
+
 // crumbs makes a breadcrumb's steps from href and label pairs, for the crumb
 // partial: {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .Name)}}.
 func crumbs(pairs ...string) ([]crumbStep, error) {
@@ -443,6 +453,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"figure":            figure,
 		"share":             share,
 		"crumbs":            crumbs,
+		"tip":               tip,
 		"chatPath":          func() string { return PathChat },
 		"utc":               func(t time.Time) string { return t.UTC().Format(notify.TimeLayout) },
 		"isoTime":           func(t time.Time) string { return t.UTC().Format(time.RFC3339) },

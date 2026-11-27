@@ -61,7 +61,7 @@
   "mods.row.gone": "Hráči se nemohou připojit: portál modů už nemá verzi {version}, takže ji jejich hra nemůže stáhnout.",
   "mods.row.gone_none": "Hráči se nemohou připojit: portál modů už nemá verzi {version} ani žádnou pro tuto verzi hry. Mod je třeba odebrat nebo vypnout.",
   "mods.row.deprecated": "Na portálu modů označen jako zastaralý, takže ho hráči nenajdou v prohlížeči modů ve hře.",
-  "mods.row.not_on_portal": "Není na portálu modů, takže ho hry hráčů nemohou stáhnout. Hráči musí soubor získat jinak.",
+  "mods.row.not_on_portal": "Není na portálu modů, takže hráči musí soubor získat jinak.",
   "mods.status.loading": "Kontrolují se aktualizace na portálu modů…",
   "mods.status.unreachable": "Foreman se nemohl spojit s portálem modů, a proto nemohl zkontrolovat aktualizace ani mody, které hráči nemohou stáhnout.",
   "mods.status.retry": "Zkontrolovat znovu",

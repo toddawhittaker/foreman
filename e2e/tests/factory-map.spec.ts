@@ -232,6 +232,20 @@ test("the keys and the buttons zoom by 1.15, 0 fits, and the level is said", { t
   expect(await ui.base(page).evaluate((i) => getComputedStyle(i).imageRendering)).toMatch(/pixelated|crisp-edges/);
 });
 
+// Without script the zoom buttons would do nothing, so they are not shown;
+// the picture is still there to scroll.
+test("without script the picture shows and the zoom buttons do not", async ({ page, browser, foreman }) => {
+  await page.goto(base);
+  await draw(page);
+  const plain = await browser.newContext({ baseURL: foreman.url, javaScriptEnabled: false, storageState: await page.context().storageState() });
+  const noScript = await plain.newPage();
+  await noScript.goto(base);
+  await expect(ui.base(noScript)).toBeVisible();
+  await expect(noScript.locator(".factorymap__zoom")).toBeHidden();
+  await expect(ui.zoomIn(noScript)).toBeHidden();
+  await plain.close();
+});
+
 test("a drag pans a zoomed picture, and the arrow keys pan it too", { tag: "@looks" }, async ({ page }) => {
   await page.goto(base);
   await draw(page);

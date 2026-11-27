@@ -189,10 +189,9 @@ test("a very long world name wraps on the list and the world page", { tag: "@loo
 });
 
 // DESIGN 6, Shell: the Worlds tab is the current page on the list and marks
-// the section on every other page about worlds. Below 64rem the current tab
-// is underlined in the selected colour and a hovered tab only brightens its
-// text; from 64rem the rail row has the selected edge on its start side and
-// a hovered row takes the hover face.
+// the section on every other page about worlds. The current tab is
+// underlined in the selected colour and a hovered tab brightens its text, at
+// every width: the main tabs are one row in the top bar.
 test("the Worlds tab marks the current page and the section", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "alpha", { name: "Alpha", game_version: "2.0.72", space_age: false });
@@ -207,16 +206,16 @@ test("the Worlds tab marks the current page and the section", { tag: "@looks" },
     await page.goto(path);
     await expect(tab, path).toHaveAttribute("aria-current", "true");
   }
-  const wide = (page.viewportSize()?.width ?? 0) >= 1024;
-  const look = () => tab.evaluate((el, wide) => {
+  const look = () => tab.evaluate((el) => {
     const s = getComputedStyle(el);
-    // What hover changes: the text below 64rem, the row's face from 64rem.
-    return { line: wide ? s.borderInlineStartColor : s.borderBottomColor, hovered: wide ? s.backgroundColor : s.color };
-  }, wide);
-  const selected = await page.evaluate(() => {
+    // The underline is the tab's 3 px foot strip; what hover changes is the tab's text.
+    return { line: getComputedStyle(el, "::after").backgroundColor, hovered: s.color };
+  });
+  // Read inside the bar, which keeps its own colour scheme in either theme.
+  const selected = await tab.evaluate((el) => {
     const probe = document.createElement("span");
     probe.style.color = "var(--color-selected)";
-    document.body.append(probe);
+    el.append(probe);
     const c = getComputedStyle(probe).color;
     probe.remove();
     return c;
@@ -224,12 +223,22 @@ test("the Worlds tab marks the current page and the section", { tag: "@looks" },
   const current = await look();
   expect(current.line).toBe(selected);
   await tab.evaluate((el) => el.removeAttribute("aria-current"));
+  // The strip's colour eases, so it is read once it has settled.
+  await expect.poll(async () => (await look()).line).not.toBe(selected);
   const idle = await look();
-  expect(idle.line).not.toBe(selected);
   await tab.hover();
+  await expect.poll(async () => (await look()).hovered).not.toBe(idle.hovered);
   const hover = await look();
-  expect(hover.hovered).not.toBe(idle.hovered);
   expect(hover.line).not.toBe(selected);
+  // Forced colours drop backgrounds, so there the underline is a Highlight border.
+  await page.goto("/worlds");
+  await page.emulateMedia({ forcedColors: "active" });
+  const forced = await tab.evaluate((el) => {
+    const a = getComputedStyle(el, "::after");
+    return { width: a.borderBottomWidth, style: a.borderBottomStyle };
+  });
+  expect(forced).toEqual({ width: "3px", style: "solid" });
+  await page.emulateMedia({ forcedColors: "none" });
 });
 
 // SPEC 5.4, 6.6: each world in the list says, in its Disk use, what its snapshots add, and

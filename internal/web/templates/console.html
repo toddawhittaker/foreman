@@ -19,8 +19,8 @@
 {{- /* The facts event carries the heading's badge and the announce event is read out, so state changes are spoken here too (DESIGN 7.5). */}}
 <div sse-swap="facts" hidden></div>
 <div sse-swap="announce" hidden></div>
+{{template "crumb" (crumbs serverPath (t "common.nav.server") "" .World.Name)}}
 <header class="page-head">
-  <p class="eyebrow">{{t "common.nav.server"}}</p>
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
 </header>
 {{template "rail" $}}
@@ -33,9 +33,25 @@
     <a href="{{.LogPath}}" download id="log-download" class="button">{{t "server.console.log_download"}}</a>
   </div>
   <p class="hint">{{t "server.console.log_hint" "count" .MaxLines}}</p>
+  {{- /* Finding and filtering are the script's; without it the bar stays hidden (DESIGN 8.5). */}}
+  <div class="log-tools" hidden>
+    <label for="log-find">{{t "server.console.find"}}</label>
+    <input id="log-find" class="log-tools__find" type="text" autocomplete="off" spellcheck="false">
+    <fieldset class="segmented log-tools__filter">
+      <legend class="visually-hidden">{{t "server.console.filter"}}</legend>
+      <label><input type="radio" name="log-filter" value="" checked> {{t "server.console.filter_all"}}</label>
+      <label><input type="radio" name="log-filter" value="warning"> {{t "server.console.filter_warnings"}}</label>
+      <label><input type="radio" name="log-filter" value="error"> {{t "server.console.filter_errors"}}</label>
+      <label><input type="radio" name="log-filter" value="chat"> {{t "common.nav.chat"}}</label>
+    </fieldset>
+    <label class="check log-tools__follow"><input type="checkbox" id="log-follow" checked> {{t "server.console.follow"}}</label>
+    {{- /* How many lines the find and filter leave, said politely once typing pauses. */}}
+    <p class="hint log-tools__count" id="log-count" role="status"></p>
+  </div>
   {{- if not .Lines}}
   <p class="empty" id="log-empty">{{t "server.console.log_empty"}}</p>
   {{- end}}
+  <p class="empty" id="log-no-match" hidden>{{t "server.console.no_match"}}</p>
   <div class="log-frame" data-log-events="{{.EventsPath}}" data-max-lines="{{.MaxLines}}">
     <div class="log" tabindex="0" role="region" aria-label="{{t "server.console.log_label"}}">
       {{- /* The game's own words stay English (SPEC 22.3). */}}

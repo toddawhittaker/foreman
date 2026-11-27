@@ -107,6 +107,9 @@ test("an import of a save that uses a mod links to the same plan", { tag: "@look
   await page.goto("/import");
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
   await form.getByLabel("World name").fill("Modded");
+  // The typed version is behind its disclosure, which opens by itself only when the version list cannot be fetched.
+  const other = form.locator("details.disclosure:has(input[name=game_version_typed])");
+  if (!(await other.evaluate((d) => (d as HTMLDetailsElement).open))) await other.locator("summary").click();
   await form.getByLabel("Or type a version").fill("2.1.24");
   await form.getByLabel("Download the game image", { exact: false }).uncheck();
   await form.getByRole("button", { name: "Import folder" }).click();

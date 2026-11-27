@@ -19,6 +19,7 @@
   "js.generate.ach_setting": "{setting} turns off some achievements.",
   "js.generate.ach_clear": "No setting turns off achievements now.",
   "js.generate.moved": "{field} set to {value} to keep the range valid.",
+  "js.generate.changed": "Changed from the preset",
   "js.generate.all_set": {
     "one": "{setting} set to {value} on {count} resource.",
     "other": "{setting} set to {value} on {count} resources."
@@ -39,5 +40,9 @@
   "js.settings.unsaved": {
     "one": "{count} unsaved change, kept while you move between sections.",
     "other": "{count} unsaved changes, kept while you move between sections."
+  },
+  "js.console.shown": {
+    "one": "{shown} of {count} line shown",
+    "other": "{shown} of {count} lines shown"
   }
 }

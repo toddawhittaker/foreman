@@ -2,15 +2,16 @@
 
 {{define "scripts"}}<script src="{{static "generate.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.generate.title"))}}
+<div class="flow-head">
 <h1>{{t "worlds.generate.title"}}</h1>
-{{template "rail" $}}
 {{template "genflow-steps" .Steps}}
+</div>
 <p class="page-intro">{{t "worlds.generate.intro"}}</p>
+<div class="gen-start">
 {{- if .FavoritesOn}}
 {{- /* A plain GET, so without script the page reloads filled in (SPEC 5.12). */}}
 <form method="get" action="{{.Path}}" class="panel" id="favorite-chooser" aria-labelledby="favorite-chooser-heading">
@@ -118,5 +119,8 @@
     <button type="submit" class="button button--primary" id="generate-button">{{t "newmap.next.mods"}}</button>
   </div>
 </form>
+</div>
 {{end}}
 {{- end}}
+
+{{define "page-width"}}{{"measure"}}{{end}}

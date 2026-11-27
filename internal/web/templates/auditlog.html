@@ -77,7 +77,7 @@
       <tr role="row" id="audit-{{.ID}}">
         <td role="cell" class="audit-time" data-label="{{t "audit.fact.time"}}">{{template "when" .Time}}</td>
         <td role="cell" class="audit-user" data-label="{{t "audit.fact.user"}}">{{.User}}</td>
-        <td role="cell" class="audit-token" data-label="{{t "audit.fact.token"}}">{{if .Token}}<span class="badge ident" translate="no">{{.Token}}</span>{{end}}</td>
+        <td role="cell" class="audit-token" data-label="{{t "audit.fact.token"}}">{{if .Token}}<span class="badge ident" translate="no" title="{{.Token}}">{{.Token}}</span>{{end}}</td>
         <td role="cell" class="audit-action" data-label="{{t "audit.filter.action"}}">{{if .Word.IsZero}}<span class="ident" translate="no">{{.Action}}</span>{{else}}{{msg .Word}}{{end}}</td>
         <td role="cell" class="audit-world" data-label="{{t "audit.fact.world"}}">{{if .WorldID}}{{if .WorldKnown}}<a href="{{.WorldPath}}">{{.WorldName}}</a>{{else}}<span class="ident">{{t "audit.world.deleted" "world" .WorldID}}</span>{{end}}{{end}}</td>
         <td role="cell" class="audit-detail ident" data-label="{{t "audit.fact.detail"}}">{{.Detail}}</td>

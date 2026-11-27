@@ -1,9 +1,11 @@
-{{/* The world file export card, on the world page (SPEC 5.13). Dot is the WorldPage. It posts, because it does work and writes an audit entry; the response is the file. */}}
+{{/* The world file export card, in the world page's side column (SPEC 5.13). Dot is the WorldPage. It posts, because it does work and writes an audit entry; the response is the file. */}}
 {{define "world-export"}}
-<div class="world-share">
-<form method="post" action="{{.ExportPath}}" class="panel card world-share__item world-export" novalidate aria-labelledby="export-heading">
+<form method="post" action="{{.ExportPath}}" class="panel card world-share__item world-export" novalidate aria-labelledby="export-heading" data-tips>
   <div class="world-share__head">
-    <h2 id="export-heading">{{t "worldfile.export.heading"}}</h2>
+    <div class="setting-row__title">
+      <h2 id="export-heading">{{t "worldfile.export.heading"}}</h2>
+      {{template "tip-icon" (tip "export-notes" (t "worldfile.export.heading"))}}
+    </div>
     <p class="hint" id="export-hint">{{t "worldfile.export.text"}}{{if not .World.SizeUnknown}} {{t "worldfile.export.size" "size" (bytes .World.DiskBytes)}}{{end}}</p>
   </div>
   <div class="world-share__body">
@@ -13,8 +15,11 @@
       <label class="check"><input type="radio" id="export-saves-loaded" name="saves" value="loaded" aria-describedby="export-saves-loaded-hint"> {{t "worldfile.export.saves.loaded"}}</label>
       <p class="hint" id="export-saves-loaded-hint">{{t "worldfile.export.saves.loaded_hint"}}</p>
     </fieldset>
-    <p class="hint" id="export-running"><strong>{{t "common.label.note"}}</strong> {{t "worldfile.export.running"}}</p>
-    <p class="hint" id="export-left-out">{{t "worldfile.export.left_out"}} {{t "worldfile.export.audit"}}</p>
+    {{- /* What the file leaves out and how a running game is caught sit behind the (i) beside the heading; the warning stays with the button. */}}
+    <div class="tip__text" id="export-notes">
+      <p id="export-running"><strong>{{t "common.label.note"}}</strong> {{t "worldfile.export.running"}}</p>
+      <p id="export-left-out">{{t "worldfile.export.left_out"}} {{t "worldfile.export.audit"}}</p>
+    </div>
     {{- /* The warning sits with the one action it is about, as the favorites export's does (DESIGN 7.11). */}}
     <div class="message message--warning" id="export-warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "worldfile.export.warning"}}</p>
@@ -24,5 +29,4 @@
     </div>
   </div>
 </form>
-</div>
 {{end}}

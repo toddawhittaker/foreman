@@ -10,7 +10,7 @@
      They follow the placeholder; when Docker Hub cannot be reached one disabled option says why. */}}
 {{define "version-list" -}}
 {{- if .Unreachable}}
-<option value="" disabled>{{t "server.versions.unreachable_option"}}</option>
+<option value="" disabled data-unreachable>{{t "server.versions.unreachable_option"}}</option>
 {{- end}}
 {{- range .Versions}}
 <option value="{{.}}"{{if eq . $.Selected}} selected{{end}}>{{msg ($.Label .)}}</option>
