@@ -5,15 +5,7 @@
 (() => {
   "use strict";
 
-  // Text from the page's #i18n block: a plural entry is picked by the
-  // page's language, and {name} placeholders are filled in.
-  const lang = document.documentElement.lang;
-  const strings = JSON.parse(document.getElementById("i18n").textContent);
-  function t(key, args = {}) {
-    let text = strings[key];
-    if (typeof text === "object") text = text[new Intl.PluralRules(lang).select(args.count)] ?? text.other;
-    return text.replace(/\{(\w+)\}/g, (_, name) => (typeof args[name] === "number" ? args[name].toLocaleString(lang) : args[name]));
-  }
+  const t = window.foremanText;
 
   // The same words as the server's stepList.Left.
   function left(until) {

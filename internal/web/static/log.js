@@ -3,6 +3,8 @@
 (() => {
   "use strict";
 
+  const t = window.foremanText;
+
   // A pixel or two of slack, since scroll positions are fractional.
   const atEnd = (box) => box.scrollHeight - box.scrollTop - box.clientHeight <= 4;
 
@@ -78,11 +80,12 @@
       el.replaceChildren(...(time ? [time] : []), msg);
       return el;
     };
-    // The first line of each day carries data-day, which shows its date.
+    // The first shown line of each day carries data-day, which shows its
+    // date, so a filter that hides a day's first line keeps the date.
     const markDays = () => {
       let day = "";
       for (const line of pre.children) {
-        const date = line.querySelector(":scope > .log-time > .log-date")?.textContent.trim();
+        const date = line.hidden ? "" : line.querySelector(":scope > .log-time > .log-date")?.textContent.trim();
         if (date && date !== day) {
           line.dataset.day = "";
           day = date;
@@ -142,15 +145,42 @@
       line.hidden = (kind !== "" && kindOf(line) !== kind) || (words !== "" && !line.textContent.toLowerCase().includes(words));
       return line;
     };
+    // With a filter or words to find, the log says how many lines show, in
+    // a polite status line, and in the log itself when none do.
+    const status = document.getElementById("log-count");
+    const noMatch = document.getElementById("log-no-match");
+    const filtering = () => tools.querySelector("input[name=log-filter]:checked")?.value !== "" || tools.querySelector("#log-find").value.trim() !== "";
+    const shownCount = () => [...pre.children].filter((line) => !line.hidden).length;
+    const showNoMatch = () => {
+      if (noMatch) noMatch.hidden = !(filtering() && pre.childElementCount > 0 && shownCount() === 0);
+    };
+    const sayCount = () => {
+      if (!status) return;
+      const shown = shownCount();
+      if (!filtering()) status.textContent = "";
+      else if (shown === 0) status.textContent = noMatch?.textContent ?? "";
+      else status.textContent = t("js.console.shown", { shown, count: pre.childElementCount });
+    };
+    let sayLater = 0;
     if (tools) {
       tools.hidden = false;
       const siftAll = () => {
         for (const line of pre.children) sift(line);
+        if (pre.tagName === "PRE") markDays();
+        showNoMatch();
         keepEnd();
       };
       tools.addEventListener("input", (e) => {
-        if (e.target !== follow) siftAll();
+        if (e.target === follow) return;
+        siftAll();
+        // While words are typed the count is said once the typing pauses.
+        clearTimeout(sayLater);
+        if (e.target.id === "log-find") sayLater = setTimeout(sayCount, 500);
+        else sayCount();
       });
+      // A filter the browser kept over a reload applies to the lines already drawn.
+      siftAll();
+      if (filtering()) sayCount();
       follow.addEventListener("change", () => {
         held = !follow.checked;
         if (follow.checked) toEnd();
@@ -169,6 +199,7 @@
       while (pre.childElementCount > max) pre.firstElementChild.remove();
       if (row === span) markDays();
       noEmptyNote(lines);
+      if (tools) showNoMatch();
       if (following) toEnd();
       else jump.hidden = false;
     };
@@ -180,6 +211,7 @@
       pre.replaceChildren(...lines.slice(-max).map((l) => sift(row(l))));
       if (row === span) markDays();
       noEmptyNote(lines);
+      if (tools) showNoMatch();
       if (following) toEnd();
       else {
         box.scrollTop = top;

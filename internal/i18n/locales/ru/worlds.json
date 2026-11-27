@@ -132,6 +132,7 @@
   "worlds.import.space_age_off_warning": "Сохранение создано с Space Age. Без него Factorio может не загрузить сохранение или удалить его содержимое Space Age.",
   "worlds.import.space_age_on_warning": "Сохранение создано без Space Age. Factorio преобразует его для Space Age при первом запуске, и отменить это нельзя.",
   "worlds.import.title": "Импорт мира",
+  "worlds.import.pick.legend": "Способ импорта",
   "worlds.import.unimportable.clash": "сохранение {name} есть и в самой папке, и в её папке saves, поэтому неясно, какое импортировать. Удалите или переименуйте одно из них",
   "worlds.import.unimportable.heading": "Нельзя импортировать",
   "worlds.import.unimportable.no_save": "нет сохранения ни в корне папки, ни в папке saves, поэтому её нельзя импортировать",

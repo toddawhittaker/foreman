@@ -19,8 +19,8 @@ test("the wordmark links home, is named Foreman, and is sharp on a 2x screen", {
   // The 296 px file drawn at 148 px, so a 2x screen gets every pixel.
   await expect(logo).toHaveAttribute("src", /wordmark-296\.webp\?v=\w+/);
   const size = (await logo.boundingBox())!;
-  // 46 px tall in the bar, smaller on a phone, so the word on the plate reads.
-  if (phone(page)) expect(size.height).toBeGreaterThanOrEqual(24);
+  // 46 px tall in the bar, 28 px at 320 px, so the live world's name has the room.
+  if (phone(page)) expect(size.height).toBe(28);
   else expect(size.height).toBe(46);
   expect(size.width).toBeGreaterThan(size.height * 3);
   await home.click();

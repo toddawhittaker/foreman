@@ -18,6 +18,15 @@ document.addEventListener("DOMContentLoaded", () => {
     pick.addEventListener("change", (e) => sessionStorage.setItem("foreman-import-pick", e.target.value));
   }
 
+  // A version list that could not be fetched says to type a version, so the
+  // typed field beside it is opened rather than left folded away.
+  document.body.addEventListener("htmx:afterSettle", (e) => {
+    const list = e.detail.target;
+    if (!list?.matches?.("select") || !list.querySelector("option[data-unreachable]")) return;
+    const other = list.closest("form")?.querySelector("details.disclosure:has(input[name=game_version_typed])");
+    if (other) other.open = true;
+  });
+
   // Text from the page's #i18n block, with {name} placeholders filled in.
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const t = (key, args = {}) => strings[key].replace(/\{(\w+)\}/g, (_, name) => args[name]);

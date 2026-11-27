@@ -29,7 +29,15 @@
 {{- /* The list leads; uploading one, the rarer task, sits in the rail beside it on a wide screen. */}}
 <div class="split split--saves">
 <section class="panel" aria-labelledby="saves-heading" data-tips>
+  {{- /* The (i) for the Saved times sits by the heading, not in the column's header, so the header's name stays the one word. */}}
+  {{- if .Rows}}
+  <div class="section-head section-head--tip">
+    <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
+    {{template "tip-icon" (tip "saves-time-hint" (t "worlds.saves.col.saved"))}}
+  </div>
+  {{- else}}
   <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
+  {{- end}}
   {{- if .LoadMissing}}
   <div class="message message--note">
     <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.saves.load.missing" "file" (code .LoadSave)}}</p>
@@ -46,7 +54,7 @@
   <table class="save-list" role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
-      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader"><span class="th-tip">{{t "worlds.saves.col.saved"}}<button type="button" class="tip" aria-expanded="false" aria-controls="saves-time-hint" aria-describedby="saves-time-hint"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "worlds.saves.col.saved")}}</span></button></span></th>{{if not .Newer}}<th scope="col" class="visually-hidden" role="columnheader">{{t "worlds.saves.load_next"}}</th>{{end}}</tr>
+      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th>{{if not .Newer}}<th scope="col" class="visually-hidden" role="columnheader">{{t "worlds.saves.load_next"}}</th>{{end}}</tr>
     </thead>
     <tbody role="rowgroup">
       {{- range .Rows}}

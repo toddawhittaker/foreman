@@ -122,6 +122,7 @@
   "worlds.import.space_age_off_warning": "此存档是在太空时代下创建的。若不启用，Factorio 可能无法加载该存档，或会移除其中的太空时代内容。",
   "worlds.import.space_age_on_warning": "此存档并非在太空时代下创建。Factorio 首次启动时会将其转换为太空时代，且无法撤销。",
   "worlds.import.title": "导入世界",
+  "worlds.import.pick.legend": "导入方式",
   "worlds.import.unimportable.clash": "存档 {name} 同时存在于该文件夹及其 saves 文件夹中，无法确定要导入哪一个。请删除其中一个或重命名",
   "worlds.import.unimportable.heading": "无法导入",
   "worlds.import.unimportable.no_save": "顶层或 saves 文件夹中没有存档，因此无法导入",

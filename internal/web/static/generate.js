@@ -219,8 +219,17 @@ startGenerateWithForm(() => {
       range.step = "1";
       range.dataset.for = select.id;
       range.setAttribute("aria-labelledby", select.id + "-label");
-      range.setAttribute("aria-describedby", select.getAttribute("aria-describedby") || "");
+      // A step off its preset says so to a screen reader too, through
+      // visually hidden words in its description, filled while it differs.
+      // A referenced element is read even when hidden, so it is emptied.
+      const changed = document.createElement("span");
+      changed.className = "visually-hidden";
+      changed.id = select.id + "-changed";
+      const described = [select.getAttribute("aria-describedby"), changed.id].filter(Boolean).join(" ");
+      select.setAttribute("aria-describedby", described);
+      range.setAttribute("aria-describedby", described);
       select.after(range);
+      range.after(changed);
       syncSlider(select);
     });
   }
@@ -349,7 +358,12 @@ startGenerateWithForm(() => {
       if (changed) modified = true;
       // A step setting off its preset is marked beside its value, so edits stand out in a long list.
       const step = el.tagName === "SELECT" ? el.closest(".step") : null;
-      if (step) step.toggleAttribute("data-changed", changed);
+      if (step) {
+        step.toggleAttribute("data-changed", changed);
+        const said = document.getElementById(el.id + "-changed");
+        const words = changed ? strings["js.generate.changed"] : "";
+        if (said && said.textContent !== words) said.textContent = words;
+      }
       if (!el.dataset.ach) return;
       const blocked = crosses(el);
       if (blocked) active.add(el.dataset.achReason);

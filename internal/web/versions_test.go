@@ -109,7 +109,7 @@ func TestVersionsShowsNothingWhenTheSourceFails(t *testing.T) {
 			if rep.StatusCode != http.StatusOK {
 				t.Fatalf("status %d\n%s", rep.StatusCode, rep.body)
 			}
-			if got := optionValues(rep.body); len(got) != 1 || got[0] != "" || !strings.Contains(rep.body, "disabled>Docker Hub cannot be reached") {
+			if got := optionValues(rep.body); len(got) != 1 || got[0] != "" || !strings.Contains(rep.body, "disabled data-unreachable>Docker Hub cannot be reached") {
 				t.Errorf("lists %q", got)
 			}
 			g.wantMissing("picker", rep.body, "secret-hub-detail", "10.9.8.7")

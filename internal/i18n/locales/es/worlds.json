@@ -127,6 +127,7 @@
   "worlds.import.space_age_off_warning": "La partida guardada se creó con Space Age. Sin él, Factorio puede no cargarla o eliminar su contenido de Space Age.",
   "worlds.import.space_age_on_warning": "La partida guardada se creó sin Space Age. Factorio la convierte a Space Age la primera vez que se inicia, y no se puede deshacer.",
   "worlds.import.title": "Importar un mundo",
+  "worlds.import.pick.legend": "Cómo importar",
   "worlds.import.unimportable.clash": "la partida guardada {name} está tanto en la carpeta como en su carpeta saves, así que no está claro cuál importar. Elimina o cambia el nombre de una de ellas",
   "worlds.import.unimportable.heading": "No se puede importar",
   "worlds.import.unimportable.no_save": "no hay ninguna partida guardada en el nivel superior ni en una carpeta saves, así que no se puede importar",

@@ -42,7 +42,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-2);
-  min-block-size: calc(var(--target-min) - 2px);
+  min-block-size: var(--target-min);
   padding: var(--space-2) var(--space-4);
   color: var(--color-text-muted);
   border-radius: var(--radius);
@@ -152,6 +152,11 @@
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: 0 4px 12px rgb(0 0 0 / 35%);
+}
+
+/* Without script the zoom does nothing, so it stays out of sight. */
+.factorymap__zoom[hidden] {
+  display: none;
 }
 
 .factorymap__zoom > .icon-button {

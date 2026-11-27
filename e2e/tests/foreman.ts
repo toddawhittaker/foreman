@@ -712,10 +712,8 @@ export async function expectFollowed(page: Page, sentence: string) {
 
 // The Snapshots selection bar, Generate's action bar and the save bars of
 // long forms stick to the window's foot (DESIGN 6, "The 320 px rules", rule
-// 7), and from 40rem the top bar sticks to its top (DESIGN 6, Shell). So at
-// some scroll positions one lies over a control (a row's, scrolled up under
-// the bar) and
-// axe's target-size rule counts that control as partly covered.
+// 7). So at some scroll positions one lies over a control and axe's
+// target-size rule counts that control as partly covered.
 // That is not a barrier: a pointer user scrolls the control out from under the
 // bar, and the page's scroll-padding keeps a focused control clear of it
 // (WCAG 2.4.11, tested per bar in sticky-bars.spec.ts). So a target-size
@@ -723,7 +721,7 @@ export async function expectFollowed(page: Page, sentence: string) {
 // small, the control's own box is at least 24 by 24 px, and it lies under one
 // of those bars while the bar is sticky. Every other finding still fails.
 // Todd approved this exception on 2026-11-13.
-const stickyBars = ".select-bar, .generate > .gen-actions, .form-foot, .flow-foot, header.site";
+const stickyBars = ".select-bar, .generate > .gen-actions, .form-foot, .flow-foot";
 type AxeCheck = { id: string; data?: unknown };
 type AxeNode = { target: unknown[]; any?: AxeCheck[]; all?: AxeCheck[]; none?: AxeCheck[] };
 type AxeViolation = { id: string; nodes: AxeNode[] };

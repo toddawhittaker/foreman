@@ -132,6 +132,7 @@
   "worlds.import.space_age_off_warning": "Zapis utworzono z Erą Kosmosu. Bez niej Factorio może nie wczytać zapisu albo usunąć jego zawartość z Ery Kosmosu.",
   "worlds.import.space_age_on_warning": "Zapis utworzono bez Ery Kosmosu. Factorio przekonwertuje go na Erę Kosmosu przy pierwszym uruchomieniu i nie będzie można tego cofnąć.",
   "worlds.import.title": "Importowanie świata",
+  "worlds.import.pick.legend": "Sposób importu",
   "worlds.import.unimportable.clash": "zapis {name} znajduje się zarówno w folderze, jak i w jego folderze saves, więc nie wiadomo, który zaimportować. Należy usunąć jeden z nich lub zmienić mu nazwę",
   "worlds.import.unimportable.heading": "Nie można zaimportować",
   "worlds.import.unimportable.no_save": "brak zapisu na najwyższym poziomie ani w folderze saves, więc nie można go zaimportować",

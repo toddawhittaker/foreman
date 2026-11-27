@@ -206,6 +206,55 @@ test.describe("with the fake game", () => {
     await checkPage(page);
   });
 
+  // DESIGN 8.5, WCAG 4.1.3: finding and filtering say how many lines are
+  // left, in a polite status line, and in the log itself when none are. A
+  // filter the browser keeps over a reload applies to the lines drawn, and a
+  // day's date stays shown when its first line is filtered out.
+  test("find and filter say how many lines show, and a kept filter applies after a reload", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    const log = logBox(page);
+    for (const player of ["alice", "bob"]) await fakeGame!.call("/join", { name: container, player });
+    await expect(log).toContainText("bob joined the game", live);
+    const status = page.getByRole("status").and(page.locator("#log-count"));
+    const noMatch = page.locator("#log-no-match");
+    const lines = page.locator(".log pre > span");
+    const shown = page.locator(".log pre > span:not([hidden])");
+    await expect(status).toHaveText("");
+
+    const find = page.getByLabel("Find in the log");
+    await find.pressSequentially("bob");
+    const total = await lines.count();
+    await expect(status).toHaveText(`1 of ${total} lines shown`);
+    await expect(shown).toHaveCount(1);
+    // Alice's line opened the day; with it hidden, Bob's line carries the date.
+    await expect(shown.first()).toHaveAttribute("data-day", "");
+    await expect(shown.first().locator(".log-date")).toBeVisible();
+
+    await find.fill("no line holds this");
+    await expect(status).toHaveText("No lines match.");
+    await expect(noMatch).toBeVisible();
+    await expect(noMatch).toHaveText("No lines match.");
+    await checkPage(page);
+
+    await find.fill("");
+    await expect(status).toHaveText("");
+    await expect(noMatch).toBeHidden();
+    await page.locator(".log-tools__filter label", { hasText: "Errors" }).click();
+    await expect(status).toHaveText("No lines match.");
+    // A browser that keeps the chosen filter over a reload has it checked
+    // before the script runs; the page is served that way here.
+    await page.route("**/console", async (route) => {
+      const html = await (await route.fetch()).text();
+      await route.fulfill({ contentType: "text/html", body: html.replace('value="" checked>', 'value="">').replace('value="error">', 'value="error" checked>') });
+    });
+    await page.reload();
+    await expect(log).toContainText("bob joined the game", live);
+    await expect(page.getByRole("radio", { name: "Errors" })).toBeChecked();
+    await expect(shown).toHaveCount(0);
+    await expect(noMatch).toBeVisible();
+    await expect(status).toHaveText("No lines match.");
+  });
+
   test("a log stream that cannot connect is said, not silent", async ({ page, foreman, fakeGame }) => {
     await page.route("**/worlds/base/console/events", (route) => route.fulfill({ status: 503, body: "" }));
     await setUp(page, foreman, fakeGame!, { running: false });

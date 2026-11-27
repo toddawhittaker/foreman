@@ -263,6 +263,33 @@ test("several folders import at once, each reported", { tag: "@looks" }, async (
   await expect(page.getByText("Type the version this save was made with.")).toHaveCount(0);
 });
 
+// WCAG 4.1.2: the three ways in are one group named for the choice, and each
+// card is named by its title, with its line of text as the description.
+// A link that ticks one folder opens on the folder form, even after another
+// way was chosen earlier in the session.
+test("the ways in are named by their titles, there is no tab row, and a folder link opens the folder form", async ({ page, foreman }) => {
+  await createAdmin(page);
+  inboxFixture(foreman, "sa", "2.1.24-space-age.zip");
+  await page.goto("/import");
+  // Import is an action from the Worlds page, like Generate, so it shows no
+  // tab row in which no tab could be the current one; its breadcrumb leads back.
+  await expect(page.getByRole("navigation", { name: "Worlds pages" })).toHaveCount(0);
+  const ways = page.getByRole("group", { name: "How to import" });
+  await expect(ways.getByRole("radio")).toHaveCount(3);
+  await expect(ways.getByRole("radio", { name: "Upload a save", exact: true })).toHaveAccessibleDescription("Make a new world from one save file. Its mods are not added.");
+  const folder = ways.getByRole("radio", { name: "Import a folder", exact: true });
+  await expect(folder).toBeVisible();
+  await expect(folder).toHaveAccessibleDescription(/import/);
+  await expect(ways.getByRole("radio", { name: "Import a world file", exact: true })).toBeVisible();
+
+  await page.locator("label:has(#import-pick-upload)").click();
+  await expect(page.locator("#import-pick-upload")).toBeChecked();
+  await page.goto("/import?folder=sa");
+  await expect(page.locator("#import-pick-folder")).toBeChecked();
+  await expect(folderForm(page).getByLabel(/sa: /)).toBeChecked();
+  await expect(folderForm(page).getByLabel(/sa: /)).toBeVisible();
+});
+
 // SPEC 5.5: a folder already imported is listed apart, names its
 // world, and can be imported again; one with a newer save waits again.
 test("folders already imported are listed apart", async ({ page, foreman }) => {
@@ -379,6 +406,8 @@ test("accepts a typed game version while Docker Hub is unreachable", async ({ pa
   const form = folderForm(page);
   await page.waitForLoadState("networkidle");
   await expect(form.locator("#folder-version-select option")).toHaveText(["Same as the save (2.0.77)", "Docker Hub cannot be reached; type a version below"]);
+  // The list says to type a version, so the field to type it in is open.
+  await expect(form.getByLabel("Or type a version")).toBeVisible();
   await form.getByLabel("World name").fill("Typed");
   await (await typedVersion(form)).fill("2.0.78");
   await checkPage(page);

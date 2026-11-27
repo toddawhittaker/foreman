@@ -45,10 +45,13 @@
       <label><input type="radio" name="log-filter" value="chat"> {{t "common.nav.chat"}}</label>
     </fieldset>
     <label class="check log-tools__follow"><input type="checkbox" id="log-follow" checked> {{t "server.console.follow"}}</label>
+    {{- /* How many lines the find and filter leave, said politely once typing pauses. */}}
+    <p class="hint log-tools__count" id="log-count" role="status"></p>
   </div>
   {{- if not .Lines}}
   <p class="empty" id="log-empty">{{t "server.console.log_empty"}}</p>
   {{- end}}
+  <p class="empty" id="log-no-match" hidden>{{t "server.console.no_match"}}</p>
   <div class="log-frame" data-log-events="{{.EventsPath}}" data-max-lines="{{.MaxLines}}">
     <div class="log" tabindex="0" role="region" aria-label="{{t "server.console.log_label"}}">
       {{- /* The game's own words stay English (SPEC 22.3). */}}

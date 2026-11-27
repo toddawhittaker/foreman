@@ -117,6 +117,13 @@
 {{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
      focus, because it is replaced whenever a figure changes. Figures that
      cannot be known now are left out rather than shown stale (SPEC 7.1). */}}
+{{/* The word for a load over its warn or danger level (serverpage.go, loadLevel). */}}
+{{define "load-word" -}}
+{{- if eq . "danger"}} <span class="gauge__level">{{t "server.facts.load_very_high"}}</span>
+{{- else if eq . "warn"}} <span class="gauge__level">{{t "server.facts.load_high"}}</span>
+{{- end}}
+{{- end}}
+
 {{define "server-facts" -}}
 {{- if .Live}}
 {{- /* The heading's badge changes with the facts, so it travels with them (DESIGN 7.5). */}}
@@ -136,9 +143,9 @@
   <div class="stat"><dt>{{t "server.facts.save"}}</dt><dd><code>{{.}}</code></dd></div>
   {{- end}}
   {{- if .Status.HaveUsage}}
-  {{- /* The meters are decorative: the figures say the same. */}}
-  <div class="stat gauge gauge--{{or .CPULevel "ok"}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
-  <div class="stat{{if .HaveMemoryMeter}} gauge gauge--{{or .MemoryLevel "ok"}}{{end}}"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}{{if .HaveMemoryMeter}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.MemoryMeter}}%"></span></span>{{end}}</dd></div>
+  {{- /* The meters are decorative: the figures say the same, memory's share of its limit is written out, and a high level is a word, not only a colour. */}}
+  <div class="stat gauge gauge--{{or .CPULevel "ok"}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}{{template "load-word" .CPULevel}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
+  <div class="stat{{if .HaveMemoryMeter}} gauge gauge--{{or .MemoryLevel "ok"}}{{end}}"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}{{if .HaveMemoryMeter}}{{template "load-word" .MemoryLevel}}<span class="gauge__share">{{t "server.facts.memory_share" "percent" (num .MemoryShare)}}</span><span class="meter" aria-hidden="true"><span style="inline-size: {{.MemoryMeter}}%"></span></span>{{end}}</dd></div>
   {{- end}}
   {{- end}}
 </dl>
@@ -173,7 +180,7 @@
      redrawn only when the count changes (DESIGN 7.5). The wrapper is always
      there, so a change back to nothing still sends a non-empty event. */}}
 {{define "server-saveplayers" -}}
-<div class="play-time__players">
+<div class="save-players-count">
   {{- if .ShowSavePlayers}}
   <a class="more-link" href="{{.SavePlayersLink}}" id="act-save-players">{{msg .SavePlayersText}}</a>
   {{- end}}

@@ -127,6 +127,7 @@
   "worlds.import.space_age_off_warning": "La sauvegarde a été créée avec l’Ère spatiale. Sans elle, Factorio peut ne pas charger la sauvegarde ou en retirer le contenu de l’Ère spatiale.",
   "worlds.import.space_age_on_warning": "La sauvegarde a été créée sans l’Ère spatiale. Factorio la convertit pour l’Ère spatiale à son premier démarrage, et cela est irréversible.",
   "worlds.import.title": "Importer un monde",
+  "worlds.import.pick.legend": "Mode d’importation",
   "worlds.import.unimportable.clash": "la sauvegarde {name} se trouve à la fois dans le dossier et dans son sous-dossier saves ; on ne sait donc pas laquelle importer. Supprimez ou renommez l’une des deux",
   "worlds.import.unimportable.heading": "Ne peut pas être importé",
   "worlds.import.unimportable.no_save": "aucune sauvegarde à la racine ni dans un dossier saves, donc il ne peut pas être importé",

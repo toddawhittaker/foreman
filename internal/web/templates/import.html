@@ -3,13 +3,10 @@
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
 <script src="{{static "import.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
-
 {{define "content" -}}
 {{with .Page}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.import.title"))}}
 <h1>{{t "worlds.import.title"}}</h1>
-{{template "rail" $}}
 <p class="page-intro">{{t "worlds.import.intro"}}</p>
 {{- with .Result}}
 {{- if .Imported}}
@@ -46,11 +43,13 @@
 {{- if or .Inbox .Result .Folder.Problems}}{{$pick = "folder"}}{{end}}
 {{- if .Upload.Problems}}{{$pick = "upload"}}{{end}}
 {{- if .WorldFileProblems}}{{$pick = "file"}}{{end}}
-<fieldset class="import-pick"{{if or .Upload.Problems .WorldFileProblems .Result .Folder.Problems}} data-answer{{end}}>
-  <legend class="visually-hidden">{{t "worlds.import.title"}}</legend>
-  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-upload" value="upload"{{if eq $pick "upload"}} checked{{end}}><span class="pick-card__title">{{t "worlds.saves.upload.heading"}}</span><span class="pick-card__text">{{t "worlds.import.upload.intro"}}</span></label>
-  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-folder" value="folder"{{if eq $pick "folder"}} checked{{end}}><span class="pick-card__title">{{t "worlds.import.folder.heading"}}</span><span class="pick-card__text"><code translate="no">{{.InboxDir}}</code></span></label>
-  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-file" value="file"{{if eq $pick "file"}} checked{{end}}><span class="pick-card__title">{{t "worldfile.import.heading"}}</span><span class="pick-card__text">{{t "worldfile.import.intro"}}</span></label>
+{{- /* A ticked folder came from a link such as "import it on its own", so the page answers it as it answers a form. */}}
+<fieldset class="import-pick"{{if or .Upload.Problems .WorldFileProblems .Result .Folder.Problems .Folder.Folders}} data-answer{{end}}>
+  <legend class="visually-hidden">{{t "worlds.import.pick.legend"}}</legend>
+  {{- /* Each card is named by its title alone; the line under it is its description. */}}
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-upload" value="upload" aria-labelledby="import-pick-upload-title" aria-describedby="import-pick-upload-text"{{if eq $pick "upload"}} checked{{end}}><span class="pick-card__title" id="import-pick-upload-title">{{t "worlds.saves.upload.heading"}}</span><span class="pick-card__text" id="import-pick-upload-text">{{t "worlds.import.upload.intro"}}</span></label>
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-folder" value="folder" aria-labelledby="import-pick-folder-title" aria-describedby="import-pick-folder-text"{{if eq $pick "folder"}} checked{{end}}><span class="pick-card__title" id="import-pick-folder-title">{{t "worlds.import.folder.heading"}}</span><span class="pick-card__text" id="import-pick-folder-text"><code translate="no">{{.InboxDir}}</code></span></label>
+  <label class="pick-card"><input type="radio" name="import-pick" id="import-pick-file" value="file" aria-labelledby="import-pick-file-title" aria-describedby="import-pick-file-text"{{if eq $pick "file"}} checked{{end}}><span class="pick-card__title" id="import-pick-file-title">{{t "worldfile.import.heading"}}</span><span class="pick-card__text" id="import-pick-file-text">{{t "worldfile.import.intro"}}</span></label>
 </fieldset>
 <form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel import-upload" novalidate aria-labelledby="upload-heading">
   <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>

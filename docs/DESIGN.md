@@ -117,7 +117,7 @@ a phone can find where a page and a section start.
 | Token | Size | Line height | Weight | Use |
 |---|---|---|---|---|
 | `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | Column names and fact names (Plex Sans, sentence case, `text-muted`), hints (weight 400, a 1.5 line height, 66ch), badges, a mod's portal news line, figures in table cells (Plex Mono); the game log below 40rem |
-| `--text-sm` | 0.8125rem (13 px) | 1.43 | 400 | A card's one-line description under its heading (a 1.5 line height, 60ch), table captions, timestamps, the log and console, labels (600), state badges (600), units beside a figure, breadcrumbs (500) |
+| `--text-sm` | 0.875rem (14 px) | 1.43 | 400 | A card's one-line description under its heading (a 1.5 line height, 60ch), table captions, timestamps, the log and console, labels (600), state badges (600), units beside a figure, breadcrumbs (500) |
 | `--text-md` | 0.9375rem (15 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells, row titles (600) |
 | `--text-lg` | 1rem (16 px) | 1.375 | 600 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
 | `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings; the Server plate's figures on a phone |

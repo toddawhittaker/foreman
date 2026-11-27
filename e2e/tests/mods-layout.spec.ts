@@ -1,8 +1,8 @@
 import { test, expect, checkPage, createAdmin, seedWorld, openModTools, setUpModsWorld, showModsView, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
-// Issue 761: on a wide screen the Plan card sticks in view while the page
-// scrolls, clear of the top strip, alone in its rail: "Match mods to the
+// On a wide screen the Plan card sticks in view while the page scrolls,
+// alone in its rail: "Match mods to the
 // save" sits above Installed mods and the other tools below it, in the main
 // column, so nothing passes under the plan (DESIGN 8.11). The projects run
 // this in both themes; a phone holds the plan as a bar at the foot instead.
@@ -80,11 +80,31 @@ for (const width of [390, 1280]) {
   });
 }
 
-// Todd's ruling on #761: on a wide screen the Plan card is never taller than
-// the window below the top strip. Its heading and Review stay in view, only
-// the list of mods scrolls, the newest pick is at its top, and no control
-// reached by keyboard is ever behind it (WCAG 2.1.1, 2.4.11). In a window
-// too short to hold it, it does not stick and Review is still reached.
+// WCAG 1.4.10: on a phone, Match mods to the save is one column, and its
+// button has a row of its own under the reason, so it never covers the text.
+for (const width of [320, 390]) {
+  test(`at ${width} px the Match button sits under the reason, clear of it`, { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+    await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { other: "2.0" } });
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/worlds/base/mods");
+    await showModsView(page, "installed");
+    const button = page.locator("#act-sync");
+    await expect(button).toBeVisible();
+    const buttonBox = (await button.boundingBox())!;
+    for (const part of ["#sync-heading", ".sync-reason", "#sync-heading ~ p:not(#sync-state)"]) {
+      const box = (await page.locator(part).first().boundingBox())!;
+      expect(buttonBox.y, `${part} ends above the button`).toBeGreaterThanOrEqual(box.y + box.height);
+    }
+    await checkPage(page);
+  });
+}
+
+// On a wide screen a long Plan card is never taller than the window: its
+// heading and Review stay in view, only its list of mods scrolls, by mouse
+// and by keyboard, the newest pick is at the list's top, and no control
+// reached by keyboard is ever behind the card (WCAG 2.1.1, 2.4.11). The card
+// never scrolls on its own, and in a window too short to hold it, it does
+// not stick and Review is still reached.
 test.describe("a long plan on a wide screen", () => {
   test.use({ fakePortalOn: true, portalAccountOn: true });
   const caps = Array.from({ length: 8 }, (_, i) => `fp-cap-${i}`);

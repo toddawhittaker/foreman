@@ -19,6 +19,7 @@
   "js.generate.ach_setting": "{setting} désactive certains succès.",
   "js.generate.ach_clear": "Plus aucun paramètre ne désactive les succès.",
   "js.generate.moved": "{field} réglé sur {value} pour que la plage reste valide.",
+  "js.generate.changed": "Modifié par rapport au préréglage",
   "js.generate.all_set": {
     "one": "{setting} réglé sur {value} pour {count} ressource.",
     "other": "{setting} réglé sur {value} pour {count} ressources."
@@ -39,5 +40,9 @@
   "js.settings.unsaved": {
     "one": "{count} modification non enregistrée, conservée lorsque vous changez de section.",
     "other": "{count} modifications non enregistrées, conservées lorsque vous changez de section."
+  },
+  "js.console.shown": {
+    "one": "{shown} sur {count} ligne affichée",
+    "other": "{shown} sur {count} lignes affichées"
   }
 }

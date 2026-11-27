@@ -127,8 +127,62 @@
   </dl>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
-{{- /* Facts, then the save's players and the rows that manage the world in the main column; sharing it (map string, favorite, world file) in a column beside them on a wide screen, under them on a phone. */}}
+{{- /* Facts, then sharing the world (map string, favorite, world file), then the save's players and the rows that manage it. The sharing column comes first in the markup so a phone shows and focuses it straight after the facts; a wide screen places it beside the main column. */}}
 <div class="world-layout">
+<div class="world-layout__side">
+{{- /* Sharing the world: its map string, a favorite made from it and the world file, stacked in the side column. */}}
+{{- with .Exchange}}
+<section class="panel card world-share__item" aria-labelledby="exchange-heading">
+  <div class="world-share__head">
+    <h2 id="exchange-heading">{{t "mapgen.exchange.heading"}}</h2>
+  </div>
+  <div class="world-share__body">
+    {{template "exchange-string" .}}
+  </div>
+</section>
+{{- end}}
+{{- if .CanFavorite}}
+<form method="post" action="{{.FavoritePath}}" class="panel card world-share__item" novalidate aria-labelledby="favorite-heading" data-tips>
+  <div class="world-share__head">
+    <div class="setting-row__title">
+      <h2 id="favorite-heading">{{t "favorites.make.heading"}}</h2>
+      {{template "tip-icon" (tip "favorite-hint" (t "favorites.make.heading"))}}
+    </div>
+    <p class="tip__text" id="favorite-hint">{{t "favorites.make.text"}}{{if .FavDefaultMap}} {{t "favorites.make.default_map"}}{{end}}</p>
+  </div>
+  <div class="world-share__body">
+    {{- with .FavMade}}
+    <div class="message message--success" id="favorite-made" tabindex="-1" autofocus>
+      <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.made" "name" .Name}}</p>
+      {{- if .DefaultMap}}
+      <p>{{t "favorites.made.default_map"}}</p>
+      {{- end}}
+      {{- with .LeftOut}}
+      <p>{{t "favorites.made.left_out" "count" (len .)}}</p>
+      <ul>
+        {{- range .}}<li><span class="ident" translate="no">{{.}}</span></li>{{end}}
+      </ul>
+      {{- end}}
+      <div class="actions"><a href="{{$.Page.FavoritesPath}}" id="act-favorites">{{t "favorites.list.link"}}</a></div>
+    </div>
+    {{- end}}
+    <div class="field">
+      <label for="favorite-name" class="required">{{t "favorites.make.label"}}</label>
+      <div class="inline-row">
+        <input id="favorite-name" name="favorite_name" type="text" value="{{.FavName}}" required maxlength="100" autocomplete="off"
+          {{- if not .FavError.IsZero}} aria-invalid="true" aria-describedby="favorite-hint favorite-name-error" autofocus{{else}} aria-describedby="favorite-hint"{{end}}>
+        <button type="submit" class="button" id="act-favorite">{{t "favorites.make.button"}}</button>
+      </div>
+      {{- if not .FavError.IsZero}}
+      <p class="error" id="favorite-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .FavError}}</p>
+      {{- end}}
+    </div>
+  </div>
+</form>
+{{- end}}
+{{- /* Export the world as one file (SPEC 5.13). */}}
+{{template "world-export" .}}
+</div>
 <div class="world-layout__main">
 {{- /* The players of the save the world loads (SPEC 8.14), right after the facts. */}}
 {{template "world-players" .}}
@@ -187,60 +241,6 @@
   </div>
 </section>
 </div>
-</div>
-<div class="world-layout__side">
-{{- /* Sharing the world: its map string, a favorite made from it and the world file, stacked in the side column. */}}
-{{- with .Exchange}}
-<section class="panel card world-share__item" aria-labelledby="exchange-heading">
-  <div class="world-share__head">
-    <h2 id="exchange-heading">{{t "mapgen.exchange.heading"}}</h2>
-  </div>
-  <div class="world-share__body">
-    {{template "exchange-string" .}}
-  </div>
-</section>
-{{- end}}
-{{- if .CanFavorite}}
-<form method="post" action="{{.FavoritePath}}" class="panel card world-share__item" novalidate aria-labelledby="favorite-heading" data-tips>
-  <div class="world-share__head">
-    <div class="setting-row__title">
-      <h2 id="favorite-heading">{{t "favorites.make.heading"}}</h2>
-      <button type="button" class="tip" aria-expanded="false" aria-controls="favorite-hint" aria-describedby="favorite-hint"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "favorites.make.heading")}}</span></button>
-    </div>
-    <p class="tip__text" id="favorite-hint">{{t "favorites.make.text"}}{{if .FavDefaultMap}} {{t "favorites.make.default_map"}}{{end}}</p>
-  </div>
-  <div class="world-share__body">
-    {{- with .FavMade}}
-    <div class="message message--success" id="favorite-made" tabindex="-1" autofocus>
-      <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.made" "name" .Name}}</p>
-      {{- if .DefaultMap}}
-      <p>{{t "favorites.made.default_map"}}</p>
-      {{- end}}
-      {{- with .LeftOut}}
-      <p>{{t "favorites.made.left_out" "count" (len .)}}</p>
-      <ul>
-        {{- range .}}<li><span class="ident" translate="no">{{.}}</span></li>{{end}}
-      </ul>
-      {{- end}}
-      <div class="actions"><a href="{{$.Page.FavoritesPath}}" id="act-favorites">{{t "favorites.list.link"}}</a></div>
-    </div>
-    {{- end}}
-    <div class="field">
-      <label for="favorite-name" class="required">{{t "favorites.make.label"}}</label>
-      <div class="inline-row">
-        <input id="favorite-name" name="favorite_name" type="text" value="{{.FavName}}" required maxlength="100" autocomplete="off"
-          {{- if not .FavError.IsZero}} aria-invalid="true" aria-describedby="favorite-hint favorite-name-error" autofocus{{else}} aria-describedby="favorite-hint"{{end}}>
-        <button type="submit" class="button" id="act-favorite">{{t "favorites.make.button"}}</button>
-      </div>
-      {{- if not .FavError.IsZero}}
-      <p class="error" id="favorite-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .FavError}}</p>
-      {{- end}}
-    </div>
-  </div>
-</form>
-{{- end}}
-{{- /* Export the world as one file (SPEC 5.13). */}}
-{{template "world-export" .}}
 </div>
 </div>
 {{- end}}

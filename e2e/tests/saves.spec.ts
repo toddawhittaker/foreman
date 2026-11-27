@@ -423,6 +423,10 @@ test("autosaves show the world's name and time, newest first, and keep the file 
   await expect(rows.nth(2).locator(".save-file")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Load next: _autosave1.zip" })).toBeVisible();
   await expect(page.locator("#saves-time-hint")).toContainText("last changed on disk");
+  // The column's header is the one word; the (i) that explains the times sits by the list's heading.
+  await expect(page.getByRole("columnheader", { name: "Saved", exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader").getByRole("button")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "About Saved" })).toHaveAccessibleDescription(/last changed on disk/);
   await checkPage(page);
 });
 

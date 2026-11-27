@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, live } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, live, openModTools } from "./foreman.js";
 import { newMapPath } from "./newmap.js";
 import type { Locator, Page } from "@playwright/test";
 
@@ -129,6 +129,26 @@ test("step 2's Next reviews the plan, and the review's Next installs it and goes
 // SPEC 5.6, 9.14: skipping step 2 with a plan installs nothing and keeps
 // the plan, so the Worlds list's Continue opens step 2 again with it; the
 // review's Back to the mods keeps it too.
+// Step 2 opens on Find a mod, but a refused upload's error is in the mod
+// tools under Installed mods, so the refused page shows that view, with the
+// error and its field in sight.
+test("a refused mod upload in step 2 shows its error", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await generate(page, "Refused");
+  await expect(page.locator("#mods-view-find")).toBeChecked();
+  await openModTools(page);
+  await page.locator("#mod-upload > summary").click();
+  await page.locator("#mod-file").setInputFiles({ name: "junk.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
+  await page.getByRole("button", { name: "Upload mod", exact: true }).click();
+  await expect(page.locator("#error-summary")).toBeFocused();
+  await expect(page.locator("#mods-view-installed")).toBeChecked();
+  await expect(page.locator("#mod-file-error")).toBeVisible();
+  await expect(page.locator("#mod-file-error")).toContainText("This file is not a mod zip");
+  await page.locator("#error-summary a").first().click();
+  await expect(page.locator("#mod-file")).toBeFocused();
+  await checkPage(page);
+});
+
 test("a skip or Back with a plan keeps the plan for Continue", async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-kept", "1.0.0", ["base >= 2.0"], "2.1");
   await setUp(page, foreman, fakeGame!);

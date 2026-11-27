@@ -267,11 +267,21 @@ func (p ServerPage) MemoryMeter() string { return strconv.FormatFloat(p.memorySh
 
 func (p ServerPage) MemoryLevel() string { return loadLevel(p.memoryShare()) }
 
+// MemoryShare is the memory figure's share of the limit, as a whole percent.
+func (p ServerPage) MemoryShare() int { return int(math.Round(p.memoryShare())) }
+
+// The load levels a gauge warns at: over 75 percent it is high, over 90 very
+// high, so a game has room to spare before it slows.
+const (
+	loadWarnOver   = 75
+	loadDangerOver = 90
+)
+
 func loadLevel(v float64) string {
 	switch {
-	case v > 90:
+	case v > loadDangerOver:
 		return "danger"
-	case v > 75:
+	case v > loadWarnOver:
 		return "warn"
 	}
 	return ""

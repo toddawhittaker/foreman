@@ -154,7 +154,15 @@ test("the top bar never covers a control reached with Shift+Tab", { tag: "@looks
 
   await page.keyboard.press("Shift+Tab");
   await expect(field).toBeFocused();
-  const strip2 = (await strip.boundingBox())!;
   expect((await field.boundingBox())!.y, "the focused field is in view").toBeGreaterThanOrEqual(0);
-  expect((await field.boundingBox())!.y, "the focused field starts below the bar").toBeGreaterThanOrEqual(strip2.y + strip2.height - 0.5);
+  // Nothing is drawn over the field's top edge, its middle or its end: what
+  // a point there hits is the field itself.
+  const covered = await field.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return [r.left + 4, r.left + r.width / 2, r.right - 4].flatMap((x) => {
+      const hit = document.elementFromPoint(x, r.top + 2);
+      return hit === el || el.contains(hit) ? [] : [`${Math.round(x)}: ${hit?.tagName}.${hit?.className}`];
+    });
+  });
+  expect(covered, "the focused field's top edge is not covered").toEqual([]);
 });

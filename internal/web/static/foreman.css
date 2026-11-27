@@ -101,7 +101,7 @@
      metadata (400), 15 body, 16 row titles, 20 plate titles, 24 figures,
      30 the page title. */
   --text-xs: 0.8125rem;
-  --text-sm: 0.8125rem;
+  --text-sm: 0.875rem;
   --text-md: 0.9375rem;
   --text-lg: 1rem;
   --text-xl: 1.25rem;
@@ -7430,7 +7430,7 @@ main > .panel > .facts > div {
 
 .site > .menu > summary {
   background: transparent;
-  border-color: var(--color-line-strong);
+  border-color: var(--color-border);
 }
 
 .site > .menu > summary:hover {
@@ -9485,25 +9485,6 @@ main > .panel.danger-zone.danger-zone--blocked {
   color: var(--color-danger-text);
 }
 
-/* World Overview: facts, then sharing (map string and favorite) side by
-   side, then managing the world, then what retires or destroys it. */
-.world-share {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-}
-
-@container (min-width: 64rem) {
-  .world-share {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-5);
-  }
-
-  .world-share:has(> :only-child) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 .world-share__item {
   display: grid;
   grid-template-rows: auto 1fr;
@@ -9845,8 +9826,8 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-/* The plan stays in view while the results scroll past it, clear of the
-   shell's sticky 3.5rem top strip. It is never taller than the window: the
+/* The plan stays in view while the results scroll past it; the top bar
+   scrolls away, so it sticks near the window's top. It is never taller than the window: the
    heading and Review stay put and only the list of mods scrolls, newest at
    its top. In a window too short for even its fixed parts the whole card
    scrolls; below 30rem it does not stick at all (DESIGN 8.11). */
@@ -9860,10 +9841,6 @@ main > .panel.danger-zone.danger-zone--blocked {
     flex-direction: column;
     max-block-size: calc(100dvh - var(--plan-top) - var(--space-4));
     overflow-y: auto;
-  }
-
-  body:has(> .site > nav) .mod-side > .plan-panel {
-    --plan-top: calc(3.5rem + var(--space-4));
   }
 
   .mod-side > .plan-panel > *,
@@ -13327,9 +13304,9 @@ main > h1 + p.hint,
   }
 }
 
-/* ---- The wordmark in the desk: 46 px tall in a 64 px bar, drawn from a
+/* ---- The wordmark in the desk: 46 px tall in the 56 px bar, drawn from a
    file twice its size so the rivets and letters stay sharp, with clear
-   space on both sides. 34 px on a phone, 28 px below 22rem. */
+   space on both sides. 30 px on a phone, 28 px below 22rem. */
 .site > .product {
   padding-block: var(--space-2);
   padding-inline-end: var(--space-3);
@@ -13352,7 +13329,7 @@ main > h1 + p.hint,
 
 @media (max-width: 39.99rem) {
   .site > .product img {
-    block-size: 34px;
+    block-size: 30px;
   }
 }
 
@@ -13472,8 +13449,10 @@ html:has(.large-view[open]) > body {
 }
 
 /* The game log fades out at its top edge, so a line scrolled half out of
-   view reads as more above rather than as a cut. */
+   view reads as more above rather than as a cut. The top padding is as tall
+   as the fade, so the first line is never faded. */
 .terminal .log-frame > .log {
+  padding-block-start: var(--space-5);
   mask-image: linear-gradient(to bottom, transparent 0, black var(--space-5));
 }
 
@@ -13571,10 +13550,14 @@ html:has(.large-view[open]) > body {
 
 @media (max-width: 39.99rem) {
   .segmented > label,
-  .js-on .tablist > .tab,
+  .js-on .tablist > .tab {
+    min-block-size: calc(var(--target-min) - 2px);
+    padding-inline: var(--space-3);
+  }
+
   .subnav .subnav__sub a,
   .subnav .subnav__sub a[aria-current] {
-    min-block-size: calc(var(--target-min) - 2px);
+    min-block-size: var(--target-min);
     padding-inline: var(--space-3);
   }
 }
@@ -13790,6 +13773,17 @@ form.general-grid.setting-rows > .form-foot {
   .world-layout {
     grid-template-columns: minmax(0, 1fr) 30rem;
     align-items: start;
+  }
+
+  /* The side column is first in the markup for a phone's reading order. */
+  .world-layout__main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .world-layout__side {
+    grid-column: 2;
+    grid-row: 1;
   }
 }
 
@@ -14025,13 +14019,6 @@ a.mod-title:hover,
   font-size: var(--text-xs);
 }
 
-/* A column name with its (i): the word, then the button, on one line. */
-.th-tip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
 /* ==== General settings: the groups as rows of one plate, two columns on a
    wide screen, each group as tall as its own content; a rule over each
    group, never a box inside the plate. */
@@ -14256,6 +14243,12 @@ form.general-grid.setting-rows > .form-foot {
 
 /* ==== Game settings: the form at a working width, and beside it what
    applies to all of it (the restart note) and the file behind it. */
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
 .settings-aside {
   display: grid;
   gap: var(--space-4);
@@ -14263,7 +14256,7 @@ form.general-grid.setting-rows > .form-foot {
   min-inline-size: 0;
 }
 
-.settings-aside > .message,
+.settings-layout > .settings-note,
 .settings-aside > .actions {
   margin: 0;
 }
@@ -14272,13 +14265,30 @@ form.general-grid.setting-rows > .form-foot {
   .settings-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
-    gap: var(--space-5);
+    grid-template-rows: auto 1fr;
+    gap: var(--space-4) var(--space-5);
     align-items: start;
   }
 
+  .settings-main {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .settings-layout > .settings-note {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
   .settings-aside {
+    grid-column: 2;
+    grid-row: 2;
     position: sticky;
     inset-block-start: var(--space-4);
+  }
+
+  .settings-layout:not(:has(> .settings-note)) > .settings-aside {
+    grid-row: 1 / -1;
   }
 }
 
@@ -14411,15 +14421,6 @@ form.general-grid.setting-rows > .form-foot {
   align-self: center;
 }
 
-section[data-view="installed"] > .group__head > :is(h2#installed-heading, .count) {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 /* The plan's remove control is a framed 28 px button at rest, inside a
    44 px target. */
 .button--icon.plan-panel__remove::after {
@@ -14440,14 +14441,8 @@ section[data-view="installed"] > .group__head > :is(h2#installed-heading, .count
 }
 
 /* ==== Phone: the live world's name is never cut. The account button shows
-   the person only (the language is in the menu and in its name), and the
-   wordmark steps down so the name has the room. Sharing a world (its map
-   string first) comes straight after the facts. */
+   the person only (the language is in the menu and in its name). */
 @media (max-width: 39.99rem) {
-  .site > .product img {
-    block-size: 30px;
-  }
-
   .site > .menu summary:has(.menu__user) .menu__lang {
     display: none;
   }
@@ -14455,13 +14450,9 @@ section[data-view="installed"] > .group__head > :is(h2#installed-heading, .count
   .site-strip .site-world,
   .site-strip:has(.site-state:not(:empty)) .site-world {
     overflow: visible;
-    overflow-wrap: normal;
+    overflow-wrap: anywhere;
     text-overflow: clip;
     white-space: normal;
-  }
-
-  .world-layout__side {
-    order: -1;
   }
 }
 
@@ -14611,7 +14602,7 @@ main:has(.import-pick) form:is(.import-upload, .import-world-file) > p:not([clas
 }
 
 .terminal .log-frame > .log {
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   line-height: 1.375rem;
 }
 
@@ -14653,7 +14644,7 @@ main tbody th[scope="row"] .hint {
   padding: 0 var(--space-3);
   list-style: none;
   background: var(--color-surface);
-  border: var(--border-width) solid var(--color-line-strong);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   cursor: pointer;
 }
@@ -15055,17 +15046,6 @@ form.general-grid.setting-rows .setting-row__body .hint {
   align-self: start;
 }
 
-/* The installed list's hidden title and count sit inside their head, so
-   they never widen a phone's page. */
-section[data-view="installed"] > .group__head {
-  position: relative;
-}
-
-section[data-view="installed"] > .group__head > :is(h2#installed-heading, .count) {
-  inset-block-start: 0;
-  inset-inline-end: 0;
-}
-
 /* On the one-row map header the preset, its "modified" word and Reset or
    Undo keep one line: the select gives up width, so Undo takes Reset's
    place rather than dropping a line. */
@@ -15342,7 +15322,8 @@ fieldset > legend {
 }
 
 /* ==== Map settings: a step off its preset shows its words in the accent
-   ink with an orange dot before them, so edits stand out in a long list. */
+   ink with a dot in the selected colour before them, so edits stand out in
+   a long list. */
 .js-on .step[data-changed] .step__value {
   color: var(--color-link);
   font-weight: 600;
@@ -15356,7 +15337,7 @@ fieldset > legend {
   margin-inline-end: 0.375rem;
   vertical-align: 0.1em;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: var(--color-selected);
 }
 
 /* The world list inside the page measure: the name column keeps room for
@@ -15418,6 +15399,35 @@ main:has(> .gate)::before {
 
 .gauge--ok .meter > span {
   background: var(--color-text-muted);
+}
+
+/* The danger fill is the readable red, so it holds 3:1 against its track
+   in both themes. */
+.gauge--danger .meter > span {
+  background: var(--color-danger-text);
+}
+
+/* A high load says so in a word after its figure, in the level's colour;
+   memory's share of its limit is a quiet line under the figure. */
+.gauge__level {
+  margin-inline-start: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.gauge--warn .gauge__level {
+  color: var(--color-warn);
+}
+
+.gauge--danger .gauge__level {
+  color: var(--color-danger-text);
+}
+
+.facts.stat-grid .gauge__share {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
 }
 
 /* ==== A notice fills the column it sits in, so its edges line up with the
@@ -15484,4 +15494,35 @@ main > .message,
 .mods-main > section:has(> #sync-heading) > .actions {
   grid-row: 1 / span 2;
   align-self: center;
+}
+
+/* On a phone the button takes its own row under the text, so it never
+   covers the reason. */
+@media (max-width: 39.99rem) {
+  .mods-main > section:has(> #sync-heading) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mods-main > section:has(> #sync-heading) > .actions {
+    grid-column: 1;
+    grid-row: 4;
+  }
+}
+
+/* The console's count of lines shown takes a row of its own under the bar.
+   While empty it takes no room but stays a live region, so its first words
+   are still read out. */
+.log-tools > .log-tools__count {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.log-tools > .log-tools__count:empty {
+  position: absolute;
+}
+
+/* A heading with its (i): the button right after the words. */
+.section-head.section-head--tip {
+  justify-content: flex-start;
+  gap: 0 var(--space-1);
 }

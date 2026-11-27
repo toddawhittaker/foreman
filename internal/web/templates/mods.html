@@ -72,9 +72,10 @@
 <div class="mods-main">
 <div class="mods-bar">
 <fieldset class="segmented mods-view">
-  <legend class="visually-hidden">{{t "mods.tab"}}</legend>
-  <label><input type="radio" name="mods-view" id="mods-view-installed" value="installed"{{if not .InFlow}} checked{{end}}> {{t "mods.installed.heading"}}{{with .Rows}} <span class="count" aria-hidden="true">{{len .}}</span>{{end}}</label>
-  <label><input type="radio" name="mods-view" id="mods-view-find" value="find"{{if .InFlow}} checked{{end}}> {{t "mods.search.heading"}}</label>
+  <legend class="visually-hidden">{{t "common.legend.show"}}</legend>
+  {{- /* A refused upload's error is in the tools, under Installed mods, so that view shows whenever there is one. */}}
+  <label><input type="radio" name="mods-view" id="mods-view-installed" value="installed"{{if or (not .InFlow) .Problems}} checked{{end}}> {{t "mods.installed.heading"}}{{with .Rows}} <span class="count" aria-hidden="true">{{len .}}</span>{{end}}</label>
+  <label><input type="radio" name="mods-view" id="mods-view-find" value="find"{{if and .InFlow (not .Problems)}} checked{{end}}> {{t "mods.search.heading"}}</label>
 </fieldset>
 <section class="mods-find" aria-labelledby="search-heading">
   <h2 id="search-heading" class="visually-hidden">{{t "mods.search.heading"}}</h2>
@@ -122,9 +123,8 @@
 </section>
 <section class="panel" aria-labelledby="installed-heading" data-view="installed">
   <div class="group__head">
-    <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
-    {{- /* The table's caption gives a screen reader the count. */}}
-    {{- with .Rows}}<span class="count" aria-hidden="true">{{len .}}</span>{{end}}
+    {{- /* The view switch above shows the name and count; the table's caption gives a screen reader the count. */}}
+    <h2 id="installed-heading" class="visually-hidden">{{t "mods.installed.heading"}}</h2>
     {{- /* Update all sits beside the heading; the portal's answer fills it in. */}}
     <span id="mod-update-all" class="group__action"></span>
   </div>
@@ -205,7 +205,7 @@
   {{template "portal-browse" .Line}}
 </div>
 {{template "mod-results" .Search}}
-<details class="disclosure mod-rail" id="mod-tools" data-view="installed" data-open-wide="64rem"{{if or (not .UploadError.IsZero) (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
+<details class="disclosure mod-rail" id="mod-tools" data-view="installed" data-open-wide="64rem"{{if .Problems}} open{{end}}>
 <summary class="mod-rail__toggle" id="mod-tools-summary">{{t "mods.tools.label"}}</summary>
 <div class="split__rail">
 <section class="panel" aria-labelledby="upload-heading">

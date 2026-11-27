@@ -4,7 +4,7 @@
   <div class="world-share__head">
     <div class="setting-row__title">
       <h2 id="export-heading">{{t "worldfile.export.heading"}}</h2>
-      <button type="button" class="tip" aria-expanded="false" aria-controls="export-notes" aria-describedby="export-notes"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "worldfile.export.heading")}}</span></button>
+      {{template "tip-icon" (tip "export-notes" (t "worldfile.export.heading"))}}
     </div>
     <p class="hint" id="export-hint">{{t "worldfile.export.text"}}{{if not .World.SizeUnknown}} {{t "worldfile.export.size" "size" (bytes .World.DiskBytes)}}{{end}}</p>
   </div>

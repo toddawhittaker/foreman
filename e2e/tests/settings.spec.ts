@@ -381,7 +381,17 @@ test.describe("a running world", () => {
     await expect(page.locator("main h1 .state")).toHaveText("Running", live);
 
     await page.getByRole("link", { name: "Game settings" }).click();
-    await expect(page.getByText("The server is running. Changes to these settings take effect after a restart. Changes to admins apply at once.")).toBeVisible();
+    const note = page.getByText("The server is running. Changes to these settings take effect after a restart. Changes to admins apply at once.");
+    await expect(note).toBeVisible();
+    // WCAG 1.3.2: the note holds for the whole form, so it comes before the
+    // form in the markup, while a wide screen still shows it beside the form.
+    const form = page.locator("form.settings");
+    expect(await note.evaluate((n, f) => !!(n.compareDocumentPosition(f!) & Node.DOCUMENT_POSITION_FOLLOWING), await form.elementHandle())).toBe(true);
+    await page.setViewportSize({ width: 1600, height: 900 });
+    const noteBox = (await note.boundingBox())!;
+    const formBox = (await form.boundingBox())!;
+    expect(noteBox.x).toBeGreaterThan(formBox.x + formBox.width);
+    expect(Math.abs(noteBox.y - formBox.y)).toBeLessThan(40);
     await checkPage(page);
     const pages = page.getByRole("navigation", { name: "World pages" });
     await pages.getByRole("link", { name: "Players and access" }).click();
