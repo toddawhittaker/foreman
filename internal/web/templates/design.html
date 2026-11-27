@@ -55,16 +55,12 @@
   <li><a href="#design-buttons" class="button button--risky">{{t "worlds.world.delete.button"}}</a><code>button--risky</code></li>
   <li><button type="button" class="button button--icon"><span class="visually-hidden">{{t "worlds.snapshots.delete.button"}}</span></button><code>button--icon</code></li>
   <li><a href="#design-buttons" class="button button--remove"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{t "worlds.snapshots.delete.button"}}</span></a><code>button--remove</code></li>
+  <li><a href="#design-buttons" class="button button--remove button--revoke">{{t "apitokens.revoke"}}</a><code>button--revoke</code></li>
   <li><a href="#design-buttons" class="button button--ghost">{{t "settings.cancel"}}</a><code>button--ghost</code></li>
   <li><button type="button" class="button" disabled>{{t "worlds.snapshots.take.button"}}</button><code>disabled</code></li>
   <li><button type="button" class="button button--primary" disabled aria-busy="true">{{t "server.state.starting"}}</button><code>aria-busy</code></li>
   <li><button type="button" class="button" disabled aria-busy="true">{{t "worlds.snapshots.take.button"}}</button><code>aria-busy</code></li>
 </ul>
-{{- /* The Server page's emergency stop, on its own row under the everyday controls. */}}
-<div class="danger-row">
-  <p class="hint">{{t "server.force.at_once"}}</p>
-  <a href="#design-buttons" class="button button--risky">{{t "server.action.force_stop"}}</a>
-</div>
 <p class="hint">{{t "common.design.hover"}}</p>
 {{- end}}
 
@@ -99,6 +95,19 @@
   <label class="check"><input type="radio" name="{{.Theme}}-theme"> {{t "common.theme.light"}}</label>
   <label class="check"><input type="radio" name="{{.Theme}}-theme"> {{t "common.theme.dark"}}</label>
 </fieldset>
+<div class="field field--short">
+  <label for="{{.Theme}}-max">{{t "settings.max_players.label"}}</label>
+  <input id="{{.Theme}}-max" type="text" inputmode="numeric" autocomplete="off" value="0">
+</div>
+<div class="exchange">
+  <div class="field">
+    <label for="{{.Theme}}-secret">{{t "apitokens.created.secret"}}</label>
+    <div class="copy-field">
+      <textarea id="{{.Theme}}-secret" class="exchange__value" readonly rows="1" spellcheck="false" autocomplete="off" translate="no">{{.Page.Secret}}</textarea>
+      <button type="button" class="button button--primary">{{t "apitokens.created.copy_secret"}}</button>
+    </div>
+  </div>
+</div>
 {{- with .Tip}}
 <div class="field">
   <div class="field__head">
@@ -117,6 +126,20 @@
 <div class="message message--success"><p><strong>{{t "common.label.done"}}</strong> {{t "server.done.snapshot_short"}}</p></div>
 <div class="message message--warning"><p><strong>{{t "common.label.warning"}}</strong> {{t "mapgen.achievement.warning"}}</p></div>
 <div class="message message--error"><p><strong>{{t "common.error.label"}}</strong> {{t "server.start.load_failed"}}</p></div>
+<div class="message message--warning">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "server.disk.low" "free" "2.1 GB" "reserve" "5 GB"}}</p>
+  <div class="actions"><a href="{{snapshotsTabPath}}" class="button">{{t "server.disk.snapshots"}}</a></div>
+</div>
+{{- /* The one message with a close button, as the Server page draws it. */}}
+<div class="message message--success message--closable">
+  <p><strong>{{t "common.label.done"}}</strong> {{t "server.done.snapshot_short"}}</p>
+  <div class="actions">
+    <a href="{{snapshotsTabPath}}">{{t "server.go_snapshots"}}</a>
+  </div>
+  <form method="get" action="#design-messages" class="message__dismiss">
+    <button type="submit" class="button button--icon message__close"><span class="visually-hidden">{{t "server.done.close"}}</span></button>
+  </form>
+</div>
 <section class="confirm" aria-labelledby="{{.Theme}}-confirm">
   <p id="{{.Theme}}-confirm">{{t "common.confirm.will"}}</p>
   <ul>
@@ -142,31 +165,44 @@
   <li><span class="badge badge--active">{{t "worlds.badge.active"}}</span></li>
   <li>{{template "live-state" (index .Page.States 2)}}</li>
   <li><span class="badge">{{t "mods.state.off"}}</span></li>
+  <li><span class="badge">{{t "server.players.admin"}}</span></li>
+  <li><span class="badge badge--online">{{t "server.players.online"}}</span></li>
+  <li><span class="badge badge--chosen">{{t "mods.badge.in_plan"}}</span></li>
 </ul>
 {{- end}}
 
-{{/* DESIGN 7.8: a card, the status card in each state and a disclosure row. */}}
+{{/* DESIGN 7.8: the Server page's cards as it draws them: the plate in each state, the live world's shortcuts, the players and the newest snapshots, then a disclosure row and the settings layout. */}}
 {{define "design-cards" -}}
-<section class="panel card" aria-labelledby="{{.Theme}}-card">
-  <h4 id="{{.Theme}}-card">{{t "server.players.heading"}}</h4>
-  <p class="empty">{{t "server.online.nobody"}}</p>
-</section>
-{{- /* The Server plate in each state, as the Server page draws it: the band
-     with the state word and its rule, then the stat grid, CPU's meter at
-     rest, above 80% and above 95%. The running plate also shows the
-     controls, with Take snapshot as the one primary, and Force stop at the
-     foot under its Emergency actions disclosure (folded on a phone). */}}
+{{- /* The Server plate in each state, with the page's own structure: the band, the control region (the actions, the steps of an operation, the Emergency actions disclosure) and the facts block with its stat grid, CPU's meter at rest, above 80% and above 95%. */}}
 {{- range $i, $st := .Page.States}}
 <div class="card status-card plate status-card--{{.State}}">
   <div class="plate__band"><span class="plate__state plate__state--{{.State}}">{{msg .Word}}</span><span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{duration 5400000000000}}</span></div>
-  {{- if eq (print .State) "running"}}
-  <div class="plate__controls">
+  {{- if eq (print .State) "starting"}}
+  <div sse-swap="control">
+    <h2 class="op-heading">{{t "server.op.start"}}</h2>
+    <ol class="steps" role="list">
+      <li><span class="step-state step-state--done">{{t "server.step.done"}}</span> <span class="step-name">{{t "server.step.check"}}</span></li>
+      <li><span class="step-state step-state--done">{{t "server.step.done"}}</span> <span class="step-name">{{t "server.step.image"}}</span></li>
+      <li aria-current="step"><span class="step-state step-state--progress">{{t "server.step.progress"}}</span> <span class="step-name">{{t "server.step.load"}}</span>
+        <progress aria-label="{{t "server.step.load"}}"></progress></li>
+      <li><span class="step-state">{{t "server.step.waiting"}}</span> <span class="step-name">{{t "server.step.rcon"}}</span></li>
+    </ol>
+  </div>
+  {{- else if eq (print .State) "stopped"}}
+  <div sse-swap="control">
+    <div class="actions server-actions">
+      <form><button type="button" class="button button--primary" data-design-icon="start">{{t "server.action.start"}}</button></form>
+      <form><button type="button" class="button" data-design-icon="snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+    </div>
+  </div>
+  {{- else if eq (print .State) "running"}}
+  <div sse-swap="control">
     <div class="actions server-actions">
       <form><button type="button" class="button button--primary" data-design-icon="snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
       <a href="{{serverPath}}" class="button" data-design-icon="restart">{{t "server.action.restart"}}</a>
       <a href="{{serverPath}}" class="button" data-design-icon="stop">{{t "server.action.stop"}}</a>
     </div>
-    <details class="disclosure emergency" data-open-wide>
+    <details class="disclosure emergency">
       <summary>{{t "server.force.group"}}</summary>
       <div class="danger-row">
         <a href="{{serverPath}}" class="design-force-stop">{{t "server.action.force_stop"}}</a>
@@ -175,16 +211,58 @@
     </details>
   </div>
   {{- end}}
-  <div class="facts-block"><div>
-    <dl class="facts stat-grid">
-      <div class="stat"><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
-      <div class="stat"><dt>{{t "server.facts.save"}}</dt><dd><code>save.zip</code></dd></div>
-      <div class="stat gauge gauge--{{if eq $i 1}}warn{{else if eq $i 3}}danger{{else}}ok{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 (index $.Page.Loads $i)))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{index $.Page.Loads $i}}%"></span></span></dd></div>
-      <div class="stat gauge gauge--ok"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes 1610612736)}}<span class="meter" aria-hidden="true"><span style="inline-size: 38%"></span></span></dd></div>
-    </dl>
-  </div></div>
+  <div class="facts-block">
+    <div sse-swap="facts">
+      <dl class="facts stat-grid">
+        <div class="stat"><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
+        <div class="stat"><dt>{{t "server.facts.save"}}</dt><dd><code>save.zip</code></dd></div>
+        <div class="stat gauge gauge--{{if eq $i 1}}warn{{else if eq $i 3}}danger{{else}}ok{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 (index $.Page.Loads $i)))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{index $.Page.Loads $i}}%"></span></span></dd></div>
+        <div class="stat gauge gauge--ok"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes 1610612736)}}<span class="gauge__share">{{t "server.facts.memory_share" "percent" 38}}</span><span class="meter" aria-hidden="true"><span style="inline-size: 38%"></span></span></dd></div>
+      </dl>
+    </div>
+    <div sse-swap="playtime"><div class="play-time"><dl class="facts facts--inline"><div><dt>{{t "server.playtime.label"}}</dt><dd>{{duration 5400000000000}}</dd></div></dl></div></div>
+    <div sse-swap="loads"><div class="loads-next"></div></div>
+    <div sse-swap="schedule"><div class="schedule-next"></div></div>
+    <div class="disk-notice" sse-swap="disk"><div></div></div>
+  </div>
 </div>
 {{- end}}
+{{- /* The live world's pages on one row, then the players, then the newest snapshots, as the Server page lays them out. */}}
+<div class="server-grid">
+<div class="links card shortcuts">
+  <a href="{{serverPath}}" data-design-icon="map">{{t "server.links.world"}}</a>
+  <a href="{{serverPath}}" data-design-icon="mods">{{t "mods.tab"}}</a>
+  <a href="{{serverPath}}" data-design-icon="settings">{{t "settings.link"}}</a>
+  <a href="{{worldsPath}}" data-design-icon="switch">{{t "server.links.switch"}}</a>
+</div>
+<section class="panel card" aria-labelledby="{{.Theme}}-card">
+  <div class="section-head">
+    <h2 id="{{.Theme}}-card">{{t "server.players.heading"}}</h2>
+    <div><div class="save-players-count"><a class="more-link" href="{{serverPath}}">{{t "server.players.all" "count" 12}}</a></div></div>
+  </div>
+  <div>
+    <table role="table" class="server-players">
+      <caption>{{t "server.players.heading"}}</caption>
+      <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "server.players.player"}}</th><th scope="col" class="num" role="columnheader">{{t "server.players.time"}}</th></tr></thead>
+      <tbody role="rowgroup">
+        <tr role="row"><td role="cell"><details class="player-actions disclosure" name="{{.Theme}}-player-actions">
+          <summary><span class="player-actions__name" translate="no">{{(index .Page.Players 0).Name}}</span> <span class="badge">{{t "server.players.admin"}}</span> <span class="badge badge--online">{{t "server.players.online"}}</span></summary>
+          <div class="actions">
+            <a href="{{serverPath}}" class="button button--risky">{{t "server.players.kick"}}</a>
+            <a href="{{serverPath}}" class="button button--risky">{{t "server.players.ban"}}</a>
+          </div>
+        </details></td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{duration 7500000000000}}</td></tr>
+        <tr role="row"><td role="cell"><span translate="no">{{(index .Page.Players 1).Name}}</span><br><span class="hint">{{t "saveplayers.before_foreman"}}</span></td><td class="num" role="cell" data-label="{{t "server.playtime.label"}}">{{duration 2820000000000}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="panel card recent-snaps" aria-labelledby="{{.Theme}}-recent-snaps">
+  <h2 id="{{.Theme}}-recent-snaps">{{t "common.nav.snapshots"}}</h2>
+  <div><p class="empty">{{t "worlds.snapshots.empty"}}</p></div>
+  <div class="actions"><a href="{{snapshotsTabPath}}">{{t "worlds.snapshots.list"}}</a></div>
+</section>
+</div>
 <details class="disclosure">
   <summary>{{t "account.form.replace"}}</summary>
   <p>{{t "account.remove.hint"}}</p>
@@ -193,7 +271,7 @@
 <div class="panel card setting-rows">
   <section class="setting-row" aria-labelledby="{{.Theme}}-row-rename">
     <div class="setting-row__head">
-      <h4 id="{{.Theme}}-row-rename">{{t "worlds.world.rename.heading"}}</h4>
+      <h2 id="{{.Theme}}-row-rename">{{t "worlds.world.rename.heading"}}</h2>
       <p class="hint" id="{{.Theme}}-row-name-hint">{{t "worlds.world.rename.text"}}</p>
     </div>
     <div class="setting-row__body">
@@ -208,7 +286,7 @@
   </section>
   <section class="setting-row disk-use" aria-labelledby="{{.Theme}}-row-disk">
     <div class="setting-row__head">
-      <h4 id="{{.Theme}}-row-disk">{{t "worlds.fact.disk_use"}}</h4>
+      <h2 id="{{.Theme}}-row-disk">{{t "worlds.fact.disk_use"}}</h2>
       <p class="hint">{{t "worlds.snapshots.adds_hint"}}</p>
     </div>
     <div class="setting-row__body">
@@ -222,18 +300,72 @@
 </div>
 {{- end}}
 
-{{/* DESIGN 6, "Sub-navigation": the main tabs, then the server's and a world's. */}}
+{{/* DESIGN 6: the top bar as the layout draws it, the crumb, every row of sub-navigation, and the controls that choose a view (segmented, tab list, step bar, pager). */}}
 {{define "design-navigation" -}}
-<nav aria-label="{{t "common.nav.label"}}">
-  <ul class="tabs" role="list">
-    <li><a href="{{serverPath}}" aria-current="true">{{t "common.nav.server"}}<span id="{{.Theme}}-lamp" class="nav-lamp">{{template "nav-lamp" (index .Page.States 2)}}</span></a></li>
-    <li><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></li>
-    <li><a href="{{snapshotsTabPath}}">{{t "common.nav.snapshots"}}</a></li>
-    <li><a href="{{schedulePath}}">{{t "common.nav.settings"}}</a></li>
-  </ul>
-</nav>
+{{- $lang := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$lang = .Name}}{{end}}{{end}}
+<header class="site">
+  <a href="{{serverPath}}" class="product"><img src="{{static "icons/wordmark-296.webp"}}" alt="Foreman" width="148" height="46"></a>
+  <div class="site-strip"><span class="site-world" aria-hidden="true">{{.Page.World}}</span><span class="site-state" aria-hidden="true">{{template "nav-lamp" (index .Page.States 2)}}</span></div>
+  <nav aria-label="{{t "common.nav.label"}}">
+    <ul class="tabs" role="list">
+      <li><a href="{{serverPath}}" aria-current="page">{{t "common.nav.server"}}<span id="{{.Theme}}-lamp" class="nav-lamp">{{template "nav-lamp" (index .Page.States 2)}}</span></a></li>
+      <li><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></li>
+      <li><a href="{{snapshotsTabPath}}">{{t "common.nav.snapshots"}}</a></li>
+      <li><a href="{{generalPath}}">{{t "common.nav.settings"}}</a></li>
+    </ul>
+  </nav>
+  <details class="menu">
+    <summary aria-label="{{t "common.menu.account" "user" .Page.User "language" $lang}}"><span class="menu__user">{{.Page.User}}</span> <span class="menu__lang">{{$lang}}</span></summary>
+  </details>
+</header>
+{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Page.WorldTabs.Path .Page.World "" (t "mods.tab"))}}
+{{template "worlds-area-tabs" "worlds"}}
 {{template "server-tabs" "overview"}}
 {{template "world-tabs" .Page.WorldTabs}}
+{{template "settings-tabs" "general"}}
+{{- /* The segmented control, as the Console's filter and the API tokens list draw it. */}}
+<fieldset class="segmented">
+  <legend class="visually-hidden">{{t "server.console.filter"}}</legend>
+  <label><input type="radio" name="{{.Theme}}-filter" value="" checked> {{t "server.console.filter_all"}}</label>
+  <label><input type="radio" name="{{.Theme}}-filter" value="warning"> {{t "server.console.filter_warnings"}}</label>
+  <label><input type="radio" name="{{.Theme}}-filter" value="error"> {{t "server.console.filter_errors"}}</label>
+  <label><input type="radio" name="{{.Theme}}-filter" value="chat"> {{t "common.nav.chat"}}</label>
+</fieldset>
+{{- /* The map settings' tab list. */}}
+<fieldset class="tabset">
+  <legend class="visually-hidden">{{t "mapgen.tab.legend"}}</legend>
+  <div class="tablist">
+    <label class="tab"><input type="radio" name="{{.Theme}}-tab" value="resources" checked>{{t "mapgen.tab.resources"}}</label>
+    <label class="tab"><input type="radio" name="{{.Theme}}-tab" value="terrain">{{t "mapgen.tab.terrain"}}</label>
+    <label class="tab"><input type="radio" name="{{.Theme}}-tab" value="enemy">{{t "mapgen.tab.enemy"}}</label>
+    <label class="tab"><input type="radio" name="{{.Theme}}-tab" value="advanced">{{t "mapgen.tab.advanced"}}</label>
+  </div>
+</fieldset>
+{{- /* The guided Generate's step bar. It is genflow-steps without that partial's fixed id, which a second copy on the page would repeat; the steps' own marks are the partial's. */}}
+<nav class="flow-steps" aria-label="{{t "newmap.steps.label"}}">
+  <ol role="list">
+    {{- range .Page.FlowSteps}}
+    <li class="flow-step{{if .Done}} flow-step--done{{end}}{{if .Current}} flow-step--current{{end}}{{if .Skipped}} flow-step--skipped{{end}}">
+      {{- if .Path}}<a href="{{.Path}}"{{if .Current}} aria-current="step"{{end}}>{{template "genflow-step" .}}</a>
+      {{- else}}<span>{{template "genflow-step" .}}</span>{{end -}}
+    </li>
+    {{- end}}
+  </ol>
+  {{- range .Page.FlowSteps}}{{if .Current}}
+  <p class="flow-steps__now" aria-hidden="true">{{msg .Label}}</p>
+  {{- end}}{{end}}
+</nav>
+{{- /* The mod search's pager. */}}
+<nav class="pager result-pager" aria-label="{{t "mods.hits.pages_bottom"}}">
+  <span class="result-pager__step"></span>
+  <form method="get" action="#design-navigation" class="result-pager__jump">
+    <label for="{{.Theme}}-page">{{t "mods.hits.page_label"}}</label>
+    <input id="{{.Theme}}-page" name="page" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="1" size="3" aria-describedby="{{.Theme}}-pages">
+    <span id="{{.Theme}}-pages">{{t "mods.hits.of_pages" "pages" 4}}</span>
+    <button type="submit" class="button button--quiet"><span aria-hidden="true">{{t "mods.hits.go"}}</span><span class="visually-hidden">{{t "mods.hits.go_name"}}</span></button>
+  </form>
+  <a href="{{worldsPath}}" class="button button--quiet result-pager__step" rel="next">{{t "mods.hits.next"}}</a>
+</nav>
 {{- end}}
 
 {{/* DESIGN 8.3 and the empty states; the table keeps its roles as the Server page's does, because display changes on a phone drop them. */}}
@@ -252,11 +384,16 @@
   <span class="select-bar__count" aria-hidden="true">2</span>
   <button type="button" class="button button--risky">{{t "worlds.snapshots.delete_selected"}}</button>
 </div>
-{{- /* A list's heading with its count, and mod rows as the Mods page draws them: one visible action, then the More menu, closed and open. */}}
-<section class="panel card" aria-labelledby="{{.Theme}}-mods">
+{{- /* The installed mods as the Mods page draws them: the list's summary tags from the portal's answer, then rows with one visible action and the More menu, closed and open. */}}
+<section class="panel" aria-labelledby="{{.Theme}}-mods">
   <div class="group__head">
-    <h4 id="{{.Theme}}-mods">{{t "mods.installed.heading"}}</h4>
-    <span class="count" aria-hidden="true">1</span>
+    <h2 id="{{.Theme}}-mods" class="visually-hidden">{{t "mods.installed.heading"}}</h2>
+    <span class="group__action"></span>
+  </div>
+  <div class="mod-status" role="status">
+    <div class="mod-status__line">
+      <p><span class="mod-count mod-count--warning">{{t "mods.status.warnings" "count" 1}}</span> <span class="mod-count mod-count--note">{{t "mods.status.notes" "count" 1}}</span> <span class="mod-count mod-count--update">{{t "mods.status.updates" "count" 2}}</span> <span class="mod-count mod-count--ok">{{t "mods.status.current" "count" 3}}</span></p>
+    </div>
   </div>
   <table role="table" class="mod-list">
     <caption>{{t "mods.installed.caption" "world" "Nauvis Prime" "count" 1}}</caption>
@@ -265,7 +402,7 @@
     </thead>
     <tbody role="rowgroup">
       <tr role="row">
-        <td role="cell"><div class="mod-line"><span class="mod-name ident" translate="no">{{$.Page.Mod}}</span> <span class="mod-ver">3.2.2</span></div></td>
+        <td role="cell"><div class="mod-line"><span class="mod-name">{{template "mod-name" (modName $.Page.Mod "" true)}}</span> <span class="mod-ver">3.2.2</span></div></td>
         <td role="cell" data-label="{{t "mods.col.actions"}}">
           <div class="row-actions mod-actions">
             <span><a href="{{worldsPath}}" class="button">{{t "mods.row.update" "version" "3.2.3"}}</a></span>
@@ -282,7 +419,7 @@
       </tr>
       {{- /* A mod that is off: Enable is the row's one framed action. */}}
       <tr role="row">
-        <td role="cell"><div class="mod-line"><span class="mod-name ident" translate="no">{{$.Page.Mod}}</span> <span class="mod-ver">3.2.2</span><span class="badge">{{t "mods.state.off"}}</span></div></td>
+        <td role="cell"><div class="mod-line"><span class="mod-name">{{template "mod-name" (modName $.Page.Mod "" true)}}</span> <span class="mod-ver">3.2.2</span><span class="badge">{{t "mods.state.off"}}</span></div></td>
         <td role="cell" data-label="{{t "mods.col.actions"}}">
           <div class="row-actions mod-actions">
             <a href="{{worldsPath}}" class="button mod-toggle">{{t "mods.row.enable"}}</a>
@@ -297,7 +434,7 @@
       </tr>
       {{- /* The same row with its menu open, as it shows after a click. */}}
       <tr role="row" class="design-menu-open">
-        <td role="cell"><div class="mod-line"><span class="mod-name ident" translate="no">{{$.Page.Mod}}</span> <span class="mod-ver">3.2.3</span></div></td>
+        <td role="cell"><div class="mod-line"><span class="mod-name">{{template "mod-name" (modName $.Page.Mod "" true)}}</span> <span class="mod-ver">3.2.3</span></div></td>
         <td role="cell" data-label="{{t "mods.col.actions"}}">
           <div class="row-actions mod-actions">
             <details class="row-menu" open>
@@ -314,10 +451,6 @@
     </tbody>
   </table>
 </section>
-{{- /* A list's summary tags. */}}
-<div class="mod-status__line">
-  <p><span class="mod-count mod-count--warning">{{t "mods.status.warnings" "count" 1}}</span> <span class="mod-count mod-count--note">{{t "mods.status.notes" "count" 1}}</span> <span class="mod-count mod-count--update">{{t "mods.status.updates" "count" 2}}</span> <span class="mod-count mod-count--ok">{{t "mods.status.current" "count" 3}}</span></p>
-</div>
 <p class="empty empty--art empty--players">{{t "server.online.nobody"}}</p>
 <p class="empty empty--art empty--snapshots">{{t "worlds.snapshots.empty"}}</p>
 <p class="empty">{{t "server.players.cannot_see"}}</p>

@@ -3,9 +3,12 @@
 /* The component page (DESIGN 7): each section drawn once in each theme. A
    pane's colour and background are set again because the inherited ones were
    resolved in the page's theme, not the pane's. */
+/* One theme above the other, each pane as wide as the page. The components
+   change their layout at widths of the window, not of their box, so a pane
+   narrower than a page would draw them as no page does. */
 .design-pair {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
@@ -96,7 +99,13 @@
   position: static;
 }
 
-/* The component page's Server controls carry the same icons as the page's. */
+/* The Server page names each control's icon and the Stop colours by its id
+   (pages/server.css). A specimen cannot repeat an id, one copy per theme, so
+   data-design-icon carries the same words: this block only names them. */
+[data-design-icon="start"] {
+  --icon: var(--i-start);
+}
+
 [data-design-icon="snapshot"] {
   --icon: var(--i-snapshot);
 }
@@ -107,6 +116,68 @@
 
 [data-design-icon="stop"] {
   --icon: var(--i-stop);
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+
+[data-design-icon="stop"]:hover {
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+
+[data-design-icon="map"] {
+  --icon: var(--i-map);
+}
+
+[data-design-icon="mods"] {
+  --icon: var(--i-mods);
+}
+
+[data-design-icon="settings"] {
+  --icon: var(--i-settings);
+}
+
+[data-design-icon="switch"] {
+  --icon: var(--i-switch);
+}
+
+/* The Server page places the players card by the id of its heading
+   (pages/server.css); a specimen cannot repeat the id, so the card is found
+   by its section head. */
+@media (min-width: 64rem) {
+  .design-pane .server-grid > .panel:has(.section-head) {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+    align-self: start;
+    align-content: start;
+  }
+}
+
+/* Both blocks below repeat a shared rule that is scoped to the page's own
+   frame: shell.css sets a row of tabs by `main > .subnav`, and pages/server.css
+   sets Stop apart by `#act-stop`. A specimen is neither, so it gets the same
+   values here. Delete a block when the shared rule loses its scope. */
+@media (min-width: 40rem) {
+  .design-pane > .subnav {
+    border-block-end-color: var(--color-line-strong);
+  }
+
+  .design-pane > .subnav a {
+    min-block-size: var(--target-min);
+    padding-inline: var(--space-4);
+  }
+
+  .design-pane > .subnav > ul > li:first-child > a {
+    padding-inline-start: 0;
+  }
+}
+
+@media (min-width: 64rem) {
+  .server-actions > [data-design-icon="stop"] {
+    margin-inline-start: var(--space-6);
+    padding-inline-start: var(--space-4);
+    border-inline-start: var(--border-width) solid var(--color-danger);
+  }
 }
 
 /* On the component page the open menu's panel sits in the flow, so the
@@ -114,19 +185,5 @@
 .design-menu-open .row-menu__panel {
   position: static;
   margin-block-start: var(--space-1);
-}
-
-/* Round 4. The Server tabs share one heading: the world's name and its
-   state badge on Overview, Console and Chat alike. */
-/* Stop server is set apart from Restart: still a secondary button, with
-   its stop icon, danger-coloured words and edge. */
-.plate__controls [data-design-icon="stop"] {
-  color: var(--color-danger-text);
-  border-color: var(--color-danger);
-}
-
-.plate__controls [data-design-icon="stop"]:hover {
-  color: var(--color-danger-text);
-  border-color: var(--color-danger);
 }
 }
