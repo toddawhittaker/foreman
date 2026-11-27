@@ -391,6 +391,11 @@
     "few": "Usunięto {mod}. Plan obejmuje {count} modyfikacje.",
     "many": "Usunięto {mod}. Plan obejmuje {count} modyfikacji."
   },
+  "mods.plan.added": {
+    "one": "Plan zaktualizowany: dodano {mod}. Zmienia się {count} modyfikacja.",
+    "few": "Plan zaktualizowany: dodano {mod}. Zmieniają się {count} modyfikacje.",
+    "many": "Plan zaktualizowany: dodano {mod}. Zmienia się {count} modyfikacji."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plan zaktualizowany: ma konflikt, więc nie można go zastosować.",
     "few": "Plan zaktualizowany: ma {count} konflikty, więc nie można go zastosować.",

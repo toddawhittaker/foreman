@@ -56,7 +56,7 @@ func (d *draftStore) get(token string, user int64, world string) (planForm, bool
 // one-time notes are not kept.
 func (d *draftStore) keep(token string, user int64, world string, f planForm) string {
 	f = f.clone()
-	f.Removed, f.Fixed, f.Hash, f.Fingerprint, f.DropsConfirmed = "", "", "", "", false
+	f.Removed, f.Added, f.Fixed, f.Hash, f.Fingerprint, f.DropsConfirmed = "", "", "", "", "", false
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.sweepLocked()
