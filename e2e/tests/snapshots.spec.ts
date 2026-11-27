@@ -54,7 +54,7 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
 
   await page.getByLabel("Label (optional)").fill("Before the rocket");
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.getByText('Done: Foreman took the snapshot "Before the rocket".')).toBeVisible();
+  await expect(page.locator("#toasts").getByText('Done: Foreman took the snapshot "Before the rocket".')).toBeVisible();
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Before the rocket");
@@ -78,7 +78,7 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
   await page.getByRole("button", { name: "Restore snapshot" }).click();
 
   await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?undo=/);
-  await expect(page.getByText(/The world is restored\. Foreman took the snapshot "Before restore" first/)).toBeVisible();
+  await expect(page.locator("#toasts").getByText(/The world is restored\. Foreman took the snapshot "Before restore" first/)).toBeVisible();
   await expect(rows).toHaveCount(2);
   await expect(rows.first().locator("td").first()).toHaveText(/^\s*Before restore \(taken /);
   await expect(rows.first().locator("td").first()).not.toHaveText(/Before restore\s*Before restore/);
@@ -125,29 +125,24 @@ test("an over-long label is refused with a field error", async ({ page, foreman 
   await checkPage(page);
 });
 
-// "Go to the snapshot" lands on that row's Restore link, and Restore links
-// tell apart snapshots taken in the same minute by their seconds.
-test("the done message leads to the snapshot's Restore link", async ({ page, foreman }) => {
+// Restore links tell apart snapshots taken in the same minute by their
+// seconds, and the result is a toast, so the list keeps its place.
+test("Restore links tell apart snapshots taken in the same minute", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "family-base");
   await page.goto("/worlds/family-base/snapshots");
   await page.getByRole("button", { name: "Take snapshot" }).click();
   await page.waitForTimeout(1100);
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await page.getByRole("link", { name: "Go to the snapshot" }).click();
-  await expect(page).toHaveURL(/#restore-\d{8}T\d{6}Z$/);
-  const target = page.locator(":target");
-  await expect(target).toHaveText(/^Restore/);
-  await expect(target).toHaveAttribute("href", /\/restore$/);
-  const names = await page.getByRole("link", { name: /^Restore Manual snapshot, taken/ }).evaluateAll((els) =>
-    els.map((el) => el.textContent),
-  );
+  await expect(page.locator("#toasts")).toContainText("Done: Foreman took the snapshot");
+  const restore = page.getByRole("link", { name: /^Restore Manual snapshot, taken/ });
+  const names = await restore.evaluateAll((els) => els.map((el) => el.textContent));
   expect(names).toHaveLength(2);
   expect(names[0]).toMatch(/\d{1,2}:\d{2}:\d{2}/);
   expect(new Set(names).size).toBe(2);
   await checkPage(page);
 
-  await target.click();
+  await restore.first().click();
   await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   await checkPage(page);
 });

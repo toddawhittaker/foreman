@@ -144,7 +144,6 @@
   "worlds.list.all": "Alle Welten",
   "worlds.list.deleted_gone": "{name} wurde gelöscht. Die Welt hatte keine Snapshots und kann daher nicht wiederhergestellt werden.",
   "worlds.list.deleted_kept": "{name} wurde gelöscht. Die Snapshots der Welt findest du unter „Gelöschte Welten“.",
-  "worlds.list.deleted_link": "Zu den gelöschten Welten",
   "worlds.list.empty": "Noch keine Welten. Importiere einen Ordner mit Speicherständen oder lade einen Speicherstand hoch, um deine erste Welt anzulegen.",
   "worlds.list.upload_save": "Einen Speicherstand hochladen",
   "worlds.list.import": "Welt importieren",

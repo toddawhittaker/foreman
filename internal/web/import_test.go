@@ -84,7 +84,8 @@ func TestBulkImport(t *testing.T) {
 	if rep.StatusCode != http.StatusOK {
 		t.Fatalf("status %d\n%s", rep.StatusCode, rep.body)
 	}
-	g.wantContains("result", rep.body, "<strong>Done:</strong> Imported 3 folders.",
+	wantToast(t, "result", rep.body, false, "Imported 3 folders.")
+	g.wantContains("result", rep.body,
 		"<code>broken</code>: Foreman could not read its save", "Downloading the game image for Factorio <code>2.0.77</code>.")
 	g.wantMissing("result", rep.body, "Ignored")
 	if w := g.worldByName("sa"); w.GameVersion != "2.1.24" || !w.SpaceAge {
@@ -128,7 +129,8 @@ func TestImportListsAlreadyImportedFolders(t *testing.T) {
 
 	body := g.get(PathImport)
 	g.wantContains("import page", body, "<strong>Already imported.</strong>", "Imported as First on", `<a href="/worlds/first">Open First</a>`)
-	g.wantContains("world page", g.get("/worlds/first?imported=1"), "<strong>Done:</strong> Imported First.",
+	wantToast(t, "world page", g.get("/worlds/first?imported=1"), false, "Imported First.")
+	g.wantContains("world page", g.get("/worlds/first?imported=1"),
 		"<dt>Imported from</dt><dd>The folder <code>done</code>, save <code>a.zip</code>")
 	g.wantRedirectTo("/worlds/second?imported=1", g.post(PathImportFolder, url.Values{"folder": {"done"}, "name": {"Second"}}))
 }

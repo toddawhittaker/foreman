@@ -293,7 +293,7 @@ test.describe("with the fake game, a snapshot meanwhile", () => {
     await other.goto("/worlds/base/snapshots");
     await other.getByLabel("Label (optional)").fill("By hand");
     await other.getByRole("button", { name: "Take snapshot" }).click();
-    await expect(other.getByText('Done: Foreman took the snapshot "By hand".')).toBeVisible();
+    await expect(other.locator("#toasts").getByText('Done: Foreman took the snapshot "By hand".')).toBeVisible();
     await expect(card.locator(".recent-snaps__list > li")).toHaveCount(1, live);
     await expect(card).toContainText("By hand");
     await expect(card).not.toContainText("No snapshots yet");
@@ -308,11 +308,11 @@ test.describe("with the fake game, a snapshot meanwhile", () => {
     await other.goto("/worlds/base/snapshots");
     await other.getByLabel("Label (optional)").fill("Short lived");
     await other.getByRole("button", { name: "Take snapshot" }).click();
-    await expect(other.getByText('Done: Foreman took the snapshot "Short lived".')).toBeVisible();
+    await expect(other.locator("#toasts").getByText('Done: Foreman took the snapshot "Short lived".')).toBeVisible();
     await expect(card).toContainText("Short lived", live);
     await other.getByRole("link", { name: /^Delete Short lived/ }).click();
     await other.getByRole("button", { name: "Delete snapshot" }).click();
-    await expect(other.getByText(/Done: Foreman deleted the snapshot taken/)).toBeVisible();
+    await expect(other.locator("#toasts").getByText(/Done: Foreman deleted the snapshot taken/)).toBeVisible();
     await expect(card).toContainText("No snapshots yet", live);
     await expect(card).not.toContainText("Short lived");
     await checkPage(page);

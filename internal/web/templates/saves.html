@@ -2,24 +2,14 @@
 
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .WorldName "" (t "worlds.world.saves"))}}{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .WorldName "" (t "worlds.world.saves"))}}
-<h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-{{template "rail" $}}
+{{template "pagehead" $}}
 {{template "summary" .Problems}}
-{{- if .Uploaded}}
-<div class="message message--success" tabindex="-1"{{if not .Chosen}} autofocus{{end}}>
-  <p><strong>{{t "common.label.done"}}</strong> {{tHTML "worlds.saves.uploaded" "file" (code .Uploaded)}}</p>
-</div>
-{{- end}}
-{{- if .Chosen}}
-<div class="message message--success" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{if .LoadSave}}{{tHTML "worlds.saves.chosen" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.chosen_newest"}}{{end}}</p>
-</div>
-{{- end}}
 {{- if .Newer}}
 <div class="message message--note">
   <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.saves.newer"}}</p>
@@ -81,7 +71,8 @@
   <div class="actions"><a href="{{.OlderHref}}">{{t "worlds.saves.older"}}</a></div>
   {{- end}}
   {{- else}}
-  <p class="empty empty--art empty--saves">{{if .Newer}}{{t "worlds.saves.empty"}}{{else}}{{t "worlds.saves.empty_upload"}}{{end}}</p>
+  {{- $empty := t "worlds.saves.empty_upload"}}{{if .Newer}}{{$empty = t "worlds.saves.empty"}}{{end}}
+  {{template "empty" (empty "saves" $empty)}}
   {{- end}}
 </section>
 
@@ -93,9 +84,7 @@
     {{template "required-note"}}
     <p class="hint">{{t "worlds.saves.upload.hint"}}</p>
     {{template "dropzone" .UploadZone}}
-    <div class="actions">
-      <button type="submit" class="button button--primary">{{t "worlds.saves.upload.button"}}</button>
-    </div>
+    {{template "form-foot" (formFoot "submit" (t "worlds.saves.upload.button"))}}
   </form>
 </section>
 </div>
@@ -104,4 +93,3 @@
 {{end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

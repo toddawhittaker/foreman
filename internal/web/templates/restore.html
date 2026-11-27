@@ -1,20 +1,16 @@
 {{define "title"}}{{if .Page.ModUndo}}{{t "server.restore.mods.title" "world" .Page.WorldName}}{{else}}{{t "server.restore.title" "world" .Page.WorldName}}{{end}}{{end}}
 
+{{define "head-title"}}{{with .Page}}{{if .ModUndo}}{{t "server.restore.mods.heading" "world" .WorldName}}{{else}}{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}{{end}}{{end}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-{{- if .ModUndo}}
-<h1 id="confirm-heading">{{t "server.restore.mods.heading" "world" .WorldName}}</h1>
-{{- else}}
-<h1 id="confirm-heading">{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}</h1>
-{{- end}}
+{{template "pagehead" $}}
 {{template "summary" .Problems}}
-{{- if not .Error.IsZero}}
-<div class="message message--error" id="action-error" tabindex="-1" autofocus>
-  <p><strong>{{t "common.error.label"}}</strong> {{msgHTML .Error}}</p>
-  {{- if $.Page.Undo}}
-  <p>{{t "server.failure.undo_text" "label" (m "worlds.snapshot.label.before_restore")}}</p>
-  <div class="actions"><a href="{{$.Page.UndoPath}}">{{t "server.restore.undo_link" "label" (m "worlds.snapshot.label.before_restore")}}</a></div>
-  {{- end}}
+{{- /* The error is a toast; the undo snapshot a failed restore left is the next step, so it stays here (SPEC 6.5). */}}
+{{- if and (not .Error.IsZero) .Undo}}
+<div class="message message--warning" id="restore-undo">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "server.failure.undo_text" "label" (m "worlds.snapshot.label.before_restore")}}</p>
+  <div class="actions"><a href="{{.UndoPath}}">{{t "server.restore.undo_link" "label" (m "worlds.snapshot.label.before_restore")}}</a></div>
 </div>
 {{- end}}
 <section class="confirm">

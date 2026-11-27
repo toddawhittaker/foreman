@@ -1,14 +1,11 @@
 {{define "title"}}{{t "server.rollback.title" "world" .Page.World.Name}}{{end}}
 
+{{define "head-title"}}{{with .Page}}{{if .Version}}{{t "server.rollback.heading" "from" .World.GameVersion "to" .Version}}{{else}}{{t "server.rollback.title" "world" .World.Name}}{{end}}{{end}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<h1 id="confirm-heading">{{if .Version}}{{t "server.rollback.heading" "from" .World.GameVersion "to" .Version}}{{else}}{{t "server.rollback.title" "world" .World.Name}}{{end}}</h1>
+{{template "pagehead" $}}
 {{template "summary" .Problems}}
-{{- if not .Error.IsZero}}
-<div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
-  <p><strong>{{t "common.error.label"}}</strong> {{msgHTML .Error}}</p>
-</div>
-{{- end}}
 {{- if .Version}}
 <section class="confirm">
   <p><strong>{{t "common.label.warning"}}</strong> {{t "server.rollback.warning" "from" .World.GameVersion "to" .Version}}</p>

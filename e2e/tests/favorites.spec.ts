@@ -25,8 +25,8 @@ test("make a favorite, start Generate from it, land on the review page, then del
   await expect(page.locator("#favorite-hint")).toContainText("default map");
   await name.fill("Club start");
   await page.getByRole("button", { name: "Make favorite" }).click();
+  await expect(page.locator("#toasts")).toContainText('Made the favorite "Club start".');
   const made = page.locator("#favorite-made");
-  await expect(made).toContainText('Made the favorite "Club start".');
   await expect(made).toContainText("1 mod is left out");
   await expect(made.getByRole("listitem")).toHaveText(["mylocal"]);
   await checkPage(page);
@@ -82,7 +82,7 @@ test("make a favorite, start Generate from it, land on the review page, then del
   await expect(page.getByRole("heading", { level: 1 })).toHaveText('Delete the favorite "Club start"?');
   await checkPage(page);
   await page.getByRole("button", { name: "Delete favorite" }).click();
-  await expect(page.locator("#done-message")).toContainText('Deleted the favorite "Club start".');
+  await expect(page.locator("#toasts")).toContainText('Deleted the favorite "Club start".');
   await expect(page.locator("#favorites-empty")).toBeVisible();
   await checkPage(page);
 });
@@ -132,7 +132,7 @@ test("export a favorite, see the warning, then import it by dropping the file", 
   await dropFile(page, "favorite-file", [{ name: "Shared_pack-favorite.zip", body: file, type: "application/zip" }]);
   await expect(page.locator(".dropzone__chosen")).toContainText("Shared_pack-favorite.zip");
   await page.getByRole("button", { name: "Import favorite" }).click();
-  await expect(page.locator("#done-message")).toContainText('Imported the favorite "Shared pack".');
+  await expect(page.locator("#toasts")).toContainText('Imported the favorite "Shared pack".');
   const imported = favRow(page, "Shared pack");
   await expect(imported).toBeVisible();
   // An imported favorite names no source world and is dated on import.
@@ -214,7 +214,7 @@ test("a favorite is a closed row; Details holds the rest; Rename changes the lis
 
   await rename(page, "Shared pack", "Rail world");
   await expect(page).toHaveURL(`/favorites?renamed=${favID}`);
-  await expect(page.locator("#done-message")).toContainText('Renamed the favorite to "Rail world".');
+  await expect(page.locator("#toasts")).toContainText('Renamed the favorite to "Rail world".');
   await expect(favRow(page, "Rail world")).toHaveCount(1);
   await expect(favRow(page, "Shared pack")).toHaveCount(0);
   await expect(JSON.parse(readFileSync(join(foreman.dataDir, "favorites", favID, "favorite.json"), "utf8")).name).toBe("Rail world");
@@ -225,7 +225,7 @@ test("a favorite is a closed row; Details holds the rest; Rename changes the lis
   await page.goto("/favorites");
   await page.locator("#favorite-file").setInputFiles({ name: "pack.zip", mimeType: "application/zip", buffer: file });
   await page.getByRole("button", { name: "Import favorite" }).click();
-  await expect(page.locator("#done-message")).toContainText('Imported the favorite "Rail world".');
+  await expect(page.locator("#toasts")).toContainText('Imported the favorite "Rail world".');
 });
 
 for (const lang of ["de", "ru"] as const) {
@@ -269,7 +269,7 @@ test.describe("without script", () => {
     await page.goto("/favorites");
     await expectDetails(page, "Shared pack");
     await rename(page, "Shared pack", "SHARED PACK");
-    await expect(page.locator("#done-message")).toContainText('Renamed the favorite to "SHARED PACK".');
+    await expect(page.locator("#toasts")).toContainText('Renamed the favorite to "SHARED PACK".');
   });
 
   test("a favorite file imports through the plain file field", async ({ page, foreman }) => {
@@ -279,6 +279,6 @@ test.describe("without script", () => {
     await page.goto("/favorites");
     await page.getByLabel("Favorite file").setInputFiles({ name: "pack.zip", mimeType: "application/zip", buffer: file });
     await page.getByRole("button", { name: "Import favorite" }).click();
-    await expect(page.locator("#done-message")).toContainText('Imported the favorite "Shared pack".');
+    await expect(page.locator("#toasts")).toContainText('Imported the favorite "Shared pack".');
   });
 });

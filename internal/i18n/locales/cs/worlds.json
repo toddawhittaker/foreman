@@ -149,7 +149,6 @@
   "worlds.list.all": "Všechny světy",
   "worlds.list.deleted_gone": "Svět {name} byl smazán. Neměl žádné snímky, proto ho nelze obnovit.",
   "worlds.list.deleted_kept": "Svět {name} byl smazán. Jeho snímky jsou v části „Smazané světy“.",
-  "worlds.list.deleted_link": "Přejít na smazané světy",
   "worlds.list.empty": "Zatím nejsou žádné světy. Pro vytvoření prvního světa je třeba importovat složku s uloženými hrami nebo nahrát soubor uložené hry.",
   "worlds.list.upload_save": "Nahrát uloženou hru",
   "worlds.list.import": "Importovat svět",

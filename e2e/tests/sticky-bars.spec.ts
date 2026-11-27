@@ -111,7 +111,7 @@ test("the Snapshots selection bar never covers the focused control", { tag: "@lo
   for (let i = 1; i <= 8; i++) {
     await page.getByLabel("Label (optional)").fill(`Snapshot ${i}`);
     await page.getByRole("button", { name: "Take snapshot" }).click();
-    await expect(page.getByText(`Done: Foreman took the snapshot "Snapshot ${i}".`)).toBeVisible();
+    await expect(page.locator("#toasts").getByText(`Done: Foreman took the snapshot "Snapshot ${i}".`)).toBeVisible();
   }
   await page.goto("/snapshots");
   await page.locator('input[name="snap"]').first().check();

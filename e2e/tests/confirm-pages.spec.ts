@@ -12,8 +12,13 @@ async function expectPlainConfirmation(page: Page, where: string, opts: { backLi
   const main = page.locator("main");
   await expect(page.getByRole("heading", { level: 1 }), `${where}: one h1`).toHaveCount(1);
   const h1 = (await page.getByRole("heading", { level: 1 }).innerText()).trim();
-  // The heading comes first: nothing, such as a Back link, sits above it.
-  expect(await main.evaluate((m) => m.firstElementChild?.tagName), `${where}: the h1 is first`).toBe("H1");
+  // The heading comes first: nothing, such as a Back link, sits above it. The
+  // page header (DESIGN 6) counts as the heading: its crumb row is its own.
+  const first = await main.evaluate((m) => {
+    const f = m.firstElementChild;
+    return f?.matches("header.pagehead") && f.querySelector(":scope > h1") ? "H1" : f?.tagName;
+  });
+  expect(first, `${where}: the h1 is first`).toBe("H1");
   const others = await main.locator("h2, h3").allInnerTexts();
   expect(others.map((t) => t.trim()), `${where}: no heading repeats the h1`).not.toContain(h1);
   expect(await main.locator("form h2").count(), `${where}: no second heading inside the form`).toBe(0);
@@ -80,8 +85,13 @@ test("every confirmation page has one heading, no Back link and one main action"
   await page.goto("/deleted");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Deleted worlds");
   await expect(page.locator("main").getByRole("link", { name: /^Back to/ })).toHaveCount(0);
-  // Deleted worlds sits under Worlds, so only its breadcrumb comes before the heading (DESIGN 8.1).
-  expect(await page.locator("main").evaluate((m) => [...m.children].slice(0, 2).map((c) => `${c.tagName}.${c.className}`))).toEqual(["NAV.crumb", "H1."]);
+  // Deleted worlds sits under Worlds, so only its breadcrumb comes before the heading (DESIGN 8.1), in the page header (DESIGN 6).
+  expect(
+    await page.locator("main").evaluate((m) => {
+      const head = m.firstElementChild!;
+      return [head, ...[...head.children].slice(0, 2)].map((c) => `${c.tagName}.${c.className}`).concat(head.querySelector(":scope > .pagehead__crumb > nav.crumb") ? "crumb" : "");
+    }),
+  ).toEqual(["HEADER.pagehead", "DIV.pagehead__crumb", "H1.", "crumb"]);
   await checkPage(page);
   await page.getByRole("link", { name: /^Restore/ }).first().click();
   await expectPlainConfirmation(page, "restore deleted world");

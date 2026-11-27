@@ -394,8 +394,8 @@ func TestUpdateOfAnInactiveWorld(t *testing.T) {
 		t.Error("a plain visit asked for a refresh")
 	}
 	page := g.get(worldPath(b) + ownResultQuery)
-	g.wantContains("world page after", page, `id="world-activity"`, `id="world-result" tabindex="-1" autofocus>`,
-		"The game version is updated.", "<code>"+newVersion+"</code>")
+	g.wantContains("world page after", page, `id="world-activity"`)
+	wantToast(t, "world page after", page, false, "The game version is updated. Foreman took the snapshot &#34;Before update&#34; first.")
 	g.wantMissing("world page after", page, `hx-trigger="every`, `message--error`)
 	// The result belongs to the visit the update sent the admin to, not to every later one.
 	later := g.get(worldPath(b))
@@ -895,8 +895,11 @@ func TestNoRollbackBeforeAnUpdate(t *testing.T) {
 		t.Errorf("a rollback page offers a rollback:\n%s", body)
 	}
 	rep := g.post(rollbackURL(id), url.Values{})
-	if rep.StatusCode != http.StatusConflict || !strings.Contains(rep.body, `id="action-error"`) {
+	if rep.StatusCode != http.StatusConflict {
 		t.Errorf("POST: %d\n%s", rep.StatusCode, rep.body)
+	}
+	if !strings.Contains(toastRegion(rep.body), "toast--error") {
+		t.Errorf("POST: no error toast\n%s", rep.body)
 	}
 	g.wantUnchanged("a rollback with nothing to roll back to", id, oldVersion, save, 1)
 }

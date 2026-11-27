@@ -18,24 +18,6 @@
   --icon: var(--i-copy);
 }
 
-.world-layout__main > .panel {
-  position: relative;
-  padding: var(--card-pad);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-line);
-}
-
-/* Below 360 px a card's frame would cost the content its room, so sections
-   lie flat on the page, a rule above each (DESIGN 4). */
-@media (max-width: 22.4rem) {
-  .world-layout__main > .panel {
-    padding: var(--space-4) 0 0;
-    background: none;
-    border: 0;
-    border-block-start: var(--border-width) solid var(--color-line);
-  }
-}
-
 /* Single-column grids use minmax(0, 1fr), so a long word or a wide child
    cannot push the track past its box (DESIGN 7, 320 px rules). */
 .worlds {
@@ -151,24 +133,6 @@ time[data-age-only] .time-short {
     gap: var(--space-2);
   }
 
-  .snapshot-list th,
-  .snapshot-list td {
-    padding-inline: var(--space-1);
-  }
-}
-
-@container (max-width: 14rem) {
-  .snapshot-list :is(td.num, th[scope="row"]) {
-    padding-inline: 0;
-  }
-}
-
-@container (max-width: 24rem) {
-  .snapshot-list th:first-child,
-  .snapshot-list td:first-child {
-    padding-inline-start: 0;
-  }
-
   .snapshot-list .row-actions .button,
   .snapshot-list td > .button {
     padding-inline: var(--space-3);
@@ -200,6 +164,12 @@ time[data-age-only] .time-short {
   .snapshot-list:has(.row-actions) caption,
   .snapshot-list:has(.row-actions) tbody {
     display: block;
+  }
+
+  /* A stacked row lends its cells' side padding to the row, so its
+     content keeps clear of the highlight's edges (DESIGN 8.3). */
+  .snapshot-list:has(.row-actions) :is(caption, tr) {
+    padding-inline: var(--cell-pad);
   }
 
   .snapshot-list:has(.row-actions) tr {
@@ -427,6 +397,7 @@ time[data-age-only] .time-short {
 
   .snapshot-list:has(.row-actions) caption {
     grid-column: 1 / -1;
+    padding-inline: var(--cell-pad);
     text-align: start;
   }
 
@@ -440,7 +411,7 @@ time[data-age-only] .time-short {
     grid-template-columns: subgrid;
     align-items: center;
     row-gap: var(--space-1);
-    padding-block: var(--space-3);
+    padding: var(--space-3) var(--cell-pad);
     border-block-end: var(--border-width) solid var(--color-line);
   }
 
@@ -731,7 +702,9 @@ time[data-age-only] .time-short {
   position: sticky;
   inset-block-end: var(--space-4);
   z-index: 2;
-  flex-wrap: nowrap;
+  /* At large text on a phone the button takes its own line rather than
+     splitting a word (WCAG 1.4.4). */
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   inline-size: fit-content;
@@ -745,8 +718,17 @@ time[data-age-only] .time-short {
   box-shadow: var(--shadow-pop);
 }
 
+/* The bar floats, so its button stays beside the count rather than taking
+   the column's width as a narrow panel's buttons do; it wraps under the
+   count only when the two do not fit. */
+.select-bar > .button {
+  flex: 0 1 auto;
+}
+
+/* Hidden, it keeps its room, so ticking the first box moves nothing below
+   the list (DESIGN 8.3). */
 .select-bar[hidden] {
-  display: none;
+  visibility: hidden;
 }
 
 /* The link to older snapshots after the list stays after the bar too. */
@@ -1400,6 +1382,13 @@ time[data-age-only] .time-short {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  /* The record lends its cells' side padding to the row, so its text
+     keeps clear of the highlight's edges and lines up with the title. */
+  #main .save-list > caption,
+  #main .save-list > tbody > tr {
+    padding-inline: var(--cell-pad);
   }
 
   #main .save-list > tbody > tr {

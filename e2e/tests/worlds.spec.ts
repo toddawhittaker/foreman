@@ -58,7 +58,7 @@ test("/ is the Server page and the world list is at /worlds", async ({ page }) =
 // works without script (SPEC 5.12, DESIGN 6).
 test("the Worlds page has a Favorites link that opens the favorites list", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
-  const actions = page.locator("header .actions");
+  const actions = page.locator("header .pagehead__actions");
   const buttons = actions.locator("a.button");
   await expect(buttons.nth(0)).toHaveText("Generate a world");
   await expect(buttons.nth(1)).toHaveText("Import a world");
@@ -163,7 +163,7 @@ test("renames a world and refuses a duplicate name", async ({ page, foreman }) =
   await page.getByRole("button", { name: "Rename world" }).click();
   await expect(page).toHaveURL(/\/worlds\/base\?renamed=Main\+base$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Main base");
-  await expect(page.locator(".message--success p")).toHaveText("Done: Renamed to Main base.");
+  await expect(page.locator("#toasts .toast--success p")).toHaveText("Done: Renamed to Main base.");
 });
 
 test("a world a newer Foreman wrote cannot be renamed", { tag: "@looks" }, async ({ page, foreman }) => {
@@ -249,7 +249,7 @@ test("the list shows what each world's snapshots add", async ({ page, foreman })
   seedWorld(foreman, "beta", { name: "Beta", game_version: "2.0.72", space_age: false });
   await page.goto("/worlds/alpha/snapshots");
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.getByText("Done: Foreman took the snapshot")).toBeVisible();
+  await expect(page.locator("#toasts").getByText("Done: Foreman took the snapshot")).toBeVisible();
   // The world moves on, so the snapshot alone holds the old save.
   rmSync(join(foreman.dataDir, "worlds", "alpha", "saves", "base.zip"));
   await page.reload();

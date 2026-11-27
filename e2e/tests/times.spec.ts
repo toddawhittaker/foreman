@@ -8,7 +8,7 @@ async function takeSnapshot(page: import("@playwright/test").Page, foreman: impo
   seedWorld(foreman);
   await page.goto("/worlds/base/snapshots");
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.getByText(/Done: Foreman took the snapshot/)).toBeVisible();
+  await expect(page.locator("#toasts").getByText(/Done: Foreman took the snapshot/)).toBeVisible();
 }
 
 // DESIGN 9: times show in the browser's zone, with how long ago they were.

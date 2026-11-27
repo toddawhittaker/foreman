@@ -595,7 +595,7 @@ test("a staged file the form cannot confirm stays out of the address and goes wh
   await expect(page).toHaveURL(/\/worlds\/crafted\?imported=1/);
   expect(staged(foreman)).toEqual([]);
   // The world page then shows the imported message (5.14).
-  await expect(page.locator(".message--success")).toContainText(/imported/i);
+  await expect(page.locator("#toasts .toast--success")).toContainText(/imported/i);
   await checkPage(page);
 });
 

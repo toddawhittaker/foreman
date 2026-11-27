@@ -10,7 +10,7 @@ async function takeSnapshot(page: Page, label: string) {
   await page.goto("/worlds/second/snapshots");
   await page.getByLabel("Label (optional)").fill(label);
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.getByText(`Done: Foreman took the snapshot "${label}".`)).toBeVisible();
+  await expect(page.locator("#toasts").getByText(`Done: Foreman took the snapshot "${label}".`)).toBeVisible();
 }
 
 // SPEC 17.4: Select all automatic reloads the page, so it says what it ticked

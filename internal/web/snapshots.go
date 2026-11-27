@@ -53,9 +53,8 @@ type SnapshotsPage struct {
 	LabelError i18n.Msg
 	// Error says why the last action failed, in plain words.
 	Error i18n.Msg
-	// Done says what the last action did; DoneSnap is the snapshot it names.
-	Done     i18n.Msg
-	DoneSnap string
+	// Done says what the last action did.
+	Done i18n.Msg
 	// Deleted holds when each snapshot the last delete removed was taken.
 	Deleted []time.Time
 	// Removed is how many snapshots the last bulk delete removed.
@@ -82,6 +81,9 @@ type RestorePage struct {
 	// ModUndo says what restoring a "Before mod change" snapshot does to
 	// the world's mods; nil for any other restore (SPEC 9.4, 17.5).
 	ModUndo []i18n.Msg
+	// FromAll is true when the restore started on the Snapshots tab, which
+	// stays the highlighted area and where Cancel goes.
+	FromAll bool
 	CountdownForm
 }
 
@@ -92,7 +94,12 @@ func (SnapshotsPage) navItem() string      { return PathWorlds }
 func (p SnapshotsPage) Tabs() WorldTabs {
 	return WorldTabs{Path: worldPath(p.WorldID), Current: "snapshots", Settings: true}
 }
-func (RestorePage) navItem() string { return PathWorlds }
+func (p RestorePage) navItem() string {
+	if p.FromAll {
+		return PathSnapshots
+	}
+	return PathWorlds
+}
 
 // WorldPath links back to the world page.
 func (p RestorePage) WorldPath() string  { return worldPath(p.WorldID) }
@@ -127,13 +134,23 @@ func (p SnapshotsPage) BulkValue(snap string) string { return refValue(p.WorldID
 func (p SnapshotsPage) RestorePath(snap string) string { return restorePath(p.WorldID, snap) }
 
 // Path is where the confirmation posts.
-func (p RestorePage) Path() string { return restorePath(p.WorldID, p.Snapshot.Name) }
+func (p RestorePage) Path() string {
+	if p.FromAll {
+		return restorePath(p.WorldID, p.Snapshot.Name) + "?from=" + fromAll
+	}
+	return restorePath(p.WorldID, p.Snapshot.Name)
+}
 
 // UndoPath restores the "Before restore" snapshot a failed restore took.
 func (p RestorePage) UndoPath() string { return restorePath(p.WorldID, p.Undo) }
 
 // SnapshotsPath is where cancelling goes.
-func (p RestorePage) SnapshotsPath() string { return snapshotsPath(p.WorldID) }
+func (p RestorePage) SnapshotsPath() string {
+	if p.FromAll {
+		return PathSnapshots
+	}
+	return snapshotsPath(p.WorldID)
+}
 
 func (s *server) snapshotRoutes() {
 	s.mux.HandleFunc("GET "+PathWorldSnapshots, s.requireUser(s.handleSnapshots))
@@ -193,17 +210,17 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	}
 	q := r.URL.Query()
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("taken")); ok {
-		p.Done, p.DoneSnap = i18n.M("worlds.snapshots.done.taken", "label", snapshotLabelArg(sn)), sn.Name
+		p.Done = i18n.M("worlds.snapshots.done.taken", "label", snapshotLabelArg(sn))
 	}
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("restored")); ok {
-		p.Done, p.DoneSnap = i18n.M("worlds.snapshots.done.restored", "label", snapshotLabelArg(sn)), sn.Name
+		p.Done = i18n.M("worlds.snapshots.done.restored", "label", snapshotLabelArg(sn))
 	}
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("undo")); ok {
-		p.Done, p.DoneSnap = i18n.M("worlds.snapshots.done.undo", "label", snapshotLabelArg(sn)), sn.Name
+		p.Done = i18n.M("worlds.snapshots.done.undo", "label", snapshotLabelArg(sn))
 	}
 	p.Deleted, p.Removed = deletedTimes(q["deleted"]), removedCount(r)
 	if len(p.Deleted) > 0 || p.Removed > 0 {
-		p.Done, p.DoneSnap = i18n.Msg{}, ""
+		p.Done = i18n.Msg{}
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
@@ -303,6 +320,7 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		s.notFoundOrFail(w, r, u, "read snapshot", err)
 		return RestorePage{}, false
 	}
+	p.FromAll = r.URL.Query().Get("from") == fromAll
 	return p, true
 }
 

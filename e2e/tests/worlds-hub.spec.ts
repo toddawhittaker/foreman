@@ -73,18 +73,18 @@ test("on a world page Switch is the main action, Rename is plain and Delete come
 test("a rename says Done", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/worlds/second");
-  await expect(page.locator(".message--success")).toHaveCount(0);
+  await expect(page.locator("#toasts .toast--success")).toHaveCount(0);
 
   await page.getByLabel("Name", { exact: true }).fill("  Second base ");
   await page.getByRole("button", { name: "Rename world" }).click();
   await expect(page).toHaveURL(/\/worlds\/second\?renamed=/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Second base");
-  await expect(page.locator(".message--success p")).toHaveText("Done: Renamed to Second base.");
+  await expect(page.locator("#toasts .toast--success p")).toHaveText("Done: Renamed to Second base.");
   await checkPage(page);
 
   // A link that names something else is not believed.
   await page.goto("/worlds/second?renamed=Something+else");
-  await expect(page.locator(".message--success")).toHaveCount(0);
+  await expect(page.locator("#toasts .toast--success")).toHaveCount(0);
 });
 
 test("a running switch is shown on both of its worlds and not on others", async ({ page, foreman, fakeGame }) => {
