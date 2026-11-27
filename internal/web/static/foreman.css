@@ -207,7 +207,6 @@
   --i-rename: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 21h8'/%3E %3Cpath d='m15 5 4 4'/%3E %3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3C/svg%3E");
   --i-account: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='5'/%3E %3Cpath d='M20 21a8 8 0 0 0-16 0'/%3E%3C/svg%3E");
   --i-sync: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2 9 3-3 3 3'/%3E %3Cpath d='M13 18H7a2 2 0 0 1-2-2V6'/%3E %3Cpath d='m22 15-3 3-3-3'/%3E %3Cpath d='M11 6h6a2 2 0 0 1 2 2v10'/%3E%3C/svg%3E");
-  --i-folder: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2'/%3E%3C/svg%3E");
   --i-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E %3Cpath d='m6 6 12 12'/%3E%3C/svg%3E");
   --i-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
   --i-list: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h.01'/%3E %3Cpath d='M3 12h.01'/%3E %3Cpath d='M3 19h.01'/%3E %3Cpath d='M8 5h13'/%3E %3Cpath d='M8 12h13'/%3E %3Cpath d='M8 19h13'/%3E%3C/svg%3E");
@@ -1105,9 +1104,8 @@ main {
   }
 }
 
-/* On a phone only the logo shows, so the menu keeps room for its words, and
-   the open panel takes nearly the window's width so a language's name keeps
-   its line at large text sizes (DESIGN 6). */
+/* On a narrow phone the open panel takes nearly the window's width so a
+   language's name keeps its line at large text sizes (DESIGN 6). */
 @media (max-width: 22rem) {
   .menu__panel {
     inset-inline-end: var(--space-2);
@@ -1124,14 +1122,6 @@ main {
     padding-inline-start: calc(var(--space-2) + 3px);
   }
 
-  .product__name {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
 }
 
 /* On a phone the header is two rows within 100 px: the logo and the user
@@ -7448,18 +7438,8 @@ main > .panel > .facts > div {
 }
 
 /* Phone: one 52 px row with the logo, the live world and its state, and the
-   menu; the four areas take the row under it. The product's name stays for
-   screen readers only, so the world's name has the room. */
+   menu; the four areas take the row under it. */
 @media (max-width: 39.99rem) {
-  .site:has(.site-state:not(:empty)) .product__name {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
   .site-strip:has(.site-state:not(:empty)) {
     display: flex;
     flex: 1 1 0;
@@ -15461,7 +15441,7 @@ main > .message,
 /* Import: the other-version opener stays in the fields' column, beside the
    drop zone. */
 @container (min-width: 56rem) {
-  :is(.import-upload, .import-folder, .import-file) > details.disclosure {
+  :is(.import-upload, .import-folder) > details.disclosure {
     grid-column: 1;
   }
 }
