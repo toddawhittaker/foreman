@@ -13606,9 +13606,19 @@ html:has(.large-view[open]) > body {
   min-inline-size: 0;
 }
 
-.split--mods:has(#mods-view-installed:checked) .mods-main > :is([data-view="find"], #results),
-.split--mods:has(#mods-view-find:checked) .mods-main > [data-view="installed"] {
-  display: none;
+/* Without script both views show and the switch hides, so searching and
+   the plan work as plain links and forms (SPEC 9.1). */
+@media (scripting: enabled) {
+  .split--mods:has(#mods-view-installed:checked) .mods-main > :is([data-view="find"], #results),
+  .split--mods:has(#mods-view-find:checked) .mods-main > [data-view="installed"] {
+    display: none;
+  }
+}
+
+@media (scripting: none) {
+  .mods-bar > .mods-view {
+    display: none;
+  }
 }
 
 .mods-bar {
@@ -15078,3 +15088,95 @@ form.general-grid.setting-rows .setting-row__body .hint {
   border-inline-start: var(--border-width) solid var(--color-line);
 }
 
+
+/* A choice card's radio keeps its tick size at the card's top. */
+.pick-card > input {
+  align-self: start;
+}
+
+/* The installed list's hidden title and count sit inside their head, so
+   they never widen a phone's page. */
+section[data-view="installed"] > .group__head {
+  position: relative;
+}
+
+section[data-view="installed"] > .group__head > :is(h2#installed-heading, .count) {
+  inset-block-start: 0;
+  inset-inline-end: 0;
+}
+
+/* On the one-row map header the preset, its "modified" word and Reset or
+   Undo keep one line: the select gives up width, so Undo takes Reset's
+   place rather than dropping a line. */
+@container generate (min-width: 62rem) {
+  #preset-box .preset-row {
+    flex-wrap: nowrap;
+  }
+
+  #preset-box .preset-row > :is(.modified, .button) {
+    flex: none;
+  }
+}
+
+/* The plan rail runs the page's height, so the plan can hold in view
+   while the results scroll past it. */
+.split--mods > .mod-side {
+  align-self: stretch;
+}
+
+/* A world a newer Foreman wrote has no Load next, so on a phone a save's
+   time keeps its place beside the name, its size under the name. */
+@media (max-width: 39.99rem) {
+  #main .save-list > tbody > tr:not(:has(> td.save-load)) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+  }
+
+  #main .save-list > tbody > tr:not(:has(> td.save-load)) > td:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  #main .save-list > tbody > tr:not(:has(> td.save-load)) > td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: end;
+  }
+
+  #main .save-list > tbody > tr:not(:has(> td.save-load)) > td.num {
+    grid-column: 1;
+    grid-row: 2;
+  }
+}
+
+/* The portal's summary runs the table's width; Update all, when there is
+   one, keeps its own 16 px from it. */
+#main section[data-view="installed"].panel {
+  column-gap: 0;
+}
+
+#main section[data-view="installed"].panel > .group__head > .group__action:not(:empty) {
+  margin-inline-start: var(--space-4);
+}
+
+/* A segment that holds a radio is a full 44 px target, as every other
+   label of a radio is. */
+.segmented > label,
+.js-on .tablist > .tab {
+  min-block-size: var(--target-min);
+}
+
+@container (min-width: 60rem) {
+  .split--mods:has(> .panel + .panel) > .mod-side {
+    grid-row: 1 / span 2;
+  }
+}
+
+/* On a phone the favorite's name and its button wrap rather than squeeze
+   the button's words past its edge. */
+@media (max-width: 39.99rem) {
+  #main .world-layout__side .inline-row {
+    flex-wrap: wrap;
+  }
+}
