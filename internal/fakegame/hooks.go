@@ -214,6 +214,16 @@ func (g *Game) SetSaveHangs(name string, on bool) {
 	g.behave[name] = b
 }
 
+// SetBlankTime makes /time in the named container answer with an empty
+// line, as a real game does on a map that has not yet run a second.
+func (g *Game) SetBlankTime(name string, on bool) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	b := g.behave[name]
+	b.blankTime = on
+	g.behave[name] = b
+}
+
 // PreviewMode is how the fake game's preview containers end.
 type PreviewMode string
 
@@ -229,16 +239,20 @@ const (
 	// PreviewNoPatches is PreviewOK, but a resource count finds no patches,
 	// as on a planet whose resources are tiles.
 	PreviewNoPatches PreviewMode = "no-patches"
+	// PreviewModCrash is PreviewOK, but a mod settings run fails in the
+	// script of the world's first enabled mod that is not the game's own,
+	// as a mod that crashes in its data stage does (issue 965).
+	PreviewModCrash PreviewMode = "mod-crash"
 )
 
 // SetPreviewMode sets how later preview containers end (SPEC 5.6). The
 // default is PreviewOK.
 func (g *Game) SetPreviewMode(mode PreviewMode) error {
 	switch mode {
-	case PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches:
+	case PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches, PreviewModCrash:
 	default:
-		return fmt.Errorf("a preview mode is %q, %q, %q, %q, %q or %q",
-			PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches)
+		return fmt.Errorf("a preview mode is %q, %q, %q, %q, %q, %q or %q",
+			PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewNoPatches, PreviewModCrash)
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -342,7 +356,7 @@ type hookRequest struct {
 	Ref    string `json:"ref"`    // image: the full reference
 	Code   int    `json:"code"`   // crash: exit code, 1 when left out
 	OOM    bool   `json:"oom"`    // crash: the out-of-memory killer did it
-	On     bool   `json:"on"`     // crash-loop, rcon-refuse, save-hangs, image
+	On     bool   `json:"on"`     // crash-loop, rcon-refuse, save-hangs, blank-time, image
 	Mode   string `json:"mode"`   // preview-mode
 	Text   string `json:"text"`   // chat
 	Port   string `json:"port"`   // port-in-use: the host port that is taken; sidecar-port: the one published, "" for none
@@ -359,6 +373,7 @@ type hookRequest struct {
 //	POST /leave         name, player
 //	POST /rcon-refuse   name, on
 //	POST /save-hangs    name, on
+//	POST /blank-time    name, on (/time answers with an empty line)
 //	POST /image         ref, on (the image is present)
 //	POST /chat          name, player, text
 //	POST /oom           name, on
@@ -412,6 +427,7 @@ func (g *Game) HookHandler() http.Handler {
 	})
 	hook("/rcon-refuse", func(q hookRequest) error { g.SetRCONRefuse(q.Name, q.On); return nil })
 	hook("/save-hangs", func(q hookRequest) error { g.SetSaveHangs(q.Name, q.On); return nil })
+	hook("/blank-time", func(q hookRequest) error { g.SetBlankTime(q.Name, q.On); return nil })
 	hook("/sidecar-port", func(q hookRequest) error { return g.SetSidecarPort(q.Port) })
 	hook("/sidecar-restart", func(hookRequest) error { return g.RestartSidecar() })
 	hook("/preview-mode", func(q hookRequest) error { return g.SetPreviewMode(PreviewMode(q.Mode)) })

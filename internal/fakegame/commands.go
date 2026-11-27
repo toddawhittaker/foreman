@@ -32,6 +32,7 @@ func (in *instance) reply(command string) string {
 	in.g.mu.Lock()
 	in.g.commands[in.name] = append(in.g.commands[in.name], command)
 	hangs := in.g.behave[in.name].saveHangs
+	blankTime := in.g.behave[in.name].blankTime
 	in.g.mu.Unlock()
 
 	text := strings.TrimLeft(command, " ")
@@ -56,6 +57,10 @@ func (in *instance) reply(command string) string {
 			out += "  " + p + " (online)\n"
 		}
 		return out
+	case "/time":
+		if blankTime {
+			return "\n"
+		}
 	case "/server-save":
 		// The reply is immediate; the save finishes later, shown in the log.
 		in.emit(in.v.save[:1], runSave)

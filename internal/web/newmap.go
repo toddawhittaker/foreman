@@ -1,6 +1,7 @@
 package web
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
+	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -44,6 +46,9 @@ type NewMapPage struct {
 	// Builtin says why the built-in planets are used instead of the world's
 	// own list; zero when the list is the world's (SPEC 5.6, 14.6).
 	Builtin i18n.Msg
+	// BuiltinFix removes the mod the game's error names, when Builtin names
+	// one (SPEC 5.6, 8.7); nil otherwise.
+	BuiltinFix *Offer
 	// Gone lists the controls the saved settings name that the world's mods
 	// no longer add; the next save leaves them out (SPEC 5.6).
 	Gone []string
@@ -78,7 +83,77 @@ func (p NewMapPage) ExchangeOtherLine() bool { return p.Form.ExchangeError.Key =
 // or because a mod is named like Foreman's helper, so the warning offers its
 // Mods tab.
 func (p NewMapPage) BuiltinFailed() bool {
-	return p.Builtin.Key == "newmap.builtin.failed" || p.Builtin.Key == "mapgen.preview.control_mod_taken"
+	switch p.Builtin.Key {
+	case "newmap.builtin.failed", "newmap.builtin.failed_kept", "newmap.builtin.mod_failed", "mapgen.preview.control_mod_taken":
+		return true
+	}
+	return false
+}
+
+// builtinFailure words why the world's planets could not be read: a mod
+// named like Foreman's helper, a refused or missing list, or a failed run,
+// kept or not, that names one of the world's own mods by its title with the
+// plan that removes it when the game's error names that mod (SPEC 5.6, 8.7).
+// installed is the world's mods.
+func builtinFailure(installed []world.InstalledMod, id string, err error) (i18n.Msg, *Offer) {
+	switch {
+	case errors.Is(err, game.ErrControlModTaken):
+		// A world mod named like Foreman's helper: it stays so until that mod
+		// goes (SPEC 5.6, ADR 0033).
+		return i18n.M("mapgen.preview.control_mod_taken"), nil
+	case errors.Is(err, game.ErrPlanetsRefused):
+		return i18n.M("newmap.builtin.refused"), nil
+	case errors.Is(err, game.ErrPlanetsMissing):
+		return i18n.M("newmap.builtin.missing"), nil
+	}
+	if m, ok := crashedWorldMod(installed, err); ok {
+		title := cmp.Or(m.Title, m.Name)
+		return i18n.M("newmap.builtin.mod_failed", "mod", i18n.Ident(title)),
+			&Offer{Path: kindPlanPath(id, mods.KindRemove, m.Name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(title))}
+	}
+	if errors.Is(err, game.ErrModSettingsKept) {
+		return i18n.M("newmap.builtin.failed_kept"), nil
+	}
+	return i18n.M("newmap.builtin.failed"), nil
+}
+
+// crashedWorldMod is the world's own mod (not a built-in one) the game's
+// error names (SPEC 5.6, 8.7). It is found by name when the error gives
+// one. A control-stage error with no event line gives only a title and
+// version: then it is the only mod with both, its name standing in for a
+// missing title.
+func crashedWorldMod(installed []world.InstalledMod, err error) (world.InstalledMod, bool) {
+	if name := game.CrashedMod(err); name != "" {
+		i := slices.IndexFunc(installed, func(m world.InstalledMod) bool { return m.Name == name && !m.BuiltIn })
+		if i < 0 {
+			return world.InstalledMod{}, false
+		}
+		return installed[i], true
+	}
+	title, version := game.CrashedModTitle(err)
+	if title == "" {
+		return world.InstalledMod{}, false
+	}
+	var found []world.InstalledMod
+	for _, m := range installed {
+		if !m.BuiltIn && cmp.Or(m.Title, m.Name) == title && m.Version == version {
+			found = append(found, m)
+		}
+	}
+	if len(found) != 1 {
+		return world.InstalledMod{}, false
+	}
+	return found[0], true
+}
+
+// installedMods is the world's mods, for naming the one a failed planets
+// read names; nil when they cannot be read.
+func (s *server) installedMods(id string) []world.InstalledMod {
+	if s.worlds == nil {
+		return nil
+	}
+	installed, _ := s.worlds.Mods(id)
+	return installed
 }
 
 // ModsPath is the world's Mods tab, step 2.
@@ -252,24 +327,15 @@ func (s *server) newMapWorld(w http.ResponseWriter, r *http.Request, u store.Use
 // catalogue is the world's planets and controls, and why the built-in ones
 // are used when the world's own list cannot be (SPEC 5.6, 14.6). It never
 // fails: the planet list comes only from the world's mods, never from a form.
-func (s *server) catalogue(ctx context.Context, r *http.Request, sum world.Summary) (mapgen.Catalogue, i18n.Msg) {
+func (s *server) catalogue(ctx context.Context, r *http.Request, sum world.Summary) (mapgen.Catalogue, i18n.Msg, *Offer) {
 	cat, err := worldCatalogue(s, ctx, sum, localeOf(r))
 	if err == nil {
-		return cat, i18n.Msg{}
+		return cat, i18n.Msg{}, nil
 	}
 	// The reason may hold text a mod wrote, so it goes to the log only.
 	s.log.Warn("read the world's planets", "world", sum.ID, "error", err)
-	switch {
-	case errors.Is(err, game.ErrControlModTaken):
-		// A world mod named like Foreman's helper: it stays so until that mod
-		// goes (SPEC 5.6, ADR 0033).
-		return cat, i18n.M("mapgen.preview.control_mod_taken")
-	case errors.Is(err, game.ErrPlanetsRefused):
-		return cat, i18n.M("newmap.builtin.refused")
-	case errors.Is(err, game.ErrPlanetsMissing):
-		return cat, i18n.M("newmap.builtin.missing")
-	}
-	return cat, i18n.M("newmap.builtin.failed")
+	why, fix := builtinFailure(s.installedMods(sum.ID), sum.ID, err)
+	return cat, why, fix
 }
 
 // newMapInput is what step 3's map form is laid out for.
@@ -294,8 +360,8 @@ func (s *server) handleNewMap(w http.ResponseWriter, r *http.Request, u store.Us
 		s.page(w, r, http.StatusOK, u.Username, p)
 		return
 	}
-	cat, why := s.catalogue(r.Context(), r, p.World)
-	p.Builtin = why
+	cat, why, fix := s.catalogue(r.Context(), r, p.World)
+	p.Builtin, p.BuiltinFix = why, fix
 	in := newMapInput(p.World, cat)
 	f := MapForm{cat: cat, Mode: modeSettings, Preset: defaultPreset, Line: in.Line,
 		Presets: mapgen.Presets(in.Line), MapKey: in.MapKey, Tab: tabResources}
@@ -382,8 +448,8 @@ func newMapForm(sum world.Summary, f MapForm) NewMapForm {
 
 // readNewMap reads a posted step 3 form with the world's own catalogue.
 func (s *server) readNewMap(r *http.Request, p *NewMapPage, kind readKind) (world.NewMapFiles, bool) {
-	cat, why := s.catalogue(r.Context(), r, p.World)
-	p.Builtin = why
+	cat, why, fix := s.catalogue(r.Context(), r, p.World)
+	p.Builtin, p.BuiltinFix = why, fix
 	in := newMapInput(p.World, cat)
 	// The settings are stale when laid out for another line or Space Age setting.
 	in.Stale = r.PostForm.Get(settingsShown) != "" && r.PostForm.Get("map_key") != in.MapKey

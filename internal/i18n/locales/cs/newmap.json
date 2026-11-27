@@ -33,6 +33,8 @@
   "newmap.builtin.refused": "Seznam planet z modů tohoto světa nelze použít, proto se zobrazují jen planety samotné hry. Jejich nastavení stále fungují.",
   "newmap.builtin.missing": "Hra neohlásila planety modů tohoto světa, proto se zobrazují jen planety samotné hry. Jejich nastavení stále fungují.",
   "newmap.builtin.failed": "Planety modů tohoto světa se nepodařilo načíst, proto se zobrazují jen planety samotné hry. Jejich nastavení stále fungují. Lze zkontrolovat mody světa nebo to zkusit později.",
+  "newmap.builtin.failed_kept": "Planety modů tohoto světa se nepodařilo načíst, proto se zobrazují jen planety samotné hry. Jejich nastavení stále fungují. Nové načtení proběhne po změně modů světa.",
+  "newmap.builtin.mod_failed": "Mod {mod} selhal, když hra načítala planety modů tohoto světa, proto se zobrazují jen planety samotné hry. Jejich nastavení stále fungují. Po odebrání modu {mod} nebo změně jeho verze se planety načtou znovu.",
   "newmap.error.running": "Server tohoto světa se spouští nebo běží a první spuštění vytváří mapu. Před změnou nastavení mapy je nutné server zastavit.",
   "newmap.error.busy": "Na tomto světě probíhá jiná operace. Po jejím dokončení to lze zkusit znovu.",
   "newmap.error.exchange_other_line": "Tento řetězec vytvořil Factorio {version}, ale tento svět používá {game}. Řetězec funguje jen s verzí hry ze stejné řady (1.1, 2.0 nebo 2.1). Změňte verzi hry světa na jeho stránce, nebo vložte jiný řetězec.",

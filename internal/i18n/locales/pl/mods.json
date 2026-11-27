@@ -322,6 +322,7 @@
   "mods.plan.why.only_needed_by": "potrzebowała jej tylko {mod}",
   "mods.recommended.legend": "Polecane modyfikacje",
   "mods.recommended.hint": "Polecane modyfikacje są już zaznaczone. Odznaczenie modyfikacji spowoduje jej pominięcie.",
+  "mods.optional.unavailable": "{mod}, oferowana przez {of}, zostaje pominięta: nie ma wersji dla tej gry albo spowodowałaby konflikt.",
   "mods.recommended.unavailable": "{mod}, polecana przez {of}, zostaje pominięta: portal modyfikacji nie ma pasującej wersji.",
   "mods.unresolved.legend": "Portal modyfikacji nie ma {mod} {version}",
   "mods.unresolved.hint": "Zapis utworzono z tą wersją. Należy wybrać, co zrobić; do tego czasu planu nie można zastosować.",

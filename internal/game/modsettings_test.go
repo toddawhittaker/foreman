@@ -434,36 +434,51 @@ func TestModSettingDefsRunOutlivesItsCallers(t *testing.T) {
 }
 
 // SPEC 9.6: each way the run fails is one of the page's errors, with
-// nothing left behind.
+// nothing left behind. Issue 965: only a failure the game itself reported
+// (its error line and a normal exit) or output that does not parse is kept;
+// any other may pass on its own and runs again.
 func TestModSettingDefsErrors(t *testing.T) {
 	good := defaultsDat(t)
+	gameError := func(code int) func(r *modSettingsRig, c dockertest.Container) {
+		return func(r *modSettingsRig, c dockertest.Container) {
+			r.game.Daemon().EmitLog(c.ID, docker.Stderr, `   0.263 Error Util.cpp:81: Failed to load mod "fake-planet": __fake-planet__/data.lua:1: boom`)
+			r.game.Daemon().Exit(c.ID, code, false)
+		}
+	}
 	var pe *PreviewError
 	cases := []struct {
 		name string
 		run  func(r *modSettingsRig, c dockertest.Container)
 		want error
+		kept bool
 		more func(t *testing.T, err error)
 	}{
 		{"out of memory", func(r *modSettingsRig, c dockertest.Container) { r.game.Daemon().Exit(c.ID, 137, true) },
-			ErrModSettingsOutOfMemory, func(t *testing.T, err error) {
+			ErrModSettingsOutOfMemory, false, func(t *testing.T, err error) {
 				if !errors.As(err, &pe) || !pe.OOM {
 					t.Errorf("%v is not an OOM *PreviewError", err)
 				}
 			}},
-		{"the game fails", func(r *modSettingsRig, c dockertest.Container) { r.game.Daemon().Exit(c.ID, 1, false) },
-			ErrModSettingsBadOutput, func(t *testing.T, err error) {
-				if !errors.As(err, &pe) || pe.ExitCode != 1 {
-					t.Errorf("%v does not carry the exit", err)
-				}
-			}},
+		{"the game fails with its error line", gameError(1), ErrModSettingsBadOutput, true, func(t *testing.T, err error) {
+			if !errors.As(err, &pe) || pe.ExitCode != 1 {
+				t.Errorf("%v does not carry the exit", err)
+			}
+		}},
+		{"an exit without the game's error line", func(r *modSettingsRig, c dockertest.Container) {
+			r.game.Daemon().EmitLog(c.ID, docker.Stderr, "cp: can't stat '/tmp/script-output/defs.json': No such file or directory")
+			r.game.Daemon().Exit(c.ID, 1, false)
+		}, ErrModSettingsBadOutput, false, nil},
+		// Docker may not flag an out-of-memory kill; 137 is SIGKILL.
+		{"killed and not flagged as memory", gameError(137), ErrModSettingsBadOutput, false, nil},
+		{"stopped from outside", gameError(143), ErrModSettingsBadOutput, false, nil},
 		{"no files", func(r *modSettingsRig, c dockertest.Container) { r.game.Daemon().Exit(c.ID, 0, false) },
-			ErrModSettingsBadOutput, nil},
+			ErrModSettingsBadOutput, false, nil},
 		{"definitions that are not JSON", func(r *modSettingsRig, c dockertest.Container) { r.finish(c, `{"settings":`, good) },
-			ErrModSettingsBadOutput, nil},
+			ErrModSettingsBadOutput, true, nil},
 		{"a defaults file that is not one", func(r *modSettingsRig, c dockertest.Container) { r.finish(c, defsJSON, []byte("nope")) },
-			ErrModSettingsBadOutput, nil},
+			ErrModSettingsBadOutput, true, nil},
 		{"a defaults file that is empty", func(r *modSettingsRig, c dockertest.Container) { r.finish(c, defsJSON, nil) },
-			ErrModSettingsBadOutput, nil},
+			ErrModSettingsBadOutput, true, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -478,7 +493,19 @@ func TestModSettingDefsErrors(t *testing.T) {
 				tc.more(t, res.err)
 			}
 			eventually(t, func() bool { return len(r.previewContainers()) == 0 && len(r.previewFolders()) == 0 }, "the container and folder to go")
-			// A failure is not kept.
+			if tc.kept {
+				// The next call does not run the game.
+				if !errors.Is(res.err, ErrModSettingsKept) {
+					t.Errorf("%v is not kept", res.err)
+				}
+				if _, err := r.c.ModSettingDefs(context.Background(), r.id); !errors.Is(err, tc.want) || r.creates() != 1 {
+					t.Fatalf("the next call: %v after %d runs, want the kept failure and 1 run", err, r.creates())
+				}
+				return
+			}
+			if errors.Is(res.err, ErrModSettingsKept) {
+				t.Errorf("%v is kept", res.err)
+			}
 			ch = r.ask(context.Background())
 			r.finish(r.waitRunning(), defsJSON, good)
 			if res := r.result(ch); res.err != nil {

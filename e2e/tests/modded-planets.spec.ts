@@ -110,3 +110,48 @@ test("a world mod named like Foreman's helper mod is said in the preview", async
   await expect(page.locator("#preview-fallback")).toContainText("same name as a mod Foreman adds", { timeout: 60_000 });
   await checkPage(page);
 });
+
+// Issue 965, SPEC 5.6, 8.7: a mod that crashes the planets read is named by
+// its title with its removal, and the failure is kept: reloading does not
+// run the game again until the world's mods change.
+test("a mod that crashes the planet read is named, and the read is not run again", async ({ page, foreman, fakeGame }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await fakeGame!.call("/preview-mode", { mode: "mod-crash" });
+  const id = await openNewMap(page, { name: "Crashing" });
+  addFakePlanet(foreman.dataDir, id);
+  const runs = async () => (await fakeGame!.state()).calls.filter((c) => c.includes("/containers/create")).length;
+  await page.goto(newMapPath(id));
+  const warning = page.locator("#newmap-builtin");
+  await expect(warning).toContainText("Fake planet failed while the game read the planets", { timeout: 60_000 });
+  await expect(warning).not.toContainText("try again later");
+  await expect(warning.locator('[translate="no"]').first()).toHaveText("Fake planet");
+  const remove = page.locator("#newmap-builtin-remove");
+  await expect(remove).toHaveText("Remove Fake planet");
+  await expect(remove).toHaveAttribute("href", `/worlds/${id}/mods/plan?kind=remove&name=fake-planet`);
+  await expect(page.locator("#newmap-builtin-mods")).toHaveAttribute("href", `/worlds/${id}/mods`);
+  await checkPage(page);
+  const before = await runs();
+  await page.reload();
+  await expect(warning).toContainText("Fake planet failed", { timeout: 60_000 });
+  await page.reload();
+  await expect(warning).toContainText("Fake planet failed", { timeout: 60_000 });
+  expect(await runs()).toBe(before);
+});
+
+// Issue 965: a kept failure that names no mod says a change of mods tries again.
+test("a kept planet-read failure with no mod named says to change the mods", async ({ page, foreman, fakeGame }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await fakeGame!.call("/preview-mode", { mode: "fail" });
+  const id = await openNewMap(page, { name: "Failing" });
+  addFakePlanet(foreman.dataDir, id);
+  await page.goto(newMapPath(id));
+  const warning = page.locator("#newmap-builtin");
+  await expect(warning).toContainText("Change the world's mods to try again.", { timeout: 60_000 });
+  await expect(warning).not.toContainText("try again later");
+  await expect(page.locator("#newmap-builtin-remove")).toHaveCount(0);
+  await checkPage(page);
+});

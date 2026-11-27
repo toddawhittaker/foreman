@@ -42,9 +42,11 @@
 <div id="newmap-body" data-ready="{{t "newmap.ready"}}">
 {{- if not .Builtin.IsZero}}
 <div class="message message--warning" id="newmap-builtin">
-  <p><strong>{{t "common.label.warning"}}</strong> {{msg .Builtin}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{msgHTML .Builtin}}</p>
   {{- if .BuiltinFailed}}
-  <div class="actions"><a href="{{.ModsPath}}" id="newmap-builtin-mods">{{t "newmap.link.mods"}}</a></div>
+  <div class="actions">
+    {{- with .BuiltinFix}}<a href="{{.Path}}" id="newmap-builtin-remove">{{msgHTML .Label}}</a>{{end -}}
+    <a href="{{.ModsPath}}" id="newmap-builtin-mods">{{t "newmap.link.mods"}}</a></div>
   {{- end}}
 </div>
 {{- end}}

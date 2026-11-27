@@ -298,6 +298,7 @@
   "mods.plan.why.only_needed_by": "nur {mod} brauchte sie",
   "mods.recommended.legend": "Empfohlene Mods",
   "mods.recommended.hint": "Als empfohlen markierte Mods sind schon angehakt. Entferne den Haken, um eine wegzulassen.",
+  "mods.optional.unavailable": "{mod}, von {of} angeboten, wird weggelassen: Es gibt keine Version für dieses Spiel, oder sie würde einen Konflikt verursachen.",
   "mods.recommended.unavailable": "{mod}, empfohlen von {of}, wird weggelassen: Das Mod-Portal hat keine passende Version.",
   "mods.unresolved.legend": "Das Mod-Portal hat {mod} {version} nicht",
   "mods.unresolved.hint": "Der Speicherstand wurde mit dieser Version erstellt. Wähle, was geschehen soll; der Plan kann erst angewendet werden, wenn du das getan hast.",

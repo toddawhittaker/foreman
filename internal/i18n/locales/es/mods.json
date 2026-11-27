@@ -298,6 +298,7 @@
   "mods.plan.why.only_needed_by": "solo lo necesitaba {mod}",
   "mods.recommended.legend": "Mods recomendados",
   "mods.recommended.hint": "Los mods recomendados ya están marcados. Desmarca uno para no añadirlo.",
+  "mods.optional.unavailable": "{mod}, ofrecido por {of}, se deja fuera: no tiene ninguna versión para este juego, o causaría un conflicto.",
   "mods.recommended.unavailable": "{mod}, recomendado por {of}, se deja fuera: el portal de mods no tiene ninguna versión que encaje.",
   "mods.unresolved.legend": "El portal de mods no tiene {mod} {version}",
   "mods.unresolved.hint": "La partida guardada se creó con esta versión. Elige qué hacer; el plan no se puede aplicar hasta que lo hagas.",

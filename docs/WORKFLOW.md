@@ -119,6 +119,9 @@ The targets (STACK.md, section 13):
   test-shards` shows the count without testing.
   Under `CI` the default is one process, but the CI workflow passes
   `TEST_SHARDS=auto`, so CI uses the same pool.
+- `make test-pkgs PKGS="./internal/mods ./internal/web"`: the race-enabled
+  tests of the named packages only, without coverage or the floor. The
+  web, game and world packages among them use the same queue as `make test`.
 - `make lint` and `make fmt`: check or rewrite formatting, and lint.
 - `make build`: the static binary at `bin/foreman`.
 - `make run`: serve locally on port 8080, with data in `.dev-data/`. It
