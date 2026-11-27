@@ -516,3 +516,53 @@ func TestAPITokenWarningLinksOnlyUsableSwitches(t *testing.T) {
 		t.Errorf("with both off the note should link both switches:\n%s", body)
 	}
 }
+
+// The create form's ticks turn access on with the token, audited like the
+// switches, so the new token works at once; a forced-off access stays off
+// whatever the form says (SPEC 12.10, 21.2, 23.8).
+func TestAPITokenCreateTurnsOnTickedAccess(t *testing.T) {
+	t.Run("ticked", func(t *testing.T) {
+		hn := newHarness(t, nil)
+		c := hn.signIn()
+		form := hn.get(PathAPITokens, withCookie(c)).Body.String()
+		for _, id := range []string{`id="token-turn-on-mcp"`, `id="token-turn-on-api"`} {
+			if !strings.Contains(form, id) {
+				t.Errorf("form lacks %s while both accesses are off", id)
+			}
+		}
+		rec := hn.post(PathAPITokens, url.Values{"name": {"x"}, "scope": {auth.ScopeRead}, "turn_on_mcp": {"on"}}, withCookie(c))
+		if strings.Contains(rec.Body.String(), `id="access-off-note"`) {
+			t.Error("the created page still says access is off")
+		}
+		if mcp, api := hn.setting(SettingMCP), hn.setting(SettingAPI); mcp != MCPOn || api == APIOn {
+			t.Errorf("MCP %q, REST %q; want only MCP on", mcp, api)
+		}
+		if got := strings.Join(hn.audits(AuditMCPSet), "|"); got != "alice  on" {
+			t.Errorf("MCP audit = %q", got)
+		}
+		if n := len(hn.audits(AuditAPISet)); n != 0 {
+			t.Errorf("%d REST API audits, want none", n)
+		}
+	})
+	t.Run("forced off", func(t *testing.T) {
+		hn := newHarness(t, map[string]string{"FOREMAN_MCP": "off"})
+		c := hn.signIn()
+		if form := hn.get(PathAPITokens, withCookie(c)).Body.String(); strings.Contains(form, `id="token-turn-on-mcp"`) {
+			t.Error("form offers to turn on a forced-off MCP access")
+		}
+		hn.post(PathAPITokens, url.Values{"name": {"x"}, "scope": {auth.ScopeRead}, "turn_on_mcp": {"on"}}, withCookie(c))
+		if hn.setting(SettingMCP) == MCPOn || len(hn.audits(AuditMCPSet)) != 0 {
+			t.Error("a forced-off MCP access was turned on")
+		}
+	})
+}
+
+// setting is the stored value of an app setting, "" when unset.
+func (hn *harness) setting(name string) string {
+	hn.t.Helper()
+	v, _, err := hn.store.AppSetting(context.Background(), name)
+	if err != nil {
+		hn.t.Fatal(err)
+	}
+	return v
+}

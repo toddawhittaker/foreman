@@ -108,12 +108,12 @@
   --text-2xl: 1.5rem;
   --text-3xl: 1.875rem;
 
-  --color-bg: light-dark(#ebe6dd, #0e0d0c);
-  --color-surface: light-dark(#ffffff, #1b1916);
-  --color-raised: light-dark(#f4f0e9, #2a2722);
+  --color-bg: light-dark(#e5dfd4, #0e0d0c);
+  --color-surface: light-dark(#ffffff, #1d1b18);
+  --color-raised: light-dark(#f4f0e9, #2e2a25);
   --color-deep: light-dark(#ffffff, #0b0a09);
-  --color-line: light-dark(#d9d1c3, #403b35);
-  --color-line-strong: light-dark(#aa9f8a, #5a534b);
+  --color-line: light-dark(#c9bfad, #575047);
+  --color-line-strong: light-dark(#aa9f8a, #6a6258);
   --color-border: light-dark(#80766a, #857c70);
   --color-text: light-dark(#1c1915, #ece7df);
   --color-heading: light-dark(#13110e, #f8f5ef);
@@ -14748,3 +14748,333 @@ main > .crumb {
 form.general-grid.setting-rows .setting-row__body .hint {
   max-inline-size: 100ch;
 }
+
+/* ==== One shorter page header on every page: a 56 px bar, the breadcrumb
+   4 px over a 28 px title, a 40 px tab row, and the first plate 16 px
+   under the tabs, so content starts about 190 px from the top. */
+@media (min-width: 40rem) {
+  .site {
+    min-block-size: 3.5rem;
+  }
+
+  .site > .product {
+    padding-block: 5px;
+  }
+
+  .site .tabs a {
+    block-size: 3.5rem;
+    min-block-size: 3.5rem;
+  }
+
+  main {
+    padding-block-start: var(--space-5);
+  }
+
+  main h1 {
+    font-size: 1.75rem;
+    line-height: 1.25;
+  }
+
+  main > .subnav a {
+    min-block-size: 2.5rem;
+  }
+
+  main > .subnav + * {
+    margin-block-start: calc(var(--space-4) - var(--space-5));
+  }
+}
+
+/* ==== Server: one compact row at the plate's top, the state, uptime and
+   who is online at its start and the actions at its end (Take snapshot,
+   Restart, then Stop set apart, then Emergency actions as a small menu);
+   the facts below it as one strip on one baseline. When the control area
+   holds a message or an operation's steps it takes a full row of its own
+   under the band, as before. */
+@media (min-width: 64rem) {
+  .status-card.plate {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    overflow: visible;
+  }
+
+  .status-card.plate > .plate__band {
+    grid-column: 1;
+    grid-row: 1;
+    border-start-start-radius: calc(var(--radius-lg) - 1px);
+  }
+
+  .status-card.plate > [sse-swap="control"] {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--card-pad);
+    background: var(--color-raised);
+    border-block-end: var(--border-width) solid var(--color-line);
+    border-start-end-radius: calc(var(--radius-lg) - 1px);
+  }
+
+  .status-card.plate > .facts-block {
+    grid-column: 1 / -1;
+  }
+
+  .status-card.plate:has(> [sse-swap="control"] > :not(.server-actions, .emergency)) > [sse-swap="control"] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    justify-content: stretch;
+    padding: var(--card-pad);
+    background: none;
+  }
+
+  .status-card.plate:has(> [sse-swap="control"] > :not(.server-actions, .emergency)) > .plate__band {
+    grid-column: 1 / -1;
+  }
+
+  .status-card.plate > [sse-swap="control"] > .server-actions {
+    flex-wrap: nowrap;
+    margin: 0;
+  }
+
+  .status-card .emergency {
+    position: relative;
+    margin: 0;
+  }
+
+  .status-card .emergency > .danger-row {
+    position: absolute;
+    inset-block-start: calc(100% + var(--space-1));
+    inset-inline-end: 0;
+    z-index: 5;
+    inline-size: max-content;
+    max-inline-size: 22rem;
+    box-shadow: var(--shadow-pop);
+  }
+
+  .status-card .emergency[open] > .danger-row {
+    margin-block-start: 0;
+    background: var(--color-surface);
+  }
+
+  .disclosure.emergency > summary {
+    min-block-size: 2.5rem;
+  }
+
+  /* The facts: one strip of equal columns, every label on one line and
+     every value on one baseline under it. */
+  .status-card.plate .facts-block {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) repeat(auto-fit, minmax(9rem, 1fr));
+    align-items: start;
+    padding-block: var(--space-4);
+  }
+
+  .status-card.plate .facts-block > :is([sse-swap="playtime"], [sse-swap="loads"], [sse-swap="schedule"]):not(:has(dl)) {
+    display: none;
+  }
+
+  .status-card .facts-block :is(.play-time, .loads-next, .schedule-next) .facts--inline > div,
+  .facts.stat-grid > .stat {
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: var(--space-2);
+  }
+
+  .status-card .facts-block :is(.play-time, .loads-next, .schedule-next) dt,
+  .facts.stat-grid dt {
+    font-size: var(--text-xs);
+    line-height: 1.23;
+  }
+
+  .status-card .facts-block :is(.play-time, .loads-next, .schedule-next) dd {
+    margin: 0;
+    line-height: 1.167;
+  }
+}
+
+/* The players link sits at the end of the Players band. */
+.section-head > [sse-swap="saveplayers"] {
+  margin-inline-start: auto;
+}
+
+.section-head > [sse-swap="saveplayers"]:not(:has(a)) {
+  display: none;
+}
+
+.more-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--target-min);
+  color: var(--color-link);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.more-link::after {
+  content: "";
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+.more-link:hover {
+  text-decoration: underline;
+}
+
+[dir="rtl"] .more-link::after {
+  transform: scaleX(-1);
+}
+
+/* A player is one 44 px line on a wide screen: name and tag, the quiet
+   total or last-seen note after them, the time at the end. */
+@media (min-width: 64rem) {
+  .server-players td > br {
+    display: none;
+  }
+
+  .server-players td > .hint,
+  .server-players td > .player-actions + br + .hint {
+    display: inline;
+    margin: 0 0 0 var(--space-3);
+  }
+
+  .server-players td > .player-actions {
+    display: inline-block;
+  }
+
+  .server-players tbody :is(td, th) {
+    padding-block: var(--space-1);
+    vertical-align: middle;
+  }
+
+  .server-players td.num {
+    padding-block-start: var(--space-1);
+    vertical-align: middle;
+  }
+}
+
+@media (min-width: 64rem) {
+  .server-players tbody :is(td, th),
+  .server-players tbody td.num {
+    block-size: var(--target-min);
+    padding-block: 0;
+  }
+}
+
+/* ==== API tokens: the list and the create form side by side on a wide
+   screen. When both ways in are off, the form opens with that warning and
+   an admin's two ticks to turn access on with the token. */
+@container (min-width: 60rem) {
+  .split.token-layout {
+    grid-template-columns: minmax(0, 1fr) 28rem;
+  }
+}
+
+.token-access {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-warn-bg);
+  border-inline-start: 3px solid var(--color-warn);
+  border-radius: var(--radius);
+}
+
+.token-access > .token-access-off {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+.token-access > .check {
+  min-block-size: var(--target-min);
+  font-weight: 600;
+}
+
+.token-create > .token-access {
+  grid-column: 1 / -1;
+}
+
+/* ==== Token created: the secret and what was made on the start side,
+   where to use it beside them, so the page fills a wide screen with what
+   the person needs next. */
+@container (min-width: 60rem) {
+  .split.token-created-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.token-created-layout > .token-created {
+  max-inline-size: none;
+}
+
+.token-use {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+}
+
+.token-use .exchange {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.token-use .field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.token-use > .message {
+  margin: 0;
+  max-inline-size: none;
+}
+
+/* On a phone an address stands over its full-width Copy button. */
+@media (max-width: 39.99rem) {
+  :is(.token-use, .token-created) .copy-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  :is(.token-use, .token-created) .copy-field > .button {
+    inline-size: 100%;
+    min-block-size: var(--target-min);
+  }
+}
+
+/* ==== The console's find field is a normal field at rest: the deep fill
+   and the control border every other input has. */
+#main .log-tools__find {
+  padding-inline: var(--space-3);
+  background: var(--color-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+/* ==== The large view's zoom is one joined cluster at the bottom-right
+   corner, as the factory map's is: out and in share one frame. */
+.large-view__zoom {
+  gap: 0;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+
+.large-view__zoom > .icon-button {
+  border: 0;
+  border-radius: 0;
+}
+
+.large-view__zoom > .icon-button + .icon-button {
+  border-inline-start: var(--border-width) solid var(--color-line);
+}
+

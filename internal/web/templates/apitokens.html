@@ -34,10 +34,8 @@
 {{define "content" -}}
 {{with .Page}}
 {{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "apitokens.tab"))}}
-<header class="page-head page-head--row">
+<header class="page-head">
   <h1>{{t "apitokens.title"}}</h1>
-  {{- /* The page's task is one jump away from the top, wherever the list ends (SPEC 12.10). */}}
-  <div class="actions"><a href="#create-token" class="button button--primary" id="act-token-new">{{t "apitokens.create.heading"}}</a></div>
 </header>
 {{template "rail" $}}
 {{- template "summary" .Problems}}
@@ -94,6 +92,8 @@
 </section>
 </div>
 
+{{- /* On a wide screen the list and the create form sit side by side, so the page's task is in view from the top (SPEC 12.10). */}}
+<div class="split token-layout">
 {{- /* One list of tokens. An admin sees every user's and filters it to their own or all; the filter is CSS only, so nothing reloads (SPEC 12.10). */}}
 <section class="panel token-table" aria-labelledby="tokens-heading">
   <div class="token-table__head">
@@ -128,10 +128,21 @@
 <section class="panel" id="create-token" aria-labelledby="create-heading">
   <h2 id="create-heading">{{t "apitokens.create.heading"}}</h2>
   {{- /* Whether a token will work comes first, before anything is typed (SPEC 12.10). */}}
-  {{- if not (or .MCPOn .APIOn)}}
-  <p class="token-access-off" id="token-access-off">{{t "apitokens.both_off"}}</p>
-  {{- end}}
   <form method="post" action="{{.Path}}" class="token-create" novalidate>
+    {{- if not (or .MCPOn .APIOn)}}
+    {{- /* An admin can turn access on with the token, so it works at once; the ticks start clear (SPEC 12.10, 21.2, 23.8). */}}
+    <div class="token-access" role="group" aria-labelledby="token-access-off">
+      <p class="token-access-off" id="token-access-off">{{t "apitokens.both_off"}}</p>
+      {{- if .Admin}}
+      {{- if not .MCPForced}}
+      <label class="check"><input type="checkbox" name="turn_on_mcp" value="on" id="token-turn-on-mcp"{{if .Form.TurnOnMCP}} checked{{end}}> {{t "apitokens.mcp.turn_on"}}</label>
+      {{- end}}
+      {{- if not .APIForced}}
+      <label class="check"><input type="checkbox" name="turn_on_api" value="on" id="token-turn-on-api"{{if .Form.TurnOnAPI}} checked{{end}}> {{t "apitokens.api.turn_on"}}</label>
+      {{- end}}
+      {{- end}}
+    </div>
+    {{- end}}
     {{template "required-note"}}
     <div class="field">
       <label for="token-name" class="required">{{t "apitokens.create.name"}}</label>
@@ -159,5 +170,6 @@
     </div>
   </form>
 </section>
+</div>
 {{- end}}
 {{- end}}

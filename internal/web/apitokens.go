@@ -131,8 +131,12 @@ func tokenPath(id int64, what string) string {
 
 // TokenForm is the create form's values and errors.
 type TokenForm struct {
-	Name      string
-	Scope     string
+	Name  string
+	Scope string
+	// TurnOnMCP and TurnOnAPI are an admin's ticks to turn that access on
+	// with the token, so it works at once (SPEC 12.10).
+	TurnOnMCP bool
+	TurnOnAPI bool
 	NameError i18n.Msg
 }
 
@@ -294,7 +298,8 @@ func (s *server) handleAPITokenCreate(w http.ResponseWriter, r *http.Request, u 
 	if !s.readForm(w, r) {
 		return
 	}
-	f := TokenForm{Name: r.PostFormValue("name"), Scope: r.PostFormValue("scope")}
+	f := TokenForm{Name: r.PostFormValue("name"), Scope: r.PostFormValue("scope"),
+		TurnOnMCP: r.PostFormValue("turn_on_mcp") == "on", TurnOnAPI: r.PostFormValue("turn_on_api") == "on"}
 	if !auth.ScopeIncludes(f.Scope, auth.ScopeRead) {
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
@@ -319,12 +324,38 @@ func (s *server) handleAPITokenCreate(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	s.audit(r.Context(), actor(u), AuditTokenCreate, "", tokenAudit(t))
+	s.turnOnAccess(r.Context(), u, f)
 	// Render sends every signed-in page with no-store; the secret is never
 	// cached or shown again (SPEC 14.19).
 	s.page(w, r, http.StatusOK, u.Username, APITokenCreatedPage{
 		Token: tokenRow(t, u.ID, s.now()), Secret: secret, Endpoint: s.publicAddress(r, PathMCP), APIBase: s.publicAddress(r, path.Dir(PathAPITools)),
 		AccessOn: s.mcpOn(r.Context()) || s.apiOn(r.Context()), MCPForced: s.cfg.MCPForcedOff, APIForced: s.cfg.APIForcedOff, Admin: isAdmin(u),
 	})
+}
+
+// turnOnAccess turns on the access an admin ticked in the create form,
+// under the same rules as the switches: admins only, never past a forced
+// off, and audited (SPEC 21.2, 23.8). A tick from anyone else is ignored.
+// The token already exists, so a failure here is logged rather than shown
+// in place of its secret; the created page then says access is still off.
+func (s *server) turnOnAccess(ctx context.Context, u store.User, f TokenForm) {
+	if !isAdmin(u) {
+		return
+	}
+	if f.TurnOnMCP && !s.cfg.MCPForcedOff && !s.mcpOn(ctx) {
+		if err := s.setMCP(ctx, MCPOn, u.Username); err != nil {
+			s.log.Warn("turn on MCP access with a new token", "error", err)
+		} else {
+			s.audit(ctx, actor(u), AuditMCPSet, "", MCPOn)
+		}
+	}
+	if f.TurnOnAPI && !s.cfg.APIForcedOff && !s.apiOn(ctx) {
+		if err := s.setAPI(ctx, APIOn, u.Username); err != nil {
+			s.log.Warn("turn on REST API access with a new token", "error", err)
+		} else {
+			s.audit(ctx, actor(u), AuditAPISet, "", APIOn)
+		}
+	}
 }
 
 // tokenAudit is an audit detail naming the token, its owner and its scope

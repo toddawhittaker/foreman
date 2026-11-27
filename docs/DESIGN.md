@@ -203,12 +203,12 @@ dialog (black at 50%) and the shadows' own values (4).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#0e0d0c` | `#ebe6dd` | The page |
-| `--color-surface` | `#1b1916` | `#ffffff` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#2a2722` | `#f4f0e9` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-bg` | `#0e0d0c` | `#e5dfd4` | The page |
+| `--color-surface` | `#1d1b18` | `#ffffff` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#2e2a25` | `#f4f0e9` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
 | `--color-deep` | `#0b0a09` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#403b35` | `#d9d1c3` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
-| `--color-line-strong` | `#5a534b` | `#aa9f8a` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
+| `--color-line` | `#575047` | `#c9bfad` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-line-strong` | `#6a6258` | `#aa9f8a` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
 | `--color-text-muted` | `#b9b0a3` | `#4a443b` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
