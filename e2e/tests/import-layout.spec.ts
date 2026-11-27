@@ -19,6 +19,7 @@ test("imports a folder in the server layout: its save, mods and settings", { tag
   await expect(form.getByLabel(/server: 1 save and mods/)).toBeChecked();
   await checkPage(page);
   await form.getByLabel("World name").fill("Server layout");
+  await form.getByText("Use a version not in the list").click();
   await form.getByLabel("Or type a version").fill("2.0.72");
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/server-layout?imported=1&unchecked=1");

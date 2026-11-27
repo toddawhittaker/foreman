@@ -107,7 +107,8 @@
 {{- with .StripURL}}
 <div hidden hx-ext="sse" sse-connect="{{.}}" sse-swap="strip" hx-swap="none"></div>
 {{- end}}
-<main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
+{{- /* A form-only or short-list page sets its width to "measure", so its content keeps a working width on a wide screen while the tab row runs full width. */}}
+<main id="main" tabindex="-1" data-width="{{block "page-width" .}}{{"full"}}{{end}}"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
 {{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here (SPEC 12.10). */}}
 {{- with .Renewed}}
 <div class="message message--success" id="renewed-message" tabindex="-1" autofocus>

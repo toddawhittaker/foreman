@@ -38,6 +38,7 @@ test("a dropped save fills the field, names the file, and imports", { tag: "@loo
   await expect(form.getByLabel("Save file")).toBeFocused();
   await checkPage(page);
 
+  await form.getByText("Use a version not in the list").click();
   await form.getByLabel("Or type a version").fill("1.1.110");
   await form.getByRole("button", { name: "Upload and import" }).click();
   await expect(page).toHaveURL("/worlds/dropped?imported=1&unchecked=1");
@@ -144,6 +145,7 @@ test("a new good choice clears the server's error", async ({ page }) => {
   await page.goto("/import");
   const form = uploadForm(page);
   await form.getByLabel("World name").fill("Nofile");
+  await form.getByText("Use a version not in the list").click();
   await form.getByLabel("Or type a version").fill("1.1.110");
   await form.getByRole("button", { name: "Upload and import" }).click();
   const serverError = form.locator("#upload-source-error");
@@ -193,6 +195,7 @@ test.describe("without script", () => {
     await expect(input).toHaveAttribute("accept", ".zip");
 
     await form.getByLabel("World name").fill("Plain");
+    await form.getByText("Use a version not in the list").click();
     await form.getByLabel("Or type a version").fill("1.1.110");
     await input.setInputFiles({ name: "plain.zip", mimeType: "application/zip", buffer: emptyZip });
     await form.getByRole("button", { name: "Upload and import" }).click();

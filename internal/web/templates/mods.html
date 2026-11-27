@@ -103,6 +103,8 @@
   <p id="sync-state">{{tHTML "mods.sync.match" "save" (code .LoadSave)}}</p>
   {{- else}}
   {{- with .SaveDiff}}
+  {{- /* The reason is one line under the heading: which save, then what differs. */}}
+  <div class="sync-reason">
   <p id="sync-state">{{tHTML "mods.sync.differ" "save" (code $.Page.LoadSave)}}</p>
   <ul class="sync-diff">
     {{- if .Missing}}<li>{{t "mods.sync.missing" "count" .Missing}}</li>{{end}}
@@ -110,6 +112,7 @@
     {{- if .Version}}<li>{{t "mods.sync.version" "count" .Version}}</li>{{end}}
     {{- if .Extra}}<li>{{t "mods.sync.extra" "count" .Extra}}</li>{{end}}
   </ul>
+  </div>
   <p>{{t "mods.sync.what"}}</p>
   {{- else}}
   <p>{{tHTML "mods.sync.text" "save" (code .LoadSave)}}</p>

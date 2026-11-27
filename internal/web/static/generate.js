@@ -345,7 +345,11 @@ startGenerateWithForm(() => {
     let modified = false;
     const active = new Set();
     document.querySelectorAll(`:is(${settingsIn}) [data-preset]`).forEach((el) => {
-      if (differs(el)) modified = true;
+      const changed = differs(el);
+      if (changed) modified = true;
+      // A step setting off its preset is marked beside its value, so edits stand out in a long list.
+      const step = el.tagName === "SELECT" ? el.closest(".step") : null;
+      if (step) step.toggleAttribute("data-changed", changed);
       if (!el.dataset.ach) return;
       const blocked = crosses(el);
       if (blocked) active.add(el.dataset.achReason);

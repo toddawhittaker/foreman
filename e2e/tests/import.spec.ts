@@ -62,6 +62,7 @@ test("imports a folder from the inbox, leaves it unchanged, and says Done", { ta
   const form = folderForm(page);
   await expect(form.getByLabel(/saves-2025: 2 saves and mods/)).toBeChecked();
   await form.getByLabel("World name").fill("Old game");
+  await form.getByText("Use a version not in the list").click();
   await form.getByLabel("Or type a version").fill("2.0");
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page.locator("#error-summary")).toContainText("Enter the game version as three numbers");

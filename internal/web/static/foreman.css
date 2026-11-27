@@ -110,9 +110,9 @@
 
   --color-bg: light-dark(#e5dfd4, #0e0d0c);
   --color-surface: light-dark(#ffffff, #1d1b18);
-  --color-raised: light-dark(#f4f0e9, #2e2a25);
+  --color-raised: light-dark(#f1ebe1, #2e2a25);
   --color-deep: light-dark(#ffffff, #0b0a09);
-  --color-line: light-dark(#c9bfad, #575047);
+  --color-line: light-dark(#c9bfad, #4a443d);
   --color-line-strong: light-dark(#aa9f8a, #6a6258);
   --color-border: light-dark(#80766a, #857c70);
   --color-text: light-dark(#1c1915, #ece7df);
@@ -122,7 +122,7 @@
   --color-desk: light-dark(#2a2622, #090807);
   --color-desk-line: light-dark(#4a443c, #2e2a25);
   --color-link: light-dark(#9a4800, #ffb357);
-  --color-selected: light-dark(#bd6500, #f39a2a);
+  --color-selected: light-dark(#b05a00, #f39a2a);
   --color-accent-bg: light-dark(#fdecd5, #352610);
   --color-primary: #f39a2a;
   --color-primary-hover: light-dark(#f6ad52, #f7ae4f);
@@ -144,8 +144,8 @@
   /* Each theme's shadow is its own layers; the other theme's layers are
      transparent, because light-dark() takes only colours. */
   --shadow-card: inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 3%)),
-    0 1px 2px light-dark(rgb(60 45 25 / 8%), transparent),
-    0 1px 1px light-dark(rgb(60 45 25 / 4%), transparent);
+    0 1px 2px light-dark(rgb(60 45 25 / 10%), transparent),
+    0 3px 10px light-dark(rgb(60 45 25 / 7%), transparent);
   --shadow-pop: 0 8px 24px light-dark(transparent, rgb(0 0 0 / 45%)),
     0 10px 28px light-dark(rgb(60 45 25 / 18%), transparent);
 
@@ -9644,34 +9644,30 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-/* Foreman's settings have eight tabs: on a phone one scrolling row rather
-   than a grid four rows tall, the current tab brought into view
-   (subnav.js); from 40 rem the row wraps onto a second line rather than
-   cutting a tab off or scrolling. */
+/* Foreman's settings have eight tabs: on a phone the same even grid as
+   every other area's tabs, two across and four down, so every section
+   shows whole as a 44 px target and none hides past the edge; from 40 rem
+   the row wraps onto a second line rather than cutting a tab off. */
 @media (max-width: 39.99rem) {
   .subnav--settings ul,
   .subnav--settings ul:has(> li:nth-child(5)) {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-    scroll-padding-inline: var(--space-5);
-    box-shadow: inset 0 -1px 0 var(--color-line);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .subnav--settings ul > li,
-  .subnav--settings ul:has(> li:nth-child(5)) > li {
-    flex: none;
-    box-shadow: none;
+  .subnav--settings ul:has(> li:nth-child(5)) > li,
+  .subnav--settings ul:has(> li:nth-child(5)) > li:nth-child(n + 4) {
+    grid-column: auto;
   }
 
   .subnav--settings a,
   .subnav--settings a[aria-current],
   .subnav--settings li:first-child a,
   .subnav--settings li:last-child a {
+    justify-content: flex-start;
     padding-inline: var(--space-3);
     white-space: nowrap;
+    text-align: start;
   }
 }
 
@@ -14977,40 +14973,6 @@ form.general-grid.setting-rows .setting-row__body .hint {
   }
 }
 
-/* ==== API tokens: the list and the create form side by side on a wide
-   screen. When both ways in are off, the form opens with that warning and
-   an admin's two ticks to turn access on with the token. */
-@container (min-width: 60rem) {
-  .split.token-layout {
-    grid-template-columns: minmax(0, 1fr) 28rem;
-  }
-}
-
-.token-access {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-warn-bg);
-  border-inline-start: 3px solid var(--color-warn);
-  border-radius: var(--radius);
-}
-
-.token-access > .token-access-off {
-  margin: 0;
-  padding: 0;
-  background: none;
-  border: 0;
-}
-
-.token-access > .check {
-  min-block-size: var(--target-min);
-  font-weight: 600;
-}
-
-.token-create > .token-access {
-  grid-column: 1 / -1;
-}
-
 /* ==== Token created: the secret and what was made on the start side,
    where to use it beside them, so the page fills a wide screen with what
    the person needs next. */
@@ -15179,4 +15141,291 @@ section[data-view="installed"] > .group__head > :is(h2#installed-heading, .count
   #main .world-layout__side .inline-row {
     flex-wrap: wrap;
   }
+}
+
+/* ==== Page width. A form-only or short-list page keeps its content to an
+   80rem working width, start-aligned under its title, while the area's tab
+   row (and a flow's step bar) still runs the page's width; wide data and
+   tools (the audit log, the factory map, mods) take the whole page. */
+main[data-width="measure"] {
+  grid-template-columns: minmax(0, 80rem) minmax(0, 1fr);
+  column-gap: 0;
+}
+
+main[data-width="measure"] > * {
+  grid-column: 1;
+}
+
+main[data-width="measure"] > :is(.subnav, .flow-head) {
+  grid-column: 1 / -1;
+}
+
+/* ==== Type roles on forms: a field's label is 14 px at 600 in the body ink,
+   its help 13 px in the faint ink under the control, so the name, the value
+   and the help read as three steps. */
+:where(label:not(.check), legend) {
+  font-size: 0.875rem;
+  letter-spacing: 0;
+}
+
+.field > label,
+fieldset > legend {
+  color: var(--color-text);
+}
+
+:is(.field, fieldset) > .hint {
+  color: var(--color-text-faint);
+}
+
+/* A plain field (label, help, control, perhaps its error) shows the help
+   under the control; the help stays the control's description. */
+.field:has(> label + .hint + :is(input:not([type="checkbox"], [type="radio"]), select, textarea):is(:last-child, :has(+ .error:last-child))) > .hint {
+  order: 1;
+}
+
+/* ==== API tokens: the create form leads, under the two access plates;
+   the scopes are three cards in a row and the token list follows. */
+.scope-cards {
+  display: grid;
+  gap: var(--space-2) var(--space-3);
+}
+
+@container (min-width: 40rem) {
+  .scope-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .scope-cards > #scope-hint {
+    grid-column: 1 / -1;
+  }
+}
+
+.scope-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius);
+}
+
+/* The whole card picks the scope; the label alone stays the radio's name. */
+.scope-card > label::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.scope-card > label {
+  min-block-size: 0;
+  font-weight: 600;
+}
+
+.scope-card:hover {
+  border-color: var(--color-border);
+}
+
+.scope-card:has(input:checked) {
+  background: var(--color-accent-bg);
+  border-color: var(--color-selected);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+.scope-card > .hint {
+  margin: 0;
+  padding-inline-start: calc(1.25rem + var(--space-2));
+}
+
+.token-create > .actions > .token-access-off {
+  margin: 0 auto 0 0;
+  padding: 0 0 0 var(--space-3);
+  max-inline-size: 60ch;
+  background: none;
+  border: 0;
+  border-inline-start: 3px solid var(--color-warn);
+  border-radius: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.token-create > .actions > .token-access-off:dir(rtl) {
+  margin: 0 0 0 auto;
+}
+
+/* ==== Mods: Match mods to the save reads as a heading line, then the
+   reason on its own line, then the quiet help, with its button at the end. */
+.mods-main > section:has(> #sync-heading) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-5);
+  padding-block: var(--space-4);
+}
+
+.mods-main > section:has(> #sync-heading) > * {
+  grid-column: 1;
+}
+
+.mods-main > section > #sync-heading {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.mods-main > section:has(> .sync-reason) {
+  border-inline-start-color: var(--color-warn);
+}
+
+.sync-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+}
+
+.sync-reason > * {
+  margin: 0;
+}
+
+.sync-reason > .sync-diff {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+  font-weight: 600;
+}
+
+.mods-main > section:has(> #sync-heading) > p:not(#sync-state):not(:has(a)) {
+  order: 0;
+  margin-block-start: var(--space-1);
+}
+
+.mods-main > section:has(> #sync-heading) > .actions {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  margin: 0;
+}
+
+/* Installed mods on a wide panel: one compact row each, the name and
+   version over one short note line, the actions centred at the end. */
+@container (min-width: 36.01rem) {
+  .mod-list tbody tr {
+    padding-block: var(--space-2);
+    row-gap: 0.125rem;
+  }
+
+  .mod-list .mod-line {
+    padding-block: 0;
+  }
+
+  .mod-list tbody td:last-child {
+    grid-row: 1 / span 2;
+  }
+
+  .mod-list tbody td:first-child > div:not(.mod-line) {
+    grid-column: 1;
+    padding-block-end: 0;
+    color: var(--color-text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .mod-list .mod-actions :is(.button, .row-menu__toggle) {
+    min-block-size: 2.25rem;
+    padding-block: 0;
+  }
+}
+
+/* ==== Map settings: a step off its preset shows its words in the accent
+   ink with an orange dot before them, so edits stand out in a long list. */
+.js-on .step[data-changed] .step__value {
+  color: var(--color-link);
+  font-weight: 600;
+}
+
+.js-on .step[data-changed] .step__value::before {
+  content: "";
+  display: inline-block;
+  inline-size: 0.4375rem;
+  block-size: 0.4375rem;
+  margin-inline-end: 0.375rem;
+  vertical-align: 0.1em;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+/* The world list inside the page measure: the name column keeps room for
+   the name and its live chip on one line. */
+@media (min-width: 64rem) {
+  .worlds > li {
+    grid-template-columns: minmax(14rem, 1.4fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
+  }
+}
+
+/* ==== Sign-in with both ways: two cards 16 px apart, each whole, on a grid
+   that fades evenly from the middle with no darker bands. */
+main:has(> .gate) > .gate:has(+ .gate) {
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+}
+
+main:has(> .gate) > .gate + .gate {
+  margin-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+main:has(> .gate)::before {
+  mask-image: radial-gradient(circle at 50% 40%, currentColor 0, transparent 70vmax);
+  opacity: 0.4;
+}
+
+/* ==== Tags: a token that works is a neutral tag with a check, so green
+   stays for live states (running, online). */
+.state--token-working {
+  background-color: color-mix(in srgb, var(--color-text-muted) 14%, var(--color-surface));
+  color: var(--color-text);
+}
+
+.state--token-working::before {
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  margin-inline: 0;
+  border: 0;
+  border-radius: 0;
+  background-image: none;
+  background-color: currentColor;
+  mask: var(--i-check) center / contain no-repeat;
+}
+
+/* ==== Server facts: a unit is 0.6 of its figure, 2 px after it; a meter
+   is neutral at rest and turns amber over 75 percent, red over 90. */
+.facts.stat-grid dd .unit {
+  margin-inline-start: 2px;
+  font-size: 0.6em;
+}
+
+.gauge--ok .meter > span {
+  background: var(--color-text-muted);
+}
+
+/* ==== A notice fills the column it sits in, so its edges line up with the
+   plate's other blocks. */
+.panel .message,
+main > .message,
+.token-use > .message {
+  max-inline-size: none;
+}
+
+/* Token created: the done line is a success notice across the plate. */
+.token-created__done {
+  max-inline-size: none;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-ok-bg);
+  border-inline-start-width: 3px;
+  border-radius: var(--radius);
+  outline: none;
 }

@@ -92,8 +92,44 @@
 </section>
 </div>
 
-{{- /* On a wide screen the list and the create form sit side by side, so the page's task is in view from the top (SPEC 12.10). */}}
-<div class="split token-layout">
+{{- /* Creating a token comes before the list it adds to, so its button is in view from the top; its button is the page's one primary action (SPEC 12.10). */}}
+<section class="panel" id="create-token" aria-labelledby="create-heading">
+  <h2 id="create-heading">{{t "apitokens.create.heading"}}</h2>
+  <form method="post" action="{{.Path}}" class="token-create" novalidate>
+    {{template "required-note"}}
+    <div class="field">
+      <label for="token-name" class="required">{{t "apitokens.create.name"}}</label>
+      <input id="token-name" name="name" type="text" value="{{.Form.Name}}" required maxlength="{{.Form.NameMax}}" autocomplete="off"
+        {{- if not .Form.NameError.IsZero}} aria-invalid="true"{{end}} aria-describedby="token-name-hint{{if not .Form.NameError.IsZero}} token-name-error{{end}}">
+      <p class="hint" id="token-name-hint">{{t "apitokens.create.name.hint" "max" .Form.NameMax}}</p>
+      {{- if not .Form.NameError.IsZero}}
+      <p class="error" id="token-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.NameError}}</p>
+      {{- end}}
+    </div>
+    {{- /* The scopes are three cards in one row; each card's label holds only the scope's name, its description stays a description. */}}
+    <fieldset class="scope-cards" aria-describedby="scope-hint">
+      <legend>{{t "apitokens.create.scope"}}</legend>
+      <p class="hint" id="scope-hint">{{t "apitokens.create.scope.hint"}}</p>
+      {{- range .Form.Scopes}}
+      <div class="scope-card">
+        <label class="check"><input type="radio" name="scope" value="{{.Value}}" id="scope-{{.Value}}"{{if .Checked}} checked{{end}} aria-describedby="scope-{{.Value}}-hint{{if eq .Value "admin"}} scope-admin-warning{{end}}"> {{msg .Name}}</label>
+        <p class="hint" id="scope-{{.Value}}-hint">{{msg .Hint}}</p>
+      </div>
+      {{- end}}
+    </fieldset>
+    {{- /* SPEC 14.19: the two-step confirm guards mistakes, not an AI steered by what it reads. */}}
+    <div class="message message--warning" id="scope-admin-warning">
+      <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
+    </div>
+    <div class="actions form-end">
+      {{- /* The access plates above hold the switches; here one line says what that means for this token (SPEC 12.10). */}}
+      {{- if not (or .MCPOn .APIOn)}}
+      <p class="token-access-off" id="token-access-off">{{t "apitokens.both_off"}}</p>
+      {{- end}}
+      <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>
+    </div>
+  </form>
+</section>
 {{- /* One list of tokens. An admin sees every user's and filters it to their own or all; the filter is CSS only, so nothing reloads (SPEC 12.10). */}}
 <section class="panel token-table" aria-labelledby="tokens-heading">
   <div class="token-table__head">
@@ -124,52 +160,7 @@
   <p class="empty" id="all-tokens-empty">{{t "apitokens.all.empty"}}</p>
   {{- end}}
 </section>
-{{- /* Creating a token follows the list it adds to; its button is the page's one primary action. */}}
-<section class="panel" id="create-token" aria-labelledby="create-heading">
-  <h2 id="create-heading">{{t "apitokens.create.heading"}}</h2>
-  {{- /* Whether a token will work comes first, before anything is typed (SPEC 12.10). */}}
-  <form method="post" action="{{.Path}}" class="token-create" novalidate>
-    {{- if not (or .MCPOn .APIOn)}}
-    {{- /* An admin can turn access on with the token, so it works at once; the ticks start clear (SPEC 12.10, 21.2, 23.8). */}}
-    <div class="token-access" role="group" aria-labelledby="token-access-off">
-      <p class="token-access-off" id="token-access-off">{{t "apitokens.both_off"}}</p>
-      {{- if .Admin}}
-      {{- if not .MCPForced}}
-      <label class="check"><input type="checkbox" name="turn_on_mcp" value="on" id="token-turn-on-mcp"{{if .Form.TurnOnMCP}} checked{{end}}> {{t "apitokens.mcp.turn_on"}}</label>
-      {{- end}}
-      {{- if not .APIForced}}
-      <label class="check"><input type="checkbox" name="turn_on_api" value="on" id="token-turn-on-api"{{if .Form.TurnOnAPI}} checked{{end}}> {{t "apitokens.api.turn_on"}}</label>
-      {{- end}}
-      {{- end}}
-    </div>
-    {{- end}}
-    {{template "required-note"}}
-    <div class="field">
-      <label for="token-name" class="required">{{t "apitokens.create.name"}}</label>
-      <p class="hint" id="token-name-hint">{{t "apitokens.create.name.hint" "max" .Form.NameMax}}</p>
-      <input id="token-name" name="name" type="text" value="{{.Form.Name}}" required maxlength="{{.Form.NameMax}}" autocomplete="off"
-        {{- if not .Form.NameError.IsZero}} aria-invalid="true"{{end}} aria-describedby="token-name-hint{{if not .Form.NameError.IsZero}} token-name-error{{end}}">
-      {{- if not .Form.NameError.IsZero}}
-      <p class="error" id="token-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.NameError}}</p>
-      {{- end}}
-    </div>
-    <fieldset aria-describedby="scope-hint">
-      <legend>{{t "apitokens.create.scope"}}</legend>
-      <p class="hint" id="scope-hint">{{t "apitokens.create.scope.hint"}}</p>
-      {{- range .Form.Scopes}}
-      <label class="check"><input type="radio" name="scope" value="{{.Value}}" id="scope-{{.Value}}"{{if .Checked}} checked{{end}} aria-describedby="scope-{{.Value}}-hint{{if eq .Value "admin"}} scope-admin-warning{{end}}"> {{msg .Name}}</label>
-      <p class="hint" id="scope-{{.Value}}-hint">{{msg .Hint}}</p>
-      {{- end}}
-    </fieldset>
-    {{- /* SPEC 14.19: the two-step confirm guards mistakes, not an AI steered by what it reads. */}}
-    <div class="message message--warning" id="scope-admin-warning">
-      <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
-    </div>
-    <div class="actions form-end">
-      <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>
-    </div>
-  </form>
-</section>
-</div>
 {{- end}}
 {{- end}}
+
+{{define "page-width"}}{{"measure"}}{{end}}

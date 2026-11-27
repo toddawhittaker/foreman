@@ -205,9 +205,9 @@ dialog (black at 50%) and the shadows' own values (4).
 |---|---|---|---|
 | `--color-bg` | `#0e0d0c` | `#e5dfd4` | The page |
 | `--color-surface` | `#1d1b18` | `#ffffff` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#2e2a25` | `#f4f0e9` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-raised` | `#2e2a25` | `#f1ebe1` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
 | `--color-deep` | `#0b0a09` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#575047` | `#c9bfad` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-line` | `#4a443d` | `#c9bfad` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
 | `--color-line-strong` | `#6a6258` | `#aa9f8a` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
@@ -217,7 +217,7 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-desk-line` | `#2e2a25` | `#4a443c` | The control desk's bottom edge |
 | `--color-border` | `#857c70` | `#80766a` | Edge of fields, secondary buttons and the menu |
 | `--color-link` | `#ffb357` | `#9a4800` | Links (always underlined), quiet buttons, the "Active" badge |
-| `--color-selected` | `#f39a2a` | `#bd6500` | The current tab's underline, the current item's edge in the rail, the current item in the menu, the live world's edge, checked boxes, progress bars |
+| `--color-selected` | `#f39a2a` | `#b05a00` | The current tab's underline, the current item's edge in the rail, the current item in the menu, the live world's edge, checked boxes, progress bars |
 | `--color-accent-bg` | `#352610` | `#fdecd5` | A pale orange tint: the current item in the menu, the "Active" badge |
 | `--color-primary` | `#f39a2a` | `#f39a2a` | Primary button face, the line across the top of the header |
 | `--color-primary-hover` | `#f7ae4f` | `#f6ad52` | Primary button hover |

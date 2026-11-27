@@ -157,19 +157,23 @@
     <option value="" id="{{.IDPrefix}}-version-same">{{if .SaveRead}}{{t "worlds.import.version.same_with" "version" .SaveVersion}}{{else}}{{t "worlds.import.version.same"}}{{end}}</option>
   </select>
 </div>
-<div class="field">
-  <label for="{{.IDPrefix}}-version">{{t "worlds.import.version.typed"}}</label>
-  <p class="hint" id="{{.IDPrefix}}-version-hint">{{t "worlds.import.version.hint"}}</p>
-  {{- if .AskVersion}}
-  <p class="hint" id="{{.IDPrefix}}-version-ask">{{t "worlds.import.version.ask"}}</p>
-  {{- end}}
-  <input id="{{.IDPrefix}}-version" name="game_version_typed" type="text" value="{{.GameVersion}}"
-    inputmode="decimal" autocomplete="off" spellcheck="false"{{if .AskVersion}} autofocus{{end}}
-    {{- if not .VersionError.IsZero}} aria-invalid="true"{{end}} aria-describedby="{{.IDPrefix}}-version-hint{{if .AskVersion}} {{.IDPrefix}}-version-ask{{end}}{{if not .VersionError.IsZero}} {{.IDPrefix}}-version-error{{end}}">
-  {{- if not .VersionError.IsZero}}
-  <p class="error" id="{{$.IDPrefix}}-version-error"><strong>{{t "common.error.label"}}</strong> {{msg .VersionError}}</p>
-  {{- end}}
-</div>
+{{- /* One version control: the list, and a version not in it behind a disclosure, as on Generate. */}}
+<details class="disclosure"{{if or .GameVersion .AskVersion (not .VersionError.IsZero)}} open{{end}}>
+  <summary>{{t "worlds.generate.version.other"}}</summary>
+  <div class="field">
+    <label for="{{.IDPrefix}}-version">{{t "worlds.import.version.typed"}}</label>
+    <p class="hint" id="{{.IDPrefix}}-version-hint">{{t "worlds.import.version.hint"}}</p>
+    {{- if .AskVersion}}
+    <p class="hint" id="{{.IDPrefix}}-version-ask">{{t "worlds.import.version.ask"}}</p>
+    {{- end}}
+    <input id="{{.IDPrefix}}-version" name="game_version_typed" type="text" value="{{.GameVersion}}"
+      inputmode="decimal" autocomplete="off" spellcheck="false"{{if .AskVersion}} autofocus{{end}}
+      {{- if not .VersionError.IsZero}} aria-invalid="true"{{end}} aria-describedby="{{.IDPrefix}}-version-hint{{if .AskVersion}} {{.IDPrefix}}-version-ask{{end}}{{if not .VersionError.IsZero}} {{.IDPrefix}}-version-error{{end}}">
+    {{- if not .VersionError.IsZero}}
+    <p class="error" id="{{$.IDPrefix}}-version-error"><strong>{{t "common.error.label"}}</strong> {{msg .VersionError}}</p>
+    {{- end}}
+  </div>
+</details>
 <div class="field">
   <label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age"
     aria-describedby="{{.IDPrefix}}-space-age-hint {{.IDPrefix}}-space-age-warning{{if not .SpaceAgeError.IsZero}} {{.IDPrefix}}-space-age-error{{end}}"

@@ -157,7 +157,7 @@ test("two picks share a dependency: it shows once naming both, counted once, wit
     // The bar holds to the bottom of the screen with the count, the names and Review.
     const bar = (await plan.boundingBox())!;
     expect(Math.round(bar.y + bar.height)).toBeLessThanOrEqual(page.viewportSize()!.height + 1);
-    await expect(plan.locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
+    await expect(plan.locator(".plan-panel__sum")).toHaveText("4 mods in the plan");
     await expect(plan.locator(".plan-panel__names")).toHaveText("fp-trains, fp-rails");
     await expect(plan.getByRole("link", { name: "Review and install 4 mods" })).toBeVisible();
     await checkPage(page);
@@ -191,7 +191,7 @@ test("two picks share a dependency: it shows once naming both, counted once, wit
 
   // The plan is kept on the server: a reload still has it.
   await page.reload();
-  await expect(panel(page).locator(".plan-panel__sum")).toHaveText("2 mods in the plan");
+  await expect(panel(page).locator(".plan-panel__sum")).toHaveText("4 mods in the plan");
 
   // Review opens today's plan page with the picks.
   await panel(page).getByRole("link", { name: "Review and install 4 mods" }).click();

@@ -102,3 +102,5 @@
   <div><dt>{{t "worlds.fact.last_played"}}</dt><dd>{{if .LastPlayedUnknown}}{{t "worlds.unknown_lower"}}{{else if .LastPlayed.IsZero}}{{t "worlds.never"}}{{else}}<time datetime="{{isoTime .LastPlayed}}" data-age-only><span class="nowrap">{{day .LastPlayed}}</span> <span class="nowrap">{{clock .LastPlayed}}</span></time>{{end}}</dd></div>
   <div><dt>{{t "worlds.fact.disk_use"}}</dt><dd>{{if .SizeUnknown}}{{t "worlds.unknown_lower"}}{{else}}<span class="nowrap">{{bytes .DiskBytes}}</span>{{end}}<span class="visually-hidden">,</span> <span class="fact-note">{{if .AddsUnknown}}{{t "worlds.list.adds_unknown"}}{{else}}{{tHTML "worlds.list.adds" "size" (nowrap (bytes .Adds))}}{{end}}</span></dd></div>
 </dl>{{end}}
+
+{{define "page-width"}}{{"measure"}}{{end}}

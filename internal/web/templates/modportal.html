@@ -139,7 +139,7 @@
   {{- else}}
   {{- /* Open beside the results on a wide screen; on a phone a one-line bar that opens to the list. */}}
   <details class="plan-panel__list" id="plan-list" data-open-wide="64rem">
-    <summary><span class="plan-panel__sum">{{t "mods.plan_panel.summary" "count" (len .Picks)}}</span> <span class="plan-panel__names" translate="no">{{.Names}}</span></summary>
+    <summary><span class="plan-panel__sum">{{t "mods.plan_panel.summary" "count" (or (and (not .Unreachable) .Count) (len .Picks))}}</span> <span class="plan-panel__names" translate="no">{{.Names}}</span></summary>
     {{- if .Unreachable}}
     <div class="message message--warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.plan_panel.unreachable"}}</p>
