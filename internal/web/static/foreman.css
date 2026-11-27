@@ -7393,6 +7393,15 @@ main > .panel > .facts > div {
   background: var(--color-selected);
 }
 
+/* Forced colours drop backgrounds, so the current area's underline is drawn
+   as a border in the system's highlight colour. */
+@media (forced-colors: active) {
+  .site .tabs a[aria-current]::after {
+    box-sizing: border-box;
+    border-block-end: 3px solid Highlight;
+  }
+}
+
 /* The live world: its name, then the lamp and the state's word in the
    state's colour, behind a hairline. Said once, read from anywhere. */
 .site-strip {
@@ -9655,8 +9664,9 @@ main > .panel.danger-zone.danger-zone--blocked {
 
 /* Foreman's settings have eight tabs: on a phone they wrap onto as many
    rows as their words need, each row filled edge to edge, so every section
-   shows whole on one line as a 44 px target and none hides past the edge;
-   from 40 rem the row wraps the same way. */
+   shows whole as a 44 px target and none hides past the edge. A tab's words
+   stay on one line unless they are wider than the row on their own, as at
+   large text. From 40 rem the row wraps the same way. */
 @media (max-width: 39.99rem) {
   .subnav--settings ul,
   .subnav--settings ul:has(> li:nth-child(5)) {
@@ -9675,7 +9685,7 @@ main > .panel.danger-zone.danger-zone--blocked {
   .subnav--settings li:first-child a,
   .subnav--settings li:last-child a {
     padding-inline: var(--space-3);
-    white-space: nowrap;
+    white-space: normal;
   }
 }
 
@@ -13107,6 +13117,13 @@ main > h1 + p.hint,
   background: var(--color-accent-bg);
 }
 
+/* A crash loop is the one solid tag: on-danger ink on the danger fill, so
+   the wash above must not reach it. */
+.state.state--crash-looping {
+  background-color: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
 /* ---- The Server plate: while the game runs Take snapshot is the one
    filled action; Stop server stands apart, 32 px off, in its danger
    outline (DESIGN 7.1). */
@@ -15219,6 +15236,13 @@ fieldset > legend {
 .scope-card > label {
   min-block-size: 1.75rem;
   font-weight: 600;
+}
+
+/* The radio itself sits above the card-wide target, so a press on it lands
+   on it. */
+.scope-card > label > input {
+  position: relative;
+  z-index: 1;
 }
 
 .scope-card:hover {
