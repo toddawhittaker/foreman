@@ -850,6 +850,8 @@ func (r *resolver) misfits() (map[string]bool, error) {
 
 // fits reports whether d's newest release on the world's line within its
 // limit could be turned on without a conflict its own dependencies declare.
+// It is judged only against the fixed part of the plan (inPlan), never
+// against other offers, so the offer rows stay the same whatever is ticked.
 func (r *resolver) fits(d Dep) (bool, error) {
 	mod, err := r.mod(d.Name)
 	if err != nil || mod == nil {
@@ -872,14 +874,14 @@ func (r *resolver) fits(d Dep) (bool, error) {
 		}
 		dt := r.targets[dd.Name]
 		switch {
-		case dd.Kind == Incompatible && r.present(dd.Name):
+		case dd.Kind == Incompatible && r.inPlan(dd.Name):
 			return false, nil
 		case dd.required() && dt != nil && dt.builtin && !dt.enabled:
 			return false, nil
 		}
 	}
 	for n, t := range r.targets {
-		if !t.enabled {
+		if !t.enabled || !r.inPlan(n) {
 			continue
 		}
 		for _, td := range t.deps {

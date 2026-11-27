@@ -99,3 +99,20 @@ func TestOfferSharedOnce(t *testing.T) {
 		}
 	}
 }
+
+// An offer that conflicts only with another offer stays offered, ticked or
+// not, so the rows never change with what is ticked; the conflict shows
+// once both are ticked.
+func TestOfferConflictingOnlyWithOfferStaysOffered(t *testing.T) {
+	p := portal{
+		"main": {rel("1.0.0", "2.0", "? a", "? b")},
+		"a":    {rel("1.0.0", "2.0")},
+		"b":    {rel("1.0.0", "2.0", "! a")},
+	}
+	for _, ticked := range [][]string{nil, {"a"}, {"b"}} {
+		plan := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"main"}, Optional: ticked})
+		if got := offerNames(plan.Optional); !slices.Equal(got, []string{"a", "b"}) || len(plan.Unavailable) != 0 {
+			t.Errorf("ticked %v: optional %v, unavailable %v", ticked, got, plan.Unavailable)
+		}
+	}
+}
