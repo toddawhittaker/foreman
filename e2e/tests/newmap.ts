@@ -25,12 +25,19 @@ export async function openNewMap(page: Page, opts: { name?: string; step1?: (pag
   return id;
 }
 
+// Step 1's typed version field. Docker Hub is unreachable in these tests, so
+// once the version list has said so, the disclosure around the field is open.
+export async function typedVersion(page: Page) {
+  await page.locator("#generate-version-select option[data-unreachable]").waitFor({ state: "attached" });
+  return page.getByLabel("Or type a version");
+}
+
 // Step 1 fields of a 1.1 world: its typed version, no Space Age (SPEC 5.6) and no
 // image download. Pass it as openNewMap's step1.
 export async function oldGameStep1(page: Page) {
-  await page.locator(".version-fields > details.disclosure > summary").click();
-  await page.getByLabel("Type a version").fill("1.1.110");
-  await page.getByLabel("Type a version").press("Tab");
+  const typed = await typedVersion(page);
+  await typed.fill("1.1.110");
+  await typed.press("Tab");
   await page.getByLabel("Download the game image", { exact: false }).uncheck();
   await page.getByLabel("Space Age is on").uncheck();
 }

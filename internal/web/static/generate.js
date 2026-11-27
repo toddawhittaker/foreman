@@ -450,6 +450,15 @@ startGenerateWithForm(() => {
     if (t.closest(settingsIn)) changed(t);
   });
 
+  // A version list that could not be fetched says to type a version, so the
+  // typed field beside it is opened rather than left folded away.
+  document.body.addEventListener("htmx:afterSettle", (e) => {
+    const list = e.detail.target;
+    if (!list?.matches?.("select") || !list.querySelector("option[data-unreachable]")) return;
+    const other = list.closest("form")?.querySelector("details.disclosure:has(input[name=game_version_typed])");
+    if (other) other.open = true;
+  });
+
   document.addEventListener("change", (e) => {
     const t = e.target;
     if (!t.closest("#generate-form")) return;

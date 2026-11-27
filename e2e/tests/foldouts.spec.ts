@@ -36,12 +36,14 @@ const marker = (d: Locator) =>
     await page.goto("/generate");
     expect(await topLine(lone(page))).toBe("0px");
 
+    // Docker Hub is unreachable here, so the list opens the foldout once it has said so.
+    await expect(lone(page)).toHaveJSProperty("open", true);
     const before = await marker(lone(page));
     expect(before.color).toBe(await muted(lone(page)));
-    expect(before.type).toBe("disclosure-closed");
+    expect(before.type).toBe("disclosure-open");
     await lone(page).locator("> summary").click();
-    await expect(lone(page)).toHaveJSProperty("open", true);
-    expect((await marker(lone(page))).type).toBe("disclosure-open");
+    await expect(lone(page)).toHaveJSProperty("open", false);
+    expect((await marker(lone(page))).type).toBe("disclosure-closed");
 
     // Keyboard: the summary takes focus with a visible ring.
     await lone(page).locator("> summary").focus();

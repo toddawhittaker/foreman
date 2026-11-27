@@ -1,7 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo, openPlanetRow, wcagTags } from "./foreman.js";
 import AxeBuilder from "@axe-core/playwright";
 import { countClicks, expectWithin } from "./clicks.js";
-import { openNewMap, newMapPath, oldGameStep1, planetPictures } from "./newmap.js";
+import { openNewMap, newMapPath, oldGameStep1, planetPictures, typedVersion } from "./newmap.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -29,13 +29,6 @@ async function setUp(page: Page, foreman: Parameters<typeof seedWorld>[0], fakeG
 const mode = (page: Page, name: string) => page.getByRole("radio", { name, exact: true });
 // A tab is a radio drawn as a tab; it is picked through its label.
 const tab = (page: Page, name: string) => page.locator("label.tab", { hasText: new RegExp(`^\s*${name}\s*$`) });
-
-// The typed version sits in a disclosure, opened first.
-async function typedVersion(page: Page) {
-  const d = page.locator(".version-fields > details.disclosure");
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator("summary").click();
-  return page.getByLabel("Or type a version");
-}
 
 // Sets a setting of steps through its select, which is what the form sends
 // whether the page shows the select or the slider.
@@ -271,6 +264,16 @@ test("the preset and seed line up their controls on a wide screen", { tag: "@loo
     if ((await box("#generate-seed")).x > (await box("#generate-preset")).x)
       expect(await top("#generate-preset")).toBeCloseTo(await top("#generate-seed"), 0);
   }
+});
+
+// SPEC 10.7: with no version list, the field to type a version in is open.
+test("opens the typed version field while Docker Hub is unreachable", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator("#generate-version-select option")).toHaveText(["2.1.24, same as the active world", "Docker Hub cannot be reached; type a version below"]);
+  // The list says to type a version, so the field to type it in is open.
+  await expect(page.getByLabel("Or type a version")).toBeVisible();
 });
 
 // SPEC 5.6: step 1 refuses Space Age on a game line without it, on the field.
