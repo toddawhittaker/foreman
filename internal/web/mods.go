@@ -1056,6 +1056,24 @@ const (
 
 var planKinds = []mods.Kind{mods.KindInstall, mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove, mods.KindUpload}
 
+// toasts: in the guided Generate, the Mods step says the world was just made
+// (SPEC 5.6).
+func (p ModsPage) toasts() []Toast {
+	if p.InFlow() && p.Generated {
+		return []Toast{{Text: i18n.M("mods.flow.generated", "name", p.World.Name)}}
+	}
+	return nil
+}
+
+// toasts: the review after Generate from a favorite says the world was made
+// (SPEC 5.12). A redraw keeps the toast already shown.
+func (p ModPlanPage) toasts() []Toast {
+	if p.Generated && !p.Redraw {
+		return []Toast{{Text: i18n.M("favorites.review.generated", "name", p.World.Name)}}
+	}
+	return nil
+}
+
 // readPlanForm reads a request from a query or a posted form; ok is false
 // for one no page offers.
 func readPlanForm(v url.Values) (planForm, bool) {

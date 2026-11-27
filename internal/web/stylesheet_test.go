@@ -482,9 +482,6 @@ func TestStylesheetServedJoined(t *testing.T) {
 var shorthandConflictsToFixInWave1 = map[string]bool{
 	"form.general-grid.setting-rows>.required-note | pages/settings.css margin | pages/settings.css margin-block-end": true,
 	"form.general-grid.setting-rows>p:first-child | pages/settings.css margin | pages/settings.css margin-block-end":  true,
-	".plan-tree__deps | pages/mods.css margin | pages/mods.css margin-block-start":                                    true,
-	".plan-tree__deps | pages/mods.css margin | pages/mods.css margin-inline-start":                                   true,
-	".plan-tree__deps | pages/mods.css padding | pages/mods.css padding-inline-start":                                 true,
 }
 
 func TestStylesheetHasNoConflictingRules(t *testing.T) {

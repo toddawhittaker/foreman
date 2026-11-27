@@ -1,22 +1,14 @@
 {{define "title"}}{{t "mods.title" "world" .Page.World.Name}}{{end}}
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script><script src="{{static "modsearch.js"}}" defer></script><script src="{{static "dropzone.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name "" (t "mods.tab"))}}{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{if .Page.InFlow}}{{template "genflow-steps" .Page.Steps}}{{end}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name "" (t "mods.tab"))}}
-<div class="title-row">
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-</div>
-{{template "rail" $}}
 {{- if .InFlow}}
-{{template "genflow-steps" .Steps}}
-{{- if .Generated}}
-<div class="message message--success" id="mods-generated" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{t "mods.flow.generated" "name" .World.Name}}</p>
-</div>
-{{- end}}
 {{- if .ShowSkip}}
 {{- /* Step 2 is optional: the way on is a link, with picks kept for Continue. It names step 4 when step 3 has nothing and passes on (SPEC 5.6). */}}
 <div class="actions"><a href="{{.NextPath}}" id="mods-skip">{{if .NoModSettings}}{{t "mods.flow.skip_map"}}{{else}}{{t "mods.flow.skip"}}{{end}}</a></div>
@@ -30,10 +22,11 @@
 <div id="world-activity"{{if .Working}} hx-get="{{.Path}}" hx-trigger="every 2s" hx-select="#world-activity" hx-swap="outerHTML"{{end}}>
 {{- if not .Busy.IsZero}}
 <div class="message message--note">
-  <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
   {{- if .Working}}
-  {{- /* The bar Generate shows while it waits, so a long install does not look stuck; the words above carry the meaning. */}}
-  <progress aria-hidden="true"></progress>
+  {{- /* The working bar, so a long install does not look stuck; its words carry the meaning. */}}
+  {{template "working" (msg .Busy)}}
+  {{- else}}
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
   {{- end}}
   {{- if .ServerLink}}
   <div class="actions"><a href="{{serverPath}}" id="world-server-link">{{t "worlds.world.server_link"}}</a></div>
@@ -130,7 +123,7 @@
   </div>
   {{- /* The portal's answer loads after the page, so a slow portal never holds up the list (SPEC 9.3). */}}
   <div id="mod-status" class="mod-status" role="status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
-    <p class="empty">{{t "mods.status.loading"}}</p>
+    {{template "working" (t "mods.status.loading")}}
   </div>
   {{- with .Rows}}
   {{- /* Two columns, so a name keeps its room on a phone (DESIGN 8.11). The state is a word only when a mod is off. */}}
@@ -188,7 +181,7 @@
     </tbody>
   </table>
   {{- else}}
-  <p class="empty empty--art empty--mods">{{t "mods.installed.none"}}</p>
+  {{template "empty" (empty "mods" (t "mods.installed.none"))}}
   {{- end}}
   {{- /* Built-in mods are one line, not rows: nothing about them is changed here (SPEC 9.7). */}}
   {{- with .BuiltIns}}
@@ -199,11 +192,7 @@
     {{- end}}</p>
   {{- end}}
 </section>
-{{- /* What the search looks in, the portal link, then the results, right under the search box (DESIGN 8.11). */}}
-<div class="mods-find__notes" data-view="find">
-  <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
-  {{template "portal-browse" .Line}}
-</div>
+{{- /* The results, right under the search box, in a plate that starts with what the search looks in and the portal link (DESIGN 8.11). */}}
 {{template "mod-results" .Search}}
 <details class="disclosure mod-rail" id="mod-tools" data-view="installed" data-open-wide="64rem"{{if .Problems}} open{{end}}>
 <summary class="mod-rail__toggle" id="mod-tools-summary">{{t "mods.tools.label"}}</summary>
@@ -218,9 +207,7 @@
       {{template "required-note"}}
       <p class="hint">{{t "mods.upload.hint"}}</p>
       {{template "dropzone" .UploadZone}}
-      <div class="actions">
-        <button type="submit" class="button">{{t "mods.upload.button"}}</button>
-      </div>
+      {{template "form-foot" (formFoot "submit" (t "mods.upload.button"))}}
     </form>
   </details>
 </section>
@@ -233,7 +220,7 @@
   {{- if .HasSettings}}
   <div class="actions"><a href="{{.SettingsPath}}" download id="act-settings-download">{{t "mods.settings.download"}}</a></div>
   {{- else}}
-  <p class="empty">{{tHTML "mods.settings.none" "file" (code .SettingsFile)}}</p>
+  <p>{{tHTML "mods.settings.none" "file" (code .SettingsFile)}}</p>
   {{- end}}
   <details class="disclosure" id="mod-settings-replace"{{if or (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
     <summary id="mod-settings-summary">{{tHTML "mods.settings.summary" "file" (code .SettingsFile)}}</summary>
@@ -261,9 +248,7 @@
           <li>{{t "mods.plan.undo"}}</li>
         </ul>
       </div>
-      <div class="actions">
-        <button type="submit" class="button">{{t "mods.settings.button"}}</button>
-      </div>
+      {{template "form-foot" (formFoot "submit" (t "mods.settings.button"))}}
     </form>
   </details>
 </section>
