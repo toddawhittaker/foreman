@@ -16,21 +16,22 @@ var modPathRE = regexp.MustCompile(`__([A-Za-z0-9][A-Za-z0-9 ._-]*?)__/`)
 // fault: the game's own data and Foreman's helper mod.
 var notWorldMods = []string{"core", "base", modsettingsmod.ModName}
 
-// CrashedMods is the names of the mods whose files the game's error names,
-// in the order they appear, for a run that failed in the game (SPEC 5.6,
-// 8.7). It is empty when the error is not a game failure or names no mod.
-// A name is what the log says: the caller checks it is one of the world's
-// mods before it shows it.
-func CrashedMods(err error) []string {
+// CrashedMod is the name of the mod the game's error line names, for a run
+// that failed in the game (SPEC 5.6, 8.7): the first path into a mod in the
+// game's first error line. A traceback lists the frames that led there,
+// library mods among them, so it never names the mod. The name is empty when
+// the error is not a game failure or its line names no mod of the world. A
+// name is what the log says: the caller checks it is one of the world's mods
+// before it shows it.
+func CrashedMod(err error) string {
 	var pe *PreviewError
 	if !errors.As(err, &pe) || pe.OOM {
-		return nil
+		return ""
 	}
-	var out []string
-	for _, m := range modPathRE.FindAllStringSubmatch(pe.Log, -1) {
-		if name := m[1]; !slices.Contains(notWorldMods, name) && !slices.Contains(out, name) {
-			out = append(out, name)
+	for _, m := range modPathRE.FindAllStringSubmatch(pe.ErrorLine, -1) {
+		if !slices.Contains(notWorldMods, m[1]) {
+			return m[1]
 		}
 	}
-	return out
+	return ""
 }

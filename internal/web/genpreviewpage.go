@@ -12,7 +12,7 @@ import (
 func previewCarrier(in previewInput, view *PreviewView) NewMapPage {
 	p := NewMapPage{World: in.sum, Form: newMapForm(in.sum, in.f.MapForm), CanPreview: true, Preview: view}
 	if in.catErr != nil {
-		p.Builtin, _ = builtinFailure(nil, in.sum.ID, in.catErr)
+		p.Builtin, p.BuiltinFix = builtinFailure(in.installed, in.sum.ID, in.catErr)
 	}
 	return p
 }

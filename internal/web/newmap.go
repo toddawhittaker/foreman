@@ -90,23 +90,43 @@ func (p NewMapPage) BuiltinFailed() bool {
 	return false
 }
 
-// builtinFailure words a planets read that failed: kept or not, and, when
-// the game's error names one of the world's own mods, that mod by its title
-// with the plan that removes it.
+// builtinFailure words why the world's planets could not be read: a mod
+// named like Foreman's helper, a refused or missing list, or a failed run,
+// kept or not, that names one of the world's own mods by its title with the
+// plan that removes it when the game's error names that mod (SPEC 5.6, 8.7).
+// installed is the world's mods.
 func builtinFailure(installed []world.InstalledMod, id string, err error) (i18n.Msg, *Offer) {
-	for _, name := range game.CrashedMods(err) {
-		i := slices.IndexFunc(installed, func(m world.InstalledMod) bool { return m.Name == name && !m.BuiltIn })
-		if i < 0 {
-			continue
+	switch {
+	case errors.Is(err, game.ErrControlModTaken):
+		// A world mod named like Foreman's helper: it stays so until that mod
+		// goes (SPEC 5.6, ADR 0033).
+		return i18n.M("mapgen.preview.control_mod_taken"), nil
+	case errors.Is(err, game.ErrPlanetsRefused):
+		return i18n.M("newmap.builtin.refused"), nil
+	case errors.Is(err, game.ErrPlanetsMissing):
+		return i18n.M("newmap.builtin.missing"), nil
+	}
+	if name := game.CrashedMod(err); name != "" {
+		if i := slices.IndexFunc(installed, func(m world.InstalledMod) bool { return m.Name == name && !m.BuiltIn }); i >= 0 {
+			title := cmp.Or(installed[i].Title, name)
+			return i18n.M("newmap.builtin.mod_failed", "mod", i18n.Ident(title)),
+				&Offer{Path: kindPlanPath(id, mods.KindRemove, name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(title))}
 		}
-		title := cmp.Or(installed[i].Title, name)
-		return i18n.M("newmap.builtin.mod_failed", "mod", i18n.Ident(title)),
-			&Offer{Path: kindPlanPath(id, mods.KindRemove, name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(title))}
 	}
 	if errors.Is(err, game.ErrModSettingsKept) {
 		return i18n.M("newmap.builtin.failed_kept"), nil
 	}
 	return i18n.M("newmap.builtin.failed"), nil
+}
+
+// installedMods is the world's mods, for naming the one a failed planets
+// read names; nil when they cannot be read.
+func (s *server) installedMods(id string) []world.InstalledMod {
+	if s.worlds == nil {
+		return nil
+	}
+	installed, _ := s.worlds.Mods(id)
+	return installed
 }
 
 // ModsPath is the world's Mods tab, step 2.
@@ -287,21 +307,7 @@ func (s *server) catalogue(ctx context.Context, r *http.Request, sum world.Summa
 	}
 	// The reason may hold text a mod wrote, so it goes to the log only.
 	s.log.Warn("read the world's planets", "world", sum.ID, "error", err)
-	switch {
-	case errors.Is(err, game.ErrControlModTaken):
-		// A world mod named like Foreman's helper: it stays so until that mod
-		// goes (SPEC 5.6, ADR 0033).
-		return cat, i18n.M("mapgen.preview.control_mod_taken"), nil
-	case errors.Is(err, game.ErrPlanetsRefused):
-		return cat, i18n.M("newmap.builtin.refused"), nil
-	case errors.Is(err, game.ErrPlanetsMissing):
-		return cat, i18n.M("newmap.builtin.missing"), nil
-	}
-	var installed []world.InstalledMod
-	if s.worlds != nil {
-		installed, _ = s.worlds.Mods(sum.ID)
-	}
-	why, fix := builtinFailure(installed, sum.ID, err)
+	why, fix := builtinFailure(s.installedMods(sum.ID), sum.ID, err)
 	return cat, why, fix
 }
 

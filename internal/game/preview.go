@@ -99,6 +99,9 @@ type PreviewError struct {
 	ExitCode int
 	OOM      bool
 	Log      string
+	// ErrorLine is the game's first error line in the whole output, which
+	// the end in Log can miss behind a long traceback; empty when none.
+	ErrorLine string
 }
 
 func (e *PreviewError) Error() string {
@@ -574,7 +577,8 @@ func (c *Controller) runOneOff(ctx context.Context, name string, spec docker.Con
 			if cont.State.ExitCode == 0 && !cont.State.OOMKilled {
 				return nil
 			}
-			return &PreviewError{ExitCode: cont.State.ExitCode, OOM: cont.State.OOMKilled, Log: c.previewLog(id)}
+			tail, errLine := c.previewLog(id)
+			return &PreviewError{ExitCode: cont.State.ExitCode, OOM: cont.State.OOMKilled, Log: tail, ErrorLine: errLine}
 		}
 		select {
 		case <-tick.C:
@@ -642,13 +646,14 @@ func (c *Controller) oneOffHostConfigMem(dir string, memory int64) docker.HostCo
 	}
 }
 
-// previewLog returns the end of a failed preview's output, as one line.
-func (c *Controller) previewLog(id string) string {
+// previewLog returns the end of a failed preview's output, as one line, and
+// the game's first error line in all of it.
+func (c *Controller) previewLog(id string) (tail, errLine string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s, err := c.docker.Logs(ctx, id, docker.LogOptions{})
 	if err != nil {
-		return ""
+		return "", ""
 	}
 	defer func() { _ = s.Close() }()
 	var lines []string
@@ -657,10 +662,16 @@ func (c *Controller) previewLog(id string) string {
 		if err != nil {
 			break
 		}
-		lines = append(lines, strings.TrimSpace(l.Text))
+		line := strings.TrimSpace(l.Text)
+		if errLine == "" {
+			if bare := strings.TrimSpace(secondsPrefix.ReplaceAllString(line, "")); errorLine.MatchString(bare) {
+				errLine = cut(bare, maxKeptText)
+			}
+		}
+		lines = append(lines, line)
 		lines = lines[max(0, len(lines)-5):]
 	}
-	return strings.Join(lines, " | ")
+	return strings.Join(lines, " | "), errLine
 }
 
 // removePreview kills a preview container if it still runs, then deletes it.
