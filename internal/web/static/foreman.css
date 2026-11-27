@@ -9644,30 +9644,29 @@ main > .panel.danger-zone.danger-zone--blocked {
   }
 }
 
-/* Foreman's settings have eight tabs: on a phone the same even grid as
-   every other area's tabs, two across and four down, so every section
-   shows whole as a 44 px target and none hides past the edge; from 40 rem
-   the row wraps onto a second line rather than cutting a tab off. */
+/* Foreman's settings have eight tabs: on a phone they wrap onto as many
+   rows as their words need, each row filled edge to edge, so every section
+   shows whole on one line as a 44 px target and none hides past the edge;
+   from 40 rem the row wraps the same way. */
 @media (max-width: 39.99rem) {
   .subnav--settings ul,
   .subnav--settings ul:has(> li:nth-child(5)) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
   }
 
   .subnav--settings ul > li,
   .subnav--settings ul:has(> li:nth-child(5)) > li,
   .subnav--settings ul:has(> li:nth-child(5)) > li:nth-child(n + 4) {
-    grid-column: auto;
+    flex: 1 1 auto;
   }
 
   .subnav--settings a,
   .subnav--settings a[aria-current],
   .subnav--settings li:first-child a,
   .subnav--settings li:last-child a {
-    justify-content: flex-start;
     padding-inline: var(--space-3);
     white-space: nowrap;
-    text-align: start;
   }
 }
 
@@ -14376,13 +14375,6 @@ form.general-grid.setting-rows > .form-foot {
   }
 }
 
-/* ==== Plates that hold only a short text keep a reading width. */
-@media (min-width: 72rem) {
-  main > .panel.setting-rows:not(form) {
-    max-inline-size: 72rem;
-  }
-}
-
 /* ==== Mods: the switch already names the installed list and its count, so
    the plate drops its own title (kept for screen readers) and opens with
    the portal's summary, Update all at that line's end. */
@@ -14782,7 +14774,7 @@ form.general-grid.setting-rows .setting-row__body .hint {
   }
 
   main > .subnav a {
-    min-block-size: 2.5rem;
+    min-block-size: var(--target-min);
   }
 
   main > .subnav + * {
@@ -15219,7 +15211,7 @@ fieldset > legend {
 }
 
 .scope-card > label {
-  min-block-size: 0;
+  min-block-size: 1.75rem;
   font-weight: 600;
 }
 
@@ -15269,6 +15261,8 @@ fieldset > legend {
 }
 
 .mods-main > section > #sync-heading {
+  grid-column: 1;
+  grid-row: auto;
   font-size: var(--text-lg);
   font-weight: 600;
 }
@@ -15308,8 +15302,8 @@ fieldset > legend {
   margin: 0;
 }
 
-/* Installed mods on a wide panel: one compact row each, the name and
-   version over one short note line, the actions centred at the end. */
+/* Installed mods on a wide panel: one compact row each, the name, version
+   and actions on one line, one short note line under them. */
 @container (min-width: 36.01rem) {
   .mod-list tbody tr {
     padding-block: var(--space-2);
@@ -15321,7 +15315,7 @@ fieldset > legend {
   }
 
   .mod-list tbody td:last-child {
-    grid-row: 1 / span 2;
+    padding-block: 0;
   }
 
   .mod-list tbody td:first-child > div:not(.mod-line) {
@@ -15357,9 +15351,13 @@ fieldset > legend {
 
 /* The world list inside the page measure: the name column keeps room for
    the name and its live chip on one line. */
-@media (min-width: 64rem) {
-  .worlds > li {
-    grid-template-columns: minmax(14rem, 1.4fr) minmax(23.5rem, 2.6fr) minmax(10rem, 13rem);
+@media (min-width: 90rem) {
+  #main :is(.worlds-head, .worlds > li) {
+    grid-template-columns: minmax(19rem, 1fr) auto 16rem;
+  }
+
+  #main :is(.worlds > li > .facts, .worlds-head__facts) {
+    grid-template-columns: 6rem 5rem minmax(12rem, 15rem) 8rem;
   }
 }
 
@@ -15428,4 +15426,29 @@ main > .message,
   border-inline-start-width: 3px;
   border-radius: var(--radius);
   outline: none;
+}
+
+/* Import: the other-version opener stays in the fields' column, beside the
+   drop zone. */
+@container (min-width: 56rem) {
+  :is(.import-upload, .import-folder, .import-file) > details.disclosure {
+    grid-column: 1;
+  }
+}
+
+/* On a phone the find label and its field share one row, so the log starts
+   on the first screen above the command bar. */
+@media (max-width: 39.99rem) {
+  .log-tools > label[for="log-find"] {
+    margin-inline-end: 0;
+  }
+
+  .log-tools__find {
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+
+  .log-tools > .log-tools__filter {
+    flex: 1 1 100%;
+  }
 }
