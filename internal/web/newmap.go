@@ -106,17 +106,44 @@ func builtinFailure(installed []world.InstalledMod, id string, err error) (i18n.
 	case errors.Is(err, game.ErrPlanetsMissing):
 		return i18n.M("newmap.builtin.missing"), nil
 	}
-	if name := game.CrashedMod(err); name != "" {
-		if i := slices.IndexFunc(installed, func(m world.InstalledMod) bool { return m.Name == name && !m.BuiltIn }); i >= 0 {
-			title := cmp.Or(installed[i].Title, name)
-			return i18n.M("newmap.builtin.mod_failed", "mod", i18n.Ident(title)),
-				&Offer{Path: kindPlanPath(id, mods.KindRemove, name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(title))}
-		}
+	if m, ok := crashedWorldMod(installed, err); ok {
+		title := cmp.Or(m.Title, m.Name)
+		return i18n.M("newmap.builtin.mod_failed", "mod", i18n.Ident(title)),
+			&Offer{Path: kindPlanPath(id, mods.KindRemove, m.Name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(title))}
 	}
 	if errors.Is(err, game.ErrModSettingsKept) {
 		return i18n.M("newmap.builtin.failed_kept"), nil
 	}
 	return i18n.M("newmap.builtin.failed"), nil
+}
+
+// crashedWorldMod is the world's own mod (not a built-in one) the game's
+// error names (SPEC 5.6, 8.7). It is found by name when the error gives
+// one. A control-stage error with no event line gives only a title and
+// version: then it is the only mod with both, its name standing in for a
+// missing title.
+func crashedWorldMod(installed []world.InstalledMod, err error) (world.InstalledMod, bool) {
+	if name := game.CrashedMod(err); name != "" {
+		i := slices.IndexFunc(installed, func(m world.InstalledMod) bool { return m.Name == name && !m.BuiltIn })
+		if i < 0 {
+			return world.InstalledMod{}, false
+		}
+		return installed[i], true
+	}
+	title, version := game.CrashedModTitle(err)
+	if title == "" {
+		return world.InstalledMod{}, false
+	}
+	var found []world.InstalledMod
+	for _, m := range installed {
+		if !m.BuiltIn && cmp.Or(m.Title, m.Name) == title && m.Version == version {
+			found = append(found, m)
+		}
+	}
+	if len(found) != 1 {
+		return world.InstalledMod{}, false
+	}
+	return found[0], true
 }
 
 // installedMods is the world's mods, for naming the one a failed planets
