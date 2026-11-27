@@ -18,7 +18,13 @@ Branch `epic/fixes-20`, cut on 2026-11-27 from main `6d242662` (the merge of #96
 
 ## CSS files after task A (the owner of each in later tasks is in brackets)
 
-`css/tokens.css` [F1] · `css/base.css` [F2] · `css/shell.css` (top bar, page header, crumb, tab row, account menu, toast) [F1] · `css/buttons.css` [F2] · `css/forms.css` (fields, hints, Required, form footer) [F2] · `css/tables.css` [F2] · `css/plates.css` (plates, title band, gaps, facts) [F2] · `css/messages.css` (messages, notes, empty states, working bar) [F2] · `css/controls.css` (segmented, step bar, radios, checkboxes) [F2] · `css/pages/server.css` [P1] · `css/pages/settings.css` [P2] · `css/pages/worlds.css` (worlds, saves, snapshots, import, favorites, factory map) [P3] · `css/pages/generate.css` (generate, preview, large view, game and mod settings) [P4] · `css/pages/mods.css` (mods, plan, search) [P5]. Task A may adjust the split. Where it does, the orchestrator updates the brackets before wave 1.
+Task A's split, in the order they're joined: `css/tokens.css` [F1] · `css/base.css` (element selectors) [F2] · `css/buttons.css` [F2] · `css/tables.css` [F2] · `css/plates.css` (plates, title band, gaps, facts, the Danger zone) [F2] · `css/forms.css` (fields, hints, Required, form footer) [F2] · `css/messages.css` (messages, notes, empty states, working bar) [F2] · `css/controls.css` (segmented, step bar, radios, checkboxes) [F2] · `css/shell.css` (top bar, page header, crumb, tab row, account menu, toast) [F1] · `css/pages/server.css` [P1] · `css/pages/settings.css` [P2] · `css/pages/worlds.css` (worlds, saves, snapshots, import, favorites) [P3] · `css/pages/generate.css` (generate, preview, large view, game and mod settings) [P4] · `css/pages/mods.css` (mods, plan, search) [P5] · `css/pages/design.css` [G]. `factorymap.css` stays a separate, unlayered file [P3].
+
+Orchestrator rulings after task A:
+- The game-settings rules that `settings.html` uses sit in `pages/generate.css`. P2's first step moves them to `pages/settings.css`, checked pixel for pixel; P4 doesn't touch them.
+- The guard test `stylesheet_test.go` allowlists 10 known conflicts in `shorthandConflictsToFixInWave1`. Each owner fixes its own and deletes its own lines: the 5 `.field select` lines are F2's, the 2 `form.general-grid` lines P2's, the 3 `.plan-tree__deps` lines P5's. A stale entry fails the test.
+- `/design` is G's: F1 and F2 don't edit `design.html`. Each lists in its report the `/design` specimens its new components need, and a short G2 task adds them after F1 and F2 land.
+- Task checks are the repo-wide fast checks, `make test-pkgs` for the changed packages, and the touched e2e specs. The full `make verify` runs on the epic head before the epic PR.
 
 ## Tasks
 
@@ -32,7 +38,7 @@ Branch `epic/fixes-20`, cut on 2026-11-27 from main `6d242662` (the merge of #96
 | **Wave 1** (from the epic head after A) | | | | |
 | F1. Shell components | builder, Opus, high | Todd-Desktop-2 | `css/tokens.css`, `css/shell.css`, `layout.html`, a new `pagehead.html` partial, a new toast partial and `static/toast.js`, `error.html`, `setup.html`, `signin.html`, `signedout.html`, `menu.js`, DESIGN 6 | #979, #963, #984 (partial and 404/gate pages), #985 (component) |
 | F2. Shared components | builder, Opus, high | linux-dev | `css/base.css`, `buttons.css`, `forms.css`, `tables.css`, `plates.css`, `messages.css`, `controls.css`, new partials (working bar, empty state, form footer), DESIGN 7 | #976, #980, #982 (component), #987, #988, #989, #990 (components) |
-| G. `/design` in step | builder, Sonnet, high | linux-dev | `design.html`, `design.go` and its test, `e2e/tests/design.spec.ts` | (with #983 item 5) |
+| G. `/design` in step | builder, Sonnet, high | pve1-dev | `design.html`, `design.go` and its test, `e2e/tests/design.spec.ts` | (with #983 item 5) |
 | **Wave 2** (pages; from the epic head after F1, F2 and G) | | | | |
 | P1. Server area | builder, Opus, medium | linux-dev | `server.html`, `console.html`, `chat.html`, `stop.html`, `forcestop.html`, `switch.html`, `playeraction.html`, `saveplayers.html`, `css/pages/server.css`, `log.js`, `live.js`, their handlers and specs | #985, #986, #988, #990 and #991 (server parts) |
 | P2. Settings area | builder, Opus, medium | pve1-dev | `settings.html`, `generalsettings.html`, `generalconfirm.html`, `schedule.html`, `notifications.html`, `notificationform.html`, `notificationdelete.html`, `publicmods*.html`, `apitoken*.html`, `users.html`, `userdelete.html`, `account.html`, `auditlog.html`, `about.html`, `css/pages/settings.css`, their handlers and specs | #962, #981 (settings), and the settings parts of #985, #987, #988, #990 |
@@ -53,6 +59,6 @@ Waves 0 and 1 overlap only on the epic head: wave 1 starts when A has merged and
 
 ## Checks
 
-- Orchestrator, per task: `make verify` (TEST_SHARDS=4, one at a time), then the e2e specs for the touched files under the load gate.
+- Orchestrator, per task: `make check-go fmt-check vet lint typecheck`, `make test-pkgs` for the changed packages, then the e2e specs for the touched files under the load gate. The full `make verify` runs once on the epic head.
 - Reviews: code-reviewer on every task, a11y-reviewer on A, F1, F2 and P1 to P5, and security-reviewer on F1 (the toast prints server messages) and P2 (tokens and users).
 - The full CI suite on each epic push. Then the re-sweep (ruling 11), the targeted real-game tests (B, D), a trial deploy for Todd's hand test, and the epic PR.
