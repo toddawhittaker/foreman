@@ -207,12 +207,12 @@ summary::-webkit-details-marker {
   }
 }
 
-/* Checkboxes and radios are drawn, so an empty one never reads as disabled
-   in dark: a sunk 20 px box; chosen, the heading colour fills it under a
-   tick. The fill is neutral, so orange stays the primary action's. */
-.check > input:is([type="checkbox"], [type="radio"]),
-label > input[type="checkbox"]:only-child,
-td > input[type="checkbox"] {
+/* Every checkbox and radio is drawn, so an empty one never reads as
+   disabled in dark: a sunk 20 px box with a 12 px gap to its words (.check);
+   chosen, the heading colour fills it under a tick. The fill is neutral, so
+   orange stays the primary action's. A segment's or tab's radio is hidden
+   by its own rule. */
+input:is([type="checkbox"], [type="radio"]) {
   appearance: none;
   display: inline-grid;
   place-content: center;
@@ -227,13 +227,11 @@ td > input[type="checkbox"] {
   transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
 
-.check > input[type="radio"] {
+input[type="radio"] {
   border-radius: 50%;
 }
 
-.check > input:is([type="checkbox"], [type="radio"])::before,
-label > input[type="checkbox"]:only-child::before,
-td > input[type="checkbox"]::before {
+input:is([type="checkbox"], [type="radio"])::before {
   content: "";
   inline-size: 0.875rem;
   block-size: 0.875rem;
@@ -243,47 +241,37 @@ td > input[type="checkbox"]::before {
   transition: transform var(--dur-1) var(--ease);
 }
 
-.check > input[type="radio"]::before {
+input[type="radio"]::before {
   inline-size: 0.5rem;
   block-size: 0.5rem;
   border-radius: 50%;
   mask: none;
 }
 
-.check > input:is([type="checkbox"], [type="radio"]):hover,
-label > input[type="checkbox"]:only-child:hover,
-td > input[type="checkbox"]:hover {
+input:is([type="checkbox"], [type="radio"]):hover {
   border-color: var(--color-text-muted);
 }
 
-.check > input:is([type="checkbox"], [type="radio"]):checked,
-label > input[type="checkbox"]:only-child:checked,
-td > input[type="checkbox"]:checked {
+input:is([type="checkbox"], [type="radio"]):checked {
   background: var(--color-heading);
   border-color: var(--color-heading);
 }
 
-.check > input:is([type="checkbox"], [type="radio"]):checked::before,
-label > input[type="checkbox"]:only-child:checked::before,
-td > input[type="checkbox"]:checked::before {
+input:is([type="checkbox"], [type="radio"]):checked::before {
   transform: scale(1);
 }
 
-.check > input:is([type="checkbox"], [type="radio"]):disabled {
+input:is([type="checkbox"], [type="radio"]):disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 @media (forced-colors: active) {
-  .check > input:is([type="checkbox"], [type="radio"]),
-  label > input[type="checkbox"]:only-child,
-  td > input[type="checkbox"] {
+  input:is([type="checkbox"], [type="radio"]) {
     appearance: auto;
   }
 
-  .check > input:is([type="checkbox"], [type="radio"])::before,
-  label > input[type="checkbox"]:only-child::before,
-  td > input[type="checkbox"]::before {
+  input:is([type="checkbox"], [type="radio"])::before {
     content: none;
   }
 }
