@@ -116,3 +116,72 @@ func TestOfferConflictingOnlyWithOfferStaysOffered(t *testing.T) {
 		}
 	}
 }
+
+// Ticking an offer never hides another through the ticked offer's own
+// dependencies: Z clashes only with Y, which only the ticked X brings in.
+// The clash shows once both are ticked (SPEC 9.2).
+func TestOfferNotHiddenByTickedOffersDeps(t *testing.T) {
+	p := portal{
+		"a": {rel("1.0.0", "2.0", "? x", "? z")},
+		"x": {rel("1.0.0", "2.0", "y")},
+		"y": {rel("1.0.0", "2.0")},
+		"z": {rel("1.0.0", "2.0", "! y")},
+	}
+	for _, ticked := range [][]string{nil, {"x"}, {"z"}, {"x", "z"}} {
+		plan := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"a"}, Optional: ticked})
+		if got := offerNames(plan.Optional); !slices.Equal(got, []string{"x", "z"}) || len(plan.Unavailable) != 0 {
+			t.Errorf("ticked %v: optional %v, unavailable %v", ticked, got, plan.Unavailable)
+		}
+		clash := slices.ContainsFunc(plan.Conflicts, func(c Conflict) bool {
+			return c.Code == ConflictIncompatible && c.Mod == "z" && c.Other == "y"
+		})
+		if clash != (len(ticked) == 2) {
+			t.Errorf("ticked %v: conflicts %+v", ticked, plan.Conflicts)
+		}
+	}
+}
+
+// A mod offered by two parents is offered if either parent's offer fits,
+// from that parent; it is unavailable only when no offer fits.
+func TestOfferFitsForOneParent(t *testing.T) {
+	p := portal{
+		"a": {rel("1.0.0", "2.0", "? x >= 2.0.0")},
+		"b": {rel("1.0.0", "2.0", "? x")},
+		"x": {rel("1.5.0", "2.0")},
+	}
+	plan := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"a", "b"}})
+	if want := []Offer{{Name: "x", Of: "b"}}; !slices.Equal(plan.Optional, want) || len(plan.Unavailable) != 0 {
+		t.Errorf("optional %+v, unavailable %+v; want optional %+v", plan.Optional, plan.Unavailable, want)
+	}
+}
+
+// A mod one parent recommends and another only offers keeps one row that
+// is marked recommended.
+func TestOfferSharedKeepsRecommended(t *testing.T) {
+	p := portal{"a": {rel("1.0.0", "2.0", "? d")}, "c": {rel("1.0.0", "2.0", "+ d")}, "d": {rel("1.0.0", "2.0")}}
+	plan := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"a", "c"}})
+	if want := []Offer{{Name: "d", Of: "a", Chosen: true, Recommended: true}}; !slices.Equal(plan.Optional, want) {
+		t.Errorf("optional = %+v, want %+v", plan.Optional, want)
+	}
+}
+
+// A mod a ticked offer and a mod in the plan both require is fixed, so an
+// offer that clashes with it does not fit, ticked or not (SPEC 9.2). The
+// walk reaches y through the ticked x first, so y's reason names x: every
+// requirer counts, not only the first.
+func TestOfferClashingWithSharedRequirementIsUnavailable(t *testing.T) {
+	p := portal{
+		"a": {rel("1.0.0", "2.0", "? x", "? z")},
+		"b": {rel("1.0.0", "2.0", "w")},
+		"w": {rel("1.0.0", "2.0", "y")},
+		"x": {rel("1.0.0", "2.0", "y")},
+		"y": {rel("1.0.0", "2.0")},
+		"z": {rel("1.0.0", "2.0", "! y")},
+	}
+	for _, ticked := range [][]string{nil, {"x"}} {
+		plan := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"a", "b"}, Optional: ticked})
+		if got := offerNames(plan.Optional); !slices.Equal(got, []string{"x"}) || !slices.Equal(offerNames(plan.Unavailable), []string{"z"}) {
+			t.Errorf("ticked %v: optional %v, unavailable %v", ticked, got, plan.Unavailable)
+		}
+	}
+}

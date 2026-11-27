@@ -82,10 +82,7 @@ func Resolve(ctx context.Context, w World, req Request, lookup Lookup) (Plan, er
 			if err != nil {
 				return Plan{}, err
 			}
-			for n := range left {
-				misfit[n] = true
-			}
-			p := r.plan(unresolved, misfit)
+			p := r.plan(unresolved, left, misfit)
 			if req.Kind == KindInstall || req.Kind == KindUpdate {
 				if p.Releases, err = r.releases(req.Names); err != nil {
 					return Plan{}, err
@@ -198,12 +195,18 @@ func (r *resolver) recommendedRoot(name string) string {
 
 // requiredByEnabled reports whether an enabled mod needs name outright.
 func (r *resolver) requiredByEnabled(name string) bool {
+	return r.requiredBy(name, func(string) bool { return true })
+}
+
+// requiredBy reports whether an enabled mod for which by is true needs
+// name outright.
+func (r *resolver) requiredBy(name string, by func(string) bool) bool {
 	for n, t := range r.targets {
 		if n == name || !t.enabled {
 			continue
 		}
 		for _, d := range t.deps {
-			if d.Name == name && d.required() {
+			if d.Name == name && d.required() && by(n) {
 				return true
 			}
 		}
@@ -708,8 +711,9 @@ func (r *resolver) activeNeeds(name string) []Need {
 	return out
 }
 
-// plan writes the final round; left names the recommended mods left out.
-func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
+// plan writes the final round; left names the recommended mods left out,
+// and misfit the offers that do not fit the world.
+func (r *resolver) plan(unresolved []Unresolved, left map[string]bool, misfit map[Offer]bool) Plan {
 	p := Plan{Orphans: r.orphans}
 	names := make([]string, 0, len(r.targets))
 	for n := range r.targets {
@@ -755,7 +759,7 @@ func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
 					continue
 				}
 				o := Offer{Name: d.Name, Of: n, Chosen: r.wants(d, t), Recommended: d.Kind == Recommended}
-				if left[d.Name] {
+				if left[d.Name] || misfit[Offer{Name: d.Name, Of: n}] {
 					p.Unavailable = append(p.Unavailable, o)
 				} else {
 					p.Optional = append(p.Optional, o)
@@ -784,18 +788,23 @@ func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
 	byName := func(a, b Offer) int { return strings.Compare(a.Name+"\x00"+a.Of, b.Name+"\x00"+b.Of) }
 	slices.SortFunc(p.Optional, byName)
 	slices.SortFunc(p.Unavailable, byName)
+	// A mod that fits for any parent is offered from that parent alone.
+	p.Unavailable = slices.DeleteFunc(p.Unavailable, func(u Offer) bool {
+		return slices.ContainsFunc(p.Optional, func(o Offer) bool { return o.Name == u.Name })
+	})
 	p.Optional, p.Unavailable = onePerMod(p.Optional), onePerMod(p.Unavailable)
 	return p
 }
 
 // onePerMod keeps one offer per mod, so a mod two parents offer gets one
-// box (#972); it is chosen if any parent's offer is.
+// box (#972); it is chosen, or recommended, if any parent's offer is.
 func onePerMod(os []Offer) []Offer {
 	var out []Offer
 	at := map[string]int{}
 	for _, o := range os {
 		if i, ok := at[o.Name]; ok {
 			out[i].Chosen = out[i].Chosen || o.Chosen
+			out[i].Recommended = out[i].Recommended || o.Recommended
 			continue
 		}
 		at[o.Name] = len(out)
@@ -805,9 +814,18 @@ func onePerMod(os []Offer) []Offer {
 }
 
 // inPlan reports whether a mod is in the plan for a reason other than
-// being offered: on before this change, asked for, or required by an
-// enabled mod. Such a mod is never offered (#972).
+// being offered: on before this change, asked for, or required by a mod
+// that is itself in the plan. Such a mod is never offered (#972). A mod
+// only a ticked or recommended offer needs does not count, so ticking one
+// box never hides another (SPEC 9.2).
 func (r *resolver) inPlan(name string) bool {
+	return r.fixed(name, map[string]bool{})
+}
+
+// fixed is inPlan; seen cuts dependency cycles. It follows every requirer,
+// not only t.why, which names just the first.
+func (r *resolver) fixed(name string, seen map[string]bool) bool {
+	seen[name] = true
 	if r.wasOn(name) {
 		return true
 	}
@@ -815,18 +833,21 @@ func (r *resolver) inPlan(name string) bool {
 	if t == nil || !t.enabled {
 		return false
 	}
-	if t.why.Code != WhyOptionalOf && t.why.Code != WhyRecommendedBy {
+	switch t.why.Code {
+	case WhyOptionalOf, WhyRecommendedBy, WhyRequiredBy:
+	default:
 		return true
 	}
-	return r.requiredByEnabled(name)
+	return r.requiredBy(name, func(n string) bool { return !seen[n] && r.fixed(n, seen) })
 }
 
-// misfits names the offered mods the plan leaves off that do not fit the
-// world: no release on its line within the parent's limit, or required
-// dependencies that would conflict (#970, SPEC 9.2). Offers the plan turns
-// on are checked by the walk itself.
-func (r *resolver) misfits() (map[string]bool, error) {
-	out := map[string]bool{}
+// misfits names the offers the plan leaves off that do not fit the world:
+// no release on its line within that parent's limit, or required
+// dependencies that would conflict (#970, SPEC 9.2). Each is keyed by mod
+// and parent, since parents set different limits. Offers the plan turns on
+// are checked by the walk itself.
+func (r *resolver) misfits() (map[Offer]bool, error) {
+	out := map[Offer]bool{}
 	for n, offers := range r.offers {
 		t := r.targets[n]
 		if !t.enabled || t.remove || !t.changes() {
@@ -841,7 +862,7 @@ func (r *resolver) misfits() (map[string]bool, error) {
 				return nil, err
 			}
 			if !ok {
-				out[d.Name] = true
+				out[Offer{Name: d.Name, Of: n}] = true
 			}
 		}
 	}
