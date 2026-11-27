@@ -11,7 +11,9 @@ const container = "foreman-base";
 const live = { timeout: 20_000 };
 
 const badge = (page: Page) => page.locator("main h1 .state");
-const done = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
+// The Done message is a toast (DESIGN 6); its undo sits in the plate under the actions.
+const done = (page: Page) => page.locator("#toasts .toast--success").filter({ hasText: "Done:" });
+const undoRow = (page: Page) => page.locator("#result-undo");
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { second?: Parameters<typeof seedSecond>[1]; fixture?: string; spaceAge?: boolean } = {}) {
   await createAdmin(page);
@@ -96,7 +98,6 @@ test.describe("with the fake game", () => {
 
     await page.getByRole("button", { name: "Cancel stop" }).click();
     await expect(done(page)).toContainText("The stop was canceled. Nothing was saved or stopped, and nothing changed.", live);
-    await expect(done(page)).toContainText(/Finished at .*\d{1,2}:\d{2}.* \((now|\d+ seconds? ago)\)\./);
     await expect(badge(page)).toHaveText("Running");
     await expect(page.locator(".message--error")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Cancel stop" })).toHaveCount(0);
@@ -135,7 +136,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
 
     // Switch back after a switch: 2 clicks (SPEC 17.10).
-    await done(page).getByRole("link", { name: "Switch back to Base" }).click();
+    await undoRow(page).getByRole("link", { name: "Switch back to Base" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Second to Base?");
   });
 
@@ -144,10 +145,12 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, g);
     await page.getByRole("button", { name: "Take snapshot" }).click();
     await expect(done(page)).toContainText('Foreman took the snapshot "Manual snapshot" of Base.', live);
-    await expect(done(page)).toContainText(/Finished at .*\d{1,2}:\d{2}.* \((now|\d+ seconds? ago)\)\./);
     await checkPage(page);
 
     await page.getByRole("button", { name: "Start server" }).click();
+    await expect(badge(page)).toHaveText("Running", live);
+    // A toast already shown closes on its own; the page drawn now has none.
+    await page.reload();
     await expect(badge(page)).toHaveText("Running", live);
     await expect(done(page)).toHaveCount(0);
   });
@@ -166,7 +169,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("button", { name: "Restore snapshot" }).click();
     await expect(done(page)).toContainText("The world is restored.", live);
     await expect(badge(page)).toHaveText("Running", live);
-    await done(page).getByRole("link", { name: "Undo this restore" }).click();
+    await undoRow(page).getByRole("link", { name: "Undo this restore" }).click();
     await expect(page.getByRole("heading", { level: 1, name: /Restore the snapshot "Before restore"/ })).toBeVisible();
   });
 

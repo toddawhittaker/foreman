@@ -15,6 +15,13 @@
 <section class="panel mod-found" id="results" aria-labelledby="results-heading">
   {{- /* A page control without script reloads the page; focus goes to the results it asked for. */}}
   <h2 id="results-heading" tabindex="-1"{{if and .Paged (not .Problems)}} autofocus{{end}}>{{if .Searched}}{{t "mods.search.results_heading" "query" .Query}}{{else}}{{t "mods.search.results_heading_empty"}}{{end}}</h2>
+  {{- if .Tab}}
+  {{- /* On the tab the search box sits in the view switch's row, so what it looks in leads its results. */}}
+  <div class="mods-find__notes">
+    <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
+    {{template "portal-browse" .Line}}
+  </div>
+  {{- end}}
   {{- if not .QueryError.IsZero}}
   {{- /* Inside the panel so a typed search shows it too; modsearch.js ties it to the box after a swap. */}}
   <p class="error" id="mod-search-error"><strong>{{t "common.error.label"}}</strong> {{msg .QueryError}}</p>
@@ -23,7 +30,7 @@
     <p><strong>{{t "common.error.label"}}</strong> {{t "mods.search.unreachable"}}</p>
   </div>
   {{- else if not .Query}}
-  <p class="empty">{{t "mods.search.start"}}</p>
+  {{template "empty" (empty "mods" (t "mods.search.start"))}}
   {{- else if .Results.Rows}}
   {{- $p := .}}
   {{template "result-pager" (.Pager "top")}}
@@ -54,9 +61,9 @@
   {{- end}}
   {{template "result-pager" (.Pager "bottom")}}
   {{- else if not .LinkMiss.IsZero}}
-  <p class="empty">{{msg .LinkMiss}}</p>
+  {{template "empty" (empty "mods" (msg .LinkMiss))}}
   {{- else}}
-  <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
+  {{template "empty" (empty "mods" (t "mods.search.none" "line" .Line))}}
   {{- end}}
 </section>
 {{- end}}
@@ -135,7 +142,7 @@
   <p class="error" id="plan-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
   {{- end}}
   {{- if not .Picks}}
-  <p class="empty">{{t "mods.plan_panel.empty"}}</p>
+  {{template "empty" (empty "mods" (t "mods.plan_panel.empty"))}}
   {{- else}}
   {{- /* Open beside the results on a wide screen; on a phone a one-line bar that opens to the list. */}}
   <details class="plan-panel__list" id="plan-list" data-open-wide="64rem">

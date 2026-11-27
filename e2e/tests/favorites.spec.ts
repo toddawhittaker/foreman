@@ -65,10 +65,10 @@ test("make a favorite, start Generate from it, land on the review page, then del
   expect(url.searchParams.get("favorite")).toMatch(/^[0-9a-f]{16}$/);
   expect(url.searchParams.getAll("name")).toEqual([]);
   await expect(planRow(page, "fp-signs")).toContainText("1.0.0");
-  // The page says the world was made, above the changes, and takes focus.
-  const generated = page.locator("#plan-generated");
+  // A toast says the world was made; it leaves focus alone.
+  const generated = page.locator("#toasts [data-toast]");
   await expect(generated).toContainText("Generated From club from the favorite.");
-  await expect(generated).toBeFocused();
+  await expect(generated).not.toBeFocused();
   await checkPage(page);
   const id = url.pathname.split("/")[2];
   const server = readFileSync(join(foreman.dataDir, "worlds", id, "config", "server-settings.json"), "utf8");

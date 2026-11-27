@@ -209,3 +209,31 @@ test("a row with every action fits at large text", { tag: "@looks" }, async ({ p
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/mods-version-large-text-${test.info().project.name}.png`, fullPage: true });
 });
+
+// Choosing a release keeps the version list's box and its row's other parts
+// where they were, whatever the chosen option's length (DESIGN 7.8).
+test("choosing a release moves nothing in its row", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-ver", "1.0.0");
+  await fakePortal!.add("fp-ver", "2.0.0");
+  await setUpModsWorld(page, foreman, fakeGame!, world);
+  const boxes = () =>
+    page.locator("#mod-plan .plan-row").first().evaluate((row) =>
+      [row, ...row.querySelectorAll("select, .plan-row__name")].map((el) => {
+        const r = el.getBoundingClientRect();
+        return [r.x, r.y, r.width, r.height];
+      }),
+    );
+  for (const size of [{ width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    for (const theme of ["dark", "light"] as const) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto("/worlds/base/mods/plan?kind=install&name=fp-ver");
+      const before = await boxes();
+      const scrollY = await page.evaluate(() => window.scrollY);
+      await page.getByLabel("Version of fp-ver").selectOption("1.0.0");
+      await expect(planRow(page, "fp-ver")).toContainText("1.0.0");
+      expect(await boxes(), `${size.width} ${theme}`).toEqual(before);
+      expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+    }
+  }
+});

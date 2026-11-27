@@ -262,12 +262,17 @@
     if (e.target.matches?.(".console-past") && e.target.open) historyToEnd();
   }, true);
 
-  // After a command is sent, the newest reply is brought onto the screen (on
-  // a phone it would land just below it). Focus stays where it was.
-  document.addEventListener("htmx:afterSettle", (e) => {
-    const form = e.detail && e.detail.requestConfig && e.detail.requestConfig.elt;
-    if (!form || !form.matches || !form.matches(".console-form")) return;
-    const reply = document.getElementById("last-reply");
-    if (reply) reply.scrollIntoView({ block: "nearest" });
+  // After a command or a message is sent the page stays where it is: the
+  // reply is read out, and the history box shows its end (ruling 1 of fixes
+  // 20). The swap puts focus back on the new panel's control, and the
+  // browser may scroll to bring it into view, so the scroll is put back.
+  let keptScroll = null;
+  document.addEventListener("htmx:beforeSwap", (e) => {
+    if (e.detail.target?.matches?.("#console-panel, #chat-panel")) keptScroll = window.scrollY;
+  });
+  document.addEventListener("htmx:afterSettle", () => {
+    if (keptScroll === null) return;
+    if (window.scrollY !== keptScroll) window.scrollTo({ top: keptScroll, behavior: "instant" });
+    keptScroll = null;
   });
 })();

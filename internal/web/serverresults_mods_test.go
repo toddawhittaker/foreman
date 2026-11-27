@@ -137,7 +137,7 @@ func TestFailedModChangeOnTheServerPage(t *testing.T) {
 		}
 	}
 	// The failed step and its box come before the folded steps.
-	if i, j := strings.Index(html, "act-fix"), strings.Index(html, "<details"); i < 0 || j < i {
+	if i, j := strings.Index(html, "act-fix"), strings.Index(html, `<details class="disclosure">`); i < 0 || j < i {
 		t.Errorf("Try again at %d, folded steps at %d", i, j)
 	}
 	if strings.Count(html, "Skipped") != 4 || strings.Index(html, "Skipped") < strings.Index(html, "<details") {

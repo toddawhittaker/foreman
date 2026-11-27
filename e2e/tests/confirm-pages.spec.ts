@@ -12,11 +12,15 @@ async function expectPlainConfirmation(page: Page, where: string, opts: { backLi
   const main = page.locator("main");
   await expect(page.getByRole("heading", { level: 1 }), `${where}: one h1`).toHaveCount(1);
   const h1 = (await page.getByRole("heading", { level: 1 }).innerText()).trim();
-  // The heading comes first: nothing, such as a Back link, sits above it. The
-  // page header (DESIGN 6) counts as the heading: its crumb row is its own.
+  // The heading comes first: nothing, such as a Back link, sits above it. A
+  // page header may hold it, after an empty crumb row (DESIGN 6).
   const first = await main.evaluate((m) => {
-    const f = m.firstElementChild;
-    return f?.matches("header.pagehead") && f.querySelector(":scope > h1") ? "H1" : f?.tagName;
+    const head = m.firstElementChild;
+    if (head?.matches(".pagehead")) {
+      const crumb = head.querySelector(".pagehead__crumb");
+      return crumb && crumb.textContent?.trim() === "" && crumb.nextElementSibling?.tagName === "H1" ? "H1" : "header with more before its h1";
+    }
+    return head?.tagName;
   });
   expect(first, `${where}: the h1 is first`).toBe("H1");
   const others = await main.locator("h2, h3").allInnerTexts();
@@ -40,7 +44,7 @@ test("every confirmation page has one heading, no Back link and one main action"
   // Pages that need the game stopped or running.
   await page.goto("/");
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.getByText(/Done: Foreman took the snapshot/)).toBeVisible();
+  await expect(page.locator("#toasts").getByText(/Done: Foreman took the snapshot/)).toBeVisible();
   await page.goto("/worlds/base/update");
   await expectPlainConfirmation(page, "update");
   await page.goto("/worlds/second/switch");

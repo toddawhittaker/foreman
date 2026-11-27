@@ -79,7 +79,7 @@ test.describe("mod-settings.dat", () => {
     await page.goto("/worlds/base/mods");
     await openModTools(page);
     await expect(page.getByRole("link", { name: "Download mod-settings.dat" })).toHaveCount(0);
-    await expect(page.locator("#settings-heading + p + p, #settings-heading ~ p.empty")).toContainText("has no mod-settings.dat yet");
+    await expect(page.locator("#settings-heading ~ p", { hasText: "has no mod-settings.dat yet" })).toBeVisible();
     await checkPage(page);
   });
 

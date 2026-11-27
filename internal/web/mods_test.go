@@ -706,13 +706,13 @@ func modPageCases() []pageCase {
 	}
 	form := planForm{Kind: mods.KindSync, Save: "base.zip", Choices: map[string]mods.ChoiceKind{"old": mods.ChoiceWithout}, Confirmed: map[string]bool{}}
 	return []pageCase{
-		{"mods", "todd", 200, ModsPage{World: w, Mods: installed, NoAccount: true, LoadSave: "base.zip", HasSettings: true, Running: true,
+		{"mods", "todd", 200, ModsPage{World: w, Mods: installed, NoAccount: true, LoadSave: "base.zip", HasSettings: true, Running: true, Search: ModSearchPage{World: w, Tab: true},
 			CountdownForm: CountdownForm{Countdown: "60"},
 			Done:          i18n.M("mods.done", "world", w.Name, "label", "x"), Undo: &Offer{Path: "/x", Label: i18n.M("mods.undo")}}},
-		{"mods errors", "todd", 200, ModsPage{World: w, Mods: installed[:1], UploadError: i18n.M("mods.upload.not_mod"),
+		{"mods errors", "todd", 200, ModsPage{World: w, Mods: installed[:1], Search: ModSearchPage{World: w, Tab: true}, UploadError: i18n.M("mods.upload.not_mod"),
 			SettingsError: i18n.M("mods.settings.empty"), Failure: &Failure{Message: i18n.M("mods.error.changed")}}},
 		{"mods plan", "todd", 200, ModsPage{World: w, Mods: installed, Plan: samplePanel(w), Search: ModSearchPage{World: w, Tab: true}}},
-		{"mods plan down", "todd", 200, ModsPage{World: w, Plan: PlanPanel{World: w, Picks: []string{"alpha"},
+		{"mods plan down", "todd", 200, ModsPage{World: w, Search: ModSearchPage{World: w, Tab: true}, Plan: PlanPanel{World: w, Picks: []string{"alpha"},
 			Roots: []PlanNode{{Name: "alpha", Title: "alpha"}}, Unreachable: true, Error: planFull()}}},
 		{"mods unreadable", "todd", 200, ModsPage{World: world.Summary{ID: "x", Name: "X", Unreadable: true}}},
 		{"mod search", "todd", 200, ModSearchPage{World: w, Query: "alpha", NoAccount: true, Installed: map[string]bool{"alpha": true},

@@ -1,8 +1,12 @@
 import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, doneBox, live, stateBadge } from "./foreman.js";
 
-// SPEC 17.9, DESIGN 7.3: the Done box after a success has a close button. It
-// removes the box, and with it the Switch back offer; the box stays gone on a
-// reload; focus goes to the first control of the panel.
+// SPEC 17.9, DESIGN 6, 7.3: after a success with an undo, the Done words are a
+// toast and the plate keeps the undo in a row under its actions, with a close
+// button. Closing removes the row, and with it the Switch back offer, and the
+// server forgets the result, so neither comes back on a reload; focus goes to
+// the first control of the plate.
+
+const undoRow = (page: import("@playwright/test").Page) => page.locator("#result-undo");
 
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
@@ -17,15 +21,15 @@ test.describe("with the fake game", () => {
     await page.locator("section.confirm").getByRole("button", { name: "Switch to Second" }).click();
     await expect(stateBadge(page)).toHaveText("Running", live);
     await expect(doneBox(page)).toContainText("The worlds are switched", live);
-    await expect(page.getByRole("link", { name: "Switch back to Base" })).toBeVisible();
+    await expect(undoRow(page).getByRole("link", { name: "Switch back to Base" })).toBeVisible();
 
-    const close = doneBox(page).getByRole("button", { name: "Close this message" });
+    const close = undoRow(page).getByRole("button", { name: "Close this message" });
     const size = await close.boundingBox();
     expect(size!.width).toBeGreaterThanOrEqual(44);
     expect(size!.height).toBeGreaterThanOrEqual(44);
     await close.click();
 
-    await expect(doneBox(page)).toHaveCount(0);
+    await expect(undoRow(page)).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Switch back to Base" })).toHaveCount(0);
     await expect(page.locator("#act-snapshot")).toBeFocused();
     await checkPage(page);
@@ -56,9 +60,9 @@ test.describe("with the fake game", () => {
       await held;
       await route.fulfill({ response: answer });
     });
-    await doneBox(page).getByRole("button", { name: "Close this message" }).click();
-    // The server has forgotten the result; its live update removes the box.
-    await expect(doneBox(page)).toHaveCount(0, live);
+    await undoRow(page).getByRole("button", { name: "Close this message" }).click();
+    // The server has forgotten the result; its live update removes the row.
+    await expect(undoRow(page)).toHaveCount(0, live);
     release();
     await expect(page.locator("#act-snapshot")).toBeFocused();
   });
@@ -67,22 +71,26 @@ test.describe("with the fake game", () => {
 test.describe("with the fake game and no JavaScript", () => {
   test.use({ fakeGameOn: true, javaScriptEnabled: false });
 
-  test("the close button posts and the page comes back without the box", async ({ page, foreman, fakeGame }) => {
+  test("the close button posts and the page comes back without the row or the toast", async ({ page, foreman, fakeGame }) => {
     await createAdmin(page);
     seedWorld(foreman);
+    seedSecond(foreman);
     await fakeGame!.call("/image", { ref: image21, on: true });
-    await page.goto("/");
-    await page.getByRole("button", { name: "Take snapshot" }).click();
+    await page.goto("/worlds/second/switch");
+    await page.locator("section.confirm").getByRole("button", { name: "Switch to Second" }).click();
     // Without script the page does not follow the action, so it is loaded again.
     await expect(async () => {
       await page.goto("/");
-      await expect(doneBox(page)).toBeVisible({ timeout: 1_000 });
+      await expect(undoRow(page)).toBeVisible({ timeout: 1_000 });
     }).toPass(live);
+    await expect(doneBox(page)).toContainText("The worlds are switched");
 
-    await doneBox(page).getByRole("button", { name: "Close this message" }).click();
+    await undoRow(page).getByRole("button", { name: "Close this message" }).click();
     await expect(page).toHaveURL(/\/$/);
+    await expect(undoRow(page)).toHaveCount(0);
     await expect(doneBox(page)).toHaveCount(0);
     await page.reload();
+    await expect(undoRow(page)).toHaveCount(0);
     await expect(doneBox(page)).toHaveCount(0);
   });
 });

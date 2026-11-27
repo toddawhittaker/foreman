@@ -18,7 +18,7 @@ h2.op-heading {
 }
 
 .server-actions :is(a, button)::before,
-:is(#act-force-stop, .design-force-stop)::before {
+:is(.server-force-stop, .design-force-stop)::before {
   flex: none;
   inline-size: 1.125rem;
   block-size: 1.125rem;
@@ -27,50 +27,50 @@ h2.op-heading {
 }
 
 .shortcuts > a::before,
-.server-actions :is(#act-start, #act-stop, #act-restart, #act-snapshot, #act-pull, [data-design-icon])::before,
-:is(#act-force-stop, .design-force-stop)::before {
+.server-actions :is(.server-act--start, .server-act--stop, .server-act--restart, .server-act--snapshot, .server-act--pull, [data-design-icon])::before,
+:is(.server-force-stop, .design-force-stop)::before {
   content: "";
 }
 
-:is(#act-start, [data-design-icon="start"]) {
+:is(.server-act--start, [data-design-icon="start"]) {
   --icon: var(--i-start);
 }
 
-:is(#act-stop, [data-design-icon="stop"]) {
+:is(.server-act--stop, [data-design-icon="stop"]) {
   --icon: var(--i-stop);
   color: var(--color-danger-text);
   border-color: var(--color-danger);
 }
 
-:is(#act-restart, [data-design-icon="restart"]) {
+:is(.server-act--restart, [data-design-icon="restart"]) {
   --icon: var(--i-restart);
 }
 
-:is(#act-snapshot, [data-design-icon="snapshot"]) {
+:is(.server-act--snapshot, [data-design-icon="snapshot"]) {
   --icon: var(--i-snapshot);
 }
 
-#act-pull {
+.server-act--pull {
   --icon: var(--i-download);
 }
 
-:is(#act-world, [data-design-icon="map"]) {
+:is(.shortcut--map, [data-design-icon="map"]) {
   --icon: var(--i-map);
 }
 
-:is(#act-mods, [data-design-icon="mods"]) {
+:is(.shortcut--mods, [data-design-icon="mods"]) {
   --icon: var(--i-mods);
 }
 
-:is(#act-settings, [data-design-icon="settings"]) {
+:is(.shortcut--settings, [data-design-icon="settings"]) {
   --icon: var(--i-settings);
 }
 
-:is(#act-switch-world, [data-design-icon="switch"]) {
+:is(.shortcut--switch, [data-design-icon="switch"]) {
   --icon: var(--i-switch);
 }
 
-#players-heading {
+.server-players-panel > .section-head > h2 {
   --icon: var(--i-players);
 }
 
@@ -169,6 +169,23 @@ h2.op-heading {
   padding-inline: 0;
 }
 
+/* Copy keeps its room until copy.js shows it, so nothing beside it moves. */
+.join__copy[hidden] {
+  display: inline-flex;
+  visibility: hidden;
+}
+
+/* A step's working bar sits under its name (DESIGN 7.6). */
+.steps > li > .working {
+  grid-column: 2;
+}
+
+@container (max-width: 14rem) {
+  .steps > li > .working {
+    grid-column: 1;
+  }
+}
+
 /* A row of quiet links, each a full-size target. */
 .links {
   display: flex;
@@ -250,16 +267,22 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   display: none;
 }
 
+/* The actions row is always drawn, so its place never changes; with no
+   action to offer it takes no room. */
+.server-actions:not(:has(*)) {
+  display: none;
+}
+
 /* The everyday actions lead the row; Force stop is set apart at its end,
    and on a phone on a full-width row of its own below a gap. */
-.server-actions :is(#act-force-stop, .design-force-stop) {
+.server-actions :is(.server-force-stop, .design-force-stop) {
   margin-inline-start: auto;
 }
 
 @container (max-width: 24rem) {
   /* As wide as its words, but it wraps rather than push the page wider
      at large text (SPEC 17.2). */
-  .server-actions :is(#act-force-stop, .design-force-stop) {
+  .server-actions :is(.server-force-stop, .design-force-stop) {
     flex: 1 1 100%;
     order: 2;
     justify-content: center;
@@ -269,7 +292,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 
 /* Force stop is a link, not a button face, drawn with .button--risky's
    colours and size so every opener of a destructive step looks alike. */
-:is(#act-force-stop, .design-force-stop) {
+:is(.server-force-stop, .design-force-stop) {
   --icon: var(--i-force);
   display: inline-flex;
   align-items: center;
@@ -283,7 +306,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   text-decoration: none;
 }
 
-:is(#act-force-stop, .design-force-stop):hover {
+:is(.server-force-stop, .design-force-stop):hover {
   background: var(--color-danger-bg);
 }
 
@@ -348,8 +371,34 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   gap: var(--space-2);
 }
 
+/* "Jump to the newest" floats over the log's foot only while there is
+   something newer, so it keeps no empty row under the log. */
+.log-frame {
+  position: relative;
+}
+
 .log-frame > .button {
-  justify-self: end;
+  position: absolute;
+  inset-block-end: var(--space-3);
+  inset-inline-end: var(--space-3);
+  margin: 0;
+}
+
+/* An empty log, or a find that matches nothing, says so over the log's box,
+   in its middle, so the log and what follows never move when lines come
+   (ruling 1 of fixes 20). */
+.log-frame > :is(.log, .log-frame__empty) {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.log-frame > .log-frame__empty {
+  align-self: center;
+  pointer-events: none;
+}
+
+.log-frame > .log-frame__empty[hidden] {
+  display: none;
 }
 
 .log-frame > .button[hidden] {
@@ -415,7 +464,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 @media (forced-colors: active) {
   /* Line icons are masks painted with a background, which forced colours
      replace with the page colour; paint them in the system colours instead. */
-  :is(.button--icon, .server-actions :is(a, button), :is(#act-force-stop, .design-force-stop), .page-head--row .button)::before {
+  :is(.button--icon, .server-actions :is(a, button), :is(.server-force-stop, .design-force-stop), .page-head--row .button)::before {
     forced-color-adjust: none;
     background: ButtonText;
   }
@@ -464,12 +513,6 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   min-block-size: 3rem;
 }
 
-.terminal__log > .section-head > h2 {
-  font-size: var(--text-xl);
-  font-weight: 600;
-  line-height: 1.5;
-}
-
 /* The log pane runs to the card's edges; long lines scroll sideways rather
    than wrap inside a word. The command row sits in the log's card, 16 px
    under the log, with no strip between. "Jump to the newest" floats over the
@@ -506,10 +549,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 }
 
 .terminal .log-frame > .button {
-  position: absolute;
-  inset-block-end: var(--space-3);
   inset-inline-end: var(--card-pad);
-  margin: 0;
 }
 
 .terminal .log-frame > .button:not(:active) {
@@ -523,19 +563,6 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 
 .terminal #console-panel > .log {
   border-color: var(--color-line);
-}
-
-.terminal #console-panel > .empty--art {
-  grid-auto-flow: column;
-  justify-content: start;
-  padding-block: 0;
-  font-size: var(--text-sm);
-  text-align: start;
-}
-
-.terminal #console-panel > .empty--art::before {
-  inline-size: 1.25rem;
-  block-size: 1.25rem;
 }
 
 /* The command's label and the required note share a line above the row. */
@@ -614,7 +641,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 /* Each page is a quiet link, not a second set of controls: icon, name and
    a chevron at the row's end. */
 .shortcuts > a,
-.shortcuts > #act-switch-world {
+.shortcuts > .shortcut--switch {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -638,12 +665,12 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 }
 
 .shortcuts > a::before,
-.shortcuts > #act-switch-world::before {
+.shortcuts > .shortcut--switch::before {
   background: var(--color-text-muted);
 }
 
 .shortcuts > a::after,
-.shortcuts > #act-switch-world::after {
+.shortcuts > .shortcut--switch::after {
   content: "";
   flex: none;
   inline-size: 1rem;
@@ -685,7 +712,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
     align-content: start;
   }
 
-  .server-grid > .panel:has(#players-heading) {
+  .server-grid > .server-players-panel {
     grid-row: 1 / span 2;
     grid-column: 1;
     align-self: start;
@@ -708,7 +735,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
     grid-template-rows: auto 1fr;
   }
 
-  .server-grid > .panel:has(#players-heading) {
+  .server-grid > .server-players-panel {
     grid-row: 1 / span 2;
     grid-column: 1;
   }
@@ -742,7 +769,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   }
 
   .shortcuts > a,
-  .shortcuts > #act-switch-world,
+  .shortcuts > .shortcut--switch,
   .shortcuts > :not(:last-child) {
     justify-content: flex-start;
     min-block-size: 3rem;
@@ -755,12 +782,12 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   }
 
   .shortcuts > a:hover,
-  .shortcuts > #act-switch-world:hover {
+  .shortcuts > .shortcut--switch:hover {
     background: var(--color-secondary-hover);
   }
 
   .shortcuts > a::after,
-  .shortcuts > #act-switch-world::after {
+  .shortcuts > .shortcut--switch::after {
     content: none;
   }
 }
@@ -897,7 +924,10 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   white-space: nowrap;
 }
 
+/* The actions take the cell's width and lend none to it, so opening a row
+   never widens the name column and moves the times (ruling 1 of fixes 20). */
 .player-actions > .actions {
+  contain: inline-size;
   gap: var(--space-2);
   padding-block: var(--space-2) var(--space-3);
 }
@@ -952,14 +982,28 @@ tr:has(> td > .player-actions[open]) > td.num {
 }
 
 /* "Not running" follows the heading's live badge, so it goes when the game
-   starts and comes back when it stops, with no reload. */
+   starts and comes back when it stops, with no reload. While it shows it is
+   the plate's one empty state: the log and the form wait for the game
+   (DESIGN 8.14). */
 .chat-not-running {
   display: grid;
   gap: var(--space-3);
 }
 
+.chat-plate > :is(.log-frame, #chat-panel) {
+  display: none;
+}
+
 main:has(#server-title .state--running) .chat-not-running {
   display: none;
+}
+
+main:has(#server-title .state--running) .chat-plate > .log-frame {
+  display: grid;
+}
+
+main:has(#server-title .state--running) .chat-plate > #chat-panel {
+  display: block;
 }
 
 /* 8.15, 8.17 The next restart and the low-disk warning are regions of the
@@ -983,7 +1027,7 @@ tr:has(> td > .player-actions) > td.num {
 /* On a phone Force stop ends the actions on a row of its own, under a
    hairline, so it is set apart from the everyday ones. */
 @container (max-width: 24rem) {
-  .server-actions:has(:is(#act-force-stop, .design-force-stop))::after {
+  .server-actions:has(:is(.server-force-stop, .design-force-stop))::after {
     content: "";
     order: 1;
     flex: 1 1 100%;
@@ -1087,17 +1131,17 @@ tr:has(> td > .player-actions) > td.num {
    and Stop, share a row under Take snapshot; narrower, every button keeps
    the full width. A form lends its box, so its button is the row's item. */
 @container (min-width: 19rem) and (max-width: 24rem) {
-  .server-actions:has(> #act-restart):has(> #act-stop) {
+  .server-actions:has(> :is(.server-act--restart, [data-design-icon="restart"])):has(> :is(.server-act--stop, [data-design-icon="stop"])) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .server-actions:has(> #act-restart):has(> #act-stop) :is(.button, :is(#act-force-stop, .design-force-stop)),
-  .server-actions:has(> #act-restart):has(> #act-stop)::after {
+  .server-actions:has(> :is(.server-act--restart, [data-design-icon="restart"])):has(> :is(.server-act--stop, [data-design-icon="stop"])) :is(.button, :is(.server-force-stop, .design-force-stop)),
+  .server-actions:has(> :is(.server-act--restart, [data-design-icon="restart"])):has(> :is(.server-act--stop, [data-design-icon="stop"]))::after {
     grid-column: 1 / -1;
   }
 
-  .server-actions:has(> #act-restart):has(> #act-stop) > :is(#act-restart, #act-stop) {
+  .server-actions:has(> :is(.server-act--restart, [data-design-icon="restart"])):has(> :is(.server-act--stop, [data-design-icon="stop"])) > :is(.server-act--restart, .server-act--stop, [data-design-icon="restart"], [data-design-icon="stop"]) {
     grid-column: auto;
     padding-inline: var(--space-2);
   }
@@ -1124,7 +1168,7 @@ tr:has(> td > .player-actions) > td.num {
   margin: 0;
 }
 
-.danger-row > :is(#act-force-stop, .design-force-stop) {
+.danger-row > :is(.server-force-stop, .design-force-stop) {
   order: -1;
   flex: 0 1 auto;
   margin: 0;
@@ -1346,7 +1390,7 @@ tr:has(> td > .player-actions) > td.num {
   }
 }
 
-:is(#act-stop, [data-design-icon="stop"]):hover {
+:is(.server-act--stop, [data-design-icon="stop"]):hover {
   background: var(--color-danger-bg);
   color: var(--color-danger-text);
   border-color: var(--color-danger);
@@ -1592,16 +1636,26 @@ tr:has(> td > .player-actions) > td.num {
    save's players beside the gauges rather than under them. */
 @media (min-width: 64rem) {
   .status-card.plate .facts-block {
-    display: grid;
+    display: flex;
     flex-wrap: wrap;
     align-items: start;
     gap: var(--space-4) 0;
-    grid-template-columns: minmax(0, 4fr) repeat(auto-fit, minmax(9rem, 1fr));
     padding-block: var(--space-4);
   }
 
-  .status-card.plate .facts-block > [sse-swap="facts"] {
-    flex: 4 1 36rem;
+  /* Every fact is one equal cell of one row, however many the state has,
+     so no stretch of nothing opens between them (issue 988). */
+  .status-card.plate .facts-block > [sse-swap="facts"],
+  .status-card.plate .facts-block > [sse-swap="facts"] > .facts.stat-grid {
+    display: contents;
+  }
+
+  .status-card.plate .facts-block > [sse-swap="facts"] > .facts.stat-grid > .stat {
+    flex: 1 1 9rem;
+  }
+
+  .status-card.plate .facts-block > [sse-swap="facts"] > :not(.facts) {
+    flex: 1 1 100%;
   }
 
   .status-card.plate .facts-block > :is([sse-swap="playtime"], [sse-swap="saveplayers"], [sse-swap="loads"], [sse-swap="schedule"]) {
@@ -1626,14 +1680,13 @@ tr:has(> td > .player-actions) > td.num {
   padding-block-start: calc(var(--space-2) + (var(--target-min) - 1lh) / 2);
 }
 
-/* An online player's total sits right under their name, not a row lower. */
-.server-players td > .player-actions + br {
-  display: none;
-}
-
-.server-players td > .player-actions + br + .hint {
-  display: block;
+/* An online player's total is the summary's last line, right under their
+   name, so the actions open below it and it never moves. */
+.player-actions__total {
+  flex: 1 0 100%;
   margin-block: calc(-1 * var(--space-2)) var(--space-1);
+  color: var(--color-text-faint);
+  font-weight: 400;
 }
 
 .log :is(.log-warning, .log-error) {
@@ -1645,8 +1698,7 @@ tr:has(> td > .player-actions) > td.num {
    filled action; Stop server stands apart, 32 px off, in its danger
    outline (DESIGN 7.1). */
 @media (min-width: 64rem) {
-  .server-actions > :has(> #act-stop),
-  .server-actions > :is(#act-stop, [data-design-icon="stop"]) {
+  .server-actions > :is(.server-act--stop, [data-design-icon="stop"]) {
     margin-inline-start: var(--space-6);
     padding-inline-start: var(--space-4);
     border-inline-start: var(--border-width) solid var(--color-danger);
@@ -1810,8 +1862,19 @@ tr:has(> td > .player-actions) > td.num {
 @media (min-width: 64rem) {
   .status-card.plate {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     overflow: visible;
+  }
+
+  /* The head row's tint runs on under the actions, past the band. */
+  .status-card.plate::before {
+    content: "";
+    grid-row: 1;
+    grid-column: 1 / -1;
+    background: var(--color-raised);
+    border-block-end: var(--border-width) solid var(--color-line);
+    border-start-start-radius: calc(var(--radius-lg) - 1px);
+    border-start-end-radius: calc(var(--radius-lg) - 1px);
   }
 
   .status-card.plate > .plate__band {
@@ -1820,40 +1883,48 @@ tr:has(> td > .player-actions) > td.num {
     border-start-start-radius: calc(var(--radius-lg) - 1px);
   }
 
+  /* The control region lends its parts to the plate's grid: the actions
+     and Emergency actions keep the head row's end in every state, and what
+     the server reports takes full rows under it (ruling 1 of fixes 20). */
   .status-card.plate > [sse-swap="control"] {
+    display: contents;
+  }
+
+  .status-card.plate > [sse-swap="control"] > .server-actions {
     grid-column: 2;
     grid-row: 1;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-3);
-    padding: var(--space-2) var(--card-pad);
-    background: var(--color-raised);
-    border-block-end: var(--border-width) solid var(--color-line);
-    border-start-end-radius: calc(var(--radius-lg) - 1px);
+    align-self: center;
+    flex-wrap: nowrap;
+    margin: 0;
+    padding: var(--space-2) var(--card-pad) var(--space-2) var(--space-3);
+  }
+
+  .status-card.plate > [sse-swap="control"] > .server-actions:has(~ .emergency) {
+    padding-inline-end: 0;
+  }
+
+  .status-card.plate > [sse-swap="control"] > .emergency {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+    padding-inline: var(--space-3) var(--card-pad);
+  }
+
+  .status-card.plate > [sse-swap="control"] > :not(.server-actions, .emergency) {
+    grid-column: 1 / -1;
+    margin: var(--space-4) var(--card-pad) 0;
+  }
+
+  .status-card.plate > [sse-swap="control"] > :is(.server-actions, .emergency) + :not(.server-actions, .emergency) {
+    margin-block-start: var(--card-pad);
+  }
+
+  .status-card.plate > [sse-swap="control"] > :last-child:not(.server-actions, .emergency) {
+    margin-block-end: var(--space-4);
   }
 
   .status-card.plate > .facts-block {
     grid-column: 1 / -1;
-  }
-
-  .status-card.plate:has(> [sse-swap="control"] > :not(.server-actions, .emergency)) > [sse-swap="control"] {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    display: grid;
-    justify-content: stretch;
-    padding: var(--card-pad);
-    background: none;
-  }
-
-  .status-card.plate:has(> [sse-swap="control"] > :not(.server-actions, .emergency)) > .plate__band {
-    grid-column: 1 / -1;
-  }
-
-  .status-card.plate > [sse-swap="control"] > .server-actions {
-    flex-wrap: nowrap;
-    margin: 0;
   }
 
   .status-card .emergency {
@@ -1946,10 +2017,14 @@ tr:has(> td > .player-actions) > td.num {
     display: none;
   }
 
-  .server-players td > .hint,
-  .server-players td > .player-actions + br + .hint {
+  .server-players td > .hint {
     display: inline;
     margin: 0 0 0 var(--space-3);
+  }
+
+  .player-actions__total {
+    flex: 0 1 auto;
+    margin: 0 0 0 var(--space-1);
   }
 
   .server-players td > .player-actions {
@@ -2018,15 +2093,19 @@ tr:has(> td > .player-actions) > td.num {
   }
 }
 
-/* The console's count of lines shown takes a row of its own under the bar.
-   While empty it takes no room but stays a live region, so its first words
-   are still read out. */
-.log-tools > .log-tools__count {
-  flex: 1 1 100%;
-  margin: 0;
+/* The console's count of lines shown sits at the end of the bar's foot,
+   over the log's faded top padding, so its words come and go without
+   moving the bar's controls or the log (ruling 1 of fixes 20). Empty, it
+   stays a live region, so its first words are still read out. */
+.log-tools {
+  position: relative;
 }
 
-.log-tools > .log-tools__count:empty {
+.log-tools > .log-tools__count {
   position: absolute;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  margin: 0;
+  pointer-events: none;
 }
 }

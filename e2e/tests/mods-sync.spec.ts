@@ -239,16 +239,88 @@ test("ticking an optional mod that conflicts shows the conflict", { tag: "@looks
   await expect(page.getByRole("checkbox", { name: "fp-conf offered by fp-main" })).toHaveCount(0);
   await expect(page.locator("#plan-unavailable")).toContainText("fp-conf, offered by fp-main, is left out");
   // Ticking fp-a keeps fp-b's box (the rows never change with what is
-  // ticked). Its position is #971's: the fp-a change row lands above it.
+  // ticked).
   const fpB = page.getByRole("checkbox", { name: "fp-b offered by fp-main" });
+  const before = await fpB.boundingBox();
   await page.getByRole("checkbox", { name: "fp-a offered by fp-main" }).check();
   await expect(page.getByRole("checkbox", { name: "fp-a offered by fp-main" })).toBeChecked();
   await expect(page.locator("#announcer")).toContainText("Plan updated");
   await expect(fpB).toBeVisible();
+  // fp-a's change row lands below the offers, so fp-b keeps its box exactly.
+  const after = await fpB.boundingBox();
+  expect({ x: after!.x, y: after!.y }).toEqual({ x: before!.x, y: before!.y });
   await fpB.check();
   await expect(page.locator("#plan-conflicts")).toContainText("fp-b cannot run together with fp-a.", { timeout: 3_000 });
   await expect(page.locator("#announcer")).toHaveText("Plan updated: it has a conflict, so it cannot be applied.");
   // A redraw never moves focus to the conflict box.
   await expect(page.locator("#plan-conflicts")).not.toBeFocused();
   await expect(page.locator("#act-apply")).toHaveCount(0);
+});
+
+// Ticking or clearing an offer redraws the plan in place: every box already
+// shown keeps its exact place and the page does not scroll (SPEC 9.14,
+// DESIGN 7.8). A box's change row goes below the offers, and an offer the
+// tick brings goes at the end of the list, even when its name sorts first.
+test("ticking or clearing an offer moves no box and does not scroll", async ({ page, foreman, fakeGame, fakePortal }) => {
+  const portal = fakePortal!;
+  const names = Array.from({ length: 12 }, (_, i) => `fp-${String(i + 1).padStart(2, "0")}`);
+  await portal.add("fp-main", "1.0.0", ["base >= 2.0", "+ fp-rec", ...names.map((n) => `? ${n}`)]);
+  await portal.add("fp-rec", "1.0.0", ["base >= 2.0"]);
+  for (const n of names) await portal.add(n, "1.0.0", n === "fp-05" ? ["base >= 2.0", "? fp-00x"] : ["base >= 2.0"]);
+  await portal.add("fp-00x", "1.0.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip" });
+
+  type Layout = { scrollY: number; boxes: Record<string, { x: number; y: number; w: number; h: number }> };
+  const layout = (): Promise<Layout> =>
+    page.locator("#mod-plan .plan-offer input[type=checkbox]").evaluateAll((els) => ({
+      scrollY: window.scrollY,
+      boxes: Object.fromEntries(
+        els.map((el) => {
+          const r = el.getBoundingClientRect();
+          return [el.id, { x: r.x, y: r.y, w: r.width, h: r.height }];
+        }),
+      ),
+    }));
+  const box = (name: string, of = "fp-main") => page.getByRole("checkbox", { name: `${name} offered by ${of}` });
+  const recommended = page.getByRole("checkbox", { name: "fp-rec recommended by fp-main" });
+  // Each step: act on one box, wait for the redraw, then every box shown
+  // before is where it was, the page has not scrolled, and focus stayed.
+  const step = async (target: ReturnType<typeof box>, act: "check" | "uncheck", label: string) => {
+    // The admin scrolls the box into view first; only the redraw must not scroll.
+    await target.scrollIntoViewIfNeeded();
+    const before = await layout();
+    const updates = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/mods/plan"));
+    await target[act]();
+    await updates;
+    await expect(page.locator("#announcer")).toContainText("Plan updated");
+    await expect(target).toBeFocused();
+    const after = await layout();
+    expect(after.scrollY, `${label}: scrollY`).toBe(before.scrollY);
+    for (const [id, b] of Object.entries(before.boxes)) {
+      if (id in after.boxes) expect(after.boxes[id], `${label}: ${id}`).toEqual(b);
+    }
+    return after;
+  };
+
+  for (const size of [{ width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    for (const theme of ["dark", "light"] as const) {
+      await page.emulateMedia({ colorScheme: theme });
+      const label = `${size.width} ${theme}`;
+      await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
+      // The middle of a list long enough to scroll.
+      await box("fp-05").evaluate((el) => el.scrollIntoView({ block: "center" }));
+      expect(await page.evaluate(() => window.scrollY), `${label}: the page scrolls`).toBeGreaterThan(0);
+
+      // An offer with an offer of its own: the new one goes at the end.
+      let now = await step(box("fp-05"), "check", `${label} tick fp-05`);
+      const ids = Object.keys(now.boxes);
+      expect(ids.at(-1), label).toBe(await box("fp-00x", "fp-05").getAttribute("id"));
+      await step(box("fp-07"), "check", `${label} tick fp-07`);
+      await step(box("fp-07"), "uncheck", `${label} clear fp-07`);
+      await step(recommended, "uncheck", `${label} clear fp-rec`);
+      await step(box("fp-05"), "uncheck", `${label} clear fp-05`);
+      await expect(box("fp-00x", "fp-05")).toHaveCount(0);
+    }
+  }
 });

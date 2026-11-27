@@ -3,41 +3,39 @@
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
 <script src="{{static "log.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "server-tabs" "chat"}}{{end}}
+{{- /* The page header (DESIGN 6), the Server tabs' shape on all three tabs. */}}
+{{define "head-crumb"}}{{with .Page}}{{if .HasWorld}}{{template "crumb" (crumbs serverPath (t "common.nav.server") "" .World.Name)}}{{else}}<p class="eyebrow">{{t "common.nav.server"}}</p>{{end}}{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{if .HasWorld}}<span id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></span>{{else}}{{t "common.nav.chat"}}{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "server-tabs" "chat"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
 {{- if not .HasWorld}}
-<h1>{{t "common.nav.chat"}}</h1>
-{{template "rail" $}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
-  <p class="empty">{{t "chat.none"}}</p>
+  {{template "empty" (empty "worlds" (t "chat.none"))}}
   <div class="actions"><a href="{{worldsPath}}" class="button">{{t "server.none.go"}}</a></div>
 </section>
 {{- else}}
 {{- /* The facts event carries the heading's badge and the announce event is read out, so state changes are spoken here too (DESIGN 7.5). */}}
 <div sse-swap="facts" hidden></div>
 <div sse-swap="announce" hidden></div>
-{{template "crumb" (crumbs serverPath (t "common.nav.server") "" .World.Name)}}
-<header class="page-head">
-  <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
-</header>
-{{template "rail" $}}
-<section class="panel" aria-labelledby="chat-heading">
+<section class="panel chat-plate" aria-labelledby="chat-heading">
   <h2 id="chat-heading" class="visually-hidden">{{t "common.nav.chat"}}</h2>
-  {{- /* Always there, and hidden by the style sheet while the heading's live badge says the game runs, so it follows the game without a reload (DESIGN 8.14). */}}
+  {{- /* Always there. The style sheet shows it, and only it, while the heading's live badge says the game is not running, and shows the log and the form while it runs, so the page follows the game without a reload (DESIGN 8.14). */}}
   <div class="chat-not-running">
-    <p class="empty empty--art empty--chat" id="chat-not-running">{{t "chat.not_running"}}</p>
+    {{template "empty" (empty "chat" (t "chat.not_running") "chat-not-running")}}
     <div class="actions"><a href="{{serverPath}}">{{t "chat.go_server"}}</a></div>
   </div>
-  {{- if not .Rows}}
-  <p class="empty" id="log-empty">{{t "chat.empty"}}</p>
-  {{- end}}
   {{- /* Followed by log.js as the Console's log is: new lines are appended, never redrawn, so the polite log reads each once. */}}
   <div class="log-frame" data-log-events="{{.EventsPath}}" data-max-lines="{{.MaxLines}}" data-log-html>
     {{- /* The log role is on the box, not the list, so the list keeps its own role and its items stay list items. */}}
     <div class="log" tabindex="0" role="log" aria-label="{{t "chat.history_label"}}"><ol class="chat-lines">{{template "chat-rows" .}}</ol></div>
+    {{- /* No chat yet says so over the log's box, so the form never moves when the first line comes (ruling 1 of fixes 20). */}}
+    {{- if not .Rows}}
+    <div class="log-frame__empty" id="log-empty">{{template "empty" (empty "chat" (t "chat.empty"))}}</div>
+    {{- end}}
     <button type="button" class="button" hidden>{{t "server.console.jump"}}</button>
   </div>
   {{template "chat-panel" .}}
@@ -61,14 +59,6 @@
 {{define "chat-panel" -}}
 <div id="chat-panel">
   {{template "summary" .Problems}}
-  {{- if not .Failure.IsZero}}
-  <div class="message message--error">
-    <p><strong>{{t "common.error.label"}}</strong> {{msg .Failure}}</p>
-    {{- if .GoServer}}
-    <div class="actions"><a href="{{serverPath}}">{{t "chat.go_server"}}</a></div>
-    {{- end}}
-  </div>
-  {{- end}}
   <form class="field" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#chat-panel" hx-swap="outerHTML" novalidate>
     {{template "required-note"}}
     <label for="chat-message" class="required">{{t "chat.message.label"}}</label>
@@ -88,8 +78,13 @@
 </div>
 {{- end}}
 
+{{/* What a script swaps in after a message: the panel, the news for the
+     announcer, and a refusal as a toast (DESIGN 6, "Toasts"). */}}
 {{define "chat-response" -}}
 {{template "chat-panel" .}}
+{{- range .Toasts}}
+{{template "toast-oob" .}}
+{{- end}}
 {{- if not .Announce.IsZero}}
 <div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
 {{- end}}
