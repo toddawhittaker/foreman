@@ -60,11 +60,12 @@ test("25 results: a list a page at a time, with Previous, a page box and Next ab
   if (phone(page)) expect(planBox.y).toBeGreaterThan(searchBox.y + searchBox.height);
   else {
     expect(Math.abs(planBox.y - searchBox.y)).toBeLessThan(2);
-    // It stays in view while the list scrolls past, clear of the 56 px top strip (issue 761).
+    // It stays in view at its sticky offset while the list scrolls past, and nothing covers it (DESIGN 8.11).
     await page.getByRole("navigation", { name: "Result pages, below the list" }).scrollIntoViewIfNeeded();
+    const stickyTop = await panel(page).evaluate((p) => parseFloat(getComputedStyle(p).top));
     const held = (await panel(page).boundingBox())!;
-    expect(held.y).toBeGreaterThanOrEqual(56);
-    expect(held.y).toBeLessThan(96);
+    expect(Math.abs(held.y - stickyTop)).toBeLessThan(1);
+    expect(await panel(page).evaluate((p, [x, y]) => p.contains(document.elementFromPoint(x, y)), [held.x + held.width / 2, held.y + 2])).toBe(true);
   }
   await checkPage(page);
   await shot(page, "mods-search-25");
