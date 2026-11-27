@@ -483,20 +483,45 @@ var (
 )
 
 // A stylesheet's content values hold no words: "", symbols or attr(...),
-// so a label comes from the page in its own language.
+// so a label comes from the page in its own language. The joined
+// foreman.css is checked whole, with every other stylesheet under static.
 func TestStylesheetHasNoHardCodedText(t *testing.T) {
+	joined, err := stylesheet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sheets := map[string]string{stylesheetName: string(joined)}
 	files, err := fs.Glob(staticFS, "static/*.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, f := range files {
 		src, _ := staticFS.ReadFile(f)
-		for _, m := range reCSSContent.FindAllStringSubmatch(string(src), -1) {
-			if cssContentHasWords(m[1]) {
-				t.Errorf("%s: content with words: %q", f, m[1])
-			}
+		sheets[f] = string(src)
+	}
+	if _, ok := sheets["static/factorymap.css"]; !ok {
+		t.Errorf("factorymap.css is not checked: %v", files)
+	}
+	for name, src := range sheets {
+		for _, c := range cssTextFindings(src) {
+			t.Errorf("%s: content with words: %q", name, c)
 		}
 	}
+	// The check catches text planted in a copy of the joined stylesheet.
+	if got := cssTextFindings(string(joined) + "\n.planted::after { content: \"New\"; }\n"); !slices.Equal(got, []string{`"New"`}) {
+		t.Errorf("planted content: \"New\" found as %q", got)
+	}
+}
+
+// cssTextFindings lists the content values in css that hold words.
+func cssTextFindings(css string) []string {
+	var out []string
+	for _, m := range reCSSContent.FindAllStringSubmatch(css, -1) {
+		if cssContentHasWords(m[1]) {
+			out = append(out, strings.TrimSpace(m[1]))
+		}
+	}
+	return out
 }
 
 func cssContentHasWords(v string) bool {
