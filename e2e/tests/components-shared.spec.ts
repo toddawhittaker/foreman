@@ -242,11 +242,10 @@ const rowPages: [string, string][] = [
 ];
 
 for (const width of [1920, 390]) {
-  // On a phone the saves list and the audit log lay each row out as a record
-  // of its own, whose cells drop their padding (pages/worlds.css and
-  // pages/settings.css); they are left out of the phone run until those
-  // pages adopt the row padding.
-  const phoneOwnLayout = ["/worlds/base/saves", "/settings/audit-log"];
+  // On a phone the saves list lays each row out as a record of its own,
+  // whose cells drop their padding (pages/worlds.css); it is left out of the
+  // phone run until that page adopts the row padding.
+  const phoneOwnLayout = ["/worlds/base/saves"];
   const pages = width === 1920 ? rowPages : rowPages.filter(([path]) => !phoneOwnLayout.includes(path));
   test.describe(`at ${width} px`, () => {
     test.use({ viewport: { width, height: 1000 } });

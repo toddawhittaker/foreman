@@ -197,7 +197,7 @@ func TestAccountSaveReplaceRemove(t *testing.T) {
 	}
 
 	body := ah.get(PathAccount+"?done=saved", withCookie(c)).Body.String()
-	for _, want := range []string{"<strong>Done:</strong> The account is saved.", "Mod downloads are on. The account was stored on", `<time datetime="`, `<details class="disclosure" id="account-replace">`, `<button type="submit" class="button">Replace account</button>`, "by alice", "Replace account", "Remove account"} {
+	for _, want := range []string{"<span data-toast-text>The account is saved.</span>", "Mod downloads are on. The account was stored on", `<time datetime="`, `<details class="disclosure" id="account-replace">`, `<button type="submit" class="button">Replace account</button>`, "by alice", "Replace account", "Remove account"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q\n%s", want, body)
 		}
@@ -217,7 +217,7 @@ func TestAccountSaveReplaceRemove(t *testing.T) {
 		t.Errorf("remove audit entries %q", got)
 	}
 	body = ah.get(PathAccount+"?done=removed", withCookie(c)).Body.String()
-	if !strings.Contains(body, "<strong>Done:</strong> The account is removed.") || !strings.Contains(body, "no account is set") {
+	if !strings.Contains(body, "<span data-toast-text>The account is removed.</span>") || !strings.Contains(body, "no account is set") {
 		t.Errorf("page after remove:\n%s", body)
 	}
 	ah.wantNoSecrets("the removed page", body, acctUser, acctToken, "second-user-1", "second-token-2")
@@ -323,7 +323,7 @@ func TestAccountReturnPath(t *testing.T) {
 	const back = "/worlds/base/mods?q=a%20b"
 
 	body := ah.get(PathAccount+"?return="+url.QueryEscape(back), withCookie(c)).Body.String()
-	if !strings.Contains(body, `<input type="hidden" name="return" value="/worlds/base/mods?q=a%20b">`) || !strings.Contains(body, `href="/worlds/base/mods?q=a%20b">Cancel</a>`) {
+	if !strings.Contains(body, `<input type="hidden" name="return" value="/worlds/base/mods?q=a%20b">`) || !strings.Contains(body, `href="/worlds/base/mods?q=a%20b" class="button button--ghost">Cancel</a>`) {
 		t.Errorf("the page does not carry the return path\n%s", body)
 	}
 

@@ -217,25 +217,6 @@
   list-style: none;
 }
 
-/* An on-or-off feature states its state as a switch plate: a 4 px edge in
-   the state's colour on the raised face, then the sentence (DESIGN 8.20). */
-#public-mods-state {
-  inline-size: fit-content;
-  max-inline-size: min(100%, 52rem);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-line);
-  border-inline-start: 4px solid var(--color-border);
-  border-radius: var(--radius);
-  color: var(--color-heading);
-  font-weight: 500;
-}
-
-main:has(#act-public-mods-open) #public-mods-state {
-  background: var(--color-ok-bg);
-  border-inline-start-color: var(--color-ok);
-}
-
 /* What the page shares gets half the card, not the narrow title column. */
 @container (min-width: 60rem) {
   .panel.setting-row:has(> .setting-row__head #public-mods-shares-heading) {
@@ -244,11 +225,7 @@ main:has(#act-public-mods-open) #public-mods-state {
 }
 
 /* The public mods page: the running world's card leads, and where the files
-   go is a note in a rail beside it; a players' page, so a narrower frame. */
-main:has(> .public-world) {
-  max-inline-size: 80rem;
-}
-
+   go is a note in a rail beside it. */
 @container (min-width: 56rem) {
   .public-world,
   .public-where {
@@ -457,7 +434,7 @@ main:has(> .public-world) {
 }
 
 @container (width > 64rem) {
-  .audit-table :is(.audit-user, .audit-world) {
+  .audit-table .audit-world {
     white-space: nowrap;
   }
 
@@ -490,18 +467,16 @@ main:has(> .public-world) {
     clip-path: inset(50%);
   }
 
-  /* The action is the row's title; the other facts follow as label and value pairs. */
+  /* The action is the row's title; the other facts follow as label and
+     value pairs. The row carries the cells' padding, even on every side, so
+     its highlight keeps them clear of its edges (DESIGN 8.3). */
   .audit-table tr {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-1) var(--space-4);
-    padding-block: var(--space-3);
+    padding: var(--space-3) var(--cell-pad);
     border-block-end: var(--border-width) solid var(--color-line);
     position: relative;
-  }
-
-  .audit-table tbody tr:first-child {
-    padding-block-start: 0;
   }
 
   .audit-table td {
@@ -812,8 +787,8 @@ main:has(> .public-world) {
   }
 }
 
-/* Create a token: the name and button on the start side, the three scopes
-   side by side beside them, the admin warning across the foot. */
+/* Create a token: the name on the start side, the three scopes side by
+   side beside it, the notes and the foot bar across both. */
 .token-create {
   display: grid;
   gap: var(--space-4);
@@ -826,8 +801,9 @@ main:has(> .public-world) {
     align-items: start;
   }
 
-  .token-create > .required-note,
-  .token-create > .message {
+  /* The name and the scopes share a row; the notes and the foot bar run
+     across both columns. */
+  .token-create > :not(.field, fieldset) {
     grid-column: 1 / -1;
   }
 
@@ -837,7 +813,6 @@ main:has(> .public-world) {
 
   .token-create > fieldset {
     grid-column: 2;
-    grid-row: 2;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     column-gap: var(--space-5);
     row-gap: var(--space-1);
@@ -847,46 +822,6 @@ main:has(> .public-world) {
   .token-create > fieldset > #scope-hint {
     grid-column: 1 / -1;
     grid-row: 1;
-  }
-
-  .token-create > fieldset > label:nth-of-type(1) {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .token-create > fieldset > label:nth-of-type(2) {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .token-create > fieldset > label:nth-of-type(3) {
-    grid-column: 3;
-    grid-row: 2;
-  }
-
-  .token-create > fieldset > p:nth-of-type(2) {
-    grid-column: 1;
-    grid-row: 3;
-  }
-
-  .token-create > fieldset > p:nth-of-type(3) {
-    grid-column: 2;
-    grid-row: 3;
-  }
-
-  .token-create > fieldset > p:nth-of-type(4) {
-    grid-column: 3;
-    grid-row: 3;
-  }
-
-  .token-create > .message {
-    grid-row: 3;
-  }
-
-  .token-create > .actions {
-    grid-column: 1;
-    grid-row: 4;
-    margin: 0;
   }
 }
 
@@ -980,11 +915,10 @@ main:has(> .public-world) {
   }
 }
 
-/* The token-created page: one panel at a form's width. */
+/* The token-created page: what was made and its secret. */
 .token-created {
   display: grid;
   gap: var(--space-5);
-  max-inline-size: 52rem;
 }
 
 .token-created__done {
@@ -995,7 +929,6 @@ main:has(> .public-world) {
   max-inline-size: none;
   padding: var(--space-3) var(--space-4);
   background: var(--color-ok-bg);
-  border-inline-start-width: 3px;
   border-radius: var(--radius);
   outline: none;
 }
@@ -1094,10 +1027,6 @@ main:has(> .public-world) {
     grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
     column-gap: var(--space-6);
   }
-
-  .webhook-form > .webhook-form__lang {
-    max-inline-size: 30rem;
-  }
 }
 
 /* A webhook's Edit and Delete sit side by side at the row's end, each its
@@ -1169,42 +1098,6 @@ main:has(> .public-world) {
   }
 }
 
-/* ---- A form's last row: a rule, then Cancel just before the primary
-   action at the end, as the General settings foot bar orders them. */
-.actions.form-end {
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-2);
-  padding-block-start: var(--space-4);
-  border-block-start: var(--border-width) solid var(--color-line);
-}
-
-.actions.form-end > a:not(.button) {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: var(--target-min);
-  padding-inline: var(--space-3);
-  font-weight: 600;
-}
-
-@container (min-width: 52rem) {
-  .token-create > .actions.form-end {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Both ways in are off: said first, on the warning edge, so a token is
-   not made without knowing it will not work yet. */
-.token-access-off {
-  max-inline-size: none;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-warn-bg);
-  border-inline-start: 3px solid var(--color-warn);
-  border-radius: var(--radius);
-  color: var(--color-text);
-}
-
 /* ==== General settings: each group is a self-contained tile (title, one
    line of help, then its fields stacked), two to a row on a laptop or wider
    and one on a phone (DESIGN 8.15). */
@@ -1232,24 +1125,12 @@ form.general-grid.setting-rows > .setting-row {
   border-block-start: var(--border-width) solid var(--color-line);
 }
 
-form.general-grid.setting-rows > .setting-row .setting-row__body {
-  gap: var(--space-3);
+/* The tiles have no row gap, so the note keeps the hint's gap above the first. */
+form.general-grid.setting-rows > .required-note {
+  margin: 0 0 var(--space-3);
 }
 
-form.general-grid.setting-rows .setting-row__body input[inputmode="numeric"] {
-  inline-size: 10rem;
-}
-
-form.general-grid.setting-rows .setting-row__body .hint {
-  max-inline-size: 100ch;
-}
-
-form.general-grid.setting-rows > .required-note,
-form.general-grid.setting-rows > p:first-child {
-  margin: 0;
-  justify-self: end;
-}
-
+/* Each tile ends in its own padding, so the bar needs no gap of its own. */
 form.general-grid.setting-rows > .form-foot {
   margin-block-start: 0;
 }
@@ -1265,12 +1146,6 @@ form.general-grid.setting-rows > .form-foot {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0 var(--space-6);
   }
-}
-
-/* The required note shares the tiles' first row's top edge rather than
-   taking a row of its own. */
-form.general-grid.setting-rows > .required-note {
-  margin-block-end: var(--space-3);
 }
 
 /* API tokens: the two ways in side by side as one row of state, so the
@@ -1295,10 +1170,6 @@ form.general-grid.setting-rows .setting-row__head .hint {
   margin: 0;
 }
 
-form.general-grid.setting-rows > p:first-child {
-  margin-block-end: var(--space-3);
-}
-
 @container (min-width: 84rem) {
   /* Inside a wide column a group's name and help sit beside its fields. */
   form.general-grid.setting-rows > .setting-row {
@@ -1314,10 +1185,6 @@ form.general-grid.setting-rows > p:first-child {
   .split.token-created-layout {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-}
-
-.token-created-layout > .token-created {
-  max-inline-size: none;
 }
 
 .token-use {
@@ -1417,22 +1284,6 @@ form.general-grid.setting-rows > p:first-child {
   padding-inline-start: calc(1.25rem + var(--space-2));
 }
 
-.token-create > .actions > .token-access-off {
-  margin: 0 auto 0 0;
-  padding: 0 0 0 var(--space-3);
-  max-inline-size: 60ch;
-  background: none;
-  border: 0;
-  border-inline-start: 3px solid var(--color-warn);
-  border-radius: 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-}
-
-.token-create > .actions > .token-access-off:dir(rtl) {
-  margin: 0 0 0 auto;
-}
-
 /* ==== A world's game settings (DESIGN 8.10). */
 /* Settings: the connected-players heading is an h2 for the outline but sits inside the admins fieldset, so it is set as an h3. */
 #connected-heading {
@@ -1450,6 +1301,13 @@ form.general-grid.setting-rows > p:first-child {
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   min-inline-size: 0;
+}
+
+/* The same gap between plates as main's own. */
+@media (min-width: 40rem) {
+  .settings-main {
+    gap: var(--space-5);
+  }
 }
 
 /* Players connected now: one aligned row each, the name, then Make admin. */
@@ -1492,10 +1350,6 @@ form.general-grid.setting-rows > p:first-child {
   margin-block-start: var(--space-3);
 }
 
-#settings-gameplay select {
-  max-inline-size: 24rem;
-}
-
 .form-foot > #settings-unsaved {
   display: inline-flex;
   align-items: center;
@@ -1513,14 +1367,6 @@ form.general-grid.setting-rows > p:first-child {
 
   .form-foot > #settings-unsaved:not(:empty) {
     flex-basis: 100%;
-  }
-}
-
-/* World settings: on a wide panel a text field is as wide as what it holds.
-   A narrow panel has no rail; the raw editor's link follows the form (DESIGN 8.10). */
-@container settings (min-width: 44rem) {
-  .settings .field input:is([type="text"], [type="password"]):not([inputmode="numeric"]) {
-    max-inline-size: 35rem;
   }
 }
 
@@ -1549,11 +1395,6 @@ form.general-grid.setting-rows > p:first-child {
   font-size: var(--text-xl);
   font-weight: 600;
   line-height: 1.3;
-}
-
-.settings-main > .message {
-  inline-size: fit-content;
-  max-inline-size: min(100%, 52rem);
 }
 
 /* A control that saves on its own inside a larger form sits in a box with

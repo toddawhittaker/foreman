@@ -32,7 +32,7 @@ func TestAboutPageShowsTheBuild(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		`<h1 class="about__heading">`, "About Foreman",
+		`<h1><span class="about__heading">`, "About Foreman",
 		"<dt>Version</dt><dd>v1.4.0-3-gabcdef1</dd>",
 		"<dt>Commit</dt><dd>0123456789ab (modified)</dd>",
 		"<dt>Go version</dt><dd>" + runtime.Version() + "</dd>",

@@ -48,7 +48,7 @@ test.describe("with a secret key", () => {
     await page.getByLabel("factorio.com token").fill(token);
     await page.getByRole("button", { name: "Save account" }).click();
     await expect(page).toHaveURL("/settings/factorio-account?done=saved");
-    await expect(page.locator(".message--success")).toHaveText("Done: The account is saved.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The account is saved.");
     await expect(page.locator("#account-stored")).toContainText(/^Mod downloads are on\. The account was stored on .+ by admin\.$/);
     await expect(page.locator("#account-stored time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
     await expectNoValues(page, username, token);
@@ -65,12 +65,12 @@ test.describe("with a secret key", () => {
     await page.getByLabel("factorio.com username").fill("second-user");
     await page.getByLabel("factorio.com token").fill("second-token");
     await page.getByRole("button", { name: "Replace account" }).click();
-    await expect(page.locator(".message--success")).toHaveText("Done: The account is saved.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The account is saved.");
     await expectNoValues(page, username, token, "second-user", "second-token");
 
     await page.getByRole("button", { name: "Remove account" }).click();
     await expect(page).toHaveURL("/settings/factorio-account?done=removed");
-    await expect(page.locator(".message--success")).toHaveText("Done: The account is removed.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The account is removed.");
     await expect(page.locator("#account-none")).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove account" })).toHaveCount(0);
     await checkPage(page);
@@ -110,7 +110,7 @@ test.describe("with a secret key", () => {
     await page.keyboard.type(token);
     // Enter in a field submits the form.
     await page.keyboard.press("Enter");
-    await expect(page.locator(".message--success")).toHaveText("Done: The account is saved.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The account is saved.");
 
     // Replace by keyboard: the summary opens the form, and Enter in a field submits it.
     await tabTo(page, page.getByText("Replace the account"));
@@ -121,11 +121,11 @@ test.describe("with a secret key", () => {
     await tabTo(page, page.getByLabel("factorio.com token"));
     await page.keyboard.type("second-token");
     await page.keyboard.press("Enter");
-    await expect(page.locator(".message--success")).toHaveText("Done: The account is saved.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The account is saved.");
 
     await tabTo(page, page.getByRole("button", { name: "Remove account" }));
     await page.keyboard.press("Enter");
-    await expect(page.locator(".message--success")).toHaveText("Done: The account is removed.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The account is removed.");
   });
 
   test("a refused replace opens the form again and asks for both fields", async ({ page }) => {

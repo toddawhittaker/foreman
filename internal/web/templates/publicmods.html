@@ -48,11 +48,15 @@
 </html>
 {{end}}
 
+{{define "head-title"}}{{t "publicmods.title"}}{{end}}
+
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-<h1>{{t "publicmods.title"}}</h1>
 {{- if not .Worlds}}
-<p class="empty" id="public-none">{{t "publicmods.none"}}</p>
+<section class="panel public-world" aria-label="{{t "publicmods.title"}}">
+  {{template "empty" (empty "mods" (t "publicmods.none") "public-none")}}
+</section>
 {{- end}}
 {{- range $i, $w := .Worlds}}
 <section class="panel public-world" aria-labelledby="public-world-name-{{$i}}">
@@ -87,7 +91,7 @@
     {{- end}}
   </ul>
   {{- else}}
-  <p class="empty" id="public-no-mods">{{t "publicmods.no_mods"}}</p>
+  {{template "empty" (empty "mods" (t "publicmods.no_mods") "public-no-mods")}}
   {{- end}}
 </section>
 {{- end}}

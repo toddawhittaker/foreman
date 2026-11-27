@@ -24,7 +24,7 @@ func TestPublicModsSettings(t *testing.T) {
 		t.Errorf("after turning on, the page answered %d", rep.StatusCode)
 	}
 	body := p.get(PathPublicModsSettings + "?done=on")
-	for _, want := range []string{`id="done-message"`, `href="/public/mods"`, `value="off"`} {
+	for _, want := range []string{"Done:</strong> <span data-toast-text>", `href="/public/mods"`, `value="off"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the on page lacks %q", want)
 		}

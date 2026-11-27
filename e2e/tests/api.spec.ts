@@ -21,7 +21,7 @@ test("a token reads the tool list and runs a tool while REST API access is on, a
 
   // MCP stays off throughout: the two switches are separate.
   await page.getByRole("button", { name: "Turn on REST API access" }).click();
-  await expect(page.locator("#done-message")).toHaveText("Done: Turned REST API access on.");
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Turned REST API access on.");
   await expect(page.locator("#api-state")).toContainText("REST API access is on.");
   await expect(page.locator("#mcp-state")).toContainText("MCP access is off.");
 

@@ -1,23 +1,12 @@
 {{define "title"}}{{t "users.title"}}{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "users"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.users"))}}{{end}}
+{{define "head-title"}}{{t "users.title"}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "users"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.users"))}}
-<h1>{{t "users.title"}}</h1>
-{{template "rail" $}}
-{{- template "summary" .Problems}}
-{{- if .Done}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "deleted"}}{{t "users.done.deleted"}}{{else}}{{t "users.done.password"}}{{end}}</p>
-</div>
-{{- end}}
-{{- if not .Error.IsZero}}
-<div class="message message--error" id="users-refusal" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-</div>
-{{- end}}
 <p class="page-intro">{{t "users.intro"}}</p>
 
 {{- /* The list leads; changing your own password sits in the rail beside it. */}}
@@ -48,6 +37,8 @@
   <h2 id="password-heading">{{t "users.password.heading"}}</h2>
   {{- if eq .MyKind "password"}}
   <form method="post" action="{{.PasswordPath}}" class="form-stack" novalidate>
+    {{- /* The summary leads the form it is about, so the list beside it keeps its place. */}}
+    {{- template "summary" .Problems}}
     {{template "required-note"}}
     <div class="field">
       <label for="password-current" class="required">{{t "users.password.current"}}</label>
@@ -75,9 +66,7 @@
       {{- end}}
     </div>
     <p class="hint" id="password-sessions">{{t "users.password.sessions"}}</p>
-    <div class="actions">
-      <button type="submit" class="button button--primary" id="act-password">{{t "users.password.button"}}</button>
-    </div>
+    {{template "form-foot" (formFoot "submit" (t "users.password.button") "submitID" "act-password")}}
   </form>
   {{- else if eq .MyKind "oidc"}}
   <p id="password-managed">{{t "users.password.managed.oidc"}}</p>
@@ -90,4 +79,3 @@
 {{- end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

@@ -131,7 +131,7 @@ func TestScheduleSave(t *testing.T) {
 	}
 	body := hn.get(PathSchedule+"?done=saved", withCookie(c)).Body.String()
 	for _, want := range []string{
-		`id="done-message"`, "Saved. The next restart is", `datetime="2026-11-03T04:30:00Z"`,
+		"<span data-toast-text>Saved. The next restart is", `datetime="2026-11-03T04:30:00Z"`,
 		"Foreman restarts the active world every day at 04:30 (", "Europe/London", `<option value="Europe/London" selected>`,
 		`name="enabled" value="on" checked>`, `value="3"`,
 	} {

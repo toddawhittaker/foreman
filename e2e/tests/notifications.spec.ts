@@ -47,7 +47,7 @@ test.describe("with a secret key", () => {
     await page.getByLabel("Webhook address").fill(discordURL);
     await page.getByRole("button", { name: "Add webhook" }).click();
     await expect(page).toHaveURL(/\/settings\/notifications\?done=added/);
-    await expect(page.locator("#done-message")).toHaveText("Done: Added the Discord webhook to discord.com.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Added the Discord webhook to discord.com.");
     await expect(page.locator("#notify-state")).toHaveText("1 webhook gets messages.");
     const row = page.locator("#webhook-1");
     await expect(row.getByRole("heading", { level: 2 })).toHaveText("Discord discord.com");
@@ -69,7 +69,7 @@ test.describe("with a secret key", () => {
     await page.getByRole("checkbox", { name: "An API token is about to expire" }).check();
     await page.getByLabel("Language of the messages").selectOption("de");
     await page.getByRole("button", { name: "Save webhook" }).click();
-    await expect(page.locator("#done-message")).toHaveText("Done: Saved the Discord webhook to discord.com.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Saved the Discord webhook to discord.com.");
     await expect(events).toHaveText(["Start", "Stop", "Crash", "Crash loop", "Scheduled restart", "Low disk", "Token expiring"]);
     await expect(row.locator('dd[lang="de"]')).toHaveText("Deutsch");
 
@@ -81,7 +81,7 @@ test.describe("with a secret key", () => {
     await expect(row).toBeVisible();
     await page.getByRole("link", { name: "Delete the Discord webhook to discord.com" }).click();
     await page.getByRole("button", { name: "Delete webhook" }).click();
-    await expect(page.locator("#done-message")).toHaveText("Done: Deleted the Discord webhook to discord.com.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Deleted the Discord webhook to discord.com.");
     await expect(page.locator("#notify-empty")).toBeVisible();
 
     expect(foreman.logs()).not.toContain(token);
@@ -92,7 +92,7 @@ test.describe("with a secret key", () => {
     await page.goto("/settings/notifications/new");
     await page.getByLabel("Webhook address").fill(discordURL);
     await page.getByRole("button", { name: "Add webhook" }).click();
-    await expect(page.locator("#done-message")).toContainText("Added the Discord webhook");
+    await expect(page.locator("#toasts .toast--success")).toContainText("Added the Discord webhook");
     const stored = () => {
       const db = new DatabaseSync(join(foreman.dataDir, "foreman.db"));
       try {
@@ -109,7 +109,7 @@ test.describe("with a secret key", () => {
     await expect(reminder).not.toBeChecked();
     await page.getByRole("checkbox", { name: "A player joins" }).uncheck();
     await page.getByRole("button", { name: "Save webhook" }).click();
-    await expect(page.locator("#done-message")).toContainText("Saved the Discord webhook");
+    await expect(page.locator("#toasts .toast--success")).toContainText("Saved the Discord webhook");
     expect(stored()).toBe("player-join,token-expiring");
 
     // Ticking it turns it on, and every event is then on but join.
@@ -178,7 +178,7 @@ test.describe("with a secret key", () => {
     await page.getByLabel("Application token").fill(appToken);
     await page.getByLabel("User key").fill(userKey);
     await page.getByRole("button", { name: "Add webhook" }).click();
-    await expect(page.locator("#done-message")).toHaveText("Done: Added the Pushover webhook to api.pushover.net.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Added the Pushover webhook to api.pushover.net.");
 
     await page.getByRole("link", { name: "Edit the Pushover webhook to api.pushover.net" }).click();
     await expect(page.locator("#webhook-keys-hint")).toContainText("The keys are kept.");
@@ -189,7 +189,7 @@ test.describe("with a secret key", () => {
     await page.getByLabel("User key").fill("e2eNEWuser42");
     await page.getByRole("checkbox", { name: "A player joins" }).uncheck();
     await page.getByRole("button", { name: "Save webhook" }).click();
-    await expect(page.locator("#done-message")).toHaveText("Done: Saved the Pushover webhook to api.pushover.net.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Saved the Pushover webhook to api.pushover.net.");
     for (const k of [appToken, userKey, "e2eNEWuser42"]) {
       expect(await page.content(), "the page shows a key").not.toContain(k);
       expect(foreman.logs()).not.toContain(k);
@@ -212,7 +212,7 @@ test.describe("with a secret key", () => {
     await expect(field).not.toHaveAccessibleDescription(/sent unencrypted/);
     await field.fill(`http://ntfy.lan:8080/${token}`);
     await page.getByRole("button", { name: "Add webhook" }).click();
-    await expect(page.locator("#done-message")).toHaveText("Done: Added the ntfy webhook to ntfy.lan.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Added the ntfy webhook to ntfy.lan.");
 
     // The edit page of an http:// webhook shows the note from the start.
     await page.getByRole("link", { name: "Edit the ntfy webhook to ntfy.lan" }).click();
@@ -230,7 +230,7 @@ test.describe("with a secret key", () => {
     await page.getByLabel("Adresse du webhook").fill("https://ntfy.sh/alerts");
     await page.getByRole("radio", { name: "ntfy" }).check();
     await page.getByRole("button", { name: "Ajouter le webhook" }).click();
-    await expect(page.locator("#done-message")).toContainText("Webhook ntfy vers ntfy.sh ajouté.");
+    await expect(page.locator("#toasts .toast--success")).toContainText("Webhook ntfy vers ntfy.sh ajouté.");
     await expect(page.locator("#webhook-1 dd[lang]")).toHaveText("Français");
   });
 });

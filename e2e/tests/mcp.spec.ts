@@ -49,7 +49,7 @@ test("a token made on the page calls /mcp until it is revoked or MCP is off", as
 
     await page.locator("#my-tokens").getByRole("link", { name: /^Revoke Claude/ }).click();
     await page.getByRole("button", { name: "Revoke token" }).click();
-    await expect(page.locator("#done-message")).toContainText("Revoked Claude.");
+    await expect(page.locator("#toasts .toast--success")).toContainText("Revoked Claude.");
     const revoked = await mcp(secret);
     expect(revoked.status()).toBe(401);
     expect(await revoked.text()).toContain("revoked");
