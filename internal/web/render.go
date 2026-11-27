@@ -480,9 +480,11 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		// the page's language, as the language menu's label is.
 		"english": func(key string) string { return i18n.English.T(key) },
 		// empty and formFoot make the input of the empty and form-foot
-		// partials (components.html).
-		"empty":    emptyState,
-		"formFoot": formFoot,
+		// partials, and workingWords checks the working partial's words
+		// (components.html).
+		"empty":        emptyState,
+		"formFoot":     formFoot,
+		"workingWords": workingWords,
 	}
 }
 
