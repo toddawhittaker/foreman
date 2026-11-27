@@ -424,10 +424,13 @@ ol.plan-steps > li:not(:last-child)::after {
   white-space: nowrap;
 }
 
+/* A redraw puts the new plan in before taking the old one out; scroll
+   anchoring would hold the old one in view and leave the page at its end. */
 .mod-plan {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
+  overflow-anchor: none;
 }
 
 .mods-notice:has(.message) {

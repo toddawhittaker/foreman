@@ -108,7 +108,7 @@
     {{- end}}
     <input type="hidden" name="hash" value="{{.Hash}}">
     <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
-    {{- /* On a wide screen the changes lead and what happens next sits beside them, with the button. */}}
+    {{- /* On a wide screen the choices and changes lead and what happens next sits beside them, with the button. */}}
     <div class="confirm__main">
     {{- if .AsksRequired}}
     {{template "required-note"}}
@@ -123,33 +123,6 @@
       {{- end}}
     </div>
     {{- end}}
-    {{- /* One shape for every kind: the changes, then the choices, then the steps (DESIGN 8.11). */}}
-    {{- $groups := .Groups}}
-    {{- $kept := .Kept}}
-    {{- if or $groups $kept}}
-    {{- /* A label, not a heading: the box holds no heading of its own (DESIGN 7.4). It takes focus after a removal or a fix redraws the plan. */}}
-    <p class="plan-label" id="plan-changes" tabindex="-1"{{if and .Redraw (or .Form.Removed (and .Form.Fixed (not .Plan.Conflicts)))}} autofocus{{end}}>{{t "mods.plan.changes"}}</p>
-    {{- /* Choosing a release in a row redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). Arrow keys on a closed list fire a change per press; the form replaces an older redraw with the newest, so the last choice wins. */}}
-    {{- if $versions}}
-    <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" .Line}}</p>
-    {{- end}}
-    {{- with $groups}}
-    <dl class="plan-groups">
-      {{- range .}}
-      <div><dt>{{msg .Title}}</dt><dd><ul class="plan-items" role="list">{{range .Items}}{{template "plan-item" ($.Page.Row .)}}{{end}}</ul></dd></div>
-      {{- end}}
-    </dl>
-    {{- end}}
-    {{- with $kept}}
-    <details class="disclosure">
-      <summary>{{t "mods.plan.kept" "count" (len .)}}</summary>
-      <ul class="plan-items" role="list">{{range .}}{{template "plan-item" ($.Page.Row .)}}{{end}}</ul>
-    </details>
-    {{- end}}
-    {{- end}}
-    {{- if .Nothing}}
-    <p id="plan-same">{{t "mods.version.same"}}</p>
-    {{- end}}
     {{- with $.Page.RecommendedRows}}
     {{- /* Each box also sends its name as offered, so an unticked one reads as declined (SPEC 9.2). */}}
     <fieldset id="plan-recommended">
@@ -157,15 +130,18 @@
       <p class="hint">{{t "mods.recommended.hint"}}</p>
       {{- range .}}
       <input type="hidden" name="offered" value="{{.Offer.Name}}">
+      <input type="hidden" name="shown" value="{{.Offer.Name}}">
       {{template "plan-offer" .}}
       {{- end}}
     </fieldset>
     {{- end}}
     {{- with $.Page.OptionalRows}}
+    {{- /* Each box also sends its name as shown, so a redraw keeps the rows in the order the page showed them and adds new offers at the end. */}}
     <fieldset>
       <legend>{{t "mods.optional.legend"}}</legend>
       <p class="hint">{{t "mods.optional.hint"}}</p>
       {{- range .}}
+      <input type="hidden" name="shown" value="{{.Offer.Name}}">
       {{template "plan-offer" .}}
       {{- end}}
     </fieldset>
@@ -212,6 +188,33 @@
       <div class="actions"><button type="submit" class="button" form="{{$id}}-form">{{t "mods.unresolved.upload_button"}}</button></div>
       {{- end}}
     </fieldset>
+    {{- end}}
+    {{- /* The choices, then the changes, then the steps: a tick adds its change rows below the box, so no box moves when the plan is redrawn. */}}
+    {{- $groups := .Groups}}
+    {{- $kept := .Kept}}
+    {{- if or $groups $kept}}
+    {{- /* A label, not a heading: the box holds no heading of its own (DESIGN 7.4). It takes focus after a removal or a fix redraws the plan. */}}
+    <p class="plan-label" id="plan-changes" tabindex="-1"{{if and .Redraw (or .Form.Removed (and .Form.Fixed (not .Plan.Conflicts)))}} autofocus{{end}}>{{t "mods.plan.changes"}}</p>
+    {{- /* Choosing a release in a row redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). Arrow keys on a closed list fire a change per press; the form replaces an older redraw with the newest, so the last choice wins. */}}
+    {{- if $versions}}
+    <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" .Line}}</p>
+    {{- end}}
+    {{- with $groups}}
+    <dl class="plan-groups">
+      {{- range .}}
+      <div><dt>{{msg .Title}}</dt><dd><ul class="plan-items" role="list">{{range .Items}}{{template "plan-item" ($.Page.Row .)}}{{end}}</ul></dd></div>
+      {{- end}}
+    </dl>
+    {{- end}}
+    {{- with $kept}}
+    <details class="disclosure">
+      <summary>{{t "mods.plan.kept" "count" (len .)}}</summary>
+      <ul class="plan-items" role="list">{{range .}}{{template "plan-item" ($.Page.Row .)}}{{end}}</ul>
+    </details>
+    {{- end}}
+    {{- end}}
+    {{- if .Nothing}}
+    <p id="plan-same">{{t "mods.version.same"}}</p>
     {{- end}}
     {{- if or .Plan.Optional .Plan.Unresolved $versions}}
     {{- /* With script, a change redraws the plan; without it, this button does. */}}
