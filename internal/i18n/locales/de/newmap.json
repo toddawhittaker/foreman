@@ -32,6 +32,8 @@
   "newmap.builtin.refused": "Die Planetenliste aus den Mods dieser Welt war nicht verwendbar, daher werden nur die Planeten des Spiels gezeigt. Deren Einstellungen funktionieren weiterhin.",
   "newmap.builtin.missing": "Das Spiel hat die Planeten der Mods dieser Welt nicht gemeldet, daher werden nur die Planeten des Spiels gezeigt. Deren Einstellungen funktionieren weiterhin.",
   "newmap.builtin.failed": "Die Planeten der Mods dieser Welt konnten nicht gelesen werden, daher werden nur die Planeten des Spiels gezeigt. Deren Einstellungen funktionieren weiterhin. Prüfe die Mods der Welt oder versuche es später erneut.",
+  "newmap.builtin.failed_kept": "Die Planeten der Mods dieser Welt konnten nicht gelesen werden, daher werden nur die Planeten des Spiels gezeigt. Deren Einstellungen funktionieren weiterhin. Ändere die Mods der Welt, um es erneut zu versuchen.",
+  "newmap.builtin.mod_failed": "{mod} ist fehlgeschlagen, während das Spiel die Planeten der Mods dieser Welt gelesen hat, daher werden nur die Planeten des Spiels gezeigt. Deren Einstellungen funktionieren weiterhin. Entferne {mod} oder ändere seine Version, damit die Planeten erneut gelesen werden.",
   "newmap.error.running": "Der Server dieser Welt startet oder läuft, und der erste Start erstellt die Karte. Stoppe den Server, bevor du die Karteneinstellungen änderst.",
   "newmap.error.busy": "Ein anderer Vorgang arbeitet an dieser Welt. Versuche es erneut, wenn er beendet ist.",
   "newmap.error.exchange_other_line": "Dieser Code stammt von Factorio {version}, diese Welt nutzt aber {game}. Ein Code funktioniert nur mit einer Spielversion derselben Reihe (1.1, 2.0 oder 2.1). Ändere die Spielversion der Welt auf ihrer Seite oder füge einen anderen Code ein.",

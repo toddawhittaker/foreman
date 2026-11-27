@@ -157,6 +157,11 @@ func (g *Game) bootPreview(c dockertest.Container) {
 		g.daemon.EmitLog(c.ID, docker.Stderr, "Killed")
 		g.daemon.Exit(c.ID, 137, true)
 		return
+	case PreviewModCrash:
+		if envValue(c.Spec.Env, gameenv.PreviewKind) == gameenv.KindModSettings {
+			g.crashMod(c)
+			return
+		}
 	case PreviewNoPatches:
 		if envValue(c.Spec.Env, gameenv.PreviewKind) == gameenv.KindResources {
 			g.endPreview(c, writeResources(c, false))
@@ -164,6 +169,24 @@ func (g *Game) bootPreview(c dockertest.Container) {
 		}
 	}
 	g.finishPreview(c)
+}
+
+// crashMod ends a mod settings run as the game does when a mod's script
+// fails in the data stage: the error names a path in the mod, and the game
+// exits 1 (issue 965).
+func (g *Game) crashMod(c dockertest.Container) {
+	mod := "base"
+	if dir := mountSource(c, gameenv.PreviewMount); dir != "" {
+		for _, m := range enabledMods(dir) {
+			if !slices.Contains([]string{"base", "space-age", "quality", "elevated-rails"}, m) && !strings.HasPrefix(m, "foreman-") {
+				mod = m
+				break
+			}
+		}
+	}
+	g.daemon.EmitLog(c.ID, docker.Stderr, "Error ModManager.cpp:1735: Error while loading data: __"+mod+"__/data.lua:1: the fake mod was told to fail")
+	g.daemon.EmitLog(c.ID, docker.Stdout, "Goodbye")
+	g.daemon.Exit(c.ID, 1, false)
 }
 
 // PreviewSlowDelay is how long a PreviewSlow container runs before it draws.

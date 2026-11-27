@@ -3,7 +3,6 @@ package web
 import (
 	"net/http"
 
-	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
@@ -13,7 +12,7 @@ import (
 func previewCarrier(in previewInput, view *PreviewView) NewMapPage {
 	p := NewMapPage{World: in.sum, Form: newMapForm(in.sum, in.f.MapForm), CanPreview: true, Preview: view}
 	if in.catErr != nil {
-		p.Builtin = i18n.M("newmap.builtin.failed")
+		p.Builtin, _ = builtinFailure(nil, in.sum.ID, in.catErr)
 	}
 	return p
 }

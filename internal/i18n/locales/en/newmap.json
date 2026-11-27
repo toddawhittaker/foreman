@@ -32,6 +32,8 @@
   "newmap.builtin.refused": "The planet list this world's mods report could not be used, so only the game's own planets are shown. Their settings still work.",
   "newmap.builtin.missing": "The game did not report the planets of this world's mods, so only the game's own planets are shown. Their settings still work.",
   "newmap.builtin.failed": "The planets of this world's mods could not be read, so only the game's own planets are shown. Their settings still work. Check the world's mods, or try again later.",
+  "newmap.builtin.failed_kept": "The planets of this world's mods could not be read, so only the game's own planets are shown. Their settings still work. Change the world's mods to try again.",
+  "newmap.builtin.mod_failed": "{mod} failed while the game read the planets of this world's mods, so only the game's own planets are shown. Their settings still work. Remove {mod} or change its version to read the planets again.",
   "newmap.error.running": "This world's server is starting or running, and its first start makes the map. Stop the server before changing the map settings.",
   "newmap.error.busy": "Another operation is working on this world. Try again when it has finished.",
   "newmap.error.exchange_other_line": "This string was made by Factorio {version}, but this world uses {game}. A string works only with a game version of the same series (1.1, 2.0 or 2.1). Change the world's game version on its page, or paste another string.",

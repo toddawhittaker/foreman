@@ -32,6 +32,8 @@
   "newmap.builtin.refused": "La lista de planetas de los mods de este mundo no se pudo usar, así que solo se muestran los planetas del juego. Sus ajustes siguen funcionando.",
   "newmap.builtin.missing": "El juego no informó de los planetas de los mods de este mundo, así que solo se muestran los planetas del juego. Sus ajustes siguen funcionando.",
   "newmap.builtin.failed": "No se pudieron leer los planetas de los mods de este mundo, así que solo se muestran los planetas del juego. Sus ajustes siguen funcionando. Revisa los mods del mundo o inténtalo más tarde.",
+  "newmap.builtin.failed_kept": "No se pudieron leer los planetas de los mods de este mundo, así que solo se muestran los planetas del juego. Sus ajustes siguen funcionando. Cambia los mods del mundo para volver a intentarlo.",
+  "newmap.builtin.mod_failed": "{mod} falló mientras el juego leía los planetas de los mods de este mundo, así que solo se muestran los planetas del juego. Sus ajustes siguen funcionando. Quita {mod} o cambia su versión para volver a leer los planetas.",
   "newmap.error.running": "El servidor de este mundo se está iniciando o está en marcha, y su primer inicio crea el mapa. Detén el servidor antes de cambiar los ajustes del mapa.",
   "newmap.error.busy": "Otra operación está trabajando en este mundo. Inténtalo de nuevo cuando termine.",
   "newmap.error.exchange_other_line": "Esta cadena la creó Factorio {version}, pero este mundo usa {game}. Una cadena solo funciona con una versión del juego de la misma serie (1.1, 2.0 o 2.1). Cambia la versión del juego del mundo en su página o pega otra cadena.",
