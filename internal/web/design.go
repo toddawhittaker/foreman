@@ -88,6 +88,26 @@ func (DesignPage) States() []LiveState {
 // Mod is a sample mod's name, for the mod row.
 func (DesignPage) Mod() string { return "flow-control" }
 
+// Secret is a sample API token, for the copy field.
+func (DesignPage) Secret() string { return "fm_0123456789abcdef" }
+
+// World is a sample world's name, for the headings and the top bar.
+func (DesignPage) World() string { return "Nauvis Prime" }
+
+// User is a sample signed-in name, for the top bar's account menu.
+func (DesignPage) User() string { return "admin" }
+
+// FlowSteps are the guided Generate's step bar part way through: one step
+// done, one current, one that cannot be opened yet and one skipped.
+func (DesignPage) FlowSteps() []FlowStep {
+	return []FlowStep{
+		{Number: 1, Path: PathWorlds + "/generate", Label: i18n.M("newmap.steps.world"), Done: true},
+		{Number: 2, Path: PathWorlds + "/example/mods", Label: i18n.M("newmap.steps.mods"), Current: true},
+		{Number: 3, Label: i18n.M("newmap.steps.mod_settings_none"), Skipped: true},
+		{Number: 4, Label: i18n.M("newmap.steps.map")},
+	}
+}
+
 // Loads are sample CPU figures, one per state, so the plates show the
 // meter at rest, above 80% and above 95%.
 func (DesignPage) Loads() []float64 {
