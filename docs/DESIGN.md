@@ -230,9 +230,9 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-text-faint` | `#a0978b` | `#655d52` | Help and metadata: hints, the context row over a title, a row's second line, the log's times; the third ink, quieter than muted |
 | `--color-desk` | `#090807` | `#2a2622` | The top bar across the page; dark in both themes, and its contents use the dark theme's tokens |
 | `--color-desk-line` | `#2e2a25` | `#4a443c` | The top bar's bottom edge |
-| `--color-border` | `#857c70` | `#80766a` | Edge of fields, secondary buttons and the menu |
+| `--color-border` | `#857c70` | `#80766a` | Edge of fields, secondary buttons, the account menu's button and the menu, and the Emergency actions button |
 | `--color-link` | `#ffb357` | `#9a4800` | Links in running text (underlined), quiet buttons, the "Active" badge, a row title under the pointer, a changed map step's words |
-| `--color-selected` | `#f39a2a` | `#b05a00` | The current tab's underline, the current segment's foot, the plan's leading edge, the current item in the menu, the live world's edge, checked boxes, progress bars |
+| `--color-selected` | `#f39a2a` | `#b05a00` | The current tab's underline, the current segment's foot, the plan's leading edge, the current item in the menu, the live world's edge, checked boxes, progress bars, the dot before a changed map setting |
 | `--color-accent-bg` | `#352610` | `#fdecd5` | A pale orange tint: the current item in the menu, the "Active" badge |
 | `--color-primary` | `#f39a2a` | `#f39a2a` | Primary button face, the line across the top of the top bar |
 | `--color-primary-hover` | `#f7ae4f` | `#f6ad52` | Primary button hover |
@@ -242,7 +242,7 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-danger` | `#e5553c` | `#b3301d` | Danger button face, "crash-looping" badge background, the confirmation box's edge, the Server plate's state rule when the game has crashed |
 | `--color-danger-hover` | `#ef7560` | `#932616` | Danger button hover |
 | `--color-on-danger` | `#1a0503` | `#ffffff` | Danger button text, "crash-looping" badge text |
-| `--color-danger-text` | `#ff978a` | `#a32a18` | Error words, field error text, invalid field border, "crashed" badge, the required mark, the outlined (risky) and remove buttons, Force stop |
+| `--color-danger-text` | `#ff978a` | `#a32a18` | Error words, field error text, invalid field border, "crashed" badge, the required mark, the outlined (risky) and remove buttons, Force stop, the danger fill of a load meter and its "Very high" word |
 | `--color-danger-bg` | `#3a1913` | `#fbe6e1` | Error message and "crashed" badge background, risky and remove buttons under the pointer |
 | `--color-ok` | `#86d672` | `#1f6a2a` | "Done" word, "running" badge, the Server plate's state word and rule while the game runs |
 | `--color-ok-bg` | `#172a12` | `#e3f1de` | Success message and "running" badge background |
@@ -626,7 +626,7 @@ frame (7.4).
   so its parts line up with the page column. Four parts, in this order:
   1. **The wordmark** is the home link: the rusty Foreman wordmark (a gear
      and FOREMAN on a riveted plate), 46 px tall in the 56 px bar, 30 px on
-     a phone. It is from `static/icons/wordmark-296.webp`, a file twice its
+     a phone and 28 px below 22rem. It is from `static/icons/wordmark-296.webp`, a file twice its
      drawn size, so the rivets and letters stay sharp, made from
      `docs/brand/foreman-wordmark.webp` (`docs/brand/README.md`). Its `alt`
      is "Foreman", the link's name in every language. The sign-in and
@@ -683,7 +683,7 @@ frame (7.4).
   - The focus order is the source order (wordmark, areas, menu) at every
     width; the live world is `aria-hidden` and has nothing to focus.
 - **The user menu** is a native `details` at the bar's end. Its summary is a
-  bordered button (1 px `line-strong`, transparent at rest, `raised` under
+  bordered button (1 px `border`, transparent at rest, `raised` under
   the pointer; `--radius`, `--text-sm`, 40 px tall) that shows the user's
   name in weight 600 and the current language in `text-muted` ("todd
   English"), so a person who landed in a language they cannot read still
@@ -781,7 +781,7 @@ frame (7.4).
   General, Restart schedule, Notifications and its form, Users, API tokens
   and Token created, the factorio.com account page, Worlds, Favorites,
   Deleted worlds, Generate step 1, Import and a world's Saves. The area's
-  tab row and a flow's step bar still run the page's whole width. Short
+  tab row and a flow's step bar keep to the same 80rem. Short
   forms and a three-row table stretched across 1760 px with their fields
   far apart, so the working width is the rule for any new page of that
   kind. The world list's columns are sized to their values within it (8.2).
@@ -806,7 +806,9 @@ frame (7.4).
   pages") holding a list of links; its ids and URLs do not change with the
   width. A flow's step bar (SPEC 17.19) takes the row's place on Generate
   and its steps: none of the Worlds area's tabs is the current page there,
-  and a row with no current tab told the reader nothing.
+  and a row with no current tab told the reader nothing. Import and the
+  world file's preview page have no Worlds tab row for the same reason; each
+  has a breadcrumb that leads back.
   - **The tab row** is a 44 px row of underline tabs: `text-muted`, weight
     500, `--space-4` of side padding (none before the first tab), the
     current one `heading` at weight 600 with a 3 px `selected` underline
@@ -825,7 +827,8 @@ frame (7.4).
     one row that wraps.
   - **Foreman's eight settings tabs** differ: on a phone they wrap onto as
     many rows as their words need, each row filled edge to edge, every tab
-    whole on one line as a 44 px target. Nothing hides past the edge and
+    whole on one line as a 44 px target; a label wider than the row on its
+    own wraps inside its tab. Nothing hides past the edge and
     nothing scrolls sideways. From 40rem the row wraps the same way.
   - **Game settings' own pages** are one more row under the world's tabs
     while Game settings is open: a segmented control (7.8), not tabs. Game
@@ -848,8 +851,8 @@ Windows high contrast (`forced-colors: active`) replaces every fill and
 colour with the user's system colours. A page tab row's current underline
 and the current theme's edge are borders, and that mode draws them in
 `Highlight`, so "selected" is still a drawn shape. The top bar's
-current-area underline is a drawn background, which this mode drops: the
-area's word and `aria-current` still say where you are. A tag has no border,
+current-area underline is a drawn background, which this mode drops, so it
+is redrawn as a 3 px `Highlight` border at the tab's foot. A tag has no border,
 so its word and its drawn shape carry it, and buttons, fields and message
 boxes keep their borders, so they need nothing more. The state badge's
 shapes (7.5) are redrawn in `CanvasText` so their fills survive. The line icons (7.9)
@@ -988,14 +991,16 @@ order and the picture agree.
   `currentColor` edge, 44 px tall, `danger-bg` under the pointer. At every
   width it folds under a closed "Emergency actions" disclosure (7.8), so a
   rare action that loses data takes no permanent row. The disclosure is a
-  small framed menu button (`surface` face, 1 px `line-strong` edge,
+  small framed menu button (`surface` face, 1 px `border` edge,
   `--radius`, 36 px tall, 40 px from 64rem and 44 px on touch, a chevron at
   its end) that turns red once open. Opened, it shows Force stop first in an
   area with a `danger-bg` face and a 1 px `danger` edge, with its
   consequence in one muted line beside it ("Stop the game at once, without
   warning players and without saving."). From 64rem that area floats just
   under the button (`--shadow-pop`, at most 22rem wide) so the band does not
-  grow; below 64rem it opens in flow. It leads to its own confirmation (7.4).
+  grow; below 64rem it opens in flow. With script (`menu.js`) it closes on
+  Escape, returning focus to its button, and on a click outside it. It leads
+  to its own confirmation (7.4).
 - **Console page.** The same breadcrumb and `h1` as the Server page, its
   state word again for screen readers only, then the Overview, Console and
   Chat tabs. It reads as a terminal at every
@@ -1564,7 +1569,13 @@ holds only the word. A template always writes the modifier, even for
   below are one strip of equal columns (6). The plate's gauges run the
   width of their cell, up to 20rem, 8 px tall. A gauge is neutral
   (`text-muted`) at rest, so a green bar never reads as a state; it turns
-  `warn` above 75 percent and `danger` above 90. The units beside a figure
+  `warn` above 75 percent, and above 90 its fill is `danger-text`, the
+  readable red, which holds 3:1 against its track in both themes. Colour is
+  not the only sign: over 75 percent the word "High" follows the figure in
+  `warn`, over 90 "Very high" in `danger-text` (`--text-sm`, weight 600).
+  Memory also writes its share of its limit under the figure ("38% of the
+  limit", `--text-sm`, `text-muted`). The load levels are `loadWarnOver` and
+  `loadDangerOver` in `serverpage.go`. The units beside a figure
   are 0.6 of its size, 2 px after it. The Players plate's band ends with a
   link, "N players in this save" (SPEC 8.14), to the Overview's list (8.2).
 - **The bar's state.** Every page's top bar says the server's state in
@@ -1740,7 +1751,7 @@ as the game's map generator has it (SPEC 5.6, 17).
 - Nothing moves when a tip opens: the box lies over what follows.
 - **Long explanations use it too**, so help does not compete with the
   fields it explains: a General settings group's description (8.15), the
-  meaning of the Saved column's times (8.3), and the long explanations on a
+  meaning of the Saved times (8.3), and the long explanations on a
   world's side column, Make a favorite and Export world file (8.2). The
   button sits beside the title or column name it explains. Without script
   the text shows in place, as before.
@@ -2041,7 +2052,9 @@ wrote has no card.
 
 **Import** is the third way in on the Import page. The page opens with three
 choice cards, "Upload a save", "Import a folder" (with the import folder's
-path) and "Import a world file", each naming what it brings, and shows only
+path) and "Import a world file", in one group whose visually hidden legend
+is "How to import". Each card is named by its title alone, and its line of
+text is its description. The page shows only
 the chosen way's form (CSS only; each card is a radio and a label, and the
 radio stays tick-sized at the card's top). Folders waiting in the import
 folder, or an answer about them, choose the folder; a world file's problem
@@ -2058,8 +2071,9 @@ it, Cancel and then the primary action at the end, held to the window's foot
 while the form is in view. Import has one game version control, the
 select, with "Use a version not in the list" as a disclosure that holds the
 typed field (the same as Generate, 8.6); it opens by itself when a version
-was typed, asked for or refused, so there is never a second control that
-needs a hint to say which wins. On a wide form the disclosure stays in the
+was typed, asked for or refused, and when the version list could not be
+fetched (the list's one option says to type a version), so there is never a
+second control that needs a hint to say which wins. On a wide form the disclosure stays in the
 fields' column, beside the drop zone.
 
 **The preview** is a form page: the facts list, then the warnings (a game
@@ -2189,7 +2203,8 @@ other worlds' pages an Archive row in the Danger zone (7.4). The switch
 pickers leave archived worlds out.
 
 **A world's Overview**, in order: the facts across the top (7.5); then, on
-a wide screen (72rem), two columns. The main column holds Players in this
+a wide screen (72rem), two columns, the main column at the start and the
+side column at the end. The main column holds Players in this
 save (below), then one plate of setting rows for managing the world: Game
 version, Rename and Clone. The side column (30rem, 34rem from 100rem) holds
 sharing, as compact actions rather than expanded forms: the map exchange
@@ -2198,9 +2213,10 @@ with Copy; Make a favorite (7.11), a name and a button, its long
 explanation in an (i) toggletip (7.7); and Export world file (7.12), the
 choice of saves, the warning and the button, what the file leaves out in a
 toggletip. The Danger zone with Archive and Delete (7.4) stays last, the
-full width. Below 72rem the side column follows the main one; on a phone
-(below 40rem) it comes straight after the facts, so "Copy map exchange
-string" is the first action. A setting row is a title column (heading and
+full width. The side column is first in the markup, so below 72rem, and on a
+phone, it comes straight after the facts and "Copy map exchange string" is
+the first action; the main column follows it, and the wide layout places
+the columns by grid position, not by `order`. A setting row is a title column (heading and
 hint) and a content column; from a 60rem plate the title column is 240 px.
 
 **Players in this save** (SPEC 8.14) is a plate under the facts,
@@ -2271,7 +2287,8 @@ these tables carry explicit `table`, `rowgroup`, `row`, `columnheader` and
 **The Saves tab** puts the list first and Upload a save after it; on a
 wide page they sit side by side, Upload a save in the rail (a `.split`).
 What a save's time means is a hint that opens from an (i) toggletip beside
-the Saved column's name (7.7); without script it shows under the table. The
+the list's heading (7.7), so the column's name stays the one word "Saved";
+without script it shows under the table. The
 Load next column's empty header cell is drawn, so the header's rule spans
 every column.
 The saves table's Load next buttons sit in its own last column, under a
@@ -2373,7 +2390,10 @@ Classes and their contract:
 - **The log is a dark well in both themes**, as the top bar is dark in
   both: the machine's output reads as machinery. Its face is `deep`, its
   text `text`, both the dark theme's values, with a 1 px `line` rule at its
-  foot, `--space-3` padding and `--font-mono` at 14 px on 22 px lines. From
+  foot, `--space-3` padding (24 px at the top) and `--font-mono` at 14 px on
+  22 px lines. The log's top edge fades over 24 px, so a line scrolled half
+  out of view reads as more above; the top padding is as tall as the fade,
+  so the first line is never faded. From
   40rem a line keeps its length and the box scrolls sideways inside itself
   when one is long; below 40rem the `pre` wraps (`pre-wrap`,
   `overflow-wrap`), so a phone never scrolls sideways. A line with a time
@@ -2389,7 +2409,10 @@ Classes and their contract:
   follows new lines and sets it. Without script the bar is hidden and the
   whole log shows. On a phone the label and the field share one row, so the
   log starts on the first screen above the command bar, and the filter takes
-  the row under them.
+  the row under them. While a filter or words are set, a line under the bar
+  (`role="status"`, `text-faint`) says how many lines show ("12 of 1,000
+  lines shown"), once typing pauses; with none it takes no room. When none
+  match it says "No lines match.", and so does a line over the log.
 - **Times in the game log.** `log.js` splits each line into its time (a
   date and a clock, or the game's elapsed seconds) and its words; the text
   of every line is unchanged, and a path in the words may break after a
@@ -2498,7 +2521,8 @@ in this order:
 1. The required note (7.2), then Name (required, a placeholder example).
 2. Game version: the same picker as Import (SPEC 10.7). Typing a version
    not in the list sits in a closed `details`, "Use a version not in the
-   list", opened when it holds a value or an error.
+   list", opened when it holds a value or an error, and (`generate.js`)
+   when the version list could not be fetched.
 3. Space Age, and the "download the game image" checkbox.
 4. "Start from a favorite". From 80rem the world's form leads at a working
    width, with the name beside the version, and Start from a favorite is a
@@ -2605,7 +2629,9 @@ and `--space-4` of padding, and sizes its own controls from its width, as
 the settings do from theirs (8.7). All planets shows its thumbnails three
 to a row, so they read clearly as small beside One planet's picture now that
 the pane is taller. From 100rem the preview column takes about two fifths of the page.
-On step 1 the world's name and its game version pair up from 80rem. On a
+On step 1 the world's name and its game version pair up from 80rem; from
+90rem they share label, control and help rows, with the name's help under
+its input, so the input and the select line up. On a
 map section at least 62rem wide the preset, the seed and Fill from a map
 exchange string share one row (8.7); a pair shares a label row, a hint row
 and a control row, so the controls line up and a field without a hint
@@ -3334,8 +3360,9 @@ Server name is required (7.2). On a wide column (a settings container at
 least 72rem wide) the form keeps a working width, and a side column beside
 it holds the note that changes apply after a restart and the "Edit
 server-settings.json as JSON" link, held in view as the page scrolls; short
-forms no longer stretch two fields across the page. Below that the note
-comes above the form and the link under it, in one column.
+forms no longer stretch two fields across the page. The note comes before
+the form in the markup, so it is read before the fields it holds for, and
+the link follows the form; below that width it is one column in that order.
 
 **Sub-pages.** Game settings is too long to read whole, so it is split
 into eight sub-pages, listed as a segmented control (7.8) in a second row
@@ -3505,7 +3532,8 @@ written with.
 
 **The Mods tab.** One `h1`, the world's name with the Active badge, and the
 game's state badge beside it (7.5), then the tab's bar and its content. The
-bar holds a segmented control (7.8) of two views, then the "Mod name" search
+bar holds a segmented control (7.8) of two views, in a group whose
+visually hidden legend is "Show", then the "Mod name" search
 box beside it. **Installed mods** (with its count) is the default; in the
 guided Generate, where mods are picked, **Find a mod** is. Installed mods
 shows "Match mods to the save", the installed list and the tools; Find a
@@ -3552,7 +3580,8 @@ fine pointer and 44 px on touch. The content, in order:
   the save) and a secondary button to the sync plan; the plate's leading
   edge is amber only while they differ. A save Foreman cannot read keeps the
   general sentence and the button; a world with no save says so and links
-  to upload one.
+  to upload one. Below 40rem the plate is one column, and the button takes a
+  row of its own under the reason, so it never covers it.
 - "Installed mods". The switch already names this plate with its count, so
   the plate drops its own title (kept for screen readers) and opens with the
   portal's summary, with Update all at that line's end. A status block
@@ -3653,9 +3682,10 @@ and only the list of mods scrolls, the newest pick at its top. In a window
 under 30rem tall it does not stick. On a phone it
 follows the results; once it has a mod it holds to the bottom of the
 screen as a bar with the count ("4 mods in the plan"), the names cut to
-one line, and "Review and install 4 mods". The count in the bar is the same
-as the button's (the picks and what they need), so the two never read as a
-contradiction. The bar's line is a `details`
+one line, and "Review and install 4 mods". Both count every distinct mod
+the plan installs or changes, the picks and what they need, so "4 mods" can
+come from two picks; the two never read as a contradiction. The announcer's
+"The plan has 2 mods" (below) counts the picks alone. The bar's line is a `details`
 summary that opens the full list (up to 40% of the screen, scrolling);
 the panel's heading stays for screen readers and focus. Below 360 px the
 bar keeps its frame while the other cards lie flat.
@@ -4718,7 +4748,8 @@ mods. Its order follows what a person came to do:
    end. Creating is one click on this page.
 3. **The tokens**, one list in one plate. An admin sees every user's tokens
    with a "Your tokens" and "All tokens" choice above the list (a segmented
-   control, 7.8; the filter is CSS only, so nothing reloads), "Your tokens"
+   control, 7.8, whose group has the visually hidden legend "Show"; the
+   filter is CSS only, so nothing reloads), "Your tokens"
    chosen first; anyone else sees "Your tokens" as the heading and only
    their own. A token holds the name, a state tag (Valid, Expired, Revoked),
    owner, scope, expiry, creation and last use to the minute. A tag that
