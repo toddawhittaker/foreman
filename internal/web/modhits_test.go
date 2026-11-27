@@ -142,7 +142,7 @@ func TestSearchShortAndEmpty(t *testing.T) {
 		t.Fatalf("short: %d", rec.Code)
 	}
 	wantIn(t, "short", rec.Body.String(), `<h2 id="results-heading" tabindex="-1">Mods matching</h2>`,
-		`<p class="empty">Type at least 2 characters of a mod&#39;s name in Find a mod. Matching mods show here.</p>`)
+		`<p class="empty empty--art empty--mods"><span class="empty__text">Type at least 2 characters of a mod&#39;s name in Find a mod. Matching mods show here.</span></p>`)
 	if g.portal.ListCalls() != calls {
 		t.Error("a search under 2 characters asked the portal")
 	}
@@ -164,7 +164,7 @@ func TestSearchShortWithoutScript(t *testing.T) {
 			t.Fatalf("short %q: %d", q, code)
 		}
 		wantIn(t, "short "+q, body, `<h2 id="results-heading" tabindex="-1">Mods matching</h2>`,
-			`<p class="empty">Type at least 2 characters of a mod&#39;s name in Find a mod. Matching mods show here.</p>`)
+			`<p class="empty empty--art empty--mods"><span class="empty__text">Type at least 2 characters of a mod&#39;s name in Find a mod. Matching mods show here.</span></p>`)
 	}
 	if g.portal.ListCalls() != calls {
 		t.Error("a search under 2 characters without script asked the portal")

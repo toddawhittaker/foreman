@@ -2,13 +2,13 @@
 
 {{define "scripts"}}<script src="{{static "modsearch.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name "" (t "mods.tab"))}}{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name "" (t "mods.tab"))}}
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-{{template "rail" $}}
 {{template "summary" .Problems}}
 {{- if .NoAccount}}
 <div class="message message--note">

@@ -500,6 +500,12 @@ test.describe("typing on the Mods tab", () => {
     await box.fill("fp-pg");
     await box.press("Enter");
     await expect(page.getByRole("list", { name: /Showing 1 to 10\./ })).toBeVisible();
+    // The next page answers late, after the typing's delayed search would
+    // fire: that search must not bring page 1 back over it.
+    await page.route(/page=2/, async (route) => {
+      await new Promise((done) => setTimeout(done, 500));
+      await route.continue();
+    });
     await page.getByRole("navigation", { name: "Result pages, above the list" }).getByRole("link", { name: "Next page" }).click();
     await expect(page.getByRole("list", { name: /Showing 11 to 20\./ })).toBeVisible();
     await expect(page.locator("#results-heading")).toBeFocused();
@@ -523,4 +529,39 @@ test.describe("typing on the Mods tab", () => {
     await page.getByLabel("Mod name").fill(link);
     await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." }).getByRole("button", { name: "Add fp-pg-04 to the plan" })).toBeVisible();
   });
+});
+
+// Adding a result to the plan and taking it out again keeps the result's
+// title, facts and button where they were (DESIGN 8.11). Boxes are in page
+// terms: on a phone the plan's bar appears at the foot with the first pick,
+// and the browser scrolls the focused button clear of it (WCAG 2.4.11).
+test("adding and removing a result moves nothing in its row", async ({ page }) => {
+  const boxes = () =>
+    hit(page, "fp-pg-01").evaluate((row) => [
+      window.scrollY,
+      ...[row, ...row.querySelectorAll(".hit__title, .hit__facts, .plan-toggle")].map((el) => {
+        const r = el.getBoundingClientRect();
+        return [r.x, r.y + window.scrollY, r.width, r.height];
+      }),
+    ]);
+  for (const size of [{ width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    for (const theme of ["dark", "light"] as const) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto("/worlds/base/mods");
+      await page.getByLabel("Mod name").fill("fp-pg-01");
+      await expect(hit(page, "fp-pg-01")).toBeVisible();
+      const before = await boxes();
+      await hit(page, "fp-pg-01").getByRole("button", { name: "Add fp-pg-01 to the plan" }).click();
+      await expect(hit(page, "fp-pg-01")).toContainText("In plan");
+      const added = await boxes();
+      // The title keeps its box; the row's end changes from + to In plan with −.
+      expect(added[2], `${size.width} ${theme}: title after +`).toEqual(before[2]);
+      await hit(page, "fp-pg-01").getByRole("button", { name: "Remove fp-pg-01 from the plan" }).click();
+      await expect(hit(page, "fp-pg-01").getByRole("button", { name: "Add fp-pg-01 to the plan" })).toBeVisible();
+      const after = await boxes();
+      expect(after.slice(1), `${size.width} ${theme}: after −`).toEqual(before.slice(1));
+      if (size.width > 1024) expect(after[0], `${size.width} ${theme}: scrollY`).toBe(before[0]);
+    }
+  }
 });

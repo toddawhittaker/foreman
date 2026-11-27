@@ -349,6 +349,14 @@ func (p ModPlanPage) offerRows(recommended bool) []OfferRow {
 		}
 		out = append(out, r)
 	}
+	// The rows the page showed keep their order; new ones follow in plan order.
+	shown := func(r OfferRow) int {
+		if i := slices.Index(p.Form.Shown, r.Offer.Name); i >= 0 {
+			return i
+		}
+		return len(p.Form.Shown)
+	}
+	slices.SortStableFunc(out, func(a, b OfferRow) int { return shown(a) - shown(b) })
 	return out
 }
 

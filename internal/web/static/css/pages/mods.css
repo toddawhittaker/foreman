@@ -28,26 +28,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.mods-main > .panel,
-.mod-side > .panel {
-  position: relative;
-  padding: var(--card-pad);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-line);
-}
-
-/* Below 360 px a card's frame would cost the content its room, so sections
-   lie flat on the page, a rule above each (DESIGN 4). */
-@media (max-width: 22.4rem) {
-  .mods-main > .panel,
-  .mod-side > .panel {
-    padding: var(--space-4) 0 0;
-    background: none;
-    border: 0;
-    border-block-start: var(--border-width) solid var(--color-line);
-  }
-}
-
 /* A label that is a bare word keeps its name for screen readers but takes no room. */
 .mod-actions .button--icon.mod-remove {
   gap: 0;
@@ -424,10 +404,13 @@ ol.plan-steps > li:not(:last-child)::after {
   white-space: nowrap;
 }
 
+/* A redraw puts the new plan in before taking the old one out; scroll
+   anchoring would hold the old one in view and leave the page at its end. */
 .mod-plan {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
+  overflow-anchor: none;
 }
 
 .mods-notice:has(.message) {
@@ -807,36 +790,6 @@ ol.plan-steps > li:not(:last-child)::after {
   font-size: var(--text-sm);
 }
 
-/* Before a search the results panel is one quiet line, so the installed
-   list starts higher (DESIGN 8.11). */
-#results:not(:has(.hits, .error, .message)) {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-  padding-block: var(--space-3);
-  background: none;
-  border-style: dashed;
-  box-shadow: none;
-}
-
-#results:not(:has(.hits, .error, .message)) > h2 {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-#results:not(:has(.hits, .error, .message)) > .empty {
-  margin: 0;
-  padding: 0;
-  font-size: var(--text-sm);
-  text-align: start;
-}
-
-#results:not(:has(.hits, .error, .message)) > .empty::before {
-  content: none;
-}
-
 .hits {
   max-inline-size: none;
   margin: 0;
@@ -852,7 +805,7 @@ ol.plan-steps > li:not(:last-child)::after {
   padding-block: var(--space-3);
   padding-inline: var(--space-3) 0;
   border-block-start: var(--border-width) solid var(--color-line);
-  border-inline-start: 4px solid transparent;
+  border-inline-start: 3px solid transparent;
 }
 
 .hit:last-child {
@@ -861,11 +814,12 @@ ol.plan-steps > li:not(:last-child)::after {
 
 /* A mod in the plan is drawn in blueprint blue, planned but not yet built,
    as the game draws a ghost before it is placed (DESIGN 3): a 3 px blue
-   edge and the In plan pill say it, and the row keeps the card's face, so
-   the plan's button stays the one orange area. */
+   edge, the same width as the plain row's clear one so the title stays put,
+   and the In plan pill say it. The row keeps the card's face, so the plan's
+   button stays the one orange area. */
 .hit:has(.badge--chosen) {
   background: none;
-  border-inline-start: 3px solid var(--color-info);
+  border-inline-start-color: var(--color-info);
 }
 
 .hit__title {
@@ -971,7 +925,7 @@ ol.plan-steps > li:not(:last-child)::after {
   display: inline;
 }
 
-/* The row's + (or −): 44 px on touch screens, 32 px with a mouse (WCAG 2.5.8 asks 24). */
+/* The row's + (or −): a row button, 44 px on touch screens and 36 px with a mouse (DESIGN 7.1). */
 .plan-toggle {
   inline-size: var(--target-min);
   min-inline-size: var(--target-min);
@@ -993,10 +947,10 @@ ol.plan-steps > li:not(:last-child)::after {
 
 @media (pointer: fine) {
   .plan-toggle {
-    inline-size: 2rem;
-    min-inline-size: 2rem;
-    block-size: 2rem;
-    min-block-size: 2rem;
+    inline-size: 2.25rem;
+    min-inline-size: 2.25rem;
+    block-size: 2.25rem;
+    min-block-size: 2.25rem;
   }
 }
 
@@ -1105,12 +1059,6 @@ ol.plan-steps > li:not(:last-child)::after {
 }
 
 .plan-tree,
-.plan-tree__deps {
-  max-inline-size: none;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 
 /* The list scrolls inside the held card, so it holds its own visually
    hidden text: placed in the card, that text stretched the card's scroll
@@ -1153,9 +1101,12 @@ ol.plan-steps > li:not(:last-child)::after {
 
 /* A dependency hangs off its parent by a rule, one step in per level. */
 .plan-tree__deps {
-  margin-block-start: var(--space-1);
-  margin-inline-start: var(--space-1);
-  padding-inline-start: var(--space-3);
+  max-inline-size: none;
+  margin-block: var(--space-1) 0;
+  margin-inline: var(--space-1) 0;
+  padding-block: 0;
+  padding-inline: var(--space-3) 0;
+  list-style: none;
   border-inline-start: var(--border-width) solid var(--color-line);
 }
 
@@ -1292,12 +1243,6 @@ ol.plan-steps > li:not(:last-child)::after {
   }
 }
 
-@media (min-width: 64rem) and (pointer: fine) {
-  .mod-rail .split__rail .actions > .button {
-    min-block-size: 2.5rem;
-    padding-block: var(--space-1);
-  }
-}
 
 /* Mods on a phone: Update all keeps its place on the Installed mods
    heading's row, drawn tighter (12 px sides, 14 px words, 8 px gaps) so the
@@ -1368,16 +1313,13 @@ ol.plan-steps > li:not(:last-child)::after {
   max-inline-size: 100%;
 }
 
+/* One width whatever release is chosen, so picking one moves nothing. */
 .plan-row__version select {
+  inline-size: 15rem;
   min-inline-size: 0;
   max-inline-size: 100%;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .plan-row__version select {
-    min-block-size: 2.5rem;
-  }
-}
 
 /* An offered mod: the tick box is its own target, apart from the title
    link, so following the link never ticks it. */
@@ -1480,27 +1422,12 @@ html:has(.flow-foot) {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-5);
-  padding-block: var(--space-4);
   border-inline-start: 3px solid var(--color-line-strong);
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .mods-main > section:has(> .sync-diff) {
   border-inline-start-color: var(--color-warn);
-}
-
-.mods-main > section > #sync-heading {
-  flex: 0 1 auto;
-  min-inline-size: 0;
-  min-block-size: 0;
-  margin: 0;
-  padding: 0;
-  background: none;
-  border: 0;
-  font-size: var(--text-lg);
-  grid-column: 1;
-  grid-row: auto;
-  font-weight: 600;
 }
 
 .mods-main > section:has(> #sync-heading) > :is(p, ul) {
@@ -1528,33 +1455,6 @@ html:has(.flow-foot) {
   border: var(--border-width) solid var(--color-line);
   background: var(--color-surface);
   border-inline-start: 3px solid var(--color-selected);
-}
-
-/* ---- A heading that is a row's label, not a plate's title, takes no
-   raised band: the favourite chooser on Generate and the results line
-   before a search. */
-#main #results:not(:has(.hits, .error, .message)) > h2 {
-  min-block-size: 0;
-  margin: 0;
-  padding: 0;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  font-weight: 600;
-}
-
-/* Before a search the results are one quiet line under Find a mod, not a
-   plate of their own. */
-#main #results:not(:has(.hits, .error, .message)) {
-  margin-block-start: calc(-1 * var(--space-3));
-  padding: 0 var(--card-pad);
-  background: none;
-  border: 0;
-}
-
-#main #results:not(:has(.hits, .error, .message)) > h2 {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
 }
 
 #main .plan-panel:not(.plan-panel--empty) > .plan-panel__head {
@@ -1694,7 +1594,6 @@ html:has(.flow-foot) {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-5);
-  margin-block-start: calc(-1 * var(--space-2));
 }
 
 .mods-find__notes > .hint {
@@ -1844,21 +1743,13 @@ a.mod-title:hover {
     padding-block: var(--space-2);
     row-gap: 0.125rem;
   }
-
-  .mod-list .mod-actions :is(.button, .row-menu__toggle) {
-    min-block-size: 2.25rem;
-    padding-block: 0;
-  }
 }
 
-/* Match mods to the save: each line has its own row, so nothing the
-   plate's title band rules add can push the heading under the button. */
+/* Match mods to the save: the title band spans the plate, and each line
+   under it has its own row, beside the button. */
 .mods-main > section:has(> #sync-heading) > #sync-heading {
+  grid-column: 1 / -1;
   grid-row: 1;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
 }
 
 .mods-main > section:has(> #sync-heading) > :is(.sync-reason, #sync-state, .empty) {
@@ -1872,7 +1763,7 @@ a.mod-title:hover {
 .mods-main > section:has(> #sync-heading) > .actions {
   grid-column: 2;
   margin: 0;
-  grid-row: 1 / span 2;
+  grid-row: 2 / span 2;
   align-self: center;
 }
 
