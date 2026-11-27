@@ -14698,3 +14698,53 @@ main tbody th[scope="row"] .hint {
     max-inline-size: 100ch;
   }
 }
+
+/* Server on a very wide screen: the world's pages keep their own height and
+   the snapshots follow them one gap below; only the last row grows. */
+@media (min-width: 100rem) {
+  .server-grid {
+    grid-template-rows: auto 1fr;
+  }
+
+  .server-grid > .shortcuts.card,
+  .server-grid > .recent-snaps {
+    align-self: start;
+  }
+}
+
+/* The play time stands on the same label line and value size as the
+   facts beside it. */
+.status-card .play-time dt {
+  margin: 0;
+  line-height: inherit;
+}
+
+/* A recent snapshot's label is its row's title. */
+.recent-snaps__name > span:not(.snap-kind) {
+  color: var(--color-heading);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* One page header everywhere: the breadcrumb sits as close over the title
+   as the area's name does on Server and Worlds. */
+main > .crumb {
+  margin-block-end: calc(var(--space-1) - var(--space-4));
+}
+
+@media (min-width: 40rem) {
+  main > .crumb {
+    margin-block-end: calc(var(--space-1) - var(--space-5));
+  }
+}
+
+/* A world's facts in its row are values: body size, regular weight. */
+.worlds > li .facts dd {
+  font-size: var(--text-md);
+  font-weight: 400;
+}
+
+/* General's field hints run the field column's width, so most take one line. */
+form.general-grid.setting-rows .setting-row__body .hint {
+  max-inline-size: 100ch;
+}
