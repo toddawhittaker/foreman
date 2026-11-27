@@ -4795,8 +4795,10 @@ html:has(.large-view[open]) {
     grid-template-columns: 38rem minmax(0, 1fr);
   }
 
-  /* It scrolls on its own; the padding keeps focus rings inside it. */
+  /* It scrolls on its own; the padding keeps focus rings inside it. Positioned,
+     so its visually hidden headings scroll with it rather than stretch the view. */
   .large-view__settings:not([hidden]) {
+    position: relative;
     container: map-section / inline-size;
     display: grid;
     align-content: start;
