@@ -1068,11 +1068,9 @@ order and the picture agree.
 ### Motion
 
 Only `opacity` and `transform` may animate, for at most 150 ms. Under
-`prefers-reduced-motion: reduce`, nothing animates, including the
-indeterminate progress bar, which is hidden in that mode (`.steps
-progress { display: none }`) because the browser animates it itself; the
-"In progress" word carries the meaning. Nothing on these screens needs motion to be
-understood.
+`prefers-reduced-motion: reduce`, nothing animates: the working bar
+(7.6) stands still, and the "In progress" word carries the meaning.
+Nothing on these screens needs motion to be understood.
 
 ## 7. Components
 
