@@ -480,11 +480,6 @@ func TestStylesheetServedJoined(t *testing.T) {
 // CSS files, by folding each later rule into the first; remove each entry
 // with its fix, and this list once it is empty. Nothing may be added to it.
 var shorthandConflictsToFixInWave1 = map[string]bool{
-	".field select | forms.css padding-inline | forms.css padding-inline-end":                                         true,
-	".field select | forms.css background | forms.css background-image":                                               true,
-	".field select | forms.css background | forms.css background-repeat":                                              true,
-	".field select | forms.css background | forms.css background-position":                                            true,
-	".field select | forms.css background | forms.css background-size":                                                true,
 	"form.general-grid.setting-rows>.required-note | pages/settings.css margin | pages/settings.css margin-block-end": true,
 	"form.general-grid.setting-rows>p:first-child | pages/settings.css margin | pages/settings.css margin-block-end":  true,
 	".plan-tree__deps | pages/mods.css margin | pages/mods.css margin-block-start":                                    true,

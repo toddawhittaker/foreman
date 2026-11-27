@@ -479,6 +479,10 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		// english is a key's English, for a word shown in English beside
 		// the page's language, as the language menu's label is.
 		"english": func(key string) string { return i18n.English.T(key) },
+		// empty and formFoot make the input of the empty and form-foot
+		// partials (components.html).
+		"empty":    emptyState,
+		"formFoot": formFoot,
 	}
 }
 
@@ -547,7 +551,7 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 
 // partials are template files that no route renders on their own: every page
 // loads them, and each defines templates the pages include.
-var partials = []string{"mapgenform", "generatepreview", "failure", "modportal", "dropzone", "mapexchange", "saveplayers", "worldexportcard", "genflowsteps", "modsettingsform"}
+var partials = []string{"mapgenform", "generatepreview", "failure", "modportal", "dropzone", "mapexchange", "saveplayers", "worldexportcard", "genflowsteps", "modsettingsform", "components"}
 
 var partialFiles = func() []string {
 	out := make([]string, len(partials))
