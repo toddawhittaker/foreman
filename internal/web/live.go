@@ -43,6 +43,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	out.doneOp, _ = strconv.ParseUint(r.URL.Query().Get(doneOpParam), 10, 64)
+	out.toasts = r.URL.Query().Get(toastsParam)
 
 	view, updates, stop := s.game.Watch(sum.ID)
 	defer stop()
@@ -189,6 +190,7 @@ type liveStream struct {
 	started bool
 	state   game.State // the last state sent
 	result  string     // the last results sent, as read out
+	toasts  string     // the result toasts the page has (toastMark)
 	moved   bool       // the page was told to follow a switch
 	// doneOp is the ID of the last ended operation the page has seen.
 	doneOp uint64
@@ -206,6 +208,10 @@ const modsRecheckEvent = "mods"
 // was drawn with, so the stream does not reload a notice already current.
 const doneOpParam = "op"
 
+// toastsParam on the stream's address is the toastMark of the result toasts
+// the page was drawn with, so the stream sends only newer ones.
+const toastsParam = "toasts"
+
 // ModNoticeTrigger loads the mods notice with the page, and again each time
 // an operation on the world ends.
 func (ServerPage) ModNoticeTrigger() string { return "load, sse:" + modsRecheckEvent }
@@ -218,14 +224,19 @@ func (l *liveStream) send(p ServerPage) error {
 	p.Live = true
 	result := l.loc.Format(resultAnnouncement(p))
 	var say i18n.Msg
+	// A new result's toasts read themselves out, so only a failure, which
+	// stays on the plate, is said here (DESIGN 6, "Toasts").
+	toasts := p.toastMark()
+	sendToasts := toasts != "" && toasts != l.toasts
 	if l.started {
-		switch {
-		case result != "" && result != l.result:
-			say = resultAnnouncement(p)
-		case l.state != p.Status.State:
+		if result != "" && result != l.result {
+			say = failureAnnouncement(p)
+		}
+		if say.IsZero() && l.state != p.Status.State {
 			say = announcement(p.Status.State)
 		}
 	}
+	l.toasts = toasts
 	if !say.IsZero() && !p.StartBlocked().IsZero() {
 		say = join(say, blockedAnnouncement)
 	}
@@ -283,6 +294,16 @@ func (l *liveStream) send(p ServerPage) error {
 	if recheck {
 		// An event with no data is never delivered, so it carries a word.
 		if err := l.event(modsRecheckEvent, "ended"); err != nil {
+			return err
+		}
+		wrote = true
+	}
+	if sendToasts {
+		var b strings.Builder
+		if err := l.render.Fragment(&b, l.loc, p, "server-toast"); err != nil {
+			return err
+		}
+		if err := l.event("toast", b.String()); err != nil {
 			return err
 		}
 		wrote = true

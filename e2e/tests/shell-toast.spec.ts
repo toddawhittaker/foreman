@@ -20,6 +20,15 @@ const show = (page: Page, kind: "success" | "error", text: string) =>
     document.getElementById("toasts")!.prepend(t.content.querySelector("[data-toast]")!);
   }, toastOOB(kind, text));
 
+// clock.install leaves fake time flowing with real time, so a slow step such
+// as an axe run would spend a toast's time unseen. Stopped here, only runFor
+// moves it, and "stays 6 s" means 6 s from when the toast lands. The announcer
+// fills on the next frame, so the tests run 100 ms (frames) after a toast
+// lands and count those 100 ms in its 6 s.
+async function stopClock(page: Page) {
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
+}
+
 // An htmx request to a path the test answers itself, swapped into a probe
 // that must keep its words unless htmx swaps the answer.
 async function ask(page: Page, status: number, body: string) {
@@ -114,11 +123,19 @@ test("a success toast is announced politely, stays at least 6 s, and waits while
   // Focus stays where it was and nothing moved.
   await expect(field).toBeFocused();
   expect(await layout(page)).toEqual(before);
+  // axe runs on timers of its own, so it runs while time flows, on this
+  // toast; the time is measured on a fresh one.
   await checkThemes(page);
   await page.emulateMedia({ colorScheme: "dark" });
+  await toast.evaluate((el) => el.remove());
   await field.focus();
 
-  await page.clock.runFor(6_000);
+  await stopClock(page);
+  await show(page, "success", "Snapshot taken.");
+  await expect(toast).toHaveCount(1);
+  await page.clock.runFor(100);
+  await expect(page.locator("#announcer")).toHaveText(/Snapshot taken\./);
+  await page.clock.runFor(5_900);
   await expect(toast).toBeVisible();
   // Hovered, it waits.
   await toast.hover();
@@ -168,14 +185,16 @@ test("a toast in an htmx answer lands whole and closes after its time", async ({
   await page.clock.install();
   await createAdmin(page);
   await page.goto("/worlds");
+  await stopClock(page);
   await ask(page, 200, `<b>swapped</b>${toastOOB("success", "Saved.")}`);
   await expect(page.locator("#probe")).toHaveText("swapped");
   const toast = toasts(page);
   await expect(toast).toHaveCount(1);
   await expect(toast.locator(".toast__text")).toHaveText("Done: Saved.");
   await expect(toast.getByRole("button", { name: "Close this message" })).toBeVisible();
+  await page.clock.runFor(100);
   await expect(page.locator("#announcer")).toHaveText("Done: Saved.");
-  await page.clock.runFor(6_000);
+  await page.clock.runFor(5_900);
   await expect(toast).toBeVisible();
   await page.clock.runFor(4_000);
   await expect(toast).toHaveCount(0);

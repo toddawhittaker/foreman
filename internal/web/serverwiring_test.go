@@ -89,17 +89,18 @@ func TestSnapshotAfterCancelNeverShowsTheCancelledMessage(t *testing.T) {
 	}
 }
 
-// SPEC 17.9, DESIGN 5: the Done message takes focus when the page follows the
-// admin's own action, and only then.
-func TestDoneTakesFocusAfterTheAdminsOwnAction(t *testing.T) {
+// DESIGN 6, "Toasts": the Done message is a toast, which never takes focus,
+// after the admin's own action or on a plain load.
+func TestDoneIsAToastThatTakesNoFocus(t *testing.T) {
 	g := newGameRig(t, image21)
 	g.newWorld("Base", fixtureNoSA, false)
 	g.wantRedirectTo(PathServerResult, g.post(gamePath("base", "take-snapshot"), url.Values{}))
 	g.waitPage("Foreman took the snapshot")
-	g.wantContains("own result", g.get(PathServerResult), `id="done-message" tabindex="-1" autofocus>`, "data-focus-result")
-	plain := g.get(PathServer)
-	g.wantContains("plain load", plain, `id="done-message" tabindex="-1">`)
-	g.wantMissing("plain load", plain, "autofocus", "data-focus-result")
+	for _, path := range []string{PathServerResult, PathServer} {
+		body := g.get(path)
+		g.wantContains(path, body, `<div class="toast toast--success" data-toast>`, "Foreman took the snapshot")
+		g.wantMissing(path, body, "autofocus", "data-focus-result", "done-message")
+	}
 }
 
 // SPEC 17.9: a download Docker Hub has no image for links the page of the

@@ -408,7 +408,6 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	p := s.serverPage(r.Context(), sum, s.game.Status(sum.ID))
 	p.Admin = isAdmin(u)
-	p.FocusResult = followsOwnAction(r)
 	p.PlayerResult = s.playerResults.take(u.ID, sum.ID, PathServer)
 	p.RecentSnapshots, p.RecentFailed = s.recentSnapshots(sum.ID)
 	s.page(w, r, http.StatusOK, u.Username, p)

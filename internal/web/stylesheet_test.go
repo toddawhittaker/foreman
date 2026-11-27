@@ -473,30 +473,9 @@ func TestStylesheetServedJoined(t *testing.T) {
 	}
 }
 
-// shorthandConflictsToFixInWave1 is TEMPORARY. These are the conflicts the
-// guard found in the stylesheet when it began expanding shorthands (#983):
-// a shorthand in one rule and a longhand of it in a later rule for the same
-// selector. They are to be fixed in wave 1 of fixes batch 20, which owns the
-// CSS files, by folding each later rule into the first; remove each entry
-// with its fix, and this list once it is empty. Nothing may be added to it.
-var shorthandConflictsToFixInWave1 = map[string]bool{
-	".plan-tree__deps | pages/mods.css margin | pages/mods.css margin-block-start":    true,
-	".plan-tree__deps | pages/mods.css margin | pages/mods.css margin-inline-start":   true,
-	".plan-tree__deps | pages/mods.css padding | pages/mods.css padding-inline-start": true,
-}
-
 func TestStylesheetHasNoConflictingRules(t *testing.T) {
-	found := map[string]bool{}
 	for _, c := range cssConflicts(stylesheetRules(t)) {
-		found[c.key] = true
-		if !shorthandConflictsToFixInWave1[c.key] {
-			t.Error(c.msg)
-		}
-	}
-	for key := range shorthandConflictsToFixInWave1 {
-		if !found[key] {
-			t.Errorf("%q is fixed; remove it from shorthandConflictsToFixInWave1", key)
-		}
+		t.Error(c.msg)
 	}
 }
 

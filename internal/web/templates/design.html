@@ -1,4 +1,4 @@
-{{- /* The components on this page are the app's own. A shared component is the app's partial or class, never a copy. These are copies of markup that a page or the layout writes inline, since no partial of them exists yet; only the end-to-end pairs in e2e/tests/design.spec.ts guard them against drifting: the top bar and its open account menu (layout.html), the disk and play-time blocks, the players table and the snapshots card (server.html), the map settings' tab list, the working bar's idle state and the Server page's closable Done message and Emergency actions. */ -}}
+{{- /* The components on this page are the app's own. A shared component is the app's partial or class, never a copy. These are copies of markup that a page or the layout writes inline, since no partial of them exists yet; only the end-to-end pairs in e2e/tests/design.spec.ts guard them against drifting: the top bar and its open account menu (layout.html), the disk and play-time blocks, the players table and the snapshots card (server.html), the map settings' tab list, the working bar's idle state and the Server page's Undo row and Emergency actions. */ -}}
 {{define "title"}}{{t "common.design.title"}}{{end}}
 
 {{- /* The page header partial's slots, for the header specimens: they read Full from designHead. */}}
@@ -144,13 +144,10 @@
   <p><strong>{{t "common.label.warning"}}</strong> {{t "server.disk.low" "free" "2.1 GB" "reserve" "5 GB"}}</p>
   <div class="actions"><a href="{{snapshotsTabPath}}" class="button">{{t "server.disk.snapshots"}}</a></div>
 </div>
-{{- /* The one message with a close button, as the Server page draws it. Its ids are the page's, so it is written out here. */}}
-<div class="message message--success message--closable">
-  <p><strong>{{t "common.label.done"}}</strong> {{t "server.done.snapshot_short"}}</p>
-  <div class="actions">
-    <a href="{{snapshotsTabPath}}">{{t "server.go_snapshots"}}</a>
-  </div>
-  <form method="get" action="#design-messages" class="message__dismiss">
+{{- /* The Server plate's Undo row, as the page draws it under its actions once a Done toast has an undo. Its ids are the page's, so it is written out here. */}}
+<div class="actions result-undo">
+  <a href="{{snapshotsTabPath}}" class="button">{{t "server.undo.restore"}}</a>
+  <form method="get" action="#design-messages">
     <button type="submit" class="button button--icon message__close"><span class="visually-hidden">{{t "server.done.close"}}</span></button>
   </form>
 </div>
@@ -203,7 +200,7 @@
       <li><span class="step-state step-state--done">{{t "server.step.done"}}</span> <span class="step-name">{{t "server.step.check"}}</span></li>
       <li><span class="step-state step-state--done">{{t "server.step.done"}}</span> <span class="step-name">{{t "server.step.image"}}</span></li>
       <li aria-current="step"><span class="step-state step-state--progress">{{t "server.step.progress"}}</span> <span class="step-name">{{t "server.step.load"}}</span>
-        <progress aria-label="{{t "server.step.load"}}"></progress></li>
+        {{template "working" (t "server.op.other")}}</li>
       <li><span class="step-state">{{t "server.step.waiting"}}</span> <span class="step-name">{{t "server.step.rcon"}}</span></li>
     </ol>
   </div>

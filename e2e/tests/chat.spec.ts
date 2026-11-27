@@ -183,9 +183,13 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, fakeGame!, { running: false });
     await expect(page.locator("#chat-not-running")).toContainText("The server is not running, so no one can read chat.");
     await expect(page.locator("section.panel").getByRole("link", { name: "Go to the Server page" })).toHaveAttribute("href", "/");
-    await send(page, "hello");
-    await expect(page.locator("#chat-panel")).toContainText("The game is not running, so the message was not sent.");
-    await expect(field(page)).toHaveValue("hello");
+    // While stopped the plate shows only that, with no log and no form (DESIGN 8.14).
+    await expect(page.locator("#chat-panel")).toBeHidden();
+    await expect(page.locator("section.panel .log-frame")).toBeHidden();
+    // A message posted anyway is refused, and the refusal sums it up as a toast.
+    const answer = await page.request.post("/worlds/base/chat", { form: { message: "hello" }, maxRedirects: 0 });
+    expect(answer.status()).toBe(409);
+    expect(await answer.text()).toContain("The game is not running, so the message was not sent.");
     expect(chatAudit(foreman)).toEqual([]);
     await checkPage(page);
   });
