@@ -1006,6 +1006,9 @@ type planForm struct {
 	// Declined are recommended mods the admin unticked. A box cannot send
 	// "unticked", so each recommended box sends its name as "offered" too.
 	Declined []string
+	// Shown are the offers in the order the page showed them, so a redraw
+	// keeps that order and adds new offers at the end.
+	Shown []string
 	// Kept are offered orphans the admin unticked; each orphan box sends
 	// its name as "orphan-offered" too, for the same reason (SPEC 9.4).
 	Kept []string
@@ -1046,17 +1049,36 @@ const (
 	orphanField        = "orphan"
 	orphanOfferedField = "orphan-offered"
 	keptField          = "kept"
+	shownField         = "shown"
 	versionPrefix      = "version-"
 	draftField         = "draft"
 )
 
 var planKinds = []mods.Kind{mods.KindInstall, mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove, mods.KindUpload}
 
+// toasts: in the guided Generate, the Mods step says the world was just made
+// (SPEC 5.6).
+func (p ModsPage) toasts() []Toast {
+	if p.InFlow() && p.Generated {
+		return []Toast{{Text: i18n.M("mods.flow.generated", "name", p.World.Name)}}
+	}
+	return nil
+}
+
+// toasts: the review after Generate from a favorite says the world was made
+// (SPEC 5.12). A redraw keeps the toast already shown.
+func (p ModPlanPage) toasts() []Toast {
+	if p.Generated && !p.Redraw {
+		return []Toast{{Text: i18n.M("favorites.review.generated", "name", p.World.Name)}}
+	}
+	return nil
+}
+
 // readPlanForm reads a request from a query or a posted form; ok is false
 // for one no page offers.
 func readPlanForm(v url.Values) (planForm, bool) {
 	f := planForm{
-		Kind: mods.Kind(v.Get("kind")), Names: v["name"], Optional: v["optional"],
+		Kind: mods.Kind(v.Get("kind")), Names: v["name"], Optional: v["optional"], Shown: v[shownField],
 		Save: v.Get("save"), Staged: v.Get("staged"), Hash: v.Get("hash"), Fingerprint: v.Get("fingerprint"),
 		DropsConfirmed: v.Get(dropsField) == "1",
 		Choices:        map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{},
@@ -1081,7 +1103,7 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		}
 	}
 	// Each name can cost a portal request, so a crafted list is bounded.
-	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > store.MaxModPlanNames || len(f.Optional) > store.MaxModPlanNames || len(f.Declined) > store.MaxModPlanNames ||
+	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > store.MaxModPlanNames || len(f.Optional) > store.MaxModPlanNames || len(f.Declined) > store.MaxModPlanNames || len(f.Shown) > store.MaxModPlanNames ||
 		len(f.AlsoDisable)+len(f.AlsoRemove) > store.MaxModPlanNames {
 		return planForm{}, false
 	}

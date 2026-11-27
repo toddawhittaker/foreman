@@ -272,7 +272,8 @@ func TestAcceptedInstallKeepsOtherSavedPicks(t *testing.T) {
 }
 
 // SPEC 5.12: the review page after Generate from a favorite says the world
-// was made and takes focus; an ordinary review page has no such note.
+// was made, in a toast that leaves focus alone; an ordinary review page has
+// no such note.
 func TestReviewAfterGenerateSaysTheWorldWasMade(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("aai-industry", "1.0.0")
@@ -280,14 +281,14 @@ func TestReviewAfterGenerateSaysTheWorldWasMade(t *testing.T) {
 
 	q := url.Values{"kind": {"install"}, "name": {"aai-industry"}}
 	_, plain0 := g.getStatus(planPath(id, q))
-	if strings.Contains(plain0, `id="plan-generated"`) {
+	if strings.Contains(plain0, `data-toast>`) {
 		t.Error("an ordinary review page has the generated note")
 	}
 	q.Set(generatedQuery, "1")
 	_, body := g.getStatus(planPath(id, q))
-	wantIn(t, "note", body, `id="plan-generated" tabindex="-1" autofocus`)
+	wantIn(t, "note", body, `<div class="toast toast--success" data-toast>`)
 	wantIn(t, "note text", plain(body), "Generated Club world from the favorite.")
-	if strings.Index(body, `id="plan-generated"`) > strings.Index(body, `id="mod-plan"`) {
-		t.Error("the note is not above the plan")
+	if strings.Contains(body, " autofocus") {
+		t.Error("the toast takes focus")
 	}
 }

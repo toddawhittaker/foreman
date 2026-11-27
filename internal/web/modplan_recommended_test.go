@@ -89,3 +89,37 @@ func TestRecommendedUpgradeOfInstalledModStaysListed(t *testing.T) {
 		t.Errorf("the upgrade of installed fp-sun is missing from the plan:\n%s", rows)
 	}
 }
+
+// A redraw keeps the offers in the order the page showed them, and an offer
+// the redraw brings goes after them even when its name sorts first, so no
+// box moves under the pointer (SPEC 9.14).
+func TestOfferOrderKeptAcrossRedraw(t *testing.T) {
+	g := newModsRig(t, true)
+	for _, n := range []string{"fp-b", "fp-c", "fp-0"} {
+		g.portal.AddZip(n, "1.0.0")
+	}
+	g.portal.AddZip("fp-a", "1.0.0", "base >= 2.0", "? fp-0")
+	g.portal.AddZip("fp-main", "1.0.0", "base >= 2.0", "? fp-a", "? fp-b", "? fp-c")
+	id := g.world20("Base")
+	order := func(body string) []string {
+		var out []string
+		for _, part := range strings.Split(body, `<input type="hidden" name="shown" value="`)[1:] {
+			out = append(out, part[:strings.Index(part, `"`)])
+		}
+		return out
+	}
+	_, first := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}}))
+	if got := order(first); strings.Join(got, " ") != "fp-a fp-b fp-c" {
+		t.Fatalf("first order %v", got)
+	}
+	// Ticking fp-a offers fp-0, which sorts first by name but goes last.
+	_, ticked := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}, "optional": {"fp-a"}, "shown": order(first)}))
+	if got := order(ticked); strings.Join(got, " ") != "fp-a fp-b fp-c fp-0" {
+		t.Errorf("after the tick %v, want fp-a fp-b fp-c fp-0", got)
+	}
+	// A page that showed another order keeps it.
+	_, kept := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}, "shown": {"fp-c", "fp-a", "fp-b"}}))
+	if got := order(kept); strings.Join(got, " ") != "fp-c fp-a fp-b" {
+		t.Errorf("shown order not kept: %v", got)
+	}
+}
