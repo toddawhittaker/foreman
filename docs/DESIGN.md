@@ -438,7 +438,7 @@ The shadows, each theme's own (the other theme's layers are transparent):
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--shadow-card` | `inset 0 1px 0 rgb(255 255 255 / 3%)` | `0 1px 2px rgb(60 45 25 / 8%), 0 1px 1px rgb(60 45 25 / 4%)` | A card's faint lift |
+| `--shadow-card` | `inset 0 1px 0 rgb(255 255 255 / 3%)` | `0 1px 2px rgb(60 45 25 / 10%), 0 3px 10px rgb(60 45 25 / 7%)` | A card's faint lift |
 | `--shadow-pop` | `0 8px 24px rgb(0 0 0 / 45%)` | `0 10px 28px rgb(60 45 25 / 18%)` | What floats: the user menu's panel, a row's More menu, the selection bar, "Jump to newest"; the sign-in box |
 
 Badges and the state pill are fully rounded (999px), which is not a token.
