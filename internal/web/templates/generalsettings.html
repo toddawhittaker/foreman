@@ -9,6 +9,8 @@
 {{- end}}
 {{- end}}
 
+{{define "scripts"}}<script src="{{static "toggletip.js"}}" defer></script>{{end}}
+
 {{define "rail"}}{{template "settings-tabs" "general"}}{{end}}
 
 {{define "content" -}}
@@ -25,13 +27,17 @@
 </div>
 {{- end}}
 {{template "summary" .Problems}}
-<form method="post" action="{{.Path}}" class="panel setting-rows" novalidate>
+<form method="post" action="{{.Path}}" class="panel setting-rows" novalidate data-tips>
   {{template "required-note"}}
   {{- /* The two retention groups pair first, then the stop countdown beside the upload limits. */}}
   <section class="setting-row" aria-labelledby="general-snapshots-heading">
     <div class="setting-row__head">
-      <h2 id="general-snapshots-heading">{{t "general.snapshots.heading"}}</h2>
-      <p class="hint">{{t "general.snapshots.text"}}</p>
+      <div class="setting-row__title">
+        <h2 id="general-snapshots-heading">{{t "general.snapshots.heading"}}</h2>
+        <button type="button" class="tip" aria-expanded="false" aria-controls="general-snapshots-tip" aria-describedby="general-snapshots-tip"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "general.snapshots.heading")}}</span></button>
+      </div>
+      <p class="hint">{{t "general.snapshots.short"}}</p>
+      <p class="tip__text" id="general-snapshots-tip">{{t "general.snapshots.text"}}</p>
     </div>
     <div class="setting-row__body">
       {{- if and .Trims (not .Saved)}}
@@ -48,8 +54,12 @@
   </section>
   <section class="setting-row" aria-labelledby="general-audit-heading">
     <div class="setting-row__head">
-      <h2 id="general-audit-heading">{{t "general.audit.heading"}}</h2>
-      <p class="hint">{{t "general.audit.text"}}</p>
+      <div class="setting-row__title">
+        <h2 id="general-audit-heading">{{t "general.audit.heading"}}</h2>
+        <button type="button" class="tip" aria-expanded="false" aria-controls="general-audit-tip" aria-describedby="general-audit-tip"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "general.audit.heading")}}</span></button>
+      </div>
+      <p class="hint">{{t "general.audit.short"}}</p>
+      <p class="tip__text" id="general-audit-tip">{{t "general.audit.text"}}</p>
     </div>
     <div class="setting-row__body">
       <div class="field">
@@ -61,8 +71,12 @@
   </section>
   <section class="setting-row" aria-labelledby="general-stop-heading">
     <div class="setting-row__head">
-      <h2 id="general-stop-heading">{{t "general.stop.heading"}}</h2>
-      <p class="hint">{{t "general.stop.text"}}</p>
+      <div class="setting-row__title">
+        <h2 id="general-stop-heading">{{t "general.stop.heading"}}</h2>
+        <button type="button" class="tip" aria-expanded="false" aria-controls="general-stop-tip" aria-describedby="general-stop-tip"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "general.stop.heading")}}</span></button>
+      </div>
+      <p class="hint">{{t "general.stop.short"}}</p>
+      <p class="tip__text" id="general-stop-tip">{{t "general.stop.text"}}</p>
     </div>
     <div class="setting-row__body">
       <div class="field">
@@ -74,8 +88,12 @@
   </section>
   <section class="setting-row" aria-labelledby="general-uploads-heading">
     <div class="setting-row__head">
-      <h2 id="general-uploads-heading">{{t "general.uploads.heading"}}</h2>
-      <p class="hint">{{t "general.uploads.text"}}</p>
+      <div class="setting-row__title">
+        <h2 id="general-uploads-heading">{{t "general.uploads.heading"}}</h2>
+        <button type="button" class="tip" aria-expanded="false" aria-controls="general-uploads-tip" aria-describedby="general-uploads-tip"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "general.uploads.heading")}}</span></button>
+      </div>
+      <p class="hint">{{t "general.uploads.short"}}</p>
+      <p class="tip__text" id="general-uploads-tip">{{t "general.uploads.text"}}</p>
     </div>
     <div class="setting-row__body">
       <div class="field">
@@ -92,8 +110,12 @@
   </section>
   <section class="setting-row" aria-labelledby="general-updates-heading">
     <div class="setting-row__head">
-      <h2 id="general-updates-heading">{{t "general.updates.heading"}}</h2>
-      <p class="hint">{{t "general.updates.text"}}</p>
+      <div class="setting-row__title">
+        <h2 id="general-updates-heading">{{t "general.updates.heading"}}</h2>
+        <button type="button" class="tip" aria-expanded="false" aria-controls="general-updates-tip" aria-describedby="general-updates-tip"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "general.updates.heading")}}</span></button>
+      </div>
+      <p class="hint">{{t "general.updates.short"}}</p>
+      <p class="tip__text" id="general-updates-tip">{{t "general.updates.text"}}</p>
     </div>
     <div class="setting-row__body">
       <div class="field">
@@ -104,8 +126,12 @@
   </section>
   <section class="setting-row" aria-labelledby="general-icons-heading">
     <div class="setting-row__head">
-      <h2 id="general-icons-heading">{{t "general.icons.heading"}}</h2>
-      <p class="hint">{{t "general.icons.text"}}</p>
+      <div class="setting-row__title">
+        <h2 id="general-icons-heading">{{t "general.icons.heading"}}</h2>
+        <button type="button" class="tip" aria-expanded="false" aria-controls="general-icons-tip" aria-describedby="general-icons-tip"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (t "general.icons.heading")}}</span></button>
+      </div>
+      <p class="hint">{{t "general.icons.short"}}</p>
+      <p class="tip__text" id="general-icons-tip">{{t "general.icons.text"}}</p>
     </div>
     <div class="setting-row__body">
       <div class="field">

@@ -998,7 +998,7 @@ func TestFaviconLinksAndFiles(t *testing.T) {
 		{PathStatic + "icons/icon-32.png", "image/png"},
 		{PathStatic + "icons/apple-touch-icon.png", "image/png"},
 		{PathStatic + "icons/wordmark-480.webp", "image/webp"},
-		{PathStatic + "icons/wordmark-260.webp", "image/webp"},
+		{PathStatic + "icons/wordmark-296.webp", "image/webp"},
 	} {
 		rec := hn.get(c.path)
 		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != c.contentType {

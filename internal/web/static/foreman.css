@@ -3417,7 +3417,7 @@ td > .hint {
    preset beside seed, so the map's settings start a screen sooner. */
 @container map-section (min-width: 40rem) {
   :has(> #preset-box + .field) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     column-gap: var(--space-5);
     align-items: start;
   }
@@ -3759,7 +3759,7 @@ summary::-webkit-details-marker {
 /* The preset, "[modified]" and its reset share a row while they fit: the
    select gives up width before the reset is pushed to a line of its own. */
 .preset-row > select {
-  flex: 1 1 14rem;
+  flex: 1 1 11rem;
   inline-size: auto;
   min-inline-size: 0;
 }
@@ -5799,7 +5799,7 @@ a[target="_blank"]::after {
   flex: none;
 }
 
-@container generate (min-width: 56rem) {
+@container generate (min-width: 62rem) {
   .gen-grid {
     grid-template-columns: minmax(34rem, 1fr) minmax(20rem, 26rem);
     gap: var(--space-6);
@@ -5822,13 +5822,6 @@ a[target="_blank"]::after {
     background: var(--color-raised);
     border: var(--border-width) solid var(--color-line);
     border-radius: var(--radius-lg);
-  }
-
-  /* Clear of the shell's sticky 3.5rem top strip. */
-  @media (min-width: 64rem) {
-    body:has(> .site > nav) .gen-preview {
-      --gen-top: calc(3.5rem + var(--space-4));
-    }
   }
 
   /* Once a picture is drawn, the section's parts are the pane's own rows,
@@ -5914,9 +5907,9 @@ a[target="_blank"]::after {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* All planets are thumbnails, two to a row, so they read as small beside One planet's picture (DESIGN 8.8). */
+  /* All planets are thumbnails, three to a row, so they read as small beside One planet's picture (DESIGN 8.8). */
   .gen-preview .pictures:has(> li + li) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -12622,8 +12615,9 @@ h1 {
   background: var(--color-raised);
   border-block-end: var(--border-width) solid var(--color-line-strong);
   border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
-  font-size: var(--text-lg);
-  line-height: 1.333;
+  font-size: var(--text-xl);
+  font-weight: 650;
+  line-height: 1.3;
 }
 
 :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(.section-head, .group__head):is(:first-child, :is(input[type="hidden"], [hidden]) + *) {
@@ -12635,7 +12629,8 @@ h1 {
 }
 
 :is(main > .panel, main > .panels > .panel, .card) > :is(.section-head, .group__head):first-child :is(h2, h3) {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
+  font-weight: 650;
 }
 
 /* Below 360 px plates lie flat, so the band does too. */
@@ -13060,7 +13055,7 @@ main > .panel.danger-zone {
   }
 }
 
-/* ---- Type roles. Page title 30/700; a plate's title 18/650; body 15;
+/* ---- Type roles. Page title 30/700; a plate's title 20/650; body 15;
    a field's label 13/600 in the muted ink; help 13/400 in the faint ink.
    Each role is one step apart in size, weight or ink. */
 h1 {
@@ -13329,5 +13324,155 @@ main > h1 + p.hint,
     grid-column: 2;
     grid-row: 1 / span 2;
     align-self: center;
+  }
+}
+
+/* ---- The wordmark in the desk: 46 px tall in a 64 px bar, drawn from a
+   file twice its size so the rivets and letters stay sharp, with clear
+   space on both sides. 34 px on a phone, 28 px below 22rem. */
+.site > .product {
+  padding-block: var(--space-2);
+  padding-inline-end: var(--space-3);
+}
+
+.site > .product img {
+  block-size: 46px;
+}
+
+@media (min-width: 40rem) {
+  .site {
+    min-block-size: 4rem;
+  }
+
+  .site .tabs a {
+    block-size: 4rem;
+    min-block-size: 4rem;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .site > .product img {
+    block-size: 34px;
+  }
+}
+
+@media (max-width: 22rem) {
+  .site > .product img {
+    block-size: 28px;
+  }
+}
+
+/* ---- The large view holds the window. While it is open the page behind
+   takes no height, so nothing of it shows past the view's foot. */
+html:has(.large-view[open]) > body {
+  block-size: 100dvh;
+  overflow: clip;
+}
+
+/* Its header reads as a page header: the title at the page title's weight
+   over a rule, the keys at its end. */
+.large-view__bar {
+  padding-block-end: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.large-view__head h2 {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+
+@media (min-width: 48rem) {
+  .large-view[open] {
+    padding-block: var(--space-4);
+    row-gap: var(--space-4);
+  }
+}
+
+@media (min-width: 90rem) {
+  .large-view[open] {
+    padding-inline: var(--space-6);
+  }
+}
+
+/* The star map has no settings, so it takes the whole width and sits in
+   the middle of the window rather than beside an empty column. */
+.large-view[data-starmap] #large-settings {
+  display: none;
+}
+
+@container large-view (min-width: 77rem) {
+  .large-view[data-starmap] .large-view__body:has(> .large-view__settings) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Previous keeps the spot it has beside a planet's settings, so clicks in
+     one place still step through every picture (DESIGN 8.8). */
+  .large-view[data-starmap] .large-view__body:has(> .large-view__settings:not([hidden])) .large-view__edge--prev {
+    inset-inline-start: calc(38rem + var(--space-4) + var(--space-2));
+  }
+}
+
+.large-view__frame {
+  border-radius: var(--radius-lg);
+}
+
+/* ---- A mod row's More is a framed button at rest, the twin of the
+   Update button beside it, so the row's actions read as one set. */
+.mod-list .row-menu > summary.row-menu__toggle,
+.mod-list .row-menu > summary.row-menu__toggle:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.mod-list .row-menu > summary.row-menu__toggle:hover,
+.mod-list .row-menu[open] > summary.row-menu__toggle {
+  background: var(--color-secondary-hover);
+}
+
+/* The plan's remove buttons are framed 36 px icon buttons, quiet in ink. */
+.button--icon.plan-panel__remove {
+  inline-size: 2.25rem;
+  min-block-size: 2.25rem;
+  block-size: 2.25rem;
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.button--icon.plan-panel__remove::before {
+  inline-size: 1rem;
+  block-size: 1rem;
+}
+
+@media (pointer: coarse) {
+  .button--icon.plan-panel__remove {
+    inline-size: var(--target-min);
+    min-block-size: var(--target-min);
+    block-size: var(--target-min);
+  }
+}
+
+/* The game log fades out at its top edge, so a line scrolled half out of
+   view reads as more above rather than as a cut. */
+.terminal .log-frame > .log {
+  mask-image: linear-gradient(to bottom, transparent 0, black var(--space-5));
+}
+
+/* ---- A settings group's title carries its (i) toggletip; the head keeps
+   one short line of help and the full text opens from the button. */
+.setting-row__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.setting-row__head:has(> .tip__text) {
+  position: relative;
+}
+
+/* ---- On a phone the settings tabs scroll sideways; their end fades, so
+   the strip shows it holds more. */
+@media (max-width: 39.99rem) {
+  nav.subnav.subnav--settings > ul {
+    mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
   }
 }

@@ -57,7 +57,7 @@
   "mods.row.gone": "Players cannot join: the mod portal no longer has version {version}, so their game cannot download it.",
   "mods.row.gone_none": "Players cannot join: the mod portal no longer has version {version} and has none for this game version. Remove the mod or disable it.",
   "mods.row.deprecated": "Deprecated on the mod portal, so players cannot find it in the game's mod browser.",
-  "mods.row.not_on_portal": "Not on the mod portal, so players' games cannot download it. Players need the file from you.",
+  "mods.row.not_on_portal": "Not on the mod portal, so players need the file from you.",
   "mods.status.loading": "Checking the mod portal for updates…",
   "mods.status.unreachable": "Foreman could not reach the mod portal, so it could not check for updates or for mods players cannot download.",
   "mods.status.retry": "Check again",

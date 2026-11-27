@@ -57,7 +57,7 @@
   "mods.row.gone": "Les joueurs ne peuvent pas rejoindre la partie : le portail de mods n’a plus la version {version}, leur jeu ne peut donc pas la télécharger.",
   "mods.row.gone_none": "Les joueurs ne peuvent pas rejoindre la partie : le portail de mods n’a plus la version {version} et n’en a aucune pour cette version du jeu. Retirez le mod ou désactivez-le.",
   "mods.row.deprecated": "Marqué comme obsolète sur le portail de mods, les joueurs ne peuvent donc pas le trouver dans le navigateur de mods du jeu.",
-  "mods.row.not_on_portal": "Absent du portail de mods, le jeu des joueurs ne peut donc pas le télécharger. Les joueurs ont besoin du fichier de votre part.",
+  "mods.row.not_on_portal": "Absent du portail de mods, les joueurs ont donc besoin du fichier de votre part.",
   "mods.status.loading": "Recherche de mises à jour sur le portail de mods…",
   "mods.status.unreachable": "Foreman n’a pas pu joindre le portail de mods et n’a donc pas pu rechercher les mises à jour ni vérifier les mods que les joueurs ne peuvent pas télécharger.",
   "mods.status.retry": "Vérifier à nouveau",

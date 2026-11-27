@@ -53,7 +53,7 @@
   "mods.row.gone": "玩家无法加入：模组门户已没有版本 {version}，因此其游戏无法下载。",
   "mods.row.gone_none": "玩家无法加入：模组门户已没有版本 {version}，也没有适用于此游戏版本的版本。请移除或禁用该模组。",
   "mods.row.deprecated": "在模组门户上被标记为已弃用，因此玩家无法在游戏的模组浏览器中找到它。",
-  "mods.row.not_on_portal": "不在模组门户上，因此玩家的游戏无法下载它。玩家需要另行获取该文件。",
+  "mods.row.not_on_portal": "不在模组门户上，因此玩家需要另行获取该文件。",
   "mods.status.loading": "正在向模组门户检查更新…",
   "mods.status.unreachable": "Foreman 无法连接模组门户，因此无法检查更新，也无法检查玩家无法下载的模组。",
   "mods.status.retry": "重新检查",

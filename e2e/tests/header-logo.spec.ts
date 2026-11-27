@@ -16,12 +16,12 @@ test("the wordmark links home, is named Foreman, and is sharp on a 2x screen", {
   const logo = home.locator("img");
   // The wordmark's alt text is the link's name.
   await expect(logo).toHaveAttribute("alt", "Foreman");
-  // The 260 px file drawn at about 130 px, so a 2x screen gets every pixel.
-  await expect(logo).toHaveAttribute("src", /wordmark-260\.webp\?v=\w+/);
+  // The 296 px file drawn at 148 px, so a 2x screen gets every pixel.
+  await expect(logo).toHaveAttribute("src", /wordmark-296\.webp\?v=\w+/);
   const size = (await logo.boundingBox())!;
-  // 40 px tall in the bar, smaller on a phone, so the word on the plate reads.
+  // 46 px tall in the bar, smaller on a phone, so the word on the plate reads.
   if (phone(page)) expect(size.height).toBeGreaterThanOrEqual(24);
-  else expect(size.height).toBe(40);
+  else expect(size.height).toBe(46);
   expect(size.width).toBeGreaterThan(size.height * 3);
   await home.click();
   await expect(page).toHaveURL("/");

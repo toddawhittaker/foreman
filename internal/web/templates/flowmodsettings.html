@@ -2,13 +2,11 @@
 
 {{define "scripts"}}<script src="{{static "flowmodsettings.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "worlds-area-tabs" ""}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .World.Name "" (t "newmap.modsettings.title"))}}
 <h1 id="flow-modsettings-heading" tabindex="-1">{{t "newmap.modsettings.title"}}</h1>
-{{template "rail" $}}
 {{template "genflow-steps" .Steps}}
 <p class="page-intro">{{t "newmap.modsettings.intro" "name" .World.Name}}</p>
 {{- /* Step 3 is optional: the way on is a link, as step 2's is (SPEC 5.6). */}}
