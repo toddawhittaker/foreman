@@ -27,22 +27,23 @@ by, affiliated with or endorsed by Wube Software. It uses its own colour
 values and none of the game's artwork, icons, logos, fonts or textures,
 and nothing in it should suggest it is an official product.
 
-- **Cards with 1 px lines.** On a wide screen the page is a rail on the
-  start side, a status strip across the top, then the cards; on a phone it
-  is a header bar, then one column of cards (6, "Shell"; 7.8). A card is a
-  section on `surface` with a 1 px `line` edge and 8 px corners, set on
-  the `bg` page; inside it, headings, lists and thin rules give the
-  structure. A box also appears where it means something: a field, the
-  log, a message, a confirmation. There are no bevels (apart from a
-  secondary button's raised plate and a field's sunk well, 4), gradients
-  (apart from the hard-stop fills inside state shapes), glows (apart from
-  the faint ring round the running badge's square) or blurred glass. A
-  shadow comes from one of two tokens: the card's faint edge
-  light (`--shadow-card`) and what floats over the page (`--shadow-pop`):
-  the user menu, a row's More menu, the selection bar and "Jump to
-  newest", and the sign-in box.
-  Corners are 6 px on controls and foldout rows under the pointer, and
-  8 px on cards and the menu.
+- **Plates with strong lines.** The page is one top bar, then the plates,
+  on a phone as on a wide screen (6, "Shell"; 7.8). A plate is a section on
+  `surface` with a 1 px `line` edge and 4 px corners, set on the `bg` page.
+  Its title sits in a raised band over a strong rule, and inside it
+  headings, lists and thin rules give the structure. A box also appears
+  where it means something: a field, the log, a message, a confirmation.
+  There are no bevels (apart from a secondary button's raised plate and a
+  field's sunk well, 4), gradients (apart from the hard-stop fills inside
+  state shapes and the hazard stripe), glows (apart from the faint ring
+  round the running badge's square) or blurred glass. A plate has no shadow
+  in dark and a 1 px hairline of shadow under it in light. Two tokens give
+  every other shadow: the faint lift of a confirmation box
+  (`--shadow-card`), and what floats over the page (`--shadow-pop`):
+  the user menu, a row's More menu, the selection bar and "Jump to newest",
+  and the second sign-in card. Corners are 3 px on controls and on foldout
+  rows under the pointer, 4 px on plates, segmented tracks and the menu,
+  and 2 px on tags (7.5).
 - **Colour that means something.** Neutrals are warm greys. Orange marks
   the one primary button on a screen, the current place, checked boxes,
   links, the line across the top of the header and the live world's edge in
@@ -50,24 +51,26 @@ and nothing in it should suggest it is an official product.
   the "running" badge, the Server plate's state rule while the game runs, and the
   "Done" word. Red is the final step of a destructive action, the failed
   states and the outlined buttons that open a destructive step (7.1).
-  Yellow is a warning. Blueprint blue (`info`) marks a note and what is
-  planned but not yet done: a mod in the plan, a review that destroys
-  nothing, an empty state's drawing. None of them decorates.
+  Yellow is a warning. Blueprint blue (`info`) marks what is planned but
+  not yet done and the starting state: a review that destroys nothing, an
+  empty state's drawing. A note is a neutral plate (7.3). None of them
+  decorates.
 - **Dark first.** Dark is the main look, as in the game. The light theme
   is the same layout in warm off-white, not an inverted afterthought.
-- **The logo in the header.** The rusty Foreman logo sits beside the
-  product name in the header, 32 CSS pixels square (6, Shell), and above
-  the heading of the sign-in and setup pages at 64 px. A faint drafting
-  grid sits behind the rail's logo and behind the sign-in and signed-out
-  pages. There is no hero or illustration anywhere else.
+- **The wordmark in the top bar.** The rusty Foreman wordmark, a gear and
+  FOREMAN on a riveted plate, is the home link in the top bar, 46 px tall
+  (6, Shell). The sign-in and signed-out pages show it 288 px wide over
+  their heading. A faint drafting grid sits behind those two pages. There is
+  no hero or illustration anywhere else. The flat icon stays only as the
+  16 px favicon (`docs/brand/README.md`).
 - **IBM Plex, with Plex Mono for what the game prints**: file names,
-  world ids, folder ids, seeds, commands, the console and the log are in
-  IBM Plex Mono. So are the figures a machine writes when they stand as
-  values: a version (`.ver`, `.mod-ver`), and the sizes, times and versions
-  in table cells and in the world list's facts, at 13 px with tabular
-  digits. The overline is Plex Mono capitals too (2). Everything a person
-  wrote, or Foreman wrote for a person, is in IBM Plex Sans, and so are
-  table column names (8.3) and fact names (2).
+  world ids, folder ids, seeds, map exchange strings, commands, the console
+  and the log are in IBM Plex Mono. So are versions (`.ver`, `.mod-ver`).
+  Times, durations and the figures in table cells are Plex Sans with
+  tabular digits, so a time inside a line does not change face. Everything
+  a person wrote, or Foreman wrote for a person, is in IBM Plex Sans, and
+  so are table column names (8.3), fact names and the context row over a
+  page title (2).
 - **Dense, not cramped.** Lists and tables inside cards, not grids of
   tiles. A world list is a list of rows divided by rules. A save list is a
   table.
@@ -109,50 +112,63 @@ files as `IBM-Plex-Sans-OFL.txt` and `IBM-Plex-Mono-OFL.txt`, and
 
 The root size is left at the browser default (normally 16 px) so that a
 person's own text-size setting works. Every size is in `rem`. The steps
-are about 1.125 to 1.25 apart, which keeps headings close to body text: on
-a 320 px screen, big headings waste lines. The page heading (32 px) and the
-section heading (20 px) are the two steps that jump, so a person scrolling
-a phone can find where a page and a section start.
+are one step apart per role, which keeps headings close to body text: on a
+320 px screen, big headings waste lines. They are 13 (labels at 600 in the
+muted ink, help and metadata at 400 in the faint ink), 15 (body and
+controls), 16 (row titles at 600 and group headings), 20 (a plate's title),
+24 (figures) and 28 (the page title), so each role reads apart from its
+neighbours and a person scrolling a phone can find where a page and a plate
+start.
 
 | Token | Size | Line height | Weight | Use |
 |---|---|---|---|---|
-| `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | Column names and fact names (Plex Sans, sentence case, `text-muted`), hints (weight 400, a 1.5 line height, 66ch), badges, a mod's portal news line, figures in table cells (Plex Mono); the game log below 40rem |
-| `--text-sm` | 0.875rem (14 px) | 1.43 | 400 | A card's one-line description under its heading (a 1.5 line height, 60ch), table captions, timestamps, the log and console, labels (600), state badges (600), units beside a figure, breadcrumbs (500) |
-| `--text-md` | 0.9375rem (15 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells, row titles (600) |
-| `--text-lg` | 1rem (16 px) | 1.375 | 600 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
-| `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings; the Server plate's figures on a phone |
-| `--text-2xl` | 1.5rem (24 px) | 1.167 | 600 | Stat figures: the Server plate's gauges, tabular |
-| `--text-3xl` | 1.875rem (30 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
+| `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | Labels: column names and fact names (Plex Sans, sentence case, `text-muted`). Help and metadata at weight 400 in `text-faint` (a 1.5 line height, 64ch, up to 100ch in a wide column), such as a hint, a row's second line, a save's file name. Tags, a mod's portal news line, the context row over a page title (500, `text-faint`) |
+| `--text-sm` | 0.875rem (14 px) | 1.43 | 400 | Field labels (600, `text`), a card's one-line description under its heading (a 1.5 line height, 60ch), table captions, times and durations in tables (Plex Sans, tabular), segmented segments (600), state badges (600), breadcrumbs (500) |
+| `--text-md` | 0.9375rem (15 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells |
+| `--text-lg` | 1rem (16 px) | 1.375 | 600 | Row titles (a save's, a mod's, a world's and a token's name; a table's row header), group headings (`h3`, an operation's heading), the Server page's state badge |
+| `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`: a plate's title in its raised band; the Server plate's figures on a phone |
+| `--text-2xl` | 1.5rem (24 px) | 1.167 | 600 | Figures: the Server plate's gauges and facts, tabular |
+| `--text-3xl` | 1.875rem (30 px) | 1.2 | 700 | The page title's token. `h1`, one per page, is set one step under it: 28 px at a 1.25 line height from 40rem, 26 px below, weight 700, `letter-spacing: -0.01em` |
 
 Column names (table heads and the heads of the world, token and user
 lists) and fact names (`dt`) are labels set apart from content by colour
 and weight, not by capitals: `--text-xs` (13 px), weight 600,
 `text-muted`, in Plex Sans and sentence case, so a long German or Russian
-name stays easy to read. Only the overline (`p.eyebrow`, 8.1) keeps the
-stamped look: 0.75rem (12 px, no token), weight 600, `text-muted`, in Plex
-Mono capitals tracked `0.06em`. Its text stays sentence case in the
-markup, and a Chinese overline uses Plex Sans untracked.
+name stays easy to read. A field's label is the exception: 14 px at weight
+600 in the body ink (`text`), with its help in 13 px `text-faint`. For a
+plain field (a label, its help, one control and perhaps its error) the
+help shows under the control; the markup keeps it between the label and
+the control, so it stays the control's description (7.2).
 
-`h3` is 1.0625rem (17 px, no token) at weight 600. So is an operation's
+The context row over a page title (`p.eyebrow`, 8.1) is the same kind of
+line as the breadcrumb: 13 px Plex Sans, sentence case, weight 500, in
+`text-faint`. There are no tracked capitals anywhere.
+
+`h3` is 1rem (16 px, `--text-lg`) at weight 600. So is an operation's
 heading (`h2.op-heading`) and the connected-players heading in the
 settings: each is an `h2` for the outline that sits inside its section, so
 it is set as an `h3`.
 
+The figures a machine writes stay in Plex Mono: versions, file names, seeds,
+map exchange strings and the game log. Times, durations and the figures in
+table cells use Plex Sans with tabular figures.
+
 Rules:
 
-- Body is 15 px, helper text 13 px and section headings 20 px, so help,
-  body and headings are three distinct steps. Text smaller than 13 px is
-  only the 12 px overline and the rail's list name (6). Form controls take the body size.
+- Body is 15 px, help 13 px and a plate's title 20 px, so help, body and
+  headings are three distinct steps. Text smaller than 13 px is only the
+  game log's date dividers and phone times (8.5), the map preview's
+  resource labels and chips. Form controls take the body size.
 - Body text is limited to `max-inline-size: 68ch` (`--measure`). A hint is
-  13 px at a 1.5 line height, held to 66ch, so long help never reads as a
-  grey wall. Tables and the log are not limited.
+  13 px at a 1.5 line height, held to 64ch (100ch in a wide column of a
+  form), so long help never reads as a grey wall. Tables and the log are
+  not limited.
 - Numbers that line up in columns (sizes, times, uptime, player counts)
   use `font-variant-numeric: tabular-nums`: tables, facts, the log and
   every `time`.
 - Monospace text is set smaller than sans would be at the same size,
-  because monospace faces look larger: `code` is 0.9em, the log and
-  console are `--text-sm`, and a field that holds game text takes the
-  field's size.
+  because monospace faces look larger: `code` is 0.9em, the log is 14 px on
+  22 px lines, and a field that holds game text takes the field's size.
 - Prose breaks at syllables (`hyphens: auto`) in the page's own language,
   but only a word of ten letters or more, and never leaving fewer than four
   letters on either side of the hyphen. A name a program reads, such as a
@@ -160,10 +176,9 @@ Rules:
 - Long unbroken strings (world ids, file names, 60-character world names,
   log lines) use `overflow-wrap: anywhere` so they wrap instead of
   pushing the page wider than 320 px.
-- Copy is sentence case. Buttons start with a verb ("Start server",
-  "Delete world", "Take snapshot"), never "Submit" or "OK". The one
-  exception is drawn by CSS, not written: the overline and the rail's list
-  name (6) are shown in capitals, and their text stays sentence case.
+- Copy is sentence case, everywhere and in the markup. Buttons start with
+  a verb ("Start server", "Delete world", "Take snapshot"), never "Submit"
+  or "OK".
 - Headings never skip a level. Each page has exactly one `h1`.
 
 ## 3. Colour
@@ -204,22 +219,22 @@ dialog (black at 50%) and the shadows' own values (4).
 | Token | Dark | Light | Use |
 |---|---|---|---|
 | `--color-bg` | `#0e0d0c` | `#e5dfd4` | The page |
-| `--color-surface` | `#1d1b18` | `#ffffff` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#2e2a25` | `#f1ebe1` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
-| `--color-deep` | `#0b0a09` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#4a443d` | `#c9bfad` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
-| `--color-line-strong` | `#6a6258` | `#aa9f8a` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
+| `--color-surface` | `#1d1b18` | `#ffffff` | Plates and cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#2e2a25` | `#f1ebe1` | The secondary button's face, a plate's title band, the user menu's button, the Generate preview column and picture frames, the bar under a form, the "stopped" and "unknown" badges, a table row under the pointer |
+| `--color-deep` | `#0b0a09` | `#ffffff` | Form fields, the segmented control's track, the log and console (the log's well is dark in both themes) |
+| `--color-line` | `#4a443d` | `#c9bfad` | Dividers and plate edges: under the tabs' own rows, between rows; never the only edge of a control (about 1.8:1 on a plate) |
+| `--color-line-strong` | `#6a6258` | `#aa9f8a` | A plate's title-band rule, the rule under a page's tab row, a segmented control's edge, a note's leading edge, idle edges in the top bar |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
-| `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
-| `--color-text-muted` | `#b9b0a3` | `#4a443b` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
-| `--color-text-faint` | `#a0978b` | `#655d52` | Hints, metadata and second lines in rows: the third ink, quieter than muted |
-| `--color-desk` | `#090807` | `#2a2622` | The control desk bar across the top; dark in both themes, and its contents use the dark theme's tokens |
-| `--color-desk-line` | `#2e2a25` | `#4a443c` | The control desk's bottom edge |
+| `--color-heading` | `#f8f5ef` | `#13110e` | Headings, secondary button text, area and page tabs when current or under the pointer, the figures in the status card; a touch stronger than `text` |
+| `--color-text-muted` | `#b9b0a3` | `#4a443b` | Labels, placeholders, table captions and headers, fact names, empty states, idle tabs, the icons before section headings, a segment at rest |
+| `--color-text-faint` | `#a0978b` | `#655d52` | Help and metadata: hints, the context row over a title, a row's second line, the log's times; the third ink, quieter than muted |
+| `--color-desk` | `#090807` | `#2a2622` | The top bar across the page; dark in both themes, and its contents use the dark theme's tokens |
+| `--color-desk-line` | `#2e2a25` | `#4a443c` | The top bar's bottom edge |
 | `--color-border` | `#857c70` | `#80766a` | Edge of fields, secondary buttons and the menu |
-| `--color-link` | `#ffb357` | `#9a4800` | Links (always underlined), quiet buttons, the "Active" badge |
-| `--color-selected` | `#f39a2a` | `#b05a00` | The current tab's underline, the current item's edge in the rail, the current item in the menu, the live world's edge, checked boxes, progress bars |
+| `--color-link` | `#ffb357` | `#9a4800` | Links in running text (underlined), quiet buttons, the "Active" badge, a row title under the pointer, a changed map step's words |
+| `--color-selected` | `#f39a2a` | `#b05a00` | The current tab's underline, the current segment's foot, the plan's leading edge, the current item in the menu, the live world's edge, checked boxes, progress bars |
 | `--color-accent-bg` | `#352610` | `#fdecd5` | A pale orange tint: the current item in the menu, the "Active" badge |
-| `--color-primary` | `#f39a2a` | `#f39a2a` | Primary button face, the line across the top of the header |
+| `--color-primary` | `#f39a2a` | `#f39a2a` | Primary button face, the line across the top of the top bar |
 | `--color-primary-hover` | `#f7ae4f` | `#f6ad52` | Primary button hover |
 | `--color-primary-edge` | `#f39a2a` | `#a35200` | Primary button edge (the face is too pale to carry it in light) |
 | `--color-on-primary` | `#1a1004` | `#1a1004` | Primary button text |
@@ -233,7 +248,7 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-ok-bg` | `#172a12` | `#e3f1de` | Success message and "running" badge background |
 | `--color-warn` | `#f2c14e` | `#6b5200` | "Warning" word, "starting" and "stopping" badges, the Server plate's state word and rule while stopping |
 | `--color-warn-bg` | `#33280c` | `#faefc8` | Warning message and "starting"/"stopping" badge background |
-| `--color-info` | `#8ec1ea` | `#1d5a8a` | "Note" word and a note's edge; the Server plate's state word and rule while starting; a planned mod's edge, a harmless plan's top edge, an empty state's drawing |
+| `--color-info` | `#8ec1ea` | `#1d5a8a` | The Server plate's state word and rule while starting; a planned mod's edge, a harmless plan's top edge, an empty state's drawing |
 | `--color-info-bg` | `#13222f` | `#e2eef7` | Notice background |
 | `--color-focus` | `#f7ae4f` | `#a85400` | Focus outline |
 
@@ -253,32 +268,39 @@ they sit on the map's picture, which does not follow the theme (8.8):
 How the colours divide the work:
 
 - **Orange means "act here" or "you are here".** The one primary button
-  on a screen (7.1), the current place (a 3 px edge in the rail, an
-  underline in a phone's tab row), the current language in the menu, a
-  checked box, the live world's edge in the world list, the line across
-  the top of the phone header, and focus. Links in running text are orange
-  too, and always underlined, so a link is never mistaken for the button.
-  Breadcrumbs and disclosure triangles are not orange: they are quiet
-  (`text-muted`), so orange stays for those meanings. The "Active"
-  badge is an orange outline on a pale orange tint (`accent-bg`), not a
-  solid fill, so it does not compete with the primary button.
-- **Green means success.** Only the "Done" word, the "running" badge and
-  the Server plate's state rule while the game runs, which say an action or the
-  server succeeded. No button is green.
+  on a screen (7.1), the current place (a 3 px underline under the current
+  area in the top bar and under the current tab of a page's tab row, a 2 px
+  foot under the current segment of a view switch), the plan's leading
+  edge, the current language in the menu, a checked box, the live world's
+  edge in the world list, the line across the top of the top bar, and focus.
+  Links in running text are orange too, and always underlined, so a link is
+  never mistaken for the button. A row's title that is a link (a save's,
+  a mod's or a world's name) is not orange or underlined at rest: it shows
+  both only under the pointer. Breadcrumbs and disclosure triangles are not
+  orange: they are quiet (`text-muted`), so orange stays for those
+  meanings. The "Active" badge is a pale orange tint (`accent-bg`) with no
+  outline, so it does not compete with the primary button.
+- **Green means success or a live state.** Only the "Done" word, the
+  "running" and "online" badges and the Server plate's state rule while the
+  game runs, which say an action or the server succeeded. No button is
+  green, and nothing at rest is: a working API token's tag is neutral with a
+  check mark, and a load meter is neutral until it is high (7.5).
 - **Red means destroy or failed.** The final button of a destructive
   action, the outlined and remove buttons that open one (7.1), errors, the
   crashed states and the required mark.
-- **Blueprint blue means noted or planned.** The `info` pair marks a
-  note (7.3), the starting state, a mod chosen for the plan and a plan
-  that destroys nothing (8.11), and the drawing in an empty state (7.3). It always comes
-  with words or a badge.
+- **Blueprint blue means planned or starting.** The `info` pair marks the
+  starting state, a mod chosen for the plan and a plan that destroys
+  nothing (8.11), and the drawing in an empty state (7.3). A note is not
+  blue: it is a neutral plate with a strong-line leading edge (7.3). Blue
+  always comes with words or a badge.
 - **Yellow means warning**: the "Warning" word, the in-between server
-  states, and the Server plate's state word and rule while the game is
-  stopping (starting is `info` blue there). It is lighter and
+  states, the "both ways in are off" line beside Create token (8.21), and
+  the Server plate's state word and rule while the game is stopping
+  (starting is `info` blue there). It is lighter and
   yellower than the orange in dark, and browner in light, and it always
   comes with its word.
 - **The focus ring is orange**, a tone close to the primary button's:
-  `#f7ae4f` in dark and `#b35c00` in light. It is told apart from the
+  `#f7ae4f` in dark and `#a85400` in light. It is told apart from the
   other oranges by its shape, a 3 px ring held 2 px off the control, not by
   its hue, and it meets 3:1 on every surface in both themes (below).
 
@@ -295,104 +317,120 @@ changes: compute each colour's relative luminance L, then
 `(L_lighter + 0.05) / (L_darker + 0.05)`.
 
 The lowest text ratio is 5.34:1 in dark (`on-danger` on `danger`) and
-4.97:1 in light (`link` on `bg`). The lowest edge or focus ratio is
-3.91:1 in dark (`border` on `secondary-hover`) and 3.03:1 in light
-(`border` on `bg`).
+4.80:1 in light (`link` on `bg`). The lowest edge or focus ratio is
+3.01:1 in dark (`border` on `secondary-hover`) and 3.36:1 in light
+(`border` on `bg`). The top bar's contents always use the dark theme's
+tokens, on `desk` (the table's "top bar" rows, where the Light column is the
+bar on the light page).
 
 **Text pairings (need 4.5:1)**
 
 | Foreground | Background | Dark | Light |
 |---|---|---|---|
-| `text` | `bg` | 15.21 | 13.69 |
-| `text` | `surface` | 13.81 | 17.24 |
-| `text` | `raised` | 12.23 | 15.42 |
-| `text` | `deep` | 15.88 | 17.51 |
-| `text` | `secondary-hover` | 10.64 | 14.37 |
+| `text` | `bg` | 15.78 | 13.21 |
+| `text` | `surface` | 13.96 | 17.51 |
+| `text` | `raised` | 11.58 | 14.77 |
+| `text` | `deep` | 16.07 | 17.51 |
+| `text` | `secondary-hover` | 10.04 | 13.60 |
 | `text` | `accent-bg` | 11.88 | 15.12 |
-| `heading` | `surface` | 15.62 | 18.55 |
-| `heading` | `raised` | 13.84 | 16.59 |
-| `heading` | `secondary-hover` | 12.03 | 15.47 |
-| `text-muted` | `bg` | 9.74 | 6.97 |
-| `text-muted` | `surface` | 8.85 | 8.77 |
-| `text-muted` | `raised` | 7.84 | 7.84 |
-| `text-muted` | `deep` (placeholders) | 10.17 | 8.91 |
-| `text-muted` | `secondary-hover` | 6.81 | 7.31 |
-| `link` | `bg` | 10.55 | 4.98 |
-| `link` | `surface` | 9.58 | 6.26 |
-| `link` | `raised` | 8.49 | 5.60 |
-| `link` | `deep` | 11.02 | 6.36 |
+| `heading` | `surface` | 15.79 | 18.85 |
+| `heading` | `raised` | 13.09 | 15.90 |
+| `heading` | `secondary-hover` | 11.36 | 14.64 |
+| `text-muted` | `bg` | 9.06 | 7.26 |
+| `text-muted` | `surface` | 8.02 | 9.63 |
+| `text-muted` | `raised` | 6.65 | 8.12 |
+| `text-muted` | `deep` (placeholders) | 9.23 | 9.63 |
+| `text-muted` | `secondary-hover` | 5.77 | 7.48 |
+| `text-faint` | `bg` | 6.74 | 4.89 |
+| `text-faint` | `surface` | 5.97 | 6.48 |
+| `text-faint` | `raised` | 4.95 | 5.46 |
+| `text-faint` | `deep` | 6.87 | 6.48 |
+| `text-faint` | `accent-bg` | 5.08 | 5.60 |
+| `heading` (top bar) | `desk` | 18.39 | 13.80 |
+| `text` (top bar) | `desk` | 16.26 | 12.20 |
+| `text-muted` (top bar tabs at rest) | `desk` | 9.34 | 7.01 |
+| `link` | `bg` | 10.95 | 4.80 |
+| `link` | `surface` | 9.69 | 6.36 |
+| `link` | `raised` | 8.03 | 5.37 |
+| `link` | `deep` | 11.15 | 6.36 |
 | `link` | `accent-bg` | 8.24 | 5.49 |
 | `on-primary` | `primary` | 8.45 | 8.45 |
 | `on-primary` | `primary-hover` | 9.93 | 9.84 |
 | `on-danger` | `danger` | 5.34 | 6.26 |
 | `on-danger` | `danger-hover` | 6.92 | 8.30 |
-| `danger-text` | `bg` | 8.96 | 5.66 |
-| `danger-text` | `surface` | 8.13 | 7.12 |
-| `danger-text` | `raised` | 7.20 | 6.37 |
-| `danger-text` | `deep` | 9.35 | 7.24 |
+| `danger-text` | `bg` | 9.29 | 5.46 |
+| `danger-text` | `surface` | 8.22 | 7.24 |
+| `danger-text` | `raised` | 6.81 | 6.10 |
+| `danger-text` | `deep` | 9.46 | 7.24 |
 | `danger-text` | `danger-bg` | 7.56 | 6.03 |
-| `ok` | `bg` | 10.59 | 5.21 |
-| `ok` | `surface` | 9.61 | 6.56 |
+| `ok` | `bg` | 10.98 | 5.02 |
+| `ok` | `surface` | 9.72 | 6.66 |
 | `ok` | `ok-bg` | 8.63 | 5.68 |
-| `warn` | `bg` | 11.16 | 5.80 |
-| `warn` | `surface` | 10.13 | 7.30 |
-| `warn` | `warn-bg` | 8.63 | 6.40 |
+| `warn` | `bg` | 11.57 | 5.59 |
+| `warn` | `surface` | 10.24 | 7.42 |
+| `warn` | `warn-bg` | 8.63 | 6.44 |
 | `info` | `info-bg` | 8.45 | 6.18 |
 | `text` | `danger-bg` | 12.84 | 14.60 |
 | `text` | `ok-bg` | 12.40 | 14.93 |
-| `text` | `warn-bg` | 11.77 | 15.11 |
+| `text` | `warn-bg` | 11.77 | 15.21 |
 | `text` | `info-bg` | 13.15 | 14.85 |
 | `link` | `danger-bg` | 8.91 | 5.30 |
 | `link` | `ok-bg` | 8.60 | 5.42 |
-| `link` | `warn-bg` | 8.17 | 5.49 |
+| `link` | `warn-bg` | 8.17 | 5.53 |
 | `link` | `info-bg` | 9.12 | 5.39 |
 
 **Control edges and focus (need 3:1)**
 
 | Foreground | Background | Dark | Light |
 |---|---|---|---|
-| `border` (field, secondary button, menu edge) | `bg` | 5.59 | 3.03 |
-| `border` | `surface` | 5.08 | 3.82 |
-| `border` | `raised` | 4.50 | 3.41 |
-| `border` | `deep` | 5.84 | 3.88 |
-| `border` | `secondary-hover` | 3.91 | 3.18 |
-| `primary-edge` (primary button) | `bg` | 8.44 | 4.36 |
-| `primary-edge` | `surface` | 7.66 | 5.49 |
-| `primary-edge` | `raised` | 6.79 | 4.91 |
-| `danger` (danger button, confirmation edge) | `bg` | 5.08 | 4.89 |
-| `danger` | `surface` | 4.61 | 6.16 |
-| `danger` | `raised` | 4.08 | 5.51 |
-| `selected` (tab underline, menu mark, live world edge) | `bg` | 8.44 | 3.27 |
-| `selected` | `surface` | 7.66 | 4.11 |
-| `selected` | `raised` | 6.79 | 3.68 |
-| `selected` | `accent-bg` | 6.59 | 3.61 |
+| `border` (field, secondary button, menu edge) | `bg` | 4.73 | 3.36 |
+| `border` | `surface` | 4.18 | 4.45 |
+| `border` | `raised` | 3.47 | 3.75 |
+| `border` | `deep` | 4.82 | 4.45 |
+| `border` | `secondary-hover` | 3.01 | 3.46 |
+| `primary-edge` (primary button) | `bg` | 8.75 | 4.21 |
+| `primary-edge` | `surface` | 7.75 | 5.58 |
+| `primary-edge` | `raised` | 6.42 | 4.71 |
+| `danger` (danger button, confirmation edge) | `bg` | 5.27 | 4.72 |
+| `danger` | `surface` | 4.66 | 6.26 |
+| `danger` | `raised` | 3.86 | 5.28 |
+| `selected` (tab underline, menu mark, live world edge) | `bg` | 8.75 | 3.68 |
+| `selected` | `surface` | 7.75 | 4.87 |
+| `selected` | `raised` | 6.42 | 4.11 |
+| `selected` | `accent-bg` | 6.59 | 4.21 |
+| `selected` (current area's underline, top bar) | `desk` | 9.02 | 6.77 |
 | `link` ("Active" badge outline) | `accent-bg` | 8.24 | 5.49 |
-| `danger-text` (invalid field border) | `bg` | 8.96 | 5.66 |
-| `danger-text` | `deep` | 9.35 | 7.24 |
-| `focus` | `bg` | 9.92 | 3.69 |
-| `focus` | `surface` | 9.00 | 4.65 |
-| `focus` | `raised` | 7.98 | 4.16 |
-| `focus` | `deep` | 10.35 | 4.72 |
-| `focus` | `accent-bg` | 7.74 | 4.08 |
-| `focus` | `danger-bg` | 8.37 | 3.94 |
-| `focus` | `ok-bg` | 8.08 | 4.03 |
-| `focus` | `warn-bg` | 7.67 | 4.08 |
-| `focus` | `info-bg` | 8.57 | 4.00 |
-| `ok` (running card edge) | `surface` | 9.61 | 6.56 |
-| `warn` (starting or stopping card edge) | `surface` | 10.13 | 7.30 |
-| `ok` (badge border and shape) | `ok-bg` | 8.63 | 5.68 |
-| `warn` | `warn-bg` | 8.63 | 6.40 |
+| `danger-text` (invalid field border) | `bg` | 9.29 | 5.46 |
+| `danger-text` | `deep` | 9.46 | 7.24 |
+| `focus` | `bg` | 10.28 | 4.03 |
+| `focus` | `surface` | 9.10 | 5.34 |
+| `focus` | `raised` | 7.55 | 4.50 |
+| `focus` | `deep` | 10.48 | 5.34 |
+| `focus` | `accent-bg` | 7.74 | 4.61 |
+| `focus` | `danger-bg` | 8.37 | 4.45 |
+| `focus` | `ok-bg` | 8.08 | 4.55 |
+| `focus` | `warn-bg` | 7.67 | 4.64 |
+| `focus` | `info-bg` | 8.57 | 4.53 |
+| `ok` (running card edge) | `surface` | 9.72 | 6.66 |
+| `warn` (starting or stopping card edge) | `surface` | 10.24 | 7.42 |
+| `ok` (badge shape) | `ok-bg` | 8.63 | 5.68 |
+| `warn` | `warn-bg` | 8.63 | 6.44 |
 | `danger-text` | `danger-bg` | 7.56 | 6.03 |
-| `info` (planned row edge, plan's top edge) | `surface` | 8.88 | 7.17 |
+| `info` (planned row edge) | `surface` | 8.97 | 7.29 |
 | `info` (message border) | `info-bg` | 8.45 | 6.18 |
-| `text-muted` ("stopped" badge) | `raised` | 7.84 | 7.84 |
+| `text-muted` ("stopped" badge) | `raised` | 6.65 | 8.12 |
 | `on-danger` ("crash-looping" shape) | `danger` | 5.34 | 6.26 |
 
 Not covered by a ratio, on purpose:
 
-- `--color-line` and the steps between `bg`, `surface` and `deep`. They
-  divide the page, not information, and no control relies on them: every
-  control's edge is one of the rows above.
+- `--color-line` (about 1.8:1 on a plate, in both themes) and the steps
+  between `bg`, `surface` and `deep`. They divide the page, not
+  information, and no control relies on them: every control's edge is one
+  of the rows above. `--color-line-strong` (2.86:1 on a plate in dark,
+  2.61:1 in light) draws a plate's title-band rule, the segmented control's
+  track and idle edges in the top bar. A segment is told apart by its words,
+  and the chosen one by a 2 px `selected` foot (its pair is in the table),
+  not by the track's edge.
 - The primary button's face against the page in light (`primary` on
   `bg`): its edge is `primary-edge`, which is the row above.
 - A disabled control (exempt under 1.4.3; this design avoids disabled
@@ -401,8 +439,7 @@ Not covered by a ratio, on purpose:
 - The drawings in empty states, a line icon in `info` over a dashed
   tile on a faint grid. They are decoration beside a sentence that says
   the same.
-- The faint drafting grid behind the rail's logo and the sign-in pages,
-  which is decoration.
+- The faint drafting grid behind the sign-in pages, which is decoration.
 
 ## 4. Spacing
 
@@ -410,7 +447,7 @@ A 4 px base, in `rem` so it scales with text size.
 
 | Token | Value | Typical use |
 |---|---|---|
-| `--space-1` | 0.25rem (4 px) | The header's block padding; the gap between a sub-navigation's tabs |
+| `--space-1` | 0.25rem (4 px) | The gap between a breadcrumb and the page title; the gap between a tab row's tabs |
 | `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block; the gap between a badge's shape and its word; the space under a section's `h2`; the gap between a mod row's action and its More menu |
 | `--space-3` | 0.75rem (12 px) | Gap between buttons in a row; table cell padding inline; the gap between a card's parts; message padding; the page's side padding at phone width |
 | `--space-4` | 1rem (16 px) | Gap between form fields; confirmation box padding; card padding below 48rem (capped at 4vw); the gap between sections at phone width |
@@ -421,15 +458,15 @@ Other fixed values, also tokens:
 
 | Token | Value | Use |
 |---|---|---|
-| `--radius` | 3px | Buttons, fields, the menu button, messages, the log |
-| `--radius-lg` | 4px | Cards, the confirmation box, the menu panel, the Generate preview column |
+| `--radius` | 3px | Buttons, fields, the menu button, messages, the log, a segment of a segmented control |
+| `--radius-lg` | 4px | Plates, the confirmation box, the menu panel, a segmented control's track, the Generate preview column |
 | `--border-width` | 1px | Every border except the ones below |
 | `--focus-width` | 3px | Focus outline |
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
 | `--target-inline` | 1.5rem (24 px) | Minimum block size of a link inside an error or an empty state's sentence (WCAG 2.5.8) |
 | `--measure` | 68ch | Maximum line length of prose |
-| `--page-max` | 114rem | Maximum width of `main`'s content; from 64rem `main` starts after the rail, left-aligned, and adds `--space-6` each side |
-| `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |
+| `--page-max` | 114rem | Maximum width of `main`'s content, centred, with `--space-6` of padding each side from 64rem. A form-only or short-list page keeps its content to 80rem inside it (6, "Shell") |
+| `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A plate's padding (7.8) |
 | `--dur-1` | 120ms | Hover and pressed fills easing in |
 | `--dur-2` | 200ms | A chevron turning, a meter moving |
 | `--ease` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | The one easing curve; all motion is off under reduced motion |
@@ -438,28 +475,31 @@ The shadows, each theme's own (the other theme's layers are transparent):
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--shadow-card` | `inset 0 1px 0 rgb(255 255 255 / 3%)` | `0 1px 2px rgb(60 45 25 / 10%), 0 3px 10px rgb(60 45 25 / 7%)` | A card's faint lift |
+| `--shadow-card` | `inset 0 1px 0 rgb(255 255 255 / 3%)` | `0 1px 2px rgb(60 45 25 / 10%), 0 3px 10px rgb(60 45 25 / 7%)` | The faint lift of a confirmation box (a plate has none in dark and a 1 px hairline under it in light, "Depth") |
 | `--shadow-pop` | `0 8px 24px rgb(0 0 0 / 45%)` | `0 10px 28px rgb(60 45 25 / 18%)` | What floats: the user menu's panel, a row's More menu, the selection bar, "Jump to newest"; the sign-in box |
 
-Badges and the state pill are fully rounded (999px), which is not a token.
+Tags (badges, state badges and chips) are square-cornered, with a 2 px
+radius that is not a token. Nothing is a pill.
 
 ### Depth
 
-There is very little. A card (7.8) has a 1 px `line` border and
-`--shadow-card`: a faint top highlight in dark and a hairline shadow in
-light, enough to lift it off the page without looking raised. The user
+There is very little. A plate (7.8) has a 1 px `line` border and a
+raised title band over a strong rule. In dark it has no shadow; in light a
+1 px hairline of shadow under it lifts it off the page without looking
+raised. A confirmation box carries `--shadow-card`. The user
 menu's panel floats over the page and carries `--shadow-pop`. Controls
 carry one more cue, so a button beside a field never reads as a second
 field: a secondary button is a raised plate (`raised` face, a light inset
 line along its top and a 1 px shadow under it, pressed in while active),
 the primary button has the same top line, and a field is a sunk well (a
 faint inset shadow at its top). Nothing else has a shadow, a bevel or a
-gradient (state shapes use hard-stop fills, 7.5).
-Every field, button, message, badge and box has a 1 px border, so its edge
+gradient (state shapes use hard-stop fills, 7.5). A tag is a 14 percent tint
+of its own ink with no border; its word and drawn shape carry it (7.5).
+Every field, button, message and box has a 1 px border, so its edge
 shows in forced-colours mode as well (section 6, "Forced colours"); the
 shadows are decoration only. A group inside a long form, such as a
 settings fieldset, has a 1 px `line` above it instead of a box. Below
-22.4rem (a 320 px phone) a card gives up its frame and its padding: it
+22.4rem (a 320 px phone) a plate gives up its frame and its padding: it
 becomes a flat section with a 1 px `line` rule above it and `--space-4`
 under the rule, so the content keeps its width. The space under a
 section's `h2` is `--space-2`, closer than the content's own parts, which
@@ -502,18 +542,17 @@ frame (7.4).
   not a fill, it is not read as the primary face or the selected underline.
 - A 3 px ring around a control at least 44 px tall meets WCAG 2.2 focus
   appearance (2.4.13, AAA) as well as focus visible (2.4.7, AA).
-- Nothing sticky may cover the focused element (2.4.11). On a phone the
-  header is not sticky. From 64rem the status strip, with the logo and
-  the user menu in its row, sticks to the top of the window. It is 56 px
-  tall, so the page sets `scroll-padding-block-start` to the strip's
-  height plus a small gap from 64rem, and an element focused by keyboard
-  scrolls into view below it. The Audit log's sticky column names stick
-  just below the strip. The open user menu covers the top of the
+- Nothing sticky may cover the focused element (2.4.11). The top bar
+  scrolls with the page at every width: held at the top it lay over the
+  controls scrolled up under it, so it is not sticky, and the page sets
+  `scroll-padding-block` to `--space-3` only. The Audit log's column names
+  stick to the top of the window. The open user menu covers the top of the
   page, but it closes on Escape and on a click outside, and focus stays
-  inside it while open. Generate's preview column is also sticky on a wide
-  screen; it sits beside the form, never over it.
-  The one-row bars that stick to the foot of a card or form (6, "The 320 px
-  rules", rule 7) hold the action or the field they keep in reach.
+  inside it while open. Generate's preview column, the Mods plan and the
+  Game settings side column are also sticky on a wide screen; each sits
+  beside the form, never over it. The one-row bars that stick to the foot
+  of a plate or form (6, "The 320 px rules", rule 7) hold the action or the
+  field they keep in reach.
 - In Windows high-contrast mode (`forced-colors: active`) the outline
   still shows, and every button, field and box keeps its 1 px border
   (section 4, "Depth") so its edge shows too.
@@ -526,7 +565,7 @@ frame (7.4).
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <header class="site">
-    <a href="/" class="product"><img src="logo-32.png" srcset="logo-64.png 2x" alt="" width="32" height="32"><span class="product__name">Foreman</span></a>
+    <a href="/" class="product"><img src="wordmark-296.webp" alt="Foreman" width="148" height="46"></a>
     <div class="site-strip"><span class="site-world" aria-hidden="true">Family base 2025</span><span id="site-state" class="site-state" aria-hidden="true">…</span></div>
     <nav aria-label="Main">
       <ul class="tabs">
@@ -537,7 +576,7 @@ frame (7.4).
       </ul>
     </nav>
     <details class="menu">
-      <summary><span class="menu__user">todd</span> <span class="menu__lang">English</span></summary>
+      <summary aria-label="todd, English: account menu"><span class="menu__user">todd</span> <span class="menu__lang">English</span></summary>
       <div class="menu__panel">
         <p class="hint">Signed in as todd</p>
         <details class="menu__langs">
@@ -564,7 +603,7 @@ frame (7.4).
       </div>
     </details>
   </header>
-  <main id="main" tabindex="-1">
+  <main id="main" tabindex="-1" data-width="full">
     <nav class="crumb" aria-label="Breadcrumb"><ol role="list"><li><a href="/worlds">Worlds</a></li><li><span aria-current="page">Family base 2025</span></li></ol></nav>
     <h1>…</h1>
     <nav class="subnav" aria-label="World pages">…</nav>
@@ -574,85 +613,90 @@ frame (7.4).
 </body>
 ```
 
-- **The frame from 64rem** is a grid of two columns, the rail and the
-  page, under one markup at every width:
-  - **The rail** (the product rail, `--rail`, 240 px) runs the full height of the window on
-    `surface` with a 1 px `line` on its end side. At its top sits the logo
-    and name, over a faint drafting grid, in a 56 px cell. Under it, the
-    four areas (Server, Worlds, Snapshots, Settings) are a column of 44 px
-    rows: icon and word, `--text-md`, weight 500, in `text`. The current
-    area has a `raised` face, a 1 px `line` inset edge and a 3 px
-    `selected` edge on its start side, in `heading` at weight 600; a row
-    under the pointer takes `secondary-hover`. Under the areas, after a
-    hairline, the current area's own pages (see "Sub-navigation").
-  - **The status strip** is 56 px tall across the top of the page's column,
-    on `surface`, and sticks to the top of the window while the page
-    scrolls (the logo cell and the user menu stick with it). It names the
-    live world in `heading`, weight 650 (cut with an ellipsis when long),
-    then the server's state as a content-sized 24 px pill in the state's
-    colours (7.5, "The nav's state"), and ends with the user menu. A 2 px
-    rule under it takes the state's colour: `ok` running, `info` starting,
-    `warn` stopping, `danger` crashed, `line` otherwise.
-  - **`main`** starts after the rail, left-aligned, at most `--page-max`
-    plus `--space-6` padding on each side, so content starts at the same
-    place on every page.
-- **The header below 64rem** is a bar the full width of the window:
-  background `surface`, a 3 px `primary` line across its top and a 1 px
-  `line` under it. Its side padding follows `main`'s. It is a flex row
-  that wraps. From 40rem it is one row: the logo and name at the start,
-  the server's state in words after them (7.5, "The nav's state"), then
-  the nav and the user menu at the end. Below 40rem it is two rows, about
-  100 px at 320 px: the logo, the server's state in words and the menu,
-  then the nav on a row of its own (`order: 2; flex-basis: 100%`), its
-  four tabs sharing the row out between them. At 320 px with 200% text in
-  German or Russian the tabs wrap onto a second row of that line rather
-  than widen the page. The live world's name shows only in the wide
-  strip. The focus order is the source order (logo, state, tabs, menu) at
-  every width.
-- **The logo** is the rusty Foreman logo, 32 CSS pixels square, from
-  `static/icons/logo-32.png` with `logo-64.png` for 2x screens (both made
-  from `docs/brand/foreman-logo.webp`). It is decorative beside the word
-  "Foreman", so its `alt` is empty and the link's name is "Foreman" in
-  every language. The name is `--text-lg`, weight 700. Below 22rem (a 320 px
-  phone) the word is visually hidden and only the icon shows; the link
-  keeps its name. The sign-in and setup pages also show the 64 px mark
-  (`logo-64.png`, decorative, empty `alt`) centred above their heading.
-- **Nav links below 64rem are tabs**: no underline, padded to
-  `--target-min` tall, `text-muted`, weight 500, each with a line icon
-  before its word (7.9). The current one is `heading` with a 3 px
-  `selected` underline drawn as a border, so it survives forced colours;
-  it is not bolder, so the tabs keep their widths from page to page. Hover
-  brightens the text to `heading`; nothing else changes. Below 23rem the
-  icons are dropped and the tabs
-  are tighter (`--space-1` side padding) and a step smaller (`--text-sm`),
-  so the four tabs fit one row at 320 px in English and German. The tab of the page itself has
-  `aria-current="page"`; on a page inside its section (a world's page under
-  Worlds, Console under Server) the tab has `aria-current="true"`, which
-  looks the same but does not tell a screen reader it is on the list
-  itself. There are four tabs: Server, Worlds, Snapshots and Settings. Console is a
-  tab of the Server view (see "Sub-navigation"). Settings is Foreman's own
-  settings (8.15): it opens General, and is marked on every settings page and
-  the pages under them, "page" on General and "true" on the others. It once
-  opened the restart schedule, as the one most used; Todd reversed that on
-  2026-11-19 (#726), so the first tab is the one it opens. No page shows two
-  navigation links with the same name, so a world's own settings tab is
-  "Game settings", and a world's own Snapshots tab keeps its one word on
-  screen but is named "Snapshots of this world" (an `aria-label` that
-  starts with the shown word, WCAG 2.5.3).
-- **The user menu** is a native `details` at the end of the header (from
-  64rem, the end of the status strip). Its summary is a bordered button on
-  `raised` (1 px `border`, `--radius`, `--text-sm`) that shows the user's
+- **The frame** is one top bar over `main`, at every width: the same
+  markup, the same parts, no side column. Foreman's own pages are one
+  column of plates under it (SPEC 17.18).
+- **The top bar** (`header.site`) is the control desk. Its face is `desk`
+  with a 1 px `desk-line` under it and a 2 px `primary` line across its top.
+  It is dark in both themes, because it is the machine and not the paper,
+  and its parts take the dark theme's tokens. It scrolls with the page at
+  every width: held at the top it lay over controls scrolled up under it
+  and overflowed at 200% text (WCAG 1.4.10, 2.4.11), so it is not sticky.
+  From 40rem it is at least 56 px tall. Its side padding follows `main`'s,
+  so its parts line up with the page column. Four parts, in this order:
+  1. **The wordmark** is the home link: the rusty Foreman wordmark (a gear
+     and FOREMAN on a riveted plate), 46 px tall in the 56 px bar, 30 px on
+     a phone. It is from `static/icons/wordmark-296.webp`, a file twice its
+     drawn size, so the rivets and letters stay sharp, made from
+     `docs/brand/foreman-wordmark.webp` (`docs/brand/README.md`). Its `alt`
+     is "Foreman", the link's name in every language. The sign-in and
+     signed-out pages hide it in the bar and show the same wordmark 288 px
+     wide over their heading (`static/icons/wordmark-480.webp`), with the
+     language menu alone floating at the top end.
+  2. **The four areas** (Server, Worlds, Snapshots, Settings) are tabs, 56
+     px tall from 40rem, standing on the bar's foot, in `--text-md` at
+     weight 600, `text-muted`, with `--space-4` of side padding and a line
+     icon before the word (7.9; the icons are dropped below 25rem). The
+     current area is `heading`, its icon turns `selected` and a 3 px
+     `selected` bar sits at the tab's foot. It is not bolder, so the tabs
+     keep their widths from page to page. A tab under the pointer takes
+     `heading` and a 3 px `line-strong` foot. The tab of the page itself has
+     `aria-current="page"`; on a page inside its area (a world's page under
+     Worlds, Console under Server) the tab has `aria-current="true"`, which
+     looks the same but does not tell a screen reader it is on the list
+     itself. Console is a page of the Server view (see "Sub-navigation").
+     Settings is Foreman's own settings (8.15): it opens General, and is
+     marked on every settings page and the pages under them, "page" on
+     General and "true" on the others. No page shows two navigation links
+     with the same name, so a world's own settings tab is "Game settings",
+     and a world's own Snapshots tab keeps its one word on screen but is
+     named "Snapshots of this world" (an `aria-label` that starts with the
+     shown word, WCAG 2.5.3).
+  3. **The live world** sits after the areas, at the bar's end, behind a
+     hairline: its name in `heading` at `--text-md`, weight 600 (cut with an
+     ellipsis when long), then the server's state as a lamp and a word in
+     the state's colour (7.5, "The bar's state"). Server's tab keeps the
+     state as visually hidden text, and the copy in the bar is `aria-hidden`,
+     so the state is heard once. The Server page's live facts and the
+     status stream on every other page replace the copy, so the bar follows
+     the game without a reload.
+  4. **The user menu**, last, at the end edge (below).
+- **How the bar lays out.**
+  - **From 64rem** it is one row: wordmark, areas, then the live world and
+    the menu at the end.
+  - **From 40rem to 64rem** the first row holds the wordmark, the live
+    world and the menu, and the four areas take a row of their own under
+    it, above a 1 px `line` rule, still 56 px tall.
+  - **Below 40rem** the first row holds the wordmark, the live world and
+    its state, and the menu; the four areas share the row under it, each at
+    least 46 px tall, `--text-sm`, weight 600, with a 1 px `line` rule
+    above. The name of the world is written over its state, wraps and is
+    never cut. Below 22rem the name and the state share one line, the name
+    giving way first.
+  - **At large text** the bar reflows rather than scroll sideways (WCAG
+    1.4.10). The live world takes only the room that is left and never
+    forces a wrap by itself; when the row is too narrow the menu and then
+    the areas wrap onto further rows. At 320 px with 200% text in German or
+    Russian the areas wrap onto a second row of that line rather than
+    widen the page. Below 23rem the tabs are tighter (`--space-1` side
+    padding) so the four fit one row at 320 px in English and German.
+  - The focus order is the source order (wordmark, areas, menu) at every
+    width; the live world is `aria-hidden` and has nothing to focus.
+- **The user menu** is a native `details` at the bar's end. Its summary is a
+  bordered button (1 px `line-strong`, transparent at rest, `raised` under
+  the pointer; `--radius`, `--text-sm`, 40 px tall) that shows the user's
   name in weight 600 and the current language in `text-muted` ("todd
   English"), so a person who landed in a language they cannot read still
   finds it, and a small chevron drawn in CSS that turns over when the menu
-  is open. From 64rem a round person badge leads the name; the language
-  follows as quiet text. Its accessible name says it is the account menu
-  ("todd, English: account menu"), and the language list is a row inside
-  it. On the sign-in and setup pages
-  it shows only the language. The two words wrap between them, never inside
-  one. Inside, on a `surface` panel (1 px `border`, `--radius-lg`,
-  `--shadow-pop`, at most 18rem wide): "Signed in as todd", then four
-  rows, each under a divider line after the first:
+  is open. From 64rem a round person badge leads the name. Below 40rem the
+  button shows the user only: its name still names the language, and the
+  menu holds it, so the live world's name keeps its whole width. Its
+  accessible name says it is the account menu ("todd, English: account
+  menu"), and the language list is a row inside it. On the sign-in and
+  setup pages it shows only the language. The two words wrap between them,
+  never inside one. Inside, on a `surface` panel (1 px `border`,
+  `--radius-lg`, `--shadow-pop`, at most 18rem wide): "Signed in as todd",
+  then four rows, each under a divider line after the first:
   1. **Language**, one row: the current language's flag, its own name, and
      an arrow at the end that turns over when open. It is a `details`
      inside the menu, so it works without script. Opened, it lists the other
@@ -702,95 +746,113 @@ frame (7.4).
   works without script; `menu.js` also closes it on Escape (focus returns
   to the summary) and on a click outside. Escape with focus in the open
   language list folds the list first, focus back on its row; opening the
-  menu folds the list, so the menu always opens with it folded. The panel is positioned under the
-  header at the end edge and never wider than the window.
+  menu folds the list, so the menu always opens with it folded. A closed
+  menu takes no room, so its panel can never widen the page at large text
+  sizes. The panel is positioned under the bar at the end edge and never
+  wider than the window.
 - The skip link is the first focusable element. It is visually hidden
-  until focused, then appears at the top-left of the header.
+  until focused, then appears at the top-left of the bar.
+- **The page header** has one shape on every page, so the title sits at one
+  height: the context row or breadcrumb, 4 px over a 28 px title; under the
+  title the page's tab row, 16 px below it; and the first plate 16 px under
+  the tabs, so content starts about 190 px from the top of the window. A
+  page that has a parent (a world's page, a settings page, a favorite, the
+  Server view while a world is live) opens with the breadcrumb (8.1); a page
+  with none (All worlds, All snapshots, the Server page while no world
+  exists) opens with the context row, the area's name in the same quiet
+  type. A flow's pages (Generate and its Mod settings and Map settings
+  steps) show the breadcrumb, the title and the step bar instead of a tab
+  row (8.6): from a wide screen the title and the step bar share one row,
+  with the description one line under them.
 - `main` holds one column: `max-inline-size: var(--page-max)`, centred,
   `padding: var(--space-5) var(--space-3) var(--space-6)` at phone width,
-  `var(--space-6)` block padding from 40rem and `var(--space-5)` inline
-  padding from 48rem. From 64rem it sits beside the rail as above, with
-  `var(--space-6)` padding all round. Its children are a grid with `gap: var(--space-4)`
+  `var(--space-5)` inline padding from 48rem and `var(--space-6)` from
+  64rem. Its children are a grid with `gap: var(--space-4)`
   (`var(--space-5)` from 40rem), and it is the container
   (`container-type: inline-size`) that components size themselves from.
   The page always keeps room for the scroll bar (`scrollbar-gutter:
   stable`), so the tabs do not shift sideways between a short page and a
   long one.
-- **Sections are cards.** A `section` (class `panel`) is a heading and its
-  content, with `gap: var(--space-3)` inside, drawn as a card (7.8). A
-  page's sections are the cards in `main`'s grid. Some pages set cards
+- **Page width.** Wide data and tools keep the whole `--page-max` width:
+  the audit log, the Server page, the Mods tab, the factory map, the map
+  settings and Game settings. A form-only or short-list page keeps its
+  content to an 80rem working width, start-aligned under its title
+  (`main[data-width="measure"]`, set by the template's `page-width`):
+  General, Restart schedule, Notifications and its form, Users, API tokens
+  and Token created, the factorio.com account page, Worlds, Favorites,
+  Deleted worlds, Generate step 1, Import and a world's Saves. The area's
+  tab row and a flow's step bar still run the page's whole width. Short
+  forms and a three-row table stretched across 1760 px with their fields
+  far apart, so the working width is the rule for any new page of that
+  kind. The world list's columns are sized to their values within it (8.2).
+- **Sections are plates.** A `section` (class `panel`) is a heading and its
+  content, with `gap: var(--space-3)` inside, drawn as a plate (7.8). A
+  page's sections are the plates in `main`'s grid. Some pages set plates
   side by side where there is room: the Server page's players, snapshots
-  and pages (below), a Mods tab's list and its rail (8.11), a world's map
-  exchange string and Make a favorite (8.2), the Saves list and Upload a
+  and pages (below), a Mods tab's views and its plan (8.11), a world's
+  players and its side column of sharing (8.2), the Saves list and Upload a
   save (8.3), the Users list and Your password (8.15), the public mods
-  page's two cards (8.20), the factorio.com account page, and Generate's
-  settings and preview (8.6).
+  page's two plates (8.20), the factorio.com account page, Generate's
+  settings and preview (8.6), and the two plates of a created token (8.21).
 - **Sub-navigation: one pattern everywhere** (ADR 0028). Any area with
-  sub-pages lists them in one place and nowhere else, the product rail
-  (below 64rem, a tab row under the heading): no page
-  carries an in-page list of its own sections, and a page too long to read
-  whole is split into sub-pages in that column (Game settings, 8.10). The
-  lists are the Server view's Overview, Console and Chat (8.14); Foreman's
-  own settings, eight pages (8.15); the Worlds area's All worlds,
-  Favorites and Deleted worlds; and a world's Overview, Saves, Snapshots,
-  Mods and Game settings, with Game settings' eight sub-pages nested under
-  it while one is open. Each is a `nav` with its own name ("Server pages",
-  "Foreman settings", "Worlds pages", "World pages") holding a list of
-  links. In the markup the list sits in the rail right after the four
-  areas, so from 64rem it is drawn there in flow, with no offset; its ids
-  and URLs do not change with the width.
-  - **From 64rem** the list is drawn in the rail, under the four areas,
-    after a hairline, headed by a caption taken from the `nav`'s own name
-    (`aria-label`, shown by CSS with empty alt text, 12 px Plex Sans
-    capitals in `text-muted`). Each page is a 44 px row in `text` at
-    `--text-md`, weight 500; the current page is marked as the current area
-    is (a `raised` face, a hairline inset and a 3 px `selected` start
-    edge, `heading`, weight 600). Game settings' sub-pages sit indented
-    under it, behind a 1 px `line` on their start side, as 36 px rows at
-    `--text-sm` in `text-muted`; the open one is `heading`, weight 600,
-    with the same marked face, and Game settings itself then reads as a
-    group title (weight 600, no face). Focus draws the ring 1 px inside
-    the row.
-  - **Below 64rem** each list is a tab row under the heading, with a 1 px
-    `line` under it. On a phone (below 40rem) the Server, Worlds and world
-    lists are an even grid of 44 px cells that shows every label whole,
-    never a row that scrolls sideways or cuts a word: three tabs take three
-    equal columns, four take two over two, and five take three over two (a
-    six-column grid in which the last two cells are each half the width, so
-    no tab sits alone). Each cell has its own 1 px `line` underneath, 4 px
-    apart from its neighbour's, and the current cell's `selected` underline
-    covers exactly that cell. The words are `--text-sm`, weight 600,
-    centred, and wrap inside their cell (`--text-xs` below 23rem). From
-    40rem the tabs are one row that wraps. Two lists differ on a phone:
-    Foreman's eight settings tabs are one row that scrolls sideways, each
-    tab whole, and `subnav.js` scrolls the current one into view; Game
-    settings' sub-pages are a second row under the world's tabs, of 44 px
-    pill-shaped chips (`surface` face, 1 px `line` edge; the current one
-    `accent-bg` with a `selected` edge) that also scrolls sideways. From
-    40rem to 64rem the chips wrap instead.
-  - The current page's link has `aria-current="page"`. On a Game settings
-    sub-page, the sub-page's link has `aria-current="page"` and Game
-    settings has `aria-current="true"`.
+  sub-pages lists them in one place and nowhere else: one tab row under the
+  page title. No page carries an in-page list of its own sections, and a
+  page too long to read whole is split into sub-pages in that row (Game
+  settings, 8.10). The lists are the Server view's Overview, Console and
+  Chat (8.14); Foreman's own settings, eight pages (8.15); the Worlds
+  area's All worlds, Favorites and Deleted worlds; and a world's Overview,
+  Saves, Snapshots, Mods and Game settings. Each is a `nav` with its own
+  name ("Server pages", "Foreman settings", "Worlds pages", "World
+  pages") holding a list of links; its ids and URLs do not change with the
+  width. A flow's step bar (SPEC 17.19) takes the row's place on Generate
+  and its steps: none of the Worlds area's tabs is the current page there,
+  and a row with no current tab told the reader nothing.
+  - **The tab row** is a 44 px row of underline tabs: `text-muted`, weight
+    500, `--space-4` of side padding (none before the first tab), the
+    current one `heading` at weight 600 with a 3 px `selected` underline
+    drawn as a border, so it survives forced colours. Under it a 1 px
+    `line-strong` rule runs the column's full width. A tab under the pointer
+    takes `heading`.
+  - **Below 40rem** the Server, Worlds and world rows are an even grid of
+    44 px cells that shows every label whole, never a row that scrolls
+    sideways or cuts a word: three tabs take three equal columns, four take
+    two over two, and five take three over two (a six-column grid in which
+    the last two cells are each half the width, so no tab sits alone). Each
+    cell has its own 1 px `line` underneath, 4 px apart from its
+    neighbour's, and the current cell's `selected` underline covers exactly
+    that cell. The words are `--text-sm`, weight 600, centred, and wrap
+    inside their cell (`--text-xs` below 23rem). From 40rem the tabs are
+    one row that wraps.
+  - **Foreman's eight settings tabs** differ: on a phone they wrap onto as
+    many rows as their words need, each row filled edge to edge, every tab
+    whole on one line as a 44 px target. Nothing hides past the edge and
+    nothing scrolls sideways. From 40rem the row wraps the same way.
+  - **Game settings' own pages** are one more row under the world's tabs
+    while Game settings is open: a segmented control (7.8), not tabs. Game
+    settings itself has `aria-current="true"` and the open sub-page
+    `aria-current="page"`.
+  - The current page's link has `aria-current="page"`.
 - The `#announcer` region is where htmx swaps short results ("Snapshot
   taken", "Server started") so screen readers hear them. Errors are not
   announced from here; see 7.3.
-- Viewport media queries are used for the shell (the rail and strip from
-  64rem, header and `main` padding, card padding, the header's rows, the
-  logo's word, the tab icons)
-  and where a page's whole layout changes with the window: the Server page
-  (below), Generate (8.6), the phone log (8.5), the world Overview and the
-  account page (two columns from 64rem). Every other component lays itself
-  out from its container with `@container` queries.
+- Viewport media queries are used for the shell (the bar's rows, the
+  page's padding and width, plate padding, the tab icons) and where a
+  page's whole layout changes with the window: the Server page (below),
+  Generate (8.6), the phone log (8.5), the world Overview and the account
+  page (two columns from 64rem). Every other component lays itself out from
+  its container with `@container` queries.
 
 ### Forced colours
 
 Windows high contrast (`forced-colors: active`) replaces every fill and
-colour with the user's system colours. The current tab's underline and the
-current theme's edge are borders, and that mode draws them in
-`Highlight`, so "selected" is still a drawn shape. The "Active" badge
-keeps its border and its word, and buttons, fields and message boxes keep
-their borders, so they need nothing more. The state badge's shapes (7.5)
-are redrawn in `CanvasText` so their fills survive. The line icons (7.9)
+colour with the user's system colours. A page tab row's current underline
+and the current theme's edge are borders, and that mode draws them in
+`Highlight`, so "selected" is still a drawn shape. The top bar's
+current-area underline is a drawn background, which this mode drops: the
+area's word and `aria-current` still say where you are. A tag has no border,
+so its word and its drawn shape carry it, and buttons, fields and message
+boxes keep their borders, so they need nothing more. The state badge's
+shapes (7.5) are redrawn in `CanvasText` so their fills survive. The line icons (7.9)
 are masks painted with a background, which this mode would replace with
 the page colour, so the ones that carry words are repainted in system
 colours: `ButtonText` for icons on buttons, `LinkText` for tab and shortcut
@@ -830,13 +892,15 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
    same width as the links beside it.
 6. Tables follow 8.3. The log and console wrap their lines (8.5); they
    scroll vertically inside their own box, never horizontally.
-7. Nothing is fixed to the viewport. A few one-row bars are sticky at
-   the foot of their own card or form, so an action stays in reach: the
+7. Nothing is fixed to the viewport, and the top bar scrolls with the
+   page. A few one-row bars are sticky at the foot of their own plate or
+   form, so an action stays in reach: the
    Console's command bar on a phone (8.5; the field is in the bar), the
    save bars of long forms (Game settings, Mod settings, General settings,
-   the webhook form and Generate) and the Snapshots selection bar. (The
-   status strip and Generate's preview column are sticky too, but only on
-   wide screens: the strip above the page, the column beside the form.)
+   the webhook form, Import, Restart schedule and Generate) and the
+   Snapshots selection bar. (Generate's preview column, the Mods plan and
+   the Game settings side column are sticky too, but only on wide screens,
+   beside the form.)
    On a phone (30rem and narrower) Generate's stacked action bar stops
    sticking when the window is also 30rem tall or less, such as a phone on
    its side, so it never covers most of the page (WCAG 1.4.10).
@@ -848,9 +912,9 @@ each page is on its first screen, at 320 by 640 px, without scrolling.
 The order is the source order at every width, so reading order, focus
 order and the picture agree.
 
-- **Server page.** Under the "Server" overline, the `h1` is the active
-  world's name, so what is running is the first thing read; its state
-  badge is read by screen readers only, because the header (or the strip)
+- **Server page.** Under the breadcrumb ("Server", then the live world),
+  the `h1` is the active world's name, so what is running is the first thing
+  read; its state badge is read by screen readers only, because the top bar
   and the plate show the state (7.5). Under it, when
   the operator set `FOREMAN_PUBLIC_ADDRESS` (SPEC 3.2), one line "Players
   join at host:port" with the address in `code` and a quiet "Copy address"
@@ -884,8 +948,9 @@ order and the picture agree.
   pages card over the Snapshots card on the right (`grid-row` and
   `grid-column`, not `order`; two parts to one), each card ending after
   its own content; the pages are one card of four 56 px rows divided by
-  hairlines (icon, name and a chevron). From 100rem the row is three
-  columns: players, snapshots, then the world's pages. There is no list
+  hairlines (icon, name and a chevron). From 100rem the players take a wide
+  start column, and the world's pages (two to a row) and the newest
+  snapshots stack in the end column. There is no list
   of other worlds: "Switch world"
   goes to the Worlds list, where every row has its Switch button, which
   makes a switch three clicks from the Server page (SPEC 17.10). After an
@@ -897,13 +962,17 @@ order and the picture agree.
   it is the safe everyday action, and Restart and Stop stay secondary, Stop
   in danger-coloured words and edge (7.1); while it is stopped, Start is
   the primary one (7.1). From 64rem Stop server is set apart from the
-  routine actions by a 1 px `line` rule before it.
+  routine actions by a 1 px `danger` rule before it, 32 px off, and the
+  whole row sits at the end of the plate's band (7.5).
 - **Status facts** (7.5) sit in the card as a grid,
   `repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr))` with
   `gap: var(--space-3) var(--space-5)`, two to a row when the card is under
-  24rem wide, so they are two or three to a row at 320 px. Each is a small
-  name in 13 px sentence case over its value at `--text-xl`, weight 600, in `heading`;
-  the game version is set in the same face and size as the other values.
+  24rem wide, so they are two or three to a row at 320 px. From 64rem they
+  are one strip of equal columns, every label on one line and every value
+  on one baseline. Each is a small name in 13 px sentence case over its
+  value at `--text-2xl` (24 px), weight 600, in `heading`; the game version
+  and the play time are set in the same face and size as the other values.
+  A unit beside a figure is 0.6 of the figure's size, 2 px after it.
   Elsewhere `dl.facts--inline` is a wrapping flex row with `gap:
   var(--space-2) var(--space-5)` (the disk strip, 7.8).
 - **Loads next.** While an older save is chosen (SPEC 7.11), a second
@@ -917,14 +986,17 @@ order and the picture agree.
 - **Force stop** is a bordered link standing alone (rule 3), not a
   `.button`, drawn like the risky button (7.1): `danger-text`, a 1 px
   `currentColor` edge, 44 px tall, `danger-bg` under the pointer. At every
-  width it folds under a closed "Emergency actions" disclosure (7.8) at
-  the controls' foot, a quiet foldout like any other (summary in
-  `text-muted`, `--text-sm`, weight 600), so a rare action that loses data
-  takes no permanent row. Opened, it shows Force stop first in an area
-  with a `danger-bg` face and a 1 px `danger` edge, with its consequence in
-  one muted line beside it ("Stop the game at once, without warning
-  players and without saving."). It leads to its own confirmation (7.4).
-- **Console page.** The same overline and `h1` as the Server page, its
+  width it folds under a closed "Emergency actions" disclosure (7.8), so a
+  rare action that loses data takes no permanent row. The disclosure is a
+  small framed menu button (`surface` face, 1 px `line-strong` edge,
+  `--radius`, 36 px tall, 40 px from 64rem and 44 px on touch, a chevron at
+  its end) that turns red once open. Opened, it shows Force stop first in an
+  area with a `danger-bg` face and a 1 px `danger` edge, with its
+  consequence in one muted line beside it ("Stop the game at once, without
+  warning players and without saving."). From 64rem that area floats just
+  under the button (`--shadow-pop`, at most 22rem wide) so the band does not
+  grow; below 64rem it opens in flow. It leads to its own confirmation (7.4).
+- **Console page.** The same breadcrumb and `h1` as the Server page, its
   state word again for screen readers only, then the Overview, Console and
   Chat tabs. It reads as a terminal at every
   width: one card holds the "Game log", then the "Console" section (its
@@ -939,7 +1011,7 @@ order and the picture agree.
 - **World list** (8.2). Generate (primary) and Import sit at the end of
   the `h1`'s row and wrap under it on a phone. Favorites and Deleted worlds
   are not buttons: they are the Worlds area's pages, beside All worlds, in
-  the product rail (6, "Sub-navigation"). Each row is a grid, `minmax(0, 1fr) auto`: the
+  its tab row (6, "Sub-navigation"). Each row is a grid, `minmax(0, 1fr) auto`: the
   name heading in the first column and, when the world can be switched
   to, its "Switch" button beside it in the second (`.facts ~ .actions`
   moves to row 1). Everything else spans both columns, and the facts sit
@@ -983,7 +1055,7 @@ tokens. Classes are short, flat and named for what the thing is (`button`,
 | Danger (red) | `danger` | `on-danger` | 1px `danger` | face `danger-hover` | Only the final, confirming button of a destructive action (7.4). |
 | Risky (outlined red) | transparent | `danger-text` | 1px `currentColor` | face `danger-bg` | The button that opens a destructive step: "Delete world" on a world's page, "Delete selected" on the Snapshots pages. Force stop is a bordered link drawn the same way. |
 | Remove (red ghost) | transparent | `danger-text`, a trash icon (a cross for Revoke) before the word | transparent; `currentColor` under the pointer | face `danger-bg` | Every destructive action in a row: Delete on a snapshot, a favorite, a webhook or a user, and Revoke on a token. The word shows; the row's name is hidden text. |
-| Icon only | transparent | `danger-text` or `text` | transparent | face `danger-bg` | Only where a word does not fit: a plan row's remove (a cross) and a message's close button. A 44 px square; its name is hidden text. |
+| Icon only | transparent | `danger-text` or `text`; a plan row's remove is a cross in `text-muted` | transparent | face `danger-bg` | Only where a word does not fit: a plan row's remove (a cross) and a message's close button. A 44 px target; its name is hidden text. A plan row's cross is drawn as a framed 28 px button (`surface` face, 1 px `line-strong`) inside that target, so it never weighs as much as Review. |
 
 All buttons: `min-block-size: var(--target-min)`, `min-inline-size:
 var(--target-min)`, `padding-inline: var(--space-4)` (`--space-2` for
@@ -1007,8 +1079,9 @@ the block padding is `--space-2` so a two-line label is not cramped.
   Restart server: stopping disconnects every player. Take snapshot is
   still the one filled orange button. The component page shows the same.
 - **Force stop** on the Server page is not a button at all: it is a
-  bordered link drawn like the risky button, at the foot of the controls
-  under a dashed danger rule (section 6, "What a phone shows first").
+  bordered link drawn like the risky button, folded under the "Emergency
+  actions" menu button at the end of the controls (section 6, "What a phone
+  shows first").
 - A button that leads to a confirmation step, such as the first "Delete
   world" on a world's page, is **risky** (outlined red) or a red ghost
   (remove), not the filled danger button. Filled red is kept for the moment the thing
@@ -1078,13 +1151,16 @@ the block padding is `--space-2` so a two-line label is not cramped.
 </div>
 ```
 
-- The `div.field` is a grid with `gap: var(--space-2)`: label, hint,
-  field, error, top to bottom. The hint sits above the field so it is read
-  before typing, and so a phone keyboard does not cover it.
-- The label is always visible, `--text-md`, weight 600. A placeholder is
-  never the label. It may give an example of what to enter where one
+- The `div.field` is a grid with `gap: var(--space-2)`. In the markup the
+  order is label, hint, field, error, so the hint stays the field's
+  description. For a plain field (a label, its help, one control and
+  perhaps its error) CSS draws the help under the control (`order`), so
+  the value sits next to its name and the help reads as a quiet note. A
+  field with more than one control keeps its help under the label.
+- The label is always visible, 14 px (0.875rem), weight 600, in the body
+  ink (`text`). A placeholder is never the label. It may give an example of what to enter where one
   helps ("Family base"), in `text-muted`, which meets text contrast on
-  `deep` in both themes (10.17:1 dark, 8.91:1 light).
+  `deep` in both themes (9.23:1 dark, 9.63:1 light).
 - **Required fields** have the `required` attribute, which screen readers
   announce, and a red asterisk after the label: `<label class="required">`,
   whose `::after` is `content: " *" / ""`. The empty alt text keeps the
@@ -1110,11 +1186,12 @@ the block padding is `--space-2` so a two-line label is not cramped.
   "Take snapshot". The row wraps when it does not fit.
 - Fields that hold game text (a world id, a seed, a map exchange string, a
   console command) use `--font-mono`.
-- Hint: `--text-xs` (13 px) at a 1.5 line height, `text-muted`, held to
-  66ch, so it reads as help under its label and not as content. Only
-  present when it says something the label cannot. It is shown under the
-  label, except in the Console's sticky command bar on a phone, where it
-  is visually hidden and still linked (8.5).
+- Hint: `--text-xs` (13 px) at a 1.5 line height, `text-faint`, held to
+  64ch (100ch in a wide column), so it reads as help and not as content.
+  Only present when it says something the label cannot. A hint that
+  carries a consequence stays visible under its field. It is visually
+  hidden and still linked in the Console's sticky command bar on a phone
+  (8.5).
 - Error: shown only after a submit fails. `--text-sm`, `danger-text`,
   starting with the bold word "Error:" so the message is not colour alone.
   The field gets `aria-invalid="true"` and a 2px `danger-text` border
@@ -1163,12 +1240,12 @@ bold word, so the kind never depends on colour.
 </div>
 ```
 
-| Kind | Word and icon | Tone (word, icon, 4 px edge) | Face | When |
+| Kind | Word and icon | Tone (word, icon, edge) | Face | When |
 |---|---|---|---|---|
 | Error | "Error:", a circled cross | `danger-text` | `danger-bg` | Something failed. Says what, and what to do next. |
 | Warning | "Warning:", a triangle | `warn` | `warn-bg` | Something will go wrong unless acted on ("Snapshots use 41 GB and the disk has 3 GB free"). |
 | Success | "Done:", a tick | `ok` | `ok-bg` | An action finished and the result is not otherwise visible. |
-| Note | "Note:", a circled "i" | `info` (blueprint blue) | `info-bg` | Context that changes how a person reads the page ("Snapshots are using full copies, not hardlinks", SPEC 6.8). |
+| Note | "Note:", a circled "i" | `text-muted` icon, word in `heading`, a 3 px `line-strong` edge | `surface`, a neutral plate | Context that changes how a person reads the page ("Snapshots are using full copies, not hardlinks", SPEC 6.8). Amber and blue were spent on resting states, so a note is neutral and they keep their meaning. |
 
 - Body text inside a message is `text`, not the kind colour; only the
   leading word is coloured. Links inside are `link` and underlined.
@@ -1177,8 +1254,9 @@ bold word, so the kind never depends on colour.
   survives forced colours. A 20 px line icon in the tone sits at the start
   of the first line (repainted `CanvasText` in forced colours), and the
   text keeps clear of it. Padding `var(--space-3) var(--space-4)`,
-  `--radius`. A message as a direct child of `main`, of a card or of the
-  settings column is as wide as its text, up to 52rem. A message has no
+  `--radius`. A message as a direct child of `main` or of a plate fills the
+  column it sits in, so its edges line up with the plate's other blocks;
+  its words keep their reading measure. A message has no
   shadow, so it never looks like a control. No close button: a message
   stays until the page changes. The one
   exception is the Server page's Done box after a success or a cancelled
@@ -1212,9 +1290,11 @@ bold word, so the kind never depends on colour.
   one control at the end (`state-plate`; MCP access on the API tokens
   page, 8.21; the public mods page's state sentence, 8.20, is drawn the
   same way). It is a box on `surface` with a 1 px `line` hairline and a
-  4 px start edge in the state's colour: `ok` when on; when off, `warn`,
-  with a `warn-bg` face. The heading carries its On or Off badge, then the
-  state sentence, then the one Turn on or Turn off button.
+  4 px start edge: `ok` when on; when off, a neutral plate with a
+  `line-strong` edge, because a feature that is off is a resting state and
+  not a problem. The heading carries its On or Off badge, then the state
+  sentence, then the one Turn on or Turn off button. On the API tokens
+  page the two plates sit side by side in one row from 64rem (8.21).
 - **A mod's portal news** (the availability flags in a Mods row, 8.11) is
   one quiet 13 px line in `text-muted` per flag, led by a 14 px icon for
   its kind. The leading word ("Error:", "Warning:", "Note:") stays in the
@@ -1410,18 +1490,23 @@ SPEC 7.1 and 17.4: state is never shown by colour alone.
 <span class="state state--running">Running</span>
 ```
 
-| State | Word | Text | Background | Shape (drawn in CSS) |
-|---|---|---|---|---|
-| stopped | "Stopped" | `text-muted` | `raised` | Hollow square |
-| starting | "Starting" | `warn` | `warn-bg` | Square, left half filled |
-| running | "Running" | `ok` | `ok-bg` | Filled square, with a faint ring |
-| stopping | "Stopping" | `warn` | `warn-bg` | Square, right half filled |
-| crashed | "Crashed" | `danger-text` | `danger-bg` | Filled diamond (the square turned 45 degrees) |
-| crash-looping | "Crash-looping" | `on-danger` | `danger` | Filled square; the whole badge is solid |
-| unknown | "Unknown" | `text-muted` | `raised` | Hollow circle; the badge edge is dashed |
+| State | Word | Ink | Shape (drawn in CSS) |
+|---|---|---|---|
+| stopped | "Stopped" | `text-muted` | Hollow square |
+| starting | "Starting" | `info` | A ring with a gap, turning (still, as a three-quarter ring, under reduced motion) |
+| running | "Running" | `ok` | Filled square, with a faint ring |
+| stopping | "Stopping" | `warn` | Square, right half filled |
+| crashed | "Crashed" | `danger-text` | Filled diamond (the square turned 45 degrees) |
+| crash-looping | "Crash-looping" | `on-danger` on `danger` | Filled square; the whole badge is solid |
+| unknown | "Unknown" | `text-muted` | Hollow circle; the badge edge is dashed |
+
+Every tag is a tint, not an outline: its face is a 14 percent wash of its
+own ink over `surface` (so "Stopped" is `text-muted` over a grey wash and
+"Running" `ok` over a green one), with no border. A bordered, rounded tag
+read as a button, so a tag is never one.
 
 "Unknown" is for when Foreman cannot ask Docker (SPEC 7.1). It uses the
-same pair of colours as "Stopped" (7.84 on dark and light), so
+same ink as "Stopped" (6.65:1 in dark, 8.12:1 in light on `raised`), so
 no new contrast row is needed; the circle and the dashed edge tell the
 two apart without colour.
 
@@ -1443,10 +1528,12 @@ holds only the word. A template always writes the modifier, even for
   the shape in `CanvasText`, so "Running" stays a filled square and
   "Stopped" a hollow one. The solid crash-looping badge gets a 3px edge.
 - `display: inline-flex`, `gap: var(--space-2)`, `--text-sm`, weight 600,
-  padding `0.125rem 0.625rem 0.125rem var(--space-2)`, 1px border in
-  `currentColor`, fully rounded (a pill). Sentence case, never all
+  padding `0 0.625rem 0 var(--space-2)`, at least 22 px tall, one line, a
+  2 px radius and no border (a tag, above). Sentence case, never all
   capitals. The running square has a static 3 px ring of its own colour at
-  25%, which is decoration.
+  25%, which is decoration. The generic `badge` (an "Active" mark, a
+  "Loads next" mark, a count of mods) is the same tag without the drawn
+  shape, one line, at `--text-xs`, weight 600.
 - Crash-looping is filled solid because it is the one state that needs a
   person to act (SPEC 8.9: Foreman has stopped the game and will not
   restart it alone).
@@ -1455,9 +1542,8 @@ holds only the word. A template always writes the modifier, even for
   carries a copy of that span marked `hx-swap-oob="innerHTML"`, so the
   heading follows the game without a second event and without replacing
   the `h1`, which may have focus. On all three the heading's badge is
-  visually hidden and still read by screen readers: the header (from
-  64rem, the status strip) states the state on every page, and on
-  Overview the plate's band states it large. No page title carries a
+  visually hidden and still read by screen readers: the top bar states the
+  state on every page, and on Overview the plate's band states it large. No page title carries a
   second visible state badge.
 - **The Server plate** is the Overview's status card (`card status-card
   plate`, 7.8). Its band (`plate__band`, at least 64 px tall, on `raised`,
@@ -1469,36 +1555,42 @@ holds only the word. A template always writes the modifier, even for
   otherwise. So the state reads from across the room and is said once per
   screen. After the word come the uptime and who is online. The rule is a
   border, so forced colours keeps it. The plate has no corner marks or
-  rivets: its state edge is its one mark. The riveted logo in the header
-  is unchanged. The plate's gauges run the width of their cell, up to
-  20rem, 8 px tall.
-- **The nav's state.** Every page's header says the server's state in
-  words, with the badge's shape as a small lamp (a 0.625rem square in the
+  rivets: its state edge is its one mark. From 64rem the band is one row
+  with the actions at its end: the state, uptime and who is online at its
+  start; at its end Take snapshot and Restart, then Stop set apart by a
+  `danger` rule, then Emergency actions as a small framed menu button (6,
+  "What a phone shows first"). When the control area holds a message or an
+  operation's steps it takes its own full row under the band. The facts
+  below are one strip of equal columns (6). The plate's gauges run the
+  width of their cell, up to 20rem, 8 px tall. A gauge is neutral
+  (`text-muted`) at rest, so a green bar never reads as a state; it turns
+  `warn` above 75 percent and `danger` above 90. The units beside a figure
+  are 0.6 of its size, 2 px after it. The Players plate's band ends with a
+  link, "N players in this save" (SPEC 8.14), to the Overview's list (8.2).
+- **The bar's state.** Every page's top bar says the server's state in
+  words, with the badge's shape as a small lamp (a 0.75rem square in the
   state's colour) before the word, so no state is told by shape or colour
-  alone (`site-state`, `--text-sm`, weight 600). Below 64rem the lamp and
-  word sit in the header's first row, after the product name, in
-  `text-muted`; the word takes the room between the logo and the tabs (on
-  a phone, the menu), and a long state wraps there instead of widening the
-  header; the lamp stays with its word (a no-break space). From 64rem they
-  sit in the status strip after the live world's name (6, "Shell"), as a
-  pill as wide as its word, 24 px tall, in the state's pair (`ok` on
-  `ok-bg` running, `info` on `info-bg` starting, `warn` on `warn-bg`
-  stopping, `danger-text` on `danger-bg` crashed; `heading` on `raised`
-  otherwise), with a hairline edge in the state's colour. Server's tab
-  shows only "Server" and keeps the state as visually hidden text, so its
-  name is "Server Running", its words in the order they are read (WCAG
-  2.5.3). The copy beside the logo is `aria-hidden`, so the state is heard
-  once. The Server page's live facts replace both copies, so the header
-  follows the game without a reload.
+  alone (`site-state`, `--text-sm`, weight 600, the whole in the state's
+  colour: `ok` running, `info` starting, `warn` stopping, `danger-text`
+  crashed or crash-looping, `text-muted` otherwise). It follows the live
+  world's name (6, "Shell"). From 40rem it is a tag as wide as its word,
+  28 px tall, on `raised`, with a 3 px start edge in the state's colour;
+  below 40rem it is the plain lamp and word under the world's name. The
+  lamp stays with its word. Server's tab shows only "Server" and keeps the
+  state as visually hidden text, so its name is "Server Running", its words
+  in the order they are read (WCAG 2.5.3). The copy in the bar is
+  `aria-hidden`, so the state is heard once. The Server page's live facts
+  replace both copies, so the bar follows the game without a reload.
 - **The live world's chip.** In the Worlds list the live world's mark and
-  the server's state are one chip, never two pills side by side: a pill on
-  `raised` with a 1 px `border` edge holding the pin and "Active", a
+  the server's state are one chip, never two tags side by side: a
+  square-cornered chip (2 px radius) on `raised` with a 1 px `border` edge
+  holding the pin and "Active", a
   hairline, then the state's shape and word in its colour (`live-chip`,
   `--text-sm`, weight 600), inside the world's heading (8.2). A world's
   own pages (Overview, Saves, Snapshots, Mods, Mod settings and Game
   settings) show only the visible "Active" badge in the `h1`; the state is
-  in the header or strip. The component page shows the plain state badges
-  and the chip.
+  in the top bar. The component page shows the plain state badges and the
+  chip.
 - The other status facts (SPEC 7.2) are a `dl` after the controls:
 
   ```html
@@ -1518,13 +1610,14 @@ holds only the word. A template always writes the modifier, even for
   `--text-md`, weight 500, in `text`, with tabular figures. On a world's
   Overview the facts card reads as a nameplate: its values are
   `--text-lg`, weight 600, in `heading`. In the world list a fact's value
-  is 13 px Plex Mono (8.2). A second figure
+  is body size (15 px), regular weight, in Plex Sans (8.2). A second figure
   under a value (`fact-note`, such as what a world's snapshots add) is
-  `--text-xs`, weight 400, `text-muted`.
+  `--text-xs`, weight 400, `text-faint`.
 - **Play time** (SPEC 8.15) sits below the Server page's facts grid: a
-  "Play time" fact in hours and minutes (hours are not folded into days)
-  and a quiet link "N players in this save" to the players panel on the
-  world's Overview (8.2). It is a live region of its own, because its link
+  "Play time" fact in hours and minutes (hours are not folded into days),
+  in the facts strip. The link "N players in this save" to the players
+  panel on the world's Overview (8.2) sits at the end of the Players
+  plate's title band. It is a live region of its own, because its link
   takes focus, and is sent only when its HTML changes. It says nothing
   until a record exists, and "Being read" while the first read runs.
 - When the state changes live (SPEC 16.3), the server sends the new
@@ -1645,11 +1738,18 @@ as the game's map generator has it (SPEC 5.6, 17).
   it when there is no room below, and moves it left to keep 8 px from the
   window's right edge, so it fits at 320 px. `aria-expanded` follows.
 - Nothing moves when a tip opens: the box lies over what follows.
+- **Long explanations use it too**, so help does not compete with the
+  fields it explains: a General settings group's description (8.15), the
+  meaning of the Saved column's times (8.3), and the long explanations on a
+  world's side column, Make a favorite and Export world file (8.2). The
+  button sits beside the title or column name it explains. Without script
+  the text shows in place, as before.
 
-### 7.8 Cards, the status card and disclosure rows
+### 7.8 Plates, the status plate, segmented controls and disclosure rows
 
-A card is a page section drawn as a panel, so a page reads as a few panels
-on its background instead of one long list.
+A card, or plate, is a page section drawn as a panel, so a page reads as a
+few plates on its background instead of one long list. This document calls
+it a card or a plate alike; the class is `card` or `panel`.
 
 ```html
 <section class="panel" aria-labelledby="players-heading">
@@ -1662,33 +1762,45 @@ on its background instead of one long list.
   (or of a `.panels` wrapper, a column of a `.split`, or the mod settings
   editor), a settings `form.panel`, and anything given the class `card`. A `.panel` anywhere
   else is only a grid, with no frame.
-- **The look.** `surface` face, a 1 px `line` border, `--radius-lg`,
-  `--shadow-card` and `padding: var(--card-pad)`. The padding is
+- **The look.** `surface` face, a 1 px `line` border, `--radius-lg`
+  (4 px) and `padding: var(--card-pad)`. It has no shadow in dark and a
+  1 px hairline of shadow under it in light (4, "Depth"). The padding is
   `min(1rem, 4vw)` below 48rem and 1.5rem from 48rem. It follows the
   window, not the text size, so at 200% text the content keeps its width
   (WCAG 1.4.4). Below 22.4rem (a 320 px phone) the frame and padding go: the
-  card becomes a flat section under a 1 px `line` rule (4, "Depth").
+  plate becomes a flat section under a 1 px `line` rule (4, "Depth").
+- **The title band.** The plate's title (its `h2`, or a section head that
+  holds the title and its actions) sits in a raised band: a `raised` face
+  at least 3rem tall, running edge to edge of the plate across its padding,
+  with a 1 px `line-strong` rule under it, the plate's corners at its top,
+  and the title at `--text-xl`, weight 650. A section head with actions
+  lays its parts out in a wrapping row inside the band. The band is for a
+  plate's title: a heading that is only a row's label (Generate's
+  favorite chooser, the results line before a search) and a setting row's
+  own heading in its start column take no band, and a flat plate below
+  22.4rem has none either. A plate that is the task in hand (the Mods plan)
+  keeps the same band and adds a 3 px `selected` edge at its start.
 - **Inside.** A grid with `gap: var(--space-3)`, the section's `h2` pulled
   to `--space-2` of its content. A card is also a size container
   (`container-type: inline-size`), so what is inside lays itself out from
   the card's width, not the window's. The headings that CSS names by id
   carry a small line icon in `text-muted` before their words (7.9).
-- **Side by side.** A `.split` is a main column and a rail: from 64rem
-  the Mods tab puts "Plan" alone in a 22.5rem rail, and "Find a mod", the
-  results, "Match mods to the save", "Installed mods" and the rarer tools
-  (upload, mod settings) in the main column, in that order; narrower,
-  the plan follows the results and the tools fold under one "Mod tools"
-  disclosure after "Installed mods" (8.11). The Saves tab puts the list in the main column and
+- **Side by side.** A `.split` is a main column and a rail: from 60rem
+  the Mods tab puts "Plan" alone in a 24rem rail (28rem from 90rem), and
+  the bar with its two views and the view's own content in the main column
+  (8.11); narrower, the plan follows the views and the tools fold under one
+  "Mod tools" disclosure after "Installed mods". The Saves tab puts the list in the main column and
   Upload a save in the rail (8.3); the Users page puts the list beside
-  Your password (8.15). Other two-column places: the world Overview (map
-  exchange string and Make a favorite side by side from 64rem, 8.2), the
-  factorio.com account page and Generate (8.6). The account card spans the full content width, with the
-  same section-heading column and content column as the world Overview,
-  so a wide screen shows no empty space beside it.
+  Your password (8.15). Other two-column places: the world Overview (the save's players and
+  managing rows beside a side column of sharing from 72rem, 8.2), the
+  factorio.com account page and Generate (8.6). The account page keeps the
+  80rem page width every form-only settings page has (6, "Shell"), so a
+  plate of short text no longer spans 1760 px with most of it empty.
 - **The status card** is the Server page's `card status-card plate`, the
   Server plate. Its band states the server's state large, behind a 6 px
-  rule in the state's colour (7.5); then come the controls, the step list
-  of a running operation and the Emergency actions (section 6), then the
+  rule in the state's colour (7.5); from 64rem the controls share that
+  band's row at its end, and below it they follow it, with the step list
+  of a running operation and the Emergency actions (section 6); then the
   facts, "Loads next" and the mods notice. The rule is drawn as a border,
   so forced colours keeps it. A live part with nothing in it takes no row.
 - **The pages card** (`card shortcuts`) lists the live world's pages
@@ -1705,6 +1817,25 @@ on its background instead of one long list.
   (name beside value) and the one-line explanation on a single wrapping row,
   so the forms and the list stay near the top. A warning inside it takes a
   row of its own.
+- **The segmented control** (`.segmented`, and the links of Game settings'
+  own pages) is the one drawing of an in-page view switch. Every switch
+  between views of the same content uses it: the Mods tab's two views
+  (8.11), Game settings' own pages (8.10), the map settings' Resources,
+  Terrain, Enemy and Advanced and the preview's One planet and All planets
+  (8.7, 8.8), the API tokens page's owners (8.21), the factory map's
+  surfaces (8.22) and the console's line filter (8.5). A page-level
+  sub-page keeps the underline tab row instead (6, "Sub-navigation"), so
+  there are two drawings of choosing a view and no third. The control is a
+  sunk track (`deep` face, a 1 px `line-strong` edge, `--radius-lg`, 3 px
+  inside padding, 2 px between segments) as wide as its segments on every
+  page; only a phone stretches it across the column. A segment is
+  `--text-sm`, weight 600, `text-muted`, `--radius`, with `--space-4` of
+  side padding. A segment that is a link is 36 px tall (42 px on a
+  phone); a segment that holds a radio is a full 44 px target. The segment
+  under the pointer takes `secondary-hover` and `heading`; the chosen one
+  takes the `accent-bg` face, `heading` ink and a 2 px `selected` foot, so
+  it is told apart by more than colour. A segment with a count shows it
+  inside. Focus draws the usual ring 1 px outside the segment.
 - **Foldouts** (`details.disclosure`). One style for every foldout; the
   class stays `disclosure`. The summary is a `list-item` with the browser's own triangle (`::marker`) at
   its start, coloured `text-muted` so orange stays for the primary action,
@@ -1717,8 +1848,8 @@ on its background instead of one long list.
   and below); on touch it is `--target-min`. A lone foldout has no line
   above it; one directly after another gets a 1 px `line` rule above it,
   so stacked rows such as Generate's planets and the raw settings read as
-  a list. "Emergency actions" is as quiet as any other (`--text-sm`); only
-  its opened area is red (section 6). The plan list's summary on the mod
+  a list. "Emergency actions" is the exception: a small framed menu button
+  whose opened area is red (section 6). The plan list's summary on the mod
   portal keeps its 44 px bar and draws its own triangle, without the
   compact size or the hover fill. Used for "Or start anyway" (7.4), the steps that were not
   run (7.6), "N other mods stay as they are" and the upload and replace
@@ -1754,7 +1885,7 @@ Words stay first (1).
   message and an icon-only button, 1rem for a chevron, 14 px before a
   mod's portal news, 2rem in the map preview's held box and 3rem in an
   empty state.
-- **Where.** The three main tabs (dropped below 23rem); the Server page's
+- **Where.** The four area tabs of the top bar (dropped below 25rem); the Server page's
   control buttons and the pages card; the Generate and Import buttons; the
   section headings that have an id the stylesheet names; remove and
   icon-only buttons; messages; a mod row's More toggle (three dots) and
@@ -1908,11 +2039,28 @@ out; the Warning message (7.3) about mod-held data, tied to the button by
 `aria-describedby`; then the Export world button. A world a newer Foreman
 wrote has no card.
 
-**Import** is a third panel on the Import page, after the folder form: a
-heading, one sentence, one drop zone (7.10) for a `.zip` and an "Upload
-world file" button, which goes to the preview page. It is a plain upload
-form without script. No file chosen, or a file over the limit, shows on the
-field with the error summary (7.2).
+**Import** is the third way in on the Import page. The page opens with three
+choice cards, "Upload a save", "Import a folder" (with the import folder's
+path) and "Import a world file", each naming what it brings, and shows only
+the chosen way's form (CSS only; each card is a radio and a label, and the
+radio stays tick-sized at the card's top). Folders waiting in the import
+folder, or an answer about them, choose the folder; a world file's problem
+chooses that one; otherwise the way last chosen in this tab (`import.js`),
+or uploading a save, the common way in. A link to a form's heading chooses
+that form. Three long forms in a row made the reader work out which one fits
+their file before starting. The world file's form is a heading, one
+sentence, one drop zone (7.10) for a `.zip` and an "Upload world file"
+button, which goes to the preview page. It is a plain upload form without
+script. No file chosen, or a file over the limit, shows on the field with
+the error summary (7.2). Each of the three forms and Restart schedule end
+in the same foot bar as General settings: a raised band with a rule above
+it, Cancel and then the primary action at the end, held to the window's foot
+while the form is in view. Import has one game version control, the
+select, with "Use a version not in the list" as a disclosure that holds the
+typed field (the same as Generate, 8.6); it opens by itself when a version
+was typed, asked for or refused, so there is never a second control that
+needs a hint to say which wins. On a wide form the disclosure stays in the
+fields' column, beside the drop zone.
 
 **The preview** is a form page: the facts list, then the warnings (a game
 password was set; what mods may hold), then the name field, the image
@@ -1938,13 +2086,15 @@ A page head (`header.page-head`) may carry a line above the `h1` that
 says where the page sits. There are two kinds, and no page has a "Back
 to" link above its heading:
 
-- **An overline** (`p.eyebrow`: 12 px Plex Mono capitals, weight 600,
-  `text-muted`, 2) names the area on the pages of the Server view and on
-  the top-level Worlds and Snapshots pages ("Server", "Worlds",
-  "Snapshots"). The Server page has no breadcrumb: its trail would be one
-  item.
+- **A context row** (`p.eyebrow`: 13 px Plex Sans, weight 500, sentence
+  case, `text-faint`, 2) names the area on a page that has no parent:
+  All worlds, All snapshots, and the Server page while no world exists. It
+  sits 4 px over the title, as the breadcrumb does.
 - **A breadcrumb** (`nav.crumb`, named "Breadcrumb", holding an `ol` with
-  one `li` per step) opens the pages under Worlds: a world's pages
+  one `li` per step) opens every page that has a parent, and sits 4 px over
+  the page title, so every page header has one shape and the title is at
+  one height on every page. It opens the Server view's three pages
+  ("Server > Nauvis Prime") and the pages under Worlds: a world's pages
   (Overview, Saves, Snapshots, Mods, Mod search, the mod plan, Mod
   settings, Game settings), Generate, Import, Favorites, a favorite's
   delete step and Deleted worlds. It also opens each of Foreman's settings
@@ -1966,12 +2116,13 @@ to" link above its heading:
   shown, because the page is a step under another: a favorite's delete
   step, the notification form, the created API token and the mod plan.
 
-A page's one-line description under its title (`p.page-intro`) is
-`text-muted` at the measure.
+A page's one-line description under its title (`p.page-intro`) is body
+text (15 px) in `text-muted`, one line at a wide measure (110ch).
 
 **Sign-in.** When both ways to sign in are offered, single sign-on and
-the Foreman account form are one composed panel: single sign-on above,
-the account form below a hairline, with one shadow. The account form's
+the Foreman account form are two whole cards 16 px apart, each with its
+own edge and corners, over a drafting grid that fades evenly from the
+middle. Joined into one panel they looked like two boxes touching. The account form's
 button is the one filled button; "Sign in with single sign-on" is
 secondary, and primary only when there is no account form.
 
@@ -1982,10 +2133,10 @@ name (a link to the world's page), then a `dl.facts` with game version,
 Space Age, last played and disk use. The active world carries the live
 world's chip (7.5) inside its heading, after its name: the pin and the
 word "Active", a hairline, then the game's state when Foreman controls
-the game, as one pill rather than two. It is listed first. The values
-(game version, last played, disk use) are 13 px Plex Mono with tabular
-digits, and what the world's snapshots add, under Disk use, is
-`--text-xs`, weight 400, `text-muted` (7.5). A size in the Disk use
+the game, as one chip rather than two tags. It is listed first. The values
+(game version, last played, disk use) are body size (15 px), regular
+weight, in Plex Sans with tabular digits, and what the world's snapshots
+add, under Disk use, is `--text-xs`, weight 400, `text-faint` (7.5). A size in the Disk use
 fact, and the size in its "snapshots add" note, are each one
 `span.nowrap`, so "0 B" never wraps onto a line of its own at 320 px. A world that can be switched
 to has a "Switch" button beside its name (its accessible name is "Switch to"
@@ -2003,21 +2154,27 @@ Space Age, Last played, Disk use) in the column-name style (8.3), over a
 1 px `line`, heads the list. The header row is `aria-hidden`, because each row
 keeps its own fact names for screen readers, visually hidden there. Every
 row is at least 56 px tall, with its name, chip and values centred on the
-row, on columns shared by every row. The columns are shares of the row,
-not fixed widths, so they fit beside the rail; Last played takes the
-widest share and wraps between its date, clock and age when it must,
-24 px clear of Disk use. Below 64rem an archived row's two buttons take
+row, on columns shared by every row. The columns are sized to their
+values within the page's 80rem working width (6, "Shell"), so a short list
+does not spread a few words across the page: from 90rem the name takes
+what is left (at least 19rem) and the facts sit in columns of 6, 5, 12 to
+15 and 8rem. Last played wraps between its date, clock and age when it
+must, clear of Disk use. Below 64rem an archived row's two buttons take
 a line under its facts. The list sits in the page's card, and its rows are separated by a 1px `line`
-border, not boxed as cards of their own. A world's name is its row's title,
-a link in `heading` colour that is underlined only under the pointer. The
+border, not boxed as cards of their own. A world's name is its row's title:
+a link at 16 px, weight 600, in `heading` colour, with no underline until
+the pointer is over it, then `link` colour and underlined. A row's title
+that is a link (a save's name, a mod's name, a world's name) is drawn this
+way everywhere, so lists do not read as documents; a link in running text
+keeps its underline. The
 active world's row has a 3px leading edge in `selected` that reaches the
 card's edge, and takes the server's state colour while the badge shows
 (`ok`, `warn` or `danger`, as the Server plate's rule does).
 
 The page is the Worlds area's All worlds page: under the "Worlds"
-overline, the `h1` with Generate (primary) and Import at the end of its
-row, then the area's list of pages (All worlds, Favorites, Deleted
-worlds; 6, "Sub-navigation"), then the list.
+context row, the `h1` with Generate (primary) and Import at the end of its
+row, then the area's tab row (All worlds, Favorites, Deleted worlds; 6,
+"Sub-navigation"), then the list.
 
 Archived worlds (SPEC 5.9) are not in this list. They sit in a closed
 `details.disclosure` at its foot, "Archived worlds (n)", whose rows share
@@ -2031,15 +2188,22 @@ link. A world's page shows the badge and an Unarchive button, and the
 other worlds' pages an Archive row in the Danger zone (7.4). The switch
 pickers leave archived worlds out.
 
-**A world's Overview**, in order: the facts card (7.5); then Players in
-this save (below); then sharing, the map exchange string (8.8) and Make a
-favorite (7.11), as two cards side by side from 64rem; then Export world
-file (7.12); then one card of setting rows for managing the world, Game
-version, Rename and Clone; then the Danger zone with Archive and Delete
-(7.4). A setting row is a title column (heading and hint) and a content
-column; from a 60rem card the title column is 240 px.
+**A world's Overview**, in order: the facts across the top (7.5); then, on
+a wide screen (72rem), two columns. The main column holds Players in this
+save (below), then one plate of setting rows for managing the world: Game
+version, Rename and Clone. The side column (30rem, 34rem from 100rem) holds
+sharing, as compact actions rather than expanded forms: the map exchange
+string (8.8) as a three-line preview that opens whole when clicked into,
+with Copy; Make a favorite (7.11), a name and a button, its long
+explanation in an (i) toggletip (7.7); and Export world file (7.12), the
+choice of saves, the warning and the button, what the file leaves out in a
+toggletip. The Danger zone with Archive and Delete (7.4) stays last, the
+full width. Below 72rem the side column follows the main one; on a phone
+(below 40rem) it comes straight after the facts, so "Copy map exchange
+string" is the first action. A setting row is a title column (heading and
+hint) and a content column; from a 60rem plate the title column is 240 px.
 
-**Players in this save** (SPEC 8.14) is a panel under the facts,
+**Players in this save** (SPEC 8.14) is a plate under the facts,
 `id="save-players"`, the target of the Server page's "N players in this
 save" link. It is rendered with the page and works without script. It
 shows one sentence for the state (reading, never read, tracked since a date
@@ -2062,9 +2226,11 @@ one of which may be actions. The name column wraps with
 `overflow-wrap: anywhere`; numbers are right-aligned and tabular. Column
 names (and the token, user and world lists' header rows) are labels, set
 apart from content: 13 px Plex Sans in sentence case, weight 600, in
-`text-muted`, on one line. The figures in cells (sizes, times,
-versions) are 13 px Plex Mono with tabular digits, so the numbers carry
-the mono voice, not the labels. Every row has a bottom border of
+`text-muted`, on one line. The sizes and times in cells are 13 px Plex
+Sans with tabular digits, so a time never changes face inside a line; only
+a version (`.ver`) and a file name are Plex Mono. A row's title (a save's
+name, a snapshot's label, a table's row header) is 16 px at weight 600 in
+`heading`. Every row has a bottom border of
 1px `line` (the last has none). No zebra stripes; a body row under the
 pointer is tinted with `raised`. If a table needs more than
 four columns, it becomes a list with a `dl` per row (8.2) instead.
@@ -2104,12 +2270,19 @@ these tables carry explicit `table`, `rowgroup`, `row`, `columnheader` and
 `cell` roles (SPEC 17.12).
 **The Saves tab** puts the list first and Upload a save after it; on a
 wide page they sit side by side, Upload a save in the rail (a `.split`).
-The hint about the times shown follows the table.
+What a save's time means is a hint that opens from an (i) toggletip beside
+the Saved column's name (7.7); without script it shows under the table. The
+Load next column's empty header cell is drawn, so the header's rule spans
+every column.
 The saves table's Load next buttons sit in its own last column, under a
 visually hidden header, so they line up whatever the names' lengths; the
-newest save's button is named "Load next: the newest save". When the panel
-is 14 to 24rem wide (a phone), each saves row is a grid with fixed size
-and time columns and the button on its own line under them.
+newest save's button is named "Load next: the newest save". Below 40rem
+each save is one record rather than a stacked table row: its name (an
+autosave's world and time, with the file name under it), then one muted
+line with the size and, for a save that is not an autosave, its time, then
+Load next. The column labels are kept for screen readers only. A world a
+newer Foreman wrote has no Load next, so there each save keeps its time
+beside the name and its size under it.
 An autosave's label in the saves table is "World, date time" in tabular
 numbers, and its file name sits on a second line under it, muted, so every
 file name starts at the label's left edge; the "Loads next" badge stays
@@ -2197,13 +2370,26 @@ Classes and their contract:
   `pre` in the same `li`.
 - `button[hidden]` is hidden even though `.button` sets `display`.
 
-- A deep box: background `deep`, 1px `border`, text `text`, `--space-3`
-  padding, `--font-mono` at `--text-sm`,
-  `white-space: pre-wrap` on the `pre`, `overflow-wrap: anywhere`, so lines
-  wrap and never scroll sideways. When lines rewrap (the web font
-  arriving, a turned phone) a view that was at the bottom is taken back
-  there. (The `ol` of the console history keeps normal white space, or the
-  markup's line breaks would show as blank lines.)
+- **The log is a dark well in both themes**, as the top bar is dark in
+  both: the machine's output reads as machinery. Its face is `deep`, its
+  text `text`, both the dark theme's values, with a 1 px `line` rule at its
+  foot, `--space-3` padding and `--font-mono` at 14 px on 22 px lines. From
+  40rem a line keeps its length and the box scrolls sideways inside itself
+  when one is long; below 40rem the `pre` wraps (`pre-wrap`,
+  `overflow-wrap`), so a phone never scrolls sideways. A line with a time
+  starts in a quiet gutter (`text-faint` or `text-muted`). When lines
+  rewrap (the web font arriving, a turned phone) a view that was at the
+  bottom is taken back there. (The `ol` of the console history keeps normal
+  white space, or the markup's line breaks would show as blank lines.)
+- **Find and filter.** Over the log sits one bar, 40 px tall: a "Find in
+  the log" text field (a normal field, `deep` face and a `border`), a
+  segmented filter (7.8) of All, Warnings, Errors and Chat, and a "Follow
+  newest" box at the end. With script (`log.js`) lines that do not match
+  the text or the filter are hidden, and Follow says whether the view
+  follows new lines and sets it. Without script the bar is hidden and the
+  whole log shows. On a phone the label and the field share one row, so the
+  log starts on the first screen above the command bar, and the filter takes
+  the row under them.
 - **Times in the game log.** `log.js` splits each line into its time (a
   date and a clock, or the game's elapsed seconds) and its words; the text
   of every line is unchanged, and a path in the words may break after a
@@ -2226,7 +2412,8 @@ Classes and their contract:
   keyboard users can scroll them.
 - **The game's own Error and Warning lines** (a line whose message, after
   the game's seconds counter, starts with "Error" or "Warning") are drawn
-  in `danger-text` and `warn`. A player joining (a `[JOIN]` line) takes
+  in `danger-text` and `warn`, each with a 3 px leading edge in its own
+  colour, so the line shows in a long log without its colour alone. A player joining (a `[JOIN]` line) takes
   the running colour, `ok`, and a player leaving (a `[LEAVE]` line) takes
   `text-muted` (classes `log-join` and `log-join log-leave`), so the two
   events read apart. The word is in the line itself, so the colour is
@@ -2281,7 +2468,13 @@ is Unfinished.
 Below a 30rem bar (a container query), so on a phone, only the marks show
 and the current step's name is written under them (`flow-steps__now`,
 hidden from screen readers, which read the marks' names). Each mark stays a
-44 px target. The bar is at most 44rem wide.
+44 px target. The bar is at most 40rem wide on a wide screen.
+
+**The flow's header.** Generate, its Mod settings step and its Map
+settings step show the breadcrumb, the title and the step bar as the
+header, with no Worlds tab row (6, "Sub-navigation"). From a wide screen
+the title and the step bar share one row, the bar at the end, and the
+page's one-line description sits under them.
 
 **The footer.** Each step ends with the same action bar, held to the
 window's foot: Back first, at the start, and the step's primary button
@@ -2307,7 +2500,9 @@ in this order:
    not in the list sits in a closed `details`, "Use a version not in the
    list", opened when it holds a value or an error.
 3. Space Age, and the "download the game image" checkbox.
-4. "Start from a favorite" (one row on a card at least 64rem wide).
+4. "Start from a favorite". From 80rem the world's form leads at a working
+   width, with the name beside the version, and Start from a favorite is a
+   side plate beside it; below 80rem it follows the form's fields.
 5. The footer: Cancel and "Next: Mods" (primary), which makes the world.
 
 There is no map form, preview or leave dialog on this page. The world is
@@ -2381,22 +2576,24 @@ and 8.8. Its form id is still `generate-form`. In this order:
    that are saved but no longer in the mods, as a list.
 3. "Fill from a map exchange string", a closed `details` with a mono
    `textarea` and a "Fill the settings" button. A string from another
-   game line is refused with a link to the world's page.
+   game line is refused with a link to the world's page. On a wide form
+   (a map section at least 62rem wide) it shares one row with the preset
+   and the seed, and opens to a full row under them (item 4).
 4. The preset select with "[modified]" (the game's word) and a quiet
    "Reset to defaults" button after it; the seed with a "Random seed"
-   button; then the tabs of 8.7.
+   button; then the groups of 8.7.
 5. The preview slot (8.8), beside the settings on a wide screen (below).
 6. One achievements summary (below), then the footer: Back (to step 3,
    or step 2 when step 3 has nothing), "Preview map" and "Save map
    settings" (primary).
 
-**Layout.** Once the form is 56rem wide (a container query, so the rail's
-width counts) the page is two columns, `gen-grid`: the settings, never
+**Layout.** Once the form is 56rem wide (a container query, so it follows the
+form's own width, not the window's) the page is two columns, `gen-grid`: the settings, never
 narrower than 34rem so their steps stay sliders,
 (items 1 to 4 and the achievements summary) on the left, and the preview in
 a column of 20 to 26rem on the right that stays in view while the settings
-change. That column (`gen-preview`) is sticky at `--space-5` from the top,
-as tall as the window between the top strip and the action bar. Once a
+change. That column (`gen-preview`) is sticky at `--space-4` from the top,
+as tall as the window between its top and the action bar. Once a
 picture is drawn its order is: the heading and seed, the One planet and All
 planets tabs, Show resource amounts, Preview size, the picture, then the
 download links and the kept note as one tight group. Preview size is above
@@ -2405,11 +2602,14 @@ is a square sized by the smaller of the column's width and the height left,
 never under 16rem so its amounts stay readable; where the window is tall
 enough the whole pane fits, and below that the pane scrolls on its own; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
 and `--space-4` of padding, and sizes its own controls from its width, as
-the settings do from theirs (8.7). Several planets are thumbnails, two to a
-row. From 100rem the preview column takes about two fifths of the page.
-From 90rem the world's name and its game version pair up, and on a map
-section at least 40rem wide the preset and the seed pair up; a pair shares a label row, a hint row and a control row, so the controls line up and a field without a hint leaves that row blank; starting
-from a favorite is one row on a card at least 64rem wide. Narrower than that it is one column in source order, and on a phone (30rem
+the settings do from theirs (8.7). All planets shows its thumbnails three
+to a row, so they read clearly as small beside One planet's picture now that
+the pane is taller. From 100rem the preview column takes about two fifths of the page.
+On step 1 the world's name and its game version pair up from 80rem. On a
+map section at least 62rem wide the preset, the seed and Fill from a map
+exchange string share one row (8.7); a pair shares a label row, a hint row
+and a control row, so the controls line up and a field without a hint
+leaves that row blank. Narrower than that it is one column in source order, and on a phone (30rem
 and narrower) the preview comes straight after the preset and seed, so it
 is on the first screens, and the planets' rows in the settings start
 closed. **The action bar** is one bar at the foot of the card, `raised`
@@ -2504,10 +2704,11 @@ the settings of the mods' planets.
 …
 ```
 
-- **Tabs, as the game has them.** Resources, Terrain (with cliffs and
-  1.1's water), Enemy and Advanced. The tabs are radios drawn as the
-  sub-navigation's tabs (6): one tab stop, the arrow keys move between
-  them, the current one bold with the 3px `selected` underline. The
+- **Groups, as the game has tabs.** Resources, Terrain (with cliffs and
+  1.1's water), Enemy and Advanced. They are radios drawn as a segmented
+  control (7.8): one tab stop, the arrow keys move between them, each
+  segment a full 44 px target, the current one on the accent tint with a
+  2 px `selected` foot. (The markup keeps the names `tablist` and `tab`.) The
   script adds `js-on` to the form and names the shown tab in `data-tab`,
   and the style sheet shows that one panel; the panel's own legend is
   then for screen readers only. Without script the radios are hidden and
@@ -2567,6 +2768,15 @@ the settings of the mods' planets.
   hint. While every resource of the planet is off, the row is disabled and
   the hint says why; ticking one box brings it back. The on/off boxes are
   as before.
+- **One row per control.** On a map section at least 46rem wide each
+  resource or terrain control is one row: its on/off box and name in an
+  11rem start column, its three sliders beside it, so a planet's resources
+  fit on a screen. Narrower, the sliders sit under the name.
+- **A changed step.** A step whose setting is off its preset shows its words
+  in the accent ink (`link`), weight 600, with an orange dot before them,
+  and the page's "[modified]" word still shows once any setting differs, so
+  edits stand out in a long list of sliders (`generate.js` marks the
+  field).
 - **One fieldset per control**, its legend the game's name, small and
   muted so the groups read as one list. Its settings sit in a grid
   `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`, 13rem with sliders.
@@ -2712,7 +2922,7 @@ close the view, the tab, the setting, and the picture again).
   its way (the server stops its run) and a late reply is ignored. A
   pressed "Preview map" is aborted by a later change too.
 - **One planet or all.** On a world with several planets, a choice under
-  the heading line, drawn as tabs (radios, as 8.7's tabs, one tab stop;
+  the heading line, drawn as a segmented control (radios, as 8.7's groups, one tab stop;
   legend "Preview shows", for screen readers only): **One planet**
   (checked by default) and **All planets**. It stays when a draw fails,
   still showing the choice made, so One planet is one click back. It
@@ -2789,8 +2999,9 @@ close the view, the tab, the setting, and the picture again).
   a scrolling frame, which has focus on open.
   - Over the picture: Previous and Next arrows on its left and right
     edges, named after where they lead ("Previous planet: Aquilo"); a
-    round X in the top corner ("Close"); Zoom out and Zoom in in the
-    bottom corner, the single-pointer way to zoom (WCAG 2.5.1). They show
+    round X in the top corner ("Close"); Zoom out and Zoom in
+    as one joined cluster in the bottom end corner (one frame, a hairline
+    between them), the single-pointer way to zoom (WCAG 2.5.1). They show
     while the pointer is over the picture or a control in it has
     keyboard focus, and always under `(hover: none)`. Each is an
     icon button (8.8 icons below), 24 px, 44 px under
@@ -2807,9 +3018,12 @@ close the view, the tab, the setting, and the picture again).
     There, a bar taller than the window leaves beside that stage (the
     opened list) scrolls on its own,
     so the stage's foot never moves. The arrows show on the star map too, in
-    the same place. The settings column below keeps its place for every
-    planet, and on the star map the planet's boxes and the column are
-    hidden but keep their places.
+    the same place. On the star map the planet's boxes and the settings
+    column are hidden and the map takes the whole width of the view and sits
+    in its middle, rather than beside a blank column. Previous keeps the
+    screen spot it has beside a planet's settings (just past the 38rem
+    column), so clicks in one place still step through every picture. While
+    the large view is open the page behind takes no height.
   - Zoom, pan, the zoom keys and the three zoom buttons are one plain
     script, `static/viewer.js` (`window.ForemanViewer`), shared with the
     factory map (SPEC 5.16) and loaded with `defer` before each page's own
@@ -3116,11 +3330,16 @@ takes one more, its sub-page.
 The settings pages (form, raw editor and preview) carry the world's tabs
 (6) with Game settings current, and no "Back to" link. The form's `h1` is
 the world's name, under the breadcrumb "Worlds > *world* > Game settings".
-Server name is required (7.2).
+Server name is required (7.2). On a wide column (a settings container at
+least 72rem wide) the form keeps a working width, and a side column beside
+it holds the note that changes apply after a restart and the "Edit
+server-settings.json as JSON" link, held in view as the page scrolls; short
+forms no longer stretch two fields across the page. Below that the note
+comes above the form and the link under it, in one column.
 
 **Sub-pages.** Game settings is too long to read whole, so it is split
-into eight sub-pages, listed under Game settings in the world's page
-column (6, "Sub-navigation"): Listing, Players and access, Gameplay,
+into eight sub-pages, listed as a segmented control (7.8) in a second row
+under the world's tabs (6, "Sub-navigation"): Listing, Players and access, Gameplay,
 Saving, Network, Admins, Ban list and Whitelist. Each shows one section;
 the plain settings link opens Listing, and the others add
 `?section=<key>`. A sub-page's link has `aria-current="page"` and Game
@@ -3136,8 +3355,8 @@ form as a plain link.
 made on one sub-page are kept in the tab's session storage and put back
 on the next, so one "Preview changes" covers every section. The foot
 bar's note counts them ("3 unsaved changes, kept while you move between
-sections.", with an orange dot), and the rail marks each sub-page
-that holds one with a dot. Saving or Cancel drops the draft. Without
+sections.", with an orange dot), and the segmented control marks each
+sub-page that holds one with a dot. Saving or Cancel drops the draft. Without
 script each sub-page saves on its own.
 
 **The form** (`GET /worlds/{id}/settings`) is one `form.panel` of
@@ -3285,37 +3504,59 @@ snapshot label, an audit entry, a sent notification) keep the slug they were
 written with.
 
 **The Mods tab.** One `h1`, the world's name with the Active badge, and the
-game's state badge beside it (7.5), then sections in the order below, each
-a `section.panel` (a card, 7.8). The markup order is the order seen at
-every width, so focus follows what is seen (WCAG 1.3.2, 2.4.3): "Plan",
-then "Match mods to the save", where a save mismatch is seen before the
-list it would change, then "Installed mods", then the two rarer tools
-("Upload a mod", "Mod settings") inside one `details.disclosure`, "Mod
-tools", so each tool appears once on the page. Below 64rem that
-disclosure is a closed 44 px row after "Installed mods", with the tools'
-full cards inside. From 64rem `subnav.js` opens it and hides its summary
-(`data-open-wide`); "Plan" is alone in a 22.5rem rail beside the rest, so
-nothing passes under it while it sticks, and every other card is in the
-main column. A refused upload opens the disclosure, so the error summary's
-link reaches the field. From 64rem the tools' buttons (Edit mod settings,
-Upload a mod zip) are as wide as their words, not the column's width, so
-they do not compete with the rows' own Update buttons; they are 40 px tall under a
-fine pointer and 44 px on touch. The sections, in order:
+game's state badge beside it (7.5), then the tab's bar and its content. The
+bar holds a segmented control (7.8) of two views, then the "Mod name" search
+box beside it. **Installed mods** (with its count) is the default; in the
+guided Generate, where mods are picked, **Find a mod** is. Installed mods
+shows "Match mods to the save", the installed list and the tools; Find a
+mod shows what the search looks in, the portal link and the results, right
+under the box. Typing or sending a search switches to Find a mod. The plan
+is alone in a sticky rail beside both views (after them in the markup),
+drawn as a normal plate marked as the task in hand (below). The switch is
+CSS only (two radios in the markup), and without script both views show one
+after the other and the switch hides (a `scripting: none` rule), so search
+and the plan work as plain links and forms (SPEC 9.1). Finding mods and
+reviewing the installed list are two tasks, so each gets the whole column
+rather than sharing it. The markup order is the order seen at every
+width, so focus follows what is seen (WCAG 1.3.2, 2.4.3): the bar, "Match
+mods to the save" (where a save mismatch is seen before the list it would
+change), "Installed mods", then the two rarer tools ("Upload a mod", "Mod
+settings") inside one `details.disclosure`, "Mod tools", so each tool
+appears once on the page, then the plan. Below 64rem that disclosure is a
+closed 44 px row after "Installed mods", with the tools' full cards
+inside. From 64rem `subnav.js` opens it and hides its summary
+(`data-open-wide`). From a 60rem page column the plan is alone in a 24rem
+rail (28rem from 90rem) beside the rest, so nothing passes under it, and
+every other plate is in the main column; on the search page the rail runs
+the full height of both plates, so the plan holds in view while results
+scroll. A refused upload opens the disclosure, so the error summary's link
+reaches the field. From 64rem the tools' buttons (Edit mod settings, Upload
+a mod zip) are as wide as their words, not the column's width, so they do
+not compete with the rows' own Update buttons; they are 40 px tall under a
+fine pointer and 44 px on touch. The content, in order:
 
 - A Note when Foreman has no factorio.com account: "Mod downloads are off
   ... Searching still works", with a link to the account page that comes
   back to this tab.
-- "Find a mod": one `role="search"` form, a field and Search, then
-  "Mods matching" and "Plan" as described under Search below.
-- "Match mods to the save": the tab reads the save that loads (SPEC 9.9)
-  and says "The mods match the save base.zip." with no button, or "The mods
-  differ from the save base.zip:" with a list of counts (not installed,
-  disabled here, at another version, enabled and not in the save) and a
-  secondary button to the sync plan. A save Foreman cannot read keeps the
+- "Find a mod": one `role="search"` form in the bar, the label "Mod name"
+  beside a field and Search on one row (the label over the field on a
+  phone). Under it, in the Find a mod view, a line of notes on what the
+  search looks in and the portal link, then "Mods matching" as described
+  under Search below.
+- "Match mods to the save": a heading line (16 px, weight 600), then the
+  reason on one line (which save, then what differs), then the faint
+  help, with its button at the end of the plate. The tab reads the save
+  that loads (SPEC 9.9) and says "The mods match the save base.zip." with no
+  button, or "The mods differ from the save base.zip:" with a list of counts
+  (not installed, disabled here, at another version, enabled and not in
+  the save) and a secondary button to the sync plan; the plate's leading
+  edge is amber only while they differ. A save Foreman cannot read keeps the
   general sentence and the button; a world with no save says so and links
   to upload one.
-- "Installed mods". A status block (`role="status"`, so a late answer is
-  announced) loads after the page ("Checking the mod portal for updates…"),
+- "Installed mods". The switch already names this plate with its count, so
+  the plate drops its own title (kept for screen readers) and opens with the
+  portal's summary, with Update all at that line's end. A status block
+  (`role="status"`, so a late answer is announced) loads after the page ("Checking the mod portal for updates…"),
   then shows one quiet line of counts in `text`, each led by its shape and
   not drawn as a tag: how many mods stop players joining, are deprecated,
   or are not on the portal, then how many have an update; or "All N mods
@@ -3338,8 +3579,10 @@ fine pointer and 44 px on touch. The sections, in order:
   off. Turn on Space Age"; both links go to the Game settings tab. A game
   without Space Age has no last sentence and no link.
 - A table (8.3) of the other mods in two columns, Mod and Actions, at the
-  width of its column. The first cell holds the name (the portal
-  link), the version as 13 px `text-muted` sans text with tabular figures
+  width of its column; on a wide plate each mod is one compact row, its name,
+  version and actions on one line and one short note line under it. The
+  first cell holds the name (the portal link, 16 px at weight 600 in
+  `heading`, underlined only under the pointer), the version as 13 px `text-muted` sans text with tabular figures
   (not a mono chip), a "Disabled" badge only when the mod is off (on is
   the usual state, so it has no word; the caption says how many are on),
   and a "Local folder" badge for a folder mod. Under them, filled in by the
@@ -3359,9 +3602,9 @@ fine pointer and 44 px on touch. The sections, in order:
   is on. Remove is the last item, in `danger-text`, the only red control
   on the tab, since it is the one change that destroys something; its
   confirmation is the plan page. A folder mod has neither Change version
-  nor Remove. The toggle is framed (1 px `line` edge, `raised` face) on
-  phones and touch screens; only on a wide screen with a fine pointer does
-  it rest frameless, taking its frame under the pointer. Opening one row's
+  nor Remove. The toggle is a framed button at rest (`surface` face, 1 px
+  `border` edge, 36 px tall on a wide plate), the twin of the Update button
+  beside it, so the row's actions read as one set. Opening one row's
   menu closes any other (`name="mod-menu"`); it works without script, and
   `menu.js` closes it on Escape, with focus back on the toggle, and on a
   click outside. The status fills Update and Change version into empty
@@ -3398,26 +3641,30 @@ change", which goes to the restore confirmation (7.4).
 
 **Search and the plan panel** (SPEC 9.1, 9.2, 9.14). The Mods tab and the
 search page (`/worlds/{id}/mods/search?q=`, the same results without
-script) show three things in this order: "Find a mod", "Mods matching" and
-"Plan". On a wide screen (64rem and up) "Plan" is alone in the rail,
-beside the other two, and holds to the top of the screen
-(`position: sticky`) while the results scroll past it. It is never taller
-than the window below the top strip: the heading and Review stay in view
+script) show three things: the search box, "Mods matching" and "Plan". On a
+wide screen (64rem and up) "Plan" is alone in the rail, beside the other
+two, and holds near the top of the screen (`position: sticky`) while the
+results scroll past it. It is a normal plate with a 3 px `selected`
+(orange) leading edge and the title band every plate has; a blue header read
+as an info notice. Each pick's remove cross is drawn 28 px in `text-muted`,
+framed, inside a 44 px target, so it never weighs as much as Review. The
+plan is never taller than the window: the heading and Review stay in view
 and only the list of mods scrolls, the newest pick at its top. In a window
 under 30rem tall it does not stick. On a phone it
 follows the results; once it has a mod it holds to the bottom of the
-screen as a bar with the count ("2 mods in the plan"), the names cut to
-one line, and "Review and install N mods". The bar's line is a `details`
+screen as a bar with the count ("4 mods in the plan"), the names cut to
+one line, and "Review and install 4 mods". The count in the bar is the same
+as the button's (the picks and what they need), so the two never read as a
+contradiction. The bar's line is a `details`
 summary that opens the full list (up to 40% of the screen, scrolling);
 the panel's heading stays for screen readers and focus. Below 360 px the
 bar keeps its frame while the other cards lie flat.
 
 - "Mods matching" is always there. Before a search it says "Type at
   least 2 characters of a mod's name in Find a mod. Matching mods show
-  here." and is drawn as one quiet line, not a card: its heading at
-  `--text-md` in `text-muted` and the sentence beside it, inside a dashed
-  `line` edge with no face, so the installed mods start higher on the
-  first screen. With script, typing replaces only this panel 300 ms after the
+  here." and is drawn as one quiet line under Find a mod, not a plate: its
+  heading at `--text-sm` in `text-muted` and the sentence beside it, with
+  no face or edge, so the first results start right under the box. With script, typing replaces only this panel 300 ms after the
   last key (htmx); under 2 characters the server sends that sentence back
   and asks the portal nothing. A reply that no longer matches the box is
   dropped. The count, the empty sentence or the error is read out through
@@ -3656,7 +3903,10 @@ player's actions is one click on the thing the admin is looking at:
   since each opens a confirmation. Every button names the player in hidden
   text after its visible word, so the label is in the name (SPEC 22.7) and
   a screen reader's list of buttons tells the rows apart.
-- **The admin mark** is the existing neutral `badge` (8.2's pill without
+- **One line each.** From 64rem each player is one 44 px line: the name,
+  its tag, the quiet note (the total play time of an online player, or
+  "Last seen" for the others), then the time at the end of the row.
+- **The admin mark** is the existing neutral `badge` (a tag, 7.5, without
   the `--active` tint) with the word "Admin", after the name. It is read
   from the world's admin list, so the row offers "Make admin" or "Remove
   admin" and never both.
@@ -3896,7 +4146,7 @@ Chat is the third tab of the Server view: Overview, Console, Chat
 (`GET /chat`, `chat.html`). It is a tab of its own
 because reading and answering players is a task of its own; it is apart
 from the Console because a chat line is never a command. The page has
-the Server page's overline and `h1` (its state word for screen readers
+the Server page's breadcrumb and `h1` (its state word for screen readers
 only, 7.5), then the Server tabs with Chat current.
 
 ```html
@@ -3968,9 +4218,10 @@ with the other tab words.
 ### 8.15 Foreman settings: the restart schedule (SPEC 7.12, Epic 9)
 
 Foreman has eight pages that belong to Foreman, not a world, listed in
-one sub-navigation (6, "Sub-navigation"), named "Foreman settings": in
-the product rail from 64rem, a tab row under each page's `h1` below it.
-In order: General, Restart schedule, Notifications
+one sub-navigation (6, "Sub-navigation"), named "Foreman settings": one
+tab row under each page's title. On a phone the eight tabs wrap onto as
+many rows as their words need, each row filled edge to edge, every tab
+whole on one line as a 44 px target. In order: General, Restart schedule, Notifications
 (8.16), Public mods (8.20), API tokens (8.21), Users, Audit log and the
 factorio.com account (8.11). The main navigation's Settings tab (6) opens
 General and is marked current on all of them and the pages under them. Moving between them is one click, and reaching any of them from any
@@ -3989,8 +4240,11 @@ page does:
   schedule's own zone, named.
 - Off: "No restart is scheduled."
 
-Then a short "How it works" list, in plain words, before the form, because
-the behaviour is the thing an admin must trust:
+Then a short "How it works" list, in plain words, because the behaviour is
+the thing an admin must trust. From 72rem the settings come first at a
+working width (36rem) and "How it works" is a raised side plate at the end
+of the plate, its steps in body text (15 px); below that the list comes
+first, before the form:
 
 1. At the set time, Foreman waits until nobody is online.
 2. Then it restarts the server after a 60-second warning in the game.
@@ -4041,6 +4295,10 @@ The form is a `form.panel`:
   values, so turning it back on is one tick. While unticked the fields are
   not required, and the server ignores them.
 - The countdown is fixed at 60 seconds and is not a field (SPEC 7.12).
+- **The foot.** The form ends in the same foot bar as General settings: a
+  raised band with a rule above it, Cancel and then the primary "Save
+  schedule" at the end, held to the window's foot while the form is in
+  view (6, "The 320 px rules", rule 7).
 - After saving, the page returns with a Done message (`#done-message`)
   naming the next restart time: "Saved. The next restart is `<time>`." or
   "Saved. No restart is scheduled."
@@ -4088,26 +4346,30 @@ page's fact, notes and the operation heading in `server`; the menu and
 sub-navigation link words in `common`.
 
 **The General tab** (`GET /settings/general`, `generalsettings.html`, SPEC
-13.1). One form, `.setting-rows`, with one section per setting group, each
-a heading and a hint beside its number fields, in this order: snapshot
-retention, audit retention, the default stop countdown, and the save and
-mod upload limits. When the form is at least 92rem wide its groups sit
-two to a row, the two retention groups first, then Stopping the server
-beside Uploads, each pair under one rule; the markup order matches, so
-reading and tab order go row by row. A hint under each field states the
-range. The form ends in the sticky foot bar (6, "The 320 px rules", rule
-7), 24 px below the last field: the line that says each value is "set
-here", since none has an environment form (17.16), leads it, and "Save
-settings" ends it. Each
-field is a text input with `inputmode="numeric"`, never a number spinner. A
-bad value refuses the whole form, with the errors in the summary and beside
-the fields (7.2). A save that lowers retention below what worlds hold shows
-the **confirm page** (7.4, `generalconfirm.html`) first: it lists the
-snapshot and world counts, a line saying removed snapshots cannot be
-restored and that raising the figure before the next automatic snapshot
-keeps them, and each change from old to new, with one danger button and a
-Cancel link. After any save, the Done message repeats the count when it
-is above zero.
+13.1). One form, `.setting-rows`, one plate, whose groups are its rows: a
+group shows only its title, snapshot retention, audit retention, the default
+stop countdown, and the save and mod upload limits, in this order, each
+with the full paragraph that explains it in an (i) toggletip beside the
+title (7.7; without script the paragraph shows under the title as before).
+The short line of help that repeated each field's label is gone; a field
+hint that carries a consequence, such as a range, stays visible under its
+field. A group is a row of the plate under a 1 px `line` rule, never a box
+inside the plate. From a 52rem form the groups sit two to a row, the two
+retention groups first, then Stopping the server beside Uploads; the
+markup order matches, so reading and tab order go row by row. From 84rem a
+group's title sits in a 15rem column beside its fields. One column on a
+phone. The form ends in the sticky foot bar (6, "The 320 px rules", rule
+7): a raised band with a rule above it, the line that says each value is
+"set here", since none has an environment form (17.16), leading it, and
+"Save settings" ending it. Each field is a text input with
+`inputmode="numeric"`, never a number spinner. A bad value refuses the whole
+form, with the errors in the summary and beside the fields (7.2). A save
+that lowers retention below what worlds hold shows the **confirm page**
+(7.4, `generalconfirm.html`) first: it lists the snapshot and world counts,
+a line saying removed snapshots cannot be restored and that raising the
+figure before the next automatic snapshot keeps them, and each change from
+old to new, with one danger button and a Cancel link. After any save, the
+Done message repeats the count when it is above zero.
 
 **The Users tab** (`GET /settings/users`, `users.html`). The list leads, in
 `.token-list` like the API tokens (8.21): each user holds the name (with a
@@ -4139,7 +4401,10 @@ User, API token, Action, World and Detail. The column names stay in view
 while the rows scroll, and every cell starts on the row's top line, so a
 wrapped detail leaves the short cells level. On a wide card User and World
 keep one line, and from 64rem rows are compact, at `--text-sm`.
-The token cell is empty when no token was used. A world that still exists
+The token cell is empty when no token was used. From 64rem a token's tag
+stays on one line, cut with an ellipsis, with the full name in its title
+and in its text for screen readers, so a long name never breaks into tall
+ovals mid-word. A world that still exists
 is a link, with its current name; a deleted one shows its id and the word
 "deleted". The links "Newer entries" and "Older entries" sit at the foot
 in a navigation named "Log pages"; both keep the filters and a page size
@@ -4387,8 +4652,8 @@ The rules the Epic 9 pages add to `foreman.css`.
 ### 8.20 The public mods page (SPEC 9.16)
 
 **The page** (`GET /public/mods`, `publicmods.html`) is for players, who
-are not signed in. It has its own shell (`public-layout`): the logo and
-product name, the only link back into Foreman, and the user menu with
+are not signed in. It has its own shell (`public-layout`): the wordmark
+(`wordmark-296.webp`, served from `/public/static/`), the only link back into Foreman, and the user menu with
 only the language, which posts to `POST /public/language`. No theme
 choice, no nav, no About. Every file loads from `/public/static/`, so a
 proxy rule for `/public/` is all it needs.
@@ -4432,41 +4697,52 @@ and `__marks`, at the end of `foreman.css`.
 `/settings/api-tokens` is the fifth "Foreman settings" tab, after Public
 mods. Its order follows what a person came to do:
 
-1. **MCP access** comes first, under the page's one-line intro: one state
-   plate (7.3, "A state plate") with the heading "MCP access" and its On
-   or Off badge, the state sentence, and its one Turn on or Turn off
-   button (secondary). Off, the plate has an amber (`warn`) edge and a
-   `warn-bg` face; on, a green (`ok`) edge. The prerequisite is said once
-   here, with its control, and nowhere else on the page. When
-   `FOREMAN_MCP=off` forces it off, the sentence names the variable and
-   no button shows; a user who is not an admin sees no button either.
-2. **The tokens**, one list in one card. An admin sees every user's
-   tokens with a "Your tokens" and "All tokens" choice above the list (a
-   segmented pair of radios; the filter is CSS only, so nothing reloads),
-   "Your tokens" chosen first; anyone else sees "Your tokens" as the
-   heading and only their own. A token holds the name, a state badge
-   (Valid, Expired, Revoked, reusing the running, stopping and crashed
-   shapes so no state is told by colour alone), owner, scope, expiry,
-   creation and last use to the minute. Renew is a one-click form post on
-   the owner's own tokens only; Revoke (a red ghost with a cross, 7.1)
-   links to a confirm page (7.4), because it is final. A revoked token
-   has no buttons. On a narrow card each token is a card of its own, so
-   seven facts wrap at 320 px; once the card is 52rem wide the same markup
-   is laid out as table rows under one row of column names (`aria-hidden`,
-   since each row keeps its own fact names for screen readers).
-3. **Create a token**: name, then the scope as radio buttons with read
-   checked, each with a hint. The warning that the two-step confirm
-   guards mistakes, not a steered AI, shows only while Admin is chosen.
-   There is no second MCP warning or button here. Creating is one click
-   on this page.
+1. **The two ways in** come first, under the page's one-line intro, side by
+   side in one row from a 64rem column, one under the other below it: MCP
+   access and REST API access. Each is one state plate (7.3, "A state
+   plate") with its heading and its On or Off badge, the state sentence,
+   and its one Turn on or Turn off button (secondary). On, the plate has a
+   green (`ok`) edge; off, it is a neutral plate with a `line-strong` edge,
+   because a feature that is off is a resting state and not a problem. The
+   prerequisite is said once here, with its control, and nowhere else on the
+   page. When `FOREMAN_MCP=off` forces MCP off, the sentence names the
+   variable and no button shows; a user who is not an admin sees no button
+   either.
+2. **Create a token**, a plate under them, so the form is not below the
+   fold: the name beside the three scopes (read, write, admin) as radio
+   cards in one row, each card a whole target with its hint; the admin
+   warning (that the two-step confirm guards mistakes, not a steered AI)
+   shows only while Admin is chosen; then the foot, a rule above it, one
+   quiet line at its start saying a token will not work while both ways in
+   are off (a `warn` leading edge, shown only then), and Create token at its
+   end. Creating is one click on this page.
+3. **The tokens**, one list in one plate. An admin sees every user's tokens
+   with a "Your tokens" and "All tokens" choice above the list (a segmented
+   control, 7.8; the filter is CSS only, so nothing reloads), "Your tokens"
+   chosen first; anyone else sees "Your tokens" as the heading and only
+   their own. A token holds the name, a state tag (Valid, Expired, Revoked),
+   owner, scope, expiry, creation and last use to the minute. A tag that
+   says a token works is neutral with a check mark, not green: the same
+   green meant Running, Online and Valid, so green stays for live states.
+   Expired and Revoked keep their own shape and word. Renew is a one-click
+   form post on the owner's own tokens only; Revoke (a red ghost with a
+   cross, 7.1) links to a confirm page (7.4), because it is final. A
+   revoked token has no buttons. On a narrow plate each token is a card of
+   its own, so seven facts wrap at 320 px; once the plate is 52rem wide the
+   same markup is laid out as table rows under one row of column names
+   (`aria-hidden`, since each row keeps its own fact names for screen
+   readers).
 
-The create answer is its own page: one panel at most 52rem wide, read top
-to bottom. The Done line comes first and takes focus; then the secret, in
-a read-only box that selects whole, with the warning that it is shown
-once right above it and a Copy button joined to the box; then the
-endpoint the same way; then scope and expiry as facts; then, when MCP
-access is off, a short Note with a "Turn on MCP access" link for an admin;
-then the way back to the list. It is sent with `no-store`.
+The create answer is its own page, in two plates side by side on a wide
+screen (from a 60rem page column), one column on a phone. The first plate,
+on the start side, is what was made: the Done line (a success notice across
+the plate) takes focus first; then the secret, in a read-only box that
+selects whole, with the warning that it is shown once right above it and a
+Copy button joined to the box; then scope and expiry as facts; then the way
+back to the list. The second plate is where to use it: the MCP endpoint and
+the REST API base address, each the same way, with, when a way in is off,
+a short Note with a "Turn on" link for an admin. On a phone each address
+stands over its full-width Copy button. It is sent with `no-store`.
 
 The **expiry banner** sits at the top of `main` on every signed-in page,
 a warning message with one line per token from 5 days before expiry and
@@ -4477,18 +4753,26 @@ button that returns to the same page.
 
 `/worlds/{id}/map` is a world tab after Snapshots. In order: the summary
 (the state, and "Drawn <time> from <save>, Factorio <version>"); the draw
-form; the surface list (links with `aria-current`, shown when there is more
-than one surface); the viewer; the layer checkboxes; one download link; then
+form; the surface list (a segmented control of links with `aria-current`,
+shown when there is more than one surface); the viewer; the layer checkboxes; one download link; then
 the "When to draw" panel (radios Automatic, Manual and Off with hints, the
 "Do not draw a running world while players are online" checkbox, and Save).
 
-- **The viewer** is on the page, not in a dialog. Its frame has a fixed
-  height (min(70svh, 48rem), at least 16rem), the `deep` face, and focus. It
-  is named by the surface heading and described by the key line "Keys:
-  arrows pan, + − zoom, 0 fit. Drag to pan, tap to center." Zoom out, Fit
-  and Zoom in icon buttons sit in its bottom corner (24 px, 44 px under a
-  coarse pointer; `aria-disabled` at the limits), with a status line under
-  it. The zoom steps and limits are those of the Generate page's large view
+- **The viewer** is on the page, not in a dialog. Below 64rem its frame has
+  a fixed height (min(70svh, 48rem), at least 16rem) across the page width.
+  From 64rem the page is a map viewer: the map is as tall as the window
+  leaves (the window less 19rem, between 22rem and 64rem) and exactly as
+  wide as its picture, so it has no empty bands, and the controls stand in a
+  column beside it (22rem or wider, at most 40rem): the drawn line, "Draw
+  factory map" (the page's primary button), the surfaces as one segmented
+  control (7.8), the layers as a legend plate in two columns, and the
+  download and "When to draw" as a plate. The frame has the `deep` face and
+  focus. It is named by the surface heading and described by the key line
+  "Keys: arrows pan, + − zoom, 0 fit. Drag to pan, tap to center." Zoom out,
+  Fit and Zoom in are one joined cluster of icon buttons (one `raised` frame
+  with hairlines between them) at the map's top end corner (36 px, 44 px
+  under a coarse pointer; `aria-disabled` at the limits), with a status line
+  under the map. The zoom steps and limits are those of the Generate page's large view
   (8.8). A zoom from a key or a button is announced; a wheel or a pinch is
   not.
 - **Layers** are a fieldset "Buildings to show on the map", one checkbox per
@@ -4637,8 +4921,7 @@ only at desktop in the dark theme. On every screen the tests check:
 
 One stylesheet, `internal/web/static/foreman.css`, in this order: tokens
 (both themes on `:root`, then the forced themes), a small reset, base elements
-(`body`, headings, links, `code`, `table`), the shell (with its wide-screen
-rail), then one block per component in the order of section 7 and section 8.
+(`body`, headings, links, `code`, `table`), the shell (the top bar), then one block per component in the order of section 7 and section 8.
 A component's narrow, wide-screen, forced-colours and reduced-motion rules sit
 with the component. A rule that restyles another is folded into that rule,
 never added as a later override, and nothing at the end of the file restyles

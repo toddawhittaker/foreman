@@ -4158,31 +4158,39 @@ test for it. Left as they are, one short value each: a note, a favorite's id,
 a player name, a game version, a search and its page, the versions filter. (P0)
 
 17.18. **One navigation pattern.** Every signed-in page shares one frame
-(DESIGN 6, "Shell"). From a window 64rem wide, a column on the start side
-(the product rail) holds the logo and the four areas (Server, Worlds,
-Snapshots, Settings), and a strip across the top of the page names the
-live world and the server's state, in words, and holds the user menu; the
-strip stays in view while the page scrolls. Below 64rem the same parts
-are a header bar with the areas as a row of tabs. (P1)
+(DESIGN 6, "Shell"): a top bar at every width, then the page. The bar is
+dark in both themes. It holds the wordmark (the home link), the four areas
+(Server, Worlds, Snapshots, Settings) as tabs with the current one marked,
+the live world's name with the server's state in words, and the user menu.
+It scrolls with the page, and when large text leaves it too little room it
+wraps the menu and then the areas onto further rows rather than scroll
+sideways. (P1)
 
-- **Sub-pages in one place.** Any area with sub-pages lists them in that
-  column, under the four areas: the Server view (Overview, Console, Chat),
-  Settings (13.1), the Worlds area (All worlds, Favorites, Deleted worlds),
-  and a world (Overview, Saves, Snapshots, Mods, Game settings). Below
-  64rem each list is a row of tabs under the page's heading. The ids and
-  addresses are the same at every width.
+- **Sub-pages in one place.** Any area with sub-pages lists them as one tab
+  row under the page's title: the Server view (Overview, Console, Chat),
+  Settings (13.1), the Worlds area (All worlds, Favorites, Deleted
+  worlds), and a world (Overview, Saves, Snapshots, Mods, Game settings).
+  Game settings' own sub-pages (11.1) are a second row of segmented
+  links under the world's tabs while one is open. The ids and addresses are
+  the same at every width.
+- **Flows show a step bar instead.** Generate and its Mod settings and Map
+  settings steps (5.6) show the breadcrumb, the title and the step bar
+  (17.19) as their header, with no tab row, because none of the Worlds
+  tabs is the current page there.
 - **No in-page section lists.** A page never carries its own list of links
   to its sections. A page too long to read whole is split into sub-pages
-  in that column instead, as Game settings is (11.1). The current page's
+  in that tab row instead, as Game settings is (11.1). The current page's
   link is marked `aria-current="page"`; its parent, when a sub-page is
   open, `aria-current="true"`.
-- **Where you are.** Every page under Worlds opens with a breadcrumb of
-  its full path (for example "Worlds > Nauvis Prime > Mods"); the Server,
-  Settings, Worlds and Snapshots pages name their area in a line above the
-  heading. No page has a "Back to" link above its heading.
-- **The state is said once.** The strip (or, below 64rem, the header)
-  is where the server's state shows on every page. Page headings do not
-  repeat it visibly; the Server view's heading keeps it for screen readers.
+- **Where you are.** Every page with a parent opens with a breadcrumb of
+  its full path (for example "Worlds > Nauvis Prime > Mods", "Server >
+  Nauvis Prime" or "Settings > General"). A page with no parent (All
+  worlds, All snapshots, and the Server page while no world exists) names
+  its area in a context row above the heading. No page has a "Back to"
+  link above its heading.
+- **The state is said once.** The bar is where the server's state shows on
+  every page. Page headings do not repeat it visibly; the Server view's
+  heading keeps it for screen readers.
 
 17.19. **Generate's steps work without script.** Each step of Generate
 (5.6) is a plain page with a form that posts. The step bar is a list of
