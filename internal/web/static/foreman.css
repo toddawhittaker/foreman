@@ -15452,3 +15452,26 @@ main > .message,
     flex: 1 1 100%;
   }
 }
+
+/* Match mods to the save: each line has its own row, so nothing the
+   plate's title band rules add can push the heading under the button. */
+.mods-main > section:has(> #sync-heading) > #sync-heading {
+  grid-row: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.mods-main > section:has(> #sync-heading) > :is(.sync-reason, #sync-state, .empty) {
+  grid-row: 2;
+}
+
+.mods-main > section:has(> #sync-heading) > p:not(#sync-state, .empty) {
+  grid-row: 3;
+}
+
+.mods-main > section:has(> #sync-heading) > .actions {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
