@@ -221,15 +221,15 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-bg` | `#0e0d0c` | `#e5dfd4` | The page |
 | `--color-surface` | `#1d1b18` | `#ffffff` | Plates and cards, the user menu panel, the confirmation box, dialogs |
 | `--color-raised` | `#2e2a25` | `#f1ebe1` | The secondary button's face, a plate's title band, the user menu's button, the Generate preview column and picture frames, the bar under a form, the "stopped" and "unknown" badges, a table row under the pointer |
-| `--color-deep` | `#0b0a09` | `#ffffff` | Form fields, the segmented control's track, the log and console (the log's well is dark in both themes) |
+| `--color-deep` | `#0b0a09` | `#ffffff` | Form fields, the segmented control's track, the log and console |
 | `--color-line` | `#4a443d` | `#c9bfad` | Dividers and plate edges: under the tabs' own rows, between rows; never the only edge of a control (about 1.8:1 on a plate) |
 | `--color-line-strong` | `#6a6258` | `#aa9f8a` | A plate's title-band rule, the rule under a page's tab row, a segmented control's edge, a note's leading edge, idle edges in the top bar |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f8f5ef` | `#13110e` | Headings, secondary button text, area and page tabs when current or under the pointer, the figures in the status card; a touch stronger than `text` |
 | `--color-text-muted` | `#b9b0a3` | `#4a443b` | Labels, placeholders, table captions and headers, fact names, empty states, idle tabs, the icons before section headings, a segment at rest |
 | `--color-text-faint` | `#a0978b` | `#655d52` | Help and metadata: hints, the context row over a title, a row's second line, the log's times; the third ink, quieter than muted |
-| `--color-desk` | `#090807` | `#2a2622` | The top bar across the page; dark in both themes, and its contents use the dark theme's tokens |
-| `--color-desk-line` | `#2e2a25` | `#4a443c` | The top bar's bottom edge |
+| `--color-desk` | `#090807` | `#ffffff` | The top bar across the page; it follows the theme like everything else |
+| `--color-desk-line` | `#2e2a25` | `#c9bfad` | The top bar's bottom edge |
 | `--color-border` | `#857c70` | `#80766a` | Edge of fields, secondary buttons, the account menu's button and the menu, and the Emergency actions button |
 | `--color-link` | `#ffb357` | `#9a4800` | Links in running text (underlined), quiet buttons, the "Active" badge, a row title under the pointer, a changed map step's words |
 | `--color-selected` | `#f39a2a` | `#b05a00` | The current tab's underline, the current segment's foot, the plan's leading edge, the current item in the menu, the live world's edge, checked boxes, progress bars, the dot before a changed map setting |
@@ -319,9 +319,8 @@ changes: compute each colour's relative luminance L, then
 The lowest text ratio is 5.34:1 in dark (`on-danger` on `danger`) and
 4.80:1 in light (`link` on `bg`). The lowest edge or focus ratio is
 3.01:1 in dark (`border` on `secondary-hover`) and 3.36:1 in light
-(`border` on `bg`). The top bar's contents always use the dark theme's
-tokens, on `desk` (the table's "top bar" rows, where the Light column is the
-bar on the light page).
+(`border` on `bg`). The top bar's contents use the theme's own tokens, on
+`desk` (the table's "top bar" rows).
 
 **Text pairings (need 4.5:1)**
 
@@ -346,9 +345,9 @@ bar on the light page).
 | `text-faint` | `raised` | 4.95 | 5.46 |
 | `text-faint` | `deep` | 6.87 | 6.48 |
 | `text-faint` | `accent-bg` | 5.08 | 5.60 |
-| `heading` (top bar) | `desk` | 18.39 | 13.80 |
-| `text` (top bar) | `desk` | 16.26 | 12.20 |
-| `text-muted` (top bar tabs at rest) | `desk` | 9.34 | 7.01 |
+| `heading` (top bar) | `desk` | 18.39 | 18.85 |
+| `text` (top bar) | `desk` | 16.26 | 17.51 |
+| `text-muted` (top bar tabs at rest) | `desk` | 9.34 | 9.63 |
 | `link` | `bg` | 10.95 | 4.80 |
 | `link` | `surface` | 9.69 | 6.36 |
 | `link` | `raised` | 8.03 | 5.37 |
@@ -398,7 +397,7 @@ bar on the light page).
 | `selected` | `surface` | 7.75 | 4.87 |
 | `selected` | `raised` | 6.42 | 4.11 |
 | `selected` | `accent-bg` | 6.59 | 4.21 |
-| `selected` (current area's underline, top bar) | `desk` | 9.02 | 6.77 |
+| `selected` (current area's underline, top bar) | `desk` | 9.02 | 4.87 |
 | `link` ("Active" badge outline) | `accent-bg` | 8.24 | 5.49 |
 | `danger-text` (invalid field border) | `bg` | 9.29 | 5.46 |
 | `danger-text` | `deep` | 9.46 | 7.24 |
@@ -465,7 +464,7 @@ Other fixed values, also tokens:
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
 | `--target-inline` | 1.5rem (24 px) | Minimum block size of a link inside an error or an empty state's sentence (WCAG 2.5.8) |
 | `--measure` | 68ch | Maximum line length of prose |
-| `--page-max` | 114rem | Maximum width of `main`'s content, centred, with `--space-6` of padding each side from 64rem. A form-only or short-list page keeps its content to 80rem inside it (6, "Shell") |
+| `--page-max` | 114rem | Maximum width of `main`'s content, centred, with `--space-6` of padding each side from 64rem. Every page uses the whole of it (6, "Shell") |
 | `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A plate's padding (7.8) |
 | `--dur-1` | 120ms | Hover and pressed fills easing in |
 | `--dur-2` | 200ms | A chevron turning, a meter moving |
@@ -603,10 +602,14 @@ frame (7.4).
       </div>
     </details>
   </header>
-  <main id="main" tabindex="-1" data-width="full">
-    <nav class="crumb" aria-label="Breadcrumb"><ol role="list"><li><a href="/worlds">Worlds</a></li><li><span aria-current="page">Family base 2025</span></li></ol></nav>
-    <h1>…</h1>
-    <nav class="subnav" aria-label="World pages">…</nav>
+  <main id="main" tabindex="-1">
+    <div id="toasts" class="toasts"></div>
+    <header class="pagehead">
+      <div class="pagehead__crumb"><nav class="crumb" aria-label="Breadcrumb"><ol role="list"><li><a href="/worlds">Worlds</a></li><li><span aria-current="page">Family base 2025</span></li></ol></nav></div>
+      <h1>…</h1>
+      <div class="pagehead__actions">…</div>
+      <nav class="subnav" aria-label="World pages">…</nav>
+    </header>
     …
   </main>
   <div id="announcer" class="visually-hidden" aria-live="polite"></div>
@@ -618,8 +621,8 @@ frame (7.4).
   column of plates under it (SPEC 17.18).
 - **The top bar** (`header.site`) is the control desk. Its face is `desk`
   with a 1 px `desk-line` under it and a 2 px `primary` line across its top.
-  It is dark in both themes, because it is the machine and not the paper,
-  and its parts take the dark theme's tokens. It scrolls with the page at
+  It follows the theme like the rest of the page: white with a `line` rule
+  in the light theme, near black in the dark one. It scrolls with the page at
   every width: held at the top it lay over controls scrolled up under it
   and overflowed at 200% text (WCAG 1.4.10, 2.4.11), so it is not sticky.
   From 40rem it is at least 56 px tall. Its side padding follows `main`'s,
@@ -752,18 +755,40 @@ frame (7.4).
   wider than the window.
 - The skip link is the first focusable element. It is visually hidden
   until focused, then appears at the top-left of the bar.
-- **The page header** has one shape on every page, so the title sits at one
-  height: the context row or breadcrumb, 4 px over a 28 px title; under the
-  title the page's tab row, 16 px below it; and the first plate 16 px under
-  the tabs, so content starts about 190 px from the top of the window. A
-  page that has a parent (a world's page, a settings page, a favorite, the
-  Server view while a world is live) opens with the breadcrumb (8.1); a page
-  with none (All worlds, All snapshots, the Server page while no world
-  exists) opens with the context row, the area's name in the same quiet
-  type. A flow's pages (Generate and its Mod settings and Map settings
-  steps) show the breadcrumb, the title and the step bar instead of a tab
-  row (8.6): from a wide screen the title and the step bar share one row,
-  with the description one line under them.
+- **The page header** has one shape on every page, so each part sits at one
+  place: the breadcrumb (or the context row) 4 px over a 28 px title; the
+  page's own buttons at the end of the title's row; under the title the
+  page's tab row or a flow's step bar, 16 px below it; and the first plate
+  16 px under the tabs, so content starts about 190 px from the top of the
+  window. A page that has a parent (a world's page, a settings page, a
+  favorite, the Server view while a world is live) opens with the
+  breadcrumb (8.1); a page with none (All worlds, All snapshots, the Server
+  page while no world exists) opens with the context row, the area's name in
+  the same quiet type. A flow's pages (Generate and its Mod settings and Map
+  settings steps) show the step bar in the tab row's place on every step.
+  - **One partial.** `templates/pagehead.html` draws it: `{{template
+    "pagehead" .}}` with the page's view. A page fills the slots it needs by
+    defining them; a slot it leaves alone stays empty:
+    - `head-crumb`: the breadcrumb (`{{template "crumb" (crumbs …)}}`) or a
+      `p.eyebrow` context row. Left empty, its row keeps its one line, so the
+      title sits where its siblings' titles sit.
+    - `head-title`: what goes inside the `h1`, the words and any badge.
+    - `head-actions`: the page's own buttons (`.button` links or forms).
+    - `head-nav`: the area's tab row (`server-tabs`, `settings-tabs`,
+      `worlds-area-tabs`, `world-tabs`) or a flow's step bar.
+  - **Fixed places.** The crumb's row is one line tall whether it is filled
+    or not. On a wide screen the title's row is one button tall
+    (`--target-min`) with buttons or without, so the tab row under it never
+    moves; the buttons end the row. Below 40rem the buttons go under the tab
+    row, each the column's width, so the tabs sit in one place on every page
+    of an area; an empty button slot takes no room there. The source order is
+    the wide screen's (crumb, title, buttons, tabs).
+  - The sign-in, set-up and signed-out pages put the wordmark
+    (`{{template "gate-logo"}}`) over the same header, with no crumb row and
+    the title centred.
+  - A signed-in visitor sees every page in the shell, a 404 for an unknown
+    address and an error page included; only a signed-out visitor sees the
+    sign-in pages' bar.
 - `main` holds one column: `max-inline-size: var(--page-max)`, centred,
   `padding: var(--space-5) var(--space-3) var(--space-6)` at phone width,
   `var(--space-5)` inline padding from 48rem and `var(--space-6)` from
@@ -773,18 +798,11 @@ frame (7.4).
   The page always keeps room for the scroll bar (`scrollbar-gutter:
   stable`), so the tabs do not shift sideways between a short page and a
   long one.
-- **Page width.** Wide data and tools keep the whole `--page-max` width:
-  the audit log, the Server page, the Mods tab, the factory map, the map
-  settings and Game settings. A form-only or short-list page keeps its
-  content to an 80rem working width, start-aligned under its title
-  (`main[data-width="measure"]`, set by the template's `page-width`):
-  General, Restart schedule, Notifications and its form, Users, API tokens
-  and Token created, the factorio.com account page, Worlds, Favorites,
-  Deleted worlds, Generate step 1, Import and a world's Saves. The area's
-  tab row and a flow's step bar keep to the same 80rem. Short
-  forms and a three-row table stretched across 1760 px with their fields
-  far apart, so the working width is the rule for any new page of that
-  kind. The world list's columns are sized to their values within it (8.2).
+- **Page width.** Every page is one width: its frame spans the whole
+  `--page-max` column, from under the wordmark to under the account menu,
+  so the title, the tab row, the plates and the top bar's ends line up on
+  every page. Inside it, fields fill their column; short fixed-format inputs
+  (a number, a time) are sized to their content.
 - **Sections are plates.** A `section` (class `panel`) is a heading and its
   content, with `gap: var(--space-3)` inside, drawn as a plate (7.8). A
   page's sections are the plates in `main`'s grid. Some pages set plates
@@ -836,8 +854,31 @@ frame (7.4).
     `aria-current="page"`.
   - The current page's link has `aria-current="page"`.
 - The `#announcer` region is where htmx swaps short results ("Snapshot
-  taken", "Server started") so screen readers hear them. Errors are not
-  announced from here; see 7.3.
+  taken", "Server started") so screen readers hear them, and where a success
+  toast is read out. Errors are not announced from here; see 7.3.
+- **Toasts** are the result messages of an action: "Done:" for a success,
+  and "Error:" for a failure that sums up what went wrong. Field errors stay
+  at their field (7.2); a toast only sums up.
+  - **Where.** `templates/toast.html` draws `#toasts` first in `main`; a
+    page lists its messages with a `toasts() []Toast` method on its view
+    model. A toast that comes after the page is the same partial in an htmx
+    answer, swapped in with `hx-swap-oob="beforeend:#toasts"`;
+    `static/toast.js` picks up every toast that lands there. With script the region floats at the window's
+    end corner, 16 px in from the foot, and lifts above a bar stuck to the
+    window's foot (`--foot-bar-room`), so it takes no room and nothing on the
+    page moves; several stack, the newest last. Without script it is the
+    first thing in `main`, in the page's flow, so it keeps its room.
+  - **Look.** A message's look (7.3): the kind's tint, a 4 px start edge and
+    the leading word in its tone, the words in `text`, a 1 px `line` edge,
+    `--shadow-pop` while it floats, at most 28rem wide. A 44 px icon-only
+    close button ("Close this message") sits at its end; without script
+    there is none.
+  - **Behaviour.** A success is read out through `#announcer`, stays at
+    least 6 s (8 s, counted again when the pointer or focus leaves it) and
+    waits while hovered or focused. An error is `role="alert"` and stays
+    until closed. A toast never takes focus; closing the one that holds
+    focus returns it to where it was before, else to `main`.
+
 - Viewport media queries are used for the shell (the bar's rows, the
   page's padding and width, plate padding, the tab icons) and where a
   page's whole layout changes with the window: the Server page (below),
@@ -895,7 +936,8 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
    same width as the links beside it.
 6. Tables follow 8.3. The log and console wrap their lines (8.5); they
    scroll vertically inside their own box, never horizontally.
-7. Nothing is fixed to the viewport, and the top bar scrolls with the
+7. Nothing is fixed to the viewport but the toasts, which overlay the page
+   and never cover a bar stuck to its foot, and the top bar scrolls with the
    page. A few one-row bars are sticky at the foot of their own plate or
    form, so an action stays in reach: the
    Console's command bar on a phone (8.5; the field is in the bar), the
@@ -2387,9 +2429,9 @@ Classes and their contract:
   `pre` in the same `li`.
 - `button[hidden]` is hidden even though `.button` sets `display`.
 
-- **The log is a dark well in both themes**, as the top bar is dark in
-  both: the machine's output reads as machinery. Its face is `deep`, its
-  text `text`, both the dark theme's values, with a 1 px `line` rule at its
+- **The log follows the theme**, as the top bar does: a sunken well apart
+  from its plate, its lines in the mono face. Its face is `deep` (the
+  console's game log `raised` in the light theme), its text `text`, with a 1 px `line` rule at its
   foot, `--space-3` padding (24 px at the top) and `--font-mono` at 14 px on
   22 px lines. The log's top edge fades over 24 px, so a line scrolled half
   out of view reads as more above; the top padding is as tall as the fade,

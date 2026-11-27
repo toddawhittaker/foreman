@@ -838,7 +838,8 @@ main:has(> .gate) {
    selection bar's 16 px lift. On a phone Generate's three actions may
    stack at large text, so its room grows with them, to half the window. */
 html:has(.generate > .gen-actions, .form-foot, .select-bar) {
-  scroll-padding-block-end: 5.5rem;
+  --foot-bar-room: 5.5rem;
+  scroll-padding-block-end: var(--foot-bar-room);
 }
 
 /* Sign-in and signed-out carry the rusty wordmark above their heading,
@@ -851,9 +852,18 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   block-size: auto;
 }
 
-main:has(> .gate) > h1 {
+main:has(> .gate) > .pagehead {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "title";
+}
+
+main:has(> .gate) > .pagehead > h1 {
+  justify-content: center;
   text-align: center;
-  justify-self: center;
+}
+
+main:has(> .gate) > .pagehead > :is(.pagehead__crumb, .pagehead__actions:empty) {
+  display: none;
 }
 
 /* A world's heading with the live server state beside it. */
@@ -917,7 +927,6 @@ main:has(> .gate) > h1 {
 }
 
 .site > * {
-  color-scheme: dark;
   color: var(--color-text);
 }
 
@@ -1525,15 +1534,15 @@ main:has(> .gate) > .gate {
 
 /* Sign-in: the riveted mark drawn from a 96 px source, 16 px over the
    heading and the form 24 px under it. */
-main:has(> .gate) > .gate-logo + h1 {
+main:has(> .gate) > .gate-logo + .pagehead {
   margin-block-start: var(--space-4);
 }
 
-main:has(> .gate) > h1 + .gate {
+main:has(> .gate) > .pagehead + .gate {
   margin-block-start: var(--space-5);
 }
 
-main:has(> .gate) > * + :not(h1, .gate) {
+main:has(> .gate) > * + :not(.pagehead, .gate) {
   margin-block-start: var(--space-4);
 }
 
@@ -1555,16 +1564,16 @@ main:has(> .gate) > .gate + .gate {
 /* Tab rows: the page's own pages, under its title, over a strong rule that
    runs the column's full width (DESIGN 6, Sub-navigation). */
 @media (min-width: 40rem) {
-  main > .subnav {
+  :is(main, .pagehead) > .subnav {
     border-block-end-color: var(--color-line-strong);
   }
 
-  main > .subnav a {
+  :is(main, .pagehead) > .subnav a {
     min-block-size: var(--target-min);
     padding-inline: var(--space-4);
   }
 
-  main > .subnav > ul > li:first-child > a {
+  :is(main, .pagehead) > .subnav > ul > li:first-child > a {
     padding-inline-start: 0;
   }
 }
@@ -1606,10 +1615,6 @@ main:has(> .gate) > .gate + .gate {
   background: none;
   border-block-end: 0;
   box-shadow: none;
-}
-
-.site:not(:has(> nav)) > * {
-  color-scheme: inherit;
 }
 
 /* Six tabs on a phone sit three over three, so none is left alone on a row. */
@@ -1825,16 +1830,186 @@ main > .crumb {
   }
 }
 
-/* ==== Page width. A form-only or short-list page keeps all of its own
-   content to an 80rem working width, start-aligned: its title, the area's
-   tab row, a flow's step bar and the content share one right edge. Wide
-   data and tools (the audit log, the factory map, mods) take the whole page. */
-main[data-width="measure"] {
-  grid-template-columns: minmax(0, 80rem) minmax(0, 1fr);
-  column-gap: 0;
+/* ==== The page header (DESIGN 6, "The page header"): the crumb's row, the
+   title's row with the page's own buttons at its end, then the tab row or a
+   flow's step bar. Every row keeps its place whether or not a page fills it,
+   so sibling pages put each part in the same box. */
+.pagehead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "crumb crumb"
+    "title actions"
+    "nav nav";
+  column-gap: var(--space-4);
 }
 
-main[data-width="measure"] > * {
-  grid-column: 1;
+/* A page with no crumb keeps the crumb's one line, a link's line and its
+   padding, so its title sits where its siblings' titles sit. */
+.pagehead__crumb {
+  grid-area: crumb;
+  min-block-size: calc(1.5em + 2 * 0.2em);
+  margin-block-end: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.pagehead__crumb > .crumb {
+  margin: 0;
+}
+
+.pagehead > h1 {
+  grid-area: title;
+  align-self: center;
+}
+
+/* The title's row is one button tall, with buttons or without. */
+.pagehead__actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-block-size: var(--target-min);
+}
+
+.pagehead > nav {
+  grid-area: nav;
+  margin-block-start: var(--space-4);
+}
+
+/* The first part after a tab row or step bar is 16 px under it. */
+@media (min-width: 40rem) {
+  main > .pagehead:has(> nav) + * {
+    margin-block-start: calc(var(--space-4) - var(--space-5));
+  }
+}
+
+/* On a phone the page's buttons go under the tab row, each the column's
+   width, so the tabs sit in one place on every page of an area. */
+@media (max-width: 39.99rem) {
+  .pagehead {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "crumb"
+      "title"
+      "nav"
+      "actions";
+  }
+
+  .pagehead__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    margin-block-start: var(--space-4);
+  }
+
+  .pagehead__actions:empty {
+    display: none;
+  }
+}
+
+/* ==== Toasts (DESIGN 6, "Toasts"): result messages over the page. With
+   script they float at the window's foot, above any bar stuck there, and take
+   no room; without it they stay first in the page and keep their room. */
+.toasts {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.toasts:empty {
+  display: none;
+}
+
+@media (scripting: enabled) {
+  .toasts {
+    position: fixed;
+    inset-block-end: calc(var(--space-4) + var(--foot-bar-room, 0rem));
+    inset-inline-end: var(--space-4);
+    z-index: 20;
+    inline-size: min(28rem, calc(100% - 2 * var(--space-4)));
+    pointer-events: none;
+  }
+
+  .toast {
+    pointer-events: auto;
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+/* The message's look (DESIGN 7.3): its kind's tint, a 4 px start edge and
+   leading word in its tone, the words in the text colour. */
+.toast {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start-width: var(--space-1);
+  border-radius: var(--radius);
+}
+
+.toast--success {
+  background: var(--color-ok-bg);
+  border-inline-start-color: var(--color-ok);
+}
+
+.toast--error {
+  background: var(--color-danger-bg);
+  border-inline-start-color: var(--color-danger-text);
+}
+
+.toast--success strong {
+  color: var(--color-ok);
+}
+
+.toast--error strong {
+  color: var(--color-danger-text);
+}
+
+.toast__text {
+  padding-block: var(--space-2);
+}
+
+.toast__close {
+  display: grid;
+  place-items: center;
+  inline-size: var(--target-min);
+  block-size: var(--target-min);
+  padding: 0;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.toast__close::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--i-close) center / contain no-repeat;
+}
+
+.toast__close:hover {
+  color: var(--color-heading);
+  border-color: var(--color-border);
+}
+
+/* Without script the button would do nothing, so there is none. */
+@media not (scripting: enabled) {
+  .toast__close {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .toast__close::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
 }
 }

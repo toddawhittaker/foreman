@@ -1,0 +1,23 @@
+{{/* The page header, one shape on every page (DESIGN 6, "The page header"):
+     the crumb's row, the title's row with the page's own buttons at its end,
+     then the tab row or a flow's step bar. A page fills the slots it needs by
+     defining head-crumb, head-title, head-actions and head-nav; the empty
+     ones here never replace a page's own. Takes the page's view. */}}
+{{define "pagehead" -}}
+<header class="pagehead">
+  <div class="pagehead__crumb">{{template "head-crumb" .}}</div>
+  <h1>{{template "head-title" .}}</h1>
+  <div class="pagehead__actions">{{template "head-actions" .}}</div>
+  {{- template "head-nav" .}}
+</header>
+{{- end}}
+{{define "head-crumb"}}{{end}}
+{{define "head-title"}}{{end}}
+{{define "head-actions"}}{{end}}
+{{define "head-nav"}}{{end}}
+
+{{/* The sign-in, set-up and signed-out pages carry the rusty wordmark over
+     their header, and its alt text names the product (DESIGN 6). */}}
+{{define "gate-logo" -}}
+<img class="gate-logo" src="{{static "icons/wordmark-480.webp"}}" alt="Foreman" width="288" height="89">
+{{- end}}

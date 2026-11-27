@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -311,14 +312,28 @@ func (s *server) handleUnknown(w http.ResponseWriter, r *http.Request) {
 			allowed = append(allowed, m)
 		}
 	}
+	status := http.StatusNotFound
 	if len(allowed) > 0 {
 		for _, m := range allowed {
 			w.Header().Add("Allow", m)
 		}
-		s.page(w, r, http.StatusMethodNotAllowed, "", ErrorPage{Status: http.StatusMethodNotAllowed})
-		return
+		status = http.StatusMethodNotAllowed
 	}
-	s.pageNotFound(w, r)
+	s.page(w, r, status, s.unknownPathUser(r), ErrorPage{Status: status})
+}
+
+// unknownPathUser is who is signed in, so a mistyped address keeps the shell
+// (DESIGN 6), else empty. Nothing under the public page reads a session
+// (SPEC 9.16), and a failed lookup shows the page signed out rather than fail.
+func (s *server) unknownPathUser(r *http.Request) string {
+	if strings.HasPrefix(r.URL.Path, PathPublic) {
+		return ""
+	}
+	u, state, err := s.identify(r)
+	if err != nil || state != isSignedIn {
+		return ""
+	}
+	return u.Username
 }
 
 // NewHTTPServer returns an http.Server with the timeouts and size limits
