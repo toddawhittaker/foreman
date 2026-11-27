@@ -130,17 +130,20 @@ type mcpChangeModsIn struct {
 
 type mcpChangeModsOut struct {
 	mcpPreview
-	World               mcpWorldRef         `json:"world"`
-	UntrustedChanges    []mcpPlanChange     `json:"untrusted_changes,omitempty"`
-	UntrustedConflicts  []string            `json:"untrusted_conflicts,omitempty"`
-	UntrustedOptional   []mcpPlanOffer      `json:"untrusted_optional,omitempty"`
-	UntrustedOrphans    []mcpPlanOffer      `json:"untrusted_orphans,omitempty"`
-	UntrustedUnresolved []mcpPlanUnresolved `json:"untrusted_unresolved,omitempty"`
-	UntrustedDrops      []string            `json:"untrusted_drops,omitempty"`
-	UntrustedWithout    []string            `json:"untrusted_without,omitempty"`
-	Result              *mcpActionOut       `json:"result,omitempty"`
-	Downloads           int                 `json:"downloads,omitempty"`
-	Running             bool                `json:"running"`
+	World              mcpWorldRef     `json:"world"`
+	UntrustedChanges   []mcpPlanChange `json:"untrusted_changes,omitempty"`
+	UntrustedConflicts []string        `json:"untrusted_conflicts,omitempty"`
+	UntrustedOptional  []mcpPlanOffer  `json:"untrusted_optional,omitempty"`
+	UntrustedOrphans   []mcpPlanOffer  `json:"untrusted_orphans,omitempty"`
+	// UntrustedUnavailable are offered mods left out: no release fits the
+	// world, or they would conflict (SPEC 9.2).
+	UntrustedUnavailable []mcpPlanOffer      `json:"untrusted_unavailable,omitempty"`
+	UntrustedUnresolved  []mcpPlanUnresolved `json:"untrusted_unresolved,omitempty"`
+	UntrustedDrops       []string            `json:"untrusted_drops,omitempty"`
+	UntrustedWithout     []string            `json:"untrusted_without,omitempty"`
+	Result               *mcpActionOut       `json:"result,omitempty"`
+	Downloads            int                 `json:"downloads,omitempty"`
+	Running              bool                `json:"running"`
 }
 
 type mcpPlanChange struct {
@@ -215,6 +218,9 @@ func (s *server) modsPreview(ctx context.Context, p ModPlanPage) mcpChangeModsOu
 	}
 	for _, o := range p.Plan.Optional {
 		out.UntrustedOptional = append(out.UntrustedOptional, mcpPlanOffer{UntrustedName: o.Name, UntrustedOf: o.Of, Chosen: o.Chosen, Recommended: o.Recommended})
+	}
+	for _, o := range p.Plan.Unavailable {
+		out.UntrustedUnavailable = append(out.UntrustedUnavailable, mcpPlanOffer{UntrustedName: o.Name, UntrustedOf: o.Of, Recommended: o.Recommended})
 	}
 	for _, o := range p.Plan.Orphans {
 		out.UntrustedOrphans = append(out.UntrustedOrphans, mcpPlanOffer{UntrustedName: o.Name, UntrustedOf: o.Of, Chosen: o.Chosen})

@@ -322,6 +322,7 @@
   "mods.plan.why.only_needed_by": "potřeboval ho jen {mod}",
   "mods.recommended.legend": "Doporučené mody",
   "mods.recommended.hint": "Doporučené mody jsou už zaškrtnuté. Zrušením zaškrtnutí se mod vynechá.",
+  "mods.optional.unavailable": "{mod}, který nabízí {of}, se vynechá: nemá verzi pro tuto hru, nebo by způsobil konflikt.",
   "mods.recommended.unavailable": "{mod}, který doporučuje {of}, se vynechá: portál modů nemá žádnou vhodnou verzi.",
   "mods.unresolved.legend": "Portál modů nemá {mod} {version}",
   "mods.unresolved.hint": "Uložená hra byla vytvořena s touto verzí. Je třeba zvolit, co dělat; dokud se tak nestane, plán nelze použít.",
