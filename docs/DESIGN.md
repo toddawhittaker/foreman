@@ -203,18 +203,18 @@ dialog (black at 50%) and the shadows' own values (4).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#0f0e0c` | `#e5e0d5` | The page |
-| `--color-surface` | `#1a1815` | `#fdfbf7` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#25221e` | `#f2ede4` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
-| `--color-deep` | `#0a0908` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#3a3631` | `#d4cbbb` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
-| `--color-line-strong` | `#524b44` | `#b3a893` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
+| `--color-bg` | `#121110` | `#e3ddd1` | The page |
+| `--color-surface` | `#1c1a17` | `#fffdf9` | The header bar, the rail and the status strip, cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#282521` | `#f0eadf` | The secondary button's face, the current item in the rail, the user menu's button, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-deep` | `#0b0a09` | `#ffffff` | Form fields, the log and console |
+| `--color-line` | `#3d3934` | `#d2c8b6` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-line-strong` | `#5a534b` | `#aa9f8a` | Plate title bands' rule, the rule under a page's tabs, idle edges in the control desk |
 | `--color-text` | `#ece7df` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f8f5ef` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
 | `--color-text-muted` | `#b9b0a3` | `#4a443b` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
 | `--color-text-faint` | `#a0978b` | `#655d52` | Hints, metadata and second lines in rows: the third ink, quieter than muted |
 | `--color-desk` | `#090807` | `#2a2622` | The control desk bar across the top; dark in both themes, and its contents use the dark theme's tokens |
-| `--color-desk-line` | `#2e2a25` | `#3a352f` | The control desk's bottom edge |
+| `--color-desk-line` | `#2e2a25` | `#4a443c` | The control desk's bottom edge |
 | `--color-border` | `#857c70` | `#80766a` | Edge of fields, secondary buttons and the menu |
 | `--color-link` | `#ffb357` | `#9a4800` | Links (always underlined), quiet buttons, the "Active" badge |
 | `--color-selected` | `#f39a2a` | `#bd6500` | The current tab's underline, the current item's edge in the rail, the current item in the menu, the live world's edge, checked boxes, progress bars |
@@ -223,7 +223,7 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-primary-hover` | `#f7ae4f` | `#f6ad52` | Primary button hover |
 | `--color-primary-edge` | `#f39a2a` | `#a35200` | Primary button edge (the face is too pale to carry it in light) |
 | `--color-on-primary` | `#1a1004` | `#1a1004` | Primary button text |
-| `--color-secondary-hover` | `#34302b` | `#eee8de` | Secondary button, menu item and menu button face under the pointer |
+| `--color-secondary-hover` | `#38342e` | `#e9e2d6` | Secondary button, menu item and menu button face under the pointer |
 | `--color-danger` | `#e5553c` | `#b3301d` | Danger button face, "crash-looping" badge background, the confirmation box's edge, the Server plate's state rule when the game has crashed |
 | `--color-danger-hover` | `#ef7560` | `#932616` | Danger button hover |
 | `--color-on-danger` | `#1a0503` | `#ffffff` | Danger button text, "crash-looping" badge text |

@@ -67,9 +67,32 @@
 </div>
 {{- end}}
 
-{{- /* On a wide screen Match mods to the save, the installed list, search, results and the rarer tools take the main column; the plan sits alone in a rail beside them. On a phone the plan follows the results (DESIGN 8.11). */}}
+{{- /* Two views of the tab, as one segmented control (DESIGN 8.11): Installed mods (the default, but Find a mod in the guided Generate, where mods are picked) holds Match mods to the save, the list and the tools; Find a mod holds the results. The search box sits in the switch's row in both, so typing from either view shows the results right under it. The plan is alone in the rail beside both. The switch is CSS only, so nothing reloads. */}}
 <div class="split split--mods">
-<section class="panel" aria-labelledby="sync-heading">
+<div class="mods-main">
+<div class="mods-bar">
+<fieldset class="segmented mods-view">
+  <legend class="visually-hidden">{{t "mods.tab"}}</legend>
+  <label><input type="radio" name="mods-view" id="mods-view-installed" value="installed"{{if not .InFlow}} checked{{end}}> {{t "mods.installed.heading"}}{{with .Rows}} <span class="count" aria-hidden="true">{{len .}}</span>{{end}}</label>
+  <label><input type="radio" name="mods-view" id="mods-view-find" value="find"{{if .InFlow}} checked{{end}}> {{t "mods.search.heading"}}</label>
+</fieldset>
+<section class="mods-find" aria-labelledby="search-heading">
+  <h2 id="search-heading" class="visually-hidden">{{t "mods.search.heading"}}</h2>
+  {{- /* Without script the form goes to the search page; with it the results below follow the typing after a pause, from 2 characters, and the address stays the tab's (SPEC 9.1). */}}
+  <form method="get" action="{{.SearchPath}}" role="search"
+    hx-get="{{.SearchPath}}" hx-vals='{"in": "tab"}' hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-sync="this:replace">
+    <div class="field">
+      <label for="mod-search">{{t "mods.search.label"}}</label>
+      <div class="inline-row">
+        <input id="mod-search" name="q" type="search" autocomplete="off" spellcheck="false" maxlength="300" aria-describedby="mod-search-hint mod-paste-hint"
+          hx-get="{{.SearchPath}}" hx-trigger="input changed delay:300ms" hx-sync="closest form:replace">
+        <button type="submit" class="button">{{t "mods.search.button"}}</button>
+      </div>
+    </div>
+  </form>
+</section>
+</div>
+<section class="panel" aria-labelledby="sync-heading" data-view="installed">
   <h2 id="sync-heading">{{t "mods.sync.heading"}}</h2>
   {{- if not .LoadSave}}
   <p class="empty">{{t "mods.sync.no_save"}}</p>
@@ -94,7 +117,7 @@
   <div class="actions"><a href="{{.SyncPath}}" class="button" id="act-sync">{{t "mods.sync.button"}}</a></div>
   {{- end}}
 </section>
-<section class="panel" aria-labelledby="installed-heading">
+<section class="panel" aria-labelledby="installed-heading" data-view="installed">
   <div class="group__head">
     <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
     {{- /* The table's caption gives a screen reader the count. */}}
@@ -173,32 +196,13 @@
     {{- end}}</p>
   {{- end}}
 </section>
-{{- /* Finding a mod comes after the installed list, which is the tab's subject, and sits right above its results (DESIGN 8.11). */}}
-<section class="panel setting-row" aria-labelledby="search-heading">
-  <div class="setting-row__head">
-    <h2 id="search-heading">{{t "mods.search.heading"}}</h2>
-    <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
-  </div>
-  {{- /* Without script the form goes to the search page; with it the results below follow the typing after a pause, from 2 characters, and the address stays the tab's (SPEC 9.1). */}}
-  <form method="get" action="{{.SearchPath}}" role="search" class="setting-row__body"
-    hx-get="{{.SearchPath}}" hx-vals='{"in": "tab"}' hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-sync="this:replace">
-    <div class="field">
-      <label for="mod-search">{{t "mods.search.label"}}</label>
-      <div class="inline-row">
-        <input id="mod-search" name="q" type="search" autocomplete="off" spellcheck="false" maxlength="300" aria-describedby="mod-search-hint mod-paste-hint"
-          hx-get="{{.SearchPath}}" hx-trigger="input changed delay:300ms" hx-sync="closest form:replace">
-        <button type="submit" class="button">{{t "mods.search.button"}}</button>
-      </div>
-      {{template "portal-browse" .Line}}
-    </div>
-  </form>
-</section>
-{{template "mod-results" .Search}}
-{{- /* The plan follows the results and comes before the rarer tools. On a wide screen it is alone in the rail beside the rest; on a phone it follows the results. The tools fold under one 44 px Mod tools disclosure on a phone (DESIGN 8.11). */}}
-<div class="mod-side">
-{{template "plan-panel" .Plan}}
+{{- /* What the search looks in, the portal link, then the results, right under the search box (DESIGN 8.11). */}}
+<div class="mods-find__notes" data-view="find">
+  <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
+  {{template "portal-browse" .Line}}
 </div>
-<details class="disclosure mod-rail" id="mod-tools" data-open-wide="64rem"{{if or (not .UploadError.IsZero) (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
+{{template "mod-results" .Search}}
+<details class="disclosure mod-rail" id="mod-tools" data-view="installed" data-open-wide="64rem"{{if or (not .UploadError.IsZero) (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
 <summary class="mod-rail__toggle" id="mod-tools-summary">{{t "mods.tools.label"}}</summary>
 <div class="split__rail">
 <section class="panel" aria-labelledby="upload-heading">
@@ -263,6 +267,10 @@
 {{- end}}
 </div>
 </details>
+</div>
+<div class="mod-side">
+{{template "plan-panel" .Plan}}
+</div>
 </div>
 {{- end}}
 {{- if .InFlow}}

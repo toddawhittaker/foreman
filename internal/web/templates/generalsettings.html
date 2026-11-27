@@ -27,9 +27,9 @@
 </div>
 {{- end}}
 {{template "summary" .Problems}}
-<form method="post" action="{{.Path}}" class="panel setting-rows" novalidate data-tips>
+<form method="post" action="{{.Path}}" class="panel setting-rows general-grid" novalidate data-tips>
   {{template "required-note"}}
-  {{- /* The two retention groups pair first, then the stop countdown beside the upload limits. */}}
+  {{- /* Six tiles, three to a row on a wide screen: retention first, then stopping and uploads, then what Foreman may reach out to. */}}
   <section class="setting-row" aria-labelledby="general-snapshots-heading">
     <div class="setting-row__head">
       <div class="setting-row__title">

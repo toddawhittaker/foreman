@@ -896,7 +896,18 @@ export async function openPlanetRow(page: Page, planet = "nauvis") {
 
 // The rarer Mods tools (match to the save, upload, mod settings) sit in a
 // disclosure that is closed on a phone and always open on a wide window.
+// The Mods tab shows one of two views, picked by its segmented control
+// (DESIGN 8.11): Installed mods (Match, the list and the tools) or Find a
+// mod (the results). Typing a search shows Find a mod by itself.
+export async function showModsView(page: Page, view: "installed" | "find") {
+  const radio = page.locator(`#mods-view-${view}`);
+  if (await radio.isChecked()) return;
+  await page.locator(`label:has(#mods-view-${view})`).click();
+  await expect(radio).toBeChecked();
+}
+
 export async function openModTools(page: Page) {
+  await showModsView(page, "installed");
   const tools = page.locator("#mod-tools");
   // A wide window opens it by script, so wait for that instead of clicking.
   if ((page.viewportSize()?.width ?? 1280) >= 1024) return expect(tools).toHaveJSProperty("open", true);

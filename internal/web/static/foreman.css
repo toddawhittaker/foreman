@@ -107,19 +107,19 @@
   --text-2xl: 1.5rem;
   --text-3xl: 1.75rem;
 
-  --color-bg: light-dark(#e5e0d5, #0f0e0c);
-  --color-surface: light-dark(#fdfbf7, #1a1815);
-  --color-raised: light-dark(#f2ede4, #25221e);
-  --color-deep: light-dark(#ffffff, #0a0908);
-  --color-line: light-dark(#d4cbbb, #3a3631);
-  --color-line-strong: light-dark(#b3a893, #524b44);
+  --color-bg: light-dark(#e3ddd1, #121110);
+  --color-surface: light-dark(#fffdf9, #1c1a17);
+  --color-raised: light-dark(#f0eadf, #282521);
+  --color-deep: light-dark(#ffffff, #0b0a09);
+  --color-line: light-dark(#d2c8b6, #3d3934);
+  --color-line-strong: light-dark(#aa9f8a, #5a534b);
   --color-border: light-dark(#80766a, #857c70);
   --color-text: light-dark(#1c1915, #ece7df);
   --color-heading: light-dark(#13110e, #f8f5ef);
   --color-text-muted: light-dark(#4a443b, #b9b0a3);
   --color-text-faint: light-dark(#655d52, #a0978b);
   --color-desk: light-dark(#2a2622, #090807);
-  --color-desk-line: light-dark(#3a352f, #2e2a25);
+  --color-desk-line: light-dark(#4a443c, #2e2a25);
   --color-link: light-dark(#9a4800, #ffb357);
   --color-selected: light-dark(#bd6500, #f39a2a);
   --color-accent-bg: light-dark(#fdecd5, #352610);
@@ -127,7 +127,7 @@
   --color-primary-hover: light-dark(#f6ad52, #f7ae4f);
   --color-primary-edge: light-dark(#a35200, #f39a2a);
   --color-on-primary: #1a1004;
-  --color-secondary-hover: light-dark(#eee8de, #34302b);
+  --color-secondary-hover: light-dark(#e9e2d6, #38342e);
   --color-danger: light-dark(#b3301d, #e5553c);
   --color-danger-hover: light-dark(#932616, #ef7560);
   --color-on-danger: light-dark(#ffffff, #1a0503);
@@ -1213,7 +1213,7 @@ main {
 main > .panel,
 main > .panels > .panel,
 main > .panels > .panels > .panel,
-.split > .panel,
+.split > .panel, .mods-main > .panel, .world-layout__main > .panel,
 .split .split__rail > .panel,
 .mod-side > .panel,
 .mod-settings > .panel,
@@ -1238,7 +1238,7 @@ main > .panels > .panels > .panel,
   main > .panel,
   main > .panels > .panel,
   main > .panels > .panels > .panel,
-  .split > .panel,
+  .split > .panel, .mods-main > .panel, .world-layout__main > .panel,
   .split .split__rail > .panel,
   .mod-side > .panel,
   .mod-settings > .panel,
@@ -8206,25 +8206,25 @@ form.setting-rows > .form-foot {
 /* Wide settings forms put their groups two to a row, so a page of short
    fields fills the card instead of one long column (DESIGN 8.15). */
 @container (min-width: 92rem) {
-  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)):not(.general-grid) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: var(--space-6);
     align-items: start;
   }
 
-  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > :not(.setting-row) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)):not(.general-grid) > :not(.setting-row) {
     grid-column: 1 / -1;
   }
 
   /* Each pair of groups shares one rule above it. */
-  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > .setting-row {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)):not(.general-grid) > .setting-row {
     margin-block-start: var(--space-5);
     padding-block-start: var(--space-5);
     border-block-start: var(--border-width) solid var(--color-line);
   }
 
-  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)) > .setting-row:is(:nth-of-type(1), :nth-of-type(2)) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)):not(.general-grid) > .setting-row:is(:nth-of-type(1), :nth-of-type(2)) {
     margin-block-start: 0;
     padding-block-start: 0;
     border-block-start: 0;
@@ -12601,14 +12601,14 @@ h1 {
   letter-spacing: -0.01em;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) {
   border-radius: var(--radius-lg);
   box-shadow: none;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):first-child,
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(h2:not(.visually-hidden), .section-head, .group__head),
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(input[type="hidden"], [hidden]) + :is(h2:not(.visually-hidden), .section-head, .group__head) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):first-child,
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(h2:not(.visually-hidden), .section-head, .group__head),
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(input[type="hidden"], [hidden]) + :is(h2:not(.visually-hidden), .section-head, .group__head) {
   min-block-size: 3rem;
   margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-1);
   padding: var(--space-3) var(--card-pad);
@@ -12620,7 +12620,7 @@ h1 {
   line-height: 1.3;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(.section-head, .group__head):is(:first-child, :is(input[type="hidden"], [hidden]) + *) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(.section-head, .group__head):is(:first-child, :is(input[type="hidden"], [hidden]) + *) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12635,7 +12635,7 @@ h1 {
 
 /* Below 360 px plates lie flat, so the band does too. */
 @media (max-width: 22.4rem) {
-  :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(h2:not(.visually-hidden), .section-head):first-child {
+  :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) > :is(h2:not(.visually-hidden), .section-head):first-child {
     margin: 0;
     padding-inline: 0;
     background: none;
@@ -12824,7 +12824,7 @@ tbody tr:hover {
 /* Mods: Match mods to the save is a one-line notice above the installed
    list, its words then its button, amber-edged only while the mods differ,
    so the list people come for starts higher (DESIGN 8.11). */
-.split--mods > section:has(> #sync-heading) {
+.mods-main > section:has(> #sync-heading) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12833,11 +12833,11 @@ tbody tr:hover {
   border-inline-start: 3px solid var(--color-line-strong);
 }
 
-.split--mods > section:has(> .sync-diff) {
+.mods-main > section:has(> .sync-diff) {
   border-inline-start-color: var(--color-warn);
 }
 
-.split--mods > section > #sync-heading {
+.mods-main > section > #sync-heading {
   flex: 0 1 auto;
   min-inline-size: 0;
   min-block-size: 0;
@@ -12848,25 +12848,25 @@ tbody tr:hover {
   font-size: var(--text-md);
 }
 
-.split--mods > section:has(> #sync-heading) > :is(p, ul) {
+.mods-main > section:has(> #sync-heading) > :is(p, ul) {
   flex: 0 1 auto;
   margin: 0;
 }
 
-.split--mods > section:has(> #sync-heading) > .sync-diff {
+.mods-main > section:has(> #sync-heading) > .sync-diff {
   padding-inline-start: 0;
   list-style: none;
   font-weight: 600;
 }
 
-.split--mods > section:has(> #sync-heading) > p:not(#sync-state):not(:has(a)) {
+.mods-main > section:has(> #sync-heading) > p:not(#sync-state):not(:has(a)) {
   flex-basis: 100%;
   order: 5;
   color: var(--color-text-faint);
   font-size: var(--text-xs);
 }
 
-.split--mods > section:has(> #sync-heading) > .actions {
+.mods-main > section:has(> #sync-heading) > .actions {
   margin-inline-start: auto;
 }
 
@@ -13143,17 +13143,15 @@ main > h1 + p.hint,
   font-size: var(--text-sm);
 }
 
-/* ---- The plan is a normal plate marked as pending work: a 3 px blue
-   leading edge and a blue-tinted title band, no texture (DESIGN 8.11). */
+/* ---- The plan is a normal plate marked as the task in hand: its title
+   band is every plate's, with a 3 px orange leading edge (DESIGN 8.11). */
 .plan-panel:not(.plan-panel--empty) {
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-line);
-  border-inline-start: 3px solid var(--color-info);
+  border-inline-start: 3px solid var(--color-selected);
 }
 
 #main .plan-panel:not(.plan-panel--empty) > .plan-panel__head {
-  background: var(--color-info-bg);
-  border-block-end-color: color-mix(in srgb, var(--color-info) 40%, var(--color-line));
   border-start-start-radius: 0;
 }
 
@@ -13167,7 +13165,7 @@ main > h1 + p.hint,
   border-block-end-color: var(--color-desk-line);
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .card) {
   box-shadow: 0 1px 0 light-dark(rgb(60 45 25 / 10%), transparent);
 }
 
@@ -13429,26 +13427,45 @@ html:has(.large-view[open]) > body {
   background: var(--color-secondary-hover);
 }
 
-/* The plan's remove buttons are framed 36 px icon buttons, quiet in ink. */
+/* The plan's remove crosses are drawn as 28 px icon buttons in muted ink,
+   so they never weigh as much as Review, inside a full 44 px target. */
 .button--icon.plan-panel__remove {
-  inline-size: 2.25rem;
-  min-block-size: 2.25rem;
-  block-size: 2.25rem;
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  position: relative;
+  isolation: isolate;
+  inline-size: var(--target-min);
+  min-block-size: var(--target-min);
+  block-size: var(--target-min);
+  margin-block: calc(-1 * var(--space-2));
+  color: var(--color-text-muted);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.button--icon.plan-panel__remove::after {
+  content: "";
+  position: absolute;
+  inset: var(--space-2);
+  z-index: -1;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+
+.button--icon.plan-panel__remove:hover {
+  color: var(--color-heading);
+  background: transparent;
+  border-color: transparent;
+}
+
+.button--icon.plan-panel__remove:hover::after {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line-strong);
 }
 
 .button--icon.plan-panel__remove::before {
-  inline-size: 1rem;
-  block-size: 1rem;
-}
-
-@media (pointer: coarse) {
-  .button--icon.plan-panel__remove {
-    inline-size: var(--target-min);
-    min-block-size: var(--target-min);
-    block-size: var(--target-min);
-  }
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
 }
 
 /* The game log fades out at its top edge, so a line scrolled half out of
@@ -13474,5 +13491,458 @@ html:has(.large-view[open]) > body {
 @media (max-width: 39.99rem) {
   nav.subnav.subnav--settings > ul {
     mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+  }
+}
+
+/* ==== One segmented control for every in-page view switch (DESIGN 6):
+   Mods' two views, Game settings' own pages, the map settings' groups and
+   preview views, API tokens' owners and the factory map's surfaces. A sunk
+   track, 36 px segments, the chosen one on the accent tint with a 2 px
+   orange foot. Page-level sub-pages keep the underline tabs. */
+.segmented,
+.js-on .tablist,
+.subnav .subnav__sub {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  inline-size: auto;
+  max-inline-size: 100%;
+  margin: 0;
+  padding: 3px;
+  min-inline-size: 0;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius-lg);
+}
+
+.segmented > label,
+.js-on .tablist > .tab,
+.subnav .subnav__sub a,
+.subnav .subnav__sub a[aria-current] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 2.25rem;
+  margin: 0;
+  padding-inline: var(--space-4);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: none;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.subnav .subnav__sub li + li a {
+  margin-inline-start: 0;
+}
+
+.segmented > label:hover,
+.js-on .tablist > .tab:hover,
+.subnav .subnav__sub a:hover {
+  color: var(--color-heading);
+  background: var(--color-secondary-hover);
+}
+
+.segmented > label:has(:checked),
+.js-on .tablist > .tab:has(input:checked),
+.subnav .subnav__sub a[aria-current] {
+  color: var(--color-heading);
+  background: var(--color-accent-bg);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+.segmented > label:has(:focus-visible),
+.js-on .tablist > .tab:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.segmented > label .count {
+  margin: 0;
+}
+
+@media (max-width: 39.99rem) {
+  .segmented > label,
+  .js-on .tablist > .tab,
+  .subnav .subnav__sub a,
+  .subnav .subnav__sub a[aria-current] {
+    min-block-size: calc(var(--target-min) - 2px);
+    padding-inline: var(--space-3);
+  }
+}
+
+/* ==== Mods: a bar with the view switch and the search box, then the
+   view's own content; the plan sits alone in the rail beside both and
+   stays in view (DESIGN 8.11). */
+.split.split--mods {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  grid-template-areas: none;
+}
+
+.mods-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.mods-main > * {
+  grid-column: 1;
+  grid-row: auto;
+}
+
+.split--mods > .mod-side {
+  display: grid;
+  align-content: start;
+  min-inline-size: 0;
+}
+
+.split--mods:has(#mods-view-installed:checked) .mods-main > :is([data-view="find"], #results),
+.split--mods:has(#mods-view-find:checked) .mods-main > [data-view="installed"] {
+  display: none;
+}
+
+.mods-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  padding-block-end: var(--space-4);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.mods-bar .mods-find {
+  flex: 1 1 26rem;
+  max-inline-size: 44rem;
+}
+
+.mods-bar .mods-find form .field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.mods-bar .mods-find form .field > label {
+  flex: none;
+  margin: 0;
+  font-weight: 600;
+}
+
+#main .mods-bar .mods-find .inline-row {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  display: flex;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+#main .mods-bar .mods-find .inline-row > input[type="search"] {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  max-inline-size: none;
+  inline-size: 100%;
+}
+
+.mods-find__notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  margin-block-start: calc(-1 * var(--space-2));
+}
+
+.mods-find__notes > .hint {
+  margin: 0;
+}
+
+@container (min-width: 60rem) {
+  .split.split--mods {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    align-items: stretch;
+  }
+
+  .split--mods > .mod-side {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mods-bar {
+    flex-wrap: nowrap;
+  }
+}
+
+@container (min-width: 90rem) {
+  .split.split--mods {
+    grid-template-columns: minmax(0, 1fr) 28rem;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .mods-bar .mods-view {
+    display: flex;
+    inline-size: 100%;
+  }
+
+  .mods-bar .mods-view > label {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .mods-bar .mods-find form .field {
+    flex-wrap: wrap;
+  }
+}
+
+/* ==== General settings: each group is a self-contained tile (title, one
+   line of help, then its fields stacked), three to a row on a wide screen,
+   two on a laptop, one on a phone (DESIGN 8.15). */
+form.general-grid.setting-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+form.general-grid.setting-rows > :not(.setting-row) {
+  grid-column: 1 / -1;
+}
+
+form.general-grid.setting-rows > .setting-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-5);
+  background: color-mix(in srgb, var(--color-raised) 45%, var(--color-surface));
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+}
+
+form.general-grid.setting-rows > .setting-row .setting-row__body {
+  gap: var(--space-4);
+}
+
+form.general-grid.setting-rows .setting-row__body input[inputmode="numeric"] {
+  inline-size: 10rem;
+}
+
+form.general-grid.setting-rows .setting-row__body .hint {
+  max-inline-size: 60ch;
+}
+
+form.general-grid.setting-rows > .required-note,
+form.general-grid.setting-rows > p:first-child {
+  margin: 0;
+  justify-self: end;
+}
+
+form.general-grid.setting-rows > .form-foot {
+  margin-block-start: var(--space-2);
+}
+
+@container (min-width: 52rem) {
+  form.general-grid.setting-rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 84rem) {
+  form.general-grid.setting-rows {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+}
+
+/* ==== A world's Overview: the facts across the top; the save's players
+   and the rows that manage the world in the main column; sharing it (map
+   string, favorite, world file) stacked in a side column (DESIGN 8). */
+.world-layout,
+.world-layout__main,
+.world-layout__side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-5);
+  min-inline-size: 0;
+}
+
+@container (min-width: 72rem) {
+  .world-layout {
+    grid-template-columns: minmax(0, 1fr) 30rem;
+    align-items: start;
+  }
+}
+
+@container (min-width: 100rem) {
+  .world-layout {
+    grid-template-columns: minmax(0, 1fr) 34rem;
+  }
+}
+
+.world-layout__side > .world-share__item {
+  grid-template-rows: none;
+}
+
+.world-share__head:has(> .tip__text),
+.world-share__head:has(.tip) {
+  position: relative;
+}
+
+/* The map string is a three-line preview; clicking into it opens the
+   whole string to select, and the corner handle drags it taller. */
+.world-layout__side .exchange .copy-field--block > textarea.exchange__value {
+  block-size: calc(3lh + var(--space-2));
+  resize: vertical;
+}
+
+.world-layout__side .exchange .copy-field--block > textarea.exchange__value:focus {
+  field-sizing: content;
+  block-size: auto;
+  max-block-size: 22rem;
+}
+
+.world-export > .world-share__body > fieldset {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.world-export .tip__text > p {
+  margin: 0;
+}
+
+.world-export .tip__text > p + p {
+  margin-block-start: var(--space-2);
+}
+
+/* ==== The world list on a wide screen: facts in columns sized to their
+   values, the name taking the rest, actions at the row's end, so a short
+   list does not spread a few words across the whole width (DESIGN 8.2). */
+@media (min-width: 90rem) {
+  .worlds > li,
+  .worlds-head {
+    grid-template-columns: minmax(16rem, 1fr) 46rem 14rem;
+  }
+
+  .worlds > li > .facts,
+  .worlds-head__facts {
+    grid-template-columns: 6rem 6rem 18rem 11rem;
+  }
+
+  .worlds > li {
+    min-block-size: 4rem;
+  }
+
+  .worlds > li > :is(h2, h3) {
+    font-size: var(--text-lg);
+  }
+}
+
+#main .world-layout__side .inline-row {
+  flex-wrap: nowrap;
+}
+
+#main .world-layout__side .inline-row > input {
+  flex: 1 1 auto;
+  inline-size: auto;
+  max-inline-size: none;
+}
+
+/* The required note shares the tiles' first row's top edge rather than
+   taking a row of its own. */
+form.general-grid.setting-rows > .required-note {
+  margin-block-end: calc(-1 * var(--space-3));
+}
+
+/* A settings row form (Restart schedule) ends in the same foot bar as
+   General, across both its columns. */
+.setting-row > .form-foot {
+  grid-column: 1 / -1;
+}
+
+/* API tokens: the two ways in side by side as one row of state, so the
+   list and its form start higher (SPEC 12.10, 23.8). */
+.access-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@container (min-width: 64rem) {
+  .access-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .access-row > .state-plate {
+    margin: 0;
+  }
+}
+
+/* ==== Saves on a phone: each save is one record, its name (an autosave's
+   world and time) then one line of size and time, then Load next. An
+   autosave's time is in its name, so the line gives only its size. */
+@media (max-width: 39.99rem) {
+  #main .save-list,
+  #main .save-list > tbody {
+    display: block;
+  }
+
+  #main .save-list > thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  #main .save-list > tbody > tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
+    padding-block: var(--space-4);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  #main .save-list > tbody > tr > td {
+    display: block;
+    padding: 0;
+    border: 0;
+    text-align: start;
+  }
+
+  #main .save-list > tbody > tr > td::before {
+    content: none;
+  }
+
+  #main .save-list > tbody > tr > td:first-child {
+    flex: 1 1 100%;
+    font-weight: 600;
+  }
+
+  #main .save-list > tbody > tr > td:is(.num, :nth-child(3)) {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+  }
+
+  #main .save-list > tbody > tr.save-row--auto > td:nth-child(3) {
+    display: none;
+  }
+
+  #main .save-list > tbody > tr > td.save-load {
+    flex: 1 1 100%;
+  }
+
+  #main .save-list > tbody > tr > td.save-load:empty {
+    display: none;
   }
 }

@@ -126,4 +126,13 @@
     document.getElementById(said.dataset.focus)?.focus();
     said.remove();
   });
+  // Typing a search, or sending it, shows the Find a mod view, where the
+  // results sit right under the box (DESIGN 8.11).
+  const showFind = (e) => {
+    if (e.target?.id !== "mod-search" && !e.target?.contains?.(document.getElementById("mod-search"))) return;
+    const find = document.getElementById("mods-view-find");
+    if (find && !find.checked) find.checked = true;
+  };
+  document.addEventListener("input", showFind);
+  document.addEventListener("submit", showFind, true);
 })();

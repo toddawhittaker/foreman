@@ -48,7 +48,7 @@
   {{/* The file comes last: the server reads the text fields before it. */}}
   {{template "dropzone" .SourceZone}}
   {{- end}}
-  <div class="actions">
+  <div class="actions form-foot">
     <button type="submit" class="button{{if not .Importable}} button--primary{{end}}">{{t "worlds.import.upload.button"}}</button>
   </div>
 </form>
@@ -96,7 +96,7 @@
   {{- end}}
   {{- end}}
   {{- if .Importable}}
-  <div class="actions">
+  <div class="actions form-foot">
     <button type="submit" class="button button--primary">{{t "worlds.import.folder.button"}}</button>
   </div>
   {{- end}}
@@ -109,7 +109,7 @@
   <p>{{t "worldfile.import.intro"}}</p>
   {{template "required-note"}}
   {{template "dropzone" .WorldFileZone}}
-  <div class="actions">
+  <div class="actions form-foot">
     <button type="submit" class="button" id="act-upload-world-file">{{t "worldfile.import.button"}}</button>
   </div>
 </form>

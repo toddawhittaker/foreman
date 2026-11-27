@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, openModTools, setUpModsWorld, version20 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, openModTools, setUpModsWorld, showModsView, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // Issue 761: on a wide screen the Plan card sticks in view while the page
@@ -48,26 +48,34 @@ test("the sticking Plan card stays on top of the cards under it", { tag: "@looks
 });
 
 // DESIGN 8.11, WCAG 1.3.2 and 2.4.3: the cards' markup order is the order
-// they are seen in, on a phone and on a wide screen, so focus follows it.
+// they are seen in, on a phone and on a wide screen, so focus follows it, in
+// each of the tab's two views: the search, then Match, Installed mods and
+// the tools; or the search, then its results.
 for (const width of [390, 1280]) {
   test(`at ${width} px the Mods cards are seen in their markup order`, { tag: "@looks" }, async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman, { mods: { other: "2.1", b: "2.1", c: "2.1" } });
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/worlds/base/mods");
-    const cards = ["sync-heading", "installed-heading", "search-heading", "results-heading", "mod-tools"];
-    const order = await page.evaluate((cards) => {
-      const els = cards.map((id) => {
-        const el = document.getElementById(id)!;
-        return el.tagName === "H2" ? el.closest("section")! : el;
-      });
-      const inDom = els.every((el, i) => i === 0 || els[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
-      const tops = els.map((el) => el.getBoundingClientRect().top + scrollY);
-      return { inDom, tops };
-    }, cards);
-    expect(order.inDom).toBe(true);
-    for (let i = 1; i < order.tops.length; i++) expect(order.tops[i], cards[i]).toBeGreaterThan(order.tops[i - 1]);
+    const seenInOrder = async (cards: string[]) => {
+      const order = await page.evaluate((cards) => {
+        const els = cards.map((id) => {
+          const el = document.getElementById(id)!;
+          return el.tagName === "H2" ? el.closest("section")! : el;
+        });
+        const inDom = els.every((el, i) => i === 0 || els[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+        const tops = els.map((el) => el.getBoundingClientRect().top + scrollY);
+        return { inDom, tops };
+      }, cards);
+      expect(order.inDom).toBe(true);
+      for (let i = 1; i < order.tops.length; i++) expect(order.tops[i], cards[i]).toBeGreaterThan(order.tops[i - 1]);
+    };
+    await seenInOrder(["search-heading", "sync-heading", "installed-heading", "mod-tools"]);
     if (width < 1024) await expect(page.locator("#mod-tools")).toHaveJSProperty("open", false);
+    await checkPage(page);
+    await showModsView(page, "find");
+    await seenInOrder(["search-heading", "results-heading"]);
+    await expect(page.locator("#installed-heading")).toBeHidden();
     await checkPage(page);
   });
 }

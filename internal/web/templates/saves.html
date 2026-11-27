@@ -50,7 +50,7 @@
     </thead>
     <tbody role="rowgroup">
       {{- range .Rows}}
-      <tr role="row">
+      <tr role="row"{{if .WorldName}} class="save-row--auto"{{end}}>
         <td role="cell"><div class="save-name">
           {{- if .WorldName}}{{/* The link is a flex box (a 44 px target), which drops the space between its children; the span keeps the name and the time as one run of text. */}}<a href="{{.Href}}"><span class="save-label">{{.WorldName}}, {{template "when" .Saved}}</span></a>{{else}}<a href="{{.Href}}">{{.Name}}</a>{{end}}{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}{{if .WorldName}}{{/* On its own line under the label, so every file name starts at the same left edge (DESIGN 8.3). */}}<span class="save-file">{{.Name}}</span>{{end}}</div></td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>

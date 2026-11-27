@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, version20 } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, showModsView, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // SPEC 9.1, 9.2, 9.14, 17.10: the search results are a list shown ten at a
@@ -451,6 +451,8 @@ test("a slow reply does not replace the results for newer text", async ({ page }
 for (const at of ["/worlds/base/mods", "/worlds/base/mods/search?q=fp-pg"]) {
   test(`the Browse the mod portal link on ${at}`, async ({ page }) => {
     await page.goto(at);
+    // On the tab the link is in the Find a mod view (DESIGN 8.11).
+    if (!at.includes("/search")) await showModsView(page, "find");
     const link = page.getByRole("link", { name: "Browse the mod portal (opens in a new tab)" });
     await expect(link).toHaveAttribute("href", "https://mods.factorio.com/browse/downloaded?factorio_version=2.0");
     await expect(link).toHaveAttribute("target", "_blank");
@@ -465,6 +467,8 @@ test.describe("typing on the Mods tab", () => {
     await page.goto("/worlds/base/mods");
     const url = page.url();
     const history = await page.evaluate(() => window.history.length);
+    // The panel is in the tab's Find a mod view (DESIGN 8.11).
+    await showModsView(page, "find");
     await expect(page.getByRole("heading", { level: 2, name: "Mods matching" })).toBeVisible();
     await expect(page.locator("#results .empty")).toHaveText("Type at least 2 characters of a mod's name in Find a mod. Matching mods show here.");
     const box = page.getByLabel("Mod name");
@@ -478,11 +482,11 @@ test.describe("typing on the Mods tab", () => {
     await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
     expect(page.url()).toBe(url);
     expect(await page.evaluate(() => window.history.length)).toBe(history);
-    // The installed list, then search, results and the plan.
+    // The search, then the installed list's view, its results and the plan.
     const order = await page.evaluate(() => {
       const at = (s: string) => document.querySelector(s)!;
       const after = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-      return after(at("#installed-heading"), at("#search-heading")) && after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#plan-heading"));
+      return after(at("#search-heading"), at("#installed-heading")) && after(at("#search-heading"), at("#results-heading")) && after(at("#results-heading"), at("#plan-heading"));
     });
     expect(order).toBe(true);
     await checkPage(page);

@@ -36,6 +36,8 @@
 {{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "apitokens.tab"))}}
 <header class="page-head page-head--row">
   <h1>{{t "apitokens.title"}}</h1>
+  {{- /* The page's task is one jump away from the top, wherever the list ends (SPEC 12.10). */}}
+  <div class="actions"><a href="#create-token" class="button" id="act-token-new">{{t "apitokens.create.heading"}}</a></div>
 </header>
 {{template "rail" $}}
 {{- template "summary" .Problems}}
@@ -45,6 +47,7 @@
 </div>
 {{- end}}
 <p class="page-intro">{{t "apitokens.intro"}}</p>
+<div class="access-row">
 {{- /* MCP access is the switch every token depends on: said once, as a state plate with its one control, before the tokens (SPEC 12.10). */}}
 <section class="state-plate state-plate--{{if .MCPOn}}on{{else}}off{{end}}" id="mcp-access" aria-labelledby="mcp-heading">
   <div class="state-plate__text">
@@ -89,6 +92,7 @@
   </form>
   {{- end}}
 </section>
+</div>
 
 {{- /* One list of tokens. An admin sees every user's and filters it to their own or all; the filter is CSS only, so nothing reloads (SPEC 12.10). */}}
 <section class="panel token-table" aria-labelledby="tokens-heading">
