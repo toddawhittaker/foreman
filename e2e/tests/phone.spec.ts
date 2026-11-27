@@ -56,7 +56,7 @@ test.describe("with the fake game", () => {
 
     // The heading with the state, then the controls, the facts and the players (DESIGN 6).
     const stop = page.getByRole("link", { name: "Stop server" });
-    const order = [page.locator("main h1"), stop, page.locator("main [sse-swap=facts]"), page.getByRole("heading", { name: "Players", exact: true })];
+    const order = [page.locator("main h1"), stop, page.locator("main .facts-block"), page.getByRole("heading", { name: "Players", exact: true })];
     for (let i = 1; i < order.length; i++) expect((await box(order[i])).y).toBeGreaterThan((await box(order[i - 1])).y);
 
     // On a phone the main action is on the first screen, without scrolling.
@@ -137,7 +137,8 @@ test.describe("with the fake game", () => {
       return { held: last.bottom - first.top + frame, band: el.getBoundingClientRect().bottom - last.bottom - parseFloat(s.paddingBlockEnd) - parseFloat(s.borderBottomWidth) };
     });
     if (held < cap - 4) expect(band, "empty space under the newest entry, in px").toBeLessThanOrEqual(4);
-    await expect(reply).toBeInViewport();
+    // The page stays where it was after the send (ruling 1 of fixes 20); the reply is read out.
+    await expect(reply).toBeAttached();
     await checkPage(page);
   });
 });

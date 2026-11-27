@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
@@ -53,7 +54,7 @@ func TestControlActionsHaveStableIDs(t *testing.T) {
 		{serverCase(game.StateRunning, func(*ServerPage) {}), []string{"act-stop", "act-restart", "act-force-stop"}},
 		{failed, []string{"act-start", "act-anyway"}},
 		{missing, []string{"act-start", "act-pull"}},
-		{restored, []string{"act-snapshots"}},
+		{restored, []string{"act-snapshot"}},
 		{crashed, []string{"act-console", "act-stop", "act-force-stop"}},
 	}
 	for _, c := range cases {
@@ -72,7 +73,7 @@ func TestControlActionsHaveStableIDs(t *testing.T) {
 	}
 	body := pageHTML(t, serverCase(game.StateRunning, func(*ServerPage) {}))
 	// After an operation, focus goes to the heading, which names the world and its state (DESIGN 5).
-	if !strings.Contains(body, `<h1 id="control-heading" tabindex="-1"><span id="server-title">`) || !strings.Contains(body, ` <span class="state state--running">Running</span></span></h1>`) {
+	if !strings.Contains(body, `<h1><span id="control-heading" tabindex="-1"><span id="server-title">`) || !strings.Contains(body, ` <span class="state state--running">Running</span></span></span></h1>`) {
 		t.Errorf("the heading does not name the world and state, or cannot take focus:\n%s", body)
 	}
 	if !strings.Contains(body, "live.js") {
@@ -205,10 +206,14 @@ func TestNetworkRefusalIsShown(t *testing.T) {
 
 var reAnnounce = regexp.MustCompile(`<div hx-swap-oob="innerHTML:#announcer">([^<]*)</div>`)
 
-// DESIGN 7.5, A2: a live page reads out a state change, and a failed or
-// finished operation in its place; the first send is silent.
+var reToast = regexp.MustCompile(`<div class="toast toast--(\w+)" data-toast>\s*(?:data: )?<p class="toast__text"><strong>[^<]*</strong> <span data-toast-text>([^<]*)</span>`)
+
+// DESIGN 7.5, A2: a live page reads out a state change, and a failed
+// operation in its place; a finished one's result is a toast, which reads
+// itself out (DESIGN 6). The first send is silent.
 func TestLiveAnnouncements(t *testing.T) {
 	r := newTestRenderer(t)
+	var toasted string
 	send := func(l *liveStream, p ServerPage) string {
 		t.Helper()
 		rec := httptest.NewRecorder()
@@ -216,10 +221,14 @@ func TestLiveAnnouncements(t *testing.T) {
 		if err := l.send(p); err != nil {
 			t.Fatal(err)
 		}
-		var said []string
+		var said, toasts []string
 		for _, m := range reAnnounce.FindAllStringSubmatch(rec.Body.String(), -1) {
 			said = append(said, m[1])
 		}
+		for _, m := range reToast.FindAllStringSubmatch(rec.Body.String(), -1) {
+			toasts = append(toasts, m[1]+": "+m[2])
+		}
+		toasted = strings.Join(toasts, " | ")
 		return strings.Join(said, " | ")
 	}
 	failed := func(s game.State, err error) ServerPage {
@@ -262,10 +271,19 @@ func TestLiveAnnouncements(t *testing.T) {
 	l = &liveStream{render: r, sent: map[string]string{}}
 	send(l, serverCase(game.StateStopping, func(*ServerPage) {}))
 	restored := serverCase(game.StateRunning, func(p *ServerPage) {
-		p.Result, p.HaveResult = actionResult{Action: game.ActionRestore}, true
+		p.Result, p.HaveResult = actionResult{Action: game.ActionRestore, At: msgT0}, true
 	})
-	if got := send(l, restored); got != "The world is restored." {
-		t.Errorf("restore: %q", got)
+	if got := send(l, restored); got != "Server is now running" || !strings.HasPrefix(toasted, "success: The world is restored") {
+		t.Errorf("restore: said %q, toasts %q", got, toasted)
+	}
+	if got := send(l, restored); got != "" || toasted != "" {
+		t.Errorf("the same restore again: said %q, toasts %q", got, toasted)
+	}
+	// The same words for a later action are a new toast.
+	again := restored
+	again.Result.At = msgT0.Add(time.Minute)
+	if send(l, again); !strings.HasPrefix(toasted, "success: The world is restored") {
+		t.Errorf("a later restore: toasts %q", toasted)
 	}
 
 	l = &liveStream{render: r, sent: map[string]string{}}
@@ -273,8 +291,14 @@ func TestLiveAnnouncements(t *testing.T) {
 	other := serverCase(game.StateRunning, func(p *ServerPage) {
 		p.Others = []actionResult{{Action: game.AuditStop, Err: game.ErrNotRunning}}
 	})
-	if got := send(l, other); got != "Error: The stop asked for during another action did not finish: The game is not running." {
-		t.Errorf("a refused stop: %q", got)
+	if got := send(l, other); got != "" || toasted != "error: The stop asked for during another action did not finish: The game is not running." {
+		t.Errorf("a refused stop: said %q, toasts %q", got, toasted)
+	}
+	// A failure stays on the plate and is said; it is no toast.
+	l = &liveStream{render: r, sent: map[string]string{}}
+	send(l, serverCase(game.StateStopped, func(*ServerPage) {}))
+	if send(l, failed(game.StateStopped, startFailed)); toasted != "" {
+		t.Errorf("a failure was a toast: %q", toasted)
 	}
 }
 
@@ -286,10 +310,12 @@ func TestOtherActionsErrorShownApart(t *testing.T) {
 		p.Others = []actionResult{{Action: game.AuditStop, Err: game.ErrNotRunning}}
 	})
 	html := controlHTML(t, p)
-	for _, want := range []string{"did not finish saving in time", "The stop asked for during another action did not finish: The game is not running."} {
-		if !strings.Contains(html, want) {
-			t.Errorf("missing %q in\n%s", want, html)
-		}
+	if !strings.Contains(html, "did not finish saving in time") {
+		t.Errorf("missing the failure in\n%s", html)
+	}
+	// The other action's error is a toast of its own (DESIGN 6).
+	if ts := p.ResultToasts(); len(ts) != 1 || !ts[0].Error || english(ts[0].Text) != "The stop asked for during another action did not finish: The game is not running." {
+		t.Errorf("toasts %+v", ts)
 	}
 }
 

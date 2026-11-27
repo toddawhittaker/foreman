@@ -1051,21 +1051,23 @@ func TestPlayerRowsOfferTheirActions(t *testing.T) {
 	wantNone(t, "the stop's list", html, "<details", "act-kick")
 }
 
-// The result of a player action shows once in the players card, above the
-// table and outside its live region, with Undo posting the opposite change
-// back to the Server page (DESIGN 8.12).
+// The result of a player action shows once, as a toast, and its Undo sits
+// under the table, outside its live region, so no row moves; Undo posts the
+// opposite change back to the Server page (DESIGN 6, 8.12).
 func TestPlayerResultOnTheServerPage(t *testing.T) {
 	body := pageHTML(t, liveOpsCase(func(p *ServerPage) {
 		p.PlayerResult = &PlayerResult{WorldID: "base", WorldName: "Base", Action: game.PlayerPromote, Name: "alice", Return: PathServer}
 	}))
 	wantAll(t, "the Server page", body,
-		`<div class="message message--success" id="player-done" tabindex="-1" autofocus>`,
+		`<div class="toast toast--success" data-toast>`,
 		"alice is now an admin of Base.",
+		`<div class="actions result-undo" id="player-undo">`,
 		`<form method="post" action="/worlds/base/players/demote">`,
 		`Undo: remove alice as admin`)
-	done, region := strings.Index(body, `id="player-done"`), strings.Index(body, `sse-swap="players"`)
-	if done < 0 || region < 0 || done > region {
-		t.Errorf("the result must come before the players region: result at %d, region at %d", done, region)
+	wantNone(t, "the Server page", body, `id="player-done"`, "autofocus")
+	undoAt, region := strings.Index(body, `id="player-undo"`), strings.Index(body, `sse-swap="players"`)
+	if undoAt < 0 || region < 0 || undoAt < region {
+		t.Errorf("the Undo must come after the players region: Undo at %d, region at %d", undoAt, region)
 	}
 	undo := body[strings.Index(body, `action="/worlds/base/players/demote"`):]
 	wantAll(t, "the Undo form", undo[:strings.Index(undo, "</form>")], `<input type="hidden" name="return" value="/">`)
@@ -1074,8 +1076,8 @@ func TestPlayerResultOnTheServerPage(t *testing.T) {
 		p.PlayerResult = &PlayerResult{WorldID: "base", WorldName: "Base", Action: game.PlayerKick, Name: "alice",
 			Error: i18n.M("players.error.refused", "name", "alice", "world", "Base"), Reply: "Player not found."}
 	}))
-	wantAll(t, "a refused kick", body, `id="player-error"`, `<span lang="en">Player not found.</span>`)
-	wantNone(t, "a refused kick", body, `id="player-done"`)
+	wantAll(t, "a refused kick", body, `<div class="toast toast--error" data-toast>`, `Player not found.`)
+	wantNone(t, "a refused kick", body, `id="player-undo"`, `toast--success`)
 }
 
 // The crash notice names the catalogue's reason in plain words, and a
@@ -1246,7 +1248,7 @@ func TestPlayerIDsAreUniqueWhateverTheName(t *testing.T) {
 		}
 	}
 	// The fixed ids are the page's own, not a player's.
-	for _, id := range []string{"player-done", "ps-undo", "players-heading"} {
+	for _, id := range []string{"player-undo", "ps-undo", "players-heading"} {
 		if seen[id] != 1 {
 			t.Errorf("id %q appears %d times, want once", id, seen[id])
 		}

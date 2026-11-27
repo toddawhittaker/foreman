@@ -336,7 +336,7 @@ test("an empty state is centred across its plate", async ({ page, foreman, fakeG
     await page.goto(path);
     // The pages still draw their own empty states, so the partial's markup takes the place of the first.
     await page.locator("main .empty--art").first().evaluate((old, markup) => (old.outerHTML = markup), emptyState);
-    const m = await page.locator("main .empty--art:has(.empty__text)").evaluate((e) => {
+    const m = await page.locator("main .empty--art:has(.empty__text)").first().evaluate((e) => {
       const box = e.getBoundingClientRect();
       const cs = getComputedStyle(e);
       const plate = e.parentElement!;

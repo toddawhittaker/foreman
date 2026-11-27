@@ -3,6 +3,7 @@ package web
 import (
 	"cmp"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -483,17 +484,7 @@ func labelled(label, text i18n.Msg) i18n.Msg {
 // page shows: errors first, then a restore that finished (DESIGN 7.5). It
 // is zero when there is nothing to say.
 func resultAnnouncement(p ServerPage) i18n.Msg {
-	var said []i18n.Msg
-	if f := p.Failure(); f != nil {
-		msg := f.Message
-		if f.Next != nil {
-			msg = join(msg, f.Next.Label)
-		}
-		said = append(said, labelled(f.Word(), msg))
-		if f.Anyway != nil {
-			said = append(said, f.Anyway.Offer)
-		}
-	}
+	said := failureSaid(p)
 	for _, e := range p.OtherErrors() {
 		said = append(said, labelled(i18n.M("common.error.label"), e))
 	}
@@ -515,4 +506,95 @@ func resultAnnouncement(p ServerPage) i18n.Msg {
 		return i18n.Msg{}
 	}
 	return join(said[0], said[1:]...)
+}
+
+// failureSaid is what a live page reads out for a failed result, which stays
+// on the page rather than in a toast.
+func failureSaid(p ServerPage) []i18n.Msg {
+	f := p.Failure()
+	if f == nil {
+		return nil
+	}
+	msg := f.Message
+	if f.Next != nil {
+		msg = join(msg, f.Next.Label)
+	}
+	said := []i18n.Msg{labelled(f.Word(), msg)}
+	if f.Anyway != nil {
+		said = append(said, f.Anyway.Offer)
+	}
+	return said
+}
+
+// failureAnnouncement is failureSaid as one sentence, zero when nothing
+// failed. A live page reads it out when the result changes; the result's
+// other words are toasts, which read themselves out (DESIGN 6).
+func failureAnnouncement(p ServerPage) i18n.Msg {
+	said := failureSaid(p)
+	if len(said) == 0 {
+		return i18n.Msg{}
+	}
+	return join(said[0], said[1:]...)
+}
+
+// ResultToasts are the results the plate sums up as toasts: the Done
+// message, the errors of actions asked for during another, and a download
+// that worked (DESIGN 6, "Toasts"). A failure stays in the plate, since it
+// carries its next steps.
+func (p ServerPage) ResultToasts() []Toast {
+	var out []Toast
+	if d := p.Done(); !d.IsZero() {
+		out = append(out, Toast{Text: d})
+	}
+	for _, e := range p.OtherErrors() {
+		out = append(out, Toast{Error: true, Text: e})
+	}
+	if d := p.Downloaded(); !d.IsZero() {
+		out = append(out, Toast{Text: d})
+	}
+	return out
+}
+
+// toasts: the plate's results, then the admin's last player action, whose
+// Undo stays under the players list (DESIGN 8.12).
+func (p ServerPage) toasts() []Toast {
+	if !p.HasWorld {
+		return nil
+	}
+	out := p.ResultToasts()
+	if r := p.PlayerDone(); r != nil {
+		out = append(out, Toast{Text: withReply(r.Done(), r.Reply)})
+	}
+	if r := p.PlayerFailed(); r != nil {
+		out = append(out, Toast{Error: true, Text: withReply(r.Error, r.Reply)})
+	}
+	return out
+}
+
+// withReply adds the game's own answer, in English, after a player action's
+// sentence.
+func withReply(m i18n.Msg, reply string) i18n.Msg {
+	if reply == "" {
+		return m
+	}
+	return join(m, i18n.M("server.problem.other", "text", reply))
+}
+
+// toastMark stands for the result toasts p shows: the results' times and the
+// toasts' count, so the live stream sends each toast once, and the same words
+// for a later action again. It is "" when there are none.
+func (p ServerPage) toastMark() string {
+	ts := p.ResultToasts()
+	if len(ts) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	if p.HaveResult {
+		fmt.Fprintf(&b, "%d", p.Result.At.UnixNano())
+	}
+	for _, o := range p.Others {
+		fmt.Fprintf(&b, ".%d", o.At.UnixNano())
+	}
+	fmt.Fprintf(&b, ".%d", len(ts))
+	return b.String()
 }

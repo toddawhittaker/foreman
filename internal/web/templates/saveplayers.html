@@ -30,13 +30,11 @@
 </div>
 {{- end}}
 {{- if eq .Kind "reading"}}
-<div class="message message--note" id="save-players-status">
-  <p><strong>{{t "common.label.note"}}</strong> {{t "saveplayers.reading"}}</p>
-</div>
+<div id="save-players-status">{{template "working" (t "saveplayers.reading")}}</div>
 {{- else if eq .Kind "unavailable"}}
-<p class="empty">{{t "saveplayers.unavailable"}}</p>
+{{template "empty" (empty "players" (t "saveplayers.unavailable"))}}
 {{- else if eq .Kind "no-save"}}
-<p class="empty">{{t "saveplayers.no_save"}}</p>
+{{template "empty" (empty "players" (t "saveplayers.no_save"))}}
 {{- else}}
 {{- if eq .Kind "never"}}
 <p>{{t "saveplayers.never"}}</p>
@@ -72,7 +70,7 @@
   </tbody>
 </table>
 {{- else if or (eq .Kind "ready") (eq .Kind "tracked") (eq .Kind "unsupported")}}
-<p class="empty">{{t "saveplayers.nobody"}}</p>
+{{template "empty" (empty "players" (t "saveplayers.nobody"))}}
 {{- end}}
 {{- if .CanRead}}
 <div class="actions">

@@ -522,7 +522,8 @@ export const version20 = image20.split(":")[1];
 // What the Server page and the click budgets read: the state badge, the "Done:" box, and the wait for a slow step.
 export const live = { timeout: 20_000 };
 export const stateBadge = (page: Page) => page.locator("main h1 .state");
-export const doneBox = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
+// A Done message: a toast where the page has moved onto them (DESIGN 6), else an in-page box.
+export const doneBox = (page: Page) => page.locator(".message--success, #toasts .toast--success").filter({ hasText: "Done:" });
 
 // How many game containers the fake has been asked to create, so a test sees a game start again.
 // One-off runs do not count: a view of a stopped world may start a read of its save's players
