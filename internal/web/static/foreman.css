@@ -15103,6 +15103,19 @@ form.general-grid.setting-rows .setting-row__body .hint {
   margin-inline-start: var(--space-4);
 }
 
+/* At large text the summary and Update all cannot share a line, so each
+   takes the panel's width on its own row, Update all without its gap. */
+@container (max-width: 17rem) {
+  #main section[data-view="installed"].panel > :is(.group__head, #mod-status) {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  #main section[data-view="installed"].panel > .group__head > .group__action:not(:empty) {
+    margin-inline-start: 0;
+  }
+}
+
 /* A segment that holds a radio is a full 44 px target, as every other
    label of a radio is. */
 .segmented > label,
