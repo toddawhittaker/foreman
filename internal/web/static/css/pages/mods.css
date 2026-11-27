@@ -339,6 +339,7 @@ ol.plan-steps > li:not(:last-child)::after {
   .mod-list tr {
     display: block;
     padding-block: var(--space-2);
+    padding-inline: var(--cell-pad);
     border-block-end: var(--border-width) solid var(--color-line);
   }
 
@@ -528,8 +529,14 @@ ol.plan-steps > li:not(:last-child)::after {
     border-block-end: 0;
   }
 
+  /* The first cell lends its parts to the row, so the row gives them the
+     start padding the cell would have had. */
   .mod-list tbody td:first-child {
     display: contents;
+  }
+
+  .mod-list tbody tr {
+    padding-inline-start: var(--cell-pad);
   }
 
   .mod-list .mod-line {

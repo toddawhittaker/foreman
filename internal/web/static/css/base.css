@@ -469,19 +469,19 @@ main td time {
   }
 }
 
-/* Below 360 px plates lie flat, with no padding to pull a table into, so a
-   table keeps to its plate (DESIGN 4). */
-@media (max-width: 22.4rem) {
-  table {
-    inline-size: 100%;
-    margin-inline: 0;
-  }
-}
-
 /* Four columns at phone width need tighter gutters (DESIGN 8.3). */
 @container (max-width: 24rem) {
   table {
     --cell-pad: var(--space-2);
+  }
+}
+
+/* Below 360 px plates lie flat, with no padding to pull a table into, so
+   the cells lose their side padding and a table's text starts under the
+   plate's title (DESIGN 4). This comes after the phone gutters above. */
+@media (max-width: 22.4rem) {
+  table {
+    --cell-pad: 0px;
   }
 }
 

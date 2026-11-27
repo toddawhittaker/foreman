@@ -511,15 +511,6 @@
   font-size: var(--text-sm);
 }
 
-/* Under reduced motion the bar stands still in the middle of its track;
-   the words still say what is happening. */
-@media (prefers-reduced-motion: reduce) {
-  .working__bar::before {
-    animation: none;
-    transform: translateX(116.667%);
-  }
-}
-
 @media (forced-colors: active) {
   .working__bar {
     forced-color-adjust: none;
@@ -529,6 +520,23 @@
 
   .working__bar::before {
     background: Highlight;
+  }
+}
+
+/* Under reduced motion the bar stands still. A still segment part way along
+   would read as a share done, so it fills the track in a muted tone; the
+   words say what is happening. */
+@media (prefers-reduced-motion: reduce) {
+  .working__bar::before {
+    inline-size: 100%;
+    background: var(--color-text-faint);
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (forced-colors: active) {
+  .working__bar::before {
+    background: GrayText;
   }
 }
 

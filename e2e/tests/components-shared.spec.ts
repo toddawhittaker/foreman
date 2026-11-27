@@ -1,6 +1,6 @@
-import { test, expect, createAdmin, seedWorld, seedSecond, image21, type FakeGame, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, live, stateBadge, type FakeGame, type Foreman } from "./foreman.js";
 import { chromium, firefox, webkit, type Browser, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { copyFileSync, readFileSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 
 // The shared components (DESIGN 7) have one look and one size on every page
@@ -14,6 +14,9 @@ test.use({ fakeGameOn: true, foremanEnv: { FOREMAN_SECRET_KEY: "componentscompon
 
 // The working bar's markup, as the working partial renders it (components_test.go checks the same file).
 const workingBar = readFileSync(join(import.meta.dirname, "..", "testdata", "working-bar.html"), "utf8");
+
+// The empty partial's markup, as components_test.go renders it.
+const emptyState = readFileSync(join(import.meta.dirname, "..", "testdata", "empty-state.html"), "utf8");
 
 // The raised face and the strong hairline, read from the page's own tokens.
 async function tokens(page: Page) {
@@ -30,31 +33,63 @@ async function tokens(page: Page) {
   });
 }
 
-async function seed(page: Page, foreman: Foreman, fakeGame: FakeGame | undefined) {
+// The active world "base" with a second, older save (so its saves list has a
+// Load button and two rows), the world "Second", and the game image.
+async function seed(page: Page, foreman: Foreman, fakeGame: FakeGame | undefined, opts: Parameters<typeof seedWorld>[1] = {}) {
   await createAdmin(page);
-  seedWorld(foreman);
+  seedWorld(foreman, opts);
+  const saves = join(foreman.dataDir, "worlds", "base", "saves");
+  const older = new Date(Date.now() - 86_400_000);
+  copyFileSync(join(saves, "base.zip"), join(saves, "older.zip"));
+  utimesSync(join(saves, "older.zip"), older, older);
   seedSecond(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
 }
 
+// The pages whose buttons are measured, each with the buttons that sit in a
+// row of a list or table, named by their own ids or selectors.
+const buttonPages: [string, string[]][] = [
+  ["/", []],
+  ["/worlds", ['main a.button[aria-describedby^="world-"]', 'main a.button[href$="/switch"]']],
+  ["/worlds/base/saves", ['main button[name="load"]']],
+  ["/settings/users", []],
+  ["/settings/api-tokens", []],
+  ["/settings/general", []],
+  ["/import", []],
+];
+
+async function buttonHeights(page: Page) {
+  const heights: Record<string, Set<number>> = { page: new Set(), row: new Set() };
+  let rows = 0;
+  for (const [path, rowButtons] of buttonPages) {
+    await page.goto(path);
+    const found = await page.evaluate((rowSel) => {
+      const row = new Set(rowSel.flatMap((s) => [...document.querySelectorAll(s)]));
+      return [...document.querySelectorAll("main .button")]
+        .filter((b) => b.getBoundingClientRect().height > 0 && getComputedStyle(b).visibility !== "hidden")
+        .map((b) => ({ row: row.has(b), height: b.getBoundingClientRect().height }));
+    }, rowButtons);
+    expect(found.length, path).toBeGreaterThan(0);
+    expect(found.filter((b) => b.row).length > 0, `${path} has its row buttons`).toBe(rowButtons.length > 0);
+    for (const b of found) heights[b.row ? "row" : "page"].add(b.height);
+    rows += found.filter((b) => b.row).length;
+  }
+  expect(rows).toBeGreaterThan(1);
+  return { page: [...heights.page], row: [...heights.row] };
+}
+
 test("a button has one height per role: 44 px on a page, 36 px in a row", async ({ page, foreman, fakeGame }) => {
   await seed(page, foreman, fakeGame);
-  const heights: Record<string, Set<number>> = { page: new Set(), row: new Set() };
-  for (const path of ["/", "/worlds", "/worlds/base/saves", "/settings/users", "/settings/api-tokens", "/settings/general", "/import"]) {
-    await page.goto(path);
-    const found = await page.evaluate(() =>
-      [...document.querySelectorAll("main .button")]
-        .filter((b) => b.getBoundingClientRect().height > 0 && getComputedStyle(b).visibility !== "hidden")
-        .map((b) => ({
-          row: !!b.closest("td, .row-actions, .worlds > li, .favorite-list > li, .token-card, .token-list, .webhook-list"),
-          height: b.getBoundingClientRect().height,
-        })),
-    );
-    expect(found.length, path).toBeGreaterThan(0);
-    for (const b of found) heights[b.row ? "row" : "page"].add(b.height);
-  }
-  expect([...heights.page]).toEqual([44]);
-  expect([...heights.row]).toEqual([36]);
+  expect(await buttonHeights(page)).toEqual({ page: [44], row: [36] });
+});
+
+test.describe("on a touch screen", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test("every button is 44 px, in a row as on a page", async ({ page, foreman, fakeGame }) => {
+    await seed(page, foreman, fakeGame);
+    expect(await buttonHeights(page)).toEqual({ page: [44], row: [44] });
+  });
 });
 
 test("every plate's title is the band", async ({ page, foreman, fakeGame }) => {
@@ -133,51 +168,203 @@ test("every form ends in one foot bar: raised, last, Cancel then the primary at 
   }
 });
 
-test("a highlighted row keeps its content inside the highlight, and the table lines up with its title", async ({ page, foreman, fakeGame }) => {
-  await seed(page, foreman, fakeGame);
-  for (const path of ["/worlds/base/saves", "/settings/audit-log", "/worlds/base"]) {
-    await page.goto(path);
-    const row = page.locator("main table tbody tr").first();
+// Each row of the table: its padding inside the highlight at both ends, the
+// first cell's text against the plate's title, and in y the cells filling
+// the row's box with even space above and below. A cell that lends its box to
+// the row (display: contents) is measured by its children.
+async function measureRows(page: Page, table: string) {
+  const rows = page.locator(`${table} tbody tr`);
+  await expect(rows.first()).toBeVisible(live);
+  const count = await rows.count();
+  expect(count, table).toBeGreaterThan(0);
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const row = rows.nth(i);
     await row.hover();
-    const m = await row.evaluate((tr) => {
-      const cells = [...tr.children].filter((c) => c.getBoundingClientRect().width > 0);
-      const box = tr.getBoundingClientRect();
-      const inner = (c: Element) => {
-        const r = c.getBoundingClientRect();
-        const cs = getComputedStyle(c);
-        return { left: r.left + parseFloat(cs.paddingLeft), right: r.right - parseFloat(cs.paddingRight) };
-      };
-      const plate = tr.closest(".panel, .card")!;
+    out.push(
+      await row.evaluate((tr) => {
+        const boxes = (c: Element): Element[] => (getComputedStyle(c).display === "contents" ? [...c.children].flatMap(boxes) : [c]);
+        const cells = [...tr.children].flatMap(boxes).filter((c) => c.getBoundingClientRect().width > 0);
+        const box = tr.getBoundingClientRect();
+        const trs = getComputedStyle(tr);
+        const inner = (c: Element) => {
+          const r = c.getBoundingClientRect();
+          const cs = getComputedStyle(c);
+          return { left: r.left + parseFloat(cs.paddingLeft), right: r.right - parseFloat(cs.paddingRight) };
+        };
+        // The plate's title, or where its text would start when the title is
+        // only for screen readers: the plate's content edge.
+        const plate = tr.closest(".panel, .card")!;
+        const head = [...plate.children].find((c) => !c.matches('input[type="hidden"], [hidden]'))!;
+        const heading = head.matches("h2") ? head : head.querySelector("h2, h3")!;
+        const titleText = document.createRange();
+        titleText.selectNodeContents(heading);
+        const ps = getComputedStyle(plate);
+        const titleLeft = heading.matches(".visually-hidden")
+          ? plate.getBoundingClientRect().left + parseFloat(ps.borderLeftWidth) + parseFloat(ps.paddingLeft)
+          : titleText.getBoundingClientRect().left;
+        // The first column's name, when the column names are shown.
+        const thead = tr.closest("table")!.tHead!;
+        const th = thead.querySelector("th")!;
+        const thShown = getComputedStyle(thead).position !== "absolute" && th.getBoundingClientRect().width > 1;
+        const top = Math.min(...cells.map((c) => c.getBoundingClientRect().top));
+        const bottom = Math.max(...cells.map((c) => c.getBoundingClientRect().bottom));
+        const probe = document.createElement("span");
+        probe.style.paddingLeft = "var(--cell-pad)";
+        tr.lastElementChild!.append(probe);
+        const pad = parseFloat(getComputedStyle(probe).paddingLeft);
+        probe.remove();
+        // Layout is in 1/64 px units; a plate's padding in rem leaves float noise below that.
+        const px = (n: number) => Math.round(n * 64) / 64 + 0;
+        return {
+          bg: getComputedStyle(tr).backgroundColor,
+          startPad: px(Math.min(...cells.map((c) => inner(c).left)) - box.left - pad),
+          endPad: px(box.right - Math.max(...cells.map((c) => inner(c).right)) - pad),
+          textToTitle: px(inner(cells[0]).left - titleLeft),
+          textToHeader: thShown ? px(inner(cells[0]).left - inner(th).left) : 0,
+          cellsFillRow:
+            top - box.top - parseFloat(trs.borderTopWidth) - parseFloat(trs.paddingTop) === 0 &&
+            box.bottom - bottom - parseFloat(trs.borderBottomWidth) - parseFloat(trs.paddingBottom) === 0,
+          evenAboveBelow: trs.paddingTop === trs.paddingBottom,
+          padSet: pad > 0,
+        };
+      }),
+    );
+  }
+  return out;
+}
+
+const rowPages: [string, string][] = [
+  ["/worlds/base/saves", "main table"],
+  ["/settings/audit-log", "main table"],
+  ["/worlds/base", "main #save-players-table"],
+  ["/worlds/base/mods", "main .mod-list"],
+];
+
+for (const width of [1920, 390]) {
+  // On a phone the saves list and the audit log lay each row out as a record
+  // of its own, whose cells drop their padding (pages/worlds.css and
+  // pages/settings.css); they are left out of the phone run until those
+  // pages adopt the row padding.
+  const phoneOwnLayout = ["/worlds/base/saves", "/settings/audit-log"];
+  const pages = width === 1920 ? rowPages : rowPages.filter(([path]) => !phoneOwnLayout.includes(path));
+  test.describe(`at ${width} px`, () => {
+    test.use({ viewport: { width, height: 1000 } });
+
+    test("every highlighted row keeps its content inside the highlight, and the table lines up with its title", async ({ page, foreman, fakeGame }) => {
+      await seed(page, foreman, fakeGame, { mods: { "fp-one": "2.1", "fp-two": "2.1", "fp-three": "2.1" } });
+      let rows = 0;
+      for (const [path, table] of pages) {
+        await page.goto(path);
+        const { raised } = await tokens(page);
+        const want = { bg: raised, startPad: 0, endPad: 0, textToTitle: 0, textToHeader: 0, cellsFillRow: true, evenAboveBelow: true, padSet: true };
+        const measured = await measureRows(page, table);
+        rows += measured.length;
+        for (const [i, m] of measured.entries()) expect(m, `${path} row ${i + 1}`).toEqual(want);
+      }
+      expect(rows).toBeGreaterThan(pages.length);
+    });
+  });
+}
+
+test.describe("below 360 px, where plates lie flat", () => {
+  test.use({ viewport: { width: 340, height: 800 } });
+
+  test("a table's text lines up with the plate's title", async ({ page, foreman, fakeGame }) => {
+    await seed(page, foreman, fakeGame);
+    await page.goto("/worlds/base/saves");
+    const m = await page.locator("main table").first().evaluate((table) => {
+      const plate = table.closest(".panel, .card")!;
       const head = [...plate.children].find((c) => !c.matches('input[type="hidden"], [hidden]'))!;
       const titleText = document.createRange();
       titleText.selectNodeContents(head.matches("h2") ? head : head.querySelector("h2, h3")!);
+      const title = titleText.getBoundingClientRect().left;
+      const cells = [...table.querySelectorAll("tr > :first-child")].filter((c) => c.getBoundingClientRect().width > 0);
       return {
-        bg: getComputedStyle(tr).backgroundColor,
-        startPad: inner(cells[0]).left - box.left,
-        endPad: box.right - inner(cells[cells.length - 1]).right,
-        textToTitle: inner(cells[0]).left - titleText.getBoundingClientRect().left,
+        toTitle: [...new Set(cells.map((c) => c.getBoundingClientRect().left + parseFloat(getComputedStyle(c).paddingLeft) - title))],
+        noScroll: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
       };
     });
-    const { raised } = await tokens(page);
-    expect(m, path).toEqual({ bg: raised, startPad: 12, endPad: 12, textToTitle: 0 });
-  }
+    expect(m).toEqual({ toTitle: [0], noScroll: true });
+  });
+});
+
+// A table may be pulled into its plate's padding, through wrapper boxes that
+// draw nothing, but it must not make any box scroll or clip it, nor the page
+// scroll sideways, nor reach past the inside of its plate's frame.
+async function noSidewaysScroll(page: Page, table: string) {
+  return page.locator(table).evaluate((t) => {
+    const box = t.getBoundingClientRect();
+    const name = (e: Element) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}${e.classList.length ? "." + [...e.classList].join(".") : ""}`;
+    const clipped: string[] = [];
+    for (let e: Element | null = t.parentElement; e && e !== document.documentElement; e = e.parentElement) {
+      if (getComputedStyle(e).overflowX !== "visible" && e.scrollWidth > e.clientWidth) clipped.push(`${name(e)} ${e.scrollWidth} > ${e.clientWidth}`);
+    }
+    const plate = t.closest(".panel, .card")!;
+    const p = plate.getBoundingClientRect();
+    const ps = getComputedStyle(plate);
+    const inner = { left: p.left + parseFloat(ps.borderLeftWidth), right: p.right - parseFloat(ps.borderRightWidth) };
+    return {
+      page: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      clipped,
+      inPlate: box.left >= inner.left && box.right <= inner.right,
+    };
+  });
+}
+
+test.describe("at 360 px", () => {
+  test.use({ viewport: { width: 360, height: 800 } });
+
+  test("the save's players table and the Server page's players table stay inside their boxes", async ({ page, foreman, fakeGame }) => {
+    await seed(page, foreman, fakeGame);
+    await page.goto("/worlds/base");
+    await expect(page.locator("#save-players-table")).toBeVisible();
+    expect(await noSidewaysScroll(page, "#save-players-table")).toEqual({ page: true, clipped: [], inPlate: true });
+
+    await page.goto("/");
+    await page.getByRole("button", { name: "Start server" }).click();
+    await expect(stateBadge(page)).toHaveText("Running", live);
+    await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
+    await expect(page.locator("#server-players-table")).toBeVisible(live);
+    expect(await noSidewaysScroll(page, "#server-players-table")).toEqual({ page: true, clipped: [], inPlate: true });
+  });
 });
 
 test("an empty state is centred across its plate", async ({ page, foreman, fakeGame }) => {
   await seed(page, foreman, fakeGame);
   for (const path of ["/deleted", "/chat"]) {
     await page.goto(path);
-    const m = await page.locator("main .empty--art").first().evaluate((e) => {
+    // The pages still draw their own empty states, so the partial's markup takes the place of the first.
+    await page.locator("main .empty--art").first().evaluate((old, markup) => (old.outerHTML = markup), emptyState);
+    const m = await page.locator("main .empty--art:has(.empty__text)").evaluate((e) => {
       const box = e.getBoundingClientRect();
-      const parent = e.parentElement!;
-      const cs = getComputedStyle(parent);
-      const p = parent.getBoundingClientRect();
-      const left = p.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
-      const right = p.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
+      const cs = getComputedStyle(e);
+      const plate = e.parentElement!;
+      const ps = getComputedStyle(plate);
+      const p = plate.getBoundingClientRect();
+      const left = p.left + parseFloat(ps.borderLeftWidth) + parseFloat(ps.paddingLeft);
+      const right = p.right - parseFloat(ps.borderRightWidth) - parseFloat(ps.paddingRight);
+      const centre = (left + right) / 2;
+      // The drawing is the first grid item: it starts at the top of the
+      // content box, centred in its one track.
       const art = getComputedStyle(e, "::before");
-      return { left: box.left - left, right: right - box.right, art: `${art.width} ${art.height}` };
+      const contentLeft = box.left + parseFloat(cs.paddingLeft);
+      const track = box.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const artWidth = parseFloat(art.width);
+      const artLeft = contentLeft + (cs.justifyItems === "center" && art.justifySelf === "auto" ? (track - artWidth) / 2 : 0);
+      const artTop = box.top + parseFloat(cs.paddingTop);
+      const text = e.querySelector(".empty__text")!.getBoundingClientRect();
+      return {
+        box: { left: box.left - left, right: right - box.right },
+        artCentre: artLeft + artWidth / 2 - centre,
+        textCentre: text.left + text.width / 2 - centre,
+        artTop: artTop - box.top,
+        textTop: text.top - (artTop + parseFloat(art.height)),
+        art: `${art.width} ${art.height}`,
+      };
     });
-    expect(m, path).toEqual({ left: 0, right: 0, art: "160px 96px" });
+    // The drawing sits 24 px below the empty state's top, and the sentence 8 px below the drawing.
+    expect(m, path).toEqual({ box: { left: 0, right: 0 }, artCentre: 0, textCentre: 0, artTop: 24, textTop: 8, art: "160px 96px" });
   }
 });
 
@@ -243,7 +430,7 @@ test("the working bar is the same box and motion in Chromium, Firefox and WebKit
   expect(results).toEqual({ chromium: want, firefox: want, webkit: want });
 });
 
-test("under reduced motion the working bar stands still and stays in view", async ({ page, foreman, fakeGame }) => {
+test("under reduced motion the working bar stands still, fills its track in a muted tone, and stays in view", async ({ page, foreman, fakeGame }) => {
   await seed(page, foreman, fakeGame);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
@@ -251,7 +438,75 @@ test("under reduced motion the working bar stands still and stays in view", asyn
   expect(m.motion).toMatch(/^none /);
   expect(m.bar).toEqual({ width: 320, height: 8 });
   expect(m.segment.shown).toBe("visible");
-  // It stands in the middle of its track.
-  const middle = await page.locator("#working-host .working__bar").evaluate((b) => getComputedStyle(b, "::before").transform);
-  expect(middle).toMatch(/^matrix\(1, 0, 0, 1, 111\.\d+, 0\)$/);
+  // A still segment part way along would read as a share done, so it fills the track.
+  const still = await page.locator("#working-host .working__bar").evaluate((b) => {
+    const seg = getComputedStyle(b, "::before");
+    const probe = document.createElement("div");
+    document.body.append(probe);
+    probe.style.backgroundColor = "var(--color-text-faint)";
+    const faint = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return { width: parseFloat(seg.width), track: b.clientWidth, transform: seg.transform, muted: seg.backgroundColor === faint };
+  });
+  expect(still).toEqual({ width: still.track, track: 318, transform: "none", muted: true });
+});
+
+for (const colorScheme of ["dark", "light"] as const) {
+  test(`the working bar passes the accessibility scan in the ${colorScheme} theme`, async ({ page, foreman, fakeGame }) => {
+    await seed(page, foreman, fakeGame);
+    await page.emulateMedia({ colorScheme });
+    await page.goto("/");
+    await measureWorkingBar(page);
+    await page.locator("#working-host .working").evaluate((w) => w.classList.remove("working--idle"));
+    await expect(page.locator("#working-host .working__text")).toBeVisible();
+    await checkPage(page);
+  });
+}
+
+test("a checkbox in the mixed state shows a dash on the heading colour", async ({ page, foreman, fakeGame }) => {
+  await seed(page, foreman, fakeGame);
+  for (const colorScheme of ["dark", "light"] as const) {
+    await page.emulateMedia({ colorScheme, forcedColors: "none" });
+    await page.goto("/");
+    const m = await page.evaluate(() => {
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.indeterminate = true;
+      document.querySelector("main")!.prepend(box);
+      const probe = document.createElement("div");
+      document.body.append(probe);
+      probe.style.backgroundColor = "var(--color-heading)";
+      const heading = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      const cs = getComputedStyle(box);
+      const mark = getComputedStyle(box, "::before");
+      return { fill: cs.backgroundColor === heading, edge: cs.borderTopColor === heading, shown: mark.transform, dash: mark.maskImage.includes("M5 12h14") };
+    });
+    expect(m, colorScheme).toEqual({ fill: true, edge: true, shown: "matrix(1, 0, 0, 1, 0, 0)", dash: true });
+  }
+  // In forced colours the box is the system's own control, which draws the mixed state itself.
+  await page.emulateMedia({ forcedColors: "active" });
+  await page.goto("/");
+  const forced = await page.evaluate(() => {
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.indeterminate = true;
+    document.querySelector("main")!.prepend(box);
+    return { appearance: getComputedStyle(box).appearance, mark: getComputedStyle(box, "::before").content };
+  });
+  expect(forced).toEqual({ appearance: "auto", mark: "none" });
+});
+
+test("a tab's radio stays hidden at 1 px, not drawn as a checkbox", async ({ page, foreman, fakeGame }) => {
+  await seed(page, foreman, fakeGame);
+  await page.goto("/");
+  const m = await page.evaluate(() => {
+    const label = document.createElement("label");
+    label.className = "tab";
+    label.innerHTML = '<input type="radio" name="probe-tab"> Probe';
+    document.querySelector("main")!.prepend(label);
+    const r = label.querySelector("input")!.getBoundingClientRect();
+    return { width: r.width, height: r.height };
+  });
+  expect(m).toEqual({ width: 1, height: 1 });
 });
