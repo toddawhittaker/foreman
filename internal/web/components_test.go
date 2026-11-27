@@ -33,19 +33,31 @@ func TestWorkingBarMarkup(t *testing.T) {
 	if got != string(want) {
 		t.Errorf("working bar:\n got %s\nwant %s", got, want)
 	}
-	bare, err := renderComponent(t, "working", "")
-	if err != nil {
-		t.Fatal(err)
+	// The bar alone says nothing, so it is refused.
+	for _, words := range []any{"", nil, template.HTML("")} {
+		if bare, err := renderComponent(t, "working", words); err == nil {
+			t.Errorf("a working bar with words %#v renders: %s", words, bare)
+		}
 	}
-	if bare != `<span class="working"><span class="working__bar" aria-hidden="true"></span></span>` {
-		t.Errorf("bar alone: %s", bare)
-	}
-	if strings.Contains(got+bare, "progress") {
+	if strings.Contains(got, "progress") {
 		t.Errorf("the working bar is not a progress element: %s", got)
 	}
 }
 
 func TestEmptyStateMarkup(t *testing.T) {
+	// The end-to-end checks centre this same markup in a plate.
+	wantDeleted, err := os.ReadFile("../../e2e/testdata/empty-state.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	deleted, err := emptyState("deleted", "Nothing has been deleted. A world you delete waits here for 30 days.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := renderComponent(t, "empty", deleted); got != string(wantDeleted) {
+		t.Errorf("empty state:\n got %s\nwant %s", got, wantDeleted)
+	}
+
 	e, err := emptyState("worlds", template.HTML(`No worlds yet. <a href="/worlds/import">Import one</a>.`), "worlds-empty")
 	if err != nil {
 		t.Fatal(err)
@@ -106,6 +118,8 @@ func TestFormFootMarkup(t *testing.T) {
 		"odd count":           {"submit"},
 		"wrong type":          {"submit", 3},
 		"cancel without text": {"submit", "Save", "cancel", "/x"},
+		// A status note is filled by a script, which finds it by its id.
+		"status without noteID": {"submit", "Save", "status", true, "note", "Unsaved"},
 	} {
 		if _, err := formFoot(pairs...); err == nil {
 			t.Errorf("%s: no error", name)

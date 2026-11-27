@@ -118,16 +118,6 @@ fieldset > .check + a {
   color: var(--color-text);
 }
 
-/* The radio is hidden but stays focusable; the whole label is its target. */
-.tab input {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  margin: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
 .tab:has(input:checked) {
   color: var(--color-text);
   font-weight: 650;
@@ -264,6 +254,31 @@ input:is([type="checkbox"], [type="radio"]):checked::before {
 input:is([type="checkbox"], [type="radio"]):disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* A checkbox for "some of these" (a select-all over a part-ticked list) is
+   filled like a ticked one, under a dash. In forced colours it is the
+   system's own control, which draws the mixed state itself. */
+input[type="checkbox"]:indeterminate {
+  background: var(--color-heading);
+  border-color: var(--color-heading);
+}
+
+input[type="checkbox"]:indeterminate::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
+  transform: scale(1);
+}
+
+/* A tab's radio is hidden but stays focusable; the whole label is its
+   target. It comes after the drawn box, whose rule has the same weight. */
+.tab input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 @media (forced-colors: active) {

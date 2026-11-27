@@ -1186,7 +1186,7 @@ the block padding is `--space-2` so a two-line label is not cramped.
   bar is the `form-foot` partial, `{{template "form-foot" (formFoot
   "submit" (t "…") "cancel" .BackPath "cancelText" (t "worlds.cancel"))}}`,
   with an optional `note`, `noteID` and `status` (a live note a script
-  fills). It is a `raised` bar with a 1 px `line` rule, the form's last
+  fills, so `status` needs a `noteID`; the render fails without one). It is a `raised` bar with a 1 px `line` rule, the form's last
   part on every page: as a plate's last part it runs to the plate's edges
   and takes its bottom corners; on its own it is a framed bar with
   `--radius-lg`, never wider than its column. The guided
@@ -1268,8 +1268,9 @@ the block padding is `--space-2` so a two-line label is not cramped.
   and password managers work.
 - **Checkboxes and radios** are drawn, every one of them: a sunk 20 px
   box (a circle for a radio) on `deep` with a 1 px `border`; chosen, the
-  `heading` colour fills it under a tick (a dot for a radio). Forced
-  colours gets the native control back. A segment's or a tab's radio is
+  `heading` colour fills it under a tick (a dot for a radio). A checkbox in
+  the mixed state (`indeterminate`) takes the same fill under a dash. Forced
+  colours gets the native control back, which draws the mixed state itself. A segment's or a tab's radio is
   hidden by its own rule. The
   input sits inside its `label`, and the label is a flex row with
   `min-block-size: var(--target-min)`, so the whole row is the target. The
@@ -1773,16 +1774,18 @@ in Chromium, Firefox and WebKit:
   `deep` with a 1 px `line-strong` edge and `--radius`, and an orange
   (`selected`) segment 30% of the track that slides from end to end and
   back, 1.2 s each way, eased. The words sit beside it in `text-muted`,
-  `--text-sm`, and wrap under it when the column is narrow. The partial
-  takes "" for the bar alone, beside words that are already on the page.
+  `--text-sm`, and wrap under it when the column is narrow. The words are
+  required: the render fails without them, because the bar alone says
+  nothing.
 - Its box is fixed: it takes the same room whether it shows or not.
   `working--idle` hides it and keeps its room, so showing or hiding it
   moves nothing.
-- Under `prefers-reduced-motion: reduce` the segment stands still in the
-  middle of the track; the bar stays in view, and the words still say what
-  is happening.
+- Under `prefers-reduced-motion: reduce` the segment stands still and
+  fills the whole track in `text-faint`, because a still segment part way
+  along would read as a share done; the bar stays in view, and the words
+  say what is happening.
 - In forced colours the track is `Canvas` with a `CanvasText` edge and
-  the segment `Highlight`.
+  the segment `Highlight` (`GrayText`, full width, under reduced motion).
 - The bar is `aria-hidden`; the words beside it, and `#announcer`, say
   "working" and "done" once each. It has no `role="progressbar"`, since
   there is no value to report. A busy button keeps its turning ring
