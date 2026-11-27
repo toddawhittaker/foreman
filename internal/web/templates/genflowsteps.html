@@ -1,6 +1,17 @@
 {{/* The guided Generate's step bar: a numbered stepper, finished steps ticked and the current one marked (SPEC 5.6, 17.10). Without script it is the way between the steps. A step with no path cannot be opened yet, or was skipped, and is plain text. Takes []FlowStep. */}}
 {{define "genflow-steps" -}}
-<nav class="flow-steps" aria-label="{{t "newmap.steps.label"}}" id="flow-steps">
+<nav class="flow-steps" aria-label="{{t "newmap.steps.label"}}" id="flow-steps">{{template "genflow-bar" .}}
+</nav>
+{{- end}}
+
+{{/* The same bar with no id, for a page that shows more than one, since an id is the page's once. Takes []FlowStep. */}}
+{{define "genflow-steps-plain" -}}
+<nav class="flow-steps" aria-label="{{t "newmap.steps.label"}}">{{template "genflow-bar" .}}
+</nav>
+{{- end}}
+
+{{/* The bar's steps and the current step's name under them. Takes []FlowStep. */}}
+{{define "genflow-bar"}}
   <ol role="list">
     {{- range .}}
     <li class="flow-step{{if .Done}} flow-step--done{{end}}{{if .Current}} flow-step--current{{end}}{{if .Skipped}} flow-step--skipped{{end}}">
@@ -13,7 +24,6 @@
   {{- range .}}{{if .Current}}
   <p class="flow-steps__now" aria-hidden="true">{{msg .Label}}</p>
   {{- end}}{{end}}
-</nav>
 {{- end}}
 
 {{/* One step's mark and name. The number is drawn from data-n, and is in the name for screen readers. Takes FlowStep. */}}
