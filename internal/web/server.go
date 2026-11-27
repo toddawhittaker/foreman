@@ -325,11 +325,13 @@ func (s *server) handleUnknown(w http.ResponseWriter, r *http.Request) {
 // unknownPathUser is who is signed in, so a mistyped address keeps the shell
 // (DESIGN 6), else empty. Nothing under the public page reads a session
 // (SPEC 9.16), and a failed lookup shows the page signed out rather than fail.
+// A stray request, such as a guessed icon, is not the user at work, so it
+// leaves the session's idle time alone (SPEC 12.8).
 func (s *server) unknownPathUser(r *http.Request) string {
 	if strings.HasPrefix(r.URL.Path, PathPublic) {
 		return ""
 	}
-	u, state, err := s.identify(r)
+	u, state, _, err := s.whoIs(r, s.sessions.Check)
 	if err != nil || state != isSignedIn {
 		return ""
 	}

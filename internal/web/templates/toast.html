@@ -1,16 +1,25 @@
-{{/* The result messages that float over the page (DESIGN 6, "Toasts"), first
-     in main so the keyboard meets them before the page. Without script they
-     stay in the page's flow and keep their room. Takes the view. */}}
+{{/* The result messages that float over the page (DESIGN 6, "Toasts"), last
+     in main so the page's h1 stays first; Escape closes the newest. Without
+     script they stay in the page's flow, at its end, and keep their room.
+     Takes the view. */}}
 {{define "toasts" -}}
 <div id="toasts" class="toasts">{{range .Toasts}}{{template "toast" .}}{{end}}</div>
 {{- end}}
 
 {{/* One message: its kind's word, its text, and a close button that needs
-     script. A message that comes after the page is this partial too, swapped
-     into #toasts. Takes Toast. */}}
+     script. A message that comes after the page is "toast-oob". Takes Toast. */}}
 {{define "toast" -}}
 <div class="toast toast--{{if .Error}}error{{else}}success{{end}}" data-toast>
 <p class="toast__text"><strong>{{if .Error}}{{t "common.error.label"}}{{else}}{{t "common.label.done"}}{{end}}</strong> <span data-toast-text>{{msg .Text}}</span></p>
 <button type="button" class="toast__close" aria-label="{{t "server.done.close"}}" data-toast-close></button>
 </div>
+{{- end}}
+
+
+{{/* A toast in an htmx answer, newest first in #toasts. htmx inserts this
+     wrapper's children, so the whole toast lands; toast.js also takes it from
+     an error answer, which htmx does not swap (DESIGN 6, "Toasts"). Takes
+     Toast. */}}
+{{define "toast-oob" -}}
+<div hx-swap-oob="afterbegin:#toasts">{{template "toast" .}}</div>
 {{- end}}

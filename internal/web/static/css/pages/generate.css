@@ -1943,7 +1943,7 @@ html:has(.large-view[open]) {
 
 @media (max-width: 30rem) {
   html:has(.generate > .gen-actions) {
-    scroll-padding-block-end: min(11rem, 50dvh);
+    --foot-bar-room: min(11rem, 50dvh);
   }
 }
 

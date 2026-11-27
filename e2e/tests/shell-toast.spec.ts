@@ -1,4 +1,4 @@
-import { test, expect, createAdmin, signOut } from "./foreman.js";
+import { test, expect, createAdmin, signOut, seedWorld, checkPage } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // The toast (DESIGN 6, "Toasts"): a result message over the page that takes
@@ -7,20 +7,39 @@ import type { Page } from "@playwright/test";
 // script the server's message sits in a slot that keeps its room.
 
 const toasts = (page: Page) => page.locator("#toasts > .toast");
-// A toast that comes after the page: the toast partial's markup, swapped into
-// #toasts as an htmx answer does it (DESIGN 6, "Toasts").
+// The "toast-oob" partial's markup, as an htmx answer carries it (DESIGN 6,
+// "Toasts"; TestToastOutOfBand pins the server's side).
+const toastOOB = (kind: "success" | "error", text: string) =>
+  `<div hx-swap-oob="afterbegin:#toasts"><div class="toast toast--${kind}" data-toast><p class="toast__text"><strong>${kind === "error" ? "Error:" : "Done:"}</strong> <span data-toast-text>${text}</span></p><button type="button" class="toast__close" aria-label="Close this message" data-toast-close></button></div></div>`;
+
+// A toast that comes after the page, put where htmx puts it: newest first.
 const show = (page: Page, kind: "success" | "error", text: string) =>
-  page.evaluate(
-    ([k, t]) => {
-      const toast = document.createElement("div");
-      toast.className = `toast toast--${k}`;
-      toast.setAttribute("data-toast", "");
-      toast.innerHTML = `<p class="toast__text"><strong>${k === "error" ? "Error:" : "Done:"}</strong> <span data-toast-text></span></p><button type="button" class="toast__close" aria-label="Close this message" data-toast-close></button>`;
-      toast.querySelector("[data-toast-text]")!.textContent = t;
-      document.getElementById("toasts")!.append(toast);
-    },
-    [kind, text],
-  );
+  page.evaluate((html) => {
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    document.getElementById("toasts")!.prepend(t.content.querySelector("[data-toast]")!);
+  }, toastOOB(kind, text));
+
+// An htmx request to a path the test answers itself, swapped into a probe
+// that must keep its words unless htmx swaps the answer.
+async function ask(page: Page, status: number, body: string) {
+  await page.route("**/toast-test", (route) => route.fulfill({ status, contentType: "text/html", body }));
+  await page.evaluate(() => {
+    const probe = document.createElement("p");
+    probe.id = "probe";
+    probe.textContent = "untouched";
+    document.querySelector("main")!.append(probe);
+    void (window as unknown as { htmx: { ajax: (v: string, p: string, o: object) => Promise<void> } }).htmx.ajax("POST", "/toast-test", { target: "#probe", swap: "innerHTML" });
+  });
+}
+
+// axe in both themes while the current state shows.
+async function checkThemes(page: Page) {
+  for (const theme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: theme });
+    await checkPage(page);
+  }
+}
 
 // What the page's own parts occupy, to prove a toast moves none of them.
 const layout = (page: Page) =>
@@ -45,8 +64,11 @@ test("a refused sign-in's error is a toast: an alert over the page, kept until c
   await rateLimited(page);
   const toast = toasts(page);
   await expect(toast).toHaveCount(1);
-  await expect(toast).toHaveAttribute("role", "alert");
+  // Read out once, through the layout's one alert region.
+  await expect(page.locator("#alerts")).toHaveText(/Error: Too many failed sign-ins/);
+  await expect(page.locator("[role=alert]")).toHaveCount(1);
   await expect(toast).toContainText("Error:");
+  await checkThemes(page);
   await expect(page.locator("#toasts")).toHaveCSS("position", "fixed");
   // It takes no room: the form sits where it sits on a fresh sign-in page.
   const withToast = await page.locator("main form").boundingBox();
@@ -92,8 +114,11 @@ test("a success toast is announced politely, stays at least 6 s, and waits while
   // Focus stays where it was and nothing moved.
   await expect(field).toBeFocused();
   expect(await layout(page)).toEqual(before);
+  await checkThemes(page);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await field.focus();
 
-  await page.clock.runFor(5_900);
+  await page.clock.runFor(6_000);
   await expect(toast).toBeVisible();
   // Hovered, it waits.
   await toast.hover();
@@ -117,21 +142,141 @@ test("toasts stack in one fixed place that stays put while the page scrolls", as
   for (const size of [{ width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(size);
     await page.goto("/design");
-    await show(page, "success", "First.");
-    await show(page, "error", "Second.");
-    const [a, b] = await toasts(page).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
-    // The newest sits under the one before it, and neither covers the other.
-    expect(b.y).toBeGreaterThanOrEqual(a.y + a.height);
+    // Through htmx, as the toast-oob partial lands.
+    await ask(page, 200, toastOOB("success", "First."));
+    await expect(toasts(page)).toHaveCount(1);
+    const a = await toasts(page).first().evaluate((el) => el.getBoundingClientRect().toJSON());
+    await ask(page, 200, toastOOB("error", "Second."));
+    await expect(toasts(page)).toHaveCount(2);
+    // The toast already shown keeps its exact box; the newest goes on top.
+    const [b, a2] = await toasts(page).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+    expect(a2, `${size.width}: the first toast moved`).toEqual(a);
+    expect(b.y + b.height).toBeLessThanOrEqual(a.y);
     // Whole, inside the window.
-    expect(b.y + b.height).toBeLessThanOrEqual(size.height);
+    expect(a.y + a.height).toBeLessThanOrEqual(size.height);
+    expect(b.y).toBeGreaterThanOrEqual(0);
     expect(a.x).toBeGreaterThanOrEqual(0);
     expect(a.x + a.width).toBeLessThanOrEqual(size.width);
-    await expect(toasts(page).nth(1)).toHaveAttribute("role", "alert");
     const at = await page.locator("#toasts").boundingBox();
     await page.mouse.wheel(0, 600);
     await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
     expect(await page.locator("#toasts").boundingBox()).toEqual(at);
   }
+});
+
+test("a toast in an htmx answer lands whole and closes after its time", async ({ page }) => {
+  await page.clock.install();
+  await createAdmin(page);
+  await page.goto("/worlds");
+  await ask(page, 200, `<b>swapped</b>${toastOOB("success", "Saved.")}`);
+  await expect(page.locator("#probe")).toHaveText("swapped");
+  const toast = toasts(page);
+  await expect(toast).toHaveCount(1);
+  await expect(toast.locator(".toast__text")).toHaveText("Done: Saved.");
+  await expect(toast.getByRole("button", { name: "Close this message" })).toBeVisible();
+  await expect(page.locator("#announcer")).toHaveText("Done: Saved.");
+  await page.clock.runFor(6_000);
+  await expect(toast).toBeVisible();
+  await page.clock.runFor(4_000);
+  await expect(toast).toHaveCount(0);
+});
+
+test("an error answer's toast is shown, and nothing else of it is swapped", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/worlds");
+  await ask(page, 422, `<b>swapped</b>${toastOOB("error", "The name is taken.")}`);
+  const toast = toasts(page);
+  await expect(toast).toHaveCount(1);
+  await expect(toast).toHaveClass(/toast--error/);
+  await expect(page.locator("#alerts")).toHaveText("Error: The name is taken.");
+  await expect(page.locator("#probe")).toHaveText("untouched");
+  await checkThemes(page);
+});
+
+test("toasts still arm after a swap replaces their region", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/worlds");
+  await page.evaluate(() => {
+    const fresh = document.createElement("div");
+    fresh.id = "toasts";
+    fresh.className = "toasts";
+    document.getElementById("toasts")!.replaceWith(fresh);
+  });
+  await show(page, "success", "After the swap.");
+  await expect(page.locator("#announcer")).toHaveText("Done: After the swap.");
+  await expect(toasts(page)).toHaveAttribute("data-armed", "");
+});
+
+test("Escape closes the newest toast, unless a menu or a text field has the key", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/settings/general");
+  await show(page, "success", "Older.");
+  await show(page, "error", "Newest.");
+  // In a text field Escape is the field's.
+  await page.locator("main input[type=text], main input:not([type])").first().focus();
+  await page.keyboard.press("Escape");
+  await expect(toasts(page)).toHaveCount(2);
+  // An open menu takes Escape first, and only the menu closes.
+  await page.locator("header.site .menu > summary").click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("details.menu")).not.toHaveAttribute("open");
+  await expect(toasts(page)).toHaveCount(2);
+  await page.locator("main").focus();
+  await page.keyboard.press("Escape");
+  await expect(toasts(page)).toHaveCount(1);
+  await expect(toasts(page)).toContainText("Older.");
+});
+
+test("on a phone the toast sits above the foot bar and never covers the focused control", async ({ page, foreman }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await createAdmin(page);
+  seedWorld(foreman);
+  await page.goto("/worlds/base/settings?section=players");
+  await show(page, "error", "The save failed because the server could not be reached. Try again in a moment.");
+  const bar = page.locator(".form-foot");
+  const stack = page.locator("#toasts");
+  // Over the bar, not on it.
+  const [s, b] = [(await stack.boundingBox())!, (await bar.boundingBox())!];
+  expect(s.y + s.height).toBeLessThanOrEqual(b.y);
+  // A field drawn 4 px under the toast's top edge, reached by Tab.
+  const placed = await page.evaluate(() => {
+    const tabbable = [...document.querySelectorAll<HTMLElement>("main a[href], main button:not([disabled]), main input:not([disabled]):not([type=hidden]), main select, main textarea, main summary")].filter(
+      (el) => el.checkVisibility({ visibilityProperty: true }) && !el.closest(".form-foot, #toasts"),
+    );
+    const top = document.getElementById("toasts")!.getBoundingClientRect().top;
+    const fields = tabbable.filter((el) => el.matches("input, select, textarea") && el.getBoundingClientRect().height < 60);
+    const target = fields[fields.length - 1];
+    window.scrollBy(0, target.getBoundingClientRect().top - (top + 4));
+    const r = target.getBoundingClientRect();
+    target.setAttribute("data-under-toast", "");
+    tabbable[tabbable.indexOf(target) - 1].focus({ preventScroll: true });
+    return r.top > top && r.top < document.getElementById("toasts")!.getBoundingClientRect().bottom;
+  });
+  expect(placed, "the field starts under the toast").toBe(true);
+  await page.keyboard.press("Tab");
+  const target = page.locator("[data-under-toast]");
+  await expect(target).toBeFocused();
+  const t = (await target.boundingBox())!;
+  const s2 = (await stack.boundingBox())!;
+  expect(t.y + t.height, "the focused field ends above the toast").toBeLessThanOrEqual(s2.y);
+  expect(t.y).toBeGreaterThanOrEqual(0);
+});
+
+test("at 320 px a tall stack stays inside the window and scrolls", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await createAdmin(page);
+  await page.goto("/worlds");
+  const long =
+    "The world could not be started because the game image is missing, the save is locked by another process, the disk is nearly full, and the mod portal did not answer. Check the image, close the other process, free some space and wait for the portal, then try again.";
+  for (let i = 0; i < 3; i++) await show(page, "error", `${i + 1}. ${long}`);
+  const s = (await page.locator("#toasts").boundingBox())!;
+  expect(s.y).toBeGreaterThanOrEqual(0);
+  expect(s.y + s.height).toBeLessThanOrEqual(640);
+  expect(s.x).toBeGreaterThanOrEqual(0);
+  expect(s.x + s.width).toBeLessThanOrEqual(320);
+  const scrolls = await page.locator("#toasts").evaluate((el) => el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === "auto");
+  expect(scrolls, "the stack scrolls inside itself").toBe(true);
+  await checkPage(page);
 });
 
 test.describe("without script", () => {
@@ -143,10 +288,10 @@ test.describe("without script", () => {
     await expect(toast).toHaveCount(1);
     await expect(toast).toContainText("Too many failed sign-ins");
     await expect(page.locator("#toasts")).not.toHaveCSS("position", "fixed");
-    // In the page's flow: nothing after it starts above its foot.
+    // In the page's flow, at its end: what comes before it ends above it.
     const t = (await toast.boundingBox())!;
-    const next = (await page.locator("main > .toasts ~ :not(template)").first().boundingBox())!;
-    expect(next.y).toBeGreaterThanOrEqual(t.y + t.height);
+    const before = (await page.locator("main > :not(.toasts, template)").last().boundingBox())!;
+    expect(t.y).toBeGreaterThanOrEqual(before.y + before.height);
     // A close button needs script, so there is none to press in vain.
     await expect(toast.getByRole("button")).toHaveCount(0);
   });
