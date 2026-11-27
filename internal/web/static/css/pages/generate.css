@@ -1,12 +1,6 @@
 /* Generate, the map settings and preview, the large view, and a world's
    game settings and mod settings. */
 @layer pages {
-/* Settings: the connected-players heading is an h2 for the outline but sits inside the admins fieldset, so it is set as an h3. */
-#connected-heading {
-  font-size: var(--text-lg);
-  line-height: 1.333;
-  font-weight: 650;
-}
 
 #settings-heading,
 #mod-settings-heading,
@@ -1397,62 +1391,6 @@ html:has(.large-view[open]) {
   }
 }
 
-/* Game settings' rows lay out by the width of the settings column. */
-.settings-wrap {
-  container: settings / inline-size;
-}
-
-.settings-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-  min-inline-size: 0;
-}
-
-/* Players connected now: one aligned row each, the name, then Make admin. */
-#settings-admins ul {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  max-inline-size: 28rem;
-  list-style: none;
-}
-
-#settings-admins li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-block: var(--space-2);
-  border-block-end: var(--border-width) solid var(--color-line);
-}
-
-#settings-admins li:last-child {
-  border-block-end: 0;
-}
-
-/* Settings form, defaults (SPEC 11.1): a checkbox with its hints below it,
-   the hints lined up under the label text (a 1.25rem box and the gap). */
-.setting-check {
-  display: grid;
-  gap: var(--space-1);
-  min-inline-size: 0;
-}
-
-.setting-check > .hint {
-  margin-block: 0;
-  padding-inline-start: calc(1.25rem + var(--space-3));
-}
-
-/* The collapsed Network group keeps its fields clear of the summary. */
-#settings-network details > .field + .field {
-  margin-block-start: var(--space-3);
-}
-
-#settings-gameplay select {
-  max-inline-size: 24rem;
-}
-
 .changes {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1972,26 +1910,6 @@ html:has(.large-view[open]) {
   border-color: var(--color-line);
 }
 
-.form-foot > #settings-unsaved {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--color-heading);
-  font-weight: 600;
-}
-
-/* On a narrow form the unsaved count takes its own line over the actions,
-   so Cancel and Preview changes keep their words whole. */
-@container settings (max-width: 36rem) {
-  .form-foot:has(> #settings-unsaved:not(:empty)) {
-    flex-wrap: wrap;
-  }
-
-  .form-foot > #settings-unsaved:not(:empty) {
-    flex-basis: 100%;
-  }
-}
-
 @media (max-width: 30rem) {
   /* On a phone the three stack full width in source order, so no
      language's long label is squeezed into a third of the bar (DESIGN 8.6). */
@@ -2046,19 +1964,6 @@ html:has(.large-view[open]) {
   .gen-settings .achievements {
     order: 2;
   }
-}
-
-/* World settings: on a wide panel a text field is as wide as what it holds.
-   A narrow panel has no rail; the raw editor's link follows the form (DESIGN 8.10). */
-@container settings (min-width: 44rem) {
-  .settings .field input:is([type="text"], [type="password"]):not([inputmode="numeric"]) {
-    max-inline-size: 35rem;
-  }
-}
-
-/* The raw editor's link follows the form at every width. */
-.settings-raw-link {
-  display: flex;
 }
 
 /* Every slider's first row is the same: its name at the start, the step in
@@ -2133,27 +2038,10 @@ html:has(.large-view[open]) {
   margin: 0;
 }
 
-.settings > fieldset + fieldset,
 .mod-settings-group.setting-row {
   margin-block-start: var(--space-2);
   padding-block-start: var(--space-5);
   border-block-start: var(--border-width) solid var(--color-line);
-}
-
-/* A fieldset's floated legend is laid out as its first item, so it takes
-   the title's column. */
-.settings > fieldset > legend {
-  float: inline-start;
-  inline-size: auto;
-  margin: 0;
-}
-
-/* A group's name in a world's settings is a section heading: 20/26. */
-.settings > fieldset > legend {
-  color: var(--color-heading);
-  font-size: var(--text-xl);
-  font-weight: 600;
-  line-height: 1.3;
 }
 
 .mod-settings-group.setting-row > :is(legend, h3) {
@@ -2168,92 +2056,9 @@ html:has(.large-view[open]) {
   gap: var(--space-4);
 }
 
-.settings-main > .message {
-  inline-size: fit-content;
-  max-inline-size: min(100%, 52rem);
-}
-
-/* A control that saves on its own inside a larger form sits in a box with
-   its own button, so what each button saves is plain. */
-.own-save {
-  padding: var(--space-3) var(--space-4) var(--space-4);
-  background: var(--color-raised);
-  border: var(--border-width) solid var(--color-line);
-  border-radius: var(--radius-lg);
-}
-
-/* The connected players' heading, its hint and the list read as one block. */
-#connected-heading + .hint,
-#connected-hint + ul {
-  margin-block-start: calc(var(--space-2) - var(--space-5));
-}
-
-.settings > .required-note {
-  padding-inline-start: 0;
-}
-
 /* Generate: the other-version opener is as wide as the select above it. */
 .version-fields > .disclosure {
   max-inline-size: 25rem;
-}
-
-#settings-listing,
-#settings-joining,
-#settings-saving,
-#settings-admins,
-#settings-whitelist,
-#settings-bans {
-  scroll-margin-block-start: var(--space-4);
-}
-
-/* Game settings on a wide card: a section's fields flow two to a row, so
-   the long form uses the width beside its titles instead of one narrow
-   column. Lists, notes and anything that is not a field run across both. */
-@container (min-width: 72rem) {
-  .settings > fieldset > .setting-row__body {
-    column-gap: var(--space-6);
-    align-items: start;
-  }
-
-  .settings > fieldset > .setting-row__body:not(:has(> .field--short + .field--short)) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .settings > fieldset > .setting-row__body > :not(.field, .setting-check, fieldset) {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Game settings' sub-pages: one fieldset each, the others kept in the form
-   but out of sight, so a save leaves them as they are (DESIGN 6). */
-.settings > fieldset[hidden],
-.settings-main > section.panel[hidden],
-form.settings[hidden] {
-  display: none !important;
-}
-
-/* In its own card the whitelist switch needs no inner box of its own. */
-#settings-whitelist-enforce .own-save {
-  padding: 0;
-  background: none;
-  border: 0;
-  box-shadow: none;
-}
-
-/* The unsaved mark: a small orange dot before the foot bar's count of
-   changes and after each sub-page that holds some. */
-#settings-unsaved::before {
-  content: "";
-  flex: none;
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  border-radius: 50%;
-  background: var(--color-selected);
-}
-
-/* The note stays in the page while empty, so its status region is heard when it fills. */
-#settings-unsaved:empty::before {
-  content: none;
 }
 
 /* Generate and Mod settings on a phone: 24 px between field groups, 8 px
@@ -2638,64 +2443,6 @@ html:has(.large-view[open]) > body {
 
   .js-on #map-settings .autoplace .step {
     row-gap: 0;
-  }
-}
-
-/* ==== Game settings: the form at a working width, and beside it what
-   applies to all of it (the restart note) and the file behind it. */
-.settings-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-}
-
-.settings-aside {
-  display: grid;
-  gap: var(--space-4);
-  align-content: start;
-  min-inline-size: 0;
-}
-
-.settings-layout > .settings-note,
-.settings-aside > .actions {
-  margin: 0;
-}
-
-@container settings (min-width: 72rem) {
-  .settings-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
-    grid-template-rows: auto 1fr;
-    gap: var(--space-4) var(--space-5);
-    align-items: start;
-  }
-
-  .settings-main {
-    grid-column: 1;
-    grid-row: 1 / -1;
-  }
-
-  .settings-layout > .settings-note {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .settings-aside {
-    grid-column: 2;
-    grid-row: 2;
-    position: sticky;
-    inset-block-start: var(--space-4);
-  }
-
-  .settings-layout:not(:has(> .settings-note)) > .settings-aside {
-    grid-row: 1 / -1;
-  }
-}
-
-/* A section's fields keep a working width rather than the plate's. */
-@container settings (min-width: 52rem) {
-  .settings-main .setting-row__body {
-    max-inline-size: 60rem;
   }
 }
 
