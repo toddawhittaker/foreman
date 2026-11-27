@@ -141,17 +141,31 @@ func TestOfferNotHiddenByTickedOffersDeps(t *testing.T) {
 	}
 }
 
-// A mod offered by two parents is offered if either parent's offer fits,
-// from that parent; it is unavailable only when no offer fits.
-func TestOfferFitsForOneParent(t *testing.T) {
+// An offered mod fits only if one release on the world's line meets the
+// limit of every mod in the fixed part of the plan that names it, whichever
+// parent's row it would come from: SPEC 9.2 holds an optional limit even
+// while its mod is off, so a box must never lead only to a conflict. A
+// parent that is itself only an offer, ticked or not, sets no limit.
+func TestOfferFitsEveryFixedLimit(t *testing.T) {
 	p := portal{
 		"a": {rel("1.0.0", "2.0", "? x >= 2.0.0")},
 		"b": {rel("1.0.0", "2.0", "? x")},
+		"c": {rel("1.0.0", "2.0", "? a", "? b")},
 		"x": {rel("1.5.0", "2.0")},
 	}
-	plan := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"a", "b"}})
-	if want := []Offer{{Name: "x", Of: "b"}}; !slices.Equal(plan.Optional, want) || len(plan.Unavailable) != 0 {
-		t.Errorf("optional %+v, unavailable %+v; want optional %+v", plan.Optional, plan.Unavailable, want)
+	both := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"a", "b"}})
+	if want := []Offer{{Name: "x", Of: "a"}}; len(both.Optional) != 0 || !slices.Equal(both.Unavailable, want) {
+		t.Errorf("a and b fixed: optional %+v, unavailable %+v; want unavailable %+v", both.Optional, both.Unavailable, want)
+	}
+	alone := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"b"}})
+	if want := []Offer{{Name: "x", Of: "b"}}; !slices.Equal(alone.Optional, want) || len(alone.Unavailable) != 0 {
+		t.Errorf("b alone: optional %+v, unavailable %+v; want optional %+v", alone.Optional, alone.Unavailable, want)
+	}
+	for _, ticked := range [][]string{{"b"}, {"a", "b"}} {
+		plan := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"c"}, Optional: ticked})
+		if !slices.Contains(offerNames(plan.Optional), "x") || slices.Contains(offerNames(plan.Unavailable), "x") {
+			t.Errorf("c asked, ticked %v: optional %+v, unavailable %+v; want x offered", ticked, plan.Optional, plan.Unavailable)
+		}
 	}
 }
 

@@ -82,7 +82,10 @@ func Resolve(ctx context.Context, w World, req Request, lookup Lookup) (Plan, er
 			if err != nil {
 				return Plan{}, err
 			}
-			p := r.plan(unresolved, left, misfit)
+			for n := range left {
+				misfit[n] = true
+			}
+			p := r.plan(unresolved, misfit)
 			if req.Kind == KindInstall || req.Kind == KindUpdate {
 				if p.Releases, err = r.releases(req.Names); err != nil {
 					return Plan{}, err
@@ -711,9 +714,9 @@ func (r *resolver) activeNeeds(name string) []Need {
 	return out
 }
 
-// plan writes the final round; left names the recommended mods left out,
-// and misfit the offers that do not fit the world.
-func (r *resolver) plan(unresolved []Unresolved, left map[string]bool, misfit map[Offer]bool) Plan {
+// plan writes the final round; left names the offered mods shown as
+// unavailable: recommended mods left out, and offers that do not fit.
+func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
 	p := Plan{Orphans: r.orphans}
 	names := make([]string, 0, len(r.targets))
 	for n := range r.targets {
@@ -759,7 +762,7 @@ func (r *resolver) plan(unresolved []Unresolved, left map[string]bool, misfit ma
 					continue
 				}
 				o := Offer{Name: d.Name, Of: n, Chosen: r.wants(d, t), Recommended: d.Kind == Recommended}
-				if left[d.Name] || misfit[Offer{Name: d.Name, Of: n}] {
+				if left[d.Name] {
 					p.Unavailable = append(p.Unavailable, o)
 				} else {
 					p.Optional = append(p.Optional, o)
@@ -788,10 +791,6 @@ func (r *resolver) plan(unresolved []Unresolved, left map[string]bool, misfit ma
 	byName := func(a, b Offer) int { return strings.Compare(a.Name+"\x00"+a.Of, b.Name+"\x00"+b.Of) }
 	slices.SortFunc(p.Optional, byName)
 	slices.SortFunc(p.Unavailable, byName)
-	// A mod that fits for any parent is offered from that parent alone.
-	p.Unavailable = slices.DeleteFunc(p.Unavailable, func(u Offer) bool {
-		return slices.ContainsFunc(p.Optional, func(o Offer) bool { return o.Name == u.Name })
-	})
 	p.Optional, p.Unavailable = onePerMod(p.Optional), onePerMod(p.Unavailable)
 	return p
 }
@@ -841,46 +840,66 @@ func (r *resolver) fixed(name string, seen map[string]bool) bool {
 	return r.requiredBy(name, func(n string) bool { return !seen[n] && r.fixed(n, seen) })
 }
 
-// misfits names the offers the plan leaves off that do not fit the world:
-// no release on its line within that parent's limit, or required
-// dependencies that would conflict (#970, SPEC 9.2). Each is keyed by mod
-// and parent, since parents set different limits. Offers the plan turns on
-// are checked by the walk itself.
-func (r *resolver) misfits() (map[Offer]bool, error) {
-	out := map[Offer]bool{}
+// misfits names the offered mods the plan leaves off that do not fit the
+// world (#970, SPEC 9.2). Fit is judged against the fixed part of the plan
+// alone, so it is the same whichever parent offers the mod, and the same
+// whatever is ticked. Offers the plan turns on are checked by the walk
+// itself.
+func (r *resolver) misfits() (map[string]bool, error) {
+	out := map[string]bool{}
+	judged := map[string]bool{}
 	for n, offers := range r.offers {
 		t := r.targets[n]
 		if !t.enabled || t.remove || !t.changes() {
 			continue // the plan shows no offers for it
 		}
 		for _, d := range offers {
-			if r.wants(d, t) || r.present(d.Name) || r.inPlan(d.Name) {
+			if judged[d.Name] || r.wants(d, t) || r.present(d.Name) || r.inPlan(d.Name) {
 				continue
 			}
-			ok, err := r.fits(d)
+			judged[d.Name] = true
+			ok, err := r.fits(d.Name)
 			if err != nil {
 				return nil, err
 			}
 			if !ok {
-				out[Offer{Name: d.Name, Of: n}] = true
+				out[d.Name] = true
 			}
 		}
 	}
 	return out, nil
 }
 
-// fits reports whether d's newest release on the world's line within its
-// limit could be turned on without a conflict its own dependencies declare.
-// It is judged only against the fixed part of the plan (inPlan), never
-// against other offers, so the offer rows stay the same whatever is ticked.
-func (r *resolver) fits(d Dep) (bool, error) {
-	mod, err := r.mod(d.Name)
+// fits reports whether the mod could be turned on without a conflict: it
+// has a release on the world's line that meets the limit of every mod in
+// the fixed part of the plan (inPlan) that names it, as a required,
+// optional or recommended dependency, since SPEC 9.2 holds an optional
+// limit even while its mod is off; and that release's own dependencies
+// clash with nothing fixed. Mods that are only offers, ticked or not, do
+// not count, so the offer rows stay the same whatever is ticked.
+func (r *resolver) fits(name string) (bool, error) {
+	var limits []Dep
+	for n, t := range r.targets {
+		if n == name || !t.enabled || !r.inPlan(n) {
+			continue
+		}
+		for _, td := range t.deps {
+			switch {
+			case td.Name != name:
+			case td.Kind == Incompatible:
+				return false, nil
+			default:
+				limits = append(limits, td)
+			}
+		}
+	}
+	mod, err := r.mod(name)
 	if err != nil || mod == nil {
 		return false, err
 	}
 	var rel *modportal.Release
-	for i := len(mod.Releases) - 1; i >= 0; i-- {
-		if c := mod.Releases[i]; c.FactorioVersion == r.line && d.Allows(c.Version) &&
+	for i, c := range mod.Releases {
+		if c.FactorioVersion == r.line && allows(limits, c.Version) &&
 			(rel == nil || world.CompareVersions(c.Version, rel.Version) > 0) {
 			rel = &mod.Releases[i]
 		}
@@ -890,7 +909,7 @@ func (r *resolver) fits(d Dep) (bool, error) {
 	}
 	for _, s := range rel.Dependencies {
 		dd, err := ParseDep(s)
-		if err != nil || dd.Name == d.Name {
+		if err != nil || dd.Name == name {
 			continue
 		}
 		dt := r.targets[dd.Name]
@@ -901,17 +920,17 @@ func (r *resolver) fits(d Dep) (bool, error) {
 			return false, nil
 		}
 	}
-	for n, t := range r.targets {
-		if !t.enabled || !r.inPlan(n) {
-			continue
-		}
-		for _, td := range t.deps {
-			if td.Kind == Incompatible && td.Name == d.Name && n != d.Name {
-				return false, nil
-			}
+	return true, nil
+}
+
+// allows reports whether version meets every limit.
+func allows(limits []Dep, version string) bool {
+	for _, d := range limits {
+		if !d.Allows(version) {
+			return false
 		}
 	}
-	return true, nil
+	return true
 }
 
 func dedupe(cs []Conflict) []Conflict {
