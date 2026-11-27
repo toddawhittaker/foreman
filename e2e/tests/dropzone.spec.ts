@@ -1,4 +1,5 @@
 import { test, expect, checkPage, createAdmin, dropFile, pickLanguage } from "./foreman.js";
+import { typedVersion } from "./typedversion.js";
 import type { Page } from "@playwright/test";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -38,8 +39,7 @@ test("a dropped save fills the field, names the file, and imports", { tag: "@loo
   await expect(form.getByLabel("Save file")).toBeFocused();
   await checkPage(page);
 
-  // Docker Hub is unreachable here, so the version list opens the typed field itself.
-  await form.getByLabel("Or type a version").fill("1.1.110");
+  await (await typedVersion(form)).fill("1.1.110");
   await form.getByRole("button", { name: "Upload and import" }).click();
   await expect(page).toHaveURL("/worlds/dropped?imported=1&unchecked=1");
   expect(readdirSync(join(foreman.dataDir, "worlds", "dropped", "saves"))).toEqual(["dropped.zip"]);
@@ -145,8 +145,7 @@ test("a new good choice clears the server's error", async ({ page }) => {
   await page.goto("/import");
   const form = uploadForm(page);
   await form.getByLabel("World name").fill("Nofile");
-  // Docker Hub is unreachable here, so the version list opens the typed field itself.
-  await form.getByLabel("Or type a version").fill("1.1.110");
+  await (await typedVersion(form)).fill("1.1.110");
   await form.getByRole("button", { name: "Upload and import" }).click();
   const serverError = form.locator("#upload-source-error");
   await expect(serverError).toBeVisible();

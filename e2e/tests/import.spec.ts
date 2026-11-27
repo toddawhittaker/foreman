@@ -1,5 +1,6 @@
 import { test, expect, checkPage, createAdmin, type Foreman } from "./foreman.js";
-import type { Locator, Page } from "@playwright/test";
+import { typedVersion } from "./typedversion.js";
+import type { Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -12,13 +13,6 @@ test.use({ fakeGameOn: true });
 const emptyZip = Buffer.concat([Buffer.from("PK\x05\x06"), Buffer.alloc(18)]);
 
 const fixtures = join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata");
-
-// A version not in the list is typed in a disclosure under the select, opened first.
-async function typedVersion(form: Locator) {
-  const d = form.locator("details.disclosure:has(input[name=game_version_typed])");
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator("summary").click();
-  return form.getByLabel("Or type a version");
-}
 
 function inboxFixture(f: Foreman, folder: string, fixture: string) {
   mkdirSync(join(f.dataDir, "import", folder), { recursive: true });
