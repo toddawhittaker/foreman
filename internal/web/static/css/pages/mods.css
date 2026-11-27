@@ -1058,8 +1058,6 @@ ol.plan-steps > li:not(:last-child)::after {
   display: none;
 }
 
-.plan-tree,
-
 /* The list scrolls inside the held card, so it holds its own visually
    hidden text: placed in the card, that text stretched the card's scroll
    area past the list's end and gave the card a second, dead scrollbar. */

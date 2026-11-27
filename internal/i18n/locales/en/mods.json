@@ -363,6 +363,10 @@
     "one": "Removed {mod}. The plan has {count} mod.",
     "other": "Removed {mod}. The plan has {count} mods."
   },
+  "mods.plan.added": {
+    "one": "Plan updated: adds {mod}. {count} mod changes.",
+    "other": "Plan updated: adds {mod}. {count} mods change."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plan updated: it has a conflict, so it cannot be applied.",
     "other": "Plan updated: it has {count} conflicts, so it cannot be applied."

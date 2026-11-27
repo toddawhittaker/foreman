@@ -1,6 +1,6 @@
 {{define "title"}}{{msg .Page.Heading}}{{end}}
 
-{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script><script src="{{static "modsearch.js"}}" defer></script>{{end}}
 
 {{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name (printf "%s/mods" .Tabs.Path) (t "mods.tab"))}}{{end}}{{end}}
 {{- /* A redraw swaps in the heading's words too, as adding or taking out a mod changes them. */}}

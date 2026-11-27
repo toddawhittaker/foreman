@@ -915,6 +915,25 @@ export async function openModTools(page: Page) {
   await expect(tools).toHaveJSProperty("open", true);
 }
 
+// Runs act and waits until htmx has swapped in and settled the element
+// with this id. Waiting for the reply or for text is not enough: the reply
+// can arrive before the swap, and the old page may already hold the text.
+export async function redrawn(page: Page, id: string, act: () => Promise<unknown>) {
+  await page.evaluate((id) => {
+    const w = window as unknown as { __redrawn?: Promise<void> };
+    w.__redrawn = new Promise<void>((done) => {
+      const on = (e: Event) => {
+        if ((e as CustomEvent).detail?.target?.id !== id) return;
+        document.removeEventListener("htmx:afterSettle", on);
+        done();
+      };
+      document.addEventListener("htmx:afterSettle", on);
+    });
+  }, id);
+  await act();
+  await page.evaluate(() => (window as unknown as { __redrawn?: Promise<void> }).__redrawn);
+}
+
 // A change's row on the review page, found by the name it starts with.
 export const planRow = (page: Page, name: string) => page.locator("#mod-plan .plan-row", { hasText: new RegExp(`^\\s*${name}(\\s|$)`) });
 

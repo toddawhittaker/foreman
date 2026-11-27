@@ -284,6 +284,36 @@ test("keyboard focus is never hidden behind the plan's bar", { tag: "@looks" }, 
   expect(checked).toBeGreaterThan(4);
 });
 
+// WCAG 2.4.11: Shift+Tab out of the phone bar's open list lands on a
+// control the bar does not cover (the list folds once focus leaves it).
+test("Shift+Tab out of the plan bar's open list lands on a control in view", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/worlds/base/mods");
+  const box = page.getByLabel("Mod name");
+  await box.fill("fp-pg-00");
+  await hit(page, "fp-pg-00").getByRole("button", { name: "Add fp-pg-00 to the plan" }).click();
+  await expect(hit(page, "fp-pg-00")).toContainText("In plan");
+  await box.fill("fp-pg");
+  await expect(page.getByRole("list", { name: /Showing 1 to 10\./ })).toBeVisible();
+  const summary = page.locator("#plan-list > summary");
+  await summary.click();
+  await expect(page.locator("#plan-list")).toHaveJSProperty("open", true);
+  await expect(summary).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  const focused = page.locator(":focus");
+  expect(await focused.evaluate((el) => !el.closest("#plan-panel"))).toBe(true);
+  // No part of it is under the bar or anything else.
+  const covered = await focused.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const points = [[r.x + r.width / 2, r.y + 1], [r.x + r.width / 2, r.y + r.height / 2], [r.x + r.width / 2, r.bottom - 1]];
+    return points.filter(([x, y]) => {
+      const top = document.elementFromPoint(x, y);
+      return !top || !(el === top || el.contains(top));
+    }).length;
+  });
+  expect(covered, await focused.evaluate((el) => el.outerHTML.slice(0, 80))).toBe(0);
+});
+
 // SPEC 9.2: with the portal out of reach the panel still lists the picks by
 // name, says their dependencies cannot be checked now, and offers to check again.
 test("with the portal down the panel lists the picks by name and says why", { tag: "@looks" }, async ({ page, fakePortal }) => {
@@ -496,21 +526,47 @@ test.describe("typing on the Mods tab", () => {
 
   test("Enter searches in place, and the page controls keep the tab's address", { tag: "@looks" }, async ({ page }) => {
     await page.goto("/worlds/base/mods");
+    // The typing's delayed search for the text Enter already searched would
+    // fire about 300 ms after the typing and, if sent, is held here so it
+    // lands after the next page: it must never bring page 1 back over it.
+    await page.route(
+      (u) => u.searchParams.get("q") === "fp-pg" && !u.searchParams.has("page"),
+      async (route) => {
+        if (route.request().headers()["hx-trigger"] === "mod-search") await new Promise((done) => setTimeout(done, 700));
+        await route.continue();
+      },
+    );
     const box = page.getByLabel("Mod name");
     await box.fill("fp-pg");
     await box.press("Enter");
     await expect(page.getByRole("list", { name: /Showing 1 to 10\./ })).toBeVisible();
-    // The next page answers late, after the typing's delayed search would
-    // fire: that search must not bring page 1 back over it.
-    await page.route(/page=2/, async (route) => {
-      await new Promise((done) => setTimeout(done, 500));
-      await route.continue();
-    });
     await page.getByRole("navigation", { name: "Result pages, above the list" }).getByRole("link", { name: "Next page" }).click();
     await expect(page.getByRole("list", { name: /Showing 11 to 20\./ })).toBeVisible();
     await expect(page.locator("#results-heading")).toBeFocused();
+    // Past the time the held search would have landed, page 2 still shows.
+    await page.waitForTimeout(1200);
+    await expect(page.getByRole("list", { name: /Showing 11 to 20\./ })).toBeVisible();
     expect(new URL(page.url()).pathname).toBe("/worlds/base/mods");
     expect(new URL(page.url()).search).toBe("");
+  });
+
+  // A search that never got an answer is sent again when the same text is
+  // typed again; only a search that was answered is not repeated.
+  test("a failed search is sent again when the same text is typed again", async ({ page }) => {
+    await page.goto("/worlds/base/mods");
+    let first = true;
+    await page.route("**/mods/search?**", (route) => {
+      if (!first) return route.continue();
+      first = false;
+      return route.abort();
+    });
+    const failed = page.waitForEvent("requestfailed", (r) => r.url().includes("q=fp-pg-01"));
+    const box = page.getByLabel("Mod name");
+    await box.fill("fp-pg-01");
+    await failed;
+    await box.press("Backspace");
+    await box.pressSequentially("1");
+    await expect(page.getByRole("list", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
   });
 
   test("a refused search says why in place", { tag: "@looks" }, async ({ page }) => {

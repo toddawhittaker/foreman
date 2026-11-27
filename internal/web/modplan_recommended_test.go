@@ -123,3 +123,21 @@ func TestOfferOrderKeptAcrossRedraw(t *testing.T) {
 		t.Errorf("shown order not kept: %v", got)
 	}
 }
+
+// A tick's redraw names the mod it adds, so a screen reader hears what the
+// box did, not only the count; a clear keeps the plain sentence (SPEC 9.14,
+// DESIGN 7.5).
+func TestTickAnnouncesTheModItAdds(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("fp-a", "1.0.0")
+	g.portal.AddZip("fp-main", "1.0.0", "base >= 2.0", "? fp-a")
+	id := g.world20("Base")
+	_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}}))
+	v := planValues(t, body)
+	v.Set("optional", "fp-a")
+	rec := g.harness.post(modsPath(id)+"/plan/redraw", v, withCookie(g.cookie), withHeader("HX-Request", "true"), withHeader("HX-Trigger", modID("fp-a", "optional")))
+	wantIn(t, "tick", rec.Body.String(), `<div hx-swap-oob="innerHTML:#announcer">Plan updated: adds fp-a. 2 mods change.</div>`)
+	v.Del("optional")
+	rec = g.harness.post(modsPath(id)+"/plan/redraw", v, withCookie(g.cookie), withHeader("HX-Request", "true"), withHeader("HX-Trigger", modID("fp-a", "optional")))
+	wantIn(t, "clear", rec.Body.String(), `<div hx-swap-oob="innerHTML:#announcer">Plan updated: 1 mod changes.</div>`)
+}
