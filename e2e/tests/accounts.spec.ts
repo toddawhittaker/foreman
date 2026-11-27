@@ -95,11 +95,11 @@ test("repeated failures reach the rate-limit message", { tag: "@looks" }, async 
   }
   // Even the right password is refused while the limit holds.
   await signIn(page, admin, password);
-  // The refusal is summed up in an alert over the page, which takes no focus
+  // The refusal is summed up over the page and read out as an alert; it takes no focus
   // (DESIGN 6, "Toasts"), and no field is marked at fault.
   const toast = page.locator("#toasts > .toast");
   await expect(toast).toContainText("Too many failed sign-ins");
-  await expect(toast).toHaveAttribute("role", "alert");
+  await expect(page.locator("#alerts")).toContainText("Too many failed sign-ins");
   await expect(page.locator("#error-summary")).toHaveCount(0);
   expect(await page.evaluate(() => document.activeElement?.closest("#toasts") ?? null)).toBeNull();
   await expect(page).toHaveURL("/signin");

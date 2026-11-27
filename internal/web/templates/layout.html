@@ -111,7 +111,6 @@
 {{- end}}
 {{- /* Every page is one width, its frame lined up with the top bar (DESIGN 6). */}}
 <main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
-{{template "toasts" .}}
 {{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here (SPEC 12.10). */}}
 {{- with .Renewed}}
 <div class="message message--success" id="renewed-message" tabindex="-1" autofocus>
@@ -137,8 +136,11 @@
 </section>
 {{- end}}
 {{template "content" .}}
+{{- /* Last, so the page's h1 stays first; with script it floats (DESIGN 6, "Toasts"). */}}
+{{template "toasts" .}}
 </main>
 <div id="announcer" class="visually-hidden" aria-live="polite"></div>
+<div id="alerts" class="visually-hidden" role="alert"></div>
 <script type="application/json" id="i18n">{{jsStrings}}</script>
 </body>
 </html>
