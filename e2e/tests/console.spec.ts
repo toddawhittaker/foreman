@@ -206,9 +206,10 @@ test.describe("with the fake game", () => {
   test("with the game stopped a command is refused in plain words", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { running: false });
     await send(page, "/players online");
-    const message = page.locator(".message--error");
+    // The refusal is a toast; the Server tabs lead back to the Server page (DESIGN 6).
+    const message = page.locator("#toasts .toast--error");
     await expect(message).toContainText("The game is not running, so it cannot take commands.");
-    await expect(message.getByRole("link", { name: "Go to the Server page" })).toBeVisible();
+    await expect(page.locator("#alerts")).toContainText("The game is not running, so it cannot take commands.");
     // Nothing was sent, so the field keeps the command to try again.
     await expect(page.getByLabel("Command")).toHaveValue("/players online");
     await checkPage(page);
@@ -219,9 +220,9 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, fakeGame!);
     await fakeGame!.call("/rcon-refuse", { name: container, on: true });
     await send(page, "/players online");
-    const message = page.locator(".message--error");
+    const message = page.locator("#toasts .toast--error");
     await expect(message).toContainText("could not reach the game over RCON");
-    await expect(message.getByRole("link", { name: "Go to the Server page" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Server pages" }).getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/");
     await checkPage(page);
   });
 

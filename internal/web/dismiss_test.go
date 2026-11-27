@@ -99,7 +99,8 @@ func TestDismissLeavesAsidesAndRunningActions(t *testing.T) {
 	}
 }
 
-// DESIGN 7.3: only a success or a cancelled stop has a close button; a
+// DESIGN 7.3, SPEC 17.9: a success with an undo has the Undo row and its close
+// button; a success without one, or a cancelled stop, is only a toast; a
 // failure's box stays.
 func TestOnlyDoneBoxesHaveACloseButton(t *testing.T) {
 	at := scheduleNow
@@ -111,9 +112,10 @@ func TestOnlyDoneBoxesHaveACloseButton(t *testing.T) {
 	}
 	form := []string{`action="/worlds/base/dismiss-result"`, `hx-post="/worlds/base/dismiss-result"`, `data-dismiss-result`,
 		`name="at" value="` + strconv.FormatInt(at.UnixNano(), 10) + `"`, `id="act-dismiss"`, `<span class="visually-hidden">Close this message</span>`}
-	wantAll(t, "a restore", withResult(actionResult{Action: game.ActionRestore}), form...)
-	wantAll(t, "a snapshot", withResult(actionResult{Action: actionSnapshot, Taken: "Manual"}), form...)
-	wantAll(t, "a cancelled stop", withResult(actionResult{Action: game.AuditStop, Err: game.ErrStopCancelled}), form...)
+	wantAll(t, "a restore", withResult(actionResult{Action: game.ActionRestore, Undo: "before"}), form...)
+	wantNone(t, "a restore with no undo", withResult(actionResult{Action: game.ActionRestore}), "act-dismiss")
+	wantNone(t, "a snapshot", withResult(actionResult{Action: actionSnapshot, Taken: "Manual"}), "act-dismiss")
+	wantNone(t, "a cancelled stop", withResult(actionResult{Action: game.AuditStop, Err: game.ErrStopCancelled}), "act-dismiss")
 	wantNone(t, "a failed update", withResult(actionResult{Action: game.AuditUpdate, Err: errors.New("boom")}), "act-dismiss", "dismiss-result")
 	wantNone(t, "a refused start", withResult(actionResult{Action: game.AuditStart, Err: precheckErr()}), "act-dismiss", "dismiss-result")
 	wantNone(t, "a start that worked", withResult(actionResult{Action: game.AuditStart}), "act-dismiss", "dismiss-result")
@@ -122,8 +124,9 @@ func TestOnlyDoneBoxesHaveACloseButton(t *testing.T) {
 
 var dismissAt = regexp.MustCompile(`name="at" value="(\d+)"`)
 
-// SPEC 17.9, 17.10: after a switch, closing the Done box removes it and its
-// Switch back offer, and it stays gone on a reload. A close that names an
+// SPEC 17.9, 17.10: after a switch, closing the Undo row under the plate's
+// actions removes it and its Switch back offer, and the Done toast stays gone
+// on a reload. A close that names an
 // older result, or has no time, changes nothing.
 func TestDismissOverHTTP(t *testing.T) {
 	g := newGameRig(t, image21)
@@ -146,10 +149,10 @@ func TestDismissOverHTTP(t *testing.T) {
 	g.wantMissing("after the close", g.get(PathServer), "The worlds are switched", "Switch back to Alpha", "act-dismiss")
 
 	// A script request gets no body and the same effect.
-	g.wantRedirectTo(PathServerResult, g.post(gamePath(b, "take-snapshot"), url.Values{}))
-	body = g.waitPage(`id="act-dismiss"`)
+	g.wantRedirectHome(g.post(switchPath(a), url.Values{"from": {b}, "countdown": {"0"}}))
+	body = g.waitPage("The worlds are switched, from Bravo to Alpha.", `id="act-dismiss"`)
 	m = dismissAt.FindStringSubmatch(body)
-	rep := g.do(http.MethodPost, path, url.Values{"at": {m[1]}}, http.Header{"Cookie": {g.cookie.String()}, "HX-Request": {"true"}})
+	rep := g.do(http.MethodPost, gamePath(a, "dismiss-result"), url.Values{"at": {m[1]}}, http.Header{"Cookie": {g.cookie.String()}, "HX-Request": {"true"}})
 	if rep.StatusCode != http.StatusNoContent || rep.body != "" {
 		t.Errorf("htmx close: %d %q, want 204 and no body", rep.StatusCode, rep.body)
 	}

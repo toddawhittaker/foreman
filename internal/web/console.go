@@ -339,7 +339,7 @@ func (s *server) handleConsoleSend(w http.ResponseWriter, r *http.Request, u sto
 		return
 	}
 	if err != nil {
-		p.Announce = labelled(i18n.M("common.error.label"), p.Failure)
+		// The refusal is a toast, which reads itself out (DESIGN 6).
 		s.respond(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
@@ -430,3 +430,15 @@ func (l *liveStream) lines(event string, lines []string) error {
 	}
 	return l.rc.Flush()
 }
+
+// toasts: a command the game did not take is summed up over the page; the
+// field's own refusal stays at the field (DESIGN 6, "Toasts").
+func (p ConsolePage) toasts() []Toast {
+	if p.Failure.IsZero() {
+		return nil
+	}
+	return []Toast{{Error: true, Text: p.Failure}}
+}
+
+// Toasts are the toasts a script's answer carries out of band.
+func (p ConsolePage) Toasts() []Toast { return p.toasts() }

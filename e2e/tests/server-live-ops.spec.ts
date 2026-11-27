@@ -64,8 +64,9 @@ test("make an online player admin in two clicks, then undo it in one more", { ta
   await page.getByRole("button", { name: "Make admin alice" }).click();
 
   await expect(page).toHaveURL("/");
-  await expect(page.locator("#player-done")).toContainText("alice is now an admin of Base.");
-  await expect(page.locator("#player-done")).toBeFocused();
+  await expect(page.locator("#toasts .toast")).toContainText("alice is now an admin of Base.");
+  // The result is a toast, which never takes focus (DESIGN 6).
+  await expect(page.locator("#toasts :focus")).toHaveCount(0);
   await expectWithin(clicks, 2, "Make an online player admin");
   expect(await commands(fakeGame!)).toContain("/promote alice");
   // The row reads the admin list the game wrote: the mark, and the opposite change.
@@ -74,7 +75,7 @@ test("make an online player admin in two clicks, then undo it in one more", { ta
   await checkPage(page);
 
   await page.getByRole("button", { name: "Undo: remove alice as admin" }).click();
-  await expect(page.locator("#player-done")).toContainText("alice is no longer an admin of Base.");
+  await expect(page.locator("#toasts .toast")).toContainText("alice is no longer an admin of Base.");
   await expectWithin(clicks, 3, "Make a player admin, then undo it");
   expect(await commands(fakeGame!)).toContain("/demote alice");
   await page.locator("#ps-alice").click();
@@ -82,7 +83,7 @@ test("make an online player admin in two clicks, then undo it in one more", { ta
   await checkPage(page);
   // The result shows once: a reload drops it.
   await page.reload();
-  await expect(page.locator("#player-done")).toHaveCount(0);
+  await expect(page.locator("#toasts .toast")).toHaveCount(0);
 });
 
 test("kick and ban confirm and come back to the Server page, three clicks each", async ({ page, foreman, fakeGame }) => {
@@ -96,7 +97,7 @@ test("kick and ban confirm and come back to the Server page, three clicks each",
   await checkPage(page);
   await page.getByRole("button", { name: "Kick alice" }).click();
   await expect(page).toHaveURL("/");
-  await expect(page.locator("#player-done")).toContainText("alice was kicked from Base.");
+  await expect(page.locator("#toasts .toast")).toContainText("alice was kicked from Base.");
   await expectWithin(clicks, 3, "Kick a player");
   expect((await commands(fakeGame!)).some((c) => c.startsWith("/kick alice"))).toBe(true);
   await checkPage(page);
@@ -109,7 +110,7 @@ test("kick and ban confirm and come back to the Server page, three clicks each",
   await expect(page.getByRole("link", { name: "Cancel, keep bob in the game" })).toHaveAttribute("href", "/");
   await page.getByRole("button", { name: "Ban bob" }).click();
   await expect(page).toHaveURL("/");
-  await expect(page.locator("#player-done")).toContainText("bob is banned from Base.");
+  await expect(page.locator("#toasts .toast")).toContainText("bob is banned from Base.");
   await expect(page.getByRole("button", { name: "Unban bob" })).toBeVisible();
   await expectWithin(clicks, 3, "Ban a player");
   expect((await commands(fakeGame!)).some((c) => c.startsWith("/ban bob"))).toBe(true);
@@ -148,7 +149,7 @@ for (const lang of ["ru", "de"]) {
     await fakeGame!.call("/join", { name: container, player: "Maximilian_the_Engineer_of_Nauvis" });
     await page.locator("#ps-alice").click();
     await page.locator("#pa-promote-alice").click();
-    await expect(page.locator("#player-done")).toBeVisible();
+    await expect(page.locator("#toasts .toast")).toBeVisible();
     await pickLanguage(page, lang);
     await expect(page.locator("html")).toHaveAttribute("lang", lang);
     await expect(row(page, "Maximilian_the_Engineer_of_Nauvis")).toBeVisible(live);
@@ -183,7 +184,7 @@ test("the whitelist buttons show only while the running game keeps the whitelist
   await clicks.reset();
   await page.locator("#ps-dave").click();
   await page.getByRole("button", { name: "Add to whitelist dave" }).click();
-  await expect(page.locator("#player-done")).toContainText("dave is on the whitelist of Base.");
+  await expect(page.locator("#toasts .toast")).toContainText("dave is on the whitelist of Base.");
   await expectWithin(clicks, 2, "Add an online player to the whitelist");
   await page.locator("#ps-dave").click();
   await expect(page.getByRole("button", { name: "Remove from whitelist dave" })).toBeVisible();

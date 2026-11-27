@@ -8,7 +8,7 @@ const container = "foreman-base";
 const live = { timeout: 20_000 };
 
 const badge = (page: Page) => page.locator("main h1 .state");
-const done = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
+const done = (page: Page) => page.locator("#toasts .toast--success").filter({ hasText: "Done:" });
 const focusedId = (page: Page) => page.evaluate(() => document.activeElement?.id ?? "");
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, second = false) {
@@ -23,7 +23,9 @@ async function setUp(page: Page, f: Foreman, g: FakeGame, second = false) {
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
-  test("after Cancel stop the Done message has focus", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+  // DESIGN 6, "Toasts": the Done message is a toast, read out and never
+  // given focus, after the admin's own action or on a plain load.
+  test("after Cancel stop the Done toast is read out and takes no focus", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     await page.getByRole("button", { name: "Start server" }).click();
@@ -36,37 +38,24 @@ test.describe("with the fake game", () => {
 
     await expect(page).toHaveURL("/?result=1");
     await expect(done(page)).toContainText("The stop was canceled.", live);
-    await expect.poll(() => focusedId(page)).toBe("done-message");
-    // The live stream's first update replaces the region; focus stays.
+    await expect(page.locator("#announcer")).toContainText("The stop was canceled.");
+    // The live stream's first update replaces the plate; nothing takes focus.
     await page.waitForTimeout(1000);
-    expect(await focusedId(page)).toBe("done-message");
+    expect(await page.evaluate(() => !!document.activeElement?.closest("#toasts, .plate"))).toBe(false);
+    await expect(done(page)).toHaveCount(1);
     await checkPage(page);
-
-    // A plain load of the page, with the same Done message, leaves focus alone.
-    await page.goto("/");
-    await expect(done(page)).toBeVisible(live);
-    expect(await focusedId(page)).not.toBe("done-message");
   });
 
-  test("after Take snapshot the Done message gets focus when it appears, once", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+  test("a Done toast that arrives by a live update comes once", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
-    await page.getByRole("button", { name: "Take snapshot" }).click();
-    await expect(done(page)).toContainText('Foreman took the snapshot "Manual snapshot" of Base.', live);
-    await expect.poll(() => focusedId(page)).toBe("done-message");
-
-    // Once: the mark is spent, so a later update cannot pull focus back.
-    await expect(page.locator("[data-focus-result]")).toHaveCount(0);
-  });
-
-  test("a Done message that arrives by a live update takes focus too", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
-    await setUp(page, foreman, fakeGame!);
-    // Loaded as after the admin's own action, with nothing done yet.
-    await page.goto("/?result=1");
     await expect(badge(page)).toHaveText("Stopped", live);
     await expect(done(page)).toHaveCount(0);
     await page.evaluate(() => fetch("/worlds/base/take-snapshot", { method: "POST", body: new URLSearchParams() }));
     await expect(done(page)).toContainText("Foreman took the snapshot", live);
-    await expect.poll(() => focusedId(page)).toBe("done-message");
+    // Later updates bring no second copy.
+    await page.waitForTimeout(1500);
+    await expect(done(page)).toHaveCount(1);
+    expect(await focusedId(page)).not.toMatch(/^act-/);
   });
 
   // The switch starts from the Worlds list (SPEC 17.10); the Server page's

@@ -68,9 +68,6 @@ type ServerPage struct {
 	// Live is set for a live update, whose facts also carry the heading's
 	// state badge out of band (DESIGN 7.5).
 	Live bool
-	// FocusResult is true when this load follows the admin's own cancel stop
-	// or snapshot, so the Done message takes focus and is read out.
-	FocusResult bool
 	// ModsNotice says the page loads its line about mods players cannot get
 	// (SPEC 9.3), which needs the mod portal.
 	ModsNotice bool
@@ -107,11 +104,19 @@ func (p ServerPage) liveURL() string {
 		return ""
 	}
 	// The stream reloads the mods notice once an operation the page has not
-	// seen ends (SPEC 9.3).
+	// seen ends (SPEC 9.3), and sends only the result toasts the page has not
+	// shown (DESIGN 6).
+	q := url.Values{}
 	if o := p.Status.Operation; o != nil && o.Done {
-		return gamePath(p.World.ID, "events") + "?" + doneOpParam + "=" + strconv.FormatUint(o.ID, 10)
+		q.Set(doneOpParam, strconv.FormatUint(o.ID, 10))
 	}
-	return gamePath(p.World.ID, "events")
+	if m := p.toastMark(); m != "" {
+		q.Set(toastsParam, m)
+	}
+	if len(q) == 0 {
+		return gamePath(p.World.ID, "events")
+	}
+	return gamePath(p.World.ID, "events") + "?" + q.Encode()
 }
 
 // Paths the server page links and posts to.

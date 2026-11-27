@@ -71,6 +71,9 @@ test.describe("logs", () => {
     await createAdmin(page);
     seedWorld(foreman);
     await fakeGame!.call("/image", { ref: image21, on: true });
+    // Chat shows its log only while the game runs (DESIGN 8.14).
+    expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
+    await expect.poll(async () => (await page.request.get("/")).text(), { timeout: 20_000 }).toContain("state--running");
     for (const path of ["/console", "/chat"]) {
       await each(page, async (label) => {
         await page.goto(path);

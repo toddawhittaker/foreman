@@ -12,8 +12,17 @@ async function expectPlainConfirmation(page: Page, where: string, opts: { backLi
   const main = page.locator("main");
   await expect(page.getByRole("heading", { level: 1 }), `${where}: one h1`).toHaveCount(1);
   const h1 = (await page.getByRole("heading", { level: 1 }).innerText()).trim();
-  // The heading comes first: nothing, such as a Back link, sits above it.
-  expect(await main.evaluate((m) => m.firstElementChild?.tagName), `${where}: the h1 is first`).toBe("H1");
+  // The heading comes first: nothing, such as a Back link, sits above it. A
+  // page header may hold it, after an empty crumb row (DESIGN 6).
+  const first = await main.evaluate((m) => {
+    const head = m.firstElementChild;
+    if (head?.matches(".pagehead")) {
+      const crumb = head.querySelector(".pagehead__crumb");
+      return crumb && crumb.textContent?.trim() === "" && crumb.nextElementSibling?.tagName === "H1" ? "H1" : "header with more before its h1";
+    }
+    return head?.tagName;
+  });
+  expect(first, `${where}: the h1 is first`).toBe("H1");
   const others = await main.locator("h2, h3").allInnerTexts();
   expect(others.map((t) => t.trim()), `${where}: no heading repeats the h1`).not.toContain(h1);
   expect(await main.locator("form h2").count(), `${where}: no second heading inside the form`).toBe(0);
@@ -35,7 +44,7 @@ test("every confirmation page has one heading, no Back link and one main action"
   // Pages that need the game stopped or running.
   await page.goto("/");
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.getByText(/Done: Foreman took the snapshot/)).toBeVisible();
+  await expect(page.locator("#toasts").getByText(/Done: Foreman took the snapshot/)).toBeVisible();
   await page.goto("/worlds/base/update");
   await expectPlainConfirmation(page, "update");
   await page.goto("/worlds/second/switch");

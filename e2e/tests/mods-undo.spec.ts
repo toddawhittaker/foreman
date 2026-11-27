@@ -42,8 +42,9 @@ async function change(page: Page, kind: string, name: string, button: string) {
   await expect(doneBox(page)).toBeVisible(live);
 }
 
-// The time the Done box gives for the snapshot the change kept.
-const keptAt = (page: Page) => doneBox(page).locator("time").first().getAttribute("datetime");
+// The time of the snapshot the change kept, which the Undo under the plate's
+// actions names (the Done toast's words are plain text, DESIGN 6).
+const keptAt = (page: Page) => page.locator("#result-undo time").first().getAttribute("datetime");
 
 test("three changes on a stopped world share one snapshot, and undo lists and puts back the mods from before the first", async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-new", "1.0.0", ["base >= 2.0"], "2.1");

@@ -173,10 +173,11 @@ test.describe("with the fake game", () => {
     await expect(page.locator(".message--note")).toHaveCount(0);
     const retry = page.getByRole("button", { name: "Try to start again" });
     await expect(retry).toBeVisible();
-    // The button is not flush under the message (DESIGN 6, rule 4).
+    // The button keeps the actions' place, and the message grows under it,
+    // never flush against it (DESIGN 6, rule 4; ruling 1 of fixes 20).
     const noteRect = (await crash.boundingBox())!;
     const buttonRect = (await retry.boundingBox())!;
-    expect(buttonRect.y - (noteRect.y + noteRect.height)).toBeGreaterThanOrEqual(8);
+    expect(noteRect.y - (buttonRect.y + buttonRect.height)).toBeGreaterThanOrEqual(8);
     await checkPage(page);
     await expect(page.locator("#announcer")).toContainText("Start server is replaced by Try to start again");
     await crash.getByRole("link", { name: "Read the full log on the Console page" }).click();
@@ -358,7 +359,7 @@ test.describe("with the fake game", () => {
     await expect(control.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await checkPage(page);
     await control.getByRole("button", { name: "Download game image" }).click();
-    await expect(control).toContainText(`Downloaded ${image21}; Base is ready to start.`, live);
+    await expect(page.locator("#toasts .toast--success")).toContainText(`Downloaded ${image21}; Base is ready to start.`, live);
     await expect(control.getByRole("button", { name: "Download game image" })).toHaveCount(0);
     await expect.poll(async () => (await fakeGame!.state()).calls.some((c) => c.startsWith("POST ") && c.includes("/images/create")), live).toBe(true);
     await checkPage(page);
@@ -395,8 +396,9 @@ test.describe("with the fake game", () => {
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restore snapshot" }).click();
     await expect(page).toHaveURL("/");
-    await expect(page.locator(".message--success")).toContainText("The world is restored", live);
-    await expect.poll(() => watcher.evaluate(() => (window as unknown as { seen: string[] }).seen), live).toContain("The world is restored.");
+    await expect(page.locator("#toasts .toast--success")).toContainText("The world is restored", live);
+    // The other page hears it from its toast (DESIGN 6).
+    await expect.poll(() => watcher.evaluate(() => (window as unknown as { seen: string[] }).seen.some((s) => s.includes("The world is restored."))), live).toBe(true);
     await watcher.close();
     await expect(badge(page)).toHaveText("Running", live);
     await checkPage(page);

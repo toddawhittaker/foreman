@@ -41,8 +41,8 @@ type ChatPage struct {
 	MessageError i18n.Msg
 	// Failure says why a message was not sent.
 	Failure i18n.Msg
-	// GoConsole and GoServer add the link that leads out of the refusal.
-	GoConsole, GoServer bool
+	// GoConsole adds the link that leads out of the field's refusal.
+	GoConsole bool
 	// Announce is read out by #announcer when a script swaps in the panel.
 	Announce i18n.Msg
 }
@@ -172,7 +172,7 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request, u store.
 	switch {
 	case err == nil:
 	case errors.Is(err, game.ErrNotRunning):
-		p.Failure, p.GoServer = i18n.M("chat.failure.not_running"), true
+		p.Failure = i18n.M("chat.failure.not_running")
 	case errors.Is(err, game.ErrRCONUnreachable):
 		p.Failure = i18n.M("chat.failure.unreachable")
 	default:
@@ -180,7 +180,7 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	if err != nil {
-		p.Announce = labelled(i18n.M("common.error.label"), p.Failure)
+		// The refusal is a toast, which reads itself out (DESIGN 6).
 		s.respondChat(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
@@ -301,3 +301,15 @@ func (l *liveStream) chatLines(lines []game.ChatLine) error {
 	}
 	return l.rc.Flush()
 }
+
+// toasts: a message the game did not take is summed up over the page; the
+// field's own refusal stays at the field (DESIGN 6, "Toasts").
+func (p ChatPage) toasts() []Toast {
+	if p.Failure.IsZero() {
+		return nil
+	}
+	return []Toast{{Error: true, Text: p.Failure}}
+}
+
+// Toasts are the toasts a script's answer carries out of band.
+func (p ChatPage) Toasts() []Toast { return p.toasts() }

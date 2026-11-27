@@ -1,16 +1,21 @@
 {{define "title"}}{{if .Page.Restart}}{{t "server.stop.restart_title"}}{{else}}{{t "server.stop.title"}}{{end}}{{end}}
 
+{{- /* A confirmation page (DESIGN 7.4): the page header, then the confirm box with Cancel and the action at its foot. */}}
+{{define "head-title"}}{{with .Page}}<span id="stop-heading">{{if .Restart}}{{t "server.stop.restart_heading" "world" .World.Name}}{{else}}{{t "server.stop.heading" "world" .World.Name}}{{end}}</span>{{end}}{{end}}
+
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-<h1 id="stop-heading">{{if .Restart}}{{t "server.stop.restart_heading" "world" .World.Name}}{{else}}{{t "server.stop.heading" "world" .World.Name}}{{end}}</h1>
 {{template "summary" .Problems}}
-<form method="post" action="{{.Path}}" class="panel" novalidate>
+<section class="confirm" aria-labelledby="stop-heading">
   <p>{{if .Restart}}{{t "server.stop.restart_text"}}{{else}}{{t "server.stop.text"}}{{end}}</p>
-  {{template "countdown" .CountdownForm}}
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{if .Restart}}{{t "server.action.restart"}}{{else}}{{t "server.action.stop"}}{{end}}</button>
-    <a href="{{.Back}}">{{t "server.stop.cancel"}}</a>
-  </div>
-</form>
+  <form method="post" action="{{.Path}}" novalidate>
+    {{template "countdown" .CountdownForm}}
+    <div class="actions">
+      <a href="{{.Back}}">{{t "server.stop.cancel"}}</a>
+      <button type="submit" class="button button--primary">{{if .Restart}}{{t "server.action.restart"}}{{else}}{{t "server.action.stop"}}{{end}}</button>
+    </div>
+  </form>
+</section>
 {{- end}}
 {{- end}}

@@ -121,7 +121,7 @@ const server: Pair[] = [
   { name: "account menu theme button", real: "header.site .menu__themes li:nth-child(2) button", design: ".design-menu-bar .menu__themes li:nth-child(2) button", box: "both", menu: true, widths: shellWidths },
   { name: "account menu about", real: "header.site .menu__panel > a.menu__item", design: ".design-menu-bar .menu__panel > a.menu__item", box: "height", menu: true, widths: shellWidths },
   { name: "account menu sign out", real: "header.site .menu__panel > form:last-child > button.menu__item", design: ".design-menu-bar .menu__panel > form:last-child > button.menu__item", box: "height", menu: true, widths: shellWidths },
-  { name: "crumb", real: "nav.crumb", design: "nav.crumb:not(.pagehead__crumb > *)", box: "height", widths: shellWidths },
+  { name: "crumb", real: ".pagehead__crumb > nav.crumb", design: ".pagehead__crumb > nav.crumb", box: "height", widths: shellWidths },
   { name: "server tabs", real: "nav.subnav", design: "nav.subnav[aria-label='Server pages']", box: "height", widths: shellWidths },
   { name: "server tab", real: "nav.subnav li:nth-child(2) a", design: "nav.subnav[aria-label='Server pages'] li:nth-child(2) a", box: "both", widths: shellWidths, boxAt: { 320: "height" } },
   { name: "plate", real: ".plate", design: ".plate.status-card--running", box: "none" },
@@ -142,9 +142,6 @@ const server: Pair[] = [
   { name: "players table cell", real: ".server-players tbody tr:last-child td:first-child", design: ".server-players tbody tr:last-child td:first-child", box: "height" },
   { name: "players table time", real: ".server-players tbody tr:last-child td.num", design: ".server-players tbody tr:last-child td.num", box: "height" },
   { name: "snapshots card head", real: ".recent-snaps > h2", design: ".recent-snaps > h2", box: "height" },
-  { name: "done message", real: "#done-message", design: ".message--closable", box: "none" },
-  { name: "done message action", real: "#done-message .actions a", design: ".message--closable .actions a", box: "height" },
-  { name: "done message close", real: "#done-message .message__close", design: ".message--closable .message__close", box: "both" },
   { name: "snapshots card link", real: ".recent-snaps .actions a", design: ".recent-snaps .actions a", box: "height" },
 ];
 
@@ -179,7 +176,7 @@ const mods: Pair[] = [
   { name: "mod enable button", real: "table.mod-list .mod-toggle.button", design: "table.mod-list a.mod-toggle.button", box: "both" },
   { name: "more menu toggle", real: ".row-menu__toggle", design: ".row-menu__toggle", box: "both" },
   { name: "message note", real: ".message--note", design: ".message--note", box: "none" },
-  { name: "message warning", real: ".message--warning", design: ".message--warning:not(.message--closable)", box: "none" },
+  { name: "message warning", real: ".message--warning", design: ".message--warning", box: "none" },
   { name: "message action", real: ".message--warning .actions .button", design: ".message--warning .actions .button", box: "height" },
   { name: "mod table head", real: "table.mod-list th", design: "table.mod-list th", box: "height" },
   { name: "off badge", real: ".mod-line .badge", design: ".mod-line .badge", box: "both" },
@@ -226,11 +223,12 @@ const generate: Pair[] = [
   { name: "step name", real: ".flow-step--current .flow-step__name", design: ".flow-step--current .flow-step__name", box: "height", widths: shellWidths },
 ];
 
-// The Done message appears once a snapshot is taken; the pair's real side needs it.
+// A snapshot taken first gives the page its newest-snapshots list; its Done
+// message is a toast, which no pair measures.
 async function takeSnapshot(page: Page) {
-  if ((await page.locator("#done-message").count()) > 0) return;
+  if ((await page.locator(".recent-snaps__list").count()) > 0) return;
   await page.locator("#act-snapshot").click();
-  await expect(page.locator("#done-message")).toBeVisible(live);
+  await expect(page.locator(".recent-snaps__list")).toBeVisible(live);
 }
 
 test.describe("specimens match the real components", () => {
@@ -314,13 +312,14 @@ test("the error toast specimen matches the sign-in page's toast, in both themes"
   }
 });
 
-// No page draws the working bar yet, so the specimen is held to its own box: a
-// 320 by 8 track with its words beside it, and the idle bar keeps that room.
+// The specimen is held to its own box: a 320 by 8 track with its words beside
+// it, and the idle bar keeps that room. The bar in the starting plate's step
+// list is the plate's, so it is left out here.
 test("the working bar specimens are 320 by 8 with words beside, and the idle one keeps its room", async ({ page }) => {
   await createAdmin(page);
   await page.goto("/design");
   for (const theme of ["light", "dark"] as const) {
-    const bars = page.locator(`.design-pane[data-theme="${theme}"] .working`);
+    const bars = page.locator(`.design-pane[data-theme="${theme}"] .working:not(.steps .working)`);
     await expect(bars).toHaveCount(2);
     const box = async (i: number) => (await bars.nth(i).locator(".working__bar").boundingBox())!;
     expect(await box(0), `${theme}: the bar`).toMatchObject({ width: 320, height: 8 });

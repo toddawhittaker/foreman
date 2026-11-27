@@ -184,7 +184,7 @@ func TestServerPlayersTimeColumn(t *testing.T) {
 	})
 	html := playersHTML(t, p)
 	for _, want := range []string{
-		`<br><span class="hint">40 h 0 min total</span></td><td class="num" role="cell" data-label="Online for">2 min</td>`,
+		`<span class="hint player-actions__total">40 h 0 min total</span><span class="visually-hidden">`,
 		`data-label="Online for">3 min</td>`,
 		`data-label="Online for">unknown</td>`,
 		`data-label="Play time">5 h 0 min</td>`,
