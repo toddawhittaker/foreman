@@ -41,7 +41,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test test-shards coverage-floor typecheck build build-fakegame build-fakeportal build-fakeidp image run e2e e2e-deps e2e-report \
+.PHONY: verify check-go fmt-check fmt vet lint test test-pkgs test-shards coverage-floor typecheck build build-fakegame build-fakeportal build-fakeidp image run e2e e2e-deps e2e-report \
 	test-game test-game-resources test-catalogue game-images e2e-game vuln ci tidy i18n-hash deploy design-export
 
 verify: check-go fmt-check vet lint test typecheck
@@ -86,6 +86,11 @@ TEST_SHARDS ?= $(if $(CI),1,auto)
 # goes first in each round of the queue.
 POOL_PKGS := ./internal/game ./internal/world ./internal/web
 
+# What `make test` hands the queue (TEST_QUEUE below).
+QUEUE_POOL = $(POOL_PKGS)
+QUEUE_ALL = ./...
+QUEUE_COVER_FLAGS = -covermode=atomic -coverpkg=./internal/...
+
 # How many tests one queued batch holds. Each batch is a new process, so
 # small batches balance the workers better but pay the start-up cost (the
 # race detector and the coverage counters) more often; large ones the
@@ -117,7 +122,7 @@ endef
 # The output, and the exit code and seconds, are written there for the report.
 define POOL_BATCH
 dir=$$1; bin=$$2; id=$$3; run=$$4; t0=$$(date +%s); mkdir "$$POOL_WORK/cov/$$id"; \
-( cd "$$dir" && "$$bin" -test.run "$$run" -test.timeout $(TEST_TIMEOUT) -test.gocoverdir="$$POOL_WORK/cov/$$id" ) > "$$POOL_WORK/out/$$id" 2>&1; rc=$$?; \
+( cd "$$dir" && "$$bin" -test.run "$$run" -test.timeout $(TEST_TIMEOUT)$(if $(QUEUE_COVER_FLAGS), -test.gocoverdir="$$POOL_WORK/cov/$$id") ) > "$$POOL_WORK/out/$$id" 2>&1; rc=$$?; \
 echo "$$rc $$(( $$(date +%s) - t0 ))" > "$$POOL_WORK/rc/$$id"
 endef
 
@@ -162,6 +167,83 @@ endef
 test-shards:
 	@$(RESOLVE_SHARDS); echo "$$msg."
 
+# The queued run of `make test` below, shared with `make test-pkgs`. The
+# caller sets QUEUE_POOL (the queued packages), QUEUE_ALL (the packages whose
+# others run beside the queue) and QUEUE_COVER_FLAGS; with those flags empty
+# it collects no coverage and checks no floor.
+define TEST_QUEUE
+$(RESOLVE_SHARDS); \
+slice='$(TEST_SLICE)'; k=1; m=1; \
+if [ -n "$$slice" ]; then \
+	k=$${slice%%/*}; m=$${slice#*/}; \
+	case "$$k/$$m" in */*/*|*[!0-9/]*|/*|*/) echo "TEST_SLICE must look like 1/3."; exit 1;; esac; \
+	if [ "$$k" -lt 1 ] || [ "$$k" -gt "$$m" ]; then echo "TEST_SLICE must look like 1/3, with the first number from 1 to the second."; exit 1; fi; \
+fi; \
+work=$$(mktemp -d) && trap 'rm -rf "$$work"' EXIT && \
+mkdir "$$work/bin" "$$work/lists" "$$work/cov" "$$work/cov-other" "$$work/out" "$$work/rc" && \
+go test -c -race $(QUEUE_COVER_FLAGS) -o "$$work/bin/" $(QUEUE_POOL) || exit $$?; \
+for p in $(QUEUE_POOL); do \
+	base=$${p##*/}; \
+	(cd "$$p" && "$$work/bin/$$base.test" -test.list '.*' 2>/dev/null) | grep -v '^Benchmark' > "$$work/lists/$$base"; \
+	if [ ! -s "$$work/lists/$$base" ]; then echo "Found no tests in $${p#./}." >&2; exit 1; fi; \
+	awk -v size=$(TEST_BATCH) '{ r = r (r == "" ? "" : "|") $$0 } NR % size == 0 { print r; r = "" } END { if (r != "") print r }' "$$work/lists/$$base" | \
+	{ i=0; while read -r run; do \
+		i=$$((i + 1)); \
+		printf '%s %s %s %s-%03d %s\n' "$$i" "$${p#./}" "$$work/bin/$$base.test" "$$base" "$$i" "^($$run)\$$"; \
+	done; }; \
+done > "$$work/queue.in" || exit $$?; \
+sort -s -n -k1,1 "$$work/queue.in" | cut -d' ' -f2- | awk -v k="$$k" -v m="$$m" 'NR % m == k % m' > "$$work/queue"; \
+batches=$$(wc -l < "$$work/queue"); \
+if [ "$$n" -gt "$$batches" ]; then n=$$batches; fi; \
+word=workers; if [ "$$n" -eq 1 ]; then word=worker; fi; \
+names=$$(echo $(patsubst ./%,%,$(QUEUE_POOL)) | awk '{ s = $$1; for (i = 2; i < NF; i++) s = s ", " $$i; if (NF > 1) s = s " and " $$NF; print s }'); \
+part=""; if [ -n "$$slice" ]; then part=" (slice $$slice)"; fi; \
+echo "Running $$names as $$batches batches$$part on $$n $$word ($$why)."; \
+go list $(QUEUE_POOL) > "$$work/pool.pkgs"; \
+pkgs=$$(go list $(QUEUE_ALL) | grep -vxFf "$$work/pool.pkgs"); \
+if [ "$$k" -eq 1 ] && [ -n "$$pkgs" ]; then \
+	( go test -race -count=1 -timeout $(TEST_TIMEOUT) $(QUEUE_COVER_FLAGS) $$pkgs$(if $(QUEUE_COVER_FLAGS), -args -test.gocoverdir="$$work/cov-other") > "$$work/other.out" 2>&1; echo $$? > "$$work/other.rc" ) & \
+else \
+	: > "$$work/other.out"; echo 0 > "$$work/other.rc"; \
+fi; \
+POOL_WORK="$$work" xargs -P "$$n" -n 4 sh -c '$(POOL_BATCH)' sh < "$$work/queue"; \
+wait; \
+failed=0; \
+for p in $(QUEUE_POOL); do \
+	base=$${p##*/}; bad=0; count=0; slow=0; tests=0; \
+	while read -r dir bin id run; do \
+		case "$$id" in "$$base"-*) ;; *) continue;; esac; \
+		count=$$((count + 1)); rc=1; secs=0; \
+		tests=$$((tests + $$(printf '%s' "$$run" | tr -cd '|' | wc -c) + 1)); \
+		read rc secs < "$$work/rc/$$id" || true; \
+		if [ "$$rc" -ne 0 ]; then bad=$$((bad + 1)); echo "$$id" >> "$$work/failed"; fi; \
+		if [ "$$secs" -gt "$$slow" ]; then slow=$$secs; fi; \
+	done < "$$work/queue"; \
+	if [ "$$bad" -eq 0 ]; then \
+		printf 'ok    %s  %s tests in %s batches  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$slow"; \
+	else \
+		printf 'FAIL  %s  %s tests in %s batches, %s failed  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$bad" "$$slow"; failed=1; \
+	fi; \
+done; \
+cat "$$work/other.out"; \
+read rc < "$$work/other.rc" || rc=1; \
+if [ "$$rc" -ne 0 ]; then failed=1; fi; \
+if [ -s "$$work/failed" ]; then \
+	while read -r id; do echo "Output of failed batch $$id:"; cat "$$work/out/$$id"; done < "$$work/failed"; \
+fi; \
+if [ "$$failed" -ne 0 ]; then exit 1; fi; \
+$(if $(QUEUE_COVER_FLAGS),if [ -n "$$slice" ]; then \
+	mkdir -p '$(TEST_COVER_DIR)' || exit $$?; \
+	if [ "$$batches" -gt 0 ]; then cp -R "$$work"/cov/* '$(TEST_COVER_DIR)'/ || exit $$?; fi; \
+	if [ "$$k" -eq 1 ]; then cp -R "$$work/cov-other" '$(TEST_COVER_DIR)/other' || exit $$?; fi; \
+	echo "Slice $$slice left its coverage in $(TEST_COVER_DIR); make coverage-floor checks the floor."; \
+	exit 0; \
+fi; \
+cov="$$work/cover.out"; \
+dirs=$$(ls -d "$$work"/cov/* "$$work/cov-other" | paste -sd, -); \
+$(CHECK_FLOOR),exit 0)
+endef
+
 # One race-enabled run gives both the test result and the coverage floor.
 ifeq ($(TEST_SHARDS),1)
 test:
@@ -180,77 +262,19 @@ else
 # run beside the pool. Each batch writes coverage to its own folder, and the
 # folders are merged before the floor check.
 test:
-	@$(RESOLVE_SHARDS); \
-	slice='$(TEST_SLICE)'; k=1; m=1; \
-	if [ -n "$$slice" ]; then \
-		k=$${slice%%/*}; m=$${slice#*/}; \
-		case "$$k/$$m" in */*/*|*[!0-9/]*|/*|*/) echo "TEST_SLICE must look like 1/3."; exit 1;; esac; \
-		if [ "$$k" -lt 1 ] || [ "$$k" -gt "$$m" ]; then echo "TEST_SLICE must look like 1/3, with the first number from 1 to the second."; exit 1; fi; \
-	fi; \
-	work=$$(mktemp -d) && trap 'rm -rf "$$work"' EXIT && \
-	mkdir "$$work/bin" "$$work/lists" "$$work/cov" "$$work/cov-other" "$$work/out" "$$work/rc" && \
-	go test -c -race -covermode=atomic -coverpkg=./internal/... -o "$$work/bin/" $(POOL_PKGS) || exit $$?; \
-	for p in $(POOL_PKGS); do \
-		base=$${p##*/}; \
-		(cd "$$p" && "$$work/bin/$$base.test" -test.list '.*' 2>/dev/null) | grep -v '^Benchmark' > "$$work/lists/$$base"; \
-		if [ ! -s "$$work/lists/$$base" ]; then echo "Found no tests in $${p#./}." >&2; exit 1; fi; \
-		awk -v size=$(TEST_BATCH) '{ r = r (r == "" ? "" : "|") $$0 } NR % size == 0 { print r; r = "" } END { if (r != "") print r }' "$$work/lists/$$base" | \
-		{ i=0; while read -r run; do \
-			i=$$((i + 1)); \
-			printf '%s %s %s %s-%03d %s\n' "$$i" "$${p#./}" "$$work/bin/$$base.test" "$$base" "$$i" "^($$run)\$$"; \
-		done; }; \
-	done > "$$work/queue.in" || exit $$?; \
-	sort -s -n -k1,1 "$$work/queue.in" | cut -d' ' -f2- | awk -v k="$$k" -v m="$$m" 'NR % m == k % m' > "$$work/queue"; \
-	batches=$$(wc -l < "$$work/queue"); \
-	if [ "$$n" -gt "$$batches" ]; then n=$$batches; fi; \
-	word=workers; if [ "$$n" -eq 1 ]; then word=worker; fi; \
-	names=$$(echo $(patsubst ./%,%,$(POOL_PKGS)) | awk '{ s = $$1; for (i = 2; i < NF; i++) s = s ", " $$i; if (NF > 1) s = s " and " $$NF; print s }'); \
-	part=""; if [ -n "$$slice" ]; then part=" (slice $$slice)"; fi; \
-	echo "Running $$names as $$batches batches$$part on $$n $$word ($$why)."; \
-	go list $(POOL_PKGS) > "$$work/pool.pkgs"; \
-	pkgs=$$(go list ./... | grep -vxFf "$$work/pool.pkgs"); \
-	if [ "$$k" -eq 1 ]; then \
-		( go test -race -count=1 -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... $$pkgs -args -test.gocoverdir="$$work/cov-other" > "$$work/other.out" 2>&1; echo $$? > "$$work/other.rc" ) & \
-	else \
-		: > "$$work/other.out"; echo 0 > "$$work/other.rc"; \
-	fi; \
-	POOL_WORK="$$work" xargs -P "$$n" -n 4 sh -c '$(POOL_BATCH)' sh < "$$work/queue"; \
-	wait; \
-	failed=0; \
-	for p in $(POOL_PKGS); do \
-		base=$${p##*/}; bad=0; count=0; slow=0; tests=0; \
-		while read -r dir bin id run; do \
-			case "$$id" in "$$base"-*) ;; *) continue;; esac; \
-			count=$$((count + 1)); rc=1; secs=0; \
-			tests=$$((tests + $$(printf '%s' "$$run" | tr -cd '|' | wc -c) + 1)); \
-			read rc secs < "$$work/rc/$$id" || true; \
-			if [ "$$rc" -ne 0 ]; then bad=$$((bad + 1)); echo "$$id" >> "$$work/failed"; fi; \
-			if [ "$$secs" -gt "$$slow" ]; then slow=$$secs; fi; \
-		done < "$$work/queue"; \
-		if [ "$$bad" -eq 0 ]; then \
-			printf 'ok    %s  %s tests in %s batches  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$slow"; \
-		else \
-			printf 'FAIL  %s  %s tests in %s batches, %s failed  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$bad" "$$slow"; failed=1; \
-		fi; \
-	done; \
-	cat "$$work/other.out"; \
-	read rc < "$$work/other.rc" || rc=1; \
-	if [ "$$rc" -ne 0 ]; then failed=1; fi; \
-	if [ -s "$$work/failed" ]; then \
-		while read -r id; do echo "Output of failed batch $$id:"; cat "$$work/out/$$id"; done < "$$work/failed"; \
-	fi; \
-	if [ "$$failed" -ne 0 ]; then exit 1; fi; \
-	if [ -n "$$slice" ]; then \
-		mkdir -p '$(TEST_COVER_DIR)' || exit $$?; \
-		if [ "$$batches" -gt 0 ]; then cp -R "$$work"/cov/* '$(TEST_COVER_DIR)'/ || exit $$?; fi; \
-		if [ "$$k" -eq 1 ]; then cp -R "$$work/cov-other" '$(TEST_COVER_DIR)/other' || exit $$?; fi; \
-		echo "Slice $$slice left its coverage in $(TEST_COVER_DIR); make coverage-floor checks the floor."; \
-		exit 0; \
-	fi; \
-	cov="$$work/cover.out"; \
-	dirs=$$(ls -d "$$work"/cov/* "$$work/cov-other" | paste -sd, -); \
-	$(CHECK_FLOOR)
+	@$(TEST_QUEUE)
 endif
+
+# Runs only the packages in PKGS, with the race detector and no coverage.
+# Those in POOL_PKGS go through the queue; the rest run as plain go test.
+PKGS_NORM = $(addprefix ./,$(patsubst ./%,%,$(PKGS)))
+test-pkgs: QUEUE_POOL = $(filter $(POOL_PKGS),$(PKGS_NORM))
+test-pkgs: QUEUE_ALL = $(PKGS_NORM)
+test-pkgs: QUEUE_COVER_FLAGS =
+test-pkgs:
+	@if [ -z '$(strip $(PKGS))' ]; then echo 'make test-pkgs needs PKGS, for example PKGS="./internal/mods ./internal/web".'; exit 1; fi
+	@if [ -n '$(TEST_SLICE)' ]; then echo "TEST_SLICE does not apply to make test-pkgs."; exit 1; fi
+	@$(if $(QUEUE_POOL),$(TEST_QUEUE),go test -race -count=1 -timeout $(TEST_TIMEOUT) $(PKGS_NORM))
 
 # Merges the coverage that every TEST_SLICE run left in TEST_COVER_DIR and
 # checks the floor, as a whole-queue `make test` does.
