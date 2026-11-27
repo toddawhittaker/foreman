@@ -118,6 +118,16 @@
       announce(doc.body.textContent.trim());
       return;
     }
+    // A result's toasts go first in #toasts, as htmx's out-of-band swap
+    // puts them, and toast.js reads each out (DESIGN 6, "Toasts").
+    if (e.target.getAttribute("sse-swap") === "toast") {
+      e.preventDefault();
+      const region = document.getElementById("toasts");
+      const answer = document.createElement("template");
+      answer.innerHTML = e.detail.data;
+      if (region) for (const t of answer.content.querySelectorAll("[hx-swap-oob] > [data-toast]")) region.prepend(document.importNode(t, true));
+      return;
+    }
     // The strip's update swaps only out of band; nothing on the page moves.
     if (e.target.getAttribute("sse-swap") === "strip") return;
     held = e.target.contains(document.activeElement) ? e.target : null;
@@ -139,30 +149,11 @@
     document.getElementById(heading)?.focus();
   });
 
-  // After the admin's own cancel stop or snapshot, the Done message takes
-  // focus once, as soon as it is there: at once when the page already shows
-  // it, or when a live update brings it. The server marks such a load with
-  // data-focus-result on the control region (SPEC 17.9).
-  function focusDone() {
-    const region = document.querySelector("[data-focus-result]");
-    const done = region?.querySelector("#done-message");
-    if (!done) return;
-    region.removeAttribute("data-focus-result");
-    // A screen reader reads the box once, on focus, so its times must already
-    // be local; time.js would only get to them after the swap settles.
-    window.foremanTimes?.run(done);
-    done.focus();
-  }
-  focusDone();
-  document.addEventListener("htmx:sseMessage", (e) => {
-    if (e.target.hasAttribute("data-focus-result")) focusDone();
-  });
-
-  // Closing the Done message posts without a reload (the form works without
-  // script). The server answers with no body, so the box is removed here, and
-  // focus goes to the first control of the panel, not to the top of the page
+  // Closing the Undo row posts without a reload (the form works without
+  // script). The server answers with no body, so the row is removed here, and
+  // focus goes to the first control of the plate, not to the top of the page
   // (DESIGN 7.3, SPEC 17.9). The next live update brings the page in line.
-  // That update can come first: it redraws the panel, the form that sent the
+  // That update can come first: it redraws the plate, the form that sent the
   // close is gone, and its answer never reaches this page. So the close is
   // remembered when it is sent, and whichever comes first, the answer or the
   // update, moves focus.
@@ -182,11 +173,11 @@
       closing = false;
       return;
     }
-    form.closest(".message")?.remove();
+    form.closest(".result-undo")?.remove();
     if (closing) focusFirstControl();
   });
   document.addEventListener("htmx:sseMessage", (e) => {
-    if (closing && !document.getElementById("done-message") && e.target.querySelector(".server-actions")) focusFirstControl();
+    if (closing && !document.getElementById("result-undo") && e.target.querySelector(".server-actions")) focusFirstControl();
   });
 
   // The mods notice is a status region and loads again after each operation

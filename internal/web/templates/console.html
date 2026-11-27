@@ -3,27 +3,24 @@
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
 <script src="{{static "log.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "server-tabs" "console"}}{{end}}
+{{- /* The page header (DESIGN 6), the Server tabs' shape on all three tabs. */}}
+{{define "head-crumb"}}{{with .Page}}{{if .HasWorld}}{{template "crumb" (crumbs serverPath (t "common.nav.server") "" .World.Name)}}{{else}}<p class="eyebrow">{{t "common.nav.server"}}</p>{{end}}{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{if .HasWorld}}<span id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></span>{{else}}{{t "server.console.title"}}{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "server-tabs" "console"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
 {{- if not .HasWorld}}
-<h1>{{t "server.console.title"}}</h1>
-{{template "rail" $}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
-  <p class="empty">{{t "server.console.none"}}</p>
+  {{template "empty" (empty "worlds" (t "server.console.none"))}}
   <div class="actions"><a href="{{worldsPath}}" class="button">{{t "server.none.go"}}</a></div>
 </section>
 {{- else}}
 {{- /* The facts event carries the heading's badge and the announce event is read out, so state changes are spoken here too (DESIGN 7.5). */}}
 <div sse-swap="facts" hidden></div>
 <div sse-swap="announce" hidden></div>
-{{template "crumb" (crumbs serverPath (t "common.nav.server") "" .World.Name)}}
-<header class="page-head">
-  <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
-</header>
-{{template "rail" $}}
 {{- /* One terminal card: the game log, then past commands, then the command
      row at its foot, as a terminal reads (DESIGN 8.5). */}}
 <div class="card terminal">
@@ -48,16 +45,17 @@
     {{- /* How many lines the find and filter leave, said politely once typing pauses. */}}
     <p class="hint log-tools__count" id="log-count" role="status"></p>
   </div>
-  {{- if not .Lines}}
-  <p class="empty" id="log-empty">{{t "server.console.log_empty"}}</p>
-  {{- end}}
-  <p class="empty" id="log-no-match" hidden>{{t "server.console.no_match"}}</p>
   <div class="log-frame" data-log-events="{{.EventsPath}}" data-max-lines="{{.MaxLines}}">
     <div class="log" tabindex="0" role="region" aria-label="{{t "server.console.log_label"}}">
       {{- /* The game's own words stay English (SPEC 22.3). */}}
       <pre lang="en">{{range .Lines}}<span{{with $.Page.LineClass .}} class="{{.}}"{{end}}>{{with $.Page.LineStamp .}}<span class="log-time">{{.}}</span>{{end}}{{$.Page.LineText .}}
 </span>{{end}}</pre>
     </div>
+    {{- /* An empty log, or a find that matches nothing, says so over the log's box, so the log never moves when lines come (ruling 1 of fixes 20). */}}
+    {{- if not .Lines}}
+    <div class="log-frame__empty" id="log-empty">{{template "empty" (empty "console" (t "server.console.log_empty"))}}</div>
+    {{- end}}
+    <div class="log-frame__empty" id="log-no-match" hidden>{{template "empty" (empty "console" (t "server.console.no_match"))}}</div>
     <button type="button" class="button" hidden>{{t "server.console.jump"}}</button>
   </div>
 </section>
@@ -75,12 +73,6 @@
 {{define "console-panel" -}}
 <div id="console-panel">
   {{template "summary" .Problems}}
-  {{- if not .Failure.IsZero}}
-  <div class="message message--error">
-    <p><strong>{{t "common.error.label"}}</strong> {{msg .Failure}}</p>
-    <div class="actions"><a href="{{serverPath}}">{{t "server.console.go_server"}}</a></div>
-  </div>
-  {{- end}}
   <form class="field console-form" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#console-panel" hx-swap="outerHTML" novalidate>
     <label for="command">{{t "server.console.command"}}</label>
     <p class="hint" id="command-hint">{{t "server.console.command_hint"}}</p>
@@ -116,15 +108,18 @@
   </div>
   </details>
   {{- else}}
-  <p class="empty empty--art empty--console">{{t "server.console.no_history"}}</p>
+  {{template "empty" (empty "console" (t "server.console.no_history"))}}
   {{- end}}
 </div>
 {{- end}}
 
-{{/* What a script swaps in after a command: the panel, and the reply or the
-     refusal for the announcer. */}}
+{{/* What a script swaps in after a command: the panel, the reply for the
+     announcer, and a refusal as a toast (DESIGN 6, "Toasts"). */}}
 {{define "console-response" -}}
 {{template "console-panel" .}}
+{{- range .Toasts}}
+{{template "toast-oob" .}}
+{{- end}}
 {{- if not .Announce.IsZero}}
 <div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
 {{- end}}

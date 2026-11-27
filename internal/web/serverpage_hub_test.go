@@ -60,7 +60,7 @@ func wantIDs(t *testing.T, html string) {
 var hubNames = map[string]string{"alpha": "Alpha", "bravo": "Bravo", "base": longName}
 
 // VISION principle 1, SPEC 17.9: every Done message offers its undo as a
-// button that opens the undo's own confirmation, and says when it happened.
+// button that opens the undo's own confirmation; its words are a toast.
 func TestDoneOffersUndoAndItsTime(t *testing.T) {
 	at := msgT0
 	cases := map[string]struct {
@@ -87,8 +87,13 @@ func TestDoneOffersUndoAndItsTime(t *testing.T) {
 				p.Result, p.HaveResult, p.Rollback, p.WorldNames = c.res, true, c.rollback, hubNames
 			})
 			html := controlHTML(t, p)
-			wantAll(t, name, html, append(c.sentences, `href="`+c.path+`" class="button" id="act-undo">`+c.label+`</a>`,
-				`Finished at <time datetime="2026-11-04T10:00:00Z">2026-11-04 10:00 UTC</time>.`)...)
+			wantAll(t, name, html, `href="`+c.path+`" class="button" id="act-undo">`+c.label+`</a>`)
+			// The words and the time are the Done toast's (DESIGN 6).
+			ts := p.ResultToasts()
+			if len(ts) != 1 {
+				t.Fatalf("toasts %+v", ts)
+			}
+			wantAll(t, name+" toast", english(ts[0].Text), c.sentences...)
 			wantNone(t, name, html, "from the Snapshots page", "use Roll back on the world")
 			wantIDs(t, html)
 		})
@@ -112,8 +117,12 @@ func TestCancelledStopIsReportedAsDone(t *testing.T) {
 				p.Status.Operation.Switch = &game.SwitchInfo{From: "base", To: "bravo"}
 			}
 		})
+		plain := html.UnescapeString(want)
 		html := controlHTML(t, p)
-		wantAll(t, action, html, "<strong>Done:</strong> "+want)
+		// The words are the Done toast's (DESIGN 6, "Toasts").
+		if ts := p.ResultToasts(); len(ts) != 1 || ts[0].Error || !strings.Contains(english(ts[0].Text), plain) {
+			t.Errorf("%s: toasts %+v, want one Done with %q", action, ts, want)
+		}
 		wantNone(t, action, html, "Error:", `<ol class="steps"`, "act-undo", "Switch back")
 		if got := english(resultAnnouncement(p)); !strings.Contains(got, "was canceled.") {
 			t.Errorf("%s: announcement %q", action, got)
@@ -142,7 +151,7 @@ func TestCountdownShowsTimeLeftPlayersAndCancel(t *testing.T) {
 	html := controlHTML(t, p)
 	// The browser counts down from data-until; without script the text shows the time left at render.
 	wantAll(t, "control", html, `Warn players: <span data-until="`+now.Add(17*time.Second+time.Millisecond).UTC().Format(time.RFC3339)+`">18 seconds left</span>`,
-		`<form method="post" action="/worlds/base/cancel-stop" class="actions"><button type="submit" class="button button--primary" id="act-cancel-stop">Cancel stop</button></form>`)
+		`<form method="post" action="/worlds/base/cancel-stop"><button type="submit" class="button button--primary" id="act-cancel-stop">Cancel stop</button></form>`)
 	wantIDs(t, html)
 	players := fragmentHTML(t, p, "server-players")
 	wantAll(t, "players", players, "<caption>Players: 1 online when the stop began</caption>", `badge badge--online">Online</span>`)
@@ -237,7 +246,7 @@ func TestSwitchShowsTheNewActiveWorld(t *testing.T) {
 			p.Status.Operation = &game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "alpha", To: "bravo", Presented: presented}}
 		})
 		link := fragmentHTML(t, p, "server-active")
-		wantAll(t, "active", link, `href="/worlds/`+strings.ToLower(active)+`" id="act-world">World page</a>`)
+		wantAll(t, "active", link, `href="/worlds/`+strings.ToLower(active)+`" class="shortcut--map" id="act-world">World page</a>`)
 		facts := fragmentHTML(t, p, "server-facts")
 		wantAll(t, "facts", facts, "<dt>Switching</dt><dd>From Alpha to Bravo</dd>")
 		if presented == strings.Contains(facts, "alpha.zip") {
@@ -255,9 +264,9 @@ func TestTakeSnapshotOffered(t *testing.T) {
 	} {
 		html := controlHTML(t, serverCase(state, func(*ServerPage) {}))
 		// Take snapshot is plain beside Start, and the primary once nothing brings the game up.
-		face := `class="button"`
+		face := `class="button server-act--snapshot"`
 		if state == game.StateRunning {
-			face = `class="button button--primary"`
+			face = `class="button button--primary server-act--snapshot"`
 		}
 		if got := strings.Contains(html, `<form method="post" action="/worlds/base/take-snapshot"><button type="submit" `+face+` id="act-snapshot">Take snapshot</button></form>`); got != want {
 			t.Errorf("%s: offered %v, want %v", state, got, want)
@@ -270,7 +279,9 @@ func TestTakeSnapshotOffered(t *testing.T) {
 	done := serverCase(game.StateRunning, func(p *ServerPage) {
 		p.Result, p.HaveResult = actionResult{Action: actionSnapshot, Taken: defaultLabel, At: msgT0}, true
 	})
-	wantAll(t, "done", controlHTML(t, done), `<strong>Done:</strong> Foreman took the snapshot &#34;Manual snapshot&#34; of `, `id="act-snapshots"`)
+	if ts := done.ResultToasts(); len(ts) != 1 || !strings.HasPrefix(english(ts[0].Text), `Foreman took the snapshot "Manual snapshot" of `) {
+		t.Errorf("done: toasts %+v", ts)
+	}
 }
 
 // SPEC 7.6, 7.7: the forms that stop the game name who is online.
@@ -411,7 +422,7 @@ func TestSnapshotFromServerPage(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Base", fixtureNoSA, false)
 	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "take-snapshot"), url.Values{}))
-	g.waitPage(`<strong>Done:</strong> Foreman took the snapshot &#34;Manual snapshot&#34; of Base.`)
+	g.waitPage(`<span data-toast-text>Foreman took the snapshot &#34;Manual snapshot&#34; of Base.</span>`)
 	snaps, err := g.worlds.Snapshots(id)
 	if err != nil || len(snaps) != 1 || snaps[0].Label != defaultLabel {
 		t.Errorf("snapshots %+v, %v", snaps, err)
@@ -426,7 +437,7 @@ func TestServerPageSwitchesAndSwitchesBack(t *testing.T) {
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
 	body := g.get(PathServer)
-	g.wantContains("server page", body, `<a href="/worlds" id="act-switch-world">Switch world</a>`)
+	g.wantContains("server page", body, `<a href="/worlds" class="shortcut--switch" id="act-switch-world">Switch world</a>`)
 	g.wantMissing("server page", body, "Switch to Bravo", "Switch to Alpha")
 	g.wantContains("worlds list", g.get(PathWorlds), `href="`+switchPath(b)+`"`)
 
