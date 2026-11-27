@@ -5949,8 +5949,9 @@ a[target="_blank"]::after {
     grid-column: 1 / -1;
   }
 
-  /* Name and version share label, hint and control rows, so the input and
-     the select line up; what follows the control flows below (DESIGN 8.6). */
+  /* Name and version share label, control and help rows, so the input and
+     the select line up; the name's help sits under its input, as on any
+     plain field, and what follows the control flows below (DESIGN 8.6). */
   .gen-settings > .field:has(#generate-name),
   .gen-settings > .version-fields {
     grid-column: auto;
@@ -5958,6 +5959,14 @@ a[target="_blank"]::after {
     grid-row: span 5;
     grid-template-rows: subgrid;
     row-gap: var(--space-2);
+  }
+
+  #generate-name {
+    grid-row: 2;
+  }
+
+  #generate-name-hint {
+    grid-row: 3;
   }
 
   .gen-settings > .field:has(#generate-name) > .error {
@@ -5970,7 +5979,7 @@ a[target="_blank"]::after {
   }
 
   #generate-version-select {
-    grid-row: 3;
+    grid-row: 2;
   }
 
   .version-fields > .disclosure {
@@ -13803,9 +13812,10 @@ form.general-grid.setting-rows > .form-foot {
 }
 
 /* The map string is a three-line preview; clicking into it opens the
-   whole string to select, and the corner handle drags it taller. */
+   whole string to select, and the corner handle drags it taller. Its height
+   is three whole lines plus its top padding and its bottom edge. */
 .world-layout__side .exchange .copy-field--block > textarea.exchange__value {
-  block-size: calc(3lh + var(--space-2));
+  block-size: calc(3lh + 2 * var(--space-2));
   resize: vertical;
 }
 
@@ -15135,10 +15145,10 @@ section[data-view="installed"] > .group__head > :is(h2#installed-heading, .count
   }
 }
 
-/* ==== Page width. A form-only or short-list page keeps its content to an
-   80rem working width, start-aligned under its title, while the area's tab
-   row (and a flow's step bar) still runs the page's width; wide data and
-   tools (the audit log, the factory map, mods) take the whole page. */
+/* ==== Page width. A form-only or short-list page keeps all of its own
+   content to an 80rem working width, start-aligned: its title, the area's
+   tab row, a flow's step bar and the content share one right edge. Wide
+   data and tools (the audit log, the factory map, mods) take the whole page. */
 main[data-width="measure"] {
   grid-template-columns: minmax(0, 80rem) minmax(0, 1fr);
   column-gap: 0;
@@ -15148,15 +15158,11 @@ main[data-width="measure"] > * {
   grid-column: 1;
 }
 
-main[data-width="measure"] > :is(.subnav, .flow-head) {
-  grid-column: 1 / -1;
-}
-
 /* ==== Type roles on forms: a field's label is 14 px at 600 in the body ink,
    its help 13 px in the faint ink under the control, so the name, the value
    and the help read as three steps. */
 :where(label:not(.check), legend) {
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   letter-spacing: 0;
 }
 

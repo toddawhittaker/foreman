@@ -57,6 +57,14 @@ test("a generated world offers its string and copies it", { tag: "@looks" }, asy
   await expect(page.getByText("The string carries the map settings only, not mods.")).toBeVisible();
   await copyAndRead(page, page.locator("section", { has: page.getByRole("heading", { name: "Map exchange string" }) }), f);
   expect(page.url()).not.toContain(">>>");
+  // The preview on the world's page shows three whole lines, none cut through.
+  await page.locator("main h1").click();
+  const lines = await f.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    const inner = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    return inner / parseFloat(cs.lineHeight);
+  });
+  expect(lines).toBeCloseTo(3, 1);
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/x2-world-${test.info().project.name}.png`, fullPage: true });
 });
