@@ -500,6 +500,12 @@ test.describe("typing on the Mods tab", () => {
     await box.fill("fp-pg");
     await box.press("Enter");
     await expect(page.getByRole("list", { name: /Showing 1 to 10\./ })).toBeVisible();
+    // The next page answers late, after the typing's delayed search would
+    // fire: that search must not bring page 1 back over it.
+    await page.route(/page=2/, async (route) => {
+      await new Promise((done) => setTimeout(done, 500));
+      await route.continue();
+    });
     await page.getByRole("navigation", { name: "Result pages, above the list" }).getByRole("link", { name: "Next page" }).click();
     await expect(page.getByRole("list", { name: /Showing 11 to 20\./ })).toBeVisible();
     await expect(page.locator("#results-heading")).toBeFocused();

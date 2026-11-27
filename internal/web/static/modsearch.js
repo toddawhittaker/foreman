@@ -43,6 +43,21 @@
       review.removeAttribute("aria-describedby");
     }
   };
+  // Enter searches at once, but the typing's delayed search for the same text
+  // still fires after it; by then a page control may have asked for another
+  // page, which that late reply would replace with page 1. A search for the
+  // text already searched is dropped.
+  let searched = null;
+  document.addEventListener("htmx:confirm", (e) => {
+    const elt = e.detail.elt;
+    const box = document.getElementById("mod-search");
+    if (!box || (elt !== box && elt !== box.form)) return;
+    if (elt === box && box.value === searched) {
+      e.preventDefault();
+      return;
+    }
+    searched = box.value;
+  });
   document.addEventListener("click", (e) => {
     if (e.target.closest?.('#act-review-plan[aria-disabled="true"], #flow-next[aria-disabled="true"]')) e.preventDefault();
   });
