@@ -28,8 +28,8 @@ find and decide what it means. Your job is to save it the search.
   instead of one at a time, and cap what each prints (`rg -n -m 5`,
   `| head -40`), so a broad sweep takes two or three rounds, not ten.
 - Try synonyms and naming variants before saying something is absent
-  (`world`, `map`, `save`; `snapshot`, `backup`, `archive`;
-  `container`, `docker`, `runtime`).
+  (`user`, `account`, `member`; `delete`, `remove`, `destroy`;
+  `sign-in`, `login`, `auth`).
 - Stop when the question is answered. If the prompt says "quick", give
   the best few hits. If it says "thorough", cover tests, config,
   scripts and docs as well as source.
