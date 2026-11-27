@@ -1,0 +1,728 @@
+/* Forms (DESIGN 7.2): fields, labels, hints, the required mark, setting
+   rows, copy fields, confirmations and the form footer. */
+@layer components {
+/* Single-column grids use minmax(0, 1fr), so a long word or a wide child
+   cannot push the track past its box (DESIGN 7, 320 px rules). */
+.confirm,
+.confirm form,
+.field {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* 7.2 Form fields */
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.hint a {
+  padding-block: 0.3em;
+}
+
+/* Checkboxes and radios keep their own 1.25rem look; the .check label is the
+   target. A slider is no box either: padding would stop its knob short of the
+   track's ends. */
+.field input:not([type="checkbox"], [type="radio"], [type="range"]) {
+  inline-size: 100%;
+  max-inline-size: 40ch;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  background: var(--color-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--text-md);
+  text-overflow: ellipsis;
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 50%));
+}
+
+.field select {
+  inline-size: 100%;
+  max-inline-size: 40ch;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  background: var(--color-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--text-md);
+  text-overflow: ellipsis;
+}
+
+/* The file picker button is drawn as a secondary button (DESIGN 7.2). */
+.field input[type="file"] {
+  padding-inline: 0 var(--space-3);
+}
+
+.field input[type="file"]::file-selector-button {
+  min-block-size: calc(var(--target-min) - 2 * var(--border-width));
+  margin-inline-end: var(--space-3);
+  padding-inline: var(--space-4);
+  background: transparent;
+  color: var(--color-text);
+  border: 0;
+  border-inline-end: var(--border-width) solid var(--color-border);
+  border-radius: 0;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field input[type="file"]::file-selector-button:hover {
+  background: var(--color-secondary-hover);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.field input[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+  border: 2px solid var(--color-danger-text);
+}
+
+/* A number field is about 10 characters wide, not the width of a name
+   (DESIGN 7.2). The padding and edges are added to the characters. */
+.field input[inputmode="numeric"],
+.field--short input {
+  max-inline-size: calc(10ch + 2 * var(--space-3) + 2 * var(--border-width));
+}
+
+/* A field and the button that acts on it share a row while they fit. */
+.inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.inline-row > input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.inline-row > input[inputmode="numeric"] {
+  flex: 0 1 auto;
+}
+
+/* A required field's mark: an asterisk, explained once per form (DESIGN 7.2).
+   It is drawn by the style sheet with empty alt text, so the label's name stays
+   the label's words and screen readers hear "required" from the field instead. */
+.req,
+.required::after {
+  color: var(--color-danger-text);
+  font-weight: 600;
+}
+
+.required::after {
+  content: " *" / "";
+}
+
+/* 7.4 Confirming risky actions: a flat danger box, no bevel. */
+.confirm {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--space-3);
+  padding: max(var(--space-4), var(--card-pad));
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-danger);
+  border-block-start-width: var(--border-width);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  padding-block-start: calc(max(var(--space-4), var(--card-pad)) + 6px);
+}
+
+.confirm :is(ul, ol) {
+  display: grid;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-5);
+}
+
+.confirm form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* The mod review on a wide screen: the changes lead, and what happens, the
+   countdown and the button sit in a column beside them. */
+.confirm__main,
+.confirm__side {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+@container (min-width: 64rem) {
+  .confirm form:has(> .confirm__side) {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .confirm__side:not(:empty) {
+    padding-inline-start: var(--space-6);
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+td > .hint {
+  margin-block-start: var(--space-1);
+}
+
+/* A setting's name and its tip button share a line; with a slider, the step
+   in words sits at the line's end (DESIGN 7.7, 8.7). */
+.field__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.field__head > label {
+  min-inline-size: 0;
+}
+
+/* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
+@media (forced-colors: active) {
+  .field input[type="file"]::file-selector-button {
+    border-inline-end-color: ButtonText;
+  }
+}
+
+/* 8.10 Game settings: text areas, the raw editor and the list of changes. */
+.field textarea {
+  inline-size: 100%;
+  max-inline-size: 40ch;
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: var(--text-md);
+  text-overflow: ellipsis;
+  resize: vertical;
+}
+
+/* The JSON editor keeps its lines; a long one scrolls inside the box. */
+.field textarea.code {
+  max-inline-size: none;
+  font-family: var(--font-mono);
+  white-space: pre;
+  overflow: auto;
+  tab-size: 2;
+}
+
+/* A mod plan that destroys nothing is not a danger box (DESIGN 7.1, 8.11). */
+.confirm--plain {
+  border-color: var(--color-line);
+}
+
+/* An unresolved mod's zip form is empty; its field and button sit in the
+   plan's form and name it with form="". */
+.confirm form[hidden] {
+  display: none;
+}
+
+.field input[type="color"] {
+  flex: none;
+  inline-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  padding: var(--space-1);
+}
+
+/* A long form's actions stay in reach: the bar sticks to the window's foot
+   while the form is in view, and settles at the form's end. */
+.form-foot {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  box-shadow: 0 -6px 16px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 35%));
+}
+
+/* A form's foot bar at the card's foot: what is pending leads it; Cancel
+   sits just before the primary action at the end. It wraps rather than
+   squeeze a button's words out of its box at large text (320 px rule 5). */
+.form-foot {
+  min-block-size: 4rem;
+  margin: 0 calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
+  padding: var(--space-3) var(--card-pad);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* Cancel comes just before the primary action, in code order too, so the
+   keyboard meets them as the eye does. */
+.form-foot > a {
+  margin-inline-end: 0;
+}
+
+/* A save bar's note leads it, the action ends it. */
+.form-foot > .form-foot__note {
+  margin-block: 0;
+  margin-inline: 0 auto;
+}
+
+.form-foot > .form-foot__note:not([hidden]) {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), select, textarea) {
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 10%), rgb(0 0 0 / 35%));
+}
+
+/* Selects are drawn: the browser's arrow goes, and the one chevron of the
+   icon set takes its place, 12 px from the end. */
+.field select,
+select.select {
+  appearance: none;
+  padding-inline-end: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23857c70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+}
+
+.field select:dir(rtl) {
+  padding-inline: var(--space-3) 2.25rem;
+  background-position: left 0.75rem center;
+}
+
+:where(select:not([multiple], [size])):focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.confirm::before {
+  content: "";
+  position: absolute;
+  inset: -1px -1px auto;
+  block-size: 6px;
+  background: repeating-linear-gradient(-45deg, var(--color-danger) 0 8px, var(--color-danger-bg) 8px 16px);
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
+}
+
+/* A plan that destroys nothing keeps the review frame but is drawn in
+   blueprint blue: planned, not yet built; the hazard stripe stays for
+   destructive ones (DESIGN 7.1). */
+.confirm--plain::before {
+  block-size: 4px;
+  background: var(--color-info);
+}
+
+@media (forced-colors: active) {
+  .confirm::before {
+    display: none;
+  }
+
+  .confirm {
+    border-block-start-width: 4px;
+  }
+}
+
+/* The settings layout (DESIGN 4): a section's title and its helper text in
+   the first column, its fields beside them, 24 px between fields and a
+   hairline between sections; one column on a phone. A world's settings,
+   mod settings, a world's overview, the factorio.com account and the
+   one-field forms over a list all use it. */
+.panel.setting-rows {
+  gap: 0;
+}
+
+/* The source hint is a note above the first section, so it gets the gap a hint has before a section. */
+.setting-rows > #general-source {
+  margin-block-end: var(--space-4);
+}
+
+:is(.setting-row, .settings > fieldset) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3) var(--space-6);
+  min-inline-size: 0;
+}
+
+.setting-rows > .setting-row + .setting-row {
+  padding-block-start: var(--space-5);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.setting-rows > .setting-row + .setting-row {
+  margin-block-start: var(--space-5);
+}
+
+/* General settings: the pairs keep a clear gap above the save bar, so the
+   last field never sits under it (DESIGN 8.15). */
+form.setting-rows > .form-foot {
+  margin-block-start: var(--space-5);
+}
+
+/* Wide settings forms put their groups two to a row, so a page of short
+   fields fills the card instead of one long column (DESIGN 8.15). */
+@container (min-width: 92rem) {
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)):not(.general-grid) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)):not(.general-grid) > :not(.setting-row) {
+    grid-column: 1 / -1;
+  }
+
+  /* Each pair of groups shares one rule above it. */
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)):not(.general-grid) > .setting-row {
+    margin-block-start: var(--space-5);
+    padding-block-start: var(--space-5);
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  form.setting-rows:has(> .setting-row:nth-of-type(4)):not(:has(fieldset)):not(.general-grid) > .setting-row:is(:nth-of-type(1), :nth-of-type(2)) {
+    margin-block-start: 0;
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+}
+
+.setting-row__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.setting-row__head > :is(h2, h3, h4),
+.setting-row > h3 {
+  margin: 0;
+}
+
+/* A fieldset's floated legend is laid out as its first item, so it takes
+   the title's column. */
+.setting-row > legend {
+  float: inline-start;
+  inline-size: auto;
+  margin: 0;
+}
+
+/* A list in the title's column reads as helper text. */
+.setting-row__head > :is(ol, ul) {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.43;
+}
+
+.setting-row__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-5);
+  min-inline-size: 0;
+}
+
+/* In the fields' column a text field is as wide as the column. */
+.setting-row__body .field :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [inputmode="numeric"], .mod-settings-number), select, textarea) {
+  max-inline-size: none;
+}
+
+.setting-row__body .inline-row > input:not([type="color"], .mod-settings-number, [inputmode="numeric"]) {
+  flex: 1 1 12rem;
+}
+
+/* The title's column is a third of the card and at least 240 px; the
+   fields' column is the rest, its fields capped at 480 px. */
+@container (min-width: 46rem) {
+  :is(.setting-row, .settings > fieldset) {
+    grid-template-columns: 13.75rem minmax(0, 1fr);
+  }
+}
+
+.group > .group__head > .hint {
+  margin-inline-end: auto;
+}
+
+/* A page's description sits 8 px under its title, whatever the page's gap. */
+main > h1 + p.hint {
+  margin-block-start: calc(var(--space-2) - var(--space-4));
+  max-inline-size: 64ch;
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@media (min-width: 40rem) {
+  main > h1 + p.hint {
+    margin-block-start: calc(var(--space-2) - var(--space-5));
+  }
+}
+
+/* The required note is one quiet line at the top end of its form. */
+.required-note {
+  justify-self: end;
+  font-size: var(--text-xs);
+  text-align: end;
+}
+
+/* Settings: a narrow column for each section's name, the fields beside it
+   up to 640 px, and short figures paired two to a row (DESIGN 4). */
+@container (min-width: 46rem) {
+  .setting-row__body > * {
+    max-inline-size: 30rem;
+  }
+
+  /* A long string reads better on a wider box. */
+  .setting-row__body > .exchange {
+    max-inline-size: 44rem;
+  }
+
+  .setting-row__body:has(> .field--short + .field--short) {
+    grid-template-columns: repeat(2, minmax(0, 19rem));
+  }
+
+  .setting-row__body:has(> .field--short + .field--short) > :not(.field--short) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Mod settings' save bar: the form's last part, at the window's foot while
+   the form is in view, as on Game settings. */
+.panels > .form-foot {
+  margin: 0;
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+/* Settings rows: a 240 px title column from a wide card, so the controls
+   start sooner and the long forms use the width beside their titles. */
+@container (min-width: 60rem) {
+  :is(.setting-row, .settings > fieldset) {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    column-gap: var(--space-5);
+  }
+
+  .setting-row__body > * {
+    max-inline-size: 30rem;
+  }
+
+  /* A long string reads better on a wider box. */
+  .setting-row__body > .exchange {
+    max-inline-size: 44rem;
+  }
+}
+
+.danger-zone .setting-row__head > h2 {
+  color: var(--color-danger-text);
+}
+
+/* ---- X2 map exchange string (SPEC 5.6): a read-only field to select and
+   copy, on a world's page and in each favorite. ---- */
+.exchange {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.exchange .field textarea.exchange__value {
+  inline-size: 100%;
+  max-inline-size: none;
+  padding-block: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  resize: vertical;
+}
+
+/* A read-only value with its copy button joined to the field's end edge. */
+.copy-field {
+  display: flex;
+  align-items: stretch;
+  min-inline-size: 0;
+}
+
+.exchange .field .copy-field:not(.copy-field--block) > textarea.exchange__value {
+  flex: 1 1 auto;
+  min-block-size: var(--target-min);
+  padding-block: 0.6rem;
+  field-sizing: content;
+  resize: none;
+  min-inline-size: 0;
+  max-inline-size: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-overflow: clip;
+}
+
+/* The token page's two values sit at a width a token fits on one line. */
+.exchange:has(.copy-field:not(.copy-field--block)) {
+  max-inline-size: 52rem;
+}
+
+/* A long string: the text box and a foot bar holding Copy, drawn as one field. */
+.copy-field--block {
+  display: grid;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+/* The map exchange string shows five whole lines and scrolls; Copy sits in
+   the foot below it, never over the text. */
+.exchange .copy-field--block > textarea.exchange__value {
+  block-size: calc(5lh + 2 * var(--space-2));
+  min-block-size: 0;
+  padding-block-end: 0;
+  overflow-y: auto;
+  border: 0;
+  border-block-end: var(--space-2) solid var(--color-deep);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: none;
+  line-height: 1.5;
+  resize: none;
+}
+
+.exchange .copy-field--block > textarea.exchange__value:focus {
+  outline-offset: -2px;
+}
+
+.copy-field__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* A setting row names itself in its own start column, so its heading is
+   not a band. */
+#main .setting-row > :is(h2, .section-head, .group__head) {
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+/* The hazard stripe is the game's yellow and black in both themes, 8 px
+   tall, so a destructive step reads as one at a glance. */
+.confirm:not(.confirm--plain)::before {
+  block-size: 8px;
+  background: repeating-linear-gradient(-45deg, var(--color-hazard) 0 8px, var(--color-hazard-ink) 8px 16px);
+}
+
+.hint,
+.panel > :is(h2, .section-head) + .hint {
+  max-inline-size: 64ch;
+}
+
+/* ---- A settings group's title carries its (i) toggletip; the head keeps
+   one short line of help and the full text opens from the button. */
+.setting-row__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* A settings row form (Restart schedule) ends in the same foot bar as
+   General, across both its columns. */
+.setting-row > .form-foot {
+  grid-column: 1 / -1;
+}
+
+.hint,
+.panel > :is(h2, .section-head) + .hint {
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* ==== Restart schedule: the settings at a working width, how a restart
+   works beside them as a side plate that runs to the plate's edge. */
+@media (min-width: 72rem) {
+  form.panel.setting-row:has(#schedule-how-heading) {
+    grid-template-columns: minmax(0, 36rem) minmax(0, 1fr);
+    column-gap: var(--space-6);
+  }
+
+  form.panel.setting-row:has(#schedule-how-heading) > .setting-row__head {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+    margin-block-start: calc(-1 * var(--card-pad));
+    margin-inline-end: calc(-1 * var(--card-pad));
+    padding: var(--space-5);
+    background: var(--color-raised);
+    border-inline-start: var(--border-width) solid var(--color-line);
+  }
+
+  form.panel.setting-row:has(#schedule-how-heading) > .setting-row__head ol {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: 72ch;
+    color: var(--color-text-muted);
+    font-size: var(--text-md);
+    line-height: 1.5;
+  }
+
+  form.panel.setting-row:has(#schedule-how-heading) > .setting-row__body {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  form.panel.setting-row:has(#schedule-how-heading) > .form-foot {
+    grid-column: 1 / -1;
+  }
+}
+
+main tbody th[scope="row"] .hint {
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+/* A hint under a field in a wide column runs to a longer line, so most
+   take one. */
+@media (min-width: 64rem) {
+  .field > .hint,
+  .setting-row__body .hint {
+    max-inline-size: 100ch;
+  }
+}
+
+.field > label {
+  color: var(--color-text);
+}
+
+:is(.field, fieldset) > .hint {
+  color: var(--color-text-faint);
+}
+
+/* A plain field (label, help, control, perhaps its error) shows the help
+   under the control; the help stays the control's description. */
+.field:has(> label + .hint + :is(input:not([type="checkbox"], [type="radio"]), select, textarea):is(:last-child, :has(+ .error:last-child))) > .hint {
+  order: 1;
+}
+}

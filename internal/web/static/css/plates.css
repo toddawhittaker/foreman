@@ -1,0 +1,604 @@
+/* Plates: panels, cards, the title band, section heads, groups, facts,
+   the Danger zone and the split layout. */
+@layer components {
+/* Figures line up in every table, fact and log (DESIGN 8.3). */
+.facts {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A section of a page is a card: the surface colour, a hairline edge and
+   one padding, so every page reads as a set of panels on its background. */
+.panel {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+main > .panel,
+main > .panels > .panel,
+main > .panels > .panels > .panel,
+.split > .panel,
+.split .split__rail > .panel,
+.card {
+  position: relative;
+  padding: var(--card-pad);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+}
+
+/* Below 360 px a card's frame would cost the content its room, so sections
+   lie flat on the page, a rule above each (DESIGN 4). */
+@media (max-width: 22.4rem) {
+  main > .panel,
+  main > .panels > .panel,
+  main > .panels > .panels > .panel,
+  .split > .panel,
+  .split .split__rail > .panel,
+  .card {
+    padding: var(--space-4) 0 0;
+    background: none;
+    border: 0;
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* A form that spans several sections lays them out as main's own (DESIGN 4). */
+.panels {
+  display: contents;
+}
+
+form.panel,
+.panel > form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* A card's heading has one 16 px gap under it on every card, whatever the
+   card's own gap between its parts. */
+.panel > h2,
+.panel > .section-head {
+  margin-block-end: calc(var(--space-4) - var(--space-3));
+}
+
+form.panel > h2,
+form.panel > .section-head {
+  margin-block-end: 0;
+}
+
+/* Single-column grids use minmax(0, 1fr), so a long word or a wide child
+   cannot push the track past its box (DESIGN 7, 320 px rules). */
+form.panel,
+.panel > form,
+.group {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The status facts: label and value pairs that reflow at any width (7.5). */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+.facts > div {
+  min-inline-size: 0;
+}
+
+/* Fact names are labels: 13 px sentence case in the interface face, so a
+   long German or Russian name stays easy to read (DESIGN 2). */
+.facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.facts dd {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* The world's facts read as a nameplate: stamped names over larger values. */
+main > .panel > .facts dd {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+/* Facts on one wrapping line, under the controls (DESIGN 7.5). */
+.facts--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
+/* A section heading with a link or note at its end. */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+}
+
+.section-head > a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* What a machine wrote is mono: versions, file and folder names, seeds and
+   addresses, at 0.9375em with no box; what a person reads stays sans. */
+.facts dd > code:only-child {
+  font-size: 0.9375em;
+}
+
+/* Snapshot lists: a world's heading beside its shortcut button, then its
+   table. min-inline-size keeps a long name from widening the panel. */
+.group {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+/* A heading row with its one action at the end: each world's snapshots, and
+   the whole list's, take the same row. */
+.group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+/* A world's name over its snapshots is a heading first: text colour, with
+   the link shown by its underline only under the pointer. */
+.group__head h3 a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  color: var(--color-heading);
+  text-decoration: none;
+}
+
+.unit {
+  color: var(--color-text-muted);
+  font-size: 0.6em;
+  font-weight: 500;
+}
+
+/* Two columns for a page with one main list and a few smaller tools: the
+   list and search lead, the rest sit in a rail. One column on a phone. */
+.split,
+.split__rail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+@media (min-width: 40rem) {
+  .split,
+  .split__rail {
+    gap: var(--space-5);
+  }
+}
+
+@container (min-width: 60rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) 22.5rem;
+    align-items: start;
+  }
+}
+
+/* The mods rail is wider once the page is, so the plan's rows keep one line. */
+@container (min-width: 80rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) 26rem;
+  }
+}
+
+.group__head h3 a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.group__head > :is(h2, h3) {
+  margin: 0;
+}
+
+form.panel > .group__head:has(> h2) {
+  margin-block-end: 0;
+}
+
+/* A world's facts: one strip, each fact at least 160 px and as wide as its
+   value, so a date keeps its line; they wrap rather than overlap. */
+main > .panel > .facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+}
+
+main > .panel > .facts > div {
+  flex: 1 1 auto;
+  min-inline-size: min(100%, 10rem);
+}
+
+/* On a phone the short facts sit two to a row; a long one takes its own. */
+@media (max-width: 39.99rem) {
+  main > .panel > .facts {
+    column-gap: var(--space-4);
+  }
+
+  main > .panel > .facts > div {
+    min-inline-size: min(100%, 8rem);
+  }
+}
+
+/* A world's page keeps its time on one line; the world list's Last played
+   wraps between its date, clock and age instead, so it never runs into
+   Disk use (DESIGN 8.2, 8.3). */
+@media (min-width: 48rem) {
+  main > .panel > .facts time {
+    white-space: nowrap;
+  }
+}
+
+.plate {
+  position: relative;
+}
+
+/* The plate's band, 64 px tall, leads with the state behind a 6 px rule in
+   the state's colour, so it reads from across the room before any button. */
+.plate__band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-5);
+  min-block-size: 4rem;
+  padding: var(--space-2) var(--card-pad);
+  background: var(--color-raised);
+  color: var(--color-heading);
+  border-inline-start: 6px solid var(--plate-state, var(--color-border));
+  border-block-end: var(--border-width) solid var(--color-line);
+  font-size: var(--text-md);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding-block: var(--space-3);
+}
+
+.plate__fact {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* A thin rule between the band's facts; it wraps away with them. */
+.plate__fact + .plate__fact::before {
+  content: "";
+  align-self: center;
+  inline-size: var(--border-width);
+  block-size: 1rem;
+  margin-inline-end: var(--space-2);
+  background: currentColor;
+  opacity: 0.35;
+}
+
+.plate__label {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.plate > [sse-swap="control"] {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--card-pad);
+  padding-block-end: var(--space-4);
+}
+
+.plate > [sse-swap="control"]:not(:has(*)) {
+  display: none;
+}
+
+/* Hazard stripes mark the two places that destroy things: the confirmation
+   box and a Danger zone. They are decorative; the words carry the warning,
+   and forced colours fall back to the solid edge. */
+.danger-zone {
+  border-block-start-width: var(--border-width);
+}
+
+.danger-zone::before {
+  content: "";
+  position: absolute;
+  inset: -1px -1px auto;
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
+}
+
+/* The Danger zone (DESIGN 7.4): the last section of a page that deletes
+   something, a card like the others, set apart by its red edge and red
+   headings. */
+main > .panel.danger-zone {
+  padding-block-start: calc(var(--card-pad) + 8px);
+  background: var(--color-surface);
+  border-color: var(--color-danger);
+}
+
+.danger-zone > h2 {
+  color: var(--color-danger-text);
+}
+
+@media (forced-colors: active) {
+  .danger-zone::before {
+    display: none;
+  }
+
+  .danger-zone {
+    border-block-start-width: 4px;
+  }
+}
+
+/* A list's count sits after its heading as a quiet tag. */
+.group__head > .count {
+  margin-inline-end: auto;
+  padding: 0 var(--space-2);
+  background: var(--color-raised);
+  color: var(--color-text-muted);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 2px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.54;
+}
+
+.group__head:has(> .count) {
+  justify-content: flex-start;
+}
+
+/* In the rail beside a list, a card's sentences are hints: the list is the page's subject. */
+.split__rail > .panel > p,
+.split__rail > .panel > ul {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.43;
+}
+
+/* All snapshots: a world's name, what its snapshots add and its shortcut
+   share one raised band, so each button's reach is plain. */
+.group > .group__head {
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-raised);
+  border-radius: var(--radius);
+}
+
+/* On a narrow panel the band keeps its button's room. */
+@container (max-width: 24rem) {
+  .group > .group__head {
+    padding: var(--space-2);
+  }
+}
+
+.group + .group {
+  margin-block-start: var(--space-4);
+}
+
+/* The band's rule and state word take the state's colour; the state word
+   carries a shape too (the badge's square). */
+.plate__band:has(.plate__state--running) {
+  --plate-state: var(--color-ok);
+}
+
+.plate__band:has(.plate__state--starting) {
+  --plate-state: var(--color-info);
+}
+
+.plate__band:has(.plate__state--stopping) {
+  --plate-state: var(--color-warn);
+}
+
+.plate__band:has(.plate__state--crashed),
+.plate__band:has(.plate__state--crash-looping) {
+  --plate-state: var(--color-danger);
+}
+
+/* The state word is the largest thing on the plate. */
+.plate__state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--plate-state-text, var(--color-heading));
+  line-height: 1.2;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.plate__state::before {
+  content: "";
+  flex: none;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+}
+
+.plate__state--running {
+  --plate-state-text: var(--color-ok);
+}
+
+.plate__state--running::before {
+  background-image: linear-gradient(currentColor, currentColor);
+}
+
+.plate__state--starting {
+  --plate-state-text: var(--color-info);
+}
+
+.plate__state--starting::before {
+  border-color: currentColor currentColor currentColor transparent;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.plate__state--stopping {
+  --plate-state-text: var(--color-warn);
+}
+
+.plate__state--stopping::before {
+  background-image: linear-gradient(to left, currentColor 50%, transparent 50%);
+}
+
+.plate__state--crashed,
+.plate__state--crash-looping {
+  --plate-state-text: var(--color-danger-text);
+}
+
+.plate__state--crashed::before {
+  background-image: linear-gradient(currentColor, currentColor);
+  transform: rotate(45deg);
+}
+
+.plate__state--crash-looping::before {
+  background-image: linear-gradient(currentColor, currentColor);
+}
+
+.plate__state--unknown::before {
+  border-radius: 50%;
+  border-style: dashed;
+}
+
+/* The rule between facts follows the state word too. */
+.plate__state + .plate__fact::before {
+  content: "";
+  align-self: center;
+  inline-size: var(--border-width);
+  block-size: 1rem;
+  margin-inline-end: var(--space-2);
+  background: currentColor;
+  opacity: 0.35;
+}
+
+/* Helper text and a card's description under its heading share one style
+   (DESIGN 2): 13 px at a 1.5 line height in the faint ink, held to about 66
+   characters, so it reads as help and never competes with content. */
+.panel > :is(h2, .section-head) + :is(p.hint, p:not([class])) {
+  max-inline-size: 66ch;
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.plate > .plate__controls {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--card-pad);
+  padding-block-end: var(--space-4);
+}
+
+/* On a phone the state word takes the band's first line, its facts the next. */
+@media (max-width: 39.99rem) {
+  .plate__state {
+    flex-basis: 100%;
+  }
+
+  .plate__state + .plate__fact::before {
+    content: none;
+  }
+}
+
+/* A world that cannot be deleted keeps the card and its red edge and
+   headings; the hazard stripe appears only when Delete is offered. */
+main > .panel.danger-zone.danger-zone--blocked {
+  padding-block-start: var(--card-pad);
+  background: var(--color-surface);
+  border-color: var(--color-danger);
+}
+
+.danger-zone--blocked::before {
+  content: none;
+}
+
+.danger-zone.danger-zone--blocked > h2 {
+  color: var(--color-danger-text);
+}
+
+/* Version numbers in facts are values like their neighbours: the sans at
+   the same size and weight, with tabular figures. Mono stays for the log,
+   commands, file names and code chips. */
+.facts dd > .ver > code {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--font-sans);
+  font-size: 1em;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.group__head > .group__action {
+  margin-inline-start: auto;
+}
+
+.group__head > .group__action:empty {
+  display: none;
+}
+
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) {
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 0 light-dark(rgb(60 45 25 / 10%), transparent);
+}
+
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):first-child,
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(h2:not(.visually-hidden), .section-head, .group__head),
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(input[type="hidden"], [hidden]) + :is(h2:not(.visually-hidden), .section-head, .group__head) {
+  min-block-size: 3rem;
+  margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-1);
+  padding: var(--space-3) var(--card-pad);
+  background: var(--color-raised);
+  border-block-end: var(--border-width) solid var(--color-line-strong);
+  border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+  font-size: var(--text-xl);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(.section-head, .group__head):is(:first-child, :is(input[type="hidden"], [hidden]) + *) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding-block: var(--space-2);
+}
+
+:is(main > .panel, main > .panels > .panel, .card) > :is(.section-head, .group__head):first-child :is(h2, h3) {
+  font-size: var(--text-xl);
+  font-weight: 650;
+}
+
+/* Below 360 px plates lie flat, so the band does too. */
+@media (max-width: 22.4rem) {
+  :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(h2:not(.visually-hidden), .section-head):first-child {
+    margin: 0;
+    padding-inline: 0;
+    background: none;
+  }
+}
+
+/* The hazard stripe is the game's yellow and black in both themes, 8 px
+   tall, so a destructive step reads as one at a glance. */
+.danger-zone::before {
+  block-size: 8px;
+  background: repeating-linear-gradient(-45deg, var(--color-hazard) 0 8px, var(--color-hazard-ink) 8px 16px);
+}
+
+/* A heading with its (i): the button right after the words. */
+.section-head.section-head--tip {
+  justify-content: flex-start;
+  gap: 0 var(--space-1);
+}
+}

@@ -58,7 +58,7 @@ func (DesignPage) templateName() string { return "design" }
 
 // newDesignPage reads the tokens and icons from the shipped stylesheet.
 func newDesignPage() (DesignPage, error) {
-	css, err := staticFS.ReadFile("static/foreman.css")
+	css, err := stylesheet()
 	if err != nil {
 		return DesignPage{}, err
 	}

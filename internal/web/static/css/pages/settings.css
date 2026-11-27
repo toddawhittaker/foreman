@@ -1,0 +1,1435 @@
+/* Foreman's own settings: general, users, API tokens, the audit log,
+   notifications, public mods, the Factorio account and About. */
+@layer pages {
+#account-env-heading,
+#account-form-heading {
+  --icon: var(--i-key);
+}
+
+#account-remove-heading {
+  --icon: var(--i-trash);
+}
+
+#changes-heading {
+  --icon: var(--i-file);
+}
+
+#admins-heading {
+  --icon: var(--i-players);
+}
+
+#none-heading {
+  --icon: var(--i-worlds);
+}
+
+/* Figures line up in every table, fact and log (DESIGN 8.3). */
+.about__facts {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A feature's on-or-off state said once, with its one control at the end: a
+   hairline plate with a 4 px edge in the state's colour (DESIGN 7.3). */
+.state-plate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  max-inline-size: none;
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.state-plate--off {
+  background: var(--color-surface);
+  border-color: var(--color-line);
+  border-inline-start-color: var(--color-line-strong);
+}
+
+.state-plate--on {
+  border-inline-start-color: var(--color-ok);
+}
+
+.state-plate__text {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  flex: 1 1 24rem;
+}
+
+.state-plate h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.state-plate p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.state-plate form {
+  flex: none;
+  margin: 0;
+}
+
+/* Figures in table cells take the mono face with tabular digits. */
+.token-card time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* About (DESIGN 6, "User menu"): the product, its version and commit, the Go
+   version, the licence and the project's address, on the About page and in
+   the dialog the user menu opens. The dialog has the look of the leave box. */
+/* The wordmark stands above the heading's words, at most the width it is
+   drawn for, and shrinks with a narrow dialog. */
+.about__heading {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+
+.about__heading img {
+  inline-size: min(15rem, 100%);
+  block-size: auto;
+}
+
+/* The link to the project is a sentence's own, and a target of the floor's height (SPEC 17.2). */
+.about__source a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* The About list looks like the page facts but is its own class, so a page's
+   own `dl.facts` stays the only one on the page. */
+.about__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  min-inline-size: 0;
+}
+
+.about__facts > div {
+  min-inline-size: 0;
+}
+
+.about__facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.about__facts dd {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.about-dialog {
+  inline-size: min(32rem, calc(100% - 2 * var(--space-3)));
+  max-inline-size: none;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.about-dialog[open] {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.about-dialog::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+/* 8.16 The webhook list takes the world list's rows without the active
+   edge; a row's title is its kind, then its host in the muted colour. */
+.webhook-list .webhook-list__title {
+  font-size: var(--text-md);
+  color: var(--color-heading);
+}
+
+.webhook-list__title .ident {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+/* The account page's explanation, where no form can follow it. */
+.account-intro {
+  display: grid;
+  gap: var(--space-3);
+  max-inline-size: var(--measure);
+}
+
+/* ---- The public mods page (SPEC 9.16, DESIGN 8.20): a plain list of the
+   running world's mods, one row each, with any marks in words beside it. ---- */
+.public-world {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.public-mods {
+  display: grid;
+  padding: 0;
+  list-style: none;
+}
+
+.public-mods > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-block-size: var(--target-min);
+  padding-block: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-line);
+  max-inline-size: none;
+}
+
+/* The download link makes the 24 px target floor (SPEC 17.2) without
+   making its row taller. */
+.public-mods__name {
+  min-inline-size: 0;
+  padding-block: var(--space-1);
+  margin-block: calc(-1 * var(--space-1));
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.public-mods__version {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.public-mods__marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 0;
+  list-style: none;
+}
+
+/* An on-or-off feature states its state as a switch plate: a 4 px edge in
+   the state's colour on the raised face, then the sentence (DESIGN 8.20). */
+#public-mods-state {
+  inline-size: fit-content;
+  max-inline-size: min(100%, 52rem);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  border-inline-start: 4px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 500;
+}
+
+main:has(#act-public-mods-open) #public-mods-state {
+  background: var(--color-ok-bg);
+  border-inline-start-color: var(--color-ok);
+}
+
+/* What the page shares gets half the card, not the narrow title column. */
+@container (min-width: 60rem) {
+  .panel.setting-row:has(> .setting-row__head #public-mods-shares-heading) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* The public mods page: the running world's card leads, and where the files
+   go is a note in a rail beside it; a players' page, so a narrower frame. */
+main:has(> .public-world) {
+  max-inline-size: 80rem;
+}
+
+@container (min-width: 56rem) {
+  .public-world,
+  .public-where {
+    align-self: start;
+  }
+}
+
+@media (min-width: 64rem) {
+  main:has(> .public-world) {
+    grid-template-columns: minmax(0, 1fr) 30rem;
+  }
+
+  main:has(> .public-world) > :not(.public-world, .public-where) {
+    grid-column: 1 / -1;
+  }
+
+  main > .public-world {
+    grid-column: 1;
+  }
+
+  main > .public-where {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+}
+
+.public-where > p {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+/* Public mods: Where the mods go as three numbered steps; the folder for
+   each system sits on its own line in a code box, to select and copy. */
+.where-steps {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: where-step;
+}
+
+.where-steps > li {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  column-gap: var(--space-3);
+  row-gap: var(--space-3);
+  align-items: baseline;
+  max-inline-size: none;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  counter-increment: where-step;
+}
+
+.where-steps > li::before {
+  content: counter(where-step);
+  grid-row: 1;
+  align-self: start;
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 50%;
+  color: var(--color-heading);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.where-paths {
+  grid-column: 2;
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.where-paths > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.where-paths dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.where-paths dd {
+  margin: 0;
+}
+
+.where-paths code {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* DESIGN 8.15 Audit log (SPEC 12.9). The filters are one row of controls that
+   wraps when it must. The entries are a table of six fixed columns; where the
+   section is too narrow for six columns each row becomes a compact block of
+   labelled values instead, so the page never scrolls sideways. */
+.audit-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.audit-filter > .field {
+  flex: 1 1 8.5rem;
+  min-inline-size: 0;
+}
+
+.audit-filter > .field--size {
+  flex: 0 1 8.5rem;
+}
+
+.audit-filter .field select {
+  max-inline-size: none;
+}
+
+.audit-filter > .actions {
+  flex: none;
+}
+
+/* The Audit log is one card like its sibling settings pages: the filter
+   row is the card's head band above a hairline, the entries under it. */
+.audit-panel {
+  gap: var(--space-5);
+}
+
+.audit-panel > .audit-filter {
+  padding-block-end: var(--space-5);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.audit-panel > form.audit-filter {
+  display: flex;
+}
+
+.audit-entries {
+  container-type: inline-size;
+}
+
+/* Audit rows: every cell starts on the row's top line, so a wrapped detail
+   leaves the short cells level. A stacked row keeps its own spacing. */
+.audit-table td {
+  vertical-align: top;
+}
+
+/* The Audit log's column names stay in view while its rows scroll. */
+.audit-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  background: var(--color-surface);
+}
+
+.audit-table th:first-child,
+.audit-table td:first-child {
+  overflow-wrap: normal;
+}
+
+.audit-table .audit-detail,
+.audit-table .audit-user {
+  overflow-wrap: anywhere;
+}
+
+/* The fixed columns keep their words whole and the detail takes what is left, so
+   one long detail never squeezes them. The time stays on one line, age included;
+   the user, token and world keep a floor of 12 characters, so a short value never
+   breaks, and still break inside a word when a 32-character value is wider. The
+   action keeps a floor of 16 characters and wraps only between words, so a long
+   label in another language (German runs to 52 characters) never pushes the table
+   past its container. */
+@container (width > 52rem) {
+  .audit-table .audit-time {
+    white-space: nowrap;
+  }
+
+  .audit-table .audit-action {
+    min-inline-size: 16ch;
+    overflow-wrap: normal;
+  }
+
+  .audit-table :is(.audit-user, .audit-token, .audit-world) {
+    min-inline-size: 12ch;
+    overflow-wrap: anywhere;
+  }
+
+  .audit-table .audit-token .badge {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .audit-table td {
+    padding-block: var(--space-3);
+  }
+}
+
+@container (width > 64rem) {
+  .audit-table :is(.audit-user, .audit-world) {
+    white-space: nowrap;
+  }
+
+  .audit-table .audit-detail {
+    inline-size: 100%;
+    min-inline-size: 15rem;
+  }
+}
+
+/* An entry's world link is a full-size target that does not make its row taller
+   than the rows without one. */
+.audit-table .audit-world a {
+  display: inline-block;
+  padding-block: calc((var(--target-min) - 1lh) / 2);
+  margin-block: calc((var(--target-min) - 1lh) / -2);
+}
+
+@container (max-width: 52rem) {
+  .audit-table,
+  .audit-table caption,
+  .audit-table tbody {
+    display: block;
+  }
+
+  .audit-table thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  /* The action is the row's title; the other facts follow as label and value pairs. */
+  .audit-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    padding-block: var(--space-3);
+    border-block-end: var(--border-width) solid var(--color-line);
+    position: relative;
+  }
+
+  .audit-table tbody tr:first-child {
+    padding-block-start: 0;
+  }
+
+  .audit-table td {
+    min-inline-size: 0;
+    padding: 0;
+    border: 0;
+    display: block;
+  }
+
+  .audit-table td::before {
+    content: attr(data-label) " ";
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* An empty cell (no API token) is hidden from sight only, so screen
+     readers still count it and read each cell under its own column. */
+  .audit-table td:empty {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .audit-table .audit-action {
+    order: -1;
+    flex: 1 1 100%;
+    font-weight: 600;
+  }
+
+  .audit-table .audit-action::before {
+    display: none;
+  }
+
+  .audit-table .audit-detail {
+    flex: 1 1 100%;
+  }
+
+  /* A 32-character token name has no break point, and at large text it is wider than the row. */
+  .audit-table .audit-token {
+    max-inline-size: 100%;
+  }
+
+  .audit-table .audit-token .badge {
+    max-inline-size: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* A token's name in an audit row keeps the row's height. */
+.audit-token .badge {
+  padding-block: 0;
+  line-height: 1.4;
+}
+
+/* The Audit log on a wide screen: compact 44 px rows at 14 px, the age
+   after each time in the quiet colour, and actions kept on one line. */
+@media (min-width: 64rem) {
+  .audit-table td {
+    padding-block: var(--space-2);
+  }
+
+  .audit-table td {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .audit-table .audit-time time > span:last-child:not(.nowrap) {
+    color: var(--color-text-muted);
+  }
+
+  .audit-table .audit-action {
+    white-space: nowrap;
+  }
+}
+
+/* DESIGN 8.21 API tokens (SPEC 12.10). Each token is a card that sizes itself from
+   its list, so the facts wrap under the name on a phone. */
+.token-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.token-card {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--card-pad);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.token-card__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-lg);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-heading);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* The expiry banner: one line per token, its Renew button at the end,
+   wrapping under the words when narrow. */
+.token-banner ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.token-banner__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.token-banner__line > p {
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Rows are as wide as their list, not the reading measure. */
+.token-list > li {
+  max-inline-size: none;
+}
+
+/* Tokens and users: a card each on a phone; on a wide card one row each
+   under a row of column names, values centred on the row (as Worlds). */
+.token-head {
+  display: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+@container (min-width: 52rem) {
+  .token-head,
+  .token-list > .token-card {
+    display: grid;
+    grid-template-columns: minmax(15rem, 1.3fr) minmax(4.5rem, 0.5fr) minmax(4.5rem, 0.5fr) repeat(3, minmax(0, 1fr)) 12.5rem;
+    column-gap: var(--space-5);
+    align-items: center;
+  }
+
+  .token-head {
+    padding-block-end: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .token-list {
+    gap: 0;
+  }
+
+  .token-card > .facts {
+    display: contents;
+  }
+
+  .token-card > .facts > div {
+    grid-row: 1;
+    font-size: var(--text-sm);
+  }
+
+  .token-card > .facts dd {
+    font-weight: 400;
+  }
+
+  /* A time's age takes the line under its date, in the quiet colour. */
+  .token-card > .facts time > span:last-child:not(.nowrap) {
+    display: block;
+    color: var(--color-text-muted);
+  }
+
+  .token-card > .facts dt {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .token-card > .token-card__title {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .token-card__owner {
+    grid-column: 2;
+  }
+
+  .token-card__scope {
+    grid-column: 3;
+  }
+
+  .token-card__expires {
+    grid-column: 4;
+  }
+
+  .token-card__created {
+    grid-column: 5;
+  }
+
+  .token-card__used {
+    grid-column: 6;
+  }
+
+  .token-card > .actions {
+    grid-column: 7;
+    grid-row: 1;
+    justify-content: flex-end;
+    margin: 0;
+  }
+}
+
+/* The users list is in the rail's neighbour, so it turns into a table sooner. */
+@container (min-width: 34rem) {
+  .token-head--users,
+  .token-list--users > .token-card {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 7rem;
+    column-gap: var(--space-5);
+    align-items: center;
+  }
+
+  .token-head--users {
+    padding-block-end: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .token-list--users {
+    gap: 0;
+  }
+
+  .token-list--users > .token-card {
+    container-type: normal;
+    min-block-size: 3.5rem;
+    padding: var(--space-2) 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .token-list--users > .token-card + .token-card {
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  .token-list--users > .token-card > .facts {
+    display: contents;
+  }
+
+  .token-list--users > .token-card > .facts > div {
+    grid-row: 1;
+  }
+
+  .token-list--users > .token-card > .facts dd {
+    font-weight: 400;
+  }
+
+  .token-list--users > .token-card > .facts time > span:last-child:not(.nowrap) {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .token-list--users > .token-card > .facts dt {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .token-list--users > .token-card > .token-card__title {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .token-list--users .token-card__kind {
+    grid-column: 2;
+  }
+
+  .token-list--users .token-card__created {
+    grid-column: 3;
+  }
+
+  .token-list--users > .token-card > .actions {
+    grid-column: 4;
+    grid-row: 1;
+    justify-content: flex-end;
+    margin: 0;
+  }
+}
+
+/* Create a token: the name and button on the start side, the three scopes
+   side by side beside them, the admin warning across the foot. */
+.token-create {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@container (min-width: 52rem) {
+  form.token-create {
+    grid-template-columns: 20rem minmax(0, 1fr);
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .token-create > .required-note,
+  .token-create > .message {
+    grid-column: 1 / -1;
+  }
+
+  .token-create > .field {
+    grid-column: 1;
+  }
+
+  .token-create > fieldset {
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: var(--space-5);
+    row-gap: var(--space-1);
+    align-content: start;
+  }
+
+  .token-create > fieldset > #scope-hint {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .token-create > fieldset > label:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .token-create > fieldset > label:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .token-create > fieldset > label:nth-of-type(3) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .token-create > fieldset > p:nth-of-type(2) {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .token-create > fieldset > p:nth-of-type(3) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .token-create > fieldset > p:nth-of-type(4) {
+    grid-column: 3;
+    grid-row: 3;
+  }
+
+  .token-create > .message {
+    grid-row: 3;
+  }
+
+  .token-create > .actions {
+    grid-column: 1;
+    grid-row: 4;
+    margin: 0;
+  }
+}
+
+/* A form inside a card that carries the heading: fields stacked, 16 px apart. */
+.form-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* Inside a card, a token or user is a row between hairlines, not a card in
+   a card, at every width. */
+.panel > .token-list {
+  gap: 0;
+}
+
+.panel > .token-list > .token-card {
+  padding: var(--space-3) 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.panel > .token-list > .token-card + .token-card {
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+/* Revoke and Delete in a row of people or tokens are red words that gain
+   their outline only when pointed at, so a column of them does not shout. */
+.token-list .button--risky:not(:hover, :focus-visible) {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.token-list .button--remove:not(:hover, :focus-visible) {
+  border-color: transparent;
+}
+
+/* The admin-scope warning shows once Admin is the chosen scope; it stays
+   in the document, so the radio's description still reads it. */
+.token-create:has(input[name="scope"]:checked):not(:has(#scope-admin:checked)) > #scope-admin-warning {
+  display: none;
+}
+
+/* API tokens (DESIGN 8.21): one list under a head band that carries the
+   owner filter and MCP access, then the form that adds to it. */
+.token-table {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.token-table__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+}
+
+.token-table__head h2 {
+  margin: 0;
+}
+
+/* The owner filter: the list shows only the user's own tokens until All
+   tokens is chosen; each choice has its own empty line. */
+.token-table:has(#token-show-mine:checked) .token-card:not([data-mine]),
+.token-table:has(#token-show-mine:checked) #all-tokens-empty,
+.token-table:has(#token-show-mine:checked) .token-all-hint,
+.token-table:has(#token-show-all:checked) #my-tokens-empty,
+.token-table:has(#token-show-mine:checked):not(:has(.token-card[data-mine])) .token-head {
+  display: none;
+}
+
+.token-table .token-all-hint {
+  margin: 0;
+}
+
+/* Each row closes with its own rule, so a filtered-out row leaves no double line. */
+@container (min-width: 52rem) {
+  .token-list > .token-card + .token-card {
+    border-block-start: 0;
+  }
+
+  .token-list > .token-card {
+    container-type: normal;
+    min-block-size: 3.5rem;
+    padding: var(--space-2) 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+}
+
+/* The token-created page: one panel at a form's width. */
+.token-created {
+  display: grid;
+  gap: var(--space-5);
+  max-inline-size: 52rem;
+}
+
+.token-created__done {
+  margin: 0;
+  border-inline-start: 4px solid var(--color-ok);
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  max-inline-size: none;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-ok-bg);
+  border-inline-start-width: 3px;
+  border-radius: var(--radius);
+  outline: none;
+}
+
+.token-created__done > strong {
+  color: var(--color-ok);
+}
+
+.token-created .exchange {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.token-created .field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.token-created .field > .message {
+  margin: 0;
+  max-inline-size: none;
+}
+
+/* Focus lands on the result so it is read out; it is not a control, so no ring. */
+.token-created__done:focus {
+  outline: none;
+}
+
+.token-created__foot {
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+/* The webhook form swaps the address field and Pushover's keys (DESIGN 8.16). */
+#webhook-url-field[hidden],
+#webhook-keys[hidden] {
+  display: none;
+}
+
+/* The webhook form: each service is a 2-by-2 choice of framed options,
+   the address or keys beside it, the events in columns, and the save in
+   the same foot bar as the other settings forms. */
+.webhook-form__presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-3);
+}
+
+.webhook-preset {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.webhook-preset:has(input:checked) {
+  border-color: var(--color-selected);
+  box-shadow: inset 3px 0 0 var(--color-selected);
+  background: var(--color-raised);
+}
+
+.webhook-preset > .hint {
+  margin: 0;
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+.webhook-form__event-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-2) var(--space-5);
+}
+
+/* Once there is room, the four services sit two by two and the nine events
+   three by three, never a lone last item (DESIGN 8.16). */
+@container (min-width: 30rem) {
+  .webhook-form__presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .webhook-form__event-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.webhook-form__top,
+.webhook-form__where {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 80rem) {
+  .webhook-form__top {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    column-gap: var(--space-6);
+  }
+
+  .webhook-form > .webhook-form__lang {
+    max-inline-size: 30rem;
+  }
+}
+
+/* A webhook's Edit and Delete sit side by side at the row's end, each its
+   own width. */
+@media (min-width: 64rem) {
+  .webhook-list > li > .facts ~ .actions {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .webhook-list > li > .facts ~ .actions .button {
+    inline-size: auto;
+  }
+}
+
+/* A webhook's events are small chips, wrapping under the label. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips > li {
+  padding: 1px var(--space-2);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 2px;
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.webhook-list .facts dd {
+  font-weight: 400;
+}
+
+/* Times and durations read as words in the interface face with tabular
+   figures; mono stays for what a machine wrote (versions, files, logs). */
+.token-card time {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+}
+
+/* The audit log's token: one line, cut with an ellipsis, its full name in
+   the cell's own text for screen readers and on hover by the title. */
+@media (min-width: 64rem) {
+  .audit-table td.audit-token {
+    inline-size: 11rem;
+  }
+
+  .audit-table .audit-token .badge {
+    display: inline-block;
+    max-inline-size: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    font-family: var(--font-sans);
+    font-weight: 500;
+  }
+}
+
+/* ---- A form's last row: a rule, then Cancel just before the primary
+   action at the end, as the General settings foot bar orders them. */
+.actions.form-end {
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.actions.form-end > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  font-weight: 600;
+}
+
+@container (min-width: 52rem) {
+  .token-create > .actions.form-end {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Both ways in are off: said first, on the warning edge, so a token is
+   not made without knowing it will not work yet. */
+.token-access-off {
+  max-inline-size: none;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-warn-bg);
+  border-inline-start: 3px solid var(--color-warn);
+  border-radius: var(--radius);
+  color: var(--color-text);
+}
+
+/* ==== General settings: each group is a self-contained tile (title, one
+   line of help, then its fields stacked), two to a row on a laptop or wider
+   and one on a phone (DESIGN 8.15). */
+form.general-grid.setting-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 var(--space-6);
+  align-items: start;
+}
+
+form.general-grid.setting-rows > :not(.setting-row) {
+  grid-column: 1 / -1;
+}
+
+form.general-grid.setting-rows > .setting-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-5) 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  align-self: start;
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+form.general-grid.setting-rows > .setting-row .setting-row__body {
+  gap: var(--space-3);
+}
+
+form.general-grid.setting-rows .setting-row__body input[inputmode="numeric"] {
+  inline-size: 10rem;
+}
+
+form.general-grid.setting-rows .setting-row__body .hint {
+  max-inline-size: 100ch;
+}
+
+form.general-grid.setting-rows > .required-note,
+form.general-grid.setting-rows > p:first-child {
+  margin: 0;
+  justify-self: end;
+}
+
+form.general-grid.setting-rows > .form-foot {
+  margin-block-start: 0;
+}
+
+@container (min-width: 52rem) {
+  form.general-grid.setting-rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 84rem) {
+  form.general-grid.setting-rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--space-6);
+  }
+}
+
+/* The required note shares the tiles' first row's top edge rather than
+   taking a row of its own. */
+form.general-grid.setting-rows > .required-note {
+  margin-block-end: var(--space-3);
+}
+
+/* API tokens: the two ways in side by side as one row of state, so the
+   list and its form start higher (SPEC 12.10, 23.8). */
+.access-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@container (min-width: 64rem) {
+  .access-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .access-row > .state-plate {
+    margin: 0;
+  }
+}
+
+form.general-grid.setting-rows .setting-row__head .hint {
+  margin: 0;
+}
+
+form.general-grid.setting-rows > p:first-child {
+  margin-block-end: var(--space-3);
+}
+
+@container (min-width: 84rem) {
+  /* Inside a wide column a group's name and help sit beside its fields. */
+  form.general-grid.setting-rows > .setting-row {
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+/* ==== Token created: the secret and what was made on the start side,
+   where to use it beside them, so the page fills a wide screen with what
+   the person needs next. */
+@container (min-width: 60rem) {
+  .split.token-created-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.token-created-layout > .token-created {
+  max-inline-size: none;
+}
+
+.token-use {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+}
+
+.token-use .exchange {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.token-use .field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.token-use > .message {
+  margin: 0;
+  max-inline-size: none;
+}
+
+/* On a phone an address stands over its full-width Copy button. */
+@media (max-width: 39.99rem) {
+  :is(.token-use, .token-created) .copy-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  :is(.token-use, .token-created) .copy-field > .button {
+    inline-size: 100%;
+    min-block-size: var(--target-min);
+  }
+}
+
+/* ==== API tokens: the create form leads, under the two access plates;
+   the scopes are three cards in a row and the token list follows. */
+.scope-cards {
+  display: grid;
+  gap: var(--space-2) var(--space-3);
+}
+
+@container (min-width: 40rem) {
+  .scope-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .scope-cards > #scope-hint {
+    grid-column: 1 / -1;
+  }
+}
+
+.scope-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line-strong);
+  border-radius: var(--radius);
+}
+
+/* The whole card picks the scope; the label alone stays the radio's name. */
+.scope-card > label::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.scope-card > label {
+  min-block-size: 1.75rem;
+  font-weight: 600;
+}
+
+/* The radio itself sits above the card-wide target, so a press on it lands
+   on it. */
+.scope-card > label > input {
+  position: relative;
+  z-index: 1;
+}
+
+.scope-card:hover {
+  border-color: var(--color-border);
+}
+
+.scope-card:has(input:checked) {
+  background: var(--color-accent-bg);
+  border-color: var(--color-selected);
+  box-shadow: inset 0 -2px 0 var(--color-selected);
+}
+
+.scope-card > .hint {
+  margin: 0;
+  padding-inline-start: calc(1.25rem + var(--space-2));
+}
+
+.token-create > .actions > .token-access-off {
+  margin: 0 auto 0 0;
+  padding: 0 0 0 var(--space-3);
+  max-inline-size: 60ch;
+  background: none;
+  border: 0;
+  border-inline-start: 3px solid var(--color-warn);
+  border-radius: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.token-create > .actions > .token-access-off:dir(rtl) {
+  margin: 0 0 0 auto;
+}
+}

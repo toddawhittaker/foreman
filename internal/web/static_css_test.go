@@ -69,13 +69,15 @@ func TestCSSBalanceFinder(t *testing.T) {
 }
 
 // A hand-resolved merge once dropped a closing brace and swallowed the next
-// rule, so the stylesheet must balance.
+// rule, so each part of the stylesheet must balance.
 func TestForemanCSSIsBalanced(t *testing.T) {
-	css, err := staticFS.ReadFile("static/foreman.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := cssBalance(string(css)); got != "" {
-		t.Errorf("static/foreman.css: %s", got)
+	for _, p := range stylesheetParts {
+		css, err := staticFS.ReadFile("static/css/" + p.File)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := cssBalance(string(css)); got != "" {
+			t.Errorf("static/css/%s: %s", p.File, got)
+		}
 	}
 }

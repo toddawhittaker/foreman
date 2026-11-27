@@ -1,0 +1,132 @@
+/* The component page's own frame (DESIGN 7). */
+@layer pages {
+/* The component page (DESIGN 7): each section drawn once in each theme. A
+   pane's colour and background are set again because the inherited ones were
+   resolved in the page's theme, not the pane's. */
+.design-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--space-4);
+}
+
+.design-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+  padding: var(--space-3);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+}
+
+.design-pane code {
+  overflow-wrap: anywhere;
+}
+
+.design-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.design-list > li {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.design-icon {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.design-swatches {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.design-swatches > li {
+  display: grid;
+  grid-template-columns: var(--target-min) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.design-scale > li {
+  grid-template-columns: 8rem minmax(0, 1fr);
+}
+
+.design-scale code {
+  overflow-wrap: normal;
+}
+
+/* A token's value can be long (a min() or a font stack), so it breaks
+   anywhere rather than widen a 320 px page; the name beside it stays whole. */
+.design-scale > li > code + code {
+  overflow-wrap: anywhere;
+}
+
+.design-chip {
+  block-size: var(--target-min);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.design-bar {
+  block-size: var(--space-3);
+  background: var(--color-selected);
+}
+
+/* On the component page the bar is a specimen, so it stays in its place. */
+.design-pane .select-bar {
+  order: 0;
+  position: static;
+}
+
+/* The component page's Server controls carry the same icons as the page's. */
+[data-design-icon="snapshot"] {
+  --icon: var(--i-snapshot);
+}
+
+[data-design-icon="restart"] {
+  --icon: var(--i-restart);
+}
+
+[data-design-icon="stop"] {
+  --icon: var(--i-stop);
+}
+
+/* On the component page the open menu's panel sits in the flow, so the
+   row shows it without covering the next specimen. */
+.design-menu-open .row-menu__panel {
+  position: static;
+  margin-block-start: var(--space-1);
+}
+
+/* Round 4. The Server tabs share one heading: the world's name and its
+   state badge on Overview, Console and Chat alike. */
+/* Stop server is set apart from Restart: still a secondary button, with
+   its stop icon, danger-coloured words and edge. */
+.plate__controls [data-design-icon="stop"] {
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+
+.plate__controls [data-design-icon="stop"]:hover {
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+}

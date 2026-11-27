@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-// The design tokens in foreman.css must be the ones docs/DESIGN.md lists,
+// The design tokens in the stylesheet must be the ones docs/DESIGN.md lists,
 // with the same values (DESIGN 2, 3 and 4). The CSS is what ships, so when
 // the two differ the doc is the one to fix, unless the change is meant.
 func TestDesignTokensMatchDoc(t *testing.T) {
-	css, err := os.ReadFile("static/foreman.css")
+	css, err := stylesheet()
 	if err != nil {
 		t.Fatal(err)
 	}

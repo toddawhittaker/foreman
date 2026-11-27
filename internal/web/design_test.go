@@ -42,7 +42,7 @@ func TestDesignPageShowsEveryGroupTokenAndIcon(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(p.Icons) < 30 || len(p.TokensWith("--color-")) < 30 {
-		t.Fatalf("read %d icons and %d colours from foreman.css; the parser no longer fits it", len(p.Icons), len(p.TokensWith("--color-")))
+		t.Fatalf("read %d icons and %d colours from the stylesheet; the parser no longer fits it", len(p.Icons), len(p.TokensWith("--color-")))
 	}
 	for _, name := range p.Icons {
 		if !strings.Contains(body, "var(--i-"+name+")") {

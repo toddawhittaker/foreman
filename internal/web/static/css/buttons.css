@@ -1,0 +1,487 @@
+/* Buttons and rows of buttons (DESIGN 7.1). */
+@layer components {
+/* 7.1 Buttons */
+/* Buttons look pressable and fields look sunk, each theme in its own way:
+   light is a printed sheet with a soft drop, dark a lit panel with a top
+   highlight. Pressing takes the drop away with the 1 px move. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  padding-inline: var(--space-4);
+  background: var(--color-raised);
+  color: var(--color-heading);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  white-space: normal;
+  padding-block: var(--space-2);
+  box-shadow: inset 0 1px 0 light-dark(rgb(255 255 255 / 70%), rgb(255 255 255 / 7%)),
+    0 1px 0 light-dark(rgb(60 45 25 / 10%), rgb(0 0 0 / 40%));
+  transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.button:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-heading);
+  border-color: var(--color-text-muted);
+}
+
+/* Pressing moves the button down a pixel; nothing moves under reduced motion. */
+.button:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button:active {
+    transform: none;
+  }
+}
+
+.button--primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary-edge);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 25%),
+    0 1px 0 var(--color-primary-edge);
+}
+
+.button--primary:hover {
+  background: var(--color-primary-hover);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary-edge);
+}
+
+/* Quiet: drawn as a link, still a full-size target (DESIGN 7.1). */
+.button--quiet {
+  padding-inline: var(--space-2);
+  background: transparent;
+  color: var(--color-text);
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  box-shadow: none;
+}
+
+.button--quiet:hover {
+  background: none;
+  color: var(--color-text);
+  border-color: transparent;
+}
+
+.button--danger {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+  border-color: var(--color-danger);
+}
+
+.button--danger:hover {
+  background: var(--color-danger-hover);
+  color: var(--color-on-danger);
+  border-color: var(--color-danger-hover);
+}
+
+/* Risky: opens a confirmation for something that destroys or interrupts.
+   Outlined in the danger colour, so it is set apart from safe actions
+   without the weight of the confirmation's own filled red button. */
+.button--risky {
+  background: transparent;
+  color: var(--color-danger-text);
+  border-color: currentColor;
+}
+
+.button--risky:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  border-color: currentColor;
+}
+
+/* Icon only: a square target with its name kept for screen readers. A
+   trash icon opens a delete or remove step; it stays red but borderless
+   until pointed at, so it is set apart without weighing on the row. */
+.button--icon,
+.button--icon:hover {
+  flex: none;
+  inline-size: var(--target-min);
+  padding: 0;
+  color: var(--color-danger-text);
+  text-decoration: none;
+}
+
+.button--icon {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.button--icon:hover {
+  background: var(--color-danger-bg);
+  border-color: currentColor;
+}
+
+.button--icon::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--icon, var(--i-trash)) center / contain no-repeat;
+}
+
+.button--icon > [aria-hidden="true"] {
+  display: none;
+}
+
+/* Disabled reads as unavailable in both themes; busy keeps the progress cursor. */
+.button:disabled,
+.button[aria-disabled="true"],
+.button:disabled:hover {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border);
+  box-shadow: none;
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Busy is not disabled: the button keeps its own colours and gains a
+   turning ring before its words, so working and unavailable never look alike. */
+.button[aria-busy="true"],
+.button[aria-busy="true"]:disabled,
+.button[aria-busy="true"]:disabled:hover {
+  opacity: 1;
+  cursor: progress;
+  transform: none;
+}
+
+.button--primary[aria-busy="true"]:disabled {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary-edge);
+}
+
+.button:not(.button--primary)[aria-busy="true"]:disabled {
+  background: var(--color-raised);
+  color: var(--color-heading);
+}
+
+.button[aria-busy="true"]::before {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: none;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  mask: none;
+  animation: spin 0.8s linear infinite;
+}
+
+[aria-busy="true"] .button:disabled {
+  cursor: progress;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* A button in its own form lines up and stacks like the links beside it. */
+.actions > form {
+  display: contents;
+}
+
+/* A plain link beside a button, such as Cancel, is a full-size target. */
+.actions > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* On a narrow panel the buttons stack full width, primary first. */
+@container (max-width: 24rem) {
+  .actions > .button,
+  .actions > form > .button {
+    flex: 1 1 100%;
+  }
+}
+
+/* A confirmation's way out is a quiet button beside the action, not bare
+   underlined text (DESIGN 7.1). */
+.confirm .actions > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.confirm .actions > a:not(.button):hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-line);
+}
+
+/* When the way out comes first, it and the action end the confirmation as
+   one completion footer over a hairline (DESIGN 7.1). */
+.confirm .actions:has(> a:not(.button):first-child ~ :is(.button--primary, .button--danger)) {
+  justify-content: flex-end;
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button[aria-busy="true"]::before {
+    animation: none !important;
+  }
+}
+
+/* A button in a cell keeps its word whole; the label column gives way instead. */
+td > .button {
+  white-space: nowrap;
+}
+
+/* A link alone in a cell is a full-size target (DESIGN 8.3). */
+td > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+.row-actions .button {
+  white-space: nowrap;
+}
+
+/* At large text a panel is too narrow for a button label or a header word
+   to stay whole, so they may wrap rather than push the page sideways (SPEC 17.2). */
+@container (max-width: 14rem) {
+  td > .button,
+  .row-actions .button {
+    white-space: normal;
+  }
+}
+
+/* A button's display would otherwise beat the hidden attribute. */
+.button[hidden] {
+  display: none;
+}
+
+/* A round icon control with a hidden name; 24 px, and 44 px for a finger (SPEC 17.2). */
+.icon-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.icon-button[hidden] {
+  display: none;
+}
+
+.icon-button[aria-disabled="true"] {
+  cursor: default;
+}
+
+.icon-button svg {
+  inline-size: 1rem;
+  block-size: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (pointer: coarse) {
+  .icon-button {
+    inline-size: var(--target-min);
+    block-size: var(--target-min);
+  }
+}
+
+/* In a button a name breaks only when it is wider than the box, as the
+   button's own words do, so the button keeps its width. A button is a flex
+   box, so the name joins its words' line rather than becoming a flex item,
+   which would drop the space before it. */
+.button .ident {
+  display: contents;
+  overflow-wrap: break-word;
+}
+
+@container (max-width: 24rem) {
+  .form-foot > .button {
+    flex: 0 1 auto;
+  }
+}
+
+/* The world list on a wide screen: name, the four facts in aligned columns,
+   then Switch, centred on the row. */
+@media (min-width: 64rem) {
+  :is(.worlds, .token-list, .row-actions, .webhook-list) .button {
+    min-block-size: 2.5rem;
+  }
+}
+
+/* One row-action rule: safe actions are outline buttons sized to their
+   words; destructive ones are ghost buttons in the danger colour with an
+   icon and a word, never a bare icon or plain red text (DESIGN 7.1). */
+.button--remove,
+.button--ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  padding-inline: var(--space-3);
+}
+
+.button--remove {
+  color: var(--color-danger-text);
+}
+
+.button--remove::before {
+  content: "";
+  flex: none;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  background: currentColor;
+  mask: var(--icon, var(--i-trash)) center / contain no-repeat;
+}
+
+.button--revoke {
+  --icon: var(--i-close);
+}
+
+.button--remove:hover {
+  background: var(--color-danger-bg);
+  border-color: currentColor;
+  color: var(--color-danger-text);
+}
+
+.button--ghost {
+  color: var(--color-heading);
+}
+
+.button--ghost:hover {
+  background: var(--color-secondary-hover);
+  border-color: transparent;
+}
+
+@media (forced-colors: active) {
+  .button--remove::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+
+  .button--primary,
+  .button--primary:hover,
+  .button--primary[aria-busy="true"]:disabled {
+    color: ButtonText;
+  }
+}
+
+.setting-row__body > .actions {
+  margin: 0;
+}
+
+/* Secondary buttons are raised plates and fields are sunk wells, so a
+   button beside a field never reads as a second field (DESIGN 7.1, 7.2). */
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky) {
+  background: var(--color-raised);
+  box-shadow: inset 0 1px 0 light-dark(rgb(255 255 255 / 90%), rgb(255 255 255 / 6%)),
+    0 1px 0 light-dark(rgb(60 45 25 / 12%), rgb(0 0 0 / 45%));
+}
+
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky):hover {
+  background: var(--color-secondary-hover);
+}
+
+.button:not(.button--primary, .button--danger, .button--quiet, .button--ghost, .button--remove, .button--icon, .button--risky):active {
+  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 15%), rgb(0 0 0 / 40%));
+}
+
+/* Short in-row actions on a mouse-driven screen; touch keeps 44 px. */
+@media (min-width: 64rem) and (pointer: fine) {
+  :is(td, .token-card, .worlds > li, .favorite-list > li) .button:not(.button--primary) {
+    min-block-size: 2.25rem;
+  }
+}
+
+/* An icon-only button on a phone shows its whole 44 px box, the frame of
+   the secondary button beside it, so the target reads at its true size. */
+@media (max-width: 39.99rem) {
+  .row-actions .button--icon {
+    block-size: var(--target-min);
+    background: var(--color-surface);
+    border-color: var(--color-border);
+  }
+
+  .row-actions .button--icon:hover {
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger-text);
+  }
+}
+
+.copy-field > .exchange__value:has(+ .button:not([hidden])) {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.copy-field > .button {
+  flex: none;
+  margin-inline-start: calc(-1 * var(--border-width));
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.copy-field__foot:not(:has(> .button:not([hidden]))) {
+  display: none;
+}
+
+/* ==== A segmented control is as wide as its segments; a button as wide as
+   its words. Only a phone stretches either across the column. */
+@media (min-width: 40rem) {
+  .actions > .button,
+  .actions > form > .button {
+    flex: 0 0 auto;
+  }
+
+  .split__rail .actions,
+  .card .actions {
+    justify-content: flex-start;
+  }
+}
+}
