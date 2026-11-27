@@ -1564,16 +1564,16 @@ main:has(> .gate) > .gate + .gate {
 /* Tab rows: the page's own pages, under its title, over a strong rule that
    runs the column's full width (DESIGN 6, Sub-navigation). */
 @media (min-width: 40rem) {
-  :is(main, .pagehead) > .subnav {
+  :is(main, .pagehead, .design-pane) > .subnav {
     border-block-end-color: var(--color-line-strong);
   }
 
-  :is(main, .pagehead) > .subnav a {
+  :is(main, .pagehead, .design-pane) > .subnav a {
     min-block-size: var(--target-min);
     padding-inline: var(--space-4);
   }
 
-  :is(main, .pagehead) > .subnav > ul > li:first-child > a {
+  :is(main, .pagehead, .design-pane) > .subnav > ul > li:first-child > a {
     padding-inline-start: 0;
   }
 }
@@ -1857,7 +1857,7 @@ main > .crumb {
   margin: 0;
 }
 
-.pagehead > h1 {
+.pagehead > :is(h1, h2) {
   grid-area: title;
   align-self: center;
 }

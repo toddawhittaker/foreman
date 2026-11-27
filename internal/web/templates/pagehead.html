@@ -2,15 +2,25 @@
      the crumb's row, the title's row with the page's own buttons at its end,
      then the tab row or a flow's step bar. A page fills the slots it needs by
      defining head-crumb, head-title, head-actions and head-nav; the empty
-     ones here never replace a page's own. Takes the page's view. */}}
+     ones here never replace a page's own. The heading is an h1; a page that
+     already has one calls pagehead-h2. Takes the page's view. */}}
 {{define "pagehead" -}}
 <header class="pagehead">
-  <div class="pagehead__crumb">{{template "head-crumb" .}}</div>
+  {{template "pagehead-crumb" .}}
   <h1>{{template "head-title" .}}</h1>
-  <div class="pagehead__actions">{{template "head-actions" .}}</div>
-  {{- template "head-nav" .}}
+  {{template "pagehead-rest" .}}
 </header>
 {{- end}}
+{{- /* The same header for a page that shows another header's worth of one, such as the component page, where the one h1 is the page's own. Only the heading's level differs; its look is the page title's. */}}
+{{define "pagehead-h2" -}}
+<header class="pagehead">
+  {{template "pagehead-crumb" .}}
+  <h2>{{template "head-title" .}}</h2>
+  {{template "pagehead-rest" .}}
+</header>
+{{- end}}
+{{define "pagehead-crumb"}}<div class="pagehead__crumb">{{template "head-crumb" .}}</div>{{end}}
+{{define "pagehead-rest"}}<div class="pagehead__actions">{{template "head-actions" .}}</div>{{template "head-nav" .}}{{end}}
 {{define "head-crumb"}}{{end}}
 {{define "head-title"}}{{end}}
 {{define "head-actions"}}{{end}}

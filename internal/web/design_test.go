@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -100,10 +101,84 @@ func TestDesignPageDrawsTheComponentsAsThePagesDo(t *testing.T) {
 		}
 	}
 	// A class no real template or handler uses is a stale copy of a component.
-	// Modifiers built from a name are compared by their prefix. The one hook
-	// only this page needs is status-card--<state>: the Server page tints its
-	// plate from its heading's badge (pages/server.css), a specimen from this.
-	pages := ""
+	// The hooks only this page needs are status-card--<state>: the Server
+	// page tints its plate from its heading's badge (pages/server.css), a
+	// specimen from this.
+	known := realClasses(t)
+	for _, c := range known.missing(body) {
+		// working--idle is the state a page's script gives the working bar to
+		// hide it and keep its room; no page adopts the bar yet.
+		if strings.HasPrefix(c, "status-card--") || c == "working--idle" {
+			continue
+		}
+		t.Errorf("class %q is on the component page but on no real page", c)
+	}
+}
+
+// A class counts only as a whole name: "tab" is not made real by "table", and
+// a made-up class is reported. Only a name built with an action, such as
+// state--{{.State}}, is matched by its prefix.
+func TestDesignClassCheckComparesWholeNames(t *testing.T) {
+	known := realClasses(t)
+	got := known.missing(`<p class="tabl zzz-made-up button button--primary state--running">`)
+	want := []string{"tabl", "zzz-made-up"}
+	if !slices.Equal(got, want) {
+		t.Errorf("reported %q, want %q", got, want)
+	}
+	for _, name := range []string{"tab", "mod-list", "button"} {
+		if _, ok := known.exact[name]; !ok {
+			t.Errorf("%q should be a real class", name)
+		}
+	}
+	// A stale name that only starts like a real one is still stale.
+	if got := known.missing(`<p class="tab-old button--primaryx">`); len(got) != 2 {
+		t.Errorf("reported %q, want both names", got)
+	}
+}
+
+// classSet is the class names real templates and handlers write: whole names,
+// and the prefixes of names built with an action (state--{{.State}}) or by
+// joining strings in Go.
+type classSet struct {
+	exact    map[string]struct{}
+	prefixes []string
+}
+
+var (
+	// An attribute's value may hold actions, which hold quotes of their own.
+	classAttr = regexp.MustCompile(`class="((?:[^"{]|\{\{.*?\}\})*)"`)
+	// Actions that only choose text, so what they wrap is whole names.
+	controlAction = regexp.MustCompile(`\{\{-?\s*(?:/\*.*?\*/|if\b.*?|else\b.*?|end|range\b.*?|with\b.*?)\s*-?\}\}`)
+	// A choosing action with text right after it.
+	controlGlued = regexp.MustCompile(`\{\{-?\s*(?:if\b.*?|else\b.*?)\s*-?\}\}([^\s{])`)
+	// Any other action prints something, so a name it touches is built.
+	printAction = regexp.MustCompile(`\{\{.*?\}\}`)
+	goString    = regexp.MustCompile("`[^`]*`|\"(?:[^\"\\\\\n]|\\\\.)*\"")
+)
+
+// add records the names in one class attribute's value.
+func (c *classSet) add(value string) {
+	// An action that chooses text and has more text right after it builds a
+	// name (toast--{{if .Error}}error{{end}}); one followed by a space only
+	// switches a whole name on.
+	value = controlGlued.ReplaceAllString(value, "\x00${1}")
+	value = controlAction.ReplaceAllString(value, " ")
+	value = printAction.ReplaceAllString(value, "\x00")
+	for _, f := range strings.Fields(value) {
+		if before, _, built := strings.Cut(f, "\x00"); built {
+			if before != "" {
+				c.prefixes = append(c.prefixes, before)
+			}
+			continue
+		}
+		c.exact[f] = struct{}{}
+	}
+}
+
+// realClasses reads every class the other templates and the handlers write.
+func realClasses(t *testing.T) classSet {
+	t.Helper()
+	c := classSet{exact: map[string]struct{}{}}
 	files, err := templateFS.ReadDir("templates")
 	if err != nil || len(files) == 0 {
 		t.Fatalf("read the templates: %v (%d files)", err, len(files))
@@ -116,8 +191,11 @@ func TestDesignPageDrawsTheComponentsAsThePagesDo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		pages += string(b)
+		for _, m := range classAttr.FindAllStringSubmatch(string(b), -1) {
+			c.add(m[1])
+		}
 	}
+	// A handler can name a class too, whole or as a prefix it joins a name to.
 	code, _ := filepath.Glob("*.go")
 	for _, f := range code {
 		if strings.HasSuffix(f, "_test.go") {
@@ -127,27 +205,42 @@ func TestDesignPageDrawsTheComponentsAsThePagesDo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		pages += string(b)
-	}
-	seen := map[string]bool{}
-	for _, m := range classAttr.FindAllStringSubmatch(body, -1) {
-		for _, c := range strings.Fields(m[1]) {
-			if seen[c] || strings.HasPrefix(c, "design-") {
-				continue
+		for _, lit := range goString.FindAllString(string(b), -1) {
+			lit = strings.ReplaceAll(strings.Trim(lit, "`\""), `\"`, `"`)
+			for _, m := range classAttr.FindAllStringSubmatch(lit, -1) {
+				c.add(m[1])
 			}
-			seen[c] = true
-			if strings.Contains(pages, c) {
-				continue
+			for _, w := range strings.Fields(lit) {
+				c.exact[w] = struct{}{}
+				if strings.HasSuffix(w, "-") {
+					c.prefixes = append(c.prefixes, w)
+				}
 			}
-			if i := strings.Index(c, "--"); i > 0 && (strings.Contains(pages, c[:i+2]+"{{") || strings.Contains(pages, `"`+c[:i+2]+`"`)) {
-				continue
-			}
-			if strings.HasPrefix(c, "status-card--") {
-				continue
-			}
-			t.Errorf("class %q is on the component page but on no real page", c)
 		}
 	}
+	return c
 }
 
-var classAttr = regexp.MustCompile(`class="([^"]*)"`)
+// missing lists the classes in body that no real page writes, each once, in
+// the order they first appear. A name of the component page's own (design-) is
+// not a component.
+func (c classSet) missing(body string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, m := range classAttr.FindAllStringSubmatch(body, -1) {
+		for _, name := range strings.Fields(m[1]) {
+			if seen[name] || strings.HasPrefix(name, "design-") {
+				continue
+			}
+			seen[name] = true
+			if _, ok := c.exact[name]; ok {
+				continue
+			}
+			if slices.ContainsFunc(c.prefixes, func(p string) bool { return strings.HasPrefix(name, p) }) {
+				continue
+			}
+			out = append(out, name)
+		}
+	}
+	return out
+}

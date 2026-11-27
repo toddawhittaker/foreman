@@ -32,21 +32,21 @@ h2.op-heading {
   content: "";
 }
 
-#act-start {
+:is(#act-start, [data-design-icon="start"]) {
   --icon: var(--i-start);
 }
 
-#act-stop {
+:is(#act-stop, [data-design-icon="stop"]) {
   --icon: var(--i-stop);
   color: var(--color-danger-text);
   border-color: var(--color-danger);
 }
 
-#act-restart {
+:is(#act-restart, [data-design-icon="restart"]) {
   --icon: var(--i-restart);
 }
 
-#act-snapshot {
+:is(#act-snapshot, [data-design-icon="snapshot"]) {
   --icon: var(--i-snapshot);
 }
 
@@ -54,19 +54,19 @@ h2.op-heading {
   --icon: var(--i-download);
 }
 
-#act-world {
+:is(#act-world, [data-design-icon="map"]) {
   --icon: var(--i-map);
 }
 
-#act-mods {
+:is(#act-mods, [data-design-icon="mods"]) {
   --icon: var(--i-mods);
 }
 
-#act-settings {
+:is(#act-settings, [data-design-icon="settings"]) {
   --icon: var(--i-settings);
 }
 
-#act-switch-world {
+:is(#act-switch-world, [data-design-icon="switch"]) {
   --icon: var(--i-switch);
 }
 
@@ -1346,7 +1346,7 @@ tr:has(> td > .player-actions) > td.num {
   }
 }
 
-#act-stop:hover {
+:is(#act-stop, [data-design-icon="stop"]):hover {
   background: var(--color-danger-bg);
   color: var(--color-danger-text);
   border-color: var(--color-danger);
@@ -1646,7 +1646,7 @@ tr:has(> td > .player-actions) > td.num {
    outline (DESIGN 7.1). */
 @media (min-width: 64rem) {
   .server-actions > :has(> #act-stop),
-  .server-actions > #act-stop {
+  .server-actions > :is(#act-stop, [data-design-icon="stop"]) {
     margin-inline-start: var(--space-6);
     padding-inline-start: var(--space-4);
     border-inline-start: var(--border-width) solid var(--color-danger);

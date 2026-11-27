@@ -8,6 +8,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // PathDesign is the component page: every component in every state, in
@@ -175,6 +176,42 @@ func (p designPane) Value(t designToken) string {
 		return t.Light
 	}
 	return t.Dark
+}
+
+// designHead is the page header specimen's view: its slots (head-title and
+// the others, defined by the component page) read Full to say whether the
+// crumb, the buttons and the tab row are filled.
+type designHead struct {
+	Full bool
+	Page DesignPage
+}
+
+// Head is the view for one page header specimen.
+func (p designPane) Head(full bool) designHead { return designHead{Full: full, Page: p.Page} }
+
+// designBar is the top bar specimen's view: a pane, and whether its account
+// menu is open.
+type designBar struct {
+	designPane
+	Open bool
+}
+
+// Bar is the view for one top bar specimen.
+func (p designPane) Bar(open bool) designBar { return designBar{designPane: p, Open: open} }
+
+// Toasts are a success and an error, as the toast partial draws them.
+func (designPane) Toasts() []Toast {
+	return []Toast{
+		{Text: i18n.M("server.done.snapshot_short")},
+		{Error: true, Text: i18n.M("server.start.load_failed")},
+	}
+}
+
+// Pager is the mod search's page controls on page 2 of 4, with both steps. Its
+// ids start with the theme, so the two panes never share one.
+func (p designPane) Pager() ResultPager {
+	search := ModSearchPage{World: world.Summary{ID: "example"}, Query: "belts", Results: ModHits{Total: 4 * hitsPerPage, Page: 2, Pages: 4}}
+	return ResultPager{Search: search, Where: p.Theme}
 }
 
 // Tip is the sample toggletip (DESIGN 7.7).

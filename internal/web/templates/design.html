@@ -1,6 +1,13 @@
+{{- /* The components on this page are the app's own. A shared component is the app's partial or class, never a copy. These are copies of markup that a page or the layout writes inline, since no partial of them exists yet; only the end-to-end pairs in e2e/tests/design.spec.ts guard them against drifting: the top bar and its open account menu (layout.html), the disk and play-time blocks, the players table and the snapshots card (server.html), the map settings' tab list, the working bar's idle state and the Server page's closable Done message and Emergency actions. */ -}}
 {{define "title"}}{{t "common.design.title"}}{{end}}
 
-{{define "scripts"}}<script src="{{static "toggletip.js"}}" defer></script>{{end}}
+{{- /* The page header partial's slots, for the header specimens: they read Full from designHead. */}}
+{{define "head-crumb"}}{{if .Full}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .Page.World)}}{{end}}{{end}}
+{{define "head-title"}}{{.Page.World}}{{end}}
+{{define "head-actions"}}{{if .Full}}<a href="{{worldsPath}}" class="button">{{t "worlds.world.rename.button"}}</a><a href="{{worldsPath}}" class="button button--primary">{{t "worlds.snapshots.take.button"}}</a>{{end}}{{end}}
+{{define "head-nav"}}{{if .Full}}{{template "world-tabs" .Page.WorldTabs}}{{end}}{{end}}
+
+{{define "scripts"}}<script src="{{static "toggletip.js"}}" defer></script><script src="{{static "design.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -89,6 +96,9 @@
   <label class="check"><input type="checkbox" checked aria-describedby="{{.Theme}}-space-hint"> {{t "worlds.import.space_age.label"}}</label>
   <p class="hint" id="{{.Theme}}-space-hint">{{t "worlds.import.space_age.hint"}}</p>
 </div>
+<div class="field">
+  <label class="check"><input type="checkbox" data-indeterminate> {{t "server.console.filter_all"}}</label>
+</div>
 <fieldset>
   <legend>{{t "common.theme.label"}}</legend>
   <label class="check"><input type="radio" name="{{.Theme}}-theme" checked> {{t "common.theme.auto"}}</label>
@@ -118,6 +128,11 @@
   {{- template "tip-text" .}}
 </div>
 {{- end}}
+{{- /* A form's foot bar: what is pending leads, then Cancel and the primary action at the end. */}}
+<div class="panel card">
+  {{template "form-foot" (formFoot "note" (t "general.source") "submit" (t "general.save"))}}
+  {{template "form-foot" (formFoot "submit" (t "schedule.save") "cancel" "#design-fields" "cancelText" (t "worlds.cancel"))}}
+</div>
 {{- end}}
 
 {{/* DESIGN 7.3 and 7.4. */}}
@@ -130,7 +145,7 @@
   <p><strong>{{t "common.label.warning"}}</strong> {{t "server.disk.low" "free" "2.1 GB" "reserve" "5 GB"}}</p>
   <div class="actions"><a href="{{snapshotsTabPath}}" class="button">{{t "server.disk.snapshots"}}</a></div>
 </div>
-{{- /* The one message with a close button, as the Server page draws it. */}}
+{{- /* The one message with a close button, as the Server page draws it. Its ids are the page's, so it is written out here. */}}
 <div class="message message--success message--closable">
   <p><strong>{{t "common.label.done"}}</strong> {{t "server.done.snapshot_short"}}</p>
   <div class="actions">
@@ -140,6 +155,11 @@
     <button type="submit" class="button button--icon message__close"><span class="visually-hidden">{{t "server.done.close"}}</span></button>
   </form>
 </div>
+{{- /* The result messages that float over the page, here in their own place so they take room; a success and an error. */}}
+{{range .Toasts}}{{template "toast" .}}{{end}}
+{{- /* The working bar, then the same bar idle, which keeps its room and shows nothing. */}}
+{{template "working" (t "server.op.start")}}
+<span class="working working--idle"><span class="working__bar" aria-hidden="true"></span><span class="working__text">{{t "server.op.start"}}</span></span>
 <section class="confirm" aria-labelledby="{{.Theme}}-confirm">
   <p id="{{.Theme}}-confirm">{{t "common.confirm.will"}}</p>
   <ul>
@@ -300,24 +320,57 @@
 </div>
 {{- end}}
 
-{{/* DESIGN 6: the top bar as the layout draws it, the crumb, every row of sub-navigation, and the controls that choose a view (segmented, tab list, step bar, pager). */}}
-{{define "design-navigation" -}}
+{{/* The top bar as the layout draws it, closed or with its account menu open. Takes designBar. */}}
+{{define "design-topbar" -}}
 {{- $lang := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$lang = .Name}}{{end}}{{end}}
 <header class="site">
   <a href="{{serverPath}}" class="product"><img src="{{static "icons/wordmark-296.webp"}}" alt="Foreman" width="148" height="46"></a>
   <div class="site-strip"><span class="site-world" aria-hidden="true">{{.Page.World}}</span><span class="site-state" aria-hidden="true">{{template "nav-lamp" (index .Page.States 2)}}</span></div>
   <nav aria-label="{{t "common.nav.label"}}">
     <ul class="tabs" role="list">
-      <li><a href="{{serverPath}}" aria-current="page">{{t "common.nav.server"}}<span id="{{.Theme}}-lamp" class="nav-lamp">{{template "nav-lamp" (index .Page.States 2)}}</span></a></li>
+      <li><a href="{{serverPath}}" aria-current="page">{{t "common.nav.server"}}<span{{if not .Open}} id="{{.Theme}}-lamp"{{end}} class="nav-lamp">{{template "nav-lamp" (index .Page.States 2)}}</span></a></li>
       <li><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></li>
       <li><a href="{{snapshotsTabPath}}">{{t "common.nav.snapshots"}}</a></li>
       <li><a href="{{generalPath}}">{{t "common.nav.settings"}}</a></li>
     </ul>
   </nav>
-  <details class="menu">
+  <details class="menu"{{if .Open}} open{{end}}>
     <summary aria-label="{{t "common.menu.account" "user" .Page.User "language" $lang}}"><span class="menu__user">{{.Page.User}}</span> <span class="menu__lang">{{$lang}}</span></summary>
+{{- if .Open}}
+    <div class="menu__panel">
+      <p class="hint">{{t "common.signedin" "user" .Page.User}}</p>
+      <details class="menu__langs">
+        <summary class="menu__item"><img src="{{flag lang}}" alt="" width="20" height="15"><span class="visually-hidden">{{t "common.language.label"}}</span> <span class="menu__name">{{$lang}}</span></summary>
+      </details>
+      <form method="post" action="{{themePath}}">
+        <fieldset class="menu__themes">
+          <legend>{{t "common.theme.label"}}</legend>
+          <ul role="list">
+            <li><button type="button" class="menu__icon" title="{{t "common.theme.auto"}}" aria-current="true"><span class="visually-hidden">{{t "common.theme.auto"}}</span></button></li>
+            <li><button type="button" class="menu__icon" title="{{t "common.theme.light"}}"><span class="visually-hidden">{{t "common.theme.light"}}</span></button></li>
+            <li><button type="button" class="menu__icon" title="{{t "common.theme.dark"}}"><span class="visually-hidden">{{t "common.theme.dark"}}</span></button></li>
+          </ul>
+        </fieldset>
+      </form>
+      <a href="{{aboutPath}}" class="menu__item">{{t "about.title"}}</a>
+      <form method="post" action="{{signOutPath}}">
+        <button type="button" class="menu__item">{{t "common.signout"}}</button>
+      </form>
+    </div>
+{{- end}}
   </details>
 </header>
+{{- end}}
+
+{{/* DESIGN 6: the top bar as the layout draws it, the crumb, every row of sub-navigation, and the controls that choose a view (segmented, tab list, step bar, pager). */}}
+{{define "design-navigation" -}}
+{{- $lang := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$lang = .Name}}{{end}}{{end}}
+{{- /* The page header partial: a page with only a title, then one with a crumb, buttons and tabs. */}}
+{{template "pagehead-h2" (.Head false)}}
+{{template "pagehead-h2" (.Head true)}}
+{{template "design-topbar" (.Bar false)}}
+{{- /* The account menu open, with room kept under the bar for the panel, which floats over the page. */}}
+<div class="design-menu-bar">{{template "design-topbar" (.Bar true)}}</div>
 {{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Page.WorldTabs.Path .Page.World "" (t "mods.tab"))}}
 {{template "worlds-area-tabs" "worlds"}}
 {{template "server-tabs" "overview"}}
@@ -341,31 +394,10 @@
     <label class="tab"><input type="radio" name="{{.Theme}}-tab" value="advanced">{{t "mapgen.tab.advanced"}}</label>
   </div>
 </fieldset>
-{{- /* The guided Generate's step bar. It is genflow-steps without that partial's fixed id, which a second copy on the page would repeat; the steps' own marks are the partial's. */}}
-<nav class="flow-steps" aria-label="{{t "newmap.steps.label"}}">
-  <ol role="list">
-    {{- range .Page.FlowSteps}}
-    <li class="flow-step{{if .Done}} flow-step--done{{end}}{{if .Current}} flow-step--current{{end}}{{if .Skipped}} flow-step--skipped{{end}}">
-      {{- if .Path}}<a href="{{.Path}}"{{if .Current}} aria-current="step"{{end}}>{{template "genflow-step" .}}</a>
-      {{- else}}<span>{{template "genflow-step" .}}</span>{{end -}}
-    </li>
-    {{- end}}
-  </ol>
-  {{- range .Page.FlowSteps}}{{if .Current}}
-  <p class="flow-steps__now" aria-hidden="true">{{msg .Label}}</p>
-  {{- end}}{{end}}
-</nav>
-{{- /* The mod search's pager. */}}
-<nav class="pager result-pager" aria-label="{{t "mods.hits.pages_bottom"}}">
-  <span class="result-pager__step"></span>
-  <form method="get" action="#design-navigation" class="result-pager__jump">
-    <label for="{{.Theme}}-page">{{t "mods.hits.page_label"}}</label>
-    <input id="{{.Theme}}-page" name="page" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="1" size="3" aria-describedby="{{.Theme}}-pages">
-    <span id="{{.Theme}}-pages">{{t "mods.hits.of_pages" "pages" 4}}</span>
-    <button type="submit" class="button button--quiet"><span aria-hidden="true">{{t "mods.hits.go"}}</span><span class="visually-hidden">{{t "mods.hits.go_name"}}</span></button>
-  </form>
-  <a href="{{worldsPath}}" class="button button--quiet result-pager__step" rel="next">{{t "mods.hits.next"}}</a>
-</nav>
+{{- /* The guided Generate's step bar, without the id that its page owns. */}}
+{{template "genflow-steps-plain" .Page.FlowSteps}}
+{{- /* The mod search's pager, as the result-pager partial draws it. */}}
+{{template "result-pager" .Pager}}
 {{- end}}
 
 {{/* DESIGN 8.3 and the empty states; the table keeps its roles as the Server page's does, because display changes on a phone drop them. */}}
@@ -451,9 +483,13 @@
     </tbody>
   </table>
 </section>
-<p class="empty empty--art empty--players">{{t "server.online.nobody"}}</p>
-<p class="empty empty--art empty--snapshots">{{t "worlds.snapshots.empty"}}</p>
-<p class="empty">{{t "server.players.cannot_see"}}</p>
+{{- /* Empty states, each in a plate: the missing thing drawn as a plan, over the sentence that names the next step. */}}
+<div class="panel card">
+  {{template "empty" (empty "players" (t "server.online.nobody"))}}
+  {{template "empty" (empty "snapshots" (t "worlds.snapshots.empty"))}}
+  {{template "empty" (empty "deleted" (t "worlds.deleted.empty"))}}
+  <p class="empty">{{t "server.players.cannot_see"}}</p>
+</div>
 {{- end}}
 
 {{/* DESIGN 7.9: the whole set, named as in foreman.css. */}}

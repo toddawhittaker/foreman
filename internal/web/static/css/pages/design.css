@@ -99,48 +99,6 @@
   position: static;
 }
 
-/* The Server page names each control's icon and the Stop colours by its id
-   (pages/server.css). A specimen cannot repeat an id, one copy per theme, so
-   data-design-icon carries the same words: this block only names them. */
-[data-design-icon="start"] {
-  --icon: var(--i-start);
-}
-
-[data-design-icon="snapshot"] {
-  --icon: var(--i-snapshot);
-}
-
-[data-design-icon="restart"] {
-  --icon: var(--i-restart);
-}
-
-[data-design-icon="stop"] {
-  --icon: var(--i-stop);
-  color: var(--color-danger-text);
-  border-color: var(--color-danger);
-}
-
-[data-design-icon="stop"]:hover {
-  color: var(--color-danger-text);
-  border-color: var(--color-danger);
-}
-
-[data-design-icon="map"] {
-  --icon: var(--i-map);
-}
-
-[data-design-icon="mods"] {
-  --icon: var(--i-mods);
-}
-
-[data-design-icon="settings"] {
-  --icon: var(--i-settings);
-}
-
-[data-design-icon="switch"] {
-  --icon: var(--i-switch);
-}
-
 /* The Server page places the players card by the id of its heading
    (pages/server.css); a specimen cannot repeat the id, so the card is found
    by its section head. */
@@ -153,31 +111,41 @@
   }
 }
 
-/* Both blocks below repeat a shared rule that is scoped to the page's own
-   frame: shell.css sets a row of tabs by `main > .subnav`, and pages/server.css
-   sets Stop apart by `#act-stop`. A specimen is neither, so it gets the same
-   values here. Delete a block when the shared rule loses its scope. */
-@media (min-width: 40rem) {
-  .design-pane > .subnav {
-    border-block-end-color: var(--color-line-strong);
-  }
+/* The page header's heading is an h2 here, since the page has its own h1, so
+   it takes the page title's look from this block. Delete it when base.css's
+   h1 rules name `.pagehead > h2` too. */
+.design-pane .pagehead > h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  hyphens: auto;
+  hyphenate-limit-chars: 10 4 4;
+}
 
-  .design-pane > .subnav a {
-    min-block-size: var(--target-min);
-    padding-inline: var(--space-4);
-  }
-
-  .design-pane > .subnav > ul > li:first-child > a {
-    padding-inline-start: 0;
+@media (max-width: 39.99rem) {
+  .design-pane .pagehead > h2 {
+    font-size: 1.625rem;
+    line-height: 1.23;
   }
 }
 
-@media (min-width: 64rem) {
-  .server-actions > [data-design-icon="stop"] {
-    margin-inline-start: var(--space-6);
-    padding-inline-start: var(--space-4);
-    border-inline-start: var(--border-width) solid var(--color-danger);
+@media (min-width: 40rem) {
+  .design-pane .pagehead > h2 {
+    font-size: 1.75rem;
+    line-height: 1.25;
   }
+}
+
+/* The account menu's panel floats under the bar, so the specimen keeps room
+   for it instead of covering the next one. */
+.design-menu-bar {
+  padding-block-end: 17.5rem;
 }
 
 /* On the component page the open menu's panel sits in the flow, so the
