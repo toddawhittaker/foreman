@@ -41,9 +41,10 @@ test("the header keeps every tab on one row and the menu beside the logo", { tag
   const menu = await box(page.locator("details.menu > summary"));
   // The menu is on the first row, level with the logo, never on a row of its own.
   expect(Math.abs(menu.y + menu.height / 2 - (product.y + product.height / 2))).toBeLessThan(4);
-  // Two rows of 44 px targets at most on a phone; the 56 px bar on a wide screen.
+  // Two rows of 44 px targets at most on a phone; on a wide screen the 56 px
+  // bar and the 1 px rule under it.
   const top = await box(page.locator("header.site"));
-  expect(top.height).toBeLessThanOrEqual(phone(page) ? 100 : 56);
+  expect(top.height).toBeLessThanOrEqual(phone(page) ? 100 : 57);
   await checkPage(page);
 });
 

@@ -309,10 +309,11 @@ test.describe("on a wide screen", () => {
     await openLarge(page);
     const heading = panel(page).getByRole("heading", { level: 3, name: "Resources" });
     const look = await heading.evaluate((h) => { const s = getComputedStyle(h); return { size: s.fontSize, weight: s.fontWeight }; });
-    expect(look).toEqual({ size: "18px", weight: "600" });
+    // --text-lg, the group heading role (DESIGN 2).
+    expect(look).toEqual({ size: "16px", weight: "600" });
     // A step above the groups' names inside the column.
     const group = await panel(page).locator("legend").first().evaluate((l) => parseFloat(getComputedStyle(l).fontSize));
-    expect(group).toBeLessThan(18);
+    expect(group).toBeLessThan(16);
     // At the column's top, above its headings; the map's own key help is left as it is.
     const hint = panel(page).getByText(keysInSetting);
     await expect(hint).toBeVisible();

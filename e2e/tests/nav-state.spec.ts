@@ -34,9 +34,9 @@ async function expectStateWord(page: Page, word: string) {
   await expect(beside).toBeVisible();
   expect(await beside.evaluate(drawnWord), "the word is drawn").toBeGreaterThan(20);
   expect(await inTab.evaluate(drawnWord), "the word is drawn once").toBe(0);
-  // The tab itself reads as plain "Server".
+  // The tab itself reads as plain "Server", on one line of the 56 px bar.
   const box = (await tab.boundingBox())!;
-  expect(box.height, "the tab is one line").toBeLessThanOrEqual(48);
+  expect(box.height, "the tab is one line").toBeLessThanOrEqual(56);
   // After the logo (and after the tabs in the wide bar), before the menu, at every width.
   const logo = (await page.locator("header.site .product").boundingBox())!;
   const shown = (await beside.boundingBox())!;

@@ -208,13 +208,14 @@ test("the Worlds tab marks the current page and the section", { tag: "@looks" },
   }
   const look = () => tab.evaluate((el) => {
     const s = getComputedStyle(el);
-    // What hover changes: the tab's text.
-    return { line: s.borderBottomColor, hovered: s.color };
+    // The underline is the tab's 3 px foot strip; what hover changes is the tab's text.
+    return { line: getComputedStyle(el, "::after").backgroundColor, hovered: s.color };
   });
-  const selected = await page.evaluate(() => {
+  // Read inside the bar, which keeps its own colour scheme in either theme.
+  const selected = await tab.evaluate((el) => {
     const probe = document.createElement("span");
     probe.style.color = "var(--color-selected)";
-    document.body.append(probe);
+    el.append(probe);
     const c = getComputedStyle(probe).color;
     probe.remove();
     return c;
@@ -222,12 +223,22 @@ test("the Worlds tab marks the current page and the section", { tag: "@looks" },
   const current = await look();
   expect(current.line).toBe(selected);
   await tab.evaluate((el) => el.removeAttribute("aria-current"));
+  // The strip's colour eases, so it is read once it has settled.
+  await expect.poll(async () => (await look()).line).not.toBe(selected);
   const idle = await look();
-  expect(idle.line).not.toBe(selected);
   await tab.hover();
+  await expect.poll(async () => (await look()).hovered).not.toBe(idle.hovered);
   const hover = await look();
-  expect(hover.hovered).not.toBe(idle.hovered);
   expect(hover.line).not.toBe(selected);
+  // Forced colours drop backgrounds, so there the underline is a Highlight border.
+  await page.goto("/worlds");
+  await page.emulateMedia({ forcedColors: "active" });
+  const forced = await tab.evaluate((el) => {
+    const a = getComputedStyle(el, "::after");
+    return { width: a.borderBottomWidth, style: a.borderBottomStyle };
+  });
+  expect(forced).toEqual({ width: "3px", style: "solid" });
+  await page.emulateMedia({ forcedColors: "none" });
 });
 
 // SPEC 5.4, 6.6: each world in the list says, in its Disk use, what its snapshots add, and

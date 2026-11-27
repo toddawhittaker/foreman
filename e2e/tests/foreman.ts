@@ -20,8 +20,8 @@ const fakeIdPBinary = join(import.meta.dirname, "..", "..", "bin", "fakeidp");
 
 // SPEC 17.1 names WCAG 2.2 AA.
 // The page background, --color-bg, in each theme (DESIGN 3, "Tokens").
-export const darkBg = "rgb(19, 18, 16)";
-export const lightBg = "rgb(233, 227, 214)";
+export const darkBg = "rgb(14, 13, 12)";
+export const lightBg = "rgb(229, 223, 212)";
 
 export const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
