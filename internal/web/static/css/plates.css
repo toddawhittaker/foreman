@@ -15,12 +15,10 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-main > .panel,
-main > .panels > .panel,
-main > .panels > .panels > .panel,
-.split > .panel,
-.split .split__rail > .panel,
-.card {
+/* A plate is a panel at the top of a page's column or of one of its
+   layouts; this one list names them, for the frame, the title band and the
+   flat look on a narrow phone. */
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) {
   position: relative;
   padding: var(--card-pad);
   background: var(--color-surface);
@@ -30,12 +28,7 @@ main > .panels > .panels > .panel,
 /* Below 360 px a card's frame would cost the content its room, so sections
    lie flat on the page, a rule above each (DESIGN 4). */
 @media (max-width: 22.4rem) {
-  main > .panel,
-  main > .panels > .panel,
-  main > .panels > .panels > .panel,
-  .split > .panel,
-  .split .split__rail > .panel,
-  .card {
+  :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) {
     padding: var(--space-4) 0 0;
     background: none;
     border: 0;
@@ -74,10 +67,12 @@ form.panel,
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* The status facts: label and value pairs that reflow at any width (7.5). */
+/* The status facts (7.5): label and value pairs that reflow at any width.
+   The columns stay whether or not a fact fills them, so a row of few facts
+   packs them at its start rather than spreading them across the width. */
 .facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 7rem), 1fr));
   gap: var(--space-2) var(--space-4);
 }
 
@@ -486,7 +481,7 @@ main > .panel.danger-zone {
    (DESIGN 2): 13 px at a 1.5 line height in the faint ink, held to about 66
    characters, so it reads as help and never competes with content. */
 .panel > :is(h2, .section-head) + :is(p.hint, p:not([class])) {
-  max-inline-size: 66ch;
+  max-inline-size: 64ch;
   color: var(--color-text-faint);
   font-size: var(--text-xs);
   line-height: 1.5;
@@ -553,9 +548,9 @@ main > .panel.danger-zone.danger-zone--blocked {
   box-shadow: 0 1px 0 light-dark(rgb(60 45 25 / 10%), transparent);
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):first-child,
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(h2:not(.visually-hidden), .section-head, .group__head),
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(input[type="hidden"], [hidden]):first-child + :is(input[type="hidden"], [hidden]) + :is(h2:not(.visually-hidden), .section-head, .group__head) {
+/* Every plate's title is a band: a plate's first shown part, when it is a
+   heading or a heading row, whatever hidden inputs come before it. */
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):not(:not(input[type="hidden"], [hidden]) ~ *) {
   min-block-size: 3rem;
   margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-1);
   padding: var(--space-3) var(--card-pad);
@@ -567,7 +562,7 @@ main > .panel.danger-zone.danger-zone--blocked {
   line-height: 1.3;
 }
 
-:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(.section-head, .group__head):is(:first-child, :is(input[type="hidden"], [hidden]) + *) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(.section-head, .group__head):not(:not(input[type="hidden"], [hidden]) ~ *) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -575,14 +570,14 @@ main > .panel.danger-zone.danger-zone--blocked {
   padding-block: var(--space-2);
 }
 
-:is(main > .panel, main > .panels > .panel, .card) > :is(.section-head, .group__head):first-child :is(h2, h3) {
+:is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(.section-head, .group__head):not(:not(input[type="hidden"], [hidden]) ~ *) :is(h2, h3) {
   font-size: var(--text-xl);
   font-weight: 650;
 }
 
 /* Below 360 px plates lie flat, so the band does too. */
 @media (max-width: 22.4rem) {
-  :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(h2:not(.visually-hidden), .section-head):first-child {
+  :is(main > .panel, main > .panels > .panel, main > .panels > .panels > .panel, .split > .panel, .mods-main > .panel, .world-layout__main > .panel, .split .split__rail > .panel, .mod-side > .panel, .mod-settings > .panel, .mod-settings > .panels > .panel, .settings-main > .panel, .gen-start > .panel, .card) > :is(h2:not(.visually-hidden), .section-head, .group__head, .world-share__head):not(:not(input[type="hidden"], [hidden]) ~ *) {
     margin: 0;
     padding-inline: 0;
     background: none;

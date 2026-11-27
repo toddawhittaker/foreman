@@ -24,7 +24,6 @@
    track's ends. */
 .field input:not([type="checkbox"], [type="radio"], [type="range"]) {
   inline-size: 100%;
-  max-inline-size: 40ch;
   min-block-size: var(--target-min);
   padding-inline: var(--space-3);
   background: var(--color-deep);
@@ -36,17 +35,19 @@
   box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 50%));
 }
 
+/* Selects are drawn: the browser's arrow goes, and the one chevron of the
+   icon set takes its place, 12 px from the end. */
 .field select {
   inline-size: 100%;
-  max-inline-size: 40ch;
   min-block-size: var(--target-min);
-  padding-inline: var(--space-3);
-  background: var(--color-deep);
+  padding-inline: var(--space-3) 2.25rem;
+  background: var(--color-deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23857c70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0.75rem center / 1rem;
   color: var(--color-text);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   font-size: var(--text-md);
   text-overflow: ellipsis;
+  appearance: none;
 }
 
 /* The file picker button is drawn as a secondary button (DESIGN 7.2). */
@@ -84,11 +85,16 @@
   border: 2px solid var(--color-danger-text);
 }
 
-/* A number field is about 10 characters wide, not the width of a name
-   (DESIGN 7.2). The padding and edges are added to the characters. */
-.field input[inputmode="numeric"],
+/* A short fixed-format field is sized to its content, not its column
+   (DESIGN 7.2): a number about 10 characters plus its padding and edges,
+   a time the browser's own width for hours and minutes. */
+.field :is(input[inputmode="numeric"], input[type="number"]),
 .field--short input {
   max-inline-size: calc(10ch + 2 * var(--space-3) + 2 * var(--border-width));
+}
+
+.field input[type="time"] {
+  inline-size: auto;
 }
 
 /* A field and the button that acts on it share a row while they fit. */
@@ -198,7 +204,6 @@ td > .hint {
 /* 8.10 Game settings: text areas, the raw editor and the list of changes. */
 .field textarea {
   inline-size: 100%;
-  max-inline-size: 40ch;
   min-block-size: var(--target-min);
   padding: var(--space-2) var(--space-3);
   background: var(--color-deep);
@@ -247,20 +252,28 @@ td > .hint {
   box-shadow: 0 -6px 16px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 35%));
 }
 
-/* A form's foot bar at the card's foot: what is pending leads it; Cancel
-   sits just before the primary action at the end. It wraps rather than
-   squeeze a button's words out of its box at large text (320 px rule 5). */
+/* A form's foot bar: what is pending leads it; Cancel sits just before the
+   primary action at the end. It wraps rather than squeeze a button's words
+   out of its box at large text (320 px rule 5). On its own it is a framed
+   bar; as a plate's last part it runs to the plate's edges (DESIGN 7.1). */
 .form-foot {
   min-block-size: 4rem;
-  margin: 0 calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
-  padding: var(--space-3) var(--card-pad);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
   background: var(--color-raised);
-  border-block-start: var(--border-width) solid var(--color-line);
-  border-end-start-radius: var(--radius-lg);
-  border-end-end-radius: var(--radius-lg);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-3);
+}
+
+:is(.panel, .card) > .form-foot,
+:is(.panel, .card) > form > .form-foot {
+  margin: 0 calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
+  padding-inline: var(--card-pad);
+  border-width: var(--border-width) 0 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 /* Cancel comes just before the primary action, in code order too, so the
@@ -275,18 +288,10 @@ td > .hint {
   margin-inline: 0 auto;
 }
 
-.form-foot > .form-foot__note:not([hidden]) {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
 :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), select, textarea) {
   box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 10%), rgb(0 0 0 / 35%));
 }
 
-/* Selects are drawn: the browser's arrow goes, and the one chevron of the
-   icon set takes its place, 12 px from the end. */
-.field select,
 select.select {
   appearance: none;
   padding-inline-end: 2.25rem;
@@ -297,7 +302,6 @@ select.select {
 }
 
 .field select:dir(rtl) {
-  padding-inline: var(--space-3) 2.25rem;
   background-position: left 0.75rem center;
 }
 
@@ -430,17 +434,13 @@ form.setting-rows > .form-foot {
   line-height: 1.43;
 }
 
+/* Stacked fields have one gap everywhere, the form's own (DESIGN 7.2). */
 .setting-row__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: var(--space-5);
+  gap: var(--space-4);
   min-inline-size: 0;
-}
-
-/* In the fields' column a text field is as wide as the column. */
-.setting-row__body .field :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [inputmode="numeric"], .mod-settings-number), select, textarea) {
-  max-inline-size: none;
 }
 
 .setting-row__body .inline-row > input:not([type="color"], .mod-settings-number, [inputmode="numeric"]) {
@@ -475,25 +475,16 @@ main > h1 + p.hint {
   }
 }
 
-/* The required note is one quiet line at the top end of its form. */
+/* The required note is one quiet hint line at the start of its form, right
+   under the form's intro, before the first field (DESIGN 7.2). */
 .required-note {
-  justify-self: end;
-  font-size: var(--text-xs);
-  text-align: end;
+  justify-self: start;
+  text-align: start;
 }
 
-/* Settings: a narrow column for each section's name, the fields beside it
-   up to 640 px, and short figures paired two to a row (DESIGN 4). */
+/* Settings: a narrow column for each section's name, the fields filling
+   the column beside it, and short figures paired two to a row (DESIGN 4). */
 @container (min-width: 46rem) {
-  .setting-row__body > * {
-    max-inline-size: 30rem;
-  }
-
-  /* A long string reads better on a wider box. */
-  .setting-row__body > .exchange {
-    max-inline-size: 44rem;
-  }
-
   .setting-row__body:has(> .field--short + .field--short) {
     grid-template-columns: repeat(2, minmax(0, 19rem));
   }
@@ -503,30 +494,12 @@ main > h1 + p.hint {
   }
 }
 
-/* Mod settings' save bar: the form's last part, at the window's foot while
-   the form is in view, as on Game settings. */
-.panels > .form-foot {
-  margin: 0;
-  border: var(--border-width) solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-}
-
 /* Settings rows: a 240 px title column from a wide card, so the controls
    start sooner and the long forms use the width beside their titles. */
 @container (min-width: 60rem) {
   :is(.setting-row, .settings > fieldset) {
     grid-template-columns: 15rem minmax(0, 1fr);
     column-gap: var(--space-5);
-  }
-
-  .setting-row__body > * {
-    max-inline-size: 30rem;
-  }
-
-  /* A long string reads better on a wider box. */
-  .setting-row__body > .exchange {
-    max-inline-size: 44rem;
   }
 }
 
@@ -570,11 +543,6 @@ main > h1 + p.hint {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   text-overflow: clip;
-}
-
-/* The token page's two values sit at a width a token fits on one line. */
-.exchange:has(.copy-field:not(.copy-field--block)) {
-  max-inline-size: 52rem;
 }
 
 /* A long string: the text box and a foot bar holding Copy, drawn as one field. */
@@ -634,6 +602,7 @@ main > h1 + p.hint {
 }
 
 .hint,
+.form-foot__note,
 .panel > :is(h2, .section-head) + .hint {
   max-inline-size: 64ch;
 }
@@ -652,7 +621,10 @@ main > h1 + p.hint {
   grid-column: 1 / -1;
 }
 
+/* One quiet-text style: hints, a plate's description, the foot bar's note
+   and the required note share it (DESIGN 7.2). */
 .hint,
+.form-foot__note,
 .panel > :is(h2, .section-head) + .hint {
   color: var(--color-text-faint);
   font-size: var(--text-xs);
@@ -672,7 +644,7 @@ main > h1 + p.hint {
     grid-column: 2;
     grid-row: 1;
     align-self: stretch;
-    margin-block-start: calc(-1 * var(--card-pad));
+    margin-block: calc(-1 * var(--card-pad)) calc(-1 * var(--space-3));
     margin-inline-end: calc(-1 * var(--card-pad));
     padding: var(--space-5);
     background: var(--color-raised);
@@ -703,26 +675,11 @@ main tbody th[scope="row"] .hint {
   font-weight: 400;
 }
 
-/* A hint under a field in a wide column runs to a longer line, so most
-   take one. */
-@media (min-width: 64rem) {
-  .field > .hint,
-  .setting-row__body .hint {
-    max-inline-size: 100ch;
-  }
-}
-
 .field > label {
   color: var(--color-text);
 }
 
 :is(.field, fieldset) > .hint {
   color: var(--color-text-faint);
-}
-
-/* A plain field (label, help, control, perhaps its error) shows the help
-   under the control; the help stays the control's description. */
-.field:has(> label + .hint + :is(input:not([type="checkbox"], [type="radio"]), select, textarea):is(:last-child, :has(+ .error:last-child))) > .hint {
-  order: 1;
 }
 }

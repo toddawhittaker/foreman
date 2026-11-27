@@ -219,13 +219,13 @@
   }
 }
 
-/* A confirmation's way out is a quiet button beside the action, not bare
-   underlined text (DESIGN 7.1). */
-.confirm .actions > a:not(.button) {
+/* The way out of a confirmation or a form's foot bar is a ghost button
+   beside the action, not bare underlined text (DESIGN 7.1). */
+:is(.confirm .actions, .form-foot) > a:not(.button) {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);
-  padding-inline: var(--space-4);
+  padding-inline: var(--space-3);
   border: var(--border-width) solid transparent;
   border-radius: var(--radius);
   color: var(--color-heading);
@@ -233,9 +233,9 @@
   text-decoration: none;
 }
 
-.confirm .actions > a:not(.button):hover {
+:is(.confirm .actions, .form-foot) > a:not(.button):hover {
   background: var(--color-secondary-hover);
-  border-color: var(--color-line);
+  border-color: transparent;
 }
 
 /* When the way out comes first, it and the action end the confirmation as
@@ -349,14 +349,6 @@ td > a:not(.button) {
   }
 }
 
-/* The world list on a wide screen: name, the four facts in aligned columns,
-   then Switch, centred on the row. */
-@media (min-width: 64rem) {
-  :is(.worlds, .token-list, .row-actions, .webhook-list) .button {
-    min-block-size: 2.5rem;
-  }
-}
-
 /* One row-action rule: safe actions are outline buttons sized to their
    words; destructive ones are ghost buttons in the danger colour with an
    icon and a word, never a bare icon or plain red text (DESIGN 7.1). */
@@ -379,10 +371,6 @@ td > a:not(.button) {
   block-size: 1.125rem;
   background: currentColor;
   mask: var(--icon, var(--i-trash)) center / contain no-repeat;
-}
-
-.button--revoke {
-  --icon: var(--i-close);
 }
 
 .button--remove:hover {
@@ -433,10 +421,18 @@ td > a:not(.button) {
   box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 15%), rgb(0 0 0 / 40%));
 }
 
-/* Short in-row actions on a mouse-driven screen; touch keeps 44 px. */
-@media (min-width: 64rem) and (pointer: fine) {
-  :is(td, .token-card, .worlds > li, .favorite-list > li) .button:not(.button--primary) {
+/* Two button sizes (DESIGN 7.1): a page button is 44 px; a button in a row
+   of a list or table is the row size, 36 px with a mouse, every kind alike.
+   A touch screen keeps 44 px for both. */
+@media (pointer: fine) {
+  :is(td, .row-actions, .worlds > li, .favorite-list > li, .token-card, .token-list, .webhook-list) .button {
     min-block-size: 2.25rem;
+    padding-block: var(--space-1);
+  }
+
+  :is(td, .row-actions, .worlds > li, .favorite-list > li, .token-card, .token-list, .webhook-list) .button--icon {
+    inline-size: 2.25rem;
+    min-inline-size: 2.25rem;
   }
 }
 
@@ -444,7 +440,6 @@ td > a:not(.button) {
    the secondary button beside it, so the target reads at its true size. */
 @media (max-width: 39.99rem) {
   .row-actions .button--icon {
-    block-size: var(--target-min);
     background: var(--color-surface);
     border-color: var(--color-border);
   }

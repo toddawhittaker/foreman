@@ -174,10 +174,14 @@ test("the Mods tab: built-in mods in one line, portal links, and where mod-setti
   await expect(page.locator("#settings-file-help")).toContainText("Startup settings apply when the world next starts.");
   // Mod names never break with a hyphen in a table cell (DESIGN 8.3).
   expect(await page.locator("td .ident").first().evaluate((el) => getComputedStyle(el).hyphens)).toBe("manual");
-  // The summary line and the table share one width, so the tab is one column.
+  // The summary line and the table's column share one width, so the tab is one column. The table is pulled
+  // out past that column by its end cells' padding, so a highlighted row keeps them clear of its edge (DESIGN 8.3).
   const summary = (await page.locator("#mod-status .mod-status__line").boundingBox())!;
-  const box = (await table.boundingBox())!;
-  expect(Math.abs(summary.width - box.width)).toBeLessThan(2);
+  const column = await table.evaluate((t) => {
+    const cs = getComputedStyle(t);
+    return t.getBoundingClientRect().width + parseFloat(cs.marginLeft) + parseFloat(cs.marginRight);
+  });
+  expect(Math.abs(summary.width - column)).toBeLessThan(2);
   await checkPage(page);
   await shot(page, "mods-tab-portal");
 });
