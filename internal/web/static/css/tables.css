@@ -22,7 +22,8 @@ tbody tr:last-child > td {
 
 /* Every table's column names share one style: 13 px sentence case in the
    interface face, in the quiet colour, over a hairline, the same as the
-   token and user lists (DESIGN 2). */
+   token and user lists (DESIGN 2). This is the one rule for a column
+   head's padding and line; no page sets its own. */
 main table th[scope="col"] {
   padding-block: 0 var(--space-3);
   color: var(--color-text-muted);
@@ -32,6 +33,12 @@ main table th[scope="col"] {
   line-height: 1.3;
   white-space: nowrap;
   vertical-align: bottom;
+}
+
+/* The token and user lists draw their column heads as a grid of words, not
+   a table; they take a table head's line, so every head reads alike. */
+.token-head > span {
+  line-height: 1.3;
 }
 
 /* Figures in table cells take the mono face with tabular digits. */

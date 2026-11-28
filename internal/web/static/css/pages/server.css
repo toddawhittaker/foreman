@@ -879,31 +879,14 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   border: 0;
   border-radius: 0;
   font-weight: 500;
-  list-style: none;
   cursor: pointer;
 }
 
-.player-actions.disclosure > summary::-webkit-details-marker {
-  display: none;
-}
-
-/* The chevron keeps to the end of the name's first line, whatever wraps. */
+/* The chevron (7.8) keeps to the end of the name's first line, whatever wraps. */
 .player-actions.disclosure > summary::after {
-  content: "";
   position: absolute;
-  inset-inline-end: calc(var(--target-min) / 2 - 0.25rem);
-  inset-block-start: calc(var(--space-2) + var(--target-min) / 2 - 0.3rem);
-  flex: none;
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  margin: 0;
-  border-inline-end: 2px solid currentColor;
-  border-block-end: 2px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-}
-
-.player-actions.disclosure[open] > summary::after {
-  transform: translateY(2px) rotate(-135deg);
+  inset-inline-end: calc(var(--target-min) / 2 - 0.5rem);
+  inset-block-start: calc(var(--space-2) + var(--target-min) / 2 - 0.5rem);
 }
 
 /* Epic 9: live operations (DESIGN 8.12 to 8.19). */
@@ -1326,11 +1309,6 @@ tr:has(> td > .player-actions) > td.num {
    Force stop sits under its dashed rule as before. */
 .emergency {
   margin-block-start: var(--space-2);
-}
-
-.disclosure.emergency > summary::marker {
-  color: var(--color-text-muted);
-  content: "";
 }
 
 .emergency[open] > .danger-row {
@@ -1793,7 +1771,6 @@ tr:has(> td > .player-actions) > td.num {
   min-block-size: 2.25rem;
   margin: 0;
   padding: 0 var(--space-3);
-  list-style: none;
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
@@ -1806,31 +1783,13 @@ tr:has(> td > .player-actions) > td.num {
   }
 }
 
-.disclosure.emergency > summary::-webkit-details-marker {
-  display: none;
-}
-
 .disclosure.emergency > summary::before {
   content: none;
-}
-
-.disclosure.emergency > summary::after {
-  content: "";
-  inline-size: 1rem;
-  block-size: 1rem;
-  background: currentColor;
-  mask: var(--i-chevron) center / contain no-repeat;
-  transform: rotate(90deg);
-  transition: transform var(--dur-1) var(--ease);
 }
 
 .disclosure.emergency[open] > summary {
   color: var(--color-danger-text);
   border-color: var(--color-danger);
-}
-
-.disclosure.emergency[open] > summary::after {
-  transform: rotate(-90deg);
 }
 
 @media (pointer: coarse) {

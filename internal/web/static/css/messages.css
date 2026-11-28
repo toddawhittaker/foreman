@@ -559,11 +559,6 @@
   }
 }
 
-/* A long confirmation sentence starts beside the top of its box. */
-.message .check {
-  align-items: start;
-}
-
 td > .badge {
   flex: none;
   white-space: nowrap;

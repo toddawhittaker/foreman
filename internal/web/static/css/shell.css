@@ -278,7 +278,8 @@ a:hover {
 }
 
 /* A tab is a link with an underline when current. The underline is a border,
-   so it is still drawn in forced colours. */
+   so it is still drawn in forced colours. The current tab is not bolder, so
+   every tab keeps its width from page to page (DESIGN 6, "Controls stay put"). */
 .tabs a,
 .subnav a {
   display: flex;
@@ -303,12 +304,6 @@ a:hover {
 .subnav a[aria-current] {
   color: var(--color-heading);
   border-block-end-color: var(--color-selected);
-}
-
-/* The current sub-tab is also set bolder; a main tab is not, so the header's
-   tabs keep their widths from page to page. */
-.subnav a[aria-current] {
-  font-weight: 600;
 }
 
 /* The current section's icon takes the accent, so the eye finds it first. */
@@ -372,7 +367,6 @@ a:hover {
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   font-size: var(--text-sm);
-  list-style: none;
   cursor: pointer;
 }
 
@@ -380,26 +374,17 @@ a:hover {
   background: var(--color-secondary-hover);
 }
 
-.menu > summary::-webkit-details-marker {
-  display: none;
+/* Turned, the chevron's stroke is 8 px wide in its 16 px box, so on the
+   bar the box gives back the empty 4 px each side: the account button
+   stays as narrow as it was, and a long live state keeps its line at
+   320 px (DESIGN 7.5). */
+.site > .menu > summary::after {
+  margin-inline: calc(-1 * var(--space-1));
 }
 
 /* The two words wrap between them, never inside one. */
 .menu > summary > span {
   white-space: nowrap;
-}
-
-.menu > summary::after {
-  content: "";
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  border-inline-end: 2px solid currentColor;
-  border-block-end: 2px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-}
-
-.menu[open] > summary::after {
-  transform: translateY(2px) rotate(-135deg);
 }
 
 .menu__user {
@@ -499,29 +484,10 @@ a:hover {
   min-inline-size: 0;
 }
 
-/* The language row opens the other seven under it. Its arrow sits at the
-   end and turns over when open, as the menu's own chevron does. */
-.menu__langs > summary {
-  list-style: none;
-}
-
-.menu__langs > summary::-webkit-details-marker {
-  display: none;
-}
-
+/* The language row opens the other seven under it. Its chevron (7.8)
+   sits at the end and turns over when open, as the menu's own does. */
 .menu__langs > summary::after {
-  content: "";
-  flex: none;
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
   margin-inline-start: auto;
-  border-inline-end: 2px solid currentColor;
-  border-block-end: 2px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-}
-
-.menu__langs[open] > summary::after {
-  transform: translateY(2px) rotate(-135deg);
 }
 
 @media (min-width: 22rem) {
@@ -1434,10 +1400,17 @@ main:has(> .gate) > .gate {
 }
 
 /* The unsaved mark: a small orange dot before the foot bar's count of
-   changes and after each sub-page that holds some. */
+   changes and at the top end corner of each sub-page that holds some, in
+   the link's own padding, so the mark takes no room and moves no link. */
+.subnav .subnav__sub a {
+  position: relative;
+}
+
 .subnav__sub a[data-unsaved]::after {
   content: "";
-  flex: none;
+  position: absolute;
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
   inline-size: 0.5rem;
   block-size: 0.5rem;
   border-radius: 50%;
@@ -1790,9 +1763,12 @@ main > .crumb {
   margin-block-start: var(--space-4);
 }
 
-/* The first part after a tab row or step bar is 16 px under it. */
+/* The first part drawn under a page header is 16 px under it, with or
+   without a tab row. A part that draws nothing (a hidden live region, an
+   empty activity block) is skipped, so the gap lands on what is seen. */
 @media (min-width: 40rem) {
-  main > .pagehead:has(> nav) + * {
+  main > .pagehead + *,
+  main > .pagehead + :is(.visually-hidden, #world-activity:not(:has(*))) + * {
     margin-block-start: calc(var(--space-4) - var(--space-5));
   }
 }
