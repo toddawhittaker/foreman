@@ -266,14 +266,35 @@ func (g *gameRuns) dismiss(id string, at int64) {
 // page, and each mark takes one too (DESIGN 6, "Toasts").
 type toastMark struct{ At, Page uint64 }
 
+// byPage reports whether a page load made the mark: a stream's mark takes a
+// count after its page's.
+func (m toastMark) byPage() bool { return m.At == m.Page }
+
+// shownByPage is marks less those only a stream made.
+func shownByPage(marks map[string]toastMark) map[string]toastMark {
+	out := make(map[string]toastMark, len(marks))
+	for k, m := range marks {
+		if m.byPage() {
+			out[k] = m
+		}
+	}
+	return out
+}
+
 // pageToasts notes that a page load showed the world's result toasts with
 // these keys, so a later load leaves them out. The results stay, with their
 // Undo and Switch back offers; the next action forgets the marks with them.
 // It returns the load's count, which names the page to its stream.
+// A key only a stream had sent is marked again as this load's.
 func (g *gameRuns) pageToasts(id string, keys []string) uint64 {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.toastSeq++
+	for _, k := range keys {
+		if m, ok := g.toasted[id][k]; ok && !m.byPage() {
+			delete(g.toasted[id], k)
+		}
+	}
 	g.markLocked(id, keys, g.toastSeq)
 	return g.toastSeq
 }
@@ -462,6 +483,12 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 	p.Admin = isAdmin(u)
 	p.PlayerResult = s.playerResults.take(u.ID, sum.ID, PathServer)
 	p.RecentSnapshots, p.RecentFailed = s.recentSnapshots(sum.ID)
+	// The load after the admin's own action shows its toasts even when the
+	// asking page's stream had them first: Cancel stop answers only once its
+	// action ends, while that page is on its way here (DESIGN 6, "Toasts").
+	if followsOwnAction(r) {
+		p.Toasted = shownByPage(p.Toasted)
+	}
 	// A result's toast shows once: the next load leaves it out, while its
 	// Undo row stays (DESIGN 6, "Toasts").
 	p.ToastSeq = s.runs.pageToasts(sum.ID, toastKeys(p.ResultToasts()))
