@@ -325,6 +325,46 @@ test("just above the stacking width, a long German action label does not scroll 
   expect(table.right).toBeLessThanOrEqual(table.parent + 1);
 });
 
+// At 1024 px (where the laptop-width rules start) German's long action labels
+// wrap between words, and a user name is never broken inside the word; wider,
+// the table still fits.
+for (const width of [1024, 1280, 1440]) {
+test(`at ${width} px in German nothing scrolls sideways and no user name breaks inside a word`, { tag: "@looks" }, async ({ page, foreman, context }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await createAdmin(page);
+  seedWorld(foreman);
+  const now = Math.floor(Date.now() / 1000);
+  seed(foreman, [
+    { time: now - 30, username: "toddwhittaker", action: "save-upload-limit-set", world: "base", detail: "x".repeat(120), token: "Claude" },
+    { time: now - 20, username: "toddwhittaker", action: "public-mods-set", world: null, detail: "short", token: "" },
+  ]);
+  await context.addCookies([{ name: "foreman_lang", value: "de", url: foreman.url }]);
+  await page.goto("/settings/audit-log");
+  await expect(page.locator("#audit-list")).toHaveCSS("display", "table");
+  await expect(page.locator("#audit-list")).toContainText("Limit für das Hochladen");
+  const root = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  expect(root.scroll).toBeLessThanOrEqual(root.client);
+  const table = await page.locator("#audit-list").evaluate((el) => ({ right: el.getBoundingClientRect().right, parent: el.parentElement!.getBoundingClientRect().right - parseFloat(getComputedStyle(el).marginRight) }));
+  expect(table.right).toBeLessThanOrEqual(table.parent + 1);
+  // A name with no space is one word, so it must fill one line of its cell.
+  const lines = await page.locator("#audit-list .audit-user").evaluateAll((cells) =>
+    cells.map((cell) => {
+      const r = document.createRange();
+      r.selectNodeContents(cell);
+      return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size;
+    }),
+  );
+  expect(lines.length).toBeGreaterThan(1);
+  for (const n of lines) expect(n).toBe(1);
+  // The action never runs past its cell, and at 1024 px may wrap between words.
+  for (const cell of await page.locator("#audit-list .audit-action").all()) {
+    if (width === 1024) await expect(cell).toHaveCSS("white-space", "normal");
+    expect(await cell.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  }
+});
+}
+
+
 test("at 320 px the table stacks each row, with no sideways scroll", { tag: "@looks" }, async ({ page, foreman }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await createAdmin(page);
