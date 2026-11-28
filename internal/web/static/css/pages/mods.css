@@ -1697,4 +1697,38 @@ a.mod-title:hover {
     grid-row: 4;
   }
 }
+
+/* The plan's confirming button keeps the box of its longest words
+   (data-room), drawn unseen in the same cell, so ticking an offer that
+   changes its count never moves Cancel just before it (DESIGN 6, 7.1). The
+   room's words are no part of the button's name. */
+#act-apply[data-room] {
+  display: inline-grid;
+  justify-items: center;
+}
+
+#act-apply[data-room] > [data-label],
+#act-apply[data-room]::after {
+  grid-area: 1 / 1;
+}
+
+#act-apply[data-room]::after {
+  content: attr(data-room);
+  content: attr(data-room) / "";
+  visibility: hidden;
+}
+
+/* While it posts, the busy ring takes a column before the words. */
+#act-apply[data-room][aria-busy="true"] {
+  grid-template-columns: auto auto;
+}
+
+#act-apply[data-room][aria-busy="true"]::before {
+  grid-area: 1 / 1;
+}
+
+#act-apply[data-room][aria-busy="true"] > [data-label],
+#act-apply[data-room][aria-busy="true"]::after {
+  grid-area: 1 / 2;
+}
 }

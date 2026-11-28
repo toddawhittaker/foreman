@@ -271,12 +271,12 @@
     grid-column: 1 / -1;
   }
 
-  /* Preset and seed share message, label, hint, control and error rows,
+  /* Preset and seed share message, label, hint, control, line and error rows,
      so the select and the input line up (DESIGN 8.6). */
   :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field) {
     grid-column: auto;
     display: grid;
-    grid-row: span 5;
+    grid-row: span 6;
     grid-template-rows: subgrid;
     row-gap: var(--space-2);
   }
@@ -286,7 +286,7 @@
   }
 
   #preset-box > .field {
-    grid-row: 2 / span 4;
+    grid-row: 2 / span 5;
     grid-template-rows: subgrid;
   }
 
@@ -310,8 +310,12 @@
     grid-row: 5;
   }
 
-  #preset-box > .field > .inline-row {
+  #preset-box > .field > select {
     grid-row: 3;
+  }
+
+  #preset-box > .field > .preset-row {
+    grid-row: 4;
   }
 
   /* A shared row is as tall as the taller control; each starts at its top. */
@@ -320,7 +324,7 @@
   }
 
   #preset-box > .field > .error {
-    grid-row: 4;
+    grid-row: 5;
   }
 
   .map-section .modes {
@@ -458,12 +462,11 @@
   padding-block: var(--space-3);
 }
 
-/* The preset, "[modified]" and its reset share a row while they fit: the
-   select gives up width before the reset is pushed to a line of its own. */
-.preset-row > select {
-  flex: 1 1 11rem;
-  inline-size: auto;
-  min-inline-size: 0;
+/* "[modified]" and Reset or Undo share the line under the preset's select,
+   which fills its column like every field; the line is one target tall
+   whether or not they show, so nothing below moves (DESIGN 6, 8.6). */
+.preset-row {
+  min-block-size: var(--target-min);
 }
 
 .modified {
@@ -1065,6 +1068,32 @@ html:has(.large-view[open]) {
   min-block-size: 0;
 }
 
+/* Below the two columns the preview stands above the map's settings, so a
+   line it gains would push them down. There the territories' line and the
+   amounts' line under the picture keep their room from the start, whether
+   or not their box is ticked, so ticking moves nothing below (DESIGN 6,
+   "Controls stay put"; 8.8). The amounts' room is their closed list's one
+   line, as tall as a disclosure's summary. Beside the settings the pane
+   holds them itself. */
+@container generate (max-width: 61.99rem) {
+  .preview:has(#preview-territories) .territory-result,
+  .preview:has(#preview-territories:checked) .territory-result:is(:empty, :has(> .territory-counts:only-child)) {
+    display: block;
+    min-block-size: 1lh;
+  }
+
+  #preview-amounts-result {
+    display: block;
+    min-block-size: var(--target-min);
+  }
+
+  @media (pointer: fine) {
+    #preview-amounts-result {
+      min-block-size: max(1.75rem, 1lh + 2 * var(--space-1));
+    }
+  }
+}
+
 .mod-settings.htmx-request .wait {
   display: grid;
 }
@@ -1621,12 +1650,18 @@ html:has(.large-view[open]) {
   flex: 1 1 12rem;
 }
 
-.picture-actions > a.download[data-room] > [data-label],
-.picture-actions > a.download[data-room]::after {
+/* Download all planets keeps its longer words' box the same way. */
+.preview p > a.download[data-room] {
+  display: inline-grid;
+  align-items: center;
+}
+
+:is(.picture-actions, .preview p) > a.download[data-room] > [data-label],
+:is(.picture-actions, .preview p) > a.download[data-room]::after {
   grid-area: 1 / 1;
 }
 
-.picture-actions > a.download[data-room]::after {
+:is(.picture-actions, .preview p) > a.download[data-room]::after {
   content: attr(data-room);
   content: attr(data-room) / "";
   visibility: hidden;
@@ -2364,18 +2399,6 @@ html:has(.large-view[open]) > body {
   border-inline-start: var(--border-width) solid var(--color-line);
 }
 
-/* On the one-row map header the preset, its "modified" word and Reset or
-   Undo keep one line: the select gives up width, so Undo takes Reset's
-   place rather than dropping a line. */
-@container generate (min-width: 62rem) {
-  #preset-box .preset-row {
-    flex-wrap: nowrap;
-  }
-
-  #preset-box .preset-row > :is(.modified, .button) {
-    flex: none;
-  }
-}
 
 /* ==== Map settings: a step off its preset shows its words in the accent
    ink with a dot in the selected colour before them, so edits stand out in

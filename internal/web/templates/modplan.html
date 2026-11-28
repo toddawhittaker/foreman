@@ -240,7 +240,8 @@
     <div class="actions">
       <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
       {{- if .CanApply}}
-      <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}{{if not .ButtonRecommended.IsZero}} {{msg .ButtonRecommended}}{{end}}</button>
+      {{- /* data-room, the label's longest words while an offer may change it, holds the button's box, so Cancel before it never moves (DESIGN 6). */}}
+      <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply"{{with .ButtonRoom}} data-room="{{range $i, $m := .}}{{if $i}} {{end}}{{msg $m}}{{end}}"{{end}}><span data-label>{{msg .Button}}{{if not .ButtonRecommended.IsZero}} {{msg .ButtonRecommended}}{{end}}</span></button>
       {{- end}}
       {{- /* The step's own action comes first; skipping it is the secondary way on (SPEC 5.6). */}}
       {{- if .InFlow}}<a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>{{end}}

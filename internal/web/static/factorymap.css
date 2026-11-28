@@ -2,6 +2,7 @@
    block; the shared look stays in foreman.css. */
 
 .factorymap {
+  grid-template-columns: minmax(0, 1fr);
   display: grid;
   gap: var(--space-4);
   min-inline-size: 0;
@@ -264,57 +265,45 @@
   list-style: none;
 }
 
-/* A map viewer: on a wide screen the map is as tall as the window leaves
-   and exactly as wide as its picture, so it has no empty bands; its
-   controls, the layers as a legend, the download and when to draw, stand
-   in a column beside it. */
+/* The page is its tab row's width: the drawing's plate (Draw, the state,
+   the map and its controls), then the "When to draw" plate. On a wide
+   screen with a picture the drawing's plate is a map viewer: the map is as
+   tall as the window leaves and exactly as wide as its picture, so it has
+   no empty bands, and its controls stand in a column beside it. Draw keeps
+   the plate's top row, so it stands where it stood before the first
+   drawing (DESIGN 8.22). */
 .factorymap-page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   min-inline-size: 0;
 }
 
-/* Without a picture there is no map column, so the controls start at the
-   tab row's edge rather than past an empty column and its gap. */
 @media (min-width: 64rem) {
   .factorymap-page {
     --fm-h: clamp(22rem, calc(100dvh - 19rem), 64rem);
-    align-items: start;
     row-gap: var(--space-4);
   }
 
-  .factorymap-page:has(.factorymap__view) {
+  .factorymap:has(.factorymap__view) {
     grid-template-columns: minmax(0, max-content) minmax(22rem, 1fr);
     grid-auto-flow: row dense;
+    align-items: start;
     column-gap: var(--space-6);
   }
 
-  .factorymap-page > .factorymap {
-    display: contents;
-  }
-
-  .factorymap-page > .factorymap > *,
-  .factorymap-page > .factorymap-mode {
-    max-inline-size: 40rem;
-  }
-
-  .factorymap-page:has(.factorymap__view) > .factorymap > *,
-  .factorymap-page:has(.factorymap__view) > .factorymap-mode {
+  .factorymap:has(.factorymap__view) > * {
     grid-column: 2;
   }
 
-  /* Draw keeps the top row across both columns, so it stands where it
-     stood before the first drawing; the map and its controls start below
-     it (DESIGN 8.22). */
-  .factorymap-page:has(.factorymap__view) > .factorymap > .factorymap__draw {
+  .factorymap:has(.factorymap__view) > .factorymap__draw {
     grid-column: 1 / -1;
     grid-row: 1;
   }
 
-  .factorymap-page > .factorymap > .factorymap__view {
+  .factorymap > .factorymap__view {
     grid-column: 1;
     grid-row: 2 / span 12;
-    max-inline-size: none;
   }
 
   .factorymap-page .factorymap__frame {
@@ -374,7 +363,8 @@
   font-weight: 600;
 }
 
-/* When to draw is a plate like the page's others, its title in the raised band. */
+/* The drawing and When to draw are the page's two plates, one look. */
+.factorymap,
 .factorymap-mode {
   padding: var(--card-pad);
   background: var(--color-surface);

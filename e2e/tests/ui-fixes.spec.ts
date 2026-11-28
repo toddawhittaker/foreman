@@ -310,9 +310,9 @@ test.describe("Generate", () => {
     await expect(page.locator("#generate-preset")).toHaveValue("default");
     await expect(page.getByLabel("Maximum expansion distance")).not.toHaveValue("3");
     await expect.poll(said).toContain("Map settings reset to the defaults for this game version. Undo reset brings your changes back.");
-    // Undo takes the reset's place, so the row does not grow.
+    // Undo takes the reset's place on the line under the preset, so the line does not grow.
     const u = (await undo.boundingBox())!;
-    const p = (await page.locator("#generate-preset").boundingBox())!;
+    const p = (await page.locator("#preset-box .preset-row").boundingBox())!;
     if ((page.viewportSize()?.width ?? 0) > 600) expect(Math.abs(u.y + u.height / 2 - (p.y + p.height / 2))).toBeLessThan(4);
     await checkPage(page);
 

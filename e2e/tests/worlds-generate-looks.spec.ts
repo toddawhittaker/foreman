@@ -110,7 +110,26 @@ test.describe("Generate", () => {
     expect(await text("#large-settings .autoplace > legend .check")).toEqual({ ...shared, weight: "bold" });
   });
 
-  test.fixme("on a phone, ticking Show resource amounts or territories moves nothing below the preview", async ({ page, foreman, fakeGame }) => {
+  test("the Preset select fills its column, and marking it modified moves nothing below", async ({ page, foreman, fakeGame }) => {
+    await generateWorld(page, foreman, fakeGame!);
+    const id = await openNewMap(page);
+    for (const size of [wide, phone]) {
+      await page.setViewportSize(size);
+      await page.goto(newMapPath(id));
+      await expect(page.locator("#preset-modified")).toHaveText("");
+      const select = await at(page, "#generate-preset");
+      const column = await at(page, "#preset-box > .field");
+      expect({ x: select.x, right: select.right }, `${size.width}`).toEqual({ x: column.x, right: column.right });
+      const below = ["#map-settings", "#preset-box + .field"];
+      const before = await Promise.all(below.map((b) => at(page, b)));
+      await page.locator("#ms-pollution-enabled").evaluate((b) => (b as HTMLInputElement).click());
+      await expect(page.locator("#preset-modified")).toHaveText("[modified]");
+      await expect(page.locator("#preset-reset")).toBeVisible();
+      expect(await Promise.all(below.map((b) => at(page, b))), `${size.width}`).toEqual(before);
+    }
+  });
+
+  test("on a phone, ticking Show resource amounts or territories moves nothing below the preview", async ({ page, foreman, fakeGame }) => {
     await generateWorld(page, foreman, fakeGame!);
     await page.setViewportSize(phone);
     const id = await openNewMap(page);
@@ -154,7 +173,7 @@ test.describe("Favorites", () => {
 });
 
 test.describe("Factory map", () => {
-  test.fixme("the page is full width, Draw and the empty state in a plate", async ({ page, foreman }) => {
+  test("the page is full width, Draw and the empty state in a plate", async ({ page, foreman }) => {
     await createAdmin(page);
     seedWorld(foreman);
     await page.setViewportSize(wide);
@@ -237,18 +256,23 @@ test.describe("Mods", () => {
     expect(looks.more.height).toBe(36);
   });
 
-  test.fixme("ticking an optional mod leaves Cancel where it was", async ({ page, foreman, fakeGame, fakePortal }) => {
-    await fakePortal!.add("fp-extra", "1.0.0", ["base >= 2.0"]);
-    await fakePortal!.add("fp-core", "1.0.0", ["base >= 2.0", "? fp-extra"]);
-    await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip" });
-    await page.setViewportSize(wide);
-    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-core");
-    const cancel = page.getByRole("link", { name: "Cancel, change nothing" });
-    await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible(live);
-    await cancel.scrollIntoViewIfNeeded();
-    const before = await at(page, "a:has(+ #act-apply)");
-    await page.locator('input[type=checkbox][name="optional"][value="fp-extra"]').check();
-    await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible(live);
-    expect(await at(page, "a:has(+ #act-apply)")).toEqual(before);
+  // The plan's primary button needs downloads on, so the portal account is set.
+  test.describe("with a portal account", () => {
+    test.use({ portalAccountOn: true });
+
+    test("ticking an optional mod leaves Cancel where it was", async ({ page, foreman, fakeGame, fakePortal }) => {
+      await fakePortal!.add("fp-extra", "1.0.0", ["base >= 2.0"]);
+      await fakePortal!.add("fp-core", "1.0.0", ["base >= 2.0", "? fp-extra"]);
+      await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip" });
+      await page.setViewportSize(wide);
+      await page.goto("/worlds/base/mods/plan?kind=install&name=fp-core");
+      const cancel = page.getByRole("link", { name: "Cancel, change nothing" });
+      await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible(live);
+      await cancel.scrollIntoViewIfNeeded();
+      const before = await at(page, "a:has(+ #act-apply)");
+      await page.locator('input[type=checkbox][name="optional"][value="fp-extra"]').check();
+      await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible(live);
+      expect(await at(page, "a:has(+ #act-apply)")).toEqual(before);
+    });
   });
 });
