@@ -474,8 +474,8 @@ td > a:not(.button) {
     flex: 0 0 auto;
   }
 
-  .split__rail .actions,
-  .card .actions {
+  .split__rail .actions:not(.form-foot),
+  .card .actions:not(.form-foot) {
     justify-content: flex-start;
   }
 }

@@ -5415,7 +5415,9 @@ Serves SPEC 5.6, 8.15, 9.3, 17.9, 17.11, 17.18 and the new 17.21 to 17.23,
 with DESIGN 6, 7, 8 and 11, ADR 0038 and docs/WORKFLOW.md "Where CSS goes".
 It covers 27 issues: #962 to #966 and #970 to #991, most from Todd's hand
 test of #969 and a three-machine UI sweep. The plan was #992. The task pull
-requests were #993 to #1022.
+requests were #993 to #1035; #1023 and #1025 to #1027 carried the agent
+setup, the fold, a race fix and the code leftovers, and #1028 to #1035 a re-sweep
+(wave 4).
 
 ### Delivered
 
@@ -5504,6 +5506,28 @@ requests were #993 to #1022.
   world's mods change.
 - **`make test-pkgs` (#996)** runs named packages' race tests through the
   shared queue, without coverage.
+- **Re-sweep, wave 4 (#1028 to #1035).** A second sweep of the three areas
+  found about 30 more shifts and second looks, all fixed. The shell: the
+  current sub-tab is no longer bold, the unsaved dot sits in its tab's
+  corner, the first plate is 16 px under every header, one disclosure
+  chevron (muted, pointing down closed and up open) serves foldouts, menus
+  and the plan list, one column-head rule serves every table, a wrapped
+  checkbox label starts level with its neighbours, and a plate's focus gap
+  takes the plate's face (`--focus-gap`). Toasts: the token Renew result,
+  Take snapshot and the switch with two tabs open each show once; "Select
+  all automatic" with none to tick is a toast. Server: Stop and Restart use
+  the plain confirm, the Console and Chat titles are plate bands, Find is a
+  normal field, the Server buttons keep one place in every state (Take
+  snapshot first, drawn disabled when refused, left out when the state is
+  unknown), /about is one plate, and error pages keep their area's tabs.
+  Settings: one radio card look, Change password's foot, webhook rows on a
+  phone, the Audit log's kept Clear slot and two-slot pager (both wrap at
+  320 px with large text), and two gaps. Worlds and Generate: one form foot
+  with Back and the primary at the same x on every step, step 4 and the
+  factory map in full-width plates, kept slots for the phone preview's
+  lines, full-width version and Preset fields, centred empty states, the
+  shared More row button and check label, and a mod plan primary sized to
+  its longest label so Cancel stays put.
 
 Verified: each task with a failing test first, its unit tests and the e2e
 specs for the pages it touched, under the load gate; the layout tests at

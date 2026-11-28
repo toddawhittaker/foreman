@@ -1341,7 +1341,13 @@ the block padding is `--space-2` so a two-line label is not cramped.
   `div.field`: the `.field` rule excludes `[type="checkbox"]` and
   `[type="radio"]`, so the input stays 1.25rem square.
 - A group of radios or checkboxes is a `fieldset` with a `legend` styled
-  like a label. The save that loads next (SPEC 7.11) is chosen with a "Load next" button on each row of the saves table (DESIGN 8.3).
+  like a label.
+- **Radio cards.** A choice among a few named options, each with a line of
+  description (webhook Service, API token Scope), is a set of radio cards
+  (`.choice-card`): a hairline `line-strong` frame, 12 by 16 px padding,
+  the radio at the card's top start and its description indented past it.
+  The whole card picks it; chosen, the card takes the `accent-bg` face, the
+  `selected` border and a 2 px `selected` bottom edge. The save that loads next (SPEC 7.11) is chosen with a "Load next" button on each row of the saves table (DESIGN 8.3).
 - **File inputs** are native, inside the same 44 px box as other
   fields. `::file-selector-button` is styled as a secondary button (7.1):
   transparent face, text `text`, weight 600, `secondary-hover` on hover, `padding-inline: var(--space-4)`, a 1px `border` rule on its
