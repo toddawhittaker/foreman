@@ -338,13 +338,9 @@
   }
 }
 
-/* The ring's 2 px offset shows the plate the slider lies on; the shared
-   gap in the page's colour would draw a band of the page there on a plate
-   (DESIGN 4, 6). */
 .step__range:focus-visible {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: 2px;
-  box-shadow: none;
 }
 
 /* A slider is drawn in neutrals, so orange stays the primary action's and

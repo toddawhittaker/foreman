@@ -22,6 +22,7 @@
   position: relative;
   padding: var(--card-pad);
   background: var(--color-surface);
+  --focus-gap: var(--color-surface);
   border: var(--border-width) solid var(--color-line);
 }
 
