@@ -354,8 +354,12 @@
   max-inline-size: none;
 }
 
+/* The buttons may wrap under each other on a narrow screen at large text;
+   both slots are always there, so wrapping moves nothing between states. */
 .audit-filter > .actions {
-  flex: none;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-inline-size: 0;
 }
 
 /* A control the audit log has no use for right now keeps its place unseen,
@@ -364,11 +368,11 @@
   visibility: hidden;
 }
 
-/* The pager: Newer then Older in two fixed slots on one line at every width. */
+/* The pager: Newer then Older in two fixed slots, side by side where they
+   fit and one under the other on a narrow screen at large text. */
 .audit-pager {
-  display: grid;
-  grid-template-columns: repeat(2, auto);
-  justify-content: start;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
 }
 
