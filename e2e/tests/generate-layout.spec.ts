@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, live } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, live, makeZip } from "./foreman.js";
 import type { Page, Route } from "@playwright/test";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -69,9 +69,15 @@ function hold(page: Page, ends: string) {
   };
 }
 
-function addFakePlanet(dataDir: string, id: string) {
+// label: the fake planet's name in its mod's locale, else the test mod's own zip.
+function addFakePlanet(dataDir: string, id: string, label?: string) {
   const mods = join(dataDir, "worlds", id, "mods");
-  copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), join(mods, "fake-planet_1.0.0.zip"));
+  const zip = join(mods, "fake-planet_1.0.0.zip");
+  if (label === undefined) copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), zip);
+  else writeFileSync(zip, makeZip({
+    "fake-planet_1.0.0/info.json": JSON.stringify({ name: "fake-planet", version: "1.0.0", title: "Fake planet", author: "Foreman tests", factorio_version: "2.0", dependencies: ["base"] }),
+    "fake-planet_1.0.0/locale/en/fake-planet.cfg": `[space-location-name]\nfake-planet=${label}\n`,
+  }));
   const listFile = join(mods, "mod-list.json");
   const list = (existsSync(listFile) ? JSON.parse(readFileSync(listFile, "utf8")) : { mods: ["base", "elevated-rails", "quality", "space-age"].map((name) => ({ name, enabled: true })) }) as { mods: { name: string; enabled: boolean }[] };
   list.mods = list.mods.filter((m) => m.name !== "fake-planet").concat([{ name: "fake-planet", enabled: true }]);
@@ -333,45 +339,38 @@ test("#977: the large view's settings put each resource's name and its three sli
   expect(await scrollsSideways(page)).toBe(false);
 });
 
-test("#966: every star map label fits inside its picture, on the page and in the large view", async ({ page, foreman }) => {
+// The server sizes the star map for its labels, so the page, the large view and the downloaded file
+// all fit them, with or without script. A name of wide letters is wider than an average guess.
+test("#966: every star map label fits inside its picture, on the page, in the large view and in the file", async ({ page, foreman }) => {
   const id = await openNewMap(page, { name: "Modded" });
-  addFakePlanet(foreman.dataDir, id);
+  addFakePlanet(foreman.dataDir, id, "WM".repeat(50));
+  const inside = (svg: string) => page.locator(svg).first().evaluate((s) => {
+    const frame = s.getBoundingClientRect();
+    return [...s.querySelectorAll("text")].filter((t) => {
+      const b = t.getBoundingClientRect();
+      return b.left < frame.left - 0.5 || b.right > frame.right + 0.5 || b.top < frame.top - 0.5 || b.bottom > frame.bottom + 0.5;
+    }).map((t) => t.textContent);
+  });
   await each(page, async (label) => {
     await page.goto(newMapPath(id));
     await page.locator("label:has(> #preview-view-all)").click();
     await expect(page.locator("#preview-view-all")).toBeChecked();
     const card = section(page).locator(".starmap-card svg").first();
     await expect(card).toBeVisible({ timeout: 60_000 });
-    const inside = (svg: string) => page.locator(svg).first().evaluate((s) => {
-      const frame = s.getBoundingClientRect();
-      return [...s.querySelectorAll("text")].filter((t) => {
-        const b = t.getBoundingClientRect();
-        return b.left < frame.left - 0.5 || b.right > frame.right + 0.5 || b.top < frame.top - 0.5 || b.bottom > frame.bottom + 0.5;
-      }).map((t) => t.textContent);
-    });
+    await expect(card.locator("text", { hasText: "WMWM" })).toHaveCount(1);
     expect(await inside("#preview .starmap-card svg"), `${label}: page`).toEqual([]);
-    // Fitting again changes nothing: each fit starts from the server's view box. Wider labels, as
-    // a wider font draws them, make the first refit grow the box; the second keeps it.
-    const svg = page.locator("#preview .starmap-card svg").first();
-    const viewBox = () => svg.getAttribute("viewBox");
-    const refit = () => page.evaluate(() => document.body.dispatchEvent(new Event("htmx:afterSettle")));
-    const server = await viewBox();
-    await svg.evaluate((s) => { (s as SVGSVGElement).style.letterSpacing = "0.4em"; });
-    await refit();
-    const grown = await viewBox();
-    expect(grown, `${label}: wider labels grow the box`).not.toBe(server);
-    await refit();
-    expect(await viewBox(), `${label}: refitted`).toBe(grown);
-    expect(await inside("#preview .starmap-card svg"), `${label}: wider labels`).toEqual([]);
-    await svg.evaluate((s) => { (s as SVGSVGElement).style.letterSpacing = ""; });
-    await refit();
-    expect(await inside("#preview .starmap-card svg"), `${label}: labels again`).toEqual([]);
     await section(page).locator(".starmap-card a.picture").click();
     await expect(page.locator("#large-view")).toHaveAttribute("data-starmap", "");
     await expect(page.locator("#large-frame svg.starmap")).toBeVisible();
     expect(await inside("#large-frame svg.starmap"), `${label}: large`).toEqual([]);
     await page.keyboard.press("Escape");
   });
+  // The file, drawn on its own as a browser opens it.
+  const href = await section(page).locator(".starmap-card a.download").first().getAttribute("href");
+  const res = await page.request.get(href!);
+  expect(res.ok()).toBe(true);
+  await page.setContent(await res.text());
+  expect(await inside("svg"), "file").toEqual([]);
 });
 
 test("#986: opening Fill from a map exchange string leaves its summary where it was", async ({ page }) => {
@@ -404,20 +403,22 @@ test("#987: every step ends in the one form foot, and step 4 never scrolls sidew
       await expect(page.locator(".gen-actions, .flow-foot")).toHaveCount(0);
       expect(await scrollsSideways(page), `${label} ${path}: ${(await pastEdge(page)).join(", ")}`).toBe(false);
     }
-    // Using a slider on a phone moves nothing sideways.
+    // Changing a step, by slider or select, moves nothing sideways.
     await page.goto(newMapPath(id));
     await expect(page.locator("#generate-form")).toBeVisible(live);
-    await page.locator("#mg-resources-nauvis summary").click();
+    // Nauvis's settings open, whichever planet the form last had open; never toggled shut.
+    const nauvis = page.locator("#mg-resources-nauvis");
+    if (!(await nauvis.evaluate((d) => (d as HTMLDetailsElement).open))) await nauvis.locator("> summary").click();
     const head = ["main h1", "#flow-steps", ".pagehead__crumb"];
     const before = await snap(page, head);
-    const range = page.locator("#mg-resources-nauvis .step__range").first();
-    if (await range.isVisible()) {
-      await range.focus();
-      await page.keyboard.press("ArrowRight");
-      expect(await scrollsSideways(page), `${label}: after a slider`).toBe(false);
-      await page.evaluate((y) => window.scrollTo(0, y as number), before.scrollY);
-      expect(await snap(page, head), `${label}: header after a slider`).toEqual(before);
-    }
+    // A slider on a wide panel, the select it stands for on a narrow one (DESIGN 7.2): one shows.
+    const step = page.locator("#mg-nauvis-iron-ore-size-range, #mg-nauvis-iron-ore-size").locator("visible=true");
+    await expect(step).toHaveCount(1);
+    await step.focus();
+    await page.keyboard.press("ArrowDown");
+    expect(await scrollsSideways(page), `${label}: after a slider`).toBe(false);
+    await page.evaluate((y) => window.scrollTo(0, y as number), before.scrollY);
+    expect(await snap(page, head), `${label}: header after a slider`).toEqual(before);
   }, [{ width: 1920, height: 1080 }, { width: 375, height: 812 }]);
 });
 

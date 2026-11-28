@@ -42,10 +42,10 @@ func (SettingsRawPage) templateName() string { return "settingsraw" }
 // the field. A read-only refusal is already told by the page's read-only
 // note, so it makes no toast.
 func (p SettingsRawPage) toasts() []Toast {
-	if p.Error.IsZero() || reflect.DeepEqual(p.Error, p.ReadOnly) {
+	if reflect.DeepEqual(p.Error, p.ReadOnly) {
 		return nil
 	}
-	return []Toast{{Error: true, Text: p.Error}}
+	return errorToast(p.Error)
 }
 func (SettingsRawPage) navItem() string { return PathWorlds }
 

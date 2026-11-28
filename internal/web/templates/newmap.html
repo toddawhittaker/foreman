@@ -31,7 +31,7 @@
 {{- end}}
 {{- if .Loading}}
 {{- /* The script writes the text into the live region once the page has loaded, so it is said once (SPEC 17.19). */}}
-<div id="newmap-load" class="newmap-load" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">
+<div id="newmap-load" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">
   <p role="status" class="visually-hidden" id="newmap-load-status" data-text="{{t "newmap.loading"}}"></p>
   {{- /* Seen, not read: the status line above says the sentence once. */}}
   <div class="js-only" aria-hidden="true">{{template "working" (t "newmap.loading")}}</div>

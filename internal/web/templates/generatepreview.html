@@ -129,7 +129,7 @@
     <template id="download-prep">
       <div class="download-prep" data-amounts-failed="{{t "worlds.generate.resources.request_failed"}}" data-territories-failed="{{t "worlds.generate.territories.request_failed"}}" data-not-kept="{{t "worlds.generate.resources.not_kept"}}">
         {{- /* The script writes which planet of how many into the bar's words. */}}
-        <div class="download-prep__wait" data-prep-wait>{{template "working" (t "worlds.generate.resources.counting_short")}}</div>
+        <div data-prep-wait>{{template "working" (t "worlds.generate.resources.counting_short")}}</div>
         <div class="message message--error" data-prep-failed hidden><p><strong>{{t "common.error.label"}}</strong> <span data-prep-why></span></p></div>
         <p class="download-prep__actions"><button type="button" class="button" data-prep-without hidden></button> <button type="button" class="button" data-prep-retry hidden></button> <button type="button" class="button" data-prep-cancel>{{t "worlds.cancel"}}</button></p>
       </div>

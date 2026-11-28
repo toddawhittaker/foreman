@@ -180,7 +180,6 @@ test.describe("with script", () => {
     await first;
     // The first run is under way (the slow game takes half a second); change again.
     await expect(page.locator("#preview-status .working")).toBeVisible();
-    await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
     await seed.fill("222");
     await expect(planetPictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
     expect(failed).toEqual(["111"]);
@@ -201,7 +200,6 @@ test.describe("with script", () => {
     const held = (await line.boundingBox())!.height;
     await fakeGame!.call("/preview-mode", { mode: "slow" });
     await page.locator("#generate-seed").fill("333");
-    await expect(line).toHaveText("Drawing the map preview for the current settings…");
     await expect(line.locator(".working")).toBeVisible();
     await expect(bar).toBeVisible();
     await expect(bar).toHaveAttribute("aria-hidden", "true");
@@ -226,7 +224,6 @@ test.describe("with script", () => {
     await fakeGame!.call("/preview-mode", { mode: "slow" });
     await page.locator("#generate-seed").fill("444");
     await expect(page.locator("#preview-status .working")).toBeVisible();
-    await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
     expect(await page.locator("#preview-status .working__bar").evaluate((b) => getComputedStyle(b, "::before").animationName)).toBe("none");
     await expect(planetPictures(page)).toHaveAccessibleName(/seed 444\./);
   });

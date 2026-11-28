@@ -76,53 +76,9 @@ startPreviewWithForm(() => {
       });
       img.setAttribute("href", url);
     });
-    const maps = root.matches && root.matches("svg.starmap") ? [root] : root.querySelectorAll("svg.starmap");
-    maps.forEach(fitStarMap);
-  }
-  // The server guesses each label's width from its letters; the reader's font
-  // may be wider, so the view box grows, square about its middle, to what the
-  // page draws, and no label is cut at the frame's edge (DESIGN 8.23). Each fit
-  // starts from the server's view box, kept in data-view-box, so fitting again
-  // changes nothing. A map out of sight, in a template, has no size yet and is
-  // fitted once shown.
-  function fitStarMap(svg) {
-    const vb = svg.viewBox && svg.viewBox.baseVal;
-    if (!vb || !vb.width) return;
-    if (!svg.dataset.viewBox) svg.dataset.viewBox = svg.getAttribute("viewBox");
-    const [vx, vy, vw, vh] = svg.dataset.viewBox.trim().split(/[\s,]+/).map(Number);
-    // Only the labels' boxes: the rest is drawn where the server measured it.
-    const boxes = [];
-    for (const t of svg.querySelectorAll("text")) {
-      try {
-        const b = t.getBBox();
-        if (b.width && b.height) boxes.push(b);
-      } catch {
-        return;
-      }
-    }
-    if (!boxes.length) return;
-    const pad = vw / 100;
-    const x0 = Math.min(vx, ...boxes.map((b) => b.x - pad));
-    const y0 = Math.min(vy, ...boxes.map((b) => b.y - pad));
-    const x1 = Math.max(vx + vw, ...boxes.map((b) => b.x + b.width + pad));
-    const y1 = Math.max(vy + vh, ...boxes.map((b) => b.y + b.height + pad));
-    let fit = svg.dataset.viewBox;
-    if (x0 < vx || y0 < vy || x1 > vx + vw || y1 > vy + vh) {
-      const side = Math.max(x1 - x0, y1 - y0);
-      const cx = (x0 + x1) / 2;
-      const cy = (y0 + y1) / 2;
-      fit = `${cx - side / 2} ${cy - side / 2} ${side} ${side}`;
-    }
-    // The labels' measured size moves a little with the scale they are drawn at, so a fit
-    // within half the padding of the box shown keeps it, and fitting again is a no-op.
-    const now = [vb.x, vb.y, vb.width, vb.height];
-    if (fit.trim().split(/[\s,]+/).map(Number).every((v, i) => Math.abs(v - now[i]) < pad / 2)) return;
-    svg.setAttribute("viewBox", fit);
   }
   loadPictures(document);
   document.body.addEventListener("htmx:afterSettle", () => loadPictures(document));
-  // A label's width is known only once its font has loaded.
-  if (document.fonts) document.fonts.ready.then(() => loadPictures(document));
 
   // Only the newest words are said: a later announcement or status text
   // cancels one still waiting, so older news never overwrites newer.
