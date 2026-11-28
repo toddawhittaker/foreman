@@ -9,7 +9,7 @@
 {{with .Page}}
 <p class="page-intro">{{t "users.intro"}}</p>
 
-{{- /* The list leads; changing your own password sits in the rail beside it. */}}
+{{- /* The list leads; changing your own password sits beside it. The plate is the split's own second column, not in a split__rail, so its foot bar ends at the end edge like every other form's (DESIGN 7.1, "One completion footer"). */}}
 <div class="split">
 <section class="panel" aria-labelledby="users-heading">
   <h2 id="users-heading">{{t "users.list.heading"}}</h2>
@@ -32,7 +32,6 @@
   </ul>
 </section>
 
-<div class="split__rail">
 <section class="panel" aria-labelledby="password-heading">
   <h2 id="password-heading">{{t "users.password.heading"}}</h2>
   {{- if eq .MyKind "password"}}
@@ -69,12 +68,11 @@
     {{template "form-foot" (formFoot "submit" (t "users.password.button") "submitID" "act-password")}}
   </form>
   {{- else if eq .MyKind "oidc"}}
-  <p id="password-managed">{{t "users.password.managed.oidc"}}</p>
+  <p class="hint" id="password-managed">{{t "users.password.managed.oidc"}}</p>
   {{- else}}
-  <p id="password-managed">{{t "users.password.managed.proxy"}}</p>
+  <p class="hint" id="password-managed">{{t "users.password.managed.proxy"}}</p>
   {{- end}}
 </section>
-</div>
 </div>
 {{- end}}
 {{- end}}

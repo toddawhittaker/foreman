@@ -50,8 +50,11 @@
   </div>
   <div class="actions">
     <button type="submit" class="button" id="act-audit-filter">{{t "audit.filter.apply"}}</button>
+    {{- /* Clear keeps its slot while there is nothing to clear, so filtering moves no control (DESIGN 6, "Controls stay put"). */}}
     {{- if .Filtered}}
     <a href="{{.ClearPath}}" class="button" id="act-audit-clear">{{t "audit.filter.clear"}}</a>
+    {{- else}}
+    <span class="button audit-slot" aria-hidden="true">{{t "audit.filter.clear"}}</span>
     {{- end}}
   </div>
 </form>
@@ -91,12 +94,17 @@
   {{template "empty" (empty "settings" (t "audit.empty") "audit-empty")}}
   {{- end}}
   {{- if or .Newer .Older}}
-  <nav class="actions" aria-label="{{t "audit.pager"}}">
+  {{- /* Newer then Older, each in its own slot on every page and at every width; a missing one keeps its place (DESIGN 6, "Controls stay put"). */}}
+  <nav class="audit-pager" aria-label="{{t "audit.pager"}}">
     {{- if .Newer}}
     <a href="{{.Newer}}" class="button" id="act-audit-newer" rel="prev">{{t "audit.newer"}}</a>
+    {{- else}}
+    <span class="button audit-slot" aria-hidden="true">{{t "audit.newer"}}</span>
     {{- end}}
     {{- if .Older}}
     <a href="{{.Older}}" class="button" id="act-audit-older" rel="next">{{t "audit.older"}}</a>
+    {{- else}}
+    <span class="button audit-slot" aria-hidden="true">{{t "audit.older"}}</span>
     {{- end}}
   </nav>
   {{- end}}

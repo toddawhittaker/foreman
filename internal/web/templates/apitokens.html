@@ -110,9 +110,9 @@
       <legend>{{t "apitokens.create.scope"}}</legend>
       <p class="hint" id="scope-hint">{{t "apitokens.create.scope.hint"}}</p>
       {{- range .Form.Scopes}}
-      <div class="scope-card">
+      <div class="choice-card">
         <label class="check"><input type="radio" name="scope" value="{{.Value}}" id="scope-{{.Value}}"{{if .Checked}} checked{{end}} aria-describedby="scope-{{.Value}}-hint{{if eq .Value "admin"}} scope-admin-warning{{end}}"> {{msg .Name}}</label>
-        <p class="hint" id="scope-{{.Value}}-hint">{{msg .Hint}}</p>
+        <p class="hint choice-card__hint" id="scope-{{.Value}}-hint">{{msg .Hint}}</p>
       </div>
       {{- end}}
     </fieldset>
