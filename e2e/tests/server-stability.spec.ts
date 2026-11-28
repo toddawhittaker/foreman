@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-// Ruling 1 of fixes 20 (#985, #986, #988, #990, #991): in the Server area a
+// DESIGN 6 (page header, toasts), 7.8, 8.5, 8.12 and 8.14: in the Server area a
 // control and its siblings keep their exact box, in x and y, when something
 // else on the page appears, goes or changes, and the page does not scroll
 // unless the person scrolls. Each test walks 1920 and 390 wide in both
@@ -108,6 +108,54 @@ test("the Server plate's buttons keep their place when a result comes, stopped a
   }
 });
 
+// While a snapshot is being taken (its save hangs here, so it stays in
+// flight; the Server page draws no steps for it) the plate's controls and the
+// parts beside them keep their boxes, in x and y, at each width and theme.
+test("the Server plate's buttons keep their place while a snapshot is working", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await start(page);
+  const parts = `${plateControls}, #plate-band, .facts-block`;
+  const before: Record<string, unknown> = {};
+  await each(page, async (label) => {
+    await page.goto("/");
+    await expect(page.locator("#act-snapshot")).toBeVisible(live);
+    before[label] = await boxes(page, parts);
+  });
+  await fakeGame!.call("/save-hangs", { name: container, on: true });
+  await page.setViewportSize(widths[0]);
+  await page.goto("/");
+  await page.locator("#act-snapshot").click();
+  await expect(page).toHaveURL(/\/\?result=1$/);
+  await each(page, async (label) => {
+    await page.goto("/");
+    await expect(page.locator("#act-snapshot")).toBeVisible(live);
+    expect(await boxes(page, parts), `${label}: the plate's controls and the parts beside them`).toEqual(before[label]);
+  });
+  // Still in flight: no result came while the boxes were measured.
+  await expect(page.locator("#toasts [data-toast]")).toHaveCount(0);
+  await expect(page.locator(".recent-snaps")).not.toContainText("Manual snapshot");
+});
+
+// DESIGN 7.8: Emergency actions keeps its id, so a step update that redraws
+// the control region leaves it open and focus on its summary.
+test("an open Emergency actions stays open, with focus, through a step update", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await start(page);
+  await fakeGame!.call("/join", { name: container, player: "alice" });
+  await fakeGame!.call("/save-hangs", { name: container, on: true });
+  expect((await page.request.post("/worlds/base/stop", { form: { countdown: "3" }, maxRedirects: 0 })).status()).toBe(303);
+  const current = page.locator(".plate [aria-current=step]");
+  await expect(current).toBeVisible(live);
+  const first = await current.textContent();
+  await page.locator("#emergency-summary").click();
+  await expect(page.locator("#emergency")).toHaveAttribute("open", "");
+  await expect(page.locator("#emergency-summary")).toBeFocused();
+  // The countdown ends and the next step begins: the region is drawn again.
+  await expect(current).not.toHaveText(first!, live);
+  await expect(page.locator("#emergency")).toHaveAttribute("open", "");
+  await expect(page.locator("#emergency-summary")).toBeFocused();
+});
+
 test("Overview, Console and Chat put their headers in the same boxes", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   // A tab's own width follows its words' weight when current, so a tab is
@@ -157,8 +205,8 @@ test("the Console's find that matches nothing moves no control and no line", asy
   await setUp(page, foreman, fakeGame!);
   await start(page);
   await fakeGame!.call("/join", { name: container, player: "first" });
-  // The count's own box is its words; it floats, so it is left out.
-  const parts = ".log-tools > :not(.log-tools__count), .terminal .log-frame > .log, #command, #send";
+  // The count has a row of its own, kept while it is empty, so it is in too.
+  const parts = ".log-tools > *, .terminal .log-frame > .log, #command, #send";
   await each(page, async (label) => {
     await page.goto("/console");
     await expect(page.locator(".log-tools")).toBeVisible();
@@ -172,6 +220,33 @@ test("the Console's find that matches nothing moves no control and no line", asy
     expect(await boxes(page, parts), `${label}: the find bar, the log and the command row`).toEqual(before);
     expect(await scrollY(page), `${label}: scroll`).toBe(y);
   });
+});
+
+// DESIGN 8.5: the count of lines shown never lies over the log's lines, at
+// 320 px and with text at 400%, in both themes.
+test("the Console's count never covers the first log line", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await start(page);
+  await fakeGame!.call("/join", { name: container, player: "first" });
+  for (const size of [{ width: 320, height: 640 }, { width: 1280, height: 800 }]) {
+    for (const text of ["100%", "400%"]) {
+      for (const theme of themes) {
+        const label = `${size.width} ${text} ${theme}`;
+        await page.setViewportSize(size);
+        await page.emulateMedia({ colorScheme: theme });
+        await page.goto("/console");
+        await page.evaluate((t) => (document.documentElement.style.fontSize = t), text);
+        await expect(page.locator(".log-tools")).toBeVisible();
+        await expect(page.locator(".terminal .log pre > span").first()).toBeVisible(live);
+        await page.locator("#log-find").fill("first");
+        await expect(page.locator("#log-count")).not.toBeEmpty();
+        // The log is a scroll box, so no line it shows starts above its top.
+        const [count] = await boxes(page, "#log-count");
+        const [log] = await boxes(page, ".terminal .log-frame > .log");
+        expect(count.y + count.height, `${label}: the count's foot and the log's top`).toBeLessThanOrEqual(log.y);
+      }
+    }
+  }
 });
 
 test("sending a command leaves the page where it is", async ({ page, foreman, fakeGame }) => {
@@ -230,13 +305,15 @@ for (const size of widths) {
 
 test("the stopped plate's facts sit side by side with no stretch of nothing", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
-  await page.setViewportSize(widths[0]);
-  await page.goto("/");
-  const cells = await boxes(page, ".facts-block .stat, .facts-block > :is([sse-swap=playtime], [sse-swap=loads], [sse-swap=schedule], [sse-swap=saveplayers]):visible");
-  expect(cells.length).toBeGreaterThan(1);
-  const row = cells.filter((c) => c.y === cells[0].y).sort((a, b) => a.x - b.x);
-  for (let i = 1; i < row.length; i++) {
-    expect(row[i].x - (row[i - 1].x + row[i - 1].width), `gap before cell ${i}`).toBeLessThanOrEqual(0.5);
+  for (const size of widths) {
+    await page.setViewportSize(size);
+    await page.goto("/");
+    const cells = await boxes(page, ".facts-block .stat, .facts-block > :is([sse-swap=playtime], [sse-swap=loads], [sse-swap=schedule], [sse-swap=saveplayers]):visible");
+    expect(cells.length, `${size.width}: cells`).toBeGreaterThan(1);
+    const row = cells.filter((c) => c.y === cells[0].y).sort((a, b) => a.x - b.x);
+    for (let i = 1; i < row.length; i++) {
+      expect(row[i].x - (row[i - 1].x + row[i - 1].width), `${size.width}: gap before cell ${i}`).toBeLessThanOrEqual(0.5);
+    }
   }
 });
 

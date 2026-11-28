@@ -463,19 +463,17 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"clock": func(t time.Time) string { return t.UTC().Format("15:04 UTC") },
 		// momentUTC and momentUTCSeconds are a <time> element for a sentence
 		// that holds a time, for tHTML.
-		"momentUTC": momentUTC,
-		"momentUTCSeconds": func(t time.Time) i18n.Fragment {
-			return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04:05 UTC"))
-		},
-		"deletedPath":   func() string { return PathDeleted },
-		"favoritesPath": func() string { return PathFavorites },
-		"signInPath":    func() string { return PathSignIn },
-		"setupPath":     func() string { return PathSetup },
-		"signOutPath":   func() string { return PathSignOut },
-		"signedOutPath": func() string { return PathSignedOut },
-		"languagePath":  func() string { return PathLanguage },
-		"themePath":     func() string { return PathTheme },
-		"languages":     func() []i18n.Language { return i18n.Languages },
+		"momentUTC":        momentUTC,
+		"momentUTCSeconds": momentUTCSeconds,
+		"deletedPath":      func() string { return PathDeleted },
+		"favoritesPath":    func() string { return PathFavorites },
+		"signInPath":       func() string { return PathSignIn },
+		"setupPath":        func() string { return PathSetup },
+		"signOutPath":      func() string { return PathSignOut },
+		"signedOutPath":    func() string { return PathSignedOut },
+		"languagePath":     func() string { return PathLanguage },
+		"themePath":        func() string { return PathTheme },
+		"languages":        func() []i18n.Language { return i18n.Languages },
 		// english is a key's English, for a word shown in English beside
 		// the page's language, as the language menu's label is.
 		"english": func(key string) string { return i18n.English.T(key) },
@@ -840,4 +838,10 @@ func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name st
 // time (SPEC 17.11).
 func momentUTC(t time.Time) i18n.Fragment {
 	return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format(notify.TimeLayout))
+}
+
+// momentUTCSeconds is momentUTC to the second, for a time that tells one
+// snapshot from the next.
+func momentUTCSeconds(t time.Time) i18n.Fragment {
+	return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04:05 UTC"))
 }

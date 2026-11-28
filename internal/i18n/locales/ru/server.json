@@ -271,6 +271,7 @@
   "server.done.restore_short": "Мир восстановлен.",
   "server.done.switch_short": "Миры переключены.",
   "server.done.close": "Закрыть это сообщение",
+  "server.done.dismiss_undo": "Скрыть предложение отмены",
   "server.done.update_short": "Версия игры обновлена.",
   "server.done.mods_short": "Моды изменены.",
   "server.done.rollback_short": "Мир откачен.",

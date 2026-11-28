@@ -265,6 +265,7 @@
   "server.done.restore_short": "Die Welt ist wiederhergestellt.",
   "server.done.switch_short": "Der Wechsel ist abgeschlossen.",
   "server.done.close": "Diese Meldung schließen",
+  "server.done.dismiss_undo": "Das Angebot zum Rückgängigmachen ausblenden",
   "server.done.update_short": "Die Spielversion ist aktualisiert.",
   "server.done.mods_short": "Die Mods wurden geändert.",
   "server.done.rollback_short": "Die Welt ist zurückgerollt.",

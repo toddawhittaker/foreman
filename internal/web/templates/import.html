@@ -14,7 +14,8 @@
 {{- /* The toast says how many were imported; the way to each new world stays here. */}}
 {{- if .Imported}}
 <div class="message message--note" id="import-result">
-  <ul>
+  <p id="import-result-lead">{{t "worlds.import.result.imported" "count" (len .Imported)}}</p>
+  <ul aria-labelledby="import-result-lead">
     {{- range .Imported}}
     <li><code>{{.Folder}}</code>: <a href="{{$.Page.WorldPath .WorldID}}">{{t "worlds.import.result.open" "world" .WorldName}}</a></li>
     {{- end}}

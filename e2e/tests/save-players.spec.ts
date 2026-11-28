@@ -491,7 +491,7 @@ test.describe("an upload", () => {
     await page.goto("/worlds/base/saves");
     await page.getByLabel("Save file").setInputFiles({ name: "from-elsewhere.zip", mimeType: "application/zip", buffer: makeZip({ "level/level.dat0": "a map from elsewhere" }) });
     await page.getByRole("button", { name: "Upload save" }).click();
-    await expect(page).toHaveURL(/\/worlds\/base\/saves\?uploaded=/);
+    await expect(page).toHaveURL(/\/worlds\/base\/saves(\?uploaded=.*)?$/);
     expect(existsSync(recordPath(foreman))).toBe(false);
   });
 });

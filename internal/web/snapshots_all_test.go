@@ -145,7 +145,7 @@ func TestSnapshotDeleteConfirmsThenDeletesAndAudits(t *testing.T) {
 		t.Errorf("audit %q", got)
 	}
 	done := hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String()
-	wantToast(t, "after the delete", done, false, "Foreman deleted the snapshot taken 2026-11-02 12:00:00 UTC.")
+	wantToast(t, "after the delete", done, false, `Foreman deleted the snapshot taken <time datetime="2026-11-02T12:00:00Z">2026-11-02 12:00:00 UTC</time>.`)
 
 	// From the tab, the delete returns to the tab.
 	rec = hn.post(snapshotDeletePath(id, second.Name), map[string][]string{"from": {"all"}}, withCookie(c))

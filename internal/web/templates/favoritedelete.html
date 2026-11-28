@@ -1,12 +1,12 @@
 {{define "title"}}{{t "favorites.delete.question" "name" .Page.Favorite.Name}}{{end}}
 
 {{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .ListPath (t "favorites.title"))}}{{end}}{{end}}
-{{define "head-title"}}{{t "favorites.delete.question" "name" .Page.Favorite.Name}}{{end}}
+{{define "head-title"}}<span id="confirm-heading">{{t "favorites.delete.question" "name" .Page.Favorite.Name}}</span>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
 {{template "pagehead" $}}
-<section class="confirm">
+<section class="confirm" aria-labelledby="confirm-heading">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{t "favorites.delete.removes"}}</li>

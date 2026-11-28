@@ -32,7 +32,7 @@
   <div class="log-frame" data-log-events="{{.EventsPath}}" data-max-lines="{{.MaxLines}}" data-log-html>
     {{- /* The log role is on the box, not the list, so the list keeps its own role and its items stay list items. */}}
     <div class="log" tabindex="0" role="log" aria-label="{{t "chat.history_label"}}"><ol class="chat-lines">{{template "chat-rows" .}}</ol></div>
-    {{- /* No chat yet says so over the log's box, so the form never moves when the first line comes (ruling 1 of fixes 20). */}}
+    {{- /* No chat yet says so over the log's box, so the form never moves when the first line comes (DESIGN 8.14). */}}
     {{- if not .Rows}}
     <div class="log-frame__empty" id="log-empty">{{template "empty" (empty "chat" (t "chat.empty"))}}</div>
     {{- end}}

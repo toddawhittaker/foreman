@@ -51,7 +51,7 @@
       <pre lang="en">{{range .Lines}}<span{{with $.Page.LineClass .}} class="{{.}}"{{end}}>{{with $.Page.LineStamp .}}<span class="log-time">{{.}}</span>{{end}}{{$.Page.LineText .}}
 </span>{{end}}</pre>
     </div>
-    {{- /* An empty log, or a find that matches nothing, says so over the log's box, so the log never moves when lines come (ruling 1 of fixes 20). */}}
+    {{- /* An empty log, or a find that matches nothing, says so over the log's box, so the log never moves when lines come (DESIGN 8.5). */}}
     {{- if not .Lines}}
     <div class="log-frame__empty" id="log-empty">{{template "empty" (empty "console" (t "server.console.log_empty"))}}</div>
     {{- end}}

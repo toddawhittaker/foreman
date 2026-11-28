@@ -111,7 +111,7 @@ func TestOnlyDoneBoxesHaveACloseButton(t *testing.T) {
 		}))
 	}
 	form := []string{`action="/worlds/base/dismiss-result"`, `hx-post="/worlds/base/dismiss-result"`, `data-dismiss-result`,
-		`name="at" value="` + strconv.FormatInt(at.UnixNano(), 10) + `"`, `id="act-dismiss"`, `<span class="visually-hidden">Close this message</span>`}
+		`name="at" value="` + strconv.FormatInt(at.UnixNano(), 10) + `"`, `id="act-dismiss"`, `<span class="visually-hidden">Dismiss the undo offer</span>`}
 	wantAll(t, "a restore", withResult(actionResult{Action: game.ActionRestore, Undo: "before"}), form...)
 	wantNone(t, "a restore with no undo", withResult(actionResult{Action: game.ActionRestore}), "act-dismiss")
 	wantNone(t, "a snapshot", withResult(actionResult{Action: actionSnapshot, Taken: "Manual"}), "act-dismiss")
@@ -143,7 +143,8 @@ func TestDismissOverHTTP(t *testing.T) {
 	g.wantRedirectHome(g.post(path, url.Values{"at": {"1"}}))
 	g.wantRedirectHome(g.post(path, url.Values{}))
 	g.wantRedirectHome(g.post(path, url.Values{"at": {"nope"}}))
-	g.wantContains("after closes that did not match", g.get(PathServer), "The worlds are switched", "Switch back to Alpha")
+	// The Done toast showed once; the Undo row stays until it is closed.
+	g.wantContains("after closes that did not match", g.get(PathServer), "Switch back to Alpha", `id="act-dismiss"`)
 
 	g.wantRedirectHome(g.post(path, url.Values{"at": {m[1]}}))
 	g.wantMissing("after the close", g.get(PathServer), "The worlds are switched", "Switch back to Alpha", "act-dismiss")

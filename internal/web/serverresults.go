@@ -3,8 +3,8 @@ package web
 import (
 	"cmp"
 	"errors"
-	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -105,13 +105,15 @@ func (p ServerPage) cancelled() bool {
 
 // cancelledByOperation returns the result of a stop countdown's action from
 // the finished operation, for the moment after the cancel when the run has
-// ended in the controller but its result is not stored yet (SPEC 7.6).
+// ended in the controller but its result is not stored yet (SPEC 7.6). The
+// operation names it, so its toast keeps one key on every update and once the
+// result is stored; now only stands in for when it ended.
 func cancelledByOperation(st game.Status, now time.Time) (actionResult, bool) {
 	o := st.Operation
 	if o == nil || !o.Done || !strings.Contains(o.Error, game.ErrStopCancelled.Error()) {
 		return actionResult{}, false
 	}
-	res := actionResult{Action: o.Action, Err: game.ErrStopCancelled, At: now}
+	res := actionResult{Action: o.Action, Err: game.ErrStopCancelled, At: now, Op: o.ID}
 	if o.Switch != nil {
 		res.Target, res.From = o.Switch.To, o.Switch.From
 	}
@@ -537,22 +539,55 @@ func failureAnnouncement(p ServerPage) i18n.Msg {
 	return join(said[0], said[1:]...)
 }
 
-// ResultToasts are the results the plate sums up as toasts: the Done
+// resultToasts are the results the plate sums up as toasts: the Done
 // message, the errors of actions asked for during another, and a download
 // that worked (DESIGN 6, "Toasts"). A failure stays in the plate, since it
-// carries its next steps.
-func (p ServerPage) ResultToasts() []Toast {
+// carries its next steps. Each toast's key names its result, never the
+// page's state, so a live page sends it once however the state moves.
+func (p ServerPage) resultToasts() []Toast {
 	var out []Toast
 	if d := p.Done(); !d.IsZero() {
-		out = append(out, Toast{Text: d})
+		key := resultKey("done", p.Result.At)
+		if p.cancelled() {
+			key = "cancelled." + strconv.FormatUint(p.Result.Op, 10)
+		}
+		out = append(out, Toast{Text: d, Key: key})
 	}
-	for _, e := range p.OtherErrors() {
-		out = append(out, Toast{Error: true, Text: e})
+	for _, res := range p.Others {
+		if res.Err != nil {
+			out = append(out, Toast{Error: true, Text: otherError(res.Action, failureText(res.Err)), Key: resultKey("other", res.At)})
+		}
 	}
-	if d := p.Downloaded(); !d.IsZero() {
-		out = append(out, Toast{Text: d})
+	if d, at := p.downloaded(); !d.IsZero() {
+		out = append(out, Toast{Text: d, Key: resultKey("download", at)})
 	}
 	return out
+}
+
+func resultKey(kind string, at time.Time) string {
+	return kind + "." + strconv.FormatInt(at.UnixNano(), 10)
+}
+
+// ResultToasts are resultToasts less those a page has shown already, so a
+// load after the toast shows none; the result stays for its Undo row and
+// Switch back offer (DESIGN 6, "Toasts").
+func (p ServerPage) ResultToasts() []Toast {
+	var out []Toast
+	for _, t := range p.resultToasts() {
+		if _, shown := p.Toasted[t.Key]; !shown {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// toastKeys are the keys of ts.
+func toastKeys(ts []Toast) []string {
+	keys := make([]string, 0, len(ts))
+	for _, t := range ts {
+		keys = append(keys, t.Key)
+	}
+	return keys
 }
 
 // toasts: the plate's results, then the admin's last player action, whose
@@ -578,23 +613,4 @@ func withReply(m i18n.Msg, reply string) i18n.Msg {
 		return m
 	}
 	return join(m, i18n.M("server.problem.other", "text", reply))
-}
-
-// toastMark stands for the result toasts p shows: the results' times and the
-// toasts' count, so the live stream sends each toast once, and the same words
-// for a later action again. It is "" when there are none.
-func (p ServerPage) toastMark() string {
-	ts := p.ResultToasts()
-	if len(ts) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	if p.HaveResult {
-		fmt.Fprintf(&b, "%d", p.Result.At.UnixNano())
-	}
-	for _, o := range p.Others {
-		fmt.Fprintf(&b, ".%d", o.At.UnixNano())
-	}
-	fmt.Fprintf(&b, ".%d", len(ts))
-	return b.String()
 }

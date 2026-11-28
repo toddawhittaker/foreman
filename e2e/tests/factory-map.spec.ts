@@ -757,3 +757,29 @@ test("at phone width the page has no sideways scroll and the controls are reacha
     await expect(c).toBeVisible();
   }
 });
+
+// Ruling 1: Draw keeps its exact place in x and y before and after a drawing,
+// at both widths; the state under it and the map may come and go.
+test("Draw stands in one place before and after a drawing", async ({ page }) => {
+  const sizes = [
+    { width: 1920, height: 1080 },
+    { width: 390, height: 844 },
+  ];
+  const place = async () => {
+    await page.goto(base);
+    return ui.draw(page).evaluate((e) => {
+      const r = e.getBoundingClientRect();
+      return { x: r.x + window.scrollX, y: r.y + window.scrollY };
+    });
+  };
+  const before: { x: number; y: number }[] = [];
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    before.push(await place());
+  }
+  await draw(page);
+  for (const [i, size] of sizes.entries()) {
+    await page.setViewportSize(size);
+    expect(await place(), `${size.width}`).toEqual(before[i]);
+  }
+});
