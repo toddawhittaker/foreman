@@ -197,3 +197,24 @@ func TestReconnectReplaysNoToast(t *testing.T) {
 		}
 	}
 }
+
+// DESIGN 6, "Toasts": each open page shows a result's toast once. A load
+// drawn just before the result lands, whose marks are noted only after
+// another page's stream sent and marked the toast, still gets it from its
+// own stream; the load never showed it.
+func TestALoadDrawnBeforeTheResultGetsItsToast(t *testing.T) {
+	done := actionResult{Action: actionSnapshot, Taken: "Manual", At: scheduleNow}
+	key := toastKeys(serverCase(game.StateStopped, func(p *ServerPage) { p.Result, p.HaveResult = done, true }).resultToasts())[0]
+	runs := newGameRuns()
+	watching := runs.loadToasts()
+	runs.pageToasts("w", watching, nil)
+	acting := runs.loadToasts()                     // the acting page's load is drawn, with no result yet
+	runs.streamToasts("w", []string{key}, watching) // the result lands; the watching page's stream sends its toast
+	runs.pageToasts("w", acting, nil)               // the load's marks: it showed no toast
+	l := newStream(t)
+	l.toastSeq = acting
+	p := serverCase(game.StateStopped, func(p *ServerPage) { p.Result, p.HaveResult, p.Toasted = done, true, runs.toastedKeys("w") })
+	if got := sentToasts(t, l, p); len(got[0]) != 1 {
+		t.Fatalf("the acting page's stream sent %q, want the Done toast", got[0])
+	}
+}
