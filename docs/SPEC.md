@@ -4015,11 +4015,14 @@ as a button or link on the same page. That includes undo after a change
 (VISION principle 1, "undone in one click"), the download after a missing
 image, and switch back or restore after a failed switch or a crash loop.
 Text that tells the admin to go somewhere else and do something, without
-a link that does it, does not meet this. The Server page's "Done" box,
-which reports a success or a cancelled stop, may be closed by the person
-(a close button that works without script); closing it also drops the
-undo or Switch back offer it carried, and forgets that result on the
-server. A failure's box has no close button. (P1)
+a link that does it, does not meet this. On the Server page a success
+or a cancelled stop is said by a toast (17.21), and its Undo or Switch
+back offer stays as a row under the controls. The person may close that
+row (a close button that works without script); closing it drops the
+offer and forgets that result on the server. A failure's box stays in
+the page and has no close button. A result that carries a button, such as
+Undo or Next, keeps it in the page, because a toast has no place for
+one. (P1)
 
 17.10. **Click budgets for common tasks.** Starting on the Server page,
 with the defaults accepted, these take at most:
@@ -4158,8 +4161,9 @@ test for it. Left as they are, one short value each: a note, a favorite's id,
 a player name, a game version, a search and its page, the versions filter. (P0)
 
 17.18. **One navigation pattern.** Every signed-in page shares one frame
-(DESIGN 6, "Shell"): a top bar at every width, then the page. The bar is
-dark in both themes. It holds the wordmark (the home link), the four areas
+(DESIGN 6, "Shell"): a top bar at every width, then the page. The bar
+follows the theme, as the account menu and the Console and Chat logs do.
+It holds the wordmark (the home link), the four areas
 (Server, Worlds, Snapshots, Settings) as tabs with the current one marked,
 the live world's name with the server's state in words, and the user menu.
 It scrolls with the page, and when large text leaves it too little room it
@@ -4173,10 +4177,12 @@ sideways. (P1)
   Game settings' own sub-pages (11.1) are a second row of segmented
   links under the world's tabs while one is open. The ids and addresses are
   the same at every width.
-- **Flows show a step bar instead.** Generate and its Mod settings and Map
-  settings steps (5.6) show the breadcrumb, the title and the step bar
-  (17.19) as their header, with no tab row, because none of the Worlds
-  tabs is the current page there.
+- **Flows show a step bar instead.** Generate's four steps (5.6), the
+  world's Mods tab included while it is step 2, show the breadcrumb, the
+  title and the step bar (17.19) as their header, with no tab row, because
+  none of the Worlds or world tabs is the current page there. The four
+  headers have the same boxes, so moving between steps moves nothing in
+  them.
 - **No in-page section lists.** A page never carries its own list of links
   to its sections. A page too long to read whole is split into sub-pages
   in that tab row instead, as Game settings is (11.1). The current page's
@@ -4217,6 +4223,38 @@ controls (5.6) can be reached; each is a focusable `role="button"` named
 by the planet. A picture on a
 location's circle is decoration: the location's title names it, and one
 that fails to load changes nothing the reader hears. (P1)
+
+17.21. **Results are toasts** (Todd's ruling, 2026-11-27, #985). The
+result of an action ("Done:" or "Error:") floats over the page as a toast
+and takes no room in it, so nothing on the page moves when one shows.
+Field errors stay at their field. (P1)
+
+- **Shown once.** A result shows once: live or on the next page load,
+  never again on a state change, a reconnect, a reload or Back. A toast
+  built from a parameter in the address, such as `?renamed=`, drops that
+  parameter from the address once it shows, keeping every other parameter
+  and the hash.
+- **Never takes focus.** A toast never moves focus, and never covers the
+  control that has it. A success is read out politely and stays at least
+  6 seconds, longer while the pointer or focus is on it. An error is read
+  out as an alert once and stays until closed. Each has a close button
+  reached by keyboard, and Escape closes the newest.
+- **Times are local.** A time in a toast is a `time` element, shown in the
+  viewer's zone (17.11).
+- **Without script** the toasts are the last thing in `main`, in the
+  page's flow, and keep their room.
+
+17.22. **A confirmation page asks one question.** Its one `h1`, in the page
+header (17.18), is a plain question that names the thing ("Delete the world
+'Family base 2025'?"). The box under it holds what will happen and the
+form; it carries no landmark name of its own, so a screen reader does not
+hear the question twice. (P1)
+
+17.23. **Where CSS goes.** A component's look is set once, in its shared
+part of the stylesheet, and a page part holds only what that page alone
+has. docs/WORKFLOW.md, "Where CSS goes", holds the rule, DESIGN 11 the
+file layout and ADR 0038 the reasons; a guard in `make verify` enforces
+it. (P1)
 
 ## 18. Epics, in order
 
