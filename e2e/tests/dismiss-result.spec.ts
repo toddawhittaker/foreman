@@ -23,7 +23,7 @@ test.describe("with the fake game", () => {
     await expect(doneBox(page)).toContainText("The worlds are switched", live);
     await expect(undoRow(page).getByRole("link", { name: "Switch back to Base" })).toBeVisible();
 
-    const close = undoRow(page).getByRole("button", { name: "Close this message" });
+    const close = undoRow(page).getByRole("button", { name: "Dismiss the undo offer" });
     const size = await close.boundingBox();
     expect(size!.width).toBeGreaterThanOrEqual(44);
     expect(size!.height).toBeGreaterThanOrEqual(44);
@@ -60,7 +60,7 @@ test.describe("with the fake game", () => {
       await held;
       await route.fulfill({ response: answer });
     });
-    await undoRow(page).getByRole("button", { name: "Close this message" }).click();
+    await undoRow(page).getByRole("button", { name: "Dismiss the undo offer" }).click();
     // The server has forgotten the result; its live update removes the row.
     await expect(undoRow(page)).toHaveCount(0, live);
     release();
@@ -85,7 +85,7 @@ test.describe("with the fake game and no JavaScript", () => {
     }).toPass(live);
     await expect(doneBox(page)).toContainText("The worlds are switched");
 
-    await undoRow(page).getByRole("button", { name: "Close this message" }).click();
+    await undoRow(page).getByRole("button", { name: "Dismiss the undo offer" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(undoRow(page)).toHaveCount(0);
     await expect(doneBox(page)).toHaveCount(0);

@@ -30,9 +30,12 @@ function startGenerateWithForm(start) {
       if (document.getElementById("newmap-load") || !document.getElementById("generate-form")) return;
       document.body.removeEventListener("htmx:afterSettle", loaded);
       start();
-      // Focus left inside the replaced box goes to the page's heading.
-      const heading = document.getElementById("newmap-heading");
-      if (focusWasIn && heading) heading.focus();
+      // Focus left inside the replaced box goes to the page's heading, which the header partial draws.
+      const heading = document.querySelector("main .pagehead > h1");
+      if (focusWasIn && heading) {
+        heading.tabIndex = -1;
+        heading.focus();
+      }
       const body = document.getElementById("newmap-body");
       const announcer = document.getElementById("announcer");
       if (body && announcer) announcer.textContent = body.dataset.ready;
@@ -720,7 +723,7 @@ startGenerateWithForm(() => {
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (!isPreview(e)) return;
     setBusy(true);
-    const wait = document.querySelector("#preview-wait p");
+    const wait = document.querySelector("#preview-wait .working__text");
     if (wait) announce(wait.textContent.trim());
   });
   document.body.addEventListener("htmx:afterRequest", (e) => { if (isPreview(e)) setBusy(false); });

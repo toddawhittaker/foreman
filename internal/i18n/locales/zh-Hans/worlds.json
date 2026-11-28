@@ -328,7 +328,6 @@
   "worlds.generate.preview.alt": "{planet} 的地图预览，种子 {seed}。图钉标记玩家的出生点。",
   "worlds.generate.preview.kept": "这些图片会保留 15 分钟。",
   "worlds.generate.preview.wait": "正在生成地图预览。每个星球需要几秒钟。",
-  "worlds.generate.preview.wait_label": "正在生成地图预览",
   "worlds.generate.preview.no_image": "Foreman 无法生成预览，因为这里没有下载 Factorio {version} 的游戏镜像。请在勾选下载的情况下生成世界，或选择已下载的版本。",
   "worlds.generate.preview.busy": "正在生成另一个地图预览。请等待几秒钟，然后再次点击“预览地图”。",
   "worlds.generate.preview.failed": "游戏无法生成地图预览，但仍可生成世界。如果持续失败，请查看 Foreman 的日志。",

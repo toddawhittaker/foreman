@@ -43,7 +43,8 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	out.doneOp, _ = strconv.ParseUint(r.URL.Query().Get(doneOpParam), 10, 64)
-	out.toasts = r.URL.Query().Get(toastsParam)
+	out.toastSeq, _ = strconv.ParseUint(r.URL.Query().Get(toastSeqParam), 10, 64)
+	out.toasted = func(keys []string) { s.runs.streamToasts(sum.ID, keys, out.toastSeq) }
 
 	view, updates, stop := s.game.Watch(sum.ID)
 	defer stop()
@@ -190,8 +191,16 @@ type liveStream struct {
 	started bool
 	state   game.State // the last state sent
 	result  string     // the last results sent, as read out
-	toasts  string     // the result toasts the page has (toastMark)
-	moved   bool       // the page was told to follow a switch
+	// toastsSeen holds the keys of the result toasts this connection has
+	// had, sent or already on the page, so each is sent once (DESIGN 6).
+	toastsSeen map[string]bool
+	// toasted notes the keys of the toasts sent, so a later page load
+	// leaves them out; nil in tests.
+	toasted func(keys []string)
+	// toastSeq is the page's ToastSeq: the toasts marked by then the page
+	// showed or left out on purpose, and the name its stream marks with.
+	toastSeq uint64
+	moved    bool // the page was told to follow a switch
 	// doneOp is the ID of the last ended operation the page has seen.
 	doneOp uint64
 	// fix is the path of the main fix of the refusal the page last showed,
@@ -208,13 +217,35 @@ const modsRecheckEvent = "mods"
 // was drawn with, so the stream does not reload a notice already current.
 const doneOpParam = "op"
 
-// toastsParam on the stream's address is the toastMark of the result toasts
-// the page was drawn with, so the stream sends only newer ones.
-const toastsParam = "toasts"
+// toastSeqParam on the stream's address is the page's ToastSeq.
+const toastSeqParam = "toasted"
 
 // ModNoticeTrigger loads the mods notice with the page, and again each time
 // an operation on the world ends.
 func (ServerPage) ModNoticeTrigger() string { return "load, sse:" + modsRecheckEvent }
+
+// newToasts are p's result toasts this connection has not had. On the first
+// send, the page already shows its toasts, or left them out as shown
+// before, so only these go: one no page has shown, from a result that landed
+// between the page's load and the stream's opening, and one another page
+// showed after this one was drawn. A reconnect's first send skips those this
+// page's own stream sent before; live.js drops any toast the page has had.
+func (l *liveStream) newToasts(p ServerPage) []Toast {
+	if l.toastsSeen == nil {
+		l.toastsSeen = map[string]bool{}
+	}
+	var out []Toast
+	for _, t := range p.resultToasts() {
+		if l.toastsSeen[t.Key] {
+			continue
+		}
+		l.toastsSeen[t.Key] = true
+		if m, shown := p.Toasted[t.Key]; l.started || !shown || m.At > l.toastSeq && m.Page != l.toastSeq {
+			out = append(out, t)
+		}
+	}
+	return out
+}
 
 // send writes each region of p that changed since the last send. A new
 // result, or else a new state, also goes to #announcer (DESIGN 7.5). A
@@ -226,8 +257,7 @@ func (l *liveStream) send(p ServerPage) error {
 	var say i18n.Msg
 	// A new result's toasts read themselves out, so only a failure, which
 	// stays on the plate, is said here (DESIGN 6, "Toasts").
-	toasts := p.toastMark()
-	sendToasts := toasts != "" && toasts != l.toasts
+	p.LiveToasts = l.newToasts(p)
 	if l.started {
 		if result != "" && result != l.result {
 			say = failureAnnouncement(p)
@@ -236,7 +266,6 @@ func (l *liveStream) send(p ServerPage) error {
 			say = announcement(p.Status.State)
 		}
 	}
-	l.toasts = toasts
 	if !say.IsZero() && !p.StartBlocked().IsZero() {
 		say = join(say, blockedAnnouncement)
 	}
@@ -298,13 +327,16 @@ func (l *liveStream) send(p ServerPage) error {
 		}
 		wrote = true
 	}
-	if sendToasts {
+	if len(p.LiveToasts) > 0 {
 		var b strings.Builder
 		if err := l.render.Fragment(&b, l.loc, p, "server-toast"); err != nil {
 			return err
 		}
 		if err := l.event("toast", b.String()); err != nil {
 			return err
+		}
+		if l.toasted != nil {
+			l.toasted(toastKeys(p.LiveToasts))
 		}
 		wrote = true
 	}

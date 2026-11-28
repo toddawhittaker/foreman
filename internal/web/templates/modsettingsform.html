@@ -7,10 +7,7 @@
   <section class="panel" aria-labelledby="mod-settings-heading">
     <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
     {{- /* The moving bar is the one Generate shows while it waits; the words carry the meaning (DESIGN 6, Motion). */}}
-    <div class="wait mod-settings-loading" role="status">
-      <p>{{t "mods.settings.edit.loading"}}</p>
-      <progress aria-hidden="true"></progress>
-    </div>
+    <div class="wait mod-settings-loading" role="status">{{template "working" (t "mods.settings.edit.loading")}}</div>
     {{- /* The words above show only while the script's request runs, so without script they do not claim a load that never comes; the link asks the server to read the form first. The script replaces the whole block (SPEC 9.6). */}}
     <p><a href="{{.WaitPath}}" id="mod-settings-wait">{{t "mods.settings.edit.loading_link"}}</a></p>
   </section>
@@ -126,12 +123,17 @@
   </div>
 </section>
 {{- /* The save bar stays at the window's foot while the form is in view, so the action is always in reach. */}}
+{{- /* In the guided Generate it is the step's footer, Back first (SPEC 5.6); the form-foot partial
+     has no Back, so that bar is written out as the partial draws it. */}}
+{{- if .InFlow}}
 <div class="actions form-foot">
-  {{- /* In the guided Generate it is the step's footer, Back first (SPEC 5.6). */}}
-  {{- if .InFlow}}{{template "genflow-back" .Back}}{{else}}
-  <a href="{{.ModsPath}}">{{t "settings.cancel"}}</a>{{end}}
-  <button type="submit" class="button button--primary">{{if .InFlow}}{{t "newmap.next.map"}}{{else if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
+  {{- template "genflow-back" .Back}}
+  <button type="submit" class="button button--primary">{{t "newmap.next.map"}}</button>
 </div>
+{{- else}}
+{{- $save := t "mods.settings.edit.save"}}{{if .Running}}{{$save = t "mods.settings.edit.save_restart"}}{{end}}
+{{template "form-foot" (formFoot "cancel" .ModsPath "cancelText" (t "settings.cancel") "submit" $save)}}
+{{- end}}
 </form>
 {{- end}}
 {{- if and (not .NewMap) .Map}}

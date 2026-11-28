@@ -431,14 +431,12 @@ func (l *liveStream) lines(event string, lines []string) error {
 	return l.rc.Flush()
 }
 
-// toasts: a command the game did not take is summed up over the page; the
-// field's own refusal stays at the field (DESIGN 6, "Toasts").
-func (p ConsolePage) toasts() []Toast {
+// Toasts: a command the game did not take is summed up over the page, in
+// the page and in a script's answer, out of band; the field's own refusal
+// stays at the field (DESIGN 6, "Toasts").
+func (p ConsolePage) Toasts() []Toast {
 	if p.Failure.IsZero() {
 		return nil
 	}
 	return []Toast{{Error: true, Text: p.Failure}}
 }
-
-// Toasts are the toasts a script's answer carries out of band.
-func (p ConsolePage) Toasts() []Toast { return p.toasts() }

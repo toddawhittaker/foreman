@@ -340,7 +340,6 @@
   "worlds.generate.preview.alt": "Vista previa del mapa de {planet}, semilla {seed}. El marcador señala dónde empiezan los jugadores.",
   "worlds.generate.preview.kept": "Estas imágenes se conservan 15 minutos.",
   "worlds.generate.preview.wait": "Creando la vista previa del mapa. Tarda unos segundos por planeta.",
-  "worlds.generate.preview.wait_label": "Creando la vista previa del mapa",
   "worlds.generate.preview.no_image": "Foreman no puede crear una vista previa porque la imagen del juego de Factorio {version} no está descargada aquí. Genera el mundo con la descarga marcada, o elige una versión que ya esté descargada.",
   "worlds.generate.preview.busy": "Se está creando otra vista previa de mapa. Espera unos segundos y vuelve a elegir «Previsualizar el mapa».",
   "worlds.generate.preview.failed": "El juego no pudo crear la vista previa del mapa. Aun así puedes generar el mundo. Si sigue fallando, revisa el registro de Foreman.",

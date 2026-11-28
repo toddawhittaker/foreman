@@ -386,7 +386,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 
 /* An empty log, or a find that matches nothing, says so over the log's box,
    in its middle, so the log and what follows never move when lines come
-   (ruling 1 of fixes 20). */
+   (DESIGN 8.5). */
 .log-frame > :is(.log, .log-frame__empty) {
   grid-row: 1;
   grid-column: 1;
@@ -925,7 +925,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 }
 
 /* The actions take the cell's width and lend none to it, so opening a row
-   never widens the name column and moves the times (ruling 1 of fixes 20). */
+   never widens the name column and moves the times (DESIGN 8.12). */
 .player-actions > .actions {
   contain: inline-size;
   gap: var(--space-2);
@@ -1644,7 +1644,7 @@ tr:has(> td > .player-actions) > td.num {
   }
 
   /* Every fact is one equal cell of one row, however many the state has,
-     so no stretch of nothing opens between them (issue 988). */
+     so no stretch of nothing opens between them (DESIGN 7.8). */
   .status-card.plate .facts-block > [sse-swap="facts"],
   .status-card.plate .facts-block > [sse-swap="facts"] > .facts.stat-grid {
     display: contents;
@@ -1885,7 +1885,7 @@ tr:has(> td > .player-actions) > td.num {
 
   /* The control region lends its parts to the plate's grid: the actions
      and Emergency actions keep the head row's end in every state, and what
-     the server reports takes full rows under it (ruling 1 of fixes 20). */
+     the server reports takes full rows under it (DESIGN 7.8). */
   .status-card.plate > [sse-swap="control"] {
     display: contents;
   }
@@ -2093,19 +2093,16 @@ tr:has(> td > .player-actions) > td.num {
   }
 }
 
-/* The console's count of lines shown sits at the end of the bar's foot,
-   over the log's faded top padding, so its words come and go without
-   moving the bar's controls or the log (ruling 1 of fixes 20). Empty, it
-   stays a live region, so its first words are still read out. */
-.log-tools {
-  position: relative;
-}
-
+/* The console's count of lines shown has a row of its own at the bar's
+   foot, kept one line tall while it is empty, so its words come and go
+   without moving the bar's controls or the log, and never lie over the log's
+   lines (DESIGN 8.5). Empty, it stays a live region, so its first words are
+   still read out. */
 .log-tools > .log-tools__count {
-  position: absolute;
-  inset-block-start: 100%;
-  inset-inline-end: 0;
+  flex: 1 1 100%;
+  max-inline-size: none;
+  min-block-size: 1lh;
   margin: 0;
-  pointer-events: none;
+  text-align: end;
 }
 }

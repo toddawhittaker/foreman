@@ -77,7 +77,7 @@ test("a rename says Done", async ({ page, foreman, fakeGame }) => {
 
   await page.getByLabel("Name", { exact: true }).fill("  Second base ");
   await page.getByRole("button", { name: "Rename world" }).click();
-  await expect(page).toHaveURL(/\/worlds\/second\?renamed=/);
+  await expect(page).toHaveURL(/\/worlds\/second$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Second base");
   await expect(page.locator("#toasts .toast--success p")).toHaveText("Done: Renamed to Second base.");
   await checkPage(page);

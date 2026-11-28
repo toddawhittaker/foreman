@@ -49,7 +49,7 @@ test("step 3 shows the startup settings, and saving one adds the planet it turns
   const wait = page.locator("#mod-settings-form .wait");
   await expect(wait).toBeVisible();
   await expect(wait).toHaveAttribute("role", "status");
-  await expect(wait.locator("progress")).toBeVisible();
+  await expect(wait.locator(".working__bar")).toBeVisible();
   release();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mod settings");
   await expect(steps(page).getByRole("link", { name: "3. Mod settings" })).toHaveAttribute("aria-current", "step");

@@ -179,6 +179,7 @@ test.describe("with script", () => {
     await seed.fill("111");
     await first;
     // The first run is under way (the slow game takes half a second); change again.
+    await expect(page.locator("#preview-status .working")).toBeVisible();
     await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
     await seed.fill("222");
     await expect(planetPictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
@@ -186,29 +187,29 @@ test.describe("with script", () => {
     // The dropped run never shows, even if it ends later.
     await page.waitForTimeout(800);
     await expect(planetPictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
-    await expect(page.locator("#preview-status")).toHaveText("");
+    await expect(page.locator("#preview-status .working")).toBeHidden();
   });
 
-  // DESIGN 8.8: a redraw shows the counting's moving bar on the drawing line, and only while it runs; the line
-  // keeps its height, so nothing under it moves.
+  // DESIGN 8.8: a redraw shows the app's working bar and its words on the drawing line, and only while it
+  // runs; the line keeps its height, idle or not, so nothing under it moves (#975).
   test("a redraw shows the moving bar beside its words until the picture lands", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(planetPictures(page)).toHaveCount(1);
     const line = page.locator("#preview-status");
-    const bar = line.locator("progress");
+    const bar = line.locator(".working__bar");
     await expect(bar).toBeHidden();
     const held = (await line.boundingBox())!.height;
     await fakeGame!.call("/preview-mode", { mode: "slow" });
     await page.locator("#generate-seed").fill("333");
     await expect(line).toHaveText("Drawing the map preview for the current settings…");
+    await expect(line.locator(".working")).toBeVisible();
     await expect(bar).toBeVisible();
     await expect(bar).toHaveAttribute("aria-hidden", "true");
     expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
     await line.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `../screenshots/preview-drawing-bar-${test.info().project.name}.png` });
     await expect(planetPictures(page)).toHaveAccessibleName(/seed 333\./);
-    await expect(line).toHaveText("");
-    await expect(bar).toBeHidden();
+    await expect(line.locator(".working")).toBeHidden();
     expect((await line.boundingBox())!.height).toBeCloseTo(held, 0);
     // All planets draws by the same path, with the same bar.
     await section(page).locator("label.tab", { hasText: "All planets" }).click();
@@ -217,14 +218,16 @@ test.describe("with script", () => {
     await expect(bar).toBeHidden();
   });
 
-  test("with reduced motion a redraw shows its words but no moving bar", { tag: "@looks" }, async ({ page, fakeGame }) => {
+  // The working bar stands still under reduced motion, as everywhere (DESIGN 7.6).
+  test("with reduced motion a redraw shows its words and a still bar", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openNewMap(page);
     await expect(planetPictures(page)).toHaveCount(1);
     await fakeGame!.call("/preview-mode", { mode: "slow" });
     await page.locator("#generate-seed").fill("444");
+    await expect(page.locator("#preview-status .working")).toBeVisible();
     await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
-    await expect(page.locator("#preview-status progress")).toBeHidden();
+    expect(await page.locator("#preview-status .working__bar").evaluate((b) => getComputedStyle(b, "::before").animationName)).toBe("none");
     await expect(planetPictures(page)).toHaveAccessibleName(/seed 444\./);
   });
 
@@ -514,7 +517,7 @@ test.describe("with script", () => {
       await page.route(/\/generate\/preview\/resources/, async (r) => { await new Promise((ok) => setTimeout(ok, 400)); await r.continue(); });
       await dialog.locator("#large-amounts").check();
       if (width === 1920) {
-        await expect(dialog.locator("#large-counting")).toBeVisible();
+        await expect(dialog.locator("#large-amounts-work .working")).toBeVisible();
         await page.screenshot({ path: `../screenshots/large-view-counting-1920-${info.project.name}.png`, clip: { x: 0, y: 0, width, height: 200 } });
       }
       await expect(dialog.locator("#large-status")).toHaveText("Resource amounts ready.");

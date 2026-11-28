@@ -39,7 +39,7 @@ test("step 3 shows the step bar, saves a preset and lands on a next step", { tag
   await expect(steps.getByRole("link", { name: "4. Map settings" })).toHaveAttribute("aria-current", "step");
   await expect(steps.getByRole("link", { name: "1. World (done)" })).toBeVisible();
   // The footer: Back to step 2, since step 3 has nothing, then the save as the primary button (SPEC 5.6).
-  const bar = page.locator(".gen-actions");
+  const bar = page.locator("#generate-form > .form-foot");
   await expect(bar.locator("> *").first()).toHaveText("Back to the mods");
   await expect(bar.locator("> *").first()).toHaveAttribute("href", `/worlds/${id}/mods`);
   await expect(bar.locator("> *").last()).toHaveAttribute("id", "newmap-save");
@@ -133,7 +133,7 @@ test("the wait is said once, then the form's arrival, and focus moves to the hea
   release();
   await expect(page.locator("#generate-form")).toBeVisible();
   await expect(page.locator("#announcer")).toHaveText("Map settings ready.");
-  await expect(page.locator("#newmap-heading")).toBeFocused();
+  await expect(page.locator("main .pagehead > h1")).toBeFocused();
 });
 
 test("when the world's planets cannot be read, the page says so and the save is refused", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {

@@ -31,7 +31,7 @@ async function restore(page: Page, label: string) {
   await page.goto(`${world}/snapshots`);
   await page.getByRole("link", { name: new RegExp(`^Restore ${label}`) }).click();
   await page.getByRole("button", { name: "Restore snapshot" }).click();
-  await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?undo=/);
+  await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots$/);
 }
 
 // Each table sits inside its panel's border, at any width; on a phone it may use the panel's padding.
@@ -111,7 +111,7 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
   await page.getByRole("button", { name: "Delete selected" }).click();
   await page.getByRole("button", { name: "Delete 2 snapshots" }).click();
-  await expect(page).toHaveURL("/snapshots?removed=2");
+  await expect(page).toHaveURL("/snapshots");
   await expect(page.locator("#toasts").getByText("Done: Foreman deleted 2 snapshots.")).toBeVisible();
   await expect(rowsOf(page)).toHaveCount(1);
   await expect(rowsOf(page).first()).toContainText("Keep me");
@@ -132,7 +132,7 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   await page.locator('input[name="snap"]').first().check();
   await page.getByRole("button", { name: "Delete selected" }).click();
   await page.getByRole("button", { name: "Delete 1 snapshot" }).click();
-  await expect(page).toHaveURL(`${world}/snapshots?removed=1`);
+  await expect(page).toHaveURL(`${world}/snapshots`);
   await expect(page.getByText(/No snapshots yet/)).toBeVisible();
 });
 

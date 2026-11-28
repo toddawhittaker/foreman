@@ -72,7 +72,7 @@ test("imports a folder from the inbox, leaves it unchanged, and says Done", { ta
   await (await typedVersion(form)).fill("2.0.72");
   await form.getByLabel("Download the game image", { exact: false }).uncheck();
   await form.getByRole("button", { name: "Import folder" }).click();
-  await expect(page).toHaveURL("/worlds/old-game?imported=1&unchecked=1");
+  await expect(page).toHaveURL("/worlds/old-game");
   await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Imported Old game.");
   await expect(page.locator(".message--warning:not(#export-warning)")).toContainText("could not reach Docker Hub to check that Factorio 2.0.72 exists");
   await expect(page.locator("dl.facts")).toContainText("Imported fromThe folder saves-2025, save base.zip");
@@ -103,7 +103,7 @@ test("a single folder is chosen, named from its server settings, and uses the sa
   await expect(page.locator("body")).not.toContainText("hush");
   await checkPage(page);
   await form.getByRole("button", { name: "Import folder" }).click();
-  await expect(page).toHaveURL("/worlds/friday-factory?imported=1");
+  await expect(page).toHaveURL("/worlds/friday-factory");
   await expect(page.locator("dl.facts")).toContainText("2.1.24");
   expect(worldJSON(foreman, "friday-factory")).toMatchObject({ game_version: "2.1.24", space_age: true });
 });
@@ -248,7 +248,7 @@ test("several folders import at once, each reported", { tag: "@looks" }, async (
   await checkPage(page);
   await (await typedVersion(alone)).fill("2.0.72");
   await alone.getByRole("button", { name: "Import folder" }).click();
-  await expect(page).toHaveURL("/worlds/junk?imported=1&unchecked=1");
+  await expect(page).toHaveURL("/worlds/junk");
 
   // A folder whose version is known gets no hint and no focus change.
   await page.goto("/import?folder=sa");
@@ -295,7 +295,7 @@ test("folders already imported are listed apart", async ({ page, foreman }) => {
   await form.getByLabel(/done: /).check();
   await form.getByLabel("World name").fill("First");
   await form.getByRole("button", { name: "Import folder" }).click();
-  await expect(page).toHaveURL("/worlds/first?imported=1");
+  await expect(page).toHaveURL("/worlds/first");
 
   await page.goto("/import");
   await expect(form.getByText("Already imported.")).toBeVisible();
@@ -376,7 +376,7 @@ test("imports a world by uploading a save, and suggests its name", { tag: "@look
   await form.getByLabel("World name").fill("Uploaded");
   await (await typedVersion(form)).fill("1.1.110");
   await form.getByRole("button", { name: "Upload and import" }).click();
-  await expect(page).toHaveURL("/worlds/uploaded?imported=1&unchecked=1");
+  await expect(page).toHaveURL("/worlds/uploaded");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Uploaded Active");
   await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Imported Uploaded.");
   expect(readdirSync(join(foreman.dataDir, "worlds", "uploaded", "saves"))).toEqual(["my save.zip"]);
@@ -406,7 +406,7 @@ test("accepts a typed game version while Docker Hub is unreachable", async ({ pa
   await (await typedVersion(form)).fill("2.0.78");
   await checkPage(page);
   await form.getByRole("button", { name: "Import folder" }).click();
-  await expect(page).toHaveURL("/worlds/typed?imported=1&unchecked=1");
+  await expect(page).toHaveURL("/worlds/typed");
   await expect(page.locator("dl.facts")).toContainText("2.0.78");
   expect(worldJSON(foreman, "typed").game_version).toBe("2.0.78");
 });

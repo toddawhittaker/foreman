@@ -213,7 +213,7 @@ test("a favorite is a closed row; Details holds the rest; Rename changes the lis
   await expect(err).toContainText("Enter a name for the favorite.");
 
   await rename(page, "Shared pack", "Rail world");
-  await expect(page).toHaveURL(`/favorites?renamed=${favID}`);
+  await expect(page).toHaveURL("/favorites");
   await expect(page.locator("#toasts")).toContainText('Renamed the favorite to "Rail world".');
   await expect(favRow(page, "Rail world")).toHaveCount(1);
   await expect(favRow(page, "Shared pack")).toHaveCount(0);

@@ -108,7 +108,7 @@ test("an uploaded save appears, is kept byte for byte, and loads as the newest",
   await page.getByLabel("Save file").setInputFiles({ name: "from elsewhere.zip", mimeType: "application/zip", buffer: upload });
   await page.getByRole("button", { name: "Upload save" }).click();
 
-  await expect(page).toHaveURL(/\/worlds\/family-base\/saves\?uploaded=/);
+  await expect(page).toHaveURL(/\/worlds\/family-base\/saves(\?uploaded=.*)?$/);
   await expect(page.locator("#toasts").getByText("Done: Uploaded from elsewhere.zip.")).toBeVisible();
   // The result is a toast, which never takes focus (DESIGN 6, "Toasts").
   expect(await page.evaluate(() => document.activeElement?.closest("#toasts") ?? null)).toBeNull();
@@ -195,7 +195,7 @@ test("choosing which save loads is kept, and going back to the newest clears it"
   await expect(rows.nth(0).getByRole("button")).toHaveCount(0);
   await page.getByRole("button", { name: "Load next: old.zip" }).click();
 
-  await expect(page).toHaveURL(/saves\?chosen=1/);
+  await expect(page).toHaveURL(/saves(\?chosen=1.*)?$/);
   await expect(page.locator("#toasts").getByText("The server will load old.zip the next time it starts.")).toBeVisible();
   // The result is a toast, which never takes focus (DESIGN 6, "Toasts").
   expect(await page.evaluate(() => document.activeElement?.closest("#toasts") ?? null)).toBeNull();

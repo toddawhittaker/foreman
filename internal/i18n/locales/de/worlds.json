@@ -340,7 +340,6 @@
   "worlds.generate.preview.alt": "Kartenvorschau von {planet}, Kartenseed {seed}. Die Markierung zeigt, wo die Spieler starten.",
   "worlds.generate.preview.kept": "Diese Bilder werden 15 Minuten lang aufbewahrt.",
   "worlds.generate.preview.wait": "Die Kartenvorschau wird erstellt. Das dauert pro Planet einige Sekunden.",
-  "worlds.generate.preview.wait_label": "Kartenvorschau wird erstellt",
   "worlds.generate.preview.no_image": "Foreman kann keine Vorschau erstellen, weil das Spiel-Image für Factorio {version} hier nicht heruntergeladen ist. Generiere die Welt mit angehaktem Download oder wähle eine Version, die schon heruntergeladen ist.",
   "worlds.generate.preview.busy": "Es wird gerade eine andere Kartenvorschau erstellt. Warte ein paar Sekunden und wähle dann erneut „Karte vorab ansehen“.",
   "worlds.generate.preview.failed": "Das Spiel konnte die Kartenvorschau nicht erstellen. Du kannst die Welt trotzdem generieren. Wenn es weiter scheitert, sieh im Protokoll von Foreman nach.",

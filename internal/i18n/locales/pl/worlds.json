@@ -352,7 +352,6 @@
   "worlds.generate.preview.alt": "Podgląd mapy dla {planet}, ziarno {seed}. Znacznik pokazuje, gdzie zaczynają gracze.",
   "worlds.generate.preview.kept": "Te obrazy są przechowywane przez 15 minut.",
   "worlds.generate.preview.wait": "Trwa tworzenie podglądu mapy. Zajmuje to kilka sekund na każdą planetę.",
-  "worlds.generate.preview.wait_label": "Tworzenie podglądu mapy",
   "worlds.generate.preview.no_image": "Foreman nie może utworzyć podglądu, ponieważ obraz gry dla Factorio {version} nie został tu pobrany. Należy wygenerować świat z zaznaczonym pobieraniem albo wybrać wersję, której obraz jest już pobrany.",
   "worlds.generate.preview.busy": "Trwa tworzenie innego podglądu mapy. Należy odczekać kilka sekund i ponownie wybrać „Pokaż podgląd mapy”.",
   "worlds.generate.preview.failed": "Gra nie zdołała utworzyć podglądu mapy. Świat nadal można wygenerować. Jeśli błąd się powtarza, należy sprawdzić dziennik Foremana.",

@@ -76,9 +76,42 @@ startPreviewWithForm(() => {
       });
       img.setAttribute("href", url);
     });
+    const maps = root.matches && root.matches("svg.starmap") ? [root] : root.querySelectorAll("svg.starmap");
+    maps.forEach(fitStarMap);
+  }
+  // The server guesses each label's width from its letters; the reader's font
+  // may be wider, so the view box grows, square about its middle, to what the
+  // page draws, and no label is cut at the frame's edge (#966). A map out of
+  // sight, in a template, has no size yet and is fitted once shown.
+  function fitStarMap(svg) {
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    if (!vb || !vb.width) return;
+    // Only the labels' boxes: the rest is drawn where the server measured it.
+    const boxes = [];
+    for (const t of svg.querySelectorAll("text")) {
+      try {
+        const b = t.getBBox();
+        if (b.width && b.height) boxes.push(b);
+      } catch {
+        return;
+      }
+    }
+    if (!boxes.length) return;
+    const pad = vb.width / 100;
+    const x0 = Math.min(vb.x, ...boxes.map((b) => b.x - pad));
+    const y0 = Math.min(vb.y, ...boxes.map((b) => b.y - pad));
+    const x1 = Math.max(vb.x + vb.width, ...boxes.map((b) => b.x + b.width + pad));
+    const y1 = Math.max(vb.y + vb.height, ...boxes.map((b) => b.y + b.height + pad));
+    if (x0 >= vb.x && y0 >= vb.y && x1 <= vb.x + vb.width && y1 <= vb.y + vb.height) return;
+    const side = Math.max(x1 - x0, y1 - y0);
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    svg.setAttribute("viewBox", `${cx - side / 2} ${cy - side / 2} ${side} ${side}`);
   }
   loadPictures(document);
   document.body.addEventListener("htmx:afterSettle", () => loadPictures(document));
+  // A label's width is known only once its font has loaded.
+  if (document.fonts) document.fonts.ready.then(() => loadPictures(document));
 
   // Only the newest words are said: a later announcement or status text
   // cancels one still waiting, so older news never overwrites newer.
@@ -110,14 +143,16 @@ startPreviewWithForm(() => {
     owed = "";
   }
 
+  // A working bar's spot under its box or on its held line: idle, it keeps its room unseen (#975).
+  function working(id, on) {
+    const spot = document.getElementById(id);
+    if (spot) spot.toggleAttribute("data-idle", !on);
+  }
+
   function setStatus(on) {
-    const words = document.getElementById("preview-status-text");
-    if (status && words) words.textContent = on ? status.dataset.text : "";
-    // The counting's moving bar shows while any redraw runs, on the page and in the large view.
-    for (const id of ["preview-status-wait", "large-drawing-wait"]) {
-      const wait = document.getElementById(id);
-      if (wait) wait.classList.toggle("htmx-request", on);
-    }
+    // The working bar shows while any redraw runs, on the page and in the large view.
+    working("preview-status", on);
+    working("large-drawing-wait", on);
     // A redraw makes "Map preview ready." stale, so the large view's status line drops it, said or waiting.
     const ready = strings["js.generate.preview_ready"];
     const said = document.getElementById("large-status");
@@ -131,8 +166,6 @@ startPreviewWithForm(() => {
     // The large view fades its picture the same way while the next one is drawn.
     const big = document.getElementById("large-frame");
     if (big) big.setAttribute("aria-busy", on && dialog && dialog.open ? "true" : "false");
-    const note = document.getElementById("large-drawing");
-    if (note && !on) note.textContent = "";
   }
 
   function drop() {
@@ -182,6 +215,13 @@ startPreviewWithForm(() => {
     terrSent++;
     if (terrPending) terrPending.abort();
     terrPending = null;
+    terrWorking(false);
+  }
+
+  // The territories' working bar, under the box on the page and in the large view.
+  function terrWorking(on) {
+    working("preview-territories-work", on);
+    working("large-territories-work", on);
   }
 
   // While the box is ticked the downloads ask for the territories, held yet
@@ -284,10 +324,9 @@ startPreviewWithForm(() => {
     const n = terrSent;
     const ctrl = new AbortController();
     terrPending = ctrl;
-    const note = document.createElement("p");
-    note.className = "hint";
-    note.textContent = slot.dataset.finding;
-    slot.replaceChildren(note);
+    // The working bar under the box says it is finding them; the slot under the picture waits empty.
+    slot.replaceChildren();
+    terrWorking(true);
     largeRetry();
     const body = new URLSearchParams(new FormData(formEl()));
     let html;
@@ -296,6 +335,7 @@ startPreviewWithForm(() => {
     } catch {
       if (n !== terrSent || ctrl.signal.aborted) return;
       terrPending = null;
+      terrWorking(false);
       const failed = document.getElementById("territory-failed");
       if (failed) showTerritoryResult(slot, failed.content);
       largeRetry();
@@ -306,6 +346,7 @@ startPreviewWithForm(() => {
     }
     if (n !== terrSent) return;
     terrPending = null;
+    terrWorking(false);
     const reply = new DOMParser().parseFromString(html, "text/html").getElementById("territory-reply");
     const result = reply && reply.querySelector(".territory-result");
     if (!result) return;
@@ -416,8 +457,6 @@ startPreviewWithForm(() => {
     pendingInView = Boolean(dialog && dialog.open);
     drawing = showAll ? "*" : viewing || firstPlanet();
     setStatus(true);
-    const note = el("large-drawing");
-    if (change && pendingInView && status && note) note.textContent = status.dataset.text;
     let html;
     try {
       const res = await fetch(path, { method: "POST", body, signal: ctrl.signal, headers: { "HX-Request": "true" }, credentials: "same-origin" });
@@ -488,11 +527,7 @@ startPreviewWithForm(() => {
   let chartCtrl = null;
   function chartBusy(on) {
     const wait = el("preview-chart-wait");
-    if (wait) {
-      wait.hidden = !on;
-      // The wait line shows as htmx shows Preview map's own.
-      wait.classList.toggle("htmx-request", on);
-    }
+    if (wait) wait.hidden = !on;
     const slot = el("preview");
     if (slot) slot.setAttribute("aria-busy", on ? "true" : "false");
     document.querySelectorAll(chartActions).forEach((b) => {
@@ -650,31 +685,6 @@ startPreviewWithForm(() => {
     if (field && section && e.detail.target === section && section.contains(field)) section.after(field);
   });
   document.addEventListener("htmx:afterSettle", () => placeSize(document.getElementById("preview")));
-
-  // The Download line grows past its link's row when it wraps, when the
-  // button's text wraps, and when a stopped download's message opens in it;
-  // CSS cannot measure that, so the picture is told how much more room the
-  // line takes (DESIGN 8.8). The line's content follows the pane's width and
-  // the script's own changes, so both are watched.
-  function reserveLine() {
-    for (const row of document.querySelectorAll(".gen-preview .picture-actions")) {
-      const boxes = [...row.children].map((c) => c.getBoundingClientRect()).filter((b) => b.width && b.height);
-      const list = row.closest(".pictures");
-      if (!boxes.length || !list) continue;
-      const extra = Math.max(...boxes.map((b) => b.bottom)) - boxes[0].bottom;
-      list.style.setProperty("--chart-row", `${Math.max(0, Math.ceil(extra))}px`);
-    }
-  }
-  const pane = document.querySelector(".gen-preview");
-  if (pane) {
-    let marking = 0;
-    const mark = () => {
-      if (!marking) marking = requestAnimationFrame(() => { marking = 0; reserveLine(); });
-    };
-    new ResizeObserver(mark).observe(pane);
-    new MutationObserver(mark).observe(pane, { childList: true, characterData: true, subtree: true, attributeFilter: ["hidden", "class"] });
-    reserveLine();
-  }
 
   // Puts the new section in place; a control that had focus there keeps it.
   function swap(fresh) {
@@ -843,7 +853,7 @@ startPreviewWithForm(() => {
   const newCount = () => ({ sent: 0, pending: null, asked: "", labelled: null, sizes: new Map(), saying: 0, unsaid: false });
   const places = {
     large: {
-      box: "large-amounts", bar: "large-amounts-bar", counting: "large-counting", text: "large-counting-text",
+      box: "large-amounts", bar: "large-amounts-bar", counting: "large-amounts-work", text: "large-counting-text",
       slot: "large-amounts-result", news: "large-amounts-news", status: "large-status", overlays: "#large-view .resources",
       shown: viewOpen,
       // The star map has no planet to count.
@@ -852,7 +862,7 @@ startPreviewWithForm(() => {
       ...newCount(),
     },
     page: {
-      box: "preview-amounts", bar: "preview-amounts-bar", counting: "preview-counting", text: "preview-counting-text",
+      box: "preview-amounts", bar: "preview-amounts-bar", counting: "preview-amounts-work", text: "preview-counting-text",
       slot: "preview-amounts-result", news: "preview-amounts-news", status: "announcer", overlays: "#preview .resources",
       shown: () => !viewOpen(),
       // The box is there only while one planet is shown.
@@ -865,8 +875,7 @@ startPreviewWithForm(() => {
   const ticked = (at) => { const box = el(at.box); return Boolean(box && box.checked); };
 
   function counting(at, on) {
-    const line = el(at.counting);
-    if (line) line.hidden = !on;
+    working(at.counting, on);
   }
 
   // In the large view a count's note or error lies over the picture's top with a close button,
@@ -1029,7 +1038,7 @@ startPreviewWithForm(() => {
       e.preventDefault();
       // One download is prepared at a time; another link says so.
       // The same link says where its preparation is; another says one is on its way.
-      const news = a === prep.a ? words(prep.block.querySelector("[data-prep-failed]").hidden ? prep.block.querySelector("[data-prep-text]") : prep.block.querySelector("[data-prep-failed]")) : strings["js.preview.prepare_busy"];
+      const news = a === prep.a ? words(prep.block.querySelector("[data-prep-failed]").hidden ? prep.block.querySelector("[data-prep-wait] .working__text") : prep.block.querySelector("[data-prep-failed]")) : strings["js.preview.prepare_busy"];
       // Another link is offered the Cancel of the one on its way.
       if (a !== prep.a) prep.block.querySelector("[data-prep-cancel]").focus();
       owed = news;
@@ -1085,8 +1094,7 @@ startPreviewWithForm(() => {
   async function runPrep(p) {
     const block = p.block;
     const wait = block.querySelector("[data-prep-wait]");
-    const bar = block.querySelector("progress");
-    const text = block.querySelector("[data-prep-text]");
+    const text = block.querySelector("[data-prep-wait] .working__text");
     const failure = block.querySelector("[data-prep-failed]");
     const retry = block.querySelector("[data-prep-retry]");
     const without = block.querySelector("[data-prep-without]");
@@ -1100,11 +1108,7 @@ startPreviewWithForm(() => {
     while (p.at < p.steps.length) {
       const step = p.steps[p.at];
       const vars = { planet: nameOf(step.planet), n: (p.at + 1).toLocaleString(lang), total: p.steps.length.toLocaleString(lang) };
-      // The planet counted now is half done, so the bar never sits empty; one planet only shows it works.
-      if (p.steps.length > 1) {
-        bar.max = p.steps.length;
-        bar.value = p.at + 0.5;
-      } else bar.removeAttribute("value");
+      // The words say which planet of how many; the working bar beside them only shows it works.
       // Said once as each run starts; the bar is only seen.
       const tell = (key) => {
         text.textContent = say(key, vars);

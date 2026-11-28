@@ -13,6 +13,11 @@
   --icon: var(--i-rename);
 }
 
+/* The way to the snapshot a result named, which outlasts its toast. */
+.snapshot-jump {
+  margin: 0;
+}
+
 #delete-heading,
 #clone-heading {
   --icon: var(--i-copy);

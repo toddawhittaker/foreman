@@ -2,13 +2,13 @@
 
 {{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name (printf "%s/mods" .Tabs.Path) (t "mods.tab") "" (t "mods.settings.heading"))}}{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "rail" .}}{{end}}
+
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name (printf "%s/mods" .Tabs.Path) (t "mods.tab") "" (t "mods.settings.heading"))}}
-<div class="title-row">
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-</div>
-{{template "rail" $}}
 {{template "summary" .Problems}}
 {{- if .Loaded}}
 {{template "modsettings-form" .}}
