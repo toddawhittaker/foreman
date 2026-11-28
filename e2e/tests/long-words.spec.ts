@@ -13,7 +13,7 @@ async function layoutProblems(page: Page) {
     const problems: string[] = [];
     const root = document.documentElement;
     if (root.scrollWidth > root.clientWidth) problems.push(`page scrolls sideways to ${root.scrollWidth}px`);
-    for (const b of document.querySelectorAll<HTMLElement>(".gen-actions > *")) {
+    for (const b of document.querySelectorAll<HTMLElement>(".generate > .form-foot > *")) {
       if (b.scrollWidth > b.clientWidth) problems.push(`"${b.textContent?.trim()}" spills out of its button`);
     }
     for (const a of document.querySelectorAll<HTMLElement>(".tabs a")) {

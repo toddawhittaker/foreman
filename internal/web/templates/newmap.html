@@ -12,15 +12,13 @@
 {{- end}}{{end}}
 
 
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .World.Name "" (t "newmap.title"))}}{{end}}{{end}}
+{{define "head-title"}}{{t "newmap.title"}}{{end}}
+{{define "head-nav"}}{{if .Page.Why.IsZero}}{{template "genflow-steps" .Page.Steps}}{{end}}{{end}}
+
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .World.Name "" (t "newmap.title"))}}
-<div class="flow-head">
-<h1 id="newmap-heading" tabindex="-1">{{t "newmap.title"}}</h1>
-{{- if .Why.IsZero}}
-{{template "genflow-steps" .Steps}}
-{{- end}}
-</div>
 {{- if not .Why.IsZero}}
 <div class="message message--note" id="newmap-why">
   <p><strong>{{t "common.label.note"}}</strong> {{msg .Why}}</p>
@@ -33,9 +31,10 @@
 {{- end}}
 {{- if .Loading}}
 {{- /* The script writes the text into the live region once the page has loaded, so it is said once (SPEC 17.19). */}}
-<div id="newmap-load" class="wait" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">
-  <p role="status" id="newmap-load-status" data-text="{{t "newmap.loading"}}"></p>
-  <progress aria-label="{{t "newmap.loading_label"}}"></progress>
+<div id="newmap-load" class="newmap-load" hx-get="{{.WaitPath}}" hx-trigger="load" hx-select="#newmap-body" hx-target="this" hx-swap="outerHTML">
+  <p role="status" class="visually-hidden" id="newmap-load-status" data-text="{{t "newmap.loading"}}"></p>
+  {{- /* Seen, not read: the status line above says the sentence once. */}}
+  <div class="js-only" aria-hidden="true">{{template "working" (t "newmap.loading")}}</div>
   <p><a href="{{.WaitPath}}">{{t "newmap.loading_link"}}</a></p>
 </div>
 {{- else}}
@@ -112,10 +111,7 @@
   </div>
   <div class="gen-preview">
     {{template "generate-preview" .}}
-    <div id="preview-wait" class="wait" role="status">
-      <p>{{t "worlds.generate.preview.wait"}}</p>
-      <progress aria-label="{{t "worlds.generate.preview.wait_label"}}"></progress>
-    </div>
+    <div id="preview-wait" class="wait" role="status">{{template "working" (t "worlds.generate.preview.wait")}}</div>
     <template id="preview-failed">
       <section aria-labelledby="preview-failed-heading">
         <h2 id="preview-failed-heading">{{t "worlds.generate.preview.heading"}}</h2>
@@ -125,8 +121,8 @@
       </section>
     </template>
     {{- if .CanPreview}}
-    {{- /* While a redraw runs: its words and the counting's moving bar, on one held line (DESIGN 8.8). */}}
-    <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"><span id="preview-status-text"></span><span class="wait" id="preview-status-wait"><progress aria-hidden="true"></progress></span></p>
+    {{- /* While a redraw runs: the working bar and its words, on one line held whether or not it runs (DESIGN 8.8). */}}
+    <div class="work-slot preview-status" id="preview-status" data-idle data-text="{{t "worlds.generate.preview.updating"}}">{{template "working" (t "worlds.generate.preview.updating")}}</div>
     {{- with .Form}}
     <div class="field step" id="preview-size-field">
       <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
@@ -156,8 +152,9 @@
   </div>
   {{- end}}
   {{- end}}
-  {{- /* Each step's footer: Back first, the step's save last (SPEC 5.6). */}}
-  <div class="actions gen-actions">
+  {{- /* Each step's footer is the form's foot bar: Back first, the step's save last (SPEC 5.6, DESIGN 7.1).
+       The form-foot partial has no Back or second button, so the bar is written out as the partial draws it. */}}
+  <div class="actions form-foot">
     {{template "genflow-back" .Back}}
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"

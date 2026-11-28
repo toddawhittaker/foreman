@@ -20,7 +20,6 @@
   "newmap.next.review_plain": "下一步：审阅计划",
   "newmap.finish": "完成",
   "newmap.loading": "正在读取此世界的模组添加的星球。首次读取可能需要一分钟。",
-  "newmap.loading_label": "正在读取星球",
   "newmap.loading_link": "准备好后显示地图设置",
   "newmap.to_world": "前往世界",
   "newmap.why.unreadable": "无法读取此世界的 world.json，因此无法在此指定其地图设置。",

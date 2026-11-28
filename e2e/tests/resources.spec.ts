@@ -20,7 +20,8 @@ const section = (page: Page) => page.getByRole("region", { name: "Map preview" }
 const dialog = (page: Page) => page.locator("#large-view");
 const box = (page: Page) => dialog(page).getByRole("checkbox", { name: "Show resource amounts" });
 const labels = (page: Page) => dialog(page).locator(".resources__label");
-const counting = (page: Page) => page.locator("#large-counting");
+// The working bar under the box (#975): idle it keeps its room, unseen.
+const counting = (page: Page) => page.locator("#large-amounts-work .working");
 const status = (page: Page) => page.locator("#large-status");
 const result = (page: Page) => page.locator("#large-amounts-result");
 // A count's note or error lies over the picture's top, not in the bar (DESIGN 8.8).
@@ -116,7 +117,7 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   expect(planetOf(hold.held[0].request())).toBe("nauvis");
   // The wait is seen: a line and an indeterminate bar.
   await expect(counting(page)).toBeVisible();
-  await expect(counting(page)).toContainText("Counting resources in the map… This can take up to a minute.");
+  await expect(counting(page)).toContainText("Counting…");
   // Said once as it starts.
   await expect(status(page)).toHaveText("Counting resources in the map… This can take up to a minute.");
   await expect(labels(page)).toHaveCount(0);
@@ -467,12 +468,12 @@ test.describe("on the One planet picture", () => {
     await pageBox(page).check();
     await expect.poll(() => hold.held.length).toBe(1);
     expect(planetOf(hold.held[0].request())).toBe("nauvis");
-    await expect(page.locator("#preview-counting")).toBeVisible();
-    await expect(page.locator("#preview-counting")).toContainText("Counting resources in the map… This can take up to a minute.");
+    await expect(page.locator("#preview-amounts-work .working")).toBeVisible();
+    await expect(page.locator("#preview-amounts-work .working")).toContainText("Counting…");
     await expect(announcer(page)).toHaveText("Counting resources in the map… This can take up to a minute.");
     await hold.release();
     await expect(pageLabels(page)).toHaveCount(4);
-    await expect(page.locator("#preview-counting")).toBeHidden();
+    await expect(page.locator("#preview-amounts-work .working")).toBeHidden();
     await expect(announcer(page)).toHaveText("Resource amounts ready.");
     await expect(section(page).locator(".resources")).toHaveAttribute("aria-hidden", "true");
     expect(await pageLabels(page).allTextContents()).toContain("12.3M");
@@ -578,11 +579,11 @@ test.describe("on the One planet picture", () => {
     await expect(announcer(page)).not.toHaveText("Resource amounts ready.");
   });
 
-  // At 320 px the counting line is under the picture, out of sight of the box, so the box
-  // says beside itself that it is counting; the line under the picture says the rest.
-  test("ticking the box shows beside it that it is counting", { tag: "@looks" }, async ({ page }) => {
+  // The box shows just under itself that it is counting, with the app's working bar, in a
+  // spot it keeps while idle (#975); the announcer says the whole sentence.
+  test("ticking the box shows under it that it is counting", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
-    const busy = page.locator("#preview-amounts-busy");
+    const busy = page.locator("#preview-amounts-work .working");
     await expect(busy).toBeHidden();
     const hold = holdCounts(page);
     await hold.start();
@@ -591,12 +592,12 @@ test.describe("on the One planet picture", () => {
     await expect(busy).toBeVisible();
     await expect(busy).toHaveText("Counting…");
     // Seen, not said: the status line already says the whole sentence once.
-    await expect(busy).toHaveAttribute("aria-hidden", "true");
-    // On the box's own line, in view with it.
+    await expect(page.locator("#preview-amounts-work")).toHaveAttribute("aria-hidden", "true");
+    // Just under the box, in view with it.
     const b = (await pageBox(page).locator("xpath=..").boundingBox())!;
     const h = (await busy.boundingBox())!;
-    expect(h.y).toBeLessThan(b.y + b.height);
-    expect(h.y + h.height).toBeGreaterThan(b.y);
+    expect(h.y).toBeGreaterThanOrEqual(b.y + b.height - 1);
+    expect(h.y).toBeLessThan(b.y + b.height + 16);
     expect(h.x + h.width).toBeLessThanOrEqual(page.viewportSize()!.width);
     await expect(busy).toBeInViewport();
     await shot(page, "resources-one-planet-counting");
@@ -631,9 +632,9 @@ test.describe("on the One planet picture", () => {
     const hold = holdCounts(page);
     await hold.start();
     await pageBox(page).check();
-    await expect(page.locator("#preview-counting")).toBeVisible();
-    // The bar is not named again; the sentence beside it is said.
-    await expect(page.locator("#preview-counting progress")).toHaveAttribute("aria-hidden", "true");
+    await expect(page.locator("#preview-amounts-work .working")).toBeVisible();
+    // The bar is not named again; the sentence is said.
+    await expect(page.locator("#preview-amounts-work")).toHaveAttribute("aria-hidden", "true");
     expect(await top()).toBeCloseTo(before, 0);
     await hold.release();
     await expect(pageLabels(page)).toHaveCount(4);
@@ -650,7 +651,7 @@ test.describe("on the One planet picture", () => {
     await expect.poll(() => hold.held.length).toBe(1);
     await pageBox(page).uncheck();
     await expect.poll(() => aborted.length).toBe(1);
-    await expect(page.locator("#preview-counting")).toBeHidden();
+    await expect(page.locator("#preview-amounts-work .working")).toBeHidden();
     await hold.release();
     await expect(pageLabels(page)).toHaveCount(0);
     await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));

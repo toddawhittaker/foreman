@@ -4,15 +4,13 @@
 
 {{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .WorldName (printf "%s/settings" .WorldPath) (t "worlds.world.settings") "" .File)}}{{end}}{{end}}
+{{define "head-nav"}}{{template "rail" .}}{{end}}
+{{define "head-title"}}{{t "settings.raw.title" "file" .Page.File "world" .Page.WorldName}}{{end}}
+
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-<h1>{{t "settings.raw.title" "file" .File "world" .WorldName}}</h1>
-{{template "rail" $}}
-{{- if not .Error.IsZero}}
-<div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-</div>
-{{- end}}
 {{- if not .ReadOnly.IsZero}}
 <div class="message message--note">
   <p><strong>{{t "common.label.note"}}</strong> {{msg .ReadOnly}}</p>
@@ -40,10 +38,7 @@
       {{- if not .ReadOnly.IsZero}} readonly{{end}}>{{.Text}}</textarea>
   </div>
   {{- if .ReadOnly.IsZero}}
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{t "settings.preview.button"}}</button>
-    <a href="{{.WorldPath}}">{{t "settings.cancel"}}</a>
-  </div>
+  {{template "form-foot" (formFoot "cancel" .WorldPath "cancelText" (t "settings.cancel") "submit" (t "settings.preview.button"))}}
   {{- end}}
 </form>
 {{- end}}

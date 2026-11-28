@@ -35,7 +35,17 @@ type SettingsRawPage struct {
 }
 
 func (SettingsRawPage) templateName() string { return "settingsraw" }
-func (SettingsRawPage) navItem() string      { return PathWorlds }
+
+// toasts: a save the world no longer takes is summed up over the editor,
+// which keeps its text (DESIGN 6, "Toasts"); the errors in the text stay at
+// the field.
+func (p SettingsRawPage) toasts() []Toast {
+	if p.Error.IsZero() {
+		return nil
+	}
+	return []Toast{{Error: true, Text: p.Error}}
+}
+func (SettingsRawPage) navItem() string { return PathWorlds }
 
 // Tabs are the world's pages, with Settings current (DESIGN 6).
 func (p SettingsRawPage) Tabs() WorldTabs {

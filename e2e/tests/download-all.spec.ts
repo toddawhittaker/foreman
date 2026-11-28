@@ -21,9 +21,8 @@ const announcer = (page: Page) => page.locator("#announcer");
 const resourceURL = (u: URL) => u.pathname.endsWith("/generate/preview/resources");
 const isResources = (url: string) => new URL(url).pathname.endsWith("/generate/preview/resources");
 const planetOf = (r: Request) => new URLSearchParams(r.postData() ?? "").get("planet");
-const bar = (page: Page) => prep(page).locator("progress");
+const bar = (page: Page) => prep(page).locator(".working__bar");
 // The bar's share done: -1 while it only shows that work goes on.
-const share = (page: Page) => bar(page).evaluate((b) => (b as HTMLProgressElement).position);
 
 // The page checked as it is, then the block again with forced colours
 // (SPEC 17); the projects run it at 320 px and in both themes.
@@ -85,20 +84,19 @@ test("the zip counts each planet without amounts, one at a time, then downloads 
   const download = page.waitForEvent("download");
   const heard = await listen(page, "#announcer");
   await zip(page).click();
-  await expect(prep(page).locator("[data-prep-text]")).toHaveText("Counting resources for the download, planet 1 of 2: Nauvis…");
+  await expect(prep(page).locator("[data-prep-wait] .working__text")).toHaveText("Counting resources for the download, planet 1 of 2: Nauvis…");
   await expect(announcer(page)).toHaveText(/planet 1 of 2: Nauvis/);
   await expect(prep(page).getByRole("button", { name: "Cancel" })).toBeVisible();
   // Under the zip's paragraph, not inside it: the block holds paragraphs of its own.
   await expect(page.locator("p .download-prep")).toHaveCount(0);
   expect(await zip(page).evaluate((a) => a.parentElement!.nextElementSibling!.className)).toBe("download-prep");
   await expect.poll(() => held.length).toBe(1);
-  // The planet on its way is half a step in, so the bar never sits empty.
-  expect(await share(page)).toBeCloseTo(0.25);
+  // The app's one working bar shows it works; the words say which planet of how many (ruling 9).
+  await expect(bar(page)).toBeVisible();
   await checkLooks(page);
   await held.shift()!.continue();
-  await expect(prep(page).locator("[data-prep-text]")).toHaveText("Counting resources for the download, planet 2 of 2: Vulcanus…");
+  await expect(prep(page).locator("[data-prep-wait] .working__text")).toHaveText("Counting resources for the download, planet 2 of 2: Vulcanus…");
   await expect.poll(() => held.length).toBe(1);
-  expect(await share(page)).toBeCloseTo(0.75);
   await held.shift()!.continue();
   await page.unroute(resourceURL);
   const files = await names(await download);
@@ -198,9 +196,8 @@ test("the planet's own download waits for its count on the way, and counts after
   const download = page.waitForEvent("download");
   await one.click();
   await expect.poll(() => held.length).toBe(1);
-  // One planet has no steps to show, so the bar only shows that it works.
-  await expect(bar(page)).not.toHaveAttribute("value");
-  expect(await share(page)).toBe(-1);
+  // One planet: the working bar shows that it works.
+  await expect(bar(page)).toBeVisible();
   await held.shift()!.continue();
   await page.unroute(resourceURL);
   const d = await download;
@@ -301,7 +298,7 @@ test("the planet's own download waits for the count already on its way", async (
   await expect.poll(() => hold.held.length).toBe(1);
   const download = page.waitForEvent("download");
   await section(page).locator("li a.download").click();
-  await expect(prep(page).locator("[data-prep-text]")).toHaveText("Counting resources for the download, planet 1 of 1: Nauvis…");
+  await expect(prep(page).locator("[data-prep-wait] .working__text")).toHaveText("Counting resources for the download, planet 1 of 1: Nauvis…");
   await page.waitForTimeout(300);
   expect(hold.held.length).toBe(1);
   await hold.next();

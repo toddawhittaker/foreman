@@ -2,11 +2,14 @@
 
 {{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .WorldPath .WorldName (printf "%s/settings" .WorldPath) (t "worlds.world.settings") "" .File)}}{{end}}{{end}}
+{{define "head-nav"}}{{template "rail" .}}{{end}}
+{{define "head-title"}}{{if .Page.Nothing}}{{t "settings.preview.nothing_title" "world" .Page.WorldName}}{{else}}{{t "settings.preview.heading" "world" .Page.WorldName}}{{end}}{{end}}
+
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
 {{- if .Nothing}}
-<h1>{{t "settings.preview.nothing_title" "world" .WorldName}}</h1>
-{{template "rail" $}}
 {{- if .FileChanged}}
 <div class="message message--note" id="file-changed" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.nothing_left"}}</p>
@@ -16,8 +19,6 @@
 {{- end}}
 <div class="actions"><a href="{{.BackPath}}" class="button">{{t "settings.preview.back_fresh"}}</a></div>
 {{- else}}
-<h1>{{t "settings.preview.heading" "world" .WorldName}}</h1>
-{{template "rail" $}}
 {{- if .FileChanged}}
 <div class="message message--warning" id="file-changed" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.warning"}}</strong> {{t "settings.preview.changed" "file" .File}}</p>
