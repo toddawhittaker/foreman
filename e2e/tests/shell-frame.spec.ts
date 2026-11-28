@@ -152,7 +152,11 @@ test("a signed-in unknown page keeps the shell, its header where the other error
     };
     const unknown = await parts("/no-such-page");
     await checkPage(page);
-    expect(await parts("/worlds/no-such-world"), label).toEqual(unknown);
+    // A missing page inside an area keeps that area's tabs, so
+    // its header grows by the tab row; the bar and the title stay put.
+    const inArea = await parts("/worlds/no-such-world");
+    expect({ bar: inArea.bar, h1: inArea.h1 }, label).toEqual({ bar: unknown.bar, h1: unknown.h1 });
+    expect(await page.locator("main .pagehead nav.subnav").count(), label).toBeGreaterThan(0);
   });
 });
 
