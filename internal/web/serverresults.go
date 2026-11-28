@@ -563,8 +563,17 @@ func (p ServerPage) resultToasts() []Toast {
 	if d, at := p.downloaded(); !d.IsZero() {
 		out = append(out, Toast{Text: d, Key: resultKey("download", at)})
 	}
+	// The load after the admin's own action came with ownResultQuery, and
+	// the reload after a switch with movedParam; once a toast shows, they
+	// leave the address, so a reload shows none.
+	for i := range out {
+		out[i].Drop = dropOwnResult
+	}
 	return out
 }
+
+// dropOwnResult is the parameters a result toast takes out of the address.
+var dropOwnResult = []string{"result", movedParam}
 
 func resultKey(kind string, at time.Time) string {
 	return kind + "." + strconv.FormatInt(at.UnixNano(), 10)

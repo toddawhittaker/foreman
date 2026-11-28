@@ -25,16 +25,23 @@ type Toast struct {
 // DropParams is Drop as the toast's data-drop attribute.
 func (t Toast) DropParams() string { return strings.Join(t.Drop, " ") }
 
-// Toasts are the page's result messages, from pages that have any. A page
-// whose htmx answers carry its toasts too has them as an exported method.
+// Toasts are the page's result messages, from pages that have any, after
+// a banner Renew's, which any page can show. A page whose htmx answers carry
+// its toasts too has them as an exported method.
 func (v view) Toasts() []Toast {
+	var out []Toast
+	// Renewed names only a working token of the user's own
+	// (dropSpoofedRenewed), so a crafted link shows no made-up text.
+	if v.Renewed != "" {
+		out = append(out, Toast{Text: i18n.M("apitokens.done.renewed", "name", v.Renewed), Drop: []string{"done", "name"}})
+	}
 	switch p := v.Page.(type) {
 	case interface{ toasts() []Toast }:
-		return p.toasts()
+		out = append(out, p.toasts()...)
 	case interface{ Toasts() []Toast }:
-		return p.Toasts()
+		out = append(out, p.Toasts()...)
 	}
-	return nil
+	return out
 }
 
 // toasts: a refused sign-in is summed up over the form, which stays as it was

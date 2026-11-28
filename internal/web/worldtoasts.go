@@ -72,7 +72,7 @@ func deletedToast(deleted []time.Time, removed int) []Toast {
 }
 
 func (p SnapshotsPage) toasts() []Toast {
-	var ts []Toast
+	ts := p.TickToasts
 	if !p.Done.IsZero() {
 		t := Toast{Text: p.Done}
 		if p.DoneParam != "" {
@@ -87,7 +87,9 @@ func (p SnapshotsPage) toasts() []Toast {
 	return ts
 }
 
-func (p AllSnapshotsPage) toasts() []Toast { return deletedToast(p.Deleted, p.Removed) }
+func (p AllSnapshotsPage) toasts() []Toast {
+	return append(p.TickToasts, deletedToast(p.Deleted, p.Removed)...)
+}
 
 func (p SnapshotBulkDeletePage) toasts() []Toast {
 	ts := deletedToast(p.Deleted, 0)

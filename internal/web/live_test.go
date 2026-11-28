@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -216,5 +217,50 @@ func TestALoadDrawnBeforeTheResultGetsItsToast(t *testing.T) {
 	p := serverCase(game.StateStopped, func(p *ServerPage) { p.Result, p.HaveResult, p.Toasted = done, true, runs.toastedKeys("w") })
 	if got := sentToasts(t, l, p); len(got[0]) != 1 {
 		t.Fatalf("the acting page's stream sent %q, want the Done toast", got[0])
+	}
+}
+
+// DESIGN 6, "Toasts": a Server page result toast takes ownResultQuery and
+// the switch reload's movedParam out of the address once shown, so a reload
+// shows it no more; the live stream's toast too.
+func TestServerResultToastsDropTheirParameters(t *testing.T) {
+	p := serverCase(game.StateStopped, func(p *ServerPage) {
+		p.Result, p.HaveResult = actionResult{Action: actionSnapshot, Taken: "Mine", At: time.Unix(5, 0)}, true
+	})
+	ts := p.ResultToasts()
+	if len(ts) != 1 {
+		t.Fatalf("toasts = %v, want the Done toast", ts)
+	}
+	if got := ts[0].DropParams(); got != "result moved" {
+		t.Errorf("the Done toast drops %q, want %q", got, "result moved")
+	}
+}
+
+// DESIGN 6, "Toasts": a switch reloads every open Server page. The reload
+// names the load it goes on from, and shows the toasts that load had not
+// shown, even when another page, reloaded first, showed them; it is honoured
+// once, so a reload of the same address, or a made-up one, shows none.
+func TestAReloadAfterASwitchShowsItsToastOnce(t *testing.T) {
+	g := newGameRuns()
+	from := g.loadToasts()  // this page, before the switch
+	first := g.loadToasts() // the other open page, reloaded first
+	g.pageToasts("second", first, []string{"done.1"})
+	moved := func(v string) *http.Request { return httptest.NewRequest(http.MethodGet, "/?moved="+v, nil) }
+
+	_ = g.loadToasts() // this page's reload
+	page, ok := g.movedFrom(moved(strconv.FormatUint(from, 10)))
+	if !ok || page != from {
+		t.Fatalf("movedFrom = %d, %v; want %d, true", page, ok, from)
+	}
+	if marks := marksOf(g.toastedKeys("second"), page); len(marks) != 0 {
+		t.Errorf("the reload leaves out %v, which this page never showed", marks)
+	}
+	if _, ok := g.movedFrom(moved(strconv.FormatUint(from, 10))); ok {
+		t.Error("a second reload of the same address went on from the page again")
+	}
+	for _, v := range []string{"999", "0", "x", ""} {
+		if _, ok := g.movedFrom(moved(v)); ok {
+			t.Errorf("moved=%q went on from a page", v)
+		}
 	}
 }

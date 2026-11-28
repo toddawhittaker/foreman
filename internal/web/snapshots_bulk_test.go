@@ -457,3 +457,29 @@ func TestRemovedCountIgnoresJunk(t *testing.T) {
 		}
 	}
 }
+
+// DESIGN 6, "Toasts": Select all automatic with no automatic snapshot says
+// so in a toast, which takes no room and no focus, so nothing on the page
+// moves; on both lists.
+func TestSelectAllAutomaticWithNoneSaysSoInAToast(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, _ := hn.seedTwo()
+	if _, err := hn.worlds.TakeSnapshot(id, "Mine", "alice"); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{PathSnapshots, snapshotsPath(id)} {
+		rec := hn.post(path+"/select", url.Values{"select": {"automatic"}}, withCookie(c))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("POST %s/select: %d", path, rec.Code)
+		}
+		body := rec.Body.String()
+		if strings.Contains(body, `id="tick-note"`) {
+			t.Errorf("%s: the note is drawn in the page", path)
+		}
+		region := body[strings.Index(body, `id="toasts"`):]
+		if !strings.Contains(region, "There are no automatic snapshots to tick.") {
+			t.Errorf("%s: no toast says there was nothing to tick", path)
+		}
+	}
+}
