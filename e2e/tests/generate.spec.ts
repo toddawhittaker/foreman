@@ -182,8 +182,8 @@ test("a long world name fits at any width", { tag: "@looks" }, async ({ page, fo
 });
 
 // DESIGN 8.6: on a desktop Preview size sits above the picture, in reach
-// without scrolling, and where the window is tall enough the whole pane fits
-// between the top strip and the action bar, the picture shrinking to the room left.
+// without scrolling; the picture takes the column's width and never shrinks
+// for what shows under it (#973).
 for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
   test(`the preview pane keeps Preview size in reach at ${width}x${height}`, { tag: "@looks" }, async ({ page, foreman, fakeGame }, info) => {
     test.skip(info.project.name.startsWith("phone"), "a desktop layout");
@@ -201,11 +201,15 @@ for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
         scroll: pane.scrollHeight,
         client: pane.clientHeight,
         slider: document.querySelector(".gen-preview .field.step")!.getBoundingClientRect().bottom,
-        bar: document.querySelector(".gen-actions")!.getBoundingClientRect().top,
+        bar: document.querySelector(".generate > .form-foot")!.getBoundingClientRect().top,
+        picture: document.querySelector(".gen-preview .pictures img")!.getBoundingClientRect().width,
+        column: pane.clientWidth - parseFloat(getComputedStyle(pane).paddingLeft) - parseFloat(getComputedStyle(pane).paddingRight),
       };
     });
     expect(m.top).toBe(0);
-    if (height >= 950) expect(m.scroll).toBeLessThanOrEqual(m.client + 1);
+    // The picture is as wide as the pane's column, whatever the window's height (#973): the
+    // pane scrolls under it rather than shrink it to the room left.
+    expect(m.picture).toBeGreaterThan(m.column * 0.9);
     expect(m.slider).toBeLessThanOrEqual(m.bar);
     await expect(page.locator(".gen-preview .field.step")).toBeInViewport({ ratio: 1 });
     // A card narrower than the column sits in its middle.
@@ -910,7 +914,7 @@ for (const [name, size, axis] of [
     await page.setViewportSize(size);
     await setUp(page, foreman, fakeGame!);
     await openNewMap(page);
-    const bar = page.locator(".generate > .gen-actions");
+    const bar = page.locator(".generate > .form-foot");
     await expect(page.locator("#preview-button")).toBeVisible();
     await bar.locator("#flow-back").focus();
     const seen: { id: string; pos: number }[] = [];

@@ -2,14 +2,14 @@
 
 {{define "scripts"}}<script src="{{static "generate.js"}}" defer></script>{{end}}
 
+{{define "head-crumb"}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.generate.title"))}}{{end}}
+{{define "head-title"}}{{t "worlds.generate.title"}}{{end}}
+{{define "head-nav"}}{{template "genflow-steps" .Page.Steps}}{{end}}
+
 
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.generate.title"))}}
-<div class="flow-head">
-<h1>{{t "worlds.generate.title"}}</h1>
-{{template "genflow-steps" .Steps}}
-</div>
 <p class="page-intro">{{t "worlds.generate.intro"}}</p>
 <div class="gen-start">
 {{- if .FavoritesOn}}
@@ -114,13 +114,8 @@
   {{- end}}
   </div>
   {{- /* Each step's footer: step 1 has no Back, so Cancel leads it (SPEC 5.6). */}}
-  <div class="actions gen-actions">
-    <a href="{{worldsPath}}">{{t "worlds.cancel"}}</a>
-    <button type="submit" class="button button--primary" id="generate-button">{{t "newmap.next.mods"}}</button>
-  </div>
+  {{template "form-foot" (formFoot "cancel" worldsPath "cancelText" (t "worlds.cancel") "submit" (t "newmap.next.mods") "submitID" "generate-button")}}
 </form>
 </div>
 {{end}}
 {{- end}}
-
-{{define "page-width"}}{{"measure"}}{{end}}

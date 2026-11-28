@@ -309,11 +309,10 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 	body := getLong(hn, strings.TrimSuffix(refreshPath(t, hn, c, "2.1.24"), "/refresh")+"?wait=1", c).Body.String()
 	for _, want := range []string{
 		`<input type="checkbox" id="large-amounts"> Show resource amounts</label>`,
-		`<div class="wait resource-amounts__counting" id="large-counting" hidden>`,
+		// The working bar's spot under the box, held while idle (#975); the
+		// sentence is said as a count starts, the bar is not named again (DESIGN 8.8).
+		`<div class="work-slot" id="large-amounts-work" data-idle aria-hidden="true"><span class="working"><span class="working__bar" aria-hidden="true"></span><span class="working__text">Counting…</span></span></div>`,
 		`<p class="visually-hidden" id="large-counting-text">Counting resources in the map… This can take up to a minute.</p>`,
-		`<p class="hint" aria-hidden="true">Counting…</p>`,
-		// The sentence is said as a count starts; the bar is not named again (DESIGN 8.8).
-		`<progress aria-hidden="true"></progress>`,
 		`data-ready="Resource amounts ready."`,
 		`<template id="resource-failed">`,
 		`<p class="visually-hidden" id="large-amounts-news" role="status"></p>`,
@@ -605,10 +604,9 @@ func TestOnePlanetHasTheResourceBox(t *testing.T) {
 	body := hn.postLong(PathGeneratePreview, one, c, hx).Body.String()
 	for _, want := range []string{
 		`<div class="js-only"><div class="resource-box"><label class="check"><input type="checkbox" id="preview-amounts"> Show resource amounts</label>`,
-		`<span class="hint resource-box__busy" id="preview-amounts-busy" aria-hidden="true">Counting…</span></div></div>`,
+		`<div class="work-slot" id="preview-amounts-work" data-idle aria-hidden="true"><span class="working">`,
 		`<div class="js-only"><div class="resource-amounts" id="preview-amounts-bar" data-ready="Resource amounts ready.">`,
-		`<div class="wait resource-amounts__counting" id="preview-counting" hidden>`,
-		`<progress aria-hidden="true"></progress>`,
+		`<p class="visually-hidden" id="preview-counting-text">Counting resources in the map… This can take up to a minute.</p>`,
 		`<p class="visually-hidden" id="preview-amounts-news" role="status"></p>`,
 		`data-amounts="Download Nauvis with resource amounts (PNG)"`,
 		`data-amounts="Download all drawn planets (zip), with resource amounts"`,

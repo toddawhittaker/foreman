@@ -21,7 +21,6 @@
   "newmap.next.review_plain": "Suivant : Vérifier le plan",
   "newmap.finish": "Terminer",
   "newmap.loading": "Lecture des planètes ajoutées par les mods de ce monde. La première fois, cela peut prendre jusqu’à une minute.",
-  "newmap.loading_label": "Lecture des planètes",
   "newmap.loading_link": "Afficher les paramètres de la carte quand ils sont prêts",
   "newmap.to_world": "Aller au monde",
   "newmap.why.unreadable": "Le fichier world.json de ce monde est illisible ; ses paramètres de carte ne peuvent donc pas être définis ici.",

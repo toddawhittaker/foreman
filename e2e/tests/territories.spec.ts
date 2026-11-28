@@ -60,7 +60,8 @@ test("the box shows only beside Vulcanus on a Space Age world, and is off", { ta
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeVisible();
   await expect(box(page)).not.toBeChecked();
-  await expect(box(page)).toHaveAccessibleDescription("Finding them takes a few seconds more.");
+  // No hint under it any more: the working bar's spot holds its place (#975).
+  await expect(box(page)).not.toHaveAttribute("aria-describedby");
   // Off, nothing runs and nothing is drawn.
   await expect(overlay(page)).toHaveCount(0);
   await checkPage(page);
@@ -84,7 +85,9 @@ test("ticked, the territories come after the picture, over it and in words under
   await box(page).check();
   // The request waits; the picture is there, with a note and no overlay yet.
   await expect.poll(() => hold.held.length).toBe(1);
-  await expect(section(page).locator("#territory-result")).toHaveText("Finding the demolisher territories…");
+  await expect(page.locator("#preview-territories-work .working")).toBeVisible();
+  await expect(page.locator("#preview-territories-work .working")).toHaveText("Finding the demolisher territories…");
+  await expect(section(page).locator("#territory-result")).toHaveText("");
   await expect(overlay(page)).toHaveCount(0);
   await hold.release();
   await expect(list(page)).toHaveText(counts);
@@ -293,7 +296,8 @@ test("the large view's box unticks and ticks the overlay, and the page's box mat
   const dialog = page.locator("#large-view");
   await expect(largeBox(page)).toBeVisible();
   await expect(largeBox(page)).toBeChecked();
-  await expect(largeBox(page)).toHaveAccessibleDescription("Finding them takes a few seconds more.");
+  // No hint under it any more: the working bar's spot holds its place (#975).
+  await expect(largeBox(page)).not.toHaveAttribute("aria-describedby");
   await expect(largeOverlay(page)).toHaveCount(1);
   // Off: the overlay, its words and the download's territories go, and the page's box follows.
   await largeBox(page).uncheck();

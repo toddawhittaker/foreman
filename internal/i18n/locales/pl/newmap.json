@@ -22,7 +22,6 @@
   "newmap.next.review_plain": "Dalej: Przejrzyj plan",
   "newmap.finish": "Zakończ",
   "newmap.loading": "Odczytywanie planet dodawanych przez modyfikacje tego świata. Za pierwszym razem może to potrwać do minuty.",
-  "newmap.loading_label": "Odczytywanie planet",
   "newmap.loading_link": "Pokaż ustawienia mapy, gdy będą gotowe",
   "newmap.to_world": "Przejdź do świata",
   "newmap.why.unreadable": "Nie można odczytać pliku world.json tego świata, więc nie można tu określić ustawień jego mapy.",

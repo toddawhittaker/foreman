@@ -86,7 +86,7 @@ func TestTerritoriesAnswerFromTheStore(t *testing.T) {
 	hn, prev, c := newTerritoryHarness(t)
 	hx := withHeader("HX-Request", "true")
 	pic := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1"), c, hx).Body.String()
-	if len(prev.runs) != 0 || !strings.Contains(pic, `id="preview-territories" name="territories" value="1" aria-describedby="preview-territories-hint" checked>`) {
+	if len(prev.runs) != 0 || !strings.Contains(pic, `id="preview-territories" name="territories" value="1" checked>`) {
 		t.Fatalf("the picture's reply ran territories (%d) or lacks the ticked box:\n%s", len(prev.runs), pic)
 	}
 	if strings.Contains(pic, `class="territories"`) {
@@ -185,10 +185,11 @@ func TestTerritoryBoxShowsOnlyForVulcanus(t *testing.T) {
 		t.Errorf("Nauvis shows the box, or loses the choice:\n%s", nauvis)
 	}
 	off := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "territories", ""), c, hx).Body.String()
-	if !strings.Contains(off, box) || strings.Contains(off, " checked> Show demolisher") || strings.Contains(off, `name="territories" value="1">`) {
+	if !strings.Contains(off, box) || strings.Contains(off, " checked> Show demolisher") || strings.Contains(off, `name="territories" value="1" checked>`) {
 		t.Errorf("Vulcanus lacks the box, or it is ticked when off:\n%s", off)
 	}
-	if !strings.Contains(off, "Show demolisher territories") || !strings.Contains(off, "Finding them takes a few seconds more.") {
+	// No hint under the box: its working bar's spot, held while idle, takes the place (#975).
+	if !strings.Contains(off, "Show demolisher territories") || strings.Contains(off, "Finding them takes a few seconds more.") || !strings.Contains(off, `id="preview-territories-work" data-idle`) {
 		t.Errorf("the box's words are missing:\n%s", off)
 	}
 	// Every size offered can show them, the largest too (SPEC 5.6).

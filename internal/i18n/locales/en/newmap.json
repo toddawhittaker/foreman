@@ -21,7 +21,6 @@
   "newmap.next.review_plain": "Next: Review the plan",
   "newmap.finish": "Finish",
   "newmap.loading": "Reading the planets this world's mods add. This can take up to a minute the first time.",
-  "newmap.loading_label": "Reading the planets",
   "newmap.loading_link": "Show the map settings when they are ready",
   "newmap.to_world": "Go to the world",
   "newmap.why.unreadable": "This world's world.json cannot be read, so its map settings cannot be set here.",

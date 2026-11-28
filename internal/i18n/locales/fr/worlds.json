@@ -340,7 +340,6 @@
   "worlds.generate.preview.alt": "Aperçu de la carte de {planet}, valeur d’initialisation {seed}. L’épingle marque le point de départ des joueurs.",
   "worlds.generate.preview.kept": "Ces images sont conservées 15 minutes.",
   "worlds.generate.preview.wait": "Création de l’aperçu de la carte. Cela prend quelques secondes par planète.",
-  "worlds.generate.preview.wait_label": "Création de l’aperçu de la carte",
   "worlds.generate.preview.no_image": "Foreman ne peut pas créer d’aperçu : l’image du jeu pour Factorio {version} n’est pas téléchargée ici. Générez le monde avec le téléchargement coché, ou choisissez une version déjà téléchargée.",
   "worlds.generate.preview.busy": "Un autre aperçu de carte est en cours de création. Attendez quelques secondes, puis choisissez de nouveau « Prévisualiser la carte ».",
   "worlds.generate.preview.failed": "Le jeu n’a pas pu créer l’aperçu de la carte. Vous pouvez quand même générer le monde. Si l’échec persiste, consultez le journal de Foreman.",

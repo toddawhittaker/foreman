@@ -908,7 +908,7 @@ func TestModSettingsPageWithWaitHoldsTheForm(t *testing.T) {
 	_, page := g.getStatus(modSettingsEditPath(id))
 	wantIn(t, "page", page, `href="/worlds/`+id+`/mods/settings?wait=1" id="mod-settings-wait"`)
 	// The loading words are the status only while the script's request runs (SPEC 9.6).
-	wantIn(t, "loading", page, `<div class="wait mod-settings-loading" role="status">`, `<progress aria-hidden="true"></progress>`)
+	wantIn(t, "loading", page, `<div class="wait mod-settings-loading" role="status"><span class="working">`)
 	_, page = g.getStatus(modSettingsEditPath(id) + "?wait=1")
 	wantIn(t, "waited page", page, "Startup integer", "Save settings")
 	if strings.Contains(page, "hx-trigger=\"load\"") {

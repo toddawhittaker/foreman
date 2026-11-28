@@ -79,7 +79,7 @@ test("Generate's action bar never covers the focused control", { tag: "@looks" }
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
   await openNewMap(page);
-  await tabsClearOf(page, await markBar(page.locator(".generate > .gen-actions")));
+  await tabsClearOf(page, await markBar(page.locator(".generate > .form-foot")));
 });
 
 test("step 2's footer on the Mods tab never covers the focused control", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {

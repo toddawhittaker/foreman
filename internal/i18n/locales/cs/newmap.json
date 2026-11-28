@@ -22,7 +22,6 @@
   "newmap.next.review_plain": "Další: Zkontrolovat plán",
   "newmap.finish": "Dokončit",
   "newmap.loading": "Načítají se planety, které přidávají mody tohoto světa. Poprvé to může trvat až minutu.",
-  "newmap.loading_label": "Načítání planet",
   "newmap.loading_link": "Zobrazit nastavení mapy, až budou připravena",
   "newmap.to_world": "Přejít na svět",
   "newmap.why.unreadable": "Soubor world.json tohoto světa nelze přečíst, takže zde nelze určit nastavení jeho mapy.",

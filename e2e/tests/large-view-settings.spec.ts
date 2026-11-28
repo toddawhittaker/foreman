@@ -107,13 +107,14 @@ test.describe("on a wide screen", () => {
     await expect(status(page)).not.toHaveText("Zoom 115%");
     // The slow redraw shows as on the page: the picture fades and a line, not read out, says so; then the map is ready.
     await expect(frame(page)).toHaveAttribute("aria-busy", "true");
-    const drawing = page.locator("#large-drawing");
+    const drawing = page.locator("#large-drawing-wait .working");
+    await expect(drawing).toBeVisible();
     await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
     await expect(drawing).toBeVisible();
     expect(await drawing.evaluate((p) => p.closest("[role=status], [aria-live]"))).toBeNull();
     await expect(status(page)).not.toHaveText(/Drawing/);
     release();
-    await expect(drawing).toHaveText("");
+    await expect(drawing).toBeHidden();
     await expect(status(page)).toHaveText("Map preview ready.");
     await expect(frame(page)).toHaveAttribute("aria-busy", "false");
     // One request for the two steps, after the pause, with the new value.
@@ -146,8 +147,8 @@ test.describe("on a wide screen", () => {
     await openLarge(page);
     // One resource's slider: unlike the All resources row, a change there says nothing of its own.
     const range = page.locator("#large-resources #mg-nauvis-iron-ore-size-range");
-    const bar = page.locator("#large-drawing-wait progress");
-    const drawing = page.locator("#large-drawing");
+    const bar = page.locator("#large-drawing-wait .working__bar");
+    const drawing = page.locator("#large-drawing-wait .working");
     let release = () => {};
     await page.route("**/generate/preview", async (route) => {
       await new Promise<void>((r) => (release = r));
@@ -155,22 +156,24 @@ test.describe("on a wide screen", () => {
     });
     await range.focus();
     await page.keyboard.press("ArrowRight");
+    await expect(drawing).toBeVisible();
     await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
     release();
     await expect(status(page)).toHaveText("Map preview ready.");
     await expect(bar).toBeHidden();
 
     await page.keyboard.press("ArrowRight");
+    await expect(drawing).toBeVisible();
     await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
     await expect(status(page)).not.toHaveText(/ready/);
-    if (await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)) await expect(bar).toBeHidden();
-    else await expect(bar).toBeVisible();
+    // The working bar shows under reduced motion too, standing still (DESIGN 7.6).
+    await expect(bar).toBeVisible();
     // The bar is seen, not read out; the line is not a live region.
     await expect(bar).toHaveAttribute("aria-hidden", "true");
     await shot(page, "large-view-drawing-bar");
     release();
     await expect(status(page)).toHaveText("Map preview ready.");
-    await expect(drawing).toHaveText("");
+    await expect(drawing).toBeHidden();
     await expect(bar).toBeHidden();
   });
 
