@@ -396,31 +396,37 @@
 
 {{/* The actions for the current state, then operations, crashes and
      notes. The actions row is always there and always first, so its buttons
-     keep their place whatever the server reports (DESIGN 7.8);
+     keep their place whatever the server reports (DESIGN 6, "Controls stay
+     put", 7.8);
      results' words are toasts (DESIGN 6). Every link and button has an id,
      so focus stays on it across live updates. */}}
 {{define "server-control" -}}
 {{- $failure := .Failure}}
 <div class="actions server-actions">
+  {{- /* Take snapshot leads in every state, so it keeps one place; the state's own buttons follow it. While the game runs, the safe step is the plate's primary (DESIGN 7.1). */}}
+  {{- if .ShowSnapshot}}
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button{{if .SnapshotLeads}} button--primary{{end}} server-act--snapshot" id="act-snapshot"{{if not .CanSnapshot}} disabled{{end}}>{{t "worlds.snapshots.take.button"}}</button></form>
+  {{- end}}
   {{- if .OffersDownload}}
   <form method="post" action="{{.PullPath}}"><button type="submit" class="button button--primary server-act--pull" id="act-pull">{{t "server.action.download"}}</button></form>
   {{- end}}
   {{- if .ImageMissing}}
   {{- else if not .StartBlocked.IsZero}}
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button server-act--start" id="act-start">{{t "server.action.try_again"}}</button></form>
-  {{- else if .CanStart}}
-  <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}} server-act--start" id="act-start">{{msg .StartLabel}}</button></form>
+  {{- else if .ShowStart}}
+  {{- /* Disabled while it is under way, so the buttons after it keep their place. */}}
+  <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}} server-act--start" id="act-start"{{if not .CanStart}} disabled{{end}}>{{msg .StartLabel}}</button></form>
   {{- end}}
-  {{- if .CanSnapshot}}
-  {{- /* While the game runs, the safe step leads: Take snapshot is the plate's primary (DESIGN 7.1). */}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button{{if eq .Status.State "running"}} button--primary{{end}} server-act--snapshot" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
-  {{- end}}
-  {{- if .CanRestart}}
+  {{- if .ShowRestart}}{{if .CanRestart}}
   <a href="{{.RestartPath}}" class="button server-act--restart" id="act-restart">{{t "server.action.restart"}}</a>
-  {{- end}}
-  {{- if .CanStop}}
+  {{- else}}
+  <button type="button" class="button server-act--restart" id="act-restart" disabled>{{t "server.action.restart"}}</button>
+  {{- end}}{{end}}
+  {{- if .ShowStop}}{{if .CanStop}}
   <a href="{{.StopPath}}" class="button server-act--stop" id="act-stop">{{t "server.action.stop"}}</a>
-  {{- end}}
+  {{- else}}
+  <button type="button" class="button server-act--stop" id="act-stop" disabled>{{t "server.action.stop"}}</button>
+  {{- end}}{{end}}
   {{- with .CancelStopPath}}
   <form method="post" action="{{.}}"><button type="submit" class="button button--primary" id="act-cancel-stop">{{t "server.cancel_stop"}}</button></form>
   {{- end}}

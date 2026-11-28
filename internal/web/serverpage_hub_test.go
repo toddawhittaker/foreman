@@ -256,7 +256,9 @@ func TestSwitchShowsTheNewActiveWorld(t *testing.T) {
 }
 
 // SPEC 17.7, 17.10: Take snapshot is one click on the Server page, offered
-// whenever the snapshot would not be refused.
+// whenever the snapshot would not be refused. Otherwise it is drawn
+// disabled, so it keeps its place in every state (DESIGN 6, "Controls stay
+// put").
 func TestTakeSnapshotOffered(t *testing.T) {
 	for state, want := range map[game.State]bool{
 		game.StateStopped: true, game.StateRunning: true, game.StateCrashLooping: true,
@@ -271,11 +273,14 @@ func TestTakeSnapshotOffered(t *testing.T) {
 		if got := strings.Contains(html, `<form method="post" action="/worlds/base/take-snapshot"><button type="submit" `+face+` id="act-snapshot">Take snapshot</button></form>`); got != want {
 			t.Errorf("%s: offered %v, want %v", state, got, want)
 		}
+		if got := strings.Contains(html, `id="act-snapshot" disabled>Take snapshot</button>`); got == (want || state == game.StateUnknown) {
+			t.Errorf("%s: drawn disabled %v, want %v", state, got, !want)
+		}
 	}
 	busy := serverCase(game.StateRunning, func(p *ServerPage) {
 		p.Status.Operation = &game.Operation{Action: game.AuditRestart}
 	})
-	wantNone(t, "busy", controlHTML(t, busy), "Take snapshot")
+	wantAll(t, "busy", controlHTML(t, busy), `id="act-snapshot" disabled>Take snapshot</button>`)
 	done := serverCase(game.StateRunning, func(p *ServerPage) {
 		p.Result, p.HaveResult = actionResult{Action: actionSnapshot, Taken: defaultLabel, At: msgT0}, true
 	})

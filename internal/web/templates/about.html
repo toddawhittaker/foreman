@@ -1,11 +1,16 @@
 {{define "title"}}{{t "about.title"}}{{end}}
 
-{{/* DESIGN 6, "User menu". The same content the user menu's About dialog shows. */}}
-{{define "head-title"}}<span class="about__heading">{{template "about-logo"}}{{t "about.heading"}}</span>{{end}}
+{{/* DESIGN 6, "User menu". The same content the user menu's About dialog
+     shows: the shared page header, then the wordmark and the facts in one
+     plate, as other pages hold their content. */}}
+{{define "head-title"}}{{t "about.heading"}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" .}}
 {{with .Page}}
-{{template "about-details" .Info}}
+<div class="panel">
+  <p>{{template "about-logo"}}</p>
+  {{template "about-details" .Info}}
+</div>
 {{end}}
 {{- end}}

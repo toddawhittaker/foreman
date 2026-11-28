@@ -144,6 +144,37 @@ type ErrorPage struct {
 	// the link home: the likely next step.
 	ActionLabel i18n.Msg
 	ActionPath  string
+	// Area is the top bar's link for the area the address falls under, and
+	// AreaTabs that area's tabs ("settings" or "worlds"), with SettingsTab
+	// the settings tab marked current. Render fills them from the address,
+	// so an error keeps its area (DESIGN 6, "Sub-navigation").
+	Area        string
+	AreaTabs    string
+	SettingsTab string
+}
+
+func (p ErrorPage) navItem() string { return p.Area }
+
+// errorArea is the area an address falls under, for its error page.
+func errorArea(path string, p ErrorPage) ErrorPage {
+	under := func(prefix string) bool { return path == prefix || strings.HasPrefix(path, prefix+"/") }
+	switch {
+	case strings.HasPrefix(path, "/settings/"):
+		p.Area, p.AreaTabs = generalPath(), "settings"
+		// The tabs that have a page under them mark it as current but not the page.
+		for prefix, tab := range map[string]string{generalPath(): "general-confirm", PathNotifications: "notification", usersPath(): "user", PathAPITokens: "api-token"} {
+			if under(prefix) {
+				p.SettingsTab = tab
+			}
+		}
+	case under("/worlds"), under(PathFavorites), under(PathDeleted), under(PathGenerate), under(PathImport):
+		p.Area, p.AreaTabs = PathWorlds, "worlds"
+	case under(PathSnapshots):
+		p.Area = PathSnapshots
+	case under(PathConsole), under(PathChat):
+		p.Area = PathServer
+	}
+	return p
 }
 
 // publicPage is a page anyone may see without signing in (SPEC 9.16). It is
@@ -716,6 +747,9 @@ func menuReturn(req *http.Request) string {
 // before anything is written, so on error the response is untouched and the
 // caller can still send an ErrorPage.
 func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, banner []TokenRow, newer string, p Page) error {
+	if e, ok := p.(ErrorPage); ok && e.Area == "" {
+		p = errorArea(req.URL.Path, e)
+	}
 	t, err := r.template(localeOf(req), p)
 	if err != nil {
 		return err

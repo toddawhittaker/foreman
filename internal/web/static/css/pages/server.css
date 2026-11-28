@@ -496,8 +496,14 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
-  padding: 0;
+  padding: var(--card-pad) var(--card-pad) 0;
   overflow: clip;
+}
+
+/* The card's padding holds its title band; the log and the command row
+   run to the card's edges under it. */
+.terminal > :is(.terminal__log, .terminal__console) {
+  margin-inline: calc(-1 * var(--card-pad));
 }
 
 .terminal > .panel {
@@ -507,10 +513,6 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 
 .terminal__log {
   padding-block-end: 0;
-}
-
-.terminal__log > .section-head {
-  min-block-size: 3rem;
 }
 
 /* The log pane runs to the card's edges; long lines scroll sideways rather
@@ -527,7 +529,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 /* The game log on a warm paper surface: 22 px lines in a pane that grows in
    20 px steps, sized so the command field is on the first screen. */
 .terminal .log-frame > .log {
-  block-size: calc(round(down, clamp(15rem, 100vh - 34rem, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
+  block-size: calc(round(down, clamp(15rem, 100vh - 38rem, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
   padding: var(--space-3) var(--card-pad);
   overflow: auto;
   background: light-dark(var(--color-raised), var(--color-deep));
@@ -1341,7 +1343,7 @@ tr:has(> td > .player-actions) > td.num {
   }
 
   .terminal #console-panel > * {
-    margin-inline: var(--card-pad);
+    margin-inline: 0;
   }
 
   .terminal #console-panel > :last-child {
@@ -1352,7 +1354,7 @@ tr:has(> td > .player-actions) > td.num {
     position: sticky;
     inset-block-end: 0;
     z-index: 2;
-    margin: 0;
+    margin: 0 calc(-1 * var(--card-pad));
     padding: var(--space-3) var(--card-pad);
     background: var(--color-surface);
     border-block-start: var(--border-width) solid var(--color-line);
@@ -1707,10 +1709,12 @@ tr:has(> td > .player-actions) > td.num {
 
 /* ==== The console's bar over the game log: find, the kinds of line, and
    Follow, on one 40 px row; the log itself 14/22 Plex Mono. */
+/* The find field's label sits above it, so the row's controls line up on
+   the field's foot. */
 .log-tools {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: end;
   gap: var(--space-2) var(--space-4);
 }
 
@@ -1718,22 +1722,15 @@ tr:has(> td > .player-actions) > td.num {
   display: none;
 }
 
-.log-tools > label[for="log-find"] {
-  margin-inline-end: calc(-1 * var(--space-2));
-  color: var(--color-text-muted);
-}
-
+/* The find field takes the row's free room, up to a readable width. */
 .log-tools__find {
   flex: 1 1 14rem;
   max-inline-size: 24rem;
-  min-block-size: 2.5rem;
 }
 
+/* The filter ends the row; Follow newest sits beside the find field. */
 .log-tools > .log-tools__filter {
   flex: none;
-}
-
-.log-tools > .log-tools__follow {
   margin-inline-start: auto;
 }
 
@@ -1744,9 +1741,6 @@ tr:has(> td > .player-actions) > td.num {
     min-inline-size: 0;
   }
 
-  .log-tools > .log-tools__follow {
-    margin-inline-start: 0;
-  }
 }
 
 .terminal .log-frame > .log pre > span[hidden][hidden] {
@@ -1818,10 +1812,14 @@ tr:has(> td > .player-actions) > td.num {
    the facts below it as one strip on one baseline. When the control area
    holds a message or an operation's steps it takes a full row of its own
    under the band, as before. */
+/* The band's column takes up to 40% of the row, whatever the state, so the
+   actions start at the same x in every state and Take snapshot, first, keeps
+   its place (DESIGN 6, "Controls stay put"); only when the actions need more
+   room does the band give it up. */
 @media (min-width: 64rem) {
   .status-card.plate {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 40%) minmax(max-content, 1fr) auto;
     overflow: visible;
   }
 
@@ -2007,15 +2005,6 @@ tr:has(> td > .player-actions) > td.num {
   }
 }
 
-/* ==== The console's find field is a normal field at rest: the deep fill
-   and the control border every other input has. */
-#main .log-tools__find {
-  padding-inline: var(--space-3);
-  background: var(--color-deep);
-  color: var(--color-text);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-}
 
 /* A high load says so in a word after its figure, in the level's colour;
    memory's share of its limit is a quiet line under the figure. */
@@ -2040,15 +2029,11 @@ tr:has(> td > .player-actions) > td.num {
   font-weight: 400;
 }
 
-/* On a phone the find label and its field share one row, so the log starts
-   on the first screen above the command bar. */
+/* On a phone the filter takes a row of its own. */
 @media (max-width: 39.99rem) {
-  .log-tools > label[for="log-find"] {
-    margin-inline-end: 0;
-  }
-
   .log-tools > .log-tools__filter {
     flex: 1 1 100%;
+    margin-inline-start: 0;
   }
 }
 
@@ -2065,13 +2050,4 @@ tr:has(> td > .player-actions) > td.num {
   text-align: end;
 }
 
-/* On a phone Follow newest has its row to itself, so the count takes that
-   row's end and adds no row: the log starts on the first screen above the
-   command bar (DESIGN 8.5). */
-@media (max-width: 39.99rem) {
-  .log-tools > .log-tools__count {
-    flex: 1 1 0;
-    min-inline-size: 0;
-  }
-}
 }
