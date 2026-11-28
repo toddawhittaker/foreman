@@ -71,7 +71,7 @@
 <p>{{t "mods.plan.nothing"}}</p>
 {{- if .StepFoot}}
 {{- /* Step 2's footer: nothing to install, so Next goes straight on (SPEC 5.6). */}}
-<div class="actions flow-foot">
+<div class="actions form-foot">
   {{template "genflow-back" .Back}}
   <a href="{{.NextPath}}" class="button button--primary" id="plan-next">{{msg .NextLabel}}</a>
 </div>
@@ -249,7 +249,7 @@
     </div>
     {{- if .StepFoot}}
     {{- /* Step 2's footer: Next installs the plan as Install would, with the same checks and snapshot, then goes on to step 3 (SPEC 5.6). While a conflict stands there is no Next. */}}
-    <div class="actions flow-foot">
+    <div class="actions form-foot">
       {{template "genflow-back" .Back}}
       <a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>
       {{- if .CanApply}}

@@ -1611,4 +1611,10 @@ main:has(.import-pick) form:is(.import-upload, .import-world-file) > p:not([clas
     grid-column: 1;
   }
 }
+
+/* Favorites with none yet: the way to the worlds stands centred under the
+   empty state's drawing and sentence, as one block (DESIGN 7.3). */
+#favorites-empty-link {
+  justify-content: center;
+}
 }

@@ -2689,11 +2689,12 @@ link: step 2 goes "Back to the world", step 3 "Back to the mods", step 4
 "Back to mod settings", or "Back to the mods" when step 3 has nothing. Step
 1 has no Back, so its Cancel leads the bar. Step 1 uses the `form-foot`
 partial (7.1). Steps 3 and 4 write the same `actions form-foot` bar out by
-hand, because the partial has no Back slot. Step 2's Mods tab ends with a
-bar of the same look as its last block (`flow-foot`). Skip links stay where they
+hand, because the partial has no Back slot. Step 2's Mods tab ends with the
+same `actions form-foot` bar as its last block. Skip links stay where they
 were, as secondary actions. Step 2's review of the plan ends with the same
-`flow-foot` bar, across both of the review's columns and out to its box's
-edges.
+bar, across both of the review's columns and out to its box's edges. Step
+4's form is a plate, as step 1's is, so on every step Back and the primary
+action stand at the same x (7.1).
 
 **Step 1**, `GET /generate`: one `h1` with a one-line hint, then one form,
 in this order:
